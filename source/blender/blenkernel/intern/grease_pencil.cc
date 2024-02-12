@@ -386,13 +386,10 @@ Span<uint32_t> Drawing::triangles_offsets() const
   return this->runtime->triangles_offsets_cache.data().as_span();
 }
 
-static bool check_valid_curves(const CurvesGeometry &curves,
-                               Span<float2> projverts,
+static bool check_valid_curves(Span<float2> projverts,
                                const IndexMask group,
                                const OffsetIndices<int> points_by_group)
 {
-  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-
   std::atomic<bool> intersect = false;
   /* Check for self intersections. */
   group.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
@@ -400,16 +397,15 @@ static bool check_valid_curves(const CurvesGeometry &curves,
       return;
     }
     const IndexRange point_group = points_by_group[pos];
-    const IndexRange points = points_by_curve[curve_i];
-    for (const int e2_id : points.index_range()) {
-      for (const int e1_id : points.index_range()) {
+    for (const int e2_id : point_group.index_range()) {
+      for (const int e1_id : point_group.index_range()) {
         if (e2_id >= e1_id) {
           continue;
         }
         const int p1 = e1_id;
-        const int p2 = (e1_id + 1) % points.size();
+        const int p2 = (e1_id + 1) % point_group.size();
         const int p3 = e2_id;
-        const int p4 = (e2_id + 1) % points.size();
+        const int p4 = (e2_id + 1) % point_group.size();
         if (p1 == p4) {
           continue;
         }
@@ -439,24 +435,22 @@ static bool check_valid_curves(const CurvesGeometry &curves,
       return;
     }
     const IndexRange point_group1 = points_by_group[pos1];
-    const IndexRange points1 = points_by_curve[curve_i1];
 
     group.foreach_index([&](const int64_t curve_i2, const int64_t pos2) {
       if (intersect) {
         return;
       }
       const IndexRange point_group2 = points_by_group[pos2];
-      const IndexRange points2 = points_by_curve[curve_i2];
 
       if (pos2 >= pos1) {
         return;
       }
-      for (const int e1_id : points1.index_range()) {
-        for (const int e2_id : points2.index_range()) {
+      for (const int e1_id : point_group1.index_range()) {
+        for (const int e2_id : point_group2.index_range()) {
           const int p11 = e1_id;
-          const int p12 = (e1_id + 1) % points1.size();
+          const int p12 = (e1_id + 1) % point_group1.size();
           const int p21 = e2_id;
-          const int p22 = (e2_id + 1) % points2.size();
+          const int p22 = (e2_id + 1) % point_group2.size();
 
           if (isect_seg_seg_v2_simple(projverts[point_group1[p11]],
                                       projverts[point_group1[p12]],
@@ -518,7 +512,7 @@ Span<uint3> Drawing::triangles() const
         });
       });
 
-      if (!check_valid_curves(curves, projverts, group, points_by_group)) {
+      if (!check_valid_curves(projverts, group, points_by_group)) {
         triangles_offsets[group_id] = triangles_offset;
         continue;
       }
