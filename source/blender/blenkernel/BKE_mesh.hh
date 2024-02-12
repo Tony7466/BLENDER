@@ -9,6 +9,7 @@
  */
 
 #include "BLI_index_mask_fwd.hh"
+#include "BLI_math_geom.h"
 #include "BLI_offset_indices.hh"
 
 #include "BKE_mesh.h"
@@ -288,6 +289,12 @@ inline int face_triangles_num(const int face_size)
 {
   BLI_assert(face_size > 2);
   return face_size - 2;
+}
+
+inline IndexRange face_triangles_range(OffsetIndices<int> faces, int face_i)
+{
+  const IndexRange face = faces[face_i];
+  return IndexRange(poly_to_tri_count(face_i, face.start()), face_triangles_num(face.size()));
 }
 
 /**
