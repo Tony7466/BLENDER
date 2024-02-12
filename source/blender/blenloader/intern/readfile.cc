@@ -58,14 +58,14 @@
 #include "BLI_threads.h"
 #include "BLI_time.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_asset.hh"
 #include "BKE_blender_version.h"
-#include "BKE_collection.h"
-#include "BKE_global.h" /* for G */
+#include "BKE_collection.hh"
+#include "BKE_global.hh" /* for G */
 #include "BKE_idprop.h"
 #include "BKE_idtype.hh"
 #include "BKE_layer.hh"
@@ -82,8 +82,8 @@
 #include "BKE_node.hh" /* for tree type defines */
 #include "BKE_object.hh"
 #include "BKE_packedFile.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_undo_system.hh"
 #include "BKE_workspace.h"
