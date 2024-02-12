@@ -74,15 +74,15 @@ ShaderCache::ShaderCache()
 
   std::string smoke[] = {"_smoke", "_object"};
   std::string interpolation[] = {"_linear", "_cubic", "_closest"};
-  std::string slice[] = {"_no_slice", "_slice"};
   std::string coba[] = {"_no_coba", "_coba"};
+  std::string slice[] = {"_no_slice", "_slice"};
 
   for (auto sm : IndexRange(2) /*smoke*/) {
     for (auto i : IndexRange(3) /*interpolation*/) {
-      for (auto sl : IndexRange(2) /*slice*/) {
-        for (auto c : IndexRange(2) /*coba*/) {
-          volume_[sm][i][sl][c] = {"workbench_volume" + smoke[sm] + interpolation[i] + slice[sl] +
-                                   coba[c]};
+      for (auto c : IndexRange(2) /*coba*/) {
+        for (auto sl : IndexRange(2) /*slice*/) {
+          volume_[sm][i][c][sl] = {"workbench_volume" + smoke[sm] + interpolation[i] + coba[c] +
+                                   slice[sl]};
         }
       }
     }

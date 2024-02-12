@@ -50,7 +50,7 @@ void VolumePass::object_sync_volume(Manager &manager,
   const bool use_slice = (volume->display.axis_slice_method == AXIS_SLICE_SINGLE);
 
   sub_ps.shader_set(ShaderCache::get().volume_get(
-      false, volume->display.interpolation_method, use_slice, false));
+      false, volume->display.interpolation_method, false, use_slice));
   sub_ps.push_constant("do_depth_test", scene_state.shading.type >= OB_SOLID);
 
   const float density_scale = volume->display.density *
@@ -118,7 +118,7 @@ void VolumePass::object_sync_modifier(Manager &manager,
   const bool use_slice = settings.axis_slice_method == AXIS_SLICE_SINGLE;
 
   sub_ps.shader_set(
-      ShaderCache::get().volume_get(true, settings.interp_method, use_slice, settings.use_coba));
+      ShaderCache::get().volume_get(true, settings.interp_method, settings.use_coba, use_slice));
   sub_ps.push_constant("do_depth_test", scene_state.shading.type >= OB_SOLID);
 
   if (settings.use_coba) {

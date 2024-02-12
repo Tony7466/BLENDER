@@ -88,9 +88,9 @@ class ShaderCache {
     return shadow_[depth_pass][manifold][cap].get();
   }
 
-  GPUShader *volume_get(bool smoke, int interpolation, bool slice, bool coba)
+  GPUShader *volume_get(bool smoke, int interpolation, bool coba, bool slice)
   {
-    return volume_[smoke][interpolation][slice][coba].get();
+    return volume_[smoke][interpolation][coba][slice].get();
   }
 
   StaticShader extract_stencil = {"workbench_extract_stencil"};
