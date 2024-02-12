@@ -1840,10 +1840,7 @@ static int grease_pencil_separate_shape_exec(bContext *C, wmOperator * /*op*/)
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
     bke::SpanAttributeWriter<int> shape_ids = attributes.lookup_for_write_span<int>("shape_id");
 
-    int max_shape_id = 0;
-    for (const int i : shape_ids.span.index_range()) {
-      max_shape_id = std::max(max_shape_id, shape_ids.span[i]);
-    }
+    const int max_shape_id = *std::max_element(shape_ids.span.begin(), shape_ids.span.end());
 
     strokes.foreach_index(
         [&](const int64_t i, const int64_t pos) { shape_ids.span[i] = pos + max_shape_id + 1; });

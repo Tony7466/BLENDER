@@ -161,10 +161,7 @@ void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
 
   /* Make the new curves part of new shapes. */
   if (shape_ids) {
-    int max_shape_id = 0;
-    for (const int i : shape_ids.span.index_range()) {
-      max_shape_id = std::max(max_shape_id, shape_ids.span[i]);
-    }
+    const int max_shape_id = *std::max_element(shape_ids.span.begin(), shape_ids.span.end());
 
     /* Note: add `max_shape_id` may create gaps in the order of shape ids.
      * This is fix by `ensure_shape_id_order` */
@@ -234,10 +231,7 @@ void duplicate_curves(bke::CurvesGeometry &curves, const IndexMask &mask)
 
   /* Make the new curves part of new shapes. */
   if (shape_ids) {
-    int max_shape_id = 0;
-    for (const int i : shape_ids.span.index_range()) {
-      max_shape_id = std::max(max_shape_id, shape_ids.span[i]);
-    }
+    const int max_shape_id = *std::max_element(shape_ids.span.begin(), shape_ids.span.end());
 
     /* Note: add `max_shape_id` may create gaps in the order of shape ids.
      * This is fix by `ensure_shape_id_order` */

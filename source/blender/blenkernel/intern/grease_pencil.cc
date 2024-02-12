@@ -366,10 +366,8 @@ Array<IndexMask> Drawing::get_shapes_index_masks(IndexMaskMemory &memory) const
     return data;
   }
 
-  int max_shape_id = 0;
-  for (const int i : shape_ids.index_range()) {
-    max_shape_id = std::max(max_shape_id, shape_ids[i]);
-  }
+  const int max_shape_id = *std::max_element(shape_ids.get_internal_span().begin(),
+                                             shape_ids.get_internal_span().end());
 
   Array<IndexMask> data(max_shape_id + 1);
   IndexMask::from_groups<int>(

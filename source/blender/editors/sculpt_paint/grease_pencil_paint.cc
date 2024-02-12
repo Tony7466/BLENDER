@@ -247,10 +247,7 @@ struct PaintOperationExecutor {
 
     /* Make the new stroke a new shape. */
     if (shape_ids) {
-      int max_shape_id = 0;
-      for (const int i : shape_ids.span.index_range()) {
-        max_shape_id = std::max(max_shape_id, shape_ids.span[i]);
-      }
+      const int max_shape_id = *std::max_element(shape_ids.span.begin(), shape_ids.span.end());
 
       shape_ids.span.last() = max_shape_id + 1;
     }
@@ -268,10 +265,11 @@ struct PaintOperationExecutor {
                                       bke::AttrDomain::Point,
                                       {"position", "radius", "opacity", "vertex_color"},
                                       curves.points_range().take_back(1));
-    bke::fill_attribute_range_default(attributes,
-                                      bke::AttrDomain::Curve,
-                                      {"curve_type", "material_index", "cyclic", "hardness", "shape_id"},
-                                      curves.curves_range().take_back(1));
+    bke::fill_attribute_range_default(
+        attributes,
+        bke::AttrDomain::Curve,
+        {"curve_type", "material_index", "cyclic", "hardness", "shape_id"},
+        curves.curves_range().take_back(1));
 
     drawing_->tag_topology_changed();
   }
