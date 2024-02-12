@@ -52,8 +52,7 @@ class ShaderCache {
 
   StaticShader prepass_[geometry_type_len][pipeline_type_len][lighting_type_len][shader_type_len]
                        [2 /*clip*/];
-  StaticShader resolve_[pipeline_type_len][lighting_type_len][2 /*cavity*/][2 /*curvature*/]
-                       [2 /*shadow*/];
+  StaticShader resolve_[lighting_type_len][2 /*cavity*/][2 /*curvature*/][2 /*shadow*/];
 
   StaticShader shadow_[2 /*depth_pass*/][2 /*manifold*/][2 /*cap*/];
 
@@ -76,13 +75,12 @@ class ShaderCache {
                        .get();
   }
 
-  GPUShader *resolve_get(ePipelineType pipeline_type,
-                         eLightingType lighting_type,
+  GPUShader *resolve_get(eLightingType lighting_type,
                          bool cavity = false,
                          bool curvature = false,
                          bool shadow = false)
   {
-    return resolve_[int(pipeline_type)][int(lighting_type)][cavity][curvature][shadow].get();
+    return resolve_[int(lighting_type)][cavity][curvature][shadow].get();
   }
 
   GPUShader *shadow_get(bool depth_pass, bool manifold, bool cap = false)

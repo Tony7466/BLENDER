@@ -122,8 +122,7 @@ void OpaquePass::sync(const SceneState &scene_state, SceneResources &resources)
 
   deferred_ps_.init();
   deferred_ps_.state_set(DRW_STATE_WRITE_COLOR);
-  deferred_ps_.shader_set(ShaderCache::get().resolve_get(ePipelineType::OPAQUE,
-                                                         scene_state.lighting_type,
+  deferred_ps_.shader_set(ShaderCache::get().resolve_get(scene_state.lighting_type,
                                                          scene_state.draw_cavity,
                                                          scene_state.draw_curvature,
                                                          scene_state.draw_shadows));

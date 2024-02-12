@@ -49,14 +49,12 @@ ShaderCache::ShaderCache()
   std::string curvature[] = {"_no_curvature", "_curvature"};
   std::string shadow[] = {"_no_shadow", "_shadow"};
 
-  for (auto p : IndexRange(pipeline_type_len)) {
-    for (auto l : IndexRange(lighting_type_len)) {
-      for (auto ca : IndexRange(2) /*cavity*/) {
-        for (auto cu : IndexRange(2) /*curvature*/) {
-          for (auto s : IndexRange(2) /*shadow*/) {
-            resolve_[p][l][ca][cu][s] = {"workbench_resolve" + pipelines[p] + lightings[l] +
-                                         cavity[ca] + curvature[cu] + shadow[s]};
-          }
+  for (auto l : IndexRange(lighting_type_len)) {
+    for (auto ca : IndexRange(2) /*cavity*/) {
+      for (auto cu : IndexRange(2) /*curvature*/) {
+        for (auto s : IndexRange(2) /*shadow*/) {
+          resolve_[l][ca][cu][s] = {"workbench_resolve_opaque" + lightings[l] + cavity[ca] +
+                                    curvature[cu] + shadow[s]};
         }
       }
     }
