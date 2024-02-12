@@ -228,6 +228,83 @@ static Curves *edge_paths_to_curves_convert(
   return curves_id;
 }
 
+static Curves *edge_paths_to_curves_convert_new(
+    const Mesh &mesh,
+    const IndexMask &start_verts_mask,
+    const AnonymousAttributePropagationInfo &propagation_info,
+    MutableSpan<int> next_indices)
+{
+  const IndexRange vert_range(mesh.verts_num);
+
+  /* All the next points can pointing to itself. */
+  {
+    SCOPED_TIMER_AVERAGED("Loops incorrect indices");
+    threading::parallel_for(next_indices.index_range(), 4096, [&](const IndexRange range) {
+      for (const int vert_i : range) {
+        int &next_vert = next_indices[vert_i];
+        if (UNLIKELY(!vert_range.contains(next_vert))) {
+          next_vert = vert_i;
+        }
+      }
+    });
+  }
+
+  /* Do not create curves from first point with incorrect index. */
+  IndexMaskMemory memory;
+  IndexMask valid_start_verts;
+  {
+    SCOPED_TIMER_AVERAGED("Roots mask");
+    valid_start_verts = IndexMask::from_predicate(
+        start_verts_mask, GrainSize(4096), memory, [&](const int vert_i) {
+          return !is_dead_end(next_indices, vert_i);
+        });
+  }
+
+  Array<int> rank();
+  Vector<int> threads
+
+      Array<int>
+          curve_offsets(valid_start_verts.size() + 1);
+  {
+    SCOPED_TIMER_AVERAGED("Count rank");
+    valid_start_verts.foreach_index(GrainSize(2048),
+                                    [&](const int first_vert, const int vert_pos) {
+                                      curve_offsets[vert_pos] = rank_for_vertex(first_vert);
+                                    });
+  }
+
+  OffsetIndices<int> curves;
+  {
+    SCOPED_TIMER_AVERAGED("Accumulate");
+    curves = offset_indices::accumulate_counts_to_offsets(curve_offsets);
+  }
+  if (curves.is_empty()) {
+    return nullptr;
+  }
+
+  Array<int> indices(curves.total_size());
+  {
+    SCOPED_TIMER_AVERAGED("Gather indices");
+    valid_start_verts.foreach_index(GrainSize(1024), [&](const int first_vert, const int pos) {
+      MutableSpan<int> curve_indices = indices.as_mutable_span().slice(curves[pos]);
+      int current_vert = first_vert;
+      for (const int i : curve_indices.index_range()) {
+        curve_indices[i] = current_vert;
+        current_vert = next_indices[current_vert];
+      }
+    });
+  }
+
+  SCOPED_TIMER_AVERAGED("New curves");
+  Curves *curves_id = bke::curves_new_nomain(
+      geometry::create_curve_from_vert_indices(mesh.attributes(),
+                                               indices,
+                                               curve_offsets.as_span().drop_back(1),
+                                               IndexRange(0),
+                                               propagation_info));
+  return curves_id;
+}
+
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Mesh");
