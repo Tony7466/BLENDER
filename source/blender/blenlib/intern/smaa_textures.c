@@ -6,8 +6,6 @@
  *
  * SPDX-License-Identifier: MIT */
 
-#include "BLI_smaa_textures.h"
-
 /* Don't re-wrap large data definitions. */
 /* clang-format off */
 
