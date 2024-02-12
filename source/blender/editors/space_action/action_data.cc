@@ -59,6 +59,21 @@
 /** \name Utilities
  * \{ */
 
+static bool action_active(bContext *C)
+{
+  if (ED_operator_action_active(C)) {
+    SpaceAction *saction = (SpaceAction *)CTX_wm_space_data(C);
+    AnimData *adt = ED_actedit_animdata_from_context(C, nullptr);
+
+    /* Only when there's an active action, in the right modes... */
+    if (saction->action && adt) {
+      return true;
+    }
+  }
+
+  /* something failed... */
+  return false;
+}
 AnimData *ED_actedit_animdata_from_context(const bContext *C, ID **r_adt_id_owner)
 {
   SpaceAction *saction = (SpaceAction *)CTX_wm_space_data(C);
@@ -283,12 +298,22 @@ static int action_new_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static std::string new_action_get_description(bContext *C, wmOperatorType* /*ot*/, PointerRNA * /*ptr*/)
+{
+  if (action_active(C)) {
+    return "Creates new action by duplicating the current action";
+  }
+  else {
+    return "Create new action from scratch";
+  }
+}
+
 void ACTION_OT_new(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "New Action";
+  ot->name = "Duplicate action";
   ot->idname = "ACTION_OT_new";
-  ot->description = "Create new action";
+  ot->get_description = new_action_get_description;
 
   /* api callbacks */
   ot->exec = action_new_exec;
@@ -657,18 +682,7 @@ void ED_animedit_unlink_action(
 
 static bool action_unlink_poll(bContext *C)
 {
-  if (ED_operator_action_active(C)) {
-    SpaceAction *saction = (SpaceAction *)CTX_wm_space_data(C);
-    AnimData *adt = ED_actedit_animdata_from_context(C, nullptr);
-
-    /* Only when there's an active action, in the right modes... */
-    if (saction->action && adt) {
-      return true;
-    }
-  }
-
-  /* something failed... */
-  return false;
+  return action_active(C);
 }
 
 static int action_unlink_exec(bContext *C, wmOperator *op)
