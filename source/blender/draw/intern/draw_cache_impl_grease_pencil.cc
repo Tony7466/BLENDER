@@ -462,7 +462,9 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     /* One vertex is stored before and after as padding. Cyclic strokes have one extra vertex. */
     total_verts_num += num_points + num_cyclic + num_curves * 2;
     total_triangles_num += (num_points + num_cyclic) * 2;
-    total_triangles_num += info.drawing.triangles().size();
+    for (const int tris_id : info.drawing.triangles().index_range()) {
+      total_triangles_num += info.drawing.triangles()[tris_id].size();
+    }
 
     verts_start_offsets_per_visible_drawing.append(std::move(verts_start_offsets));
   }
@@ -519,9 +521,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
             "fill_color", bke::AttrDomain::Curve, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
     const VArray<int> materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
-    const Span<uint3> triangles = info.drawing.triangles();
+    const Span<Vector<uint3>> triangles = info.drawing.triangles();
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];
-    const Span<uint32_t> triangles_offsets = info.drawing.triangles_offsets();
     IndexMaskMemory memory;
     const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         object, info.drawing, memory);
@@ -565,14 +566,10 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
     /* Add the triangle indices to the index buffer. */
     for (const int group_id : groups.index_range()) {
-      const int tris_start_offset = triangles_offsets[group_id];
-      const int tris_next_offset = triangles_offsets[group_id + 1];
-      const int tris_length = tris_next_offset - tris_start_offset;
-      if (tris_length == 0) {
+      const Span<uint3> tris_slice = triangles[group_id];
+      if (tris_slice.size() == 0) {
         continue;
       }
-
-      const Span<uint3> tris_slice = triangles.slice(tris_start_offset, tris_length);
       auto point_to_id = [&](uint32_t p) {
         const int curve_ = point_to_curve_map[p];
         const IndexRange points_ = points_by_curve[curve_];

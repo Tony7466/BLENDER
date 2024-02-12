@@ -299,7 +299,6 @@ Drawing::Drawing(const Drawing &other)
   this->runtime = MEM_new<bke::greasepencil::DrawingRuntime>(__func__);
 
   this->runtime->triangles_cache = other.runtime->triangles_cache;
-  this->runtime->triangles_offsets_cache = other.runtime->triangles_offsets_cache;
   this->runtime->curve_plane_normals_cache = other.runtime->curve_plane_normals_cache;
 }
 
@@ -374,16 +373,6 @@ Array<IndexMask> Drawing::get_shapes_index_masks(IndexMaskMemory &memory) const
       IndexRange(num_curves), memory, [&](const int i) { return shape_ids[i]; }, data);
 
   return data;
-}
-
-Span<uint32_t> Drawing::triangles_offsets() const
-{
-  if (this->runtime->triangles_offsets_cache.is_dirty()) {
-    this->runtime->triangles_cache.tag_dirty();
-    this->triangles();
-  }
-
-  return this->runtime->triangles_offsets_cache.data().as_span();
 }
 
 static bool check_self_intersections(Span<float2> projverts)
@@ -499,9 +488,9 @@ static bool check_valid_curves(Span<float2> projverts, const OffsetIndices<int> 
   return true;
 }
 
-Span<uint3> Drawing::triangles() const
+Span<Vector<uint3>> Drawing::triangles() const
 {
-  this->runtime->triangles_cache.ensure([&](Vector<uint3> &r_data) {
+  this->runtime->triangles_cache.ensure([&](Vector<Vector<uint3>> &r_data) {
     const CurvesGeometry &curves = this->strokes();
     const Span<float3> positions = curves.positions();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -514,9 +503,8 @@ Span<uint3> Drawing::triangles() const
     IndexMaskMemory memory;
     const Array<IndexMask> groups = this->get_shapes_index_masks(memory);
 
-    Array<uint32_t> triangles_offsets(groups.size() + 1);
+    r_data.resize(groups.size() + 1);
 
-    int triangles_offset = 0;
     for (const int group_id : groups.index_range()) {
       const IndexMask &group = groups[group_id];
 
@@ -540,7 +528,6 @@ Span<uint3> Drawing::triangles() const
       });
 
       if (!check_valid_curves(projverts, points_by_group)) {
-        triangles_offsets[group_id] = triangles_offset;
         continue;
       }
 
@@ -573,26 +560,17 @@ Span<uint3> Drawing::triangles() const
 
       meshintersect::CDT_result<double> result = delaunay_2d_calc(input, CDT_INSIDE_WITH_HOLES);
 
-      r_data.resize(triangles_offset + result.face.size());
+      r_data[group_id].resize(result.face.size());
 
       threading::parallel_for(result.face.index_range(), 512, [&](const IndexRange range) {
         for (const int i : range) {
           BLI_assert(result.face[i].size() == 3);
-          r_data[i + triangles_offset] = uint3(vert_to_point_map[result.face[i][0]],
-                                               vert_to_point_map[result.face[i][1]],
-                                               vert_to_point_map[result.face[i][2]]);
+          r_data[group_id][i] = uint3(vert_to_point_map[result.face[i][0]],
+                                      vert_to_point_map[result.face[i][1]],
+                                      vert_to_point_map[result.face[i][2]]);
         }
       });
-
-      triangles_offsets[group_id] = triangles_offset;
-      triangles_offset += result.face.size();
     }
-    triangles_offsets.last() = triangles_offset;
-
-    this->runtime->triangles_offsets_cache.update([&](Vector<uint32_t> &r_data) {
-      r_data.resize(triangles_offsets.size());
-      array_utils::copy(triangles_offsets.as_span(), r_data.as_mutable_span());
-    });
   });
 
   return this->runtime->triangles_cache.data().as_span();
@@ -695,7 +673,6 @@ void Drawing::tag_positions_changed()
 {
   this->strokes_for_write().tag_positions_changed();
   this->runtime->triangles_cache.tag_dirty();
-  this->runtime->triangles_offsets_cache.tag_dirty();
   this->runtime->curve_plane_normals_cache.tag_dirty();
 }
 
