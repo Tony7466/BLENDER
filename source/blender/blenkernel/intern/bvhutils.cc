@@ -932,25 +932,6 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
   return data->tree;
 }
 
-static BitVector<> bmverts_loose_map_get(BMesh *bm, int *r_bmvert_active_len)
-{
-  BitVector<> bmvert_mask(bm->totvert);
-
-  int i, bmvert_loose_len = 0;
-  BMIter iter;
-  BMVert *v;
-  BM_ITER_MESH_INDEX (v, &iter, bm, BM_VERTS_OF_MESH, i) {
-    if (v->e == nullptr) {
-      bmvert_mask[i].set();
-      bmvert_loose_len++;
-    }
-  }
-
-  *r_bmvert_active_len = bmvert_loose_len;
-
-  return bmvert_mask;
-}
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
