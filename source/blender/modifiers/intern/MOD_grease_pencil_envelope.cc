@@ -270,17 +270,18 @@ static bool find_envelope(const Span<float3> positions,
     }
   }
 
-  const float3 new_center = 0.5f * (intersect1 + intersect2);
   r_radius = 0.5f * (max_distance1 + max_distance2);
   if (r_radius < FLT_EPSILON) {
     return false;
   }
 
+  const float3 new_center = 0.5f * (intersect1 + intersect2);
   /* Apply radius limiting to not cross existing lines. */
   const float3 dir = math::normalize(new_center - pos);
   r_radius = std::min(r_radius, calc_radius_limit(positions, is_cyclic, spread, point, dir));
 
-  r_center = math::interpolate(pos, new_center, r_radius / math::distance(intersect1, intersect2));
+  r_center = math::interpolate(
+      pos, new_center, 2.0f * r_radius / math::distance(intersect1, intersect2));
 
   return true;
 }
