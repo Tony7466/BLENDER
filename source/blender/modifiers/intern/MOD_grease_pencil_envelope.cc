@@ -314,12 +314,18 @@ static void deform_drawing_as_envelope(const GreasePencilEnvelopeModifierData &e
                                            point_num / 2)) :
                                 std::min(emd.spread, point_num - 1);
 
-    for (const int64_t point_i : points) {
+    for (const int64_t i : points.index_range()) {
+      const int64_t point_i = points[i];
       const float weight = vgroup_weights[point_i];
 
       float3 envelope_center;
       float envelope_radius;
-      if (!find_envelope(old_positions, cyclic, spread, point_i, envelope_center, envelope_radius))
+      if (!find_envelope(old_positions.as_span().slice(points),
+                         cyclic,
+                         spread,
+                         i,
+                         envelope_center,
+                         envelope_radius))
       {
         continue;
       }
