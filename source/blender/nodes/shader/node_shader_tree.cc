@@ -28,7 +28,7 @@
 #include "BLI_vector.hh"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_linestyle.h"
@@ -36,7 +36,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -1005,7 +1005,7 @@ static bool closure_node_filter(const bNode *node)
 }
 
 /* Shader to rgba needs their associated closure duplicated and the weight tree generated for. */
-static void ntree_shader_shader_to_rgba_branch(bNodeTree *ntree, bNode *output_node)
+static void ntree_shader_shader_to_rgba_branches(bNodeTree *ntree)
 {
   Vector<bNode *> shader_to_rgba_nodes;
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
@@ -1197,7 +1197,7 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat)
   if (valid_tree) {
     ntree_shader_pruned_unused(localtree, output);
     if (output != nullptr) {
-      ntree_shader_shader_to_rgba_branch(localtree, output);
+      ntree_shader_shader_to_rgba_branches(localtree);
       ntree_shader_weight_tree_invert(localtree, output);
     }
   }

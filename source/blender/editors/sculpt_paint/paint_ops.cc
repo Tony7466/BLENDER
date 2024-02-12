@@ -19,7 +19,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "IMB_interp.hh"
 
@@ -40,7 +40,7 @@
 #include "BKE_main.hh"
 #include "BKE_paint.hh"
 #include "BKE_preferences.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "ED_asset_handle.hh"
 #include "ED_asset_library.hh"
