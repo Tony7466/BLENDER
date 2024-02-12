@@ -47,8 +47,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <iostream>
-
 static void init_data(GpencilModifierData *md)
 {
   EnvelopeGpencilModifierData *gpmd = (EnvelopeGpencilModifierData *)md;
@@ -216,7 +214,6 @@ static void apply_stroke_envelope(bGPDstroke *gps,
     if (normalize_v3(plane_no) == 0.0f) {
       continue;
     }
-    std::cout << "Plane normal " << blender::float3(plane_no) << std::endl;
     /* Now find the intersections with the plane. */
     /* NOTE this part is the first performance critical part. Improvements are welcome. */
     float tmp_closest[3];
@@ -225,7 +222,6 @@ static void apply_stroke_envelope(bGPDstroke *gps,
                                  max_ii(0, i + j - spread_left);
       const int i2 = is_cyclic ? (i + j + spread_right) % gps->totpoints :
                                  min_ii(gps->totpoints - 1, i + j + spread_right);
-      std::cout << "  Envelope pair (" << i1 << ", " << i2 << ")" << std::endl;
 #if 0
       bool side = dot_v3v3(&old_points[i1].x, plane_no) < dot_v3v3(plane_no, &old_points[i2].x);
       if (side) {
@@ -247,7 +243,6 @@ static void apply_stroke_envelope(bGPDstroke *gps,
                               dot_v3v3(plane_no, &old_points[i2].x)) /
                         len_v3v3(&old_points[i1].x, &old_points[i2].x);
       d *= 2 * cos_angle / (1 + cos_angle);
-      std::cout << "  Diameter: " << d << std::endl;
       float to_closest[3];
       sub_v3_v3v3(to_closest, closest, &point->x);
       if (dist == 0.0f) {
@@ -266,8 +261,6 @@ static void apply_stroke_envelope(bGPDstroke *gps,
           copy_v3_v3(closest2, tmp_closest);
         }
       }
-      std::cout << "Closest 1: r=" << dist << " p=" << blender::float3(closest) << std::endl;
-      std::cout << "Closest 2: r=" << dist2 << " p=" << blender::float3(closest2) << std::endl;
     }
     if (dist == 0.0f) {
       copy_v3_v3(closest, &point->x);
@@ -295,10 +288,7 @@ static void apply_stroke_envelope(bGPDstroke *gps,
     float fac = use_dist * weight;
     point->pressure += fac * pixfactor;
     interp_v3_v3v3(&point->x, &point->x, new_center, fac / len_v3v3(closest, closest2));
-    std::cout << "Final radius=" << use_dist << " center=" << blender::float3(&point->x)
-              << std::endl;
   }
-  std::flush(std::cout);
 
   MEM_freeN(old_points);
 }

@@ -27,7 +27,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "WM_types.hh"
 
@@ -37,8 +37,6 @@
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
-
-#include <iostream>
 
 namespace blender {
 
@@ -94,33 +92,109 @@ static inline std::optional<float3> find_plane_intersection(const float3 &plane_
   return math::interpolate(from, to, lambda);
 }
 
+/* "Infinite" radius in case no limit is applied. */
+static const float unlimited_radius = FLT_MAX;
+
+/**
+ * Compute the minimal radius of a circle centered on the direction vector,
+ * going through the origin and touching the line (p1, p2).
+ *
+ * Use plane-conic-intersections to choose the minimal radius.
+ * The conic is defined in 4D as f({x,y,z,t}) = x*x + y*y + z*z - t*t = 0
+ * Then a plane is defined parametrically as
+ * {p}(u, v) = {p1,0}*u + {p2,0}*(1-u) + {dir,1}*v with 0 <= u <= 1 and v >= 0
+ * Now compute the intersection point with the smallest t.
+ * To do so, compute the parameters u, v such that f(p(u, v)) = 0 and v is minimal.
+ * This can be done analytically and the solution is:
+ * u = -dot(p2,dir) / dot(p1-p2, dir) +/- sqrt((dot(p2,dir) / dot(p1-p2, dir))^2 -
+ * (2*dot(p1-p2,p2)*dot(p2,dir)-dot(p2,p2)*dot(p1-p2,dir))/(dot(p1-p2,dir)*dot(p1-p2,p1-p2)));
+ * v = ({p1}u + {p2}*(1-u))^2 / (2*(dot(p1,dir)*u + dot(p2,dir)*(1-u)));
+ */
+static float calc_min_radius_v3v3(const float3 &p1, const float3 &p2, const float3 &dir)
+{
+  const float p1_dir = math::dot(p1, dir);
+  const float p2_dir = math::dot(p2, dir);
+  const float p2_sqr = math::length_squared(p2);
+  const float diff_dir = p1_dir - p2_dir;
+
+  float u;
+  if (diff_dir != 0.0f) {
+    const float p = p2_dir / diff_dir;
+    const float3 diff = p1 - p2;
+    const float diff_sqr = math::length_squared(diff);
+    const float diff_p2 = math::dot(diff, p2);
+    const float q = (2 * diff_p2 * p2_dir - p2_sqr * diff_dir) / (diff_dir * diff_sqr);
+    if (p * p - q >= 0) {
+      u = math::clamp(-p - math::sqrt(p * p - q) * std::copysign(1.0f, p), 0.0f, 1.0f);
+    }
+    else {
+      u = 0.5f - std::copysign(0.5f, p);
+    }
+  }
+  else {
+    const float p1_sqr = math::length_squared(p1);
+    u = p1_sqr < p2_sqr ? 1.0f : 0.0f;
+  }
+
+  /* v is the determined minimal radius. In case p1 and p2 are the same, there is a
+   * simple proof for the following formula using the geometric mean theorem and Thales theorem. */
+  const float v = math::length_squared(math::interpolate(p2, p1, u)) /
+                  (2 * math::interpolate(p2_dir, p1_dir, u));
+  if (v < 0 || !isfinite(v)) {
+    /* No limit to the radius from this segment. */
+    return unlimited_radius;
+  }
+  return v;
+}
+
 static float calc_radius_limit(const Span<float3> positions,
                                const bool is_cyclic,
                                const int spread,
                                const int point,
                                const float3 &direction)
 {
-  UNUSED_VARS(positions, is_cyclic, spread, point, direction);
-  // if (is_cyclic) {
-  //   BLI_assert(spread <= positions.size() / 2);
-  //   for (const int line_i : IndexRange(spread)) {
+  if (math::is_zero(direction)) {
+    return unlimited_radius;
+  }
 
-  //     /* Raw indices, can be out of range. */
-  //     const int from_spread_i = point - spread - 1 + line_i;
-  //     const int to_spread_i = point + line_i;
-  //     /* Clamp or wrap to valid indices. */
-  //     const int from_i = is_cyclic ? (from_spread_i + points.size()) % points.size() :
-  //                                    std::max(from_i, points.first());
-  //     const int to_i = is_cyclic ? (to_spread_i + points.size()) % points.size() :
-  //                                  std::min(to_spread_i, points.last());
-  //     const float3 &from_pos = positions[from_i];
-  //     const float3 &to_pos = positions[to_i];
-  //   }
-  // }
-  // else {
+  const int point_num = positions.size();
+  const float3 &center = positions[point];
 
-  // }
-  return FLT_MAX;
+  float result = unlimited_radius;
+  if (is_cyclic) {
+    /* Spread should be limited to half the points in the cyclic case. */
+    BLI_assert(spread <= point_num / 2);
+    for (const int line_i : IndexRange(spread)) {
+      const int left_from_i = (point - line_i - 2 + point_num) % point_num;
+      const int left_to_i = (point - line_i - 1 + point_num) % point_num;
+      const int right_from_i = (point + line_i + 1 + point_num) % point_num;
+      const int right_to_i = (point + line_i + 2 + point_num) % point_num;
+
+      const float left_limit = calc_min_radius_v3v3(
+          positions[left_from_i] - center, positions[left_to_i] - center, direction);
+      const float right_limit = calc_min_radius_v3v3(
+          positions[right_from_i] - center, positions[right_to_i] - center, direction);
+      result = std::min(result, std::min(left_limit, right_limit));
+    }
+  }
+  else {
+    if (point == 0 || point >= point_num - 1) {
+      return unlimited_radius;
+    }
+    for (const int line_i : IndexRange(spread)) {
+      const int left_from_i = std::max(point - line_i - 2, 0);
+      const int left_to_i = std::max(point - line_i - 1, 0);
+      const int right_from_i = std::min(point + line_i + 1, point_num - 1);
+      const int right_to_i = std::min(point + line_i + 2, point_num - 1);
+
+      const float left_limit = calc_min_radius_v3v3(
+          positions[left_from_i] - center, positions[left_to_i] - center, direction);
+      const float right_limit = calc_min_radius_v3v3(
+          positions[right_from_i] - center, positions[right_to_i] - center, direction);
+      result = std::min(result, std::min(left_limit, right_limit));
+    }
+  }
+  return result;
 }
 
 /**
@@ -144,7 +218,6 @@ static bool find_envelope(const Span<float3> positions,
   if (math::is_zero(plane_normal)) {
     return false;
   }
-  std::cout << "Plane normal " << plane_normal << std::endl;
 
   /* Find two intersections with maximal radii. */
   float max_distance1 = 0.0f;
@@ -160,7 +233,6 @@ static bool find_envelope(const Span<float3> positions,
                                    std::max(from_spread_i, int(points.first()));
     const int to_i = is_cyclic ? (to_spread_i + points.size()) % points.size() :
                                  std::min(to_spread_i, int(points.last()));
-    std::cout << "  Envelope pair (" << from_i << ", " << to_i << ")" << std::endl;
     const float3 &from_pos = positions[from_i];
     const float3 &to_pos = positions[to_i];
     const float3 line_delta = to_pos - from_pos;
@@ -177,7 +249,6 @@ static bool find_envelope(const Span<float3> positions,
     const float cos_angle = math::abs(math::dot(plane_normal, line_delta)) /
                             math::length(line_delta);
     const float diameter = line_distance * 2.0f * cos_angle / (1 + cos_angle);
-    std::cout << "  Diameter: " << diameter << std::endl;
 
     if (line_i == 0) {
       max_distance1 = diameter;
@@ -197,8 +268,6 @@ static bool find_envelope(const Span<float3> positions,
         max_distance2 = diameter;
       }
     }
-    std::cout << "Closest 1: r=" << max_distance1 << " p=" << intersect1 << std::endl;
-    std::cout << "Closest 2: r=" << max_distance2 << " p=" << intersect2 << std::endl;
   }
 
   const float3 new_center = 0.5f * (intersect1 + intersect2);
@@ -208,16 +277,10 @@ static bool find_envelope(const Span<float3> positions,
   }
 
   /* Apply radius limiting to not cross existing lines. */
-  {
-    const float3 dir = math::normalize(new_center - pos);
-    // if (!math::is_zero(dir) && (is_cyclic || (line_i > 0 && i < gps->totpoints - 1))) {
-    if (!math::is_zero(dir)) {
-      r_radius = std::min(r_radius, calc_radius_limit(positions, is_cyclic, spread, point, dir));
-    }
-  }
+  const float3 dir = math::normalize(new_center - pos);
+  r_radius = std::min(r_radius, calc_radius_limit(positions, is_cyclic, spread, point, dir));
 
   r_center = math::interpolate(pos, new_center, r_radius / math::distance(intersect1, intersect2));
-  std::cout << "Final radius=" << r_radius << " center=" << r_center << std::endl;
 
   return true;
 }
@@ -265,7 +328,6 @@ static void deform_drawing_as_envelope(const GreasePencilEnvelopeModifierData &e
       positions[point_i] = math::interpolate(old_positions[point_i], envelope_center, weight);
     }
   });
-  std::flush(std::cout);
 
   drawing.tag_positions_changed();
   curves.tag_radii_changed();
