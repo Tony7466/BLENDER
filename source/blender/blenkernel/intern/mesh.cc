@@ -1203,17 +1203,20 @@ std::optional<blender::Bounds<blender::float3>> Mesh::bounds_min_max() const
   if (verts_num == 0) {
     return std::nullopt;
   }
-  this->runtime->bounds_cache.ensure([&](Bounds<float3> &r_bounds) {
-    switch (this->runtime->wrapper_type) {
-      case ME_WRAPPER_TYPE_BMESH:
-        r_bounds = *BKE_editmesh_cache_calc_minmax(*this->edit_mesh, *this->runtime->edit_data);
-        break;
-      case ME_WRAPPER_TYPE_MDATA:
-      case ME_WRAPPER_TYPE_SUBD:
-        r_bounds = *bounds::min_max(this->vert_positions());
-        break;
-    }
-  });
+  this->runtime->bounds_cache.ensure(
+      [&](Bounds<float3> &r_bounds) {
+        switch (this->runtime->wrapper_type) {
+          case ME_WRAPPER_TYPE_BMESH:
+            r_bounds = *BKE_editmesh_cache_calc_minmax(*this->edit_mesh,
+                                                       *this->runtime->edit_data);
+            break;
+          case ME_WRAPPER_TYPE_MDATA:
+          case ME_WRAPPER_TYPE_SUBD:
+            r_bounds = *bounds::min_max(this->vert_positions());
+            break;
+        }
+      },
+      verts_num > 2048);
   return this->runtime->bounds_cache.data();
 }
 

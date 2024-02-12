@@ -83,7 +83,7 @@ class CacheMutex {
    * This function is thread-safe under the assumption that the same parameters are passed from
    * every thread.
    */
-  void ensure(FunctionRef<void()> compute_cache);
+  void ensure(FunctionRef<void()> compute_cache, bool is_expensive = false);
 
   /**
    * Reset the cache. The next time #ensure is called, it will recompute that code.

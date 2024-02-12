@@ -267,17 +267,19 @@ std::optional<blender::Bounds<blender::float3>> PointCloud::bounds_min_max() con
   if (this->totpoint == 0) {
     return std::nullopt;
   }
-  this->runtime->bounds_cache.ensure([&](Bounds<float3> &r_bounds) {
-    const AttributeAccessor attributes = this->attributes();
-    const Span<float3> positions = this->positions();
-    if (attributes.contains(POINTCLOUD_ATTR_RADIUS)) {
-      const VArraySpan radii = *attributes.lookup<float>(POINTCLOUD_ATTR_RADIUS);
-      r_bounds = *bounds::min_max_with_radii(positions, radii);
-    }
-    else {
-      r_bounds = *bounds::min_max(positions);
-    }
-  });
+  this->runtime->bounds_cache.ensure(
+      [&](Bounds<float3> &r_bounds) {
+        const AttributeAccessor attributes = this->attributes();
+        const Span<float3> positions = this->positions();
+        if (attributes.contains(POINTCLOUD_ATTR_RADIUS)) {
+          const VArraySpan radii = *attributes.lookup<float>(POINTCLOUD_ATTR_RADIUS);
+          r_bounds = *bounds::min_max_with_radii(positions, radii);
+        }
+        else {
+          r_bounds = *bounds::min_max(positions);
+        }
+      },
+      this->totpoint > 2048);
   return this->runtime->bounds_cache.data();
 }
 
