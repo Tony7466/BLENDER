@@ -256,11 +256,13 @@ blender::Span<blender::int3> Mesh::corner_tris() const
 blender::Span<int> Mesh::corner_tri_faces() const
 {
   using namespace blender;
-  this->runtime->corner_tri_faces_cache.ensure([&](blender::Array<int> &r_data) {
-    const OffsetIndices faces = this->faces();
-    r_data.reinitialize(poly_to_tri_count(faces.size(), this->corners_num));
-    bke::mesh::corner_tris_calc_face_indices(faces, r_data);
-  });
+  this->runtime->corner_tri_faces_cache.ensure(
+      [&](blender::Array<int> &r_data) {
+        const OffsetIndices faces = this->faces();
+        r_data.reinitialize(poly_to_tri_count(faces.size(), this->corners_num));
+        bke::mesh::corner_tris_calc_face_indices(faces, r_data);
+      },
+      this->faces_num > 2048);
   return this->runtime->corner_tri_faces_cache.data();
 }
 

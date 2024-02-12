@@ -247,23 +247,28 @@ blender::Span<blender::float3> Mesh::vert_normals() const
   const Span<int> corner_verts = this->corner_verts();
   const Span<float3> face_normals = this->face_normals();
   const GroupedSpan<int> vert_to_face = this->vert_to_face_map();
-  this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
-    r_data.reinitialize(positions.size());
-    mesh::normals_calc_verts(positions, faces, corner_verts, vert_to_face, face_normals, r_data);
-  });
+  this->runtime->vert_normals_cache.ensure(
+      [&](Vector<float3> &r_data) {
+        r_data.reinitialize(positions.size());
+        mesh::normals_calc_verts(
+            positions, faces, corner_verts, vert_to_face, face_normals, r_data);
+      },
+      this->verts_num > 2048);
   return this->runtime->vert_normals_cache.data();
 }
 
 blender::Span<blender::float3> Mesh::face_normals() const
 {
   using namespace blender;
-  this->runtime->face_normals_cache.ensure([&](Vector<float3> &r_data) {
-    const Span<float3> positions = this->vert_positions();
-    const OffsetIndices faces = this->faces();
-    const Span<int> corner_verts = this->corner_verts();
-    r_data.reinitialize(faces.size());
-    bke::mesh::normals_calc_faces(positions, faces, corner_verts, r_data);
-  });
+  this->runtime->face_normals_cache.ensure(
+      [&](Vector<float3> &r_data) {
+        const Span<float3> positions = this->vert_positions();
+        const OffsetIndices faces = this->faces();
+        const Span<int> corner_verts = this->corner_verts();
+        r_data.reinitialize(faces.size());
+        bke::mesh::normals_calc_faces(positions, faces, corner_verts, r_data);
+      },
+      this->faces_num > 2048);
   return this->runtime->face_normals_cache.data();
 }
 
