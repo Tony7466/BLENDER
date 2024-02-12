@@ -166,7 +166,7 @@ void duplicate_points(bke::CurvesGeometry &curves, const IndexMask &mask)
     /* Note: add `max_shape_id` may create gaps in the order of shape ids.
      * This is fix by `ensure_shape_id_order` */
     for (const int curve_i : IndexRange(old_curves_num, num_curves_to_add)) {
-      shape_ids.span[curve_i] += max_shape_id;
+      shape_ids.span[curve_i] += max_shape_id + 1;
     }
   }
 
