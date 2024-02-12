@@ -3824,6 +3824,334 @@ static void SCREEN_OT_area_options(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Screen Area Layout Operator
+ * \{ */
+
+/* Sort areas by position, l2R and T2B, needed to keep resized areas in place. */
+static int screen_area_position_cmp(const void *area_a_ptr, const void *area_b_ptr)
+{
+  const ScrArea *area_a = static_cast<const ScrArea *>(area_a_ptr);
+  const ScrArea *area_b = static_cast<const ScrArea *>(area_b_ptr);
+  const int center_a_x = BLI_rcti_cent_x(&area_a->totrct);
+  const int center_b_x = BLI_rcti_cent_x(&area_b->totrct);
+  if (center_a_x > center_b_x) {
+    return 1;
+  }
+  if (center_a_x < center_b_x) {
+    return -1;
+  }
+
+  const int center_a_y = BLI_rcti_cent_y(&area_a->totrct);
+  const int center_b_y = BLI_rcti_cent_y(&area_b->totrct);
+  if (center_a_y < center_b_y) {
+    return 1;
+  }
+  if (center_a_y > center_b_y) {
+    return -1;
+  }
+  return 0;
+}
+
+/* Sort areas by size, needed so we can cull smaller areas first. */
+static int screen_area_size_cmp(const void *area_a_ptr, const void *area_b_ptr)
+{
+  const ScrArea *area_a = static_cast<const ScrArea *>(area_a_ptr);
+  const ScrArea *area_b = static_cast<const ScrArea *>(area_b_ptr);
+  const int size_a = BLI_rcti_size_x(&area_a->totrct) * BLI_rcti_size_y(&area_a->totrct);
+  const int size_b = BLI_rcti_size_x(&area_b->totrct) * BLI_rcti_size_y(&area_b->totrct);
+  if (size_a < size_b) {
+    return 1;
+  }
+  if (size_a > size_b) {
+    return -1;
+  }
+  return 0;
+}
+
+static const EnumPropertyItem prop_area_layout_items[] = {
+    {10, "1", 0, "1 Area", "One Area"},
+    {20, "2H", 0, "2 Areas - Columns", "Two Areas arranged horizontally"},
+    {21, "2V", 0, "2 Areas - Rows", "Two Areas arranged vertically"},
+    {30, "3H", 0, "3 Areas - Columns", "Three Areas arranged horizontally"},
+    {31, "312", 0, "3 Areas - 1 + 2", "Three Areas with two columns, right split"},
+    {32, "321", 0, "3 Areas - 2 + 1", "Three Areas with two columns, left split"},
+    {41, "422", 0, "4 Areas - 2 + 2", "Four Areas with two columns of two rows"},
+    {42, "4112", 0, "4 Areas - 1 + 1 + 2", "Four Areas with three columns, right split"},
+    {51, "5212", 0, "5 Areas", "Five areas in three columns, split sides"},
+    {61, "6222", 0, "6 Areas", "Six areas in three columns"},
+    {0, nullptr, 0, nullptr, nullptr},
+};
+
+static int screen_area_layout_exec(bContext *C, wmOperator *op)
+{
+  wmWindowManager *wm = CTX_wm_manager(C);
+  wmWindow *win = CTX_wm_window(C);
+  bScreen *screen = CTX_wm_screen(C);
+
+  if (!win || !screen) {
+    return OPERATOR_CANCELLED;
+  };
+
+  int area_count_current = BLI_listbase_count(&screen->areabase);
+
+  int layout_index = RNA_enum_get(op->ptr, "layout");
+  if (layout_index == 0) {
+    return OPERATOR_CANCELLED;
+  }
+
+  int area_count_target = (layout_index / 10);
+
+  if (area_count_current > area_count_target) {
+    /* Sort the areas by size. */
+    ScrAreaMap *area_map = AREAMAP_FROM_SCREEN(screen);
+    BLI_listbase_sort(&area_map->areabase, screen_area_size_cmp);
+    /* Delete the smallest until we get to our target. */
+    LISTBASE_FOREACH_BACKWARD_MUTABLE (ScrArea *, area, &screen->areabase) {
+      screen_area_close(C, screen, area);
+      if (BLI_listbase_count(&screen->areabase) <= area_count_target) {
+        break;
+      }
+    }
+  }
+
+  area_count_current = BLI_listbase_count(&screen->areabase);
+
+  if (area_count_current != area_count_target) {
+    return OPERATOR_CANCELLED;
+  }
+
+  if (area_count_current == 1) {
+    CTX_wm_window_set(C, nullptr);
+    WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, nullptr);
+    return OPERATOR_FINISHED;
+  }
+
+  rcti win_rect;
+  WM_window_screen_rect_calc(win, &win_rect);
+  float width = float(BLI_rcti_size_x(&win_rect));
+  float height = float(BLI_rcti_size_y(&win_rect));
+
+  std::vector<rctf> points;
+
+  switch (layout_index) {
+    case 20:
+      /* Golden Ratio, left biased. */
+      points = {{0.0f, 0.618033f, 0.0f, 1.0f}, {0.618033f, 1.0f, 0.0f, 1.0f}};
+      break;
+    case 21:
+      /* Golden Ratio, top biased. */
+      points = {{0.0f, 1.0f, 0.0f, 0.381967f}, {0.0f, 1.0f, 0.381967f, 1.0f}};
+      break;
+    case 30:
+      /* 5, 8, 3. */
+      points = {{0.3125f, 0.8125f, 0.0f, 1.0f},
+                {0.0f, 0.3125f, 0.0f, 1.0f},
+                {0.8125f, 1.0f, 0.0f, 1.0f}};
+      break;
+    case 31:
+      /* Golden ratios. */
+      points = {{0.0f, 0.618033f, 0.0f, 1.0f},
+                {0.618033f, 1.0f, 0.381967f, 1.0f},
+                {0.618033f, 1.0f, 0.0f, 0.381967f}};
+      break;
+    case 32:
+      /* Golden ratios. */
+      points = {{0.0f, 0.618033f, 0.381967f, 1.0f},
+                {0.0f, 1.0f, 0.0f, 0.381967f},
+                {0.618033f, 1.0f, 0.381967f, 1.0f}};
+      break;
+    case 40:
+      /* 8, 5, 3, 2 */
+      points = {{0.0f, 0.444444f, 0.0f, 1.0f},
+                {0.444444f, 0.722222f, 0.0f, 1.0f},
+                {0.722222f, 0.888888f, 0.0f, 1.0f},
+                {0.888888f, 1.0f, 0.0f, 1.0f}};
+      break;
+    case 41:
+      /* Golden ratios. */
+      points = {{0.0f, 0.618033f, 0.381967f, 1.0f},
+                {0.0f, 0.618033f, 0.0f, 0.381967f},
+                {0.618033f, 1.0f, 0.0f, 0.618033f},
+                {0.618033f, 1.0f, 0.618033f, 1.0f}};
+      break;
+    case 42:
+      /* 5, 8, 3. */
+      points = {{0.0f, 0.3125f, 0.0f, 1.0f},
+                {0.3125f, 0.8125f, 0.0f, 1.0f},
+                {0.8125f, 1.0f, 0.0f, 0.381967f},
+                {0.8125f, 1.0f, 0.381967f, 1.0f}};
+      break;
+    case 51:
+      /* 8, 5, 3. */
+      points = {{0.3125f, 0.8125f, 0.0f, 1.0f},
+                {0.0f, 0.3125f, 0.381967f, 1.0f},
+                {0.0f, 0.3125f, 0.0f, 0.381967f},
+                {0.8125f, 1.0f, 0.381967f, 1.0f},
+                {0.8125f, 1.0f, 0.0f, 0.381967f}};
+      break;
+    case 61:
+      /* 8, 5, 3. */
+      points = {{0.3125f, 0.8125f, 0.381967f, 1.0f},
+                {0.3125f, 0.8125f, 0.0f, 0.381967f},
+                {0.0f, 0.3125f, 0.0f, 0.618033f},
+                {0.0f, 0.3125f, 0.618033f, 1.0f},
+                {0.8125f, 1.0f, 0.0f, 0.618033f},
+                {0.8125f, 1.0f, 0.618033f, 1.0f}};
+      break;
+  }
+
+  ScrAreaMap *area_map = AREAMAP_FROM_SCREEN(screen);
+  BLI_listbase_sort(&area_map->areabase, screen_area_position_cmp);
+
+  BLI_freelistN(&area_map->vertbase);
+  BLI_freelistN(&area_map->edgebase);
+
+  int i = 0;
+  LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+    area->v1 = screen_geom_vertex_add_ex(area_map,
+                                         win_rect.xmin + lroundf(points[i].xmin * width),
+                                         win_rect.ymin + lroundf(points[i].ymin * height));
+    area->v2 = screen_geom_vertex_add_ex(area_map,
+                                         win_rect.xmin + lroundf(points[i].xmin * width),
+                                         win_rect.ymin + lroundf(points[i].ymax * height));
+    area->v3 = screen_geom_vertex_add_ex(area_map,
+                                         win_rect.xmin + lroundf(points[i].xmax * width),
+                                         win_rect.ymin + lroundf(points[i].ymax * height));
+    area->v4 = screen_geom_vertex_add_ex(area_map,
+                                         win_rect.xmin + lroundf(points[i].xmax * width),
+                                         win_rect.ymin + lroundf(points[i].ymin * height));
+
+    screen_geom_edge_add_ex(area_map, area->v1, area->v2);
+    screen_geom_edge_add_ex(area_map, area->v2, area->v3);
+    screen_geom_edge_add_ex(area_map, area->v3, area->v4);
+    screen_geom_edge_add_ex(area_map, area->v4, area->v1);
+
+    ED_area_update_region_sizes(wm, win, area);
+
+    ED_area_tag_redraw(area);
+    i++;
+  }
+
+  BKE_screen_remove_double_scredges(screen);
+  BKE_screen_remove_double_scrverts(screen);
+  BKE_screen_remove_unused_scredges(screen);
+  BKE_screen_remove_unused_scrverts(screen);
+
+  CTX_wm_window_set(C, nullptr);
+  WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, nullptr);
+  /* Update preview thumbnail. */
+  BKE_icon_changed(screen->id.icon_id);
+
+  return OPERATOR_FINISHED;
+}
+
+bool screen_area_layout_poll(bContext *C)
+{
+  wmWindow *win = CTX_wm_window(C);
+  bScreen *screen = CTX_wm_screen(C);
+
+  if (!win || !screen) {
+    return false;
+  };
+
+  /* There must be more than area. */
+  return BLI_listbase_count_at_most(&screen->areabase, 2) > 1;
+}
+
+static void SCREEN_OT_area_layout(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Area Layout";
+  ot->description = "Arrange Screen Area Layout";
+  ot->idname = "SCREEN_OT_area_layout";
+
+  /* api callbacks */
+  ot->exec = screen_area_layout_exec;
+  ot->poll = screen_area_layout_poll;
+
+  RNA_def_enum(ot->srna, "layout", prop_area_layout_items, 0, "Layout", "");
+}
+
+static int screen_area_reduce_exec(bContext *C, wmOperator *op)
+{
+  bScreen *screen = CTX_wm_screen(C);
+
+  int area_count_current = BLI_listbase_count(&screen->areabase);
+
+  int area_count_target = RNA_int_get(op->ptr, "number");
+  if (area_count_target < 0) {
+    area_count_target = area_count_current + area_count_target;
+  }
+
+  if (area_count_target == area_count_current) {
+    return OPERATOR_FINISHED;
+  }
+  if (area_count_target < 1) {
+    return OPERATOR_CANCELLED;
+  }
+
+  /* Sort the areas by size. */
+  ScrAreaMap *area_map = AREAMAP_FROM_SCREEN(screen);
+  BLI_listbase_sort(&area_map->areabase, screen_area_size_cmp);
+
+  /* Delete the smallest until we get to our target. */
+  LISTBASE_FOREACH_BACKWARD_MUTABLE (ScrArea *, area, &screen->areabase) {
+    screen_area_close(C, screen, area);
+    if (BLI_listbase_count(&screen->areabase) <= area_count_target) {
+      break;
+    }
+  }
+
+  /* Ensure the event loop doesn't attempt to continue handling events.
+   *
+   * This causes execution from the Python console fail to return to the prompt as it should.
+   * This glitch could be solved in the event loop handling as other operators may also
+   * destructively manipulate windowing data. */
+  CTX_wm_window_set(C, nullptr);
+
+  WM_event_add_notifier(C, NC_SCREEN | NA_EDITED, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+bool screen_area_reduce_poll(bContext *C)
+{
+  wmWindow *win = CTX_wm_window(C);
+  bScreen *screen = CTX_wm_screen(C);
+
+  if (!win || !screen) {
+    return false;
+  };
+
+  /* There must be more than area. */
+  return BLI_listbase_count_at_most(&screen->areabase, 2) > 1;
+}
+
+static void SCREEN_OT_area_reduce(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Area Reduce";
+  ot->description = "Reduce the number of screen areas";
+  ot->idname = "SCREEN_OT_area_reduce";
+
+  /* api callbacks */
+  ot->exec = screen_area_reduce_exec;
+  ot->poll = screen_area_reduce_poll;
+
+  RNA_def_int(ot->srna,
+              "number",
+              -1,
+              INT_MIN,
+              INT_MAX,
+              "Area Reduction",
+              "Number of Areas to remain (if positive) or remove (if negative)",
+              INT_MIN,
+              INT_MAX);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Space Data Cleanup Operator
  * \{ */
 
@@ -5873,6 +6201,8 @@ void ED_operatortypes_screen()
   WM_operatortype_append(SCREEN_OT_area_options);
   WM_operatortype_append(SCREEN_OT_area_dupli);
   WM_operatortype_append(SCREEN_OT_area_swap);
+  WM_operatortype_append(SCREEN_OT_area_layout);
+  WM_operatortype_append(SCREEN_OT_area_reduce);
   WM_operatortype_append(SCREEN_OT_region_quadview);
   WM_operatortype_append(SCREEN_OT_region_scale);
   WM_operatortype_append(SCREEN_OT_region_toggle);

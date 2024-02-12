@@ -615,6 +615,43 @@ class TOPBAR_MT_edit(Menu):
                         text="Preferences...", icon='PREFERENCES')
 
 
+class TOPBAR_MT_window_layout_reduce(Menu):
+    bl_label = "Reduce Areas To"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("screen.area_reduce", text="One Area").number = 1
+        layout.operator("screen.area_reduce", text="Two Areas").number = 2
+        layout.operator("screen.area_reduce", text="Three Areas").number = 3
+        layout.operator("screen.area_reduce", text="Four Areas").number = 4
+        layout.operator("screen.area_reduce", text="Five Areas").number = 5
+        layout.operator("screen.area_reduce", text="Six Areas").number = 6
+        layout.operator("screen.area_reduce", text="Seven Areas").number = 7
+
+
+class TOPBAR_MT_window_layout(Menu):
+    bl_label = "Layout"
+
+    def draw(self, _context):
+        layout = self.layout
+
+        layout.operator("screen.area_layout", text="1 Area Only").layout='1'
+        layout.separator()
+        layout.operator("screen.area_layout", text="2 Areas - Horizontal Columns").layout='2H'
+        layout.operator("screen.area_layout", text="2 Areas - Vertical Rows").layout='2V'
+        layout.separator()
+        layout.operator("screen.area_layout", text="3 Areas - Horizontal Columns").layout='3H'
+        layout.operator("screen.area_layout", text="3 Areas - 1 + 2").layout='312'
+        layout.operator("screen.area_layout", text="3 Areas - 2 + 1").layout='321'
+        layout.separator()
+        layout.operator("screen.area_layout", text="4 Areas - 2 + 2").layout='422'
+        layout.operator("screen.area_layout", text="4 Areas - 1 + 1 + 2").layout='4112'
+        layout.separator()
+        layout.operator("screen.area_layout", text="5 Areas - 3 column split sides").layout='5212'
+        layout.operator("screen.area_layout", text="6 Areas - 3 columns").layout='6222'
+
+
 class TOPBAR_MT_window(Menu):
     bl_label = "Window"
 
@@ -627,6 +664,10 @@ class TOPBAR_MT_window(Menu):
         layout.operator("wm.window_new")
         layout.operator("wm.window_new_main")
 
+        layout.separator()
+        layout.menu("TOPBAR_MT_window_layout")
+        layout.operator("screen.area_reduce", text="Close Smallest Area").number = -1
+        layout.menu("TOPBAR_MT_window_layout_reduce")
         layout.separator()
 
         layout.operator("wm.window_fullscreen_toggle", icon='FULLSCREEN_ENTER')
@@ -913,6 +954,8 @@ classes = (
     TOPBAR_MT_file_previews,
     TOPBAR_MT_edit,
     TOPBAR_MT_render,
+    TOPBAR_MT_window_layout_reduce,
+    TOPBAR_MT_window_layout,
     TOPBAR_MT_window,
     TOPBAR_MT_help,
     TOPBAR_PT_tool_fallback,
