@@ -21,8 +21,6 @@
 
 #include "workbench_private.hh"
 
-#define DEBUG_SHADOW_VOLUME 0
-
 namespace blender::workbench {
 
 void ShadowPass::ShadowView::setup(View &view, float3 light_direction, bool force_fail_method)

@@ -67,7 +67,8 @@ ShaderCache::ShaderCache()
   for (auto p : IndexRange(2) /*pass*/) {
     for (auto m : IndexRange(2) /*manifold*/) {
       for (auto c : IndexRange(2) /*caps*/) {
-        shadow_[p][m][c] = {"workbench_shadow" + pass[p] + manifold[m] + caps[c]};
+        shadow_[p][m][c] = {"workbench_shadow" + pass[p] + manifold[m] + caps[c] +
+                            (DEBUG_SHADOW_VOLUME ? "_debug" : "")};
       }
     }
   }

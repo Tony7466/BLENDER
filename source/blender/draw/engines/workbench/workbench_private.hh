@@ -376,6 +376,8 @@ class TransparentDepthPass {
   bool is_empty() const;
 };
 
+#define DEBUG_SHADOW_VOLUME 0
+
 class ShadowPass {
  private:
   enum PassType { PASS = 0, FAIL, FORCED_FAIL, MAX };
