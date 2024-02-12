@@ -36,8 +36,6 @@ extern "C" {
 #  include <libavdevice/avdevice.h>
 #  include <libavformat/avformat.h>
 #  include <libavutil/log.h>
-
-#  include "ffmpeg_compat.h"
 }
 
 #endif
