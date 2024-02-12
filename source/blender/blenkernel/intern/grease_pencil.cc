@@ -394,10 +394,7 @@ static bool check_self_intersections(Span<float2> projverts)
       if (intersect) {
         return;
       }
-      for (const int e1_id : projverts.index_range()) {
-        if (e2_id >= e1_id) {
-          continue;
-        }
+      for (const int e1_id : projverts.index_range().drop_front(e2_id)) {
         const int p1 = e1_id;
         const int p2 = (e1_id + 1) % projverts.size();
         const int p3 = e2_id;
