@@ -78,7 +78,8 @@ using NodeIDVectorSet = VectorSet<bNode *, DefaultProbingStrategy, NodeIDHash, N
 /**
  * Runtime data for #bNodeTree from the perspective of execution instructions (rather than runtime
  * data from evaluation of the node tree). Evaluation data is not the responsibility of the node
- * tree and should be stored elsewhere.
+ * tree and should be stored elsewhere. Evaluating a node tree should be possible without changing
+ * it.
  */
 class bNodeTreeRuntime : NonCopyable, NonMovable {
  public:
@@ -117,8 +118,7 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
    * Legacy execution data.
    *
    * \todo Move this out of the node tree to improve semantic/physical separation between the node
-   * tree execution instructions and its evaluation. For example, storing execution data in the
-   * tree itself requires the evaluator to have ownership of the tree, which should be unnecessary.
+   * tree execution instructions and its evaluation.
    */
   bNodeTreeExec *execdata = nullptr;
   void (*progress)(void *, float progress) = nullptr;
