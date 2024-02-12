@@ -6,6 +6,7 @@
  * \ingroup draw_engine
  */
 
+#include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
 
 #include "DRW_render.hh"
@@ -273,6 +274,36 @@ static void OVERLAY_outline_gpencil(OVERLAY_PrivateData *pd, Object *ob)
                                            pd->cfra);
 }
 
+static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, const Scene *scene, Object *ob)
+{
+  using namespace blender;
+  using namespace blender::draw;
+  GPUBatch *geom = DRW_cache_grease_pencil_get(scene, ob);
+  if (geom == nullptr) {
+    return;
+  }
+
+  const float object_scale = math::length(
+      math::transform_point(float4x4(ob->object_to_world), float3(1.0f, 0.0f, 0.0f)));
+
+  DRWShadingGroup *shgroup = pd->outlines_gpencil_grp;
+  DRWShadingGroup *grp = DRW_shgroup_create_sub(shgroup);
+
+  GPUVertBuf *position_tx = DRW_cache_grease_pencil_position_buffer_get(scene, ob);
+  GPUVertBuf *color_tx = DRW_cache_grease_pencil_color_buffer_get(scene, ob);
+
+  DRW_shgroup_uniform_bool_copy(grp, "gpStrokeOrder3d", false);
+  DRW_shgroup_uniform_float_copy(grp, "gpThicknessScale", object_scale);
+  DRW_shgroup_uniform_float_copy(grp, "gpThicknessOffset", 0.0f);
+  DRW_shgroup_uniform_float_copy(grp, "gpThicknessWorldScale", 1.0f);
+  DRW_shgroup_uniform_vec4_copy(grp, "gpDepthPlane", float4(1.0f));
+
+  DRW_shgroup_buffer_texture(grp, "gp_pos_tx", position_tx);
+  DRW_shgroup_buffer_texture(grp, "gp_col_tx", color_tx);
+
+  DRW_shgroup_call(grp, geom, ob);
+}
+
 static void OVERLAY_outline_volume(OVERLAY_PrivateData *pd, Object *ob)
 {
   using namespace blender::draw;
@@ -323,6 +354,11 @@ void OVERLAY_outline_cache_populate(OVERLAY_Data *vedata,
 
   if (ob->type == OB_GPENCIL_LEGACY) {
     OVERLAY_outline_gpencil(pd, ob);
+    return;
+  }
+
+  if (ob->type == OB_GREASE_PENCIL) {
+    OVERLAY_outline_grease_pencil(pd, draw_ctx->scene, ob);
     return;
   }
 
