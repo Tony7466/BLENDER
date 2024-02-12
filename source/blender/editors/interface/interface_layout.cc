@@ -3449,8 +3449,8 @@ void uiItemS_ex(uiLayout *layout, float factor, const LayoutSeparatorType type)
   }
 
   bool is_vertical = (layout->w > 0);
-  int width = is_vertical ? int(UI_UNIT_X) : int(0.3f * UI_UNIT_X * factor);
-  int height = is_vertical ? int(0.35f * UI_UNIT_X * factor) : int(UI_UNIT_Y);
+  int width = is_vertical ? int(0.35f * UI_UNIT_X * factor) : int(UI_UNIT_Y);
+  int height = is_vertical ? int(UI_UNIT_X) : int(0.3f * UI_UNIT_X * factor);
 
   eButType but_type;
 
