@@ -386,40 +386,40 @@ Span<uint32_t> Drawing::triangles_offsets() const
   return this->runtime->triangles_offsets_cache.data().as_span();
 }
 
-static bool check_valid_curves(Span<float2> projverts,
-                               const IndexMask group,
-                               const OffsetIndices<int> points_by_group)
+static bool check_valid_curves(Span<float2> projverts, const OffsetIndices<int> points_by_group)
 {
   std::atomic<bool> intersect = false;
   /* Check for self intersections. */
-  group.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
-    if (intersect) {
-      return;
-    }
-    const IndexRange point_group = points_by_group[pos];
-    for (const int e2_id : point_group.index_range()) {
-      for (const int e1_id : point_group.index_range()) {
-        if (e2_id >= e1_id) {
-          continue;
-        }
-        const int p1 = e1_id;
-        const int p2 = (e1_id + 1) % point_group.size();
-        const int p3 = e2_id;
-        const int p4 = (e2_id + 1) % point_group.size();
-        if (p1 == p4) {
-          continue;
-        }
-        if (p2 == p3) {
-          continue;
-        }
+  threading::parallel_for(points_by_group.index_range(), 512, [&](const IndexRange range) {
+    for (const int pos : range) {
+      if (intersect) {
+        return;
+      }
+      const IndexRange point_group = points_by_group[pos];
+      for (const int e2_id : point_group.index_range()) {
+        for (const int e1_id : point_group.index_range()) {
+          if (e2_id >= e1_id) {
+            continue;
+          }
+          const int p1 = e1_id;
+          const int p2 = (e1_id + 1) % point_group.size();
+          const int p3 = e2_id;
+          const int p4 = (e2_id + 1) % point_group.size();
+          if (p1 == p4) {
+            continue;
+          }
+          if (p2 == p3) {
+            continue;
+          }
 
-        if (isect_seg_seg_v2_simple(projverts[point_group[p1]],
-                                    projverts[point_group[p2]],
-                                    projverts[point_group[p3]],
-                                    projverts[point_group[p4]]))
-        {
-          intersect.store(true, std::memory_order_relaxed);
-          return;
+          if (isect_seg_seg_v2_simple(projverts[point_group[p1]],
+                                      projverts[point_group[p2]],
+                                      projverts[point_group[p3]],
+                                      projverts[point_group[p4]]))
+          {
+            intersect.store(true, std::memory_order_relaxed);
+            return;
+          }
         }
       }
     }
@@ -430,39 +430,43 @@ static bool check_valid_curves(Span<float2> projverts,
   }
 
   /* Check if other intersect. */
-  group.foreach_index([&](const int64_t curve_i1, const int64_t pos1) {
-    if (intersect) {
-      return;
-    }
-    const IndexRange point_group1 = points_by_group[pos1];
-
-    group.foreach_index([&](const int64_t curve_i2, const int64_t pos2) {
+  threading::parallel_for(points_by_group.index_range(), 512, [&](const IndexRange range1) {
+    for (const int pos1 : range1) {
       if (intersect) {
         return;
       }
-      const IndexRange point_group2 = points_by_group[pos2];
+      const IndexRange point_group1 = points_by_group[pos1];
 
-      if (pos2 >= pos1) {
-        return;
-      }
-      for (const int e1_id : point_group1.index_range()) {
-        for (const int e2_id : point_group2.index_range()) {
-          const int p11 = e1_id;
-          const int p12 = (e1_id + 1) % point_group1.size();
-          const int p21 = e2_id;
-          const int p22 = (e2_id + 1) % point_group2.size();
-
-          if (isect_seg_seg_v2_simple(projverts[point_group1[p11]],
-                                      projverts[point_group1[p12]],
-                                      projverts[point_group2[p21]],
-                                      projverts[point_group2[p22]]))
-          {
-            intersect.store(true, std::memory_order_relaxed);
+      threading::parallel_for(points_by_group.index_range(), 512, [&](const IndexRange range2) {
+        for (const int pos2 : range2) {
+          if (intersect) {
             return;
           }
+          const IndexRange point_group2 = points_by_group[pos2];
+
+          if (pos2 >= pos1) {
+            return;
+          }
+          for (const int e1_id : point_group1.index_range()) {
+            for (const int e2_id : point_group2.index_range()) {
+              const int p11 = e1_id;
+              const int p12 = (e1_id + 1) % point_group1.size();
+              const int p21 = e2_id;
+              const int p22 = (e2_id + 1) % point_group2.size();
+
+              if (isect_seg_seg_v2_simple(projverts[point_group1[p11]],
+                                          projverts[point_group1[p12]],
+                                          projverts[point_group2[p21]],
+                                          projverts[point_group2[p22]]))
+              {
+                intersect.store(true, std::memory_order_relaxed);
+                return;
+              }
+            }
+          }
         }
-      }
-    });
+      });
+    }
   });
 
   if (intersect) {
@@ -512,7 +516,7 @@ Span<uint3> Drawing::triangles() const
         });
       });
 
-      if (!check_valid_curves(projverts, group, points_by_group)) {
+      if (!check_valid_curves(projverts, points_by_group)) {
         triangles_offsets[group_id] = triangles_offset;
         continue;
       }
