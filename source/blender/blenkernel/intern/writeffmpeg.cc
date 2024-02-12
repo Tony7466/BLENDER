@@ -25,6 +25,8 @@
 #  endif
 
 #  include "BLI_endian_defines.h"
+#  include "BLI_hash.hh"
+#  include "BLI_map.hh"
 #  include "BLI_math_base.h"
 #  include "BLI_threads.h"
 #  include "BLI_utildefines.h"
@@ -57,6 +59,29 @@ extern "C" {
 }
 
 struct StampData;
+
+/* libswscale context creation and destruction is expensive.
+ * Maintain a cache of pre-created contexts. */
+struct SwscaleContextKey {
+  uint64_t hash() const
+  {
+    using blender::get_default_hash;
+    return get_default_hash(get_default_hash(width, height, src_format, dst_format),
+                            get_default_hash(flags));
+  }
+  bool operator==(const SwscaleContextKey &o) const
+  {
+    return width == o.width && height == o.height && src_format == o.src_format &&
+           dst_format == o.dst_format && flags == o.flags;
+  }
+
+  int width, height;
+  AVPixelFormat src_format, dst_format;
+  int flags;
+};
+
+static ThreadMutex swscale_cache_lock = PTHREAD_MUTEX_INITIALIZER;
+static blender::Map<SwscaleContextKey, SwsContext *> *swscale_cache = nullptr;
 
 struct FFMpegContext {
   int ffmpeg_type;
@@ -667,7 +692,7 @@ static const AVCodec *get_av1_encoder(
   return codec;
 }
 
-SwsContext *BKE_ffmpeg_sws_get_context(
+static SwsContext *sws_create_context(
     int width, int height, int av_src_format, int av_dst_format, int sws_flags)
 {
 #  if defined(FFMPEG_SWSCALE_THREADING)
@@ -705,6 +730,46 @@ SwsContext *BKE_ffmpeg_sws_get_context(
 
   return c;
 }
+
+SwsContext *BKE_ffmpeg_sws_get_context(
+    int width, int height, int av_src_format, int av_dst_format, int sws_flags)
+{
+  SwsContext *ctx = nullptr;
+  SwscaleContextKey key;
+  key.width = width;
+  key.height = height;
+  key.src_format = AVPixelFormat(av_src_format);
+  key.dst_format = AVPixelFormat(av_dst_format);
+  key.flags = sws_flags;
+
+  BLI_mutex_lock(&swscale_cache_lock);
+
+  if (swscale_cache == nullptr) {
+    swscale_cache = new blender::Map<SwscaleContextKey, SwsContext *>();
+  }
+
+  ctx = swscale_cache->lookup_default(key, nullptr);
+  if (ctx == nullptr) {
+    ctx = sws_create_context(width, height, av_src_format, av_dst_format, sws_flags);
+    swscale_cache->add(key, ctx);
+  }
+  BLI_mutex_unlock(&swscale_cache_lock);
+  return ctx;
+}
+
+void BKE_ffmpeg_exit()
+{
+  BLI_mutex_lock(&swscale_cache_lock);
+  if (swscale_cache != nullptr) {
+    for (SwsContext *ctx : swscale_cache->values()) {
+      sws_freeContext(ctx);
+    }
+    delete swscale_cache;
+    swscale_cache = nullptr;
+  }
+  BLI_mutex_unlock(&swscale_cache_lock);
+}
+
 void BKE_ffmpeg_sws_scale_frame(SwsContext *ctx, AVFrame *dst, const AVFrame *src)
 {
 #  if defined(FFMPEG_SWSCALE_THREADING)
@@ -1678,10 +1743,7 @@ static void end_ffmpeg_impl(FFMpegContext *context, int is_autosplit)
     context->audio_deinterleave_buffer = nullptr;
   }
 
-  if (context->img_convert_ctx != nullptr) {
-    sws_freeContext(context->img_convert_ctx);
-    context->img_convert_ctx = nullptr;
-  }
+  context->img_convert_ctx = nullptr;
 }
 
 void BKE_ffmpeg_end(void *context_v)
