@@ -14,7 +14,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
@@ -24,8 +24,9 @@
 
 #include "BKE_action.h" /* BKE_pose_channel_find_name */
 #include "BKE_context.hh"
-#include "BKE_deform.h"
-#include "BKE_lib_query.h"
+#include "BKE_customdata.hh"
+#include "BKE_deform.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
@@ -336,4 +337,5 @@ ModifierTypeInfo modifierType_UVWarp = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

@@ -16,7 +16,7 @@
 #include "BLI_task.h"
 
 #include "BKE_customdata.hh"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_mesh.hh"
 #include "BKE_subdiv.hh"
 #include "BKE_subdiv_mesh.hh"
@@ -421,7 +421,8 @@ static void subdiv_foreach_edge_vertices_regular_do(SubdivForeachTaskContext *ct
     const int coarse_vert = ctx->coarse_corner_verts[coarse_face[corner]];
     const int coarse_edge_index = ctx->coarse_corner_edges[coarse_face[corner]];
     if (check_usage &&
-        BLI_BITMAP_TEST_AND_SET_ATOMIC(ctx->coarse_edges_used_map, coarse_edge_index)) {
+        BLI_BITMAP_TEST_AND_SET_ATOMIC(ctx->coarse_edges_used_map, coarse_edge_index))
+    {
       continue;
     }
     const int2 &coarse_edge = ctx->coarse_edges[coarse_edge_index];
@@ -485,7 +486,8 @@ static void subdiv_foreach_edge_vertices_special_do(SubdivForeachTaskContext *ct
     const int coarse_vert = ctx->coarse_corner_verts[coarse_face[corner]];
     const int coarse_edge_index = ctx->coarse_corner_edges[coarse_face[corner]];
     if (check_usage &&
-        BLI_BITMAP_TEST_AND_SET_ATOMIC(ctx->coarse_edges_used_map, coarse_edge_index)) {
+        BLI_BITMAP_TEST_AND_SET_ATOMIC(ctx->coarse_edges_used_map, coarse_edge_index))
+    {
       continue;
     }
     const int2 &coarse_edge = ctx->coarse_edges[coarse_edge_index];

@@ -7,6 +7,7 @@
  * \brief Blender-side interface and methods for dealing with Rigid Body simulations
  */
 
+#include <algorithm>
 #include <cfloat>
 #include <climits>
 #include <cmath>
@@ -35,22 +36,22 @@
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_effect.h"
-#include "BKE_global.h"
-#include "BKE_layer.h"
+#include "BKE_global.hh"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 #include "BKE_pointcache.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_rigidbody.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #ifdef WITH_BULLET
-#  include "BKE_lib_id.h"
-#  include "BKE_lib_query.h"
+#  include "BKE_lib_id.hh"
+#  include "BKE_lib_query.hh"
 #endif
 
 #include "DEG_depsgraph.hh"
@@ -316,7 +317,8 @@ void BKE_rigidbody_object_copy(Main *bmain, Object *ob_dst, const Object *ob_src
       }
 
       if ((flag & LIB_ID_CREATE_NO_DEG_TAG) == 0 &&
-          (need_objects_update || need_constraints_update)) {
+          (need_objects_update || need_constraints_update))
+      {
         BKE_rigidbody_cache_reset(rigidbody_world);
 
         DEG_relations_tag_update(bmain);
@@ -504,7 +506,7 @@ static rbCollisionShape *rigidbody_validate_sim_shape_helper(RigidBodyWorld *rbw
   }
   else if (rbo->shape == RB_SHAPE_SPHERE) {
     /* take radius to the largest dimension to try and encompass everything */
-    radius = MAX3(size[0], size[1], size[2]);
+    radius = std::max({size[0], size[1], size[2]});
   }
 
   /* create new shape */
@@ -530,7 +532,7 @@ static rbCollisionShape *rigidbody_validate_sim_shape_helper(RigidBodyWorld *rbw
 
     case RB_SHAPE_CONVEXH:
       /* try to embed collision margin */
-      has_volume = (MIN3(size[0], size[1], size[2]) > 0.0f);
+      has_volume = (std::min({size[0], size[1], size[2]}) > 0.0f);
 
       if (!(rbo->flag & RBO_FLAG_USE_MARGIN) && has_volume) {
         hull_margin = 0.04f;
@@ -635,7 +637,7 @@ void BKE_rigidbody_calc_volume(Object *ob, float *r_vol)
 
   if (ELEM(rbo->shape, RB_SHAPE_CAPSULE, RB_SHAPE_CYLINDER, RB_SHAPE_CONE)) {
     /* take radius as largest x/y dimension, and height as z-dimension */
-    radius = MAX2(size[0], size[1]) * 0.5f;
+    radius = std::max(size[0], size[1]) * 0.5f;
     height = size[2];
   }
   else if (rbo->shape == RB_SHAPE_SPHERE) {
@@ -1789,7 +1791,8 @@ static void rigidbody_update_sim_ob(Depsgraph *depsgraph, Object *ob, RigidBodyO
       /* compensate for embedded convex hull collision margin */
       if (!(rbo->flag & RBO_FLAG_USE_MARGIN) && rbo->shape == RB_SHAPE_CONVEXH) {
         RB_shape_set_margin(static_cast<rbCollisionShape *>(rbo->shared->physics_shape),
-                            RBO_GET_MARGIN(rbo) * MIN3(new_scale[0], new_scale[1], new_scale[2]));
+                            RBO_GET_MARGIN(rbo) *
+                                std::min({new_scale[0], new_scale[1], new_scale[2]}));
       }
     }
   }
@@ -2025,7 +2028,7 @@ static void rigidbody_update_kinematic_obj_substep(ListBase *substep_targets, fl
     /* compensate for embedded convex hull collision margin */
     if (!(rbo->flag & RBO_FLAG_USE_MARGIN) && rbo->shape == RB_SHAPE_CONVEXH) {
       RB_shape_set_margin(static_cast<rbCollisionShape *>(rbo->shared->physics_shape),
-                          RBO_GET_MARGIN(rbo) * MIN3(scale[0], scale[1], scale[2]));
+                          RBO_GET_MARGIN(rbo) * std::min({scale[0], scale[1], scale[2]}));
     }
   }
 }
@@ -2044,7 +2047,8 @@ static void rigidbody_update_external_forces(Depsgraph *depsgraph,
     /* update influence of effectors - but don't do it on an effector */
     /* only dynamic bodies need effector update */
     if (rbo->type == RBO_TYPE_ACTIVE &&
-        ((ob->pd == nullptr) || (ob->pd->forcefield == PFIELD_NULL))) {
+        ((ob->pd == nullptr) || (ob->pd->forcefield == PFIELD_NULL)))
+    {
       EffectorWeights *effector_weights = rbw->effector_weights;
       EffectedPoint epoint;
       ListBase *effectors;

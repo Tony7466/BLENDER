@@ -23,8 +23,8 @@
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "BIK_api.h"
 
@@ -632,7 +632,8 @@ static void createTransPose(bContext * /*C*/, TransInfo *t)
         pchan->bone->flag &= ~BONE_TRANSFORM_MIRROR;
 
         if ((pchan->bone->flag & BONE_TRANSFORM) &&
-            BKE_pose_channel_get_mirrored(ob->pose, pchan->name)) {
+            BKE_pose_channel_get_mirrored(ob->pose, pchan->name))
+        {
           total_mirrored++;
         }
       }
@@ -1329,7 +1330,7 @@ static void autokeyframe_pose(
     const blender::StringRef rotation_path = blender::animrig::get_rotation_mode_path(
         eRotationModes(pchan->rotmode));
 
-    if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
+    if (blender::animrig::is_keying_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
       rna_paths = get_affected_rna_paths_from_transform_mode(
           tmode, scene->toolsettings, rotation_path, targetless_ik);
     }

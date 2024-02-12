@@ -15,7 +15,7 @@
 #include "BLI_rand.h"
 #include "BLI_task.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_color_types.h" /* CurveMapping. */
 #include "DNA_defaults.h"
@@ -30,9 +30,9 @@
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_deform.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
@@ -57,11 +57,11 @@
 #include "MOD_util.hh"
 #include "MOD_weightvg_util.hh"
 
-//#define USE_TIMEIT
+// #define USE_TIMEIT
 
 #ifdef USE_TIMEIT
-#  include "PIL_time.h"
-#  include "PIL_time_utildefines.h"
+#  include "BLI_time.h"
+#  include "BLI_time_utildefines.h"
 #endif
 
 /**************************************
@@ -386,7 +386,8 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
     DEG_add_object_relation(
         ctx->node, wmd->proximity_ob_target, DEG_OB_COMP_TRANSFORM, "WeightVGProximity Modifier");
     if (wmd->proximity_ob_target->data != nullptr &&
-        wmd->proximity_mode == MOD_WVG_PROXIMITY_GEOMETRY) {
+        wmd->proximity_mode == MOD_WVG_PROXIMITY_GEOMETRY)
+    {
       DEG_add_object_relation(
           ctx->node, wmd->proximity_ob_target, DEG_OB_COMP_GEOMETRY, "WeightVGProximity Modifier");
     }
@@ -764,4 +765,5 @@ ModifierTypeInfo modifierType_WeightVGProximity = {
     /*panel_register*/ panel_register,
     /*blend_write*/ blend_write,
     /*blend_read*/ blend_read,
+    /*foreach_cache*/ nullptr,
 };

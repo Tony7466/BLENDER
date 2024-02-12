@@ -46,7 +46,7 @@
 
 #include "GPU_batch.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 #include "DRW_pbvh.hh"
 
 #include "attribute_convert.hh"
@@ -682,7 +682,8 @@ struct PBVHBatches {
         case CustomRequest::Mask: {
           float *data = static_cast<float *>(GPU_vertbuf_get_data(&vert_buf));
           if (const VArray<float> mask = *attributes.lookup<float>(".sculpt_mask",
-                                                                   bke::AttrDomain::Point)) {
+                                                                   bke::AttrDomain::Point))
+          {
             const VArraySpan<float> mask_span(mask);
             const Span<int> corner_verts = args.corner_verts;
             const Span<int3> corner_tris = args.corner_tris;
@@ -913,11 +914,10 @@ struct PBVHBatches {
     }
     else {
       const GenericRequest &request = std::get<GenericRequest>(vbo.request);
-      const StringRefNull name = request.name;
       const bke::AttrDomain domain = request.domain;
       const eCustomDataType data_type = request.type;
       const CustomData &custom_data = *get_cdata(domain, args);
-      const int cd_offset = CustomData_get_offset_named(&custom_data, data_type, name.c_str());
+      const int cd_offset = CustomData_get_offset_named(&custom_data, data_type, request.name);
       bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
         using T = decltype(dummy);
         switch (domain) {

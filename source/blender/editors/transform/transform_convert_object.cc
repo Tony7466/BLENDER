@@ -15,14 +15,14 @@
 
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcache.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_rigidbody.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "ANIM_keyframing.hh"
 #include "ANIM_rna.hh"
@@ -303,9 +303,7 @@ static void trans_object_base_deps_flag_prepare(const Scene *scene, ViewLayer *v
   }
 }
 
-static void set_trans_object_base_deps_flag_cb(ID *id,
-                                               eDepsObjectComponentType component,
-                                               void * /*user_data*/)
+static void set_trans_object_base_deps_flag_cb(ID *id, eDepsObjectComponentType component)
 {
   /* Here we only handle object IDs. */
   if (GS(id->name) != ID_OB) {
@@ -324,8 +322,7 @@ static void flush_trans_object_base_deps_flag(Depsgraph *depsgraph, Object *obje
                                      &object->id,
                                      DEG_OB_COMP_TRANSFORM,
                                      DEG_FOREACH_COMPONENT_IGNORE_TRANSFORM_SOLVERS,
-                                     set_trans_object_base_deps_flag_cb,
-                                     nullptr);
+                                     set_trans_object_base_deps_flag_cb);
 }
 
 static void trans_object_base_deps_flag_finish(const TransInfo *t,
@@ -553,8 +550,8 @@ static void createTransObject(bContext *C, TransInfo *t)
         td->flag |= TD_SKIP;
       }
       else if (BKE_object_is_in_editmode(ob)) {
-        /* The object could have edit-mode data from another view-layer,
-         * it's such a corner-case it can be skipped for now - Campbell. */
+        /* NOTE(@ideasman42): The object could have edit-mode data from another view-layer,
+         * it's such a corner-case it can be skipped for now. */
         td->flag |= TD_SKIP;
       }
     }
@@ -705,7 +702,8 @@ static void createTransObject(bContext *C, TransInfo *t)
         Base *base_parent = BKE_view_layer_base_find(view_layer, ob->parent);
         if (base_parent) {
           if (BASE_XFORM_INDIRECT(base_parent) ||
-              BLI_gset_haskey(objects_in_transdata, ob->parent)) {
+              BLI_gset_haskey(objects_in_transdata, ob->parent))
+          {
             ED_object_xform_skip_child_container_item_ensure(
                 tdo->xcs, ob, nullptr, XFORM_OB_SKIP_CHILD_PARENT_IS_XFORM);
             base->flag_legacy |= BA_TRANSFORM_LOCKED_IN_PLACE;
@@ -820,7 +818,7 @@ static void autokeyframe_object(bContext *C, Scene *scene, Object *ob, const eTf
   const blender::StringRef rotation_path = blender::animrig::get_rotation_mode_path(
       eRotationModes(ob->rotmode));
 
-  if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
+  if (blender::animrig::is_keying_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
     rna_paths = get_affected_rna_paths_from_transform_mode(
         tmode, scene, view_layer, ob, rotation_path);
   }

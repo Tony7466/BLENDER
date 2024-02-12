@@ -14,7 +14,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_rand.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
@@ -25,10 +25,11 @@
 #include "DEG_depsgraph_query.hh"
 
 #include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_particle.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 
 #include "UI_interface.hh"
@@ -328,4 +329,5 @@ ModifierTypeInfo modifierType_Build = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

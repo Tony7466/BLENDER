@@ -8,10 +8,10 @@
  */
 
 #ifdef WITH_FFMPEG
-#  include <stdio.h>
-#  include <string.h>
+#  include <cstdio>
+#  include <cstring>
 
-#  include <stdlib.h>
+#  include <cstdlib>
 
 #  include "MEM_guardedalloc.h"
 
@@ -29,16 +29,16 @@
 #  include "BLI_threads.h"
 #  include "BLI_utildefines.h"
 
-#  include "BKE_global.h"
+#  include "BKE_global.hh"
 #  include "BKE_idprop.h"
 #  include "BKE_image.h"
-#  include "BKE_lib_id.h"
+#  include "BKE_lib_id.hh"
 #  include "BKE_main.hh"
-#  include "BKE_report.h"
+#  include "BKE_report.hh"
 #  include "BKE_sound.h"
 #  include "BKE_writeffmpeg.hh"
 
-#  include "IMB_imbuf.h"
+#  include "IMB_imbuf.hh"
 
 /* This needs to be included after BLI_math_base.h otherwise it will redefine some math defines
  * like M_SQRT1_2 leading to warnings with MSVC */
@@ -783,7 +783,8 @@ static AVStream *alloc_video_stream(FFMpegContext *context,
   if (c->time_base.num != 1) {
     AVRational new_time_base;
     if (av_reduce(
-            &new_time_base.num, &new_time_base.den, c->time_base.num, c->time_base.den, INT_MAX)) {
+            &new_time_base.num, &new_time_base.den, c->time_base.num, c->time_base.den, INT_MAX))
+    {
       /* Exact reduction was possible. Use the new value. */
       c->time_base = new_time_base;
     }
@@ -1194,7 +1195,7 @@ static int start_ffmpeg_impl(FFMpegContext *context,
 
   of = avformat_alloc_context();
   if (!of) {
-    BKE_report(reports, RPT_ERROR, "Can't allocate FFMPEG format context");
+    BKE_report(reports, RPT_ERROR, "Can't allocate FFmpeg format context");
     return 0;
   }
 
@@ -1265,7 +1266,7 @@ static int start_ffmpeg_impl(FFMpegContext *context,
     if (context->ffmpeg_audio_codec != AV_CODEC_ID_NONE &&
         rd->ffcodecdata.audio_mixrate != 48000 && rd->ffcodecdata.audio_channels != 2)
     {
-      BKE_report(reports, RPT_ERROR, "FFMPEG only supports 48khz / stereo audio for DV!");
+      BKE_report(reports, RPT_ERROR, "FFmpeg only supports 48khz / stereo audio for DV!");
       goto fail;
     }
   }
@@ -1694,55 +1695,6 @@ void BKE_ffmpeg_preset_set(RenderData *rd, int preset)
   bool is_ntsc = (rd->frs_sec != 25);
 
   switch (preset) {
-    case FFMPEG_PRESET_VCD:
-      rd->ffcodecdata.type = FFMPEG_MPEG1;
-      rd->ffcodecdata.video_bitrate = 1150;
-      rd->xsch = 352;
-      rd->ysch = is_ntsc ? 240 : 288;
-      rd->ffcodecdata.gop_size = is_ntsc ? 18 : 15;
-      rd->ffcodecdata.rc_max_rate = 1150;
-      rd->ffcodecdata.rc_min_rate = 1150;
-      rd->ffcodecdata.rc_buffer_size = 40 * 8;
-      rd->ffcodecdata.mux_packet_size = 2324;
-      rd->ffcodecdata.mux_rate = 2352 * 75 * 8;
-      break;
-
-    case FFMPEG_PRESET_SVCD:
-      rd->ffcodecdata.type = FFMPEG_MPEG2;
-      rd->ffcodecdata.video_bitrate = 2040;
-      rd->xsch = 480;
-      rd->ysch = is_ntsc ? 480 : 576;
-      rd->ffcodecdata.gop_size = is_ntsc ? 18 : 15;
-      rd->ffcodecdata.rc_max_rate = 2516;
-      rd->ffcodecdata.rc_min_rate = 0;
-      rd->ffcodecdata.rc_buffer_size = 224 * 8;
-      rd->ffcodecdata.mux_packet_size = 2324;
-      rd->ffcodecdata.mux_rate = 0;
-      break;
-
-    case FFMPEG_PRESET_DVD:
-      rd->ffcodecdata.type = FFMPEG_MPEG2;
-      rd->ffcodecdata.video_bitrate = 6000;
-
-#  if 0 /* Don't set resolution, see #21351. */
-      rd->xsch = 720;
-      rd->ysch = isntsc ? 480 : 576;
-#  endif
-
-      rd->ffcodecdata.gop_size = is_ntsc ? 18 : 15;
-      rd->ffcodecdata.rc_max_rate = 9000;
-      rd->ffcodecdata.rc_min_rate = 0;
-      rd->ffcodecdata.rc_buffer_size = 224 * 8;
-      rd->ffcodecdata.mux_packet_size = 2048;
-      rd->ffcodecdata.mux_rate = 10080000;
-      break;
-
-    case FFMPEG_PRESET_DV:
-      rd->ffcodecdata.type = FFMPEG_DV;
-      rd->xsch = 720;
-      rd->ysch = is_ntsc ? 480 : 576;
-      break;
-
     case FFMPEG_PRESET_H264:
       rd->ffcodecdata.type = FFMPEG_AVI;
       rd->ffcodecdata.codec = AV_CODEC_ID_H264;
@@ -1753,7 +1705,6 @@ void BKE_ffmpeg_preset_set(RenderData *rd, int preset)
       rd->ffcodecdata.rc_buffer_size = 224 * 8;
       rd->ffcodecdata.mux_packet_size = 2048;
       rd->ffcodecdata.mux_rate = 10080000;
-
       break;
 
     case FFMPEG_PRESET_THEORA:
@@ -1775,6 +1726,7 @@ void BKE_ffmpeg_preset_set(RenderData *rd, int preset)
       rd->ffcodecdata.mux_packet_size = 2048;
       rd->ffcodecdata.mux_rate = 10080000;
       break;
+
     case FFMPEG_PRESET_AV1:
       rd->ffcodecdata.type = FFMPEG_AV1;
       rd->ffcodecdata.codec = AV_CODEC_ID_AV1;
@@ -1785,7 +1737,6 @@ void BKE_ffmpeg_preset_set(RenderData *rd, int preset)
       rd->ffcodecdata.rc_buffer_size = 224 * 8;
       rd->ffcodecdata.mux_packet_size = 2048;
       rd->ffcodecdata.mux_rate = 10080000;
-
       break;
   }
 }

@@ -35,11 +35,11 @@
 #include "BKE_curve.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_gpencil_geom_legacy.h"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_lattice.hh"
-#include "BKE_mball.h"
+#include "BKE_mball.hh"
 #include "BKE_mesh.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "bmesh.hh"
 
@@ -549,9 +549,16 @@ void ED_object_data_xform_by_mat4(XFormObjectData *xod_base, const float mat[4][
       }
       else {
         MutableSpan<float3> positions = mesh->vert_positions_for_write();
+#ifdef __GNUC__ /* Invalid `xod->elem_array` warning with GCC 13.2.1. */
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Warray-bounds"
+#endif
         for (const int i : positions.index_range()) {
           mul_v3_m4v3(positions[i], mat, xod->elem_array[i]);
         }
+#ifdef __GNUC__
+#  pragma GCC diagnostic pop
+#endif
         mesh->tag_positions_changed();
       }
 

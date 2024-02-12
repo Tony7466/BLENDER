@@ -25,21 +25,22 @@
 #include "BLI_vector.hh"
 
 #include "BKE_anim_data.h"
+#include "BKE_bake_data_block_id.hh"
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_global.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_global.hh"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -47,6 +48,7 @@
 
 using blender::float3;
 using blender::IndexRange;
+using blender::MutableSpan;
 using blender::Span;
 using blender::Vector;
 
@@ -85,6 +87,11 @@ static void pointcloud_copy_data(Main * /*bmain*/,
 
   pointcloud_dst->runtime = new blender::bke::PointCloudRuntime();
   pointcloud_dst->runtime->bounds_cache = pointcloud_src->runtime->bounds_cache;
+  if (pointcloud_src->runtime->bake_materials) {
+    pointcloud_dst->runtime->bake_materials =
+        std::make_unique<blender::bke::bake::BakeMaterialsList>(
+            *pointcloud_src->runtime->bake_materials);
+  }
 
   pointcloud_dst->batch_cache = nullptr;
 }
@@ -195,6 +202,20 @@ static void pointcloud_random(PointCloud *pointcloud)
   radii.finish();
 
   BLI_rng_free(rng);
+}
+
+Span<float3> PointCloud::positions() const
+{
+  return {static_cast<const float3 *>(
+              CustomData_get_layer_named(&this->pdata, CD_PROP_FLOAT3, "position")),
+          this->totpoint};
+}
+
+MutableSpan<float3> PointCloud::positions_for_write()
+{
+  return {static_cast<float3 *>(CustomData_get_layer_named_for_write(
+              &this->pdata, CD_PROP_FLOAT3, "position", this->totpoint)),
+          this->totpoint};
 }
 
 void *BKE_pointcloud_add(Main *bmain, const char *name)
