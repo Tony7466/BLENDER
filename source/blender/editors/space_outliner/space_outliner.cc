@@ -412,7 +412,9 @@ static SpaceLink *outliner_duplicate(SpaceLink *sl)
   return (SpaceLink *)space_outliner_new;
 }
 
-static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const IDRemapper *mappings)
+static void outliner_id_remap(ScrArea *area,
+                              SpaceLink *slink,
+                              const blender::bke::id::remapper::IDRemapper &mappings)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)slink;
 
@@ -427,7 +429,7 @@ static void outliner_id_remap(ScrArea *area, SpaceLink *slink, const IDRemapper 
 
   BLI_mempool_iternew(space_outliner->treestore, &iter);
   while ((tselem = static_cast<TreeStoreElem *>(BLI_mempool_iterstep(&iter)))) {
-    switch (BKE_id_remapper_apply(mappings, &tselem->id, ID_REMAP_APPLY_DEFAULT)) {
+    switch (mappings.apply(&tselem->id, ID_REMAP_APPLY_DEFAULT)) {
       case ID_REMAP_RESULT_SOURCE_REMAPPED:
         changed = true;
         break;

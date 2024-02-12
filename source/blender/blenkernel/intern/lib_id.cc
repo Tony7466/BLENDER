@@ -77,6 +77,8 @@
 #  include "BLI_time_utildefines.h"
 #endif
 
+using namespace blender::bke::id;
+
 static CLG_LogRef LOG = {"bke.lib_id"};
 
 IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
@@ -781,8 +783,8 @@ ID *BKE_id_copy_for_use_in_bmain(Main *bmain, const ID *id)
 static void id_embedded_swap(ID **embedded_id_a,
                              ID **embedded_id_b,
                              const bool do_full_id,
-                             IDRemapper *remapper_id_a,
-                             IDRemapper *remapper_id_b);
+                             remapper::IDRemapper *remapper_id_a,
+                             remapper::IDRemapper *remapper_id_b);
 
 /**
  * Does a mere memory swap over the whole IDs data (including type-specific memory).
@@ -793,20 +795,20 @@ static void id_swap(Main *bmain,
                     ID *id_b,
                     const bool do_full_id,
                     const bool do_self_remap,
-                    IDRemapper *input_remapper_id_a,
-                    IDRemapper *input_remapper_id_b,
+                    remapper::IDRemapper *input_remapper_id_a,
+                    remapper::IDRemapper *input_remapper_id_b,
                     const int self_remap_flags)
 {
   BLI_assert(GS(id_a->name) == GS(id_b->name));
 
-  IDRemapper *remapper_id_a = input_remapper_id_a;
-  IDRemapper *remapper_id_b = input_remapper_id_b;
+  remapper::IDRemapper *remapper_id_a = input_remapper_id_a;
+  remapper::IDRemapper *remapper_id_b = input_remapper_id_b;
   if (do_self_remap) {
     if (remapper_id_a == nullptr) {
-      remapper_id_a = BKE_id_remapper_create();
+      remapper_id_a = MEM_new<remapper::IDRemapper>(__func__);
     }
     if (remapper_id_b == nullptr) {
-      remapper_id_b = BKE_id_remapper_create();
+      remapper_id_b = MEM_new<remapper::IDRemapper>(__func__);
     }
   }
 
@@ -852,25 +854,25 @@ static void id_swap(Main *bmain,
   }
 
   if (remapper_id_a != nullptr) {
-    BKE_id_remapper_add(remapper_id_a, id_b, id_a);
+    remapper_id_a->add(id_b, id_a);
   }
   if (remapper_id_b != nullptr) {
-    BKE_id_remapper_add(remapper_id_b, id_a, id_b);
+    remapper_id_b->add(id_a, id_b);
   }
 
   /* Finalize remapping of internal references to self broken by swapping, if requested. */
   if (do_self_remap) {
     BKE_libblock_relink_multiple(
-        bmain, {id_a}, ID_REMAP_TYPE_REMAP, remapper_id_a, self_remap_flags);
+        bmain, {id_a}, ID_REMAP_TYPE_REMAP, *remapper_id_a, self_remap_flags);
     BKE_libblock_relink_multiple(
-        bmain, {id_b}, ID_REMAP_TYPE_REMAP, remapper_id_b, self_remap_flags);
+        bmain, {id_b}, ID_REMAP_TYPE_REMAP, *remapper_id_b, self_remap_flags);
   }
 
   if (input_remapper_id_a == nullptr && remapper_id_a != nullptr) {
-    BKE_id_remapper_free(remapper_id_a);
+    MEM_delete(remapper_id_a);
   }
   if (input_remapper_id_b == nullptr && remapper_id_b != nullptr) {
-    BKE_id_remapper_free(remapper_id_b);
+    MEM_delete(remapper_id_b);
   }
 }
 
@@ -881,8 +883,8 @@ static void id_swap(Main *bmain,
 static void id_embedded_swap(ID **embedded_id_a,
                              ID **embedded_id_b,
                              const bool do_full_id,
-                             IDRemapper *remapper_id_a,
-                             IDRemapper *remapper_id_b)
+                             remapper::IDRemapper *remapper_id_a,
+                             remapper::IDRemapper *remapper_id_b)
 {
   if (embedded_id_a != nullptr && *embedded_id_a != nullptr) {
     BLI_assert(embedded_id_b != nullptr);
@@ -908,10 +910,10 @@ static void id_embedded_swap(ID **embedded_id_a,
     /* Restore internal pointers to the swapped embedded IDs in their owners' data. This also
      * includes the potential self-references inside the embedded IDs themselves. */
     if (remapper_id_a != nullptr) {
-      BKE_id_remapper_add(remapper_id_a, *embedded_id_b, *embedded_id_a);
+      remapper_id_a->add(*embedded_id_b, *embedded_id_a);
     }
     if (remapper_id_b != nullptr) {
-      BKE_id_remapper_add(remapper_id_b, *embedded_id_a, *embedded_id_b);
+      remapper_id_b->add(*embedded_id_a, *embedded_id_b);
     }
   }
 }
