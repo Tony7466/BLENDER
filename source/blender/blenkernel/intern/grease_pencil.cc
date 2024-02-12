@@ -505,72 +505,74 @@ Span<Vector<uint3>> Drawing::triangles() const
 
     r_data.resize(groups.size() + 1);
 
-    for (const int group_id : groups.index_range()) {
-      const IndexMask &group = groups[group_id];
+    threading::parallel_for(groups.index_range(), 16, [&](const IndexRange group_range) {
+      for (const int group_id : group_range) {
+        const IndexMask &group = groups[group_id];
 
-      Array<int> offsets_data(group.size() + 1);
-      offset_indices::gather_group_sizes(
-          points_by_curve, group, offsets_data.as_mutable_span().drop_back(1));
-      offset_indices::accumulate_counts_to_offsets(offsets_data);
-      const OffsetIndices<int> points_by_group = OffsetIndices<int>(offsets_data);
+        Array<int> offsets_data(group.size() + 1);
+        offset_indices::gather_group_sizes(
+            points_by_curve, group, offsets_data.as_mutable_span().drop_back(1));
+        offset_indices::accumulate_counts_to_offsets(offsets_data);
+        const OffsetIndices<int> points_by_group = OffsetIndices<int>(offsets_data);
 
-      const int num_points = points_by_group.total_size();
+        const int num_points = points_by_group.total_size();
 
-      Array<float2> projverts(num_points);
-      group.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
-        const IndexRange point_group = points_by_group[pos];
-        const IndexRange points = points_by_curve[curve_i];
-        threading::parallel_for(points.index_range(), 512, [&](const IndexRange range) {
-          for (const int p_id : range) {
-            mul_v2_m3v3(projverts[point_group[p_id]], axis_mat.ptr(), positions[points[p_id]]);
-          }
+        Array<float2> projverts(num_points);
+        group.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
+          const IndexRange point_group = points_by_group[pos];
+          const IndexRange points = points_by_curve[curve_i];
+          threading::parallel_for(points.index_range(), 512, [&](const IndexRange range) {
+            for (const int p_id : range) {
+              mul_v2_m3v3(projverts[point_group[p_id]], axis_mat.ptr(), positions[points[p_id]]);
+            }
+          });
         });
-      });
 
-      if (!check_valid_curves(projverts, points_by_group)) {
-        continue;
-      }
-
-      Array<double2> verts(num_points);
-      Array<std::pair<int, int>> edges(num_points);
-      Array<Vector<int>> faces(group.size());
-
-      Array<int> vert_to_point_map(num_points);
-
-      group.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
-        const IndexRange point_group = points_by_group[pos];
-        const IndexRange points = points_by_curve[curve_i];
-        faces[pos].resize(points.size());
-        threading::parallel_for(points.index_range(), 512, [&](const IndexRange range) {
-          for (const int p_id : range) {
-            vert_to_point_map[point_group[p_id]] = points[p_id];
-            verts[point_group[p_id]] = double2(projverts[point_group[p_id]]);
-            edges[point_group[p_id]] = std::pair<int, int>(
-                point_group[p_id], point_group[(p_id + 1) % points.size()]);
-            faces[pos][p_id] = point_group[p_id];
-          }
-        });
-      });
-
-      meshintersect::CDT_input<double> input;
-      input.vert = verts;
-      input.edge = edges;
-      input.face = faces;
-      input.need_ids = false;
-
-      meshintersect::CDT_result<double> result = delaunay_2d_calc(input, CDT_INSIDE_WITH_HOLES);
-
-      r_data[group_id].resize(result.face.size());
-
-      threading::parallel_for(result.face.index_range(), 512, [&](const IndexRange range) {
-        for (const int i : range) {
-          BLI_assert(result.face[i].size() == 3);
-          r_data[group_id][i] = uint3(vert_to_point_map[result.face[i][0]],
-                                      vert_to_point_map[result.face[i][1]],
-                                      vert_to_point_map[result.face[i][2]]);
+        if (!check_valid_curves(projverts, points_by_group)) {
+          continue;
         }
-      });
-    }
+
+        Array<double2> verts(num_points);
+        Array<std::pair<int, int>> edges(num_points);
+        Array<Vector<int>> faces(group.size());
+
+        Array<int> vert_to_point_map(num_points);
+
+        group.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
+          const IndexRange point_group = points_by_group[pos];
+          const IndexRange points = points_by_curve[curve_i];
+          faces[pos].resize(points.size());
+          threading::parallel_for(points.index_range(), 512, [&](const IndexRange range) {
+            for (const int p_id : range) {
+              vert_to_point_map[point_group[p_id]] = points[p_id];
+              verts[point_group[p_id]] = double2(projverts[point_group[p_id]]);
+              edges[point_group[p_id]] = std::pair<int, int>(
+                  point_group[p_id], point_group[(p_id + 1) % points.size()]);
+              faces[pos][p_id] = point_group[p_id];
+            }
+          });
+        });
+
+        meshintersect::CDT_input<double> input;
+        input.vert = verts;
+        input.edge = edges;
+        input.face = faces;
+        input.need_ids = false;
+
+        meshintersect::CDT_result<double> result = delaunay_2d_calc(input, CDT_INSIDE_WITH_HOLES);
+
+        r_data[group_id].resize(result.face.size());
+
+        threading::parallel_for(result.face.index_range(), 512, [&](const IndexRange range) {
+          for (const int i : range) {
+            BLI_assert(result.face[i].size() == 3);
+            r_data[group_id][i] = uint3(vert_to_point_map[result.face[i][0]],
+                                        vert_to_point_map[result.face[i][1]],
+                                        vert_to_point_map[result.face[i][2]]);
+          }
+        });
+      }
+    });
   });
 
   return this->runtime->triangles_cache.data().as_span();
