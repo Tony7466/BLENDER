@@ -388,14 +388,15 @@ Span<uint32_t> Drawing::triangles_offsets() const
 
 static bool check_valid_curves(const CurvesGeometry &curves,
                                Span<float2> projverts,
-                               const IndexMask group)
+                               const IndexMask group,
+                               const OffsetIndices<int> points_by_group)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
-  int offset = 0;
   bool is_invalid = false;
-  /* Check if self intersect. */
-  group.foreach_index([&](const int64_t curve_i) {
+  /* Check for self intersections. */
+  group.foreach_index([&](const int64_t curve_i, const int64_t pos) {
+    const IndexRange point_group = points_by_group[pos];
     const IndexRange points = points_by_curve[curve_i];
     for (const int e2_id : points.index_range()) {
       for (const int e1_id : points.index_range()) {
@@ -413,17 +414,15 @@ static bool check_valid_curves(const CurvesGeometry &curves,
           continue;
         }
 
-        is_invalid |= isect_seg_seg_v2_simple(projverts[offset + p1],
-                                              projverts[offset + p2],
-                                              projverts[offset + p3],
-                                              projverts[offset + p4]);
+        is_invalid |= isect_seg_seg_v2_simple(projverts[point_group[p1]],
+                                              projverts[point_group[p2]],
+                                              projverts[point_group[p3]],
+                                              projverts[point_group[p4]]);
         if (is_invalid) {
           return;
         }
       }
     }
-
-    offset += points.size();
   });
 
   if (is_invalid) {
@@ -433,6 +432,7 @@ static bool check_valid_curves(const CurvesGeometry &curves,
   int offset1 = 0;
   /* Check if other intersect. */
   group.foreach_index([&](const int64_t curve_i1, const int64_t pos1) {
+    const IndexRange point_group1 = points_by_group[pos1];
     const IndexRange points1 = points_by_curve[curve_i1];
     if (is_invalid) {
       return;
@@ -443,6 +443,7 @@ static bool check_valid_curves(const CurvesGeometry &curves,
       if (is_invalid) {
         return;
       }
+      const IndexRange point_group2 = points_by_group[pos2];
       const IndexRange points2 = points_by_curve[curve_i2];
 
       if (pos2 >= pos1) {
@@ -456,10 +457,10 @@ static bool check_valid_curves(const CurvesGeometry &curves,
           const int p21 = e2_id;
           const int p22 = (e2_id + 1) % points2.size();
 
-          is_invalid |= isect_seg_seg_v2_simple(projverts[offset1 + p11],
-                                                projverts[offset1 + p12],
-                                                projverts[offset2 + p21],
-                                                projverts[offset2 + p22]);
+          is_invalid |= isect_seg_seg_v2_simple(projverts[point_group1[p11]],
+                                                projverts[point_group1[p12]],
+                                                projverts[point_group2[p21]],
+                                                projverts[point_group2[p22]]);
           if (is_invalid) {
             return;
           }
@@ -496,26 +497,26 @@ Span<uint3> Drawing::triangles() const
 
     int triangles_offset = 0;
     for (const int group_id : groups.index_range()) {
-      const IndexMask group = groups[group_id];
+      const IndexMask &group = groups[group_id];
 
-      int num_points = 0;
-      group.foreach_index([&](const int64_t curve_i) {
-        const IndexRange points = points_by_curve[curve_i];
-        num_points += points.size();
-      });
+      Array<int> offsets_data(group.size() + 1);
+      offset_indices::gather_group_sizes(
+          points_by_curve, group, offsets_data.as_mutable_span().drop_back(1));
+      offset_indices::accumulate_counts_to_offsets(offsets_data);
+      const OffsetIndices<int> points_by_group = OffsetIndices<int>(offsets_data);
+
+      const int num_points = points_by_group.total_size();
 
       Array<float2> projverts(num_points);
-
-      int offset = 0;
-      group.foreach_index([&](const int64_t curve_i) {
+      group.foreach_index([&](const int64_t curve_i, const int64_t pos) {
+        const IndexRange point_group = points_by_group[pos];
         const IndexRange points = points_by_curve[curve_i];
         for (const int p_id : points.index_range()) {
-          mul_v2_m3v3(projverts[p_id + offset], axis_mat.ptr(), positions[points[p_id]]);
+          mul_v2_m3v3(projverts[point_group[p_id]], axis_mat.ptr(), positions[points[p_id]]);
         }
-        offset += points.size();
       });
 
-      if (!check_valid_curves(curves, projverts, group)) {
+      if (!check_valid_curves(curves, projverts, group, points_by_group)) {
         triangles_offsets[group_id] = triangles_offset;
         continue;
       }
@@ -526,18 +527,17 @@ Span<uint3> Drawing::triangles() const
 
       Array<int> vert_to_point_map(num_points);
 
-      offset = 0; /* Reuse `offset`. */
       group.foreach_index([&](const int64_t curve_i, const int64_t pos) {
+        const IndexRange point_group = points_by_group[pos];
         const IndexRange points = points_by_curve[curve_i];
         faces[pos].resize(points.size());
         for (const int p_id : points.index_range()) {
-          vert_to_point_map[p_id + offset] = points[p_id];
-          verts[p_id + offset] = double2(projverts[p_id + offset]);
-          edges[p_id + offset] = std::pair<int, int>(p_id + offset,
-                                                     (p_id + 1) % points.size() + offset);
-          faces[pos][p_id] = p_id + offset;
+          vert_to_point_map[point_group[p_id]] = points[p_id];
+          verts[point_group[p_id]] = double2(projverts[point_group[p_id]]);
+          edges[point_group[p_id]] = std::pair<int, int>(point_group[p_id],
+                                                         point_group[(p_id + 1) % points.size()]);
+          faces[pos][p_id] = point_group[p_id];
         }
-        offset += points.size();
       });
 
       meshintersect::CDT_input<double> input;
