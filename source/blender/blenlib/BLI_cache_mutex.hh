@@ -65,12 +65,17 @@
 
 namespace blender {
 
+struct CacheMutexArena;
+
 class CacheMutex {
  private:
   std::mutex mutex_;
+  std::unique_ptr<CacheMutexArena> arena_;
   std::atomic<bool> cache_valid_ = false;
 
  public:
+  CacheMutex();
+  ~CacheMutex();
   /**
    * Make sure the cache exists and is up to date. This calls `compute_cache` once to update the
    * cache (which is stored outside of this class) if it is dirty, otherwise it does nothing.
@@ -83,10 +88,7 @@ class CacheMutex {
   /**
    * Reset the cache. The next time #ensure is called, it will recompute that code.
    */
-  void tag_dirty()
-  {
-    cache_valid_.store(false);
-  }
+  void tag_dirty();
 
   /**
    * Return true if the cache currently does not exist or has been invalidated.
