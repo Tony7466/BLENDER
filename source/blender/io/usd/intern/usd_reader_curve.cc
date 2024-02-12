@@ -5,6 +5,7 @@
  * Modifications Copyright 2021 Tangent Animation. All rights reserved. */
 
 #include "usd_reader_curve.hh"
+#include "usd.hh"
 
 #include "BKE_curve.hh"
 #include "BKE_mesh.hh"
@@ -17,12 +18,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <pxr/base/vt/array.h>
 #include <pxr/base/vt/types.h>
-#include <pxr/base/vt/value.h>
 
 #include <pxr/usd/usdGeom/basisCurves.h>
-#include <pxr/usd/usdGeom/curves.h>
 
 namespace blender::io::usd {
 
