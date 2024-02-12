@@ -2,8 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
+#include "BKE_lib_query.hh"
+#include "BKE_lib_remap.hh"
 #include "BKE_viewer_path.hh"
 
 #include "BLI_index_range.hh"

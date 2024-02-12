@@ -4,7 +4,7 @@
 
 #include "BLI_threads.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
@@ -54,7 +54,9 @@ void COM_execute(Render *render,
                  Scene *scene,
                  bNodeTree *node_tree,
                  bool rendering,
-                 const char *view_name)
+                 const char *view_name,
+                 blender::realtime_compositor::RenderContext *render_context,
+                 blender::compositor::ProfilerData &profiler_data)
 {
   /* Initialize mutex, TODO: this mutex init is actually not thread safe and
    * should be done somewhere as part of blender startup, all the other
@@ -80,7 +82,8 @@ void COM_execute(Render *render,
       node_tree->execution_mode == NTREE_EXECUTION_MODE_REALTIME)
   {
     /* Realtime GPU compositor. */
-    RE_compositor_execute(*render, *scene, *render_data, *node_tree, rendering, view_name);
+    RE_compositor_execute(
+        *render, *scene, *render_data, *node_tree, rendering, view_name, render_context);
   }
   else {
     /* Tiled and Full Frame compositors. */
@@ -93,8 +96,14 @@ void COM_execute(Render *render,
     /* Execute. */
     const bool twopass = (node_tree->flag & NTREE_TWO_PASS) && !rendering;
     if (twopass) {
-      blender::compositor::ExecutionSystem fast_pass(
-          render_data, scene, node_tree, rendering, true, view_name);
+      blender::compositor::ExecutionSystem fast_pass(render_data,
+                                                     scene,
+                                                     node_tree,
+                                                     rendering,
+                                                     true,
+                                                     view_name,
+                                                     render_context,
+                                                     profiler_data);
       fast_pass.execute();
 
       if (node_tree->runtime->test_break(node_tree->runtime->tbh)) {
@@ -104,7 +113,7 @@ void COM_execute(Render *render,
     }
 
     blender::compositor::ExecutionSystem system(
-        render_data, scene, node_tree, rendering, false, view_name);
+        render_data, scene, node_tree, rendering, false, view_name, render_context, profiler_data);
     system.execute();
   }
 

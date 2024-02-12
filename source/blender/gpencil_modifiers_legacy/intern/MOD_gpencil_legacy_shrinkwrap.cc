@@ -13,7 +13,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -24,15 +24,15 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_scene.h"
 #include "BKE_screen.hh"
-#include "BKE_shrinkwrap.h"
+#include "BKE_shrinkwrap.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -151,7 +151,8 @@ static void bake_modifier(Main * /*bmain*/,
       mmd->cache_data = static_cast<ShrinkwrapTreeData *>(
           MEM_callocN(sizeof(ShrinkwrapTreeData), __func__));
       if (BKE_shrinkwrap_init_tree(
-              mmd->cache_data, target, mmd->shrink_type, mmd->shrink_mode, false)) {
+              mmd->cache_data, target, mmd->shrink_type, mmd->shrink_mode, false))
+      {
 
         /* Compute shrinkwrap effects on this frame. */
         LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {

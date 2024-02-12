@@ -10,7 +10,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
@@ -18,7 +18,7 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_mesh.hh"
 #include "BKE_screen.hh"
 
@@ -31,8 +31,8 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include "bmesh.h"
-#include "tools/bmesh_wireframe.h"
+#include "bmesh.hh"
+#include "tools/bmesh_wireframe.hh"
 
 static void init_data(ModifierData *md)
 {
@@ -196,4 +196,5 @@ ModifierTypeInfo modifierType_Wireframe = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

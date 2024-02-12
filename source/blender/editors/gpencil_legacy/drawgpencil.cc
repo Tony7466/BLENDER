@@ -21,8 +21,8 @@
 #include "BLI_polyfill_2d.h"
 #include "BLI_utildefines.h"
 
-#include "BLF_api.h"
-#include "BLT_translation.h"
+#include "BLF_api.hh"
+#include "BLT_translation.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -61,7 +61,7 @@
 #include "UI_interface_icons.hh"
 #include "UI_resources.hh"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "gpencil_intern.h"
 

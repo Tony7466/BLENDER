@@ -15,14 +15,14 @@
 
 #include "BLI_math_rotation.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_customdata.hh"
 
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -65,11 +65,12 @@ const EnumPropertyItem rna_enum_ramp_blend_items[] = {
 #  include "DNA_screen_types.h"
 #  include "DNA_space_types.h"
 
-#  include "BKE_colorband.h"
+#  include "BKE_attribute.hh"
+#  include "BKE_colorband.hh"
 #  include "BKE_context.hh"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_grease_pencil.hh"
-#  include "BKE_main.h"
+#  include "BKE_main.hh"
 #  include "BKE_material.h"
 #  include "BKE_node.h"
 #  include "BKE_paint.hh"
@@ -130,9 +131,9 @@ static void rna_MaterialLineArt_update(Main * /*bmain*/, Scene * /*scene*/, Poin
   WM_main_add_notifier(NC_MATERIAL | ND_SHADING_DRAW, ma);
 }
 
-static char *rna_MaterialLineArt_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_MaterialLineArt_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("lineart");
+  return "lineart";
 }
 
 static void rna_Material_draw_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
@@ -163,7 +164,7 @@ static void rna_Material_active_paint_texture_index_update(bContext *C, PointerR
     }
   }
 
-  if (ma->texpaintslot) {
+  if (ma->texpaintslot && (ma->tot_slots > ma->paint_active_slot)) {
     TexPaintSlot *slot = &ma->texpaintslot[ma->paint_active_slot];
     Image *image = slot->ima;
     if (image) {
@@ -352,9 +353,9 @@ static void rna_gpcolordata_uv_update(Main *bmain, Scene *scene, PointerRNA *ptr
   rna_MaterialGpencil_update(bmain, scene, ptr);
 }
 
-static char *rna_GpencilColorData_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_GpencilColorData_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("grease_pencil");
+  return "grease_pencil";
 }
 
 static bool rna_GpencilColorData_is_stroke_visible_get(PointerRNA *ptr)
@@ -857,6 +858,25 @@ void RNA_def_material(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static EnumPropertyItem prop_displacement_method_items[] = {
+      {MA_DISPLACEMENT_BUMP,
+       "BUMP",
+       0,
+       "Bump Only",
+       "Bump mapping to simulate the appearance of displacement"},
+      {MA_DISPLACEMENT_DISPLACE,
+       "DISPLACEMENT",
+       0,
+       "Displacement Only",
+       "Use true displacement of surface only, requires fine subdivision"},
+      {MA_DISPLACEMENT_BOTH,
+       "BOTH",
+       0,
+       "Displacement and Bump",
+       "Combination of true displacement and bump mapping for finer detail"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "Material", "ID");
   RNA_def_struct_ui_text(
       srna,
@@ -869,6 +889,11 @@ void RNA_def_material(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "Surface Render Method",
                            "Controls the blending and the compatibility with certain features");
+  RNA_def_property_update(prop, 0, "rna_Material_draw_update");
+
+  prop = RNA_def_property(srna, "displacement_method", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(prop, prop_displacement_method_items);
+  RNA_def_property_ui_text(prop, "Displacement Method", "Method to use for the displacement");
   RNA_def_property_update(prop, 0, "rna_Material_draw_update");
 
 #  if 1 /* Delete this section once we remove old eevee. */
