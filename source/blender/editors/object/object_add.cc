@@ -3238,9 +3238,9 @@ static int object_convert_exec(bContext *C, wmOperator *op)
 
       bke::greasepencil::convert::legacy_gpencil_to_grease_pencil(
           *bmain, *new_grease_pencil, *gpd);
+      bke::greasepencil::convert::layer_adjustments_to_modifiers(*bmain, *gpd, *newob);
 
       BKE_object_free_derived_caches(newob);
-      BKE_object_free_modifiers(newob, 0);
     }
     else if (target == OB_CURVES) {
       ob->flag |= OB_DONE;

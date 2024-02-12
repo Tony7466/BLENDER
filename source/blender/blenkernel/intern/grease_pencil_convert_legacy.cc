@@ -11,6 +11,7 @@
 #include "BKE_deform.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
+#include "BKE_modifier.hh"
 
 #include "BLI_color.hh"
 #include "BLI_listbase.h"
@@ -21,6 +22,9 @@
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_modifier_types.h"
+
+#include "DEG_depsgraph_build.hh"
 
 namespace blender::bke::greasepencil::convert {
 
@@ -340,6 +344,40 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
   copy_v3_v3(grease_pencil.onion_skinning_settings.color_after, gpd.gcolor_next);
 
   BKE_id_materials_copy(&bmain, &gpd.id, &grease_pencil.id);
+}
+
+void layer_adjustments_to_modifiers(Main &bmain,
+                                    const bGPdata &src_object_data,
+                                    Object &dst_object)
+{
+  /* Replace layer adjustments with modifiers. */
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &src_object_data.layers) {
+    const float3 tint_color = float3(gpl->tintcolor);
+    const float tint_factor = gpl->tintcolor[3];
+    // const int thickness_px = gpl->line_change;
+    if (tint_factor > 0.0f) {
+      ModifierData *md = BKE_modifier_new(eModifierType_GreasePencilTint);
+      GreasePencilTintModifierData *tmd = reinterpret_cast<GreasePencilTintModifierData *>(md);
+
+      copy_v3_v3(tmd->color, tint_color);
+      tmd->factor = tint_factor;
+      STRNCPY(tmd->influence.layer_name, gpl->info);
+
+      BLI_addtail(&dst_object.modifiers, md);
+      BKE_modifiers_persistent_uid_init(dst_object, *md);
+
+      char modifier_name[64];
+      BLI_snprintf(modifier_name, 64, "Tint %s", gpl->info);
+      STRNCPY(md->name, modifier_name);
+      BKE_modifier_unique_name(&dst_object.modifiers, md);
+    }
+    // if (thickness_px > 0) {
+    //   ModifierData *md = BKE_modifier_new(eModifierType_GreasePencilThickness);
+    //   GreasePencilThickModifierData
+    // }
+  }
+
+  DEG_relations_tag_update(&bmain);
 }
 
 }  // namespace blender::bke::greasepencil::convert
