@@ -1,0 +1,115 @@
+{
+    "$schema": "https://schema.khronos.org/vulkan/profiles-0.8.2-276.json#",
+    "capabilities": {
+        "vulkan10_requirements": {
+            "features": {
+                "VkPhysicalDeviceFeatures": {
+                    "geometryShader": true,
+                    "dualSrcBlend": true,
+                    "logicOp": true,
+                    "imageCubeArray": true,
+                    "multiViewport": true,
+                    "shaderClipDistance": true,
+                    "drawIndirectFirstInstance": true,
+                    "fragmentStoresAndAtomics": true,
+                    "samplerAnisotropy": true
+                }
+            }
+        },
+        "vulkan11_optionals": {
+            "features": {
+                "VkPhysicalDeviceVulkan11Features": {
+                    "shaderDrawParameters": true
+                },
+                "VkPhysicalDeviceShaderDrawParametersFeatures": {
+                    "shaderDrawParameters": true
+                }
+            }
+        },
+        "vulkan12_requirements": {
+            "features": {
+                "VkPhysicalDeviceVulkan12Features": {
+                    "timelineSemaphore": true
+                }
+            }
+        },
+        "vulkan12_optionals": {
+            "features": {
+                "VkPhysicalDeviceVulkan12Features": {
+                    "shaderOutputLayer": true,
+                    "shaderOutputViewportIndex": true,
+                }
+            }
+        },
+        "vulkan_extensions_requirements": {
+            "extensions": {
+                "VK_KHR_swapchain": 1,
+                "VK_KHR_dedicated_allocation": 1,
+                "VK_KHR_get_memory_requirements2": 1
+            }
+        },
+        "vulkan_extensions_optionals": {
+            "extensions": {
+                "VK_KHR_maintenance4": 1
+            }
+        },
+        "molten_vk_optionals": {
+            "extensions": {
+                "VK_KHR_get_physical_device_properties2": 1,
+                "VK_KHR_portability_subset": 1
+            }
+        },
+        "x11_optionals": {
+            "extensions": {
+                "VK_KHR_xlib_surface": 1
+            }
+        },
+        "wayland_optionals": {
+            "extensions": {
+                "VK_KHR_wayland_surface": 1
+            }
+        },
+        "windows_optionals": {
+            "extensions": {
+                "VK_KHR_win32_surface": 1
+            }
+        }
+    },
+    "profiles": {
+        "VP_APP_blender": {
+            "version": 1,
+            "api-version": "1.2.198",
+            "label": "Blender Vulkan Profile",
+            "description": "Profile containing the minimum and optional GPU capabilities for running Blender.",
+            "contributors": {
+                "Jeroen Bakker": {
+                    "company": "Blender Institute",
+                    "email": "jeroen@blender.org",
+                    "contact": true
+                }
+            },
+            "history": [
+	        {
+	            "revision": 1,
+	            "date": "2024-02-12",
+	            "author": "Jeroen Bakker",
+	            "comment": "Initial Vulkan Profile for Blender"
+	        }
+            ],
+            "capabilities": [
+                "vulkan10_requirements",
+                "vulkan12_requirements",
+                "vulkan_extensions_requirements"
+            ],
+            "optionals": [
+                "vulkan11_optionals",
+                "vulkan12_optionals",
+                "vulkan_extensions_optionals",
+                "wayland_optionals",
+                "x11_optionals",
+                "windows_optionals",
+                "molten_vk_optionals"
+            ]
+        }
+    }
+}
