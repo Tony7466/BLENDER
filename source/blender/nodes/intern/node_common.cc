@@ -21,7 +21,7 @@
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
@@ -262,6 +262,13 @@ static SocketDeclarationPtr declaration_for_interface_socket(
     case SOCK_STRING: {
       const auto &value = node_interface::get_socket_data_as<bNodeSocketValueString>(io_socket);
       std::unique_ptr<decl::String> decl = std::make_unique<decl::String>();
+      decl->default_value = value.value;
+      dst = std::move(decl);
+      break;
+    }
+    case SOCK_MENU: {
+      const auto &value = node_interface::get_socket_data_as<bNodeSocketValueMenu>(io_socket);
+      std::unique_ptr<decl::Menu> decl = std::make_unique<decl::Menu>();
       decl->default_value = value.value;
       dst = std::move(decl);
       break;

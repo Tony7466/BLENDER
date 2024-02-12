@@ -10,7 +10,7 @@
 
 #include "BLI_listbase.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
@@ -21,7 +21,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"

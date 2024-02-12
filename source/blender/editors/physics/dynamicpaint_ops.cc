@@ -17,7 +17,7 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_modifier_types.h"
@@ -26,13 +26,13 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_dynamicpaint.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object_deform.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 
 #include "DEG_depsgraph.hh"

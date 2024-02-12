@@ -13,7 +13,7 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_fluid_types.h"
@@ -25,7 +25,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_fluid.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"

@@ -13,15 +13,12 @@
 
 #include "BLI_blenlib.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_ID.h"
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
-#include "DNA_constraint_types.h"
-#include "DNA_key_types.h"
-#include "DNA_material_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
@@ -31,15 +28,14 @@
 #include "BKE_armature.hh"
 #include "BKE_context.hh"
 #include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_nla.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph.hh"
-#include "DEG_depsgraph_build.hh"
 
 #include "ED_keyframing.hh"
 #include "ED_object.hh"
@@ -51,7 +47,6 @@
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
 #include "ANIM_rna.hh"
-#include "ANIM_visualkey.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -374,7 +369,8 @@ static int insert_key_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   /* Use the active keying set if there is one. */
-  KeyingSet *ks = ANIM_keyingset_get_from_enum_type(scene, scene->active_keyingset);
+  const int type = RNA_enum_get(op->ptr, "type");
+  KeyingSet *ks = ANIM_keyingset_get_from_enum_type(scene, type);
   if (ks) {
     return insert_key_with_keyingset(C, op, ks);
   }
@@ -396,6 +392,13 @@ void ANIM_OT_keyframe_insert(wmOperatorType *ot)
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  /* Allows passing in a keying set when using the Python operator. */
+  PropertyRNA *prop = RNA_def_enum(
+      ot->srna, "type", rna_enum_dummy_DEFAULT_items, 0, "Keying Set", "The Keying Set to use");
+  RNA_def_enum_funcs(prop, ANIM_keying_sets_enum_itemf);
+  RNA_def_property_flag(prop, PROP_HIDDEN);
+  ot->prop = prop;
 }
 
 static int keyframe_insert_with_keyingset_exec(bContext *C, wmOperator *op)
@@ -870,7 +873,6 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
   ToolSettings *ts = scene->toolsettings;
   PointerRNA ptr = {nullptr};
   PropertyRNA *prop = nullptr;
-  char *path;
   uiBut *but;
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
       CTX_data_depsgraph_pointer(C), BKE_scene_frame_get(scene));
@@ -938,9 +940,7 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
     }
     else {
       /* standard properties */
-      path = RNA_path_from_ID_to_property(&ptr, prop);
-
-      if (path) {
+      if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
         const char *identifier = RNA_property_identifier(prop);
         const char *group = nullptr;
 
@@ -975,13 +975,11 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
                                                      ptr.owner_id,
                                                      nullptr,
                                                      group,
-                                                     path,
+                                                     path->c_str(),
                                                      index,
                                                      &anim_eval_context,
                                                      eBezTriple_KeyframeType(ts->keyframe_type),
                                                      flag) != 0);
-
-        MEM_freeN(path);
       }
       else {
         BKE_report(op->reports,
@@ -1052,7 +1050,6 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
   PointerRNA ptr = {nullptr};
   PropertyRNA *prop = nullptr;
   Main *bmain = CTX_data_main(C);
-  char *path;
   const float cfra = BKE_scene_frame_get(scene);
   bool changed = false;
   int index;
@@ -1104,17 +1101,14 @@ static int delete_key_button_exec(bContext *C, wmOperator *op)
     }
     else {
       /* standard properties */
-      path = RNA_path_from_ID_to_property(&ptr, prop);
-
-      if (path) {
+      if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
         if (all) {
           /* -1 indicates operating on the entire array (or the property itself otherwise) */
           index = -1;
         }
 
         changed = blender::animrig::delete_keyframe(
-                      bmain, op->reports, ptr.owner_id, nullptr, path, index, cfra) != 0;
-        MEM_freeN(path);
+                      bmain, op->reports, ptr.owner_id, nullptr, path->c_str(), index, cfra) != 0;
       }
       else if (G.debug & G_DEBUG) {
         printf("Button Delete-Key: no path to property\n");
@@ -1161,7 +1155,6 @@ static int clear_key_button_exec(bContext *C, wmOperator *op)
   PointerRNA ptr = {nullptr};
   PropertyRNA *prop = nullptr;
   Main *bmain = CTX_data_main(C);
-  char *path;
   bool changed = false;
   int index;
   const bool all = RNA_boolean_get(op->ptr, "all");
@@ -1172,18 +1165,19 @@ static int clear_key_button_exec(bContext *C, wmOperator *op)
   }
 
   if (ptr.owner_id && ptr.data && prop) {
-    path = RNA_path_from_ID_to_property(&ptr, prop);
-
-    if (path) {
+    if (const std::optional<std::string> path = RNA_path_from_ID_to_property(&ptr, prop)) {
       if (all) {
         /* -1 indicates operating on the entire array (or the property itself otherwise) */
         index = -1;
       }
 
-      changed |=
-          (blender::animrig::clear_keyframe(
-               bmain, op->reports, ptr.owner_id, nullptr, path, index, eInsertKeyFlags(0)) != 0);
-      MEM_freeN(path);
+      changed |= (blender::animrig::clear_keyframe(bmain,
+                                                   op->reports,
+                                                   ptr.owner_id,
+                                                   nullptr,
+                                                   path->c_str(),
+                                                   index,
+                                                   eInsertKeyFlags(0)) != 0);
     }
     else if (G.debug & G_DEBUG) {
       printf("Button Clear-Key: no path to property\n");
@@ -1381,7 +1375,13 @@ static KeyingSet *keyingset_get_from_op_with_error(wmOperator *op, PropertyRNA *
   else if (prop_type == PROP_STRING) {
     char type_id[MAX_ID_NAME - 2];
     RNA_property_string_get(op->ptr, prop, type_id);
-    ks = ANIM_keyingset_get_from_idname(scene, type_id);
+
+    if (STREQ(type_id, "__ACTIVE__")) {
+      ks = ANIM_keyingset_get_from_enum_type(scene, scene->active_keyingset);
+    }
+    else {
+      ks = ANIM_keyingset_get_from_idname(scene, type_id);
+    }
 
     if (ks == nullptr) {
       BKE_reportf(op->reports, RPT_ERROR, "Keying set '%s' not found", type_id);

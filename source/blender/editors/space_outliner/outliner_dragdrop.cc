@@ -18,16 +18,16 @@
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_context.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_object.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -1287,7 +1287,7 @@ static std::string collection_drop_tooltip(bContext *C,
       }
     }
   }
-  return nullptr;
+  return {};
 }
 
 static int collection_drop_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)

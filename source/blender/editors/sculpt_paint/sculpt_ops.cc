@@ -15,12 +15,11 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
 #include "DNA_listBase.h"
-#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -29,17 +28,16 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_context.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mirror.hh"
-#include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -358,8 +356,8 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
     BKE_report(reports, RPT_WARNING, "Object has negative scale, sculpting may be unpredictable");
   }
 
-  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PAINT_MODE_SCULPT);
-  BKE_paint_init(bmain, scene, PAINT_MODE_SCULPT, PAINT_CURSOR_SCULPT);
+  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::Sculpt);
+  BKE_paint_init(bmain, scene, PaintMode::Sculpt, PAINT_CURSOR_SCULPT);
 
   ED_paint_cursor_start(paint, SCULPT_mode_poll_view3d);
 

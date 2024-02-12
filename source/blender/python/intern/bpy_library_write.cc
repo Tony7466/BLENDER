@@ -19,9 +19,9 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_blendfile.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "BLO_writefile.hh"
 
@@ -35,6 +35,7 @@
 #include "../generic/python_compat.h"
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_lib_write_doc,
     ".. method:: write(filepath, datablocks, path_remap=False, fake_user=False, compress=False)\n"
     "\n"

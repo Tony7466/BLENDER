@@ -15,7 +15,7 @@
 #include "BKE_attribute.hh"
 #include "BKE_curve.hh"
 #include "BKE_duplilist.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
@@ -45,7 +45,7 @@
 #endif
 
 #include "GPU_capabilities.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 #include "GPU_uniform_buffer.h"
 
 #include "intern/gpu_codegen.h"
@@ -647,13 +647,14 @@ static void drw_call_calc_orco(const Object *ob, float (*r_orcofacs)[4])
         const Volume &volume = *reinterpret_cast<const Volume *>(ob_data);
         const std::optional<blender::Bounds<blender::float3>> bounds = BKE_volume_min_max(&volume);
         if (bounds) {
-          mid_v3_v3v3(static_buf.texspace_location, bounds->max, bounds->min);
-          sub_v3_v3v3(static_buf.texspace_size, bounds->max, bounds->min);
+          texspace_location = static_buf.texspace_location;
+          texspace_size = static_buf.texspace_size;
+          mid_v3_v3v3(texspace_location, bounds->max, bounds->min);
+          sub_v3_v3v3(texspace_size, bounds->max, bounds->min);
+          texspace_size[0] = std::max(texspace_size[0], 0.001f);
+          texspace_size[1] = std::max(texspace_size[1], 0.001f);
+          texspace_size[2] = std::max(texspace_size[2], 0.001f);
         }
-        static_buf.texspace_size[0] = std::max(static_buf.texspace_size[0], 0.001f);
-        static_buf.texspace_size[1] = std::max(static_buf.texspace_size[1], 0.001f);
-        static_buf.texspace_size[2] = std::max(static_buf.texspace_size[2], 0.001f);
-        texspace_location = static_buf.texspace_location;
         break;
       }
       case ID_ME:
@@ -1803,18 +1804,15 @@ void DRW_shgroup_add_material_resources(DRWShadingGroup *grp, GPUMaterial *mater
   /* Bind all textures needed by the material. */
   LISTBASE_FOREACH (GPUMaterialTexture *, tex, &textures) {
     if (tex->ima) {
-      /* Image */
-      GPUTexture *gputex;
+      const bool use_tile_mapping = tex->tiled_mapping_name[0];
       ImageUser *iuser = tex->iuser_available ? &tex->iuser : nullptr;
-      if (tex->tiled_mapping_name[0]) {
-        gputex = BKE_image_get_gpu_tiles(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(grp, gputex, tex->sampler_name, tex->sampler_state);
-        gputex = BKE_image_get_gpu_tilemap(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(grp, gputex, tex->tiled_mapping_name, tex->sampler_state);
-      }
-      else {
-        gputex = BKE_image_get_gpu_texture(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(grp, gputex, tex->sampler_name, tex->sampler_state);
+      ImageGPUTextures gputex = BKE_image_get_gpu_material_texture(
+          tex->ima, iuser, use_tile_mapping);
+
+      drw_shgroup_material_texture(grp, gputex.texture, tex->sampler_name, tex->sampler_state);
+      if (gputex.tile_mapping) {
+        drw_shgroup_material_texture(
+            grp, gputex.tile_mapping, tex->tiled_mapping_name, tex->sampler_state);
       }
     }
     else if (tex->colorband) {

@@ -26,11 +26,11 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_cloth.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_effect.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_modifier.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "BKE_collision.h"
 #include "BLI_kdopbvh.h"
@@ -1101,7 +1101,7 @@ static void cloth_selfcollision(void *__restrict userdata,
   int indexA = data->overlap[index].indexA, indexB = data->overlap[index].indexB;
 
   if (indexA > indexB) {
-    SWAP(int, indexA, indexB);
+    std::swap(indexA, indexB);
   }
 
   const blender::int3 vert_tri_a = clmd->clothObject->vert_tris[indexA];

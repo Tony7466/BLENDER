@@ -10,7 +10,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_force_types.h"
@@ -18,7 +18,7 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_particle.h"
 #include "BKE_screen.hh"
 #include "BKE_softbody.h"

@@ -15,7 +15,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
 #include "BKE_screen.hh"
 
 #include "ED_screen.hh"
@@ -161,9 +160,8 @@ static void id_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
   ID *id = WM_drag_get_local_ID(drag, 0);
 
   /* copy drag path to properties */
-  char *text = RNA_path_full_ID_py(id);
-  RNA_string_set(drop->ptr, "text", text);
-  MEM_freeN(text);
+  std::string text = RNA_path_full_ID_py(id);
+  RNA_string_set(drop->ptr, "text", text.c_str());
 }
 
 static bool path_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
@@ -343,7 +341,7 @@ static void console_deactivate(bContext *C, struct ScrArea *area)
 
 void ED_spacetype_console()
 {
-  SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype console"));
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_CONSOLE;
@@ -385,5 +383,5 @@ void ED_spacetype_console()
 
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }

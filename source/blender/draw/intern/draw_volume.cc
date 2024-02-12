@@ -15,13 +15,13 @@
 #include "DNA_volume_types.h"
 
 #include "BKE_fluid.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_volume.hh"
 #include "BKE_volume_render.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "draw_common.h"
 #include "draw_manager.h"

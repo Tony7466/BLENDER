@@ -10,16 +10,18 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_types.hh"
 
-#include "usd.h"
+#include "usd.hh"
 
 #ifdef RNA_RUNTIME
 
 #  include "DNA_object_types.h"
 #  include "WM_api.hh"
+
+using namespace blender::io::usd;
 
 static StructRNA *rna_USDHook_refine(PointerRNA *ptr)
 {

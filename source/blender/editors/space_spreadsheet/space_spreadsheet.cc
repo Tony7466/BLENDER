@@ -7,8 +7,6 @@
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 
-#include "BKE_global.h"
-#include "BKE_lib_remap.hh"
 #include "BKE_screen.hh"
 
 #include "ED_screen.hh"
@@ -30,17 +28,14 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "RNA_access.hh"
-
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "spreadsheet_data_source_geometry.hh"
-#include "spreadsheet_dataset_draw.hh"
 #include "spreadsheet_intern.hh"
 #include "spreadsheet_layout.hh"
 #include "spreadsheet_row_filter.hh"
@@ -48,8 +43,7 @@
 
 #include <sstream>
 
-using namespace blender;
-using namespace blender::ed::spreadsheet;
+namespace blender::ed::spreadsheet {
 
 static SpaceLink *spreadsheet_create(const ScrArea * /*area*/, const Scene * /*scene*/)
 {
@@ -193,7 +187,7 @@ static void spreadsheet_main_region_init(wmWindowManager *wm, ARegion *region)
   }
 }
 
-ID *ED_spreadsheet_get_current_id(const SpaceSpreadsheet *sspreadsheet)
+ID *get_current_id(const SpaceSpreadsheet *sspreadsheet)
 {
   if (BLI_listbase_is_empty(&sspreadsheet->viewer_path.path)) {
     return nullptr;
@@ -296,7 +290,7 @@ static void spreadsheet_update_context(const bContext *C)
 Object *spreadsheet_get_object_eval(const SpaceSpreadsheet *sspreadsheet,
                                     const Depsgraph *depsgraph)
 {
-  ID *used_id = ED_spreadsheet_get_current_id(sspreadsheet);
+  ID *used_id = get_current_id(sspreadsheet);
   if (used_id == nullptr) {
     return nullptr;
   }
@@ -717,9 +711,9 @@ static void spreadsheet_blend_write(BlendWriter *writer, SpaceLink *sl)
   BKE_viewer_path_blend_write(writer, &sspreadsheet->viewer_path);
 }
 
-void ED_spacetype_spreadsheet()
+void register_spacetype()
 {
-  SpaceType *st = MEM_cnew<SpaceType>("spacetype spreadsheet");
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_SPREADSHEET;
@@ -801,8 +795,10 @@ void ED_spacetype_spreadsheet()
   art->init = ED_region_panels_init;
   art->draw = spreadsheet_dataset_region_draw;
   art->listener = spreadsheet_dataset_region_listener;
-  blender::ed::spreadsheet::spreadsheet_data_set_region_panels_register(*art);
+  spreadsheet_data_set_region_panels_register(*art);
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }
+
+}  // namespace blender::ed::spreadsheet

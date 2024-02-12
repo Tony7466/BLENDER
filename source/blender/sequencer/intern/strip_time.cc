@@ -18,7 +18,7 @@
 
 #include "BKE_fcurve.h"
 #include "BKE_movieclip.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_sound.h"
 
 #include "DNA_anim_types.h"
@@ -227,7 +227,7 @@ void seq_time_effect_range_set(const Scene *scene, Sequence *seq)
   }
 
   if (seq->startdisp > seq->enddisp) {
-    SWAP(int, seq->startdisp, seq->enddisp);
+    std::swap(seq->startdisp, seq->enddisp);
   }
 
   /* Values unusable for effects, these should be always 0. */

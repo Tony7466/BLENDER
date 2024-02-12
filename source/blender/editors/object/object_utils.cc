@@ -11,10 +11,8 @@
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
-#include "DNA_collection_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
@@ -25,13 +23,11 @@
 #include "BKE_armature.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_lattice.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_object.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph_query.hh"
-
-#include "WM_types.hh"
 
 #include "ED_curve.hh"
 #include "ED_object.hh" /* own include */

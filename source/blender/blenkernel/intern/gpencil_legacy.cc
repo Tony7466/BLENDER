@@ -21,10 +21,9 @@
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "IMB_imbuf.hh"
-#include "IMB_imbuf_types.hh"
+#include "IMB_interp.hh"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -36,9 +35,9 @@
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_update_cache_legacy.h"

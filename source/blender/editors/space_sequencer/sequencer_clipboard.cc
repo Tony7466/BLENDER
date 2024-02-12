@@ -10,10 +10,9 @@
 
 #include <cstring>
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 #include "MEM_guardedalloc.h"
 
-#include "ED_keyframing.hh"
 #include "ED_outliner.hh"
 #include "ED_sequencer.hh"
 
@@ -36,10 +35,8 @@
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
-
-#include "RNA_access.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "SEQ_animation.hh"
 #include "SEQ_select.hh"
@@ -368,7 +365,7 @@ int sequencer_clipboard_paste_exec(bContext *C, wmOperator *op)
   nseqbase.first = iseq_first;
 
   LISTBASE_FOREACH (Sequence *, iseq, &nseqbase) {
-    if (STREQ(iseq->name, active_seq_name.c_str())) {
+    if (iseq->name == active_seq_name) {
       SEQ_select_active_set(scene_dst, iseq);
     }
     /* Make sure, that pasted strips have unique names. This has to be done after

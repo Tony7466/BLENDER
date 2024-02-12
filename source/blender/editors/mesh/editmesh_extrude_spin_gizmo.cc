@@ -13,7 +13,7 @@
 #include "BLI_math_vector.h"
 
 #include "BKE_context.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -32,7 +32,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 #include "ED_transform.hh"
 

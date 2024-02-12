@@ -17,16 +17,16 @@
 
 #include "BKE_action.h"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph_query.hh"
 

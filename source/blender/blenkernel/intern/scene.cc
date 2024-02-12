@@ -24,6 +24,7 @@
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_rigidbody_types.h"
@@ -39,7 +40,7 @@
 #include "DNA_workspace_types.h"
 #include "DNA_world_types.h"
 
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BLI_blenlib.h"
 #include "BLI_math_rotation.h"
 #include "BLI_string.h"
@@ -49,17 +50,17 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
-#include "BKE_bpath.h"
-#include "BKE_cachefile.h"
-#include "BKE_collection.h"
+#include "BKE_bpath.hh"
+#include "BKE_cachefile.hh"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
 #include "BKE_curveprofile.h"
 #include "BKE_duplilist.h"
@@ -72,13 +73,14 @@
 #include "BKE_idtype.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_linestyle.h"
 #include "BKE_main.hh"
 #include "BKE_mask.h"
+#include "BKE_modifier.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
@@ -86,7 +88,8 @@
 #include "BKE_pointcache.h"
 #include "BKE_preview_image.hh"
 #include "BKE_rigidbody.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
+#include "BKE_scene_runtime.hh"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_unit.hh"
@@ -97,6 +100,7 @@
 #include "DEG_depsgraph_build.hh"
 #include "DEG_depsgraph_debug.hh"
 #include "DEG_depsgraph_query.hh"
+#include "DEG_depsgraph_writeback_sync.hh"
 
 #include "RE_engine.h"
 
@@ -116,6 +120,8 @@
 #include "DRW_engine.hh"
 
 #include "bmesh.hh"
+
+using blender::bke::SceneRuntime;
 
 CurveMapping *BKE_sculpt_default_cavity_curve()
 
@@ -246,6 +252,8 @@ static void scene_init_data(ID *id)
   scene->master_collection = BKE_collection_master_add(scene);
 
   BKE_view_layer_add(scene, DATA_("ViewLayer"), nullptr, VIEWLAYER_ADD_NEW);
+
+  scene->runtime = MEM_new<SceneRuntime>(__func__);
 }
 
 static void scene_copy_markers(Scene *scene_dst, const Scene *scene_src, const int flag)
@@ -366,6 +374,8 @@ static void scene_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int
   }
 
   BKE_scene_copy_data_eevee(scene_dst, scene_src);
+
+  scene_dst->runtime = MEM_new<SceneRuntime>(__func__);
 }
 
 static void scene_free_markers(Scene *scene, bool do_id_user)
@@ -461,6 +471,8 @@ static void scene_free_data(ID *id)
 
   /* These are freed on `do_versions`. */
   BLI_assert(scene->layer_properties == nullptr);
+
+  MEM_delete(scene->runtime);
 }
 
 static void scene_foreach_rigidbodyworldSceneLooper(RigidBodyWorld * /*rbw*/,
@@ -889,6 +901,7 @@ static void scene_foreach_id(ID *id, LibraryForeachIDData *data)
 
   LISTBASE_FOREACH (ViewLayer *, view_layer, &scene->view_layers) {
     BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, view_layer->mat_override, IDWALK_CB_USER);
+    BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, view_layer->world_override, IDWALK_CB_USER);
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
         data,
         IDP_foreach_property(view_layer->id_properties,
@@ -1255,6 +1268,8 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
 
   /* set users to one by default, not in lib-link, this will increase it for compo nodes */
   id_us_ensure_real(&sce->id);
+
+  sce->runtime = MEM_new<SceneRuntime>(__func__);
 
   BLO_read_list(reader, &(sce->base));
 
@@ -2567,7 +2582,7 @@ static void scene_graph_update_tagged(Depsgraph *depsgraph, Main *bmain, bool on
     prepare_mesh_for_viewport_render(bmain, scene, view_layer);
     /* Update all objects: drivers, matrices, etc. flags set
      * by depsgraph or manual, no layer check here, gets correct flushed. */
-    DEG_evaluate_on_refresh(depsgraph);
+    DEG_evaluate_on_refresh(depsgraph, DEG_EVALUATE_SYNC_WRITEBACK_YES);
     /* Update sound system. */
     BKE_scene_update_sound(depsgraph, bmain);
     /* Notify python about depsgraph update. */
@@ -2638,7 +2653,6 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
      * call this at the start so modifiers with textures don't lag 1 frame.
      */
     BKE_image_editors_update_frame(bmain, scene->r.cfra);
-    BKE_sound_set_cfra(scene->r.cfra);
     DEG_graph_relations_update(depsgraph);
     /* Update all objects: drivers, matrices, etc. flags set
      * by depsgraph or manual, no layer check here, gets correct flushed.
@@ -2648,10 +2662,10 @@ void BKE_scene_graph_update_for_newframe_ex(Depsgraph *depsgraph, const bool cle
      * lose any possible unkeyed changes made by the handler. */
     if (pass == 0) {
       const float frame = BKE_scene_frame_get(scene);
-      DEG_evaluate_on_framechange(depsgraph, frame);
+      DEG_evaluate_on_framechange(depsgraph, frame, DEG_EVALUATE_SYNC_WRITEBACK_YES);
     }
     else {
-      DEG_evaluate_on_refresh(depsgraph);
+      DEG_evaluate_on_refresh(depsgraph, DEG_EVALUATE_SYNC_WRITEBACK_YES);
     }
     /* Update sound system animation. */
     BKE_scene_update_sound(depsgraph, bmain);

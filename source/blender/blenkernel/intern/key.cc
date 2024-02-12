@@ -19,7 +19,7 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -37,16 +37,16 @@
 #include "BKE_anim_data.h"
 #include "BKE_curve.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_idtype.hh"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_lattice.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
@@ -1946,21 +1946,13 @@ void BKE_keyblock_copy_settings(KeyBlock *kb_dst, const KeyBlock *kb_src)
   kb_dst->slidermax = kb_src->slidermax;
 }
 
-char *BKE_keyblock_curval_rnapath_get(const Key *key, const KeyBlock *kb)
+std::optional<std::string> BKE_keyblock_curval_rnapath_get(const Key *key, const KeyBlock *kb)
 {
-  PropertyRNA *prop;
-
-  /* sanity checks */
   if (ELEM(nullptr, key, kb)) {
     return nullptr;
   }
-
-  /* create the RNA pointer */
   PointerRNA ptr = RNA_pointer_create((ID *)&key->id, &RNA_ShapeKey, (KeyBlock *)kb);
-  /* get pointer to the property too */
-  prop = RNA_struct_find_property(&ptr, "value");
-
-  /* return the path */
+  PropertyRNA *prop = RNA_struct_find_property(&ptr, "value");
   return RNA_path_from_ID_to_property(&ptr, prop);
 }
 

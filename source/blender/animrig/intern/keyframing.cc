@@ -24,14 +24,14 @@
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_nla.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DNA_scene_types.h"
 
 #include "BLI_dynstr.h"
 #include "BLI_math_base.h"
 #include "BLI_utildefines.h"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -466,7 +466,7 @@ static bool insert_keyframe_fcurve_value(Main *bmain,
 
   const bool success = insert_keyframe_value(fcu, fcurve_frame, curval, keytype, flag);
 
-  if (!success) {
+  if (!success && reports != nullptr) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Failed to insert keys on F-Curve with path '%s[%d]', ensure that it is not "
@@ -858,6 +858,7 @@ int clear_keyframe(Main *bmain,
 int insert_key_action(Main *bmain,
                       bAction *action,
                       PointerRNA *ptr,
+                      PropertyRNA *prop,
                       const std::string &rna_path,
                       const float frame,
                       const Span<float> values,
@@ -879,10 +880,18 @@ int insert_key_action(Main *bmain,
   int property_array_index = 0;
   int inserted_keys = 0;
   for (float value : values) {
-    FCurve *fcurve = action_fcurve_ensure(
-        bmain, action, group.c_str(), ptr, rna_path.c_str(), property_array_index);
-    const bool inserted_key = insert_keyframe_value(
-        fcurve, frame, value, key_type, insert_key_flag);
+    const bool inserted_key = insert_keyframe_fcurve_value(bmain,
+                                                           nullptr,
+                                                           ptr,
+                                                           prop,
+                                                           action,
+                                                           group.c_str(),
+                                                           rna_path.c_str(),
+                                                           property_array_index,
+                                                           frame,
+                                                           value,
+                                                           key_type,
+                                                           insert_key_flag);
     if (inserted_key) {
       inserted_keys++;
     }
@@ -948,19 +957,19 @@ void insert_key_rna(PointerRNA *rna_pointer,
                   rna_path.c_str());
       continue;
     }
-    char *rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr, prop);
+    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
+                                                                                        prop);
     Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
 
     insert_key_count += insert_key_action(bmain,
                                           action,
                                           rna_pointer,
-                                          rna_path_id_to_prop,
+                                          prop,
+                                          rna_path_id_to_prop->c_str(),
                                           nla_frame,
                                           rna_values.as_span(),
                                           insert_key_flags,
                                           key_type);
-
-    MEM_freeN(rna_path_id_to_prop);
   }
 
   if (insert_key_count == 0) {

@@ -33,13 +33,13 @@
 #include "BKE_preview_image.hh"
 #include "BKE_world.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DRW_engine.hh"
 
 #include "DEG_depsgraph.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "BLO_read_write.hh"
 

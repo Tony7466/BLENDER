@@ -21,10 +21,10 @@
 #include "BKE_context.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "UI_view2d.hh"
 

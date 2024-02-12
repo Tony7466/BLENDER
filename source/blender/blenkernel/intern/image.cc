@@ -60,11 +60,11 @@
 #include "BLI_timecode.h" /* For stamp time-code format. */
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_bpath.h"
+#include "BKE_bpath.hh"
 #include "BKE_colortools.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_icons.h"
 #include "BKE_idtype.hh"
 #include "BKE_image.h"
@@ -76,17 +76,17 @@
 #include "BKE_node_tree_update.hh"
 #include "BKE_packedFile.h"
 #include "BKE_preview_image.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_workspace.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "RE_pipeline.h"
 
 #include "SEQ_utils.hh" /* SEQ_get_topmost_sequence() */
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 #include "GPU_texture.h"
 
 #include "BLI_sys_types.h" /* for intptr_t support */
@@ -775,7 +775,7 @@ void BKE_image_merge(Main *bmain, Image *dest, Image *source)
   }
 }
 
-bool BKE_image_scale(Image *image, int width, int height)
+bool BKE_image_scale(Image *image, int width, int height, ImageUser *iuser)
 {
   /* NOTE: We could be clever and scale all imbuf's
    * but since some are mipmaps its not so simple. */
@@ -783,7 +783,7 @@ bool BKE_image_scale(Image *image, int width, int height)
   ImBuf *ibuf;
   void *lock;
 
-  ibuf = BKE_image_acquire_ibuf(image, nullptr, &lock);
+  ibuf = BKE_image_acquire_ibuf(image, iuser, &lock);
 
   if (ibuf) {
     IMB_scaleImBuf(ibuf, width, height);
@@ -1420,9 +1420,19 @@ bool BKE_image_memorypack(Image *ima)
     ima->views_format = R_IMF_VIEWS_INDIVIDUAL;
   }
 
-  if (ok && ima->source == IMA_SRC_GENERATED) {
-    ima->source = IMA_SRC_FILE;
-    ima->type = IMA_TYPE_IMAGE;
+  /* Images which were "generated" before packing should now be
+   * treated as if they were saved as real files. */
+  if (ok) {
+    if (ima->source == IMA_SRC_GENERATED) {
+      ima->source = IMA_SRC_FILE;
+      ima->type = IMA_TYPE_IMAGE;
+    }
+
+    /* Clear the per-tile generated flag if all tiles were ok.
+     * Mirrors similar processing inside #BKE_image_save. */
+    LISTBASE_FOREACH (ImageTile *, tile, &ima->tiles) {
+      tile->gen_flag &= ~IMA_GEN_TILE;
+    }
   }
 
   return ok;
