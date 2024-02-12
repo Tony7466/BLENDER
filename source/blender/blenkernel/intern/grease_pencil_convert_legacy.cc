@@ -498,6 +498,7 @@ void layer_adjustments_to_modifiers(Main &bmain,
       auto *ui_data = reinterpret_cast<IDPropertyUIDataFloat *>(
           IDP_ui_data_ensure(radius_offset_prop));
       ui_data->soft_min = 0.0f;
+      ui_data->base.rna_subtype = PROP_TRANSLATION;
       IDP_AddToGroup(md->settings.properties, radius_offset_prop);
       IDP_AddToGroup(md->settings.properties,
                      bke::idprop::create(DATA_("Socket_2"), gpl->info).release());
