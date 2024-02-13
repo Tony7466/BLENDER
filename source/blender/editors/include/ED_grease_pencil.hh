@@ -13,6 +13,7 @@
 #include "BLI_generic_span.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_math_matrix_types.hh"
+#include "BLI_set.hh"
 
 #include "ED_keyframes_edit.hh"
 
@@ -172,15 +173,15 @@ struct MutableDrawingInfo {
   bke::greasepencil::Drawing &drawing;
   const int layer_index;
   const int frame_number;
-  const float influence;
+  const float multi_frame_falloff;
 };
 Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
                                                      GreasePencil &grease_pencil);
 Array<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
     const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
 
-Array<Array<MutableDrawingInfo>> retrieve_editable_drawings_per_frame(const Scene &scene,
-                                                                      GreasePencil &grease_pencil);
+Vector<Vector<MutableDrawingInfo>> retrieve_editable_drawings_per_frame(
+    const Scene &scene, GreasePencil &grease_pencil);
 
 Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
                                              const GreasePencil &grease_pencil);
@@ -235,10 +236,17 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
 
-float get_multi_frame_falloff(const int frame_number,
-                              const int center_frame,
-                              const int min_frame,
-                              const int max_frame,
-                              const CurveMapping *falloff_curve);
+/** Create a vertex group in a GP object with a general name or the name of an active bone. */
+int create_vertex_group_in_object(Object *ob);
+
+/** Returns a set of vertex group names that are deformed by a bone in an armature. */
+Set<std::string> get_bone_deformed_vertex_groups(Object &object);
+
+/** For a point in a stroke, normalize the weights of vertex groups deformed by bones so that the
+ * sum is 1.0f. */
+void normalize_vertex_weights(const MDeformVert &dvert,
+                              const int active_vertex_group,
+                              const Vector<bool> &vertex_group_is_locked,
+                              const Vector<bool> &vertex_group_is_bone_deformed);
 
 }  // namespace blender::ed::greasepencil

@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_context.hh"
+#include "BKE_deform.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_object_deform.h"
 #include "BKE_report.h"
 
 #include "DEG_depsgraph_query.hh"
@@ -359,6 +361,12 @@ static int grease_pencil_weight_brush_stroke_invoke(bContext *C,
       ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
   if (drawings.is_empty()) {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw weight on");
+    return OPERATOR_CANCELLED;
+  }
+
+  const int active_defgroup_nr = BKE_object_defgroup_active_index_get(object) - 1;
+  if (active_defgroup_nr >= 0 && BKE_object_defgroup_active_is_locked(object)) {
+    BKE_report(op->reports, RPT_WARNING, "Active group is locked, aborting");
     return OPERATOR_CANCELLED;
   }
 

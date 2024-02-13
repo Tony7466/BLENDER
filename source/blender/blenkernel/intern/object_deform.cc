@@ -709,6 +709,12 @@ bool BKE_object_defgroup_check_lock_relative_multi(int defbase_tot,
 
 bool BKE_object_defgroup_active_is_locked(const Object *ob)
 {
+  if (ob->type == OB_GREASE_PENCIL) {
+    GreasePencil *grease_pencil = static_cast<GreasePencil *>(ob->data);
+    bDeformGroup *dg = static_cast<bDeformGroup *>(BLI_findlink(
+        &grease_pencil->vertex_group_names, grease_pencil->vertex_group_active_index - 1));
+    return dg->flag & DG_LOCK_WEIGHT;
+  }
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   bDeformGroup *dg = static_cast<bDeformGroup *>(
       BLI_findlink(&mesh->vertex_group_names, mesh->vertex_group_active_index - 1));
