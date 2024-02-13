@@ -6,20 +6,16 @@
  * \ingroup animrig
  */
 
-#include "BLI_linklist.h"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
-#include "BLI_math_color.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_armature_types.h"
-
-#include "BLI_math_bits.h"
 
 #include "MEM_guardedalloc.h"
 
