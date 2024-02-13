@@ -943,11 +943,6 @@ void drawPropRange(TransInfo *t)
     return;
   }
 
-  const eGPUDepthTest depth_test_enabled = GPU_depth_test_get();
-  if (depth_test_enabled) {
-    GPU_depth_test(GPU_DEPTH_NONE);
-  }
-
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
   immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
@@ -973,10 +968,6 @@ void drawPropRange(TransInfo *t)
   imm_draw_box_wire_3d(pos, x1, y1, x2, y2);
 
   immUnbindProgram();
-
-  if (depth_test_enabled) {
-    GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
-  }
 }
 
 static void drawObjectConstraint(TransInfo *t)
