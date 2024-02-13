@@ -3961,6 +3961,14 @@ bool SCULPT_mode_poll_view3d(bContext *C)
   return (SCULPT_mode_poll(C) && CTX_wm_region_view3d(C));
 }
 
+bool SCULPT_mode_poll_visible(bContext *C)
+{
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+
+  return SCULPT_mode_poll(C) && v3d && base && BKE_base_is_visible(v3d, base);
+}
+
 bool SCULPT_poll(bContext *C)
 {
   return SCULPT_mode_poll(C) && blender::ed::sculpt_paint::paint_brush_tool_poll(C);

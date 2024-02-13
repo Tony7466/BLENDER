@@ -713,6 +713,7 @@ struct Cache {
 
 bool SCULPT_mode_poll(bContext *C);
 bool SCULPT_mode_poll_view3d(bContext *C);
+bool SCULPT_mode_poll_visible(bContext *C);
 /**
  * Checks for a brush, not just sculpt mode.
  */
