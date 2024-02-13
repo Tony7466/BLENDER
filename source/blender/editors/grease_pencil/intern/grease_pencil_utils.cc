@@ -189,28 +189,23 @@ static float get_multi_frame_falloff(const int frame_number,
                                      const int max_frame,
                                      const CurveMapping *falloff_curve)
 {
-  float falloff, frame_factor = 0.5f;
-
   if (falloff_curve == nullptr) {
     return 1.0f;
   }
 
   /* Frame right of the center frame. */
   if (frame_number > center_frame) {
-    frame_factor = 0.5f * float(center_frame - min_frame) / (frame_number - min_frame);
-    falloff = BKE_curvemapping_evaluateF(falloff_curve, 0, frame_factor);
+    const float frame_factor = 0.5f * float(center_frame - min_frame) / (frame_number - min_frame);
+    return BKE_curvemapping_evaluateF(falloff_curve, 0, frame_factor);
   }
   /* Frame left of the center frame. */
-  else if (frame_number < center_frame) {
-    frame_factor = 0.5f * float(center_frame - frame_number) / (max_frame - frame_number);
-    falloff = BKE_curvemapping_evaluateF(falloff_curve, 0, frame_factor + 0.5f);
+  if (frame_number < center_frame) {
+    const float frame_factor = 0.5f * float(center_frame - frame_number) /
+                               (max_frame - frame_number);
+    return BKE_curvemapping_evaluateF(falloff_curve, 0, frame_factor + 0.5f);
   }
   /* Frame at center. */
-  else {
-    falloff = BKE_curvemapping_evaluateF(falloff_curve, 0, 0.5f);
-  }
-
-  return falloff;
+  return BKE_curvemapping_evaluateF(falloff_curve, 0, 0.5f);
 }
 
 static std::pair<int, int> get_minmax_selected_frame_numbers(const GreasePencil &grease_pencil,
