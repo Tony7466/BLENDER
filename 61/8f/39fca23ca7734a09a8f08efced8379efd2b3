@@ -9,3 +9,4 @@ Referenced by commit 09bd04697529950bce69efff2f681493b5619e3a, Fix #115181: RMB 
 Referenced by issue #115887, Fallback Tools are only tweaking single elements
 Referenced by issue #116402, Curve Hook modifier broken?
 Referenced by issue #117016, Cannot select curve handles in Blender 4 as in previous versions
+Referenced by issue #118188, Left-click selection with Tweak tool instead of moving 3d-cursor
