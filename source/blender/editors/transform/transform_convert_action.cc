@@ -342,7 +342,6 @@ static void TimeToTransData(
     td->center[0] = td->ival;
   }
   td->center[1] = ypos;
-  td->center[2] = 0.0f;
 
   /* Store the AnimData where this keyframe exists as a keyframe of the
    * active action as #td->extra. */
