@@ -412,7 +412,7 @@ static void wm_main_remap_msgbus_notify(ID *old_id, ID *new_id, void *user_data)
   }
 }
 
-void WM_main_remap_editor_id_reference(const blender::bke::id::remapper::IDRemapper &mappings)
+void WM_main_remap_editor_id_reference(const blender::bke::id::IDRemapper &mappings)
 {
   Main *bmain = G_MAIN;
 

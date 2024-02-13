@@ -70,7 +70,7 @@ struct wmXrRuntimeData;
 struct wmXrSessionState;
 #endif
 
-namespace blender::bke::id::remapper {
+namespace blender::bke::id {
 class IDRemapper;
 }
 
@@ -588,7 +588,7 @@ void WM_main_add_notifier(unsigned int type, void *reference);
  * Clear notifiers by reference, Used so listeners don't act on freed data.
  */
 void WM_main_remove_notifier_reference(const void *reference);
-void WM_main_remap_editor_id_reference(const blender::bke::id::remapper::IDRemapper &mappings);
+void WM_main_remap_editor_id_reference(const blender::bke::id::IDRemapper &mappings);
 
 /* reports */
 /**

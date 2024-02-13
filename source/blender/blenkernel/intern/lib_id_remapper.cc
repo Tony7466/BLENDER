@@ -10,7 +10,7 @@
 
 #include "MEM_guardedalloc.h"
 
-namespace blender::bke::id::remapper {
+namespace blender::bke::id {
 
 void IDRemapper::add(ID *old_id, ID *new_id)
 {
@@ -119,4 +119,4 @@ void IDRemapper::print(void) const
   this->iter(print_cb, nullptr);
 }
 
-}  // namespace blender::bke::id::remapper
+}  // namespace blender::bke::id

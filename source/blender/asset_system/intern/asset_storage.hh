@@ -18,7 +18,7 @@
 struct AssetMetaData;
 struct ID;
 
-namespace blender::bke::id::remapper {
+namespace blender::bke::id {
 class IDRemapper;
 }
 
@@ -52,7 +52,7 @@ class AssetStorage {
   bool remove_asset(AssetRepresentation &asset);
 
   /** See #AssetLibrary::remap_ids_and_remove_nulled(). */
-  void remap_ids_and_remove_invalid(const blender::bke::id::remapper::IDRemapper &mappings);
+  void remap_ids_and_remove_invalid(const blender::bke::id::IDRemapper &mappings);
 };
 
 }  // namespace blender::asset_system

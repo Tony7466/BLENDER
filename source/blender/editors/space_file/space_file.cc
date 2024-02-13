@@ -829,7 +829,7 @@ static void file_space_subtype_item_extend(bContext * /*C*/, EnumPropertyItem **
 
 static void file_id_remap(ScrArea *area,
                           SpaceLink *sl,
-                          const blender::bke::id::remapper::IDRemapper & /*mappings*/)
+                          const blender::bke::id::IDRemapper & /*mappings*/)
 {
   SpaceFile *sfile = (SpaceFile *)sl;
 

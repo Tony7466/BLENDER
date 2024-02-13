@@ -1992,7 +1992,7 @@ static void space_view3d_refresh(const bContext *C, ScrArea *area)
 }
 
 static void view3d_id_remap_v3d_ob_centers(View3D *v3d,
-                                           const blender::bke::id::remapper::IDRemapper &mappings)
+                                           const blender::bke::id::IDRemapper &mappings)
 {
   if (mappings.apply((ID **)&v3d->ob_center, ID_REMAP_APPLY_DEFAULT) ==
       ID_REMAP_RESULT_SOURCE_UNASSIGNED)
@@ -2006,7 +2006,7 @@ static void view3d_id_remap_v3d_ob_centers(View3D *v3d,
 static void view3d_id_remap_v3d(ScrArea *area,
                                 SpaceLink *slink,
                                 View3D *v3d,
-                                const blender::bke::id::remapper::IDRemapper &mappings,
+                                const blender::bke::id::IDRemapper &mappings,
                                 const bool is_local)
 {
   if (mappings.apply((ID **)&v3d->camera, ID_REMAP_APPLY_DEFAULT) ==
@@ -2029,7 +2029,7 @@ static void view3d_id_remap_v3d(ScrArea *area,
 
 static void view3d_id_remap(ScrArea *area,
                             SpaceLink *slink,
-                            const blender::bke::id::remapper::IDRemapper &mappings)
+                            const blender::bke::id::IDRemapper &mappings)
 {
 
   if (!mappings.contains_mappings_for_any(FILTER_ID_OB | FILTER_ID_MA | FILTER_ID_IM |

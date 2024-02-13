@@ -412,7 +412,7 @@ static SpaceLink *outliner_duplicate(SpaceLink *sl)
 
 static void outliner_id_remap(ScrArea *area,
                               SpaceLink *slink,
-                              const blender::bke::id::remapper::IDRemapper &mappings)
+                              const blender::bke::id::IDRemapper &mappings)
 {
   SpaceOutliner *space_outliner = (SpaceOutliner *)slink;
 

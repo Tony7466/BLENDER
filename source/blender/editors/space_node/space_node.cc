@@ -1225,7 +1225,7 @@ static void node_id_remap_cb(ID *old_id, ID *new_id, void *user_data)
 
 static void node_id_remap(ScrArea * /*area*/,
                           SpaceLink *slink,
-                          const blender::bke::id::remapper::IDRemapper &mappings)
+                          const blender::bke::id::IDRemapper &mappings)
 {
   /* Although we should be able to perform all the mappings in a single go this lead to issues when
    * running the python test cases. Somehow the nodetree/edittree weren't updated to the new

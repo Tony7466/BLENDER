@@ -785,7 +785,7 @@ static void action_refresh(const bContext *C, ScrArea *area)
 
 static void action_id_remap(ScrArea * /*area*/,
                             SpaceLink *slink,
-                            const blender::bke::id::remapper::IDRemapper &mappings)
+                            const blender::bke::id::IDRemapper &mappings)
 {
   SpaceAction *sact = (SpaceAction *)slink;
 

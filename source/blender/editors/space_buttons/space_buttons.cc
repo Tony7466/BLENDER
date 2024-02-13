@@ -856,7 +856,7 @@ static void buttons_area_listener(const wmSpaceTypeListenerParams *params)
 
 static void buttons_id_remap(ScrArea * /*area*/,
                              SpaceLink *slink,
-                             const blender::bke::id::remapper::IDRemapper &mappings)
+                             const blender::bke::id::IDRemapper &mappings)
 {
   SpaceProperties *sbuts = (SpaceProperties *)slink;
 

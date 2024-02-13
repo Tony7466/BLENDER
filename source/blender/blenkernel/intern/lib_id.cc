@@ -783,8 +783,8 @@ ID *BKE_id_copy_for_use_in_bmain(Main *bmain, const ID *id)
 static void id_embedded_swap(ID **embedded_id_a,
                              ID **embedded_id_b,
                              const bool do_full_id,
-                             remapper::IDRemapper *remapper_id_a,
-                             remapper::IDRemapper *remapper_id_b);
+                             IDRemapper *remapper_id_a,
+                             IDRemapper *remapper_id_b);
 
 /**
  * Does a mere memory swap over the whole IDs data (including type-specific memory).
@@ -795,20 +795,20 @@ static void id_swap(Main *bmain,
                     ID *id_b,
                     const bool do_full_id,
                     const bool do_self_remap,
-                    remapper::IDRemapper *input_remapper_id_a,
-                    remapper::IDRemapper *input_remapper_id_b,
+                    IDRemapper *input_remapper_id_a,
+                    IDRemapper *input_remapper_id_b,
                     const int self_remap_flags)
 {
   BLI_assert(GS(id_a->name) == GS(id_b->name));
 
-  remapper::IDRemapper *remapper_id_a = input_remapper_id_a;
-  remapper::IDRemapper *remapper_id_b = input_remapper_id_b;
+  IDRemapper *remapper_id_a = input_remapper_id_a;
+  IDRemapper *remapper_id_b = input_remapper_id_b;
   if (do_self_remap) {
     if (remapper_id_a == nullptr) {
-      remapper_id_a = MEM_new<remapper::IDRemapper>(__func__);
+      remapper_id_a = MEM_new<IDRemapper>(__func__);
     }
     if (remapper_id_b == nullptr) {
-      remapper_id_b = MEM_new<remapper::IDRemapper>(__func__);
+      remapper_id_b = MEM_new<IDRemapper>(__func__);
     }
   }
 
@@ -883,8 +883,8 @@ static void id_swap(Main *bmain,
 static void id_embedded_swap(ID **embedded_id_a,
                              ID **embedded_id_b,
                              const bool do_full_id,
-                             remapper::IDRemapper *remapper_id_a,
-                             remapper::IDRemapper *remapper_id_b)
+                             IDRemapper *remapper_id_a,
+                             IDRemapper *remapper_id_b)
 {
   if (embedded_id_a != nullptr && *embedded_id_a != nullptr) {
     BLI_assert(embedded_id_b != nullptr);

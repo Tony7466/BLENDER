@@ -798,7 +798,7 @@ static void graph_refresh(const bContext *C, ScrArea *area)
 
 static void graph_id_remap(ScrArea * /*area*/,
                            SpaceLink *slink,
-                           const blender::bke::id::remapper::IDRemapper &mappings)
+                           const blender::bke::id::IDRemapper &mappings)
 {
   SpaceGraph *sgraph = (SpaceGraph *)slink;
   if (!sgraph->ads) {

@@ -378,7 +378,7 @@ static void text_properties_region_draw(const bContext *C, ARegion *region)
 
 static void text_id_remap(ScrArea * /*area*/,
                           SpaceLink *slink,
-                          const blender::bke::id::remapper::IDRemapper &mappings)
+                          const blender::bke::id::IDRemapper &mappings)
 {
   SpaceText *stext = (SpaceText *)slink;
   mappings.apply((ID **)&stext->text, ID_REMAP_APPLY_ENSURE_REAL);

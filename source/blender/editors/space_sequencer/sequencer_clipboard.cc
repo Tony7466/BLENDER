@@ -66,8 +66,8 @@
 
 static int gather_strip_data_ids_to_null(LibraryIDLinkCallbackData *cb_data)
 {
-  blender::bke::id::remapper::IDRemapper &id_remapper =
-      *static_cast<blender::bke::id::remapper::IDRemapper *>(cb_data->user_data);
+  blender::bke::id::IDRemapper &id_remapper = *static_cast<blender::bke::id::IDRemapper *>(
+      cb_data->user_data);
   ID *id = *cb_data->id_pointer;
 
   /* We don't care about embedded, loop-back, or internal IDs. */
@@ -184,7 +184,7 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
    * to copy whole scenes. We have to come up with a proper idea of how to copy and
    * paste scene strips.
    */
-  blender::bke::id::remapper::IDRemapper id_remapper;
+  blender::bke::id::IDRemapper id_remapper;
   BKE_library_foreach_ID_link(
       bmain_src, &scene_dst->id, gather_strip_data_ids_to_null, &id_remapper, IDWALK_RECURSE);
 

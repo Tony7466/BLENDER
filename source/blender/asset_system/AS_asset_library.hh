@@ -23,7 +23,7 @@
 
 struct Main;
 
-namespace blender::bke::id::remapper {
+namespace blender::bke::id {
 class IDRemapper;
 }
 
@@ -143,7 +143,7 @@ class AssetLibrary {
    * mapped to null (typically when an ID gets removed), the asset is removed, because we don't
    * support such empty/null assets.
    */
-  void remap_ids_and_remove_invalid(const blender::bke::id::remapper::IDRemapper &mappings);
+  void remap_ids_and_remove_invalid(const blender::bke::id::IDRemapper &mappings);
 
   /**
    * Update `catalog_simple_name` by looking up the asset's catalog by its ID.
@@ -267,7 +267,7 @@ bool AS_asset_library_has_any_unsaved_catalogs(void);
  * An asset library can include local IDs (IDs in the current file). Their pointers need to be
  * remapped on change (or assets removed as IDs gets removed).
  */
-void AS_asset_library_remap_ids(const blender::bke::id::remapper::IDRemapper &mappings);
+void AS_asset_library_remap_ids(const blender::bke::id::IDRemapper &mappings);
 
 /**
  * Attempt to resolve a full path to an asset based on the currently available (not necessary

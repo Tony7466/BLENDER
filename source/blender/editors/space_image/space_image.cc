@@ -1008,7 +1008,7 @@ static void image_header_region_listener(const wmRegionListenerParams *params)
 
 static void image_id_remap(ScrArea * /*area*/,
                            SpaceLink *slink,
-                           const blender::bke::id::remapper::IDRemapper &mappings)
+                           const blender::bke::id::IDRemapper &mappings)
 {
   SpaceImage *simg = (SpaceImage *)slink;
 

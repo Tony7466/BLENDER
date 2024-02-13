@@ -118,7 +118,7 @@ void AS_asset_library_refresh_catalog_simplename(AssetLibrary *asset_library,
   asset_library->refresh_catalog_simplename(asset_data);
 }
 
-void AS_asset_library_remap_ids(const bke::id::remapper::IDRemapper &mappings)
+void AS_asset_library_remap_ids(const bke::id::IDRemapper &mappings)
 {
   AssetLibraryService *service = AssetLibraryService::get();
   service->foreach_loaded_asset_library(
@@ -239,7 +239,7 @@ bool AssetLibrary::remove_asset(AssetRepresentation &asset)
   return asset_storage_->remove_asset(asset);
 }
 
-void AssetLibrary::remap_ids_and_remove_invalid(const bke::id::remapper::IDRemapper &mappings)
+void AssetLibrary::remap_ids_and_remove_invalid(const bke::id::IDRemapper &mappings)
 {
   asset_storage_->remap_ids_and_remove_invalid(mappings);
 }

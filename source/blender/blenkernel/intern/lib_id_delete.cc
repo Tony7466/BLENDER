@@ -148,7 +148,7 @@ static int id_free(Main *bmain, void *idv, int flag, const bool use_flag_from_id
     }
 
     if (remap_editor_id_reference_cb) {
-      remapper::IDRemapper remapper;
+      IDRemapper remapper;
       remapper.add(id, nullptr);
       remap_editor_id_reference_cb(remapper);
     }
@@ -242,7 +242,7 @@ static size_t id_delete(Main *bmain,
 
   BKE_main_lock(bmain);
   if (do_tagged_deletion) {
-    remapper::IDRemapper id_remapper;
+    IDRemapper id_remapper;
     BKE_layer_collection_resync_forbid();
 
     /* Main idea of batch deletion is to remove all IDs to be deleted from Main database.
@@ -340,7 +340,7 @@ static size_t id_delete(Main *bmain,
      * Note that we go forward here, since we want to check dependencies before users
      * (e.g. meshes before objects).
      * Avoids to have to loop twice. */
-    remapper::IDRemapper remapper;
+    IDRemapper remapper;
     for (i = 0; i < base_count; i++) {
       ListBase *lb = lbarray[i];
       ID *id, *id_next;

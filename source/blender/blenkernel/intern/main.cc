@@ -260,7 +260,7 @@ static bool are_ids_from_different_mains_matching(Main *bmain_1, ID *id_1, Main 
 static void main_merge_add_id_to_move(Main *bmain_dst,
                                       blender::Map<std::string, blender::Vector<ID *>> &id_map_dst,
                                       ID *id_src,
-                                      id::remapper::IDRemapper &id_remapper,
+                                      id::IDRemapper &id_remapper,
                                       blender::Vector<ID *> &ids_to_move,
                                       const bool is_library,
                                       MainMergeReport &reports)
@@ -323,8 +323,8 @@ void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &report
   /* A dedicated remapper for libraries is needed because these need to be remapped _before_ IDs
    * are moved from `bmain_src` to `bmain_dst`, to avoid having to fix naming and ordering of IDs
    * afterwards (especially in case some source linked IDs become local in `bmain_dst`). */
-  id::remapper::IDRemapper id_remapper;
-  id::remapper::IDRemapper id_remapper_libraries;
+  id::IDRemapper id_remapper;
+  id::IDRemapper id_remapper_libraries;
   blender::Vector<ID *> ids_to_move;
 
   FOREACH_MAIN_ID_BEGIN (bmain_src, id_iter_src) {

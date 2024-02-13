@@ -17,7 +17,7 @@
 
 #include "BKE_context.hh"
 
-namespace blender::bke::id::remapper {
+namespace blender::bke::id {
 class IDRemapper;
 }
 
@@ -112,9 +112,7 @@ struct SpaceType {
   bContextDataCallback context;
 
   /* Used when we want to replace an ID by another (or NULL). */
-  void (*id_remap)(ScrArea *area,
-                   SpaceLink *sl,
-                   const blender::bke::id::remapper::IDRemapper &mappings);
+  void (*id_remap)(ScrArea *area, SpaceLink *sl, const blender::bke::id::IDRemapper &mappings);
 
   /**
    * foreach_id callback to process all ID pointers of the editor. Used indirectly by lib_query's

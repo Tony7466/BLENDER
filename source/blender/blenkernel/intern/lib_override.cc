@@ -489,7 +489,7 @@ static void lib_override_prefill_newid_from_existing_overrides(Main *bmain, ID *
   FOREACH_MAIN_ID_END;
 }
 
-static void lib_override_remapper_overrides_add(id::remapper::IDRemapper &id_remapper,
+static void lib_override_remapper_overrides_add(id::IDRemapper &id_remapper,
                                                 ID *reference_id,
                                                 ID *local_id)
 {
@@ -622,7 +622,7 @@ bool BKE_lib_override_library_create_from_tag(Main *bmain,
     BLI_assert(id_hierarchy_root != nullptr);
 
     blender::Vector<ID *> relinked_ids;
-    id::remapper::IDRemapper id_remapper;
+    id::IDRemapper id_remapper;
     /* Still checking the whole Main, that way we can tag other local IDs as needing to be
      * remapped to use newly created overriding IDs, if needed. */
     ID *id;
@@ -1935,7 +1935,7 @@ static void lib_override_library_remap(Main *bmain,
                                        GHash *linkedref_to_old_override)
 {
   ID *id;
-  id::remapper::IDRemapper remapper;
+  id::IDRemapper remapper;
   blender::Vector<ID *> nomain_ids;
 
   FOREACH_MAIN_ID_BEGIN (bmain, id) {
@@ -2508,7 +2508,7 @@ static bool lib_override_library_resync(Main *bmain,
   /* Once overrides have been properly 'transferred' from old to new ID, we can clear ID usages
    * of the old one.
    * This is necessary in case said old ID is not in Main anymore. */
-  id::remapper::IDRemapper id_remapper;
+  id::IDRemapper id_remapper;
   BKE_libblock_relink_multiple(bmain,
                                id_override_old_vector,
                                ID_REMAP_TYPE_CLEANUP,

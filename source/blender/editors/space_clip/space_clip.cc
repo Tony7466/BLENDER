@@ -1153,7 +1153,7 @@ static void clip_properties_region_listener(const wmRegionListenerParams *params
 
 static void clip_id_remap(ScrArea * /*area*/,
                           SpaceLink *slink,
-                          const blender::bke::id::remapper::IDRemapper &mappings)
+                          const blender::bke::id::IDRemapper &mappings)
 {
   SpaceClip *sclip = (SpaceClip *)slink;
 

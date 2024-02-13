@@ -556,7 +556,7 @@ static void nla_listener(const wmSpaceTypeListenerParams *params)
 
 static void nla_id_remap(ScrArea * /*area*/,
                          SpaceLink *slink,
-                         const blender::bke::id::remapper::IDRemapper &mappings)
+                         const blender::bke::id::IDRemapper &mappings)
 {
   SpaceNla *snla = reinterpret_cast<SpaceNla *>(slink);
 

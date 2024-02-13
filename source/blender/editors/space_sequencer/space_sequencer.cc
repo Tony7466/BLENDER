@@ -908,7 +908,7 @@ static void sequencer_buttons_region_listener(const wmRegionListenerParams *para
 
 static void sequencer_id_remap(ScrArea * /*area*/,
                                SpaceLink *slink,
-                               const blender::bke::id::remapper::IDRemapper &mappings)
+                               const blender::bke::id::IDRemapper &mappings)
 {
   SpaceSeq *sseq = (SpaceSeq *)slink;
   mappings.apply((ID **)&sseq->gpd, ID_REMAP_APPLY_DEFAULT);

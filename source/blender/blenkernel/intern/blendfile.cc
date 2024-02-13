@@ -230,7 +230,7 @@ struct ReuseOldBMainData {
 
   /** Storage for all remapping rules (old_id -> new_id) required by the preservation of old IDs
    * into the new Main. */
-  id::remapper::IDRemapper *remapper;
+  id::IDRemapper *remapper;
   bool is_libraries_remapped;
 
   /** Used to find matching IDs by name/lib in new main, to remap ID usages of data ported over
@@ -248,19 +248,19 @@ struct ReuseOldBMainData {
  * double of a linked data as a local one, without any known relationships between them. In
  * practice, this latter case is not expected to commonly happen.
  */
-static id::remapper::IDRemapper &reuse_bmain_data_remapper_ensure(ReuseOldBMainData *reuse_data)
+static id::IDRemapper &reuse_bmain_data_remapper_ensure(ReuseOldBMainData *reuse_data)
 {
   if (reuse_data->is_libraries_remapped) {
     return *reuse_data->remapper;
   }
 
   if (reuse_data->remapper == nullptr) {
-    reuse_data->remapper = MEM_new<id::remapper::IDRemapper>(__func__);
+    reuse_data->remapper = MEM_new<id::IDRemapper>(__func__);
   }
 
   Main *new_bmain = reuse_data->new_bmain;
   Main *old_bmain = reuse_data->old_bmain;
-  id::remapper::IDRemapper &remapper = *reuse_data->remapper;
+  id::IDRemapper &remapper = *reuse_data->remapper;
 
   LISTBASE_FOREACH (Library *, old_lib_iter, &old_bmain->libraries) {
     /* In case newly opened `new_bmain` is a library of the `old_bmain`, remap it to null, since a
@@ -288,7 +288,7 @@ static id::remapper::IDRemapper &reuse_bmain_data_remapper_ensure(ReuseOldBMainD
   return *reuse_data->remapper;
 }
 
-static bool reuse_bmain_data_remapper_is_id_remapped(id::remapper::IDRemapper &remapper, ID *id)
+static bool reuse_bmain_data_remapper_is_id_remapped(id::IDRemapper &remapper, ID *id)
 {
   IDRemapperApplyResult result = remapper.get_mapping_result(id, ID_REMAP_APPLY_DEFAULT, nullptr);
   if (ELEM(result, ID_REMAP_RESULT_SOURCE_REMAPPED, ID_REMAP_RESULT_SOURCE_UNASSIGNED)) {
@@ -320,7 +320,7 @@ static void swap_old_bmain_data_for_blendfile(ReuseOldBMainData *reuse_data, con
   ListBase *new_lb = which_libbase(new_bmain, id_code);
   ListBase *old_lb = which_libbase(old_bmain, id_code);
 
-  id::remapper::IDRemapper &remapper = reuse_bmain_data_remapper_ensure(reuse_data);
+  id::IDRemapper &remapper = reuse_bmain_data_remapper_ensure(reuse_data);
 
   /* NOTE: Full swapping is only supported for ID types that are assumed to be only local
    * data-blocks (like UI-like ones). Otherwise, the swapping could fail in many funny ways. */
@@ -429,7 +429,7 @@ static void swap_wm_data_for_blendfile(ReuseOldBMainData *reuse_data, const bool
      * new WM, and is responsible to free it properly. */
     reuse_data->wm_setup_data->old_wm = old_wm;
 
-    id::remapper::IDRemapper &remapper = reuse_bmain_data_remapper_ensure(reuse_data);
+    id::IDRemapper &remapper = reuse_bmain_data_remapper_ensure(reuse_data);
     remapper.add(&old_wm->id, &new_wm->id);
   }
   /* Current (old) WM, but no (new) one in file (should only happen when reading pre 2.5 files, no
@@ -453,7 +453,7 @@ static int swap_old_bmain_data_for_blendfile_dependencies_process_cb(
   ReuseOldBMainData *reuse_data = static_cast<ReuseOldBMainData *>(cb_data->user_data);
 
   /* First check if it has already been remapped. */
-  id::remapper::IDRemapper &remapper = reuse_bmain_data_remapper_ensure(reuse_data);
+  id::IDRemapper &remapper = reuse_bmain_data_remapper_ensure(reuse_data);
   if (reuse_bmain_data_remapper_is_id_remapped(remapper, id)) {
     return IDWALK_RET_NOP;
   }

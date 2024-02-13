@@ -14,7 +14,7 @@
 struct Main;
 struct bContext;
 
-namespace blender::bke::id::remapper {
+namespace blender::bke::id {
 class IDRemapper;
 }
 
@@ -47,7 +47,7 @@ bool ED_editors_flush_edits(Main *bmain);
 void ED_spacedata_id_remap_single(ScrArea *area, SpaceLink *sl, ID *old_id, ID *new_id);
 void ED_spacedata_id_remap(ScrArea *area,
                            SpaceLink *sl,
-                           const blender::bke::id::remapper::IDRemapper &mappings);
+                           const blender::bke::id::IDRemapper &mappings);
 
 void ED_operatortypes_edutils();
 
