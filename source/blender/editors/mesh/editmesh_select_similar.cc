@@ -15,17 +15,16 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_material.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
-#include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "WM_api.hh"
@@ -38,7 +37,9 @@
 #include "ED_screen.hh"
 #include "ED_select_utils.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
+
+using blender::Vector;
 
 /* -------------------------------------------------------------------- */
 /** \name Select Similar (Vert/Edge/Face) Operator - common
@@ -157,19 +158,16 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
   const int compare = RNA_enum_get(op->ptr, "compare");
 
   int tot_faces_selected_all = 0;
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     tot_faces_selected_all += em->bm->totfacesel;
   }
 
   if (tot_faces_selected_all == 0) {
     BKE_report(op->reports, RPT_ERROR, "No face selected");
-    MEM_freeN(objects);
     return OPERATOR_CANCELLED;
   }
 
@@ -197,8 +195,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
   }
 
   int tree_index = 0;
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     Material ***material_array = nullptr;
@@ -309,8 +306,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
     BLI_kdtree_4d_balance(tree_4d);
   }
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     bool changed = false;
@@ -471,8 +467,7 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
   face_select_all:
     BLI_assert(ELEM(type, SIMFACE_SMOOTH, SIMFACE_FREESTYLE));
 
-    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-      Object *ob = objects[ob_index];
+    for (Object *ob : objects) {
       BMEditMesh *em = BKE_editmesh_from_object(ob);
       BMesh *bm = em->bm;
 
@@ -493,7 +488,6 @@ static int similar_face_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  MEM_freeN(objects);
   BLI_kdtree_1d_free(tree_1d);
   BLI_kdtree_3d_free(tree_3d);
   BLI_kdtree_4d_free(tree_4d);
@@ -571,19 +565,16 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
   const int compare = RNA_enum_get(op->ptr, "compare");
 
   int tot_edges_selected_all = 0;
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     tot_edges_selected_all += em->bm->totedgesel;
   }
 
   if (tot_edges_selected_all == 0) {
     BKE_report(op->reports, RPT_ERROR, "No edge selected");
-    MEM_freeN(objects);
     return OPERATOR_CANCELLED;
   }
 
@@ -608,8 +599,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
   }
 
   int tree_index = 0;
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
 
@@ -736,8 +726,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
     BLI_kdtree_3d_balance(tree_3d);
   }
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     bool changed = false;
@@ -916,8 +905,7 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
   edge_select_all:
     BLI_assert(ELEM(type, SIMEDGE_SEAM, SIMEDGE_SHARP, SIMEDGE_FREESTYLE));
 
-    for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-      Object *ob = objects[ob_index];
+    for (Object *ob : objects) {
       BMEditMesh *em = BKE_editmesh_from_object(ob);
       BMesh *bm = em->bm;
 
@@ -938,7 +926,6 @@ static int similar_edge_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  MEM_freeN(objects);
   BLI_kdtree_1d_free(tree_1d);
   BLI_kdtree_3d_free(tree_3d);
   if (gset != nullptr) {
@@ -966,19 +953,16 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
   const int compare = RNA_enum_get(op->ptr, "compare");
 
   int tot_verts_selected_all = 0;
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     tot_verts_selected_all += em->bm->totvertsel;
   }
 
   if (tot_verts_selected_all == 0) {
     BKE_report(op->reports, RPT_ERROR, "No vertex selected");
-    MEM_freeN(objects);
     return OPERATOR_CANCELLED;
   }
 
@@ -1004,8 +988,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
 
   int normal_tree_index = 0;
   int tree_1d_index = 0;
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     int cd_dvert_offset = -1;
@@ -1117,8 +1100,7 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
   }
 
   /* Run the matching operations. */
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
     BMesh *bm = em->bm;
     bool changed = false;
@@ -1273,7 +1255,6 @@ static int similar_vert_select_exec(bContext *C, wmOperator *op)
     }
   }
 
-  MEM_freeN(objects);
   BLI_kdtree_1d_free(tree_1d);
   BLI_kdtree_3d_free(tree_3d);
   if (gset != nullptr) {

@@ -175,15 +175,18 @@ static void extract_lnor_iter_face_bm(const MeshRenderData &mr,
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
   do {
     const int l_index = BM_elem_index_get(l_iter);
+    GPUPackedNormal *lnor_data = &(*(GPUPackedNormal **)data)[l_index];
     if (!mr.corner_normals.is_empty()) {
       data[l_index] = GPU_normal_convert_i10_v3(mr.corner_normals[l_index]);
     }
     else {
-      if (BM_elem_flag_test(f, BM_ELEM_SMOOTH)) {
-        data[l_index] = GPU_normal_convert_i10_v3(bm_vert_no_get(mr, l_iter->v));
+      if (mr.normals_domain == bke::MeshNormalDomain::Face ||
+          !BM_elem_flag_test(f, BM_ELEM_SMOOTH))
+      {
+        data[l_index] = GPU_normal_convert_i10_v3(bm_face_no_get(mr, f));
       }
       else {
-        data[l_index] = GPU_normal_convert_i10_v3(bm_face_no_get(mr, f));
+        data[l_index] = GPU_normal_convert_i10_v3(bm_vert_no_get(mr, l_iter->v));
       }
     }
     data[l_index].w = BM_elem_flag_test(f, BM_ELEM_HIDDEN) ? -1 : 0;

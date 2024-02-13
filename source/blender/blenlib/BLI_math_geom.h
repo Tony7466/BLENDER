@@ -57,13 +57,19 @@ float area_poly_signed_v2(const float verts[][2], unsigned int nr);
 float cotangent_tri_weight_v3(const float v1[3], const float v2[3], const float v3[3]);
 
 void cross_tri_v3(float n[3], const float v1[3], const float v2[3], const float v3[3]);
+/**
+ * Scalar cross product of a 2D triangle.
+ *
+ * - Equivalent to `area * 2`.
+ * - Useful for checking polygon winding (a negative value is clockwise).
+ */
 MINLINE float cross_tri_v2(const float v1[2], const float v2[2], const float v3[2]);
 void cross_poly_v3(float n[3], const float verts[][3], unsigned int nr);
 /**
- * Scalar cross product of a 2d polygon.
+ * Scalar cross product of a 2D polygon.
  *
- * - equivalent to `area * 2`
- * - useful for checking polygon winding (a positive value is clockwise).
+ * - Equivalent to `area * 2`.
+ * - Useful for checking polygon winding (a negative value is clockwise).
  */
 float cross_poly_v2(const float verts[][2], unsigned int nr);
 
@@ -128,7 +134,10 @@ float volume_tri_tetrahedron_signed_v3(const float v1[3], const float v2[3], con
  * (depends on face winding)
  * Copied from BM_edge_is_convex().
  */
-bool is_edge_convex_v3(const float v1[3], const float v2[3], const float v3[3], const float v4[3]);
+bool is_edge_convex_v3(const float v1[3],
+                       const float v2[3],
+                       const float f1_no[3],
+                       const float f2_no[3]);
 /**
  * Evaluate if entire quad is a proper convex quad
  */
@@ -759,7 +768,7 @@ bool isect_ray_tri_watertight_v3(const float ray_origin[3],
                                  const float v0[3],
                                  const float v1[3],
                                  const float v2[3],
-                                 float *r_dist,
+                                 float *r_lambda,
                                  float r_uv[2]);
 /**
  * Slower version which calculates #IsectRayPrecalc each time.

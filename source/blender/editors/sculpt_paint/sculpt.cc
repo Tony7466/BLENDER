@@ -43,7 +43,8 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_image.h"
-#include "BKE_key.h"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
@@ -55,8 +56,8 @@
 #include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subsurf.hh"
 #include "BLI_math_vector.hh"
@@ -1177,7 +1178,7 @@ static int sculpt_brush_needs_normal(const SculptSession *ss, Sculpt *sd, const 
 
           (mask_tex->brush_map_mode == MTEX_MAP_MODE_AREA)) ||
          sculpt_brush_use_topology_rake(ss, brush) ||
-         BKE_brush_has_cube_tip(brush, PAINT_MODE_SCULPT);
+         BKE_brush_has_cube_tip(brush, PaintMode::Sculpt);
 }
 
 static bool sculpt_brush_needs_rake_rotation(const Brush *brush)
@@ -1865,6 +1866,8 @@ static void calc_area_normal_and_center_task(Object *ob,
       float3 no;
       int flip_index;
 
+      r_any_vertex_sampled = true;
+
       normal_tri_v3(no, UNPACK3(co_tri));
 
       flip_index = (math::dot(ss->cache->view_normal, no) <= 0.0f);
@@ -2411,7 +2414,7 @@ float SCULPT_brush_strength_factor(
   avg *= 1.0f - mask;
 
   /* Auto-masking. */
-  avg *= auto_mask::factor_get(cache->automasking, ss, vertex, automask_data);
+  avg *= auto_mask::factor_get(cache->automasking.get(), ss, vertex, automask_data);
 
   return avg;
 }
@@ -2447,7 +2450,7 @@ void SCULPT_brush_strength_color(
 
   /* Auto-masking. */
   const float automasking_factor = auto_mask::factor_get(
-      cache->automasking, ss, vertex, automask_data);
+      cache->automasking.get(), ss, vertex, automask_data);
 
   const float masks_combined = falloff * paint_mask * automasking_factor;
 
@@ -3324,7 +3327,7 @@ static void do_brush_action(Sculpt *sd,
     float radius_scale = 1.0f;
 
     /* Corners of square brushes can go outside the brush radius. */
-    if (BKE_brush_has_cube_tip(brush, PAINT_MODE_SCULPT)) {
+    if (BKE_brush_has_cube_tip(brush, PaintMode::Sculpt)) {
       radius_scale = M_SQRT2;
     }
 
@@ -3362,7 +3365,8 @@ static void do_brush_action(Sculpt *sd,
       /* Initialize auto-masking cache. */
       if (auto_mask::is_enabled(sd, ss, brush)) {
         ss->cache->automasking = auto_mask::cache_init(sd, brush, ob);
-        ss->last_automasking_settings_hash = auto_mask::settings_hash(ob, ss->cache->automasking);
+        ss->last_automasking_settings_hash = auto_mask::settings_hash(*ob,
+                                                                      *ss->cache->automasking);
       }
       /* Initialize surface smooth cache. */
       if ((brush->sculpt_tool == SCULPT_TOOL_SMOOTH) &&
@@ -3959,7 +3963,7 @@ bool SCULPT_mode_poll_view3d(bContext *C)
 
 bool SCULPT_poll(bContext *C)
 {
-  return SCULPT_mode_poll(C) && PAINT_brush_tool_poll(C);
+  return SCULPT_mode_poll(C) && blender::ed::sculpt_paint::paint_brush_tool_poll(C);
 }
 
 static const char *sculpt_tool_name(Sculpt *sd)
@@ -4627,7 +4631,7 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt *sd, Object *ob, Po
    * thumb). They depends on initial state and brush coord/pressure/etc.
    * It's more an events design issue, which doesn't split coordinate/pressure/angle changing
    * events. We should avoid this after events system re-design. */
-  if (paint_supports_dynamic_size(brush, PAINT_MODE_SCULPT) || cache->first_time) {
+  if (paint_supports_dynamic_size(brush, PaintMode::Sculpt) || cache->first_time) {
     cache->pressure = RNA_float_get(ptr, "pressure");
   }
 
@@ -4660,7 +4664,7 @@ static void sculpt_update_cache_variants(bContext *C, Sculpt *sd, Object *ob, Po
     }
   }
 
-  if (BKE_brush_use_size_pressure(brush) && paint_supports_dynamic_size(brush, PAINT_MODE_SCULPT))
+  if (BKE_brush_use_size_pressure(brush) && paint_supports_dynamic_size(brush, PaintMode::Sculpt))
   {
     cache->radius = sculpt_brush_dynamic_size_get(brush, cache, cache->initial_radius);
     cache->dyntopo_pixel_radius = sculpt_brush_dynamic_size_get(
@@ -4893,7 +4897,10 @@ bool SCULPT_cursor_geometry_info_update(bContext *C,
   ob = vc.obact;
   ss = ob->sculpt;
 
-  if (!ss->pbvh || !vc.rv3d) {
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+
+  if (!ss->pbvh || !vc.rv3d || !BKE_base_is_visible(v3d, base)) {
     zero_v3(out->location);
     zero_v3(out->normal);
     zero_v3(out->active_vertex_co);
@@ -5276,6 +5283,8 @@ void SCULPT_flush_update_step(bContext *C, SculptUpdateType update_flags)
          * are trivial to access from the PBVH. Updating the object's evaluated geometry bounding
          * box is necessary because sculpt strokes don't cause an object reevaluation. */
         mesh->tag_positions_changed_no_normals();
+        /* Sculpt mode does node use or recalculate face corner normals, so they are cleared. */
+        mesh->runtime->corner_normals_cache.tag_dirty();
       }
       else {
         /* Drawing happens from the modifier stack evaluation result.
@@ -5400,7 +5409,7 @@ static void sculpt_stroke_undo_begin(const bContext *C, wmOperator *op)
   if (brush && brush->sculpt_tool == SCULPT_TOOL_PAINT &&
       SCULPT_use_image_paint_brush(&tool_settings->paint_mode, ob))
   {
-    ED_image_undo_push_begin(op->type->name, PAINT_MODE_SCULPT);
+    ED_image_undo_push_begin(op->type->name, PaintMode::Sculpt);
   }
   else {
     undo::push_begin_ex(ob, sculpt_tool_name(sd));
@@ -5440,6 +5449,8 @@ bool SCULPT_handles_colors_report(SculptSession *ss, ReportList *reports)
 
   return false;
 }
+
+namespace blender::ed::sculpt_paint {
 
 static bool sculpt_stroke_test_start(bContext *C, wmOperator *op, const float mval[2])
 {
@@ -5487,7 +5498,6 @@ static void sculpt_stroke_update_step(bContext *C,
                                       PaintStroke *stroke,
                                       PointerRNA *itemptr)
 {
-  using namespace blender::ed::sculpt_paint;
   UnifiedPaintSettings *ups = &CTX_data_tool_settings(C)->unified_paint_settings;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   Object *ob = CTX_data_active_object(C);
@@ -5574,7 +5584,6 @@ static void sculpt_brush_exit_tex(Sculpt *sd)
 
 static void sculpt_stroke_done(const bContext *C, PaintStroke * /*stroke*/)
 {
-  using namespace blender::ed::sculpt_paint;
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
@@ -5597,10 +5606,6 @@ static void sculpt_stroke_done(const bContext *C, PaintStroke * /*stroke*/)
     smooth_brush_toggle_off(C, &sd->paint, ss->cache);
     /* Refresh the brush pointer in case we switched brush in the toggle function. */
     brush = BKE_paint_brush(&sd->paint);
-  }
-
-  if (auto_mask::is_enabled(sd, ss, brush)) {
-    auto_mask::cache_free(ss->cache->automasking);
   }
 
   BKE_pbvh_node_color_buffer_free(ss->pbvh);
@@ -5636,16 +5641,13 @@ static int sculpt_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent
   int retval;
   Object *ob = CTX_data_active_object(C);
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
   /* Test that ob is visible; otherwise we won't be able to get evaluated data
    * from the depsgraph. We do this here instead of SCULPT_mode_poll
    * to avoid falling through to the translate operator in the
-   * global view3d keymap.
-   *
-   * NOTE: #BKE_object_is_visible_in_viewport is not working here (it returns false
-   * if the object is in local view); instead, test for OB_HIDE_VIEWPORT directly.
-   */
-
-  if (ob->visibility_flag & OB_HIDE_VIEWPORT) {
+   * global view3d keymap. */
+  if (!BKE_base_is_visible(v3d, base)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -5809,7 +5811,7 @@ enum {
   SCULPT_TOPOLOGY_ID_DEFAULT,
 };
 
-static void SCULPT_fake_neighbor_init(SculptSession *ss, const float max_dist)
+static void fake_neighbor_init(SculptSession *ss, const float max_dist)
 {
   const int totvert = SCULPT_vertex_count_get(ss);
   ss->fake_neighbors.fake_neighbor_index = static_cast<int *>(
@@ -5821,7 +5823,7 @@ static void SCULPT_fake_neighbor_init(SculptSession *ss, const float max_dist)
   ss->fake_neighbors.current_max_distance = max_dist;
 }
 
-static void SCULPT_fake_neighbor_add(SculptSession *ss, PBVHVertRef v_a, PBVHVertRef v_b)
+static void fake_neighbor_add(SculptSession *ss, PBVHVertRef v_a, PBVHVertRef v_b)
 {
   int v_index_a = BKE_pbvh_vertex_to_index(ss->pbvh, v_a);
   int v_index_b = BKE_pbvh_vertex_to_index(ss->pbvh, v_b);
@@ -5869,8 +5871,6 @@ static void do_fake_neighbor_search_task(SculptSession *ss,
 
 static PBVHVertRef fake_neighbor_search(Object *ob, const PBVHVertRef vertex, float max_distance)
 {
-  using namespace blender;
-  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
 
   const float3 center = SCULPT_vertex_co_get(ss, vertex);
@@ -5921,6 +5921,8 @@ struct SculptTopologyIDFloodFillData {
   int next_id;
 };
 
+}  // namespace blender::ed::sculpt_paint
+
 void SCULPT_boundary_info_ensure(Object *object)
 {
   using namespace blender;
@@ -5947,6 +5949,7 @@ void SCULPT_boundary_info_ensure(Object *object)
 
 void SCULPT_fake_neighbors_ensure(Object *ob, const float max_dist)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   const int totvert = SCULPT_vertex_count_get(ss);
 
@@ -5960,7 +5963,7 @@ void SCULPT_fake_neighbors_ensure(Object *ob, const float max_dist)
   }
 
   SCULPT_topology_islands_ensure(ob);
-  SCULPT_fake_neighbor_init(ss, max_dist);
+  fake_neighbor_init(ss, max_dist);
 
   for (int i = 0; i < totvert; i++) {
     const PBVHVertRef from_v = BKE_pbvh_index_to_vertex(ss->pbvh, i);
@@ -5970,7 +5973,7 @@ void SCULPT_fake_neighbors_ensure(Object *ob, const float max_dist)
       const PBVHVertRef to_v = fake_neighbor_search(ob, from_v, max_dist);
       if (to_v.i != PBVH_REF_NONE) {
         /* Add the fake neighbor if available. */
-        SCULPT_fake_neighbor_add(ss, from_v, to_v);
+        fake_neighbor_add(ss, from_v, to_v);
       }
     }
   }
@@ -5992,6 +5995,7 @@ void SCULPT_fake_neighbors_disable(Object *ob)
 
 void SCULPT_fake_neighbors_free(Object *ob)
 {
+  using namespace blender::ed::sculpt_paint;
   SculptSession *ss = ob->sculpt;
   sculpt_pose_fake_neighbors_free(ss);
 }

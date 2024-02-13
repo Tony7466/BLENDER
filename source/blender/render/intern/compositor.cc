@@ -13,16 +13,15 @@
 
 #include "DNA_ID.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_node.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "DRW_engine.hh"
 #include "DRW_render.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
+#include "IMB_imbuf.hh"
 
 #include "DEG_depsgraph_query.hh"
 

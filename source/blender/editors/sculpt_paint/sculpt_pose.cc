@@ -19,7 +19,6 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.hh"
-#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -150,7 +149,8 @@ static void do_pose_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
 
   SculptOrigVertData orig_data;
   SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -178,7 +178,7 @@ static void do_pose_brush_task(Object *ob, const Brush *brush, PBVHNode *node)
       /* Apply the vertex mask to the displacement. */
       const float mask = 1.0f - vd.mask;
       const float automask = auto_mask::factor_get(
-          ss->cache->automasking, ss, vd.vertex, &automask_data);
+          ss->cache->automasking.get(), ss, vd.vertex, &automask_data);
       mul_v3_fl(disp, mask * automask);
 
       /* Accumulate the displacement. */

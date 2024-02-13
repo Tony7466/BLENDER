@@ -18,24 +18,17 @@
 #include "BLI_math_vector.h"
 
 #include "BKE_action.h"
-#include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
-#include "BKE_main.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
 
 #include "BIK_api.h"
 
 #include "ED_armature.hh"
-#include "ED_keyframing.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
-
-#include "RNA_access.hh"
-#include "RNA_prototypes.h"
 
 #include "ANIM_bone_collections.hh"
 #include "ANIM_keyframing.hh"
@@ -1330,7 +1323,7 @@ static void autokeyframe_pose(
     const blender::StringRef rotation_path = blender::animrig::get_rotation_mode_path(
         eRotationModes(pchan->rotmode));
 
-    if (blender::animrig::is_autokey_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
+    if (blender::animrig::is_keying_flag(scene, AUTOKEY_FLAG_INSERTNEEDED)) {
       rna_paths = get_affected_rna_paths_from_transform_mode(
           tmode, scene->toolsettings, rotation_path, targetless_ik);
     }

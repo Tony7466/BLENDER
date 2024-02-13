@@ -2,29 +2,25 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "viewport_engine.h"
-#include "camera.h"
+#include "viewport_engine.hh"
+#include "camera.hh"
 
 #include <pxr/base/gf/camera.h>
 #include <pxr/imaging/glf/drawTarget.h>
 #include <pxr/usd/usdGeom/camera.h>
 
-#include "DNA_camera_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_vec_types.h" /* This include must be before `BKE_camera.h` due to `rctf` type. */
 #include "DNA_view3d_types.h"
 
 #include "BLI_math_matrix.h"
+#include "BLI_time.h"
 #include "BLI_timecode.h"
-#include "PIL_time.h"
 
 #include "BKE_camera.h"
 #include "BKE_context.hh"
 
-#include "DEG_depsgraph_query.hh"
-
-#include "GPU_context.h"
 #include "GPU_matrix.h"
 
 #include "RE_engine.h"
@@ -251,13 +247,13 @@ void ViewportEngine::render()
   GPU_shader_unbind();
 
   if (renderer_percent_done() == 0.0f) {
-    time_begin_ = PIL_check_seconds_timer();
+    time_begin_ = BLI_check_seconds_timer();
   }
 
   char elapsed_time[32];
 
   BLI_timecode_string_from_time_simple(
-      elapsed_time, sizeof(elapsed_time), PIL_check_seconds_timer() - time_begin_);
+      elapsed_time, sizeof(elapsed_time), BLI_check_seconds_timer() - time_begin_);
 
   float percent_done = renderer_percent_done();
   if (!render_task_delegate_->is_converged()) {

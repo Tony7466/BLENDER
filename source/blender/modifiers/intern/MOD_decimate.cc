@@ -9,7 +9,7 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
@@ -19,10 +19,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_mesh.hh"
-#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -40,8 +38,8 @@
 // #define USE_TIMEIT
 
 #ifdef USE_TIMEIT
-#  include "PIL_time.h"
-#  include "PIL_time_utildefines.h"
+#  include "BLI_time.h"
+#  include "BLI_time_utildefines.h"
 #endif
 
 #include "MOD_ui_common.hh"
@@ -305,4 +303,5 @@ ModifierTypeInfo modifierType_Decimate = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

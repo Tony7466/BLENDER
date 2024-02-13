@@ -9,6 +9,7 @@
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
 
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 #include <cstddef>
@@ -25,7 +26,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_action_types.h"
 #include "DNA_armature_types.h"
@@ -48,15 +49,15 @@
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_bvhutils.hh"
-#include "BKE_cachefile.h"
+#include "BKE_cachefile.hh"
 #include "BKE_camera.h"
 #include "BKE_constraint.h"
 #include "BKE_curve.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_displist.h"
 #include "BKE_editmesh.hh"
 #include "BKE_fcurve_driver.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.h"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
@@ -65,7 +66,7 @@
 #include "BKE_movieclip.h"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_shrinkwrap.hh"
 #include "BKE_tracking.h"
 
@@ -87,7 +88,7 @@
 #endif
 
 #ifdef WITH_USD
-#  include "usd.h"
+#  include "usd.hh"
 #endif
 
 /* ---------------------------------------------------------------------------- */
@@ -3552,7 +3553,7 @@ static void stretchto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *t
     }
     if (bulge < 1.0f) {
       if (data->flag & STRETCHTOCON_USE_BULGE_MIN) {
-        float bulge_min = CLAMPIS(data->bulge_min, 0.0f, 1.0f);
+        float bulge_min = std::clamp(data->bulge_min, 0.0f, 1.0f);
         float hard = max_ff(bulge, bulge_min);
 
         float range = 1.0f - bulge_min;
@@ -5394,7 +5395,8 @@ static void transformcache_evaluate(bConstraint *con, bConstraintOb *cob, ListBa
       break;
     case CACHEFILE_TYPE_USD:
 #  ifdef WITH_USD
-      USD_get_transform(data->reader, cob->matrix, time * FPS, cache_file->scale);
+      blender::io::usd::USD_get_transform(
+          data->reader, cob->matrix, time * FPS, cache_file->scale);
 #  endif
       break;
     case CACHE_FILE_TYPE_INVALID:

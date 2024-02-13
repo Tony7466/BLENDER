@@ -8,7 +8,7 @@
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_ID.h"
 #include "DNA_ID_enums.h"
@@ -23,8 +23,6 @@
 #include "ED_view3d.hh"
 
 #include "DRW_render.hh"
-
-#include "IMB_colormanagement.h"
 
 #include "COM_context.hh"
 #include "COM_domain.hh"

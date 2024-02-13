@@ -15,12 +15,11 @@
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
 #include "DNA_listBase.h"
-#include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -29,21 +28,20 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_context.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mirror.hh"
-#include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
@@ -358,8 +356,8 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
     BKE_report(reports, RPT_WARNING, "Object has negative scale, sculpting may be unpredictable");
   }
 
-  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PAINT_MODE_SCULPT);
-  BKE_paint_init(bmain, scene, PAINT_MODE_SCULPT, PAINT_CURSOR_SCULPT);
+  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::Sculpt);
+  BKE_paint_init(bmain, scene, PaintMode::Sculpt, PAINT_CURSOR_SCULPT);
 
   ED_paint_cursor_start(paint, SCULPT_mode_poll_view3d);
 
@@ -1009,7 +1007,7 @@ enum CavityBakeSettingsSource {
 };
 
 static void sculpt_bake_cavity_exec_task(Object *ob,
-                                         blender::ed::sculpt_paint::auto_mask::Cache *automasking,
+                                         blender::ed::sculpt_paint::auto_mask::Cache &automasking,
                                          const CavityBakeMixMode mode,
                                          const float factor,
                                          const SculptMaskWriteInfo mask_write,
@@ -1021,12 +1019,12 @@ static void sculpt_bake_cavity_exec_task(Object *ob,
 
   undo::push_node(ob, node, undo::Type::Mask);
 
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, &automasking, *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     auto_mask::node_update(automask_data, vd);
 
-    float automask = auto_mask::factor_get(automasking, ss, vd.vertex, &automask_data);
+    float automask = auto_mask::factor_get(&automasking, ss, vd.vertex, &automask_data);
     float mask;
 
     switch (mode) {
@@ -1142,16 +1140,14 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
 
   SCULPT_stroke_id_next(ob);
 
-  auto_mask::Cache *automasking = auto_mask::cache_init(&sd2, &brush2, ob);
+  std::unique_ptr<auto_mask::Cache> automasking = auto_mask::cache_init(&sd2, &brush2, ob);
   const SculptMaskWriteInfo mask_write = SCULPT_mask_get_for_write(ss);
 
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     for (const int i : range) {
-      sculpt_bake_cavity_exec_task(ob, automasking, mode, factor, mask_write, nodes[i]);
+      sculpt_bake_cavity_exec_task(ob, *automasking, mode, factor, mask_write, nodes[i]);
     }
   });
-
-  auto_mask::cache_free(automasking);
 
   bke::pbvh::update_mask(*ss->pbvh);
   undo::push_end(ob);

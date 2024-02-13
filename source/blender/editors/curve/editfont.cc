@@ -29,16 +29,16 @@
 
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_vfont.hh"
 
 #include "BLI_string_utf8.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -666,7 +666,7 @@ static void text_insert_unicode_confirm(bContext *C, void *arg_block, void *arg_
     return;
   }
 
-  uint val = strtoul(edit_string, NULL, 16);
+  uint val = strtoul(edit_string, nullptr, 16);
   if (val > 31 && val < 0x10FFFF) {
     Object *obedit = CTX_data_edit_object(C);
     if (obedit) {
@@ -731,17 +731,17 @@ static uiBlock *wm_block_insert_unicode_create(bContext *C, ARegion *region, voi
 
   if (windows_layout) {
     confirm = uiDefIconTextBut(
-        block, UI_BTYPE_BUT, 0, 0, "Insert", 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, nullptr);
+        block, UI_BTYPE_BUT, 0, 0, "Insert", 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, nullptr);
     uiLayoutColumn(split, false);
   }
 
   cancel = uiDefIconTextBut(
-      block, UI_BTYPE_BUT, 0, 0, "Cancel", 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, nullptr);
+      block, UI_BTYPE_BUT, 0, 0, "Cancel", 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, nullptr);
 
   if (!windows_layout) {
     uiLayoutColumn(split, false);
     confirm = uiDefIconTextBut(
-        block, UI_BTYPE_BUT, 0, 0, "Insert", 0, 0, 0, UI_UNIT_Y, 0, 0, 0, 0, 0, nullptr);
+        block, UI_BTYPE_BUT, 0, 0, "Insert", 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, nullptr);
   }
 
   UI_block_func_set(block, nullptr, nullptr, nullptr);

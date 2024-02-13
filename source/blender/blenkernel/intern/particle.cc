@@ -9,6 +9,7 @@
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
 
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -44,34 +45,31 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
 #include "BKE_anim_path.h"
 #include "BKE_boids.h"
 #include "BKE_cloth.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_displist.h"
 #include "BKE_effect.h"
-#include "BKE_idtype.h"
-#include "BKE_key.h"
+#include "BKE_idtype.hh"
+#include "BKE_key.hh"
 #include "BKE_lattice.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
-#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
-#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_texture.h"
 
 #include "DEG_depsgraph.hh"
@@ -2718,7 +2716,7 @@ static bool psys_thread_context_init_path(ParticleThreadContext *ctx,
     totchild = int(float(totchild) * float(part->disp) / 100.0f);
   }
 
-  totparent = MIN2(totparent, totchild);
+  totparent = std::min(totparent, totchild);
 
   if (totchild == 0) {
     return false;
@@ -3356,7 +3354,7 @@ void psys_cache_paths(ParticleSimulationData *sim, float cfra, const bool use_re
     copy_v3_v3(rotmat[2], hairmat[0]);
 
     if (part->draw & PART_ABS_PATH_TIME) {
-      birthtime = MAX2(pind.birthtime, part->path_start);
+      birthtime = std::max(pind.birthtime, part->path_start);
       dietime = std::min(pind.dietime, part->path_end);
     }
     else {
@@ -3957,6 +3955,7 @@ static ModifierData *object_add_or_copy_particle_system(
   psmd->psys = psys;
   BLI_addtail(&ob->modifiers, md);
   BKE_object_modifier_set_active(ob, md);
+  BKE_modifiers_persistent_uid_init(*ob, *md);
 
   psys->totpart = 0;
   psys->flag = PSYS_CURRENT;

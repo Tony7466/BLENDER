@@ -25,8 +25,9 @@
 #include "BLI_math_vector.h"
 #include "BLI_span.hh"
 #include "BLI_string.h"
+#include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 
@@ -43,13 +44,13 @@
 #include "BKE_constraint.h"
 #include "BKE_curve.hh"
 #include "BKE_idprop.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "ANIM_bone_collections.hh"
 
@@ -62,6 +63,8 @@
 #include "BLO_read_write.hh"
 
 #include "CLG_log.h"
+
+using namespace blender;
 
 /* -------------------------------------------------------------------- */
 /** \name Prototypes
@@ -461,6 +464,14 @@ static void armature_blend_read_data(BlendDataReader *reader, ID *id)
   ANIM_armature_runtime_refresh(arm);
 }
 
+static void armature_undo_preserve(BlendLibReader * /*reader*/, ID *id_new, ID *id_old)
+{
+  bArmature *arm_new = (bArmature *)id_new;
+  bArmature *arm_old = (bArmature *)id_old;
+
+  animrig::bonecolls_copy_expanded_flag(arm_new->collections_span(), arm_old->collections_span());
+}
+
 IDTypeInfo IDType_ID_AR = {
     /*id_code*/ ID_AR,
     /*id_filter*/ FILTER_ID_AR,
@@ -485,7 +496,7 @@ IDTypeInfo IDType_ID_AR = {
     /*blend_read_data*/ armature_blend_read_data,
     /*blend_read_after_liblink*/ nullptr,
 
-    /*blend_read_undo_preserve*/ nullptr,
+    /*blend_read_undo_preserve*/ armature_undo_preserve,
 
     /*lib_override_apply_post*/ nullptr,
 };
@@ -3182,9 +3193,17 @@ bool BoneCollection::is_visible_ancestors() const
 {
   return this->flags & BONE_COLLECTION_ANCESTORS_VISIBLE;
 }
-bool BoneCollection::is_visible_effectively() const
+bool BoneCollection::is_visible_with_ancestors() const
 {
   return this->is_visible() && this->is_visible_ancestors();
+}
+bool BoneCollection::is_solo() const
+{
+  return this->flags & BONE_COLLECTION_SOLO;
+}
+bool BoneCollection::is_expanded() const
+{
+  return this->flags & BONE_COLLECTION_EXPANDED;
 }
 
 /** \} */

@@ -15,7 +15,7 @@
 #include "BLI_rand.h"
 #include "BLI_task.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_color_types.h" /* CurveMapping. */
 #include "DNA_defaults.h"
@@ -27,16 +27,12 @@
 
 #include "BKE_bvhutils.hh"
 #include "BKE_colortools.hh" /* CurveMapping. */
-#include "BKE_context.hh"
-#include "BKE_curve.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
-#include "BKE_lib_id.hh"
+#include "BKE_deform.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
-#include "BKE_screen.hh"
 #include "BKE_texture.h" /* Texture masking. */
 
 #include "UI_interface.hh"
@@ -52,7 +48,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 #include "MOD_util.hh"
 #include "MOD_weightvg_util.hh"
@@ -60,8 +55,8 @@
 // #define USE_TIMEIT
 
 #ifdef USE_TIMEIT
-#  include "PIL_time.h"
-#  include "PIL_time_utildefines.h"
+#  include "BLI_time.h"
+#  include "BLI_time_utildefines.h"
 #endif
 
 /**************************************
@@ -765,4 +760,5 @@ ModifierTypeInfo modifierType_WeightVGProximity = {
     /*panel_register*/ panel_register,
     /*blend_write*/ blend_write,
     /*blend_read*/ blend_read,
+    /*foreach_cache*/ nullptr,
 };

@@ -18,7 +18,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector_set.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "ED_curves.hh"
 #include "ED_object.hh"
@@ -34,7 +34,7 @@
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
@@ -43,7 +43,7 @@
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_meshdata_types.h"

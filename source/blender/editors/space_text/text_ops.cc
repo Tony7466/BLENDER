@@ -6,6 +6,7 @@
  * \ingroup sptext
  */
 
+#include <algorithm>
 #include <cerrno>
 #include <cstring>
 #include <sstream>
@@ -19,15 +20,14 @@
 #include "BLI_math_vector.h"
 #include "BLI_string_cursor_utf8.h"
 #include "BLI_string_utf8.h"
+#include "BLI_time.h"
 
-#include "BLT_translation.h"
-
-#include "PIL_time.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_text.h"
 
 #include "WM_api.hh"
@@ -1791,7 +1791,7 @@ static int space_text_get_cursor_rel(
         curs = j;
       }
       if (i + columns - start > max) {
-        end = MIN2(end, i);
+        end = std::min(end, i);
 
         if (found) {
           /* exact cursor position was found, check if it's */
@@ -1986,7 +1986,7 @@ static void txt_wrap_move_bol(SpaceText *st, ARegion *region, const bool sel)
 
     while (chars--) {
       if (i + columns - start > max) {
-        end = MIN2(end, i);
+        end = std::min(end, i);
 
         *charp = endj;
 
@@ -2073,7 +2073,7 @@ static void txt_wrap_move_eol(SpaceText *st, ARegion *region, const bool sel)
 
     while (chars--) {
       if (i + columns - start > max) {
-        end = MIN2(end, i);
+        end = std::min(end, i);
 
         if (chop) {
           endj = BLI_str_find_prev_char_utf8((*linep)->line + j, (*linep)->line) - (*linep)->line;
@@ -2455,7 +2455,7 @@ static int text_jump_exec(bContext *C, wmOperator *op)
 
 static int text_jump_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  return WM_operator_props_dialog_popup(C, op, 200);
+  return WM_operator_props_dialog_popup(C, op, 200, IFACE_("Jump to Line Number"));
 }
 
 void TEXT_OT_jump(wmOperatorType *ot)
@@ -3165,7 +3165,7 @@ static void space_text_cursor_set_to_pos_wrapped(
           curs = j;
         }
         if (i + columns - start > max) {
-          end = MIN2(end, i);
+          end = std::min(end, i);
 
           if (found) {
             /* exact cursor position was found, check if it's still on needed line
@@ -3340,7 +3340,7 @@ static void text_cursor_set_apply(bContext *C, wmOperator *op, const wmEvent *ev
 
     if (event->type == TIMER) {
       text_cursor_set_to_pos(
-          st, region, CLAMPIS(event->mval[0], 0, region->winx), event->mval[1], true);
+          st, region, std::clamp(event->mval[0], 0, int(region->winx)), event->mval[1], true);
       ED_space_text_scroll_to_cursor(st, region, false);
       WM_event_add_notifier(C, NC_TEXT | ND_CURSOR, st->text);
     }
@@ -3520,7 +3520,7 @@ static int text_line_number_invoke(bContext *C, wmOperator * /*op*/, const wmEve
     return OPERATOR_PASS_THROUGH;
   }
 
-  time = PIL_check_seconds_timer();
+  time = BLI_check_seconds_timer();
   if (last_jump < time - 1) {
     jump_to = 0;
   }
@@ -4106,6 +4106,9 @@ static int text_jump_to_file_at_point_exec(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_WARNING, "File path property not set");
     return OPERATOR_CANCELLED;
   }
+
+  /* Useful to copy-paste from the terminal. */
+  printf("%s:%d:%d\n", filepath, line_index + 1, column_index);
 
   bool success;
   if (U.text_editor[0] != '\0') {

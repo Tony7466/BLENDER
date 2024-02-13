@@ -6,19 +6,17 @@
  * \ingroup bke
  */
 
+#include <algorithm>
+#include <cmath>
 #include <cstdarg>
 #include <cstddef>
-
-#include <cmath>
 #include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_collection_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_listBase.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_force_types.h"
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
@@ -33,26 +31,22 @@
 #include "BLI_math_vector.h"
 #include "BLI_noise.h"
 #include "BLI_rand.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
-
-#include "PIL_time.h"
 
 #include "BKE_anim_path.h" /* needed for where_on_path */
 #include "BKE_bvhutils.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_collision.h"
 #include "BKE_curve.hh"
 #include "BKE_displist.h"
 #include "BKE_effect.h"
 #include "BKE_fluid.h"
-#include "BKE_global.h"
-#include "BKE_layer.h"
-#include "BKE_mesh.hh"
+#include "BKE_global.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 #include "BKE_particle.h"
-#include "BKE_scene.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_physics.hh"
@@ -85,7 +79,7 @@ PartDeflect *BKE_partdeflect_new(int type)
   pd->pdef_sbift = 0.2f;
   pd->pdef_sboft = 0.02f;
   pd->pdef_cfrict = 5.0f;
-  pd->seed = (uint(ceil(PIL_check_seconds_timer())) + 1) % 128;
+  pd->seed = (uint(ceil(BLI_check_seconds_timer())) + 1) % 128;
   pd->f_strength = 1.0f;
   pd->f_damp = 1.0f;
 
@@ -525,7 +519,7 @@ static float eff_calc_visibility(ListBase *colliders,
         absorption = col->ob->pd->absorption;
 
         /* visibility is only between 0 and 1, calculated from 1-absorption */
-        visibility *= CLAMPIS(1.0f - absorption, 0.0f, 1.0f);
+        visibility *= std::clamp(1.0f - absorption, 0.0f, 1.0f);
 
         if (visibility <= 0.0f) {
           break;
@@ -1076,8 +1070,8 @@ static void do_physical_effector(EffectorCache *eff,
       copy_v3_v3(force, point->vel);
       fac = normalize_v3(force) * point->vel_to_sec;
 
-      strength = MIN2(strength, 2.0f);
-      damp = MIN2(damp, 2.0f);
+      strength = std::min(strength, 2.0f);
+      damp = std::min(damp, 2.0f);
 
       mul_v3_fl(force, -efd->falloff * fac * (strength * fac + damp));
       break;

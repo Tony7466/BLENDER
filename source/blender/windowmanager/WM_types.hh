@@ -112,10 +112,14 @@ struct wmWindowManager;
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
+
 #include "DNA_listBase.h"
 #include "DNA_uuid_types.h"
 #include "DNA_vec_types.h"
 #include "DNA_xr_types.h"
+
+#include "BKE_wm_runtime.hh"
+
 #include "RNA_types.hh"
 
 /* exported types for WM */
@@ -919,29 +923,14 @@ struct wmTimer {
   bool sleep;
 };
 
-enum wmConfirmSize {
-  WM_WARNING_SIZE_SMALL = 0,
-  WM_WARNING_SIZE_LARGE,
+enum wmPopupSize {
+  WM_POPUP_SIZE_SMALL = 0,
+  WM_POPUP_SIZE_LARGE,
 };
 
-enum wmConfirmPosition {
-  WM_WARNING_POSITION_MOUSE = 0,
-  WM_WARNING_POSITION_CENTER,
-};
-
-struct wmConfirmDetails {
-  char title[1024];
-  char message[1024];
-  char message2[1024];
-  char confirm_button[256];
-  char cancel_button[256];
-  int icon;
-  wmConfirmSize size;
-  wmConfirmPosition position;
-  bool confirm_default;
-  bool cancel_default;
-  bool mouse_move_quit;
-  bool red_alert;
+enum wmPopupPosition {
+  WM_POPUP_POSITION_MOUSE = 0,
+  WM_POPUP_POSITION_CENTER,
 };
 
 /**
@@ -1070,11 +1059,6 @@ struct wmOperatorType {
    * The returned string is expected to be translated if needed.
    */
   std::string (*get_description)(bContext *C, wmOperatorType *ot, PointerRNA *ptr);
-
-  /**
-   * If using WM_operator_confirm the following can override all parts of the dialog.
-   */
-  void (*confirm)(bContext *C, wmOperator *, wmConfirmDetails *details);
 
   /** RNA for properties */
   StructRNA *srna;
@@ -1224,10 +1208,10 @@ struct wmDragGreasePencilLayer {
   GreasePencilLayer *layer;
 };
 
-using WMDropboxTooltipFunc = char *(*)(bContext *C,
-                                       wmDrag *drag,
-                                       const int xy[2],
-                                       wmDropBox *drop);
+using WMDropboxTooltipFunc = std::string (*)(bContext *C,
+                                             wmDrag *drag,
+                                             const int xy[2],
+                                             wmDropBox *drop);
 
 struct wmDragActiveDropState {
   wmDragActiveDropState();

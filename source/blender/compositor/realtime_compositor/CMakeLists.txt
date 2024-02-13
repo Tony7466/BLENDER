@@ -129,8 +129,8 @@ set(LIB
 set(GLSL_SRC
   shaders/compositor_alpha_crop.glsl
   shaders/compositor_bilateral_blur.glsl
-  shaders/compositor_blur.glsl
-  shaders/compositor_blur_variable_size.glsl
+  shaders/compositor_bokeh_blur.glsl
+  shaders/compositor_bokeh_blur_variable_size.glsl
   shaders/compositor_bokeh_image.glsl
   shaders/compositor_box_mask.glsl
   shaders/compositor_compute_preview.glsl
@@ -177,7 +177,8 @@ set(GLSL_SRC
   shaders/compositor_kuwahara_anisotropic.glsl
   shaders/compositor_kuwahara_anisotropic_compute_structure_tensor.glsl
   shaders/compositor_kuwahara_classic.glsl
-  shaders/compositor_map_uv.glsl
+  shaders/compositor_map_uv_anisotropic.glsl
+  shaders/compositor_map_uv_nearest_neighbour.glsl
   shaders/compositor_morphological_blur.glsl
   shaders/compositor_morphological_distance.glsl
   shaders/compositor_morphological_distance_feather.glsl
@@ -278,8 +279,8 @@ target_include_directories(bf_compositor_shaders PUBLIC ${CMAKE_CURRENT_BINARY_D
 set(SRC_SHADER_CREATE_INFOS
   shaders/infos/compositor_alpha_crop_info.hh
   shaders/infos/compositor_bilateral_blur_info.hh
-  shaders/infos/compositor_blur_info.hh
-  shaders/infos/compositor_blur_variable_size_info.hh
+  shaders/infos/compositor_bokeh_blur_info.hh
+  shaders/infos/compositor_bokeh_blur_variable_size_info.hh
   shaders/infos/compositor_bokeh_image_info.hh
   shaders/infos/compositor_box_mask_info.hh
   shaders/infos/compositor_compute_preview_info.hh
