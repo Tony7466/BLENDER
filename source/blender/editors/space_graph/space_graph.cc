@@ -31,7 +31,6 @@
 #include "ED_space_api.hh"
 #include "ED_time_scrub_ui.hh"
 
-#include "GPU_framebuffer.h"
 #include "GPU_immediate.h"
 #include "GPU_state.h"
 
@@ -333,8 +332,9 @@ static void graph_main_region_draw_overlay(const bContext *C, ARegion *region)
   }
 
   /* scrollers */
+  const rcti scroller_mask = ED_time_scrub_clamp_scroller_mask(v2d->mask);
   /* FIXME: args for scrollers depend on the type of data being shown. */
-  UI_view2d_scrollers_draw(v2d, nullptr);
+  UI_view2d_scrollers_draw(v2d, &scroller_mask);
 
   /* scale numbers */
   {

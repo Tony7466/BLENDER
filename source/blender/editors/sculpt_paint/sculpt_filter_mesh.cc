@@ -6,7 +6,8 @@
  * \ingroup edsculpt
  */
 
-#include "DNA_modifier_types.h"
+#include <fmt/format.h>
+
 #include "DNA_windowmanager_types.h"
 
 #include "MEM_guardedalloc.h"
@@ -17,25 +18,20 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
-#include "BLI_string.h"
 #include "BLI_task.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
-#include "BKE_modifier.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-
-#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "ED_screen.hh"
 #include "ED_sculpt.hh"
-#include "ED_util.hh"
 #include "ED_view3d.hh"
 
 #include "paint_intern.hh"
@@ -694,23 +690,15 @@ wmKeyMap *modal_keymap(wmKeyConfig *keyconf)
 
 static void sculpt_mesh_update_status_bar(bContext *C, wmOperator *op)
 {
-  char header[UI_MAX_DRAW_STR];
-  char buf[UI_MAX_DRAW_STR];
-  int available_len = sizeof(buf);
+  auto get_modal_key_str = [&](int id) {
+    return WM_modalkeymap_operator_items_to_string(op->type, id, true).value_or("");
+  };
 
-  char *p = buf;
-#define WM_MODALKEY(_id) \
-  WM_modalkeymap_operator_items_to_string_buf( \
-      op->type, (_id), true, UI_MAX_SHORTCUT_STR, &available_len, &p)
+  const std::string header = fmt::format(IFACE_("{}: Confirm, {}: Cancel"),
+                                         get_modal_key_str(FILTER_MESH_MODAL_CONFIRM),
+                                         get_modal_key_str(FILTER_MESH_MODAL_CANCEL));
 
-  SNPRINTF(header,
-           IFACE_("%s: Confirm, %s: Cancel"),
-           WM_MODALKEY(FILTER_MESH_MODAL_CONFIRM),
-           WM_MODALKEY(FILTER_MESH_MODAL_CANCEL));
-
-#undef WM_MODALKEY
-
-  ED_workspace_status_text(C, header);
+  ED_workspace_status_text(C, header.c_str());
 }
 
 static void sculpt_mesh_filter_apply(bContext *C, wmOperator *op)

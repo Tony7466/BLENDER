@@ -14,23 +14,19 @@
 #include "BLI_math_vector.h"
 #include "BLI_uvproject.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_camera_types.h"
 #include "DNA_defaults.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_camera.h"
-#include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_lib_query.hh"
-#include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -43,9 +39,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
-#include "DEG_depsgraph_query.hh"
 
 static void init_data(ModifierData *md)
 {
