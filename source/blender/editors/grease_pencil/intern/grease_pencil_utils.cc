@@ -7,9 +7,7 @@
  */
 
 #include "BKE_attribute.hh"
-#include "BKE_brush.hh"
 #include "BKE_colortools.hh"
-#include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 #include "BKE_scene.hh"
