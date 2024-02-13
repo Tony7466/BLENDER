@@ -74,7 +74,6 @@ static float from_16dot16(FT_Fixed value)
 /** \name Glyph Cache Entries
  * \{ */
 
-
 static GlyphCacheBLF *blf_glyph_cache_new(FontBLF *font)
 {
   GlyphCacheBLF *gc = (GlyphCacheBLF *)MEM_callocN(sizeof(GlyphCacheBLF), "blf_glyph_cache_new");
