@@ -75,13 +75,23 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
 
   /* Get the number of points, number of strokes and the offsets for each stroke. */
   Vector<int> offsets;
+  Vector<int8_t> curve_types;
   offsets.append(0);
   int num_strokes = 0;
   int num_points = 0;
+  bool has_bezier_stroke = false;
   LISTBASE_FOREACH (bGPDstroke *, gps, &gpf.strokes) {
-    num_points += gps->totpoints;
-    offsets.append(num_points);
+    if (gps->editcurve != nullptr) {
+      has_bezier_stroke = true;
+      num_points += gps->editcurve->tot_curve_points;
+      curve_types.append(CURVE_TYPE_BEZIER);
+    }
+    else {
+      num_points += gps->totpoints;
+      curve_types.append(CURVE_TYPE_POLY);
+    }
     num_strokes++;
+    offsets.append(num_points);
   }
 
   /* Resize the CurvesGeometry. */
@@ -94,8 +104,13 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
   OffsetIndices<int> points_by_curve = curves.points_by_curve();
   MutableAttributeAccessor attributes = curves.attributes_for_write();
 
-  /* All strokes are poly curves. */
-  curves.fill_curve_types(CURVE_TYPE_POLY);
+  if (!has_bezier_stroke) {
+    /* All strokes are poly curves. */
+    curves.fill_curve_types(CURVE_TYPE_POLY);
+  }
+  else {
+    curves.curve_types_for_write().copy_from(curve_types);
+  }
 
   /* Find used vertex groups in this drawing. */
   ListBase stroke_vertex_group_names;
@@ -158,8 +173,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
 
   int stroke_i = 0;
   LISTBASE_FOREACH_INDEX (bGPDstroke *, gps, &gpf.strokes, stroke_i) {
-    /* TODO: check if `gps->editcurve` is not nullptr and parse bezier curve instead. */
-
     /* Write curve attributes. */
     stroke_cyclic.span[stroke_i] = (gps->flag & GP_STROKE_CYCLIC) != 0;
     /* TODO: This should be a `double` attribute. */
@@ -181,53 +194,62 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       continue;
     }
 
-    Span<bGPDspoint> stroke_points{gps->points, gps->totpoints};
-    MutableSpan<float3> stroke_positions = positions.slice(stroke_points_range);
-    MutableSpan<float> stroke_radii = radii.slice(stroke_points_range);
-    MutableSpan<float> stroke_opacities = opacities.slice(stroke_points_range);
-    MutableSpan<float> stroke_deltatimes = delta_times.span.slice(stroke_points_range);
-    MutableSpan<float> stroke_rotations = rotations.span.slice(stroke_points_range);
-    MutableSpan<ColorGeometry4f> stroke_vertex_colors = vertex_colors.span.slice(
-        stroke_points_range);
-    MutableSpan<bool> stroke_selections = selection.span.slice(stroke_points_range);
-    MutableSpan<MDeformVert> stroke_dverts = use_dverts ? dverts.slice(stroke_points_range) :
-                                                          MutableSpan<MDeformVert>();
+    if (curve_types[stroke_i] == CURVE_TYPE_POLY) {
+      Span<bGPDspoint> stroke_points{gps->points, gps->totpoints};
+      MutableSpan<float3> stroke_positions = positions.slice(stroke_points_range);
+      MutableSpan<float> stroke_radii = radii.slice(stroke_points_range);
+      MutableSpan<float> stroke_opacities = opacities.slice(stroke_points_range);
+      MutableSpan<float> stroke_deltatimes = delta_times.span.slice(stroke_points_range);
+      MutableSpan<float> stroke_rotations = rotations.span.slice(stroke_points_range);
+      MutableSpan<ColorGeometry4f> stroke_vertex_colors = vertex_colors.span.slice(
+          stroke_points_range);
+      MutableSpan<bool> stroke_selections = selection.span.slice(stroke_points_range);
+      MutableSpan<MDeformVert> stroke_dverts = use_dverts ? dverts.slice(stroke_points_range) :
+                                                            MutableSpan<MDeformVert>();
 
-    /* Do first point. */
-    const bGPDspoint &first_pt = stroke_points.first();
-    stroke_positions.first() = float3(first_pt.x, first_pt.y, first_pt.z);
-    /* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px` was
-     * the brush size which would be stored in the stroke thickness and then scaled by the point
-     * pressure factor. Finally, the render engine would divide this thickness value by 2000 (we're
-     * going from a thickness to a radius, hence the factor of two) to convert back into blender
-     * units.
-     * Store the radius now directly in blender units. This makes it consistent with how hair
-     * curves handle the radius. */
-    stroke_radii.first() = gps->thickness * first_pt.pressure / 2000.0f;
-    stroke_opacities.first() = first_pt.strength;
-    stroke_deltatimes.first() = 0;
-    stroke_rotations.first() = first_pt.uv_rot;
-    stroke_vertex_colors.first() = ColorGeometry4f(first_pt.vert_color);
-    stroke_selections.first() = (first_pt.flag & GP_SPOINT_SELECT) != 0;
-    if (use_dverts && gps->dvert) {
-      copy_dvert(gps->dvert[0], stroke_dverts.first());
-    }
-
-    /* Do the rest of the points. */
-    for (const int i : stroke_points.index_range().drop_back(1)) {
-      const int point_i = i + 1;
-      const bGPDspoint &pt_prev = stroke_points[point_i - 1];
-      const bGPDspoint &pt = stroke_points[point_i];
-      stroke_positions[point_i] = float3(pt.x, pt.y, pt.z);
-      stroke_radii[point_i] = gps->thickness * pt.pressure / 2000.0f;
-      stroke_opacities[point_i] = pt.strength;
-      stroke_deltatimes[point_i] = pt.time - pt_prev.time;
-      stroke_rotations[point_i] = pt.uv_rot;
-      stroke_vertex_colors[point_i] = ColorGeometry4f(pt.vert_color);
-      stroke_selections[point_i] = (pt.flag & GP_SPOINT_SELECT) != 0;
+      /* Do first point. */
+      const bGPDspoint &first_pt = stroke_points.first();
+      stroke_positions.first() = float3(first_pt.x, first_pt.y, first_pt.z);
+      /* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px`
+       * was the brush size which would be stored in the stroke thickness and then scaled by the
+       * point pressure factor. Finally, the render engine would divide this thickness value by
+       * 2000 (we're going from a thickness to a radius, hence the factor of two) to convert back
+       * into blender units. Store the radius now directly in blender units. This makes it
+       * consistent with how hair curves handle the radius. */
+      stroke_radii.first() = gps->thickness * first_pt.pressure / 2000.0f;
+      stroke_opacities.first() = first_pt.strength;
+      stroke_deltatimes.first() = 0;
+      stroke_rotations.first() = first_pt.uv_rot;
+      stroke_vertex_colors.first() = ColorGeometry4f(first_pt.vert_color);
+      stroke_selections.first() = (first_pt.flag & GP_SPOINT_SELECT) != 0;
       if (use_dverts && gps->dvert) {
-        copy_dvert(gps->dvert[point_i], stroke_dverts[point_i]);
+        copy_dvert(gps->dvert[0], stroke_dverts.first());
       }
+
+      /* Do the rest of the points. */
+      for (const int point_i : stroke_points.index_range().drop_front(1)) {
+        const bGPDspoint &pt_prev = stroke_points[point_i - 1];
+        const bGPDspoint &pt = stroke_points[point_i];
+        stroke_positions[point_i] = float3(pt.x, pt.y, pt.z);
+        stroke_radii[point_i] = gps->thickness * pt.pressure / 2000.0f;
+        stroke_opacities[point_i] = pt.strength;
+        stroke_deltatimes[point_i] = pt.time - pt_prev.time;
+        stroke_rotations[point_i] = pt.uv_rot;
+        stroke_vertex_colors[point_i] = ColorGeometry4f(pt.vert_color);
+        stroke_selections[point_i] = (pt.flag & GP_SPOINT_SELECT) != 0;
+        if (use_dverts && gps->dvert) {
+          copy_dvert(gps->dvert[point_i], stroke_dverts[point_i]);
+        }
+      }
+    }
+    else if (curve_types[stroke_i] == CURVE_TYPE_BEZIER) {
+      Span<bGPDcurve_point> curve_points{gps->editcurve->curve_points,
+                                         gps->editcurve->tot_curve_points};
+      
+    }
+    else {
+      /* Unknown curve type. */
+      BLI_assert_unreachable();
     }
   }
 
