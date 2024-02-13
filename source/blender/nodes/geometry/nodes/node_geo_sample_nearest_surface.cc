@@ -69,14 +69,14 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
-class SampleNearestSurfaceInGroupFunction : public mf::MultiFunction {
+class SampleNearestSurfaceFunction : public mf::MultiFunction {
  private:
   GeometrySet source_;
   Array<BVHTreeFromMesh> bvh_trees_;
   VectorSet<int> group_indices_;
 
  public:
-  SampleNearestSurfaceInGroupFunction(GeometrySet geometry, const Field<int> &group_id_field)
+  SampleNearestSurfaceFunction(GeometrySet geometry, const Field<int> &group_id_field)
       : source_(std::move(geometry))
   {
     source_.ensure_owns_direct_data();
@@ -120,7 +120,7 @@ class SampleNearestSurfaceInGroupFunction : public mf::MultiFunction {
     }
   }
 
-  ~SampleNearestSurfaceInGroupFunction()
+  ~SampleNearestSurfaceFunction()
   {
     for (BVHTreeFromMesh &tree : bvh_trees_) {
       free_bvhtree_from_mesh(&tree);
@@ -184,8 +184,8 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   auto nearest_op = FieldOperation::Create(
-      std::make_shared<SampleNearestSurfaceInGroupFunction>(
-          geometry, params.extract_input<Field<int>>("Group ID")),
+      std::make_shared<SampleNearestSurfaceFunction>(geometry,
+                                                     params.extract_input<Field<int>>("Group ID")),
       {params.extract_input<Field<float3>>("Sample Position"),
        params.extract_input<Field<int>>("Sample Group ID")});
   Field<int> triangle_indices(nearest_op, 0);
