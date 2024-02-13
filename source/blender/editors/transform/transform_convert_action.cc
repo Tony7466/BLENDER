@@ -335,8 +335,14 @@ static void TimeToTransData(
   copy_v3_v3(td->iloc, td->loc);
   td->val = time;
   td->ival = *(time);
-  td->center[0] = td->ival;
+  if (adt) {
+    td->center[0] = BKE_nla_tweakedit_remap(adt, td->ival, NLATIME_CONVERT_MAP);
+  }
+  else {
+    td->center[0] = td->ival;
+  }
   td->center[1] = ypos;
+  td->center[2] = 0.0f;
 
   /* Store the AnimData where this keyframe exists as a keyframe of the
    * active action as #td->extra. */
