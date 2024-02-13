@@ -9,7 +9,6 @@
 
 #include "BKE_constraint.h"
 #include "BKE_lib_id.hh"
-#include "BKE_library.hh"
 #include "BKE_object.hh"
 
 #include "BLI_math_matrix.h"
@@ -20,6 +19,8 @@
 #include "DNA_object_types.h"
 
 #include <pxr/base/gf/matrix4f.h>
+
+#include <string>
 
 namespace blender::io::usd {
 
