@@ -90,7 +90,7 @@ static int unpack_libraries_invoke(bContext *C, wmOperator *op, const wmEvent * 
   return WM_operator_confirm_ex(C,
                                 op,
                                 IFACE_("Restore Packed Linked Data to Their Original Locations"),
-                                IFACE_("Will create directories so that all paths should work"),
+                                IFACE_("Will create directories so that all paths are valid."),
                                 IFACE_("Unpack"),
                                 ALERT_ICON_INFO,
                                 false);
