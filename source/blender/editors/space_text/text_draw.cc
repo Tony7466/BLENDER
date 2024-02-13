@@ -1297,7 +1297,7 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
     }
   }
 
-  if (!hidden && !st->runtime->hide_cursor) {
+  if (!hidden) {
     /* Draw the cursor itself (we draw the sel. cursor as this is the leading edge) */
     x = TXT_BODY_LEFT(st) + (vselc * st->runtime->cwidth_px);
     y = region->winy - vsell * lheight;
@@ -1305,7 +1305,18 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
       y += st->runtime->scroll_ofs_px[1];
     }
 
-    immUniformThemeColor(TH_HILITE);
+    GPU_blend(GPU_BLEND_ALPHA);
+
+    float color[4];
+    UI_GetThemeColor4fv(TH_HILITE, color);
+    if (st->runtime->hide_cursor) {
+      float gray = rgb_to_grayscale(color);
+      color[0] = gray;
+      color[1] = gray;
+      color[2] = gray;
+      color[3] = 0.5;
+    }
+    immUniformColor4fv(color);
 
     if (st->overwrite) {
       char ch = text->sell->line[text->selc];
@@ -1322,6 +1333,7 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
     else {
       immRecti(pos, x - U.pixelsize, y, x + U.pixelsize, y - lheight);
     }
+    GPU_blend(GPU_BLEND_NONE);
   }
 
   immUnbindProgram();
