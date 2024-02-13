@@ -12,6 +12,7 @@
 #include <cstring>
 
 #include "BLI_listbase.h"
+#include "BLI_math_base.h"
 
 #include "MEM_guardedalloc.h"
 
