@@ -206,7 +206,7 @@ int insert_key_action(Main *bmain,
                       Span<float> values,
                       eInsertKeyFlags insert_key_flag,
                       eBezTriple_KeyframeType key_type,
-                      BLI_bitmap *keying_mask);
+                      const BLI_bitmap *keying_mask);
 
 /**
  * Insert keys to the ID of the given PointerRNA for the given RNA paths. Tries to create an

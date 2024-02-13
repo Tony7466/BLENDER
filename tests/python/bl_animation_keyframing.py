@@ -501,8 +501,15 @@ class InsertNeededTest(AbstractKeyframingTest, unittest.TestCase):
 
 
 def _create_nla_anim_object():
-    # Creates an object with 3 NLA tracks each with a strip that has its own action.
-    # The middle layer is additive.
+    """
+    Creates an object with 3 NLA tracks each with a strip that has its own action.
+    The middle layer is additive.
+    Creates a key on frame 0 and frame 10 for each of them.
+    The values are:
+        top: 0, 0
+        add: 0, 1
+        base: 0, 1
+    """
     anim_object = bpy.data.objects.new("anim_object", None)
     bpy.context.scene.collection.objects.link(anim_object)
     bpy.context.view_layer.objects.active = anim_object
@@ -538,14 +545,16 @@ def _create_nla_anim_object():
 
 
 class NlaInsertTest(AbstractKeyframingTest, unittest.TestCase):
-    # Testing inserting keys into an NLA stack.
-    # The system is expected to remap the inserted values based on the strips blend_type.
+    """
+    Testing inserting keys into an NLA stack.
+    The system is expected to remap the inserted values based on the strips blend_type.
+    """
 
     def setUp(self):
         super().setUp()
         bpy.context.preferences.edit.key_insert_channels = {'LOCATION'}
         # Change one area to the NLA so we can call operators in it.
-        # Assumes there is at least one window in the blender default startup file that is not the 3D viewport.
+        # Assumes there is at least one editor in the blender default startup file that is not the 3D viewport.
         for area in bpy.context.window.screen.areas:
             if area.type == 'VIEW_3D':
                 continue
@@ -595,7 +604,8 @@ class NlaInsertTest(AbstractKeyframingTest, unittest.TestCase):
             bpy.ops.anim.keyframe_insert()
 
         base_action = bpy.data.actions["action_base"]
-        # This should add keys to Y and Z but not X.
+        # This should have added keys to Y and Z but not X.
+        # X already had two keys from the file setup.
         self.assertEqual(len(base_action.fcurves.find("location", index=0).keyframe_points), 2)
         self.assertEqual(len(base_action.fcurves.find("location", index=1).keyframe_points), 1)
         self.assertEqual(len(base_action.fcurves.find("location", index=2).keyframe_points), 1)

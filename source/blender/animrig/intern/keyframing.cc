@@ -864,7 +864,7 @@ int insert_key_action(Main *bmain,
                       const Span<float> values,
                       eInsertKeyFlags insert_key_flag,
                       eBezTriple_KeyframeType key_type,
-                      BLI_bitmap *keying_mask)
+                      const BLI_bitmap *keying_mask)
 {
   BLI_assert(bmain != nullptr);
   BLI_assert(action != nullptr);
