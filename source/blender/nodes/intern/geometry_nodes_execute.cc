@@ -300,10 +300,6 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
       ui_data->base.rna_subtype = PROP_EULER;
       return property;
     }
-    case SOCK_MATRIX: {
-      BLI_assert_unreachable();
-      break;
-    }
     case SOCK_STRING: {
       const bNodeSocketValueString *value = static_cast<const bNodeSocketValueString *>(
           socket.socket_data);
@@ -349,6 +345,7 @@ std::unique_ptr<IDProperty, bke::idprop::IDPropertyDeleter> id_property_create_f
           socket.socket_data);
       return bke::idprop::create(identifier, reinterpret_cast<ID *>(value->value));
     }
+    case SOCK_MATRIX:
     case SOCK_CUSTOM:
     case SOCK_GEOMETRY:
     case SOCK_SHADER:
@@ -371,9 +368,6 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
     case SOCK_ROTATION:
       return property.type == IDP_ARRAY &&
              ELEM(property.subtype, IDP_INT, IDP_FLOAT, IDP_DOUBLE) && property.len == 3;
-    case SOCK_MATRIX:
-      BLI_assert_unreachable();
-      break;
     case SOCK_RGBA:
       return property.type == IDP_ARRAY &&
              ELEM(property.subtype, IDP_INT, IDP_FLOAT, IDP_DOUBLE) && property.len == 4;
@@ -393,6 +387,7 @@ bool id_property_type_matches_socket(const bNodeTreeInterfaceSocket &socket,
     case SOCK_MATERIAL:
       return property.type == IDP_ID;
     case SOCK_CUSTOM:
+    case SOCK_MATRIX:
     case SOCK_GEOMETRY:
     case SOCK_SHADER:
       return false;
@@ -477,9 +472,6 @@ static void init_socket_cpp_value_from_property(const IDProperty &property,
       new (r_value) bke::SocketValueVariant(math::to_quaternion(euler_value));
       break;
     }
-    case SOCK_MATRIX:
-      BLI_assert_unreachable();
-      break;
     case SOCK_STRING: {
       std::string value = IDP_String(&property);
       new (r_value) bke::SocketValueVariant(std::move(value));
@@ -683,12 +675,15 @@ static Vector<OutputAttributeToStore> compute_attributes_to_store(
       for (const OutputAttributeInfo &output_info : outputs_info) {
         const CPPType &type = output_info.field.cpp_type();
         const bke::AttributeValidator validator = attributes.lookup_validator(output_info.name);
+
         OutputAttributeToStore store{
             component_type,
             domain,
             output_info.name,
             GMutableSpan{
-                type, MEM_malloc_arrayN(domain_size, type.size(), __func__), domain_size}};
+                type,
+                MEM_mallocN_aligned(type.size() * domain_size, type.alignment(), __func__),
+                domain_size}};
         fn::GField field = validator.validate_field_if_necessary(output_info.field);
         field_evaluator.add_with_destination(std::move(field), store.data);
         attributes_to_store.append(store);
@@ -877,7 +872,7 @@ void update_input_properties_from_node_tree(const bNodeTree &tree,
     if (new_prop == nullptr) {
       /* Out of the set of supported input sockets, only
        * geometry sockets aren't added to the modifier. */
-      BLI_assert(socket_type == SOCK_GEOMETRY);
+      BLI_assert(ELEM(socket_type, SOCK_GEOMETRY, SOCK_MATRIX));
       continue;
     }
 
