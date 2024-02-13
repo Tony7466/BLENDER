@@ -220,6 +220,6 @@ void insert_key_rna(PointerRNA *rna_pointer,
                     eBezTriple_KeyframeType key_type,
                     Main *bmain,
                     ReportList *reports,
-                    const AnimationEvalContext *anim_eval_context);
+                    const AnimationEvalContext &anim_eval_context);
 
 }  // namespace blender::animrig

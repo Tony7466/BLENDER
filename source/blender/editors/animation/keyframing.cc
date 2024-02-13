@@ -370,7 +370,7 @@ static int insert_key(bContext *C, wmOperator *op)
                             key_type,
                             bmain,
                             op->reports,
-                            &anim_eval_context);
+                            anim_eval_context);
   }
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);

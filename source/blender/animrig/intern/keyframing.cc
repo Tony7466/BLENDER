@@ -931,7 +931,7 @@ void insert_key_rna(PointerRNA *rna_pointer,
                     const eBezTriple_KeyframeType key_type,
                     Main *bmain,
                     ReportList *reports,
-                    const AnimationEvalContext *anim_eval_context)
+                    const AnimationEvalContext &anim_eval_context)
 {
   ID *id = rna_pointer->owner_id;
   bAction *action = id_action_ensure(bmain, id);
@@ -951,7 +951,7 @@ void insert_key_rna(PointerRNA *rna_pointer,
   NlaKeyframingContext *nla_context = nullptr;
   if (adt && adt->action == action) {
     nla_context = BKE_animsys_get_nla_keyframing_context(
-        &nla_cache, rna_pointer, adt, anim_eval_context);
+        &nla_cache, rna_pointer, adt, &anim_eval_context);
   }
 
   const float nla_frame = BKE_nla_tweakedit_remap(adt, scene_frame, NLATIME_CONVERT_UNMAP);
@@ -982,7 +982,7 @@ void insert_key_rna(PointerRNA *rna_pointer,
                                           prop,
                                           rna_values.as_mutable_span(),
                                           -1,
-                                          anim_eval_context,
+                                          &anim_eval_context,
                                           nullptr,
                                           successful_remaps);
 
