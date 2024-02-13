@@ -25,11 +25,10 @@
 #include "BKE_anim_path.h"
 #include "BKE_curve.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_lattice.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object_types.hh"
 
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Curve Deform Internal Utilities
