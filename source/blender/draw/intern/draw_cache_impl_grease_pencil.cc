@@ -351,11 +351,11 @@ static void grease_pencil_weight_batch_ensure(Object &object,
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     const VArray<bool> cyclic = curves.cyclic();
     IndexMaskMemory memory;
-    const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
+    const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
         object, info.drawing, memory);
 
     /* Fill line indices. */
-    editable_strokes.foreach_index([&](const int curve_i) {
+    visible_strokes.foreach_index([&](const int curve_i) {
       const IndexRange points = points_by_curve[curve_i];
       const bool is_cyclic = cyclic[curve_i];
 
@@ -372,7 +372,7 @@ static void grease_pencil_weight_batch_ensure(Object &object,
 
     /* Fill point indices. */
     if (!layer->is_locked()) {
-      editable_strokes.foreach_index([&](const int curve_i) {
+      visible_strokes.foreach_index([&](const int curve_i) {
         const IndexRange points = points_by_curve[curve_i];
         for (const int point : points) {
           GPU_indexbuf_add_generic_vert(&epb, point + drawing_start_offset);
