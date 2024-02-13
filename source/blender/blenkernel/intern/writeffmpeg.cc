@@ -25,11 +25,10 @@
 #  endif
 
 #  include "BLI_endian_defines.h"
-#  include "BLI_hash.hh"
-#  include "BLI_map.hh"
 #  include "BLI_math_base.h"
 #  include "BLI_threads.h"
 #  include "BLI_utildefines.h"
+#  include "BLI_vector.hh"
 
 #  include "BKE_global.hh"
 #  include "BKE_idprop.h"
@@ -61,27 +60,23 @@ extern "C" {
 struct StampData;
 
 /* libswscale context creation and destruction is expensive.
- * Maintain a cache of pre-created contexts. */
-struct SwscaleContextKey {
-  uint64_t hash() const
-  {
-    using blender::get_default_hash;
-    return get_default_hash(get_default_hash(width, height, src_format, dst_format),
-                            get_default_hash(flags));
-  }
-  bool operator==(const SwscaleContextKey &o) const
-  {
-    return width == o.width && height == o.height && src_format == o.src_format &&
-           dst_format == o.dst_format && flags == o.flags;
-  }
+ * Maintain a cache of already created contexts. */
 
-  int width, height;
-  AVPixelFormat src_format, dst_format;
-  int flags;
+constexpr int64_t swscale_cache_max_entries = 32;
+
+struct SwscaleContext {
+  int width = 0, height = 0;
+  AVPixelFormat src_format = AV_PIX_FMT_NONE, dst_format = AV_PIX_FMT_NONE;
+  int flags = 0;
+
+  SwsContext *context = nullptr;
+  int64_t last_use_timestamp = 0;
+  bool is_used = false;
 };
 
 static ThreadMutex swscale_cache_lock = PTHREAD_MUTEX_INITIALIZER;
-static blender::Map<SwscaleContextKey, SwsContext *> *swscale_cache = nullptr;
+static int64_t swscale_cache_timestamp = 0;
+static blender::Vector<SwscaleContext> *swscale_cache = nullptr;
 
 struct FFMpegContext {
   int ffmpeg_type;
@@ -731,38 +726,121 @@ static SwsContext *sws_create_context(
   return c;
 }
 
+static void init_swscale_cache_if_needed()
+{
+  if (swscale_cache == nullptr) {
+    swscale_cache = new blender::Vector<SwscaleContext>();
+    swscale_cache_timestamp = 0;
+  }
+}
+
+static bool remove_oldest_swscale_context()
+{
+  int64_t oldest_index = -1;
+  int64_t oldest_time = 0;
+  for (int64_t index = 0; index < swscale_cache->size(); index++) {
+    SwscaleContext &ctx = (*swscale_cache)[index];
+    if (ctx.is_used) {
+      continue;
+    }
+    int64_t time = swscale_cache_timestamp - ctx.last_use_timestamp;
+    if (time > oldest_time) {
+      oldest_time = time;
+      oldest_index = index;
+    }
+  }
+
+  if (oldest_index >= 0) {
+    SwscaleContext &ctx = (*swscale_cache)[oldest_index];
+    sws_freeContext(ctx.context);
+    swscale_cache->remove_and_reorder(oldest_index);
+    return true;
+  }
+  return false;
+}
+
+static void maintain_swscale_cache_size()
+{
+  while (swscale_cache->size() > swscale_cache_max_entries) {
+    if (!remove_oldest_swscale_context()) {
+      /* Could not remove anything (all contexts are actively used),
+       * stop trying. */
+      break;
+    }
+  }
+}
+
 SwsContext *BKE_ffmpeg_sws_get_context(
     int width, int height, int av_src_format, int av_dst_format, int sws_flags)
 {
-  SwsContext *ctx = nullptr;
-  SwscaleContextKey key;
-  key.width = width;
-  key.height = height;
-  key.src_format = AVPixelFormat(av_src_format);
-  key.dst_format = AVPixelFormat(av_dst_format);
-  key.flags = sws_flags;
-
   BLI_mutex_lock(&swscale_cache_lock);
 
-  if (swscale_cache == nullptr) {
-    swscale_cache = new blender::Map<SwscaleContextKey, SwsContext *>();
+  init_swscale_cache_if_needed();
+
+  swscale_cache_timestamp++;
+
+  /* Search for unused context that has suitable parameters. */
+  SwsContext *ctx = nullptr;
+  for (SwscaleContext &c : *swscale_cache) {
+    if (!c.is_used && c.width == width && c.height == height &&
+        c.src_format == av_src_format && c.dst_format == av_dst_format &&
+        c.flags == sws_flags)
+    {
+      ctx = c.context;
+      /* Mark as used. */
+      c.is_used = true;
+      c.last_use_timestamp = swscale_cache_timestamp;
+      break;
+    }
+  }
+  if (ctx == nullptr) {
+    /* No free matching context in cache: create a new one. */
+    ctx = sws_create_context(width, height, av_src_format, av_dst_format, sws_flags);
+    SwscaleContext c;
+    c.width = width;
+    c.height = height;
+    c.src_format = AVPixelFormat(av_src_format);
+    c.dst_format = AVPixelFormat(av_dst_format);
+    c.flags = sws_flags;
+    c.context = ctx;
+    c.is_used = true;
+    c.last_use_timestamp = swscale_cache_timestamp;
+    swscale_cache->append(c);
+
+    maintain_swscale_cache_size();
   }
 
-  ctx = swscale_cache->lookup_default(key, nullptr);
-  if (ctx == nullptr) {
-    ctx = sws_create_context(width, height, av_src_format, av_dst_format, sws_flags);
-    swscale_cache->add(key, ctx);
-  }
   BLI_mutex_unlock(&swscale_cache_lock);
   return ctx;
 }
+
+void BKE_ffmpeg_sws_release_context(SwsContext *ctx)
+{
+  BLI_mutex_lock(&swscale_cache_lock);
+  init_swscale_cache_if_needed();
+
+  bool found = false;
+  for (SwscaleContext &c : *swscale_cache) {
+    if (c.context == ctx) {
+      BLI_assert_msg(c.is_used, "Releasing ffmpeg swscale context that is not in use");
+      c.is_used = false;
+      found = true;
+      break;
+    }
+  }
+  BLI_assert_msg(found, "Releasing ffmpeg swscale context that is not in cache");
+  maintain_swscale_cache_size();
+
+  BLI_mutex_unlock(&swscale_cache_lock);
+}
+
 
 void BKE_ffmpeg_exit()
 {
   BLI_mutex_lock(&swscale_cache_lock);
   if (swscale_cache != nullptr) {
-    for (SwsContext *ctx : swscale_cache->values()) {
-      sws_freeContext(ctx);
+    for (SwscaleContext &c : *swscale_cache) {
+      sws_freeContext(c.context);
     }
     delete swscale_cache;
     swscale_cache = nullptr;
@@ -1743,7 +1821,10 @@ static void end_ffmpeg_impl(FFMpegContext *context, int is_autosplit)
     context->audio_deinterleave_buffer = nullptr;
   }
 
-  context->img_convert_ctx = nullptr;
+  if (context->img_convert_ctx != nullptr) {
+    BKE_ffmpeg_sws_release_context(context->img_convert_ctx);
+    context->img_convert_ctx = nullptr;
+  }
 }
 
 void BKE_ffmpeg_end(void *context_v)
