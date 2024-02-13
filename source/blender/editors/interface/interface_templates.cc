@@ -4349,7 +4349,6 @@ static uiBlock *sound_equalizer_clipping_func(bContext *C, ARegion *region, void
 {
   CurveMapping *cumap = static_cast<CurveMapping *>(cumap_v);
   uiBut *bt;
-  uiLayout *row;
   const float width = 8 * UI_UNIT_X;
 
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
@@ -4373,7 +4372,6 @@ static uiBlock *sound_equalizer_clipping_func(bContext *C, ARegion *region, void
   UI_but_func_set(bt, curvemap_buttons_setclip, cumap, nullptr);
 
   UI_block_align_begin(block);
-  // uiLayoutRow(layout, true);
   bt = uiDefButF(block,
                  UI_BTYPE_NUM,
                  0,
@@ -4393,8 +4391,8 @@ static uiBlock *sound_equalizer_clipping_func(bContext *C, ARegion *region, void
                  0,
                  IFACE_("Min Hz:"),
                  0,
-                 4 * UI_UNIT_Y,
-                 2 * width / 2,
+                 3 * UI_UNIT_Y,
+                 width,
                  UI_UNIT_Y,
                  &cumap->clipr.ymin,
                  -FLT_MAX,
@@ -4402,7 +4400,6 @@ static uiBlock *sound_equalizer_clipping_func(bContext *C, ARegion *region, void
                  "");
   UI_but_number_step_size_set(bt, 10);
   UI_but_number_precision_set(bt, 2);
-  // uiLayoutRow(layout, true);
   bt = uiDefButF(block,
                  UI_BTYPE_NUM,
                  0,
@@ -5261,7 +5258,7 @@ static void sound_equalizer_buttons_layout(
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
-                   IFACE_("dB:"),
+                   "dB:",
                    0,
                    2 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
@@ -5275,7 +5272,7 @@ static void sound_equalizer_buttons_layout(
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
-                   IFACE_("Hz:"),
+                   "Hz:",
                    0,
                    1 * UI_UNIT_Y,
                    UI_UNIT_X * 10,

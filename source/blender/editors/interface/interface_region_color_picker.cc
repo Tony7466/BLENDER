@@ -532,7 +532,7 @@ static void ui_block_colorpicker(uiBlock *block,
                  &colormode,
                  0.0,
                  float(PICKER_TYPE_RGB),
-                 TIP_("Red, Green, Blue, Nate"));
+                 TIP_("Red, Green, Blue"));
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_drawflag_disable(bt, UI_BUT_TEXT_LEFT);
   UI_but_func_set(bt, ui_colorpicker_create_mode_cb, bt, nullptr);
