@@ -554,7 +554,7 @@ class NlaInsertTest(AbstractKeyframingTest, unittest.TestCase):
 
     def test_insert_failure(self):
         # If the topmost track is set to "REPLACE" the system will fail
-        # to insert keyframes for any channel that has been defined there.
+        # when trying to insert keys into a layer beneath.
         nla_anim_object = _create_nla_anim_object()
         tracks = nla_anim_object.animation_data.nla_tracks
 
@@ -595,15 +595,16 @@ class NlaInsertTest(AbstractKeyframingTest, unittest.TestCase):
             bpy.ops.anim.keyframe_insert()
 
         base_action = bpy.data.actions["action_base"]
-        # This should add another key to the Location X curve.
+        # This should add keys to Y and Z but not X.
         self.assertEqual(len(base_action.fcurves.find("location", index=0).keyframe_points), 2)
         self.assertEqual(len(base_action.fcurves.find("location", index=1).keyframe_points), 1)
         self.assertEqual(len(base_action.fcurves.find("location", index=2).keyframe_points), 1)
 
         # The keyframe value should not be changed even though the position of the
         # object is modified by the additive layer.
-        self.assertEqual(nla_anim_object.location.x, 2)
-        self.assertEqual(base_action.fcurves.find("location", index=0).keyframe_points[-1].co[1], 1)
+        self.assertAlmostEqual(nla_anim_object.location.x, 2.0, 8)
+        fcurve_loc_x = base_action.fcurves.find("location", index=0)
+        self.assertAlmostEqual(fcurve_loc_x.keyframe_points[-1].co[1], 1.0, 8)
 
 
 
