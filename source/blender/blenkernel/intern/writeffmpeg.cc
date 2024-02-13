@@ -782,9 +782,8 @@ SwsContext *BKE_ffmpeg_sws_get_context(
   /* Search for unused context that has suitable parameters. */
   SwsContext *ctx = nullptr;
   for (SwscaleContext &c : *swscale_cache) {
-    if (!c.is_used && c.width == width && c.height == height &&
-        c.src_format == av_src_format && c.dst_format == av_dst_format &&
-        c.flags == sws_flags)
+    if (!c.is_used && c.width == width && c.height == height && c.src_format == av_src_format &&
+        c.dst_format == av_dst_format && c.flags == sws_flags)
     {
       ctx = c.context;
       /* Mark as used. */
@@ -833,7 +832,6 @@ void BKE_ffmpeg_sws_release_context(SwsContext *ctx)
 
   BLI_mutex_unlock(&swscale_cache_lock);
 }
-
 
 void BKE_ffmpeg_exit()
 {
