@@ -37,6 +37,9 @@ static void node_declare(NodeDeclarationBuilder &b)
     const eCustomDataType data_type = eCustomDataType(node->custom1);
     b.add_output(data_type, "Value").dependent_field({3, 4});
   }
+  b.add_output<decl::Bool>("Is Valid")
+      .dependent_field({3, 4})
+      .description("Whether the sampling was successfull");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -84,6 +87,7 @@ class SampleNearestSurfaceInGroupFunction : public mf::MultiFunction {
       builder.single_input<int>("Sample ID");
       builder.single_output<int>("Triangle Index");
       builder.single_output<float3>("Sample Position");
+      builder.single_output<bool>("Is Valid");
       return signature;
     }();
     this->set_signature(&signature);
@@ -130,6 +134,7 @@ class SampleNearestSurfaceInGroupFunction : public mf::MultiFunction {
     MutableSpan<int> triangle_index = params.uninitialized_single_output<int>(2, "Triangle Index");
     MutableSpan<float3> sample_position = params.uninitialized_single_output<float3>(
         3, "Sample Position");
+    MutableSpan<bool> is_valid_span = params.uninitialized_single_output<bool>(4, "Is Valid");
 
     mask.foreach_index([&](const int i) {
       const float3 position = positions[i];
@@ -138,6 +143,7 @@ class SampleNearestSurfaceInGroupFunction : public mf::MultiFunction {
       if (group_index == -1) {
         triangle_index[i] = 0;
         sample_position[i] = float3(0, 0, 0);
+        is_valid_span[i] = false;
         return;
       }
       const BVHTreeFromMesh &bvh = bvh_trees_[group_index];
@@ -147,6 +153,7 @@ class SampleNearestSurfaceInGroupFunction : public mf::MultiFunction {
           bvh.tree, position, &nearest, bvh.nearest_callback, const_cast<BVHTreeFromMesh *>(&bvh));
       triangle_index[i] = nearest.index;
       sample_position[i] = nearest.co;
+      is_valid_span[i] = true;
     });
   }
 
@@ -183,6 +190,7 @@ static void node_geo_exec(GeoNodeExecParams params)
        params.extract_input<Field<int>>("Sample Group ID")});
   Field<int> triangle_indices(nearest_op, 0);
   Field<float3> nearest_positions(nearest_op, 1);
+  Field<bool> is_valid(nearest_op, 2);
 
   Field<float3> bary_weights = Field<float3>(FieldOperation::Create(
       std::make_shared<bke::mesh_surface_sample::BaryWeightFromPositionFn>(geometry),
@@ -194,6 +202,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       {triangle_indices, bary_weights});
 
   params.set_output("Value", GField(sample_op));
+  params.set_output("Is Valid", is_valid);
 }
 
 static void node_rna(StructRNA *srna)
