@@ -1738,7 +1738,8 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_boolean(func, "use_negative_slope", false, "", "Use a negative slope by default");
   RNA_def_boolean(func, "show_tone", false, "", "Show tone options");
 
-  func = RNA_def_function(srna, "template_frequency_mapping", "uiTemplateFrequencyMapping");
+  func = RNA_def_function(
+      srna, "template_sound_equalizer_mapping", "uiTemplateSoundEqualizerMapping");
   RNA_def_function_ui_description(
       func, "Item. A mapping widget used for frequency e.g sound equalization");
   api_ui_item_rna_common(func);

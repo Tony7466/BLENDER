@@ -4345,10 +4345,11 @@ static uiBlock *curvemap_clipping_func(bContext *C, ARegion *region, void *cumap
 }
 
 /* NOTE: this is a block-menu, needs 0 events, otherwise the menu closes */
-static uiBlock *frequencymap_clipping_func(bContext *C, ARegion *region, void *cumap_v)
+static uiBlock *sound_equalizer_clipping_func(bContext *C, ARegion *region, void *cumap_v)
 {
   CurveMapping *cumap = static_cast<CurveMapping *>(cumap_v);
   uiBut *bt;
+  uiLayout *row;
   const float width = 8 * UI_UNIT_X;
 
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
@@ -4367,25 +4368,23 @@ static uiBlock *frequencymap_clipping_func(bContext *C, ARegion *region, void *c
                     &cumap->flag,
                     0.0,
                     0.0,
-                    10,
-                    0,
                     "");
+
   UI_but_func_set(bt, curvemap_buttons_setclip, cumap, nullptr);
 
   UI_block_align_begin(block);
+  // uiLayoutRow(layout, true);
   bt = uiDefButF(block,
                  UI_BTYPE_NUM,
                  0,
                  IFACE_("Min dB:"),
                  0,
                  4 * UI_UNIT_Y,
-                 width,
+                 width / 2,
                  UI_UNIT_Y,
                  &cumap->clipr.xmin,
                  -FLT_MAX,
                  cumap->clipr.xmax,
-                 0,
-                 0,
                  "");
   UI_but_number_step_size_set(bt, 10);
   UI_but_number_precision_set(bt, 2);
@@ -4394,17 +4393,16 @@ static uiBlock *frequencymap_clipping_func(bContext *C, ARegion *region, void *c
                  0,
                  IFACE_("Min Hz:"),
                  0,
-                 3 * UI_UNIT_Y,
-                 width,
+                 4 * UI_UNIT_Y,
+                 2 * width / 2,
                  UI_UNIT_Y,
                  &cumap->clipr.ymin,
                  -FLT_MAX,
                  cumap->clipr.ymax,
-                 0,
-                 0,
                  "");
   UI_but_number_step_size_set(bt, 10);
   UI_but_number_precision_set(bt, 2);
+  // uiLayoutRow(layout, true);
   bt = uiDefButF(block,
                  UI_BTYPE_NUM,
                  0,
@@ -4416,8 +4414,6 @@ static uiBlock *frequencymap_clipping_func(bContext *C, ARegion *region, void *c
                  &cumap->clipr.xmax,
                  cumap->clipr.xmin,
                  FLT_MAX,
-                 0,
-                 0,
                  "");
   UI_but_number_step_size_set(bt, 10);
   UI_but_number_precision_set(bt, 2);
@@ -4432,8 +4428,6 @@ static uiBlock *frequencymap_clipping_func(bContext *C, ARegion *region, void *c
                  &cumap->clipr.ymax,
                  cumap->clipr.ymin,
                  FLT_MAX,
-                 0,
-                 0,
                  "");
   UI_but_number_step_size_set(bt, 10);
   UI_but_number_precision_set(bt, 2);
@@ -5073,7 +5067,7 @@ void uiTemplateCurveMapping(uiLayout *layout,
  *
  * \param labeltype: Used for defining which curve-channels to show.
  */
-static void frequencymap_buttons_layout(
+static void sound_equalizer_buttons_layout(
     uiLayout *layout, PointerRNA *ptr, char labeltype, bool neg_slope, RNAUpdateCb *cb)
 {
   CurveMapping *cumap = static_cast<CurveMapping *>(ptr->data);
@@ -5142,8 +5136,16 @@ static void frequencymap_buttons_layout(
 
   /* Clipping button. */
   const int icon = (cumap->flag & CUMA_DO_CLIP) ? ICON_CLIPUV_HLT : ICON_CLIPUV_DEHLT;
-  bt = uiDefIconBlockBut(
-      block, frequencymap_clipping_func, cumap, 0, icon, 0, 0, dx, dx, TIP_("Clipping Options"));
+  bt = uiDefIconBlockBut(block,
+                         sound_equalizer_clipping_func,
+                         cumap,
+                         0,
+                         icon,
+                         0,
+                         0,
+                         dx,
+                         dx,
+                         TIP_("Clipping Options"));
   bt->drawflag &= ~UI_BUT_ICON_LEFT;
   UI_but_funcN_set(bt, rna_update_cb, MEM_dupallocN(cb), nullptr);
 
@@ -5259,7 +5261,7 @@ static void frequencymap_buttons_layout(
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
-                   "X:",
+                   IFACE_("dB:"),
                    0,
                    2 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
@@ -5267,15 +5269,13 @@ static void frequencymap_buttons_layout(
                    &cmp->x,
                    bounds.xmin,
                    bounds.xmax,
-                   0,
-                   0,
-                   "");
+                   TIP_("X axis"));
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
     bt = uiDefButF(block,
                    UI_BTYPE_NUM,
                    0,
-                   "Y:",
+                   IFACE_("Hz:"),
                    0,
                    1 * UI_UNIT_Y,
                    UI_UNIT_X * 10,
@@ -5283,9 +5283,7 @@ static void frequencymap_buttons_layout(
                    &cmp->y,
                    bounds.ymin,
                    bounds.ymax,
-                   0,
-                   0,
-                   "");
+                   TIP_("Y axis"));
     UI_but_number_step_size_set(bt, 1);
     UI_but_number_precision_set(bt, 5);
 
@@ -5313,7 +5311,7 @@ static void frequencymap_buttons_layout(
   UI_block_funcN_set(block, nullptr, nullptr, nullptr);
 }
 
-void uiTemplateFrequencyMapping(
+void uiTemplateSoundEqualizerMapping(
     uiLayout *layout, PointerRNA *ptr, const char *propname, int type, bool neg_slope)
 {
   PropertyRNA *prop = RNA_struct_find_property(ptr, propname);
@@ -5341,7 +5339,7 @@ void uiTemplateFrequencyMapping(
   ID *id = cptr.owner_id;
   UI_block_lock_set(block, (id && ID_IS_LINKED(id)), ERROR_LIBDATA_MESSAGE);
 
-  frequencymap_buttons_layout(layout, &cptr, type, neg_slope, cb);
+  sound_equalizer_buttons_layout(layout, &cptr, type, neg_slope, cb);
 
   UI_block_lock_clear(block);
 

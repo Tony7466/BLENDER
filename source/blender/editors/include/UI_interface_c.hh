@@ -2486,7 +2486,7 @@ void uiTemplateCurveMapping(uiLayout *layout,
                             bool neg_slope,
                             bool tone);
 
-void uiTemplateFrequencyMapping(
+void uiTemplateSoundEqualizerMapping(
     uiLayout *layout, PointerRNA *ptr, const char *propname, int type, bool neg_slope);
 
 /**

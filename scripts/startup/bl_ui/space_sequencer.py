@@ -2682,7 +2682,7 @@ class SEQUENCER_PT_modifiers(SequencerButtonsPanel, Panel):
                         for sound_eq in mod.graphics:
                             col = flow.column()
                             box = col.box()
-                            box.template_frequency_mapping(
+                            box.template_sound_equalizer_mapping(
                                 sound_eq,
                                 "curve_mapping",
                                 type='NONE',
