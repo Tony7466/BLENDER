@@ -33,8 +33,6 @@
 #include "WM_types.hh"
 
 #include "RNA_access.hh"
-#include "RNA_define.hh"
-#include "RNA_enum_types.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -971,7 +969,7 @@ static void buttons_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_buttons()
 {
-  SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype buttons"));
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_PROPERTIES;
@@ -1048,7 +1046,7 @@ void ED_spacetype_buttons()
   art->message_subscribe = buttons_navigation_bar_region_message_subscribe;
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }
 
 /** \} */

@@ -17,7 +17,6 @@ set(INC
   ../render
   ../windowmanager
   ../../../intern/eigen
-  ../../../extern/fmtlib/include
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -46,6 +45,8 @@ set(SRC
   intern/MOD_explode.cc
   intern/MOD_fluid.cc
   intern/MOD_grease_pencil_color.cc
+  intern/MOD_grease_pencil_dash.cc
+  intern/MOD_grease_pencil_lattice.cc
   intern/MOD_grease_pencil_mirror.cc
   intern/MOD_grease_pencil_noise.cc
   intern/MOD_grease_pencil_offset.cc
@@ -123,7 +124,7 @@ set(LIB
   PRIVATE bf::depsgraph
   PUBLIC bf::dna
   PRIVATE bf::intern::guardedalloc
-  extern_fmtlib
+  PRIVATE bf::extern::fmtlib
 )
 
 if(WITH_ALEMBIC)

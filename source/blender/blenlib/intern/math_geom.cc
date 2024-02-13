@@ -11,7 +11,6 @@
 #include "BLI_math_base.hh"
 #include "BLI_math_geom.h"
 
-#include "BLI_math_base_safe.h"
 #include "BLI_math_bits.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
@@ -156,7 +155,7 @@ float cross_poly_v2(const float verts[][2], uint nr)
   co_curr = verts[0];
   cross = 0.0f;
   for (a = 0; a < nr; a++) {
-    cross += (co_curr[0] - co_prev[0]) * (co_curr[1] + co_prev[1]);
+    cross += (co_prev[0] - co_curr[0]) * (co_curr[1] + co_prev[1]);
     co_prev = co_curr;
     co_curr += 2;
   }
@@ -1517,19 +1516,14 @@ bool isect_point_tri_v2_cw(const float pt[2],
 
 int isect_point_tri_v2(const float pt[2], const float v1[2], const float v2[2], const float v3[2])
 {
-  if (line_point_side_v2(v1, v2, pt) >= 0.0f) {
-    if (line_point_side_v2(v2, v3, pt) >= 0.0f) {
-      if (line_point_side_v2(v3, v1, pt) >= 0.0f) {
-        return 1;
-      }
-    }
+  float side12 = line_point_side_v2(v1, v2, pt);
+  float side23 = line_point_side_v2(v2, v3, pt);
+  float side31 = line_point_side_v2(v3, v1, pt);
+  if (side12 >= 0.0f && side23 >= 0.0f && side31 >= 0.0f) {
+    return 1;
   }
-  else {
-    if (!(line_point_side_v2(v2, v3, pt) >= 0.0f)) {
-      if (!(line_point_side_v2(v3, v1, pt) >= 0.0f)) {
-        return -1;
-      }
-    }
+  if (side12 <= 0.0f && side23 <= 0.0f && side31 <= 0.0f) {
+    return -1;
   }
 
   return 0;
@@ -1538,25 +1532,16 @@ int isect_point_tri_v2(const float pt[2], const float v1[2], const float v2[2], 
 int isect_point_quad_v2(
     const float pt[2], const float v1[2], const float v2[2], const float v3[2], const float v4[2])
 {
-  if (line_point_side_v2(v1, v2, pt) >= 0.0f) {
-    if (line_point_side_v2(v2, v3, pt) >= 0.0f) {
-      if (line_point_side_v2(v3, v4, pt) >= 0.0f) {
-        if (line_point_side_v2(v4, v1, pt) >= 0.0f) {
-          return 1;
-        }
-      }
-    }
+  float side12 = line_point_side_v2(v1, v2, pt);
+  float side23 = line_point_side_v2(v2, v3, pt);
+  float side34 = line_point_side_v2(v3, v4, pt);
+  float side41 = line_point_side_v2(v4, v1, pt);
+  if (side12 >= 0.0f && side23 >= 0.0f && side34 >= 0.0f && side41 >= 0.0f) {
+    return 1;
   }
-  else {
-    if (!(line_point_side_v2(v2, v3, pt) >= 0.0f)) {
-      if (!(line_point_side_v2(v3, v4, pt) >= 0.0f)) {
-        if (!(line_point_side_v2(v4, v1, pt) >= 0.0f)) {
-          return -1;
-        }
-      }
-    }
+  if (side12 <= 0.0f && side23 <= 0.0f && side34 <= 0.0f && side41 <= 0.0f) {
+    return -1;
   }
-
   return 0;
 }
 

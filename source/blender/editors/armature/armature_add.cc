@@ -22,19 +22,16 @@
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
 #include "BKE_armature.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
-#include "BKE_deform.hh"
 #include "BKE_fcurve.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
-#include "BKE_library.hh"
-#include "BKE_main.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"

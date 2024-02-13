@@ -42,7 +42,7 @@
 #include "BKE_curveprofile.h"
 #include "BKE_movieclip.h"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 #include "BKE_tracking.h"
 #include "BKE_unit.hh"
@@ -56,7 +56,6 @@
 
 #include "UI_interface.hh"
 #include "UI_string_search.hh"
-#include "UI_view2d.hh"
 
 #include "BLF_api.hh"
 
@@ -70,8 +69,6 @@
 #include "wm_event_system.hh"
 
 #ifdef WITH_INPUT_IME
-#  include "BLT_lang.h"
-#  include "BLT_translation.h"
 #  include "wm_window.hh"
 #endif
 
@@ -5624,6 +5621,7 @@ static bool ui_numedit_but_SLI(uiBut *but,
                                const bool snap,
                                const bool shift)
 {
+  uiButNumberSlider *slider_but = reinterpret_cast<uiButNumberSlider *>(but);
   float cursor_x_range, f, tempf, softmin, softmax, softrange;
   int temp, lvalue;
   bool changed = false;
@@ -5655,7 +5653,7 @@ static bool ui_numedit_but_SLI(uiBut *but,
     const float size = (is_horizontal) ? BLI_rctf_size_x(&but->rect) :
                                          -BLI_rctf_size_y(&but->rect);
     cursor_x_range = size * (but->softmax - but->softmin) /
-                     (but->softmax - but->softmin + but->a1);
+                     (but->softmax - but->softmin + slider_but->step_size);
   }
   else {
     const float ofs = (BLI_rctf_size_y(&but->rect) / 2.0f);

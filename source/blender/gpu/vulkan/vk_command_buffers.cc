@@ -254,8 +254,12 @@ void VKCommandBuffers::bind(const VKDescriptorSet &descriptor_set,
     ensure_no_draw_commands();
     type = Type::DataTransferCompute;
   }
-  if (bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+  else if (bind_point == VK_PIPELINE_BIND_POINT_GRAPHICS) {
     type = Type::Graphics;
+  }
+  else {
+    BLI_assert_unreachable();
+    return;
   }
 
   VKCommandBuffer &command_buffer = command_buffer_get(type);
