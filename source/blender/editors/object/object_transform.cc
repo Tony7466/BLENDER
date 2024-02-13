@@ -54,7 +54,7 @@
 #include "BKE_scene.hh"
 #include "BKE_tracking.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
