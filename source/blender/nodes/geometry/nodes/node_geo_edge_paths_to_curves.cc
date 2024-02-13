@@ -24,6 +24,80 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Geometry>("Curves").propagate_all();
 }
 
+constexpr int non_checked = 0;
+
+static std::pair<int, int> explore_branch(const Span<int> next_index,
+                                          MutableSpan<int> branch_size,
+                                          const int vert_i)
+{
+  int total_size = 0;
+  int vert_iter = vert_i;
+  while (branch_size[vert_iter] == non_checked) {
+    total_size++;
+    branch_size[vert_iter] = -total_size;
+    vert_iter = next_index[vert_iter];
+  }
+  return {total_size, vert_iter};
+}
+
+static void fill_cycle(const Span<int> next_index, MutableSpan<int> branch_size, const int vert_i)
+{
+  BLI_assert(branch_size[vert_i] < 0);
+  BLI_assert(next_index[vert_i] != vert_i);
+  BLI_assert(-branch_size[vert_i] > -branch_size[next_index[vert_i]]);
+
+  const int total_branch_size = 1 + math::abs<int>(branch_size[vert_i]);
+  const int dangling_part = math::abs<int>(branch_size[next_index[vert_i]]);
+  const int cycle_size = total_branch_size - dangling_part;
+
+  int vert_iter = next_index[vert_i];
+  branch_size[vert_i] = cycle_size;
+  while (vert_iter != vert_i) {
+    branch_size[vert_iter] = cycle_size;
+    vert_iter = next_index[vert_iter];
+  }
+}
+
+static void fill_branch(const Span<int> next_index,
+                        MutableSpan<int> branch_size,
+                        const int vert_i,
+                        const int total_size)
+{
+  BLI_assert(branch_size[vert_i] < 0);
+  int vert_iter = vert_i;
+  int size = total_size;
+  while (branch_size[vert_iter] < 0) {
+    branch_size[vert_iter] = size;
+    size--;
+    vert_iter = next_index[vert_iter];
+  }
+}
+
+static int size_of_branch(const Span<int> next_index,
+                          MutableSpan<int> branch_size,
+                          const int vert_i)
+{
+  BLI_assert(!std::any_of(
+      branch_size.begin(), branch_size.end(), [](const int size) { return size < 0; }));
+  if (branch_size[vert_i] != non_checked) {
+    return branch_size[vert_i];
+  }
+
+  const auto [size, last_i] = explore_branch(next_index, branch_size, vert_i);
+
+  const bool is_dead_end = last_i == next_index[last_i];
+  const bool unknown_root = branch_size[last_i] < 0;
+  if (!is_dead_end && unknown_root) {
+    fill_cycle(next_index, branch_size, vert_i);
+  }
+
+  BLI_assert(branch_size[last_i] < 0 || branch_size[last_i] > 0);
+  const int total_size = size - 1 + math::max<int>(1, branch_size[last_i]);
+
+  fill_branch(next_index, branch_size, vert_i, total_size);
+  return total_size;
+}
+
 static Curves *edge_paths_to_curves_convert(
     const Mesh &mesh,
     const IndexMask &start_verts_mask,
@@ -50,54 +124,10 @@ static Curves *edge_paths_to_curves_convert(
     }
   });
 
-  const constexpr int non_checked = -1;
-  const constexpr int in_progress = 0;
-
-  Array<int> rank(mesh.verts_num, non_checked);
-  const auto rank_for_vertex = [&](const int vertex) -> int {
-    if (rank[vertex] != non_checked) {
-      return rank[vertex];
-    }
-
-    int total_rank = 0;
-    int last_index = vertex;
-    for (; rank[last_index] == non_checked; last_index = next_indices[last_index]) {
-      rank[last_index] = in_progress;
-      total_rank++;
-    }
-
-    const bool end_is_loop = last_index != next_indices[last_index];
-    const bool end_is_open = rank[last_index] == in_progress;
-    if (UNLIKELY(end_is_loop && end_is_open)) {
-      int rank_of_loop = 1;
-      for (int current_vert = next_indices[last_index]; current_vert != last_index;
-           current_vert = next_indices[current_vert])
-      {
-        rank_of_loop++;
-      }
-      rank[last_index] = rank_of_loop;
-      for (int current_vert = next_indices[last_index]; current_vert != last_index;
-           current_vert = next_indices[current_vert])
-      {
-        rank[current_vert] = rank_of_loop;
-      }
-    }
-    else if (LIKELY(!ELEM(rank[last_index], in_progress, non_checked))) {
-      total_rank += rank[last_index];
-    }
-
-    for (int current_vert = vertex; rank[current_vert] == in_progress;
-         current_vert = next_indices[current_vert])
-    {
-      rank[current_vert] = total_rank;
-      total_rank--;
-    }
-    return rank[vertex];
-  };
-
+  Array<int> branch_size(mesh.verts_num, non_checked);
   Array<int> curve_offsets(valid_start_verts.size() + 1);
   valid_start_verts.foreach_index([&](const int first_vert, const int vert_pos) {
-    curve_offsets[vert_pos] = rank_for_vertex(first_vert);
+    curve_offsets[vert_pos] = size_of_branch(next_indices, branch_size, first_vert);
   });
 
   OffsetIndices<int> curves = offset_indices::accumulate_counts_to_offsets(curve_offsets);
