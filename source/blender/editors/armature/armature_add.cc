@@ -22,19 +22,16 @@
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
 #include "BKE_armature.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
 #include "BKE_fcurve.h"
 #include "BKE_idprop.h"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
-#include "BKE_library.hh"
-#include "BKE_main.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -179,7 +176,7 @@ static int armature_click_extrude_exec(bContext *C, wmOperator * /*op*/)
       if (flipbone == nullptr) {
         break;
       }
-      SWAP(EditBone *, flipbone, ebone);
+      std::swap(flipbone, ebone);
     }
 
     newbone = ED_armature_ebone_add(arm, ebone->name);
@@ -1493,7 +1490,7 @@ static int armature_extrude_exec(bContext *C, wmOperator *op)
               if (flipbone == nullptr) {
                 break;
               }
-              SWAP(EditBone *, flipbone, ebone);
+              std::swap(flipbone, ebone);
             }
 
             totbone++;
@@ -1567,7 +1564,7 @@ static int armature_extrude_exec(bContext *C, wmOperator *op)
 
             /* restore ebone if we were flipping */
             if (a == 1 && flipbone) {
-              SWAP(EditBone *, flipbone, ebone);
+              std::swap(flipbone, ebone);
             }
           }
         }

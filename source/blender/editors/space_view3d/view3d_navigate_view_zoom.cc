@@ -13,8 +13,6 @@
 #include "BKE_context.hh"
 #include "BKE_screen.hh"
 
-#include "DEG_depsgraph_query.hh"
-
 #include "WM_api.hh"
 
 #include "RNA_access.hh"
@@ -194,7 +192,7 @@ static float viewzoom_scale_value(const rcti *winrct,
 
     /* intentionally ignore 'zoom_invert' for scale */
     if (zoom_invert_force) {
-      SWAP(float, len_new, len_old);
+      std::swap(len_new, len_old);
     }
 
     zfac = val_orig * (len_old / max_ff(len_new, 1.0f)) / val;
@@ -213,7 +211,7 @@ static float viewzoom_scale_value(const rcti *winrct,
     }
 
     if (zoom_invert != zoom_invert_force) {
-      SWAP(float, len_new, len_old);
+      std::swap(len_new, len_old);
     }
 
     zfac = val_orig * (2.0f * ((len_new / max_ff(len_old, 1.0f)) - 1.0f) + 1.0f) / val;

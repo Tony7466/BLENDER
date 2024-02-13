@@ -13,7 +13,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_anim_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
 #include "BLI_listbase.h"
@@ -25,11 +24,9 @@
 #include "BKE_context.hh"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
-#include "BKE_global.h"
-#include "BKE_main.hh"
+#include "BKE_global.hh"
 #include "BKE_nla.h"
 
-#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
 #include "ED_keyframing.hh"
@@ -237,7 +234,6 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str)
   bContext *C = static_cast<bContext *>(but->block->evil_C);
   ID *id;
   FCurve *fcu;
-  char *path;
   bool ok = false;
 
   /* button must have RNA-pointer to a numeric-capable property */
@@ -269,13 +265,14 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str)
   }
 
   /* get path */
-  path = RNA_path_from_ID_to_property(&but->rnapoin, but->rnaprop);
-  if (path == nullptr) {
+  const std::optional<std::string> path = RNA_path_from_ID_to_property(&but->rnapoin,
+                                                                       but->rnaprop);
+  if (!path) {
     return false;
   }
 
   /* create driver */
-  fcu = verify_driver_fcurve(id, path, but->rnaindex, DRIVER_FCURVE_KEYFRAMES);
+  fcu = verify_driver_fcurve(id, path->c_str(), but->rnaindex, DRIVER_FCURVE_KEYFRAMES);
   if (fcu) {
     ChannelDriver *driver = fcu->driver;
 
@@ -294,8 +291,6 @@ bool ui_but_anim_expression_create(uiBut *but, const char *str)
       ok = true;
     }
   }
-
-  MEM_freeN(path);
 
   return ok;
 }

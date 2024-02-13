@@ -23,7 +23,7 @@
 #include "BKE_curve.hh"
 #include "BKE_fcurve.h"
 #include "BKE_layer.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -1886,14 +1886,14 @@ static void curve_select_shortest_path_curve(Nurb *nu, int vert_src, int vert_ds
   int i;
 
   if (vert_src > vert_dst) {
-    SWAP(int, vert_src, vert_dst);
+    std::swap(vert_src, vert_dst);
   }
 
   if (nu->flagu & CU_NURB_CYCLIC) {
     if (curve_calc_dist_span(nu, vert_src, vert_dst) >
         curve_calc_dist_span(nu, vert_dst, vert_src))
     {
-      SWAP(int, vert_src, vert_dst);
+      std::swap(vert_src, vert_dst);
     }
   }
 

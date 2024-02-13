@@ -22,7 +22,6 @@
 #include "../mathutils/mathutils.h"
 
 #include "DNA_meshdata_types.h"
-#include "DNA_object_types.h"
 
 #include "BKE_customdata.hh"
 
@@ -31,7 +30,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 
 #include "bmesh.hh"
 #include "bmesh_py_types_meshdata.h"

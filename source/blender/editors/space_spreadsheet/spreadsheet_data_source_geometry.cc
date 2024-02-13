@@ -12,7 +12,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
 #include "BKE_lib_id.hh"
@@ -37,7 +37,7 @@
 #include "NOD_geometry_nodes_lazy_function.hh"
 #include "NOD_geometry_nodes_log.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_enum_types.hh"
@@ -487,14 +487,14 @@ std::unique_ptr<ColumnValues> VolumeDataSource::get_column_values(
   if (STREQ(column_id.name, "Grid Name")) {
     return std::make_unique<ColumnValues>(
         IFACE_("Grid Name"), VArray<std::string>::ForFunc(size, [volume](int64_t index) {
-          const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, index);
+          const bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, index);
           return volume_grid->name();
         }));
   }
   if (STREQ(column_id.name, "Data Type")) {
     return std::make_unique<ColumnValues>(
         IFACE_("Data Type"), VArray<std::string>::ForFunc(size, [volume](int64_t index) {
-          const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, index);
+          const bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, index);
           const VolumeGridType type = volume_grid->grid_type();
           const char *name = nullptr;
           RNA_enum_name_from_value(rna_enum_volume_grid_data_type_items, type, &name);
@@ -504,7 +504,7 @@ std::unique_ptr<ColumnValues> VolumeDataSource::get_column_values(
   if (STREQ(column_id.name, "Class")) {
     return std::make_unique<ColumnValues>(
         IFACE_("Class"), VArray<std::string>::ForFunc(size, [volume](int64_t index) {
-          const blender::bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, index);
+          const bke::VolumeGridData *volume_grid = BKE_volume_grid_get(volume, index);
           openvdb::GridClass grid_class = volume_grid->grid_class();
           if (grid_class == openvdb::GridClass::GRID_FOG_VOLUME) {
             return IFACE_("Fog Volume");
