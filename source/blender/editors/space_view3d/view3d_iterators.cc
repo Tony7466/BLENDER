@@ -527,8 +527,8 @@ void mesh_foreachScreenEdge_clip_bb_segment(ViewContext *vc,
   BM_mesh_elem_table_ensure(vc->em->bm, BM_EDGE);
 
   if ((clip_flag & V3D_PROJ_TEST_CLIP_BB) && (vc->rv3d->clipbb != nullptr)) {
-    ED_view3d_clipping_local(vc->rv3d,
-                             vc->obedit->object_to_world().ptr()); /* for local clipping lookups. */
+    ED_view3d_clipping_local(
+        vc->rv3d, vc->obedit->object_to_world().ptr()); /* for local clipping lookups. */
     BKE_mesh_foreach_mapped_edge(
         mesh, vc->em->bm->totedge, mesh_foreachScreenEdge_clip_bb_segment__mapFunc, &data);
   }
@@ -746,7 +746,8 @@ void lattice_foreachScreenVert(ViewContext *vc,
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
   if (clip_flag & V3D_PROJ_TEST_CLIP_BB) {
-    ED_view3d_clipping_local(vc->rv3d, obedit->object_to_world().ptr()); /* for local clipping lookups */
+    ED_view3d_clipping_local(vc->rv3d,
+                             obedit->object_to_world().ptr()); /* for local clipping lookups */
   }
 
   for (i = 0; i < N; i++, bp++, co += 3) {

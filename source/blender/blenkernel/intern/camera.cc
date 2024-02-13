@@ -287,7 +287,9 @@ float BKE_camera_object_dof_distance(const Object *ob)
       sub_v3_v3v3(dof_dir, ob->object_to_world().location(), posemat[3]);
     }
     else {
-      sub_v3_v3v3(dof_dir, ob->object_to_world().location(), cam->dof.focus_object->object_to_world().location());
+      sub_v3_v3v3(dof_dir,
+                  ob->object_to_world().location(),
+                  cam->dof.focus_object->object_to_world().location());
     }
     return fabsf(dot_v3v3(view_dir, dof_dir));
   }

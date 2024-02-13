@@ -143,7 +143,8 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
 
   if ((ca->flag & CAM_SHOWLIMITS) && (v3d->gizmo_show_camera & V3D_GIZMO_SHOW_CAMERA_DOF_DIST)) {
     WM_gizmo_set_matrix_location(cagzgroup->dop_dist, ob->object_to_world().location());
-    WM_gizmo_set_matrix_rotation_from_yz_axis(cagzgroup->dop_dist, ob->object_to_world().ptr()[1], dir);
+    WM_gizmo_set_matrix_rotation_from_yz_axis(
+        cagzgroup->dop_dist, ob->object_to_world().ptr()[1], dir);
     WM_gizmo_set_scale(cagzgroup->dop_dist, ca->drawsize);
     WM_gizmo_set_flag(cagzgroup->dop_dist, WM_GIZMO_HIDDEN, false);
 

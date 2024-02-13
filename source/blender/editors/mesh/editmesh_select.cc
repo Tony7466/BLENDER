@@ -1101,8 +1101,9 @@ bool EDBM_unified_findnearest_from_raycast(ViewContext *vc,
               for (uint j = 0; j < 2; j++) {
                 BMVert *v = *((&e->v1) + j);
                 float point[3];
-                mul_v3_m4v3(
-                    point, obedit->object_to_world().ptr(), coords ? coords[BM_elem_index_get(v)] : v->co);
+                mul_v3_m4v3(point,
+                            obedit->object_to_world().ptr(),
+                            coords ? coords[BM_elem_index_get(v)] : v->co);
                 const float dist_sq_test = dist_squared_to_ray_v3_normalized(
                     ray_origin, ray_direction, point);
                 if (dist_sq_test < dist_sq_best_vert) {
@@ -1156,8 +1157,9 @@ bool EDBM_unified_findnearest_from_raycast(ViewContext *vc,
         BM_ITER_MESH (v, &viter, bm, BM_VERTS_OF_MESH) {
           if (BM_elem_flag_test(v, BM_ELEM_HIDDEN) == false) {
             float point[3];
-            mul_v3_m4v3(
-                point, obedit->object_to_world().ptr(), coords ? coords[BM_elem_index_get(v)] : v->co);
+            mul_v3_m4v3(point,
+                        obedit->object_to_world().ptr(),
+                        coords ? coords[BM_elem_index_get(v)] : v->co);
             const float dist_sq_test = dist_squared_to_ray_v3_normalized(
                 ray_origin, ray_direction, point);
             if (dist_sq_test < dist_sq_best_vert) {

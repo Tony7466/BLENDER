@@ -342,7 +342,8 @@ void OVERLAY_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
     case OB_EMPTY_CONE:
     case OB_ARROWS:
       DRW_object_wire_theme_get(ob, view_layer, &color);
-      OVERLAY_empty_shape(cb, ob->object_to_world().ptr(), ob->empty_drawsize, ob->empty_drawtype, color);
+      OVERLAY_empty_shape(
+          cb, ob->object_to_world().ptr(), ob->empty_drawsize, ob->empty_drawtype, color);
       break;
     case OB_EMPTY_IMAGE:
       OVERLAY_image_empty_cache_populate(vedata, ob);
@@ -757,7 +758,8 @@ void OVERLAY_lightprobe_cache_populate(OVERLAY_Data *vedata, Object *ob)
       if (show_influence) {
         float f = 1.0f - prb->falloff;
         OVERLAY_empty_shape(cb, ob->object_to_world().ptr(), 1.0 + prb->distinf, OB_CUBE, color_p);
-        OVERLAY_empty_shape(cb, ob->object_to_world().ptr(), 1.0 + prb->distinf * f, OB_CUBE, color_p);
+        OVERLAY_empty_shape(
+            cb, ob->object_to_world().ptr(), 1.0 + prb->distinf * f, OB_CUBE, color_p);
       }
 
       /* Data dots */
@@ -1287,7 +1289,8 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
       float center[3];
       mul_v3_m4v3(center, ob->object_to_world().ptr(), hmd->cent);
       if (hmd->object) {
-        OVERLAY_extra_line_dashed(cb, hmd->object->object_to_world().location(), center, relation_color);
+        OVERLAY_extra_line_dashed(
+            cb, hmd->object->object_to_world().location(), center, relation_color);
       }
       OVERLAY_extra_point(cb, center, relation_color);
     }
@@ -1298,7 +1301,8 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
       float center[3];
       mul_v3_m4v3(center, ob->object_to_world().ptr(), hmd->cent);
       if (hmd->object) {
-        OVERLAY_extra_line_dashed(cb, hmd->object->object_to_world().location(), center, relation_color);
+        OVERLAY_extra_line_dashed(
+            cb, hmd->object->object_to_world().location(), center, relation_color);
       }
       OVERLAY_extra_point(cb, center, relation_color);
     }
@@ -1308,12 +1312,16 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
     Object *rbc_ob1 = ob->rigidbody_constraint->ob1;
     Object *rbc_ob2 = ob->rigidbody_constraint->ob2;
     if (rbc_ob1 && (DRW_object_visibility_in_active_context(rbc_ob1) & OB_VISIBLE_SELF)) {
-      OVERLAY_extra_line_dashed(
-          cb, rbc_ob1->object_to_world().location(), ob->object_to_world().location(), relation_color);
+      OVERLAY_extra_line_dashed(cb,
+                                rbc_ob1->object_to_world().location(),
+                                ob->object_to_world().location(),
+                                relation_color);
     }
     if (rbc_ob2 && (DRW_object_visibility_in_active_context(rbc_ob2) & OB_VISIBLE_SELF)) {
-      OVERLAY_extra_line_dashed(
-          cb, rbc_ob2->object_to_world().location(), ob->object_to_world().location(), relation_color);
+      OVERLAY_extra_line_dashed(cb,
+                                rbc_ob2->object_to_world().location(),
+                                ob->object_to_world().location(),
+                                relation_color);
     }
   }
 
@@ -1340,8 +1348,10 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
         }
 
         if (camob) {
-          OVERLAY_extra_line_dashed(
-              cb, camob->object_to_world().location(), ob->object_to_world().location(), constraint_color);
+          OVERLAY_extra_line_dashed(cb,
+                                    camob->object_to_world().location(),
+                                    ob->object_to_world().location(),
+                                    constraint_color);
         }
       }
       else {
@@ -1362,7 +1372,8 @@ static void OVERLAY_relationship_lines(OVERLAY_ExtraCallBuffers *cb,
             else {
               unit_m4(ct->matrix);
             }
-            OVERLAY_extra_line_dashed(cb, ct->matrix[3], ob->object_to_world().location(), constraint_color);
+            OVERLAY_extra_line_dashed(
+                cb, ct->matrix[3], ob->object_to_world().location(), constraint_color);
           }
 
           BKE_constraint_targets_flush(curcon, &targets, true);

@@ -676,7 +676,8 @@ static void cloth_brush_solve_collision(Object *object, SimulationData *cloth_si
     float pos_world_space[3], prev_pos_world_space[3];
 
     mul_v3_m4v3(pos_world_space, object->object_to_world().ptr(), cloth_sim->pos[i]);
-    mul_v3_m4v3(prev_pos_world_space, object->object_to_world().ptr(), cloth_sim->last_iteration_pos[i]);
+    mul_v3_m4v3(
+        prev_pos_world_space, object->object_to_world().ptr(), cloth_sim->last_iteration_pos[i]);
     sub_v3_v3v3(ray_normal, pos_world_space, prev_pos_world_space);
     copy_v3_v3(ray_start, prev_pos_world_space);
     hit.index = -1;

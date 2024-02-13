@@ -1178,8 +1178,9 @@ static void init_meta(Depsgraph *depsgraph, PROCESS *process, Scene *scene, Obje
   const eEvaluationMode deg_eval_mode = DEG_get_mode(depsgraph);
   const short parenting_dupli_transflag = (OB_DUPLIFACES | OB_DUPLIVERTS);
 
-  copy_m4_m4(obmat,
-             ob->object_to_world().ptr()); /* to cope with duplicators from BKE_scene_base_iter_next */
+  copy_m4_m4(
+      obmat,
+      ob->object_to_world().ptr()); /* to cope with duplicators from BKE_scene_base_iter_next */
   invert_m4_m4(obinv, ob->object_to_world().ptr());
 
   BLI_string_split_name_number(ob->id.name + 2, '.', obname, &obnr);

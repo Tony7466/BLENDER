@@ -589,7 +589,7 @@ void EEVEE_lightprobes_planar_data_from_object(Object *ob,
 
   /* Computing mtx : matrix that mirror position around object's XY plane. */
   normalize_m4_m4(normat, ob->object_to_world().ptr()); /* object > world */
-  invert_m4_m4(imat, normat);                   /* world > object */
+  invert_m4_m4(imat, normat);                           /* world > object */
   /* XY reflection plane */
   imat[0][2] = -imat[0][2];
   imat[1][2] = -imat[1][2];
@@ -600,7 +600,8 @@ void EEVEE_lightprobes_planar_data_from_object(Object *ob,
   /* Compute clip plane equation / normal. */
   copy_v3_v3(eplanar->plane_equation, ob->object_to_world().ptr()[2]);
   normalize_v3(eplanar->plane_equation); /* plane normal */
-  eplanar->plane_equation[3] = -dot_v3v3(eplanar->plane_equation, ob->object_to_world().location());
+  eplanar->plane_equation[3] = -dot_v3v3(eplanar->plane_equation,
+                                         ob->object_to_world().location());
   eplanar->clipsta = probe->clipsta;
 
   /* Compute XY clip planes. */

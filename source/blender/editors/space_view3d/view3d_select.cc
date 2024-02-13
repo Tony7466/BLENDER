@@ -2394,9 +2394,10 @@ static Base *mouse_select_object_center(ViewContext *vc, Base *startbase, const 
   while (base) {
     if (BASE_SELECTABLE(v3d, base)) {
       float screen_co[2];
-      if (ED_view3d_project_float_global(
-              region, base->object->object_to_world().location(), screen_co, V3D_PROJ_TEST_CLIP_DEFAULT) ==
-          V3D_PROJ_RET_OK)
+      if (ED_view3d_project_float_global(region,
+                                         base->object->object_to_world().location(),
+                                         screen_co,
+                                         V3D_PROJ_TEST_CLIP_DEFAULT) == V3D_PROJ_RET_OK)
       {
         float dist_test = len_manhattan_v2v2(mval_fl, screen_co);
         if (base == oldbasact) {

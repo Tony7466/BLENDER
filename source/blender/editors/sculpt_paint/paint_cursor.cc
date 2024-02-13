@@ -1135,7 +1135,8 @@ static void cursor_draw_point_with_symmetry(const uint gpuattr,
           mul_m4_v3(symm_rot_mat, location);
 
           cursor_draw_tiling_preview(gpuattr, region, location, sd, ob, radius);
-          cursor_draw_point_screen_space(gpuattr, region, location, ob->object_to_world().ptr(), 3);
+          cursor_draw_point_screen_space(
+              gpuattr, region, location, ob->object_to_world().ptr(), 3);
         }
       }
     }

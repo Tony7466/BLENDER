@@ -37,7 +37,8 @@ void OBJCurve::set_world_axes_transform(const eIOAxis forward, const eIOAxis up)
   mat3_from_axis_conversion(forward, up, IO_AXIS_Y, IO_AXIS_Z, axes_transform);
   mul_m4_m3m4(world_axes_transform_, axes_transform, export_object_eval_->object_to_world().ptr());
   /* #mul_m4_m3m4 does not transform last row of #Object.object_to_world, i.e. location data. */
-  mul_v3_m3v3(world_axes_transform_[3], axes_transform, export_object_eval_->object_to_world().location());
+  mul_v3_m3v3(
+      world_axes_transform_[3], axes_transform, export_object_eval_->object_to_world().location());
   world_axes_transform_[3][3] = export_object_eval_->object_to_world().location()[3];
 }
 
