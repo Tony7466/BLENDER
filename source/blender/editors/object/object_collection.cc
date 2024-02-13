@@ -8,6 +8,7 @@
 
 #include <cstring>
 
+#include "BLI_string.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_collection_types.h"

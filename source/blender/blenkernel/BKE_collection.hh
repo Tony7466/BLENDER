@@ -13,6 +13,7 @@
 #include "BLI_iterator.h"
 #include "BLI_sys_types.h"
 
+#include "DNA_collection_types.h"
 #include "DNA_listBase.h"
 
 /* Structs */

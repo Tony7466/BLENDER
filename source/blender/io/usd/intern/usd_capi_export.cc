@@ -31,7 +31,7 @@
 
 #include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_lib_id.hh"

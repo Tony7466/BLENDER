@@ -31,7 +31,7 @@
 #include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_preview_image.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_rigidbody.h"
 #include "BKE_scene.hh"
 
