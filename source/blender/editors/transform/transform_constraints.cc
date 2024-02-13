@@ -903,15 +903,6 @@ void drawPropCircle(TransInfo *t)
     else if (t->spacetype == SPACE_IMAGE) {
       GPU_matrix_scale_2f(1.0f / t->aspect[0], 1.0f / t->aspect[1]);
     }
-    else if (ELEM(t->spacetype, SPACE_GRAPH, SPACE_ACTION)) {
-      /* only scale y */
-      float xscale, yscale;
-      UI_view2d_scale_get(&t->region->v2d, &xscale, &yscale);
-
-      const float fac_scale = xscale / yscale;
-      GPU_matrix_scale_2f(1.0f, fac_scale);
-      GPU_matrix_translate_2f(0.0f, (t->center_global[1] / fac_scale) - t->center_global[1]);
-    }
 
     eGPUDepthTest depth_test_enabled = GPU_depth_test_get();
     if (depth_test_enabled) {
@@ -952,8 +943,6 @@ void drawPropRange(TransInfo *t)
     return;
   }
 
-  GPU_matrix_push();
-
   const eGPUDepthTest depth_test_enabled = GPU_depth_test_get();
   if (depth_test_enabled) {
     GPU_depth_test(GPU_DEPTH_NONE);
@@ -988,8 +977,6 @@ void drawPropRange(TransInfo *t)
   if (depth_test_enabled) {
     GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
   }
-
-  GPU_matrix_pop();
 }
 
 static void drawObjectConstraint(TransInfo *t)
