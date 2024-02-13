@@ -839,7 +839,7 @@ class VIEW3D_HT_header(Header):
                     sub = row.row(align=True)
                     sub.enabled = tool_settings.use_grease_pencil_multi_frame_editing
                     sub.popover(
-                        panel="VIEW3D_PT_gpencil_multi_frame",
+                        panel="VIEW3D_PT_grease_pencil_multi_frame",
                         text="Multiframe",
                     )
 
@@ -8001,6 +8001,26 @@ class VIEW3D_PT_gpencil_multi_frame(Panel):
         layout = self.layout
         tool_settings = context.tool_settings
 
+        gpd = context.gpencil_data
+        settings = tool_settings.gpencil_sculpt
+
+        col = layout.column(align=True)
+        col.prop(settings, "use_multiframe_falloff")
+
+        # Falloff curve
+        if gpd.use_multiedit and settings.use_multiframe_falloff:
+            layout.template_curve_mapping(settings, "multiframe_falloff_curve", brush=True)
+
+
+class VIEW3D_PT_grease_pencil_multi_frame(Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'HEADER'
+    bl_label = "Multi Frame"
+
+    def draw(self, context):
+        layout = self.layout
+        tool_settings = context.tool_settings
+
         settings = tool_settings.gpencil_sculpt
 
         col = layout.column(align=True)
@@ -9031,6 +9051,7 @@ classes = (
     VIEW3D_PT_grease_pencil,
     VIEW3D_PT_annotation_onion,
     VIEW3D_PT_gpencil_multi_frame,
+    VIEW3D_PT_grease_pencil_multi_frame,
     VIEW3D_PT_gpencil_curve_edit,
     VIEW3D_PT_gpencil_sculpt_automasking,
     VIEW3D_PT_quad_view,
