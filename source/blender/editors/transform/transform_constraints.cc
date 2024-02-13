@@ -946,6 +946,52 @@ void drawPropCircle(TransInfo *t)
   }
 }
 
+void drawPropRange(TransInfo *t)
+{
+  if ((t->flag & T_PROP_EDIT) == 0) {
+    return;
+  }
+
+  GPU_matrix_push();
+
+  const eGPUDepthTest depth_test_enabled = GPU_depth_test_get();
+  if (depth_test_enabled) {
+    GPU_depth_test(GPU_DEPTH_NONE);
+  }
+
+  uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+
+  immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
+
+  float viewport[4];
+  GPU_viewport_size_get_f(viewport);
+  GPU_blend(GPU_BLEND_ALPHA);
+
+  immUniform2fv("viewportSize", &viewport[2]);
+
+  View2D *v2d = &t->region->v2d;
+  const float x1 = t->center_global[0] - t->prop_size;
+  const float y1 = v2d->cur.ymin;
+  const float x2 = t->center_global[0] + t->prop_size;
+  const float y2 = v2d->cur.ymax;
+
+  immUniform1f("lineWidth", 3.0f * U.pixelsize);
+  immUniformThemeColorShadeAlpha(TH_GRID, -20, 255);
+  imm_draw_box_wire_3d(pos, x1, y1, x2, y2);
+
+  immUniform1f("lineWidth", 1.0f * U.pixelsize);
+  immUniformThemeColorShadeAlpha(TH_GRID, 20, 255);
+  imm_draw_box_wire_3d(pos, x1, y1, x2, y2);
+
+  immUnbindProgram();
+
+  if (depth_test_enabled) {
+    GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
+  }
+
+  GPU_matrix_pop();
+}
+
 static void drawObjectConstraint(TransInfo *t)
 {
   /* Draw the first one lighter because that's the one who controls the others.
