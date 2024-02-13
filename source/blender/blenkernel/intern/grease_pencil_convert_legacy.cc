@@ -445,6 +445,25 @@ static bNodeTree *add_offset_radius_node_tree(Main &bmain)
   return group;
 }
 
+void thickness_factor_to_modifier(Main &bmain, const bGPdata &src_object_data, Object &dst_object)
+{
+  if (src_object_data.pixfactor <= 0.0f) {
+    return;
+  }
+  const float thickness_factor = src_object_data.pixfactor;
+
+  ModifierData *md = BKE_modifier_new(eModifierType_GreasePencilThickness);
+  GreasePencilThickModifierData *tmd = reinterpret_cast<GreasePencilThickModifierData *>(md);
+
+  tmd->thickness_fac = thickness_factor;
+
+  STRNCPY(md->name, DATA_("Thickness"));
+  BKE_modifier_unique_name(&dst_object.modifiers, md);
+
+  BLI_addtail(&dst_object.modifiers, md);
+  BKE_modifiers_persistent_uid_init(dst_object, *md);
+}
+
 void layer_adjustments_to_modifiers(Main &bmain,
                                     const bGPdata &src_object_data,
                                     Object &dst_object)

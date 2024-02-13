@@ -3239,6 +3239,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       bke::greasepencil::convert::legacy_gpencil_to_grease_pencil(
           *bmain, *new_grease_pencil, *gpd);
       bke::greasepencil::convert::layer_adjustments_to_modifiers(*bmain, *gpd, *newob);
+      /* Thickness factor is applied after all other changes to the radii. */
+      bke::greasepencil::convert::thickness_factor_to_modifier(*bmain, *gpd, *newob);
 
       BKE_object_free_derived_caches(newob);
     }

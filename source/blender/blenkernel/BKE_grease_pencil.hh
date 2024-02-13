@@ -729,6 +729,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
                                                    GreasePencilDrawing &r_drawing);
 void legacy_gpencil_to_grease_pencil(Main &main, GreasePencil &grease_pencil, bGPdata &gpd);
 
+void thickness_factor_to_modifier(Main &bmain, const bGPdata &src_object_data, Object &dst_object);
 void layer_adjustments_to_modifiers(Main &bmain, const bGPdata &src_object_data, Object &dst_object);
 
 }  // namespace convert
