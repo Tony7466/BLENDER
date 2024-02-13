@@ -1,2 +1,3 @@
 Referenced by issue #118184, Crash on material without material Output node
 Referenced by pull request #118202, Fix #118184: crash deleting a material output node
+Referenced by commit cb37fe751bfc13a342948628019492815cc655e0, Fix #118184: crash deleting a material output node
