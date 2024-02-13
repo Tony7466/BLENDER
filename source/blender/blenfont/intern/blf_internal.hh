@@ -166,10 +166,6 @@ void blf_str_offset_to_glyph_bounds(struct FontBLF *font,
 
 void blf_font_free(struct FontBLF *font);
 
-struct GlyphCacheBLF *blf_glyph_cache_acquire(struct FontBLF *font);
-void blf_glyph_cache_release(struct FontBLF *font);
-void blf_glyph_cache_clear(struct FontBLF *font);
-
 /**
  * Create (or load from cache) a fully-rendered bitmap glyph.
  */

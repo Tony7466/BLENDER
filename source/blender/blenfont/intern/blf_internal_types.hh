@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "GPU_texture.h"
 #include "GPU_vertex_buffer.h"
 
@@ -105,6 +107,23 @@ typedef struct KerningCacheBLF {
    */
   int ascii_table[KERNING_CACHE_TABLE_SIZE][KERNING_CACHE_TABLE_SIZE];
 } KerningCacheBLF;
+
+class GlyphCacheListBLF {
+ private:
+  std::vector<GlyphCacheBLF *> list;
+
+  FontBLF *font;
+
+  /** Mutex lock for glyph cache. */
+  ThreadMutex glyph_cache_mutex;
+
+ public:
+  GlyphCacheListBLF(FontBLF *font);
+  ~GlyphCacheListBLF();
+  GlyphCacheBLF *acquire();
+  void release();
+  void clear();
+};
 
 typedef struct GlyphCacheBLF {
   struct GlyphCacheBLF *next;
@@ -355,9 +374,9 @@ typedef struct FontBLF {
 
   /**
    * List of glyph caches (#GlyphCacheBLF) for this font for size, DPI, bold, italic.
-   * Use blf_glyph_cache_acquire(font) and blf_glyph_cache_release(font) to access cache!
+   * Use font->cache->acquire() and font->cache->release() to access cache!
    */
-  ListBase cache;
+  GlyphCacheListBLF *cache;
 
   /** Cache of unscaled kerning values. Will be NULL if font does not have kerning. */
   KerningCacheBLF *kerning_cache;
@@ -379,7 +398,4 @@ typedef struct FontBLF {
 
   /** Data for buffer usage (drawing into a texture buffer) */
   FontBufInfoBLF buf_info;
-
-  /** Mutex lock for glyph cache. */
-  ThreadMutex glyph_cache_mutex;
 } FontBLF;

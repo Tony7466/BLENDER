@@ -71,24 +71,9 @@ static float from_16dot16(FT_Fixed value)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Glyph Cache
+/** \name Glyph Cache Entries
  * \{ */
 
-static GlyphCacheBLF *blf_glyph_cache_find(const FontBLF *font, const float size)
-{
-  GlyphCacheBLF *gc = (GlyphCacheBLF *)font->cache.first;
-  while (gc) {
-    if (gc->size == size && (gc->bold == ((font->flags & BLF_BOLD) != 0)) &&
-        (gc->italic == ((font->flags & BLF_ITALIC) != 0)) &&
-        (gc->char_weight == font->char_weight) && (gc->char_slant == font->char_slant) &&
-        (gc->char_width == font->char_width) && (gc->char_spacing == font->char_spacing))
-    {
-      return gc;
-    }
-    gc = gc->next;
-  }
-  return nullptr;
-}
 
 static GlyphCacheBLF *blf_glyph_cache_new(FontBLF *font)
 {
@@ -124,26 +109,7 @@ static GlyphCacheBLF *blf_glyph_cache_new(FontBLF *font)
     gc->fixed_width = 1;
   }
 
-  BLI_addhead(&font->cache, gc);
   return gc;
-}
-
-GlyphCacheBLF *blf_glyph_cache_acquire(FontBLF *font)
-{
-  BLI_mutex_lock(&font->glyph_cache_mutex);
-
-  GlyphCacheBLF *gc = blf_glyph_cache_find(font, font->size);
-
-  if (!gc) {
-    gc = blf_glyph_cache_new(font);
-  }
-
-  return gc;
-}
-
-void blf_glyph_cache_release(FontBLF *font)
-{
-  BLI_mutex_unlock(&font->glyph_cache_mutex);
 }
 
 static void blf_glyph_cache_free(GlyphCacheBLF *gc)
@@ -162,15 +128,59 @@ static void blf_glyph_cache_free(GlyphCacheBLF *gc)
   MEM_freeN(gc);
 }
 
-void blf_glyph_cache_clear(FontBLF *font)
-{
-  BLI_mutex_lock(&font->glyph_cache_mutex);
+/* -------------------------------------------------------------------- */
+/** \name Glyph Cache List
+ * \{ */
 
-  while (GlyphCacheBLF *gc = static_cast<GlyphCacheBLF *>(BLI_pophead(&font->cache))) {
-    blf_glyph_cache_free(gc);
+GlyphCacheListBLF::GlyphCacheListBLF(FontBLF *font) : list{}, font(font)
+{
+  BLI_mutex_init(&glyph_cache_mutex);
+}
+
+GlyphCacheListBLF ::~GlyphCacheListBLF()
+{
+  clear();
+  BLI_mutex_end(&glyph_cache_mutex);
+};
+
+GlyphCacheBLF *GlyphCacheListBLF::acquire()
+{
+  BLI_mutex_lock(&glyph_cache_mutex);
+
+  GlyphCacheBLF *gc = nullptr;
+
+  for (auto &entry : list) {
+    if (entry->size == font->size && (entry->bold == ((font->flags & BLF_BOLD) != 0)) &&
+        (entry->italic == ((font->flags & BLF_ITALIC) != 0)) &&
+        (entry->char_weight == font->char_weight) && (entry->char_slant == font->char_slant) &&
+        (entry->char_width == font->char_width) && (entry->char_spacing == font->char_spacing))
+    {
+      gc = entry;
+      break;
+    }
   }
 
-  BLI_mutex_unlock(&font->glyph_cache_mutex);
+  if (!gc) {
+    gc = blf_glyph_cache_new(font);
+    list.push_back(gc);
+  }
+
+  return gc;
+}
+
+void GlyphCacheListBLF::release()
+{
+  BLI_mutex_unlock(&glyph_cache_mutex);
+}
+
+void GlyphCacheListBLF::clear()
+{
+  BLI_mutex_lock(&glyph_cache_mutex);
+  for (auto &entry : list) {
+    blf_glyph_cache_free(entry);
+  }
+  list.clear();
+  BLI_mutex_unlock(&glyph_cache_mutex);
 }
 
 /**
