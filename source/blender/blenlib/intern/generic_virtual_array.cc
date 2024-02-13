@@ -513,41 +513,27 @@ class GVArrayImpl_For_SlicedGVArray : public GVArrayImpl {
 
   void materialize(const IndexMask &mask, void *dst) const final
   {
-    IndexMaskFromSegment mask_from_segment;
-    mask.foreach_segment([&](const IndexMaskSegment segment, const int64_t start) {
-      const IndexMask &segment_mask = mask_from_segment.update(
-          {segment.offset() + offset_, segment.base_span()});
-      varray_.materialize(segment_mask, POINTER_OFFSET(dst, type_->size() * start));
-    });
+    IndexMaskMemory memory;
+    const IndexMask shifted_mask = mask.shift(offset_, memory);
+    varray_.materialize(shifted_mask, dst);
   }
   void materialize_to_uninitialized(const IndexMask &mask, void *dst) const final
   {
-    IndexMaskFromSegment mask_from_segment;
-    mask.foreach_segment([&](const IndexMaskSegment segment, const int64_t start) {
-      const IndexMask &segment_mask = mask_from_segment.update(
-          {segment.offset() + offset_, segment.base_span()});
-      varray_.materialize_to_uninitialized(segment_mask,
-                                           POINTER_OFFSET(dst, type_->size() * start));
-    });
+    IndexMaskMemory memory;
+    const IndexMask shifted_mask = mask.shift(offset_, memory);
+    varray_.materialize_to_uninitialized(shifted_mask, dst);
   }
   void materialize_compressed(const IndexMask &mask, void *dst) const final
   {
-    IndexMaskFromSegment mask_from_segment;
-    mask.foreach_segment([&](const IndexMaskSegment segment, const int64_t start) {
-      const IndexMask &segment_mask = mask_from_segment.update(
-          {segment.offset() + offset_, segment.base_span()});
-      varray_.materialize_compressed(segment_mask, POINTER_OFFSET(dst, type_->size() * start));
-    });
+    IndexMaskMemory memory;
+    const IndexMask shifted_mask = mask.shift(offset_, memory);
+    varray_.materialize_compressed(shifted_mask, dst);
   }
   void materialize_compressed_to_uninitialized(const IndexMask &mask, void *dst) const override
   {
-    IndexMaskFromSegment mask_from_segment;
-    mask.foreach_segment([&](const IndexMaskSegment segment, const int64_t start) {
-      const IndexMask &segment_mask = mask_from_segment.update(
-          {segment.offset() + offset_, segment.base_span()});
-      varray_.materialize_compressed_to_uninitialized(segment_mask,
-                                                      POINTER_OFFSET(dst, type_->size() * start));
-    });
+    IndexMaskMemory memory;
+    const IndexMask shifted_mask = mask.shift(offset_, memory);
+    varray_.materialize_compressed_to_uninitialized(shifted_mask, dst);
   }
 };
 
