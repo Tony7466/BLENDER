@@ -31,6 +31,10 @@ ShaderCache::ShaderCache()
   std::string lightings[] = {"_flat", "_studio", "_matcap"};
   std::string shaders[] = {"_material", "_texture"};
   std::string clip[] = {"_no_clip", "_clip"};
+  static_assert(std::size(geometries) == geometry_type_len);
+  static_assert(std::size(pipelines) == pipeline_type_len);
+  static_assert(std::size(lightings) == lighting_type_len);
+  static_assert(std::size(shaders) == shader_type_len);
 
   for (auto g : IndexRange(geometry_type_len)) {
     for (auto p : IndexRange(pipeline_type_len)) {
