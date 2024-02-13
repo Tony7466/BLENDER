@@ -27,11 +27,9 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.hh"
-
 #include "ED_view3d.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "UI_resources.hh"
 #include "UI_view2d.hh"

@@ -44,7 +44,7 @@
 
 #include "BLO_read_write.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_ID.h"
 #include "DNA_ID_enums.h"
@@ -52,7 +52,6 @@
 #include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
-#include "DNA_scene_types.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -2580,6 +2579,7 @@ static void read_layer(BlendDataReader *reader,
 {
   BLO_read_data_address(reader, &node->base.name);
   node->base.parent = parent;
+  BLO_read_data_address(reader, &node->parsubstr);
 
   /* Read frames storage. */
   BLO_read_int32_array(reader, node->frames_storage.num, &node->frames_storage.keys);
@@ -2647,6 +2647,7 @@ static void write_layer(BlendWriter *writer, GreasePencilLayer *node)
 {
   BLO_write_struct(writer, GreasePencilLayer, node);
   BLO_write_string(writer, node->base.name);
+  BLO_write_string(writer, node->parsubstr);
 
   BLO_write_int32_array(writer, node->frames_storage.num, node->frames_storage.keys);
   BLO_write_struct_array(

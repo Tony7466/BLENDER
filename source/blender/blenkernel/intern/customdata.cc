@@ -41,7 +41,7 @@
 #  include "BLI_dynstr.h"
 #endif
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_anonymous_attribute_id.hh"
 #include "BKE_customdata.hh"
@@ -2025,7 +2025,7 @@ static const LayerTypeInfo LAYERTYPEINFO[CD_NUMTYPES] = {
      nullptr,
      nullptr},
     /* 46: CD_PROP_INT32_2D */
-    {sizeof(vec2i),
+    {sizeof(blender::int2),
      alignof(blender::int2),
      "vec2i",
      1,

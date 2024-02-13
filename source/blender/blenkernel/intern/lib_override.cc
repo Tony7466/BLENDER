@@ -27,10 +27,10 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_armature.hh"
-#include "BKE_blender.h"
-#include "BKE_collection.h"
+#include "BKE_blender.hh"
+#include "BKE_collection.hh"
 #include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idtype.hh"
 #include "BKE_key.hh"
 #include "BKE_layer.hh"
@@ -41,10 +41,10 @@
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
 #include "BKE_node.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
@@ -2071,8 +2071,15 @@ static bool lib_override_library_resync(Main *bmain,
 
   ID *id_root_reference = id_root->override_library->reference;
   ID *id;
-  BKE_view_layer_synced_ensure(scene, view_layer);
-  const Object *old_active_object = BKE_view_layer_active_object_get(view_layer);
+
+  const Object *old_active_object = nullptr;
+  if (view_layer) {
+    BKE_view_layer_synced_ensure(scene, view_layer);
+    old_active_object = BKE_view_layer_active_object_get(view_layer);
+  }
+  else {
+    BKE_scene_view_layers_synced_ensure(scene);
+  }
 
   if (id_root_reference->tag & LIB_TAG_MISSING) {
     BKE_reportf(reports != nullptr ? reports->reports : nullptr,

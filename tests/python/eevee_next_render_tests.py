@@ -25,7 +25,7 @@ def setup():
     eevee.gtao_distance = 1
     eevee.use_volumetric_shadows = True
     eevee.volumetric_tile_size = '2'
-    eevee.use_motion_blur = True
+    scene.render.use_motion_blur = True
     # Overscan of 50 will doesn't offset the final image, and adds more information for screen based ray tracing.
     eevee.use_overscan = True
     eevee.overscan_size = 50.0
@@ -84,7 +84,6 @@ def get_gpu_device_type(blender):
     # TODO: This always fails.
     command = [
         blender,
-        "-noaudio",
         "--background",
         "--factory-startup",
         "--python",
@@ -104,7 +103,6 @@ def get_gpu_device_type(blender):
 def get_arguments(filepath, output_filepath):
     return [
         "--background",
-        "-noaudio",
         "--factory-startup",
         "--enable-autoexec",
         "--debug-memory",

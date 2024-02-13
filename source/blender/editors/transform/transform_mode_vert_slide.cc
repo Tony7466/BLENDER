@@ -13,7 +13,6 @@
 #include "BLI_math_matrix.h"
 #include "BLI_string.h"
 
-#include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_unit.hh"
 
@@ -31,7 +30,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_constraints.hh"
