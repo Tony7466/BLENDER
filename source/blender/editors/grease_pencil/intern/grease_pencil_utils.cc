@@ -7,11 +7,9 @@
  */
 
 #include "BKE_attribute.hh"
-#include "BKE_brush.hh"
-#include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "BLI_bit_span_ops.hh"
 #include "BLI_bit_vector.hh"

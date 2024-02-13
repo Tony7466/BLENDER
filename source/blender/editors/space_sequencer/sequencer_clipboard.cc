@@ -10,10 +10,9 @@
 
 #include <cstring>
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 #include "MEM_guardedalloc.h"
 
-#include "ED_keyframing.hh"
 #include "ED_outliner.hh"
 #include "ED_sequencer.hh"
 
@@ -36,10 +35,8 @@
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
-
-#include "RNA_access.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "SEQ_animation.hh"
 #include "SEQ_select.hh"

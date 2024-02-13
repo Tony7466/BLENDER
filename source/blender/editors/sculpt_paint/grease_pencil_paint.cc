@@ -7,10 +7,8 @@
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
-#include "BKE_grease_pencil.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
-#include "BKE_scene.h"
 
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_color.h"
@@ -258,7 +256,7 @@ struct PaintOperationExecutor {
                                       curves.points_range().take_back(1));
     bke::fill_attribute_range_default(attributes,
                                       bke::AttrDomain::Curve,
-                                      {"curve_type", "material_index", "cyclic"},
+                                      {"curve_type", "material_index", "cyclic", "hardness"},
                                       curves.curves_range().take_back(1));
 
     drawing_->tag_topology_changed();

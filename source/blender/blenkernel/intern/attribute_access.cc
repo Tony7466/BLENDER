@@ -17,7 +17,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "FN_field.hh"
 
@@ -127,6 +127,9 @@ bool allow_procedural_attribute_access(StringRef attribute_name)
     return false;
   }
   if (attribute_name.startswith(".uv")) {
+    return false;
+  }
+  if (attribute_name == ".reference_index") {
     return false;
   }
   if (attribute_name.startswith("." UV_VERTSEL_NAME ".")) {
