@@ -1092,7 +1092,8 @@ class VIEW3D_HT_header(Header):
         elif mode_string == 'SCULPT_CURVES':
             sub.popover(panel="VIEW3D_PT_overlay_sculpt_curves", text="", icon='SCULPTMODE_HLT')
         elif mode_string == 'PAINT_WEIGHT':
-            sub.popover(panel="VIEW3D_PT_overlay_weight_paint", text="", icon='WPAINT_HLT')
+            if obj is None or obj.type != 'GREASEPENCIL':
+                sub.popover(panel="VIEW3D_PT_overlay_weight_paint", text="", icon='WPAINT_HLT')
         elif mode_string == 'PAINT_TEXTURE':
             sub.popover(panel="VIEW3D_PT_overlay_texture_paint", text="", icon='TPAINT_HLT')
         elif mode_string == 'PAINT_VERTEX':

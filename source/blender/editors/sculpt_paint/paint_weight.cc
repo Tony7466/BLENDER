@@ -52,6 +52,7 @@
 #include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
+#include "ED_grease_pencil.hh"
 #include "ED_image.hh"
 #include "ED_mesh.hh"
 #include "ED_object.hh"
@@ -1538,6 +1539,13 @@ static void wpaint_paint_leaves(bContext *C,
 /** \name Enter Weight Paint Mode
  * \{ */
 
+static bool grease_pencil_poll_weight_cursor(bContext *C)
+{
+  Object *ob = CTX_data_active_object(C);
+  return ob && (ob->mode & OB_MODE_WEIGHT_PAINT) && (ob->type == OB_GREASE_PENCIL) &&
+         CTX_wm_region_view3d(C) && WM_toolsystem_active_tool_is_brush(C);
+}
+
 static void grease_pencil_wpaintmode_enter(Scene *scene, Object *ob)
 {
   const PaintMode paint_mode = PaintMode::Weight;
@@ -1545,6 +1553,9 @@ static void grease_pencil_wpaintmode_enter(Scene *scene, Object *ob)
   BKE_paint_ensure(scene->toolsettings, &weight_paint);
 
   ob->mode |= OB_MODE_WEIGHT_PAINT;
+
+  ED_paint_cursor_start(weight_paint, grease_pencil_poll_weight_cursor);
+  paint_init_pivot(ob, scene);
 
   /* Flush object mode. */
   DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
