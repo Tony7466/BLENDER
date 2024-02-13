@@ -131,24 +131,20 @@ static void blf_glyph_cache_free(GlyphCacheBLF *gc)
 /** \name Glyph Cache List
  * \{ */
 
-GlyphCacheListBLF::GlyphCacheListBLF(FontBLF *font) : list{}, font(font)
-{
-  BLI_mutex_init(&glyph_cache_mutex);
-}
+GlyphCacheListBLF::GlyphCacheListBLF(FontBLF *font) : list{}, font(font) {}
 
 GlyphCacheListBLF ::~GlyphCacheListBLF()
 {
   clear();
-  BLI_mutex_end(&glyph_cache_mutex);
 };
 
 GlyphCacheBLF *GlyphCacheListBLF::acquire()
 {
-  BLI_mutex_lock(&glyph_cache_mutex);
+  glyph_cache_mutex.lock();
 
   GlyphCacheBLF *gc = nullptr;
 
-  for (auto &entry : list) {
+  for (GlyphCacheBLF *entry : list) {
     if (entry->size == font->size && (entry->bold == ((font->flags & BLF_BOLD) != 0)) &&
         (entry->italic == ((font->flags & BLF_ITALIC) != 0)) &&
         (entry->char_weight == font->char_weight) && (entry->char_slant == font->char_slant) &&
@@ -161,7 +157,7 @@ GlyphCacheBLF *GlyphCacheListBLF::acquire()
 
   if (!gc) {
     gc = blf_glyph_cache_new(font);
-    list.push_back(gc);
+    list.append(gc);
   }
 
   return gc;
@@ -169,17 +165,17 @@ GlyphCacheBLF *GlyphCacheListBLF::acquire()
 
 void GlyphCacheListBLF::release()
 {
-  BLI_mutex_unlock(&glyph_cache_mutex);
+  this->glyph_cache_mutex.unlock();
 }
 
 void GlyphCacheListBLF::clear()
 {
-  BLI_mutex_lock(&glyph_cache_mutex);
-  for (auto &entry : list) {
+  glyph_cache_mutex.lock();
+  for (GlyphCacheBLF *entry : list) {
     blf_glyph_cache_free(entry);
   }
   list.clear();
-  BLI_mutex_unlock(&glyph_cache_mutex);
+  glyph_cache_mutex.unlock();
 }
 
 /**

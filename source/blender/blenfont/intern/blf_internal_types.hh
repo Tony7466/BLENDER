@@ -8,7 +8,9 @@
 
 #pragma once
 
-#include <vector>
+#include <mutex>
+
+#include "BLI_vector.hh"
 
 #include "GPU_texture.h"
 #include "GPU_vertex_buffer.h"
@@ -109,13 +111,9 @@ typedef struct KerningCacheBLF {
 } KerningCacheBLF;
 
 class GlyphCacheListBLF {
- private:
-  std::vector<GlyphCacheBLF *> list;
-
+  blender::Vector<GlyphCacheBLF *> list;
   FontBLF *font;
-
-  /** Mutex lock for glyph cache. */
-  ThreadMutex glyph_cache_mutex;
+  std::mutex glyph_cache_mutex;
 
  public:
   GlyphCacheListBLF(FontBLF *font);
