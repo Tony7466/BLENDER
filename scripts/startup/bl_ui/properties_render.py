@@ -724,6 +724,7 @@ class RENDER_PT_eevee_next_shadows(RenderButtonsPanel, Panel):
 
         col = layout.column()
         col.prop(props, "shadow_normal_bias", text="Normal Bias")
+        col.prop(props, "shadow_pcf_radius", text="PCF Radius")
 
 
 class RENDER_PT_eevee_sampling(RenderButtonsPanel, Panel):

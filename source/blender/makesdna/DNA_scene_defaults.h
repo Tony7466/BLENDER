@@ -236,6 +236,7 @@
     .shadow_ray_count = 1, \
     .shadow_step_count = 6, \
     .shadow_normal_bias = 0.02f, \
+    .shadow_pcf_radius = 3.0f, \
  \
     .ray_tracing_method = RAYTRACE_EEVEE_METHOD_SCREEN, \
  \

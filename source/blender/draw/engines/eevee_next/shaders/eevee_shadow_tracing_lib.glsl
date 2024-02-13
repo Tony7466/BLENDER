@@ -21,7 +21,7 @@ vec2 shadow_pcf_offset(uint lod)
 #endif
   vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(0.0), rand);
   pcf_offset = pcf_offset * vec2(2.0) - vec2(1.0);
-  pcf_offset *= 3.0;
+  pcf_offset *= uniform_buf.shadow.pcf_radius;
   return pcf_offset / float(SHADOW_MAP_MAX_RES / (lod + 1));
 }
 
