@@ -20,7 +20,7 @@
 #include "BLI_string_utf8.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_lib_id.hh"
@@ -390,6 +390,9 @@ static Vector<NodeLinkItem> ui_node_link_items(NodeLinkArg *arg,
       }
       else if (dynamic_cast<const decl::Rotation *>(&socket_decl)) {
         item.socket_type = SOCK_ROTATION;
+      }
+      else if (dynamic_cast<const decl::Matrix *>(&socket_decl)) {
+        item.socket_type = SOCK_MATRIX;
       }
       else if (dynamic_cast<const decl::String *>(&socket_decl)) {
         item.socket_type = SOCK_STRING;
@@ -802,8 +805,7 @@ static void ui_node_draw_panel(uiLayout &layout,
   uiBut *but = uiDefIconTextBut(block,
                                 UI_BTYPE_BUT,
                                 0,
-                                panel_state.is_collapsed() ? ICON_DISCLOSURE_TRI_RIGHT :
-                                                             ICON_DISCLOSURE_TRI_DOWN,
+                                panel_state.is_collapsed() ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT,
                                 IFACE_(panel_decl.name.c_str()),
                                 0,
                                 0,
@@ -928,8 +930,7 @@ static void ui_node_draw_input(uiLayout &layout,
       if (lnode &&
           (lnode->inputs.first || (lnode->typeinfo->draw_buttons && lnode->type != NODE_GROUP)))
       {
-        int icon = (input.flag & SOCK_COLLAPSED) ? ICON_DISCLOSURE_TRI_RIGHT :
-                                                   ICON_DISCLOSURE_TRI_DOWN;
+        int icon = (input.flag & SOCK_COLLAPSED) ? ICON_RIGHTARROW : ICON_DOWNARROW_HLT;
         uiItemR(sub, &inputptr, "show_expanded", UI_ITEM_R_ICON_ONLY, "", icon);
       }
 

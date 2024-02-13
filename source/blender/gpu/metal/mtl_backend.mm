@@ -6,7 +6,7 @@
  * \ingroup gpu
  */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "gpu_backend.hh"
 #include "mtl_backend.hh"
@@ -441,9 +441,6 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
 
   /* Feature support */
   GCaps.mem_stats_support = false;
-  GCaps.shader_image_load_store_support = ([device supportsFamily:MTLGPUFamilyApple3] ||
-                                           MTLBackend::capabilities.supports_family_mac1 ||
-                                           MTLBackend::capabilities.supports_family_mac2);
   GCaps.compute_shader_support = true;
   GCaps.shader_draw_parameters_support = true;
   GCaps.hdr_viewport_support = true;

@@ -19,6 +19,8 @@
 #include <iostream>
 #include <sstream>
 
+#include <fmt/format.h>
+
 #ifdef WIN32
 #  include "GHOST_C-api.h"
 #endif
@@ -36,11 +38,10 @@
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_dial_2d.h"
-#include "BLI_dynstr.h" /* For #WM_operator_pystring. */
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_utils.hh"
@@ -51,7 +52,7 @@
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
@@ -60,14 +61,14 @@
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_preview_image.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh" /* BKE_ST_MAXNAME */
 #include "BKE_unit.hh"
 
 #include "BKE_idtype.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -212,23 +213,23 @@ bool WM_operator_py_idname_ok_or_report(ReportList *reports,
   return true;
 }
 
-char *WM_operator_pystring_ex(bContext *C,
-                              wmOperator *op,
-                              const bool all_args,
-                              const bool macro_args,
-                              wmOperatorType *ot,
-                              PointerRNA *opptr)
+std::string WM_operator_pystring_ex(bContext *C,
+                                    wmOperator *op,
+                                    const bool all_args,
+                                    const bool macro_args,
+                                    wmOperatorType *ot,
+                                    PointerRNA *opptr)
 {
   char idname_py[OP_MAX_TYPENAME];
 
   /* for building the string */
-  DynStr *dynstr = BLI_dynstr_new();
+  std::stringstream ss;
 
   /* arbitrary, but can get huge string with stroke painting otherwise */
   int max_prop_length = 10;
 
   WM_operator_py_idname(idname_py, ot->idname);
-  BLI_dynstr_appendf(dynstr, "bpy.ops.%s(", idname_py);
+  ss << "bpy.ops." << idname_py << "(";
 
   if (op && op->macro.first) {
     /* Special handling for macros, else we only get default values in this case... */
@@ -245,15 +246,14 @@ char *WM_operator_pystring_ex(bContext *C,
         opmptr = &opmptr_default;
       }
 
-      char *cstring_args = RNA_pointer_as_string_id(C, opmptr);
+      std::string string_args = RNA_pointer_as_string_id(C, opmptr);
       if (first_op) {
-        BLI_dynstr_appendf(dynstr, "%s=%s", opm->type->idname, cstring_args);
+        ss << opm->type->idname << '=' << string_args;
         first_op = false;
       }
       else {
-        BLI_dynstr_appendf(dynstr, ", %s=%s", opm->type->idname, cstring_args);
+        ss << ", " << opm->type->idname << '=' << string_args;
       }
-      MEM_freeN(cstring_args);
 
       if (opmptr == &opmptr_default) {
         WM_operator_properties_free(&opmptr_default);
@@ -270,63 +270,61 @@ char *WM_operator_pystring_ex(bContext *C,
       opptr = &opptr_default;
     }
 
-    char *cstring_args = RNA_pointer_as_string_keywords(
+    ss << RNA_pointer_as_string_keywords(
         C, opptr, false, all_args, macro_args_test, max_prop_length);
-    BLI_dynstr_append(dynstr, cstring_args);
-    MEM_freeN(cstring_args);
 
     if (opptr == &opptr_default) {
       WM_operator_properties_free(&opptr_default);
     }
   }
 
-  BLI_dynstr_append(dynstr, ")");
+  ss << ')';
 
-  char *cstring = BLI_dynstr_get_cstring(dynstr);
-  BLI_dynstr_free(dynstr);
-  return cstring;
+  return ss.str();
 }
 
-char *WM_operator_pystring(bContext *C, wmOperator *op, const bool all_args, const bool macro_args)
+std::string WM_operator_pystring(bContext *C,
+                                 wmOperator *op,
+                                 const bool all_args,
+                                 const bool macro_args)
 {
   return WM_operator_pystring_ex(C, op, all_args, macro_args, op->type, op->ptr);
 }
 
-bool WM_operator_pystring_abbreviate(char *str, int str_len_max)
+std::string WM_operator_pystring_abbreviate(std::string str, int str_len_max)
 {
-  const int str_len = strlen(str);
-  const char *parens_start = strchr(str, '(');
-
-  if (parens_start) {
-    const int parens_start_pos = parens_start - str;
-    const char *parens_end = strrchr(parens_start + 1, ')');
-
-    if (parens_end) {
-      const int parens_len = parens_end - parens_start;
-
-      if (parens_len > str_len_max) {
-        const char *comma_first = strchr(parens_start, ',');
-
-        /* Truncate after the first comma. */
-        if (comma_first) {
-          const char end_str[] = " ... )";
-          const int end_str_len = sizeof(end_str) - 1;
-
-          /* Leave a place for the first argument. */
-          const int new_str_len = (comma_first - parens_start) + 1;
-
-          if (str_len >= new_str_len + parens_start_pos + end_str_len + 1) {
-            /* Append " ... )" to the string after the comma. */
-            memcpy(str + new_str_len + parens_start_pos, end_str, end_str_len + 1);
-
-            return true;
-          }
-        }
-      }
-    }
+  const int str_len = str.size();
+  const size_t parens_start = str.find('(');
+  if (parens_start == std::string::npos) {
+    return str;
   }
 
-  return false;
+  const size_t parens_end = str.find(parens_start + 1, ')');
+  if (parens_end == std::string::npos) {
+    return str;
+  }
+
+  const int parens_len = parens_end - parens_start;
+  if (parens_len <= str_len_max) {
+    return str;
+  }
+
+  /* Truncate after the first comma. */
+  const size_t comma_first = str.find(parens_start, ',');
+  if (comma_first == std::string::npos) {
+    return str;
+  }
+  const char end_str[] = " ... )";
+  const int end_str_len = sizeof(end_str) - 1;
+
+  /* Leave a place for the first argument. */
+  const int new_str_len = (comma_first - parens_start) + 1;
+
+  if (str_len < new_str_len + parens_start + end_str_len + 1) {
+    return str;
+  }
+
+  return str.substr(0, comma_first) + end_str;
 }
 
 /* return nullptr if no match is found */
@@ -595,95 +593,91 @@ static const char *wm_context_member_from_ptr(const bContext *C,
 }
 #endif
 
-char *WM_context_path_resolve_property_full(const bContext *C,
-                                            const PointerRNA *ptr,
-                                            PropertyRNA *prop,
-                                            int index)
+std::optional<std::string> WM_context_path_resolve_property_full(const bContext *C,
+                                                                 const PointerRNA *ptr,
+                                                                 PropertyRNA *prop,
+                                                                 int index)
 {
   bool is_id;
   const char *member_id = wm_context_member_from_ptr(C, ptr, &is_id);
-  char *member_id_data_path = nullptr;
-  if (member_id != nullptr) {
-    if (is_id && !RNA_struct_is_ID(ptr->type)) {
-      char *data_path = RNA_path_from_ID_to_struct(ptr);
-      if (data_path != nullptr) {
-        if (prop != nullptr) {
-          char *prop_str = RNA_path_property_py(ptr, prop, index);
-          if (prop_str[0] == '[') {
-            member_id_data_path = BLI_string_joinN(member_id, ".", data_path, prop_str);
-          }
-          else {
-            member_id_data_path = BLI_string_join_by_sep_charN(
-                '.', member_id, data_path, prop_str);
-          }
-          MEM_freeN(prop_str);
-        }
-        else {
-          member_id_data_path = BLI_string_join_by_sep_charN('.', member_id, data_path);
-        }
-        MEM_freeN(data_path);
-      }
-    }
-    else {
+  if (!member_id) {
+    return std::nullopt;
+  }
+  std::string member_id_data_path;
+  if (is_id && !RNA_struct_is_ID(ptr->type)) {
+    std::optional<std::string> data_path = RNA_path_from_ID_to_struct(ptr);
+    if (data_path) {
       if (prop != nullptr) {
-        char *prop_str = RNA_path_property_py(ptr, prop, index);
+        std::string prop_str = RNA_path_property_py(ptr, prop, index);
         if (prop_str[0] == '[') {
-          member_id_data_path = BLI_string_joinN(member_id, prop_str);
+          member_id_data_path = fmt::format("{}.{}", *data_path, prop_str);
         }
         else {
-          member_id_data_path = BLI_string_join_by_sep_charN('.', member_id, prop_str);
+          member_id_data_path = fmt::format("{}.{}.{}", member_id, *data_path, prop_str);
         }
-        MEM_freeN(prop_str);
       }
       else {
-        member_id_data_path = BLI_strdup(member_id);
+        member_id_data_path = fmt::format("{}.{}", member_id, *data_path);
       }
     }
   }
+  else {
+    if (prop != nullptr) {
+      std::string prop_str = RNA_path_property_py(ptr, prop, index);
+      if (prop_str[0] == '[') {
+        member_id_data_path = fmt::format("{}{}", member_id, prop_str);
+      }
+      else {
+        member_id_data_path = fmt::format("{}.{}", member_id, prop_str);
+      }
+    }
+    else {
+      member_id_data_path = member_id;
+    }
+  }
+
   return member_id_data_path;
 }
 
-char *WM_context_path_resolve_full(bContext *C, const PointerRNA *ptr)
+std::optional<std::string> WM_context_path_resolve_full(bContext *C, const PointerRNA *ptr)
 {
   return WM_context_path_resolve_property_full(C, ptr, nullptr, -1);
 }
 
-static char *wm_prop_pystring_from_context(bContext *C,
-                                           PointerRNA *ptr,
-                                           PropertyRNA *prop,
-                                           int index)
+static std::optional<std::string> wm_prop_pystring_from_context(bContext *C,
+                                                                PointerRNA *ptr,
+                                                                PropertyRNA *prop,
+                                                                int index)
 {
-  char *member_id_data_path = WM_context_path_resolve_property_full(C, ptr, prop, index);
-  char *ret = nullptr;
-  if (member_id_data_path != nullptr) {
-    ret = BLI_sprintfN("bpy.context.%s", member_id_data_path);
-    MEM_freeN(member_id_data_path);
+  std::optional<std::string> member_id_data_path = WM_context_path_resolve_property_full(
+      C, ptr, prop, index);
+  if (!member_id_data_path.has_value()) {
+    return std::nullopt;
   }
-  return ret;
+  return "bpy.context." + member_id_data_path.value();
 }
 
-char *WM_prop_pystring_assign(bContext *C, PointerRNA *ptr, PropertyRNA *prop, int index)
+std::optional<std::string> WM_prop_pystring_assign(bContext *C,
+                                                   PointerRNA *ptr,
+                                                   PropertyRNA *prop,
+                                                   int index)
 {
-  char *lhs = C ? wm_prop_pystring_from_context(C, ptr, prop, index) : nullptr;
+  std::optional<std::string> lhs = C ? wm_prop_pystring_from_context(C, ptr, prop, index) :
+                                       std::nullopt;
 
-  if (lhs == nullptr) {
+  if (!lhs.has_value()) {
     /* Fallback to `bpy.data.foo[id]` if we don't find in the context. */
-    lhs = RNA_path_full_property_py(ptr, prop, index);
+    if (std::optional<std::string> lhs_str = RNA_path_full_property_py(ptr, prop, index)) {
+      lhs = lhs_str;
+    }
+    else {
+      return std::nullopt;
+    }
   }
 
-  if (!lhs) {
-    return nullptr;
-  }
+  std::string rhs = RNA_property_as_string(C, ptr, prop, index, INT_MAX);
 
-  char *rhs = RNA_property_as_string(C, ptr, prop, index, INT_MAX);
-  if (!rhs) {
-    MEM_freeN(lhs);
-    return nullptr;
-  }
-
-  char *ret = BLI_sprintfN("%s = %s", lhs, rhs);
-  MEM_freeN(lhs);
-  MEM_freeN(rhs);
+  std::string ret = fmt::format("{} = {}", lhs.value(), rhs);
   return ret;
 }
 
@@ -1518,12 +1512,12 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
       BLF_width(style->widget.uifont_id, data->title.c_str(), BLF_DRAW_STR_DUMMY_MAX));
 
   /* Break Message into multiple lines. */
-  std::vector<std::string> message_lines;
+  blender::Vector<std::string> message_lines;
   blender::StringRef messaged_trimmed = blender::StringRef(data->message).trim();
   std::istringstream message_stream(messaged_trimmed);
   std::string line;
   while (std::getline(message_stream, line)) {
-    message_lines.push_back(line);
+    message_lines.append(line);
     text_width = std::max(
         text_width, int(BLF_width(style->widget.uifont_id, line.c_str(), BLF_DRAW_STR_DUMMY_MAX)));
   }
@@ -1549,6 +1543,11 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   /* Title. */
   if (!data->title.empty()) {
     uiItemL_ex(layout, data->title.c_str(), ICON_NONE, true, false);
+
+    /* Line under the title if there are properties but no message body. */
+    if (data->include_properties && message_lines.size() == 0) {
+      uiItemS_ex(layout, 0.2f, LayoutSeparatorType::Line);
+    };
   }
 
   /* Message lines. */
@@ -1557,6 +1556,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   }
 
   if (data->include_properties) {
+    uiItemS_ex(layout, 0.5f);
     uiTemplateOperatorPropertyButs(C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, 0);
   }
 
@@ -1792,16 +1792,19 @@ int WM_operator_props_popup(bContext *C, wmOperator *op, const wmEvent * /*event
   return wm_operator_props_popup_ex(C, op, false, true);
 }
 
-int WM_operator_props_dialog_popup(
-    bContext *C, wmOperator *op, int width, const char *title, const char *confirm_text)
+int WM_operator_props_dialog_popup(bContext *C,
+                                   wmOperator *op,
+                                   int width,
+                                   std::optional<std::string> title,
+                                   std::optional<std::string> confirm_text)
 {
   wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
   data->width = int(float(width) * UI_SCALE_FAC * UI_style_get()->widgetlabel.points /
                     UI_DEFAULT_TEXT_POINTS);
   data->free_op = true; /* if this runs and gets registered we may want not to free it */
-  data->title = (title == nullptr) ? WM_operatortype_name(op->type, op->ptr) : title;
-  data->confirm_text = (confirm_text == nullptr) ? IFACE_("OK") : confirm_text;
+  data->title = title ? std::move(*title) : WM_operatortype_name(op->type, op->ptr);
+  data->confirm_text = confirm_text ? std::move(*confirm_text) : IFACE_("OK");
   data->icon = ALERT_ICON_NONE;
   data->size = WM_POPUP_SIZE_SMALL;
   data->position = WM_POPUP_POSITION_MOUSE;
@@ -1809,7 +1812,7 @@ int WM_operator_props_dialog_popup(
   data->mouse_move_quit = false;
   data->include_properties = true;
 
-  /* op is not executed until popup OK but is clicked */
+  /* The operator is not executed until popup OK button is clicked. */
   UI_popup_block_ex(
       C, wm_block_dialog_create, wm_operator_ui_popup_ok, wm_operator_ui_popup_cancel, data, op);
 

@@ -2,14 +2,13 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "viewport_engine.h"
-#include "camera.h"
+#include "viewport_engine.hh"
+#include "camera.hh"
 
 #include <pxr/base/gf/camera.h>
 #include <pxr/imaging/glf/drawTarget.h>
 #include <pxr/usd/usdGeom/camera.h>
 
-#include "DNA_camera_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_vec_types.h" /* This include must be before `BKE_camera.h` due to `rctf` type. */
@@ -22,9 +21,6 @@
 #include "BKE_camera.h"
 #include "BKE_context.hh"
 
-#include "DEG_depsgraph_query.hh"
-
-#include "GPU_context.h"
 #include "GPU_matrix.h"
 
 #include "RE_engine.h"

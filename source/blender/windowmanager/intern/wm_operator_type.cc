@@ -18,7 +18,7 @@
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
@@ -606,9 +606,9 @@ std::string WM_operatortype_description_or_name(bContext *C,
 {
   std::string text = WM_operatortype_description(C, ot, properties);
   if (text.empty()) {
-    const std::string text_orig = WM_operatortype_name(ot, properties);
+    std::string text_orig = WM_operatortype_name(ot, properties);
     if (!text_orig.empty()) {
-      text = BLI_strdupn(text_orig.c_str(), text_orig.size());
+      return text_orig;
     }
   }
   return text;

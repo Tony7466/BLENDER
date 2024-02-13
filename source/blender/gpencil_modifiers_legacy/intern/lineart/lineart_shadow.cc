@@ -11,26 +11,16 @@
 
 #include "lineart_intern.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_lib_id.hh"
-#include "BKE_material.h"
 #include "BKE_object.hh"
-#include "BKE_scene.h"
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_task.h"
 #include "BLI_time.h"
 
-#include "DEG_depsgraph_query.hh"
-
-#include "DNA_collection_types.h"
-#include "DNA_gpencil_legacy_types.h"
 #include "DNA_light_types.h"
-#include "DNA_material_types.h"
-#include "DNA_modifier_types.h"
-#include "DNA_scene_types.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -729,7 +719,7 @@ static bool lineart_shadow_cast_onto_triangle(LineartData *ld,
                                               double *r_gloc_2,
                                               bool *r_facing_light)
 {
-
+  using namespace blender;
   double *LFBC = sedge->fbc1, *RFBC = sedge->fbc2, *FBC0 = tri->v[0]->fbcoord,
          *FBC1 = tri->v[1]->fbcoord, *FBC2 = tri->v[2]->fbcoord;
 
@@ -786,7 +776,7 @@ static bool lineart_shadow_cast_onto_triangle(LineartData *ld,
 
   /* Get projected global position. */
 
-  double gpos1[3], gpos2[3];
+  double3 gpos1, gpos2;
   double *v1 = (trie[0] == 0 ? FBC0 : (trie[0] == 1 ? FBC1 : FBC2));
   double *v2 = (trie[0] == 0 ? FBC1 : (trie[0] == 1 ? FBC2 : FBC0));
   double *v3 = (trie[1] == 0 ? FBC0 : (trie[1] == 1 ? FBC1 : FBC2));
@@ -806,7 +796,7 @@ static bool lineart_shadow_cast_onto_triangle(LineartData *ld,
   interp_v3_v3v3_db(gpos1, gv1, gv2, gr1);
   interp_v3_v3v3_db(gpos2, gv3, gv4, gr2);
 
-  double fbc1[4], fbc2[4];
+  double4 fbc1, fbc2;
 
   mul_v4_m4v3_db(fbc1, ld->conf.view_projection, gpos1);
   mul_v4_m4v3_db(fbc2, ld->conf.view_projection, gpos2);
@@ -819,9 +809,9 @@ static bool lineart_shadow_cast_onto_triangle(LineartData *ld,
   double at1 = ratiod(LFBC[use], RFBC[use], fbc1[use]);
   double at2 = ratiod(LFBC[use], RFBC[use], fbc2[use]);
   if (at1 > at2) {
-    swap_v3_v3_db(gpos1, gpos2);
-    swap_v4_v4_db(fbc1, fbc2);
-    SWAP(double, at1, at2);
+    std::swap(gpos1, gpos2);
+    std::swap(fbc1, fbc2);
+    std::swap(at1, at2);
   }
 
   /* If not effectively projecting anything. */
