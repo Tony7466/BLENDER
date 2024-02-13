@@ -76,7 +76,7 @@
 #include "BKE_softbody.h"
 #include "BKE_volume.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -1818,7 +1818,7 @@ static int modifier_apply_invoke(bContext *C, wmOperator *op, const wmEvent *eve
             C,
             op,
             IFACE_("Apply Modifier"),
-            IFACE_("Make data single-user, apply modifier, and remove it from the list"),
+            IFACE_("Make data single-user, apply modifier, and remove it from the list."),
             IFACE_("Apply"),
             ALERT_ICON_WARNING,
             false);
