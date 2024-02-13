@@ -52,7 +52,7 @@ def setup():
         bpy.ops.object.lightprobe_add(type='VOLUME', location=(0.0, 0.0, 0.0))
         grid = bpy.context.selected_objects[0]
         grid.scale = (1.735, 1.735, 1.735)
-        grid.data.bake_samples = 256
+        grid.data.grid_bake_samples = 256
         bpy.ops.object.lightprobe_cache_bake(subset='ACTIVE')
     except:
         pass
@@ -84,7 +84,6 @@ def get_gpu_device_type(blender):
     # TODO: This always fails.
     command = [
         blender,
-        "-noaudio",
         "--background",
         "--factory-startup",
         "--python",
@@ -104,7 +103,6 @@ def get_gpu_device_type(blender):
 def get_arguments(filepath, output_filepath):
     return [
         "--background",
-        "-noaudio",
         "--factory-startup",
         "--enable-autoexec",
         "--debug-memory",
