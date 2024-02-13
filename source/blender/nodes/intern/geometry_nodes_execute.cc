@@ -93,9 +93,6 @@ static bool node_needs_own_transform_relation(const bNode &node)
         node.storage);
     return storage.transform_space == GEO_NODE_TRANSFORM_SPACE_RELATIVE;
   }
-  if (node.type == GEO_NODE_OBJECT_TRANSFORM) {
-    return node.custom1 == GEO_NODE_TRANSFORM_SPACE_RELATIVE;
-  }
   if (node.type == GEO_NODE_SELF_OBJECT) {
     return true;
   }

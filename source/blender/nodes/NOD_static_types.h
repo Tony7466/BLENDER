@@ -404,7 +404,6 @@ DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_FACE_OF_CORNER, 0, "FACE_OF_CORNER"
 DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_OFFSET_CORNER_IN_FACE, 0, "OFFSET_CORNER_IN_FACE", OffsetCornerInFace, "Offset Corner in Face", "Retrieve corners in the same face as another")
 DefNode(GeometryNode, GEO_NODE_MESH_TOPOLOGY_VERTEX_OF_CORNER, 0, "VERTEX_OF_CORNER", VertexOfCorner, "Vertex of Corner", "Retrieve the vertex each face corner is attached to")
 DefNode(GeometryNode, GEO_NODE_OBJECT_INFO, 0, "OBJECT_INFO", ObjectInfo, "Object Info", "Retrieve information from an object")
-DefNode(GeometryNode, GEO_NODE_OBJECT_TRANSFORM, 0, "OBJECT_TRANSFORM", ObjectTransform, "Object Transform", "Retrieve an object's location, rotation, and scale")
 DefNode(GeometryNode, GEO_NODE_OFFSET_POINT_IN_CURVE, 0, "OFFSET_POINT_IN_CURVE", OffsetPointInCurve, "Offset Point in Curve", "Offset a control point index within its curve")
 DefNode(GeometryNode, GEO_NODE_TOOL_FACE_SET, 0, "TOOL_FACE_SET", ToolFaceSet, "Face Set", "Each face's sculpt face set value")
 DefNode(GeometryNode, GEO_NODE_TOOL_3D_CURSOR, 0, "TOOL_3D_CURSOR", Tool3DCursor, "3D Cursor", "The scene's 3D cursor location and rotation")
