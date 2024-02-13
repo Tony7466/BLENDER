@@ -175,7 +175,7 @@ static int pack_all_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*
         C,
         op,
         IFACE_("Pack all used external files into this .blend file"),
-        IFACE_("Warning: Some images are modified and these changes will be lost"),
+        IFACE_("Warning: Some images are modified and these changes will be lost."),
         IFACE_("Pack"),
         ALERT_ICON_WARNING,
         false);
