@@ -10,21 +10,18 @@
 
 #include "DNA_brush_types.h"
 #include "DNA_defaults.h"
-#include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
-#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_rotation.h"
 #include "BLI_rand.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_bpath.h"
+#include "BKE_bpath.hh"
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
-#include "BKE_context.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
@@ -2448,6 +2445,25 @@ void BKE_brush_weight_set(const Scene *scene, Brush *brush, float value)
   }
   else {
     brush->weight = value;
+  }
+}
+
+int BKE_brush_input_samples_get(const Scene *scene, const Brush *brush)
+{
+  UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
+
+  return (ups->flag & UNIFIED_PAINT_INPUT_SAMPLES) ? ups->input_samples : brush->input_samples;
+}
+
+void BKE_brush_input_samples_set(const Scene *scene, Brush *brush, int value)
+{
+  UnifiedPaintSettings *ups = &scene->toolsettings->unified_paint_settings;
+
+  if (ups->flag & UNIFIED_PAINT_INPUT_SAMPLES) {
+    ups->input_samples = value;
+  }
+  else {
+    brush->input_samples = value;
   }
 }
 

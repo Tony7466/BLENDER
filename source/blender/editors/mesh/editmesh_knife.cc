@@ -12,9 +12,11 @@
 #  define _USE_MATH_DEFINES
 #endif
 
+#include <fmt/format.h>
+
 #include "MEM_guardedalloc.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "BLI_alloca.h"
 #include "BLI_array.h"
@@ -30,15 +32,14 @@
 #include "BLI_stack.h"
 #include "BLI_string.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_bvhutils.hh"
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_editmesh_bvh.h"
 #include "BKE_layer.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_unit.hh"
 
 #include "GPU_immediate.h"
@@ -1098,37 +1099,29 @@ static void knifetool_draw(const bContext * /*C*/, ARegion * /*region*/, void *a
 
 static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *kcd)
 {
-  char header[UI_MAX_DRAW_STR];
-  char buf[UI_MAX_DRAW_STR];
+  auto get_modal_key_str = [&](int id) {
+    return WM_modalkeymap_operator_items_to_string(op->type, id, true).value_or("");
+  };
 
-  char *p = buf;
-  int available_len = sizeof(buf);
-
-#define WM_MODALKEY(_id) \
-\
-  WM_modalkeymap_operator_items_to_string_buf( \
-      op->type, (_id), true, UI_MAX_SHORTCUT_STR, &available_len, &p)
-
-  SNPRINTF(
-      header,
-      RPT_("%s: confirm, %s: cancel, %s: undo, "
-           "%s: start/define cut, %s: close cut, %s: new cut, "
-           "%s: midpoint snap (%s), %s: ignore snap (%s), "
-           "%s: angle constraint %.2f(%.2f) (%s%s%s%s), %s: cut through (%s), "
-           "%s: panning, %s%s%s: orientation lock (%s), "
-           "%s: distance/angle measurements (%s), "
-           "%s: x-ray (%s)"),
-      WM_MODALKEY(KNF_MODAL_CONFIRM),
-      WM_MODALKEY(KNF_MODAL_CANCEL),
-      WM_MODALKEY(KNF_MODAL_UNDO),
-      WM_MODALKEY(KNF_MODAL_ADD_CUT),
-      WM_MODALKEY(KNF_MODAL_ADD_CUT_CLOSED),
-      WM_MODALKEY(KNF_MODAL_NEW_CUT),
-      WM_MODALKEY(KNF_MODAL_MIDPOINT_ON),
+  const std::string header = fmt::format(
+      IFACE_("{}: confirm, {}: cancel, {}: undo, "
+             "{}: start/define cut, {}: close cut, {}: new cut, "
+             "{}: midpoint snap ({}), {}: ignore snap ({}), "
+             "{}: angle constraint {:.2f}({:.2f}) ({}{}{}{}), {}: cut through ({}), "
+             "{}: panning, {}{}{}: orientation lock ({}), "
+             "{}: distance/angle measurements ({}), "
+             "{}: x-ray ({})"),
+      get_modal_key_str(KNF_MODAL_CONFIRM),
+      get_modal_key_str(KNF_MODAL_CANCEL),
+      get_modal_key_str(KNF_MODAL_UNDO),
+      get_modal_key_str(KNF_MODAL_ADD_CUT),
+      get_modal_key_str(KNF_MODAL_ADD_CUT_CLOSED),
+      get_modal_key_str(KNF_MODAL_NEW_CUT),
+      get_modal_key_str(KNF_MODAL_MIDPOINT_ON),
       WM_bool_as_string(kcd->snap_midpoints),
-      WM_MODALKEY(KNF_MODAL_IGNORE_SNAP_ON),
+      get_modal_key_str(KNF_MODAL_IGNORE_SNAP_ON),
       WM_bool_as_string(kcd->ignore_edge_snapping),
-      WM_MODALKEY(KNF_MODAL_ANGLE_SNAP_TOGGLE),
+      get_modal_key_str(KNF_MODAL_ANGLE_SNAP_TOGGLE),
       (kcd->angle >= 0.0f) ? RAD2DEGF(kcd->angle) : 360.0f + RAD2DEGF(kcd->angle),
       (kcd->angle_snapping_increment > KNIFE_MIN_ANGLE_SNAPPING_INCREMENT &&
        kcd->angle_snapping_increment <= KNIFE_MAX_ANGLE_SNAPPING_INCREMENT) ?
@@ -1139,24 +1132,22 @@ static void knife_update_header(bContext *C, wmOperator *op, KnifeTool_OpData *k
           "OFF", /* TODO: Can this be simplified? */
       (kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_RELATIVE) ? " - " : "",
       (kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_RELATIVE) ?
-          WM_MODALKEY(KNF_MODAL_CYCLE_ANGLE_SNAP_EDGE) :
+          get_modal_key_str(KNF_MODAL_CYCLE_ANGLE_SNAP_EDGE) :
           "",
       (kcd->angle_snapping_mode == KNF_CONSTRAIN_ANGLE_MODE_RELATIVE) ? ": cycle edge" : "", /**/
-      WM_MODALKEY(KNF_MODAL_CUT_THROUGH_TOGGLE),
+      get_modal_key_str(KNF_MODAL_CUT_THROUGH_TOGGLE),
       WM_bool_as_string(kcd->cut_through),
-      WM_MODALKEY(KNF_MODAL_PANNING),
-      WM_MODALKEY(KNF_MODAL_X_AXIS),
-      WM_MODALKEY(KNF_MODAL_Y_AXIS),
-      WM_MODALKEY(KNF_MODAL_Z_AXIS),
+      get_modal_key_str(KNF_MODAL_PANNING),
+      get_modal_key_str(KNF_MODAL_X_AXIS),
+      get_modal_key_str(KNF_MODAL_Y_AXIS),
+      get_modal_key_str(KNF_MODAL_Z_AXIS),
       (kcd->axis_constrained ? kcd->axis_string : WM_bool_as_string(kcd->axis_constrained)),
-      WM_MODALKEY(KNF_MODAL_SHOW_DISTANCE_ANGLE_TOGGLE),
+      get_modal_key_str(KNF_MODAL_SHOW_DISTANCE_ANGLE_TOGGLE),
       WM_bool_as_string(kcd->show_dist_angle),
-      WM_MODALKEY(KNF_MODAL_DEPTH_TEST_TOGGLE),
+      get_modal_key_str(KNF_MODAL_DEPTH_TEST_TOGGLE),
       WM_bool_as_string(!kcd->depth_test));
 
-#undef WM_MODALKEY
-
-  ED_workspace_status_text(C, header);
+  ED_workspace_status_text(C, header.c_str());
 }
 
 /** \} */
@@ -4054,8 +4045,7 @@ static void knife_init_colors(KnifeColors *colors)
 /* called when modal loop selection gets set up... */
 static void knifetool_init(ViewContext *vc,
                            KnifeTool_OpData *kcd,
-                           Object **objects,
-                           const int objects_len,
+                           Vector<Object *> objects,
                            const bool only_select,
                            const bool cut_through,
                            const bool xray,
@@ -4076,13 +4066,7 @@ static void knifetool_init(ViewContext *vc,
   kcd->scene = scene;
   kcd->region = vc->region;
 
-  if (objects) {
-    kcd->objects = Vector<Object *>(objects, objects + objects_len);
-  }
-  else {
-    kcd->objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-        vc->scene, vc->view_layer, vc->v3d);
-  }
+  kcd->objects = std::move(objects);
 
   Object *ob;
   BMEditMesh *em;
@@ -4770,17 +4754,17 @@ static int knifetool_invoke(bContext *C, wmOperator *op, const wmEvent *event)
   /* alloc new customdata */
   KnifeTool_OpData *kcd = MEM_new<KnifeTool_OpData>(__func__);
   op->customdata = kcd;
-  knifetool_init(&vc,
-                 kcd,
-                 nullptr,
-                 0,
-                 only_select,
-                 cut_through,
-                 xray,
-                 visible_measurements,
-                 angle_snapping,
-                 angle_snapping_increment,
-                 true);
+  knifetool_init(
+      &vc,
+      kcd,
+      BKE_view_layer_array_from_objects_in_edit_mode_unique_data(vc.scene, vc.view_layer, vc.v3d),
+      only_select,
+      cut_through,
+      xray,
+      visible_measurements,
+      angle_snapping,
+      angle_snapping_increment,
+      true);
 
   if (only_select) {
     bool faces_selected = false;
@@ -4923,12 +4907,8 @@ static bool edbm_mesh_knife_point_isect(LinkNode *polys, const float cent_ss[2])
   return false;
 }
 
-void EDBM_mesh_knife(ViewContext *vc,
-                     Object **objects,
-                     const int objects_len,
-                     LinkNode *polys,
-                     bool use_tag,
-                     bool cut_through)
+void EDBM_mesh_knife(
+    ViewContext *vc, const Span<Object *> objects, LinkNode *polys, bool use_tag, bool cut_through)
 {
   KnifeTool_OpData *kcd;
 
@@ -4941,12 +4921,11 @@ void EDBM_mesh_knife(ViewContext *vc,
     const int angle_snapping = KNF_CONSTRAIN_ANGLE_MODE_NONE;
     const float angle_snapping_increment = KNIFE_DEFAULT_ANGLE_SNAPPING_INCREMENT;
 
-    kcd = static_cast<KnifeTool_OpData *>(MEM_callocN(sizeof(KnifeTool_OpData), __func__));
+    kcd = MEM_new<KnifeTool_OpData>(__func__);
 
     knifetool_init(vc,
                    kcd,
-                   objects,
-                   objects_len,
+                   {objects},
                    only_select,
                    cut_through,
                    xray,

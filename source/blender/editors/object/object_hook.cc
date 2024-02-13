@@ -21,20 +21,17 @@
 #include "DNA_curve_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_layer.hh"
-#include "BKE_main.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -551,6 +548,7 @@ static int add_hook_object(const bContext *C,
   BLI_insertlinkbefore(&obedit->modifiers, md, hmd);
   SNPRINTF(hmd->modifier.name, "Hook-%s", ob->id.name + 2);
   BKE_modifier_unique_name(&obedit->modifiers, (ModifierData *)hmd);
+  BKE_modifiers_persistent_uid_init(*obedit, hmd->modifier);
 
   hmd->object = ob;
   hmd->indexar = indexar;

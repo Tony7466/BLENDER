@@ -8,7 +8,6 @@
 
 #include "DNA_node_types.h"
 
-#include "BLI_array_utils.hh"
 #include "BLI_string.h"
 
 #include "FN_multi_function.hh"
@@ -20,10 +19,7 @@
 #include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
 
-#include "RNA_access.hh"
 #include "RNA_enum_types.hh"
-
-#include "WM_api.hh"
 
 namespace blender::nodes::node_geo_menu_switch_cc {
 
@@ -122,8 +118,10 @@ static void node_enum_definition_copy(NodeEnumDefinition &dst_enum_def,
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeMenuSwitch *data = MEM_cnew<NodeMenuSwitch>(__func__);
-  node_enum_definition_init(data->enum_definition);
   data->data_type = SOCK_GEOMETRY;
+  node_enum_definition_init(data->enum_definition);
+  data->enum_definition.add_item("A");
+  data->enum_definition.add_item("B");
   node->storage = data;
 }
 

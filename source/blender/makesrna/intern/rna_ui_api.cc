@@ -11,7 +11,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
@@ -22,7 +22,7 @@
 #include "UI_interface_icons.hh"
 #include "UI_resources.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #define DEF_ICON(name) {ICON_##name, (#name), 0, (#name), ""},
 #define DEF_ICON_VECTOR(name) {ICON_##name, (#name), 0, (#name), ""},
@@ -516,6 +516,11 @@ static void rna_uiItemProgress(uiLayout *layout,
   uiItemProgressIndicator(layout, text, factor, eButProgressType(progress_type));
 }
 
+static void rna_uiItemSeparator(uiLayout *layout, float factor, int type)
+{
+  uiItemS_ex(layout, factor, LayoutSeparatorType(type));
+}
+
 static void rna_uiTemplateID(uiLayout *layout,
                              bContext *C,
                              PointerRNA *ptr,
@@ -796,7 +801,7 @@ void rna_uiLayoutPanelProp(uiLayout *layout,
     return;
   }
 
-  PanelLayout panel_layout = uiLayoutPanelWithHeader(C, layout, data, property);
+  PanelLayout panel_layout = uiLayoutPanelProp(C, layout, data, property);
   *r_layout_header = panel_layout.header;
   *r_layout_body = panel_layout.body;
 }
@@ -816,9 +821,7 @@ void rna_uiLayoutPanel(uiLayout *layout,
     *r_layout_body = nullptr;
     return;
   }
-  LayoutPanelState *state = BKE_panel_layout_panel_state_ensure(panel, idname, default_closed);
-  PointerRNA state_ptr = RNA_pointer_create(nullptr, &RNA_LayoutPanelState, state);
-  PanelLayout panel_layout = uiLayoutPanelWithHeader(C, layout, &state_ptr, "is_open");
+  PanelLayout panel_layout = uiLayoutPanel(C, layout, idname, default_closed);
   *r_layout_header = panel_layout.header;
   *r_layout_body = panel_layout.body;
 }
@@ -1070,6 +1073,25 @@ void RNA_api_ui_layout(StructRNA *srna)
        0,
        "",
        "Do not display buttons to choose or refresh an asset library"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  static const EnumPropertyItem rna_enum_separator_type_items[] = {
+      {int(LayoutSeparatorType::Auto),
+       "AUTO",
+       0,
+       "Auto",
+       "Best guess at what type of separator is needed."},
+      {int(LayoutSeparatorType::Space),
+       "SPACE",
+       0,
+       "Empty space",
+       "Horizontal or Vertical empty space, depending on layout direction."},
+      {int(LayoutSeparatorType::Line),
+       "LINE",
+       0,
+       "Line",
+       "Horizontal or Vertical line, depending on layout direction."},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -1482,7 +1504,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   parm = RNA_def_string(func, "category", nullptr, 0, "", "panel type category");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
-  func = RNA_def_function(srna, "separator", "uiItemS_ex");
+  func = RNA_def_function(srna, "separator", "rna_uiItemSeparator");
   RNA_def_function_ui_description(func, "Item. Inserts empty space into the layout between items");
   RNA_def_float(func,
                 "factor",
@@ -1493,6 +1515,12 @@ void RNA_api_ui_layout(StructRNA *srna)
                 "Percentage of width to space (leave unset for default space)",
                 0.0f,
                 FLT_MAX);
+  RNA_def_enum(func,
+               "type",
+               rna_enum_separator_type_items,
+               int(LayoutSeparatorType::Auto),
+               "Type",
+               "The type of the separator");
 
   func = RNA_def_function(srna, "separator_spacer", "uiItemSpacer");
   RNA_def_function_ui_description(
