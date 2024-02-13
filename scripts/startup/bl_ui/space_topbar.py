@@ -280,6 +280,9 @@ class TOPBAR_MT_file(Menu):
 
         layout.menu("TOPBAR_MT_file_import", icon='IMPORT')
         layout.menu("TOPBAR_MT_file_export", icon='EXPORT')
+        row = layout.row()
+        row.operator("wm.collection_export_all")
+        row.enabled = any(len(coll.io_handlers) > 0 for coll in bpy.data.collections)
 
         layout.separator()
 

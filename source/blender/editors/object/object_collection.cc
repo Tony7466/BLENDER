@@ -464,7 +464,7 @@ void COLLECTION_OT_io_handler_add(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = collection_io_handler_add_exec;
-  ot->poll = ED_operator_objectmode;
+  ot->poll = WM_operator_winactive;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -502,7 +502,7 @@ void COLLECTION_OT_io_handler_remove(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = collection_io_handler_remove_exec;
-  ot->poll = ED_operator_objectmode;
+  ot->poll = WM_operator_winactive;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -555,7 +555,7 @@ void COLLECTION_OT_io_handler_export(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = collection_io_handler_export_exec;
-  ot->poll = ED_operator_objectmode;
+  ot->poll = WM_operator_winactive;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -563,31 +563,78 @@ void COLLECTION_OT_io_handler_export(wmOperatorType *ot)
   RNA_def_int(ot->srna, "index", 0, 0, INT_MAX, "Index", "IO Handler index", 0, INT_MAX);
 }
 
-static int collection_io_export_all_exec(bContext *C, wmOperator * /*op*/)
+static int collection_export(bContext *C, Collection *collection)
 {
-  Collection *collection = CTX_data_collection(C);
   ListBase *io_handlers = &collection->io_handlers;
 
   LISTBASE_FOREACH (IOHandlerData *, data, io_handlers) {
-    io_handler_export(C, data, collection);
-
-    /* TODO: Should we continue calling operators if one fails? */
-    /* TODO: What's the best way to surface the problem? Reports? */
+    if (io_handler_export(C, data, collection) != OPERATOR_FINISHED) {
+      /* Do not continue calling exporters if we encounter one that fails. */
+      return OPERATOR_CANCELLED;
+    }
   }
 
   return OPERATOR_FINISHED;
+}
+
+static int collection_io_export_all_exec(bContext *C, wmOperator * /*op*/)
+{
+  Collection *collection = CTX_data_collection(C);
+  return collection_export(C, collection);
 }
 
 void COLLECTION_OT_io_export_all(wmOperatorType *ot)
 {
   /* identifiers */
   ot->name = "Export All";
-  ot->description = "Export all configured IO Handlers";
+  ot->description = "Invoke all configured exporters on this collection";
   ot->idname = "COLLECTION_OT_io_export_all";
 
   /* api callbacks */
   ot->exec = collection_io_export_all_exec;
-  ot->poll = ED_operator_objectmode;
+  ot->poll = WM_operator_winactive;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+}
+
+static int collection_export_recursive(bContext *C, LayerCollection *layer_collection)
+{
+  if (collection_export(C, layer_collection->collection) != OPERATOR_FINISHED) {
+    return OPERATOR_CANCELLED;
+  }
+
+  LISTBASE_FOREACH (LayerCollection *, child, &layer_collection->layer_collections) {
+    if (collection_export_recursive(C, child) != OPERATOR_FINISHED) {
+      return OPERATOR_CANCELLED;
+    }
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+static int wm_collection_export_all_exec(bContext *C, wmOperator * /*op*/)
+{
+  ViewLayer *view_layer = CTX_data_view_layer(C);
+  LISTBASE_FOREACH (LayerCollection *, layer_collection, &view_layer->layer_collections) {
+    if (collection_export_recursive(C, layer_collection) != OPERATOR_FINISHED) {
+      return OPERATOR_CANCELLED;
+    }
+  }
+
+  return OPERATOR_FINISHED;
+}
+
+void WM_OT_collection_export_all(wmOperatorType *ot)
+{
+  /* identifiers */
+  ot->name = "Export All Collections";
+  ot->description = "Invoke all configured exporters for all collections";
+  ot->idname = "WM_OT_collection_export_all";
+
+  /* api callbacks */
+  ot->exec = wm_collection_export_all_exec;
+  ot->poll = WM_operator_winactive;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -609,7 +656,7 @@ static void collection_io_handler_menu_draw(const bContext * /*C*/, Menu *menu)
   }
 
   if (!at_least_one) {
-    uiItemL(layout, "No file handlers available", ICON_NONE);
+    uiItemL(layout, IFACE_("No file handlers available"), ICON_NONE);
   }
 }
 
@@ -619,7 +666,7 @@ void collection_io_handler_register()
 {
   MenuType *mt = MEM_cnew<MenuType>(__func__);
   STRNCPY(mt->idname, "COLLECTION_MT_io_handler_add");
-  STRNCPY(mt->label, N_("Add IO Handler"));
+  STRNCPY(mt->label, N_("Add Exporter"));
   mt->draw = collection_io_handler_menu_draw;
 
   WM_menutype_add(mt);
@@ -627,6 +674,7 @@ void collection_io_handler_register()
   WM_operatortype_append(COLLECTION_OT_io_handler_remove);
   WM_operatortype_append(COLLECTION_OT_io_handler_export);
   WM_operatortype_append(COLLECTION_OT_io_export_all);
+  WM_operatortype_append(WM_OT_collection_export_all);
 }
 
 }  // namespace blender::ed::object

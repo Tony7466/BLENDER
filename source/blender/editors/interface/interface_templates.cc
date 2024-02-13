@@ -2337,86 +2337,6 @@ void uiTemplateModifiers(uiLayout * /*layout*/, bContext *C)
   }
 }
 
-#ifdef _MSC_VER
-#  pragma optimize("", off)
-#endif
-static wmOperator *minimal_operator_create(wmOperatorType *ot, PointerRNA *properties)
-{
-  /* Copied from #wm_operator_create.
-   * Create a slimmed down operator suitable only for UI drawing. */
-  wmOperator *op = MEM_cnew<wmOperator>(ot->idname);
-  STRNCPY(op->idname, ot->idname);
-  op->type = ot;
-
-  /* Initialize properties but do not assume ownership of them.
-   * This "minimal" operator owns nothing. */
-  op->ptr = MEM_cnew<PointerRNA>("wmOperatorPtrRNA");
-  op->properties = static_cast<IDProperty *>(properties->data);
-  *op->ptr = *properties;
-
-  return op;
-}
-
-static void minimal_operator_free(wmOperator *op)
-{
-  MEM_freeN(op->ptr);
-  MEM_freeN(op);
-}
-
-static void draw_export_controls(uiLayout *layout, const char *label, int index)
-{
-  uiItemL(layout, label, ICON_NONE);
-  uiItemIntO(layout, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "index", index);
-  uiItemIntO(layout, "", ICON_X, "COLLECTION_OT_io_handler_remove", "index", index);
-}
-
-static void draw_export_properties(
-    bContext *C, uiLayout *layout, ID *id, wmOperatorType *ot, IOHandlerData *data)
-{
-  PointerRNA properties = RNA_pointer_create(id, ot->srna, data->export_properties);
-
-  uiLayout *box = uiLayoutBox(layout);
-  uiItemR(box, &properties, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
-
-  wmOperator *op = minimal_operator_create(ot, &properties);
-  op->layout = layout;
-  op->type->ui(C, op);
-  op->layout = nullptr;
-  minimal_operator_free(op);
-}
-
-void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
-{
-  Collection *collection = CTX_data_collection(C);
-  ListBase *io_handlers = &collection->io_handlers;
-
-  /* Draw all the IO handlers. */
-  int index = 0;
-  LISTBASE_FOREACH_INDEX (IOHandlerData *, data, io_handlers, index) {
-    using namespace blender;
-    bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
-    if (!fh) {
-      continue;
-    }
-
-    wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
-    if (!ot) {
-      continue;
-    }
-
-    PointerRNA io_handler_ptr = RNA_pointer_create(&collection->id, &RNA_IOHandlerData, data);
-
-    PanelLayout panel = uiLayoutPanelProp(C, layout, &io_handler_ptr, "is_open");
-    draw_export_controls(panel.header, fh->label, index);
-    if (panel.body) {
-      draw_export_properties(C, panel.body, &collection->id, ot, data);
-    }
-  }
-}
-#ifdef _MSC_VER
-#  pragma optimize("", on)
-#endif
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -3036,6 +2956,86 @@ void uiTemplateOperatorRedoProperties(uiLayout *layout, const bContext *C)
       uiItemO(layout, IFACE_("More..."), ICON_NONE, "SCREEN_OT_redo_last");
     }
 #endif
+  }
+}
+
+static wmOperator *minimal_operator_create(wmOperatorType *ot, PointerRNA *properties)
+{
+  /* Copied from #wm_operator_create.
+   * Create a slimmed down operator suitable only for UI drawing. */
+  wmOperator *op = MEM_cnew<wmOperator>(ot->idname);
+  STRNCPY(op->idname, ot->idname);
+  op->type = ot;
+
+  /* Initialize properties but do not assume ownership of them.
+   * This "minimal" operator owns nothing. */
+  op->ptr = MEM_cnew<PointerRNA>("wmOperatorPtrRNA");
+  op->properties = static_cast<IDProperty *>(properties->data);
+  *op->ptr = *properties;
+
+  return op;
+}
+
+static void minimal_operator_free(wmOperator *op)
+{
+  MEM_freeN(op->ptr);
+  MEM_freeN(op);
+}
+
+static void draw_export_controls(uiLayout *layout, const std::string &label, int index, bool valid)
+{
+  uiItemL(layout, label.c_str(), ICON_NONE);
+  if (valid) {
+    uiItemIntO(layout, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "index", index);
+    uiItemIntO(layout, "", ICON_X, "COLLECTION_OT_io_handler_remove", "index", index);
+  }
+}
+
+static void draw_export_properties(
+    bContext *C, uiLayout *layout, ID *id, wmOperatorType *ot, IOHandlerData *data)
+{
+  PointerRNA properties = RNA_pointer_create(id, ot->srna, data->export_properties);
+
+  uiLayout *box = uiLayoutBox(layout);
+  uiItemR(box, &properties, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  wmOperator *op = minimal_operator_create(ot, &properties);
+  op->type->flag &= ~OPTYPE_PRESET; /* TODO: Presets will not work currently. */
+  template_operator_property_buts_draw_single(C, op, layout, UI_BUT_LABEL_ALIGN_NONE, 0);
+  minimal_operator_free(op);
+}
+
+void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
+{
+  Collection *collection = CTX_data_collection(C);
+  ListBase *io_handlers = &collection->io_handlers;
+
+  /* Draw all the IO handlers. */
+  int index = 0;
+  LISTBASE_FOREACH_INDEX (IOHandlerData *, data, io_handlers, index) {
+    using namespace blender;
+    PointerRNA io_handler_ptr = RNA_pointer_create(&collection->id, &RNA_IOHandlerData, data);
+    PanelLayout panel = uiLayoutPanelProp(C, layout, &io_handler_ptr, "is_open");
+
+    bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
+    if (!fh) {
+      std::string label = std::string(IFACE_("Undefined")) + " " + data->fh_idname;
+      draw_export_controls(panel.header, label, index, false);
+      continue;
+    }
+
+    wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
+    if (!ot) {
+      std::string label = std::string(IFACE_("Undefined")) + " " + fh->export_operator;
+      draw_export_controls(panel.header, label, index, false);
+      continue;
+    }
+
+    std::string label(fh->label);
+    draw_export_controls(panel.header, label, index, true);
+    if (panel.body) {
+      draw_export_properties(C, panel.body, &collection->id, ot, data);
+    }
   }
 }
 

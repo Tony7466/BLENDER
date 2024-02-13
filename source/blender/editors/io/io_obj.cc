@@ -197,8 +197,7 @@ static void ui_obj_export_settings(uiLayout *layout, PointerRNA *imfptr)
 
 static void wm_obj_export_draw(bContext * /*C*/, wmOperator *op)
 {
-  PointerRNA ptr = RNA_pointer_create(nullptr, op->type->srna, op->properties);
-  ui_obj_export_settings(op->layout, &ptr);
+  ui_obj_export_settings(op->layout, op->ptr);
 }
 
 /**

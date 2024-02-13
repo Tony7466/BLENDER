@@ -108,6 +108,7 @@ static void collection_gobject_hash_ensure(Collection *collection);
 static void collection_gobject_hash_update_object(Collection *collection,
                                                   Object *ob_old,
                                                   CollectionObject *cob);
+static void collection_io_handler_copy(Collection *collection, IOHandlerData *data);
 
 /** \} */
 
@@ -159,14 +160,15 @@ static void collection_copy_data(Main *bmain, ID *id_dst, const ID *id_src, cons
   BLI_listbase_clear(&collection_dst->runtime.parents);
   collection_dst->runtime.gobject_hash = nullptr;
 
-  /* TODO: Copy over io_handlers */
-
   LISTBASE_FOREACH (CollectionChild *, child, &collection_src->children) {
     collection_child_add(
         bmain, collection_dst, child->collection, &child->light_linking, flag, false);
   }
   LISTBASE_FOREACH (CollectionObject *, cob, &collection_src->gobject) {
     collection_object_add(bmain, collection_dst, cob->ob, &cob->light_linking, flag, false);
+  }
+  LISTBASE_FOREACH (IOHandlerData *, data, &collection_src->io_handlers) {
+    collection_io_handler_copy(collection_dst, data);
   }
 }
 
@@ -1373,6 +1375,22 @@ static bool collection_object_remove(
   }
   collection_object_remove_no_gobject_hash(bmain, collection, cob, id_create_flag, free_us);
   return true;
+}
+
+static void collection_io_handler_copy(Collection *collection, IOHandlerData *data)
+{
+  IOHandlerData *new_data = MEM_cnew<IOHandlerData>("IOHandlerData");
+  STRNCPY(new_data->fh_idname, data->fh_idname);
+  new_data->export_properties = IDP_CopyProperty(data->export_properties);
+  new_data->flag = data->flag;
+
+  /* Clear the `filepath` property. */
+  IDProperty *filepath = IDP_GetPropertyFromGroup(new_data->export_properties, "filepath");
+  if (filepath) {
+    IDP_ClearProperty(filepath);
+  }
+
+  BLI_addtail(&collection->io_handlers, new_data);
 }
 
 bool BKE_collection_object_add_notest(Main *bmain, Collection *collection, Object *ob)
