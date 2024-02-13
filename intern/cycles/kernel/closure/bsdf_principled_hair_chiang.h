@@ -142,11 +142,13 @@ ccl_device_inline float longitudinal_scattering(
   if (v <= 0.1f) {
     float i0 = log_bessel_I0(cos_arg);
     float val = expf(i0 - sin_arg - inv_v + 0.6931f + logf(0.5f * inv_v));
+    kernel_assert(isfinite_safe(val));
     return val;
   }
   else {
     float i0 = bessel_I0(cos_arg);
     float val = (expf(-sin_arg) * i0) / (sinhf(inv_v) * 2.0f * v);
+    kernel_assert(isfinite_safe(val));
     return val;
   }
 }
@@ -389,9 +391,12 @@ ccl_device int bsdf_hair_chiang_sample(KernelGlobals kg,
 
   float angles[6];
   hair_alpha_angles(sin_theta_o, cos_theta_o, bsdf->alpha, angles);
-  float sintheta_temp_o = angles[2 * p];
-  float costheta_temp_o = angles[2 * p + 1];
-
+  float sintheta_temp_o = sin_theta_o;
+  float costheta_temp_o = cos_theta_o;
+  if (p < 3) {
+    sintheta_temp_o = angles[2 * p];
+    costheta_temp_o = angles[2 * p + 1];
+  }
   rand.z = max(rand.z, 1e-5f);
   const float fac = 1.0f + v * logf(rand.z + (1.0f - rand.z) * expf(-2.0f / v));
   float sin_theta_i = -fac * sintheta_temp_o +
