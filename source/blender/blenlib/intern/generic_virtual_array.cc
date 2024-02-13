@@ -288,7 +288,7 @@ template<int BufferSize> class GVArrayImpl_For_SmallTrivialSingleValue : public 
   }
   void materialize_compressed_to_uninitialized(const IndexMask &mask, void *dst) const final
   {
-    type_->fill_contruct_n(buffer_, dst, mask.size());
+    type_->fill_construct_n(buffer_, dst, mask.size());
   }
 
   CommonVArrayInfo common_info() const final
