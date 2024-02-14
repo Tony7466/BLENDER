@@ -312,8 +312,9 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "gl_WorkGroupSize"
     /* clang-format on */
 };
-static const Span<const char * > text_format_glsl_literals_reserved(
-    text_format_glsl_literals_reserved_data, ARRAY_SIZE(text_format_glsl_literals_reserved_data));
+static const Span<const char *> text_format_glsl_literals_reserved(
+    text_format_glsl_literals_reserved_data,
+    ARRAY_SIZE(text_format_glsl_literals_reserved_data));
 
 /* GLSL shader types */
 static const char *text_format_glsl_literals_specialvar_data[] = {
@@ -344,7 +345,8 @@ static const char *text_format_glsl_literals_preprocessor[] = {
     "version"
 };
 static const Span<const char *>text_format_glsl_literals_preprocessor(
-  text_format_glsl_literals_preprocessor, ARRAY_SIZE(text_format_glsl_literals_preprocessor));
+    text_format_glsl_literals_preprocessor,
+    ARRAY_SIZE(text_format_glsl_literals_preprocessor));
 /*---------------------------------------------------------------------*/
 /* name local functions 
 */
@@ -399,12 +401,12 @@ static char txtfmt_glsl_format_identifier(const char *str)
 
     /* clang-format off */
 
-   if        (txtfmt_glsl_find_specialvar(str)    != -1) {fmt = FMT_TYPE_SPECIAL;
-   } else if (txtfmt_glsl_find_builtinfunc(str)   != -1) {fmt = FMT_TYPE_KEYWORD;
-   } else if (txtfmt_glsl_find_reserved(str)      != -1) {fmt = FMT_TYPE_RESERVED;
-   } else if (txtfmt_glsl_find_preprocessor(str)  != -1) {fmt = FMT_TYPE_DIRECTIVE;
-   } else                                                {fmt = FMT_TYPE_DEFAULT;
-   }
+  if        (txtfmt_glsl_find_specialvar(str)    != -1) {fmt = FMT_TYPE_SPECIAL;
+  } else if (txtfmt_glsl_find_builtinfunc(str)   != -1) {fmt = FMT_TYPE_KEYWORD;
+  } else if (txtfmt_glsl_find_reserved(str)      != -1) {fmt = FMT_TYPE_RESERVED;
+  } else if (txtfmt_glsl_find_preprocessor(str)  != -1) {fmt = FMT_TYPE_DIRECTIVE;
+  } else                                                {fmt = FMT_TYPE_DEFAULT;
+  }
     /* clang-format on */
 
     return fmt;
