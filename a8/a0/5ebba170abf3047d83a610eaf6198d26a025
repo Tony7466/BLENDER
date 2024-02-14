@@ -1,1 +1,2 @@
 Referenced by issue #111541, Tiled Compositor: Lens Distortion node outputs black pixel at edge
+Referenced by issue #115877, Composer's 'Translate' node shows random pixels when used in 3-component images
