@@ -148,7 +148,7 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
       const int sample_id = sample_ids[i];
       const int group_index = group_indices_.index_of_try(sample_id);
       if (group_index == -1) {
-        triangle_index[i] = 0;
+        triangle_index[i] = -1;
         sample_position[i] = float3(0, 0, 0);
         if (!is_valid_span.is_empty()) {
           is_valid_span[i] = false;
