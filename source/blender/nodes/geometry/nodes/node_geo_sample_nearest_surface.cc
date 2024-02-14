@@ -87,7 +87,7 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
       builder.single_input<int>("Sample ID");
       builder.single_output<int>("Triangle Index");
       builder.single_output<float3>("Sample Position");
-      builder.single_output<bool>("Is Valid");
+      builder.single_output<bool>("Is Valid", mf::ParamFlag::SupportsUnusedOutput);
       return signature;
     }();
     this->set_signature(&signature);
@@ -140,7 +140,8 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
     MutableSpan<int> triangle_index = params.uninitialized_single_output<int>(2, "Triangle Index");
     MutableSpan<float3> sample_position = params.uninitialized_single_output<float3>(
         3, "Sample Position");
-    MutableSpan<bool> is_valid_span = params.uninitialized_single_output<bool>(4, "Is Valid");
+    MutableSpan<bool> is_valid_span = params.uninitialized_single_output_if_required<bool>(
+        4, "Is Valid");
 
     mask.foreach_index([&](const int i) {
       const float3 position = positions[i];
@@ -149,7 +150,9 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
       if (group_index == -1) {
         triangle_index[i] = 0;
         sample_position[i] = float3(0, 0, 0);
-        is_valid_span[i] = false;
+        if (!is_valid_span.is_empty()) {
+          is_valid_span[i] = false;
+        }
         return;
       }
       const BVHTreeFromMesh &bvh = bvh_trees_[group_index];
@@ -159,7 +162,9 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
           bvh.tree, position, &nearest, bvh.nearest_callback, const_cast<BVHTreeFromMesh *>(&bvh));
       triangle_index[i] = nearest.index;
       sample_position[i] = nearest.co;
-      is_valid_span[i] = true;
+      if (!is_valid_span.is_empty()) {
+        is_valid_span[i] = true;
+      }
     });
   }
 
