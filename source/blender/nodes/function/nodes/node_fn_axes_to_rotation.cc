@@ -49,21 +49,21 @@ static float3 get_orthogonal_of_non_zero_vector(const float3 &v)
   return {0.0f, -v.z, v.y};
 }
 
-class AxisToEulerFunction : public mf::MultiFunction {
+class AxesToRotationFunction : public mf::MultiFunction {
  private:
   math::Axis primary_axis_;
   math::Axis secondary_axis_;
   math::Axis tertiary_axis_;
 
  public:
-  AxisToEulerFunction(const math::Axis primary_axis, const math::Axis secondary_axis)
+  AxesToRotationFunction(const math::Axis primary_axis, const math::Axis secondary_axis)
       : primary_axis_(primary_axis), secondary_axis_(secondary_axis)
   {
     BLI_assert(primary_axis_ != secondary_axis_);
 
     /* Through cancellation this will set the last axis to be the one that's neither the primary
      * nor secondary axis. */
-    tertiary_axis_ = (0 + 1 + 2) - primary_axis - secondary_axis;
+    tertiary_axis_ = math::Axis((0 + 1 + 2) - primary_axis.as_int() - secondary_axis.as_int());
 
     static const mf::Signature signature = []() {
       mf::Signature signature;
@@ -83,7 +83,7 @@ class AxisToEulerFunction : public mf::MultiFunction {
     MutableSpan r_rotations = params.uninitialized_single_output<math::Quaternion>(2, "Rotation");
 
     /* Might have to invert the axis to make sure that the created matrix has determinant 1. */
-    const bool invert_tertiary = (secondary_axis_ + 1) % 3 == primary_axis_;
+    const bool invert_tertiary = (secondary_axis_.as_int() + 1) % 3 == primary_axis_.as_int();
     const float tertiary_factor = invert_tertiary ? -1.0f : 1.0f;
 
     mask.foreach_index([&](const int64_t i) {
@@ -118,9 +118,9 @@ class AxisToEulerFunction : public mf::MultiFunction {
       }
 
       float3x3 mat;
-      mat[primary_axis_] = primary;
-      mat[secondary_axis_] = secondary;
-      mat[tertiary_axis_] = tertiary_factor * tertiary;
+      mat[primary_axis_.as_int()] = primary;
+      mat[secondary_axis_.as_int()] = secondary;
+      mat[tertiary_axis_.as_int()] = tertiary_factor * tertiary;
       BLI_assert(math::is_orthonormal(mat));
       BLI_assert(std::abs(math::determinant(mat) - 1.0f) < 0.0001f);
 
@@ -135,8 +135,8 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   if (node.custom1 == node.custom2) {
     return;
   }
-  builder.construct_and_set_matching_fn<AxisToEulerFunction>(math::Axis(node.custom1),
-                                                             math::Axis(node.custom2));
+  builder.construct_and_set_matching_fn<AxesToRotationFunction>(math::Axis(node.custom1),
+                                                                math::Axis(node.custom2));
 }
 
 static void node_rna(StructRNA *srna)
