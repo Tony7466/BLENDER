@@ -199,7 +199,7 @@ std::optional<Mesh *> mesh_copy_selection(
     return std::nullopt;
   }
 
-  Mesh *dst_mesh = bke::create_mesh_no_attributes(
+  Mesh *dst_mesh = bke::mesh_new_no_attributes(
       vert_mask.size(), edge_mask.size(), face_mask.size(), 0);
   BKE_mesh_copy_parameters_for_eval(dst_mesh, &src_mesh);
   bke::MutableAttributeAccessor dst_attributes = dst_mesh->attributes_for_write();
@@ -333,7 +333,7 @@ std::optional<Mesh *> mesh_copy_selection_keep_verts(
     return std::nullopt;
   }
 
-  Mesh *dst_mesh = bke::create_mesh_no_attributes(
+  Mesh *dst_mesh = bke::mesh_new_no_attributes(
       src_mesh.verts_num, edge_mask.size(), face_mask.size(), 0);
   BKE_mesh_copy_parameters_for_eval(dst_mesh, &src_mesh);
   bke::MutableAttributeAccessor dst_attributes = dst_mesh->attributes_for_write();
@@ -426,7 +426,7 @@ std::optional<Mesh *> mesh_copy_selection_keep_edges(
     return std::nullopt;
   }
 
-  Mesh *dst_mesh = bke::create_mesh_no_attributes(
+  Mesh *dst_mesh = bke::mesh_new_no_attributes(
       src_mesh.verts_num, src_mesh.edges_num, face_mask.size(), 0);
   BKE_mesh_copy_parameters_for_eval(dst_mesh, &src_mesh);
   bke::MutableAttributeAccessor dst_attributes = dst_mesh->attributes_for_write();

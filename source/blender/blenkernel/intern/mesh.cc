@@ -704,10 +704,10 @@ Mesh *BKE_mesh_new_nomain(const int verts_num,
 
 namespace blender::bke {
 
-Mesh *create_mesh_no_attributes(const int verts_num,
-                                const int edges_num,
-                                const int faces_num,
-                                const int corners_num)
+Mesh *mesh_new_no_attributes(const int verts_num,
+                             const int edges_num,
+                             const int faces_num,
+                             const int corners_num)
 {
   Mesh *mesh = BKE_mesh_new_nomain(0, 0, faces_num, 0);
   mesh->verts_num = verts_num;
