@@ -26,51 +26,18 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 constexpr int non_checked = 0;
 
-static std::pair<int, int> explore_branch(const Span<int> next_index,
-                                          MutableSpan<int> branch_size,
-                                          const int vert_i)
+template<typename Func>
+static int foreach (const Span<int> next_index, const int first_i, Func && func)
 {
-  int total_size = 0;
-  int vert_iter = vert_i;
-  while (branch_size[vert_iter] == non_checked) {
-    total_size++;
-    branch_size[vert_iter] = -total_size;
-    vert_iter = next_index[vert_iter];
+  int iter = first_i;
+  for (; func(next_index[iter]); iter = next_index[iter]) {
   }
-  return {total_size, vert_iter};
+  return iter;
 }
 
-static void fill_cycle(const Span<int> next_index, MutableSpan<int> branch_size, const int vert_i)
+static int size_between(const int a, const int b)
 {
-  BLI_assert(branch_size[vert_i] < 0);
-  BLI_assert(next_index[vert_i] != vert_i);
-  BLI_assert(-branch_size[vert_i] > -branch_size[next_index[vert_i]]);
-
-  const int total_branch_size = 1 + math::abs<int>(branch_size[vert_i]);
-  const int dangling_part = math::abs<int>(branch_size[next_index[vert_i]]);
-  const int cycle_size = total_branch_size - dangling_part;
-
-  int vert_iter = next_index[vert_i];
-  branch_size[vert_i] = cycle_size;
-  while (vert_iter != vert_i) {
-    branch_size[vert_iter] = cycle_size;
-    vert_iter = next_index[vert_iter];
-  }
-}
-
-static void fill_branch(const Span<int> next_index,
-                        MutableSpan<int> branch_size,
-                        const int vert_i,
-                        const int total_size)
-{
-  BLI_assert(branch_size[vert_i] < 0);
-  int vert_iter = vert_i;
-  int size = total_size;
-  while (branch_size[vert_iter] < 0) {
-    branch_size[vert_iter] = size;
-    size--;
-    vert_iter = next_index[vert_iter];
-  }
+  return math::abs<int>(a - b) + 1;
 }
 
 static int size_of_branch(const Span<int> next_index,
@@ -83,18 +50,50 @@ static int size_of_branch(const Span<int> next_index,
     return branch_size[vert_i];
   }
 
-  const auto [size, last_i] = explore_branch(next_index, branch_size, vert_i);
+  int size = 1;
+  branch_size[vert_i] = -1;
+  const int last_i = foreach (next_index, vert_i, [&](const int i) -> bool {
+    if (branch_size[i] != non_checked) {
+      return false;
+    }
+    size++;
+    branch_size[i] = -size;
+    return true;
+  });
+  const int cycle_start_i = next_index[last_i];
 
-  const bool is_dead_end = last_i == next_index[last_i];
-  const bool unknown_root = branch_size[last_i] < 0;
-  if (!is_dead_end && unknown_root) {
-    fill_cycle(next_index, branch_size, vert_i);
+  const int prefix_end = branch_size[cycle_start_i] > 0 ? branch_size[last_i] - 1 :
+                                                          branch_size[cycle_start_i];
+  const int prefix_size = size_between(math::abs<int>(branch_size[vert_i]),
+                                       math::abs<int>(prefix_end));
+
+  const bool unknown_end = branch_size[cycle_start_i] < 0;
+  if (unknown_end) {
+    const int cycle_size = size_between(math::abs<int>(branch_size[last_i]),
+                                        math::abs<int>(branch_size[cycle_start_i]));
+    foreach (next_index, last_i, [&](const int i) -> bool {
+      branch_size[i] = cycle_size;
+      return i != last_i;
+    })
+      ;
   }
 
-  BLI_assert(branch_size[last_i] < 0 || branch_size[last_i] > 0);
-  const int total_size = size - 1 + math::max<int>(1, branch_size[last_i]);
+  const int total_size = prefix_size + branch_size[cycle_start_i] - 1;
+  BLI_assert(total_size > 0);
 
-  fill_branch(next_index, branch_size, vert_i, total_size);
+  int total = total_size;
+  branch_size[vert_i] = total_size;
+  foreach (next_index, vert_i, [&](const int i) -> bool {
+    if (i == next_index[last_i]) {
+      return false;
+    }
+    total--;
+    BLI_assert(total > 0);
+    branch_size[i] = total;
+    return true;
+  })
+    ;
+
   return total_size;
 }
 
