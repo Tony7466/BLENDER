@@ -5,8 +5,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_task.hh"
 
-#include "DNA_mesh_types.h"
-
 #include "BKE_bvhutils.hh"
 #include "BKE_geometry_set.hh"
 
