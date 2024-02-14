@@ -435,10 +435,10 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
 
 static void create_envelope_strokes(const GreasePencilEnvelopeModifierData &emd,
                                     bke::greasepencil::Drawing &drawing,
-                                    const IndexMask &curves_mask)
+                                    const IndexMask &curves_mask,
+                                    const bool keep_original)
 {
   const EnvelopeInfo info = get_envelope_info(emd);
-
   const bke::CurvesGeometry &src_curves = drawing.strokes();
   const bke::AttributeAccessor src_attributes = src_curves.attributes();
   const VArray<bool> src_cyclic = *src_attributes.lookup_or_default(
@@ -455,9 +455,9 @@ static void create_envelope_strokes(const GreasePencilEnvelopeModifierData &emd,
   });
   /* Ranges by source curve for envelope curves and points. */
   const OffsetIndices envelope_curve_offsets = offset_indices::accumulate_counts_to_offsets(
-      envelope_curves_by_curve);
+      envelope_curves_by_curve, keep_original ? src_curves.curve_num : 0);
   const OffsetIndices envelope_point_offsets = offset_indices::accumulate_counts_to_offsets(
-      envelope_points_by_curve);
+      envelope_points_by_curve, keep_original ? src_curves.point_num : 0);
   const int dst_curve_num = envelope_curve_offsets.total_size();
   const int dst_point_num = envelope_point_offsets.total_size();
   if (dst_curve_num == 0 || dst_point_num == 0) {
@@ -473,6 +473,18 @@ static void create_envelope_strokes(const GreasePencilEnvelopeModifierData &emd,
   /* Map each destination curve and point to its source. */
   Array<int> src_curve_indices(dst_curve_num);
   Array<int> src_point_indices(dst_point_num);
+
+  if (keep_original) {
+    /* Add indices to original data. */
+    dst_curves.offsets_for_write()
+        .slice(src_curves.curves_range())
+        .copy_from(src_curves.offsets().drop_back(1));
+
+    array_utils::fill_index_range(
+        src_curve_indices.as_mutable_span().slice(src_curves.curves_range()));
+    array_utils::fill_index_range(
+        src_point_indices.as_mutable_span().slice(src_curves.points_range()));
+  }
 
   curves_mask.foreach_index([&](const int64_t i) {
     const bool src_curve_cyclic = src_cyclic[i];
@@ -524,7 +536,7 @@ static void modify_drawing(const GreasePencilEnvelopeModifierData &emd,
       break;
     case MOD_GREASE_PENCIL_ENVELOPE_SEGMENTS:
     case MOD_GREASE_PENCIL_ENVELOPE_FILLS:
-      create_envelope_strokes(emd, drawing, curves_mask);
+      create_envelope_strokes(emd, drawing, curves_mask, true);
       break;
   }
 }
