@@ -130,14 +130,14 @@ class SampleIDFunction : public mf::MultiFunction {
                                                                                       "Is Valid");
 
     if (!indices.is_empty()) {
-      devirtualize_varray(ids, [&](auto &ids) {
+      devirtualize_varray(ids, [&](auto ids) {
         mask.foreach_index_optimized<int>(
             [&](const int i) { indices[i] = id_map_.lookup_default(ids[i], 0); });
       });
     }
 
     if (!is_valid.is_empty()) {
-      devirtualize_varray(ids, [&](auto &ids) {
+      devirtualize_varray(ids, [&](auto ids) {
         mask.foreach_index_optimized<int>(
             [&](const int i) { is_valid[i] = id_map_.contains(ids[i]); });
       });
