@@ -67,7 +67,7 @@ class AxesToRotationFunction : public mf::MultiFunction {
 
     static const mf::Signature signature = []() {
       mf::Signature signature;
-      mf::SignatureBuilder builder{"Euler from Axis", signature};
+      mf::SignatureBuilder builder{"Axes to Rotation", signature};
       builder.single_input<float3>("Primary");
       builder.single_input<float3>("Secondary");
       builder.single_output<math::Quaternion>("Rotation");
