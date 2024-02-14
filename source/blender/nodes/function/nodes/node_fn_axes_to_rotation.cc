@@ -15,8 +15,8 @@ namespace blender::nodes::node_fn_axis_to_euler_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Vector>(N_("Primary Axis")).hide_value();
-  b.add_input<decl::Vector>(N_("Secondary Axis")).hide_value();
+  b.add_input<decl::Vector>(N_("Primary Axis")).default_value(float3(1, 0, 0)).hide_value();
+  b.add_input<decl::Vector>(N_("Secondary Axis")).default_value(float3(0, 1, 0)).hide_value();
   b.add_output<decl::Rotation>(N_("Rotation"));
 }
 
