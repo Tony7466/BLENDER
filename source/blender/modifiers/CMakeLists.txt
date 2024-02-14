@@ -54,6 +54,7 @@ set(SRC
   intern/MOD_grease_pencil_smooth.cc
   intern/MOD_grease_pencil_subdiv.cc
   intern/MOD_grease_pencil_thickness.cc
+  intern/MOD_grease_pencil_time.cc
   intern/MOD_grease_pencil_tint.cc
   intern/MOD_grease_pencil_util.cc
   intern/MOD_hook.cc

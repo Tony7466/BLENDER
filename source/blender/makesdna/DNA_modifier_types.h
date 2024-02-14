@@ -106,6 +106,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilThickness = 69,
   eModifierType_GreasePencilLattice = 70,
   eModifierType_GreasePencilDash = 71,
+  eModifierType_GreasePencilTime = 72,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2816,3 +2817,54 @@ typedef struct GreasePencilDashModifierData {
 typedef enum GreasePencilDashModifierFlag {
   MOD_GREASE_PENCIL_DASH_USE_CYCLIC = (1 << 0),
 } GreasePencilDashModifierFlag;
+
+typedef struct GreasePencilTimeModifierSegment {
+  char name[64];
+  int seg_start;
+  int seg_end;
+  int seg_mode;
+  int seg_repeat;
+} GreasePencilTimeModifierSegment;
+
+typedef struct GreasePencilTimeModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /** #GreasePencilTimeModifierFlag */
+  int flag;
+  int offset;
+  /** Animation scale. */
+  float frame_scale;
+  int mode;
+  /** Start and end frame for custom range. */
+  int sfra, efra;
+
+  GreasePencilTimeModifierSegment *segments_array;
+  int segments_num;
+  int segment_active_index;
+
+#ifdef __cplusplus
+  blender::Span<GreasePencilTimeModifierSegment> segments() const;
+  blender::MutableSpan<GreasePencilTimeModifierSegment> segments();
+#endif
+} GreasePencilTimeModifierData;
+
+typedef enum GreasePencilTimeModifierFlag {
+  MOD_GREASE_PENCIL_TIME_INVERT_LAYER = (1 << 0),
+  MOD_GREASE_PENCIL_TIME_KEEP_LOOP = (1 << 1),
+  MOD_GREASE_PENCIL_TIME_INVERT_LAYERPASS = (1 << 2),
+  MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE = (1 << 3),
+} GreasePencilTimeModifierFlag;
+
+typedef enum GreasePencilTimeModifierMode {
+  MOD_GREASE_PENCIL_TIME_MODE_NORMAL = 0,
+  MOD_GREASE_PENCIL_TIME_MODE_REVERSE = 1,
+  MOD_GREASE_PENCIL_TIME_MODE_FIX = 2,
+  MOD_GREASE_PENCIL_TIME_MODE_PINGPONG = 3,
+  MOD_GREASE_PENCIL_TIME_MODE_CHAIN = 4,
+} GreasePencilTimeModifierMode;
+
+typedef enum GreasePencilTimeModifierSegmentMode {
+  MOD_GREASE_PENCIL_TIME_SEG_MODE_NORMAL = 0,
+  MOD_GREASE_PENCIL_TIME_SEG_MODE_REVERSE = 1,
+  MOD_GREASE_PENCIL_TIME_SEG_MODE_PINGPONG = 2,
+} GreasePencilTimeModifierSegmentMode;
