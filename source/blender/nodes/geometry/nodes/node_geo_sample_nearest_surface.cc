@@ -93,11 +93,15 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
     this->set_signature(&signature);
 
     const Mesh &mesh = *source_.get_mesh();
+
+    /* Compute group ids on mesh. */
     bke::MeshFieldContext field_context{mesh, bke::AttrDomain::Face};
     FieldEvaluator field_evaluator{field_context, mesh.faces_num};
     field_evaluator.add(group_id_field);
     field_evaluator.evaluate();
     VArraySpan<int> group_ids_span = field_evaluator.get_evaluated<int>(0);
+
+    /* Compute an #IndexMask for every unique group id. */
     group_indices_.add_multiple(group_ids_span);
     const int groups_num = group_indices_.size();
     IndexMaskMemory memory;
@@ -107,6 +111,8 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
         memory,
         [&](const int i) { return group_indices_.index_of(group_ids_span[i]); },
         group_masks);
+
+    /* Construct BVH tree for each group. */
     bvh_trees_.reinitialize(groups_num);
     for (const int group_i : IndexRange(groups_num)) {
       const IndexMask &group_mask = group_masks[group_i];
