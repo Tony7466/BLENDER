@@ -17,48 +17,37 @@
 #include "BLI_string_utf8.h"
 
 #include "BLI_array.hh"
-#include "BLI_math_color.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
-#include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rand.h"
 #include "BLI_span.hh"
 #include "BLI_vector.hh"
 
-#include "DNA_anim_types.h"
 #include "DNA_collection_types.h"
 #include "DNA_curves_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_pointcloud_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_vfont_types.h"
 #include "DNA_volume_types.h"
 
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_duplilist.h"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_cache.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.h"
 #include "BKE_instances.hh"
-#include "BKE_lattice.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_iterators.hh"
-#include "BKE_mesh_runtime.hh"
-#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 #include "BKE_particle.h"
-#include "BKE_scene.h"
-#include "BKE_type_conversions.hh"
 #include "BKE_vfont.hh"
 
 #include "DEG_depsgraph.hh"
@@ -71,7 +60,6 @@
 #include "RNA_access.hh"
 #include "RNA_path.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.hh"
 
 #include "MOD_nodes.hh"
 
@@ -417,7 +405,7 @@ static void make_child_duplis(const DupliContext *ctx,
   }
   else {
     /* FIXME: using a mere counter to generate a 'persistent' dupli id is very weak. One possible
-     * better solution could be to use `session_uuid` of ID's instead? */
+     * better solution could be to use `session_uid` of ID's instead? */
     int persistent_dupli_id = 0;
     DEGObjectIterSettings deg_iter_settings{};
     deg_iter_settings.depsgraph = ctx->depsgraph;
@@ -744,7 +732,7 @@ static void make_duplis_verts(const DupliContext *ctx)
   else {
     VertexDupliData_Mesh vdd{};
     vdd.params = vdd_params;
-    vdd.totvert = me_eval->totvert;
+    vdd.totvert = me_eval->verts_num;
     vdd.vert_positions = me_eval->vert_positions();
     vdd.vert_normals = me_eval->vert_normals();
     vdd.orco = (const float(*)[3])CustomData_get_layer(&me_eval->vert_data, CD_ORCO);
@@ -1329,7 +1317,7 @@ static void make_duplis_faces(const DupliContext *ctx)
     make_child_duplis(ctx, &fdd, make_child_duplis_faces_from_editmesh);
   }
   else {
-    const int uv_idx = CustomData_get_render_layer(&me_eval->loop_data, CD_PROP_FLOAT2);
+    const int uv_idx = CustomData_get_render_layer(&me_eval->corner_data, CD_PROP_FLOAT2);
     FaceDupliData_Mesh fdd{};
     fdd.params = fdd_params;
     fdd.totface = me_eval->faces_num;
@@ -1337,7 +1325,7 @@ static void make_duplis_faces(const DupliContext *ctx)
     fdd.corner_verts = me_eval->corner_verts();
     fdd.vert_positions = me_eval->vert_positions();
     fdd.mloopuv = (uv_idx != -1) ? (const float2 *)CustomData_get_layer_n(
-                                       &me_eval->loop_data, CD_PROP_FLOAT2, uv_idx) :
+                                       &me_eval->corner_data, CD_PROP_FLOAT2, uv_idx) :
                                    nullptr;
     fdd.orco = (const float(*)[3])CustomData_get_layer(&me_eval->vert_data, CD_ORCO);
 
@@ -1464,7 +1452,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
         psys_find_group_weights(part);
         LISTBASE_FOREACH (ParticleDupliWeight *, dw, &part->instance_weights) {
           FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
-              part->instance_collection, object, mode) {
+              part->instance_collection, object, mode)
+          {
             if (dw->ob == object) {
               totcollection += dw->count;
               break;
@@ -1489,7 +1478,8 @@ static void make_duplis_particle_system(const DupliContext *ctx, ParticleSystem 
         a = 0;
         LISTBASE_FOREACH (ParticleDupliWeight *, dw, &part->instance_weights) {
           FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (
-              part->instance_collection, object, mode) {
+              part->instance_collection, object, mode)
+          {
             if (dw->ob == object) {
               for (b = 0; b < dw->count; b++, a++) {
                 oblist[a] = dw->ob;

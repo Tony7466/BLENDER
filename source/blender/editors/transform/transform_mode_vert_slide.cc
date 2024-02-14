@@ -13,7 +13,6 @@
 #include "BLI_math_matrix.h"
 #include "BLI_string.h"
 
-#include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_unit.hh"
 
@@ -31,7 +30,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_constraints.hh"
@@ -58,12 +57,11 @@ struct TransDataVertSlideVert {
 };
 
 struct VertSlideData {
+  /* result of ED_view3d_ob_project_mat_get */
+  float4x4 proj_mat;
   TransDataVertSlideVert *sv;
   int totsv;
   int curr_sv_index;
-
-  /* result of ED_view3d_ob_project_mat_get */
-  float4x4 proj_mat;
 };
 
 struct VertSlideParams {
@@ -194,7 +192,7 @@ static VertSlideData *createVertSlideVerts(TransInfo *t, const TransDataContaine
   BMEdge *e;
   BMVert *v;
   TransDataVertSlideVert *sv_array;
-  VertSlideData *sld = static_cast<VertSlideData *>(MEM_callocN(sizeof(*sld), "sld"));
+  VertSlideData *sld = MEM_new<VertSlideData>(__func__);
   int j;
 
   sld->curr_sv_index = 0;
@@ -581,7 +579,7 @@ static void applyVertSlide(TransInfo *t)
   t->values_final[0] = final;
 
   /* header string */
-  ofs += BLI_strncpy_rlen(str + ofs, TIP_("Vertex Slide: "), sizeof(str) - ofs);
+  ofs += BLI_strncpy_rlen(str + ofs, IFACE_("Vertex Slide: "), sizeof(str) - ofs);
   if (hasNumInput(&t->num)) {
     char c[NUM_STR_REP_LEN];
     outputNumInput(&(t->num), c, &t->scene->unit);
@@ -591,13 +589,13 @@ static void applyVertSlide(TransInfo *t)
     ofs += BLI_snprintf_rlen(str + ofs, sizeof(str) - ofs, "%.4f ", final);
   }
   ofs += BLI_snprintf_rlen(
-      str + ofs, sizeof(str) - ofs, TIP_("(E)ven: %s, "), WM_bool_as_string(use_even));
+      str + ofs, sizeof(str) - ofs, IFACE_("(E)ven: %s, "), WM_bool_as_string(use_even));
   if (use_even) {
     ofs += BLI_snprintf_rlen(
-        str + ofs, sizeof(str) - ofs, TIP_("(F)lipped: %s, "), WM_bool_as_string(flipped));
+        str + ofs, sizeof(str) - ofs, IFACE_("(F)lipped: %s, "), WM_bool_as_string(flipped));
   }
   ofs += BLI_snprintf_rlen(
-      str + ofs, sizeof(str) - ofs, TIP_("Alt or (C)lamp: %s"), WM_bool_as_string(is_clamp));
+      str + ofs, sizeof(str) - ofs, IFACE_("Alt or (C)lamp: %s"), WM_bool_as_string(is_clamp));
   /* done with header string */
 
   /* do stuff here */

@@ -150,17 +150,19 @@ GPU_SHADER_CREATE_INFO(eevee_cryptomatte_out)
 
 GPU_SHADER_CREATE_INFO(eevee_surf_deferred_base)
     .define("MAT_DEFERRED")
+    .define("GBUFFER_WRITE")
     /* NOTE: This removes the possibility of using gl_FragDepth. */
     .early_fragment_test(true)
     /* Direct output. (Emissive, Holdout) */
     .fragment_out(0, Type::VEC4, "out_radiance")
     .fragment_out(1, Type::UINT, "out_gbuf_header", DualBlend::NONE, DEFERRED_GBUFFER_ROG_ID)
-    .fragment_out(2, Type::VEC4, "out_gbuf_color")
-    .fragment_out(3, Type::VEC4, "out_gbuf_closure")
+    .fragment_out(2, Type::VEC2, "out_gbuf_normal")
+    .fragment_out(3, Type::VEC4, "out_gbuf_closure1")
+    .fragment_out(4, Type::VEC4, "out_gbuf_closure2")
     /* Everything is stored inside a two layered target, one for each format. This is to fit the
      * limitation of the number of images we can bind on a single shader. */
-    .image_array_out(GBUF_CLOSURE_SLOT, Qualifier::WRITE, GPU_RGBA16, "out_gbuf_closure_img")
-    .image_array_out(GBUF_COLOR_SLOT, Qualifier::WRITE, GPU_RGB10_A2, "out_gbuf_color_img")
+    .image_array_out(GBUF_CLOSURE_SLOT, Qualifier::WRITE, GPU_RGB10_A2, "out_gbuf_closure_img")
+    .image_array_out(GBUF_NORMAL_SLOT, Qualifier::WRITE, GPU_RG16, "out_gbuf_normal_img")
     .additional_info("eevee_global_ubo",
                      "eevee_utility_texture",
                      /* Added at runtime because of test shaders not having `node_tree`. */
@@ -175,7 +177,6 @@ GPU_SHADER_CREATE_INFO(eevee_surf_deferred)
 
 GPU_SHADER_CREATE_INFO(eevee_surf_deferred_hybrid)
     .fragment_source("eevee_surf_hybrid_frag.glsl")
-    .define("LIGHT_CLOSURE_EVAL_COUNT", "2")
     .additional_info("eevee_surf_deferred_base",
                      "eevee_light_data",
                      "eevee_lightprobe_data",
@@ -189,7 +190,6 @@ GPU_SHADER_CREATE_INFO(eevee_surf_forward)
     .fragment_out(0, Type::VEC4, "out_radiance", DualBlend::SRC_0)
     .fragment_out(0, Type::VEC4, "out_transmittance", DualBlend::SRC_1)
     .fragment_source("eevee_surf_forward_frag.glsl")
-    .define("LIGHT_CLOSURE_EVAL_COUNT", "3")
     .additional_info("eevee_global_ubo",
                      "eevee_light_data",
                      "eevee_lightprobe_data",
@@ -226,10 +226,13 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
                      //  "eevee_cryptomatte_out",
                      "eevee_utility_texture");
 
+GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_atomic_iface, "shadow_iface")
+    .flat(Type::INT, "shadow_view_id");
+
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow)
     .define("DRW_VIEW_LEN", STRINGIFY(SHADOW_VIEW_MAX))
     .define("MAT_SHADOW")
-    .builtins(BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)
+    .builtins(BuiltinBits::VIEWPORT_INDEX)
     .storage_buf(SHADOW_VIEWPORT_INDEX_BUF_SLOT,
                  Qualifier::READ,
                  "uint",
@@ -244,6 +247,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic)
     /* Early fragment test for speeding up platforms that requires a depth buffer. */
     /* NOTE: This removes the possibility of using gl_FragDepth. */
     .early_fragment_test(true)
+    .vertex_out(eevee_surf_shadow_atomic_iface)
     .storage_buf(SHADOW_RENDER_MAP_BUF_SLOT,
                  Qualifier::READ,
                  "uint",
@@ -257,6 +261,7 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow_atomic)
 GPU_SHADER_CREATE_INFO(eevee_surf_shadow_tbdr)
     .additional_info("eevee_surf_shadow")
     .define("SHADOW_UPDATE_TBDR")
+    .builtins(BuiltinBits::LAYER)
     /* F32 color attachment for on-tile depth accumulation without atomics. */
     .fragment_out(0, Type::FLOAT, "out_depth", DualBlend::NONE, SHADOW_ROG_ID);
 

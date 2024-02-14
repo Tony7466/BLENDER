@@ -21,20 +21,17 @@
 #include "DNA_curve_types.h"
 #include "DNA_lattice_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_layer.h"
-#include "BKE_main.hh"
+#include "BKE_layer.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -344,7 +341,7 @@ static bool object_hook_index_array(Main *bmain,
 
       em = mesh->edit_mesh;
 
-      BKE_editmesh_looptri_and_normals_calc(em);
+      BKE_editmesh_looptris_and_normals_calc(em);
 
       /* check selected vertices first */
       if (return_editmesh_indexar(em, r_indexar_num, r_indexar, r_cent) == 0) {
@@ -497,7 +494,7 @@ static Object *add_hook_object_new(
   Base *basact = BKE_view_layer_active_base_get(view_layer);
   BLI_assert(basact->object == ob);
   if (v3d && v3d->localvd) {
-    basact->local_view_bits |= v3d->local_view_uuid;
+    basact->local_view_bits |= v3d->local_view_uid;
   }
 
   /* icky, BKE_object_add sets new base as active.
@@ -551,6 +548,7 @@ static int add_hook_object(const bContext *C,
   BLI_insertlinkbefore(&obedit->modifiers, md, hmd);
   SNPRINTF(hmd->modifier.name, "Hook-%s", ob->id.name + 2);
   BKE_modifier_unique_name(&obedit->modifiers, (ModifierData *)hmd);
+  BKE_modifiers_persistent_uid_init(*obedit, hmd->modifier);
 
   hmd->object = ob;
   hmd->indexar = indexar;
@@ -603,6 +601,7 @@ static int add_hook_object(const bContext *C,
   /* apparently this call goes from right to left... */
   mul_m4_series(hmd->parentinv, pose_mat, object_eval->world_to_object, obedit->object_to_world);
 
+  DEG_id_tag_update(&obedit->id, ID_RECALC_GEOMETRY);
   DEG_relations_tag_update(bmain);
 
   return true;

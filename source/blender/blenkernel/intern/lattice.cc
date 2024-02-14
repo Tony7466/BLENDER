@@ -19,7 +19,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -30,22 +30,17 @@
 #include "DNA_lattice_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
-#include "BKE_anim_data.h"
 #include "BKE_curve.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_displist.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_lattice.hh"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
-
-#include "DEG_depsgraph_query.hh"
 
 #include "BLO_read_write.hh"
 
@@ -417,7 +412,8 @@ void outside_lattice(Lattice *lt)
 
         for (u = 0; u < lt->pntsu; u++, bp++) {
           if (u == 0 || v == 0 || w == 0 || u == lt->pntsu - 1 || v == lt->pntsv - 1 ||
-              w == lt->pntsw - 1) {
+              w == lt->pntsw - 1)
+          {
             /* pass */
           }
           else {

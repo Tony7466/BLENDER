@@ -12,12 +12,15 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.hh"
+#include "BLI_time.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
+#include "DNA_brush_types.h"
 #include "DNA_mesh_types.h"
 
 #include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_screen.hh"
@@ -39,8 +42,6 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-
-#include "PIL_time.h"
 
 #include "CLG_log.h"
 
@@ -115,9 +116,9 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   undo::push_begin(ob, op);
   undo::push_node(ob, nullptr, undo::Type::Position);
 
-  const double start_time = PIL_check_seconds_timer();
+  const double start_time = BLI_check_seconds_timer();
 
-  while (BKE_pbvh_bmesh_update_topology(
+  while (bke::pbvh::bmesh_update_topology(
       ss->pbvh, PBVH_Collapse | PBVH_Subdivide, center, nullptr, size, false, false))
   {
     for (PBVHNode *node : nodes) {
@@ -125,7 +126,7 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
     }
   }
 
-  CLOG_INFO(&LOG, 2, "Detail flood fill took %f seconds.", PIL_check_seconds_timer() - start_time);
+  CLOG_INFO(&LOG, 2, "Detail flood fill took %f seconds.", BLI_check_seconds_timer() - start_time);
 
   undo::push_end(ob);
 
@@ -199,15 +200,14 @@ static void sample_detail_voxel(bContext *C, ViewContext *vc, const int mval[2])
   }
 }
 
-static void sculpt_raycast_detail_cb(PBVHNode *node, void *data_v, float *tmin)
+static void sculpt_raycast_detail_cb(PBVHNode &node, SculptDetailRaycastData &srd, float *tmin)
 {
-  if (BKE_pbvh_node_get_tmin(node) < *tmin) {
-    SculptDetailRaycastData *srd = static_cast<SculptDetailRaycastData *>(data_v);
-    if (BKE_pbvh_bmesh_node_raycast_detail(
-            node, srd->ray_start, &srd->isect_precalc, &srd->depth, &srd->edge_length))
+  if (BKE_pbvh_node_get_tmin(&node) < *tmin) {
+    if (bke::pbvh::bmesh_node_raycast_detail(
+            &node, srd.ray_start, &srd.isect_precalc, &srd.depth, &srd.edge_length))
     {
-      srd->hit = true;
-      *tmin = srd->depth;
+      srd.hit = true;
+      *tmin = srd.depth;
     }
   }
 }
@@ -231,7 +231,12 @@ static void sample_detail_dyntopo(bContext *C, ViewContext *vc, const int mval[2
   srd.edge_length = 0.0f;
   isect_ray_tri_watertight_v3_precalc(&srd.isect_precalc, ray_normal);
 
-  BKE_pbvh_raycast(ob->sculpt->pbvh, sculpt_raycast_detail_cb, &srd, ray_start, ray_normal, false);
+  bke::pbvh::raycast(
+      ob->sculpt->pbvh,
+      [&](PBVHNode &node, float *tmin) { sculpt_raycast_detail_cb(node, srd, tmin); },
+      ray_start,
+      ray_normal,
+      false);
 
   if (srd.hit && srd.edge_length > 0.0f) {
     /* Convert edge length to world space detail resolution. */
@@ -265,6 +270,12 @@ static int sample_detail(bContext *C, const int event_xy[2], int mode)
 
   SculptSession *ss = ob->sculpt;
   if (!ss->pbvh) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -310,7 +321,7 @@ static int sculpt_sample_detail_size_exec(bContext *C, wmOperator *op)
 
 static int sculpt_sample_detail_size_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  ED_workspace_status_text(C, TIP_("Click on the mesh to set the detail"));
+  ED_workspace_status_text(C, IFACE_("Click on the mesh to set the detail"));
   WM_cursor_modal_set(CTX_wm_window(C), WM_CURSOR_EYEDROPPER);
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
@@ -760,7 +771,7 @@ static int dyntopo_detail_size_edit_invoke(bContext *C, wmOperator *op, const wm
 
   ss->draw_faded_cursor = true;
 
-  const char *status_str = TIP_(
+  const char *status_str = IFACE_(
       "Move the mouse to change the dyntopo detail size. LMB: confirm size, ESC/RMB: cancel, "
       "SHIFT: precision mode, CTRL: sample detail size");
   ED_workspace_status_text(C, status_str);

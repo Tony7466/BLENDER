@@ -17,10 +17,10 @@
 
 #include "BKE_action.h"
 #include "BKE_armature.hh"
-#include "BKE_deform.h"
-#include "BKE_global.h"
+#include "BKE_deform.hh"
+#include "BKE_global.hh"
 #include "BKE_idprop.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 
 #include "ED_armature.hh"
@@ -66,7 +66,7 @@ bool ControllerExporter::add_instance_controller(Object *ob)
   ins.setUrl(COLLADASW::URI(COLLADABU::Utils::EMPTY_STRING, controller_id));
 
   Mesh *mesh = (Mesh *)ob->data;
-  if (BKE_mesh_deform_verts(mesh) == nullptr) {
+  if (mesh->deform_verts().is_empty()) {
     return false;
   }
 
@@ -162,7 +162,7 @@ void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm)
   bool use_instantiation = this->export_settings.get_use_object_instantiation();
   Mesh *mesh;
 
-  if (BKE_mesh_deform_verts((Mesh *)ob->data) == nullptr) {
+  if (((Mesh *)ob->data)->deform_verts().is_empty()) {
     return;
   }
 
@@ -205,9 +205,9 @@ void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm)
       }
     }
 
-    const MDeformVert *dvert = BKE_mesh_deform_verts(mesh);
+    const MDeformVert *dvert = mesh->deform_verts().data();
     int oob_counter = 0;
-    for (i = 0; i < mesh->totvert; i++) {
+    for (i = 0; i < mesh->verts_num; i++) {
       const MDeformVert *vert = &dvert[i];
       std::map<int, float> jw;
 

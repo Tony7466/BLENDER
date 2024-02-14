@@ -15,7 +15,7 @@
 
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
@@ -37,9 +37,7 @@
 
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
-
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Helper Functions
@@ -347,7 +345,7 @@ static int add_primitive_cube_gizmo_exec(bContext *C, wmOperator *op)
 
   EDBM_selectmode_flush_ex(em, SCE_SELECT_VERTEX);
   EDBMUpdate_Params params{};
-  params.calc_looptri = true;
+  params.calc_looptris = true;
   params.calc_normals = false;
   params.is_destructive = true;
   EDBM_update(static_cast<Mesh *>(obedit->data), &params);

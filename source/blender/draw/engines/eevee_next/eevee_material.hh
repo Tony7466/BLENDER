@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BLI_map.hh"
 #include "BLI_vector.hh"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "eevee_sync.hh"
 
@@ -124,6 +124,9 @@ static inline eClosureBits shader_closure_bits_from_flag(const GPUMaterial *gpum
   }
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSPARENT)) {
     closure_bits |= CLOSURE_TRANSPARENCY;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_TRANSLUCENT)) {
+    closure_bits |= CLOSURE_TRANSLUCENT;
   }
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_EMISSION)) {
     closure_bits |= CLOSURE_EMISSION;

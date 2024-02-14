@@ -13,7 +13,6 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BKE_curves_utils.hh"
-#include "BKE_geometry_set.hh"
 
 #include "GEO_trim_curves.hh"
 
@@ -1060,7 +1059,7 @@ bke::CurvesGeometry trim_curves(const bke::CurvesGeometry &src_curves,
     }
 
     bke::copy_attributes_group_to_group(src_attributes,
-                                        ATTR_DOMAIN_POINT,
+                                        bke::AttrDomain::Point,
                                         propagation_info,
                                         copy_point_skip,
                                         src_points_by_curve,
