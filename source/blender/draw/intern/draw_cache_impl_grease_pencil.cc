@@ -234,10 +234,7 @@ static void grease_pencil_weight_batch_ensure(Object &object,
   /* Get active vertex group. */
   const bDeformGroup *active_defgroup = static_cast<bDeformGroup *>(BLI_findlink(
       &grease_pencil.vertex_group_names, grease_pencil.vertex_group_active_index - 1));
-  if (active_defgroup == nullptr) {
-    return;
-  }
-  const char *active_defgroup_name = active_defgroup->name;
+  const char *active_defgroup_name = (active_defgroup == nullptr) ? "" : active_defgroup->name;
 
   /* Get the visible drawings. */
   const Vector<ed::greasepencil::DrawingInfo> drawings =
