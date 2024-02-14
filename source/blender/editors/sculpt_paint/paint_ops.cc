@@ -1353,6 +1353,7 @@ static int brush_asset_save_as_invoke(bContext *C, wmOperator *op, const wmEvent
   Brush *brush = BKE_paint_brush(paint);
 
   RNA_string_set(op->ptr, "name", brush->id.name + 2);
+
   if (const bUserAssetLibrary *library = brush_asset_get_default_library()) {
     const AssetLibraryReference library_ref = user_library_to_library_ref(*library);
     const int enum_value = asset::library_reference_to_enum_value(&library_ref);
