@@ -32,8 +32,8 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
   uiItemR(layout, ptr, "primary_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "secondary_axis", UI_ITEM_R_EXPAND, nullptr, ICON_NONE);
 
-  if (node.custom1 == node.custom1) {
-    uiItemL(layout, N_("Must not be equal"), ICON_ERROR);
+  if (node.custom1 == node.custom2) {
+    uiItemL(layout, N_("Axes must not be equal"), ICON_ERROR);
   }
 }
 
