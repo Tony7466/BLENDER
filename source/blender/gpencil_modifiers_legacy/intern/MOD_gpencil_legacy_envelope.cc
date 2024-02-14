@@ -357,6 +357,9 @@ static void add_stroke(Object *ob,
   bGPDstroke *gps_dst = BKE_gpencil_stroke_new(mat_nr, size, gps->thickness);
   gps_dst->runtime.gps_orig = gps->runtime.gps_orig;
 
+  std::cout << "add_stroke " << point_index << ".." << connection_index << " (" << size1 << ", "
+            << size2 << ")" << std::endl;
+
   blender::dna::shallow_copy_array(&gps_dst->points[0], &gps->points[connection_index], size1);
   blender::dna::shallow_copy_array(&gps_dst->points[size1], &gps->points[point_index], size2);
 
