@@ -181,20 +181,21 @@ static bool normalize_vertex_weights_try(const MDeformVert &dvert,
         dw.weight = math::clamp(dw.weight * normalize_factor, 0.0f, 1.0f);
       }
     }
-  }
-  /* Spread out the remainder of the locked weights over the unlocked weights. */
-  else {
-    const float weight_remainder = math::clamp(
-        (1.0f - sum_weights_locked) / unlocked_num, 0.0f, 1.0f);
 
-    for (int i = 0; i < dvert.totweight; i++) {
-      MDeformWeight &dw = dvert.dw[i];
-      if (dw.def_nr < vertex_groups_num && vertex_group_is_bone_deformed[dw.def_nr] &&
-          dw.weight > FLT_EPSILON && !vertex_group_is_locked[dw.def_nr] &&
-          dw.def_nr != locked_active_vertex_group)
-      {
-        dw.weight = weight_remainder;
-      }
+    return true;
+  }
+
+  /* Spread out the remainder of the locked weights over the unlocked weights. */
+  const float weight_remainder = math::clamp(
+      (1.0f - sum_weights_locked) / unlocked_num, 0.0f, 1.0f);
+
+  for (int i = 0; i < dvert.totweight; i++) {
+    MDeformWeight &dw = dvert.dw[i];
+    if (dw.def_nr < vertex_groups_num && vertex_group_is_bone_deformed[dw.def_nr] &&
+        dw.weight > FLT_EPSILON && !vertex_group_is_locked[dw.def_nr] &&
+        dw.def_nr != locked_active_vertex_group)
+    {
+      dw.weight = weight_remainder;
     }
   }
 
