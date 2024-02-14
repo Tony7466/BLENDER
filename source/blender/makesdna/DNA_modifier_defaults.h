@@ -912,10 +912,10 @@
 #define _DNA_DEFAULT_GreasePencilTimeModifierSegment \
   { \
     .name = "Segment", \
-    .seg_start = 1, \
-    .seg_end = 2, \
-    .seg_mode = 0, \
-    .seg_repeat = 1, \
+    .segment_start = 1, \
+    .segment_end = 2, \
+    .segment_mode = 0, \
+    .segment_repeat = 1, \
   }
 
 /* clang-format off */

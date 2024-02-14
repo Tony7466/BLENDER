@@ -2820,10 +2820,10 @@ typedef enum GreasePencilDashModifierFlag {
 
 typedef struct GreasePencilTimeModifierSegment {
   char name[64];
-  int seg_start;
-  int seg_end;
-  int seg_mode;
-  int seg_repeat;
+  int segment_start;
+  int segment_end;
+  int segment_mode;
+  int segment_repeat;
 } GreasePencilTimeModifierSegment;
 
 typedef struct GreasePencilTimeModifierData {

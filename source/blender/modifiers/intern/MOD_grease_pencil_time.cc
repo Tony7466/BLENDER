@@ -117,65 +117,98 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
   auto *tmd = static_cast<GreasePencilTimeModifierData *>(ptr->data);
+  const auto mode = GreasePencilTimeModifierMode(RNA_enum_get(ptr, "mode"));
+  const bool use_fixed_offset = (mode == MOD_GREASE_PENCIL_TIME_MODE_FIX);
+  const bool use_custom_range = !ELEM(
+      mode, MOD_GREASE_PENCIL_TIME_MODE_FIX, MOD_GREASE_PENCIL_TIME_MODE_CHAIN);
+  uiLayout *row, *col;
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "dash_offset", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  uiLayout *row = uiLayoutRow(layout, false);
-  uiLayoutSetPropSep(row, false);
+  col = uiLayoutColumn(layout, false);
 
-  uiTemplateList(row,
-                 (bContext *)C,
-                 "MOD_UL_grease_pencil_dash_modifier_segments",
-                 "",
-                 ptr,
-                 "segments",
-                 ptr,
-                 "segment_active_index",
-                 nullptr,
-                 3,
-                 10,
-                 0,
-                 1,
-                 UI_TEMPLATE_LIST_FLAG_NONE);
+  const char *text = use_fixed_offset ? IFACE_("Frame") : IFACE_("Frame Offset");
+  uiItemR(col, ptr, "offset", UI_ITEM_NONE, text, ICON_NONE);
 
-  uiLayout *col = uiLayoutColumn(row, false);
-  uiLayout *sub = uiLayoutColumn(col, true);
-  uiItemO(sub, "", ICON_ADD, "OBJECT_OT_grease_pencil_dash_modifier_segment_add");
-  uiItemO(sub, "", ICON_REMOVE, "OBJECT_OT_grease_pencil_dash_modifier_segment_remove");
-  uiItemS(col);
-  sub = uiLayoutColumn(col, true);
-  uiItemEnumO_string(
-      sub, "", ICON_TRIA_UP, "OBJECT_OT_grease_pencil_dash_modifier_segment_move", "type", "UP");
-  uiItemEnumO_string(sub,
-                     "",
-                     ICON_TRIA_DOWN,
-                     "OBJECT_OT_grease_pencil_dash_modifier_segment_move",
-                     "type",
-                     "DOWN");
+  row = uiLayoutRow(col, false);
+  uiLayoutSetActive(row, !use_fixed_offset);
+  uiItemR(row, ptr, "frame_scale", UI_ITEM_NONE, IFACE_("Scale"), ICON_NONE);
 
-  if (tmd->segment_active_index >= 0 && tmd->segment_active_index < tmd->segments_num) {
-    PointerRNA segment_ptr = RNA_pointer_create(ptr->owner_id,
-                                                &RNA_GreasePencilTimeModifierSegment,
-                                                &tmd->segments()[tmd->segment_active_index]);
+  row = uiLayoutRow(layout, false);
+  uiLayoutSetActive(row, !use_fixed_offset);
+  uiItemR(row, ptr, "use_keep_loop", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-    sub = uiLayoutColumn(layout, true);
-    uiItemR(sub, &segment_ptr, "dash", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(sub, &segment_ptr, "gap", UI_ITEM_NONE, nullptr, ICON_NONE);
+  if (mode == MOD_GREASE_PENCIL_TIME_MODE_CHAIN) {
+    row = uiLayoutRow(layout, false);
+    uiLayoutSetPropSep(row, false);
 
-    sub = uiLayoutColumn(layout, false);
-    uiItemR(sub, &segment_ptr, "radius", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(sub, &segment_ptr, "opacity", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(sub, &segment_ptr, "material_index", UI_ITEM_NONE, nullptr, ICON_NONE);
-    uiItemR(sub, &segment_ptr, "use_cyclic", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiTemplateList(row,
+                   (bContext *)C,
+                   "MOD_UL_grease_pencil_time_modifier_segments",
+                   "",
+                   ptr,
+                   "segments",
+                   ptr,
+                   "segment_active_index",
+                   nullptr,
+                   3,
+                   10,
+                   0,
+                   1,
+                   UI_TEMPLATE_LIST_FLAG_NONE);
+
+    col = uiLayoutColumn(row, false);
+
+    uiLayout *sub = uiLayoutColumn(col, true);
+    uiItemO(sub, "", ICON_ADD, "OBJECT_OT_grease_pencil_time_modifier_segment_add");
+    uiItemO(sub, "", ICON_REMOVE, "OBJECT_OT_grease_pencil_time_modifier_segment_remove");
+    uiItemS(col);
+    sub = uiLayoutColumn(col, true);
+    uiItemEnumO_string(
+        sub, "", ICON_TRIA_UP, "OBJECT_OT_grease_pencil_time_modifier_segment_move", "type", "UP");
+    uiItemEnumO_string(sub,
+                       "",
+                       ICON_TRIA_DOWN,
+                       "OBJECT_OT_grease_pencil_time_modifier_segment_move",
+                       "type",
+                       "DOWN");
+
+    if (tmd->segments().index_range().contains(tmd->segment_active_index)) {
+      PointerRNA segment_ptr = RNA_pointer_create(ptr->owner_id,
+                                                  &RNA_GreasePencilTimeModifierSegment,
+                                                  &tmd->segments()[tmd->segment_active_index]);
+
+      sub = uiLayoutColumn(layout, true);
+      uiItemR(sub, &segment_ptr, "segment_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
+      sub = uiLayoutColumn(layout, true);
+      uiItemR(sub, &segment_ptr, "segment_start", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(sub, &segment_ptr, "segment_end", UI_ITEM_NONE, nullptr, ICON_NONE);
+      uiItemR(sub, &segment_ptr, "segment_repeat", UI_ITEM_NONE, nullptr, ICON_NONE);
+    }
+  }
+
+  PanelLayout custom_range_panel_layout = uiLayoutPanelProp(
+      C, layout, ptr, "open_custom_range_panel");
+  if (uiLayout *header = custom_range_panel_layout.header) {
+    uiLayoutSetPropSep(header, false);
+    uiLayoutSetActive(header, use_custom_range);
+    uiItemR(header, ptr, "use_custom_frame_range", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+  if (uiLayout *body = custom_range_panel_layout.body) {
+    uiLayoutSetPropSep(body, true);
+    uiLayoutSetActive(body, use_custom_range && RNA_boolean_get(ptr, "use_custom_frame_range"));
+
+    col = uiLayoutColumn(body, true);
+    uiItemR(col, ptr, "frame_start", UI_ITEM_NONE, IFACE_("Frame Start"), ICON_NONE);
+    uiItemR(col, ptr, "frame_end", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
   }
 
   if (uiLayout *influence_panel = uiLayoutPanelProp(
           C, layout, ptr, "open_influence_panel", "Influence"))
   {
     modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
-    modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
   }
 
   modifier_panel_end(layout, ptr);
@@ -198,11 +231,11 @@ static void segment_list_item_draw(uiList * /*ui_list*/,
 
 static void panel_register(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, eModifierType_GreasePencilDash, panel_draw);
+  modifier_panel_register(region_type, eModifierType_GreasePencilTime, panel_draw);
 
   uiListType *list_type = static_cast<uiListType *>(
-      MEM_callocN(sizeof(uiListType), "Grease Pencil Dash modifier segments"));
-  STRNCPY(list_type->idname, "MOD_UL_grease_pencil_dash_modifier_segments");
+      MEM_callocN(sizeof(uiListType), "Grease Pencil Time modifier segments"));
+  STRNCPY(list_type->idname, "MOD_UL_grease_pencil_time_modifier_segments");
   list_type->draw_item = segment_list_item_draw;
   WM_uilisttype_add(list_type);
 }

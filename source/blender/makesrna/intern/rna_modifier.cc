@@ -8771,23 +8771,23 @@ static void rna_def_modifier_grease_pencil_time_segment(BlenderRNA *brna)
   RNA_def_struct_name_property(srna, prop);
   RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER | NA_RENAME, nullptr);
 
-  prop = RNA_def_property(srna, "seg_start", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "segment_start", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, INT16_MAX);
   RNA_def_property_ui_text(prop, "Frame Start", "First frame of the segment");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "seg_end", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "segment_end", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 0, INT16_MAX);
   RNA_def_property_ui_text(prop, "End", "Last frame of the segment");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "seg_repeat", PROP_INT, PROP_NONE);
+  prop = RNA_def_property(srna, "segment_repeat", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 1, INT16_MAX);
   RNA_def_property_ui_text(prop, "Repeat", "Number of cycle repeats");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
-  prop = RNA_def_property(srna, "seg_mode", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "seg_mode");
+  prop = RNA_def_property(srna, "segment_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "segment_mode");
   RNA_def_property_enum_items(prop, segment_mode_items);
   RNA_def_property_ui_text(prop, "Mode", "");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
@@ -8835,6 +8835,7 @@ static void rna_def_modifier_grease_pencil_time(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_layer_filter(srna);
 
   rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+  rna_def_modifier_panel_open_prop(srna, "open_custom_range_panel", 1);
 
   RNA_define_lib_overridable(true);
 
