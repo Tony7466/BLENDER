@@ -6,8 +6,6 @@
 
 #include "DNA_mesh_types.h"
 
-#include "BLI_timeit.hh"
-
 #include "GEO_mesh_to_curve.hh"
 
 #include "node_geometry_util.hh"
