@@ -11,84 +11,103 @@ namespace blender::iterator {
 template<typename Derived> class RandomAccessIteratorMixin {
  public:
   using iterator_category = std::random_access_iterator_tag;
+  using difference_type = std::ptrdiff_t;
 
-  constexpr Derived &operator++()
+  constexpr friend Derived &operator++(Derived &a)
   {
-    auto &derived = this->as_derived();
-    derived.iter_prop()++;
-    return derived;
+    ++a.iter_prop();
+    return a;
   }
 
-  constexpr Derived operator++(int)
+  constexpr friend Derived operator++(Derived &a, int)
   {
-    Derived copied = this->as_derived();
-    ++(*this);
-    return copied;
+    Derived copy = a;
+    ++a;
+    return copy;
   }
 
-  constexpr Derived &operator--()
+  constexpr friend Derived &operator--(Derived &a)
   {
-    auto &derived = this->as_derived();
-    derived.iter_prop()--;
-    return derived;
+    --a.iter_prop();
+    return a;
   }
 
-  constexpr Derived operator--(int)
+  constexpr friend Derived operator--(Derived &a, int)
   {
-    Derived copied = this->as_derived();
-    --(*this);
-    return copied;
+    Derived copy = a;
+    --a;
+    return copy;
   }
 
-  constexpr friend Derived &operator+=(RandomAccessIteratorMixin &a, const int64_t n)
+  constexpr friend Derived &operator+=(Derived &a, const std::ptrdiff_t n)
   {
     a.iter_prop() += n;
-    return a.as_derived();
+    return a;
   }
 
-  constexpr friend Derived &operator-=(RandomAccessIteratorMixin &a, const int64_t n)
+  constexpr friend Derived &operator-=(Derived &a, const std::ptrdiff_t n)
   {
     a.iter_prop() -= n;
-    return a.as_derived();
+    return a;
   }
 
-  constexpr friend auto operator-(const RandomAccessIteratorMixin &a,
-                                  const RandomAccessIteratorMixin &b)
+  constexpr friend Derived &operator+(const Derived &a, const std::ptrdiff_t n)
+  {
+    Derived copy = a;
+    copy.iter_prop() += n;
+    return copy;
+  }
+
+  constexpr friend Derived &operator-(const Derived &a, const std::ptrdiff_t n)
+  {
+    Derived copy = a;
+    copy.iter_prop() -= n;
+    return copy;
+  }
+
+  constexpr friend auto operator-(const Derived &a, const Derived &b)
   {
     return a.iter_prop() - b.iter_prop();
   }
 
-  constexpr friend bool operator!=(const RandomAccessIteratorMixin &a,
-                                   const RandomAccessIteratorMixin &b)
+  constexpr friend bool operator!=(const Derived &a, const Derived &b)
   {
     return a.iter_prop() != b.iter_prop();
   }
 
-  constexpr friend bool operator==(const RandomAccessIteratorMixin &a,
-                                   const RandomAccessIteratorMixin &b)
+  constexpr friend bool operator==(const Derived &a, const Derived &b)
   {
     return a.iter_prop() == b.iter_prop();
   }
 
- private:
-  Derived &as_derived()
+  constexpr friend bool operator<(const Derived &a, const Derived &b)
   {
-    return *static_cast<Derived *>(this);
+    return a.iter_prop() < b.iter_prop();
   }
 
-  const Derived &as_derived() const
+  constexpr friend bool operator>(const Derived &a, const Derived &b)
   {
-    return *static_cast<const Derived *>(this);
+    return a.iter_prop() > b.iter_prop();
   }
 
-  auto &iter_prop()
+  constexpr friend bool operator<=(const Derived &a, const Derived &b)
   {
-    return this->as_derived().iter_prop();
+    return a.iter_prop() <= b.iter_prop();
   }
 
-  const auto &iter_prop() const
+  constexpr friend bool operator>=(const Derived &a, const Derived &b)
   {
-    return this->as_derived().iter_prop();
+    return a.iter_prop() >= b.iter_prop();
+  }
+
+  constexpr decltype(auto) operator[](const std::ptrdiff_t i)
+  {
+    return *(*static_cast<Derived *>(this) + i);
+  }
+
+  constexpr decltype(auto) operator[](const std::ptrdiff_t i) const
+  {
+    return *(*static_cast<const Derived *>(this) + i);
   }
 };
 

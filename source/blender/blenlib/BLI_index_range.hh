@@ -70,8 +70,7 @@ class IndexRange {
    public:
     using value_type = int64_t;
     using pointer = const int64_t *;
-    using reference = const int64_t &;
-    using difference_type = std::ptrdiff_t;
+    using reference = int64_t;
 
    private:
     int64_t current_;

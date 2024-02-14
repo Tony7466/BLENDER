@@ -72,6 +72,11 @@ template<typename T, typename BaseT> class OffsetSpan {
   }
 
   class Iterator : public iterator::RandomAccessIteratorMixin<Iterator> {
+   public:
+    using value_type = T;
+    using pointer = const T *;
+    using reference = T;
+
    private:
     T offset_;
     const BaseT *data_;
