@@ -1271,15 +1271,6 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   if (!library) {
     return OPERATOR_CANCELLED;
   }
-
-  /* Check if the asset belongs to an editable blend file. */
-  if (paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush)) {
-    if (!asset_is_editable(*paint->brush_asset_reference)) {
-      BKE_report(op->reports, RPT_ERROR, "Asset blend file is not editable");
-      return false;
-    }
-  }
-
   const std::string filepath = brush_asset_blendfile_path_for_save(op->reports, *library, name);
   if (filepath.empty()) {
     return OPERATOR_CANCELLED;
