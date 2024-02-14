@@ -1377,12 +1377,12 @@ static const EnumPropertyItem *rna_asset_library_reference_itemf(bContext * /*C*
   return items;
 }
 
-static void visit_asset_catalog_for_search_fn(const bContext *C,
-                                              PointerRNA *ptr,
-                                              PropertyRNA * /*prop*/,
-                                              const char * /*edit_text*/,
-                                              StringPropertySearchVisitFunc visit_fn,
-                                              void *visit_user_data)
+static void visit_asset_catalog_for_search_fn(
+    const bContext *C,
+    PointerRNA *ptr,
+    PropertyRNA * /*prop*/,
+    const char * /*edit_text*/,
+    FunctionRef<void(StringPropertySearchVisitParams)> visit_fn)
 {
   const bUserAssetLibrary *user_library = get_asset_library_from_prop(*ptr);
   if (!user_library) {
@@ -1397,9 +1397,8 @@ static void visit_asset_catalog_for_search_fn(const bContext *C,
   asset_system::AssetCatalogTree &full_tree = *library->catalog_service->get_catalog_tree();
   full_tree.foreach_root_item([&](const asset_system::AssetCatalogTreeItem &item) {
     StringPropertySearchVisitParams visit_params{};
-    visit_params.text = item.catalog_path().c_str();
-    visit_params.info = "";
-    visit_fn(visit_user_data, &visit_params);
+    visit_params.text = item.catalog_path();
+    visit_fn(visit_params);
   });
 }
 
