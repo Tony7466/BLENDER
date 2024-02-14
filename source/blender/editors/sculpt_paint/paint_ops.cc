@@ -1289,6 +1289,11 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   if (!user_library) {
     return OPERATOR_CANCELLED;
   }
+  const std::string filepath = brush_asset_blendfile_path_for_save(
+      op->reports, *user_library, name);
+  if (filepath.empty()) {
+    return OPERATOR_CANCELLED;
+  }
 
   asset_system::AssetLibrary *library = AS_asset_library_load(
       CTX_data_main(C), user_library_to_library_ref(*user_library));
@@ -1299,17 +1304,11 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   char catalog_path[MAX_NAME];
   RNA_string_get(op->ptr, "catalog_path", catalog_path);
   const asset_system::AssetCatalog &catalog = asset_library_ensure_catalog(*library, catalog_path);
-
-  const std::string filepath = brush_asset_blendfile_path_for_save(
-      op->reports, *user_library, name);
-  if (filepath.empty()) {
-    return OPERATOR_CANCELLED;
-  }
+  library->catalog_service->write_to_disk(filepath);
 
   /* Turn brush into asset if it isn't yet. */
   if (!BKE_paint_brush_is_valid_asset(brush)) {
     asset::mark_id(&brush->id);
-    // TODO: Somehow get the catalog file to save in the library.
     brush->id.asset_data->catalog_id = catalog.catalog_id;
     STRNCPY(brush->id.asset_data->catalog_simple_name, catalog.simple_name.c_str());
     asset::generate_preview(C, &brush->id);
