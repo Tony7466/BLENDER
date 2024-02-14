@@ -358,7 +358,7 @@ static int grease_pencil_weight_brush_stroke_invoke(bContext *C,
     return OPERATOR_CANCELLED;
   }
 
-  const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+  const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
       ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
   if (drawings.is_empty()) {
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw weight on");

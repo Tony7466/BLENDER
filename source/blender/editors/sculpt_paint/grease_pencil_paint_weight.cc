@@ -5,16 +5,11 @@
 #include <map>
 
 #include "BLI_array.hh"
-#include "BLI_array_utils.hh"
-#include "BLI_index_mask.hh"
 #include "BLI_kdtree.h"
-#include "BLI_map.hh"
-#include "BLI_math_geom.h"
 #include "BLI_rect.h"
 #include "BLI_set.hh"
 #include "BLI_task.hh"
 
-#include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
@@ -24,11 +19,10 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_grease_pencil_vertex_groups.hh"
 #include "BKE_modifier.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph_query.hh"
 
-#include "DNA_armature_types.h"
 #include "DNA_meshdata_types.h"
 
 #include "ED_grease_pencil.hh"
