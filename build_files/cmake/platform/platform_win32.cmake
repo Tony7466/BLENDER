@@ -687,32 +687,6 @@ if(NOT OpenImageIO_FOUND)
   set(OPENIMAGEIO_TOOL "${OPENIMAGEIO}/bin/oiiotool.exe")
 endif()
 
-if(WITH_LLVM)
-  set(LLVM_ROOT_DIR ${LIBDIR}/llvm CACHE PATH "Path to the LLVM installation")
-  set(LLVM_INCLUDE_DIRS ${LLVM_ROOT_DIR}/$<$<CONFIG:Debug>:Debug>/include CACHE PATH "Path to the LLVM include directory")
-  file(GLOB LLVM_LIBRARY_OPTIMIZED ${LLVM_ROOT_DIR}/lib/*.lib)
-
-  if(EXISTS ${LLVM_ROOT_DIR}/debug/lib)
-    foreach(LLVM_OPTIMIZED_LIB ${LLVM_LIBRARY_OPTIMIZED})
-      get_filename_component(LIBNAME ${LLVM_OPTIMIZED_LIB} ABSOLUTE)
-      list(APPEND LLVM_LIBS optimized ${LIBNAME})
-    endforeach(LLVM_OPTIMIZED_LIB)
-
-    file(GLOB LLVM_LIBRARY_DEBUG ${LLVM_ROOT_DIR}/debug/lib/*.lib)
-
-    foreach(LLVM_DEBUG_LIB ${LLVM_LIBRARY_DEBUG})
-      get_filename_component(LIBNAME ${LLVM_DEBUG_LIB} ABSOLUTE)
-      list(APPEND LLVM_LIBS debug ${LIBNAME})
-    endforeach(LLVM_DEBUG_LIB)
-
-    set(LLVM_LIBRARY ${LLVM_LIBS})
-  else()
-    message(WARNING "LLVM debug libs not present on this system. Using release libs for debug builds.")
-    set(LLVM_LIBRARY ${LLVM_LIBRARY_OPTIMIZED})
-  endif()
-
-endif()
-
 if(WITH_OPENCOLORIO)
   windows_find_package(OpenColorIO)
   if(NOT OpenColorIO_FOUND)
