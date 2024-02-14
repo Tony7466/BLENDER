@@ -431,7 +431,7 @@ static void GREASE_PENCIL_OT_layer_isolate(wmOperatorType *ot)
 
 static int grease_pencil_layer_lock_all_exec(bContext *C, wmOperator *op)
 {
-  using namespace ::blender::bke::greasepencil;
+  using namespace blender::bke::greasepencil;
   Object *object = CTX_data_active_object(C);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const bool lock_value = RNA_boolean_get(op->ptr, "lock");
