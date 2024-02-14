@@ -10,7 +10,7 @@
 
 #include "node_function_util.hh"
 
-namespace blender::nodes::node_fn_axis_to_euler_cc {
+namespace blender::nodes::node_fn_axes_to_rotation_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -163,10 +163,10 @@ static void node_rna(StructRNA *srna)
       NOD_inline_enum_accessors(custom2));
 }
 
-void node_register()
+static void node_register()
 {
   static bNodeType ntype;
-  fn_node_type_base(&ntype, FN_NODE_AXES_TO_ROTATION, "Axis to Euler", NODE_CLASS_CONVERTER);
+  fn_node_type_base(&ntype, FN_NODE_AXES_TO_ROTATION, "Axes to Rotation", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.build_multi_function = node_build_multi_function;
@@ -176,4 +176,4 @@ void node_register()
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_fn_axis_to_euler_cc
+}  // namespace blender::nodes::node_fn_axes_to_rotation_cc
