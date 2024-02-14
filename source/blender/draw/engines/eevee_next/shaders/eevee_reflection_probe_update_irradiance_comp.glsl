@@ -5,18 +5,9 @@
 /* Shader to extract spherical harmonics cooefs from octahedral mapped reflection probe. */
 
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_reflection_probe_mapping_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_octahedron_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
-
-SphereProbeUvArea reinterpret_as_atlas_coord(ivec4 packed_coord)
-{
-  SphereProbeUvArea unpacked;
-  unpacked.offset = intBitsToFloat(packed_coord.xy);
-  unpacked.scale = intBitsToFloat(packed_coord.z);
-  unpacked.layer = intBitsToFloat(packed_coord.w);
-  return unpacked;
-}
 
 void atlas_store(vec4 sh_coefficient, ivec2 atlas_coord, int layer)
 {

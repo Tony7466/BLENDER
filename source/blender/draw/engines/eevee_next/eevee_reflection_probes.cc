@@ -55,6 +55,7 @@ void SphereProbeModule::begin_sync()
     pass.shader_set(instance_.shaders.static_shader_get(SPHERE_PROBE_CONVOLVE));
     pass.bind_image("in_atlas_mip_img", &convolve_input_);
     pass.bind_image("out_atlas_mip_img", &convolve_output_);
+    pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&probe_sampling_coord_));
     pass.push_constant("write_coord_packed", reinterpret_cast<int4 *>(&probe_write_coord_));
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
     pass.dispatch(&dispatch_probe_convolve_);
