@@ -375,19 +375,23 @@ static void create_envelope_stroke_for_point(const EnvelopeInfo &info,
 {
   const int point_num = src_curve_points.size();
 
+  std::cout << "  Envelope ";
   for (const int i : point_src_indices.index_range().drop_back(1)) {
     const int point_i = envelope_start + i;
-    const int index = src_curve_cyclic ? (point_i - info.spread + point_num) % point_num :
-                                         std::max(point_i - info.spread, 0);
+    const int index = src_curve_cyclic ? (point_i + point_num) % point_num :
+                                         math::clamp(point_i, 0, point_num - 1);
     point_src_indices[i] = src_curve_points[index];
+    std::cout << index << ", ";
   }
   /* Last point always connects to the end of the range. */
   {
     const int point_i = envelope_start + info.spread + 1;
-    const int index = src_curve_cyclic ? (point_i - info.spread + point_num) % point_num :
-                                         std::max(point_i - info.spread, 0);
+    const int index = src_curve_cyclic ? (point_i + point_num) % point_num :
+                                         math::clamp(point_i, 0, point_num - 1);
     point_src_indices.last() = src_curve_points[index];
+    std::cout << index;
   }
+  std::cout << std::endl;
 }
 
 static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
@@ -407,19 +411,20 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
   std::cout << "Strokes for curve " << src_curve_index << " points=" << src_curve_points
             << " dst_points=" << dst_points << ": " << std::endl;
 
-  /* Index range here goes beyond the point range:
-   * This adds points [i - spread - 1, i + 1] as a curve.
+  /*
+   * Index range here goes beyond the point range:
+   * This adds points [i - spread, i + 1] as a curve.
    * The total range covers [-spread - 1, spread + 1].
    * Each span only gets added once since it repeats for neighboring points.
    */
   for (const int i : IndexRange(src_curve_points.size() + info.spread - 1)) {
-    const int envelope_start = i - info.spread - 1;
+    const int envelope_start = i - info.spread;
     const IndexRange dst_envelope_points = {i * info.points_per_curve, info.points_per_curve};
 
     curve_offsets[i] = dst_points[dst_envelope_points.start()];
 
-    std::cout << "  Envelope " << i << ": dst_envelope_points=" << dst_envelope_points
-              << std::endl;
+    // std::cout << "  Envelope " << i << ": dst_envelope_points=" << dst_envelope_points
+    //           << std::endl;
     create_envelope_stroke_for_point(info,
                                      src_curve_points,
                                      src_curve_cyclic,
