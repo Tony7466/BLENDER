@@ -32,15 +32,14 @@
 #include "BLI_stack.h"
 #include "BLI_string.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_bvhutils.hh"
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_editmesh_bvh.h"
 #include "BKE_layer.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_unit.hh"
 
 #include "GPU_immediate.h"
@@ -3594,7 +3593,6 @@ static bool knife_snap_angle_relative(KnifeTool_OpData *kcd)
   float curr_ray[3], curr_ray_normal[3];
   float curr_co[3], curr_cage[3]; /* Unused. */
 
-  float plane[4];
   float ray_hit[3];
   float lambda;
 
@@ -3688,9 +3686,8 @@ static bool knife_snap_angle_relative(KnifeTool_OpData *kcd)
   mul_transposed_mat3_m4_v3(kcd->curr.ob->world_to_object, no_global);
   normalize_v3(no_global);
 
-  plane_from_point_normal_v3(plane, kcd->prev.cage, no_global);
-
-  if (isect_ray_plane_v3(curr_origin, curr_ray_normal, plane, &lambda, false)) {
+  if (isect_ray_plane_v3_factor(curr_origin, curr_ray_normal, kcd->prev.cage, no_global, &lambda))
+  {
     madd_v3_v3v3fl(ray_hit, curr_origin, curr_ray_normal, lambda);
 
     /* Calculate snap step. */
