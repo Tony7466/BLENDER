@@ -54,13 +54,6 @@ static void node_geo_exec(GeoNodeExecParams params)
       return;
     }
   }
-  if (pattern_mode == PatternMode::Exact) {
-    if (!bke::allow_procedural_attribute_access(pattern)) {
-      params.error_message_add(NodeWarningType::Info, TIP_(bke::no_procedural_access_message));
-      params.set_output("Geometry", std::move(geometry_set));
-      return;
-    }
-  }
 
   StringRef wildcard_prefix;
   StringRef wildcard_suffix;
@@ -70,8 +63,8 @@ static void node_geo_exec(GeoNodeExecParams params)
     wildcard_suffix = StringRef(pattern).substr(wildcard_index + 1);
   }
 
-  std::atomic<bool> attribute_exists = false;
-  std::atomic<bool> cannot_delete = false;
+  Set<std::string> removed_attributes;
+  Set<std::string> failed_attributes;
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
     for (const GeometryComponent::Type type : {GeometryComponent::Type::Mesh,
@@ -85,22 +78,15 @@ static void node_geo_exec(GeoNodeExecParams params)
       /* First check if the attribute exists before getting write access,
        * to avoid potentially expensive unnecessary copies. */
       const GeometryComponent &read_only_component = *geometry_set.get_component(type);
+      Vector<std::string> attributes_to_remove;
       switch (pattern_mode) {
         case PatternMode::Exact: {
           if (read_only_component.attributes()->contains(pattern)) {
-            attribute_exists = true;
-          }
-          else {
-            break;
-          }
-          GeometryComponent &component = geometry_set.get_component_for_write(type);
-          if (!component.attributes_for_write()->remove(pattern)) {
-            cannot_delete = true;
+            attributes_to_remove.append(pattern);
           }
           break;
         }
         case PatternMode::Wildcard: {
-          Vector<std::string> attributes_to_remove;
           read_only_component.attributes()->for_all(
               [&](const blender::bke::AttributeIDRef &id,
                   const blender::bke::AttributeMetaData /*meta_data*/) {
@@ -115,32 +101,40 @@ static void node_geo_exec(GeoNodeExecParams params)
                 }
                 return true;
               });
-          if (attributes_to_remove.is_empty()) {
-            break;
-          }
-          GeometryComponent &component = geometry_set.get_component_for_write(type);
-          for (const StringRef attribute_name : attributes_to_remove) {
-            if (!component.attributes_for_write()->remove(attribute_name)) {
-              cannot_delete = true;
-            }
-          }
+
           break;
+        }
+      }
+      if (attributes_to_remove.is_empty()) {
+        break;
+      }
+
+      GeometryComponent &component = geometry_set.get_component_for_write(type);
+      for (const StringRef attribute_name : attributes_to_remove) {
+        if (!bke::allow_procedural_attribute_access(attribute_name)) {
+          continue;
+        }
+        if (component.attributes_for_write()->remove(attribute_name)) {
+          removed_attributes.add(attribute_name);
+        }
+        else {
+          failed_attributes.add(attribute_name);
         }
       }
     }
   });
 
-  if (attribute_exists && !cannot_delete) {
-    params.used_named_attribute(pattern, NamedAttributeUsage::Remove);
+  for (const StringRef attribute_name : removed_attributes) {
+    params.used_named_attribute(attribute_name, NamedAttributeUsage::Remove);
   }
 
-  if (!attribute_exists) {
-    const std::string message = fmt::format(TIP_("Attribute does not exist: \"{}\""), pattern);
+  if (!failed_attributes.is_empty()) {
+    const std::string message = fmt::format(TIP_("Cannot delete built-in attributes: {}"),
+                                            fmt::join(failed_attributes, ", "));
     params.error_message_add(NodeWarningType::Warning, message);
   }
-  if (cannot_delete) {
-    const std::string message = fmt::format(TIP_("Cannot delete built-in attribute: \"{}\""),
-                                            pattern);
+  else if (removed_attributes.is_empty() && pattern_mode == PatternMode::Exact) {
+    const std::string message = fmt::format(TIP_("Attribute does not exist: \"{}\""), pattern);
     params.error_message_add(NodeWarningType::Warning, message);
   }
 
