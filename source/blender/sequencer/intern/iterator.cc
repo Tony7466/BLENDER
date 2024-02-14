@@ -172,8 +172,12 @@ static bool must_render_strip(VectorSet<Sequence *> &strips, Sequence *strip)
     }
   }
 
-  /* All effects are rendered (with respect to conditions above). */
-  if ((strip->type & SEQ_TYPE_EFFECT) != 0) {
+  /* All effects are rendered (with respect to conditions above). However,
+   * Color and Text are treated like regular strips; they do not "effect"
+   * something else but rather produce an image on their own. */
+  if ((strip->type & SEQ_TYPE_EFFECT) != 0 && (strip->type != SEQ_TYPE_COLOR) &&
+      (strip->type != SEQ_TYPE_TEXT))
+  {
     return true;
   }
 
