@@ -15,7 +15,7 @@ template<typename Derived> class RandomAccessIteratorMixin {
   constexpr Derived &operator++()
   {
     auto &derived = this->as_derived();
-    derived.get_prop()++;
+    derived.iter_prop()++;
     return derived;
   }
 
@@ -29,7 +29,7 @@ template<typename Derived> class RandomAccessIteratorMixin {
   constexpr Derived &operator--()
   {
     auto &derived = this->as_derived();
-    derived.get_prop()--;
+    derived.iter_prop()--;
     return derived;
   }
 
@@ -42,32 +42,32 @@ template<typename Derived> class RandomAccessIteratorMixin {
 
   constexpr friend Derived &operator+=(RandomAccessIteratorMixin &a, const int64_t n)
   {
-    a.get_prop() += n;
+    a.iter_prop() += n;
     return a.as_derived();
   }
 
   constexpr friend Derived &operator-=(RandomAccessIteratorMixin &a, const int64_t n)
   {
-    a.get_prop() -= n;
+    a.iter_prop() -= n;
     return a.as_derived();
   }
 
   constexpr friend auto operator-(const RandomAccessIteratorMixin &a,
                                   const RandomAccessIteratorMixin &b)
   {
-    return a.get_prop() - b.get_prop();
+    return a.iter_prop() - b.iter_prop();
   }
 
   constexpr friend bool operator!=(const RandomAccessIteratorMixin &a,
                                    const RandomAccessIteratorMixin &b)
   {
-    return a.get_prop() != b.get_prop();
+    return a.iter_prop() != b.iter_prop();
   }
 
   constexpr friend bool operator==(const RandomAccessIteratorMixin &a,
                                    const RandomAccessIteratorMixin &b)
   {
-    return a.get_prop() == b.get_prop();
+    return a.iter_prop() == b.iter_prop();
   }
 
  private:
@@ -81,14 +81,14 @@ template<typename Derived> class RandomAccessIteratorMixin {
     return *static_cast<const Derived *>(this);
   }
 
-  auto &get_prop()
+  auto &iter_prop()
   {
-    return this->as_derived().get_property();
+    return this->as_derived().iter_prop();
   }
 
-  const auto &get_prop() const
+  const auto &iter_prop() const
   {
-    return this->as_derived().get_property();
+    return this->as_derived().iter_prop();
   }
 };
 

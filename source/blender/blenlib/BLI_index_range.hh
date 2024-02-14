@@ -84,12 +84,12 @@ class IndexRange {
       return current_;
     }
 
-    int64_t &get_property()
+    int64_t &iter_prop()
     {
       return current_;
     }
 
-    const int64_t &get_property() const
+    const int64_t &iter_prop() const
     {
       return current_;
     }
