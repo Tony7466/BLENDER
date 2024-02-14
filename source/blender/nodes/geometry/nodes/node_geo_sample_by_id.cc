@@ -23,6 +23,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Int>("Sample ID").supports_field();
 
   b.add_output<decl::Int>("Index").dependent_field({2});
+  b.add_output<decl::Bool>("Is Valid").dependent_field({2});
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -103,7 +104,8 @@ class SampleIDFunction : public mf::MultiFunction {
 
     mf::SignatureBuilder builder{"Sample ID", signature_};
     builder.single_input<int>("Sample ID");
-    builder.single_output<int>("Index");
+    builder.single_output<int>("Index", mf::ParamFlag::SupportsUnusedOutput);
+    builder.single_output<bool>("Is Valid", mf::ParamFlag::SupportsUnusedOutput);
     this->set_signature(&signature_);
 
     const GeometryComponent *component = find_source_component(geometry, domain);
@@ -123,12 +125,23 @@ class SampleIDFunction : public mf::MultiFunction {
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArray<int> &ids = params.readonly_single_input<int>(0, "Sample ID");
-    MutableSpan<int> indices = params.uninitialized_single_output<int>(1, "Index");
+    MutableSpan<int> indices = params.uninitialized_single_output_if_required<int>(1, "Index");
+    MutableSpan<bool> is_valid = params.uninitialized_single_output_if_required<bool>(2,
+                                                                                      "Is Valid");
 
-    devirtualize_varray(ids, [&](auto &ids) {
-      mask.foreach_index_optimized<int>(
-          [&](const int i) { indices[i] = id_map_.lookup_default(ids[i], 0); });
-    });
+    if (!indices.is_empty()) {
+      devirtualize_varray(ids, [&](auto &ids) {
+        mask.foreach_index_optimized<int>(
+            [&](const int i) { indices[i] = id_map_.lookup_default(ids[i], 0); });
+      });
+    }
+
+    if (!is_valid.is_empty()) {
+      devirtualize_varray(ids, [&](auto &ids) {
+        mask.foreach_index_optimized<int>(
+            [&](const int i) { is_valid[i] = id_map_.contains(ids[i]); });
+      });
+    }
   }
 };
 
@@ -152,7 +165,8 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   auto sample_id_op = FieldOperation::Create(std::move(sample_id_fn),
                                              {std::move(sample_id_field)});
-  params.set_output("Index", GField(std::move(sample_id_op)));
+  params.set_output("Index", Field<int>(sample_id_op, 0));
+  params.set_output("Is Valid", Field<bool>(std::move(sample_id_op), 1));
 }
 
 static void node_rna(StructRNA *srna)
