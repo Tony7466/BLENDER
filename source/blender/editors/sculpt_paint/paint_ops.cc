@@ -1316,6 +1316,11 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
 
 static int brush_asset_save_as_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Brush *brush = BKE_paint_brush(paint);
+
+  RNA_string_set(op->ptr, "name", brush->id.name + 2);
+
   if (const bUserAssetLibrary *library = brush_asset_get_default_library()) {
     AssetLibraryReference library_ref{};
     library_ref.custom_library_index = BLI_findindex(&U.asset_libraries, library);
@@ -1323,11 +1328,6 @@ static int brush_asset_save_as_invoke(bContext *C, wmOperator *op, const wmEvent
     RNA_enum_set(
         op->ptr, "asset_library_reference", asset::library_reference_to_enum_value(&library_ref));
   }
-
-  Paint *paint = BKE_paint_get_active_from_context(C);
-  Brush *brush = BKE_paint_brush(paint);
-
-  RNA_string_set(op->ptr, "name", brush->id.name + 2);
 
   return WM_operator_props_dialog_popup(C, op, 400, std::nullopt, IFACE_("Save"));
 }
