@@ -74,7 +74,7 @@ void SphereProbeModule::begin_sync()
 
 bool SphereProbeModule::ensure_atlas()
 {
-  /* Make sure the atlas is always initialized even if there is nothing to render to it to fullfil
+  /* Make sure the atlas is always initialized even if there is nothing to render to it to fulfill
    * the resource bindings. */
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ;
 
@@ -110,7 +110,7 @@ void SphereProbeModule::end_sync()
     if (probe.do_render) {
       /* Tag the next redraw to warm up the probe pipeline.
        * Keep doing this until there is no update.
-       * This avoids stuttering when moving a lightprobe. */
+       * This avoids stuttering when moving a light-probe. */
       update_probes_next_sample_ = true;
     }
   }
@@ -127,7 +127,7 @@ void SphereProbeModule::ensure_cubemap_render_target(int resolution)
   {
     GPU_texture_mipmap_mode(cubemap_tx_, false, true);
   }
-  /* TODO(fclem): dealocate it. */
+  /* TODO(fclem): deallocate it. */
 }
 
 SphereProbeModule::UpdateInfo SphereProbeModule::update_info_from_probe(const SphereProbe &probe)
@@ -194,6 +194,8 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
 void SphereProbeModule::update_world_irradiance()
 {
   instance_.manager->submit(update_irradiance_ps_);
+  /* All volume probe that needs to composite the world probe need to be updated. */
+  instance_.volume_probes.do_update_world_ = true;
 }
 
 void SphereProbeModule::update_probes_texture_mipmaps()
@@ -254,27 +256,36 @@ void SphereProbeModule::set_view(View & /*view*/)
   }
   data_buf_.push_update();
 
-  do_display_draw_ = DRW_state_draw_support() && probe_active.size() > 0;
-  if (do_display_draw_) {
-    int display_index = 0;
-    for (int i : probe_active.index_range()) {
-      if (probe_active[i]->viewport_display) {
-        display_data_buf_.get_or_resize(display_index++) = {
-            i, probe_active[i]->viewport_display_size};
-      }
-    }
-    do_display_draw_ = display_index > 0;
-    if (do_display_draw_) {
-      display_data_buf_.resize(display_index);
-      display_data_buf_.push_update();
-    }
-  }
-
-  /* Add one for world probe. */
-  reflection_probe_count_ = probe_active.size() + 1;
+  reflection_probe_count_ = probe_id;
   dispatch_probe_select_.x = divide_ceil_u(reflection_probe_count_,
                                            SPHERE_PROBE_SELECT_GROUP_SIZE);
   instance_.manager->submit(select_ps_);
+
+  sync_display(probe_active);
+}
+
+void SphereProbeModule::sync_display(Vector<SphereProbe *> &probe_active)
+{
+  do_display_draw_ = false;
+  if (!DRW_state_draw_support()) {
+    return;
+  }
+
+  int display_index = 0;
+  for (int i : probe_active.index_range()) {
+    if (probe_active[i]->viewport_display) {
+      SphereProbeDisplayData &sph_data = display_data_buf_.get_or_resize(display_index++);
+      sph_data.probe_index = i;
+      sph_data.display_size = probe_active[i]->viewport_display_size;
+    }
+  }
+
+  if (display_index == 0) {
+    return;
+  }
+  do_display_draw_ = true;
+  display_data_buf_.resize(display_index);
+  display_data_buf_.push_update();
 }
 
 void SphereProbeModule::viewport_draw(View &view, GPUFrameBuffer *view_fb)

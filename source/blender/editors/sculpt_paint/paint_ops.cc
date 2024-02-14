@@ -19,8 +19,6 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
-
 #include "IMB_interp.hh"
 
 #include "DNA_brush_types.h"
@@ -40,7 +38,7 @@
 #include "BKE_main.hh"
 #include "BKE_paint.hh"
 #include "BKE_preferences.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "ED_asset_handle.hh"
 #include "ED_asset_library.hh"
@@ -57,6 +55,8 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
+
+#include "BLT_translation.hh"
 
 #include "AS_asset_catalog_tree.hh"
 #include "AS_asset_library.hh"
@@ -1203,6 +1203,11 @@ static bool brush_asset_save_as_poll(bContext *C)
     return false;
   }
 
+  if (BLI_listbase_is_empty(&U.asset_libraries)) {
+    CTX_wm_operator_poll_msg_set(C, "No asset library available to save to");
+    return false;
+  }
+
   return true;
 }
 
@@ -1238,7 +1243,7 @@ static bool asset_is_editable(const AssetWeakReference &asset_weak_ref)
   return true;
 }
 
-static const bUserAssetLibrary *get_library_from_props(PointerRNA &ptr)
+static const bUserAssetLibrary *get_asset_library_from_prop(PointerRNA &ptr)
 {
   const int enum_value = RNA_enum_get(&ptr, "asset_library_reference");
   const AssetLibraryReference lib_ref = asset::library_reference_from_enum_value(enum_value);
@@ -1280,7 +1285,7 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
     STRNCPY(name, brush->id.name + 2);
   }
 
-  const bUserAssetLibrary *user_library = get_library_from_props(*op->ptr);
+  const bUserAssetLibrary *user_library = get_asset_library_from_prop(*op->ptr);
   if (!user_library) {
     return OPERATOR_CANCELLED;
   }
@@ -1294,14 +1299,6 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   char catalog_path[MAX_NAME];
   RNA_string_get(op->ptr, "catalog_path", catalog_path);
   const asset_system::AssetCatalog &catalog = asset_library_ensure_catalog(*library, catalog_path);
-
-  /* Check if the asset belongs to an editable blend file. */
-  if (paint->brush_asset_reference && BKE_paint_brush_is_valid_asset(brush)) {
-    if (!asset_is_editable(*paint->brush_asset_reference)) {
-      BKE_report(op->reports, RPT_ERROR, "Asset blend file is not editable");
-      return false;
-    }
-  }
 
   const std::string filepath = brush_asset_blendfile_path_for_save(
       op->reports, *user_library, name);
@@ -1352,16 +1349,15 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
 
 static int brush_asset_save_as_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
+  Paint *paint = BKE_paint_get_active_from_context(C);
+  Brush *brush = BKE_paint_brush(paint);
+
+  RNA_string_set(op->ptr, "name", brush->id.name + 2);
   if (const bUserAssetLibrary *library = brush_asset_get_default_library()) {
     const AssetLibraryReference library_ref = user_library_to_library_ref(*library);
     const int enum_value = asset::library_reference_to_enum_value(&library_ref);
     RNA_enum_set(op->ptr, "asset_library_reference", enum_value);
   }
-
-  Paint *paint = BKE_paint_get_active_from_context(C);
-  Brush *brush = BKE_paint_brush(paint);
-
-  RNA_string_set(op->ptr, "name", brush->id.name + 2);
 
   return WM_operator_props_dialog_popup(C, op, 400, std::nullopt, IFACE_("Save"));
 }
@@ -1388,7 +1384,7 @@ static void visit_asset_catalog_for_search_fn(const bContext *C,
                                               StringPropertySearchVisitFunc visit_fn,
                                               void *visit_user_data)
 {
-  const bUserAssetLibrary *user_library = get_library_from_props(*ptr);
+  const bUserAssetLibrary *user_library = get_asset_library_from_prop(*ptr);
   if (!user_library) {
     return;
   }

@@ -18,8 +18,6 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
-#include "BKE_lib_query.hh"
-#include "BKE_material.h"
 #include "BKE_modifier.hh"
 #include "BKE_screen.hh"
 
@@ -28,7 +26,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -37,7 +35,6 @@
 #include "RNA_prototypes.h"
 
 #include "MOD_grease_pencil_util.hh"
-#include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
 namespace blender {

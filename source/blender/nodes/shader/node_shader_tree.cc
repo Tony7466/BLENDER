@@ -14,7 +14,6 @@
 #include "DNA_node_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_space_types.h"
-#include "DNA_workspace_types.h"
 #include "DNA_world_types.h"
 
 #include "BLI_array.hh"
@@ -28,7 +27,7 @@
 #include "BLI_vector.hh"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_linestyle.h"
@@ -36,18 +35,12 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
-#include "RNA_access.hh"
 #include "RNA_prototypes.h"
-
-#include "GPU_material.hh"
-
-#include "RE_texture.h"
 
 #include "UI_resources.hh"
 
-#include "NOD_common.h"
 #include "NOD_shader.h"
 
 #include "node_common.h"
@@ -1005,7 +998,7 @@ static bool closure_node_filter(const bNode *node)
 }
 
 /* Shader to rgba needs their associated closure duplicated and the weight tree generated for. */
-static void ntree_shader_shader_to_rgba_branch(bNodeTree *ntree, bNode *output_node)
+static void ntree_shader_shader_to_rgba_branches(bNodeTree *ntree)
 {
   Vector<bNode *> shader_to_rgba_nodes;
   LISTBASE_FOREACH (bNode *, node, &ntree->nodes) {
@@ -1197,7 +1190,7 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat)
   if (valid_tree) {
     ntree_shader_pruned_unused(localtree, output);
     if (output != nullptr) {
-      ntree_shader_shader_to_rgba_branch(localtree, output);
+      ntree_shader_shader_to_rgba_branches(localtree);
       ntree_shader_weight_tree_invert(localtree, output);
     }
   }
@@ -1209,7 +1202,9 @@ void ntreeGPUMaterialNodes(bNodeTree *localtree, GPUMaterial *mat)
   LISTBASE_FOREACH (bNode *, node, &localtree->nodes) {
     node->runtime->tmp_flag = -1;
   }
-  iter_shader_to_rgba_depth_count(output, max_depth);
+  if (output != nullptr) {
+    iter_shader_to_rgba_depth_count(output, max_depth);
+  }
   LISTBASE_FOREACH (bNode *, node, &localtree->nodes) {
     if (node->type == SH_NODE_OUTPUT_AOV) {
       iter_shader_to_rgba_depth_count(node, max_depth);
