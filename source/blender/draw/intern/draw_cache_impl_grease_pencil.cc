@@ -216,7 +216,7 @@ static void grease_pencil_weight_batch_ensure(Object &object,
 {
   using namespace blender::bke::greasepencil;
 
-  constexpr float no_active_weight = -1.0f;
+  constexpr float no_active_weight = 666.0f;
 
   BLI_assert(grease_pencil.runtime != nullptr);
   GreasePencilBatchCache *cache = static_cast<GreasePencilBatchCache *>(
@@ -252,7 +252,6 @@ static void grease_pencil_weight_batch_ensure(Object &object,
 
   static GPUVertFormat format_points_weight = {0};
   if (format_points_weight.attr_len == 0) {
-    /* TODO: use something like "weight" as attribute name. */
     GPU_vertformat_attr_add(&format_points_weight, "selection", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   }
 
@@ -393,6 +392,7 @@ static void grease_pencil_weight_batch_ensure(Object &object,
 
   cache->edit_lines = GPU_batch_create(
       GPU_PRIM_LINE_STRIP, cache->edit_points_pos, cache->edit_line_indices);
+  GPU_batch_vertbuf_add(cache->edit_lines, cache->edit_points_selection, false);
 
   /* Allow creation of buffer texture. */
   GPU_vertbuf_use(cache->edit_points_pos);
