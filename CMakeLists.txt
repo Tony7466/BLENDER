@@ -701,6 +701,12 @@ endif()
 option(WITH_DRAW_DEBUG "Add extra debug capabilities to Draw Manager" OFF)
 mark_as_advanced(WITH_DRAW_DEBUG)
 
+# LLVM
+option(WITH_LLVM "Use LLVM" OFF)
+option(LLVM_STATIC "Link with LLVM static libraries" OFF)
+mark_as_advanced(LLVM_STATIC)
+option(WITH_CLANG "Use Clang" OFF)
+
 # disable for now, but plan to support on all platforms eventually
 option(WITH_MEM_JEMALLOC "Enable malloc replacement (http://www.canonware.com/jemalloc)" ON)
 mark_as_advanced(WITH_MEM_JEMALLOC)
@@ -2175,6 +2181,14 @@ mark_as_advanced(
   OSL_INCLUDE_DIR
 )
 
+mark_as_advanced(
+  LLVM_CONFIG
+  LLVM_ROOT_DIR
+  LLVM_LIBRARY
+  LLVM_VERSION
+)
+
+
 # -------------------------------------------------------------------------------
 # Global Defines
 
@@ -2308,6 +2322,7 @@ if(FIRST_RUN)
   info_cfg_text("Build Options:")
   info_cfg_option(WITH_ALEMBIC)
   info_cfg_option(WITH_BULLET)
+  info_cfg_option(WITH_CLANG)
   info_cfg_option(WITH_CYCLES)
   info_cfg_option(WITH_FFTW3)
   info_cfg_option(WITH_FREESTYLE)

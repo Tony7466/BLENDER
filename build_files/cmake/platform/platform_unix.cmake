@@ -82,6 +82,7 @@ if(DEFINED LIBDIR)
   set(BOOST_LIBRARYDIR ${LIBDIR}/boost/lib)
   set(Boost_NO_SYSTEM_PATHS ON)
   set(OPENEXR_ROOT_DIR ${LIBDIR}/openexr)
+  set(CLANG_ROOT_DIR ${LIBDIR}/llvm)
   set(MaterialX_DIR ${LIBDIR}/materialx/lib/cmake/MaterialX)
 endif()
 
@@ -517,6 +518,29 @@ if(WITH_OPENIMAGEDENOISE)
   find_package_wrapper(OpenImageDenoise)
   set_and_warn_library_found("OpenImageDenoise" OPENIMAGEDENOISE_FOUND WITH_OPENIMAGEDENOISE)
   add_bundled_libraries(openimagedenoise/lib)
+endif()
+
+if(WITH_LLVM)
+  if(DEFINED LIBDIR)
+    set(LLVM_STATIC ON)
+  endif()
+
+  find_package_wrapper(LLVM)
+  set_and_warn_library_found("LLVM" LLVM_FOUND WITH_LLVM)
+
+  if(LLVM_FOUND)
+    if(WITH_CLANG)
+      find_package_wrapper(Clang)
+      set_and_warn_library_found("Clang" CLANG_FOUND WITH_CLANG)
+    endif()
+
+    # Symbol conflicts with same UTF library used by OpenCollada
+    if(DEFINED LIBDIR)
+      if(WITH_OPENCOLLADA AND (${LLVM_VERSION} VERSION_LESS "4.0.0"))
+        list(REMOVE_ITEM OPENCOLLADA_LIBRARIES ${OPENCOLLADA_UTF_LIBRARY})
+      endif()
+    endif()
+  endif()
 endif()
 
 if(WITH_OPENSUBDIV)
