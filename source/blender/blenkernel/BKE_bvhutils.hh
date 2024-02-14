@@ -115,6 +115,9 @@ BVHTree *BKE_bvhtree_from_mesh_get(BVHTreeFromMesh *data,
                                    BVHCacheType bvh_cache_type,
                                    int tree_type);
 
+/**
+ * Build a bvh tree from the triangles in the mesh that correspond to the faces in the given mask.
+ */
 void BKE_bvhtree_from_mesh_tris_init(const Mesh &mesh,
                                      const blender::IndexMask &faces_mask,
                                      BVHTreeFromMesh &r_data);

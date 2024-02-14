@@ -9,7 +9,6 @@
  */
 
 #include "BLI_index_mask_fwd.hh"
-#include "BLI_math_geom.h"
 #include "BLI_offset_indices.hh"
 
 #include "BKE_mesh.h"
@@ -291,10 +290,15 @@ inline int face_triangles_num(const int face_size)
   return face_size - 2;
 }
 
+/**
+ * Return the range of triangles that belong to the given face.
+ */
 inline IndexRange face_triangles_range(OffsetIndices<int> faces, int face_i)
 {
   const IndexRange face = faces[face_i];
-  return IndexRange(poly_to_tri_count(face_i, face.start()), face_triangles_num(face.size()));
+  /* This is the same as #poly_to_tri_count which is not included here. */
+  const int start_triangle = face.start() - face_i * 2;
+  return IndexRange(start_triangle, face_triangles_num(face.size()));
 }
 
 /**
