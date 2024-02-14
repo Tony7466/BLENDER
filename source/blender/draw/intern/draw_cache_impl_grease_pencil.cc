@@ -240,7 +240,7 @@ static void grease_pencil_weight_batch_ensure(Object &object,
   const char *active_defgroup_name = active_defgroup->name;
 
   /* Get the visible drawings. */
-  const Array<ed::greasepencil::DrawingInfo> drawings =
+  const Vector<ed::greasepencil::DrawingInfo> drawings =
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil);
 
   const Span<const Layer *> layers = grease_pencil.layers();
