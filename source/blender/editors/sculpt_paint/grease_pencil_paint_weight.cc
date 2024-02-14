@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -304,6 +304,19 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
 
     BKE_curvemapping_init(brush->curve);
 
+    /* Get the add/subtract mode of the draw tool. */
+    this->invert_brush_weight = false;
+    if (this->brush->weightpaint_tool == WPAINT_TOOL_DRAW) {
+      this->invert_brush_weight = (this->brush->flag & BRUSH_DIR_IN) != 0;
+      if (this->brush_mode == BRUSH_STROKE_INVERT) {
+        this->invert_brush_weight = !this->invert_brush_weight;
+      }
+    }
+
+    /* Auto-normalize weights is only applied when the object is deformed by an armature. */
+    this->auto_normalize = ts->auto_normalize &&
+                           (BKE_modifiers_is_deformed_by_armature(object) != nullptr);
+
     /* Get or create active vertex group in object. */
     int object_defgroup_nr = BKE_object_defgroup_active_index_get(object) - 1;
     if (object_defgroup_nr == -1) {
@@ -311,10 +324,6 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
     }
     const bDeformGroup *object_defgroup = static_cast<const bDeformGroup *>(
         BLI_findlink(BKE_object_defgroup_list(object), object_defgroup_nr));
-
-    /* Auto-normalize weights is only applied when the object is deformed by an armature. */
-    this->auto_normalize = ts->auto_normalize &&
-                           (BKE_modifiers_is_deformed_by_armature(object) != nullptr);
 
     /* Get a set of locked and bone deformed vertex groups. These are used for auto-normalizing
      * weights. */
@@ -413,9 +422,6 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
     if (BKE_brush_use_alpha_pressure(this->brush)) {
       brush_influence *= extension_sample.pressure;
     }
-    /* Get the add/subtract mode of the draw tool. */
-    this->invert_brush_weight = (this->brush->weightpaint_tool == WPAINT_TOOL_DRAW &&
-                                 (this->brush->flag & BRUSH_DIR_IN) != 0);
 
     /* For the Blur tool, look a bit wider than the brush itself,
      * because we need the weight of surrounding points to perform the blur. */

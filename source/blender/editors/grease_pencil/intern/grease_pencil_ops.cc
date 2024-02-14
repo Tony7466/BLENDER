@@ -81,7 +81,7 @@ bool grease_pencil_weight_painting_poll(bContext *C)
     return false;
   }
   ToolSettings *ts = CTX_data_tool_settings(C);
-  if (!ts || !ts->gp_weightpaint) {
+  if (!ts || !ts->wpaint) {
     return false;
   }
   return true;
@@ -118,6 +118,7 @@ void ED_operatortypes_grease_pencil()
   ED_operatortypes_grease_pencil_select();
   ED_operatortypes_grease_pencil_edit();
   ED_operatortypes_grease_pencil_material();
+  ED_operatortypes_grease_pencil_weight_paint();
 }
 
 void ED_operatormacros_grease_pencil()

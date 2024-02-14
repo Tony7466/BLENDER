@@ -21,6 +21,8 @@ class GreasePencilStrokeOperation {
   virtual void on_stroke_begin(const bContext &C, const InputSample &start_sample) = 0;
   virtual void on_stroke_extended(const bContext &C, const InputSample &extension_sample) = 0;
   virtual void on_stroke_done(const bContext &C) = 0;
+
+  BrushStrokeMode brush_mode;
 };
 
 namespace greasepencil {

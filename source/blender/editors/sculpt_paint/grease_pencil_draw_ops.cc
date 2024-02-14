@@ -334,6 +334,7 @@ static bool weight_stroke_test_start(bContext *C, wmOperator *op, const float mo
   GreasePencilStrokeOperation *operation = greasepencil::new_weight_paint_operation().release();
 
   if (operation) {
+    operation->brush_mode = static_cast<BrushStrokeMode>(RNA_enum_get(op->ptr, "mode"));
     paint_stroke_set_mode_data(paint_stroke, operation);
     operation->on_stroke_begin(*C, start_sample);
     return true;

@@ -385,8 +385,6 @@ Vector<Vector<MutableDrawingInfo>> retrieve_editable_drawings_per_frame(
   return drawings_per_frame;
 }
 
-
-
 Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
     const Scene &scene,
     GreasePencil &grease_pencil,
@@ -606,6 +604,38 @@ IndexMask retrieve_visible_strokes(Object &object,
   return IndexMask::from_predicate(
       curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
         const int material_index = materials[curve_i];
+        return !hidden_material_indices.contains(material_index);
+      });
+}
+
+IndexMask retrieve_visible_points(Object &object,
+                                  const bke::greasepencil::Drawing &drawing,
+                                  IndexMaskMemory &memory)
+{
+  /* Get all the hidden material indices. */
+  VectorSet<int> hidden_material_indices = get_hidden_material_indices(object);
+
+  if (hidden_material_indices.is_empty()) {
+    return drawing.strokes().points_range();
+  }
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const IndexRange points_range = drawing.strokes().points_range();
+  const bke::AttributeAccessor attributes = curves.attributes();
+
+  /* Propagate the material index to the points. */
+  const VArray<int> materials = *attributes.lookup<int>("material_index", bke::AttrDomain::Point);
+  if (!materials) {
+    /* If the attribute does not exist then the default is the first material. */
+    if (!hidden_material_indices.contains(0)) {
+      return points_range;
+    }
+    return {};
+  }
+  /* Get all the points that are part of a stroke with a visible material. */
+  return IndexMask::from_predicate(
+      points_range, GrainSize(4096), memory, [&](const int64_t point_i) {
+        const int material_index = materials[point_i];
         return !hidden_material_indices.contains(material_index);
       });
 }
