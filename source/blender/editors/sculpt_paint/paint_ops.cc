@@ -1242,6 +1242,13 @@ static bool asset_is_editable(const AssetWeakReference &asset_weak_ref)
   return true;
 }
 
+static const bUserAssetLibrary *get_asset_library_from_prop(PointerRNA &ptr)
+{
+  const int enum_value = RNA_enum_get(&ptr, "asset_library_reference");
+  const AssetLibraryReference lib_ref = asset::library_reference_from_enum_value(enum_value);
+  return BKE_preferences_asset_library_find_index(&U, lib_ref.custom_library_index);
+}
+
 static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
 {
   Paint *paint = BKE_paint_get_active_from_context(C);
@@ -1260,10 +1267,7 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
     STRNCPY(name, brush->id.name + 2);
   }
 
-  const int enum_value = RNA_enum_get(op->ptr, "asset_library_reference");
-  const AssetLibraryReference lib_ref = asset::library_reference_from_enum_value(enum_value);
-  const bUserAssetLibrary *library = BKE_preferences_asset_library_find_index(
-      &U, lib_ref.custom_library_index);
+  const bUserAssetLibrary *library = get_asset_library_from_prop(*op->ptr);
   if (!library) {
     return OPERATOR_CANCELLED;
   }
