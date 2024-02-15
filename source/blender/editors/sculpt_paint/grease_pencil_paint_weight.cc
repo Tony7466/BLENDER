@@ -53,7 +53,7 @@ struct DrawingWeightData {
   Vector<bool> bone_deformed_vgroups;
 
   Array<float2> point_positions;
-  Array<bool> point_is_in_kdtree;
+  Array<int> point_index_in_kdtree;
 
   /* Collected points under the brush in one #on_stroke_extended action. */
   Vector<BrushPoint> points_in_brush;
@@ -89,8 +89,9 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
    * points for Smear and Blur. Stored per frame group. */
   Array<PointsInBrushStroke> points_in_stroke;
 
-  /* The number of points stored in the stroke point buffers. Per frame group. */
-  Array<std::atomic<int>> points_in_stroke_num;
+  /* The number of points stored in the stroke point buffers. Per frame group.
+   * Note: we can't use Array or Vector here, because it doesn't support atomic types. */
+  std::vector<std::atomic<int>> points_in_stroke_num;
 
   /* Weight paint data per editable drawing. Stored per frame group. */
   Array<Array<DrawingWeightData>> drawing_weight_data;
@@ -102,7 +103,7 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
    * normalized XY vector. */
   bool get_brush_direction()
   {
-    this->brush_direction = this->mouse_position - this->mouse_position;
+    this->brush_direction = this->mouse_position - this->mouse_position_previous;
 
     /* Skip tiny changes in direction, we want the bigger movements only. */
     if (math::length_squared(this->brush_direction) < 9.0f) {
@@ -345,6 +346,7 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
     Vector<Vector<MutableDrawingInfo>> drawings_per_frame = retrieve_editable_drawings_per_frame(
         *scene, grease_pencil);
     this->points_in_stroke = Array<PointsInBrushStroke>(drawings_per_frame.size());
+    this->points_in_stroke_num = std::vector<std::atomic<int>>(drawings_per_frame.size());
     this->drawing_weight_data = Array<Array<DrawingWeightData>>(drawings_per_frame.size());
 
     for (const int frame_group : drawings_per_frame.index_range()) {
@@ -394,8 +396,7 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
               bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                   ob_eval, *object, drawing_info.layer_index, drawing_info.frame_number);
           drawing_weight_data.point_positions = Array<float2>(deformation.positions.size());
-          drawing_weight_data.point_is_in_kdtree = Array<bool>(deformation.positions.size(),
-                                                               false);
+          drawing_weight_data.point_index_in_kdtree = Array<int>(deformation.positions.size(), -1);
           threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
             for (const int point : point_range) {
               drawing_weight_data.point_positions[point] = ED_view3d_project_float_v2_m4(
@@ -480,18 +481,28 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
                              point_index});
                       }
 
-                      /* Add the point to the stroke buffer when it isn't already in it. */
-                      if (this->use_find_nearest &&
-                          !drawing_weight.point_is_in_kdtree[point_index]) {
-                        PointsInBrushStroke &points_in_brush = this->points_in_stroke[frame_group];
-                        this->ensure_stroke_buffer_size(frame_group, mutex);
-                        const int buffer_index = (this->points_in_stroke_num[frame_group]++);
-                        points_in_brush.nearest_points_positions[buffer_index] = co;
-                        points_in_brush.nearest_points_weights[buffer_index] =
-                            drawing_weight.deform_weights[point_index];
-                        BLI_kdtree_2d_insert(points_in_brush.nearest_points, buffer_index, co);
-                        drawing_weight.point_is_in_kdtree[point_index] = true;
-                        balance_kdtree = true;
+                      /* When the point is under the widened brush, add it to the stroke buffer. */
+                      if (this->use_find_nearest) {
+                        PointsInBrushStroke &points_in_stroke =
+                            this->points_in_stroke[frame_group];
+
+                        /* Add the point only once (no duplicates). */
+                        if (drawing_weight.point_index_in_kdtree[point_index] == -1) {
+                          this->ensure_stroke_buffer_size(frame_group, mutex);
+                          const int buffer_index = (this->points_in_stroke_num[frame_group]++);
+                          points_in_stroke.nearest_points_positions[buffer_index] = co;
+                          points_in_stroke.nearest_points_weights[buffer_index] =
+                              drawing_weight.deform_weights[point_index];
+                          BLI_kdtree_2d_insert(points_in_stroke.nearest_points, buffer_index, co);
+                          drawing_weight.point_index_in_kdtree[point_index] = buffer_index;
+                          balance_kdtree = true;
+                        }
+                        else {
+                          /* When the point was already in the buffer, update the weight. */
+                          points_in_stroke.nearest_points_weights
+                              [drawing_weight.point_index_in_kdtree[point_index]] =
+                              drawing_weight.deform_weights[point_index];
+                        }
                       }
                     }
                   }
@@ -550,6 +561,7 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
 
                     if (!drawing_weight.points_in_brush.is_empty()) {
                       changed = true;
+                      drawing_weight.points_in_brush.clear();
                     }
                   }
                 });

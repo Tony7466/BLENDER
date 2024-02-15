@@ -159,7 +159,7 @@ static bool normalize_vertex_weights_try(const MDeformVert &dvert,
   /* Any unlocked vertex group to normalize? */
   if (unlocked_num == 0) {
     /* We don't need a second pass when there is only one locked group (the active group). */
-    return (locked_num == 0);
+    return (locked_num == 1);
   }
 
   /* Locked groups can make it impossible to fully normalize. */
