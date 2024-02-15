@@ -129,7 +129,8 @@ AssetCatalogPath AssetCatalogPath::cleanup() const
 
 std::string AssetCatalogPath::cleanup_component(StringRef component)
 {
-  std::string cleaned = component.trim();
+  // std::string cleaned = component.trim();
+  std::string cleaned = component;
   /* Replace colons with something else, as those are used in the CDF file as delimiter. */
   std::replace(cleaned.begin(), cleaned.end(), ':', '-');
   return cleaned;

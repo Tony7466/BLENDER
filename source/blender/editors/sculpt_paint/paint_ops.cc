@@ -1129,6 +1129,8 @@ static bool brush_asset_write_in_library(Main *bmain,
                                          Brush *brush,
                                          const char *name,
                                          const StringRefNull filepath,
+                                         const std::optional<asset_system::CatalogID> catalog,
+                                         const std::optional<StringRefNull> catalog_simple_name,
                                          std::string &final_full_file_path,
                                          ReportList *reports)
 {
@@ -1170,6 +1172,13 @@ static bool brush_asset_write_in_library(Main *bmain,
     brush->id.asset_data = brush->id.override_library->reference->asset_data;
   }
   brush->id.override_library = nullptr;
+
+  if (catalog) {
+    brush->id.asset_data->catalog_id = *catalog;
+  }
+  if (catalog_simple_name) {
+    STRNCPY(brush->id.asset_data->catalog_simple_name, catalog_simple_name->c_str());
+  }
 
   BKE_blendfile_write_partial_tag_ID(&brush->id, true);
 
@@ -1301,24 +1310,32 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  char catalog_path[MAX_NAME];
-  RNA_string_get(op->ptr, "catalog_path", catalog_path);
-  const asset_system::AssetCatalog &catalog = asset_library_ensure_catalog(*library, catalog_path);
-  library->catalog_service->write_to_disk(filepath);
-
   /* Turn brush into asset if it isn't yet. */
   if (!BKE_paint_brush_is_valid_asset(brush)) {
     asset::mark_id(&brush->id);
-    brush->id.asset_data->catalog_id = catalog.catalog_id;
-    STRNCPY(brush->id.asset_data->catalog_simple_name, catalog.simple_name.c_str());
     asset::generate_preview(C, &brush->id);
   }
   BLI_assert(BKE_paint_brush_is_valid_asset(brush));
 
+  /* Add asset to catalog. */
+  char catalog_path[MAX_NAME];
+  RNA_string_get(op->ptr, "catalog_path", catalog_path);
+  const asset_system::AssetCatalog &catalog = asset_library_ensure_catalog(*library, catalog_path);
+  const asset_system::CatalogID catalog_id = catalog.catalog_id;
+  const std::string catalog_simple_name = catalog.simple_name;
+
+  library->catalog_service->write_to_disk(filepath);
+
   /* Save to asset library. */
   std::string final_full_asset_filepath;
-  const bool sucess = brush_asset_write_in_library(
-      CTX_data_main(C), brush, name, filepath, final_full_asset_filepath, op->reports);
+  const bool sucess = brush_asset_write_in_library(CTX_data_main(C),
+                                                   brush,
+                                                   name,
+                                                   filepath,
+                                                   catalog_id,
+                                                   catalog_simple_name,
+                                                   final_full_asset_filepath,
+                                                   op->reports);
 
   if (!sucess) {
     BKE_report(op->reports, RPT_ERROR, "Failed to write to asset library");
@@ -1388,6 +1405,9 @@ static void visit_asset_catalog_for_search_fn(
   if (!user_library) {
     return;
   }
+
+  // asset_system::AssetLibrary *library = asset::list::library_get_once_available(
+  //     user_library_to_library_ref(*user_library));
   asset_system::AssetLibrary *library = AS_asset_library_load(
       CTX_data_main(C), user_library_to_library_ref(*user_library));
   if (!library) {
@@ -1395,10 +1415,10 @@ static void visit_asset_catalog_for_search_fn(
   }
 
   asset_system::AssetCatalogTree &full_tree = *library->catalog_service->get_catalog_tree();
-  full_tree.foreach_root_item([&](const asset_system::AssetCatalogTreeItem &item) {
-    StringPropertySearchVisitParams visit_params{};
-    visit_params.text = item.catalog_path();
-    visit_fn(visit_params);
+  full_tree.foreach_item([&](const asset_system::AssetCatalogTreeItem &item) {
+    // StringPropertySearchVisitParams visit_params{};
+    // visit_params.text = item.catalog_path();
+    visit_fn(StringPropertySearchVisitParams{item.catalog_path().str(), std::nullopt});
   });
 }
 
@@ -1531,6 +1551,8 @@ static int brush_asset_update_exec(bContext *C, wmOperator *op)
                                brush,
                                brush->id.name + 2,
                                filepath,
+                               std::nullopt,
+                               std::nullopt,
                                final_full_asset_filepath,
                                op->reports);
 
