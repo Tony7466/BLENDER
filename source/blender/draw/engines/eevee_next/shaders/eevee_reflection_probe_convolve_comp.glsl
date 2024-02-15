@@ -4,6 +4,7 @@
 
 /* Shader to convert cube-map to octahedral projection. */
 
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_mapping_lib.glsl)
 
@@ -31,6 +32,8 @@ void convolve_sample(ivec2 in_texel,
                      vec3 out_direction,
                      SphereProbeUvArea sample_coord,
                      SphereProbePixelArea in_texel_area,
+                     ivec2 in_texel_min,
+                     ivec2 in_texel_max,
                      inout vec4 radiance_accum,
                      inout float weight_accum)
 {
@@ -40,10 +43,17 @@ void convolve_sample(ivec2 in_texel,
       in_texel, in_texel_area, sample_coord, in_atlas_mip_size, wrapped_uv);
 
   vec2 atlas_uv = wrapped_uv * sample_coord.scale + sample_coord.offset;
-  in_texel = ivec2(atlas_uv * in_atlas_mip_size);
+  ivec2 in_texel_wrapped = ivec2(atlas_uv * in_atlas_mip_size);
+
+  /* Avoid processing the same texel twice because of wrapping. */
+  bool texel_no_wrapped = all(equal(in_texel_wrapped, in_texel));
+  bool in_processed_area = in_range_inclusive(in_texel_wrapped, in_texel_min, in_texel_max);
+  if (!texel_no_wrapped && in_processed_area) {
+    return;
+  }
 
   float weight = sample_weight(out_direction, in_direction);
-  vec4 radiance = imageLoad(in_atlas_mip_img, ivec3(in_texel, in_texel_area.layer));
+  vec4 radiance = imageLoad(in_atlas_mip_img, ivec3(in_texel_wrapped, in_texel_area.layer));
 
   radiance_accum += radiance * weight;
   weight_accum += weight;
@@ -76,15 +86,22 @@ void main()
 
   float weight = 0.0;
   vec4 radiance = vec4(0.0);
-  /* Bottom left corner of the area processed for the output texel. */
-  ivec2 in_texel_base = out_texel * mip_scaling;
   /* TODO(fclem): Could derive the radius to process by taking the angle which encompass most of
    * the gaussian (using an epsilon threshold) and then derive a number of mip pixels from it. */
-  int process_area_radius = 40 * (mip_scaling / 2);
-  for (int y = -(process_area_radius - 1); y <= process_area_radius; y += mip_scaling / 2) {
-    for (int x = -(process_area_radius - 1); x <= process_area_radius; x += mip_scaling / 2) {
-      ivec2 in_texel = in_texel_base + ivec2(x, y);
-      convolve_sample(in_texel, out_direction, sample_coord, in_texel_area, radiance, weight);
+  int process_area_radius = 40;
+  ivec2 in_texel_min = out_texel * mip_scaling - (process_area_radius - 1);
+  ivec2 in_texel_max = in_texel_min + process_area_radius * 2 - 1;
+  for (int y = in_texel_min.y; y <= in_texel_max.y; y++) {
+    for (int x = in_texel_min.x; x <= in_texel_max.x; x++) {
+      ivec2 in_texel = ivec2(x, y);
+      convolve_sample(in_texel,
+                      out_direction,
+                      sample_coord,
+                      in_texel_area,
+                      in_texel_min,
+                      in_texel_max,
+                      radiance,
+                      weight);
     }
   }
   radiance *= safe_rcp(weight);
