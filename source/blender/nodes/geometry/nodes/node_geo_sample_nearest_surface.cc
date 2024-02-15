@@ -29,7 +29,11 @@ static void node_declare(NodeDeclarationBuilder &b)
     const eCustomDataType data_type = eCustomDataType(node->custom1);
     b.add_input(data_type, "Value").hide_value().field_on_all();
   }
-  b.add_input<decl::Int>("Group ID").hide_value().field_on_all();
+  b.add_input<decl::Int>("Group ID")
+      .hide_value()
+      .field_on_all()
+      .description(
+          "Splits the faces of the input mesh into groups which can be sampled individually");
   b.add_input<decl::Vector>("Sample Position").implicit_field(implicit_field_inputs::position);
   b.add_input<decl::Int>("Sample Group ID").hide_value().supports_field();
 
