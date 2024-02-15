@@ -29,8 +29,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "GEO_smooth_curves.hh"
-
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
@@ -99,7 +97,7 @@ static int ensure_vertex_group(const StringRefNull name, ListBase &vertex_group_
       &vertex_group_names, name.c_str(), offsetof(bDeformGroup, name));
   if (def_nr < 0) {
     bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
-    STRNCPY(defgroup->name, name.data());
+    STRNCPY(defgroup->name, name.c_str());
     BLI_addtail(&vertex_group_names, defgroup);
     def_nr = BLI_listbase_count(&vertex_group_names) - 1;
     BLI_assert(def_nr >= 0);
@@ -134,7 +132,7 @@ static void write_weights_for_drawing(const ModifierData &md,
   }
 
   /* Make sure that the target vertex group is added to this drawing so we can write to it. */
-  ensure_vertex_group(mmd.target_vgname, drawing.strokes_for_write().vertex_group_names);
+  ensure_vertex_group(mmd.target_vgname, curves.vertex_group_names);
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   bke::SpanAttributeWriter<float> dst_weights = attributes.lookup_for_write_span<float>(
@@ -154,7 +152,7 @@ static void write_weights_for_drawing(const ModifierData &md,
   const float rot_angle = mmd.angle - ((mmd.axis == 1) ? M_PI_2 : 0.0f);
   rotate_normalized_v3_v3v3fl(vec_ref, z_up, axis, rot_angle);
 
-  const float3x3 obmat3x3(float4x4(ob.object_to_world()));
+  const float3x3 obmat3x3(ob.object_to_world());
 
   /* Apply the rotation of the object. */
   if (mmd.space == MOD_GREASE_PENCIL_WEIGHT_ANGLE_SPACE_LOCAL) {
