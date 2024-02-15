@@ -127,7 +127,7 @@ static void write_weights_for_drawing(const ModifierData &md,
   const float rot_angle = mmd.angle - ((mmd.axis == 1) ? M_PI_2 : 0.0f);
   rotate_normalized_v3_v3v3fl(vec_ref, z_up, axis, rot_angle);
 
-  const float3x3 obmat3x3(float4x4(ob.object_to_world));
+  const float3x3 obmat3x3(float4x4(ob.object_to_world()));
 
   /* Apply the rotation of the object. */
   if (mmd.space == MOD_GREASE_PENCIL_WEIGHT_ANGLE_SPACE_LOCAL) {
