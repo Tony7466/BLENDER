@@ -8,6 +8,7 @@
 
 #include "BLI_index_mask.hh"
 #include "BLI_math_rotation.hh"
+#include "BLI_string.h" /* For #STRNCPY. */
 
 #include "BLT_translation.hh"
 
@@ -92,6 +93,28 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
+static int ensure_vertex_group(const StringRef name, ListBase &vertex_group_names)
+{
+  int def_nr = BLI_findstringindex(&vertex_group_names, name.data(), offsetof(bDeformGroup, name));
+  if (def_nr < 0) {
+    bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
+    STRNCPY(defgroup->name, name.data());
+    BLI_addtail(&vertex_group_names, defgroup);
+    def_nr = BLI_listbase_count(&vertex_group_names) - 1;
+    BLI_assert(def_nr >= 0);
+  }
+  return def_nr;
+}
+
+static bool target_vertex_group_available(const StringRef name, const ListBase &vertex_group_names)
+{
+  const int def_nr = BLI_findstringindex(
+      &vertex_group_names, name.data(), offsetof(bDeformGroup, name));
+  if (def_nr < 0)
+    return false;
+  return true;
+}
+
 static void write_weights_for_drawing(const ModifierData &md,
                                       const Object &ob,
                                       bke::greasepencil::Drawing &drawing)
@@ -108,12 +131,14 @@ static void write_weights_for_drawing(const ModifierData &md,
     return;
   }
 
+  /* Make sure that the target vertex group is added to this drawing so we can write to it. */
+  ensure_vertex_group(mmd.target_vgname, drawing.strokes_for_write().vertex_group_names);
+
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<float> dst_weights = attributes.lookup_or_add_for_write_span<float>(
-      mmd.target_vgname, bke::AttrDomain::Point);
-  if (dst_weights.span.is_empty()) {
-    return;
-  }
+  bke::SpanAttributeWriter<float> dst_weights = attributes.lookup_for_write_span<float>(
+      mmd.target_vgname);
+      
+  BLI_assert(!dst_weights.span.is_empty());
 
   const VArray<float> input_weights = modifier::greasepencil::get_influence_vertex_weights(
       curves, mmd.influence);
@@ -175,7 +200,13 @@ static void modify_geometry_set(ModifierData *md,
   if (!geometry_set->has_grease_pencil()) {
     return;
   }
+
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
+
+  if (!target_vertex_group_available(mmd->target_vgname, grease_pencil.vertex_group_names)) {
+    return;
+  }
+
   const int current_frame = grease_pencil.runtime->eval_frame;
 
   IndexMaskMemory mask_memory;

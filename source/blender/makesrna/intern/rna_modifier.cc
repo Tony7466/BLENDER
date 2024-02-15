@@ -8679,6 +8679,10 @@ static void rna_def_modifier_grease_pencil_weight_angle(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_vertex_group(srna,
                                               "rna_GPWeightAngleModifier_vertex_group_name_set");
 
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
+  RNA_define_lib_overridable(true);
+
   prop = RNA_def_property(srna, "target_vertex_group", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "target_vgname");
   RNA_def_property_ui_text(prop, "Vertex Group", "Output Vertex group");
