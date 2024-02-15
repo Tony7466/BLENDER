@@ -12,7 +12,7 @@
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_context.h"
