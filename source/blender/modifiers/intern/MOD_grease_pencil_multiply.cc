@@ -146,8 +146,7 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
   bke::CurvesGeometry duplicated_strokes = duplicate_strokes(
       curves, curves_mask, unselected_mask, mmd.duplications, src_point_count);
 
-  const float offset = math::length(math::to_scale(ctx.object->object_to_world())) *
-                       mmd.offset;
+  const float offset = math::length(math::to_scale(ctx.object->object_to_world())) * mmd.offset;
   const float distance = mmd.distance;
   const bool use_fading = (mmd.flag & MOD_GREASE_PENCIL_MULTIPLY_ENABLE_FADING) != 0;
   const float fading_thickness = mmd.fading_thickness;
@@ -164,21 +163,23 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
   bke::SpanAttributeWriter<float> radii = attributes.lookup_or_add_for_write_span<float>(
       "radius", bke::AttrDomain::Point);
 
-  const int dst_point_count = (mmd.duplications + 1) * src_point_count;
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
-  Array<float3> pos_l(dst_point_count);
-  Array<float3> pos_r(dst_point_count);
+  Array<float3> pos_l(src_point_count);
+  Array<float3> pos_r(src_point_count);
 
-  threading::parallel_for(duplicated_strokes.points_range().take_front(dst_point_count),
-                          1024,
-                          [&](const IndexRange range) {
-                            for (const int point : range) {
-                              const float3 miter = math::cross(normals[point], tangents[point]) *
-                                                   distance;
-                              pos_l[point] = positions[point] + miter;
-                              pos_r[point] = positions[point] - miter;
-                            }
-                          });
+  threading::parallel_for(curves.curves_range(), 128, [&](const IndexRange range) {
+    for (const int curve : range) {
+      for (const int point : points_by_curve[curve]) {
+        const float3 miter = math::cross(normals[curve], tangents[point]) * distance;
+        pos_l[point] = positions[point] + miter;
+        pos_r[point] = positions[point] - miter;
+      }
+    }
+  });
+
+  const Span<float3> stroke_pos_l = pos_l.as_span();
+  const Span<float3> stroke_pos_r = pos_r.as_span();
 
   for (const int i : IndexRange(mmd.duplications)) {
     using bke::attribute_math::mix2;
@@ -186,8 +187,6 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
     MutableSpan<float3> instance_positions = positions.slice(stroke);
     MutableSpan<float> instance_opacity = opacities.span.slice(stroke);
     MutableSpan<float> instance_radii = radii.span.slice(stroke);
-    Span<float3> stroke_pos_l = pos_l.as_span().slice(stroke);
-    Span<float3> stroke_pos_r = pos_r.as_span().slice(stroke);
     const float offset_fac = (mmd.duplications == 1) ?
                                  0.5f :
                                  (1.0f - (float(i) / float(mmd.duplications - 1)));
@@ -198,7 +197,8 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
     threading::parallel_for(instance_positions.index_range(), 512, [&](const IndexRange range) {
       for (const int point : range) {
         const float fac = mix2(float(i) / float(mmd.duplications - 1), 1 + offset, offset);
-        instance_positions[point] = mix2(fac, stroke_pos_l[point], stroke_pos_r[point]);
+        const int old_point = point % src_point_count;
+        instance_positions[point] = mix2(fac, stroke_pos_l[old_point], stroke_pos_r[old_point]);
         instance_radii[point] *= thickness_factor;
         instance_opacity[point] *= opacity_factor;
       }
