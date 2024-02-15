@@ -895,6 +895,17 @@
     .opacity = 1.0f, \
     .mat_nr = -1, \
   }
+  
+#define _DNA_DEFAULT_GreasePencilMultiModifierData \
+  { \
+    .flag = 0, \
+    .duplications = 3, \
+    .distance = 0.1f, \
+    .offset = 0.0f, \
+    .fading_center = 0.5f, \
+    .fading_thickness = 0.5f, \
+    .fading_opacity = 0.5f, \
+  }
 
 #define _DNA_DEFAULT_GreasePencilLengthModifierData \
   { \
@@ -911,5 +922,5 @@
     .seed = 0,\
     .step = 4,\
   }
-  
+
 /* clang-format off */
