@@ -276,6 +276,7 @@ void modifier_type_init(ModifierTypeInfo *types[])
   INIT_TYPE(GreasePencilLattice);
   INIT_TYPE(GreasePencilDash);
   INIT_TYPE(GreasePencilMultiply);
+  INIT_TYPE(GreasePencilLength);
   INIT_TYPE(GPWeightAngle);
 #undef INIT_TYPE
 }
