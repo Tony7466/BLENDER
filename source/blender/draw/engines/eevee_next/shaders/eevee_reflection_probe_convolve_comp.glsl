@@ -27,22 +27,23 @@ float sample_weight(vec3 out_direction, vec3 in_direction)
   return exp(2.0 * (NH - 1.0) / square(m));
 }
 
-void convolve_sample(ivec2 in_local_texel,
+void convolve_sample(ivec2 in_texel,
                      vec3 out_direction,
                      SphereProbeUvArea sample_coord,
                      SphereProbePixelArea in_texel_area,
                      inout vec4 radiance_accum,
                      inout float weight_accum)
 {
-
-  in_local_texel = in_local_texel % in_texel_area.extent;
-
   int in_atlas_mip_size = imageSize(in_atlas_mip_img).x;
+  vec2 wrapped_uv;
   vec3 in_direction = sphere_probe_texel_to_direction(
-      in_local_texel, in_texel_area, sample_coord, in_atlas_mip_size);
+      in_texel, in_texel_area, sample_coord, in_atlas_mip_size, wrapped_uv);
+
+  vec2 atlas_uv = wrapped_uv * sample_coord.scale + sample_coord.offset;
+  in_texel = ivec2(atlas_uv * in_atlas_mip_size);
 
   float weight = sample_weight(out_direction, in_direction);
-  vec4 radiance = imageLoad(in_atlas_mip_img, ivec3(in_local_texel, in_texel_area.layer));
+  vec4 radiance = imageLoad(in_atlas_mip_img, ivec3(in_texel, in_texel_area.layer));
 
   radiance_accum += radiance * weight;
   weight_accum += weight;
@@ -82,12 +83,8 @@ void main()
   int process_area_radius = 40 * (mip_scaling / 2);
   for (int y = -(process_area_radius - 1); y <= process_area_radius; y += mip_scaling / 2) {
     for (int x = -(process_area_radius - 1); x <= process_area_radius; x += mip_scaling / 2) {
-      convolve_sample(in_texel_base + ivec2(x, y),
-                      out_direction,
-                      sample_coord,
-                      in_texel_area,
-                      radiance,
-                      weight);
+      ivec2 in_texel = in_texel_base + ivec2(x, y);
+      convolve_sample(in_texel, out_direction, sample_coord, in_texel_area, radiance, weight);
     }
   }
   radiance *= safe_rcp(weight);

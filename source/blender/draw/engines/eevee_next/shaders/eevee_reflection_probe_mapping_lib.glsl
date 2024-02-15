@@ -22,19 +22,6 @@ SphereProbeUvArea reinterpret_as_atlas_coord(ivec4 packed_coord)
   return unpacked;
 }
 
-/* Mirror the UV if they are not on the diagonal or unit UV squares.
- * Doesn't extend outside of [-1..2] range. But this is fine since we use it only for borders. */
-vec2 mirror_repeat_uv(vec2 uv)
-{
-  vec2 m = abs(uv - 0.5) + 0.5;
-  vec2 f = floor(m);
-  float x = f.x - f.y;
-  if (x != 0.0) {
-    uv.xy = 1.0 - uv.xy;
-  }
-  return fract(uv);
-}
-
 /* local_texel is the texel coordinate inside the probe area [0..texel_area.extent] range. */
 vec3 sphere_probe_texel_to_direction(ivec2 local_texel,
                                      SphereProbePixelArea texel_area,
@@ -48,7 +35,7 @@ vec3 sphere_probe_texel_to_direction(ivec2 local_texel,
   vec2 atlas_uv = (vec2(texel) + 0.5) / vec2(atlas_mip_size);
   /* UV in sampling area. */
   vec2 sampling_uv = (atlas_uv - uv_area.offset) / uv_area.scale;
-  wrapped_uv = mirror_repeat_uv(sampling_uv);
+  wrapped_uv = octahedral_mirror_repeat_uv(sampling_uv);
   /* Direction in world space. */
   return octahedral_uv_to_direction(wrapped_uv);
 }
