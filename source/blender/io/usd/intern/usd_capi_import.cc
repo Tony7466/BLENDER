@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "IO_types.hh"
-#include "usd.h"
+#include "usd.hh"
 #include "usd_hierarchy_iterator.hh"
 #include "usd_hook.hh"
 #include "usd_reader_geom.hh"
@@ -12,18 +12,18 @@
 
 #include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
-#include "BKE_cachefile.h"
+#include "BKE_cachefile.hh"
 #include "BKE_cdderivedmesh.h"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_library.hh"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_world.h"
 
 #include "BLI_fileops.h"
@@ -34,7 +34,7 @@
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -487,10 +487,6 @@ static void import_freejob(void *user_data)
   delete data;
 }
 
-}  // namespace blender::io::usd
-
-using namespace blender::io::usd;
-
 bool USD_import(bContext *C,
                 const char *filepath,
                 const USDImportParams *params,
@@ -720,3 +716,5 @@ void USD_get_transform(CacheReader *reader, float r_mat_world[4][4], float time,
   mul_m4_m4m4(r_mat_world, mat_parent, object->parentinv);
   mul_m4_m4m4(r_mat_world, r_mat_world, mat_local);
 }
+
+}  // namespace blender::io::usd

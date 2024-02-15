@@ -34,7 +34,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "WM_types.hh"
 
@@ -146,7 +146,7 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
   bke::CurvesGeometry duplicated_strokes = duplicate_strokes(
       curves, curves_mask, unselected_mask, mmd.duplications, src_point_count);
 
-  const float offset = math::length(math::to_scale(float4x4(ctx.object->object_to_world))) *
+  const float offset = math::length(math::to_scale(ctx.object->object_to_world())) *
                        mmd.offset;
   const float distance = mmd.distance;
   const bool use_fading = (mmd.flag & MOD_GREASE_PENCIL_MULTIPLY_ENABLE_FADING) != 0;

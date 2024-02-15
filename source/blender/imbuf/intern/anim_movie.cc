@@ -62,7 +62,6 @@
 #include "IMB_metadata.hh"
 
 #ifdef WITH_FFMPEG
-#  include "BKE_global.h" /* ENDIAN_ORDER */
 #  include "BKE_writeffmpeg.hh"
 
 extern "C" {
@@ -1470,8 +1469,7 @@ static void free_anim_ffmpeg(ImBufAnim *anim)
     av_frame_free(&anim->pFrame_backup);
     av_frame_free(&anim->pFrameRGB);
     av_frame_free(&anim->pFrameDeinterlaced);
-
-    sws_freeContext(anim->img_convert_ctx);
+    BKE_ffmpeg_sws_release_context(anim->img_convert_ctx);
   }
   anim->duration_in_frames = 0;
 }
