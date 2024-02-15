@@ -107,6 +107,8 @@ void NodeDeclarationBuilder::finalize()
       }
     }
   }
+
+  BLI_assert(declaration_.is_valid());
 }
 
 NodeDeclarationBuilder::NodeDeclarationBuilder(NodeDeclaration &declaration,
@@ -119,6 +121,12 @@ NodeDeclarationBuilder::NodeDeclarationBuilder(NodeDeclaration &declaration,
 void NodeDeclarationBuilder::use_custom_socket_order(bool enable)
 {
   declaration_.use_custom_socket_order = enable;
+}
+
+void NodeDeclarationBuilder::allow_any_socket_order(bool enable)
+{
+  BLI_assert(declaration_.use_custom_socket_order);
+  declaration_.allow_any_socket_order = enable;
 }
 
 Span<SocketDeclaration *> NodeDeclaration::sockets(eNodeSocketInOut in_out) const
@@ -173,6 +181,89 @@ std::ostream &operator<<(std::ostream &stream, const RelationsInNode &relations)
 }
 
 }  // namespace anonymous_attribute_lifetime
+
+bool NodeDeclaration::is_valid() const
+{
+  if (!this->use_custom_socket_order) {
+    /* Skip validation for conventional socket layouts. */
+    return true;
+  }
+
+  /* Validation state for the interface root items as well as any panel content. */
+  struct ValidationState {
+    /* Remaining number of items expected in a panel */
+    int remaining_items = 0;
+    /* Sockets first, followed by panels. */
+    NodeTreeInterfaceItemType item_type = NODE_INTERFACE_SOCKET;
+    /* Output sockets first, followed by input sockets. */
+    eNodeSocketInOut socket_in_out = SOCK_OUT;
+  };
+
+  Stack<ValidationState> panel_states;
+  panel_states.push({});
+
+  for (const ItemDeclarationPtr &item_decl : items) {
+    BLI_assert(panel_states.size() >= 1);
+    ValidationState &state = panel_states.peek();
+
+    if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
+            item_decl.get()))
+    {
+      if (state.item_type != NODE_INTERFACE_SOCKET && !this->allow_any_socket_order) {
+        std::cout << "Socket added after panel" << std::endl;
+        return false;
+      }
+
+      /* Check for consistent outputs.., inputs.. blocks. */
+      if (state.socket_in_out == SOCK_OUT && socket_decl->in_out == SOCK_IN) {
+        /* Start of input sockets. */
+        state.socket_in_out = SOCK_IN;
+      }
+      if (socket_decl->in_out != state.socket_in_out && !this->allow_any_socket_order) {
+        std::cout << "Output socket added after input socket" << std::endl;
+        return false;
+      }
+
+      /* Item counting for the panels, but ignore for root items. */
+      if (panel_states.size() > 1) {
+        if (state.remaining_items <= 0) {
+          std::cout << "More sockets than expected in panel" << std::endl;
+          return false;
+        }
+        --state.remaining_items;
+        /* Panel closed after last item is added. */
+        if (state.remaining_items == 0) {
+          panel_states.pop();
+        }
+      }
+    }
+    else if (const PanelDeclaration *panel_decl = dynamic_cast<const PanelDeclaration *>(
+                 item_decl.get()))
+    {
+      if (state.item_type == NODE_INTERFACE_SOCKET) {
+        /* Start of panels section */
+        state.item_type = NODE_INTERFACE_PANEL;
+      }
+      BLI_assert(state.item_type == NODE_INTERFACE_PANEL);
+
+      if (panel_decl->num_child_decls > 0) {
+        /* New panel started. */
+        panel_states.push({panel_decl->num_child_decls});
+      }
+    }
+    else {
+      BLI_assert_unreachable();
+      return false;
+    }
+  }
+
+  /* All panels complete? */
+  if (panel_states.size() != 1) {
+    std::cout << "Incomplete last panel" << std::endl;
+    return false;
+  }
+  return true;
+}
 
 bool NodeDeclaration::matches(const bNode &node) const
 {

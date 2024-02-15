@@ -467,12 +467,19 @@ class NodeDeclaration {
    * outputs | buttons | inputs order. Panels are only supported when using custom socket order. */
   bool use_custom_socket_order = false;
 
+  /** Usually output sockets come before input sockets currently. Only some specific nodes are
+   * exempt from that rule for now. */
+  bool allow_any_socket_order = false;
+
   /**
    * True if any context was used to build this declaration.
    */
   bool is_context_dependent = false;
 
   friend NodeDeclarationBuilder;
+
+  /** Returns true if the declaration is considered valid. */
+  bool is_valid() const;
 
   bool matches(const bNode &node) const;
   Span<SocketDeclaration *> sockets(eNodeSocketInOut in_out) const;
@@ -526,6 +533,7 @@ class NodeDeclarationBuilder {
   void finalize();
 
   void use_custom_socket_order(bool enable = true);
+  void allow_any_socket_order(bool enable = true);
 
   template<typename DeclType>
   typename DeclType::Builder &add_input(StringRef name, StringRef identifier = "");
