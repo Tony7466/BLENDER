@@ -35,6 +35,7 @@
 #include "BLI_function_ref.hh"
 #include "BLI_index_range.hh"
 #include "BLI_lazy_threading.hh"
+#include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
 namespace blender {
@@ -68,6 +69,10 @@ namespace detail {
 void parallel_for_impl(IndexRange range,
                        int64_t grain_size,
                        FunctionRef<void(IndexRange)> function);
+void parallel_for_weighted_impl(IndexRange range,
+                                int64_t grain_size,
+                                FunctionRef<void(IndexRange)> function,
+                                FunctionRef<void(IndexRange, MutableSpan<int64_t>)> task_sizes_fn);
 }  // namespace detail
 
 template<typename Function>
@@ -81,6 +86,25 @@ inline void parallel_for(IndexRange range, int64_t grain_size, const Function &f
     return;
   }
   detail::parallel_for_impl(range, grain_size, function);
+}
+
+template<typename Function, typename TaskSizeFn>
+inline void parallel_for_weighted(IndexRange range,
+                                  int64_t grain_size,
+                                  const Function &function,
+                                  const TaskSizeFn &task_size_fn)
+{
+  if (range.is_empty()) {
+    return;
+  }
+  detail::parallel_for_weighted_impl(
+      range, grain_size, function, [&](const IndexRange sub_range, MutableSpan<int64_t> r_sizes) {
+        for (const int64_t i : sub_range.index_range()) {
+          const int64_t task_size = task_size_fn(sub_range[i]);
+          BLI_assert(task_size >= 0);
+          r_sizes[i] = task_size;
+        }
+      });
 }
 
 /**
