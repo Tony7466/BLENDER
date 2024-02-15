@@ -543,7 +543,17 @@ class BONE_PT_custom_props(BoneButtonsPanel, PropertyPanel, Panel):
     def _context_path(self):
         obj = bpy.context.object
         if obj and obj.mode == 'POSE':
-            return "active_pose_bone"
+            # If a bone is hidden it can't be active, which means it would not draw the custom properties.
+            # This leads to confusion (#95204) especially because the other panels here do show properties in that case.
+            # Those panels solve the issue by getting the bone from the context and with its name get the pose bone.
+            # So we use the same logic here.
+            active_bone = bpy.context.active_bone
+            if not active_bone:
+                # Fallback, will not show anything.
+                return "active_pose_bone"
+
+            bone_path = obj.pose.bones[active_bone.name].path_from_id()
+            return f"active_object.{bone_path}"
         else:
             return "active_bone"
 
