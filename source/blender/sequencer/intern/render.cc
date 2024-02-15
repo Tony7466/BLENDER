@@ -292,6 +292,68 @@ Vector<Sequence *> seq_get_shown_sequences(const Scene *scene,
   return result;
 }
 
+/* Strip corner coordinates in screen pixel space. Note that they might not be
+ * axis aligned when rotation is present. */
+struct StripScreenQuad {
+  float2 v0, v1, v2, v3;
+};
+
+static StripScreenQuad get_strip_screen_quad(const SeqRenderData *context, const Sequence *seq)
+{
+  Scene *scene = context->scene;
+  const int x = context->rectx;
+  const int y = context->recty;
+  float2 offset{x * 0.5f, y * 0.5f};
+
+  float quad[4][2];
+  SEQ_image_transform_final_quad_get(scene, seq, quad);
+  return StripScreenQuad{quad[0] + offset, quad[1] + offset, quad[2] + offset, quad[3] + offset};
+}
+
+/* Is quad `a` fully contained (i.e. covered by) quad `b`? For that to happen,
+ * all corners of `a` have to be inside `b`. */
+static bool is_quad_a_inside_b(const StripScreenQuad &a, const StripScreenQuad &b)
+{
+  return isect_point_quad_v2(a.v0, b.v0, b.v1, b.v2, b.v3) &&
+         isect_point_quad_v2(a.v1, b.v0, b.v1, b.v2, b.v3) &&
+         isect_point_quad_v2(a.v2, b.v0, b.v1, b.v2, b.v3) &&
+         isect_point_quad_v2(a.v3, b.v0, b.v1, b.v2, b.v3);
+}
+
+/* Tracking of "known to be opaque" strip quad coordinates, along with their
+ * order index within visible strips during rendering. */
+
+struct OpaqueQuad {
+  StripScreenQuad quad;
+  int order_index;
+};
+
+struct OpaqueQuadTracker {
+  Vector<OpaqueQuad, 4> opaques;
+
+  /* Determine if the input strip is completely behind opaque strips that are
+   * above it. Current implementation is simple and only checks if strip is
+   * completely covered by any other strip. It does not detect case where
+   * a strip is not covered by a single strip, but is behind of the union
+   * of the strips above. */
+  bool is_occluded(const SeqRenderData *context, const Sequence *seq, int order_index) const
+  {
+    StripScreenQuad quad = get_strip_screen_quad(context, seq);
+    for (const OpaqueQuad &q : opaques) {
+      if (q.order_index > order_index && is_quad_a_inside_b(quad, q.quad)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void add_occluder(const SeqRenderData *context, const Sequence *seq, int order_index)
+  {
+    StripScreenQuad quad = get_strip_screen_quad(context, seq);
+    opaques.append({quad, order_index});
+  }
+};
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -465,36 +527,11 @@ static void sequencer_thumbnail_transform(ImBuf *in, ImBuf *out)
  * image. If they do not the image will have transparent areas. */
 static bool seq_image_transform_transparency_gained(const SeqRenderData *context, Sequence *seq)
 {
-  Scene *scene = context->scene;
-  const int x = context->rectx;
-  const int y = context->recty;
-
-  float seq_image_quad[4][2];
-  SEQ_image_transform_final_quad_get(scene, seq, seq_image_quad);
-  for (int i = 0; i < 4; i++) {
-    add_v2_v2(seq_image_quad[i], float2{x / 2.0f, y / 2.0f});
-  }
-
-  return !isect_point_quad_v2(float2{float(x), float(y)},
-                              seq_image_quad[0],
-                              seq_image_quad[1],
-                              seq_image_quad[2],
-                              seq_image_quad[3]) ||
-         !isect_point_quad_v2(float2{0, float(y)},
-                              seq_image_quad[0],
-                              seq_image_quad[1],
-                              seq_image_quad[2],
-                              seq_image_quad[3]) ||
-         !isect_point_quad_v2(float2{float(x), 0},
-                              seq_image_quad[0],
-                              seq_image_quad[1],
-                              seq_image_quad[2],
-                              seq_image_quad[3]) ||
-         !isect_point_quad_v2(float2{0, 0},
-                              seq_image_quad[0],
-                              seq_image_quad[1],
-                              seq_image_quad[2],
-                              seq_image_quad[3]);
+  const float x = float(context->rectx);
+  const float y = float(context->recty);
+  StripScreenQuad quad = get_strip_screen_quad(context, seq);
+  StripScreenQuad screen{float2(0, 0), float2(x, 0), float2(0, y), float2(x, y)};
+  return !is_quad_a_inside_b(screen, quad);
 }
 
 /* Automatic filter:
@@ -697,12 +734,14 @@ static ImBuf *input_preprocess(const SeqRenderData *context,
 }
 
 static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
+                                         SeqRenderState *state,
                                          Sequence *seq,
                                          ImBuf *ibuf,
                                          float timeline_frame,
                                          bool use_preprocess,
                                          const bool is_proxy_image)
 {
+  const int input_planes = ibuf->planes;
   if (context->is_proxy_render == false &&
       (ibuf->x != context->rectx || ibuf->y != context->recty))
   {
@@ -719,6 +758,7 @@ static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
   }
 
   seq_cache_put(context, seq, timeline_frame, SEQ_CACHE_STORE_PREPROCESSED, ibuf);
+  state->planes_before_pp.add_overwrite(ibuf, input_planes);
   return ibuf;
 }
 
@@ -972,6 +1012,7 @@ static bool seq_image_strip_is_multiview_render(
 }
 
 static ImBuf *seq_render_image_strip(const SeqRenderData *context,
+                                     SeqRenderState *state,
                                      Sequence *seq,
                                      int timeline_frame,
                                      bool *r_is_proxy_image)
@@ -1025,7 +1066,7 @@ static ImBuf *seq_render_image_strip(const SeqRenderData *context,
 
       if (view_id != context->view_id) {
         ibufs_arr[view_id] = seq_render_preprocess_ibuf(
-            &localcontext, seq, ibufs_arr[view_id], timeline_frame, true, false);
+            &localcontext, state, seq, ibufs_arr[view_id], timeline_frame, true, false);
       }
     }
 
@@ -1142,6 +1183,7 @@ static ImBuf *seq_render_movie_strip_view(const SeqRenderData *context,
 }
 
 static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
+                                     SeqRenderState *state,
                                      Sequence *seq,
                                      float timeline_frame,
                                      bool *r_is_proxy_image)
@@ -1188,7 +1230,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
 
       if (view_id != context->view_id) {
         ibuf_arr[view_id] = seq_render_preprocess_ibuf(
-            &localcontext, seq, ibuf_arr[view_id], timeline_frame, true, false);
+            &localcontext, state, seq, ibuf_arr[view_id], timeline_frame, true, false);
       }
     }
 
@@ -1743,12 +1785,12 @@ static ImBuf *do_render_strip_uncached(const SeqRenderData *context,
     }
 
     case SEQ_TYPE_IMAGE: {
-      ibuf = seq_render_image_strip(context, seq, timeline_frame, r_is_proxy_image);
+      ibuf = seq_render_image_strip(context, state, seq, timeline_frame, r_is_proxy_image);
       break;
     }
 
     case SEQ_TYPE_MOVIE: {
-      ibuf = seq_render_movie_strip(context, seq, timeline_frame, r_is_proxy_image);
+      ibuf = seq_render_movie_strip(context, state, seq, timeline_frame, r_is_proxy_image);
       break;
     }
 
@@ -1811,7 +1853,7 @@ ImBuf *seq_render_strip(const SeqRenderData *context,
   if (ibuf) {
     use_preprocess = seq_input_have_to_preprocess(context, seq, timeline_frame);
     ibuf = seq_render_preprocess_ibuf(
-        context, seq, ibuf, timeline_frame, use_preprocess, is_proxy_image);
+        context, state, seq, ibuf, timeline_frame, use_preprocess, is_proxy_image);
   }
 
   if (ibuf == nullptr) {
@@ -1900,6 +1942,8 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
     return nullptr;
   }
 
+  OpaqueQuadTracker opaques;
+
   int64_t i;
   ImBuf *out = nullptr;
   for (i = strips.size() - 1; i >= 0; i--) {
@@ -1917,15 +1961,25 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
 
     StripEarlyOut early_out = seq_get_early_out_for_blend_mode(seq);
 
+    if (early_out == StripEarlyOut::DoEffect && opaques.is_occluded(context, seq, i)) {
+      early_out = StripEarlyOut::UseInput1;
+    }
+
     /* Early out for alpha over. It requires image to be rendered, so it can't use
      * `seq_get_early_out_for_blend_mode`. */
-    if (out == nullptr && seq->blend_mode == SEQ_TYPE_ALPHAOVER && seq->blend_opacity == 100.0f) {
+    if (out == nullptr && seq->blend_mode == SEQ_TYPE_ALPHAOVER &&
+        early_out == StripEarlyOut::DoEffect && seq->blend_opacity == 100.0f)
+    {
       ImBuf *test = seq_render_strip(context, state, seq, timeline_frame);
       if (ELEM(test->planes, R_IMF_PLANES_BW, R_IMF_PLANES_RGB)) {
         early_out = StripEarlyOut::UseInput2;
       }
       else {
         early_out = StripEarlyOut::DoEffect;
+      }
+
+      if (state->planes_before_pp.lookup_default(test, R_IMF_PLANES_RGBA) != R_IMF_PLANES_RGBA) {
+        opaques.add_occluder(context, seq, i);
       }
       /* Free the image. It is stored in cache, so this doesn't affect performance. */
       IMB_freeImBuf(test);
@@ -1966,7 +2020,9 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
   for (; i < strips.size(); i++) {
     Sequence *seq = strips[i];
 
-    if (seq_get_early_out_for_blend_mode(seq) == StripEarlyOut::DoEffect) {
+    if (seq_get_early_out_for_blend_mode(seq) == StripEarlyOut::DoEffect &&
+        !opaques.is_occluded(context, seq, i))
+    {
       ImBuf *ibuf1 = out;
       ImBuf *ibuf2 = seq_render_strip(context, state, seq, timeline_frame);
 
