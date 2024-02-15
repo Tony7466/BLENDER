@@ -55,6 +55,8 @@
  *   to make a nice interface for this functionality.
  */
 
+#include <optional>
+
 #include "BLI_array.hh"
 #include "BLI_hash.hh"
 #include "BLI_hash_tables.hh"
@@ -382,6 +384,19 @@ class Set {
   template<typename ForwardKey> void remove_contained_as(const ForwardKey &key)
   {
     this->remove_contained__impl(key, hash_(key));
+  }
+
+  /**
+   * Remove and return a key from the set. Order of existing keys that get removed and returned by
+   * this function is fully implementation-dependent, no auumptions should be made about it.
+   */
+  std::optional<Key> pop()
+  {
+    return this->pop_as<Key>();
+  }
+  template<typename ForwardKey> std::optional<ForwardKey> pop_as()
+  {
+    return this->pop__impl<ForwardKey>();
   }
 
   /**
@@ -841,6 +856,23 @@ class Set {
       }
     }
     SET_SLOT_PROBING_END();
+  }
+
+  template<typename ForwardKey> std::optional<ForwardKey> pop__impl()
+  {
+    if (this->is_empty()) {
+      return std::nullopt;
+    }
+    for (Slot &slot : this->slots_) {
+      if (slot.is_occupied()) {
+        ForwardKey key = *slot.key();
+        slot.remove();
+        removed_slots_++;
+        return key;
+      }
+    }
+    BLI_assert_unreachable();
+    return std::nullopt;
   }
 
   template<typename ForwardKey>
