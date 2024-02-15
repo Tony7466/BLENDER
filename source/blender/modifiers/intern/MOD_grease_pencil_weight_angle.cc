@@ -93,9 +93,10 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static int ensure_vertex_group(const StringRef name, ListBase &vertex_group_names)
+static int ensure_vertex_group(const StringRefNull name, ListBase &vertex_group_names)
 {
-  int def_nr = BLI_findstringindex(&vertex_group_names, name.data(), offsetof(bDeformGroup, name));
+  int def_nr = BLI_findstringindex(
+      &vertex_group_names, name.c_str(), offsetof(bDeformGroup, name));
   if (def_nr < 0) {
     bDeformGroup *defgroup = MEM_cnew<bDeformGroup>(__func__);
     STRNCPY(defgroup->name, name.data());
@@ -106,10 +107,11 @@ static int ensure_vertex_group(const StringRef name, ListBase &vertex_group_name
   return def_nr;
 }
 
-static bool target_vertex_group_available(const StringRef name, const ListBase &vertex_group_names)
+static bool target_vertex_group_available(const StringRefNull name,
+                                          const ListBase &vertex_group_names)
 {
   const int def_nr = BLI_findstringindex(
-      &vertex_group_names, name.data(), offsetof(bDeformGroup, name));
+      &vertex_group_names, name.c_str(), offsetof(bDeformGroup, name));
   if (def_nr < 0)
     return false;
   return true;
@@ -137,7 +139,7 @@ static void write_weights_for_drawing(const ModifierData &md,
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   bke::SpanAttributeWriter<float> dst_weights = attributes.lookup_for_write_span<float>(
       mmd.target_vgname);
-      
+
   BLI_assert(!dst_weights.span.is_empty());
 
   const VArray<float> input_weights = modifier::greasepencil::get_influence_vertex_weights(
