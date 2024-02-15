@@ -65,15 +65,15 @@ struct SphereProbeAtlasCoord {
      * We want to cover the last mip exactly at the pixel center to reduce padding texels and
      * interpolation artifacts.
      * This is a diagram of a 2px^2 map with `c` being the texels corners and `x` the pixels
-     * centers.
+     * centers. The lines shows the octahedron edges and pixel boundaries.
      *
      * c-------c-------c
      * |       |       |
-     * |   x   |   x   | <
-     * |       |       |  |
-     * c-------c-------c  | sampling area
-     * |       |       |  |
-     * |   x   |   x   | <
+     * |   x---*---x   | <
+     * |   | / | \ |   |  |
+     * c---*---c---*---c  | sampling area
+     * |   | \ | / |   |  |
+     * |   x---*---x   | <
      * |       |       |
      * c-------c-------c
      *     ^-------^
@@ -83,8 +83,31 @@ struct SphereProbeAtlasCoord {
     const int mip_max_lvl_padding = 1;
     const int mip_min_lvl_padding = mip_max_lvl_padding << (SPHERE_PROBE_MIPMAP_LEVELS - 1);
     /* Extent and offset in mip 0 texels. */
-    const int sampling_area_extent = area_extent(atlas_extent) - mip_min_lvl_padding;
     const int2 sampling_area_offset = area_offset(atlas_extent) + mip_min_lvl_padding / 2;
+    int sampling_area_extent = area_extent(atlas_extent) - mip_min_lvl_padding;
+    /**
+     * We place texel centers at the edges of the octahedron, to avoid artifacts caused by
+     * interpolating across the edges.
+     *
+     * This is a diagram of a 5px^2 map with being `x` the pixels centers.
+     * The padding is omitted for clarity. The lines shows the octahedron edges.
+     *
+     * x---x---x---x---x <
+     * |     / | \     |  |
+     * x   x   x   x   x  |
+     * | /     |     \ |  |
+     * x---x---x---x---x  | sampling area
+     * | \     |     / |  |
+     * x   x   x   x   x  |
+     * |     \ | /     |  |
+     * x---x---x---x---x <
+     * ^---------------^
+     *       sampling area
+     *
+     * To do this, we made the last mip level have an odd number of pixel, by reducing the extend
+     * by one more pixel.
+     */
+    sampling_area_extent -= mip_min_lvl_padding;
     /* Convert to atlas UVs. */
     SphereProbeUvArea coord;
     coord.scale = sampling_area_extent / float(atlas_extent);
