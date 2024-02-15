@@ -95,8 +95,8 @@ float lightprobe_roughness_to_lod(float roughness)
 {
   /* From "Moving Frostbite to Physically Based Rendering 3.0" eq 53.
    * Inversed for baking probes.
-   * Use 0.8 for last mip as we fade towards volume probes for higher roughness. */
-  return sqrt_fast(saturate(roughness / 0.8)) * SPHERE_PROBE_MIPMAP_LEVELS;
+   * Use 0.75 for last mip as we fade towards volume probes for higher roughness. */
+  return saturate(roughness / 0.75) * SPHERE_PROBE_MIPMAP_LEVELS;
 }
 
 vec3 lightprobe_eval(LightProbeSample samp, ClosureDiffuse cl, vec3 P, vec3 V)

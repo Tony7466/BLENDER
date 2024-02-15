@@ -202,8 +202,8 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
   for (auto i : IndexRange(SPHERE_PROBE_MIPMAP_LEVELS - 1)) {
     /* From "Moving Frostbite to Physically Based Rendering 3.0" eq 53 (inversed). */
     float mip_ratio = float(i + 1) / (SPHERE_PROBE_MIPMAP_LEVELS - 1);
-    /* Use 0.8 for last mip as we fade towards volume probes for higher roughness. */
-    convolve_roughness_ = square_f(mip_ratio) * 0.8f;
+    /* Use 0.75 for last mip as we fade towards volume probes for higher roughness. */
+    convolve_roughness_ = mip_ratio * 0.75f;
     convolve_input_ = probes_tx_.mip_view(i);
     convolve_output_ = probes_tx_.mip_view(i + 1);
     probe_write_coord_ = atlas_coord.as_write_coord(max_resolution_, i + 1);
