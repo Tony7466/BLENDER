@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_fast_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ray_generate_lib.glsl)
@@ -92,8 +93,10 @@ float lightprobe_roughness_to_cube_sh_mix_fac(float roughness)
 
 float lightprobe_roughness_to_lod(float roughness)
 {
-  /* Temporary. Do something better. */
-  return sqrt(roughness) * SPHERE_PROBE_MIPMAP_LEVELS;
+  /* From "Moving Frostbite to Physically Based Rendering 3.0" eq 53.
+   * Inversed for baking probes.
+   * Use 0.8 for last mip as we fade towards volume probes for higher roughness. */
+  return sqrt_fast(saturate(roughness / 0.8)) * SPHERE_PROBE_MIPMAP_LEVELS;
 }
 
 vec3 lightprobe_eval(LightProbeSample samp, ClosureDiffuse cl, vec3 P, vec3 V)

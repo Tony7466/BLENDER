@@ -57,6 +57,7 @@ void SphereProbeModule::begin_sync()
     pass.bind_image("out_atlas_mip_img", &convolve_output_);
     pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&probe_sampling_coord_));
     pass.push_constant("write_coord_packed", reinterpret_cast<int4 *>(&probe_write_coord_));
+    pass.push_constant("mip_roughness", &convolve_roughness_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
     pass.dispatch(&dispatch_probe_convolve_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -199,6 +200,10 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
 
   /* Populate the mip levels */
   for (auto i : IndexRange(SPHERE_PROBE_MIPMAP_LEVELS - 1)) {
+    /* From "Moving Frostbite to Physically Based Rendering 3.0" eq 53 (inversed). */
+    float mip_ratio = float(i + 1) / (SPHERE_PROBE_MIPMAP_LEVELS - 1);
+    /* Use 0.8 for last mip as we fade towards volume probes for higher roughness. */
+    convolve_roughness_ = square_f(mip_ratio) * 0.8f;
     convolve_input_ = probes_tx_.mip_view(i);
     convolve_output_ = probes_tx_.mip_view(i + 1);
     probe_write_coord_ = atlas_coord.as_write_coord(max_resolution_, i + 1);
