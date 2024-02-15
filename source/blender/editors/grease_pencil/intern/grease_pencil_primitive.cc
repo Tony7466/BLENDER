@@ -36,7 +36,7 @@
 #include "BLI_string.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_state.h"
@@ -711,9 +711,11 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   View3D *view3d = CTX_wm_view3d(C);
   const float2 start_coords = float2(event->mval);
 
+  GreasePencil *grease_pencil = static_cast<GreasePencil *>(vc.obact->data);
+
   /* Initialize helper class for projecting screen space coordinates. */
   ed::greasepencil::DrawingPlacement placement_ = ed::greasepencil::DrawingPlacement(
-      *vc.scene, *vc.region, *view3d, *vc.obact);
+      *vc.scene, *vc.region, *view3d, *vc.obact, *grease_pencil->get_active_layer());
   if (placement_.use_project_to_surface()) {
     placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(C), vc.region, view3d);
   }
@@ -757,8 +759,6 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   /* Add one point for the beginning. */
   pttehte.control_points.append_n_times(pos, control_points_per_segment(pttehte) + 1);
   pttehte.active_control_point_index = -1;
-
-  GreasePencil *grease_pencil = static_cast<GreasePencil *>(vc.obact->data);
 
   Paint *paint = &vc.scene->toolsettings->gp_paint->paint;
   pttehte.brush_ = BKE_paint_brush(paint);
