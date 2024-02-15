@@ -614,7 +614,7 @@ static Vector<NodeInterfaceItemData> node_build_item_data(bNode &node)
     if (const nodes::SocketDeclaration *socket_decl =
             dynamic_cast<const nodes::SocketDeclaration *>(item_decl->get()))
     {
-      if (socket_decl->inline_with_previous_socket) {
+      if (socket_decl->align_with_previous_socket) {
         NodeInterfaceItemData &last_item = result.last();
         switch (socket_decl->in_out) {
           case SOCK_IN:
