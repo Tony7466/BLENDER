@@ -279,8 +279,8 @@ void CaptureView::render_probes()
   while (const auto update_info = inst_.sphere_probes.probe_update_info_pop()) {
     GPU_debug_group_begin("Probe.Capture");
 
-    if (inst_.pipelines.data.is_probe_reflection != true) {
-      inst_.pipelines.data.is_probe_reflection = true;
+    if (inst_.pipelines.data.is_probe_reflection != bool1(true)) {
+      inst_.pipelines.data.is_probe_reflection = bool1(true);
       inst_.uniform_data.push_update();
     }
 
