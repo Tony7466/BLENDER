@@ -22,30 +22,24 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Geometry");
   b.add_input<decl::String>("Name").is_attribute_name();
+  b.add_input<decl::Bool>("Match Pattern")
+      .description("Allow a single wildcard (*) character in the name that can match anything");
   b.add_output<decl::Geometry>("Geometry").propagate_all();
-}
-
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
-{
-  uiLayoutSetPropSep(layout, true);
-  uiLayoutSetPropDecorate(layout, false);
-  uiItemR(layout, ptr, "pattern_mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Geometry");
   const std::string pattern = params.extract_input<std::string>("Name");
+  bool match_pattern = params.extract_input<bool>("Match Pattern");
   if (pattern.empty()) {
     params.set_output("Geometry", std::move(geometry_set));
     return;
   }
-  const bNode &node = params.node();
-  PatternMode pattern_mode = PatternMode(node.custom1);
-  if (pattern_mode == PatternMode::Wildcard) {
+  if (match_pattern) {
     const int wildcard_count = Span(pattern.c_str(), pattern.size()).count('*');
     if (wildcard_count == 0) {
-      pattern_mode = PatternMode::Exact;
+      match_pattern = false;
     }
     else if (wildcard_count >= 2) {
       params.error_message_add(NodeWarningType::Info,
@@ -57,7 +51,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   StringRef wildcard_prefix;
   StringRef wildcard_suffix;
-  if (pattern_mode == PatternMode::Wildcard) {
+  if (match_pattern) {
     const int wildcard_index = pattern.find('*');
     wildcard_prefix = StringRef(pattern).substr(0, wildcard_index);
     wildcard_suffix = StringRef(pattern).substr(wildcard_index + 1);
@@ -79,30 +73,25 @@ static void node_geo_exec(GeoNodeExecParams params)
        * to avoid potentially expensive unnecessary copies. */
       const GeometryComponent &read_only_component = *geometry_set.get_component(type);
       Vector<std::string> attributes_to_remove;
-      switch (pattern_mode) {
-        case PatternMode::Exact: {
-          if (read_only_component.attributes()->contains(pattern)) {
-            attributes_to_remove.append(pattern);
-          }
-          break;
-        }
-        case PatternMode::Wildcard: {
-          read_only_component.attributes()->for_all(
-              [&](const blender::bke::AttributeIDRef &id,
-                  const blender::bke::AttributeMetaData /*meta_data*/) {
-                if (id.is_anonymous()) {
-                  return true;
-                }
-                const StringRef attribute_name = id.name();
-                if (attribute_name.startswith(wildcard_prefix) &&
-                    attribute_name.endswith(wildcard_suffix))
-                {
-                  attributes_to_remove.append(attribute_name);
-                }
+      if (match_pattern) {
+        read_only_component.attributes()->for_all(
+            [&](const blender::bke::AttributeIDRef &id,
+                const blender::bke::AttributeMetaData /*meta_data*/) {
+              if (id.is_anonymous()) {
                 return true;
-              });
-
-          break;
+              }
+              const StringRef attribute_name = id.name();
+              if (attribute_name.startswith(wildcard_prefix) &&
+                  attribute_name.endswith(wildcard_suffix))
+              {
+                attributes_to_remove.append(attribute_name);
+              }
+              return true;
+            });
+      }
+      else {
+        if (read_only_component.attributes()->contains(pattern)) {
+          attributes_to_remove.append(pattern);
         }
       }
       if (attributes_to_remove.is_empty()) {
@@ -137,36 +126,12 @@ static void node_geo_exec(GeoNodeExecParams params)
                                             fmt::join(quoted_attribute_names, ", "));
     params.error_message_add(NodeWarningType::Warning, message);
   }
-  else if (removed_attributes.is_empty() && pattern_mode == PatternMode::Exact) {
+  else if (removed_attributes.is_empty() && !match_pattern) {
     const std::string message = fmt::format(TIP_("Attribute does not exist: \"{}\""), pattern);
     params.error_message_add(NodeWarningType::Warning, message);
   }
 
   params.set_output("Geometry", std::move(geometry_set));
-}
-
-static void node_rna(StructRNA *srna)
-{
-  static const EnumPropertyItem pattern_mode_items[] = {
-      {int(PatternMode::Exact),
-       "EXACT",
-       0,
-       "Exact",
-       "Remove the one attribute with the given name"},
-      {int(PatternMode::Wildcard),
-       "WILDCARD",
-       0,
-       "Wildcard",
-       "Remove all attributes that match the pattern which is allowed to contain a single "
-       "wildcard (*)."},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-  RNA_def_node_enum(srna,
-                    "pattern_mode",
-                    "Pattern Mode",
-                    "How the attributes to remove are chosen",
-                    pattern_mode_items,
-                    NOD_inline_enum_accessors(custom1));
 }
 
 static void node_register()
@@ -176,12 +141,9 @@ static void node_register()
   geo_node_type_base(
       &ntype, GEO_NODE_REMOVE_ATTRIBUTE, "Remove Named Attribute", NODE_CLASS_ATTRIBUTE);
   ntype.declare = node_declare;
-  ntype.draw_buttons = node_layout;
   bke::node_type_size(&ntype, 170, 100, 700);
   ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
-
-  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
