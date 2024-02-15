@@ -4646,7 +4646,7 @@ static bool lib_override_library_id_reset_do(Main *bmain,
   }
 
   if (was_op_deleted) {
-    DEG_id_tag_update_ex(bmain, id_root, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update_ex(bmain, id_root, ID_RECALC_EVALUATED_COPY);
     IDOverrideLibraryRuntime *liboverride_runtime = override_library_runtime_ensure(
         id_root->override_library);
     liboverride_runtime->tag |= LIBOVERRIDE_TAG_NEEDS_RELOAD;

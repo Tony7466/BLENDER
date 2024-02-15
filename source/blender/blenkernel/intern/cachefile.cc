@@ -167,7 +167,7 @@ void BKE_cachefile_reader_open(CacheFile *cache_file,
 {
 #if defined(WITH_ALEMBIC) || defined(WITH_USD)
 
-  BLI_assert(cache_file->id.tag & LIB_TAG_COPIED_ON_WRITE);
+  BLI_assert(cache_file->id.tag & LIB_TAG_COPIED_ON_EVAL);
 
   if (cache_file->handle == nullptr) {
     return;
@@ -219,7 +219,7 @@ void BKE_cachefile_reader_free(CacheFile *cache_file, CacheReader **reader)
   BLI_spin_lock(&spin);
   if (*reader != nullptr) {
     if (cache_file) {
-      BLI_assert(cache_file->id.tag & LIB_TAG_COPIED_ON_WRITE);
+      BLI_assert(cache_file->id.tag & LIB_TAG_COPIED_ON_EVAL);
 
       switch (cache_file->type) {
         case CACHEFILE_TYPE_ALEMBIC:
@@ -327,12 +327,12 @@ void BKE_cachefile_reload(Depsgraph *depsgraph, CacheFile *cache_file)
     cachefile_handle_free(cache_file_eval);
   }
 
-  DEG_id_tag_update(&cache_file->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&cache_file->id, ID_RECALC_EVALUATED_COPY);
 }
 
 void BKE_cachefile_eval(Main *bmain, Depsgraph *depsgraph, CacheFile *cache_file)
 {
-  BLI_assert(cache_file->id.tag & LIB_TAG_COPIED_ON_WRITE);
+  BLI_assert(cache_file->id.tag & LIB_TAG_COPIED_ON_EVAL);
 
   /* Compute filepath. */
   char filepath[FILE_MAX];
