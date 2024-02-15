@@ -982,8 +982,6 @@ void draw_nla_track_list(const bContext *C,
 
     GPU_blend(GPU_BLEND_NONE);
   }
-
-  /* free temporary tracks */
 }
 
 /* *********************************************** */

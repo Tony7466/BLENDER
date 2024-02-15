@@ -1521,7 +1521,10 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
 /** \name Channel List
  * \{ */
 
-void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region, ListBase *anim_data)
+void graph_draw_channel_names(bContext *C,
+                              bAnimContext *ac,
+                              ARegion *region,
+                              const ListBase &anim_data)
 {
   bAnimListElem *ale;
 
@@ -1537,7 +1540,7 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region, Li
     size_t channel_index = 0;
     float ymax = ANIM_UI_get_first_channel_top(v2d);
 
-    for (ale = static_cast<bAnimListElem *>(anim_data->first); ale;
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
          ale = ale->next, ymax -= channel_step, channel_index++)
     {
       const float ymin = ymax - ANIM_UI_get_channel_height();
@@ -1559,7 +1562,7 @@ void graph_draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region, Li
     /* set blending again, as may not be set in previous step */
     GPU_blend(GPU_BLEND_ALPHA);
 
-    for (ale = static_cast<bAnimListElem *>(anim_data->first); ale;
+    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale;
          ale = ale->next, ymax -= channel_step, channel_index++)
     {
       const float ymin = ymax - ANIM_UI_get_channel_height();

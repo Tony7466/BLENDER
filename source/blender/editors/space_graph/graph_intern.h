@@ -30,7 +30,7 @@ extern "C" {
 void graph_draw_channel_names(struct bContext *C,
                               struct bAnimContext *ac,
                               struct ARegion *region,
-                              ListBase /* bAnimElem */ *anim_data);
+                              const ListBase /* bAnimListElem */ &anim_data);
 
 /**
  * This is called twice from `space_graph.cc`, #graph_main_region_draw()

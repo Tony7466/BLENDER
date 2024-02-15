@@ -368,7 +368,7 @@ static void graph_channel_region_init(wmWindowManager *wm, ARegion *region)
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
-void set_v2d_height(View2D *v2d, const size_t item_count)
+static void set_v2d_height(View2D *v2d, const size_t item_count)
 {
   const int height = ANIM_UI_get_channels_total_height(v2d, item_count);
   v2d->tot.ymin = -height;
@@ -395,7 +395,7 @@ static void graph_channel_region_draw(const bContext *C, ARegion *region)
   UI_view2d_view_ortho(v2d);
 
   /* draw channels */
-  graph_draw_channel_names((bContext *)C, &ac, region, &anim_data);
+  graph_draw_channel_names((bContext *)C, &ac, region, anim_data);
 
   /* channel filter next to scrubbing area */
   ED_time_scrub_channel_search_draw(C, region, ac.ads);
