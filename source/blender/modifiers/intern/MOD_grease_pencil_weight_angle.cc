@@ -9,7 +9,7 @@
 #include "BLI_index_mask.hh"
 #include "BLI_math_rotation.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLO_read_write.hh"
 

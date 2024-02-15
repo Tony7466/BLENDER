@@ -23,9 +23,8 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
 #include "BKE_colorband.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
@@ -34,7 +33,6 @@
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_linestyle.h"
-#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_texture.h"
@@ -673,7 +671,7 @@ IDTypeInfo IDType_ID_LS = {
 
 static const char *modifier_name[LS_MODIFIER_NUM] = {
     nullptr,         "Along Stroke",    "Distance from Camera", "Distance from Object",
-    "Material",      "Sampling",        "Bezier Curve",         "Sinus Displacement",
+    "Material",      "Sampling",        "Bézier Curve",         "Sinus Displacement",
     "Spatial Noise", "Perlin Noise 1D", "Perlin Noise 2D",      "Backbone Stretcher",
     "Tip Remover",   "Calligraphy",     "Polygonalization",     "Guiding Lines",
     "Blueprint",     "2D Offset",       "2D Transform",         "Tangent",

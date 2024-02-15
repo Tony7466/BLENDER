@@ -12,7 +12,6 @@
 #include "UI_resources.hh"
 
 #include "GPU_shader.h"
-#include "GPU_state.h"
 #include "GPU_texture.h"
 
 #include "COM_node_operation.hh"
@@ -43,9 +42,12 @@ class CompositeOperation : public NodeOperation {
 
   void execute() override
   {
+    if (!context().is_valid_compositing_region()) {
+      return;
+    }
+
     const Result &image = get_input("Image");
     const Result &alpha = get_input("Alpha");
-
     if (image.is_single_value() && alpha.is_single_value()) {
       execute_clear();
     }

@@ -17,17 +17,21 @@
 
 #include "BKE_context.hh"
 
+namespace blender::bke::id {
+class IDRemapper;
+}
+
 namespace blender::asset_system {
 class AssetRepresentation;
 }
 
 struct ARegion;
+struct AssetShelfType;
 struct BlendDataReader;
 struct BlendLibReader;
 struct BlendWriter;
 struct Header;
 struct ID;
-struct IDRemapper;
 struct LayoutPanelState;
 struct LibraryForeachIDData;
 struct ListBase;
@@ -108,7 +112,7 @@ struct SpaceType {
   bContextDataCallback context;
 
   /* Used when we want to replace an ID by another (or NULL). */
-  void (*id_remap)(ScrArea *area, SpaceLink *sl, const IDRemapper *mappings);
+  void (*id_remap)(ScrArea *area, SpaceLink *sl, const blender::bke::id::IDRemapper &mappings);
 
   /**
    * foreach_id callback to process all ID pointers of the editor. Used indirectly by lib_query's
@@ -140,7 +144,7 @@ struct SpaceType {
   ListBase regiontypes;
 
   /** Asset shelf type definitions. */
-  ListBase asset_shelf_types; /* #AssetShelfType */
+  blender::Vector<std::unique_ptr<AssetShelfType>> asset_shelf_types;
 
   /* read and write... */
 
@@ -518,8 +522,6 @@ enum AssetShelfTypeFlag {
 ENUM_OPERATORS(AssetShelfTypeFlag, ASSET_SHELF_TYPE_FLAG_MAX);
 
 struct AssetShelfType {
-  AssetShelfType *next, *prev;
-
   char idname[BKE_ST_MAXNAME]; /* unique name */
 
   int space_type;
