@@ -1186,7 +1186,7 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
   if (is_open || !has_header) {
     float panel_backcolor[4];
     UI_draw_roundbox_corner_set(is_open ? UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT : UI_CNR_ALL);
-    if (panel->type->flag & PANEL_TYPE_NO_HEADER) {
+    if (!has_header) {
       UI_GetThemeColor4fv(TH_BUTBACK, panel_backcolor);
     }
     else {
