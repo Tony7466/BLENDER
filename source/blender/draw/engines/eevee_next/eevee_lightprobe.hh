@@ -81,7 +81,7 @@ struct SphereProbeAtlasCoord {
      */
     /* Max level only need half a pixel of padding around the sampling area. */
     const int mip_max_lvl_padding = 1;
-    const int mip_min_lvl_padding = mip_max_lvl_padding << SPHERE_PROBE_MIPMAP_LEVELS;
+    const int mip_min_lvl_padding = mip_max_lvl_padding << (SPHERE_PROBE_MIPMAP_LEVELS - 1);
     /* Extent and offset in mip 0 texels. */
     const int sampling_area_extent = area_extent(atlas_extent) - mip_min_lvl_padding;
     const int2 sampling_area_offset = area_offset(atlas_extent) + mip_min_lvl_padding / 2;
