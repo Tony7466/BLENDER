@@ -31,15 +31,15 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_blender_version.h"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_icons.h"
 #include "BKE_layer.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
@@ -1726,7 +1726,7 @@ static bool wm_window_timers_process(const bContext *C, int *sleep_us_p)
 {
   Main *bmain = CTX_data_main(C);
   wmWindowManager *wm = CTX_wm_manager(C);
-  const double time = BLI_check_seconds_timer();
+  const double time = BLI_time_now_seconds();
   bool has_event = false;
 
   const int sleep_us = *sleep_us_p;
@@ -1833,11 +1833,11 @@ void wm_window_events_process(const bContext *C)
    * events are typically generated from a timer that runs in the main loop. */
   if ((has_event == false) && (sleep_us != 0) && !(G.f & G_FLAG_EVENT_SIMULATE)) {
     if (sleep_us == sleep_us_default) {
-      /* NOTE(@ideasman42): prefer #BLI_sleep_ms over `sleep_for(..)` in the common case
+      /* NOTE(@ideasman42): prefer #BLI_time_sleep_ms over `sleep_for(..)` in the common case
        * because this function uses lower resolution (millisecond) resolution sleep timers
        * which are tried & true for the idle loop. We could move to C++ `sleep_for(..)`
        * if this works well on all platforms but this needs further testing. */
-      BLI_sleep_ms(sleep_us_default / 1000);
+      BLI_time_sleep_ms(sleep_us_default / 1000);
     }
     else {
       /* The time was shortened to resume for the upcoming timer, use a high resolution sleep.
@@ -2092,13 +2092,18 @@ void WM_event_timer_sleep(wmWindowManager *wm, wmWindow * /*win*/, wmTimer *time
   timer->sleep = do_sleep;
 }
 
-wmTimer *WM_event_timer_add(wmWindowManager *wm, wmWindow *win, int event_type, double time_step)
+wmTimer *WM_event_timer_add(wmWindowManager *wm,
+                            wmWindow *win,
+                            const int event_type,
+                            const double time_step)
 {
+  BLI_assert(ISTIMER(event_type));
+
   wmTimer *wt = static_cast<wmTimer *>(MEM_callocN(sizeof(wmTimer), "window timer"));
   BLI_assert(time_step >= 0.0f);
 
   wt->event_type = event_type;
-  wt->time_last = BLI_check_seconds_timer();
+  wt->time_last = BLI_time_now_seconds();
   wt->time_next = wt->time_last + time_step;
   wt->time_start = wt->time_last;
   wt->time_step = time_step;
@@ -2111,14 +2116,14 @@ wmTimer *WM_event_timer_add(wmWindowManager *wm, wmWindow *win, int event_type, 
 
 wmTimer *WM_event_timer_add_notifier(wmWindowManager *wm,
                                      wmWindow *win,
-                                     uint type,
-                                     double time_step)
+                                     const uint type,
+                                     const double time_step)
 {
   wmTimer *wt = static_cast<wmTimer *>(MEM_callocN(sizeof(wmTimer), "window timer"));
   BLI_assert(time_step >= 0.0f);
 
   wt->event_type = TIMERNOTIFIER;
-  wt->time_last = BLI_check_seconds_timer();
+  wt->time_last = BLI_time_now_seconds();
   wt->time_next = wt->time_last + time_step;
   wt->time_start = wt->time_last;
   wt->time_step = time_step;

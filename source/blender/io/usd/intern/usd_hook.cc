@@ -2,9 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "usd.h"
+#include "usd.hh"
 
-#include "usd_hook.h"
+#include "usd_hook.hh"
 
 #include <boost/python/call_method.hpp>
 #include <boost/python/class.hpp>
@@ -15,7 +15,7 @@
 
 #include "BLI_listbase.h"
 
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -28,6 +28,8 @@
 #include <list>
 
 using namespace boost;
+
+namespace blender::io::usd {
 
 using USDHookList = std::list<USDHook *>;
 
@@ -64,8 +66,6 @@ USDHook *USD_find_hook_name(const char name[])
 
   return (hook_iter == g_usd_hooks.end()) ? nullptr : *hook_iter;
 }
-
-namespace blender::io::usd {
 
 /* Convert PointerRNA to a PyObject*. */
 struct PointerRNAToPython {

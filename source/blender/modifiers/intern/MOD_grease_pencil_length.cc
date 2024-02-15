@@ -10,7 +10,7 @@
 #include "BLI_rand.h"
 #include "BLI_task.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLO_read_write.hh"
 
