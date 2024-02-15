@@ -395,7 +395,7 @@ static bool applyFaceProject(TransInfo *t, TransDataContainer *tc, TransData *td
   }
   else if (t->options & CTX_OBJECT) {
     BKE_object_eval_transform_all(t->depsgraph, t->scene, td->ob);
-    copy_v3_v3(iloc, td->ob->object_to_world[3]);
+    copy_v3_v3(iloc, td->ob->object_to_world().location());
   }
 
   if (ED_view3d_project_float_global(t->region, iloc, mval_fl, V3D_PROJ_TEST_NOP) !=
@@ -464,7 +464,7 @@ static void applyFaceNearest(TransInfo *t, TransDataContainer *tc, TransData *td
   }
   else if (t->options & CTX_OBJECT) {
     BKE_object_eval_transform_all(t->depsgraph, t->scene, td->ob);
-    copy_v3_v3(init_loc, td->ob->object_to_world[3]);
+    copy_v3_v3(init_loc, td->ob->object_to_world().location());
   }
 
   SnapObjectParams snap_object_params{};
@@ -562,7 +562,7 @@ void transform_snap_mixed_apply(TransInfo *t, float *vec)
   }
 
   if (t->tsnap.mode & ~(SCE_SNAP_TO_INCREMENT | SCE_SNAP_TO_GRID)) {
-    double current = BLI_check_seconds_timer();
+    double current = BLI_time_now_seconds();
 
     /* Time base quirky code to go around find-nearest slowness. */
     /* TODO: add exception for object mode, no need to slow it down then. */
