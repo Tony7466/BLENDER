@@ -1218,7 +1218,7 @@ struct VolumeProbeData {
   float normal_bias;
   float view_bias;
   float facing_bias;
-  int _pad1;
+  float blending_size;
 };
 BLI_STATIC_ASSERT_ALIGN(VolumeProbeData, 16)
 

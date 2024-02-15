@@ -20,6 +20,7 @@
     .grid_resolution_x = 4, \
     .grid_resolution_y = 4, \
     .grid_resolution_z = 4, \
+    .grid_blending_size = 1.0f, \
     .grid_bake_samples = 2048, \
     .grid_surface_bias = 0.05, \
     .grid_escape_bias = 0.1, \

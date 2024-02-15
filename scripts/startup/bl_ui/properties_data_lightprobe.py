@@ -104,6 +104,7 @@ class DATA_PT_lightprobe_eevee_next(DataButtonsPanel, Panel):
             col.separator()
 
             col.prop(probe, "intensity")
+            col.prop(probe, "grid_blending_size")
 
             col.separator()
 

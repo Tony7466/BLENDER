@@ -54,6 +54,8 @@ typedef struct LightProbe {
   int grid_resolution_x;
   int grid_resolution_y;
   int grid_resolution_z;
+  /** Irradiance grid blending. */
+  float grid_blending_size;
   /** Irradiance grid: number of directions to evaluate light transfer in. */
   int grid_bake_samples;
   /** Irradiance grid: Virtual offset parameters. */
@@ -75,12 +77,11 @@ typedef struct LightProbe {
   /** Surface element density for scene surface cache. In surfel per unit distance. */
   float surfel_density;
 
-  /** Object visibility group, inclusive or exclusive. */
-  struct Collection *visibility_grp;
-
   /** LIGHTPROBE_FLAG_SHOW_DATA display size. */
   float data_display_size;
-  char _pad1[4];
+
+  /** Object visibility group, inclusive or exclusive. */
+  struct Collection *visibility_grp;
 } LightProbe;
 
 /* Probe->type */

@@ -92,6 +92,8 @@ void LightProbeModule::sync_volume(const Object *ob, ObjectHandle &handle)
     grid.view_bias = lightprobe->grid_view_bias;
     grid.facing_bias = lightprobe->grid_facing_bias;
 
+    grid.blending_size = lightprobe->grid_blending_size;
+
     grid.validity_threshold = lightprobe->grid_validity_threshold;
     grid.dilation_threshold = lightprobe->grid_dilation_threshold;
     grid.dilation_radius = lightprobe->grid_dilation_radius;

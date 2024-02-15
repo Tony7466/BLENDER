@@ -160,6 +160,16 @@ static void rna_def_lightprobe(BlenderRNA *brna)
       prop, "Resolution Z", "Number of samples along the z axis of the volume");
   RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
 
+  prop = RNA_def_property(srna, "grid_blending_size", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0.0f, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0f, 8.0f, 1, 2);
+  RNA_def_property_ui_text(
+      prop,
+      "Blending Size",
+      "Number of voxels to blend at the grid bounds (avoids harsh cutoffs, but "
+      "may introduce external bleeding)");
+  RNA_def_property_update(prop, NC_MATERIAL | ND_SHADING, "rna_LightProbe_recalc");
+
   prop = RNA_def_property(srna, "grid_normal_bias", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_ui_text(prop,
                            "Normal Bias",
