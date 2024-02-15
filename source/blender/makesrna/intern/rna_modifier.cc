@@ -226,6 +226,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_MIRROR,
      "Mirror strokes",
      "Duplicate strokes like a mirror"},
+    {eModifierType_GreasePencilMultiply,
+     "GREASE_PENCIL_MULTIPLY",
+     ICON_GP_MULTIFRAME_EDITING,
+     "Multiple Strokes",
+     "Generate multiple strokes around original strokes"},
 
     RNA_ENUM_ITEM_HEADING(N_("Deform"), nullptr),
     {eModifierType_Armature,
@@ -1876,6 +1881,7 @@ RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilNoise);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilThick);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilLattice);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilDash);
+RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilMulti);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GPWeightAngle);
 
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilOffset);
@@ -8673,10 +8679,6 @@ static void rna_def_modifier_grease_pencil_weight_angle(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_vertex_group(srna,
                                               "rna_GPWeightAngleModifier_vertex_group_name_set");
 
-  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
-
-  RNA_define_lib_overridable(true);
-
   prop = RNA_def_property(srna, "target_vertex_group", PROP_STRING, PROP_NONE);
   RNA_def_property_string_sdna(prop, nullptr, "target_vgname");
   RNA_def_property_ui_text(prop, "Vertex Group", "Output Vertex group");
@@ -8718,6 +8720,66 @@ static void rna_def_modifier_grease_pencil_weight_angle(BlenderRNA *brna)
   prop = RNA_def_property(srna, "minimum_weight", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, nullptr, "min_weight");
   RNA_def_property_ui_text(prop, "Minimum", "Minimum value for vertex weight");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  RNA_define_lib_overridable(false);
+}
+
+static void rna_def_modifier_grease_pencil_multiply(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "GreasePencilMultiplyModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Multiply Modifier", "Generate multiple strokes from one stroke");
+  RNA_def_struct_sdna(srna, "GreasePencilMultiModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_GP_MULTIFRAME_EDITING);
+
+  rna_def_modifier_grease_pencil_layer_filter(srna);
+  rna_def_modifier_grease_pencil_material_filter(
+      srna, "rna_GreasePencilMultiModifier_material_filter_set");
+
+  rna_def_modifier_panel_open_prop(srna, "open_fading_panel", 1);
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "use_fade", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_GREASE_PENCIL_MULTIPLY_ENABLE_FADING);
+  RNA_def_property_ui_text(prop, "Fade", "Fade the stroke thickness for each generated stroke");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "duplicates", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "duplications");
+  RNA_def_property_range(prop, 0, 999);
+  RNA_def_property_ui_range(prop, 1, 10, 1, 1);
+  RNA_def_property_ui_text(prop, "duplicates", "How many copies of strokes be displayed");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "distance", PROP_FLOAT, PROP_DISTANCE);
+  RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
+  RNA_def_property_ui_range(prop, 0.0, 1.0, 0.01, 3);
+  RNA_def_property_ui_text(prop, "Distance", "Distance of duplications");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "offset", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_ui_range(prop, -1, 1, 0.01, 3);
+  RNA_def_property_ui_text(prop, "Offset", "Offset of duplicates. -1 to 1: inner to outer");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "fading_thickness", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 1);
+  RNA_def_property_ui_text(prop, "Thickness", "Fade influence of stroke's thickness");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "fading_opacity", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_range(prop, 0, 1);
+  RNA_def_property_ui_text(prop, "Opacity", "Fade influence of stroke's opacity");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "fading_center", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_range(prop, 0, 1);
+  RNA_def_property_ui_text(prop, "Center", "Fade center");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   RNA_define_lib_overridable(false);
@@ -8902,6 +8964,7 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_lattice(brna);
   rna_def_modifier_grease_pencil_dash_segment(brna);
   rna_def_modifier_grease_pencil_dash(brna);
+  rna_def_modifier_grease_pencil_multiply(brna);
   rna_def_modifier_grease_pencil_weight_angle(brna);
 }
 

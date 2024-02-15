@@ -106,7 +106,8 @@ typedef enum ModifierType {
   eModifierType_GreasePencilThickness = 69,
   eModifierType_GreasePencilLattice = 70,
   eModifierType_GreasePencilDash = 71,
-  eModifierType_GPWeightAngle = 72,
+  eModifierType_GreasePencilMultiply = 72,
+  eModifierType_GPWeightAngle = 73,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2817,6 +2818,32 @@ typedef struct GreasePencilDashModifierData {
 typedef enum GreasePencilDashModifierFlag {
   MOD_GREASE_PENCIL_DASH_USE_CYCLIC = (1 << 0),
 } GreasePencilDashModifierFlag;
+
+typedef struct GreasePencilMultiModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  /* #GreasePencilMultiplyModifierFlag */
+  int flag;
+
+  int duplications;
+  float distance;
+  /* -1:inner 0:middle 1:outer */
+  float offset;
+
+  float fading_center;
+  float fading_thickness;
+  float fading_opacity;
+
+  int _pad0;
+
+  void *_pad;
+} GreasePencilMultiModifierData;
+
+typedef enum GreasePencilMultiplyModifierFlag {
+  /* GP_MULTIPLY_ENABLE_ANGLE_SPLITTING = (1 << 1),  Deprecated. */
+  MOD_GREASE_PENCIL_MULTIPLY_ENABLE_FADING = (1 << 2),
+} GreasePencilMultiplyModifierFlag;
 
 typedef struct GPWeightAngleModifierData {
   ModifierData modifier;
