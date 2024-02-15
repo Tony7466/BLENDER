@@ -43,7 +43,8 @@ static void node_declare(NodeDeclarationBuilder &b)
   }
   b.add_output<decl::Bool>("Is Valid")
       .dependent_field({3, 4})
-      .description("Whether the sampling was successfull");
+      .description(
+          "Whether the sampling was successfull. It can fail when the sampled group is empty");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
