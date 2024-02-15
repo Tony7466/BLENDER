@@ -179,6 +179,8 @@ class SocketDeclaration : public ItemDeclaration {
   bool is_unavailable = false;
   bool is_attribute_name = false;
   bool is_default_link_socket = false;
+  /** Puts this socket on the same line as the previous one in the UI. */
+  bool align_with_previous_socket = false;
 
   InputSocketFieldType input_field_type = InputSocketFieldType::None;
   OutputFieldDependency output_field_dependency;
@@ -356,6 +358,12 @@ class BaseSocketDeclarationBuilder {
    */
   BaseSocketDeclarationBuilder &make_available(std::function<void(bNode &)> fn);
 
+  /**
+   * Puts this socket on the same row as the previous socket. This only works when one of them is
+   * an input and the other is an output.
+   */
+  BaseSocketDeclarationBuilder &align_with_previous(bool value = true);
+
   int input_index() const
   {
     BLI_assert(decl_in_base_ != nullptr);
@@ -465,9 +473,6 @@ class NodeDeclaration {
   bool is_context_dependent = false;
 
   friend NodeDeclarationBuilder;
-
-  /** Returns true if the declaration is considered valid. */
-  bool is_valid() const;
 
   bool matches(const bNode &node) const;
   Span<SocketDeclaration *> sockets(eNodeSocketInOut in_out) const;
