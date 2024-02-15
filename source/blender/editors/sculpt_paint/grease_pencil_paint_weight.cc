@@ -341,8 +341,9 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
     }
 
     /* Get editable drawings grouped per frame number. When multiframe editing is disabled, this is
-     * one group for the current frame. When multiframe editing is enabled, the selected keyframes
-     * are grouped per frame number. */
+     * just one group for the current frame. When multiframe editing is enabled, the selected
+     * keyframes are grouped per frame number. This way we can use tools like Smear, Average and
+     * Blur on multiple layers together instead of on every layer individually. */
     Vector<Vector<MutableDrawingInfo>> drawings_per_frame = retrieve_editable_drawings_per_frame(
         *scene, grease_pencil);
     this->points_in_stroke = Array<PointsInBrushStroke>(drawings_per_frame.size());

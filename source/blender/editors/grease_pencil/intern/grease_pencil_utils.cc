@@ -401,11 +401,12 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
       layer, current_frame, use_multi_frame_editing);
   for (const int frame_number : frame_numbers) {
     if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
-      editable_drawings.append({*drawing, layer.drawing_index_at(frame_number), frame_number});
+      editable_drawings.append(
+          {*drawing, layer.drawing_index_at(frame_number), frame_number, 1.0f});
     }
   }
 
-  return editable_drawings.as_span();
+  return editable_drawings;
 }
 
 Vector<DrawingInfo> retrieve_visible_drawings(const Scene &scene,

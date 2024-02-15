@@ -331,7 +331,7 @@ class _draw_tool_settings_context_mode:
         brush = paint.brush
         if brush is None:
             return False
-            
+
         capabilities = brush.weight_paint_capabilities
         
         if context.object.type != 'GREASEPENCIL':

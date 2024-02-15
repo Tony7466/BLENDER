@@ -235,6 +235,7 @@ void normalize_vertex_weights(const MDeformVert &dvert,
                                  vertex_group_is_bone_deformed);
   }
 }
+
 struct ClosestGreasePencilDrawing {
   const bke::greasepencil::Drawing *drawing = nullptr;
   int active_defgroup_index;
