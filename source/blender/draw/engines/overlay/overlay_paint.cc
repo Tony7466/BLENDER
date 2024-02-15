@@ -254,7 +254,7 @@ void OVERLAY_paint_weight_cache_populate(OVERLAY_Data *vedata, Object *ob)
       OVERLAY_paint_vertex_cache_populate(vedata, ob);
       break;
     case OB_GREASE_PENCIL:
-      OVERLAY_weight_grease_pencil_cache_populate(vedata, ob);
+      /* TODO */
       break;
     default:
       BLI_assert_unreachable();
