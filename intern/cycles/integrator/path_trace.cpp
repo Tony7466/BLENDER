@@ -1286,41 +1286,74 @@ void PathTrace::set_guiding_params(const GuidingParams &guiding_params, const bo
     guiding_params_ = guiding_params;
 
     if (guiding_params_.use) {
+#  if OPENPGL_VERSION_MINOR >= 6
+      openpgl::cpp::FieldConfig field_config;
+#  else
       PGLFieldArguments field_args;
+#  endif
       switch (guiding_params_.type) {
         default:
         /* Parallax-aware von Mises-Fisher mixture models. */
         case GUIDING_TYPE_PARALLAX_AWARE_VMM: {
+#  if OPENPGL_VERSION_MINOR >= 6
+          field_config.Init(
+              PGL_SPATIAL_STRUCTURE_TYPE::PGL_SPATIAL_STRUCTURE_KDTREE,
+              PGL_DIRECTIONAL_DISTRIBUTION_TYPE::PGL_DIRECTIONAL_DISTRIBUTION_PARALLAX_AWARE_VMM,
+              guiding_params.deterministic);
+#  else
           pglFieldArgumentsSetDefaults(
               field_args,
               PGL_SPATIAL_STRUCTURE_TYPE::PGL_SPATIAL_STRUCTURE_KDTREE,
               PGL_DIRECTIONAL_DISTRIBUTION_TYPE::PGL_DIRECTIONAL_DISTRIBUTION_PARALLAX_AWARE_VMM);
+#  endif
           break;
         }
         /* Directional quad-trees. */
         case GUIDING_TYPE_DIRECTIONAL_QUAD_TREE: {
+#  if OPENPGL_VERSION_MINOR >= 6
+          field_config.Init(
+              PGL_SPATIAL_STRUCTURE_TYPE::PGL_SPATIAL_STRUCTURE_KDTREE,
+              PGL_DIRECTIONAL_DISTRIBUTION_TYPE::PGL_DIRECTIONAL_DISTRIBUTION_QUADTREE,
+              guiding_params.deterministic);
+#  else
           pglFieldArgumentsSetDefaults(
               field_args,
               PGL_SPATIAL_STRUCTURE_TYPE::PGL_SPATIAL_STRUCTURE_KDTREE,
               PGL_DIRECTIONAL_DISTRIBUTION_TYPE::PGL_DIRECTIONAL_DISTRIBUTION_QUADTREE);
+#  endif
           break;
         }
         /* von Mises-Fisher mixture models. */
         case GUIDING_TYPE_VMM: {
+#  if OPENPGL_VERSION_MINOR >= 6
+          field_config.Init(
+              PGL_SPATIAL_STRUCTURE_TYPE::PGL_SPATIAL_STRUCTURE_KDTREE,
+              PGL_DIRECTIONAL_DISTRIBUTION_TYPE::PGL_DIRECTIONAL_DISTRIBUTION_VMM,
+              guiding_params.deterministic);
+#  else
           pglFieldArgumentsSetDefaults(
               field_args,
               PGL_SPATIAL_STRUCTURE_TYPE::PGL_SPATIAL_STRUCTURE_KDTREE,
               PGL_DIRECTIONAL_DISTRIBUTION_TYPE::PGL_DIRECTIONAL_DISTRIBUTION_VMM);
+#  endif
           break;
         }
       }
+#  if OPENPGL_VERSION_MINOR >= 6
+      field_config.SetSpatialStructureArgMaxDepth(16);
+#  else
       field_args.deterministic = guiding_params.deterministic;
       reinterpret_cast<PGLKDTreeArguments *>(field_args.spatialSturctureArguments)->maxDepth = 16;
+#  endif
       openpgl::cpp::Device *guiding_device = static_cast<openpgl::cpp::Device *>(
           device_->get_guiding_device());
       if (guiding_device) {
         guiding_sample_data_storage_ = make_unique<openpgl::cpp::SampleStorage>();
+#  if OPENPGL_VERSION_MINOR >= 6
+        guiding_field_ = make_unique<openpgl::cpp::Field>(guiding_device, field_config);
+#  else
         guiding_field_ = make_unique<openpgl::cpp::Field>(guiding_device, field_args);
+#  endif
       }
       else {
         guiding_sample_data_storage_ = nullptr;
