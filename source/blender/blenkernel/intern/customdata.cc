@@ -2557,6 +2557,29 @@ static const ImplicitSharingInfo *make_implicit_sharing_info_for_layer(const eCu
   return MEM_new<CustomDataLayerImplicitSharing>(__func__, data, totelem, type);
 }
 
+bool CustomData_is_equal_fast(const CustomData &self, const CustomData &other)
+{
+  if (self.totlayer != other.totlayer) {
+    return false;
+  }
+
+  for (int i = 0; i < self.totlayer; i++) {
+    CustomDataLayer &self_layer = self.layers[i];
+    CustomDataLayer &other_layer = other.layers[i];
+    if (self_layer.type != other_layer.type) {
+      return false;
+    }
+    if (ELEM(nullptr, self_layer.sharing_info, other_layer.sharing_info)) {
+      return false;
+    }
+    if (self_layer.data != other_layer.data) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 /**
  * If the layer data is currently shared (hence it is immutable), create a copy that can be edited.
  */

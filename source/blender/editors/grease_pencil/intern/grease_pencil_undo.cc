@@ -138,13 +138,18 @@ class StepDrawingGeometry : public StepDrawingGeometryBase {
 
     GreasePencilDrawing &drawing_geometry = *reinterpret_cast<GreasePencilDrawing *>(
         drawings[index_]);
+    if (drawing_geometry.base.flag != flag_ ||
+        !drawing_geometry.geometry.wrap().is_equal_fast(geometry_))
+    {
+      printf("Geometry Drawing %d detected as changed\n", index_);
+      drawing_geometry.base.flag = flag_;
+      drawing_geometry.geometry.wrap() = geometry_;
 
-    drawing_geometry.base.flag = flag_;
-    drawing_geometry.geometry.wrap() = geometry_;
-
-    /* TODO: Check if there is a way to tell if both stored and current geometry are still the
-     * same, to avoid recomputing the cache all the time for all drawings? */
-    drawing_geometry.runtime->triangles_cache.tag_dirty();
+      drawing_geometry.runtime->triangles_cache.tag_dirty();
+    }
+    else {
+      printf("Geometry Drawing %d detected as unchanged\n", index_);
+    }
   }
 };
 

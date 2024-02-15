@@ -284,6 +284,12 @@ class CurvesGeometry : public ::CurvesGeometry {
    */
   std::optional<Bounds<float3>> bounds_min_max() const;
 
+  /**
+   * Check whether the given other CurvesGeometry shares all of its data, and can be considered a
+   * equal to `this`.
+   */
+  bool is_equal_fast(const CurvesGeometry &other) const;
+
  private:
   /* --------------------------------------------------------------------
    * Evaluation.

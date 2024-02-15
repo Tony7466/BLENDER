@@ -223,6 +223,12 @@ CustomData CustomData_shallow_copy_remove_non_bmesh_attributes(const CustomData 
                                                                eCustomDataMask mask);
 
 /**
+ * Compare all layers in given custom data storages, and return true if they all match in both, all
+ * use implicitly shared pointers for the actual data, and all these shared pointers are matching.
+ */
+bool CustomData_is_equal_fast(const CustomData &self, const CustomData &other);
+
+/**
  * NULL's all members and resets the #CustomData.typemap.
  */
 void CustomData_reset(CustomData *data);

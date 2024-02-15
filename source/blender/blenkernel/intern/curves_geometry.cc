@@ -1179,6 +1179,27 @@ std::optional<Bounds<float3>> CurvesGeometry::bounds_min_max() const
   return this->runtime->bounds_cache.data();
 }
 
+bool CurvesGeometry::is_equal_fast(const CurvesGeometry &other) const
+{
+  if (this->curve_num != other.curve_num) {
+    BLI_assert(this->curve_offsets != other.curve_offsets);
+    return false;
+  }
+  if (this->point_num != other.point_num) {
+    return false;
+  }
+  if (this->curve_offsets != other.curve_offsets) {
+    return false;
+  }
+  if (!CustomData_is_equal_fast(this->curve_data, other.curve_data)) {
+    return false;
+  }
+  if (!CustomData_is_equal_fast(this->point_data, other.point_data)) {
+    return false;
+  }
+  return true;
+}
+
 CurvesGeometry curves_copy_point_selection(
     const CurvesGeometry &curves,
     const IndexMask &points_to_copy,
