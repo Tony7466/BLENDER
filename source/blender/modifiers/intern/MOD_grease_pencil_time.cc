@@ -7,12 +7,15 @@
  */
 
 #include "BLI_index_range.hh"
+#include "BLI_map.hh"
 #include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
+#include "BLI_vector_set.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
+#include "DNA_scene_types.h"
 
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
@@ -22,6 +25,8 @@
 #include "BKE_screen.hh"
 
 #include "BLO_read_write.hh"
+
+#include "DEG_depsgraph_query.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -36,6 +41,8 @@
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_ui_common.hh"
+
+#include <iostream>
 
 namespace blender {
 
@@ -83,19 +90,111 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&tmd->influence, ob, walk, user_data);
 }
 
+struct FrameRange {
+  /* Start frame. */
+  int sfra;
+  /* End frame. */
+  int efra;
+};
+
+/* Create a timeline for an inverse linear time mapping. */
+static void remap_frames_linear(const Map<int, GreasePencilFrame> &src_frames,
+                                const FrameRange &frame_range,
+                                const int offset,
+                                const float scale,
+                                Map<int, GreasePencilFrame> &dst_frames)
+{
+  BLI_assert(scale >= 0.0f);
+
+  /* Auxiliary map to resolve conflicts when several keys map to the same frame.
+   * Only the last frame should be used. */
+  Map<int, int> used_src_frame;
+  /* Insert a frame with an additional "order" value to resolve conflicts. */
+  auto insert_frame = [&](const int key, GreasePencilFrame frame, const int order) {
+    used_src_frame.add_or_modify(
+        key,
+        [&](int *value) {
+          *value = order;
+          dst_frames.add_new(key, std::move(frame));
+          std::cout << "  [added " << key << " first (order " << order << ")]" << std::endl;
+        },
+        [&](int *value) {
+          /* Only insert if the key is a later frame. */
+          if (order > *value) {
+            std::cout << "  [added " << key << " new (order " << order << ", higher than old "
+                      << (*value) << ")]" << std::endl;
+            *value = order;
+            dst_frames.add_overwrite(key, std::move(frame));
+          }
+          else {
+            std::cout << "  [ignored " << key << ", current order " << (*value) << " is higher]"
+                      << std::endl;
+          }
+        });
+  };
+
+  std::cout << "INSERTING" << std::endl;
+  for (const auto &item : src_frames.items()) {
+    /* Note: src_frame has same order as dst_frame for positive scale,
+     * can be used as-is for ordering. */
+    const int src_frame = item.key;
+    const GreasePencilFrame &src_value = item.value;
+    /* Inverse frame mapping. */
+    const int dst_frame = int((src_frame - offset) / scale);
+
+    if (dst_frame < frame_range.sfra) {
+      /* The frame is outside the range but might influence it.
+       * In that case a break frame is inserted at the start. */
+      std::cout << "Frame " << src_frame << " -> " << dst_frame << " outside range ("
+                << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
+      insert_frame(frame_range.sfra, src_value, src_frame);
+    }
+    else if (dst_frame <= frame_range.efra) {
+      /* Inside the frame range insert as a regular keyframe. */
+      std::cout << "Frame " << src_frame << " -> " << dst_frame << " inside range ("
+                << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
+      insert_frame(dst_frame, src_value, src_frame);
+    }
+  }
+
+  { /* DEBUGGING*/
+    struct DebugItem {
+      int src_frame;
+      int dst_frame;
+      int drawing_index;
+    };
+    blender::Vector<DebugItem> frames_debug;
+    for (const auto &item : dst_frames.items()) {
+      frames_debug.append({int(item.key * scale + offset), item.key, item.value.drawing_index});
+    }
+    std::sort(frames_debug.begin(),
+              frames_debug.end(),
+              [&](const DebugItem &a, const DebugItem &b) { return a.dst_frame < b.dst_frame; });
+
+    std::cout << "RESULT" << std::endl;
+    for (const DebugItem &item : frames_debug) {
+      std::cout << item.src_frame << " -> " << item.dst_frame << "(" << item.drawing_index << ")"
+                << std::endl;
+    }
+  } /* DEBUGGING*/
+}
+
 static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
   using bke::greasepencil::Drawing;
+  using bke::greasepencil::Layer;
 
   auto *tmd = reinterpret_cast<GreasePencilTimeModifierData *>(md);
+  const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+  FrameRange dst_range = {scene->r.sfra, scene->r.efra};
 
   if (!geometry_set->has_grease_pencil()) {
     return;
   }
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
-  const int frame = grease_pencil.runtime->eval_frame;
+  // const int frame = grease_pencil.runtime->eval_frame;
 
   //   const PatternInfo pattern_info = get_pattern_info(*tmd);
 
@@ -103,8 +202,19 @@ static void modify_geometry_set(ModifierData *md,
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       grease_pencil, tmd->influence, mask_memory);
 
-  const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
-      grease_pencil, layer_mask, frame);
+  for (const int64_t i : layer_mask.index_range()) {
+    Layer *layer = grease_pencil.layers_for_write()[layer_mask[i]];
+
+    /* Offset all the frame keys. */
+    Map<int, GreasePencilFrame> new_frames;
+    remap_frames_linear(layer->frames(), dst_range, tmd->offset, tmd->frame_scale, new_frames);
+    layer->frames_for_write() = std::move(new_frames);
+
+    layer->tag_frames_map_keys_changed();
+  }
+
+  // const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
+  //     grease_pencil, layer_mask, frame);
   //   threading::parallel_for_each(
   //       drawings, [&](Drawing *drawing) { modify_drawing(*tmd, *ctx, pattern_info, *drawing);
   //       });
