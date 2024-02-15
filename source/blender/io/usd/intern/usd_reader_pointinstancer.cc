@@ -14,6 +14,7 @@
 #include "BLI_string.h"
 
 #include "DNA_collection_types.h"
+#include "DNA_node_types.h"
 
 #include <pxr/usd/usdGeom/pointInstancer.h>
 
