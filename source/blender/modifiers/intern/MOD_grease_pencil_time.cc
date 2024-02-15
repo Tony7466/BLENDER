@@ -104,7 +104,7 @@ static void remap_frames_linear(const Map<int, GreasePencilFrame> &src_frames,
                                 const float scale,
                                 Map<int, GreasePencilFrame> &dst_frames)
 {
-  BLI_assert(scale >= 0.0f);
+  const bool reverse = scale < 0.0f;
 
   /* Auxiliary map to resolve conflicts when several keys map to the same frame.
    * Only the last frame should be used. */
@@ -124,6 +124,7 @@ static void remap_frames_linear(const Map<int, GreasePencilFrame> &src_frames,
             std::cout << "  [added " << key << " new (order " << order << ", higher than old "
                       << (*value) << ")]" << std::endl;
             *value = order;
+            BLI_assert(dst_frames.contains(key));
             dst_frames.add_overwrite(key, std::move(frame));
           }
           else {
@@ -142,18 +143,43 @@ static void remap_frames_linear(const Map<int, GreasePencilFrame> &src_frames,
     /* Inverse frame mapping. */
     const int dst_frame = int((src_frame - offset) / scale);
 
-    if (dst_frame < frame_range.sfra) {
-      /* The frame is outside the range but might influence it.
-       * In that case a break frame is inserted at the start. */
-      std::cout << "Frame " << src_frame << " -> " << dst_frame << " outside range ("
-                << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
-      insert_frame(frame_range.sfra, src_value, src_frame);
+    if (!reverse) {
+      /* Used to ensure the last frame gets used when many frames map to the same destination. */
+      const int order = src_frame;
+      if (dst_frame < frame_range.sfra) {
+        /* The frame is outside the range but might influence it.
+         * In that case a break frame is inserted at the start. */
+        std::cout << "Frame " << src_frame << " -> " << dst_frame << " outside range ("
+                  << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
+        insert_frame(frame_range.sfra, src_value, order);
+      }
+      else if (dst_frame <= frame_range.efra) {
+        /* Inside the frame range insert as a regular keyframe. */
+        std::cout << "Frame " << src_frame << " -> " << dst_frame << " inside range ("
+                  << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
+        insert_frame(dst_frame, src_value, order);
+      }
     }
-    else if (dst_frame <= frame_range.efra) {
-      /* Inside the frame range insert as a regular keyframe. */
-      std::cout << "Frame " << src_frame << " -> " << dst_frame << " inside range ("
-                << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
-      insert_frame(dst_frame, src_value, src_frame);
+    else {
+      /* Reverse mode requires that frames get pushed to the end of their range
+       * in order to project influence "backward". */
+      TODO
+          /* Used to ensure the first frame gets used when many frames map to the same destination.
+           */
+          const int order = -src_frame;
+      if (dst_frame < frame_range.sfra) {
+        /* The frame is outside the range but might influence it.
+         * In that case a break frame is inserted at the start. */
+        std::cout << "Frame " << src_frame << " -> " << dst_frame << " outside range ("
+                  << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
+        insert_frame(frame_range.sfra, src_value, order);
+      }
+      else if (dst_frame <= frame_range.efra) {
+        /* Inside the frame range insert as a regular keyframe. */
+        std::cout << "Frame " << src_frame << " -> " << dst_frame << " inside range ("
+                  << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
+        insert_frame(dst_frame, src_value, order);
+      }
     }
   }
 
@@ -188,7 +214,13 @@ static void modify_geometry_set(ModifierData *md,
 
   auto *tmd = reinterpret_cast<GreasePencilTimeModifierData *>(md);
   const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
-  FrameRange dst_range = {scene->r.sfra, scene->r.efra};
+  const bool use_custom_range = tmd->flag & MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE;
+  const bool use_loop = tmd->flag & MOD_GREASE_PENCIL_TIME_KEEP_LOOP;
+  const FrameRange dst_range = use_custom_range ? FrameRange{tmd->sfra, tmd->efra} :
+                                                  FrameRange{scene->r.sfra, scene->r.efra};
+  /* XXX This is wrong, should subtract scene->r.sfra instead of 1.
+   * But GPv2 does this, so keep it. */
+  const int shift = dst_range.sfra - 1;
 
   if (!geometry_set->has_grease_pencil()) {
     return;
@@ -205,9 +237,30 @@ static void modify_geometry_set(ModifierData *md,
   for (const int64_t i : layer_mask.index_range()) {
     Layer *layer = grease_pencil.layers_for_write()[layer_mask[i]];
 
-    /* Offset all the frame keys. */
     Map<int, GreasePencilFrame> new_frames;
-    remap_frames_linear(layer->frames(), dst_range, tmd->offset, tmd->frame_scale, new_frames);
+    switch (GreasePencilTimeModifierMode(tmd->mode)) {
+      case MOD_GREASE_PENCIL_TIME_MODE_NORMAL: {
+        remap_frames_linear(
+            layer->frames(), dst_range, shift + tmd->offset, tmd->frame_scale, new_frames);
+        break;
+      }
+      case MOD_GREASE_PENCIL_TIME_MODE_REVERSE: {
+        /* XXX This is wrong, should be using scene->r.sfra. But GPv2 does this, so keep it. */
+        const int dst_efra = dst_range.efra;
+        remap_frames_linear(layer->frames(),
+                            dst_range,
+                            dst_efra + shift + tmd->offset,
+                            -tmd->frame_scale,
+                            new_frames);
+        break;
+      }
+      case MOD_GREASE_PENCIL_TIME_MODE_FIX:
+        break;
+      case MOD_GREASE_PENCIL_TIME_MODE_PINGPONG:
+        break;
+      case MOD_GREASE_PENCIL_TIME_MODE_CHAIN:
+        break;
+    }
     layer->frames_for_write() = std::move(new_frames);
 
     layer->tag_frames_map_keys_changed();

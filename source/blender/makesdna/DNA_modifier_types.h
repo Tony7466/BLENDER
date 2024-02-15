@@ -2849,10 +2849,8 @@ typedef struct GreasePencilTimeModifierData {
 } GreasePencilTimeModifierData;
 
 typedef enum GreasePencilTimeModifierFlag {
-  MOD_GREASE_PENCIL_TIME_INVERT_LAYER = (1 << 0),
-  MOD_GREASE_PENCIL_TIME_KEEP_LOOP = (1 << 1),
-  MOD_GREASE_PENCIL_TIME_INVERT_LAYERPASS = (1 << 2),
-  MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE = (1 << 3),
+  MOD_GREASE_PENCIL_TIME_KEEP_LOOP = (1 << 0),
+  MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE = (1 << 1),
 } GreasePencilTimeModifierFlag;
 
 typedef enum GreasePencilTimeModifierMode {

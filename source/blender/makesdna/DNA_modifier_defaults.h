@@ -898,7 +898,7 @@
 
 #define _DNA_DEFAULT_GreasePencilTimeModifierData \
   { \
-    .flag = GP_TIME_KEEP_LOOP, \
+    .flag = MOD_GREASE_PENCIL_TIME_KEEP_LOOP, \
     .offset = 1, \
     .frame_scale = 1.0f, \
     .mode = 0, \
