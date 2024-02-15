@@ -14,6 +14,8 @@
 
 #include "RNA_enum_types.hh"
 
+#include "BLI_task.hh"
+
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_sample_nearest_surface_cc {
@@ -119,16 +121,18 @@ class SampleNearestSurfaceFunction : public mf::MultiFunction {
 
     /* Construct BVH tree for each group. */
     bvh_trees_.reinitialize(groups_num);
-    for (const int group_i : IndexRange(groups_num)) {
-      const IndexMask &group_mask = group_masks[group_i];
-      BVHTreeFromMesh &bvh = bvh_trees_[group_i];
-      if (group_mask.size() == mesh.faces_num) {
-        BKE_bvhtree_from_mesh_get(&bvh, &mesh, BVHTREE_FROM_CORNER_TRIS, 2);
+    threading::parallel_for(IndexRange(groups_num), 16, [&](const IndexRange range) {
+      for (const int group_i : range) {
+        const IndexMask &group_mask = group_masks[group_i];
+        BVHTreeFromMesh &bvh = bvh_trees_[group_i];
+        if (group_mask.size() == mesh.faces_num) {
+          BKE_bvhtree_from_mesh_get(&bvh, &mesh, BVHTREE_FROM_CORNER_TRIS, 2);
+        }
+        else {
+          BKE_bvhtree_from_mesh_tris_init(mesh, group_mask, bvh);
+        }
       }
-      else {
-        BKE_bvhtree_from_mesh_tris_init(mesh, group_mask, bvh);
-      }
-    }
+    });
   }
 
   ~SampleNearestSurfaceFunction()
