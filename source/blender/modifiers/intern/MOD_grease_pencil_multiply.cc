@@ -154,8 +154,8 @@ static void generate_curves(GreasePencilMultiModifierData &mmd,
   const float fading_center = mmd.fading_center;
 
   MutableSpan<float3> positions = duplicated_strokes.positions_for_write();
-  const Span<float3> normals = duplicated_strokes.evaluated_normals();
   const Span<float3> tangents = duplicated_strokes.evaluated_tangents();
+  const Span<float3> normals = drawing.curve_plane_normals();
 
   bke::MutableAttributeAccessor attributes = duplicated_strokes.attributes_for_write();
   bke::SpanAttributeWriter<float> opacities = attributes.lookup_or_add_for_write_span<float>(
