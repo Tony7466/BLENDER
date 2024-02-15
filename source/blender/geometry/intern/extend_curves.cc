@@ -35,7 +35,6 @@ static void extend_curves_straight(const float used_percent_length,
                                    MutableSpan<float3> positions)
 {
   float overshoot_point_param = used_percent_length * (new_size - 1);
-  float3 result;
   if (start_points[curve]) {
     /** Here we use the vector between two adjacent points around #overshoot_point_param as
      * our reference forthe direction of extention, however to have better tolerance for jitter,
@@ -48,34 +47,35 @@ static void extend_curves_straight(const float used_percent_length,
     if (index2 == 0) {
       index2 = 1;
     }
-    result = math::interpolate(positions[new_curve[index1]],
-                               positions[new_curve[index2]],
-                               fmodf(overshoot_point_param, 1.0f));
+    float3 result = math::interpolate(positions[new_curve[index1]],
+                                      positions[new_curve[index2]],
+                                      fmodf(overshoot_point_param, 1.0f));
     result -= positions[new_curve.first()];
     if (UNLIKELY(math::is_zero(result))) {
       result = positions[new_curve[1]] - positions[new_curve[0]];
     }
-    positions[new_curve[0]] += result * (-use_start_lengths[curve] / len_v3(result));
+    positions[new_curve[0]] += result * (-use_start_lengths[curve] / math::length(result));
   }
 
   if (end_points[curve]) {
     int index1 = new_size - 1 - math::floor(overshoot_point_param);
     int index2 = new_size - 1 - math::ceil(overshoot_point_param);
-    result = math::interpolate(positions[new_curve[index1]],
-                               positions[new_curve[index2]],
-                               fmodf(overshoot_point_param, 1.0f));
+    float3 result = math::interpolate(positions[new_curve[index1]],
+                                      positions[new_curve[index2]],
+                                      fmodf(overshoot_point_param, 1.0f));
     result -= positions[new_curve.last()];
     if (UNLIKELY(math::is_zero(result))) {
       result = positions[new_curve[new_size - 2]] - positions[new_curve[new_size - 1]];
     }
-    positions[new_curve[new_size - 1]] += result * (-use_end_lengths[curve] / len_v3(result));
+    positions[new_curve[new_size - 1]] += result *
+                                          (-use_end_lengths[curve] / math::length(result));
   }
 }
 
 static void extend_curves_curved(const float used_percent_length,
                                  const Span<int> start_points,
                                  const Span<int> end_points,
-                                 const OffsetIndices<int> &points_by_curve,
+                                 const OffsetIndices<int> points_by_curve,
                                  const int curve,
                                  const IndexRange new_curve,
                                  const Span<float> use_start_lengths,
@@ -247,10 +247,10 @@ bke::CurvesGeometry extend_curves(bke::CurvesGeometry &src_curves,
     /* Copy only curves domain since we are not changing the number of curves here. */
     dst_curves = bke::curves::copy_only_curve_domain(src_curves);
     /* Count how many points we need. */
-    MutableSpan<int> dst_point_offsets = dst_curves.offsets_for_write();
+    MutableSpan<int> dst_points_by_curve = dst_curves.offsets_for_write();
     selection.foreach_index([&](const int curve) {
       int point_count = points_by_curve[curve].size();
-      dst_point_offsets[curve] = point_count;
+      dst_points_by_curve[curve] = point_count;
       /* Curve not suitable for stretching... */
       if (point_count <= 2) {
         return;
@@ -262,14 +262,14 @@ bke::CurvesGeometry extend_curves(bke::CurvesGeometry &src_curves,
       const int count_end = (use_end_lengths[curve] > 0) ?
                                 (math::ceil(use_end_lengths[curve] * point_density)) :
                                 0;
-      dst_point_offsets[curve] += count_start;
-      dst_point_offsets[curve] += count_end;
+      dst_points_by_curve[curve] += count_start;
+      dst_points_by_curve[curve] += count_end;
       start_points[curve] = count_start;
       end_points[curve] = count_end;
     });
 
-    OffsetIndices dst_indicies = offset_indices::accumulate_counts_to_offsets(dst_point_offsets);
-    int target_point_count = dst_point_offsets.last();
+    OffsetIndices dst_indices = offset_indices::accumulate_counts_to_offsets(dst_points_by_curve);
+    int target_point_count = dst_points_by_curve.last();
 
     /* Make dest to source map for points. */
     Array<int> dst_to_src_point(target_point_count);
@@ -277,7 +277,7 @@ bke::CurvesGeometry extend_curves(bke::CurvesGeometry &src_curves,
       const int point_count = points_by_curve[curve].size();
       int local_front = 0;
       MutableSpan<int> new_points_by_curve = dst_to_src_point.as_mutable_span().slice(
-          dst_indicies[curve]);
+          dst_indices[curve]);
       if (start_points[curve]) {
         MutableSpan<int> starts = new_points_by_curve.slice(0, start_points[curve]);
         starts.fill(points_by_curve[curve].first());
