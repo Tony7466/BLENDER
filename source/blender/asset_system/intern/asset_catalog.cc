@@ -626,7 +626,7 @@ void AssetCatalogService::create_missing_catalogs()
     }
 
     /* The parent doesn't exist, so create it and queue it up for checking its parent. */
-    AssetCatalog *parent_catalog = create_catalog(parent_path);
+    AssetCatalog *parent_catalog = this->create_catalog(parent_path);
     parent_catalog->flags.has_unsaved_changes = true;
 
     paths_to_check.insert(parent_path);
