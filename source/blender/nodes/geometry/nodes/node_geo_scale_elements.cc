@@ -169,11 +169,6 @@ static void scale_vertex_islands_uniformly(Mesh &mesh,
       islands.index_range(),
       512,
       [&](const IndexRange range) {
-        {
-          static std::mutex m;
-          std::lock_guard lock{m};
-          std::cout << range << " " << range.size() << "\n";
-        }
         for (const int island_index : range) {
           const ElementIsland &island = islands[island_index];
 
