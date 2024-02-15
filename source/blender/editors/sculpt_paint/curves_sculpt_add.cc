@@ -208,7 +208,7 @@ struct AddOperationExecutor {
     add_inputs.interpolate_length = brush_settings_->flag &
                                     BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_LENGTH;
     add_inputs.interpolate_shape = brush_settings_->flag &
-                                    BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_SHAPE;
+                                   BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_SHAPE;
     add_inputs.interpolate_point_count = brush_settings_->flag &
                                          BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_POINT_COUNT;
     add_inputs.interpolate_resolution = curves_orig_->attributes().contains("resolution");
