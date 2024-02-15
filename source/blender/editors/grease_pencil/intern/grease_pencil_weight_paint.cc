@@ -35,9 +35,6 @@ namespace blender::ed::greasepencil {
 
 int create_vertex_group_in_object(Object *ob)
 {
-  int def_nr = 0;
-  bool named_by_bone = false;
-
   /* Look for an active bone in armature to name the vertex group after. */
   Object *ob_armature = BKE_modifiers_is_deformed_by_armature(ob);
   if (ob_armature != nullptr) {
@@ -48,28 +45,23 @@ int create_vertex_group_in_object(Object *ob)
         const int channel_def_nr = BKE_object_defgroup_name_index(ob, pchan->name);
         if (channel_def_nr == -1) {
           BKE_object_defgroup_add_name(ob, pchan->name);
-          def_nr = BKE_object_defgroup_active_index_get(ob) - 1;
+          return (BKE_object_defgroup_active_index_get(ob) - 1);
         }
         else {
-          def_nr = channel_def_nr;
+          return channel_def_nr;
         }
-        named_by_bone = true;
       }
     }
   }
 
   /* Create a vertex group with a general name. */
-  if (!named_by_bone) {
-    BKE_object_defgroup_add(ob);
-  }
+  BKE_object_defgroup_add(ob);
 
-  return def_nr;
+  return 0;
 }
 
 Set<std::string> get_bone_deformed_vertex_groups(Object &object)
 {
-  Set<std::string> bone_deformed_vgroups;
-
   /* Get all vertex group names in the object. */
   const ListBase *defbase = BKE_object_defgroup_list(&object);
   Set<std::string> defgroups;
@@ -78,6 +70,7 @@ Set<std::string> get_bone_deformed_vertex_groups(Object &object)
   }
 
   /* Lambda function for finding deforming bones with a name matching a vertex group. */
+  Set<std::string> bone_deformed_vgroups;
   const auto find_pose_channels = [&](ModifierData *md) {
     for (; md; md->next) {
       if (!(md->mode & (eModifierMode_Realtime | eModifierMode_Virtual)) ||

@@ -335,7 +335,9 @@ Vector<Vector<MutableDrawingInfo>> retrieve_editable_drawings_per_frame(
     BKE_curvemapping_init(toolsettings->gp_sculpt.cur_falloff);
   }
 
-  /* Get set of unique frame numbers with editable drawings on them. */
+  /* Get set of unique frame numbers with editable drawings on them.
+   * Note: we want an ordered list here, so we use `set` from STL, not the unordered Set from
+   * Blender. */
   std::set<int> selected_frames;
   Span<const Layer *> layers = grease_pencil.layers();
   for (const int layer_i : layers.index_range()) {
