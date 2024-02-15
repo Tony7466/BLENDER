@@ -342,8 +342,6 @@ enum {
   PANEL_TYPE_LAYOUT_VERT_BAR = (1 << 3),
   /** This panel type represents data external to the UI. */
   PANEL_TYPE_INSTANCED = (1 << 4),
-  /** Draw panel background and match the underlying layout's color. */
-  PANEL_TYPE_BACKGROUND_MATCH = (1 << 5),
   /** Don't search panels with this type during property search. */
   PANEL_TYPE_NO_SEARCH = (1 << 7),
 };
