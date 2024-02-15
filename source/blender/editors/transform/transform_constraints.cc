@@ -968,6 +968,7 @@ void drawPropRange(TransInfo *t)
   imm_draw_box_wire_3d(pos, x1, y1, x2, y2);
 
   immUnbindProgram();
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 static void drawObjectConstraint(TransInfo *t)
