@@ -132,16 +132,14 @@ static float4x4 get_rand_matrix(const GreasePencilArrayModifierData &mmd,
 
     if ((mmd.flag & MOD_GREASE_PENCIL_ARRAY_UNIFORM_RANDOM_SCALE) && j == 2) {
       float rand_value;
-      rand_value = math::mod(r[0] * 2.0 - 1.0 + rand_offset, double(1.0f));
-      rand_value = math::mod(math::sin(rand_value * 12.9898 + j * 78.233) * 43758.5453,
-                             double(1.0f));
+      rand_value = math::mod(r[0] * 2.0 - 1.0 + rand_offset, 1.0);
+      rand_value = math::mod(math::sin(rand_value * 12.9898 + j * 78.233) * 43758.5453, 1.0);
       rand[j] = float3(rand_value);
     }
     else {
       for (int i = 0; i < 3; i++) {
-        rand[j][i] = math::mod(r[i] * 2.0 - 1.0 + rand_offset, double(1.0f));
-        rand[j][i] = math::mod(math::sin(rand[j][i] * 12.9898 + j * 78.233) * 43758.5453,
-                               double(1.0f));
+        rand[j][i] = math::mod(r[i] * 2.0 - 1.0 + rand_offset, 1.0);
+        rand[j][i] = math::mod(math::sin(rand[j][i] * 12.9898 + j * 78.233) * 43758.5453, 1.0);
       }
     }
   }
