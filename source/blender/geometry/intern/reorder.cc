@@ -42,14 +42,6 @@ components_supported_reordering()
   return supported_types_and_domains;
 }
 
-static void remove_attributes(const Span<StringRef> names,
-                              bke::MutableAttributeAccessor attributes)
-{
-  for (const StringRef name : names) {
-    attributes.remove(name);
-  }
-}
-
 static void reorder_attributes_group_to_group(
     const bke::AttributeAccessor src_attributes,
     const bke::AttrDomain domain,
@@ -106,8 +98,6 @@ static void copy_and_reorder_mesh_verts(
   const bke::AttributeAccessor src_attributes = src_mesh.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_mesh.attributes_for_write();
 
-  remove_attributes({"position", ".edge_verts", ".corner_vert", ".corner_edge"}, dst_attributes);
-
   bke::copy_attributes(
       src_attributes, bke::AttrDomain::Edge, propagation_info, {}, dst_attributes);
   bke::copy_attributes(
@@ -144,8 +134,6 @@ static void copy_and_reorder_mesh_edges(
   const bke::AttributeAccessor src_attributes = src_mesh.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_mesh.attributes_for_write();
 
-  remove_attributes({"position", ".edge_verts", ".corner_vert", ".corner_edge"}, dst_attributes);
-
   bke::copy_attributes(
       src_attributes, bke::AttrDomain::Point, propagation_info, {}, dst_attributes);
   bke::copy_attributes(
@@ -174,8 +162,6 @@ static void copy_and_reorder_mesh_faces(
 {
   const bke::AttributeAccessor src_attributes = src_mesh.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_mesh.attributes_for_write();
-
-  remove_attributes({"position", ".edge_verts", ".corner_vert", ".corner_edge"}, dst_attributes);
 
   bke::copy_attributes(
       src_attributes, bke::AttrDomain::Point, propagation_info, {}, dst_attributes);
@@ -315,8 +301,8 @@ bke::CurvesGeometry reorder_curves_geometry(
     const Span<int> old_by_new_map,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  bke::CurvesGeometry dst_curves = bke::CurvesGeometry(src_curves.points_num(),
-                                                       src_curves.curves_num());
+  bke::CurvesGeometry dst_curves = bke::curves_new_no_attributes(src_curves.points_num(),
+                                                                 src_curves.curves_num());
   copy_and_reorder_curves(src_curves, old_by_new_map, propagation_info, dst_curves);
   return dst_curves;
 }

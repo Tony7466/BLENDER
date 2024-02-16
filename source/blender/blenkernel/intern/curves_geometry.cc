@@ -1398,9 +1398,8 @@ void CurvesGeometry::remove_attributes_based_on_types()
 
 CurvesGeometry curves_new_no_attributes(int point_num, int curve_num)
 {
-  CurvesGeometry curves(0, 0);
+  CurvesGeometry curves(0, curve_num);
   curves.point_num = point_num;
-  curves.curve_num = curve_num;
 
   CustomData_free_layer_named(&curves.point_data, "position", 0);
 
