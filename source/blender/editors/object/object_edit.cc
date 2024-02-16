@@ -1766,6 +1766,8 @@ static const EnumPropertyItem *object_mode_set_itemf(bContext *C,
 
 static bool object_mode_set_poll(bContext *C)
 {
+  /* Not using #ED_operator_object_active_editable as that hinders you from leaving an edit mode
+   * when the object is disabled in viewport. See #9478 */
   Object *ob = CTX_data_active_object(C);
 
   if (ob == nullptr) {
