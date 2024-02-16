@@ -2264,7 +2264,8 @@ static void rna_property_update(
 
 #if 1
     /* TODO(@ideasman42): Should eventually be replaced entirely by message bus (below)
-     * for now keep since copy-on-eval, bugs are hard to track when we have other missing updates. */
+     * for now keep since copy-on-eval, bugs are hard to track when we have other missing updates.
+     */
     if (prop->noteflag) {
       WM_main_add_notifier(prop->noteflag, ptr->owner_id);
     }
