@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "BLI_random_access_iterator_util.hh"
+#include "BLI_random_access_iterator_mixin.hh"
 #include "BLI_span.hh"
 
 namespace blender {

@@ -41,7 +41,7 @@
 #include <iosfwd>
 
 #include "BLI_assert.h"
-#include "BLI_random_access_iterator_util.hh"
+#include "BLI_random_access_iterator_mixin.hh"
 
 namespace blender {
 
