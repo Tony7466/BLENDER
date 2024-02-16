@@ -895,6 +895,7 @@ RNA_MOD_VGROUP_NAME_SET(WeightVGProximity, mask_defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(WeightedNormal, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Weld, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Wireframe, defgrp_name);
+RNA_MOD_VGROUP_NAME_SET(GreasePencilWeightProximity, target_vgname);
 
 static void rna_ExplodeModifier_vgroup_get(PointerRNA *ptr, char *value)
 {
@@ -974,6 +975,7 @@ RNA_MOD_OBJECT_SET(SurfaceDeform, target, OB_MESH);
 RNA_MOD_OBJECT_SET(GreasePencilMirror, object, OB_EMPTY);
 RNA_MOD_OBJECT_SET(GreasePencilTint, object, OB_EMPTY);
 RNA_MOD_OBJECT_SET(GreasePencilLattice, object, OB_LATTICE);
+RNA_MOD_OBJECT_SET(GreasePencilWeightProximity, object, OB_EMPTY);
 
 static void rna_HookModifier_object_set(PointerRNA *ptr,
                                         PointerRNA value,
@@ -8873,10 +8875,19 @@ static void rna_def_modifier_grease_pencil_weight_proximity(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "GreasePencilWeightProximityModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_VERTEX_WEIGHT);
 
+  rna_def_modifier_grease_pencil_layer_filter(srna);
+  rna_def_modifier_grease_pencil_material_filter(
+      srna, "rna_GreasePencilWeightProximityModifier_material_filter_set");
+  rna_def_modifier_grease_pencil_vertex_group(
+      srna, "rna_GreasePencilWeightProximityModifier_vertex_group_name_set");
+      
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "use_multiply", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA);
   RNA_def_property_ui_text(
       prop,
       "Multiply Weights",
@@ -8884,15 +8895,23 @@ static void rna_def_modifier_grease_pencil_weight_proximity(BlenderRNA *brna)
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_invert_output", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "flag", MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT);
   RNA_def_property_ui_text(prop, "Invert", "Invert output weight values");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "target_vertex_group", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_sdna(prop, nullptr, "target_vgname");
+  RNA_def_property_ui_text(prop, "Vertex Group", "Output Vertex group");
+  RNA_def_property_string_funcs(
+      prop, nullptr, nullptr, "rna_GreasePencilWeightProximityModifier_target_vgname_set");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   /* Distance reference object */
   prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
   RNA_def_property_ui_text(prop, "Target Object", "Object used as distance reference");
   RNA_def_property_pointer_funcs(
-      prop, nullptr, "rna_WeightProxGpencilModifier_object_set", nullptr, nullptr);
+      prop, nullptr, "rna_GreasePencilWeightProximityModifier_object_set", nullptr, nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
 

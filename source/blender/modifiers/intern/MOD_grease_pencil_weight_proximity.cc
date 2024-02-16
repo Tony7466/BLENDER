@@ -103,7 +103,7 @@ static float get_distance_factor(float4x4 mat,
                                  const float dist_min)
 {
   float weight;
-  const float3 gvert = mat * pos;
+  const float3 gvert = (mat * float4(pos,1.0f)).xyz();
   const float dist = math::length(mat.location() - gvert);
 
   if (dist > dist_max) {
@@ -171,11 +171,10 @@ static void write_weights_for_drawing(const ModifierData &md,
   const VArray<float> vgroup_weights = modifier::greasepencil::get_influence_vertex_weights(
       curves, mmd.influence);
 
-  const OffsetIndices points_by_curve = curves.points_by_curve();
   const Span<float3> positions = curves.positions_for_write();
-  const float4x4 obmat = mmd.object ? mmd.object.object_to_world() : float4x4::identity();
+  const float4x4 obmat = mmd.object ? mmd.object->object_to_world() : float4x4::identity();
 
-  threading::parallel_for(points_by_curve.index_range(), 1024, [&](const IndexRange range) {
+  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
     for (const int point : range) {
       const float vgroup_fac = vgroup_weights[point];
       if(vgroup_fac < 0.0f){ continue; }
@@ -189,10 +188,10 @@ static void write_weights_for_drawing(const ModifierData &md,
         dist_fac = 1.0f - dist_fac;
       }
 
-      dst_weights[point] = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA)?
-        dst_weights[point] * dist_fac : dist_fac;
+      dst_weights.span[point] = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA)?
+        dst_weights.span[point] * dist_fac : dist_fac;
 
-      dst_weights[point] = math::clamp(dst_weights[point], mmd->min_weight, 1.0f);
+      dst_weights.span[point] = math::clamp(dst_weights.span[point], mmd.min_weight, 1.0f);
     }
   });
 
@@ -269,7 +268,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panel_register(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, eModifierType_GreasePencilWeightAngle, panel_draw);
+  modifier_panel_register(region_type, eModifierType_GreasePencilWeightProximity, panel_draw);
 }
 
 }  // namespace blender
