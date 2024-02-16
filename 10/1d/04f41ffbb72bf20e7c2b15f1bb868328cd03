@@ -5,3 +5,4 @@ Referenced by commit acfafeed88ee5439519ad6b60b56dc2bac9a6202, Fix #103761: crea
 Referenced by pull request #109910, Fix #103410: name collisions between vertex groups and attributes
 Referenced by commit 12ef20990b35efbf8358a501d52119cd9f6197ed, Fix #103410: name collisions between vertex groups and attributes
 Referenced by pull request #118378, Fix #107228: AttributeGroup.new crash when layer cannot be created
+Referenced by commit 745d2e18dcacd468986dc82ad7ac6b674dc94e27, Fix #107228: AttributeGroup.new crash when layer cannot be created
