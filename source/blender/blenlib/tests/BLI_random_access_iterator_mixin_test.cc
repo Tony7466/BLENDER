@@ -11,24 +11,25 @@
 
 namespace blender::iterator::tests {
 
-struct DoublingIterator : public RandomAccessIteratorMixin<DoublingIterator> {
+template<typename T>
+struct DoublingIterator : public RandomAccessIteratorMixin<DoublingIterator<T>> {
  private:
-  const int *data_;
+  const T *data_;
 
  public:
-  DoublingIterator(const int *data) : data_(data) {}
+  DoublingIterator(const T *data) : data_(data) {}
 
-  int operator*() const
+  T operator*() const
   {
     return *data_ * 2;
   }
 
-  const int *&iter_prop()
+  const T *&iter_prop()
   {
     return data_;
   }
 
-  const int *const &iter_prop() const
+  const T *const &iter_prop() const
   {
     return data_;
   }
