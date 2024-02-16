@@ -1663,9 +1663,14 @@ static bool ghost_event_proc(GHOST_EventHandle ghost_event, GHOST_TUserDataPtr C
           int icon = ED_file_extension_icon((char *)stra->strings[0]);
           wmDragPath *path_data = WM_drag_create_path_data(
               blender::Span((char **)stra->strings, stra->count));
-          WM_event_start_drag(C, icon, WM_DRAG_PATH, path_data, 0.0, WM_DRAG_NOP);
+          WM_event_start_drag(C, icon, WM_DRAG_PATH, path_data, WM_DRAG_NOP);
           /* Void pointer should point to string, it makes a copy. */
         }
+      }
+      else if (ddd->dataType == GHOST_kDragnDropTypeString) {
+        /* Drop an arbitrary string. */
+        std::string *str = MEM_new<std::string>(__func__, static_cast<const char *>(ddd->data));
+        WM_event_start_drag(C, ICON_NONE, WM_DRAG_STRING, str, WM_DRAG_FREE_DATA);
       }
 
       break;
@@ -2023,7 +2028,7 @@ void wm_test_opengl_deprecation_warning(bContext *C)
   wmWindowManager *wm = CTX_wm_manager(C);
   wmWindow *win = static_cast<wmWindow *>((wm->winactive) ? wm->winactive : wm->windows.first);
 
-  BKE_report(&wm->reports,
+  BKE_report(&wm->runtime->reports,
              RPT_ERROR,
              "One of the add-ons or scripts is using OpenGL and will not work correct on Metal. "
              "Please contact the developer of the add-on to migrate to use 'gpu' module");
@@ -2177,8 +2182,8 @@ void WM_event_timer_remove(wmWindowManager *wm, wmWindow * /*win*/, wmTimer *tim
   timer->flags |= WM_TIMER_TAGGED_FOR_REMOVAL;
 
   /* Clear existing references to the timer. */
-  if (wm->reports.reporttimer == timer) {
-    wm->reports.reporttimer = nullptr;
+  if (wm->runtime->reports.reporttimer == timer) {
+    wm->runtime->reports.reporttimer = nullptr;
   }
   /* There might be events in queue with this timer as customdata. */
   LISTBASE_FOREACH (wmWindow *, win, &wm->windows) {
