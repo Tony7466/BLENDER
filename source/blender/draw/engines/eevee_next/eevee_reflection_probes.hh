@@ -30,18 +30,18 @@ class CaptureView;
 
 class SphereProbeModule {
   friend LightProbeModule;
-  /* Capture View requires access to the cube-maps texture for frame-buffer configuration. */
+  /* Capture View requires access to the probe texture for frame-buffer configuration. */
   friend class CaptureView;
   /* Instance requires access to #update_probes_this_sample_ */
   friend class Instance;
 
  private:
   /**
-   * The maximum resolution of a cube-map side.
+   * The maximum resolution of a sphere probe side.
    *
    * Must be a power of two minus one; intention to be used as an atlas.
    */
-  static constexpr int max_resolution_ = 2048 - 1;
+  static constexpr int max_resolution_ = SPHERE_PROBE_ATLAS_RES;
 
   Instance &instance_;
   SphereProbeDataBuf data_buf_;
