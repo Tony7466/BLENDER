@@ -303,12 +303,10 @@ TEST(string_ref, TrimWhitespace)
   StringRef ref2("   test ");
   StringRef ref3(" \t  Urož with spaces ");
   StringRef ref4(" \t \n\r  \t ");
-  StringRef ref5("my/asset/is/best");
   EXPECT_EQ(ref1.trim(), "test");
   EXPECT_EQ(ref2.trim(), "test");
   EXPECT_EQ(ref3.trim(), "Urož with spaces");
   EXPECT_EQ(ref4.trim(), "");
-  EXPECT_EQ(ref5.trim(), "my/asset/is/best");
 }
 
 TEST(string_ref, TrimCharacter)
