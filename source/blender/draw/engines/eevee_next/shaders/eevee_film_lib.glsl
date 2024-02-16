@@ -797,17 +797,21 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     film_store_value(dst, uniform_buf.film.aov_value_id + aov, aov_accum, out_color);
   }
 
-  if (uniform_buf.film.cryptomatte_samples_len != 0) {
-    /* Cryptomatte passes cannot be cleared by a weighted store like other passes. */
-    if (!uniform_buf.film.use_history || uniform_buf.film.use_reprojection) {
-      cryptomatte_clear_samples(dst);
-    }
+  if ((enabled_passes & (PASS_TYPE_CRYPTOMATTE_OBJECT | PASS_TYPE_CRYPTOMATTE_ASSET |
+                         PASS_TYPE_CRYPTOMATTE_MATERIAL)) != 0)
+  {
+    if (uniform_buf.film.cryptomatte_samples_len != 0) {
+      /* Cryptomatte passes cannot be cleared by a weighted store like other passes. */
+      if (!uniform_buf.film.use_history || uniform_buf.film.use_reprojection) {
+        cryptomatte_clear_samples(dst);
+      }
 
-    film_cryptomatte_layer_accum_and_store(
-        dst, texel_film, uniform_buf.film.cryptomatte_object_id, 0, out_color);
-    film_cryptomatte_layer_accum_and_store(
-        dst, texel_film, uniform_buf.film.cryptomatte_asset_id, 1, out_color);
-    film_cryptomatte_layer_accum_and_store(
-        dst, texel_film, uniform_buf.film.cryptomatte_material_id, 2, out_color);
+      film_cryptomatte_layer_accum_and_store(
+          dst, texel_film, uniform_buf.film.cryptomatte_object_id, 0, out_color);
+      film_cryptomatte_layer_accum_and_store(
+          dst, texel_film, uniform_buf.film.cryptomatte_asset_id, 1, out_color);
+      film_cryptomatte_layer_accum_and_store(
+          dst, texel_film, uniform_buf.film.cryptomatte_material_id, 2, out_color);
+    }
   }
 }

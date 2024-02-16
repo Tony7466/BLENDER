@@ -423,9 +423,13 @@ void Film::sync()
    * Still bind previous step to avoid undefined behavior. */
   eVelocityStep step_next = inst_.is_viewport() ? STEP_PREVIOUS : STEP_NEXT;
 
+  GPUShader *sh = inst_.shaders.static_shader_get(shader);
   accumulate_ps_.init();
+  /* Casts are needed otherwise it will be interpreted as a bool value. */
+  accumulate_ps_.specialize_constant(
+      sh, "enabled_passes", static_cast<uint *>(static_cast<void *>(&enabled_passes_)));
   accumulate_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
-  accumulate_ps_.shader_set(inst_.shaders.static_shader_get(shader));
+  accumulate_ps_.shader_set(sh);
   accumulate_ps_.bind_resources(inst_.uniform_data);
   accumulate_ps_.bind_ubo("camera_prev", &(*velocity.camera_steps[STEP_PREVIOUS]));
   accumulate_ps_.bind_ubo("camera_curr", &(*velocity.camera_steps[STEP_CURRENT]));
@@ -616,6 +620,7 @@ void Film::update_sample_table()
       i++;
     }
   }
+  printf("%s: samples_len: %d\n", __func__, data_.samples_len);
 }
 
 void Film::accumulate(View &view, GPUTexture *combined_final_tx)

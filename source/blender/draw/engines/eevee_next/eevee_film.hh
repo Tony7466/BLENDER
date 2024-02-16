@@ -47,7 +47,7 @@ class Film {
   /** Stores indirection table of AOVs based on their name hash and their type. */
   AOVsInfoDataBuf aovs_info;
   /** For debugging purpose but could be a user option in the future. */
-  static constexpr bool use_box_filter = false;
+  static constexpr bool use_box_filter = true;
 
  private:
   Instance &inst_;

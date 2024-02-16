@@ -240,6 +240,31 @@ enum ePassStorageType : uint32_t {
   PASS_STORAGE_CRYPTOMATTE = 2u,
 };
 
+/* Keep in sync with eViewLayerEEVEEPassType. */
+/* TODO: We should avoid to sync these values. */
+enum ePassType : uint32_t {
+  PASS_TYPE_COMBINED = 1u << 0,
+  PASS_TYPE_Z = 1u << 1,
+  PASS_TYPE_MIST = 1u << 2,
+  PASS_TYPE_NORMAL = 1u << 3,
+  PASS_TYPE_DIFFUSE_LIGHT = 1u << 4,
+  PASS_TYPE_DIFFUSE_COLOR = 1u << 5,
+  PASS_TYPE_SPECULAR_LIGHT = 1u << 6,
+  PASS_TYPE_SPECULAR_COLOR = 1u << 7,
+  PASS_TYPE_VOLUME_LIGHT = 1u << 9,
+  PASS_TYPE_EMIT = 1u << 10,
+  PASS_TYPE_ENVIRONMENT = 1u << 11,
+  PASS_TYPE_SHADOW = 1u << 12,
+  PASS_TYPE_AO = 1u << 13,
+  PASS_TYPE_AOV = 1u << 14,
+  PASS_TYPE_CRYPTOMATTE_OBJECT = 1u << 16,
+  PASS_TYPE_CRYPTOMATTE_ASSET = 1u << 17,
+  PASS_TYPE_CRYPTOMATTE_MATERIAL = 1u << 18,
+  PASS_TYPE_VECTOR = 1u << 19,
+  PASS_TYPE_TRANSPARENT = 1u << 20,
+  PASS_TYPE_POSITION = 1u << 21,
+};
+
 struct FilmSample {
   int2 texel;
   float weight;
