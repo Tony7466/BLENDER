@@ -363,7 +363,7 @@ static bNodeTree *add_offset_radius_node_tree(Main &bmain)
       DATA_("Offset"), "", "NodeSocketFloat", NODE_INTERFACE_SOCKET_INPUT, nullptr);
   auto &radius_offset_data = *static_cast<bNodeSocketValueFloat *>(radius_offset->socket_data);
   radius_offset_data.subtype = PROP_DISTANCE;
-  radius_offset_data.min = 0.0f;
+  radius_offset_data.min = -FLT_MAX;
   radius_offset_data.max = FLT_MAX;
 
   group->tree_interface.add_socket(
@@ -484,10 +484,11 @@ void layer_adjustments_to_modifiers(Main &bmain,
       BKE_modifiers_persistent_uid_init(dst_object, *md);
     }
     /* Thickness adjustment. */
-    if (thickness_px > 0) {
+    if (thickness_px != 0) {
       /* Convert the "pixel" offset value into a radius value.
        * GPv2 used a conversion of 1 "px" = 0.001. */
-      const float radius_offset = thickness_px / 2000.0f;
+      /* Note: this offset may be negative. */
+      const float radius_offset = float(thickness_px) / 2000.0f;
       if (!offset_radius_node_tree) {
         offset_radius_node_tree = add_offset_radius_node_tree(bmain);
         BKE_ntree_update_main_tree(&bmain, offset_radius_node_tree, nullptr);
