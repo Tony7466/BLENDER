@@ -133,6 +133,12 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
 
   /* Point Attributes. */
   MutableSpan<float3> positions = curves.positions_for_write();
+  MutableSpan<float3> handle_positions_left = has_bezier_stroke ?
+                                                  curves.handle_positions_left_for_write() :
+                                                  MutableSpan<float3>();
+  MutableSpan<float3> handle_positions_right = has_bezier_stroke ?
+                                                   curves.handle_positions_right_for_write() :
+                                                   MutableSpan<float3>();
   MutableSpan<float> radii = drawing.radii_for_write();
   MutableSpan<float> opacities = drawing.opacities_for_write();
   SpanAttributeWriter<float> delta_times = attributes.lookup_or_add_for_write_span<float>(
@@ -200,6 +206,12 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
      * consistent with how hair curves handle the radius. */
     const float stroke_thickness = float(gps->thickness) / 2000.0f;
     MutableSpan<float3> dst_positions = positions.slice(points);
+    MutableSpan<float3> dst_handle_positions_left = has_bezier_stroke ?
+                                                        handle_positions_left.slice(points) :
+                                                        MutableSpan<float3>();
+    MutableSpan<float3> dst_handle_positions_right = has_bezier_stroke ?
+                                                         handle_positions_right.slice(points) :
+                                                         MutableSpan<float3>();
     MutableSpan<float> dst_radii = radii.slice(points);
     MutableSpan<float> dst_opacities = opacities.slice(points);
     MutableSpan<float> dst_deltatimes = delta_times.span.slice(points);
@@ -221,9 +233,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
           dst_rotations[point_i] = pt.uv_rot;
           dst_vertex_colors[point_i] = ColorGeometry4f(pt.vert_color);
           dst_selection[point_i] = (pt.flag & GP_SPOINT_SELECT) != 0;
-          if (use_dverts && gps->dvert) {
-            copy_dvert(gps->dvert[point_i], dst_dverts[point_i]);
-          }
         }
       });
 
@@ -236,13 +245,31 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
               dst_deltatimes[point_i] = pt.time - pt_prev.time;
             }
           });
+
+      if (use_dverts && gps->dvert) {
+        for (const int point_i : src_points.index_range()) {
+          copy_dvert(gps->dvert[point_i], dst_dverts[point_i]);
+        }
+      }
     }
     else if (curve_types[stroke_i] == CURVE_TYPE_BEZIER) {
       BLI_assert(gps->editcurve != nullptr);
       Span<bGPDcurve_point> src_curve_points{gps->editcurve->curve_points,
                                              gps->editcurve->tot_curve_points};
-      
-      
+
+      threading::parallel_for(src_curve_points.index_range(), 4096, [&](const IndexRange range) {
+        for (const int point_i : range) {
+          const bGPDcurve_point &cpt = src_curve_points[point_i];
+          dst_positions[point_i] = float3(cpt.bezt.vec[1]);
+          dst_handle_positions_left[point_i] = float3(cpt.bezt.vec[0]);
+          dst_handle_positions_right[point_i] = float3(cpt.bezt.vec[2]);
+          dst_radii[point_i] = stroke_thickness * cpt.pressure;
+          dst_opacities[point_i] = cpt.strength;
+          dst_rotations[point_i] = cpt.uv_rot;
+          dst_vertex_colors[point_i] = ColorGeometry4f(cpt.vert_color);
+          dst_selection[point_i] = (cpt.flag & GP_CURVE_POINT_SELECT) != 0;
+        }
+      });
     }
     else {
       /* Unknown curve type. */
