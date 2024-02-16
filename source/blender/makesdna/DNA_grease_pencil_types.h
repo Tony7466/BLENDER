@@ -489,7 +489,7 @@ typedef struct GreasePencil {
   blender::bke::greasepencil::Layer *get_active_layer();
   void set_active_layer(const blender::bke::greasepencil::Layer *layer);
   bool is_layer_active(const blender::bke::greasepencil::Layer *layer) const;
-  void autolock_layers_set();
+  void autolock_inactive_layers();
 
   /* Adding layers and layer groups. */
   /** Adds a new layer with the given name to the top of root group. */

@@ -2178,7 +2178,7 @@ void GreasePencil::set_active_layer(const blender::bke::greasepencil::Layer *lay
       reinterpret_cast<const GreasePencilLayer *>(layer));
 
   if (this->flag & GREASE_PENCIL_AUTOLOCK_LAYERS) {
-    this->autolock_layers_set();
+    this->autolock_inactive_layers();
   }
 }
 
@@ -2190,7 +2190,7 @@ bool GreasePencil::is_layer_active(const blender::bke::greasepencil::Layer *laye
   return this->get_active_layer() == layer;
 }
 
-void GreasePencil::autolock_layers_set() {
+void GreasePencil::autolock_inactive_layers() {
   using namespace blender::bke::greasepencil;
   const bool is_autolock = this->flag & GREASE_PENCIL_AUTOLOCK_LAYERS;
 

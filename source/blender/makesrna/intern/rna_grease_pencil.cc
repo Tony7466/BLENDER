@@ -43,7 +43,7 @@ static void rna_grease_pencil_update(Main * /*bmain*/, Scene * /*scene*/, Pointe
 static void rna_grease_pencil_autolock(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
-  grease_pencil->autolock_layers_set();
+  grease_pencil->autolock_inactive_layers();
   rna_grease_pencil_update(nullptr, nullptr, ptr);
 }
 
