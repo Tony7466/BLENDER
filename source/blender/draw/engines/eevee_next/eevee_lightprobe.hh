@@ -56,61 +56,16 @@ struct SphereProbeAtlasCoord {
   /* Coordinate of the bottom left corner of the area in [0..atlas_extent[ range. */
   int2 area_offset(int atlas_extent, int mip_lvl = 0) const
   {
-    /* There is one pixel padding between each area. */
+    /* There is one pixel padding between each area.
+     * This is because we divide the atlas in power of two regions. */
     return area_location() * (area_extent(atlas_extent, mip_lvl) + 1);
   }
 
   SphereProbeUvArea as_sampling_coord(int atlas_extent) const
   {
-    /**
-     * We want to cover the last mip exactly at the pixel center to reduce padding texels and
-     * interpolation artifacts.
-     * This is a diagram of a 2px^2 map with `c` being the texels corners and `x` the pixels
-     * centers. The lines shows the octahedron edges and pixel boundaries.
-     *
-     * c-------c-------c
-     * |       |       |
-     * |   x---*---x   | <
-     * |   | / | \ |   |  |
-     * c---*---c---*---c  | sampling area
-     * |   | \ | / |   |  |
-     * |   x---*---x   | <
-     * |       |       |
-     * c-------c-------c
-     *     ^-------^
-     *       sampling area
-     *
-     * We place texel centers at the edges of the octahedron, to avoid artifacts caused by
-     * interpolating across the edges.
-     *
-     * This is a diagram of a 5px^2 map with 2 mips. 0 and 1 denote the pixels centers of each
-     * mips. The 1px padding of mip 0 is omitted for clarity. The lines shows the octahedron edges.
-     *
-     * 1---0---1---0---1 <
-     * |     / | \     |  |
-     * 0   0   0   0   0  |
-     * | /     |     \ |  |
-     * 1---0---1---0---1  | sampling area
-     * | \     |     / |  |
-     * 0   0   0   0   0  |
-     * |     \ | /     |  |
-     * 1---0---1---0---1 <
-     * ^---------------^
-     *       sampling area
-     *
-     * To do this, we made all mip levels have an odd number of pixel, by sizing the atlas
-     * appropriately.
-     */
-    /* Max level only need half a pixel of padding around the sampling area. */
-    const int mip_max_lvl_padding = 1;
-    const int mip_min_lvl_padding = mip_max_lvl_padding << (SPHERE_PROBE_MIPMAP_LEVELS - 1);
-    /* Extent and offset in mip 0 texels. */
-    const int2 sampling_area_offset = area_offset(atlas_extent) + mip_min_lvl_padding / 2;
-    int sampling_area_extent = area_extent(atlas_extent) - mip_min_lvl_padding;
-    /* Convert to atlas UVs. */
     SphereProbeUvArea coord;
-    coord.scale = sampling_area_extent / float(atlas_extent);
-    coord.offset = float2(sampling_area_offset) / float(atlas_extent);
+    coord.scale = float(area_extent(atlas_extent)) / atlas_extent;
+    coord.offset = float2(area_offset(atlas_extent)) / atlas_extent;
     coord.layer = atlas_layer;
     return coord;
   }
