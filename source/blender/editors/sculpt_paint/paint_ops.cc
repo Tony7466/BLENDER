@@ -1271,6 +1271,8 @@ static asset_system::AssetCatalog &asset_library_ensure_catalog(
 static asset_system::AssetCatalog &asset_library_ensure_catalogs_in_path(
     asset_system::AssetLibrary &library, const asset_system::AssetCatalogPath &path)
 {
+  /* Adding multiple catalogs in a path at a time with #AssetCatalogService::create_catalog()
+   * doesn't work; add each potentially new catalog in the hierarchy manually here. */
   asset_system::AssetCatalogPath parent = "";
   path.iterate_components([&](StringRef component_name, bool is_last_component) {
     asset_library_ensure_catalog(library, parent / component_name);
@@ -1418,8 +1420,6 @@ static void visit_asset_catalog_for_search_fn(
     return;
   }
 
-  // asset_system::AssetLibrary *library = asset::list::library_get_once_available(
-  //     user_library_to_library_ref(*user_library));
   asset_system::AssetLibrary *library = AS_asset_library_load(
       CTX_data_main(C), user_library_to_library_ref(*user_library));
   if (!library) {
@@ -1428,8 +1428,6 @@ static void visit_asset_catalog_for_search_fn(
 
   asset_system::AssetCatalogTree &full_tree = *library->catalog_service->get_catalog_tree();
   full_tree.foreach_item([&](const asset_system::AssetCatalogTreeItem &item) {
-    // StringPropertySearchVisitParams visit_params{};
-    // visit_params.text = item.catalog_path();
     visit_fn(StringPropertySearchVisitParams{item.catalog_path().str(), std::nullopt});
   });
 }
