@@ -437,7 +437,7 @@ static bNodeTree *add_offset_radius_node_tree(Main &bmain)
   return group;
 }
 
-void thickness_factor_to_modifier(Main &bmain, const bGPdata &src_object_data, Object &dst_object)
+void thickness_factor_to_modifier(const bGPdata &src_object_data, Object &dst_object)
 {
   if (src_object_data.pixfactor <= 0.0f) {
     return;
