@@ -1388,7 +1388,7 @@ static void collection_io_handler_copy(Collection *collection, IOHandlerData *da
   /* Clear the `filepath` property. */
   IDProperty *filepath = IDP_GetPropertyFromGroup(new_data->export_properties, "filepath");
   if (filepath) {
-    IDP_ClearProperty(filepath);
+    IDP_AssignString(filepath, "");
   }
 
   BLI_addtail(&collection->io_handlers, new_data);
