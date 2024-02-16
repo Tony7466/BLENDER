@@ -107,6 +107,8 @@ class OBJECT_MT_modifier_add_edit(ModifierAddMenu, Menu):
             self.operator_modifier_add(layout, 'VERTEX_WEIGHT_EDIT')
             self.operator_modifier_add(layout, 'VERTEX_WEIGHT_MIX')
             self.operator_modifier_add(layout, 'VERTEX_WEIGHT_PROXIMITY')
+        if ob_type == 'GREASE_PENCIL':
+            self.operator_modifier_add(layout, 'GREASE_PENCIL_WEIGHT_PROXIMITY')
         layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)
 
 

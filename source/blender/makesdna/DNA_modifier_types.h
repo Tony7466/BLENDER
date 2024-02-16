@@ -108,6 +108,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilDash = 71,
   eModifierType_GreasePencilMultiply = 72,
   eModifierType_GreasePencilLength = 73,
+  eModifierType_GreasePencilWeightProximity = 74,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2867,3 +2868,23 @@ typedef struct GreasePencilLengthModifierData {
 
   void *_pad1;
 } GreasePencilLengthModifierData;
+
+typedef struct GreasePencilWeightProximityModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  /* #eGreasePencilWeightProximityFlag. */
+  int flag;
+  char target_vgname[64];
+  float min_weight;
+
+  float dist_start;
+  float dist_end;
+
+  struct Object *object;
+} GreasePencilWeightProximityModifierData;
+
+typedef enum eGreasePencilWeightProximityFlag {
+  MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT = (1 << 0),
+  MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA = (1 << 1),
+} eGreasePencilWeightProximityFlag;
