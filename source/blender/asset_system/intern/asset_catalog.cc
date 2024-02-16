@@ -174,7 +174,7 @@ AssetCatalogFilter AssetCatalogService::create_catalog_filter(
   Set<CatalogID> known_catalog_ids;
   matching_catalog_ids.add(active_catalog_id);
 
-  const AssetCatalog *active_catalog = find_catalog(active_catalog_id);
+  const AssetCatalog *active_catalog = this->find_catalog(active_catalog_id);
 
   /* This cannot just iterate over tree items to get all the required data, because tree items only
    * represent single UUIDs. It could be used to get the main UUIDs of the children, though, and
