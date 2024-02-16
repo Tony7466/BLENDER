@@ -6,7 +6,9 @@
 
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_mapping_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
 float sample_weight(vec3 out_direction, vec3 in_direction)
 {
@@ -37,32 +39,20 @@ float sample_weight(vec3 out_direction, vec3 in_direction)
   return exp(2.0 * (NH - 1.0) / square(m));
 }
 
-void convolve_sample(ivec2 in_texel,
+void convolve_sample(vec3 in_direction,
                      vec3 out_direction,
                      SphereProbeUvArea sample_coord,
-                     SphereProbePixelArea in_texel_area,
-                     ivec2 in_texel_min,
-                     ivec2 in_texel_max,
                      inout vec4 radiance_accum,
                      inout float weight_accum)
 {
-  int in_atlas_mip_size = imageSize(in_atlas_mip_img).x;
-  vec2 wrapped_uv;
-  vec3 in_direction = sphere_probe_texel_to_direction(
-      in_texel, in_texel_area, sample_coord, in_atlas_mip_size, wrapped_uv);
-
-  vec2 atlas_uv = wrapped_uv * sample_coord.scale + sample_coord.offset;
-  ivec2 in_texel_wrapped = ivec2(atlas_uv * in_atlas_mip_size);
-
-  /* Avoid processing the same texel twice because of wrapping. */
-  bool texel_no_wrapped = all(equal(in_texel_wrapped, in_texel));
-  bool in_processed_area = in_range_inclusive(in_texel_wrapped, in_texel_min, in_texel_max);
-  if (!texel_no_wrapped && in_processed_area) {
-    return;
-  }
+  vec2 in_uv = sphere_probe_direction_to_uv(in_direction, float(read_lod), sample_coord);
+  vec2 in_texel = in_uv * float(imageSize(in_atlas_mip_img).x);
 
   float weight = sample_weight(out_direction, in_direction);
-  vec4 radiance = imageLoad(in_atlas_mip_img, ivec3(in_texel_wrapped, in_texel_area.layer));
+  vec4 radiance = imageLoad(in_atlas_mip_img, ivec3(in_texel, sample_coord.layer));
+#if 0 /* For reference and debugging.  */
+  vec4 radiance = texture(cubemap_tx, in_direction);
+#endif
 
   radiance_accum += radiance * weight;
   weight_accum += weight;
@@ -85,30 +75,20 @@ void main()
   int out_atlas_mip_size = imageSize(in_atlas_mip_img).x / 2;
   vec3 out_direction = sphere_probe_texel_to_direction(
       out_local_texel, out_texel_area, sample_coord, out_atlas_mip_size);
+  out_direction = normalize(out_direction);
+
+  mat3x3 basis = from_up_axis(out_direction);
 
   ivec2 out_texel = out_texel_area.offset + out_local_texel;
-  /* Assume we always input the previous mipmap. */
-  const int mip_scaling = 2;
 
   float weight = 0.0;
   vec4 radiance = vec4(0.0);
-  /* TODO(fclem): Could derive the radius to process by taking the angle which encompass most of
-   * the gaussian (using an epsilon threshold) and then derive a number of mip pixels from it. */
-  int process_area_radius = 30;
-  ivec2 in_texel_min = (out_texel * 2 + 1) - process_area_radius;
-  ivec2 in_texel_max = in_texel_min + process_area_radius * 2;
-  for (int y = in_texel_min.y; y <= in_texel_max.y; y++) {
-    for (int x = in_texel_min.x; x <= in_texel_max.x; x++) {
-      ivec2 in_texel = ivec2(x, y);
-      convolve_sample(in_texel,
-                      out_direction,
-                      sample_coord,
-                      in_texel_area,
-                      in_texel_min,
-                      in_texel_max,
-                      radiance,
-                      weight);
-    }
+
+  int sample_count = 1024;
+  for (int i = 0; i < sample_count; i++) {
+    vec2 rand = hammersley_2d(i, sample_count);
+    vec3 in_direction = basis * normalize(sample_uniform_cone(rand, 0.9));
+    convolve_sample(in_direction, out_direction, sample_coord, radiance, weight);
   }
   radiance *= safe_rcp(weight);
 
