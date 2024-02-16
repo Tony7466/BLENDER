@@ -99,99 +99,84 @@ struct FrameRange {
 
 /* Create a timeline for an inverse linear time mapping. */
 static void remap_frames_linear(const Map<int, GreasePencilFrame> &src_frames,
-                                const FrameRange &frame_range,
+                                const Span<int> src_sorted_keys,
+                                const FrameRange &dst_frame_range,
                                 const int offset,
                                 const float scale,
                                 Map<int, GreasePencilFrame> &dst_frames)
 {
   const bool reverse = scale < 0.0f;
 
-  /* Auxiliary map to resolve conflicts when several keys map to the same frame.
-   * Only the last frame should be used. */
-  Map<int, int> used_src_frame;
-  /* Insert a frame with an additional "order" value to resolve conflicts. */
-  auto insert_frame = [&](const int key, GreasePencilFrame frame, const int order) {
-    used_src_frame.add_or_modify(
-        key,
-        [&](int *value) {
-          *value = order;
-          dst_frames.add_new(key, std::move(frame));
-          std::cout << "  [added " << key << " first (order " << order << ")]" << std::endl;
-        },
-        [&](int *value) {
-          /* Only insert if the key is a later frame. */
-          if (order > *value) {
-            std::cout << "  [added " << key << " new (order " << order << ", higher than old "
-                      << (*value) << ")]" << std::endl;
-            *value = order;
-            BLI_assert(dst_frames.contains(key));
-            dst_frames.add_overwrite(key, std::move(frame));
-          }
-          else {
-            std::cout << "  [ignored " << key << ", current order " << (*value) << " is higher]"
-                      << std::endl;
-          }
-        });
+  /* Inverse linear time mapping function. */
+  auto time_remap = [=](const int key) { return int((key - offset) / scale); };
+
+  auto insert_key = [&](const int key, const GreasePencilFrame &value) {
+    if (key < dst_frame_range.sfra) {
+      /* The frame is outside the range but might influence it.
+       * In that case a null frame is inserted at the start. */
+      // std::cout << "Frame " << (key * scale + offset) << " -> " << key << " outside range ("
+      //           << dst_frame_range.sfra << ".." << dst_frame_range.efra << ")" << std::endl;
+      dst_frames.add_overwrite(dst_frame_range.sfra, value);
+    }
+    else if (key <= dst_frame_range.efra) {
+      /* Inside the frame range insert as a regular keyframe. */
+      // std::cout << "Frame " << (key * scale + offset) << " -> " << key << " inside range ("
+      //           << dst_frame_range.sfra << ".." << dst_frame_range.efra << ")" << std::endl;
+      dst_frames.add_overwrite(key, value);
+    }
   };
 
   std::cout << "INSERTING" << std::endl;
-  for (const auto &item : src_frames.items()) {
-    /* Note: src_frame has same order as dst_frame for positive scale,
-     * can be used as-is for ordering. */
-    const int src_frame = item.key;
-    const GreasePencilFrame &src_value = item.value;
-    /* Inverse frame mapping. */
-    const int dst_frame = int((src_frame - offset) / scale);
+  for (const int i : src_sorted_keys.index_range()) {
+    /* In case of a large scaling factor multiple source frames can map to the same destination
+     * frame. Frames must be inserted in the correct order to ensure the last frame always defines
+     * the following interval. */
 
-    if (!reverse) {
-      /* Used to ensure the last frame gets used when many frames map to the same destination. */
-      const int order = src_frame;
-      if (dst_frame < frame_range.sfra) {
-        /* The frame is outside the range but might influence it.
-         * In that case a break frame is inserted at the start. */
-        std::cout << "Frame " << src_frame << " -> " << dst_frame << " outside range ("
-                  << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
-        insert_frame(frame_range.sfra, src_value, order);
-      }
-      else if (dst_frame <= frame_range.efra) {
-        /* Inside the frame range insert as a regular keyframe. */
-        std::cout << "Frame " << src_frame << " -> " << dst_frame << " inside range ("
-                  << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
-        insert_frame(dst_frame, src_value, order);
+    if (reverse) {
+      const int src_key = src_sorted_keys[src_sorted_keys.size() - 1 - i];
+      const GreasePencilFrame &src_value = src_frames.lookup(src_key);
+      /* Reverse mode requires that frames get pushed to the end of their range
+       * in order to cover the preceding interval. */
+      const int src_end_key = (i > 0) ? src_sorted_keys[src_sorted_keys.size() - i] - 1 : 0;
+      const int dst_key = (i > 0) ? time_remap(src_end_key) : dst_frame_range.sfra;
+
+      std::cout << "Reverse: insert value [" << src_key << ".." << src_end_key << "] -> "
+                << dst_key << std::endl;
+      insert_key(dst_key, src_value);
+
+      /* For the last frame a new end key is inserted at the original source key to hold the frame
+       * only up to that key.
+       *
+       * src:
+       *  ----F>>>>F>>>>>>F>>>>
+       * dst:
+       *  ---N<<<<F<<<<<<F<<<<F
+       *
+       * F: key frame
+       * N: null frame
+       */
+      if (i == src_sorted_keys.size() - 1 && !src_value.is_null()) {
+        const int dst_clip_key = time_remap(src_key) + 1;
+        std::cout << "  insert clip frame at " << dst_clip_key << std::endl;
+        insert_key(dst_clip_key, GreasePencilFrame::null());
       }
     }
     else {
-      /* Reverse mode requires that frames get pushed to the end of their range
-       * in order to project influence "backward". */
-      TODO
-          /* Used to ensure the first frame gets used when many frames map to the same destination.
-           */
-          const int order = -src_frame;
-      if (dst_frame < frame_range.sfra) {
-        /* The frame is outside the range but might influence it.
-         * In that case a break frame is inserted at the start. */
-        std::cout << "Frame " << src_frame << " -> " << dst_frame << " outside range ("
-                  << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
-        insert_frame(frame_range.sfra, src_value, order);
-      }
-      else if (dst_frame <= frame_range.efra) {
-        /* Inside the frame range insert as a regular keyframe. */
-        std::cout << "Frame " << src_frame << " -> " << dst_frame << " inside range ("
-                  << frame_range.sfra << ".." << frame_range.efra << ")" << std::endl;
-        insert_frame(dst_frame, src_value, order);
-      }
+      const int src_key = src_sorted_keys[i];
+      const GreasePencilFrame &src_value = src_frames.lookup(src_key);
+      const int dst_key = time_remap(src_key);
+      insert_key(dst_key, src_value);
     }
   }
 
   { /* DEBUGGING*/
     struct DebugItem {
-      int src_frame;
       int dst_frame;
       int drawing_index;
     };
     blender::Vector<DebugItem> frames_debug;
     for (const auto &item : dst_frames.items()) {
-      frames_debug.append({int(item.key * scale + offset), item.key, item.value.drawing_index});
+      frames_debug.append({item.key, item.value.drawing_index});
     }
     std::sort(frames_debug.begin(),
               frames_debug.end(),
@@ -199,8 +184,7 @@ static void remap_frames_linear(const Map<int, GreasePencilFrame> &src_frames,
 
     std::cout << "RESULT" << std::endl;
     for (const DebugItem &item : frames_debug) {
-      std::cout << item.src_frame << " -> " << item.dst_frame << "(" << item.drawing_index << ")"
-                << std::endl;
+      std::cout << item.dst_frame << "(" << item.drawing_index << ")" << std::endl;
     }
   } /* DEBUGGING*/
 }
@@ -240,14 +224,19 @@ static void modify_geometry_set(ModifierData *md,
     Map<int, GreasePencilFrame> new_frames;
     switch (GreasePencilTimeModifierMode(tmd->mode)) {
       case MOD_GREASE_PENCIL_TIME_MODE_NORMAL: {
-        remap_frames_linear(
-            layer->frames(), dst_range, shift + tmd->offset, tmd->frame_scale, new_frames);
+        remap_frames_linear(layer->frames(),
+                            layer->sorted_keys(),
+                            dst_range,
+                            shift + tmd->offset,
+                            tmd->frame_scale,
+                            new_frames);
         break;
       }
       case MOD_GREASE_PENCIL_TIME_MODE_REVERSE: {
         /* XXX This is wrong, should be using scene->r.sfra. But GPv2 does this, so keep it. */
         const int dst_efra = dst_range.efra;
         remap_frames_linear(layer->frames(),
+                            layer->sorted_keys(),
                             dst_range,
                             dst_efra + shift + tmd->offset,
                             -tmd->frame_scale,
