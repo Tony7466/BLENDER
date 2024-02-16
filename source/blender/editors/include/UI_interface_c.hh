@@ -1463,6 +1463,12 @@ enum eButProgressType {
   UI_BUT_PROGRESS_TYPE_RING = 1,
 };
 
+enum class LayoutSeparatorType : int8_t {
+  Auto,
+  Space,
+  Line,
+};
+
 /***************************** ID Utilities *******************************/
 
 int UI_icon_from_id(const ID *id);
@@ -1869,10 +1875,6 @@ void UI_but_drag_set_rna(uiBut *but, PointerRNA *ptr);
  */
 void UI_but_drag_set_path(uiBut *but, const char *path);
 void UI_but_drag_set_name(uiBut *but, const char *name);
-/**
- * Value from button itself.
- */
-void UI_but_drag_set_value(uiBut *but);
 
 /**
  * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
@@ -2961,7 +2963,9 @@ void uiItemV(uiLayout *layout, const char *name, int icon, int argval);
 /** Separator item */
 void uiItemS(uiLayout *layout);
 /** Separator item */
-void uiItemS_ex(uiLayout *layout, float factor);
+void uiItemS_ex(uiLayout *layout,
+                float factor,
+                LayoutSeparatorType type = LayoutSeparatorType::Auto);
 /** Flexible spacing. */
 void uiItemSpacer(uiLayout *layout);
 
