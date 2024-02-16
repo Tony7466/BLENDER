@@ -11,10 +11,12 @@
 #include "BKE_deform.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idprop.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
 #include "BKE_node.h"
 #include "BKE_node_tree_update.hh"
+#include "BKE_object.hh"
 
 #include "BLI_color.hh"
 #include "BLI_listbase.h"
@@ -518,6 +520,28 @@ void layer_adjustments_to_modifiers(Main &bmain,
   }
 
   DEG_relations_tag_update(&bmain);
+}
+
+void legacy_gpencil_object(Main &bmain, Object &object)
+{
+  bGPdata *gpd = static_cast<bGPdata *>(object.data);
+
+  GreasePencil *new_grease_pencil = static_cast<GreasePencil *>(
+      BKE_id_new(&bmain, ID_GP, gpd->id.name + 2));
+  object.data = new_grease_pencil;
+  object.type = OB_GREASE_PENCIL;
+
+  /* NOTE: Could also use #BKE_id_free_us, to also free the legacy GP if not used anymore? */
+  id_us_min(&gpd->id);
+  /* No need to increase usercount of `new_grease_pencil`, since ID creation already set it
+   * to 1. */
+
+  legacy_gpencil_to_grease_pencil(bmain, *new_grease_pencil, *gpd);
+  layer_adjustments_to_modifiers(bmain, *gpd, object);
+  /* Thickness factor is applied after all other changes to the radii. */
+  thickness_factor_to_modifier(*gpd, object);
+
+  BKE_object_free_derived_caches(&object);
 }
 
 }  // namespace blender::bke::greasepencil::convert
