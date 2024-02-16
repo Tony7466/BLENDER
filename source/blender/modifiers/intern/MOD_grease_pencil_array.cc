@@ -25,7 +25,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLI_bounds_types.hh"
 #include "BLI_hash.h"
@@ -101,7 +101,7 @@ static float4x4 get_array_matrix(const Object &ob,
     }
     const float4x4 obinv = float4x4(ob.world_to_object);
 
-    return mat_offset * obinv * float4x4(mmd.object->object_to_world);
+    return mat_offset * obinv * mmd.object->object_to_world();
   }
 
   const float3 offset = [&]() {

@@ -15,6 +15,8 @@
 #include "DNA_session_uid_types.h"
 
 #ifdef __cplusplus
+#  include "BLI_span.hh"
+
 namespace blender {
 struct NodesModifierRuntime;
 }
@@ -102,7 +104,11 @@ typedef enum ModifierType {
   eModifierType_GreasePencilNoise = 67,
   eModifierType_GreasePencilMirror = 68,
   eModifierType_GreasePencilThickness = 69,
-  eModifierType_GreasePencilArray = 70,
+  eModifierType_GreasePencilLattice = 70,
+  eModifierType_GreasePencilDash = 71,
+  eModifierType_GreasePencilMultiply = 72,
+  eModifierType_GreasePencilLength = 73,
+  eModifierType_GreasePencilArray = 74,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -137,14 +143,22 @@ typedef struct ModifierData {
    * and easily conflict with the explicit mapping of bits to panels here.
    */
   uint16_t layout_panel_open_flag;
-  char _pad[6];
+  char _pad[2];
+  /**
+   * Uniquely identifies the modifier within the object. This identifier is stable across Blender
+   * sessions. Modifiers on the original and corresponding evaluated object have matching
+   * identifiers. The identifier stays the same if the modifier is renamed or moved in the modifier
+   * stack.
+   *
+   * A valid identifier is non-negative (>= 1). Modifiers that are currently not on an object may
+   * have invalid identifiers. It has to be initialized with #BKE_modifiers_persistent_uid_init
+   * when it is added to an object.
+   */
+  int persistent_uid;
   /** MAX_NAME. */
   char name[64];
 
   char *error;
-
-  /** Runtime field which contains unique identifier of the modifier. */
-  SessionUID session_uid;
 
   /** Runtime field which contains runtime data which is specific to a modifier type. */
   void *runtime;
@@ -2652,6 +2666,7 @@ typedef enum GreasePencilTintModifierFlag {
   MOD_GREASE_PENCIL_TINT_USE_WEIGHT_AS_FACTOR = (1 << 0),
 } GreasePencilTintModifierFlag;
 
+/* Enum definitions for length modifier stays in the old DNA for the moment. */
 typedef struct GreasePencilSmoothModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
@@ -2765,6 +2780,94 @@ typedef enum GreasePencilThicknessModifierFlag {
   MOD_GREASE_PENCIL_THICK_NORMALIZE = (1 << 0),
   MOD_GREASE_PENCIL_THICK_WEIGHT_FACTOR = (1 << 1),
 } GreasePencilThicknessModifierFlag;
+
+typedef struct GreasePencilLatticeModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  struct Object *object;
+  float strength;
+  char _pad[4];
+} GreasePencilLatticeModifierData;
+
+typedef struct GreasePencilDashModifierSegment {
+  char name[64];
+  int dash;
+  int gap;
+  float radius;
+  float opacity;
+  int mat_nr;
+  /** #GreasePencilDashModifierFlag */
+  int flag;
+} GreasePencilDashModifierSegment;
+
+typedef struct GreasePencilDashModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  GreasePencilDashModifierSegment *segments_array;
+  int segments_num;
+  int segment_active_index;
+
+  int dash_offset;
+  char _pad[4];
+
+#ifdef __cplusplus
+  blender::Span<GreasePencilDashModifierSegment> segments() const;
+  blender::MutableSpan<GreasePencilDashModifierSegment> segments();
+#endif
+} GreasePencilDashModifierData;
+
+typedef enum GreasePencilDashModifierFlag {
+  MOD_GREASE_PENCIL_DASH_USE_CYCLIC = (1 << 0),
+} GreasePencilDashModifierFlag;
+
+typedef struct GreasePencilMultiModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  /* #GreasePencilMultiplyModifierFlag */
+  int flag;
+
+  int duplications;
+  float distance;
+  /* -1:inner 0:middle 1:outer */
+  float offset;
+
+  float fading_center;
+  float fading_thickness;
+  float fading_opacity;
+
+  int _pad0;
+
+  void *_pad;
+} GreasePencilMultiModifierData;
+
+typedef enum GreasePencilMultiplyModifierFlag {
+  /* GP_MULTIPLY_ENABLE_ANGLE_SPLITTING = (1 << 1),  Deprecated. */
+  MOD_GREASE_PENCIL_MULTIPLY_ENABLE_FADING = (1 << 2),
+} GreasePencilMultiplyModifierFlag;
+
+typedef struct GreasePencilLengthModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  int flag;
+  float start_fac, end_fac;
+  float rand_start_fac, rand_end_fac, rand_offset;
+  float overshoot_fac;
+  /** (first element is the index) random values. */
+  int seed;
+  /** How many frames before recalculate randoms. */
+  int step;
+  /** #eLengthGpencil_Type. */
+  int mode;
+  char _pad[4];
+  /* Curvature parameters. */
+  float point_density;
+  float segment_influence;
+  float max_angle;
+
+  void *_pad1;
+} GreasePencilLengthModifierData;
 
 typedef struct GreasePencilArrayModifierData {
   ModifierData modifier;
