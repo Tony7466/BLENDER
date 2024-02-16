@@ -1766,7 +1766,6 @@ static const EnumPropertyItem *object_mode_set_itemf(bContext *C,
 
 static bool object_mode_set_poll(bContext *C)
 {
-  /* Needed as #ED_operator_object_active_editable doesn't call use 'active_object'. */
   Object *ob = CTX_data_active_object(C);
 
   if (ob == nullptr) {
