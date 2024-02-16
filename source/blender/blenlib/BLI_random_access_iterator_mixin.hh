@@ -8,6 +8,18 @@
 
 namespace blender::iterator {
 
+/**
+ * Simplifies implementing a random-access-iterator.
+ *
+ * The actual iterator should derive from this class publicly. Additionally, it has to provide a
+ * const `iter_prop` method which returns a reference to the internal property that corresponds to
+ * the current position. This is typically a pointer or an index.
+ *
+ * Implementing some random-access-iterator is generally quite simple but requires a lot of
+ * boilerplate code because algorithms expect many operators to work on the iterator type.
+ * They are expected to behave similarly to pointers and thus have to implement many of the same
+ * operators.
+ */
 template<typename Derived> class RandomAccessIteratorMixin {
  public:
   using iterator_category = std::random_access_iterator_tag;

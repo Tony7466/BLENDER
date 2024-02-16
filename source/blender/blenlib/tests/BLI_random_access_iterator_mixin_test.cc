@@ -30,7 +30,7 @@ struct DoublingIterator : public RandomAccessIteratorMixin<DoublingIterator<T>> 
   }
 };
 
-TEST(random_access_iterator_mixin, Test)
+TEST(random_access_iterator_mixin, DoublingIterator)
 {
   std::array<int, 4> my_array = {3, 6, 1, 2};
 
