@@ -116,7 +116,7 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_OPACITY,
      "Opacity",
      "Change the opacity of the strokes"},
-    {eModifierType_GPWeightAngle,
+    {eModifierType_GreasePencilWeightAngle,
      "GREASE_PENCIL_VERTEX_WEIGHT_ANGLE",
      ICON_MOD_VERTEX_WEIGHT,
      "Vertex Weight Angle",
@@ -893,7 +893,7 @@ RNA_MOD_VGROUP_NAME_SET(WeightVGProximity, mask_defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(WeightedNormal, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Weld, defgrp_name);
 RNA_MOD_VGROUP_NAME_SET(Wireframe, defgrp_name);
-RNA_MOD_VGROUP_NAME_SET(GPWeightAngle, target_vgname);
+RNA_MOD_VGROUP_NAME_SET(GreasePencilWeightAngle, target_vgname);
 
 static void rna_ExplodeModifier_vgroup_get(PointerRNA *ptr, char *value)
 {
@@ -1888,7 +1888,7 @@ RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilLattice);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilDash);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilMulti);
 RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilLength);
-RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GPWeightAngle);
+RNA_MOD_GREASE_PENCIL_MATERIAL_FILTER_SET(GreasePencilWeightAngle);
 
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilOffset);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilOpacity);
@@ -1899,7 +1899,7 @@ RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilNoise);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilThick);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilLattice);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilLength);
-RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GPWeightAngle);
+RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilWeightAngle);
 
 static void rna_GreasePencilOpacityModifier_opacity_factor_range(
     PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
@@ -8658,7 +8658,6 @@ static void rna_def_modifier_grease_pencil_thickness(BlenderRNA *brna)
 }
 
 static void rna_def_modifier_grease_pencil_lattice(BlenderRNA *brna)
-
 {
   StructRNA *srna;
   PropertyRNA *prop;
@@ -8821,16 +8820,16 @@ static void rna_def_modifier_grease_pencil_weight_angle(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  srna = RNA_def_struct(brna, "GPWeightAngleModifier", "Modifier");
+  srna = RNA_def_struct(brna, "GreasePencilWeightAngleModifier", "Modifier");
   RNA_def_struct_ui_text(srna, "Weight Modifier Angle", "Calculate Vertex Weight dynamically");
-  RNA_def_struct_sdna(srna, "GPWeightAngleModifierData");
+  RNA_def_struct_sdna(srna, "GreasePencilWeightAngleModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_VERTEX_WEIGHT);
 
   rna_def_modifier_grease_pencil_layer_filter(srna);
-  rna_def_modifier_grease_pencil_material_filter(srna,
-                                                 "rna_GPWeightAngleModifier_material_filter_set");
-  rna_def_modifier_grease_pencil_vertex_group(srna,
-                                              "rna_GPWeightAngleModifier_vertex_group_name_set");
+  rna_def_modifier_grease_pencil_material_filter(
+      srna, "rna_GreasePencilWeightAngleModifier_material_filter_set");
+  rna_def_modifier_grease_pencil_vertex_group(
+      srna, "rna_GreasePencilWeightAngleModifier_vertex_group_name_set");
 
   rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
 
@@ -8840,7 +8839,7 @@ static void rna_def_modifier_grease_pencil_weight_angle(BlenderRNA *brna)
   RNA_def_property_string_sdna(prop, nullptr, "target_vgname");
   RNA_def_property_ui_text(prop, "Vertex Group", "Output Vertex group");
   RNA_def_property_string_funcs(
-      prop, nullptr, nullptr, "rna_GPWeightAngleModifier_target_vgname_set");
+      prop, nullptr, nullptr, "rna_GreasePencilWeightAngleModifier_target_vgname_set");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_multiply", PROP_BOOLEAN, PROP_NONE);

@@ -39,18 +39,21 @@ namespace blender {
 
 static void init_data(ModifierData *md)
 {
-  GPWeightAngleModifierData *gpmd = reinterpret_cast<GPWeightAngleModifierData *>(md);
+  GreasePencilWeightAngleModifierData *gpmd =
+      reinterpret_cast<GreasePencilWeightAngleModifierData *>(md);
 
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(gpmd, modifier));
 
-  MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(GPWeightAngleModifierData), modifier);
+  MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(GreasePencilWeightAngleModifierData), modifier);
   modifier::greasepencil::init_influence_data(&gpmd->influence, false);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
-  const GPWeightAngleModifierData *gmd = reinterpret_cast<const GPWeightAngleModifierData *>(md);
-  GPWeightAngleModifierData *tgmd = reinterpret_cast<GPWeightAngleModifierData *>(target);
+  const GreasePencilWeightAngleModifierData *gmd =
+      reinterpret_cast<const GreasePencilWeightAngleModifierData *>(md);
+  GreasePencilWeightAngleModifierData *tgmd =
+      reinterpret_cast<GreasePencilWeightAngleModifierData *>(target);
 
   BKE_modifier_copydata_generic(md, target, flag);
   modifier::greasepencil::copy_influence_data(&gmd->influence, &tgmd->influence, flag);
@@ -58,36 +61,40 @@ static void copy_data(const ModifierData *md, ModifierData *target, const int fl
 
 static void free_data(ModifierData *md)
 {
-  GPWeightAngleModifierData *mmd = reinterpret_cast<GPWeightAngleModifierData *>(md);
+  GreasePencilWeightAngleModifierData *mmd =
+      reinterpret_cast<GreasePencilWeightAngleModifierData *>(md);
 
   modifier::greasepencil::free_influence_data(&mmd->influence);
 }
 
 static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
 {
-  GPWeightAngleModifierData *mmd = (GPWeightAngleModifierData *)md;
+  GreasePencilWeightAngleModifierData *mmd = (GreasePencilWeightAngleModifierData *)md;
 
   return (mmd->target_vgname[0] == '\0');
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
-  GPWeightAngleModifierData *mmd = reinterpret_cast<GPWeightAngleModifierData *>(md);
+  GreasePencilWeightAngleModifierData *mmd =
+      reinterpret_cast<GreasePencilWeightAngleModifierData *>(md);
 
   modifier::greasepencil::foreach_influence_ID_link(&mmd->influence, ob, walk, user_data);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
 {
-  const GPWeightAngleModifierData *mmd = reinterpret_cast<const GPWeightAngleModifierData *>(md);
+  const GreasePencilWeightAngleModifierData *mmd =
+      reinterpret_cast<const GreasePencilWeightAngleModifierData *>(md);
 
-  BLO_write_struct(writer, GPWeightAngleModifierData, mmd);
+  BLO_write_struct(writer, GreasePencilWeightAngleModifierData, mmd);
   modifier::greasepencil::write_influence_data(writer, &mmd->influence);
 }
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
-  GPWeightAngleModifierData *mmd = reinterpret_cast<GPWeightAngleModifierData *>(md);
+  GreasePencilWeightAngleModifierData *mmd =
+      reinterpret_cast<GreasePencilWeightAngleModifierData *>(md);
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
@@ -119,7 +126,7 @@ static void write_weights_for_drawing(const ModifierData &md,
                                       const Object &ob,
                                       bke::greasepencil::Drawing &drawing)
 {
-  const auto &mmd = reinterpret_cast<const GPWeightAngleModifierData &>(md);
+  const auto &mmd = reinterpret_cast<const GreasePencilWeightAngleModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   if (curves.points_num() == 0) {
     return;
@@ -195,7 +202,8 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  const GPWeightAngleModifierData *mmd = reinterpret_cast<GPWeightAngleModifierData *>(md);
+  const GreasePencilWeightAngleModifierData *mmd =
+      reinterpret_cast<GreasePencilWeightAngleModifierData *>(md);
 
   if (!geometry_set->has_grease_pencil()) {
     return;
@@ -259,17 +267,17 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panel_register(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, eModifierType_GPWeightAngle, panel_draw);
+  modifier_panel_register(region_type, eModifierType_GreasePencilWeightAngle, panel_draw);
 }
 
 }  // namespace blender
 
-ModifierTypeInfo modifierType_GPWeightAngle = {
-    /*idname*/ "GPWeightAngleModifier",
+ModifierTypeInfo modifierType_GreasePencilWeightAngle = {
+    /*idname*/ "GreasePencilWeightAngleModifier",
     /*name*/ N_("Weight Angle"),
-    /*struct_name*/ "GPWeightAngleModifierData",
-    /*struct_size*/ sizeof(GPWeightAngleModifierData),
-    /*srna*/ &RNA_GPWeightAngleModifier,
+    /*struct_name*/ "GreasePencilWeightAngleModifierData",
+    /*struct_size*/ sizeof(GreasePencilWeightAngleModifierData),
+    /*srna*/ &RNA_GreasePencilWeightAngleModifier,
     /*type*/ ModifierTypeType::NonGeometrical,
     /*flags*/
     eModifierTypeFlag_AcceptsGreasePencil | eModifierTypeFlag_SupportsEditmode |
