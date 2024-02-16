@@ -117,7 +117,7 @@ void TranslateOperation::update_memory_buffer_partial(MemoryBuffer *output,
     return;
   }
 
-  /* Some compositor operations produce en empty output buffer by specifying a COM_AREA_NONE canvas
+  /* Some compositor operations produce an empty output buffer by specifying a COM_AREA_NONE canvas
    * to indicate an invalid output, for instance, when the Mask operation reference an invalid
    * mask. The intention is that this buffer would signal that a fallback value would fill the
    * canvas of consumer operations. Since the aforementioned filling is achieved through the
