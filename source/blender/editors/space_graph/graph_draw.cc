@@ -12,6 +12,7 @@
 #include <cstring>
 
 #include "BLI_math_vector_types.hh"
+#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
@@ -28,6 +29,7 @@
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
 #include "GPU_state.h"
+#include "GPU_vertex_buffer.h"
 
 #include "ED_anim_api.hh"
 
@@ -37,7 +39,49 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
+#define MAX_VERTS 1 << 12
+
 static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu);
+using namespace blender;
+struct KeyVertex {
+  blender::float3 pos;
+  float size;
+  blender::ColorTheme4f color;
+};
+
+struct RenderBatch {
+  GPUBatch *batch;
+  GPUVertBuf *vert_buf;
+  int num_verts;
+};
+
+static void draw_batch(RenderBatch &batch)
+{
+  if (batch.num_verts == 0) {
+    return;
+  }
+  GPU_vertbuf_tag_dirty(batch.vert_buf);
+  GPU_vertbuf_use(batch.vert_buf);
+  GPU_batch_draw_range(batch.batch, 0, batch.num_verts);
+  batch.num_verts = 0;
+}
+
+static void vert_buf_add_point(RenderBatch &batch,
+                               blender::float2 p,
+                               const float size,
+                               blender::ColorTheme4f color)
+{
+  using namespace blender;
+  if (batch.num_verts >= MAX_VERTS) {
+    draw_batch(batch);
+  }
+  KeyVertex bar;
+  float3 p3 = float3(p);
+  GPU_vertbuf_attr_set(batch.vert_buf, 0, batch.num_verts, &p3);
+  GPU_vertbuf_attr_set(batch.vert_buf, 1, batch.num_verts, &size);
+  GPU_vertbuf_attr_set(batch.vert_buf, 2, batch.num_verts, &color);
+  batch.num_verts++;
+}
 
 /* -------------------------------------------------------------------- */
 /** \name Utility Drawing Defines
@@ -154,30 +198,28 @@ static void draw_fcurve_modifier_controls_envelope(FModifier *fcm,
 /* Points ---------------- */
 
 /* helper func - set color to draw F-Curve data with */
-static void set_fcurve_vertex_color(FCurve *fcu, bool sel)
+static blender::ColorTheme4f get_fcurve_vertex_color(FCurve *fcu, bool sel)
 {
-  float color[4];
-  float diff;
+  using namespace blender;
+  ColorTheme4f color;
 
-  /* Set color of curve vertex based on state of curve (i.e. 'Edit' Mode) */
-  if ((fcu->flag & FCURVE_PROTECTED) == 0) {
-    /* Curve's points ARE BEING edited */
-    UI_GetThemeColor3fv(sel ? TH_VERTEX_SELECT : TH_VERTEX, color);
+  if (fcu->flag & FCURVE_PROTECTED) {
+    /* Curve is locked */
+    UI_GetThemeColorShade4fv(TH_HEADER, 50, color);
   }
   else {
-    /* Curve's points CANNOT BE edited */
-    UI_GetThemeColorShade4fv(TH_HEADER, 50, color);
+    UI_GetThemeColor4fv(sel ? TH_VERTEX_SELECT : TH_VERTEX, color);
   }
 
   /* Fade the 'intensity' of the vertices based on the selection of the curves too
    * - Only fade by 50% the amount the curves were faded by, so that the points
    *   still stand out for easier selection
    */
-  diff = 1.0f - fcurve_display_alpha(fcu);
+  const float diff = 1.0f - fcurve_display_alpha(fcu);
   color[3] = 1.0f - (diff * 0.5f);
   CLAMP(color[3], 0.2f, 1.0f);
 
-  immUniformColor4fv(color);
+  return color;
 }
 
 /* Draw a cross at the given position. Shader must already be bound.
@@ -203,38 +245,13 @@ static void draw_cross(float position[2], float scale[2], uint attr_id)
   GPU_matrix_pop();
 }
 
-static void draw_fcurve_selected_keyframe_vertices(FCurve *fcu, View2D *v2d, bool sel, uint pos)
-{
-  const float fac = 0.05f * BLI_rctf_size_x(&v2d->cur);
-
-  set_fcurve_vertex_color(fcu, sel);
-
-  immBeginAtMost(GPU_PRIM_POINTS, fcu->totvert);
-
-  BezTriple *bezt = fcu->bezt;
-  for (int i = 0; i < fcu->totvert; i++, bezt++) {
-    /* As an optimization step, only draw those in view
-     * - We apply a correction factor to ensure that points
-     *   don't pop in/out due to slight twitches of view size.
-     */
-    if (IN_RANGE(bezt->vec[1][0], (v2d->cur.xmin - fac), (v2d->cur.xmax + fac))) {
-      /* 'Keyframe' vertex only, as handle lines and handles have already been drawn
-       * - only draw those with correct selection state for the current drawing color
-       * -
-       */
-      if ((bezt->f2 & SELECT) == sel) {
-        immVertex2fv(pos, bezt->vec[1]);
-      }
-    }
-  }
-
-  immEnd();
-}
-
 /**
  * Draw the extra indicator for the active point.
  */
-static void draw_fcurve_active_vertex(const FCurve *fcu, const View2D *v2d, const uint pos)
+static void draw_fcurve_active_vertex(const FCurve *fcu,
+                                      const View2D *v2d,
+                                      const float size,
+                                      RenderBatch &render_data)
 {
   const int active_keyframe_index = BKE_fcurve_active_keyframe_index(fcu);
   if (!(fcu->flag & FCURVE_ACTIVE) || active_keyframe_index == FCURVE_ACTIVE_KEYFRAME_NONE) {
@@ -251,30 +268,43 @@ static void draw_fcurve_active_vertex(const FCurve *fcu, const View2D *v2d, cons
     return;
   }
 
-  immBegin(GPU_PRIM_POINTS, 1);
-  immUniformThemeColor(TH_VERTEX_ACTIVE);
-  immVertex2fv(pos, bezt->vec[1]);
-  immEnd();
+  blender::ColorTheme4f color;
+  UI_GetThemeColor4fv(TH_VERTEX_ACTIVE, color);
+  blender::float2 pos = {bezt->vec[1][0], bezt->vec[1][1]};
+  vert_buf_add_point(render_data, pos, size, color);
 }
 
 /* helper func - draw keyframe vertices only for an F-Curve */
-static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, const uint pos)
+static void draw_fcurve_keyframe_vertices(FCurve *fcu, View2D *v2d, RenderBatch &batch_data)
 {
-  immBindBuiltinProgram(GPU_SHADER_2D_POINT_UNIFORM_SIZE_UNIFORM_COLOR_AA);
-
-  if ((fcu->flag & FCURVE_PROTECTED) == 0) {
-    immUniform1f("size", UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC);
+  using namespace blender;
+  float4 color;
+  UI_GetThemeColor4fv(TH_VERTEX, color);
+  GPU_batch_uniform_4fv(batch_data.batch, "color", color);
+  float size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
+  if (fcu->flag & FCURVE_PROTECTED) {
+    size *= 0.8f;
   }
-  else {
-    /* Draw keyframes on locked curves slightly smaller to give them less visual weight. */
-    immUniform1f("size", (UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC) * 0.8f);
+
+  ColorTheme4f color_sel = get_fcurve_vertex_color(fcu, true);
+  ColorTheme4f color_desel = get_fcurve_vertex_color(fcu, false);
+
+  const blender::int2 bounding_indices = get_bounding_bezt_indices(
+      fcu, v2d->cur.xmin, v2d->cur.xmax);
+
+  for (int i = bounding_indices[0]; i <= bounding_indices[1]; i++) {
+    BezTriple *bezt = &fcu->bezt[i];
+    float2 pos = {bezt->vec[1][0], bezt->vec[1][1]};
+    if (bezt->f2 & SELECT) {
+      vert_buf_add_point(batch_data, pos, size, color_sel);
+    }
+    else {
+      vert_buf_add_point(batch_data, pos, size, color_desel);
+    }
   }
 
-  draw_fcurve_selected_keyframe_vertices(fcu, v2d, false, pos);
-  draw_fcurve_selected_keyframe_vertices(fcu, v2d, true, pos);
-  draw_fcurve_active_vertex(fcu, v2d, pos);
-
-  immUnbindProgram();
+  draw_fcurve_active_vertex(fcu, v2d, size, batch_data);
+  draw_batch(batch_data);
 }
 
 /* helper func - draw handle vertices only for an F-Curve (if it is not protected) */
@@ -380,10 +410,8 @@ static void draw_fcurve_handle_vertices(FCurve *fcu, View2D *v2d, bool sel_handl
   immUnbindProgram();
 }
 
-static void draw_fcurve_vertices(ARegion *region,
-                                 FCurve *fcu,
-                                 bool do_handles,
-                                 bool sel_handle_only)
+static void draw_fcurve_vertices(
+    ARegion *region, FCurve *fcu, bool do_handles, bool sel_handle_only, RenderBatch &batch_data)
 {
   View2D *v2d = &region->v2d;
 
@@ -406,7 +434,7 @@ static void draw_fcurve_vertices(ARegion *region,
   }
 
   /* draw keyframes over the handles */
-  draw_fcurve_keyframe_vertices(fcu, v2d, pos);
+  draw_fcurve_keyframe_vertices(fcu, v2d, batch_data);
 
   GPU_program_point_size(false);
   GPU_blend(GPU_BLEND_NONE);
@@ -1138,8 +1166,10 @@ static void draw_fcurve_curve_keys(
   GPU_matrix_pop();
 }
 
-static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAnimListElem *ale)
+static void draw_fcurve(
+    bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAnimListElem *ale, RenderBatch &batch)
 {
+  SCOPED_TIMER_AVERAGED("draw_fcurve");
   FCurve *fcu = (FCurve *)ale->key_data;
   FModifier *fcm = find_active_fmodifier(&fcu->modifiers);
   AnimData *adt = ANIM_nla_mapping_get(ac, ale);
@@ -1285,7 +1315,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
           draw_fcurve_handles(sipo, region, fcu);
         }
 
-        draw_fcurve_vertices(region, fcu, do_handles, (sipo->flag & SIPO_SELVHANDLESONLY));
+        draw_fcurve_vertices(region, fcu, do_handles, (sipo->flag & SIPO_SELVHANDLESONLY), batch);
       }
       else {
         /* samples: only draw two indicators at either end as indicators */
@@ -1476,6 +1506,16 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region
   GPU_blend(GPU_BLEND_NONE);
 }
 
+static GPUIndexBuf *create_vert_index_buffer(int vert_count)
+{
+  GPUIndexBufBuilder ibuf_builder;
+  GPU_indexbuf_init(&ibuf_builder, GPU_PRIM_POINTS, vert_count, vert_count);
+  for (uint i = 0; i < vert_count; i++) {
+    GPU_indexbuf_add_point_vert(&ibuf_builder, i);
+  }
+  return GPU_indexbuf_build(&ibuf_builder);
+}
+
 void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, short sel)
 {
   ListBase anim_data = {nullptr, nullptr};
@@ -1491,6 +1531,28 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
    * draw curve, then handle-lines, and finally vertices in this order so that
    * the data will be layered correctly
    */
+  GPUIndexBuf *index_buffer = create_vert_index_buffer(MAX_VERTS);
+
+  GPUVertFormat format;
+  GPU_vertformat_clear(&format);
+  uint pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  uint size = GPU_vertformat_attr_add(&format, "size", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+  uint color = GPU_vertformat_attr_add(&format, "color", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
+
+  GPUVertBuf *vertex_buffer_verts = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STREAM);
+  GPU_vertbuf_data_alloc(vertex_buffer_verts, MAX_VERTS);
+
+  GPUBatch *batch_points = GPU_batch_create_ex(GPU_PRIM_POINTS,
+                                               vertex_buffer_verts,
+                                               index_buffer,
+                                               GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
+  GPU_batch_program_set_builtin(batch_points, GPU_SHADER_3D_POINT_VARYING_SIZE_VARYING_COLOR);
+
+  RenderBatch batch_data;
+  batch_data.batch = batch_points;
+  batch_data.vert_buf = vertex_buffer_verts;
+  batch_data.num_verts = 0;
+
   bAnimListElem *ale_active_fcurve = nullptr;
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     const FCurve *fcu = (FCurve *)ale->key_data;
@@ -1498,14 +1560,17 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
       ale_active_fcurve = ale;
       continue;
     }
-    draw_fcurve(ac, sipo, region, ale);
+    draw_fcurve(ac, sipo, region, ale, batch_data);
   }
 
   /* Draw the active FCurve last so that it (especially the active keyframe)
    * shows on top of the other curves. */
   if (ale_active_fcurve != nullptr) {
-    draw_fcurve(ac, sipo, region, ale_active_fcurve);
+    draw_fcurve(ac, sipo, region, ale_active_fcurve, batch_data);
   }
+
+  draw_batch(batch_data);
+  GPU_batch_discard(batch_points);
 
   /* free list of curves */
   ANIM_animdata_freelist(&anim_data);
