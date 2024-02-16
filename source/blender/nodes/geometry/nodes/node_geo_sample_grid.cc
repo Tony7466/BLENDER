@@ -151,9 +151,7 @@ class SampleGridFunction : public mf::MultiFunction {
 
     const std::optional<eCustomDataType> cd_type = bke::volume_grid_type_to_custom_data_type(
         grid_->grid_type());
-    // TODO: optional check
     const CPPType *cpp_type = bke::custom_data_type_to_cpp_type(*cd_type);
-    // TODO: null check
     mf::SignatureBuilder builder{"Sample Volume", signature_};
     builder.single_input<float3>("Position");
     builder.single_output("Value", *cpp_type);
