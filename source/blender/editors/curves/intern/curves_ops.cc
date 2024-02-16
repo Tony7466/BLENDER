@@ -337,7 +337,7 @@ static void try_convert_single_object(Object &curves_ob,
   const MFace *mfaces = (const MFace *)CustomData_get_layer(&surface_me.fdata_legacy, CD_MFACE);
   const Span<float3> positions = surface_me.vert_positions();
 
-  multi_point_curves.foreach_index(GrainSize(256), [&](const int curve_i, const int new_hair_i) {
+  multi_point_curves.foreach_index([&](const int curve_i, const int new_hair_i) {
     const IndexRange points = points_by_curve[curve_i];
 
     const float3 &root_pos_cu = positions_cu[points.first()];
