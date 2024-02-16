@@ -1274,7 +1274,7 @@ static asset_system::AssetCatalog &asset_library_ensure_catalogs_in_path(
   /* Adding multiple catalogs in a path at a time with #AssetCatalogService::create_catalog()
    * doesn't work; add each potentially new catalog in the hierarchy manually here. */
   asset_system::AssetCatalogPath parent = "";
-  path.iterate_components([&](StringRef component_name, bool is_last_component) {
+  path.iterate_components([&](StringRef component_name, bool /*is_last_component*/) {
     asset_library_ensure_catalog(library, parent / component_name);
     parent = parent / component_name;
   });
