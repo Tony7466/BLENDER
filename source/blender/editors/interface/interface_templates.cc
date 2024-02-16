@@ -6172,7 +6172,7 @@ static std::string progress_tooltip_func(bContext * /*C*/, void *argN, const cha
   /* create tooltip text and associate it with the job */
   char elapsed_str[32];
   char remaining_str[32] = "Unknown";
-  const double elapsed = BLI_check_seconds_timer() - WM_jobs_starttime(wm, owner);
+  const double elapsed = BLI_time_now_seconds() - WM_jobs_starttime(wm, owner);
   BLI_timecode_string_from_time_simple(elapsed_str, sizeof(elapsed_str), elapsed);
 
   if (progress) {
@@ -6380,7 +6380,7 @@ void uiTemplateRunningJobs(uiLayout *layout, bContext *C)
       UI_but_func_tooltip_set(but_progress, progress_tooltip_func, tip_arg, MEM_freeN);
     }
 
-    if (!wm->is_interface_locked) {
+    if (!wm->runtime->is_interface_locked) {
       uiDefIconTextBut(block,
                        UI_BTYPE_BUT,
                        handle_event,
