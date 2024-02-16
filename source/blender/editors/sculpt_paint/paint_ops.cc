@@ -1268,6 +1268,17 @@ static asset_system::AssetCatalog &asset_library_ensure_catalog(
   return *library.catalog_service->create_catalog(path);
 }
 
+static asset_system::AssetCatalog &asset_library_ensure_catalogs_in_path(
+    asset_system::AssetLibrary &library, const asset_system::AssetCatalogPath &path)
+{
+  asset_system::AssetCatalogPath parent = "";
+  path.iterate_components([&](StringRef component_name, bool is_last_component) {
+    asset_library_ensure_catalog(library, parent / component_name);
+    parent = parent / component_name;
+  });
+  return *library.catalog_service->find_catalog_by_path(path);
+}
+
 static AssetLibraryReference user_library_to_library_ref(const bUserAssetLibrary &user_library)
 {
   AssetLibraryReference library_ref{};
@@ -1320,7 +1331,8 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   /* Add asset to catalog. */
   char catalog_path[MAX_NAME];
   RNA_string_get(op->ptr, "catalog_path", catalog_path);
-  const asset_system::AssetCatalog &catalog = asset_library_ensure_catalog(*library, catalog_path);
+  const asset_system::AssetCatalog &catalog = asset_library_ensure_catalogs_in_path(*library,
+                                                                                    catalog_path);
   const asset_system::CatalogID catalog_id = catalog.catalog_id;
   const std::string catalog_simple_name = catalog.simple_name;
 
