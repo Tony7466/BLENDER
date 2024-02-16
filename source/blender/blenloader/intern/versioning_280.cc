@@ -62,10 +62,8 @@
 #undef DNA_GENFILE_VERSIONING_MACROS
 
 #include "BKE_animsys.h"
-#include "BKE_blender.h"
-#include "BKE_brush.hh"
-#include "BKE_cloth.hh"
-#include "BKE_collection.h"
+#include "BKE_blender.hh"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
 #include "BKE_constraint.h"
 #include "BKE_curveprofile.h"
@@ -73,10 +71,7 @@
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_freestyle.h"
-#include "BKE_global.h"
 #include "BKE_gpencil_geom_legacy.h"
-#include "BKE_gpencil_legacy.h"
-#include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_key.hh"
 #include "BKE_layer.hh"
@@ -85,10 +80,9 @@
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_node.h"
-#include "BKE_node_tree_update.hh"
 #include "BKE_paint.hh"
 #include "BKE_pointcache.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_rigidbody.h"
 #include "BKE_screen.hh"
 #include "BKE_studiolight.h"
@@ -104,12 +98,10 @@
 #include "IMB_colormanagement.hh"
 #include "IMB_imbuf.hh"
 
-#include "DEG_depsgraph.hh"
-
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLO_read_write.hh"
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 #include "readfile.hh"
 
 #include "versioning_common.hh"
@@ -330,6 +322,7 @@ static void do_version_layers_to_collections(Main *bmain, Scene *scene)
     view_layer->pass_alpha_threshold = srl->pass_alpha_threshold;
     view_layer->samples = srl->samples;
     view_layer->mat_override = srl->mat_override;
+    view_layer->world_override = srl->world_override;
 
     BKE_freestyle_config_free(&view_layer->freestyle_config, true);
     view_layer->freestyle_config = srl->freestyleConfig;

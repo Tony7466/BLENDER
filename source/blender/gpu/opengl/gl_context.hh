@@ -12,7 +12,7 @@
 
 #include "GPU_framebuffer.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BLI_set.hh"
 #include "BLI_vector.hh"
 
