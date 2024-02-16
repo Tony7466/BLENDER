@@ -22,30 +22,24 @@
 #include "IMB_moviecache.hh"
 
 #include "BKE_addon.h"
-#include "BKE_blender.h"            /* own include */
+#include "BKE_blender.hh"           /* own include */
 #include "BKE_blender_user_menu.hh" /* own include */
 #include "BKE_blender_version.h"    /* own include */
-#include "BKE_blendfile.hh"
 #include "BKE_brush.hh"
-#include "BKE_cachefile.h"
-#include "BKE_callbacks.h"
-#include "BKE_global.h"
+#include "BKE_cachefile.hh"
+#include "BKE_callbacks.hh"
+#include "BKE_global.hh"
 #include "BKE_idprop.h"
-#include "BKE_image.h"
-#include "BKE_layer.hh"
 #include "BKE_main.hh"
 #include "BKE_node.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 #include "BKE_studiolight.h"
+#include "BKE_writeffmpeg.hh"
 
 #include "DEG_depsgraph.hh"
 
-#include "RE_pipeline.h"
 #include "RE_texture.h"
-
-#include "SEQ_sequencer.hh"
 
 #include "BLF_api.hh"
 
@@ -81,6 +75,9 @@ void BKE_blender_free()
   BKE_callback_global_finalize();
 
   IMB_moviecache_destruct();
+#ifdef WITH_FFMPEG
+  BKE_ffmpeg_exit();
+#endif
 
   BKE_node_system_exit();
 }
