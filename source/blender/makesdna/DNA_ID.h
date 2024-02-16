@@ -1090,7 +1090,7 @@ typedef enum IDRecalcFlag {
    * This is most generic tag which should only be used when nothing else matches.
    * It is not to explicitly mixed in with other recalculation flags.
    */
-  ID_RECALC_EVALUATED_COPY = (1 << 13),
+  ID_RECALC_SYNC_TO_EVAL = (1 << 13),
 
   /* Sequences in the sequencer did change.
    * Use this tag with a scene ID which owns the sequences. */
@@ -1148,12 +1148,12 @@ typedef enum IDRecalcFlag {
 
   /* Update animation data-block itself, without doing full re-evaluation of
    * all dependent objects. */
-  ID_RECALC_ANIMATION_NO_FLUSH = ID_RECALC_EVALUATED_COPY,
+  ID_RECALC_ANIMATION_NO_FLUSH = ID_RECALC_SYNC_TO_EVAL,
 
   /* Ensure geometry of object and edit modes are both up-to-date in the evaluated data-block.
    * Example usage is when mesh validation modifies the non-edit-mode data,
    * which we want to be copied over to the evaluated data-block. */
-  ID_RECALC_GEOMETRY_ALL_MODES = ID_RECALC_GEOMETRY | ID_RECALC_EVALUATED_COPY,
+  ID_RECALC_GEOMETRY_ALL_MODES = ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL,
 
   /***************************************************************************
    * Aggregate flags, use only for checks on runtime.

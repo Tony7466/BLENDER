@@ -1270,7 +1270,7 @@ void ED_objects_recalculate_paths(bContext *C,
       Object *ob = static_cast<Object *>(link->data);
 
       if (has_object_motion_paths(ob) || has_pose_motion_paths(ob)) {
-        DEG_id_tag_update(&ob->id, ID_RECALC_EVALUATED_COPY);
+        DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
       }
     }
   }
@@ -1477,7 +1477,7 @@ static void object_clear_mpath(Object *ob)
     ob->avs.path_bakeflag &= ~MOTIONPATH_BAKE_HAS_PATHS;
 
     /* tag object for copy-on-eval - so removed paths don't still show */
-    DEG_id_tag_update(&ob->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
   }
 }
 
@@ -2026,7 +2026,7 @@ static int move_to_collection_exec(bContext *C, wmOperator *op)
   }
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update(&scene->id, ID_RECALC_EVALUATED_COPY | ID_RECALC_SELECT);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
 
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER, scene);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);

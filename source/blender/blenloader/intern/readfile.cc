@@ -2039,7 +2039,7 @@ static int direct_link_id_restore_recalc(const FileData *fd,
     /* If the contents datablock changed, the depsgraph needs to copy the
      * datablock again to ensure it matches the original datablock. */
     if (!is_identical) {
-      recalc |= ID_RECALC_EVALUATED_COPY;
+      recalc |= ID_RECALC_SYNC_TO_EVAL;
     }
 
     /* Special exceptions. */

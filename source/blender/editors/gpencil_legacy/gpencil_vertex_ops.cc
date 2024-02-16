@@ -1129,8 +1129,8 @@ static int gpencil_stroke_reset_vertex_color_exec(bContext *C, wmOperator *op)
   if (changed) {
     /* updates */
     DEG_id_tag_update(&gpd->id,
-                      ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_EVALUATED_COPY);
-    DEG_id_tag_update(&obact->id, ID_RECALC_EVALUATED_COPY);
+                      ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
+    DEG_id_tag_update(&obact->id, ID_RECALC_SYNC_TO_EVAL);
     WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   }
 

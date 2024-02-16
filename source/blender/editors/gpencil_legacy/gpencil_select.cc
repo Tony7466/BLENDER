@@ -282,7 +282,7 @@ static int gpencil_select_all_exec(bContext *C, wmOperator *op)
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
   /* Copy-on-eval tag is needed, or else no refresh happens */
-  DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
   WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
   WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -360,7 +360,7 @@ static int gpencil_select_linked_exec(bContext *C, wmOperator *op)
   DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
   /* Copy-on-eval tag is needed, or else no refresh happens */
-  DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
   WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
   WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -486,7 +486,7 @@ static int gpencil_select_alternate_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -700,7 +700,7 @@ static int gpencil_select_random_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -921,7 +921,7 @@ static int gpencil_select_grouped_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -1028,7 +1028,7 @@ static int gpencil_select_first_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -1138,7 +1138,7 @@ static int gpencil_select_last_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -1290,7 +1290,7 @@ static int gpencil_select_more_exec(bContext *C, wmOperator * /*op*/)
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -1436,7 +1436,7 @@ static int gpencil_select_less_exec(bContext *C, wmOperator * /*op*/)
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -1763,7 +1763,7 @@ static int gpencil_circle_select_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -2224,7 +2224,7 @@ static int gpencil_generic_select_exec(bContext *C,
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -2512,7 +2512,7 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
 
       /* Copy-on-eval tag is needed, or else no refresh happens */
       DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
-      DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+      DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
       WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
       WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
 
@@ -2651,7 +2651,7 @@ static int gpencil_select_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);
@@ -2851,7 +2851,7 @@ static int gpencil_select_vertex_color_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&gpd->id, ID_RECALC_GEOMETRY);
 
     /* Copy-on-eval tag is needed, or else no refresh happens */
-    DEG_id_tag_update(&gpd->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_SYNC_TO_EVAL);
 
     WM_event_add_notifier(C, NC_GPENCIL | NA_SELECTED, nullptr);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, nullptr);

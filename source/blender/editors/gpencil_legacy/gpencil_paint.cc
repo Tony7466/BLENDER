@@ -2022,7 +2022,7 @@ static void gpencil_init_drawing_brush(bContext *C, tGPsdata *p)
 
   /* Need this update to synchronize brush with draw manager. */
   if (changed) {
-    DEG_id_tag_update(&scene->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 }
 
@@ -3719,7 +3719,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
       p->paintmode = GP_PAINTMODE_DRAW;
       WM_cursor_modal_restore(p->win);
       ED_gpencil_toggle_brush_cursor(C, true, nullptr);
-      DEG_id_tag_update(&p->scene->id, ID_RECALC_EVALUATED_COPY);
+      DEG_id_tag_update(&p->scene->id, ID_RECALC_SYNC_TO_EVAL);
     }
     else {
       return OPERATOR_RUNNING_MODAL;

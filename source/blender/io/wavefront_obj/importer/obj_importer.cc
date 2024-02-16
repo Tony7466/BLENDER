@@ -131,7 +131,7 @@ static void geometry_to_blender_objects(Main *bmain,
     DEG_id_tag_update_ex(bmain, &obj->id, flags);
   }
   for (Collection *col : collections) {
-    DEG_id_tag_update(&col->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&col->id, ID_RECALC_SYNC_TO_EVAL);
   }
 
   DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);

@@ -1559,7 +1559,7 @@ static int make_links_data_exec(bContext *C, wmOperator *op)
               id_us_plus(&ob_dst->instance_collection->id);
               ob_dst->transflag |= OB_DUPLICOLLECTION;
             }
-            DEG_id_tag_update(&ob_dst->id, ID_RECALC_EVALUATED_COPY);
+            DEG_id_tag_update(&ob_dst->id, ID_RECALC_SYNC_TO_EVAL);
             break;
           case MAKE_LINKS_MODIFIERS:
             BKE_object_link_modifiers(ob_dst, ob_src);
@@ -2394,7 +2394,7 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
     if (ID_IS_OVERRIDE_LIBRARY_REAL(ob_iter) && !ID_IS_LINKED(ob_iter)) {
       ob_iter->id.override_library->flag &= ~LIBOVERRIDE_FLAG_SYSTEM_DEFINED;
       is_active_override = is_active_override || (&ob_iter->id == id_root);
-      DEG_id_tag_update(&ob_iter->id, ID_RECALC_EVALUATED_COPY);
+      DEG_id_tag_update(&ob_iter->id, ID_RECALC_SYNC_TO_EVAL);
     }
   }
   FOREACH_SELECTED_OBJECT_END;
@@ -2523,7 +2523,7 @@ static int make_override_library_exec(bContext *C, wmOperator *op)
     }
   }
 
-  DEG_id_tag_update(&CTX_data_scene(C)->id, ID_RECALC_BASE_FLAGS | ID_RECALC_EVALUATED_COPY);
+  DEG_id_tag_update(&CTX_data_scene(C)->id, ID_RECALC_BASE_FLAGS | ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_WINDOW, nullptr);
   WM_event_add_notifier(C, NC_WM | ND_LIB_OVERRIDE_CHANGED, nullptr);
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);
@@ -2769,7 +2769,7 @@ static int clear_override_library_exec(bContext *C, wmOperator * /*op*/)
     }
   }
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS | ID_RECALC_EVALUATED_COPY);
+  DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS | ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_WINDOW, nullptr);
   WM_event_add_notifier(C, NC_WM | ND_LIB_OVERRIDE_CHANGED, nullptr);
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_VIEW3D, nullptr);

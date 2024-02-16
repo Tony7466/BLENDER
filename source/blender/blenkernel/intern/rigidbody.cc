@@ -323,10 +323,10 @@ void BKE_rigidbody_object_copy(Main *bmain, Object *ob_dst, const Object *ob_src
 
         DEG_relations_tag_update(bmain);
         if (need_objects_update) {
-          DEG_id_tag_update(&rigidbody_world->group->id, ID_RECALC_EVALUATED_COPY);
+          DEG_id_tag_update(&rigidbody_world->group->id, ID_RECALC_SYNC_TO_EVAL);
         }
         if (need_constraints_update) {
-          DEG_id_tag_update(&rigidbody_world->constraints->id, ID_RECALC_EVALUATED_COPY);
+          DEG_id_tag_update(&rigidbody_world->constraints->id, ID_RECALC_SYNC_TO_EVAL);
         }
         DEG_id_tag_update(&ob_dst->id, ID_RECALC_TRANSFORM);
       }
@@ -1513,7 +1513,7 @@ static bool rigidbody_add_object_to_scene(Main *bmain, Scene *scene, Object *ob)
   BKE_rigidbody_cache_reset(rbw);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update(&rbw->group->id, ID_RECALC_EVALUATED_COPY);
+  DEG_id_tag_update(&rbw->group->id, ID_RECALC_SYNC_TO_EVAL);
 
   return true;
 }
@@ -1542,7 +1542,7 @@ static bool rigidbody_add_constraint_to_scene(Main *bmain, Scene *scene, Object 
   BKE_rigidbody_cache_reset(rbw);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update(&rbw->constraints->id, ID_RECALC_EVALUATED_COPY);
+  DEG_id_tag_update(&rbw->constraints->id, ID_RECALC_SYNC_TO_EVAL);
 
   return true;
 }
@@ -1622,11 +1622,11 @@ void BKE_rigidbody_remove_object(Main *bmain, Scene *scene, Object *ob, const bo
           rbc = obt->rigidbody_constraint;
           if (rbc->ob1 == ob) {
             rbc->ob1 = nullptr;
-            DEG_id_tag_update(&obt->id, ID_RECALC_EVALUATED_COPY);
+            DEG_id_tag_update(&obt->id, ID_RECALC_SYNC_TO_EVAL);
           }
           if (rbc->ob2 == ob) {
             rbc->ob2 = nullptr;
-            DEG_id_tag_update(&obt->id, ID_RECALC_EVALUATED_COPY);
+            DEG_id_tag_update(&obt->id, ID_RECALC_SYNC_TO_EVAL);
           }
         }
       }
@@ -1668,7 +1668,7 @@ void BKE_rigidbody_remove_constraint(Main *bmain, Scene *scene, Object *ob, cons
     /* Remove from RBW constraints collection. */
     if (rbw->constraints != nullptr) {
       BKE_collection_object_remove(bmain, rbw->constraints, ob, free_us);
-      DEG_id_tag_update(&rbw->constraints->id, ID_RECALC_EVALUATED_COPY);
+      DEG_id_tag_update(&rbw->constraints->id, ID_RECALC_SYNC_TO_EVAL);
     }
 
     /* remove from rigidbody world, free object won't do this */

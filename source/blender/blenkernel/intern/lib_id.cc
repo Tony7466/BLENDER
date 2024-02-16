@@ -181,7 +181,7 @@ static int lib_id_clear_library_data_users_update_cb(LibraryIDLinkCallbackData *
      * view this is a different ID. Hence we need to tag all of its users for a copy-on-eval
      * update. */
     DEG_id_tag_update_ex(
-        cb_data->bmain, cb_data->owner_id, ID_RECALC_TAG_FOR_UNDO | ID_RECALC_EVALUATED_COPY);
+        cb_data->bmain, cb_data->owner_id, ID_RECALC_TAG_FOR_UNDO | ID_RECALC_SYNC_TO_EVAL);
     return IDWALK_RET_STOP_ITER;
   }
   return IDWALK_RET_NOP;
@@ -228,7 +228,7 @@ void BKE_lib_id_clear_library_data(Main *bmain, ID *id, const int flags)
   /* We need to tag this IDs and all of its users, conceptually new local ID and original linked
    * ones are two completely different data-blocks that were virtually remapped, even though in
    * reality they remain the same data. For undo this info is critical now. */
-  DEG_id_tag_update_ex(bmain, id, ID_RECALC_EVALUATED_COPY);
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_SYNC_TO_EVAL);
   ID *id_iter;
   FOREACH_MAIN_ID_BEGIN (bmain, id_iter) {
     BKE_library_foreach_ID_link(

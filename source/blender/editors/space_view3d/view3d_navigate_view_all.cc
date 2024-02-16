@@ -238,7 +238,7 @@ static int view3d_all_exec(bContext *C, wmOperator *op)
     wmMsgBus *mbus = CTX_wm_message_bus(C);
     WM_msg_publish_rna_prop(mbus, &scene->id, &scene->cursor, View3DCursor, location);
 
-    DEG_id_tag_update(&scene->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 
   if (!changed) {

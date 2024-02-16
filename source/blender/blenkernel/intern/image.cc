@@ -2997,7 +2997,7 @@ static void image_tag_frame_recalc(Image *ima, ID *iuser_id, ImageUser *iuser, v
 
     if (iuser_id) {
       /* Must copy image user changes to evaluated data-block. */
-      DEG_id_tag_update(iuser_id, ID_RECALC_EVALUATED_COPY);
+      DEG_id_tag_update(iuser_id, ID_RECALC_SYNC_TO_EVAL);
     }
   }
 }
@@ -3012,7 +3012,7 @@ static void image_tag_reload(Image *ima, ID *iuser_id, ImageUser *iuser, void *c
     }
     if (iuser_id) {
       /* Must copy image user changes to evaluated data-block. */
-      DEG_id_tag_update(iuser_id, ID_RECALC_EVALUATED_COPY);
+      DEG_id_tag_update(iuser_id, ID_RECALC_SYNC_TO_EVAL);
     }
     BKE_image_partial_update_mark_full_update(ima);
   }

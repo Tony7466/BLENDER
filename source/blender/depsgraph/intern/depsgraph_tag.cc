@@ -171,7 +171,7 @@ void depsgraph_tag_to_component_opcode(const ID *id,
         *component_type = NodeType::PARTICLE_SYSTEM;
       }
       break;
-    case ID_RECALC_EVALUATED_COPY:
+    case ID_RECALC_SYNC_TO_EVAL:
       *component_type = NodeType::COPY_ON_EVAL;
       break;
     case ID_RECALC_SHADING:
@@ -532,7 +532,7 @@ void deg_graph_tag_parameters_if_needed(Main *bmain,
 
   /* Clear flags which are known to not affect parameters usable by drivers. */
   const uint clean_flags = flags &
-                           ~(ID_RECALC_EVALUATED_COPY | ID_RECALC_SELECT | ID_RECALC_BASE_FLAGS);
+                           ~(ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT | ID_RECALC_BASE_FLAGS);
 
   if (clean_flags == 0) {
     /* Changes are limited to only things which are not usable by drivers. */
@@ -572,7 +572,7 @@ void graph_tag_ids_for_visible_update(Depsgraph *graph)
     }
     uint flags = 0;
     if (!deg::deg_eval_copy_is_expanded(id_node->id_cow)) {
-      flags |= ID_RECALC_EVALUATED_COPY;
+      flags |= ID_RECALC_SYNC_TO_EVAL;
       if (do_time) {
         if (BKE_animdata_from_id(id_node->id_orig) != nullptr) {
           flags |= ID_RECALC_ANIMATION;
@@ -770,7 +770,7 @@ const char *DEG_update_tag_as_string(IDRecalcFlag flag)
       return "PSYS_PHYS";
     case ID_RECALC_PSYS_ALL:
       return "PSYS_ALL";
-    case ID_RECALC_EVALUATED_COPY:
+    case ID_RECALC_SYNC_TO_EVAL:
       return "COPY_ON_EVAL";
     case ID_RECALC_SHADING:
       return "SHADING";

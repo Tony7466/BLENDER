@@ -4084,7 +4084,7 @@ void object_remove_particle_system(Main *bmain,
   DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
 
   /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_EVALUATED_COPY);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 ParticleSettings *BKE_particlesettings_add(Main *bmain, const char *name)

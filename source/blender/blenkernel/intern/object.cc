@@ -5024,7 +5024,7 @@ void BKE_object_groups_clear(Main *bmain, Scene *scene, Object *ob)
   Collection *collection = nullptr;
   while ((collection = BKE_collection_object_find(bmain, scene, collection, ob))) {
     BKE_collection_object_remove(bmain, collection, ob, false);
-    DEG_id_tag_update(&collection->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   }
 }
 

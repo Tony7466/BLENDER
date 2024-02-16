@@ -235,12 +235,12 @@ static void memfile_undosys_step_decode(
             bmain, id, memfile_undosys_step_id_reused_cb, nullptr, IDWALK_READONLY);
       }
 
-      /* NOTE: Tagging `ID_RECALC_EVALUATED_COPY` here should not be needed in practice, since
+      /* NOTE: Tagging `ID_RECALC_SYNC_TO_EVAL` here should not be needed in practice, since
        * modified IDs should already have other depsgraph update tags anyway.
        * However, for the sake of consistency, it's better to effectively use it,
        * since content of that ID pointer does have been modified. */
       uint recalc_flags = id->recalc | ((id->tag & LIB_TAG_UNDO_OLD_ID_REREAD_IN_PLACE) ?
-                                            ID_RECALC_EVALUATED_COPY :
+                                            ID_RECALC_SYNC_TO_EVAL :
                                             IDRecalcFlag(0));
       /* Tag depsgraph to update data-block for changes that happened between the
        * current and the target state, see direct_link_id_restore_recalc(). */
@@ -252,7 +252,7 @@ static void memfile_undosys_step_decode(
       if (nodetree != nullptr) {
         recalc_flags = nodetree->id.recalc;
         if (id->tag & LIB_TAG_UNDO_OLD_ID_REREAD_IN_PLACE) {
-          recalc_flags |= ID_RECALC_EVALUATED_COPY;
+          recalc_flags |= ID_RECALC_SYNC_TO_EVAL;
         }
         if (recalc_flags != 0) {
           DEG_id_tag_update_ex(bmain, &nodetree->id, recalc_flags);
@@ -263,7 +263,7 @@ static void memfile_undosys_step_decode(
         if (scene->master_collection != nullptr) {
           recalc_flags = scene->master_collection->id.recalc;
           if (id->tag & LIB_TAG_UNDO_OLD_ID_REREAD_IN_PLACE) {
-            recalc_flags |= ID_RECALC_EVALUATED_COPY;
+            recalc_flags |= ID_RECALC_SYNC_TO_EVAL;
           }
           if (recalc_flags != 0) {
             DEG_id_tag_update_ex(bmain, &scene->master_collection->id, recalc_flags);

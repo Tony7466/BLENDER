@@ -129,7 +129,7 @@ class LightBake {
         bake_result_[i] = nullptr;
       }
       /* Propagate the cache to evaluated object. */
-      DEG_id_tag_update(&orig_ob->id, ID_RECALC_EVALUATED_COPY | ID_RECALC_SHADING);
+      DEG_id_tag_update(&orig_ob->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SHADING);
     }
   }
 

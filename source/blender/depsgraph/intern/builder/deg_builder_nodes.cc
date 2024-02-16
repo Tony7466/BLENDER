@@ -433,7 +433,7 @@ int DepsgraphNodeBuilder::foreach_id_cow_detect_need_for_update_callback(ID *id_
       graph_id_tag_update(bmain_,
                           graph_,
                           id_cow_self->orig_id,
-                          ID_RECALC_EVALUATED_COPY,
+                          ID_RECALC_SYNC_TO_EVAL,
                           DEG_UPDATE_SOURCE_RELATIONS);
       return IDWALK_RET_STOP_ITER;
     }
@@ -449,7 +449,7 @@ int DepsgraphNodeBuilder::foreach_id_cow_detect_need_for_update_callback(ID *id_
       graph_id_tag_update(bmain_,
                           graph_,
                           id_cow_self->orig_id,
-                          ID_RECALC_EVALUATED_COPY,
+                          ID_RECALC_SYNC_TO_EVAL,
                           DEG_UPDATE_SOURCE_RELATIONS);
       return IDWALK_RET_STOP_ITER;
     }
@@ -496,7 +496,7 @@ void DepsgraphNodeBuilder::update_invalid_cow_pointers()
       /* Node/ID with no copy-on-eval data, no need to check it. */
       continue;
     }
-    if ((id_node->id_cow->recalc & ID_RECALC_EVALUATED_COPY) != 0) {
+    if ((id_node->id_cow->recalc & ID_RECALC_SYNC_TO_EVAL) != 0) {
       /* Node/ID already tagged for copy-on-eval flush, no need to check it. */
       continue;
     }

@@ -328,7 +328,7 @@ void BKE_cachefile_reload(Depsgraph *depsgraph, CacheFile *cache_file)
     cachefile_handle_free(cache_file_eval);
   }
 
-  DEG_id_tag_update(&cache_file->id, ID_RECALC_EVALUATED_COPY);
+  DEG_id_tag_update(&cache_file->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 void BKE_cachefile_eval(Main *bmain, Depsgraph *depsgraph, CacheFile *cache_file)

@@ -5804,7 +5804,7 @@ void paint_proj_stroke(const bContext *C,
       return;
     }
 
-    DEG_id_tag_update(&scene->id, ID_RECALC_EVALUATED_COPY);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
     ED_region_tag_redraw(region);
 
     return;

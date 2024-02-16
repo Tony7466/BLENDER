@@ -2281,10 +2281,10 @@ static void rna_property_update(
       const short id_type = GS(ptr->owner_id->name);
       if (ID_TYPE_USE_COPY_ON_EVAL(id_type)) {
         if (prop->flag & PROP_DEG_SYNC_ONLY) {
-          DEG_id_tag_update(ptr->owner_id, ID_RECALC_EVALUATED_COPY);
+          DEG_id_tag_update(ptr->owner_id, ID_RECALC_SYNC_TO_EVAL);
         }
         else {
-          DEG_id_tag_update(ptr->owner_id, ID_RECALC_EVALUATED_COPY | ID_RECALC_PARAMETERS);
+          DEG_id_tag_update(ptr->owner_id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_PARAMETERS);
         }
       }
     }
