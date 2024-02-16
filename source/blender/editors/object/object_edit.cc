@@ -1768,7 +1768,18 @@ static bool object_mode_set_poll(bContext *C)
 {
   /* Needed as #ED_operator_object_active_editable doesn't call use 'active_object'. */
   Object *ob = CTX_data_active_object(C);
-  return ED_operator_object_active_editable_ex(C, ob);
+
+  if (ob == nullptr) {
+    CTX_wm_operator_poll_msg_set(C, "Context missing active object");
+    return false;
+  }
+
+  if (!BKE_id_is_editable(CTX_data_main(C), (ID *)ob)) {
+    CTX_wm_operator_poll_msg_set(C, "Cannot edit library linked or non-editable override object");
+    return false;
+  }
+
+  return true;
 }
 
 static int object_mode_set_exec(bContext *C, wmOperator *op)
