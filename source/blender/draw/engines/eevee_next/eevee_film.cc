@@ -620,7 +620,6 @@ void Film::update_sample_table()
       i++;
     }
   }
-  printf("%s: samples_len: %d\n", __func__, data_.samples_len);
 }
 
 void Film::accumulate(View &view, GPUTexture *combined_final_tx)
