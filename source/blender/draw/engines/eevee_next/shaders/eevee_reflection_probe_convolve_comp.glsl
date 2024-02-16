@@ -49,7 +49,7 @@ void convolve_sample(vec3 in_direction,
   vec2 in_texel = in_uv * float(imageSize(in_atlas_mip_img).x);
 
   float weight = sample_weight(out_direction, in_direction);
-  vec4 radiance = imageLoad(in_atlas_mip_img, ivec3(in_texel, sample_coord.layer));
+  vec4 radiance = imageLoad(in_atlas_mip_img, ivec3(ivec2(in_texel), int(sample_coord.layer)));
 #if 0 /* For reference and debugging.  */
   vec4 radiance = texture(cubemap_tx, in_direction);
 #endif

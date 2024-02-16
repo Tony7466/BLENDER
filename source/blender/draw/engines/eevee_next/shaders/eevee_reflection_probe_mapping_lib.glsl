@@ -54,6 +54,7 @@ vec3 sphere_probe_texel_to_direction(ivec2 local_texel,
 vec2 sphere_probe_miplvl_scale_bias(float mip_lvl, SphereProbeUvArea uv_area, vec2 uv)
 {
   float pixel_count_mip_0 = float(SPHERE_PROBE_ATLAS_RES) * uv_area.scale;
+  /* This should be always odd. */
   float pixel_count = floor(pixel_count_mip_0 / exp2(mip_lvl));
   float scale = (pixel_count - 1.0) / pixel_count;
   float offset = 0.5 / pixel_count;
