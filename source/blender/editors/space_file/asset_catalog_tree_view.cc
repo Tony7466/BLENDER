@@ -577,13 +577,15 @@ void AssetCatalogTreeViewAllItem::build_row(uiLayout &row)
 
   PointerRNA *props;
 
-  UI_but_extra_operator_icon_add((uiBut *)this->view_item_button(),
+  UI_but_extra_operator_icon_add(reinterpret_cast<uiBut *>(this->view_item_button()),
                                  "ASSET_OT_catalogs_save",
                                  WM_OP_INVOKE_DEFAULT,
                                  ICON_FILE_TICK);
 
-  props = UI_but_extra_operator_icon_add(
-      (uiBut *)this->view_item_button(), "ASSET_OT_catalog_new", WM_OP_INVOKE_DEFAULT, ICON_ADD);
+  props = UI_but_extra_operator_icon_add(reinterpret_cast<uiBut *>(this->view_item_button()),
+                                         "ASSET_OT_catalog_new",
+                                         WM_OP_INVOKE_DEFAULT,
+                                         ICON_ADD);
   /* No parent path to use the root level. */
   RNA_string_set(props, "parent_path", nullptr);
 }
