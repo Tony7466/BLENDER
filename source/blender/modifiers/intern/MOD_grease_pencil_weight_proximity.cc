@@ -141,8 +141,9 @@ static bool target_vertex_group_available(const StringRefNull name,
 {
   const int def_nr = BLI_findstringindex(
       &vertex_group_names, name.c_str(), offsetof(bDeformGroup, name));
-  if (def_nr < 0)
+  if (def_nr < 0) {
     return false;
+  }
   return true;
 }
 
