@@ -110,6 +110,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
   }
   else {
     curves.curve_types_for_write().copy_from(curve_types);
+    curves.update_curve_types();
   }
 
   /* Find used vertex groups in this drawing. */
@@ -198,6 +199,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       continue;
     }
 
+    const Span<bGPDspoint> src_points{gps->points, gps->totpoints};
     /* Previously, Grease Pencil used a radius convention where 1 `px` = 0.001 units. This `px`
      * was the brush size which would be stored in the stroke thickness and then scaled by the
      * point pressure factor. Finally, the render engine would divide this thickness value by
@@ -222,8 +224,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
                                                        MutableSpan<MDeformVert>();
 
     if (curve_types[stroke_i] == CURVE_TYPE_POLY) {
-      Span<bGPDspoint> src_points{gps->points, gps->totpoints};
-
       threading::parallel_for(src_points.index_range(), 4096, [&](const IndexRange range) {
         for (const int point_i : range) {
           const bGPDspoint &pt = src_points[point_i];
@@ -233,6 +233,9 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
           dst_rotations[point_i] = pt.uv_rot;
           dst_vertex_colors[point_i] = ColorGeometry4f(pt.vert_color);
           dst_selection[point_i] = (pt.flag & GP_SPOINT_SELECT) != 0;
+          if (use_dverts && gps->dvert) {
+            copy_dvert(gps->dvert[point_i], dst_dverts[point_i]);
+          }
         }
       });
 
@@ -245,12 +248,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
               dst_deltatimes[point_i] = pt.time - pt_prev.time;
             }
           });
-
-      if (use_dverts && gps->dvert) {
-        for (const int point_i : src_points.index_range()) {
-          copy_dvert(gps->dvert[point_i], dst_dverts[point_i]);
-        }
-      }
     }
     else if (curve_types[stroke_i] == CURVE_TYPE_BEZIER) {
       BLI_assert(gps->editcurve != nullptr);
@@ -268,6 +265,9 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
           dst_rotations[point_i] = cpt.uv_rot;
           dst_vertex_colors[point_i] = ColorGeometry4f(cpt.vert_color);
           dst_selection[point_i] = (cpt.flag & GP_CURVE_POINT_SELECT) != 0;
+          if (use_dverts && gps->dvert) {
+            copy_dvert(gps->dvert[point_i], dst_dverts[point_i]);
+          }
         }
       });
     }
