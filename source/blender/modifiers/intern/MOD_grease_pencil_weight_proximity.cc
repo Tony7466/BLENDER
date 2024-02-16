@@ -97,14 +97,12 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static float get_distance_factor(float4x4 mat,
-                                 float3 pos,
-                                 const float dist_max,
-                                 const float dist_min)
+static float get_distance_factor(
+    float3 target_pos, float4x4 obmat, float3 pos, const float dist_min, const float dist_max)
 {
   float weight;
-  const float3 gvert = (mat * float4(pos,1.0f)).xyz();
-  const float dist = math::length(mat.location() - gvert);
+  const float3 gvert = (obmat * float4(pos, 1.0f)).xyz();
+  const float dist = math::length(target_pos - gvert);
 
   if (dist > dist_max) {
     weight = 1.0f;
@@ -172,26 +170,36 @@ static void write_weights_for_drawing(const ModifierData &md,
       curves, mmd.influence);
 
   const Span<float3> positions = curves.positions_for_write();
-  const float4x4 obmat = mmd.object ? mmd.object->object_to_world() : float4x4::identity();
+  const float4x4 obmat = ob.object_to_world();
+  const float3 target_pos = mmd.object ? mmd.object->object_to_world().location() : float3(0.0f);
 
   threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
     for (const int point : range) {
       const float vgroup_fac = vgroup_weights[point];
-      if(vgroup_fac < 0.0f){ continue; }
+      if (vgroup_fac < 0.0f) {
+        continue;
+      }
 
       float dist_fac = mmd.object ?
-                                 get_distance_factor(
-                                     obmat, positions[point], mmd.dist_start, mmd.dist_end) :
-                                 1.0f;
+                           get_distance_factor(
+                               target_pos, obmat, positions[point], mmd.dist_start, mmd.dist_end) :
+                           1.0f;
 
       if (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT) {
         dist_fac = 1.0f - dist_fac;
       }
 
-      dst_weights.span[point] = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA)?
-        dst_weights.span[point] * dist_fac : dist_fac;
+      dst_weights.span[point] = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA) ?
+                                    dst_weights.span[point] * dist_fac :
+                                    dist_fac;
 
-      dst_weights.span[point] = math::clamp(dst_weights.span[point], mmd.min_weight, 1.0f);
+      dst_weights.span[point] = math::clamp(
+          dst_weights.span[point],
+          /** Weight==0 will remove the point from the group, assign a sufficiently small value
+           * there to prevent the visual disconnect, and keep the behavior same as the old
+           * modifier. */
+          math::max(mmd.min_weight, 1e-5f),
+          1.0f);
     }
   });
 
@@ -235,7 +243,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
-  
+
   uiLayoutSetPropSep(layout, true);
   row = uiLayoutRow(layout, true);
   uiItemPointerR(row, ptr, "target_vertex_group", &ob_ptr, "vertex_groups", nullptr, ICON_NONE);
@@ -253,7 +261,6 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   uiItemR(layout, ptr, "minimum_weight", UI_ITEM_NONE, nullptr, ICON_NONE);
   uiItemR(layout, ptr, "use_multiply", UI_ITEM_NONE, nullptr, ICON_NONE);
-
 
   if (uiLayout *influence_panel = uiLayoutPanelProp(
           C, layout, ptr, "open_influence_panel", "Influence"))
