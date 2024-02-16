@@ -1317,18 +1317,18 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  asset_system::AssetLibrary *library = AS_asset_library_load(
-      CTX_data_main(C), user_library_to_library_ref(*user_library));
-  if (!library) {
-    return OPERATOR_CANCELLED;
-  }
-
   /* Turn brush into asset if it isn't yet. */
   if (!BKE_paint_brush_is_valid_asset(brush)) {
     asset::mark_id(&brush->id);
     asset::generate_preview(C, &brush->id);
   }
   BLI_assert(BKE_paint_brush_is_valid_asset(brush));
+
+  asset_system::AssetLibrary *library = AS_asset_library_load(
+      CTX_data_main(C), user_library_to_library_ref(*user_library));
+  if (!library) {
+    return OPERATOR_CANCELLED;
+  }
 
   /* Add asset to catalog. */
   char catalog_path[MAX_NAME];
