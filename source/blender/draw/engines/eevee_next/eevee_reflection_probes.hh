@@ -39,9 +39,9 @@ class SphereProbeModule {
   /**
    * The maximum resolution of a cube-map side.
    *
-   * Must be a power of two; intention to be used as a cube-map atlas.
+   * Must be a power of two minus one; intention to be used as an atlas.
    */
-  static constexpr int max_resolution_ = 2048;
+  static constexpr int max_resolution_ = 2048 - 1;
 
   Instance &instance_;
   SphereProbeDataBuf data_buf_;
@@ -78,6 +78,8 @@ class SphereProbeModule {
   /** Updated Probe coordinates in the atlas. */
   SphereProbeUvArea probe_sampling_coord_;
   SphereProbePixelArea probe_write_coord_;
+  /** Source Probe coordinates in the atlas. */
+  SphereProbePixelArea probe_read_coord_;
   /** World coordinates in the atlas. */
   SphereProbeUvArea world_sampling_coord_;
   /** Number of the probe to process in the select phase. */
@@ -135,7 +137,7 @@ class SphereProbeModule {
    * Result is safely clamped to max resolution. */
   int subdivision_level_get(const eLightProbeResolution probe_resolution)
   {
-    return max_ii(int(log2(max_resolution_)) - int(probe_resolution), 0);
+    return max_ii(log2_ceil(max_resolution_) - int(probe_resolution), 0);
   }
 
   /**

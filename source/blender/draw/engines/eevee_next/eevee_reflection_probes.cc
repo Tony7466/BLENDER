@@ -57,6 +57,7 @@ void SphereProbeModule::begin_sync()
     pass.bind_image("out_atlas_mip_img", &convolve_output_);
     pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&probe_sampling_coord_));
     pass.push_constant("write_coord_packed", reinterpret_cast<int4 *>(&probe_write_coord_));
+    pass.push_constant("read_coord_packed", reinterpret_cast<int4 *>(&probe_read_coord_));
     pass.push_constant("mip_roughness", &convolve_roughness_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
     pass.dispatch(&dispatch_probe_convolve_);
@@ -142,7 +143,7 @@ void SphereProbeModule::ensure_cubemap_render_target(int resolution)
 
 SphereProbeModule::UpdateInfo SphereProbeModule::update_info_from_probe(const SphereProbe &probe)
 {
-  const int max_shift = int(log2(max_resolution_));
+  const int max_shift = int(roundf(log2f(max_resolution_)));
 
   SphereProbeModule::UpdateInfo info = {};
   info.atlas_coord = probe.atlas_coord;
@@ -206,6 +207,7 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
     convolve_roughness_ = mip_ratio * 0.75f;
     convolve_input_ = probes_tx_.mip_view(i);
     convolve_output_ = probes_tx_.mip_view(i + 1);
+    probe_read_coord_ = atlas_coord.as_write_coord(max_resolution_, i);
     probe_write_coord_ = atlas_coord.as_write_coord(max_resolution_, i + 1);
     int out_mip_res = resolution >> (i + 1);
     dispatch_probe_convolve_ = int3(int2(ceil_division(out_mip_res, SPHERE_PROBE_GROUP_SIZE)), 1);

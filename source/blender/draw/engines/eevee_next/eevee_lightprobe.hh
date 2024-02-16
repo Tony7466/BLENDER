@@ -41,9 +41,9 @@ struct SphereProbeAtlasCoord {
   }
 
   /* Return the area extent in pixel. */
-  int area_extent(int atlas_extent) const
+  int area_extent(int atlas_extent, int mip_lvl = 0) const
   {
-    return atlas_extent >> subdivision_lvl;
+    return atlas_extent >> (subdivision_lvl + mip_lvl);
   }
 
   /* Coordinate of the area in [0..area_count_per_dimension[ range. */
@@ -54,9 +54,10 @@ struct SphereProbeAtlasCoord {
   }
 
   /* Coordinate of the bottom left corner of the area in [0..atlas_extent[ range. */
-  int2 area_offset(int atlas_extent) const
+  int2 area_offset(int atlas_extent, int mip_lvl = 0) const
   {
-    return area_location() * area_extent(atlas_extent);
+    /* There is one pixel padding between each area. */
+    return area_location() * (area_extent(atlas_extent, mip_lvl) + 1);
   }
 
   SphereProbeUvArea as_sampling_coord(int atlas_extent) const
@@ -78,6 +79,27 @@ struct SphereProbeAtlasCoord {
      * c-------c-------c
      *     ^-------^
      *       sampling area
+     *
+     * We place texel centers at the edges of the octahedron, to avoid artifacts caused by
+     * interpolating across the edges.
+     *
+     * This is a diagram of a 5px^2 map with 2 mips. 0 and 1 denote the pixels centers of each
+     * mips. The 1px padding of mip 0 is omitted for clarity. The lines shows the octahedron edges.
+     *
+     * 1---0---1---0---1 <
+     * |     / | \     |  |
+     * 0   0   0   0   0  |
+     * | /     |     \ |  |
+     * 1---0---1---0---1  | sampling area
+     * | \     |     / |  |
+     * 0   0   0   0   0  |
+     * |     \ | /     |  |
+     * 1---0---1---0---1 <
+     * ^---------------^
+     *       sampling area
+     *
+     * To do this, we made all mip levels have an odd number of pixel, by sizing the atlas
+     * appropriately.
      */
     /* Max level only need half a pixel of padding around the sampling area. */
     const int mip_max_lvl_padding = 1;
@@ -85,29 +107,6 @@ struct SphereProbeAtlasCoord {
     /* Extent and offset in mip 0 texels. */
     const int2 sampling_area_offset = area_offset(atlas_extent) + mip_min_lvl_padding / 2;
     int sampling_area_extent = area_extent(atlas_extent) - mip_min_lvl_padding;
-    /**
-     * We place texel centers at the edges of the octahedron, to avoid artifacts caused by
-     * interpolating across the edges.
-     *
-     * This is a diagram of a 5px^2 map with being `x` the pixels centers.
-     * The padding is omitted for clarity. The lines shows the octahedron edges.
-     *
-     * x---x---x---x---x <
-     * |     / | \     |  |
-     * x   x   x   x   x  |
-     * | /     |     \ |  |
-     * x---x---x---x---x  | sampling area
-     * | \     |     / |  |
-     * x   x   x   x   x  |
-     * |     \ | /     |  |
-     * x---x---x---x---x <
-     * ^---------------^
-     *       sampling area
-     *
-     * To do this, we made the last mip level have an odd number of pixel, by reducing the extend
-     * by one more pixel.
-     */
-    sampling_area_extent -= mip_min_lvl_padding;
     /* Convert to atlas UVs. */
     SphereProbeUvArea coord;
     coord.scale = sampling_area_extent / float(atlas_extent);
@@ -119,8 +118,8 @@ struct SphereProbeAtlasCoord {
   SphereProbePixelArea as_write_coord(int atlas_extent, int mip_lvl) const
   {
     SphereProbePixelArea coord;
-    coord.extent = atlas_extent >> (subdivision_lvl + mip_lvl);
-    coord.offset = area_location() * coord.extent;
+    coord.extent = area_extent(atlas_extent, mip_lvl);
+    coord.offset = area_offset(atlas_extent, mip_lvl);
     coord.layer = atlas_layer;
     return coord;
   }

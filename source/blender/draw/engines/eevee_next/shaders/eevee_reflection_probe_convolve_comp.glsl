@@ -63,6 +63,7 @@ void main()
 {
   SphereProbeUvArea sample_coord = reinterpret_as_atlas_coord(probe_coord_packed);
   SphereProbePixelArea out_texel_area = reinterpret_as_write_coord(write_coord_packed);
+  SphereProbePixelArea in_texel_area = reinterpret_as_write_coord(read_coord_packed);
 
   /* Texel in probe. */
   ivec2 out_local_texel = ivec2(gl_GlobalInvocationID.xy);
@@ -80,17 +81,13 @@ void main()
   /* Assume we always input the previous mipmap. */
   const int mip_scaling = 2;
 
-  SphereProbePixelArea in_texel_area = out_texel_area;
-  in_texel_area.offset *= mip_scaling;
-  in_texel_area.extent *= mip_scaling;
-
   float weight = 0.0;
   vec4 radiance = vec4(0.0);
   /* TODO(fclem): Could derive the radius to process by taking the angle which encompass most of
    * the gaussian (using an epsilon threshold) and then derive a number of mip pixels from it. */
-  int process_area_radius = 40;
-  ivec2 in_texel_min = out_texel * mip_scaling - (process_area_radius - 1);
-  ivec2 in_texel_max = in_texel_min + process_area_radius * 2 - 1;
+  int process_area_radius = 30;
+  ivec2 in_texel_min = (out_texel * 2 + 1) - process_area_radius;
+  ivec2 in_texel_max = in_texel_min + process_area_radius * 2;
   for (int y = in_texel_min.y; y <= in_texel_max.y; y++) {
     for (int x = in_texel_min.x; x <= in_texel_max.x; x++) {
       ivec2 in_texel = ivec2(x, y);
