@@ -203,7 +203,6 @@ static void copy_and_reorder_mesh(const Mesh &src_mesh,
                                   const bke::AnonymousAttributePropagationInfo &propagation_info,
                                   Mesh &dst_mesh)
 {
-  BKE_mesh_copy_parameters(&dst_mesh, &src_mesh);
   switch (domain) {
     case bke::AttrDomain::Point:
       copy_and_reorder_mesh_verts(src_mesh, old_by_new_map, propagation_info, dst_mesh);
@@ -295,8 +294,9 @@ Mesh *reorder_mesh(const Mesh &src_mesh,
                    const bke::AttrDomain domain,
                    const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  Mesh *dst_mesh = BKE_mesh_new_nomain(
+  Mesh *dst_mesh = bke::mesh_new_no_attributes(
       src_mesh.verts_num, src_mesh.edges_num, src_mesh.faces_num, src_mesh.corners_num);
+  BKE_mesh_copy_parameters(dst_mesh, &src_mesh);
   copy_and_reorder_mesh(src_mesh, old_by_new_map, domain, propagation_info, *dst_mesh);
   return dst_mesh;
 }
