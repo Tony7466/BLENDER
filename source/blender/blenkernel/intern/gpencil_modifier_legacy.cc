@@ -644,7 +644,7 @@ static void gpencil_assign_object_eval(Object *object)
 
   bGPdata *gpd_eval = object->runtime->gpd_eval;
 
-  gpd_eval->id.tag |= LIB_TAG_COPIED_ON_EVAL_EVAL_RESULT;
+  gpd_eval->id.tag |= LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT;
 
   if (object->id.tag & LIB_TAG_COPIED_ON_EVAL) {
     object->data = gpd_eval;

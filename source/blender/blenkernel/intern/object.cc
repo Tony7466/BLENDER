@@ -1616,7 +1616,7 @@ void BKE_object_eval_assign_data(Object *object_eval, ID *data_eval, bool is_own
 
   if (is_owned) {
     /* Set flag for debugging. */
-    data_eval->tag |= LIB_TAG_COPIED_ON_EVAL_EVAL_RESULT;
+    data_eval->tag |= LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT;
   }
 
   /* Assigned evaluated data. */
@@ -4183,7 +4183,7 @@ Mesh *BKE_object_get_pre_modified_mesh(const Object *object)
     BLI_assert(object->runtime->data_orig->orig_id == ((Object *)object->id.orig_id)->data);
     Mesh *result = (Mesh *)object->runtime->data_orig;
     BLI_assert((result->id.tag & LIB_TAG_COPIED_ON_EVAL) != 0);
-    BLI_assert((result->id.tag & LIB_TAG_COPIED_ON_EVAL_EVAL_RESULT) == 0);
+    BLI_assert((result->id.tag & LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT) == 0);
     return result;
   }
   BLI_assert((object->id.tag & LIB_TAG_COPIED_ON_EVAL) == 0);
@@ -4202,7 +4202,7 @@ Mesh *BKE_object_get_original_mesh(const Object *object)
     result = (Mesh *)((Object *)object->id.orig_id)->data;
   }
   BLI_assert(result != nullptr);
-  BLI_assert((result->id.tag & (LIB_TAG_COPIED_ON_EVAL | LIB_TAG_COPIED_ON_EVAL_EVAL_RESULT)) ==
+  BLI_assert((result->id.tag & (LIB_TAG_COPIED_ON_EVAL | LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT)) ==
              0);
   return result;
 }

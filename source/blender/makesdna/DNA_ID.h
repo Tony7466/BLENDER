@@ -979,7 +979,7 @@ enum {
    * Typical example is object data, when evaluating the object's modifier stack the final obdata
    * can be different than the evaluated initial obdata ID.
    */
-  LIB_TAG_COPIED_ON_EVAL_EVAL_RESULT = 1 << 24,
+  LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT = 1 << 24,
 
   /**
    * ID management status tags related to non-standard BMain IDs.
