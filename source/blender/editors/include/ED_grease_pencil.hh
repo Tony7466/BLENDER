@@ -183,7 +183,7 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
                                                       GreasePencil &grease_pencil);
 Vector<MutableDrawingInfo> retrieve_editable_drawings_with_falloff(const Scene &scene,
                                                                    GreasePencil &grease_pencil);
-Vector<Vector<MutableDrawingInfo>> retrieve_editable_drawings_per_frame(
+Array<Vector<MutableDrawingInfo>> retrieve_editable_drawings_grouped_per_frame(
     const Scene &scene, GreasePencil &grease_pencil);
 Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
     const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);

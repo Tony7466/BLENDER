@@ -21,15 +21,13 @@ class GreasePencilStrokeOperation {
   virtual void on_stroke_begin(const bContext &C, const InputSample &start_sample) = 0;
   virtual void on_stroke_extended(const bContext &C, const InputSample &extension_sample) = 0;
   virtual void on_stroke_done(const bContext &C) = 0;
-
-  BrushStrokeMode brush_mode;
 };
 
 namespace greasepencil {
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
-std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_operation(BrushStrokeMode &brush_mode);
 
 }  // namespace greasepencil
 

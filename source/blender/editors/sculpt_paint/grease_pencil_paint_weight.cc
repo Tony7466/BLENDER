@@ -75,6 +75,8 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
   float brush_weight;
   float2 mouse_position;
   float2 mouse_position_previous;
+  /* Brush mode: normal, invert or smooth. */
+  BrushStrokeMode brush_mode;
   /* Brush direction (angle) during a stroke movement. */
   float2 brush_direction;
   bool brush_direction_is_set = false;
@@ -276,6 +278,11 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
   }
 
  public:
+  WeightPaintOperation(BrushStrokeMode &brush_mode)
+  {
+    this->brush_mode = brush_mode;
+  }
+
   ~WeightPaintOperation() override {}
 
   void on_stroke_begin(const bContext &C, const InputSample &start_sample)
@@ -344,8 +351,8 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
      * just one group for the current frame. When multiframe editing is enabled, the selected
      * keyframes are grouped per frame number. This way we can use tools like Smear, Average and
      * Blur on multiple layers together instead of on every layer individually. */
-    Vector<Vector<MutableDrawingInfo>> drawings_per_frame = retrieve_editable_drawings_per_frame(
-        *scene, grease_pencil);
+    Array<Vector<MutableDrawingInfo>> drawings_per_frame =
+        retrieve_editable_drawings_grouped_per_frame(*scene, grease_pencil);
     this->points_in_stroke = Array<PointsInBrushStroke>(drawings_per_frame.size());
     this->points_in_stroke_num = std::vector<std::atomic<int>>(drawings_per_frame.size());
     this->drawing_weight_data = Array<Array<DrawingWeightData>>(drawings_per_frame.size());
@@ -475,11 +482,15 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
 
                       /* When the point is under the brush, add it to brush buffer. */
                       if (!use_widened_brush || dist_point_to_brush_center <= brush_radius) {
-                        drawing_weight.points_in_brush.append(
-                            {drawing_weight.multi_frame_falloff * brush_influence *
-                                 BKE_brush_curve_strength(
-                                     this->brush, dist_point_to_brush_center, brush_radius),
-                             point_index});
+                        const float influence = drawing_weight.multi_frame_falloff *
+                                                brush_influence *
+                                                BKE_brush_curve_strength(
+                                                    this->brush,
+                                                    dist_point_to_brush_center,
+                                                    brush_radius);
+                        if (influence != 0.0f) {
+                          drawing_weight.points_in_brush.append({influence, point_index});
+                        }
                       }
 
                       /* When the point is under the widened brush, add it to the stroke buffer. */
@@ -587,9 +598,10 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
   }
 };
 
-std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_operation()
+std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_operation(
+    BrushStrokeMode &brush_mode)
 {
-  return std::make_unique<WeightPaintOperation>();
+  return std::make_unique<WeightPaintOperation>(brush_mode);
 }
 
 }  // namespace blender::ed::sculpt_paint::greasepencil

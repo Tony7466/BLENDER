@@ -320,7 +320,7 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_with_falloff(const Scene &
   return editable_drawings;
 }
 
-Vector<Vector<MutableDrawingInfo>> retrieve_editable_drawings_per_frame(
+Array<Vector<MutableDrawingInfo>> retrieve_editable_drawings_grouped_per_frame(
     const Scene &scene, GreasePencil &grease_pencil)
 {
   using namespace blender::bke::greasepencil;
@@ -358,14 +358,17 @@ Vector<Vector<MutableDrawingInfo>> retrieve_editable_drawings_per_frame(
   const int frame_max = *selected_frames.rbegin();
   current_frame = math::clamp(current_frame, frame_min, frame_max);
 
-  /* Collect drawings per frame number. */
-  Vector<Vector<MutableDrawingInfo>> drawings_per_frame;
-  for (const int frame_number : selected_frames) {
-    Vector<MutableDrawingInfo> editable_drawings;
+  /* Get drawings grouped per frame. */
+  Array<Vector<MutableDrawingInfo>> drawings_grouped_per_frame(selected_frames.size());
+  int frame_group = 0;
+  for (const int group_frame_number : selected_frames) {
     float falloff = 1.0f;
     if (use_multi_frame_falloff) {
-      falloff = get_multi_frame_falloff(
-          frame_number, current_frame, frame_min, frame_max, toolsettings->gp_sculpt.cur_falloff);
+      falloff = get_multi_frame_falloff(group_frame_number,
+                                        current_frame,
+                                        frame_min,
+                                        frame_max,
+                                        toolsettings->gp_sculpt.cur_falloff);
     }
 
     for (const int layer_i : layers.index_range()) {
@@ -373,18 +376,23 @@ Vector<Vector<MutableDrawingInfo>> retrieve_editable_drawings_per_frame(
       if (!layer.is_editable()) {
         continue;
       }
-      if (layer.has_drawing_at(frame_number)) {
-        Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number);
-        editable_drawings.append({*drawing, layer_i, frame_number, falloff});
+
+      /* Look for drawing at the group frame number. */
+      for (const auto [layer_frame_number, frame] : layer.frames().items()) {
+        if (layer_frame_number != group_frame_number || !frame.is_selected()) {
+          continue;
+        }
+        if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, layer_frame_number)) {
+          drawings_grouped_per_frame[frame_group].append(
+              {*drawing, layer_i, layer_frame_number, falloff});
+        }
       }
     }
 
-    if (!editable_drawings.is_empty()) {
-      drawings_per_frame.append(editable_drawings);
-    }
+    frame_group++;
   }
 
-  return drawings_per_frame;
+  return drawings_grouped_per_frame;
 }
 
 Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(

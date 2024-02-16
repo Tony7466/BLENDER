@@ -326,15 +326,16 @@ static void GREASE_PENCIL_OT_draw_mode_toggle(wmOperatorType *ot)
 static bool weight_stroke_test_start(bContext *C, wmOperator *op, const float mouse[2])
 {
   PaintStroke *paint_stroke = static_cast<PaintStroke *>(op->customdata);
+  BrushStrokeMode brush_mode = static_cast<BrushStrokeMode>(RNA_enum_get(op->ptr, "mode"));
 
   InputSample start_sample;
   start_sample.mouse_position = float2(mouse);
   start_sample.pressure = 0.0f;
 
-  GreasePencilStrokeOperation *operation = greasepencil::new_weight_paint_operation().release();
+  GreasePencilStrokeOperation *operation =
+      greasepencil::new_weight_paint_operation(brush_mode).release();
 
   if (operation) {
-    operation->brush_mode = static_cast<BrushStrokeMode>(RNA_enum_get(op->ptr, "mode"));
     paint_stroke_set_mode_data(paint_stroke, operation);
     operation->on_stroke_begin(*C, start_sample);
     return true;
