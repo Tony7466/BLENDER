@@ -14,20 +14,39 @@
 #  define SHADOW_ATLAS_TYPE usampler2DArray
 #endif
 
-float shadow_read_depth_at_tilemap_uv(SHADOW_ATLAS_TYPE atlas_tx,
-                                      usampler2D tilemaps_tx,
-                                      int tilemap_index,
-                                      vec2 tilemap_uv)
+struct ShadowSampleParams {
+  vec3 lP;
+  vec3 uv;
+  int tilemap_index;
+  float z_range;
+};
+
+ShadowTileData shadow_tile_data_get(usampler2D tilemaps_tx, ShadowSampleParams params)
 {
   /* Prevent out of bound access. Assumes the input is already non negative. */
-  tilemap_uv = min(tilemap_uv, vec2(0.99999));
+  vec2 tilemap_uv = min(params.uv.xy, vec2(0.99999));
 
   ivec2 texel_coord = ivec2(tilemap_uv * float(SHADOW_MAP_MAX_RES));
   /* Using bitwise ops is way faster than integer ops. */
   const int page_shift = SHADOW_PAGE_LOD;
 
   ivec2 tile_coord = texel_coord >> page_shift;
-  ShadowTileData tile = shadow_tile_load(tilemaps_tx, tile_coord, tilemap_index);
+  return shadow_tile_load(tilemaps_tx, tile_coord, params.tilemap_index);
+}
+
+float shadow_read_depth(SHADOW_ATLAS_TYPE atlas_tx,
+                        usampler2D tilemaps_tx,
+                        ShadowSampleParams params)
+{
+  /* Prevent out of bound access. Assumes the input is already non negative. */
+  vec2 tilemap_uv = min(params.uv.xy, vec2(0.99999));
+
+  ivec2 texel_coord = ivec2(tilemap_uv * float(SHADOW_MAP_MAX_RES));
+  /* Using bitwise ops is way faster than integer ops. */
+  const int page_shift = SHADOW_PAGE_LOD;
+
+  ivec2 tile_coord = texel_coord >> page_shift;
+  ShadowTileData tile = shadow_tile_load(tilemaps_tx, tile_coord, params.tilemap_index);
 
   if (!tile.is_allocated) {
     return -1.0;
@@ -92,10 +111,9 @@ float shadow_linear_occluder_distance(LightData light,
   return receiver_z - occluder_z;
 }
 
-ShadowEvalResult shadow_punctual_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
-                                            usampler2D tilemaps_tx,
-                                            LightData light,
-                                            vec3 P)
+ShadowSampleParams shadow_punctual_sample_params_get(usampler2D tilemaps_tx,
+                                                     LightData light,
+                                                     vec3 P)
 {
   vec3 lP = (P - light._position) * mat3(light.object_mat);
 
@@ -113,19 +131,32 @@ ShadowEvalResult shadow_punctual_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
   /* Clip Space > UV Space. */
   vec3 uv_P = saturate(clip_P * 0.5 + 0.5);
 
-  float depth = shadow_read_depth_at_tilemap_uv(
-      atlas_tx, tilemaps_tx, light.tilemap_index + face_id, uv_P.xy);
-
-  ShadowEvalResult result;
-  result.light_visibilty = float(uv_P.z < depth);
-  result.occluder_distance = shadow_linear_occluder_distance(light, false, lP, depth);
+  ShadowSampleParams result;
+  result.lP = lP;
+  result.uv = uv_P;
+  result.tilemap_index = light.tilemap_index + face_id;
+  result.z_range = 1.0;
   return result;
 }
 
-ShadowEvalResult shadow_directional_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
-                                               usampler2D tilemaps_tx,
-                                               LightData light,
-                                               vec3 P)
+ShadowEvalResult shadow_punctual_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
+                                            usampler2D tilemaps_tx,
+                                            LightData light,
+                                            vec3 P)
+{
+  ShadowSampleParams params = shadow_punctual_sample_params_get(tilemaps_tx, light, P);
+
+  float depth = shadow_read_depth(atlas_tx, tilemaps_tx, params);
+
+  ShadowEvalResult result;
+  result.light_visibilty = float(params.uv.z < depth);
+  result.occluder_distance = shadow_linear_occluder_distance(light, false, params.lP, depth);
+  return result;
+}
+
+ShadowSampleParams shadow_directional_sample_params_get(usampler2D tilemaps_tx,
+                                                        LightData light,
+                                                        vec3 P)
 {
   vec3 lP = P * mat3(light.object_mat);
   ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
@@ -155,12 +186,26 @@ ShadowEvalResult shadow_directional_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
   /* Clamp to avoid out of tilemap access. */
   tilemap_uv = saturate(tilemap_uv);
 
-  float depth = shadow_read_depth_at_tilemap_uv(
-      atlas_tx, tilemaps_tx, light.tilemap_index + level_relative, tilemap_uv);
+  ShadowSampleParams result;
+  result.lP = lP;
+  result.uv = vec3(tilemap_uv, dist_to_near_plane);
+  result.tilemap_index = light.tilemap_index + level_relative;
+  result.z_range = z_range;
+  return result;
+}
+
+ShadowEvalResult shadow_directional_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
+                                               usampler2D tilemaps_tx,
+                                               LightData light,
+                                               vec3 P)
+{
+  ShadowSampleParams params = shadow_directional_sample_params_get(tilemaps_tx, light, P);
+
+  float depth = shadow_read_depth(atlas_tx, tilemaps_tx, params);
 
   ShadowEvalResult result;
-  result.light_visibilty = float(dist_to_near_plane < depth * z_range);
-  result.occluder_distance = shadow_linear_occluder_distance(light, true, lP, depth);
+  result.light_visibilty = float(params.uv.z < depth * params.z_range);
+  result.occluder_distance = shadow_linear_occluder_distance(light, true, params.lP, depth);
   return result;
 }
 

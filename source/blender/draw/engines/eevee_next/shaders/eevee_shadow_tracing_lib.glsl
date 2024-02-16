@@ -406,6 +406,21 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 /** \name Shadow Evaluation
  * \{ */
 
+vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P)
+{
+  ShadowSampleParams params;
+  if (is_directional) {
+    params = shadow_directional_sample_params_get(shadow_tilemaps_tx, light, P);
+  }
+  else {
+    params = shadow_punctual_sample_params_get(shadow_tilemaps_tx, light, P);
+  }
+
+  ShadowTileData tile = shadow_tile_data_get(shadow_tilemaps_tx, params);
+
+  return vec3(0.0);
+}
+
 /**
  * Evaluate shadowing by casting rays toward the light direction.
  */
