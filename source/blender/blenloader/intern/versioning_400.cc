@@ -47,6 +47,7 @@
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_attribute.hh"
+#include "BKE_colortools.hh"
 #include "BKE_curve.hh"
 #include "BKE_effect.h"
 #include "BKE_grease_pencil.hh"
@@ -57,7 +58,6 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_scene.hh"
 #include "BKE_tracking.h"
-#include "BKE_colortools.hh"
 
 #include "SEQ_iterator.hh"
 
@@ -1939,7 +1939,6 @@ static bool seq_filter_bilinear_to_auto(Sequence *seq, void * /*user_data*/)
   }
   return true;
 }
-
 
 static bool seq_hue_correct_set_wrapping(Sequence *seq, void * /*user_data*/)
 {
