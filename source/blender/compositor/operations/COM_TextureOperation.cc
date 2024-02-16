@@ -145,8 +145,16 @@ void TextureBaseOperation::update_memory_buffer_partial(MemoryBuffer *output,
     const float3 coordinates = (float3(pixel_coordinates, 0.0f) + offset) * scale;
 
     TexResult texture_result;
-    const int result_type = multitex_ext_safe(
-        texture_, coordinates, &texture_result, pool_, scene_color_manage_, false);
+    const int result_type = multitex_ext(texture_,
+                                         coordinates,
+                                         nullptr,
+                                         nullptr,
+                                         0,
+                                         &texture_result,
+                                         WorkScheduler::current_thread_id(),
+                                         pool_,
+                                         scene_color_manage_,
+                                         false);
 
     float4 color = float4(texture_result.trgba);
     color.w = texture_result.talpha ? color.w : texture_result.tin;
