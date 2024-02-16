@@ -640,161 +640,177 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     film_store_combined(dst, src.texel, combined_accum, weight_accum, out_color);
   }
 
-  if (uniform_buf.film.has_data) {
-    float film_distance = film_distance_load(texel_film);
+  if ((enabled_passes &
+       (PASS_TYPE_Z | PASS_TYPE_VECTOR | PASS_TYPE_NORMAL | PASS_TYPE_POSITION)) != 0)
+  {
+    if (uniform_buf.film.has_data) {
+      float film_distance = film_distance_load(texel_film);
 
-    /* Get sample closest to target texel. It is always sample 0. */
-    FilmSample film_sample = film_sample_get(0, texel_film);
+      /* Get sample closest to target texel. It is always sample 0. */
+      FilmSample film_sample = film_sample_get(0, texel_film);
 
-    if (uniform_buf.film.use_reprojection || film_sample.weight < film_distance) {
-      float depth = texelFetch(depth_tx, film_sample.texel, 0).x;
-      vec4 vector = velocity_resolve(vector_tx, film_sample.texel, depth);
-      /* Transform to pixel space, matching Cycles format. */
-      vector *= vec4(vec2(uniform_buf.film.render_extent), vec2(uniform_buf.film.render_extent));
+      if (uniform_buf.film.use_reprojection || film_sample.weight < film_distance) {
+        float depth = texelFetch(depth_tx, film_sample.texel, 0).x;
+        vec4 vector = velocity_resolve(vector_tx, film_sample.texel, depth);
+        /* Transform to pixel space, matching Cycles format. */
+        vector *= vec4(vec2(uniform_buf.film.render_extent), vec2(uniform_buf.film.render_extent));
 
-      film_store_depth(texel_film, depth, out_depth);
-      if (uniform_buf.film.normal_id != -1) {
-        vec4 normal = texelFetch(
-            rp_color_tx, ivec3(film_sample.texel, uniform_buf.render_pass.normal_id), 0);
-        film_store_data(texel_film, uniform_buf.film.normal_id, normal, out_color);
+        film_store_depth(texel_film, depth, out_depth);
+        if (uniform_buf.film.normal_id != -1) {
+          vec4 normal = texelFetch(
+              rp_color_tx, ivec3(film_sample.texel, uniform_buf.render_pass.normal_id), 0);
+          film_store_data(texel_film, uniform_buf.film.normal_id, normal, out_color);
+        }
+        if (uniform_buf.film.position_id != -1) {
+          vec4 position = texelFetch(
+              rp_color_tx, ivec3(film_sample.texel, uniform_buf.render_pass.position_id), 0);
+          film_store_data(texel_film, uniform_buf.film.position_id, position, out_color);
+        }
+        film_store_data(texel_film, uniform_buf.film.vector_id, vector, out_color);
+        film_store_distance(texel_film, film_sample.weight);
       }
-      if (uniform_buf.film.position_id != -1) {
-        vec4 position = texelFetch(
-            rp_color_tx, ivec3(film_sample.texel, uniform_buf.render_pass.position_id), 0);
-        film_store_data(texel_film, uniform_buf.film.position_id, position, out_color);
-      }
-      film_store_data(texel_film, uniform_buf.film.vector_id, vector, out_color);
-      film_store_distance(texel_film, film_sample.weight);
-    }
-    else {
-      out_depth = imageLoad(depth_img, texel_film).r;
-      if (uniform_buf.film.display_id != -1 &&
-          uniform_buf.film.display_id == uniform_buf.film.normal_id)
-      {
-        out_color = imageLoad(color_accum_img, ivec3(texel_film, uniform_buf.film.display_id));
+      else {
+        out_depth = imageLoad(depth_img, texel_film).r;
+        if (uniform_buf.film.display_id != -1 &&
+            uniform_buf.film.display_id == uniform_buf.film.normal_id)
+        {
+          out_color = imageLoad(color_accum_img, ivec3(texel_film, uniform_buf.film.display_id));
+        }
       }
     }
   }
 
-  if (uniform_buf.film.any_render_pass_1) {
-    vec4 diffuse_light_accum = vec4(0.0);
-    vec4 specular_light_accum = vec4(0.0);
-    vec4 volume_light_accum = vec4(0.0);
-    vec4 emission_accum = vec4(0.0);
+  if ((enabled_passes & (PASS_TYPE_DIFFUSE_LIGHT | PASS_TYPE_SPECULAR_LIGHT |
+                         PASS_TYPE_VOLUME_LIGHT | PASS_TYPE_EMIT)) != 0)
+  {
+    if (uniform_buf.film.any_render_pass_1) {
+      vec4 diffuse_light_accum = vec4(0.0);
+      vec4 specular_light_accum = vec4(0.0);
+      vec4 volume_light_accum = vec4(0.0);
+      vec4 emission_accum = vec4(0.0);
 
-    for (int i = 0; i < uniform_buf.film.samples_len; i++) {
-      FilmSample src = film_sample_get(i, texel_film);
-      film_sample_accum(src,
-                        uniform_buf.film.diffuse_light_id,
-                        uniform_buf.render_pass.diffuse_light_id,
-                        rp_color_tx,
-                        diffuse_light_accum);
-      film_sample_accum(src,
-                        uniform_buf.film.specular_light_id,
-                        uniform_buf.render_pass.specular_light_id,
-                        rp_color_tx,
-                        specular_light_accum);
-      film_sample_accum(src,
-                        uniform_buf.film.volume_light_id,
-                        uniform_buf.render_pass.volume_light_id,
-                        rp_color_tx,
-                        volume_light_accum);
-      film_sample_accum(src,
-                        uniform_buf.film.emission_id,
-                        uniform_buf.render_pass.emission_id,
-                        rp_color_tx,
-                        emission_accum);
+      for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+        FilmSample src = film_sample_get(i, texel_film);
+        film_sample_accum(src,
+                          uniform_buf.film.diffuse_light_id,
+                          uniform_buf.render_pass.diffuse_light_id,
+                          rp_color_tx,
+                          diffuse_light_accum);
+        film_sample_accum(src,
+                          uniform_buf.film.specular_light_id,
+                          uniform_buf.render_pass.specular_light_id,
+                          rp_color_tx,
+                          specular_light_accum);
+        film_sample_accum(src,
+                          uniform_buf.film.volume_light_id,
+                          uniform_buf.render_pass.volume_light_id,
+                          rp_color_tx,
+                          volume_light_accum);
+        film_sample_accum(src,
+                          uniform_buf.film.emission_id,
+                          uniform_buf.render_pass.emission_id,
+                          rp_color_tx,
+                          emission_accum);
+      }
+      film_store_color(dst, uniform_buf.film.diffuse_light_id, diffuse_light_accum, out_color);
+      film_store_color(dst, uniform_buf.film.specular_light_id, specular_light_accum, out_color);
+      film_store_color(dst, uniform_buf.film.volume_light_id, volume_light_accum, out_color);
+      film_store_color(dst, uniform_buf.film.emission_id, emission_accum, out_color);
     }
-    film_store_color(dst, uniform_buf.film.diffuse_light_id, diffuse_light_accum, out_color);
-    film_store_color(dst, uniform_buf.film.specular_light_id, specular_light_accum, out_color);
-    film_store_color(dst, uniform_buf.film.volume_light_id, volume_light_accum, out_color);
-    film_store_color(dst, uniform_buf.film.emission_id, emission_accum, out_color);
   }
 
-  if (uniform_buf.film.any_render_pass_2) {
-    vec4 diffuse_color_accum = vec4(0.0);
-    vec4 specular_color_accum = vec4(0.0);
-    vec4 environment_accum = vec4(0.0);
-    float mist_accum = 0.0;
-    float shadow_accum = 0.0;
-    float ao_accum = 0.0;
+  if ((enabled_passes &
+       (PASS_TYPE_DIFFUSE_COLOR | PASS_TYPE_SPECULAR_COLOR | PASS_TYPE_ENVIRONMENT |
+        PASS_TYPE_SHADOW | PASS_TYPE_AO | PASS_TYPE_MIST)) != 0)
+  {
+    if (uniform_buf.film.any_render_pass_2) {
+      vec4 diffuse_color_accum = vec4(0.0);
+      vec4 specular_color_accum = vec4(0.0);
+      vec4 environment_accum = vec4(0.0);
+      float mist_accum = 0.0;
+      float shadow_accum = 0.0;
+      float ao_accum = 0.0;
 
-    for (int i = 0; i < uniform_buf.film.samples_len; i++) {
-      FilmSample src = film_sample_get(i, texel_film);
-      film_sample_accum(src,
-                        uniform_buf.film.diffuse_color_id,
-                        uniform_buf.render_pass.diffuse_color_id,
-                        rp_color_tx,
-                        diffuse_color_accum);
-      film_sample_accum(src,
-                        uniform_buf.film.specular_color_id,
-                        uniform_buf.render_pass.specular_color_id,
-                        rp_color_tx,
-                        specular_color_accum);
-      film_sample_accum(src,
-                        uniform_buf.film.environment_id,
-                        uniform_buf.render_pass.environment_id,
-                        rp_color_tx,
-                        environment_accum);
-      film_sample_accum(src,
-                        uniform_buf.film.shadow_id,
-                        uniform_buf.render_pass.shadow_id,
-                        rp_value_tx,
-                        shadow_accum);
-      film_sample_accum(src,
-                        uniform_buf.film.ambient_occlusion_id,
-                        uniform_buf.render_pass.ambient_occlusion_id,
-                        rp_value_tx,
-                        ao_accum);
-      film_sample_accum_mist(src, mist_accum);
+      for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+        FilmSample src = film_sample_get(i, texel_film);
+        film_sample_accum(src,
+                          uniform_buf.film.diffuse_color_id,
+                          uniform_buf.render_pass.diffuse_color_id,
+                          rp_color_tx,
+                          diffuse_color_accum);
+        film_sample_accum(src,
+                          uniform_buf.film.specular_color_id,
+                          uniform_buf.render_pass.specular_color_id,
+                          rp_color_tx,
+                          specular_color_accum);
+        film_sample_accum(src,
+                          uniform_buf.film.environment_id,
+                          uniform_buf.render_pass.environment_id,
+                          rp_color_tx,
+                          environment_accum);
+        film_sample_accum(src,
+                          uniform_buf.film.shadow_id,
+                          uniform_buf.render_pass.shadow_id,
+                          rp_value_tx,
+                          shadow_accum);
+        film_sample_accum(src,
+                          uniform_buf.film.ambient_occlusion_id,
+                          uniform_buf.render_pass.ambient_occlusion_id,
+                          rp_value_tx,
+                          ao_accum);
+        film_sample_accum_mist(src, mist_accum);
+      }
+      /* Monochrome render passes that have colored outputs. Set alpha to 1. */
+      vec4 shadow_accum_color = vec4(vec3(shadow_accum), weight_accum);
+      vec4 ao_accum_color = vec4(vec3(ao_accum), weight_accum);
+
+      film_store_color(dst, uniform_buf.film.diffuse_color_id, diffuse_color_accum, out_color);
+      film_store_color(dst, uniform_buf.film.specular_color_id, specular_color_accum, out_color);
+      film_store_color(dst, uniform_buf.film.environment_id, environment_accum, out_color);
+      film_store_color(dst, uniform_buf.film.shadow_id, shadow_accum_color, out_color);
+      film_store_color(dst, uniform_buf.film.ambient_occlusion_id, ao_accum_color, out_color);
+      film_store_value(dst, uniform_buf.film.mist_id, mist_accum, out_color);
     }
-    /* Monochrome render passes that have colored outputs. Set alpha to 1. */
-    vec4 shadow_accum_color = vec4(vec3(shadow_accum), weight_accum);
-    vec4 ao_accum_color = vec4(vec3(ao_accum), weight_accum);
-
-    film_store_color(dst, uniform_buf.film.diffuse_color_id, diffuse_color_accum, out_color);
-    film_store_color(dst, uniform_buf.film.specular_color_id, specular_color_accum, out_color);
-    film_store_color(dst, uniform_buf.film.environment_id, environment_accum, out_color);
-    film_store_color(dst, uniform_buf.film.shadow_id, shadow_accum_color, out_color);
-    film_store_color(dst, uniform_buf.film.ambient_occlusion_id, ao_accum_color, out_color);
-    film_store_value(dst, uniform_buf.film.mist_id, mist_accum, out_color);
   }
 
-  if (uniform_buf.film.any_render_pass_3) {
-    vec4 transparent_accum = vec4(0.0);
+  if ((enabled_passes & PASS_TYPE_TRANSPARENT) != 0) {
+    if (uniform_buf.film.any_render_pass_3) {
+      vec4 transparent_accum = vec4(0.0);
 
-    for (int i = 0; i < uniform_buf.film.samples_len; i++) {
-      FilmSample src = film_sample_get(i, texel_film);
-      film_sample_accum(src,
-                        uniform_buf.film.transparent_id,
-                        uniform_buf.render_pass.transparent_id,
-                        rp_color_tx,
-                        transparent_accum);
+      for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+        FilmSample src = film_sample_get(i, texel_film);
+        film_sample_accum(src,
+                          uniform_buf.film.transparent_id,
+                          uniform_buf.render_pass.transparent_id,
+                          rp_color_tx,
+                          transparent_accum);
+      }
+      /* Alpha stores transmittance for transparent pass. */
+      transparent_accum.a = weight_accum - transparent_accum.a;
+
+      film_store_color(dst, uniform_buf.film.transparent_id, transparent_accum, out_color);
     }
-    /* Alpha stores transmittance for transparent pass. */
-    transparent_accum.a = weight_accum - transparent_accum.a;
-
-    film_store_color(dst, uniform_buf.film.transparent_id, transparent_accum, out_color);
   }
+  if ((enabled_passes & PASS_TYPE_AOV) != 0) {
+    for (int aov = 0; aov < uniform_buf.film.aov_color_len; aov++) {
+      vec4 aov_accum = vec4(0.0);
 
-  for (int aov = 0; aov < uniform_buf.film.aov_color_len; aov++) {
-    vec4 aov_accum = vec4(0.0);
-
-    for (int i = 0; i < uniform_buf.film.samples_len; i++) {
-      FilmSample src = film_sample_get(i, texel_film);
-      film_sample_accum(src, 0, uniform_buf.render_pass.color_len + aov, rp_color_tx, aov_accum);
+      for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+        FilmSample src = film_sample_get(i, texel_film);
+        film_sample_accum(src, 0, uniform_buf.render_pass.color_len + aov, rp_color_tx, aov_accum);
+      }
+      film_store_color(dst, uniform_buf.film.aov_color_id + aov, aov_accum, out_color);
     }
-    film_store_color(dst, uniform_buf.film.aov_color_id + aov, aov_accum, out_color);
-  }
 
-  for (int aov = 0; aov < uniform_buf.film.aov_value_len; aov++) {
-    float aov_accum = 0.0;
+    for (int aov = 0; aov < uniform_buf.film.aov_value_len; aov++) {
+      float aov_accum = 0.0;
 
-    for (int i = 0; i < uniform_buf.film.samples_len; i++) {
-      FilmSample src = film_sample_get(i, texel_film);
-      film_sample_accum(src, 0, uniform_buf.render_pass.value_len + aov, rp_value_tx, aov_accum);
+      for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+        FilmSample src = film_sample_get(i, texel_film);
+        film_sample_accum(src, 0, uniform_buf.render_pass.value_len + aov, rp_value_tx, aov_accum);
+      }
+      film_store_value(dst, uniform_buf.film.aov_value_id + aov, aov_accum, out_color);
     }
-    film_store_value(dst, uniform_buf.film.aov_value_id + aov, aov_accum, out_color);
   }
 
   if ((enabled_passes & (PASS_TYPE_CRYPTOMATTE_OBJECT | PASS_TYPE_CRYPTOMATTE_ASSET |
