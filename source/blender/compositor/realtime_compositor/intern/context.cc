@@ -28,10 +28,10 @@ RenderContext *Context::render_context() const
 
 bool Context::is_canceled() const
 {
-  if (!get_node_tree().runtime->test_break) {
+  if (!this->get_node_tree().runtime->test_break) {
     return false;
   }
-  return get_node_tree().runtime->test_break(get_node_tree().runtime->tbh);
+  return this->get_node_tree().runtime->test_break(get_node_tree().runtime->tbh);
 }
 
 int2 Context::get_compositing_region_size() const
