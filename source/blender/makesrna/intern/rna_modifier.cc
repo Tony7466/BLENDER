@@ -9083,7 +9083,7 @@ static void rna_def_modifier_grease_pencil_weight_proximity(BlenderRNA *brna)
       srna, "rna_GreasePencilWeightProximityModifier_material_filter_set");
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilWeightProximityModifier_vertex_group_name_set");
-      
+
   rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
 
   RNA_define_lib_overridable(true);
