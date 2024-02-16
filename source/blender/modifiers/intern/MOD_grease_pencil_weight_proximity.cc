@@ -81,6 +81,16 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   walk(user_data, ob, (ID **)&mmd->object, IDWALK_CB_NOP);
 }
 
+static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
+{
+  auto *mmd = reinterpret_cast<GreasePencilWeightProximityModifierData *>(md);
+  if (mmd->object != nullptr) {
+    DEG_add_object_relation(
+        ctx->node, mmd->object, DEG_OB_COMP_TRANSFORM, "Grease Pencil Proximity Modifier");
+    DEG_add_depends_on_transform_relation(ctx->node, "Grease Pencil Proximity Modifier");
+  }
+}
+
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
 {
   const GreasePencilWeightProximityModifierData *mmd =
@@ -305,7 +315,7 @@ ModifierTypeInfo modifierType_GreasePencilWeightProximity = {
     /*required_data_mask*/ nullptr,
     /*free_data*/ blender::free_data,
     /*is_disabled*/ blender::is_disabled,
-    /*update_depsgraph*/ nullptr,
+    /*update_depsgraph*/ blender::update_depsgraph,
     /*depends_on_time*/ nullptr,
     /*depends_on_normals*/ nullptr,
     /*foreach_ID_link*/ blender::foreach_ID_link,
