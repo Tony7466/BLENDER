@@ -950,7 +950,6 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
                                   int modifier_flags,
                                   int modifier_calculation_flags);
 void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
-                                     const Object &ob,
                                      Depsgraph *depsgraph,
                                      blender::bke::greasepencil::Drawing &drawing,
                                      const int8_t source_type,

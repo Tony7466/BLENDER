@@ -28,6 +28,7 @@
 #include "BKE_camera.h"
 #include "BKE_collection.hh"
 #include "BKE_customdata.hh"
+#include "BKE_curves.hh"
 #include "BKE_deform.hh"
 #include "BKE_global.hh"
 #include "BKE_gpencil_geom_legacy.h"
@@ -48,6 +49,7 @@
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_meshdata_types.h"
+#include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
 #include "MEM_guardedalloc.h"
@@ -5614,7 +5616,6 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
 }
 
 void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
-                                     const Object &ob,
                                      Depsgraph *depsgraph,
                                      blender::bke::greasepencil::Drawing &drawing,
                                      const int8_t source_type,
@@ -5672,9 +5673,6 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
   bool invert_input = modifier_calculation_flags & LRT_GPENCIL_INVERT_SOURCE_VGROUP;
 
   bool inverse_silhouette = modifier_flags & LRT_GPENCIL_INVERT_SILHOUETTE_FILTER;
-
-  float gp_obmat_inverse[4][4];
-  invert_m4_m4(gp_obmat_inverse, ob.object_to_world);
 
   blender::Vector<LineartChainWriteInfo> writer = {};
   writer.reserve(128);
@@ -5853,7 +5851,7 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
       point_opacities.span[point_i] = opacity;
 
       if (src_deform_group >= 0) {
-        int sindex = 0, vindex;
+        int vindex;
         vindex = eci->index;
         if (vindex >= src_mesh->verts_num) {
           break;

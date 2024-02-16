@@ -6,7 +6,7 @@
  * \ingroup modifiers
  */
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLO_read_write.hh"
 
@@ -15,9 +15,9 @@
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_material.h"
@@ -741,7 +741,6 @@ static void generate_strokes(ModifierData &md,
 
   MOD_lineart_gpencil_generate_v3(
       lmd.cache,
-      *ctx.object,
       ctx.depsgraph,
       drawing,
       lmd.source_type,
