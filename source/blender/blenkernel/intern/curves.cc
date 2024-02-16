@@ -133,6 +133,7 @@ static void curves_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_CV = {
     /*id_code*/ ID_CV,
     /*id_filter*/ FILTER_ID_CV,
+    /*dependencies_id_types*/ FILTER_ID_MA | FILTER_ID_OB,
     /*main_listbase_index*/ INDEX_ID_CV,
     /*struct_size*/ sizeof(Curves),
     /*name*/ "Curves",
@@ -312,11 +313,11 @@ void curves_copy_parameters(const Curves &src, Curves &dst)
 
 CurvesSurfaceTransforms::CurvesSurfaceTransforms(const Object &curves_ob, const Object *surface_ob)
 {
-  this->curves_to_world = float4x4_view(curves_ob.object_to_world);
+  this->curves_to_world = curves_ob.object_to_world();
   this->world_to_curves = math::invert(this->curves_to_world);
 
   if (surface_ob != nullptr) {
-    this->surface_to_world = float4x4_view(surface_ob->object_to_world);
+    this->surface_to_world = surface_ob->object_to_world();
     this->world_to_surface = math::invert(this->surface_to_world);
     this->surface_to_curves = this->world_to_curves * this->surface_to_world;
     this->curves_to_surface = this->world_to_surface * this->curves_to_world;
