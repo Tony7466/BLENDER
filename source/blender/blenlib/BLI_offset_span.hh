@@ -89,11 +89,6 @@ template<typename T, typename BaseT> class OffsetSpan {
       return T(*data_) + offset_;
     }
 
-    const BaseT *&iter_prop()
-    {
-      return data_;
-    }
-
     const BaseT *const &iter_prop() const
     {
       return data_;

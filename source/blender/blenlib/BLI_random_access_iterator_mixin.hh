@@ -15,7 +15,7 @@ template<typename Derived> class RandomAccessIteratorMixin {
 
   constexpr friend Derived &operator++(Derived &a)
   {
-    ++a.iter_prop();
+    ++a.iter_prop_mutable();
     return a;
   }
 
@@ -28,7 +28,7 @@ template<typename Derived> class RandomAccessIteratorMixin {
 
   constexpr friend Derived &operator--(Derived &a)
   {
-    --a.iter_prop();
+    --a.iter_prop_mutable();
     return a;
   }
 
@@ -41,27 +41,27 @@ template<typename Derived> class RandomAccessIteratorMixin {
 
   constexpr friend Derived &operator+=(Derived &a, const std::ptrdiff_t n)
   {
-    a.iter_prop() += n;
+    a.iter_prop_mutable() += n;
     return a;
   }
 
   constexpr friend Derived &operator-=(Derived &a, const std::ptrdiff_t n)
   {
-    a.iter_prop() -= n;
+    a.iter_prop_mutable() -= n;
     return a;
   }
 
   constexpr friend Derived &operator+(const Derived &a, const std::ptrdiff_t n)
   {
     Derived copy = a;
-    copy.iter_prop() += n;
+    copy.iter_prop_mutable() += n;
     return copy;
   }
 
   constexpr friend Derived &operator-(const Derived &a, const std::ptrdiff_t n)
   {
     Derived copy = a;
-    copy.iter_prop() -= n;
+    copy.iter_prop_mutable() -= n;
     return copy;
   }
 
@@ -108,6 +108,13 @@ template<typename Derived> class RandomAccessIteratorMixin {
   constexpr decltype(auto) operator[](const std::ptrdiff_t i) const
   {
     return *(*static_cast<const Derived *>(this) + i);
+  }
+
+  auto &iter_prop_mutable()
+  {
+    const auto &const_iter_prop = static_cast<const Derived *>(this)->iter_prop();
+    return const_cast<std::remove_const_t<std::remove_reference_t<decltype(const_iter_prop)>> &>(
+        const_iter_prop);
   }
 };
 

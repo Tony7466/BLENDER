@@ -24,11 +24,6 @@ struct DoublingIterator : public RandomAccessIteratorMixin<DoublingIterator<T>> 
     return *data_ * 2;
   }
 
-  const T *&iter_prop()
-  {
-    return data_;
-  }
-
   const T *const &iter_prop() const
   {
     return data_;
