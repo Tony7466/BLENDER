@@ -129,7 +129,7 @@ static void node_composit_init_curve_vec(bNodeTree * /*ntree*/, bNode *node)
 
 static void node_buts_curvevec(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiTemplateCurveMapping(layout, ptr, "mapping", 'v', false, false, false, false, false);
+  uiTemplateCurveMapping(layout, ptr, "mapping", 'v', false, false, false, false);
 }
 
 using namespace blender::realtime_compositor;

@@ -1194,7 +1194,6 @@ static void cavity_bake_ui(bContext *C, wmOperator *op)
                                false,
                                false,
                                false,
-                               false,
                                false);
       }
       break;

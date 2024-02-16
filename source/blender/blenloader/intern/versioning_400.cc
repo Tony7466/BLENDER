@@ -61,6 +61,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_scene.h"
 #include "BKE_tracking.h"
+#include "BKE_colortools.hh"
 
 #include "SEQ_iterator.hh"
 #include "SEQ_retiming.hh"
@@ -1947,6 +1948,32 @@ static bool seq_filter_bilinear_to_auto(Sequence *seq, void * /*user_data*/)
   return true;
 }
 
+
+static bool seq_hue_correct_set_wrapping(Sequence *seq, void * /*user_data*/)
+{
+  LISTBASE_FOREACH (SequenceModifierData *, smd, &seq->modifiers) {
+    if (smd->type == seqModifierType_HueCorrect) {
+      HueCorrectModifierData *hcmd = (HueCorrectModifierData *)smd;
+      CurveMapping *cumap = (CurveMapping *)&hcmd->curve_mapping;
+      cumap->use_wrapping = true;
+    }
+  }
+  return true;
+}
+
+static void versioning_node_hue_correct_set_wrappng(bNodeTree *ntree)
+{
+  if (ntree->type == NTREE_COMPOSIT) {
+    LISTBASE_FOREACH_MUTABLE (bNode *, node, &ntree->nodes) {
+
+      if (node->type == CMP_NODE_HUECORRECT) {
+        CurveMapping *cumap = (CurveMapping *)node->storage;
+        cumap->use_wrapping = true;
+      }
+    }
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -2922,6 +2949,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
             scene->r.mode, scene->eevee.flag & SCE_EEVEE_MOTION_BLUR_ENABLED_DEPRECATED, R_MBLUR);
         scene->r.motion_blur_position = scene->eevee.motion_blur_position_deprecated;
         scene->r.motion_blur_shutter = scene->eevee.motion_blur_shutter_deprecated;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 3)) {
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      versioning_node_hue_correct_set_wrappng(ntree);
+    }
+    FOREACH_NODETREE_END;
+
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      if (scene->ed != nullptr) {
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_hue_correct_set_wrapping, nullptr);
       }
     }
   }

@@ -1478,7 +1478,7 @@ static void gpencil_interpolate_seq_ui(bContext *C, wmOperator *op)
     PointerRNA gpsettings_ptr = RNA_pointer_create(
         &scene->id, &RNA_GPencilInterpolateSettings, &ts->gp_interpolate);
     uiTemplateCurveMapping(
-        layout, &gpsettings_ptr, "interpolation_curve", 0, false, true, true, false, false);
+        layout, &gpsettings_ptr, "interpolation_curve", 0, false, true, true, false);
   }
   else if (type != GP_IPO_LINEAR) {
     row = uiLayoutRow(layout, false);

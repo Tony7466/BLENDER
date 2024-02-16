@@ -190,7 +190,7 @@ void gpencil_modifier_curve_panel_draw(const bContext * /*C*/, Panel *panel)
 
   PointerRNA *ptr = gpencil_modifier_panel_get_property_pointers(panel, nullptr);
 
-  uiTemplateCurveMapping(layout, ptr, "curve", 0, false, false, false, false, false);
+  uiTemplateCurveMapping(layout, ptr, "curve", 0, false, false, false, false);
 }
 
 void gpencil_modifier_panel_end(uiLayout *layout, PointerRNA *ptr)
