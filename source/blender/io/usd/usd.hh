@@ -206,9 +206,8 @@ struct USDHook {
 
 void USD_register_hook(std::unique_ptr<USDHook> hook);
 /**
- * Remove the given entry from the list of registered hooks.
- * Note that this does not free the allocated memory for the
- * hook instance, so a separate call to `MEM_freeN(hook)` is required.
+ * Remove the given entry from the list of registered hooks and
+ * free the allocated memory for the hook instance.
  */
 void USD_unregister_hook(USDHook *hook);
 USDHook *USD_find_hook_name(const char idname[]);
