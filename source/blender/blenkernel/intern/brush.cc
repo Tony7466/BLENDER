@@ -521,6 +521,7 @@ Brush *BKE_brush_add(Main *bmain, const char *name, const eObjectMode ob_mode)
   if (ob_mode == OB_MODE_SCULPT_CURVES) {
     BKE_brush_init_curves_sculpt_settings(brush);
   }
+
   return brush;
 }
 

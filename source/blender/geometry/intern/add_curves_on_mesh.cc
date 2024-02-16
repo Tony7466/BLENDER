@@ -242,7 +242,8 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
   AddCurvesOnMeshOutputs outputs;
 
   const bool use_interpolation = inputs.interpolate_length || inputs.interpolate_point_count ||
-                                 inputs.interpolate_shape || inputs.interpolate_resolution;
+                                 inputs.interpolate_radius || inputs.interpolate_shape ||
+                                 inputs.interpolate_resolution;
 
   Vector<float3> root_positions_cu;
   Vector<float3> bary_coords;
@@ -314,7 +315,8 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
 
   const int new_points_num = curves.offsets().last();
   curves.resize(new_points_num, new_curves_num);
-  MutableSpan<float3> positions_cu = curves.positions_for_write();
+  Span<float3> positions_cu = curves.positions();
+  Span<float> radius_cu = curves.radiuses();
 
   /* The new elements are added at the end of the arrays. */
   outputs.new_points_range = curves.points_range().drop_front(old_points_num);
@@ -345,6 +347,23 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
   }
   else {
     new_lengths_cu.fill(inputs.fallback_curve_length);
+  }
+
+  /* Determine radius of new curves. */
+  Array<float> new_radius_cu(added_curves_num);
+  if (inputs.interpolate_radius) {
+    const OffsetIndices points_by_curve = curves.points_by_curve();
+    interpolate_from_neighbors<float>(
+        neighbors_per_curve,
+        inputs.fallback_curve_radius,
+        [&](const int curve_i) {
+          const IndexRange points = points_by_curve[curve_i];
+          return radius_cu[points[0]];
+        },
+        new_radius_cu);
+  }
+  else {
+    new_radius_cu.fill(inputs.fallback_curve_radius);
   }
 
   /* Find surface normal at root points. */
@@ -378,6 +397,15 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
                                                inputs.transforms->surface_to_curves_normal);
   }
 
+  /* Initialize radius attribute */
+  MutableSpan<float> radiuses = curves.radiuses_for_write();
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  for (const int segment_i : new_curves_range) {
+    const IndexRange points = points_by_curve[segment_i];
+    MutableSpan<float> dst_radius = radiuses.slice(points);
+    dst_radius.fill(new_radius_cu[segment_i - old_curves_num]);
+  }
+
   curves.fill_curve_types(new_curves_range, CURVE_TYPE_CATMULL_ROM);
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -400,7 +428,7 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
 
   /* Explicitly set all other attributes besides those processed above to default values. */
   bke::fill_attribute_range_default(
-      attributes, bke::AttrDomain::Point, {"position"}, outputs.new_points_range);
+      attributes, bke::AttrDomain::Point, {"position", "radius"}, outputs.new_points_range);
   bke::fill_attribute_range_default(attributes,
                                     bke::AttrDomain::Curve,
                                     {"curve_type", "surface_uv_coordinate", "resolution"},
