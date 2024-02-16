@@ -923,6 +923,12 @@
     .step = 4,\
   }
 
+#define _DNA_DEFAULT_GreasePencilWeightAngleModifierData \
+  { \
+    .flag = 0, \
+    .axis = 1, \
+  }
+  
 #define _DNA_DEFAULT_GreasePencilArrayModifierData \
   { \
     .object = NULL, \
