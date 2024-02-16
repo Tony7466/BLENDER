@@ -110,21 +110,16 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
 static float get_distance_factor(
     float3 target_pos, float4x4 obmat, float3 pos, const float dist_min, const float dist_max)
 {
-  float weight;
-  const float3 gvert = (obmat * float4(pos, 1.0f)).xyz();
-  const float dist = math::length(target_pos - gvert);
+  const float3 gvert = math::transform_point(obmat, pos);
+  const float dist = math::distance(target_pos, gvert);
 
   if (dist > dist_max) {
-    weight = 1.0f;
+    return 1.0f;
   }
-  else if (dist <= dist_max && dist > dist_min) {
-    weight = 1.0f - ((dist_max - dist) / math::max((dist_max - dist_min), 0.0001f));
+  if (dist <= dist_max && dist > dist_min) {
+    return 1.0f - ((dist_max - dist) / math::max((dist_max - dist_min), 0.0001f));
   }
-  else {
-    weight = 0.0f;
-  }
-
-  return weight;
+  return 0.0f;
 }
 
 static int ensure_vertex_group(const StringRefNull name, ListBase &vertex_group_names)
@@ -179,32 +174,34 @@ static void write_weights_for_drawing(const ModifierData &md,
   const VArray<float> vgroup_weights = modifier::greasepencil::get_influence_vertex_weights(
       curves, mmd.influence);
 
-  const Span<float3> positions = curves.positions_for_write();
+  const Span<float3> positions = curves.positions();
   const float4x4 obmat = ob.object_to_world();
   const float3 target_pos = mmd.object ? mmd.object->object_to_world().location() : float3(0.0f);
+  const bool invert = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT) != 0;
+  const bool do_multiply = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA) != 0;
 
   threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
-    for (const int point : range) {
-      const float vgroup_fac = vgroup_weights[point];
-      if (vgroup_fac < 0.0f) {
+    for (const int point_i : range) {
+      const float weight = vgroup_weights[point_i];
+      if (weight < 0.0f) {
         continue;
       }
 
-      float dist_fac = mmd.object ?
-                           get_distance_factor(
-                               target_pos, obmat, positions[point], mmd.dist_start, mmd.dist_end) :
-                           1.0f;
+      float dist_fac = mmd.object ? get_distance_factor(target_pos,
+                                                        obmat,
+                                                        positions[point_i],
+                                                        mmd.dist_start,
+                                                        mmd.dist_end) :
+                                    1.0f;
 
-      if (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT) {
+      if (invert) {
         dist_fac = 1.0f - dist_fac;
       }
 
-      dst_weights.span[point] = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA) ?
-                                    dst_weights.span[point] * dist_fac :
-                                    dist_fac;
+      dst_weights.span[point_i] = do_multiply ? dst_weights.span[point_i] * dist_fac : dist_fac;
 
-      dst_weights.span[point] = math::clamp(
-          dst_weights.span[point],
+      dst_weights.span[point_i] = math::clamp(
+          dst_weights.span[point_i],
           /** Weight==0 will remove the point from the group, assign a sufficiently small value
            * there to prevent the visual disconnect, and keep the behavior same as the old
            * modifier. */

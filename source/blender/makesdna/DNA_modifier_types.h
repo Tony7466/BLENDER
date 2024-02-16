@@ -2873,7 +2873,7 @@ typedef struct GreasePencilWeightProximityModifierData {
   ModifierData modifier;
   GreasePencilModifierInfluenceData influence;
 
-  /* #eGreasePencilWeightProximityFlag. */
+  /* #GreasePencilWeightProximityFlag. */
   int flag;
   char target_vgname[64];
   float min_weight;
@@ -2884,7 +2884,7 @@ typedef struct GreasePencilWeightProximityModifierData {
   struct Object *object;
 } GreasePencilWeightProximityModifierData;
 
-typedef enum eGreasePencilWeightProximityFlag {
+typedef enum GreasePencilWeightProximityFlag {
   MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT = (1 << 0),
   MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA = (1 << 1),
-} eGreasePencilWeightProximityFlag;
+} GreasePencilWeightProximityFlag;
