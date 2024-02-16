@@ -13,51 +13,25 @@
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
 
-vec2 shadow_pcf_offset(uint lod)
-{
-  vec2 rand = vec2(0.0);
-#ifdef EEVEE_SAMPLING_DATA
-  rand = sampling_rng_2D_get(SAMPLING_SHADOW_V);
-#endif
-  vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(0.0), rand);
-  pcf_offset = pcf_offset * vec2(2.0) - vec2(1.0);
-  pcf_offset *= uniform_buf.shadow.pcf_radius;
-  return pcf_offset / float(SHADOW_MAP_MAX_RES / (lod + 1));
-}
-
-ShadowTileData shadow_tile_data_at_tilemap_uv(int tilemap_index,
-                                              vec2 tilemap_uv,
-                                              out ivec2 texel_coord)
-{
-  /* Prevent out of bound access. */
-  tilemap_uv = clamp(tilemap_uv, vec2(0.0), vec2(0.99999));
-
-  texel_coord = ivec2(tilemap_uv * float(SHADOW_MAP_MAX_RES));
-
-  /* Using bitwise ops is way faster than integer ops. */
-  const int page_shift = SHADOW_PAGE_LOD;
-  ivec2 tile_coord = texel_coord >> page_shift;
-  return shadow_tile_load(shadow_tilemaps_tx, tile_coord, tilemap_index);
-}
-
 float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
 {
-  ivec2 texel_coord;
-  ShadowTileData tile = shadow_tile_data_at_tilemap_uv(tilemap_index, tilemap_uv, texel_coord);
-  if (!tile.is_allocated) {
-    return -1.0;
-  }
+  /* Prevent out of bound access. Assumes the input is already non negative. */
+  tilemap_uv = min(tilemap_uv, vec2(0.99999));
 
-  tilemap_uv += shadow_pcf_offset(tile.lod);
+  ivec2 texel_coord = ivec2(tilemap_uv * float(SHADOW_MAP_MAX_RES));
+  /* Using bitwise ops is way faster than integer ops. */
+  const int page_shift = SHADOW_PAGE_LOD;
 
-  tile = shadow_tile_data_at_tilemap_uv(tilemap_index, tilemap_uv, texel_coord);
+  ivec2 tile_coord = texel_coord >> page_shift;
+  ShadowTileData tile = shadow_tile_load(shadow_tilemaps_tx, tile_coord, tilemap_index);
+
   if (!tile.is_allocated) {
     return -1.0;
   }
 
   int page_mask = ~(0xFFFFFFFF << (SHADOW_PAGE_LOD + int(tile.lod)));
   ivec2 texel_page = (texel_coord & page_mask) >> int(tile.lod);
-  ivec3 texel = ivec3((ivec2(tile.page.xy) << SHADOW_PAGE_LOD) | texel_page, tile.page.z);
+  ivec3 texel = ivec3((ivec2(tile.page.xy) << page_shift) | texel_page, tile.page.z);
 
   return uintBitsToFloat(texelFetch(shadow_atlas_tx, texel, 0).r);
 }
