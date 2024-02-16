@@ -42,8 +42,17 @@ static void rna_grease_pencil_update(Main * /*bmain*/, Scene * /*scene*/, Pointe
 
 static void rna_grease_pencil_autolock(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
+  using namespace blender::bke::greasepencil;
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
-  grease_pencil->autolock_inactive_layers();
+  if (grease_pencil->flag & GREASE_PENCIL_AUTOLOCK_LAYERS) {
+    grease_pencil->autolock_inactive_layers();
+  }
+  else {
+    for (Layer *layer : grease_pencil->layers_for_write()) {
+      layer->set_locked(false);
+    }
+  }
+
   rna_grease_pencil_update(nullptr, nullptr, ptr);
 }
 

@@ -2192,14 +2192,13 @@ bool GreasePencil::is_layer_active(const blender::bke::greasepencil::Layer *laye
 
 void GreasePencil::autolock_inactive_layers() {
   using namespace blender::bke::greasepencil;
-  const bool is_autolock = this->flag & GREASE_PENCIL_AUTOLOCK_LAYERS;
 
   for (Layer *layer : this->layers_for_write()) {
     if (this->is_layer_active(layer)) {
       layer->set_locked(false);
       continue;
     }
-    layer->set_locked(is_autolock);
+    layer->set_locked(true);
   }
 }
 
