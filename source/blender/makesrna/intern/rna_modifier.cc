@@ -8768,7 +8768,7 @@ static void rna_def_modifier_grease_pencil_array(BlenderRNA *brna)
       prop, nullptr, "flag", MOD_GREASE_PENCIL_ARRAY_UNIFORM_RANDOM_SCALE);
   RNA_def_property_ui_text(
       prop, "Uniform Scale", "Use the same random seed for each scale axis for a uniform scale");
-      RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   RNA_define_lib_overridable(false);
 }
