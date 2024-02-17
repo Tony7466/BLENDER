@@ -102,10 +102,12 @@ bool SphereProbeModule::ensure_atlas()
     probes_tx_.ensure_mip_views();
     /* TODO(fclem): Clearing means that we need to render all probes again.
      * If existing data exists, copy it using `CopyImageSubData`. */
-    probes_tx_.clear(float4(0.0f));
+    for (auto i : IndexRange(SPHERE_PROBE_MIPMAP_LEVELS)) {
+      /* Avoid undefined pixel data. Clear all mips. */
+      float4 data(0.0f);
+      GPU_texture_clear(probes_tx_.mip_view(i), GPU_DATA_FLOAT, &data);
+    }
     GPU_texture_mipmap_mode(probes_tx_, true, true);
-    /* Avoid undefined pixel data. Update all mips. */
-    GPU_texture_update_mipmap_chain(probes_tx_);
     return true;
   }
   return false;
