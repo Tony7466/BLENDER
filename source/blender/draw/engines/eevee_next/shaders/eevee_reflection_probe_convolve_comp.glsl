@@ -92,5 +92,9 @@ void main()
   }
   radiance *= safe_rcp(weight);
 
+#if 0 /* Debugging texel alignment. */
+  ivec2 a = out_texel % 2;
+  radiance = vec4(a.x == a.y);
+#endif
   imageStore(out_atlas_mip_img, ivec3(out_texel, out_texel_area.layer), radiance);
 }

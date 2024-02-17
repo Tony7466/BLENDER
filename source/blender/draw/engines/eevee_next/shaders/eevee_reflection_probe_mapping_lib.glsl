@@ -53,11 +53,16 @@ vec3 sphere_probe_texel_to_direction(ivec2 local_texel,
 /* Apply correct bias and scale for the given level of detail. */
 vec2 sphere_probe_miplvl_scale_bias(float mip_lvl, SphereProbeUvArea uv_area, vec2 uv)
 {
-  float pixel_count_mip_0 = float(SPHERE_PROBE_ATLAS_RES) * uv_area.scale;
-  /* This should be always odd. */
-  float pixel_count = floor(pixel_count_mip_0 / exp2(mip_lvl));
-  float scale = (pixel_count - 1.0) / pixel_count;
-  float offset = 0.5 / pixel_count;
+  /* Add 0.5 to avoid rounding error. */
+  int pixel_count_mip_0 = int(float(SPHERE_PROBE_ATLAS_RES) * uv_area.scale + 0.5);
+  float pixel_count = float(pixel_count_mip_0 >> int(mip_lvl));
+  float pixel_count_inv = 1.0 / pixel_count;
+  /* We place texel centers at the edges of the octahedron, to avoid artifacts caused by
+   * interpolating across the edges.
+   * The first pixel scaling aligns all the border edges (half pixel border).
+   * The second pixel scaling aligns the center edges (odd number of pixel). */
+  float scale = (pixel_count - 2.0) * pixel_count_inv;
+  float offset = 0.5 * pixel_count_inv;
   return uv * scale + offset;
 }
 
@@ -68,30 +73,9 @@ void sphere_probe_direction_to_uv(vec3 L,
                                   out vec2 altas_uv_min,
                                   out vec2 altas_uv_max)
 {
-  /* We place texel centers at the edges of the octahedron, to avoid artifacts caused by
-   * interpolating across the edges.
-   *
-   * This is a diagram of a 5px^2 map with 2 mips. 0 and 1 denote the pixels centers of each
-   * mips. The lines shows the octahedron edges.
-   *
-   * 1---0---1---0---1 <
-   * |     / | \     |  |
-   * 0   0   0   0   0  |
-   * | /     |     \ |  |
-   * 1---0---1---0---1  | sampling area
-   * | \     |     / |  |
-   * 0   0   0   0   0  |
-   * |     \ | /     |  |
-   * 1---0---1---0---1 <
-   * ^---------------^
-   *       sampling area
-   *
-   * To do this, we made all mip levels have an odd number of pixel, by sizing the atlas
-   * appropriately. But this makes the interpolation between mips not aligning and we need to use a
-   * different uv coordinate for each level of detail. Fortunately, this avoids us to have to worry
-   * about padding texels all together.
-   */
   vec2 octahedral_uv = octahedral_uv_from_direction(L);
+  /* We use a custom per mip level scaling and bias. This avoid some projection artifact and
+   * padding border waste. But we need to do the mipmap interpolation ourself. */
   vec2 local_uv_min = sphere_probe_miplvl_scale_bias(lod_min, uv_area, octahedral_uv);
   vec2 local_uv_max = sphere_probe_miplvl_scale_bias(lod_max, uv_area, octahedral_uv);
   /* Remap into atlas location. */
