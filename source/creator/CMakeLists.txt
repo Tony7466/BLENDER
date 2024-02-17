@@ -715,6 +715,11 @@ if(UNIX AND NOT APPLE)
     )
 
     install(
+      TARGETS blender_cpu_check
+      DESTINATION "./lib"
+    )
+
+    install(
       FILES
         ${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
         ${CMAKE_SOURCE_DIR}/release/freedesktop/icons/scalable/apps/blender.svg
@@ -769,7 +774,6 @@ file(REMOVE ${CMAKE_BINARY_DIR}/bin/lib/libglapi.so.0.0.0)\n
       TARGETS blender
       DESTINATION "./bin"
     )
-
     # Misc files.
     install(
       FILES ${CMAKE_SOURCE_DIR}/release/freedesktop/blender.desktop
