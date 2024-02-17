@@ -54,15 +54,14 @@ void SphereProbeModule::begin_sync()
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(SPHERE_PROBE_CONVOLVE));
     pass.bind_texture("cubemap_tx", &cubemap_tx_);
-    pass.bind_image("in_atlas_mip_img", &convolve_input_);
+    pass.bind_texture("in_atlas_mip_tx", &convolve_input_);
     pass.bind_image("out_atlas_mip_img", &convolve_output_);
     pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&probe_sampling_coord_));
     pass.push_constant("write_coord_packed", reinterpret_cast<int4 *>(&probe_write_coord_));
     pass.push_constant("read_coord_packed", reinterpret_cast<int4 *>(&probe_read_coord_));
     pass.push_constant("read_lod", &convolve_lod_);
-    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
+    pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
     pass.dispatch(&dispatch_probe_convolve_);
-    pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
   {
     PassSimple &pass = update_irradiance_ps_;

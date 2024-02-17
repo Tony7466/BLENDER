@@ -45,12 +45,12 @@ void convolve_sample(vec3 in_direction,
                      inout vec4 radiance_accum,
                      inout float weight_accum)
 {
-  vec2 in_uv = sphere_probe_direction_to_uv(in_direction, float(read_lod), sample_coord);
-  vec2 in_texel = in_uv * float(imageSize(in_atlas_mip_img).x);
-
   float weight = sample_weight(out_direction, in_direction);
-  vec4 radiance = imageLoad(in_atlas_mip_img, ivec3(ivec2(in_texel), int(sample_coord.layer)));
-#if 0 /* For reference and debugging.  */
+
+#if 1
+  vec2 in_uv = sphere_probe_direction_to_uv(in_direction, float(read_lod), sample_coord);
+  vec4 radiance = texture(in_atlas_mip_tx, vec3(in_uv, sample_coord.layer));
+#else /* For reference and debugging.  */
   vec4 radiance = texture(cubemap_tx, in_direction);
 #endif
 
