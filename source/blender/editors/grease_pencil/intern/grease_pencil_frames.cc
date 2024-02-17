@@ -513,16 +513,16 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
         continue;
       }
 
-      std::optional<bke::CurvesGeometry *> current_geo = get_gp_curves_geometry_from_frame_key(
+      std::optional<bke::CurvesGeometry *> curves = get_gp_curves_geometry_from_frame_key(
           grease_pencil, layer, current);
-      std::optional<bke::CurvesGeometry *> next_geo = get_gp_curves_geometry_from_frame_key(
+      std::optional<bke::CurvesGeometry *> curves_next = get_gp_curves_geometry_from_frame_key(
           grease_pencil, layer, next);
 
-      if (!current_geo.has_value() || !next_geo.has_value()) {
+      if (!curves.has_value() || !curves_next.has_value()) {
         continue;
       }
 
-      if (!curves_geometry_is_equal(*current_geo.value(), *next_geo.value())) {
+      if (!curves_geometry_is_equal(*curves.value(), *curves_next.value())) {
         continue;
       }
 
