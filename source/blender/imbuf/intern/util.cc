@@ -317,14 +317,10 @@ ImbAnimType imb_get_anim_type(const char *filepath)
   }
 #  endif
   if (BLI_stat(filepath, &st) == -1) {
-    return ImbAnimType::None;
+    return ImbAnimType::NotAnim;
   }
   if (((st.st_mode) & S_IFMT) != S_IFREG) {
-    return ImbAnimType::None;
-  }
-
-  if (isavi(filepath)) {
-    return ImbAnimType::Avi;
+    return ImbAnimType::NotAnim;
   }
 
   if (ismovie(filepath)) {
@@ -332,10 +328,10 @@ ImbAnimType imb_get_anim_type(const char *filepath)
   }
 #else /* !_WIN32 */
   if (BLI_stat(filepath, &st) == -1) {
-    return ImbAnimType::None;
+    return ImbAnimType::NotAnim;
   }
   if (((st.st_mode) & S_IFMT) != S_IFREG) {
-    return ImbAnimType::None;
+    return ImbAnimType::NotAnim;
   }
 
   if (ismovie(filepath)) {
@@ -354,11 +350,11 @@ ImbAnimType imb_get_anim_type(const char *filepath)
     return ImbAnimType::Sequence;
   }
 
-  return ImbAnimType::None;
+  return ImbAnimType::NotAnim;
 }
 
 bool IMB_isanim(const char *filepath)
 {
   ImbAnimType type = imb_get_anim_type(filepath);
-  return (type != ImbAnimType::None && type != ImbAnimType::Sequence);
+  return (type != ImbAnimType::NotAnim && type != ImbAnimType::Sequence);
 }

@@ -138,7 +138,7 @@ IDProperty *IMB_anim_load_metadata(ImBufAnim *anim)
     case ImbAnimType::Movie:
       /* TODO */
       break;
-    case ImbAnimType::None:
+    case ImbAnimType::NotAnim:
     default:
       break;
   }
@@ -1331,7 +1331,7 @@ ImBuf *IMB_anim_absolute(ImBufAnim *anim,
   filter_y = (anim->ib_flags & IB_animdeinterlace);
 
   if (preview_size == IMB_PROXY_NONE) {
-    if (anim->curtype == ImbAnimType::None) {
+    if (anim->curtype == ImbAnimType::NotAnim) {
       if (!anim_getnew(anim)) {
         return nullptr;
       }
