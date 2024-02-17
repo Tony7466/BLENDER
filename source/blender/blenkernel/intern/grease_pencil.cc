@@ -2191,7 +2191,8 @@ bool GreasePencil::is_layer_active(const blender::bke::greasepencil::Layer *laye
   return this->get_active_layer() == layer;
 }
 
-void GreasePencil::autolock_inactive_layers() {
+void GreasePencil::autolock_inactive_layers()
+{
   using namespace blender::bke::greasepencil;
 
   for (Layer *layer : this->layers_for_write()) {
