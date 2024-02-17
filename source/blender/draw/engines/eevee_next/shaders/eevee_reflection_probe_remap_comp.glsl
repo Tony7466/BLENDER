@@ -23,7 +23,7 @@ void main()
 
   vec2 wrapped_uv;
   vec3 direction = sphere_probe_texel_to_direction(
-      local_texel, write_coord, sample_coord, imageSize(atlas_img).x, wrapped_uv);
+      local_texel, write_coord, sample_coord, wrapped_uv);
   vec4 radiance_and_transmittance = texture(cubemap_tx, direction);
   vec3 radiance = radiance_and_transmittance.xyz;
 

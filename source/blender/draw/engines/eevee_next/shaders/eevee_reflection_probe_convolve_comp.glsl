@@ -72,9 +72,8 @@ void main()
     return;
   }
 
-  int out_atlas_mip_size = imageSize(in_atlas_mip_img).x / 2;
   vec3 out_direction = sphere_probe_texel_to_direction(
-      out_local_texel, out_texel_area, sample_coord, out_atlas_mip_size);
+      out_local_texel, out_texel_area, sample_coord);
   out_direction = normalize(out_direction);
 
   mat3x3 basis = from_up_axis(out_direction);
