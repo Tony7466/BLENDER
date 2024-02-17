@@ -34,11 +34,11 @@ TEST(random_access_iterator_mixin, DoublingIterator)
 {
   std::array<int, 4> my_array = {3, 6, 1, 2};
 
-  DoublingIterator begin{my_array.begin()};
-  DoublingIterator end{my_array.end()};
+  DoublingIterator<int> begin{my_array.begin()};
+  DoublingIterator<int> end{my_array.end()};
 
   Vector<int> values;
-  for (DoublingIterator it = begin; it != end; ++it) {
+  for (DoublingIterator<int> it = begin; it != end; ++it) {
     values.append(*it);
   }
 
