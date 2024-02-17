@@ -37,8 +37,9 @@
 #define SPHERE_PROBE_MIPMAP_LEVELS 5
 #define SPHERE_PROBE_SH_GROUP_SIZE 512
 #define SPHERE_PROBE_SH_SAMPLES_PER_GROUP 64
-/* Must be power of two minus one for correct mip size and alignment (see glsl for explanation). */
-#define SPHERE_PROBE_ATLAS_RES 2048 - 1
+/* Must be power of two for correct partitioning. */
+#define SPHERE_PROBE_ATLAS_MAX_SUBDIV 10
+#define SPHERE_PROBE_ATLAS_RES (1 << SPHERE_PROBE_ATLAS_MAX_SUBDIV)
 /**
  * Limited by the UBO size limit `(16384 bytes / sizeof(SphereProbeData))`.
  */

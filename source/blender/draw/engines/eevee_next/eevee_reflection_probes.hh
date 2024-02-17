@@ -36,13 +36,6 @@ class SphereProbeModule {
   friend class Instance;
 
  private:
-  /**
-   * The maximum resolution of a sphere probe side.
-   *
-   * Must be a power of two minus one; intention to be used as an atlas.
-   */
-  static constexpr int max_resolution_ = SPHERE_PROBE_ATLAS_RES;
-
   Instance &instance_;
   SphereProbeDataBuf data_buf_;
 
@@ -137,7 +130,7 @@ class SphereProbeModule {
    * Result is safely clamped to max resolution. */
   int subdivision_level_get(const eLightProbeResolution probe_resolution)
   {
-    return max_ii(log2_ceil(max_resolution_) - int(probe_resolution), 0);
+    return max_ii(SPHERE_PROBE_ATLAS_MAX_SUBDIV - int(probe_resolution), 0);
   }
 
   /**

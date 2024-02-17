@@ -15,6 +15,7 @@
 #include "BLI_bit_vector.hh"
 #include "BLI_map.hh"
 
+#include "eevee_defines.hh"
 #include "eevee_sync.hh"
 
 namespace blender::eevee {

@@ -93,7 +93,7 @@ bool SphereProbeModule::ensure_atlas()
   eGPUTextureUsage usage = GPU_TEXTURE_USAGE_SHADER_WRITE | GPU_TEXTURE_USAGE_SHADER_READ;
 
   if (probes_tx_.ensure_2d_array(GPU_RGBA16F,
-                                 int2(max_resolution_),
+                                 int2(SPHERE_PROBE_ATLAS_RES),
                                  instance_.light_probes.sphere_layer_count(),
                                  usage,
                                  nullptr,
@@ -144,7 +144,7 @@ void SphereProbeModule::ensure_cubemap_render_target(int resolution)
 
 SphereProbeModule::UpdateInfo SphereProbeModule::update_info_from_probe(const SphereProbe &probe)
 {
-  const int max_shift = int(roundf(log2f(max_resolution_)));
+  const int max_shift = int(roundf(log2f(SPHERE_PROBE_ATLAS_RES)));
 
   SphereProbeModule::UpdateInfo info = {};
   info.atlas_coord = probe.atlas_coord;
@@ -193,10 +193,10 @@ std::optional<SphereProbeModule::UpdateInfo> SphereProbeModule::probe_update_inf
 
 void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoord &atlas_coord)
 {
-  int resolution = max_resolution_ >> atlas_coord.subdivision_lvl;
+  int resolution = SPHERE_PROBE_ATLAS_RES >> atlas_coord.subdivision_lvl;
   /* Update shader parameters that change per dispatch. */
-  probe_sampling_coord_ = atlas_coord.as_sampling_coord(max_resolution_);
-  probe_write_coord_ = atlas_coord.as_write_coord(max_resolution_, 0);
+  probe_sampling_coord_ = atlas_coord.as_sampling_coord(SPHERE_PROBE_ATLAS_RES);
+  probe_write_coord_ = atlas_coord.as_write_coord(SPHERE_PROBE_ATLAS_RES, 0);
   dispatch_probe_pack_ = int3(int2(ceil_division(resolution, SPHERE_PROBE_GROUP_SIZE)), 1);
   instance_.manager->submit(remap_ps_);
 
@@ -205,8 +205,8 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
     convolve_lod_ = i;
     convolve_input_ = probes_tx_.mip_view(i);
     convolve_output_ = probes_tx_.mip_view(i + 1);
-    probe_read_coord_ = atlas_coord.as_write_coord(max_resolution_, i);
-    probe_write_coord_ = atlas_coord.as_write_coord(max_resolution_, i + 1);
+    probe_read_coord_ = atlas_coord.as_write_coord(SPHERE_PROBE_ATLAS_RES, i);
+    probe_write_coord_ = atlas_coord.as_write_coord(SPHERE_PROBE_ATLAS_RES, i + 1);
     int out_mip_res = resolution >> (i + 1);
     dispatch_probe_convolve_ = int3(int2(ceil_division(out_mip_res, SPHERE_PROBE_GROUP_SIZE)), 1);
     instance_.manager->submit(convolve_ps_);
