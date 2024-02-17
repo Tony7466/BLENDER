@@ -12,6 +12,9 @@
 #  include <intrin.h>
 #endif
 
+/* The code below is duplicated from system.c from bf_blenlib. This is on purpose, since bf_blenlib
+ * may be build with CPU flags that are not available on the current cpu so we can't link it. */
+
 #if !defined(_WIN32)
 static void __cpuid(
     /* Cannot be const, because it is modified below.
@@ -91,10 +94,7 @@ BOOL WINAPI DllMain(HINSTANCE /* hinstDLL */, DWORD fdwReason, LPVOID /* lpvRese
 static __attribute__((constructor)) void cpu_check(void)
 {
 #  ifdef __x86_64
-  if (cpu_supports_sse42()) {
-    printf("sse42 supported!\n");
-  }
-  else {
+  if (!cpu_supports_sse42()) {
     std::string error = "Unsupported CPU - " + std::string(cpu_brand_string()) +
                         "\nBlender requires a CPU with SSE42 support.";
     printf("%s\n", error.c_str());
