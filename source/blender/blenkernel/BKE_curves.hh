@@ -200,9 +200,6 @@ class CurvesGeometry : public ::CurvesGeometry {
   Span<float3> positions() const;
   MutableSpan<float3> positions_for_write();
 
-  Span<float> radiuses() const;
-  MutableSpan<float> radiuses_for_write();
-
   /** Whether the curve loops around to connect to itself, on the curve domain. */
   VArray<bool> cyclic() const;
   /** Mutable access to curve cyclic values. Call #tag_topology_changed after changes. */
