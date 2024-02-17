@@ -1079,11 +1079,11 @@ static void grease_pencil_primitive_cursor_update(bContext *C,
 static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   PrimitiveTool_OpData &ptd = *((PrimitiveTool_OpData *)op->customdata);
-  ptd.projection = ED_view3d_ob_project_mat_get(ptd.vc.rv3d, ptd.vc.obact);
 
   const float3 pos = ptd.control_points.first();
   if (ED_view3d_navigation_do(C, ptd.vod, event, pos)) {
     if (ptd.vc.rv3d->rflag & RV3D_NAVIGATING) {
+      ptd.projection = ED_view3d_ob_project_mat_get(ptd.vc.rv3d, ptd.vc.obact);
 
       grease_pencil_primitive_update_curves(ptd);
       grease_pencil_primitive_update_view(C, ptd);
@@ -1092,6 +1092,7 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
     }
   }
 
+  ptd.projection = ED_view3d_ob_project_mat_get(ptd.vc.rv3d, ptd.vc.obact);
   // printf("\naaaaaaaaaaaaaaaaaa-----------aaaaaaaaaaaaaaaaaa\n\n");
 
   // WM_event_print(event);
