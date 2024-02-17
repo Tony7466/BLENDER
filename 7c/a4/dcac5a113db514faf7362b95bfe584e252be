@@ -3,3 +3,4 @@ Referenced by commit 4dc345ab1e6ff55a240f6be4000aee5ca73b7b36, Fix #117494: Cras
 Referenced by pull request #117785, Refactor: Use std::string for keymap string return values
 Referenced by commit fbf47b9a126a222d4ce0500ca7a2a142b9a94c87, Refactor: Use std::string for keymap string return values
 Referenced by pull request #118361, Cleanup: Wrong return value
+Referenced by commit 1e81a353ad722b2cec369d26fd59c734bcdc227f, Cleanup: Wrong return value
