@@ -258,14 +258,14 @@ string HIPDevice::compile_kernel(const uint kernel_features, const char *name, c
   const char *const kernel_ext = "genco";
   std::string options;
 #  ifdef _WIN32
-  options.append("Wno-parentheses-equality -Wno-unused-value --hipcc-func-supp -ffast-math");
+  options.append("Wno-parentheses-equality -Wno-unused-value -ffast-math");
 #  else
-  options.append("Wno-parentheses-equality -Wno-unused-value --hipcc-func-supp -O3 -ffast-math");
+  options.append("Wno-parentheses-equality -Wno-unused-value -O3 -ffast-math");
 #  endif
 #  ifndef NDEBUG
   options.append(" -save-temps");
 #  endif
-  options.append(" --amdgpu-target=").append(arch);
+  options.append(" --offload-arch=").append(arch);
 
   const string include_path = source_path;
   const string fatbin_file = string_printf("cycles_%s_%s_%s", name, arch, kernel_md5.c_str());
