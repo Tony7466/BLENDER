@@ -30,7 +30,6 @@ static void __cpuid(
 
 static int cpu_supports_sse42(void)
 {
-  return false;
   int result[4], num;
   __cpuid(result, 0);
   num = result[0];
@@ -64,9 +63,8 @@ static const char *cpu_brand_string(void)
 #ifdef _MSC_VER
 extern "C" __declspec(dllexport) void cpu_check_win()
 {
-#ifdef _M_X64
-  if (!cpu_supports_sse42())
-  {
+#  ifdef _M_X64
+  if (!cpu_supports_sse42()) {
     std::string error_title = "Unsupported CPU - " + std::string(cpu_brand_string());
     MessageBoxA(NULL,
                 "Blender requires a CPU with SSE42 support.",
@@ -74,36 +72,35 @@ extern "C" __declspec(dllexport) void cpu_check_win()
                 MB_OK | MB_ICONERROR);
     exit(-1);
   }
-#endif 
+#  endif
 }
 
-BOOL WINAPI DllMain(HINSTANCE /* hinstDLL */,
-    DWORD fdwReason, LPVOID /* lpvReserved */)
+BOOL WINAPI DllMain(HINSTANCE /* hinstDLL */, DWORD fdwReason, LPVOID /* lpvReserved */)
 {
-    switch( fdwReason )
-    {
-        case DLL_PROCESS_ATTACH:
-        cpu_check_win();
-        break;
-   }
-    return TRUE;
+  switch (fdwReason) {
+    case DLL_PROCESS_ATTACH:
+      cpu_check_win();
+      break;
+  }
+  return TRUE;
 }
-#else 
+#else
 #  include <cstdio>
 #  include <cstdlib>
 
 static __attribute__((constructor)) void cpu_check(void)
 {
 #  ifdef __x86_64
-    if (cpu_supports_sse42()) {
-        printf("sse42 supported!\n");
-    }
-    else {
-        std::string error = "Unsupported CPU - " + std::string(cpu_brand_string()) + "\nBlender requires a CPU with SSE42 support.";
-        printf("%s\n", error.c_str());
-        exit(-1);
-    }
-    return;
-#endif
+  if (cpu_supports_sse42()) {
+    printf("sse42 supported!\n");
+  }
+  else {
+    std::string error = "Unsupported CPU - " + std::string(cpu_brand_string()) +
+                        "\nBlender requires a CPU with SSE42 support.";
+    printf("%s\n", error.c_str());
+    exit(-1);
+  }
+  return;
+#  endif
 }
 #endif

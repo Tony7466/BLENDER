@@ -9,10 +9,12 @@
 #include <cstdlib>
 #include <cstring>
 
-#ifdef WIN32
+#if defined(WIN32)
 #  include "utfconv.hh"
 #  include <windows.h>
-#  pragma comment(linker, "/include:cpu_check_win")
+#  if !defined(WITH_PYTHON_MODULE)
+#    pragma comment(linker, "/include:cpu_check_win")
+#  endif
 #endif
 
 #if defined(WITH_TBB_MALLOC) && defined(_MSC_VER) && defined(NDEBUG)
