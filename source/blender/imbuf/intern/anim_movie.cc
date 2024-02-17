@@ -1234,7 +1234,7 @@ static void free_anim_ffmpeg(ImBufAnim *anim)
  */
 static bool anim_getnew(ImBufAnim *anim)
 {
-  BLI_assert(anim->curtype == ANIM_NONE);
+  BLI_assert(anim->curtype == ImbAnimType::NotAnim);
   if (anim == nullptr) {
     /* Nothing to initialize. */
     return false;
