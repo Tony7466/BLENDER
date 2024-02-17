@@ -34,8 +34,8 @@ TEST(random_access_iterator_mixin, DoublingIterator)
 {
   std::array<int, 4> my_array = {3, 6, 1, 2};
 
-  DoublingIterator<int> begin{my_array.begin()};
-  DoublingIterator<int> end{my_array.end()};
+  const DoublingIterator<int> begin = DoublingIterator<int>(&*my_array.begin());
+  const DoublingIterator<int> end = begin + my_array.size();
 
   Vector<int> values;
   for (DoublingIterator<int> it = begin; it != end; ++it) {

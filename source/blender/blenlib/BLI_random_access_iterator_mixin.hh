@@ -63,14 +63,14 @@ template<typename Derived> class RandomAccessIteratorMixin {
     return a;
   }
 
-  constexpr friend Derived &operator+(const Derived &a, const std::ptrdiff_t n)
+  constexpr friend Derived operator+(const Derived &a, const std::ptrdiff_t n)
   {
     Derived copy = a;
     copy.iter_prop_mutable() += n;
     return copy;
   }
 
-  constexpr friend Derived &operator-(const Derived &a, const std::ptrdiff_t n)
+  constexpr friend Derived operator-(const Derived &a, const std::ptrdiff_t n)
   {
     Derived copy = a;
     copy.iter_prop_mutable() -= n;
