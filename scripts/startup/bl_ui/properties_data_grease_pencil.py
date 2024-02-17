@@ -49,8 +49,14 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
     def draw(self, context):
         layout = self.layout
         grease_pencil = context.object.data
+        space = context.space_data
 
-        layout.operator("grease_pencil.layer_group_add", text="Add Group")
+        if space.type == 'PROPERTIES':
+            layout.operator("grease_pencil.layer_group_add", text="Add Group")
+
+        layout.separator()
+        layout.operator("grease_pencil.layer_duplicate", text="Duplicate", icon='DUPLICATE')
+        layout.operator("grease_pencil.layer_duplicate", text="Duplicate Empty Keyframes").empty_keyframes = True
 
         layout.separator()
         layout.operator("grease_pencil.layer_reveal", icon='RESTRICT_VIEW_OFF', text="Show All")
