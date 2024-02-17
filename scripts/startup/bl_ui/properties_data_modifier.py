@@ -109,6 +109,7 @@ class OBJECT_MT_modifier_add_edit(ModifierAddMenu, Menu):
             self.operator_modifier_add(layout, 'VERTEX_WEIGHT_PROXIMITY')
         if ob_type == 'GREASEPENCIL':
             self.operator_modifier_add(layout, 'GREASE_PENCIL_TIME')
+            self.operator_modifier_add(layout, 'GREASE_PENCIL_VERTEX_WEIGHT_ANGLE')
         layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)
 
 
@@ -152,8 +153,11 @@ class OBJECT_MT_modifier_add_generate(ModifierAddMenu, Menu):
         if ob_type == 'MESH':
             self.operator_modifier_add(layout, 'WIREFRAME')
         if ob_type == 'GREASEPENCIL':
+            self.operator_modifier_add(layout, 'GREASE_PENCIL_ARRAY')
             self.operator_modifier_add(layout, 'GREASE_PENCIL_DASH')
+            self.operator_modifier_add(layout, 'GREASE_PENCIL_LENGTH')
             self.operator_modifier_add(layout, 'GREASE_PENCIL_MIRROR')
+            self.operator_modifier_add(layout, 'GREASE_PENCIL_MULTIPLY')
             self.operator_modifier_add(layout, 'GREASE_PENCIL_SUBDIV')
         layout.template_modifier_asset_menu_items(catalog_path=self.bl_label)
 
