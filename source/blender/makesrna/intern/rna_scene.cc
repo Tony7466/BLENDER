@@ -385,11 +385,7 @@ const EnumPropertyItem rna_enum_image_type_items[] = {
 
         RNA_ENUM_ITEM_HEADING(N_("Movie"), nullptr),
 #ifdef WITH_FFMPEG
-    {R_IMF_IMTYPE_FFMPEG,
-     "FFMPEG",
-     ICON_FILE_MOVIE,
-     "FFmpeg Video",
-     ""},
+    {R_IMF_IMTYPE_FFMPEG, "FFMPEG", ICON_FILE_MOVIE, "FFmpeg Video", ""},
 #endif
     {0, nullptr, 0, nullptr, nullptr},
 };
