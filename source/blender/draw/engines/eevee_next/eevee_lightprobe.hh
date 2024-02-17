@@ -42,9 +42,9 @@ struct SphereProbeAtlasCoord {
   }
 
   /* Return the area extent in pixel. */
-  int area_extent(int atlas_extent, int mip_lvl = 0) const
+  int area_extent(int mip_lvl = 0) const
   {
-    return atlas_extent >> (subdivision_lvl + mip_lvl);
+    return SPHERE_PROBE_ATLAS_RES >> (subdivision_lvl + mip_lvl);
   }
 
   /* Coordinate of the area in [0..area_count_per_dimension[ range. */
@@ -54,28 +54,26 @@ struct SphereProbeAtlasCoord {
     return int2(area_index % area_count_per_dimension, area_index / area_count_per_dimension);
   }
 
-  /* Coordinate of the bottom left corner of the area in [0..atlas_extent[ range. */
-  int2 area_offset(int atlas_extent, int mip_lvl = 0) const
+  /* Coordinate of the bottom left corner of the area in [0..SPHERE_PROBE_ATLAS_RES[ range. */
+  int2 area_offset(int mip_lvl = 0) const
   {
-    /* There is one pixel padding between each area.
-     * This is because we divide the atlas in power of two regions. */
-    return area_location() * (area_extent(atlas_extent, mip_lvl) + 1);
+    return area_location() * area_extent(mip_lvl);
   }
 
-  SphereProbeUvArea as_sampling_coord(int atlas_extent) const
+  SphereProbeUvArea as_sampling_coord() const
   {
     SphereProbeUvArea coord;
-    coord.scale = float(area_extent(atlas_extent)) / atlas_extent;
-    coord.offset = float2(area_offset(atlas_extent)) / atlas_extent;
+    coord.scale = float(area_extent()) / SPHERE_PROBE_ATLAS_RES;
+    coord.offset = float2(area_offset()) / SPHERE_PROBE_ATLAS_RES;
     coord.layer = atlas_layer;
     return coord;
   }
 
-  SphereProbePixelArea as_write_coord(int atlas_extent, int mip_lvl) const
+  SphereProbePixelArea as_write_coord(int mip_lvl) const
   {
     SphereProbePixelArea coord;
-    coord.extent = area_extent(atlas_extent, mip_lvl);
-    coord.offset = area_offset(atlas_extent, mip_lvl);
+    coord.extent = area_extent(mip_lvl);
+    coord.offset = area_offset();
     coord.layer = atlas_layer;
     return coord;
   }

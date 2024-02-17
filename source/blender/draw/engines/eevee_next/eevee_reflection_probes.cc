@@ -144,11 +144,9 @@ void SphereProbeModule::ensure_cubemap_render_target(int resolution)
 
 SphereProbeModule::UpdateInfo SphereProbeModule::update_info_from_probe(const SphereProbe &probe)
 {
-  const int max_shift = int(roundf(log2f(SPHERE_PROBE_ATLAS_RES)));
-
   SphereProbeModule::UpdateInfo info = {};
   info.atlas_coord = probe.atlas_coord;
-  info.resolution = 1 << (max_shift - probe.atlas_coord.subdivision_lvl - 1);
+  info.cube_target_extent = probe.atlas_coord.area_extent() / 2;
   info.clipping_distances = probe.clipping_distances;
   info.probe_pos = probe.location;
   info.do_render = probe.do_render;
@@ -166,7 +164,7 @@ std::optional<SphereProbeModule::UpdateInfo> SphereProbeModule::world_update_inf
   info.do_world_irradiance_update = do_world_irradiance_update;
   world_probe.do_render = false;
   do_world_irradiance_update = false;
-  ensure_cubemap_render_target(info.resolution);
+  ensure_cubemap_render_target(info.cube_target_extent);
   return info;
 }
 
@@ -184,7 +182,7 @@ std::optional<SphereProbeModule::UpdateInfo> SphereProbeModule::probe_update_inf
     SphereProbeModule::UpdateInfo info = update_info_from_probe(probe);
     probe.do_render = false;
     probe.use_for_render = true;
-    ensure_cubemap_render_target(info.resolution);
+    ensure_cubemap_render_target(info.cube_target_extent);
     return info;
   }
 
@@ -193,10 +191,10 @@ std::optional<SphereProbeModule::UpdateInfo> SphereProbeModule::probe_update_inf
 
 void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoord &atlas_coord)
 {
-  int resolution = SPHERE_PROBE_ATLAS_RES >> atlas_coord.subdivision_lvl;
   /* Update shader parameters that change per dispatch. */
-  probe_sampling_coord_ = atlas_coord.as_sampling_coord(SPHERE_PROBE_ATLAS_RES);
-  probe_write_coord_ = atlas_coord.as_write_coord(SPHERE_PROBE_ATLAS_RES, 0);
+  probe_sampling_coord_ = atlas_coord.as_sampling_coord();
+  probe_write_coord_ = atlas_coord.as_write_coord(0);
+  int resolution = probe_write_coord_.extent;
   dispatch_probe_pack_ = int3(int2(ceil_division(resolution, SPHERE_PROBE_GROUP_SIZE)), 1);
   instance_.manager->submit(remap_ps_);
 
@@ -205,9 +203,9 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
     convolve_lod_ = i;
     convolve_input_ = probes_tx_.mip_view(i);
     convolve_output_ = probes_tx_.mip_view(i + 1);
-    probe_read_coord_ = atlas_coord.as_write_coord(SPHERE_PROBE_ATLAS_RES, i);
-    probe_write_coord_ = atlas_coord.as_write_coord(SPHERE_PROBE_ATLAS_RES, i + 1);
-    int out_mip_res = resolution >> (i + 1);
+    probe_read_coord_ = atlas_coord.as_write_coord(i);
+    probe_write_coord_ = atlas_coord.as_write_coord(i + 1);
+    int out_mip_res = probe_write_coord_.extent;
     dispatch_probe_convolve_ = int3(int2(ceil_division(out_mip_res, SPHERE_PROBE_GROUP_SIZE)), 1);
     instance_.manager->submit(convolve_ps_);
   }

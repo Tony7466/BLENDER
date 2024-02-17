@@ -147,7 +147,7 @@ class SphereProbeModule {
   struct UpdateInfo {
     float3 probe_pos;
     /** Resolution of the cube-map to be rendered. */
-    int resolution;
+    int cube_target_extent;
 
     float2 clipping_distances;
 
