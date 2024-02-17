@@ -406,13 +406,9 @@ static bool attributes_elements_are_equal(const bke::GAttributeReader &attrs_a,
 
   const VArraySpan attrs_span_a = attributes_a;
   const VArraySpan attrs_span_b = attributes_b;
-  if (!std::equal(
-          attrs_span_a.begin(), attrs_span_a.end(), attrs_span_b.begin(), attrs_span_b.end()))
-  {
-    return false;
-  }
 
-  return true;
+  return std::equal(
+      attrs_span_a.begin(), attrs_span_a.end(), attrs_span_b.begin(), attrs_span_b.end());
 }
 
 static std::optional<bke::CurvesGeometry *> get_gp_curves_geometry_from_frame_key(
@@ -522,10 +518,9 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
       frames_to_delete.append(next);
     }
 
-    grease_pencil.remove_frames(*layer, frames_to_delete);
-    // for (const FramesMapKey frame : frames_to_delete) {
-    //   layer->remove_frame(frame);
-    // }
+    for (const FramesMapKey frame : frames_to_delete) {
+      layer->remove_frame(frame);
+    }
 
     changed = true;
   }
