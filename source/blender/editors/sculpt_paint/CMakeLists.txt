@@ -9,8 +9,10 @@ set(INC
   ../../blentranslation
   ../../bmesh
   ../../draw
+  ../../functions
   ../../geometry
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../nodes
   ../../render
@@ -97,8 +99,7 @@ set(LIB
   PRIVATE bf::blenlib
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
-  PRIVATE bf::functions
-  PRIVATE bf::imbuf
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc

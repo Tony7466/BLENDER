@@ -100,6 +100,7 @@ class NodeDeclaration;
 class NodeDeclarationBuilder;
 class GatherAddNodeSearchParams;
 class GatherLinkSearchOpParams;
+struct NodeExtraInfoParams;
 }  // namespace nodes
 namespace realtime_compositor {
 class Context;
@@ -130,6 +131,7 @@ using NodeGetCompositorOperationFunction = blender::realtime_compositor::NodeOpe
     *(*)(blender::realtime_compositor::Context &context, blender::nodes::DNode node);
 using NodeGetCompositorShaderNodeFunction =
     blender::realtime_compositor::ShaderNode *(*)(blender::nodes::DNode node);
+using NodeExtraInfoFunction = void (*)(blender::nodes::NodeExtraInfoParams &params);
 
 #else
 typedef void *NodeGetCompositorOperationFunction;
@@ -144,6 +146,7 @@ typedef void *SocketGetCPPTypeFunction;
 typedef void *SocketGetGeometryNodesCPPTypeFunction;
 typedef void *SocketGetGeometryNodesCPPValueFunction;
 typedef void *SocketGetCPPValueFunction;
+typedef void *NodeExtraInfoFunction;
 typedef struct CPPTypeHandle CPPTypeHandle;
 #endif
 
@@ -208,6 +211,8 @@ typedef struct bNodeSocketType {
   const CPPTypeHandle *geometry_nodes_cpp_type;
   /* Get geometry nodes cpp value. */
   SocketGetGeometryNodesCPPValueFunction get_geometry_nodes_cpp_value;
+  /* Default value for this socket type. */
+  const void *geometry_nodes_default_cpp_value;
 } bNodeSocketType;
 
 typedef void *(*NodeInitExecFunction)(struct bNodeExecContext *context,
@@ -386,8 +391,13 @@ typedef struct bNodeType {
    */
   NodeGatherSocketLinkOperationsFunction gather_link_search_ops;
 
+  /** Get extra information that is drawn next to the node. */
+  NodeExtraInfoFunction get_extra_info;
+
   /** True when the node cannot be muted. */
   bool no_muting;
+  /** True when the node still works but it's usage is discouraged. */
+  const char *deprecation_notice;
 
   /* RNA integration */
   ExtensionRNA rna_ext;
@@ -1017,7 +1027,8 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define CMP_NODE_CHROMA_MATTE 237
 #define CMP_NODE_CHANNEL_MATTE 238
 #define CMP_NODE_FLIP 239
-#define CMP_NODE_SPLITVIEWER 240
+/* Split viewer node is now a regular split node: CMP_NODE_SPLIT. */
+#define CMP_NODE_SPLITVIEWER__DEPRECATED 240
 // #define CMP_NODE_INDEX_MASK  241
 #define CMP_NODE_MAP_UV 242
 #define CMP_NODE_ID_MASK 243
@@ -1054,6 +1065,7 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define CMP_NODE_DESPECKLE 273
 #define CMP_NODE_ANTIALIASING 274
 #define CMP_NODE_KUWAHARA 275
+#define CMP_NODE_SPLIT 276
 
 #define CMP_NODE_GLARE 301
 #define CMP_NODE_TONEMAP 302
@@ -1087,10 +1099,6 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 /* channel toggles */
 #define CMP_CHAN_RGB 1
 #define CMP_CHAN_A 2
-
-/* Cryptomatte source. */
-#define CMP_CRYPTOMATTE_SRC_RENDER 0
-#define CMP_CRYPTOMATTE_SRC_IMAGE 1
 
 /* Default SMAA configuration values. */
 #define CMP_DEFAULT_SMAA_THRESHOLD 1.0f
@@ -1317,6 +1325,12 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define GEO_NODE_SPLIT_TO_INSTANCES 2116
 #define GEO_NODE_INPUT_NAMED_LAYER_SELECTION 2117
 #define GEO_NODE_INDEX_SWITCH 2118
+#define GEO_NODE_INPUT_ACTIVE_CAMERA 2119
+#define GEO_NODE_BAKE 2120
+#define GEO_NODE_GET_NAMED_GRID 2121
+#define GEO_NODE_STORE_NAMED_GRID 2122
+#define GEO_NODE_SORT_ELEMENTS 2123
+#define GEO_NODE_MENU_SWITCH 2124
 
 /** \} */
 
@@ -1352,6 +1366,13 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 #define FN_NODE_ROTATE_VECTOR 1229
 #define FN_NODE_ROTATE_ROTATION 1230
 #define FN_NODE_INVERT_ROTATION 1231
+#define FN_NODE_TRANSFORM_POINT 1232
+#define FN_NODE_TRANSFORM_DIRECTION 1233
+#define FN_NODE_MATRIX_MULTIPLY 1234
+#define FN_NODE_COMBINE_TRANSFORM 1235
+#define FN_NODE_SEPARATE_TRANSFORM 1236
+#define FN_NODE_INVERT_MATRIX 1237
+#define FN_NODE_TRANSPOSE_MATRIX 1238
 
 /** \} */
 

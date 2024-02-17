@@ -1,10 +1,10 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'd293f72ab6e7')\n"
+"Project-Id-Version: Blender 4.1.0 Beta (b'835651cfddcb')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-11-27 10:28:34\n"
-"PO-Revision-Date: 2023-11-18 16:52+0000\n"
+"POT-Creation-Date: 2024-02-12 11:01+0000\n"
+"PO-Revision-Date: 2023-11-30 20:00+0000\n"
 "Last-Translator: \"M. Amin Taheri\" <amintaheri2001@gmail.com>\n"
 "Language-Team: Persian <https://translate.blender.org/projects/blender-ui/ui/fa/>\n"
 "Language: fa\n"
@@ -958,12 +958,40 @@ msgid "Info"
 msgstr "ﺕﺎﻋﻼ﻿ﻃﺍ"
 
 
+msgid "Log of operations, warnings and error messages"
+msgstr "ﺎﻄﺧ ﯼﺎﻫ ﻡﺎﯿﭘ ﻭ ﺎﻫﺭﺍﺪﺸﻫ ،ﺎﻫ‌ﺕﺎﯿﻠﻤﻋ ﺵﺭﺍﺰﮔ"
+
+
+msgid "Top Bar"
+msgstr "ﻻ﻿ﺎﺑ ﺭﺍﻮﻧ"
+
+
+msgid "Global bar at the top of the screen for global per-window settings"
+msgstr "ﻩﺮﺠﻨﭘ ﺮﻫ ﯽﻠﮐ ﺕﺎﻤﯿﻈﻨﺗ ﯼﺍﺮﺑ ﻪﺤﻔﺻ ﯼﻻ﻿ﺎﺑ ﺭﺩ ﯼﺮﺳﺍﺮﺳ ﺭﺍﻮﻧ"
+
+
+msgid "Status Bar"
+msgstr "ﺖﯿﻌﺿﻭ ﺭﺍﻮﻧ"
+
+
+msgid "Global bar at the bottom of the screen for general status information"
+msgstr "ﯽﻣﻮﻤﻋ ﺖﯿﻌﺿﻭ ﺕﺎﻋﻼ﻿ﻃﺍ ﯼﺍﺮﺑ ﻪﺤﻔﺻ ﻦﯿﯾﺎﭘ ﺭﺩ ﯼﺮﺳﺍﺮﺳ ﺭﺍﻮﻧ"
+
+
 msgid "Outliner"
 msgstr "ءﺎﯿﺷﺍ ﺖﯾﺮﯾﺪﻣ"
 
 
+msgid "Overview of scene graph and all available data-blocks"
+msgstr "ﺩﻮﺟﻮﻣ ﻩﺩﺍﺩ ﯼﺎﻫ ﮎﻮﻠﺑ ﻡﺎﻤﺗ ﻭ ﻪﻨﺤﺻ ﺭﺍﺩﻮﻤﻧ ﯽﻠﮐ ﯼﺎﻤﻧ"
+
+
 msgid "Properties"
 msgstr "ﺕﺎﻤﯿﻈﻨﺗ"
+
+
+msgid "Edit properties of active object and related data-blocks"
+msgstr "ﻦﮐ ﺶﯾﺍﺮﯾﻭ ﺍﺭ ﻂﺒﺗﺮﻣ ﻩﺩﺍﺩ ﯼﺎﻫ ﮎﻮﻠﺑ ﻭ ﻝﺎﻌﻓ ﯽﺷ ﯼﺎﻫ ﯽﮔﮋﯾﻭ"
 
 
 msgid "File Browser"
@@ -2253,6 +2281,10 @@ msgid "Save"
 msgstr "ﻩﺮﯿﺧﺫ"
 
 
+msgid "Operator"
+msgstr "ﻞﻣﺎﻋ"
+
+
 msgid "Link"
 msgstr "ﺪﻧﻮﯿﭘ"
 
@@ -3063,10 +3095,6 @@ msgid "Math"
 msgstr "ﯽﺿﺎﯾﺭ"
 
 
-msgid "Tracking"
-msgstr "ﯽﺑﺎﯾﺩﺭ"
-
-
 msgid "Layout"
 msgstr "ﺡﺮﻃ"
 
@@ -3537,6 +3565,10 @@ msgid "Rotation to Euler"
 msgstr "ﺮﻟﻭﺍ ﻪﺑ ﺶﺧﺮﭼ"
 
 
+msgid "Bake"
+msgstr "ﻦﺘﺨﭘ"
+
+
 msgid "Original"
 msgstr "ﯽﻠﺻﺍ"
 
@@ -3961,6 +3993,10 @@ msgid "Flat"
 msgstr "ﺖﺨﺗ"
 
 
+msgid "By Material"
+msgstr "ﺩﺍﻮﻣ ﺎﺑ"
+
+
 msgid "X End"
 msgstr "X ﻥﺎﯾﺎﭘ"
 
@@ -4007,10 +4043,6 @@ msgstr "ﯽﻓﺩﺎﺼﺗ ﺕﺭﻮﺻ ﻪﺑ ﺱﺃﺭ ﺏﺎﺨﺘﻧﺍ"
 
 msgid "Select similar vertices, edges or faces by property types"
 msgstr "ﺖﯿﮑﻟﺎﻣ ﻉﻮﻧ ﺎﺑ ﻪﺑﺎﺸﻣ ﯼﺎﻫ‌ﺢﻄﺳ ﺎﯾ ﻭ ﺎﻫ‌ﻪﺒﻟ ٬ﺱﻮﺋﺭ ﺏﺎﺨﺘﻧﺍ"
-
-
-msgid "By Material"
-msgstr "ﺩﺍﻮﻣ ﺎﺑ"
 
 
 msgctxt "Operator"
@@ -4160,8 +4192,8 @@ msgid "Copy Pose"
 msgstr "ﺖﺳﮊ ﯽﭙﮐ"
 
 
-msgid "Bake"
-msgstr "ﻦﺘﺨﭘ"
+msgid "URL"
+msgstr "ﯽﺘﻧﺮﺘﻨﯾﺍ ﺱﺭﺩﺁ"
 
 
 msgctxt "Operator"
@@ -4200,10 +4232,6 @@ msgstr "ﻞﯾﺎﻓ ﯼﺎﻫﺮﯿﺴﻣ"
 
 msgid "Experimental"
 msgstr "ﯽﺸﯾﺎﻣﺯﺁ"
-
-
-msgid "Operator"
-msgstr "ﻞﻣﺎﻋ"
 
 
 msgctxt "Operator"
@@ -4390,10 +4418,6 @@ msgstr "ﻥﺪﯿﺸﮐﺯﺎﺑ ﻥﺎﻣﺯ"
 msgctxt "Operator"
 msgid "Splash Screen"
 msgstr "ﺖﺴﺨﻧ ﻪﺤﻔﺻ"
-
-
-msgid "URL"
-msgstr "ﯽﺘﻧﺮﺘﻨﯾﺍ ﺱﺭﺩﺁ"
 
 
 msgid "URL to open"
@@ -4840,6 +4864,10 @@ msgid "Render Settings:"
 msgstr ":ﺭﺪﻧﺭ ﺕﺎﻤﯿﻈﻨﺗ"
 
 
+msgid "Tracking"
+msgstr "ﯽﺑﺎﯾﺩﺭ"
+
+
 msgctxt "Operator"
 msgid "Import..."
 msgstr "...ﻥﺩﺮﮐ ﺩﺭﺍﻭ"
@@ -5000,14 +5028,6 @@ msgid "Internet:"
 msgstr ":ﺖﻧﺮﺘﻨﯾﺍ"
 
 
-msgid "description"
-msgstr "ﺡﺮﺷ"
-
-
-msgid "location"
-msgstr "ﻥﺎﮑﻣ"
-
-
 msgctxt "Operator"
 msgid "Flat"
 msgstr "ﺖﺨﺗ"
@@ -5048,6 +5068,10 @@ msgstr "!ﺶﯾﺍﺮﯾﻭ ﻥﺩﺮﮐ‌ﻝﺎﻌﻓ ﯼﺍﺮﺑ ﻪﻈﻓ�
 
 msgid "IK"
 msgstr "(IK) ﺱﻮﮑﻌﻣ ﺖﮐﺮﺣ"
+
+
+msgid "ShapeKey"
+msgstr "ShapeKey"
 
 
 msgid "Nothing selected"
@@ -5115,38 +5139,6 @@ msgstr "(#RRGGBB) ﮓﻧﺭ ﯼﺍﺮﺑ ﻪﻧﺎﮔ ﻪﺳ ﺰﮕﻫ"
 msgctxt "Color"
 msgid "Value:"
 msgstr ":ﺭﺍﺪﻘﻣ"
-
-
-msgid "Shortcut: %s"
-msgstr "‬%s‪‪ :ﺮﺒﻧﺎﯿﻣ"
-
-
-msgid "Python: %s"
-msgstr "‬%s‪‪ :ﻥﻮﺘﯾﺎﭘ"
-
-
-msgid "Value: %s"
-msgstr "‬%s‪‪ :ﺭﺍﺪﻘﻣ"
-
-
-msgid "Radians: %f"
-msgstr "‬%f‪‪ :ﻥﺎﯾﺩﺍﺭ"
-
-
-msgid "Expression: %s"
-msgstr "Expression: ‪%s‬"
-
-
-msgid "Library: %s"
-msgstr "‬%s‪‪ :ﻪﻧﺎﺨﺑﺎﺘﮐ"
-
-
-msgid "Disabled: %s"
-msgstr "‬%s‪‪ :ﻝﺎﻌﻓﺮﯿﻏ"
-
-
-msgid "Python: %s.%s"
-msgstr "‬%s‬.‪%s‪‪ :ﻥﻮﺘﯾﺎﭘ"
 
 
 msgid "No Properties"
@@ -5315,10 +5307,6 @@ msgstr "ﮒﺮﺑﺮﺳ ﺶﯾﺎﻤﻧ"
 
 msgid " Materials,"
 msgstr "ﻩﺩﺎﻣ "
-
-
-msgid " Textures,"
-msgstr "ﺎﻫ‌ﺖﻓﺎﺑ "
 
 
 msgid "OK"

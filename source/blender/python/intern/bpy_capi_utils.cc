@@ -11,7 +11,6 @@
 
 #include <Python.h>
 
-#include "BLI_dynstr.h"
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
@@ -19,10 +18,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_context.hh"
-#include "BKE_report.h"
-
-#include "BLT_translation.h"
+#include "BKE_report.hh"
 
 #include "../generic/py_capi_utils.h"
 
@@ -90,7 +86,7 @@ bool BPy_errors_to_report_ex(ReportList *reports,
   /* Create a temporary report list so none of the reports are printed (only stored).
    * In practically all cases printing should be handled by #PyErr_Print since this invokes
    * `sys.excepthook` as expected. */
-  ReportList _reports_buf = {{0}};
+  ReportList _reports_buf = {{nullptr}};
   ReportList *reports_orig = reports;
   if ((reports->flag & RPT_PRINT_HANDLED_BY_OWNER) == 0) {
     reports = &_reports_buf;

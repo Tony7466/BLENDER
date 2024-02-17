@@ -29,10 +29,12 @@ struct BLI_mempool;
 struct BlendThumbnail;
 struct GHash;
 struct GSet;
+struct ID;
 struct IDNameLib_Map;
 struct ImBuf;
 struct Library;
 struct MainLock;
+struct ReportList;
 struct UniqueName_Map;
 
 /**
@@ -46,28 +48,28 @@ struct BlendThumbnail {
 
 /** Structs caching relations between data-blocks in a given Main. */
 struct MainIDRelationsEntryItem {
-  struct MainIDRelationsEntryItem *next;
+  MainIDRelationsEntryItem *next;
 
   union {
     /* For `from_ids` list, a user of the hashed ID. */
-    struct ID *from;
+    ID *from;
     /* For `to_ids` list, an ID used by the hashed ID. */
-    struct ID **to;
+    ID **to;
   } id_pointer;
-  /* Session uuid of the `id_pointer`. */
-  uint session_uuid;
+  /* Session uid of the `id_pointer`. */
+  uint session_uid;
 
-  int usage_flag; /* Using IDWALK_ enums, defined in BKE_lib_query.h */
+  int usage_flag; /* Using IDWALK_ enums, defined in BKE_lib_query.hh */
 };
 
 struct MainIDRelationsEntry {
   /* Linked list of IDs using that ID. */
-  struct MainIDRelationsEntryItem *from_ids;
+  MainIDRelationsEntryItem *from_ids;
   /* Linked list of IDs used by that ID. */
-  struct MainIDRelationsEntryItem *to_ids;
+  MainIDRelationsEntryItem *to_ids;
 
-  /* Session uuid of the ID matching that entry. */
-  uint session_uuid;
+  /* Session uid of the ID matching that entry. */
+  uint session_uid;
 
   /* Runtime tags, users should ensure those are reset after usage. */
   uint tags;
@@ -103,13 +105,13 @@ enum eMainIDRelationsEntryTags {
 struct MainIDRelations {
   /* Mapping from an ID pointer to all of its parents (IDs using it) and children (IDs it uses).
    * Values are `MainIDRelationsEntry` pointers. */
-  struct GHash *relations_from_pointers;
-  /* NOTE: we could add more mappings when needed (e.g. from session uuid?). */
+  GHash *relations_from_pointers;
+  /* NOTE: we could add more mappings when needed (e.g. from session uid?). */
 
   short flag;
 
   /* Private... */
-  struct BLI_mempool *entry_items_pool;
+  BLI_mempool *entry_items_pool;
 };
 
 enum {
@@ -257,6 +259,41 @@ struct Main {
  */
 Main *BKE_main_new(void);
 void BKE_main_free(Main *mainvar);
+
+/** Struct packaging log/report info about a Main merge result. */
+struct MainMergeReport {
+  ReportList *reports = nullptr;
+
+  /** Number of IDs from source Main that have been moved into destination Main. */
+  int num_merged_ids = 0;
+  /** Number of (non-library) IDs from source Main that were expected to have a matching ID in
+   * destination Main, but did not. These have not been moved, and their usages have been remapped
+   * to null. */
+  int num_unknown_ids = 0;
+  /** Number of (non-library) IDs from source Main that already had a matching ID in destination
+   * Main. */
+  int num_remapped_ids = 0;
+  /** Number of Library IDs from source Main that already had a matching Library ID in destination
+   * Main. */
+  int num_remapped_libraries = 0;
+};
+
+/** Merge the content of `bmain_src` into `bmain_dst`.
+ *
+ * In case of collision (ID from same library with same name), the existing ID in `bmain_dst` is
+ * kept, the one from `bmain_src` is left in its original Main, and its usages in `bmain_dst` (from
+ * newly moved-in IDs) are remapped to its matching counterpart already in `bmain_dst`.
+ *
+ * Libraries are also de-duplicated, based on their absolute filepath, and remapped accordingly.
+ * Note that local IDs in source Main always remain local IDs in destination Main.
+ *
+ * In case some source IDs are linked data from the blendfile of `bmain_dst`, they are never moved.
+ * If a matching destination local ID is found, their usage get remapped as expected, otherwise
+ * they are dropped, their usages are remapped to null, and a warning is printed.
+ *
+ * Since `bmain_src` is either empty or contains left-over IDs with (likely) invalid ID
+ * relationships and other potential issues after the merge, it is always freed. */
+void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &reports);
 
 /**
  * Check whether given `bmain` is empty or contains some IDs.
@@ -429,14 +466,14 @@ const char *BKE_main_blendfile_path(const Main *bmain) ATTR_NONNULL();
  * \warning Usage is not recommended,
  * you should always try to get a valid Main pointer from context.
  */
-const char *BKE_main_blendfile_path_from_global(void);
+const char *BKE_main_blendfile_path_from_global();
 
 /**
  * \return A pointer to the \a ListBase of given \a bmain for requested \a type ID type.
  */
 ListBase *which_libbase(Main *bmain, short type);
 
-//#define INDEX_ID_MAX 41
+// #define INDEX_ID_MAX 41
 /**
  * Put the pointers to all the #ListBase structs in given `bmain` into the `*lb[INDEX_ID_MAX]`
  * array, and return the number of those for convenience.

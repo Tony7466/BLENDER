@@ -17,10 +17,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 
-#include "BKE_main.hh"
-#include "BKE_scene.h"
-#include "BKE_sound.h"
-
 #include "SEQ_animation.hh"
 #include "SEQ_channels.hh"
 #include "SEQ_edit.hh"
@@ -33,8 +29,6 @@
 
 #include "sequencer.hh"
 #include "strip_time.hh"
-
-#include "CLG_log.h"
 
 bool SEQ_transform_single_image_check(Sequence *seq)
 {
@@ -662,7 +656,7 @@ static void seq_image_transform_quad_get_ex(const Scene *scene,
   StripTransform *transform = seq->strip->transform;
   const StripCrop *crop = seq->strip->crop;
 
-  int image_size[2] = {scene->r.xsch, scene->r.ysch};
+  float image_size[2] = {float(scene->r.xsch), float(scene->r.ysch)};
   if (ELEM(seq->type, SEQ_TYPE_MOVIE, SEQ_TYPE_IMAGE)) {
     image_size[0] = seq->strip->stripdata->orig_width;
     image_size[1] = seq->strip->stripdata->orig_height;
