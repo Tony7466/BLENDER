@@ -12,11 +12,15 @@
 
 float cone_cosine_from_roughness(float linear_roughness)
 {
-  float m = linear_roughness;
-  /* Jimenez 2016 in Practical Realtime Strategies for Accurate Indirect Occlusion. (eq 26) */
-  // return exp2(-3.32193 * square(m));
-  /* Using the same derivation as above but with u = 0.244 (lobe fitting cone). */
-  return exp2(-1.017523474 * square(m));
+  /* From linear roughness to GGX roughness input. */
+  float m = square(linear_roughness);
+  /* Chosen so that roughness of 1.0 maps to half pi cone aperture. */
+  float cutoff_value = mix(0.01, 0.14, m);
+  /* Inversion of the spherical gaussian. This gives the cutoff for the half angle from N.H. */
+  float half_angle_cos = 1.0 + (log(cutoff_value) * square(m)) / 2.0;
+  float half_angle_sin = safe_sqrt(1.0 - square(half_angle_cos));
+  /* Use cosine rule to avoid acos. Return cos(2 * half_angle). */
+  return square(half_angle_cos) - square(half_angle_sin);
 }
 
 float sample_weight(vec3 out_direction, vec3 in_direction, float linear_roughness)
