@@ -744,9 +744,9 @@ static AllPointCloudsInfo preprocess_pointclouds(const bke::GeometrySet &geometr
       pointcloud_info.radii = *attributes.lookup_or_default(
           "radius", bke::AttrDomain::Point, 0.01f);
     }
-    const VArray<float3> position_attribute = *attributes.lookup_or_default<float3>(
+    const bke::AttributeReader<float3> position_attribute = attributes.lookup_or_default<float3>(
         "position", bke::AttrDomain::Point, float3(0));
-    pointcloud_info.positions = position_attribute.get_internal_span();
+    pointcloud_info.positions = position_attribute.varray.get_internal_span();
   }
   return info;
 }

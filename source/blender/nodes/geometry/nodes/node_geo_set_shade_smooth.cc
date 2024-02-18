@@ -78,7 +78,7 @@ static void set_sharp(Mesh &mesh,
   const bke::MeshFieldContext field_context{mesh, domain};
   fn::FieldEvaluator evaluator{field_context, domain_size};
   evaluator.set_selection(selection_field);
-  evaluator.add_with_destination(sharp_field, sharp.varray);
+  evaluator.add_with_destination(sharp_field, std::move(sharp.varray));
   evaluator.evaluate();
 
   sharp.finish();

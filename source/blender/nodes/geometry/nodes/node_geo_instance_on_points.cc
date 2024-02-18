@@ -83,7 +83,7 @@ static void add_instances_from_component(
                                                                                    select_len);
   MutableSpan<float4x4> dst_transforms = dst_component.transforms().slice(start_len, select_len);
 
-  const VArraySpan positions = *src_attributes.lookup<float3>("position");
+  const VArraySpan<float3> positions = std::move(*src_attributes.lookup<float3>("position"));
 
   const bke::Instances *src_instances = instance.get_instances();
 

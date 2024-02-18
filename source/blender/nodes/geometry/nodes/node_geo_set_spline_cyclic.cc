@@ -31,7 +31,7 @@ static void set_curve_cyclic(bke::CurvesGeometry &curves,
                                                                            AttrDomain::Curve);
   fn::FieldEvaluator evaluator{field_context, curves.curves_num()};
   evaluator.set_selection(selection_field);
-  evaluator.add_with_destination(cyclic_field, cyclics.varray);
+  evaluator.add_with_destination(cyclic_field, std::move(cyclics.varray));
   evaluator.evaluate();
 
   cyclics.finish();

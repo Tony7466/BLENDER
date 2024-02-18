@@ -266,7 +266,7 @@ std::optional<blender::Bounds<blender::float3>> PointCloud::bounds_min_max() con
     const AttributeAccessor attributes = this->attributes();
     const Span<float3> positions = this->positions();
     if (attributes.contains(POINTCLOUD_ATTR_RADIUS)) {
-      const VArraySpan radii = *attributes.lookup<float>(POINTCLOUD_ATTR_RADIUS);
+      const VArraySpan radii = std::move(*attributes.lookup<float>(POINTCLOUD_ATTR_RADIUS));
       r_bounds = *bounds::min_max_with_radii(positions, radii);
     }
     else {

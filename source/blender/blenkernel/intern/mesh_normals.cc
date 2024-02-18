@@ -207,17 +207,17 @@ blender::bke::MeshNormalDomain Mesh::normals_domain(const bool support_sharp_fac
   }
 
   const AttributeAccessor attributes = this->attributes();
-  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
+  const AttributeReader<bool> sharp_faces = attributes.lookup_or_default<bool>(
       "sharp_face", AttrDomain::Face, false);
 
-  const array_utils::BooleanMix face_mix = array_utils::booleans_mix_calc(sharp_faces);
+  const array_utils::BooleanMix face_mix = array_utils::booleans_mix_calc(*sharp_faces);
   if (face_mix == array_utils::BooleanMix::AllTrue) {
     return MeshNormalDomain::Face;
   }
 
-  const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
+  const AttributeReader<bool> sharp_edges = attributes.lookup_or_default<bool>(
       "sharp_edge", AttrDomain::Edge, false);
-  const array_utils::BooleanMix edge_mix = array_utils::booleans_mix_calc(sharp_edges);
+  const array_utils::BooleanMix edge_mix = array_utils::booleans_mix_calc(*sharp_edges);
   if (edge_mix == array_utils::BooleanMix::AllTrue) {
     return MeshNormalDomain::Face;
   }
@@ -286,8 +286,10 @@ blender::Span<blender::float3> Mesh::corner_normals() const
       }
       case MeshNormalDomain::Corner: {
         const AttributeAccessor attributes = this->attributes();
-        const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", AttrDomain::Edge);
-        const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
+        const VArraySpan sharp_edges = std::move(
+            *attributes.lookup<bool>("sharp_edge", AttrDomain::Edge));
+        const VArraySpan sharp_faces = std::move(
+            *attributes.lookup<bool>("sharp_face", AttrDomain::Face));
         const short2 *custom_normals = static_cast<const short2 *>(
             CustomData_get_layer(&this->corner_data, CD_CUSTOMLOOPNORMAL));
         mesh::normals_calc_corners(this->vert_positions(),

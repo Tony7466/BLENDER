@@ -250,7 +250,6 @@ static void pointcloud_extract_position_and_radius(const PointCloud &pointcloud,
 {
   const bke::AttributeAccessor attributes = pointcloud.attributes();
   const Span<float3> positions = pointcloud.positions();
-  const VArray<float> radii = *attributes.lookup<float>("radius");
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
@@ -262,8 +261,9 @@ static void pointcloud_extract_position_and_radius(const PointCloud &pointcloud,
   GPU_vertbuf_data_alloc(cache.eval_cache.pos_rad, positions.size());
   MutableSpan<float4> vbo_data{
       static_cast<float4 *>(GPU_vertbuf_get_data(cache.eval_cache.pos_rad)), pointcloud.totpoint};
-  if (radii) {
-    const VArraySpan<float> radii_span(radii);
+  if (const VArraySpan<float> radii_span = std::move(*attributes.lookup<float>("radius"));
+      !radii_span.is_empty())
+  {
     threading::parallel_for(vbo_data.index_range(), 4096, [&](IndexRange range) {
       for (const int i : range) {
         vbo_data[i].x = positions[i].x;
