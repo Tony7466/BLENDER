@@ -838,23 +838,50 @@ static void grease_pencil_primitive_exit(bContext *C, wmOperator *op)
   op->customdata = nullptr;
 }
 
+static float2 snap_diagonals(float2 p)
+{
+  using namespace math;
+  return sign(p) * float2(1.0f / numbers::sqrt2) * length(p);
+}
+
+/* Uses Chebychev distance instead of Euclidean. */
+static float2 snap_diagonals_box(float2 p)
+{
+  using namespace math;
+  return sign(p) * float2(std::max(abs(p[0]), abs(p[1])));
+}
+
+/* Snaps to diagonals, horizontal and vertical. */
+static float2 snap_8_angles(float2 p)
+{
+  using namespace math;
+  /* sin(pi/8) or sin of 22.5 degrees.*/
+  const float sin225 = 0.3826834323650897717284599840304f;
+  return sign(p) * length(p) * normalize(sign(normalize(abs(p)) - sin225) + 1.0f);
+}
+
 static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
                                                      const wmEvent *event)
 {
+  using namespace math;
   const float2 start = ptd.start_position_2d;
   const float2 end = float2(event->mval);
 
   const float2 dif = end - start;
-  float2 offset = dif / 2.0f;
+  float2 offset = dif;
 
   if (event->modifier & KM_SHIFT) {
     if (ptd.type == PrimitiveType::BOX) {
-      offset = math::sign(dif) * float2(std::max(math::abs(dif[0]), math::abs(dif[1]))) / 2.0f;
+      offset = snap_diagonals_box(dif);
     }
     else if (ptd.type == PrimitiveType::CIRCLE) {
-      offset = math::sign(dif) * float2(1.0f / math::numbers::sqrt2) * math::length(dif) / 2.0f;
+      offset = snap_diagonals(dif);
+    }
+    else { /* Line, Polyline, Arc, Curve */
+      offset = snap_8_angles(dif);
     }
   }
+  offset *= 0.5f;
 
   float2 center = start + offset;
 
@@ -864,7 +891,7 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
   }
 
   const float3 start_pos = ptd.placement_.project(start);
-  const float3 end_pos = ptd.placement_.project(end);
+  const float3 end_pos = ptd.placement_.project(center + offset);
 
   switch (ptd.type) {
     case PrimitiveType::BOX: {
@@ -889,15 +916,15 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
     case PrimitiveType::ARC: {
       /* Linear interpolation. */
       ptd.control_points.last(2) = start_pos;
-      ptd.control_points.last(1) = math::interpolate(start_pos, end_pos, 1.0f / 2.0f);
+      ptd.control_points.last(1) = interpolate(start_pos, end_pos, 1.0f / 2.0f);
       ptd.control_points.last(0) = end_pos;
       return;
     }
     case PrimitiveType::CURVE: {
       /* Linear interpolation. */
       ptd.control_points.last(3) = start_pos;
-      ptd.control_points.last(2) = math::interpolate(start_pos, end_pos, 1.0f / 3.0f);
-      ptd.control_points.last(1) = math::interpolate(start_pos, end_pos, 2.0f / 3.0f);
+      ptd.control_points.last(2) = interpolate(start_pos, end_pos, 1.0f / 3.0f);
+      ptd.control_points.last(1) = interpolate(start_pos, end_pos, 2.0f / 3.0f);
       ptd.control_points.last(0) = end_pos;
       return;
     }
