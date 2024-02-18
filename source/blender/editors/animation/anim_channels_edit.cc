@@ -3562,13 +3562,15 @@ static int click_select_channel_fcurve(bAnimContext *ac,
   FCurve *fcu = (FCurve *)ale->data;
 
   /* select/deselect */
-  if (selectmode == SELECT_INVERT) {
+  if (selectmode & SELECT_EXTEND_RANGE) {
+    if ((selectmode & SELECT_INVERT) == 0) {
+      ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
+    }
+    animchannel_select_range(ac, ale);
+  }
+  else if (selectmode & SELECT_INVERT) {
     /* inverse selection status of this F-Curve only */
     fcu->flag ^= FCURVE_SELECTED;
-  }
-  else if (selectmode == SELECT_EXTEND_RANGE) {
-    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
-    animchannel_select_range(ac, ale);
   }
   else {
     /* select F-Curve by itself */
@@ -3578,7 +3580,7 @@ static int click_select_channel_fcurve(bAnimContext *ac,
 
   /* if F-Curve is selected now, make F-Curve the 'active' one in the visible list.
    * Similar to outliner, do not change active element when selecting elements in range. */
-  if ((fcu->flag & FCURVE_SELECTED) && (selectmode != SELECT_EXTEND_RANGE)) {
+  if ((fcu->flag & FCURVE_SELECTED) && ((selectmode & SELECT_EXTEND_RANGE) == 0)) {
     ANIM_set_active_channel(ac,
                             ac->data,
                             eAnimCont_Types(ac->datatype),
@@ -3915,7 +3917,8 @@ static int animchannels_mouseclick_invoke(bContext *C, wmOperator *op, const wmE
   View2D *v2d;
   int channel_index;
   int notifierFlags = 0;
-  short selectmode;
+  short selectmode = 0;
+  bool select_mode_set = false;
   float x, y;
 
   /* get editor data */
@@ -3929,17 +3932,21 @@ static int animchannels_mouseclick_invoke(bContext *C, wmOperator *op, const wmE
 
   /* select mode is either replace (deselect all, then add) or add/extend */
   if (RNA_boolean_get(op->ptr, "extend")) {
-    selectmode = SELECT_INVERT;
+    selectmode |= SELECT_INVERT;
+    select_mode_set = true;
   }
-  else if (RNA_boolean_get(op->ptr, "extend_range")) {
-    selectmode = SELECT_EXTEND_RANGE;
+  if (RNA_boolean_get(op->ptr, "extend_range")) {
+    selectmode |= SELECT_EXTEND_RANGE;
+    select_mode_set = true;
   }
-  else if (RNA_boolean_get(op->ptr, "children_only")) {
+  if (RNA_boolean_get(op->ptr, "children_only")) {
     /* this is a bit of a special case for ActionGroups only...
      * should it be removed or extended to all instead? */
-    selectmode = -1;
+    selectmode |= -1;
+    select_mode_set = true;
   }
-  else {
+
+  if (select_mode_set == false) {
     selectmode = SELECT_REPLACE;
   }
 

@@ -3595,10 +3595,12 @@ def km_animation_channels(params):
         ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
         ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'CLICK', "shift": True},
          {"properties": [("extend_range", True)]}),
+        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
+         {"properties": [("extend_range", True), ("extend", True)]}),
         ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'CLICK', "ctrl": True},
          {"properties": [("extend", True)]}),
-        ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
-         {"properties": [("children_only", True)]}),
+        # ("anim.channels_click", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True, "ctrl": True},
+        #  {"properties": [("children_only", True)]}),
         # Rename.
         ("anim.channels_rename", {"type": 'LEFTMOUSE', "value": 'DOUBLE_CLICK'}, None),
         # Select keys.
