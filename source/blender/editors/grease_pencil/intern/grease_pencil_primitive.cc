@@ -60,9 +60,7 @@ enum class PrimitiveType : int8_t {
 };
 
 enum class OperatorMode : int8_t {
-  /* */
   IDLE = 0,
-  /* */
   EXTRUDING = 1,
   /* Set the active control point to the mouse. */
   GRAB = 2,
@@ -77,9 +75,9 @@ enum class OperatorMode : int8_t {
 };
 
 enum class ControlPointType : int8_t {
-  /*  */
+  /* The points that are at the end of segments. */
   JOIN_POINT = 0,
-  /*  */
+  /* The points inside of the segments. */
   EXTRINSIC_POINT = 1,
 };
 
@@ -115,7 +113,7 @@ struct PrimitiveTool_OpData {
 
   int segments;
   Vector<float3> control_points;
-  /* Store. */
+  /* Store the control points temporally. */
   Vector<float3> temp_control_points;
 
   PrimitiveType type;
@@ -376,10 +374,11 @@ static void primitive_calulate_curve_2d(PrimitiveTool_OpData &ptd,
     control_points_2d[i] = float3(
         ED_view3d_project_float_v2_m4(ptd.vc.region, ptd.control_points[i], ptd.projection));
   }
+
   Array<float3> new_positions_3d(new_positions.size());
   primitive_calulate_curve_3d_exec(ptd, control_points_2d, new_positions_3d);
 
-  /* TODO(FIXME) */
+  /* TODO(FIXME): This is bad. */
   for (const int i : new_positions.index_range()) {
     new_positions[i] = float2(new_positions_3d[i]);
   }
@@ -639,7 +638,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   ViewContext vc = ED_view3d_viewcontext_init(C, CTX_data_depsgraph_pointer(C));
 
-  /* Alloc new customdata. */
+  /* Allocate new data. */
   PrimitiveTool_OpData *ptd = MEM_new<PrimitiveTool_OpData>(__func__);
 
   PrimitiveTool_OpData &pttehte = *ptd;
@@ -776,7 +775,7 @@ static void grease_pencil_primitive_exit(bContext *C, wmOperator *op)
   grease_pencil_primitive_update_view(C, *ptd);
 
   MEM_delete<PrimitiveTool_OpData>(ptd);
-  /* clear pointer */
+  /* Clear pointer. */
   op->customdata = nullptr;
 }
 
@@ -819,7 +818,7 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
     else if (ptd.type == PrimitiveType::CIRCLE) {
       offset = snap_diagonals(dif);
     }
-    else { /* Line, Polyline, Arc, Curve */
+    else { /* Line, Polyline, Arc and Curve. */
       offset = snap_8_angles(dif);
     }
   }
@@ -1316,8 +1315,12 @@ static void grease_pencil_primitive_common_props(wmOperatorType *ot,
   // prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "");
   // RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
-  /* TODO. */
-  prop = RNA_def_boolean(ot->srna, "interpolate_mode", false, "Interpolation Mode", "TODO");
+  prop = RNA_def_boolean(
+      ot->srna,
+      "interpolate_mode",
+      false,
+      "Interpolation Mode",
+      "Whether the interpolation happens in 2D view space or in 3D world space");
 }
 
 void GREASE_PENCIL_OT_primitive_line(wmOperatorType *ot)
@@ -1399,7 +1402,6 @@ void ED_operatortypes_grease_pencil_primitives()
   WM_operatortype_append(GREASE_PENCIL_OT_primitive_circle);
 }
 
-// wmKeyMap *knifetool_modal_keymap(wmKeyConfig *keyconf)
 wmKeyMap *ED_primitivetool_modal_keymap(wmKeyConfig *keyconf)
 {
   using namespace blender::ed::greasepencil;
