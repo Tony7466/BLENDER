@@ -639,16 +639,13 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   ViewContext vc = ED_view3d_viewcontext_init(C, CTX_data_depsgraph_pointer(C));
 
   /* Allocate new data. */
-  PrimitiveTool_OpData *ptd = MEM_new<PrimitiveTool_OpData>(__func__);
+  PrimitiveTool_OpData *ptd_pointer = MEM_new<PrimitiveTool_OpData>(__func__);
+  op->customdata = ptd_pointer;
 
-  PrimitiveTool_OpData &pttehte = *ptd;
+  PrimitiveTool_OpData &ptd = *ptd_pointer;
 
-  // op->customdata = ((void *)ptd);
-  // op->customdata = static_cast<void *>(ptd);
-  op->customdata = ptd;
-
-  pttehte.vc = vc;
-  pttehte.region = vc.region;
+  ptd.vc = vc;
+  ptd.region = vc.region;
   View3D *view3d = CTX_wm_view3d(C);
   const float2 start_coords = float2(event->mval);
 
@@ -665,7 +662,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
     placement_.set_origin_to_nearest_stroke(start_coords);
   }
 
-  pttehte.placement_ = placement_;
+  ptd.placement_ = placement_;
 
   wmWindowManager *wm = CTX_wm_manager(C);
   wmKeyMap *keymap = WM_keymap_active(wm, op->type->modalkeymap);
@@ -685,35 +682,35 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   }
   // printf("\n");
 
-  pttehte.vod = ED_view3d_navigation_init(C, kmi_passthrough);
+  ptd.vod = ED_view3d_navigation_init(C, kmi_passthrough);
 
-  pttehte.subdivision = RNA_int_get(op->ptr, "subdivision");
-  pttehte.type = PrimitiveType(RNA_enum_get(op->ptr, "type"));
-  pttehte.interpolate_mode = InterpolationMode(RNA_boolean_get(op->ptr, "interpolate_mode"));
-  pttehte.control_points = Vector<float3>();
-  pttehte.temp_control_points = Vector<float3>();
+  ptd.subdivision = RNA_int_get(op->ptr, "subdivision");
+  ptd.type = PrimitiveType(RNA_enum_get(op->ptr, "type"));
+  ptd.interpolate_mode = InterpolationMode(RNA_boolean_get(op->ptr, "interpolate_mode"));
+  ptd.control_points = Vector<float3>();
+  ptd.temp_control_points = Vector<float3>();
 
-  pttehte.mode = OperatorMode::EXTRUDING;
-  pttehte.start_position_2d = start_coords;
-  const float3 pos = pttehte.placement_.project(pttehte.start_position_2d);
-  pttehte.segments = 1;
+  ptd.mode = OperatorMode::EXTRUDING;
+  ptd.start_position_2d = start_coords;
+  const float3 pos = ptd.placement_.project(ptd.start_position_2d);
+  ptd.segments = 1;
   /* Add one point for the beginning. */
-  pttehte.control_points.append_n_times(pos, control_points_per_segment(pttehte) + 1);
-  pttehte.active_control_point_index = -1;
+  ptd.control_points.append_n_times(pos, control_points_per_segment(ptd) + 1);
+  ptd.active_control_point_index = -1;
 
   Paint *paint = &vc.scene->toolsettings->gp_paint->paint;
-  pttehte.brush_ = BKE_paint_brush(paint);
-  pttehte.settings_ = pttehte.brush_->gpencil_settings;
+  ptd.brush_ = BKE_paint_brush(paint);
+  ptd.settings_ = ptd.brush_->gpencil_settings;
 
-  BKE_curvemapping_init(pttehte.settings_->curve_sensitivity);
-  BKE_curvemapping_init(pttehte.settings_->curve_strength);
-  BKE_curvemapping_init(pttehte.settings_->curve_jitter);
-  BKE_curvemapping_init(pttehte.settings_->curve_rand_pressure);
-  BKE_curvemapping_init(pttehte.settings_->curve_rand_strength);
-  BKE_curvemapping_init(pttehte.settings_->curve_rand_uv);
-  BKE_curvemapping_init(pttehte.settings_->curve_rand_hue);
-  BKE_curvemapping_init(pttehte.settings_->curve_rand_saturation);
-  BKE_curvemapping_init(pttehte.settings_->curve_rand_value);
+  BKE_curvemapping_init(ptd.settings_->curve_sensitivity);
+  BKE_curvemapping_init(ptd.settings_->curve_strength);
+  BKE_curvemapping_init(ptd.settings_->curve_jitter);
+  BKE_curvemapping_init(ptd.settings_->curve_rand_pressure);
+  BKE_curvemapping_init(ptd.settings_->curve_rand_strength);
+  BKE_curvemapping_init(ptd.settings_->curve_rand_uv);
+  BKE_curvemapping_init(ptd.settings_->curve_rand_hue);
+  BKE_curvemapping_init(ptd.settings_->curve_rand_saturation);
+  BKE_curvemapping_init(ptd.settings_->curve_rand_value);
 
   ToolSettings *ts = vc.scene->toolsettings;
   GP_Sculpt_Settings *gset = &ts->gp_sculpt;
@@ -722,34 +719,34 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   }
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
-      CTX_data_main(C), vc.obact, pttehte.brush_);
-  pttehte.material_index = BKE_object_material_index_get(vc.obact, material);
+      CTX_data_main(C), vc.obact, ptd.brush_);
+  ptd.material_index = BKE_object_material_index_get(vc.obact, material);
 
   const bool use_vertex_color = (vc.scene->toolsettings->gp_paint->mode ==
                                  GPPAINT_FLAG_USE_VERTEXCOLOR);
-  const bool use_vertex_color_stroke = use_vertex_color && ELEM(pttehte.settings_->vertex_mode,
+  const bool use_vertex_color_stroke = use_vertex_color && ELEM(ptd.settings_->vertex_mode,
                                                                 GPPAINT_MODE_STROKE,
                                                                 GPPAINT_MODE_BOTH);
-  pttehte.vertex_color_ = use_vertex_color_stroke ? float4(pttehte.brush_->rgb[0],
-                                                           pttehte.brush_->rgb[1],
-                                                           pttehte.brush_->rgb[2],
-                                                           pttehte.settings_->vertex_factor) :
-                                                    float4(0.0f);
-  srgb_to_linearrgb_v4(pttehte.vertex_color_, pttehte.vertex_color_);
+  ptd.vertex_color_ = use_vertex_color_stroke ? float4(ptd.brush_->rgb[0],
+                                                       ptd.brush_->rgb[1],
+                                                       ptd.brush_->rgb[2],
+                                                       ptd.settings_->vertex_factor) :
+                                                float4(0.0f);
+  srgb_to_linearrgb_v4(ptd.vertex_color_, ptd.vertex_color_);
 
   BLI_assert(grease_pencil->has_active_layer());
-  pttehte.drawing_ = grease_pencil->get_editable_drawing_at(*grease_pencil->get_active_layer(),
-                                                            vc.scene->r.cfra);
+  ptd.drawing_ = grease_pencil->get_editable_drawing_at(*grease_pencil->get_active_layer(),
+                                                        vc.scene->r.cfra);
 
-  grease_pencil_primitive_init_curves(*ptd);
+  grease_pencil_primitive_init_curves(ptd);
 
-  grease_pencil_primitive_update_view(C, pttehte);
+  grease_pencil_primitive_update_view(C, ptd);
 
-  pttehte.draw_handle = ED_region_draw_cb_activate(
-      pttehte.region->type, grease_pencil_primitive_draw, ptd, REGION_DRAW_POST_VIEW);
+  ptd.draw_handle = ED_region_draw_cb_activate(
+      ptd.region->type, grease_pencil_primitive_draw, ptd_pointer, REGION_DRAW_POST_VIEW);
 
   /* Updates indicator in header. */
-  grease_pencil_primitive_status_indicators(C, op, *ptd);
+  grease_pencil_primitive_status_indicators(C, op, ptd);
 
   /* add a modal handler for this operator */
   WM_event_add_modal_handler(C, op);
