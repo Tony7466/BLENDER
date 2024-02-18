@@ -852,12 +852,12 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
       const float2 dif = end - start;
 
       float2 offset = dif / 2.0f;
-      if (event->modifier & KM_CTRL) {
+      if (event->modifier & KM_SHIFT) {
         offset = math::sign(dif) * float2(std::max(math::abs(dif[0]), math::abs(dif[1]))) / 2.0f;
       }
 
       float2 center = start + offset;
-      if (event->modifier & KM_SHIFT) {
+      if (event->modifier & KM_ALT) {
         center = start;
         offset *= 2.0f;
       }
@@ -871,12 +871,12 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
       const float2 dif = end - start;
 
       float2 offset = dif / 2.0f;
-      if (event->modifier & KM_CTRL) {
+      if (event->modifier & KM_SHIFT) {
         offset = math::sign(dif) * float2(1.0f / math::numbers::sqrt2) * math::length(dif) / 2.0f;
       }
 
       float2 center = start + offset;
-      if (event->modifier & KM_SHIFT) {
+      if (event->modifier & KM_ALT) {
         center = start;
         offset *= 2.0f;
       }
