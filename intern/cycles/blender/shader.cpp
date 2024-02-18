@@ -23,7 +23,7 @@
 #include "util/string.h"
 #include "util/task.h"
 
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 
 CCL_NAMESPACE_BEGIN
 
@@ -56,12 +56,6 @@ static VolumeInterpolation get_volume_interpolation(PointerRNA &ptr)
       ptr, "volume_interpolation", VOLUME_NUM_INTERPOLATION, VOLUME_INTERPOLATION_LINEAR);
 }
 
-static DisplacementMethod get_displacement_method(PointerRNA &ptr)
-{
-  return (DisplacementMethod)get_enum(
-      ptr, "displacement_method", DISPLACE_NUM_METHODS, DISPLACE_BUMP);
-}
-
 static EmissionSampling get_emission_sampling(PointerRNA &ptr)
 {
   return (EmissionSampling)get_enum(
@@ -74,6 +68,12 @@ static int validate_enum_value(int value, int num_values, int default_value)
     return default_value;
   }
   return value;
+}
+
+static DisplacementMethod get_displacement_method(BL::Material &b_mat)
+{
+  int value = b_mat.displacement_method();
+  return (DisplacementMethod)validate_enum_value(value, DISPLACE_NUM_METHODS, DISPLACE_BUMP);
 }
 
 template<typename NodeType> static InterpolationType get_image_interpolation(NodeType &b_node)
@@ -936,7 +936,7 @@ static ShaderNode *add_node(Scene *scene,
     BL::ShaderNodeTexNoise b_noise_node(b_node);
     NoiseTextureNode *noise = graph->create_node<NoiseTextureNode>();
     noise->set_dimensions(b_noise_node.noise_dimensions());
-    noise->set_type((NodeNoiseType)b_noise_node.type());
+    noise->set_type((NodeNoiseType)b_noise_node.noise_type());
     noise->set_use_normalize(b_noise_node.normalize());
     BL::TexMapping b_texture_mapping(b_noise_node.texture_mapping());
     get_tex_mapping(noise, b_texture_mapping);
@@ -1548,7 +1548,7 @@ void BlenderSync::sync_materials(BL::Depsgraph &b_depsgraph, bool update_all)
       shader->set_volume_sampling_method(get_volume_sampling(cmat));
       shader->set_volume_interpolation_method(get_volume_interpolation(cmat));
       shader->set_volume_step_rate(get_float(cmat, "volume_step_rate"));
-      shader->set_displacement_method(get_displacement_method(cmat));
+      shader->set_displacement_method(get_displacement_method(b_mat));
 
       shader->set_graph(graph);
 
@@ -1592,7 +1592,7 @@ void BlenderSync::sync_world(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d,
   Integrator *integrator = scene->integrator;
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
 
-  BL::World b_world = b_scene.world();
+  BL::World b_world = view_layer.world_override ? view_layer.world_override : b_scene.world();
 
   BlenderViewportParameters new_viewport_parameters(b_v3d, use_developer_ui);
 

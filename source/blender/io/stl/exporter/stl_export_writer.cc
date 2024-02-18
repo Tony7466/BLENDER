@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup stl
@@ -34,7 +36,7 @@ FileWriter::FileWriter(const char *filepath, bool ascii) : tris_num_(0), ascii_(
 {
   file_ = BLI_fopen(filepath, "wb");
   if (file_ == nullptr) {
-    throw std::runtime_error("PLY export: failed to open file");
+    throw std::runtime_error("STL export: failed to open file");
   }
 
   /* Write header */
@@ -42,7 +44,7 @@ FileWriter::FileWriter(const char *filepath, bool ascii) : tris_num_(0), ascii_(
     fmt::print(file_, "solid \n");
   }
   else {
-    char header[BINARY_HEADER_SIZE] = {};
+    const char header[BINARY_HEADER_SIZE] = {};
     fwrite(header, 1, BINARY_HEADER_SIZE, file_);
     /* Write placeholder for number of triangles, so that it can be updated later (after all
      * triangles have been written). */

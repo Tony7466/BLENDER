@@ -8,26 +8,25 @@
  * \ingroup bke
  */
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_mask_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_vector_set.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_animsys.h"
 #include "BKE_image.h"
-#include "BKE_main.h"
-#include "BKE_scene.h"
+#include "BKE_main.hh"
+#include "BKE_scene.hh"
 
-#include "SEQ_animation.hh"
 #include "SEQ_channels.hh"
 #include "SEQ_edit.hh"
 #include "SEQ_iterator.hh"
@@ -38,8 +37,8 @@
 #include "SEQ_time.hh"
 #include "SEQ_utils.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "multiview.hh"
 #include "proxy.hh"
@@ -387,10 +386,10 @@ ListBase *SEQ_get_seqbase_by_seq(const Scene *scene, Sequence *seq)
 
 Sequence *SEQ_get_meta_by_seqbase(ListBase *seqbase_main, ListBase *meta_seqbase)
 {
-  blender::VectorSet strips = SEQ_query_all_strips_recursive(seqbase_main);
+  blender::VectorSet strips = SEQ_query_all_meta_strips_recursive(seqbase_main);
 
   for (Sequence *seq : strips) {
-    if (seq->type == SEQ_TYPE_META && &seq->seqbase == meta_seqbase) {
+    if (&seq->seqbase == meta_seqbase) {
       return seq;
     }
   }
@@ -498,14 +497,14 @@ void SEQ_set_scale_to_fit(const Sequence *seq,
 
   switch (fit_method) {
     case SEQ_SCALE_TO_FIT:
-      transform->scale_x = transform->scale_y = MIN2(float(preview_width) / float(image_width),
-                                                     float(preview_height) / float(image_height));
+      transform->scale_x = transform->scale_y = std::min(
+          float(preview_width) / float(image_width), float(preview_height) / float(image_height));
 
       break;
     case SEQ_SCALE_TO_FILL:
 
-      transform->scale_x = transform->scale_y = MAX2(float(preview_width) / float(image_width),
-                                                     float(preview_height) / float(image_height));
+      transform->scale_x = transform->scale_y = std::max(
+          float(preview_width) / float(image_width), float(preview_height) / float(image_height));
       break;
     case SEQ_STRETCH_TO_FILL:
       transform->scale_x = float(preview_width) / float(image_width);

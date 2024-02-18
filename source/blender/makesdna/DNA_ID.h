@@ -54,12 +54,25 @@ typedef struct IDPropertyUIData {
   char _pad[4];
 } IDPropertyUIData;
 
+/* DNA version of #EnumPropertyItem. */
+typedef struct IDPropertyUIDataEnumItem {
+  /* Unique identifier, used for string lookup. */
+  char *identifier;
+  /* UI name of the item. */
+  char *name;
+  /* Optional description. */
+  char *description;
+  /* Unique integer value, should never change. */
+  int value;
+  /* Optional icon. */
+  int icon;
+} IDPropertyUIDataEnumItem;
+
 /* IDP_UI_DATA_TYPE_INT */
 typedef struct IDPropertyUIDataInt {
   IDPropertyUIData base;
   int *default_array; /* Only for array properties. */
   int default_array_len;
-  char _pad[4];
 
   int min;
   int max;
@@ -67,6 +80,9 @@ typedef struct IDPropertyUIDataInt {
   int soft_max;
   int step;
   int default_value;
+
+  int enum_items_num;
+  IDPropertyUIDataEnumItem *enum_items;
 } IDPropertyUIDataInt;
 
 /** For #IDP_UI_DATA_TYPE_BOOLEAN Use `int8_t` because DNA does not support `bool`. */
@@ -477,7 +493,7 @@ typedef struct ID {
    * A session-wide unique identifier for a given ID, that remain the same across potential
    * re-allocations (e.g. due to undo/redo steps).
    */
-  unsigned int session_uuid;
+  unsigned int session_uid;
 
   IDProperty *properties;
 
@@ -678,9 +694,6 @@ typedef struct PreviewImage {
 #define ID_IS_OVERRIDE_LIBRARY_HIERARCHY_ROOT(_id) \
   (!ID_IS_OVERRIDE_LIBRARY_REAL(_id) || \
    ((ID *)(_id))->override_library->hierarchy_root == ((ID *)(_id)))
-
-#define ID_IS_OVERRIDE_LIBRARY_TEMPLATE(_id) \
-  (((ID *)(_id))->override_library != NULL && ((ID *)(_id))->override_library->reference == NULL)
 
 #define ID_IS_ASSET(_id) (((const ID *)(_id))->asset_data != NULL)
 
@@ -901,7 +914,7 @@ enum {
    * processing, because it is a 'NO_UNDO' type of ID.
    *
    * \note: Also means that such ID does not need to be lib-linked during undo readfile process. It
-   * does need to be relinked in a different way however, doing a `session_uuid`-based lookup into
+   * does need to be relinked in a different way however, doing a `session_uid`-based lookup into
    * the newly read main database.
    *
    * RESET_AFTER_USE
@@ -928,7 +941,7 @@ enum {
    * RESET_NEVER
    *
    * Don't allow assigning this to non-temporary members (since it's likely to cause errors).
-   * When set #ID.session_uuid isn't initialized, since the data isn't part of the session.
+   * When set #ID.session_uid isn't initialized, since the data isn't part of the session.
    */
   LIB_TAG_TEMP_MAIN = 1 << 20,
   /** General ID management info, for freeing or copying behavior e.g. */
@@ -1196,6 +1209,7 @@ typedef enum IDRecalcFlag {
 #define FILTER_ID_WM (1ULL << 38)
 #define FILTER_ID_LI (1ULL << 39)
 #define FILTER_ID_GP (1ULL << 40)
+#define FILTER_ID_IP (1ULL << 41)
 
 #define FILTER_ID_ALL \
   (FILTER_ID_AC | FILTER_ID_AR | FILTER_ID_BR | FILTER_ID_CA | FILTER_ID_CU_LEGACY | \
@@ -1204,7 +1218,8 @@ typedef enum IDRecalcFlag {
    FILTER_ID_NT | FILTER_ID_OB | FILTER_ID_PA | FILTER_ID_PAL | FILTER_ID_PC | FILTER_ID_SCE | \
    FILTER_ID_SPK | FILTER_ID_SO | FILTER_ID_TE | FILTER_ID_TXT | FILTER_ID_VF | FILTER_ID_WO | \
    FILTER_ID_CF | FILTER_ID_WS | FILTER_ID_LP | FILTER_ID_CV | FILTER_ID_PT | FILTER_ID_VO | \
-   FILTER_ID_SIM | FILTER_ID_KE | FILTER_ID_SCR | FILTER_ID_WM | FILTER_ID_LI | FILTER_ID_GP)
+   FILTER_ID_SIM | FILTER_ID_KE | FILTER_ID_SCR | FILTER_ID_WM | FILTER_ID_LI | FILTER_ID_GP | \
+   FILTER_ID_IP)
 
 /**
  * This enum defines the index assigned to each type of IDs in the array returned by
@@ -1314,7 +1329,7 @@ typedef enum eID_Index {
   INDEX_ID_WS,
   INDEX_ID_WM,
 
-  /* Special values. */
+  /* Special values, keep last. */
   INDEX_ID_NULL,
 } eID_Index;
 

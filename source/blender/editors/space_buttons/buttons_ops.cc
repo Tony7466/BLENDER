@@ -18,12 +18,12 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_context.hh"
-#include "BKE_main.h"
-#include "BKE_report.h"
+#include "BKE_main.hh"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 
 #include "WM_api.hh"
@@ -335,9 +335,10 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 
   if (!path[0]) {
     /* Defaults if the path is empty. */
-    if (STR_ELEM(
-            RNA_property_identifier(prop), "font_path_ui", "font_path_ui_mono", "font_directory"))
-    {
+    const char *prop_id = RNA_property_identifier(prop);
+    /* NOTE: relying on built-in names isn't useful for add-on authors.
+     * The property itself should support this kind of meta-data. */
+    if (STR_ELEM(prop_id, "font_path_ui", "font_path_ui_mono", "font_directory")) {
       if (!U.fontdir[0]) {
         char fonts_dir[FILE_MAXDIR];
         BKE_appdir_font_folder_default(fonts_dir, ARRAY_SIZE(fonts_dir));
@@ -349,6 +350,7 @@ static int file_browse_invoke(bContext *C, wmOperator *op, const wmEvent *event)
         path = BLI_strdup(U.fontdir);
       }
       RNA_boolean_set(op->ptr, "filter_font", true);
+      RNA_boolean_set(op->ptr, "filter_folder", true);
       RNA_enum_set(op->ptr, "display_type", FILE_IMGDISPLAY);
       RNA_enum_set(op->ptr, "sort_method", FILE_SORT_ALPHA);
     }

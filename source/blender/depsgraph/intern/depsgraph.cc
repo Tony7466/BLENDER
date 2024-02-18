@@ -19,9 +19,9 @@
 #include "BLI_hash.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_global.h"
-#include "BKE_idtype.h"
-#include "BKE_scene.h"
+#include "BKE_global.hh"
+#include "BKE_idtype.hh"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_debug.hh"
@@ -62,7 +62,8 @@ Depsgraph::Depsgraph(Main *bmain, Scene *scene, ViewLayer *view_layer, eEvaluati
       use_visibility_optimization(true),
       is_evaluating(false),
       is_render_pipeline_depsgraph(false),
-      use_editors_update(false)
+      use_editors_update(false),
+      update_count(0)
 {
   BLI_spin_init(&lock);
   memset(id_type_updated, 0, sizeof(id_type_updated));
@@ -343,4 +344,10 @@ void DEG_disable_visibility_optimization(Depsgraph *depsgraph)
 {
   deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(depsgraph);
   deg_graph->use_visibility_optimization = false;
+}
+
+uint64_t DEG_get_update_count(const Depsgraph *depsgraph)
+{
+  const deg::Depsgraph *deg_graph = reinterpret_cast<const deg::Depsgraph *>(depsgraph);
+  return deg_graph->update_count;
 }
