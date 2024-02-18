@@ -10,6 +10,7 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
 #include "BLI_cpp_type.hh"
+#include "BLI_generic_span.hh"
 #include "BLI_generic_virtual_array.hh"
 #include "BLI_index_range.hh"
 #include "BLI_map.hh"
@@ -379,11 +380,14 @@ static bool attributes_varrays_are_equal(const bke::GAttributeReader &attrs_a,
   }
 
   if (attrs_a.varray.is_span() && attrs_b.varray.is_span()) {
-    if (attrs_a.varray.get_internal_span().size() != attrs_b.varray.get_internal_span().size()) {
+    const GSpan attrs_span_a = attrs_a.varray.get_internal_span();
+    const GSpan attrs_span_b = attrs_b.varray.get_internal_span();
+
+    if (attrs_span_a.size() != attrs_span_b.size()) {
       return false;
     }
 
-    if (attrs_a.varray.get_internal_span().data() != attrs_b.varray.get_internal_span().data()) {
+    if (attrs_span_a.data() != attrs_span_b.data()) {
       return false;
     }
   }
@@ -438,28 +442,21 @@ static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
     if (!attributes_varrays_are_equal(attrs_a, attrs_b)) {
       return false;
     }
+
+    bool attrs_equal = true;
+
+    attribute_math::convert_to_static_type(attrs_a.varray.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+
+      attrs_equal = attributes_elements_are_equal<T>(attrs_a, attrs_b);
+    });
+
+    if (!attrs_equal) {
+      return false;
+    }
   }
 
   return true;
-
-  // return attributes_a.for_all([&](const AttributeIDRef &id, const AttributeMetaData) {
-  //   GAttributeReader attrs_a = attributes_a.lookup(id);
-  //   GAttributeReader attrs_b = attributes_b.lookup(id);
-
-  //   if (!attributes_varrays_are_equal(attrs_a, attrs_b)) {
-  //     return false;
-  //   }
-
-  //   bool attrs_equal = true;
-
-  //   attribute_math::convert_to_static_type(attrs_a.varray.type(), [&](auto dummy) {
-  //     using T = decltype(dummy);
-
-  //     attrs_equal = attributes_elements_are_equal<T>(attrs_a, attrs_b);
-  //   });
-
-  //   return attrs_equal;
-  // });
 }
 
 static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
