@@ -97,6 +97,8 @@ enum class ModelKeyMode : int8_t {
   GRAB,
   ROTATE,
   SCALE,
+  INCREASE_SUBDIVISION,
+  DECREASE_SUBDIVISION,
 };
 
 static constexpr float UI_PRIMARY_POINT_DRAW_SIZE_PX = 8.0f;
@@ -568,7 +570,10 @@ static void grease_pencil_primitive_status_indicators(bContext *C,
                         get_modal_key_str(ModelKeyMode::CANCEL),
                         get_modal_key_str(ModelKeyMode::PANNING));
 
-  // header += IFACE_(", {}: adjust subdivision number");
+  header += fmt::format(IFACE_(", {}/{}: adjust subdivisions: {}"),
+                        get_modal_key_str(ModelKeyMode::INCREASE_SUBDIVISION),
+                        get_modal_key_str(ModelKeyMode::DECREASE_SUBDIVISION),
+                        int(ptd.subdivision));
 
   if (ptd.segments == 1) {
     header += IFACE_(", Alt: center");
@@ -1137,6 +1142,21 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
         }
         break;
       }
+      case int(ModelKeyMode::INCREASE_SUBDIVISION): {
+        if (event->val != KM_RELEASE) {
+          ptd.subdivision++;
+          RNA_int_set(op->ptr, "subdivision", ptd.subdivision);
+        }
+        break;
+      }
+      case int(ModelKeyMode::DECREASE_SUBDIVISION): {
+        if (event->val != KM_RELEASE) {
+          ptd.subdivision--;
+          ptd.subdivision = std::max(ptd.subdivision, 0);
+          RNA_int_set(op->ptr, "subdivision", ptd.subdivision);
+        }
+        break;
+      }
     }
   }
 
@@ -1204,23 +1224,6 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
 
       break;
     }
-      // case EVT_PADPLUSKEY:
-      // case WHEELUPMOUSE: {
-      //   if (event->val != KM_RELEASE) {
-      //     ptd.subdivision++;
-      //     RNA_int_set(op->ptr, "subdivision", ptd.subdivision);
-      //   }
-      //   break;
-      // }
-      // case EVT_PADMINUS:
-      // case WHEELDOWNMOUSE: {
-      //   if (event->val != KM_RELEASE) {
-      //     ptd.subdivision--;
-      //     ptd.subdivision = std::max(ptd.subdivision, 0);
-      //     RNA_int_set(op->ptr, "subdivision", ptd.subdivision);
-      //   }
-      //   break;
-      // }
   }
 
   /* Updating is done every event not just MOUSEMOVE. */
@@ -1409,6 +1412,16 @@ wmKeyMap *ED_primitivetool_modal_keymap(wmKeyConfig *keyconf)
       {int(ModelKeyMode::GRAB), "GRAB", 0, "Grab", ""},
       {int(ModelKeyMode::ROTATE), "ROTATE", 0, "Rotate", ""},
       {int(ModelKeyMode::SCALE), "SCALE", 0, "Scale", ""},
+      {int(ModelKeyMode::INCREASE_SUBDIVISION),
+       "INCREASE_SUBDIVISION",
+       0,
+       "increase_subdivision",
+       ""},
+      {int(ModelKeyMode::DECREASE_SUBDIVISION),
+       "DECREASE_SUBDIVISION",
+       0,
+       "decrease_subdivision",
+       ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
