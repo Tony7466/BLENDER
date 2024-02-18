@@ -290,17 +290,16 @@ static int edges_to_curve_point_indices(const int verts_num,
   });
 
   const IndexMask cyclic_curves_mask = IndexMask::from_bools(cyclic, memory);
+  BLI_assert(cyclic_curves_mask.size() == cyclic_curve_sizes.size());
+
   const IndexMask non_cyclic_curves_mask = cyclic_curves_mask.complement(cyclic.index_range(),
                                                                          memory);
-
-  BLI_assert(cyclic_curves_mask.size() == cyclic_curve_sizes.size());
   BLI_assert(non_cyclic_curves_mask.size() == non_cyclic_curve_sizes.size());
 
   non_cyclic_curves_mask.foreach_index(
       GrainSize(4098), [&](const int curve_index, const int curve_pos) {
         non_cyclic_curve_sizes[curve_pos] = curve_verts[curve_index].size() + 2;
       });
-
   cyclic_curves_mask.foreach_index(
       GrainSize(4098), [&](const int curve_index, const int curve_pos) {
         cyclic_curve_sizes[curve_pos] = curve_verts[curve_index].size();
@@ -312,8 +311,28 @@ static int edges_to_curve_point_indices(const int verts_num,
 
   Array<int2> vert_to_verts(verts_mask.size());
   vert_to_verts_pair_map(edges, vert_to_edge, verts_mask, vert_to_verts);
-  // array_utils::gather(reverse_vert_pos.as_span(), vert_to_verts.as_span().cast<int>(),
-  // vert_to_verts.as_mutable_span().cast<int>());
+
+  Array<std::atomic<int>> begin_edge_by_curve(long_non_cyclic_curves_num);
+  threading::parallel_for(begin_edge_by_curve.index_range(), 4098, [&](const IndexRange range) {
+    for (const int64_t i : range) {
+      begin_edge_by_curve[i] = std::numeric_limits<int>::max();
+    }
+  });
+
+  end_edges_mask.foreach_index(GrainSize(2048), [&](const int edge_i) {
+    const int2 edge = edges[edge_i];
+    const int end_vert = vert_is_end(edge[0]) ? edge[0] : edge[1];
+    const int non_end_vert = bke::mesh::edge_other_vert(edge, end_vert);
+    const int non_end_vert_pos = reverse_vert_pos[non_end_vert];
+    const int curve_i = vert_curve_index[non_end_vert_pos];
+    const int curve_pos = non_cyclic_curves_mask.iterator_to_index(
+        *non_cyclic_curves_mask.find(curve_i));
+
+    std::atomic<int> &r_edge_index = begin_edge_by_curve[curve_pos];
+    int prev_i = r_edge_index.load();
+    while (prev_i > edge_i && !r_edge_index.compare_exchange_weak(prev_i, edge_i)) {
+    }
+  });
 
   for (const int2 a : vert_to_verts) {
     // std::cout << a << ", ";
@@ -343,30 +362,6 @@ static int edges_to_curve_point_indices(const int verts_num,
         // std::cout << ";\n";
       });
 
-  Array<int2> end_edge_by_curve(end_edges_mask.size() / 2, int2(-1));
-  end_edges_mask.foreach_index(GrainSize(4098), [&](const int edge_i) {
-    const int2 edge = edges[edge_i];
-    const int end_vert = vert_is_end(edge[0]) ? edge[0] : edge[1];
-    const int non_end_vert = bke::mesh::edge_other_vert(edge, end_vert);
-    const int non_end_vert_pos = reverse_vert_pos[non_end_vert];
-    const int curve_i = vert_curve_index[non_end_vert_pos];
-    const int curve_pos = non_cyclic_curves_mask.iterator_to_index(
-        *non_cyclic_curves_mask.find(curve_i));
-
-    int2 &edge_indices = end_edge_by_curve[curve_pos];
-    if (edge_indices[0] == -1) {
-      edge_indices[0] = edge_i;
-      return;
-    }
-
-    if (edge_indices[1] == -1) {
-      edge_indices[1] = edge_i;
-      return;
-    }
-
-    BLI_assert_unreachable();
-  });
-
   const IndexRange short_curves_offsets_range(long_cyclic_curves_num, short_curves_num);
   const IndexRange short_curves_indices_range =
       result_curves[IndexRange(short_curves_offsets_range)];
@@ -380,26 +375,20 @@ static int edges_to_curve_point_indices(const int verts_num,
   non_cyclic_curves_mask.foreach_index(
       GrainSize(1024), [&](const int curve_index, const int curve_pos) {
         const Span<int> unordered_verts_pos = verts_by_curve[curve_index];
+        const int2 first_edge = edges[begin_edge_by_curve[curve_pos]];
         MutableSpan<int> curve_verts = r_curve_indices.as_mutable_span().slice(
             result_curves[long_cyclic_curves_num + short_curves_num + curve_pos]);
-        curve_verts.first() = -1;
-        curve_verts.last() = -1;
 
-        const int2 begin_end_edge_indices = end_edge_by_curve[curve_pos];
-
+        const int begin_vert = vert_is_end(first_edge[0]) ? first_edge[0] : first_edge[1];
         const int first_vert_pos =
-            reverse_vert_pos[unordered_verts_pos.contains(
-                                 reverse_vert_pos[edges[begin_end_edge_indices[0]][0]]) ?
-                                 edges[begin_end_edge_indices[0]][0] :
-                                 edges[begin_end_edge_indices[0]][1]];
+            reverse_vert_pos[bke::mesh::edge_other_vert(first_edge, begin_vert)];
 
-        int prev_vert_i = unordered_verts_pos.contains(
-                              reverse_vert_pos[vert_to_verts[first_vert_pos][1]]) ?
-                              vert_to_verts[first_vert_pos][0] :
-                              vert_to_verts[first_vert_pos][1];
-        // std::cout << "|-> " << verts_mask[first_vert_pos] << "-> ";
+        curve_verts.first() = begin_vert;
+
+        int prev_vert_i = begin_vert;
         int vert_i = verts_mask[first_vert_pos];
-        for (const int i : curve_verts.index_range().drop_back(1).drop_front(1)) {
+        // std::cout << "|-> " << verts_mask[first_vert_pos] << "-> ";
+        for (const int i : curve_verts.index_range().drop_front(1).drop_back(1)) {
           // std::cout << " <-" << reverse_vert_pos[vert_i] << ": ";
           const int2 &other_verts = vert_to_verts[reverse_vert_pos[vert_i]];
           const int next_vert_i = bke::mesh::edge_other_vert(other_verts, prev_vert_i);
@@ -409,32 +398,11 @@ static int edges_to_curve_point_indices(const int verts_num,
           prev_vert_i = vert_i;
           vert_i = next_vert_i;
         }
+
+        curve_verts.last() = vert_i;
+
         // std::cout << ";\n";
       });
-
-  end_edges_mask.foreach_index(GrainSize(4098), [&](const int edge_i) {
-    const int2 edge = edges[edge_i];
-    const int end_vert = vert_is_end(edge[0]) ? edge[0] : edge[1];
-    const int non_end_vert = bke::mesh::edge_other_vert(edge, end_vert);
-    const int non_end_vert_pos = reverse_vert_pos[non_end_vert];
-    const int curve_i = vert_curve_index[non_end_vert_pos];
-    const int curve_pos = non_cyclic_curves_mask.iterator_to_index(
-        *non_cyclic_curves_mask.find(curve_i));
-    MutableSpan<int> curve_verts = r_curve_indices.as_mutable_span().slice(
-        result_curves[long_cyclic_curves_num + short_curves_num + curve_pos]);
-
-    if (non_end_vert == curve_verts.drop_front(1).first() && curve_verts.first() == -1) {
-      curve_verts.first() = end_vert;
-      return;
-    }
-
-    if (non_end_vert == curve_verts.drop_back(1).last() && curve_verts.last() == -1) {
-      curve_verts.last() = end_vert;
-      return;
-    }
-
-    BLI_assert_unreachable();
-  });
 
   for (const int i : r_curve_indices) {
     // std::cout << i << ", ";
