@@ -68,7 +68,7 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
 {
   auto *mmd = reinterpret_cast<GreasePencilWeightProximityModifierData *>(md);
 
-  return (mmd->target_vgname[0] == '\0');
+  return (mmd->target_vgname[0] == '\0' || mmd->object == nullptr);
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
@@ -177,7 +177,7 @@ static void write_weights_for_drawing(const ModifierData &md,
 
   const Span<float3> positions = curves.positions();
   const float4x4 obmat = ob.object_to_world();
-  const float3 target_pos = mmd.object ? mmd.object->object_to_world().location() : float3(0.0f);
+  const float3 target_pos = mmd.object->object_to_world().location();
   const bool invert = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT) != 0;
   const bool do_multiply = (mmd.flag & MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA) != 0;
 
@@ -188,12 +188,8 @@ static void write_weights_for_drawing(const ModifierData &md,
         continue;
       }
 
-      float dist_fac = mmd.object ? get_distance_factor(target_pos,
-                                                        obmat,
-                                                        positions[point_i],
-                                                        mmd.dist_start,
-                                                        mmd.dist_end) :
-                                    1.0f;
+      float dist_fac = get_distance_factor(
+          target_pos, obmat, positions[point_i], mmd.dist_start, mmd.dist_end);
 
       if (invert) {
         dist_fac = 1.0f - dist_fac;
@@ -290,7 +286,7 @@ static void panel_register(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_GreasePencilWeightProximity = {
     /*idname*/ "GreasePencilWeightProximityModifier",
-    /*name*/ N_("Weight Angle"),
+    /*name*/ N_("Weight Proximity"),
     /*struct_name*/ "GreasePencilWeightProximityModifierData",
     /*struct_size*/ sizeof(GreasePencilWeightProximityModifierData),
     /*srna*/ &RNA_GreasePencilWeightProximityModifier,
