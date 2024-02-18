@@ -8,6 +8,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "BLI_compiler_attrs.h"
 #include "BLI_sys_types.h"
 
@@ -253,6 +256,8 @@ float BLF_fixed_width(int fontid) ATTR_WARN_UNUSED_RESULT;
 void BLF_rotation(int fontid, float angle);
 void BLF_clipping(int fontid, int xmin, int ymin, int xmax, int ymax);
 void BLF_wordwrap(int fontid, int wrap_width);
+
+std::vector<std::string> BLF_string_wrap(int fontid, const std::string str, const int width);
 
 #if BLF_BLUR_ENABLE
 void BLF_blur(int fontid, int size);

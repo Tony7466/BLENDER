@@ -14,6 +14,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
 
 #include <ft2build.h>
 
@@ -1242,6 +1243,29 @@ void blf_font_draw_buffer__wrap(FontBLF *font,
                                 ResultBLF *r_info)
 {
   blf_font_wrap_apply(font, str, str_len, r_info, blf_font_draw_buffer__wrap_cb, nullptr);
+}
+
+/** Wrap a std::string. */
+static void blf_font_string_wrap_cb(FontBLF *font,
+                                    GlyphCacheBLF *gc,
+                                    const char *str,
+                                    const size_t str_len,
+                                    ft_pix pen_y,
+                                    void *str_list_ptr)
+{
+  std::vector<std::string> *list = static_cast<std::vector<std::string> *>(str_list_ptr);
+  std::string line(str, str + str_len);
+  list->push_back(line);
+}
+
+std::vector<std::string> blf_font_string_wrap(FontBLF *font, std::string str, int width)
+{
+  int old_wrap_width = font->wrap_width;
+  font->wrap_width = width;
+  std::vector<std::string> list;
+  blf_font_wrap_apply(font, str.c_str(), str.length(), nullptr, blf_font_string_wrap_cb, &list);
+  font->wrap_width = old_wrap_width;
+  return list;
 }
 
 /** \} */
