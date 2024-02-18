@@ -1463,6 +1463,12 @@ enum eButProgressType {
   UI_BUT_PROGRESS_TYPE_RING = 1,
 };
 
+enum class LayoutSeparatorType : int8_t {
+  Auto,
+  Space,
+  Line,
+};
+
 /***************************** ID Utilities *******************************/
 
 int UI_icon_from_id(const ID *id);
@@ -1869,10 +1875,6 @@ void UI_but_drag_set_rna(uiBut *but, PointerRNA *ptr);
  */
 void UI_but_drag_set_path(uiBut *but, const char *path);
 void UI_but_drag_set_name(uiBut *but, const char *name);
-/**
- * Value from button itself.
- */
-void UI_but_drag_set_value(uiBut *but);
 
 /**
  * Sets #UI_BUT_DRAG_FULL_BUT so the full button can be dragged.
@@ -2284,7 +2286,7 @@ uiLayout *uiLayoutPanelProp(const bContext *C,
 /**
  * Variant of #uiLayoutPanelProp that automatically stores the open-close-state in the root
  * panel. When a dynamic number of panels is required, it's recommended to use #uiLayoutPanelProp
- * instead of passing in generated idnames.
+ * instead of passing in generated id names.
  *
  * \param idname: String that identifies the open-close-state in the root panel.
  */
@@ -2961,7 +2963,9 @@ void uiItemV(uiLayout *layout, const char *name, int icon, int argval);
 /** Separator item */
 void uiItemS(uiLayout *layout);
 /** Separator item */
-void uiItemS_ex(uiLayout *layout, float factor);
+void uiItemS_ex(uiLayout *layout,
+                float factor,
+                LayoutSeparatorType type = LayoutSeparatorType::Auto);
 /** Flexible spacing. */
 void uiItemSpacer(uiLayout *layout);
 
@@ -3274,12 +3278,10 @@ void UI_butstore_unregister(uiButStore *bs_handle, uiBut **but_p);
  * for actions that can also be activated using shortcuts while the cursor is over the button.
  * Without this those shortcuts aren't discoverable for users.
  */
-const char *UI_key_event_operator_string(const bContext *C,
-                                         const char *opname,
-                                         IDProperty *properties,
-                                         const bool is_strict,
-                                         char *result,
-                                         const int result_maxncpy);
+std::optional<std::string> UI_key_event_operator_string(const bContext *C,
+                                                        const char *opname,
+                                                        IDProperty *properties,
+                                                        bool is_strict);
 
 /* ui_interface_region_tooltip.c */
 

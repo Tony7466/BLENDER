@@ -18,7 +18,7 @@
 #include "BLI_noise.hh"
 #include "BLI_task.hh"
 
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set_instances.hh"
@@ -331,7 +331,7 @@ static void realize_collections(Collection *collection, bke::Instances *instance
     const int handle = instances->add_reference(*child_object);
     float4x4 transform = float4x4::identity();
     transform.location() -= float3(collection->instance_offset);
-    transform *= float4x4(child_object->object_to_world);
+    transform *= child_object->object_to_world();
     instances->add_instance(handle, transform);instances->add_instance(handle, transform);
   }
 }
@@ -926,7 +926,7 @@ static void execute_instances_tasks(
   }
 
   MutableSpan<float4x4> all_transforms = dst_instances->transforms();
-  MutableSpan<int> all_handles = dst_instances->reference_handles();
+  MutableSpan<int> all_handles = dst_instances->reference_handles_for_write();
 
   for (const int component_index : src_components.index_range()) {
     const auto &src_component = static_cast<const bke::InstancesComponent &>(
