@@ -8,7 +8,6 @@
  * \ingroup sequencer
  */
 
-#include "BLI_map.hh"
 #include "BLI_vector.hh"
 
 struct ImBuf;
@@ -22,10 +21,6 @@ struct Sequence;
 /* mutable state for sequencer */
 struct SeqRenderState {
   LinkNode *scene_parents = nullptr;
-  /* Track value of ImBuf planes before transform postprocessing was applied.
-   * Postprocessing can alter planes if it makes the image smaller than the
-   * screen, thereby introducing transparency. */
-  blender::Map<ImBuf *, int> planes_before_pp;
 };
 
 ImBuf *seq_render_give_ibuf_seqbase(const SeqRenderData *context,

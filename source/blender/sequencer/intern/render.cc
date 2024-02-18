@@ -734,22 +734,22 @@ static ImBuf *input_preprocess(const SeqRenderData *context,
 }
 
 static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
-                                         SeqRenderState *state,
                                          Sequence *seq,
                                          ImBuf *ibuf,
                                          float timeline_frame,
                                          bool use_preprocess,
                                          const bool is_proxy_image)
 {
-  const int input_planes = ibuf->planes;
   if (context->is_proxy_render == false &&
       (ibuf->x != context->rectx || ibuf->y != context->recty))
   {
     use_preprocess = true;
   }
 
-  /* Proxies and effect strips are not stored in cache. */
-  if (!is_proxy_image && (seq->type & SEQ_TYPE_EFFECT) == 0) {
+  /* Proxies and non-generator effect strips are not stored in cache. */
+  const bool is_effect_with_inputs = (seq->type & SEQ_TYPE_EFFECT) != 0 &&
+                                     SEQ_effect_get_num_inputs(seq->type) != 0;
+  if (!is_proxy_image && !is_effect_with_inputs) {
     seq_cache_put(context, seq, timeline_frame, SEQ_CACHE_STORE_RAW, ibuf);
   }
 
@@ -758,7 +758,6 @@ static ImBuf *seq_render_preprocess_ibuf(const SeqRenderData *context,
   }
 
   seq_cache_put(context, seq, timeline_frame, SEQ_CACHE_STORE_PREPROCESSED, ibuf);
-  state->planes_before_pp.add_overwrite(ibuf, input_planes);
   return ibuf;
 }
 
@@ -1012,7 +1011,6 @@ static bool seq_image_strip_is_multiview_render(
 }
 
 static ImBuf *seq_render_image_strip(const SeqRenderData *context,
-                                     SeqRenderState *state,
                                      Sequence *seq,
                                      int timeline_frame,
                                      bool *r_is_proxy_image)
@@ -1066,7 +1064,7 @@ static ImBuf *seq_render_image_strip(const SeqRenderData *context,
 
       if (view_id != context->view_id) {
         ibufs_arr[view_id] = seq_render_preprocess_ibuf(
-            &localcontext, state, seq, ibufs_arr[view_id], timeline_frame, true, false);
+            &localcontext, seq, ibufs_arr[view_id], timeline_frame, true, false);
       }
     }
 
@@ -1183,7 +1181,6 @@ static ImBuf *seq_render_movie_strip_view(const SeqRenderData *context,
 }
 
 static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
-                                     SeqRenderState *state,
                                      Sequence *seq,
                                      float timeline_frame,
                                      bool *r_is_proxy_image)
@@ -1230,7 +1227,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
 
       if (view_id != context->view_id) {
         ibuf_arr[view_id] = seq_render_preprocess_ibuf(
-            &localcontext, state, seq, ibuf_arr[view_id], timeline_frame, true, false);
+            &localcontext, seq, ibuf_arr[view_id], timeline_frame, true, false);
       }
     }
 
@@ -1785,12 +1782,12 @@ static ImBuf *do_render_strip_uncached(const SeqRenderData *context,
     }
 
     case SEQ_TYPE_IMAGE: {
-      ibuf = seq_render_image_strip(context, state, seq, timeline_frame, r_is_proxy_image);
+      ibuf = seq_render_image_strip(context, seq, timeline_frame, r_is_proxy_image);
       break;
     }
 
     case SEQ_TYPE_MOVIE: {
-      ibuf = seq_render_movie_strip(context, state, seq, timeline_frame, r_is_proxy_image);
+      ibuf = seq_render_movie_strip(context, seq, timeline_frame, r_is_proxy_image);
       break;
     }
 
@@ -1853,7 +1850,7 @@ ImBuf *seq_render_strip(const SeqRenderData *context,
   if (ibuf) {
     use_preprocess = seq_input_have_to_preprocess(context, seq, timeline_frame);
     ibuf = seq_render_preprocess_ibuf(
-        context, state, seq, ibuf, timeline_frame, use_preprocess, is_proxy_image);
+        context, seq, ibuf, timeline_frame, use_preprocess, is_proxy_image);
   }
 
   if (ibuf == nullptr) {
@@ -1977,12 +1974,18 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
       else {
         early_out = StripEarlyOut::DoEffect;
       }
-
-      if (state->planes_before_pp.lookup_default(test, R_IMF_PLANES_RGBA) != R_IMF_PLANES_RGBA) {
-        opaques.add_occluder(context, seq, i);
-      }
       /* Free the image. It is stored in cache, so this doesn't affect performance. */
       IMB_freeImBuf(test);
+
+      /* Check whether the raw (before preprocessing, which can add alpha) strip content
+       * was opaque. */
+      ImBuf *ibuf_raw = seq_cache_get(context, seq, timeline_frame, SEQ_CACHE_STORE_RAW);
+      if (ibuf_raw != nullptr) {
+        if (ibuf_raw->planes != R_IMF_PLANES_RGBA) {
+          opaques.add_occluder(context, seq, i);
+        }
+        IMB_freeImBuf(ibuf_raw);
+      }
     }
 
     switch (early_out) {
@@ -2020,9 +2023,11 @@ static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
   for (; i < strips.size(); i++) {
     Sequence *seq = strips[i];
 
-    if (seq_get_early_out_for_blend_mode(seq) == StripEarlyOut::DoEffect &&
-        !opaques.is_occluded(context, seq, i))
-    {
+    if (opaques.is_occluded(context, seq, i)) {
+      continue;
+    }
+
+    if (seq_get_early_out_for_blend_mode(seq) == StripEarlyOut::DoEffect) {
       ImBuf *ibuf1 = out;
       ImBuf *ibuf2 = seq_render_strip(context, state, seq, timeline_frame);
 
