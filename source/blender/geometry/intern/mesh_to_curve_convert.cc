@@ -174,47 +174,6 @@ inline void parallel_transform(MutableSpan<T> data,
   });
 }
 
-static void sort_pairs(const OffsetIndices<int> offset, MutableSpan<int2> r_pairs)
-{
-  static const auto ensure_order = [](const int2 current, int2 &next) {
-    if (ELEM(next[1], current[0], current[1])) {
-      std::swap(next[0], next[1]);
-    }
-    BLI_assert(current[1] == next[0]);
-  };
-
-  threading::parallel_for(offset.index_range(), 1024, [&](const IndexRange range) {
-    for (const int64_t group_i : range) {
-      MutableSpan<int2> next_segment = r_pairs.slice(offset[group_i]);
-      for (const int index : offset[group_i].index_range().drop_back(1)) {
-        int2 &current = next_segment.first();
-        next_segment = next_segment.drop_front(1);
-        int2 *next = std::find_if(next_segment.begin(), next_segment.end(), [&](const int2 next) {
-          return ELEM(current[1], next[0], next[1]);
-        });
-        if (next != next_segment.end()) {
-          ensure_order(current, *next);
-          std::swap(next_segment.first(), *next);
-          continue;
-        }
-        /* This is the first element a non-cyclic star and looking for unconnected edge was
-         * failure. Try again in other direction. */
-        int2 *other_next = std::find_if(
-            next_segment.begin(), next_segment.end(), [&](const int2 next) {
-              return ELEM(current[0], next[0], next[1]);
-            });
-        if (other_next != next_segment.end()) {
-          std::swap(current[0], current[1]);
-          ensure_order(current, *other_next);
-          std::swap(next_segment.first(), *other_next);
-          continue;
-        }
-        BLI_assert_unreachable();
-      }
-    }
-  });
-}
-
 static void vert_to_verts_pair_map(const Span<int2> edges,
                                    const GroupedSpan<int> vert_to_edges,
                                    const IndexMask verts,
@@ -316,6 +275,11 @@ static int edges_to_curve_point_indices(const int verts_num,
       vert_curve_index, long_curves_total, verts_offsets, vert_indices);
   OffsetIndices<int> curve_verts(verts_offsets);
 
+  // Array<int> curve_body_verts_count(long_curves_total, 0);
+  // array_utils::count_indices(vert_curve_index.as_span(),
+  // curve_body_verts_count.as_mutable_span()); OffsetIndices<int>
+  // curve_verts(curve_body_verts_count);
+
   Array<bool> cyclic(long_curves_total, true);
   end_edges_mask.foreach_index_optimized<int>(GrainSize(4098), [&](const int edge_i) {
     const int2 edge = edges[edge_i];
@@ -352,12 +316,12 @@ static int edges_to_curve_point_indices(const int verts_num,
   // vert_to_verts.as_mutable_span().cast<int>());
 
   for (const int2 a : vert_to_verts) {
-    std::cout << a << ", ";
+    // std::cout << a << ", ";
   }
-  std::cout << ";\n";
+  // std::cout << ";\n";
 
-  verts_mask.foreach_index([&](const int i) { std::cout << i << ", "; });
-  std::cout << ";\n";
+  // verts_mask.foreach_index([&](const int i) { std::cout << i << ", "; });
+  // std::cout << ";\n";
 
   cyclic_curves_mask.foreach_index(
       GrainSize(1024), [&](const int curve_index, const int curve_pos) {
@@ -372,11 +336,11 @@ static int edges_to_curve_point_indices(const int verts_num,
           const int2 &other_verts = vert_to_verts[reverse_vert_pos[vert_i]];
           const int next_vert_i = bke::mesh::edge_other_vert(other_verts, prev_vert_i);
           curve_verts[i] = vert_i;
-          std::cout << vert_i << "-> ";
+          // std::cout << vert_i << "-> ";
           prev_vert_i = vert_i;
           vert_i = next_vert_i;
         }
-        std::cout << ";\n";
+        // std::cout << ";\n";
       });
 
   Array<int2> end_edge_by_curve(end_edges_mask.size() / 2, int2(-1));
@@ -433,19 +397,19 @@ static int edges_to_curve_point_indices(const int verts_num,
                               reverse_vert_pos[vert_to_verts[first_vert_pos][1]]) ?
                               vert_to_verts[first_vert_pos][0] :
                               vert_to_verts[first_vert_pos][1];
-        std::cout << "|-> " << verts_mask[first_vert_pos] << "-> ";
+        // std::cout << "|-> " << verts_mask[first_vert_pos] << "-> ";
         int vert_i = verts_mask[first_vert_pos];
         for (const int i : curve_verts.index_range().drop_back(1).drop_front(1)) {
-          std::cout << " <-" << reverse_vert_pos[vert_i] << ": ";
+          // std::cout << " <-" << reverse_vert_pos[vert_i] << ": ";
           const int2 &other_verts = vert_to_verts[reverse_vert_pos[vert_i]];
           const int next_vert_i = bke::mesh::edge_other_vert(other_verts, prev_vert_i);
-          std::cout << next_vert_i << "<< ";
+          // std::cout << next_vert_i << "<< ";
           curve_verts[i] = vert_i;
-          std::cout << vert_i << "-> ";
+          // std::cout << vert_i << "-> ";
           prev_vert_i = vert_i;
           vert_i = next_vert_i;
         }
-        std::cout << ";\n";
+        // std::cout << ";\n";
       });
 
   end_edges_mask.foreach_index(GrainSize(4098), [&](const int edge_i) {
@@ -473,9 +437,9 @@ static int edges_to_curve_point_indices(const int verts_num,
   });
 
   for (const int i : r_curve_indices) {
-    std::cout << i << ", ";
+    // std::cout << i << ", ";
   }
-  std::cout << ";\n";
+  // std::cout << ";\n";
 
   return long_cyclic_curves_num;
 }
