@@ -537,18 +537,21 @@ static void grease_pencil_primitive_status_indicators(bContext *C, PrimitiveTool
           RPT_("Line: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to "
                "adjust subdivision number, Shift to align, Alt to center, E: extrude, G: grab"),
           UI_MAX_DRAW_STR);
+      break;
     }
     case (PrimitiveType::POLYLINE): {
       BLI_strncpy(msg_str,
                   RPT_("Polyline: ESC to cancel, LMB to set, Enter/MMB to confirm, WHEEL/+- to "
                        "adjust subdivision number, Shift to align, G: grab"),
                   UI_MAX_DRAW_STR);
+      break;
     }
     case (PrimitiveType::BOX): {
       BLI_strncpy(msg_str,
                   RPT_("Rectangle: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- "
                        "to adjust subdivision number, Shift to square, Alt to center, G: grab"),
                   UI_MAX_DRAW_STR);
+      break;
     }
     case (PrimitiveType::CIRCLE): {
       BLI_strncpy(
@@ -556,6 +559,7 @@ static void grease_pencil_primitive_status_indicators(bContext *C, PrimitiveTool
           RPT_("Circle: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision "
                "number, Shift to square, Alt to center, G: grab"),
           UI_MAX_DRAW_STR);
+      break;
     }
     case (PrimitiveType::ARC): {
       BLI_strncpy(
@@ -563,12 +567,14 @@ static void grease_pencil_primitive_status_indicators(bContext *C, PrimitiveTool
           RPT_("Arc: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision number, "
                "Shift to square, Alt to center, M: Flip, E: extrude, G: grab"),
           UI_MAX_DRAW_STR);
+      break;
     }
     case (PrimitiveType::CURVE): {
       BLI_strncpy(msg_str,
                   RPT_("Curve: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision"
                        "number, Shift to square, Alt to center, E: extrude, G: grab"),
                   UI_MAX_DRAW_STR);
+      break;
     }
   }
 
