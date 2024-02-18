@@ -7,6 +7,8 @@
  * Operators for creating new Grease Pencil primitives (boxes, circles, ...).
  */
 
+#include <fmt/format.h>
+
 #include <cstring>
 
 #include "BKE_attribute.hh"
@@ -524,140 +526,69 @@ static void grease_pencil_primitive_undo_curves(PrimitiveTool_OpData &ptd)
 }
 
 /* Helper: Draw status message while the user is running the operator */
-static void grease_pencil_primitive_status_indicators(bContext *C, PrimitiveTool_OpData &ptd)
+static void grease_pencil_primitive_status_indicators(bContext *C,
+                                                      wmOperator *op,
+                                                      PrimitiveTool_OpData &ptd)
 {
-  // Scene *scene = ptd.vc.scene;
-  char status_str[UI_MAX_DRAW_STR];
-  char msg_str[UI_MAX_DRAW_STR];
+  std::string header;
 
   switch (ptd.type) {
     case PrimitiveType::LINE: {
-      BLI_strncpy(
-          msg_str,
-          RPT_("Line: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- to "
-               "adjust subdivision number, Shift to align, Alt to center, E: extrude, G: grab"),
-          UI_MAX_DRAW_STR);
+      header += RPT_("Line: ");
       break;
     }
     case (PrimitiveType::POLYLINE): {
-      BLI_strncpy(msg_str,
-                  RPT_("Polyline: ESC to cancel, LMB to set, Enter/MMB to confirm, WHEEL/+- to "
-                       "adjust subdivision number, Shift to align, G: grab"),
-                  UI_MAX_DRAW_STR);
+      header += RPT_("Polyline: ");
       break;
     }
     case (PrimitiveType::BOX): {
-      BLI_strncpy(msg_str,
-                  RPT_("Rectangle: ESC to cancel, LMB set origin, Enter/MMB to confirm, WHEEL/+- "
-                       "to adjust subdivision number, Shift to square, Alt to center, G: grab"),
-                  UI_MAX_DRAW_STR);
+      header += RPT_("Rectangle: ");
       break;
     }
     case (PrimitiveType::CIRCLE): {
-      BLI_strncpy(
-          msg_str,
-          RPT_("Circle: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision "
-               "number, Shift to square, Alt to center, G: grab"),
-          UI_MAX_DRAW_STR);
+      header += RPT_("Circle: ");
       break;
     }
     case (PrimitiveType::ARC): {
-      BLI_strncpy(
-          msg_str,
-          RPT_("Arc: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision number, "
-               "Shift to square, Alt to center, M: Flip, E: extrude, G: grab"),
-          UI_MAX_DRAW_STR);
+      header += RPT_("Arc: ");
       break;
     }
     case (PrimitiveType::CURVE): {
-      BLI_strncpy(msg_str,
-                  RPT_("Curve: ESC to cancel, Enter/MMB to confirm, WHEEL/+- to adjust subdivision"
-                       "number, Shift to square, Alt to center, E: extrude, G: grab"),
-                  UI_MAX_DRAW_STR);
+      header += RPT_("Curve: ");
       break;
     }
   }
 
-  // if (ELEM(tgpi->type,
-  //          GP_STROKE_CIRCLE,
-  //          GP_STROKE_ARC,
-  //          GP_STROKE_LINE,
-  //          GP_STROKE_BOX,
-  //          GP_STROKE_POLYLINE))
-  // {
-  //   if (hasNumInput(&tgpi->num)) {
-  //     char str_ofs[NUM_STR_REP_LEN];
+  auto get_modal_key_str = [&](ModelKeyMode id) {
+    return WM_modalkeymap_operator_items_to_string(op->type, int(id), true).value_or("");
+  };
 
-  //     outputNumInput(&tgpi->num, str_ofs, &scene->unit);
-  //     SNPRINTF(status_str, "%s: %s", msg_str, str_ofs);
-  //   }
-  //   else {
-  //     if (tgpi->flag == IN_PROGRESS) {
-  //       SNPRINTF(status_str,
-  //                "%s: %d (%d, %d) (%d, %d)",
-  //                msg_str,
-  //                cur_subdiv,
-  //                int(tgpi->start[0]),
-  //                int(tgpi->start[1]),
-  //                int(tgpi->end[0]),
-  //                int(tgpi->end[1]));
-  //     }
-  //     else {
-  //       SNPRINTF(status_str,
-  //                "%s: %d (%d, %d)",
-  //                msg_str,
-  //                cur_subdiv,
-  //                int(tgpi->end[0]),
-  //                int(tgpi->end[1]));
-  //     }
-  //   }
-  // }
-  // else {
-  //   if (tgpi->flag == IN_PROGRESS) {
-  //     SNPRINTF(status_str,
-  //              "%s: %d (%d, %d) (%d, %d)",
-  //              msg_str,
-  //              cur_subdiv,
-  //              int(tgpi->start[0]),
-  //              int(tgpi->start[1]),
-  //              int(tgpi->end[0]),
-  //              int(tgpi->end[1]));
-  //   }
-  //   else {
-  //     SNPRINTF(status_str, "%s: (%d, %d)", msg_str, int(tgpi->end[0]), int(tgpi->end[1]));
-  //   }
-  // }
+  header += fmt::format(IFACE_("{}: confirm, {}: cancel, {}: panning, Shift: align"),
+                        get_modal_key_str(ModelKeyMode::CONFIRM),
+                        get_modal_key_str(ModelKeyMode::CANCEL),
+                        get_modal_key_str(ModelKeyMode::PANNING));
 
-  // if (hasNumInput(&tgpi->num)) {
-  //   char str_ofs[NUM_STR_REP_LEN];
+  // header += IFACE_(", {}: adjust subdivision number");
 
-  //   outputNumInput(&tgpi->num, str_ofs, &scene->unit);
-  //   SNPRINTF(status_str, "%s: %s", msg_str, str_ofs);
-  // }
-  // else {
-  //   if (tgpi->flag == IN_PROGRESS) {
-  //     SNPRINTF(status_str,
-  //              "%s: %d (%d, %d) (%d, %d)",
-  //              msg_str,
-  //              cur_subdiv,
-  //              int(tgpi->start[0]),
-  //              int(tgpi->start[1]),
-  //              int(tgpi->end[0]),
-  //              int(tgpi->end[1]));
-  //   }
-  //   else {
-  //     SNPRINTF(status_str,
-  //              "%s: %d (%d, %d)",
-  //              msg_str,
-  //              cur_subdiv,
-  //              int(tgpi->end[0]),
-  //              int(tgpi->end[1]));
-  //   }
-  // }
+  if (ptd.segments == 1) {
+    header += IFACE_(", Alt: center");
+  }
 
-  SNPRINTF(status_str, "%s", msg_str);
+  if (ELEM(ptd.type,
+           PrimitiveType::LINE,
+           PrimitiveType::POLYLINE,
+           PrimitiveType::ARC,
+           PrimitiveType::CURVE))
+  {
+    header += fmt::format(IFACE_(", {}: extrude"), get_modal_key_str(ModelKeyMode::EXTRUDE));
+  }
 
-  ED_workspace_status_text(C, status_str);
+  header += fmt::format(IFACE_(", {}: grab, {}: rotate, {}: scale"),
+                        get_modal_key_str(ModelKeyMode::GRAB),
+                        get_modal_key_str(ModelKeyMode::ROTATE),
+                        get_modal_key_str(ModelKeyMode::SCALE));
+
+  ED_workspace_status_text(C, header.c_str());
 }
 
 static void grease_pencil_primitive_update_view(bContext *C, PrimitiveTool_OpData &ptd)
@@ -814,7 +745,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
       pttehte.region->type, grease_pencil_primitive_draw, ptd, REGION_DRAW_POST_VIEW);
 
   /* Updates indicator in header. */
-  grease_pencil_primitive_status_indicators(C, *ptd);
+  grease_pencil_primitive_status_indicators(C, op, *ptd);
 
   /* add a modal handler for this operator */
   WM_event_add_modal_handler(C, op);
@@ -1325,7 +1256,7 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
   grease_pencil_primitive_update_curves(ptd);
 
   /* Updates indicator in header. */
-  grease_pencil_primitive_status_indicators(C, ptd);
+  grease_pencil_primitive_status_indicators(C, op, ptd);
 
   grease_pencil_primitive_update_view(C, ptd);
 
