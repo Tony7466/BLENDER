@@ -15,6 +15,8 @@
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
 
+#include "BLI_disjoint_set.hh"
+
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
@@ -227,6 +229,8 @@ static int edges_to_curve_point_indices(const int verts_num,
       });
 
   const int long_non_cyclic_curves_num = end_edges_mask.size() / 2;
+  std::cout << "\n"
+            << "long_non_cyclic_curves_num :" << long_non_cyclic_curves_num << "';\n";
 
   /* Edges that might form cyclic curve or be part of non cyclic curve that will be capped by the
    * end edges. */
@@ -251,8 +255,22 @@ static int edges_to_curve_point_indices(const int verts_num,
     vert_curves.join(reverse_vert_pos[edge[0]], reverse_vert_pos[edge[1]]);
   });
 
+  DisjointSet<int> vert_curves_check(verts_mask.size());
+  body_edges_mask.foreach_index([&](const int edge_i) {
+    const int2 edge = edges[edge_i];
+    vert_curves_check.join(reverse_vert_pos[edge[0]], reverse_vert_pos[edge[1]]);
+  });
+
+  const int check_total = std::count_if(
+      verts_mask.index_range().begin(),
+      verts_mask.index_range().end(),
+      [&](const int64_t i) -> bool { return vert_curves_check.find_root(i) == i; });
+
+  BLI_assert(check_total == vert_curves.count_sets());
+
   const int long_curves_total = vert_curves.count_sets();
   const int long_cyclic_curves_num = long_curves_total - long_non_cyclic_curves_num;
+  std::cout << "long_curves_total: " << long_curves_total << ";\n";
   BLI_assert(long_cyclic_curves_num >= 0);
 
   Array<int> vert_curve_index(verts_mask.size());
@@ -290,6 +308,7 @@ static int edges_to_curve_point_indices(const int verts_num,
   });
 
   const IndexMask cyclic_curves_mask = IndexMask::from_bools(cyclic, memory);
+  std::cout << cyclic_curves_mask.size() << ", " << cyclic_curve_sizes.size() << ";\n";
   BLI_assert(cyclic_curves_mask.size() == cyclic_curve_sizes.size());
 
   const IndexMask non_cyclic_curves_mask = cyclic_curves_mask.complement(cyclic.index_range(),
