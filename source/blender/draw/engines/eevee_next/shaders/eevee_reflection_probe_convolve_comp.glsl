@@ -21,15 +21,17 @@ float roughness_from_relative_mip(float prev_mip_roughness, float curr_mip_rough
   /* For reference and debugging. */
   return curr_mip_roughness;
 #else
+  /* The exponent should be 2 but result is a bit less blurry than expected in practice. */
+  const float exponent = 3.0;
   /* From linear roughness to GGX roughness input. */
-  float m_prev = square(prev_mip_roughness);
-  float m_curr = square(curr_mip_roughness);
+  float m_prev = pow(prev_mip_roughness, exponent);
+  float m_curr = pow(curr_mip_roughness, exponent);
   /* Given that spherical gaussians are very close to regular gaussian in 1D,
    * we reuse the same rule for successive convolution (i.e: G(x,a) X G(x,b) = G(x,a+b)).
    * While this isn't technically correct, this still works quite well in practice. */
   float m_target = m_curr - m_prev;
   /* From GGX roughness input to linear roughness. */
-  return sqrt(m_target);
+  return pow(m_target, 1.0 / exponent);
 #endif
 }
 
