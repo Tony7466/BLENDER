@@ -844,23 +844,30 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
   const float2 start = ptd.start_position_2d;
   const float2 end = float2(event->mval);
 
+  const float2 dif = end - start;
+  float2 offset = dif / 2.0f;
+
+  if (event->modifier & KM_SHIFT) {
+    if (ptd.type == PrimitiveType::BOX) {
+      offset = math::sign(dif) * float2(std::max(math::abs(dif[0]), math::abs(dif[1]))) / 2.0f;
+    }
+    else if (ptd.type == PrimitiveType::CIRCLE) {
+      offset = math::sign(dif) * float2(1.0f / math::numbers::sqrt2) * math::length(dif) / 2.0f;
+    }
+  }
+
+  float2 center = start + offset;
+
+  if (event->modifier & KM_ALT && ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE)) {
+    center = start;
+    offset *= 2.0f;
+  }
+
   const float3 start_pos = ptd.placement_.project(start);
   const float3 end_pos = ptd.placement_.project(end);
 
   switch (ptd.type) {
     case PrimitiveType::BOX: {
-      const float2 dif = end - start;
-
-      float2 offset = dif / 2.0f;
-      if (event->modifier & KM_SHIFT) {
-        offset = math::sign(dif) * float2(std::max(math::abs(dif[0]), math::abs(dif[1]))) / 2.0f;
-      }
-
-      float2 center = start + offset;
-      if (event->modifier & KM_ALT) {
-        center = start;
-        offset *= 2.0f;
-      }
 
       ptd.control_points[0] = ptd.placement_.project(float2(-offset[0], offset[1]) + center);
       ptd.control_points[1] = ptd.placement_.project(center);
@@ -868,18 +875,6 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
       return;
     }
     case PrimitiveType::CIRCLE: {
-      const float2 dif = end - start;
-
-      float2 offset = dif / 2.0f;
-      if (event->modifier & KM_SHIFT) {
-        offset = math::sign(dif) * float2(1.0f / math::numbers::sqrt2) * math::length(dif) / 2.0f;
-      }
-
-      float2 center = start + offset;
-      if (event->modifier & KM_ALT) {
-        center = start;
-        offset *= 2.0f;
-      }
 
       ptd.control_points[0] = ptd.placement_.project(float2(offset[0], 0.0f) + center);
       ptd.control_points[1] = ptd.placement_.project(center);
