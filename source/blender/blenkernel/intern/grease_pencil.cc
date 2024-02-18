@@ -1364,10 +1364,7 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
   }
 
   ModifierApplyFlag apply_flag = use_render ? MOD_APPLY_RENDER : MOD_APPLY_USECACHE;
-
-  const bool has_lineart = BKE_grease_pencil_has_lineart_modifier(object);
-  LineartCache *lineart_cache = has_lineart ? MOD_lineart_init_cache() : nullptr;
-  const ModifierEvalContext mectx = {depsgraph, object, apply_flag, lineart_cache};
+  const ModifierEvalContext mectx = {depsgraph, object, apply_flag};
 
   BKE_modifiers_clear_errors(object);
 
@@ -1378,7 +1375,10 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
 
   bool is_first_lineart = true;
   GreasePencilLineartLimitInfo info;
-  if (has_lineart) {
+  GreasePencilLineartModifierData *first_lineart = BKE_grease_pencil_get_first_lineart_modifier(
+      object);
+  if (first_lineart) {
+    first_lineart->shared_cache = MOD_lineart_init_cache();
     info = BKE_grease_pencil_get_lineart_modifier_limits(object);
   }
 
@@ -1400,8 +1400,8 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
     }
   }
 
-  if (has_lineart) {
-    MOD_lineart_clear_cache(&lineart_cache);
+  if (first_lineart) {
+    MOD_lineart_clear_cache(&first_lineart->shared_cache);
   }
 }
 

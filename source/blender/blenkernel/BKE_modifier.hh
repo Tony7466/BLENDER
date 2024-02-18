@@ -160,9 +160,6 @@ struct ModifierEvalContext {
   Depsgraph *depsgraph;
   Object *object;
   ModifierApplyFlag flag;
-
-  /* Line Art modifier cache will exist until the end of modifier stack evaluation. */
-  struct ::LineartCache *lineart_cache = nullptr;
 };
 
 struct ModifierTypeInfo {
@@ -574,8 +571,6 @@ struct GreasePencilLineartLimitInfo {
   uint8_t silhouette_selection;
 };
 
-bool BKE_grease_pencil_has_lineart_modifier(const Object *ob);
-
 GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const Object *ob);
 
 void BKE_grease_pencil_set_lineart_modifier_limits(struct ModifierData *md,
@@ -583,6 +578,7 @@ void BKE_grease_pencil_set_lineart_modifier_limits(struct ModifierData *md,
                                                    bool is_first_lineart);
 bool BKE_grease_pencil_is_first_lineart_in_stack(const struct Object *ob,
                                                  const struct ModifierData *md);
+GreasePencilLineartModifierData *BKE_grease_pencil_get_first_lineart_modifier(const Object *ob);
 
 /* Accessors of original/evaluated modifiers. */
 

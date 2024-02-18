@@ -872,16 +872,6 @@ void BKE_modifier_path_init(char *path, int path_maxncpy, const char *name)
   BLI_path_join(path, path_maxncpy, blendfile_path[0] ? "//" : BKE_tempdir_session(), name);
 }
 
-bool BKE_grease_pencil_has_lineart_modifier(const Object *ob)
-{
-  LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-    if (md->type == eModifierType_GreasePencilLineart) {
-      return true;
-    }
-  }
-  return false;
-}
-
 GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const Object *ob)
 {
   GreasePencilLineartLimitInfo info = {0};
@@ -940,6 +930,16 @@ bool BKE_grease_pencil_is_first_lineart_in_stack(const Object *ob, const Modifie
     }
   }
   return false;
+}
+
+GreasePencilLineartModifierData *BKE_grease_pencil_get_first_lineart_modifier(const Object *ob)
+{
+  LISTBASE_FOREACH (ModifierData *, i_md, &ob->modifiers) {
+    if (i_md->type == eModifierType_GreasePencilLineart) {
+      return reinterpret_cast<GreasePencilLineartModifierData *>(i_md);
+    }
+  }
+  return nullptr;
 }
 
 /**

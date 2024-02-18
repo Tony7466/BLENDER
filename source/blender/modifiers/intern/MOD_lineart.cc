@@ -713,7 +713,13 @@ static void generate_strokes(ModifierData &md,
     return;
   }
 
-  LineartCache *local_lc = ctx.lineart_cache;
+  GreasePencilLineartModifierData *first_lineart = BKE_grease_pencil_get_first_lineart_modifier(
+      ctx.object);
+
+  /* It should not ever be possible to have first_lineart==nullptr when the modifier is running. */
+  BLI_assert(first_lineart);
+
+  LineartCache *local_lc = first_lineart->shared_cache;
 
   if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
     MOD_lineart_compute_feature_lines_v3(
@@ -764,12 +770,12 @@ static void generate_strokes(ModifierData &md,
 
   if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
     /* Clear local cache. */
-    if (local_lc != ctx.lineart_cache) {
+    if (local_lc != first_lineart->shared_cache) {
       MOD_lineart_clear_cache(&local_lc);
     }
     /* Restore the original cache pointer so the modifiers below still have access to the "global"
      * cache. */
-    lmd.cache = ctx.lineart_cache;
+    lmd.cache = first_lineart->shared_cache;
   }
 }
 

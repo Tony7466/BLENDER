@@ -3014,8 +3014,15 @@ typedef struct GreasePencilLineartModifierData {
 
   char _pad2[6];
 
-  struct LineartCache *cache;
-  /** Keep a pointer to the render buffer so we can call destroy from #ModifierData. */
-  struct LineartData *la_data_ptr;
+  /* Shared cache will only be on the first line art modifier in the stack, and will exist until
+   * the end of modifier stack evaluation. If the object has line art modifiers, this variable is
+   * then initialized in #grease_pencil_evaluate_modifiers(). */
+  struct LineartCache *shared_cache;
 
+  /* Cache for single execution of line art, when LINEART_GPENCIL_USE_CACHE is enabled, this is a
+   * reference to first_lineart->shared_cache, otherwise it holds its own cache.  */
+  struct LineartCache *cache;
+
+  /* Keep a pointer to the render buffer so we can call destroy from #ModifierData. */
+  struct LineartData *la_data_ptr;
 } GreasePencilLineartModifierData;
