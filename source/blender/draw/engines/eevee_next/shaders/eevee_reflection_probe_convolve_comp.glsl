@@ -10,6 +10,29 @@
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_mapping_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 
+/* Bypass convolution cascade and projection logic. */
+// #define ALWAYS_SAMPLE_CUBEMAP
+/* Debugging texel alignment. */
+// #define USE_PIXEL_CHECKERBOARD
+
+float roughness_from_relative_mip(float prev_mip_roughness, float curr_mip_roughness)
+{
+#ifdef ALWAYS_SAMPLE_CUBEMAP
+  /* For reference and debugging. */
+  return curr_mip_roughness;
+#else
+  /* From linear roughness to GGX roughness input. */
+  float m_prev = square(prev_mip_roughness);
+  float m_curr = square(curr_mip_roughness);
+  /* Given that spherical gaussians are very close to regular gaussian in 1D,
+   * we reuse the same rule for successive convolution (i.e: G(x,a) X G(x,b) = G(x,a+b)).
+   * While this isn't technically correct, this still works quite well in practice. */
+  float m_target = m_curr - m_prev;
+  /* From GGX roughness input to linear roughness. */
+  return sqrt(m_target);
+#endif
+}
+
 float cone_cosine_from_roughness(float linear_roughness)
 {
   /* From linear roughness to GGX roughness input. */
@@ -66,10 +89,15 @@ void main()
   }
 
   /* From mip to linear roughness (same as UI). */
-  float mip_roughness = sphere_probe_lod_to_roughness(float(read_lod + 1));
+  float prev_mip_roughness = sphere_probe_lod_to_roughness(float(read_lod));
+  float curr_mip_roughness = sphere_probe_lod_to_roughness(float(read_lod + 1));
+  /* In order to reduce the sample count, we sample the content of previous mip level.
+   * But this one has already been convolved. So we have to derive the equivalent roughness
+   * that produces the same result. */
+  float mip_roughness = roughness_from_relative_mip(prev_mip_roughness, curr_mip_roughness);
   /* Clamp to avoid numerical imprecision. */
-  mip_roughness = max(mip_roughness, BSDF_ROUGHNESS_THRESHOLD);
-  float cone_cos = cone_cosine_from_roughness(mip_roughness);
+  float mip_roughness_clamped = max(mip_roughness, BSDF_ROUGHNESS_THRESHOLD);
+  float cone_cos = cone_cosine_from_roughness(mip_roughness_clamped);
 
   vec3 out_direction = sphere_probe_texel_to_direction(
       out_local_texel, out_texel_area, sample_coord);
@@ -87,20 +115,20 @@ void main()
     vec2 rand = hammersley_2d(i, sample_count);
     vec3 in_direction = basis * sample_uniform_cone(rand, cone_cos);
 
-#if 0
+#ifndef ALWAYS_SAMPLE_CUBEMAP
     vec2 in_uv = sphere_probe_direction_to_uv(in_direction, float(read_lod), sample_coord);
     vec4 radiance = texture(in_atlas_mip_tx, vec3(in_uv, sample_coord.layer));
-#else /* For reference and debugging.  */
+#else /* For reference and debugging. */
     vec4 radiance = texture(cubemap_tx, in_direction);
 #endif
 
-    float weight = sample_weight(out_direction, in_direction, mip_roughness);
+    float weight = sample_weight(out_direction, in_direction, mip_roughness_clamped);
     radiance_accum += radiance * weight;
     weight_accum += weight;
   }
   vec4 out_radiance = radiance_accum * safe_rcp(weight_accum);
 
-#if 0 /* Debugging texel alignment. */
+#ifdef USE_PIXEL_CHECKERBOARD
   ivec2 a = out_texel % 2;
   out_radiance = vec4(a.x == a.y);
 #endif
