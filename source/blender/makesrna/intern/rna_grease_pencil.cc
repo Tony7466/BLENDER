@@ -163,8 +163,7 @@ static void rna_iterator_grease_pencil_frames_begin(CollectionPropertyIterator *
 
   // TODO
   // blender::Span<Frame *> frame = grease_pencil
-  blender::Span<Frames *> frames = grease_pencil->frames_for_write();
-
+  blender::Span<Frames *> frames = grease_pencil->frames();
   rna_iterator_array_begin(iter, (void *)groups.data(), sizeof(Frames *), frames.size(), nullptr);
 }
 
@@ -178,15 +177,9 @@ static void rna_iterator_grease_pencil_frames_end(CollectionPropertyIterator *it
 static void rna_iterator_grease_pencil_frames_length(CollectionPropertyIterator *iter,
                                                      PointerRNA *ptr)
 {
-  using namespace blender::bke::greasepencil;
   // TODO
-}
-
-static void rna_iterator_grease_pencil_frames_length(CollectionPropertyIterator *iter,
-                                                     PointerRNA *ptr)
-{
-  using namespace blender::bke::greasepencil;
-  // TODO
+  GreasePencil *grease_pencil = rna_grease_pencil(ptr);
+  return grease_pencil->frames().size();
 }
 
 static void rna_iterator_grease_pencil_frames_get(CollectionPropertyIterator *iter,
@@ -225,6 +218,10 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "GreasePencilLayer");
   RNA_def_struct_ui_text(srna, "Grease Pencil Layer", "Collection of related drawings");
   RNA_def_struct_path_func(srna, "rna_GreasePencilLayer_path");
+
+  // GreasePencilDrawing stub. TODO
+  prop = RNA_def_property(srna, "drawing", PROP_POINTER, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilDrawing");
 
   /* Frames */
   prop = RNA_def_property(srna, "frames", PROP_COLLECTION, PROP_NONE);
