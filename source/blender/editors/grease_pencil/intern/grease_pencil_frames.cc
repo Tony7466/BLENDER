@@ -411,26 +411,6 @@ static bool attributes_elements_are_equal(const bke::GAttributeReader &attrs_a,
       attrs_span_a.begin(), attrs_span_a.end(), attrs_span_b.begin(), attrs_span_b.end());
 }
 
-static std::optional<bke::CurvesGeometry *> get_gp_curves_geometry_from_frame_key(
-    GreasePencil &grease_pencil,
-    const bke::greasepencil::Layer *layer,
-    const bke::greasepencil::FramesMapKey key)
-{
-  using namespace blender::bke::greasepencil;
-
-  int index = layer->drawing_index_at(key);
-
-  GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(index);
-
-  if (drawing_base->type != GP_DRAWING) {
-    return std::nullopt;
-  }
-
-  Drawing &drawing = reinterpret_cast<GreasePencilDrawing *>(drawing_base)->wrap();
-
-  return &(drawing.strokes_for_write());
-}
-
 static bool curves_geometry_is_equal(const bke::CurvesGeometry &curves_a,
                                      const bke::CurvesGeometry &curves_b)
 {
@@ -513,16 +493,17 @@ static int frame_clean_duplicate_exec(bContext *C, wmOperator *op)
         continue;
       }
 
-      std::optional<bke::CurvesGeometry *> curves = get_gp_curves_geometry_from_frame_key(
-          grease_pencil, layer, current);
-      std::optional<bke::CurvesGeometry *> curves_next = get_gp_curves_geometry_from_frame_key(
-          grease_pencil, layer, next);
+      Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, current);
+      Drawing *drawing_next = grease_pencil.get_editable_drawing_at(layer, next);
 
-      if (!curves.has_value() || !curves_next.has_value()) {
+      if (!drawing || !drawing_next) {
         continue;
       }
 
-      if (!curves_geometry_is_equal(*curves.value(), *curves_next.value())) {
+      bke::CurvesGeometry &curves = drawing->strokes_for_write();
+      bke::CurvesGeometry &curves_next = drawing_next->strokes_for_write();
+
+      if (!curves_geometry_is_equal(curves, curves_next)) {
         continue;
       }
 
