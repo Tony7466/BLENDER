@@ -99,9 +99,14 @@ vec3 lightprobe_eval(LightProbeSample samp, ClosureTranslucent cl, vec3 P, vec3 
 
 vec3 lightprobe_reflection_dominant_dir(vec3 N, vec3 V, float roughness)
 {
+  /* From Frostbite PBR Course
+   * http://www.frostbite.com/wp-content/uploads/2014/11/course_notes_moving_frostbite_to_pbr.pdf
+   * Listing 22.
+   * Note that the reference labels squared roughness (GGX input) as roughness. */
+  float m = square(roughness);
   vec3 R = -reflect(V, N);
-  float smoothness = 1.0 - roughness;
-  float fac = smoothness * (sqrt(smoothness) + roughness);
+  float smoothness = 1.0 - m;
+  float fac = smoothness * (sqrt(smoothness) + m);
   return normalize(mix(N, R, fac));
 }
 
@@ -120,9 +125,12 @@ vec3 lightprobe_eval(LightProbeSample samp, ClosureReflection reflection, vec3 P
 
 vec3 lightprobe_refraction_dominant_dir(vec3 N, vec3 V, float ior, float roughness)
 {
+  /* Reusing same thing as lightprobe_reflection_dominant_dir for now.
+   * TODO(fclem): Find something better that take IOR and roughness into account. */
+  float m = square(roughness);
   vec3 R = refract(-V, N, 1.0 / ior);
-  float smoothness = 1.0 - roughness;
-  float fac = smoothness * (sqrt(smoothness) + roughness);
+  float smoothness = 1.0 - m;
+  float fac = smoothness * (sqrt(smoothness) + m);
   return normalize(mix(-N, R, fac));
 }
 
