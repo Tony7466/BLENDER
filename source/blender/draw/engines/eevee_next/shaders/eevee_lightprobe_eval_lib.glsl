@@ -85,20 +85,6 @@ vec3 lightprobe_eval_direction(LightProbeSample samp, vec3 P, vec3 L, float pdf)
   return radiance_sh;
 }
 
-float lightprobe_roughness_to_cube_sh_mix_fac(float roughness)
-{
-  /* Temporary. Do something better. */
-  return square(saturate(roughness * 4.0 - 2.0));
-}
-
-float lightprobe_roughness_to_lod(float roughness)
-{
-  /* From "Moving Frostbite to Physically Based Rendering 3.0" eq 53.
-   * Inversed for baking probes.
-   * Use 0.75 for last mip as we fade towards volume probes for higher roughness. */
-  return sqrt_fast(saturate(roughness / 0.75)) * float(SPHERE_PROBE_MIPMAP_LEVELS - 1);
-}
-
 vec3 lightprobe_eval(LightProbeSample samp, ClosureDiffuse cl, vec3 P, vec3 V)
 {
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(cl.N, samp.volume_irradiance);
@@ -123,11 +109,11 @@ vec3 lightprobe_eval(LightProbeSample samp, ClosureReflection reflection, vec3 P
 {
   vec3 L = lightprobe_reflection_dominant_dir(reflection.N, V, reflection.roughness);
 
-  float lod = lightprobe_roughness_to_lod(reflection.roughness);
+  float lod = sphere_probe_roughness_to_lod(reflection.roughness);
   vec3 radiance_cube = lightprobe_spherical_sample_normalized_with_parallax(
       samp.spherical_id, P, L, lod, samp.volume_irradiance);
 
-  float fac = lightprobe_roughness_to_cube_sh_mix_fac(reflection.roughness);
+  float fac = sphere_probe_roughness_to_mix_fac(reflection.roughness);
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(L, samp.volume_irradiance);
   return mix(radiance_cube, radiance_sh, fac);
 }
@@ -144,11 +130,11 @@ vec3 lightprobe_eval(LightProbeSample samp, ClosureRefraction cl, vec3 P, vec3 V
 {
   vec3 L = lightprobe_refraction_dominant_dir(cl.N, V, cl.ior, cl.roughness);
 
-  float lod = lightprobe_roughness_to_lod(cl.roughness);
+  float lod = sphere_probe_roughness_to_lod(cl.roughness);
   vec3 radiance_cube = lightprobe_spherical_sample_normalized_with_parallax(
       samp.spherical_id, P, L, lod, samp.volume_irradiance);
 
-  float fac = lightprobe_roughness_to_cube_sh_mix_fac(cl.roughness);
+  float fac = sphere_probe_roughness_to_mix_fac(cl.roughness);
   vec3 radiance_sh = spherical_harmonics_evaluate_lambert(L, samp.volume_irradiance);
   return mix(radiance_cube, radiance_sh, fac);
 }

@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_fast_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_octahedron_lib.glsl)
 
 SphereProbePixelArea reinterpret_as_write_coord(ivec4 packed_coord)
@@ -88,4 +90,27 @@ vec2 sphere_probe_direction_to_uv(vec3 L, float lod, SphereProbeUvArea uv_area)
   vec2 altas_uv_min, altas_uv_max_unused;
   sphere_probe_direction_to_uv(L, lod, 0.0, uv_area, altas_uv_min, altas_uv_max_unused);
   return altas_uv_min;
+}
+
+float sphere_probe_roughness_to_mix_fac(float roughness)
+{
+  const float scale = 1.0 / (SPHERE_PROBE_MIX_END_ROUGHNESS - SPHERE_PROBE_MIX_START_ROUGHNESS);
+  const float bias = scale * SPHERE_PROBE_MIX_START_ROUGHNESS;
+  return square(saturate(roughness * scale - bias));
+}
+
+/* Input roughness is linear roughness (UI roughness). */
+float sphere_probe_roughness_to_lod(float roughness)
+{
+  /* From "Moving Frostbite to Physically Based Rendering 3.0" eq 53. */
+  return sqrt_fast(saturate(roughness / SPHERE_PROBE_MIP_MAX_ROUGHNESS)) *
+         float(SPHERE_PROBE_MIPMAP_LEVELS - 1);
+}
+
+/* Return linear roughness (UI roughness). */
+float sphere_probe_lod_to_roughness(float lod)
+{
+  /* Inverse of sphere_probe_roughness_to_lod. */
+  float mip_ratio = lod / float(SPHERE_PROBE_MIPMAP_LEVELS - 1);
+  return square(mip_ratio * SPHERE_PROBE_MIP_MAX_ROUGHNESS);
 }

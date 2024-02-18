@@ -17,11 +17,8 @@ float sample_weight(vec3 out_direction, vec3 in_direction)
 
   float cos_theta = clamp(dot(out_direction, in_direction), 0.0, 1.0);
 
-  /* From "Moving Frostbite to Physically Based Rendering 3.0" eq 53 (inversed). */
-  float mip_ratio = float(read_lod + 1) / float(SPHERE_PROBE_MIPMAP_LEVELS - 1);
-  /* Use 0.75 for last mip as we fade towards volume probes for higher roughness. */
-  /* From mip ratio to linear roughness (same as UI). */
-  float mip_roughness = square(mip_ratio * 0.75);
+  /* From mip to linear roughness (same as UI). */
+  float mip_roughness = sphere_probe_lod_to_roughness(float(read_lod + 1));
   /* Clamp to avoid numerical imprecision. */
   mip_roughness = max(mip_roughness, BSDF_ROUGHNESS_THRESHOLD);
   /* From linear roughness to GGX roughness input. */
