@@ -869,16 +869,16 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
   switch (ptd.type) {
     case PrimitiveType::BOX: {
 
-      ptd.control_points[0] = ptd.placement_.project(float2(-offset[0], offset[1]) + center);
+      ptd.control_points[0] = ptd.placement_.project(offset * float2(-1.0f, 1.0f) + center);
       ptd.control_points[1] = ptd.placement_.project(center);
-      ptd.control_points[2] = ptd.placement_.project(float2(offset[0], offset[1]) + center);
+      ptd.control_points[2] = ptd.placement_.project(offset * float2(1.0f, 1.0f) + center);
       return;
     }
     case PrimitiveType::CIRCLE: {
 
-      ptd.control_points[0] = ptd.placement_.project(float2(offset[0], 0.0f) + center);
+      ptd.control_points[0] = ptd.placement_.project(offset * float2(1.0f, 0.0f) + center);
       ptd.control_points[1] = ptd.placement_.project(center);
-      ptd.control_points[2] = ptd.placement_.project(float2(0.0f, offset[1]) + center);
+      ptd.control_points[2] = ptd.placement_.project(offset * float2(0.0f, 1.0f) + center);
       return;
     }
     case PrimitiveType::POLYLINE:
