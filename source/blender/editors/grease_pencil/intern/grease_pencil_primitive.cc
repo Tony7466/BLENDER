@@ -1089,7 +1089,7 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
         }
 
         if (ptd.type == PrimitiveType::POLYLINE &&
-            ELEM(ptd.mode, OperatorMode::IDLE, OperatorMode::EXTRUDING) && event->val == KM_PRESS)
+            ELEM(ptd.mode, OperatorMode::IDLE, OperatorMode::EXTRUDING))
         {
           ptd.mode = OperatorMode::EXTRUDING;
           ptd.start_position_2d = ED_view3d_project_float_v2_m4(
@@ -1100,6 +1100,8 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
 
           break;
         }
+
+        break;
       }
       // case int(ModelKeyMode::LEFTCLICK): {
       //   printf("LEFTCLICK\n");
