@@ -253,6 +253,7 @@ class ProximityFunction : public mf::MultiFunction {
         BVHTreeFromMesh &bvh = bvh_trees_[group_i].mesh_bvh;
         switch (type_) {
           case GEO_NODE_PROX_TARGET_POINTS: {
+            BKE_bvhtree_from_mesh_verts_init(mesh, group_mask, bvh);
             break;
           }
           case GEO_NODE_PROX_TARGET_EDGES: {

@@ -126,6 +126,10 @@ void BKE_bvhtree_from_mesh_edges_init(const Mesh &mesh,
                                       const blender::IndexMask &edges_mask,
                                       BVHTreeFromMesh &r_data);
 
+void BKE_bvhtree_from_mesh_verts_init(const Mesh &mesh,
+                                      const blender::IndexMask &verts_mask,
+                                      BVHTreeFromMesh &r_data);
+
 /**
  * Frees data allocated by a call to `bvhtree_from_mesh_*`.
  */
