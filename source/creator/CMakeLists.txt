@@ -327,7 +327,8 @@ if(WITH_PYTHON_MODULE)
 
 else()
   add_executable(blender ${EXETYPE} ${SRC})
-  if(NOT APPLE)
+  if(WITH_CPU_CHECK)
+    target_compile_definitions(blender PRIVATE WITH_CPU_CHECK)
     # we cannot directly link against any blender libraries for the cpu_check module
     # as they may have been build for an ISA that is unsupported by the CPU
     # running this code.
@@ -714,10 +715,12 @@ if(UNIX AND NOT APPLE)
       DESTINATION "."
     )
 
-    install(
-      TARGETS blender_cpu_check
-      DESTINATION "./lib"
-    )
+    if(WITH_CPU_CHECK)
+      install(
+        TARGETS blender_cpu_check
+        DESTINATION "./lib"
+      )
+    endif()
 
     install(
       FILES
@@ -1874,10 +1877,17 @@ endif()
 if(WIN32 AND NOT WITH_PYTHON_MODULE)
   set(BLENDER_BIN "blender.exe")
   install(
-    TARGETS blender blender-launcher blender_cpu_check
+    TARGETS blender blender-launcher
     COMPONENT Blender
     DESTINATION "."
   )
+  if(WITH_CPU_CHECK)
+    install(
+      TARGETS blender_cpu_check
+      COMPONENT Blender
+      DESTINATION "."
+    )
+  endif()
   set_target_properties(
     blender
     PROPERTIES

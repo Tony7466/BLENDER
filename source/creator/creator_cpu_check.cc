@@ -64,7 +64,7 @@ static const char *cpu_brand_string(void)
 }
 
 #ifdef _MSC_VER
-extern "C" __declspec(dllexport) void cpu_check_win()
+extern "C" __declspec(dllexport) void cpu_check_win32()
 {
 #  ifdef _M_X64
   if (!cpu_supports_sse42()) {
@@ -82,7 +82,7 @@ BOOL WINAPI DllMain(HINSTANCE /* hinstDLL */, DWORD fdwReason, LPVOID /* lpvRese
 {
   switch (fdwReason) {
     case DLL_PROCESS_ATTACH:
-      cpu_check_win();
+      cpu_check_win32();
       break;
   }
   return TRUE;
