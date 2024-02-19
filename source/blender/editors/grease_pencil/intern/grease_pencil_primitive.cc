@@ -127,6 +127,7 @@ struct PrimitiveTool_OpData {
   BrushGpencilSettings *settings_;
   float4 vertex_color_;
   int material_index;
+  float hardness;
   Brush *brush_;
 
   OperatorMode mode;
@@ -496,12 +497,18 @@ static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
       "material_index", bke::AttrDomain::Curve);
   bke::SpanAttributeWriter<bool> cyclic = attributes.lookup_or_add_for_write_span<bool>(
       "cyclic", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<float> hardnesses = attributes.lookup_or_add_for_write_span<float>(
+      "hardness",
+      bke::AttrDomain::Curve,
+      bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
 
   cyclic.span.last() = ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE);
   materials.span.last() = ptd.material_index;
+  hardnesses.span.last() = ptd.hardness;
 
   cyclic.finish();
   materials.finish();
+  hardnesses.finish();
 
   curves.curve_types_for_write().last() = CURVE_TYPE_POLY;
   curves.update_curve_types();
@@ -513,7 +520,7 @@ static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
                                     curves.points_range().take_back(1));
   bke::fill_attribute_range_default(attributes,
                                     bke::AttrDomain::Curve,
-                                    {"curve_type", "material_index", "cyclic"},
+                                    {"curve_type", "material_index", "cyclic", "hardness"},
                                     curves.curves_range().take_back(1));
 
   grease_pencil_primitive_update_curves(ptd);
@@ -733,6 +740,9 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
                                                        ptd.settings_->vertex_factor) :
                                                 float4(0.0f);
   srgb_to_linearrgb_v4(ptd.vertex_color_, ptd.vertex_color_);
+
+  /* TODO: Add UI. */
+  ptd.hardness = 1.0f;
 
   BLI_assert(grease_pencil->has_active_layer());
   ptd.drawing_ = grease_pencil->get_editable_drawing_at(*grease_pencil->get_active_layer(),
