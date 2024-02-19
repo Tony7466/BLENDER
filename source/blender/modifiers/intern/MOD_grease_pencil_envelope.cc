@@ -38,8 +38,6 @@
 #include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
-#include <iostream>
-
 namespace blender {
 
 static void init_data(ModifierData *md)
@@ -433,7 +431,6 @@ static void create_envelope_stroke_for_point(const IndexRange src_curve_points,
                               math::clamp(index, 0, point_num - 1);
   };
 
-  std::cout << "  Envelope ";
   for (const int i : IndexRange(base_length)) {
     const int reverse_i = base_length - 1 - i;
     const int point_left = get_index(point - spread + reverse_i);
@@ -441,7 +438,6 @@ static void create_envelope_stroke_for_point(const IndexRange src_curve_points,
     point_src_indices[i] = src_curve_points[point_left];
     point_src_indices[base_length + i] = src_curve_points[point_right];
   }
-  std::cout << std::endl;
 }
 
 static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
@@ -469,9 +465,6 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
 
   curve_src_indices.fill(src_curve_index);
 
-  std::cout << "Strokes for curve " << src_curve_index << " points=" << src_curve_points
-            << " dst_points=" << dst_points << ": " << std::endl;
-
   /*
    * Index range here goes beyond the point range:
    * This adds points [i - spread, i + 1] as a curve.
@@ -488,8 +481,6 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
     material_indices[i] = info.material_index >= 0 ? info.material_index :
                                                      src_material_indices[src_curve_index];
 
-    // std::cout << "  Envelope " << i << ": dst_envelope_points=" << dst_envelope_points
-    //           << std::endl;
     create_envelope_stroke_for_point(src_curve_points,
                                      src_curve_cyclic,
                                      i,
@@ -573,7 +564,6 @@ static void create_envelope_strokes(const EnvelopeInfo &info,
                                       src_curve_indices.as_mutable_span().slice(envelope_curves),
                                       src_point_indices.as_mutable_span().slice(envelope_points));
   });
-  std::flush(std::cout);
   dst_curves.offsets_for_write().last() = dst_point_num;
 
   bke::gather_attributes(
