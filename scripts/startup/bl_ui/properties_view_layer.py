@@ -369,12 +369,15 @@ class VIEWLAYER_PT_layer_dependency_graph(Panel):
         col = layout.column()
 
         if is_depsgraph_mode_in_viewport_mode:
-            col.operator("scene.view_layer_evaluation_mode_set", text="Switch to Render Resolution").mode = 'RENDER'
+            col.operator("scene.view_layer_evaluation_mode_set",
+                         text="Switch to Render Mode").mode = 'RENDER'
         else:
-            col.alert = True
-            col.operator(
+            sub = col.column()
+            sub.alert = True
+            sub.operator(
                 "scene.view_layer_evaluation_mode_set",
-                text="Switch to Viewport Resolution").mode = 'VIEWPORT'
+                text="Switch to Viewport Mode").mode = 'VIEWPORT'
+            col.label(text="Editors are using render resolution and visibility", icon='ERROR')
 
 
 classes = (

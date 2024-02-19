@@ -19,12 +19,6 @@ class STATUSBAR_HT_header(Header):
         # Messages
         layout.template_reports_banner()
 
-        # Warning when the dependency graph is in rendered mode.
-        depsgraph = context.view_layer.depsgraph
-        is_depsgraph_mode_in_viewport_mode = (depsgraph is None) or (depsgraph.mode == 'VIEWPORT')
-        if not is_depsgraph_mode_in_viewport_mode:
-            layout.label(text="Editors are using render resolution and visibility", icon='ERROR')
-
         layout.separator_spacer()
 
         # Progress Bar
@@ -34,6 +28,12 @@ class STATUSBAR_HT_header(Header):
 
         row = layout.row()
         row.alignment = 'RIGHT'
+
+        # Warning when the dependency graph is in rendered mode.
+        depsgraph = context.view_layer.depsgraph
+        is_depsgraph_mode_in_viewport_mode = (depsgraph is None) or (depsgraph.mode == 'VIEWPORT')
+        if not is_depsgraph_mode_in_viewport_mode:
+            layout.label(text="Render Evaluation Mode", icon='ERROR')
 
         # Stats & Info
         layout.template_status_info()
