@@ -77,6 +77,10 @@ void Film::init_aovs()
     hash = BLI_hash_string(aov->name);
     index++;
   }
+
+  if (!aovs.is_empty()) {
+    enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ | PASS_CATEGORY_AOV);
+  }
 }
 
 float *Film::read_aov(ViewLayerAOV *aov)
@@ -209,6 +213,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
   Scene &scene = *inst_.scene;
   SceneEEVEE &scene_eevee = scene.eevee;
 
+  enabled_categories_ = ePassCategoryType(0);
   init_aovs();
 
   {
@@ -273,22 +278,34 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     const eViewLayerEEVEEPassType data_passes = EEVEE_RENDER_PASS_Z | EEVEE_RENDER_PASS_NORMAL |
                                                 EEVEE_RENDER_PASS_POSITION |
                                                 EEVEE_RENDER_PASS_VECTOR;
-    const eViewLayerEEVEEPassType color_passes_1 = EEVEE_RENDER_PASS_DIFFUSE_LIGHT |
-                                                   EEVEE_RENDER_PASS_SPECULAR_LIGHT |
-                                                   EEVEE_RENDER_PASS_VOLUME_LIGHT |
-                                                   EEVEE_RENDER_PASS_EMIT;
-    const eViewLayerEEVEEPassType color_passes_2 = EEVEE_RENDER_PASS_DIFFUSE_COLOR |
-                                                   EEVEE_RENDER_PASS_SPECULAR_COLOR |
-                                                   EEVEE_RENDER_PASS_ENVIRONMENT |
-                                                   EEVEE_RENDER_PASS_MIST |
-                                                   EEVEE_RENDER_PASS_SHADOW | EEVEE_RENDER_PASS_AO;
-    const eViewLayerEEVEEPassType color_passes_3 = EEVEE_RENDER_PASS_TRANSPARENT;
+    const eViewLayerEEVEEPassType light_passes = EEVEE_RENDER_PASS_DIFFUSE_LIGHT |
+                                                 EEVEE_RENDER_PASS_SPECULAR_LIGHT |
+                                                 EEVEE_RENDER_PASS_VOLUME_LIGHT |
+                                                 EEVEE_RENDER_PASS_EMIT;
+    const eViewLayerEEVEEPassType color_passes = EEVEE_RENDER_PASS_DIFFUSE_COLOR |
+                                                 EEVEE_RENDER_PASS_SPECULAR_COLOR |
+                                                 EEVEE_RENDER_PASS_ENVIRONMENT |
+                                                 EEVEE_RENDER_PASS_MIST |
+                                                 EEVEE_RENDER_PASS_SHADOW | EEVEE_RENDER_PASS_AO;
+    const eViewLayerEEVEEPassType transparent_passes = EEVEE_RENDER_PASS_TRANSPARENT;
 
     data_.exposure_scale = pow2f(scene.view_settings.exposure);
-    data_.has_data = (enabled_passes_ & data_passes) != 0;
-    data_.any_render_pass_1 = (enabled_passes_ & color_passes_1) != 0;
-    data_.any_render_pass_2 = (enabled_passes_ & color_passes_2) != 0;
-    data_.any_render_pass_3 = (enabled_passes_ & color_passes_3) != 0;
+    if (enabled_passes_ & data_passes) {
+      enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ |
+                                                           PASS_CATEGORY_DATA);
+    }
+    if (enabled_passes_ & light_passes) {
+      enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ |
+                                                           PASS_CATEGORY_LIGHT);
+    }
+    if (enabled_passes_ & color_passes) {
+      enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ |
+                                                           PASS_CATEGORY_COLOR);
+    }
+    if (enabled_passes_ & transparent_passes) {
+      enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ |
+                                                           PASS_CATEGORY_TRANSPARENT);
+    }
   }
   {
     /* Set pass offsets. */
@@ -358,6 +375,14 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data_.cryptomatte_object_id = cryptomatte_index_get(EEVEE_RENDER_PASS_CRYPTOMATTE_OBJECT);
     data_.cryptomatte_asset_id = cryptomatte_index_get(EEVEE_RENDER_PASS_CRYPTOMATTE_ASSET);
     data_.cryptomatte_material_id = cryptomatte_index_get(EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL);
+
+    if ((enabled_passes_ &
+         (EEVEE_RENDER_PASS_CRYPTOMATTE_ASSET | EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL |
+          EEVEE_RENDER_PASS_CRYPTOMATTE_OBJECT)) != 0)
+    {
+      enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ |
+                                                           PASS_CATEGORY_CRYPTOMATTE);
+    }
   }
   {
     int2 weight_extent = inst_.camera.is_panoramic() ? data_.extent : int2(data_.scaling_factor);
@@ -427,7 +452,7 @@ void Film::sync()
   accumulate_ps_.init();
   /* Casts are needed otherwise it will be interpreted as a bool value. */
   accumulate_ps_.specialize_constant(
-      sh, "enabled_passes", static_cast<uint *>(static_cast<void *>(&enabled_passes_)));
+      sh, "enabled_categories", static_cast<uint *>(static_cast<void *>(&enabled_categories_)));
   accumulate_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
   accumulate_ps_.shader_set(sh);
   accumulate_ps_.bind_resources(inst_.uniform_data);

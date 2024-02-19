@@ -240,29 +240,13 @@ enum ePassStorageType : uint32_t {
   PASS_STORAGE_CRYPTOMATTE = 2u,
 };
 
-/* Keep in sync with eViewLayerEEVEEPassType. */
-/* TODO: We should avoid to sync these values. */
-enum ePassType : uint32_t {
-  PASS_TYPE_COMBINED = 1u << 0,
-  PASS_TYPE_Z = 1u << 1,
-  PASS_TYPE_MIST = 1u << 2,
-  PASS_TYPE_NORMAL = 1u << 3,
-  PASS_TYPE_DIFFUSE_LIGHT = 1u << 4,
-  PASS_TYPE_DIFFUSE_COLOR = 1u << 5,
-  PASS_TYPE_SPECULAR_LIGHT = 1u << 6,
-  PASS_TYPE_SPECULAR_COLOR = 1u << 7,
-  PASS_TYPE_VOLUME_LIGHT = 1u << 9,
-  PASS_TYPE_EMIT = 1u << 10,
-  PASS_TYPE_ENVIRONMENT = 1u << 11,
-  PASS_TYPE_SHADOW = 1u << 12,
-  PASS_TYPE_AO = 1u << 13,
-  PASS_TYPE_AOV = 1u << 14,
-  PASS_TYPE_CRYPTOMATTE_OBJECT = 1u << 16,
-  PASS_TYPE_CRYPTOMATTE_ASSET = 1u << 17,
-  PASS_TYPE_CRYPTOMATTE_MATERIAL = 1u << 18,
-  PASS_TYPE_VECTOR = 1u << 19,
-  PASS_TYPE_TRANSPARENT = 1u << 20,
-  PASS_TYPE_POSITION = 1u << 21,
+enum ePassCategoryType : uint32_t {
+  PASS_CATEGORY_DATA = 1u << 0,
+  PASS_CATEGORY_LIGHT = 1u << 1,
+  PASS_CATEGORY_COLOR = 1u << 2,
+  PASS_CATEGORY_TRANSPARENT = 1u << 3,
+  PASS_CATEGORY_AOV = 1u << 4,
+  PASS_CATEGORY_CRYPTOMATTE = 1u << 5,
 };
 
 struct FilmSample {
@@ -296,12 +280,6 @@ struct FilmData {
   bool1 use_history;
   /** Is true if combined buffer is valid and can be re-projected to reduce variance. */
   bool1 use_reprojection;
-  /** Is true if accumulation of non-filtered passes is needed. */
-  bool1 has_data;
-  /** Is true if accumulation of filtered passes is needed. */
-  bool1 any_render_pass_1;
-  bool1 any_render_pass_2;
-  bool1 any_render_pass_3;
   /** Controlled by user in lookdev mode or by render settings. */
   float background_opacity;
   /** Output counts per type. */

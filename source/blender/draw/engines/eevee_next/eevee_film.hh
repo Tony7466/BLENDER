@@ -79,6 +79,7 @@ class Film {
   int2 display_extent;
 
   eViewLayerEEVEEPassType enabled_passes_ = eViewLayerEEVEEPassType(0);
+  ePassCategoryType enabled_categories_ = ePassCategoryType(0);
 
  public:
   Film(Instance &inst, FilmData &data) : inst_(inst), data_(data){};
