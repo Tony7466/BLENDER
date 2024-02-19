@@ -116,36 +116,36 @@ static float hook_falloff(const float falloff,
   if (len_sq > falloff_sq) {
     return 0.0f;
   }
-  if (len_sq > 0.0f) {
-    if (falloff_type == MOD_GREASE_PENCIL_HOOK_Falloff_Const) {
-      return fac_orig;
-    }
-    else if (falloff_type == MOD_GREASE_PENCIL_HOOK_Falloff_InvSquare) {
-      /* Avoid sqrt below. */
-      return (1.0f - (len_sq / falloff_sq)) * fac_orig;
-    }
-
-    float fac = 1.0f - (math::sqrt(len_sq) / falloff);
-
-    switch (falloff_type) {
-      case MOD_GREASE_PENCIL_HOOK_Falloff_Curve:
-        return BKE_curvemapping_evaluateF(curfalloff, 0, fac) * fac_orig;
-      case MOD_GREASE_PENCIL_HOOK_Falloff_Sharp:
-        return fac * fac * fac_orig;
-      case MOD_GREASE_PENCIL_HOOK_Falloff_Smooth:
-        return (3.0f * fac * fac - 2.0f * fac * fac * fac) * fac_orig;
-      case MOD_GREASE_PENCIL_HOOK_Falloff_Root:
-        return math::sqrt(fac) * fac_orig;
-        ;
-        break;
-      case MOD_GREASE_PENCIL_HOOK_Falloff_Sphere:
-        return math::sqrt(2 * fac - fac * fac) * fac_orig;
-      case MOD_GREASE_PENCIL_HOOK_Falloff_Linear: /* Pass. */
-      default:
-        return fac * fac_orig;
-    }
+  if (len_sq <= 0.0f) {
+    return fac_orig;
   }
-  return fac_orig;
+  if (falloff_type == MOD_GREASE_PENCIL_HOOK_Falloff_Const) {
+    return fac_orig;
+  }
+  else if (falloff_type == MOD_GREASE_PENCIL_HOOK_Falloff_InvSquare) {
+    /* Avoid sqrt below. */
+    return (1.0f - (len_sq / falloff_sq)) * fac_orig;
+  }
+
+  float fac = 1.0f - (math::sqrt(len_sq) / falloff);
+
+  switch (falloff_type) {
+    case MOD_GREASE_PENCIL_HOOK_Falloff_Curve:
+      return BKE_curvemapping_evaluateF(curfalloff, 0, fac) * fac_orig;
+    case MOD_GREASE_PENCIL_HOOK_Falloff_Sharp:
+      return fac * fac * fac_orig;
+    case MOD_GREASE_PENCIL_HOOK_Falloff_Smooth:
+      return (3.0f * fac * fac - 2.0f * fac * fac * fac) * fac_orig;
+    case MOD_GREASE_PENCIL_HOOK_Falloff_Root:
+      return math::sqrt(fac) * fac_orig;
+      break;
+    case MOD_GREASE_PENCIL_HOOK_Falloff_Sphere:
+      return math::sqrt(2 * fac - fac * fac) * fac_orig;
+    case MOD_GREASE_PENCIL_HOOK_Falloff_Linear:
+      ATTR_FALLTHROUGH; /* Pass. */
+    default:
+      return fac * fac_orig;
+  }
 }
 
 static void deform_drawing(const ModifierData &md,
@@ -171,8 +171,8 @@ static void deform_drawing(const ModifierData &md,
   const float falloff = (mmd.falloff_type == eHook_Falloff_None) ? 0.0f : mmd.falloff;
   const float falloff_sq = square_f(falloff);
   const float fac_orig = mmd.force;
-  bool use_falloff = falloff_sq != 0.0f;
-  bool use_uniform = (mmd.flag & MOD_GRAESE_PENCIL_HOOK_UNIFORM_SPACE) != 0;
+  const bool use_falloff = falloff_sq != 0.0f;
+  const bool use_uniform = (mmd.flag & MOD_GRAESE_PENCIL_HOOK_UNIFORM_SPACE) != 0;
 
   float3x3 mat_uniform;
   float3 cent;
@@ -239,8 +239,8 @@ static void deform_drawing(const ModifierData &md,
         fac = fac_orig;
       }
 
-      if (fac) {
-        float3 co_tmp = math::transform_point(use_mat, positions[point]);
+      if (fac != 0.0f) {
+        const float3 co_tmp = math::transform_point(use_mat, positions[point]);
         positions[point] = math::interpolate(positions[point], co_tmp, fac * weight);
       }
     }
