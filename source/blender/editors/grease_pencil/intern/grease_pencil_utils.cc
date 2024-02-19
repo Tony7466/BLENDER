@@ -335,61 +335,71 @@ Array<Vector<MutableDrawingInfo>> retrieve_editable_drawings_grouped_per_frame(
     BKE_curvemapping_init(toolsettings->gp_sculpt.cur_falloff);
   }
 
-  /* Get set of unique frame numbers with editable drawings on them.
-   * Note: we want an ordered list here, so we use `set` from STL, not the unordered Set from
-   * Blender. */
-  std::set<int> selected_frames;
+  /* Get a set of unique frame numbers with editable drawings on them. */
+  VectorSet<int> selected_frames;
+  int frame_min = current_frame, frame_max = current_frame;
   Span<const Layer *> layers = grease_pencil.layers();
-  for (const int layer_i : layers.index_range()) {
-    const Layer &layer = *layers[layer_i];
-    if (!layer.is_editable()) {
-      continue;
-    }
-    const Array<int> frame_numbers = get_frame_numbers_for_layer(
-        layer, current_frame, use_multi_frame_editing);
-    for (const int frame_number : frame_numbers) {
-      selected_frames.insert(frame_number);
-    }
-  }
-  if (selected_frames.empty()) {
-    return {};
-  }
-  const int frame_min = *selected_frames.begin();
-  const int frame_max = *selected_frames.rbegin();
-  current_frame = math::clamp(current_frame, frame_min, frame_max);
-
-  /* Get drawings grouped per frame. */
-  Array<Vector<MutableDrawingInfo>> drawings_grouped_per_frame(selected_frames.size());
-  int frame_group = 0;
-  for (const int group_frame_number : selected_frames) {
-    float falloff = 1.0f;
-    if (use_multi_frame_falloff) {
-      falloff = get_multi_frame_falloff(group_frame_number,
-                                        current_frame,
-                                        frame_min,
-                                        frame_max,
-                                        toolsettings->gp_sculpt.cur_falloff);
-    }
-
+  if (use_multi_frame_editing) {
     for (const int layer_i : layers.index_range()) {
       const Layer &layer = *layers[layer_i];
       if (!layer.is_editable()) {
         continue;
       }
+      for (const auto [frame_number, frame] : layer.frames().items()) {
+        if (frame_number != current_frame && frame.is_selected()) {
+          selected_frames.add(frame_number);
+          frame_min = math::min(frame_min, frame_number);
+          frame_max = math::max(frame_max, frame_number);
+        }
+      }
+    }
+  }
+  selected_frames.add(current_frame);
 
-      /* Look for drawing at the group frame number. */
-      for (const auto [layer_frame_number, frame] : layer.frames().items()) {
-        if (layer_frame_number != group_frame_number || !frame.is_selected()) {
+  /* Get multi frame falloff factor per selected frame. */
+  Array<float> falloff_per_selected_frame(selected_frames.size(), 1.0f);
+  if (use_multi_frame_falloff) {
+    int frame_group = 0;
+    for (const int frame_number : selected_frames) {
+      falloff_per_selected_frame[frame_group] = get_multi_frame_falloff(
+          frame_number, current_frame, frame_min, frame_max, toolsettings->gp_sculpt.cur_falloff);
+      frame_group++;
+    }
+  }
+
+  /* Get drawings grouped per frame. */
+  Array<Vector<MutableDrawingInfo>> drawings_grouped_per_frame(selected_frames.size());
+  Set<int> added_drawings;
+  for (const int layer_i : layers.index_range()) {
+    const Layer &layer = *layers[layer_i];
+    if (!layer.is_editable()) {
+      continue;
+    }
+    /* In multi frame editing mode, add drawings at selected frames. */
+    if (use_multi_frame_editing) {
+      for (const auto [frame_number, frame] : layer.frames().items()) {
+        if (!frame.is_selected() || added_drawings.contains(frame.drawing_index)) {
           continue;
         }
-        if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, layer_frame_number)) {
+        if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number)) {
+          const int frame_group = selected_frames.index_of(frame_number);
           drawings_grouped_per_frame[frame_group].append(
-              {*drawing, layer_i, layer_frame_number, falloff});
+              {*drawing, layer_i, frame_number, falloff_per_selected_frame[frame_group]});
+          added_drawings.add(frame.drawing_index);
         }
       }
     }
 
-    frame_group++;
+    /* Add drawing at current frame. */
+    const int drawing_index_current_frame = layer.drawing_index_at(current_frame);
+    if (!added_drawings.contains(drawing_index_current_frame)) {
+      if (Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, current_frame)) {
+        const int frame_group = selected_frames.index_of(current_frame);
+        drawings_grouped_per_frame[frame_group].append(
+            {*drawing, layer_i, current_frame, falloff_per_selected_frame[frame_group]});
+        added_drawings.add(drawing_index_current_frame);
+      }
+    }
   }
 
   return drawings_grouped_per_frame;
