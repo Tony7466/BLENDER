@@ -7,6 +7,7 @@
 
 #include "BKE_bvhutils.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_mesh.hh"
 
 #include "DNA_pointcloud_types.h"
 
@@ -148,7 +149,7 @@ class ProximityFunction : public mf::MultiFunction {
 
   GeometrySet target_;
   GeometryNodeProximityTargetType type_;
-  Array<BVHTrees> bvh_trees_;
+  Vector<BVHTrees> bvh_trees_;
   VectorSet<int> group_indices_;
 
  public:
@@ -179,6 +180,18 @@ class ProximityFunction : public mf::MultiFunction {
     }
   }
 
+  ~ProximityFunction()
+  {
+    for (BVHTrees &trees : bvh_trees_) {
+      if (trees.mesh_bvh.tree) {
+        free_bvhtree_from_mesh(&trees.mesh_bvh);
+      }
+      if (trees.pointcloud_bvh.tree) {
+        free_bvhtree_from_pointcloud(&trees.pointcloud_bvh);
+      }
+    }
+  }
+
   void init_for_pointcloud(const PointCloud &pointcloud, const Field<int> &group_id_field)
   {
     bke::PointCloudFieldContext field_context{pointcloud};
@@ -197,17 +210,76 @@ class ProximityFunction : public mf::MultiFunction {
         [&](const int i) { return group_indices_.index_of(group_ids_span[i]); },
         group_masks);
 
-    bvh_trees_.reinitialize(groups_num);
+    bvh_trees_.resize(groups_num);
     threading::parallel_for(IndexRange(groups_num), 16, [&](const IndexRange range) {
       for (const int group_i : range) {
         const IndexMask &group_mask = group_masks[group_i];
+        if (group_mask.is_empty()) {
+          continue;
+        }
         BVHTreeFromPointCloud &bvh = bvh_trees_[group_i].pointcloud_bvh;
         BKE_bvhtree_from_pointcloud_get(pointcloud, group_mask, bvh);
       }
     });
   }
 
-  void init_for_mesh(const Mesh &mesh, const Field<int> &group_id_field) {}
+  void init_for_mesh(const Mesh &mesh, const Field<int> &group_id_field)
+  {
+    const bke::AttrDomain domain = this->get_domain_on_mesh();
+    const int domain_size = mesh.attributes().domain_size(domain);
+    bke::MeshFieldContext field_context{mesh, domain};
+    FieldEvaluator field_evaluator{field_context, domain_size};
+    field_evaluator.add(group_id_field);
+    field_evaluator.evaluate();
+    VArraySpan<int> group_ids_span = field_evaluator.get_evaluated<int>(0);
+
+    group_indices_.add_multiple(group_ids_span);
+    const int groups_num = group_indices_.size();
+    IndexMaskMemory memory;
+    Array<IndexMask> group_masks(groups_num);
+    IndexMask::from_groups<int>(
+        IndexMask(domain_size),
+        memory,
+        [&](const int i) { return group_indices_.index_of(group_ids_span[i]); },
+        group_masks);
+
+    bvh_trees_.resize(groups_num);
+    threading::parallel_for(IndexRange(groups_num), 16, [&](const IndexRange range) {
+      for (const int group_i : range) {
+        const IndexMask &group_mask = group_masks[group_i];
+        if (group_mask.is_empty()) {
+          continue;
+        }
+        BVHTreeFromMesh &bvh = bvh_trees_[group_i].mesh_bvh;
+        switch (type_) {
+          case GEO_NODE_PROX_TARGET_POINTS: {
+            break;
+          }
+          case GEO_NODE_PROX_TARGET_EDGES: {
+            break;
+          }
+          case GEO_NODE_PROX_TARGET_FACES: {
+            BKE_bvhtree_from_mesh_tris_init(mesh, group_mask, bvh);
+            break;
+          }
+        }
+      }
+    });
+  }
+
+  bke::AttrDomain get_domain_on_mesh() const
+  {
+    switch (type_) {
+      case GEO_NODE_PROX_TARGET_POINTS:
+        return bke::AttrDomain::Point;
+      case GEO_NODE_PROX_TARGET_EDGES:
+        return bke::AttrDomain::Edge;
+      case GEO_NODE_PROX_TARGET_FACES:
+        return bke::AttrDomain::Face;
+    }
+    BLI_assert_unreachable();
+    return bke::AttrDomain::Point;
+  }
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
