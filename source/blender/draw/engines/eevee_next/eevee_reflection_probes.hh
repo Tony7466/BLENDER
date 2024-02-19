@@ -54,7 +54,7 @@ class SphereProbeModule {
   GPUTexture *convolve_input_ = nullptr;
   /** Output mip level for the convolution. */
   GPUTexture *convolve_output_ = nullptr;
-  float convolve_lod_ = 0.0f;
+  int convolve_lod_ = 0;
 
   int3 dispatch_probe_pack_ = int3(1);
   int3 dispatch_probe_convolve_ = int3(1);
