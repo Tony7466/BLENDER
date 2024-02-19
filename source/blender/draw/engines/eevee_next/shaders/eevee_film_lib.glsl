@@ -180,7 +180,7 @@ void film_cryptomatte_layer_accum_and_store(
   }
   /* x = hash, y = accumulated weight. Only keep track of 4 highest weighted samples. */
   vec2 crypto_samples[4] = vec2[4](vec2(0.0), vec2(0.0), vec2(0.0), vec2(0.0));
-  for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+  for (int i = 0; i < samples_len; i++) {
     FilmSample src = film_sample_get(i, texel_film);
     film_sample_cryptomatte_accum(src, layer_component, cryptomatte_tx, crypto_samples);
   }
@@ -632,7 +632,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     vec4 combined_accum = vec4(0.0);
 
     FilmSample src;
-    for (int i = uniform_buf.film.samples_len - 1; i >= 0; i--) {
+    for (int i = samples_len - 1; i >= 0; i--) {
       src = film_sample_get(i, texel_film);
       film_sample_accum_combined(src, combined_accum, weight_accum);
     }
@@ -682,7 +682,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     vec4 volume_light_accum = vec4(0.0);
     vec4 emission_accum = vec4(0.0);
 
-    for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+    for (int i = 0; i < samples_len; i++) {
       FilmSample src = film_sample_get(i, texel_film);
       film_sample_accum(src,
                         uniform_buf.film.diffuse_light_id,
@@ -719,7 +719,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     float shadow_accum = 0.0;
     float ao_accum = 0.0;
 
-    for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+    for (int i = 0; i < samples_len; i++) {
       FilmSample src = film_sample_get(i, texel_film);
       film_sample_accum(src,
                         uniform_buf.film.diffuse_color_id,
@@ -763,7 +763,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
   if ((enabled_categories & PASS_CATEGORY_TRANSPARENT) != 0) {
     vec4 transparent_accum = vec4(0.0);
 
-    for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+    for (int i = 0; i < samples_len; i++) {
       FilmSample src = film_sample_get(i, texel_film);
       film_sample_accum(src,
                         uniform_buf.film.transparent_id,
@@ -781,7 +781,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     for (int aov = 0; aov < uniform_buf.film.aov_color_len; aov++) {
       vec4 aov_accum = vec4(0.0);
 
-      for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+      for (int i = 0; i < samples_len; i++) {
         FilmSample src = film_sample_get(i, texel_film);
         film_sample_accum(src, 0, uniform_buf.render_pass.color_len + aov, rp_color_tx, aov_accum);
       }
@@ -791,7 +791,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     for (int aov = 0; aov < uniform_buf.film.aov_value_len; aov++) {
       float aov_accum = 0.0;
 
-      for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+      for (int i = 0; i < samples_len; i++) {
         FilmSample src = film_sample_get(i, texel_film);
         film_sample_accum(src, 0, uniform_buf.render_pass.value_len + aov, rp_value_tx, aov_accum);
       }
