@@ -12,6 +12,8 @@
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_math_geom_lib.glsl)
 
 float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
 {
@@ -406,19 +408,51 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 /** \name Shadow Evaluation
  * \{ */
 
-vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P)
+vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng)
 {
   ShadowSampleParams params;
+  ShadowSampleParams offset_params;
+
+  vec3 ndcP = drw_point_world_to_ndc(P);
+  vec2 extent = vec2(uniform_buf.film.render_extent);
+  /* Offset 1 pixel up and right. */
+  vec3 offsetP = drw_point_ndc_to_world(ndcP + vec3(1.0 / extent.x, 1.0 / extent.y, 0.0));
+  /* Project the offset position into the surface plane. */
+  offsetP = line_plane_intersect(
+      drw_view_position(), normalize(offsetP - drw_view_position()), P, Ng);
+
   if (is_directional) {
     params = shadow_directional_sample_params_get(shadow_tilemaps_tx, light, P);
+    offset_params = shadow_directional_sample_params_get(shadow_tilemaps_tx, light, offsetP);
   }
   else {
     params = shadow_punctual_sample_params_get(shadow_tilemaps_tx, light, P);
+    offset_params = shadow_punctual_sample_params_get(shadow_tilemaps_tx, light, offsetP);
   }
 
   ShadowTileData tile = shadow_tile_data_get(shadow_tilemaps_tx, params);
+  if (!tile.is_allocated) {
+    return vec3(0.0);
+  }
 
-  return vec3(0.0);
+  /* Find the distance in shadowmap texels from P to offsetP. */
+  float uv_delta = distance(params.uv.xy, offset_params.uv.xy);
+  float pixel_delta = uv_delta * float(SHADOW_MAP_MAX_RES / (tile.lod + 1));
+  float offset_scale = 1.0 / pixel_delta;
+
+  vec2 rand = vec2(0.0);
+#ifdef EEVEE_SAMPLING_DATA
+  rand = sampling_rng_2D_get(SAMPLING_SHADOW_V);
+#endif
+  vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(0.0), rand);
+  pcf_offset = pcf_offset * vec2(2.0) - vec2(1.0);
+  pcf_offset *= distance(P, offsetP) * offset_scale * uniform_buf.shadow.pcf_radius;
+
+  /* Build an orthonormal basis from the geometry plane to apply the 2d offset. */
+  vec3 T, B;
+  make_orthonormal_basis(Ng, T, B);
+
+  return mat3(T, B, Ng) * vec3(pcf_offset, 0.0);
 }
 
 /**
@@ -447,6 +481,8 @@ ShadowEvalResult shadow_eval(LightData light,
   /* TODO(fclem): Parameter on irradiance volumes? */
   float normal_offset = 0.02;
 #endif
+
+  P += shadow_pcf_offset(light, is_directional, P, Ng);
 
   /* Avoid self intersection. */
   P = offset_ray(P, Ng);
