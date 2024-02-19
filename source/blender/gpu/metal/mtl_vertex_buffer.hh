@@ -8,9 +8,7 @@
 
 #pragma once
 
-#include <Cocoa/Cocoa.h>
 #include <Metal/Metal.h>
-#include <QuartzCore/QuartzCore.h>
 
 #include "MEM_guardedalloc.h"
 

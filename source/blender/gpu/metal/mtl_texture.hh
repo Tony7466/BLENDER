@@ -8,9 +8,7 @@
 
 #pragma once
 
-#include <Cocoa/Cocoa.h>
 #include <Metal/Metal.h>
-#include <QuartzCore/QuartzCore.h>
 
 #include "BLI_assert.h"
 #include "MEM_guardedalloc.h"
@@ -581,7 +579,9 @@ inline bool mtl_format_is_writable(MTLPixelFormat format)
     case MTLPixelFormatDepth32Float:
     case MTLPixelFormatDepth32Float_Stencil8:
     case MTLPixelFormatBGR10A2Unorm:
+#if MTL_BACKEND_SUPPORTS_D24_S8_SYMBOLS
     case MTLPixelFormatDepth24Unorm_Stencil8:
+#endif
       return false;
     default:
       return true;
@@ -612,7 +612,9 @@ inline MTLPixelFormat mtl_format_get_writeable_view_format(MTLPixelFormat format
       /* No alternative mirror format. This should not be used for
        * manual data upload */
       return MTLPixelFormatInvalid;
+#if MTL_BACKEND_SUPPORTS_D24_S8_SYMBOLS
     case MTLPixelFormatDepth24Unorm_Stencil8:
+#endif
       /* No direct format, but we'll just mirror the bytes -- `Uint`
        * should ensure bytes are not re-normalized or manipulated */
       // return MTLPixelFormatR32Uint;

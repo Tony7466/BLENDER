@@ -11,9 +11,8 @@
 #include "MEM_guardedalloc.h"
 #include "gpu_index_buffer_private.hh"
 #include "mtl_context.hh"
-#include <Cocoa/Cocoa.h>
+
 #include <Metal/Metal.h>
-#include <QuartzCore/QuartzCore.h>
 
 namespace blender::gpu {
 

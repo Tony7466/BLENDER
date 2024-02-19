@@ -14,9 +14,7 @@
 
 #include "mtl_common.hh"
 
-#include <Cocoa/Cocoa.h>
 #include <Metal/Metal.h>
-#include <QuartzCore/QuartzCore.h>
 
 @class CAMetalLayer;
 @class MTLCommandQueue;

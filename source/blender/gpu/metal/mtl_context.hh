@@ -33,9 +33,7 @@
 #include "mtl_shader_interface.hh"
 #include "mtl_texture.hh"
 
-#include <Cocoa/Cocoa.h>
 #include <Metal/Metal.h>
-#include <QuartzCore/QuartzCore.h>
 #include <mutex>
 
 @class CAMetalLayer;
@@ -707,7 +705,7 @@ class MTLContext : public Context {
 
  private:
   /* Parent Context. */
-  GHOST_ContextCGL *ghost_context_;
+  GHOST_ContextMTL *ghost_context_;
 
   /* Render Passes and Frame-buffers. */
   id<MTLTexture> default_fbo_mtltexture_ = nil;

@@ -362,11 +362,13 @@ void MTLStorageBuf::async_flush_to_host()
   }
 
   /* For discrete memory systems, explicitly flush GPU-resident memory back to host. */
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
   id<MTLBuffer> storage_buf_mtl = this->metal_buffer_->get_metal_buffer();
   if (storage_buf_mtl.storageMode == MTLStorageModeManaged) {
     id<MTLBlitCommandEncoder> blit_encoder = ctx->main_command_buffer.ensure_begin_blit_encoder();
     [blit_encoder synchronizeResource:storage_buf_mtl];
   }
+#endif
 
   /* Encode event signal and flush command buffer to ensure GPU work is in the pipeline for future
    * reads. */
@@ -409,9 +411,11 @@ void MTLStorageBuf::read(void *data)
                         toBuffer:staging_buf_mtl
                destinationOffset:0
                             size:size_in_bytes_];
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
     if (staging_buf_mtl.storageMode == MTLStorageModeManaged) {
       [blit_encoder synchronizeResource:staging_buf_mtl];
     }
+#endif
 
     /* Device-only reads will always stall the GPU pipe. */
     GPU_finish();
@@ -434,6 +438,7 @@ void MTLStorageBuf::read(void *data)
       }
     }
 
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
     /* Managed buffers need to be explicitly flushed back to host. */
     if (metal_buffer_->get_resource_options() & MTLResourceStorageModeManaged) {
       /* Fetch active context. */
@@ -445,6 +450,7 @@ void MTLStorageBuf::read(void *data)
           ctx->main_command_buffer.ensure_begin_blit_encoder();
       [blit_encoder synchronizeResource:metal_buffer_->get_metal_buffer()];
     }
+#endif
 
     /* Read data. NOTE: Unless explicitly synchronized with GPU work, results may not be ready. */
     memcpy(data, metal_buffer_->get_host_ptr(), size_in_bytes_);
