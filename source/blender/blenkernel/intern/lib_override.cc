@@ -3176,7 +3176,7 @@ static bool lib_override_library_main_resync_on_library_indirect_level(
     BlendFileReadReport *reports)
 {
   const bool do_reports_recursive_resync_timing = (library_indirect_level != 0);
-  const double init_time = do_reports_recursive_resync_timing ? BLI_check_seconds_timer() : 0.0;
+  const double init_time = do_reports_recursive_resync_timing ? BLI_time_now_seconds() : 0.0;
 
   BKE_main_relations_create(bmain, 0);
   BKE_main_id_tag_all(bmain, LIB_TAG_DOIT, false);
@@ -3482,7 +3482,7 @@ static bool lib_override_library_main_resync_on_library_indirect_level(
   BKE_lib_override_library_main_hierarchy_root_ensure(bmain);
 
   if (do_reports_recursive_resync_timing) {
-    reports->duration.lib_overrides_recursive_resync += BLI_check_seconds_timer() - init_time;
+    reports->duration.lib_overrides_recursive_resync += BLI_time_now_seconds() - init_time;
   }
 
   return process_lib_level_again;
@@ -4175,6 +4175,11 @@ void BKE_lib_override_library_validate(Main * /*bmain*/, ID *id, ReportList *rep
   if (id->override_library == nullptr) {
     return;
   }
+
+  /* NOTE: In code deleting liboverride data below, #BKE_lib_override_library_make_local is used
+   * instead of directly calling #BKE_lib_override_library_free, because the former also handles
+   * properly 'liboverride embedded' IDs, like root node-trees, or shape-keys. */
+
   if (id->override_library->reference == nullptr) {
     /* This (probably) used to be a template ID, could be linked or local, not an override. */
     BKE_reportf(reports,
@@ -4182,7 +4187,7 @@ void BKE_lib_override_library_validate(Main * /*bmain*/, ID *id, ReportList *rep
                 "Library override templates have been removed: removing all override data from "
                 "the data-block '%s'",
                 id->name);
-    BKE_lib_override_library_free(&id->override_library, true);
+    BKE_lib_override_library_make_local(nullptr, id);
     return;
   }
   if (id->override_library->reference == id) {
@@ -4193,7 +4198,7 @@ void BKE_lib_override_library_validate(Main * /*bmain*/, ID *id, ReportList *rep
                 "Data corruption: data-block '%s' is using itself as library override reference, "
                 "removing all override data",
                 id->name);
-    BKE_lib_override_library_free(&id->override_library, true);
+    BKE_lib_override_library_make_local(nullptr, id);
     return;
   }
   if (!ID_IS_LINKED(id->override_library->reference)) {
@@ -4205,7 +4210,7 @@ void BKE_lib_override_library_validate(Main * /*bmain*/, ID *id, ReportList *rep
                 "library override reference, removing all override data",
                 id->name,
                 id->override_library->reference->name);
-    BKE_lib_override_library_free(&id->override_library, true);
+    BKE_lib_override_library_make_local(nullptr, id);
     return;
   }
 }
