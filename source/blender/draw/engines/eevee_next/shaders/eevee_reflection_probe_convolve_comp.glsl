@@ -48,9 +48,12 @@ float cone_cosine_from_roughness(float linear_roughness)
   return square(half_angle_cos) - square(half_angle_sin);
 }
 
-int sample_count_get(float cone_cosine)
+int sample_count_get()
 {
-  return 256;
+  /* After experimenting this is likely to be the best value if we keep the max resolution to 2048.
+   * This isn't ideal, but the better solution would be to use multiple steps per mip which would
+   * reduce the number of sample per step (use sum of gaussian per step). */
+  return 196;
 }
 
 float sample_weight(vec3 out_direction, vec3 in_direction, float linear_roughness)
@@ -117,7 +120,7 @@ void main()
   float weight_accum = 0.0;
   vec4 radiance_accum = vec4(0.0);
 
-  int sample_count = sample_count_get(cone_cos);
+  int sample_count = sample_count_get();
   for (int i = 0; i < sample_count; i++) {
     vec2 rand = hammersley_2d(i, sample_count);
     vec3 in_direction = basis * sample_uniform_cone(rand, cone_cos);
