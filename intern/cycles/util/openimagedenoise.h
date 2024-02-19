@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __UTIL_OPENIMAGEDENOISE_H__
 #define __UTIL_OPENIMAGEDENOISE_H__
@@ -19,7 +20,7 @@ static inline bool openimagedenoise_supported()
   /* Always supported through Accelerate framework BNNS. */
   return true;
 #  else
-  return system_cpu_support_sse41();
+  return system_cpu_support_sse42();
 #  endif
 #else
   return false;

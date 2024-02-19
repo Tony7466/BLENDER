@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2020-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # A framework to run regression tests on mesh modifiers and operators based on howardt's mesh_ops_test.py
@@ -383,7 +385,6 @@ class MeshTest(ABC):
         expected_mesh = expected_object.data
         result_codes = {}
 
-        # Mesh Comparison.
         if threshold:
             result_mesh = expected_mesh.unit_test_compare(
                 mesh=evaluated_test_mesh, threshold=threshold)
@@ -395,20 +396,6 @@ class MeshTest(ABC):
             result_codes['Mesh Comparison'] = (True, result_mesh)
         else:
             result_codes['Mesh Comparison'] = (False, result_mesh)
-
-        # Selection comparison.
-
-        selected_evaluated_verts = [
-            v.index for v in evaluated_test_mesh.vertices if v.select]
-        selected_expected_verts = [
-            v.index for v in expected_mesh.vertices if v.select]
-
-        if selected_evaluated_verts == selected_expected_verts:
-            result_selection = "Same"
-            result_codes['Selection Comparison'] = (True, result_selection)
-        else:
-            result_selection = "Selection doesn't match."
-            result_codes['Selection Comparison'] = (False, result_selection)
 
         # Validation check.
         result_validation = evaluated_test_mesh.validate(verbose=True)
@@ -743,6 +730,32 @@ class BlendFileTest(MeshTest):
         modifiers_list = evaluated_test_object.modifiers
         if not modifiers_list:
             raise Exception("No modifiers are added to test object.")
+        for modifier in modifiers_list:
+            bpy.ops.object.modifier_apply(modifier=modifier.name)
+
+
+class GeoNodesSimulationTest(MeshTest):
+    """
+    A mesh test that works similar to BlendFileTest but evaluates the scene at multiple
+    frames so that simulations can run.
+    """
+
+    def __init__(self, test_object_name, exp_object_name, *, frames_num, **kwargs):
+        super().__init__(test_object_name, exp_object_name, **kwargs)
+        self.frames_num = frames_num
+
+    def apply_operations(self, evaluated_test_object_name):
+        GeoNodesSimulationTest.apply_operations.__doc__ = MeshTest.apply_operations.__doc__
+
+        evaluated_test_object = bpy.data.objects[evaluated_test_object_name]
+        modifiers_list = evaluated_test_object.modifiers
+        if not modifiers_list:
+            raise Exception("The object has no modifiers.")
+
+        scene = bpy.context.scene
+        for frame in range(1, self.frames_num + 1):
+            scene.frame_set(frame)
+
         for modifier in modifiers_list:
             bpy.ops.object.modifier_apply(modifier=modifier.name)
 

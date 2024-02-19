@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import os
 import pathlib
 import sys
@@ -62,6 +65,10 @@ class ImBufTest(AbstractImBufTest):
 
         # Save the image in the desired format with the desired settings
         scene = bpy.data.scenes[0]
+
+        # The reference images were saved using Filmic view transform.
+        scene.view_settings.view_transform = "Filmic"
+
         ref_image_path = self.reference_dir.joinpath(img.name)
         out_image_path = self.output_dir.joinpath(img.name)
         img.save_render(str(out_image_path), scene=scene)
@@ -256,7 +263,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_dir', required=True, type=pathlib.Path)
     parser.add_argument('-output_dir', required=True, type=pathlib.Path)
-    parser.add_argument('-idiff', required=True, type=pathlib.Path)
+    parser.add_argument('-oiiotool', required=True, type=pathlib.Path)
     parser.add_argument('-optional_formats', required=True)
     args, remaining = parser.parse_known_args(argv)
 

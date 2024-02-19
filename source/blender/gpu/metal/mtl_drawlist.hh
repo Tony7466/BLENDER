@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,7 @@ namespace blender::gpu {
 
 /**
  * Implementation of Multi Draw Indirect using OpenGL.
- **/
+ */
 class MTLDrawList : public DrawList {
 
  private:

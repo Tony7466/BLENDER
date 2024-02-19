@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Intel Corporation */
+/* SPDX-FileCopyrightText: 2021-2022 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_NANOVDB
 /* Data type to replace `double` used in the NanoVDB headers. Cycles don't need doubles, and is
@@ -33,8 +34,7 @@ typedef struct ccl_vdb_double_t {
 } ccl_vdb_double_t;
 
 #  define double ccl_vdb_double_t
-#  include <nanovdb/NanoVDB.h>
-#  include <nanovdb/util/SampleFromVoxels.h>
+#  include "kernel/util/nanovdb.h"
 #  undef double
 #endif
 

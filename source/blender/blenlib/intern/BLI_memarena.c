@@ -21,7 +21,6 @@
 
 #include "BLI_asan.h"
 #include "BLI_memarena.h"
-#include "BLI_strict_flags.h"
 #include "BLI_utildefines.h"
 
 #ifdef WITH_MEM_VALGRIND
@@ -32,6 +31,8 @@
 #  define VALGRIND_MEMPOOL_ALLOC(pool, addr, size) UNUSED_VARS(pool, addr, size)
 #  define VALGRIND_MOVE_MEMPOOL(pool_a, pool_b) UNUSED_VARS(pool_a, pool_b)
 #endif
+
+#include "BLI_strict_flags.h" /* Keep last. */
 
 struct MemBuf {
   struct MemBuf *next;
@@ -84,7 +85,7 @@ void BLI_memarena_use_malloc(MemArena *ma)
   ma->use_calloc = 0;
 }
 
-void BLI_memarena_use_align(struct MemArena *ma, const size_t align)
+void BLI_memarena_use_align(MemArena *ma, const size_t align)
 {
   /* Align must be a power of two. */
   BLI_assert((align & (align - 1)) == 0);

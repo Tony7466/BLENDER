@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "integrator/path_trace_work_cpu.h"
 
@@ -133,13 +134,15 @@ void PathTraceWorkCPU::render_samples_full_pipeline(KernelGlobalsCPU *kernel_glo
 
     if (has_bake) {
       if (!kernels_.integrator_init_from_bake(
-              kernel_globals, state, &sample_work_tile, render_buffer)) {
+              kernel_globals, state, &sample_work_tile, render_buffer))
+      {
         break;
       }
     }
     else {
       if (!kernels_.integrator_init_from_camera(
-              kernel_globals, state, &sample_work_tile, render_buffer)) {
+              kernel_globals, state, &sample_work_tile, render_buffer))
+      {
         break;
       }
     }
@@ -175,6 +178,9 @@ void PathTraceWorkCPU::copy_to_display(PathTraceDisplay *display,
   const KernelFilm &kfilm = device_scene_->data.film;
 
   const PassAccessor::PassAccessInfo pass_access_info = get_display_pass_access_info(pass_mode);
+  if (pass_access_info.type == PASS_NONE) {
+    return;
+  }
 
   const PassAccessorCPU pass_accessor(pass_access_info, kfilm.exposure, num_samples);
 

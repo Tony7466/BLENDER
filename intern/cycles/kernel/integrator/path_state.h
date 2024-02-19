@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -113,9 +114,6 @@ ccl_device_inline void path_state_next(KernelGlobals kg,
     if (transparent_bounce >= kernel_data.integrator.transparent_max_bounce) {
       flag |= PATH_RAY_TERMINATE_ON_NEXT_SURFACE;
     }
-
-    if (!kernel_data.integrator.transparent_shadows)
-      flag |= PATH_RAY_MIS_SKIP;
 
     INTEGRATOR_STATE_WRITE(state, path, flag) = flag;
     INTEGRATOR_STATE_WRITE(state, path, transparent_bounce) = transparent_bounce;

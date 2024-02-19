@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,7 +23,7 @@ class Background {
     float4 color_override(0.0f, 0.0f, 0.0f, 0.0f);
     int background_type;
 
-    if (DRW_state_is_opengl_render() && !DRW_state_draw_background()) {
+    if (DRW_state_is_viewport_image_render() && !DRW_state_draw_background()) {
       background_type = BG_SOLID;
       color_override[3] = 1.0f;
     }
@@ -38,7 +38,8 @@ class Background {
       background_type = BG_CHECKER;
     }
     else if (state.v3d->shading.background_type == V3D_SHADING_BACKGROUND_WORLD &&
-             state.scene->world) {
+             state.scene->world)
+    {
       background_type = BG_SOLID;
       /* TODO(fclem): this is a scene referred linear color. we should convert
        * it to display linear here. */

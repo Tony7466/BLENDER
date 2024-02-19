@@ -1,12 +1,11 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation.
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "blendfile_loading_base_test.h"
 
 #include "BLI_path_util.h"
 
-class BlendfileLoadingTest : public BlendfileLoadingBaseTest {
-};
+class BlendfileLoadingTest : public BlendfileLoadingBaseTest {};
 
 TEST_F(BlendfileLoadingTest, CanaryTest)
 {

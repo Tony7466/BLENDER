@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 /* Templated common declaration part of all CPU kernels. */
 
@@ -100,7 +101,7 @@ bool KERNEL_FUNCTION_FULL_NAME(adaptive_sampling_convergence_check)(
     int x,
     int y,
     float threshold,
-    bool reset,
+    int reset,
     int offset,
     int stride);
 

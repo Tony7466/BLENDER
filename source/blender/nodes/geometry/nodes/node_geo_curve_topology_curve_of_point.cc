@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,10 +29,10 @@ class CurveOfPointInput final : public bke::CurvesFieldInput {
   }
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
-    if (domain != ATTR_DOMAIN_POINT) {
+    if (domain != AttrDomain::Point) {
       return {};
     }
     return VArray<int>::ForContainer(curves.point_to_curve_map());
@@ -45,15 +45,12 @@ class CurveOfPointInput final : public bke::CurvesFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
-    if (dynamic_cast<const CurveOfPointInput *>(&other)) {
-      return true;
-    }
-    return false;
+    return dynamic_cast<const CurveOfPointInput *>(&other) != nullptr;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const bke::CurvesGeometry & /*curves*/) const final
+  std::optional<AttrDomain> preferred_domain(const bke::CurvesGeometry & /*curves*/) const final
   {
-    return ATTR_DOMAIN_POINT;
+    return AttrDomain::Point;
   }
 };
 
@@ -65,10 +62,10 @@ class PointIndexInCurveInput final : public bke::CurvesFieldInput {
   }
 
   GVArray get_varray_for_context(const bke::CurvesGeometry &curves,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
-    if (domain != ATTR_DOMAIN_POINT) {
+    if (domain != AttrDomain::Point) {
       return {};
     }
     const Span<int> offsets = curves.offsets();
@@ -88,15 +85,12 @@ class PointIndexInCurveInput final : public bke::CurvesFieldInput {
 
   bool is_equal_to(const fn::FieldNode &other) const final
   {
-    if (dynamic_cast<const PointIndexInCurveInput *>(&other)) {
-      return true;
-    }
-    return false;
+    return dynamic_cast<const PointIndexInCurveInput *>(&other) != nullptr;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const bke::CurvesGeometry & /*curves*/)
+  std::optional<AttrDomain> preferred_domain(const bke::CurvesGeometry & /*curves*/)
   {
-    return ATTR_DOMAIN_POINT;
+    return AttrDomain::Point;
   }
 };
 
@@ -106,28 +100,27 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (params.output_is_required("Curve Index")) {
     params.set_output(
         "Curve Index",
-        Field<int>(std::make_shared<EvaluateAtIndexInput>(
-            point_index, Field<int>(std::make_shared<CurveOfPointInput>()), ATTR_DOMAIN_POINT)));
+        Field<int>(std::make_shared<bke::EvaluateAtIndexInput>(
+            point_index, Field<int>(std::make_shared<CurveOfPointInput>()), AttrDomain::Point)));
   }
   if (params.output_is_required("Index in Curve")) {
     params.set_output("Index in Curve",
-                      Field<int>(std::make_shared<EvaluateAtIndexInput>(
+                      Field<int>(std::make_shared<bke::EvaluateAtIndexInput>(
                           point_index,
                           Field<int>(std::make_shared<PointIndexInCurveInput>()),
-                          ATTR_DOMAIN_POINT)));
+                          AttrDomain::Point)));
   }
 }
 
-}  // namespace blender::nodes::node_geo_curve_topology_curve_of_point_cc
-
-void register_node_type_geo_curve_topology_curve_of_point()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_curve_topology_curve_of_point_cc;
-
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_CURVE_TOPOLOGY_CURVE_OF_POINT, "Curve of Point", NODE_CLASS_INPUT);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_curve_topology_curve_of_point_cc

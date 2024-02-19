@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 Blender Foundation */
+/* SPDX-FileCopyrightText: 2010 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -11,6 +12,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "GHOST_Debug.hh"
 #include "GHOST_PathUtils.hh"
 #include "GHOST_Types.h"
 
@@ -23,12 +25,12 @@ using DecodeState_e = enum DecodeState_e {
   STATE_CONVERTING
 };
 
-void GHOST_URL_decode(char *buf_dst, int buf_dst_size, const char *buf_src)
+void GHOST_URL_decode(char *buf_dst, int buf_dst_size, const char *buf_src, const int buf_src_len)
 {
-  const uint buf_src_len = strlen(buf_src);
+  GHOST_ASSERT(strnlen(buf_src, buf_src_len) == buf_src_len, "Incorrect length");
+
   DecodeState_e state = STATE_SEARCH;
   uint ascii_character;
-  char temp_num_buf[3] = {0};
 
   memset(buf_dst, 0, buf_dst_size);
 
@@ -46,28 +48,29 @@ void GHOST_URL_decode(char *buf_dst, int buf_dst_size, const char *buf_src)
         break;
       }
       case STATE_CONVERTING: {
-        bool both_digits = true;
-
         /* Create a buffer to hold the hex. For example, if `%20`,
          * this buffer would hold 20 (in ASCII). */
-        memset(temp_num_buf, 0, sizeof(temp_num_buf));
+        char temp_num_buf[3];
 
         /* Conversion complete (i.e. don't convert again next iteration). */
         state = STATE_SEARCH;
 
-        strncpy(temp_num_buf, &buf_src[i], 2);
-
         /* Ensure both characters are hexadecimal. */
+        bool both_digits = true;
         for (int j = 0; j < 2; j++) {
-          if (!isxdigit(temp_num_buf[j])) {
+          /* `isxdigit` serves to early null terminate the string too. */
+          const char hex_char = buf_src[i + j];
+          if (!isxdigit(hex_char)) {
             both_digits = false;
+            break;
           }
+          temp_num_buf[j] = hex_char;
         }
-
         if (!both_digits) {
           break;
         }
         /* Convert two hexadecimal characters into one character. */
+        temp_num_buf[2] = '\0';
         sscanf(temp_num_buf, "%x", &ascii_character);
 
         /* Ensure we aren't going to overflow. */
@@ -84,12 +87,12 @@ void GHOST_URL_decode(char *buf_dst, int buf_dst_size, const char *buf_src)
   }
 }
 
-char *GHOST_URL_decode_alloc(const char *buf_src)
+char *GHOST_URL_decode_alloc(const char *buf_src, const int buf_src_len)
 {
   /* Assume one character of encoded URL can be expanded to 4 chars max. */
-  const size_t decoded_size_max = 4 * strlen(buf_src) + 1;
+  const size_t decoded_size_max = 4 * buf_src_len + 1;
   char *buf_dst = (char *)malloc(decoded_size_max);
-  GHOST_URL_decode(buf_dst, decoded_size_max, buf_src);
+  GHOST_URL_decode(buf_dst, decoded_size_max, buf_src, buf_src_len);
   const size_t decoded_size = strlen(buf_dst) + 1;
   if (decoded_size != decoded_size_max) {
     char *buf_dst_trim = (char *)malloc(decoded_size);

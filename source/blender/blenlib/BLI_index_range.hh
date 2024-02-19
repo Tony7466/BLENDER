@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -38,11 +38,10 @@
  */
 
 #include <algorithm>
-#include <atomic>
-#include <cmath>
-#include <iostream>
+#include <iosfwd>
 
-#include "BLI_utildefines.h"
+#include "BLI_assert.h"
+#include "BLI_random_access_iterator_mixin.hh"
 
 namespace blender {
 
@@ -67,13 +66,11 @@ class IndexRange {
     BLI_assert(size >= 0);
   }
 
-  class Iterator {
+  class Iterator : public iterator::RandomAccessIteratorMixin<Iterator> {
    public:
-    using iterator_category = std::forward_iterator_tag;
     using value_type = int64_t;
     using pointer = const int64_t *;
-    using reference = const int64_t &;
-    using difference_type = std::ptrdiff_t;
+    using reference = int64_t;
 
    private:
     int64_t current_;
@@ -81,35 +78,12 @@ class IndexRange {
    public:
     constexpr explicit Iterator(int64_t current) : current_(current) {}
 
-    constexpr Iterator &operator++()
-    {
-      current_++;
-      return *this;
-    }
-
-    constexpr Iterator operator++(int)
-    {
-      Iterator copied_iterator = *this;
-      ++(*this);
-      return copied_iterator;
-    }
-
-    constexpr friend bool operator!=(const Iterator &a, const Iterator &b)
-    {
-      return a.current_ != b.current_;
-    }
-
-    constexpr friend bool operator==(const Iterator &a, const Iterator &b)
-    {
-      return a.current_ == b.current_;
-    }
-
-    constexpr friend int64_t operator-(const Iterator &a, const Iterator &b)
-    {
-      return a.current_ - b.current_;
-    }
-
     constexpr int64_t operator*() const
+    {
+      return current_;
+    }
+
+    const int64_t &iter_prop() const
     {
       return current_;
     }
@@ -324,11 +298,7 @@ class IndexRange {
     return IndexRange(start_ + n, size_);
   }
 
-  friend std::ostream &operator<<(std::ostream &stream, IndexRange range)
-  {
-    stream << "[" << range.start() << ", " << range.one_after_last() << ")";
-    return stream;
-  }
+  friend std::ostream &operator<<(std::ostream &stream, IndexRange range);
 };
 
 struct AlignedIndexRanges {

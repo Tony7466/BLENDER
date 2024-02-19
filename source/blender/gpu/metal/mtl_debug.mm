@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2022-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -11,7 +13,7 @@
 #include "BLI_system.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "GPU_debug.h"
 #include "GPU_platform.h"

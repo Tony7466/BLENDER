@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,26 +6,21 @@
  * \ingroup imbuf
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
-#include "BLI_linklist.h"
-#include "BLI_listbase.h" /* Needed due to import of BLO_readfile.h */
+#include "BLI_listbase.h" /* Needed due to import of BLO_readfile.hh */
 #include "BLI_utildefines.h"
 
-#include "BLO_blend_defs.h"
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
-#include "BKE_icons.h"
-#include "BKE_idtype.h"
-#include "BKE_main.h"
+#include "BKE_idtype.hh"
+#include "BKE_main.hh"
+#include "BKE_preview_image.hh"
 
-#include "DNA_ID.h" /* For preview images... */
-
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_thumbs.h"
+#include "IMB_imbuf_types.hh"
+#include "IMB_thumbs.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -40,7 +35,7 @@ static ImBuf *imb_thumb_load_from_blend_id(const char *blen_path,
   BlendFileReadReport bf_reports = {};
   bf_reports.reports = nullptr;
 
-  struct BlendHandle *libfiledata = BLO_blendhandle_from_file(blen_path, &bf_reports);
+  BlendHandle *libfiledata = BLO_blendhandle_from_file(blen_path, &bf_reports);
   if (libfiledata == nullptr) {
     return nullptr;
   }

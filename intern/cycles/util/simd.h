@@ -1,6 +1,7 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2013 Intel Corporation
- * Modifications Copyright 2014-2022 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011-2013 Intel Corporation
+ * SPDX-FileCopyrightText: 2014-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __UTIL_SIMD_TYPES_H__
 #define __UTIL_SIMD_TYPES_H__
@@ -385,8 +386,9 @@ __forceinline uint64_t bitscan(uint64_t v)
 __forceinline uint32_t __bsf(const uint32_t x)
 {
   for (int i = 0; i < 32; i++) {
-    if (x & (1U << i))
+    if (x & (1U << i)) {
       return i;
+    }
   }
   return 32;
 }
@@ -394,8 +396,9 @@ __forceinline uint32_t __bsf(const uint32_t x)
 __forceinline uint32_t __bsr(const uint32_t x)
 {
   for (int i = 0; i < 32; i++) {
-    if (x & (1U << (31 - i)))
+    if (x & (1U << (31 - i))) {
       return (31 - i);
+    }
   }
   return 32;
 }
@@ -409,8 +412,9 @@ __forceinline uint32_t __btc(const uint32_t x, const uint32_t bit)
 __forceinline uint32_t __bsf(const uint64_t x)
 {
   for (int i = 0; i < 64; i++) {
-    if (x & (1UL << i))
+    if (x & (1UL << i)) {
       return i;
+    }
   }
   return 64;
 }
@@ -418,8 +422,9 @@ __forceinline uint32_t __bsf(const uint64_t x)
 __forceinline uint32_t __bsr(const uint64_t x)
 {
   for (int i = 0; i < 64; i++) {
-    if (x & (1UL << (63 - i)))
+    if (x & (1UL << (63 - i))) {
       return (63 - i);
+    }
   }
   return 64;
 }
@@ -458,10 +463,10 @@ __forceinline uint64_t bitscan(uint64_t value)
  * implementations. */
 #ifdef __KERNEL_SSE2__
 
-/* Test __KERNEL_SSE41__ for MSVC which does not define __SSE4_1__, and test
- * __SSE4_1__ to avoid OpenImageIO conflicts with our emulation macros on other
+/* Test __KERNEL_SSE42__ for MSVC which does not define __SSE4_2__, and test
+ * __SSE4_1__ and __SSE4_2__ to avoid OpenImageIO conflicts with our emulation macros on other
  * platforms when compiling code outside the kernel. */
-#  if !(defined(__KERNEL_SSE41__) || defined(__SSE4_1__) || defined(__SSE4_2__))
+#  if !(defined(__KERNEL_SSE42__) || defined(__SSE4_1__) || defined(__SSE4_2__))
 
 /* Emulation of SSE4 functions with SSE2 */
 
@@ -568,7 +573,7 @@ __forceinline __m128 _mm_round_ps_emu(__m128 value, const int flags)
   return value;
 }
 
-#  endif /* !(defined(__KERNEL_SSE41__) || defined(__SSE4_1__) || defined(__SSE4_2__)) */
+#  endif /* !(defined(__KERNEL_SSE42__) || defined(__SSE4_1__) || defined(__SSE4_2__)) */
 
 /* Older GCC versions do not have _mm256_cvtss_f32 yet, so define it ourselves.
  * _mm256_castps256_ps128 generates no instructions so this is just as efficient. */
@@ -581,7 +586,7 @@ __forceinline __m128 _mm_round_ps_emu(__m128 value, const int flags)
 
 /* quiet unused define warnings */
 #if defined(__KERNEL_SSE2__) || defined(__KERNEL_SSE3__) || defined(__KERNEL_SSSE3__) || \
-    defined(__KERNEL_SSE41__) || defined(__KERNEL_AVX__) || defined(__KERNEL_AVX2__)
+    defined(__KERNEL_SSE42__) || defined(__KERNEL_AVX__) || defined(__KERNEL_AVX2__)
 /* do nothing */
 #endif
 

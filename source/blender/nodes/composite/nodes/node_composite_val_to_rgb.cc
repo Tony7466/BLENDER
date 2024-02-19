@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,17 +8,15 @@
 
 #include "BLI_assert.h"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
-#include "BKE_colorband.h"
+#include "BKE_colorband.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "COM_shader_node.hh"
 
 #include "node_composite_util.hh"
-
-#include "BKE_colorband.h"
 
 /* **************** VALTORGB ******************** */
 
@@ -52,7 +50,7 @@ class ColorRampShaderNode : public ShaderNode {
     GPUNodeStack *inputs = get_inputs_array();
     GPUNodeStack *outputs = get_outputs_array();
 
-    struct ColorBand *color_band = get_color_band();
+    ColorBand *color_band = get_color_band();
 
     /* Common / easy case optimization. */
     if ((color_band->tot <= 2) && (color_band->color_mode == COLBAND_BLEND_RGB)) {
@@ -117,9 +115,9 @@ class ColorRampShaderNode : public ShaderNode {
     GPU_stack_link(material, &bnode(), "valtorgb", inputs, outputs, tex, GPU_constant(&layer));
   }
 
-  struct ColorBand *get_color_band()
+  ColorBand *get_color_band()
   {
-    return static_cast<struct ColorBand *>(bnode().storage);
+    return static_cast<ColorBand *>(bnode().storage);
   }
 };
 

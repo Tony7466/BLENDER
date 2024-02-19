@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -18,7 +19,7 @@
 #ifdef WITH_X11_XINPUT
 #  include <X11/extensions/XInput.h>
 
-/* Disable XINPUT warp, currently not implemented by Xorg for multi-head display.
+/* Disable XINPUT warp, currently not implemented by XORG for multi-head display.
  * (see comment in XSERVER `Xi/xiwarppointer.c` -> `FIXME: panoramix stuff is missing` ~ v1.13.4)
  * If this is supported we can add back XINPUT for warping (fixing #48901).
  * For now disable (see #50383). */
@@ -56,7 +57,6 @@ class GHOST_WindowX11;
  * X11 Implementation of GHOST_System class.
  * \see GHOST_System.
  */
-
 class GHOST_SystemX11 : public GHOST_System {
  public:
   /**
@@ -124,7 +124,7 @@ class GHOST_SystemX11 : public GHOST_System {
                               uint32_t width,
                               uint32_t height,
                               GHOST_TWindowState state,
-                              GHOST_GLSettings glSettings,
+                              GHOST_GPUSettings gpuSettings,
                               const bool exclusive = false,
                               const bool is_dialog = false,
                               const GHOST_IWindow *parentWindow = nullptr) override;
@@ -134,7 +134,7 @@ class GHOST_SystemX11 : public GHOST_System {
    * Never explicitly delete the context, use #disposeContext() instead.
    * \return The new context (or 0 if creation failed).
    */
-  GHOST_IContext *createOffscreenContext(GHOST_GLSettings glSettings) override;
+  GHOST_IContext *createOffscreenContext(GHOST_GPUSettings gpuSettings) override;
 
   /**
    * Dispose of a context.
@@ -153,6 +153,13 @@ class GHOST_SystemX11 : public GHOST_System {
   GHOST_TSuccess getCursorPosition(int32_t &x, int32_t &y) const override;
 
   GHOST_TSuccess setCursorPosition(int32_t x, int32_t y) override;
+
+  /**
+   * Get the color of the pixel at the current mouse cursor location
+   * \param r_color: returned sRGB float colors
+   * \return Success value (true == successful and supported by platform)
+   */
+  GHOST_TSuccess getPixelAtCursor(float r_color[3]) const override;
 
   /**
    * Returns the state of all modifier keys.
@@ -192,6 +199,13 @@ class GHOST_SystemX11 : public GHOST_System {
     return m_xim;
   }
 #endif
+
+  /**
+   * Use this function instead of #GHOST_System::getMilliSeconds,
+   * passing in the time-stamp from X to input to get the event
+   * time-stamp with an offset applied to make it compatible with `getMilliSeconds`.
+   */
+  uint64_t ms_from_input_time(const Time timestamp) const;
 
   /** Helped function for get data from the clipboard. */
   void getClipboard_xcout(const XEvent *evt,
@@ -334,9 +348,6 @@ class GHOST_SystemX11 : public GHOST_System {
   /** The vector of windows that need to be updated. */
   std::vector<GHOST_WindowX11 *> m_dirty_windows;
 
-  /** Start time at initialization. */
-  uint64_t m_start_time;
-
   /** A vector of keyboard key masks. */
   char m_keyboard_vector[32];
 
@@ -350,6 +361,11 @@ class GHOST_SystemX11 : public GHOST_System {
   /* Detect auto-repeat glitch. */
   unsigned int m_last_release_keycode;
   Time m_last_release_time;
+
+#ifdef WITH_X11_XINPUT
+  /** Last key press or release, to apply to XIM generated events. */
+  Time m_last_key_time;
+#endif
 
   uint m_keycode_last_repeat_key;
 

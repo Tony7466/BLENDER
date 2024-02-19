@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -11,7 +12,7 @@ CCL_NAMESPACE_BEGIN
 
 /* Pseudo random numbers, uncomment this for debugging correlations. Only run
  * this single threaded on a CPU for repeatable results. */
-//#define __DEBUG_CORRELATION__
+// #define __DEBUG_CORRELATION__
 
 /*
  * The `path_rng_*()` functions below use a shuffled scrambled Sobol

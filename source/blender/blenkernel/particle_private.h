@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -38,7 +38,7 @@ void do_kink(ParticleKey *state,
              float flat,
              short type,
              short axis,
-             float obmat[4][4],
+             const float obmat[4][4],
              int smooth_start);
 float do_clump(ParticleKey *state,
                const float par_co[3],
@@ -49,7 +49,7 @@ float do_clump(ParticleKey *state,
                float pa_clump,
                bool use_clump_noise,
                float clump_noise_size,
-               struct CurveMapping *clumpcurve);
+               const struct CurveMapping *clumpcurve);
 void do_child_modifiers(const ParticleChildModifierContext *modifier_ctx,
                         float mat[4][4],
                         ParticleKey *state,

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,22 +22,22 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_lib_id.h"
-#include "BKE_screen.h"
-#include "BKE_unit.h"
+#include "BKE_context.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_screen.hh"
+#include "BKE_unit.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_view3d.h"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_view3d.hh"
 
 #include "eyedropper_intern.hh"
 #include "interface_intern.hh"
@@ -63,7 +63,7 @@ struct DepthDropper {
   char name[200];
 };
 
-static void depthdropper_draw_cb(const struct bContext * /*C*/, ARegion * /*region*/, void *arg)
+static void depthdropper_draw_cb(const bContext * /*C*/, ARegion * /*region*/, void *arg)
 {
   DepthDropper *ddr = static_cast<DepthDropper *>(arg);
   eyedropper_draw_cursor_text_region(ddr->name_pos, ddr->name);
@@ -92,7 +92,7 @@ static int depthdropper_init(bContext *C, wmOperator *op)
           BKE_id_is_editable(CTX_data_main(C), static_cast<const ID *>(v3d->camera->data)))
       {
         Camera *camera = (Camera *)v3d->camera->data;
-        RNA_pointer_create(&camera->id, &RNA_CameraDOFSettings, &camera->dof, &ddr->ptr);
+        ddr->ptr = RNA_pointer_create(&camera->id, &RNA_CameraDOFSettings, &camera->dof);
         ddr->prop = RNA_struct_find_property(&ddr->ptr, "focus_distance");
         ddr->is_undo = true;
       }
@@ -159,11 +159,12 @@ static void depthdropper_depth_sample_pt(bContext *C,
     if (area->spacetype == SPACE_VIEW3D) {
       ARegion *region = BKE_area_find_region_xy(area, RGN_TYPE_WINDOW, m_xy);
       if (region) {
-        struct Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+        Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
         View3D *v3d = static_cast<View3D *>(area->spacedata.first);
         RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
         /* weak, we could pass in some reference point */
-        const float *view_co = v3d->camera ? v3d->camera->object_to_world[3] : rv3d->viewinv[3];
+        const float *view_co = v3d->camera ? v3d->camera->object_to_world().location() :
+                                             rv3d->viewinv[3];
         const int mval[2] = {m_xy[0] - region->winrct.xmin, m_xy[1] - region->winrct.ymin};
         copy_v2_v2_int(ddr->name_pos, mval);
 

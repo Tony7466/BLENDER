@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,16 +11,16 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_listBase.h"
-#include "DNA_scene_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
 
-#include "bmesh.h"
+#include "bmesh.hh"
 
 const BMAllocTemplate bm_mesh_allocsize_default = {512, 1024, 2048, 512};
 const BMAllocTemplate bm_mesh_chunksize_default = {512, 1024, 2048, 512};
@@ -124,7 +124,7 @@ void BM_mesh_elem_toolflags_clear(BMesh *bm)
   }
 }
 
-BMesh *BM_mesh_create(const BMAllocTemplate *allocsize, const struct BMeshCreateParams *params)
+BMesh *BM_mesh_create(const BMAllocTemplate *allocsize, const BMeshCreateParams *params)
 {
   /* allocate the structure */
   BMesh *bm = static_cast<BMesh *>(MEM_callocN(sizeof(BMesh), __func__));
@@ -334,7 +334,7 @@ void bmesh_edit_end(BMesh *bm, BMOpTypeFlag type_flag)
 void BM_mesh_elem_index_ensure_ex(BMesh *bm, const char htype, int elem_offset[4])
 {
 
-#ifdef DEBUG
+#ifndef NDEBUG
   BM_ELEM_INDEX_VALIDATE(bm, "Should Never Fail!", __func__);
 #endif
 
@@ -513,7 +513,7 @@ void BM_mesh_elem_index_validate(
   }
 
 #if 0 /* mostly annoying, even in debug mode */
-#  ifdef DEBUG
+#  ifndef NDEBUG
   if (is_any_error == 0) {
     fprintf(stderr, "Valid Index Success: at %s, %s, '%s', '%s'\n", location, func, msg_a, msg_b);
   }
@@ -766,7 +766,8 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
                         static_cast<void **>(MEM_mallocN(sizeof(void *) * totvert, __func__)) :
                         nullptr;
     for (i = totvert, ve = verts_copy + totvert - 1, vep = verts_pool + totvert - 1; i--;
-         ve--, vep--) {
+         ve--, vep--)
+    {
       *ve = **vep;
       // printf("*vep: %p, verts_pool[%d]: %p\n", *vep, i, verts_pool[i]);
       if (cd_vert_pyptr != -1) {
@@ -822,7 +823,8 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
                         static_cast<void **>(MEM_mallocN(sizeof(void *) * totedge, __func__)) :
                         nullptr;
     for (i = totedge, ed = edges_copy + totedge - 1, edp = edges_pool + totedge - 1; i--;
-         ed--, edp--) {
+         ed--, edp--)
+    {
       *ed = **edp;
       if (cd_edge_pyptr != -1) {
         void **pyptr = static_cast<void **>(BM_ELEM_CD_GET_VOID_P(((BMElem *)ed), cd_edge_pyptr));
@@ -877,7 +879,8 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
                         static_cast<void **>(MEM_mallocN(sizeof(void *) * totface, __func__)) :
                         nullptr;
     for (i = totface, fa = faces_copy + totface - 1, fap = faces_pool + totface - 1; i--;
-         fa--, fap--) {
+         fa--, fap--)
+    {
       *fa = **fap;
       if (cd_poly_pyptr != -1) {
         void **pyptr = static_cast<void **>(BM_ELEM_CD_GET_VOID_P(((BMElem *)fa), cd_poly_pyptr));
@@ -990,8 +993,7 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
 
   /* Selection history */
   {
-    BMEditSelection *ese;
-    for (ese = static_cast<BMEditSelection *>(bm->selected.first); ese; ese = ese->next) {
+    LISTBASE_FOREACH (BMEditSelection *, ese, &bm->selected) {
       switch (ese->htype) {
         case BM_VERT:
           if (vptr_map) {
@@ -1034,7 +1036,7 @@ void BM_mesh_remap(BMesh *bm, const uint *vert_idx, const uint *edge_idx, const 
 }
 
 void BM_mesh_rebuild(BMesh *bm,
-                     const struct BMeshCreateParams *params,
+                     const BMeshCreateParams *params,
                      BLI_mempool *vpool_dst,
                      BLI_mempool *epool_dst,
                      BLI_mempool *lpool_dst,
@@ -1314,7 +1316,7 @@ void BM_mesh_toolflags_set(BMesh *bm, bool use_toolflags)
     bm->etoolflagpool = nullptr;
     bm->ftoolflagpool = nullptr;
   }
-  struct BMeshCreateParams params = {};
+  BMeshCreateParams params = {};
   params.use_toolflags = use_toolflags;
 
   BM_mesh_rebuild(bm, &params, vpool_dst, epool_dst, nullptr, fpool_dst);

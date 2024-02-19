@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation.
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,27 +6,25 @@
  * \ingroup edmask
  */
 
-#include <math.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cmath>
+#include <cstddef>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_mask_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_fcurve.h"
 #include "BKE_mask.h"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_markers.h"
-#include "ED_mask.h" /* own include */
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
+#include "ED_markers.hh"
+#include "ED_mask.hh" /* own include */
 
 /* ***************************************** */
 /* NOTE ABOUT THIS FILE:
@@ -89,7 +87,7 @@ bool ED_masklayer_frame_select_check(const MaskLayer *mask_layer)
 {
   /* error checking */
   if (mask_layer == nullptr) {
-    return 0;
+    return false;
   }
 
   /* stop at the first one found */
@@ -287,8 +285,8 @@ static bool snap_mask_layer_cframe(MaskLayerShape *mask_layer_shape, Scene *scen
 static bool snap_mask_layer_nearmarker(MaskLayerShape *mask_layer_shape, Scene *scene)
 {
   if (mask_layer_shape->flag & MASK_SHAPE_SELECT) {
-    mask_layer_shape->frame = (int)ED_markers_find_nearest_marker_time(
-        &scene->markers, float(mask_layer_shape->frame));
+    mask_layer_shape->frame = int(
+        ED_markers_find_nearest_marker_time(&scene->markers, float(mask_layer_shape->frame)));
   }
   return false;
 }

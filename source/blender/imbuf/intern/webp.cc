@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,9 +12,9 @@
 #  include <unistd.h>
 #endif
 
+#include <cstdio>
+#include <cstdlib>
 #include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <webp/decode.h>
 #include <webp/encode.h>
 
@@ -22,12 +22,11 @@
 #include "BLI_mmap.h"
 #include "BLI_utildefines.h"
 
-#include "IMB_allocimbuf.h"
-#include "IMB_colormanagement.h"
-#include "IMB_colormanagement_intern.h"
-#include "IMB_filetype.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_allocimbuf.hh"
+#include "IMB_colormanagement.hh"
+#include "IMB_filetype.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -76,19 +75,17 @@ ImBuf *imb_loadwebp(const uchar *mem, size_t size, int flags, char colorspace[IM
   return ibuf;
 }
 
-struct ImBuf *imb_load_filepath_thumbnail_webp(const char *filepath,
-                                               const int /*flags*/,
-                                               const size_t max_thumb_size,
-                                               char colorspace[],
-                                               size_t *r_width,
-                                               size_t *r_height)
+ImBuf *imb_load_filepath_thumbnail_webp(const char *filepath,
+                                        const int /*flags*/,
+                                        const size_t max_thumb_size,
+                                        char colorspace[],
+                                        size_t *r_width,
+                                        size_t *r_height)
 {
   const int file = BLI_open(filepath, O_BINARY | O_RDONLY, 0);
   if (file == -1) {
     return nullptr;
   }
-
-  const size_t data_size = BLI_file_descriptor_size(file);
 
   imb_mmap_lock();
   BLI_mmap_file *mmap_file = BLI_mmap_open(file);
@@ -99,6 +96,7 @@ struct ImBuf *imb_load_filepath_thumbnail_webp(const char *filepath,
   }
 
   const uchar *data = static_cast<const uchar *>(BLI_mmap_get_pointer(mmap_file));
+  const size_t data_size = BLI_mmap_get_length(mmap_file);
 
   WebPDecoderConfig config;
   if (!data || !WebPInitDecoderConfig(&config) ||
@@ -115,12 +113,12 @@ struct ImBuf *imb_load_filepath_thumbnail_webp(const char *filepath,
   *r_width = size_t(config.input.width);
   *r_height = size_t(config.input.height);
 
-  const float scale = float(max_thumb_size) / MAX2(config.input.width, config.input.height);
-  const int dest_w = MAX2(int(config.input.width * scale), 1);
-  const int dest_h = MAX2(int(config.input.height * scale), 1);
+  const float scale = float(max_thumb_size) / std::max(config.input.width, config.input.height);
+  const int dest_w = std::max(int(config.input.width * scale), 1);
+  const int dest_h = std::max(int(config.input.height * scale), 1);
 
   colorspace_set_default_role(colorspace, IM_MAX_SPACE, COLOR_ROLE_DEFAULT_BYTE);
-  struct ImBuf *ibuf = IMB_allocImBuf(dest_w, dest_h, 32, IB_rect);
+  ImBuf *ibuf = IMB_allocImBuf(dest_w, dest_h, 32, IB_rect);
   if (ibuf == nullptr) {
     fprintf(stderr, "WebP: Failed to allocate image memory\n");
     imb_mmap_lock();
@@ -160,7 +158,7 @@ struct ImBuf *imb_load_filepath_thumbnail_webp(const char *filepath,
   return ibuf;
 }
 
-bool imb_savewebp(struct ImBuf *ibuf, const char *filepath, int /*flags*/)
+bool imb_savewebp(ImBuf *ibuf, const char *filepath, int /*flags*/)
 {
   const int bytesperpixel = (ibuf->planes + 7) >> 3;
   uchar *encoded_data, *last_row;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,7 +19,7 @@ class VKContext;
  * Class for handing vulkan buffers (allocation/updating/binding).
  */
 class VKBuffer {
-  int64_t size_in_bytes_;
+  int64_t size_in_bytes_ = 0;
   VkBuffer vk_buffer_ = VK_NULL_HANDLE;
   VmaAllocation allocation_ = VK_NULL_HANDLE;
   /* Pointer to the virtually mapped memory. */
@@ -31,10 +31,13 @@ class VKBuffer {
 
   /** Has this buffer been allocated? */
   bool is_allocated() const;
-
-  bool create(int64_t size, GPUUsageType usage, VkBufferUsageFlagBits buffer_usage);
+  bool create(int64_t size,
+              GPUUsageType usage,
+              VkBufferUsageFlags buffer_usage,
+              bool is_host_visible = true);
   void clear(VKContext &context, uint32_t clear_value);
   void update(const void *data) const;
+  void flush() const;
   void read(void *data) const;
   bool free();
 
@@ -55,9 +58,13 @@ class VKBuffer {
    */
   void *mapped_memory_get() const;
 
+  /**
+   * Is this buffer mapped (visible on host)
+   */
+  bool is_mapped() const;
+
  private:
   /** Check if this buffer is mapped. */
-  bool is_mapped() const;
   bool map();
   void unmap();
 };
@@ -71,7 +78,7 @@ class VKBuffer {
  * VKIndexBuffer uses this when it is a subrange of another buffer.
  */
 struct VKBufferWithOffset {
-  VKBuffer &buffer;
+  const VKBuffer &buffer;
   VkDeviceSize offset;
 };
 

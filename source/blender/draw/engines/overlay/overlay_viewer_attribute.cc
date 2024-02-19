@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
@@ -18,11 +18,11 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_curves.hh"
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_geometry_set.hh"
 
 #include "draw_cache_extract.hh"
-#include "draw_cache_impl.h"
+#include "draw_cache_impl.hh"
 #include "overlay_private.hh"
 
 void OVERLAY_viewer_attribute_cache_init(OVERLAY_Data *vedata)
@@ -56,10 +56,10 @@ static void populate_cache_for_instance(Object &object,
 {
   using namespace blender;
   using namespace blender::bke;
+  using namespace blender::draw;
 
   const GeometrySet &base_geometry = *dupli_object.preview_base_geometry;
-  const InstancesComponent &instances =
-      *base_geometry.get_component_for_read<InstancesComponent>();
+  const InstancesComponent &instances = *base_geometry.get_component<InstancesComponent>();
   const AttributeAccessor instance_attributes = *instances.attributes();
   const VArray attribute = *instance_attributes.lookup<ColorGeometry4f>(".viewer");
   if (!attribute) {
@@ -92,7 +92,7 @@ static void populate_cache_for_instance(Object &object,
       DRWShadingGroup *sub_grp = DRW_shgroup_create_sub(pd.viewer_attribute_instance_grp);
       DRW_shgroup_uniform_vec4_copy(sub_grp, "ucolor", color);
       GPUBatch *batch = DRW_cache_curve_edge_wire_get(&object);
-      DRW_shgroup_call_obmat(sub_grp, batch, object.object_to_world);
+      DRW_shgroup_call_obmat(sub_grp, batch, object.object_to_world().ptr());
       break;
     }
     case OB_CURVES: {
@@ -109,6 +109,7 @@ static void populate_cache_for_geometry(Object &object,
 {
   using namespace blender;
   using namespace blender::bke;
+  using namespace blender::draw;
 
   switch (object.type) {
     case OB_MESH: {
@@ -138,7 +139,8 @@ static void populate_cache_for_geometry(Object &object,
         if (curves.attributes().contains(".viewer")) {
           GPUBatch *batch = DRW_cache_curve_edge_wire_viewer_attribute_get(&object);
           DRW_shgroup_uniform_float_copy(pd.viewer_attribute_curve_grp, "opacity", opacity);
-          DRW_shgroup_call_obmat(pd.viewer_attribute_curve_grp, batch, object.object_to_world);
+          DRW_shgroup_call_obmat(
+              pd.viewer_attribute_curve_grp, batch, object.object_to_world().ptr());
         }
       }
       break;
@@ -168,8 +170,8 @@ void OVERLAY_viewer_attribute_cache_populate(OVERLAY_Data *vedata, Object *objec
   DupliObject *dupli_object = DRW_object_get_dupli(object);
 
   if (dupli_object->preview_instance_index >= 0) {
-    const InstancesComponent &instances =
-        *dupli_object->preview_base_geometry->get_component_for_read<InstancesComponent>();
+    const auto &instances =
+        *dupli_object->preview_base_geometry->get_component<blender::bke::InstancesComponent>();
     if (instances.attributes()->contains(".viewer")) {
       populate_cache_for_instance(*object, *pd, *dupli_object, opacity);
       return;

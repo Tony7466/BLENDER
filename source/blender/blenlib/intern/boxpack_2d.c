@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,7 +18,7 @@
 #include "BLI_sort.h" /* qsort_r */
 #define qsort_r BLI_qsort_r
 
-#include "BLI_strict_flags.h"
+#include "BLI_strict_flags.h" /* Keep last. */
 
 #ifdef __GNUC__
 #  pragma GCC diagnostic error "-Wpadded"
@@ -43,14 +43,14 @@ typedef struct BoxVert {
   uint _pad : 23;
   uint index;
 
-  struct BoxPack *trb; /* top right box */
-  struct BoxPack *blb; /* bottom left box */
-  struct BoxPack *brb; /* bottom right box */
-  struct BoxPack *tlb; /* top left box */
+  BoxPack *trb; /* top right box */
+  BoxPack *blb; /* bottom left box */
+  BoxPack *brb; /* bottom right box */
+  BoxPack *tlb; /* top left box */
 
   /* Store last intersecting boxes here
    * speedup intersection testing */
-  struct BoxPack *isect_cache[4];
+  BoxPack *isect_cache[4];
 
 #ifdef USE_PACK_BIAS
   float bias;
@@ -457,7 +457,7 @@ void BLI_box_pack_2d(
             tot_y = max_ff(box_ymax_get(box), tot_y);
 
             /* Place the box */
-            vert->free &= (signed char)(~quad_flag(j));
+            vert->free &= (signed char)~quad_flag(j);
 
             switch (j) {
               case TR:

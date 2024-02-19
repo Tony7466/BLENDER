@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,9 +13,6 @@
 #include "BLI_math_base.h"
 #include "BLI_string.h"
 #include "BLI_system.h"
-#include "BLI_utildefines.h"
-
-#include "MEM_guardedalloc.h"
 
 /* for backtrace and gethostname/GetComputerName */
 #if defined(WIN32)
@@ -75,7 +72,14 @@ void BLI_system_backtrace(FILE *fp)
   char **strings;
   int i;
 
-  /* include a backtrace for good measure */
+  /* Include a back-trace for good measure.
+   *
+   * NOTE: often values printed are addresses (no line numbers of function names),
+   * this information can be expanded using `addr2line`, a utility is included to
+   * conveniently run addr2line on the output generated here:
+   *
+   *   `./tools/utils/addr2line_backtrace.py --exe=/path/to/blender trace.txt`
+   */
   nptrs = backtrace(buffer, SIZE);
   strings = backtrace_symbols(buffer, nptrs);
   for (i = 0; i < nptrs; i++) {
@@ -137,7 +141,7 @@ char *BLI_cpu_brand_string(void)
   return NULL;
 }
 
-int BLI_cpu_support_sse41(void)
+int BLI_cpu_support_sse42(void)
 {
   int result[4], num;
   __cpuid(result, 0);
@@ -145,7 +149,7 @@ int BLI_cpu_support_sse41(void)
 
   if (num >= 1) {
     __cpuid(result, 0x00000001);
-    return (result[2] & ((int)1 << 19)) != 0;
+    return (result[2] & ((int)1 << 20)) != 0;
   }
   return 0;
 }

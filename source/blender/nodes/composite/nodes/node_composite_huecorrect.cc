@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,15 +6,13 @@
  * \ingroup cmpnodes
  */
 
-#include "BKE_colortools.h"
+#include "BKE_colortools.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "COM_shader_node.hh"
 
 #include "node_composite_util.hh"
-
-#include "BKE_colortools.h"
 
 namespace blender::nodes::node_composite_huecorrect_cc {
 

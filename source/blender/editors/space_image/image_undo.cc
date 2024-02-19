@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,7 +25,6 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_map.hh"
-#include "BLI_math.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
@@ -35,22 +34,22 @@
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_paint.h"
-#include "BKE_undo_system.h"
+#include "BKE_paint.hh"
+#include "BKE_undo_system.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_object.h"
-#include "ED_paint.h"
-#include "ED_undo.h"
-#include "ED_util.h"
+#include "ED_object.hh"
+#include "ED_paint.hh"
+#include "ED_undo.hh"
+#include "ED_util.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 static CLG_LogRef LOG = {"ed.image.undo"};
 
@@ -63,12 +62,12 @@ static CLG_LogRef LOG = {"ed.image.undo"};
  * paint operation, but for now just give a public interface */
 static SpinLock paint_tiles_lock;
 
-void ED_image_paint_tile_lock_init(void)
+void ED_image_paint_tile_lock_init()
 {
   BLI_spin_init(&paint_tiles_lock);
 }
 
-void ED_image_paint_tile_lock_end(void)
+void ED_image_paint_tile_lock_end()
 {
   BLI_spin_end(&paint_tiles_lock);
 }
@@ -100,7 +99,7 @@ struct PaintTileKey {
 
   uint64_t hash() const
   {
-    return blender::get_default_hash_4(x_tile, y_tile, image, ibuf);
+    return blender::get_default_hash(x_tile, y_tile, image, ibuf);
   }
   bool operator==(const PaintTileKey &other) const
   {
@@ -458,12 +457,12 @@ static void utile_decref(UndoImageTile *utile)
  * \{ */
 
 struct UndoImageBuf {
-  struct UndoImageBuf *next, *prev;
+  UndoImageBuf *next, *prev;
 
   /**
    * The buffer after the undo step has executed.
    */
-  struct UndoImageBuf *post;
+  UndoImageBuf *post;
 
   char ibuf_filepath[IMB_FILEPATH_SIZE];
 
@@ -577,7 +576,7 @@ static void ubuf_free(UndoImageBuf *ubuf)
  * \{ */
 
 struct UndoImageHandle {
-  struct UndoImageHandle *next, *prev;
+  UndoImageHandle *next, *prev;
 
   /** Each undo handle refers to a single image which may have multiple buffers. */
   UndoRefID_Image image_ref;
@@ -757,7 +756,7 @@ struct ImageUndoStep {
   PaintTileMap *paint_tile_map;
 
   bool is_encode_init;
-  ePaintMode paint_mode;
+  PaintMode paint_mode;
 };
 
 /**
@@ -804,7 +803,7 @@ static bool image_undosys_poll(bContext *C)
   return false;
 }
 
-static void image_undosys_step_encode_init(struct bContext * /*C*/, UndoStep *us_p)
+static void image_undosys_step_encode_init(bContext * /*C*/, UndoStep *us_p)
 {
   ImageUndoStep *us = reinterpret_cast<ImageUndoStep *>(us_p);
   /* dummy, memory is cleared anyway. */
@@ -813,7 +812,7 @@ static void image_undosys_step_encode_init(struct bContext * /*C*/, UndoStep *us
   us->paint_tile_map = MEM_new<PaintTileMap>(__func__);
 }
 
-static bool image_undosys_step_encode(struct bContext *C, struct Main * /*bmain*/, UndoStep *us_p)
+static bool image_undosys_step_encode(bContext *C, Main * /*bmain*/, UndoStep *us_p)
 {
   /* Encoding is done along the way by adding tiles
    * to the current 'ImageUndoStep' added by encode_init.
@@ -944,8 +943,8 @@ static bool image_undosys_step_encode(struct bContext *C, struct Main * /*bmain*
   else {
     BLI_assert(C != nullptr);
     /* Happens when switching modes. */
-    ePaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
-    BLI_assert(ELEM(paint_mode, PAINT_MODE_TEXTURE_2D, PAINT_MODE_TEXTURE_3D));
+    PaintMode paint_mode = BKE_paintmode_get_active_from_context(C);
+    BLI_assert(ELEM(paint_mode, PaintMode::Texture2D, PaintMode::Texture3D));
     us->paint_mode = paint_mode;
   }
 
@@ -1008,7 +1007,7 @@ static void image_undosys_step_decode_redo(ImageUndoStep *us)
 }
 
 static void image_undosys_step_decode(
-    struct bContext *C, struct Main *bmain, UndoStep *us_p, const eUndoStepDir dir, bool is_final)
+    bContext *C, Main *bmain, UndoStep *us_p, const eUndoStepDir dir, bool is_final)
 {
   /* NOTE: behavior for undo/redo closely matches sculpt undo. */
   BLI_assert(dir != STEP_INVALID);
@@ -1021,7 +1020,7 @@ static void image_undosys_step_decode(
     image_undosys_step_decode_redo(us);
   }
 
-  if (us->paint_mode == PAINT_MODE_TEXTURE_3D) {
+  if (us->paint_mode == PaintMode::Texture3D) {
     ED_object_mode_set_ex(C, OB_MODE_TEXTURE_PAINT, false, nullptr);
   }
 
@@ -1062,7 +1061,7 @@ void ED_image_undosys_type(UndoType *ut)
 
   /* NOTE: this is actually a confusing case, since it expects a valid context, but only in a
    * specific case, see `image_undosys_step_encode` code. We cannot specify
-   * `UNDOTYPE_FLAG_NEED_CONTEXT_FOR_ENCODE` though, as it can be called with a NULL context by
+   * `UNDOTYPE_FLAG_NEED_CONTEXT_FOR_ENCODE` though, as it can be called with a null context by
    * current code. */
   ut->flags = UNDOTYPE_FLAG_DECODE_ACTIVE_STEP;
 
@@ -1083,7 +1082,7 @@ void ED_image_undosys_type(UndoType *ut)
  * - So operators can access the pixel-data before the stroke was applied, at run-time.
  * \{ */
 
-PaintTileMap *ED_image_paint_tile_map_get(void)
+PaintTileMap *ED_image_paint_tile_map_get()
 {
   UndoStack *ustack = ED_undo_stack_get();
   UndoStep *us_prev = ustack->step_init;
@@ -1094,7 +1093,7 @@ PaintTileMap *ED_image_paint_tile_map_get(void)
   BLI_assert(us_p == us_prev);
   if (us_p != us_prev) {
     /* Fallback value until we can be sure this never happens. */
-    us->paint_mode = PAINT_MODE_TEXTURE_2D;
+    us->paint_mode = PaintMode::Texture2D;
   }
   return us->paint_tile_map;
 }
@@ -1106,18 +1105,18 @@ void ED_image_undo_restore(UndoStep *us)
   ptile_invalidate_map(paint_tile_map);
 }
 
-static ImageUndoStep *image_undo_push_begin(const char *name, int paint_mode)
+static ImageUndoStep *image_undo_push_begin(const char *name, PaintMode paint_mode)
 {
   UndoStack *ustack = ED_undo_stack_get();
   bContext *C = nullptr; /* special case, we never read from this. */
   UndoStep *us_p = BKE_undosys_step_push_init_with_type(ustack, C, name, BKE_UNDOSYS_TYPE_IMAGE);
   ImageUndoStep *us = reinterpret_cast<ImageUndoStep *>(us_p);
-  BLI_assert(ELEM(paint_mode, PAINT_MODE_TEXTURE_2D, PAINT_MODE_TEXTURE_3D, PAINT_MODE_SCULPT));
-  us->paint_mode = (ePaintMode)paint_mode;
+  BLI_assert(ELEM(paint_mode, PaintMode::Texture2D, PaintMode::Texture3D, PaintMode::Sculpt));
+  us->paint_mode = (PaintMode)paint_mode;
   return us;
 }
 
-void ED_image_undo_push_begin(const char *name, int paint_mode)
+void ED_image_undo_push_begin(const char *name, PaintMode paint_mode)
 {
   image_undo_push_begin(name, paint_mode);
 }
@@ -1127,7 +1126,7 @@ void ED_image_undo_push_begin_with_image(const char *name,
                                          ImBuf *ibuf,
                                          ImageUser *iuser)
 {
-  ImageUndoStep *us = image_undo_push_begin(name, PAINT_MODE_TEXTURE_2D);
+  ImageUndoStep *us = image_undo_push_begin(name, PaintMode::Texture2D);
 
   BLI_assert(BKE_image_get_tile(image, iuser->tile));
   UndoImageHandle *uh = uhandle_ensure(&us->handles, image, iuser);
@@ -1155,7 +1154,7 @@ void ED_image_undo_push_begin_with_image(const char *name,
   }
 }
 
-void ED_image_undo_push_end(void)
+void ED_image_undo_push_end()
 {
   UndoStack *ustack = ED_undo_stack_get();
   BKE_undosys_step_push(ustack, nullptr, nullptr);

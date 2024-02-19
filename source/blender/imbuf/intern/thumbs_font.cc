@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,24 +6,23 @@
  * \ingroup imbuf
  */
 
-#include "BLI_fileops.h"
-#include "BLI_hash_md5.h"
+#include "BLI_hash_md5.hh"
 #include "BLI_utildefines.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "IMB_thumbs.h" /* own include. */
+#include "IMB_thumbs.hh" /* own include. */
 
 /* XXX, bad level call */
-#include "../../blenfont/BLF_api.h"
+#include "../../blenfont/BLF_api.hh"
 
 /* Only change if we need to update the previews in the on-disk cache. */
 #define FONT_THUMB_VERSION "1.0.1"
 
-struct ImBuf *IMB_thumb_load_font(const char *filename, uint x, uint y)
+ImBuf *IMB_thumb_load_font(const char *filename, uint x, uint y)
 {
-  struct ImBuf *ibuf = IMB_allocImBuf(x, y, 32, IB_rect | IB_metadata);
+  ImBuf *ibuf = IMB_allocImBuf(x, y, 32, IB_rect | IB_metadata);
 
   /* fill with white and zero alpha */
   const float col[4] = {1.0f, 1.0f, 1.0f, 0.0f};

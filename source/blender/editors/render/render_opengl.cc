@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,13 +14,11 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_task.h"
 #include "BLI_task.hh"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
-#include "DNA_camera_types.h"
 
 #include "DNA_action_types.h"
 #include "DNA_anim_types.h"
@@ -31,47 +29,47 @@
 
 #include "BKE_anim_data.h"
 #include "BKE_camera.h"
-#include "BKE_context.h"
-#include "BKE_customdata.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
 #include "BKE_image_save.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_writeavi.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
-#include "ED_view3d_offscreen.h"
+#include "ED_gpencil_legacy.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
+#include "ED_view3d_offscreen.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "RE_pipeline.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "SEQ_render.h"
+#include "SEQ_render.hh"
 
 #include "GPU_framebuffer.h"
 #include "GPU_matrix.h"
+#include "GPU_viewport.h"
 
 #include "render_intern.hh"
 
@@ -79,7 +77,7 @@
 // #define DEBUG_TIME
 
 #ifdef DEBUG_TIME
-#  include "PIL_time.h"
+#  include "BLI_time.h"
 #endif
 
 /* TODO(sergey): Find better approximation of the scheduled frames.
@@ -115,6 +113,8 @@ struct OGLRender {
   GPUOffScreen *ofs;
   int sizex, sizey;
   int write_still;
+
+  GPUViewport *viewport;
 
   ReportList *reports;
   bMovieHandle *mh;
@@ -194,9 +194,7 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
       RenderView *rv_del = rv->next;
       BLI_remlink(&rr->views, rv_del);
 
-      RE_RenderBuffer_data_free(&rv_del->combined_buffer);
-      RE_RenderBuffer_data_free(&rv_del->z_buffer);
-      RE_RenderByteBuffer_data_free(&rv_del->byte_buffer);
+      IMB_freeImBuf(rv_del->ibuf);
 
       MEM_freeN(rv_del);
     }
@@ -220,16 +218,14 @@ static void screen_opengl_views_setup(OGLRender *oglrender)
 
         BLI_remlink(&rr->views, rv_del);
 
-        RE_RenderBuffer_data_free(&rv_del->combined_buffer);
-        RE_RenderBuffer_data_free(&rv_del->z_buffer);
-        RE_RenderByteBuffer_data_free(&rv_del->byte_buffer);
+        IMB_freeImBuf(rv_del->ibuf);
 
         MEM_freeN(rv_del);
       }
     }
 
     /* create all the views that are needed */
-    for (srv = static_cast<SceneRenderView *>(rd->views.first); srv; srv = srv->next) {
+    LISTBASE_FOREACH (SceneRenderView *, srv, &rd->views) {
       if (BKE_scene_multiview_is_render_view_active(rd, srv) == false) {
         continue;
       }
@@ -271,7 +267,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
 
   if (oglrender->is_sequencer) {
     SpaceSeq *sseq = oglrender->sseq;
-    struct bGPdata *gpd = (sseq && (sseq->flag & SEQ_PREVIEW_SHOW_GPENCIL)) ? sseq->gpd : nullptr;
+    bGPdata *gpd = (sseq && (sseq->flag & SEQ_PREVIEW_SHOW_GPENCIL)) ? sseq->gpd : nullptr;
 
     /* use pre-calculated ImBuf (avoids deadlock), see: */
     ImBuf *ibuf = oglrender->seq_data.ibufs_arr[oglrender->view_id];
@@ -302,7 +298,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
       uchar *gp_rect;
       uchar *render_rect = ibuf_result->byte_buffer.data;
 
-      DRW_opengl_context_enable();
+      DRW_gpu_context_enable();
       GPU_offscreen_bind(oglrender->ofs, true);
 
       GPU_clear_color(0.0f, 0.0f, 0.0f, 0.0f);
@@ -324,7 +320,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
         blend_color_mix_byte(&render_rect[i], &render_rect[i], &gp_rect[i]);
       }
       GPU_offscreen_unbind(oglrender->ofs, true);
-      DRW_opengl_context_disable();
+      DRW_gpu_context_disable();
 
       MEM_freeN(gp_rect);
     }
@@ -353,6 +349,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
                                                  viewname,
                                                  true,
                                                  oglrender->ofs,
+                                                 oglrender->viewport,
                                                  err_out);
 
       /* for stamp only */
@@ -373,6 +370,7 @@ static void screen_opengl_render_doit(const bContext *C, OGLRender *oglrender, R
                                                         alpha_mode,
                                                         viewname,
                                                         oglrender->ofs,
+                                                        oglrender->viewport,
                                                         err_out);
       camera = scene->camera;
     }
@@ -474,6 +472,7 @@ static void screen_opengl_render_apply(const bContext *C, OGLRender *oglrender)
     for (view_id = 0; view_id < oglrender->views_len; view_id++) {
       context.view_id = view_id;
       context.gpu_offscreen = oglrender->ofs;
+      context.gpu_viewport = oglrender->viewport;
       oglrender->seq_data.ibufs_arr[view_id] = SEQ_render_give_ibuf(
           &context, scene->r.cfra, chanshown);
     }
@@ -606,7 +605,6 @@ static int gather_frames_to_render_for_id(LibraryIDLinkCallbackData *cb_data)
     case ID_CV:        /* Curves */
     case ID_PT:        /* PointCloud */
     case ID_VO:        /* Volume */
-    case ID_SIM:       /* Simulation */
       break;
 
       /* Blacklist: */
@@ -744,14 +742,14 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
   BKE_render_resolution(&scene->r, false, &sizex, &sizey);
 
   /* corrects render size with actual size, not every card supports non-power-of-two dimensions */
-  DRW_opengl_context_enable(); /* Off-screen creation needs to be done in DRW context. */
+  DRW_gpu_context_enable(); /* Off-screen creation needs to be done in DRW context. */
   ofs = GPU_offscreen_create(sizex,
                              sizey,
                              true,
                              GPU_RGBA16F,
                              GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_HOST_READ,
                              err_out);
-  DRW_opengl_context_disable();
+  DRW_gpu_context_disable();
 
   if (!ofs) {
     BKE_reportf(op->reports, RPT_ERROR, "Failed to create OpenGL off-screen buffer, %s", err_out);
@@ -765,6 +763,7 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
   oglrender->ofs = ofs;
   oglrender->sizex = sizex;
   oglrender->sizey = sizey;
+  oglrender->viewport = GPU_viewport_create();
   oglrender->bmain = CTX_data_main(C);
   oglrender->scene = scene;
   oglrender->workspace = workspace;
@@ -859,7 +858,7 @@ static bool screen_opengl_render_init(bContext *C, wmOperator *op)
   BLI_condition_init(&oglrender->task_condition);
 
 #ifdef DEBUG_TIME
-  oglrender->time_start = PIL_check_seconds_timer();
+  oglrender->time_start = BLI_time_now_seconds();
 #endif
 
   return true;
@@ -895,7 +894,7 @@ static void screen_opengl_render_end(bContext *C, OGLRender *oglrender)
   BLI_condition_end(&oglrender->task_condition);
 
 #ifdef DEBUG_TIME
-  printf("Total render time: %f\n", PIL_check_seconds_timer() - oglrender->time_start);
+  printf("Total render time: %f\n", BLI_time_now_seconds() - oglrender->time_start);
 #endif
 
   MEM_SAFE_FREE(oglrender->render_frames);
@@ -918,16 +917,17 @@ static void screen_opengl_render_end(bContext *C, OGLRender *oglrender)
     scene->r.cfra = oglrender->cfrao;
     BKE_scene_graph_update_for_newframe(depsgraph);
 
-    WM_event_remove_timer(oglrender->wm, oglrender->win, oglrender->timer);
+    WM_event_timer_remove(oglrender->wm, oglrender->win, oglrender->timer);
   }
 
   WM_cursor_modal_restore(oglrender->win);
 
   WM_event_add_notifier(C, NC_SCENE | ND_RENDER_RESULT, oglrender->scene);
 
-  DRW_opengl_context_enable();
+  DRW_gpu_context_enable();
   GPU_offscreen_free(oglrender->ofs);
-  DRW_opengl_context_disable();
+  GPU_viewport_free(oglrender->viewport);
+  DRW_gpu_context_disable();
 
   if (oglrender->is_sequencer) {
     MEM_freeN(oglrender->seq_data.ibufs_arr);
@@ -941,6 +941,7 @@ static void screen_opengl_render_end(bContext *C, OGLRender *oglrender)
   CTX_wm_region_set(C, oglrender->prevar);
 
   MEM_delete(oglrender);
+  G.is_rendering = false;
 }
 
 static void screen_opengl_render_cancel(bContext *C, wmOperator *op)
@@ -998,6 +999,7 @@ static bool screen_opengl_render_anim_init(bContext *C, wmOperator *op)
     }
   }
 
+  G.is_rendering = true;
   oglrender->cfrao = scene->r.cfra;
   oglrender->nfra = PSFRA;
   scene->r.cfra = PSFRA;
@@ -1069,6 +1071,7 @@ static void write_result(TaskPool *__restrict pool, WriteTaskData *task_data)
     }
   }
   if (reports.list.first != nullptr) {
+    /* TODO: Should rather use new #BKE_reports_move_to_reports ? */
     BLI_spin_lock(&oglrender->reports_lock);
     for (Report *report = static_cast<Report *>(reports.list.first); report != nullptr;
          report = report->next)
@@ -1077,6 +1080,7 @@ static void write_result(TaskPool *__restrict pool, WriteTaskData *task_data)
     }
     BLI_spin_unlock(&oglrender->reports_lock);
   }
+  BKE_reports_free(&reports);
   if (!ok) {
     oglrender->pool_ok = false;
   }
@@ -1163,7 +1167,8 @@ static bool screen_opengl_render_anim_step(bContext *C, wmOperator *op)
 
   if (view_context) {
     if (oglrender->rv3d->persp == RV3D_CAMOB && oglrender->v3d->camera &&
-        oglrender->v3d->scenelock) {
+        oglrender->v3d->scenelock)
+    {
       /* since BKE_scene_graph_update_for_newframe() is used rather
        * then ED_update_for_newframe() the camera needs to be set */
       if (BKE_scene_camera_switch_update(scene)) {
@@ -1269,7 +1274,7 @@ static int screen_opengl_render_invoke(bContext *C, wmOperator *op, const wmEven
   oglrender->win = CTX_wm_window(C);
 
   WM_event_add_modal_handler(C, op);
-  oglrender->timer = WM_event_add_timer(oglrender->wm, oglrender->win, TIMER, 0.01f);
+  oglrender->timer = WM_event_timer_add(oglrender->wm, oglrender->win, TIMER, 0.01f);
 
   return OPERATOR_RUNNING_MODAL;
 }
@@ -1308,21 +1313,21 @@ static int screen_opengl_render_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static char *screen_opengl_render_description(struct bContext * /*C*/,
-                                              struct wmOperatorType * /*ot*/,
-                                              struct PointerRNA *ptr)
+static std::string screen_opengl_render_description(bContext * /*C*/,
+                                                    wmOperatorType * /*ot*/,
+                                                    PointerRNA *ptr)
 {
   if (!RNA_boolean_get(ptr, "animation")) {
-    return nullptr;
+    return "";
   }
 
   if (RNA_boolean_get(ptr, "render_keyed_only")) {
-    return BLI_strdup(TIP_(
+    return TIP_(
         "Render the viewport for the animation range of this scene, but only render keyframes of "
-        "selected objects"));
+        "selected objects");
   }
 
-  return BLI_strdup(TIP_("Render the viewport for the animation range of this scene"));
+  return TIP_("Render the viewport for the animation range of this scene");
 }
 
 void RENDER_OT_opengl(wmOperatorType *ot)
@@ -1366,7 +1371,7 @@ void RENDER_OT_opengl(wmOperatorType *ot)
       "write_still",
       false,
       "Write Image",
-      "Save rendered the image to the output path (used only when animation is disabled)");
+      "Save the rendered image to the output path (used only when animation is disabled)");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
   prop = RNA_def_boolean(ot->srna,
                          "view_context",

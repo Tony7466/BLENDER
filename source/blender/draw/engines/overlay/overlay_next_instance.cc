@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,10 @@
  * \ingroup overlay
  */
 
-#include "DEG_depsgraph_query.h"
-#include "ED_view3d.h"
+#include "DEG_depsgraph_query.hh"
+
+#include "ED_view3d.hh"
+
 #include "draw_debug.hh"
 
 #include "overlay_next_instance.hh"
@@ -247,6 +249,7 @@ bool Instance::object_is_edit_mode(const Object *ob)
       case OB_CURVES:
         return state.ctx_mode == CTX_MODE_EDIT_CURVES;
       case OB_POINTCLOUD:
+        return state.ctx_mode == CTX_MODE_EDIT_POINT_CLOUD;
       case OB_VOLUME:
         /* No edit mode yet. */
         return false;
@@ -266,10 +269,10 @@ BoneInstanceData::BoneInstanceData(Object *ob,
                                    const float color[4])
 {
   /* TODO(fclem): Use C++ math API. */
-  mul_v3_v3fl(this->mat[0], ob->object_to_world[0], radius);
-  mul_v3_v3fl(this->mat[1], ob->object_to_world[1], radius);
-  mul_v3_v3fl(this->mat[2], ob->object_to_world[2], radius);
-  mul_v3_m4v3(this->mat[3], ob->object_to_world, pos);
+  mul_v3_v3fl(this->mat[0], ob->object_to_world().ptr()[0], radius);
+  mul_v3_v3fl(this->mat[1], ob->object_to_world().ptr()[1], radius);
+  mul_v3_v3fl(this->mat[2], ob->object_to_world().ptr()[2], radius);
+  mul_v3_m4v3(this->mat[3], ob->object_to_world().ptr(), pos);
   /* WATCH: Reminder, alpha is wire-size. */
   OVERLAY_bone_instance_data_set_color(this, color);
 }

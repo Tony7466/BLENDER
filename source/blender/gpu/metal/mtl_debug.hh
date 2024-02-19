@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "CLG_log.h"
 
 /** Options for organizing Metal GPU debug captures. */
@@ -35,11 +35,7 @@ void mtl_debug_init();
 #define MTL_LOG_ERROR(info, ...) \
   { \
     if (G.debug & G_DEBUG_GPU) { \
-      CLG_logf(debug::LOG.type, \
-               CLG_SEVERITY_ERROR, \
-               "[Metal Viewport Error]", \
-               "", \
-               info EXPAND_ARGS(__VA_ARGS__)); \
+      CLOG_ERROR(&debug::LOG, info EXPAND_ARGS(__VA_ARGS__)); \
     } \
     BLI_assert(false); \
   }
@@ -47,22 +43,14 @@ void mtl_debug_init();
 #define MTL_LOG_WARNING(info, ...) \
   { \
     if (G.debug & G_DEBUG_GPU) { \
-      CLG_logf(debug::LOG.type, \
-               CLG_SEVERITY_WARN, \
-               "[Metal Viewport Warning]", \
-               "", \
-               info EXPAND_ARGS(__VA_ARGS__)); \
+      CLOG_WARN(&debug::LOG, info EXPAND_ARGS(__VA_ARGS__)); \
     } \
   }
 
 #define MTL_LOG_INFO(info, ...) \
   { \
     if (G.debug & G_DEBUG_GPU) { \
-      CLG_logf(debug::LOG.type, \
-               CLG_SEVERITY_INFO, \
-               "[Metal Viewport Info]", \
-               "", \
-               info EXPAND_ARGS(__VA_ARGS__)); \
+      CLOG_INFO(&debug::LOG, 2, info EXPAND_ARGS(__VA_ARGS__)); \
     } \
   }
 

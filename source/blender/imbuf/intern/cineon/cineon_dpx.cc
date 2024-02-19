@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation.
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,22 +7,20 @@
  */
 
 #include "logImageCore.h"
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 
-#include "IMB_filetype.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_filetype.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_colormanagement_intern.h"
-
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "MEM_guardedalloc.h"
 
-static struct ImBuf *imb_load_dpx_cineon(
+static ImBuf *imb_load_dpx_cineon(
     const uchar *mem, size_t size, int use_cineon, int flags, char colorspace[IM_MAX_SPACE])
 {
   ImBuf *ibuf;
@@ -166,7 +164,7 @@ static int imb_save_dpx_cineon(ImBuf *ibuf, const char *filepath, int use_cineon
   return rvalue;
 }
 
-bool imb_save_cineon(struct ImBuf *buf, const char *filepath, int flags)
+bool imb_save_cineon(ImBuf *buf, const char *filepath, int flags)
 {
   return imb_save_dpx_cineon(buf, filepath, 1, flags);
 }

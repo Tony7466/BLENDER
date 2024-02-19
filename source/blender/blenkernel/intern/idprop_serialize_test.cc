@@ -1,8 +1,10 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation.
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "testing/testing.h"
+
+#include "BLI_listbase.h"
 
 #include "DNA_ID.h"
 
@@ -250,7 +252,7 @@ static void test_idprop(const IDProperty *id_property,
 
 static void test_idprop(const IDProperty *id_property,
                         StringRef expected_name,
-                        const Vector<int32_t> &values)
+                        const Span<int32_t> values)
 {
   ASSERT_NE(id_property, nullptr);
   EXPECT_EQ(id_property->type, IDP_ARRAY);
@@ -265,7 +267,7 @@ static void test_idprop(const IDProperty *id_property,
 
 static void test_idprop(const IDProperty *id_property,
                         StringRef expected_name,
-                        const Vector<float> &values)
+                        const Span<float> values)
 {
   ASSERT_NE(id_property, nullptr);
   EXPECT_EQ(id_property->type, IDP_ARRAY);
@@ -280,7 +282,7 @@ static void test_idprop(const IDProperty *id_property,
 
 static void test_idprop(const IDProperty *id_property,
                         StringRef expected_name,
-                        const Vector<double> &values)
+                        const Span<double> values)
 {
   ASSERT_NE(id_property, nullptr);
   EXPECT_EQ(id_property->type, IDP_ARRAY);

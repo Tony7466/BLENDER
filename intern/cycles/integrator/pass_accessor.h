@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
@@ -67,6 +68,10 @@ class PassAccessor {
     /* Offset in pixels from the beginning of pixels storage.
      * Allows to get pixels of render buffer into a partial slice of the destination. */
     int offset = 0;
+
+    /* Offset in floats from the beginning of pixels storage.
+     * Is ignored for half4 destination. */
+    int pixel_offset = 0;
 
     /* Number of floats per pixel. When zero is the same as `num_components`.
      *

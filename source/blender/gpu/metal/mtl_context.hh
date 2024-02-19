@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -53,9 +53,6 @@ class MTLStorageBuf;
 /* Structs containing information on current binding state for textures and samplers. */
 struct MTLTextureBinding {
   bool used;
-
-  /* Same value as index in bindings array. */
-  uint slot_index;
   gpu::MTLTexture *texture_resource;
 };
 
@@ -148,8 +145,8 @@ class MTLRenderPassState {
   /* Buffer binding (RenderCommandEncoder). */
   void bind_vertex_buffer(id<MTLBuffer> buffer, uint64_t buffer_offset, uint index);
   void bind_fragment_buffer(id<MTLBuffer> buffer, uint64_t buffer_offset, uint index);
-  void bind_vertex_bytes(void *bytes, uint64_t length, uint index);
-  void bind_fragment_bytes(void *bytes, uint64_t length, uint index);
+  void bind_vertex_bytes(const void *bytes, uint64_t length, uint index);
+  void bind_fragment_bytes(const void *bytes, uint64_t length, uint index);
 };
 
 /* Metal Context Compute Pass State -- Used to track active ComputeCommandEncoder state. */
@@ -187,7 +184,7 @@ class MTLComputeState {
                            uint64_t buffer_offset,
                            uint index,
                            bool writeable = false);
-  void bind_compute_bytes(void *bytes, uint64_t length, uint index);
+  void bind_compute_bytes(const void *bytes, uint64_t length, uint index);
 };
 
 /* Depth Stencil State */
@@ -383,6 +380,21 @@ struct MTLContextTextureUtils {
   }
 };
 
+class MTLContextComputeUtils {
+ private:
+  id<MTLComputePipelineState> buffer_clear_pso_ = nil;
+
+ public:
+  id<MTLComputePipelineState> get_buffer_clear_pso();
+  void cleanup()
+  {
+    if (buffer_clear_pso_) {
+      [buffer_clear_pso_ release];
+      buffer_clear_pso_ = nil;
+    }
+  }
+};
+
 /* Combined sampler state configuration for Argument Buffer caching. */
 struct MTLSamplerArray {
   uint num_samplers;
@@ -410,7 +422,7 @@ struct MTLSamplerArray {
   }
 };
 
-typedef enum MTLPipelineStateDirtyFlag {
+enum MTLPipelineStateDirtyFlag {
   MTL_PIPELINE_STATE_NULL_FLAG = 0,
   /* Whether we need to call setViewport. */
   MTL_PIPELINE_STATE_VIEWPORT_FLAG = (1 << 0),
@@ -429,7 +441,7 @@ typedef enum MTLPipelineStateDirtyFlag {
       (MTL_PIPELINE_STATE_VIEWPORT_FLAG | MTL_PIPELINE_STATE_SCISSOR_FLAG |
        MTL_PIPELINE_STATE_DEPTHSTENCIL_FLAG | MTL_PIPELINE_STATE_PSO_FLAG |
        MTL_PIPELINE_STATE_FRONT_FACING_FLAG | MTL_PIPELINE_STATE_CULLMODE_FLAG)
-} MTLPipelineStateDirtyFlag;
+};
 
 /* Ignore full flag bit-mask `MTL_PIPELINE_STATE_ALL_FLAG`. */
 ENUM_OPERATORS(MTLPipelineStateDirtyFlag, MTL_PIPELINE_STATE_CULLMODE_FLAG);
@@ -500,10 +512,11 @@ struct MTLContextGlobalShaderPipelineState {
   MTLContextDepthStencilState depth_stencil_state;
 
   /* Viewport/Scissor Region. */
-  int viewport_offset_x;
-  int viewport_offset_y;
-  int viewport_width;
-  int viewport_height;
+  int num_active_viewports = 1;
+  int viewport_offset_x[GPU_MAX_VIEWPORTS];
+  int viewport_offset_y[GPU_MAX_VIEWPORTS];
+  int viewport_width[GPU_MAX_VIEWPORTS];
+  int viewport_height[GPU_MAX_VIEWPORTS];
   bool scissor_enabled;
   int scissor_x;
   int scissor_y;
@@ -627,7 +640,7 @@ class MTLCommandBufferManager {
   bool end_active_command_encoder();
   id<MTLRenderCommandEncoder> ensure_begin_render_command_encoder(MTLFrameBuffer *ctx_framebuffer,
                                                                   bool force_begin,
-                                                                  bool *new_pass);
+                                                                  bool *r_new_pass);
   id<MTLBlitCommandEncoder> ensure_begin_blit_encoder();
   id<MTLComputeCommandEncoder> ensure_begin_compute_encoder();
 
@@ -653,10 +666,12 @@ class MTLCommandBufferManager {
   void unfold_pending_debug_groups();
 };
 
-/** MTLContext -- Core render loop and state management. **/
-/* NOTE(Metal): Partial #MTLContext stub to provide wrapper functionality
- * for work-in-progress `MTL*` classes. */
-
+/**
+ * MTLContext -- Core render loop and state management.
+ *
+ * NOTE(Metal): Partial #MTLContext stub to provide wrapper functionality
+ * for work-in-progress `MTL*` classes.
+ */
 class MTLContext : public Context {
   friend class MTLBackend;
   friend class MTLRenderPassState;
@@ -703,6 +718,7 @@ class MTLContext : public Context {
 
   /* Compute and specialization caches. */
   MTLContextTextureUtils texture_utils_;
+  MTLContextComputeUtils compute_utils_;
 
   /* Texture Samplers. */
   /* Cache of generated #MTLSamplerState objects based on permutations of the members of
@@ -755,7 +771,7 @@ class MTLContext : public Context {
   void flush() override;
   void finish() override;
 
-  void memory_statistics_get(int *total_mem, int *free_mem) override;
+  void memory_statistics_get(int *r_total_mem, int *r_free_mem) override;
 
   static MTLContext *get()
   {
@@ -823,13 +839,13 @@ class MTLContext : public Context {
                               const MTLRenderPipelineStateInstance *pipeline_state_instance);
   bool ensure_buffer_bindings(id<MTLComputeCommandEncoder> rec,
                               const MTLShaderInterface *shader_interface,
-                              const MTLComputePipelineStateInstance &pipeline_state_instance);
+                              const MTLComputePipelineStateInstance *pipeline_state_instance);
   void ensure_texture_bindings(id<MTLRenderCommandEncoder> rec,
                                MTLShaderInterface *shader_interface,
                                const MTLRenderPipelineStateInstance *pipeline_state_instance);
   void ensure_texture_bindings(id<MTLComputeCommandEncoder> rec,
                                MTLShaderInterface *shader_interface,
-                               const MTLComputePipelineStateInstance &pipeline_state_instance);
+                               const MTLComputePipelineStateInstance *pipeline_state_instance);
   void ensure_depth_stencil_state(MTLPrimitiveType prim_type);
 
   id<MTLBuffer> get_null_buffer();
@@ -838,12 +854,14 @@ class MTLContext : public Context {
   void free_dummy_resources();
 
   /* Compute. */
-  bool ensure_compute_pipeline_state();
+  /* Ensure compute pipeline state for current config is compiled and return PSO instance. */
+  const MTLComputePipelineStateInstance *ensure_compute_pipeline_state();
   void compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
   void compute_dispatch_indirect(StorageBuf *indirect_buf);
 
   /* State assignment. */
   void set_viewport(int origin_x, int origin_y, int width, int height);
+  void set_viewports(int count, const int (&viewports)[GPU_MAX_VIEWPORTS][4]);
   void set_scissor(int scissor_x, int scissor_y, int scissor_width, int scissor_height);
   void set_scissor_enabled(bool scissor_enabled);
 
@@ -863,6 +881,12 @@ class MTLContext : public Context {
   MTLContextTextureUtils &get_texture_utils()
   {
     return texture_utils_;
+  }
+
+  /* Compute utilities. */
+  MTLContextComputeUtils &get_compute_utils()
+  {
+    return compute_utils_;
   }
 
   bool get_active()

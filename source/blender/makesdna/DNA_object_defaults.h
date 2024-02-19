@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,7 +25,6 @@
  \
     .constinv = _DNA_DEFAULT_UNIT_M4, \
     .parentinv = _DNA_DEFAULT_UNIT_M4, \
-    .object_to_world = _DNA_DEFAULT_UNIT_M4, \
  \
     .scale = {1, 1, 1}, \
     .dscale = {1, 1, 1}, \
