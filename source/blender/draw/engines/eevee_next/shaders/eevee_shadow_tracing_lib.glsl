@@ -415,8 +415,8 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
 
   vec3 ndcP = drw_point_world_to_ndc(P);
   vec2 extent = vec2(uniform_buf.film.render_extent);
-  /* Offset 1 pixel up and right. */
-  vec3 offsetP = drw_point_ndc_to_world(ndcP + vec3(1.0 / extent.x, 1.0 / extent.y, 0.0));
+  /* Offset 1 pixel up. */
+  vec3 offsetP = drw_point_ndc_to_world(ndcP + vec3(0.0, 1.0 / extent.y, 0.0));
   /* Project the offset position into the surface plane. */
   offsetP = line_plane_intersect(
       drw_view_position(), normalize(offsetP - drw_view_position()), P, Ng);
