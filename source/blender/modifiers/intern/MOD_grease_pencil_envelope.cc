@@ -290,9 +290,6 @@ static void deform_drawing_as_envelope(const GreasePencilEnvelopeModifierData &e
                                        bke::greasepencil::Drawing &drawing,
                                        const IndexMask &curves_mask)
 {
-  /* TODO is this still needed? */
-  const float pixfactor = 1.0f;
-
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   const bke::AttributeAccessor attributes = curves.attributes();
   const MutableSpan<float3> positions = curves.positions_for_write();
@@ -330,7 +327,7 @@ static void deform_drawing_as_envelope(const GreasePencilEnvelopeModifierData &e
         continue;
       }
 
-      const float target_radius = radii[point_i] * emd.thickness + envelope_radius * pixfactor;
+      const float target_radius = radii[point_i] * emd.thickness + envelope_radius;
       radii[point_i] = math::interpolate(radii[point_i], target_radius, weight);
       positions[point_i] = math::interpolate(old_positions[point_i], envelope_center, weight);
     }
@@ -349,6 +346,8 @@ struct EnvelopeInfo {
   int points_per_curve;
   /* Material index assigned to new strokes. */
   int material_index;
+  float thickness;
+  float strength;
 };
 
 static EnvelopeInfo get_envelope_info(const GreasePencilEnvelopeModifierData &emd,
@@ -369,6 +368,8 @@ static EnvelopeInfo get_envelope_info(const GreasePencilEnvelopeModifierData &em
       break;
   }
   info.material_index = std::min(emd.mat_nr, ctx.object->totcol - 1);
+  info.thickness = emd.thickness;
+  info.strength = emd.strength;
   return info;
 }
 
@@ -473,8 +474,6 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
    */
 
   for (const int i : IndexRange(num_strokes)) {
-    // const int envelope_start = i - spread;
-    // const int envelope_next = i + 1 + info.skip;
     const IndexRange dst_envelope_points = {i * info.points_per_curve, info.points_per_curve};
 
     curve_offsets[i] = dst_points[dst_envelope_points.start()];
@@ -574,6 +573,30 @@ static void create_envelope_strokes(const EnvelopeInfo &info,
                          {"cyclic", "material_index"},
                          src_curve_indices,
                          dst_attributes);
+
+  /* Apply thickness and strength factors. */
+  {
+    bke::SpanAttributeWriter<float> radius_writer =
+        dst_attributes.lookup_or_add_for_write_span<float>(
+            "radius",
+            bke::AttrDomain::Point,
+            bke::AttributeInitVArray(VArray<float>::ForSingle(0.01f, dst_point_num)));
+    bke::SpanAttributeWriter<float> opacity_writer =
+        dst_attributes.lookup_or_add_for_write_span<float>(
+            "opacity",
+            bke::AttrDomain::Point,
+            bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, dst_point_num)));
+    const IndexRange all_new_points = keep_original ?
+                                          IndexRange(src_curves.point_num,
+                                                     dst_point_num - src_curves.point_num) :
+                                          IndexRange(dst_point_num);
+    for (const int point_i : all_new_points) {
+      radius_writer.span[point_i] *= info.thickness;
+      opacity_writer.span[point_i] *= info.strength;
+    }
+    radius_writer.finish();
+    opacity_writer.finish();
+  }
 
   dst_cyclic.finish();
   dst_material_indices.finish();
