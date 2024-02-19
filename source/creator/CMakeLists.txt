@@ -339,7 +339,7 @@ else()
       PRIVATE ${PLATFORM_LINKLIBS}
     )
     # blender_cpu_check *NEEDS* to be linked first, there can be no exceptions
-    # to this, this is to ensure, this will be the first code to run once the
+    # to this, this is to ensure this will be the first code to run once the
     # blender binary has been loaded by the OS.
     target_link_libraries(blender PRIVATE blender_cpu_check)
     if(NOT WIN32)
