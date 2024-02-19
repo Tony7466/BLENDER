@@ -169,28 +169,45 @@ ShadowEvalResult shadow_punctual_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
   return result;
 }
 
-vec3 shadow_directional_reconstruct_position(ShadowSampleParams params, LightData light, vec3 uvw)
-{
-  float clip_near = orderedIntBitsToFloat(light.clip_near);
-  float clip_far = orderedIntBitsToFloat(light.clip_far);
+struct ShadowDirectionalSampleInfo {
+  float clip_near;
+  float clip_far;
+  int level_relative;
+  int lod_relative;
+  ivec2 clipmap_offset;
+  vec2 clipmap_origin;
+};
 
-  int level = shadow_directional_level(light, params.lP - light._position);
+ShadowDirectionalSampleInfo shadow_directional_sample_info_get(LightData light, vec3 lP)
+{
+  ShadowDirectionalSampleInfo info;
+  info.clip_near = orderedIntBitsToFloat(light.clip_near);
+  info.clip_far = orderedIntBitsToFloat(light.clip_far);
+
+  int level = shadow_directional_level(light, lP - light._position);
   /* This difference needs to be less than 32 for the later shift to be valid.
    * This is ensured by ShadowDirectional::clipmap_level_range(). */
-  int level_relative = level - light.clipmap_lod_min;
-  int lod_relative = (light.type == LIGHT_SUN_ORTHO) ? light.clipmap_lod_min : level;
+  info.level_relative = level - light.clipmap_lod_min;
+  info.lod_relative = (light.type == LIGHT_SUN_ORTHO) ? light.clipmap_lod_min : level;
 
-  ivec2 clipmap_offset = shadow_decompress_grid_offset(
-      light.type, light.clipmap_base_offset, level_relative);
-  vec2 clipmap_origin = vec2(light._clipmap_origin_x, light._clipmap_origin_y);
+  info.clipmap_offset = shadow_decompress_grid_offset(
+      light.type, light.clipmap_base_offset, info.level_relative);
+  info.clipmap_origin = vec2(light._clipmap_origin_x, light._clipmap_origin_y);
+
+  return info;
+}
+
+vec3 shadow_directional_reconstruct_position(ShadowSampleParams params, LightData light, vec3 uvw)
+{
+  ShadowDirectionalSampleInfo info = shadow_directional_sample_info_get(light, params.lP);
 
   vec2 tilemap_uv = uvw.xy;
-  tilemap_uv += vec2(clipmap_offset) / float(SHADOW_TILEMAP_RES);
-  vec2 clipmap_pos = (tilemap_uv - 0.5) / exp2(-float(lod_relative));
+  tilemap_uv += vec2(info.clipmap_offset) / float(SHADOW_TILEMAP_RES);
+  vec2 clipmap_pos = (tilemap_uv - 0.5) / exp2(-float(info.lod_relative));
 
   vec3 lP;
-  lP.xy = clipmap_pos + clipmap_origin;
-  lP.z = (params.uv.z + clip_near) * -1.0;
+  lP.xy = clipmap_pos + info.clipmap_origin;
+  lP.z = (params.uv.z + info.clip_near) * -1.0;
 
   return mat3(light.object_mat) * lP;
 }
@@ -200,37 +217,26 @@ ShadowSampleParams shadow_directional_sample_params_get(usampler2D tilemaps_tx,
                                                         vec3 P)
 {
   vec3 lP = P * mat3(light.object_mat);
+  ShadowDirectionalSampleInfo info = shadow_directional_sample_info_get(light, lP);
+
   ShadowCoordinates coord = shadow_directional_coordinates(light, lP);
 
-  float clip_near = orderedIntBitsToFloat(light.clip_near);
-  float clip_far = orderedIntBitsToFloat(light.clip_far);
   /* Assumed to be non-null. */
-  float z_range = clip_far - clip_near;
-  float dist_to_near_plane = -lP.z - clip_near;
+  float z_range = info.clip_far - info.clip_near;
+  float dist_to_near_plane = -lP.z - info.clip_near;
 
-  int level = shadow_directional_level(light, lP - light._position);
-  /* This difference needs to be less than 32 for the later shift to be valid.
-   * This is ensured by ShadowDirectional::clipmap_level_range(). */
-  int level_relative = level - light.clipmap_lod_min;
+  vec2 clipmap_pos = lP.xy - info.clipmap_origin;
+  vec2 tilemap_uv = clipmap_pos * exp2(-float(info.lod_relative)) + 0.5;
 
-  int lod_relative = (light.type == LIGHT_SUN_ORTHO) ? light.clipmap_lod_min : level;
-
-  vec2 clipmap_origin = vec2(light._clipmap_origin_x, light._clipmap_origin_y);
-  vec2 clipmap_pos = lP.xy - clipmap_origin;
-  vec2 tilemap_uv = clipmap_pos * exp2(-float(lod_relative)) + 0.5;
-
-  /* Compute offset in tile. */
-  ivec2 clipmap_offset = shadow_decompress_grid_offset(
-      light.type, light.clipmap_base_offset, level_relative);
   /* Translate tilemap UVs to its origin. */
-  tilemap_uv -= vec2(clipmap_offset) / float(SHADOW_TILEMAP_RES);
+  tilemap_uv -= vec2(info.clipmap_offset) / float(SHADOW_TILEMAP_RES);
   /* Clamp to avoid out of tilemap access. */
   tilemap_uv = saturate(tilemap_uv);
 
   ShadowSampleParams result;
   result.lP = lP;
   result.uv = vec3(tilemap_uv, dist_to_near_plane);
-  result.tilemap_index = light.tilemap_index + level_relative;
+  result.tilemap_index = light.tilemap_index + info.level_relative;
   result.z_range = z_range;
   return result;
 }
