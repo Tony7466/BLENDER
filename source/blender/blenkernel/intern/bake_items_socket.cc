@@ -47,6 +47,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
       case SOCK_INT:
       case SOCK_BOOLEAN:
       case SOCK_ROTATION:
+      case SOCK_MATRIX:
       case SOCK_RGBA: {
         auto &value_variant = *static_cast<SocketValueVariant *>(socket_value);
         if (value_variant.is_context_dependent_field()) {
@@ -131,6 +132,7 @@ Array<std::unique_ptr<BakeItem>> move_socket_values_to_bake_items(const Span<voi
     case SOCK_INT:
     case SOCK_BOOLEAN:
     case SOCK_ROTATION:
+    case SOCK_MATRIX:
     case SOCK_RGBA: {
       const CPPType &base_type = *socket_type_to_geo_nodes_base_cpp_type(socket_type);
       if (const auto *item = dynamic_cast<const PrimitiveBakeItem *>(&bake_item)) {
@@ -209,8 +211,13 @@ static void default_initialize_socket_value(const eNodeSocketDatatype socket_typ
 {
   const char *socket_idname = nodeStaticSocketType(socket_type, 0);
   const bNodeSocketType *typeinfo = nodeSocketTypeFind(socket_idname);
-  typeinfo->geometry_nodes_cpp_type->copy_construct(typeinfo->geometry_nodes_default_cpp_value,
-                                                    r_value);
+  if (typeinfo->geometry_nodes_default_cpp_value) {
+    typeinfo->geometry_nodes_cpp_type->copy_construct(typeinfo->geometry_nodes_default_cpp_value,
+                                                      r_value);
+  }
+  else {
+    typeinfo->geometry_nodes_cpp_type->value_initialize(r_value);
+  }
 }
 
 void move_bake_items_to_socket_values(
