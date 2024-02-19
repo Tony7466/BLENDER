@@ -104,100 +104,48 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-/* temp struct to hold data */
-struct GreasePencilHookData_cb {
-  CurveMapping *curfalloff;
-
-  char falloff_type;
-  float falloff;
-  float falloff_sq;
-  float fac_orig;
-
-  uint use_falloff : 1;
-  uint use_uniform : 1;
-
-  float3 cent;
-
-  float3x3 mat_uniform;
-  float4x4 mat;
-};
-
 /* Calculate the factor of falloff. */
-static float gpencil_hook_falloff(const GreasePencilHookData_cb *tData, const float len_sq)
+static float hook_falloff(const float falloff,
+                          const int falloff_type,
+                          const float falloff_sq,
+                          const float fac_orig,
+                          const CurveMapping *curfalloff,
+                          const float len_sq)
 {
-  BLI_assert(tData->falloff_sq);
-  if (len_sq > tData->falloff_sq) {
+  BLI_assert(falloff_sq);
+  if (len_sq > falloff_sq) {
     return 0.0f;
   }
   if (len_sq > 0.0f) {
-    float fac;
-
-    if (tData->falloff_type == MOD_GREASE_PENCIL_HOOK_Falloff_Const) {
-      fac = 1.0f;
-      goto finally;
+    if (falloff_type == MOD_GREASE_PENCIL_HOOK_Falloff_Const) {
+      return fac_orig;
     }
-    else if (tData->falloff_type == MOD_GREASE_PENCIL_HOOK_Falloff_InvSquare) {
-      /* avoid sqrt below */
-      fac = 1.0f - (len_sq / tData->falloff_sq);
-      goto finally;
+    else if (falloff_type == MOD_GREASE_PENCIL_HOOK_Falloff_InvSquare) {
+      /* Avoid sqrt below. */
+      return (1.0f - (len_sq / falloff_sq)) * fac_orig;
     }
 
-    fac = 1.0f - (math::sqrt(len_sq) / tData->falloff);
+    float fac = 1.0f - (math::sqrt(len_sq) / falloff);
 
-    switch (tData->falloff_type) {
+    switch (falloff_type) {
       case MOD_GREASE_PENCIL_HOOK_Falloff_Curve:
-        fac = BKE_curvemapping_evaluateF(tData->curfalloff, 0, fac);
-        break;
+        return BKE_curvemapping_evaluateF(curfalloff, 0, fac) * fac_orig;
       case MOD_GREASE_PENCIL_HOOK_Falloff_Sharp:
-        fac = fac * fac;
-        break;
+        return fac * fac * fac_orig;
       case MOD_GREASE_PENCIL_HOOK_Falloff_Smooth:
-        fac = 3.0f * fac * fac - 2.0f * fac * fac * fac;
-        break;
+        return (3.0f * fac * fac - 2.0f * fac * fac * fac) * fac_orig;
       case MOD_GREASE_PENCIL_HOOK_Falloff_Root:
-        fac = math::sqrt(fac);
-        break;
-      case MOD_GREASE_PENCIL_HOOK_Falloff_Linear:
-        /* pass */
+        return math::sqrt(fac) * fac_orig;
+        ;
         break;
       case MOD_GREASE_PENCIL_HOOK_Falloff_Sphere:
-        fac = math::sqrt(2 * fac - fac * fac);
-        break;
+        return math::sqrt(2 * fac - fac * fac) * fac_orig;
+      case MOD_GREASE_PENCIL_HOOK_Falloff_Linear: /* Pass. */
       default:
-        break;
+        return fac * fac_orig;
     }
-
-  finally:
-    return fac * tData->fac_orig;
   }
-  else {
-    return tData->fac_orig;
-  }
-}
-
-/* apply point deformation */
-static void gpencil_hook_co_apply(GreasePencilHookData_cb *tData, float weight, float3 &position)
-{
-  float fac;
-  if (tData->use_falloff) {
-    float len_sq;
-    if (tData->use_uniform) {
-      const float3 co_uniform = math::transform_point(tData->mat_uniform, position);
-      len_sq = math::distance(tData->cent, co_uniform);
-    }
-    else {
-      len_sq = math::distance(tData->cent, position);
-    }
-    fac = gpencil_hook_falloff(tData, len_sq);
-  }
-  else {
-    fac = tData->fac_orig;
-  }
-
-  if (fac) {
-    float3 co_tmp = math::transform_point(tData->mat, position);
-    position = math::interpolate(position, co_tmp, fac * weight);
-  }
+  return fac_orig;
 }
 
 static void deform_drawing(const ModifierData &md,
@@ -219,40 +167,40 @@ static void deform_drawing(const ModifierData &md,
   const VArray<float> input_weights = modifier::greasepencil::get_influence_vertex_weights(
       curves, mmd.influence);
 
-  float4x4 dmat;
-  GreasePencilHookData_cb tData;
+  const int falloff_type = mmd.falloff_type;
+  const float falloff = (mmd.falloff_type == eHook_Falloff_None) ? 0.0f : mmd.falloff;
+  const float falloff_sq = square_f(falloff);
+  const float fac_orig = mmd.force;
+  bool use_falloff = falloff_sq != 0.0f;
+  bool use_uniform = (mmd.flag & MOD_GRAESE_PENCIL_HOOK_UNIFORM_SPACE) != 0;
 
-  tData.curfalloff = mmd.influence.custom_curve;
-  tData.falloff_type = mmd.falloff_type;
-  tData.falloff = (mmd.falloff_type == eHook_Falloff_None) ? 0.0f : mmd.falloff;
-  tData.falloff_sq = square_f(tData.falloff);
-  tData.fac_orig = mmd.force;
-  tData.use_falloff = (tData.falloff_sq != 0.0f);
-  tData.use_uniform = (mmd.flag & MOD_GRAESE_PENCIL_HOOK_UNIFORM_SPACE) != 0;
+  float3x3 mat_uniform;
+  float3 cent;
 
-  if (tData.use_uniform) {
-    tData.mat_uniform = float3x3(float4x4(mmd.parentinv));
-    tData.cent = math::transform_point(tData.mat_uniform, float3(mmd.cent));
+  if (use_uniform) {
+    mat_uniform = float3x3(float4x4(mmd.parentinv));
+    cent = math::transform_point(mat_uniform, float3(mmd.cent));
   }
   else {
-    tData.mat_uniform = float3x3::identity();
-    tData.cent = float3(mmd.cent);
+    mat_uniform = float3x3::identity();
+    cent = float3(mmd.cent);
   }
 
-  /* get world-space matrix of target, corrected for the space the verts are in */
+  float4x4 dmat;
+  /* Get world-space matrix of target, corrected for the space the verts are in. */
   if (mmd.subtarget[0]) {
     bPoseChannel *pchan = BKE_pose_channel_find_name(mmd.object->pose, mmd.subtarget);
     if (pchan) {
-      /* bone target if there's a matching pose-channel */
+      /* Bone target if there's a matching pose-channel. */
       dmat = mmd.object->object_to_world() * float4x4(pchan->pose_mat);
     }
   }
   else {
-    /* just object target */
+    /* Just object target. */
     dmat = mmd.object->object_to_world();
   }
   ob.runtime->world_to_object = math::invert(ob.object_to_world());
-  tData.mat = ob.world_to_object() * dmat * float4x4(mmd.parentinv);
+  float4x4 use_mat = ob.world_to_object() * dmat * float4x4(mmd.parentinv);
 
   auto get_weight = [&](const int point) {
     const float weight = input_weights[point];
@@ -273,7 +221,28 @@ static void deform_drawing(const ModifierData &md,
       if (weight < 0.0f) {
         continue;
       }
-      gpencil_hook_co_apply(&tData, weight, positions[point]);
+
+      float fac;
+      if (use_falloff) {
+        float len_sq;
+        if (use_uniform) {
+          const float3 co_uniform = math::transform_point(mat_uniform, positions[point]);
+          len_sq = math::distance(cent, co_uniform);
+        }
+        else {
+          len_sq = math::distance(cent, positions[point]);
+        }
+        fac = hook_falloff(
+            falloff, falloff_type, falloff_sq, fac_orig, mmd.influence.custom_curve, len_sq);
+      }
+      else {
+        fac = fac_orig;
+      }
+
+      if (fac) {
+        float3 co_tmp = math::transform_point(use_mat, positions[point]);
+        positions[point] = math::interpolate(positions[point], co_tmp, fac * weight);
+      }
     }
   });
 
@@ -334,7 +303,7 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemR(sub, ptr, "falloff_type", UI_ITEM_NONE, IFACE_("Type"), ICON_NONE);
 
     bool use_falloff = RNA_enum_get(ptr, "falloff_type") != eWarp_Falloff_None;
-    
+
     uiLayout *row = uiLayoutRow(sub, false);
     uiLayoutSetActive(row, use_falloff);
     uiItemR(row, ptr, "falloff_radius", UI_ITEM_NONE, nullptr, ICON_NONE);
