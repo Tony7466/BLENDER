@@ -641,6 +641,7 @@ static int ed_undo_push_snapshot_exec(bContext *C, wmOperator *op)
   char str[BKE_UNDO_STR_MAX];
   RNA_string_get(op->ptr, "message", str);
   ED_undo_push(C, str);
+  RNA_string_set(op->ptr, "message", "");
   return OPERATOR_FINISHED;
 }
 
