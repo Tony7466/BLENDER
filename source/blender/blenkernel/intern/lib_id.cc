@@ -56,7 +56,7 @@
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_rigidbody.h"
 
 #include "DEG_depsgraph.hh"
@@ -84,6 +84,7 @@ static CLG_LogRef LOG = {"bke.lib_id"};
 IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
     /*id_code*/ ID_LINK_PLACEHOLDER,
     /*id_filter*/ 0,
+    /*dependencies_id_types*/ 0,
     /*main_listbase_index*/ INDEX_ID_NULL,
     /*struct_size*/ sizeof(ID),
     /*name*/ "LinkPlaceholder",
