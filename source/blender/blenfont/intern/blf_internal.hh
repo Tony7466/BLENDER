@@ -9,7 +9,9 @@
 #pragma once
 
 #include <string>
-#include <vector>
+
+#include "BLI_string_ref.hh"
+#include "BLI_vector.hh"
 
 struct FontBLF;
 struct GlyphBLF;
@@ -99,9 +101,9 @@ void blf_font_draw__wrap(struct FontBLF *font,
                          size_t str_len,
                          struct ResultBLF *r_info);
 
-std::vector<std::string> blf_font_string_wrap(FontBLF *font,
-                                              const std::string str,
-                                              const int width);
+blender::Vector<std::string> blf_font_string_wrap(FontBLF *font,
+                                                  blender::StringRef str,
+                                                  const int max_pixel_width);
 
 /**
  * Use fixed column width, but an utf8 character may occupy multiple columns.

@@ -14,7 +14,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <vector>
 
 #include <ft2build.h>
 
@@ -38,6 +37,7 @@
 #include "BLI_string_cursor_utf8.h"
 #include "BLI_string_utf8.h"
 #include "BLI_threads.h"
+#include "BLI_vector.hh"
 
 #include "BLF_api.hh"
 
@@ -1086,6 +1086,7 @@ void blf_str_offset_to_glyph_bounds(FontBLF *font,
 static void blf_font_wrap_apply(FontBLF *font,
                                 const char *str,
                                 const size_t str_len,
+                                const int max_pixel_width,
                                 ResultBLF *r_info,
                                 void (*callback)(FontBLF *font,
                                                  GlyphCacheBLF *gc,
@@ -1110,7 +1111,7 @@ static void blf_font_wrap_apply(FontBLF *font,
   struct WordWrapVars {
     ft_pix wrap_width;
     size_t start, last[2];
-  } wrap = {font->wrap_width != -1 ? ft_pix_from_int(font->wrap_width) : INT_MAX, 0, {0, 0}};
+  } wrap = {max_pixel_width != -1 ? ft_pix_from_int(max_pixel_width) : INT_MAX, 0, {0, 0}};
 
   // printf("%s wrapping (%d, %d) `%s`:\n", __func__, str_len, strlen(str), str);
   while ((i < str_len) && str[i]) {
@@ -1199,7 +1200,8 @@ static void blf_font_draw__wrap_cb(FontBLF *font,
 }
 void blf_font_draw__wrap(FontBLF *font, const char *str, const size_t str_len, ResultBLF *r_info)
 {
-  blf_font_wrap_apply(font, str, str_len, r_info, blf_font_draw__wrap_cb, nullptr);
+  blf_font_wrap_apply(
+      font, str, str_len, font->wrap_width, r_info, blf_font_draw__wrap_cb, nullptr);
 }
 
 /** Utility for #blf_font_boundbox__wrap. */
@@ -1224,7 +1226,8 @@ void blf_font_boundbox__wrap(
   box->ymin = 32000;
   box->ymax = -32000;
 
-  blf_font_wrap_apply(font, str, str_len, r_info, blf_font_boundbox_wrap_cb, box);
+  blf_font_wrap_apply(
+      font, str, str_len, font->wrap_width, r_info, blf_font_boundbox_wrap_cb, box);
 }
 
 /** Utility for  #blf_font_draw_buffer__wrap. */
@@ -1242,7 +1245,8 @@ void blf_font_draw_buffer__wrap(FontBLF *font,
                                 const size_t str_len,
                                 ResultBLF *r_info)
 {
-  blf_font_wrap_apply(font, str, str_len, r_info, blf_font_draw_buffer__wrap_cb, nullptr);
+  blf_font_wrap_apply(
+      font, str, str_len, font->wrap_width, r_info, blf_font_draw_buffer__wrap_cb, nullptr);
 }
 
 /** Wrap a std::string. */
@@ -1253,18 +1257,18 @@ static void blf_font_string_wrap_cb(FontBLF *font,
                                     ft_pix pen_y,
                                     void *str_list_ptr)
 {
-  std::vector<std::string> *list = static_cast<std::vector<std::string> *>(str_list_ptr);
+  blender::Vector<std::string> *list = static_cast<blender::Vector<std::string> *>(str_list_ptr);
   std::string line(str, str + str_len);
-  list->push_back(line);
+  list->append(line);
 }
 
-std::vector<std::string> blf_font_string_wrap(FontBLF *font, std::string str, int width)
+blender::Vector<std::string> blf_font_string_wrap(FontBLF *font,
+                                                  blender::StringRef str,
+                                                  int max_pixel_width)
 {
-  int old_wrap_width = font->wrap_width;
-  font->wrap_width = width;
-  std::vector<std::string> list;
-  blf_font_wrap_apply(font, str.c_str(), str.length(), nullptr, blf_font_string_wrap_cb, &list);
-  font->wrap_width = old_wrap_width;
+  blender::Vector<std::string> list;
+  blf_font_wrap_apply(
+      font, str.data(), str.size(), max_pixel_width, nullptr, blf_font_string_wrap_cb, &list);
   return list;
 }
 

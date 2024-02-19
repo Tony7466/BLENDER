@@ -14,7 +14,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <vector>
 
 #include <ft2build.h>
 
@@ -936,13 +935,15 @@ void BLF_draw_buffer(int fontid, const char *str, const size_t str_len)
   BLF_draw_buffer_ex(fontid, str, str_len, nullptr);
 }
 
-std::vector<std::string> BLF_string_wrap(int fontid, const std::string str, const int width)
+blender::Vector<std::string> BLF_string_wrap(int fontid,
+                                             blender::StringRef str,
+                                             const int max_pixel_width)
 {
   FontBLF *font = blf_get(fontid);
-  if (font) {
-    return blf_font_string_wrap(font, str, width);
+  if (!font) {
+    return {};
   }
-  return {};
+  return blf_font_string_wrap(font, str, max_pixel_width);
 }
 
 char *BLF_display_name_from_file(const char *filepath)
