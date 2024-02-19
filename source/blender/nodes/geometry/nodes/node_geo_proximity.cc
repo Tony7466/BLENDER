@@ -24,10 +24,21 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>("Geometry", "Target")
       .only_realized_data()
       .supported_type({GeometryComponent::Type::Mesh, GeometryComponent::Type::PointCloud});
+  b.add_input<decl::Int>("Group ID")
+      .hide_value()
+      .field_on_all()
+      .description(
+          "Splits the elements of the input geometry into groups which can be sampled "
+          "individually");
   b.add_input<decl::Vector>("Sample Position", "Source Position")
       .implicit_field(implicit_field_inputs::position);
-  b.add_output<decl::Vector>("Position").dependent_field().reference_pass_all();
-  b.add_output<decl::Float>("Distance").dependent_field().reference_pass_all();
+  b.add_input<decl::Int>("Sample Group ID").hide_value().supports_field();
+  b.add_output<decl::Vector>("Position").dependent_field({2, 3}).reference_pass_all();
+  b.add_output<decl::Float>("Distance").dependent_field({2, 3}).reference_pass_all();
+  b.add_output<decl::Bool>("Is Valid")
+      .dependent_field({2, 3})
+      .description(
+          "Whether the sampling was successfull. It can fail when the sampled group is empty");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -132,13 +143,16 @@ class ProximityFunction : public mf::MultiFunction {
   GeometryNodeProximityTargetType type_;
 
  public:
-  ProximityFunction(GeometrySet target, GeometryNodeProximityTargetType type)
+  ProximityFunction(GeometrySet target,
+                    GeometryNodeProximityTargetType type,
+                    const Field<int> &group_id_field)
       : target_(std::move(target)), type_(type)
   {
     static const mf::Signature signature = []() {
       mf::Signature signature;
       mf::SignatureBuilder builder{"Geometry Proximity", signature};
       builder.single_input<float3>("Source Position");
+      builder.single_input<int>("Sample ID");
       builder.single_output<float3>("Position", mf::ParamFlag::SupportsUnusedOutput);
       builder.single_output<float>("Distance");
       return signature;
@@ -150,13 +164,14 @@ class ProximityFunction : public mf::MultiFunction {
   {
     const VArray<float3> &src_positions = params.readonly_single_input<float3>(0,
                                                                                "Source Position");
+    const VArray<int> &src_ids = params.readonly_single_input<int>(1, "Sample ID");
     MutableSpan<float3> positions = params.uninitialized_single_output_if_required<float3>(
-        1, "Position");
+        2, "Position");
     /* Make sure there is a distance array, used for finding the smaller distance when there are
      * multiple components. Theoretically it would be possible to avoid using the distance array
      * when there is only one component. However, this only adds an allocation and a single float
      * comparison per vertex, so it's likely not worth it. */
-    MutableSpan<float> distances = params.uninitialized_single_output<float>(2, "Distance");
+    MutableSpan<float> distances = params.uninitialized_single_output<float>(3, "Distance");
 
     index_mask::masked_fill(distances, FLT_MAX, mask);
 
@@ -199,11 +214,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   const NodeGeometryProximity &storage = node_storage(params.node());
+  Field<int> group_id_field = params.extract_input<Field<int>>("Group ID");
   Field<float3> position_field = params.extract_input<Field<float3>>("Source Position");
+  Field<int> sample_id_field = params.extract_input<Field<int>>("Sample Group ID");
 
   auto proximity_fn = std::make_unique<ProximityFunction>(
-      std::move(target), GeometryNodeProximityTargetType(storage.target_element));
-  auto proximity_op = FieldOperation::Create(std::move(proximity_fn), {std::move(position_field)});
+      std::move(target), GeometryNodeProximityTargetType(storage.target_element), group_id_field);
+  auto proximity_op = FieldOperation::Create(
+      std::move(proximity_fn), {std::move(position_field), std::move(sample_id_field)});
 
   params.set_output("Position", Field<float3>(proximity_op, 0));
   params.set_output("Distance", Field<float>(proximity_op, 1));
