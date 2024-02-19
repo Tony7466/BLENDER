@@ -1285,8 +1285,12 @@ void PathTrace::set_guiding_params(const GuidingParams &guiding_params, const bo
   if (guiding_params_.modified(guiding_params)) {
     guiding_params_ = guiding_params;
 
+#  if !(OPENPGL_VERSION_MAJOR == 0 && OPENPGL_VERSION_MINOR <= 5)
+#    define OPENPGL_USE_FIELD_CONFIG
+#  endif
+
     if (guiding_params_.use) {
-#  if OPENPGL_VERSION_MINOR >= 6
+#  ifdef OPENPGL_USE_FIELD_CONFIG
       openpgl::cpp::FieldConfig field_config;
 #  else
       PGLFieldArguments field_args;
@@ -1295,7 +1299,7 @@ void PathTrace::set_guiding_params(const GuidingParams &guiding_params, const bo
         default:
         /* Parallax-aware von Mises-Fisher mixture models. */
         case GUIDING_TYPE_PARALLAX_AWARE_VMM: {
-#  if OPENPGL_VERSION_MINOR >= 6
+#  ifdef OPENPGL_USE_FIELD_CONFIG
           field_config.Init(
               PGL_SPATIAL_STRUCTURE_TYPE::PGL_SPATIAL_STRUCTURE_KDTREE,
               PGL_DIRECTIONAL_DISTRIBUTION_TYPE::PGL_DIRECTIONAL_DISTRIBUTION_PARALLAX_AWARE_VMM,
@@ -1310,7 +1314,7 @@ void PathTrace::set_guiding_params(const GuidingParams &guiding_params, const bo
         }
         /* Directional quad-trees. */
         case GUIDING_TYPE_DIRECTIONAL_QUAD_TREE: {
-#  if OPENPGL_VERSION_MINOR >= 6
+#  ifdef OPENPGL_USE_FIELD_CONFIG
           field_config.Init(
               PGL_SPATIAL_STRUCTURE_TYPE::PGL_SPATIAL_STRUCTURE_KDTREE,
               PGL_DIRECTIONAL_DISTRIBUTION_TYPE::PGL_DIRECTIONAL_DISTRIBUTION_QUADTREE,
@@ -1325,11 +1329,10 @@ void PathTrace::set_guiding_params(const GuidingParams &guiding_params, const bo
         }
         /* von Mises-Fisher mixture models. */
         case GUIDING_TYPE_VMM: {
-#  if OPENPGL_VERSION_MINOR >= 6
-          field_config.Init(
-              PGL_SPATIAL_STRUCTURE_TYPE::PGL_SPATIAL_STRUCTURE_KDTREE,
-              PGL_DIRECTIONAL_DISTRIBUTION_TYPE::PGL_DIRECTIONAL_DISTRIBUTION_VMM,
-              guiding_params.deterministic);
+#  ifdef OPENPGL_USE_FIELD_CONFIG
+          field_config.Init(PGL_SPATIAL_STRUCTURE_TYPE::PGL_SPATIAL_STRUCTURE_KDTREE,
+                            PGL_DIRECTIONAL_DISTRIBUTION_TYPE::PGL_DIRECTIONAL_DISTRIBUTION_VMM,
+                            guiding_params.deterministic);
 #  else
           pglFieldArgumentsSetDefaults(
               field_args,
@@ -1339,7 +1342,7 @@ void PathTrace::set_guiding_params(const GuidingParams &guiding_params, const bo
           break;
         }
       }
-#  if OPENPGL_VERSION_MINOR >= 6
+#  ifdef OPENPGL_USE_FIELD_CONFIG
       field_config.SetSpatialStructureArgMaxDepth(16);
 #  else
       field_args.deterministic = guiding_params.deterministic;
@@ -1349,7 +1352,7 @@ void PathTrace::set_guiding_params(const GuidingParams &guiding_params, const bo
           device_->get_guiding_device());
       if (guiding_device) {
         guiding_sample_data_storage_ = make_unique<openpgl::cpp::SampleStorage>();
-#  if OPENPGL_VERSION_MINOR >= 6
+#  ifdef OPENPGL_USE_FIELD_CONFIG
         guiding_field_ = make_unique<openpgl::cpp::Field>(guiding_device, field_config);
 #  else
         guiding_field_ = make_unique<openpgl::cpp::Field>(guiding_device, field_args);
