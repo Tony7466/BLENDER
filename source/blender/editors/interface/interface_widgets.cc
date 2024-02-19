@@ -2644,7 +2644,7 @@ static float widget_radius_from_rcti(const rcti *rect, const uiWidgetColors *wco
  * vertically-aligned stacks of buttons it should only be shown under the bottom one.
  * \{ */
 
-static bool draw_emboss(const uiBut *but, const int roundboxalign)
+static bool draw_emboss(const uiBut *but)
 {
   if (but->drawflag & UI_BUT_ALIGN_DOWN) {
     return false;
@@ -3511,12 +3511,12 @@ static void widget_numbut_draw(const uiBut *but,
 
     /* outline */
     wtb.draw_inner = false;
-    wtb.draw_emboss = draw_emboss(but, roundboxalign);
+    wtb.draw_emboss = draw_emboss(but);
     widgetbase_draw(&wtb, wcol);
   }
   else {
     /* inner and outline */
-    wtb.draw_emboss = draw_emboss(but, roundboxalign);
+    wtb.draw_emboss = draw_emboss(but);
     widgetbase_draw(&wtb, wcol);
   }
 
@@ -4433,7 +4433,7 @@ static void widget_box(uiBut *but,
 
   const float rad = widget_radius_from_zoom(zoom, wcol);
   round_box_edges(&wtb, roundboxalign, rect, rad);
-  wtb.draw_emboss = draw_emboss(but, roundboxalign);
+  wtb.draw_emboss = draw_emboss(but);
   widgetbase_draw(&wtb, wcol);
 
   copy_v3_v3_uchar(wcol->inner, old_col);
@@ -4488,7 +4488,7 @@ static void widget_roundbut_exec(uiBut *but,
 
   /* half rounded */
   round_box_edges(&wtb, roundboxalign, rect, rad);
-  wtb.draw_emboss = draw_emboss(but, roundboxalign);
+  wtb.draw_emboss = draw_emboss(but);
   widgetbase_draw(&wtb, wcol);
 }
 
@@ -4528,7 +4528,7 @@ static void widget_tab(uiBut *but,
 #ifdef USE_TAB_SHADED_HIGHLIGHT
   wtb.draw_outline = 0;
 #endif
-  wtb.draw_emboss = draw_emboss(but, roundboxalign);
+  wtb.draw_emboss = draw_emboss(but);
   widgetbase_draw(&wtb, wcol);
 
   /* We are drawing on top of widget bases. Flush cache. */
