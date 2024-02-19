@@ -42,6 +42,32 @@ static float calc_brush_radius(ViewContext *vc,
   return BKE_brush_unprojected_radius_get(scene, brush);
 }
 
+float radius_from_input_sample(const float pressure,
+                               const float3 location,
+                               ViewContext vc,
+                               const Brush *brush,
+                               const Scene *scene,
+                               const BrushGpencilSettings *settings)
+{
+  float radius = calc_brush_radius(&vc, brush, scene, location);
+  if (BKE_brush_use_size_pressure(brush)) {
+    radius *= BKE_curvemapping_evaluateF(settings->curve_sensitivity, 0, pressure);
+  }
+  return radius;
+}
+
+float opacity_from_input_sample(const float pressure,
+                                const Brush *brush,
+                                const Scene *scene,
+                                const BrushGpencilSettings *settings)
+{
+  float opacity = BKE_brush_alpha_get(scene, brush);
+  if (BKE_brush_use_alpha_pressure(brush)) {
+    opacity *= BKE_curvemapping_evaluateF(settings->curve_strength, 0, pressure);
+  }
+  return opacity;
+}
+
 template<typename T>
 static inline void linear_interpolation(const T &a, const T &b, MutableSpan<T> dst)
 {
@@ -181,37 +207,23 @@ struct PaintOperationExecutor {
     BLI_assert(drawing_ != nullptr);
   }
 
-  float radius_from_input_sample(PaintOperation &self,
-                                 const bContext &C,
-                                 const InputSample &sample)
-  {
-    ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
-                                                CTX_data_depsgraph_pointer(&C));
-    float radius = calc_brush_radius(
-        &vc, brush_, scene_, self.placement_.project(sample.mouse_position));
-    if (BKE_brush_use_size_pressure(brush_)) {
-      radius *= BKE_curvemapping_evaluateF(settings_->curve_sensitivity, 0, sample.pressure);
-    }
-    return radius;
-  }
-
-  float opacity_from_input_sample(const InputSample &sample)
-  {
-    float opacity = BKE_brush_alpha_get(scene_, brush_);
-    if (BKE_brush_use_alpha_pressure(brush_)) {
-      opacity *= BKE_curvemapping_evaluateF(settings_->curve_strength, 0, sample.pressure);
-    }
-    return opacity;
-  }
-
   void process_start_sample(PaintOperation &self,
                             const bContext &C,
                             const InputSample &start_sample,
                             const int material_index)
   {
     const float2 start_coords = start_sample.mouse_position;
-    const float start_radius = this->radius_from_input_sample(self, C, start_sample);
-    const float start_opacity = this->opacity_from_input_sample(start_sample);
+    ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
+                                                CTX_data_depsgraph_pointer(&C));
+    const float start_radius = radius_from_input_sample(
+        start_sample.pressure,
+        self.placement_.project(start_sample.mouse_position),
+        vc,
+        brush_,
+        scene_,
+        settings_);
+    const float start_opacity = opacity_from_input_sample(
+        start_sample.pressure, brush_, scene_, settings_);
     const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
 
     self.screen_space_coords_orig_.append(start_coords);
@@ -349,8 +361,17 @@ struct PaintOperationExecutor {
                                 const InputSample &extension_sample)
   {
     const float2 coords = extension_sample.mouse_position;
-    const float radius = this->radius_from_input_sample(self, C, extension_sample);
-    const float opacity = this->opacity_from_input_sample(extension_sample);
+    ViewContext vc = ED_view3d_viewcontext_init(const_cast<bContext *>(&C),
+                                                CTX_data_depsgraph_pointer(&C));
+    const float radius = radius_from_input_sample(
+        extension_sample.pressure,
+        self.placement_.project(extension_sample.mouse_position),
+        vc,
+        brush_,
+        scene_,
+        settings_);
+    const float opacity = opacity_from_input_sample(
+        extension_sample.pressure, brush_, scene_, settings_);
     const ColorGeometry4f vertex_color = ColorGeometry4f(vertex_color_);
 
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();

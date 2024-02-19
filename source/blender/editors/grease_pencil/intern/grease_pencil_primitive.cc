@@ -413,17 +413,6 @@ static int grease_pencil_primitive_curve_points_number(PrimitiveTool_OpData &ptd
   return 0;
 }
 
-static float calc_brush_radius(ViewContext *vc,
-                               const Brush *brush,
-                               const Scene *scene,
-                               const float3 location)
-{
-  if (!BKE_brush_use_locked_size(scene, brush)) {
-    return paint_calc_object_space_radius(vc, location, BKE_brush_size_get(scene, brush));
-  }
-  return BKE_brush_unprojected_radius_get(scene, brush);
-}
-
 static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
 {
   bke::CurvesGeometry &curves = ptd.drawing_->strokes_for_write();
@@ -471,15 +460,10 @@ static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
       pressure = BKE_curvemapping_evaluateF(gset->cur_primitive, 0, t);
     }
 
-    float radius = calc_brush_radius(&ptd.vc, ptd.brush_, ptd.vc.scene, positions_3d[point_id]);
-    if (BKE_brush_use_size_pressure(ptd.brush_)) {
-      radius *= BKE_curvemapping_evaluateF(ptd.settings_->curve_sensitivity, 0, pressure);
-    }
-
-    float opacity = BKE_brush_alpha_get(ptd.vc.scene, ptd.brush_);
-    if (BKE_brush_use_alpha_pressure(ptd.brush_)) {
-      opacity *= BKE_curvemapping_evaluateF(ptd.settings_->curve_strength, 0, pressure);
-    }
+    const float radius = ed::sculpt_paint::greasepencil::radius_from_input_sample(
+        pressure, positions_3d[point_id], ptd.vc, ptd.brush_, ptd.vc.scene, ptd.settings_);
+    const float opacity = ed::sculpt_paint::greasepencil::opacity_from_input_sample(
+        pressure, ptd.brush_, ptd.vc.scene, ptd.settings_);
 
     new_radii[point_id] = radius;
     new_opacities[point_id] = opacity;
