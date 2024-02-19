@@ -373,35 +373,61 @@ static EnvelopeInfo get_envelope_info(const GreasePencilEnvelopeModifierData &em
       info.points_per_curve = 2;
       break;
     case MOD_GREASE_PENCIL_ENVELOPE_FILLS:
-      info.points_per_curve = 2 * emd.spread;
+      info.points_per_curve = 2 * (2 + emd.skip);
       break;
   }
   info.material_index = std::min(emd.mat_nr, ctx.object->totcol - 1);
   return info;
 }
 
+/**
+ * Create a single stroke as part of the envelope.
+ *
+ * In the simplest cast creates a single edge.
+ * Example for spread 4:
+ *
+ *  (p-5) (p-4) (p-3) (p-2) (p-1) ( p ) (p+1) (p+2) (p+3) (p+4) (p+5)
+ *           └---------------------------┘
+ *
+ * If fills is true a closed curve is created that connects contiguous point ranges.
+ * Example (skip=0):
+ *
+ *  (p-5) (p-4) (p-3) (p-2) (p-1) ( p ) (p+1) (p+2) (p+3) (p+4) (p+5)
+ *         | └---┘ └---------------------┘ └---┘ |
+ *         |                                     |
+ *         └-------------------------------------┘
+ *
+ * If skip > 0 more points are included in the range.
+ * Example (skip=2):
+ *
+ *  (p-5) (p-4) (p-3) (p-2) (p-1) ( p ) (p+1) (p+2) (p+3) (p+4) (p+5)
+ *         | └---┘ └---┘ └---┘ └---------┘ └---┘ └---┘ └---┘ |
+ *         |                                                 |
+ *         └-------------------------------------------------┘
+ */
 static void create_envelope_stroke_for_point(const IndexRange src_curve_points,
                                              const bool src_curve_cyclic,
-                                             const int envelope_start,
-                                             const int envelope_next,
+                                             const int point,
+                                             const int spread,
+                                             const int base_length,
                                              const MutableSpan<int> point_src_indices)
 {
   const int point_num = src_curve_points.size();
-  BLI_assert(point_src_indices.size() % 2 == 0);
-  const int envelope_num = point_src_indices.size() / 2;
+  BLI_assert(point_src_indices.size() == base_length * 2);
+
+  /* Clamp or wrap to ensure a valid index. */
+  auto get_index = [=](const int index) -> int {
+    return src_curve_cyclic ? (index + point_num) % point_num :
+                              math::clamp(index, 0, point_num - 1);
+  };
 
   std::cout << "  Envelope ";
-  for (const int i : IndexRange(envelope_num)) {
-    const int point_i = envelope_start + i;
-    const int index = src_curve_cyclic ? (point_i + point_num) % point_num :
-                                         math::clamp(point_i, 0, point_num - 1);
-    point_src_indices[i] = src_curve_points[index];
-  }
-  for (const int i : IndexRange(envelope_num)) {
-    const int point_i = envelope_next + envelope_num - 1 - i;
-    const int index = src_curve_cyclic ? (point_i + point_num) % point_num :
-                                         math::clamp(point_i, 0, point_num - 1);
-    point_src_indices[envelope_num + i] = src_curve_points[index];
+  for (const int i : IndexRange(base_length)) {
+    const int reverse_i = base_length - 1 - i;
+    const int point_left = get_index(point - spread + reverse_i);
+    const int point_right = get_index(point + reverse_i);
+    point_src_indices[i] = src_curve_points[point_left];
+    point_src_indices[base_length + i] = src_curve_points[point_right];
   }
   std::cout << std::endl;
 }
@@ -432,9 +458,12 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
    * Each span only gets added once since it repeats for neighboring points.
    */
   const int curve_spread = info.curve_spread(src_curve_points.size(), src_curve_cyclic);
+  const bool use_fills = info.points_per_curve > 2;
+  /* Length of continuous point ranges that get connected. */
+  const int base_length = use_fills ? 2 + info.skip : 1;
   for (const int i : IndexRange(src_curve_points.size() + curve_spread - 1)) {
-    const int envelope_start = i - curve_spread;
-    const int envelope_next = i + 1 + info.skip;
+    // const int envelope_start = i - curve_spread;
+    // const int envelope_next = i + 1 + info.skip;
     const IndexRange dst_envelope_points = {i * info.points_per_curve, info.points_per_curve};
 
     curve_offsets[i] = dst_points[dst_envelope_points.start()];
@@ -445,8 +474,9 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
     //           << std::endl;
     create_envelope_stroke_for_point(src_curve_points,
                                      src_curve_cyclic,
-                                     envelope_start,
-                                     envelope_next,
+                                     i,
+                                     curve_spread,
+                                     base_length,
                                      point_src_indices.slice(dst_envelope_points));
   }
 }
@@ -562,8 +592,10 @@ static void modify_drawing(const GreasePencilEnvelopeModifierData &emd,
       deform_drawing_as_envelope(emd, drawing, curves_mask);
       break;
     case MOD_GREASE_PENCIL_ENVELOPE_SEGMENTS:
-    case MOD_GREASE_PENCIL_ENVELOPE_FILLS:
       create_envelope_strokes(info, drawing, curves_mask, true);
+      break;
+    case MOD_GREASE_PENCIL_ENVELOPE_FILLS:
+      create_envelope_strokes(info, drawing, curves_mask, false);
       break;
   }
 }
