@@ -38,18 +38,18 @@
 #include "BLI_memarena.h"
 #include "BLI_string_utils.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_anim_data.h"
 #include "BKE_armature.hh"
 #include "BKE_asset.hh"
-#include "BKE_bpath.h"
+#include "BKE_bpath.hh"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_idprop.h"
 #include "BKE_idtype.hh"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_query.hh"
@@ -77,11 +77,14 @@
 #  include "BLI_time_utildefines.h"
 #endif
 
+using namespace blender::bke::id;
+
 static CLG_LogRef LOG = {"bke.lib_id"};
 
 IDTypeInfo IDType_ID_LINK_PLACEHOLDER = {
     /*id_code*/ ID_LINK_PLACEHOLDER,
     /*id_filter*/ 0,
+    /*dependencies_id_types*/ 0,
     /*main_listbase_index*/ INDEX_ID_NULL,
     /*struct_size*/ sizeof(ID),
     /*name*/ "LinkPlaceholder",
@@ -803,10 +806,10 @@ static void id_swap(Main *bmain,
   IDRemapper *remapper_id_b = input_remapper_id_b;
   if (do_self_remap) {
     if (remapper_id_a == nullptr) {
-      remapper_id_a = BKE_id_remapper_create();
+      remapper_id_a = MEM_new<IDRemapper>(__func__);
     }
     if (remapper_id_b == nullptr) {
-      remapper_id_b = BKE_id_remapper_create();
+      remapper_id_b = MEM_new<IDRemapper>(__func__);
     }
   }
 
@@ -852,25 +855,25 @@ static void id_swap(Main *bmain,
   }
 
   if (remapper_id_a != nullptr) {
-    BKE_id_remapper_add(remapper_id_a, id_b, id_a);
+    remapper_id_a->add(id_b, id_a);
   }
   if (remapper_id_b != nullptr) {
-    BKE_id_remapper_add(remapper_id_b, id_a, id_b);
+    remapper_id_b->add(id_a, id_b);
   }
 
   /* Finalize remapping of internal references to self broken by swapping, if requested. */
   if (do_self_remap) {
     BKE_libblock_relink_multiple(
-        bmain, {id_a}, ID_REMAP_TYPE_REMAP, remapper_id_a, self_remap_flags);
+        bmain, {id_a}, ID_REMAP_TYPE_REMAP, *remapper_id_a, self_remap_flags);
     BKE_libblock_relink_multiple(
-        bmain, {id_b}, ID_REMAP_TYPE_REMAP, remapper_id_b, self_remap_flags);
+        bmain, {id_b}, ID_REMAP_TYPE_REMAP, *remapper_id_b, self_remap_flags);
   }
 
   if (input_remapper_id_a == nullptr && remapper_id_a != nullptr) {
-    BKE_id_remapper_free(remapper_id_a);
+    MEM_delete(remapper_id_a);
   }
   if (input_remapper_id_b == nullptr && remapper_id_b != nullptr) {
-    BKE_id_remapper_free(remapper_id_b);
+    MEM_delete(remapper_id_b);
   }
 }
 
@@ -903,15 +906,15 @@ static void id_embedded_swap(ID **embedded_id_a,
             remapper_id_b,
             0);
     /* Manual 'remap' of owning embedded pointer in owner ID. */
-    SWAP(ID *, *embedded_id_a, *embedded_id_b);
+    std::swap(*embedded_id_a, *embedded_id_b);
 
     /* Restore internal pointers to the swapped embedded IDs in their owners' data. This also
      * includes the potential self-references inside the embedded IDs themselves. */
     if (remapper_id_a != nullptr) {
-      BKE_id_remapper_add(remapper_id_a, *embedded_id_b, *embedded_id_a);
+      remapper_id_a->add(*embedded_id_b, *embedded_id_a);
     }
     if (remapper_id_b != nullptr) {
-      BKE_id_remapper_add(remapper_id_b, *embedded_id_a, *embedded_id_b);
+      remapper_id_b->add(*embedded_id_a, *embedded_id_b);
     }
   }
 }
@@ -1485,6 +1488,31 @@ ID *BKE_libblock_find_session_uid(Main *bmain, const short type, const uint32_t 
     if (id->session_uid == session_uid) {
       return id;
     }
+  }
+  return nullptr;
+}
+
+ID *BKE_libblock_find_name_and_library(Main *bmain,
+                                       const short type,
+                                       const char *name,
+                                       const char *lib_name)
+{
+  ListBase *lb = which_libbase(bmain, type);
+  BLI_assert(lb != nullptr);
+  LISTBASE_FOREACH (ID *, id, lb) {
+    if (!STREQ(id->name + 2, name)) {
+      continue;
+    }
+    if (lib_name == nullptr || lib_name[0] == '\0') {
+      if (id->lib == nullptr) {
+        return id;
+      }
+      return nullptr;
+    }
+    if (!STREQ(id->lib->id.name + 2, lib_name)) {
+      continue;
+    }
+    return id;
   }
   return nullptr;
 }

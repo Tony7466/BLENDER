@@ -11,6 +11,7 @@
 #include <queue>
 
 #include "BKE_attribute.hh"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
 #include "BLI_array.hh"
@@ -1284,8 +1285,14 @@ float factor_get(Cache *automasking,
  * brushes and filter. */
 Cache *active_cache_get(SculptSession *ss);
 
-/* Brush can be null. */
-std::unique_ptr<Cache> cache_init(Sculpt *sd, Brush *brush, Object *ob);
+/**
+ * Creates and initializes an automasking cache.
+ *
+ * For automasking modes that cannot be calculated in real time,
+ * data is also stored at the vertex level prior to the stroke starting.
+ */
+std::unique_ptr<Cache> cache_init(const Sculpt *sd, Object *ob);
+std::unique_ptr<Cache> cache_init(const Sculpt *sd, const Brush *brush, Object *ob);
 void cache_free(Cache *automasking);
 
 bool mode_enabled(const Sculpt *sd, const Brush *br, eAutomasking_flag mode);
