@@ -939,6 +939,12 @@ void BKE_bvhtree_from_mesh_tris_init(const Mesh &mesh,
   using namespace blender;
   using namespace blender::bke;
 
+  if (faces_mask.size() == mesh.faces_num) {
+    /* Can use cache if all faces are in the bvh tree. */
+    BKE_bvhtree_from_mesh_get(&r_data, &mesh, BVHTREE_FROM_CORNER_TRIS, 2);
+    return;
+  }
+
   const Span<float3> positions = mesh.vert_positions();
   const Span<int2> edges = mesh.edges();
   const Span<int> corner_verts = mesh.corner_verts();
@@ -986,6 +992,12 @@ void BKE_bvhtree_from_mesh_edges_init(const Mesh &mesh,
   using namespace blender;
   using namespace blender::bke;
 
+  if (edges_mask.size() == mesh.edges_num) {
+    /* Can use cache if all edges are in the bvh tree. */
+    BKE_bvhtree_from_mesh_get(&r_data, &mesh, BVHTREE_FROM_EDGES, 2);
+    return;
+  }
+
   const Span<float3> positions = mesh.vert_positions();
   const Span<int2> edges = mesh.edges();
   bvhtree_from_mesh_setup_data(
@@ -1015,6 +1027,12 @@ void BKE_bvhtree_from_mesh_verts_init(const Mesh &mesh,
 {
   using namespace blender;
   using namespace blender::bke;
+
+  if (verts_mask.size() == mesh.verts_num) {
+    /* Can use cache if all vertices are in the bvh tree. */
+    BKE_bvhtree_from_mesh_get(&r_data, &mesh, BVHTREE_FROM_VERTS, 2);
+    return;
+  }
 
   const Span<float3> positions = mesh.vert_positions();
   bvhtree_from_mesh_setup_data(
