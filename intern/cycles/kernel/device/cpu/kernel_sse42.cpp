@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-/* Optimized CPU kernel entry points. This file is compiled with SSE3/SSSE3
+/* Optimized CPU kernel entry points. This file is compiled with SSE42
  * optimization flags and nearly all functions inlined, while kernel.cpp
  * is compiled without for other CPU's. */
 
