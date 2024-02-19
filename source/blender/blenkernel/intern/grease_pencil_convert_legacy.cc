@@ -6,6 +6,12 @@
  * \ingroup bke
  */
 
+#include <functional>
+#include <iostream>
+
+#include <fmt/format.h>
+
+#include "BKE_anim_data.h"
 #include "BKE_attribute.hh"
 #include "BKE_colortools.hh"
 #include "BKE_curves.hh"
@@ -30,15 +36,85 @@
 
 #include "BLT_translation.hh"
 
+#include "DNA_anim_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 
+#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
 
 namespace blender::bke::greasepencil::convert {
+
+/**************************************************************************************************
+ * Animation conversion helpers.
+ *
+ * These utils will call given callback over all relavant fcurves (also includes drivers, and
+ * actions linked through the NLA).
+ *
+ * Note that by using `std::bind`, it is possible to pass more contextual data to a specific
+ * callback if needed (e.g. the related modifier, ...).
+ */
+
+static bool legacy_fcurves_process(ListBase &fcurves, std::function<bool(FCurve *fcurve)> callback)
+{
+  bool is_changed = false;
+  LISTBASE_FOREACH (FCurve *, fcurve, &fcurves) {
+    const bool local_is_changed = callback(fcurve);
+    is_changed = is_changed || local_is_changed;
+  }
+  return is_changed;
+}
+
+static bool legacy_nla_strip_process(NlaStrip &nla_strip,
+                                     std::function<bool(FCurve *fcurve)> callback)
+{
+  bool is_changed = false;
+  if (nla_strip.act) {
+    if (legacy_fcurves_process(nla_strip.act->curves, callback)) {
+      DEG_id_tag_update(&nla_strip.act->id, ID_RECALC_ANIMATION);
+      is_changed = true;
+    }
+  }
+  LISTBASE_FOREACH (NlaStrip *, nla_strip_children, &nla_strip.strips) {
+    const bool local_is_changed = legacy_nla_strip_process(*nla_strip_children, callback);
+    is_changed = is_changed || local_is_changed;
+  }
+  return is_changed;
+}
+
+static bool legacy_animation_process(AnimData &anim_data,
+                                     std::function<bool(FCurve *fcurve)> callback)
+{
+  bool is_changed = false;
+  if (anim_data.action) {
+    if (legacy_fcurves_process(anim_data.action->curves, callback)) {
+      DEG_id_tag_update(&anim_data.action->id, ID_RECALC_ANIMATION);
+      is_changed = true;
+    }
+  }
+  if (anim_data.tmpact) {
+    if (legacy_fcurves_process(anim_data.tmpact->curves, callback)) {
+      DEG_id_tag_update(&anim_data.tmpact->id, ID_RECALC_ANIMATION);
+      is_changed = true;
+    }
+  }
+
+  {
+    const bool local_is_changed = legacy_fcurves_process(anim_data.drivers, callback);
+    is_changed = is_changed || local_is_changed;
+  }
+
+  LISTBASE_FOREACH (NlaTrack *, nla_track, &anim_data.nla_tracks) {
+    LISTBASE_FOREACH (NlaStrip *, nla_strip, &nla_track->strips) {
+      const bool local_is_changed = legacy_nla_strip_process(*nla_strip, callback);
+      is_changed = is_changed || local_is_changed;
+    }
+  }
+  return is_changed;
+}
 
 /**
  * Find vertex groups that have assigned vertices in this drawing.
@@ -616,6 +692,31 @@ static ModifierData &legacy_object_modifier_common(Object &object,
 
   /* Attempt to copy UI state (panels) as best as possible. */
   new_md.ui_expand_flag = legacy_md.ui_expand_flag;
+
+  /* Convert animation data if needed. */
+  AnimData *anim_data = BKE_animdata_from_id(&object.id);
+  if (anim_data) {
+    auto modifier_path_update = [&](FCurve *fcurve) -> bool {
+      if (!fcurve->rna_path) {
+        return false;
+      }
+      StringRefNull rna_path = fcurve->rna_path;
+      const std::string legacy_root_path = fmt::format("grease_pencil_modifiers[\"{}\"]",
+                                                       legacy_md.name);
+      if (!rna_path.startswith(legacy_root_path)) {
+        return false;
+      }
+      const std::string new_rna_path = fmt::format(
+          "modifiers[\"{}\"]{}", new_md.name, rna_path.substr(int64_t(legacy_root_path.size())));
+      MEM_freeN(fcurve->rna_path);
+      fcurve->rna_path = BLI_strdup(new_rna_path.c_str());
+      return true;
+    };
+
+    if (legacy_animation_process(*anim_data, modifier_path_update)) {
+      DEG_id_tag_update(&object.id, ID_RECALC_ANIMATION);
+    }
+  }
 
   return new_md;
 }
