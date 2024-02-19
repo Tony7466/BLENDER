@@ -213,7 +213,7 @@ static int rna_iterator_grease_pencil_layer_groups_length(PointerRNA *ptr)
 static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
 {
   StructRNA *srna;
-  // PropertyRNA *prop;
+  PropertyRNA *prop;
 
   srna = RNA_def_struct(brna, "GreasePencilDrawing", nullptr);
   RNA_def_struct_sdna(srna, "GreasePencilDrawing");
