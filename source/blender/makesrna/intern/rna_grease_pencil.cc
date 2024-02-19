@@ -162,31 +162,32 @@ static void rna_iterator_grease_pencil_frames_begin(CollectionPropertyIterator *
   GreasePencil *grease_pencil = rna_grease_pencil(ptr);
 
   // TODO
-  // blender::Span<Frame *> frame = grease_pencil
-  blender::Span<Frames *> frames = grease_pencil->frames();
-  rna_iterator_array_begin(iter, (void *)groups.data(), sizeof(Frames *), frames.size(), nullptr);
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  blender::Span<FramesMapKey> sorted_keys = layer.sorted_keys();
 }
 
 static void rna_iterator_grease_pencil_frames_end(CollectionPropertyIterator *iter,
-                                                  PointerRNA *ptr)
+                                                  PointerRNA * /*ptr*/)
 {
   using namespace blender::bke::greasepencil;
-  // TODO
+  rna_iterator_array_end(iter);
 }
 
 static void rna_iterator_grease_pencil_frames_length(CollectionPropertyIterator *iter,
                                                      PointerRNA *ptr)
 {
-  // TODO
-  GreasePencil *grease_pencil = rna_grease_pencil(ptr);
-  return grease_pencil->frames().size();
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  return layer.frames().size();
 }
 
 static void rna_iterator_grease_pencil_frames_get(CollectionPropertyIterator *iter,
                                                   PointerRNA *ptr)
 {
   using namespace blender::bke::greasepencil;
-  // TODO
+  FramesMapKey key = *rna_iterator_array_get(iter);
+
+  Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
+  return layer.frames().lookup_ptr(key);
 }
 
 static void rna_iterator_grease_pencil_layer_groups_begin(CollectionPropertyIterator *iter,
@@ -209,6 +210,15 @@ static int rna_iterator_grease_pencil_layer_groups_length(PointerRNA *ptr)
 
 #else
 
+static void rna_def_grease_pencil_drawing(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  // PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "GreasePencilDrawing", nullptr);
+  RNA_def_struct_sdna(srna, "GreasePencilDrawing");
+}
+
 static void rna_def_grease_pencil_frame(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -216,11 +226,11 @@ static void rna_def_grease_pencil_frame(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "GreasePencilFrame", nullptr);
   RNA_def_struct_sdna(srna, "GreasePencilFrame");
-  RNA_def_struct_ui_text(srna, "Grease Pencil Frame", "Collection of frames");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Frame", "A Grease Pencil keyframe");
   RNA_def_struct_path_func(srna, "rna_GreasePencilFrame_path");
 
   // GreasePencilDrawing stub. TODO
-  RNA_def_property(prop, "drawing", PROP_POINTER, PROP_NONE);
+  prop = RNA_def_property(brna, "drawing", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "GreasePencilDrawing");
 }
 
@@ -288,21 +298,6 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Onion Skinning", "Display onion skins before and after the current frame");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
-}
-
-static void rna_def_grease_pencil_frames_api(BlenderRNA *brna, PropertyRNA *cprop)
-{
-  StructRNA *srna;
-  PropertyRNA *prop;
-
-  RNA_def_property_srna(cprop, "GreasePencilv3Frames");
-  srna = RNA_def_struct(brna, "GreasePencilv3Frames", nullptr);
-  RNA_def_struct_sdna(srna, "GreasePencil");
-  RNA_def_struct_ui_text(srna, "Grease Pencil Frames", "Collection of Grease Pencil frames");
-
-  prop = RNA_def_property(srna, "active", PROP_POINTER, PROP_NONE);
-
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, nullptr);
 }
 
 static void rna_def_grease_pencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
@@ -416,6 +411,8 @@ void RNA_def_grease_pencil(BlenderRNA *brna)
   rna_def_grease_pencil_data(brna);
   rna_def_grease_pencil_layer(brna);
   rna_def_grease_pencil_layer_group(brna);
+  rna_def_grease_pencil_frame(brna);
+  rna_def_grease_pencil_drawing(brna);
 }
 
 #endif
