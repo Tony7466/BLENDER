@@ -425,18 +425,24 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
   float uv_offset = 1.0 / float(SHADOW_MAP_MAX_RES / (tile.lod + 1));
   vec3 TP, BP;
   if (is_directional) {
-    /* TODO */
-    return vec3(0.0);
+    TP = shadow_directional_reconstruct_position(
+        params, light, params.uv + vec3(uv_offset, 0.0, 0.0));
+    BP = shadow_directional_reconstruct_position(
+        params, light, params.uv + vec3(0.0, uv_offset, 0.0));
+    vec3 L = light._back;
+    /* Project the offset positions into the surface plane. */
+    TP = line_plane_intersect(TP, dot(L, TP) > 0.0 ? L : -L, P, Ng);
+    BP = line_plane_intersect(BP, dot(L, BP) > 0.0 ? L : -L, P, Ng);
   }
   else {
     TP = shadow_punctual_reconstruct_position(
         params, light, params.uv + vec3(uv_offset, 0.0, 0.0));
     BP = shadow_punctual_reconstruct_position(
         params, light, params.uv + vec3(0.0, uv_offset, 0.0));
+    /* Project the offset positions into the surface plane. */
+    TP = line_plane_intersect(light._position, normalize(TP - light._position), P, Ng);
+    BP = line_plane_intersect(light._position, normalize(BP - light._position), P, Ng);
   }
-  /* Project the offset positions into the surface plane. */
-  TP = line_plane_intersect(light._position, normalize(TP - light._position), P, Ng);
-  BP = line_plane_intersect(light._position, normalize(BP - light._position), P, Ng);
 
   vec2 rand = vec2(0.0);
 #ifdef EEVEE_SAMPLING_DATA

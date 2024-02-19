@@ -169,6 +169,32 @@ ShadowEvalResult shadow_punctual_sample_get(SHADOW_ATLAS_TYPE atlas_tx,
   return result;
 }
 
+vec3 shadow_directional_reconstruct_position(ShadowSampleParams params, LightData light, vec3 uvw)
+{
+  float clip_near = orderedIntBitsToFloat(light.clip_near);
+  float clip_far = orderedIntBitsToFloat(light.clip_far);
+
+  int level = shadow_directional_level(light, params.lP - light._position);
+  /* This difference needs to be less than 32 for the later shift to be valid.
+   * This is ensured by ShadowDirectional::clipmap_level_range(). */
+  int level_relative = level - light.clipmap_lod_min;
+  int lod_relative = (light.type == LIGHT_SUN_ORTHO) ? light.clipmap_lod_min : level;
+
+  ivec2 clipmap_offset = shadow_decompress_grid_offset(
+      light.type, light.clipmap_base_offset, level_relative);
+  vec2 clipmap_origin = vec2(light._clipmap_origin_x, light._clipmap_origin_y);
+
+  vec2 tilemap_uv = uvw.xy;
+  tilemap_uv += vec2(clipmap_offset) / float(SHADOW_TILEMAP_RES);
+  vec2 clipmap_pos = (tilemap_uv - 0.5) / exp2(-float(lod_relative));
+
+  vec3 lP;
+  lP.xy = clipmap_pos + clipmap_origin;
+  lP.z = (params.uv.z + clip_near) * -1.0;
+
+  return mat3(light.object_mat) * lP;
+}
+
 ShadowSampleParams shadow_directional_sample_params_get(usampler2D tilemaps_tx,
                                                         LightData light,
                                                         vec3 P)
