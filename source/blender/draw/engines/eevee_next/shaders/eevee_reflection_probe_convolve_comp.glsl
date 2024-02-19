@@ -48,6 +48,11 @@ float cone_cosine_from_roughness(float linear_roughness)
   return square(half_angle_cos) - square(half_angle_sin);
 }
 
+int sample_count_get(float cone_cosine)
+{
+  return 256;
+}
+
 float sample_weight(vec3 out_direction, vec3 in_direction, float linear_roughness)
 {
   out_direction = normalize(out_direction);
@@ -112,7 +117,7 @@ void main()
   float weight_accum = 0.0;
   vec4 radiance_accum = vec4(0.0);
 
-  int sample_count = 1024;
+  int sample_count = sample_count_get(cone_cos);
   for (int i = 0; i < sample_count; i++) {
     vec2 rand = hammersley_2d(i, sample_count);
     vec3 in_direction = basis * sample_uniform_cone(rand, cone_cos);

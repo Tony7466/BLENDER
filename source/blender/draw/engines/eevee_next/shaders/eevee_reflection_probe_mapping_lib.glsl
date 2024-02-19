@@ -103,8 +103,11 @@ float sphere_probe_roughness_to_mix_fac(float roughness)
 float sphere_probe_roughness_to_lod(float roughness)
 {
   /* From "Moving Frostbite to Physically Based Rendering 3.0" eq 53. */
-  return sqrt_fast(saturate(roughness / SPHERE_PROBE_MIP_MAX_ROUGHNESS)) *
-         float(SPHERE_PROBE_MIPMAP_LEVELS - 1);
+  float ratio = saturate(roughness / SPHERE_PROBE_MIP_MAX_ROUGHNESS);
+  float ratio_sqrt = sqrt_fast(ratio);
+  /* Mix with linear to avoid mip 1 being too sharp. */
+  ratio = mix(ratio, ratio_sqrt, 0.4);
+  return ratio * float(SPHERE_PROBE_MIPMAP_LEVELS - 1);
 }
 
 /* Return linear roughness (UI roughness). */
@@ -112,5 +115,13 @@ float sphere_probe_lod_to_roughness(float lod)
 {
   /* Inverse of sphere_probe_roughness_to_lod. */
   float mip_ratio = lod / float(SPHERE_PROBE_MIPMAP_LEVELS - 1);
-  return square(mip_ratio * SPHERE_PROBE_MIP_MAX_ROUGHNESS);
+  float a = mip_ratio;
+  const float b = 0.6; /* Factor of ratio. */
+  const float c = 0.4; /* Factor of ratio_sqrt. */
+  float b2 = square(b);
+  float c2 = square(c);
+  float c4 = square(c2);
+  /* In wolfram alpha we trust. */
+  float ratio = (-sqrt(4.0 * a * b * c2 + c4) + 2.0 * a * b + c2) / (2.0 * b2);
+  return ratio * SPHERE_PROBE_MIP_MAX_ROUGHNESS;
 }

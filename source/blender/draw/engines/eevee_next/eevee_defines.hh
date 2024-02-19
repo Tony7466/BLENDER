@@ -42,7 +42,7 @@
 #define SPHERE_PROBE_MIX_START_ROUGHNESS 0.7
 #define SPHERE_PROBE_MIX_END_ROUGHNESS 0.9
 /* Roughness of the last mip map for sphere probes. */
-#define SPHERE_PROBE_MIP_MAX_ROUGHNESS 0.8
+#define SPHERE_PROBE_MIP_MAX_ROUGHNESS 0.7
 /**
  * Limited by the UBO size limit `(16384 bytes / sizeof(SphereProbeData))`.
  */
