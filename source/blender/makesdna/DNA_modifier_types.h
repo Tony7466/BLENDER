@@ -110,6 +110,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilLength = 73,
   eModifierType_GreasePencilWeightAngle = 74,
   eModifierType_GreasePencilArray = 75,
+  eModifierType_GreasePencilHook = 76,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2926,3 +2927,42 @@ typedef enum GreasePencilArrayModifierFlag {
   MOD_GREASE_PENCIL_ARRAY_USE_OB_OFFSET = (1 << 9),
   MOD_GREASE_PENCIL_ARRAY_UNIFORM_RANDOM_SCALE = (1 << 10),
 } GreasePencilArrayModifierFlag;
+
+typedef struct GreasePencilHookModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  struct Object *object;
+  /** Optional name of bone target, MAX_ID_NAME-2. */
+  char subtarget[64];
+  char _pad[4];
+
+  /** GreasePencilHookFlag. */
+  int flag;
+  /** #GreasePencilHookFalloff. */
+  char falloff_type;
+  char _pad1[3];
+  /** Matrix making current transform unmodified. */
+  float parentinv[4][4];
+  /** Visualization of hook. */
+  float cent[3];
+  /** If not zero, falloff is distance where influence zero. */
+  float falloff;
+  float force;
+} GreasePencilHookModifierData;
+
+typedef enum GreasePencilHookFlag {
+  MOD_GRAESE_PENCIL_HOOK_UNIFORM_SPACE = (1 << 0),
+} GreasePencilHookFlag;
+
+typedef enum GreasePencilHookFalloff {
+  MOD_GREASE_PENCIL_HOOK_Falloff_None = 0,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Curve = 1,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Sharp = 2,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Smooth = 3,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Root = 4,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Linear = 5,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Const = 6,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Sphere = 7,
+  MOD_GREASE_PENCIL_HOOK_Falloff_InvSquare = 8,
+} GreasePencilHookFalloff;

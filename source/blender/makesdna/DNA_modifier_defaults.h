@@ -943,4 +943,16 @@
     .mat_rpl = 0, \
   }
   
+#define _DNA_DEFAULT_GreasePencilHookModifierData \
+  { \
+    .object = NULL, \
+    .subtarget = "", \
+    .flag = 0, \
+    .falloff_type = MOD_GREASE_PENCIL_HOOK_Falloff_Smooth, \
+    .parentinv = _DNA_DEFAULT_UNIT_M4, \
+    .cent = {0.0f, 0.0f, 0.0f}, \
+    .falloff = 0.0f, \
+    .force = 0.5f, \
+  }
+
 /* clang-format off */
