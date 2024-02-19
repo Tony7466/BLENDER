@@ -30,6 +30,17 @@ void AllAssetLibrary::rebuild(const bool reload_catalogs)
       },
       false);
   catalog_service->rebuild_tree();
+  catalogs_dirty_ = false;
+}
+
+void AllAssetLibrary::tag_catalogs_dirty()
+{
+  catalogs_dirty_ = true;
+}
+
+bool AllAssetLibrary::is_catalogs_dirty()
+{
+  return catalogs_dirty_;
 }
 
 void AllAssetLibrary::refresh_catalogs()
