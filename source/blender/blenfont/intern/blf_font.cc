@@ -1400,7 +1400,6 @@ static void blf_font_fill(FontBLF *font)
   font->char_width = 1.0f;
   font->char_spacing = 0.0f;
 
-  BLI_listbase_clear(&font->cache);
   font->kerning_cache = nullptr;
 #if BLF_BLUR_ENABLE
   font->blur = 0;
@@ -1760,7 +1759,7 @@ static FontBLF *blf_font_new_impl(const char *filepath,
                                   const size_t mem_size,
                                   void *ft_library)
 {
-  FontBLF *font = (FontBLF *)MEM_callocN(sizeof(FontBLF), "blf_font_new");
+  FontBLF *font = MEM_new<FontBLF>(__func__);
 
   font->mem_name = mem_name ? BLI_strdup(mem_name) : nullptr;
   font->filepath = filepath ? BLI_strdup(filepath) : nullptr;
@@ -1779,8 +1778,6 @@ static FontBLF *blf_font_new_impl(const char *filepath,
   }
 
   font->ft_lib = ft_library ? (FT_Library)ft_library : ft_lib;
-
-  BLI_mutex_init(&font->glyph_cache_mutex);
 
   /* If we have static details about this font file, we don't have to load the Face yet. */
   bool face_needed = true;
@@ -1878,9 +1875,7 @@ void blf_font_free(FontBLF *font)
     MEM_freeN(font->mem_name);
   }
 
-  BLI_mutex_end(&font->glyph_cache_mutex);
-
-  MEM_freeN(font);
+  MEM_delete(font);
 }
 
 /** \} */
