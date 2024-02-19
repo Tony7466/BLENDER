@@ -228,7 +228,9 @@ void DEG_editors_set_update_cb(DEG_EditorUpdateIDCb id_func, DEG_EditorUpdateSce
 /** \name Evaluation
  * \{ */
 
-// XXX: Documentation.
+/* Set evaluation mode of the dependency graph, overriding the mode passed during construction.
+ * If the new mode is different from the current depsgraph mode the graph is fully rebuilt and
+ * evaluated from scratch. */
 void DEG_set_mode(Depsgraph *depsgraph, eEvaluationMode mode);
 
 bool DEG_is_evaluating(const Depsgraph *depsgraph);

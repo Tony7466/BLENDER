@@ -363,9 +363,13 @@ uint64_t DEG_get_update_count(const Depsgraph *depsgraph)
   return deg_graph->update_count;
 }
 
-void DEG_set_mode(Depsgraph *depsgraph, eEvaluationMode mode)
+void DEG_set_mode(Depsgraph *depsgraph, const eEvaluationMode mode)
 {
   deg::Depsgraph *deg_graph = reinterpret_cast<deg::Depsgraph *>(depsgraph);
+
+  if (deg_graph->mode == mode) {
+    return;
+  }
 
   deg_graph->mode = mode;
   deg_graph->clear();
