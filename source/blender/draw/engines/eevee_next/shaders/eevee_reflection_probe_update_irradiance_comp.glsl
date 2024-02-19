@@ -34,7 +34,7 @@ void main()
   cooef.L1.Mp1 = vec4(0.0);
 
   SphereProbeUvArea atlas_coord = reinterpret_as_atlas_coord(world_coord_packed);
-  float layer_mipmap = 5;
+  float layer_mipmap = 2;
   /* Perform multiple sample. */
   uint store_index = gl_LocalInvocationID.x;
   float total_samples = float(gl_WorkGroupSize.x * SPHERE_PROBE_SH_SAMPLES_PER_GROUP);
