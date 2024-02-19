@@ -56,90 +56,6 @@ static void geo_proximity_init(bNodeTree * /*tree*/, bNode *node)
   node->storage = node_storage;
 }
 
-static bool calculate_mesh_proximity(const VArray<float3> &positions,
-                                     const IndexMask &mask,
-                                     const Mesh &mesh,
-                                     const GeometryNodeProximityTargetType type,
-                                     const MutableSpan<float> r_distances,
-                                     const MutableSpan<float3> r_locations)
-{
-  BVHTreeFromMesh bvh_data;
-  switch (type) {
-    case GEO_NODE_PROX_TARGET_POINTS:
-      BKE_bvhtree_from_mesh_get(&bvh_data, &mesh, BVHTREE_FROM_VERTS, 2);
-      break;
-    case GEO_NODE_PROX_TARGET_EDGES:
-      BKE_bvhtree_from_mesh_get(&bvh_data, &mesh, BVHTREE_FROM_EDGES, 2);
-      break;
-    case GEO_NODE_PROX_TARGET_FACES:
-      BKE_bvhtree_from_mesh_get(&bvh_data, &mesh, BVHTREE_FROM_CORNER_TRIS, 2);
-      break;
-  }
-
-  if (bvh_data.tree == nullptr) {
-    return false;
-  }
-
-  mask.foreach_index(GrainSize(512), [&](const int index) {
-    BVHTreeNearest nearest;
-    copy_v3_fl(nearest.co, FLT_MAX);
-    nearest.index = -1;
-
-    /* Use the distance to the last found point as upper bound to speedup the bvh lookup. */
-    nearest.dist_sq = math::distance_squared(float3(nearest.co), positions[index]);
-
-    BLI_bvhtree_find_nearest(
-        bvh_data.tree, positions[index], &nearest, bvh_data.nearest_callback, &bvh_data);
-
-    if (nearest.dist_sq < r_distances[index]) {
-      r_distances[index] = nearest.dist_sq;
-      if (!r_locations.is_empty()) {
-        r_locations[index] = nearest.co;
-      }
-    }
-  });
-
-  free_bvhtree_from_mesh(&bvh_data);
-  return true;
-}
-
-static bool calculate_pointcloud_proximity(const VArray<float3> &positions,
-                                           const IndexMask &mask,
-                                           const PointCloud &pointcloud,
-                                           MutableSpan<float> r_distances,
-                                           MutableSpan<float3> r_locations)
-{
-  BVHTreeFromPointCloud bvh_data;
-  BKE_bvhtree_from_pointcloud_get(pointcloud, IndexMask(pointcloud.totpoint), bvh_data);
-  if (bvh_data.tree == nullptr) {
-    return false;
-  }
-
-  mask.foreach_index(GrainSize(512), [&](const int index) {
-    BVHTreeNearest nearest;
-    copy_v3_fl(nearest.co, FLT_MAX);
-    nearest.index = -1;
-
-    /* Use the distance to the closest point in the mesh to speedup the pointcloud bvh lookup.
-     * This is ok because we only need to find the closest point in the pointcloud if it's
-     * closer than the mesh. */
-    nearest.dist_sq = r_distances[index];
-
-    BLI_bvhtree_find_nearest(
-        bvh_data.tree, positions[index], &nearest, bvh_data.nearest_callback, &bvh_data);
-
-    if (nearest.dist_sq < r_distances[index]) {
-      r_distances[index] = nearest.dist_sq;
-      if (!r_locations.is_empty()) {
-        r_locations[index] = nearest.co;
-      }
-    }
-  });
-
-  free_bvhtree_from_pointcloud(&bvh_data);
-  return true;
-}
-
 class ProximityFunction : public mf::MultiFunction {
  private:
   struct BVHTrees {
@@ -194,12 +110,14 @@ class ProximityFunction : public mf::MultiFunction {
 
   void init_for_pointcloud(const PointCloud &pointcloud, const Field<int> &group_id_field)
   {
+    /* Compute group ids. */
     bke::PointCloudFieldContext field_context{pointcloud};
     FieldEvaluator field_evaluator{field_context, pointcloud.totpoint};
     field_evaluator.add(group_id_field);
     field_evaluator.evaluate();
     VArraySpan<int> group_ids_span = field_evaluator.get_evaluated<int>(0);
 
+    /* Compute an #IndexMask for every unique group id. */
     group_indices_.add_multiple(group_ids_span);
     const int groups_num = group_indices_.size();
     IndexMaskMemory memory;
@@ -210,6 +128,7 @@ class ProximityFunction : public mf::MultiFunction {
         [&](const int i) { return group_indices_.index_of(group_ids_span[i]); },
         group_masks);
 
+    /* Construct BVH tree for each group. */
     bvh_trees_.resize(groups_num);
     threading::parallel_for(IndexRange(groups_num), 16, [&](const IndexRange range) {
       for (const int group_i : range) {
@@ -225,6 +144,7 @@ class ProximityFunction : public mf::MultiFunction {
 
   void init_for_mesh(const Mesh &mesh, const Field<int> &group_id_field)
   {
+    /* Compute group ids. */
     const bke::AttrDomain domain = this->get_domain_on_mesh();
     const int domain_size = mesh.attributes().domain_size(domain);
     bke::MeshFieldContext field_context{mesh, domain};
@@ -233,6 +153,7 @@ class ProximityFunction : public mf::MultiFunction {
     field_evaluator.evaluate();
     VArraySpan<int> group_ids_span = field_evaluator.get_evaluated<int>(0);
 
+    /* Compute an #IndexMask for every unique group id. */
     group_indices_.add_multiple(group_ids_span);
     const int groups_num = group_indices_.size();
     IndexMaskMemory memory;
@@ -243,6 +164,7 @@ class ProximityFunction : public mf::MultiFunction {
         [&](const int i) { return group_indices_.index_of(group_ids_span[i]); },
         group_masks);
 
+    /* Construct BVH tree for each group. */
     bvh_trees_.resize(groups_num);
     threading::parallel_for(IndexRange(groups_num), 16, [&](const IndexRange range) {
       for (const int group_i : range) {
@@ -313,6 +235,9 @@ class ProximityFunction : public mf::MultiFunction {
       }
       const BVHTrees &trees = bvh_trees_[group_index];
       BVHTreeNearest nearest;
+      /* Take mesh and pointcloud bvh tree into account. The final result is the closer of the two.
+       * First first bvhtree query will set `nearest.dist_sq` which is then passed into the second
+       * query as a maximum distance. */
       nearest.dist_sq = FLT_MAX;
       if (trees.mesh_bvh.tree != nullptr) {
         BLI_bvhtree_find_nearest(trees.mesh_bvh.tree,

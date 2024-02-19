@@ -122,10 +122,16 @@ void BKE_bvhtree_from_mesh_tris_init(const Mesh &mesh,
                                      const blender::IndexMask &faces_mask,
                                      BVHTreeFromMesh &r_data);
 
+/**
+ * Build a bvh tree containing the given edges.
+ */
 void BKE_bvhtree_from_mesh_edges_init(const Mesh &mesh,
                                       const blender::IndexMask &edges_mask,
                                       BVHTreeFromMesh &r_data);
 
+/**
+ * Build a bvh tree containing the given vertices.
+ */
 void BKE_bvhtree_from_mesh_verts_init(const Mesh &mesh,
                                       const blender::IndexMask &verts_mask,
                                       BVHTreeFromMesh &r_data);

@@ -1078,8 +1078,8 @@ void BKE_bvhtree_from_pointcloud_get(const PointCloud &pointcloud,
                                      const blender::IndexMask &points_mask,
                                      BVHTreeFromPointCloud &r_data)
 {
-  int points_num = points_mask.size();
-  BVHTree *tree = bvhtree_new_common(0.0f, 2, 6, points_mask.size(), points_num);
+  int active_num = -1;
+  BVHTree *tree = bvhtree_new_common(0.0f, 2, 6, points_mask.size(), active_num);
   r_data.tree = tree;
   if (!tree) {
     return;
@@ -1088,8 +1088,7 @@ void BKE_bvhtree_from_pointcloud_get(const PointCloud &pointcloud,
   const Span<float3> positions = pointcloud.positions();
   points_mask.foreach_index([&](const int i) { BLI_bvhtree_insert(tree, i, positions[i], 1); });
 
-  BLI_assert(BLI_bvhtree_get_len(tree) == points_mask.size());
-  bvhtree_balance(tree, false);
+  BLI_bvhtree_balance(tree);
 
   r_data.coords = (const float(*)[3])positions.data();
   r_data.tree = tree;
