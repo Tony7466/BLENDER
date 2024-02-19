@@ -111,6 +111,27 @@ float shadow_linear_occluder_distance(LightData light,
   return receiver_z - occluder_z;
 }
 
+mat4 shadow_punctual_projection_perspective(LightData light)
+{
+  /* Face Local (View) Space > Clip Space. */
+  float clip_far = intBitsToFloat(light.clip_far);
+  float clip_near = intBitsToFloat(light.clip_near);
+  float clip_side = light.clip_side;
+  /* TODO: Could be simplified since frustum is completely symmetrical. */
+  return shadow_projection_perspective(
+      -clip_side, clip_side, -clip_side, clip_side, clip_near, clip_far);
+}
+
+vec3 shadow_punctual_reconstruct_position(ShadowSampleParams params, LightData light, vec3 uvw)
+{
+  vec3 clip_P = uvw * 2.0 - 1.0;
+  mat4 winmat = shadow_punctual_projection_perspective(light);
+  vec3 lP = project_point(inverse(winmat), clip_P);
+  int face_id = params.tilemap_index - light.tilemap_index;
+  lP = shadow_punctual_face_local_to_local_position(face_id, lP);
+  return mat3(light.object_mat) * lP + light._position;
+}
+
 ShadowSampleParams shadow_punctual_sample_params_get(usampler2D tilemaps_tx,
                                                      LightData light,
                                                      vec3 P)
@@ -120,13 +141,7 @@ ShadowSampleParams shadow_punctual_sample_params_get(usampler2D tilemaps_tx,
   int face_id = shadow_punctual_face_index_get(lP);
   /* Local Light Space > Face Local (View) Space. */
   lP = shadow_punctual_local_position_to_face_local(face_id, lP);
-  /* Face Local (View) Space > Clip Space. */
-  float clip_far = intBitsToFloat(light.clip_far);
-  float clip_near = intBitsToFloat(light.clip_near);
-  float clip_side = light.clip_side;
-  /* TODO: Could be simplified since frustum is completely symmetrical. */
-  mat4 winmat = shadow_projection_perspective(
-      -clip_side, clip_side, -clip_side, clip_side, clip_near, clip_far);
+  mat4 winmat = shadow_punctual_projection_perspective(light);
   vec3 clip_P = project_point(winmat, lP);
   /* Clip Space > UV Space. */
   vec3 uv_P = saturate(clip_P * 0.5 + 0.5);
