@@ -131,7 +131,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     for (const StringRef attribute_name : failed_attributes) {
       quoted_attribute_names.append(fmt::format("\"{}\"", attribute_name));
     }
-    const std::string message = fmt::format(TIP_("Cannot delete built-in attributes: {}"),
+    const std::string message = fmt::format(TIP_("Cannot remove built-in attributes: {}"),
                                             fmt::join(quoted_attribute_names, ", "));
     params.error_message_add(NodeWarningType::Warning, message);
   }
