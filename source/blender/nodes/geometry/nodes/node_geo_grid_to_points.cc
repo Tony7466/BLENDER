@@ -135,6 +135,7 @@ template<typename T> struct PointData {
     if (output_values) {
       this->values.reinitialize(this->num_points);
     }
+    this->background_value = Converter::to_blender(grid.background());
   }
 
   void add_voxel_point(int64_t &cur_point,
