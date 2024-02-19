@@ -107,8 +107,8 @@ float sphere_probe_roughness_to_lod(float roughness)
   float ratio = saturate(roughness / SPHERE_PROBE_MIP_MAX_ROUGHNESS);
   float ratio_sqrt = sqrt_fast(ratio);
   /* Mix with linear to avoid mip 1 being too sharp. */
-  ratio = mix(ratio, ratio_sqrt, 0.4);
-  return ratio * float(SPHERE_PROBE_MIPMAP_LEVELS - 1);
+  float mip_ratio = mix(ratio, ratio_sqrt, 0.4);
+  return mip_ratio * float(SPHERE_PROBE_MIPMAP_LEVELS - 1);
 }
 
 /* Return linear roughness (UI roughness). */
