@@ -56,15 +56,15 @@ vec3 sphere_probe_texel_to_direction(ivec2 local_texel,
 vec2 sphere_probe_miplvl_scale_bias(float mip_lvl, SphereProbeUvArea uv_area, vec2 uv)
 {
   /* Add 0.5 to avoid rounding error. */
-  int pixel_count_mip_0 = int(float(SPHERE_PROBE_ATLAS_RES) * uv_area.scale + 0.5);
-  float pixel_count = float(pixel_count_mip_0 >> int(mip_lvl));
-  float pixel_count_inv = 1.0 / pixel_count;
+  int mip_0_res = int(float(SPHERE_PROBE_ATLAS_RES) * uv_area.scale + 0.5);
+  float mip_lvl_res = float(mip_0_res >> int(mip_lvl));
+  float mip_lvl_res_inv = 1.0 / mip_lvl_res;
   /* We place texel centers at the edges of the octahedron, to avoid artifacts caused by
    * interpolating across the edges.
    * The first pixel scaling aligns all the border edges (half pixel border).
    * The second pixel scaling aligns the center edges (odd number of pixel). */
-  float scale = (pixel_count - 2.0) * pixel_count_inv;
-  float offset = 0.5 * pixel_count_inv;
+  float scale = (mip_lvl_res - 2.0) * mip_lvl_res_inv;
+  float offset = 0.5 * mip_lvl_res_inv;
   return uv * scale + offset;
 }
 
