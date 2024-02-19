@@ -199,6 +199,7 @@ static GPUVertFormat *get_subdiv_lnor_format()
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "nor", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
     GPU_vertformat_alias_add(&format, "lnor");
+    GPU_vertformat_alias_add(&format, "vnor");
   }
   return &format;
 }
