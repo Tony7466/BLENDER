@@ -47,7 +47,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     }
     else if (wildcard_count >= 2) {
       params.error_message_add(NodeWarningType::Info,
-                               TIP_("Can have at most one * in the pattern"));
+                               TIP_("Only one * is supported in the pattern"));
       params.set_output("Geometry", std::move(geometry_set));
       return;
     }
