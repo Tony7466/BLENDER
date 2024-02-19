@@ -3375,17 +3375,19 @@ static int click_select_channel_object(bContext *C,
     return 0;
   }
 
-  if (selectmode == SELECT_INVERT) {
+  if (selectmode & SELECT_EXTEND_RANGE) {
+    if ((selectmode & SELECT_INVERT) == 0) {
+      ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
+    }
+    animchannel_select_range(ac, ale);
+  }
+  else if (selectmode & SELECT_INVERT) {
     /* swap select */
     ED_object_base_select(base, BA_INVERT);
 
     if (adt) {
       adt->flag ^= ADT_UI_SELECTED;
     }
-  }
-  else if (selectmode == SELECT_EXTEND_RANGE) {
-    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
-    animchannel_select_range(ac, ale);
   }
   else {
     /* deselect all */
@@ -3413,7 +3415,7 @@ static int click_select_channel_object(bContext *C,
   ED_object_base_activate_with_mode_exit_if_needed(C, base); /* adds notifier */
 
   /* Similar to outliner, do not change active element when selecting elements in range. */
-  if ((adt) && (adt->flag & ADT_UI_SELECTED) && (selectmode != SELECT_EXTEND_RANGE)) {
+  if ((adt) && (adt->flag & ADT_UI_SELECTED) && ((selectmode & SELECT_EXTEND_RANGE) == 0)) {
     adt->flag |= ADT_UI_ACTIVE;
   }
 
@@ -3429,13 +3431,16 @@ static int click_select_channel_dummy(bAnimContext *ac,
   }
 
   /* select/deselect */
-  if (selectmode == SELECT_INVERT) {
+  if (selectmode & SELECT_EXTEND_RANGE) {
+    if ((selectmode & SELECT_INVERT) == 0) {
+      ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
+    }
+    animchannel_select_range(ac, ale);
+
+  }
+  else if (selectmode & SELECT_INVERT) {
     /* inverse selection status of this AnimData block only */
     ale->adt->flag ^= ADT_UI_SELECTED;
-  }
-  else if (selectmode == SELECT_EXTEND_RANGE) {
-    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
-    animchannel_select_range(ac, ale);
   }
   else {
     /* select AnimData block by itself */
@@ -3444,7 +3449,7 @@ static int click_select_channel_dummy(bAnimContext *ac,
   }
 
   /* Similar to outliner, do not change active element when selecting elements in range. */
-  if ((ale->adt->flag & ADT_UI_SELECTED) && (selectmode != SELECT_EXTEND_RANGE)) {
+  if ((ale->adt->flag & ADT_UI_SELECTED) && ((selectmode & SELECT_EXTEND_RANGE) == 0)) {
     ale->adt->flag |= ADT_UI_ACTIVE;
   }
 
@@ -3486,13 +3491,15 @@ static int click_select_channel_group(bAnimContext *ac,
   }
 
   /* select/deselect group */
-  if (selectmode == SELECT_INVERT) {
+  if (selectmode & SELECT_EXTEND_RANGE) {
+    if ((selectmode & SELECT_INVERT) == 0) {
+      ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
+    }
+    animchannel_select_range(ac, ale);
+  }
+  else if (selectmode & SELECT_INVERT) {
     /* inverse selection status of this group only */
     agrp->flag ^= AGRP_SELECTED;
-  }
-  else if (selectmode == SELECT_EXTEND_RANGE) {
-    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
-    animchannel_select_range(ac, ale);
   }
   else if (selectmode == -1) {
     /* select all in group (and deselect everything else) */
@@ -3525,7 +3532,7 @@ static int click_select_channel_group(bAnimContext *ac,
   /* if group is selected now, make group the 'active' one in the visible list.
    * Similar to outliner, do not change active element when selecting elements in range. */
   if (agrp->flag & AGRP_SELECTED) {
-    if (selectmode != SELECT_EXTEND_RANGE) {
+    if ((selectmode & SELECT_EXTEND_RANGE) == 0) {
       ANIM_set_active_channel(ac,
                               ac->data,
                               eAnimCont_Types(ac->datatype),
@@ -3538,7 +3545,7 @@ static int click_select_channel_group(bAnimContext *ac,
     }
   }
   else {
-    if (selectmode != SELECT_EXTEND_RANGE) {
+    if ((selectmode & SELECT_EXTEND_RANGE) == 0) {
       ANIM_set_active_channel(ac,
                               ac->data,
                               eAnimCont_Types(ac->datatype),
@@ -3649,13 +3656,15 @@ static int click_select_channel_gplayer(bContext *C,
   bGPDlayer *gpl = (bGPDlayer *)ale->data;
 
   /* select/deselect */
-  if (selectmode == SELECT_INVERT) {
+  if (selectmode & SELECT_EXTEND_RANGE) {
+    if ((selectmode & SELECT_INVERT) == 0) {
+      ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
+    }
+    animchannel_select_range(ac, ale);
+  }
+  else if (selectmode & SELECT_INVERT) {
     /* invert selection status of this layer only */
     gpl->flag ^= GP_LAYER_SELECT;
-  }
-  else if (selectmode == SELECT_EXTEND_RANGE) {
-    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
-    animchannel_select_range(ac, ale);
   }
   else {
     /* select layer by itself */
@@ -3665,7 +3674,7 @@ static int click_select_channel_gplayer(bContext *C,
 
   /* change active layer, if this is selected (since we must always have an active layer).
    * Similar to outliner, do not change active element when selecting elements in range. */
-  if ((gpl->flag & GP_LAYER_SELECT) && (selectmode != SELECT_EXTEND_RANGE)) {
+  if ((gpl->flag & GP_LAYER_SELECT) && ((selectmode & SELECT_EXTEND_RANGE) == 0)) {
     ANIM_set_active_channel(ac,
                             ac->data,
                             eAnimCont_Types(ac->datatype),
@@ -3719,12 +3728,14 @@ static int click_select_channel_grease_pencil_layer(bContext *C,
   Layer *layer = static_cast<Layer *>(ale->data);
   GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
 
-  if (selectmode == SELECT_INVERT) {
-    layer->set_selected(!layer->is_selected());
-  }
-  else if (selectmode == SELECT_EXTEND_RANGE) {
-    ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
+  if (selectmode & SELECT_EXTEND_RANGE) {
+    if ((selectmode & SELECT_INVERT) == 0) {
+      ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_EXTEND_RANGE);
+    }
     animchannel_select_range(ac, ale);
+  }
+  else if (selectmode & SELECT_INVERT) {
+    layer->set_selected(!layer->is_selected());
   }
   else {
     ANIM_anim_channels_select_set(ac, ACHANNEL_SETFLAG_CLEAR);
@@ -3732,7 +3743,7 @@ static int click_select_channel_grease_pencil_layer(bContext *C,
   }
 
   /* Active channel is not changed during range select. */
-  if (layer->is_selected() && (selectmode != SELECT_EXTEND_RANGE)) {
+  if (layer->is_selected() && ((selectmode & SELECT_EXTEND_RANGE) == 0)) {
     grease_pencil->set_active_layer(layer);
   }
 
@@ -3816,7 +3827,7 @@ static int mouse_anim_channels(bContext *C,
   }
 
   /* Change selection mode to single when no active element is found. */
-  if ((selectmode == SELECT_EXTEND_RANGE) &&
+  if ((selectmode & SELECT_EXTEND_RANGE) &&
       !animchannel_has_active_of_type(ac, eAnim_ChannelType(ale->type)))
   {
     selectmode = SELECT_INVERT;
