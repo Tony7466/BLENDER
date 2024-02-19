@@ -1635,6 +1635,19 @@ void DRW_draw_view(const bContext *C)
   }
 }
 
+static bool object_is_visible_for_viewport_render(const Depsgraph &depsgraph,
+                                                  const View3D &v3d,
+                                                  const Object &object)
+{
+  if (DEG_get_mode(&depsgraph) == DAG_EVAL_RENDER) {
+    /* For dependency graph in render evaluation mode the visibility is checked on the iterator
+     * level/ */
+    return true;
+  }
+
+  return BKE_object_is_visible_in_viewport(&v3d, &object);
+}
+
 void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
                              RenderEngineType *engine_type,
                              ARegion *region,
@@ -1715,7 +1728,7 @@ void DRW_draw_render_loop_ex(Depsgraph *depsgraph,
         if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
           continue;
         }
-        if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
+        if (!object_is_visible_for_viewport_render(*depsgraph, *v3d, *ob)) {
           continue;
         }
         DST.dupli_parent = data_.dupli_parent;
@@ -2535,7 +2548,7 @@ void DRW_draw_select_loop(Depsgraph *depsgraph,
         deg_iter_settings.viewer_path = &v3d->viewer_path;
       }
       DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, ob) {
-        if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
+        if (!object_is_visible_for_viewport_render(*depsgraph, *v3d, *ob)) {
           continue;
         }
 
@@ -2716,7 +2729,7 @@ void DRW_draw_depth_loop(Depsgraph *depsgraph,
       if ((object_type_exclude_viewport & (1 << ob->type)) != 0) {
         continue;
       }
-      if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
+      if (!object_is_visible_for_viewport_render(*depsgraph, *v3d, *ob)) {
         continue;
       }
       DST.dupli_parent = data_.dupli_parent;
@@ -2816,7 +2829,7 @@ void DRW_draw_select_id(Depsgraph *depsgraph, ARegion *region, View3D *v3d)
           /* Only background (non-edit) objects are used for occlusion. */
           continue;
         }
-        if (!BKE_object_is_visible_in_viewport(v3d, ob)) {
+        if (!object_is_visible_for_viewport_render(*depsgraph, *v3d, *ob)) {
           continue;
         }
         drw_engines_cache_populate(ob);

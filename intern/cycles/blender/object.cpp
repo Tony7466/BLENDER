@@ -574,6 +574,8 @@ void BlenderSync::sync_objects(BL::Depsgraph &b_depsgraph,
   BL::ViewLayer b_view_layer = b_depsgraph.view_layer_eval();
   BL::Depsgraph::object_instances_iterator b_instance_iter;
 
+  const bool use_viewport_visibility = b_depsgraph.mode() == BL::Depsgraph::mode_VIEWPORT;
+
   for (b_depsgraph.object_instances.begin(b_instance_iter);
        b_instance_iter != b_depsgraph.object_instances.end() && !cancel;
        ++b_instance_iter)
@@ -582,9 +584,11 @@ void BlenderSync::sync_objects(BL::Depsgraph &b_depsgraph,
     BL::Object b_ob = b_instance.object();
 
     /* Viewport visibility. */
-    const bool show_in_viewport = !b_v3d || b_ob.visible_in_viewport_get(b_v3d);
-    if (show_in_viewport == false) {
-      continue;
+    if (use_viewport_visibility) {
+      const bool show_in_viewport = !b_v3d || b_ob.visible_in_viewport_get(b_v3d);
+      if (show_in_viewport == false) {
+        continue;
+      }
     }
 
     /* Load per-object culling data. */
