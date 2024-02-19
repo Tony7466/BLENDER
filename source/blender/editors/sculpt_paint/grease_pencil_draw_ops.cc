@@ -129,7 +129,7 @@ static bool grease_pencil_brush_stroke_poll(bContext *C)
   return true;
 }
 
-static int grease_pencil_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   const Object *object = CTX_data_active_object(C);
@@ -186,6 +186,16 @@ static int grease_pencil_brush_stroke_invoke(bContext *C, wmOperator *op, const 
   /* There should now always be a drawing at the current frame. */
   BLI_assert(active_layer.has_drawing_at(current_frame));
 
+  return OPERATOR_RUNNING_MODAL;
+}
+
+static int grease_pencil_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  int return_value = grease_pencil_draw_operator_invoke(C, op);
+  if (return_value != OPERATOR_RUNNING_MODAL) {
+    return return_value;
+  }
+
   op->customdata = paint_stroke_new(C,
                                     op,
                                     stroke_get_location,
@@ -195,7 +205,7 @@ static int grease_pencil_brush_stroke_invoke(bContext *C, wmOperator *op, const 
                                     stroke_done,
                                     event->type);
 
-  const int return_value = op->type->modal(C, op, event);
+  return_value = op->type->modal(C, op, event);
   if (return_value == OPERATOR_FINISHED) {
     return OPERATOR_FINISHED;
   }

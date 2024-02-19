@@ -46,6 +46,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 
 namespace blender::ed::greasepencil {
@@ -193,6 +194,7 @@ static void control_point_colors_and_sizes(const PrimitiveTool_OpData &ptd,
     colors.fill(color_gizmo_primary);
     sizes.fill(size_primary);
 
+    /* Set the center point's color. */
     colors[1] = color_redalert;
     sizes[1] = size_secondary;
   }
@@ -261,9 +263,9 @@ static void grease_pencil_primitive_draw(const bContext * /*C*/, ARegion * /*reg
   draw_control_points(ptd);
 }
 
-static void primitive_calulate_curve_3d_exec(PrimitiveTool_OpData &ptd,
-                                             Span<float3> control_points,
-                                             MutableSpan<float3> new_positions)
+static void primitive_calulate_curve_positions_3d_exec(PrimitiveTool_OpData &ptd,
+                                                       Span<float3> control_points,
+                                                       MutableSpan<float3> new_positions)
 {
   const int subdivision = ptd.subdivision;
   const int new_points_num = new_positions.size();
@@ -360,14 +362,14 @@ static void primitive_calulate_curve_3d_exec(PrimitiveTool_OpData &ptd,
   }
 }
 
-static void primitive_calulate_curve_3d(PrimitiveTool_OpData &ptd,
-                                        MutableSpan<float3> new_positions)
+static void primitive_calulate_curve_positions_3d(PrimitiveTool_OpData &ptd,
+                                                  MutableSpan<float3> new_positions)
 {
-  primitive_calulate_curve_3d_exec(ptd, ptd.control_points, new_positions);
+  primitive_calulate_curve_positions_3d_exec(ptd, ptd.control_points, new_positions);
 }
 
-static void primitive_calulate_curve_2d(PrimitiveTool_OpData &ptd,
-                                        MutableSpan<float2> new_positions)
+static void primitive_calulate_curve_positions_2d(PrimitiveTool_OpData &ptd,
+                                                  MutableSpan<float2> new_positions)
 {
   Array<float3> control_points_2d(ptd.control_points.size());
 
@@ -377,9 +379,11 @@ static void primitive_calulate_curve_2d(PrimitiveTool_OpData &ptd,
   }
 
   Array<float3> new_positions_3d(new_positions.size());
-  primitive_calulate_curve_3d_exec(ptd, control_points_2d, new_positions_3d);
+  primitive_calulate_curve_positions_3d_exec(ptd, control_points_2d, new_positions_3d);
 
-  /* TODO(FIXME): This is bad. */
+  /* TODO(FIXME): Currently we are projecting the 3D points into 2D space but then storing them in
+   * float3 so that they can be past in to `primitive_calulate_curve_positions_3d_exec` before
+   * being converting back to float2. */
   for (const int i : new_positions.index_range()) {
     new_positions[i] = float2(new_positions_3d[i]);
   }
@@ -437,7 +441,7 @@ static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
   Array<float2> positions_2d(new_points_num);
 
   if (ptd.interpolate_mode == InterpolationMode::Mode3D) {
-    primitive_calulate_curve_3d(ptd, positions_3d);
+    primitive_calulate_curve_positions_3d(ptd, positions_3d);
 
     for (const int point : positions_3d.index_range()) {
       positions_2d[point] = ED_view3d_project_float_v2_m4(
@@ -446,7 +450,7 @@ static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
     ptd.placement_.project(positions_2d, positions_3d);
   }
   else { /* 2D */
-    primitive_calulate_curve_2d(ptd, positions_2d);
+    primitive_calulate_curve_positions_2d(ptd, positions_2d);
     ptd.placement_.project(positions_2d, positions_3d);
   }
 
@@ -615,30 +619,17 @@ static void grease_pencil_primitive_update_view(bContext *C, PrimitiveTool_OpDat
 /* Invoke handler: Initialize the operator */
 static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  wmWindow *win = CTX_wm_window(C);
+  int return_value = ed::sculpt_paint::grease_pencil_draw_operator_invoke(C, op);
+  if (return_value != OPERATOR_RUNNING_MODAL) {
+    return return_value;
+  }
 
-  // if (!blender::animrig::is_autokey_on(scene)) {
-  //   bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
-  //   if ((gpl == nullptr) || (gpl->actframe == nullptr)) {
-  //     BKE_report(op->reports, RPT_INFO, "No available frame for creating stroke");
-  //     return OPERATOR_CANCELLED;
-  //   }
-  // }
-
-  // /* initialize operator runtime data */
-  // gpencil_primitive_init(C, op);
-  // tgpi = static_cast<tGPDprimitive *>(op->customdata);
-
-  // const bool is_modal = RNA_boolean_get(op->ptr, "wait_for_input");
-  // if (!is_modal) {
-  //   tgpi->flag = IN_PROGRESS;
-  //   gpencil_primitive_interaction_begin(tgpi, event);
-  // }
-
-  /* if in tools region, wait till we get to the main (3d-space)
+  /* if in tools region, wait till we get to the main (3D-space)
    * region before allowing drawing to take place.
    */
   op->flag |= OP_IS_MODAL_CURSOR_REGION;
+
+  wmWindow *win = CTX_wm_window(C);
 
   /* set cursor to indicate modal */
   WM_cursor_modal_set(win, WM_CURSOR_CROSS);
