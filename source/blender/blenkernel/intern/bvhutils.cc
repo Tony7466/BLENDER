@@ -1000,29 +1000,26 @@ void free_bvhtree_from_mesh(BVHTreeFromMesh *data)
 /** \name Point Cloud BVH Building
  * \{ */
 
-[[nodiscard]] BVHTree *BKE_bvhtree_from_pointcloud_get(BVHTreeFromPointCloud *data,
-                                                       const PointCloud *pointcloud,
-                                                       const int tree_type)
+void BKE_bvhtree_from_pointcloud_get(const PointCloud &pointcloud,
+                                     const blender::IndexMask &points_mask,
+                                     BVHTreeFromPointCloud &r_data)
 {
-  int tot_point = pointcloud->totpoint;
-  BVHTree *tree = bvhtree_new_common(0.0f, tree_type, 6, tot_point, tot_point);
+  int points_num = points_mask.size();
+  BVHTree *tree = bvhtree_new_common(0.0f, 2, 6, points_mask.size(), points_num);
+  r_data.tree = tree;
   if (!tree) {
-    return nullptr;
+    return;
   }
 
-  const Span<float3> positions = pointcloud->positions();
-  for (const int i : positions.index_range()) {
-    BLI_bvhtree_insert(tree, i, positions[i], 1);
-  }
+  const Span<float3> positions = pointcloud.positions();
+  points_mask.foreach_index([&](const int i) { BLI_bvhtree_insert(tree, i, positions[i], 1); });
 
-  BLI_assert(BLI_bvhtree_get_len(tree) == tot_point);
+  BLI_assert(BLI_bvhtree_get_len(tree) == points_mask.size());
   bvhtree_balance(tree, false);
 
-  data->coords = (const float(*)[3])positions.data();
-  data->tree = tree;
-  data->nearest_callback = nullptr;
-
-  return tree;
+  r_data.coords = (const float(*)[3])positions.data();
+  r_data.tree = tree;
+  r_data.nearest_callback = nullptr;
 }
 
 void free_bvhtree_from_pointcloud(BVHTreeFromPointCloud *data)

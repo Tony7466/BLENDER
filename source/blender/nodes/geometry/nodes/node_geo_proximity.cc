@@ -8,6 +8,8 @@
 #include "BKE_bvhutils.hh"
 #include "BKE_geometry_set.hh"
 
+#include "DNA_pointcloud_types.h"
+
 #include "NOD_rna_define.hh"
 
 #include "UI_interface.hh"
@@ -107,8 +109,8 @@ static bool calculate_pointcloud_proximity(const VArray<float3> &positions,
                                            MutableSpan<float3> r_locations)
 {
   BVHTreeFromPointCloud bvh_data;
-  const BVHTree *tree = BKE_bvhtree_from_pointcloud_get(&bvh_data, &pointcloud, 2);
-  if (tree == nullptr) {
+  BKE_bvhtree_from_pointcloud_get(pointcloud, IndexMask(pointcloud.totpoint), bvh_data);
+  if (bvh_data.tree == nullptr) {
     return false;
   }
 
@@ -139,8 +141,15 @@ static bool calculate_pointcloud_proximity(const VArray<float3> &positions,
 
 class ProximityFunction : public mf::MultiFunction {
  private:
+  struct BVHTrees {
+    BVHTreeFromMesh mesh_bvh = {};
+    BVHTreeFromPointCloud pointcloud_bvh = {};
+  };
+
   GeometrySet target_;
   GeometryNodeProximityTargetType type_;
+  Array<BVHTrees> bvh_trees_;
+  VectorSet<int> group_indices_;
 
  public:
   ProximityFunction(GeometrySet target,
@@ -154,52 +163,108 @@ class ProximityFunction : public mf::MultiFunction {
       builder.single_input<float3>("Source Position");
       builder.single_input<int>("Sample ID");
       builder.single_output<float3>("Position", mf::ParamFlag::SupportsUnusedOutput);
-      builder.single_output<float>("Distance");
+      builder.single_output<float>("Distance", mf::ParamFlag::SupportsUnusedOutput);
+      builder.single_output<bool>("Is Valid", mf::ParamFlag::SupportsUnusedOutput);
       return signature;
     }();
     this->set_signature(&signature);
+
+    if (target_.has_pointcloud() && type_ == GEO_NODE_PROX_TARGET_POINTS) {
+      const PointCloud &pointcloud = *target_.get_pointcloud();
+      this->init_for_pointcloud(pointcloud, group_id_field);
+    }
+    if (target_.has_mesh()) {
+      const Mesh &mesh = *target_.get_mesh();
+      this->init_for_mesh(mesh, group_id_field);
+    }
   }
+
+  void init_for_pointcloud(const PointCloud &pointcloud, const Field<int> &group_id_field)
+  {
+    bke::PointCloudFieldContext field_context{pointcloud};
+    FieldEvaluator field_evaluator{field_context, pointcloud.totpoint};
+    field_evaluator.add(group_id_field);
+    field_evaluator.evaluate();
+    VArraySpan<int> group_ids_span = field_evaluator.get_evaluated<int>(0);
+
+    group_indices_.add_multiple(group_ids_span);
+    const int groups_num = group_indices_.size();
+    IndexMaskMemory memory;
+    Array<IndexMask> group_masks(groups_num);
+    IndexMask::from_groups<int>(
+        IndexMask(pointcloud.totpoint),
+        memory,
+        [&](const int i) { return group_indices_.index_of(group_ids_span[i]); },
+        group_masks);
+
+    bvh_trees_.reinitialize(groups_num);
+    threading::parallel_for(IndexRange(groups_num), 16, [&](const IndexRange range) {
+      for (const int group_i : range) {
+        const IndexMask &group_mask = group_masks[group_i];
+        BVHTreeFromPointCloud &bvh = bvh_trees_[group_i].pointcloud_bvh;
+        BKE_bvhtree_from_pointcloud_get(pointcloud, group_mask, bvh);
+      }
+    });
+  }
+
+  void init_for_mesh(const Mesh &mesh, const Field<int> &group_id_field) {}
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
-    const VArray<float3> &src_positions = params.readonly_single_input<float3>(0,
-                                                                               "Source Position");
-    const VArray<int> &src_ids = params.readonly_single_input<int>(1, "Sample ID");
+    const VArray<float3> &sample_positions = params.readonly_single_input<float3>(
+        0, "Source Position");
+    const VArray<int> &sample_ids = params.readonly_single_input<int>(1, "Sample ID");
     MutableSpan<float3> positions = params.uninitialized_single_output_if_required<float3>(
         2, "Position");
-    /* Make sure there is a distance array, used for finding the smaller distance when there are
-     * multiple components. Theoretically it would be possible to avoid using the distance array
-     * when there is only one component. However, this only adds an allocation and a single float
-     * comparison per vertex, so it's likely not worth it. */
-    MutableSpan<float> distances = params.uninitialized_single_output<float>(3, "Distance");
+    MutableSpan<float> distances = params.uninitialized_single_output_if_required<float>(
+        3, "Distance");
+    MutableSpan<bool> is_valid_span = params.uninitialized_single_output_if_required<bool>(
+        4, "Is Valid");
 
-    index_mask::masked_fill(distances, FLT_MAX, mask);
+    mask.foreach_index([&](const int i) {
+      const float3 sample_position = sample_positions[i];
+      const int sample_id = sample_ids[i];
+      const int group_index = group_indices_.index_of_try(sample_id);
+      if (group_index == -1) {
+        if (!positions.is_empty()) {
+          positions[i] = float3(0, 0, 0);
+        }
+        if (!is_valid_span.is_empty()) {
+          is_valid_span[i] = false;
+        }
+        if (!distances.is_empty()) {
+          distances[i] = 0.0f;
+        }
+        return;
+      }
+      const BVHTrees &trees = bvh_trees_[group_index];
+      BVHTreeNearest nearest;
+      nearest.dist_sq = FLT_MAX;
+      if (trees.mesh_bvh.tree != nullptr) {
+        BLI_bvhtree_find_nearest(trees.mesh_bvh.tree,
+                                 sample_position,
+                                 &nearest,
+                                 trees.mesh_bvh.nearest_callback,
+                                 const_cast<BVHTreeFromMesh *>(&trees.mesh_bvh));
+      }
+      if (trees.pointcloud_bvh.tree != nullptr) {
+        BLI_bvhtree_find_nearest(trees.pointcloud_bvh.tree,
+                                 sample_position,
+                                 &nearest,
+                                 trees.pointcloud_bvh.nearest_callback,
+                                 const_cast<BVHTreeFromPointCloud *>(&trees.pointcloud_bvh));
+      }
 
-    bool success = false;
-    if (target_.has_mesh()) {
-      success |= calculate_mesh_proximity(
-          src_positions, mask, *target_.get_mesh(), type_, distances, positions);
-    }
-
-    if (target_.has_pointcloud() && type_ == GEO_NODE_PROX_TARGET_POINTS) {
-      success |= calculate_pointcloud_proximity(
-          src_positions, mask, *target_.get_pointcloud(), distances, positions);
-    }
-
-    if (!success) {
       if (!positions.is_empty()) {
-        index_mask::masked_fill(positions, float3(0), mask);
+        positions[i] = nearest.co;
+      }
+      if (!is_valid_span.is_empty()) {
+        is_valid_span[i] = true;
       }
       if (!distances.is_empty()) {
-        index_mask::masked_fill(distances, 0.0f, mask);
+        distances[i] = std::sqrt(nearest.dist_sq);
       }
-      return;
-    }
-
-    if (params.single_output_is_required(2, "Distance")) {
-      mask.foreach_index_optimized<int>(
-          GrainSize(2048), [&](const int j) { distances[j] = std::sqrt(distances[j]); });
-    }
+    });
   }
 };
 
@@ -225,6 +290,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   params.set_output("Position", Field<float3>(proximity_op, 0));
   params.set_output("Distance", Field<float>(proximity_op, 1));
+  params.set_output("Is Valid", Field<bool>(proximity_op, 2));
 }
 
 static void node_rna(StructRNA *srna)
