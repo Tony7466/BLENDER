@@ -31,16 +31,13 @@
 
 #include "BKE_addon.h"
 #include "BKE_appdir.hh"
-#include "BKE_blender.h"
+#include "BKE_blender.hh"
 #include "BKE_blender_version.h"
 #include "BKE_blendfile.hh"
-#include "BKE_bpath.h"
+#include "BKE_bpath.hh"
 #include "BKE_colorband.hh"
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_idtype.hh"
-#include "BKE_ipo.h"
-#include "BKE_keyconfig.h"
+#include "BKE_global.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
@@ -50,17 +47,16 @@
 #include "BKE_main_idmap.hh"
 #include "BKE_main_namemap.hh"
 #include "BKE_preferences.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_studiolight.h"
 #include "BKE_undo_system.hh"
 #include "BKE_workspace.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
+#include "BLO_userdef_default.h"
 #include "BLO_writefile.hh"
-
-#include "RNA_access.hh"
 
 #include "RE_pipeline.h"
 
@@ -330,7 +326,7 @@ static void swap_old_bmain_data_for_blendfile(ReuseOldBMainData *reuse_data, con
   BLI_assert(BLI_listbase_is_empty(old_lb) || !ID_IS_LINKED(old_lb->last));
   BLI_assert(BLI_listbase_is_empty(new_lb) || !ID_IS_LINKED(new_lb->last));
 
-  SWAP(ListBase, *new_lb, *old_lb);
+  std::swap(*new_lb, *old_lb);
 
   /* TODO: Could add per-IDType control over namemaps clearing, if this becomes a performances
    * concern. */

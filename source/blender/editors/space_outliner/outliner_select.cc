@@ -11,7 +11,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_armature_types.h"
-#include "DNA_collection_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_modifier_types.h"
@@ -19,16 +18,15 @@
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 #include "DNA_shader_fx_types.h"
-#include "DNA_text_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_armature.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
@@ -38,7 +36,7 @@
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_particle.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_shader_fx.h"
 
 #include "DEG_depsgraph.hh"
@@ -70,7 +68,6 @@
 #include "ANIM_bone_collections.hh"
 
 #include "outliner_intern.hh"
-#include "tree/tree_display.hh"
 #include "tree/tree_element_grease_pencil_node.hh"
 #include "tree/tree_element_seq.hh"
 #include "tree/tree_iterator.hh"
@@ -532,12 +529,11 @@ static void tree_element_posechannel_activate(bContext *C,
   if (!(pchan->bone->flag & BONE_HIDDEN_P)) {
     if (set != OL_SETSEL_EXTEND) {
       /* Single select forces all other bones to get unselected. */
-      uint objects_len = 0;
-      Object **objects = BKE_object_pose_array_get_unique(
-          scene, view_layer, nullptr, &objects_len);
+      const Vector<Object *> objects = BKE_object_pose_array_get_unique(
+          scene, view_layer, nullptr);
 
-      for (uint object_index = 0; object_index < objects_len; object_index++) {
-        Object *ob_iter = BKE_object_pose_armature_get(objects[object_index]);
+      for (Object *ob : objects) {
+        Object *ob_iter = BKE_object_pose_armature_get(ob);
 
         /* Sanity checks. */
         if (ELEM(nullptr, ob_iter, ob_iter->pose, ob_iter->data)) {
@@ -552,7 +548,6 @@ static void tree_element_posechannel_activate(bContext *C,
           DEG_id_tag_update(static_cast<ID *>(ob_iter->data), ID_RECALC_SELECT);
         }
       }
-      MEM_freeN(objects);
     }
 
     if ((set == OL_SETSEL_EXTEND) && (pchan->bone->flag & BONE_SELECTED)) {
@@ -639,16 +634,14 @@ static void tree_element_ebone_activate(bContext *C,
 
   if (set == OL_SETSEL_NORMAL) {
     if (!(ebone->flag & BONE_HIDDEN_A)) {
-      uint bases_len = 0;
 
       ObjectsInModeParams ob_params{};
       ob_params.object_mode = OB_MODE_EDIT;
       ob_params.no_dup_data = true;
 
-      Base **bases = BKE_view_layer_array_from_bases_in_mode_params(
-          scene, view_layer, nullptr, &bases_len, &ob_params);
-      ED_armature_edit_deselect_all_multi_ex(bases, bases_len);
-      MEM_freeN(bases);
+      Vector<Base *> bases = BKE_view_layer_array_from_bases_in_mode_params(
+          scene, view_layer, nullptr, &ob_params);
+      ED_armature_edit_deselect_all_multi_ex(bases);
 
       tree_element_active_ebone__sel(C, arm, ebone, true);
     }

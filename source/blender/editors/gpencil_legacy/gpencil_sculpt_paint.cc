@@ -25,11 +25,10 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_material_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -39,15 +38,12 @@
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_gpencil_update_cache_legacy.h"
 #include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_object_deform.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "UI_interface.hh"
 
@@ -56,7 +52,6 @@
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "UI_view2d.hh"
@@ -1137,9 +1132,9 @@ static void gpencil_sculpt_brush_header_set(bContext *C, tGP_BrushEditData *gso)
   char str[UI_MAX_DRAW_STR] = "";
 
   SNPRINTF(str,
-           RPT_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
-                " | Ctrl to Invert Action | Wheel Up/Down for Size "
-                " | Shift-Wheel Up/Down for Strength"),
+           IFACE_("GPencil Sculpt: %s Stroke  | LMB to paint | RMB/Escape to Exit"
+                  " | Ctrl to Invert Action | Wheel Up/Down for Size "
+                  " | Shift-Wheel Up/Down for Strength"),
            brush->id.name + 2);
 
   ED_workspace_status_text(C, str);

@@ -51,6 +51,7 @@ struct GreasePencil;
 struct BlendDataReader;
 struct BlendWriter;
 struct Object;
+struct bDeformGroup;
 
 typedef enum GreasePencilStrokeCapType {
   GP_STROKE_CAP_TYPE_ROUND = 0,
@@ -292,6 +293,17 @@ typedef struct GreasePencilLayer {
    */
   ListBase masks;
   /**
+   * Layer parent object. Can be an armature in which case the `parsubstr` is the bone name.
+   */
+  struct Object *parent;
+  char *parsubstr;
+  /**
+   * Layer transform UI settings. These should *not* be used to do any computation.
+   * Use the functions is the `bke::greasepencil::Layer` class instead.
+   */
+  float translation[3], rotation[3], scale[3];
+  char _pad2[4];
+  /**
    * Runtime struct pointer.
    */
   GreasePencilLayerRuntimeHandle *runtime;
@@ -433,6 +445,11 @@ typedef struct GreasePencil {
    * Global flag on the data-block.
    */
   uint32_t flag;
+
+  ListBase vertex_group_names;
+  int vertex_group_active_index;
+  char _pad4[4];
+
   /**
    * Onion skinning settings.
    */

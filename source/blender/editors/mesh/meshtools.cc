@@ -25,17 +25,14 @@
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_view3d_types.h"
-#include "DNA_workspace_types.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_key.h"
-#include "BKE_layer.hh"
+#include "BKE_key.hh"
 #include "BKE_lib_id.hh"
-#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.hh"
@@ -43,7 +40,7 @@
 #include "BKE_multires.hh"
 #include "BKE_object.hh"
 #include "BKE_object_deform.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -1458,10 +1455,7 @@ MDeformVert *ED_mesh_active_dvert_get_only(Object *ob)
   return nullptr;
 }
 
-void EDBM_mesh_stats_multi(Object **objects,
-                           const uint objects_len,
-                           int totelem[3],
-                           int totelem_sel[3])
+void EDBM_mesh_stats_multi(const Span<Object *> objects, int totelem[3], int totelem_sel[3])
 {
   if (totelem) {
     totelem[0] = 0;
@@ -1474,8 +1468,7 @@ void EDBM_mesh_stats_multi(Object **objects,
     totelem_sel[2] = 0;
   }
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     BMesh *bm = em->bm;
     if (totelem) {
@@ -1491,11 +1484,10 @@ void EDBM_mesh_stats_multi(Object **objects,
   }
 }
 
-void EDBM_mesh_elem_index_ensure_multi(Object **objects, const uint objects_len, const char htype)
+void EDBM_mesh_elem_index_ensure_multi(const Span<Object *> objects, const char htype)
 {
   int elem_offset[4] = {0, 0, 0, 0};
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     BMesh *bm = em->bm;
     BM_mesh_elem_index_ensure_ex(bm, htype, elem_offset);

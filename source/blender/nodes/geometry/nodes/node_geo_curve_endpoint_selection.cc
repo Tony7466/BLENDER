@@ -6,7 +6,6 @@
 
 #include "BKE_curves.hh"
 
-#include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
@@ -89,7 +88,7 @@ class EndpointFieldInput final : public bke::CurvesFieldInput {
 
   uint64_t hash() const override
   {
-    return get_default_hash_2(start_size_, end_size_);
+    return get_default_hash(start_size_, end_size_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override

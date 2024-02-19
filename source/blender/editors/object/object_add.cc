@@ -42,13 +42,13 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_armature.hh"
 #include "BKE_camera.h"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
@@ -65,7 +65,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_key.h"
+#include "BKE_key.hh"
 #include "BKE_lattice.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
@@ -85,8 +85,8 @@
 #include "BKE_object_types.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcloud.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_speaker.h"
 #include "BKE_vfont.hh"
 #include "BKE_volume.hh"
@@ -1985,12 +1985,9 @@ static int collection_drop_exec(bContext *C, wmOperator *op)
     translate_m4(delta_mat, UNPACK3(offset));
 
     ObjectsInViewLayerParams params = {0};
-    uint objects_len;
-    Object **objects = BKE_view_layer_array_selected_objects_params(
-        view_layer, nullptr, &objects_len, &params);
-    ED_object_xform_array_m4(objects, objects_len, delta_mat);
-
-    MEM_freeN(objects);
+    blender::Vector<Object *> objects = BKE_view_layer_array_selected_objects_params(
+        view_layer, nullptr, &params);
+    ED_object_xform_array_m4(objects.data(), objects.size(), delta_mat);
   }
 
   return OPERATOR_FINISHED;
@@ -4192,9 +4189,8 @@ static int object_transform_to_mouse_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop_matrix = RNA_struct_find_property(op->ptr, "matrix");
   if (RNA_property_is_set(op->ptr, prop_matrix)) {
     ObjectsInViewLayerParams params = {0};
-    uint objects_len;
-    Object **objects = BKE_view_layer_array_selected_objects_params(
-        view_layer, nullptr, &objects_len, &params);
+    blender::Vector<Object *> objects = BKE_view_layer_array_selected_objects_params(
+        view_layer, nullptr, &params);
 
     float matrix[4][4];
     RNA_property_float_get_array(op->ptr, prop_matrix, &matrix[0][0]);
@@ -4208,9 +4204,7 @@ static int object_transform_to_mouse_exec(bContext *C, wmOperator *op)
     invert_m4(mat_src_unit);
     mul_m4_m4m4(final_delta, mat_dst_unit, mat_src_unit);
 
-    ED_object_xform_array_m4(objects, objects_len, final_delta);
-
-    MEM_freeN(objects);
+    ED_object_xform_array_m4(objects.data(), objects.size(), final_delta);
   }
   else if (CTX_wm_region_view3d(C)) {
     int mval[2];

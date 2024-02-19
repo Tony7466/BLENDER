@@ -29,9 +29,7 @@
 #  include "BLI_span.hh"
 #  include "BLI_stack.hh"
 #  include "BLI_task.hh"
-#  include "BLI_time.h"
 #  include "BLI_vector.hh"
-#  include "BLI_vector_set.hh"
 
 #  include "BLI_mesh_boolean.hh"
 
@@ -88,7 +86,7 @@ class Edge {
 
   uint64_t hash() const
   {
-    return get_default_hash_2(v_[0]->id, v_[1]->id);
+    return get_default_hash(v_[0]->id, v_[1]->id);
   }
 };
 

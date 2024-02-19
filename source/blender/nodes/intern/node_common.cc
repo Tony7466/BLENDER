@@ -13,7 +13,6 @@
 
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
-#include "BLI_math_euler.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
@@ -21,14 +20,11 @@
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_interface.hh"
-#include "BKE_node_tree_update.hh"
-
-#include "RNA_types.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -262,6 +258,13 @@ static SocketDeclarationPtr declaration_for_interface_socket(
     case SOCK_STRING: {
       const auto &value = node_interface::get_socket_data_as<bNodeSocketValueString>(io_socket);
       std::unique_ptr<decl::String> decl = std::make_unique<decl::String>();
+      decl->default_value = value.value;
+      dst = std::move(decl);
+      break;
+    }
+    case SOCK_MENU: {
+      const auto &value = node_interface::get_socket_data_as<bNodeSocketValueMenu>(io_socket);
+      std::unique_ptr<decl::Menu> decl = std::make_unique<decl::Menu>();
       decl->default_value = value.value;
       dst = std::move(decl);
       break;
