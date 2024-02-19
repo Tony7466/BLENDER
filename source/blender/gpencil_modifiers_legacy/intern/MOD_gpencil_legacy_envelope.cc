@@ -43,8 +43,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include <iostream>
-
 static void init_data(GpencilModifierData *md)
 {
   EnvelopeGpencilModifierData *gpmd = (EnvelopeGpencilModifierData *)md;
@@ -353,9 +351,6 @@ static void add_stroke(Object *ob,
   bGPDstroke *gps_dst = BKE_gpencil_stroke_new(mat_nr, size, gps->thickness);
   gps_dst->runtime.gps_orig = gps->runtime.gps_orig;
 
-  std::cout << "add_stroke " << point_index << ".." << connection_index << " (" << size1 << ", "
-            << size2 << ")" << std::endl;
-
   blender::dna::shallow_copy_array(&gps_dst->points[0], &gps->points[connection_index], size1);
   blender::dna::shallow_copy_array(&gps_dst->points[size1], &gps->points[point_index], size2);
 
@@ -442,8 +437,6 @@ static void add_stroke_simple(Object *ob,
   bGPDstroke *gps_dst = BKE_gpencil_stroke_new(mat_nr, 2, gps->thickness);
   gps_dst->runtime.gps_orig = gps->runtime.gps_orig;
 
-  std::cout << "  add_stroke_simple " << point_index << ".." << connection_index << std::endl;
-
   gps_dst->points[0] = blender::dna::shallow_copy(gps->points[connection_index]);
   gps_dst->points[0].pressure *= thickness;
   gps_dst->points[0].strength *= strength;
@@ -477,7 +470,6 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
 {
   EnvelopeGpencilModifierData *mmd = (EnvelopeGpencilModifierData *)md;
   ListBase duplicates = {nullptr};
-  int strokeindex = 0;
   LISTBASE_FOREACH_MUTABLE (bGPDstroke *, gps, &gpf->strokes) {
     if (!is_stroke_affected_by_modifier(ob,
                                         mmd->layername,
@@ -492,11 +484,8 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
                                         mmd->flag & GP_ENVELOPE_INVERT_LAYERPASS,
                                         mmd->flag & GP_ENVELOPE_INVERT_MATERIAL))
     {
-      strokeindex++;
       continue;
     }
-
-    std::cout << "generate_geometry " << strokeindex << std::endl;
 
     const int mat_nr = mmd->mat_nr < 0 ? gps->mat_nr : min_ii(mmd->mat_nr, ob->totcol - 1);
     if (mmd->mode == GP_ENVELOPE_FILLS) {
@@ -565,8 +554,6 @@ static void generate_geometry(GpencilModifierData *md, Object *ob, bGPDlayer *gp
         }
       }
     }
-
-    strokeindex++;
   }
   if (!BLI_listbase_is_empty(&duplicates)) {
     /* Add strokes to the start of the stroke list to ensure the new lines are drawn underneath the
