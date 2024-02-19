@@ -44,10 +44,49 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output(data_type, "Value").dependent_field({1});
 }
 
-static void search_link_ops(GatherLinkSearchOpParams &params)
+static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSocket &socket)
 {
-  if (U.experimental.use_new_volume_nodes) {
-    nodes::search_link_ops_for_basic_node(params);
+  switch (socket.type) {
+    case SOCK_FLOAT:
+      return CD_PROP_FLOAT;
+    case SOCK_BOOLEAN:
+      return CD_PROP_BOOL;
+    case SOCK_INT:
+      return CD_PROP_INT32;
+    case SOCK_VECTOR:
+    case SOCK_RGBA:
+      return CD_PROP_FLOAT3;
+    default:
+      return {};
+  }
+}
+
+static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
+{
+  if (!U.experimental.use_new_volume_nodes) {
+    return;
+  }
+  const NodeDeclaration &declaration = *params.node_type().static_declaration;
+  const std::optional<eCustomDataType> type = node_type_from_other_socket(params.other_socket());
+  if (!type) {
+    return;
+  }
+  if (params.in_out() == SOCK_IN) {
+    if (ELEM(*type, CD_PROP_INT32, CD_PROP_FLOAT3, CD_PROP_FLOAT)) {
+      params.add_item(IFACE_("Grid"), [type](LinkSearchOpParams &params) {
+        bNode &node = params.add_node("GeometryNodeSampleGrid");
+        node.custom1 = *type;
+        params.update_and_connect_available_socket(node, "Grid");
+      });
+    }
+    search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(1));
+  }
+  else {
+    params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("GeometryNodeSampleGrid");
+      node.custom1 = *type;
+      params.update_and_connect_available_socket(node, "Value");
+    });
   }
 }
 
@@ -242,7 +281,7 @@ static void node_register()
   geo_node_type_base(&ntype, GEO_NODE_SAMPLE_GRID, "Sample Grid", NODE_CLASS_CONVERTER);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
-  ntype.gather_link_search_ops = search_link_ops;
+  ntype.gather_link_search_ops = node_gather_link_search_ops;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.geometry_node_execute = node_geo_exec;
