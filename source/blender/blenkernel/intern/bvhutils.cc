@@ -979,6 +979,36 @@ void BKE_bvhtree_from_mesh_tris_init(const Mesh &mesh,
   BLI_bvhtree_balance(tree);
 }
 
+void BKE_bvhtree_from_mesh_edges_init(const Mesh &mesh,
+                                      const blender::IndexMask &edges_mask,
+                                      BVHTreeFromMesh &r_data)
+{
+  using namespace blender;
+  using namespace blender::bke;
+
+  const Span<float3> positions = mesh.vert_positions();
+  const Span<int2> edges = mesh.edges();
+  bvhtree_from_mesh_setup_data(
+      nullptr, BVHTREE_FROM_EDGES, positions, edges, {}, {}, nullptr, &r_data);
+
+  int active_num = -1;
+  BVHTree *tree = bvhtree_new_common(0.0f, 2, 6, edges_mask.size(), active_num);
+  r_data.tree = tree;
+  if (tree == nullptr) {
+    return;
+  }
+
+  edges_mask.foreach_index([&](const int edge_i) {
+    const int2 &edge = edges[edge_i];
+    float co[2][3];
+    copy_v3_v3(co[0], positions[edge[0]]);
+    copy_v3_v3(co[1], positions[edge[1]]);
+    BLI_bvhtree_insert(tree, edge_i, co[0], 2);
+  });
+
+  BLI_bvhtree_balance(tree);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

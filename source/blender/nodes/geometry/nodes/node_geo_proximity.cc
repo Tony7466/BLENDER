@@ -256,6 +256,7 @@ class ProximityFunction : public mf::MultiFunction {
             break;
           }
           case GEO_NODE_PROX_TARGET_EDGES: {
+            BKE_bvhtree_from_mesh_edges_init(mesh, group_mask, bvh);
             break;
           }
           case GEO_NODE_PROX_TARGET_FACES: {
