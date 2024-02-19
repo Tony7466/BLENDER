@@ -351,12 +351,6 @@ struct EnvelopeInfo {
   int points_per_curve;
   /* Material index assigned to new strokes. */
   int material_index;
-
-  int curve_spread(const int point_num, const bool is_cyclic_curve) const
-  {
-    /* Clamp spread in the cyclic case to half the curve size. */
-    return is_cyclic_curve ? std::min(this->spread, point_num / 2) : this->spread;
-  }
 };
 
 static EnvelopeInfo get_envelope_info(const GreasePencilEnvelopeModifierData &emd,
@@ -378,6 +372,24 @@ static EnvelopeInfo get_envelope_info(const GreasePencilEnvelopeModifierData &em
   }
   info.material_index = std::min(emd.mat_nr, ctx.object->totcol - 1);
   return info;
+}
+
+static int curve_spread(const EnvelopeInfo &info, const int point_num, const bool is_cyclic_curve)
+{
+  /* Clamp spread in the cyclic case to half the curve size. */
+  return is_cyclic_curve ? std::min(info.spread, point_num / 2) : info.spread;
+}
+
+static int curve_envelope_strokes_num(const EnvelopeInfo &info,
+                                      const int point_num,
+                                      const bool is_cyclic_curve)
+{
+  const int spread = curve_spread(info, point_num, is_cyclic_curve);
+  /* Number of envelope strokes making up the envelope. */
+  const int num_strokes = point_num + spread - 1;
+  /* Skip strokes (only every n-th point generates strokes). */
+  const int num_strokes_simplified = (num_strokes + info.skip) / (1 + info.skip);
+  return num_strokes_simplified;
 }
 
 /**
@@ -443,8 +455,17 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
                                               const MutableSpan<int> curve_src_indices,
                                               const MutableSpan<int> point_src_indices)
 {
-  BLI_assert(curve_src_indices.size() == curve_offsets.size());
-  BLI_assert(point_src_indices.size() == curve_offsets.size() * info.points_per_curve);
+  const int src_point_num = src_curve_points.size();
+  const int spread = curve_spread(info, src_point_num, src_curve_cyclic);
+  const int num_strokes = curve_envelope_strokes_num(info, src_point_num, src_curve_cyclic);
+  const bool use_fills = info.points_per_curve > 2;
+  /* Length of continuous point ranges that get connected. */
+  const int base_length = use_fills ? 2 + info.skip : 1;
+
+  BLI_assert(curve_offsets.size() == num_strokes);
+  BLI_assert(material_indices.size() == num_strokes);
+  BLI_assert(curve_src_indices.size() == num_strokes);
+  BLI_assert(point_src_indices.size() == num_strokes * info.points_per_curve);
 
   curve_src_indices.fill(src_curve_index);
 
@@ -457,12 +478,9 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
    * The total range covers [-spread - 1, spread + 1].
    * Each span only gets added once since it repeats for neighboring points.
    */
-  const int curve_spread = info.curve_spread(src_curve_points.size(), src_curve_cyclic);
-  const bool use_fills = info.points_per_curve > 2;
-  /* Length of continuous point ranges that get connected. */
-  const int base_length = use_fills ? 2 + info.skip : 1;
-  for (const int i : IndexRange(src_curve_points.size() + curve_spread - 1)) {
-    // const int envelope_start = i - curve_spread;
+
+  for (const int i : IndexRange(num_strokes)) {
+    // const int envelope_start = i - spread;
     // const int envelope_next = i + 1 + info.skip;
     const IndexRange dst_envelope_points = {i * info.points_per_curve, info.points_per_curve};
 
@@ -475,7 +493,7 @@ static void create_envelope_strokes_for_curve(const EnvelopeInfo &info,
     create_envelope_stroke_for_point(src_curve_points,
                                      src_curve_cyclic,
                                      i,
-                                     curve_spread,
+                                     spread,
                                      base_length,
                                      point_src_indices.slice(dst_envelope_points));
   }
@@ -498,8 +516,7 @@ static void create_envelope_strokes(const EnvelopeInfo &info,
   Array<int> envelope_points_by_curve(src_curves.curve_num + 1);
   curves_mask.foreach_index([&](const int64_t src_curve_i) {
     const IndexRange points = src_curves.points_by_curve()[src_curve_i];
-    const int curve_spread = info.curve_spread(points.size(), src_cyclic[src_curve_i]);
-    const int curve_num = points.size() + curve_spread - 1;
+    const int curve_num = curve_envelope_strokes_num(info, points.size(), src_cyclic[src_curve_i]);
     envelope_curves_by_curve[src_curve_i] = curve_num;
     envelope_points_by_curve[src_curve_i] = info.points_per_curve * curve_num;
   });
