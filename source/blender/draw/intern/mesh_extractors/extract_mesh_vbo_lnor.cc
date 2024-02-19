@@ -36,8 +36,8 @@ template<typename GPUType>
 static void extract_normals(const Span<float3> src, MutableSpan<GPUType> dst)
 {
   threading::parallel_for(src.index_range(), 2048, [&](const IndexRange range) {
-    for (const int vert : range) {
-      dst[vert] = convert_normal<GPUType>(src[vert]);
+    for (const int i : range) {
+      dst[i] = convert_normal<GPUType>(src[i]);
     }
   });
 }
