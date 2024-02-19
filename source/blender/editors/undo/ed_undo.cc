@@ -626,7 +626,7 @@ void ED_OT_undo_push(wmOperatorType *ot)
                  "");
 }
 
-static int ed_undo_push_waypoint_exec(bContext *C, wmOperator *op)
+static int ed_undo_push_snapshot_exec(bContext *C, wmOperator *op)
 {
   if (G.background) {
     /* Exception for background mode, see: #60934.
@@ -638,28 +638,52 @@ static int ed_undo_push_waypoint_exec(bContext *C, wmOperator *op)
     }
   }
 
-  time_t time_now = time(NULL);
-  struct tm *tm_local = localtime(&time_now);
-  char time_str[26];
-  strftime(time_str, 26, "%H:%M:%S", tm_local);
-
   char str[BKE_UNDO_STR_MAX];
-  SNPRINTF_RLEN(str, "Waypoint at %s", time_str);
+  RNA_string_get(op->ptr, "message", str);
   ED_undo_push(C, str);
   return OPERATOR_FINISHED;
 }
 
-void ED_OT_undo_push_waypoint(wmOperatorType *ot)
+static int ed_undo_push_snapshot_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_props_dialog_popup(C, op, 200, IFACE_("Add Undo Snapshot"), IFACE_("Add"));
+}
+
+static void ed_undo_push_snapshot_ui(bContext *C, wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  wmWindowManager *wm = CTX_wm_manager(C);
+
+  char str[FILE_MAX];
+  RNA_string_get(op->ptr, "message", str);
+  if (!str[0]) {
+    time_t time_now = time(NULL);
+    struct tm *tm_local = localtime(&time_now);
+    char time_str[26];
+    strftime(time_str, 26, "%H:%M:%S", tm_local);
+    SNPRINTF_RLEN(str, "Snapshot at %s", time_str);
+    RNA_string_set(op->ptr, "message", str);
+  }
+
+  uiItemL(layout, "Description", ICON_NONE);
+  uiItemR(layout, op->ptr, "message", UI_ITEM_NONE, "", ICON_NONE);
+}
+
+void ED_OT_undo_push_snapshot(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Undo Waypoint Push";
-  ot->description = "Add an undo waypoint";
-  ot->idname = "ED_OT_undo_push_waypoint";
+  ot->name = "Add Snapshot";
+  ot->description = "Add an undo snapshot";
+  ot->idname = "ED_OT_undo_push_snapshot";
 
   /* api callbacks */
-  ot->exec = ed_undo_push_waypoint_exec;
-  /* Unlike others undo operators this initializes undo stack. */
+  ot->invoke = ed_undo_push_snapshot_invoke;
+  ot->exec = ed_undo_push_snapshot_exec;
   ot->poll = ED_operator_screenactive;
+  ot->ui = ed_undo_push_snapshot_ui;
+
+  /* properties */
+  RNA_def_string(ot->srna, "message", nullptr, BKE_UNDO_STR_MAX, "Snapshot description", "");
 }
 
 static bool ed_redo_poll(bContext *C)

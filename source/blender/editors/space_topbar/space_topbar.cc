@@ -219,7 +219,7 @@ static void undo_history_draw_menu(const bContext *C, Menu *menu)
   uiLayout *split = uiLayoutSplit(menu->layout, 0.0f, false);
   uiLayout *column = uiLayoutColumn(split, false);
 
-  uiItemO(column, IFACE_("Add Waypoint"), ICON_ADD, "ED_OT_undo_push_waypoint");
+  uiItemO(column, IFACE_("Add Snapshot"), ICON_ADD, "ED_OT_undo_push_snapshot");
   uiItemS(column);
 
   int rows = 2;
