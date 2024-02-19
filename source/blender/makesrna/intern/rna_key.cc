@@ -58,6 +58,11 @@ const EnumPropertyItem rna_enum_keyblock_type_items[] = {
 
 static Key *rna_ShapeKey_find_key(ID *id)
 {
+  /* Can happen e.g. if we query `is_overridable` on ShapeKey bl_rna normals functions. */
+  if (id == nullptr) {
+    return nullptr;
+  }
+
   switch (GS(id->name)) {
     case ID_CU_LEGACY:
       return ((Curve *)id)->key;
