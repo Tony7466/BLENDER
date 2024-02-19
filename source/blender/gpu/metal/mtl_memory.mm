@@ -123,7 +123,7 @@ gpu::MTLBuffer *MTLBufferPool::allocate_aligned(uint64_t size,
   /* Allocate new MTL Buffer */
   MTLResourceOptions options;
   if (cpu_visible) {
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
     options = ([device_ hasUnifiedMemory]) ? MTLResourceStorageModeShared :
                                              MTLResourceStorageModeManaged;
 #else
@@ -747,7 +747,7 @@ uint64_t gpu::MTLBuffer::get_size_used() const
 bool gpu::MTLBuffer::requires_flush()
 {
   /* We do not need to flush shared memory, as addressable buffer is shared. */
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   return options_ & MTLResourceStorageModeManaged;
 #else
   return false;
@@ -771,7 +771,7 @@ void gpu::MTLBuffer::debug_ensure_used()
 void gpu::MTLBuffer::flush()
 {
   this->debug_ensure_used();
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   if (this->requires_flush()) {
     [metal_buffer_ didModifyRange:NSMakeRange(0, size_)];
   }
@@ -781,7 +781,7 @@ void gpu::MTLBuffer::flush()
 void gpu::MTLBuffer::flush_range(uint64_t offset, uint64_t length)
 {
   this->debug_ensure_used();
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   if (this->requires_flush()) {
     BLI_assert((offset + length) <= size_);
     [metal_buffer_ didModifyRange:NSMakeRange(offset, length)];
@@ -820,7 +820,7 @@ uint64_t gpu::MTLBuffer::get_alignment()
 
 bool MTLBufferRange::requires_flush()
 {
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   /* We do not need to flush shared memory. */
   return this->options & MTLResourceStorageModeManaged;
 #else
@@ -830,7 +830,7 @@ bool MTLBufferRange::requires_flush()
 
 void MTLBufferRange::flush()
 {
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   if (this->requires_flush()) {
     BLI_assert(this->metal_buffer);
     BLI_assert((this->buffer_offset + this->size) <= [this->metal_buffer length]);
@@ -939,7 +939,7 @@ MTLCircularBuffer::MTLCircularBuffer(MTLContext &ctx, uint64_t initial_size, boo
 {
   BLI_assert(this);
 
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   MTLResourceOptions options = ([own_context_.device hasUnifiedMemory]) ?
                                    MTLResourceStorageModeShared :
                                    MTLResourceStorageModeManaged;

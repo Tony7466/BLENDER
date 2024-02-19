@@ -565,7 +565,7 @@ id<MTLBuffer> MTLContext::get_null_buffer()
   static const int null_buffer_size = 20480;
 
   MTLResourceOptions options = MTLResourceStorageModeShared;
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   options = MTLResourceStorageModeManaged;
 #endif
 
@@ -573,7 +573,7 @@ id<MTLBuffer> MTLContext::get_null_buffer()
   [null_buffer_ retain];
   uint32_t *null_data = (uint32_t *)calloc(1, null_buffer_size);
   memcpy([null_buffer_ contents], null_data, null_buffer_size);
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   [null_buffer_ didModifyRange:NSMakeRange(0, null_buffer_size)];
 #endif
   free(null_data);
@@ -591,7 +591,7 @@ id<MTLBuffer> MTLContext::get_null_attribute_buffer()
   /* Allocate Null buffer if it has not yet been created.
    * Min buffer size is 256 bytes -- though we only need 64 bytes of data. */
   static const int null_buffer_size = 256;
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   MTLResourceOptions options = MTLResourceStorageModeManaged;
 #else
   MTLResourceOptions options = MTLResourceStorageModeShared;
@@ -601,7 +601,7 @@ id<MTLBuffer> MTLContext::get_null_attribute_buffer()
   [null_attribute_buffer_ retain];
   float data[4] = {0.0f, 0.0f, 0.0f, 1.0f};
   memcpy([null_attribute_buffer_ contents], data, sizeof(float) * 4);
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   [null_attribute_buffer_ didModifyRange:NSMakeRange(0, null_buffer_size)];
 #endif
   return null_attribute_buffer_;
@@ -2490,7 +2490,7 @@ static inline MTLSamplerAddressMode to_mtl_type(GPUSamplerExtendMode wrap_mode)
     case GPU_SAMPLER_EXTEND_MODE_MIRRORED_REPEAT:
       return MTLSamplerAddressModeMirrorRepeat;
     case GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER:
-#if MTL_BACKEND_SUPPORTS_BORDER_COLOR == 1
+#if MTL_BACKEND_SUPPORTS_BORDER_COLOR
       return MTLSamplerAddressModeClampToBorderColor;
 #else
       return MTLSamplerAddressModeClampToEdge;
@@ -2519,7 +2519,7 @@ void MTLContext::sampler_state_cache_init()
         descriptor.sAddressMode = extend_s;
         descriptor.tAddressMode = extend_t;
         descriptor.rAddressMode = extend_t;
-#if MTL_BACKEND_SUPPORTS_BORDER_COLOR == 1
+#if MTL_BACKEND_SUPPORTS_BORDER_COLOR
         descriptor.borderColor = MTLSamplerBorderColorTransparentBlack;
 #endif
         descriptor.minFilter = (filtering & GPU_SAMPLER_FILTERING_LINEAR) ?

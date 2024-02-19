@@ -362,7 +362,7 @@ void MTLStorageBuf::async_flush_to_host()
   }
 
   /* For discrete memory systems, explicitly flush GPU-resident memory back to host. */
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   id<MTLBuffer> storage_buf_mtl = this->metal_buffer_->get_metal_buffer();
   if (storage_buf_mtl.storageMode == MTLStorageModeManaged) {
     id<MTLBlitCommandEncoder> blit_encoder = ctx->main_command_buffer.ensure_begin_blit_encoder();
@@ -411,7 +411,7 @@ void MTLStorageBuf::read(void *data)
                         toBuffer:staging_buf_mtl
                destinationOffset:0
                             size:size_in_bytes_];
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
     if (staging_buf_mtl.storageMode == MTLStorageModeManaged) {
       [blit_encoder synchronizeResource:staging_buf_mtl];
     }
@@ -438,7 +438,7 @@ void MTLStorageBuf::read(void *data)
       }
     }
 
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
     /* Managed buffers need to be explicitly flushed back to host. */
     if (metal_buffer_->get_resource_options() & MTLResourceStorageModeManaged) {
       /* Fetch active context. */

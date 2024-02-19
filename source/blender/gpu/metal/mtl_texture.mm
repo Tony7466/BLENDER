@@ -1101,7 +1101,7 @@ void gpu::MTLTexture::update_sub(
       [staging_texture release];
     }
 
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
     /* Finalize Blit Encoder. */
     if (can_use_direct_blit) {
       /* Textures which use MTLStorageModeManaged need to have updated contents

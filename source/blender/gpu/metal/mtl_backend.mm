@@ -310,7 +310,7 @@ bool MTLBackend::metal_is_supported()
 
   id<MTLDevice> device = MTLCreateSystemDefaultDevice();
 
-#ifdef MTL_BACKEND_LOW_POWER_GPU_SUPPORT
+#if MTL_BACKEND_LOW_POWER_GPU_SUPPORT
   /* Debug: Enable low power GPU with Environment Var: METAL_FORCE_INTEL. */
   static const char *forceIntelStr = getenv("METAL_FORCE_INTEL");
   bool forceIntel = forceIntelStr ? (atoi(forceIntelStr) != 0) : false;

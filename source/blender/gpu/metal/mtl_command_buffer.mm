@@ -594,7 +594,7 @@ bool MTLCommandBufferManager::insert_memory_barrier(eGPUBarrier barrier_bits,
   /* Resolve scope. */
   MTLBarrierScope scope = 0;
   if (barrier_bits & GPU_BARRIER_SHADER_IMAGE_ACCESS || barrier_bits & GPU_BARRIER_TEXTURE_FETCH) {
-#if MTL_BACKEND_SUPPORTS_RENDER_TARGET_BARRIER == 1
+#if MTL_BACKEND_SUPPORTS_RENDER_TARGET_BARRIER
     bool is_compute = (active_command_encoder_type_ != MTL_RENDER_COMMAND_ENCODER);
     scope |= (is_compute ? 0 : MTLBarrierScopeRenderTargets) | MTLBarrierScopeTextures;
 #else
@@ -638,7 +638,7 @@ bool MTLCommandBufferManager::insert_memory_barrier(eGPUBarrier barrier_bits,
           after_stage_flags = MTLRenderStageFragment;
         }
 
-#if MTL_BACKEND_SUPPORTS_RENDER_TARGET_BARRIER == 1
+#if MTL_BACKEND_SUPPORTS_RENDER_TARGET_BARRIER
         id<MTLRenderCommandEncoder> rec = this->get_active_render_command_encoder();
         BLI_assert(rec != nil);
         [rec memoryBarrierWithScope:scope
@@ -650,7 +650,7 @@ bool MTLCommandBufferManager::insert_memory_barrier(eGPUBarrier barrier_bits,
 
       /* Compute. */
       case MTL_COMPUTE_COMMAND_ENCODER: {
-#if MTL_BACKEND_SUPPORTS_RENDER_TARGET_BARRIER == 1
+#if MTL_BACKEND_SUPPORTS_RENDER_TARGET_BARRIER
         id<MTLComputeCommandEncoder> rec = this->get_active_compute_command_encoder();
         BLI_assert(rec != nil);
         [rec memoryBarrierWithScope:scope];

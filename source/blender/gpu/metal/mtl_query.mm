@@ -102,7 +102,7 @@ void MTLQueryPool::get_occlusion_result(MutableSpan<uint32_t> r_values)
 
   /* Create a blit encoder to synchronize the query buffer results between
    * GPU and CPU when not using shared-memory. */
-#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS == 1
+#if MTL_BACKEND_SUPPORTS_MANAGED_BUFFERS
   if ([ctx->device hasUnifiedMemory] == false) {
     id<MTLBlitCommandEncoder> blit_encoder = ctx->main_command_buffer.ensure_begin_blit_encoder();
     BLI_assert(blit_encoder);
