@@ -6,8 +6,6 @@
  * \ingroup edgreasepencil
  */
 
-#include <set>
-
 #include "BKE_attribute.hh"
 #include "BKE_colortools.hh"
 #include "BKE_grease_pencil.hh"
@@ -645,14 +643,15 @@ IndexMask retrieve_visible_points(Object &object,
   const bke::AttributeAccessor attributes = curves.attributes();
 
   /* Propagate the material index to the points. */
-  const VArray<int> materials = *attributes.lookup<int>("material_index", bke::AttrDomain::Point);
-  if (!materials) {
-    /* If the attribute does not exist then the default is the first material. */
-    if (!hidden_material_indices.contains(0)) {
+  const VArray<int> materials = *attributes.lookup_or_default<int>(
+      "material_index", bke::AttrDomain::Point, 0);
+  if (const std::optional<int> single_material = materials.get_if_single()) {
+    if (!hidden_material_indices.contains(*single_material)) {
       return points_range;
     }
     return {};
   }
+
   /* Get all the points that are part of a stroke with a visible material. */
   return IndexMask::from_predicate(
       points_range, GrainSize(4096), memory, [&](const int64_t point_i) {

@@ -2,8 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include <map>
-
 #include "BLI_array.hh"
 #include "BLI_kdtree.h"
 #include "BLI_rect.h"
@@ -97,9 +95,6 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
 
   /* Weight paint data per editable drawing. Stored per frame group. */
   Array<Array<DrawingWeightData>> drawing_weight_data;
-
-  /* Mapping of drawing to index in #drawing_weight_data. */
-  std::map<bke::greasepencil::Drawing *, int> mapping_of_drawing_to_weight_data;
 
   /** Get the direction of the brush while the mouse is moving. The direction is given as a
    * normalized XY vector. */
@@ -328,7 +323,7 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
     /* Get or create active vertex group in object. */
     int object_defgroup_nr = BKE_object_defgroup_active_index_get(object) - 1;
     if (object_defgroup_nr == -1) {
-      object_defgroup_nr = create_vertex_group_in_object(object);
+      object_defgroup_nr = create_vertex_group_in_object(*object);
     }
     const bDeformGroup *object_defgroup = static_cast<const bDeformGroup *>(
         BLI_findlink(BKE_object_defgroup_list(object), object_defgroup_nr));

@@ -33,29 +33,27 @@
 
 namespace blender::ed::greasepencil {
 
-int create_vertex_group_in_object(Object *ob)
+int create_vertex_group_in_object(Object &ob)
 {
   /* Look for an active bone in armature to name the vertex group after. */
-  Object *ob_armature = BKE_modifiers_is_deformed_by_armature(ob);
+  Object *ob_armature = BKE_modifiers_is_deformed_by_armature(&ob);
   if (ob_armature != nullptr) {
     Bone *actbone = ((bArmature *)ob_armature->data)->act_bone;
     if (actbone != nullptr) {
       bPoseChannel *pchan = BKE_pose_channel_find_name(ob_armature->pose, actbone->name);
       if (pchan != nullptr) {
-        const int channel_def_nr = BKE_object_defgroup_name_index(ob, pchan->name);
+        const int channel_def_nr = BKE_object_defgroup_name_index(&ob, pchan->name);
         if (channel_def_nr == -1) {
-          BKE_object_defgroup_add_name(ob, pchan->name);
-          return (BKE_object_defgroup_active_index_get(ob) - 1);
+          BKE_object_defgroup_add_name(&ob, pchan->name);
+          return (BKE_object_defgroup_active_index_get(&ob) - 1);
         }
-        else {
-          return channel_def_nr;
-        }
+        return channel_def_nr;
       }
     }
   }
 
   /* Create a vertex group with a general name. */
-  BKE_object_defgroup_add(ob);
+  BKE_object_defgroup_add(&ob);
 
   return 0;
 }
@@ -111,8 +109,8 @@ Set<std::string> get_bone_deformed_vertex_groups(Object &object)
 static bool normalize_vertex_weights_try(const MDeformVert &dvert,
                                          const int vertex_groups_num,
                                          const int locked_active_vertex_group,
-                                         const Vector<bool> &vertex_group_is_locked,
-                                         const Vector<bool> &vertex_group_is_bone_deformed)
+                                         const Span<bool> &vertex_group_is_locked,
+                                         const Span<bool> &vertex_group_is_bone_deformed)
 {
   /* Nothing to normalize when there are less than two vertex group weights. */
   if (dvert.totweight <= 1) {
@@ -208,8 +206,8 @@ static bool normalize_vertex_weights_try(const MDeformVert &dvert,
 
 void normalize_vertex_weights(const MDeformVert &dvert,
                               const int active_vertex_group,
-                              const Vector<bool> &vertex_group_is_locked,
-                              const Vector<bool> &vertex_group_is_bone_deformed)
+                              const Span<bool> &vertex_group_is_locked,
+                              const Span<bool> &vertex_group_is_bone_deformed)
 {
   /* Try to normalize the weights with both active and explicitly locked vertex groups restricted
    * from change. */
@@ -251,8 +249,7 @@ static int sample_weight(bContext *C, wmOperator * /*op*/, const wmEvent *event)
   /* Collect visible drawings. */
   const Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, const_cast<Object *>(vc.obact));
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc.obact->data);
-  const Vector<ed::greasepencil::DrawingInfo> drawings =
-      ed::greasepencil::retrieve_visible_drawings(*vc.scene, grease_pencil);
+  const Vector<DrawingInfo> drawings = retrieve_visible_drawings(*vc.scene, grease_pencil);
 
   /* Find stroke points closest to mouse cursor position. */
   const ClosestGreasePencilDrawing closest = threading::parallel_reduce(
@@ -262,7 +259,7 @@ static int sample_weight(bContext *C, wmOperator * /*op*/, const wmEvent *event)
       [&](const IndexRange range, const ClosestGreasePencilDrawing &init) {
         ClosestGreasePencilDrawing new_closest = init;
         for (const int i : range) {
-          ed::greasepencil::DrawingInfo info = drawings[i];
+          DrawingInfo info = drawings[i];
           const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
 
           /* Skip drawing when it doesn't use the active vertex group. */
@@ -280,8 +277,7 @@ static int sample_weight(bContext *C, wmOperator * /*op*/, const wmEvent *event)
                   ob_eval, *vc.obact, info.layer_index, info.frame_number);
 
           IndexMaskMemory memory;
-          const IndexMask points = ed::greasepencil::retrieve_visible_points(
-              *vc.obact, info.drawing, memory);
+          const IndexMask points = retrieve_visible_points(*vc.obact, info.drawing, memory);
           if (points.is_empty()) {
             continue;
           }
@@ -314,11 +310,9 @@ static int sample_weight(bContext *C, wmOperator * /*op*/, const wmEvent *event)
   }
 
   /* From the closest point found, get the vertex weight in the active vertex group. */
-  const float new_weight = math::clamp(
-      bke::varray_for_deform_verts(closest.drawing->strokes().deform_verts(),
-                                   closest.active_defgroup_index)[closest.elem.index],
-      0.0f,
-      1.0f);
+  const VArray<float> point_weights = bke::varray_for_deform_verts(
+      closest.drawing->strokes().deform_verts(), closest.active_defgroup_index);
+  const float new_weight = math::clamp(point_weights[closest.elem.index], 0.0f, 1.0f);
 
   /* Set the new brush weight. */
   const ToolSettings *ts = vc.scene->toolsettings;
