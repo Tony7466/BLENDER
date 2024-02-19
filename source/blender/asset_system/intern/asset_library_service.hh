@@ -88,6 +88,11 @@ class AssetLibraryService {
   AssetLibrary *get_asset_library_current_file();
   /** Get the "All" asset library, which loads all others and merges them into one. */
   AssetLibrary *get_asset_library_all(const Main *bmain);
+  /**
+   * Tag the "All" asset library as needing to reload catalogs. This should be called when catalog
+   * data of other asset libraries changes. Note that changes to the catalog definition file on
+   * disk don't ever affect this "dirty" flag. It only reflects changes from this Blender session.
+   */
   void tag_all_library_catalogs_dirty();
   void reload_all_library_catalogs_if_dirty();
 
