@@ -41,7 +41,6 @@ static void extract_pos_init(const MeshRenderData &mr,
   static GPUVertFormat format = {0};
   if (format.attr_len == 0) {
     GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_alias_add(&format, "vnor");
   }
   GPU_vertbuf_init_with_format(vbo, &format);
   GPU_vertbuf_data_alloc(vbo, mr.loop_len + mr.loop_loose_len);
