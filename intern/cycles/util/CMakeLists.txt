@@ -20,7 +20,6 @@ set(SRC
   path.cpp
   profiling.cpp
   string.cpp
-  simd.cpp
   system.cpp
   task.cpp
   thread.cpp
