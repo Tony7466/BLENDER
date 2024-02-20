@@ -795,6 +795,25 @@ static void legacy_object_modifier_dash(Object &object, GpencilModifierData &leg
   auto &md_dash = reinterpret_cast<GreasePencilDashModifierData &>(md);
   auto &legacy_md_dash = reinterpret_cast<DashGpencilModifierData &>(legacy_md);
 
+  md_dash.dash_offset = legacy_md_dash.dash_offset;
+  md_dash.segment_active_index = legacy_md_dash.segment_active_index;
+  md_dash.segments_num = legacy_md_dash.segments_len;
+  md_dash.segments_array = MEM_cnew_array<GreasePencilDashModifierSegment>(
+      legacy_md_dash.segments_len, __func__);
+  for (const int i : IndexRange(md_dash.segments_num)) {
+    GreasePencilDashModifierSegment &dst_segment = md_dash.segments_array[i];
+    const DashGpencilModifierSegment &src_segment = legacy_md_dash.segments[i];
+    STRNCPY(dst_segment.name, src_segment.name);
+    if (src_segment.flag & GP_DASH_USE_CYCLIC) {
+      dst_segment.flag |= MOD_GREASE_PENCIL_DASH_USE_CYCLIC;
+    }
+    dst_segment.dash = src_segment.dash;
+    dst_segment.gap = src_segment.gap;
+    dst_segment.opacity = src_segment.opacity;
+    dst_segment.radius = src_segment.radius;
+    dst_segment.mat_nr = src_segment.mat_nr;
+  }
+
   legacy_object_modifier_influence(md_dash.influence,
                                    legacy_md_dash.layername,
                                    legacy_md_dash.layer_pass,
