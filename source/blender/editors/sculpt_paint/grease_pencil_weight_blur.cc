@@ -1,0 +1,175 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "grease_pencil_weight_paint.hh"
+
+namespace blender::ed::sculpt_paint::greasepencil {
+
+class BlurWeightPaintOperation : public WeightPaintOperation {
+ private:
+  /* Apply the Blur tool to a point under the brush. */
+  void apply_blur_tool(const BrushPoint &point,
+                       DrawingWeightData &drawing_weight,
+                       PointsInBrushStroke &points_in_stroke)
+  {
+    /* Find the nearest neighbours of the to-be-blurred point. The point itself is included. */
+    KDTreeNearest_2d nearest_points[BLUR_NEIGHBOUR_NUM];
+    const int point_num = BLI_kdtree_2d_find_nearest_n(
+        points_in_stroke.nearest_points,
+        drawing_weight.point_positions[point.drawing_point_index],
+        nearest_points,
+        BLUR_NEIGHBOUR_NUM);
+
+    if (point_num <= 1) {
+      return;
+    }
+
+    /* Calculate the blurred weight for the point (A). For this we use a weighted average of the
+     * point weights, based on the distance of the neighbour point to A. So points closer to A
+     * contribute more to the average than points farther away from A. */
+    float distance_sum = 0.0f;
+    for (int i = 0; i < point_num; i++) {
+      distance_sum += nearest_points[i].dist;
+    }
+    if (distance_sum == 0.0f) {
+      return;
+    }
+    float blur_weight_sum = 0.0f;
+    for (int i = 0; i < point_num; i++) {
+      blur_weight_sum += (1.0f - nearest_points[i].dist / distance_sum) *
+                         points_in_stroke.nearest_points_weights[nearest_points[i].index];
+    }
+    const float blur_weight = blur_weight_sum / (point_num - 1);
+
+    apply_weight_to_point(point, blur_weight, drawing_weight);
+  }
+
+ public:
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample)
+  {
+    using namespace blender::ed::greasepencil;
+
+    this->get_brush_settings(C, start_sample);
+    this->ensure_active_vertex_group_in_object();
+    this->get_locked_and_bone_deformed_vertex_groups();
+
+    /* Get editable drawings grouped per frame number. When multiframe editing is disabled, this
+     * is just one group for the current frame. When multiframe editing is enabled, the selected
+     * keyframes are grouped per frame number. This way we can use Blur on multiple layers
+     * together instead of on every layer individually. */
+    const Scene *scene = CTX_data_scene(&C);
+    Array<Vector<MutableDrawingInfo>> drawings_per_frame =
+        retrieve_editable_drawings_grouped_per_frame(*scene, *this->grease_pencil);
+
+    this->drawing_weight_data = Array<Array<DrawingWeightData>>(drawings_per_frame.size());
+    this->points_in_stroke = Array<PointsInBrushStroke>(drawings_per_frame.size());
+    this->points_in_stroke_num = std::vector<std::atomic<int>>(drawings_per_frame.size());
+
+    for (const int frame_group : drawings_per_frame.index_range()) {
+      const Vector<MutableDrawingInfo> &drawings = drawings_per_frame[frame_group];
+
+      /* Create a buffer for points under the brush during the brush stroke. */
+      this->init_stroke_point_buffer(frame_group);
+
+      /* Get weight data for all drawings in this frame group. */
+      this->init_weight_data_for_drawings(C, drawings, frame_group);
+    }
+  }
+
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample)
+  {
+    using namespace blender::ed::greasepencil;
+
+    this->get_mouse_input_sample(extension_sample, 1.3f);
+
+    /* Iterate over the drawings grouped per frame number. Collect all stroke points under the
+     * brush and blur them. */
+    std::atomic<bool> changed = false;
+    std::mutex mutex;
+    threading::parallel_for(
+        this->drawing_weight_data.index_range(), 1, [&](const IndexRange frame_group_range) {
+          for (const int frame_group : frame_group_range) {
+            Array<DrawingWeightData> &drawing_weights = this->drawing_weight_data[frame_group];
+            std::atomic<bool> balance_kdtree = false;
+
+            /* Collect all stroke points under the brush in a buffer. */
+            threading::parallel_for(
+                drawing_weights.index_range(), 1, [&](const IndexRange drawing_range) {
+                  for (const int drawing_index : drawing_range) {
+                    DrawingWeightData &drawing_weight = drawing_weights[drawing_index];
+
+                    for (const int point_index : drawing_weight.point_positions.index_range()) {
+                      const float2 &co = drawing_weight.point_positions[point_index];
+
+                      /* When the point is under the brush, add it to the brush point buffer. */
+                      if (!this->add_point_under_brush_to_brush_buffer(
+                              co, drawing_weight, point_index)) {
+                        continue;
+                      }
+
+                      /* And add the point to the stroke point buffer. */
+                      if (this->add_point_to_stroke_buffer(
+                              co, frame_group, point_index, drawing_weight, mutex))
+                      {
+                        balance_kdtree = true;
+                      }
+                    }
+                  }
+                });
+
+            /* Balance the KDtree. */
+            if (balance_kdtree) {
+              BLI_kdtree_2d_balance(this->points_in_stroke[frame_group].nearest_points);
+            }
+
+            /* Apply the Blur tool to all points in the brush buffer. */
+            threading::parallel_for(
+                drawing_weights.index_range(), 1, [&](const IndexRange drawing_range) {
+                  for (const int drawing_index : drawing_range) {
+                    DrawingWeightData &drawing_weight = drawing_weights[drawing_index];
+
+                    for (const BrushPoint &point : drawing_weight.points_in_brush) {
+                      this->apply_blur_tool(
+                          point, drawing_weight, this->points_in_stroke[frame_group]);
+
+                      /* Normalize weights of bone-deformed vertex groups to 1.0f. */
+                      if (this->auto_normalize) {
+                        normalize_vertex_weights(
+                            drawing_weight.deform_verts[point.drawing_point_index],
+                            drawing_weight.active_vertex_group,
+                            drawing_weight.locked_vgroups,
+                            drawing_weight.bone_deformed_vgroups);
+                      }
+                    }
+
+                    if (!drawing_weight.points_in_brush.is_empty()) {
+                      changed = true;
+                      drawing_weight.points_in_brush.clear();
+                    }
+                  }
+                });
+          }
+        });
+
+    if (changed) {
+      DEG_id_tag_update(&this->grease_pencil->id, ID_RECALC_GEOMETRY);
+      WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+    }
+  }
+
+  void on_stroke_done(const bContext & /*C*/)
+  {
+    /* Clean up KDtrees. */
+    for (const PointsInBrushStroke &point_buffer : this->points_in_stroke) {
+      BLI_kdtree_2d_free(point_buffer.nearest_points);
+    }
+  }
+};
+
+std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_blur_operation()
+{
+  return std::make_unique<BlurWeightPaintOperation>();
+}
+
+}  // namespace blender::ed::sculpt_paint::greasepencil
