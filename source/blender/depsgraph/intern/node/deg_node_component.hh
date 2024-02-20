@@ -132,7 +132,7 @@ struct ComponentNode : public Node {
 
   /* Denotes whether copy-on-eval component is to be tagged when this component
    * is tagged for update. */
-  virtual bool need_tag_cow_before_update(IDRecalcFlag /*tag*/)
+  virtual bool need_tag_cow_before_update(const IDRecalcFlag /*tag*/)
   {
     return true;
   }
@@ -170,7 +170,7 @@ struct ComponentNode : public Node {
 #define DEG_COMPONENT_NODE_DECLARE_NO_COW_TAG_ON_UPDATE(name) \
   struct name##ComponentNode : public ComponentNode { \
     DEG_COMPONENT_NODE_DECLARE; \
-    virtual bool need_tag_cow_before_update(IDRecalcFlag /*tag*/) \
+    virtual bool need_tag_cow_before_update(const IDRecalcFlag /*tag*/) \
     { \
       return false; \
     } \
@@ -225,7 +225,7 @@ struct BoneComponentNode : public ComponentNode {
 /* Eventually we would not tag parameters in all cases.
  * Support for this each ID needs to be added on an individual basis. */
 struct ParametersComponentNode : public ComponentNode {
-  virtual bool need_tag_cow_before_update(IDRecalcFlag /*tag*/) override
+  virtual bool need_tag_cow_before_update(const IDRecalcFlag /*tag*/) override
   {
     if (ID_TYPE_SUPPORTS_PARAMS_WITHOUT_COW(owner->id_type)) {
       /* Disabled as this is not true for newly added objects, needs investigation. */
@@ -240,14 +240,11 @@ struct ParametersComponentNode : public ComponentNode {
 
 /* Audio component. */
 struct AudioComponentNode : public ComponentNode {
-  virtual bool need_tag_cow_before_update(IDRecalcFlag tag) override
+  virtual bool need_tag_cow_before_update(const IDRecalcFlag tag) override
   {
     /* Frame change doesn't require a copy of the scene, doing so can be a heavy operation
      * especially when the collection contains many objects, see #104798. */
-    if (tag == ID_RECALC_FRAME_CHANGE) {
-      return false;
-    }
-    return true;
+    return (tag != ID_RECALC_FRAME_CHANGE);
   }
 
   DEG_COMPONENT_NODE_DECLARE;
