@@ -459,7 +459,7 @@ static void get_tc_filepath(ImBufAnim *anim, IMB_Timecode_Type tc, char *filepat
  * ---------------------------------------------------------------------- */
 
 struct IndexBuildContext {
-  ImbAnimType anim_type;
+  bool valid;
 };
 
 /* ----------------------------------------------------------------------
@@ -1297,22 +1297,17 @@ IndexBuildContext *IMB_anim_index_rebuild_context(ImBufAnim *anim,
     return nullptr;
   }
 
-  switch (anim->curtype) {
 #ifdef WITH_FFMPEG
-    case ImbAnimType::Ffmpeg:
-      context = index_ffmpeg_create_context(
-          anim, tcs_in_use, proxy_sizes_to_build, quality, build_only_on_bad_performance);
-      break;
+  if (anim->state == ImBufAnim::State::Valid) {
+    context = index_ffmpeg_create_context(
+        anim, tcs_in_use, proxy_sizes_to_build, quality, build_only_on_bad_performance);
+  }
 #else
-    UNUSED_VARS(build_only_on_bad_performance);
+  UNUSED_VARS(build_only_on_bad_performance);
 #endif
 
-    default:
-      break;
-  }
-
   if (context) {
-    context->anim_type = anim->curtype;
+    context->valid = true;
   }
 
   return context;
@@ -1328,33 +1323,23 @@ void IMB_anim_index_rebuild(IndexBuildContext *context,
                             /* NOLINTNEXTLINE: readability-non-const-parameter. */
                             float *progress)
 {
-  switch (context->anim_type) {
 #ifdef WITH_FFMPEG
-    case ImbAnimType::Ffmpeg:
-      if (indexer_need_to_build_proxy((FFmpegIndexBuilderContext *)context)) {
-        index_rebuild_ffmpeg((FFmpegIndexBuilderContext *)context, stop, do_update, progress);
-      }
-      break;
-#endif
-    default:
-      break;
+  if (context->valid) {
+    if (indexer_need_to_build_proxy((FFmpegIndexBuilderContext *)context)) {
+      index_rebuild_ffmpeg((FFmpegIndexBuilderContext *)context, stop, do_update, progress);
+    }
   }
-
+#endif
   UNUSED_VARS(stop, do_update, progress);
 }
 
 void IMB_anim_index_rebuild_finish(IndexBuildContext *context, const bool stop)
 {
-  switch (context->anim_type) {
 #ifdef WITH_FFMPEG
-    case ImbAnimType::Ffmpeg:
-      index_rebuild_ffmpeg_finish((FFmpegIndexBuilderContext *)context, stop);
-      break;
-#endif
-    default:
-      break;
+  if (context->valid) {
+    index_rebuild_ffmpeg_finish((FFmpegIndexBuilderContext *)context, stop);
   }
-
+#endif
   /* static defined at top of the file */
   UNUSED_VARS(stop, proxy_sizes);
 }
