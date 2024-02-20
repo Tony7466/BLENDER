@@ -28,22 +28,55 @@ CCL_NAMESPACE_BEGIN
  *    x,y over x,z.
  */
 
+ccl_device_forceinline uint3 blue_noise_indexing(KernelGlobals kg, uint pixel_index, uint sample)
+{
+  if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY) {
+    /* One sequence per pixel, using the length mask optimization. */
+    return make_uint3(sample, pixel_index, kernel_data.integrator.sobol_index_mask);
+  }
+  else if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_BLUE_NOISE_PURE) {
+    /* For blue-noise samples, we use a single sequence (seed 0) with each pixel receiving
+     * a section of it.
+     * The total length is expected to get very large (effectively pixel count times sample count),
+     * so we don't use the length mask optimization here. */
+    pixel_index *= kernel_data.integrator.blue_noise_sequence_length;
+    return make_uint3(sample + pixel_index, 0, 0xffffffff);
+  }
+  else if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_BLUE_NOISE_FIRST) {
+    /* The "first" pattern uses a 1SPP blue-noise sequence for the first sample, and a separate
+     * N-1 SPP sequence for the remaining pixels. The purpose of this is to get blue-noise
+     * properties during viewport navigation, which will generally use 1 SPP.
+     * Unfortunately using just the first sample of a full blue-noise sequence doesn't give
+     * its benefits, so we combine the two as a tradeoff between quality at 1 SPP and full SPP. */
+    if (sample == 0) {
+      return make_uint3(pixel_index, 0x0cd0519f, 0xffffffff);
+    }
+    else {
+      pixel_index *= kernel_data.integrator.blue_noise_sequence_length;
+      return make_uint3((sample - 1) + pixel_index, 0, 0xffffffff);
+    }
+  }
+  else {
+    kernel_assert(false);
+    return make_uint3(0, 0, 0);
+  }
+}
+
 ccl_device_forceinline float path_rng_1D(KernelGlobals kg,
                                          uint rng_hash,
-                                         int sample,
+                                         uint sample,
                                          int dimension)
 {
 #ifdef __DEBUG_CORRELATION__
   return (float)drand48();
 #endif
 
-  if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY) {
-    const uint index_mask = kernel_data.integrator.sobol_index_mask;
-    return sobol_burley_sample_1D(sample, dimension, rng_hash, index_mask);
-  }
-  else {
+  if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_TABULATED_SOBOL) {
     return tabulated_sobol_sample_1D(kg, sample, rng_hash, dimension);
   }
+
+  uint3 index = blue_noise_indexing(kg, rng_hash, sample);
+  return sobol_burley_sample_1D(index.x, dimension, index.y, index.z);
 }
 
 ccl_device_forceinline float2 path_rng_2D(KernelGlobals kg,
@@ -55,13 +88,12 @@ ccl_device_forceinline float2 path_rng_2D(KernelGlobals kg,
   return make_float2((float)drand48(), (float)drand48());
 #endif
 
-  if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY) {
-    const uint index_mask = kernel_data.integrator.sobol_index_mask;
-    return sobol_burley_sample_2D(sample, dimension, rng_hash, index_mask);
-  }
-  else {
+  if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_TABULATED_SOBOL) {
     return tabulated_sobol_sample_2D(kg, sample, rng_hash, dimension);
   }
+
+  uint3 index = blue_noise_indexing(kg, rng_hash, sample);
+  return sobol_burley_sample_2D(index.x, dimension, index.y, index.z);
 }
 
 ccl_device_forceinline float3 path_rng_3D(KernelGlobals kg,
@@ -73,13 +105,12 @@ ccl_device_forceinline float3 path_rng_3D(KernelGlobals kg,
   return make_float3((float)drand48(), (float)drand48(), (float)drand48());
 #endif
 
-  if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY) {
-    const uint index_mask = kernel_data.integrator.sobol_index_mask;
-    return sobol_burley_sample_3D(sample, dimension, rng_hash, index_mask);
-  }
-  else {
+  if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_TABULATED_SOBOL) {
     return tabulated_sobol_sample_3D(kg, sample, rng_hash, dimension);
   }
+
+  uint3 index = blue_noise_indexing(kg, rng_hash, sample);
+  return sobol_burley_sample_3D(index.x, dimension, index.y, index.z);
 }
 
 ccl_device_forceinline float4 path_rng_4D(KernelGlobals kg,
@@ -91,13 +122,12 @@ ccl_device_forceinline float4 path_rng_4D(KernelGlobals kg,
   return make_float4((float)drand48(), (float)drand48(), (float)drand48(), (float)drand48());
 #endif
 
-  if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY) {
-    const uint index_mask = kernel_data.integrator.sobol_index_mask;
-    return sobol_burley_sample_4D(sample, dimension, rng_hash, index_mask);
-  }
-  else {
+  if (kernel_data.integrator.sampling_pattern == SAMPLING_PATTERN_TABULATED_SOBOL) {
     return tabulated_sobol_sample_4D(kg, sample, rng_hash, dimension);
   }
+
+  uint3 index = blue_noise_indexing(kg, rng_hash, sample);
+  return sobol_burley_sample_4D(index.x, dimension, index.y, index.z);
 }
 
 ccl_device_inline uint path_rng_hash_init(KernelGlobals kg,
@@ -105,7 +135,19 @@ ccl_device_inline uint path_rng_hash_init(KernelGlobals kg,
                                           const int x,
                                           const int y)
 {
-  const uint rng_hash = hash_iqnt2d(x, y) ^ kernel_data.integrator.seed;
+  uint rng_hash = kernel_data.integrator.seed;
+  const uint pattern = kernel_data.integrator.sampling_pattern;
+  if (pattern == SAMPLING_PATTERN_TABULATED_SOBOL || pattern == SAMPLING_PATTERN_SOBOL_BURLEY) {
+    rng_hash ^= hash_iqnt2d(x, y);
+  }
+  else {
+    /* Perform blue-noise dithered sampling by distributing the base sequence across pixels
+     * following a hierarchically shuffled 2D morton curve.
+     * Based on:
+     * https://psychopath.io/post/2022_07_24_owen_scrambling_based_dithered_blue_noise_sampling.
+     */
+    rng_hash = nested_uniform_scramble_base4(morton2d(x, y), rng_hash);
+  }
 
 #ifdef __DEBUG_CORRELATION__
   srand48(rng_hash + sample);

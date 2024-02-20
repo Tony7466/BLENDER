@@ -141,6 +141,7 @@ ccl_device bool integrator_init_from_bake(KernelGlobals kg,
   prim += kernel_data.bake.tri_offset;
 
   /* Random number generator. */
+  // TODO
   const uint rng_hash = hash_uint(seed) ^ kernel_data.integrator.seed;
 
   const float2 rand_filter = (sample == 0) ? make_float2(0.5f, 0.5f) :
