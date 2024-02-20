@@ -422,6 +422,8 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
     return vec3(0.0);
   }
 
+  /* Compute shadomap TBN matrix. */
+
   float uv_offset = 1.0 / float(SHADOW_MAP_MAX_RES / (tile.lod + 1));
   vec3 TP, BP;
   if (is_directional) {
@@ -444,15 +446,62 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
     BP = line_plane_intersect(light._position, normalize(BP - light._position), P, Ng);
   }
 
+  mat3 TBN = mat3(TP - P, BP - P, Ng);
+
+  /* Linearly interpolate tile lod-based scale. */
+
+  ivec4 relative_lods;
+  relative_lods[0] = 0;
+
+  vec2 tile_fract = fract(vec2(params.uv.xy * float(SHADOW_TILEMAP_RES)));
+  ivec2 tile_nearest_corner = ivec2(round(tile_fract)) * 2 - 1;
+
+  vec2 tile_nearest_offset = vec2(tile_nearest_corner.x > 0 ? 1.0 - tile_fract.x : tile_fract.x,
+                                  tile_nearest_corner.y > 0 ? 1.0 - tile_fract.y : tile_fract.y);
+  tile_nearest_offset *= float(SHADOW_PAGE_RES + 1);
+
+  ivec2 offsets[3] = ivec2[3](ivec2(1, 0), ivec2(0, 1), ivec2(1, 1));
+  for (int i = 0; i < 3; i++) {
+    vec2 offset = tile_nearest_offset * vec2(offsets[i]);
+    vec3 offset_P = P + TBN * vec3(offset, 0.0);
+    int relative_lod;
+    ShadowSampleParams offset_params;
+    if (is_directional) {
+      offset_params = shadow_directional_sample_params_get(shadow_tilemaps_tx, light, offset_P);
+      relative_lod = offset_params.tilemap_index - params.tilemap_index;
+    }
+    else {
+      offset_params = shadow_punctual_sample_params_get(shadow_tilemaps_tx, light, offset_P);
+      ShadowTileData offset_tile = shadow_tile_data_get(shadow_tilemaps_tx, offset_params);
+      relative_lod = int(offset_tile.lod) - int(tile.lod);
+    }
+    /* Only interpolate from lower to higher lods. */
+    relative_lods[i + 1] = max(relative_lod, 0);
+  }
+
+  vec2 interpolation = abs(tile_fract - 0.5) * 2.0;
+  /* (Interpolate at 1/4 of the edge) */
+  interpolation = saturate((interpolation - 0.75) * 4.0);
+
+  float lod_scale;
+  {
+    float ab = mix(float(relative_lods[0]), float(relative_lods[1]), interpolation.x);
+    float cd = mix(float(relative_lods[2]), float(relative_lods[3]), interpolation.x);
+    float interpolated_lod = mix(ab, cd, interpolation.y);
+    lod_scale = interpolated_lod + 1.0;
+  }
+
+  /* Compute the actual offset. */
+
   vec2 rand = vec2(0.0);
 #ifdef EEVEE_SAMPLING_DATA
   rand = sampling_rng_2D_get(SAMPLING_SHADOW_V);
 #endif
   vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(0.0), rand);
   pcf_offset = pcf_offset * vec2(2.0) - vec2(1.0);
-  pcf_offset *= uniform_buf.shadow.pcf_radius;
+  pcf_offset *= lod_scale * uniform_buf.shadow.pcf_radius;
 
-  return mat3(TP - P, BP - P, Ng) * vec3(pcf_offset, 0.0);
+  return TBN * vec3(pcf_offset, 0.0);
 }
 
 /**
