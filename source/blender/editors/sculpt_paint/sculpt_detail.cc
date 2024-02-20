@@ -526,7 +526,8 @@ static void dyntopo_detail_size_parallel_lines_draw(uint pos3d,
   }
   else {
     object_space_constant_detail = (cd->brush_radius / cd->pixel_radius) *
-                                   (cd->current_value * U.pixelsize) / 0.4f;
+                                   (cd->current_value * U.pixelsize) /
+                                   detail_size::RELATIVE_SCALE_FACTOR;
   }
 
   /* The constant detail represents the maximum edge length allowed before subdividing it. If the
@@ -865,7 +866,7 @@ static int dyntopo_detail_size_edit_invoke(bContext *C, wmOperator *op, const wm
   const Scene *scene = CTX_data_scene(C);
   cd->brush_radius = blender::ed::sculpt_paint::sculpt_calc_radius(
       &vc, brush, scene, ss->cursor_location);
-  cd->pixel_radius = tool_settings->unified_paint_settings.pixel_radius;
+  cd->pixel_radius = BKE_brush_size_get(scene, brush);
 
   /* Generates the matrix to position the gizmo in the surface of the mesh using the same
    * location and orientation as the brush cursor. */
@@ -948,7 +949,7 @@ float constant_to_relative_detail(const float constant_detail,
 {
   const float object_scale = mat4_to_scale(ob->object_to_world().ptr());
 
-  return (pixel_radius / brush_radius) * (0.4f / U.pixelsize) *
+  return (pixel_radius / brush_radius) * (RELATIVE_SCALE_FACTOR / U.pixelsize) *
          (1.0f / (constant_detail * object_scale));
 }
 }  // namespace blender::ed::sculpt_paint::dyntopo::detail_size

@@ -1230,6 +1230,7 @@ void triangulate(BMesh *bm);
 WarnFlag check_attribute_warning(Scene *scene, Object *ob);
 
 namespace detail_size {
+constexpr float RELATIVE_SCALE_FACTOR = 0.4f;
 
 /**
  * Converts from Sculpt#constant_detail to equivalent Sculpt#detail_percent value.
