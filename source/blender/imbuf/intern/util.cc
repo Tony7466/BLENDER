@@ -323,9 +323,6 @@ ImbAnimType imb_get_anim_type(const char *filepath)
     return ImbAnimType::NotAnim;
   }
 
-  if (ismovie(filepath)) {
-    return ImbAnimType::Movie;
-  }
 #else /* !_WIN32 */
   if (BLI_stat(filepath, &st) == -1) {
     return ImbAnimType::NotAnim;
@@ -334,9 +331,6 @@ ImbAnimType imb_get_anim_type(const char *filepath)
     return ImbAnimType::NotAnim;
   }
 
-  if (ismovie(filepath)) {
-    return ImbAnimType::Movie;
-  }
 #  ifdef WITH_FFMPEG
   if (isffmpeg(filepath)) {
     return ImbAnimType::Ffmpeg;

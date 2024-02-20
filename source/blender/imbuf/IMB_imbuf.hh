@@ -333,7 +333,6 @@ void IMB_close_anim(ImBufAnim *anim);
 void IMB_close_anim_proxies(ImBufAnim *anim);
 bool IMB_anim_can_produce_frames(const ImBufAnim *anim);
 
-int ismovie(const char *filepath);
 int IMB_anim_get_image_width(ImBufAnim *anim);
 int IMB_anim_get_image_height(ImBufAnim *anim);
 bool IMB_get_gop_decode_time(ImBufAnim *anim);

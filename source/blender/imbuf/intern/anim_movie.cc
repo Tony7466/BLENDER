@@ -52,25 +52,6 @@ extern "C" {
 
 #endif /* WITH_FFMPEG */
 
-int ismovie(const char * /*filepath*/)
-{
-  return 0;
-}
-
-/* never called, just keep the linker happy */
-static int startmovie(ImBufAnim * /*anim*/)
-{
-  return 1;
-}
-static ImBuf *movie_fetchibuf(ImBufAnim * /*anim*/, int /*position*/)
-{
-  return nullptr;
-}
-static void free_anim_movie(ImBufAnim * /*anim*/)
-{
-  /* pass */
-}
-
 #ifdef WITH_FFMPEG
 static void free_anim_ffmpeg(ImBufAnim *anim);
 #endif
@@ -81,8 +62,6 @@ void IMB_free_anim(ImBufAnim *anim)
     printf("free anim, anim == nullptr\n");
     return;
   }
-
-  free_anim_movie(anim);
 
 #ifdef WITH_FFMPEG
   free_anim_ffmpeg(anim);
@@ -1240,8 +1219,6 @@ static bool anim_getnew(ImBufAnim *anim)
     return false;
   }
 
-  free_anim_movie(anim);
-
 #ifdef WITH_FFMPEG
   free_anim_ffmpeg(anim);
 #endif
@@ -1262,10 +1239,7 @@ static bool anim_getnew(ImBufAnim *anim)
       break;
     }
     case ImbAnimType::Movie:
-      if (startmovie(anim)) {
-        return false;
-      }
-      break;
+      return false;
 #ifdef WITH_FFMPEG
     case ImbAnimType::Ffmpeg:
       if (startffmpeg(anim)) {
@@ -1369,13 +1343,6 @@ ImBuf *IMB_anim_absolute(ImBufAnim *anim,
       }
       break;
     }
-    case ImbAnimType::Movie:
-      ibuf = movie_fetchibuf(anim, position);
-      if (ibuf) {
-        anim->cur_position = position;
-        IMB_convert_rgba_to_abgr(ibuf);
-      }
-      break;
 #ifdef WITH_FFMPEG
     case ImbAnimType::Ffmpeg:
       ibuf = ffmpeg_fetchibuf(anim, position, tc);
