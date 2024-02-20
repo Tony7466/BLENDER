@@ -6,9 +6,6 @@
  * \ingroup bke
  */
 
-#include <functional>
-#include <iostream>
-
 #include <fmt/format.h>
 
 #include "BKE_anim_data.h"
@@ -28,6 +25,7 @@
 #include "BKE_object.hh"
 
 #include "BLI_color.hh"
+#include "BLI_function_ref.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
@@ -58,7 +56,8 @@ namespace blender::bke::greasepencil::convert {
  * callback if needed (e.g. the related modifier, ...).
  */
 
-static bool legacy_fcurves_process(ListBase &fcurves, std::function<bool(FCurve *fcurve)> callback)
+static bool legacy_fcurves_process(ListBase &fcurves,
+                                   blender::FunctionRef<bool(FCurve *fcurve)> callback)
 {
   bool is_changed = false;
   LISTBASE_FOREACH (FCurve *, fcurve, &fcurves) {
@@ -69,7 +68,7 @@ static bool legacy_fcurves_process(ListBase &fcurves, std::function<bool(FCurve 
 }
 
 static bool legacy_nla_strip_process(NlaStrip &nla_strip,
-                                     std::function<bool(FCurve *fcurve)> callback)
+                                     blender::FunctionRef<bool(FCurve *fcurve)> callback)
 {
   bool is_changed = false;
   if (nla_strip.act) {
@@ -86,7 +85,7 @@ static bool legacy_nla_strip_process(NlaStrip &nla_strip,
 }
 
 static bool legacy_animation_process(AnimData &anim_data,
-                                     std::function<bool(FCurve *fcurve)> callback)
+                                     blender::FunctionRef<bool(FCurve *fcurve)> callback)
 {
   bool is_changed = false;
   if (anim_data.action) {
@@ -697,6 +696,8 @@ static ModifierData &legacy_object_modifier_common(Object &object,
   AnimData *anim_data = BKE_animdata_from_id(&object.id);
   if (anim_data) {
     auto modifier_path_update = [&](FCurve *fcurve) -> bool {
+      /* NOTE: This logic will likely need to be re-used in other similar conditions for other
+       * areas, should be put into its own util then. */
       if (!fcurve->rna_path) {
         return false;
       }
