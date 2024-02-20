@@ -1362,7 +1362,7 @@ void ED_object_constraint_tag_update(Main *bmain, Object *ob, bConstraint *con)
   /* Do Copy-on-Write tag here too, otherwise constraint
    * influence/mute buttons in UI have no effect
    */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 void ED_object_constraint_dependency_tag_update(Main *bmain, Object *ob, bConstraint *con)
@@ -2324,14 +2324,14 @@ static bool get_new_constraint_target(
       /* Since by default, IK targets the tip of the last bone,
        * use the tip of the active PoseChannel if adding a target for an IK Constraint. */
       if (con_type == CONSTRAINT_TYPE_KINEMATIC) {
-        mul_v3_m4v3(obt->loc, obact->object_to_world, pchanact->pose_tail);
+        mul_v3_m4v3(obt->loc, obact->object_to_world().ptr(), pchanact->pose_tail);
       }
       else {
-        mul_v3_m4v3(obt->loc, obact->object_to_world, pchanact->pose_head);
+        mul_v3_m4v3(obt->loc, obact->object_to_world().ptr(), pchanact->pose_head);
       }
     }
     else {
-      copy_v3_v3(obt->loc, obact->object_to_world[3]);
+      copy_v3_v3(obt->loc, obact->object_to_world().location());
     }
 
     /* restore, BKE_object_add sets active */

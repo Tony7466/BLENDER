@@ -158,6 +158,7 @@ static void lattice_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_LT = {
     /*id_code*/ ID_LT,
     /*id_filter*/ FILTER_ID_LT,
+    /*dependencies_id_types*/ FILTER_ID_KE,
     /*main_listbase_index*/ INDEX_ID_LT,
     /*struct_size*/ sizeof(Lattice),
     /*name*/ "Lattice",
@@ -338,10 +339,10 @@ void BKE_lattice_resize(Lattice *lt, int uNew, int vNew, int wNew, Object *ltOb)
       BKE_displist_free(&ltOb->runtime->curve_cache->disp);
     }
 
-    copy_m4_m4(mat, ltOb->object_to_world);
-    unit_m4(ltOb->object_to_world);
+    copy_m4_m4(mat, ltOb->object_to_world().ptr());
+    unit_m4(ltOb->runtime->object_to_world.ptr());
     BKE_lattice_deform_coords(ltOb, nullptr, vert_coords, uNew * vNew * wNew, 0, nullptr, 1.0f);
-    copy_m4_m4(ltOb->object_to_world, mat);
+    copy_m4_m4(ltOb->runtime->object_to_world.ptr(), mat);
 
     lt->typeu = typeu;
     lt->typev = typev;

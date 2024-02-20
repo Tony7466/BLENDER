@@ -319,7 +319,7 @@ void ensure_valid_pivot(const Object *ob, Scene *scene)
   if (ups->average_stroke_counter == 0 || !ups->last_stroke_valid) {
     const Bounds<float3> bounds = BKE_pbvh_bounding_box(ob->sculpt->pbvh);
     const float3 center = math::midpoint(bounds.min, bounds.max);
-    const float3 location = math::transform_point(float4x4(ob->object_to_world), center);
+    const float3 location = math::transform_point(ob->object_to_world(), center);
 
     copy_v3_v3(ups->average_stroke_accum, location);
     ups->average_stroke_counter = 1;
@@ -352,7 +352,7 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
     BKE_report(
         reports, RPT_WARNING, "Object has non-uniform scale, sculpting may be unpredictable");
   }
-  else if (is_negative_m4(ob->object_to_world)) {
+  else if (is_negative_m4(ob->object_to_world().ptr())) {
     BKE_report(reports, RPT_WARNING, "Object has negative scale, sculpting may be unpredictable");
   }
 
@@ -419,7 +419,7 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
   ensure_valid_pivot(ob, scene);
 
   /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 void ED_object_sculptmode_enter(bContext *C, Depsgraph *depsgraph, ReportList *reports)
@@ -473,7 +473,7 @@ void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scen
   BKE_object_free_derived_caches(ob);
 
   /* Flush object mode. */
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 void ED_object_sculptmode_exit(bContext *C, Depsgraph *depsgraph)
@@ -635,6 +635,12 @@ static int sculpt_sample_color_invoke(bContext *C, wmOperator *op, const wmEvent
   float active_vertex_color[4];
 
   if (!SCULPT_handles_colors_report(ss, op->reports)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
     return OPERATOR_CANCELLED;
   }
 
@@ -902,12 +908,17 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
+  View3D *v3d = CTX_wm_view3d(C);
 
   {
-    View3D *v3d = CTX_wm_view3d(C);
     if (v3d && v3d->shading.type == OB_SOLID) {
       v3d->shading.color_type = V3D_SHADING_VERTEX_COLOR;
     }
+  }
+
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
   }
 
   /* Color data is not available in multi-resolution or dynamic topology. */
@@ -1066,6 +1077,12 @@ static int sculpt_bake_cavity_exec(bContext *C, wmOperator *op)
   SculptSession *ss = ob->sculpt;
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   const Brush *brush = BKE_paint_brush(&sd->paint);
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
 
   MultiresModifierData *mmd = BKE_sculpt_multires_active(CTX_data_scene(C), ob);
   BKE_sculpt_mask_layers_ensure(depsgraph, CTX_data_main(C), ob, mmd);
