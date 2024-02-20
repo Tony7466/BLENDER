@@ -174,7 +174,7 @@ static void deform_drawing(const ModifierData &md,
   const bool use_falloff = falloff_sq != 0.0f;
   const bool use_uniform = (mmd.flag & MOD_GRAESE_PENCIL_HOOK_UNIFORM_SPACE) != 0;
 
-  const float3x3 mat_uniform = use_uniform ? float3x3(float4x4(mmd.parentinv)); : float3x3::identity();
+  const float3x3 mat_uniform = use_uniform ? float3x3(float4x4(mmd.parentinv)) : float3x3::identity();
   const float3 cent = use_uniform ? math::transform_point(mat_uniform, float3(mmd.cent)) :
                                     float3(mmd.cent);
 
