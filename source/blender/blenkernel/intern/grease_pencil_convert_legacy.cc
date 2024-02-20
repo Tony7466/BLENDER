@@ -52,9 +52,6 @@ namespace blender::bke::greasepencil::convert {
  *
  * These utils will call given callback over all relavant fcurves (also includes drivers, and
  * actions linked through the NLA).
- *
- * Note that by using `std::bind`, it is possible to pass more contextual data to a specific
- * callback if needed (e.g. the related modifier, ...).
  * \{ */
 
 static bool legacy_fcurves_process(ListBase &fcurves,
