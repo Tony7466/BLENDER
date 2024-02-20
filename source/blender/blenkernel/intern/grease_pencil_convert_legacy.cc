@@ -47,15 +47,15 @@
 
 namespace blender::bke::greasepencil::convert {
 
-/**************************************************************************************************
- * Animation conversion helpers.
+/* -------------------------------------------------------------------- */
+/** \name Animation conversion helpers.
  *
  * These utils will call given callback over all relavant fcurves (also includes drivers, and
  * actions linked through the NLA).
  *
  * Note that by using `std::bind`, it is possible to pass more contextual data to a specific
  * callback if needed (e.g. the related modifier, ...).
- */
+ * \{ */
 
 static bool legacy_fcurves_process(ListBase &fcurves,
                                    blender::FunctionRef<bool(FCurve *fcurve)> callback)
@@ -115,6 +115,8 @@ static bool legacy_animation_process(AnimData &anim_data,
   }
   return is_changed;
 }
+
+/* \} */
 
 /**
  * Find vertex groups that have assigned vertices in this drawing.
@@ -711,7 +713,7 @@ static ModifierData &legacy_object_modifier_common(Object &object,
       const std::string new_rna_path = fmt::format(
           "modifiers[\"{}\"]{}", new_md.name, rna_path.substr(int64_t(legacy_root_path.size())));
       MEM_freeN(fcurve->rna_path);
-      fcurve->rna_path = BLI_strdup(new_rna_path.c_str());
+      fcurve->rna_path = BLI_strdupn(new_rna_path.c_str(), new_rna_path.size());
       return true;
     };
 
