@@ -1250,7 +1250,7 @@ void blf_font_draw_buffer__wrap(FontBLF *font,
 }
 
 /** Wrap a blender::StringRef. */
-static void blf_font_string_wrap_cb(FontBLF *font,
+static void blf_font_string_wrap_cb(FontBLF * /*font*/,
                                     GlyphCacheBLF * /*gc*/,
                                     const char *str,
                                     const size_t str_len,
@@ -1268,8 +1268,13 @@ blender::Vector<blender::StringRef> blf_font_string_wrap(FontBLF *font,
                                                          int max_pixel_width)
 {
   blender::Vector<blender::StringRef> list;
-  blf_font_wrap_apply(
-      font, str.data(), str.size(), max_pixel_width, nullptr, blf_font_string_wrap_cb, &list);
+  blf_font_wrap_apply(font,
+                      str.data(),
+                      size_t(str.size()),
+                      max_pixel_width,
+                      nullptr,
+                      blf_font_string_wrap_cb,
+                      &list);
   return list;
 }
 
