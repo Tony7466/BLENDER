@@ -12,14 +12,18 @@ set(INC
 )
 
 set(INC_SYS
-
+  ${BOOST_INCLUDE_DIR}
 )
 
 set(LIB
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
+  ${BOOST_LIBRARIES}
 )
 
+list(APPEND LIB
+  ${BOOST_LIBRARIES}
+)
 add_definitions(-DWITH_DNA_GHASH)
 
 # Needed for `mallocn.c`.
@@ -67,6 +71,7 @@ set(SRC_BLENLIB
 
 set(SRC
   dna_utils.cc
+  dna_parser.cc
   makesdna.cc
   ${SRC_BLENLIB}
   ../../../../intern/guardedalloc/intern/leak_detector.cc
@@ -123,6 +128,7 @@ add_custom_command(
 set(SRC
   dna_defaults.c
   dna_genfile.cc
+  dna_parser.cc
   dna_utils.cc
   ${CMAKE_CURRENT_BINARY_DIR}/dna.c
   ${CMAKE_CURRENT_BINARY_DIR}/dna_verify.c
@@ -130,6 +136,7 @@ set(SRC
 
   ${CMAKE_CURRENT_BINARY_DIR}/dna_type_offsets.h
   dna_rename_defs.h
+  dna_parser.hh
   dna_utils.h
 )
 
@@ -153,7 +160,7 @@ set(INC
 )
 
 set(INC_SYS
-
+  ${BOOST_INCLUDE_DIR}
 )
 
 set(SRC
@@ -167,3 +174,12 @@ set(LIB
 )
 
 blender_add_lib(bf_dna_blenlib "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+
+if(WITH_GTESTS)
+  set(TEST_INC
+  )
+  set(TEST_SRC
+    dna_parser_test.cc
+  )
+  blender_add_test_suite_lib(dna "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
+endif()

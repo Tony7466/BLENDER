@@ -42,6 +42,7 @@
 #include "BLI_system.h"    /* for 'BLI_system_backtrace' stub. */
 #include "BLI_utildefines.h"
 
+#include "dna_parser.hh"
 #include "dna_utils.h"
 
 #define SDNA_MAX_FILENAME_LENGTH 255
@@ -713,7 +714,8 @@ static int convert_include(const char *filepath)
     fprintf(stderr, "Can't read file %s\n", filepath);
     return 1;
   }
-
+  blender::Vector<blender::dna::parser::ast::CppType> c;
+  blender::dna::parser::parse_include(maindata, filepath, c);
   maindata_len = preprocess_include(maindata, maindata_len);
   char *mainend = maindata + maindata_len - 1;
 
