@@ -134,9 +134,12 @@ elseif(CMAKE_COMPILER_IS_GNUCC OR (CMAKE_CXX_COMPILER_ID MATCHES "Clang"))
     if(CXX_HAS_AVX2)
       set(CYCLES_AVX2_KERNEL_FLAGS "${CYCLES_SSE42_KERNEL_FLAGS} -mavx -mavx2 -mfma -mlzcnt -mbmi -mbmi2 -mf16c")
     endif()
+
+    string(APPEND CMAKE_CXX_FLAGS " ${CYCLES_SSE42_KERNEL_FLAGS}")
+  else()
+    string(APPEND CMAKE_CXX_FLAGS " ${CYCLES_KERNEL_FLAGS}")
   endif()
 
-  string(APPEND CMAKE_CXX_FLAGS " ${CYCLES_KERNEL_FLAGS}")
 elseif(WIN32 AND CMAKE_CXX_COMPILER_ID MATCHES "Intel")
   check_cxx_compiler_flag(/QxSSE4.2 CXX_HAS_SSE42)
   check_cxx_compiler_flag(/arch:AVX CXX_HAS_AVX)
