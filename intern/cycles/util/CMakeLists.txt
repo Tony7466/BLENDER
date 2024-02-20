@@ -136,7 +136,7 @@ set(SRC_HEADERS
   xml.h
 )
 
-if(CXX_HAS_SSE)
+if(CXX_HAS_SSE42)
   set_source_files_properties(transform_sse42.cpp PROPERTIES COMPILE_FLAGS "${CYCLES_SSE42_KERNEL_FLAGS}")
 endif()
 if(CXX_HAS_AVX2)
