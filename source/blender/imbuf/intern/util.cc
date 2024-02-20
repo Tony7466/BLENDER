@@ -224,12 +224,13 @@ const char *IMB_ffmpeg_last_error()
   return ffmpeg_last_error;
 }
 
-/* Somewhat quickly try to determine if the given file can be understood by
- * ffmpeg as a video file. Note: this does not do a fully robust check; the
- * file could have a corrupt or missing video stream and not be able to
- * actually play. */
-static bool isffmpeg(const char *filepath)
+static int isffmpeg(const char *filepath)
 {
+  AVFormatContext *pFormatCtx = nullptr;
+  uint i;
+  int videoStream;
+  const AVCodec *pCodec;
+
   if (BLI_path_extension_check_n(filepath,
                                  ".swf",
                                  ".jpg",
@@ -245,23 +246,56 @@ static bool isffmpeg(const char *filepath)
                                  ".wav",
                                  nullptr))
   {
-    return false;
+    return 0;
   }
 
-  AVFormatContext *pFormatCtx = nullptr;
   if (avformat_open_input(&pFormatCtx, filepath, nullptr, nullptr) != 0) {
     if (UTIL_DEBUG) {
       fprintf(stderr, "isffmpeg: av_open_input_file failed\n");
     }
-    return false;
+    return 0;
   }
 
-  /* Note: do not do avformat_find_stream_info + find video stream +
-   * avcodec_find_decoder sequence here, for performance reasons. Just
-   * return true if `avformat_open_input` succeeds. */
+  if (avformat_find_stream_info(pFormatCtx, nullptr) < 0) {
+    if (UTIL_DEBUG) {
+      fprintf(stderr, "isffmpeg: avformat_find_stream_info failed\n");
+    }
+    avformat_close_input(&pFormatCtx);
+    return 0;
+  }
+
+  if (UTIL_DEBUG) {
+    av_dump_format(pFormatCtx, 0, filepath, 0);
+  }
+
+  /* Find the first video stream */
+  videoStream = -1;
+  for (i = 0; i < pFormatCtx->nb_streams; i++) {
+    if (pFormatCtx->streams[i] && pFormatCtx->streams[i]->codecpar &&
+        (pFormatCtx->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO))
+    {
+      videoStream = i;
+      break;
+    }
+  }
+
+  if (videoStream == -1) {
+    avformat_close_input(&pFormatCtx);
+    return 0;
+  }
+
+  AVCodecParameters *codec_par = pFormatCtx->streams[videoStream]->codecpar;
+
+  /* Find the decoder for the video stream */
+  pCodec = avcodec_find_decoder(codec_par->codec_id);
+  if (pCodec == nullptr) {
+    avformat_close_input(&pFormatCtx);
+    return 0;
+  }
 
   avformat_close_input(&pFormatCtx);
-  return true;
+
+  return 1;
 }
 #endif
 
