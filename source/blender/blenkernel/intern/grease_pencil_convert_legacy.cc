@@ -862,6 +862,21 @@ static void legacy_object_modifier_length(Object &object, GpencilModifierData &l
   auto &md_length = reinterpret_cast<GreasePencilLengthModifierData &>(md);
   auto &legacy_md_length = reinterpret_cast<LengthGpencilModifierData &>(legacy_md);
 
+  md_length.flag |= legacy_md_length.flag &
+                    (GP_LENGTH_USE_CURVATURE | GP_LENGTH_INVERT_CURVATURE | GP_LENGTH_USE_RANDOM);
+  md_length.start_fac = legacy_md_length.start_fac;
+  md_length.end_fac = legacy_md_length.end_fac;
+  md_length.rand_start_fac = legacy_md_length.rand_start_fac;
+  md_length.rand_end_fac = legacy_md_length.rand_end_fac;
+  md_length.rand_offset = legacy_md_length.rand_offset;
+  md_length.overshoot_fac = legacy_md_length.overshoot_fac;
+  md_length.seed = legacy_md_length.seed;
+  md_length.step = legacy_md_length.step;
+  md_length.mode = legacy_md_length.mode;
+  md_length.point_density = legacy_md_length.point_density;
+  md_length.segment_influence = legacy_md_length.segment_influence;
+  md_length.max_angle = legacy_md_length.max_angle;
+
   legacy_object_modifier_influence(md_length.influence,
                                    legacy_md_length.layername,
                                    legacy_md_length.layer_pass,
