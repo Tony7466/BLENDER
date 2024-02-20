@@ -224,9 +224,9 @@ class GHOST_DeviceVK {
     VkPhysicalDeviceFeatures device_features = {};
 #ifndef __APPLE__
     device_features.geometryShader = VK_TRUE;
+#endif
     /* MoltenVK supports logicOp, needs to be build with MVK_USE_METAL_PRIVATE_API. */
     device_features.logicOp = VK_TRUE;
-#endif
     device_features.dualSrcBlend = VK_TRUE;
     device_features.imageCubeArray = VK_TRUE;
     device_features.multiViewport = VK_TRUE;
