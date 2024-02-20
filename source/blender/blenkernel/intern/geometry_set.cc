@@ -581,13 +581,15 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
                                     const IndexMask selection,
                                     const AttributeForeachCallback callback) const
 {
-  /**  
-   * This function iterates through a set of geometries, applying a callback to each attribute of eligible children based on specified conditions. 
-   * Relevant children are determined by three criteria: the component type (e.g., mesh, curve), a depth value greater than 0 and a selection.
-   * If the primary component is an instance, the condition is true only when the depth is exactly 0. 
-   * Additionally, the function extends its operation to instances if any of their nested children meet the first condition.
-   * Also, an initial depth of 0 is equal to infinity for easier use.
-  */
+  /**
+   * This function iterates through a set of geometries, applying a callback to each attribute of
+   * eligible children based on specified conditions. Relevant children are determined by three
+   * criteria: the component type (e.g., mesh, curve), a depth value greater than 0 and a
+   * selection. If the primary component is an instance, the condition is true only when the depth
+   * is exactly 0. Additionally, the function extends its operation to instances if any of their
+   * nested children meet the first condition. Also, an initial depth of 0 is equal to infinity for
+   * easier use.
+   */
 
   /*Initialize flag to track if child instances have the specified components.*/
   bool is_child_has_component = true;
@@ -598,7 +600,7 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
     const Instances &instances = *this->get_instances();
     /*ensure objects and collection are included.*/
     Instances ensure_instances = instances;
-    ensure_instances.ensure_geometry_instances(); 
+    ensure_instances.ensure_geometry_instances();
     const IndexMask indices = (current_depth == 0) ?
                                   selection :
                                   IndexMask(IndexRange(ensure_instances.instances_num()));
@@ -612,7 +614,8 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
       if (reference.type() == InstanceReference::Type::GeometrySet) {
         bke::GeometrySet instance_geometry_set = reference.geometry_set();
         if (current_depth != depth_target_tmp) {
-          is_child_has_component = is_child_has_component || instance_geometry_set.attribute_foreach(component_types,
+          is_child_has_component = is_child_has_component ||
+                                   instance_geometry_set.attribute_foreach(component_types,
                                                                            current_depth + 1,
                                                                            depth_target_tmp,
                                                                            instance_depth,
@@ -621,7 +624,6 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
         }
       }
     }
-
   }
 
   /*Flag to track if any relevant attributes were found.*/
