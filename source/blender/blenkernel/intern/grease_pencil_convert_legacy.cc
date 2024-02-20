@@ -710,6 +710,29 @@ static void legacy_object_modifier_array(Object &object, GpencilModifierData &le
   auto &md_array = reinterpret_cast<GreasePencilArrayModifierData &>(md);
   auto &legacy_md_array = reinterpret_cast<ArrayGpencilModifierData &>(legacy_md);
 
+  md_array.object = legacy_md_array.object;
+  legacy_md_array.object = nullptr;
+  md_array.count = legacy_md_array.count;
+  if (legacy_md_array.flag & GP_ARRAY_UNIFORM_RANDOM_SCALE) {
+    md_array.flag |= MOD_GREASE_PENCIL_ARRAY_UNIFORM_RANDOM_SCALE;
+  }
+  if (legacy_md_array.flag & GP_ARRAY_USE_OB_OFFSET) {
+    md_array.flag |= MOD_GREASE_PENCIL_ARRAY_USE_OB_OFFSET;
+  }
+  if (legacy_md_array.flag & GP_ARRAY_USE_OFFSET) {
+    md_array.flag |= MOD_GREASE_PENCIL_ARRAY_USE_OFFSET;
+  }
+  if (legacy_md_array.flag & GP_ARRAY_USE_RELATIVE) {
+    md_array.flag |= MOD_GREASE_PENCIL_ARRAY_USE_RELATIVE;
+  }
+  copy_v3_v3(md_array.offset, legacy_md_array.offset);
+  copy_v3_v3(md_array.shift, legacy_md_array.shift);
+  copy_v3_v3(md_array.rnd_offset, legacy_md_array.rnd_offset);
+  copy_v3_v3(md_array.rnd_rot, legacy_md_array.rnd_rot);
+  copy_v3_v3(md_array.rnd_scale, legacy_md_array.rnd_scale);
+  md_array.seed = legacy_md_array.seed;
+  md_array.mat_rpl = legacy_md_array.mat_rpl;
+
   legacy_object_modifier_influence(md_array.influence,
                                    legacy_md_array.layername,
                                    legacy_md_array.layer_pass,
