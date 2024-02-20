@@ -16,6 +16,8 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "RNA_enum_types.hh"
+
 #ifdef WITH_OPENVDB
 #  include <openvdb/tools/Interpolation.h>
 #endif
@@ -36,7 +38,7 @@ static void node_declare(NodeDeclarationBuilder &b)
   if (!node) {
     return;
   }
-  const eCustomDataType data_type = eCustomDataType(node->custom1);
+  const eNodeSocketDatatype data_type = eNodeSocketDatatype(node->custom1);
 
   b.add_input(data_type, "Grid").hide_value();
   b.add_input<decl::Vector>("Position").implicit_field(implicit_field_inputs::position);
@@ -44,20 +46,20 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_output(data_type, "Value").dependent_field({1});
 }
 
-static std::optional<eCustomDataType> node_type_from_other_socket(const bNodeSocket &socket)
+static std::optional<eNodeSocketDatatype> node_type_for_socket_type(const bNodeSocket &socket)
 {
   switch (socket.type) {
     case SOCK_FLOAT:
-      return CD_PROP_FLOAT;
+      return SOCK_FLOAT;
     case SOCK_BOOLEAN:
-      return CD_PROP_BOOL;
+      return SOCK_BOOLEAN;
     case SOCK_INT:
-      return CD_PROP_INT32;
+      return SOCK_INT;
     case SOCK_VECTOR:
     case SOCK_RGBA:
-      return CD_PROP_FLOAT3;
+      return SOCK_VECTOR;
     default:
-      return {};
+      return std::nullopt;
   }
 }
 
@@ -66,25 +68,29 @@ static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
   if (!U.experimental.use_new_volume_nodes) {
     return;
   }
-  const NodeDeclaration &declaration = *params.node_type().static_declaration;
-  const std::optional<eCustomDataType> type = node_type_from_other_socket(params.other_socket());
-  if (!type) {
+  const std::optional<eNodeSocketDatatype> node_type = node_type_for_socket_type(
+      params.other_socket());
+  if (!node_type) {
     return;
   }
   if (params.in_out() == SOCK_IN) {
-    if (ELEM(*type, CD_PROP_INT32, CD_PROP_FLOAT3, CD_PROP_FLOAT)) {
-      params.add_item(IFACE_("Grid"), [type](LinkSearchOpParams &params) {
+    params.add_item(IFACE_("Grid"), [node_type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("GeometryNodeSampleGrid");
+      node.custom1 = *node_type;
+      params.update_and_connect_available_socket(node, "Grid");
+    });
+    const eNodeSocketDatatype other_type = eNodeSocketDatatype(params.other_socket().type);
+    if (params.node_tree().typeinfo->validate_link(other_type, SOCK_VECTOR)) {
+      params.add_item(IFACE_("Position"), [node_type](LinkSearchOpParams &params) {
         bNode &node = params.add_node("GeometryNodeSampleGrid");
-        node.custom1 = *type;
-        params.update_and_connect_available_socket(node, "Grid");
+        params.update_and_connect_available_socket(node, "Position");
       });
     }
-    search_link_ops_for_declarations(params, declaration.inputs.as_span().take_back(1));
   }
   else {
-    params.add_item(IFACE_("Value"), [type](LinkSearchOpParams &params) {
+    params.add_item(IFACE_("Value"), [node_type](LinkSearchOpParams &params) {
       bNode &node = params.add_node("GeometryNodeSampleGrid");
-      node.custom1 = *type;
+      node.custom1 = *node_type;
       params.update_and_connect_available_socket(node, "Value");
     });
   }
@@ -98,7 +104,7 @@ static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = CD_PROP_FLOAT;
+  node->custom1 = SOCK_FLOAT;
   node->custom2 = int16_t(InterpolationMode::TriLinear);
 }
 
@@ -186,9 +192,9 @@ class SampleGridFunction : public mf::MultiFunction {
   {
     BLI_assert(grid_);
 
-    const std::optional<eCustomDataType> cd_type = bke::volume_grid_type_to_custom_data_type(
+    const std::optional<eNodeSocketDatatype> data_type = bke::grid_type_to_socket_type(
         grid_->grid_type());
-    const CPPType *cpp_type = bke::custom_data_type_to_cpp_type(*cd_type);
+    const CPPType *cpp_type = bke::socket_type_to_geo_nodes_base_cpp_type(*data_type);
     mf::SignatureBuilder builder{"Sample Volume", signature_};
     builder.single_input<float3>("Position");
     builder.single_output("Value", *cpp_type);
@@ -215,7 +221,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
   const bNode &node = params.node();
-  const eCustomDataType data_type = eCustomDataType(node.custom1);
+  const eNodeSocketDatatype data_type = eNodeSocketDatatype(node.custom1);
   const InterpolationMode interpolation = InterpolationMode(node.custom2);
 
   Field<float3> position = params.extract_input<Field<float3>>("Position");
@@ -229,7 +235,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   auto op = FieldOperation::Create(std::move(fn), {std::move(position)});
 
   const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
-  const CPPType &output_type = *bke::custom_data_type_to_cpp_type(data_type);
+  const CPPType &output_type = *bke::socket_type_to_geo_nodes_base_cpp_type(data_type);
   const GField output_field = conversions.try_convert(fn::GField(std::move(op)), output_type);
   params.set_output("Value", std::move(output_field));
 
@@ -238,30 +244,35 @@ static void node_geo_exec(GeoNodeExecParams params)
 #endif
 }
 
+static const EnumPropertyItem *data_type_filter_fn(bContext * /*C*/,
+                                                   PointerRNA * /*ptr*/,
+                                                   PropertyRNA * /*prop*/,
+                                                   bool *r_free)
+{
+  *r_free = true;
+  return enum_items_filter(
+      rna_enum_node_socket_type_items, [](const EnumPropertyItem &item) -> bool {
+        return ELEM(item.value, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR);
+      });
+}
+
 static void node_rna(StructRNA *srna)
 {
+  RNA_def_node_enum(srna,
+                    "data_type",
+                    "Data Type",
+                    "Node socket data type",
+                    rna_enum_node_socket_type_items,
+                    NOD_inline_enum_accessors(custom1),
+                    CD_PROP_FLOAT,
+                    data_type_filter_fn);
+
   static const EnumPropertyItem interpolation_mode_items[] = {
       {int(InterpolationMode::Nearest), "NEAREST", 0, "Nearest Neighbor", ""},
       {int(InterpolationMode::TriLinear), "TRILINEAR", 0, "Trilinear", ""},
       {int(InterpolationMode::TriQuadratic), "TRIQUADRATIC", 0, "Triquadratic", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
-
-  static const EnumPropertyItem grid_type_items[] = {
-      {CD_PROP_FLOAT, "FLOAT", 0, "Float", "Floating-point value"},
-      {CD_PROP_FLOAT3, "FLOAT_VECTOR", 0, "Vector", "3D vector with floating-point values"},
-      {CD_PROP_INT32, "INT", 0, "Integer", "32-bit integer"},
-      {CD_PROP_BOOL, "BOOLEAN", 0, "Boolean", "True or false"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  RNA_def_node_enum(srna,
-                    "data_type",
-                    "Data Type",
-                    "Type of grid to sample data from",
-                    grid_type_items,
-                    NOD_inline_enum_accessors(custom1),
-                    CD_PROP_FLOAT);
 
   RNA_def_node_enum(srna,
                     "interpolation_mode",
