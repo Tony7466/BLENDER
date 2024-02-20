@@ -201,7 +201,7 @@ float film_distance_load(ivec2 texel)
   /* Repeat texture coordinates as the weight can be optimized to a small portion of the film. */
   texel = texel % imageSize(in_weight_img).xy;
 
-  if (!uniform_buf.film.use_history || uniform_buf.film.use_reprojection) {
+  if (!uniform_buf.film.use_history || use_reprojection) {
     return 1.0e16;
   }
   return imageLoad(in_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_DISTANCE)).x;
@@ -212,7 +212,7 @@ float film_weight_load(ivec2 texel)
   /* Repeat texture coordinates as the weight can be optimized to a small portion of the film. */
   texel = texel % imageSize(in_weight_img).xy;
 
-  if (!uniform_buf.film.use_history || uniform_buf.film.use_reprojection) {
+  if (!uniform_buf.film.use_history || use_reprojection) {
     return 0.0;
   }
   return imageLoad(in_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_ACCUMULATION)).x;
@@ -456,7 +456,7 @@ void film_store_combined(
   /* Undo the weighting to get final spatially-filtered color. */
   color_src = color / color_weight;
 
-  if (uniform_buf.film.use_reprojection) {
+  if (use_reprojection) {
     /* Interactive accumulation. Do reprojection and Temporal Anti-Aliasing. */
 
     /* Reproject by finding where this pixel was in the previous frame. */
@@ -646,7 +646,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     /* Get sample closest to target texel. It is always sample 0. */
     FilmSample film_sample = film_sample_get(0, texel_film);
 
-    if (uniform_buf.film.use_reprojection || film_sample.weight < film_distance) {
+    if (use_reprojection || film_sample.weight < film_distance) {
       float depth = texelFetch(depth_tx, film_sample.texel, 0).x;
       vec4 vector = velocity_resolve(vector_tx, film_sample.texel, depth);
       /* Transform to pixel space, matching Cycles format. */
@@ -802,7 +802,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
   if ((enabled_categories & PASS_CATEGORY_CRYPTOMATTE) != 0) {
     if (uniform_buf.film.cryptomatte_samples_len != 0) {
       /* Cryptomatte passes cannot be cleared by a weighted store like other passes. */
-      if (!uniform_buf.film.use_history || uniform_buf.film.use_reprojection) {
+      if (!uniform_buf.film.use_history || use_reprojection) {
         cryptomatte_clear_samples(dst);
       }
 
