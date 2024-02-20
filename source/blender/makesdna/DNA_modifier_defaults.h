@@ -963,4 +963,12 @@
     .shadow_camera_size = 200.0f, \
   }
   
+#define _DNA_DEFAULT_GreasePencilWeightProximityModifierData \
+  { \
+    .target_vgname = "", \
+    .flag = 0, \
+    .dist_start = 0.0f, \
+    .dist_end = 20.0f, \
+  }
+
 /* clang-format off */
