@@ -115,18 +115,11 @@ class ProximityFunction : public mf::MultiFunction {
     FieldEvaluator field_evaluator{field_context, pointcloud.totpoint};
     field_evaluator.add(group_id_field);
     field_evaluator.evaluate();
-    VArraySpan<int> group_ids_span = field_evaluator.get_evaluated<int>(0);
+    const VArray<int> group_ids = field_evaluator.get_evaluated<int>(0);
 
-    /* Compute an #IndexMask for every unique group id. */
-    group_indices_.add_multiple(group_ids_span);
-    const int groups_num = group_indices_.size();
     IndexMaskMemory memory;
-    Array<IndexMask> group_masks(groups_num);
-    IndexMask::from_groups<int>(
-        IndexMask(pointcloud.totpoint),
-        memory,
-        [&](const int i) { return group_indices_.index_of(group_ids_span[i]); },
-        group_masks);
+    Vector<IndexMask> group_masks = IndexMask::from_group_ids(group_ids, memory, group_indices_);
+    const int groups_num = group_masks.size();
 
     /* Construct BVH tree for each group. */
     bvh_trees_.resize(groups_num);
@@ -151,18 +144,11 @@ class ProximityFunction : public mf::MultiFunction {
     FieldEvaluator field_evaluator{field_context, domain_size};
     field_evaluator.add(group_id_field);
     field_evaluator.evaluate();
-    VArraySpan<int> group_ids_span = field_evaluator.get_evaluated<int>(0);
+    const VArray<int> group_ids = field_evaluator.get_evaluated<int>(0);
 
-    /* Compute an #IndexMask for every unique group id. */
-    group_indices_.add_multiple(group_ids_span);
-    const int groups_num = group_indices_.size();
     IndexMaskMemory memory;
-    Array<IndexMask> group_masks(groups_num);
-    IndexMask::from_groups<int>(
-        IndexMask(domain_size),
-        memory,
-        [&](const int i) { return group_indices_.index_of(group_ids_span[i]); },
-        group_masks);
+    Vector<IndexMask> group_masks = IndexMask::from_group_ids(group_ids, memory, group_indices_);
+    const int groups_num = group_masks.size();
 
     /* Construct BVH tree for each group. */
     bvh_trees_.resize(groups_num);
