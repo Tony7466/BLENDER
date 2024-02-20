@@ -160,7 +160,7 @@ static void rna_GreasePencilLayer_pass_index_set(PointerRNA *ptr, int value)
   bke::SpanAttributeWriter<int> layer_passes =
       grease_pencil.attributes_for_write().lookup_or_add_for_write_span<int>(
           "pass", bke::AttrDomain::Layer);
-  layer_passes.span[layer_idx] = max_ii(0, value);
+  layer_passes.span[layer_idx] = std::max(0, value);
   layer_passes.finish();
 }
 
