@@ -459,10 +459,10 @@ __forceinline uint64_t bitscan(uint64_t value)
 
 /* Older GCC versions do not have _mm256_cvtss_f32 yet, so define it ourselves.
  * _mm256_castps256_ps128 generates no instructions so this is just as efficient. */
-#  if defined(__KERNEL_AVX__) || defined(__KERNEL_AVX2__)
-#    undef _mm256_cvtss_f32
-#    define _mm256_cvtss_f32(a) (_mm_cvtss_f32(_mm256_castps256_ps128(a)))
-#  endif
+#if defined(__KERNEL_AVX__) || defined(__KERNEL_AVX2__)
+#  undef _mm256_cvtss_f32
+#  define _mm256_cvtss_f32(a) (_mm_cvtss_f32(_mm256_castps256_ps128(a)))
+#endif
 
 /* quiet unused define warnings */
 #if defined(__KERNEL_SSE2__) || defined(__KERNEL_SSE3__) || defined(__KERNEL_SSSE3__) || \
