@@ -612,7 +612,7 @@ bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> componen
       if (reference.type() == InstanceReference::Type::GeometrySet) {
         bke::GeometrySet instance_geometry_set = reference.geometry_set();
         if (current_depth != depth_target_tmp) {
-          is_child_has_component = instance_geometry_set.attribute_foreach(component_types,
+          is_child_has_component = is_child_has_component || instance_geometry_set.attribute_foreach(component_types,
                                                                            current_depth + 1,
                                                                            depth_target_tmp,
                                                                            instance_depth,
