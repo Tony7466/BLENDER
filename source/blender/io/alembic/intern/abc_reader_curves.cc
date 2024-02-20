@@ -23,12 +23,9 @@
 #include "BKE_curve.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
-#include "BLT_translation.h"
-
-#include "BKE_mesh.hh"
 #include "BKE_object.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 using Alembic::Abc::FloatArraySamplePtr;
 using Alembic::Abc::Int32ArraySamplePtr;

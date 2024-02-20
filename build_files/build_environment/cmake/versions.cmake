@@ -2,6 +2,18 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+# Compilers
+#
+# Version used for precompiled library builds used for official releases.
+# For anyone making their own library build, matching these exactly is not
+# needed but it can be a useful reference.
+
+set(RELEASE_GCC_VERSION 11.2.*)
+set(RELEASE_CUDA_VERSION 12.3.*)
+set(RELEASE_HIP_VERSION 5.7.*)
+
+# Libraries
+#
 # CPE's are used to identify dependencies, for more information on what they
 # are please see https://nvd.nist.gov/products/cpe
 #
@@ -627,10 +639,10 @@ set(BROTLI_HASH_TYPE SHA256)
 set(BROTLI_FILE brotli-v${BROTLI_VERSION}.tar.gz)
 set(BROTLI_CPE "cpe:2.3:a:google:brotli:${BROTLI_VERSION}:*:*:*:*:*:*:*")
 
-set(OPENPGL_VERSION v0.5.0)
-set(OPENPGL_SHORT_VERSION 0.5.0)
+set(OPENPGL_VERSION v0.6.0)
+set(OPENPGL_SHORT_VERSION 0.6.0)
 set(OPENPGL_URI https://github.com/OpenPathGuidingLibrary/openpgl/archive/refs/tags/${OPENPGL_VERSION}.tar.gz)
-set(OPENPGL_HASH 1ec806d434d45e43e098f82ee9be0cb74928343898c57490b34ff80584e9805a)
+set(OPENPGL_HASH 4192a4096ee3e3d31878cd013f8de23418c8037c576537551f946c4811931c5e)
 set(OPENPGL_HASH_TYPE SHA256)
 set(OPENPGL_FILE openpgl-${OPENPGL_VERSION}.tar.gz)
 
