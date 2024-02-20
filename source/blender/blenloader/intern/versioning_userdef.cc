@@ -946,10 +946,11 @@ void BLO_sanitize_experimental_features_userpref_blend(UserDef *userdef)
    *
    * At that time master already has its version bumped so its user preferences
    * are not touched by these settings. */
-
+#ifdef WITH_EXPERIMENTAL_FEATURES
   if (BKE_blender_version_is_alpha()) {
     return;
   }
+#else
 
   MEMSET_STRUCT_AFTER(&userdef->experimental, 0, SANITIZE_AFTER_HERE);
 }
