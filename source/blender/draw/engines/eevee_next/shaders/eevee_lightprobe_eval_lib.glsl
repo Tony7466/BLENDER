@@ -126,9 +126,9 @@ vec3 lightprobe_eval(LightProbeSample samp, ClosureReflection reflection, vec3 P
 /* Return the equivalent reflective roughness resulting in a similar lobe. */
 float lightprobe_refraction_roughness_remapping(float roughness, float ior)
 {
-  /* TODO(fclem): This is a very rough mapping used by manually curve fitting
-   * the apparent roughness (blurriness) of GGX reflections and GGX refraction.
-   * A better fit would be desirable if it is in the same order of complexity.  */
+  /* This is a very rough mapping used by manually curve fitting the apparent roughness
+   * (blurriness) of GGX reflections and GGX refraction.
+   * A better fit is desirable if it is in the same order of complexity.  */
   if (ior > 1.0) {
     return roughness * sqrt_fast(1.0 - 1.0 / ior);
   }
