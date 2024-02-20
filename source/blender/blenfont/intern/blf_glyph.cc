@@ -120,6 +120,7 @@ static GlyphCacheBLF *blf_glyph_cache_new(FontBLF *font)
   }
 
   font->cache.append(std::move(gc));
+
   return font->cache.last().get();
 }
 
@@ -176,10 +177,10 @@ static GlyphBLF *blf_glyph_cache_find_glyph(const GlyphCacheBLF *gc,
 {
   const std::unique_ptr<GlyphBLF> *ptr = gc->glyphs.lookup_ptr_as(
       blf_cache_key(charcode, subpixel));
-  if (ptr == nullptr) {
-    return nullptr;
+  if (ptr != nullptr) {
+    return ptr->get();
   }
-  return ptr->get();
+  return nullptr;
 }
 
 #ifdef BLF_GAMMA_CORRECT_GLYPHS
@@ -230,7 +231,6 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
                                            uint8_t subpixel)
 {
   std::unique_ptr<GlyphBLF> g = std::make_unique<GlyphBLF>();
-
   g->c = charcode;
   g->idx = glyph_index;
   g->advance_x = (ft_pix)glyph->advance.x;
