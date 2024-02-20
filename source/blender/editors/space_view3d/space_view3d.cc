@@ -1594,11 +1594,11 @@ static void view3d_header_region_listener(const wmRegionListenerParams *params)
     case NC_BRUSH:
       ED_region_tag_redraw(region);
       break;
-    case NC_GEOM:
-      if (wmn->data == ND_VERTEX_GROUP) {
+    case NC_GEOM: {
+      if (wmn->data == ND_VERTEX_GROUP || wmn->data == ND_DATA) {
         ED_region_tag_redraw(region);
       }
-      break;
+    } break;
     case NC_MATERIAL:
       /* For the canvas picker. */
       if (wmn->data == ND_SHADING_LINKS) {
