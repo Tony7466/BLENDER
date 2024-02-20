@@ -287,10 +287,10 @@ class BONE_PT_collections(BoneButtonsPanel, Panel):
             row.label(text=bcoll.name)
 
             # Sub-layout that's dimmed when the bone collection's own visibility flag doesn't matter.
-            sub = row.row(align=True)
-            sub.active = (not is_solo_active) and bcoll.is_visible_ancestors
-            sub.prop(bcoll, "is_visible", text="",
-                     icon='HIDE_OFF' if bcoll.is_visible else 'HIDE_ON')
+            sub_visible = row.row(align=True)
+            sub_visible.active = (not is_solo_active) and bcoll.is_visible_ancestors
+            sub_visible.prop(bcoll, "is_visible", text="",
+                             icon='HIDE_OFF' if bcoll.is_visible else 'HIDE_ON')
 
             row.prop(bcoll, "is_solo", text="",
                      icon='SOLO_ON' if bcoll.is_solo else 'SOLO_OFF')
