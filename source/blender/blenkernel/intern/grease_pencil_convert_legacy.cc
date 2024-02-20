@@ -679,7 +679,7 @@ static void legacy_object_modifier_influence(GreasePencilModifierInfluenceData &
   }
 }
 
-static GreasePencilModifierColorMode convert_color_mode(eGp_Vertex_Mode legacy_mode)
+static GreasePencilModifierColorMode convert_tint_color_mode(eGp_Vertex_Mode legacy_mode)
 {
   switch (legacy_mode) {
     case GPPAINT_MODE_BOTH:
@@ -688,6 +688,21 @@ static GreasePencilModifierColorMode convert_color_mode(eGp_Vertex_Mode legacy_m
       return MOD_GREASE_PENCIL_COLOR_STROKE;
     case GPPAINT_MODE_FILL:
       return MOD_GREASE_PENCIL_COLOR_FILL;
+  }
+  return MOD_GREASE_PENCIL_COLOR_BOTH;
+}
+
+static GreasePencilModifierColorMode convert_color_mode(eModifyColorGpencil_Flag legacy_mode)
+{
+  switch (legacy_mode) {
+    case GP_MODIFY_COLOR_BOTH:
+      return MOD_GREASE_PENCIL_COLOR_BOTH;
+    case GP_MODIFY_COLOR_STROKE:
+      return MOD_GREASE_PENCIL_COLOR_STROKE;
+    case GP_MODIFY_COLOR_FILL:
+      return MOD_GREASE_PENCIL_COLOR_FILL;
+    case GP_MODIFY_COLOR_HARDNESS:
+      return MOD_GREASE_PENCIL_COLOR_HARDNESS;
   }
   return MOD_GREASE_PENCIL_COLOR_BOTH;
 }
@@ -754,6 +769,9 @@ static void legacy_object_modifier_color(Object &object, GpencilModifierData &le
       object, eModifierType_GreasePencilColor, legacy_md);
   auto &md_color = reinterpret_cast<GreasePencilColorModifierData &>(md);
   auto &legacy_md_color = reinterpret_cast<ColorGpencilModifierData &>(legacy_md);
+
+  md_color.color_mode = convert_color_mode(eModifyColorGpencil_Flag(legacy_md_color.modify_color));
+  copy_v3_v3(md_color.hsv, legacy_md_color.hsv);
 
   legacy_object_modifier_influence(md_color.influence,
                                    legacy_md_color.layername,
@@ -1036,7 +1054,7 @@ static void legacy_object_modifier_tint(Object &object, GpencilModifierData &leg
   if (legacy_md_tint.flag & GP_TINT_WEIGHT_FACTOR) {
     md_tint.flag |= MOD_GREASE_PENCIL_TINT_USE_WEIGHT_AS_FACTOR;
   }
-  md_tint.color_mode = convert_color_mode(eGp_Vertex_Mode(legacy_md_tint.mode));
+  md_tint.color_mode = convert_tint_color_mode(eGp_Vertex_Mode(legacy_md_tint.mode));
   md_tint.tint_mode = convert_tint_mode(eTintGpencil_Type(legacy_md_tint.type));
   md_tint.factor = legacy_md_tint.factor;
   md_tint.radius = legacy_md_tint.radius;
