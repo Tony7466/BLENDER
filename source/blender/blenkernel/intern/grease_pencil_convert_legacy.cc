@@ -680,6 +680,59 @@ static void legacy_object_modifier_noise(GreasePencilNoiseModifierData &gp_md_no
   }
 }
 
+static void legacy_object_modifier_array(GreasePencilArrayModifierData &to,
+                                         ArrayGpencilModifierData &from)
+{
+  if (from.flag & GP_ARRAY_USE_OFFSET) {
+    to.flag |= MOD_GREASE_PENCIL_ARRAY_USE_OFFSET;
+  }
+  if (from.flag & GP_ARRAY_USE_RELATIVE) {
+    to.flag |= MOD_GREASE_PENCIL_ARRAY_USE_RELATIVE;
+  }
+  if (from.flag & GP_ARRAY_USE_OB_OFFSET) {
+    to.flag |= MOD_GREASE_PENCIL_ARRAY_USE_OB_OFFSET;
+  }
+  if (from.flag & GP_ARRAY_UNIFORM_RANDOM_SCALE) {
+    to.flag |= GP_ARRAY_UNIFORM_RANDOM_SCALE;
+  }
+  to.count = from.count;
+  to.mat_rpl = from.mat_rpl;
+  to.object = from.object;
+  copy_v3_v3(to.offset, from.offset);
+  copy_v3_v3(to.rnd_offset, from.rnd_offset);
+  copy_v3_v3(to.rnd_rot, from.rnd_rot);
+  copy_v3_v3(to.rnd_scale, from.rnd_scale);
+  copy_v3_v3(to.shift, from.shift);
+  to.seed = from.seed;
+
+  STRNCPY(to.influence.layer_name, from.layername);
+  if (from.flag & GP_ARRAY_INVERT_LAYER) {
+    to.influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_LAYER_FILTER;
+  }
+  to.influence.layer_pass = from.layer_pass;
+  if (to.influence.layer_pass > 0) {
+    to.influence.flag |= GREASE_PENCIL_INFLUENCE_USE_LAYER_PASS_FILTER;
+  }
+  if (from.flag & GP_ARRAY_INVERT_LAYERPASS) {
+    to.influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_LAYER_PASS_FILTER;
+  }
+
+  if (from.material) {
+    to.influence.material = from.material;
+    from.material = nullptr;
+  }
+  if (from.flag & GP_ARRAY_INVERT_MATERIAL) {
+    to.influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_FILTER;
+  }
+  to.influence.material_pass = from.pass_index;
+  if (to.influence.material_pass > 0) {
+    to.influence.flag |= GREASE_PENCIL_INFLUENCE_USE_MATERIAL_PASS_FILTER;
+  }
+  if (from.flag & GP_ARRAY_INVERT_PASS) {
+    to.influence.flag |= GREASE_PENCIL_INFLUENCE_INVERT_MATERIAL_PASS_FILTER;
+  }
+}
+
 static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
 {
   BLI_assert(BLI_listbase_is_empty(&object.modifiers));
@@ -703,7 +756,13 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
       case eGpencilModifierType_Subdiv:
       case eGpencilModifierType_Thick:
       case eGpencilModifierType_Tint:
-      case eGpencilModifierType_Array:
+      case eGpencilModifierType_Array: {
+        auto &from = *reinterpret_cast<ArrayGpencilModifierData *>(gpd_md);
+        auto &to = reinterpret_cast<GreasePencilArrayModifierData &>(
+            legacy_object_modifier_common(object, eModifierType_GreasePencilArray, *gpd_md));
+        legacy_object_modifier_array(to, from);
+        break;
+      }
       case eGpencilModifierType_Build:
       case eGpencilModifierType_Opacity:
       case eGpencilModifierType_Color:
