@@ -679,6 +679,186 @@ static void legacy_object_modifier_influence(GreasePencilModifierInfluenceData &
   }
 }
 
+static GreasePencilModifierColorMode convert_color_mode(eGp_Vertex_Mode legacy_mode)
+{
+  switch (legacy_mode) {
+    case GPPAINT_MODE_BOTH:
+      return MOD_GREASE_PENCIL_COLOR_BOTH;
+    case GPPAINT_MODE_STROKE:
+      return MOD_GREASE_PENCIL_COLOR_STROKE;
+    case GPPAINT_MODE_FILL:
+      return MOD_GREASE_PENCIL_COLOR_FILL;
+  }
+  return MOD_GREASE_PENCIL_COLOR_BOTH;
+}
+
+static GreasePencilTintModifierMode convert_tint_mode(eTintGpencil_Type legacy_mode)
+{
+  switch (legacy_mode) {
+    case GP_TINT_UNIFORM:
+      return MOD_GREASE_PENCIL_TINT_UNIFORM;
+    case GP_TINT_GRADIENT:
+      return MOD_GREASE_PENCIL_TINT_GRADIENT;
+  }
+  return MOD_GREASE_PENCIL_TINT_UNIFORM;
+}
+
+static void legacy_object_modifier_array(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilArray, legacy_md);
+  auto &md_array = reinterpret_cast<GreasePencilArrayModifierData &>(md);
+  auto &legacy_md_array = reinterpret_cast<ArrayGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_array.influence,
+                                   legacy_md_array.layername,
+                                   legacy_md_array.layer_pass,
+                                   legacy_md_array.flag & GP_ARRAY_INVERT_LAYER,
+                                   legacy_md_array.flag & GP_ARRAY_INVERT_LAYERPASS,
+                                   &legacy_md_array.material,
+                                   legacy_md_array.pass_index,
+                                   legacy_md_array.flag & GP_ARRAY_INVERT_MATERIAL,
+                                   legacy_md_array.flag & GP_ARRAY_INVERT_PASS,
+                                   "",
+                                   false,
+                                   nullptr,
+                                   false);
+}
+
+static void legacy_object_modifier_color(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilColor, legacy_md);
+  auto &md_color = reinterpret_cast<GreasePencilColorModifierData &>(md);
+  auto &legacy_md_color = reinterpret_cast<ColorGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_color.influence,
+                                   legacy_md_color.layername,
+                                   legacy_md_color.layer_pass,
+                                   legacy_md_color.flag & GP_COLOR_INVERT_LAYER,
+                                   legacy_md_color.flag & GP_COLOR_INVERT_LAYERPASS,
+                                   &legacy_md_color.material,
+                                   legacy_md_color.pass_index,
+                                   legacy_md_color.flag & GP_COLOR_INVERT_MATERIAL,
+                                   legacy_md_color.flag & GP_COLOR_INVERT_PASS,
+                                   "",
+                                   false,
+                                   &legacy_md_color.curve_intensity,
+                                   legacy_md_color.flag & GP_COLOR_CUSTOM_CURVE);
+}
+
+static void legacy_object_modifier_dash(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilDash, legacy_md);
+  auto &md_dash = reinterpret_cast<GreasePencilDashModifierData &>(md);
+  auto &legacy_md_dash = reinterpret_cast<DashGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_dash.influence,
+                                   legacy_md_dash.layername,
+                                   legacy_md_dash.layer_pass,
+                                   legacy_md_dash.flag & GP_DASH_INVERT_LAYER,
+                                   legacy_md_dash.flag & GP_DASH_INVERT_LAYERPASS,
+                                   &legacy_md_dash.material,
+                                   legacy_md_dash.pass_index,
+                                   legacy_md_dash.flag & GP_DASH_INVERT_MATERIAL,
+                                   legacy_md_dash.flag & GP_DASH_INVERT_PASS,
+                                   "",
+                                   false,
+                                   nullptr,
+                                   false);
+}
+
+static void legacy_object_modifier_lattice(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilLattice, legacy_md);
+  auto &md_lattice = reinterpret_cast<GreasePencilLatticeModifierData &>(md);
+  auto &legacy_md_lattice = reinterpret_cast<LatticeGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_lattice.influence,
+                                   legacy_md_lattice.layername,
+                                   legacy_md_lattice.layer_pass,
+                                   legacy_md_lattice.flag & GP_LATTICE_INVERT_LAYER,
+                                   legacy_md_lattice.flag & GP_LATTICE_INVERT_LAYERPASS,
+                                   &legacy_md_lattice.material,
+                                   legacy_md_lattice.pass_index,
+                                   legacy_md_lattice.flag & GP_LATTICE_INVERT_MATERIAL,
+                                   legacy_md_lattice.flag & GP_LATTICE_INVERT_PASS,
+                                   legacy_md_lattice.vgname,
+                                   legacy_md_lattice.flag & GP_LATTICE_INVERT_VGROUP,
+                                   nullptr,
+                                   false);
+}
+
+static void legacy_object_modifier_length(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilLength, legacy_md);
+  auto &md_length = reinterpret_cast<GreasePencilLengthModifierData &>(md);
+  auto &legacy_md_length = reinterpret_cast<LengthGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_length.influence,
+                                   legacy_md_length.layername,
+                                   legacy_md_length.layer_pass,
+                                   legacy_md_length.flag & GP_LENGTH_INVERT_LAYER,
+                                   legacy_md_length.flag & GP_LENGTH_INVERT_LAYERPASS,
+                                   &legacy_md_length.material,
+                                   legacy_md_length.pass_index,
+                                   legacy_md_length.flag & GP_LENGTH_INVERT_MATERIAL,
+                                   legacy_md_length.flag & GP_LENGTH_INVERT_PASS,
+                                   "",
+                                   false,
+                                   nullptr,
+                                   false);
+}
+
+static void legacy_object_modifier_mirror(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilMirror, legacy_md);
+  auto &md_mirror = reinterpret_cast<GreasePencilMirrorModifierData &>(md);
+  auto &legacy_md_mirror = reinterpret_cast<MirrorGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_mirror.influence,
+                                   legacy_md_mirror.layername,
+                                   legacy_md_mirror.layer_pass,
+                                   legacy_md_mirror.flag & GP_MIRROR_INVERT_LAYER,
+                                   legacy_md_mirror.flag & GP_MIRROR_INVERT_LAYERPASS,
+                                   &legacy_md_mirror.material,
+                                   legacy_md_mirror.pass_index,
+                                   legacy_md_mirror.flag & GP_MIRROR_INVERT_MATERIAL,
+                                   legacy_md_mirror.flag & GP_MIRROR_INVERT_PASS,
+                                   "",
+                                   false,
+                                   nullptr,
+                                   false);
+}
+
+static void legacy_object_modifier_multiply(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilMultiply, legacy_md);
+  auto &md_multiply = reinterpret_cast<GreasePencilMultiModifierData &>(md);
+  auto &legacy_md_multiply = reinterpret_cast<MultiplyGpencilModifierData &>(legacy_md);
+
+  /* Note: This looks wrong, but GPv2 version uses Mirror modifier flags in its `flag` property and
+   * own flags in its `flags` property. */
+  legacy_object_modifier_influence(md_multiply.influence,
+                                   legacy_md_multiply.layername,
+                                   legacy_md_multiply.layer_pass,
+                                   legacy_md_multiply.flag & GP_MIRROR_INVERT_LAYER,
+                                   legacy_md_multiply.flag & GP_MIRROR_INVERT_LAYERPASS,
+                                   &legacy_md_multiply.material,
+                                   legacy_md_multiply.pass_index,
+                                   legacy_md_multiply.flag & GP_MIRROR_INVERT_MATERIAL,
+                                   legacy_md_multiply.flag & GP_MIRROR_INVERT_PASS,
+                                   "",
+                                   false,
+                                   nullptr,
+                                   false);
+}
+
 static void legacy_object_modifier_noise(Object &object, GpencilModifierData &legacy_md)
 {
   ModifierData &md = legacy_object_modifier_common(
@@ -712,28 +892,114 @@ static void legacy_object_modifier_noise(Object &object, GpencilModifierData &le
                                    legacy_md_noise.flag & GP_NOISE_CUSTOM_CURVE);
 }
 
-static GreasePencilModifierColorMode convert_color_mode(eGp_Vertex_Mode legacy_mode)
+static void legacy_object_modifier_offset(Object &object, GpencilModifierData &legacy_md)
 {
-  switch (legacy_mode) {
-    case GPPAINT_MODE_BOTH:
-      return MOD_GREASE_PENCIL_COLOR_BOTH;
-    case GPPAINT_MODE_STROKE:
-      return MOD_GREASE_PENCIL_COLOR_STROKE;
-    case GPPAINT_MODE_FILL:
-      return MOD_GREASE_PENCIL_COLOR_FILL;
-  }
-  return MOD_GREASE_PENCIL_COLOR_BOTH;
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilOffset, legacy_md);
+  auto &md_offset = reinterpret_cast<GreasePencilOffsetModifierData &>(md);
+  auto &legacy_md_offset = reinterpret_cast<OffsetGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_offset.influence,
+                                   legacy_md_offset.layername,
+                                   legacy_md_offset.layer_pass,
+                                   legacy_md_offset.flag & GP_OFFSET_INVERT_LAYER,
+                                   legacy_md_offset.flag & GP_OFFSET_INVERT_LAYERPASS,
+                                   &legacy_md_offset.material,
+                                   legacy_md_offset.pass_index,
+                                   legacy_md_offset.flag & GP_OFFSET_INVERT_MATERIAL,
+                                   legacy_md_offset.flag & GP_OFFSET_INVERT_PASS,
+                                   legacy_md_offset.vgname,
+                                   legacy_md_offset.flag & GP_OFFSET_INVERT_VGROUP,
+                                   nullptr,
+                                   false);
 }
 
-static GreasePencilTintModifierMode convert_tint_mode(eTintGpencil_Type legacy_mode)
+static void legacy_object_modifier_opacity(Object &object, GpencilModifierData &legacy_md)
 {
-  switch (legacy_mode) {
-    case GP_TINT_UNIFORM:
-      return MOD_GREASE_PENCIL_TINT_UNIFORM;
-    case GP_TINT_GRADIENT:
-      return MOD_GREASE_PENCIL_TINT_GRADIENT;
-  }
-  return MOD_GREASE_PENCIL_TINT_UNIFORM;
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilOpacity, legacy_md);
+  auto &md_opacity = reinterpret_cast<GreasePencilOpacityModifierData &>(md);
+  auto &legacy_md_opacity = reinterpret_cast<OpacityGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_opacity.influence,
+                                   legacy_md_opacity.layername,
+                                   legacy_md_opacity.layer_pass,
+                                   legacy_md_opacity.flag & GP_OPACITY_INVERT_LAYER,
+                                   legacy_md_opacity.flag & GP_OPACITY_INVERT_LAYERPASS,
+                                   &legacy_md_opacity.material,
+                                   legacy_md_opacity.pass_index,
+                                   legacy_md_opacity.flag & GP_OPACITY_INVERT_MATERIAL,
+                                   legacy_md_opacity.flag & GP_OPACITY_INVERT_PASS,
+                                   legacy_md_opacity.vgname,
+                                   legacy_md_opacity.flag & GP_OPACITY_INVERT_VGROUP,
+                                   &legacy_md_opacity.curve_intensity,
+                                   legacy_md_opacity.flag & GP_OPACITY_CUSTOM_CURVE);
+}
+
+static void legacy_object_modifier_smooth(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilSmooth, legacy_md);
+  auto &md_smooth = reinterpret_cast<GreasePencilSmoothModifierData &>(md);
+  auto &legacy_md_smooth = reinterpret_cast<SmoothGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_smooth.influence,
+                                   legacy_md_smooth.layername,
+                                   legacy_md_smooth.layer_pass,
+                                   legacy_md_smooth.flag & GP_SMOOTH_INVERT_LAYER,
+                                   legacy_md_smooth.flag & GP_SMOOTH_INVERT_LAYERPASS,
+                                   &legacy_md_smooth.material,
+                                   legacy_md_smooth.pass_index,
+                                   legacy_md_smooth.flag & GP_SMOOTH_INVERT_MATERIAL,
+                                   legacy_md_smooth.flag & GP_SMOOTH_INVERT_PASS,
+                                   legacy_md_smooth.vgname,
+                                   legacy_md_smooth.flag & GP_SMOOTH_INVERT_VGROUP,
+                                   &legacy_md_smooth.curve_intensity,
+                                   legacy_md_smooth.flag & GP_SMOOTH_CUSTOM_CURVE);
+}
+
+static void legacy_object_modifier_subdiv(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilSubdiv, legacy_md);
+  auto &md_subdiv = reinterpret_cast<GreasePencilSubdivModifierData &>(md);
+  auto &legacy_md_subdiv = reinterpret_cast<SubdivGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_subdiv.influence,
+                                   legacy_md_subdiv.layername,
+                                   legacy_md_subdiv.layer_pass,
+                                   legacy_md_subdiv.flag & GP_SUBDIV_INVERT_LAYER,
+                                   legacy_md_subdiv.flag & GP_SUBDIV_INVERT_LAYERPASS,
+                                   &legacy_md_subdiv.material,
+                                   legacy_md_subdiv.pass_index,
+                                   legacy_md_subdiv.flag & GP_SUBDIV_INVERT_MATERIAL,
+                                   legacy_md_subdiv.flag & GP_SUBDIV_INVERT_PASS,
+                                   "",
+                                   false,
+                                   nullptr,
+                                   false);
+}
+
+static void legacy_object_modifier_thickness(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilThickness, legacy_md);
+  auto &md_thickness = reinterpret_cast<GreasePencilThickModifierData &>(md);
+  auto &legacy_md_thickness = reinterpret_cast<ThickGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_thickness.influence,
+                                   legacy_md_thickness.layername,
+                                   legacy_md_thickness.layer_pass,
+                                   legacy_md_thickness.flag & GP_THICK_INVERT_LAYER,
+                                   legacy_md_thickness.flag & GP_THICK_INVERT_LAYERPASS,
+                                   &legacy_md_thickness.material,
+                                   legacy_md_thickness.pass_index,
+                                   legacy_md_thickness.flag & GP_THICK_INVERT_MATERIAL,
+                                   legacy_md_thickness.flag & GP_THICK_INVERT_PASS,
+                                   legacy_md_thickness.vgname,
+                                   legacy_md_thickness.flag & GP_THICK_INVERT_VGROUP,
+                                   &legacy_md_thickness.curve_thickness,
+                                   legacy_md_thickness.flag & GP_THICK_CUSTOM_CURVE);
 }
 
 static void legacy_object_modifier_tint(Object &object, GpencilModifierData &legacy_md)
@@ -773,6 +1039,50 @@ static void legacy_object_modifier_tint(Object &object, GpencilModifierData &leg
                                    legacy_md_tint.flag & GP_TINT_CUSTOM_CURVE);
 }
 
+static void legacy_object_modifier_weight_angle(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilWeightAngle, legacy_md);
+  auto &md_weight_angle = reinterpret_cast<GreasePencilWeightAngleModifierData &>(md);
+  auto &legacy_md_weight_angle = reinterpret_cast<WeightAngleGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_weight_angle.influence,
+                                   legacy_md_weight_angle.layername,
+                                   legacy_md_weight_angle.layer_pass,
+                                   legacy_md_weight_angle.flag & GP_WEIGHT_INVERT_LAYER,
+                                   legacy_md_weight_angle.flag & GP_WEIGHT_INVERT_LAYERPASS,
+                                   &legacy_md_weight_angle.material,
+                                   legacy_md_weight_angle.pass_index,
+                                   legacy_md_weight_angle.flag & GP_WEIGHT_INVERT_MATERIAL,
+                                   legacy_md_weight_angle.flag & GP_WEIGHT_INVERT_PASS,
+                                   legacy_md_weight_angle.vgname,
+                                   legacy_md_weight_angle.flag & GP_WEIGHT_INVERT_VGROUP,
+                                   nullptr,
+                                   false);
+}
+
+static void legacy_object_modifier_weight_proximity(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilWeightProximity, legacy_md);
+  auto &md_weight_prox = reinterpret_cast<GreasePencilWeightProximityModifierData &>(md);
+  auto &legacy_md_weight_prox = reinterpret_cast<WeightProxGpencilModifierData &>(legacy_md);
+
+  legacy_object_modifier_influence(md_weight_prox.influence,
+                                   legacy_md_weight_prox.layername,
+                                   legacy_md_weight_prox.layer_pass,
+                                   legacy_md_weight_prox.flag & GP_WEIGHT_INVERT_LAYER,
+                                   legacy_md_weight_prox.flag & GP_WEIGHT_INVERT_LAYERPASS,
+                                   &legacy_md_weight_prox.material,
+                                   legacy_md_weight_prox.pass_index,
+                                   legacy_md_weight_prox.flag & GP_WEIGHT_INVERT_MATERIAL,
+                                   legacy_md_weight_prox.flag & GP_WEIGHT_INVERT_PASS,
+                                   legacy_md_weight_prox.vgname,
+                                   legacy_md_weight_prox.flag & GP_WEIGHT_INVERT_VGROUP,
+                                   nullptr,
+                                   false);
+}
+
 static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
 {
   BLI_assert(BLI_listbase_is_empty(&object.modifiers));
@@ -784,34 +1094,60 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
       case eGpencilModifierType_None:
         /* Unknown type, just ignore. */
         break;
-      case eGpencilModifierType_Noise: {
+      case eGpencilModifierType_Array:
+        legacy_object_modifier_array(object, *gpd_md);
+        break;
+      case eGpencilModifierType_Color:
+        legacy_object_modifier_color(object, *gpd_md);
+        break;
+      case eGpencilModifierType_Dash:
+        legacy_object_modifier_dash(object, *gpd_md);
+        break;
+      case eGpencilModifierType_Lattice:
+        legacy_object_modifier_lattice(object, *gpd_md);
+        break;
+      case eGpencilModifierType_Length:
+        legacy_object_modifier_length(object, *gpd_md);
+        break;
+      case eGpencilModifierType_Mirror:
+        legacy_object_modifier_mirror(object, *gpd_md);
+        break;
+      case eGpencilModifierType_Noise:
         legacy_object_modifier_noise(object, *gpd_md);
         break;
-      }
+      case eGpencilModifierType_Offset:
+        legacy_object_modifier_offset(object, *gpd_md);
+        break;
+      case eGpencilModifierType_Opacity:
+        legacy_object_modifier_opacity(object, *gpd_md);
+        break;
+      case eGpencilModifierType_Smooth:
+        legacy_object_modifier_smooth(object, *gpd_md);
+        break;
       case eGpencilModifierType_Subdiv:
+        legacy_object_modifier_subdiv(object, *gpd_md);
+        break;
       case eGpencilModifierType_Thick:
+        legacy_object_modifier_thickness(object, *gpd_md);
+        break;
       case eGpencilModifierType_Tint:
         legacy_object_modifier_tint(object, *gpd_md);
         break;
-      case eGpencilModifierType_Array:
+      case eGpencilModifierType_WeightAngle:
+        legacy_object_modifier_weight_angle(object, *gpd_md);
+        break;
+      case eGpencilModifierType_WeightProximity:
+        legacy_object_modifier_weight_proximity(object, *gpd_md);
+        break;
+
       case eGpencilModifierType_Build:
-      case eGpencilModifierType_Opacity:
-      case eGpencilModifierType_Color:
-      case eGpencilModifierType_Lattice:
       case eGpencilModifierType_Simplify:
-      case eGpencilModifierType_Smooth:
       case eGpencilModifierType_Hook:
-      case eGpencilModifierType_Offset:
-      case eGpencilModifierType_Mirror:
       case eGpencilModifierType_Armature:
       case eGpencilModifierType_Time:
       case eGpencilModifierType_Multiply:
       case eGpencilModifierType_Texture:
       case eGpencilModifierType_Lineart:
-      case eGpencilModifierType_Length:
-      case eGpencilModifierType_WeightProximity:
-      case eGpencilModifierType_Dash:
-      case eGpencilModifierType_WeightAngle:
       case eGpencilModifierType_Shrinkwrap:
       case eGpencilModifierType_Envelope:
       case eGpencilModifierType_Outline:
