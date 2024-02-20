@@ -10,6 +10,7 @@
 
 #include <mutex>
 
+#include "BLI_map.hh"
 #include "BLI_vector.hh"
 
 #include "GPU_texture.h"
@@ -132,7 +133,7 @@ struct GlyphCacheBLF {
   int fixed_width;
 
   /** The glyphs. */
-  ListBase bucket[257];
+  blender::Map<int, GlyphBLF *> glyphs;
 
   /** Texture array, to draw the glyphs. */
   GPUTexture *texture;
@@ -145,9 +146,6 @@ struct GlyphCacheBLF {
 };
 
 struct GlyphBLF {
-  GlyphBLF *next;
-  GlyphBLF *prev;
-
   /** The character, as UTF-32. */
   unsigned int c;
 
@@ -192,6 +190,8 @@ struct GlyphBLF {
   int pos[2];
 
   GlyphCacheBLF *glyph_cache;
+
+  ~GlyphBLF();
 };
 
 struct FontBufInfoBLF {
