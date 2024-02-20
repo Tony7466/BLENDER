@@ -950,7 +950,7 @@ void BLO_sanitize_experimental_features_userpref_blend(UserDef *userdef)
   if (BKE_blender_version_is_alpha()) {
     return;
   }
-#else
+#endif
 
   MEMSET_STRUCT_AFTER(&userdef->experimental, 0, SANITIZE_AFTER_HERE);
 }
