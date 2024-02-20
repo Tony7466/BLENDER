@@ -84,7 +84,7 @@ static Map<int, int> id_to_index_map(const VArray<int> &id_varray)
   }
 
   const IndexRange range = id_varray.index_range();
-  devirtualize_varray(id_varray, [&](auto &id_varray) {
+  devirtualize_varray(id_varray, [&](auto id_varray) {
     for (const int index : range) {
       map.add(id_varray[index], index);
     }
@@ -130,14 +130,14 @@ class SampleIDFunction : public mf::MultiFunction {
                                                                                       "Is Valid");
 
     if (!indices.is_empty()) {
-      devirtualize_varray(ids, [&](auto &ids) {
+      devirtualize_varray(ids, [&](auto ids) {
         mask.foreach_index_optimized<int>(
             [&](const int i) { indices[i] = id_map_.lookup_default(ids[i], 0); });
       });
     }
 
     if (!is_valid.is_empty()) {
-      devirtualize_varray(ids, [&](auto &ids) {
+      devirtualize_varray(ids, [&](auto ids) {
         mask.foreach_index_optimized<int>(
             [&](const int i) { is_valid[i] = id_map_.contains(ids[i]); });
       });

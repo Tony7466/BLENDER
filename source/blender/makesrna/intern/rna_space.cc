@@ -19,7 +19,7 @@
 #include "BKE_image.h"
 #include "BKE_key.hh"
 #include "BKE_movieclip.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_studiolight.h"
 #include "BKE_viewer_path.hh"
 
@@ -3720,6 +3720,12 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "UV Opacity", "Opacity of UV overlays");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
+  prop = RNA_def_property(srna, "stretch_opacity", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "stretch_opacity");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Stretch Opacity", "Opacity of the UV Stretch overlay");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
+
   prop = RNA_def_property(srna, "pixel_round_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, pixel_round_mode_items);
   RNA_def_property_ui_text(prop, "Round to Pixels", "Round UVs to pixels while editing");
@@ -6422,7 +6428,7 @@ static void rna_def_space_graph(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Show Handles", "Show handles of Bézier control points");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, nullptr);
 
-  prop = RNA_def_property(srna, "autolock_translation_axis", PROP_BOOLEAN, PROP_NONE);
+  prop = RNA_def_property(srna, "use_auto_lock_translation_axis", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SIPO_AUTOLOCK_AXIS);
   RNA_def_property_ui_text(prop,
                            "Auto-Lock Key Axis",
