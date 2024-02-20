@@ -631,7 +631,7 @@ static void dyntopo_detail_size_edit_cancel(bContext *C, wmOperator *op)
 
 static void dyntopo_detail_size_bounds(DyntopoDetailSizeEditCustomData *cd)
 {
-  // TODO: Get range from RNA for these values?
+  /* TODO: Get range from RNA for these values? */
   if (cd->mode == DETAILING_MODE_RESOLUTION) {
     cd->min_value = 1.0f;
     cd->max_value = 500.0f;
