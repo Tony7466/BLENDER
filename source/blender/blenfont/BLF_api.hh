@@ -258,9 +258,9 @@ void BLF_rotation(int fontid, float angle);
 void BLF_clipping(int fontid, int xmin, int ymin, int xmax, int ymax);
 void BLF_wordwrap(int fontid, int wrap_width);
 
-blender::Vector<std::string> BLF_string_wrap(int fontid,
-                                             blender::StringRef str,
-                                             const int max_pixel_width);
+blender::Vector<blender::StringRef> BLF_string_wrap(int fontid,
+                                                    blender::StringRef str,
+                                                    const int max_pixel_width);
 
 #if BLF_BLUR_ENABLE
 void BLF_blur(int fontid, int size);

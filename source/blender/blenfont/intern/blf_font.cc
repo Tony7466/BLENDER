@@ -1249,24 +1249,25 @@ void blf_font_draw_buffer__wrap(FontBLF *font,
       font, str, str_len, font->wrap_width, r_info, blf_font_draw_buffer__wrap_cb, nullptr);
 }
 
-/** Wrap a std::string. */
+/** Wrap a blender::StringRef. */
 static void blf_font_string_wrap_cb(FontBLF *font,
-                                    GlyphCacheBLF *gc,
+                                    GlyphCacheBLF * /*gc*/,
                                     const char *str,
                                     const size_t str_len,
-                                    ft_pix pen_y,
+                                    ft_pix /*pen_y*/,
                                     void *str_list_ptr)
 {
-  blender::Vector<std::string> *list = static_cast<blender::Vector<std::string> *>(str_list_ptr);
-  std::string line(str, str + str_len);
+  blender::Vector<blender::StringRef> *list = static_cast<blender::Vector<blender::StringRef> *>(
+      str_list_ptr);
+  blender::StringRef line(str, str + str_len);
   list->append(line);
 }
 
-blender::Vector<std::string> blf_font_string_wrap(FontBLF *font,
-                                                  blender::StringRef str,
-                                                  int max_pixel_width)
+blender::Vector<blender::StringRef> blf_font_string_wrap(FontBLF *font,
+                                                         blender::StringRef str,
+                                                         int max_pixel_width)
 {
-  blender::Vector<std::string> list;
+  blender::Vector<blender::StringRef> list;
   blf_font_wrap_apply(
       font, str.data(), str.size(), max_pixel_width, nullptr, blf_font_string_wrap_cb, &list);
   return list;
