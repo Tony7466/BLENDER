@@ -1,1 +1,2 @@
 Referenced by issue #117082, EEVEE-Next crash
+Referenced by issue #109858, API's new context.property causing immediate Blender access violation crash.
