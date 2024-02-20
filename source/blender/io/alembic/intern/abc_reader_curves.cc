@@ -8,22 +8,20 @@
 
 #include "abc_reader_curves.h"
 #include "abc_axis_conversion.h"
-#include "abc_reader_transform.h"
 #include "abc_util.h"
 
 #include <cstdio>
 
-#include "MEM_guardedalloc.h"
-
 #include "DNA_curves_types.h"
 #include "DNA_object_types.h"
 
-#include "BLI_listbase.h"
-
+#include "BKE_attribute.hh"
 #include "BKE_curve.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_object.hh"
+
+#include "BLI_vector.hh"
 
 #include "BLT_translation.hh"
 
@@ -43,7 +41,6 @@ using Alembic::AbcGeom::ISampleSelector;
 using Alembic::AbcGeom::kWrapExisting;
 
 namespace blender::io::alembic {
-
 static int16_t get_curve_resolution(const ICurvesSchema &schema,
                                     const Alembic::Abc::ISampleSelector &sample_sel)
 {
@@ -99,7 +96,8 @@ static int get_curve_overlap(const Alembic::AbcGeom::CurvePeriodicity periodicit
   const int end = idx + num_verts;
   int overlap = 0;
 
-  for (int j = start, k = end - order; j < order; j++, k++) {
+  const int safe_order = order <= num_verts ? order : num_verts;
+  for (int j = start, k = end - safe_order; j < (start + safe_order); j++, k++) {
     const Imath::V3f &p1 = (*positions)[j];
     const Imath::V3f &p2 = (*positions)[k];
 
@@ -168,7 +166,7 @@ struct PreprocessedSampleData {
    * actually starts, accounting for duplicate points indicating cyclicity. */
   Vector<int> offset_in_alembic;
   /* This holds one value for each spline to tell whether it is cyclic. */
-  Vector<bool> curves_overlaps;
+  Vector<bool> curves_cyclic;
   /* This holds one value for each spline which define its order. */
   Vector<int8_t> curves_orders;
 
@@ -227,7 +225,7 @@ static std::optional<PreprocessedSampleData> preprocess_sample(StringRefNull iob
   /* Add 1 as these store offsets with the actual value being `offset[i + 1] - offset[i]`. */
   data.offset_in_blender.resize(curve_count + 1);
   data.offset_in_alembic.resize(curve_count + 1);
-  data.curves_overlaps.resize(curve_count);
+  data.curves_cyclic.resize(curve_count);
   data.curve_type = get_curve_type(smp.getBasis());
 
   if (data.curve_type == CURVE_TYPE_NURBS) {
@@ -249,14 +247,14 @@ static std::optional<PreprocessedSampleData> preprocess_sample(StringRefNull iob
 
     data.offset_in_blender[i] = blender_offset;
     data.offset_in_alembic[i] = alembic_offset;
-    data.curves_overlaps[i] = overlap != 0;
+    data.curves_cyclic[i] = overlap != 0;
 
     if (data.curve_type == CURVE_TYPE_NURBS) {
       data.curves_orders[i] = curve_order;
     }
 
-    data.do_cyclic |= overlap != 0;
-    blender_offset += vertices_count - overlap;
+    data.do_cyclic |= data.curves_cyclic[i];
+    blender_offset += (overlap >= vertices_count) ? vertices_count : (vertices_count - overlap);
     alembic_offset += vertices_count;
   }
   data.offset_in_blender[curve_count] = blender_offset;
@@ -364,7 +362,9 @@ void AbcCurveReader::read_curves_sample(Curves *curves,
   }
 
   if (data.do_cyclic) {
-    geometry.cyclic_for_write().copy_from(data.curves_overlaps);
+    geometry.cyclic_for_write().copy_from(data.curves_cyclic);
+    geometry.handle_types_left_for_write().fill(BEZIER_HANDLE_AUTO);
+    geometry.handle_types_right_for_write().fill(BEZIER_HANDLE_AUTO);
   }
 
   if (data.radii) {
