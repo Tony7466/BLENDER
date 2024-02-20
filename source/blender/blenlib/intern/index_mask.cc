@@ -1125,7 +1125,7 @@ Vector<IndexMask, 4> IndexMask::from_group_ids(const IndexMask &universe,
   const VArraySpan<int> group_ids_span{group_ids};
   universe.foreach_index([&](const int64_t i) { r_index_by_group_id.add(group_ids_span[i]); });
   const int64_t groups_num = r_index_by_group_id.size();
-  result_masks.reserve(groups_num);
+  result_masks.resize(groups_num);
   IndexMask::from_groups<int>(
       universe, memory, [&](const int64_t i) { return r_index_by_group_id[i]; }, result_masks);
   return result_masks;
