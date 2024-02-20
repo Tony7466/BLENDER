@@ -454,7 +454,8 @@ void Film::sync()
   accumulate_ps_.specialize_constant(
       sh, "enabled_categories", static_cast<uint *>(static_cast<void *>(&enabled_categories_)));
   accumulate_ps_.specialize_constant(sh, "samples_len", &data_.samples_len);
-  accumulate_ps_.specialize_constant(sh, "use_reprojection", &data_.use_reprojection);
+  accumulate_ps_.specialize_constant(
+      sh, "use_reprojection", static_cast<bool*>(static_cast<void*>(&data_.use_reprojection)));
   accumulate_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
   accumulate_ps_.shader_set(sh);
   accumulate_ps_.bind_resources(inst_.uniform_data);
