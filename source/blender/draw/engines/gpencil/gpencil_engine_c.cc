@@ -114,9 +114,9 @@ void GPENCIL_engine_init(void *ved)
     stl->pd->v3d_color_type = (v3d->shading.type == OB_SOLID) ? v3d->shading.color_type : -1;
     /* Special case: If Vertex Paint mode, use always Vertex mode. */
     if (v3d->shading.type == OB_SOLID && ctx->obact &&
-            (ctx->obact->type == OB_GPENCIL_LEGACY &&
-             ctx->obact->mode == OB_MODE_VERTEX_GPENCIL_LEGACY) ||
-        (ctx->obact->type == OB_GREASE_PENCIL && ctx->obact->mode == OB_MODE_VERTEX_PAINT))
+        ((ctx->obact->type == OB_GPENCIL_LEGACY &&
+          ctx->obact->mode == OB_MODE_VERTEX_GPENCIL_LEGACY) ||
+         (ctx->obact->type == OB_GREASE_PENCIL && ctx->obact->mode == OB_MODE_VERTEX_PAINT)))
     {
       stl->pd->v3d_color_type = V3D_SHADING_VERTEX_COLOR;
     }
@@ -655,7 +655,28 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     }
   }
   else if (ob->data && (ob->type == OB_GREASE_PENCIL) && (ob->dt >= OB_SOLID)) {
-    
+    int mat_ofs = 0;
+    GPENCIL_tObject *tgp_ob = grease_pencil_object_cache_add(pd, ob);
+    GPENCIL_MaterialPool *matpool = grease_pencil_material_pool_create(pd, ob, &mat_ofs);
+
+    GPUBatch *geom;
+    DRWShadingGroup *grp;
+    int vfirst, vcount;
+
+
+    const Vector<ed::greasepencil::DrawingInfo> drawings =
+      ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil);
+
+
+    // for (const Layer *layer : grease_pencil.layers()) {
+    //   GPENCIL_tLayer *tgp_layer = gpencil_layer_cache_add(pd, iter->ob, gpl, gpf, iter->tgp_ob);
+    // }
+
+    if (geom != nullptr) {
+      DRW_shgroup_call_range(grp, ob, geom, vfirst, vcount);
+    }
+
+    gpencil_vfx_cache_populate(vedata, ob, tgp_ob);
   }
 
   if (ob->type == OB_LAMP && pd->use_lights) {
