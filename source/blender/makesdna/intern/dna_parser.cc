@@ -261,7 +261,7 @@ struct ParserDebugPrinter {
   }
   void operator()(ast::Struct &val) const
   {
-    std::cout << "stuct " << val.name << " {\n";
+    std::cout << "struct " << val.name << " {\n";
     for (auto &item : val.items) {
       std::cout << "    ";
       std::visit(StructMemberPrinter{}, item);
