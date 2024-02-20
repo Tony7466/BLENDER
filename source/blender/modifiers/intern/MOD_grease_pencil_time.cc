@@ -102,7 +102,7 @@ static void remap_frames_linear(const Map<int, GreasePencilFrame> &src_frames,
   const bool reverse = scale < 0.0f;
 
   /* Inverse linear time mapping function. */
-  auto time_remap = [=](const int key) { return int((key - offset) / scale); };
+  auto time_remap = [=](const int key) { return math::floor((key - offset) / scale); };
 
   auto insert_key = [&](const int key, const GreasePencilFrame &value) {
     if (key < dst_frame_range.sfra) {
@@ -189,62 +189,212 @@ struct FrameRange {
   int sfra;
   /* End frame (unlimited range when undefined). */
   int efra;
+
+  bool is_empty() const
+  {
+    return efra < sfra;
+  }
+
+  bool is_single_frame() const
+  {
+    return efra == sfra;
+  }
+
+  int duration() const
+  {
+    return std::max(efra + 1 - sfra, 0);
+  }
 };
 
-/**
- * \param src_interval Start and end of the interval for this keyframe.
- * \param src_keyframe_range Overall range of keyframes in the grease pencil data.
- * \param src_interval Frame range to fill with transformed keyframes.
- */
-static void add_keyframe_instances(const GreasePencilFrame &value,
-                            const FrameRange &src_interval,
-                            const FrameRange &src_keyframe_range,
-                            const FrameRange &dst_timeline_range,
-                            GreasePencilTimeModifierMode mode,
-                            const bool loop,
-                            const int offset,
-                            const float scale,
-                            Map<int, GreasePencilFrame> &dst_frames)
-{
-  /* Keyframe interval must be contained within the overall range. */
-  BLI_assert(src_interval.sfra >= src_keyframe_range.sfra &&
-             src_interval.efra <= src_keyframe_range.efra);
-  BLI_assert(scale >= 0);
-  /* Inverse linear time mapping function. */
-  auto time_transform = [=](const int key) { return int((key - offset) / scale); };
-  auto has_overlap = [](const FrameRange &a, const FrameRange &b) -> bool {
-    return a.efra >= b.sfra && a.sfra <= b.efra;
-  };
-  //auto try_insert_keyframe_instance = [&](const FrameRange &interval) -> bool {
-  //  if (has_overlap(interval, dst_timeline_range)) {
-  //    dst_frames.add(interval.sfra, value);
-  //  }
-  //};
+// /**
+//  * \param src_interval Start and end of the interval for this keyframe.
+//  * \param src_keyframe_range Overall range of keyframes in the grease pencil data.
+//  * \param src_interval Frame range to fill with transformed keyframes.
+//  */
+// static void add_keyframe_instances(const GreasePencilFrame &value,
+//                                    const FrameRange &src_interval,
+//                                    const FrameRange &src_keyframe_range,
+//                                    const FrameRange &dst_timeline_range,
+//                                    GreasePencilTimeModifierMode mode,
+//                                    const bool loop,
+//                                    const int offset,
+//                                    const float scale,
+//                                    Map<int, GreasePencilFrame> &dst_frames)
+// {
+//   /* Keyframe interval must be contained within the overall range. */
+//   BLI_assert(src_interval.sfra >= src_keyframe_range.sfra &&
+//              src_interval.efra <= src_keyframe_range.efra);
+//   BLI_assert(scale >= 0);
+//   /* Inverse linear time mapping function. */
+//   auto time_transform = [=](const int key) { return math::floor((key - offset) / scale); };
+//   auto has_overlap = [](const FrameRange &a, const FrameRange &b) -> bool {
+//     return a.efra >= b.sfra && a.sfra <= b.efra;
+//   };
+//   // auto try_insert_keyframe_instance = [&](const FrameRange &interval) -> bool {
+//   //   if (has_overlap(interval, dst_timeline_range)) {
+//   //     dst_frames.add(interval.sfra, value);
+//   //   }
+//   // };
 
-  /* Compute linear transformation first to determine necessary instance range. */
-  const FrameRange transformed_interval = {time_transform(src_interval.sfra),
-                                           time_transform(src_interval.efra)};
-  const FrameRange transformed_keyframe_range = {time_transform(src_keyframe_range.sfra),
-                                                 time_transform(src_keyframe_range.efra)};
+//   /* Add a linear section of the source (grease pencil) timeline using the supplied linear
+//    * transform. */
+//   auto add_source_time_section =
+//       [&](const FrameRange src_interval, const float scale, const float offset) {
+
+//       };
+
+//   /* Compute linear transformation first to determine necessary instance range. */
+//   const FrameRange transformed_interval = {time_transform(src_interval.sfra),
+//                                            time_transform(src_interval.efra)};
+//   const FrameRange transformed_keyframe_range = {time_transform(src_keyframe_range.sfra),
+//                                                  time_transform(src_keyframe_range.efra)};
+
+//   switch (mode) {
+//     case MOD_GREASE_PENCIL_TIME_MODE_NORMAL:
+//       if (loop) {
+//         const float fnum = float(dst_timeline_range.sfra - transformed_interval.efra) /
+//                            float(transformed_keyframe_range.efra -
+//                                  transformed_keyframe_range.sfra);
+//       }
+//       else {
+//         // try_insert_keyframe_instance(transformed_interval);
+//         add_source_time_section()
+//       }
+//       break;
+//     case MOD_GREASE_PENCIL_TIME_MODE_REVERSE:
+//       break;
+//     case MOD_GREASE_PENCIL_TIME_MODE_FIX:
+//       break;
+//     case MOD_GREASE_PENCIL_TIME_MODE_PINGPONG:
+//       const float src_duration
+//       break;
+//     case MOD_GREASE_PENCIL_TIME_MODE_CHAIN:
+//       break;
+//   }
+// }
+
+/* Determine how many times the source frame range must be repeated to cover the destination range.
+ */
+static void calculate_repetitions(const FrameRange &src,
+                                  const FrameRange &dst,
+                                  int &r_start,
+                                  int &r_count)
+{
+  const int duration = src.duration();
+  if (duration <= 0) {
+    r_start = 0;
+    r_count = 0;
+    return;
+  }
+
+  r_start = math::floor(float(dst.sfra - src.sfra) / float(duration));
+  r_count = math::floor(float(dst.efra - src.sfra) / float(duration)) + 1 - r_start;
+}
+
+/* Find the index range of sorted keys that covers the frame range, including the key right before
+ * and after the inverval. The extra keys are needed when frames are held at the beginning or when
+ * reversing the direction. */
+const IndexRange find_key_range(const Span<int> sorted_keys, const FrameRange &frame_range)
+{
+  /* TODO doesn't quite work yet, just return the full range for now. */
+  return sorted_keys.index_range();
+#if 0
+  IndexRange result = sorted_keys.index_range();
+  for (const int i : sorted_keys.index_range().drop_front(1)) {
+    if (sorted_keys[i] >= frame_range.sfra) {
+      /* Keep the previous point. */
+      result = result.drop_front(i - 1);
+      break;
+    }
+  }
+  for (const int i : result.index_range().drop_front(1)) {
+    if (sorted_keys[i] > frame_range.sfra) {
+      /* Keep the end point in case the direction is reversed. */
+      result = result.take_front(i + 1);
+      break;
+    }
+  }
+  return result;
+#endif
+}
+
+static void fill_scene_range_forward(const GreasePencilTimeModifierData &tmd,
+                                     const Map<int, GreasePencilFrame> &frames,
+                                     const Span<int> sorted_keys,
+                                     const FrameRange scene_dst_range,
+                                     const FrameRange gp_src_range,
+                                     Map<int, GreasePencilFrame> &dst_frames)
+{
+  const bool use_loop = tmd.flag & MOD_GREASE_PENCIL_TIME_KEEP_LOOP;
+  const float offset = tmd.offset;
+  const float scale = tmd.frame_scale;
+
+  // auto scene_to_gp_time = [=](const int key) { return key * scale + offset; };
+  auto gp_to_scene_time = [=](const int key) { return float(key - offset) / scale; };
+
+  const float scene_src_sfra = gp_to_scene_time(gp_src_range.sfra);
+  const float scene_src_efra = gp_to_scene_time(gp_src_range.efra);
+  const float scene_src_duration = scene_src_efra + 1.0f - scene_src_sfra;
+
+  const FrameRange scene_src_range = FrameRange{math::floor(scene_src_sfra),
+                                                math::floor(scene_src_efra)};
+
+  int repeat_start = 0, repeat_count = 1;
+  if (use_loop) {
+    calculate_repetitions(scene_src_range, scene_dst_range, repeat_start, repeat_count);
+  }
+
+  const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
+  for (const int r : IndexRange(repeat_count)) {
+    const float shift = (repeat_start + r) * scene_src_duration + scene_src_sfra;
+
+    for (const int i : src_keys) {
+      const int gp_key = sorted_keys[i];
+      const float scene_key = gp_to_scene_time(gp_key) + shift;
+      dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
+    }
+  }
+}
+
+static void fill_scene_range_reverse() {}
+
+static void fill_scene_range_fixed() {}
+static void fill_scene_range_ping_pong() {}
+static void fill_scene_range_chain() {}
+
+static void fill_scene_timeline(const GreasePencilTimeModifierData &tmd,
+                                const ModifierEvalContext &ctx,
+                                const Map<int, GreasePencilFrame> &frames,
+                                const Span<int> sorted_keys,
+                                const FrameRange scene_dst_range,
+                                Map<int, GreasePencilFrame> &dst_frames)
+{
+  const auto mode = GreasePencilTimeModifierMode(tmd.mode);
+  const bool use_custom_range = tmd.flag & MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE;
+  const bool use_loop = tmd.flag & MOD_GREASE_PENCIL_TIME_KEEP_LOOP;
+  const float offset = tmd.offset;
+  const float scale = tmd.frame_scale;
+
+  const Scene *scene = DEG_get_evaluated_scene(ctx.depsgraph);
+  const FrameRange gp_src_range = use_custom_range ? FrameRange{tmd.sfra, tmd.efra} :
+                                                     FrameRange{scene->r.sfra, scene->r.efra};
 
   switch (mode) {
     case MOD_GREASE_PENCIL_TIME_MODE_NORMAL:
-      if (loop) {
-        const float fnum = float(dst_timeline_range.sfra - transformed_interval.efra) /
-                           float(transformed_keyframe_range.efra -
-                                 transformed_keyframe_range.sfra);
-      }
-      else {
-        //try_insert_keyframe_instance(transformed_interval);
-      }
+      fill_scene_range_forward(
+          tmd, frames, sorted_keys, scene_dst_range, gp_src_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_REVERSE:
+      fill_scene_range_reverse();
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_FIX:
+      fill_scene_range_fixed();
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_PINGPONG:
+      fill_scene_range_ping_pong();
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_CHAIN:
+      fill_scene_range_chain();
       break;
   }
 }
@@ -258,15 +408,9 @@ static void modify_geometry_set(ModifierData *md,
 
   auto *tmd = reinterpret_cast<GreasePencilTimeModifierData *>(md);
   const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
-  const auto mode = GreasePencilTimeModifierMode(tmd->mode);
-  const bool use_custom_range = tmd->flag & MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE;
-  const bool use_loop = tmd->flag & MOD_GREASE_PENCIL_TIME_KEEP_LOOP;
-  const FrameRange src_keyframe_range = {scene->r.sfra, scene->r.efra};
-  const FrameRange dst_keyframe_range = use_custom_range ? FrameRange{tmd->sfra, tmd->efra} :
-                                                           src_keyframe_range;
-  /* XXX This is wrong, should subtract src_keyframe_range.sfra instead of 1.
-   * But GPv2 does this, so keep it. */
-  const int shift = dst_keyframe_range.sfra - 1;
+  /* Just include the current frame for now. The method can be applied to arbitrary ranges. */
+  // const FrameRange dst_keyframe_range = {scene->r.sfra, scene->r.efra};
+  const FrameRange dst_keyframe_range = {scene->r.cfra, scene->r.cfra};
 
   if (!geometry_set->has_grease_pencil()) {
     return;
@@ -286,21 +430,8 @@ static void modify_geometry_set(ModifierData *md,
     const Map<int, GreasePencilFrame> &src_frames = layer->frames();
 
     Map<int, GreasePencilFrame> new_frames;
-    for (const int i : sorted_keys.index_range()) {
-      const int sfra = sorted_keys[i];
-      const int efra = (i < sorted_keys.size() - 1) ? sorted_keys[i + 1] - 1 :
-                                                      src_keyframe_range.efra;
-      const FrameRange src_keyframe_interval = {sfra, efra};
-      add_keyframe_instances(src_frames.lookup(sfra),
-                             {sfra, efra},
-                             src_keyframe_range,
-                             dst_keyframe_range,
-                             mode,
-                             use_loop,
-                             tmd->offset,
-                             tmd->frame_scale,
-                             new_frames);
-    }
+    fill_scene_timeline(*tmd, *ctx, src_frames, sorted_keys, dst_keyframe_range, new_frames);
+
 #if 0
     switch (GreasePencilTimeModifierMode(tmd->mode)) {
       case MOD_GREASE_PENCIL_TIME_MODE_NORMAL: {

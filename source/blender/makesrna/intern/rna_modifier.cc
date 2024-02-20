@@ -128,6 +128,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_VERTEX_WEIGHT,
      "Vertex Weight Angle",
      "Generate vertex weights base on stroke angle"},
+    {eModifierType_GreasePencilTime,
+     "GREASE_PENCIL_TIME",
+     ICON_MOD_TIME,
+     "Time Offset",
+     "Offset keyframes"},
 
     RNA_ENUM_ITEM_HEADING(N_("Generate"), nullptr),
     {eModifierType_Array,
