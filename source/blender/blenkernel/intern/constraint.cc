@@ -1658,6 +1658,50 @@ static bConstraintTypeInfo CTI_LOCLIMIT = {
 
 /* -------- Limit Rotation --------- */
 
+/** Clamps an angle between min and max. The values are expected to be in radians. In case `max` is
+ * smaller than `min` the whole clockwise range on the unit circle from `min` to `max` is
+ * considered a valid range.*/
+static float clamp_angle(const float angle, const float min, const float max)
+{
+  if (min == max) {
+    return min;
+  }
+
+  float angle_unit_circle[2];
+  angle_unit_circle[0] = cos(angle);
+  angle_unit_circle[1] = sin(angle);
+
+  float min_unit_circle[2];
+  min_unit_circle[0] = cos(min);
+  min_unit_circle[1] = sin(min);
+
+  float max_unit_circle[2];
+  max_unit_circle[0] = cos(max);
+  max_unit_circle[1] = sin(max);
+
+  float max_to_angle[2];
+  sub_v2_v2v2(max_to_angle, angle_unit_circle, max_unit_circle);
+
+  float max_to_min[2];
+  sub_v2_v2v2(max_to_min, min_unit_circle, max_unit_circle);
+
+  /* By calculating the cross between those two we can determine if the angle_unit_circle point is
+   * left or right to the max_to_min vector, which tells us if it is in the legal range or not.*/
+  const float cross = cross_v2v2(max_to_angle, max_to_min);
+  if (cross < 0) {
+    return angle;
+  }
+
+  const float dot_min = dot_v2v2(angle_unit_circle, min_unit_circle);
+  const float dot_max = dot_v2v2(angle_unit_circle, max_unit_circle);
+
+  /* Clamps the value to whichever constraint is closer. */
+  if (dot_min > dot_max) {
+    return min;
+  }
+  return max;
+}
+
 static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
   bRotLimitConstraint *data = static_cast<bRotLimitConstraint *>(con->data);
@@ -1692,31 +1736,13 @@ static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /
 
   /* limiting of euler values... */
   if (data->flag & LIMIT_XROT) {
-    if (eul[0] < data->xmin) {
-      eul[0] = data->xmin;
-    }
-
-    if (eul[0] > data->xmax) {
-      eul[0] = data->xmax;
-    }
+    eul[0] = clamp_angle(eul[0], data->xmin, data->xmax);
   }
   if (data->flag & LIMIT_YROT) {
-    if (eul[1] < data->ymin) {
-      eul[1] = data->ymin;
-    }
-
-    if (eul[1] > data->ymax) {
-      eul[1] = data->ymax;
-    }
+    eul[1] = clamp_angle(eul[1], data->ymin, data->ymax);
   }
   if (data->flag & LIMIT_ZROT) {
-    if (eul[2] < data->zmin) {
-      eul[2] = data->zmin;
-    }
-
-    if (eul[2] > data->zmax) {
-      eul[2] = data->zmax;
-    }
+    eul[2] = clamp_angle(eul[2], data->zmin, data->zmax);
   }
 
   loc_eulO_size_to_mat4(cob->matrix, loc, eul, size, rot_order);
