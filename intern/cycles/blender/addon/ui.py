@@ -1965,7 +1965,10 @@ class CYCLES_MATERIAL_PT_settings(CyclesButtonsPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
+        cmat = mat.cycles
+
         layout.prop(mat, "pass_index")
+        layout.prop(cmat, "volume_stack_priority")
 
     def draw(self, context):
         self.draw_shared(self, context.material)

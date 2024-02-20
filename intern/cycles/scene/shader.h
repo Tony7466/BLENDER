@@ -82,6 +82,7 @@ class Shader : public Node {
   NODE_SOCKET_API(VolumeSampling, volume_sampling_method)
   NODE_SOCKET_API(int, volume_interpolation_method)
   NODE_SOCKET_API(float, volume_step_rate)
+  NODE_SOCKET_API(int, volume_stack_priority)
 
   /* displacement */
   NODE_SOCKET_API(DisplacementMethod, displacement_method)

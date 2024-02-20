@@ -148,9 +148,8 @@ ccl_device_inline int bsdf_sample(KernelGlobals kg,
       *eta = 1.0f;
       break;
     case CLOSURE_BSDF_TRANSPARENT_ID:
-      label = bsdf_transparent_sample(sc, Ng, sd->wi, eval, wo, pdf);
+      label = bsdf_transparent_sample(sc, Ng, sd->wi, eval, wo, pdf, eta);
       *sampled_roughness = zero_float2();
-      *eta = 1.0f;
       break;
     case CLOSURE_BSDF_MICROFACET_GGX_ID:
     case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:

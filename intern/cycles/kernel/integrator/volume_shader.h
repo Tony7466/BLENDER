@@ -461,10 +461,14 @@ ccl_device_inline void volume_shader_eval(KernelGlobals kg,
   sd->flag = 0;
   sd->object_flag = 0;
 
+  int active_priority = volume_stack_active_priority(kg, stack_read);
   for (int i = 0;; i++) {
     const VolumeStack entry = stack_read(i);
     if (entry.shader == SHADER_NONE) {
       break;
+    }
+    if (!volume_stack_volume_active(kg, entry.shader, active_priority)) {
+      continue;
     }
 
     /* Setup shader-data from stack. it's mostly setup already in

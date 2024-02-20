@@ -80,8 +80,13 @@ ccl_device_inline void path_state_init_integrator(KernelGlobals kg,
     INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 0, object) = OBJECT_NONE;
     INTEGRATOR_STATE_ARRAY_WRITE(
         state, volume_stack, 0, shader) = kernel_data.background.volume_shader;
+    INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 0, ior) = 1.0f;
     INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 1, object) = OBJECT_NONE;
     INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 1, shader) = SHADER_NONE;
+  }
+  else {
+    INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 0, object) = OBJECT_NONE;
+    INTEGRATOR_STATE_ARRAY_WRITE(state, volume_stack, 0, shader) = SHADER_NONE;
   }
 
 #ifdef __DENOISING_FEATURES__

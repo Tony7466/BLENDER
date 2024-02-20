@@ -47,6 +47,7 @@ ccl_device_inline void shader_setup_from_ray(KernelGlobals kg,
   sd->prim = isect->prim;
   sd->lamp = LAMP_NONE;
   sd->flag = 0;
+  sd->opposite_ior = 1.0f;
 
   /* Read matrices and time. */
   sd->time = ray->time;
@@ -175,6 +176,7 @@ ccl_device_inline void shader_setup_from_sample(KernelGlobals kg,
   sd->v = v;
   sd->time = time;
   sd->ray_length = t;
+  sd->opposite_ior = 1.0f;
 
   sd->flag = kernel_data_fetch(shaders, (sd->shader & SHADER_MASK)).flags;
   sd->object_flag = 0;
@@ -304,6 +306,7 @@ ccl_device void shader_setup_from_curve(KernelGlobals kg,
   sd->v = 0.0f;
   sd->time = 0.5f;
   sd->ray_length = 0.0f;
+  sd->opposite_ior = 1.0f;
 
   /* Shader */
   sd->shader = kernel_data_fetch(curves, prim).shader_id;
@@ -383,6 +386,7 @@ ccl_device_inline void shader_setup_from_background(KernelGlobals kg,
   sd->object_flag = 0;
   sd->time = ray_time;
   sd->ray_length = 0.0f;
+  sd->opposite_ior = 1.0f;
 
   sd->object = OBJECT_NONE;
   sd->lamp = LAMP_NONE;
@@ -423,6 +427,7 @@ ccl_device_inline void shader_setup_from_volume(KernelGlobals kg,
   sd->object_flag = 0;
   sd->time = ray->time;
   sd->ray_length = 0.0f; /* todo: can we set this to some useful value? */
+  sd->opposite_ior = 1.0f;
 
   sd->object = OBJECT_NONE; /* todo: fill this for texture coordinates */
   sd->lamp = LAMP_NONE;

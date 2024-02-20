@@ -1549,6 +1549,7 @@ void BlenderSync::sync_materials(BL::Depsgraph &b_depsgraph, bool update_all)
       shader->set_volume_interpolation_method(get_volume_interpolation(cmat));
       shader->set_volume_step_rate(get_float(cmat, "volume_step_rate"));
       shader->set_displacement_method(get_displacement_method(b_mat));
+      shader->set_volume_stack_priority(get_int(cmat, "volume_stack_priority"));
 
       shader->set_graph(graph);
 

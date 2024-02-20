@@ -680,6 +680,9 @@ int Scene::get_max_closure_count()
 
 int Scene::get_volume_stack_size() const
 {
+  /* TODO: Determine this properly. Just count "has volume or priority"? */
+  return MAX_VOLUME_STACK_SIZE;
+
   int volume_stack_size = 0;
 
   /* Space for background volume and terminator.

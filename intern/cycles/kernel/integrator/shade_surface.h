@@ -33,6 +33,9 @@ ccl_device_forceinline void integrate_surface_shader_setup(KernelGlobals kg,
   integrator_state_read_ray(state, &ray);
 
   shader_setup_from_ray(kg, sd, &ray, &isect);
+
+  VOLUME_READ_LAMBDA(integrator_state_read_volume_stack(state, i))
+  volume_stack_set_surface_priority(kg, sd, volume_read_lambda_pass);
 }
 
 ccl_device_forceinline float3 integrate_surface_ray_offset(KernelGlobals kg,
@@ -397,7 +400,8 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
     KernelGlobals kg,
     IntegratorState state,
     ccl_private ShaderData *sd,
-    ccl_private const RNGState *rng_state)
+    ccl_private const RNGState *rng_state,
+    ccl_private float *bsdf_eta)
 {
   /* Sample BSDF or BSSRDF. */
   if (!(sd->flag & (SD_BSDF | SD_BSSRDF))) {
@@ -421,7 +425,7 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
   int label;
 
   float2 bsdf_sampled_roughness = make_float2(1.0f, 1.0f);
-  float bsdf_eta = 1.0f;
+  *bsdf_eta = 1.0f;
   float mis_pdf = 1.0f;
 
 #if defined(__PATH_GUIDING__) && PATH_GUIDING_LEVEL >= 4
@@ -437,7 +441,7 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
                                                       &mis_pdf,
                                                       &unguided_bsdf_pdf,
                                                       &bsdf_sampled_roughness,
-                                                      &bsdf_eta,
+                                                      bsdf_eta,
                                                       rng_state);
 
     if (bsdf_pdf == 0.0f || bsdf_eval_is_zero(&bsdf_eval)) {
@@ -458,7 +462,7 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
                                                &bsdf_wo,
                                                &bsdf_pdf,
                                                &bsdf_sampled_roughness,
-                                               &bsdf_eta);
+                                               bsdf_eta);
 
     if (bsdf_pdf == 0.0f || bsdf_eval_is_zero(&bsdf_eval)) {
       return LABEL_NONE;
@@ -520,7 +524,7 @@ ccl_device_forceinline int integrate_surface_bsdf_bssrdf_bounce(
                                 sd->N,
                                 normalize(bsdf_wo),
                                 bsdf_sampled_roughness,
-                                bsdf_eta);
+                                *bsdf_eta);
 
   return label;
 }
@@ -658,6 +662,7 @@ ccl_device int integrate_surface(KernelGlobals kg,
   PROFILING_SHADER(sd.object, sd.shader);
 
   int continue_path_label = 0;
+  float ior = 1.0f;
 
   const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
 
@@ -749,7 +754,7 @@ ccl_device int integrate_surface(KernelGlobals kg,
 #endif
 
     PROFILING_EVENT(PROFILING_SHADE_SURFACE_INDIRECT_LIGHT);
-    continue_path_label = integrate_surface_bsdf_bssrdf_bounce(kg, state, &sd, &rng_state);
+    continue_path_label = integrate_surface_bsdf_bssrdf_bounce(kg, state, &sd, &rng_state, &ior);
 #ifdef __VOLUME__
   }
   else {
@@ -763,7 +768,7 @@ ccl_device int integrate_surface(KernelGlobals kg,
 
   if (continue_path_label & LABEL_TRANSMIT) {
     /* Enter/Exit volume. */
-    volume_stack_enter_exit(kg, state, &sd);
+    volume_stack_enter_exit(kg, state, &sd, ior);
   }
 #endif
 

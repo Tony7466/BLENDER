@@ -56,6 +56,7 @@ NODE_DEFINE(Shader)
   SOCKET_BOOLEAN(use_transparent_shadow, "Use Transparent Shadow", true);
   SOCKET_BOOLEAN(use_bump_map_correction, "Bump Map Correction", true);
   SOCKET_BOOLEAN(heterogeneous_volume, "Heterogeneous Volume", true);
+  SOCKET_INT(volume_stack_priority, "Volume Stack Priority", 0);
 
   static NodeEnum volume_sampling_method_enum;
   volume_sampling_method_enum.insert("distance", VOLUME_SAMPLING_DISTANCE);
@@ -605,6 +606,7 @@ void ShaderManager::device_update_common(Device * /*device*/,
     /* regular shader */
     kshader->flags = flag;
     kshader->pass_id = shader->get_pass_id();
+    kshader->volume_stack_priority = shader->get_volume_stack_priority();
     kshader->constant_emission[0] = shader->emission_estimate.x;
     kshader->constant_emission[1] = shader->emission_estimate.y;
     kshader->constant_emission[2] = shader->emission_estimate.z;
@@ -783,6 +785,10 @@ uint ShaderManager::get_kernel_features(Scene *scene)
     /* On top of volume nodes, also check if we need volume sampling because
      * e.g. an Emission node would slip through the KERNEL_FEATURE_NODE_VOLUME check */
     if (shader->has_volume_connected) {
+      kernel_features |= KERNEL_FEATURE_VOLUME;
+    }
+    /* Volume stack priority requires the volume stack even if no volumetric shaders are used. */
+    if (shader->get_volume_stack_priority() != 0) {
       kernel_features |= KERNEL_FEATURE_VOLUME;
     }
   }

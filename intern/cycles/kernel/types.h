@@ -831,9 +831,12 @@ enum ShaderDataFlag {
   SD_BSDF_NEEDS_LCG = (1 << 10),
   /* BSDF has a transmissive component. */
   SD_BSDF_HAS_TRANSMISSION = (1 << 11),
+  /* Shader is masked by volume with higher priority. */
+  SD_BSDF_PRIORIITY_MASKED = (1 << 12),
 
   SD_CLOSURE_FLAGS = (SD_EMISSION | SD_BSDF | SD_BSDF_HAS_EVAL | SD_BSSRDF | SD_HOLDOUT |
-                      SD_EXTINCTION | SD_SCATTER | SD_BSDF_NEEDS_LCG | SD_BSDF_HAS_TRANSMISSION),
+                      SD_EXTINCTION | SD_SCATTER | SD_BSDF_NEEDS_LCG | SD_BSDF_HAS_TRANSMISSION |
+                      SD_BSDF_PRIORIITY_MASKED),
 
   /* Shader flags. */
 
@@ -991,6 +994,9 @@ typedef struct ccl_align(16) ShaderData
 #  endif
 #endif
 
+  /* IOR of medium on the opposite side of the surface. */
+  float opposite_ior;
+
   /* LCG state for closures that require additional random numbers. */
   uint lcg_state;
 
@@ -1048,6 +1054,8 @@ typedef struct ShaderVolumePhases {
 typedef struct VolumeStack {
   int object;
   int shader;
+  /* TODO: ior is wasted space in the Shadow Volume Stack. */
+  float ior;
 } VolumeStack;
 #endif
 
@@ -1537,7 +1545,8 @@ typedef struct KernelShader {
   float cryptomatte_id;
   int flags;
   int pass_id;
-  int pad2, pad3;
+  int volume_stack_priority;
+  int pad2;
 } KernelShader;
 static_assert_align(KernelShader, 16);
 

@@ -80,6 +80,7 @@ ccl_device
 
   switch (type) {
     case CLOSURE_BSDF_PRINCIPLED_ID: {
+
       uint specular_ior_level_offset, roughness_offset, specular_tint_offset, anisotropic_offset,
           sheen_weight_offset, sheen_tint_offset, sheen_roughness_offset, coat_weight_offset,
           coat_roughness_offset, coat_ior_offset, eta_offset, transmission_weight_offset,
@@ -163,6 +164,11 @@ ccl_device
       float3 emission = stack_load_float3(stack, emission_offset) * emission_strength;
 
       Spectrum weight = closure_weight * mix_weight;
+
+      if (sd->flag & SD_BSDF_PRIORIITY_MASKED) {
+        bsdf_transparent_setup(sd, closure_weight * mix_weight, path_flag, ior);
+        break;
+      }
 
       float alpha_x = sqr(roughness), alpha_y = sqr(roughness);
       if (anisotropic > 0.0f) {
@@ -314,11 +320,12 @@ ccl_device
             bsdf->T = zero_float3();
 
             bsdf->alpha_x = bsdf->alpha_y = sqr(roughness);
-            bsdf->ior = (sd->flag & SD_BACKFACING) ? 1.0f / ior : ior;
+            float eta = ior / sd->opposite_ior;
+            bsdf->ior = (sd->flag & SD_BACKFACING) ? 1.0f / eta : eta;
 
-            fresnel->f0 = make_float3(F0_from_ior(ior)) * specular_tint;
+            fresnel->f0 = make_float3(F0_from_ior(eta)) * specular_tint;
             fresnel->f90 = one_spectrum();
-            fresnel->exponent = -ior;
+            fresnel->exponent = -eta;
             fresnel->reflection_tint = reflective_caustics ? one_spectrum() : zero_spectrum();
             fresnel->transmission_tint = refractive_caustics ?
                                              sqrt(rgb_to_spectrum(clamped_base_color)) :
@@ -556,6 +563,13 @@ ccl_device
     case CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID:
     case CLOSURE_BSDF_MICROFACET_BECKMANN_GLASS_ID:
     case CLOSURE_BSDF_MICROFACET_MULTI_GGX_GLASS_ID: {
+      float ior = fmaxf(param2, 1e-5f);
+
+      if (sd->flag & SD_BSDF_PRIORIITY_MASKED) {
+        bsdf_transparent_setup(sd, closure_weight * mix_weight, path_flag, ior);
+        break;
+      }
+
 #ifdef __CAUSTICS_TRICKS__
       const bool reflective_caustics = (kernel_data.integrator.caustics_reflective ||
                                         (path_flag & PATH_RAY_DIFFUSE) == 0);
@@ -578,7 +592,7 @@ ccl_device
         bsdf->N = maybe_ensure_valid_specular_reflection(sd, N);
         bsdf->T = zero_float3();
 
-        float ior = fmaxf(param2, 1e-5f);
+        ior = ior / sd->opposite_ior;
         bsdf->ior = (sd->flag & SD_BACKFACING) ? 1.0f / ior : ior;
         bsdf->alpha_x = bsdf->alpha_y = sqr(param1);
 

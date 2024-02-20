@@ -1040,6 +1040,12 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
         min=0.001, max=1000.0, soft_min=0.1, soft_max=10.0, precision=4
     )
 
+    volume_stack_priority: IntProperty(
+        name="Volume Stack Priority",
+        default=0,
+        min=0,
+    )
+
     @classmethod
     def register(cls):
         bpy.types.Material.cycles = PointerProperty(

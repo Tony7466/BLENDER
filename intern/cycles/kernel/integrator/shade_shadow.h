@@ -40,6 +40,9 @@ ccl_device_inline Spectrum integrate_transparent_surface_shadow(KernelGlobals kg
 
   shader_setup_from_ray(kg, shadow_sd, &ray, &isect);
 
+  VOLUME_READ_LAMBDA(integrator_state_read_shadow_volume_stack(state, i))
+  volume_stack_set_surface_priority(kg, shadow_sd, volume_read_lambda_pass);
+
   /* Evaluate shader. */
   if (!(shadow_sd->flag & SD_HAS_ONLY_VOLUME)) {
     surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_SHADOW>(
