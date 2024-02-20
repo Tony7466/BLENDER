@@ -91,7 +91,7 @@ static GlyphCacheBLF *blf_glyph_cache_find(FontBLF *font)
 
 static GlyphCacheBLF *blf_glyph_cache_new(FontBLF *font)
 {
-  std::unique_ptr<GlyphCacheBLF> gc = std::make_unique<GlyphCacheBLF>(GlyphCacheBLF{});
+  std::unique_ptr<GlyphCacheBLF> gc = std::make_unique<GlyphCacheBLF>();
 
   gc->size = font->size;
   gc->bold = ((font->flags & BLF_BOLD) != 0);
@@ -120,7 +120,6 @@ static GlyphCacheBLF *blf_glyph_cache_new(FontBLF *font)
   }
 
   font->cache.append(std::move(gc));
-
   return font->cache.last().get();
 }
 
@@ -144,9 +143,8 @@ void blf_glyph_cache_release(FontBLF *font)
 
 GlyphCacheBLF::~GlyphCacheBLF()
 {
-  for (auto item : this->glyphs.items()) {
-    MEM_delete(item.value);
-  }
+  this->glyphs.clear_and_shrink();
+
   if (this->texture) {
     GPU_texture_free(this->texture);
   }
@@ -166,11 +164,22 @@ void blf_glyph_cache_clear(FontBLF *font)
  *
  * \return nullptr if not found.
  */
+
+static int blf_cache_key(uint charcode, uint8_t subpixel)
+{
+  return (charcode << 6 | subpixel);
+}
+
 static GlyphBLF *blf_glyph_cache_find_glyph(const GlyphCacheBLF *gc,
                                             uint charcode,
                                             uint8_t subpixel)
 {
-  return gc->glyphs.lookup_default(charcode << 6 | subpixel, nullptr);
+  const std::unique_ptr<GlyphBLF> *ptr = gc->glyphs.lookup_ptr_as(
+      blf_cache_key(charcode, subpixel));
+  if (ptr == nullptr) {
+    return nullptr;
+  }
+  return ptr->get();
 }
 
 #ifdef BLF_GAMMA_CORRECT_GLYPHS
@@ -220,7 +229,7 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
                                            FT_UInt glyph_index,
                                            uint8_t subpixel)
 {
-  GlyphBLF *g = MEM_new<GlyphBLF>(__func__);
+  std::unique_ptr<GlyphBLF> g = std::make_unique<GlyphBLF>();
 
   g->c = charcode;
   g->idx = glyph_index;
@@ -334,9 +343,9 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
     }
   }
 
-  gc->glyphs.add(g->c << 6 | subpixel, g);
-
-  return g;
+  int key = blf_cache_key(g->c, subpixel);
+  gc->glyphs.add(key, std::move(g));
+  return gc->glyphs.lookup(key).get();
 }
 
 /** \} */

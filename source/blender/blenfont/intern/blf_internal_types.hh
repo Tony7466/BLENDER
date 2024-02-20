@@ -133,7 +133,7 @@ struct GlyphCacheBLF {
   int fixed_width;
 
   /** The glyphs. */
-  blender::Map<int, GlyphBLF *> glyphs;
+  blender::Map<int, std::unique_ptr<GlyphBLF>> glyphs;
 
   /** Texture array, to draw the glyphs. */
   GPUTexture *texture;
