@@ -253,7 +253,7 @@ void debug_randomize_instance_order(bke::Instances *instances)
   }
 
   instances->reference_handles_for_write().copy_from(new_reference_handles);
-  instances->transforms().copy_from(new_transforms);
+  instances->transforms_for_write().copy_from(new_transforms);
 }
 
 bool use_debug_randomization()

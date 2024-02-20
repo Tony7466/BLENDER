@@ -204,6 +204,13 @@ void GeometryDataSource::foreach_default_column_ids(
         if (!bke::allow_procedural_attribute_access(attribute_id.name())) {
           return true;
         }
+        if (meta_data.domain == bke::AttrDomain::Instance &&
+            attribute_id.name() == "instance_transform")
+        {
+          /* Don't display the instance transform attribute, since matrix visualization in the
+           * spreadsheet isn't helpful. */
+          return true;
+        }
         SpreadsheetColumnID column_id;
         column_id.name = (char *)attribute_id.name().data();
         const bool is_front = attribute_id.name() == ".viewer";
