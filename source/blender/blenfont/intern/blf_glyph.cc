@@ -75,10 +75,10 @@ static float from_16dot16(FT_Fixed value)
 /** \name Glyph Cache
  * \{ */
 
-static GlyphCacheBLF *blf_glyph_cache_find(FontBLF *font, const float size)
+static GlyphCacheBLF *blf_glyph_cache_find(FontBLF *font)
 {
   for (std::unique_ptr<GlyphCacheBLF> &gc : font->cache) {
-    if (gc->size == size && (gc->bold == ((font->flags & BLF_BOLD) != 0)) &&
+    if (gc->size == font->size && (gc->bold == ((font->flags & BLF_BOLD) != 0)) &&
         (gc->italic == ((font->flags & BLF_ITALIC) != 0)) &&
         (gc->char_weight == font->char_weight) && (gc->char_slant == font->char_slant) &&
         (gc->char_width == font->char_width) && (gc->char_spacing == font->char_spacing))
@@ -130,7 +130,7 @@ GlyphCacheBLF *blf_glyph_cache_acquire(FontBLF *font)
 {
   font->glyph_cache_mutex.lock();
 
-  GlyphCacheBLF *gc = blf_glyph_cache_find(font, font->size);
+  GlyphCacheBLF *gc = blf_glyph_cache_find(font);
 
   if (!gc) {
     gc = blf_glyph_cache_new(font);
@@ -1277,10 +1277,7 @@ static FT_GlyphSlot blf_glyph_render(FontBLF *settings_font,
   return nullptr;
 }
 
-static GlyphBLF *blf_glyph_ensure_ex(FontBLF *font,
-                                     GlyphCacheBLF *gc,
-                                     const uint charcode,
-                                     uint8_t subpixel)
+GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode, uint8_t subpixel)
 {
   GlyphBLF *g = blf_glyph_cache_find_glyph(gc, charcode, subpixel);
   if (g) {
@@ -1306,11 +1303,6 @@ static GlyphBLF *blf_glyph_ensure_ex(FontBLF *font,
   return g;
 }
 
-GlyphBLF *blf_glyph_ensure(FontBLF *font, GlyphCacheBLF *gc, const uint charcode)
-{
-  return blf_glyph_ensure_ex(font, gc, charcode, 0);
-}
-
 #ifdef BLF_SUBPIXEL_AA
 GlyphBLF *blf_glyph_ensure_subpixel(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *g, int32_t pen_x)
 {
@@ -1328,7 +1320,7 @@ GlyphBLF *blf_glyph_ensure_subpixel(FontBLF *font, GlyphCacheBLF *gc, GlyphBLF *
   const uint8_t subpixel = uint8_t(pen_x & ((font->size > 16.0f) ? 32L : 48L));
 
   if (g->subpixel != subpixel) {
-    g = blf_glyph_ensure_ex(font, gc, g->c, subpixel);
+    g = blf_glyph_ensure(font, gc, g->c, subpixel);
   }
   return g;
 }
