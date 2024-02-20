@@ -836,6 +836,10 @@ static void legacy_object_modifier_lattice(Object &object, GpencilModifierData &
   auto &md_lattice = reinterpret_cast<GreasePencilLatticeModifierData &>(md);
   auto &legacy_md_lattice = reinterpret_cast<LatticeGpencilModifierData &>(legacy_md);
 
+  md_lattice.object = legacy_md_lattice.object;
+  legacy_md_lattice.object = nullptr;
+  md_lattice.strength = legacy_md_lattice.strength;
+
   legacy_object_modifier_influence(md_lattice.influence,
                                    legacy_md_lattice.layername,
                                    legacy_md_lattice.layer_pass,
