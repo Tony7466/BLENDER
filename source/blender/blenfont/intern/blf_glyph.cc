@@ -166,11 +166,6 @@ void blf_glyph_cache_clear(FontBLF *font)
  * \return nullptr if not found.
  */
 
-static int blf_cache_key(uint charcode, uint8_t subpixel)
-{
-  return (charcode << 6 | subpixel);
-}
-
 static GlyphBLF *blf_glyph_cache_find_glyph(const GlyphCacheBLF *gc,
                                             uint charcode,
                                             uint8_t subpixel)
