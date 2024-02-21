@@ -709,6 +709,7 @@ GBufferWriter gbuffer_pack(GBufferData data_in)
     ClosureUndetermined cl = data_in.closure[i];
 
     if (cl.weight <= 1e-5) {
+      gbuf.layer_gbuf++;
       continue;
     }
 
