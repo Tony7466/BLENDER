@@ -169,15 +169,13 @@ Main *BKE_asset_weak_reference_main(Main *global_main, const ID *id)
   }
 
   for (const AssetWeakReferenceMain &weak_ref_main : get_weak_reference_mains()) {
-    /* TODO: just loop over listbase of same type, or make this whole thing
-     * more efficient. */
-    ID *other_id;
-    FOREACH_MAIN_ID_BEGIN (weak_ref_main.main, other_id) {
+    /* TODO: Look into make this whole thing more efficient. */
+    ListBase *lb = which_libbase(weak_ref_main.main, GS(id->name));
+    LISTBASE_FOREACH (ID *, other_id, lb) {
       if (id == other_id) {
         return weak_ref_main.main;
       }
     }
-    FOREACH_MAIN_ID_END;
   }
 
   BLI_assert_unreachable();
