@@ -410,6 +410,11 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 
 vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng)
 {
+  if (uniform_buf.shadow.pcf_radius <= 0.001) {
+    /* Early return. */
+    return vec3(0.0);
+  }
+
   ShadowSampleParams params;
   if (is_directional) {
     params = shadow_directional_sample_params_get(shadow_tilemaps_tx, light, P);
