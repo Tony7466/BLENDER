@@ -145,7 +145,6 @@ void blf_glyph_cache_release(FontBLF *font)
 GlyphCacheBLF::~GlyphCacheBLF()
 {
   this->glyphs.clear_and_shrink();
-
   if (this->texture) {
     GPU_texture_free(this->texture);
   }
@@ -165,7 +164,6 @@ void blf_glyph_cache_clear(FontBLF *font)
  *
  * \return nullptr if not found.
  */
-
 static GlyphBLF *blf_glyph_cache_find_glyph(const GlyphCacheBLF *gc,
                                             uint charcode,
                                             uint8_t subpixel)
