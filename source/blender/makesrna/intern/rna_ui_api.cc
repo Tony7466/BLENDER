@@ -439,7 +439,8 @@ static void rna_uiItemL(uiLayout *layout,
                         const char *text_ctxt,
                         bool translate,
                         int icon,
-                        int icon_value)
+                        int icon_value,
+                        bool wrap)
 {
   /* Get translated name (label). */
   name = rna_translate_ui_text(name, text_ctxt, nullptr, nullptr, translate);
@@ -448,7 +449,7 @@ static void rna_uiItemL(uiLayout *layout,
     icon = icon_value;
   }
 
-  uiItemL(layout, name, icon);
+  uiItemL(layout, name, icon, wrap);
 }
 
 static void rna_uiItemM(uiLayout *layout,
@@ -1476,6 +1477,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   api_ui_item_common(func);
   parm = RNA_def_property(func, "icon_value", PROP_INT, PROP_UNSIGNED);
   RNA_def_property_ui_text(parm, "Icon Value", "Override automatic icon of the item");
+  RNA_def_boolean(func, "wrap", false, "Word Wrap", "Wrap to multiple lines if neccessary");
 
   func = RNA_def_function(srna, "menu", "rna_uiItemM");
   parm = RNA_def_string(func, "menu", nullptr, 0, "", "Identifier of the menu");

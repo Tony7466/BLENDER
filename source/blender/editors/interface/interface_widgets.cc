@@ -1861,6 +1861,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
   const char *drawstr_right = nullptr;
   bool use_right_only = false;
   const char *indeterminate_str = UI_VALUE_INDETERMINATE_CHAR;
+  const bool wrap = but->drawflag & UI_BUT_TEXT_WRAP;
 
 #ifdef WITH_INPUT_IME
   const wmIMEData *ime_data;
@@ -2149,8 +2150,12 @@ static void widget_draw_text(const uiFontStyle *fstyle,
                                                   (drawstr_left_len - but->ofs);
 
     if (drawlen > 0) {
+      if (wrap) {
+        BLF_wordwrap(fstyle->uifont_id, BLI_rcti_size_x(rect));
+      }
       uiFontStyleDraw_Params params{};
       params.align = align;
+      params.word_wrap = wrap;
       UI_fontstyle_draw_ex(fstyle,
                            rect,
                            drawstr + but->ofs,
@@ -2453,8 +2458,8 @@ static void widget_draw_text_icon(const uiFontStyle *fstyle,
   if (but->editstr && but->pos >= 0) {
     ui_text_clip_cursor(fstyle, but, rect);
   }
-  else if (but->drawstr[0] == '\0') {
-    /* bypass text clipping on icon buttons */
+  else if ((but->drawstr[0] == '\0') || (but->drawflag & UI_BUT_TEXT_WRAP)) {
+    /* bypass text clipping on icon and multi-line buttons */
     but->ofs = 0;
     but->strwidth = 0;
   }

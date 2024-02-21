@@ -18,6 +18,8 @@
 #include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 
+#include "BLF_api.hh"
+
 #include "BLI_array.hh"
 #include "BLI_dynstr.h"
 #include "BLI_listbase.h"
@@ -3261,7 +3263,7 @@ void uiItemPopoverPanelFromGroup(uiLayout *layout,
 }
 
 /* label item */
-static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon)
+static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon, bool wrap = false)
 {
   uiBlock *block = layout->root->block;
 
@@ -3275,33 +3277,34 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon)
     icon = ICON_BLANK1;
   }
 
-  const int w = ui_text_icon_width_ex(
-      layout, name, icon, ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
+  int w;
+  int h;
+
+  if (wrap && layout->w) {
+    const uiStyle *style = UI_style_get();
+    const uiFontStyle *fstyle = &style->widget;
+    blender::StringRef test = name;
+    blender::Vector<blender::StringRef> wrapped = BLF_string_wrap(
+        fstyle->uifont_id, test, layout->w);
+    w = 0;
+    h = std::max(int(UI_UNIT_Y), int(BLF_height_max(fstyle->uifont_id) * wrapped.size()));
+  }
+  else {
+    w = ui_text_icon_width_ex(layout, name, icon, ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
+    h = UI_UNIT_Y;
+  }
+
   uiBut *but;
   if (icon && name[0]) {
-    but = uiDefIconTextBut(block,
-                           UI_BTYPE_LABEL,
-                           0,
-                           icon,
-                           name,
-                           0,
-                           0,
-                           w,
-                           UI_UNIT_Y,
-                           nullptr,
-                           0.0,
-                           0.0,
-                           0,
-                           0,
-                           nullptr);
+    but = uiDefIconTextBut(
+        block, UI_BTYPE_LABEL, 0, icon, name, 0, 0, w, h, nullptr, 0.0, 0.0, 0, 0, nullptr);
   }
   else if (icon) {
     but = uiDefIconBut(
-        block, UI_BTYPE_LABEL, 0, icon, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, nullptr);
+        block, UI_BTYPE_LABEL, 0, icon, 0, 0, w, h, nullptr, 0.0, 0.0, 0, 0, nullptr);
   }
   else {
-    but = uiDefBut(
-        block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, nullptr);
+    but = uiDefBut(block, UI_BTYPE_LABEL, 0, name, 0, 0, w, h, nullptr, 0.0, 0.0, 0, 0, nullptr);
   }
 
   /* to compensate for string size padding in ui_text_icon_width,
@@ -3310,6 +3313,10 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon)
   if (uiLayoutGetAlignment(layout) == UI_LAYOUT_ALIGN_RIGHT) {
     but->drawflag &= ~UI_BUT_TEXT_LEFT; /* default, needs to be unset */
     but->drawflag |= UI_BUT_TEXT_RIGHT;
+  }
+
+  if (wrap) {
+    but->drawflag |= UI_BUT_TEXT_WRAP;
   }
 
   /* Mark as a label inside a list-box. */
@@ -3341,9 +3348,9 @@ uiBut *uiItemL_ex(
   return but;
 }
 
-void uiItemL(uiLayout *layout, const char *name, int icon)
+void uiItemL(uiLayout *layout, const char *name, int icon, bool wrap)
 {
-  uiItemL_(layout, name, icon);
+  uiItemL_(layout, name, icon, wrap);
 }
 
 uiPropertySplitWrapper uiItemPropertySplitWrapperCreate(uiLayout *parent_layout)

@@ -314,15 +314,17 @@ enum {
   UI_BUT_TEXT_LEFT = 1 << 1,
   UI_BUT_ICON_LEFT = 1 << 2,
   UI_BUT_TEXT_RIGHT = 1 << 3,
+  UI_BUT_TEXT_WRAP = 1 << 4,
+
   /** Prevent the button to show any tool-tip. */
-  UI_BUT_NO_TOOLTIP = 1 << 4,
+  UI_BUT_NO_TOOLTIP = 1 << 5,
   /**
    * Show a quick tool-tip label, that is, a short tool-tip that appears faster than the full one
    * and only shows the label. After a short delay the full tool-tip is shown if any.
    */
-  UI_BUT_HAS_TOOLTIP_LABEL = 1 << 5,
+  UI_BUT_HAS_TOOLTIP_LABEL = 1 << 6,
   /** Do not add the usual horizontal padding for text drawing. */
-  UI_BUT_NO_TEXT_PADDING = 1 << 6,
+  UI_BUT_NO_TEXT_PADDING = 1 << 7,
 
   /* Button align flag, for drawing groups together.
    * Used in 'uiBlock.flag', take care! */
@@ -2925,7 +2927,7 @@ struct uiPropertySplitWrapper {
  */
 uiPropertySplitWrapper uiItemPropertySplitWrapperCreate(uiLayout *parent_layout);
 
-void uiItemL(uiLayout *layout, const char *name, int icon); /* label */
+void uiItemL(uiLayout *layout, const char *name, int icon, bool wrap = false); /* label */
 uiBut *uiItemL_ex(uiLayout *layout, const char *name, int icon, bool highlight, bool redalert);
 /**
  * Helper to add a label and creates a property split layout if needed.
