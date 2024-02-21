@@ -1167,12 +1167,12 @@ static void draw_seq_locked(TimelineDrawContext *timeline_ctx,
   immUniform1i("size1", 8);
   immUniform1i("size2", 4);
 
-  for (const StripDrawContext &strip_ctx : strips) {
-    if (!SEQ_transform_is_locked(timeline_ctx->channels, strip_ctx.seq)) {
+  for (const StripDrawContext &strip : strips) {
+    if (!SEQ_transform_is_locked(timeline_ctx->channels, strip.seq)) {
       continue;
     }
 
-    immRectf(pos, strip_ctx.left_handle, strip_ctx.bottom, strip_ctx.right_handle, strip_ctx.top);
+    immRectf(pos, strip.left_handle, strip.bottom, strip.right_handle, strip.strip_content_top);
   }
 
   immUnbindProgram();
