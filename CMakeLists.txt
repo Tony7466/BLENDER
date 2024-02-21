@@ -259,6 +259,28 @@ else()
   set(WITH_UNITY_BUILD OFF)
 endif()
 
+if(COMMAND target_precompile_headers)
+  # Disabling is needed for `./tools/utils_maintenance/code_clean.py` to function.
+  option(WITH_COMPILER_PRECOMPILED_HEADERS "\
+Use pre-compiled headers to speed up compilation."
+    ON
+  )
+  mark_as_advanced(WITH_COMPILER_PRECOMPILED_HEADERS)
+
+  if(WITH_CLANG_TIDY AND CMAKE_COMPILER_IS_GNUCC)
+    if(WITH_COMPILER_PRECOMPILED_HEADERS)
+      message(STATUS
+        "Clang-Tidy and GCC precompiled headers are incompatible, disabling precompiled headers"
+      )
+      set(WITH_COMPILER_PRECOMPILED_HEADERS OFF)
+    endif()
+  endif()
+
+  if(NOT WITH_COMPILER_PRECOMPILED_HEADERS)
+    set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
+  endif()
+endif()
+
 option(WITH_IK_ITASC "\
 Enable ITASC IK solver (only disable for development & for incompatible C++ compilers)"
   ON
@@ -412,7 +434,6 @@ option(WITH_IMAGE_CINEON "Enable CINEON and DPX Image Support" ON)
 option(WITH_IMAGE_WEBP "Enable WebP Image Support" ON)
 
 # Audio/Video format support
-option(WITH_CODEC_AVI "Enable Blenders own AVI file support (raw/jpeg)" ON)
 option(WITH_CODEC_FFMPEG "Enable FFMPeg Support (http://ffmpeg.org)" ON)
 option(WITH_CODEC_SNDFILE "Enable libsndfile Support (http://www.mega-nerd.com/libsndfile)" ON)
 
@@ -2390,7 +2411,6 @@ if(FIRST_RUN)
   info_cfg_option(WITH_IMAGE_OPENJPEG)
 
   info_cfg_text("Audio:")
-  info_cfg_option(WITH_CODEC_AVI)
   info_cfg_option(WITH_CODEC_FFMPEG)
   info_cfg_option(WITH_CODEC_SNDFILE)
   info_cfg_option(WITH_COREAUDIO)
