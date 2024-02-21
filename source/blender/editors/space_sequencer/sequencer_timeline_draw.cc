@@ -568,7 +568,7 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
     return;
   }
 
-  Scene *scene = timeline_ctx->scene;
+  const Scene *scene = timeline_ctx->scene;
 
   uchar col[4];
 
@@ -665,7 +665,7 @@ static void draw_seq_handle(TimelineDrawContext *timeline_ctx,
                             const StripDrawContext *strip_ctx,
                             const short direction)
 {
-  Sequence *seq = strip_ctx->seq;
+  const Sequence *seq = strip_ctx->seq;
   if (SEQ_transform_is_locked(timeline_ctx->channels, seq)) {
     return;
   }
@@ -815,7 +815,7 @@ static void draw_seq_outline(TimelineDrawContext *timeline_ctx, const StripDrawC
   }
 }
 
-static const char *draw_seq_text_get_name(Sequence *seq)
+static const char *draw_seq_text_get_name(const Sequence *seq)
 {
   const char *name = seq->name + 2;
   if (name[0] == '\0') {
@@ -824,7 +824,7 @@ static const char *draw_seq_text_get_name(Sequence *seq)
   return name;
 }
 
-static void draw_seq_text_get_source(Sequence *seq, char *r_source, size_t source_maxncpy)
+static void draw_seq_text_get_source(const Sequence *seq, char *r_source, size_t source_maxncpy)
 {
   *r_source = '\0';
 
@@ -886,7 +886,7 @@ static size_t draw_seq_text_get_overlay_string(TimelineDrawContext *timeline_ctx
                                                char *r_overlay_string,
                                                size_t overlay_string_len)
 {
-  Sequence *seq = strip_ctx->seq;
+  const Sequence *seq = strip_ctx->seq;
 
   const char *text_sep = " | ";
   const char *text_array[5];
@@ -976,7 +976,7 @@ static void draw_seq_text_overlay(TimelineDrawContext *timeline_ctx,
 static void draw_strip_offsets(TimelineDrawContext *timeline_ctx,
                                const StripDrawContext *strip_ctx)
 {
-  Sequence *seq = strip_ctx->seq;
+  const Sequence *seq = strip_ctx->seq;
   if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0) {
     return;
   }
@@ -989,8 +989,8 @@ static void draw_strip_offsets(TimelineDrawContext *timeline_ctx,
     return;
   }
 
-  Scene *scene = timeline_ctx->scene;
-  ListBase *channels = timeline_ctx->channels;
+  const Scene *scene = timeline_ctx->scene;
+  const ListBase *channels = timeline_ctx->channels;
 
   uchar col[4], blend_col[4];
   color3ubv_from_seq(scene, seq, strip_ctx->show_strip_color_tag, col);
@@ -1046,7 +1046,7 @@ static uchar mute_overlap_alpha_factor_get(const ListBase *channels, const Seque
 static void draw_strip_color_band(TimelineDrawContext *timeline_ctx,
                                   const StripDrawContext *strip_ctx)
 {
-  Sequence *seq = strip_ctx->seq;
+  const Sequence *seq = strip_ctx->seq;
   if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) == 0 || (seq->type != SEQ_TYPE_COLOR)) {
     return;
   }
@@ -1074,8 +1074,8 @@ static void draw_strip_color_band(TimelineDrawContext *timeline_ctx,
 static void draw_strip_background(TimelineDrawContext *timeline_ctx,
                                   const StripDrawContext *strip_ctx)
 {
-  Scene *scene = timeline_ctx->scene;
-  Sequence *seq = strip_ctx->seq;
+  const Scene *scene = timeline_ctx->scene;
+  const Sequence *seq = strip_ctx->seq;
 
   uchar col[4];
   color3ubv_from_seq(scene, seq, strip_ctx->show_strip_color_tag, col);
@@ -1568,7 +1568,7 @@ static void draw_timeline_sfra_efra(TimelineDrawContext *ctx)
 }
 
 struct CacheDrawData {
-  View2D *v2d;
+  const View2D *v2d;
   float stripe_ofs_y;
   float stripe_ht;
   int cache_flag;
@@ -1649,8 +1649,8 @@ static void draw_cache_stripe(const Scene *scene,
 static void draw_cache_background(const bContext *C, CacheDrawData *draw_data)
 {
   using blender::uchar4;
-  Scene *scene = CTX_data_scene(C);
-  View2D *v2d = UI_view2d_fromcontext(C);
+  const Scene *scene = CTX_data_scene(C);
+  const View2D *v2d = UI_view2d_fromcontext(C);
 
   const uchar4 bg_final{255, 102, 51, 25};
   const uchar4 bg_raw{255, 25, 5, 25};
@@ -1692,7 +1692,7 @@ static void draw_cache_background(const bContext *C, CacheDrawData *draw_data)
 static void draw_cache_view(const bContext *C)
 {
   Scene *scene = CTX_data_scene(C);
-  View2D *v2d = UI_view2d_fromcontext(C);
+  const View2D *v2d = UI_view2d_fromcontext(C);
 
   if ((scene->ed->cache_flag & SEQ_CACHE_VIEW_ENABLE) == 0) {
     return;
