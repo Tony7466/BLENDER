@@ -786,8 +786,7 @@ static void free_proxy_output_ffmpeg(proxy_output_ctx *ctx, int rollback)
   MEM_freeN(ctx);
 }
 
-struct FFmpegIndexBuilderContext {
-  int anim_type;
+struct FFmpegIndexBuilderContext : public IndexBuildContext {
 
   AVFormatContext *iFormatCtx;
   AVCodecContext *iCodecCtx;
