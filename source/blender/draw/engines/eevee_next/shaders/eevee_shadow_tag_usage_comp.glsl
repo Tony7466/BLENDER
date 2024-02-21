@@ -42,7 +42,7 @@ void main()
   ivec2 texel = base_texel;
   for (texel.y = base_texel.y; texel.y < max_texel_round.y; texel.y += 2) {
     for (texel.x = base_texel.x; texel.x < max_texel_round.x; texel.x += 2) {
-      vec4 depths = textureGather(depth_tx, vec2(texel) / vec2(imageSize(depth_tx).xy));
+      vec4 depths = textureGather(depth_tx, vec2(texel) / vec2(textureSize(depth_tx, 0).xy));
 
       if (all(lessThan(depths, vec4(1.0)))) {
         shadow_tag_usage_depth(depths.r, texel + ivec2(0, 1));
