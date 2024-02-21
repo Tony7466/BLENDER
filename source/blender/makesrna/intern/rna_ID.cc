@@ -214,10 +214,12 @@ const IDFilterEnumPropertyItem rna_enum_id_type_filter_items[] = {
 #  include "BLI_listbase.h"
 #  include "BLI_math_base.h"
 
-#  include "BLO_readfile.h"
+#  include "BLT_translation.hh"
+
+#  include "BLO_readfile.hh"
 
 #  include "BKE_anim_data.h"
-#  include "BKE_global.h" /* XXX, remove me */
+#  include "BKE_global.hh" /* XXX, remove me */
 #  include "BKE_idprop.h"
 #  include "BKE_idtype.hh"
 #  include "BKE_lib_override.hh"
@@ -300,18 +302,34 @@ void rna_ID_name_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static int rna_ID_name_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_ID_name_editable(PointerRNA *ptr, const char **r_info)
 {
   ID *id = (ID *)ptr->data;
+
+  /* NOTE: For the time being, allow rename of local liboverrides from the RNA API.
+   *       While this is not allowed from the UI, this should work with modern liboverride code,
+   *       and could be useful in some cases. */
+  if (ID_IS_LINKED(id)) {
+    if (r_info) {
+      *r_info = N_("Linked data-blocks cannot be renamed");
+    }
+    return 0;
+  }
 
   if (GS(id->name) == ID_VF) {
     VFont *vfont = (VFont *)id;
     if (BKE_vfont_is_builtin(vfont)) {
+      if (r_info) {
+        *r_info = N_("Built-in fonts cannot be renamed");
+      }
       return 0;
     }
   }
   /* TODO: add BKE_id_is_in_editable_main? */
   else if (!(BKE_id_is_in_global_main(id) || (id->tag & LIB_TAG_ASSET_MAIN))) {
+    if (r_info) {
+      *r_info = N_("Datablocks not in global Main data-base cannot be renamed");
+    }
     return 0;
   }
 
@@ -589,7 +607,7 @@ int rna_ID_is_runtime_editable(PointerRNA *ptr, const char **r_info)
   ID *id = (ID *)ptr->data;
   /* TODO: This should be abstracted in a BKE function or define, somewhat related to #88555. */
   if (id->tag & (LIB_TAG_NO_MAIN | LIB_TAG_TEMP_MAIN | LIB_TAG_LOCALIZED |
-                 LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT | LIB_TAG_COPIED_ON_WRITE))
+                 LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT | LIB_TAG_COPIED_ON_EVAL))
   {
     *r_info =
         "Cannot edit 'runtime' status of non-blendfile data-blocks, as they are by definition "
@@ -605,7 +623,7 @@ bool rna_ID_is_runtime_get(PointerRNA *ptr)
   ID *id = (ID *)ptr->data;
   /* TODO: This should be abstracted in a BKE function or define, somewhat related to #88555. */
   if (id->tag & (LIB_TAG_NO_MAIN | LIB_TAG_TEMP_MAIN | LIB_TAG_LOCALIZED |
-                 LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT | LIB_TAG_COPIED_ON_WRITE))
+                 LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT | LIB_TAG_COPIED_ON_EVAL))
   {
     return true;
   }
@@ -2339,7 +2357,10 @@ static void rna_def_ID(BlenderRNA *brna)
   /* functions */
   func = RNA_def_function(srna, "evaluated_get", "rna_ID_evaluated_get");
   RNA_def_function_ui_description(
-      func, "Get corresponding evaluated ID from the given dependency graph");
+      func,
+      "Get corresponding evaluated ID from the given dependency graph. Note that this does not "
+      "ensure the dependency graph is fully evaluated, it just returns the result of the last "
+      "evaluation");
   parm = RNA_def_pointer(
       func, "depsgraph", "Depsgraph", "", "Dependency graph to perform lookup in");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);

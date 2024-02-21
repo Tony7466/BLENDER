@@ -11,7 +11,7 @@
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_file_handler.hh"
 #include "BKE_idprop.h"
@@ -63,7 +63,7 @@ const EnumPropertyItem rna_enum_uilist_layout_type_items[] = {
 
 #  include "BKE_context.hh"
 #  include "BKE_main.hh"
-#  include "BKE_report.h"
+#  include "BKE_report.hh"
 #  include "BKE_screen.hh"
 
 #  include "ED_asset_library.hh"
@@ -1145,6 +1145,29 @@ static bool asset_shelf_poll(const bContext *C, const AssetShelfType *shelf_type
   return is_visible;
 }
 
+static const AssetWeakReference *asset_shelf_get_active_asset(const AssetShelfType *shelf_type)
+{
+  extern FunctionRNA rna_AssetShelf_get_active_asset_func;
+
+  PointerRNA ptr = RNA_pointer_create(nullptr, shelf_type->rna_ext.srna, nullptr); /* dummy */
+
+  FunctionRNA *func = &rna_AssetShelf_get_active_asset_func;
+  // RNA_struct_find_function(&ptr, "get_active_asset");
+
+  ParameterList list;
+  RNA_parameter_list_create(&list, &ptr, func);
+  shelf_type->rna_ext.call(nullptr, &ptr, func, &list);
+
+  void *ret;
+  RNA_parameter_get_lookup(&list, "asset_reference", &ret);
+  /* Get the value before freeing. */
+  AssetWeakReference *active_asset = *(AssetWeakReference **)ret;
+
+  RNA_parameter_list_free(&list);
+
+  return active_asset;
+}
+
 static void asset_shelf_draw_context_menu(const bContext *C,
                                           const AssetShelfType *shelf_type,
                                           const AssetRepresentationHandle *asset,
@@ -1185,7 +1208,13 @@ static bool rna_AssetShelf_unregister(Main *bmain, StructRNA *type)
   RNA_struct_free_extension(type, &shelf_type->rna_ext);
   RNA_struct_free(&BLENDER_RNA, type);
 
-  BLI_freelinkN(&space_type->asset_shelf_types, shelf_type);
+  const auto it = std::find_if(
+      space_type->asset_shelf_types.begin(),
+      space_type->asset_shelf_types.end(),
+      [&](const std::unique_ptr<AssetShelfType> &type) { return type.get() == shelf_type; });
+  BLI_assert(it != space_type->asset_shelf_types.end());
+
+  space_type->asset_shelf_types.remove(it - space_type->asset_shelf_types.begin());
 
   /* update while blender is running */
   WM_main_add_notifier(NC_WINDOW, nullptr);
@@ -1201,78 +1230,95 @@ static StructRNA *rna_AssetShelf_register(Main *bmain,
                                           StructCallbackFunc call,
                                           StructFreeFunc free)
 {
-  AssetShelfType dummy_shelf_type = {};
-  AssetShelf dummy_shelf = {};
+  std::unique_ptr<AssetShelfType> shelf_type = std::make_unique<AssetShelfType>();
 
   /* setup dummy shelf & shelf type to store static properties in */
-  dummy_shelf.type = &dummy_shelf_type;
+  AssetShelf dummy_shelf = {};
+  dummy_shelf.type = shelf_type.get();
   PointerRNA dummy_shelf_ptr = RNA_pointer_create(nullptr, &RNA_AssetShelf, &dummy_shelf);
 
-  bool have_function[3];
+  bool have_function[4];
 
   /* validate the python class */
   if (validate(&dummy_shelf_ptr, data, have_function) != 0) {
     return nullptr;
   }
 
-  if (strlen(identifier) >= sizeof(dummy_shelf_type.idname)) {
+  if (strlen(identifier) >= sizeof(shelf_type->idname)) {
     BKE_reportf(reports,
                 RPT_ERROR,
                 "Registering asset shelf class: '%s' is too long, maximum length is %d",
                 identifier,
-                (int)sizeof(dummy_shelf_type.idname));
+                (int)sizeof(shelf_type->idname));
     return nullptr;
   }
 
-  SpaceType *space_type = BKE_spacetype_from_id(dummy_shelf_type.space_type);
+  SpaceType *space_type = BKE_spacetype_from_id(shelf_type->space_type);
   if (!space_type) {
     BLI_assert_unreachable();
     return nullptr;
   }
 
   /* Check if we have registered this asset shelf type before, and remove it. */
-  LISTBASE_FOREACH (AssetShelfType *, iter_shelf_type, &space_type->asset_shelf_types) {
-    if (STREQ(iter_shelf_type->idname, dummy_shelf_type.idname)) {
+  for (std::unique_ptr<AssetShelfType> &iter_shelf_type : space_type->asset_shelf_types) {
+    if (STREQ(iter_shelf_type->idname, shelf_type->idname)) {
       if (iter_shelf_type->rna_ext.srna) {
         BKE_reportf(reports,
                     RPT_INFO,
                     "Registering asset shelf class: '%s' has been registered before, "
                     "unregistering previous",
-                    dummy_shelf_type.idname);
+                    shelf_type->idname);
 
         rna_AssetShelf_unregister(bmain, iter_shelf_type->rna_ext.srna);
       }
       break;
     }
   }
-  if (!RNA_struct_available_or_report(reports, dummy_shelf_type.idname)) {
+  if (!RNA_struct_available_or_report(reports, shelf_type->idname)) {
     return nullptr;
   }
-  if (!RNA_struct_bl_idname_ok_or_report(reports, dummy_shelf_type.idname, "_AST_")) {
+  if (!RNA_struct_bl_idname_ok_or_report(reports, shelf_type->idname, "_AST_")) {
     return nullptr;
   }
 
   /* Create the new shelf type. */
-  AssetShelfType *shelf_type = static_cast<AssetShelfType *>(
-      MEM_mallocN(sizeof(*shelf_type), __func__));
-  memcpy(shelf_type, &dummy_shelf_type, sizeof(*shelf_type));
-
   shelf_type->rna_ext.srna = RNA_def_struct_ptr(&BLENDER_RNA, shelf_type->idname, &RNA_AssetShelf);
   shelf_type->rna_ext.data = data;
   shelf_type->rna_ext.call = call;
   shelf_type->rna_ext.free = free;
-  RNA_struct_blender_type_set(shelf_type->rna_ext.srna, shelf_type);
+  RNA_struct_blender_type_set(shelf_type->rna_ext.srna, shelf_type.get());
 
   shelf_type->poll = have_function[0] ? asset_shelf_poll : nullptr;
   shelf_type->asset_poll = have_function[1] ? asset_shelf_asset_poll : nullptr;
-  shelf_type->draw_context_menu = have_function[2] ? asset_shelf_draw_context_menu : nullptr;
+  shelf_type->get_active_asset = have_function[2] ? asset_shelf_get_active_asset : nullptr;
+  shelf_type->draw_context_menu = have_function[3] ? asset_shelf_draw_context_menu : nullptr;
 
-  BLI_addtail(&space_type->asset_shelf_types, shelf_type);
+  StructRNA *srna = shelf_type->rna_ext.srna;
+
+  space_type->asset_shelf_types.append(std::move(shelf_type));
 
   /* update while blender is running */
   WM_main_add_notifier(NC_WINDOW, nullptr);
 
-  return shelf_type->rna_ext.srna;
+  return srna;
+}
+
+static void rna_AssetShelf_activate_operator_get(PointerRNA *ptr, char *value)
+{
+  AssetShelf *shelf = static_cast<AssetShelf *>(ptr->data);
+  strcpy(value, shelf->type->activate_operator.c_str());
+}
+
+static int rna_AssetShelf_activate_operator_length(PointerRNA *ptr)
+{
+  AssetShelf *shelf = static_cast<AssetShelf *>(ptr->data);
+  return shelf->type->activate_operator.size();
+}
+
+static void rna_AssetShelf_activate_operator_set(PointerRNA *ptr, const char *value)
+{
+  AssetShelf *shelf = static_cast<AssetShelf *>(ptr->data);
+  shelf->type->activate_operator = value;
 }
 
 static StructRNA *rna_AssetShelf_refine(PointerRNA *shelf_ptr)
@@ -2132,7 +2178,7 @@ static void rna_def_header(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "ID Name",
                            "If this is set, the header gets a custom ID, otherwise it takes the "
-                           "name of the class used to define the panel; for example, if the "
+                           "name of the class used to define the header; for example, if the "
                            "class name is \"OBJECT_HT_hello\", and bl_idname is not set by the "
                            "script, then bl_idname = \"OBJECT_HT_hello\"");
 
@@ -2257,6 +2303,12 @@ static void rna_def_asset_shelf(BlenderRNA *brna)
        "No Asset Dragging",
        "Disable the default asset dragging on drag events. Useful for implementing custom "
        "dragging via custom key-map items"},
+      {ASSET_SHELF_TYPE_FLAG_DEFAULT_VISIBLE,
+       "DEFAULT_VISIBLE",
+       0,
+       "Visible by Default",
+       "Unhide the asset shelf when it's available for the first time, otherwise it will be "
+       "hidden"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -2276,7 +2328,7 @@ static void rna_def_asset_shelf(BlenderRNA *brna)
   RNA_def_property_ui_text(prop,
                            "ID Name",
                            "If this is set, the asset gets a custom ID, otherwise it takes the "
-                           "name of the class used to define the menu (for example, if the "
+                           "name of the class used to define the asset (for example, if the "
                            "class name is \"OBJECT_AST_hello\", and bl_idname is not set by the "
                            "script, then bl_idname = \"OBJECT_AST_hello\")");
 
@@ -2292,6 +2344,24 @@ static void rna_def_asset_shelf(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, asset_shelf_flag_items);
   RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL | PROP_ENUM_FLAG);
   RNA_def_property_ui_text(prop, "Options", "Options for this asset shelf type");
+
+  prop = RNA_def_property(srna, "bl_activate_operator", PROP_STRING, PROP_NONE);
+  RNA_def_property_string_funcs(prop,
+                                "rna_AssetShelf_activate_operator_get",
+                                "rna_AssetShelf_activate_operator_length",
+                                "rna_AssetShelf_activate_operator_set");
+  RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
+  RNA_def_property_ui_text(
+      prop,
+      "Activate Operator",
+      "Operator to call when activating an item with asset reference properties");
+
+  prop = RNA_def_property(srna, "bl_default_preview_size", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_int_sdna(prop, nullptr, "type->default_preview_size");
+  RNA_def_property_range(prop, 32, 256);
+  RNA_def_property_flag(prop, PROP_REGISTER_OPTIONAL);
+  RNA_def_property_ui_text(
+      prop, "Default Preview Size", "Default size of the asset preview thumbnails in pixels");
 
   PropertyRNA *parm;
   FunctionRNA *func;
@@ -2313,6 +2383,19 @@ static void rna_def_asset_shelf(BlenderRNA *brna)
   RNA_def_function_return(func, RNA_def_boolean(func, "visible", true, "", ""));
   parm = RNA_def_pointer(func, "asset", "AssetRepresentation", "", "");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+
+  func = RNA_def_function(srna, "get_active_asset", nullptr);
+  RNA_def_function_ui_description(
+      func,
+      "Return a reference to the asset that should be highlighted as active in the asset shelf");
+  RNA_def_function_flag(func, FUNC_NO_SELF | FUNC_REGISTER_OPTIONAL);
+  /* return type */
+  parm = RNA_def_pointer(func,
+                         "asset_reference",
+                         "AssetWeakReference",
+                         "",
+                         "The weak reference to the asset to be hightlighted as active, or None");
+  RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "draw_context_menu", nullptr);
   RNA_def_function_ui_description(

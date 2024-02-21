@@ -28,6 +28,7 @@ struct SpaceType;
 struct uiBlock;
 struct uiLayout;
 struct uiList;
+struct uiListType;
 struct wmDrawBuffer;
 struct wmTimer;
 struct wmTooltipState;
@@ -785,7 +786,6 @@ typedef struct AssetShelfSettings {
 
   AssetLibraryReference asset_library_reference;
 
-  ListBase enabled_catalog_paths; /* #LinkData */
   /** If not set (null or empty string), all assets will be displayed ("All" catalog behavior). */
   const char *active_catalog_path;
 

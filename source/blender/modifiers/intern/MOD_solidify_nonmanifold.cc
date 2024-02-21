@@ -20,7 +20,6 @@
 #include "BKE_customdata.hh"
 #include "BKE_deform.hh"
 #include "BKE_mesh.hh"
-#include "BKE_particle.h"
 
 #include "MOD_modifiertypes.hh"
 #include "MOD_solidify_util.hh" /* Own include. */
@@ -380,7 +379,7 @@ Mesh *MOD_solidify_nonmanifold_modifyMesh(ModifierData *md,
           }
 
           if (v2 < v1) {
-            SWAP(uint, v1, v2);
+            std::swap(v1, v2);
           }
           sub_v3_v3v3(edgedir, orig_mvert_co[v2], orig_mvert_co[v1]);
           orig_edge_lengths[i] = len_squared_v3(edgedir);

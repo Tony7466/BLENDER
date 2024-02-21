@@ -10,8 +10,6 @@
 
 #include <cstring>
 
-#include "DNA_asset_types.h"
-
 #include "MEM_guardedalloc.h"
 
 #include "BLI_fileops.h"
@@ -24,7 +22,7 @@
 #include "BKE_appdir.hh"
 #include "BKE_preferences.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_userdef_types.h"
@@ -159,7 +157,7 @@ static size_t strncpy_py_module(char *dst, const char *src, const size_t dst_max
 bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
                                                        const char *name,
                                                        const char *module,
-                                                       const char *dirpath)
+                                                       const char *custom_dirpath)
 {
   bUserExtensionRepo *repo = DNA_struct_default_alloc(bUserExtensionRepo);
   BLI_addtail(&userdef->extension_repos, repo);
@@ -171,9 +169,9 @@ bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
   BKE_preferences_extension_repo_module_set(userdef, repo, module);
 
   /* Set the directory. */
-  STRNCPY(repo->dirpath, dirpath);
-  BLI_path_normalize(repo->dirpath);
-  BLI_path_slash_rstrip(repo->dirpath);
+  STRNCPY(repo->custom_dirpath, custom_dirpath);
+  BLI_path_normalize(repo->custom_dirpath);
+  BLI_path_slash_rstrip(repo->custom_dirpath);
 
   /* While not a strict rule, ignored paths that already exist, *
    * pointing to the same path is going to logical problems with package-management. */
@@ -181,8 +179,8 @@ bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
     if (repo == repo_iter) {
       continue;
     }
-    if (BLI_path_cmp(repo->dirpath, repo_iter->dirpath) == 0) {
-      repo->dirpath[0] = '\0';
+    if (BLI_path_cmp(repo->custom_dirpath, repo_iter->custom_dirpath) == 0) {
+      repo->custom_dirpath[0] = '\0';
       break;
     }
   }
@@ -193,6 +191,22 @@ bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
 void BKE_preferences_extension_repo_remove(UserDef *userdef, bUserExtensionRepo *repo)
 {
   BLI_freelinkN(&userdef->extension_repos, repo);
+}
+
+bUserExtensionRepo *BKE_preferences_extension_repo_add_default(UserDef *userdef)
+{
+  bUserExtensionRepo *repo = BKE_preferences_extension_repo_add(
+      userdef, "Blender Official", "blender_official", "");
+  STRNCPY(repo->remote_path, "https://extensions.blender.org");
+  repo->flag |= USER_EXTENSION_REPO_FLAG_USE_REMOTE_PATH;
+  return repo;
+}
+
+bUserExtensionRepo *BKE_preferences_extension_repo_add_default_user(UserDef *userdef)
+{
+  bUserExtensionRepo *repo = BKE_preferences_extension_repo_add(
+      userdef, "User Default", "user_default", "");
+  return repo;
 }
 
 void BKE_preferences_extension_repo_name_set(UserDef *userdef,
@@ -228,9 +242,28 @@ void BKE_preferences_extension_repo_module_set(UserDef *userdef,
                  sizeof(repo->module));
 }
 
-void BKE_preferences_extension_repo_path_set(bUserExtensionRepo *repo, const char *path)
+void BKE_preferences_extension_repo_custom_dirpath_set(bUserExtensionRepo *repo, const char *path)
 {
-  STRNCPY(repo->dirpath, path);
+  STRNCPY(repo->custom_dirpath, path);
+}
+
+void BKE_preferences_extension_repo_dirpath_get(const bUserExtensionRepo *repo,
+                                                char *dirpath,
+                                                const int dirpath_maxncpy)
+{
+  if (repo->flag & USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY) {
+    BLI_strncpy(dirpath, repo->custom_dirpath, dirpath_maxncpy);
+    return;
+  }
+
+  /* TODO: support `BLENDER_USER_EXTENSIONS`, until then add to user resource. */
+  std::optional<std::string> path = BKE_appdir_resource_path_id(BLENDER_RESOURCE_PATH_USER, false);
+  /* Highly unlikely to fail as the directory doesn't have to exist. */
+  if (!path) {
+    dirpath[0] = '\0';
+    return;
+  }
+  BLI_path_join(dirpath, dirpath_maxncpy, path.value().c_str(), "extensions", repo->module);
 }
 
 bUserExtensionRepo *BKE_preferences_extension_repo_find_index(const UserDef *userdef, int index)
@@ -249,6 +282,98 @@ int BKE_preferences_extension_repo_get_index(const UserDef *userdef,
                                              const bUserExtensionRepo *repo)
 {
   return BLI_findindex(&userdef->extension_repos, repo);
+}
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name #bUserAssetShelfSettings
+ * \{ */
+
+static bUserAssetShelfSettings *asset_shelf_settings_new(UserDef *userdef,
+                                                         const char *shelf_idname)
+{
+  bUserAssetShelfSettings *settings = DNA_struct_default_alloc(bUserAssetShelfSettings);
+  BLI_addtail(&userdef->asset_shelves_settings, settings);
+  STRNCPY(settings->shelf_idname, shelf_idname);
+  BLI_assert(BLI_listbase_is_empty(&settings->enabled_catalog_paths));
+  return settings;
+}
+
+static bUserAssetShelfSettings *asset_shelf_settings_ensure(UserDef *userdef,
+                                                            const char *shelf_idname)
+{
+  if (bUserAssetShelfSettings *settings = BKE_preferences_asset_shelf_settings_get(userdef,
+                                                                                   shelf_idname))
+  {
+    return settings;
+  }
+  return asset_shelf_settings_new(userdef, shelf_idname);
+}
+
+bUserAssetShelfSettings *BKE_preferences_asset_shelf_settings_get(const UserDef *userdef,
+                                                                  const char *shelf_idname)
+{
+  return static_cast<bUserAssetShelfSettings *>(
+      BLI_findstring(&userdef->asset_shelves_settings,
+                     shelf_idname,
+                     offsetof(bUserAssetShelfSettings, shelf_idname)));
+}
+
+static bool asset_shelf_settings_is_catalog_path_enabled(const bUserAssetShelfSettings *settings,
+                                                         const char *catalog_path)
+{
+  return BLI_findstring_ptr(
+             &settings->enabled_catalog_paths, catalog_path, offsetof(LinkData, data)) != nullptr;
+}
+
+bool BKE_preferences_asset_shelf_settings_is_catalog_path_enabled(const UserDef *userdef,
+                                                                  const char *shelf_idname,
+                                                                  const char *catalog_path)
+{
+  const bUserAssetShelfSettings *settings = BKE_preferences_asset_shelf_settings_get(userdef,
+                                                                                     shelf_idname);
+  if (!settings) {
+    return false;
+  }
+  return asset_shelf_settings_is_catalog_path_enabled(settings, catalog_path);
+}
+
+bool BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(UserDef *userdef,
+                                                                      const char *shelf_idname,
+                                                                      const char *catalog_path)
+{
+  if (BKE_preferences_asset_shelf_settings_is_catalog_path_enabled(
+          userdef, shelf_idname, catalog_path))
+  {
+    return false;
+  }
+
+  bUserAssetShelfSettings *settings = asset_shelf_settings_ensure(userdef, shelf_idname);
+
+  char *path_copy = BLI_strdup(catalog_path);
+  BLI_addtail(&settings->enabled_catalog_paths, BLI_genericNodeN(path_copy));
+  return true;
+}
+
+void BKE_preferences_asset_shelf_settings_clear_enabled_catalog_paths(
+    bUserAssetShelfSettings *settings)
+{
+  LISTBASE_FOREACH_MUTABLE (LinkData *, path_link, &settings->enabled_catalog_paths) {
+    MEM_freeN(path_link->data);
+    BLI_freelinkN(&settings->enabled_catalog_paths, path_link);
+  }
+  BLI_assert(BLI_listbase_is_empty(&settings->enabled_catalog_paths));
+}
+
+void BKE_preferences_asset_shelf_settings_clear_enabled_catalog_paths(const UserDef *userdef,
+                                                                      const char *shelf_idname)
+{
+  bUserAssetShelfSettings *settings = BKE_preferences_asset_shelf_settings_get(userdef,
+                                                                               shelf_idname);
+  if (!settings) {
+    return;
+  }
+  BKE_preferences_asset_shelf_settings_clear_enabled_catalog_paths(settings);
 }
 
 /** \} */

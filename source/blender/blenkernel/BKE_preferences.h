@@ -17,6 +17,7 @@ extern "C" {
 struct UserDef;
 struct bUserExtensionRepo;
 struct bUserAssetLibrary;
+struct bUserAssetShelfSettings;
 
 /* -------------------------------------------------------------------- */
 /** \name Assert Libraries
@@ -82,8 +83,10 @@ void BKE_preferences_asset_library_default_add(struct UserDef *userdef) ATTR_NON
 bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
                                                        const char *name,
                                                        const char *module,
-                                                       const char *dirpath);
+                                                       const char *custom_dirpath);
 void BKE_preferences_extension_repo_remove(UserDef *userdef, bUserExtensionRepo *repo);
+bUserExtensionRepo *BKE_preferences_extension_repo_add_default(UserDef *userdef);
+bUserExtensionRepo *BKE_preferences_extension_repo_add_default_user(UserDef *userdef);
 
 void BKE_preferences_extension_repo_name_set(UserDef *userdef,
                                              bUserExtensionRepo *repo,
@@ -92,7 +95,11 @@ void BKE_preferences_extension_repo_module_set(UserDef *userdef,
                                                bUserExtensionRepo *repo,
                                                const char *module);
 
-void BKE_preferences_extension_repo_path_set(bUserExtensionRepo *repo, const char *path);
+void BKE_preferences_extension_repo_custom_dirpath_set(bUserExtensionRepo *repo, const char *path);
+void BKE_preferences_extension_repo_dirpath_get(const bUserExtensionRepo *repo,
+                                                char *dirpath,
+                                                int dirpath_maxncpy);
+
 bUserExtensionRepo *BKE_preferences_extension_repo_find_index(const UserDef *userdef, int index);
 bUserExtensionRepo *BKE_preferences_extension_repo_find_by_module(const UserDef *userdef,
                                                                   const char *module);
@@ -101,6 +108,32 @@ int BKE_preferences_extension_repo_get_index(const UserDef *userdef,
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name #bUserAssetShelvesSettings
+ * \{ */
+
+bUserAssetShelfSettings *BKE_preferences_asset_shelf_settings_get(const UserDef *userdef,
+                                                                  const char *shelf_idname);
+bool BKE_preferences_asset_shelf_settings_is_catalog_path_enabled(const UserDef *userdef,
+                                                                  const char *shelf_idname,
+                                                                  const char *catalog_path);
+/**
+ * Enable a catalog path for a asset shelf identified by \a shelf_idname. Will create the shelf
+ * settings in the Preferences if necessary.
+ * \return Return true if the catalog was newly enabled. The Preferences should be tagged as dirty
+ * then.
+ */
+bool BKE_preferences_asset_shelf_settings_ensure_catalog_path_enabled(UserDef *userdef,
+                                                                      const char *shelf_idname,
+                                                                      const char *catalog_path);
+
+/** \} */
+
 #ifdef __cplusplus
 }
 #endif
+
+void BKE_preferences_asset_shelf_settings_clear_enabled_catalog_paths(const UserDef *userdef,
+                                                                      const char *shelf_idname);
+void BKE_preferences_asset_shelf_settings_clear_enabled_catalog_paths(
+    bUserAssetShelfSettings *settings);

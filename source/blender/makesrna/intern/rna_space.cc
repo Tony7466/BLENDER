@@ -11,7 +11,7 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
@@ -19,7 +19,7 @@
 #include "BKE_image.h"
 #include "BKE_key.hh"
 #include "BKE_movieclip.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_studiolight.h"
 #include "BKE_viewer_path.hh"
 
@@ -554,14 +554,14 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "BKE_anim_data.h"
 #  include "BKE_brush.hh"
 #  include "BKE_context.hh"
-#  include "BKE_global.h"
+#  include "BKE_global.hh"
 #  include "BKE_icons.h"
 #  include "BKE_idprop.h"
 #  include "BKE_layer.hh"
 #  include "BKE_nla.h"
 #  include "BKE_paint.hh"
 #  include "BKE_preferences.h"
-#  include "BKE_scene.h"
+#  include "BKE_scene.hh"
 #  include "BKE_screen.hh"
 #  include "BKE_workspace.h"
 
@@ -580,7 +580,7 @@ static const EnumPropertyItem rna_enum_curve_display_handle_items[] = {
 #  include "ED_transform.hh"
 #  include "ED_view3d.hh"
 
-#  include "GPU_material.h"
+#  include "GPU_material.hh"
 
 #  include "IMB_imbuf_types.hh"
 
@@ -3297,7 +3297,7 @@ const EnumPropertyItem *rna_SpaceSpreadsheet_attribute_domain_itemf(bContext * /
   SpaceSpreadsheet *sspreadsheet = (SpaceSpreadsheet *)ptr->data;
   auto component_type = bke::GeometryComponent::Type(sspreadsheet->geometry_component_type);
   if (sspreadsheet->object_eval_state == SPREADSHEET_OBJECT_EVAL_STATE_ORIGINAL) {
-    ID *used_id = ED_spreadsheet_get_current_id(sspreadsheet);
+    ID *used_id = ed::spreadsheet::get_current_id(sspreadsheet);
     if (used_id != nullptr) {
       if (GS(used_id->name) == ID_OB) {
         Object *used_object = (Object *)used_id;
@@ -3718,6 +3718,12 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
   RNA_def_property_float_sdna(prop, nullptr, "uv_opacity");
   RNA_def_property_range(prop, 0.0f, 1.0f);
   RNA_def_property_ui_text(prop, "UV Opacity", "Opacity of UV overlays");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
+
+  prop = RNA_def_property(srna, "stretch_opacity", PROP_FLOAT, PROP_FACTOR);
+  RNA_def_property_float_sdna(prop, nullptr, "stretch_opacity");
+  RNA_def_property_range(prop, 0.0f, 1.0f);
+  RNA_def_property_ui_text(prop, "Stretch Opacity", "Opacity of the UV Stretch overlay");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
   prop = RNA_def_property(srna, "pixel_round_mode", PROP_ENUM, PROP_NONE);
@@ -6281,7 +6287,7 @@ static void rna_def_space_dopesheet(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", SACTION_SHOW_INTERPOLATION);
   RNA_def_property_ui_text(prop,
                            "Show Handles and Interpolation",
-                           "Display keyframe handle types and non-bezier interpolation modes");
+                           "Display keyframe handle types and non-Bézier interpolation modes");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_DOPESHEET, nullptr);
 
   prop = RNA_def_property(srna, "show_extremes", PROP_BOOLEAN, PROP_NONE);
@@ -6419,7 +6425,14 @@ static void rna_def_space_graph(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "show_handles", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", SIPO_NOHANDLES);
-  RNA_def_property_ui_text(prop, "Show Handles", "Show handles of Bezier control points");
+  RNA_def_property_ui_text(prop, "Show Handles", "Show handles of Bézier control points");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, nullptr);
+
+  prop = RNA_def_property(srna, "use_auto_lock_translation_axis", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SIPO_AUTOLOCK_AXIS);
+  RNA_def_property_ui_text(prop,
+                           "Auto-Lock Key Axis",
+                           "Automatically locks the movement of keyframes to the dominant axis");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_GRAPH, nullptr);
 
   prop = RNA_def_property(srna, "use_only_selected_keyframe_handles", PROP_BOOLEAN, PROP_NONE);

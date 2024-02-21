@@ -11,6 +11,7 @@
 #include "AS_asset_library.hh"
 #include "AS_asset_representation.hh"
 
+#include "BKE_asset.hh"
 #include "BKE_screen.hh"
 
 #include "BLI_fnmatch.h"
@@ -18,15 +19,14 @@
 
 #include "DNA_asset_types.h"
 #include "DNA_screen_types.h"
-#include "DNA_space_types.h"
 
 #include "ED_asset_handle.hh"
 #include "ED_asset_list.hh"
+#include "ED_asset_menu_utils.hh"
 #include "ED_asset_shelf.hh"
 
 #include "UI_grid_view.hh"
 #include "UI_interface.hh"
-#include "UI_view2d.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
@@ -40,6 +40,7 @@ namespace blender::ed::asset::shelf {
 class AssetView : public ui::AbstractGridView {
   const AssetLibraryReference library_ref_;
   const AssetShelf &shelf_;
+  std::optional<AssetWeakReference> active_asset_;
   /** Copy of the filter string from #AssetShelfSettings, with extra '*' added to the beginning and
    * end of the string, for `fnmatch()` to work. */
   char search_string[sizeof(AssetShelfSettings::search_string) + 2] = "";
@@ -50,6 +51,7 @@ class AssetView : public ui::AbstractGridView {
 
  public:
   AssetView(const AssetLibraryReference &library_ref, const AssetShelf &shelf);
+  ~AssetView();
 
   void build_items() override;
   bool begin_filtering(const bContext &C) const override;
@@ -70,6 +72,7 @@ class AssetViewItem : public ui::PreviewGridItem {
   void disable_asset_drag();
   void build_grid_tile(uiLayout &layout) const override;
   void build_context_menu(bContext &C, uiLayout &column) const override;
+  std::optional<bool> should_be_active() const override;
   bool is_filtered_visible() const override;
 
   std::unique_ptr<ui::AbstractViewItemDragController> create_drag_controller() const override;
@@ -92,7 +95,17 @@ AssetView::AssetView(const AssetLibraryReference &library_ref, const AssetShelf 
     BLI_strncpy_ensure_pad(
         search_string, shelf.settings.search_string, '*', sizeof(search_string));
   }
+  if (shelf.type->get_active_asset) {
+    if (const AssetWeakReference *weak_ref = shelf.type->get_active_asset(shelf.type)) {
+      active_asset_ = *weak_ref;
+    }
+    else {
+      active_asset_.reset();
+    }
+  }
 }
+
+AssetView::~AssetView() {}
 
 void AssetView::build_items()
 {
@@ -194,16 +207,17 @@ void AssetViewItem::disable_asset_drag()
 
 void AssetViewItem::build_grid_tile(uiLayout &layout) const
 {
-  PointerRNA file_ptr = RNA_pointer_create(
-      nullptr,
-      &RNA_FileSelectEntry,
-      /* XXX passing file pointer here, should be asset handle or asset representation. */
-      const_cast<FileDirEntry *>(asset_.file_data));
+  const AssetView &asset_view = reinterpret_cast<const AssetView &>(this->get_view());
+  const AssetShelfType &shelf_type = *asset_view.shelf_.type;
 
-  uiBlock *block = uiLayoutGetBlock(&layout);
-  UI_but_context_ptr_set(
-      block, reinterpret_cast<uiBut *>(view_item_but_), "active_file", &file_ptr);
-  ui::PreviewGridItem::build_grid_tile(layout);
+  wmOperatorType *ot = WM_operatortype_find(shelf_type.activate_operator.c_str(), true);
+  PointerRNA op_props = PointerRNA_NULL;
+  if (ot) {
+    WM_operator_properties_create_ptr(&op_props, ot);
+    asset::operator_asset_reference_props_set(*handle_get_representation(&asset_), op_props);
+  }
+
+  ui::PreviewGridItem::build_grid_tile_button(layout, ot, &op_props);
 }
 
 void AssetViewItem::build_context_menu(bContext &C, uiLayout &column) const
@@ -214,6 +228,19 @@ void AssetViewItem::build_context_menu(bContext &C, uiLayout &column) const
     asset_system::AssetRepresentation *asset = handle_get_representation(&asset_);
     shelf_type.draw_context_menu(&C, &shelf_type, asset, &column);
   }
+}
+
+std::optional<bool> AssetViewItem::should_be_active() const
+{
+  const AssetView &asset_view = dynamic_cast<const AssetView &>(get_view());
+  if (!asset_view.active_asset_) {
+    return false;
+  }
+  const asset_system::AssetRepresentation *asset = handle_get_representation(&asset_);
+  AssetWeakReference weak_ref = asset->make_weak_reference();
+  const bool matches = *asset_view.active_asset_ == weak_ref;
+
+  return matches;
 }
 
 bool AssetViewItem::is_filtered_visible() const

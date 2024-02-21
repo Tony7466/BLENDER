@@ -20,20 +20,17 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_image.h"
+#include "BKE_global.hh"
 #include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
 #include "RNA_access.hh"
-#include "RNA_types.hh"
 
 #include "WM_api.hh"
 #include "WM_message.hh"
 #include "WM_toolsystem.hh"
 #include "WM_types.hh"
 
-#include "ED_asset.hh"
 #include "ED_asset_shelf.hh"
 #include "ED_buttons.hh"
 #include "ED_screen.hh"
@@ -49,7 +46,6 @@
 
 #include "BLF_api.hh"
 
-#include "IMB_imbuf_types.hh"
 #include "IMB_metadata.hh"
 
 #include "UI_interface.hh"
@@ -2023,6 +2019,9 @@ void ED_area_update_region_sizes(wmWindowManager *wm, wmWindow *win, ScrArea *ar
   area_azone_init(win, screen, area);
 
   LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+    if (region->flag & RGN_FLAG_POLL_FAILED) {
+      continue;
+    }
     region_evaulate_visibility(region);
 
     /* region size may have changed, init does necessary adjustments */
@@ -2335,11 +2334,11 @@ void ED_area_data_copy(ScrArea *area_dst, ScrArea *area_src, const bool do_free)
 
 void ED_area_data_swap(ScrArea *area_dst, ScrArea *area_src)
 {
-  SWAP(char, area_dst->spacetype, area_src->spacetype);
-  SWAP(SpaceType *, area_dst->type, area_src->type);
+  std::swap(area_dst->spacetype, area_src->spacetype);
+  std::swap(area_dst->type, area_src->type);
 
-  SWAP(ListBase, area_dst->spacedata, area_src->spacedata);
-  SWAP(ListBase, area_dst->regionbase, area_src->regionbase);
+  std::swap(area_dst->spacedata, area_src->spacedata);
+  std::swap(area_dst->regionbase, area_src->regionbase);
 }
 
 /* -------------------------------------------------------------------- */
@@ -2796,8 +2795,6 @@ int ED_area_header_switchbutton(const bContext *C, uiBlock *block, int yco)
             0,
             0.0f,
             0.0f,
-            0.0f,
-            0.0f,
             "");
 
   return xco + 1.7 * U.widget_unit;
@@ -2875,7 +2872,8 @@ static void ed_panel_draw(const bContext *C,
                           int w,
                           int em,
                           char *unique_panel_str,
-                          const char *search_filter)
+                          const char *search_filter,
+                          wmOperatorCallContext op_context)
 {
   const uiStyle *style = UI_style_get_dpi();
 
@@ -2913,6 +2911,8 @@ static void ed_panel_draw(const bContext *C,
                                     0,
                                     style);
 
+    uiLayoutSetOperatorContext(panel->layout, op_context);
+
     pt->draw_header_preset(C, panel);
 
     UI_block_apply_search_filter(block, search_filter);
@@ -2943,6 +2943,8 @@ static void ed_panel_draw(const bContext *C,
       panel->layout = UI_block_layout(
           block, UI_LAYOUT_HORIZONTAL, UI_LAYOUT_HEADER, labelx, labely, UI_UNIT_Y, 1, 0, style);
     }
+
+    uiLayoutSetOperatorContext(panel->layout, op_context);
 
     pt->draw_header(C, panel);
 
@@ -2981,6 +2983,8 @@ static void ed_panel_draw(const bContext *C,
         0,
         style);
 
+    uiLayoutSetOperatorContext(panel->layout, op_context);
+
     pt->draw(C, panel);
 
     const bool ends_with_layout_panel_header = uiLayoutEndsWithPanelHeader(*panel->layout);
@@ -3016,7 +3020,8 @@ static void ed_panel_draw(const bContext *C,
                       w,
                       em,
                       unique_panel_str,
-                      search_filter);
+                      search_filter,
+                      op_context);
       }
     }
   }
@@ -3188,11 +3193,8 @@ void ED_region_panels_layout_ex(const bContext *C,
       update_tot_size = false;
     }
 
-    if (panel && panel->layout) {
-      uiLayoutSetOperatorContext(panel->layout, op_context);
-    }
-
-    ed_panel_draw(C, region, &region->panels, pt, panel, width, em, nullptr, search_filter);
+    ed_panel_draw(
+        C, region, &region->panels, pt, panel, width, em, nullptr, search_filter, op_context);
   }
 
   /* Draw "poly-instantiated" panels that don't have a 1 to 1 correspondence with their types. */
@@ -3227,7 +3229,8 @@ void ED_region_panels_layout_ex(const bContext *C,
                     width,
                     em,
                     unique_panel_str,
-                    search_filter);
+                    search_filter,
+                    op_context);
     }
   }
 

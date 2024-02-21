@@ -50,7 +50,7 @@
 #include "bmesh.hh"
 
 #include "GPU_batch.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "DRW_render.hh"
 
@@ -1868,7 +1868,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
                                        is_editmode,
                                        is_paint_mode,
                                        is_mode_active,
-                                       ob->object_to_world,
+                                       ob->object_to_world().ptr(),
                                        false,
                                        true,
                                        scene,
@@ -1885,7 +1885,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
                                        is_editmode,
                                        is_paint_mode,
                                        is_mode_active,
-                                       ob->object_to_world,
+                                       ob->object_to_world().ptr(),
                                        false,
                                        false,
                                        scene,
@@ -1901,7 +1901,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
                            is_editmode,
                            is_paint_mode,
                            is_mode_active,
-                           ob->object_to_world,
+                           ob->object_to_world().ptr(),
                            true,
                            false,
                            do_cage,
@@ -1922,7 +1922,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
                                      is_editmode,
                                      is_paint_mode,
                                      is_mode_active,
-                                     ob->object_to_world,
+                                     ob->object_to_world().ptr(),
                                      true,
                                      false,
                                      scene,

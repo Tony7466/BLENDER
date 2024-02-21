@@ -625,10 +625,10 @@ typedef struct bUserExtensionRepo {
 
   /**
    * The "local" directory where extensions are stored.
-   * When unset, use `{BLENDER_USER_SCRIPTS}/extensions/{bUserExtensionRepo::module}`.
+   * When unset, use `{BLENDER_RESOURCE_PATH_USER}/extensions/{bUserExtensionRepo::module}`.
    */
-  char dirpath[1024];     /* FILE_MAX */
-  char remote_path[1024]; /* FILE_MAX */
+  char custom_dirpath[1024]; /* FILE_MAX */
+  char remote_path[1024];    /* FILE_MAX */
 
   int flag;
   char _pad0[4];
@@ -638,6 +638,8 @@ typedef enum eUserExtensionRepo_Flag {
   /** Maintain disk cache. */
   USER_EXTENSION_REPO_FLAG_NO_CACHE = 1 << 0,
   USER_EXTENSION_REPO_FLAG_DISABLED = 1 << 1,
+  USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY = 1 << 2,
+  USER_EXTENSION_REPO_FLAG_USE_REMOTE_PATH = 1 << 3,
 } eUserExtensionRepo_Flag;
 
 typedef struct SolidLight {
@@ -714,12 +716,13 @@ typedef struct UserDef_Experimental {
   char use_extended_asset_browser;
   char use_sculpt_texture_paint;
   char use_grease_pencil_version3;
+  char use_new_matrix_socket;
   char enable_overlay_next;
   char use_new_volume_nodes;
   char use_shader_node_previews;
   char use_extension_repos;
 
-  char _pad[4];
+  char _pad[3];
   /** `makesdna` does not allow empty structs. */
 } UserDef_Experimental;
 
@@ -736,6 +739,20 @@ typedef struct bUserScriptDirectory {
   char name[64];      /* MAX_NAME */
   char dir_path[768]; /* FILE_MAXDIR */
 } bUserScriptDirectory;
+
+/**
+ * Settings for an asset shelf, stored in the Preferences. Most settings are still stored in the
+ * asset shelf instance in #AssetShelfSettings. This is just for the options that should be shared
+ * as Preferences.
+ */
+typedef struct bUserAssetShelfSettings {
+  struct bUserAssetShelfSettings *next, *prev;
+
+  /** Identifier that matches the #AssetShelfType.idname of the shelf these settings apply to. */
+  char shelf_idname[64]; /* MAX_NAME */
+
+  ListBase enabled_catalog_paths; /* #LinkData */
+} bUserAssetShelfSettings;
 
 typedef struct UserDef {
   DNA_DEFINE_CXX_METHODS(UserDef)
@@ -859,6 +876,7 @@ typedef struct UserDef {
   struct ListBase asset_libraries;
   /** #bUserExtensionRepo */
   struct ListBase extension_repos;
+  struct ListBase asset_shelves_settings; /* #bUserAssetShelfSettings */
 
   char keyconfigstr[64];
 
@@ -1050,7 +1068,7 @@ typedef struct UserDef {
   UserDef_Runtime runtime;
 } UserDef;
 
-/** From blenkernel `blender.cc`. */
+/** From `source/blender/blenkernel/intern/blender.cc`. */
 extern UserDef U;
 
 /* ***************** USERDEF ****************** */

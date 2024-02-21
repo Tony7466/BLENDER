@@ -100,8 +100,8 @@
 #include "MEM_guardedalloc.h" /* MEM_freeN */
 
 #include "BKE_blender_version.h"
-#include "BKE_bpath.h"
-#include "BKE_global.h" /* For #Global `G`. */
+#include "BKE_bpath.hh"
+#include "BKE_global.hh" /* For #Global `G`. */
 #include "BKE_idprop.h"
 #include "BKE_idtype.hh"
 #include "BKE_layer.hh"
@@ -112,13 +112,13 @@
 #include "BKE_main_namemap.hh"
 #include "BKE_node.hh"
 #include "BKE_packedFile.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_workspace.h"
 
 #include "BLO_blend_defs.hh"
 #include "BLO_blend_validate.hh"
 #include "BLO_read_write.hh"
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 #include "BLO_undofile.hh"
 #include "BLO_writefile.hh"
 
@@ -932,6 +932,15 @@ static void write_userdef(BlendWriter *writer, const UserDef *userdef)
 
   LISTBASE_FOREACH (const bUserExtensionRepo *, repo_ref, &userdef->extension_repos) {
     BLO_write_struct(writer, bUserExtensionRepo, repo_ref);
+  }
+  LISTBASE_FOREACH (
+      const bUserAssetShelfSettings *, shelf_settings, &userdef->asset_shelves_settings)
+  {
+    BLO_write_struct(writer, bUserAssetShelfSettings, shelf_settings);
+    LISTBASE_FOREACH (const LinkData *, path_link, &shelf_settings->enabled_catalog_paths) {
+      BLO_write_struct(writer, LinkData, path_link);
+      BLO_write_string(writer, (const char *)path_link->data);
+    }
   }
 
   LISTBASE_FOREACH (const uiStyle *, style, &userdef->uistyles) {

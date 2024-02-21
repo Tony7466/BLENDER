@@ -34,22 +34,20 @@
 #include "BLO_writefile.hh"
 
 #include "BKE_asset.hh"
-#include "BKE_blender.h"
+#include "BKE_blender.hh"
 #include "BKE_blendfile.hh"
 #include "BKE_brush.hh"
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_icons.h"
 #include "BKE_image.h"
 #include "BKE_keyconfig.h"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_mball_tessellate.hh"
-#include "BKE_node.hh"
 #include "BKE_preview_image.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_vfont.hh"
@@ -65,10 +63,7 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h" /* RE_ free stuff */
 
-#include "IMB_thumbs.hh"
-
 #ifdef WITH_PYTHON
-#  include "BPY_extern.h"
 #  include "BPY_extern_python.h"
 #  include "BPY_extern_run.h"
 #endif
@@ -91,7 +86,6 @@
 #include "wm_window.hh"
 
 #include "ED_anim_api.hh"
-#include "ED_armature.hh"
 #include "ED_asset.hh"
 #include "ED_gpencil_legacy.hh"
 #include "ED_keyframes_edit.hh"
@@ -102,10 +96,9 @@
 #include "ED_space_api.hh"
 #include "ED_undo.hh"
 #include "ED_util.hh"
-#include "ED_view3d.hh"
 
 #include "BLF_api.hh"
-#include "BLT_lang.h"
+#include "BLT_lang.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -113,7 +106,7 @@
 
 #include "GPU_context.h"
 #include "GPU_init_exit.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "COM_compositor.hh"
 
@@ -168,6 +161,10 @@ void WM_init_gpu()
   GPU_init();
 
   GPU_pass_cache_init();
+
+  if (G.debug & G_DEBUG_GPU_COMPILE_SHADERS) {
+    GPU_shader_compile_static();
+  }
 
   gpu_is_init = true;
 }

@@ -37,7 +37,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_asset.hh"
 #include "BKE_attribute.hh"
@@ -64,7 +64,7 @@
 #include "BKE_object_types.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_subdiv_ccg.hh"
 #include "BKE_subsurf.hh"
 
@@ -147,6 +147,7 @@ static void palette_undo_preserve(BlendLibReader * /*reader*/, ID *id_new, ID *i
 IDTypeInfo IDType_ID_PAL = {
     /*id_code*/ ID_PAL,
     /*id_filter*/ FILTER_ID_PAL,
+    /*dependencies_id_types*/ 0,
     /*main_listbase_index*/ INDEX_ID_PAL,
     /*struct_size*/ sizeof(Palette),
     /*name*/ "Palette",
@@ -214,6 +215,7 @@ static void paint_curve_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_PC = {
     /*id_code*/ ID_PC,
     /*id_filter*/ FILTER_ID_PC,
+    /*dependencies_id_types*/ 0,
     /*main_listbase_index*/ INDEX_ID_PC,
     /*struct_size*/ sizeof(PaintCurve),
     /*name*/ "PaintCurve",
@@ -679,28 +681,24 @@ bool BKE_paint_brush_is_valid_asset(const Brush *brush)
 
 static void paint_brush_asset_update(Paint &paint,
                                      Brush *brush,
-                                     AssetWeakReference *brush_asset_reference)
+                                     const AssetWeakReference &brush_asset_reference)
 {
-  if (paint.brush_asset_reference != nullptr) {
-    BKE_asset_weak_reference_free(&paint.brush_asset_reference);
-  }
+  MEM_delete(paint.brush_asset_reference);
 
   if (brush == nullptr || brush != paint.brush || !(brush->id.tag & LIB_TAG_ASSET_MAIN)) {
-    BKE_asset_weak_reference_free(&brush_asset_reference);
     return;
   }
 
-  paint.brush_asset_reference = brush_asset_reference;
+  paint.brush_asset_reference = MEM_new<AssetWeakReference>(__func__, brush_asset_reference);
 }
 
 bool BKE_paint_brush_asset_set(Paint *paint,
                                Brush *brush,
-                               AssetWeakReference *weak_asset_reference)
+                               const AssetWeakReference &weak_asset_reference)
 {
   /* Should not happen for users if brush assets are properly filtered by mode, but still protect
    * against it in case of invalid API usage. */
   if (brush && paint->runtime.ob_mode != brush->ob_mode) {
-    BKE_asset_weak_reference_free(&weak_asset_reference);
     return false;
   }
 
@@ -734,15 +732,16 @@ void BKE_paint_brush_asset_restore(Main *bmain, Paint *paint)
     return;
   }
 
-  AssetWeakReference *brush_asset_reference = paint->brush_asset_reference;
+  AssetWeakReference weak_ref = std::move(*paint->brush_asset_reference);
+  MEM_delete(paint->brush_asset_reference);
   paint->brush_asset_reference = nullptr;
 
   Brush *brush_asset = reinterpret_cast<Brush *>(
-      BKE_asset_weak_reference_ensure(bmain, brush_asset_reference));
+      BKE_asset_weak_reference_ensure(bmain, &weak_ref));
 
   /* Will either re-assign the brush_asset_reference to `paint`, or free it if loading a brush ID
    * from it failed. */
-  BKE_paint_brush_asset_set(paint, brush_asset, brush_asset_reference);
+  BKE_paint_brush_asset_set(paint, brush_asset, weak_ref);
 }
 
 void BKE_paint_runtime_init(const ToolSettings *ts, Paint *paint)
@@ -1283,21 +1282,22 @@ void BKE_paint_free(Paint *paint)
 {
   BKE_curvemapping_free(paint->cavity_curve);
   MEM_SAFE_FREE(paint->tool_slots);
-  if (paint->brush_asset_reference != nullptr) {
-    BKE_asset_weak_reference_free(&paint->brush_asset_reference);
-  }
+  MEM_delete(paint->brush_asset_reference);
 }
 
-void BKE_paint_copy(const Paint *src, Paint *tar, const int flag)
+void BKE_paint_copy(const Paint *src, Paint *dst, const int flag)
 {
-  tar->brush = src->brush;
-  tar->cavity_curve = BKE_curvemapping_copy(src->cavity_curve);
-  tar->tool_slots = static_cast<PaintToolSlot *>(MEM_dupallocN(src->tool_slots));
+  dst->brush = src->brush;
+  dst->cavity_curve = BKE_curvemapping_copy(src->cavity_curve);
+  dst->tool_slots = static_cast<PaintToolSlot *>(MEM_dupallocN(src->tool_slots));
 
-  tar->brush_asset_reference = BKE_asset_weak_reference_copy(src->brush_asset_reference);
+  if (src->brush_asset_reference) {
+    dst->brush_asset_reference = MEM_new<AssetWeakReference>(__func__,
+                                                             *src->brush_asset_reference);
+  }
 
   if ((flag & LIB_ID_CREATE_NO_USER_REFCOUNT) == 0) {
-    id_us_plus((ID *)tar->palette);
+    id_us_plus((ID *)dst->palette);
   }
 }
 
@@ -1309,7 +1309,7 @@ void BKE_paint_stroke_get_average(const Scene *scene, const Object *ob, float st
     mul_v3_v3fl(stroke, ups->average_stroke_accum, fac);
   }
   else {
-    copy_v3_v3(stroke, ob->object_to_world[3]);
+    copy_v3_v3(stroke, ob->object_to_world().location());
   }
 }
 
