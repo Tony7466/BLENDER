@@ -2151,8 +2151,8 @@ static void unused_message_gen(std::string &message,
           (is_first) ? "" : ", ",
           num_tagged[i],
           (num_tagged[i] > 1) ?
-              IFACE_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))) :
-              IFACE_(BKE_idtype_idcode_to_name(BKE_idtype_idcode_from_index(i))));
+              IFACE_(BKE_idtype_idcode_to_name_plural(BKE_idtype_index_to_idcode(i))) :
+              IFACE_(BKE_idtype_idcode_to_name(BKE_idtype_index_to_idcode(i))));
       is_first = false;
     }
   }
@@ -2163,7 +2163,10 @@ static int unused_message_popup_width_compute(bContext *C)
   /* Computation of unused data amounts, with all options ON.
    * Used to estimate the maximum required width for the dialog. */
   Main *bmain = CTX_data_main(C);
-  LibQueryUnusedIDsData data = {true, true, true, {}, {}, {}};
+  LibQueryUnusedIDsData data;
+  data.do_local_ids = true;
+  data.do_linked_ids = true;
+  data.do_recursive = true;
   BKE_lib_query_unused_ids_amounts(bmain, data);
 
   std::string unused_message = "";
