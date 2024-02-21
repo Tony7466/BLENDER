@@ -955,17 +955,20 @@ static void do_clay_strips_brush_task(Object *ob,
     auto_mask::node_update(automask_data, vd);
 
     /* The normal from the vertices is ignored, it causes glitch with planes, see: #44390. */
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                brush,
-                                                                vd.co,
-                                                                ss->cache->radius * test.dist,
-                                                                vd.no,
-                                                                vd.fno,
-                                                                vd.mask,
-                                                                vd.vertex,
-                                                                thread_id,
-                                                                &automask_data);
-
+    float fade = bstrength * SCULPT_brush_strength_factor(ss,
+                                                          brush,
+                                                          vd.co,
+                                                          ss->cache->radius * test.dist,
+                                                          vd.no,
+                                                          vd.fno,
+                                                          vd.mask,
+                                                          vd.vertex,
+                                                          thread_id,
+                                                          &automask_data);
+    /* Workaround for https://projects.blender.org/blender/blender/issues/116458
+      apply a strong falloff based on the distance to the brush plane */
+    const float decay_rate = 34.0f;
+    fade *= std::exp(-decay_rate * len_v3(val));
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;
