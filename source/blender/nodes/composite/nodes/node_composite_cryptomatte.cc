@@ -843,7 +843,7 @@ class LegacyCryptoMatteOperation : public BaseCryptoMatteOperation {
   Vector<GPUTexture *> get_layers() override
   {
     Vector<GPUTexture *> layers;
-    /* Add all textures of all inputs except the first input, which the input image. */
+    /* Add all textures of all inputs except the first input, which is the input image. */
     for (const bNodeSocket *socket : bnode().input_sockets().drop_front(1)) {
       layers.append(get_input(socket->identifier).texture());
     }
