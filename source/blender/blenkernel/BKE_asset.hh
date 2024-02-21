@@ -11,6 +11,7 @@
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
 
+#include "DNA_ID_enums.h"
 #include "DNA_asset_types.h"
 
 struct AssetLibraryReference;
@@ -82,4 +83,6 @@ void BKE_asset_weak_reference_read(BlendDataReader *reader, AssetWeakReference *
 
 Main *BKE_asset_weak_reference_main(Main *global_main, const ID *id);
 void BKE_asset_weak_reference_main_free();
-ID *BKE_asset_weak_reference_ensure(Main *global_main, const AssetWeakReference *weak_ref);
+ID *BKE_asset_weak_reference_ensure(Main &global_main,
+                                    ID_Type id_type,
+                                    const AssetWeakReference &weak_ref);

@@ -1008,7 +1008,7 @@ static int brush_asset_select_exec(bContext *C, wmOperator *op)
 
   AssetWeakReference brush_asset_reference = asset->make_weak_reference();
   Brush *brush = reinterpret_cast<Brush *>(
-      BKE_asset_weak_reference_ensure(bmain, &brush_asset_reference));
+      BKE_asset_weak_reference_ensure(*bmain, ID_BR, brush_asset_reference));
 
   Paint *paint = BKE_paint_get_active_from_context(C);
 
@@ -1371,7 +1371,8 @@ static int brush_asset_save_as_exec(bContext *C, wmOperator *op)
   /* TODO: maybe not needed, even less so if there is more visual confirmation of change. */
   BKE_reportf(op->reports, RPT_INFO, "Saved \"%s\"", filepath.c_str());
 
-  brush = reinterpret_cast<Brush *>(BKE_asset_weak_reference_ensure(bmain, &new_brush_weak_ref));
+  brush = reinterpret_cast<Brush *>(
+      BKE_asset_weak_reference_ensure(*bmain, ID_BR, new_brush_weak_ref));
 
   if (!BKE_paint_brush_asset_set(paint, brush, new_brush_weak_ref)) {
     /* Note brush sset was still saved in editable asset library, so was not a no-op. */
@@ -1623,7 +1624,7 @@ static int brush_asset_revert_exec(bContext *C, wmOperator * /*op*/)
   BLI_remlink(&asset_main->brushes, brush);
 
   Brush *new_brush = reinterpret_cast<Brush *>(
-      BKE_asset_weak_reference_ensure(bmain, paint->brush_asset_reference));
+      BKE_asset_weak_reference_ensure(*bmain, ID_BR, *paint->brush_asset_reference));
 
   BKE_libblock_remap(bmain, brush, new_brush, 0);
   BLI_addtail(&asset_main->brushes, brush);

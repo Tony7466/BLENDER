@@ -737,7 +737,7 @@ void BKE_paint_brush_asset_restore(Main *bmain, Paint *paint)
   paint->brush_asset_reference = nullptr;
 
   Brush *brush_asset = reinterpret_cast<Brush *>(
-      BKE_asset_weak_reference_ensure(bmain, &weak_ref));
+      BKE_asset_weak_reference_ensure(*bmain, ID_BR, weak_ref));
 
   /* Will either re-assign the brush_asset_reference to `paint`, or free it if loading a brush ID
    * from it failed. */
