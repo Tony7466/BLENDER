@@ -156,7 +156,11 @@ struct AssetWeakReferenceMain {
   }
 };
 
-blender::Vector<AssetWeakReferenceMain> ASSET_WEAK_REFERENCE_MAINS;
+static Vector<AssetWeakReferenceMain> &get_weak_reference_mains()
+{
+  static Vector<AssetWeakReferenceMain> mains;
+  return mains;
+}
 
 Main *BKE_asset_weak_reference_main(Main *global_main, const ID *id)
 {
@@ -164,7 +168,7 @@ Main *BKE_asset_weak_reference_main(Main *global_main, const ID *id)
     return global_main;
   }
 
-  for (const AssetWeakReferenceMain &weak_ref_main : ASSET_WEAK_REFERENCE_MAINS) {
+  for (const AssetWeakReferenceMain &weak_ref_main : get_weak_reference_mains()) {
     /* TODO: just loop over listbase of same type, or make this whole thing
      * more efficient. */
     ID *other_id;
@@ -182,19 +186,19 @@ Main *BKE_asset_weak_reference_main(Main *global_main, const ID *id)
 
 static Main *asset_weak_reference_main_ensure(const char *filepath)
 {
-  for (const AssetWeakReferenceMain &weak_ref_main : ASSET_WEAK_REFERENCE_MAINS) {
+  for (const AssetWeakReferenceMain &weak_ref_main : get_weak_reference_mains()) {
     if (weak_ref_main.filepath == filepath) {
       return weak_ref_main.main;
     }
   }
 
-  ASSET_WEAK_REFERENCE_MAINS.append(filepath);
-  return ASSET_WEAK_REFERENCE_MAINS.last().main;
+  get_weak_reference_mains().append(filepath);
+  return get_weak_reference_mains().last().main;
 }
 
 void BKE_asset_weak_reference_main_free()
 {
-  ASSET_WEAK_REFERENCE_MAINS.clear_and_shrink();
+  get_weak_reference_mains().clear_and_shrink();
 }
 
 ID *BKE_asset_weak_reference_ensure(Main *global_main, const AssetWeakReference *weak_ref)
