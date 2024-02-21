@@ -73,8 +73,12 @@ void main()
 
   GBufferData gbuf_data;
   gbuf_data.closure[0] = g_closure_get_resolved(0, transparency_rcp);
+#if CLOSURE_DATA_COUNT > 1
   gbuf_data.closure[1] = g_closure_get_resolved(1, transparency_rcp);
+#endif
+#if CLOSURE_DATA_COUNT > 2
   gbuf_data.closure[2] = g_closure_get_resolved(2, transparency_rcp);
+#endif
   gbuf_data.surface_N = g_data.N;
   gbuf_data.thickness = thickness;
   gbuf_data.object_id = resource_id;

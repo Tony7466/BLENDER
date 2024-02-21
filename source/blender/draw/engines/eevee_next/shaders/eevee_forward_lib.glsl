@@ -13,6 +13,10 @@
 #pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
 
+#if CLOSURE_DATA_COUNT != LIGHT_CLOSURE_EVAL_COUNT
+#  error Closure data count and eval count must match
+#endif
+
 void forward_lighting_eval(float thickness, out vec3 radiance, out vec3 transmittance)
 {
   float vPz = dot(drw_view_forward(), g_data.P) - dot(drw_view_forward(), drw_view_position());
