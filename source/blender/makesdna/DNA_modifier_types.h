@@ -111,6 +111,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilWeightAngle = 74,
   eModifierType_GreasePencilArray = 75,
   eModifierType_GreasePencilWeightProximity = 76,
+  eModifierType_GreasePencilSimplify = 77,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2947,3 +2948,30 @@ typedef enum GreasePencilWeightProximityFlag {
   MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT = (1 << 0),
   MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA = (1 << 1),
 } GreasePencilWeightProximityFlag;
+
+typedef struct GreasePencilSimplifyModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  /** #GreasePencilSimplifyModifierFlag. */
+  int flag;
+  /** #GreasePencilSimplifyModifierMode. */
+  short mode;
+
+  /** Every n vertex to keep. */
+  short step;
+  float factor;
+  /** For sampling. */
+  float length;
+  float sharp_threshold;
+
+  /** Merge distance */
+  float distance;
+} GreasePencilSimplifyModifierData;
+
+typedef enum GreasePencilSimplifyModifierMode {
+  MOD_GREASE_PENCIL_SIMPLIFY_FIXED = 0,
+  MOD_GREASE_PENCIL_SIMPLIFY_ADAPTIVE = 1,
+  MOD_GREASE_PENCIL_SIMPLIFY_SAMPLE = 2,
+  MOD_GREASE_PENCIL_SIMPLIFY_MERGE = 3,
+} GreasePencilSimplifyModifierMode;
