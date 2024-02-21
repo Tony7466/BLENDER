@@ -33,10 +33,16 @@ ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V)
       cl_light.ltc_mat = LTC_GGX_MAT(dot(cl.N, V), cl.data.x);
       cl_light.type = LIGHT_SPECULAR;
       break;
-    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
+      ClosureRefraction cl_refract = to_closure_refraction(cl);
+      vec3 R = refract(-V, cl.N, 1.0 / cl_refract.ior);
+      float roughness = lightprobe_refraction_roughness_remapping(cl_refract.roughness,
+                                                                  cl_refract.ior);
+      cl_light.ltc_mat = LTC_GGX_MAT(dot(-cl.N, R), roughness);
       cl_light.N = -cl.N;
       cl_light.type = LIGHT_SPECULAR;
       break;
+    }
     case CLOSURE_NONE_ID:
       /* TODO(fclem): Assert. */
       break;
@@ -124,8 +130,7 @@ void main()
           stack.cl[i].light_shadowed += lightprobe_eval(samp, to_closure_reflection(cl), P, V);
           break;
         case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
-          /* TODO(fclem): Add instead of replacing when we support correct refracted light. */
-          stack.cl[i].light_shadowed = lightprobe_eval(samp, to_closure_refraction(cl), P, V);
+          stack.cl[i].light_shadowed += lightprobe_eval(samp, to_closure_refraction(cl), P, V);
           break;
         case CLOSURE_NONE_ID:
           /* TODO(fclem): Assert. */

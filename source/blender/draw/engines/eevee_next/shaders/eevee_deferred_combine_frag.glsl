@@ -59,14 +59,7 @@ void main()
     ClosureUndetermined cl = gbuffer_closure_get(gbuf, i);
 
     if (!use_combined_lightprobe_eval) {
-      vec3 closure_indirect = load_radiance_indirect(texel, i);
-      if (cl.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
-        /* TODO(fclem): Add instead of replacing when we support correct refracted light. */
-        closure_light = closure_indirect;
-      }
-      else {
-        closure_light += closure_indirect;
-      }
+      closure_light += load_radiance_indirect(texel, i);
     }
 
     switch (cl.type) {
