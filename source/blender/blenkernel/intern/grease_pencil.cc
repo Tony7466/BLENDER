@@ -44,7 +44,7 @@
 
 #include "BLO_read_write.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_ID.h"
 #include "DNA_ID_enums.h"
@@ -52,7 +52,6 @@
 #include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
-#include "DNA_scene_types.h"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
@@ -215,6 +214,7 @@ static void grease_pencil_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_GP = {
     /*id_code*/ ID_GP,
     /*id_filter*/ FILTER_ID_GP,
+    /*dependencies_id_types*/ FILTER_ID_GP | FILTER_ID_MA,
     /*main_listbase_index*/ INDEX_ID_GP,
     /*struct_size*/ sizeof(GreasePencil),
     /*name*/ "GreasePencil",
@@ -259,18 +259,18 @@ static CustomData &domain_custom_data(CurvesGeometry &curves, const AttrDomain d
 template<typename T>
 static MutableSpan<T> get_mutable_attribute(CurvesGeometry &curves,
                                             const AttrDomain domain,
-                                            const StringRefNull name,
+                                            const StringRef name,
                                             const T default_value = T())
 {
   const int num = domain_num(curves, domain);
   const eCustomDataType type = cpp_type_to_custom_data_type(CPPType::get<T>());
   CustomData &custom_data = domain_custom_data(curves, domain);
 
-  T *data = (T *)CustomData_get_layer_named_for_write(&custom_data, type, name.c_str(), num);
+  T *data = (T *)CustomData_get_layer_named_for_write(&custom_data, type, name, num);
   if (data != nullptr) {
     return {data, num};
   }
-  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, num, name.c_str());
+  data = (T *)CustomData_add_layer_named(&custom_data, type, CD_SET_DEFAULT, num, name);
   MutableSpan<T> span = {data, num};
   if (num > 0 && span.first() != default_value) {
     span.fill(default_value);
@@ -960,7 +960,7 @@ void Layer::update_from_dna_read()
 float4x4 Layer::to_world_space(const Object &object) const
 {
   if (this->parent == nullptr) {
-    return float4x4(object.object_to_world) * this->local_transform();
+    return object.object_to_world() * this->local_transform();
   }
   const Object &parent = *this->parent;
   return this->parent_to_world(parent) * this->local_transform();
@@ -972,8 +972,7 @@ float4x4 Layer::to_object_space(const Object &object) const
     return this->local_transform();
   }
   const Object &parent = *this->parent;
-  return float4x4(object.world_to_object) * this->parent_to_world(parent) *
-         this->local_transform();
+  return object.world_to_object() * this->parent_to_world(parent) * this->local_transform();
 }
 
 StringRefNull Layer::parent_bone_name() const
@@ -991,7 +990,7 @@ void Layer::set_parent_bone_name(const char *new_name)
 
 float4x4 Layer::parent_to_world(const Object &parent) const
 {
-  const float4x4 parent_object_to_world(parent.object_to_world);
+  const float4x4 &parent_object_to_world = parent.object_to_world();
   if (parent.type == OB_ARMATURE && !this->parent_bone_name().is_empty()) {
     if (bPoseChannel *channel = BKE_pose_channel_find_name(parent.pose,
                                                            this->parent_bone_name().c_str()))
@@ -1065,6 +1064,18 @@ LayerGroup::~LayerGroup()
 
   MEM_delete(this->runtime);
   this->runtime = nullptr;
+}
+
+LayerGroup &LayerGroup::operator=(const LayerGroup &other)
+{
+  if (this == &other) {
+    return *this;
+  }
+
+  this->~LayerGroup();
+  new (this) LayerGroup(other);
+
+  return *this;
 }
 
 Layer &LayerGroup::add_layer(StringRefNull name)
@@ -1717,6 +1728,32 @@ blender::MutableSpan<GreasePencilDrawingBase *> GreasePencil::drawings()
                                                          this->drawing_array_num};
 }
 
+void GreasePencil::resize_drawings(const int new_num)
+{
+  using namespace blender;
+  BLI_assert(new_num > 0);
+
+  const int prev_num = int(this->drawings().size());
+  if (new_num == prev_num) {
+    return;
+  }
+  if (new_num > prev_num) {
+    const int add_num = new_num - prev_num;
+    grow_array<GreasePencilDrawingBase *>(&this->drawing_array, &this->drawing_array_num, add_num);
+  }
+  else { /* if (new_num < prev_num) */
+    const int shrink_num = prev_num - new_num;
+    MutableSpan<GreasePencilDrawingBase *> old_drawings = this->drawings().drop_front(new_num);
+    for (const int64_t i : old_drawings.index_range()) {
+      if (old_drawings[i]) {
+        MEM_delete(old_drawings[i]);
+      }
+    }
+    shrink_array<GreasePencilDrawingBase *>(
+        &this->drawing_array, &this->drawing_array_num, shrink_num);
+  }
+}
+
 void GreasePencil::add_empty_drawings(const int add_num)
 {
   using namespace blender;
@@ -2140,6 +2177,10 @@ void GreasePencil::set_active_layer(const blender::bke::greasepencil::Layer *lay
 {
   this->active_layer = const_cast<GreasePencilLayer *>(
       reinterpret_cast<const GreasePencilLayer *>(layer));
+
+  if (this->flag & GREASE_PENCIL_AUTOLOCK_LAYERS) {
+    this->autolock_inactive_layers();
+  }
 }
 
 bool GreasePencil::is_layer_active(const blender::bke::greasepencil::Layer *layer) const
@@ -2148,6 +2189,19 @@ bool GreasePencil::is_layer_active(const blender::bke::greasepencil::Layer *laye
     return false;
   }
   return this->get_active_layer() == layer;
+}
+
+void GreasePencil::autolock_inactive_layers()
+{
+  using namespace blender::bke::greasepencil;
+
+  for (Layer *layer : this->layers_for_write()) {
+    if (this->is_layer_active(layer)) {
+      layer->set_locked(false);
+      continue;
+    }
+    layer->set_locked(true);
+  }
 }
 
 static blender::VectorSet<blender::StringRefNull> get_node_names(const GreasePencil &grease_pencil)
@@ -2580,6 +2634,7 @@ static void read_layer(BlendDataReader *reader,
 {
   BLO_read_data_address(reader, &node->base.name);
   node->base.parent = parent;
+  BLO_read_data_address(reader, &node->parsubstr);
 
   /* Read frames storage. */
   BLO_read_int32_array(reader, node->frames_storage.num, &node->frames_storage.keys);
@@ -2647,6 +2702,7 @@ static void write_layer(BlendWriter *writer, GreasePencilLayer *node)
 {
   BLO_write_struct(writer, GreasePencilLayer, node);
   BLO_write_string(writer, node->base.name);
+  BLO_write_string(writer, node->parsubstr);
 
   BLO_write_int32_array(writer, node->frames_storage.num, node->frames_storage.keys);
   BLO_write_struct_array(

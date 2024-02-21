@@ -10,8 +10,6 @@
 
 #include <cstring>
 
-#include "DNA_asset_types.h"
-
 #include "MEM_guardedalloc.h"
 
 #include "BLI_fileops.h"
@@ -24,7 +22,7 @@
 #include "BKE_appdir.hh"
 #include "BKE_preferences.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_userdef_types.h"
@@ -193,6 +191,22 @@ bUserExtensionRepo *BKE_preferences_extension_repo_add(UserDef *userdef,
 void BKE_preferences_extension_repo_remove(UserDef *userdef, bUserExtensionRepo *repo)
 {
   BLI_freelinkN(&userdef->extension_repos, repo);
+}
+
+bUserExtensionRepo *BKE_preferences_extension_repo_add_default(UserDef *userdef)
+{
+  bUserExtensionRepo *repo = BKE_preferences_extension_repo_add(
+      userdef, "Blender Official", "blender_official", "");
+  STRNCPY(repo->remote_path, "https://extensions.blender.org");
+  repo->flag |= USER_EXTENSION_REPO_FLAG_USE_REMOTE_PATH;
+  return repo;
+}
+
+bUserExtensionRepo *BKE_preferences_extension_repo_add_default_user(UserDef *userdef)
+{
+  bUserExtensionRepo *repo = BKE_preferences_extension_repo_add(
+      userdef, "User Default", "user_default", "");
+  return repo;
 }
 
 void BKE_preferences_extension_repo_name_set(UserDef *userdef,

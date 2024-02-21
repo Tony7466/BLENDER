@@ -10,21 +10,19 @@
 #include "BLI_multi_value_map.hh"
 #include "BLI_string.h"
 
-#include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
 #include "BKE_asset.hh"
 #include "BKE_idprop.h"
 #include "BKE_screen.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 
 #include "ED_asset.hh"
 #include "ED_asset_menu_utils.hh"
 #include "ED_node.hh"
-#include "ED_screen.hh"
 
 #include "node_intern.hh"
 
@@ -53,6 +51,7 @@ static asset::AssetItemTree build_catalog_tree(const bContext &C, const bNodeTre
     return true;
   };
   const AssetLibraryReference library = asset_system::all_library_reference();
+  asset_system::all_library_reload_catalogs_if_dirty();
   return asset::build_filtered_all_catalog_tree(library, C, type_filter, meta_data_filter);
 }
 
