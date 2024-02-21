@@ -141,7 +141,10 @@ struct AssetWeakReferenceMain {
   std::string filepath;
   Main *main;
 
-  AssetWeakReferenceMain(const char *filepath) : filepath(filepath), main(BKE_main_new()) {}
+  AssetWeakReferenceMain(std::string filepath)
+      : filepath(std::move(filepath)), main(BKE_main_new())
+  {
+  }
   AssetWeakReferenceMain(const AssetWeakReferenceMain &) = delete;
   AssetWeakReferenceMain(AssetWeakReferenceMain &&other)
       : filepath(std::exchange(other.filepath, "")), main(std::exchange(other.main, nullptr))
@@ -182,7 +185,7 @@ Main *BKE_asset_weak_reference_main(Main *global_main, const ID *id)
   return nullptr;
 }
 
-static Main *asset_weak_reference_main_ensure(const char *filepath)
+static Main *asset_weak_reference_main_ensure(const StringRef filepath)
 {
   for (const AssetWeakReferenceMain &weak_ref_main : get_weak_reference_mains()) {
     if (weak_ref_main.filepath == filepath) {
@@ -190,7 +193,7 @@ static Main *asset_weak_reference_main_ensure(const char *filepath)
     }
   }
 
-  get_weak_reference_mains().append(filepath);
+  get_weak_reference_mains().append_as(filepath);
   return get_weak_reference_mains().last().main;
 }
 
