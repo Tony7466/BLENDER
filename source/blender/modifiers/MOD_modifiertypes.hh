@@ -89,6 +89,7 @@ extern ModifierTypeInfo modifierType_GreasePencilLength;
 extern ModifierTypeInfo modifierType_GreasePencilWeightAngle;
 extern ModifierTypeInfo modifierType_GreasePencilArray;
 extern ModifierTypeInfo modifierType_GreasePencilWeightProximity;
+extern ModifierTypeInfo modifierType_GreasePencilHook;
 extern ModifierTypeInfo modifierType_GreasePencilLineart;
 
 /* MOD_util.cc */
