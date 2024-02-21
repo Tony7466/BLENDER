@@ -219,6 +219,7 @@ void GeometryDataSource::foreach_default_column_ids(
       });
 
   if (component_->type() == bke::GeometryComponent::Type::Instance) {
+    fn({(char *)"Position"}, false);
     fn({(char *)"Rotation"}, false);
     fn({(char *)"Scale"}, false);
   }
@@ -264,6 +265,12 @@ std::unique_ptr<ColumnValues> GeometryDataSource::get_column_values(
                 }));
       }
       Span<float4x4> transforms = instances->transforms();
+      if (STREQ(column_id.name, "Position")) {
+        return std::make_unique<ColumnValues>(
+            column_id.name, VArray<float3>::ForFunc(domain_num, [transforms](int64_t index) {
+              return transforms[index].location();
+            }));
+      }
       if (STREQ(column_id.name, "Rotation")) {
         return std::make_unique<ColumnValues>(
             column_id.name, VArray<float3>::ForFunc(domain_num, [transforms](int64_t index) {
