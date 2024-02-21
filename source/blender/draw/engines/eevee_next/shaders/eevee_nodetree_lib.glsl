@@ -22,12 +22,12 @@ vec3 g_volume_absorption;
 
 /* Maximum number of picked closure. */
 #ifndef CLOSURE_DATA_COUNT
-#  define CLOSURE_DATA_COUNT 3
+#  define CLOSURE_DATA_COUNT 1
 #endif
 /* Sampled closure parameters. */
 ClosureUndetermined g_closures_data[CLOSURE_DATA_COUNT];
 /* Random number per sampled closure type. */
-float g_closure_rand[3];
+float g_closure_rand[CLOSURE_DATA_COUNT];
 
 ClosureUndetermined g_closure_get(int i)
 {
@@ -177,6 +177,7 @@ Closure closure_eval(ClosureReflection reflection)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, reflection);
+  cl.data.r = reflection.roughness;
   /* Choose the slot with the least amount of weight.
    * Allow clearcoat layer without noise. */
 #define CHOOSE_MIN_WEIGHT_CLOSURE_BIN(a, b) \
