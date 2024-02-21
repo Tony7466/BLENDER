@@ -49,6 +49,7 @@ enum eEditKeyframes_Validate {
 
 /* select modes */
 enum eEditKeyframes_Select {
+  SELECT_NONE = 0,
   /* SELECT_SUBTRACT for all, followed by SELECT_ADD for some */
   SELECT_REPLACE = (1 << 0),
   /* add ok keyframes to selection */
@@ -58,7 +59,9 @@ enum eEditKeyframes_Select {
   /* flip ok status of keyframes based on key status */
   SELECT_INVERT = (1 << 3),
   SELECT_EXTEND_RANGE = (1 << 4),
+  SELECT_CHILDREN_ONLY = (1 << 5),
 };
+ENUM_OPERATORS(eEditKeyframes_Select, SELECT_CHILDREN_ONLY)
 
 /* "selection map" building modes */
 enum eEditKeyframes_SelMap {

@@ -1971,7 +1971,8 @@ static int graphkeys_clickselect_exec(bContext *C, wmOperator *op)
   }
 
   /* select mode is either replace (deselect all, then add) or add/extend */
-  const short selectmode = RNA_boolean_get(op->ptr, "extend") ? SELECT_INVERT : SELECT_REPLACE;
+  const eEditKeyframes_Select selectmode = RNA_boolean_get(op->ptr, "extend") ? SELECT_INVERT :
+                                                                                SELECT_REPLACE;
   const bool deselect_all = RNA_boolean_get(op->ptr, "deselect_all");
   /* See #WM_operator_properties_generic_select() for a detailed description of the how and why of
    * this. */
@@ -1985,22 +1986,16 @@ static int graphkeys_clickselect_exec(bContext *C, wmOperator *op)
   /* figure out action to take */
   if (RNA_boolean_get(op->ptr, "column")) {
     /* select all keyframes in the same frame as the one that was under the mouse */
-    ret_val = graphkeys_mselect_column(
-        &ac, mval, eEditKeyframes_Select(selectmode), wait_to_deselect_others);
+    ret_val = graphkeys_mselect_column(&ac, mval, selectmode, wait_to_deselect_others);
   }
   else if (RNA_boolean_get(op->ptr, "curves")) {
     /* select all keyframes in the same F-Curve as the one under the mouse */
-    ret_val = mouse_graph_keys(
-        &ac, mval, eEditKeyframes_Select(selectmode), deselect_all, true, wait_to_deselect_others);
+    ret_val = mouse_graph_keys(&ac, mval, selectmode, deselect_all, true, wait_to_deselect_others);
   }
   else {
     /* select keyframe under mouse */
-    ret_val = mouse_graph_keys(&ac,
-                               mval,
-                               eEditKeyframes_Select(selectmode),
-                               deselect_all,
-                               false,
-                               wait_to_deselect_others);
+    ret_val = mouse_graph_keys(
+        &ac, mval, selectmode, deselect_all, false, wait_to_deselect_others);
   }
 
   /* set notifier that keyframe selection (and also channel selection in some cases) has
