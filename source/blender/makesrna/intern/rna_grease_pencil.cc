@@ -256,7 +256,8 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
-  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+  RNA_def_property_update(
+      prop, NC_GPENCIL | ND_DATA | NA_SELECTED | ND_KEYFRAME, "rna_grease_pencil_update");
 
   /* Name */
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
