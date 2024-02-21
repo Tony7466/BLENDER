@@ -29,6 +29,7 @@
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_ui_common.hh"
 
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 namespace blender {
@@ -79,8 +80,9 @@ static void subdivide_drawing(GreasePencilSimplifyModifierData &mmd,
                               bke::greasepencil::Drawing &drawing)
 {
   IndexMaskMemory memory;
+  bke::CurvesGeometry curves=drawing.strokes_for_write();
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
-      &ob, drawing.strokes_for_write(), mmd.influence, memory);
+      &ob, curves, mmd.influence, memory);
 
   //bke::GreasePencilLayerFieldContext field_context(
   //    grease_pencil, AttrDomain::Curve, layer_index);
@@ -90,14 +92,13 @@ static void subdivide_drawing(GreasePencilSimplifyModifierData &mmd,
   switch (mmd.mode) {
     case MOD_GREASE_PENCIL_SIMPLIFY_FIXED: {
       for (int i = 0; i < mmd.step; i++) {
-
         //BKE_gpencil_stroke_simplify_fixed(gpd, gps);
       }
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_ADAPTIVE: {
       /* simplify stroke using Ramer-Douglas-Peucker algorithm */
-      //BKE_gpencil_stroke_simplify_adaptive(gpd, gps, mmd->factor);
+      //geometry::resample_adaptive(curves,strokes,VArray<float>::ForSingle(mmd.factor,curves.curves_num()));
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_SAMPLE: {
@@ -147,23 +148,30 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&mmd->influence, ob, walk, user_data);
 }
 
-static void panel_draw(const bContext *C, Panel *panel)
+static void panel_draw(const bContext * /*C*/, Panel *panel)
 {
   uiLayout *layout = panel->layout;
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
+  
+  int mode = RNA_enum_get(ptr, "mode");
 
   uiLayoutSetPropSep(layout, true);
 
-  uiItemR(layout, ptr, "subdivision_type", UI_ITEM_NONE, nullptr, ICON_NONE);
-  uiItemR(layout, ptr, "level", UI_ITEM_NONE, IFACE_("Subdivisions"), ICON_NONE);
+  uiItemR(layout, ptr, "mode", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  if (uiLayout *influence_panel = uiLayoutPanelProp(
-          C, layout, ptr, "open_influence_panel", "Influence"))
-  {
-    modifier::greasepencil::draw_layer_filter_settings(C, influence_panel, ptr);
-    modifier::greasepencil::draw_material_filter_settings(C, influence_panel, ptr);
-    modifier::greasepencil::draw_vertex_group_settings(C, influence_panel, ptr);
+  if (mode == MOD_GREASE_PENCIL_SIMPLIFY_FIXED) {
+    uiItemR(layout, ptr, "step", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+  else if (mode == MOD_GREASE_PENCIL_SIMPLIFY_ADAPTIVE) {
+    uiItemR(layout, ptr, "factor", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+  else if (mode == MOD_GREASE_PENCIL_SIMPLIFY_SAMPLE) {
+    uiItemR(layout, ptr, "length", UI_ITEM_NONE, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "sharp_threshold", UI_ITEM_NONE, nullptr, ICON_NONE);
+  }
+  else if (mode == MOD_GREASE_PENCIL_SIMPLIFY_MERGE) {
+    uiItemR(layout, ptr, "distance", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
   modifier_panel_end(layout, ptr);
