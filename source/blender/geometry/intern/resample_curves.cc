@@ -411,6 +411,39 @@ static CurvesGeometry resample_to_uniform(const CurvesGeometry &src_curves,
 }
 
 CurvesGeometry resample_to_count(const CurvesGeometry &src_curves,
+                                 const IndexMask &selection,
+                                 const VArray<int> &counts,
+                                 const ResampleCurvesOutputAttributeIDs &output_ids)
+{
+  if (src_curves.curves_range().is_empty()) {
+    return {};
+  }
+  const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
+
+  CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
+  MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
+
+  /* Ensure that the count of each curve is at least one. */
+  threading::parallel_for(dst_curves.curves_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      dst_offsets[i] = math::max(1, counts[i]);
+    }
+  });
+
+  IndexMaskMemory memory;
+  const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
+
+  /* Fill the counts for the curves that aren't selected and accumulate the counts into offsets. */
+  offset_indices::copy_group_sizes(src_points_by_curve, unselected, dst_offsets);
+  offset_indices::accumulate_counts_to_offsets(dst_offsets);
+  dst_curves.resize(dst_offsets.last(), dst_curves.curves_num());
+
+  resample_to_uniform(src_curves, selection, output_ids, dst_curves);
+
+  return dst_curves;
+}
+
+CurvesGeometry resample_to_count(const CurvesGeometry &src_curves,
                                  const fn::FieldContext &field_context,
                                  const fn::Field<bool> &selection_field,
                                  const fn::Field<int> &count_field,
@@ -421,6 +454,42 @@ CurvesGeometry resample_to_count(const CurvesGeometry &src_curves,
                              selection_field,
                              get_count_input_max_one(count_field),
                              output_ids);
+}
+
+CurvesGeometry resample_to_length(const CurvesGeometry &src_curves,
+                                  const IndexMask &selection,
+                                  const VArray<float> &sample_lengths,
+                                  const ResampleCurvesOutputAttributeIDs &output_ids)
+{
+  if (src_curves.curves_range().is_empty()) {
+    return {};
+  }
+  const OffsetIndices src_points_by_curve = src_curves.points_by_curve();
+  const VArray<bool> curves_cyclic = src_curves.cyclic();
+
+  CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
+  MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
+
+  src_curves.ensure_evaluated_lengths();
+  threading::parallel_for(dst_curves.curves_range(), 1024, [&](const IndexRange range) {
+    for (const int i : range) {
+      const float curve_length = src_curves.evaluated_length_total_for_curve(i, curves_cyclic[i]);
+      const int count = int(curve_length / sample_lengths[i]) + 1;
+      dst_offsets[i] = math::max(1, count);
+    }
+  });
+
+  IndexMaskMemory memory;
+  const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
+
+  /* Fill the counts for the curves that aren't selected and accumulate the counts into offsets. */
+  offset_indices::copy_group_sizes(src_points_by_curve, unselected, dst_offsets);
+  offset_indices::accumulate_counts_to_offsets(dst_offsets);
+  dst_curves.resize(dst_offsets.last(), dst_curves.curves_num());
+
+  resample_to_uniform(src_curves, selection, output_ids, dst_curves);
+
+  return dst_curves;
 }
 
 CurvesGeometry resample_to_length(const CurvesGeometry &src_curves,
@@ -437,8 +506,7 @@ CurvesGeometry resample_to_length(const CurvesGeometry &src_curves,
 }
 
 CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
-                                     const fn::FieldContext &field_context,
-                                     const fn::Field<bool> &selection_field,
+                                     const IndexMask &selection,
                                      const ResampleCurvesOutputAttributeIDs &output_ids)
 {
   if (src_curves.curves_range().is_empty()) {
@@ -448,10 +516,6 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
   const OffsetIndices src_evaluated_points_by_curve = src_curves.evaluated_points_by_curve();
   const Span<float3> evaluated_positions = src_curves.evaluated_positions();
 
-  fn::FieldEvaluator evaluator{field_context, src_curves.curves_num()};
-  evaluator.set_selection(selection_field);
-  evaluator.evaluate();
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
   IndexMaskMemory memory;
   const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
 
@@ -525,6 +589,21 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
   }
 
   return dst_curves;
+}
+
+CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
+                                     const fn::FieldContext &field_context,
+                                     const fn::Field<bool> &selection_field,
+                                     const ResampleCurvesOutputAttributeIDs &output_ids)
+{
+  if (src_curves.curves_range().is_empty()) {
+    return {};
+  }
+  fn::FieldEvaluator evaluator{field_context, src_curves.curves_num()};
+  evaluator.set_selection(selection_field);
+  evaluator.evaluate();
+  return resample_to_evaluated(
+      src_curves, evaluator.get_evaluated_selection_as_mask(), output_ids);
 }
 
 }  // namespace blender::geometry
