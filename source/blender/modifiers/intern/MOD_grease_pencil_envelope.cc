@@ -117,24 +117,23 @@ static float calc_min_radius_v3v3(const float3 &p1, const float3 &p2, const floa
   const float p2_sqr = math::length_squared(p2);
   const float diff_dir = p1_dir - p2_dir;
 
-  float u;
-  if (diff_dir != 0.0f) {
+  const float u = [=]() {
+    if (diff_dir == 0.0f) {
+      const float p1_sqr = math::length_squared(p1);
+      return p1_sqr < p2_sqr ? 1.0f : 0.0f;
+    }
+
     const float p = p2_dir / diff_dir;
     const float3 diff = p1 - p2;
     const float diff_sqr = math::length_squared(diff);
     const float diff_p2 = math::dot(diff, p2);
     const float q = (2 * diff_p2 * p2_dir - p2_sqr * diff_dir) / (diff_dir * diff_sqr);
-    if (p * p - q >= 0) {
-      u = math::clamp(-p - math::sqrt(p * p - q) * std::copysign(1.0f, p), 0.0f, 1.0f);
+    if (p * p - q < 0) {
+      return 0.5f - std::copysign(0.5f, p);
     }
-    else {
-      u = 0.5f - std::copysign(0.5f, p);
-    }
-  }
-  else {
-    const float p1_sqr = math::length_squared(p1);
-    u = p1_sqr < p2_sqr ? 1.0f : 0.0f;
-  }
+
+    return math::clamp(-p - math::sqrt(p * p - q) * std::copysign(1.0f, p), 0.0f, 1.0f);
+  }();
 
   /* v is the determined minimal radius. In case p1 and p2 are the same, there is a
    * simple proof for the following formula using the geometric mean theorem and Thales theorem. */
