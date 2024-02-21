@@ -173,20 +173,25 @@ Closure closure_eval(ClosureTranslucent translucent)
   return Closure(0);
 }
 
+bool g_closure_reflection_bin = false;
+
 Closure closure_eval(ClosureReflection reflection)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, reflection);
   cl.data.r = reflection.roughness;
-  /* Choose the slot with the least amount of weight.
-   * Allow clearcoat layer without noise. */
+  /* Alternate between two bins on a per closure basis.
+   * Allow clearcoat layer without noise.
+   * Choosing the bin with the least weight can choose a different bin for the same closure and
+   * produce issue with raytracing denoiser. */
 #define CHOOSE_MIN_WEIGHT_CLOSURE_BIN(a, b) \
-  if (g_closures_data[a].weight > g_closures_data[b].weight) { \
+  if (g_closure_reflection_bin) { \
     closure_select(g_closures_data[b], g_closure_rand[b], cl); \
   } \
   else { \
     closure_select(g_closures_data[a], g_closure_rand[a], cl); \
-  }
+  } \
+  g_closure_reflection_bin = !g_closure_reflection_bin;
 
 #if CLOSURE_DATA_COUNT == 1
   /* Only one reflection closure is present in the whole tree. */
