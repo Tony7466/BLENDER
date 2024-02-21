@@ -42,14 +42,14 @@ static void align_rotations_auto_pivot(const IndexMask &mask,
                                        MutableSpan<math::Quaternion> output_rotations)
 {
   mask.foreach_index([&](const int64_t i) {
+    const math::Quaternion old_rotation = input_rotations[i];
     const float3 vector = vectors[i];
     if (math::is_zero(vector)) {
-      output_rotations[i] = input_rotations[i];
+      output_rotations[i] = old_rotation;
       return;
     }
 
-    const float3x3 old_rotation = math::from_rotation<float3x3>(input_rotations[i]);
-    const float3 old_axis = old_rotation * local_main_axis;
+    const float3 old_axis = math::transform_point(old_rotation, local_main_axis);
 
     const float3 new_axis = math::normalize(vector);
     float3 rotation_axis = math::cross_high_precision(old_axis, new_axis);
@@ -65,11 +65,9 @@ static void align_rotations_auto_pivot(const IndexMask &mask,
     const float full_angle = angle_normalized_v3v3(old_axis, new_axis);
     const float angle = factors[i] * full_angle;
 
-    const float3x3 rotation = math::from_rotation<float3x3>(math::AxisAngle(rotation_axis, angle));
+    const math::Quaternion rotation = math::to_quaternion(math::AxisAngle(rotation_axis, angle));
 
-    const float3x3 new_rotation_matrix = rotation * old_rotation;
-
-    output_rotations[i] = math::to_quaternion(new_rotation_matrix);
+    output_rotations[i] = rotation * old_rotation;
   });
 }
 
@@ -82,21 +80,21 @@ static void align_rotations_fixed_pivot(const IndexMask &mask,
                                         MutableSpan<math::Quaternion> output_rotations)
 {
   mask.foreach_index([&](const int64_t i) {
+    const math::Quaternion old_rotation = input_rotations[i];
     if (local_main_axis == local_pivot_axis) {
       /* Can't compute any meaningful rotation angle in this case. */
-      output_rotations[i] = input_rotations[i];
+      output_rotations[i] = old_rotation;
       return;
     }
 
     const float3 vector = vectors[i];
     if (math::is_zero(vector)) {
-      output_rotations[i] = input_rotations[i];
+      output_rotations[i] = old_rotation;
       return;
     }
 
-    const float3x3 old_rotation = math::from_rotation<float3x3>(input_rotations[i]);
-    const float3 old_axis = old_rotation * local_main_axis;
-    const float3 pivot_axis = old_rotation * local_pivot_axis;
+    const float3 old_axis = math::transform_point(old_rotation, local_main_axis);
+    const float3 pivot_axis = math::transform_point(old_rotation, local_pivot_axis);
 
     float full_angle = angle_signed_on_axis_v3v3_v3(vector, old_axis, pivot_axis);
     if (full_angle > M_PI) {
@@ -105,11 +103,9 @@ static void align_rotations_fixed_pivot(const IndexMask &mask,
     }
     const float angle = factors[i] * full_angle;
 
-    const float3x3 rotation = math::from_rotation<float3x3>(math::AxisAngle(pivot_axis, angle));
+    const math::Quaternion rotation = math::to_quaternion(math::AxisAngle(pivot_axis, angle));
 
-    const float3x3 new_rotation_matrix = rotation * old_rotation;
-
-    output_rotations[i] = math::to_quaternion(new_rotation_matrix);
+    output_rotations[i] = rotation * old_rotation;
   });
 }
 
