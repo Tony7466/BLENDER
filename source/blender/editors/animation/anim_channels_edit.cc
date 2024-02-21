@@ -3273,8 +3273,7 @@ static void ANIM_OT_channels_rename(wmOperatorType *ot)
 
 /* Handle selection changes due to clicking on channels. Settings will get caught by UI code... */
 
-static int click_select_channel_scene(bAnimListElem *ale,
-                                      const eEditKeyframes_Select selectmode)
+static int click_select_channel_scene(bAnimListElem *ale, const eEditKeyframes_Select selectmode)
 {
   Scene *sce = (Scene *)ale->data;
   AnimData *adt = sce->adt;
