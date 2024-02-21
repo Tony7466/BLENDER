@@ -117,6 +117,19 @@ struct KerningCacheBLF {
   int ascii_table[KERNING_CACHE_TABLE_SIZE][KERNING_CACHE_TABLE_SIZE];
 };
 
+struct GlyphCacheKey {
+  uint charcode;
+  uint8_t subpixel;
+  friend bool operator==(const GlyphCacheKey &a, const GlyphCacheKey &b)
+  {
+    return a.charcode == b.charcode && a.subpixel == b.subpixel;
+  }
+  uint64_t hash() const
+  {
+    return (charcode << 6 | subpixel);
+  }
+};
+
 struct GlyphCacheBLF {
   /** Font size. */
   float size;
@@ -133,7 +146,7 @@ struct GlyphCacheBLF {
   int fixed_width;
 
   /** The glyphs. */
-  blender::Map<int, std::unique_ptr<GlyphBLF>> glyphs;
+  blender::Map<GlyphCacheKey, std::unique_ptr<GlyphBLF>> glyphs;
 
   /** Texture array, to draw the glyphs. */
   GPUTexture *texture;

@@ -176,7 +176,7 @@ static GlyphBLF *blf_glyph_cache_find_glyph(const GlyphCacheBLF *gc,
                                             uint8_t subpixel)
 {
   const std::unique_ptr<GlyphBLF> *ptr = gc->glyphs.lookup_ptr_as(
-      blf_cache_key(charcode, subpixel));
+      GlyphCacheKey{charcode, subpixel});
   if (ptr != nullptr) {
     return ptr->get();
   }
@@ -343,7 +343,7 @@ static GlyphBLF *blf_glyph_cache_add_glyph(FontBLF *font,
     }
   }
 
-  int key = blf_cache_key(g->c, subpixel);
+  GlyphCacheKey key = {charcode, subpixel};
   gc->glyphs.add(key, std::move(g));
   return gc->glyphs.lookup(key).get();
 }
