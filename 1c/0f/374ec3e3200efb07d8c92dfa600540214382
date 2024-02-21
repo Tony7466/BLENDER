@@ -1,2 +1,3 @@
 Referenced by commit 92428db3bbe9d9481694261d1a673e031092846e, Fix crash using the depth eye-dropper
 Referenced by issue #118524, Loop cut    Ctrl+r ---> crash
+Referenced by pull request #118549, Fix #118524: Loopcut crashes when not near an edge
