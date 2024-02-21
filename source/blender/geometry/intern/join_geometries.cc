@@ -129,7 +129,7 @@ static void join_instances(const Span<const GeometryComponent *> src_components,
 
   result.replace_instances(dst_instances.release());
   auto &dst_component = result.get_component_for_write<bke::InstancesComponent>();
-  join_attributes(src_components, dst_component, {"position", ".reference_index"});
+  join_attributes(src_components, dst_component, {".reference_index"});
 }
 
 static void join_volumes(const Span<const GeometryComponent *> /*src_components*/,
