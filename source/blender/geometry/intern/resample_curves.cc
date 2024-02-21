@@ -423,12 +423,10 @@ CurvesGeometry resample_to_count(const CurvesGeometry &src_curves,
   CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
 
-  /* Ensure that the count of each curve is at least one. */
-  threading::parallel_for(dst_curves.curves_range(), 4096, [&](const IndexRange range) {
-    for (const int i : range) {
-      dst_offsets[i] = math::max(1, counts[i]);
-    }
-  });
+  counts.materialize(dst_offsets);
+  /* We assume the counts are at least 1. */
+  BLI_assert(std::all_of(
+      dst_offsets.begin(), dst_offsets.end(), [&](const int i) { return dst_offsets[i] > 0; }));
 
   IndexMaskMemory memory;
   const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
@@ -474,8 +472,7 @@ CurvesGeometry resample_to_length(const CurvesGeometry &src_curves,
   threading::parallel_for(dst_curves.curves_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       const float curve_length = src_curves.evaluated_length_total_for_curve(i, curves_cyclic[i]);
-      const int count = int(curve_length / sample_lengths[i]) + 1;
-      dst_offsets[i] = math::max(1, count);
+      dst_offsets[i] = int(curve_length / sample_lengths[i]) + 1;
     }
   });
 
