@@ -133,7 +133,7 @@ Closure closure_eval(ClosureDiffuse diffuse)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
-  /* Diffuse & SSS are always first. */
+  /* Diffuse & SSS always use the first closure. */
   closure_select(g_closures_data[0], g_closure_rand[0], cl);
   return Closure(0);
 }
@@ -143,7 +143,7 @@ Closure closure_eval(ClosureSubsurface diffuse)
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
   cl.data.rgb = diffuse.sss_radius;
-  /* Diffuse & SSS are always first. */
+  /* Diffuse & SSS always use the first closure. */
   closure_select(g_closures_data[0], g_closure_rand[0], cl);
   return Closure(0);
 }
@@ -152,7 +152,7 @@ Closure closure_eval(ClosureTranslucent translucent)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, translucent);
-  /* Use second slot so we can have diffuse + translucent on same material without noise. */
+  /* Use second slot so we can have diffuse + translucent without noise. */
   closure_select(g_closures_data[1], g_closure_rand[1], cl);
   return Closure(0);
 }
@@ -161,8 +161,8 @@ Closure closure_eval(ClosureReflection reflection)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, reflection);
-  cl.data.r = reflection.roughness;
-  /* Choose the slot with the least amount of weight. This allows clearcoat layer without noise. */
+  /* Choose the slot with the least amount of weight.
+   * Allow clearcoat layer without noise. */
   if (g_closures_data[1].weight > g_closures_data[2].weight) {
     closure_select(g_closures_data[2], g_closure_rand[2], cl);
   }
@@ -178,8 +178,8 @@ Closure closure_eval(ClosureRefraction refraction)
   closure_base_copy(cl, refraction);
   cl.data.r = refraction.roughness;
   cl.data.g = refraction.ior;
-  /* Use same slot as diffuse as mixed diffuse/refraction are not common. Allow glass material
-   * with clearcoat without noise. */
+  /* Use same slot as diffuse as mixed diffuse/refraction are not common.
+   * Allow glass material with clearcoat without noise. */
   closure_select(g_closures_data[0], g_closure_rand[0], cl);
   return Closure(0);
 }
