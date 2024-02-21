@@ -20,6 +20,7 @@
 
 #include "BIF_glutil.hh"
 
+#include "SEQ_channels.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_render.hh"
 #include "SEQ_sequencer.hh"
@@ -464,6 +465,9 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     return;
   }
 
+  Editing *ed = SEQ_editing_get(scene);
+  ListBase *channels = ed ? SEQ_channels_displayed_get(ed) : nullptr;
+
   const float thumb_height = y2 - y1;
   seq_get_thumb_image_dimensions(
       seq, pixelx, pixely, &thumb_width, thumb_height, &image_width, &image_height);
@@ -548,19 +552,22 @@ void draw_seq_strip_thumbnail(View2D *v2d,
       break;
     }
 
-    /* Transparency on overlap. */
-    if (seq->flag & SEQ_OVERLAP) {
+    /* Transparency on overlap / mute. */
+    bool muted = channels ? SEQ_render_is_muted(channels, seq) : false;
+    bool overlap = seq->flag & SEQ_OVERLAP;
+    if (muted || overlap) {
+      uchar alpha = muted ? 120 : OVERLAP_ALPHA;
       GPU_blend(GPU_BLEND_ALPHA);
       if (ibuf->byte_buffer.data) {
         uchar *buf = ibuf->byte_buffer.data;
         for (int pixel = ibuf->x * ibuf->y; pixel--; buf += 4) {
-          buf[3] = OVERLAP_ALPHA;
+          buf[3] = alpha;
         }
       }
       else if (ibuf->float_buffer.data) {
         float *buf = ibuf->float_buffer.data;
         for (int pixel = ibuf->x * ibuf->y; pixel--; buf += ibuf->channels) {
-          buf[3] = (OVERLAP_ALPHA / 255.0f);
+          buf[3] = (alpha / 255.0f);
         }
       }
     }

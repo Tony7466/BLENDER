@@ -1065,6 +1065,11 @@ static void draw_strip_background(TimelineDrawContext *timeline_ctx,
   uchar col[4];
   color3ubv_from_seq(scene, seq, strip_ctx->show_strip_color_tag, col);
   col[3] = mute_overlap_alpha_factor_get(timeline_ctx->channels, seq);
+  /* Muted strips: turn almost gray. */
+  if (col[3] == MUTE_ALPHA) {
+    uchar muted_color[3] = {128, 128, 128};
+    UI_GetColorPtrBlendShade3ubv(col, muted_color, col, 0.8f, 0);
+  }
 
   /* Draw the main strip body. */
   float x1 = strip_ctx->is_single_image ? strip_ctx->left_handle : strip_ctx->content_start;
