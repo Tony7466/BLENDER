@@ -1931,6 +1931,7 @@ static void remove_drawings_unchecked(GreasePencil &grease_pencil,
       for (auto [key, value] : layer->frames_for_write().items()) {
         if (value.drawing_index == swap_index) {
           value.drawing_index = index_to_remove;
+          layer->tag_frames_map_changed();
         }
       }
     }
