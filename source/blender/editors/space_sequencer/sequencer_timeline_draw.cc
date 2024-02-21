@@ -743,22 +743,32 @@ static void draw_seq_handle(TimelineDrawContext *timeline_ctx,
   }
 }
 
+/* Strip border: slightly darker than regular strip background. */
+static void draw_seq_border(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx)
+{
+  const Scene *scene = timeline_ctx->scene;
+  const Sequence *seq = strip_ctx->seq;
+
+  uchar col[4];
+  color3ubv_from_seq(scene, seq, strip_ctx->show_strip_color_tag, col);
+  UI_GetColorPtrShade3ubv(col, col, -40);
+  col[3] = 255;
+
+  timeline_ctx->quads->add_wire_quad(
+      strip_ctx->left_handle, strip_ctx->bottom, strip_ctx->right_handle, strip_ctx->top, col);
+}
+
+/* Selected/active strip outline: draw slightly outside the strip bounds. */
 static void draw_seq_outline(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx)
 {
-  Sequence *seq = strip_ctx->seq;
+  const Sequence *seq = strip_ctx->seq;
+  if (!(seq->flag & SELECT)) {
+    return;
+  }
 
-  /* Get the color for the outline. */
+  /* Base outline color. */
   uchar col[4];
-  if (strip_ctx->is_active_strip && (seq->flag & SELECT)) {
-    UI_GetThemeColor3ubv(TH_SEQ_ACTIVE, col);
-  }
-  else if (seq->flag & SELECT) {
-    UI_GetThemeColor3ubv(TH_SEQ_SELECTED, col);
-  }
-  else {
-    /* Color for unselected strips is a bit darker than the background. */
-    UI_GetThemeColorShade3ubv(TH_BACK, -40, col);
-  }
+  UI_GetThemeColor3ubv(strip_ctx->is_active_strip ? TH_SEQ_ACTIVE : TH_SEQ_SELECTED, col);
   col[3] = 255;
 
   /* Outline while translating strips:
@@ -766,9 +776,7 @@ static void draw_seq_outline(TimelineDrawContext *timeline_ctx, const StripDrawC
    *  - Red when overlapping with other strips.
    */
   const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(timeline_ctx->scene);
-  if ((G.moving & G_TRANSFORM_SEQ) && (seq->flag & SELECT) &&
-      overlap_mode != SEQ_OVERLAP_OVERWRITE)
-  {
+  if ((G.moving & G_TRANSFORM_SEQ) && overlap_mode != SEQ_OVERLAP_OVERWRITE) {
     if (seq->flag & SEQ_OVERLAP) {
       col[0] = 255;
       col[1] = col[2] = 33;
@@ -778,41 +786,19 @@ static void draw_seq_outline(TimelineDrawContext *timeline_ctx, const StripDrawC
     }
   }
 
-  /* 2px wide outline for selected strips: draw as four quads. */
-  if (seq->flag & SELECT) {
-    float delta_x = timeline_ctx->pixelx;
-    float delta_y = timeline_ctx->pixely * 2;
+  /* 2px wide outline: draw as four quads. */
+  const float dx = timeline_ctx->pixelx;
+  const float dy = timeline_ctx->pixely;
+  const float x0 = strip_ctx->left_handle;
+  const float x1 = strip_ctx->right_handle;
+  const float y0 = strip_ctx->bottom;
+  const float y1 = strip_ctx->top;
 
-    /* Left */
-    timeline_ctx->quads->add_quad(strip_ctx->left_handle - delta_x,
-                                  strip_ctx->bottom,
-                                  strip_ctx->left_handle + delta_x,
-                                  strip_ctx->top,
-                                  col);
-    /* Bottom */
-    timeline_ctx->quads->add_quad(strip_ctx->left_handle - delta_x,
-                                  strip_ctx->bottom,
-                                  strip_ctx->right_handle + delta_x,
-                                  strip_ctx->bottom + delta_y,
-                                  col);
-    /* Right */
-    timeline_ctx->quads->add_quad(strip_ctx->right_handle - delta_x,
-                                  strip_ctx->bottom,
-                                  strip_ctx->right_handle + delta_x,
-                                  strip_ctx->top,
-                                  col);
-    /* Top */
-    timeline_ctx->quads->add_quad(strip_ctx->left_handle - delta_x,
-                                  strip_ctx->top - delta_y,
-                                  strip_ctx->right_handle + delta_x,
-                                  strip_ctx->top,
-                                  col);
-  }
-  else {
-    /* 1px wide outline for unselected strips. */
-    timeline_ctx->quads->add_wire_quad(
-        strip_ctx->left_handle, strip_ctx->bottom, strip_ctx->right_handle, strip_ctx->top, col);
-  }
+  /* Left, right, bottom, top. */
+  timeline_ctx->quads->add_quad(x0 - dx * 3, y0 - dy * 2, x0 - dx * 1, y1 + dy * 2, col);
+  timeline_ctx->quads->add_quad(x1 + dx * 1, y0 - dy * 2, x1 + dx * 3, y1 + dy * 2, col);
+  timeline_ctx->quads->add_quad(x0 - dx * 2, y0 - dy * 3, x1 + dx * 2, y0 - dy * 1, col);
+  timeline_ctx->quads->add_quad(x0 - dx * 2, y1 + dy * 1, x1 + dx * 2, y1 + dy * 3, col);
 }
 
 static const char *draw_seq_text_get_name(const Sequence *seq)
@@ -943,19 +929,18 @@ static void draw_seq_text_overlay(TimelineDrawContext *timeline_ctx,
     return;
   }
 
-  /* White text for the active strip. */
-  uchar col[4];
-  col[0] = col[1] = col[2] = strip_ctx->is_active_strip ? 255 : 10;
-  col[3] = 255;
+  const Sequence *seq = strip_ctx->seq;
 
-  /* Make the text duller when the strip is muted. */
-  if (SEQ_render_is_muted(timeline_ctx->channels, strip_ctx->seq)) {
-    if (strip_ctx->is_active_strip) {
-      UI_GetColorPtrShade3ubv(col, col, -70);
-    }
-    else {
-      UI_GetColorPtrShade3ubv(col, col, 15);
-    }
+  /* Text: white at 75% opacity, fully opaque when selected/active. */
+  const bool active_or_sel = strip_ctx->is_active_strip || (seq->flag & SELECT);
+  uchar col[4];
+  col[0] = col[1] = col[2] = 255;
+  col[3] = active_or_sel ? 255 : 192;
+
+  /* Muted strips: gray color, reduce opacity. */
+  if (SEQ_render_is_muted(timeline_ctx->channels, seq)) {
+    col[0] = col[1] = col[2] = 192;
+    col[3] *= 0.66f;
   }
 
   float text_margin = 2.0f * strip_ctx->handle_width;
@@ -1414,7 +1399,8 @@ static void visible_strips_ordered_get(TimelineDrawContext *timeline_ctx,
 }
 
 static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
-                            const blender::Vector<StripDrawContext> &strips)
+                            const blender::Vector<StripDrawContext> &strips,
+                            bool drawing_selected)
 {
   if (strips.is_empty()) {
     return;
@@ -1465,7 +1451,17 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     draw_seq_solo_highlight(timeline_ctx, &strip_ctx);
     draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_LEFTHANDLE);
     draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_RIGHTHANDLE);
-    draw_seq_outline(timeline_ctx, &strip_ctx);
+    draw_seq_border(timeline_ctx, &strip_ctx);
+  }
+
+  /* Draw selected outline separately, since they go outside the strip
+   * boundaries a bit; we want all outlines to be "on top" of any neighboring
+   * strips. */
+  if (drawing_selected) {
+    timeline_ctx->quads->draw();
+    for (const StripDrawContext &strip_ctx : strips) {
+      draw_seq_outline(timeline_ctx, &strip_ctx);
+    }
   }
   timeline_ctx->quads->draw();
   GPU_blend(GPU_BLEND_NONE);
@@ -1479,8 +1475,8 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
 
   blender::Vector<StripDrawContext> unselected, selected;
   visible_strips_ordered_get(timeline_ctx, unselected, selected);
-  draw_seq_strips(timeline_ctx, unselected);
-  draw_seq_strips(timeline_ctx, selected);
+  draw_seq_strips(timeline_ctx, unselected, false);
+  draw_seq_strips(timeline_ctx, selected, true);
 
   /* Draw text overlay parts in the opposite order: first selected set, then
    * unselected (UI_view2d_text_cache_add_rectf adds new text in front of
@@ -1492,7 +1488,10 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
   for (const StripDrawContext &strip_ctx : unselected) {
     draw_seq_text_overlay(timeline_ctx, &strip_ctx);
   }
+
+  GPU_blend(GPU_BLEND_ALPHA);
   UI_view2d_text_cache_draw(timeline_ctx->region);
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 static void draw_timeline_sfra_efra(TimelineDrawContext *ctx)
