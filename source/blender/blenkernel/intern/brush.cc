@@ -1645,6 +1645,7 @@ void BKE_brush_init_curves_sculpt_settings(Brush *brush)
     brush->curves_sculpt_settings = MEM_cnew<BrushCurvesSculptSettings>(__func__);
   }
   BrushCurvesSculptSettings *settings = brush->curves_sculpt_settings;
+  settings->flag = BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_RADIUS;
   settings->add_amount = 1;
   settings->points_per_curve = 8;
   settings->minimum_length = 0.01f;

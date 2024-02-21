@@ -2176,6 +2176,7 @@ static void rna_def_curves_sculpt_options(BlenderRNA *brna)
   prop = RNA_def_property(srna, "interpolate_radius", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
       prop, nullptr, "flag", BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_RADIUS);
+  RNA_def_property_boolean_default(prop, true);
   RNA_def_property_ui_text(
       prop, "Interpolate Radius", "Use radius of the curves in close proximity");
 

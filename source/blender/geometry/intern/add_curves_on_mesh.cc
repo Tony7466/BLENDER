@@ -236,38 +236,43 @@ static void interpolate_position_with_interpolation(CurvesGeometry &curves,
   });
 }
 
-static void interpolate_radius_without_interpolation(CurvesGeometry &curves,
-                                                     const int old_curves_num,
-                                                     const Span<float> root_radiuses_cu)
+static void calc_radius_without_interpolation(CurvesGeometry &curves,
+                                              const int old_curves_num,
+                                              const int added_curves_num,
+                                              const float radius)
 {
-  const int added_curves_num = root_radiuses_cu.size();
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::SpanAttributeWriter radius_attr =
-      curves.attributes_for_write().lookup_for_write_span<float>("radius");
-  auto p = curves.positions_for_write();
+      curves.attributes_for_write().lookup_or_add_for_write_span<float>("radius",
+                                                                        bke::AttrDomain::Point);
   threading::parallel_for(IndexRange(added_curves_num), 256, [&](const IndexRange range) {
     for (const int i : range) {
       const int curve_i = old_curves_num + i;
       const IndexRange points = points_by_curve[curve_i];
-      const float root_cu = root_radiuses_cu[i];
-      radius_attr.span.slice(points).fill(root_cu);
+      radius_attr.span.slice(points).fill(radius);
     }
   });
   radius_attr.finish();
 }
 
-static void interpolate_radius_with_interpolation(CurvesGeometry &curves,
-                                                  const int old_curves_num,
-                                                  const Span<float> root_radiuses_cu,
-                                                  const Span<float> new_lengths_cu,
-                                                  const Span<NeighborCurves> neighbors_per_curve)
+static void calc_radius_with_interpolation(CurvesGeometry &curves,
+                                           const int old_curves_num,
+                                           const float radius,
+                                           const Span<float> new_lengths_cu,
+                                           const Span<NeighborCurves> neighbors_per_curve)
 {
-  const int added_curves_num = root_radiuses_cu.size();
+  const int added_curves_num = new_lengths_cu.size();
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::SpanAttributeWriter radius_attr =
       curves.attributes_for_write().lookup_for_write_span<float>("radius");
+
+  if (!radius_attr) {
+    radius_attr.finish();
+    return;
+  }
+
   MutableSpan<float3> positions_cu = curves.positions_for_write();
-  MutableSpan<float> radiuses_cu = radius_attr.span;
+  MutableSpan<float> radii_cu = radius_attr.span;
 
   threading::parallel_for(IndexRange(added_curves_num), 256, [&](const IndexRange range) {
     for (const int i : range) {
@@ -276,22 +281,20 @@ static void interpolate_radius_with_interpolation(CurvesGeometry &curves,
       const int curve_i = old_curves_num + i;
       const IndexRange points = points_by_curve[curve_i];
 
-      const float root_cu = root_radiuses_cu[i];
-
       if (neighbors.is_empty()) {
         /* If there are no neighbors, just using uniform radius. */
-        radiuses_cu.slice(points).fill(root_cu);
+        radii_cu.slice(points).fill(radius);
         continue;
       }
 
-      radiuses_cu.slice(points).fill(0);
+      radii_cu.slice(points).fill(0);
 
       for (const NeighborCurve &neighbor : neighbors) {
         const int neighbor_curve_i = neighbor.index;
         const IndexRange neighbor_points = points_by_curve[neighbor_curve_i];
         const float3 &neighbor_root_cu = positions_cu[neighbor_points[0]];
         const Span<float3> neighbor_positions_cu = positions_cu.slice(neighbor_points);
-        const Span<float> neighbor_radiuses_cu = radius_attr.span.slice(neighbor_points);
+        const Span<float> neighbor_radii_cu = radius_attr.span.slice(neighbor_points);
 
         Array<float, 32> lengths(length_parameterize::segments_num(neighbor_points.size(), false));
         length_parameterize::accumulate_lengths<float3>(neighbor_positions_cu, false, lengths);
@@ -311,9 +314,9 @@ static void interpolate_radius_with_interpolation(CurvesGeometry &curves,
 
         for (const int i : IndexRange(points.size())) {
           const float sample_cu = math::interpolate(
-              neighbor_radiuses_cu[indices[i]], neighbor_radiuses_cu[indices[i] + 1], factors[i]);
+              neighbor_radii_cu[indices[i]], neighbor_radii_cu[indices[i] + 1], factors[i]);
 
-          radiuses_cu[points[i]] += neighbor.weight * sample_cu;
+          radii_cu[points[i]] += neighbor.weight * sample_cu;
         }
       }
     }
@@ -433,26 +436,6 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
     new_lengths_cu.fill(inputs.fallback_curve_length);
   }
 
-  /* Determine radius of new curves. */
-  bke::SpanAttributeWriter radius_attr =
-      curves.attributes_for_write().lookup_for_write_span<float>("radius");
-  const bool has_radius_attr = !radius_attr.span.is_empty();  // check if the attribute exists
-  Array<float> root_radius_cu(added_curves_num);
-  if (inputs.interpolate_radius && has_radius_attr) {
-    interpolate_from_neighbors<float>(
-        neighbors_per_curve,
-        inputs.fallback_curve_radius,
-        [&](const int curve_i) {
-          const IndexRange points = points_by_curve[curve_i];
-          return radius_attr.span[points[0]];
-        },
-        root_radius_cu);
-  }
-  else {
-    root_radius_cu.fill(inputs.fallback_curve_radius);
-  }
-  radius_attr.finish();
-
   /* Find surface normal at root points. */
   Array<float3> new_normals_su(added_curves_num);
   bke::mesh_surface_sample::sample_corner_normals(inputs.surface_corner_tris,
@@ -485,14 +468,13 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
   }
 
   /* Initialize radius attribute */
-  if (has_radius_attr) {
-    if (inputs.interpolate_radius) {
-      interpolate_radius_with_interpolation(
-          curves, old_curves_num, root_radius_cu, new_lengths_cu, neighbors_per_curve);
-    }
-    else {
-      interpolate_radius_without_interpolation(curves, old_curves_num, root_radius_cu);
-    }
+  if (inputs.interpolate_radius) {
+    calc_radius_with_interpolation(
+        curves, old_curves_num, inputs.fallback_curve_radius, new_lengths_cu, neighbors_per_curve);
+  }
+  else {
+    calc_radius_without_interpolation(
+        curves, old_curves_num, added_curves_num, inputs.fallback_curve_radius);
   }
 
   curves.fill_curve_types(new_curves_range, CURVE_TYPE_CATMULL_ROM);
