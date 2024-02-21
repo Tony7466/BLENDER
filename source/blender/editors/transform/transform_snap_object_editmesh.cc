@@ -191,6 +191,9 @@ static SnapCache_EditMesh *snap_object_data_editmesh_get(SnapObjectContext *sctx
   if (init) {
     em_cache->mesh = create_mesh(sctx, ob_eval, sctx->runtime.params.edit_mode_type);
     if (mesh_ref) {
+      /* `BKE_editmesh_vert_coords_set` sometimes destroys `mesh_ref`. */
+      mesh_ref = get_mesh_ref(ob_eval);
+
       em_cache->mesh_ref = mesh_ref;
       em_cache->runtime_ref = mesh_ref->runtime;
       em_cache->edit_data_ref = mesh_ref->runtime->edit_data.get();

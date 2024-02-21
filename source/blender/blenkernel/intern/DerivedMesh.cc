@@ -1565,6 +1565,7 @@ Mesh *editbmesh_get_eval_cage(Depsgraph *depsgraph,
   if (!obedit->runtime->editmesh_eval_cage ||
       !CustomData_MeshMasks_are_matching(&(obedit->runtime->last_data_mask), &cddata_masks))
   {
+    BKE_object_free_derived_caches(obedit);
     editbmesh_build_data(depsgraph, scene, obedit, em, &cddata_masks);
   }
 
