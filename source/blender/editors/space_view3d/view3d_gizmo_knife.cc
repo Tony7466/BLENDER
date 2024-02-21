@@ -28,10 +28,6 @@
 static void WIDGETGROUP_mesh_knife_setup(const bContext * /*C*/, wmGizmoGroup *gzgroup)
 {
   wmGizmo *gz = WM_gizmo_new("GIZMO_GT_snap_3d", gzgroup, NULL);
-
-  RNA_enum_set(
-      gz->ptr, "snap_elements_force", SCE_SNAP_TO_VERTEX | SCE_SNAP_TO_EDGE | SCE_SNAP_TO_FACE);
-
   wmOperatorType *ot = WM_operatortype_find("MESH_OT_knife_tool", true);
   WM_gizmo_operator_set(gz, 0, ot, NULL);
 
