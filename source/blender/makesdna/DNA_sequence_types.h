@@ -298,6 +298,8 @@ typedef struct SeqTimelineChannel {
 
 typedef struct EditingRuntime {
   struct SequenceLookup *sequence_lookup;
+  struct AnimLookup *anim_lookup;
+  void *_pad0;
 } EditingRuntime;
 
 typedef struct Editing {
