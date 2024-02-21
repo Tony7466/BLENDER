@@ -232,6 +232,14 @@ static void rna_def_grease_pencil_frame(BlenderRNA *brna)
   // GreasePencilDrawing stub. TODO
   prop = RNA_def_property(brna, "drawing", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "GreasePencilDrawing");
+
+  // Selection status
+  prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_FRAME_SELECTED);
+  RNA_def_property_ui_text(prop, "Select", "Frame is selected for editing");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA | NA_SELECTED, "rna_grease_pencil_update");
+
+  // Keyframe time; TODO
 }
 
 static void rna_def_grease_pencil_layer(BlenderRNA *brna)
@@ -256,8 +264,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
                                     nullptr,
                                     nullptr,
                                     nullptr);
-  RNA_def_property_update(
-      prop, NC_GPENCIL | ND_DATA | NA_SELECTED | ND_KEYFRAME, "rna_grease_pencil_update");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   /* Name */
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
