@@ -106,12 +106,10 @@ void closure_weights_reset(float closure_rand)
   g_closure_rand[0] = closure_rand;
   g_closure_rand[1] = closure_rand;
   g_closure_rand[2] = closure_rand;
-  g_closure_rand[3] = closure_rand;
 
   g_closures_data[0].weight = 0.0;
   g_closures_data[1].weight = 0.0;
   g_closures_data[2].weight = 0.0;
-  g_closures_data[3].weight = 0.0;
 
   g_volume_scattering = vec3(0.0);
   g_volume_anisotropy = 0.0;
