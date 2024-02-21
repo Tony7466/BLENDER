@@ -1,2 +1,3 @@
 Referenced by issue #118402, Unhandled SIGBUS in Depsgraph on startup
 Referenced by pull request #118568, Fix #118402: enforce expected minimum alignment in MEM_CXX_CLASS_ALLOC_FUNCS
+Referenced by commit 8ea425d95d835f13e70700c116fe14b22ce347cc, Fix #118402: enforce expected minimum alignment in MEM_CXX_CLASS_ALLOC_FUNCS
