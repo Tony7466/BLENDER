@@ -998,8 +998,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       break;
     case UI_ID_LOCAL:
       if (id) {
-        Main *bmain = CTX_data_main(C);
-        Main *id_main = BKE_asset_weak_reference_main(bmain, id);
+        Main *id_main = BKE_asset_weak_reference_main(CTX_data_main(C), id);
         if (CTX_wm_window(C)->eventstate->modifier & KM_SHIFT) {
           template_id_liboverride_hierarchy_make(
               C, id_main, template_ui, &idptr, &undo_push_label);
@@ -1021,8 +1020,7 @@ static void template_id_cb(bContext *C, void *arg_litem, void *arg_event)
       break;
     case UI_ID_OVERRIDE:
       if (id && ID_IS_OVERRIDE_LIBRARY(id)) {
-        Main *bmain = CTX_data_main(C);
-        Main *id_main = BKE_asset_weak_reference_main(bmain, id);
+        Main *id_main = BKE_asset_weak_reference_main(CTX_data_main(C), id);
         if (CTX_wm_window(C)->eventstate->modifier & KM_SHIFT) {
           template_id_liboverride_hierarchy_make(
               C, id_main, template_ui, &idptr, &undo_push_label);
