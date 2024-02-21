@@ -296,6 +296,11 @@ Vector<Sequence *> seq_get_shown_sequences(const Scene *scene,
  * axis aligned when rotation is present. */
 struct StripScreenQuad {
   float2 v0, v1, v2, v3;
+
+  bool is_empty() const
+  {
+    return v0 == v1 && v2 == v3 && v0 == v2;
+  }
 };
 
 static StripScreenQuad get_strip_screen_quad(const SeqRenderData *context, const Sequence *seq)
@@ -339,6 +344,10 @@ struct OpaqueQuadTracker {
   bool is_occluded(const SeqRenderData *context, const Sequence *seq, int order_index) const
   {
     StripScreenQuad quad = get_strip_screen_quad(context, seq);
+    if (quad.is_empty()) {
+      /* Strip size is not initialized/valid, we can't know if it is occluded. */
+      return false;
+    }
     for (const OpaqueQuad &q : opaques) {
       if (q.order_index > order_index && is_quad_a_inside_b(quad, q.quad)) {
         return true;
@@ -350,7 +359,9 @@ struct OpaqueQuadTracker {
   void add_occluder(const SeqRenderData *context, const Sequence *seq, int order_index)
   {
     StripScreenQuad quad = get_strip_screen_quad(context, seq);
-    opaques.append({quad, order_index});
+    if (!quad.is_empty()) {
+      opaques.append({quad, order_index});
+    }
   }
 };
 
