@@ -126,7 +126,7 @@ struct GlyphCacheKey {
   }
   uint64_t hash() const
   {
-    return (charcode << 6 | subpixel);
+    return blender::get_default_hash(charcode, subpixel);
   }
 };
 
