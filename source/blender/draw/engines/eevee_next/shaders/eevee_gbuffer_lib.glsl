@@ -17,7 +17,10 @@
  *
  * \{ */
 
-#define GBUFFER_LAYER_MAX 3
+/* Note: Only specialized for the gbuffer pass. */
+#ifndef GBUFFER_LAYER_MAX
+#  define GBUFFER_LAYER_MAX 3
+#endif
 #define GBUFFER_NORMAL_MAX GBUFFER_LAYER_MAX
 #define GBUFFER_DATA_MAX (GBUFFER_LAYER_MAX * 2)
 /* Note: Reserve the last 4 bits for the normal layers ids. */
