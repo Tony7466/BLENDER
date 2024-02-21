@@ -8,6 +8,9 @@
 
 #pragma once
 
+#include "BLI_string_ref.hh"
+#include "BLI_vector.hh"
+
 struct FontBLF;
 struct GlyphBLF;
 struct GlyphCacheBLF;
@@ -96,6 +99,10 @@ void blf_font_draw__wrap(struct FontBLF *font,
                          size_t str_len,
                          struct ResultBLF *r_info);
 
+blender::Vector<blender::StringRef> blf_font_string_wrap(FontBLF *font,
+                                                         blender::StringRef str,
+                                                         int max_pixel_width);
+
 /**
  * Use fixed column width, but an utf8 character may occupy multiple columns.
  */
@@ -173,7 +180,10 @@ void blf_glyph_cache_clear(struct FontBLF *font);
 /**
  * Create (or load from cache) a fully-rendered bitmap glyph.
  */
-struct GlyphBLF *blf_glyph_ensure(struct FontBLF *font, struct GlyphCacheBLF *gc, uint charcode);
+struct GlyphBLF *blf_glyph_ensure(struct FontBLF *font,
+                                  struct GlyphCacheBLF *gc,
+                                  uint charcode,
+                                  uint8_t subpixel = 0);
 
 #ifdef BLF_SUBPIXEL_AA
 struct GlyphBLF *blf_glyph_ensure_subpixel(struct FontBLF *font,
