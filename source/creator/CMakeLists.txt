@@ -150,6 +150,10 @@ set(SRC
   creator_signals.cc
 
   creator_intern.h
+
+  # This helps visual studio find the debugger vizualizers
+  # all other generators will just ignore it.
+  ${CMAKE_SOURCE_DIR}/tools/utils_ide/natvis/Blender.natvis
 )
 
 # MSVC 2010 gives linking errors with the manifest.
