@@ -527,10 +527,19 @@ static void sequencer_thumbnail_transform(ImBuf *in, ImBuf *out)
  * image. If they do not the image will have transparent areas. */
 static bool seq_image_transform_transparency_gained(const SeqRenderData *context, Sequence *seq)
 {
-  const float x = float(context->rectx);
-  const float y = float(context->recty);
+  float x0 = 0.0f;
+  float y0 = 0.0f;
+  float x1 = float(context->rectx);
+  float y1 = float(context->recty);
+  float x_aspect = context->scene->r.xasp / context->scene->r.yasp;
+  if (x_aspect != 1.0f) {
+    float xmid = (x0 + x1) * 0.5f;
+    x0 = xmid - (xmid - x0) * x_aspect;
+    x1 = xmid + (x1 - xmid) * x_aspect;
+  }
   StripScreenQuad quad = get_strip_screen_quad(context, seq);
-  StripScreenQuad screen{float2(0, 0), float2(x, 0), float2(0, y), float2(x, y)};
+  StripScreenQuad screen{float2(x0, y0), float2(x1, y0), float2(x0, y1), float2(x1, y1)};
+
   return !is_quad_a_inside_b(screen, quad);
 }
 
