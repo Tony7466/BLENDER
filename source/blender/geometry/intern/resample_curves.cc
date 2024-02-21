@@ -601,7 +601,7 @@ CurvesGeometry resample_adaptive(const CurvesGeometry &src_curves,
                                  const IndexMask &selection,
                                  const VArray<float> epsilons)
 {
-  CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
+  CurvesGeometry dst_curves(src_curves);
 
   const Span<float3> positions = src_curves.positions();
   const VArray<bool> cyclic = src_curves.cyclic();
@@ -620,11 +620,16 @@ CurvesGeometry resample_adaptive(const CurvesGeometry &src_curves,
 
   selection.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const IndexRange points = points_by_curve[curve_i];
-    curve_resample_adaptive(points,
-                            cyclic[curve_i],
-                            epsilons[curve_i],
-                            dist_function_positions,
-                            points_to_delete.as_mutable_span());
+    if (epsilons[curve_i] > 0.0f) {
+      curve_resample_adaptive(points,
+                              cyclic[curve_i],
+                              epsilons[curve_i],
+                              dist_function_positions,
+                              points_to_delete.as_mutable_span());
+    }
+    else {
+      points_to_delete.as_mutable_span().slice(points).fill(false);
+    }
   });
 
   IndexMaskMemory memory;
