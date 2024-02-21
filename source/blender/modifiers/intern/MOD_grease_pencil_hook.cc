@@ -77,7 +77,6 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
 {
   auto *mmd = reinterpret_cast<GreasePencilHookModifierData *>(md);
   if (mmd->object != nullptr) {
-    DEG_add_object_relation(ctx->node, mmd->object, DEG_OB_COMP_GEOMETRY, "Hook Modifier");
     DEG_add_object_relation(ctx->node, mmd->object, DEG_OB_COMP_TRANSFORM, "Hook Modifier");
   }
   DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Hook Modifier");
@@ -327,7 +326,7 @@ static void panel_register(ARegionType *region_type)
 
 ModifierTypeInfo modifierType_GreasePencilHook = {
     /*idname*/ "GreasePencilHookModifier",
-    /*name*/ N_("Hoook"),
+    /*name*/ N_("Hook"),
     /*struct_name*/ "GreasePencilHookModifierData",
     /*struct_size*/ sizeof(GreasePencilHookModifierData),
     /*srna*/ &RNA_GreasePencilHookModifier,
