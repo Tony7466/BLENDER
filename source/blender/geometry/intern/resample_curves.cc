@@ -424,15 +424,15 @@ CurvesGeometry resample_to_count(const CurvesGeometry &src_curves,
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
 
   array_utils::copy(counts, selection, dst_offsets);
-  /* We assume the counts are at least 1. */
-  BLI_assert(std::all_of(
-      dst_offsets.begin(), dst_offsets.end(), [&](const int i) { return dst_offsets[i] > 0; }));
 
   IndexMaskMemory memory;
   const IndexMask unselected = selection.complement(src_curves.curves_range(), memory);
 
   /* Fill the counts for the curves that aren't selected and accumulate the counts into offsets. */
   offset_indices::copy_group_sizes(src_points_by_curve, unselected, dst_offsets);
+  /* We assume the counts are at least 1. */
+  BLI_assert(std::all_of(
+      dst_offsets.begin(), dst_offsets.end(), [&](const int i) { return dst_offsets[i] > 0; }));
   offset_indices::accumulate_counts_to_offsets(dst_offsets);
   dst_curves.resize(dst_offsets.last(), dst_curves.curves_num());
 
@@ -469,11 +469,10 @@ CurvesGeometry resample_to_length(const CurvesGeometry &src_curves,
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
 
   src_curves.ensure_evaluated_lengths();
-  threading::parallel_for(dst_curves.curves_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      const float curve_length = src_curves.evaluated_length_total_for_curve(i, curves_cyclic[i]);
-      dst_offsets[i] = int(curve_length / sample_lengths[i]) + 1;
-    }
+  selection.foreach_index(GrainSize(1024), [&](const int curve_i) {
+    const float curve_length = src_curves.evaluated_length_total_for_curve(curve_i,
+                                                                           curves_cyclic[curve_i]);
+    dst_offsets[curve_i] = int(curve_length / sample_lengths[curve_i]) + 1;
   });
 
   IndexMaskMemory memory;
