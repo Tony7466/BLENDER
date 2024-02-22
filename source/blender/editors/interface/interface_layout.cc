@@ -3299,7 +3299,6 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon, bool wrap =
 
   const int w = ui_text_icon_width_ex(
       layout, name, icon, ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
-
   uiBut *but;
   if (icon && name[0]) {
     but = uiDefIconTextBut(block,
