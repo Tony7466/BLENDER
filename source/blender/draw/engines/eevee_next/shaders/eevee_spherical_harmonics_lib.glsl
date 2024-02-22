@@ -563,4 +563,71 @@ SphericalHarmonicL2 spherical_harmonics_add(SphericalHarmonicL2 a, SphericalHarm
   return result;
 }
 
+/* -------------------------------------------------------------------- */
+/** \name Mix
+ * \{ */
+
+SphericalHarmonicBandL0 spherical_harmonics_L0_mix(SphericalHarmonicBandL0 a,
+                                                   SphericalHarmonicBandL0 b,
+                                                   float fac)
+{
+  SphericalHarmonicBandL0 result;
+  result.M0 = mix(a.M0, b.M0, fac);
+  return result;
+}
+
+SphericalHarmonicBandL1 spherical_harmonics_L1_mix(SphericalHarmonicBandL1 a,
+                                                   SphericalHarmonicBandL1 b,
+                                                   float fac)
+{
+  SphericalHarmonicBandL1 result;
+  result.Mn1 = mix(a.Mn1, b.Mn1, fac);
+  result.M0 = mix(a.M0, b.M0, fac);
+  result.Mp1 = mix(a.Mp1, b.Mp1, fac);
+  return result;
+}
+
+SphericalHarmonicBandL2 spherical_harmonics_L2_mix(SphericalHarmonicBandL2 a,
+                                                   SphericalHarmonicBandL2 b,
+                                                   float fac)
+{
+  SphericalHarmonicBandL2 result;
+  result.Mn2 = mix(a.Mn2, b.Mn2, fac);
+  result.Mn1 = mix(a.Mn1, b.Mn1, fac);
+  result.M0 = mix(a.M0, b.M0, fac);
+  result.Mp1 = mix(a.Mp1, b.Mp1, fac);
+  result.Mp2 = mix(a.Mp2, b.Mp2, fac);
+  return result;
+}
+
+SphericalHarmonicL0 spherical_harmonics_mix(SphericalHarmonicL0 a,
+                                            SphericalHarmonicL0 b,
+                                            float fac)
+{
+  SphericalHarmonicL0 result;
+  result.L0 = spherical_harmonics_L0_mix(a.L0, b.L0, fac);
+  return result;
+}
+
+SphericalHarmonicL1 spherical_harmonics_mix(SphericalHarmonicL1 a,
+                                            SphericalHarmonicL1 b,
+                                            float fac)
+{
+  SphericalHarmonicL1 result;
+  result.L0 = spherical_harmonics_L0_mix(a.L0, b.L0, fac);
+  result.L1 = spherical_harmonics_L1_mix(a.L1, b.L1, fac);
+  return result;
+}
+
+SphericalHarmonicL2 spherical_harmonics_mix(SphericalHarmonicL2 a,
+                                            SphericalHarmonicL2 b,
+                                            float fac)
+{
+  SphericalHarmonicL2 result;
+  result.L0 = spherical_harmonics_L0_mix(a.L0, b.L0, fac);
+  result.L1 = spherical_harmonics_L1_mix(a.L1, b.L1, fac);
+  result.L2 = spherical_harmonics_L2_mix(a.L2, b.L2, fac);
+  return result;
+}
+
 /** \} */
