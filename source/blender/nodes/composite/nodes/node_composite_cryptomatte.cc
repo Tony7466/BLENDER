@@ -250,7 +250,7 @@ class BaseCryptoMatteOperation : public NodeOperation {
  public:
   using NodeOperation::NodeOperation;
 
-  /* Should the input image result. */
+  /* Should return the input image result. */
   virtual Result &get_input_image() = 0;
 
   /* Should returns all the Cryptomatte layers in order. */
