@@ -1663,8 +1663,12 @@ static bConstraintTypeInfo CTI_LOCLIMIT = {
  * considered a valid range.*/
 static float clamp_angle(const float angle, const float min, const float max)
 {
-  if (min == max) {
-    return min;
+  if ((max - min) >= (2 * M_PI)) {
+    return angle;
+  }
+
+  if (max <= min) {
+    return angle;
   }
 
   float angle_unit_circle[2];
