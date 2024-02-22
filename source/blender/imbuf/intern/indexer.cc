@@ -458,9 +458,7 @@ static void get_tc_filepath(ImBufAnim *anim, IMB_Timecode_Type tc, char *filepat
  * - common rebuilder structures
  * ---------------------------------------------------------------------- */
 
-struct IndexBuildContext {
-  bool valid;
-};
+struct IndexBuildContext {};
 
 /* ----------------------------------------------------------------------
  * - ffmpeg rebuilder
@@ -1247,7 +1245,6 @@ IndexBuildContext *IMB_anim_index_rebuild_context(ImBufAnim *anim,
                                                   GSet *file_list,
                                                   bool build_only_on_bad_performance)
 {
-  IndexBuildContext *context = nullptr;
   int proxy_sizes_to_build = proxy_sizes_in_use;
   int i;
 
@@ -1296,6 +1293,7 @@ IndexBuildContext *IMB_anim_index_rebuild_context(ImBufAnim *anim,
     return nullptr;
   }
 
+  IndexBuildContext *context = nullptr;
 #ifdef WITH_FFMPEG
   if (anim->state == ImBufAnim::State::Valid) {
     context = index_ffmpeg_create_context(
@@ -1304,10 +1302,6 @@ IndexBuildContext *IMB_anim_index_rebuild_context(ImBufAnim *anim,
 #else
   UNUSED_VARS(build_only_on_bad_performance);
 #endif
-
-  if (context) {
-    context->valid = true;
-  }
 
   return context;
 
@@ -1323,7 +1317,7 @@ void IMB_anim_index_rebuild(IndexBuildContext *context,
                             float *progress)
 {
 #ifdef WITH_FFMPEG
-  if (context->valid) {
+  if (context != nullptr) {
     if (indexer_need_to_build_proxy((FFmpegIndexBuilderContext *)context)) {
       index_rebuild_ffmpeg((FFmpegIndexBuilderContext *)context, stop, do_update, progress);
     }
@@ -1335,7 +1329,7 @@ void IMB_anim_index_rebuild(IndexBuildContext *context,
 void IMB_anim_index_rebuild_finish(IndexBuildContext *context, const bool stop)
 {
 #ifdef WITH_FFMPEG
-  if (context->valid) {
+  if (context != nullptr) {
     index_rebuild_ffmpeg_finish((FFmpegIndexBuilderContext *)context, stop);
   }
 #endif
