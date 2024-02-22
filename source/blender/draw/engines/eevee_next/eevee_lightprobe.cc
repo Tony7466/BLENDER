@@ -108,17 +108,19 @@ void LightProbeModule::sync_volume(const Object *ob, ObjectHandle &handle)
 void LightProbeModule::sync_sphere(const Object *ob, ObjectHandle &handle)
 {
   SphereProbe &cube = sphere_map_.lookup_or_add_default(handle.object_key);
+  SphereProbeModule &probe_module = inst_.sphere_probes;
+  eLightProbeResolution probe_resolution = sphere_object_resolution_;
+  int subdivision_lvl = probe_module.subdivision_level_get(probe_resolution);
+
   cube.used = true;
-  if (handle.recalc != 0 || cube.initialized == false) {
+  if (handle.recalc != 0 || cube.initialized == false ||
+      cube.atlas_coord.subdivision_lvl != subdivision_lvl)
+  {
     const ::LightProbe &light_probe = *(::LightProbe *)ob->data;
 
     cube.initialized = true;
     cube.updated = true;
     cube.do_render = true;
-
-    SphereProbeModule &probe_module = inst_.sphere_probes;
-    eLightProbeResolution probe_resolution = sphere_object_resolution_;
-    int subdivision_lvl = probe_module.subdivision_level_get(probe_resolution);
 
     if (cube.atlas_coord.subdivision_lvl != subdivision_lvl) {
       cube.atlas_coord.free();
