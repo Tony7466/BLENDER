@@ -8338,13 +8338,13 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "invert_source_vertex_group", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
-      prop, nullptr, "calculation_flags", LRT_GPENCIL_INVERT_SOURCE_VGROUP);
+      prop, nullptr, "calculation_flags", MOD_LINEART_INVERT_SOURCE_VGROUP);
   RNA_def_property_ui_text(prop, "Invert Vertex Group", "Invert source vertex group values");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_output_vertex_group_match_by_name", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(
-      prop, nullptr, "calculation_flags", LRT_GPENCIL_MATCH_OUTPUT_VGROUP);
+      prop, nullptr, "calculation_flags", MOD_LINEART_MATCH_OUTPUT_VGROUP);
   RNA_def_property_ui_text(prop, "Match Output", "Match output vertex group based on name");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 

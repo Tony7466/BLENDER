@@ -73,14 +73,14 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
   if ((lmd->influence.layer_name[0] == '\0') || (lmd->influence.material == nullptr)) {
     return true;
   }
-  if (lmd->source_type == LRT_SOURCE_OBJECT && !lmd->source_object) {
+  if (lmd->source_type == LINEART_SOURCE_OBJECT && !lmd->source_object) {
     return true;
   }
-  if (lmd->source_type == LRT_SOURCE_COLLECTION && !lmd->source_collection) {
+  if (lmd->source_type == LINEART_SOURCE_COLLECTION && !lmd->source_collection) {
     return true;
   }
   /* Preventing calculation in depsgraph when baking frames. */
-  if (lmd->flags & LRT_GPENCIL_IS_BAKED) {
+  if (lmd->flags & MOD_LINEART_IS_BAKED) {
     return true;
   }
 
@@ -185,10 +185,10 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   uiItemR(layout, ptr, "source_type", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  if (source_type == LRT_SOURCE_OBJECT) {
+  if (source_type == LINEART_SOURCE_OBJECT) {
     uiItemR(layout, ptr, "source_object", UI_ITEM_NONE, nullptr, ICON_OBJECT_DATA);
   }
-  else if (source_type == LRT_SOURCE_COLLECTION) {
+  else if (source_type == LINEART_SOURCE_COLLECTION) {
     uiLayout *sub = uiLayoutRow(layout, true);
     uiItemR(sub, ptr, "source_collection", UI_ITEM_NONE, nullptr, ICON_OUTLINER_COLLECTION);
     uiItemR(sub, ptr, "use_invert_collection", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
@@ -244,7 +244,7 @@ static void edge_types_panel_draw(const bContext * /*C*/, Panel *panel)
   uiItemR(entry, ptr, "silhouette_filtering", UI_ITEM_NONE, "", ICON_NONE);
 
   const int silhouette_filtering = RNA_enum_get(ptr, "silhouette_filtering");
-  if (silhouette_filtering != LRT_SILHOUETTE_FILTER_NONE) {
+  if (silhouette_filtering != LINEART_SILHOUETTE_FILTER_NONE) {
     uiItemR(entry, ptr, "use_invert_silhouette", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
   }
 
@@ -721,7 +721,7 @@ static void generate_strokes(ModifierData &md,
 
   LineartCache *local_lc = first_lineart->shared_cache;
 
-  if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
+  if (!(lmd.flags & MOD_LINEART_USE_CACHE)) {
     MOD_lineart_compute_feature_lines_v3(
         ctx.depsgraph, lmd, &local_lc, !(ctx.object->dtx & OB_DRAW_IN_FRONT));
     MOD_lineart_destroy_render_data_v3(&lmd);
@@ -768,7 +768,7 @@ static void generate_strokes(ModifierData &md,
       lmd.flags,
       lmd.calculation_flags);
 
-  if (!(lmd.flags & LRT_GPENCIL_USE_CACHE)) {
+  if (!(lmd.flags & MOD_LINEART_USE_CACHE)) {
     /* Clear local cache. */
     if (local_lc != first_lineart->shared_cache) {
       MOD_lineart_clear_cache(&local_lc);

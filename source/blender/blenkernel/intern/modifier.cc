@@ -878,7 +878,7 @@ GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const
   LISTBASE_FOREACH (const ModifierData *, md, &ob->modifiers) {
     if (md->type == eModifierType_GreasePencilLineart) {
       const auto *lmd = reinterpret_cast<const GreasePencilLineartModifierData *>(md);
-      if (is_first || (lmd->flags & LRT_GPENCIL_USE_CACHE)) {
+      if (is_first || (lmd->flags & MOD_LINEART_USE_CACHE)) {
         info.min_level = std::min(int(info.min_level), int(lmd->level_start));
         info.max_level = std::max(
             int(info.max_level),
@@ -899,7 +899,7 @@ void BKE_grease_pencil_set_lineart_modifier_limits(ModifierData *md,
 {
   BLI_assert(md->type == eModifierType_GreasePencilLineart);
   auto *lmd = reinterpret_cast<GreasePencilLineartModifierData *>(md);
-  if (is_first_lineart || lmd->flags & LRT_GPENCIL_USE_CACHE) {
+  if (is_first_lineart || lmd->flags & MOD_LINEART_USE_CACHE) {
     lmd->level_start_override = info->min_level;
     lmd->level_end_override = info->max_level;
     lmd->edge_types_override = info->edge_types;

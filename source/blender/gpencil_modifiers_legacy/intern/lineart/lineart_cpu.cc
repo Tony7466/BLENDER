@@ -3795,7 +3795,7 @@ static LineartData *lineart_create_render_buffer_v3(Scene *scene,
 
   ld->conf.shadow_selection = lmd->shadow_selection_override;
   ld->conf.shadow_enclose_shapes = lmd->shadow_selection_override ==
-                                   LRT_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES;
+                                   LINEART_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES;
   ld->conf.shadow_use_silhouette = lmd->shadow_use_silhouette_override != 0;
 
   ld->conf.use_back_face_culling = (lmd->calculation_flags & LRT_USE_BACK_FACE_CULLING) != 0;
@@ -5262,7 +5262,7 @@ bool MOD_lineart_compute_feature_lines_v3(Depsgraph *depsgraph,
 
     if (enable_stroke_depth_offset && lmd.stroke_depth_offset > FLT_EPSILON) {
       MOD_lineart_chain_offset_towards_camera(
-          ld, lmd.stroke_depth_offset, lmd.flags & LRT_GPENCIL_OFFSET_TOWARDS_CUSTOM_CAMERA);
+          ld, lmd.stroke_depth_offset, lmd.flags & MOD_LINEART_OFFSET_TOWARDS_CUSTOM_CAMERA);
     }
 
     if (ld->conf.shadow_use_silhouette) {
@@ -5357,9 +5357,9 @@ static void lineart_gpencil_generate(LineartCache *cache,
   /* (!orig_col && !orig_ob) means the whole scene is selected. */
 
   int enabled_types = cache->all_enabled_edge_types;
-  bool invert_input = modifier_calculation_flags & LRT_GPENCIL_INVERT_SOURCE_VGROUP;
-  bool match_output = modifier_calculation_flags & LRT_GPENCIL_MATCH_OUTPUT_VGROUP;
-  bool inverse_silhouette = modifier_flags & LRT_GPENCIL_INVERT_SILHOUETTE_FILTER;
+  bool invert_input = modifier_calculation_flags & MOD_LINEART_INVERT_SOURCE_VGROUP;
+  bool match_output = modifier_calculation_flags & MOD_LINEART_MATCH_OUTPUT_VGROUP;
+  bool inverse_silhouette = modifier_flags & MOD_LINEART_INVERT_SILHOUETTE_FILTER;
 
   LISTBASE_FOREACH (LineartEdgeChain *, ec, &cache->chains) {
 
@@ -5377,18 +5377,18 @@ static void lineart_gpencil_generate(LineartCache *cache,
     }
     if (orig_col && ec->object_ref) {
       if (BKE_collection_has_object_recursive_instanced(orig_col, (Object *)ec->object_ref)) {
-        if (modifier_flags & LRT_GPENCIL_INVERT_COLLECTION) {
+        if (modifier_flags & MOD_LINEART_INVERT_COLLECTION) {
           continue;
         }
       }
       else {
-        if (!(modifier_flags & LRT_GPENCIL_INVERT_COLLECTION)) {
+        if (!(modifier_flags & MOD_LINEART_INVERT_COLLECTION)) {
           continue;
         }
       }
     }
-    if (mask_switches & LRT_GPENCIL_MATERIAL_MASK_ENABLE) {
-      if (mask_switches & LRT_GPENCIL_MATERIAL_MASK_MATCH) {
+    if (mask_switches & MOD_LINEART_MATERIAL_MASK_ENABLE) {
+      if (mask_switches & MOD_LINEART_MATERIAL_MASK_MATCH) {
         if (ec->material_mask_bits != material_mask_bits) {
           continue;
         }
@@ -5400,7 +5400,7 @@ static void lineart_gpencil_generate(LineartCache *cache,
       }
     }
     if (ec->type & LRT_EDGE_FLAG_INTERSECTION) {
-      if (mask_switches & LRT_GPENCIL_INTERSECTION_MATCH) {
+      if (mask_switches & MOD_LINEART_INTERSECTION_MATCH) {
         if (ec->intersection_mask != intersection_mask) {
           continue;
         }
@@ -5414,17 +5414,17 @@ static void lineart_gpencil_generate(LineartCache *cache,
     if (shaodow_selection) {
       if (ec->shadow_mask_bits != LRT_SHADOW_MASK_UNDEFINED) {
         /* TODO(@Yiming): Give a behavior option for how to display undefined shadow info. */
-        if (shaodow_selection == LRT_SHADOW_FILTER_ILLUMINATED &&
+        if (shaodow_selection == LINEART_SHADOW_FILTER_ILLUMINATED &&
             !(ec->shadow_mask_bits & LRT_SHADOW_MASK_ILLUMINATED))
         {
           continue;
         }
-        if (shaodow_selection == LRT_SHADOW_FILTER_SHADED &&
+        if (shaodow_selection == LINEART_SHADOW_FILTER_SHADED &&
             !(ec->shadow_mask_bits & LRT_SHADOW_MASK_SHADED))
         {
           continue;
         }
-        if (shaodow_selection == LRT_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES) {
+        if (shaodow_selection == LINEART_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES) {
           uint32_t test_bits = ec->shadow_mask_bits & LRT_SHADOW_TEST_SHAPE_BITS;
           if ((test_bits != LRT_SHADOW_MASK_ILLUMINATED) &&
               (test_bits != (LRT_SHADOW_MASK_SHADED | LRT_SHADOW_MASK_ILLUMINATED_SHAPE)))
@@ -5451,7 +5451,7 @@ static void lineart_gpencil_generate(LineartCache *cache,
         }
       }
 
-      if ((silhouette_mode == LRT_SILHOUETTE_FILTER_INDIVIDUAL || orig_ob) &&
+      if ((silhouette_mode == LINEART_SILHOUETTE_FILTER_INDIVIDUAL || orig_ob) &&
           ec->silhouette_backdrop != ec->object_ref)
       {
         is_silhouette = true;
@@ -5576,13 +5576,13 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
   Object *source_object = nullptr;
   Collection *source_collection = nullptr;
   int16_t use_types = edge_types;
-  if (source_type == LRT_SOURCE_OBJECT) {
+  if (source_type == LINEART_SOURCE_OBJECT) {
     if (!source_reference) {
       return;
     }
     source_object = (Object *)source_reference;
   }
-  else if (source_type == LRT_SOURCE_COLLECTION) {
+  else if (source_type == LINEART_SOURCE_COLLECTION) {
     if (!source_reference) {
       return;
     }
@@ -5652,14 +5652,14 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
   Object *orig_ob = nullptr;
   Collection *orig_col = nullptr;
 
-  if (source_type == LRT_SOURCE_OBJECT) {
+  if (source_type == LINEART_SOURCE_OBJECT) {
     if (!source_object) {
       return;
     }
     orig_ob = source_object->id.orig_id ? (Object *)source_object->id.orig_id : source_object;
     orig_col = nullptr;
   }
-  else if (source_type == LRT_SOURCE_COLLECTION) {
+  else if (source_type == LINEART_SOURCE_COLLECTION) {
     if (!source_collection) {
       return;
     }
@@ -5671,9 +5671,9 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
 
   int enabled_types = cache->all_enabled_edge_types;
 
-  bool invert_input = modifier_calculation_flags & LRT_GPENCIL_INVERT_SOURCE_VGROUP;
+  bool invert_input = modifier_calculation_flags & MOD_LINEART_INVERT_SOURCE_VGROUP;
 
-  bool inverse_silhouette = modifier_flags & LRT_GPENCIL_INVERT_SILHOUETTE_FILTER;
+  bool inverse_silhouette = modifier_flags & MOD_LINEART_INVERT_SILHOUETTE_FILTER;
 
   blender::Vector<LineartChainWriteInfo> writer;
   writer.reserve(128);
@@ -5695,18 +5695,18 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
     }
     if (orig_col && ec->object_ref) {
       if (BKE_collection_has_object_recursive_instanced(orig_col, (Object *)ec->object_ref)) {
-        if (modifier_flags & LRT_GPENCIL_INVERT_COLLECTION) {
+        if (modifier_flags & MOD_LINEART_INVERT_COLLECTION) {
           continue;
         }
       }
       else {
-        if (!(modifier_flags & LRT_GPENCIL_INVERT_COLLECTION)) {
+        if (!(modifier_flags & MOD_LINEART_INVERT_COLLECTION)) {
           continue;
         }
       }
     }
-    if (mask_switches & LRT_GPENCIL_MATERIAL_MASK_ENABLE) {
-      if (mask_switches & LRT_GPENCIL_MATERIAL_MASK_MATCH) {
+    if (mask_switches & MOD_LINEART_MATERIAL_MASK_ENABLE) {
+      if (mask_switches & MOD_LINEART_MATERIAL_MASK_MATCH) {
         if (ec->material_mask_bits != material_mask_bits) {
           continue;
         }
@@ -5718,7 +5718,7 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
       }
     }
     if (ec->type & LRT_EDGE_FLAG_INTERSECTION) {
-      if (mask_switches & LRT_GPENCIL_INTERSECTION_MATCH) {
+      if (mask_switches & MOD_LINEART_INTERSECTION_MATCH) {
         if (ec->intersection_mask != intersection_mask) {
           continue;
         }
@@ -5732,17 +5732,17 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
     if (shadow_selection) {
       if (ec->shadow_mask_bits != LRT_SHADOW_MASK_UNDEFINED) {
         /* TODO(@Yiming): Give a behavior option for how to display undefined shadow info. */
-        if (shadow_selection == LRT_SHADOW_FILTER_ILLUMINATED &&
+        if (shadow_selection == LINEART_SHADOW_FILTER_ILLUMINATED &&
             !(ec->shadow_mask_bits & LRT_SHADOW_MASK_ILLUMINATED))
         {
           continue;
         }
-        if (shadow_selection == LRT_SHADOW_FILTER_SHADED &&
+        if (shadow_selection == LINEART_SHADOW_FILTER_SHADED &&
             !(ec->shadow_mask_bits & LRT_SHADOW_MASK_SHADED))
         {
           continue;
         }
-        if (shadow_selection == LRT_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES) {
+        if (shadow_selection == LINEART_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES) {
           uint32_t test_bits = ec->shadow_mask_bits & LRT_SHADOW_TEST_SHAPE_BITS;
           if ((test_bits != LRT_SHADOW_MASK_ILLUMINATED) &&
               (test_bits != (LRT_SHADOW_MASK_SHADED | LRT_SHADOW_MASK_ILLUMINATED_SHAPE)))
@@ -5769,7 +5769,7 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
         }
       }
 
-      if ((silhouette_mode == LRT_SILHOUETTE_FILTER_INDIVIDUAL || orig_ob) &&
+      if ((silhouette_mode == LINEART_SILHOUETTE_FILTER_INDIVIDUAL || orig_ob) &&
           ec->silhouette_backdrop != ec->object_ref)
       {
         is_silhouette = true;
