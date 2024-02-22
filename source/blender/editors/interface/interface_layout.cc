@@ -3262,14 +3262,24 @@ void uiItemPopoverPanelFromGroup(uiLayout *layout,
   }
 }
 
-/* Return height needed for a wrapped string that is contrained to a maximum pixel width.*/
-static int ui_string_wrapped_height(blender::StringRef str, const uiFontStyle *fstyle, int max_pixel_width)
+/* Adjust button to allow the text to wrap to multiple lines. */
+static void ui_but_wrap(uiBut *but, uiLayout *layout, const uiFontStyle *fstyle)
 {
+  if (!layout || !layout->w) {
+    return;
+  }
+
+  but->drawflag |= UI_BUT_TEXT_WRAP;
+
+  const int max = (but->icon) ? layout->w - int(UI_UNIT_X * ui_text_pad_none.icon) : layout->w;
+
   BLF_size(fstyle->uifont_id, fstyle->points);
-  blender::Vector<blender::StringRef> wrapped = BLF_string_wrap(
-      fstyle->uifont_id, str, max_pixel_width);
-  float line_height = BLF_height_max(fstyle->uifont_id) * 1.1f;
-  return std::max(int(UI_UNIT_Y), int(line_height * wrapped.size()));
+  blender::Vector<blender::StringRef> wrapped = BLF_string_wrap(fstyle->uifont_id, but->str, max);
+  if (wrapped.size() > 1) {
+    float line_height = BLF_height_max(fstyle->uifont_id) * 1.1f;
+    but->rect.ymax = but->rect.ymin + int(line_height * wrapped.size());
+    but->rect.xmax = but->rect.xmin;
+  }
 }
 
 /* label item */
@@ -3287,28 +3297,34 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon, bool wrap =
     icon = ICON_BLANK1;
   }
 
-  int w = 0;
-  int h = UI_UNIT_Y;
-
-  if (wrap && layout->w) {
-    const int width = (icon) ? layout->w - int(UI_UNIT_X * ui_text_pad_none.icon) : layout->w;
-    h = ui_string_wrapped_height(name, UI_FSTYLE_WIDGET_LABEL, width);
-  }
-  else {
-    w = ui_text_icon_width_ex(layout, name, icon, ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
-  }
+  const int w = ui_text_icon_width_ex(
+      layout, name, icon, ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
 
   uiBut *but;
   if (icon && name[0]) {
-    but = uiDefIconTextBut(
-        block, UI_BTYPE_LABEL, 0, icon, name, 0, 0, w, h, nullptr, 0.0, 0.0, 0, 0, nullptr);
+    but = uiDefIconTextBut(block,
+                           UI_BTYPE_LABEL,
+                           0,
+                           icon,
+                           name,
+                           0,
+                           0,
+                           w,
+                           UI_UNIT_Y,
+                           nullptr,
+                           0.0,
+                           0.0,
+                           0,
+                           0,
+                           nullptr);
   }
   else if (icon) {
     but = uiDefIconBut(
-        block, UI_BTYPE_LABEL, 0, icon, 0, 0, w, h, nullptr, 0.0, 0.0, 0, 0, nullptr);
+        block, UI_BTYPE_LABEL, 0, icon, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, nullptr);
   }
   else {
-    but = uiDefBut(block, UI_BTYPE_LABEL, 0, name, 0, 0, w, h, nullptr, 0.0, 0.0, 0, 0, nullptr);
+    but = uiDefBut(
+        block, UI_BTYPE_LABEL, 0, name, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, nullptr);
   }
 
   /* to compensate for string size padding in ui_text_icon_width,
@@ -3320,7 +3336,7 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon, bool wrap =
   }
 
   if (wrap) {
-    but->drawflag |= UI_BUT_TEXT_WRAP;
+    ui_but_wrap(but, layout, UI_FSTYLE_WIDGET_LABEL);
   }
 
   /* Mark as a label inside a list-box. */
