@@ -3284,7 +3284,7 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon, bool wrap =
     const uiFontStyle *fstyle = UI_FSTYLE_WIDGET_LABEL;
     BLF_size(fstyle->uifont_id, fstyle->points);
     blender::StringRef str = name;
-    int width = (icon) ? layout->w - int(UI_UNIT_X * 1.3f) : layout->w;
+    int width = (icon) ? layout->w - int(UI_UNIT_X * ui_text_pad_none.icon) : layout->w;
     blender::Vector<blender::StringRef> wrapped = BLF_string_wrap(fstyle->uifont_id, str, width);
     float line_height = BLF_height_max(fstyle->uifont_id) * 1.1f;
     w = 0;
