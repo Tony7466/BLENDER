@@ -500,14 +500,12 @@ IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memo
     if (first_in_range) {
       /* This mask is a range that contains the start of the universe.
        * The complement is a range that contains the end of the universe. */
-      const int64_t complement_start = this_range->one_after_last();
-      return IndexRange::from_begin_end(complement_start, universe.one_after_last());
+      return IndexRange::from_begin_end(this_range->one_after_last(), universe.one_after_last());
     }
     if (last_in_range) {
       /* This mask is a range that contains the end of the universe.
        * The complement is a range that contains the start of the universe. */
-      const int64_t complement_start = universe.first();
-      return IndexRange::from_begin_end(complement_start, universe.first());
+      return IndexRange::from_begin_end(universe.first(), this_range->first());
     }
   }
 
