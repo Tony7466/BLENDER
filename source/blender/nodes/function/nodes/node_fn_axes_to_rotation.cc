@@ -97,7 +97,7 @@ class AxesToRotationFunction : public mf::MultiFunction {
       if (primary_is_non_zero && secondary_is_non_zero) {
         tertiary = math::cross(primary, secondary);
         if (math::is_zero(tertiary)) {
-          tertiary = get_orthogonal_of_non_zero_vector(secondary);
+          tertiary = get_orthogonal_of_non_zero_vector(primary);
         }
         tertiary = math::normalize(tertiary);
         secondary = math::cross(tertiary, primary);
