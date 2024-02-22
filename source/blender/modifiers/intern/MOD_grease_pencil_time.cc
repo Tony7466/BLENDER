@@ -294,9 +294,10 @@ static void calculate_repetitions(const FrameRange &src,
 /* Find the index range of sorted keys that covers the frame range, including the key right before
  * and after the inverval. The extra keys are needed when frames are held at the beginning or when
  * reversing the direction. */
-const IndexRange find_key_range(const Span<int> sorted_keys, const FrameRange &frame_range)
+static const IndexRange find_key_range(const Span<int> sorted_keys, const FrameRange &frame_range)
 {
   /* TODO doesn't quite work yet, just return the full range for now. */
+  UNUSED_VARS(frame_range);
   return sorted_keys.index_range();
 #if 0
   IndexRange result = sorted_keys.index_range();
@@ -318,29 +319,58 @@ const IndexRange find_key_range(const Span<int> sorted_keys, const FrameRange &f
 #endif
 }
 
-static void fill_scene_range_forward(const GreasePencilTimeModifierData &tmd,
+struct TimeMapping {
+ private:
+  float offset_;
+  float scale_;
+  bool use_loop_;
+
+ public:
+  TimeMapping(const GreasePencilTimeModifierData &tmd)
+      : offset_(tmd.offset),
+        scale_(tmd.frame_scale),
+        use_loop_(tmd.flag & MOD_GREASE_PENCIL_TIME_KEEP_LOOP)
+  {
+  }
+
+  float offset() const
+  {
+    return offset_;
+  }
+  float scale() const
+  {
+    return scale_;
+  }
+  bool use_loop() const
+  {
+    return use_loop_;
+  }
+
+  float to_scene_time(const float t_local) const
+  {
+    return float(t_local - offset_) / scale_;
+  }
+  float to_local_time(const float t_scene) const
+  {
+    return t_scene * scale_ + offset_;
+  }
+};
+
+static void fill_scene_range_forward(const TimeMapping &mapping,
                                      const Map<int, GreasePencilFrame> &frames,
                                      const Span<int> sorted_keys,
                                      const FrameRange scene_dst_range,
                                      const FrameRange gp_src_range,
                                      Map<int, GreasePencilFrame> &dst_frames)
 {
-  const bool use_loop = tmd.flag & MOD_GREASE_PENCIL_TIME_KEEP_LOOP;
-  const float offset = tmd.offset;
-  const float scale = tmd.frame_scale;
-
-  // auto scene_to_gp_time = [=](const int key) { return key * scale + offset; };
-  auto gp_to_scene_time = [=](const int key) { return float(key - offset) / scale; };
-
-  const float scene_src_sfra = gp_to_scene_time(gp_src_range.sfra);
-  const float scene_src_efra = gp_to_scene_time(gp_src_range.efra);
-  const float scene_src_duration = scene_src_efra + 1.0f - scene_src_sfra;
-
-  const FrameRange scene_src_range = FrameRange{math::floor(scene_src_sfra),
-                                                math::floor(scene_src_efra)};
+  const float scene_src_sfra = mapping.to_scene_time(gp_src_range.sfra);
+  const float scene_src_efra = mapping.to_scene_time(gp_src_range.efra);
+  const float scene_src_duration = float(scene_src_efra) + 1.0f - scene_src_sfra;
+  const FrameRange scene_src_range = FrameRange{int(math::floor(scene_src_sfra)),
+                                                int(math::floor(scene_src_efra))};
 
   int repeat_start = 0, repeat_count = 1;
-  if (use_loop) {
+  if (mapping.use_loop()) {
     calculate_repetitions(scene_src_range, scene_dst_range, repeat_start, repeat_count);
   }
 
@@ -350,13 +380,52 @@ static void fill_scene_range_forward(const GreasePencilTimeModifierData &tmd,
 
     for (const int i : src_keys) {
       const int gp_key = sorted_keys[i];
-      const float scene_key = gp_to_scene_time(gp_key) + shift;
+      const float scene_key = mapping.to_scene_time(gp_key) + shift;
       dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
     }
   }
 }
 
-static void fill_scene_range_reverse() {}
+static void fill_scene_range_reverse(const TimeMapping &mapping,
+                                     const Map<int, GreasePencilFrame> &frames,
+                                     const Span<int> sorted_keys,
+                                     const FrameRange scene_dst_range,
+                                     const FrameRange gp_src_range,
+                                     Map<int, GreasePencilFrame> &dst_frames)
+{
+  const float scene_src_sfra = mapping.to_scene_time(gp_src_range.sfra);
+  const float scene_src_efra = mapping.to_scene_time(gp_src_range.efra);
+  const float scene_src_duration = scene_src_efra + 1.0f - scene_src_sfra;
+  const FrameRange scene_src_range = FrameRange{int(math::floor(scene_src_sfra)),
+                                                int(math::floor(scene_src_efra))};
+
+  int repeat_start = 0, repeat_count = 1;
+  if (mapping.use_loop()) {
+    calculate_repetitions(scene_src_range, scene_dst_range, repeat_start, repeat_count);
+  }
+
+  const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
+  for (const int r : IndexRange(repeat_count)) {
+    const int rrev = repeat_count - 1 - r;
+    const float shift = (repeat_start + rrev) * scene_src_duration;
+
+    for (const int i : src_keys) {
+      /* Reverse iterator. */
+      const int irev = src_keys.last() - i;
+      /* In reverse mode keys need to be inserted at the end of each interval instead of the start
+       * of the interval. */
+      const int gp_key = sorted_keys[irev];
+      const int gp_end_key = (irev < src_keys.last() ?
+                                  std::min(sorted_keys[irev + 1] - 1, gp_src_range.efra) :
+                                  gp_src_range.efra);
+      /* Compute insertion key relative to the end frame. */
+      const float scene_end_key = mapping.to_scene_time(gp_src_range.efra - gp_end_key +
+                                                        gp_src_range.sfra) +
+                                  shift;
+      dst_frames.add_overwrite(scene_end_key, frames.lookup(gp_key));
+    }
+  }
+}
 
 static void fill_scene_range_fixed() {}
 static void fill_scene_range_ping_pong() {}
@@ -369,11 +438,9 @@ static void fill_scene_timeline(const GreasePencilTimeModifierData &tmd,
                                 const FrameRange scene_dst_range,
                                 Map<int, GreasePencilFrame> &dst_frames)
 {
+  const TimeMapping mapping(tmd);
   const auto mode = GreasePencilTimeModifierMode(tmd.mode);
   const bool use_custom_range = tmd.flag & MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE;
-  const bool use_loop = tmd.flag & MOD_GREASE_PENCIL_TIME_KEEP_LOOP;
-  const float offset = tmd.offset;
-  const float scale = tmd.frame_scale;
 
   const Scene *scene = DEG_get_evaluated_scene(ctx.depsgraph);
   const FrameRange gp_src_range = use_custom_range ? FrameRange{tmd.sfra, tmd.efra} :
@@ -385,7 +452,8 @@ static void fill_scene_timeline(const GreasePencilTimeModifierData &tmd,
           tmd, frames, sorted_keys, scene_dst_range, gp_src_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_REVERSE:
-      fill_scene_range_reverse();
+      fill_scene_range_reverse(
+          tmd, frames, sorted_keys, scene_dst_range, gp_src_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_FIX:
       fill_scene_range_fixed();
