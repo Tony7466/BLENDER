@@ -352,54 +352,71 @@ void IMB_buffer_float_from_byte(float *rect_to,
                                 int profile_to,
                                 int profile_from,
                                 bool predivide,
+                                int channels,
                                 int width,
                                 int height,
                                 int stride_to,
                                 int stride_from)
 {
-  float tmp[4];
-  int x, y;
-
   /* we need valid profiles */
   BLI_assert(profile_to != IB_PROFILE_NONE);
   BLI_assert(profile_from != IB_PROFILE_NONE);
 
   /* RGBA input */
-  for (y = 0; y < height; y++) {
-    const uchar *from = rect_from + size_t(stride_from) * y * 4;
-    float *to = rect_to + size_t(stride_to) * y * 4;
+  for (int y = 0; y < height; y++) {
+    const uchar *from = rect_from + size_t(stride_from) * y * channels;
+    float *to = rect_to + size_t(stride_to) * y * channels;
 
     if (profile_to == profile_from) {
       /* no color space conversion */
-      for (x = 0; x < width; x++, from += 4, to += 4) {
-        rgba_uchar_to_float(to, from);
+      for (int x = 0; x < width; x++) {
+        for (int i = 0; i < channels; i++, from++, to++) {
+          *to = uchar_to_float(*from);
+        }
       }
     }
     else if (profile_to == IB_PROFILE_LINEAR_RGB) {
       /* convert sRGB to linear */
-      if (predivide) {
-        for (x = 0; x < width; x++, from += 4, to += 4) {
+      if (predivide && channels == 4) {
+        for (int x = 0; x < width; x++, from += 4, to += 4) {
           srgb_to_linearrgb_uchar4_predivide(to, from);
         }
       }
-      else {
-        for (x = 0; x < width; x++, from += 4, to += 4) {
+      else if (channels == 4) {
+        for (int x = 0; x < width; x++, from += 4, to += 4) {
           srgb_to_linearrgb_uchar4(to, from);
+        }
+      }
+      else {
+        for (int x = 0; x < width; x++) {
+          for (int i = 0; i < channels; i++, from++, to++) {
+            *to = BLI_color_from_srgb_table[*from];
+          }
         }
       }
     }
     else if (profile_to == IB_PROFILE_SRGB) {
       /* convert linear to sRGB */
-      if (predivide) {
-        for (x = 0; x < width; x++, from += 4, to += 4) {
-          rgba_uchar_to_float(tmp, from);
-          linearrgb_to_srgb_predivide_v4(to, tmp);
+      if (predivide && channels == 4) {
+        for (int x = 0; x < width; x++, from += 4, to += 4) {
+          float float_value[4];
+          rgba_uchar_to_float(float_value, from);
+          linearrgb_to_srgb_predivide_v4(to, float_value);
+        }
+      }
+      else if (channels == 4) {
+        for (int x = 0; x < width; x++, from += 4, to += 4) {
+          float float_value[4];
+          rgba_uchar_to_float(float_value, from);
+          linearrgb_to_srgb_v4(to, float_value);
         }
       }
       else {
-        for (x = 0; x < width; x++, from += 4, to += 4) {
-          rgba_uchar_to_float(tmp, from);
-          linearrgb_to_srgb_v4(to, tmp);
+        for (int x = 0; x < width; x++) {
+          for (int i = 0; i < channels; i++, from++, to++) {
+            const float float_value = uchar_to_float(*from);
+            *to = linearrgb_to_srgb(float_value);
+          }
         }
       }
     }
@@ -755,7 +772,8 @@ void IMB_float_from_rect_ex(ImBuf *dst, const ImBuf *src, const rcti *region_to_
                  "Source buffer should have a byte buffer assigned.");
   BLI_assert_msg(dst->x == src->x, "Source and destination buffer should have the same dimension");
   BLI_assert_msg(dst->y == src->y, "Source and destination buffer should have the same dimension");
-  BLI_assert_msg(dst->channels = 4, "Destination buffer should have 4 channels.");
+  BLI_assert_msg(dst->channels = src->channels,
+                 "Spurce and destination buffers should have the same number of channels.");
   BLI_assert_msg(region_to_update->xmin >= 0,
                  "Region to update should be clipped to the given buffers.");
   BLI_assert_msg(region_to_update->ymin >= 0,
@@ -766,9 +784,9 @@ void IMB_float_from_rect_ex(ImBuf *dst, const ImBuf *src, const rcti *region_to_
                  "Region to update should be clipped to the given buffers.");
 
   float *rect_float = dst->float_buffer.data;
-  rect_float += (region_to_update->xmin + region_to_update->ymin * dst->x) * 4;
+  rect_float += (region_to_update->xmin + region_to_update->ymin * dst->x) * dst->channels;
   uchar *rect = src->byte_buffer.data;
-  rect += (region_to_update->xmin + region_to_update->ymin * dst->x) * 4;
+  rect += (region_to_update->xmin + region_to_update->ymin * dst->x) * dst->channels;
   const int region_width = BLI_rcti_size_x(region_to_update);
   const int region_height = BLI_rcti_size_y(region_to_update);
 
@@ -778,6 +796,7 @@ void IMB_float_from_rect_ex(ImBuf *dst, const ImBuf *src, const rcti *region_to_
                              IB_PROFILE_SRGB,
                              IB_PROFILE_SRGB,
                              false,
+                             dst->channels,
                              region_width,
                              region_height,
                              src->x,
@@ -788,7 +807,7 @@ void IMB_float_from_rect_ex(ImBuf *dst, const ImBuf *src, const rcti *region_to_
   for (int i = 0; i < region_height; i++) {
     IMB_colormanagement_colorspace_to_scene_linear(
         float_ptr, region_width, 1, dst->channels, src->byte_buffer.colorspace, false);
-    float_ptr += 4 * dst->x;
+    float_ptr += dst->channels * dst->x;
   }
 
   /* Perform alpha conversion. */
@@ -796,7 +815,7 @@ void IMB_float_from_rect_ex(ImBuf *dst, const ImBuf *src, const rcti *region_to_
     float_ptr = rect_float;
     for (int i = 0; i < region_height; i++) {
       IMB_premultiply_rect_float(float_ptr, dst->channels, region_width, 1);
-      float_ptr += 4 * dst->x;
+      float_ptr += dst->channels * dst->x;
     }
   }
 }
@@ -814,14 +833,12 @@ void IMB_float_from_rect(ImBuf *ibuf)
    */
   float *rect_float = ibuf->float_buffer.data;
   if (rect_float == nullptr) {
-    const size_t size = IMB_get_rect_len(ibuf) * sizeof(float[4]);
+    const size_t size = IMB_get_rect_len(ibuf) * ibuf->channels * sizeof(float);
     rect_float = static_cast<float *>(MEM_callocN(size, "IMB_float_from_rect"));
 
     if (rect_float == nullptr) {
       return;
     }
-
-    ibuf->channels = 4;
 
     IMB_assign_float_buffer(ibuf, rect_float, IB_TAKE_OWNERSHIP);
   }
