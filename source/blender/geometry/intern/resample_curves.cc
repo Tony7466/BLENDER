@@ -423,7 +423,7 @@ CurvesGeometry resample_to_count(const CurvesGeometry &src_curves,
   CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
 
-  counts.materialize(dst_offsets);
+  array_utils::copy(counts, selection, dst_offsets);
   /* We assume the counts are at least 1. */
   BLI_assert(std::all_of(
       dst_offsets.begin(), dst_offsets.end(), [&](const int i) { return dst_offsets[i] > 0; }));
