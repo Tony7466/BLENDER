@@ -10,6 +10,8 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BKE_attribute_math.hh"
+#include "BKE_curves.hh"
+#include "BKE_curves_utils.hh"
 #include "BKE_pointcloud.hh"
 
 #include "GEO_point_merge_by_distance.hh"
@@ -158,6 +160,155 @@ PointCloud *point_merge_by_distance(const PointCloud &src_points,
   debug_randomize_point_order(dst_pointcloud);
 
   return dst_pointcloud;
+}
+
+static int curve_merge_by_distance(const Span<float> lengths,
+                                   const IndexMask &selection,
+                                   const float merge_distance,
+                                   MutableSpan<int> r_merge_indices)
+{
+  /* We use a KDTree_1d here, because we can only merge neighboring points in the curves. */
+  KDTree_1d *tree = BLI_kdtree_1d_new(selection.size());
+  /* The selection is an IndexMask of the points just in this curve. */
+  selection.foreach_index_optimized<int64_t>(
+      [&](const int64_t i, const int64_t pos) { BLI_kdtree_1d_insert(tree, pos, &lengths[i]); });
+  BLI_kdtree_1d_balance(tree);
+
+  Array<int> selection_merge_indices(selection.size(), -1);
+  const int duplicate_count = BLI_kdtree_1d_calc_duplicates_fast(
+      tree, merge_distance, false, selection_merge_indices.data());
+  BLI_kdtree_1d_free(tree);
+
+  array_utils::fill_index_range<int>(r_merge_indices);
+
+  selection.foreach_index([&](const int src_index, const int pos) {
+    const int merge_index = selection_merge_indices[pos];
+    if (merge_index != -1) {
+      const int src_merge_index = selection[merge_index];
+      r_merge_indices[src_index] = src_merge_index;
+    }
+  });
+
+  return duplicate_count;
+}
+
+bke::CurvesGeometry curves_merge_by_distance(
+    const bke::CurvesGeometry &src_curves,
+    const float merge_distance,
+    const IndexMask &selection,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
+{
+  const int src_point_size = src_curves.points_num();
+  OffsetIndices<int> points_by_curve = src_curves.points_by_curve();
+  VArray<bool> cyclic = src_curves.cyclic();
+
+  std::atomic<int> total_duplicate_count = 0;
+  Array<int> dst_curve_counts(src_curves.curves_num());
+  Array<Array<int>> merge_indices_per_curve(src_curves.curves_num());
+  threading::parallel_for(src_curves.curves_range(), 512, [&](const IndexRange range) {
+    for (const int curve_i : range) {
+      const IndexRange points = points_by_curve[curve_i];
+      merge_indices_per_curve[curve_i].reinitialize(points.size());
+
+      const Span<float> lengths = src_curves.evaluated_lengths_for_curve(curve_i, cyclic[curve_i]);
+      MutableSpan<int> merge_indices = merge_indices_per_curve[curve_i].as_mutable_span();
+      const int duplicate_count = curve_merge_by_distance(
+          lengths, selection.slice_content(points), merge_distance, merge_indices);
+
+      dst_curve_counts[curve_i] = points.size() - duplicate_count;
+      total_duplicate_count += duplicate_count;
+    }
+  });
+
+  bke::CurvesGeometry dst_curves = bke::curves::copy_only_curve_domain(src_curves);
+  const int dst_point_size = src_point_size - total_duplicate_count;
+  dst_curves.resize(dst_point_size, src_curves.curves_num());
+
+  array_utils::copy(dst_curve_counts.as_span(), dst_curves.offsets_for_write());
+  offset_indices::accumulate_counts_to_offsets(dst_curves.offsets_for_write());
+
+  int merged_points = 0;
+  Array<int> src_to_dst_indices(src_point_size);
+  for (const int curve_i : src_curves.curves_range()) {
+    const IndexRange points = points_by_curve[curve_i];
+    const Span<int> merge_indices = merge_indices_per_curve[curve_i].as_span();
+    for (const int i : points.index_range()) {
+      const int point_i = points.start() + i;
+      src_to_dst_indices[point_i] = point_i - merged_points;
+      if (merge_indices[i] != i) {
+        merged_points++;
+      }
+    }
+  }
+
+  Array<int> point_merge_counts(dst_point_size, 0);
+  for (const int curve_i : src_curves.curves_range()) {
+    const IndexRange points = points_by_curve[curve_i];
+    const Span<int> merge_indices = merge_indices_per_curve[curve_i].as_span();
+    for (const int i : points.index_range()) {
+      const int merge_index = merge_indices[i];
+      const int point_src = points.start() + merge_index;
+      const int dst_index = src_to_dst_indices[point_src];
+      point_merge_counts[dst_index]++;
+    }
+  }
+
+  Array<int> map_offsets_data(dst_point_size + 1);
+  map_offsets_data.as_mutable_span().drop_back(1).copy_from(point_merge_counts);
+  OffsetIndices<int> map_offsets = offset_indices::accumulate_counts_to_offsets(map_offsets_data);
+
+  point_merge_counts.fill(0);
+
+  Array<int> merge_map_indices(src_point_size);
+  for (const int curve_i : src_curves.curves_range()) {
+    const IndexRange points = points_by_curve[curve_i];
+    const Span<int> merge_indices = merge_indices_per_curve[curve_i].as_span();
+    for (const int i : points.index_range()) {
+      const int point_i = points.start() + i;
+      const int merge_index = merge_indices[i];
+      const int dst_index = src_to_dst_indices[merge_index];
+      merge_map_indices[map_offsets[dst_index].first() + point_merge_counts[dst_index]] = point_i;
+      point_merge_counts[dst_index]++;
+    }
+  }
+
+  Set<bke::AttributeIDRef> attribute_ids = src_curves.attributes().all_ids();
+
+  for (const bke::AttributeIDRef &id : attribute_ids) {
+    if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+      continue;
+    }
+
+    bke::GAttributeReader src_attribute = src_curves.attributes().lookup(id);
+    bke::attribute_math::convert_to_static_type(src_attribute.varray.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      if constexpr (!std::is_void_v<bke::attribute_math::DefaultMixer<T>>) {
+        bke::SpanAttributeWriter<T> dst_attribute =
+            dst_attributes.lookup_or_add_for_write_only_span<T>(id, bke::AttrDomain::Point);
+        VArraySpan<T> src = src_attribute.varray.typed<T>();
+
+        threading::parallel_for(dst_point_size, 1024, [&](IndexRange range) {
+          for (const int dst_point_i : range) {
+            /* Create a separate mixer for every point to avoid allocating temporary buffers
+             * in the mixer the size of the result point cloud and to improve memory locality. */
+            bke::attribute_math::DefaultMixer<T> mixer{dst_attribute.span.slice(dst_point_i, 1)};
+
+            Span<int> src_merge_indices = merge_map_indices.as_span().slice(
+                map_offsets[dst_point_i]);
+            for (const int src_point_i : src_merge_indices) {
+              mixer.mix_in(0, src[src_point_i]);
+            }
+
+            mixer.finalize();
+          }
+        });
+
+        dst_attribute.finish();
+      }
+    });
+  }
+
+  return dst_curves;
 }
 
 }  // namespace blender::geometry

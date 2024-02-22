@@ -9,7 +9,8 @@
 struct PointCloud;
 namespace blender::bke {
 class AnonymousAttributePropagationInfo;
-}
+class CurvesGeometry;
+}  // namespace blender::bke
 
 /** \file
  * \ingroup geo
@@ -23,6 +24,12 @@ namespace blender::geometry {
  */
 PointCloud *point_merge_by_distance(
     const PointCloud &src_points,
+    const float merge_distance,
+    const IndexMask &selection,
+    const bke::AnonymousAttributePropagationInfo &propagation_info);
+
+bke::CurvesGeometry curves_merge_by_distance(
+    const bke::CurvesGeometry &src_curves,
     const float merge_distance,
     const IndexMask &selection,
     const bke::AnonymousAttributePropagationInfo &propagation_info);
