@@ -674,7 +674,7 @@ static bool transform_modal_item_poll(const wmOperator *op, int value)
         return t->data_type == &TransConvertType_Tracking;
       }
       if (value == TFM_MODAL_VERT_EDGE_SLIDE &&
-          (t->data_type != &TransConvertType_Mesh ||
+          (!ELEM(t->data_type, &TransConvertType_Mesh, &TransConvertType_MeshUV) ||
            /* WORKAROUND: Avoid repeated keys in status bar.
             *
             * Previously, `Vert/Edge Slide` and `Move` were triggered by the same modal key.
@@ -1378,7 +1378,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
         break;
       case EVT_LEFTALTKEY:
       case EVT_RIGHTALTKEY:
-        if (ELEM(t->spacetype, SPACE_SEQ, SPACE_VIEW3D)) {
+        if (ELEM(t->spacetype, SPACE_SEQ, SPACE_VIEW3D, SPACE_IMAGE)) {
           t->flag |= T_ALT_TRANSFORM;
           t->redraw |= TREDRAW_HARD;
           handled = true;
@@ -1396,7 +1396,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
       case EVT_LEFTALTKEY:
       case EVT_RIGHTALTKEY:
         /* TODO: Modal Map */
-        if (ELEM(t->spacetype, SPACE_SEQ, SPACE_VIEW3D)) {
+        if (ELEM(t->spacetype, SPACE_SEQ, SPACE_VIEW3D, SPACE_IMAGE)) {
           t->flag &= ~T_ALT_TRANSFORM;
           t->redraw |= TREDRAW_HARD;
           handled = true;
