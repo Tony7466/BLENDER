@@ -277,15 +277,16 @@ static bool open_anim_file_multiview(Scene *scene, Sequence *seq, char *filepath
     SNPRINTF(filepath_view, "%s%s%s", prefix, suffix, ext);
 
     StripAnim *sanim = static_cast<StripAnim *>(MEM_mallocN(sizeof(StripAnim), "Strip Anim"));
-    BLI_addtail(&seq->anims, sanim);
     open_anim_filepath(seq, sanim, filepath_view, openfile);
 
     if (sanim->anim == nullptr) {
+      MEM_freeN(sanim);
       return false; /* Multiview render failed. */
     }
 
-    IMB_suffix_anim(sanim->anim, suffix);
     index_dir_set(ed, seq, sanim);
+    BLI_addtail(&seq->anims, sanim);
+    IMB_suffix_anim(sanim->anim, suffix);
     is_multiview_loaded = true;
   }
 
