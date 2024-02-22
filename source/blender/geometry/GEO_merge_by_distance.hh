@@ -22,12 +22,15 @@ namespace blender::geometry {
  * Merge selected points into other selected points within the \a merge_distance. The merged
  * indices favor speed over accuracy, since the results will depend on the order of the points.
  */
-PointCloud *point_merge_by_distance(
-    const PointCloud &src_points,
-    const float merge_distance,
-    const IndexMask &selection,
-    const bke::AnonymousAttributePropagationInfo &propagation_info);
-
+PointCloud *merge_by_distance(const PointCloud &src_points,
+                              const float merge_distance,
+                              const IndexMask &selection,
+                              const bke::AnonymousAttributePropagationInfo &propagation_info);
+/**
+ * Merge selected points into other selected points within the \a merge_distance. Only merges
+ * neighboring points within each curve. The merged indices favor speed over accuracy, since the
+ * results will depend on the order of the points.
+ */
 bke::CurvesGeometry curves_merge_by_distance(
     const bke::CurvesGeometry &src_curves,
     const float merge_distance,

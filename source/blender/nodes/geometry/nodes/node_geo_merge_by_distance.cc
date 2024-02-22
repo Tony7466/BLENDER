@@ -5,8 +5,8 @@
 #include "DNA_mesh_types.h"
 #include "DNA_pointcloud_types.h"
 
+#include "GEO_merge_by_distance.hh"
 #include "GEO_mesh_merge_by_distance.hh"
-#include "GEO_point_merge_by_distance.hh"
 
 #include "NOD_rna_define.hh"
 
@@ -58,8 +58,7 @@ static PointCloud *pointcloud_merge_by_distance(
     return nullptr;
   }
 
-  return geometry::point_merge_by_distance(
-      src_points, merge_distance, selection, propagation_info);
+  return geometry::merge_by_distance(src_points, merge_distance, selection, propagation_info);
 }
 
 static std::optional<Mesh *> mesh_merge_by_distance_connected(const Mesh &mesh,

@@ -32,7 +32,7 @@ set(SRC
   intern/mesh_to_curve_convert.cc
   intern/mesh_to_volume.cc
   intern/mix_geometries.cc
-  intern/point_merge_by_distance.cc
+  intern/merge_by_distance.cc
   intern/points_to_volume.cc
   intern/randomize.cc
   intern/realize_instances.cc
@@ -65,7 +65,7 @@ set(SRC
   GEO_mesh_to_curve.hh
   GEO_mesh_to_volume.hh
   GEO_mix_geometries.hh
-  GEO_point_merge_by_distance.hh
+  GEO_merge_by_distance.hh
   GEO_points_to_volume.hh
   GEO_randomize.hh
   GEO_realize_instances.hh
