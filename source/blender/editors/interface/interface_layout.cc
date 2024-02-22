@@ -3281,13 +3281,14 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon, bool wrap =
   int h;
 
   if (wrap && layout->w) {
-    const uiStyle *style = UI_style_get();
-    const uiFontStyle *fstyle = &style->widget;
-    blender::StringRef test = name;
-    blender::Vector<blender::StringRef> wrapped = BLF_string_wrap(
-        fstyle->uifont_id, test, layout->w);
+    const uiFontStyle *fstyle = UI_FSTYLE_WIDGET_LABEL;
+    BLF_size(fstyle->uifont_id, fstyle->points);
+    blender::StringRef str = name;
+    int width = (icon) ? layout->w - int(UI_UNIT_X * 1.3f) : layout->w;
+    blender::Vector<blender::StringRef> wrapped = BLF_string_wrap(fstyle->uifont_id, str, width);
+    float line_height = BLF_height_max(fstyle->uifont_id) * 1.1f;
     w = 0;
-    h = std::max(int(UI_UNIT_Y), int(BLF_height_max(fstyle->uifont_id) * wrapped.size()));
+    h = std::max(int(UI_UNIT_Y), int(line_height * wrapped.size()));
   }
   else {
     w = ui_text_icon_width_ex(layout, name, icon, ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
