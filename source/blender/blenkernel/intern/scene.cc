@@ -58,7 +58,7 @@
 #include "BKE_collection.hh"
 #include "BKE_colortools.hh"
 #include "BKE_curveprofile.h"
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_effect.h"
 #include "BKE_fcurve.h"
@@ -1601,6 +1601,10 @@ constexpr IDTypeInfo get_type_info()
   IDTypeInfo info{};
   info.id_code = ID_SCE;
   info.id_filter = FILTER_ID_SCE;
+  info.dependencies_id_types = (FILTER_ID_OB | FILTER_ID_WO | FILTER_ID_SCE | FILTER_ID_MC |
+                                FILTER_ID_MA | FILTER_ID_GR | FILTER_ID_TXT | FILTER_ID_LS |
+                                FILTER_ID_MSK | FILTER_ID_SO | FILTER_ID_GD_LEGACY | FILTER_ID_BR |
+                                FILTER_ID_PAL | FILTER_ID_IM | FILTER_ID_NT);
   info.main_listbase_index = INDEX_ID_SCE;
   info.struct_size = sizeof(Scene);
   info.name = "Scene";
@@ -2167,13 +2171,13 @@ int BKE_scene_base_iter_next(
           if (iter->dupli_refob != *ob) {
             if (iter->dupli_refob) {
               /* Restore previous object's real matrix. */
-              copy_m4_m4(iter->dupli_refob->object_to_world, iter->omat);
+              copy_m4_m4(iter->dupli_refob->runtime->object_to_world.ptr(), iter->omat);
             }
             /* Backup new object's real matrix. */
             iter->dupli_refob = *ob;
-            copy_m4_m4(iter->omat, iter->dupli_refob->object_to_world);
+            copy_m4_m4(iter->omat, iter->dupli_refob->object_to_world().ptr());
           }
-          copy_m4_m4((*ob)->object_to_world, iter->dupob->mat);
+          copy_m4_m4((*ob)->runtime->object_to_world.ptr(), iter->dupob->mat);
 
           iter->dupob = iter->dupob->next;
         }
@@ -2183,7 +2187,7 @@ int BKE_scene_base_iter_next(
 
           if (iter->dupli_refob) {
             /* Restore last object's real matrix. */
-            copy_m4_m4(iter->dupli_refob->object_to_world, iter->omat);
+            copy_m4_m4(iter->dupli_refob->runtime->object_to_world.ptr(), iter->omat);
             iter->dupli_refob = nullptr;
           }
 
@@ -2265,7 +2269,7 @@ bool BKE_scene_camera_switch_update(Scene *scene)
   Object *camera = BKE_scene_camera_switch_find(scene);
   if (camera && (camera != scene->camera)) {
     scene->camera = camera;
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
     return true;
   }
 #else
