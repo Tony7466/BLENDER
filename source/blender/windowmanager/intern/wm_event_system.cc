@@ -2630,7 +2630,7 @@ static eHandlerActionFlag wm_handler_operator_call(bContext *C,
   return WM_HANDLER_BREAK;
 }
 
-static void wm_operator_free_for_fileselect(wmOperator *file_operator)
+static void wm_operator_clear_fileselect(wmOperator *file_operator)
 {
   LISTBASE_FOREACH (bScreen *, screen, &G_MAIN->screens) {
     LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
@@ -2642,7 +2642,11 @@ static void wm_operator_free_for_fileselect(wmOperator *file_operator)
       }
     }
   }
+}
 
+static void wm_operator_free_for_fileselect(wmOperator *file_operator)
+{
+  wm_operator_clear_fileselect(file_operator);
   WM_operator_free(file_operator);
 }
 
@@ -2848,9 +2852,25 @@ static eHandlerActionFlag wm_handler_fileselect_do(bContext *C,
 
         if (retval & OPERATOR_FINISHED) {
           WM_operator_last_properties_store(handler->op);
-        }
 
-        if (retval & (OPERATOR_CANCELLED | OPERATOR_FINISHED)) {
+          ED_area_type_hud_clear(wm, nullptr);
+
+          if (wm_operator_register_check(wm, handler->op->type)) {
+            wm_operator_register(C, handler->op);
+            WM_operator_region_active_win_set(C);
+
+            if (WM_operator_last_redo(C) == handler->op) {
+              /* Show the redo panel. */
+              ScrArea *area = CTX_wm_area(C);
+              if (area && ((area->flag & AREA_FLAG_OFFSCREEN) == 0)) {
+                ED_area_type_hud_ensure(C, area);
+              }
+            }
+          }
+
+          wm_operator_clear_fileselect(handler->op);
+        }
+        else if (retval & OPERATOR_CANCELLED) {
           wm_operator_free_for_fileselect(handler->op);
         }
       }
