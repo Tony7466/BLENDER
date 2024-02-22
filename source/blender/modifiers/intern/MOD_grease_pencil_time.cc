@@ -346,7 +346,7 @@ static void fill_scene_range_forward(const GreasePencilTimeModifierData &tmd,
 
   const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
   for (const int r : IndexRange(repeat_count)) {
-    const float shift = (repeat_start + r) * scene_src_duration + scene_src_sfra;
+    const float shift = (repeat_start + r) * scene_src_duration;
 
     for (const int i : src_keys) {
       const int gp_key = sorted_keys[i];
