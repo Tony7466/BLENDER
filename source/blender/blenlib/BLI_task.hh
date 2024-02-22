@@ -88,6 +88,13 @@ inline void parallel_for(IndexRange range, int64_t grain_size, const Function &f
   detail::parallel_for_impl(range, grain_size, function);
 }
 
+/**
+ * Almost like `parallel_for` but allows passing in a function that estimates the amount of work
+ * per index. This allows distributing work to threads more evenly.
+ *
+ * Using this function makes sense when the work load for each index can differ significantly, so
+ * that it is impossible to determine a good grain size.
+ */
 template<typename Function, typename TaskSizeFn>
 inline void parallel_for_weighted(IndexRange range,
                                   int64_t grain_size,
