@@ -65,9 +65,8 @@ static void align_rotations_auto_pivot(const IndexMask &mask,
     const float full_angle = angle_normalized_v3v3(old_axis, new_axis);
     const float angle = factors[i] * full_angle;
 
-    const math::Quaternion rotation = math::to_quaternion(math::AxisAngle(rotation_axis, angle));
-
-    output_rotations[i] = rotation * old_rotation;
+    const math::AxisAngle axis_angle = math::AxisAngle(math::normalize(rotation_axis), angle);
+    output_rotations[i] = math::to_quaternion(axis_angle) * old_rotation;
   });
 }
 
@@ -103,9 +102,8 @@ static void align_rotations_fixed_pivot(const IndexMask &mask,
     }
     const float angle = factors[i] * full_angle;
 
-    const math::Quaternion rotation = math::to_quaternion(math::AxisAngle(pivot_axis, angle));
-
-    output_rotations[i] = rotation * old_rotation;
+    const math::AxisAngle axis_angle = math::AxisAngle(math::normalize(pivot_axis), angle);
+    output_rotations[i] = math::to_quaternion(axis_angle) * old_rotation;
   });
 }
 
@@ -140,7 +138,7 @@ class AlignRotationToVectorFunction : public mf::MultiFunction {
         3, "Rotation");
 
     float3 local_main_axis = {0.0f, 0.0f, 0.0f};
-    local_main_axis[main_axis_mode_.as_int()] = 1;
+    local_main_axis[main_axis_mode_.as_int()] = 1.0f;
 
     if (pivot_axis_mode_ == FN_NODE_ALIGN_EULER_TO_VECTOR_PIVOT_AXIS_AUTO) {
       align_rotations_auto_pivot(
@@ -171,7 +169,7 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
 {
   const bNode &node = builder.node();
   builder.construct_and_set_matching_fn<AlignRotationToVectorFunction>(
-      math::Axis(node.custom1), NodeAlignEulerToVectorPivotAxis(node.custom2));
+      math::Axis::from_int(node.custom1), NodeAlignEulerToVectorPivotAxis(node.custom2));
 }
 
 static void node_rna(StructRNA *srna)
