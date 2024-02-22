@@ -126,7 +126,8 @@ def get_submodule_directories(args: argparse.Namespace):
 
 
 def ensure_git_lfs(args: argparse.Namespace) -> None:
-    # Use `--skip-repo` to avoid creating git hooks (they might already exist).
+    # Use `--skip-repo` to avoid creating git hooks.
+    # This is called from the `blender.git` checkout, so we don't need to install hooks there.
     call((args.git_command, "lfs", "install", "--skip-repo"), exit_on_error=True)
 
 
