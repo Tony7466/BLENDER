@@ -764,8 +764,7 @@ static bool lineart_shadow_cast_onto_triangle(LineartData *ld,
      * the edge
      */
     if (!(pi && LRT_DOUBLE_CLOSE_ENOUGH(ratio[0], 1.0f) &&
-          LRT_DOUBLE_CLOSE_ENOUGH(ratio[1], 0.0f)))
-    {
+          LRT_DOUBLE_CLOSE_ENOUGH(ratio[1], 0.0f))) {
       trie[pi] = 1;
       pi++;
     }
@@ -943,12 +942,7 @@ static void lineart_shadow_cast(LineartData *ld, bool transform_edge_cuts, bool 
                                   tri->base.target_reference);
         }
       }
-      LineartBoundingArea *use_ba = nba;
       LRT_EDGE_BA_MARCHING_NEXT(sedge->fbc1, sedge->fbc2);
-      if (nba == use_ba) {
-        printf("?\n");
-        break;
-      }
     }
     LRT_EDGE_BA_MARCHING_END;
   }
