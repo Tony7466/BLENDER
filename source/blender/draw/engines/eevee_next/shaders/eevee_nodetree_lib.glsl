@@ -173,7 +173,7 @@ Closure closure_eval(ClosureTranslucent translucent)
   return Closure(0);
 }
 
-bool g_closure_reflection_bin = false;
+bool g_closure_reflection_bin = true;
 
 Closure closure_eval(ClosureReflection reflection)
 {

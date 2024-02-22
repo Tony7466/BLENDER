@@ -84,12 +84,11 @@ void main()
   GBufferReader gbuf = gbuffer_read(
       gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
-  bool has_valid_closure = closure_index < gbuf.closure_count;
-  if (!has_valid_closure) {
+  ClosureUndetermined closure_center = gbuffer_closure_get_by_layer(gbuf, closure_index);
+
+  if (closure_center.type == CLOSURE_NONE_ID) {
     return;
   }
-
-  ClosureUndetermined closure_center = gbuffer_closure_get(gbuf, closure_index);
 
   vec3 center_N = closure_center.N;
   float roughness = closure_apparent_roughness_get(closure_center);

@@ -119,7 +119,7 @@ void main()
 
     g_data_packed = gbuffer_pack(data_in);
 
-    EXPECT_EQ(g_data_packed.layer_gbuf, 2);
+    EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(g_data_packed.layer_normal, 1);
 
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
@@ -138,7 +138,7 @@ void main()
 
     g_data_packed = gbuffer_pack(data_in);
 
-    EXPECT_EQ(g_data_packed.layer_gbuf, 2);
+    EXPECT_EQ(g_data_packed.layer_data, 2);
     EXPECT_EQ(g_data_packed.layer_normal, 2);
 
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));

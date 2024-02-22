@@ -801,6 +801,43 @@ GBufferReader gbuffer_read_header_closure_types(uint header)
   return gbuf;
 }
 
+int gbuffer_closure_layer_get(GBufferReader gbuf, int closure_index)
+{
+  int closure_i = 0;
+  for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
+    GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
+    if (mode != GBUF_NONE) {
+      if (closure_i == closure_index) {
+        return layer;
+      }
+      closure_i++;
+    }
+  }
+  /* Should never happen. */
+  return -1;
+}
+
+int gbuffer_closure_index_get(GBufferReader gbuf, int layer_index)
+{
+  int closure_index = 0;
+  for (int layer = 0; layer <= layer_index; layer++) {
+    GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
+    if (mode != GBUF_NONE) {
+      if (layer == layer_index) {
+        return closure_index;
+      }
+      closure_index++;
+    }
+  }
+  return 0;
+}
+
+ClosureUndetermined gbuffer_closure_get_by_layer(GBufferReader gbuf, int layer_index)
+{
+  return gbuffer_closure_get(gbuf, gbuffer_closure_index_get(gbuf, layer_index));
+}
+
+/* Read the entirety of the GBuffer. */
 GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
                            samplerGBufferClosure closure_tx,
                            samplerGBufferNormal normal_tx,
@@ -814,12 +851,13 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
   gbuf.layer_data = 0;
   gbuf.layer_normal = 0;
   gbuf.surface_N = vec3(0.0);
+  for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
+    gbuffer_register_closure(gbuf, closure_new(CLOSURE_NONE_ID), layer);
+  }
 
   gbuf.header = fetchGBuffer(header_tx, texel);
+
   if (gbuf.header == 0u) {
-    for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
-      gbuffer_register_closure(gbuf, closure_new(CLOSURE_NONE_ID), layer);
-    }
     return gbuf;
   }
 
@@ -832,37 +870,36 @@ GBufferReader gbuffer_read(samplerGBufferHeader header_tx,
     switch (mode) {
       default:
       case GBUF_NONE:
-        gbuffer_register_closure(gbuf, closure_new(CLOSURE_NONE_ID), layer);
         break;
       case GBUF_DIFFUSE:
-        gbuffer_closure_diffuse_load(gbuf, layer, closure_tx, normal_tx);
+        gbuffer_closure_diffuse_load(gbuf, gbuf.closure_count, closure_tx, normal_tx);
         gbuf.closure_count++;
         break;
       case GBUF_TRANSLUCENT:
-        gbuffer_closure_translucent_load(gbuf, layer, closure_tx, normal_tx);
+        gbuffer_closure_translucent_load(gbuf, gbuf.closure_count, closure_tx, normal_tx);
         gbuf.closure_count++;
         has_additional_data = true;
         break;
       case GBUF_SUBSURFACE:
-        gbuffer_closure_subsurface_load(gbuf, layer, closure_tx, normal_tx);
+        gbuffer_closure_subsurface_load(gbuf, gbuf.closure_count, closure_tx, normal_tx);
         gbuf.closure_count++;
         has_additional_data = true;
         break;
       case GBUF_REFLECTION:
-        gbuffer_closure_reflection_load(gbuf, layer, closure_tx, normal_tx);
+        gbuffer_closure_reflection_load(gbuf, gbuf.closure_count, closure_tx, normal_tx);
         gbuf.closure_count++;
         break;
       case GBUF_REFRACTION:
-        gbuffer_closure_refraction_load(gbuf, layer, closure_tx, normal_tx);
+        gbuffer_closure_refraction_load(gbuf, gbuf.closure_count, closure_tx, normal_tx);
         gbuf.closure_count++;
         has_additional_data = true;
         break;
       case GBUF_REFLECTION_COLORLESS:
-        gbuffer_closure_reflection_colorless_load(gbuf, layer, closure_tx, normal_tx);
+        gbuffer_closure_reflection_colorless_load(gbuf, gbuf.closure_count, closure_tx, normal_tx);
         gbuf.closure_count++;
         break;
       case GBUF_REFRACTION_COLORLESS:
-        gbuffer_closure_refraction_colorless_load(gbuf, layer, closure_tx, normal_tx);
+        gbuffer_closure_refraction_colorless_load(gbuf, gbuf.closure_count, closure_tx, normal_tx);
         gbuf.closure_count++;
         has_additional_data = true;
         break;

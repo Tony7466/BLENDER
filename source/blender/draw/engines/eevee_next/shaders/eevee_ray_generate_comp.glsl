@@ -24,8 +24,9 @@ void main()
   GBufferReader gbuf = gbuffer_read(
       gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
-  bool valid_pixel = closure_index < gbuf.closure_count;
-  if (!valid_pixel) {
+  ClosureUndetermined closure = gbuffer_closure_get_by_layer(gbuf, closure_index);
+
+  if (closure.type == CLOSURE_NONE_ID) {
     imageStore(out_ray_data_img, texel, vec4(0.0));
     return;
   }
@@ -36,7 +37,7 @@ void main()
   vec2 noise = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER).rg;
   noise = fract(noise + sampling_rng_2D_get(SAMPLING_RAYTRACE_U));
 
-  BsdfSample samp = ray_generate_direction(noise.xy, gbuffer_closure_get(gbuf, closure_index), V);
+  BsdfSample samp = ray_generate_direction(noise.xy, closure, V);
 
   /* Store inverse pdf to speedup denoising.
    * Limit to the smallest non-0 value that the format can encode.
