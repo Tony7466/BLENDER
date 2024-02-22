@@ -23,7 +23,7 @@ void main()
   }
   else {
     vec3 probe_center = reflection_probe_buf[idx].location;
-    sh = lightprobe_irradiance_sample(probe_center);
+    sh = lightprobe_irradiance_sample_blended(probe_center);
   }
 
   reflection_probe_buf[idx].low_freq_light = reflection_probes_extract_low_freq(sh);
