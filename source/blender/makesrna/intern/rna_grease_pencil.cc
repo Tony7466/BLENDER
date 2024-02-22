@@ -145,7 +145,7 @@ static int rna_GreasePencilLayer_pass_index_get(PointerRNA *ptr)
   const int layer_idx = *grease_pencil.get_layer_index(layer);
 
   const VArray layer_passes = *grease_pencil.attributes().lookup_or_default<int>(
-      "pass", bke::AttrDomain::Layer, 0);
+      "pass_index", bke::AttrDomain::Layer, 0);
   return layer_passes[layer_idx];
 }
 
@@ -159,7 +159,7 @@ static void rna_GreasePencilLayer_pass_index_set(PointerRNA *ptr, int value)
 
   bke::SpanAttributeWriter<int> layer_passes =
       grease_pencil.attributes_for_write().lookup_or_add_for_write_span<int>(
-          "pass", bke::AttrDomain::Layer);
+          "pass_index", bke::AttrDomain::Layer);
   layer_passes.span[layer_idx] = std::max(0, value);
   layer_passes.finish();
 }
