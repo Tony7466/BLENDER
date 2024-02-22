@@ -124,45 +124,9 @@ SphericalHarmonicL1 lightprobe_irradiance_sample_atlas(sampler3D atlas_tx, vec3 
   return sh;
 }
 
-SphericalHarmonicL1 lightprobe_irradiance_sample(
-    sampler3D atlas_tx, vec3 P, vec3 V, vec3 Ng, const bool do_bias)
+SphericalHarmonicL1 lightprobe_irradiance_sample_probe(
+    sampler3D atlas_tx, VolumeProbeData grid_data, vec3 lP, vec3 V, vec3 Ng, const bool do_bias)
 {
-  vec3 lP;
-  int index = -1;
-  int i = 0;
-#ifdef IRRADIANCE_GRID_UPLOAD
-  i = grid_start_index;
-#endif
-#ifdef IRRADIANCE_GRID_SAMPLING
-  float random = interlieved_gradient_noise(UTIL_TEXEL, 0.0, 0.0);
-  random = fract(random + sampling_rng_1D_get(SAMPLING_LIGHTPROBE));
-#endif
-  for (; i < IRRADIANCE_GRID_MAX; i++) {
-    /* Last grid is tagged as invalid to stop the iteration. */
-    if (grids_infos_buf[i].grid_size.x == -1) {
-      /* Sample the last grid instead. */
-      index = i - 1;
-      break;
-    }
-
-    /* If sample fall inside the grid, step out of the loop. */
-    if (lightprobe_irradiance_grid_local_coord(grids_infos_buf[i], P, lP)) {
-      index = i;
-#ifdef IRRADIANCE_GRID_SAMPLING
-      float distance_to_border = reduce_min(min(lP, vec3(grids_infos_buf[i].grid_size) - lP));
-      if (distance_to_border < random) {
-        /* Remap random to the remaining interval. */
-        random = (random - distance_to_border) / (1.0 - distance_to_border);
-        /* Try to sample another grid to get smooth transitions at borders. */
-        continue;
-      }
-#endif
-      break;
-    }
-  }
-
-  VolumeProbeData grid_data = grids_infos_buf[index];
-
   /* TODO(fclem): Make sure this is working as expected. */
   mat3x3 world_to_grid_transposed = mat3x3(grid_data.world_to_grid_transposed);
   vec3 lNg = safe_normalize(world_to_grid_transposed * Ng);
@@ -192,6 +156,87 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
   return lightprobe_irradiance_sample_atlas(atlas_tx, atlas_coord);
 }
 
+SphericalHarmonicL1 lightprobe_irradiance_sample(
+    sampler3D atlas_tx, vec3 P, vec3 V, vec3 Ng, const bool do_bias)
+{
+  vec3 lP;
+  int index = -1;
+  int i = 0;
+#ifdef IRRADIANCE_GRID_UPLOAD
+  i = grid_start_index;
+#endif
+#ifdef IRRADIANCE_GRID_SAMPLING
+  float random = interlieved_gradient_noise(UTIL_TEXEL, 0.0, 0.0);
+  random = fract(random + sampling_rng_1D_get(SAMPLING_LIGHTPROBE));
+#endif
+  for (; i < IRRADIANCE_GRID_MAX; i++) {
+    /* Last grid is tagged as invalid to stop the iteration. */
+    if (grids_infos_buf[i].grid_size.x == -1) {
+      /* Sample the last grid (world irradiance) instead. */
+      index = i - 1;
+      break;
+    }
+
+    /* If sample fall inside the grid, step out of the loop. */
+    if (lightprobe_irradiance_grid_local_coord(grids_infos_buf[i], P, lP)) {
+      index = i;
+#ifdef IRRADIANCE_GRID_SAMPLING
+      float distance_to_border = reduce_min(min(lP, vec3(grids_infos_buf[i].grid_size) - lP));
+      float blend_size = 1.0;
+      if (distance_to_border < blend_size * random) {
+        /* Try to sample another grid to get smooth transitions at borders. */
+        continue;
+      }
+#endif
+      break;
+    }
+  }
+
+  VolumeProbeData grid_data = grids_infos_buf[index];
+  return lightprobe_irradiance_sample_probe(atlas_tx, grid_data, lP, V, Ng, do_bias);
+}
+
+/* Non-stochastic version for sphere probes. */
+SphericalHarmonicL1 lightprobe_irradiance_sample_blended(
+    sampler3D atlas_tx, vec3 P, vec3 V, vec3 Ng, const bool do_bias)
+{
+  float weight = 0.0;
+  SphericalHarmonicL1 result;
+  result.L0.M0 = vec4(0.0);
+  result.L1.Mn1 = vec4(0.0);
+  result.L1.M0 = vec4(0.0);
+  result.L1.Mp1 = vec4(0.0);
+
+  for (int i = 0; i < IRRADIANCE_GRID_MAX; i++) {
+    /* Last grid is tagged as invalid to stop the iteration. */
+    if (grids_infos_buf[i].grid_size.x == -1) {
+      /* Sample the last grid (world irradiance) instead. */
+      VolumeProbeData grid_data = grids_infos_buf[i - 1];
+      SphericalHarmonicL1 sh = lightprobe_irradiance_sample_probe(
+          atlas_tx, grid_data, vec3(0.5), V, Ng, do_bias);
+      result = spherical_harmonics_mix(result, sh, 1.0 - weight);
+      break;
+    }
+
+    vec3 lP;
+    if (lightprobe_irradiance_grid_local_coord(grids_infos_buf[i], P, lP)) {
+      VolumeProbeData grid_data = grids_infos_buf[i];
+      SphericalHarmonicL1 sh = lightprobe_irradiance_sample_probe(
+          atlas_tx, grid_data, lP, V, Ng, do_bias);
+      float distance_to_border = reduce_min(min(lP, vec3(grids_infos_buf[i].grid_size) - lP));
+      float blend_size = 1.0;
+      float fac = blend_size > 0.0 ? saturate(distance_to_border / blend_size) : 1.0;
+      fac = min(fac, 1.0 - weight);
+      result = spherical_harmonics_mix(result, sh, fac);
+      weight += fac;
+      if (weight > 0.999) {
+        break;
+      }
+    }
+  }
+  return result;
+}
+
 SphericalHarmonicL1 lightprobe_irradiance_world()
 {
   return lightprobe_irradiance_sample_atlas(irradiance_atlas_tx, vec3(0.0));
@@ -205,4 +250,9 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(vec3 P)
 SphericalHarmonicL1 lightprobe_irradiance_sample(vec3 P, vec3 V, vec3 Ng)
 {
   return lightprobe_irradiance_sample(irradiance_atlas_tx, P, V, Ng, true);
+}
+
+SphericalHarmonicL1 lightprobe_irradiance_sample_blended(vec3 P)
+{
+  return lightprobe_irradiance_sample_blended(irradiance_atlas_tx, P, vec3(0), vec3(0), false);
 }
