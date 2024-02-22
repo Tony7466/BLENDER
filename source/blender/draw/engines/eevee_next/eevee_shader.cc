@@ -421,18 +421,18 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
     info.define("SHADOW_SUBSURFACE");
   }
 
-  int32_t closure_data_count = count_bits_i(closure_data_slots);
-  switch (closure_data_count) {
+  int32_t CLOSURE_BIN_COUNT = count_bits_i(closure_data_slots);
+  switch (CLOSURE_BIN_COUNT) {
     /* These need to be separated since the strings need to be static. */
     case 0:
     case 1:
-      info.define("CLOSURE_DATA_COUNT", "1");
+      info.define("CLOSURE_BIN_COUNT", "1");
       break;
     case 2:
-      info.define("CLOSURE_DATA_COUNT", "2");
+      info.define("CLOSURE_BIN_COUNT", "2");
       break;
     case 3:
-      info.define("CLOSURE_DATA_COUNT", "3");
+      info.define("CLOSURE_BIN_COUNT", "3");
       break;
     default:
       BLI_assert_unreachable();
@@ -440,7 +440,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   }
 
   if (pipeline_type == MAT_PIPE_DEFERRED) {
-    switch (closure_data_count) {
+    switch (CLOSURE_BIN_COUNT) {
       /* These need to be separated since the strings need to be static. */
       case 0:
       case 1:
@@ -461,7 +461,7 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   if ((pipeline_type == MAT_PIPE_FORWARD) ||
       GPU_material_flag_get(gpumat, GPU_MATFLAG_SHADER_TO_RGBA))
   {
-    int32_t lit_closure_count = closure_data_count + closure_extra_eval;
+    int32_t lit_closure_count = CLOSURE_BIN_COUNT + closure_extra_eval;
     switch (lit_closure_count) {
       case 0:
         /* Define nothing. This will in turn define SKIP_LIGHT_EVAL. */

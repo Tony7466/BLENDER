@@ -21,27 +21,27 @@ vec3 g_volume_absorption;
 #define CLOSURE_DEFAULT 0.0
 
 /* Maximum number of picked closure. */
-#ifndef CLOSURE_DATA_COUNT
-#  define CLOSURE_DATA_COUNT 1
+#ifndef CLOSURE_BIN_COUNT
+#  define CLOSURE_BIN_COUNT 1
 #endif
 /* Sampled closure parameters. */
-ClosureUndetermined g_closures_data[CLOSURE_DATA_COUNT];
+ClosureUndetermined g_closure_bins[CLOSURE_BIN_COUNT];
 /* Random number per sampled closure type. */
-float g_closure_rand[CLOSURE_DATA_COUNT];
+float g_closure_rand[CLOSURE_BIN_COUNT];
 
 ClosureUndetermined g_closure_get(int i)
 {
   switch (i) {
     default:
     case 0:
-      return g_closures_data[0];
-#if CLOSURE_DATA_COUNT > 1
+      return g_closure_bins[0];
+#if CLOSURE_BIN_COUNT > 1
     case 1:
-      return g_closures_data[1];
+      return g_closure_bins[1];
 #endif
-#if CLOSURE_DATA_COUNT > 2
+#if CLOSURE_BIN_COUNT > 2
     case 2:
-      return g_closures_data[2];
+      return g_closure_bins[2];
 #endif
   }
 }
@@ -112,14 +112,14 @@ void closure_select(inout ClosureUndetermined destination,
 void closure_weights_reset(float closure_rand)
 {
   g_closure_rand[0] = closure_rand;
-  g_closures_data[0].weight = 0.0;
-#if CLOSURE_DATA_COUNT > 1
+  g_closure_bins[0].weight = 0.0;
+#if CLOSURE_BIN_COUNT > 1
   g_closure_rand[1] = closure_rand;
-  g_closures_data[1].weight = 0.0;
+  g_closure_bins[1].weight = 0.0;
 #endif
-#if CLOSURE_DATA_COUNT > 2
+#if CLOSURE_BIN_COUNT > 2
   g_closure_rand[2] = closure_rand;
-  g_closures_data[2].weight = 0.0;
+  g_closure_bins[2].weight = 0.0;
 #endif
 
   g_volume_scattering = vec3(0.0);
@@ -145,7 +145,7 @@ Closure closure_eval(ClosureDiffuse diffuse)
   ClosureUndetermined cl;
   closure_base_copy(cl, diffuse);
   /* Diffuse & SSS always use the first closure. */
-  closure_select(g_closures_data[0], g_closure_rand[0], cl);
+  closure_select(g_closure_bins[0], g_closure_rand[0], cl);
   return Closure(0);
 }
 
@@ -155,7 +155,7 @@ Closure closure_eval(ClosureSubsurface diffuse)
   closure_base_copy(cl, diffuse);
   cl.data.rgb = diffuse.sss_radius;
   /* Diffuse & SSS always use the first closure. */
-  closure_select(g_closures_data[0], g_closure_rand[0], cl);
+  closure_select(g_closure_bins[0], g_closure_rand[0], cl);
   return Closure(0);
 }
 
@@ -163,44 +163,47 @@ Closure closure_eval(ClosureTranslucent translucent)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, translucent);
-#if CLOSURE_DATA_COUNT == 1
+#if CLOSURE_BIN_COUNT == 1
   /* Only one closure type is present in the whole tree. */
-  closure_select(g_closures_data[0], g_closure_rand[0], cl);
+  closure_select(g_closure_bins[0], g_closure_rand[0], cl);
 #else
   /* Use second slot so we can have diffuse + translucent without noise. */
-  closure_select(g_closures_data[1], g_closure_rand[1], cl);
+  closure_select(g_closure_bins[1], g_closure_rand[1], cl);
 #endif
   return Closure(0);
 }
 
+/* Alternate between two bins on a per closure basis.
+ * Allow clearcoat layer without noise.
+ * Choosing the bin with the least weight can choose a
+ * different bin for the same closure and
+ * produce issue with raytracing denoiser.
+ * Alway start with the second bin, this one doesn't
+ * overlap with other closure. */
 bool g_closure_reflection_bin = true;
+#define CHOOSE_MIN_WEIGHT_CLOSURE_BIN(a, b) \
+  if (g_closure_reflection_bin) { \
+    closure_select(g_closure_bins[b], g_closure_rand[b], cl); \
+  } \
+  else { \
+    closure_select(g_closure_bins[a], g_closure_rand[a], cl); \
+  } \
+  g_closure_reflection_bin = !g_closure_reflection_bin;
 
 Closure closure_eval(ClosureReflection reflection)
 {
   ClosureUndetermined cl;
   closure_base_copy(cl, reflection);
   cl.data.r = reflection.roughness;
-  /* Alternate between two bins on a per closure basis.
-   * Allow clearcoat layer without noise.
-   * Choosing the bin with the least weight can choose a different bin for the same closure and
-   * produce issue with raytracing denoiser. */
-#define CHOOSE_MIN_WEIGHT_CLOSURE_BIN(a, b) \
-  if (g_closure_reflection_bin) { \
-    closure_select(g_closures_data[b], g_closure_rand[b], cl); \
-  } \
-  else { \
-    closure_select(g_closures_data[a], g_closure_rand[a], cl); \
-  } \
-  g_closure_reflection_bin = !g_closure_reflection_bin;
 
-#if CLOSURE_DATA_COUNT == 1
+#if CLOSURE_BIN_COUNT == 1
   /* Only one reflection closure is present in the whole tree. */
-  closure_select(g_closures_data[0], g_closure_rand[0], cl);
-#elif CLOSURE_DATA_COUNT == 2
+  closure_select(g_closure_bins[0], g_closure_rand[0], cl);
+#elif CLOSURE_BIN_COUNT == 2
   /* Case with either only one reflection and one other closure
    * or only multiple reflection closures. */
   CHOOSE_MIN_WEIGHT_CLOSURE_BIN(0, 1);
-#elif CLOSURE_DATA_COUNT == 3
+#elif CLOSURE_BIN_COUNT == 3
   /* Case with multiple reflection closures and one other closure. */
   CHOOSE_MIN_WEIGHT_CLOSURE_BIN(1, 2);
 #endif
@@ -218,7 +221,7 @@ Closure closure_eval(ClosureRefraction refraction)
   cl.data.g = refraction.ior;
   /* Use same slot as diffuse as mixed diffuse/refraction are not common.
    * Allow glass material with clearcoat without noise. */
-  closure_select(g_closures_data[0], g_closure_rand[0], cl);
+  closure_select(g_closure_bins[0], g_closure_rand[0], cl);
   return Closure(0);
 }
 

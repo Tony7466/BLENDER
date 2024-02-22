@@ -13,7 +13,7 @@
 #pragma BLENDER_REQUIRE(eevee_light_eval_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
 
-#if CLOSURE_DATA_COUNT != LIGHT_CLOSURE_EVAL_COUNT
+#if CLOSURE_BIN_COUNT != LIGHT_CLOSURE_EVAL_COUNT
 #  error Closure data count and eval count must match
 #endif
 
