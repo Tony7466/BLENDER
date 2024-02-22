@@ -56,36 +56,33 @@ bool operator==(const CachedImageKey &a, const CachedImageKey &b)
  * Cached Image.
  */
 
-/* Returns a new texture of the given format and precision preprocessed using the given shader. The
- * input texture is freed. */
-static GPUTexture *preprocess_texture(Context &context,
-                                      GPUTexture *input_texture,
-                                      eGPUTextureFormat target_format,
-                                      ResultPrecision precision,
-                                      const char *shader_name)
+/* Returns a new texture with the alpha premultiplied. The input texture is freed. */
+static GPUTexture *premultiply_alpha(Context &context, GPUTexture *input_texture)
 {
+  const eGPUTextureFormat format = GPU_texture_format(input_texture);
+  const ResultPrecision precision = Result::precision(format);
   const int2 size = int2(GPU_texture_width(input_texture), GPU_texture_height(input_texture));
 
-  GPUTexture *preprocessed_texture = GPU_texture_create_2d(
-      "Cached Image", size.x, size.y, 1, target_format, GPU_TEXTURE_USAGE_GENERAL, nullptr);
+  GPUTexture *output_texture = GPU_texture_create_2d(
+      "Cached Image", size.x, size.y, 1, format, GPU_TEXTURE_USAGE_GENERAL, nullptr);
 
-  GPUShader *shader = context.get_shader(shader_name, precision);
+  GPUShader *shader = context.get_shader("compositor_premultiply_alpha", precision);
   GPU_shader_bind(shader);
 
   const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
   GPU_texture_bind(input_texture, input_unit);
 
   const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
-  GPU_texture_image_bind(preprocessed_texture, image_unit);
+  GPU_texture_image_bind(output_texture, image_unit);
 
   compute_dispatch_threads_at_least(shader, size);
 
   GPU_shader_unbind();
   GPU_texture_unbind(input_texture);
-  GPU_texture_image_unbind(preprocessed_texture);
+  GPU_texture_image_unbind(output_texture);
   GPU_texture_free(input_texture);
 
-  return preprocessed_texture;
+  return output_texture;
 }
 
 /* Compositor images are expected to be always pre-multiplied, so identify if the GPU texture
@@ -99,29 +96,6 @@ static bool should_premultiply_alpha(Image *image, ImBuf *image_buffer)
   }
 
   return !BKE_image_has_gpu_texture_premultiplied_alpha(image, image_buffer);
-}
-
-/* Get a suitable texture format supported by the compositor given the format of the texture
- * returned by the IMB module. See imb_gpu_get_format for the formats that needs to be handled. */
-static eGPUTextureFormat get_compatible_texture_format(eGPUTextureFormat original_format)
-{
-  switch (original_format) {
-    case GPU_R16F:
-    case GPU_R32F:
-    case GPU_RGBA16F:
-    case GPU_RGBA32F:
-      return original_format;
-    case GPU_R8:
-      return GPU_R16F;
-    case GPU_RGBA8:
-    case GPU_SRGB8_A8:
-      return GPU_RGBA16F;
-    default:
-      break;
-  }
-
-  BLI_assert_unreachable();
-  return original_format;
 }
 
 /* Get the selected render layer selected assuming the image is a multilayer image. */
@@ -227,27 +201,27 @@ CachedImage::CachedImage(Context &context,
       context, image, image_user, pass_name);
 
   ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user_for_pass, nullptr);
+
+  /* The image buffer might be storing an sRGB 8-bit image, while the compositor expects linear
+   * float images, so compute a float buffer for the image buffer. This will also do linear space
+   * conversion and alpha pre-multiplication as needed. We could store those images in sRGB GPU
+   * textures and let the GPU do the linear space conversion and alpha pre-multiplication, but the
+   * issues is that we don't control how the GPU does the conversion and so we get tiny differences
+   * across CPU and GPU compositing, and potentially even across GPUs/Drivers. Notice that we don't
+   * own the image buffer, so we need to free he computed float buffer before releasing it back. */
+  const bool should_compute_float_buffer = image_buffer->float_buffer.data == nullptr;
+  if (should_compute_float_buffer) {
+    IMB_float_from_rect(image_buffer);
+  }
+
   const bool is_premultiplied = BKE_image_has_gpu_texture_premultiplied_alpha(image, image_buffer);
   texture_ = IMB_create_gpu_texture("Image Texture", image_buffer, true, is_premultiplied);
   GPU_texture_update_mipmap_chain(texture_);
 
-  const eGPUTextureFormat original_format = GPU_texture_format(texture_);
-  const eGPUTextureFormat target_format = get_compatible_texture_format(original_format);
-  const ResultType result_type = Result::type(target_format);
-  const ResultPrecision precision = Result::precision(target_format);
+  const ResultType result_type = Result::type(GPU_texture_format(texture_));
 
-  /* The GPU image returned by the IMB module can be in a format not supported by the compositor,
-   * or it might need pre-multiplication, so preprocess them first. */
   if (result_type == ResultType::Color && should_premultiply_alpha(image, image_buffer)) {
-    texture_ = preprocess_texture(
-        context, texture_, target_format, precision, "compositor_premultiply_alpha");
-  }
-  else if (original_format != target_format) {
-    const char *conversion_shader_name = result_type == ResultType::Float ?
-                                             "compositor_convert_float_to_float" :
-                                             "compositor_convert_color_to_color";
-    texture_ = preprocess_texture(
-        context, texture_, target_format, precision, conversion_shader_name);
+    texture_ = premultiply_alpha(context, texture_);
   }
 
   /* Set the alpha to 1 using swizzling if alpha is ignored. */
@@ -255,6 +229,11 @@ CachedImage::CachedImage(Context &context,
     GPU_texture_swizzle_set(texture_, "rgb1");
   }
 
+  /* Free the float buffer if we computed it since we don't own the image buffer and shouldn't
+   * change it.  */
+  if (should_compute_float_buffer) {
+    IMB_assign_float_buffer(image_buffer, nullptr, IB_TAKE_OWNERSHIP);
+  }
   BKE_image_release_ibuf(image, image_buffer, nullptr);
 }
 
