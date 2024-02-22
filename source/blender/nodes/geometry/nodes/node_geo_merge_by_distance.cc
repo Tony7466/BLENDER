@@ -58,7 +58,8 @@ static PointCloud *pointcloud_merge_by_distance(
     return nullptr;
   }
 
-  return geometry::merge_by_distance(src_points, merge_distance, selection, propagation_info);
+  return geometry::points_merge_by_distance(
+      src_points, merge_distance, selection, propagation_info);
 }
 
 static std::optional<Mesh *> mesh_merge_by_distance_connected(const Mesh &mesh,

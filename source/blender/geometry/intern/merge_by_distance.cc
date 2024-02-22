@@ -19,10 +19,11 @@
 
 namespace blender::geometry {
 
-PointCloud *merge_by_distance(const PointCloud &src_points,
-                              const float merge_distance,
-                              const IndexMask &selection,
-                              const bke::AnonymousAttributePropagationInfo &propagation_info)
+PointCloud *points_merge_by_distance(
+    const PointCloud &src_points,
+    const float merge_distance,
+    const IndexMask &selection,
+    const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
   const bke::AttributeAccessor src_attributes = src_points.attributes();
   const Span<float3> positions = src_points.positions();
