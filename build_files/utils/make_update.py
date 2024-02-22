@@ -125,7 +125,8 @@ def get_submodule_directories(args: argparse.Namespace):
     return (Path(line.split(' ', 1)[1]) for line in submodule_directories_output.strip().splitlines())
 
 
-def ensure_git_lfs_hooks(args: argparse.Namespace) -> None:
+def ensure_git_lfs(args: argparse.Namespace) -> None:
+    # Use `--skip-repo` to avoid creating git hooks (they might already exist).
     call((args.git_command, "lfs", "install", "--skip-repo"), exit_on_error=True)
 
 
@@ -576,7 +577,7 @@ if __name__ == "__main__":
         branch = 'main'
 
     # Submodules and precompiled libraries require Git LFS.
-    ensure_git_lfs_hooks(args)
+    ensure_git_lfs(args)
 
     if not args.no_blender:
         blender_skip_msg = git_update_skip(args)
