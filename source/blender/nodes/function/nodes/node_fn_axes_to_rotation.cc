@@ -15,8 +15,8 @@ namespace blender::nodes::node_fn_axes_to_rotation_cc {
 static void node_declare(NodeDeclarationBuilder &b)
 {
   b.is_function_node();
-  b.add_input<decl::Vector>(N_("Primary Axis")).default_value(float3(1, 0, 0)).hide_value();
-  b.add_input<decl::Vector>(N_("Secondary Axis")).default_value(float3(0, 1, 0)).hide_value();
+  b.add_input<decl::Vector>(N_("Primary Axis")).default_value(float3(1, 0, 0));
+  b.add_input<decl::Vector>(N_("Secondary Axis")).default_value(float3(0, 1, 0));
   b.add_output<decl::Rotation>(N_("Rotation"));
 }
 
@@ -63,7 +63,8 @@ class AxesToRotationFunction : public mf::MultiFunction {
 
     /* Through cancellation this will set the last axis to be the one that's neither the primary
      * nor secondary axis. */
-    tertiary_axis_ = math::Axis((0 + 1 + 2) - primary_axis.as_int() - secondary_axis.as_int());
+    tertiary_axis_ = math::Axis::from_int((0 + 1 + 2) - primary_axis.as_int() -
+                                          secondary_axis.as_int());
 
     static const mf::Signature signature = []() {
       mf::Signature signature;
@@ -135,8 +136,8 @@ static void node_build_multi_function(NodeMultiFunctionBuilder &builder)
   if (node.custom1 == node.custom2) {
     return;
   }
-  builder.construct_and_set_matching_fn<AxesToRotationFunction>(math::Axis(node.custom1),
-                                                                math::Axis(node.custom2));
+  builder.construct_and_set_matching_fn<AxesToRotationFunction>(
+      math::Axis::from_int(node.custom1), math::Axis::from_int(node.custom2));
 }
 
 static void node_rna(StructRNA *srna)
