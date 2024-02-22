@@ -94,6 +94,10 @@ inline void parallel_for(IndexRange range, int64_t grain_size, const Function &f
  *
  * Using this function makes sense when the work load for each index can differ significantly, so
  * that it is impossible to determine a good grain size.
+ *
+ * \param task_size_fn: Gets the task index as input and computes that tasks size.
+ * \param grain_size: Determines approximately how large a combined task should be. For example, if
+ * the grain size is 100, then 5 tasks of size 20 fit into it.
  */
 template<typename Function, typename TaskSizeFn>
 inline void parallel_for_weighted(IndexRange range,

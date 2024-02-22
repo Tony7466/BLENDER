@@ -188,31 +188,39 @@ void parallel_for_weighted_impl(
     const FunctionRef<void(IndexRange)> function,
     const FunctionRef<void(IndexRange, MutableSpan<int64_t>)> task_sizes_fn)
 {
-  threading::parallel_for(
-      range, std::min<int64_t>(grain_size, 512), [&](const IndexRange sub_range) {
-        Array<int64_t, 1024> task_sizes(sub_range.size());
-        task_sizes_fn(sub_range, task_sizes);
-        Vector<int64_t, 256> offsets_vec;
-        offsets_vec.append(0);
-        int64_t counter = 0;
-        for (const int64_t i : sub_range.index_range()) {
-          counter += task_sizes[i];
-          if (counter >= grain_size) {
-            offsets_vec.append(i + 1);
-            counter = 0;
-          }
-        }
-        if (offsets_vec.last() < sub_range.size()) {
-          offsets_vec.append(sub_range.size());
-        }
-        const OffsetIndices<int64_t> offsets = offsets_vec.as_span();
-        threading::parallel_for(offsets.index_range(), 1, [&](const IndexRange offsets_range) {
-          for (const int64_t i : offsets_range) {
-            const IndexRange actual_range = offsets[i].shift(sub_range.start());
-            function(actual_range);
-          }
-        });
-      });
+  /* Shouldn't be too small, because then there is more overhead when the individual tasks are
+   * small. Also shouldn't be too large because then the serial code to split up tasks cause extra
+   * overhead. */
+  const int64_t outer_grain_size = std::min<int64_t>(grain_size, 512);
+  threading::parallel_for(range, outer_grain_size, [&](const IndexRange sub_range) {
+    /* Compute the size of every task in the current range. */
+    Array<int64_t, 1024> task_sizes(sub_range.size());
+    task_sizes_fn(sub_range, task_sizes);
+
+    /* Split range into multiple segments that have a size that approximates the grain size. */
+    Vector<int64_t, 256> offsets_vec;
+    offsets_vec.append(0);
+    int64_t counter = 0;
+    for (const int64_t i : sub_range.index_range()) {
+      counter += task_sizes[i];
+      if (counter >= grain_size) {
+        offsets_vec.append(i + 1);
+        counter = 0;
+      }
+    }
+    if (offsets_vec.last() < sub_range.size()) {
+      offsets_vec.append(sub_range.size());
+    }
+    const OffsetIndices<int64_t> offsets = offsets_vec.as_span();
+
+    /* Run the dynamically split-up tasks in parallel. */
+    threading::parallel_for(offsets.index_range(), 1, [&](const IndexRange offsets_range) {
+      for (const int64_t i : offsets_range) {
+        const IndexRange actual_range = offsets[i].shift(sub_range.start());
+        function(actual_range);
+      }
+    });
+  });
 }
 
 }  // namespace blender::threading::detail
