@@ -67,7 +67,7 @@ set(SRC
   intern/lineart/lineart_util.cc
 
   intern/lineart/MOD_lineart.h
-  intern/lineart/lineart_intern.hh
+  intern/lineart/lineart_intern.h
 )
 
 if(WITH_TBB)

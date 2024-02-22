@@ -19,6 +19,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_sort.hh"
+#include "BLI_string.h"
 #include "BLI_task.h"
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
@@ -59,7 +60,7 @@
 
 #include "ED_grease_pencil.hh"
 
-#include "lineart_intern.hh"
+#include "lineart_intern.h"
 
 #include <algorithm> /* For `min/max`. */
 
@@ -3558,8 +3559,8 @@ void MOD_lineart_wrap_modifier_v3(const LineartGpencilModifierData *lmd_legacy,
   LMD_WRAP(source_object);
   LMD_WRAP(source_collection);
   LMD_WRAP(target_material);
-  strcpy(lmd->source_vertex_group, lmd_legacy->source_vertex_group);
-  strcpy(lmd->vgname, lmd_legacy->vgname);
+  STRNCPY(lmd->source_vertex_group, lmd_legacy->source_vertex_group);
+  STRNCPY(lmd->vgname, lmd_legacy->vgname);
   LMD_WRAP(overscan);
   LMD_WRAP(shadow_camera_fov);
   LMD_WRAP(shadow_camera_size);
@@ -3605,8 +3606,8 @@ void MOD_lineart_unwrap_modifier_v3(LineartGpencilModifierData *lmd_legacy,
   LMD_UNWRAP(source_object);
   LMD_UNWRAP(source_collection);
   LMD_UNWRAP(target_material);
-  strcpy(lmd_legacy->source_vertex_group, lmd->source_vertex_group);
-  strcpy(lmd_legacy->vgname, lmd->vgname);
+  STRNCPY(lmd_legacy->source_vertex_group, lmd->source_vertex_group);
+  STRNCPY(lmd_legacy->vgname, lmd->vgname);
   LMD_UNWRAP(overscan);
   LMD_UNWRAP(shadow_camera_fov);
   LMD_UNWRAP(shadow_camera_size);
@@ -5674,7 +5675,7 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
 
   bool inverse_silhouette = modifier_flags & LRT_GPENCIL_INVERT_SILHOUETTE_FILTER;
 
-  blender::Vector<LineartChainWriteInfo> writer = {};
+  blender::Vector<LineartChainWriteInfo> writer;
   writer.reserve(128);
   int total_point_count = 0;
   int stroke_count = 0;
@@ -5802,8 +5803,7 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
     return;
   }
 
-  bke::CurvesGeometry new_curves;
-  new_curves.resize(total_point_count, stroke_count);
+  bke::CurvesGeometry new_curves(total_point_count, stroke_count);
   new_curves.fill_curve_types(CURVE_TYPE_POLY);
 
   bke::MutableAttributeAccessor attributes = new_curves.attributes_for_write();
@@ -5876,7 +5876,7 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
   point_opacities.finish();
   stroke_materials.finish();
 
-  drawing.strokes_for_write() = new_curves;
+  drawing.strokes_for_write() = std::move(new_curves);
   drawing.tag_topology_changed();
 
   if (G.debug_value == 4000) {

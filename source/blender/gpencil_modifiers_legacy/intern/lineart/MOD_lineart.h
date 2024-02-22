@@ -13,8 +13,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_threads.h"
 
-#include "BKE_grease_pencil.hh"
-
 #include <algorithm>
 #include <math.h>
 
@@ -949,12 +947,16 @@ void MOD_lineart_gpencil_generate(LineartCache *cache,
                                   const char *vgname,
                                   int modifier_flags,
                                   int modifier_calculation_flags);
+
+namespace blender::bke::greasepencil {
+class Drawing;
+}
 void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
                                      Depsgraph *depsgraph,
                                      blender::bke::greasepencil::Drawing &drawing,
                                      const int8_t source_type,
                                      Object *source_object,
-                                     Collection *source_collection,
+                                     struct Collection *source_collection,
                                      const int level_start,
                                      const int level_end,
                                      const int mat_nr,

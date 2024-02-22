@@ -9,7 +9,7 @@
 #include "MOD_gpencil_legacy_lineart.h"
 #include "MOD_lineart.h"
 
-#include "lineart_intern.hh"
+#include "lineart_intern.h"
 
 #include "BKE_global.hh"
 #include "BKE_gpencil_modifier_legacy.h"

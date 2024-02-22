@@ -35,7 +35,6 @@
 
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
-#include "BLI_math_base.hh"
 #include "BLI_path_util.h"
 #include "BLI_rand.hh"
 #include "BLI_session_uid.h"
@@ -880,13 +879,13 @@ GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const
     if (md->type == eModifierType_GreasePencilLineart) {
       const auto *lmd = reinterpret_cast<const GreasePencilLineartModifierData *>(md);
       if (is_first || (lmd->flags & LRT_GPENCIL_USE_CACHE)) {
-        info.min_level = blender::math::min(int(info.min_level), int(lmd->level_start));
-        info.max_level = blender::math::max(
+        info.min_level = std::min(int(info.min_level), int(lmd->level_start));
+        info.max_level = std::max(
             int(info.max_level),
             int(lmd->use_multiple_levels ? lmd->level_end : lmd->level_start));
         info.edge_types |= lmd->edge_types;
-        blender::math::max_inplace(info.shadow_selection, lmd->shadow_selection);
-        blender::math::max_inplace(info.silhouette_selection, lmd->silhouette_selection);
+        info.shadow_selection = std::max(info.shadow_selection, lmd->shadow_selection);
+        info.silhouette_selection = std::max(info.silhouette_selection, lmd->silhouette_selection);
         is_first = false;
       }
     }
