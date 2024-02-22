@@ -3262,6 +3262,16 @@ void uiItemPopoverPanelFromGroup(uiLayout *layout,
   }
 }
 
+/* Return height needed for a wrapped string that is contrained to a maximum pixel width.*/
+static int ui_string_wrapped_height(blender::StringRef str, const uiFontStyle *fstyle, int max_pixel_width)
+{
+  BLF_size(fstyle->uifont_id, fstyle->points);
+  blender::Vector<blender::StringRef> wrapped = BLF_string_wrap(
+      fstyle->uifont_id, str, max_pixel_width);
+  float line_height = BLF_height_max(fstyle->uifont_id) * 1.1f;
+  return std::max(int(UI_UNIT_Y), int(line_height * wrapped.size()));
+}
+
 /* label item */
 static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon, bool wrap = false)
 {
@@ -3277,22 +3287,15 @@ static uiBut *uiItemL_(uiLayout *layout, const char *name, int icon, bool wrap =
     icon = ICON_BLANK1;
   }
 
-  int w;
-  int h;
+  int w = 0;
+  int h = UI_UNIT_Y;
 
   if (wrap && layout->w) {
-    const uiFontStyle *fstyle = UI_FSTYLE_WIDGET_LABEL;
-    BLF_size(fstyle->uifont_id, fstyle->points);
-    blender::StringRef str = name;
-    int width = (icon) ? layout->w - int(UI_UNIT_X * ui_text_pad_none.icon) : layout->w;
-    blender::Vector<blender::StringRef> wrapped = BLF_string_wrap(fstyle->uifont_id, str, width);
-    float line_height = BLF_height_max(fstyle->uifont_id) * 1.1f;
-    w = 0;
-    h = std::max(int(UI_UNIT_Y), int(line_height * wrapped.size()));
+    const int width = (icon) ? layout->w - int(UI_UNIT_X * ui_text_pad_none.icon) : layout->w;
+    h = ui_string_wrapped_height(name, UI_FSTYLE_WIDGET_LABEL, width);
   }
   else {
     w = ui_text_icon_width_ex(layout, name, icon, ui_text_pad_none, UI_FSTYLE_WIDGET_LABEL);
-    h = UI_UNIT_Y;
   }
 
   uiBut *but;
