@@ -774,7 +774,7 @@ static void PREFERENCES_OT_unassociate_blend(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Drag & Drop
+/** \name Drag & Drop URL
  * \{ */
 
 static bool drop_extension_url_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
@@ -786,11 +786,16 @@ static bool drop_extension_url_poll(bContext * /*C*/, wmDrag *drag, const wmEven
     return false;
   }
 
+  /* NOTE(@ideasman42): it should be possible to drag a URL into the text editor or Python console.
+   * In the future we may support dragging images into Blender by URL, so treating any single-line
+   * URL as an extension could back-fire. Avoid problems in the future by limiting the text which
+   * is accepted as an extension to ZIP's or URL's that reference known repositories. */
+
   const std::string &str = WM_drag_get_string(drag);
 
   /* Only URL formatted text. */
   const char *cstr = str.c_str();
-  if (!(STRPREFIX(cstr, "http://") || STRPREFIX(cstr, "https://") || STRPREFIX(cstr, "file://"))) {
+  if (BKE_preferences_extension_repo_remote_scheme_end(cstr) == 0) {
     return false;
   }
 
@@ -798,8 +803,13 @@ static bool drop_extension_url_poll(bContext * /*C*/, wmDrag *drag, const wmEven
   if (str.find('\n') != std::string::npos) {
     return false;
   }
+
   const char *cstr_ext = BLI_path_extension(cstr);
-  if (!(cstr_ext && STRCASEEQ(cstr_ext, ".zip"))) {
+  /* Check the URL has a `.zip` suffix OR has a known repository as a prefix.
+   * This is needed to support redirects which don't contain an extension. */
+  if (!(cstr_ext && STRCASEEQ(cstr_ext, ".zip")) &&
+      !(BKE_preferences_extension_repo_find_by_remote_path_prefix(&U, cstr, true)))
+  {
     return false;
   }
 
@@ -813,6 +823,39 @@ static void drop_extension_url_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *d
   RNA_string_set(drop->ptr, "url", str.c_str());
 }
 
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Drag & Drop Paths
+ * \{ */
+
+static bool drop_extension_path_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
+{
+  if (!U.experimental.use_extension_repos) {
+    return false;
+  }
+  if (drag->type != WM_DRAG_PATH) {
+    return false;
+  }
+
+  const char *cstr = WM_drag_get_single_path(drag);
+  const char *cstr_ext = BLI_path_extension(cstr);
+  if (!(cstr_ext && STRCASEEQ(cstr_ext, ".zip"))) {
+    return false;
+  }
+
+  return true;
+}
+
+static void drop_extension_path_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
+{
+  /* Copy drag URL to properties. */
+  const char *cstr = WM_drag_get_single_path(drag);
+  RNA_string_set(drop->ptr, "url", cstr);
+}
+
+/** \} */
+
 static void ED_dropbox_drop_extension()
 {
   ListBase *lb = WM_dropboxmap_find("Window", SPACE_EMPTY, RGN_TYPE_WINDOW);
@@ -822,9 +865,13 @@ static void ED_dropbox_drop_extension()
                  drop_extension_url_copy,
                  nullptr,
                  nullptr);
+  WM_dropbox_add(lb,
+                 "PREFERENCES_OT_extension_url_drop",
+                 drop_extension_path_poll,
+                 drop_extension_path_copy,
+                 nullptr,
+                 nullptr);
 }
-
-/** \} */
 
 void ED_operatortypes_userpref()
 {
