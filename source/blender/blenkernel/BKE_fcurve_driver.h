@@ -136,7 +136,7 @@ float driver_get_variable_value(const struct AnimationEvalContext *anim_eval_con
                                 struct DriverVar *dvar);
 
 typedef enum eDriverVariablePropertyResult {
-  /** The property reference has been succesfully resolved and can be accessed. */
+  /** The property reference has been successfully resolved and can be accessed. */
   DRIVER_VAR_PROPERTY_SUCCESS,
   /** Evaluation should use the fallback value. */
   DRIVER_VAR_PROPERTY_FALLBACK,
@@ -181,7 +181,7 @@ void BKE_driver_invalidate_expression(struct ChannelDriver *driver,
  *
  * - `anim_eval_context->eval_time` is the frame at which F-Curve is being evaluated.
  * - Has to return a float value.
- * - \a driver_orig is where we cache Python expressions, in case of COW
+ * - \a driver_orig is where we cache Python expressions, in case of copy-on-eval
  */
 float evaluate_driver(struct PathResolvedRNA *anim_rna,
                       struct ChannelDriver *driver,
