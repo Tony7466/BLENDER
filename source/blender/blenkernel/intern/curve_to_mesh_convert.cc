@@ -188,9 +188,11 @@ static float4x4 calc_profile_matrix(const Span<float3> positions,
   }
 
   if (angle_scale && !ELEM(i, 0, positions.index_range().last())) {
-    const float3 dir_a = math::normalize(positions[i - 1] - positions[i]);
-    const float3 dir_b = math::normalize(positions[i + 1] - positions[i]);
-    const float factor = shell_v3v3_normalized_to_dist(dir_a, dir_b);
+    // const float3 dir_a = math::normalize(positions[i - 1] - positions[i]);
+    // const float3 dir_b = math::normalize(positions[i + 1] - positions[i]);
+    // const float factor = shell_v3v3_normalized_to_dist(dir_a, dir_b);
+    const float angle = angle_v3v3v3(positions[i - 1], positions[i], positions[i + 1]);
+    const float factor = shell_angle_to_dist(angle);
     if (factor != 1.0f) {
       const float3 tri_normal = math::normal_tri(positions[i - 1], positions[i], positions[i + 1]);
 
