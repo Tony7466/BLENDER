@@ -42,7 +42,7 @@ void main()
     GBufferReader gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
     for (int i = 0; i < GBUFFER_LAYER_MAX; i++) {
-      ClosureUndetermined cl = gbuffer_closure_get_by_layer(gbuf, i);
+      ClosureUndetermined cl = gbuffer_closure_get_by_bin(gbuf, i);
       if (cl.type == CLOSURE_NONE_ID) {
         continue;
       }

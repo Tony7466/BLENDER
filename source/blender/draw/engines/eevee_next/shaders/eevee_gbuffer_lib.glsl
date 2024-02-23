@@ -6,6 +6,16 @@
  * G-buffer: Packing and unpacking of G-buffer data.
  *
  * See #GBuffer for a breakdown of the G-buffer layout.
+ *
+ * There is two way of indexing closure data from the GBuffer:
+ * - per "bin": same closure indices as during the material evaluation pass.
+ *              Can have none-closures.
+ * - per "layer": gbuffer internal storage order. Tightly packed, will only have none-closures at
+ *                the end of the array.
+ *
+ * Indexing per bin is better to avoid parameter discontinuity for a given closure
+ * (i.e: for denoising), whereas indexing per layer is better for iterating through the closure
+ * without dealing with none-closures.
  */
 
 #pragma BLENDER_REQUIRE(gpu_shader_math_vector_lib.glsl)
@@ -871,22 +881,17 @@ int gbuffer_closure_layer_get(GBufferReader gbuf, int closure_index)
   return -1;
 }
 
-ClosureUndetermined gbuffer_closure_get_by_layer(GBufferReader gbuf, int layer_index)
+ClosureUndetermined gbuffer_closure_get_by_bin(GBufferReader gbuf, int bin_index)
 {
-  int closure_index = 0;
-  for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
-    GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
-    if (layer == layer_index) {
-      if (mode != GBUF_NONE) {
-        return gbuffer_closure_get(gbuf, closure_index);
-      }
-      else {
-        return closure_new(CLOSURE_NONE_ID);
-      }
+  int layer_index = 0;
+  for (int bin = 0; bin < GBUFFER_LAYER_MAX; bin++) {
+    GBufferMode mode = gbuffer_header_unpack(gbuf.header, bin);
+    if (bin == bin_index) {
+      return gbuffer_closure_get(gbuf, layer_index);
     }
     else {
       if (mode != GBUF_NONE) {
-        closure_index++;
+        layer_index++;
       }
     }
   }
