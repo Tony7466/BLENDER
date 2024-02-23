@@ -11,11 +11,12 @@
 #include "BLI_sys_types.h"
 
 #include "BKE_icons.h"
+#include "BKE_preview_image.hh"
 
 #include "DNA_ID.h"
 #include "DNA_asset_types.h"
 
-#include "IMB_thumbs.h"
+#include "IMB_thumbs.hh"
 
 #include "AS_asset_identifier.hh"
 #include "AS_asset_library.hh"

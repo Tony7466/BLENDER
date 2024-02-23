@@ -60,7 +60,6 @@ void iterate(const AssetLibraryReference &library_reference, AssetListIterFn fn)
  */
 void storage_fetch(const AssetLibraryReference *library_reference, const bContext *C);
 bool is_loaded(const AssetLibraryReference *library_reference);
-void ensure_previews_job(const AssetLibraryReference *library_reference, const bContext *C);
 void clear(const AssetLibraryReference *library_reference, const bContext *C);
 bool storage_has_list_for_library(const AssetLibraryReference *library_reference);
 /**

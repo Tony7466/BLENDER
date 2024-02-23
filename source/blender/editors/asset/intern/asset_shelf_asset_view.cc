@@ -243,7 +243,6 @@ void build_asset_view(uiLayout &layout,
                       ARegion &region)
 {
   list::storage_fetch(&library_ref, &C);
-  list::ensure_previews_job(&library_ref, &C);
 
   const asset_system::AssetLibrary *library = list::library_get_once_available(library_ref);
   if (!library) {

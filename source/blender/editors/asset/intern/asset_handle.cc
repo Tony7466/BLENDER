@@ -8,6 +8,8 @@
 
 #include <string>
 
+#include "AS_asset_representation.hh"
+
 #include "BKE_icons.h"
 
 #include "DNA_space_types.h"
@@ -25,11 +27,11 @@ asset_system::AssetRepresentation *handle_get_representation(const AssetHandle *
   return asset->file_data->asset;
 }
 
-int ED_asset_handle_get_preview_icon_id(const AssetHandle *asset_handle)
+int handle_get_preview_icon_id(const AssetHandle *asset_handle)
 {
-  PreviewImage *preview = AS_asset_representation_preview_request(asset_handle->file_data->asset);
+  PreviewImage *preview = asset_handle->file_data->asset->request_preview();
   /* Can be null. */
-  ID *local_id = AS_asset_representation_local_id_get(asset_handle->file_data->asset);
+  ID *local_id = asset_handle->file_data->asset->local_id();
 
   return BKE_icon_preview_ensure(local_id, preview);
 }

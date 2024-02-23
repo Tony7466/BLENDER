@@ -23,7 +23,6 @@
 #endif
 
 #include "AS_asset_library.hh"
-#include "AS_asset_representation.h"
 #include "AS_asset_representation.hh"
 
 #include "MEM_guardedalloc.h"
@@ -71,6 +70,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "UI_interface_c.hh"
 #include "UI_interface_icons.hh"
 #include "UI_resources.hh"
 
@@ -1662,7 +1662,7 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
   FileListInternEntry *intern_entry = filelist->filelist_intern.filtered[index];
   PreviewImage *preview_in_memory = nullptr;
   if (entry->asset) {
-    preview_in_memory = AS_asset_representation_preview_request(entry->asset);
+    preview_in_memory = entry->asset->request_preview();
   }
 
   if (preview_in_memory && !BKE_previewimg_is_finished(preview_in_memory, ICON_SIZE_PREVIEW)) {
@@ -2133,7 +2133,7 @@ static FileDirEntry *filelist_file_create_entry(FileList *filelist, const int in
     ret->redirection_path = BLI_strdup(entry->redirection_path);
   }
   ret->id = entry->local_data.id;
-  ret->asset = reinterpret_cast<::AssetRepresentation *>(entry->asset);
+  ret->asset = reinterpret_cast<AssetRepresentationHandle *>(entry->asset);
 
   /* Shortcut: IDs may already have their preview in memory. No need to load them in a thread. */
   if (ret->id) {

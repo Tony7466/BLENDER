@@ -20,7 +20,6 @@ struct BlendDataReader;
 struct BlendWriter;
 struct ID;
 struct IDProperty;
-struct PreviewImage;
 
 using PreSaveFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
 using OnMarkAssetFn = void (*)(void *asset_ptr, AssetMetaData *asset_data);
@@ -69,9 +68,6 @@ void BKE_asset_library_reference_init_default(AssetLibraryReference *library_ref
 void BKE_asset_metadata_idprop_ensure(AssetMetaData *asset_data, IDProperty *prop);
 IDProperty *BKE_asset_metadata_idprop_find(const AssetMetaData *asset_data,
                                            const char *name) ATTR_WARN_UNUSED_RESULT;
-
-PreviewImage *BKE_asset_metadata_preview_get_from_id(const AssetMetaData *asset_data,
-                                                     const ID *owner_id);
 
 void BKE_asset_metadata_write(BlendWriter *writer, AssetMetaData *asset_data);
 void BKE_asset_metadata_read(BlendDataReader *reader, AssetMetaData *asset_data);
