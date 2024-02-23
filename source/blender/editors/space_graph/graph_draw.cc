@@ -13,6 +13,7 @@
 
 #include "BLI_array.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_task.hh"
 #include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
@@ -40,7 +41,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#define MAX_VERTS 1 << 16
+#define MAX_VERTS 1 << 12
 
 static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu);
 using namespace blender;
@@ -48,6 +49,14 @@ struct KeyVertex {
   float2 pos;
   float size;
   ColorTheme4b color;
+};
+
+struct BuildArguments {
+  bool draw_extrapolation;
+  int2 bounding_indices;
+  const View2D *v2d;
+  ID *id;
+  bAnimContext *anim_context;
 };
 
 struct RenderBatch {
@@ -925,7 +934,7 @@ static void add_bezt_vertices(BezTriple *bezt,
   MEM_freeN(bezier_diff_points);
 }
 
-static void add_extrapolation_point_left(FCurve *fcu,
+static void add_extrapolation_point_left(const FCurve *fcu,
                                          const float v2d_xmin,
                                          blender::Vector<blender::float2> &curve_vertices)
 {
@@ -962,7 +971,7 @@ static void add_extrapolation_point_left(FCurve *fcu,
   curve_vertices.append(vertex_position);
 }
 
-static void add_extrapolation_point_right(FCurve *fcu,
+static void add_extrapolation_point_right(const FCurve *fcu,
                                           const float v2d_xmax,
                                           blender::Vector<blender::float2> &curve_vertices)
 {
@@ -998,7 +1007,7 @@ static void add_extrapolation_point_right(FCurve *fcu,
   curve_vertices.append(vertex_position);
 }
 
-static blender::float2 calculate_pixels_per_unit(View2D *v2d)
+static blender::float2 calculate_pixels_per_unit(const View2D *v2d)
 {
   const int window_width = BLI_rcti_size_x(&v2d->mask);
   const int window_height = BLI_rcti_size_y(&v2d->mask);
@@ -1010,25 +1019,35 @@ static blender::float2 calculate_pixels_per_unit(View2D *v2d)
   return pixels_per_unit;
 }
 
-static float calculate_pixel_distance(const rctf &bounds, const blender::float2 pixels_per_unit)
+static inline float calculate_pixel_distance(const rctf &bounds, const float2 &pixels_per_unit)
 {
   return BLI_rctf_size_x(&bounds) * pixels_per_unit[0] +
          BLI_rctf_size_y(&bounds) * pixels_per_unit[1];
 }
 
-static void expand_key_bounds(const BezTriple *left_key, const BezTriple *right_key, rctf &bounds)
+static inline void expand_key_bounds(const BezTriple *left_key,
+                                     const BezTriple *right_key,
+                                     rctf &bounds)
 {
   bounds.xmax = right_key->vec[1][0];
   if (left_key->ipo == BEZT_IPO_BEZ) {
     /* Respect handles of bezier keys. */
-    bounds.ymin = min_ffff(
-        bounds.ymin, right_key->vec[1][1], right_key->vec[0][1], left_key->vec[2][1]);
-    bounds.ymax = max_ffff(
-        bounds.ymax, right_key->vec[1][1], right_key->vec[0][1], left_key->vec[2][1]);
+    for (int i = 0; i < 3; i++) {
+      if (right_key->vec[i][1] < bounds.ymin) {
+        bounds.ymin = right_key->vec[i][1];
+      }
+      if (right_key->vec[i][1] > bounds.ymax) {
+        bounds.ymax = right_key->vec[i][1];
+      }
+    }
   }
   else {
-    bounds.ymax = max_ff(bounds.ymax, right_key->vec[1][1]);
-    bounds.ymin = min_ff(bounds.ymin, right_key->vec[1][1]);
+    if (right_key->vec[1][1] > bounds.ymax) {
+      bounds.ymax = right_key->vec[1][1];
+    }
+    if (right_key->vec[1][1] < bounds.ymin) {
+      bounds.ymin = right_key->vec[1][1];
+    }
   }
 }
 
@@ -1279,7 +1298,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
       if ((fcu->flag & FCURVE_ACTIVE) && (fcm)) {
         switch (fcm->type) {
           case FMODIFIER_TYPE_ENVELOPE: /* envelope */
-            draw_fcurve_modifier_controls_envelope(fcm, &region->v2d, adt);
+            // draw_fcurve_modifier_controls_envelope(fcm, &region->v2d, adt);
             break;
         }
       }
@@ -1321,7 +1340,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
 
   /* 3) draw driver debugging stuff */
   if ((ac->datatype == ANIMCONT_DRIVERS) && (fcu->flag & FCURVE_ACTIVE)) {
-    graph_draw_driver_debug(ac, ale->id, fcu);
+    // graph_draw_driver_debug(ac, ale->id, fcu);
   }
 
   /* undo mapping of keyframes for drawing if scaled F-Curve */
@@ -1453,6 +1472,7 @@ static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu)
 
 void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region)
 {
+  return;
   /* draw with thick dotted lines */
   GPU_line_width(3.0f);
 
@@ -1502,11 +1522,13 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region
 struct FCurveRenderData {
   Array<KeyVertex> key_points;
   Array<KeyVertex> key_handles;
+  Vector<float2> line_points;
+  float4 color_line;
 };
 
 static void build_keyframe_render_data(const FCurve *fcu,
-                                       float2 range,
-                                       FCurveRenderData &fcu_render_data)
+                                       FCurveRenderData &fcu_render_data,
+                                       BuildArguments &args)
 {
   float size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
   if (fcu->flag & FCURVE_PROTECTED) {
@@ -1516,13 +1538,11 @@ static void build_keyframe_render_data(const FCurve *fcu,
   ColorTheme4b color_sel = get_fcurve_vertex_color(fcu, true);
   ColorTheme4b color_desel = get_fcurve_vertex_color(fcu, false);
 
-  const blender::int2 bounding_indices = get_bounding_bezt_indices(fcu, range[0], range[1]);
-
-  const int key_count = (bounding_indices[1] - bounding_indices[0]) + 1;
+  const int key_count = (args.bounding_indices[1] - args.bounding_indices[0]) + 1;
   fcu_render_data.key_points = Array<KeyVertex>(key_count);
 
   int array_index = 0;
-  for (int i = bounding_indices[0]; i <= bounding_indices[1]; i++) {
+  for (int i = args.bounding_indices[0]; i <= args.bounding_indices[1]; i++) {
     BezTriple *bezt = &fcu->bezt[i];
     KeyVertex *key_vertex = &fcu_render_data.key_points[array_index];
     key_vertex->pos = {bezt->vec[1][0], bezt->vec[1][1]};
@@ -1538,27 +1558,150 @@ static void build_keyframe_render_data(const FCurve *fcu,
   }
 }
 
-static void create_fcurve_render_data(const FCurve *fcu,
-                                      float2 range,
-                                      FCurveRenderData &fcu_render_data)
+static void build_line_render_data(FCurve *fcu,
+                                   FCurveRenderData &fcu_render_data,
+                                   BuildArguments &args)
 {
-  build_keyframe_render_data(fcu, range, fcu_render_data);
-}
-
-static GPUIndexBuf *create_vert_index_buffer(int vert_count)
-{
-  GPUIndexBufBuilder ibuf_builder;
-  GPU_indexbuf_init(&ibuf_builder, GPU_PRIM_POINTS, vert_count, vert_count);
-  for (uint i = 0; i < vert_count; i++) {
-    GPU_indexbuf_add_point_vert(&ibuf_builder, i);
+  if (args.draw_extrapolation && fcu->totvert == 1) {
+    return;
   }
-  return GPU_indexbuf_build(&ibuf_builder);
+
+  float offset;
+  short mapping_flag = ANIM_get_normalization_flags(args.anim_context->sl);
+  const float unit_scale = ANIM_unit_mapping_get_factor(
+      args.anim_context->scene, args.id, fcu, mapping_flag, &offset);
+
+  fcu_render_data.color_line = {
+      fcu->color[0], fcu->color[1], fcu->color[2], fcurve_display_alpha(fcu)};
+  fcu_render_data.line_points = Vector<float2>();
+  Vector<float2> &curve_vertices = fcu_render_data.line_points;
+
+  /* Extrapolate to the left? */
+  if (args.draw_extrapolation && fcu->bezt[0].vec[1][0] > args.v2d->cur.xmin) {
+    add_extrapolation_point_left(fcu, args.v2d->cur.xmin, curve_vertices);
+  }
+
+  /* Always add the first point so the extrapolation line doesn't jump. */
+  curve_vertices.append({fcu->bezt[args.bounding_indices[0]].vec[1][0],
+                         fcu->bezt[args.bounding_indices[0]].vec[1][1]});
+
+  const blender::float2 pixels_per_unit = calculate_pixels_per_unit(args.v2d);
+  const int window_width = BLI_rcti_size_x(&args.v2d->mask);
+  const float v2d_frame_range = BLI_rctf_size_x(&args.v2d->cur);
+  const float pixel_width = v2d_frame_range / window_width;
+  const float samples_per_pixel = 0.66f;
+  const float evaluation_step = pixel_width / samples_per_pixel;
+
+  BezTriple *first_key = &fcu->bezt[args.bounding_indices[0]];
+  rctf key_bounds = {
+      first_key->vec[1][0], first_key->vec[1][1], first_key->vec[1][0], first_key->vec[1][1]};
+  /* Used when skipping keys. */
+  bool has_skipped_keys = false;
+  const float min_pixel_distance = 3.0f;
+
+  /* Draw curve between first and last keyframe (if there are enough to do so). */
+  for (int i = args.bounding_indices[0] + 1; i <= args.bounding_indices[1]; i++) {
+    BezTriple *prevbezt = &fcu->bezt[i - 1];
+    BezTriple *bezt = &fcu->bezt[i];
+    expand_key_bounds(prevbezt, bezt, key_bounds);
+    float pixel_distance = calculate_pixel_distance(key_bounds, pixels_per_unit);
+
+    if (pixel_distance >= min_pixel_distance && has_skipped_keys) {
+      /* When the pixel distance is greater than the threshold, and we've skipped at least one, add
+       * a point. The point position is the average of all keys from INCLUDING prevbezt to
+       * EXCLUDING bezt. prevbezt then gets reset to the key before bezt because the distance
+       * between those is potentially below the threshold. */
+      curve_vertices.append({BLI_rctf_cent_x(&key_bounds), BLI_rctf_cent_y(&key_bounds)});
+      has_skipped_keys = false;
+      key_bounds = {
+          prevbezt->vec[1][0], prevbezt->vec[1][1], prevbezt->vec[1][0], prevbezt->vec[1][1]};
+      expand_key_bounds(prevbezt, bezt, key_bounds);
+      /* Calculate again based on the new prevbezt. */
+      pixel_distance = calculate_pixel_distance(key_bounds, pixels_per_unit);
+    }
+
+    if (pixel_distance < min_pixel_distance) {
+      /* Skip any keys that are too close to each other in screen space. */
+      has_skipped_keys = true;
+      continue;
+    }
+
+    switch (prevbezt->ipo) {
+
+      case BEZT_IPO_CONST:
+        /* Constant-Interpolation: draw segment between previous keyframe and next,
+         * but holding same value */
+        curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
+        curve_vertices.append({bezt->vec[1][0], prevbezt->vec[1][1]});
+        break;
+
+      case BEZT_IPO_LIN:
+        /* Linear interpolation: just add one point (which should add a new line segment) */
+        curve_vertices.append({prevbezt->vec[1][0], prevbezt->vec[1][1]});
+        break;
+
+      case BEZT_IPO_BEZ: {
+        const int resolution = calculate_bezt_draw_resolution(bezt, prevbezt, pixels_per_unit);
+        add_bezt_vertices(bezt, prevbezt, resolution, curve_vertices);
+        break;
+      }
+
+      default: {
+        /* In case there is no other way to get curve points, evaluate the FCurve. */
+        curve_vertices.append(prevbezt->vec[1]);
+        float current_frame = prevbezt->vec[1][0] + evaluation_step;
+        while (current_frame < bezt->vec[1][0]) {
+          curve_vertices.append({current_frame, evaluate_fcurve(fcu, current_frame)});
+          current_frame += evaluation_step;
+        }
+        break;
+      }
+    }
+
+    prevbezt = bezt;
+  }
+
+  /* Always add the last point so the extrapolation line doesn't jump. */
+  curve_vertices.append({fcu->bezt[args.bounding_indices[1]].vec[1][0],
+                         fcu->bezt[args.bounding_indices[1]].vec[1][1]});
+
+  /* Extrapolate to the right? (see code for left-extrapolation above too) */
+  if (args.draw_extrapolation && fcu->bezt[fcu->totvert - 1].vec[1][0] < args.v2d->cur.xmax) {
+    add_extrapolation_point_right(fcu, args.v2d->cur.xmax, curve_vertices);
+  }
 }
 
-static void draw_fcurve_render_data(Array<FCurveRenderData> &render_data)
+static void build_fcurve_render_data(FCurve *fcu,
+                                     FCurveRenderData &fcu_render_data,
+                                     ID *id,
+                                     bAnimContext *anim_context,
+                                     const bool draw_extrapolation)
+{
+  const View2D *v2d = &anim_context->region->v2d;
+  const int2 bounding_indices = get_bounding_bezt_indices(fcu, v2d->cur.xmin, v2d->cur.xmax);
+  BuildArguments args;
+  args.bounding_indices = bounding_indices;
+  args.draw_extrapolation = draw_extrapolation;
+  args.v2d = v2d;
+  args.id = id;
+  args.anim_context = anim_context;
+
+  build_keyframe_render_data(fcu, fcu_render_data, args);
+  build_line_render_data(fcu, fcu_render_data, args);
+}
+
+/** \name Drawing Code
+ * \{ */
+
+static void draw_fcurve_keys(Array<FCurveRenderData> &render_data)
 {
   GPU_program_point_size(true);
-  GPUIndexBuf *index_buffer = create_vert_index_buffer(MAX_VERTS);
+  GPUIndexBufBuilder ibuf_builder;
+  GPU_indexbuf_init(&ibuf_builder, GPU_PRIM_POINTS, MAX_VERTS, MAX_VERTS);
+  for (uint i = 0; i < MAX_VERTS; i++) {
+    GPU_indexbuf_add_point_vert(&ibuf_builder, i);
+  }
+  GPUIndexBuf *index_buffer = GPU_indexbuf_build(&ibuf_builder);
 
   GPUVertFormat format;
   GPU_vertformat_clear(&format);
@@ -1566,38 +1709,101 @@ static void draw_fcurve_render_data(Array<FCurveRenderData> &render_data)
   GPU_vertformat_attr_add(&format, "size", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
   GPU_vertformat_attr_add(&format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
 
-  GPUVertBuf *vertex_buffer_verts = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STREAM);
-  GPU_vertbuf_data_alloc(vertex_buffer_verts, MAX_VERTS);
+  GPUVertBuf *vertex_buffer_keys = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STREAM);
+  GPU_vertbuf_data_alloc(vertex_buffer_keys, MAX_VERTS);
 
-  GPUBatch *batch_points = GPU_batch_create_ex(GPU_PRIM_POINTS,
-                                               vertex_buffer_verts,
-                                               index_buffer,
-                                               GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
-  GPU_batch_program_set_builtin(batch_points, GPU_SHADER_3D_POINT_VARYING_SIZE_VARYING_COLOR);
+  GPUBatch *batch_keys = GPU_batch_create_ex(GPU_PRIM_POINTS,
+                                             vertex_buffer_keys,
+                                             index_buffer,
+                                             GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
+  GPU_batch_program_set_builtin(batch_keys, GPU_SHADER_3D_POINT_VARYING_SIZE_VARYING_COLOR);
 
   int verts_in_buffer = 0;
   KeyVertex *vertex_buffer_data = static_cast<KeyVertex *>(
-      GPU_vertbuf_get_data(vertex_buffer_verts));
+      GPU_vertbuf_get_data(vertex_buffer_keys));
   for (const FCurveRenderData &fcu_render_data : render_data) {
     for (const KeyVertex &kv : fcu_render_data.key_points) {
       vertex_buffer_data[verts_in_buffer] = kv;
       verts_in_buffer++;
       if (verts_in_buffer >= MAX_VERTS) {
-        GPU_vertbuf_tag_dirty(vertex_buffer_verts);
-        GPU_vertbuf_use(vertex_buffer_verts);
-        GPU_batch_draw(batch_points);
+        GPU_vertbuf_tag_dirty(vertex_buffer_keys);
+        GPU_vertbuf_use(vertex_buffer_keys);
+        GPU_batch_draw(batch_keys);
         verts_in_buffer = 0;
       }
     }
   }
 
-  GPU_vertbuf_tag_dirty(vertex_buffer_verts);
-  GPU_vertbuf_use(vertex_buffer_verts);
-  GPU_batch_draw_range(batch_points, 0, verts_in_buffer);
+  GPU_vertbuf_tag_dirty(vertex_buffer_keys);
+  GPU_vertbuf_use(vertex_buffer_keys);
+  GPU_batch_draw_range(batch_keys, 0, verts_in_buffer);
 
-  GPU_batch_discard(batch_points);
+  GPU_batch_discard(batch_keys);
   GPU_program_point_size(false);
 }
+
+static void draw_fcurve_lines(Array<FCurveRenderData> &render_data)
+{
+  GPUIndexBufBuilder ibuf_builder;
+  GPU_indexbuf_init_ex(&ibuf_builder, GPU_PRIM_LINE_STRIP, MAX_VERTS, MAX_VERTS);
+  for (uint i = 0; i < MAX_VERTS; i++) {
+    GPU_indexbuf_add_generic_vert(&ibuf_builder, i);
+  }
+  GPUIndexBuf *index_buffer = GPU_indexbuf_build(&ibuf_builder);
+
+  GPUVertFormat format;
+  GPU_vertformat_clear(&format);
+  GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+
+  GPUVertBuf *vertex_buffer_lines = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STREAM);
+  GPU_vertbuf_data_alloc(vertex_buffer_lines, MAX_VERTS);
+
+  GPUBatch *batch_lines = GPU_batch_create_ex(GPU_PRIM_LINE_STRIP,
+                                              vertex_buffer_lines,
+                                              index_buffer,
+                                              GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
+  GPU_batch_program_set_builtin(batch_lines, GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
+
+  GPU_shader_uniform_1f(batch_lines->shader, "lineWidth", GPU_line_width_get());
+  float viewport_size[4];
+  GPU_viewport_size_get_f(viewport_size);
+  GPU_shader_uniform_2fv(batch_lines->shader, "viewport_size", &viewport_size[2]);
+
+  int verts_in_buffer = 0;
+  float2 *vertex_buffer_data = static_cast<float2 *>(GPU_vertbuf_get_data(vertex_buffer_lines));
+  for (const FCurveRenderData &fcu_render_data : render_data) {
+    const int32_t uniform_loc = GPU_shader_get_builtin_uniform(batch_lines->shader,
+                                                               GPU_UNIFORM_COLOR);
+    GPU_shader_uniform_float_ex(
+        batch_lines->shader, uniform_loc, 4, 1, fcu_render_data.color_line);
+
+    for (const float2 &p : fcu_render_data.line_points) {
+      vertex_buffer_data[verts_in_buffer] = p;
+      verts_in_buffer++;
+      if (verts_in_buffer >= MAX_VERTS) {
+        GPU_vertbuf_tag_dirty(vertex_buffer_lines);
+        GPU_vertbuf_use(vertex_buffer_lines);
+        GPU_batch_draw(batch_lines);
+        verts_in_buffer = 0;
+      }
+    }
+
+    /* Flush buffer after every line to make sure the line strip ends and is drawn with the right
+     * color. */
+    GPU_vertbuf_tag_dirty(vertex_buffer_lines);
+    GPU_vertbuf_use(vertex_buffer_lines);
+    GPU_batch_draw_range(batch_lines, 0, verts_in_buffer);
+    verts_in_buffer = 0;
+  }
+}
+
+static void draw_fcurve_render_data(Array<FCurveRenderData> &render_data)
+{
+  draw_fcurve_lines(render_data);
+  // draw_fcurve_keys(render_data);
+}
+
+/** \} */
 
 static void free_fcurve_render_data(Array<FCurveRenderData> &render_data)
 {
@@ -1620,20 +1826,31 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
     anim_list_elements[list_index] = ale;
   }
 
-  const View2D *v2d = &ac->region->v2d;
-  const float2 v2d_range = {v2d->cur.xmin, v2d->cur.xmax};
+  const bool draw_extrapolation = (sipo->flag & SIPO_NO_DRAW_EXTRAPOLATION) == 0;
 
-  Array<FCurveRenderData> render_data = Array<FCurveRenderData>(fcurve_count);
-  for (int i = 0; i < anim_list_elements.size(); i++) {
-    AnimData *adt = ANIM_nla_mapping_get(ac, anim_list_elements[i]);
-    FCurve *fcu = (FCurve *)anim_list_elements[i]->key_data;
+  Array<FCurveRenderData> render_data(fcurve_count);
+  threading::parallel_for(anim_list_elements.index_range(), 64, [&](const IndexRange range) {
+    for (const int i : range) {
+      bAnimListElem *ale = anim_list_elements[i];
+      AnimData *adt = ANIM_nla_mapping_get(ac, ale);
+      FCurve *fcu = (FCurve *)ale->key_data;
+      ANIM_nla_mapping_apply_fcurve(adt, fcu, false, false);
+      build_fcurve_render_data(fcu, render_data[i], ale->id, ac, draw_extrapolation);
+      ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
+    }
+  });
+
+  /* for (const int i : anim_list_elements.index_range()) {
+    bAnimListElem *ale = anim_list_elements[i];
+    AnimData *adt = ANIM_nla_mapping_get(ac, ale);
+    FCurve *fcu = (FCurve *)ale->key_data;
     ANIM_nla_mapping_apply_fcurve(adt, fcu, false, false);
-    create_fcurve_render_data(fcu, v2d_range, render_data[i]);
+    build_fcurve_render_data(fcu, render_data[i], ale->id, ac, draw_extrapolation);
     ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
-  }
+  } */
 
   /* Legacy. */
-  bAnimListElem *ale_active_fcurve = nullptr;
+  /* bAnimListElem *ale_active_fcurve = nullptr;
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     const FCurve *fcu = (FCurve *)ale->key_data;
     if (fcu->flag & FCURVE_ACTIVE) {
@@ -1641,13 +1858,13 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
       continue;
     }
     draw_fcurve(ac, sipo, region, ale);
-  }
+  } */
 
   /* Draw the active FCurve last so that it (especially the active keyframe)
    * shows on top of the other curves. */
-  if (ale_active_fcurve != nullptr) {
+  /* if (ale_active_fcurve != nullptr) {
     draw_fcurve(ac, sipo, region, ale_active_fcurve);
-  }
+  } */
 
   draw_fcurve_render_data(render_data);
 
