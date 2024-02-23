@@ -1668,7 +1668,7 @@ static float clamp_angle(const float angle, const float min, const float max)
   }
 
   if (max <= min) {
-    return angle;
+    return min;
   }
 
   float angle_unit_circle[2];
