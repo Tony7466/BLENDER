@@ -229,7 +229,7 @@ static void rna_def_grease_pencil_frame(BlenderRNA *brna)
   RNA_def_struct_ui_text(srna, "Grease Pencil Frame", "A Grease Pencil keyframe");
   RNA_def_struct_path_func(srna, "rna_GreasePencilFrame_path");
 
-  // GreasePencilDrawing stub. TODO
+  // GreasePencilDrawing
   prop = RNA_def_property(brna, "drawing", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "GreasePencilDrawing");
 
@@ -256,11 +256,11 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "frames", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "GreasePencilFrame");
   RNA_def_property_collection_funcs(prop,
-                                    "rna_iterator_grease_pencil_frames_begin",   // TODO
-                                    "rna_iterator_grease_pencil_frames_next",    // TODO
-                                    "rna_iterator_grease_pencil_frames_end",     // TODO
-                                    "rna_iterator_grease_pencil_frames_get",     // TODO
-                                    "rna_iterator_grease_pencil_frames_length",  // TODO
+                                    "rna_iterator_grease_pencil_frames_begin",   
+                                    "rna_iterator_grease_pencil_frames_next",    
+                                    "rna_iterator_grease_pencil_frames_end",     
+                                    "rna_iterator_grease_pencil_frames_get",     
+                                    "rna_iterator_grease_pencil_frames_length",
                                     nullptr,
                                     nullptr,
                                     nullptr);
