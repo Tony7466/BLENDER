@@ -70,7 +70,7 @@ Set<std::string> get_bone_deformed_vertex_groups(Object &object)
   /* Lambda function for finding deforming bones with a name matching a vertex group. */
   Set<std::string> bone_deformed_vgroups;
   const auto find_pose_channels = [&](ModifierData *md) {
-    for (; md; md->next) {
+    for (; md; md = md->next) {
       if (!(md->mode & (eModifierMode_Realtime | eModifierMode_Virtual)) ||
           md->type != eModifierType_Armature)
       {
