@@ -1795,6 +1795,8 @@ static void draw_fcurve_lines(Array<FCurveRenderData> &render_data)
     GPU_batch_draw_range(batch_lines, 0, verts_in_buffer);
     verts_in_buffer = 0;
   }
+
+  GPU_batch_discard(batch_lines);
 }
 
 static void draw_fcurve_render_data(Array<FCurveRenderData> &render_data)
