@@ -6,13 +6,7 @@
 
 #include <algorithm>
 
-namespace blender {
-namespace index_mask {
-class IndexMask;
-}
-using index_mask::IndexMask;
-}  // namespace blender
-
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_index_range.hh"
 #include "BLI_span.hh"
 
@@ -72,16 +66,14 @@ template<typename T> class OffsetIndices {
     BLI_assert(index < offsets_.size() - 1);
     const int64_t begin = offsets_[index];
     const int64_t end = offsets_[index + 1];
-    const int64_t size = end - begin;
-    return IndexRange(begin, size);
+    return IndexRange::from_begin_end(begin, end);
   }
 
   IndexRange operator[](const IndexRange indices) const
   {
     const int64_t begin = offsets_[indices.start()];
     const int64_t end = offsets_[indices.one_after_last()];
-    const int64_t size = end - begin;
-    return IndexRange(begin, size);
+    return IndexRange::from_begin_end(begin, end);
   }
 
   /**
@@ -177,7 +169,7 @@ void build_reverse_map(OffsetIndices<int> offsets, MutableSpan<int> r_map);
 /**
  * Build offsets to group the elements of \a indices pointing to the same index.
  */
-void build_reverse_offsets(Span<int> indices, MutableSpan<int> r_map);
+void build_reverse_offsets(Span<int> indices, MutableSpan<int> offsets);
 
 }  // namespace blender::offset_indices
 

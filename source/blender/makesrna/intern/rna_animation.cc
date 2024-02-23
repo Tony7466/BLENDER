@@ -14,7 +14,7 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -22,7 +22,7 @@
 #include "RNA_define.hh"
 #include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "WM_types.hh"
 
@@ -86,6 +86,8 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
 };
 
 #ifdef RNA_RUNTIME
+
+#  include <algorithm>
 
 #  include "BLI_math_base.h"
 
@@ -503,7 +505,7 @@ static void rna_KeyingSet_active_ksPath_set(PointerRNA *ptr,
 static int rna_KeyingSet_active_ksPath_index_get(PointerRNA *ptr)
 {
   KeyingSet *ks = (KeyingSet *)ptr->data;
-  return MAX2(ks->active_path - 1, 0);
+  return std::max(ks->active_path - 1, 0);
 }
 
 static void rna_KeyingSet_active_ksPath_index_set(PointerRNA *ptr, int value)
@@ -623,7 +625,7 @@ static NlaTrack *rna_NlaTrack_new(ID *id, AnimData *adt, Main *bmain, bContext *
   WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, nullptr);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_SYNC_TO_EVAL);
 
   return new_track;
 }
@@ -644,7 +646,7 @@ static void rna_NlaTrack_remove(
   WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_REMOVED, nullptr);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_SYNC_TO_EVAL);
 }
 
 static PointerRNA rna_NlaTrack_active_get(PointerRNA *ptr)

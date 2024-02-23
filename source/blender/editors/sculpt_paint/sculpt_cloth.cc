@@ -25,6 +25,7 @@
 #include "BKE_collision.h"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_paint.hh"
@@ -35,6 +36,8 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
+
+#include "ED_sculpt.hh"
 
 #include "sculpt_intern.hh"
 
@@ -667,14 +670,15 @@ static void cloth_brush_solve_collision(Object *object, SimulationData *cloth_si
   BVHTreeRayHit hit;
 
   float obmat_inv[4][4];
-  invert_m4_m4(obmat_inv, object->object_to_world);
+  invert_m4_m4(obmat_inv, object->object_to_world().ptr());
 
   LISTBASE_FOREACH (ColliderCache *, collider_cache, cloth_sim->collider_list) {
     float ray_start[3], ray_normal[3];
     float pos_world_space[3], prev_pos_world_space[3];
 
-    mul_v3_m4v3(pos_world_space, object->object_to_world, cloth_sim->pos[i]);
-    mul_v3_m4v3(prev_pos_world_space, object->object_to_world, cloth_sim->last_iteration_pos[i]);
+    mul_v3_m4v3(pos_world_space, object->object_to_world().ptr(), cloth_sim->pos[i]);
+    mul_v3_m4v3(
+        prev_pos_world_space, object->object_to_world().ptr(), cloth_sim->last_iteration_pos[i]);
     sub_v3_v3v3(ray_normal, pos_world_space, prev_pos_world_space);
     copy_v3_v3(ray_start, prev_pos_world_space);
     hit.index = -1;
@@ -1386,7 +1390,7 @@ static void cloth_filter_apply_forces_task(Object *ob,
 
   float sculpt_gravity[3] = {0.0f};
   if (sd->gravity_object) {
-    copy_v3_v3(sculpt_gravity, sd->gravity_object->object_to_world[2]);
+    copy_v3_v3(sculpt_gravity, sd->gravity_object->object_to_world().ptr()[2]);
   }
   else {
     sculpt_gravity[2] = -1.0f;
@@ -1400,7 +1404,8 @@ static void cloth_filter_apply_forces_task(Object *ob,
     auto_mask::node_update(automask_data, vd);
 
     float fade = vd.mask;
-    fade *= auto_mask::factor_get(ss->filter_cache->automasking, ss, vd.vertex, &automask_data);
+    fade *= auto_mask::factor_get(
+        ss->filter_cache->automasking.get(), ss, vd.vertex, &automask_data);
     fade = 1.0f - fade;
     float force[3] = {0.0f, 0.0f, 0.0f};
     float disp[3], temp[3], transform[3][3];
@@ -1526,6 +1531,12 @@ static int sculpt_cloth_filter_invoke(bContext *C, wmOperator *op, const wmEvent
   Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
   SculptSession *ss = ob->sculpt;
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   const eSculptClothFilterType filter_type = eSculptClothFilterType(RNA_enum_get(op->ptr, "type"));
 
   /* Update the active vertex */
@@ -1538,6 +1549,10 @@ static int sculpt_cloth_filter_invoke(bContext *C, wmOperator *op, const wmEvent
   /* Needs mask data to be available as it is used when solving the constraints. */
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
+  if (ED_sculpt_report_if_shape_key_is_locked(ob, op->reports)) {
+    return OPERATOR_CANCELLED;
+  }
+
   SCULPT_stroke_id_next(ob);
 
   undo::push_begin(ob, op);
@@ -1549,7 +1564,7 @@ static int sculpt_cloth_filter_invoke(bContext *C, wmOperator *op, const wmEvent
                      RNA_float_get(op->ptr, "area_normal_radius"),
                      RNA_float_get(op->ptr, "strength"));
 
-  ss->filter_cache->automasking = auto_mask::cache_init(sd, nullptr, ob);
+  ss->filter_cache->automasking = auto_mask::cache_init(sd, ob);
 
   const float cloth_mass = RNA_float_get(op->ptr, "cloth_mass");
   const float cloth_damping = RNA_float_get(op->ptr, "cloth_damping");

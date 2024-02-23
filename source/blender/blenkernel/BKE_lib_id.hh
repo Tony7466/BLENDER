@@ -31,7 +31,9 @@
  */
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_set.hh"
 #include "BLI_utildefines.h"
+#include "BLI_vector.hh"
 
 #include "DNA_userdef_enums.h"
 
@@ -73,29 +75,29 @@ void BKE_libblock_init_empty(ID *id) ATTR_NONNULL(1);
  */
 void BKE_libblock_runtime_reset_remapping_status(ID *id) ATTR_NONNULL(1);
 
-/* *** ID's session_uuid management. *** */
+/* *** ID's session_uid management. *** */
 
 /**
- * When an ID's UUID is of that value, it is unset/invalid (e.g. for runtime IDs, etc.).
+ * When an ID's UID is of that value, it is unset/invalid (e.g. for runtime IDs, etc.).
  */
-#define MAIN_ID_SESSION_UUID_UNSET 0
+#define MAIN_ID_SESSION_UID_UNSET 0
 
 /**
- * Generate a session-wise UUID for the given \a id.
+ * Generate a session-wise UID for the given \a id.
  *
  * \note "session-wise" here means while editing a given .blend file. Once a new .blend file is
- * loaded or created, undo history is cleared/reset, and so is the UUID counter.
+ * loaded or created, undo history is cleared/reset, and so is the UID counter.
  */
-void BKE_lib_libblock_session_uuid_ensure(ID *id);
+void BKE_lib_libblock_session_uid_ensure(ID *id);
 /**
- * Re-generate a new session-wise UUID for the given \a id.
+ * Re-generate a new session-wise UID for the given \a id.
  *
  * \warning This has a few very specific use-cases, no other usage is expected currently:
  *   - To handle UI-related data-blocks that are kept across new file reading, when we do keep
  * existing UI.
  *   - For IDs that are made local without needing any copying.
  */
-void BKE_lib_libblock_session_uuid_renew(ID *id);
+void BKE_lib_libblock_session_uid_renew(ID *id);
 
 /**
  * Generic helper to create a new empty data-block of given type in given \a bmain database.
@@ -137,7 +139,7 @@ enum {
    * specific code in some copy cases (mostly for node trees). */
   LIB_ID_CREATE_LOCAL = 1 << 9,
 
-  /** Create for the depsgraph, when set #LIB_TAG_COPIED_ON_WRITE must be set.
+  /** Create for the depsgraph, when set #LIB_TAG_COPIED_ON_EVAL must be set.
    * Internally this is used to share some pointers instead of duplicating them. */
   LIB_ID_COPY_SET_COPIED_ON_WRITE = 1 << 10,
 
@@ -180,7 +182,7 @@ enum {
   /** Create a local, outside of bmain, data-block to work on. */
   LIB_ID_CREATE_LOCALIZE = LIB_ID_CREATE_NO_MAIN | LIB_ID_CREATE_NO_USER_REFCOUNT |
                            LIB_ID_CREATE_NO_DEG_TAG,
-  /** Generate a local copy, outside of bmain, to work on (used by COW e.g.). */
+  /** Generate a local copy, outside of bmain, to work on (used by copy-on-eval e.g.). */
   LIB_ID_COPY_LOCALIZE = LIB_ID_CREATE_LOCALIZE | LIB_ID_COPY_NO_PREVIEW | LIB_ID_COPY_CACHES |
                          LIB_ID_COPY_NO_LIB_OVERRIDE,
 };
@@ -203,12 +205,16 @@ void BKE_libblock_ensure_unique_name(Main *bmain, ID *id) ATTR_NONNULL();
 
 ID *BKE_libblock_find_name(Main *bmain, short type, const char *name) ATTR_WARN_UNUSED_RESULT
     ATTR_NONNULL();
-ID *BKE_libblock_find_session_uuid(Main *bmain, short type, uint32_t session_uuid);
+ID *BKE_libblock_find_session_uid(Main *bmain, short type, uint32_t session_uid);
+ID *BKE_libblock_find_name_and_library(Main *bmain,
+                                       short type,
+                                       const char *name,
+                                       const char *lib_name);
 /**
  * Duplicate (a.k.a. deep copy) common processing options.
  * See also eDupli_ID_Flags for options controlling what kind of IDs to duplicate.
  */
-typedef enum eLibIDDuplicateFlags {
+enum eLibIDDuplicateFlags {
   /** This call to a duplicate function is part of another call for some parent ID.
    * Therefore, this sub-process should not clear `newid` pointers, nor handle remapping itself.
    * NOTE: In some cases (like Object one), the duplicate function may be called on the root ID
@@ -218,7 +224,7 @@ typedef enum eLibIDDuplicateFlags {
   /** This call is performed on a 'root' ID, and should therefore perform some decisions regarding
    * sub-IDs (dependencies), check for linked vs. locale data, etc. */
   LIB_ID_DUPLICATE_IS_ROOT_ID = 1 << 1,
-} eLibIDDuplicateFlags;
+};
 
 ENUM_OPERATORS(eLibIDDuplicateFlags, LIB_ID_DUPLICATE_IS_ROOT_ID)
 
@@ -315,11 +321,23 @@ void BKE_id_delete_ex(Main *bmain, void *idv, const int extra_remapping_flags) A
  * This is more efficient than calling #BKE_id_delete repetitively on a large set of IDs
  * (several times faster when deleting most of the IDs at once).
  *
- * \warning Considered experimental for now, seems to be working OK but this is
- * risky code in a complicated area.
  * \return Number of deleted data-blocks.
  */
 size_t BKE_id_multi_tagged_delete(Main *bmain) ATTR_NONNULL();
+/**
+ * Properly delete all IDs from \a ids_to_delete, from given \a bmain database.
+ *
+ * This is more efficient than calling #BKE_id_delete repetitively on a large set of IDs
+ * (several times faster when deleting most of the IDs at once).
+ *
+ * \note The ID pointers are not removed from the Set (which may contain more pointers than
+ * originally given, when extra users or dependencies also had to be deleted with the original set
+ * of IDs). They are all freed though, so these pointers are all invalid after calling this
+ * function.
+ *
+ * \return Number of deleted data-blocks.
+ */
+size_t BKE_id_multi_delete(Main *bmain, blender::Set<ID *> &ids_to_delete);
 
 /**
  * Add a 'NO_MAIN' data-block to given main (also sets user-counts of its IDs if needed).
@@ -644,9 +662,8 @@ bool BKE_id_is_editable(const Main *bmain, const ID *id);
 
 /**
  * Returns ordered list of data-blocks for display in the UI.
- * Result is list of #LinkData of IDs that must be freed.
  */
-void BKE_id_ordered_list(ListBase *ordered_lb, const ListBase *lb);
+blender::Vector<ID *> BKE_id_ordered_list(const ListBase *lb);
 /**
  * Reorder ID in the list, before or after the "relative" ID.
  */
