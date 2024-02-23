@@ -26,7 +26,7 @@
 #include "multiview.hh"
 #include "proxy.hh"
 
-/* For now api funcs are declared here. */
+/* XXX For now api funcs are declared here. */
 #include "SEQ_relations.hh"
 #include "utils.hh"
 
@@ -178,6 +178,7 @@ class ShareableAnim {
     if (is_multiview(scene, seq, filepath)) {
       anims = multiview_anims_get(scene, seq, filepath);
       multiview_loaded = true;
+      return;
     }
 
     anims.append(anim_get(seq, filepath, openfile));
