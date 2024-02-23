@@ -526,6 +526,8 @@ BLI_INLINE void material_shadow(EEVEE_Data *vedata,
       /* This GPUShader has already been used by another material.
        * Add new shading group just after to avoid shader switching cost. */
       grp = DRW_shgroup_create_sub(*grp_p);
+      /* Per material uniforms. */
+      DRW_shgroup_uniform_float_copy(grp, "alphaClipThreshold", alpha_clip_threshold);
     }
     else {
       *grp_p = grp = DRW_shgroup_create(sh, psl->shadow_pass);
