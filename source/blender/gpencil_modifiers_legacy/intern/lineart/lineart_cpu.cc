@@ -5795,8 +5795,6 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
     writer.append({ec, count});
 
     stroke_count++;
-
-    /* TODO: Debug random color feature not implemented for v3 yet. */
   }
 
   if (!total_point_count || !stroke_count) {

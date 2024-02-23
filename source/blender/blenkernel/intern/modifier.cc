@@ -879,10 +879,9 @@ GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const
     if (md->type == eModifierType_GreasePencilLineart) {
       const auto *lmd = reinterpret_cast<const GreasePencilLineartModifierData *>(md);
       if (is_first || (lmd->flags & MOD_LINEART_USE_CACHE)) {
-        info.min_level = std::min(int(info.min_level), int(lmd->level_start));
-        info.max_level = std::max(
-            int(info.max_level),
-            int(lmd->use_multiple_levels ? lmd->level_end : lmd->level_start));
+        info.min_level = std::min<int>(info.min_level, lmd->level_start);
+        info.max_level = std::max<int>(
+            info.max_level, lmd->use_multiple_levels ? lmd->level_end : lmd->level_start);
         info.edge_types |= lmd->edge_types;
         info.shadow_selection = std::max(info.shadow_selection, lmd->shadow_selection);
         info.silhouette_selection = std::max(info.silhouette_selection, lmd->silhouette_selection);
