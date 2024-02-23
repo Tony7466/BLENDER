@@ -480,7 +480,8 @@ GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
   const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
 
   const bool is_in_front = (ob->dtx & OB_DRAW_IN_FRONT);
-  const bool is_screenspace = (grease_pencil.flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
+  /* Grease Pencil 3 doesn't have this. */
+  const bool is_screenspace = false;
   const bool override_vertcol = (pd->v3d_color_type != -1);
   const bool is_vert_col_mode = (pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
                                 (ob->mode == OB_MODE_VERTEX_PAINT) || pd->is_render;
