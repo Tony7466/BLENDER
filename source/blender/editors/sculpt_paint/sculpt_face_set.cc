@@ -37,6 +37,7 @@
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
+#include "BKE_layer.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_fair.hh"
 #include "BKE_mesh_mapping.hh"
@@ -557,6 +558,12 @@ static int sculpt_face_set_create_exec(bContext *C, wmOperator *op)
 
   const CreateMode mode = CreateMode(RNA_enum_get(op->ptr, "mode"));
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   if (BKE_pbvh_type(ss.pbvh) == PBVH_BMESH) {
     /* Dyntopo not supported. */
     return OPERATOR_CANCELLED;
@@ -780,6 +787,12 @@ static int sculpt_face_set_init_exec(bContext *C, wmOperator *op)
 
   const InitMode mode = InitMode(RNA_enum_get(op->ptr, "mode"));
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 
   /* Dyntopo not supported. */
@@ -982,8 +995,10 @@ static void face_hide_update(Object &object,
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     TLS &tls = all_tls.local();
     for (PBVHNode *node : nodes.slice(range)) {
-      const Span<int> faces = bke::pbvh::node_face_indices_calc_mesh(
-          pbvh, *node, tls.face_indices);
+      const Span<int> faces =
+          (BKE_pbvh_type(&pbvh) == PBVH_FACES) ?
+              bke::pbvh::node_face_indices_calc_mesh(pbvh, *node, tls.face_indices) :
+              bke::pbvh::node_face_indices_calc_grids(pbvh, *node, tls.face_indices);
 
       tls.new_hide.reinitialize(faces.size());
       MutableSpan<bool> new_hide = tls.new_hide;
@@ -1124,6 +1139,12 @@ static int sculpt_face_set_change_visibility_invoke(bContext *C,
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   /* Update the active vertex and Face Set using the cursor position to avoid relying on the paint
    * cursor updates. */
   SculptCursorGeometryInfo sgi;
@@ -1171,6 +1192,12 @@ static int sculpt_face_sets_randomize_colors_exec(bContext *C, wmOperator * /*op
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
 
   /* Dyntopo not supported. */
   if (BKE_pbvh_type(ss->pbvh) == PBVH_BMESH) {
@@ -1543,6 +1570,12 @@ static int sculpt_face_set_edit_invoke(bContext *C, wmOperator *op, const wmEven
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 

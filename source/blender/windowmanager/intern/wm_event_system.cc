@@ -1098,7 +1098,7 @@ static void wm_operator_reports(bContext *C,
 
   if (retval & OPERATOR_FINISHED) {
     std::string pystring = WM_operator_pystring(C, op, false, true);
-    CLOG_STR_INFO_N(WM_LOG_OPERATORS, 1, pystring.c_str());
+    CLOG_STR_INFO(WM_LOG_OPERATORS, 1, pystring.c_str());
 
     if (caller_owns_reports == false) {
       BKE_reports_print(op->reports, RPT_DEBUG); /* Print out reports to console. */
@@ -2502,6 +2502,7 @@ static eHandlerActionFlag wm_handler_operator_call(bContext *C,
         else {
           /* Not very common, but modal operators may report before finishing. */
           if (!BLI_listbase_is_empty(&op->reports->list)) {
+            WM_event_add_notifier(C, NC_SPACE | ND_SPACE_INFO_REPORT, nullptr);
             WM_reports_from_reports_move(wm, op->reports);
           }
         }
