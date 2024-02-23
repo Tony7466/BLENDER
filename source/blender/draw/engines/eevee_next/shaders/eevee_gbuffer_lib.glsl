@@ -871,24 +871,27 @@ int gbuffer_closure_layer_get(GBufferReader gbuf, int closure_index)
   return -1;
 }
 
-int gbuffer_closure_index_get(GBufferReader gbuf, int layer_index)
-{
-  int closure_index = 0;
-  for (int layer = 0; layer <= layer_index; layer++) {
-    GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
-    if (mode != GBUF_NONE) {
-      if (layer == layer_index) {
-        return closure_index;
-      }
-      closure_index++;
-    }
-  }
-  return 0;
-}
-
 ClosureUndetermined gbuffer_closure_get_by_layer(GBufferReader gbuf, int layer_index)
 {
-  return gbuffer_closure_get(gbuf, gbuffer_closure_index_get(gbuf, layer_index));
+  int closure_index = 0;
+  for (int layer = 0; layer < GBUFFER_LAYER_MAX; layer++) {
+    GBufferMode mode = gbuffer_header_unpack(gbuf.header, layer);
+    if (layer == layer_index) {
+      if (mode != GBUF_NONE) {
+        return gbuffer_closure_get(gbuf, closure_index);
+      }
+      else {
+        return closure_new(CLOSURE_NONE_ID);
+      }
+    }
+    else {
+      if (mode != GBUF_NONE) {
+        closure_index++;
+      }
+    }
+  }
+  /* Should never happen. */
+  return closure_new(CLOSURE_NONE_ID);
 }
 
 /* Read the entirety of the GBuffer. */
@@ -990,7 +993,7 @@ ClosureUndetermined gbuffer_read_bin(samplerGBufferHeader header_tx,
     mode = gbuffer_header_unpack(gbuf.header, layer);
 
     /* TODO(fclem): This might not work with packed closure pair. */
-    if (mode != GBUF_NONE && gbuf.closure_count >= bin_index) {
+    if (mode != GBUF_NONE && layer >= bin_index) {
       break;
     }
 
@@ -1050,7 +1053,7 @@ ClosureUndetermined gbuffer_read_bin(samplerGBufferHeader header_tx,
       break;
   }
 
-  return gbuffer_closure_get(gbuf.closure_count);
+  return gbuffer_closure_get(gbuf, gbuf.closure_count);
 }
 
 /** \} */
