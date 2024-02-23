@@ -56,48 +56,6 @@ bool operator==(const CachedImageKey &a, const CachedImageKey &b)
  * Cached Image.
  */
 
-/* Returns a new texture with the alpha premultiplied. The input texture is freed. */
-static GPUTexture *premultiply_alpha(Context &context, GPUTexture *input_texture)
-{
-  const eGPUTextureFormat format = GPU_texture_format(input_texture);
-  const ResultPrecision precision = Result::precision(format);
-  const int2 size = int2(GPU_texture_width(input_texture), GPU_texture_height(input_texture));
-
-  GPUTexture *output_texture = GPU_texture_create_2d(
-      "Cached Image", size.x, size.y, 1, format, GPU_TEXTURE_USAGE_GENERAL, nullptr);
-
-  GPUShader *shader = context.get_shader("compositor_premultiply_alpha", precision);
-  GPU_shader_bind(shader);
-
-  const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
-  GPU_texture_bind(input_texture, input_unit);
-
-  const int image_unit = GPU_shader_get_sampler_binding(shader, "output_img");
-  GPU_texture_image_bind(output_texture, image_unit);
-
-  compute_dispatch_threads_at_least(shader, size);
-
-  GPU_shader_unbind();
-  GPU_texture_unbind(input_texture);
-  GPU_texture_image_unbind(output_texture);
-  GPU_texture_free(input_texture);
-
-  return output_texture;
-}
-
-/* Compositor images are expected to be always pre-multiplied, so identify if the GPU texture
- * returned by the IMB module is straight and needs to be pre-multiplied. An exception is when
- * the image has an alpha mode of channel packed or alpha ignore, in which case, we always ignore
- * pre-multiplication. */
-static bool should_premultiply_alpha(Image *image, ImBuf *image_buffer)
-{
-  if (ELEM(image->alpha_mode, IMA_ALPHA_CHANNEL_PACKED, IMA_ALPHA_IGNORE)) {
-    return false;
-  }
-
-  return !BKE_image_has_gpu_texture_premultiplied_alpha(image, image_buffer);
-}
-
 /* Get the selected render layer selected assuming the image is a multilayer image. */
 static RenderLayer *get_render_layer(Image *image, ImageUser &image_user)
 {
@@ -202,35 +160,26 @@ CachedImage::CachedImage(Context &context,
 
   ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user_for_pass, nullptr);
 
-  /* The image buffer might be storing an sRGB 8-bit image, while the compositor expects linear
+  /* The image buffer might be stored as an sRGB 8-bit image, while the compositor expects linear
    * float images, so compute a float buffer for the image buffer. This will also do linear space
    * conversion and alpha pre-multiplication as needed. We could store those images in sRGB GPU
-   * textures and let the GPU do the linear space conversion and alpha pre-multiplication, but the
-   * issues is that we don't control how the GPU does the conversion and so we get tiny differences
-   * across CPU and GPU compositing, and potentially even across GPUs/Drivers. Notice that we don't
-   * own the image buffer, so we need to free he computed float buffer before releasing it back. */
+   * textures and let the GPU do the linear space conversion, but the issues is that we don't
+   * control how the GPU does the conversion and so we get tiny differences across CPU and GPU
+   * compositing, and potentially even across GPUs/Drivers. Further, if alpha pre-multiplication is
+   * needed, we would need to do it ourself, which means alpha pre-multiplication will happen
+   * before linear space conversion, which would produce yet another difference. So we just do
+   * everything on the CPU, since this is already a cached resource. Notice that we don't own the
+   * image buffer, so we need to free he computed float buffer before releasing it back. */
   const bool should_compute_float_buffer = image_buffer->float_buffer.data == nullptr;
   if (should_compute_float_buffer) {
     IMB_float_from_rect(image_buffer);
   }
 
-  const bool is_premultiplied = BKE_image_has_gpu_texture_premultiplied_alpha(image, image_buffer);
-  texture_ = IMB_create_gpu_texture("Image Texture", image_buffer, true, is_premultiplied);
+  texture_ = IMB_create_gpu_texture("Image Texture", image_buffer, true, true);
   GPU_texture_update_mipmap_chain(texture_);
 
-  const ResultType result_type = Result::type(GPU_texture_format(texture_));
-
-  if (result_type == ResultType::Color && should_premultiply_alpha(image, image_buffer)) {
-    texture_ = premultiply_alpha(context, texture_);
-  }
-
-  /* Set the alpha to 1 using swizzling if alpha is ignored. */
-  if (result_type == ResultType::Color && image->alpha_mode == IMA_ALPHA_IGNORE) {
-    GPU_texture_swizzle_set(texture_, "rgb1");
-  }
-
-  /* Free the float buffer if we computed it since we don't own the image buffer and shouldn't
-   * change it.  */
+  /* Free the float buffer if we computed it ourselves since we don't own the image buffer and
+   * shouldn't change it.  */
   if (should_compute_float_buffer) {
     IMB_assign_float_buffer(image_buffer, nullptr, IB_TAKE_OWNERSHIP);
   }
