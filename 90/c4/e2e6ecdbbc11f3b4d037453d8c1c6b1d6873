@@ -3,3 +3,4 @@ Referenced by pull request #117693, Fix #117672: Translation of enum button tool
 Referenced by commit cbc5d861db77134d438fcd173d184cfdfc8c9891, Fix #117672: Translation of enum button tooltips broken
 Referenced by issue #118643, Regression: Tooltip translation in properties tab is affected
 Referenced by pull request #118653, Fix #118643: Translation of enum button tooltip not working in cases
+Referenced by commit 199f8ad8172fd14099a328b13190328889668134, Fix #118643: Translation of enum button tooltip not working in cases
