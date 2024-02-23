@@ -8043,6 +8043,10 @@ def km_3d_view_tool_paint_weight_gradient(params):
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
         {"items": [
             ("paint.weight_gradient", params.tool_maybe_tweak_event, None),
+            ("grease_pencil.weight_gradient", params.tool_maybe_tweak_event, None),
+            ("grease_pencil.weight_gradient", 
+             {"type": params.tool_mouse, "value": params.tool_maybe_tweak_value, "ctrl": True}, 
+             {"properties": [("mode", 'INVERT')]}),
         ]},
     )
 

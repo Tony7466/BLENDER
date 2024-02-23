@@ -1720,28 +1720,56 @@ class _defs_weight_paint:
     def gradient():
         def draw_settings(context, layout, tool):
             brush = context.tool_settings.weight_paint.brush
+            is_greasepencil = context.object.type == 'GREASEPENCIL'
+
             if brush is not None:
                 from bl_ui.properties_paint_common import UnifiedPaintPanel
-                UnifiedPaintPanel.prop_unified(
-                    layout,
-                    context,
-                    brush,
-                    "weight",
-                    unified_name="use_unified_weight",
-                    slider=True,
-                    header=True,
-                )
-                UnifiedPaintPanel.prop_unified(
-                    layout,
-                    context,
-                    brush,
-                    "strength",
-                    unified_name="use_unified_strength",
-                    header=True,
-                )
 
-            props = tool.operator_properties("paint.weight_gradient")
+                if not is_greasepencil:
+                    UnifiedPaintPanel.prop_unified(
+                        layout,
+                        context,
+                        brush,
+                        "weight",
+                        unified_name="use_unified_weight",
+                        slider=True,
+                        header=True,
+                    )
+                    UnifiedPaintPanel.prop_unified(
+                        layout,
+                        context,
+                        brush,
+                        "strength",
+                        unified_name="use_unified_strength",
+                        header=True,
+                    )
+                else:
+                    UnifiedPaintPanel.prop_unified(
+                        layout,
+                        context,
+                        brush,
+                        "strength",
+                        unified_name="use_unified_strength",
+                        header=True,
+                    )
+                    UnifiedPaintPanel.prop_unified(
+                        layout,
+                        context,
+                        brush,
+                        "weight",
+                        unified_name="use_unified_weight",
+                        slider=True,
+                        header=True,
+                    )
+                    layout.prop(brush, "direction", expand=True, text="")
+
+            if is_greasepencil:
+                props = tool.operator_properties("grease_pencil.weight_gradient")
+            else:
+                props = tool.operator_properties("paint.weight_gradient")
             layout.prop(props, "type", expand=True)
+            if is_greasepencil:
+                layout.popover("VIEW3D_PT_tools_grease_pencil_weight_options", text="Options")
             layout.popover("VIEW3D_PT_tools_weight_gradient")
 
         return dict(
