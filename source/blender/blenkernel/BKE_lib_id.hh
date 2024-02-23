@@ -31,7 +31,9 @@
  */
 
 #include "BLI_compiler_attrs.h"
+#include "BLI_set.hh"
 #include "BLI_utildefines.h"
+#include "BLI_vector.hh"
 
 #include "DNA_userdef_enums.h"
 
@@ -137,7 +139,7 @@ enum {
    * specific code in some copy cases (mostly for node trees). */
   LIB_ID_CREATE_LOCAL = 1 << 9,
 
-  /** Create for the depsgraph, when set #LIB_TAG_COPIED_ON_WRITE must be set.
+  /** Create for the depsgraph, when set #LIB_TAG_COPIED_ON_EVAL must be set.
    * Internally this is used to share some pointers instead of duplicating them. */
   LIB_ID_COPY_SET_COPIED_ON_WRITE = 1 << 10,
 
@@ -180,7 +182,7 @@ enum {
   /** Create a local, outside of bmain, data-block to work on. */
   LIB_ID_CREATE_LOCALIZE = LIB_ID_CREATE_NO_MAIN | LIB_ID_CREATE_NO_USER_REFCOUNT |
                            LIB_ID_CREATE_NO_DEG_TAG,
-  /** Generate a local copy, outside of bmain, to work on (used by COW e.g.). */
+  /** Generate a local copy, outside of bmain, to work on (used by copy-on-eval e.g.). */
   LIB_ID_COPY_LOCALIZE = LIB_ID_CREATE_LOCALIZE | LIB_ID_COPY_NO_PREVIEW | LIB_ID_COPY_CACHES |
                          LIB_ID_COPY_NO_LIB_OVERRIDE,
 };
@@ -319,11 +321,23 @@ void BKE_id_delete_ex(Main *bmain, void *idv, const int extra_remapping_flags) A
  * This is more efficient than calling #BKE_id_delete repetitively on a large set of IDs
  * (several times faster when deleting most of the IDs at once).
  *
- * \warning Considered experimental for now, seems to be working OK but this is
- * risky code in a complicated area.
  * \return Number of deleted data-blocks.
  */
 size_t BKE_id_multi_tagged_delete(Main *bmain) ATTR_NONNULL();
+/**
+ * Properly delete all IDs from \a ids_to_delete, from given \a bmain database.
+ *
+ * This is more efficient than calling #BKE_id_delete repetitively on a large set of IDs
+ * (several times faster when deleting most of the IDs at once).
+ *
+ * \note The ID pointers are not removed from the Set (which may contain more pointers than
+ * originally given, when extra users or dependencies also had to be deleted with the original set
+ * of IDs). They are all freed though, so these pointers are all invalid after calling this
+ * function.
+ *
+ * \return Number of deleted data-blocks.
+ */
+size_t BKE_id_multi_delete(Main *bmain, blender::Set<ID *> &ids_to_delete);
 
 /**
  * Add a 'NO_MAIN' data-block to given main (also sets user-counts of its IDs if needed).
@@ -648,9 +662,8 @@ bool BKE_id_is_editable(const Main *bmain, const ID *id);
 
 /**
  * Returns ordered list of data-blocks for display in the UI.
- * Result is list of #LinkData of IDs that must be freed.
  */
-void BKE_id_ordered_list(ListBase *ordered_lb, const ListBase *lb);
+blender::Vector<ID *> BKE_id_ordered_list(const ListBase *lb);
 /**
  * Reorder ID in the list, before or after the "relative" ID.
  */

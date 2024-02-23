@@ -1939,6 +1939,13 @@ static bool seq_filter_bilinear_to_auto(Sequence *seq, void * /*user_data*/)
   return true;
 }
 
+static void image_settings_avi_to_ffmpeg(Scene *sce)
+{
+  if (ELEM(sce->r.im_format.imtype, R_IMF_IMTYPE_AVIRAW, R_IMF_IMTYPE_AVIJPEG)) {
+    sce->r.im_format.imtype = R_IMF_IMTYPE_FFMPEG;
+  }
+}
+
 void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
 {
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 1)) {
@@ -2915,6 +2922,47 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         scene->r.motion_blur_position = scene->eevee.motion_blur_position_deprecated;
         scene->r.motion_blur_shutter = scene->eevee.motion_blur_shutter_deprecated;
       }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 3)) {
+    constexpr int NTREE_EXECUTION_MODE_FULL_FRAME = 1;
+
+    constexpr int NTREE_COM_GROUPNODE_BUFFER = 1 << 3;
+    constexpr int NTREE_COM_OPENCL = 1 << 1;
+
+    FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
+      if (ntree->type != NTREE_COMPOSIT) {
+        continue;
+      }
+
+      ntree->flag &= ~(NTREE_COM_GROUPNODE_BUFFER | NTREE_COM_OPENCL);
+
+      if (ntree->execution_mode == NTREE_EXECUTION_MODE_FULL_FRAME) {
+        ntree->execution_mode = NTREE_EXECUTION_MODE_CPU;
+      }
+    }
+    FOREACH_NODETREE_END;
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 4)) {
+    if (!DNA_struct_member_exists(fd->filesdna, "SpaceImage", "float", "stretch_opacity")) {
+      LISTBASE_FOREACH (bScreen *, screen, &bmain->screens) {
+        LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
+          LISTBASE_FOREACH (SpaceLink *, sl, &area->spacedata) {
+            if (sl->spacetype == SPACE_IMAGE) {
+              SpaceImage *sima = (SpaceImage *)sl;
+              sima->stretch_opacity = 0.9f;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 5)) {
+    LISTBASE_FOREACH (Scene *, sce, &bmain->scenes) {
+      image_settings_avi_to_ffmpeg(sce);
     }
   }
 
