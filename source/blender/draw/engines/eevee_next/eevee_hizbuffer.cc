@@ -114,7 +114,7 @@ void HiZBuffer::debug_draw(View &view, GPUFrameBuffer *view_fb)
     inst_.info +=
         "Debug Mode: HiZ Validation\n"
         " - Red: pixel in front of HiZ tile value.\n"
-        " - Blue: No error.";
+        " - Blue: No error.\n";
     inst_.hiz_buffer.update();
     GPU_framebuffer_bind(view_fb);
     inst_.manager->submit(debug_draw_ps_, view);
