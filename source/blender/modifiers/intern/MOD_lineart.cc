@@ -704,7 +704,8 @@ static void panel_register(ARegionType *region_type)
 
 static void generate_strokes(ModifierData &md,
                              const ModifierEvalContext &ctx,
-                             GreasePencil &grease_pencil)
+                             GreasePencil &grease_pencil,
+                             GreasePencilLineartModifierData &first_lineart)
 {
   auto &lmd = reinterpret_cast<GreasePencilLineartModifierData &>(md);
 
@@ -713,13 +714,7 @@ static void generate_strokes(ModifierData &md,
     return;
   }
 
-  GreasePencilLineartModifierData *first_lineart = BKE_grease_pencil_get_first_lineart_modifier(
-      ctx.object);
-
-  /* It should not ever be possible to have first_lineart==nullptr when the modifier is running. */
-  BLI_assert(first_lineart);
-
-  LineartCache *local_lc = first_lineart->shared_cache;
+  LineartCache *local_lc = first_lineart.shared_cache;
 
   if (!(lmd.flags & MOD_LINEART_USE_CACHE)) {
     MOD_lineart_compute_feature_lines_v3(
@@ -770,12 +765,12 @@ static void generate_strokes(ModifierData &md,
 
   if (!(lmd.flags & MOD_LINEART_USE_CACHE)) {
     /* Clear local cache. */
-    if (local_lc != first_lineart->shared_cache) {
+    if (local_lc != first_lineart.shared_cache) {
       MOD_lineart_clear_cache(&local_lc);
     }
     /* Restore the original cache pointer so the modifiers below still have access to the "global"
      * cache. */
-    lmd.cache = first_lineart->shared_cache;
+    lmd.cache = first_lineart.shared_cache;
   }
 }
 
@@ -787,8 +782,29 @@ static void modify_geometry_set(ModifierData *md,
     return;
   }
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
+  auto mmd = reinterpret_cast<GreasePencilLineartModifierData *>(md);
 
-  generate_strokes(*md, *ctx, grease_pencil);
+  GreasePencilLineartModifierData *first_lineart = BKE_grease_pencil_get_first_lineart_modifier(
+      ctx->object);
+  BLI_assert(first_lineart);
+
+  bool is_first_lineart = (mmd == first_lineart);
+  GreasePencilLineartLimitInfo info;
+  if (is_first_lineart) {
+    mmd->shared_cache = MOD_lineart_init_cache();
+    info = BKE_grease_pencil_get_lineart_modifier_limits(ctx->object);
+    LISTBASE_FOREACH (ModifierData *, imd, &ctx->object->modifiers) {
+      if (imd->type == eModifierType_GreasePencilLineart) {
+        BKE_grease_pencil_set_lineart_modifier_limits(imd, &info, imd == md);
+      }
+    }
+  }
+
+  generate_strokes(*md, *ctx, grease_pencil, *first_lineart);
+
+  if (BKE_grease_pencil_is_last_line_art(md)) {
+    MOD_lineart_clear_cache(&first_lineart->shared_cache);
+  }
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
 }

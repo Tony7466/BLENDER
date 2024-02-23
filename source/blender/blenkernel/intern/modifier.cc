@@ -941,6 +941,21 @@ GreasePencilLineartModifierData *BKE_grease_pencil_get_first_lineart_modifier(co
   return nullptr;
 }
 
+bool BKE_grease_pencil_is_last_line_art(const ModifierData *md)
+{
+  if (md->type != eModifierType_GreasePencilLineart) {
+    return false;
+  }
+  ModifierData *imd = md->next;
+  while (imd) {
+    if (imd->type == eModifierType_GreasePencilLineart) {
+      return false;
+    }
+    imd = imd->next;
+  }
+  return true;
+}
+
 /**
  * Call when #ModifierTypeInfo.depends_on_normals callback requests normals.
  */

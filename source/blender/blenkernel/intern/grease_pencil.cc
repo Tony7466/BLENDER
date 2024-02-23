@@ -1373,15 +1373,6 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
   VirtualModifierData virtualModifierData;
   ModifierData *md = BKE_modifiers_get_virtual_modifierlist(object, &virtualModifierData);
 
-  bool is_first_lineart = true;
-  GreasePencilLineartLimitInfo info;
-  GreasePencilLineartModifierData *first_lineart = BKE_grease_pencil_get_first_lineart_modifier(
-      object);
-  if (first_lineart) {
-    first_lineart->shared_cache = MOD_lineart_init_cache();
-    info = BKE_grease_pencil_get_lineart_modifier_limits(object);
-  }
-
   /* Evaluate modifiers. */
   for (; md; md = md->next) {
     const ModifierTypeInfo *mti = BKE_modifier_get_info(ModifierType(md->type));
@@ -1390,18 +1381,9 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
       continue;
     }
 
-    if (md->type == eModifierType_GreasePencilLineart) {
-      BKE_grease_pencil_set_lineart_modifier_limits(md, &info, is_first_lineart);
-      is_first_lineart = false;
-    }
-
     if (mti->modify_geometry_set != nullptr) {
       mti->modify_geometry_set(md, &mectx, &geometry_set);
     }
-  }
-
-  if (first_lineart) {
-    MOD_lineart_clear_cache(&first_lineart->shared_cache);
   }
 }
 

@@ -579,6 +579,7 @@ void BKE_grease_pencil_set_lineart_modifier_limits(struct ModifierData *md,
 bool BKE_grease_pencil_is_first_lineart_in_stack(const struct Object *ob,
                                                  const struct ModifierData *md);
 GreasePencilLineartModifierData *BKE_grease_pencil_get_first_lineart_modifier(const Object *ob);
+bool BKE_grease_pencil_is_last_line_art(const ModifierData *md);
 
 /* Accessors of original/evaluated modifiers. */
 
