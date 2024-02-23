@@ -108,6 +108,10 @@ typedef enum ModifierType {
   eModifierType_GreasePencilDash = 71,
   eModifierType_GreasePencilMultiply = 72,
   eModifierType_GreasePencilLength = 73,
+  eModifierType_GreasePencilWeightAngle = 74,
+  eModifierType_GreasePencilArray = 75,
+  eModifierType_GreasePencilWeightProximity = 76,
+  eModifierType_GreasePencilHook = 77,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2867,3 +2871,119 @@ typedef struct GreasePencilLengthModifierData {
 
   void *_pad1;
 } GreasePencilLengthModifierData;
+
+typedef struct GreasePencilWeightAngleModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /** #GreasePencilWeightAngleModifierFlag */
+  int flag;
+  float min_weight;
+  /** Axis. */
+  int16_t axis;
+  /** #GreasePencilWeightAngleModifierSpace */
+  int16_t space;
+  /** Angle */
+  float angle;
+  /** Weights output to this vertex group, can be the same as source group. */
+  char target_vgname[64];
+
+  void *_pad;
+} GreasePencilWeightAngleModifierData;
+
+typedef enum GreasePencilWeightAngleModifierFlag {
+  MOD_GREASE_PENCIL_WEIGHT_ANGLE_MULTIPLY_DATA = (1 << 5),
+  MOD_GREASE_PENCIL_WEIGHT_ANGLE_INVERT_OUTPUT = (1 << 6),
+} GreasePencilWeightAngleModifierFlag;
+
+typedef enum GreasePencilWeightAngleModifierSpace {
+  MOD_GREASE_PENCIL_WEIGHT_ANGLE_SPACE_LOCAL = 0,
+  MOD_GREASE_PENCIL_WEIGHT_ANGLE_SPACE_WORLD = 1,
+} GreasePencilWeightAngleModifierSpace;
+
+typedef struct GreasePencilArrayModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  struct Object *object;
+  int count;
+  /** #GreasePencilArrayModifierFlag */
+  int flag;
+  float offset[3];
+  float shift[3];
+
+  float rnd_offset[3];
+  float rnd_rot[3];
+  float rnd_scale[3];
+
+  char _pad[4];
+  /** (first element is the index) random values. (?) */
+  int seed;
+
+  /* Replacement material index. */
+  int mat_rpl;
+} GreasePencilArrayModifierData;
+
+typedef enum GreasePencilArrayModifierFlag {
+  MOD_GREASE_PENCIL_ARRAY_USE_OFFSET = (1 << 7),
+  MOD_GREASE_PENCIL_ARRAY_USE_RELATIVE = (1 << 8),
+  MOD_GREASE_PENCIL_ARRAY_USE_OB_OFFSET = (1 << 9),
+  MOD_GREASE_PENCIL_ARRAY_UNIFORM_RANDOM_SCALE = (1 << 10),
+} GreasePencilArrayModifierFlag;
+
+typedef struct GreasePencilWeightProximityModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  /* #GreasePencilWeightProximityFlag. */
+  int flag;
+  char target_vgname[64];
+  float min_weight;
+
+  float dist_start;
+  float dist_end;
+
+  struct Object *object;
+} GreasePencilWeightProximityModifierData;
+
+typedef enum GreasePencilWeightProximityFlag {
+  MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_INVERT_OUTPUT = (1 << 0),
+  MOD_GREASE_PENCIL_WEIGHT_PROXIMITY_MULTIPLY_DATA = (1 << 1),
+} GreasePencilWeightProximityFlag;
+
+typedef struct GreasePencilHookModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  struct Object *object;
+  /** Optional name of bone target, MAX_ID_NAME-2. */
+  char subtarget[64];
+  char _pad[4];
+
+  /** #GreasePencilHookFlag. */
+  int flag;
+  /** #GreasePencilHookFalloff. */
+  char falloff_type;
+  char _pad1[3];
+  /** Matrix making current transform unmodified. */
+  float parentinv[4][4];
+  /** Visualization of hook. */
+  float cent[3];
+  /** If not zero, falloff is distance where influence zero. */
+  float falloff;
+  float force;
+} GreasePencilHookModifierData;
+
+typedef enum GreasePencilHookFlag {
+  MOD_GRAESE_PENCIL_HOOK_UNIFORM_SPACE = (1 << 0),
+} GreasePencilHookFlag;
+
+typedef enum GreasePencilHookFalloff {
+  MOD_GREASE_PENCIL_HOOK_Falloff_None = 0,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Curve = 1,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Sharp = 2,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Smooth = 3,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Root = 4,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Linear = 5,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Const = 6,
+  MOD_GREASE_PENCIL_HOOK_Falloff_Sphere = 7,
+  MOD_GREASE_PENCIL_HOOK_Falloff_InvSquare = 8,
+} GreasePencilHookFalloff;
