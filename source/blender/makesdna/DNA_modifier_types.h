@@ -2972,7 +2972,7 @@ typedef struct GreasePencilHookModifierData {
 } GreasePencilHookModifierData;
 
 typedef enum GreasePencilHookFlag {
-  MOD_GRAESE_PENCIL_HOOK_UNIFORM_SPACE = (1 << 0),
+  MOD_GREASE_PENCIL_HOOK_UNIFORM_SPACE = (1 << 0),
 } GreasePencilHookFlag;
 
 typedef enum GreasePencilHookFalloff {

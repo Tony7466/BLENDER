@@ -28,6 +28,7 @@
 #include "BLI_color.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_listbase.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -920,6 +921,69 @@ static void legacy_object_modifier_dash(Object &object, GpencilModifierData &leg
                                    false);
 }
 
+static void legacy_object_modifier_hook(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilHook, legacy_md);
+  auto &md_hook = reinterpret_cast<GreasePencilHookModifierData &>(md);
+  auto &legacy_md_hook = reinterpret_cast<HookGpencilModifierData &>(legacy_md);
+
+  md_hook.flag = 0;
+  if (legacy_md_hook.flag & GP_HOOK_UNIFORM_SPACE) {
+    md_hook.flag |= MOD_GREASE_PENCIL_HOOK_UNIFORM_SPACE;
+  }
+  switch (eHookGpencil_Falloff(legacy_md_hook.falloff_type)) {
+    case eGPHook_Falloff_None:
+      md_hook.falloff_type = MOD_GREASE_PENCIL_HOOK_Falloff_None;
+      break;
+    case eGPHook_Falloff_Curve:
+      md_hook.falloff_type = MOD_GREASE_PENCIL_HOOK_Falloff_Curve;
+      break;
+    case eGPHook_Falloff_Sharp:
+      md_hook.falloff_type = MOD_GREASE_PENCIL_HOOK_Falloff_Sharp;
+      break;
+    case eGPHook_Falloff_Smooth:
+      md_hook.falloff_type = MOD_GREASE_PENCIL_HOOK_Falloff_Smooth;
+      break;
+    case eGPHook_Falloff_Root:
+      md_hook.falloff_type = MOD_GREASE_PENCIL_HOOK_Falloff_Root;
+      break;
+    case eGPHook_Falloff_Linear:
+      md_hook.falloff_type = MOD_GREASE_PENCIL_HOOK_Falloff_Linear;
+      break;
+    case eGPHook_Falloff_Const:
+      md_hook.falloff_type = MOD_GREASE_PENCIL_HOOK_Falloff_Const;
+      break;
+    case eGPHook_Falloff_Sphere:
+      md_hook.falloff_type = MOD_GREASE_PENCIL_HOOK_Falloff_Sphere;
+      break;
+    case eGPHook_Falloff_InvSquare:
+      md_hook.falloff_type = MOD_GREASE_PENCIL_HOOK_Falloff_InvSquare;
+      break;
+  }
+  md_hook.object = legacy_md_hook.object;
+  legacy_md_hook.object = nullptr;
+  STRNCPY(md_hook.subtarget, legacy_md_hook.subtarget);
+  copy_m4_m4(md_hook.parentinv, legacy_md_hook.parentinv);
+  copy_v3_v3(md_hook.cent, legacy_md_hook.cent);
+  md_hook.falloff = legacy_md_hook.falloff;
+  md_hook.force = legacy_md_hook.force;
+
+  legacy_object_modifier_influence(md_hook.influence,
+                                   legacy_md_hook.layername,
+                                   legacy_md_hook.layer_pass,
+                                   legacy_md_hook.flag & GP_HOOK_INVERT_LAYER,
+                                   legacy_md_hook.flag & GP_HOOK_INVERT_LAYERPASS,
+                                   &legacy_md_hook.material,
+                                   legacy_md_hook.pass_index,
+                                   legacy_md_hook.flag & GP_HOOK_INVERT_MATERIAL,
+                                   legacy_md_hook.flag & GP_HOOK_INVERT_PASS,
+                                   legacy_md_hook.vgname,
+                                   legacy_md_hook.flag & GP_HOOK_INVERT_VGROUP,
+                                   &legacy_md_hook.curfalloff,
+                                   true);
+}
+
 static void legacy_object_modifier_lattice(Object &object, GpencilModifierData &legacy_md)
 {
   ModifierData &md = legacy_object_modifier_common(
@@ -1035,8 +1099,8 @@ static void legacy_object_modifier_multiply(Object &object, GpencilModifierData 
   md_multiply.fading_thickness = legacy_md_multiply.fading_thickness;
   md_multiply.fading_opacity = legacy_md_multiply.fading_opacity;
 
-  /* Note: This looks wrong, but GPv2 version uses Mirror modifier flags in its `flag` property and
-   * own flags in its `flags` property. */
+  /* Note: This looks wrong, but GPv2 version uses Mirror modifier flags in its `flag` property
+   * and own flags in its `flags` property. */
   legacy_object_modifier_influence(md_multiply.influence,
                                    legacy_md_multiply.layername,
                                    legacy_md_multiply.layer_pass,
@@ -1438,6 +1502,9 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
       case eGpencilModifierType_Dash:
         legacy_object_modifier_dash(object, *gpd_md);
         break;
+      case eGpencilModifierType_Hook:
+        legacy_object_modifier_hook(object, *gpd_md);
+        break;
       case eGpencilModifierType_Lattice:
         legacy_object_modifier_lattice(object, *gpd_md);
         break;
@@ -1480,7 +1547,6 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
 
       case eGpencilModifierType_Build:
       case eGpencilModifierType_Simplify:
-      case eGpencilModifierType_Hook:
       case eGpencilModifierType_Armature:
       case eGpencilModifierType_Time:
       case eGpencilModifierType_Texture:

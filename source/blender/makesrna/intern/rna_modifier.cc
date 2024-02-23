@@ -9161,7 +9161,7 @@ static void rna_def_modifier_grease_pencil_hook(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_OBJECT | ND_TRANSFORM, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "use_falloff_uniform", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_HOOK_UNIFORM_SPACE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_GREASE_PENCIL_HOOK_UNIFORM_SPACE);
   RNA_def_property_ui_text(prop, "Uniform Falloff", "Compensate for non-uniform object scale");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
