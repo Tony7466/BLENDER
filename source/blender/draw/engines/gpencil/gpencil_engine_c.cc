@@ -680,7 +680,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     GPUTexture *tex_fill = txl->dummy_texture;
     GPUTexture *tex_stroke = txl->dummy_texture;
 
-    GPUBatch *geom = draw::DRW_cache_grease_pencil_get(pd->scene, ob);
+    GPUBatch *geom = nullptr;
     DRWShadingGroup *grp;
     int vfirst = -1;
     int vcount = 0;
@@ -806,10 +806,12 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
 
         GPUBatch *new_geom = draw::DRW_cache_grease_pencil_get(pd->scene, ob);
         if (geom != new_geom) {
+          geom = new_geom;
           gpencil_drawcall_flush();
 
-          GPUVertBuf *position_tx = draw::DRW_cache_gpencil_position_buffer_get(ob, pd->cfra);
-          GPUVertBuf *color_tx = draw::DRW_cache_gpencil_color_buffer_get(ob, pd->cfra);
+          GPUVertBuf *position_tx = draw::DRW_cache_grease_pencil_position_buffer_get(pd->scene,
+                                                                                      ob);
+          GPUVertBuf *color_tx = draw::DRW_cache_grease_pencil_color_buffer_get(pd->scene, ob);
           DRW_shgroup_buffer_texture(grp, "gp_pos_tx", position_tx);
           DRW_shgroup_buffer_texture(grp, "gp_col_tx", color_tx);
         }
@@ -835,9 +837,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
       }
     }
 
-    if (geom != nullptr) {
-      DRW_shgroup_call_range(grp, ob, geom, vfirst, vcount);
-    }
+    gpencil_drawcall_flush();
 
     gpencil_vfx_cache_populate(vedata, ob, tgp_ob);
   }
