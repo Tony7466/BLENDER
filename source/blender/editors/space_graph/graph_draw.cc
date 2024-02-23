@@ -1523,7 +1523,8 @@ struct FCurveRenderData {
   Array<KeyVertex> key_points;
   Array<KeyVertex> key_handles;
   Vector<float2> line_points;
-  float4 color_line;
+  float4 line_color;
+  float line_thickness;
 };
 
 static void build_keyframe_render_data(const FCurve *fcu,
@@ -1571,9 +1572,17 @@ static void build_line_render_data(FCurve *fcu,
   const float unit_scale = ANIM_unit_mapping_get_factor(
       args.anim_context->scene, args.id, fcu, mapping_flag, &offset);
 
-  fcu_render_data.color_line = {
+  fcu_render_data.line_color = {
       fcu->color[0], fcu->color[1], fcu->color[2], fcurve_display_alpha(fcu)};
   fcu_render_data.line_points = Vector<float2>();
+
+  if (fcu->flag & FCURVE_ACTIVE && !BKE_fcurve_is_protected(fcu)) {
+    fcu_render_data.line_thickness = 2.5f;
+  }
+  else {
+    fcu_render_data.line_thickness = 1.0f;
+  }
+
   Vector<float2> &curve_vertices = fcu_render_data.line_points;
 
   /* Extrapolate to the left? */
@@ -1734,9 +1743,11 @@ static void draw_fcurve_keys(Array<FCurveRenderData> &render_data)
     }
   }
 
-  GPU_vertbuf_tag_dirty(vertex_buffer_keys);
-  GPU_vertbuf_use(vertex_buffer_keys);
-  GPU_batch_draw_range(batch_keys, 0, verts_in_buffer);
+  if (verts_in_buffer != 0) {
+    GPU_vertbuf_tag_dirty(vertex_buffer_keys);
+    GPU_vertbuf_use(vertex_buffer_keys);
+    GPU_batch_draw_range(batch_keys, 0, verts_in_buffer);
+  }
 
   GPU_batch_discard(batch_keys);
   GPU_program_point_size(false);
@@ -1769,13 +1780,20 @@ static void draw_fcurve_lines(Array<FCurveRenderData> &render_data)
   GPU_viewport_size_get_f(viewport_size);
   GPU_shader_uniform_2fv(batch_lines->shader, "viewport_size", &viewport_size[2]);
 
+  if (U.animation_flag & USER_ANIM_HIGH_QUALITY_DRAWING) {
+    GPU_line_smooth(true);
+  }
+  GPU_blend(GPU_BLEND_ALPHA);
+
   int verts_in_buffer = 0;
   float2 *vertex_buffer_data = static_cast<float2 *>(GPU_vertbuf_get_data(vertex_buffer_lines));
   for (const FCurveRenderData &fcu_render_data : render_data) {
     const int32_t uniform_loc = GPU_shader_get_builtin_uniform(batch_lines->shader,
                                                                GPU_UNIFORM_COLOR);
     GPU_shader_uniform_float_ex(
-        batch_lines->shader, uniform_loc, 4, 1, fcu_render_data.color_line);
+        batch_lines->shader, uniform_loc, 4, 1, fcu_render_data.line_color);
+
+    GPU_line_width(fcu_render_data.line_thickness);
 
     for (const float2 &p : fcu_render_data.line_points) {
       vertex_buffer_data[verts_in_buffer] = p;
@@ -1790,19 +1808,26 @@ static void draw_fcurve_lines(Array<FCurveRenderData> &render_data)
 
     /* Flush buffer after every line to make sure the line strip ends and is drawn with the right
      * color. */
-    GPU_vertbuf_tag_dirty(vertex_buffer_lines);
-    GPU_vertbuf_use(vertex_buffer_lines);
-    GPU_batch_draw_range(batch_lines, 0, verts_in_buffer);
+    if (verts_in_buffer != 0) {
+      GPU_vertbuf_tag_dirty(vertex_buffer_lines);
+      GPU_vertbuf_use(vertex_buffer_lines);
+      GPU_batch_draw_range(batch_lines, 0, verts_in_buffer);
+    }
     verts_in_buffer = 0;
   }
 
   GPU_batch_discard(batch_lines);
+
+  if (U.animation_flag & USER_ANIM_HIGH_QUALITY_DRAWING) {
+    GPU_line_smooth(false);
+  }
+  GPU_blend(GPU_BLEND_NONE);
 }
 
 static void draw_fcurve_render_data(Array<FCurveRenderData> &render_data)
 {
   draw_fcurve_lines(render_data);
-  // draw_fcurve_keys(render_data);
+  draw_fcurve_keys(render_data);
 }
 
 /** \} */
