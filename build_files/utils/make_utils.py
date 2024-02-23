@@ -29,15 +29,21 @@ def call(cmd: Sequence[str], exit_on_error: bool = True, silent: bool = False, e
         cmd_str += " ".join([str(x) for x in cmd])
         print(cmd_str)
 
+    env_full = None
+    if env:
+        env_full = os.environ.copy()
+        for key, value in env.items():
+            env_full[key] = value
+
     # Flush to ensure correct order output on Windows.
     sys.stdout.flush()
     sys.stderr.flush()
 
     if silent:
         retcode = subprocess.call(
-            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env_full)
     else:
-        retcode = subprocess.call(cmd, env=env)
+        retcode = subprocess.call(cmd, env=env_full)
 
     if exit_on_error and retcode != 0:
         sys.exit(retcode)
@@ -163,8 +169,7 @@ def git_update_submodule(git_command: str, submodule_dir: str) -> bool:
     # Doing "git lfs pull" after checkout with GIT_LFS_SKIP_SMUDGE=true seems to be the
     # valid process. For example, https://www.mankier.com/7/git-lfs-faq
 
-    env = os.environ.copy()
-    env["GIT_LFS_SKIP_SMUDGE"] = "1"
+    env = {"GIT_LFS_SKIP_SMUDGE": "1"}
 
     if call((git_command, "submodule", "update", "--init", "--progress", submodule_dir),
             exit_on_error=False, env=env) != 0:
