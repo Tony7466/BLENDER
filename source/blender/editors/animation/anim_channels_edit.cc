@@ -4532,13 +4532,12 @@ static void deselect_all_fcurves(bAnimContext *ac, const bool hide)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static rctf calculate_selection_fcurve_bounds_and_unhide(
-    bContext *C,
-    ListBase /* CollectionPointerLink */ *selection,
-    PropertyRNA *prop,
-    const blender::StringRefNull id_to_prop_path,
-    const int index,
-    const bool whole_array)
+static rctf calculate_fcurve_bounds_and_unhide(bContext *C,
+                                               ID *id,
+                                               PointerRNA *ptr,
+                                               PropertyRNA *prop,
+                                               const bool whole_array,
+                                               const int index)
 {
   rctf bounds;
   bounds.xmin = INFINITY;
@@ -4551,10 +4550,74 @@ static rctf calculate_selection_fcurve_bounds_and_unhide(
     return bounds;
   }
 
+  AnimData *anim_data = BKE_animdata_from_id(id);
+  if (anim_data == nullptr) {
+    return bounds;
+  }
+
   Scene *scene = CTX_data_scene(C);
   float frame_range[2];
   get_view_range(scene, true, frame_range);
+  float mapped_frame_range[2];
+  mapped_frame_range[0] = BKE_nla_tweakedit_remap(
+      anim_data, frame_range[0], NLATIME_CONVERT_UNMAP);
+  mapped_frame_range[1] = BKE_nla_tweakedit_remap(
+      anim_data, frame_range[1], NLATIME_CONVERT_UNMAP);
+
   const bool include_handles = false;
+  const std::optional<std::string> path = RNA_path_from_ID_to_property(ptr, prop);
+
+  blender::Vector<FCurve *> fcurves;
+  if (RNA_property_array_check(prop) && whole_array) {
+    const int length = RNA_property_array_length(ptr, prop);
+    for (int i = 0; i < length; i++) {
+      FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
+          anim_data, path->c_str(), i, nullptr, nullptr);
+      if (fcurve != nullptr) {
+        fcurves.append(fcurve);
+      }
+    }
+  }
+  else {
+    FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
+        anim_data, path->c_str(), index, nullptr, nullptr);
+    if (fcurve != nullptr) {
+      fcurves.append(fcurve);
+    }
+  }
+
+  for (FCurve *fcurve : fcurves) {
+    fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
+    rctf fcu_bounds;
+    get_normalized_fcurve_bounds(fcurve,
+                                 anim_data,
+                                 ge_space_link,
+                                 scene,
+                                 id,
+                                 include_handles,
+                                 mapped_frame_range,
+                                 &fcu_bounds);
+
+    if (BLI_rctf_is_valid(&fcu_bounds)) {
+      BLI_rctf_union(&bounds, &fcu_bounds);
+    }
+  }
+
+  return bounds;
+}
+
+static rctf calculate_selection_fcurve_bounds(bContext *C,
+                                              ListBase /* CollectionPointerLink */ *selection,
+                                              PropertyRNA *prop,
+                                              const blender::StringRefNull id_to_prop_path,
+                                              const int index,
+                                              const bool whole_array)
+{
+  rctf bounds;
+  bounds.xmin = INFINITY;
+  bounds.xmax = -INFINITY;
+  bounds.ymin = INFINITY;
+  bounds.ymax = -INFINITY;
 
   LISTBASE_FOREACH (CollectionPointerLink *, selected, selection) {
     ID *selected_id = selected->ptr.owner_id;
@@ -4574,45 +4637,10 @@ static rctf calculate_selection_fcurve_bounds_and_unhide(
       resolved_ptr = selected->ptr;
       resolved_prop = prop;
     }
-    const std::optional<std::string> path = RNA_path_from_ID_to_property(&resolved_ptr,
-                                                                         resolved_prop);
+    rctf fcu_bounds = calculate_fcurve_bounds_and_unhide(
+        C, selected_id, &resolved_ptr, resolved_prop, whole_array, index);
 
-    AnimData *anim_data = BKE_animdata_from_id(selected_id);
-    blender::Vector<FCurve *> fcurves;
-    if (RNA_property_array_check(prop) && whole_array) {
-      const int length = RNA_property_array_length(&selected->ptr, prop);
-      for (int i = 0; i < length; i++) {
-        FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
-            anim_data, path->c_str(), i, nullptr, nullptr);
-        if (fcurve != nullptr) {
-          fcurves.append(fcurve);
-        }
-      }
-    }
-    else {
-      FCurve *fcurve = BKE_animadata_fcurve_find_by_rna_path(
-          anim_data, path->c_str(), index, nullptr, nullptr);
-      if (fcurve != nullptr) {
-        fcurves.append(fcurve);
-      }
-    }
-
-    for (FCurve *fcurve : fcurves) {
-      fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
-      rctf fcu_bounds;
-      float mapped_frame_range[2];
-      mapped_frame_range[0] = BKE_nla_tweakedit_remap(
-          anim_data, frame_range[0], NLATIME_CONVERT_UNMAP);
-      mapped_frame_range[1] = BKE_nla_tweakedit_remap(
-          anim_data, frame_range[1], NLATIME_CONVERT_UNMAP);
-      get_normalized_fcurve_bounds(fcurve,
-                                   anim_data,
-                                   ge_space_link,
-                                   scene,
-                                   selected_id,
-                                   include_handles,
-                                   mapped_frame_range,
-                                   &fcu_bounds);
+    if (BLI_rctf_is_valid(&fcu_bounds)) {
       BLI_rctf_union(&bounds, &fcu_bounds);
     }
   }
@@ -4622,12 +4650,12 @@ static rctf calculate_selection_fcurve_bounds_and_unhide(
 
 static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 {
-  PointerRNA ptr = {nullptr};
-  PropertyRNA *prop = nullptr;
+  PointerRNA button_ptr = {nullptr};
+  PropertyRNA *button_prop = nullptr;
   uiBut *but;
   int index;
 
-  if (!(but = UI_context_active_but_prop_get(C, &ptr, &prop, &index))) {
+  if (!(but = UI_context_active_but_prop_get(C, &button_ptr, &button_prop, &index))) {
     /* Pass event on if no active button found. */
     return (OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH);
   }
@@ -4645,14 +4673,10 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
   bool path_from_id;
   std::optional<std::string> id_to_prop_path;
   const bool selected_list_success = UI_context_copy_to_selected_list(
-      C, &ptr, prop, &selection, &path_from_id, &id_to_prop_path);
+      C, &button_ptr, button_prop, &selection, &path_from_id, &id_to_prop_path);
 
-  if (BLI_listbase_is_empty(&selection) || !selected_list_success) {
-    WM_report(RPT_ERROR, "Nothing selected");
-    retval = OPERATOR_CANCELLED;
-  }
-  else if (!context_find_graph_editor(
-               C, &wm_context_temp.win, &wm_context_temp.area, &wm_context_temp.region))
+  if (!context_find_graph_editor(
+          C, &wm_context_temp.win, &wm_context_temp.area, &wm_context_temp.region))
   {
     WM_report(RPT_WARNING, "No open Graph Editor window found");
     retval = OPERATOR_CANCELLED;
@@ -4674,12 +4698,29 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
     }
     else {
       const bool isolate = RNA_boolean_get(op->ptr, "isolate");
-      deselect_all_fcurves(&ac, isolate);
-
       const bool whole_array = RNA_boolean_get(op->ptr, "all");
 
-      rctf bounds = calculate_selection_fcurve_bounds_and_unhide(
-          C, &selection, prop, id_to_prop_path.value_or(""), index, whole_array);
+      deselect_all_fcurves(&ac, isolate);
+
+      rctf bounds;
+      bounds.xmin = INFINITY;
+      bounds.xmax = -INFINITY;
+      bounds.ymin = INFINITY;
+      bounds.ymax = -INFINITY;
+      if (selected_list_success && !BLI_listbase_is_empty(&selection)) {
+        rctf selection_bounds = calculate_selection_fcurve_bounds(
+            C, &selection, button_prop, id_to_prop_path.value_or(""), index, whole_array);
+        if (BLI_rctf_is_valid(&selection_bounds)) {
+          BLI_rctf_union(&bounds, &selection_bounds);
+        }
+      }
+
+      /* The object to which the button belongs might not be selected, or selectable. */
+      rctf button_bounds = calculate_fcurve_bounds_and_unhide(
+          C, button_ptr.owner_id, &button_ptr, button_prop, whole_array, index);
+      if (BLI_rctf_is_valid(&button_bounds)) {
+        BLI_rctf_union(&bounds, &button_bounds);
+      }
 
       if (!BLI_rctf_is_valid(&bounds)) {
         WM_report(RPT_ERROR, "F-Curves have no valid size");
