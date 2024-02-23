@@ -16,7 +16,7 @@
  * #include "GPU_debug.h"
  * static void do_render_engine(Render *re)
  * {
- *   GPU_debug_capture_begin();
+ *   GPU_debug_capture_begin(__func__);
  *   RE_engine_render(re, false);
  *   GPU_debug_capture_end();
  * }
