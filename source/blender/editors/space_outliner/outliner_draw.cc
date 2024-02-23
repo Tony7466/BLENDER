@@ -1783,7 +1783,7 @@ static void outliner_draw_userbuts(uiBlock *block,
       tip = TIP_("Item is protected from removal.\nClick to mark for deletion");
     }
     else {
-      tip = TIP_("Iitem has no users and will be removed.\nClick to protect from deletion");
+      tip = TIP_("Item has no users and will be removed.\nClick to protect from deletion");
     }
 
     bt = uiDefIconButBitS(block,
