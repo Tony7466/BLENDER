@@ -14,10 +14,6 @@
 
 #include "RNA_enum_types.hh"
 
-#ifdef WITH_OPENVDB
-#  include <openvdb/tools/Interpolation.h>
-#endif
-
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_sample_grid_index_cc {
