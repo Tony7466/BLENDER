@@ -58,10 +58,6 @@
 
 #include "MEM_guardedalloc.h"
 
-/* For Line Art modifier cache calls. */
-#include "MOD_gpencil_legacy_lineart.h"
-#include "MOD_lineart.h"
-
 using blender::float3;
 using blender::Span;
 using blender::uint3;
@@ -1362,7 +1358,6 @@ static void grease_pencil_evaluate_modifiers(Depsgraph *depsgraph,
   if (BKE_object_is_in_editmode(object)) {
     required_mode |= eModifierMode_Editmode;
   }
-
   ModifierApplyFlag apply_flag = use_render ? MOD_APPLY_RENDER : MOD_APPLY_USECACHE;
   const ModifierEvalContext mectx = {depsgraph, object, apply_flag};
 
