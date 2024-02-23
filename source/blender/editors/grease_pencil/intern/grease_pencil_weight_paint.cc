@@ -72,7 +72,7 @@ Set<std::string> get_bone_deformed_vertex_groups(Object &object)
   /* Lambda function for finding deforming bones with a name matching a vertex group. */
   Set<std::string> bone_deformed_vgroups;
   const auto find_pose_channels = [&](ModifierData *md) {
-    for (; md; md->next) {
+    for (; md; md = md->next) {
       if (!(md->mode & (eModifierMode_Realtime | eModifierMode_Virtual)) ||
           md->type != eModifierType_Armature)
       {
@@ -227,120 +227,6 @@ void normalize_vertex_weights(const MDeformVert &dvert,
                                  vertex_group_is_locked,
                                  vertex_group_is_bone_deformed);
   }
-}
-
-struct ClosestGreasePencilDrawing {
-  const bke::greasepencil::Drawing *drawing = nullptr;
-  int active_defgroup_index;
-  ed::curves::FindClosestData elem = {};
-};
-
-static int sample_weight(bContext *C, wmOperator * /*op*/, const wmEvent *event)
-{
-  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
-
-  /* Get the active vertex group. */
-  const int object_defgroup_nr = BKE_object_defgroup_active_index_get(vc.obact) - 1;
-  if (object_defgroup_nr == -1) {
-    return OPERATOR_CANCELLED;
-  }
-  const bDeformGroup *object_defgroup = static_cast<const bDeformGroup *>(
-      BLI_findlink(BKE_object_defgroup_list(vc.obact), object_defgroup_nr));
-
-  /* Collect visible drawings. */
-  const Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, const_cast<Object *>(vc.obact));
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(vc.obact->data);
-  const Vector<DrawingInfo> drawings = retrieve_visible_drawings(*vc.scene, grease_pencil);
-
-  /* Find stroke points closest to mouse cursor position. */
-  const ClosestGreasePencilDrawing closest = threading::parallel_reduce(
-      drawings.index_range(),
-      1L,
-      ClosestGreasePencilDrawing(),
-      [&](const IndexRange range, const ClosestGreasePencilDrawing &init) {
-        ClosestGreasePencilDrawing new_closest = init;
-        for (const int i : range) {
-          DrawingInfo info = drawings[i];
-          const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
-
-          /* Skip drawing when it doesn't use the active vertex group. */
-          const int drawing_defgroup_nr = BLI_findstringindex(
-              &info.drawing.strokes().vertex_group_names,
-              object_defgroup->name,
-              offsetof(bDeformGroup, name));
-          if (drawing_defgroup_nr == -1) {
-            continue;
-          }
-
-          /* Get deformation by modifiers. */
-          bke::crazyspace::GeometryDeformation deformation =
-              bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                  ob_eval, *vc.obact, info.layer_index, info.frame_number);
-
-          IndexMaskMemory memory;
-          const IndexMask points = retrieve_visible_points(*vc.obact, info.drawing, memory);
-          if (points.is_empty()) {
-            continue;
-          }
-          const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
-          const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc.rv3d,
-                                                                              layer_to_world);
-          std::optional<ed::curves::FindClosestData> new_closest_elem =
-              ed::curves::closest_elem_find_screen_space(vc,
-                                                         info.drawing.strokes().points_by_curve(),
-                                                         deformation.positions,
-                                                         projection,
-                                                         points,
-                                                         bke::AttrDomain::Point,
-                                                         event->mval,
-                                                         new_closest.elem);
-          if (new_closest_elem) {
-            new_closest.elem = *new_closest_elem;
-            new_closest.drawing = &info.drawing;
-            new_closest.active_defgroup_index = drawing_defgroup_nr;
-          }
-        }
-        return new_closest;
-      },
-      [](const ClosestGreasePencilDrawing &a, const ClosestGreasePencilDrawing &b) {
-        return (a.elem.distance < b.elem.distance) ? a : b;
-      });
-
-  if (!closest.drawing) {
-    return OPERATOR_CANCELLED;
-  }
-
-  /* From the closest point found, get the vertex weight in the active vertex group. */
-  const VArray<float> point_weights = bke::varray_for_deform_verts(
-      closest.drawing->strokes().deform_verts(), closest.active_defgroup_index);
-  const float new_weight = math::clamp(point_weights[closest.elem.index], 0.0f, 1.0f);
-
-  /* Set the new brush weight. */
-  const ToolSettings *ts = vc.scene->toolsettings;
-  Brush *brush = BKE_paint_brush(&ts->wpaint->paint);
-  BKE_brush_weight_set(vc.scene, brush, new_weight);
-
-  /* Update brush settings in UI. */
-  WM_main_add_notifier(NC_BRUSH | NA_EDITED, nullptr);
-
-  return OPERATOR_FINISHED;
-}
-
-static void GREASE_PENCIL_OT_weight_sample(wmOperatorType *ot)
-{
-  /* Identifiers. */
-  ot->name = "Weight Paint Sample Weight";
-  ot->idname = "GREASE_PENCIL_OT_weight_sample";
-  ot->description =
-      "Set the weight of the Draw tool to the weight of the vertex under the mouse cursor";
-
-  /* Callbacks. */
-  ot->poll = grease_pencil_weight_painting_poll;
-  ot->invoke = sample_weight;
-
-  /* Flags. */
-  ot->flag = OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
 }
 
 static int toggle_weight_tool_direction(bContext *C, wmOperator * /*op*/)
@@ -621,7 +507,7 @@ static void init_weight_gradient_cache(const bContext &C,
   /* Get or create active vertex group in GP object. */
   int object_defgroup_nr = BKE_object_defgroup_active_index_get(tool.object) - 1;
   if (object_defgroup_nr == -1) {
-    object_defgroup_nr = ed::greasepencil::create_vertex_group_in_object(*tool.object);
+    object_defgroup_nr = create_vertex_group_in_object(*tool.object);
   }
   bDeformGroup *object_defgroup = static_cast<bDeformGroup *>(
       BLI_findlink(BKE_object_defgroup_list(tool.object), object_defgroup_nr));
@@ -635,7 +521,7 @@ static void init_weight_gradient_cache(const bContext &C,
       object_locked_defgroups.add(dg->name);
     }
   }
-  object_bone_deformed_defgroups = ed::greasepencil::get_bone_deformed_vertex_groups(*tool.object);
+  object_bone_deformed_defgroups = get_bone_deformed_vertex_groups(*tool.object);
 
   /* Build cache for all editable drawings. */
   const Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
@@ -771,6 +657,5 @@ void ED_operatortypes_grease_pencil_weight_paint()
 {
   using namespace blender::ed::greasepencil;
   WM_operatortype_append(GREASE_PENCIL_OT_weight_toggle_direction);
-  WM_operatortype_append(GREASE_PENCIL_OT_weight_sample);
   WM_operatortype_append(GREASE_PENCIL_OT_weight_gradient);
 }

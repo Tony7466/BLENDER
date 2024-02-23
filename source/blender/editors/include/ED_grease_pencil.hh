@@ -50,6 +50,7 @@ void ED_operatortypes_grease_pencil_layers();
 void ED_operatortypes_grease_pencil_select();
 void ED_operatortypes_grease_pencil_edit();
 void ED_operatortypes_grease_pencil_material();
+void ED_operatortypes_grease_pencil_weight_paint();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
 
@@ -164,6 +165,7 @@ bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
+bool grease_pencil_weight_painting_poll(bContext *C);
 
 struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;
