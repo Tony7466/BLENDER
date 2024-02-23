@@ -2097,7 +2097,7 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
 
   seq_cache_free_temp_cache(context->scene, context->task_id, timeline_frame);
   /* Make sure we only keep the `anim` data for strips that are in view. */
-  SEQ_relations_free_all_anim_ibufs(context->scene, timeline_frame);
+  // SEQ_relations_free_all_anim_ibufs(context->scene, timeline_frame);
 
   if (!strips.is_empty() && !out) {
     BLI_mutex_lock(&seq_render_mutex);

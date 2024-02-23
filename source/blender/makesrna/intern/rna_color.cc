@@ -607,9 +607,9 @@ static bool seq_find_colorspace_settings_cb(Sequence *seq, void *user_data)
   return true;
 }
 
-static bool seq_free_anim_cb(Sequence *seq, void * /*user_data*/)
+static bool seq_free_anim_cb(Sequence *seq, void *user_data)
 {
-  SEQ_relations_sequence_free_anim(seq);
+  SEQ_relations_sequence_free_anim(static_cast<Scene *>(user_data), seq);
   return true;
 }
 
@@ -659,7 +659,7 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
       Sequence *seq = cb_data.r_seq;
 
       if (seq) {
-        SEQ_relations_sequence_free_anim(seq);
+        SEQ_relations_sequence_free_anim(scene, seq);
 
         if (seq->strip->proxy && seq->strip->proxy->anim) {
           IMB_free_anim(seq->strip->proxy->anim);
@@ -669,7 +669,7 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
         SEQ_relations_invalidate_cache_raw(scene, seq);
       }
       else {
-        SEQ_for_each_callback(&scene->ed->seqbase, seq_free_anim_cb, nullptr);
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_free_anim_cb, scene);
       }
 
       WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, nullptr);

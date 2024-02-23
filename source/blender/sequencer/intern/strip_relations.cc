@@ -256,7 +256,7 @@ void SEQ_relations_free_imbuf(Scene *scene, ListBase *seqbase, bool for_render)
 
     if (seq->strip) {
       if (seq->type == SEQ_TYPE_MOVIE) {
-        SEQ_relations_sequence_free_anim(seq);
+        SEQ_relations_sequence_free_anim(scene, seq);
       }
       if (seq->type == SEQ_TYPE_SPEED) {
         seq_effect_speed_rebuild_map(scene, seq);
@@ -282,7 +282,7 @@ static void sequencer_all_free_anim_ibufs(const Scene *scene,
     if (!SEQ_time_strip_intersects_frame(scene, seq, timeline_frame) ||
         !((frame_range[0] <= timeline_frame) && (frame_range[1] > timeline_frame)))
     {
-      SEQ_relations_sequence_free_anim(seq);
+      SEQ_relations_sequence_free_anim(scene, seq);
     }
     if (seq->type == SEQ_TYPE_META) {
       int meta_range[2];
@@ -388,21 +388,6 @@ bool SEQ_relations_render_loop_check(Sequence *seq_main, Sequence *seq)
   }
 
   return false;
-}
-
-void SEQ_relations_sequence_free_anim(Sequence *seq)
-{
-  while (seq->anims.last) {
-    StripAnim *sanim = static_cast<StripAnim *>(seq->anims.last);
-
-    if (sanim->anim) {
-      IMB_free_anim(sanim->anim);
-      sanim->anim = nullptr;
-    }
-
-    BLI_freelinkN(&seq->anims, sanim);
-  }
-  BLI_listbase_clear(&seq->anims);
 }
 
 void SEQ_relations_session_uid_generate(Sequence *sequence)

@@ -171,7 +171,7 @@ static void seq_sequence_free_ex(Scene *scene,
     seq_free_strip(seq->strip);
   }
 
-  SEQ_relations_sequence_free_anim(seq);
+  SEQ_relations_sequence_free_anim(scene, seq);
 
   if (seq->type & SEQ_TYPE_EFFECT) {
     SeqEffectHandle sh = SEQ_effect_handle_get(seq);
