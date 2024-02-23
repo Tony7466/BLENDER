@@ -8,6 +8,7 @@ Utility functions for make update and make tests.
 """
 
 import re
+import os
 import shutil
 import subprocess
 import sys
