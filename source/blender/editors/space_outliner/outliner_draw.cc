@@ -1773,36 +1773,19 @@ static void outliner_draw_userbuts(uiBlock *block,
     uiBut *bt;
     ID *id = tselem->id;
     const char *tip = nullptr;
-    char buf[BLI_STR_FORMAT_INT32_GROUPED_SIZE] = "";
     int but_flag = UI_BUT_DRAG_LOCK;
 
     if (ID_IS_LINKED(id)) {
       but_flag |= UI_BUT_DISABLED;
     }
 
-    BLI_str_format_int_grouped(buf, id->us);
-    bt = uiDefBut(block,
-                  UI_BTYPE_BUT,
-                  1,
-                  buf,
-                  int(region->v2d.cur.xmax - OL_TOG_USER_BUTS_USERS),
-                  te->ys,
-                  UI_UNIT_X,
-                  UI_UNIT_Y,
-                  nullptr,
-                  0.0,
-                  0.0,
-                  0,
-                  0,
-                  TIP_("Number of users of this data-block"));
-    UI_but_flag_enable(bt, but_flag);
-
     if (id->flag & LIB_FAKEUSER) {
-      tip = TIP_("Data-block will be retained using a fake user");
+      tip = TIP_("Item is protected from removal.\nClick to mark for deletion");
     }
     else {
-      tip = TIP_("Data-block has no users and will be deleted");
+      tip = TIP_("Iitem has no users and will be removed.\nClick to protect from deletion");
     }
+
     bt = uiDefIconButBitS(block,
                           UI_BTYPE_ICON_TOGGLE,
                           LIB_FAKEUSER,
@@ -1818,7 +1801,11 @@ static void outliner_draw_userbuts(uiBlock *block,
                           0,
                           0,
                           tip);
+
     UI_but_func_set(bt, restrictbutton_id_user_toggle, id, nullptr);
+    char overlay[5];
+    BLI_str_format_integer_unit(overlay, id->us);
+    UI_but_icon_indicator_set(bt, overlay);
     UI_but_flag_enable(bt, but_flag);
   });
 }
