@@ -32,11 +32,9 @@ void main()
     return;
   }
 
-  GBufferReader gbuf = gbuffer_read(
-      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
-
   HorizonScanContext ctx;
-  ctx.closure = gbuffer_closure_get_by_layer(gbuf, closure_index);
+  ctx.closure = gbuffer_read_bin(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres, closure_index);
   ctx.closure.N = drw_normal_world_to_view(ctx.closure.N);
 
   if (ctx.closure.type == CLOSURE_NONE_ID) {

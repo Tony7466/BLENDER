@@ -71,10 +71,8 @@ void main()
   float center_depth = texelFetch(depth_tx, texel_fullres, 0).r;
   vec3 center_P = drw_point_screen_to_world(vec3(center_uv, center_depth));
 
-  GBufferReader gbuf = gbuffer_read(
-      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
-
-  ClosureUndetermined center_closure = gbuffer_closure_get_by_layer(gbuf, closure_index);
+  ClosureUndetermined center_closure = gbuffer_read_bin(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres, closure_index);
 
   if (center_closure.type == CLOSURE_NONE_ID) {
     /* Output nothing. This shouldn't even be loaded. */
@@ -136,9 +134,8 @@ void main()
       continue;
     }
 
-    GBufferReader sample_gbuf = gbuffer_read(
-        gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, sample_texel);
-    ClosureUndetermined sample_closure = gbuffer_closure_get_by_layer(sample_gbuf, closure_index);
+    ClosureUndetermined sample_closure = gbuffer_read_bin(
+        gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, sample_texel, closure_index);
 
     if (sample_closure.type == CLOSURE_NONE_ID) {
       continue;

@@ -21,10 +21,8 @@ void main()
   ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
                         uniform_buf.raytrace.resolution_bias;
 
-  GBufferReader gbuf = gbuffer_read(
-      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
-
-  ClosureUndetermined closure = gbuffer_closure_get_by_layer(gbuf, closure_index);
+  ClosureUndetermined closure = gbuffer_read_bin(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres, closure_index);
 
   if (closure.type == CLOSURE_NONE_ID) {
     imageStore(out_ray_data_img, texel, vec4(0.0));

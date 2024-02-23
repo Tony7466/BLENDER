@@ -81,10 +81,8 @@ void main()
     return;
   }
 
-  GBufferReader gbuf = gbuffer_read(
-      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
-
-  ClosureUndetermined closure_center = gbuffer_closure_get_by_layer(gbuf, closure_index);
+  ClosureUndetermined closure_center = gbuffer_read_bin(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres, closure_index);
 
   if (closure_center.type == CLOSURE_NONE_ID) {
     return;

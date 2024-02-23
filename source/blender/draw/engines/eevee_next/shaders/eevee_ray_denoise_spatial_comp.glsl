@@ -109,10 +109,8 @@ void main()
     return;
   }
 
-  GBufferReader gbuf = gbuffer_read(
-      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
-
-  ClosureUndetermined closure = gbuffer_closure_get_by_layer(gbuf, closure_index);
+  ClosureUndetermined closure = gbuffer_read_bin(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres, closure_index);
 
   if (closure.type == CLOSURE_NONE_ID) {
     invalid_pixel_write(texel_fullres);
