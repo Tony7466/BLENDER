@@ -50,8 +50,8 @@ namespace blender::bke::greasepencil::convert {
 /* -------------------------------------------------------------------- */
 /** \name Animation conversion helpers.
  *
- * These utils will call given callback over all relavant fcurves (also includes drivers, and
- * actions linked through the NLA).
+ * These utilities will call given callback over all relevant F-curves
+ * (also includes drivers, and actions linked through the NLA).
  * \{ */
 
 static bool legacy_fcurves_process(ListBase &fcurves,
@@ -457,6 +457,18 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
 
     /* TODO: Update drawing user counts. */
   }
+
+  /* Second loop, to write to layer attributes after all layers were created. */
+  MutableAttributeAccessor layer_attributes = grease_pencil.attributes_for_write();
+  SpanAttributeWriter<int> layer_passes = layer_attributes.lookup_or_add_for_write_span<int>(
+      "pass_index", bke::AttrDomain::Layer);
+
+  layer_idx = 0;
+  LISTBASE_FOREACH_INDEX (bGPDlayer *, gpl, &gpd.layers, layer_idx) {
+    layer_passes.span[layer_idx] = int(gpl->pass_index);
+  }
+
+  layer_passes.finish();
 
   /* Copy vertex group names and settings. */
   BKE_defgroup_copy_list(&grease_pencil.vertex_group_names, &gpd.vertex_group_names);
