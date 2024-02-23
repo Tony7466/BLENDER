@@ -70,7 +70,7 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
 {
   GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)md;
 
-  if ((lmd->influence.layer_name[0] == '\0') || (lmd->influence.material == nullptr)) {
+  if (lmd->target_layer[0] == '\0' || !lmd->target_material) {
     return true;
   }
   if (lmd->source_type == LINEART_SOURCE_OBJECT && !lmd->source_object) {
@@ -177,8 +177,8 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetEnabled(layout, !is_baked);
 
-  if (!BKE_grease_pencil_is_first_lineart_in_stack(static_cast<const Object *>(ob_ptr.data),
-                                                   static_cast<const ModifierData *>(ptr->data)))
+  if (!BKE_grease_pencil_is_first_lineart(
+          *static_cast<const GreasePencilLineartModifierData *>(ptr->data)))
   {
     uiItemR(layout, ptr, "use_cache", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
@@ -198,9 +198,9 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   }
 
   uiLayout *col = uiLayoutColumn(layout, false);
-  uiItemPointerR(col, ptr, "layer_filter", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
+  uiItemPointerR(col, ptr, "target_layer", &obj_data_ptr, "layers", nullptr, ICON_GREASEPENCIL);
   uiItemPointerR(
-      col, ptr, "material_filter", &obj_data_ptr, "materials", nullptr, ICON_GREASEPENCIL);
+      col, ptr, "target_material", &obj_data_ptr, "materials", nullptr, ICON_GREASEPENCIL);
 
   col = uiLayoutColumn(layout, false);
   uiItemR(col, ptr, "thickness", UI_ITEM_R_SLIDER, IFACE_("Line Thickness"), ICON_NONE);
@@ -217,8 +217,8 @@ static void edge_types_panel_draw(const bContext * /*C*/, Panel *panel)
 
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
-  const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
+  const bool is_first = BKE_grease_pencil_is_first_lineart(
+      *static_cast<const GreasePencilLineartModifierData *>(ptr->data));
   const bool has_light = RNA_pointer_get(ptr, "light_contour_object").data != nullptr;
 
   uiLayoutSetEnabled(layout, !is_baked);
@@ -305,8 +305,8 @@ static void options_light_reference_draw(const bContext * /*C*/, Panel *panel)
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
   const bool has_light = RNA_pointer_get(ptr, "light_contour_object").data != nullptr;
-  const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
+  const bool is_first = BKE_grease_pencil_is_first_lineart(
+      *static_cast<const GreasePencilLineartModifierData *>(ptr->data));
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetEnabled(layout, !is_baked);
@@ -336,8 +336,8 @@ static void options_panel_draw(const bContext * /*C*/, Panel *panel)
 
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
-  const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
+  const bool is_first = BKE_grease_pencil_is_first_lineart(
+      *static_cast<const GreasePencilLineartModifierData *>(ptr->data));
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetEnabled(layout, !is_baked);
@@ -494,8 +494,8 @@ static void face_mark_panel_draw_header(const bContext * /*C*/, Panel *panel)
 
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
-  const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
+  const bool is_first = BKE_grease_pencil_is_first_lineart(
+      *static_cast<const GreasePencilLineartModifierData *>(ptr->data));
 
   if (!use_cache || is_first) {
     uiLayoutSetEnabled(layout, !is_baked);
@@ -515,8 +515,8 @@ static void face_mark_panel_draw(const bContext * /*C*/, Panel *panel)
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_mark = RNA_boolean_get(ptr, "use_face_mark");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
-  const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
+  const bool is_first = BKE_grease_pencil_is_first_lineart(
+      *static_cast<const GreasePencilLineartModifierData *>(ptr->data));
 
   uiLayoutSetEnabled(layout, !is_baked);
 
@@ -543,8 +543,8 @@ static void chaining_panel_draw(const bContext * /*C*/, Panel *panel)
 
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
-  const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
+  const bool is_first = BKE_grease_pencil_is_first_lineart(
+      *static_cast<const GreasePencilLineartModifierData *>(ptr->data));
   const bool is_geom = RNA_boolean_get(ptr, "use_geometry_space_chain");
 
   uiLayoutSetPropSep(layout, true);
@@ -584,8 +584,8 @@ static void vgroup_panel_draw(const bContext * /*C*/, Panel *panel)
 
   const bool is_baked = RNA_boolean_get(ptr, "is_baked");
   const bool use_cache = RNA_boolean_get(ptr, "use_cache");
-  const bool is_first = BKE_grease_pencil_is_first_lineart_in_stack(
-      static_cast<const Object *>(ob_ptr.data), static_cast<const ModifierData *>(ptr->data));
+  const bool is_first = BKE_grease_pencil_is_first_lineart(
+      *static_cast<const GreasePencilLineartModifierData *>(ptr->data));
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetEnabled(layout, !is_baked);
@@ -709,7 +709,7 @@ static void generate_strokes(ModifierData &md,
 {
   auto &lmd = reinterpret_cast<GreasePencilLineartModifierData &>(md);
 
-  bke::greasepencil::TreeNode *node = grease_pencil.find_node_by_name(lmd.influence.layer_name);
+  bke::greasepencil::TreeNode *node = grease_pencil.find_node_by_name(lmd.target_layer);
   if (!node || !node->is_layer()) {
     return;
   }
@@ -728,7 +728,6 @@ static void generate_strokes(ModifierData &md,
 
   /* Ensure we have a frame in the selected layer to put line art result in. */
   bke::greasepencil::Layer &layer = node->as_layer();
-  layer.add_frame(0, 0, 0);
 
   bke::greasepencil::Drawing &drawing = [&]() -> bke::greasepencil::Drawing & {
     if (bke::greasepencil::Drawing *drawing = grease_pencil.get_editable_drawing_at(layer,
@@ -754,7 +753,7 @@ static void generate_strokes(ModifierData &md,
       lmd.mask_switches,
       lmd.material_mask_bits,
       lmd.intersection_mask,
-      (float)lmd.thickness / 1000,
+      float(lmd.thickness) / 1000.0f,
       lmd.opacity,
       lmd.shadow_selection,
       lmd.silhouette_selection,
@@ -785,24 +784,25 @@ static void modify_geometry_set(ModifierData *md,
   auto mmd = reinterpret_cast<GreasePencilLineartModifierData *>(md);
 
   GreasePencilLineartModifierData *first_lineart = BKE_grease_pencil_get_first_lineart_modifier(
-      ctx->object);
+      *ctx->object);
   BLI_assert(first_lineart);
 
   bool is_first_lineart = (mmd == first_lineart);
   GreasePencilLineartLimitInfo info;
   if (is_first_lineart) {
     mmd->shared_cache = MOD_lineart_init_cache();
-    info = BKE_grease_pencil_get_lineart_modifier_limits(ctx->object);
+    info = BKE_grease_pencil_get_lineart_modifier_limits(*ctx->object);
     LISTBASE_FOREACH (ModifierData *, imd, &ctx->object->modifiers) {
       if (imd->type == eModifierType_GreasePencilLineart) {
-        BKE_grease_pencil_set_lineart_modifier_limits(imd, &info, imd == md);
+        BKE_grease_pencil_set_lineart_modifier_limits(
+            *reinterpret_cast<GreasePencilLineartModifierData *>(imd), info, imd == md);
       }
     }
   }
 
   generate_strokes(*md, *ctx, grease_pencil, *first_lineart);
 
-  if (BKE_grease_pencil_is_last_line_art(md)) {
+  if (BKE_grease_pencil_is_last_line_art(*mmd)) {
     MOD_lineart_clear_cache(&first_lineart->shared_cache);
   }
 
@@ -814,14 +814,11 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
   const auto *lmd = reinterpret_cast<const GreasePencilLineartModifierData *>(md);
 
   BLO_write_struct(writer, GreasePencilLineartModifierData, lmd);
-  modifier::greasepencil::write_influence_data(writer, &lmd->influence);
 }
 
 static void blend_read(BlendDataReader *reader, ModifierData *md)
 {
   auto *lmd = reinterpret_cast<GreasePencilLineartModifierData *>(md);
-
-  modifier::greasepencil::read_influence_data(reader, &lmd->influence);
 }
 
 }  // namespace blender

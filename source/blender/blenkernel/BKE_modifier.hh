@@ -571,15 +571,14 @@ struct GreasePencilLineartLimitInfo {
   uint8_t silhouette_selection;
 };
 
-GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const Object *ob);
+GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const Object &ob);
 
-void BKE_grease_pencil_set_lineart_modifier_limits(struct ModifierData *md,
-                                                   const struct GreasePencilLineartLimitInfo *info,
+void BKE_grease_pencil_set_lineart_modifier_limits(GreasePencilLineartModifierData &lmd,
+                                                   const GreasePencilLineartLimitInfo &info,
                                                    bool is_first_lineart);
-bool BKE_grease_pencil_is_first_lineart_in_stack(const struct Object *ob,
-                                                 const struct ModifierData *md);
-GreasePencilLineartModifierData *BKE_grease_pencil_get_first_lineart_modifier(const Object *ob);
-bool BKE_grease_pencil_is_last_line_art(const ModifierData *md);
+bool BKE_grease_pencil_is_first_lineart(const GreasePencilLineartModifierData &md);
+GreasePencilLineartModifierData *BKE_grease_pencil_get_first_lineart_modifier(const Object &ob);
+bool BKE_grease_pencil_is_last_line_art(const GreasePencilLineartModifierData &md);
 
 /* Accessors of original/evaluated modifiers. */
 

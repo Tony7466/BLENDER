@@ -1951,6 +1951,17 @@ RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilWeightAngle);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilWeightProximity);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilHook);
 
+static void rna_GreasePencilLineartModifier_material_set(PointerRNA *ptr,
+                                                         PointerRNA value,
+                                                         ReportList *reports)
+{
+  GreasePencilLineartModifierData *lmd = reinterpret_cast<GreasePencilLineartModifierData *>(
+      ptr->data);
+  Material **ma_target = &lmd->target_material;
+
+  rna_GreasePencilModifier_material_set(ptr, value, reports, ma_target);
+}
+
 static void rna_GreasePencilOpacityModifier_opacity_factor_range(
     PointerRNA *ptr, float *min, float *max, float *softmin, float *softmax)
 {
@@ -8256,10 +8267,6 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
   RNA_def_struct_sdna(srna, "GreasePencilLineartModifierData");
   RNA_def_struct_ui_icon(srna, ICON_MOD_LINEART);
 
-  rna_def_modifier_grease_pencil_layer_filter(srna);
-  rna_def_modifier_grease_pencil_material_filter(
-      srna, "rna_GreasePencilOpacityModifier_material_filter_set");
-
   RNA_define_lib_overridable(true);
 
   prop = RNA_def_property(srna, "use_custom_camera", PROP_BOOLEAN, PROP_NONE);
@@ -8540,6 +8547,18 @@ static void rna_def_modifier_grease_pencil_lineart(BlenderRNA *brna)
   prop = RNA_def_property(srna, "target_layer", PROP_STRING, PROP_NONE);
   RNA_def_property_ui_text(
       prop, "Layer", "Grease Pencil layer to which assign the generated strokes");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "target_material", PROP_POINTER, PROP_NONE);
+  RNA_def_property_flag(prop, PROP_EDITABLE);
+  RNA_def_property_struct_type(prop, "Material");
+  RNA_def_property_pointer_funcs(prop,
+                                 nullptr,
+                                 "rna_GreasePencilLineartModifier_material_set",
+                                 nullptr,
+                                 "rna_GreasePencilModifier_material_poll");
+  RNA_def_property_ui_text(
+      prop, "Material", "Grease Pencil material assigned to the generated strokes");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");
 
   prop = RNA_def_property(srna, "source_vertex_group", PROP_STRING, PROP_NONE);

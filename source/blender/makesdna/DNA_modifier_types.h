@@ -3057,7 +3057,6 @@ struct LineartCache;
 
 typedef struct GreasePencilLineartModifierData {
   ModifierData modifier;
-  GreasePencilModifierInfluenceData influence;
 
   /* [Important] Note on legacy material/layer selection variables:
    *
