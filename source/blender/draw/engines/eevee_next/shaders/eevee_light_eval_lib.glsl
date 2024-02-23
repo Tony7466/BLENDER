@@ -14,6 +14,7 @@
  */
 
 #pragma BLENDER_REQUIRE(eevee_shadow_tracing_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_bxdf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
@@ -103,6 +104,40 @@ struct ClosureLight {
   vec3 light_shadowed;
   vec3 light_unshadowed;
 };
+
+ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V)
+{
+  ClosureLight cl_light;
+  cl_light.N = cl.N;
+  cl_light.ltc_mat = LTC_LAMBERT_MAT;
+  cl_light.type = LIGHT_DIFFUSE;
+  cl_light.light_shadowed = vec3(0.0);
+  switch (cl.type) {
+    case CLOSURE_BSDF_TRANSLUCENT_ID:
+      cl_light.N = -cl.N;
+      break;
+    case CLOSURE_BSSRDF_BURLEY_ID:
+    case CLOSURE_BSDF_DIFFUSE_ID:
+      break;
+    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+      cl_light.ltc_mat = LTC_GGX_MAT(dot(cl.N, V), cl.data.x);
+      cl_light.type = LIGHT_SPECULAR;
+      break;
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID: {
+      ClosureRefraction cl_refract = to_closure_refraction(cl);
+      vec3 R = refract(-V, cl.N, 1.0 / cl_refract.ior);
+      float roughness = refraction_roughness_remapping(cl_refract.roughness, cl_refract.ior);
+      cl_light.ltc_mat = LTC_GGX_MAT(dot(-cl.N, R), roughness);
+      cl_light.N = -cl.N;
+      cl_light.type = LIGHT_SPECULAR;
+      break;
+    }
+    case CLOSURE_NONE_ID:
+      /* TODO(fclem): Assert. */
+      break;
+  }
+  return cl_light;
+}
 
 struct ClosureLightStack {
   /* NOTE: This is wrapped into a struct to avoid array shenanigans on MSL. */
