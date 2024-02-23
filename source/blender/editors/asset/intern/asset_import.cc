@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,9 +10,9 @@
 
 #include "DNA_space_types.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "ED_asset_import.hh"
 

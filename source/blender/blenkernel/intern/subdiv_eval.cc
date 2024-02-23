@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2018 Blender Foundation
+/* SPDX-FileCopyrightText: 2018 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,24 +6,20 @@
  * \ingroup bke
  */
 
-#include "BKE_subdiv_eval.h"
-
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
+#include "BKE_subdiv_eval.hh"
 
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
-#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
-#include "BKE_subdiv.h"
+#include "BKE_subdiv.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "opensubdiv_evaluator_capi.h"
-#include "opensubdiv_topology_refiner_capi.h"
+#include "opensubdiv_evaluator_capi.hh"
+#include "opensubdiv_topology_refiner_capi.hh"
 
 /* --------------------------------------------------------------------
  * Helper functions.
@@ -173,9 +169,9 @@ static void set_face_varying_data_from_uv(Subdiv *subdiv,
 static void set_vertex_data_from_orco(Subdiv *subdiv, const Mesh *mesh)
 {
   const float(*orco)[3] = static_cast<const float(*)[3]>(
-      CustomData_get_layer(&mesh->vdata, CD_ORCO));
+      CustomData_get_layer(&mesh->vert_data, CD_ORCO));
   const float(*cloth_orco)[3] = static_cast<const float(*)[3]>(
-      CustomData_get_layer(&mesh->vdata, CD_CLOTH_ORCO));
+      CustomData_get_layer(&mesh->vert_data, CD_CLOTH_ORCO));
 
   if (orco || cloth_orco) {
     OpenSubdiv_TopologyRefiner *topology_refiner = subdiv->topology_refiner;
@@ -205,8 +201,8 @@ static void set_vertex_data_from_orco(Subdiv *subdiv, const Mesh *mesh)
 
 static void get_mesh_evaluator_settings(OpenSubdiv_EvaluatorSettings *settings, const Mesh *mesh)
 {
-  settings->num_vertex_data = (CustomData_has_layer(&mesh->vdata, CD_ORCO) ? 3 : 0) +
-                              (CustomData_has_layer(&mesh->vdata, CD_CLOTH_ORCO) ? 3 : 0);
+  settings->num_vertex_data = (CustomData_has_layer(&mesh->vert_data, CD_ORCO) ? 3 : 0) +
+                              (CustomData_has_layer(&mesh->vert_data, CD_CLOTH_ORCO) ? 3 : 0);
 }
 
 bool BKE_subdiv_eval_begin_from_mesh(Subdiv *subdiv,
@@ -237,15 +233,15 @@ bool BKE_subdiv_eval_refine_from_mesh(Subdiv *subdiv,
   set_coarse_positions(
       subdiv,
       coarse_vertex_cos ?
-          Span(reinterpret_cast<const float3 *>(coarse_vertex_cos), mesh->totvert) :
+          Span(reinterpret_cast<const float3 *>(coarse_vertex_cos), mesh->verts_num) :
           mesh->vert_positions(),
       mesh->verts_no_face());
 
   /* Set face-varying data to UV maps. */
-  const int num_uv_layers = CustomData_number_of_layers(&mesh->ldata, CD_PROP_FLOAT2);
+  const int num_uv_layers = CustomData_number_of_layers(&mesh->corner_data, CD_PROP_FLOAT2);
   for (int layer_index = 0; layer_index < num_uv_layers; layer_index++) {
     const float(*mloopuv)[2] = static_cast<const float(*)[2]>(
-        CustomData_get_layer_n(&mesh->ldata, CD_PROP_FLOAT2, layer_index));
+        CustomData_get_layer_n(&mesh->corner_data, CD_PROP_FLOAT2, layer_index));
     set_face_varying_data_from_uv(subdiv, mesh, mloopuv, layer_index);
   }
   /* Set vertex data to orco. */

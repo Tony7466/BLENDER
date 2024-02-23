@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,8 +10,6 @@
  */
 
 #include <Python.h>
-
-#include "../generic/py_capi_utils.h"
 
 #include "gpu_py.h"
 #include "gpu_py_types.h" /* own include */

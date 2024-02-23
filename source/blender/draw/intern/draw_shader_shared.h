@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -47,6 +47,10 @@ typedef enum eObjectInfoFlag eObjectInfoFlag;
 #  endif
 #endif
 
+#if defined(__cplusplus) && !defined(GPU_SHADER)
+extern "C" {
+#endif
+
 #define DRW_SHADER_SHARED_H
 
 #define DRW_RESOURCE_CHUNK_LEN 512
@@ -61,13 +65,6 @@ typedef enum eObjectInfoFlag eObjectInfoFlag;
 /* -------------------------------------------------------------------- */
 /** \name Views
  * \{ */
-
-/**
- * The maximum of indexable views is dictated by:
- * - The UBO limit (16KiB) of the ViewMatrices container.
- * - The maximum resource index supported for shaders using multi-view (see DRW_VIEW_SHIFT).
- */
-#define DRW_VIEW_MAX 64
 
 #ifndef DRW_VIEW_LEN
 /* Single-view case (default). */
@@ -169,7 +166,7 @@ enum eObjectInfoFlag {
 
 struct ObjectInfos {
 #if defined(GPU_SHADER) && !defined(DRAW_FINALIZE_SHADER)
-  /* TODO Rename to struct member for glsl too. */
+  /* TODO Rename to struct member for GLSL too. */
   float4 orco_mul_bias[2];
   float4 ob_color;
   float4 infos;
@@ -207,7 +204,7 @@ struct ObjectBounds {
 
 #if !defined(GPU_SHADER) && defined(__cplusplus)
   void sync();
-  void sync(Object &ob);
+  void sync(const Object &ob, float inflate_bounds = 0.0f);
   void sync(const float3 &center, const float3 &size);
 #endif
 };
@@ -263,7 +260,7 @@ struct LayerAttribute {
   uint _pad1, _pad2;
 
 #if !defined(GPU_SHADER) && defined(__cplusplus)
-  bool sync(Scene *scene, ViewLayer *layer, const GPULayerAttr &attr);
+  bool sync(const Scene *scene, const ViewLayer *layer, const GPULayerAttr &attr);
 #endif
 };
 #pragma pack(pop)
@@ -331,8 +328,10 @@ BLI_STATIC_ASSERT_ALIGN(DRWDebugPrintBuffer, 16)
 /* Reuse first instance as row index as we don't use instancing. Equivalent to
  * `DRWDebugPrintBuffer.command.i_first`. */
 #define drw_debug_print_row_shared drw_debug_print_buf[3]
-/** Offset to the first data. Equal to: `sizeof(DrawCommand) / sizeof(uint)`.
- * This is needed because we bind the whole buffer as a `uint` array. */
+/**
+ * Offset to the first data. Equal to: `sizeof(DrawCommand) / sizeof(uint)`.
+ * This is needed because we bind the whole buffer as a `uint` array.
+ */
 #define drw_debug_print_offset 8
 
 /** \} */
@@ -375,8 +374,14 @@ BLI_STATIC_ASSERT_ALIGN(DRWDebugPrintBuffer, 16)
 
 /* Equivalent to `DRWDebugDrawBuffer.command.v_count`. */
 #define drw_debug_draw_v_count drw_debug_verts_buf[0].pos0
-/** Offset to the first data. Equal to: `sizeof(DrawCommand) / sizeof(DRWDebugVert)`.
- * This is needed because we bind the whole buffer as a `DRWDebugVert` array. */
+/**
+ * Offset to the first data. Equal to: `sizeof(DrawCommand) / sizeof(DRWDebugVert)`.
+ * This is needed because we bind the whole buffer as a `DRWDebugVert` array.
+ */
 #define drw_debug_draw_offset 2
 
 /** \} */
+
+#if defined(__cplusplus) && !defined(GPU_SHADER)
+}
+#endif

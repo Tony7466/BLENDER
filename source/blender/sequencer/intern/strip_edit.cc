@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
- * SPDX-FileCopyrightText: 2003-2009 Blender Foundation
+ * SPDX-FileCopyrightText: 2003-2009 Blender Authors
  * SPDX-FileCopyrightText: 2005-2006 Peter Schlaile <peter [at] schlaile [dot] de>
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -12,31 +12,30 @@
 #include "DNA_sequence_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_base.h"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_main.h"
-#include "BKE_movieclip.h"
-#include "BKE_scene.h"
 #include "BKE_sound.h"
 
-#include "strip_time.h"
-#include "utils.h"
+#include "strip_time.hh"
 
-#include "SEQ_add.h"
-#include "SEQ_animation.h"
-#include "SEQ_edit.h"
-#include "SEQ_effects.h"
-#include "SEQ_iterator.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
-#include "SEQ_transform.h"
-#include "SEQ_utils.h"
+#include "SEQ_add.hh"
+#include "SEQ_animation.hh"
+#include "SEQ_channels.hh"
+#include "SEQ_edit.hh"
+#include "SEQ_effects.hh"
+#include "SEQ_iterator.hh"
+#include "SEQ_relations.hh"
+#include "SEQ_render.hh"
+#include "SEQ_sequencer.hh"
+#include "SEQ_time.hh"
+#include "SEQ_transform.hh"
+#include "SEQ_utils.hh"
+
+#include <cstring>
 
 bool SEQ_edit_sequence_swap(Scene *scene, Sequence *seq_a, Sequence *seq_b, const char **error_str)
 {
@@ -76,15 +75,15 @@ bool SEQ_edit_sequence_swap(Scene *scene, Sequence *seq_a, Sequence *seq_b, cons
   BLI_strncpy(seq_b->name + 2, name, sizeof(seq_b->name) - 2);
 
   /* swap back opacity, and overlay mode */
-  SWAP(int, seq_a->blend_mode, seq_b->blend_mode);
-  SWAP(float, seq_a->blend_opacity, seq_b->blend_opacity);
+  std::swap(seq_a->blend_mode, seq_b->blend_mode);
+  std::swap(seq_a->blend_opacity, seq_b->blend_opacity);
 
-  SWAP(Sequence *, seq_a->prev, seq_b->prev);
-  SWAP(Sequence *, seq_a->next, seq_b->next);
-  SWAP(float, seq_a->start, seq_b->start);
-  SWAP(float, seq_a->startofs, seq_b->startofs);
-  SWAP(float, seq_a->endofs, seq_b->endofs);
-  SWAP(int, seq_a->machine, seq_b->machine);
+  std::swap(seq_a->prev, seq_b->prev);
+  std::swap(seq_a->next, seq_b->next);
+  std::swap(seq_a->start, seq_b->start);
+  std::swap(seq_a->startofs, seq_b->startofs);
+  std::swap(seq_a->endofs, seq_b->endofs);
+  std::swap(seq_a->machine, seq_b->machine);
   seq_time_effect_range_set(scene, seq_a);
   seq_time_effect_range_set(scene, seq_b);
 
@@ -96,11 +95,9 @@ static void seq_update_muting_recursive(ListBase *channels,
                                         Sequence *metaseq,
                                         const bool mute)
 {
-  Sequence *seq;
-
   /* For sound we go over full meta tree to update muted state,
    * since sound is played outside of evaluating the imbufs. */
-  for (seq = static_cast<Sequence *>(seqbasep->first); seq; seq = seq->next) {
+  LISTBASE_FOREACH (Sequence *, seq, seqbasep) {
     bool seqmute = (mute || SEQ_render_is_muted(channels, seq));
 
     if (seq->type == SEQ_TYPE_META) {
@@ -144,9 +141,7 @@ static void sequencer_flag_users_for_removal(Scene *scene, ListBase *seqbase, Se
     }
 
     /* Clear seq from modifiers. */
-    SequenceModifierData *smd;
-    for (smd = static_cast<SequenceModifierData *>(user_seq->modifiers.first); smd;
-         smd = smd->next) {
+    LISTBASE_FOREACH (SequenceModifierData *, smd, &user_seq->modifiers) {
       if (smd->mask_sequence == seq) {
         smd->mask_sequence = nullptr;
       }
@@ -221,12 +216,12 @@ bool SEQ_edit_move_strip_to_meta(Scene *scene,
   ListBase *seqbase = SEQ_get_seqbase_by_seq(scene, src_seq);
 
   if (dst_seqm->type != SEQ_TYPE_META) {
-    *error_str = N_("Can not move strip to non-meta strip");
+    *error_str = N_("Cannot move strip to non-meta strip");
     return false;
   }
 
   if (src_seq == dst_seqm) {
-    *error_str = N_("Strip can not be moved into itself");
+    *error_str = N_("Strip cannot be moved into itself");
     return false;
   }
 
@@ -241,21 +236,18 @@ bool SEQ_edit_move_strip_to_meta(Scene *scene,
   }
 
   if (!SEQ_exists_in_seqbase(dst_seqm, &ed->seqbase)) {
-    *error_str = N_("Can not move strip to different scene");
+    *error_str = N_("Cannot move strip to different scene");
     return false;
   }
 
-  SeqCollection *collection = SEQ_collection_create(__func__);
-  SEQ_collection_append_strip(src_seq, collection);
-  SEQ_collection_expand(scene, seqbase, collection, SEQ_query_strip_effect_chain);
+  blender::VectorSet<Sequence *> strips;
+  strips.add(src_seq);
+  SEQ_iterator_set_expand(scene, seqbase, strips, SEQ_query_strip_effect_chain);
 
-  Sequence *seq;
-  SEQ_ITERATOR_FOREACH (seq, collection) {
+  for (Sequence *seq : strips) {
     /* Move to meta. */
     SEQ_edit_move_strip_to_seqbase(scene, seqbase, seq, &dst_seqm->seqbase);
   }
-
-  SEQ_collection_free(collection);
 
   return true;
 }
@@ -277,7 +269,7 @@ static void seq_split_set_right_hold_offset(Main *bmain,
   /* Adjust within range of strip contents. */
   else if ((timeline_frame >= content_start) && (timeline_frame <= content_end)) {
     seq->endofs = 0;
-    float speed_factor = seq_time_media_playback_rate_factor_get(scene, seq);
+    float speed_factor = SEQ_time_media_playback_rate_factor_get(scene, seq);
     seq->anim_endofs += round_fl_to_int((content_end - timeline_frame) * speed_factor);
   }
 
@@ -296,7 +288,7 @@ static void seq_split_set_left_hold_offset(Main *bmain,
 
   /* Adjust within range of strip contents. */
   if ((timeline_frame >= content_start) && (timeline_frame <= content_end)) {
-    float speed_factor = seq_time_media_playback_rate_factor_get(scene, seq);
+    float speed_factor = SEQ_time_media_playback_rate_factor_get(scene, seq);
     seq->anim_startofs += round_fl_to_int((timeline_frame - content_start) * speed_factor);
     seq->start = timeline_frame;
     seq->startofs = 0;
@@ -384,12 +376,16 @@ static bool seq_edit_split_effect_inputs_intersect(const Scene *scene,
 }
 
 static bool seq_edit_split_operation_permitted_check(const Scene *scene,
-                                                     SeqCollection *strips,
+                                                     blender::Span<Sequence *> strips,
                                                      const int timeline_frame,
                                                      const char **r_error)
 {
-  Sequence *seq;
-  SEQ_ITERATOR_FOREACH (seq, strips) {
+  for (Sequence *seq : strips) {
+    ListBase *channels = SEQ_channels_displayed_get(SEQ_editing_get(scene));
+    if (SEQ_transform_is_locked(channels, seq)) {
+      *r_error = "Strip is locked.";
+      return false;
+    }
     if ((seq->type & SEQ_TYPE_EFFECT) == 0) {
       continue;
     }
@@ -424,12 +420,11 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
   }
 
   /* Whole strip chain must be duplicated in order to preserve relationships. */
-  SeqCollection *collection = SEQ_collection_create(__func__);
-  SEQ_collection_append_strip(seq, collection);
-  SEQ_collection_expand(scene, seqbase, collection, SEQ_query_strip_effect_chain);
+  blender::VectorSet<Sequence *> strips;
+  strips.add(seq);
+  SEQ_iterator_set_expand(scene, seqbase, strips, SEQ_query_strip_effect_chain);
 
-  if (!seq_edit_split_operation_permitted_check(scene, collection, timeline_frame, r_error)) {
-    SEQ_collection_free(collection);
+  if (!seq_edit_split_operation_permitted_check(scene, strips, timeline_frame, r_error)) {
     return nullptr;
   }
 
@@ -438,7 +433,7 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
   SEQ_animation_backup_original(scene, &animation_backup);
 
   ListBase left_strips = {nullptr, nullptr};
-  SEQ_ITERATOR_FOREACH (seq, collection) {
+  for (Sequence *seq : strips) {
     /* Move strips in collection from seqbase to new ListBase. */
     BLI_remlink(seqbase, seq);
     BLI_addtail(&left_strips, seq);
@@ -446,8 +441,6 @@ Sequence *SEQ_edit_strip_split(Main *bmain,
     /* Duplicate curves from backup, so they can be renamed along with split strips. */
     SEQ_animation_duplicate_backup_to_scene(scene, seq, &animation_backup);
   }
-
-  SEQ_collection_free(collection);
 
   /* Duplicate ListBase. */
   ListBase right_strips = {nullptr, nullptr};

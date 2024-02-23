@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,17 +10,20 @@
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
 
-#include "BLI_math.h"
+#include "BKE_context.hh"
 
-#include "BKE_context.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_transverts.h"
+#include "ED_object.hh"
+#include "ED_transverts.hh"
 
 #include "object_intern.h"
 
@@ -39,7 +42,7 @@ static void object_warp_calc_view_matrix(float r_mat_view[4][4],
   mul_m4_m4m4(viewmat_roll, mat_offset, viewmat);
 
   /* apply the view and the object matrix */
-  mul_m4_m4m4(r_mat_view, viewmat_roll, obedit->object_to_world);
+  mul_m4_m4m4(r_mat_view, viewmat_roll, obedit->object_to_world().ptr());
 
   /* get the view-space cursor */
   mul_v3_m4v3(r_center_view, viewmat_roll, center);
@@ -166,6 +169,10 @@ static int object_warp_verts_exec(bContext *C, wmOperator *op)
 
   float min, max;
 
+  if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+    return OPERATOR_CANCELLED;
+  }
+
   ED_transverts_create_from_obedit(&tvs, obedit, TM_ALL_JOINTS | TM_SKIP_HANDLES);
   if (tvs.transverts == nullptr) {
     return OPERATOR_CANCELLED;
@@ -225,7 +232,7 @@ static int object_warp_verts_exec(bContext *C, wmOperator *op)
     }
 
     if (min > max) {
-      SWAP(float, min, max);
+      std::swap(min, max);
     }
   }
 

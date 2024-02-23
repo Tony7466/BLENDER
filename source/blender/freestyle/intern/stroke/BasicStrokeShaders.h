@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -584,7 +584,7 @@ class BlenderTextureShader : public StrokeShader {
   BlenderTextureShader(MTex *mtex)
   {
     _mtex = mtex;
-    _nodeTree = NULL;
+    _nodeTree = nullptr;
   }
 
   /** Builds the shader.
@@ -594,7 +594,7 @@ class BlenderTextureShader : public StrokeShader {
   BlenderTextureShader(bNodeTree *nodetree)
   {
     _nodeTree = nodetree;
-    _mtex = NULL;
+    _mtex = nullptr;
   }
 
   virtual string getName() const

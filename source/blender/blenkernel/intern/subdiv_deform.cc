@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,19 +6,18 @@
  * \ingroup bke
  */
 
-#include "BKE_subdiv_deform.h"
+#include "BKE_subdiv_deform.hh"
 
 #include <cstring>
 
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_customdata.h"
-#include "BKE_subdiv.h"
-#include "BKE_subdiv_eval.h"
+#include "BKE_customdata.hh"
+#include "BKE_subdiv.hh"
+#include "BKE_subdiv_eval.hh"
 #include "BKE_subdiv_foreach.hh"
 #include "BKE_subdiv_mesh.hh"
 
@@ -107,7 +106,7 @@ static bool subdiv_mesh_topology_info(const SubdivForeachContext *foreach_contex
 {
   SubdivDeformContext *subdiv_context = static_cast<SubdivDeformContext *>(
       foreach_context->user_data);
-  subdiv_mesh_prepare_accumulator(subdiv_context, subdiv_context->coarse_mesh->totvert);
+  subdiv_mesh_prepare_accumulator(subdiv_context, subdiv_context->coarse_mesh->verts_num);
   return true;
 }
 
@@ -204,7 +203,7 @@ void BKE_subdiv_deform_coarse_vertices(Subdiv *subdiv,
   }
 
   /* Initialize subdivision mesh creation context. */
-  SubdivDeformContext subdiv_context = {0};
+  SubdivDeformContext subdiv_context = {nullptr};
   subdiv_context.coarse_mesh = coarse_mesh;
   subdiv_context.subdiv = subdiv;
   subdiv_context.vertex_cos = vertex_cos;

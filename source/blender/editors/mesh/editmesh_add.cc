@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,28 +6,28 @@
  * \ingroup edmesh
  */
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_sys_types.h"
 
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 #define MESH_ADD_VERTS_MAXI 10000000
 
@@ -77,7 +77,7 @@ static void make_prim_finish(bContext *C,
 
   /* Only recalculate edit-mode tessellation if we are staying in edit-mode. */
   EDBMUpdate_Params params{};
-  params.calc_looptri = !exit_editmode;
+  params.calc_looptris = !exit_editmode;
   params.calc_normals = false;
   params.is_destructive = true;
   EDBM_update(static_cast<Mesh *>(obedit->data), &params);

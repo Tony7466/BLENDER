@@ -1,10 +1,11 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <memory>
 #include <string>
 
+#include "BLI_assert.h"
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
 #include "BLI_string_ref.hh"
@@ -13,7 +14,7 @@
 #include "DNA_customdata_types.h"
 
 #include "GPU_context.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 #include "GPU_shader.h"
 #include "GPU_texture.h"
 #include "GPU_uniform_buffer.h"
@@ -31,6 +32,8 @@
 #include "COM_shader_operation.hh"
 #include "COM_utilities.hh"
 
+#include <sstream>
+
 namespace blender::realtime_compositor {
 
 using namespace nodes::derived_node_tree_types;
@@ -38,7 +41,8 @@ using namespace nodes::derived_node_tree_types;
 ShaderOperation::ShaderOperation(Context &context, ShaderCompileUnit &compile_unit)
     : Operation(context), compile_unit_(compile_unit)
 {
-  material_ = GPU_material_from_callbacks(&construct_material, &generate_code, this);
+  material_ = GPU_material_from_callbacks(
+      GPU_MAT_COMPOSITOR, &construct_material, &generate_code, this);
   GPU_material_status_set(material_, GPU_MAT_QUEUED);
   GPU_material_compile(material_);
 }
@@ -225,6 +229,9 @@ static const char *get_set_function_name(ResultType type)
       return "set_rgb";
     case ResultType::Color:
       return "set_rgba";
+    default:
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
 
   BLI_assert_unreachable();
@@ -310,6 +317,9 @@ static const char *get_store_function_name(ResultType type)
       return "node_compositor_store_output_vector";
     case ResultType::Color:
       return "node_compositor_store_output_color";
+    default:
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
 
   BLI_assert_unreachable();
@@ -322,7 +332,7 @@ void ShaderOperation::populate_operation_result(DOutputSocket output_socket, GPU
   std::string output_identifier = "output" + std::to_string(output_id);
 
   const ResultType result_type = get_node_socket_result_type(output_socket.bsocket());
-  const Result result = Result(result_type, texture_pool());
+  const Result result = context().create_result(result_type);
   populate_result(output_identifier, result);
 
   /* Map the output socket to the identifier of the newly populated result. */
@@ -391,21 +401,6 @@ void ShaderOperation::generate_code(void *thunk,
   shader_create_info.compute_source_generated += "}\n";
 }
 
-static eGPUTextureFormat texture_format_from_result_type(ResultType type)
-{
-  switch (type) {
-    case ResultType::Float:
-      return GPU_R16F;
-    case ResultType::Vector:
-      return GPU_RGBA16F;
-    case ResultType::Color:
-      return GPU_RGBA16F;
-  }
-
-  BLI_assert_unreachable();
-  return GPU_RGBA16F;
-}
-
 /* Texture storers in the shader always take a vec4 as an argument, so encode each type in a vec4
  * appropriately. */
 static const char *glsl_store_expression_from_result_type(ResultType type)
@@ -417,6 +412,9 @@ static const char *glsl_store_expression_from_result_type(ResultType type)
       return "vec4(vector, 0.0)";
     case ResultType::Color:
       return "color";
+    default:
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
 
   BLI_assert_unreachable();
@@ -455,11 +453,11 @@ void ShaderOperation::generate_code_for_outputs(ShaderCreateInfo &shader_create_
 
     /* Add a write-only image for this output where its values will be written. */
     shader_create_info.image(0,
-                             texture_format_from_result_type(result.type()),
+                             result.get_texture_format(),
                              Qualifier::WRITE,
                              ImageType::FLOAT_2D,
                              output_identifier,
-                             Frequency::BATCH);
+                             Frequency::PASS);
 
     /* Add a case for the index of this output followed by a break statement. */
     std::stringstream case_code;
@@ -479,6 +477,10 @@ void ShaderOperation::generate_code_for_outputs(ShaderCreateInfo &shader_create_
         break;
       case ResultType::Color:
         store_color_function << case_code.str();
+        break;
+      default:
+        /* Other types are internal and needn't be handled by operations. */
+        BLI_assert_unreachable();
         break;
     }
   }
@@ -503,6 +505,9 @@ static const char *glsl_type_from_result_type(ResultType type)
       return "vec3";
     case ResultType::Color:
       return "vec4";
+    default:
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
 
   BLI_assert_unreachable();
@@ -520,6 +525,9 @@ static const char *glsl_swizzle_from_result_type(ResultType type)
       return "xyz";
     case ResultType::Color:
       return "rgba";
+    default:
+      /* Other types are internal and needn't be handled by operations. */
+      break;
   }
 
   BLI_assert_unreachable();
@@ -538,7 +546,7 @@ void ShaderOperation::generate_code_for_inputs(GPUMaterial *material,
 
   /* Add a texture sampler for each of the inputs with the same name as the attribute. */
   LISTBASE_FOREACH (GPUMaterialAttribute *, attribute, &attributes) {
-    shader_create_info.sampler(0, ImageType::FLOAT_2D, attribute->name, Frequency::BATCH);
+    shader_create_info.sampler(0, ImageType::FLOAT_2D, attribute->name, Frequency::PASS);
   }
 
   /* Declare a struct called var_attrs that includes an appropriately typed member for each of the

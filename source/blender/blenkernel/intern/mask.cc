@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2012 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,34 +16,36 @@
 #include "BLI_endian_switch.h"
 #include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_mask_types.h"
 
 #include "BKE_animsys.h"
-#include "BKE_curve.h"
-#include "BKE_idtype.h"
+#include "BKE_curve.hh"
+#include "BKE_idtype.hh"
 
 #include "BKE_anim_data.h"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph_build.hh"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static CLG_LogRef LOG = {"bke.mask"};
 
@@ -79,6 +81,7 @@ static void mask_foreach_id(ID *id, LibraryForeachIDData *data)
 
   LISTBASE_FOREACH (MaskLayer *, mask_layer, &mask->masklayers) {
     LISTBASE_FOREACH (MaskSpline *, mask_spline, &mask_layer->splines) {
+      BKE_LIB_FOREACHID_PROCESS_ID(data, mask_spline->parent.id, IDWALK_CB_USER);
       for (int i = 0; i < mask_spline->tot_point; i++) {
         MaskSplinePoint *point = &mask_spline->points[i];
         BKE_LIB_FOREACHID_PROCESS_ID(data, point->parent.id, IDWALK_CB_USER);
@@ -93,10 +96,6 @@ static void mask_blend_write(BlendWriter *writer, ID *id, const void *id_address
 
   BLO_write_id_struct(writer, Mask, id_address, &mask->id);
   BKE_id_blend_write(writer, &mask->id);
-
-  if (mask->adt) {
-    BKE_animdata_blend_write(writer, mask->adt);
-  }
 
   LISTBASE_FOREACH (MaskLayer *, masklay, &mask->masklayers) {
     BLO_write_struct(writer, MaskLayer, masklay);
@@ -182,59 +181,14 @@ static void mask_blend_read_data(BlendDataReader *reader, ID *id)
   }
 }
 
-static void lib_link_mask_parent(BlendLibReader *reader, Mask *mask, MaskParent *parent)
-{
-  BLO_read_id_address(reader, &mask->id, &parent->id);
-}
-
-static void mask_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Mask *mask = (Mask *)id;
-  LISTBASE_FOREACH (MaskLayer *, masklay, &mask->masklayers) {
-    MaskSpline *spline = static_cast<MaskSpline *>(masklay->splines.first);
-    while (spline) {
-      for (int i = 0; i < spline->tot_point; i++) {
-        MaskSplinePoint *point = &spline->points[i];
-
-        lib_link_mask_parent(reader, mask, &point->parent);
-      }
-
-      lib_link_mask_parent(reader, mask, &spline->parent);
-
-      spline = spline->next;
-    }
-  }
-}
-
-static void expand_mask_parent(BlendExpander *expander, MaskParent *parent)
-{
-  if (parent->id) {
-    BLO_expand(expander, parent->id);
-  }
-}
-
-static void mask_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Mask *mask = (Mask *)id;
-  LISTBASE_FOREACH (MaskLayer *, mask_layer, &mask->masklayers) {
-    LISTBASE_FOREACH (MaskSpline *, spline, &mask_layer->splines) {
-      for (int i = 0; i < spline->tot_point; i++) {
-        MaskSplinePoint *point = &spline->points[i];
-        expand_mask_parent(expander, &point->parent);
-      }
-
-      expand_mask_parent(expander, &spline->parent);
-    }
-  }
-}
-
 IDTypeInfo IDType_ID_MSK = {
     /*id_code*/ ID_MSK,
     /*id_filter*/ FILTER_ID_MSK,
+    /*dependencies_id_types*/ FILTER_ID_MC, /* WARNING! mask->parent.id, not typed. */
     /*main_listbase_index*/ INDEX_ID_MSK,
     /*struct_size*/ sizeof(Mask),
     /*name*/ "Mask",
-    /*name_plural*/ "masks",
+    /*name_plural*/ N_("masks"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_MASK,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -250,8 +204,7 @@ IDTypeInfo IDType_ID_MSK = {
 
     /*blend_write*/ mask_blend_write,
     /*blend_read_data*/ mask_blend_read_data,
-    /*blend_read_lib*/ mask_blend_read_lib,
-    /*blend_read_expand*/ mask_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -497,8 +450,8 @@ void BKE_mask_point_direction_switch(MaskSplinePoint *point)
   copy_v2_v2(point->bezt.vec[0], point->bezt.vec[2]);
   copy_v2_v2(point->bezt.vec[2], co_tmp);
   /* in this case the flags are unlikely to be different but swap anyway */
-  SWAP(uint8_t, point->bezt.f1, point->bezt.f3);
-  SWAP(uint8_t, point->bezt.h1, point->bezt.h2);
+  std::swap(point->bezt.f1, point->bezt.f3);
+  std::swap(point->bezt.h1, point->bezt.h2);
 
   /* swap UW's */
   if (tot_uw > 1) {
@@ -506,7 +459,7 @@ void BKE_mask_point_direction_switch(MaskSplinePoint *point)
     for (int i = 0; i < tot_uw_half; i++) {
       MaskSplinePointUW *uw_a = &point->uw[i];
       MaskSplinePointUW *uw_b = &point->uw[tot_uw - (i + 1)];
-      SWAP(MaskSplinePointUW, *uw_a, *uw_b);
+      std::swap(*uw_a, *uw_b);
     }
   }
 
@@ -530,7 +483,7 @@ void BKE_mask_spline_direction_switch(MaskLayer *masklay, MaskSpline *spline)
   for (i = 0; i < tot_point_half; i++) {
     MaskSplinePoint *point_a = &spline->points[i];
     MaskSplinePoint *point_b = &spline->points[tot_point - (i + 1)];
-    SWAP(MaskSplinePoint, *point_a, *point_b);
+    std::swap(*point_a, *point_b);
   }
 
   /* correct UW's */
@@ -539,8 +492,8 @@ void BKE_mask_spline_direction_switch(MaskLayer *masklay, MaskSpline *spline)
 
     BKE_mask_point_direction_switch(&spline->points[i]);
 
-    SWAP(MaskSplinePointUW *, spline->points[i].uw, spline->points[i_prev].uw);
-    SWAP(int, spline->points[i].tot_uw, spline->points[i_prev].tot_uw);
+    std::swap(spline->points[i].uw, spline->points[i_prev].uw);
+    std::swap(spline->points[i].tot_uw, spline->points[i_prev].tot_uw);
 
     i_prev = i;
   }
@@ -555,7 +508,7 @@ void BKE_mask_spline_direction_switch(MaskLayer *masklay, MaskSpline *spline)
       for (i = 0; i < tot_point_half; i++) {
         MaskLayerShapeElem *fp_a = &fp_arr[spline_index + (i)];
         MaskLayerShapeElem *fp_b = &fp_arr[spline_index + (tot_point - (i + 1))];
-        SWAP(MaskLayerShapeElem, *fp_a, *fp_b);
+        std::swap(*fp_a, *fp_b);
       }
     }
   }
@@ -899,14 +852,14 @@ MaskSplinePointUW *BKE_mask_point_sort_uw(MaskSplinePoint *point, MaskSplinePoin
 
     if (idx > 0 && point->uw[idx - 1].u > uw->u) {
       while (idx > 0 && point->uw[idx - 1].u > point->uw[idx].u) {
-        SWAP(MaskSplinePointUW, point->uw[idx - 1], point->uw[idx]);
+        std::swap(point->uw[idx - 1], point->uw[idx]);
         idx--;
       }
     }
 
     if (idx < point->tot_uw - 1 && point->uw[idx + 1].u < uw->u) {
       while (idx < point->tot_uw - 1 && point->uw[idx + 1].u < point->uw[idx].u) {
-        SWAP(MaskSplinePointUW, point->uw[idx + 1], point->uw[idx]);
+        std::swap(point->uw[idx + 1], point->uw[idx]);
         idx++;
       }
     }
@@ -1878,7 +1831,7 @@ void BKE_mask_layer_shape_changed_add(MaskLayer *masklay,
     const int pi_next = (spline_point_index + 1) % spline->tot_point;
 
     const int index_offset = index - spline_point_index;
-    /* const int pi_curr_abs = index; */
+    // const int pi_curr_abs = index;
     const int pi_prev_abs = pi_prev + index_offset;
     const int pi_next_abs = pi_next + index_offset;
 

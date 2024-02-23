@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,39 +7,32 @@
  */
 
 #include "DNA_curve_types.h"
-#include "DNA_gpencil_legacy_types.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 
-#include "BLT_translation.h"
+#include "BKE_context.hh"
+#include "BKE_layer.hh"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
+#include "BKE_paint.hh"
+#include "BKE_vfont.hh"
 
-#include "BKE_armature.h"
-#include "BKE_context.h"
-#include "BKE_gpencil_geom_legacy.h"
-#include "BKE_layer.h"
-#include "BKE_object.h"
-#include "BKE_paint.h"
-#include "BKE_scene.h"
-#include "BKE_screen.h"
-#include "BKE_vfont.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "ED_screen.hh"
+#include "ED_transform.hh"
 
-#include "ED_mesh.h"
-#include "ED_particle.h"
-#include "ED_screen.h"
-#include "ED_transform.h"
+#include "WM_api.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-
-#include "RNA_access.h"
-#include "RNA_define.h"
-
-#include "UI_resources.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "view3d_intern.h"
 
@@ -53,9 +46,22 @@ static eViewOpsFlag viewops_flag_from_prefs()
   const bool use_select = (U.uiflag & USER_ORBIT_SELECTION) != 0;
   const bool use_depth = (U.uiflag & USER_DEPTH_NAVIGATE) != 0;
   const bool use_zoom_to_mouse = (U.uiflag & USER_ZOOM_TO_MOUSEPOS) != 0;
-  const bool use_auto_persp = (U.uiflag & USER_AUTOPERSP) != 0;
 
-  enum eViewOpsFlag flag = VIEWOPS_FLAG_INIT_ZFAC;
+  /**
+   * If the mode requires it, always set the #VIEWOPS_FLAG_PERSP_ENSURE.
+   * The function `ED_view3d_persp_ensure` already handles the checking of the preferences.
+   * And even with the option disabled, in some modes, it is still necessary to exit the camera
+   * view.
+   *
+   * \code{.c}
+   * const bool use_auto_persp = (U.uiflag & USER_AUTOPERSP) != 0;
+   * if (use_auto_persp) {
+   *  flag |= VIEWOPS_FLAG_PERSP_ENSURE;
+   * }
+   * \endcode
+   */
+  enum eViewOpsFlag flag = VIEWOPS_FLAG_INIT_ZFAC | VIEWOPS_FLAG_PERSP_ENSURE;
+
   if (use_select) {
     flag |= VIEWOPS_FLAG_ORBIT_SELECT;
   }
@@ -64,9 +70,6 @@ static eViewOpsFlag viewops_flag_from_prefs()
   }
   if (use_zoom_to_mouse) {
     flag |= VIEWOPS_FLAG_ZOOM_TO_MOUSE;
-  }
-  if (use_auto_persp) {
-    flag |= VIEWOPS_FLAG_PERSP_ENSURE;
   }
 
   return flag;
@@ -145,10 +148,9 @@ void ViewOpsData::state_restore()
 
   /* ROTATE and ZOOM. */
   {
-    /**
-     * For Rotate this only changes when orbiting from a camera view.
-     * In this case the `dist` is calculated based on the camera relative to the `ofs`.
-     */
+    /* For Rotate this only changes when orbiting from a camera view.
+     * In this case the `dist` is calculated based on the camera relative to the `ofs`. */
+
     /* Note this does not remove auto-keys on locked cameras. */
     this->rv3d->dist = this->init.dist;
   }
@@ -177,6 +179,7 @@ static eViewOpsFlag navigate_pivot_get(bContext *C,
                                        View3D *v3d,
                                        const wmEvent *event,
                                        eViewOpsFlag viewops_flag,
+                                       const float dyn_ofs_override[3],
                                        float r_pivot[3])
 {
   if ((viewops_flag & VIEWOPS_FLAG_ORBIT_SELECT) && view3d_orbit_calc_center(C, r_pivot)) {
@@ -191,6 +194,11 @@ static eViewOpsFlag navigate_pivot_get(bContext *C,
     /* Uses the `lastofs` in #view3d_orbit_calc_center. */
     BLI_assert(viewops_flag & VIEWOPS_FLAG_ORBIT_SELECT);
     return VIEWOPS_FLAG_ORBIT_SELECT;
+  }
+
+  if (dyn_ofs_override) {
+    ED_view3d_win_to_3d_int(v3d, region, dyn_ofs_override, event->mval, r_pivot);
+    return VIEWOPS_FLAG_DEPTH_NAVIGATE;
   }
 
   const bool use_depth_last = ED_view3d_autodist_last_check(win, event);
@@ -214,14 +222,14 @@ static eViewOpsFlag navigate_pivot_get(bContext *C,
 void ViewOpsData::init_navigation(bContext *C,
                                   const wmEvent *event,
                                   const ViewOpsType *nav_type,
+                                  const float dyn_ofs_override[3],
                                   const bool use_cursor_init)
 {
   this->nav_type = nav_type;
   eViewOpsFlag viewops_flag = nav_type->flag & viewops_flag_from_prefs();
 
   if (!use_cursor_init) {
-    viewops_flag &= ~(VIEWOPS_FLAG_USE_MOUSE_INIT | VIEWOPS_FLAG_DEPTH_NAVIGATE |
-                      VIEWOPS_FLAG_ZOOM_TO_MOUSE);
+    viewops_flag &= ~(VIEWOPS_FLAG_DEPTH_NAVIGATE | VIEWOPS_FLAG_ZOOM_TO_MOUSE);
   }
 
   bool calc_rv3d_dist = true;
@@ -233,6 +241,14 @@ void ViewOpsData::init_navigation(bContext *C,
            &ViewOpsType_ndof_all))
   {
     calc_rv3d_dist = false;
+
+    /* When using "Free" NDOF navigation, ignore "Orbit Around Selected" preference.
+     * Logically it doesn't make sense to use the selection as a pivot when the first-person
+     * navigation pivots from the view-point. This also interferes with zoom-speed,
+     * causing zoom-speed scale based on the distance to the selection center, see: #115253. */
+    if ((U.ndof_flag & NDOF_MODE_ORBIT) == 0) {
+      viewops_flag &= ~VIEWOPS_FLAG_ORBIT_SELECT;
+    }
   }
 #endif
 
@@ -253,15 +269,17 @@ void ViewOpsData::init_navigation(bContext *C,
   if (viewops_flag & (VIEWOPS_FLAG_DEPTH_NAVIGATE | VIEWOPS_FLAG_ORBIT_SELECT)) {
     float pivot_new[3];
     eViewOpsFlag pivot_type = navigate_pivot_get(
-        C, depsgraph, region, v3d, event, viewops_flag, pivot_new);
+        C, depsgraph, region, v3d, event, viewops_flag, dyn_ofs_override, pivot_new);
+
     viewops_flag &= ~(VIEWOPS_FLAG_DEPTH_NAVIGATE | VIEWOPS_FLAG_ORBIT_SELECT);
     viewops_flag |= pivot_type;
 
     negate_v3_v3(this->dyn_ofs, pivot_new);
     this->use_dyn_ofs = true;
 
-    if (!(nav_type->flag & VIEWOPS_FLAG_ORBIT_SELECT)) {
-      /* Calculate new #RegionView3D::ofs and #RegionView3D::dist. */
+    {
+      /* The pivot has changed so the offset needs to be updated as well.
+       * Calculate new #RegionView3D::ofs and #RegionView3D::dist. */
 
       if (rv3d->is_persp) {
         float my_origin[3]; /* Original #RegionView3D.ofs. */
@@ -318,7 +336,7 @@ void ViewOpsData::init_navigation(bContext *C,
     copy_v2_v2_int(this->init.event_xy, event->xy);
     copy_v2_v2_int(this->prev.event_xy, event->xy);
 
-    if (viewops_flag & VIEWOPS_FLAG_USE_MOUSE_INIT) {
+    if (use_cursor_init) {
       zero_v2_int(this->init.event_xy_offset);
     }
     else {
@@ -385,12 +403,16 @@ struct ViewOpsData_Utility : ViewOpsData {
   /* Used by #ED_view3d_navigation_do. */
   bool is_modal_event;
 
-  ViewOpsData_Utility(bContext *C, const bool use_alt_navigation = false)
+  ViewOpsData_Utility(bContext *C, const wmKeyMapItem *kmi_merge = nullptr)
       : ViewOpsData(), keymap_items(), is_modal_event(false)
   {
     this->init_context(C);
 
-    wmKeyMap *keymap = WM_keymap_find_all(CTX_wm_manager(C), "3D View", SPACE_VIEW3D, 0);
+    wmKeyMap *keymap = WM_keymap_find_all(
+        CTX_wm_manager(C), "3D View", SPACE_VIEW3D, RGN_TYPE_WINDOW);
+
+    WM_keyconfig_update_suppress_begin();
+
     wmKeyMap keymap_tmp = {};
 
     LISTBASE_FOREACH (wmKeyMapItem *, kmi, &keymap->items) {
@@ -404,22 +426,42 @@ struct ViewOpsData_Utility : ViewOpsData {
         continue;
       }
 
-      wmKeyMapItem *kmi_copy = WM_keymap_add_item_copy(&keymap_tmp, kmi);
-      if (use_alt_navigation) {
-        kmi_copy->alt = true;
+      wmKeyMapItem *kmi_cpy = WM_keymap_add_item_copy(&keymap_tmp, kmi);
+      if (kmi_merge) {
+        if (kmi_merge->shift == 1 || ELEM(kmi_merge->type, EVT_RIGHTSHIFTKEY, EVT_LEFTSHIFTKEY)) {
+          kmi_cpy->shift = 1;
+        }
+        if (kmi_merge->ctrl == 1 || ELEM(kmi_merge->type, EVT_LEFTCTRLKEY, EVT_RIGHTCTRLKEY)) {
+          kmi_cpy->ctrl = 1;
+        }
+        if (kmi_merge->alt == 1 || ELEM(kmi_merge->type, EVT_LEFTALTKEY, EVT_RIGHTALTKEY)) {
+          kmi_cpy->alt = 1;
+        }
+        if (kmi_merge->oskey == 1 || ELEM(kmi_merge->type, EVT_OSKEY)) {
+          kmi_cpy->oskey = 1;
+        }
+        if (!ISKEYMODIFIER(kmi_merge->type)) {
+          kmi_cpy->keymodifier = kmi_merge->type;
+        }
       }
     }
 
     /* Weak, but only the keymap items from the #wmKeyMap struct are needed here. */
     this->keymap_items = keymap_tmp.items;
+
+    WM_keyconfig_update_suppress_end();
   }
 
   ~ViewOpsData_Utility()
   {
     /* Weak, but rebuild the struct #wmKeyMap to clear the keymap items. */
+    WM_keyconfig_update_suppress_begin();
+
     wmKeyMap keymap_tmp = {};
     keymap_tmp.items = this->keymap_items;
     WM_keymap_clear(&keymap_tmp);
+
+    WM_keyconfig_update_suppress_end();
   }
 
 #ifdef WITH_CXX_GUARDEDALLOC
@@ -491,7 +533,8 @@ static int view3d_navigation_invoke_generic(bContext *C,
                                             ViewOpsData *vod,
                                             const wmEvent *event,
                                             PointerRNA *ptr,
-                                            const ViewOpsType *nav_type)
+                                            const ViewOpsType *nav_type,
+                                            const float dyn_ofs_override[3])
 {
   if (!nav_type->init_fn) {
     return OPERATOR_CANCELLED;
@@ -502,7 +545,7 @@ static int view3d_navigation_invoke_generic(bContext *C,
     use_cursor_init = RNA_property_boolean_get(ptr, prop);
   }
 
-  vod->init_navigation(C, event, nav_type, use_cursor_init);
+  vod->init_navigation(C, event, nav_type, dyn_ofs_override, use_cursor_init);
   ED_view3d_smooth_view_force_finish(C, vod->v3d, vod->region);
 
   return nav_type->init_fn(C, vod, event, ptr);
@@ -515,7 +558,7 @@ int view3d_navigate_invoke_impl(bContext *C,
 {
   ViewOpsData *vod = new ViewOpsData();
   vod->init_context(C);
-  int ret = view3d_navigation_invoke_generic(C, vod, event, op->ptr, nav_type);
+  int ret = view3d_navigation_invoke_generic(C, vod, event, op->ptr, nav_type, nullptr);
   op->customdata = (void *)vod;
 
   if (ret == OPERATOR_RUNNING_MODAL) {
@@ -559,7 +602,7 @@ int view3d_navigate_modal_fn(bContext *C, wmOperator *op, const wmEvent *event)
     wmOperatorType *ot_new = WM_operatortype_find(vod->nav_type->idname, false);
     WM_operator_type_set(op, ot_new);
     vod->end_navigation(C);
-    return view3d_navigation_invoke_generic(C, vod, event, op->ptr, vod->nav_type);
+    return view3d_navigation_invoke_generic(C, vod, event, op->ptr, vod->nav_type, nullptr);
   }
 
   int ret = vod->nav_type->apply_fn(C, vod, event_code, event->xy);
@@ -765,31 +808,29 @@ bool view3d_orbit_calc_center(bContext *C, float r_dyn_ofs[3])
     }
     mul_v2_fl(lastofs, 1.0f / 4.0f);
 
-    mul_m4_v3(ob_act_eval->object_to_world, lastofs);
+    mul_m4_v3(ob_act_eval->object_to_world().ptr(), lastofs);
 
     is_set = true;
   }
   else if (ob_act == nullptr || ob_act->mode == OB_MODE_OBJECT) {
-    /* object mode use boundbox centers */
+    /* Object mode uses bounding-box centers. */
     uint tot = 0;
     float select_center[3];
 
     zero_v3(select_center);
     LISTBASE_FOREACH (Base *, base_eval, BKE_view_layer_object_bases_get(view_layer_eval)) {
       if (BASE_SELECTED(v3d, base_eval)) {
-        /* use the boundbox if we can */
+        /* Use the bounding-box if we can. */
         Object *ob_eval = base_eval->object;
 
-        if (ob_eval->runtime.bb && !(ob_eval->runtime.bb->flag & BOUNDBOX_DIRTY)) {
-          float cent[3];
-
-          BKE_boundbox_calc_center_aabb(ob_eval->runtime.bb, cent);
-
-          mul_m4_v3(ob_eval->object_to_world, cent);
+        if (ob_eval->runtime->bounds_eval) {
+          blender::float3 cent = blender::math::midpoint(ob_eval->runtime->bounds_eval->min,
+                                                         ob_eval->runtime->bounds_eval->max);
+          mul_m4_v3(ob_eval->object_to_world().ptr(), cent);
           add_v3_v3(select_center, cent);
         }
         else {
-          add_v3_v3(select_center, ob_eval->object_to_world[3]);
+          add_v3_v3(select_center, ob_eval->object_to_world().location());
         }
         tot++;
       }
@@ -817,7 +858,7 @@ ViewOpsData *viewops_data_create(bContext *C,
 {
   ViewOpsData *vod = new ViewOpsData();
   vod->init_context(C);
-  vod->init_navigation(C, event, nav_type, use_cursor_init);
+  vod->init_navigation(C, event, nav_type, nullptr, use_cursor_init);
   return vod;
 }
 
@@ -1007,30 +1048,19 @@ static const ViewOpsType *view3d_navigation_type_from_idname(const char *idname)
 
 /* Unlike `viewops_data_create`, `ED_view3d_navigation_init` creates a navigation context along
  * with an array of `wmKeyMapItem`s used for navigation. */
-ViewOpsData *ED_view3d_navigation_init(bContext *C, const bool use_alt_navigation)
+ViewOpsData *ED_view3d_navigation_init(bContext *C, const wmKeyMapItem *kmi_merge)
 {
   if (!CTX_wm_region_view3d(C)) {
     return nullptr;
   }
 
-  return new ViewOpsData_Utility(C, use_alt_navigation);
+  return new ViewOpsData_Utility(C, kmi_merge);
 }
 
-/* Checks and initializes the navigation modal operation. */
-static int view3d_navigation_invoke(bContext *C,
-                                    ViewOpsData *vod,
-                                    const wmEvent *event,
-                                    wmKeyMapItem *kmi,
-                                    const ViewOpsType *nav_type)
-{
-  if (nav_type->poll_fn && !nav_type->poll_fn(C)) {
-    return OPERATOR_CANCELLED;
-  }
-
-  return view3d_navigation_invoke_generic(C, vod, event, kmi->ptr, nav_type);
-}
-
-bool ED_view3d_navigation_do(bContext *C, ViewOpsData *vod, const wmEvent *event)
+bool ED_view3d_navigation_do(bContext *C,
+                             ViewOpsData *vod,
+                             const wmEvent *event,
+                             const float depth_loc_override[3])
 {
   if (!vod) {
     return false;
@@ -1063,7 +1093,13 @@ bool ED_view3d_navigation_do(bContext *C, ViewOpsData *vod, const wmEvent *event
       }
 
       const ViewOpsType *nav_type = view3d_navigation_type_from_idname(kmi->idname);
-      op_return = view3d_navigation_invoke(C, vod, event, kmi, nav_type);
+      if (nav_type->poll_fn && !nav_type->poll_fn(C)) {
+        break;
+      }
+
+      op_return = view3d_navigation_invoke_generic(
+          C, vod, event, kmi->ptr, nav_type, depth_loc_override);
+
       if (op_return == OPERATOR_RUNNING_MODAL) {
         vod_intern->is_modal_event = true;
       }
@@ -1085,7 +1121,7 @@ bool ED_view3d_navigation_do(bContext *C, ViewOpsData *vod, const wmEvent *event
 
     return true;
   }
-  else if (vod->rv3d->rflag & RV3D_NAVIGATING) {
+  if (vod->rv3d->rflag & RV3D_NAVIGATING) {
     /* Add a fake confirmation. */
     vod->rv3d->rflag &= ~RV3D_NAVIGATING;
     return true;

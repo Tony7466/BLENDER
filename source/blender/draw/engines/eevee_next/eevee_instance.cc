@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,14 +10,14 @@
 
 #include <sstream>
 
-#include "BKE_global.h"
-#include "BKE_object.h"
+#include "BKE_global.hh"
+#include "BKE_object.hh"
 #include "BLI_rect.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 #include "DNA_ID.h"
 #include "DNA_lightprobe_types.h"
 #include "DNA_modifier_types.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 #include "RE_pipeline.h"
 
 #include "eevee_engine.h"
@@ -25,7 +25,13 @@
 
 #include "DNA_particle_types.h"
 
+#include "draw_common.hh"
+
 namespace blender::eevee {
+
+void *Instance::debug_scope_render_sample = nullptr;
+void *Instance::debug_scope_irradiance_setup = nullptr;
+void *Instance::debug_scope_irradiance_sample = nullptr;
 
 /* -------------------------------------------------------------------- */
 /** \name Initialization
@@ -39,6 +45,7 @@ namespace blender::eevee {
 
 void Instance::init(const int2 &output_res,
                     const rcti *output_rect,
+                    const rcti *visible_rect,
                     RenderEngine *render_,
                     Depsgraph *depsgraph_,
                     Object *camera_object_,
@@ -56,11 +63,27 @@ void Instance::init(const int2 &output_res,
   rv3d = rv3d_;
   manager = DRW_manager_get();
 
+  info = "";
+
   if (assign_if_different(debug_mode, (eDebugMode)G.debug_value)) {
     sampling.reset();
   }
-
-  info = "";
+  if (output_res != film.display_extent_get()) {
+    sampling.reset();
+  }
+  if (output_rect) {
+    int2 offset = int2(output_rect->xmin, output_rect->ymin);
+    int2 extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
+    if (offset != film.get_data().offset || extent != film.get_data().extent) {
+      sampling.reset();
+    }
+  }
+  if (assign_if_different(overlays_enabled_, v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS))) {
+    sampling.reset();
+  }
+  if (DRW_state_is_navigating()) {
+    sampling.reset();
+  }
 
   update_eval_members();
 
@@ -69,13 +92,18 @@ void Instance::init(const int2 &output_res,
   film.init(output_res, output_rect);
   ambient_occlusion.init();
   velocity.init();
+  raytracing.init();
   depth_of_field.init();
   shadows.init();
   motion_blur.init();
   main_view.init();
+  light_probes.init();
+  planar_probes.init();
   /* Irradiance Cache needs reflection probes to be initialized. */
-  reflection_probes.init();
-  irradiance_cache.init();
+  sphere_probes.init();
+  volume_probes.init();
+  volume.init();
+  lookdev.init(visible_rect);
 }
 
 void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
@@ -104,9 +132,13 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
   depth_of_field.init();
   shadows.init();
   main_view.init();
+  light_probes.init();
+  planar_probes.init();
   /* Irradiance Cache needs reflection probes to be initialized. */
-  reflection_probes.init();
-  irradiance_cache.init();
+  sphere_probes.init();
+  volume_probes.init();
+  volume.init();
+  lookdev.init(&empty_rect);
 }
 
 void Instance::set_time(float time)
@@ -125,6 +157,12 @@ void Instance::update_eval_members()
                            nullptr;
 }
 
+void Instance::view_update()
+{
+  sampling.reset();
+  sync.view_update();
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -141,16 +179,16 @@ void Instance::begin_sync()
   velocity.begin_sync(); /* NOTE: Also syncs camera. */
   lights.begin_sync();
   shadows.begin_sync();
+  volume.begin_sync();
   pipelines.begin_sync();
   cryptomatte.begin_sync();
-  reflection_probes.begin_sync();
+  sphere_probes.begin_sync();
   light_probes.begin_sync();
 
   gpencil_engine_enabled = false;
 
-  scene_sync();
-
   depth_of_field.sync();
+  raytracing.sync();
   motion_blur.sync();
   hiz_buffer.sync();
   main_view.sync();
@@ -158,28 +196,35 @@ void Instance::begin_sync()
   film.sync();
   render_buffers.sync();
   ambient_occlusion.sync();
-  irradiance_cache.sync();
-}
+  volume_probes.sync();
+  lookdev.sync();
 
-void Instance::scene_sync()
-{
-  SceneHandle &sc_handle = sync.sync_scene(scene);
+  use_surfaces = (view_layer->layflag & SCE_LAY_SOLID) != 0;
+  use_curves = (view_layer->layflag & SCE_LAY_STRAND) != 0;
+  use_volumes = (view_layer->layflag & SCE_LAY_VOLUMES) != 0;
 
-  sc_handle.reset_recalc_flag();
+  if (is_light_bake) {
+    /* Do not use render layer visibility during bake.
+     * Note: This is arbitrary and could be changed if needed. */
+    use_surfaces = use_curves = use_volumes = true;
+  }
 
-  /* This refers specifically to the Scene camera that can be accessed
-   * via View Layer Attribute nodes, rather than the actual render camera. */
-  if (scene->camera != nullptr) {
-    ObjectHandle &ob_handle = sync.sync_object(scene->camera);
-
-    ob_handle.reset_recalc_flag();
+  if (is_viewport() && velocity.camera_has_motion()) {
+    sampling.reset();
   }
 }
 
 void Instance::object_sync(Object *ob)
 {
-  const bool is_renderable_type = ELEM(
-      ob->type, OB_CURVES, OB_GPENCIL_LEGACY, OB_MESH, OB_POINTCLOUD, OB_LAMP, OB_LIGHTPROBE);
+  const bool is_renderable_type = ELEM(ob->type,
+                                       OB_CURVES,
+                                       OB_GPENCIL_LEGACY,
+                                       OB_MESH,
+                                       OB_POINTCLOUD,
+                                       OB_VOLUME,
+                                       OB_LAMP,
+                                       OB_LIGHTPROBE);
+  const bool is_drawable_type = is_renderable_type && !ELEM(ob->type, OB_LAMP, OB_LIGHTPROBE);
   const int ob_visibility = DRW_object_visibility_in_active_context(ob);
   const bool partsys_is_visible = (ob_visibility & OB_VISIBLE_PARTICLES) != 0 &&
                                   (ob->type == OB_MESH);
@@ -192,31 +237,19 @@ void Instance::object_sync(Object *ob)
 
   /* TODO cleanup. */
   ObjectRef ob_ref = DRW_object_ref_get(ob);
-  ResourceHandle res_handle = manager->resource_handle(ob_ref);
-
-  ObjectHandle &ob_handle = sync.sync_object(ob);
+  ObjectHandle &ob_handle = sync.sync_object(ob_ref);
+  ResourceHandle res_handle = {0};
+  if (is_drawable_type) {
+    res_handle = manager->resource_handle(ob_ref);
+  }
 
   if (partsys_is_visible && ob != DRW_context_state_get()->object_edit) {
-    int sub_key = 1;
-    LISTBASE_FOREACH (ModifierData *, md, &ob->modifiers) {
-      if (md->type == eModifierType_ParticleSystem) {
-        ParticleSystem *particle_sys = reinterpret_cast<ParticleSystemModifierData *>(md)->psys;
-        ParticleSettings *part_settings = particle_sys->part;
-        const int draw_as = (part_settings->draw_as == PART_DRAW_REND) ? part_settings->ren_as :
-                                                                         part_settings->draw_as;
-        if (draw_as != PART_DRAW_PATH ||
-            !DRW_object_is_visible_psys_in_active_context(ob, particle_sys)) {
-          continue;
-        }
-
-        ObjectHandle _ob_handle{};
-        _ob_handle.object_key = ObjectKey(ob_handle.object_key.ob, sub_key++);
-        _ob_handle.recalc = particle_sys->recalc;
-        ResourceHandle _res_handle = manager->resource_handle(float4x4(ob->object_to_world));
-
-        sync.sync_curves(ob, _ob_handle, _res_handle, md, particle_sys);
-      }
-    }
+    auto sync_hair =
+        [&](ObjectHandle hair_handle, ModifierData &md, ParticleSystem &particle_sys) {
+          ResourceHandle _res_handle = manager->resource_handle(ob->object_to_world());
+          sync.sync_curves(ob, hair_handle, _res_handle, ob_ref, &md, &particle_sys);
+        };
+    foreach_hair_particle_handle(ob, ob_handle, sync_hair);
   }
 
   if (object_is_visible) {
@@ -225,27 +258,29 @@ void Instance::object_sync(Object *ob)
         lights.sync_light(ob, ob_handle);
         break;
       case OB_MESH:
-        sync.sync_mesh(ob, ob_handle, res_handle, ob_ref);
+        if (!sync.sync_sculpt(ob, ob_handle, res_handle, ob_ref)) {
+          sync.sync_mesh(ob, ob_handle, res_handle, ob_ref);
+        }
         break;
       case OB_POINTCLOUD:
         sync.sync_point_cloud(ob, ob_handle, res_handle, ob_ref);
+        break;
       case OB_VOLUME:
+        sync.sync_volume(ob, ob_handle, res_handle);
         break;
       case OB_CURVES:
-        sync.sync_curves(ob, ob_handle, res_handle);
+        sync.sync_curves(ob, ob_handle, res_handle, ob_ref);
         break;
       case OB_GPENCIL_LEGACY:
         sync.sync_gpencil(ob, ob_handle, res_handle);
         break;
       case OB_LIGHTPROBE:
-        sync.sync_light_probe(ob, ob_handle);
+        light_probes.sync_probe(ob, ob_handle);
         break;
       default:
         break;
     }
   }
-
-  ob_handle.reset_recalc_flag();
 }
 
 /* Wrapper to use with DRW_render_object_iter. */
@@ -256,13 +291,19 @@ void Instance::object_sync_render(void *instance_,
 {
   UNUSED_VARS(engine, depsgraph);
   Instance &inst = *reinterpret_cast<Instance *>(instance_);
+
+  if (inst.is_baking() && ob->visibility_flag & OB_HIDE_PROBE_VOLUME) {
+    return;
+  }
+
   inst.object_sync(ob);
 }
 
 void Instance::end_sync()
 {
   velocity.end_sync();
-  shadows.end_sync(); /** \note: Needs to be before lights. */
+  volume.end_sync();  /* Needs to be before shadows. */
+  shadows.end_sync(); /* Needs to be before lights. */
   lights.end_sync();
   sampling.end_sync();
   subsurface.end_sync();
@@ -270,7 +311,12 @@ void Instance::end_sync()
   cryptomatte.end_sync();
   pipelines.end_sync();
   light_probes.end_sync();
-  reflection_probes.end_sync();
+  sphere_probes.end_sync();
+  planar_probes.end_sync();
+
+  uniform_data.push_update();
+
+  depsgraph_last_update_ = DEG_get_update_count(depsgraph);
 }
 
 void Instance::render_sync()
@@ -280,8 +326,20 @@ void Instance::render_sync()
 
   manager->begin_sync();
 
+  draw::hair_init();
+  draw::curves_init();
+
   begin_sync();
+
   DRW_render_object_iter(this, render, depsgraph, object_sync_render);
+
+  draw::hair_update(*manager);
+  draw::curves_update(*manager);
+  draw::hair_free();
+  draw::curves_free();
+
+  velocity.geometry_steps_fill();
+
   end_sync();
 
   manager->end_sync();
@@ -292,12 +350,23 @@ void Instance::render_sync()
   DRW_curves_update();
 }
 
-bool Instance::do_probe_sync() const
+bool Instance::do_reflection_probe_sync() const
 {
+  if (!sphere_probes.update_probes_this_sample_) {
+    return false;
+  }
   if (materials.queued_shaders_count > 0) {
     return false;
   }
-  if (!reflection_probes.update_probes_this_sample_) {
+  return true;
+}
+
+bool Instance::do_planar_probe_sync() const
+{
+  if (!planar_probes.update_probes_) {
+    return false;
+  }
+  if (materials.queued_shaders_count > 0) {
     return false;
   }
   return true;
@@ -312,11 +381,12 @@ bool Instance::do_probe_sync() const
 /**
  * Conceptually renders one sample per pixel.
  * Everything based on random sampling should be done here (i.e: DRWViews jitter)
- **/
+ */
 void Instance::render_sample()
 {
   if (sampling.finished_viewport()) {
     film.display();
+    lookdev.display();
     return;
   }
 
@@ -325,6 +395,8 @@ void Instance::render_sample()
     render_sync();
   }
 
+  DebugScope debug_scope(debug_scope_render_sample, "EEVEE.render_sample");
+
   sampling.step();
 
   capture_view.render_world();
@@ -332,13 +404,16 @@ void Instance::render_sample()
 
   main_view.render();
 
+  lookdev_view.render();
+
   motion_blur.step();
 }
 
 void Instance::render_read_result(RenderLayer *render_layer, const char *view_name)
 {
   eViewLayerEEVEEPassType pass_bits = film.enabled_passes_get();
-  for (auto i : IndexRange(EEVEE_RENDER_PASS_MAX_BIT)) {
+
+  for (auto i : IndexRange(EEVEE_RENDER_PASS_MAX_BIT + 1)) {
     eViewLayerEEVEEPassType pass_type = eViewLayerEEVEEPassType(pass_bits & (1 << i));
     if (pass_type == 0) {
       continue;
@@ -357,8 +432,8 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
         BLI_mutex_lock(&render->update_render_passes_mutex);
         /* WORKAROUND: We use texture read to avoid using a frame-buffer to get the render result.
          * However, on some implementation, we need a buffer with a few extra bytes for the read to
-         * happen correctly (see GLTexture::read()). So we need a custom memory allocation. */
-        /* Avoid memcpy(), replace the pointer directly. */
+         * happen correctly (see #GLTexture::read()). So we need a custom memory allocation. */
+        /* Avoid `memcpy()`, replace the pointer directly. */
         RE_pass_set_buffer_data(rp, result);
         BLI_mutex_unlock(&render->update_render_passes_mutex);
       }
@@ -411,11 +486,6 @@ void Instance::render_read_result(RenderLayer *render_layer, const char *view_na
 
 void Instance::render_frame(RenderLayer *render_layer, const char *view_name)
 {
-  /* TODO(jbakker): should we check on the subtype as well? Now it also populates even when there
-   * are other light probes in the scene. */
-  if (DEG_id_type_any_exists(this->depsgraph, ID_LP)) {
-    reflection_probes.update_probes_next_sample_ = true;
-  }
 
   while (!sampling.finished()) {
     this->render_sample();
@@ -441,9 +511,8 @@ void Instance::render_frame(RenderLayer *render_layer, const char *view_name)
   this->render_read_result(render_layer, view_name);
 }
 
-void Instance::draw_viewport(DefaultFramebufferList *dfbl)
+void Instance::draw_viewport()
 {
-  UNUSED_VARS(dfbl);
   render_sample();
   velocity.step_swap();
 
@@ -459,6 +528,19 @@ void Instance::draw_viewport(DefaultFramebufferList *dfbl)
     ss << "Compiling Shaders (" << materials.queued_shaders_count << " remaining)";
     info = ss.str();
   }
+  else if (materials.queued_optimize_shaders_count > 0) {
+    std::stringstream ss;
+    ss << "Optimizing Shaders (" << materials.queued_optimize_shaders_count << " remaining)";
+    info = ss.str();
+  }
+}
+
+void Instance::draw_viewport_image_render()
+{
+  while (!sampling.finished_viewport()) {
+    this->render_sample();
+  }
+  velocity.step_swap();
 }
 
 void Instance::store_metadata(RenderResult *render_result)
@@ -486,6 +568,8 @@ void Instance::update_passes(RenderEngine *engine, Scene *scene, ViewLayer *view
   CHECK_PASS_LEGACY(Z, SOCK_FLOAT, 1, "Z");
   CHECK_PASS_LEGACY(MIST, SOCK_FLOAT, 1, "Z");
   CHECK_PASS_LEGACY(NORMAL, SOCK_VECTOR, 3, "XYZ");
+  CHECK_PASS_LEGACY(POSITION, SOCK_VECTOR, 3, "XYZ");
+  CHECK_PASS_LEGACY(VECTOR, SOCK_VECTOR, 4, "XYZW");
   CHECK_PASS_LEGACY(DIFFUSE_DIRECT, SOCK_RGBA, 3, "RGB");
   CHECK_PASS_LEGACY(DIFFUSE_COLOR, SOCK_RGBA, 3, "RGB");
   CHECK_PASS_LEGACY(GLOSSY_DIRECT, SOCK_RGBA, 3, "RGB");
@@ -553,32 +637,47 @@ void Instance::light_bake_irradiance(
     context_disable();
   };
 
-  irradiance_cache.bake.init(probe);
+  volume_probes.bake.init(probe);
 
   custom_pipeline_wrapper([&]() {
-    /* TODO: lightprobe visibility group option. */
     manager->begin_sync();
     render_sync();
     manager->end_sync();
 
+    DebugScope debug_scope(debug_scope_irradiance_setup, "EEVEE.irradiance_setup");
+
     capture_view.render_world();
 
-    irradiance_cache.bake.surfels_create(probe);
-    irradiance_cache.bake.surfels_lights_eval();
+    volume_probes.bake.surfels_create(probe);
+
+    if (volume_probes.bake.should_break()) {
+      return;
+    }
+
+    volume_probes.bake.surfels_lights_eval();
+
+    volume_probes.bake.clusters_build();
+    volume_probes.bake.irradiance_offset();
   });
+
+  if (volume_probes.bake.should_break()) {
+    return;
+  }
 
   sampling.init(probe);
   while (!sampling.finished()) {
     context_wrapper([&]() {
+      DebugScope debug_scope(debug_scope_irradiance_sample, "EEVEE.irradiance_sample");
+
       /* Batch ray cast by pack of 16. Avoids too much overhead of the update function & context
        * switch. */
       /* TODO(fclem): Could make the number of iteration depend on the computation time. */
       for (int i = 0; i < 16 && !sampling.finished(); i++) {
         sampling.step();
 
-        irradiance_cache.bake.raylists_build();
-        irradiance_cache.bake.propagate_light();
-        irradiance_cache.bake.irradiance_capture();
+        volume_probes.bake.raylists_build();
+        volume_probes.bake.propagate_light();
+        volume_probes.bake.irradiance_capture();
       }
 
       if (sampling.finished()) {
@@ -588,11 +687,11 @@ void Instance::light_bake_irradiance(
 
       LightProbeGridCacheFrame *cache_frame;
       if (sampling.finished()) {
-        cache_frame = irradiance_cache.bake.read_result_packed();
+        cache_frame = volume_probes.bake.read_result_packed();
       }
       else {
         /* TODO(fclem): Only do this read-back if needed. But it might be tricky to know when. */
-        cache_frame = irradiance_cache.bake.read_result_unpacked();
+        cache_frame = volume_probes.bake.read_result_unpacked();
       }
 
       float progress = sampling.sample_index() / float(sampling.sample_count());

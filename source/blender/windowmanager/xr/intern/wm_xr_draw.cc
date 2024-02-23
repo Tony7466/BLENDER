@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,12 +12,12 @@
 
 #include <cstring>
 
-#include "BKE_context.h"
-
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
-#include "ED_view3d_offscreen.h"
+#include "ED_view3d_offscreen.hh"
 
 #include "GHOST_C-api.h"
 #include "GPU_batch_presets.h"
@@ -26,10 +26,9 @@
 
 #include "GPU_viewport.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "wm_surface.h"
-#include "wm_xr_intern.h"
+#include "wm_xr_intern.hh"
 
 void wm_xr_pose_to_mat(const GHOST_XrPose *pose, float r_mat[4][4])
 {
@@ -127,7 +126,7 @@ static void wm_xr_draw_viewport_buffers_to_active_framebuffer(
 
   /* For upside down contexts, draw with inverted y-values. */
   if (is_upside_down) {
-    SWAP(int, rect.ymin, rect.ymax);
+    std::swap(rect.ymin, rect.ymax);
   }
   GPU_viewport_draw_to_screen_ex(vp->viewport, 0, &rect, draw_view->expects_srgb_buffer, true);
 }

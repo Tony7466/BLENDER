@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,10 +13,7 @@
 #include "BLI_dlrbTree.h"
 #include "BLI_listbase.h"
 
-#include "BKE_gpencil_legacy.h"
-
 #include "DNA_gpencil_legacy_types.h"
-#include "DNA_userdef_types.h"
 
 #include "MEM_guardedalloc.h"
 

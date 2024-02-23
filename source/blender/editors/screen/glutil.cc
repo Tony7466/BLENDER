@@ -12,26 +12,20 @@
 #include "DNA_userdef_types.h"
 #include "DNA_vec_types.h"
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BIF_glutil.hh"
 
-#include "BIF_glutil.h"
-
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "GPU_context.h"
 #include "GPU_immediate.h"
-#include "GPU_matrix.h"
 #include "GPU_texture.h"
 
 #ifdef __APPLE__
 #  include "GPU_state.h"
 #endif
-
-#include "UI_interface.h"
 
 /* ******************************************** */
 
@@ -233,7 +227,8 @@ void immDrawPixelsTexTiled_scaling_clipping(IMMDrawPixelsTexState *state,
 
       if (use_clipping) {
         if (rast_x + right * xzoom * scaleX < clip_min_x ||
-            rast_y + top * yzoom * scaleY < clip_min_y) {
+            rast_y + top * yzoom * scaleY < clip_min_y)
+        {
           continue;
         }
         if (rast_x + left * xzoom > clip_max_x || rast_y + bottom * yzoom > clip_max_y) {
@@ -445,7 +440,7 @@ void ED_draw_imbuf_clipping(ImBuf *ibuf,
   if (force_fallback == false) {
     int ok;
 
-    IMMDrawPixelsTexState state = {0};
+    IMMDrawPixelsTexState state = {nullptr};
     /* We want GLSL state to be fully handled by OCIO. */
     state.do_shader_unbind = false;
     immDrawPixelsTexSetupAttributes(&state);
@@ -628,7 +623,7 @@ int ED_draw_imbuf_method(const ImBuf *ibuf)
      * otherwise do color management on CPU side. */
     const size_t threshold = sizeof(float[4]) * 2048 * 2048;
     const size_t data_size = (ibuf->float_buffer.data) ? sizeof(float) : sizeof(uchar);
-    const size_t size = ibuf->x * ibuf->y * ibuf->channels * data_size;
+    const size_t size = size_t(ibuf->x) * size_t(ibuf->y) * size_t(ibuf->channels) * data_size;
 
     return (size > threshold) ? IMAGE_DRAW_METHOD_2DTEXTURE : IMAGE_DRAW_METHOD_GLSL;
   }

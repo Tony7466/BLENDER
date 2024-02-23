@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2014-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -7,13 +7,15 @@
 # Example usage:
 #   cmake -C../blender/build_files/cmake/config/blender_release.cmake  ../blender
 #
+# NOTE: the built-bot supports configuration overrides for some of these settings.
+# This means the daily-builds may not match this configuration *exactly*,
+# see: `build_files/buildbot/config/*.cmake`.
 
 set(WITH_ALEMBIC             ON  CACHE BOOL "" FORCE)
 set(WITH_ASSERT_ABORT        OFF CACHE BOOL "" FORCE)
 set(WITH_AUDASPACE           ON  CACHE BOOL "" FORCE)
 set(WITH_BUILDINFO           ON  CACHE BOOL "" FORCE)
 set(WITH_BULLET              ON  CACHE BOOL "" FORCE)
-set(WITH_CODEC_AVI           ON  CACHE BOOL "" FORCE)
 set(WITH_CODEC_FFMPEG        ON  CACHE BOOL "" FORCE)
 set(WITH_CODEC_SNDFILE       ON  CACHE BOOL "" FORCE)
 set(WITH_COMPOSITOR_CPU      ON  CACHE BOOL "" FORCE)
@@ -58,7 +60,8 @@ set(WITH_QUADRIFLOW          ON  CACHE BOOL "" FORCE)
 set(WITH_SDL                 ON  CACHE BOOL "" FORCE)
 set(WITH_TBB                 ON  CACHE BOOL "" FORCE)
 set(WITH_USD                 ON  CACHE BOOL "" FORCE)
-set(WITH_MATERIALX           OFF CACHE BOOL "" FORCE)
+set(WITH_MATERIALX           ON  CACHE BOOL "" FORCE)
+set(WITH_HYDRA               ON  CACHE BOOL "" FORCE)
 
 set(WITH_MEM_JEMALLOC          ON  CACHE BOOL "" FORCE)
 
@@ -77,6 +80,9 @@ if(UNIX AND NOT APPLE)
   set(WITH_PULSEAUDIO          ON  CACHE BOOL "" FORCE)
   set(WITH_X11_XINPUT          ON  CACHE BOOL "" FORCE)
   set(WITH_X11_XF86VMODE       ON  CACHE BOOL "" FORCE)
+  set(WITH_JACK_DYNLOAD        ON  CACHE BOOL "" FORCE)
+  set(WITH_PULSEAUDIO_DYNLOAD  ON  CACHE BOOL "" FORCE)
+  set(WITH_SDL_DYNLOAD         ON  CACHE BOOL "" FORCE)
 endif()
 if(NOT APPLE)
   set(WITH_XR_OPENXR              ON  CACHE BOOL "" FORCE)

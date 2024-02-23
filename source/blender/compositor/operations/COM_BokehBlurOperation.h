@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,9 +18,6 @@ class BokehBlurOperation : public MultiThreadedOperation, public QualityStepHelp
   float size_;
   bool sizeavailable_;
 
-  float bokeh_mid_x_;
-  float bokeh_mid_y_;
-  float bokehDimension_;
   bool extend_bounds_;
 
  public:

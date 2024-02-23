@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,11 +11,9 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_array_utils.hh"
-#include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_armature_types.h"
 #include "DNA_defaults.h"
@@ -26,24 +24,20 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_action.h" /* BKE_pose_channel_find_name */
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_deform.h"
-#include "BKE_lib_query.h"
+#include "BKE_customdata.hh"
+#include "BKE_deform.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
-#include "BKE_screen.h"
+#include "BKE_modifier.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_build.hh"
 
-#include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
 #include "BLI_array.hh"
@@ -59,7 +53,7 @@ using blender::MutableSpan;
 using blender::Span;
 using blender::Vector;
 
-static void initData(ModifierData *md)
+static void init_data(ModifierData *md)
 {
   MaskModifierData *mmd = (MaskModifierData *)md;
 
@@ -68,18 +62,18 @@ static void initData(ModifierData *md)
   MEMCPY_STRUCT_AFTER(mmd, DNA_struct_default_get(MaskModifierData), modifier);
 }
 
-static void requiredDataMask(ModifierData * /*md*/, CustomData_MeshMasks *r_cddata_masks)
+static void required_data_mask(ModifierData * /*md*/, CustomData_MeshMasks *r_cddata_masks)
 {
   r_cddata_masks->vmask |= CD_MASK_MDEFORMVERT;
 }
 
-static void foreachIDLink(ModifierData *md, Object *ob, IDWalkFunc walk, void *userData)
+static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
 {
   MaskModifierData *mmd = reinterpret_cast<MaskModifierData *>(md);
-  walk(userData, ob, (ID **)&mmd->ob_arm, IDWALK_CB_NOP);
+  walk(user_data, ob, (ID **)&mmd->ob_arm, IDWALK_CB_NOP);
 }
 
-static void updateDepsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
+static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
   MaskModifierData *mmd = reinterpret_cast<MaskModifierData *>(md);
   if (mmd->ob_arm) {
@@ -163,11 +157,11 @@ static void computed_masked_edges(const Mesh *mesh,
                                   MutableSpan<int> r_edge_map,
                                   uint *r_edges_masked_num)
 {
-  BLI_assert(mesh->totedge == r_edge_map.size());
+  BLI_assert(mesh->edges_num == r_edge_map.size());
   const Span<int2> edges = mesh->edges();
 
   uint edges_masked_num = 0;
-  for (int i : IndexRange(mesh->totedge)) {
+  for (int i : IndexRange(mesh->edges_num)) {
     const int2 &edge = edges[i];
 
     /* only add if both verts will be in new mesh */
@@ -189,12 +183,12 @@ static void computed_masked_edges_smooth(const Mesh *mesh,
                                          uint *r_edges_masked_num,
                                          uint *r_verts_add_num)
 {
-  BLI_assert(mesh->totedge == r_edge_map.size());
+  BLI_assert(mesh->edges_num == r_edge_map.size());
   const Span<int2> edges = mesh->edges();
 
   uint edges_masked_num = 0;
   uint verts_add_num = 0;
-  for (int i : IndexRange(mesh->totedge)) {
+  for (int i : IndexRange(mesh->edges_num)) {
     const int2 &edge = edges[i];
 
     /* only add if both verts will be in new mesh */
@@ -225,7 +219,7 @@ static void computed_masked_faces(const Mesh *mesh,
                                   uint *r_faces_masked_num,
                                   uint *r_loops_masked_num)
 {
-  BLI_assert(mesh->totvert == vertex_mask.size());
+  BLI_assert(mesh->verts_num == vertex_mask.size());
   const blender::OffsetIndices faces = mesh->faces();
   const Span<int> corner_verts = mesh->corner_verts();
 
@@ -265,7 +259,7 @@ static void compute_interpolated_faces(const Mesh *mesh,
                                        uint *r_faces_add_num,
                                        uint *r_loops_add_num)
 {
-  BLI_assert(mesh->totvert == vertex_mask.size());
+  BLI_assert(mesh->verts_num == vertex_mask.size());
 
   /* Can't really know ahead of time how much space to use exactly. Estimate limit instead. */
   /* NOTE: this reserve can only lift the capacity if there are ngons, which get split. */
@@ -331,14 +325,14 @@ static void copy_masked_verts_to_new_mesh(const Mesh &src_mesh,
                                           Mesh &dst_mesh,
                                           Span<int> vertex_map)
 {
-  BLI_assert(src_mesh.totvert == vertex_map.size());
+  BLI_assert(src_mesh.verts_num == vertex_map.size());
   for (const int i_src : vertex_map.index_range()) {
     const int i_dst = vertex_map[i_src];
     if (i_dst == -1) {
       continue;
     }
 
-    CustomData_copy_data(&src_mesh.vdata, &dst_mesh.vdata, i_src, i_dst, 1);
+    CustomData_copy_data(&src_mesh.vert_data, &dst_mesh.vert_data, i_src, i_dst, 1);
   }
 }
 
@@ -363,14 +357,14 @@ static void add_interp_verts_copy_edges_to_new_mesh(const Mesh &src_mesh,
                                                     uint verts_add_num,
                                                     MutableSpan<int> r_edge_map)
 {
-  BLI_assert(src_mesh.totvert == vertex_mask.size());
-  BLI_assert(src_mesh.totedge == r_edge_map.size());
+  BLI_assert(src_mesh.verts_num == vertex_mask.size());
+  BLI_assert(src_mesh.edges_num == r_edge_map.size());
   const Span<int2> src_edges = src_mesh.edges();
   MutableSpan<int2> dst_edges = dst_mesh.edges_for_write();
 
-  uint vert_index = dst_mesh.totvert - verts_add_num;
+  uint vert_index = dst_mesh.verts_num - verts_add_num;
   uint edge_index = edges_masked_num - verts_add_num;
-  for (int i_src : IndexRange(src_mesh.totedge)) {
+  for (int i_src : IndexRange(src_mesh.edges_num)) {
     if (r_edge_map[i_src] != -1) {
       int i_dst = r_edge_map[i_src];
       if (i_dst == -2) {
@@ -379,7 +373,7 @@ static void add_interp_verts_copy_edges_to_new_mesh(const Mesh &src_mesh,
       const int2 &e_src = src_edges[i_src];
       int2 &e_dst = dst_edges[i_dst];
 
-      CustomData_copy_data(&src_mesh.edata, &dst_mesh.edata, i_src, i_dst, 1);
+      CustomData_copy_data(&src_mesh.edge_data, &dst_mesh.edge_data, i_src, i_dst, 1);
       e_dst = e_src;
       e_dst[0] = vertex_map[e_src[0]];
       e_dst[1] = vertex_map[e_src[1]];
@@ -403,12 +397,17 @@ static void add_interp_verts_copy_edges_to_new_mesh(const Mesh &src_mesh,
           dvert, defgrp_index, threshold, e_src[0], e_src[1]);
 
       float weights[2] = {1.0f - fac, fac};
-      CustomData_interp(
-          &src_mesh.vdata, &dst_mesh.vdata, (int *)&e_src[0], weights, nullptr, 2, vert_index);
+      CustomData_interp(&src_mesh.vert_data,
+                        &dst_mesh.vert_data,
+                        (int *)&e_src[0],
+                        weights,
+                        nullptr,
+                        2,
+                        vert_index);
       vert_index++;
     }
   }
-  BLI_assert(vert_index == dst_mesh.totvert);
+  BLI_assert(vert_index == dst_mesh.verts_num);
   BLI_assert(edge_index == edges_masked_num);
 }
 
@@ -420,15 +419,15 @@ static void copy_masked_edges_to_new_mesh(const Mesh &src_mesh,
   const Span<int2> src_edges = src_mesh.edges();
   MutableSpan<int2> dst_edges = dst_mesh.edges_for_write();
 
-  BLI_assert(src_mesh.totvert == vertex_map.size());
-  BLI_assert(src_mesh.totedge == edge_map.size());
-  for (const int i_src : IndexRange(src_mesh.totedge)) {
+  BLI_assert(src_mesh.verts_num == vertex_map.size());
+  BLI_assert(src_mesh.edges_num == edge_map.size());
+  for (const int i_src : IndexRange(src_mesh.edges_num)) {
     const int i_dst = edge_map[i_src];
     if (ELEM(i_dst, -1, -2)) {
       continue;
     }
 
-    CustomData_copy_data(&src_mesh.edata, &dst_mesh.edata, i_src, i_dst, 1);
+    CustomData_copy_data(&src_mesh.edge_data, &dst_mesh.edge_data, i_src, i_dst, 1);
     dst_edges[i_dst][0] = vertex_map[src_edges[i_src][0]];
     dst_edges[i_dst][1] = vertex_map[src_edges[i_src][1]];
   }
@@ -455,9 +454,9 @@ static void copy_masked_faces_to_new_mesh(const Mesh &src_mesh,
 
     dst_face_offsets[i_dst] = new_loop_starts[i_dst];
 
-    CustomData_copy_data(&src_mesh.pdata, &dst_mesh.pdata, i_src, i_dst, 1);
-    CustomData_copy_data(&src_mesh.ldata,
-                         &dst_mesh.ldata,
+    CustomData_copy_data(&src_mesh.face_data, &dst_mesh.face_data, i_src, i_dst, 1);
+    CustomData_copy_data(&src_mesh.corner_data,
+                         &dst_mesh.corner_data,
                          src_face.start(),
                          dst_face_offsets[i_dst],
                          src_face.size());
@@ -490,11 +489,12 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
   MutableSpan<int> dst_corner_verts = dst_mesh.corner_verts_for_write();
   MutableSpan<int> dst_corner_edges = dst_mesh.corner_edges_for_write();
 
-  int edge_index = dst_mesh.totedge - edges_add_num;
+  int edge_index = dst_mesh.edges_num - edges_add_num;
   int sub_face_index = 0;
   int last_i_src = -1;
   for (const int i_dst :
-       IndexRange(faces_masked_num, masked_face_indices.size() - faces_masked_num)) {
+       IndexRange(faces_masked_num, masked_face_indices.size() - faces_masked_num))
+  {
     const int i_src = masked_face_indices[i_dst];
     if (i_src == last_i_src) {
       sub_face_index++;
@@ -507,7 +507,7 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
     const blender::IndexRange src_face = src_faces[i_src];
     const int i_ml_src = src_face.start();
     int i_ml_dst = new_loop_starts[i_dst];
-    CustomData_copy_data(&src_mesh.pdata, &dst_mesh.pdata, i_src, i_dst, 1);
+    CustomData_copy_data(&src_mesh.face_data, &dst_mesh.face_data, i_src, i_dst, 1);
 
     dst_face_offsets[i_dst] = i_ml_dst;
 
@@ -533,7 +533,7 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
     }
 
     BLI_assert(start >= 0);
-    BLI_assert(edge_index < dst_mesh.totedge);
+    BLI_assert(edge_index < dst_mesh.edges_num);
 
     int last_index = start;
     bool v_loop_in_mask_last = vertex_mask[face_verts_src[last_index]];
@@ -547,12 +547,13 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
         float weights[2] = {1.0f - fac, fac};
         int indices[2] = {i_ml_src + last_index, i_ml_src + index};
         CustomData_interp(
-            &src_mesh.ldata, &dst_mesh.ldata, indices, weights, nullptr, 2, i_ml_dst);
+            &src_mesh.corner_data, &dst_mesh.corner_data, indices, weights, nullptr, 2, i_ml_dst);
         dst_corner_edges[i_ml_dst] = edge_map[face_edges_src[last_index]];
         dst_corner_verts[i_ml_dst] = dst_edges[dst_corner_edges[i_ml_dst]][0];
         i_ml_dst++;
 
-        CustomData_copy_data(&src_mesh.ldata, &dst_mesh.ldata, i_ml_src + index, i_ml_dst, 1);
+        CustomData_copy_data(
+            &src_mesh.corner_data, &dst_mesh.corner_data, i_ml_src + index, i_ml_dst, 1);
         dst_corner_verts[i_ml_dst] = vertex_map[face_verts_src[index]];
         dst_corner_edges[i_ml_dst] = edge_map[face_edges_src[index]];
         i_ml_dst++;
@@ -565,7 +566,7 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
         float weights[2] = {1.0f - fac, fac};
         int indices[2] = {i_ml_src + last_index, i_ml_src + index};
         CustomData_interp(
-            &src_mesh.ldata, &dst_mesh.ldata, indices, weights, nullptr, 2, i_ml_dst);
+            &src_mesh.corner_data, &dst_mesh.corner_data, indices, weights, nullptr, 2, i_ml_dst);
         dst_corner_edges[i_ml_dst] = edge_index;
         dst_corner_verts[i_ml_dst] = dst_edges[edge_map[face_edges_src[last_index]]][0];
 
@@ -583,7 +584,8 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
       else if (v_loop_in_mask && v_loop_in_mask_last) {
         BLI_assert(i_ml_dst != dst_face_offsets[i_dst]);
         /* Extend active face. */
-        CustomData_copy_data(&src_mesh.ldata, &dst_mesh.ldata, i_ml_src + index, i_ml_dst, 1);
+        CustomData_copy_data(
+            &src_mesh.corner_data, &dst_mesh.corner_data, i_ml_src + index, i_ml_dst, 1);
         dst_corner_verts[i_ml_dst] = vertex_map[face_verts_src[index]];
         dst_corner_edges[i_ml_dst] = edge_map[face_edges_src[index]];
         i_ml_dst++;
@@ -592,7 +594,7 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
       v_loop_in_mask_last = v_loop_in_mask;
     }
   }
-  BLI_assert(edge_index == dst_mesh.totedge);
+  BLI_assert(edge_index == dst_mesh.edges_num);
 }
 
 /* Components of the algorithm:
@@ -600,7 +602,7 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
  * 2. Find edges and faces only using those vertices.
  * 3. Create a new mesh that only uses the found vertices, edges and faces.
  */
-static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
+static Mesh *modify_mesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, Mesh *mesh)
 {
   MaskModifierData *mmd = reinterpret_cast<MaskModifierData *>(md);
   const bool invert_mask = mmd->flag & MOD_MASK_INV;
@@ -614,7 +616,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, M
   }
 
   /* Quick test to see if we can return early. */
-  if (!ELEM(mmd->mode, MOD_MASK_MODE_ARM, MOD_MASK_MODE_VGROUP) || (mesh->totvert == 0) ||
+  if (!ELEM(mmd->mode, MOD_MASK_MODE_ARM, MOD_MASK_MODE_VGROUP) || (mesh->verts_num == 0) ||
       BLI_listbase_is_empty(&mesh->vertex_group_names))
   {
     return mesh;
@@ -631,7 +633,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, M
       return mesh;
     }
 
-    vertex_mask = Array<bool>(mesh->totvert);
+    vertex_mask = Array<bool>(mesh->verts_num);
     compute_vertex_mask__armature_mode(
         dverts.data(), mesh, armature_ob, mmd->threshold, vertex_mask);
   }
@@ -644,7 +646,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, M
       return mesh;
     }
 
-    vertex_mask = Array<bool>(mesh->totvert);
+    vertex_mask = Array<bool>(mesh->verts_num);
     compute_vertex_mask__vertex_group_mode(
         dverts.data(), defgrp_index, mmd->threshold, vertex_mask);
   }
@@ -653,11 +655,11 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, M
     blender::array_utils::invert_booleans(vertex_mask);
   }
 
-  Array<int> vertex_map(mesh->totvert);
+  Array<int> vertex_map(mesh->verts_num);
   uint verts_masked_num;
   compute_masked_verts(vertex_mask, vertex_map, &verts_masked_num);
 
-  Array<int> edge_map(mesh->totedge);
+  Array<int> edge_map(mesh->edges_num);
   uint edges_masked_num;
   uint verts_add_num;
   if (use_interpolation) {
@@ -741,7 +743,7 @@ static Mesh *modifyMesh(ModifierData *md, const ModifierEvalContext * /*ctx*/, M
   return result;
 }
 
-static bool isDisabled(const Scene * /*scene*/, ModifierData *md, bool /*useRenderParams*/)
+static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
 {
   MaskModifierData *mmd = reinterpret_cast<MaskModifierData *>(md);
 
@@ -769,57 +771,59 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
 
   if (mode == MOD_MASK_MODE_ARM) {
     row = uiLayoutRow(layout, true);
-    uiItemR(row, ptr, "armature", 0, nullptr, ICON_NONE);
+    uiItemR(row, ptr, "armature", UI_ITEM_NONE, nullptr, ICON_NONE);
     sub = uiLayoutRow(row, true);
     uiLayoutSetPropDecorate(sub, false);
-    uiItemR(sub, ptr, "invert_vertex_group", 0, "", ICON_ARROW_LEFTRIGHT);
+    uiItemR(sub, ptr, "invert_vertex_group", UI_ITEM_NONE, "", ICON_ARROW_LEFTRIGHT);
   }
   else if (mode == MOD_MASK_MODE_VGROUP) {
     modifier_vgroup_ui(layout, ptr, &ob_ptr, "vertex_group", "invert_vertex_group", nullptr);
-    uiItemR(layout, ptr, "use_smooth", 0, nullptr, ICON_NONE);
+    uiItemR(layout, ptr, "use_smooth", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
 
-  uiItemR(layout, ptr, "threshold", 0, nullptr, ICON_NONE);
+  uiItemR(layout, ptr, "threshold", UI_ITEM_NONE, nullptr, ICON_NONE);
 
   modifier_panel_end(layout, ptr);
 }
 
-static void panelRegister(ARegionType *region_type)
+static void panel_register(ARegionType *region_type)
 {
   modifier_panel_register(region_type, eModifierType_Mask, panel_draw);
 }
 
 ModifierTypeInfo modifierType_Mask = {
+    /*idname*/ "Mask",
     /*name*/ N_("Mask"),
-    /*structName*/ "MaskModifierData",
-    /*structSize*/ sizeof(MaskModifierData),
+    /*struct_name*/ "MaskModifierData",
+    /*struct_size*/ sizeof(MaskModifierData),
     /*srna*/ &RNA_MaskModifier,
-    /*type*/ eModifierTypeType_Nonconstructive,
+    /*type*/ ModifierTypeType::Nonconstructive,
     /*flags*/
     (ModifierTypeFlag)(eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_SupportsMapping |
                        eModifierTypeFlag_SupportsEditmode),
     /*icon*/ ICON_MOD_MASK,
 
-    /*copyData*/ BKE_modifier_copydata_generic,
+    /*copy_data*/ BKE_modifier_copydata_generic,
 
-    /*deformVerts*/ nullptr,
-    /*deformMatrices*/ nullptr,
-    /*deformVertsEM*/ nullptr,
-    /*deformMatricesEM*/ nullptr,
-    /*modifyMesh*/ modifyMesh,
-    /*modifyGeometrySet*/ nullptr,
+    /*deform_verts*/ nullptr,
+    /*deform_matrices*/ nullptr,
+    /*deform_verts_EM*/ nullptr,
+    /*deform_matrices_EM*/ nullptr,
+    /*modify_mesh*/ modify_mesh,
+    /*modify_geometry_set*/ nullptr,
 
-    /*initData*/ initData,
-    /*requiredDataMask*/ requiredDataMask,
-    /*freeData*/ nullptr,
-    /*isDisabled*/ isDisabled,
-    /*updateDepsgraph*/ updateDepsgraph,
-    /*dependsOnTime*/ nullptr,
-    /*dependsOnNormals*/ nullptr,
-    /*foreachIDLink*/ foreachIDLink,
-    /*foreachTexLink*/ nullptr,
-    /*freeRuntimeData*/ nullptr,
-    /*panelRegister*/ panelRegister,
-    /*blendWrite*/ nullptr,
-    /*blendRead*/ nullptr,
+    /*init_data*/ init_data,
+    /*required_data_mask*/ required_data_mask,
+    /*free_data*/ nullptr,
+    /*is_disabled*/ is_disabled,
+    /*update_depsgraph*/ update_depsgraph,
+    /*depends_on_time*/ nullptr,
+    /*depends_on_normals*/ nullptr,
+    /*foreach_ID_link*/ foreach_ID_link,
+    /*foreach_tex_link*/ nullptr,
+    /*free_runtime_data*/ nullptr,
+    /*panel_register*/ panel_register,
+    /*blend_write*/ nullptr,
+    /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

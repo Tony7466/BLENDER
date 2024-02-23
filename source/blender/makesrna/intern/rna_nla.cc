@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,14 +16,14 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 /* Enum defines exported for `rna_animation.cc`. */
 
@@ -71,6 +71,7 @@ const EnumPropertyItem rna_enum_nla_mode_extend_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include <fmt/format.h>
 #  include <math.h>
 #  include <stdio.h>
 
@@ -81,10 +82,10 @@ const EnumPropertyItem rna_enum_nla_mode_extend_items[] = {
 
 #  include "DNA_object_types.h"
 
-#  include "ED_anim_api.h"
+#  include "ED_anim_api.hh"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 static void rna_NlaStrip_name_set(PointerRNA *ptr, const char *value)
 {
@@ -100,7 +101,7 @@ static void rna_NlaStrip_name_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static char *rna_NlaStrip_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_NlaStrip_path(const PointerRNA *ptr)
 {
   NlaStrip *strip = (NlaStrip *)ptr->data;
   AnimData *adt = BKE_animdata_from_id(ptr->owner_id);
@@ -119,15 +120,15 @@ static char *rna_NlaStrip_path(const PointerRNA *ptr)
 
           BLI_str_escape(name_esc_nlt, nlt->name, sizeof(name_esc_nlt));
           BLI_str_escape(name_esc_strip, strip->name, sizeof(name_esc_strip));
-          return BLI_sprintfN(
-              "animation_data.nla_tracks[\"%s\"].strips[\"%s\"]", name_esc_nlt, name_esc_strip);
+          return fmt::format(
+              "animation_data.nla_tracks[\"{}\"].strips[\"{}\"]", name_esc_nlt, name_esc_strip);
         }
       }
     }
   }
 
   /* no path */
-  return BLI_strdup("");
+  return "";
 }
 
 static void rna_NlaStrip_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
@@ -310,10 +311,7 @@ static void rna_NlaStrip_frame_end_ui_set(PointerRNA *ptr, float value)
   /* calculate the lengths the strip and its action : *
    * (Meta and transitions shouldn't be updated, but clip and sound should) */
   if (data->type == NLASTRIP_TYPE_CLIP || data->type == NLASTRIP_TYPE_SOUND) {
-    float actlen = data->actend - data->actstart;
-    if (IS_EQF(actlen, 0.0f)) {
-      actlen = 1.0f; /* Only sanity check needed : we use this as divisor later on. */
-    }
+    const float actlen = BKE_nla_clip_length_get_nonzero(data);
 
     /* Modify the strip's action end frame, or repeat based on :
      * - if data->repeat == 1.0f, modify the action end frame :
@@ -583,7 +581,7 @@ static NlaStrip *rna_NlaStrip_new(ID *id,
   WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_ADDED, nullptr);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_SYNC_TO_EVAL);
 
   return strip;
 }
@@ -604,7 +602,7 @@ static void rna_NlaStrip_remove(
   WM_event_add_notifier(C, NC_ANIMATION | ND_NLA | NA_REMOVED, nullptr);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update_ex(bmain, id, ID_RECALC_ANIMATION | ID_RECALC_SYNC_TO_EVAL);
 }
 
 /* Set the 'solo' setting for the given NLA-track, making sure that it is the only one

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,32 +19,32 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_matrix.h"
-#include "GPU_select.h"
+#include "GPU_select.hh"
 #include "GPU_state.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_screen.h"
-#include "ED_transform.h"
-#include "ED_view3d.h"
+#include "ED_gizmo_library.hh"
+#include "ED_screen.hh"
+#include "ED_transform.hh"
+#include "ED_view3d.hh"
 
 /* own includes */
-#include "../gizmo_geometry.h"
 #include "../gizmo_library_intern.h"
 
-/* To use custom dials exported to geom_dial_gizmo.c */
+// /** To use custom dials exported to `geom_dial_gizmo.cc`. */
 // #define USE_GIZMO_CUSTOM_DIAL
 
 struct DialInteraction {
@@ -166,9 +166,9 @@ static void dial_geom_draw(const float color[4],
       imm_draw_circle_partial_wire_3d(
           pos, 0.0f, 0.0f, 0.0f, 1.0f, DIAL_RESOLUTION, -arc_partial_deg / 2, arc_partial_deg);
 #  if 0
-if (arc_inner_factor != 0.0f) {
-BLI_assert(0);
-}
+      if (arc_inner_factor != 0.0f) {
+        BLI_assert(0);
+      }
 #  endif
     }
   }
@@ -332,7 +332,8 @@ static void dial_ghostarc_get_angles(const wmGizmo *gz,
   };
 
   if (!ED_view3d_win_to_3d_on_plane(
-          region, dial_plane, inter->init.mval, false, proj_mval_init_rel)) {
+          region, dial_plane, inter->init.mval, false, proj_mval_init_rel))
+  {
     return fail();
   }
   sub_v3_v3(proj_mval_init_rel, gz->matrix_basis[3]);

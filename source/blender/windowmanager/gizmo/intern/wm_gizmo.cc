@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,39 +9,34 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "GPU_batch.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
-#include "WM_api.h"
-#include "WM_toolsystem.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_toolsystem.hh"
+#include "WM_types.hh"
 
-#include "ED_screen.h"
-#include "ED_view3d.h"
-
-#include "UI_interface.h"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
 #endif
 
-/* only for own init/exit calls (wm_gizmotype_init/wm_gizmotype_free) */
-#include "wm.h"
-
 /* own includes */
-#include "wm_gizmo_intern.h"
-#include "wm_gizmo_wmapi.h"
+#include "wm_gizmo_intern.hh"
+#include "wm_gizmo_wmapi.hh"
 
 static void wm_gizmo_register(wmGizmoGroup *gzgroup, wmGizmo *gz);
 
@@ -66,7 +61,7 @@ static wmGizmo *wm_gizmo_create(const wmGizmoType *gzt, PointerRNA *properties)
     IDPropertyTemplate val = {0};
     gz->properties = IDP_New(IDP_GROUP, &val, "wmGizmoProperties");
   }
-  RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), gzt->srna, gz->properties, gz->ptr);
+  *gz->ptr = RNA_pointer_create(static_cast<ID *>(G_MAIN->wm.first), gzt->srna, gz->properties);
 
   WM_gizmo_properties_sanitize(gz->ptr, false);
 
@@ -231,7 +226,7 @@ PointerRNA *WM_gizmo_operator_set(wmGizmo *gz,
 int WM_gizmo_operator_invoke(bContext *C, wmGizmo *gz, wmGizmoOpElem *gzop, const wmEvent *event)
 {
   if (gz->flag & WM_GIZMO_OPERATOR_TOOL_INIT) {
-    /* Merge toolsettings into the gizmo properties. */
+    /* Merge tool-settings into the gizmo properties. */
     PointerRNA tref_ptr;
     bToolRef *tref = WM_toolsystem_ref_from_context(C);
     if (tref && WM_toolsystem_ref_properties_get_from_operator(tref, gzop->type, &tref_ptr)) {
@@ -311,7 +306,7 @@ void WM_gizmo_set_flag(wmGizmo *gz, const int flag, const bool enable)
     gz->flag |= eWM_GizmoFlag(flag);
   }
   else {
-    gz->flag &= eWM_GizmoFlag(~flag);
+    gz->flag &= ~eWM_GizmoFlag(flag);
   }
 }
 
@@ -590,7 +585,7 @@ void WM_gizmo_calc_matrix_final(const wmGizmo *gz, float r_mat[4][4])
 
 void WM_gizmo_properties_create_ptr(PointerRNA *ptr, wmGizmoType *gzt)
 {
-  RNA_pointer_create(nullptr, gzt->srna, nullptr, ptr);
+  *ptr = RNA_pointer_create(nullptr, gzt->srna, nullptr);
 }
 
 void WM_gizmo_properties_create(PointerRNA *ptr, const char *gtstring)
@@ -601,7 +596,7 @@ void WM_gizmo_properties_create(PointerRNA *ptr, const char *gtstring)
     WM_gizmo_properties_create_ptr(ptr, (wmGizmoType *)gzt);
   }
   else {
-    RNA_pointer_create(nullptr, &RNA_GizmoProperties, nullptr, ptr);
+    *ptr = RNA_pointer_create(nullptr, &RNA_GizmoProperties, nullptr);
   }
 }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,15 +18,16 @@
 #include "DNA_object_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
-#include "BLI_string_utils.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_fcurve.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Flip the Action (Armature/Pose Objects)
@@ -166,7 +167,7 @@ static void action_flip_pchan(Object *ob_arm, const bPoseChannel *pchan, FCurveP
   /* Use a fixed buffer size as it's known this can only be at most:
    * `pose.bones["{MAXBONENAME}"].rotation_quaternion`. */
   char path_xform[256];
-  char pchan_name_esc[sizeof(((bActionChannel *)nullptr)->name) * 2];
+  char pchan_name_esc[sizeof(bActionChannel::name) * 2];
   BLI_str_escape(pchan_name_esc, pchan->name, sizeof(pchan_name_esc));
   const int path_xform_prefix_len = SNPRINTF(path_xform, "pose.bones[\"%s\"]", pchan_name_esc);
   char *path_xform_suffix = path_xform + path_xform_prefix_len;
@@ -457,7 +458,7 @@ void BKE_action_flip_with_pose(bAction *act, Object *ob_arm)
 
   action_flip_pchan_rna_paths(act);
 
-  DEG_id_tag_update(&act->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&act->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 /** \} */

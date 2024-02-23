@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,36 +14,27 @@
 
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
-#include "DNA_space_types.h" /* for FILE_MAX. */
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
 #include "BLI_fileops.h"
 #include "BLI_fileops_types.h"
-#include "BLI_ghash.h"
 #include "BLI_listbase.h"
-#include "BLI_mempool.h"
 #include "BLI_path_util.h"
 #include "BLI_threads.h"
 
-#include "BKE_main.h"
-#include "BKE_scene.h"
+#include "BKE_main.hh"
 
-#include "SEQ_prefetch.h"
-#include "SEQ_relations.h"
-#include "SEQ_render.h"
-#include "SEQ_sequencer.h"
-#include "SEQ_time.h"
+#include "SEQ_render.hh"
+#include "SEQ_time.hh"
 
-#include "disk_cache.h"
-#include "image_cache.h"
-#include "prefetch.h"
-#include "strip_time.h"
+#include "disk_cache.hh"
+#include "image_cache.hh"
 
 /**
  * Disk Cache Design Notes
@@ -252,7 +243,7 @@ bool seq_disk_cache_enforce_limits(SeqDiskCache *disk_cache)
 }
 
 static DiskCacheFile *seq_disk_cache_get_file_entry_by_path(SeqDiskCache *disk_cache,
-                                                            char *filepath)
+                                                            const char *filepath)
 {
   DiskCacheFile *cache_file = static_cast<DiskCacheFile *>(disk_cache->files.first);
 
@@ -266,7 +257,7 @@ static DiskCacheFile *seq_disk_cache_get_file_entry_by_path(SeqDiskCache *disk_c
 }
 
 /* Update file size and timestamp. */
-static void seq_disk_cache_update_file(SeqDiskCache *disk_cache, char *filepath)
+static void seq_disk_cache_update_file(SeqDiskCache *disk_cache, const char *filepath)
 {
   DiskCacheFile *cache_file;
   int64_t size_before;
@@ -641,12 +632,14 @@ ImBuf *seq_disk_cache_read_file(SeqDiskCache *disk_cache, SeqCacheKey *key)
 
   if (header.entry[entry_index].size_raw == size_char) {
     expected_size = size_char;
-    ibuf = IMB_allocImBuf(key->context.rectx, key->context.recty, 32, IB_rect);
+    ibuf = IMB_allocImBuf(
+        key->context.rectx, key->context.recty, 32, IB_rect | IB_uninitialized_pixels);
     IMB_colormanagement_assign_byte_colorspace(ibuf, header.entry[entry_index].colorspace_name);
   }
   else if (header.entry[entry_index].size_raw == size_float) {
     expected_size = size_float;
-    ibuf = IMB_allocImBuf(key->context.rectx, key->context.recty, 32, IB_rectfloat);
+    ibuf = IMB_allocImBuf(
+        key->context.rectx, key->context.recty, 32, IB_rectfloat | IB_uninitialized_pixels);
     IMB_colormanagement_assign_float_colorspace(ibuf, header.entry[entry_index].colorspace_name);
   }
   else {

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -37,11 +37,11 @@ class NodeGraph {
  public:
   ~NodeGraph();
 
-  const Vector<Node *> &nodes() const
+  Span<Node *> nodes() const
   {
     return nodes_;
   }
-  const Vector<Link> &links() const
+  Span<Link> links() const
   {
     return links_;
   }

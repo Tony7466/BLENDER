@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -101,7 +101,7 @@ inline IndexRange align_sub_range(const IndexRange unaligned_range,
   const int64_t aligned_end = unaligned_end == global_end ?
                                   unaligned_end :
                                   std::max(global_begin, unaligned_end & alignment_mask);
-  const IndexRange aligned_range{aligned_begin, aligned_end - aligned_begin};
+  const IndexRange aligned_range = IndexRange::from_begin_end(aligned_begin, aligned_end);
   return aligned_range;
 }
 

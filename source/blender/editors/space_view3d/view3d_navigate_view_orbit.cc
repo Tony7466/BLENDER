@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,40 +6,14 @@
  * \ingroup spview3d
  */
 
-#include "DNA_curve_types.h"
-#include "DNA_gpencil_legacy_types.h"
-
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-#include "BLI_rect.h"
+#include "BLI_math_rotation.h"
 
-#include "BLT_translation.h"
+#include "WM_api.hh"
 
-#include "BKE_armature.h"
-#include "BKE_context.h"
-#include "BKE_gpencil_geom_legacy.h"
-#include "BKE_layer.h"
-#include "BKE_object.h"
-#include "BKE_paint.h"
-#include "BKE_scene.h"
-#include "BKE_screen.h"
-#include "BKE_vfont.h"
-
-#include "DEG_depsgraph_query.h"
-
-#include "ED_mesh.h"
-#include "ED_particle.h"
-#include "ED_screen.h"
-#include "ED_transform.h"
-
-#include "WM_api.h"
-#include "WM_message.h"
-
-#include "RNA_access.h"
-#include "RNA_define.h"
-
-#include "UI_resources.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "view3d_intern.h"
 
@@ -101,7 +75,7 @@ static int vieworbit_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  vod.init_navigation(C, nullptr, &ViewOpsType_orbit, false);
+  vod.init_navigation(C, nullptr, &ViewOpsType_orbit, nullptr, false);
 
   int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
   float quat_mul[4];
@@ -184,7 +158,7 @@ void VIEW3D_OT_view_orbit(wmOperatorType *ot)
 /** \} */
 
 const ViewOpsType ViewOpsType_orbit = {
-    /*flag*/ (VIEWOPS_FLAG_PERSP_ENSURE | VIEWOPS_FLAG_ORBIT_SELECT),
+    /*flag*/ VIEWOPS_FLAG_ORBIT_SELECT,
     /*idname*/ "VIEW3D_OT_view_orbit",
     /*poll_fn*/ nullptr,
     /*init_fn*/ nullptr,

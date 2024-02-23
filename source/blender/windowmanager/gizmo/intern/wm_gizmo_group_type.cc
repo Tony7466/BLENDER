@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,23 +11,17 @@
 #include "BLI_ghash.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
-
-/* only for own init/exit calls (wm_gizmogrouptype_init/wm_gizmogrouptype_free) */
-#include "wm.h"
+#include "WM_types.hh"
 
 /* own includes */
-#include "wm_gizmo_intern.h"
-#include "wm_gizmo_wmapi.h"
+#include "wm_gizmo_intern.hh"
+#include "wm_gizmo_wmapi.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name GizmoGroup Type Append

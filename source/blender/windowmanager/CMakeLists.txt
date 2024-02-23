@@ -1,13 +1,15 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
-  PUBLIC .
-  PUBLIC gizmo
-  PRIVATE gizmo/intern
+  .
+  gizmo
+  gizmo/intern
   ../asset_system
+  ../blenkernel
   ../blenloader
+  ../blentranslation
   ../compositor
   ../editors/include
   ../draw
@@ -17,11 +19,13 @@ set(INC
   ../nodes
   ../render
   ../sequencer
-  ../../../intern/ghost
   ../../../intern/memutil
+  ../bmesh
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
+)
+set(INC_SYS
 )
 
 set(SRC
@@ -66,42 +70,42 @@ set(SRC
   message_bus/intern/wm_message_bus_rna.cc
   message_bus/intern/wm_message_bus_static.cc
 
-  WM_api.h
-  WM_keymap.h
-  WM_message.h
-  WM_toolsystem.h
-  WM_types.h
-  wm.h
-  wm_cursors.h
-  wm_draw.h
-  wm_event_system.h
-  wm_event_types.h
-  wm_files.h
-  wm_surface.h
-  wm_window.h
-  intern/wm_platform_support.h
-  intern/wm_window_private.h
-  gizmo/WM_gizmo_api.h
-  gizmo/WM_gizmo_types.h
-  gizmo/wm_gizmo_fn.h
-  gizmo/wm_gizmo_wmapi.h
-  gizmo/intern/wm_gizmo_intern.h
-  message_bus/intern/wm_message_bus_intern.h
-  message_bus/wm_message_bus.h
+  WM_api.hh
+  WM_keymap.hh
+  WM_message.hh
+  WM_toolsystem.hh
+  WM_types.hh
+  wm.hh
+  wm_cursors.hh
+  wm_draw.hh
+  wm_event_system.hh
+  wm_event_types.hh
+  wm_files.hh
+  wm_surface.hh
+  wm_window.hh
+  intern/wm_platform_support.hh
+  intern/wm_window_private.hh
+  gizmo/WM_gizmo_api.hh
+  gizmo/WM_gizmo_types.hh
+  gizmo/wm_gizmo_fn.hh
+  gizmo/wm_gizmo_wmapi.hh
+  gizmo/intern/wm_gizmo_intern.hh
+  message_bus/intern/wm_message_bus_intern.hh
+  message_bus/wm_message_bus.hh
 )
 
 set(LIB
   PRIVATE bf::blenfont
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_screen
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::animrig
   bf_sequencer
+  bf_intern_ghost
 )
 
 if(WIN32)
@@ -171,10 +175,8 @@ if(WITH_INPUT_NDOF)
   add_definitions(-DWITH_INPUT_NDOF)
 endif()
 
-if(WIN32 OR APPLE)
-  if(WITH_INPUT_IME)
-    add_definitions(-DWITH_INPUT_IME)
-  endif()
+if(WITH_INPUT_IME)
+  add_definitions(-DWITH_INPUT_IME)
 endif()
 
 if(WITH_COMPOSITOR_CPU)
@@ -199,13 +201,21 @@ if(WITH_XR_OPENXR)
     xr/intern/wm_xr_operators.cc
     xr/intern/wm_xr_session.cc
 
-    xr/wm_xr.h
-    xr/intern/wm_xr_intern.h
+    xr/wm_xr.hh
+    xr/intern/wm_xr_intern.hh
   )
 endif()
 
 blender_add_lib_nolist(bf_windowmanager "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
-add_library(bf::windowmanager ALIAS bf_windowmanager)
 
 # RNA_prototypes.h
 add_dependencies(bf_windowmanager bf_rna)
+
+if(WITH_GTESTS)
+  set(TEST_INC
+  )
+  set(TEST_SRC
+    intern/wm_dragdrop_test.cc
+  )
+  blender_add_test_suite_lib(windowmanager "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB}")
+endif()

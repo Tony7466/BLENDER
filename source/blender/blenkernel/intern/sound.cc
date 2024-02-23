@@ -13,10 +13,10 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_iterator.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_threads.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -39,23 +39,22 @@
 #  include <AUD_Special.h>
 #endif
 
-#include "BKE_bpath.h"
-#include "BKE_global.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_bpath.hh"
+#include "BKE_global.hh"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
 #include "BKE_packedFile.h"
-#include "BKE_scene.h"
 #include "BKE_sound.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
-#include "SEQ_sequencer.h"
-#include "SEQ_sound.h"
-#include "SEQ_time.h"
+#include "SEQ_sound.hh"
+#include "SEQ_time.hh"
 
 static void sound_free_audio(bSound *sound);
 
@@ -103,14 +102,24 @@ static void sound_free_data(ID *id)
   }
 }
 
+static void sound_foreach_id(ID *id, LibraryForeachIDData *data)
+{
+  bSound *sound = reinterpret_cast<bSound *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, sound->ipo, IDWALK_CB_USER);
+  }
+}
+
 static void sound_foreach_cache(ID *id,
                                 IDTypeForeachCacheFunctionCallback function_callback,
                                 void *user_data)
 {
   bSound *sound = (bSound *)id;
   IDCacheKey key{};
-  key.id_session_uuid = id->session_uuid;
-  key.offset_in_ID = offsetof(bSound, waveform);
+  key.id_session_uid = id->session_uid;
+  key.identifier = offsetof(bSound, waveform);
 
   function_callback(id, &key, &sound->waveform, 0, user_data);
 }
@@ -177,26 +186,14 @@ static void sound_blend_read_data(BlendDataReader *reader, ID *id)
   BKE_packedfile_blend_read(reader, &sound->newpackedfile);
 }
 
-static void sound_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  bSound *sound = (bSound *)id;
-  /* XXX: deprecated - old animation system. */
-  BLO_read_id_address(reader, id, &sound->ipo);
-}
-
-static void sound_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  bSound *snd = (bSound *)id;
-  BLO_expand(expander, snd->ipo); /* XXX deprecated - old animation system */
-}
-
 IDTypeInfo IDType_ID_SO = {
     /*id_code*/ ID_SO,
     /*id_filter*/ FILTER_ID_SO,
+    /*dependencies_id_types*/ 0,
     /*main_listbase_index*/ INDEX_ID_SO,
     /*struct_size*/ sizeof(bSound),
     /*name*/ "Sound",
-    /*name_plural*/ "sounds",
+    /*name_plural*/ N_("sounds"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_SOUND,
     /*flags*/ IDTYPE_FLAGS_NO_ANIMDATA | IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -206,15 +203,14 @@ IDTypeInfo IDType_ID_SO = {
     /*copy_data*/ sound_copy_data,
     /*free_data*/ sound_free_data,
     /*make_local*/ nullptr,
-    /*foreach_id*/ nullptr,
+    /*foreach_id*/ sound_foreach_id,
     /*foreach_cache*/ sound_foreach_cache,
     /*foreach_path*/ sound_foreach_path,
     /*owner_pointer_get*/ nullptr,
 
     /*blend_write*/ sound_blend_write,
     /*blend_read_data*/ sound_blend_read_data,
-    /*blend_read_lib*/ sound_blend_read_lib,
-    /*blend_read_expand*/ sound_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -223,7 +219,6 @@ IDTypeInfo IDType_ID_SO = {
 
 #ifdef WITH_AUDASPACE
 /* evil globals ;-) */
-static int sound_cfra;
 static char **audio_device_names = nullptr;
 #endif
 
@@ -235,11 +230,11 @@ BLI_INLINE void sound_verify_evaluated_id(const ID *id)
    * We don't want audio system handles to be allocated on an original data-blocks, and only want
    * them to be allocated on a data-blocks which are result of dependency graph evaluation.
    *
-   * Data-blocks which are covered by a copy-on-write system of dependency graph will have
-   * LIB_TAG_COPIED_ON_WRITE tag set on them. But if some of data-blocks during its evaluation
+   * Data-blocks which are covered by a copy-on-evaluation system of dependency graph will have
+   * LIB_TAG_COPIED_ON_EVAL tag set on them. But if some of data-blocks during its evaluation
    * decides to re-allocate its nested one (for example, object evaluation could re-allocate mesh
    * when evaluating modifier stack). Such data-blocks will have
-   * LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT tag set on them.
+   * LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT tag set on them.
    *
    * Additionally, we also allow data-blocks outside of main database. Those can not be "original"
    * and could be used as a temporary evaluated result during operations like baking.
@@ -247,7 +242,7 @@ BLI_INLINE void sound_verify_evaluated_id(const ID *id)
    * NOTE: We consider ID evaluated if ANY of those flags is set. We do NOT require ALL of them.
    */
   BLI_assert(id->tag &
-             (LIB_TAG_COPIED_ON_WRITE | LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT | LIB_TAG_NO_MAIN));
+             (LIB_TAG_COPIED_ON_EVAL | LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT | LIB_TAG_NO_MAIN));
 }
 
 bSound *BKE_sound_new_file(Main *bmain, const char *filepath)
@@ -261,7 +256,7 @@ bSound *BKE_sound_new_file(Main *bmain, const char *filepath)
 
   sound = static_cast<bSound *>(BKE_libblock_alloc(bmain, ID_SO, BLI_path_basename(filepath), 0));
   STRNCPY(sound->filepath, filepath);
-  /* sound->type = SOUND_TYPE_FILE; */ /* XXX unused currently */
+  // sound->type = SOUND_TYPE_FILE; /* UNUSED. */
 
   /* Extract sound specs for bSound */
   SoundInfo info;
@@ -458,71 +453,38 @@ void BKE_sound_exit_once()
 #  if 0
 bSound *BKE_sound_new_buffer(Main *bmain, bSound *source)
 {
-bSound *sound = nullptr;
+  bSound *sound = nullptr;
 
+  char name[MAX_ID_NAME + 5];
+  BLI_string_join(name, sizeof(name), "buf_", source->id.name);
 
+  sound = BKE_libblock_alloc(bmain, ID_SO, name);
 
+  sound->child_sound = source;
+  sound->type = SOUND_TYPE_BUFFER;
 
-char name[MAX_ID_NAME + 5];
-BLI_string_join(name, sizeof(name), "buf_", source->id.name);
+  sound_load(bmain, sound);
 
-
-
-
-sound = BKE_libblock_alloc(bmain, ID_SO, name);
-
-
-
-
-sound->child_sound = source;
-sound->type = SOUND_TYPE_BUFFER;
-
-
-
-
-sound_load(bmain, sound);
-
-
-
-
-return sound;
+  return sound;
 }
-
-
-
 
 bSound *BKE_sound_new_limiter(Main *bmain, bSound *source, float start, float end)
 {
-bSound *sound = nullptr;
+  bSound *sound = nullptr;
 
+  char name[MAX_ID_NAME + 5];
+  BLI_string_join(name, sizeof(name), "lim_", source->id.name);
 
+  sound = BKE_libblock_alloc(bmain, ID_SO, name);
 
+  sound->child_sound = source;
+  sound->start = start;
+  sound->end = end;
+  sound->type = SOUND_TYPE_LIMITER;
 
-char name[MAX_ID_NAME + 5];
-BLI_string_join(name, sizeof(name), "lim_", source->id.name);
+  sound_load(bmain, sound);
 
-
-
-
-sound = BKE_libblock_alloc(bmain, ID_SO, name);
-
-
-
-
-sound->child_sound = source;
-sound->start = start;
-sound->end = end;
-sound->type = SOUND_TYPE_LIMITER;
-
-
-
-
-sound_load(bmain, sound);
-
-
-
-
-return sound;
+  return sound;
 }
 #  endif
 
@@ -572,8 +534,8 @@ static void sound_load_audio(Main *bmain, bSound *sound, bool free_waveform)
 
 /* XXX unused currently */
 #  if 0
-switch (sound->type) {
-case SOUND_TYPE_FILE:
+  switch (sound->type) {
+    case SOUND_TYPE_FILE:
 #  endif
   {
     char fullpath[FILE_MAX];
@@ -596,16 +558,18 @@ case SOUND_TYPE_FILE:
   }
 /* XXX unused currently */
 #  if 0
-break;
-}
-case SOUND_TYPE_BUFFER: if (sound->child_sound && sound->child_sound->handle) {
-sound->handle = AUD_bufferSound(sound->child_sound->handle);
-}
-break;
-case SOUND_TYPE_LIMITER: if (sound->child_sound && sound->child_sound->handle) {
-sound->handle = AUD_limitSound(sound->child_sound, sound->start, sound->end);
-}
-break;
+    break;
+  }
+  case SOUND_TYPE_BUFFER:
+    if (sound->child_sound && sound->child_sound->handle) {
+      sound->handle = AUD_bufferSound(sound->child_sound->handle);
+    }
+    break;
+  case SOUND_TYPE_LIMITER:
+    if (sound->child_sound && sound->child_sound->handle) {
+      sound->handle = AUD_limitSound(sound->child_sound, sound->start, sound->end);
+    }
+    break;
 }
 #  endif
   if (sound->flags & SOUND_FLAGS_MONO) {
@@ -822,10 +786,18 @@ void BKE_sound_update_scene_sound(void *handle, bSound *sound)
   AUD_SequenceEntry_setSound(handle, sound->playback_handle);
 }
 
-void BKE_sound_set_cfra(int cfra)
+#endif /* WITH_AUDASPACE */
+
+void BKE_sound_update_sequence_handle(void *handle, void *sound_handle)
 {
-  sound_cfra = cfra;
+#ifdef WITH_AUDASPACE
+  AUD_SequenceEntry_setSound(handle, sound_handle);
+#else
+  UNUSED_VARS(handle, sound_handle);
+#endif
 }
+
+#ifdef WITH_AUDASPACE
 
 void BKE_sound_set_scene_volume(Scene *scene, float volume)
 {
@@ -840,33 +812,37 @@ void BKE_sound_set_scene_volume(Scene *scene, float volume)
                                 (scene->audio.flag & AUDIO_VOLUME_ANIMATED) != 0);
 }
 
-void BKE_sound_set_scene_sound_volume(void *handle, float volume, char animated)
+void BKE_sound_set_scene_sound_volume_at_frame(void *handle,
+                                               const int frame,
+                                               float volume,
+                                               const char animated)
 {
-  AUD_SequenceEntry_setAnimationData(handle, AUD_AP_VOLUME, sound_cfra, &volume, animated);
+  AUD_SequenceEntry_setAnimationData(handle, AUD_AP_VOLUME, frame, &volume, animated);
 }
 
-void BKE_sound_set_scene_sound_pitch(void *handle, float pitch, char animated)
-{
-  AUD_SequenceEntry_setAnimationData(handle, AUD_AP_PITCH, sound_cfra, &pitch, animated);
-}
-
-void BKE_sound_set_scene_sound_pitch_at_frame(void *handle, int frame, float pitch, char animated)
+void BKE_sound_set_scene_sound_pitch_at_frame(void *handle,
+                                              const int frame,
+                                              float pitch,
+                                              const char animated)
 {
   AUD_SequenceEntry_setAnimationData(handle, AUD_AP_PITCH, frame, &pitch, animated);
 }
 
 void BKE_sound_set_scene_sound_pitch_constant_range(void *handle,
-                                                    int frame_start,
-                                                    int frame_end,
+                                                    const int frame_start,
+                                                    const int frame_end,
                                                     float pitch)
 {
   AUD_SequenceEntry_setConstantRangeAnimationData(
       handle, AUD_AP_PITCH, frame_start, frame_end, &pitch);
 }
 
-void BKE_sound_set_scene_sound_pan(void *handle, float pan, char animated)
+void BKE_sound_set_scene_sound_pan_at_frame(void *handle,
+                                            const int frame,
+                                            float pan,
+                                            const char animated)
 {
-  AUD_SequenceEntry_setAnimationData(handle, AUD_AP_PANNING, sound_cfra, &pan, animated);
+  AUD_SequenceEntry_setAnimationData(handle, AUD_AP_PANNING, frame, &pan, animated);
 }
 
 void BKE_sound_update_sequencer(Main *main, bSound *sound)
@@ -1133,8 +1109,6 @@ void BKE_sound_read_waveform(Main *bmain, bSound *sound, bool *stop)
 
 static void sound_update_base(Scene *scene, Object *object, void *new_set)
 {
-  NlaTrack *track;
-  NlaStrip *strip;
   Speaker *speaker;
   float quat[4];
 
@@ -1145,9 +1119,8 @@ static void sound_update_base(Scene *scene, Object *object, void *new_set)
     return;
   }
 
-  for (track = static_cast<NlaTrack *>(object->adt->nla_tracks.first); track; track = track->next)
-  {
-    for (strip = static_cast<NlaStrip *>(track->strips.first); strip; strip = strip->next) {
+  LISTBASE_FOREACH (NlaTrack *, track, &object->adt->nla_tracks) {
+    LISTBASE_FOREACH (NlaStrip *, strip, &track->strips) {
       if (strip->type != NLASTRIP_TYPE_SOUND) {
         continue;
       }
@@ -1185,9 +1158,10 @@ static void sound_update_base(Scene *scene, Object *object, void *new_set)
         AUD_SequenceEntry_setConeAngleInner(strip->speaker_handle, speaker->cone_angle_inner);
         AUD_SequenceEntry_setConeVolumeOuter(strip->speaker_handle, speaker->cone_volume_outer);
 
-        mat4_to_quat(quat, object->object_to_world);
+        mat4_to_quat(quat, object->object_to_world().ptr());
+        blender::float3 location = object->object_to_world().location();
         AUD_SequenceEntry_setAnimationData(
-            strip->speaker_handle, AUD_AP_LOCATION, scene->r.cfra, object->object_to_world[3], 1);
+            strip->speaker_handle, AUD_AP_LOCATION, scene->r.cfra, location, 1);
         AUD_SequenceEntry_setAnimationData(
             strip->speaker_handle, AUD_AP_ORIENTATION, scene->r.cfra, quat, 1);
         AUD_SequenceEntry_setAnimationData(
@@ -1211,7 +1185,7 @@ void BKE_sound_update_scene(Depsgraph *depsgraph, Scene *scene)
 
   /* cheap test to skip looping over all objects (no speakers is a common case) */
   if (DEG_id_type_any_exists(depsgraph, ID_SPK)) {
-    DEGObjectIterSettings deg_iter_settings = {0};
+    DEGObjectIterSettings deg_iter_settings = {nullptr};
     deg_iter_settings.depsgraph = depsgraph;
     deg_iter_settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
                               DEG_ITER_OBJECT_FLAG_LINKED_INDIRECTLY |
@@ -1227,9 +1201,9 @@ void BKE_sound_update_scene(Depsgraph *depsgraph, Scene *scene)
   }
 
   if (scene->camera) {
-    mat4_to_quat(quat, scene->camera->object_to_world);
-    AUD_Sequence_setAnimationData(
-        scene->sound_scene, AUD_AP_LOCATION, scene->r.cfra, scene->camera->object_to_world[3], 1);
+    mat4_to_quat(quat, scene->camera->object_to_world().ptr());
+    blender::float3 location = scene->camera->object_to_world().location();
+    AUD_Sequence_setAnimationData(scene->sound_scene, AUD_AP_LOCATION, scene->r.cfra, location, 1);
     AUD_Sequence_setAnimationData(scene->sound_scene, AUD_AP_ORIENTATION, scene->r.cfra, quat, 1);
   }
 
@@ -1335,17 +1309,17 @@ bool BKE_sound_stream_info_get(Main *main,
 #  include "BLI_utildefines.h"
 
 void BKE_sound_force_device(const char * /*device*/) {}
-void BKE_sound_init_once(void) {}
+void BKE_sound_init_once() {}
 void BKE_sound_init(Main * /*bmain*/) {}
-void BKE_sound_exit(void) {}
-void BKE_sound_exit_once(void) {}
+void BKE_sound_exit() {}
+void BKE_sound_exit_once() {}
 void BKE_sound_cache(bSound * /*sound*/) {}
 void BKE_sound_delete_cache(bSound * /*sound*/) {}
 void BKE_sound_load(Main * /*bmain*/, bSound * /*sound*/) {}
 void BKE_sound_create_scene(Scene * /*scene*/) {}
 void BKE_sound_destroy_scene(Scene * /*scene*/) {}
-void BKE_sound_lock(void) {}
-void BKE_sound_unlock(void) {}
+void BKE_sound_lock() {}
+void BKE_sound_unlock() {}
 void BKE_sound_reset_scene_specs(Scene * /*scene*/) {}
 void BKE_sound_mute_scene(Scene * /*scene*/, int /*muted*/) {}
 void *BKE_sound_scene_add_scene_sound(Scene * /*scene*/,
@@ -1402,16 +1376,24 @@ void BKE_sound_read_waveform(Main *bmain,
   UNUSED_VARS(sound, stop, bmain);
 }
 void BKE_sound_init_main(Main * /*bmain*/) {}
-void BKE_sound_set_cfra(int /*cfra*/) {}
 void BKE_sound_update_sequencer(Main * /*main*/, bSound * /*sound*/) {}
 void BKE_sound_update_scene(Depsgraph * /*depsgraph*/, Scene * /*scene*/) {}
 void BKE_sound_update_scene_sound(void * /*handle*/, bSound * /*sound*/) {}
 void BKE_sound_update_scene_listener(Scene * /*scene*/) {}
 void BKE_sound_update_fps(Main * /*bmain*/, Scene * /*scene*/) {}
-void BKE_sound_set_scene_sound_volume(void * /*handle*/, float /*volume*/, char /*animated*/) {}
-void BKE_sound_set_scene_sound_pan(void * /*handle*/, float /*pan*/, char /*animated*/) {}
+void BKE_sound_set_scene_sound_volume_at_frame(void * /*handle*/,
+                                               int /* frame */,
+                                               float /*volume*/,
+                                               char /*animated*/)
+{
+}
+void BKE_sound_set_scene_sound_pan_at_frame(void * /*handle*/,
+                                            int /* frame */,
+                                            float /*pan*/,
+                                            char /*animated*/)
+{
+}
 void BKE_sound_set_scene_volume(Scene * /*scene*/, float /*volume*/) {}
-void BKE_sound_set_scene_sound_pitch(void * /*handle*/, float /*pitch*/, char /*animated*/) {}
 void BKE_sound_set_scene_sound_pitch_at_frame(void * /*handle*/,
                                               int /*frame*/,
                                               float /*pitch*/,
@@ -1424,7 +1406,7 @@ void BKE_sound_set_scene_sound_pitch_constant_range(void * /*handle*/,
                                                     float /*pitch*/)
 {
 }
-float BKE_sound_get_length(struct Main * /*bmain*/, bSound * /*sound*/)
+float BKE_sound_get_length(Main * /*bmain*/, bSound * /*sound*/)
 {
   return 0;
 }
@@ -1436,14 +1418,12 @@ char **BKE_sound_get_device_names()
 
 void BKE_sound_free_waveform(bSound * /*sound*/) {}
 
-bool BKE_sound_info_get(struct Main * /*main*/,
-                        struct bSound * /*sound*/,
-                        SoundInfo * /*sound_info*/)
+bool BKE_sound_info_get(Main * /*main*/, bSound * /*sound*/, SoundInfo * /*sound_info*/)
 {
   return false;
 }
 
-bool BKE_sound_stream_info_get(struct Main * /*main*/,
+bool BKE_sound_stream_info_get(Main * /*main*/,
                                const char * /*filepath*/,
                                int /*stream*/,
                                SoundStreamInfo * /*sound_info*/)

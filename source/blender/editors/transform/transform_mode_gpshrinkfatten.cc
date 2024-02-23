@@ -8,19 +8,18 @@
 
 #include <cstdlib>
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -32,7 +31,7 @@
 /** \name Transform (GPencil Strokes Shrink/Fatten)
  * \{ */
 
-static void applyGPShrinkFatten(TransInfo *t, const int[2] /*mval*/)
+static void applyGPShrinkFatten(TransInfo *t)
 {
   float ratio;
   int i;
@@ -51,10 +50,10 @@ static void applyGPShrinkFatten(TransInfo *t, const int[2] /*mval*/)
     char c[NUM_STR_REP_LEN];
 
     outputNumInput(&(t->num), c, &t->scene->unit);
-    SNPRINTF(str, TIP_("Shrink/Fatten: %s"), c);
+    SNPRINTF(str, IFACE_("Shrink/Fatten: %s"), c);
   }
   else {
-    SNPRINTF(str, TIP_("Shrink/Fatten: %3f"), ratio);
+    SNPRINTF(str, IFACE_("Shrink/Fatten: %3f"), ratio);
   }
 
   bool recalc = false;
@@ -84,7 +83,7 @@ static void applyGPShrinkFatten(TransInfo *t, const int[2] /*mval*/)
   }
 
   if (recalc) {
-    recalcData(t);
+    recalc_data(t);
   }
 
   ED_area_status_text(t->area, str);

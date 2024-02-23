@@ -1,9 +1,13 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
+  ../../asset_system
+  ../../blenkernel
+  ../../blentranslation
+  ../../bmesh
   ../../functions
   ../../gpencil_modifiers_legacy
   ../../gpu
@@ -14,6 +18,7 @@ set(INC
   ../../python
   ../../render
   ../../shader_fx
+  ../../windowmanager
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -23,6 +28,7 @@ set(INC_SYS
 )
 
 set(SRC
+  add_modifier_assets.cc
   object_add.cc
   object_bake.cc
   object_bake_api.cc
@@ -54,19 +60,19 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::animrig
   PRIVATE bf::blenfont
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_mesh
   bf_editor_grease_pencil
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_render
-  PRIVATE bf::windowmanager
+  bf_windowmanager
 )
 
 

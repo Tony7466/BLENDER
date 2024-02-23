@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,15 +11,14 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_brush_types.h"
-#include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
 #include "BLI_utildefines.h"
 
-#include "BKE_brush.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_paint.h"
+#include "BKE_brush.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
+#include "BKE_paint.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Tool Slot Initialization / Versioning

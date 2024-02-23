@@ -1,12 +1,12 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_PreviewOperation.h"
 
 #include "BKE_node.hh"
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
 
 namespace blender::compositor {
 
@@ -43,7 +43,8 @@ void PreviewOperation::init_execution()
   output_image_ = preview_->ibuf;
 
   if (this->get_width() == uint(preview_->ibuf->x) &&
-      this->get_height() == uint(preview_->ibuf->y)) {
+      this->get_height() == uint(preview_->ibuf->y))
+  {
     return;
   }
   const uint size[2] = {get_width(), get_height()};

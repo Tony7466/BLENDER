@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Foundation
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
  * \ingroup imbuf
  */
 
-#include "IMB_colormanagement.h"
-#include "IMB_colormanagement_intern.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_colormanagement_intern.hh"
 
 #include <cmath>
 #include <cstring>
@@ -16,35 +16,37 @@
 #include "DNA_image_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_scene_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 
-#include "IMB_filetype.h"
-#include "IMB_filter.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_metadata.h"
-#include "IMB_moviecache.h"
+#include "IMB_filetype.hh"
+#include "IMB_filter.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_metadata.hh"
+#include "IMB_moviecache.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_math_color.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
+#include "BLI_task.hh"
 #include "BLI_threads.h"
 
-#include "BKE_appdir.h"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
-#include "BKE_image.h"
+#include "BKE_appdir.hh"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_image_format.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
-#include "RNA_define.h"
+#include "GPU_capabilities.h"
 
-#include "SEQ_iterator.h"
+#include "RNA_define.hh"
+
+#include "SEQ_iterator.hh"
 
 #include <ocio_capi.h>
 
@@ -650,7 +652,6 @@ static void colormanage_free_config()
 void colormanagement_init()
 {
   const char *ocio_env;
-  const char *configdir;
   char configfile[FILE_MAX];
   OCIO_ConstConfigRcPtr *config = nullptr;
 
@@ -666,10 +667,11 @@ void colormanagement_init()
   }
 
   if (config == nullptr) {
-    configdir = BKE_appdir_folder_id(BLENDER_DATAFILES, "colormanagement");
+    const std::optional<std::string> configdir = BKE_appdir_folder_id(BLENDER_DATAFILES,
+                                                                      "colormanagement");
 
-    if (configdir) {
-      BLI_path_join(configfile, sizeof(configfile), configdir, BCM_CONFIG_FILE);
+    if (configdir.has_value()) {
+      BLI_path_join(configfile, sizeof(configfile), configdir->c_str(), BCM_CONFIG_FILE);
 
       config = OCIO_configCreateFromFile(configfile);
     }
@@ -736,14 +738,47 @@ void colormanagement_exit()
 /** \name Internal functions
  * \{ */
 
-static bool colormanage_compatible_look(ColorManagedLook *look, const char *view_name)
+static bool has_explicit_look_for_view(const char *view_name)
+{
+  if (!view_name) {
+    return false;
+  }
+
+  LISTBASE_FOREACH (ColorManagedLook *, look, &global_looks) {
+    if (STREQ(look->view, view_name)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static bool colormanage_compatible_look(const ColorManagedLook *look,
+                                        const char *view_name,
+                                        const bool has_explicit_look)
 {
   if (look->is_noop) {
     return true;
   }
 
-  /* Skip looks only relevant to specific view transforms. */
-  return (look->view[0] == 0 || (view_name && STREQ(look->view, view_name)));
+  /* Skip looks only relevant to specific view transforms.
+   * If the view transform has view-specific look ignore non-specific looks. */
+
+  if (view_name && STREQ(look->view, view_name)) {
+    return true;
+  }
+
+  if (has_explicit_look) {
+    return false;
+  }
+
+  return look->view[0] == '\0';
+}
+
+static bool colormanage_compatible_look(const ColorManagedLook *look, const char *view_name)
+{
+  const bool has_explicit_look = has_explicit_look_for_view(view_name);
+  return colormanage_compatible_look(look, view_name, has_explicit_look);
 }
 
 static bool colormanage_use_look(const char *look, const char *view_name)
@@ -1100,7 +1135,7 @@ static void colormanage_check_view_settings(ColorManagedDisplaySettings *display
 {
   ColorManagedDisplay *display;
   ColorManagedView *default_view = nullptr;
-  ColorManagedLook *default_look = (ColorManagedLook *)global_looks.first;
+  const char *default_look_name = IMB_colormanagement_look_get_default_name();
 
   if (view_settings->view_transform[0] == '\0') {
     display = colormanage_display_get_named(display_settings->display_device);
@@ -1135,7 +1170,7 @@ static void colormanage_check_view_settings(ColorManagedDisplaySettings *display
   }
 
   if (view_settings->look[0] == '\0') {
-    STRNCPY(view_settings->look, default_look->name);
+    STRNCPY(view_settings->look, default_look_name);
   }
   else {
     ColorManagedLook *look = colormanage_look_get_named(view_settings->look);
@@ -1143,9 +1178,20 @@ static void colormanage_check_view_settings(ColorManagedDisplaySettings *display
       printf("Color management: %s look \"%s\" not found, setting default \"%s\".\n",
              what,
              view_settings->look,
-             default_look->name);
+             default_look_name);
 
-      STRNCPY(view_settings->look, default_look->name);
+      STRNCPY(view_settings->look, default_look_name);
+    }
+    else if (!colormanage_compatible_look(look, view_settings->view_transform)) {
+      printf(
+          "Color management: %s look \"%s\" is not compatible with view \"%s\", setting default "
+          "\"%s\".\n",
+          what,
+          view_settings->look,
+          view_settings->view_transform,
+          default_look_name);
+
+      STRNCPY(view_settings->look, default_look_name);
     }
   }
 
@@ -1354,7 +1400,7 @@ bool IMB_colormanagement_space_is_data(ColorSpace *colorspace)
 
 static void colormanage_ensure_srgb_scene_linear_info(ColorSpace *colorspace)
 {
-  if (!colorspace->info.cached) {
+  if (colorspace && !colorspace->info.cached) {
     OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
     OCIO_ConstColorSpaceRcPtr *ocio_colorspace = OCIO_configGetColorSpace(config,
                                                                           colorspace->name);
@@ -1526,7 +1572,8 @@ static void display_buffer_apply_get_linear_buffer(DisplayBufferThread *handle,
 
     /* first convert byte buffer to float, keep in image space */
     for (i = 0, fp = linear_buffer, cp = byte_buffer; i != i_last;
-         i++, fp += channels, cp += channels) {
+         i++, fp += channels, cp += channels)
+    {
       if (channels == 3) {
         rgb_uchar_to_float(fp, cp);
       }
@@ -1928,8 +1975,6 @@ static void colormanagement_transform_ex(uchar *byte_buffer,
                                          bool predivide,
                                          bool do_threaded)
 {
-  ColormanageProcessor *cm_processor;
-
   if (from_colorspace[0] == '\0') {
     return;
   }
@@ -1941,7 +1986,12 @@ static void colormanagement_transform_ex(uchar *byte_buffer,
     return;
   }
 
-  cm_processor = IMB_colormanagement_colorspace_processor_new(from_colorspace, to_colorspace);
+  ColormanageProcessor *cm_processor = IMB_colormanagement_colorspace_processor_new(
+      from_colorspace, to_colorspace);
+  if (IMB_colormanagement_processor_is_noop(cm_processor)) {
+    IMB_colormanagement_processor_free(cm_processor);
+    return;
+  }
 
   if (do_threaded) {
     processor_transform_apply_threaded(
@@ -2033,25 +2083,31 @@ void IMB_colormanagement_transform_from_byte_threaded(float *float_buffer,
                                                       const char *from_colorspace,
                                                       const char *to_colorspace)
 {
+  using namespace blender;
   ColormanageProcessor *cm_processor;
   if (from_colorspace == nullptr || from_colorspace[0] == '\0') {
     return;
   }
-  if (STREQ(from_colorspace, to_colorspace)) {
-    /* Because this function always takes a byte buffer and returns a float buffer, it must
-     * always do byte-to-float conversion of some kind. To avoid threading overhead
-     * IMB_buffer_float_from_byte is used when color spaces are identical. See #51002.
-     */
-    IMB_buffer_float_from_byte(float_buffer,
-                               byte_buffer,
-                               IB_PROFILE_SRGB,
-                               IB_PROFILE_SRGB,
-                               false,
-                               width,
-                               height,
-                               width,
-                               width);
-    IMB_premultiply_rect_float(float_buffer, 4, width, height);
+  if (STREQ(from_colorspace, to_colorspace) && channels == 4) {
+    /* Color spaces are the same, just do a simple byte->float conversion. */
+    int64_t pixel_count = int64_t(width) * height;
+    threading::parallel_for(IndexRange(pixel_count), 256 * 1024, [&](IndexRange pix_range) {
+      float *dst_ptr = float_buffer + pix_range.first() * channels;
+      uchar *src_ptr = byte_buffer + pix_range.first() * channels;
+      for ([[maybe_unused]] const int i : pix_range) {
+        /* Equivalent of rgba_uchar_to_float + premultiply. */
+        float cr = float(src_ptr[0]) * (1.0f / 255.0f);
+        float cg = float(src_ptr[1]) * (1.0f / 255.0f);
+        float cb = float(src_ptr[2]) * (1.0f / 255.0f);
+        float ca = float(src_ptr[3]) * (1.0f / 255.0f);
+        dst_ptr[0] = cr * ca;
+        dst_ptr[1] = cg * ca;
+        dst_ptr[2] = cb * ca;
+        dst_ptr[3] = ca;
+        src_ptr += 4;
+        dst_ptr += 4;
+      }
+    });
     return;
   }
   cm_processor = IMB_colormanagement_colorspace_processor_new(from_colorspace, to_colorspace);
@@ -2515,8 +2571,6 @@ ImBuf *IMB_colormanagement_imbuf_for_write(ImBuf *ibuf,
    * display transform for renders, or a user specified color space for the file. */
   const bool byte_output = BKE_image_format_is_byte(image_format);
 
-  BLI_assert(!(byte_output && linear_float_output));
-
   /* If we're saving from RGBA to RGB buffer then it's not so much useful to just ignore alpha --
    * it leads to bad artifacts especially when saving byte images.
    *
@@ -2790,6 +2844,31 @@ void IMB_display_buffer_transform_apply(uchar *display_buffer,
   MEM_freeN(buffer);
 }
 
+void IMB_display_buffer_transform_apply_float(float *float_display_buffer,
+                                              float *linear_buffer,
+                                              int width,
+                                              int height,
+                                              int channels,
+                                              const ColorManagedViewSettings *view_settings,
+                                              const ColorManagedDisplaySettings *display_settings,
+                                              bool predivide)
+{
+  float *buffer;
+  ColormanageProcessor *cm_processor = IMB_colormanagement_display_processor_new(view_settings,
+                                                                                 display_settings);
+
+  buffer = static_cast<float *>(MEM_mallocN(size_t(channels) * width * height * sizeof(float),
+                                            "display transform temp buffer"));
+  memcpy(buffer, linear_buffer, size_t(channels) * width * height * sizeof(float));
+
+  IMB_colormanagement_processor_apply(cm_processor, buffer, width, height, channels, predivide);
+
+  IMB_colormanagement_processor_free(cm_processor);
+
+  memcpy(float_display_buffer, buffer, size_t(channels) * width * height * sizeof(float));
+  MEM_freeN(buffer);
+}
+
 void IMB_display_buffer_release(void *cache_handle)
 {
   if (cache_handle) {
@@ -3036,6 +3115,30 @@ const char *IMB_colormanagement_view_get_default_name(const char *display_name)
   return nullptr;
 }
 
+const char *IMB_colormanagement_view_get_raw_or_default_name(const char *display_name)
+{
+  ColorManagedDisplay *display = colormanage_display_get_named(display_name);
+  if (!display) {
+    return nullptr;
+  }
+
+  ColorManagedView *view = nullptr;
+
+  if (!view) {
+    view = colormanage_view_get_named_for_display(display_name, "Raw");
+  }
+
+  if (!view) {
+    view = colormanage_view_get_default(display);
+  }
+
+  if (!view) {
+    return nullptr;
+  }
+
+  return view->name;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -3261,6 +3364,42 @@ const char *IMB_colormanagement_look_get_indexed_name(int index)
   return nullptr;
 }
 
+const char *IMB_colormanagement_look_get_default_name()
+{
+  const ColorManagedLook *default_look = static_cast<const ColorManagedLook *>(global_looks.first);
+  if (!default_look) {
+    return "";
+  }
+
+  return default_look->name;
+}
+
+const char *IMB_colormanagement_look_validate_for_view(const char *view_name,
+                                                       const char *look_name)
+{
+  ColorManagedLook *look_descr = colormanage_look_get_named(look_name);
+  if (!look_descr) {
+    return look_name;
+  }
+
+  /* Keep same look if compatible. */
+  if (colormanage_compatible_look(look_descr, view_name)) {
+    return look_name;
+  }
+
+  /* Try to find another compatible look with the same UI name, in case
+   * of looks specialized for view transform, */
+  LISTBASE_FOREACH (ColorManagedLook *, other_look, &global_looks) {
+    if (STREQ(look_descr->ui_name, other_look->ui_name) &&
+        colormanage_compatible_look(other_look, view_name))
+    {
+      return other_look->name;
+    }
+  }
+
+  return IMB_colormanagement_look_get_default_name();
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -3316,8 +3455,10 @@ void IMB_colormanagement_look_items_add(EnumPropertyItem **items,
                                         int *totitem,
                                         const char *view_name)
 {
+  const bool has_explicit_look = has_explicit_look_for_view(view_name);
+
   LISTBASE_FOREACH (ColorManagedLook *, look, &global_looks) {
-    if (!colormanage_compatible_look(look, view_name)) {
+    if (!colormanage_compatible_look(look, view_name, has_explicit_look)) {
       continue;
     }
 
@@ -3800,6 +3941,18 @@ ColormanageProcessor *IMB_colormanagement_colorspace_processor_new(const char *f
   return cm_processor;
 }
 
+bool IMB_colormanagement_processor_is_noop(ColormanageProcessor *cm_processor)
+{
+  if (cm_processor->curve_mapping) {
+    /* Consider processor which has curve mapping as a non no-op.
+     * This is mainly for the simplicity of the check, since the current cases where this function
+     * is used the curve mapping is never assigned. */
+    return false;
+  }
+
+  return OCIO_cpuProcessorIsNoOp(cm_processor->cpu_processor);
+}
+
 void IMB_colormanagement_processor_apply_v4(ColormanageProcessor *cm_processor, float pixel[4])
 {
   if (cm_processor->curve_mapping) {
@@ -4056,6 +4209,8 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
   const float gamma = applied_view_settings->gamma;
   const float scale = (exposure == 0.0f) ? 1.0f : powf(2.0f, exposure);
   const float exponent = (gamma == 1.0f) ? 1.0f : 1.0f / max_ff(FLT_EPSILON, gamma);
+  const bool use_hdr = GPU_hdr_support() &&
+                       (applied_view_settings->flag & COLORMANAGE_VIEW_USE_HDR) != 0;
 
   OCIO_ConstConfigRcPtr *config = OCIO_getCurrentConfig();
 
@@ -4070,7 +4225,8 @@ bool IMB_colormanagement_setup_glsl_draw_from_space(
                                                                 exponent,
                                                                 dither,
                                                                 predivide,
-                                                                do_overlay_merge);
+                                                                do_overlay_merge,
+                                                                use_hdr);
 
   OCIO_configRelease(config);
 
@@ -4183,6 +4339,19 @@ static void blackbody_temperature_to_rec709(float rec709[3], float t)
   }
 }
 
+void IMB_colormanagement_blackbody_temperature_to_rgb(float r_dest[4], float value)
+{
+  float rec709[3];
+  blackbody_temperature_to_rec709(rec709, value);
+
+  float rgb[3];
+  IMB_colormanagement_rec709_to_scene_linear(rgb, rec709);
+  clamp_v3(rgb, 0.0f, FLT_MAX);
+
+  copy_v3_v3(r_dest, rgb);
+  r_dest[3] = 1.0f;
+}
+
 void IMB_colormanagement_blackbody_temperature_to_rgb_table(float *r_table,
                                                             const int width,
                                                             const float min,
@@ -4190,16 +4359,7 @@ void IMB_colormanagement_blackbody_temperature_to_rgb_table(float *r_table,
 {
   for (int i = 0; i < width; i++) {
     float temperature = min + (max - min) / float(width) * float(i);
-
-    float rec709[3];
-    blackbody_temperature_to_rec709(rec709, temperature);
-
-    float rgb[3];
-    IMB_colormanagement_rec709_to_scene_linear(rgb, rec709);
-    clamp_v3(rgb, 0.0f, FLT_MAX);
-
-    copy_v3_v3(&r_table[i * 4], rgb);
-    r_table[i * 4 + 3] = 0.0f;
+    IMB_colormanagement_blackbody_temperature_to_rgb(&r_table[i * 4], temperature);
   }
 }
 
@@ -4215,7 +4375,7 @@ void IMB_colormanagement_blackbody_temperature_to_rgb_table(float *r_table,
  * \endcode
  */
 
-static float cie_colour_match[81][3] = {
+static float cie_color_match[81][3] = {
     {0.0014f, 0.0000f, 0.0065f}, {0.0022f, 0.0001f, 0.0105f}, {0.0042f, 0.0001f, 0.0201f},
     {0.0076f, 0.0002f, 0.0362f}, {0.0143f, 0.0004f, 0.0679f}, {0.0232f, 0.0006f, 0.1102f},
     {0.0435f, 0.0012f, 0.2074f}, {0.0776f, 0.0022f, 0.3713f}, {0.1344f, 0.0040f, 0.6456f},
@@ -4256,27 +4416,31 @@ static void wavelength_to_xyz(float xyz[3], float lambda_nm)
   }
   else {
     ii -= float(i);
-    const float *c = cie_colour_match[i];
+    const float *c = cie_color_match[i];
     xyz[0] = c[0] + ii * (c[3] - c[0]);
     xyz[1] = c[1] + ii * (c[4] - c[1]);
     xyz[2] = c[2] + ii * (c[5] - c[2]);
   }
 }
 
+void IMB_colormanagement_wavelength_to_rgb(float r_dest[4], float value)
+{
+  float xyz[3];
+  wavelength_to_xyz(xyz, value);
+
+  float rgb[3];
+  IMB_colormanagement_xyz_to_scene_linear(rgb, xyz);
+  clamp_v3(rgb, 0.0f, FLT_MAX);
+
+  copy_v3_v3(r_dest, rgb);
+  r_dest[3] = 1.0f;
+}
+
 void IMB_colormanagement_wavelength_to_rgb_table(float *r_table, const int width)
 {
   for (int i = 0; i < width; i++) {
-    float temperature = 380 + 400 / float(width) * float(i);
-
-    float xyz[3];
-    wavelength_to_xyz(xyz, temperature);
-
-    float rgb[3];
-    IMB_colormanagement_xyz_to_scene_linear(rgb, xyz);
-    clamp_v3(rgb, 0.0f, FLT_MAX);
-
-    copy_v3_v3(&r_table[i * 4], rgb);
-    r_table[i * 4 + 3] = 0.0f;
+    float wavelength = 380 + 400 / float(width) * float(i);
+    IMB_colormanagement_wavelength_to_rgb(&r_table[i * 4], wavelength);
   }
 }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,17 +25,13 @@
 #include <optional>
 
 #include "BLI_array.hh"
-#include "BLI_edgehash.h"
 #include "BLI_map.hh"
-#include "BLI_math.h"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_rect.h"
 #include "BLI_vector.hh"
 #include "BLI_vector_list.hh"
 #include "BLI_virtual_array.hh"
-
-#include "DNA_meshdata_types.h"
 
 namespace blender::bke::pbvh::uv_islands {
 
@@ -120,10 +116,10 @@ class TriangleToEdgeMap {
  */
 struct MeshData {
  public:
-  const Span<MLoopTri> looptris;
-  const Span<int> corner_verts;
-  const Span<float2> uv_map;
-  const Span<float3> vert_positions;
+  Span<int3> corner_tris;
+  Span<int> corner_verts;
+  Span<float2> uv_map;
+  Span<float3> vert_positions;
 
   VertToEdgeMap vert_to_edge_map;
 
@@ -141,10 +137,10 @@ struct MeshData {
   int64_t uv_island_len;
 
  public:
-  explicit MeshData(Span<MLoopTri> looptris,
+  explicit MeshData(Span<int3> corner_tris,
                     Span<int> corner_verts,
-                    const Span<float2> uv_map,
-                    const Span<float3> vert_positions);
+                    Span<float2> uv_map,
+                    Span<float3> vert_positions);
 };
 
 struct UVVertex {

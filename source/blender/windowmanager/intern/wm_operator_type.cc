@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -18,25 +18,25 @@
 #include "DNA_userdef_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm.h"
-#include "wm_event_system.h"
+#include "wm.hh"
+#include "wm_event_system.hh"
 
 #define UNDOCUMENTED_OPERATOR_TIP N_("(undocumented operator)")
 
@@ -95,7 +95,7 @@ static wmOperatorType *wm_operatortype_append__begin()
   BLI_assert(ot_prop_basic_count == -1);
 
   ot->srna = RNA_def_struct_ptr(&BLENDER_RNA, "", &RNA_OperatorProperties);
-  RNA_def_struct_property_tags(ot->srna, rna_enum_operator_property_tags);
+  RNA_def_struct_property_tags(ot->srna, rna_enum_operator_property_tag_items);
   /* Set the default i18n context now, so that opfunc can redefine it if needed! */
   RNA_def_struct_translation_context(ot->srna, BLT_I18NCONTEXT_OPERATOR_DEFAULT);
   ot->translation_context = BLT_I18NCONTEXT_OPERATOR_DEFAULT;
@@ -249,12 +249,12 @@ void WM_operatortype_last_properties_clear_all()
   }
 }
 
-void WM_operatortype_idname_visit_for_search(const bContext * /*C*/,
-                                             PointerRNA * /*ptr*/,
-                                             PropertyRNA * /*prop*/,
-                                             const char * /*edit_text*/,
-                                             StringPropertySearchVisitFunc visit_fn,
-                                             void *visit_user_data)
+void WM_operatortype_idname_visit_for_search(
+    const bContext * /*C*/,
+    PointerRNA * /*ptr*/,
+    PropertyRNA * /*prop*/,
+    const char * /*edit_text*/,
+    blender::FunctionRef<void(StringPropertySearchVisitParams)> visit_fn)
 {
   GHashIterator gh_iter;
   GHASH_ITER (gh_iter, global_ops_hash) {
@@ -263,10 +263,10 @@ void WM_operatortype_idname_visit_for_search(const bContext * /*C*/,
     char idname_py[OP_MAX_TYPENAME];
     WM_operator_py_idname(idname_py, ot->idname);
 
-    StringPropertySearchVisitParams visit_params = {nullptr};
+    StringPropertySearchVisitParams visit_params{};
     visit_params.text = idname_py;
     visit_params.info = ot->name;
-    visit_fn(visit_user_data, &visit_params);
+    visit_fn(visit_params);
   }
 }
 
@@ -428,7 +428,8 @@ static int wm_macro_modal(bContext *C, wmOperator *op, const wmEvent *event)
           const rcti *wrap_region = nullptr;
 
           if ((op->opm->flag & OP_IS_MODAL_GRAB_CURSOR) ||
-              (op->opm->type->flag & OPTYPE_GRAB_CURSOR_XY)) {
+              (op->opm->type->flag & OPTYPE_GRAB_CURSOR_XY))
+          {
             wrap = WM_CURSOR_WRAP_XY;
           }
           else if (op->opm->type->flag & OPTYPE_GRAB_CURSOR_X) {
@@ -508,7 +509,8 @@ wmOperatorType *WM_operatortype_append_macro(const char *idname,
   return ot;
 }
 
-void WM_operatortype_append_macro_ptr(void (*opfunc)(wmOperatorType *, void *), void *userdata)
+void WM_operatortype_append_macro_ptr(void (*opfunc)(wmOperatorType *ot, void *userdata),
+                                      void *userdata)
 {
   wmOperatorType *ot;
 
@@ -573,44 +575,41 @@ static void wm_operatortype_free_macro(wmOperatorType *ot)
   BLI_freelistN(&ot->macro);
 }
 
-const char *WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
+std::string WM_operatortype_name(wmOperatorType *ot, PointerRNA *properties)
 {
-  const char *name = nullptr;
-
+  std::string name;
   if (ot->get_name && properties) {
     name = ot->get_name(ot, properties);
   }
 
-  return (name && name[0]) ? name : RNA_struct_ui_name(ot->srna);
+  return name.empty() ? std::string(RNA_struct_ui_name(ot->srna)) : name;
 }
 
-char *WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties)
+std::string WM_operatortype_description(bContext *C, wmOperatorType *ot, PointerRNA *properties)
 {
   if (ot->get_description && properties) {
-    char *description = ot->get_description(C, ot, properties);
-
-    if (description) {
-      if (description[0]) {
-        return description;
-      }
-      MEM_freeN(description);
+    std::string description = ot->get_description(C, ot, properties);
+    if (!description.empty()) {
+      return description;
     }
   }
 
   const char *info = RNA_struct_ui_description(ot->srna);
   if (info && info[0]) {
-    return BLI_strdup(info);
+    return info;
   }
-  return nullptr;
+  return "";
 }
 
-char *WM_operatortype_description_or_name(bContext *C, wmOperatorType *ot, PointerRNA *properties)
+std::string WM_operatortype_description_or_name(bContext *C,
+                                                wmOperatorType *ot,
+                                                PointerRNA *properties)
 {
-  char *text = WM_operatortype_description(C, ot, properties);
-  if (text == nullptr) {
-    const char *text_orig = WM_operatortype_name(ot, properties);
-    if (text_orig != nullptr) {
-      text = BLI_strdup(text_orig);
+  std::string text = WM_operatortype_description(C, ot, properties);
+  if (text.empty()) {
+    std::string text_orig = WM_operatortype_name(ot, properties);
+    if (!text_orig.empty()) {
+      return text_orig;
     }
   }
   return text;

@@ -8,18 +8,16 @@
 
 #include <cstdlib>
 
-#include "BLI_math.h"
 #include "BLI_math_bits.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_armature.h"
-#include "BKE_context.h"
+#include "ED_screen.hh"
 
-#include "ED_screen.h"
+#include "UI_interface.hh"
 
-#include "UI_interface.h"
-
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -148,11 +146,11 @@ static void ElementMirror(TransInfo *t, TransDataContainer *tc, TransData *td, i
       add_v3_v3v3(td->loc, td->iloc, vec);
     }
 
-    constraintTransLim(t, td);
+    constraintTransLim(t, tc, td);
   }
 }
 
-static void applyMirror(TransInfo *t, const int[2] /*mval*/)
+static void applyMirror(TransInfo *t)
 {
   int i;
   char str[UI_MAX_DRAW_STR];
@@ -176,7 +174,7 @@ static void applyMirror(TransInfo *t, const int[2] /*mval*/)
       special_axis = bitscan_forward_i(special_axis_bitmap);
     }
 
-    SNPRINTF(str, TIP_("Mirror%s"), t->con.text);
+    SNPRINTF(str, IFACE_("Mirror%s"), t->con.text);
 
     FOREACH_TRANS_DATA_CONTAINER (t, tc) {
       TransData *td = tc->data;
@@ -189,7 +187,7 @@ static void applyMirror(TransInfo *t, const int[2] /*mval*/)
       }
     }
 
-    recalcData(t);
+    recalc_data(t);
 
     ED_area_status_text(t->area, str);
   }
@@ -205,13 +203,13 @@ static void applyMirror(TransInfo *t, const int[2] /*mval*/)
       }
     }
 
-    recalcData(t);
+    recalc_data(t);
 
     if (t->flag & T_2D_EDIT) {
-      ED_area_status_text(t->area, TIP_("Select a mirror axis (X, Y)"));
+      ED_area_status_text(t->area, IFACE_("Select a mirror axis (X, Y)"));
     }
     else {
-      ED_area_status_text(t->area, TIP_("Select a mirror axis (X, Y, Z)"));
+      ED_area_status_text(t->area, IFACE_("Select a mirror axis (X, Y, Z)"));
     }
   }
 }

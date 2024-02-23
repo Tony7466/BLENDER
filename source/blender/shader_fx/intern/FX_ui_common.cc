@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,9 +11,9 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_context.h"
-#include "BKE_object.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_object.hh"
+#include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
 
 #include "DNA_object_types.h"
@@ -21,18 +21,18 @@
 #include "DNA_screen_types.h"
 #include "DNA_shader_fx_types.h"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "FX_ui_common.h" /* Self include */
 
@@ -88,7 +88,7 @@ void shaderfx_panel_end(uiLayout *layout, PointerRNA *ptr)
   ShaderFxData *fx = static_cast<ShaderFxData *>(ptr->data);
   if (fx->error) {
     uiLayout *row = uiLayoutRow(layout, false);
-    uiItemL(row, TIP_(fx->error), ICON_ERROR);
+    uiItemL(row, RPT_(fx->error), ICON_ERROR);
   }
 }
 
@@ -98,7 +98,7 @@ PointerRNA *shaderfx_panel_get_property_pointers(Panel *panel, PointerRNA *r_ob_
   BLI_assert(RNA_struct_is_a(ptr->type, &RNA_ShaderFx));
 
   if (r_ob_ptr != nullptr) {
-    RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id, r_ob_ptr);
+    *r_ob_ptr = RNA_pointer_create(ptr->owner_id, &RNA_Object, ptr->owner_id);
   }
 
   UI_panel_context_pointer_set(panel, "shaderfx", ptr);
@@ -106,7 +106,7 @@ PointerRNA *shaderfx_panel_get_property_pointers(Panel *panel, PointerRNA *r_ob_
   return ptr;
 }
 
-#define ERROR_LIBDATA_MESSAGE TIP_("External library data")
+#define ERROR_LIBDATA_MESSAGE N_("External library data")
 
 static void gpencil_shaderfx_ops_extra_draw(bContext *C, uiLayout *layout, void *fx_v)
 {
@@ -114,9 +114,8 @@ static void gpencil_shaderfx_ops_extra_draw(bContext *C, uiLayout *layout, void 
   uiLayout *row;
   ShaderFxData *fx = (ShaderFxData *)fx_v;
 
-  PointerRNA ptr;
   Object *ob = ED_object_active_context(C);
-  RNA_pointer_create(&ob->id, &RNA_ShaderFx, fx, &ptr);
+  PointerRNA ptr = RNA_pointer_create(&ob->id, &RNA_ShaderFx, fx);
   uiLayoutSetContextPointer(layout, "shaderfx", &ptr);
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
 
@@ -138,7 +137,7 @@ static void gpencil_shaderfx_ops_extra_draw(bContext *C, uiLayout *layout, void 
               ICON_TRIA_UP,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
-              0,
+              UI_ITEM_NONE,
               &op_ptr);
   RNA_int_set(&op_ptr, "index", 0);
   if (!fx->prev) {
@@ -153,7 +152,7 @@ static void gpencil_shaderfx_ops_extra_draw(bContext *C, uiLayout *layout, void 
               ICON_TRIA_DOWN,
               nullptr,
               WM_OP_INVOKE_DEFAULT,
-              0,
+              UI_ITEM_NONE,
               &op_ptr);
   RNA_int_set(&op_ptr, "index", BLI_listbase_count(&ob->shader_fx) - 1);
   if (!fx->next) {
@@ -176,7 +175,7 @@ static void shaderfx_panel_header(const bContext * /*C*/, Panel *panel)
 
   /* Effect type icon. */
   uiLayout *row = uiLayoutRow(layout, false);
-  if (fxti->isDisabled && fxti->isDisabled(fx, 0)) {
+  if (fxti->is_disabled && fxti->is_disabled(fx, false)) {
     uiLayoutSetRedAlert(row, true);
   }
   uiItemL(row, "", RNA_struct_ui_icon(ptr->type));
@@ -184,17 +183,17 @@ static void shaderfx_panel_header(const bContext * /*C*/, Panel *panel)
   /* Effect name. */
   row = uiLayoutRow(layout, true);
   if (!narrow_panel) {
-    uiItemR(row, ptr, "name", 0, "", ICON_NONE);
+    uiItemR(row, ptr, "name", UI_ITEM_NONE, "", ICON_NONE);
   }
 
   /* Mode enabling buttons. */
   if (fxti->flags & eShaderFxTypeFlag_SupportsEditmode) {
     uiLayout *sub = uiLayoutRow(row, true);
     uiLayoutSetActive(sub, false);
-    uiItemR(sub, ptr, "show_in_editmode", 0, "", ICON_NONE);
+    uiItemR(sub, ptr, "show_in_editmode", UI_ITEM_NONE, "", ICON_NONE);
   }
-  uiItemR(row, ptr, "show_viewport", 0, "", ICON_NONE);
-  uiItemR(row, ptr, "show_render", 0, "", ICON_NONE);
+  uiItemR(row, ptr, "show_viewport", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(row, ptr, "show_render", UI_ITEM_NONE, "", ICON_NONE);
 
   /* Extra operators. */
   uiItemMenuF(row, "", ICON_DOWNARROW_HLT, gpencil_shaderfx_ops_extra_draw, fx);

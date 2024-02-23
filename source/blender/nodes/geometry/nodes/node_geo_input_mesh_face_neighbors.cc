@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,12 +20,12 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description("Number of faces which share an edge with the face");
 }
 
-static VArray<int> construct_neighbor_count_varray(const Mesh &mesh, const eAttrDomain domain)
+static VArray<int> construct_neighbor_count_varray(const Mesh &mesh, const AttrDomain domain)
 {
   const OffsetIndices faces = mesh.faces();
   const Span<int> corner_edges = mesh.corner_edges();
 
-  Array<int> edge_count(mesh.totedge, 0);
+  Array<int> edge_count(mesh.edges_num, 0);
   array_utils::count_indices(corner_edges, edge_count);
 
   Array<int> face_count(faces.size(), 0);
@@ -36,7 +36,7 @@ static VArray<int> construct_neighbor_count_varray(const Mesh &mesh, const eAttr
   }
 
   return mesh.attributes().adapt_domain<int>(
-      VArray<int>::ForContainer(std::move(face_count)), ATTR_DOMAIN_FACE, domain);
+      VArray<int>::ForContainer(std::move(face_count)), AttrDomain::Face, domain);
 }
 
 class FaceNeighborCountFieldInput final : public bke::MeshFieldInput {
@@ -48,7 +48,7 @@ class FaceNeighborCountFieldInput final : public bke::MeshFieldInput {
   }
 
   GVArray get_varray_for_context(const Mesh &mesh,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
     return construct_neighbor_count_varray(mesh, domain);
@@ -65,19 +65,19 @@ class FaceNeighborCountFieldInput final : public bke::MeshFieldInput {
     return dynamic_cast<const FaceNeighborCountFieldInput *>(&other) != nullptr;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
+  std::optional<AttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
   {
-    return ATTR_DOMAIN_FACE;
+    return AttrDomain::Face;
   }
 };
 
-static VArray<int> construct_vertex_count_varray(const Mesh &mesh, const eAttrDomain domain)
+static VArray<int> construct_vertex_count_varray(const Mesh &mesh, const AttrDomain domain)
 {
   const OffsetIndices faces = mesh.faces();
   return mesh.attributes().adapt_domain<int>(
       VArray<int>::ForFunc(faces.size(),
                            [faces](const int i) -> float { return faces[i].size(); }),
-      ATTR_DOMAIN_FACE,
+      AttrDomain::Face,
       domain);
 }
 
@@ -89,7 +89,7 @@ class FaceVertexCountFieldInput final : public bke::MeshFieldInput {
   }
 
   GVArray get_varray_for_context(const Mesh &mesh,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const IndexMask & /*mask*/) const final
   {
     return construct_vertex_count_varray(mesh, domain);
@@ -106,9 +106,9 @@ class FaceVertexCountFieldInput final : public bke::MeshFieldInput {
     return dynamic_cast<const FaceVertexCountFieldInput *>(&other) != nullptr;
   }
 
-  std::optional<eAttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
+  std::optional<AttrDomain> preferred_domain(const Mesh & /*mesh*/) const override
   {
-    return ATTR_DOMAIN_FACE;
+    return AttrDomain::Face;
   }
 };
 
@@ -120,17 +120,16 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Face Count", std::move(neighbor_count_field));
 }
 
-}  // namespace blender::nodes::node_geo_input_mesh_face_neighbors_cc
-
-void register_node_type_geo_input_mesh_face_neighbors()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_input_mesh_face_neighbors_cc;
-
   static bNodeType ntype;
   geo_node_type_base(
       &ntype, GEO_NODE_INPUT_MESH_FACE_NEIGHBORS, "Face Neighbors", NODE_CLASS_INPUT);
   blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_input_mesh_face_neighbors_cc

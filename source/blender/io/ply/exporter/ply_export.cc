@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,14 +6,14 @@
  * \ingroup ply
  */
 
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BLI_memory_utils.hh"
-#include "IO_ply.h"
+#include "IO_ply.hh"
 
 #include "ply_data.hh"
 #include "ply_export.hh"

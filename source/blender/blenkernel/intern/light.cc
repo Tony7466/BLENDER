@@ -13,33 +13,27 @@
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
 
-#include "DNA_anim_types.h"
 #include "DNA_defaults.h"
 #include "DNA_light_types.h"
-#include "DNA_material_types.h"
 #include "DNA_node_types.h"
-#include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_anim_data.h"
-#include "BKE_colortools.h"
 #include "BKE_icons.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_light.h"
-#include "BKE_main.h"
-#include "BKE_node.h"
+#include "BKE_node.hh"
+#include "BKE_preview_image.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static void light_init_data(ID *id)
 {
@@ -57,7 +51,7 @@ static void light_init_data(ID *id)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
  */
 static void light_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
 {
@@ -105,11 +99,17 @@ static void light_free_data(ID *id)
 
 static void light_foreach_id(ID *id, LibraryForeachIDData *data)
 {
-  Light *lamp = (Light *)id;
+  Light *lamp = reinterpret_cast<Light *>(id);
+  const int flag = BKE_lib_query_foreachid_process_flags_get(data);
+
   if (lamp->nodetree) {
     /* nodetree **are owned by IDs**, treat them as mere sub-data and not real ID! */
     BKE_LIB_FOREACHID_PROCESS_FUNCTION_CALL(
         data, BKE_library_foreach_ID_embedded(data, (ID **)&lamp->nodetree));
+  }
+
+  if (flag & IDWALK_DO_DEPRECATED_POINTERS) {
+    BKE_LIB_FOREACHID_PROCESS_ID_NOCHECK(data, lamp->ipo, IDWALK_CB_USER);
   }
 }
 
@@ -126,10 +126,6 @@ static void light_blend_write(BlendWriter *writer, ID *id, const void *id_addres
   /* write LibData */
   BLO_write_id_struct(writer, Light, id_address, &la->id);
   BKE_id_blend_write(writer, &la->id);
-
-  if (la->adt) {
-    BKE_animdata_blend_write(writer, la->adt);
-  }
 
   /* Node-tree is integral part of lights, no libdata. */
   if (la->nodetree) {
@@ -148,32 +144,19 @@ static void light_blend_write(BlendWriter *writer, ID *id, const void *id_addres
 static void light_blend_read_data(BlendDataReader *reader, ID *id)
 {
   Light *la = (Light *)id;
-  BLO_read_data_address(reader, &la->adt);
-  BKE_animdata_blend_read_data(reader, la->adt);
 
   BLO_read_data_address(reader, &la->preview);
   BKE_previewimg_blend_read(reader, la->preview);
 }
 
-static void light_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  Light *la = (Light *)id;
-  BLO_read_id_address(reader, id, &la->ipo);  // XXX deprecated - old animation system
-}
-
-static void light_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  Light *la = (Light *)id;
-  BLO_expand(expander, la->ipo);  // XXX deprecated - old animation system
-}
-
 IDTypeInfo IDType_ID_LA = {
     /*id_code*/ ID_LA,
     /*id_filter*/ FILTER_ID_LA,
+    /*dependencies_id_types*/ FILTER_ID_TE,
     /*main_listbase_index*/ INDEX_ID_LA,
     /*struct_size*/ sizeof(Light),
     /*name*/ "Light",
-    /*name_plural*/ "lights",
+    /*name_plural*/ N_("lights"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_LIGHT,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -189,8 +172,7 @@ IDTypeInfo IDType_ID_LA = {
 
     /*blend_write*/ light_blend_write,
     /*blend_read_data*/ light_blend_read_data,
-    /*blend_read_lib*/ light_blend_read_lib,
-    /*blend_read_expand*/ light_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 

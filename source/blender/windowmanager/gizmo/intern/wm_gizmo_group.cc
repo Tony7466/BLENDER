@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,24 +21,24 @@
 #include "BLI_rect.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_main.h"
-#include "BKE_report.h"
+#include "BKE_context.hh"
+#include "BKE_main.hh"
+#include "BKE_report.hh"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
-#include "wm_event_system.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
+#include "wm_event_system.hh"
 
-#include "ED_screen.h"
-#include "ED_undo.h"
+#include "ED_screen.hh"
+#include "ED_undo.hh"
 
 /* own includes */
-#include "wm_gizmo_intern.h"
-#include "wm_gizmo_wmapi.h"
+#include "wm_gizmo_intern.hh"
+#include "wm_gizmo_wmapi.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -102,7 +102,7 @@ void wm_gizmogroup_free(bContext *C, wmGizmoGroup *gzgroup)
 #endif
 
   if (gzgroup->reports && (gzgroup->reports->flag & RPT_FREE)) {
-    BKE_reports_clear(gzgroup->reports);
+    BKE_reports_free(gzgroup->reports);
     MEM_freeN(gzgroup->reports);
   }
 
@@ -222,7 +222,7 @@ void wm_gizmogroup_intersectable_gizmos_to_list(wmWindowManager *wm,
                                                 BLI_Buffer *visible_gizmos)
 {
   int gzgroup_keymap_uses_modifier = -1;
-  for (wmGizmo *gz = static_cast<wmGizmo *>(gzgroup->gizmos.last); gz; gz = gz->prev) {
+  LISTBASE_FOREACH_BACKWARD (wmGizmo *, gz, &gzgroup->gizmos) {
     if ((gz->flag & (WM_GIZMO_HIDDEN | WM_GIZMO_HIDDEN_SELECT)) == 0) {
       if (((gzgroup->type->flag & WM_GIZMOGROUPTYPE_3D) &&
            (gz->type->draw_select || gz->type->test_select)) ||
@@ -284,7 +284,8 @@ void WM_gizmo_group_remove_by_tool(bContext *C,
           if (gzmap && gzmap->type == gzmap_type) {
             wmGizmoGroup *gzgroup, *gzgroup_next;
             for (gzgroup = static_cast<wmGizmoGroup *>(gzmap->groups.first); gzgroup;
-                 gzgroup = gzgroup_next) {
+                 gzgroup = gzgroup_next)
+            {
               gzgroup_next = gzgroup->next;
               if (gzgroup->type == gzgt) {
                 BLI_assert(gzgroup->parent_gzmap == gzmap);
@@ -1046,7 +1047,8 @@ void WM_gizmomaptype_group_unlink(bContext *C,
           if (gzmap && gzmap->type == gzmap_type) {
             wmGizmoGroup *gzgroup, *gzgroup_next;
             for (gzgroup = static_cast<wmGizmoGroup *>(gzmap->groups.first); gzgroup;
-                 gzgroup = gzgroup_next) {
+                 gzgroup = gzgroup_next)
+            {
               gzgroup_next = gzgroup->next;
               if (gzgroup->type == gzgt) {
                 BLI_assert(gzgroup->parent_gzmap == gzmap);

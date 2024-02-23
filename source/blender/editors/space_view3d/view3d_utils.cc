@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,32 +23,34 @@
 
 #include "BLI_array_utils.h"
 #include "BLI_bitmap_draw_2d.h"
-#include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_camera.h"
-#include "BKE_context.h"
-#include "BKE_object.h"
-#include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_object.hh"
+#include "BKE_scene.hh"
+#include "BKE_screen.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
-
-#include "BIF_glutil.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_matrix.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_keyframing.h"
-#include "ED_screen.h"
-#include "ED_undo.h"
-#include "ED_view3d.h"
+#include "ED_keyframing.hh"
+#include "ED_screen.hh"
+#include "ED_undo.hh"
+#include "ED_view3d.hh"
 
-#include "UI_resources.h"
+#include "ANIM_keyframing.hh"
+
+#include "UI_resources.hh"
 
 #include "view3d_intern.h" /* own include */
 
@@ -282,7 +284,7 @@ void ED_view3d_clipping_calc(
   /* optionally transform to object space */
   if (ob) {
     float imat[4][4];
-    invert_m4_m4(imat, ob->object_to_world);
+    invert_m4_m4(imat, ob->object_to_world().ptr());
 
     for (int val = 0; val < 8; val++) {
       mul_m4_v3(imat, bb->vec[val]);
@@ -292,7 +294,7 @@ void ED_view3d_clipping_calc(
   /* verify if we have negative scale. doing the transform before cross
    * product flips the sign of the vector compared to doing cross product
    * before transform then, so we correct for that. */
-  int flip_sign = (ob) ? is_negative_m4(ob->object_to_world) : false;
+  int flip_sign = (ob) ? is_negative_m4(ob->object_to_world().ptr()) : false;
 
   ED_view3d_clipping_calc_from_boundbox(planes, bb, flip_sign);
 }
@@ -470,7 +472,7 @@ void ED_view3d_persp_switch_from_camera(const Depsgraph *depsgraph,
   if (v3d->camera) {
     Object *ob_camera_eval = DEG_get_evaluated_object(depsgraph, v3d->camera);
     rv3d->dist = ED_view3d_offset_distance(
-        ob_camera_eval->object_to_world, rv3d->ofs, VIEW3D_DIST_FALLBACK);
+        ob_camera_eval->object_to_world().ptr(), rv3d->ofs, VIEW3D_DIST_FALLBACK);
     ED_view3d_from_object(ob_camera_eval, rv3d->ofs, rv3d->viewquat, &rv3d->dist, nullptr);
   }
 
@@ -562,7 +564,7 @@ void ED_view3d_camera_lock_init_ex(const Depsgraph *depsgraph,
     if (calc_dist) {
       /* using a fallback dist is OK here since ED_view3d_from_object() compensates for it */
       rv3d->dist = ED_view3d_offset_distance(
-          ob_camera_eval->object_to_world, rv3d->ofs, VIEW3D_DIST_FALLBACK);
+          ob_camera_eval->object_to_world().ptr(), rv3d->ofs, VIEW3D_DIST_FALLBACK);
     }
     ED_view3d_from_object(ob_camera_eval, rv3d->ofs, rv3d->viewquat, &rv3d->dist, nullptr);
   }
@@ -597,12 +599,12 @@ bool ED_view3d_camera_lock_sync(const Depsgraph *depsgraph, View3D *v3d, RegionV
 
       ED_view3d_to_m4(view_mat, rv3d->ofs, rv3d->viewquat, rv3d->dist);
 
-      normalize_m4_m4(tmat, ob_camera_eval->object_to_world);
+      normalize_m4_m4(tmat, ob_camera_eval->object_to_world().ptr());
 
       invert_m4_m4(imat, tmat);
       mul_m4_m4m4(diff_mat, view_mat, imat);
 
-      mul_m4_m4m4(parent_mat, diff_mat, root_parent_eval->object_to_world);
+      mul_m4_m4m4(parent_mat, diff_mat, root_parent_eval->object_to_world().ptr());
 
       BKE_object_tfm_protected_backup(root_parent, &obtfm);
       BKE_object_apply_mat4(root_parent, parent_mat, true, false);
@@ -635,12 +637,11 @@ bool ED_view3d_camera_lock_sync(const Depsgraph *depsgraph, View3D *v3d, RegionV
 bool ED_view3d_camera_autokey(
     const Scene *scene, ID *id_key, bContext *C, const bool do_rotate, const bool do_translate)
 {
-  if (autokeyframe_cfra_can_key(scene, id_key)) {
+  if (blender::animrig::autokeyframe_cfra_can_key(scene, id_key)) {
     const float cfra = float(scene->r.cfra);
-    ListBase dsources = {nullptr, nullptr};
-
+    blender::Vector<PointerRNA> sources;
     /* add data-source override for the camera object */
-    ANIM_relative_keyingset_add_source(&dsources, id_key, nullptr, nullptr);
+    ANIM_relative_keyingset_add_source(sources, id_key);
 
     /* insert keyframes
      * 1) on the first frame
@@ -649,15 +650,12 @@ bool ED_view3d_camera_autokey(
      */
     if (do_rotate) {
       KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, ANIM_KS_ROTATION_ID);
-      ANIM_apply_keyingset(C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, cfra);
+      ANIM_apply_keyingset(C, &sources, ks, MODIFYKEY_MODE_INSERT, cfra);
     }
     if (do_translate) {
       KeyingSet *ks = ANIM_get_keyingset_for_autokeying(scene, ANIM_KS_LOCATION_ID);
-      ANIM_apply_keyingset(C, &dsources, nullptr, ks, MODIFYKEY_MODE_INSERT, cfra);
+      ANIM_apply_keyingset(C, &sources, ks, MODIFYKEY_MODE_INSERT, cfra);
     }
-
-    /* free temp data */
-    BLI_freelistN(&dsources);
 
     return true;
   }
@@ -702,7 +700,7 @@ bool ED_view3d_camera_lock_undo_test(const View3D *v3d, const RegionView3D *rv3d
 /**
  * Create a MEMFILE undo-step for locked camera movement when transforming the view.
  * Edit and texture paint mode don't use MEMFILE undo so undo push is skipped for them.
- * NDOF and track-pad navigation would create an undo step on every gesture and we may end up with
+ * NDOF and trackpad navigation would create an undo step on every gesture and we may end up with
  * unnecessary undo steps so undo push for them is not supported for now.
  * Operators that use smooth view for navigation are supported via an optional parameter field,
  * see: #V3D_SmoothParams.undo_str.
@@ -985,7 +983,7 @@ void ED_view3d_quadview_update(ScrArea *area, ARegion *region, bool do_clip)
   /* ensure locked regions have an axis, locked user views don't make much sense */
   if (viewlock & RV3D_LOCK_ROTATION) {
     int index_qsplit = 0;
-    for (region = static_cast<ARegion *>(area->regionbase.first); region; region = region->next) {
+    LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       if (region->alignment == RGN_ALIGN_QSPLIT) {
         rv3d = static_cast<RegionView3D *>(region->regiondata);
         if (rv3d->viewlock) {
@@ -1009,8 +1007,8 @@ void ED_view3d_quadview_update(ScrArea *area, ARegion *region, bool do_clip)
 /* -------------------------------------------------------------------- */
 /** \name View Auto-Depth Last State Access
  *
- * Calling consecutive track-pad gestures reuses the previous offset to prevent
- * each track-pad event using a different offset, see: #103263.
+ * Calling consecutive trackpad gestures reuses the previous offset to prevent
+ * each trackpad event using a different offset, see: #103263.
  * \{ */
 
 static const char *view3d_autodepth_last_id = "view3d_autodist_last";
@@ -1165,13 +1163,13 @@ bool ED_view3d_autodist_simple(ARegion *region,
   return ED_view3d_unproject_v3(region, centx, centy, depth, mouse_worldloc);
 }
 
-static bool depth_segment_cb(int x, int y, void *userData)
+static bool depth_segment_cb(int x, int y, void *user_data)
 {
   struct UserData {
     const ViewDepths *vd;
     int margin;
     float depth;
-  } *data = static_cast<UserData *>(userData);
+  } *data = static_cast<UserData *>(user_data);
   int mval[2];
   float depth;
 
@@ -1581,7 +1579,7 @@ void ED_view3d_to_m4(float mat[4][4], const float ofs[3], const float quat[4], c
 
 void ED_view3d_from_object(const Object *ob, float ofs[3], float quat[4], float *dist, float *lens)
 {
-  ED_view3d_from_m4(ob->object_to_world, ofs, quat, dist);
+  ED_view3d_from_m4(ob->object_to_world().ptr(), ofs, quat, dist);
 
   if (lens) {
     CameraParams params;
@@ -1624,12 +1622,13 @@ static bool view3d_camera_to_view_selected_impl(Main *bmain,
     bool is_ortho_camera = false;
 
     if ((camera_ob_eval->type == OB_CAMERA) &&
-        (((Camera *)camera_ob_eval->data)->type == CAM_ORTHO)) {
+        (((Camera *)camera_ob_eval->data)->type == CAM_ORTHO))
+    {
       ((Camera *)camera_ob->data)->ortho_scale = scale;
       is_ortho_camera = true;
     }
 
-    copy_m4_m4(obmat_new, camera_ob_eval->object_to_world);
+    copy_m4_m4(obmat_new, camera_ob_eval->object_to_world().ptr());
     copy_v3_v3(obmat_new[3], co);
 
     /* only touch location */

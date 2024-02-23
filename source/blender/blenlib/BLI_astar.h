@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,6 +8,8 @@
  * \ingroup bli
  * \brief An implementation of the A* (AStar) algorithm to solve shortest path problem.
  */
+
+#include "DNA_listBase.h"
 
 #include "BLI_utildefines.h"
 

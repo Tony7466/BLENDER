@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,12 +14,12 @@
 
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_collection_color_items[] = {
     {COLLECTION_COLOR_NONE, "NONE", ICON_X, "None", "Assign no color tag to the collection"},
@@ -39,20 +39,22 @@ BLI_STATIC_ASSERT(ARRAY_SIZE(rna_enum_collection_color_items) - 2 == COLLECTION_
 
 #ifdef RNA_RUNTIME
 
+#  include <fmt/format.h>
+
 #  include "DNA_object_types.h"
 #  include "DNA_scene_types.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
+#  include "DEG_depsgraph_query.hh"
 
-#  include "BKE_collection.h"
-#  include "BKE_global.h"
-#  include "BKE_layer.h"
+#  include "BKE_collection.hh"
+#  include "BKE_global.hh"
+#  include "BKE_layer.hh"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
 static void rna_Collection_all_objects_begin(CollectionPropertyIterator *iter, PointerRNA *ptr)
 {
@@ -135,7 +137,7 @@ static void rna_Collection_objects_link(Collection *collection,
     return;
   }
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, &object->id);
 }
@@ -157,26 +159,20 @@ static void rna_Collection_objects_unlink(Collection *collection,
     return;
   }
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, &object->id);
 }
 
 static bool rna_Collection_objects_override_apply(Main *bmain,
-                                                  PointerRNA *ptr_dst,
-                                                  PointerRNA * /*ptr_src*/,
-                                                  PointerRNA * /*ptr_storage*/,
-                                                  PropertyRNA *prop_dst,
-                                                  PropertyRNA * /*prop_src*/,
-                                                  PropertyRNA * /*prop_storage*/,
-                                                  const int /*len_dst*/,
-                                                  const int /*len_src*/,
-                                                  const int /*len_storage*/,
-                                                  PointerRNA *ptr_item_dst,
-                                                  PointerRNA *ptr_item_src,
-                                                  PointerRNA * /*ptr_item_storage*/,
-                                                  IDOverrideLibraryPropertyOperation *opop)
+                                                  RNAPropertyOverrideApplyContext &rnaapply_ctx)
 {
+  PointerRNA *ptr_dst = &rnaapply_ctx.ptr_dst;
+  PropertyRNA *prop_dst = rnaapply_ctx.prop_dst;
+  PointerRNA *ptr_item_dst = &rnaapply_ctx.ptr_item_dst;
+  PointerRNA *ptr_item_src = &rnaapply_ctx.ptr_item_src;
+  IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
+
   BLI_assert(opop->operation == LIBOVERRIDE_OP_REPLACE &&
              "Unsupported RNA override operation on collections' objects");
   UNUSED_VARS_NDEBUG(opop);
@@ -269,7 +265,7 @@ static void rna_Collection_children_link(Collection *collection,
     return;
   }
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, &child->id);
 }
@@ -291,26 +287,20 @@ static void rna_Collection_children_unlink(Collection *collection,
     return;
   }
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_OBJECT | ND_DRAW, &child->id);
 }
 
 static bool rna_Collection_children_override_apply(Main *bmain,
-                                                   PointerRNA *ptr_dst,
-                                                   PointerRNA * /*ptr_src*/,
-                                                   PointerRNA * /*ptr_storage*/,
-                                                   PropertyRNA *prop_dst,
-                                                   PropertyRNA * /*prop_src*/,
-                                                   PropertyRNA * /*prop_storage*/,
-                                                   const int /*len_dst*/,
-                                                   const int /*len_src*/,
-                                                   const int /*len_storage*/,
-                                                   PointerRNA *ptr_item_dst,
-                                                   PointerRNA *ptr_item_src,
-                                                   PointerRNA * /*ptr_item_storage*/,
-                                                   IDOverrideLibraryPropertyOperation *opop)
+                                                   RNAPropertyOverrideApplyContext &rnaapply_ctx)
 {
+  PointerRNA *ptr_dst = &rnaapply_ctx.ptr_dst;
+  PropertyRNA *prop_dst = rnaapply_ctx.prop_dst;
+  PointerRNA *ptr_item_dst = &rnaapply_ctx.ptr_item_dst;
+  PointerRNA *ptr_item_src = &rnaapply_ctx.ptr_item_src;
+  IDOverrideLibraryPropertyOperation *opop = rnaapply_ctx.liboverride_operation;
+
   BLI_assert(opop->operation == LIBOVERRIDE_OP_REPLACE &&
              "Unsupported RNA override operation on collections' children");
   UNUSED_VARS_NDEBUG(opop);
@@ -339,7 +329,7 @@ static bool rna_Collection_children_override_apply(Main *bmain,
   collchild_dst->collection = subcoll_src;
   id_us_plus(&collchild_dst->collection->id);
 
-  BKE_collection_object_cache_free(coll_dst);
+  BKE_collection_object_cache_free(bmain, coll_dst, 0);
   BKE_main_collection_sync(bmain);
 
   RNA_property_update_main(bmain, nullptr, ptr_dst, prop_dst);
@@ -380,10 +370,10 @@ static void rna_Collection_hide_render_set(PointerRNA *ptr, bool value)
 static void rna_Collection_flag_update(Main *bmain, Scene *scene, PointerRNA *ptr)
 {
   Collection *collection = (Collection *)ptr->data;
-  BKE_collection_object_cache_free(collection);
+  BKE_collection_object_cache_free(bmain, collection, 0);
   BKE_main_collection_sync(bmain);
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
   WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
 }
@@ -419,7 +409,7 @@ static void rna_Collection_instance_offset_update(Main * /*bmain*/,
   DEG_id_tag_update(&collection->id, ID_RECALC_GEOMETRY);
 }
 
-static char *rna_CollectionLightLinking_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_CollectionLightLinking_path(const PointerRNA *ptr)
 {
   Collection *collection = (Collection *)ptr->owner_id;
   CollectionLightLinking *collection_light_linking = (CollectionLightLinking *)ptr->data;
@@ -429,7 +419,7 @@ static char *rna_CollectionLightLinking_path(const PointerRNA *ptr)
   counter = 0;
   LISTBASE_FOREACH (CollectionObject *, collection_object, &collection->gobject) {
     if (&collection_object->light_linking == collection_light_linking) {
-      return BLI_sprintfN("collection_objects[%d].light_linking", counter);
+      return fmt::format("collection_objects[{}].light_linking", counter);
     }
     ++counter;
   }
@@ -437,12 +427,12 @@ static char *rna_CollectionLightLinking_path(const PointerRNA *ptr)
   counter = 0;
   LISTBASE_FOREACH (CollectionChild *, collection_child, &collection->children) {
     if (&collection_child->light_linking == collection_light_linking) {
-      return BLI_sprintfN("collection_children[%d].light_linking", counter);
+      return fmt::format("collection_children[{}].light_linking", counter);
     }
     ++counter;
   }
 
-  return BLI_strdup("..");
+  return "..";
 }
 
 static void rna_CollectionLightLinking_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
@@ -584,7 +574,7 @@ void RNA_def_collections(BlenderRNA *brna)
   srna = RNA_def_struct(brna, "Collection", "ID");
   RNA_def_struct_ui_text(srna, "Collection", "Collection of Object data-blocks");
   RNA_def_struct_ui_icon(srna, ICON_OUTLINER_COLLECTION);
-  /* This is done on save/load in readfile.c,
+  /* This is done on save/load in `readfile.cc`,
    * removed if no objects are in the collection and not in a scene. */
   RNA_def_struct_clear_flag(srna, STRUCT_ID_REFCOUNT);
 
@@ -736,7 +726,6 @@ void RNA_def_collections(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_SCENE, nullptr);
 
   prop = RNA_def_property(srna, "lineart_intersection_priority", PROP_INT, PROP_NONE);
-  RNA_def_property_range(prop, 0, 255);
   RNA_def_property_ui_text(prop,
                            "Intersection Priority",
                            "The intersection line will be included into the object with the "

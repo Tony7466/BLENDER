@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,7 +7,7 @@
  *
  * Main BlenFont (BLF) API, public functions for font handling.
  *
- * Wraps OpenGL and FreeType.
+ * Wraps GPU display and FreeType.
  */
 
 #include <cmath>
@@ -23,20 +23,20 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_fileops.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_threads.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "GPU_matrix.h"
 #include "GPU_shader.h"
 
-#include "blf_internal.h"
-#include "blf_internal_types.h"
+#include "blf_internal.hh"
+#include "blf_internal_types.hh"
 
 #define BLF_RESULT_CHECK_INIT(r_info) \
   if (r_info) { \
@@ -81,6 +81,21 @@ void BLF_exit()
   blf_font_exit();
 }
 
+void BLF_reset_fonts()
+{
+  const int def_font = BLF_default();
+  for (int i = 0; i < BLF_MAX_FONT; i++) {
+    FontBLF *font = global_font[i];
+    if (font && !ELEM(i, def_font, blf_mono_font, blf_mono_font_render) &&
+        !(font->flags & BLF_DEFAULT))
+    {
+      /* Remove fonts that are not used in the UI or part of the stack. */
+      blf_font_free(font);
+      global_font[i] = nullptr;
+    }
+  }
+}
+
 void BLF_cache_clear()
 {
   for (int i = 0; i < BLF_MAX_FONT; i++) {
@@ -100,10 +115,10 @@ static int blf_search_by_mem_name(const char *mem_name)
 {
   for (int i = 0; i < BLF_MAX_FONT; i++) {
     const FontBLF *font = global_font[i];
-    if (font == nullptr || font->mem_name == nullptr) {
+    if ((font == nullptr) || (font->mem_name == nullptr)) {
       continue;
     }
-    if (font && STREQ(font->mem_name, mem_name)) {
+    if (STREQ(font->mem_name, mem_name)) {
       return i;
     }
   }
@@ -115,7 +130,10 @@ static int blf_search_by_filepath(const char *filepath)
 {
   for (int i = 0; i < BLF_MAX_FONT; i++) {
     const FontBLF *font = global_font[i];
-    if (font && (BLI_path_cmp(font->filepath, filepath) == 0)) {
+    if ((font == nullptr) || (font->filepath == nullptr)) {
+      continue;
+    }
+    if (BLI_path_cmp(font->filepath, filepath) == 0) {
       return i;
     }
   }
@@ -306,6 +324,14 @@ void BLF_disable(int fontid, int option)
 
   if (font) {
     font->flags &= ~option;
+  }
+}
+
+void BLF_character_weight(int fontid, int weight)
+{
+  FontBLF *font = blf_get(fontid);
+  if (font) {
+    font->char_weight = weight;
   }
 }
 
@@ -506,7 +532,7 @@ void BLF_batch_draw_end()
   g_batch.enabled = false;
 }
 
-static void blf_draw_gl__start(const FontBLF *font)
+static void blf_draw_gpu__start(const FontBLF *font)
 {
   /*
    * The pixmap alignment hack is handle
@@ -534,7 +560,7 @@ static void blf_draw_gl__start(const FontBLF *font)
   }
 }
 
-static void blf_draw_gl__end(const FontBLF *font)
+static void blf_draw_gpu__end(const FontBLF *font)
 {
   if ((font->flags & (BLF_ROTATION | BLF_MATRIX | BLF_ASPECT)) != 0) {
     GPU_matrix_pop();
@@ -548,14 +574,14 @@ void BLF_draw_ex(int fontid, const char *str, const size_t str_len, ResultBLF *r
   BLF_RESULT_CHECK_INIT(r_info);
 
   if (font) {
-    blf_draw_gl__start(font);
+    blf_draw_gpu__start(font);
     if (font->flags & BLF_WORD_WRAP) {
       blf_font_draw__wrap(font, str, str_len, r_info);
     }
     else {
       blf_font_draw(font, str, str_len, r_info);
     }
-    blf_draw_gl__end(font);
+    blf_draw_gpu__end(font);
   }
 }
 void BLF_draw(int fontid, const char *str, const size_t str_len)
@@ -570,7 +596,7 @@ void BLF_draw(int fontid, const char *str, const size_t str_len)
   BLF_draw_ex(fontid, str, str_len, nullptr);
 }
 
-int BLF_draw_mono(int fontid, const char *str, const size_t str_len, int cwidth)
+int BLF_draw_mono(int fontid, const char *str, const size_t str_len, int cwidth, int tab_columns)
 {
   if (str_len == 0 || str[0] == '\0') {
     return 0;
@@ -580,9 +606,9 @@ int BLF_draw_mono(int fontid, const char *str, const size_t str_len, int cwidth)
   int columns = 0;
 
   if (font) {
-    blf_draw_gl__start(font);
-    columns = blf_font_draw_mono(font, str, str_len, cwidth);
-    blf_draw_gl__end(font);
+    blf_draw_gpu__start(font);
+    columns = blf_font_draw_mono(font, str, str_len, cwidth, tab_columns);
+    blf_draw_gpu__end(font);
   }
 
   return columns;
@@ -909,6 +935,17 @@ void BLF_draw_buffer(int fontid, const char *str, const size_t str_len)
   BLF_draw_buffer_ex(fontid, str, str_len, nullptr);
 }
 
+blender::Vector<blender::StringRef> BLF_string_wrap(int fontid,
+                                                    blender::StringRef str,
+                                                    const int max_pixel_width)
+{
+  FontBLF *font = blf_get(fontid);
+  if (!font) {
+    return {};
+  }
+  return blf_font_string_wrap(font, str, max_pixel_width);
+}
+
 char *BLF_display_name_from_file(const char *filepath)
 {
   /* While listing font directories this function can be called simultaneously from a greater
@@ -929,7 +966,69 @@ char *BLF_display_name_from_file(const char *filepath)
   return name;
 }
 
-#ifdef DEBUG
+char *BLF_display_name_from_id(int fontid)
+{
+  FontBLF *font = blf_get(fontid);
+  if (!font) {
+    return nullptr;
+  }
+
+  return blf_display_name(font);
+}
+
+bool BLF_get_vfont_metrics(int fontid, float *ascend_ratio, float *em_ratio, float *scale)
+{
+  FontBLF *font = blf_get(fontid);
+  if (!font) {
+    return false;
+  }
+
+  if (!blf_ensure_face(font)) {
+    return false;
+  }
+
+  /* Copied without change from vfontdata_freetype.cc to ensure consistent sizing. */
+
+  /* Blender default BFont is not "complete". */
+  const bool complete_font = (font->face->ascender != 0) && (font->face->descender != 0) &&
+                             (font->face->ascender != font->face->descender);
+
+  if (complete_font) {
+    /* We can get descender as well, but we simple store descender in relation to the ascender.
+     * Also note that descender is stored as a negative number. */
+    *ascend_ratio = float(font->face->ascender) / (font->face->ascender - font->face->descender);
+  }
+  else {
+    *ascend_ratio = 0.8f;
+    *em_ratio = 1.0f;
+  }
+
+  /* Adjust font size */
+  if (font->face->bbox.yMax != font->face->bbox.yMin) {
+    *scale = float(1.0 / double(font->face->bbox.yMax - font->face->bbox.yMin));
+
+    if (complete_font) {
+      *em_ratio = float(font->face->ascender - font->face->descender) /
+                  (font->face->bbox.yMax - font->face->bbox.yMin);
+    }
+  }
+  else {
+    *scale = 1.0f / 1000.0f;
+  }
+
+  return true;
+}
+
+float BLF_character_to_curves(int fontid, uint unicode, ListBase *nurbsbase, const float scale)
+{
+  FontBLF *font = blf_get(fontid);
+  if (!font) {
+    return 0.0f;
+  }
+  return blf_character_to_curves(font, unicode, nurbsbase, scale);
+}
+
+#ifndef NDEBUG
 void BLF_state_print(int fontid)
 {
   FontBLF *font = blf_get(fontid);

@@ -1,12 +1,16 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
+  ../../blenkernel
+  ../../blentranslation
+  ../../bmesh
   ../../geometry
   ../../gpu
   ../../makesrna
+  ../../windowmanager
   ../../../../intern/eigen
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -29,18 +33,15 @@ set(SRC
   uvedit_unwrap_ops.cc
 
   uvedit_clipboard_graph_iso.hh
-  uvedit_intern.h
+  uvedit_intern.hh
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::bmesh
+  bf_bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
 )
 
 

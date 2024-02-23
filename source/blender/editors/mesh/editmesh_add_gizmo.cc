@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,34 +10,35 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
-#include "BKE_scene.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_object_types.hh"
+#include "BKE_scene.hh"
 
-#include "ED_gizmo_library.h"
-#include "ED_gizmo_utils.h"
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_undo.h"
-#include "ED_view3d.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "ED_gizmo_library.hh"
+#include "ED_gizmo_utils.hh"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_undo.hh"
+#include "ED_view3d.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "UI_resources.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "BLT_translation.h"
+#include "UI_resources.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Helper Functions
@@ -316,8 +317,8 @@ static int add_primitive_cube_gizmo_exec(bContext *C, wmOperator *op)
     PropertyRNA *prop_matrix = RNA_struct_find_property(op->ptr, "matrix");
     if (RNA_property_is_set(op->ptr, prop_matrix)) {
       RNA_property_float_get_array(op->ptr, prop_matrix, &matrix[0][0]);
-      invert_m4_m4(obedit->world_to_object, obedit->object_to_world);
-      mul_m4_m4m4(matrix, obedit->world_to_object, matrix);
+      invert_m4_m4(obedit->runtime->world_to_object.ptr(), obedit->object_to_world().ptr());
+      mul_m4_m4m4(matrix, obedit->world_to_object().ptr(), matrix);
     }
     else {
       /* For the first update the widget may not set the matrix. */
@@ -345,7 +346,7 @@ static int add_primitive_cube_gizmo_exec(bContext *C, wmOperator *op)
 
   EDBM_selectmode_flush_ex(em, SCE_SELECT_VERTEX);
   EDBMUpdate_Params params{};
-  params.calc_looptri = true;
+  params.calc_looptris = true;
   params.calc_normals = false;
   params.is_destructive = true;
   EDBM_update(static_cast<Mesh *>(obedit->data), &params);

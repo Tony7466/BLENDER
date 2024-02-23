@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005-2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2005-2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,20 +15,17 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLI_sys_types.h"
-
 #include "DNA_listBase.h"
 #include "DNA_userdef_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BKE_context.h"
-#include "BKE_global.h"
-#include "BKE_main.h"
+#include "BKE_global.hh"
+#include "BKE_main.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
-#include "wm_cursors.h"
-#include "wm_window.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
+#include "wm_cursors.hh"
+#include "wm_window.hh"
 
 /* Blender custom cursor. */
 struct BCursor {
@@ -39,7 +36,7 @@ struct BCursor {
   bool can_invert_color;
 };
 
-static BCursor *BlenderCursor[WM_CURSOR_NUM] = {0};
+static BCursor *BlenderCursor[WM_CURSOR_NUM] = {nullptr};
 
 /* Blender cursor to GHOST standard cursor conversion. */
 static GHOST_TStandardCursor convert_to_ghost_standard_cursor(WMCursorType curs)
@@ -314,8 +311,9 @@ static void wm_cursor_warp_relative(wmWindow *win, int x, int y)
 {
   /* NOTE: don't use wmEvent coords because of continuous grab #36409. */
   int cx, cy;
-  wm_cursor_position_get(win, &cx, &cy);
-  WM_cursor_warp(win, cx + x, cy + y);
+  if (wm_cursor_position_get(win, &cx, &cy)) {
+    WM_cursor_warp(win, cx + x, cy + y);
+  }
 }
 
 bool wm_cursor_arrow_move(wmWindow *win, const wmEvent *event)

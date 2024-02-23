@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,10 +15,10 @@
 
 #include "BKE_image.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 struct FillColorThreadData {
   uchar *rect;
@@ -141,7 +141,7 @@ static void image_buf_fill_checker_slice(
   rect = rect_orig;
   rect_float = rect_float_orig;
 
-  /* 2nd pass, colored + */
+  /* 2nd pass, colored `+`. */
   for (y = offset; y < height + offset; y++) {
     float hoffs = 0.125f * floorf(y / checkerwidth);
 
@@ -268,7 +268,8 @@ static void checker_board_color_tint(
   for (y = offset; y < height + offset; y++) {
     for (x = 0; x < width; x++) {
       if (((y / size) % 2 == 1 && (x / size) % 2 == 1) ||
-          ((y / size) % 2 == 0 && (x / size) % 2 == 0)) {
+          ((y / size) % 2 == 0 && (x / size) % 2 == 0))
+      {
         if (rect) {
           rect[0] = char(BLEND_CHAR(rect[0], blend));
           rect[1] = char(BLEND_CHAR(rect[1], blend));
@@ -344,7 +345,7 @@ static void checker_board_grid_fill(
   }
 }
 
-/* defined in image.c */
+/* Defined in `image.cc`. */
 
 static void checker_board_text(
     uchar *rect, float *rect_float, int width, int height, int step, int outline)
@@ -436,7 +437,7 @@ static void checker_board_color_prepare_thread_do(void *data_v, int scanline)
 {
   FillCheckerColorThreadData *data = (FillCheckerColorThreadData *)data_v;
   const int num_scanlines = 1;
-  size_t offset = (size_t(data->width)) * scanline * 4;
+  size_t offset = size_t(data->width) * scanline * 4;
   uchar *rect = (data->rect != nullptr) ? (data->rect + offset) : nullptr;
   float *rect_float = (data->rect_float != nullptr) ? (data->rect_float + offset) : nullptr;
   checker_board_color_prepare_slice(

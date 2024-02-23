@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,6 +7,10 @@
  */
 
 #include <cstring>
+#include <iostream>
+#include <ostream>
+
+#include <fmt/format.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -21,45 +25,47 @@
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
+
+#include "BLF_api.hh"
 
 #include "BKE_action.h"
 #include "BKE_animsys.h"
-#include "BKE_appdir.h"
-#include "BKE_armature.h"
-#include "BKE_blender_copybuffer.h"
-#include "BKE_context.h"
-#include "BKE_idtype.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_override.h"
-#include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
-#include "BKE_report.h"
+#include "BKE_appdir.hh"
+#include "BKE_armature.hh"
+#include "BKE_blender_copybuffer.hh"
+#include "BKE_context.hh"
+#include "BKE_idtype.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_override.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
+#include "BKE_object.hh"
+#include "BKE_report.hh"
 #include "BKE_workspace.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
-#include "ED_keyframing.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_keyframing.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_path.hh"
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #include "outliner_intern.hh"
 #include "tree/tree_element_rna.hh"
@@ -90,7 +96,7 @@ static void outliner_copybuffer_filepath_get(char filepath[FILE_MAX], size_t fil
 /** \name Highlight on Cursor Motion Operator
  * \{ */
 
-static int outliner_highlight_update(bContext *C, wmOperator * /*op*/, const wmEvent *event)
+static int outliner_highlight_update_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
   /* stop highlighting if out of area */
   if (!ED_screen_area_active(C)) {
@@ -150,7 +156,7 @@ void OUTLINER_OT_highlight_update(wmOperatorType *ot)
   ot->idname = "OUTLINER_OT_highlight_update";
   ot->description = "Update the item highlight based on the current mouse position";
 
-  ot->invoke = outliner_highlight_update;
+  ot->invoke = outliner_highlight_update_invoke;
 
   ot->poll = ED_operator_outliner_active;
 }
@@ -306,62 +312,52 @@ static void do_item_rename(ARegion *region,
 {
   bool add_textbut = false;
 
-  /* can't rename rna datablocks entries or listbases */
+  /* FIXME: These info messages are often useless, they should be either reworded to be more
+   * informative for the user, or purely removed? */
+
+  /* Can't rename rna datablocks entries or listbases. */
   if (ELEM(tselem->type,
+           TSE_ANIM_DATA,
+           TSE_NLA,
+           TSE_DEFGROUP_BASE,
+           TSE_CONSTRAINT_BASE,
+           TSE_MODIFIER_BASE,
+           TSE_DRIVER_BASE,
+           TSE_POSE_BASE,
+           TSE_R_LAYER_BASE,
+           TSE_SCENE_COLLECTION_BASE,
+           TSE_VIEW_COLLECTION_BASE,
+           TSE_LIBRARY_OVERRIDE_BASE,
+           TSE_BONE_COLLECTION_BASE,
            TSE_RNA_STRUCT,
            TSE_RNA_PROPERTY,
            TSE_RNA_ARRAY_ELEM,
-           TSE_ID_BASE,
-           TSE_SCENE_OBJECTS_BASE))
+           TSE_ID_BASE) ||
+      ELEM(tselem->type, TSE_SCENE_OBJECTS_BASE, TSE_GENERIC_LABEL))
   {
-    /* do nothing */
-  }
-  else if (ELEM(tselem->type,
-                TSE_ANIM_DATA,
-                TSE_NLA,
-                TSE_DEFGROUP_BASE,
-                TSE_CONSTRAINT_BASE,
-                TSE_MODIFIER_BASE,
-                TSE_DRIVER_BASE,
-                TSE_POSE_BASE,
-                TSE_POSEGRP_BASE,
-                TSE_R_LAYER_BASE,
-                TSE_SCENE_COLLECTION_BASE,
-                TSE_VIEW_COLLECTION_BASE,
-                TSE_LIBRARY_OVERRIDE_BASE,
-                TSE_GENERIC_LABEL))
-  {
-    BKE_report(reports, RPT_WARNING, "Cannot edit builtin name");
+    BKE_report(reports, RPT_INFO, "Not an editable name");
   }
   else if (ELEM(tselem->type, TSE_SEQUENCE, TSE_SEQ_STRIP, TSE_SEQUENCE_DUP)) {
-    BKE_report(reports, RPT_WARNING, "Cannot edit sequence name");
+    BKE_report(reports, RPT_INFO, "Sequence names are not editable from the Outliner");
   }
-  else if (ID_IS_LINKED(tselem->id)) {
-    BKE_report(reports, RPT_WARNING, "Cannot edit external library data");
+  else if (TSE_IS_REAL_ID(tselem) && ID_IS_LINKED(tselem->id)) {
+    BKE_report(reports, RPT_INFO, "External library data is not editable");
   }
-  else if (ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
-    BKE_report(reports, RPT_WARNING, "Cannot edit name of an override data-block");
+  else if (TSE_IS_REAL_ID(tselem) && ID_IS_OVERRIDE_LIBRARY(tselem->id)) {
+    BKE_report(reports, RPT_INFO, "Overridden data-blocks names are not editable");
   }
   else if (outliner_is_collection_tree_element(te)) {
     Collection *collection = outliner_collection_from_tree_element(te);
 
     if (collection->flag & COLLECTION_IS_MASTER) {
-      BKE_report(reports, RPT_WARNING, "Cannot edit name of master collection");
+      BKE_report(reports, RPT_INFO, "Not an editable name");
     }
     else {
       add_textbut = true;
     }
   }
   else if (te->idcode == ID_LI) {
-    if (reinterpret_cast<Library *>(tselem->id)->parent) {
-      BKE_report(reports, RPT_WARNING, "Cannot edit the path of an indirectly linked library");
-    }
-    else {
-      BKE_report(
-          reports,
-          RPT_WARNING,
-          "Library path is not editable from here anymore, please use Relocate operation instead");
-    }
+    BKE_report(reports, RPT_INFO, "Library path is not editable, use the Relocate operation");
   }
   else {
     add_textbut = true;
@@ -378,8 +374,7 @@ void item_rename_fn(bContext *C,
                     Scene * /*scene*/,
                     TreeElement *te,
                     TreeStoreElem * /*tsep*/,
-                    TreeStoreElem *tselem,
-                    void * /*user_data*/)
+                    TreeStoreElem *tselem)
 {
   ARegion *region = CTX_wm_region(C);
   do_item_rename(region, te, tselem, reports);
@@ -413,7 +408,7 @@ static TreeElement *outliner_item_rename_find_hovered(const SpaceOutliner *space
   return nullptr;
 }
 
-static int outliner_item_rename(bContext *C, wmOperator *op, const wmEvent *event)
+static int outliner_item_rename_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   ARegion *region = CTX_wm_region(C);
   View2D *v2d = &region->v2d;
@@ -423,7 +418,7 @@ static int outliner_item_rename(bContext *C, wmOperator *op, const wmEvent *even
   TreeElement *te = use_active ? outliner_item_rename_find_active(space_outliner, op->reports) :
                                  outliner_item_rename_find_hovered(space_outliner, region, event);
   if (!te) {
-    return OPERATOR_CANCELLED;
+    return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
   }
 
   /* Force element into view. */
@@ -446,7 +441,7 @@ void OUTLINER_OT_item_rename(wmOperatorType *ot)
   ot->idname = "OUTLINER_OT_item_rename";
   ot->description = "Rename the active element";
 
-  ot->invoke = outliner_item_rename;
+  ot->invoke = outliner_item_rename_invoke;
 
   ot->poll = ED_operator_outliner_active;
 
@@ -525,8 +520,7 @@ void id_delete_tag_fn(bContext *C,
                       Scene * /*scene*/,
                       TreeElement *te,
                       TreeStoreElem * /*tsep*/,
-                      TreeStoreElem *tselem,
-                      void * /*user_data*/)
+                      TreeStoreElem *tselem)
 {
   id_delete_tag(C, reports, te, tselem);
 }
@@ -706,7 +700,7 @@ static const EnumPropertyItem *outliner_id_itemf(bContext *C,
                                                  bool *r_free)
 {
   if (C == nullptr) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   EnumPropertyItem item_tmp = {0}, *item = nullptr;
@@ -750,13 +744,14 @@ void OUTLINER_OT_id_remap(wmOperatorType *ot)
    */
   RNA_def_property_flag(prop, PROP_HIDDEN);
 
-  prop = RNA_def_enum(ot->srna, "old_id", DummyRNA_NULL_items, 0, "Old ID", "Old ID to replace");
+  prop = RNA_def_enum(
+      ot->srna, "old_id", rna_enum_dummy_NULL_items, 0, "Old ID", "Old ID to replace");
   RNA_def_property_enum_funcs_runtime(prop, nullptr, nullptr, outliner_id_itemf);
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_ENUM_NO_TRANSLATE | PROP_HIDDEN));
 
   ot->prop = RNA_def_enum(ot->srna,
                           "new_id",
-                          DummyRNA_NULL_items,
+                          rna_enum_dummy_NULL_items,
                           0,
                           "New ID",
                           "New ID to remap all selected IDs' users to");
@@ -769,8 +764,7 @@ void id_remap_fn(bContext *C,
                  Scene * /*scene*/,
                  TreeElement * /*te*/,
                  TreeStoreElem * /*tsep*/,
-                 TreeStoreElem *tselem,
-                 void * /*user_data*/)
+                 TreeStoreElem *tselem)
 {
   wmOperatorType *ot = WM_operatortype_find("OUTLINER_OT_id_remap", false);
   PointerRNA op_props;
@@ -1010,8 +1004,7 @@ void lib_relocate_fn(bContext *C,
                      Scene * /*scene*/,
                      TreeElement *te,
                      TreeStoreElem * /*tsep*/,
-                     TreeStoreElem *tselem,
-                     void * /*user_data*/)
+                     TreeStoreElem *tselem)
 {
   /* XXX: This does not work with several items
    * (it is only called once in the end, due to the 'deferred'
@@ -1067,8 +1060,7 @@ void lib_reload_fn(bContext *C,
                    Scene * /*scene*/,
                    TreeElement *te,
                    TreeStoreElem * /*tsep*/,
-                   TreeStoreElem *tselem,
-                   void * /*user_data*/)
+                   TreeStoreElem *tselem)
 {
   wmOperatorType *ot = WM_operatortype_find("WM_OT_lib_reload", false);
 
@@ -1660,7 +1652,7 @@ static void tree_element_to_path(TreeElement *te,
     /* get data */
     TreeElement *tem = (TreeElement *)ld->data;
     TreeElementRNACommon *tem_rna = tree_element_cast<TreeElementRNACommon>(tem);
-    PointerRNA ptr = tem_rna->getPointerRNA();
+    PointerRNA ptr = tem_rna->get_pointer_rna();
 
     /* check if we're looking for first ID, or appending to path */
     if (*id) {
@@ -1669,7 +1661,7 @@ static void tree_element_to_path(TreeElement *te,
        *   then free old path + swap them.
        */
       if (TreeElementRNAProperty *tem_rna_prop = tree_element_cast<TreeElementRNAProperty>(tem)) {
-        PropertyRNA *prop = tem_rna_prop->getPropertyRNA();
+        PropertyRNA *prop = tem_rna_prop->get_property_rna();
 
         if (RNA_property_type(prop) == PROP_POINTER) {
           /* for pointer we just append property name */
@@ -1679,7 +1671,7 @@ static void tree_element_to_path(TreeElement *te,
           char buf[128], *name;
 
           TreeElement *temnext = (TreeElement *)(ld->next->data);
-          PointerRNA nextptr = tree_element_cast<TreeElementRNACommon>(temnext)->getPointerRNA();
+          PointerRNA nextptr = tree_element_cast<TreeElementRNACommon>(temnext)->get_pointer_rna();
           name = RNA_struct_name_get_alloc(&nextptr, buf, sizeof(buf), nullptr);
 
           if (name) {
@@ -1737,7 +1729,7 @@ static void tree_element_to_path(TreeElement *te,
   /* step 3: if we've got an ID, add the current item to the path */
   if (*id) {
     /* add the active property to the path */
-    PropertyRNA *prop = tree_element_cast<TreeElementRNACommon>(te)->getPropertyRNA();
+    PropertyRNA *prop = tree_element_cast<TreeElementRNACommon>(te)->get_property_rna();
 
     /* array checks */
     if (tselem->type == TSE_RNA_ARRAY_ELEM) {
@@ -1798,8 +1790,8 @@ static void do_outliner_drivers_editop(SpaceOutliner *space_outliner,
     short groupmode = KSP_GROUP_KSNAME;
 
     TreeElementRNACommon *te_rna = tree_element_cast<TreeElementRNACommon>(te);
-    PointerRNA ptr = te_rna ? te_rna->getPointerRNA() : PointerRNA_NULL;
-    PropertyRNA *prop = te_rna ? te_rna->getPropertyRNA() : nullptr;
+    PointerRNA ptr = te_rna ? te_rna->get_pointer_rna() : PointerRNA_NULL;
+    PropertyRNA *prop = te_rna ? te_rna->get_property_rna() : nullptr;
 
     /* check if RNA-property described by this selected element is an animatable prop */
     if (prop && RNA_property_animateable(&ptr, prop)) {
@@ -1991,9 +1983,10 @@ static void do_outliner_keyingset_editop(SpaceOutliner *space_outliner,
 
     /* check if RNA-property described by this selected element is an animatable prop */
     const TreeElementRNACommon *te_rna = tree_element_cast<TreeElementRNACommon>(te);
-    PointerRNA ptr = te_rna->getPointerRNA();
-    if (te_rna && te_rna->getPropertyRNA() &&
-        RNA_property_animateable(&ptr, te_rna->getPropertyRNA())) {
+    PointerRNA ptr = te_rna->get_pointer_rna();
+    if (te_rna && te_rna->get_property_rna() &&
+        RNA_property_animateable(&ptr, te_rna->get_property_rna()))
+    {
       /* get id + path + index info from the selected element */
       tree_element_to_path(te, tselem, &id, &path, &array_index, &flag, &groupmode);
     }
@@ -2132,51 +2125,95 @@ static bool ed_operator_outliner_id_orphans_active(bContext *C)
   return true;
 }
 
-static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static void unused_message_gen(std::string &message,
+                               const std::array<int, INDEX_ID_MAX> &num_tagged)
 {
-  Main *bmain = CTX_data_main(C);
-  int num_tagged[INDEX_ID_MAX] = {0};
-
-  const bool do_local_ids = RNA_boolean_get(op->ptr, "do_local_ids");
-  const bool do_linked_ids = RNA_boolean_get(op->ptr, "do_linked_ids");
-  const bool do_recursive_cleanup = RNA_boolean_get(op->ptr, "do_recursive");
-
-  /* Tag all IDs to delete. */
-  BKE_lib_query_unused_ids_tag(
-      bmain, LIB_TAG_DOIT, do_local_ids, do_linked_ids, do_recursive_cleanup, num_tagged);
-
-  RNA_int_set(op->ptr, "num_deleted", num_tagged[INDEX_ID_NULL]);
-
+  bool is_first = true;
   if (num_tagged[INDEX_ID_NULL] == 0) {
-    BKE_report(op->reports, RPT_INFO, "No orphaned data-blocks to purge");
-    return OPERATOR_CANCELLED;
+    message += IFACE_("None");
+    return;
   }
 
-  DynStr *dyn_str = BLI_dynstr_new();
-  BLI_dynstr_appendf(dyn_str, TIP_("Purging %d unused data-blocks ("), num_tagged[INDEX_ID_NULL]);
-  bool is_first = true;
-  for (int i = 0; i < INDEX_ID_MAX - 2; i++) {
+  /* NOTE: Index is looped in reversed order, since typically 'higher level' IDs (like Collections
+   * or Objects) have a higher index than 'lower level' ones like object data, materials, etc.
+   *
+   * It makes more sense to present to the user the deleted numbers of Collections or Objects
+   * before the ones for object data or Materials. */
+  for (int i = INDEX_ID_MAX - 2; i >= 0; i--) {
     if (num_tagged[i] != 0) {
-      if (!is_first) {
-        BLI_dynstr_append(dyn_str, ", ");
-      }
-      else {
-        is_first = false;
-      }
-      BLI_dynstr_appendf(dyn_str,
-                         "%d %s",
-                         num_tagged[i],
-                         TIP_(BKE_idtype_idcode_to_name_plural(BKE_idtype_idcode_from_index(i))));
+      message += fmt::format(
+          "{}{} {}",
+          (is_first) ? "" : ", ",
+          num_tagged[i],
+          (num_tagged[i] > 1) ?
+              IFACE_(BKE_idtype_idcode_to_name_plural(BKE_idtype_index_to_idcode(i))) :
+              IFACE_(BKE_idtype_idcode_to_name(BKE_idtype_index_to_idcode(i))));
+      is_first = false;
     }
   }
-  BLI_dynstr_append(dyn_str, TIP_("). Click here to proceed..."));
+}
 
-  char *message = BLI_dynstr_get_cstring(dyn_str);
-  int ret = WM_operator_confirm_message(C, op, message);
+static int unused_message_popup_width_compute(bContext *C)
+{
+  /* Computation of unused data amounts, with all options ON.
+   * Used to estimate the maximum required width for the dialog. */
+  Main *bmain = CTX_data_main(C);
+  LibQueryUnusedIDsData data;
+  data.do_local_ids = true;
+  data.do_linked_ids = true;
+  data.do_recursive = true;
+  BKE_lib_query_unused_ids_amounts(bmain, data);
 
-  MEM_freeN(message);
-  BLI_dynstr_free(dyn_str);
-  return ret;
+  std::string unused_message = "";
+  const uiStyle *style = UI_style_get_dpi();
+  unused_message_gen(unused_message, data.num_local);
+  float max_messages_width = BLF_width(
+      style->widget.uifont_id, unused_message.c_str(), BLF_DRAW_STR_DUMMY_MAX);
+
+  unused_message = "";
+  unused_message_gen(unused_message, data.num_linked);
+  max_messages_width = std::max(
+      max_messages_width,
+      BLF_width(style->widget.uifont_id, unused_message.c_str(), BLF_DRAW_STR_DUMMY_MAX));
+
+  return int(std::max(max_messages_width, 300.0f));
+}
+
+static void outliner_orphans_purge_cleanup(wmOperator *op)
+{
+  if (op->customdata) {
+    MEM_delete(static_cast<LibQueryUnusedIDsData *>(op->customdata));
+    op->customdata = nullptr;
+  }
+}
+
+static bool outliner_orphans_purge_check(bContext *C, wmOperator *op)
+{
+  Main *bmain = CTX_data_main(C);
+  LibQueryUnusedIDsData &data = *static_cast<LibQueryUnusedIDsData *>(op->customdata);
+
+  data.do_local_ids = RNA_boolean_get(op->ptr, "do_local_ids");
+  data.do_linked_ids = RNA_boolean_get(op->ptr, "do_linked_ids");
+  data.do_recursive = RNA_boolean_get(op->ptr, "do_recursive");
+
+  BKE_lib_query_unused_ids_amounts(bmain, data);
+
+  /* Always assume count changed, and request a redraw. */
+  return true;
+}
+
+static int outliner_orphans_purge_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  op->customdata = MEM_new<LibQueryUnusedIDsData>(__func__);
+
+  /* Compute expected amounts of deleted IDs and store them in 'cached' operator properties. */
+  outliner_orphans_purge_check(C, op);
+
+  return WM_operator_props_dialog_popup(C,
+                                        op,
+                                        unused_message_popup_width_compute(C),
+                                        IFACE_("Purge Unused Data From This File"),
+                                        IFACE_("Delete"));
 }
 
 static int outliner_orphans_purge_exec(bContext *C, wmOperator *op)
@@ -2184,26 +2221,27 @@ static int outliner_orphans_purge_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   ScrArea *area = CTX_wm_area(C);
   SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
-  int num_tagged[INDEX_ID_MAX] = {0};
 
-  if ((num_tagged[INDEX_ID_NULL] = RNA_int_get(op->ptr, "num_deleted")) == 0) {
-    const bool do_local_ids = RNA_boolean_get(op->ptr, "do_local_ids");
-    const bool do_linked_ids = RNA_boolean_get(op->ptr, "do_linked_ids");
-    const bool do_recursive_cleanup = RNA_boolean_get(op->ptr, "do_recursive");
+  if (!op->customdata) {
+    op->customdata = MEM_new<LibQueryUnusedIDsData>(__func__);
+  }
+  LibQueryUnusedIDsData &data = *static_cast<LibQueryUnusedIDsData *>(op->customdata);
 
-    /* Tag all IDs to delete. */
-    BKE_lib_query_unused_ids_tag(
-        bmain, LIB_TAG_DOIT, do_local_ids, do_linked_ids, do_recursive_cleanup, num_tagged);
+  data.do_local_ids = RNA_boolean_get(op->ptr, "do_local_ids");
+  data.do_linked_ids = RNA_boolean_get(op->ptr, "do_linked_ids");
+  data.do_recursive = RNA_boolean_get(op->ptr, "do_recursive");
 
-    if (num_tagged[INDEX_ID_NULL] == 0) {
-      BKE_report(op->reports, RPT_INFO, "No orphaned data-blocks to purge");
-      return OPERATOR_CANCELLED;
-    }
+  /* Tag all IDs to delete. */
+  BKE_lib_query_unused_ids_tag(bmain, LIB_TAG_DOIT, data);
+
+  if (data.num_total[INDEX_ID_NULL] == 0) {
+    BKE_report(op->reports, RPT_INFO, "No orphaned data-blocks to purge");
+    return OPERATOR_CANCELLED;
   }
 
   BKE_id_multi_tagged_delete(bmain);
 
-  BKE_reportf(op->reports, RPT_INFO, "Deleted %d data-block(s)", num_tagged[INDEX_ID_NULL]);
+  BKE_reportf(op->reports, RPT_INFO, "Deleted %d data-block(s)", data.num_total[INDEX_ID_NULL]);
 
   /* XXX: tree management normally happens from draw_outliner(), but when
    *      you're clicking to fast on Delete object from context menu in
@@ -2219,7 +2257,49 @@ static int outliner_orphans_purge_exec(bContext *C, wmOperator *op)
   /* Force full redraw of the UI. */
   WM_main_add_notifier(NC_WINDOW, nullptr);
 
+  outliner_orphans_purge_cleanup(op);
+
   return OPERATOR_FINISHED;
+}
+
+static void outliner_orphans_purge_cancel(bContext * /*C*/, wmOperator *op)
+{
+  outliner_orphans_purge_cleanup(op);
+}
+
+static void outliner_orphans_purge_ui(bContext * /*C*/, wmOperator *op)
+{
+  uiLayout *layout = op->layout;
+  PointerRNA *ptr = op->ptr;
+  if (!op->customdata) {
+    /* This should only happen on 'adjust last operation' case, since `invoke` will not have  been
+     * called then before showing the UI (the 'redo panel' UI uses WM-stored operator properties
+     * and a newly-created operator).
+     *
+     * Since that operator is not 'registered' for adjusting from undo stack, this should never
+     * happen currently. */
+    BLI_assert_unreachable();
+    op->customdata = MEM_new<LibQueryUnusedIDsData>(__func__);
+  }
+  LibQueryUnusedIDsData &data = *static_cast<LibQueryUnusedIDsData *>(op->customdata);
+
+  std::string unused_message = "";
+  unused_message_gen(unused_message, data.num_local);
+  uiLayout *column = uiLayoutColumn(layout, true);
+  uiItemR(column, ptr, "do_local_ids", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiLayout *row = uiLayoutRow(column, true);
+  uiItemS_ex(row, 2.67f);
+  uiItemL(row, unused_message.c_str(), ICON_NONE);
+
+  unused_message = "";
+  unused_message_gen(unused_message, data.num_linked);
+  column = uiLayoutColumn(layout, true);
+  uiItemR(column, ptr, "do_linked_ids", UI_ITEM_NONE, nullptr, ICON_NONE);
+  row = uiLayoutRow(column, true);
+  uiItemS_ex(row, 2.67f);
+  uiItemL(row, unused_message.c_str(), ICON_NONE);
+
+  uiItemR(layout, ptr, "do_recursive", UI_ITEM_NONE, nullptr, ICON_NONE);
 }
 
 void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
@@ -2232,15 +2312,17 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
   /* callbacks */
   ot->invoke = outliner_orphans_purge_invoke;
   ot->exec = outliner_orphans_purge_exec;
+  ot->cancel = outliner_orphans_purge_cancel;
+
   ot->poll = ed_operator_outliner_id_orphans_active;
+  ot->check = outliner_orphans_purge_check;
+  ot->ui = outliner_orphans_purge_ui;
 
   /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+  /* NOTE: No #OPTYPE_REGISTER, since this operator should not be 'adjustable'. */
+  ot->flag = OPTYPE_UNDO;
 
-  /* properties */
-  PropertyRNA *prop = RNA_def_int(ot->srna, "num_deleted", 0, 0, INT_MAX, "", "", 0, INT_MAX);
-  RNA_def_property_flag(prop, (PropertyFlag)(PROP_SKIP_SAVE | PROP_HIDDEN));
-
+  /* Actual user-visible settings. */
   RNA_def_boolean(ot->srna,
                   "do_local_ids",
                   true,

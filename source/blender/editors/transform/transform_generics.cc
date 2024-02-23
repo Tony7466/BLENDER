@@ -13,47 +13,44 @@
 #include "DNA_gpencil_legacy_types.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_rand.h"
+#include "BLI_time.h"
 
-#include "PIL_time.h"
+#include "BLT_translation.hh"
 
-#include "BLT_translation.h"
+#include "RNA_access.hh"
 
-#include "RNA_access.h"
-
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-
-#include "BKE_context.h"
-#include "BKE_layer.h"
+#include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_mask.h"
-#include "BKE_modifier.h"
-#include "BKE_paint.h"
+#include "BKE_modifier.hh"
+#include "BKE_paint.hh"
 
-#include "SEQ_transform.h"
+#include "SEQ_transform.hh"
 
-#include "ED_clip.h"
-#include "ED_image.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_uvedit.h"
+#include "ED_clip.hh"
+#include "ED_image.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_uvedit.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "SEQ_sequencer.h"
+#include "SEQ_sequencer.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
 #include "transform_gizmo.hh"
-#include "transform_mode.hh"
 #include "transform_orientations.hh"
 #include "transform_snap.hh"
+
+using namespace blender;
 
 /* ************************** GENERICS **************************** */
 
@@ -171,20 +168,24 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   t->redraw = TREDRAW_HARD; /* redraw first time */
 
-  int mval[2];
+  float2 mval;
   if (event) {
     if (t->flag & T_EVENT_DRAG_START) {
-      WM_event_drag_start_mval(event, region, mval);
+      WM_event_drag_start_mval_fl(event, region, mval);
     }
     else {
-      copy_v2_v2_int(mval, event->mval);
+      mval = float2(event->mval);
     }
   }
   else {
-    zero_v2_int(mval);
+    mval = float2(0, 0);
   }
-  copy_v2_v2_int(t->mval, mval);
-  copy_v2_v2_int(t->mouse.imval, mval);
+
+  t->mval = mval;
+
+  /* Initialize this mouse variable in advance as it is required by
+   * `transform_convert_frame_side_dir_get` which is called before `initMouseInput`. */
+  t->mouse.imval = mval;
 
   t->mode_info = nullptr;
 
@@ -220,6 +221,13 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
 
   /* GPencil editing context */
   if (GPENCIL_EDIT_MODE(gpd)) {
+    t->options |= CTX_GPENCIL_STROKES;
+  }
+
+  /* Grease Pencil editing context */
+  if (t->obedit_type == OB_GREASE_PENCIL && object_mode == OB_MODE_EDIT &&
+      (area->spacetype == SPACE_VIEW3D))
+  {
     t->options |= CTX_GPENCIL_STROKES;
   }
 
@@ -310,7 +318,7 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
   else if (t->spacetype == SPACE_SEQ && region->regiontype == RGN_TYPE_PREVIEW) {
     t->options |= CTX_SEQUENCER_IMAGE;
 
-    /* Needed for autokeying transforms in preview during playback. */
+    /* Needed for auto-keying transforms in preview during playback. */
     bScreen *animscreen = ED_screen_animation_playing(CTX_wm_manager(C));
     t->animtimer = (animscreen) ? animscreen->animtimer : nullptr;
   }
@@ -646,6 +654,14 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     }
   }
 
+  if (op && (prop = RNA_struct_find_property(op->ptr, "use_duplicated_keyframes")) &&
+      RNA_property_is_set(op->ptr, prop))
+  {
+    if (RNA_property_boolean_get(op->ptr, prop)) {
+      t->flag |= T_DUPLICATED_KEYFRAMES;
+    }
+  }
+
 /* Mirror is not supported with proportional editing, turn it off. */
 #if 0
   if (t->flag & T_PROP_EDIT) {
@@ -667,9 +683,20 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
            TFM_EDGE_SLIDE,
            TFM_VERT_SLIDE))
   {
-    const bool use_alt_navigation = (prop = RNA_struct_find_property(op->ptr, "alt_navigation")) &&
-                                    RNA_property_boolean_get(op->ptr, prop);
-    t->vod = ED_view3d_navigation_init(C, use_alt_navigation);
+    wmWindowManager *wm = CTX_wm_manager(C);
+    wmKeyMap *keymap = WM_keymap_active(wm, op->type->modalkeymap);
+    const wmKeyMapItem *kmi_passthrough = nullptr;
+    LISTBASE_FOREACH (const wmKeyMapItem *, kmi, &keymap->items) {
+      if (kmi->flag & KMI_INACTIVE) {
+        continue;
+      }
+
+      if (kmi->propvalue == TFM_MODAL_PASSTHROUGH_NAVIGATE) {
+        kmi_passthrough = kmi;
+        break;
+      }
+    }
+    t->vod = ED_view3d_navigation_init(C, kmi_passthrough);
   }
 
   setTransformViewMatrices(t);
@@ -805,20 +832,20 @@ void applyTransObjects(TransInfo *t)
       copy_v3_v3(td->ext->isize, td->ext->size);
     }
   }
-  recalcData(t);
+  recalc_data(t);
 }
 
 static void transdata_restore_basic(TransDataBasic *td_basic)
 {
-  if (td_basic->val) {
-    *td_basic->val = td_basic->ival;
+  if (td_basic->loc) {
+    copy_v3_v3(td_basic->loc, td_basic->iloc);
   }
 
   /* TODO(mano-wii): Only use 3D or larger vectors in `td->loc`.
    * If `loc` and `val` point to the same address, it may indicate that `loc` is not 3D which is
    * not safe for `copy_v3_v3`. */
-  if (td_basic->loc && td_basic->val != td_basic->loc) {
-    copy_v3_v3(td_basic->loc, td_basic->iloc);
+  if (td_basic->val && td_basic->val != td_basic->loc) {
+    *td_basic->val = td_basic->ival;
   }
 }
 
@@ -881,7 +908,7 @@ void restoreTransObjects(TransInfo *t)
     unit_m3(t->mat);
   }
 
-  recalcData(t);
+  recalc_data(t);
 }
 
 void calculateCenter2D(TransInfo *t)
@@ -1066,7 +1093,7 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
   }
   if (tc->obedit) {
     if (ED_object_calc_active_center_for_editmode(tc->obedit, select_only, r_center)) {
-      mul_m4_v3(tc->obedit->object_to_world, r_center);
+      mul_m4_v3(tc->obedit->object_to_world().ptr(), r_center);
       return true;
     }
   }
@@ -1074,7 +1101,7 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
     BKE_view_layer_synced_ensure(t->scene, t->view_layer);
     Object *ob = BKE_view_layer_active_object_get(t->view_layer);
     if (ED_object_calc_active_center_for_posemode(ob, select_only, r_center)) {
-      mul_m4_v3(ob->object_to_world, r_center);
+      mul_m4_v3(ob->object_to_world().ptr(), r_center);
       return true;
     }
   }
@@ -1091,7 +1118,7 @@ bool calculateCenterActive(TransInfo *t, bool select_only, float r_center[3])
     BKE_view_layer_synced_ensure(t->scene, t->view_layer);
     Base *base = BKE_view_layer_active_base_get(t->view_layer);
     if (base && ((!select_only) || ((base->flag & BASE_SELECTED) != 0))) {
-      copy_v3_v3(r_center, base->object->object_to_world[3]);
+      copy_v3_v3(r_center, base->object->object_to_world().location());
       return true;
     }
   }
@@ -1254,9 +1281,7 @@ void calculatePropRatio(TransInfo *t)
         if (td->flag & TD_SELECTED) {
           td->factor = 1.0f;
         }
-        else if ((connected && (td->flag & TD_NOTCONNECTED || td->dist > t->prop_size)) ||
-                 (connected == 0 && td->rdist > t->prop_size))
-        {
+        else if ((connected ? td->dist : td->rdist) > t->prop_size) {
           td->factor = 0.0f;
           restoreElement(td);
         }
@@ -1300,7 +1325,7 @@ void calculatePropRatio(TransInfo *t)
             case PROP_RANDOM:
               if (t->rng == nullptr) {
                 /* Lazy initialization. */
-                uint rng_seed = uint(PIL_check_seconds_timer_i() & UINT_MAX);
+                uint rng_seed = uint(BLI_time_now_seconds_i() & UINT_MAX);
                 t->rng = BLI_rng_new(rng_seed);
               }
               td->factor = BLI_rng_get_float(t->rng) * dist;

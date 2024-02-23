@@ -8,20 +8,20 @@
 
 #include <cstdlib>
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_context.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -170,7 +170,7 @@ static void transdata_elem_to_sphere_fn(void *__restrict iter_data_v,
 /** \name Transform (ToSphere)
  * \{ */
 
-static void applyToSphere(TransInfo *t, const int[2] /*mval*/)
+static void applyToSphere(TransInfo *t)
 {
   const bool is_local_center = transdata_check_local_center(t, t->around);
   const bool is_data_space = (t->options & CTX_POSE_BONE) != 0;
@@ -195,11 +195,11 @@ static void applyToSphere(TransInfo *t, const int[2] /*mval*/)
 
     outputNumInput(&(t->num), c, &t->scene->unit);
 
-    SNPRINTF(str, TIP_("To Sphere: %s %s"), c, t->proptext);
+    SNPRINTF(str, IFACE_("To Sphere: %s %s"), c, t->proptext);
   }
   else {
     /* default header print */
-    SNPRINTF(str, TIP_("To Sphere: %.4f %s"), ratio, t->proptext);
+    SNPRINTF(str, IFACE_("To Sphere: %.4f %s"), ratio, t->proptext);
   }
 
   const ToSphereInfo *to_sphere_info = static_cast<const ToSphereInfo *>(t->custom.mode.data);
@@ -232,7 +232,7 @@ static void applyToSphere(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

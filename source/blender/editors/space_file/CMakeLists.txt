@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -6,12 +6,14 @@ set(INC
   ../asset
   ../include
   ../../asset_system
+  ../../blenkernel
   ../../blenloader
+  ../../blentranslation
   ../../gpu
   ../../imbuf
   ../../makesrna
   ../../render
-  ../../../../extern/fmtlib/include
+  ../../windowmanager
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -22,6 +24,7 @@ set(INC_SYS
 
 set(SRC
   asset_catalog_tree_view.cc
+  file_context.cc
   file_draw.cc
   file_indexer.cc
   file_ops.cc
@@ -30,24 +33,23 @@ set(SRC
   filelist.cc
   filesel.cc
   folder_history.cc
-  fsmenu.c
+  fsmenu.cc
+  fsmenu_system.cc
   space_file.cc
 
-  file_indexer.h
-  file_intern.h
-  filelist.h
+  file_indexer.hh
+  file_intern.hh
+  filelist.hh
   fsmenu.h
 )
 
 set(LIB
   PRIVATE bf::blenfont
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
   PRIVATE bf::dna
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
-  extern_fmtlib
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::atomic
 )
 

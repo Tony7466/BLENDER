@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,13 +17,13 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_interp.hh"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -35,26 +35,26 @@
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
-#include "BKE_collection.h"
-#include "BKE_colortools.h"
-#include "BKE_deform.h"
+#include "BKE_collection.hh"
+#include "BKE_colortools.hh"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_update_cache_legacy.h"
 #include "BKE_icons.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_main.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_paint.h"
+#include "BKE_paint.hh"
 
 #include "BLI_math_color.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 static CLG_LogRef LOG = {"bke.gpencil"};
 
@@ -149,10 +149,6 @@ static void greasepencil_blend_write(BlendWriter *writer, ID *id, const void *id
   BLO_write_id_struct(writer, bGPdata, id_address, &gpd->id);
   BKE_id_blend_write(writer, &gpd->id);
 
-  if (gpd->adt) {
-    BKE_animdata_blend_write(writer, gpd->adt);
-  }
-
   BKE_defbase_blend_write(writer, &gpd->vertex_group_names);
 
   BLO_write_pointer_array(writer, gpd->totcol, gpd->mat);
@@ -188,10 +184,6 @@ void BKE_gpencil_blend_read_data(BlendDataReader *reader, bGPdata *gpd)
   if (gpd == nullptr) {
     return;
   }
-
-  /* Relink anim-data. */
-  BLO_read_data_address(reader, &gpd->adt);
-  BKE_animdata_blend_read_data(reader, gpd->adt);
 
   /* Ensure full object-mode for linked grease pencil. */
   if (ID_IS_LINKED(gpd)) {
@@ -269,42 +261,14 @@ static void greasepencil_blend_read_data(BlendDataReader *reader, ID *id)
   BKE_gpencil_blend_read_data(reader, gpd);
 }
 
-static void greasepencil_blend_read_lib(BlendLibReader *reader, ID *id)
-{
-  bGPdata *gpd = (bGPdata *)id;
-
-  /* Relink all data-block linked by GP data-block. */
-  /* Layers */
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    /* Layer -> Parent References */
-    BLO_read_id_address(reader, id, &gpl->parent);
-  }
-
-  /* materials */
-  for (int a = 0; a < gpd->totcol; a++) {
-    BLO_read_id_address(reader, id, &gpd->mat[a]);
-  }
-}
-
-static void greasepencil_blend_read_expand(BlendExpander *expander, ID *id)
-{
-  bGPdata *gpd = (bGPdata *)id;
-  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
-    BLO_expand(expander, gpl->parent);
-  }
-
-  for (int a = 0; a < gpd->totcol; a++) {
-    BLO_expand(expander, gpd->mat[a]);
-  }
-}
-
 IDTypeInfo IDType_ID_GD_LEGACY = {
     /*id_code*/ ID_GD_LEGACY,
     /*id_filter*/ FILTER_ID_GD_LEGACY,
+    /*dependencies_id_types*/ FILTER_ID_MA,
     /*main_listbase_index*/ INDEX_ID_GD_LEGACY,
     /*struct_size*/ sizeof(bGPdata),
     /*name*/ "GPencil",
-    /*name_plural*/ "grease_pencils",
+    /*name_plural*/ N_("grease_pencils"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_GPENCIL,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,
@@ -320,8 +284,7 @@ IDTypeInfo IDType_ID_GD_LEGACY = {
 
     /*blend_write*/ greasepencil_blend_write,
     /*blend_read_data*/ greasepencil_blend_read_data,
-    /*blend_read_lib*/ greasepencil_blend_read_lib,
-    /*blend_read_expand*/ greasepencil_blend_read_expand,
+    /*blend_read_after_liblink*/ nullptr,
 
     /*blend_read_undo_preserve*/ nullptr,
 
@@ -480,10 +443,21 @@ void BKE_gpencil_free_layers(ListBase *list)
   }
 }
 
+/* Free all of the gp-palettes and colors. */
+void BKE_gpencil_free_legacy_palette_data(ListBase *list)
+{
+  LISTBASE_FOREACH_MUTABLE (bGPDpalette *, palette, list) {
+    BLI_freelistN(&palette->colors);
+    MEM_freeN(palette);
+  }
+  BLI_listbase_clear(list);
+}
+
 void BKE_gpencil_free_data(bGPdata *gpd, bool free_all)
 {
   /* free layers */
   BKE_gpencil_free_layers(&gpd->layers);
+  BKE_gpencil_free_legacy_palette_data(&gpd->palettes);
 
   /* materials */
   MEM_SAFE_FREE(gpd->mat);
@@ -764,7 +738,7 @@ bGPDstroke *BKE_gpencil_stroke_new(int mat_idx, int totpoints, short thickness)
 
   gps->thickness = thickness;
   gps->fill_opacity_fac = 1.0f;
-  gps->hardeness = 1.0f;
+  gps->hardness = 1.0f;
   copy_v2_fl(gps->aspect_ratio, 1.0f);
 
   gps->uv_scale = 1.0f;
@@ -1050,7 +1024,7 @@ void BKE_gpencil_stroke_copy_settings(const bGPDstroke *gps_src, bGPDstroke *gps
   gps_dst->inittime = gps_src->inittime;
   gps_dst->mat_nr = gps_src->mat_nr;
   copy_v2_v2_short(gps_dst->caps, gps_src->caps);
-  gps_dst->hardeness = gps_src->hardeness;
+  gps_dst->hardness = gps_src->hardness;
   copy_v2_v2(gps_dst->aspect_ratio, gps_src->aspect_ratio);
   gps_dst->fill_opacity_fac = gps_dst->fill_opacity_fac;
   copy_v3_v3(gps_dst->boundbox_min, gps_src->boundbox_min);
@@ -1220,12 +1194,10 @@ bool BKE_gpencil_layer_is_editable(const bGPDlayer *gpl)
 
 bGPDframe *BKE_gpencil_layer_frame_find(bGPDlayer *gpl, int cframe)
 {
-  bGPDframe *gpf;
-
   /* Search in reverse order, since this is often used for playback/adding,
    * where it's less likely that we're interested in the earlier frames
    */
-  for (gpf = static_cast<bGPDframe *>(gpl->frames.last); gpf; gpf = gpf->prev) {
+  LISTBASE_FOREACH_BACKWARD (bGPDframe *, gpf, &gpl->frames) {
     if (gpf->framenum == cframe) {
       return gpf;
     }
@@ -1583,15 +1555,13 @@ bGPDlayer *BKE_gpencil_layer_active_get(bGPdata *gpd)
 
 bGPDlayer *BKE_gpencil_layer_get_by_name(bGPdata *gpd, const char *name, int first_if_not_found)
 {
-  bGPDlayer *gpl;
-
   /* error checking */
   if (ELEM(nullptr, gpd, gpd->layers.first)) {
     return nullptr;
   }
 
   /* loop over layers until found (assume only one active) */
-  for (gpl = static_cast<bGPDlayer *>(gpd->layers.first); gpl; gpl = gpl->next) {
+  LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     if (STREQ(name, gpl->info)) {
       return gpl;
     }
@@ -2024,7 +1994,7 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
   GHash *mat_used = BLI_ghash_int_new(__func__);
 
   short *totcol = BKE_object_material_len_p(ob);
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     return changed;
   }
 
@@ -2047,7 +2017,8 @@ bool BKE_gpencil_merge_materials_table_get(Object *ob,
       /* Read secondary material to compare with primary material. */
       ma_secondary = BKE_gpencil_material(ob, idx_secondary + 1);
       if ((ma_secondary == nullptr) ||
-          BLI_ghash_haskey(r_mat_table, POINTER_FROM_INT(idx_secondary))) {
+          BLI_ghash_haskey(r_mat_table, POINTER_FROM_INT(idx_secondary)))
+      {
         continue;
       }
       gp_style_primary = ma_primary->gp_style;
@@ -2143,7 +2114,7 @@ bool BKE_gpencil_merge_materials(Object *ob,
   bGPdata *gpd = static_cast<bGPdata *>(ob->data);
 
   short *totcol = BKE_object_material_len_p(ob);
-  if (totcol == 0) {
+  if (totcol == nullptr) {
     *r_removed = 0;
     return false;
   }
@@ -2172,7 +2143,8 @@ bool BKE_gpencil_merge_materials(Object *ob,
               continue;
             }
             if (((gpl->flag & GP_LAYER_UNLOCK_COLOR) == 0) &&
-                (gp_style->flag & GP_MATERIAL_LOCKED)) {
+                (gp_style->flag & GP_MATERIAL_LOCKED))
+            {
               continue;
             }
           }
@@ -2525,7 +2497,8 @@ void BKE_gpencil_visible_stroke_advanced_iter(ViewLayer *view_layer,
       /* Special cases when cframe is before first frame. */
       bGPDframe *gpf_first = static_cast<bGPDframe *>(gpl->frames.first);
       if ((gpf_first != nullptr) && (act_gpf != nullptr) &&
-          (gpf_first->framenum > act_gpf->framenum)) {
+          (gpf_first->framenum > act_gpf->framenum))
+      {
         is_before_first = true;
       }
       if ((gpf_first != nullptr) && (act_gpf == nullptr)) {
@@ -2626,7 +2599,8 @@ void BKE_gpencil_visible_stroke_advanced_iter(ViewLayer *view_layer,
 
       /* If layer solo mode and Paint mode, only keyframes with data are displayed. */
       if (GPENCIL_PAINT_MODE(gpd) && (gpl->flag & GP_LAYER_SOLO_MODE) &&
-          (act_gpf->framenum != cfra)) {
+          (act_gpf->framenum != cfra))
+      {
         gpl->opacity = prev_opacity;
         continue;
       }
@@ -2723,7 +2697,7 @@ void BKE_gpencil_layer_transform_matrix_get(const Depsgraph *depsgraph,
   /* if not layer parented, try with object parented */
   if (obparent_eval == nullptr) {
     if ((ob_eval != nullptr) && (ob_eval->type == OB_GPENCIL_LEGACY)) {
-      copy_m4_m4(diff_mat, ob_eval->object_to_world);
+      copy_m4_m4(diff_mat, ob_eval->object_to_world().ptr());
       mul_m4_m4m4(diff_mat, diff_mat, gpl->layer_mat);
       return;
     }
@@ -2733,8 +2707,8 @@ void BKE_gpencil_layer_transform_matrix_get(const Depsgraph *depsgraph,
   }
 
   if (ELEM(gpl->partype, PAROBJECT, PARSKEL)) {
-    mul_m4_m4m4(diff_mat, obparent_eval->object_to_world, gpl->inverse);
-    add_v3_v3(diff_mat[3], ob_eval->object_to_world[3]);
+    mul_m4_m4m4(diff_mat, obparent_eval->object_to_world().ptr(), gpl->inverse);
+    add_v3_v3(diff_mat[3], ob_eval->object_to_world().location());
     mul_m4_m4m4(diff_mat, diff_mat, gpl->layer_mat);
     return;
   }
@@ -2742,14 +2716,14 @@ void BKE_gpencil_layer_transform_matrix_get(const Depsgraph *depsgraph,
     bPoseChannel *pchan = BKE_pose_channel_find_name(obparent_eval->pose, gpl->parsubstr);
     if (pchan) {
       float tmp_mat[4][4];
-      mul_m4_m4m4(tmp_mat, obparent_eval->object_to_world, pchan->pose_mat);
+      mul_m4_m4m4(tmp_mat, obparent_eval->object_to_world().ptr(), pchan->pose_mat);
       mul_m4_m4m4(diff_mat, tmp_mat, gpl->inverse);
-      add_v3_v3(diff_mat[3], ob_eval->object_to_world[3]);
+      add_v3_v3(diff_mat[3], ob_eval->object_to_world().location());
     }
     else {
       /* if bone not found use object (armature) */
-      mul_m4_m4m4(diff_mat, obparent_eval->object_to_world, gpl->inverse);
-      add_v3_v3(diff_mat[3], ob_eval->object_to_world[3]);
+      mul_m4_m4m4(diff_mat, obparent_eval->object_to_world().ptr(), gpl->inverse);
+      add_v3_v3(diff_mat[3], ob_eval->object_to_world().location());
     }
     mul_m4_m4m4(diff_mat, diff_mat, gpl->layer_mat);
     return;
@@ -2803,12 +2777,15 @@ void BKE_gpencil_update_layer_transforms(const Depsgraph *depsgraph, Object *ob)
       Object *ob_parent = DEG_get_evaluated_object(depsgraph, gpl->parent);
       /* calculate new matrix */
       if (ELEM(gpl->partype, PAROBJECT, PARSKEL)) {
-        mul_m4_m4m4(cur_mat, ob->world_to_object, ob_parent->object_to_world);
+        mul_m4_m4m4(cur_mat, ob->world_to_object().ptr(), ob_parent->object_to_world().ptr());
       }
       else if (gpl->partype == PARBONE) {
         bPoseChannel *pchan = BKE_pose_channel_find_name(ob_parent->pose, gpl->parsubstr);
         if (pchan != nullptr) {
-          mul_m4_series(cur_mat, ob->world_to_object, ob_parent->object_to_world, pchan->pose_mat);
+          mul_m4_series(cur_mat,
+                        ob->world_to_object().ptr(),
+                        ob_parent->object_to_world().ptr(),
+                        pchan->pose_mat);
         }
         else {
           unit_m4(cur_mat);

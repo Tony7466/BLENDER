@@ -8,10 +8,12 @@
 
 #include "DNA_vec_types.h"
 
-#include "BLI_math.h"
-#include "BLI_strict_flags.h"
+#include "BLI_math_base.h"
+#include "BLI_math_geom.h"
 
 #include "BLI_lasso_2d.h" /* own include */
+
+#include "BLI_strict_flags.h" /* Keep last. */
 
 void BLI_lasso_boundbox(rcti *rect, const int mcoords[][2], const uint mcoords_len)
 {
@@ -47,7 +49,7 @@ bool BLI_lasso_is_point_inside(const int mcoords[][2],
   }
 
   const int pt[2] = {sx, sy};
-  return isect_point_poly_v2_int(pt, mcoords, mcoords_len, true);
+  return isect_point_poly_v2_int(pt, mcoords, mcoords_len);
 }
 
 bool BLI_lasso_is_edge_inside(const int mcoords[][2],

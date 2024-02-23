@@ -8,17 +8,17 @@
 
 #include <cstdlib>
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -30,7 +30,7 @@
 /** \name Transform (EditBone Roll)
  * \{ */
 
-static void applyBoneRoll(TransInfo *t, const int[2] /*mval*/)
+static void applyBoneRoll(TransInfo *t)
 {
   int i;
   char str[UI_MAX_DRAW_STR];
@@ -50,10 +50,10 @@ static void applyBoneRoll(TransInfo *t, const int[2] /*mval*/)
 
     outputNumInput(&(t->num), c, &t->scene->unit);
 
-    SNPRINTF(str, TIP_("Roll: %s"), &c[0]);
+    SNPRINTF(str, IFACE_("Roll: %s"), &c[0]);
   }
   else {
-    SNPRINTF(str, TIP_("Roll: %.2f"), RAD2DEGF(final));
+    SNPRINTF(str, IFACE_("Roll: %.2f"), RAD2DEGF(final));
   }
 
   /* set roll values */
@@ -68,7 +68,7 @@ static void applyBoneRoll(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

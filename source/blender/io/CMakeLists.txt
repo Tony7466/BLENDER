@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020 Blender Foundation
+# SPDX-FileCopyrightText: 2020 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -24,10 +24,6 @@ endif()
 
 if(WITH_ALEMBIC)
   add_subdirectory(alembic)
-endif()
-
-if(WITH_CODEC_AVI)
-  add_subdirectory(avi)
 endif()
 
 if(WITH_OPENCOLLADA)

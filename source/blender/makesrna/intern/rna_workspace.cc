@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,20 +6,20 @@
  * \ingroup RNA
  */
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "RNA_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "RNA_types.hh"
 
 #include "BKE_workspace.h"
 
-#include "ED_render.h"
+#include "ED_render.hh"
 
 #include "RE_engine.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "DNA_workspace_types.h"
 
@@ -27,18 +27,18 @@
 
 #  include "BLI_listbase.h"
 
-#  include "BKE_global.h"
+#  include "BKE_global.hh"
 
 #  include "DNA_object_types.h"
 #  include "DNA_screen_types.h"
 #  include "DNA_space_types.h"
 
-#  include "ED_asset.h"
-#  include "ED_paint.h"
+#  include "ED_asset.hh"
+#  include "ED_paint.hh"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
-#  include "WM_toolsystem.h"
+#  include "WM_toolsystem.hh"
 
 static void rna_window_update_all(Main * /*bmain*/, Scene * /*scene*/, PointerRNA * /*ptr*/)
 {
@@ -99,13 +99,13 @@ static void rna_WorkSpace_owner_ids_clear(WorkSpace *workspace)
 static int rna_WorkSpace_asset_library_get(PointerRNA *ptr)
 {
   const WorkSpace *workspace = static_cast<WorkSpace *>(ptr->data);
-  return ED_asset_library_reference_to_enum_value(&workspace->asset_library_ref);
+  return blender::ed::asset::library_reference_to_enum_value(&workspace->asset_library_ref);
 }
 
 static void rna_WorkSpace_asset_library_set(PointerRNA *ptr, int value)
 {
   WorkSpace *workspace = static_cast<WorkSpace *>(ptr->data);
-  workspace->asset_library_ref = ED_asset_library_reference_from_enum_value(value);
+  workspace->asset_library_ref = blender::ed::asset::library_reference_from_enum_value(value);
 }
 
 static bToolRef *rna_WorkSpace_tools_from_tkey(WorkSpace *workspace,
@@ -170,7 +170,7 @@ const EnumPropertyItem *rna_WorkSpace_tools_mode_itemf(bContext * /*C*/,
     case SPACE_SEQ:
       return rna_enum_space_sequencer_view_type_items;
   }
-  return DummyRNA_DEFAULT_items;
+  return rna_enum_dummy_DEFAULT_items;
 }
 
 static bool rna_WorkSpaceTool_use_paint_canvas_get(PointerRNA *ptr)
@@ -212,7 +212,6 @@ static void rna_def_workspace_owner(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "wmOwnerID", nullptr);
   RNA_def_struct_sdna(srna, "wmOwnerID");
-  RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
   RNA_def_struct_ui_text(srna, "Work Space UI Tag", "");
 
   prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
@@ -262,7 +261,6 @@ static void rna_def_workspace_tool(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "WorkSpaceTool", nullptr);
   RNA_def_struct_sdna(srna, "bToolRef");
-  RNA_def_struct_clear_flag(srna, STRUCT_UNDO);
   RNA_def_struct_ui_text(srna, "Work Space Tool", "");
 
   prop = RNA_def_property(srna, "idname", PROP_STRING, PROP_NONE);
@@ -285,7 +283,7 @@ static void rna_def_workspace_tool(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "mode");
-  RNA_def_property_enum_items(prop, DummyRNA_DEFAULT_items);
+  RNA_def_property_enum_items(prop, rna_enum_dummy_DEFAULT_items);
   RNA_def_property_enum_funcs(prop, nullptr, nullptr, "rna_WorkSpace_tools_mode_itemf");
   RNA_def_property_ui_text(prop, "Tool Mode", "");
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);

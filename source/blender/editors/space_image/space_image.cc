@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,57 +16,53 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
 #include "BLI_threads.h"
 
-#include "BKE_colortools.h"
-#include "BKE_context.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_remap.h"
-#include "BKE_screen.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_lib_remap.hh"
+#include "BKE_screen.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "DEG_depsgraph.h"
+#include "IMB_imbuf_types.hh"
 
-#include "IMB_imbuf_types.h"
+#include "ED_image.hh"
+#include "ED_mask.hh"
+#include "ED_node.hh"
+#include "ED_render.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_transform.hh"
+#include "ED_util.hh"
+#include "ED_uvedit.hh"
 
-#include "ED_image.h"
-#include "ED_mask.h"
-#include "ED_node.h"
-#include "ED_render.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_transform.h"
-#include "ED_util.h"
-#include "ED_uvedit.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "BLO_read_write.hh"
 
-#include "BLO_read_write.h"
+#include "DRW_engine.hh"
 
-#include "DRW_engine.h"
-
-#include "image_intern.h"
+#include "image_intern.hh"
 
 /**************************** common state *****************************/
 
 static void image_scopes_tag_refresh(ScrArea *area)
 {
   SpaceImage *sima = (SpaceImage *)area->spacedata.first;
-  ARegion *region;
 
   /* only while histogram is visible */
-  for (region = static_cast<ARegion *>(area->regionbase.first); region; region = region->next) {
+  LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
     if (region->regiontype == RGN_TYPE_TOOL_PROPS && region->flag & RGN_FLAG_HIDDEN) {
       return;
     }
@@ -105,6 +101,7 @@ static SpaceLink *image_create(const ScrArea * /*area*/, const Scene * /*scene*/
   simage->lock = true;
   simage->flag = SI_SHOW_GPENCIL | SI_USE_ALPHA | SI_COORDFLOATS;
   simage->uv_opacity = 1.0f;
+  simage->stretch_opacity = 1.0f;
   simage->overlay.flag = SI_OVERLAY_SHOW_OVERLAYS | SI_OVERLAY_SHOW_GRID_BACKGROUND;
 
   BKE_imageuser_default(&simage->iuser);
@@ -172,7 +169,7 @@ static void image_free(SpaceLink *sl)
 /* spacetype; init callback, add handlers */
 static void image_init(wmWindowManager * /*wm*/, ScrArea *area)
 {
-  ListBase *lb = WM_dropboxmap_find("Image", SPACE_IMAGE, 0);
+  ListBase *lb = WM_dropboxmap_find("Image", SPACE_IMAGE, RGN_TYPE_WINDOW);
 
   /* add drop boxes */
   WM_event_add_dropbox_handler(&area->handlers, lb);
@@ -221,6 +218,7 @@ static void image_operatortypes()
   WM_operatortype_append(IMAGE_OT_clipboard_paste);
 
   WM_operatortype_append(IMAGE_OT_flip);
+  WM_operatortype_append(IMAGE_OT_rotate_orthogonal);
   WM_operatortype_append(IMAGE_OT_invert);
   WM_operatortype_append(IMAGE_OT_resize);
 
@@ -246,8 +244,8 @@ static void image_operatortypes()
 
 static void image_keymap(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "Image Generic", SPACE_IMAGE, 0);
-  WM_keymap_ensure(keyconf, "Image", SPACE_IMAGE, 0);
+  WM_keymap_ensure(keyconf, "Image Generic", SPACE_IMAGE, RGN_TYPE_WINDOW);
+  WM_keymap_ensure(keyconf, "Image", SPACE_IMAGE, RGN_TYPE_WINDOW);
 }
 
 /* dropboxes */
@@ -259,7 +257,7 @@ static bool image_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
   }
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
-    if (ELEM(file_type, 0, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE)) {
+    if (ELEM(file_type, FILE_TYPE_IMAGE, FILE_TYPE_MOVIE)) {
       return true;
     }
   }
@@ -269,13 +267,13 @@ static bool image_drop_poll(bContext *C, wmDrag *drag, const wmEvent *event)
 static void image_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   /* copy drag path to properties */
-  RNA_string_set(drop->ptr, "filepath", WM_drag_get_path(drag));
+  RNA_string_set(drop->ptr, "filepath", WM_drag_get_single_path(drag));
 }
 
 /* area+region dropbox definition */
 static void image_dropboxes()
 {
-  ListBase *lb = WM_dropboxmap_find("Image", SPACE_IMAGE, 0);
+  ListBase *lb = WM_dropboxmap_find("Image", SPACE_IMAGE, RGN_TYPE_WINDOW);
 
   WM_dropbox_add(lb, "IMAGE_OT_open", image_drop_poll, image_drop_copy, nullptr, nullptr);
 }
@@ -449,7 +447,7 @@ static int /*eContextResult*/ image_context(const bContext *C,
 
   if (CTX_data_dir(member)) {
     CTX_data_dir_set(result, image_context_dir);
-    /* TODO(sybren): return CTX_RESULT_OK; */
+    // return CTX_RESULT_OK; /* TODO(@sybren). */
   }
   else if (CTX_data_equals(member, "edit_image")) {
     CTX_data_id_pointer_set(result, (ID *)ED_space_image(sima));
@@ -605,26 +603,26 @@ static void image_main_region_init(wmWindowManager *wm, ARegion *region)
    * since the space clip manages own v2d in #image_main_region_set_view2d */
 
   /* mask polls mode */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Mask Editing", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Mask Editing", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
   /* image paint polls for mode */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Curve", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Curve", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Paint Curve", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Paint Curve", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Image Paint", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Image Paint", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "UV Editor", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "UV Editor", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* own keymaps */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Image Generic", SPACE_IMAGE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Image Generic", SPACE_IMAGE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
-  keymap = WM_keymap_ensure(wm->defaultconf, "Image", SPACE_IMAGE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Image", SPACE_IMAGE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 }
 
@@ -678,8 +676,8 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
       BLI_rctf_init(&frame, 0.0f, ibuf->x, 0.0f, ibuf->y);
       UI_view2d_view_to_region(&region->v2d, 0.0f, 0.0f, &x, &y);
       ED_region_image_metadata_draw(x, y, ibuf, &frame, zoomx, zoomy);
-      ED_space_image_release_buffer(sima, ibuf, lock);
     }
+    ED_space_image_release_buffer(sima, ibuf, lock);
   }
 
   /* sample line */
@@ -721,8 +719,9 @@ static void image_main_region_draw(const bContext *C, ARegion *region)
                         nullptr,
                         C);
   }
-
-  WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
+  if ((sima->gizmo_flag & SI_GIZMO_HIDE) == 0) {
+    WM_gizmomap_draw(region->gizmo_map, C, WM_GIZMOMAP_DRAWSTEP_2D);
+  }
   draw_image_cache(C, region);
 }
 
@@ -780,7 +779,7 @@ static void image_buttons_region_init(wmWindowManager *wm, ARegion *region)
   region->v2d.scroll = V2D_SCROLL_RIGHT | V2D_SCROLL_VERTICAL_HIDE;
   ED_region_panels_init(wm, region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Image Generic", SPACE_IMAGE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Image Generic", SPACE_IMAGE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -807,7 +806,8 @@ static void image_buttons_region_layout(const bContext *C, ARegion *region)
       break;
   }
 
-  ED_region_panels_layout_ex(C, region, &region->type->paneltypes, contexts_base, nullptr);
+  ED_region_panels_layout_ex(
+      C, region, &region->type->paneltypes, WM_OP_INVOKE_REGION_WIN, contexts_base, nullptr);
 }
 
 static void image_buttons_region_draw(const bContext *C, ARegion *region)
@@ -894,7 +894,7 @@ static void image_tools_region_init(wmWindowManager *wm, ARegion *region)
   region->v2d.scroll = V2D_SCROLL_RIGHT | V2D_SCROLL_VERTICAL_HIDE;
   ED_region_panels_init(wm, region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Image Generic", SPACE_IMAGE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Image Generic", SPACE_IMAGE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -939,6 +939,23 @@ static void image_tools_region_listener(const wmRegionListenerParams *params)
       ED_region_tag_redraw(region);
       break;
   }
+}
+
+/************************* Tool header region **************************/
+
+static void image_tools_header_region_draw(const bContext *C, ARegion *region)
+{
+  ScrArea *area = CTX_wm_area(C);
+  SpaceImage *sima = static_cast<SpaceImage *>(area->spacedata.first);
+
+  image_user_refresh_scene(C, sima);
+
+  ED_region_header_with_button_sections(
+      C,
+      region,
+      (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_TOP) ?
+          uiButtonSectionsAlign::Top :
+          uiButtonSectionsAlign::Bottom);
 }
 
 /************************* header region **************************/
@@ -990,18 +1007,34 @@ static void image_header_region_listener(const wmRegionListenerParams *params)
   }
 }
 
-static void image_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
+static void image_id_remap(ScrArea * /*area*/,
+                           SpaceLink *slink,
+                           const blender::bke::id::IDRemapper &mappings)
 {
   SpaceImage *simg = (SpaceImage *)slink;
 
-  if (!BKE_id_remapper_has_mapping_for(mappings,
-                                       FILTER_ID_IM | FILTER_ID_GD_LEGACY | FILTER_ID_MSK)) {
+  if (!mappings.contains_mappings_for_any(FILTER_ID_IM | FILTER_ID_GD_LEGACY | FILTER_ID_MSK)) {
     return;
   }
 
-  BKE_id_remapper_apply(mappings, (ID **)&simg->image, ID_REMAP_APPLY_ENSURE_REAL);
-  BKE_id_remapper_apply(mappings, (ID **)&simg->gpd, ID_REMAP_APPLY_UPDATE_REFCOUNT);
-  BKE_id_remapper_apply(mappings, (ID **)&simg->mask_info.mask, ID_REMAP_APPLY_ENSURE_REAL);
+  mappings.apply((ID **)&simg->image, ID_REMAP_APPLY_ENSURE_REAL);
+  mappings.apply((ID **)&simg->gpd, ID_REMAP_APPLY_UPDATE_REFCOUNT);
+  mappings.apply((ID **)&simg->mask_info.mask, ID_REMAP_APPLY_ENSURE_REAL);
+}
+
+static void image_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
+{
+  SpaceImage *simg = reinterpret_cast<SpaceImage *>(space_link);
+  const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
+  const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
+
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, simg->image, IDWALK_CB_USER_ONE);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, simg->iuser.scene, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, simg->mask_info.mask, IDWALK_CB_USER_ONE);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, simg->gpd, IDWALK_CB_USER);
+  if (!is_readonly) {
+    simg->scopes.ok = 0;
+  }
 }
 
 /**
@@ -1058,19 +1091,6 @@ static void image_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink 
 #endif
 }
 
-static void image_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
-{
-  SpaceImage *sima = (SpaceImage *)sl;
-
-  BLO_read_id_address(reader, parent_id, &sima->image);
-  BLO_read_id_address(reader, parent_id, &sima->mask_info.mask);
-
-  /* NOTE: pre-2.5, this was local data not lib data, but now we need this as lib data
-   * so fingers crossed this works fine!
-   */
-  BLO_read_id_address(reader, parent_id, &sima->gpd);
-}
-
 static void image_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   BLO_write_struct(writer, SpaceImage, sl);
@@ -1080,7 +1100,7 @@ static void image_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 
 void ED_spacetype_image()
 {
-  SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype image"));
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_IMAGE;
@@ -1098,11 +1118,12 @@ void ED_spacetype_image()
   st->context = image_context;
   st->gizmos = image_widgets;
   st->id_remap = image_id_remap;
+  st->foreach_id = image_foreach_id;
   st->space_subtype_item_extend = image_space_subtype_item_extend;
   st->space_subtype_get = image_space_subtype_get;
   st->space_subtype_set = image_space_subtype_set;
   st->blend_read_data = image_space_blend_read_data;
-  st->blend_read_lib = image_space_blend_read_lib;
+  st->blend_read_after_liblink = nullptr;
   st->blend_write = image_space_blend_write;
 
   /* regions: main window */
@@ -1150,7 +1171,7 @@ void ED_spacetype_image()
   art->keymapflag = ED_KEYMAP_UI | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES | ED_KEYMAP_HEADER;
   art->listener = image_header_region_listener;
   art->init = image_header_region_init;
-  art->draw = image_header_region_draw;
+  art->draw = image_tools_header_region_draw;
   art->message_subscribe = ED_area_do_mgs_subscribe_for_tool_header;
   BLI_addhead(&st->regiontypes, art);
 
@@ -1169,5 +1190,5 @@ void ED_spacetype_image()
   art = ED_area_type_hud(st->spaceid);
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
 #include <Python.h>
 
 #include "../generic/py_capi_utils.h"
-#include "../generic/python_utildefines.h"
+#include "../generic/python_compat.h"
 
 #include "gpu_py_vertex_format.h" /* own include */
 
@@ -58,6 +58,7 @@ static PyObject *pygpu_vertformat__tp_new(PyTypeObject * /*type*/, PyObject *arg
 }
 
 PyDoc_STRVAR(
+    /* Wrap. */
     pygpu_vertformat_attr_add_doc,
     ".. method:: attr_add(id, comp_type, len, fetch_mode)\n"
     "\n"
@@ -91,6 +92,7 @@ static PyObject *pygpu_vertformat_attr_add(BPyGPUVertFormat *self, PyObject *arg
 
   static const char *_keywords[] = {"id", "comp_type", "len", "fetch_mode", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "$"  /* Keyword only arguments. */
       "s"  /* `id` */
       "O&" /* `comp_type` */
@@ -98,7 +100,7 @@ static PyObject *pygpu_vertformat_attr_add(BPyGPUVertFormat *self, PyObject *arg
       "O&" /* `fetch_mode` */
       ":attr_add",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kwds,
@@ -143,10 +145,12 @@ static void pygpu_vertformat__tp_dealloc(BPyGPUVertFormat *self)
   Py_TYPE(self)->tp_free(self);
 }
 
-PyDoc_STRVAR(pygpu_vertformat__tp_doc,
-             ".. class:: GPUVertFormat()\n"
-             "\n"
-             "   This object contains information about the structure of a vertex buffer.\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    pygpu_vertformat__tp_doc,
+    ".. class:: GPUVertFormat()\n"
+    "\n"
+    "   This object contains information about the structure of a vertex buffer.\n");
 PyTypeObject BPyGPUVertFormat_Type = {
     /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "GPUVertFormat",

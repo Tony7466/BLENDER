@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,8 +22,7 @@ namespace Freestyle {
 namespace VecMat {
 
 namespace Internal {
-template<bool B> struct is_false {
-};
+template<bool B> struct is_false {};
 
 template<> struct is_false<false> {
   static inline void ensure() {}

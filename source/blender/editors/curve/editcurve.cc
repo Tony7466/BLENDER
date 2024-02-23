@@ -16,39 +16,43 @@
 #include "BLI_array_utils.h"
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_displist.h"
 #include "BKE_fcurve.h"
-#include "BKE_global.h"
-#include "BKE_key.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_report.h"
+#include "BKE_global.hh"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object_types.hh"
+#include "BKE_report.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_transform.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_view3d.h"
+#include "ED_curve.hh"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_transform.hh"
+#include "ED_transform_snap_object_context.hh"
+#include "ED_view3d.hh"
 
 #include "curve_intern.h"
 
@@ -56,12 +60,14 @@ extern "C" {
 #include "curve_fit_nd.h"
 }
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+
+using blender::Vector;
 
 void selectend_nurb(Object *obedit, enum eEndPoint_Types selfirst, bool doswap, bool selstatus);
 static void adduplicateflagNurb(
@@ -80,6 +86,13 @@ ListBase *object_editcurve_get(Object *ob)
     return &cu->editnurb->nurbs;
   }
   return nullptr;
+}
+
+KeyBlock *ED_curve_get_edit_shape_key(const Curve *cu)
+{
+  BLI_assert(cu->editnurb);
+
+  return BKE_keyblock_find_by_index(cu->key, cu->editnurb->shapenr - 1);
 }
 
 /** \} */
@@ -1074,11 +1087,11 @@ int ED_curve_updateAnimPaths(Main *bmain, Curve *cu)
 
   if (adt->action != nullptr) {
     curve_rename_fcurves(cu, &adt->action->curves);
-    DEG_id_tag_update(&adt->action->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&adt->action->id, ID_RECALC_SYNC_TO_EVAL);
   }
 
   curve_rename_fcurves(cu, &adt->drivers);
-  DEG_id_tag_update(&cu->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&cu->id, ID_RECALC_SYNC_TO_EVAL);
 
   /* TODO(sergey): Only update if something actually changed. */
   DEG_relations_tag_update(bmain);
@@ -1343,11 +1356,9 @@ static int separate_exec(bContext *C, wmOperator *op)
 
   WM_cursor_wait(true);
 
-  uint bases_len = 0;
-  Base **bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &bases_len);
-  for (uint b_index = 0; b_index < bases_len; b_index++) {
-    Base *oldbase = bases[b_index];
+  Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Base *oldbase : bases) {
     Base *newbase;
     Object *oldob, *newob;
     Curve *oldcu, *newcu;
@@ -1407,10 +1418,9 @@ static int separate_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, newob);
     status.changed++;
   }
-  MEM_freeN(bases);
   WM_cursor_wait(false);
 
-  if (status.unselected == bases_len) {
+  if (status.unselected == bases.size()) {
     BKE_report(op->reports, RPT_ERROR, "No point was selected");
     return OPERATOR_CANCELLED;
   }
@@ -1477,11 +1487,9 @@ static int curve_split_exec(bContext *C, wmOperator *op)
   bool changed = false;
   int count_failed = 0;
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
@@ -1512,7 +1520,6 @@ static int curve_split_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
-  MEM_freeN(objects);
 
   if (changed == false) {
     if (count_failed != 0) {
@@ -1770,7 +1777,7 @@ static void ed_surf_delete_selected(Object *obedit)
           if (newu == 1 && nu->pntsv > 1) { /* make a U spline */
             nu->pntsu = nu->pntsv;
             nu->pntsv = 1;
-            SWAP(short, nu->orderu, nu->orderv);
+            std::swap(nu->orderu, nu->orderv);
             BKE_nurb_order_clamp_u(nu);
             MEM_SAFE_FREE(nu->knotsv);
           }
@@ -2566,11 +2573,9 @@ static int switch_direction_exec(bContext *C, wmOperator * /*op*/)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = CTX_wm_view3d(C);
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
@@ -2597,7 +2602,6 @@ static int switch_direction_exec(bContext *C, wmOperator * /*op*/)
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
   }
-  MEM_freeN(objects);
   return OPERATOR_FINISHED;
 }
 
@@ -2626,12 +2630,10 @@ static int set_goal_weight_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  for (Object *obedit : objects) {
     ListBase *editnurb = object_editcurve_get(obedit);
     BezTriple *bezt;
     BPoint *bp;
@@ -2658,8 +2660,6 @@ static int set_goal_weight_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
   }
-
-  MEM_freeN(objects);
 
   return OPERATOR_FINISHED;
 }
@@ -2693,12 +2693,19 @@ static int set_radius_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  int totobjects = 0;
+
+  for (Object *obedit : objects) {
+
+    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+      continue;
+    }
+
+    totobjects++;
+
     ListBase *editnurb = object_editcurve_get(obedit);
     BezTriple *bezt;
     BPoint *bp;
@@ -2726,9 +2733,7 @@ static int set_radius_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
 
-  MEM_freeN(objects);
-
-  return OPERATOR_FINISHED;
+  return totobjects ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 void CURVE_OT_radius_set(wmOperatorType *ot)
@@ -2800,17 +2805,24 @@ static void smooth_single_bp(BPoint *bp,
   }
 }
 
-static int smooth_exec(bContext *C, wmOperator * /*op*/)
+static int smooth_exec(bContext *C, wmOperator *op)
 {
   const float factor = 1.0f / 6.0f;
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  int totobjects = 0;
+
+  for (Object *obedit : objects) {
+
+    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+      continue;
+    }
+
+    totobjects++;
+
     ListBase *editnurb = object_editcurve_get(obedit);
 
     int a, a_end;
@@ -2886,9 +2898,7 @@ static int smooth_exec(bContext *C, wmOperator * /*op*/)
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
 
-  MEM_freeN(objects);
-
-  return OPERATOR_FINISHED;
+  return totobjects ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 void CURVE_OT_smooth(wmOperatorType *ot)
@@ -3102,12 +3112,10 @@ static int curve_smooth_weight_exec(bContext *C, wmOperator * /*op*/)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  for (Object *obedit : objects) {
     ListBase *editnurb = object_editcurve_get(obedit);
 
     curve_smooth_value(editnurb, offsetof(BezTriple, weight), offsetof(BPoint, weight));
@@ -3115,8 +3123,6 @@ static int curve_smooth_weight_exec(bContext *C, wmOperator * /*op*/)
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
-
-  MEM_freeN(objects);
 
   return OPERATOR_FINISHED;
 }
@@ -3142,16 +3148,24 @@ void CURVE_OT_smooth_weight(wmOperatorType *ot)
 /** \name Smooth Radius Operator
  * \{ */
 
-static int curve_smooth_radius_exec(bContext *C, wmOperator * /*op*/)
+static int curve_smooth_radius_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+
+  int totobjects = 0;
+
+  for (Object *obedit : objects) {
+
+    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+      continue;
+    }
+
+    totobjects++;
+
     ListBase *editnurb = object_editcurve_get(obedit);
 
     curve_smooth_value(editnurb, offsetof(BezTriple, radius), offsetof(BPoint, radius));
@@ -3160,9 +3174,7 @@ static int curve_smooth_radius_exec(bContext *C, wmOperator * /*op*/)
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
 
-  MEM_freeN(objects);
-
-  return OPERATOR_FINISHED;
+  return totobjects ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 void CURVE_OT_smooth_radius(wmOperatorType *ot)
@@ -3186,16 +3198,23 @@ void CURVE_OT_smooth_radius(wmOperatorType *ot)
 /** \name Smooth Tilt Operator
  * \{ */
 
-static int curve_smooth_tilt_exec(bContext *C, wmOperator * /*op*/)
+static int curve_smooth_tilt_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  int totobjects = 0;
+
+  for (Object *obedit : objects) {
+
+    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+      continue;
+    }
+
+    totobjects++;
+
     ListBase *editnurb = object_editcurve_get(obedit);
 
     curve_smooth_value(editnurb, offsetof(BezTriple, tilt), offsetof(BPoint, tilt));
@@ -3204,9 +3223,7 @@ static int curve_smooth_tilt_exec(bContext *C, wmOperator * /*op*/)
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
 
-  MEM_freeN(objects);
-
-  return OPERATOR_FINISHED;
+  return totobjects ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 void CURVE_OT_smooth_tilt(wmOperatorType *ot)
@@ -3238,11 +3255,9 @@ static int hide_exec(bContext *C, wmOperator *op)
 
   const bool invert = RNA_boolean_get(op->ptr, "unselected");
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
 
     if (!(invert || ED_curve_select_check(v3d, cu->editnurb))) {
@@ -3305,7 +3320,6 @@ static int hide_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
     BKE_curve_nurb_vert_active_validate(static_cast<Curve *>(obedit->data));
   }
-  MEM_freeN(objects);
   return OPERATOR_FINISHED;
 }
 
@@ -3341,11 +3355,9 @@ static int reveal_exec(bContext *C, wmOperator *op)
   const bool select = RNA_boolean_get(op->ptr, "select");
   bool changed_multi = false;
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     ListBase *editnurb = object_editcurve_get(obedit);
     BPoint *bp;
     BezTriple *bezt;
@@ -3382,12 +3394,11 @@ static int reveal_exec(bContext *C, wmOperator *op)
 
     if (changed) {
       DEG_id_tag_update(static_cast<ID *>(obedit->data),
-                        ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT | ID_RECALC_GEOMETRY);
+                        ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT | ID_RECALC_GEOMETRY);
       WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
       changed_multi = true;
     }
   }
-  MEM_freeN(objects);
   return changed_multi ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
@@ -3474,7 +3485,8 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
           }
 
           if (BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, bezt) &&
-              BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, nextbezt)) {
+              BEZT_ISSEL_ANY_HIDDENHANDLES(v3d, nextbezt))
+          {
             float prevvec[3][3];
 
             memcpy(prevvec, bezt->vec, sizeof(float[9]));
@@ -3527,13 +3539,11 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
     else if (nu->pntsv == 1) {
       BPoint *nextbp;
 
-      /*
-       * All flat lines (ie. co-planar), except flat Nurbs. Flat NURB curves
+      /* NOTE(@nzc): All flat lines (ie. co-planar), except flat Nurbs. Flat NURB curves
        * are handled together with the regular NURB plane division, as it
-       * should be. I split it off just now, let's see if it is
-       * stable... nzc 30-5-'00
-       */
-      /* count */
+       * should be. I split it off just now, let's see if it is stable. */
+
+      /* Count. */
       a = nu->pntsu;
       bp = nu->bp;
       while (a--) {
@@ -3593,7 +3603,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
     else if (nu->type == CU_NURBS) {
       /* This is a very strange test ... */
       /**
-       * Subdivide NURB surfaces - nzc 30-5-'00 -
+       * NOTE(@nzc): Subdivide NURB surfaces
        *
        * Subdivision of a NURB curve can be effected by adding a
        * control point (insertion of a knot), or by raising the
@@ -3719,7 +3729,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
           }
         }
 
-        if (sel) { /* V ! */
+        if (sel) { /* V direction. */
           bpn = bpnew = static_cast<BPoint *>(
               MEM_mallocN((sel + nu->pntsv) * nu->pntsu * sizeof(BPoint), "subdivideNurb4"));
           bp = nu->bp;
@@ -3767,7 +3777,7 @@ static void subdividenurb(Object *obedit, View3D *v3d, int number_cuts)
             }
           }
 
-          if (sel) { /* U ! */
+          if (sel) { /* U direction. */
             /* Inserting U points is sort of 'default' Flat curves only get
              * U points inserted in them. */
             bpn = bpnew = static_cast<BPoint *>(
@@ -3820,11 +3830,9 @@ static int subdivide_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = CTX_wm_view3d(C);
 
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
@@ -3840,7 +3848,6 @@ static int subdivide_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, cu);
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
-  MEM_freeN(objects);
 
   return OPERATOR_FINISHED;
 }
@@ -3877,13 +3884,11 @@ static int set_spline_type_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
   int ret_value = OPERATOR_CANCELLED;
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  for (Object *obedit : objects) {
     Main *bmain = CTX_data_main(C);
     View3D *v3d = CTX_wm_view3d(C);
     ListBase *editnurb = object_editcurve_get(obedit);
@@ -3925,8 +3930,6 @@ static int set_spline_type_exec(bContext *C, wmOperator *op)
     }
   }
 
-  MEM_freeN(objects);
-
   return ret_value;
 }
 
@@ -3934,7 +3937,7 @@ void CURVE_OT_spline_type_set(wmOperatorType *ot)
 {
   static const EnumPropertyItem type_items[] = {
       {CU_POLY, "POLY", 0, "Poly", ""},
-      {CU_BEZIER, "BEZIER", 0, "Bezier", ""},
+      {CU_BEZIER, "BEZIER", 0, "Bézier", ""},
       {CU_NURBS, "NURBS", 0, "NURBS", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
@@ -3958,7 +3961,7 @@ void CURVE_OT_spline_type_set(wmOperatorType *ot)
                   "use_handles",
                   false,
                   "Handles",
-                  "Use handles when converting bezier curves into polygons");
+                  "Use handles when converting Bézier curves into polygons");
 }
 
 /** \} */
@@ -3973,12 +3976,13 @@ static int set_handle_type_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = CTX_wm_view3d(C);
   const int handle_type = RNA_enum_get(op->ptr, "type");
+  const bool hide_handles = (v3d && (v3d->overlay.handle_display == CURVE_HANDLE_NONE));
+  const eNurbHandleTest_Mode handle_mode = hide_handles ? NURB_HANDLE_TEST_KNOT_ONLY :
+                                                          NURB_HANDLE_TEST_KNOT_OR_EACH;
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
@@ -3986,12 +3990,11 @@ static int set_handle_type_exec(bContext *C, wmOperator *op)
     }
 
     ListBase *editnurb = object_editcurve_get(obedit);
-    BKE_nurbList_handles_set(editnurb, handle_type);
+    BKE_nurbList_handles_set(editnurb, handle_mode, handle_type);
 
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
-  MEM_freeN(objects);
   return OPERATOR_FINISHED;
 }
 
@@ -4038,16 +4041,23 @@ static int curve_normals_make_consistent_exec(bContext *C, wmOperator *op)
 
   const bool calc_length = RNA_boolean_get(op->ptr, "calc_length");
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+
+  int totobjects = 0;
+
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
       continue;
     }
+
+    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+      continue;
+    }
+
+    totobjects++;
 
     ListBase *editnurb = object_editcurve_get(obedit);
     BKE_nurbList_handles_recalculate(editnurb, calc_length, SELECT);
@@ -4055,8 +4065,7 @@ static int curve_normals_make_consistent_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
-  MEM_freeN(objects);
-  return OPERATOR_FINISHED;
+  return totobjects ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 void CURVE_OT_normals_make_consistent(wmOperatorType *ot)
@@ -4100,7 +4109,7 @@ static void switchdirection_knots(float *base, int tot)
   fp2 = fp1 + (a - 1);
   a /= 2;
   while (fp1 != fp2 && a > 0) {
-    SWAP(float, *fp1, *fp2);
+    std::swap(*fp1, *fp2);
     a--;
     fp1++;
     fp2--;
@@ -4135,12 +4144,12 @@ static void rotate_direction_nurb(Nurb *nu)
   BPoint *bp1, *bp2, *temp;
   int u, v;
 
-  SWAP(int, nu->pntsu, nu->pntsv);
-  SWAP(short, nu->orderu, nu->orderv);
-  SWAP(short, nu->resolu, nu->resolv);
-  SWAP(short, nu->flagu, nu->flagv);
+  std::swap(nu->pntsu, nu->pntsv);
+  std::swap(nu->orderu, nu->orderv);
+  std::swap(nu->resolu, nu->resolv);
+  std::swap(nu->flagu, nu->flagv);
 
-  SWAP(float *, nu->knotsu, nu->knotsv);
+  std::swap(nu->knotsu, nu->knotsv);
   switchdirection_knots(nu->knotsv, KNOTSV(nu));
 
   temp = static_cast<BPoint *>(MEM_dupallocN(nu->bp));
@@ -4486,11 +4495,9 @@ static int make_segment_exec(bContext *C, wmOperator *op)
     int error_generic;
   } status = {0};
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
@@ -4555,7 +4562,7 @@ static int make_segment_exec(bContext *C, wmOperator *op)
     }
 
     /* find both nurbs and points, nu1 will be put behind nu2 */
-    for (nu = static_cast<Nurb *>(nubase->first); nu; nu = nu->next) {
+    LISTBASE_FOREACH (Nurb *, nu, nubase) {
       if (nu->pntsu == 1) {
         nu->flagu &= ~CU_NURB_CYCLIC;
       }
@@ -4663,7 +4670,7 @@ static int make_segment_exec(bContext *C, wmOperator *op)
           MEM_freeN(nu1->bp);
           nu1->bp = bp;
 
-          /* a = nu1->pntsu + nu1->orderu; */ /* UNUSED */
+          // a = nu1->pntsu + nu1->orderu; /* UNUSED */
 
           nu1->pntsu += nu2->pntsu;
           BLI_remlink(nubase, nu2);
@@ -4685,7 +4692,7 @@ static int make_segment_exec(bContext *C, wmOperator *op)
     }
     else if ((nu1 && !nu2) || (!nu1 && nu2)) {
       if (nu2) {
-        SWAP(Nurb *, nu1, nu2);
+        std::swap(nu1, nu2);
       }
 
       if (!(nu1->flagu & CU_NURB_CYCLIC) && nu1->pntsu > 1) {
@@ -4721,9 +4728,8 @@ static int make_segment_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
-  MEM_freeN(objects);
 
-  if (status.unselected == objects_len) {
+  if (status.unselected == objects.size()) {
     BKE_report(op->reports, RPT_ERROR, "No points were selected");
     return OPERATOR_CANCELLED;
   }
@@ -4785,11 +4791,9 @@ void CURVE_OT_make_segment(wmOperatorType *ot)
 bool ED_curve_editnurb_select_pick(bContext *C,
                                    const int mval[2],
                                    const int dist_px,
-                                   const bool vert_without_handles,
                                    const SelectPick_Params *params)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
   Nurb *nu;
   BezTriple *bezt = nullptr;
   BPoint *bp = nullptr;
@@ -4798,34 +4802,29 @@ bool ED_curve_editnurb_select_pick(bContext *C,
   bool changed = false;
 
   view3d_operator_needs_opengl(C);
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
   copy_v2_v2_int(vc.mval, mval);
 
-  const bool use_handle_select = vert_without_handles &&
-                                 (vc.v3d->overlay.handle_display != CURVE_HANDLE_NONE);
+  const bool use_handle_select = (vc.v3d->overlay.handle_display != CURVE_HANDLE_NONE);
 
   bool found = ED_curve_pick_vert_ex(&vc, true, dist_px, &nu, &bezt, &bp, &hand, &basact);
 
   if (params->sel_op == SEL_OP_SET) {
     if ((found && params->select_passthrough) &&
-        (((bezt ? (&bezt->f1)[hand] : bp->f1) & SELECT) != 0)) {
+        (((bezt ? (&bezt->f1)[hand] : bp->f1) & SELECT) != 0))
+    {
       found = false;
     }
     else if (found || params->deselect_all) {
       /* Deselect everything. */
-      uint objects_len = 0;
-      Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-          vc.scene, vc.view_layer, vc.v3d, &objects_len);
-      for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-        Object *ob_iter = objects[ob_index];
-
+      Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+          vc.scene, vc.view_layer, vc.v3d);
+      for (Object *ob_iter : objects) {
         ED_curve_deselect_all(((Curve *)ob_iter->data)->editnurb);
-
         DEG_id_tag_update(static_cast<ID *>(ob_iter->data),
-                          ID_RECALC_SELECT | ID_RECALC_COPY_ON_WRITE);
+                          ID_RECALC_SELECT | ID_RECALC_SYNC_TO_EVAL);
         WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob_iter->data);
       }
-      MEM_freeN(objects);
       changed = true;
     }
   }
@@ -4987,7 +4986,7 @@ bool ED_curve_editnurb_select_pick(bContext *C,
       ED_object_base_activate(C, basact);
     }
 
-    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(static_cast<ID *>(obedit->data), ID_RECALC_SELECT | ID_RECALC_SYNC_TO_EVAL);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, obedit->data);
 
     changed = true;
@@ -5017,7 +5016,7 @@ bool ed_editnurb_spin(
   invert_m3_m3(persinv, persmat);
 
   /* imat and center and size */
-  copy_m3_m4(bmat, obedit->object_to_world);
+  copy_m3_m4(bmat, obedit->object_to_world().ptr());
   invert_m3_m3(imat, bmat);
 
   axis_angle_to_mat3(cmat, axis, M_PI_4);
@@ -5102,19 +5101,17 @@ static int spin_exec(bContext *C, wmOperator *op)
     unit_m4(viewmat);
   }
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = (Curve *)obedit->data;
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
       continue;
     }
 
-    invert_m4_m4(obedit->world_to_object, obedit->object_to_world);
-    mul_m4_v3(obedit->world_to_object, cent);
+    invert_m4_m4(obedit->runtime->world_to_object.ptr(), obedit->object_to_world().ptr());
+    mul_m4_v3(obedit->world_to_object().ptr(), cent);
 
     if (!ed_editnurb_spin(viewmat, v3d, obedit, axis, cent)) {
       count_failed += 1;
@@ -5129,7 +5126,6 @@ static int spin_exec(bContext *C, wmOperator *op)
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
-  MEM_freeN(objects);
 
   if (changed == false) {
     if (count_failed != 0) {
@@ -5593,7 +5589,7 @@ static int add_vertex_exec(bContext *C, wmOperator *op)
 
   RNA_float_get_array(op->ptr, "location", location);
 
-  invert_m4_m4(imat, obedit->object_to_world);
+  invert_m4_m4(imat, obedit->object_to_world().ptr());
   mul_m4_v3(imat, location);
 
   if (ed_editcurve_addvert(cu, editnurb, v3d, location)) {
@@ -5614,15 +5610,14 @@ static int add_vertex_exec(bContext *C, wmOperator *op)
 static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
-  ViewContext vc;
-
-  ED_view3d_viewcontext_init(C, &vc, depsgraph);
+  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
   if (vc.rv3d && !RNA_struct_property_is_set(op->ptr, "location")) {
     Curve *cu;
     float location[3];
     const bool use_proj = ((vc.scene->toolsettings->snap_flag & SCE_SNAP) &&
-                           (vc.scene->toolsettings->snap_mode == SCE_SNAP_TO_FACE));
+                           (vc.scene->toolsettings->snap_mode &
+                            (SCE_SNAP_TO_FACE | SCE_SNAP_INDIVIDUAL_PROJECT)));
 
     Nurb *nu;
     BezTriple *bezt;
@@ -5633,10 +5628,10 @@ static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     ED_curve_nurb_vert_selected_find(cu, vc.v3d, &nu, &bezt, &bp);
 
     if (bezt) {
-      mul_v3_m4v3(location, vc.obedit->object_to_world, bezt->vec[1]);
+      mul_v3_m4v3(location, vc.obedit->object_to_world().ptr(), bezt->vec[1]);
     }
     else if (bp) {
-      mul_v3_m4v3(location, vc.obedit->object_to_world, bp->vec);
+      mul_v3_m4v3(location, vc.obedit->object_to_world().ptr(), bp->vec);
     }
     else {
       copy_v3_v3(location, vc.scene->cursor.location);
@@ -5677,17 +5672,17 @@ static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
       ED_view3d_global_to_vector(vc.rv3d, location, view_dir);
 
       /* get the plane */
-      float plane[4];
+      const float *plane_co = vc.obedit->object_to_world().location();
+      float plane_no[3];
       /* only normalize to avoid precision errors */
-      normalize_v3_v3(plane, vc.obedit->object_to_world[2]);
-      plane[3] = -dot_v3v3(plane, vc.obedit->object_to_world[3]);
+      normalize_v3_v3(plane_no, vc.obedit->object_to_world()[2]);
 
-      if (fabsf(dot_v3v3(view_dir, plane)) < eps) {
+      if (fabsf(dot_v3v3(view_dir, plane_no)) < eps) {
         /* can't project on an aligned plane. */
       }
       else {
         float lambda;
-        if (isect_ray_plane_v3(location, view_dir, plane, &lambda, false)) {
+        if (isect_ray_plane_v3_factor(location, view_dir, plane_co, plane_no, &lambda)) {
           /* check if we're behind the viewport */
           float location_test[3];
           madd_v3_v3v3fl(location_test, location, view_dir, lambda);
@@ -5703,7 +5698,12 @@ static int add_vertex_invoke(bContext *C, wmOperator *op, const wmEvent *event)
     RNA_float_set_array(op->ptr, "location", location);
   }
 
-  return add_vertex_exec(C, op);
+  /* Support dragging to move after extrude, see: #114282. */
+  int retval = add_vertex_exec(C, op);
+  if (retval & OPERATOR_FINISHED) {
+    retval |= OPERATOR_PASS_THROUGH;
+  }
+  return WM_operator_flag_only_pass_through_on_press(retval, event);
 }
 
 void CURVE_OT_vertex_add(wmOperatorType *ot)
@@ -5747,11 +5747,9 @@ static int curve_extrude_exec(bContext *C, wmOperator * /*op*/)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = CTX_wm_view3d(C);
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
     EditNurb *editnurb = cu->editnurb;
     bool changed = false;
@@ -5776,7 +5774,6 @@ static int curve_extrude_exec(bContext *C, wmOperator * /*op*/)
       DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
     }
   }
-  MEM_freeN(objects);
   return OPERATOR_FINISHED;
 }
 
@@ -5795,7 +5792,7 @@ void CURVE_OT_extrude(wmOperatorType *ot)
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
   /* to give to transform */
-  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_types, TFM_TRANSLATION, "Mode", "");
+  RNA_def_enum(ot->srna, "mode", rna_enum_transform_mode_type_items, TFM_TRANSLATION, "Mode", "");
 }
 
 /** \} */
@@ -5890,11 +5887,9 @@ static int toggle_cyclic_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   bool changed_multi = false;
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
@@ -5908,7 +5903,6 @@ static int toggle_cyclic_exec(bContext *C, wmOperator *op)
       DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
     }
   }
-  MEM_freeN(objects);
 
   return changed_multi ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
@@ -5982,11 +5976,9 @@ static int duplicate_exec(bContext *C, wmOperator *op)
   bool changed = false;
   int count_failed = 0;
 
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
@@ -6006,7 +5998,6 @@ static int duplicate_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(&cu->id, ID_RECALC_SELECT);
     WM_event_add_notifier(C, NC_GEOM | ND_SELECT, &cu->id);
   }
-  MEM_freeN(objects);
 
   if (changed == false) {
     if (count_failed != 0) {
@@ -6488,13 +6479,11 @@ static int curve_delete_exec(bContext *C, wmOperator *op)
   eCurveElem_Types type = eCurveElem_Types(RNA_enum_get(op->ptr, "type"));
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
   bool changed_multi = false;
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  for (Object *obedit : objects) {
     Curve *cu = (Curve *)obedit->data;
     bool changed = false;
 
@@ -6525,7 +6514,6 @@ static int curve_delete_exec(bContext *C, wmOperator *op)
       DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
     }
   }
-  MEM_freeN(objects);
 
   if (changed_multi) {
     return OPERATOR_FINISHED;
@@ -6668,11 +6656,9 @@ static int curve_dissolve_exec(bContext *C, wmOperator * /*op*/)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = CTX_wm_view3d(C);
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = (Curve *)obedit->data;
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
@@ -6714,7 +6700,6 @@ static int curve_dissolve_exec(bContext *C, wmOperator * /*op*/)
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
-  MEM_freeN(objects);
   return OPERATOR_FINISHED;
 }
 
@@ -6762,11 +6747,9 @@ static int curve_decimate_exec(bContext *C, wmOperator *op)
 
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     Curve *cu = (Curve *)obedit->data;
     bool all_supported = true;
     bool changed = false;
@@ -6806,10 +6789,8 @@ static int curve_decimate_exec(bContext *C, wmOperator *op)
   }
 
   if (all_supported_multi == false) {
-    BKE_report(op->reports, RPT_WARNING, "Only bezier curves are supported");
+    BKE_report(op->reports, RPT_WARNING, "Only Bézier curves are supported");
   }
-
-  MEM_freeN(objects);
 
   return OPERATOR_FINISHED;
 }
@@ -6844,13 +6825,11 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   int clear = STREQ(op->idname, "CURVE_OT_shade_flat");
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
   int ret_value = OPERATOR_CANCELLED;
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  for (Object *obedit : objects) {
     ListBase *editnurb = object_editcurve_get(obedit);
 
     if (obedit->type != OB_CURVES_LEGACY) {
@@ -6872,8 +6851,6 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
     ret_value = OPERATOR_FINISHED;
   }
-
-  MEM_freeN(objects);
 
   return ret_value;
 }
@@ -6945,7 +6922,7 @@ int ED_curve_join_objects_exec(bContext *C, wmOperator *op)
 
   /* Inverse transform for all selected curves in this object,
    * See object_join_exec for detailed comment on why the safe version is used. */
-  invert_m4_m4_safe_ortho(imat, ob_active->object_to_world);
+  invert_m4_m4_safe_ortho(imat, ob_active->object_to_world().ptr());
 
   Curve *cu_active = static_cast<Curve *>(ob_active->data);
 
@@ -6957,7 +6934,7 @@ int ED_curve_join_objects_exec(bContext *C, wmOperator *op)
 
         if (cu->nurb.first) {
           /* watch it: switch order here really goes wrong */
-          mul_m4_m4m4(cmat, imat, ob_iter->object_to_world);
+          mul_m4_m4m4(cmat, imat, ob_iter->object_to_world().ptr());
 
           /* Compensate for different bevel depth. */
           bool do_radius = false;
@@ -7034,22 +7011,29 @@ int ED_curve_join_objects_exec(bContext *C, wmOperator *op)
 /** \name Clear Tilt Operator
  * \{ */
 
-static int clear_tilt_exec(bContext *C, wmOperator * /*op*/)
+static int clear_tilt_exec(bContext *C, wmOperator *op)
 {
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   View3D *v3d = CTX_wm_view3d(C);
 
-  uint objects_len;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+
+  int totobjects = 0;
+
+  for (Object *obedit : objects) {
     Curve *cu = static_cast<Curve *>(obedit->data);
 
     if (!ED_curve_select_check(v3d, cu->editnurb)) {
       continue;
     }
+
+    if (ED_object_edit_report_if_shape_key_is_locked(obedit, op->reports)) {
+      continue;
+    }
+
+    totobjects++;
 
     ListBase *editnurb = object_editcurve_get(obedit);
     BezTriple *bezt;
@@ -7082,8 +7066,7 @@ static int clear_tilt_exec(bContext *C, wmOperator * /*op*/)
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, obedit->data);
     DEG_id_tag_update(static_cast<ID *>(obedit->data), 0);
   }
-  MEM_freeN(objects);
-  return OPERATOR_FINISHED;
+  return totobjects ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }
 
 void CURVE_OT_tilt_clear(wmOperatorType *ot)
@@ -7139,10 +7122,10 @@ static int match_texture_space_exec(bContext *C, wmOperator * /*op*/)
   float min[3], max[3], texspace_size[3], texspace_location[3];
   int a;
 
-  BLI_assert(object_eval->runtime.curve_cache != nullptr);
+  BLI_assert(object_eval->runtime->curve_cache != nullptr);
 
   INIT_MINMAX(min, max);
-  BKE_displist_minmax(&object_eval->runtime.curve_cache->disp, min, max);
+  BKE_displist_minmax(&object_eval->runtime->curve_cache->disp, min, max);
 
   mid_v3_v3v3(texspace_location, min, max);
 

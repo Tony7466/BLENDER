@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2015 Blender Foundation
+/* SPDX-FileCopyrightText: 2015 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,6 +19,7 @@
 #include "GPU_batch.h"
 
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 
 #include "gpu_py.h"
 #include "gpu_py_element.h"
@@ -56,13 +57,14 @@ static PyObject *pygpu_batch__tp_new(PyTypeObject * /*type*/, PyObject *args, Py
 
   static const char *_keywords[] = {"type", "buf", "elem", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "|$" /* Optional keyword only arguments. */
       "O&" /* `type` */
       "O!" /* `buf` */
       "O!" /* `elem` */
       ":GPUBatch.__new__",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kwds,
@@ -119,7 +121,9 @@ static PyObject *pygpu_batch__tp_new(PyTypeObject * /*type*/, PyObject *args, Py
   return (PyObject *)ret;
 }
 
-PyDoc_STRVAR(pygpu_batch_vertbuf_add_doc, ".. method:: vertbuf_add(buf)\n"
+PyDoc_STRVAR(
+    /* Wrap. */
+    pygpu_batch_vertbuf_add_doc, ".. method:: vertbuf_add(buf)\n"
 "\n"
 "   Add another vertex buffer to the Batch.\n"
 "   It is not possible to add more vertices to the batch using this method.\n"
@@ -164,6 +168,7 @@ static PyObject *pygpu_batch_vertbuf_add(BPyGPUBatch *self, BPyGPUVertBuf *py_bu
 }
 
 PyDoc_STRVAR(
+    /* Wrap. */
     pygpu_batch_program_set_doc,
     ".. method:: program_set(program)\n"
     "\n"
@@ -205,14 +210,16 @@ static PyObject *pygpu_batch_program_set(BPyGPUBatch *self, BPyGPUShader *py_sha
   Py_RETURN_NONE;
 }
 
-PyDoc_STRVAR(pygpu_batch_draw_doc,
-             ".. method:: draw(program=None)\n"
-             "\n"
-             "   Run the drawing program with the parameters assigned to the batch.\n"
-             "\n"
-             "   :arg program: Program that performs the drawing operations.\n"
-             "      If ``None`` is passed, the last program set to this batch will run.\n"
-             "   :type program: :class:`gpu.types.GPUShader`\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    pygpu_batch_draw_doc,
+    ".. method:: draw(program=None)\n"
+    "\n"
+    "   Run the drawing program with the parameters assigned to the batch.\n"
+    "\n"
+    "   :arg program: Program that performs the drawing operations.\n"
+    "      If ``None`` is passed, the last program set to this batch will run.\n"
+    "   :type program: :class:`gpu.types.GPUShader`\n");
 static PyObject *pygpu_batch_draw(BPyGPUBatch *self, PyObject *args)
 {
   BPyGPUShader *py_program = nullptr;
@@ -234,6 +241,7 @@ static PyObject *pygpu_batch_draw(BPyGPUBatch *self, PyObject *args)
 }
 
 PyDoc_STRVAR(
+    /* Wrap. */
     pygpu_batch_draw_instanced_doc,
     ".. method:: draw_instanced(program, *, instance_start=0, instance_count=0)\n"
     "\n"
@@ -257,13 +265,14 @@ static PyObject *pygpu_batch_draw_instanced(BPyGPUBatch *self, PyObject *args, P
 
   static const char *_keywords[] = {"program", "instance_start", "instance_count", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O!" /* `program` */
       "|$" /* Optional keyword only arguments. */
       "i"  /* `instance_start` */
       "i"  /* `instance_count' */
       ":GPUBatch.draw_instanced",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &BPyGPUShader_Type, &py_program, &instance_start, &instance_count))
@@ -276,21 +285,23 @@ static PyObject *pygpu_batch_draw_instanced(BPyGPUBatch *self, PyObject *args, P
   Py_RETURN_NONE;
 }
 
-PyDoc_STRVAR(pygpu_batch_draw_range_doc,
-             ".. method:: draw_range(program, *, elem_start=0, elem_count=0)\n"
-             "\n"
-             "   Run the drawing program with the parameters assigned to the batch. Only draw\n"
-             "   the `elem_count` elements of the index buffer starting at `elem_start` \n"
-             "\n"
-             "   :arg program: Program that performs the drawing operations.\n"
-             "   :type program: :class:`gpu.types.GPUShader`\n"
-             "   :arg elem_start: First index to draw. When not provided or set to 0 drawing\n"
-             "      will start from the first element of the index buffer.\n"
-             "   :type elem_start: int\n"
-             "   :arg elem_count: Number of elements of the index buffer to draw. When not\n"
-             "      provided or set to 0 all elements from `elem_start` to the end of the\n"
-             "      index buffer will be drawn.\n"
-             "   :type elem_count: int\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    pygpu_batch_draw_range_doc,
+    ".. method:: draw_range(program, *, elem_start=0, elem_count=0)\n"
+    "\n"
+    "   Run the drawing program with the parameters assigned to the batch. Only draw\n"
+    "   the `elem_count` elements of the index buffer starting at `elem_start` \n"
+    "\n"
+    "   :arg program: Program that performs the drawing operations.\n"
+    "   :type program: :class:`gpu.types.GPUShader`\n"
+    "   :arg elem_start: First index to draw. When not provided or set to 0 drawing\n"
+    "      will start from the first element of the index buffer.\n"
+    "   :type elem_start: int\n"
+    "   :arg elem_count: Number of elements of the index buffer to draw. When not\n"
+    "      provided or set to 0 all elements from `elem_start` to the end of the\n"
+    "      index buffer will be drawn.\n"
+    "   :type elem_count: int\n");
 static PyObject *pygpu_batch_draw_range(BPyGPUBatch *self, PyObject *args, PyObject *kw)
 {
   BPyGPUShader *py_program = nullptr;
@@ -299,13 +310,14 @@ static PyObject *pygpu_batch_draw_range(BPyGPUBatch *self, PyObject *args, PyObj
 
   static const char *_keywords[] = {"program", "elem_start", "elem_count", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O!" /* `program` */
       "|$" /* Optional keyword only arguments. */
       "i"  /* `elem_start' */
       "i"  /* `elem_count' */
       ":GPUBatch.draw_range",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &BPyGPUShader_Type, &py_program, &elem_start, &elem_count))
@@ -399,6 +411,7 @@ static void pygpu_batch__tp_dealloc(BPyGPUBatch *self)
 }
 
 PyDoc_STRVAR(
+    /* Wrap. */
     pygpu_batch__tp_doc,
     ".. class:: GPUBatch(type, buf, elem=None)\n"
     "\n"

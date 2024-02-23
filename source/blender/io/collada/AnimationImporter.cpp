@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2010-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,19 +13,22 @@
 
 #include "DNA_armature_types.h"
 
-#include "ED_keyframing.h"
+#include "ED_keyframing.hh"
+
+#include "ANIM_animdata.hh"
+#include "ANIM_fcurve.hh"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_fcurve.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -65,7 +68,7 @@ void AnimationImporter::add_bezt(FCurve *fcu,
   bez.ipo = ipo; /* use default interpolation mode here... */
   bez.f1 = bez.f2 = bez.f3 = SELECT;
   bez.h1 = bez.h2 = HD_AUTO;
-  insert_bezt_fcurve(fcu, &bez, INSERTKEY_NOFLAGS);
+  blender::animrig::insert_bezt_fcurve(fcu, &bez, INSERTKEY_NOFLAGS);
   BKE_fcurve_handles_recalc(fcu);
 }
 
@@ -132,7 +135,7 @@ void AnimationImporter::animation_to_fcurves(COLLADAFW::AnimationCurve *curve)
 #endif
           bez.f1 = bez.f2 = bez.f3 = SELECT;
 
-          insert_bezt_fcurve(fcu, &bez, INSERTKEY_NOFLAGS);
+          blender::animrig::insert_bezt_fcurve(fcu, &bez, INSERTKEY_NOFLAGS);
         }
 
         BKE_fcurve_handles_recalc(fcu);
@@ -140,7 +143,8 @@ void AnimationImporter::animation_to_fcurves(COLLADAFW::AnimationCurve *curve)
         fcurves.push_back(fcu);
         unused_curves.push_back(fcu);
       }
-    } break;
+      break;
+    }
     default:
       fprintf(stderr,
               "Output dimension of %d is not yet supported (animation id = %s)\n",
@@ -185,7 +189,7 @@ void AnimationImporter::add_fcurves_to_object(Main *bmain,
   bAction *act;
 
   if (!ob->adt || !ob->adt->action) {
-    act = ED_id_action_ensure(bmain, (ID *)&ob->id);
+    act = blender::animrig::id_action_ensure(bmain, (ID *)&ob->id);
   }
   else {
     act = ob->adt->action;
@@ -335,8 +339,8 @@ void AnimationImporter::read_node_transform(COLLADAFW::Node *node, Object *ob)
   float mat[4][4];
   TransformReader::get_node_mat(mat, node, &uid_animated_map, ob);
   if (ob) {
-    copy_m4_m4(ob->object_to_world, mat);
-    BKE_object_apply_mat4(ob, ob->object_to_world, false, false);
+    copy_m4_m4(ob->runtime->object_to_world.ptr(), mat);
+    BKE_object_apply_mat4(ob, ob->object_to_world().ptr(), false, false);
   }
 }
 
@@ -348,7 +352,7 @@ virtual void AnimationImporter::change_eul_to_quat(Object *ob, bAction *act)
 
   for (grp = (bActionGroup *)act->groups.first; grp; grp = grp->next) {
 
-    FCurve *eulcu[3] = {NULL, NULL, NULL};
+    FCurve *eulcu[3] = {nullptr, nullptr, nullptr};
 
     if (fcurves_actionGroup_map.find(grp) == fcurves_actionGroup_map.end()) {
       continue;
@@ -374,10 +378,10 @@ virtual void AnimationImporter::change_eul_to_quat(Object *ob, bAction *act)
     SNPRINTF(rna_path, "%s.rotation_quaternion", joint_path);
 
     FCurve *quatcu[4] = {
-      create_fcurve(0, rna_path),
-      create_fcurve(1, rna_path),
-      create_fcurve(2, rna_path),
-      create_fcurve(3, rna_path),
+        create_fcurve(0, rna_path),
+        create_fcurve(1, rna_path),
+        create_fcurve(2, rna_path),
+        create_fcurve(3, rna_path),
     };
 
     bPoseChannel *chan = BKE_pose_channel_find_name(ob->pose, grp->name);
@@ -398,9 +402,9 @@ virtual void AnimationImporter::change_eul_to_quat(Object *ob, bAction *act)
         float frame = cu->bezt[j].vec[1][0];
 
         float eul[3] = {
-          eulcu[0] ? evaluate_fcurve(eulcu[0], frame) : 0.0f,
-          eulcu[1] ? evaluate_fcurve(eulcu[1], frame) : 0.0f,
-          eulcu[2] ? evaluate_fcurve(eulcu[2], frame) : 0.0f,
+            eulcu[0] ? evaluate_fcurve(eulcu[0], frame) : 0.0f,
+            eulcu[1] ? evaluate_fcurve(eulcu[1], frame) : 0.0f,
+            eulcu[2] ? evaluate_fcurve(eulcu[2], frame) : 0.0f,
         };
 
         /* make eul relative to bone rest pose */
@@ -601,7 +605,8 @@ void AnimationImporter::Assign_transform_animations(
           else {
             unused_fcurve(curves);
           }
-        } break;
+          break;
+        }
         case COLLADAFW::AnimationList::AXISANGLE:
         /* TODO: convert axis-angle to quat? or XYZ? */
         default:
@@ -889,7 +894,7 @@ void AnimationImporter::apply_matrix_curves(Object *ob,
       mul_m4_m4m4(temp, par, matfra);
 
 #if 0
-      evaluate_joint_world_transform_at_frame(temp, NULL, node, fra);
+      evaluate_joint_world_transform_at_frame(temp, nullptr, node, fra);
 #endif
 
       /* calc special matrix */
@@ -916,7 +921,7 @@ void AnimationImporter::apply_matrix_curves(Object *ob,
     }
   }
   Main *bmain = CTX_data_main(mContext);
-  ED_id_action_ensure(bmain, (ID *)&ob->id);
+  blender::animrig::id_action_ensure(bmain, (ID *)&ob->id);
 
   ListBase *curves = &ob->adt->action->curves;
 
@@ -929,7 +934,7 @@ void AnimationImporter::apply_matrix_curves(Object *ob,
       BLI_addtail(curves, newcu[i]);
     }
 #if 0
-    fcurve_is_used(newcu[i]);  /* never added to unused */
+    fcurve_is_used(newcu[i]); /* never added to unused */
 #endif
   }
 
@@ -979,7 +984,7 @@ static ListBase &get_animation_curves(Main *bmain, Material *ma)
 {
   bAction *act;
   if (!ma->adt || !ma->adt->action) {
-    act = ED_id_action_ensure(bmain, (ID *)&ma->id);
+    act = blender::animrig::id_action_ensure(bmain, (ID *)&ma->id);
   }
   else {
     act = ma->adt->action;
@@ -1025,7 +1030,7 @@ void AnimationImporter::translate_Animations(
     }
 
     if (!ob->adt || !ob->adt->action) {
-      act = ED_id_action_ensure(bmain, (ID *)&ob->id);
+      act = blender::animrig::id_action_ensure(bmain, (ID *)&ob->id);
     }
     else {
       act = ob->adt->action;
@@ -1087,7 +1092,7 @@ void AnimationImporter::translate_Animations(
   if ((animType->light) != 0) {
     Light *lamp = (Light *)ob->data;
     if (!lamp->adt || !lamp->adt->action) {
-      act = ED_id_action_ensure(bmain, (ID *)&lamp->id);
+      act = blender::animrig::id_action_ensure(bmain, (ID *)&lamp->id);
     }
     else {
       act = lamp->adt->action;
@@ -1125,7 +1130,7 @@ void AnimationImporter::translate_Animations(
 
     Camera *cam = (Camera *)ob->data;
     if (!cam->adt || !cam->adt->action) {
-      act = ED_id_action_ensure(bmain, (ID *)&cam->id);
+      act = blender::animrig::id_action_ensure(bmain, (ID *)&cam->id);
     }
     else {
       act = cam->adt->action;
@@ -1181,7 +1186,7 @@ void AnimationImporter::translate_Animations(
 
     Material *ma = BKE_object_material_get(ob, 1);
     if (!ma->adt || !ma->adt->action) {
-      act = ED_id_action_ensure(bmain, (ID *)&ma->id);
+      act = blender::animrig::id_action_ensure(bmain, (ID *)&ma->id);
     }
     else {
       act = ma->adt->action;
@@ -1193,7 +1198,7 @@ void AnimationImporter::translate_Animations(
       for (uint j = 0; j < matBinds.getCount(); j++) {
         const COLLADAFW::UniqueId &matuid = matBinds[j].getReferencedMaterial();
         const COLLADAFW::Effect *ef = (COLLADAFW::Effect *)(FW_object_map[matuid]);
-        if (ef != nullptr) { /* can be NULL #28909. */
+        if (ef != nullptr) { /* can be nullptr #28909. */
           Material *ma = uid_material_map[matuid];
           if (!ma) {
             fprintf(stderr,
@@ -1336,7 +1341,7 @@ void AnimationImporter::add_bone_animation_sampled(Object *ob,
     calc_joint_parent_mat_rest(par, nullptr, root, node);
     mul_m4_m4m4(temp, par, matfra);
 
-    // evaluate_joint_world_transform_at_frame(temp, NULL, node, fra);
+    // evaluate_joint_world_transform_at_frame(temp, nullptr, node, fra);
 
     /* calc special matrix */
     mul_m4_series(mat, irest, temp, irest_dae, rest);
@@ -1362,13 +1367,13 @@ void AnimationImporter::add_bone_animation_sampled(Object *ob,
     }
   }
   Main *bmain = CTX_data_main(mContext);
-  ED_id_action_ensure(bmain, (ID *)&ob->id);
+  blender::animrig::id_action_ensure(bmain, (ID *)&ob->id);
 
   /* add curves */
   for (int i = 0; i < totcu; i++) {
     add_bone_fcurve(ob, node, newcu[i]);
 #if 0
-    fcurve_is_used(newcu[i]);  /* never added to unused */
+    fcurve_is_used(newcu[i]); /* never added to unused */
 #endif
   }
 
@@ -1449,7 +1454,7 @@ AnimationImporter::AnimMix *AnimationImporter::get_animation_type(
     for (uint j = 0; j < matBinds.getCount(); j++) {
       const COLLADAFW::UniqueId &matuid = matBinds[j].getReferencedMaterial();
       const COLLADAFW::Effect *ef = (COLLADAFW::Effect *)(FW_object_map[matuid]);
-      if (ef != nullptr) { /* can be NULL #28909. */
+      if (ef != nullptr) { /* can be nullptr #28909. */
         const COLLADAFW::CommonEffectPointerArray &commonEffects = ef->getCommonEffects();
         if (!commonEffects.empty()) {
           COLLADAFW::EffectCommon *efc = commonEffects[0];
@@ -1699,7 +1704,7 @@ Object *AnimationImporter::translate_animation_OLD(
       calc_joint_parent_mat_rest(par, nullptr, root, node);
       mul_m4_m4m4(temp, par, matfra);
 
-      /* evaluate_joint_world_transform_at_frame(temp, NULL, node, fra); */
+      // evaluate_joint_world_transform_at_frame(temp, nullptr, node, fra);
 
       /* calc special matrix */
       mul_m4_series(mat, irest, temp, irest_dae, rest);
@@ -1789,7 +1794,7 @@ Object *AnimationImporter::translate_animation_OLD(
 #endif
   }
   Main *bmain = CTX_data_main(mContext);
-  ED_id_action_ensure(bmain, (ID *)&ob->id);
+  blender::animrig::id_action_ensure(bmain, (ID *)&ob->id);
 
   ListBase *curves = &ob->adt->action->curves;
 
@@ -2093,7 +2098,7 @@ Object *AnimationImporter::get_joint_object(COLLADAFW::Node *root,
     mul_v3_fl(job->scale, 0.5f);
     DEG_id_tag_update(&job->id, ID_RECALC_TRANSFORM);
 
-    ED_id_action_ensure((ID *)&job->id);
+    blender::animrig::id_action_ensure((ID *)&job->id);
 
     job->rotmode = ROT_MODE_QUAT;
 
@@ -2102,12 +2107,12 @@ Object *AnimationImporter::get_joint_object(COLLADAFW::Node *root,
 
     if (par_job) {
       float temp[4][4], ipar[4][4];
-      invert_m4_m4(ipar, par_job->object_to_world);
+      invert_m4_m4(ipar, par_job->object_to_world().ptr());
       copy_m4_m4(temp, mat);
       mul_m4_m4m4(mat, ipar, temp);
     }
 
-    bc_decompose(mat, job->loc, NULL, job->quat, job->scale);
+    bc_decompose(mat, job->loc, nullptr, job->quat, job->scale);
 
     if (par_job) {
       job->parent = par_job;

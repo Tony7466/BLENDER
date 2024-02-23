@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,27 +11,25 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-#include "DNA_modifier_types.h"
 
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
-#include "BKE_multires.h"
-#include "BKE_subdiv.h"
-#include "BKE_subdiv_eval.h"
+#include "BKE_multires.hh"
+#include "BKE_subdiv.hh"
+#include "BKE_subdiv_eval.hh"
 #include "BKE_subdiv_foreach.hh"
 #include "BKE_subdiv_mesh.hh"
 
-#include "opensubdiv_converter_capi.h"
-#include "opensubdiv_evaluator_capi.h"
-#include "opensubdiv_topology_refiner_capi.h"
+#include "opensubdiv_converter_capi.hh"
+#include "opensubdiv_evaluator_capi.hh"
 
 #include "atomic_ops.h"
-#include "subdiv_converter.h"
+#include "subdiv_converter.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Local Structs
@@ -851,7 +849,7 @@ static void geometry_init_loose_information(MultiresReshapeSmoothContext *reshap
   reshape_smooth_context->loose_base_edges = loose_edges.is_loose_bits;
 
   int num_used_edges = 0;
-  for (const int edge : blender::IndexRange(base_mesh->totedge)) {
+  for (const int edge : blender::IndexRange(base_mesh->edges_num)) {
     if (loose_edges.count > 0 && loose_edges.is_loose_bits[edge]) {
       continue;
     }

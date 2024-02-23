@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,21 +6,24 @@
  * \ingroup ply
  */
 
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
-#include "BKE_report.h"
+#include "BKE_object.hh"
+#include "BKE_report.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memory_utils.hh"
+#include "BLI_string.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ply_data.hh"
 #include "ply_import.hh"
@@ -57,8 +60,9 @@ static Span<char> parse_word(Span<char> &str)
 
 static void skip_space(Span<char> &str)
 {
-  while (!str.is_empty() && str[0] <= ' ')
+  while (!str.is_empty() && str[0] <= ' ') {
     str = str.drop_front(1);
+  }
 }
 
 static PlyDataTypes type_from_string(Span<char> word)
@@ -143,7 +147,8 @@ const char *read_header(PlyReadBuffer &file, PlyHeader &r_header)
       break;
     }
     else if (line.is_empty() || (line.first() >= '0' && line.first() <= '9') ||
-             line.first() == '-') {
+             line.first() == '-')
+    {
       /* A value was found before we broke out of the loop. No end_header. */
       return "No end_header.";
     }
@@ -236,7 +241,7 @@ void importer_main(Main *bmain,
   rescale_m4(obmat4x4, scale_vec);
   BKE_object_apply_mat4(obj, obmat4x4, true, false);
 
-  DEG_id_tag_update(&lc->collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&lc->collection->id, ID_RECALC_SYNC_TO_EVAL);
   int flags = ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION |
               ID_RECALC_BASE_FLAGS;
   DEG_id_tag_update_ex(bmain, &obj->id, flags);

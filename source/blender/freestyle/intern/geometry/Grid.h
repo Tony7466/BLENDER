@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -218,7 +218,7 @@ class Grid {
   virtual Cell *getCell(const Vec3u &coord) = 0;
 
   /** returns the cell containing the point passed as argument.
-   *  If the cell is empty (contains no occluder),  NULL is returned:
+   *  If the cell is empty (contains no occluder), nullptr is returned:
    *    p
    *      The point for which we're looking the cell
    */
@@ -339,7 +339,7 @@ class Grid {
   /** Core of castRay and castInfiniteRay, find occluders along the given ray */
   inline void castRayInternal(GridVisitor &visitor)
   {
-    Cell *current_cell = NULL;
+    Cell *current_cell = nullptr;
     do {
       current_cell = getCell(_current_cell);
       if (current_cell) {
@@ -357,7 +357,7 @@ class Grid {
     } while ((!visitor.stop()) && (nextRayCell(_current_cell, _current_cell)));
   }
 
-  /** returns the  cell next to the cell passed as argument. */
+  /** Returns the cell next to the cell passed as argument. */
   bool nextRayCell(Vec3u &current_cell, Vec3u &next_cell);
 
   uint _timestamp;

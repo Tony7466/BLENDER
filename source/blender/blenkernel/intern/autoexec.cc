@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,7 +22,7 @@
 #  include "BLI_string.h"
 #endif
 
-#include "BKE_autoexec.h" /* own include */
+#include "BKE_autoexec.hh" /* own include */
 
 bool BKE_autoexec_match(const char *path)
 {

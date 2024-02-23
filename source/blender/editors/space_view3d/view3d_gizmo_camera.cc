@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,33 +6,31 @@
  * \ingroup spview3d
  */
 
-#include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_camera.h"
-#include "BKE_context.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_context.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 
 #include "DNA_camera_types.h"
 #include "DNA_object_types.h"
 
-#include "ED_armature.h"
-#include "ED_gizmo_library.h"
-#include "ED_screen.h"
+#include "ED_gizmo_library.hh"
+#include "ED_screen.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "view3d_intern.h" /* own include */
 
@@ -89,7 +87,7 @@ static void WIDGETGROUP_camera_setup(const bContext *C, wmGizmoGroup *gzgroup)
       MEM_callocN(sizeof(CameraWidgetGroup), __func__));
   gzgroup->customdata = cagzgroup;
 
-  negate_v3_v3(dir, ob->object_to_world[2]);
+  negate_v3_v3(dir, ob->object_to_world().ptr()[2]);
 
   /* dof distance */
   {
@@ -137,22 +135,21 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *ob = BKE_view_layer_active_object_get(view_layer);
   Camera *ca = static_cast<Camera *>(ob->data);
-  PointerRNA camera_ptr;
   float dir[3];
 
-  RNA_pointer_create(&ca->id, &RNA_Camera, ca, &camera_ptr);
+  PointerRNA camera_ptr = RNA_pointer_create(&ca->id, &RNA_Camera, ca);
 
-  negate_v3_v3(dir, ob->object_to_world[2]);
+  negate_v3_v3(dir, ob->object_to_world().ptr()[2]);
 
   if ((ca->flag & CAM_SHOWLIMITS) && (v3d->gizmo_show_camera & V3D_GIZMO_SHOW_CAMERA_DOF_DIST)) {
-    WM_gizmo_set_matrix_location(cagzgroup->dop_dist, ob->object_to_world[3]);
-    WM_gizmo_set_matrix_rotation_from_yz_axis(cagzgroup->dop_dist, ob->object_to_world[1], dir);
+    WM_gizmo_set_matrix_location(cagzgroup->dop_dist, ob->object_to_world().location());
+    WM_gizmo_set_matrix_rotation_from_yz_axis(
+        cagzgroup->dop_dist, ob->object_to_world().ptr()[1], dir);
     WM_gizmo_set_scale(cagzgroup->dop_dist, ca->drawsize);
     WM_gizmo_set_flag(cagzgroup->dop_dist, WM_GIZMO_HIDDEN, false);
 
     /* Need to set property here for undo. TODO: would prefer to do this in _init. */
-    PointerRNA camera_dof_ptr;
-    RNA_pointer_create(&ca->id, &RNA_CameraDOFSettings, &ca->dof, &camera_dof_ptr);
+    PointerRNA camera_dof_ptr = RNA_pointer_create(&ca->id, &RNA_CameraDOFSettings, &ca->dof);
     WM_gizmo_target_property_def_rna(
         cagzgroup->dop_dist, "offset", &camera_dof_ptr, "focus_distance", -1);
   }
@@ -187,17 +184,17 @@ static void WIDGETGROUP_camera_refresh(const bContext *C, wmGizmoGroup *gzgroup)
     aspect[1] = (sensor_fit == CAMERA_SENSOR_FIT_HOR) ? aspy / aspx : 1.0f;
 
     unit_m4(widget->matrix_basis);
-    WM_gizmo_set_matrix_location(widget, ob->object_to_world[3]);
-    WM_gizmo_set_matrix_rotation_from_yz_axis(widget, ob->object_to_world[1], dir);
+    WM_gizmo_set_matrix_location(widget, ob->object_to_world().location());
+    WM_gizmo_set_matrix_rotation_from_yz_axis(widget, ob->object_to_world().ptr()[1], dir);
 
     if (is_ortho) {
       scale_matrix = ca->ortho_scale * 0.5f;
     }
     else {
       const float ob_scale_inv[3] = {
-          1.0f / len_v3(ob->object_to_world[0]),
-          1.0f / len_v3(ob->object_to_world[1]),
-          1.0f / len_v3(ob->object_to_world[2]),
+          1.0f / len_v3(ob->object_to_world().ptr()[0]),
+          1.0f / len_v3(ob->object_to_world().ptr()[1]),
+          1.0f / len_v3(ob->object_to_world().ptr()[2]),
       };
       const float ob_scale_uniform_inv = (ob_scale_inv[0] + ob_scale_inv[1] + ob_scale_inv[2]) /
                                          3.0f;
@@ -275,8 +272,7 @@ static void WIDGETGROUP_camera_message_subscribe(const bContext *C,
         &rna_Camera_lens,
     };
 
-    PointerRNA idptr;
-    RNA_id_pointer_create(&ca->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&ca->id);
 
     for (int i = 0; i < ARRAY_SIZE(props); i++) {
       WM_msg_subscribe_rna(mbus, &idptr, props[i], &msg_sub_value_gz_tag_refresh, __func__);
@@ -366,7 +362,7 @@ static void gizmo_render_border_prop_matrix_set(const wmGizmo * /*gz*/,
   BLI_rctf_isect(&rect, border, border);
 
   if (viewgroup->is_camera) {
-    DEG_id_tag_update(&viewgroup->scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&viewgroup->scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 }
 

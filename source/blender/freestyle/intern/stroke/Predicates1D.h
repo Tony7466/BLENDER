@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -43,7 +43,7 @@ class UnaryPredicate1D {
   /** Default constructor. */
   UnaryPredicate1D()
   {
-    py_up1D = NULL;
+    py_up1D = nullptr;
   }
 
   /** Destructor. */
@@ -85,7 +85,7 @@ class BinaryPredicate1D {
   /** Default constructor. */
   BinaryPredicate1D()
   {
-    py_bp1D = NULL;
+    py_bp1D = nullptr;
   }
 
   /** Destructor. */
@@ -254,7 +254,8 @@ class ExternalContourUP1D : public UnaryPredicate1D {
       set<ViewShape *> occluded;
       Functions1D::getOccludeeF1D(inter, occluded);
       for (set<ViewShape *>::iterator os = occluded.begin(), osend = occluded.end(); os != osend;
-           ++os) {
+           ++os)
+      {
         if ((*os) == 0) {
           result = true;
           return 0;
@@ -507,7 +508,8 @@ class SameShapeIdBP1D : public BinaryPredicate1D {
     for (set<ViewShape *>::iterator s = shapes1.begin(), send = shapes1.end(); s != send; ++s) {
       Id current = (*s)->getId();
       for (set<ViewShape *>::iterator s2 = shapes2.begin(), s2end = shapes2.end(); s2 != s2end;
-           ++s2) {
+           ++s2)
+      {
         if ((*s2)->getId() == current) {
           result = true;
           return 0;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung. All rights reserved.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung. All rights reserved.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,7 +16,6 @@ extern "C" {
 
 struct AnimData;
 struct BlendDataReader;
-struct BlendExpander;
 struct BlendLibReader;
 struct BlendWriter;
 struct ID;
@@ -90,14 +89,14 @@ void BKE_animdata_foreach_id(struct AnimData *adt, struct LibraryForeachIDData *
 /**
  * Make a copy of the given AnimData - to be used when copying data-blocks.
  * \param flag: Control ID pointers management,
- * see LIB_ID_CREATE_.../LIB_ID_COPY_... flags in BKE_lib_id.h
+ * see LIB_ID_CREATE_.../LIB_ID_COPY_... flags in BKE_lib_id.hh
  * \return The copied animdata.
  */
 struct AnimData *BKE_animdata_copy(struct Main *bmain, struct AnimData *adt, int flag);
 
 /**
  * \param flag: Control ID pointers management,
- * see LIB_ID_CREATE_.../LIB_ID_COPY_... flags in BKE_lib_id.h
+ * see LIB_ID_CREATE_.../LIB_ID_COPY_... flags in BKE_lib_id.hh
  * \return true is successfully copied.
  */
 bool BKE_animdata_copy_id(struct Main *bmain, struct ID *id_to, struct ID *id_from, int flag);
@@ -130,12 +129,8 @@ void BKE_animdata_merge_copy(struct Main *bmain,
                              eAnimData_MergeCopy_Modes action_mode,
                              bool fix_drivers);
 
-void BKE_animdata_blend_write(struct BlendWriter *writer, struct AnimData *adt);
-void BKE_animdata_blend_read_data(struct BlendDataReader *reader, struct AnimData *adt);
-void BKE_animdata_blend_read_lib(struct BlendLibReader *reader,
-                                 struct ID *id,
-                                 struct AnimData *adt);
-void BKE_animdata_blend_read_expand(struct BlendExpander *expander, struct AnimData *adt);
+void BKE_animdata_blend_write(struct BlendWriter *writer, struct ID *id);
+void BKE_animdata_blend_read_data(struct BlendDataReader *reader, struct ID *id);
 
 #ifdef __cplusplus
 }

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,29 +15,31 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_camera.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_object.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_lib_id.hh"
+#include "BKE_object.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
+#include "BKE_screen.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "ED_screen.h"
-#include "ED_transform.h"
-#include "ED_transform_snap_object_context.h"
+#include "ED_screen.hh"
+#include "ED_transform.hh"
+#include "ED_transform_snap_object_context.hh"
 
 #include "view3d_intern.h" /* own include */
 
@@ -124,7 +126,7 @@ static int view_lock_to_active_exec(bContext *C, wmOperator * /*op*/)
       if (obact->mode & OB_MODE_POSE) {
         Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
         Object *obact_eval = DEG_get_evaluated_object(depsgraph, obact);
-        bPoseChannel *pcham_act = BKE_pose_channel_active_if_layer_visible(obact_eval);
+        bPoseChannel *pcham_act = BKE_pose_channel_active_if_bonecoll_visible(obact_eval);
         if (pcham_act) {
           STRNCPY(v3d->ob_center_bone, pcham_act->name);
         }
@@ -319,7 +321,7 @@ static int render_border_exec(bContext *C, wmOperator *op)
   }
 
   if (rv3d->persp == RV3D_CAMOB) {
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
   return OPERATOR_FINISHED;
 }
@@ -337,7 +339,7 @@ void VIEW3D_OT_render_border(wmOperatorType *ot)
   ot->modal = WM_gesture_box_modal;
   ot->cancel = WM_gesture_box_cancel;
 
-  ot->poll = ED_operator_view3d_active;
+  ot->poll = ED_operator_region_view3d_active;
 
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
@@ -379,7 +381,7 @@ static int clear_render_border_exec(bContext *C, wmOperator * /*op*/)
   border->ymax = 1.0f;
 
   if (rv3d->persp == RV3D_CAMOB) {
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
   return OPERATOR_FINISHED;
 }
@@ -583,7 +585,7 @@ static int background_image_add_invoke(bContext *C, wmOperator *op, const wmEven
   cam->flag |= CAM_SHOW_BG_IMAGE;
 
   WM_event_add_notifier(C, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, cam);
-  DEG_id_tag_update(&cam->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&cam->id, ID_RECALC_SYNC_TO_EVAL);
 
   return OPERATOR_FINISHED;
 }
@@ -635,7 +637,8 @@ static int background_image_remove_exec(bContext *C, wmOperator *op)
 
   if (bgpic_rem) {
     if (ID_IS_OVERRIDE_LIBRARY(cam) &&
-        (bgpic_rem->flag & CAM_BGIMG_FLAG_OVERRIDE_LIBRARY_LOCAL) == 0) {
+        (bgpic_rem->flag & CAM_BGIMG_FLAG_OVERRIDE_LIBRARY_LOCAL) == 0)
+    {
       BKE_reportf(op->reports,
                   RPT_WARNING,
                   "Cannot remove background image %d from camera '%s', as it is from the linked "
@@ -651,7 +654,7 @@ static int background_image_remove_exec(bContext *C, wmOperator *op)
     BKE_camera_background_image_remove(cam, bgpic_rem);
 
     WM_event_add_notifier(C, NC_CAMERA | ND_DRAW_RENDER_VIEWPORT, cam);
-    DEG_id_tag_update(&cam->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&cam->id, ID_RECALC_SYNC_TO_EVAL);
 
     return OPERATOR_FINISHED;
   }
@@ -688,7 +691,7 @@ static int drop_world_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
 
-  World *world = (World *)WM_operator_properties_id_lookup_from_name_or_session_uuid(
+  World *world = (World *)WM_operator_properties_id_lookup_from_name_or_session_uid(
       bmain, op->ptr, ID_WO);
   if (world == nullptr) {
     return OPERATOR_CANCELLED;
@@ -698,7 +701,7 @@ static int drop_world_exec(bContext *C, wmOperator *op)
   id_us_plus(&world->id);
   scene->world = world;
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
 
   WM_event_add_notifier(C, NC_SCENE | ND_WORLD, scene);
@@ -1049,12 +1052,12 @@ void ED_view3d_cursor3d_update(bContext *C,
 
   {
     wmMsgBus *mbus = CTX_wm_message_bus(C);
-    wmMsgParams_RNA msg_key_params = {{0}};
-    RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor, &msg_key_params.ptr);
+    wmMsgParams_RNA msg_key_params = {{nullptr}};
+    msg_key_params.ptr = RNA_pointer_create(&scene->id, &RNA_View3DCursor, &scene->cursor);
     WM_msg_publish_rna_params(mbus, &msg_key_params);
   }
 
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 static int view3d_cursor3d_invoke(bContext *C, wmOperator *op, const wmEvent *event)

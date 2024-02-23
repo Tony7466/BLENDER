@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,26 +16,24 @@
 #include <Python.h>
 
 #include "BLI_string.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
-#include "BKE_bpath.h"
-#include "BKE_global.h" /* XXX, G_MAIN only */
+#include "BKE_bpath.hh"
+#include "BKE_global.hh" /* XXX, G_MAIN only */
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
-#include "RNA_types.h"
 
 #include "GPU_state.h"
 
-#include "WM_api.h" /* For #WM_ghost_backend */
+#include "WM_api.hh" /* For #WM_ghost_backend */
 
 #include "bpy.h"
 #include "bpy_app.h"
-#include "bpy_capi_utils.h"
 #include "bpy_driver.h"
 #include "bpy_library.h"
 #include "bpy_operator.h"
@@ -43,12 +41,12 @@
 #include "bpy_rna.h"
 #include "bpy_rna_data.h"
 #include "bpy_rna_gizmo.h"
-#include "bpy_rna_id_collection.h"
 #include "bpy_rna_types_capi.h"
 #include "bpy_utils_previews.h"
 #include "bpy_utils_units.h"
 
 #include "../generic/py_capi_utils.h"
+#include "../generic/python_compat.h"
 #include "../generic/python_utildefines.h"
 
 /* external util modules */
@@ -62,25 +60,26 @@
 
 PyObject *bpy_package_py = nullptr;
 
-PyDoc_STRVAR(bpy_script_paths_doc,
-             ".. function:: script_paths()\n"
-             "\n"
-             "   Return 2 paths to blender scripts directories.\n"
-             "\n"
-             "   :return: (system, user) strings will be empty when not found.\n"
-             "   :rtype: tuple of strings\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_script_paths_doc,
+    ".. function:: script_paths()\n"
+    "\n"
+    "   Return 2 paths to blender scripts directories.\n"
+    "\n"
+    "   :return: (system, user) strings will be empty when not found.\n"
+    "   :rtype: tuple of strings\n");
 static PyObject *bpy_script_paths(PyObject * /*self*/)
 {
   PyObject *ret = PyTuple_New(2);
   PyObject *item;
-  const char *path;
 
-  path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS, nullptr);
-  item = PyC_UnicodeFromBytes(path ? path : "");
+  std::optional<std::string> path = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS, nullptr);
+  item = PyC_UnicodeFromStdStr(path.value_or(""));
   BLI_assert(item != nullptr);
   PyTuple_SET_ITEM(ret, 0, item);
   path = BKE_appdir_folder_id(BLENDER_USER_SCRIPTS, nullptr);
-  item = PyC_UnicodeFromBytes(path ? path : "");
+  item = PyC_UnicodeFromStdStr(path.value_or(""));
   BLI_assert(item != nullptr);
   PyTuple_SET_ITEM(ret, 1, item);
 
@@ -97,19 +96,21 @@ static bool bpy_blend_foreach_path_cb(BPathForeachPathData *bpath_data,
   return false; /* Never edits the path. */
 }
 
-PyDoc_STRVAR(bpy_blend_paths_doc,
-             ".. function:: blend_paths(absolute=False, packed=False, local=False)\n"
-             "\n"
-             "   Returns a list of paths to external files referenced by the loaded .blend file.\n"
-             "\n"
-             "   :arg absolute: When true the paths returned are made absolute.\n"
-             "   :type absolute: boolean\n"
-             "   :arg packed: When true skip file paths for packed data.\n"
-             "   :type packed: boolean\n"
-             "   :arg local: When true skip linked library paths.\n"
-             "   :type local: boolean\n"
-             "   :return: path list.\n"
-             "   :rtype: list of strings\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_blend_paths_doc,
+    ".. function:: blend_paths(absolute=False, packed=False, local=False)\n"
+    "\n"
+    "   Returns a list of paths to external files referenced by the loaded .blend file.\n"
+    "\n"
+    "   :arg absolute: When true the paths returned are made absolute.\n"
+    "   :type absolute: boolean\n"
+    "   :arg packed: When true skip file paths for packed data.\n"
+    "   :type packed: boolean\n"
+    "   :arg local: When true skip linked library paths.\n"
+    "   :type local: boolean\n"
+    "   :return: path list.\n"
+    "   :rtype: list of strings\n");
 static PyObject *bpy_blend_paths(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   eBPathForeachFlag flag = eBPathForeachFlag(0);
@@ -121,13 +122,14 @@ static PyObject *bpy_blend_paths(PyObject * /*self*/, PyObject *args, PyObject *
 
   static const char *_keywords[] = {"absolute", "packed", "local", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "|$" /* Optional keyword only arguments. */
       "O&" /* `absolute` */
       "O&" /* `packed` */
       "O&" /* `local` */
       ":blend_paths",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kw,
@@ -164,18 +166,20 @@ static PyObject *bpy_blend_paths(PyObject * /*self*/, PyObject *args, PyObject *
   return list;
 }
 
-PyDoc_STRVAR(bpy_flip_name_doc,
-             ".. function:: flip_name(name, strip_digits=False)\n"
-             "\n"
-             "   Flip a name between left/right sides, useful for \n"
-             "   mirroring bone names.\n"
-             "\n"
-             "   :arg name: Bone name to flip.\n"
-             "   :type name: string\n"
-             "   :arg strip_digits: Whether to remove ``.###`` suffix.\n"
-             "   :type strip_digits: bool\n"
-             "   :return: The flipped name.\n"
-             "   :rtype: string\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_flip_name_doc,
+    ".. function:: flip_name(name, strip_digits=False)\n"
+    "\n"
+    "   Flip a name between left/right sides, useful for \n"
+    "   mirroring bone names.\n"
+    "\n"
+    "   :arg name: Bone name to flip.\n"
+    "   :type name: string\n"
+    "   :arg strip_digits: Whether to remove ``.###`` suffix.\n"
+    "   :type strip_digits: bool\n"
+    "   :return: The flipped name.\n"
+    "   :rtype: string\n");
 static PyObject *bpy_flip_name(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   const char *name_src = nullptr;
@@ -184,12 +188,13 @@ static PyObject *bpy_flip_name(PyObject * /*self*/, PyObject *args, PyObject *kw
 
   static const char *_keywords[] = {"", "strip_digits", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "s#" /* `name` */
       "|$" /* Optional, keyword only arguments. */
       "O&" /* `strip_digits` */
       ":flip_name",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, &name_src, &name_src_len, PyC_ParseBool, &strip_digits))
@@ -210,7 +215,7 @@ static PyObject *bpy_flip_name(PyObject * /*self*/, PyObject *args, PyObject *kw
   return result;
 }
 
-// PyDoc_STRVAR(bpy_user_resource_doc[] = /* now in bpy/utils.py */
+/* `bpy_user_resource_doc`, Now in `bpy/utils.py`. */
 static PyObject *bpy_user_resource(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   const PyC_StringEnumItems type_items[] = {
@@ -221,40 +226,49 @@ static PyObject *bpy_user_resource(PyObject * /*self*/, PyObject *args, PyObject
       {0, nullptr},
   };
   PyC_StringEnum type = {type_items};
-
-  const char *subdir = nullptr;
-
-  const char *path;
+  PyC_UnicodeAsBytesAndSize_Data subdir_data = {nullptr};
 
   static const char *_keywords[] = {"type", "path", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `type` */
       "|$" /* Optional keyword only arguments. */
-      "s"  /* `path` */
+      "O&" /* `path` */
       ":user_resource",
       _keywords,
-      0,
+      nullptr,
   };
-  if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, PyC_ParseStringEnum, &type, &subdir)) {
+  if (!_PyArg_ParseTupleAndKeywordsFast(args,
+                                        kw,
+                                        &_parser,
+                                        PyC_ParseStringEnum,
+                                        &type,
+                                        PyC_ParseUnicodeAsBytesAndSize,
+                                        &subdir_data))
+  {
     return nullptr;
   }
 
   /* same logic as BKE_appdir_folder_id_create(),
    * but best leave it up to the script author to create */
-  path = BKE_appdir_folder_id_user_notest(type.value_found, subdir);
+  const std::optional<std::string> path = BKE_appdir_folder_id_user_notest(type.value_found,
+                                                                           subdir_data.value);
+  Py_XDECREF(subdir_data.value_coerce);
 
-  return PyC_UnicodeFromBytes(path ? path : "");
+  return PyC_UnicodeFromStdStr(path.value_or(""));
 }
 
-PyDoc_STRVAR(bpy_system_resource_doc,
-             ".. function:: system_resource(type, path=\"\")\n"
-             "\n"
-             "   Return a system resource path.\n"
-             "\n"
-             "   :arg type: string in ['DATAFILES', 'SCRIPTS', 'PYTHON'].\n"
-             "   :type type: string\n"
-             "   :arg path: Optional subdirectory.\n"
-             "   :type path: string\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_system_resource_doc,
+    ".. function:: system_resource(type, path=\"\")\n"
+    "\n"
+    "   Return a system resource path.\n"
+    "\n"
+    "   :arg type: string in ['DATAFILES', 'SCRIPTS', 'PYTHON'].\n"
+    "   :type type: string\n"
+    "   :arg path: Optional subdirectory.\n"
+    "   :type path: string or bytes\n");
 static PyObject *bpy_system_resource(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   const PyC_StringEnumItems type_items[] = {
@@ -265,29 +279,37 @@ static PyObject *bpy_system_resource(PyObject * /*self*/, PyObject *args, PyObje
   };
   PyC_StringEnum type = {type_items};
 
-  const char *subdir = nullptr;
-
-  const char *path;
+  PyC_UnicodeAsBytesAndSize_Data subdir_data = {nullptr};
 
   static const char *_keywords[] = {"type", "path", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `type` */
       "|$" /* Optional keyword only arguments. */
-      "s"  /* `path` */
+      "O&" /* `path` */
       ":system_resource",
       _keywords,
-      0,
+      nullptr,
   };
-  if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, PyC_ParseStringEnum, &type, &subdir)) {
+  if (!_PyArg_ParseTupleAndKeywordsFast(args,
+                                        kw,
+                                        &_parser,
+                                        PyC_ParseStringEnum,
+                                        &type,
+                                        PyC_ParseUnicodeAsBytesAndSize,
+                                        &subdir_data))
+  {
     return nullptr;
   }
 
-  path = BKE_appdir_folder_id(type.value_found, subdir);
+  std::optional<std::string> path = BKE_appdir_folder_id(type.value_found, subdir_data.value);
+  Py_XDECREF(subdir_data.value_coerce);
 
-  return PyC_UnicodeFromBytes(path ? path : "");
+  return PyC_UnicodeFromStdStr(path.value_or(""));
 }
 
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_resource_path_doc,
     ".. function:: resource_path(type, major=bpy.app.version[0], minor=bpy.app.version[1])\n"
     "\n"
@@ -312,17 +334,17 @@ static PyObject *bpy_resource_path(PyObject * /*self*/, PyObject *args, PyObject
   PyC_StringEnum type = {type_items};
 
   int major = BLENDER_VERSION / 100, minor = BLENDER_VERSION % 100;
-  const char *path;
 
   static const char *_keywords[] = {"type", "major", "minor", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O&" /* `type` */
       "|$" /* Optional keyword only arguments. */
       "i"  /* `major` */
       "i"  /* `minor` */
       ":resource_path",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(
           args, kw, &_parser, PyC_ParseStringEnum, &type, &major, &minor))
@@ -330,25 +352,28 @@ static PyObject *bpy_resource_path(PyObject * /*self*/, PyObject *args, PyObject
     return nullptr;
   }
 
-  path = BKE_appdir_resource_path_id_with_version(type.value_found, false, (major * 100) + minor);
+  const std::optional<std::string> path = BKE_appdir_resource_path_id_with_version(
+      type.value_found, false, (major * 100) + minor);
 
-  return PyC_UnicodeFromBytes(path ? path : "");
+  return PyC_UnicodeFromStdStr(path.value_or(""));
 }
 
 /* This is only exposed for tests, see: `tests/python/bl_pyapi_bpy_driver_secure_eval.py`. */
-PyDoc_STRVAR(bpy_driver_secure_code_test_doc,
-             ".. function:: _driver_secure_code_test(code)\n"
-             "\n"
-             "   Test if the script should be considered trusted.\n"
-             "\n"
-             "   :arg code: The code to test.\n"
-             "   :type code: code\n"
-             "   :arg namespace: The namespace of values which are allowed.\n"
-             "   :type namespace: dict\n"
-             "   :arg verbose: Print the reason for considering insecure to the ``stderr``.\n"
-             "   :type verbose: bool\n"
-             "   :return: True when the script is considered trusted.\n"
-             "   :rtype: bool\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_driver_secure_code_test_doc,
+    ".. function:: _driver_secure_code_test(code)\n"
+    "\n"
+    "   Test if the script should be considered trusted.\n"
+    "\n"
+    "   :arg code: The code to test.\n"
+    "   :type code: code\n"
+    "   :arg namespace: The namespace of values which are allowed.\n"
+    "   :type namespace: dict\n"
+    "   :arg verbose: Print the reason for considering insecure to the ``stderr``.\n"
+    "   :type verbose: bool\n"
+    "   :return: True when the script is considered trusted.\n"
+    "   :rtype: bool\n");
 static PyObject *bpy_driver_secure_code_test(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   PyObject *py_code;
@@ -356,13 +381,14 @@ static PyObject *bpy_driver_secure_code_test(PyObject * /*self*/, PyObject *args
   const bool verbose = false;
   static const char *_keywords[] = {"code", "namespace", "verbose", nullptr};
   static _PyArg_Parser _parser = {
+      PY_ARG_PARSER_HEAD_COMPAT()
       "O!" /* `expression` */
       "|$" /* Optional keyword only arguments. */
       "O!" /* `namespace` */
       "O&" /* `verbose` */
       ":driver_secure_code_test",
       _keywords,
-      0,
+      nullptr,
   };
   if (!_PyArg_ParseTupleAndKeywordsFast(args,
                                         kw,
@@ -379,15 +405,17 @@ static PyObject *bpy_driver_secure_code_test(PyObject * /*self*/, PyObject *args
   return PyBool_FromLong(BPY_driver_secure_bytecode_test(py_code, py_namespace, verbose));
 }
 
-PyDoc_STRVAR(bpy_escape_identifier_doc,
-             ".. function:: escape_identifier(string)\n"
-             "\n"
-             "   Simple string escaping function used for animation paths.\n"
-             "\n"
-             "   :arg string: text\n"
-             "   :type string: string\n"
-             "   :return: The escaped string.\n"
-             "   :rtype: string\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_escape_identifier_doc,
+    ".. function:: escape_identifier(string)\n"
+    "\n"
+    "   Simple string escaping function used for animation paths.\n"
+    "\n"
+    "   :arg string: text\n"
+    "   :type string: string\n"
+    "   :return: The escaped string.\n"
+    "   :rtype: string\n");
 static PyObject *bpy_escape_identifier(PyObject * /*self*/, PyObject *value)
 {
   Py_ssize_t value_str_len;
@@ -416,16 +444,18 @@ static PyObject *bpy_escape_identifier(PyObject * /*self*/, PyObject *value)
   return value_escape;
 }
 
-PyDoc_STRVAR(bpy_unescape_identifier_doc,
-             ".. function:: unescape_identifier(string)\n"
-             "\n"
-             "   Simple string un-escape function used for animation paths.\n"
-             "   This performs the reverse of `escape_identifier`.\n"
-             "\n"
-             "   :arg string: text\n"
-             "   :type string: string\n"
-             "   :return: The un-escaped string.\n"
-             "   :rtype: string\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_unescape_identifier_doc,
+    ".. function:: unescape_identifier(string)\n"
+    "\n"
+    "   Simple string un-escape function used for animation paths.\n"
+    "   This performs the reverse of `escape_identifier`.\n"
+    "\n"
+    "   :arg string: text\n"
+    "   :type string: string\n"
+    "   :return: The un-escaped string.\n"
+    "   :rtype: string\n");
 static PyObject *bpy_unescape_identifier(PyObject * /*self*/, PyObject *value)
 {
   Py_ssize_t value_str_len;
@@ -468,6 +498,7 @@ extern "C" const char *view3d_context_dir[];
  * \note only exposed for generating documentation, see: `doc/python_api/sphinx_doc_gen.py`.
  */
 PyDoc_STRVAR(
+    /* Wrap. */
     bpy_context_members_doc,
     ".. function:: context_members()\n"
     "\n"
@@ -514,12 +545,14 @@ static PyObject *bpy_context_members(PyObject * /*self*/)
 /**
  * \note only exposed for generating documentation, see: `doc/python_api/sphinx_doc_gen.py`.
  */
-PyDoc_STRVAR(bpy_rna_enum_items_static_doc,
-             ".. function:: rna_enum_items_static()\n"
-             "\n"
-             "   :return: A dict where the key the name of the enum, the value is a tuple of "
-             ":class:`bpy.types.EnumPropertyItem`.\n"
-             "   :rtype: dict of \n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_rna_enum_items_static_doc,
+    ".. function:: rna_enum_items_static()\n"
+    "\n"
+    "   :return: A dict where the key the name of the enum, the value is a tuple of "
+    ":class:`bpy.types.EnumPropertyItem`.\n"
+    "   :rtype: dict of \n");
 static PyObject *bpy_rna_enum_items_static(PyObject * /*self*/)
 {
 #define DEF_ENUM(id) {STRINGIFY(id), id},
@@ -527,7 +560,7 @@ static PyObject *bpy_rna_enum_items_static(PyObject * /*self*/)
     const char *id;
     const EnumPropertyItem *items;
   } enum_info[] = {
-#include "RNA_enum_items.h"
+#include "RNA_enum_items.hh"
   };
   PyObject *result = _PyDict_NewPresized(ARRAY_SIZE(enum_info));
   for (int i = 0; i < ARRAY_SIZE(enum_info); i++) {
@@ -536,8 +569,8 @@ static PyObject *bpy_rna_enum_items_static(PyObject * /*self*/)
     const int items_count = RNA_enum_items_count(items);
     PyObject *value = PyTuple_New(items_count);
     for (int item_index = 0; item_index < items_count; item_index++) {
-      PointerRNA ptr;
-      RNA_pointer_create(nullptr, &RNA_EnumPropertyItem, (void *)&items[item_index], &ptr);
+      PointerRNA ptr = RNA_pointer_create(
+          nullptr, &RNA_EnumPropertyItem, (void *)&items[item_index]);
       PyTuple_SET_ITEM(value, item_index, pyrna_struct_CreatePyObject(&ptr));
     }
     PyDict_SetItemString(result, enum_info[i].id, value);
@@ -547,11 +580,13 @@ static PyObject *bpy_rna_enum_items_static(PyObject * /*self*/)
 }
 
 /* This is only exposed for (Unix/Linux), see: #GHOST_ISystem::getSystemBackend for details. */
-PyDoc_STRVAR(bpy_ghost_backend_doc,
-             ".. function:: _ghost_backend()\n"
-             "\n"
-             "   :return: An identifier for the GHOST back-end.\n"
-             "   :rtype: string\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_ghost_backend_doc,
+    ".. function:: _ghost_backend()\n"
+    "\n"
+    "   :return: An identifier for the GHOST back-end.\n"
+    "   :rtype: string\n");
 static PyObject *bpy_ghost_backend(PyObject * /*self*/)
 {
   return PyUnicode_FromString(WM_ghost_backend());
@@ -622,15 +657,15 @@ static PyObject *bpy_import_test(const char *modname)
 
 void BPy_init_modules(bContext *C)
 {
-  PointerRNA ctx_ptr;
   PyObject *mod;
 
   /* Needs to be first since this dir is needed for future modules */
-  const char *const modpath = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS, "modules");
-  if (modpath) {
+  const std::optional<std::string> modpath = BKE_appdir_folder_id(BLENDER_SYSTEM_SCRIPTS,
+                                                                  "modules");
+  if (modpath.has_value()) {
     // printf("bpy: found module path '%s'.\n", modpath);
     PyObject *sys_path = PySys_GetObject("path"); /* borrow */
-    PyObject *py_modpath = PyUnicode_FromString(modpath);
+    PyObject *py_modpath = PyC_UnicodeFromStdStr(modpath.value());
     PyList_Insert(sys_path, 0, py_modpath); /* add first */
     Py_DECREF(py_modpath);
   }
@@ -671,7 +706,7 @@ void BPy_init_modules(bContext *C)
   PyModule_AddObject(mod, "_utils_previews", BPY_utils_previews_module());
   PyModule_AddObject(mod, "msgbus", BPY_msgbus_module());
 
-  RNA_pointer_create(nullptr, &RNA_Context, C, &ctx_ptr);
+  PointerRNA ctx_ptr = RNA_pointer_create(nullptr, &RNA_Context, C);
   bpy_context_module = (BPy_StructRNA *)pyrna_struct_CreatePyObject(&ctx_ptr);
   /* odd that this is needed, 1 ref on creation and another for the module
    * but without we get a crash on exit */
@@ -689,7 +724,7 @@ void BPy_init_modules(bContext *C)
     PyModule_AddObject(mod, m->ml_name, (PyObject *)PyCFunction_New(m, nullptr));
   }
 
-  /* Register functions (`bpy_rna.c`). */
+  /* Register functions (`bpy_rna.cc`). */
   PyModule_AddObject(mod,
                      meth_bpy_register_class.ml_name,
                      (PyObject *)PyCFunction_New(&meth_bpy_register_class, nullptr));

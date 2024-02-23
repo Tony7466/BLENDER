@@ -4,7 +4,7 @@
  *
  * Author: Sergey Sharybin. */
 
-#include "opensubdiv_topology_refiner_capi.h"
+#include "opensubdiv_topology_refiner_capi.hh"
 
 #include "MEM_guardedalloc.h"
 #include "internal/base/type_convert.h"
@@ -126,9 +126,7 @@ int getNumFacePtexFaces(const OpenSubdiv_TopologyRefiner *topology_refiner, cons
   if (num_face_vertices == 4) {
     return 1;
   }
-  else {
-    return num_face_vertices;
-  }
+  return num_face_vertices;
 }
 
 int getNumPtexFaces(const OpenSubdiv_TopologyRefiner *topology_refiner)

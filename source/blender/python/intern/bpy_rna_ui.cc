@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,17 +14,17 @@
 
 #include "../generic/py_capi_utils.h"
 
-#include "UI_interface.h"
-
-#include "RNA_types.h"
+#include "UI_interface.hh"
 
 #include "bpy_rna.h"
-#include "bpy_rna_ui.h"
+#include "bpy_rna_ui.h" /* Declare #BPY_rna_uilayout_introspect_method_def. */
 
-PyDoc_STRVAR(bpy_rna_uilayout_introspect_doc,
-             ".. method:: introspect()\n"
-             "\n"
-             "   Return a dictionary containing a textual representation of the UI layout.\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    bpy_rna_uilayout_introspect_doc,
+    ".. method:: introspect()\n"
+    "\n"
+    "   Return a dictionary containing a textual representation of the UI layout.\n");
 static PyObject *bpy_rna_uilayout_introspect(PyObject *self)
 {
   BPy_StructRNA *pyrna = (BPy_StructRNA *)self;

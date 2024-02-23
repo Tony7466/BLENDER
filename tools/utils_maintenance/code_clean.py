@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -183,6 +183,81 @@ def text_matching_bracket_backward(
     return -1
 
 
+def text_prev_bol(data: str, pos: int, limit: int) -> int:
+    if pos == 0:
+        return pos
+    # Already at the bounds.
+    if data[pos - 1] == "\n":
+        return pos
+    pos_next = data.rfind("\n", limit, pos)
+    if pos_next == -1:
+        return limit
+    # We don't want to include the newline.
+    return pos_next + 1
+
+
+def text_next_eol(data: str, pos: int, limit: int, step_over: bool) -> int:
+    """
+    Extend ``pos`` to just before the next EOL, otherwise EOF.
+    As this is intended for use as a range, ``data[pos]``
+    will either be ``\n`` or equal to out of range (equal to ``len(data)``).
+    """
+    if pos + 1 >= len(data):
+        return pos
+    # Already at the bounds.
+    if data[pos] == "\n":
+        return pos + (1 if step_over else 0)
+    pos_next = data.find("\n", pos, limit)
+    if pos_next == -1:
+        return limit
+    return pos_next + (1 if step_over else 0)
+
+
+def text_prev_eol_nonblank(data: str, pos: int, limit: int) -> int:
+    """
+    Return the character immediately before the previous lines new-line,
+    stepping backwards over any trailing tab or space characters.
+    """
+    if pos == 0:
+        return pos
+    # Already at the bounds.
+    pos_next = data.rfind("\n", limit, pos)
+    if pos_next == -1:
+        return limit
+    # Step over the newline.
+    pos_next -= 1
+    if pos_next <= limit:
+        return pos_next
+    while pos_next > limit and data[pos_next] in " \t":
+        pos_next -= 1
+    return pos_next
+
+
+# -----------------------------------------------------------------------------
+# General C/C++ Source Code Checks
+
+RE_DEFINE = re.compile(r"\s*#\s*define\b")
+
+
+def text_cxx_in_macro_definition(data: str, pos: int) -> bool:
+    """
+    Return true when ``pos`` is inside a macro (including multi-line macros).
+    """
+    pos_bol = text_prev_bol(data, pos, 0)
+    pos_eol = text_next_eol(data, pos, len(data), False)
+    if RE_DEFINE.match(data[pos_bol:pos_eol]):
+        return True
+    while (pos_eol_prev := text_prev_eol_nonblank(data, pos_bol, 0)) != pos_bol:
+        if data[pos_eol_prev] != "\\":
+            break
+        pos_bol = text_prev_bol(data, pos_eol_prev + 1, 0)
+        # Otherwise keep checking if this is part of a macro.
+        if RE_DEFINE.match(data[pos_bol:pos_eol_prev]):
+            return True
+
+    return False
+
+
 # -----------------------------------------------------------------------------
 # Execution Wrappers
 
@@ -252,7 +327,7 @@ def process_commands(cmake_dir: str, data: Sequence[str]) -> Optional[ProcessedC
         return None
 
     # Check for unsupported configurations.
-    for arg in ("WITH_UNITY_BUILD", "WITH_COMPILER_CCACHE"):
+    for arg in ("WITH_UNITY_BUILD", "WITH_COMPILER_CCACHE", "WITH_COMPILER_PRECOMPILED_HEADERS"):
         if cmake_cache_var_is_true(cmake_cache_var(cmake_dir, arg)):
             sys.stderr.write("The option '%s' must be disabled for proper functionality\n" % arg)
             return None
@@ -357,10 +432,16 @@ class EditGenerator:
 
     # Each subclass must also a default boolean: `is_default`.
     # When false, a detailed explanation must be included for why.
+    #
+    # Declare here to quiet `mypy` warning, `__init_subclass__` ensures this value is never used.
+    # This is done so the creator of edit is forced to make a decision on the reliability of the edit
+    # and document why it might need manual checking.
+    is_default = False
 
     @classmethod
     def __init_subclass__(cls) -> None:
-        if not isinstance(getattr(cls, "is_default", None), bool):
+        # Ensure the sub-class declares this.
+        if (not isinstance(getattr(cls, "is_default", None), bool)) or ("is_default" not in cls.__dict__):
             raise Exception("Class %r missing \"is_default\" boolean!" % cls)
         if getattr(cls, "edit_list_from_file") is EditGenerator.edit_list_from_file:
             raise Exception("Class %r missing \"edit_list_from_file\" callback!" % cls)
@@ -433,7 +514,7 @@ class edit_generators:
         Replace:
           float abc[3] = {0, 1, 2};
         With:
-          const float abc[3] = {0, 1, 2};
+          `const float abc[3] = {0, 1, 2};`
 
         Replace:
           float abc[3]
@@ -995,6 +1076,41 @@ class edit_generators:
 
             return edits
 
+    class use_std_min_max(EditGenerator):
+        """
+        Use `std::min` & `std::max` instead of `MIN2`, `MAX2` macros:
+
+        Replace:
+          MAX2(a, b)
+        With:
+          std::max(a, b)
+        """
+        is_default = True
+
+        @staticmethod
+        def edit_list_from_file(source: str, data: str, _shared_edit_data: Any) -> List[Edit]:
+            edits: List[Edit] = []
+
+            # The user might include C & C++, if they forget, it is better not to operate on C.
+            if source.lower().endswith((".h", ".c")):
+                return edits
+
+            for src, dst in (
+                    ("MIN2", "std::min"),
+                    ("MAX2", "std::max"),
+            ):
+                for match in re.finditer(
+                        (r"\b(" + src + r")\("),
+                        data,
+                ):
+                    edits.append(Edit(
+                        span=match.span(1),
+                        content=dst,
+                        content_fail='__ALWAYS_FAIL__',
+                    ))
+
+            return edits
+
     class use_str_sizeof_macros(EditGenerator):
         """
         Use `STRNCPY` & `SNPRINTF` macros:
@@ -1085,6 +1201,134 @@ class edit_generators:
 
             return edits
 
+    class use_listbase_foreach_macro(EditGenerator):
+        """
+        Use macro ``LISTBASE_FOREACH`` or ``LISTBASE_FOREACH_BACKWARD``:
+
+        Replace:
+          for (var = static_cast<SomeType *>(list_base.first); var; var = var->next) {}
+        With:
+          LISTBASE_FOREACH(SomeType *, var, &list_base) {}
+        """
+        # This may be default but can generate shadow variable warnings that need
+        # to be manually corrected (typically by removing the local variable in the outer scope).
+        is_default = False
+
+        @staticmethod
+        def edit_list_from_file(_source: str, data: str, _shared_edit_data: Any) -> List[Edit]:
+            edits = []
+
+            re_cxx_cast = re.compile(r"[a-z_]+<([^\>]+)>\((.*)\)")
+            re_c_cast = re.compile(r"\(([^\)]+\*)\)(.*)")
+
+            # Note that this replacement is only valid in some cases,
+            # so only apply with validation that binary output matches.
+            for match in re.finditer(r"->(next|prev)\)\s+{", data, flags=re.MULTILINE):
+                # Chances are this is a for loop over a listbase.
+                is_forward = match.group(1) == "next"
+                for_paren_end = match.span()[0] + 6
+                for_paren_beg = for_paren_end
+
+                limit = max(0, for_paren_end - 2000)
+
+                i = for_paren_end - 1
+                level = 1
+                while True:
+                    if data[i] == ")":
+                        level += 1
+                    elif data[i] == "(":
+                        level -= 1
+                        if level == 0:
+                            for_paren_beg = i
+                            break
+                    i -= 1
+                    if i < limit:
+                        break
+                if for_paren_beg == for_paren_end:
+                    continue
+
+                content = data[for_paren_beg:for_paren_end + 1]
+                if content.count("=") != 2:
+                    continue
+                if content.count(";") != 2:
+                    continue
+                # It just so happens we expect the first element,
+                # not a strict check, the compile test will filter out errors.
+                if is_forward:
+                    if "first" not in content:
+                        continue
+                else:
+                    if "last" not in content:
+                        continue
+
+                # It just so happens that this case should be ignored (no check in the middle of the string).
+                if ";;" in content:
+                    continue
+                for_beg = for_paren_beg - 4
+                prefix = data[for_beg: for_paren_beg]
+                if prefix != "for ":
+                    continue
+
+                # Now we surely have a for-loop.
+                content_beg, content_mid, _content_end = content.split(";")
+                if "=" not in content_beg:
+                    continue
+
+                base = content_beg.rsplit("=", 1)[1].strip()
+
+                if match_cast := re_cxx_cast.match(base):
+                    ty = match_cast.group(1)
+                    base = match_cast.group(2)
+                else:
+                    if match_cast := re_c_cast.match(base):
+                        ty = match_cast.group(1)
+                        base = match_cast.group(2)
+                    else:
+                        continue
+                del match_cast
+
+                # There may be extra parens.
+                while base.startswith("(") and base.endswith(")"):
+                    base = base[1:-1]
+
+                if is_forward:
+                    if base.endswith("->first"):
+                        base = base[:-7]
+                        base_is_pointer = True
+                    elif base.endswith(".first"):
+                        base = base[:-6]
+                        base_is_pointer = False
+                    else:
+                        continue
+                else:
+                    if base.endswith("->last"):
+                        base = base[:-6]
+                        base_is_pointer = True
+                    elif base.endswith(".last"):
+                        base = base[:-5]
+                        base_is_pointer = False
+                    else:
+                        continue
+
+                # Get the variable, most likely it's a single value
+                # but may be `var != nullptr`, in this case only the first term is needed.
+                var = content_mid.strip().split(" ", 1)[0].strip()
+
+                edits.append(Edit(
+                    # Span covers `for (...)` {
+                    span=(for_beg, for_paren_end + 1),
+                    content='%s (%s, %s, %s%s)' % (
+                        "LISTBASE_FOREACH" if is_forward else "LISTBASE_FOREACH_BACKWARD",
+                        ty,
+                        var,
+                        "" if base_is_pointer else "&",
+                        base,
+                    ),
+                    content_fail='__ALWAYS_FAIL__',
+                ))
+
+            return edits
+
     class parenthesis_cleanup(EditGenerator):
         """
         Use macro for an error checked array size:
@@ -1101,6 +1345,9 @@ class edit_generators:
 
         Note that the `CFLAGS` should be set so missing parentheses that contain assignments - error instead of warn:
         With GCC: `-Werror=parentheses`
+
+        Note that this does not make any edits inside macros because it can be important to keep parenthesis
+        around macro arguments.
         """
 
         # Non-default because this edit can be applied to macros in situations where removing the parentheses
@@ -1129,6 +1376,9 @@ class edit_generators:
                 outer_beg = inner_beg - 1
                 outer_end = text_matching_bracket_forward(data, outer_beg, inner_end + 1, "(", ")")
                 if outer_end != inner_end + 1:
+                    continue
+
+                if text_cxx_in_macro_definition(data, outer_beg):
                     continue
 
                 text = data[inner_beg:inner_end + 1]
@@ -1188,6 +1438,9 @@ class edit_generators:
                     if data[outer_beg - 1] == "*":
                         continue
 
+                if text_cxx_in_macro_definition(data, outer_beg):
+                    continue
+
                 text_no_parens = data[outer_beg + 1: outer_end]
 
                 edits.append(Edit(
@@ -1202,13 +1455,23 @@ class edit_generators:
         """
         Clean headers, ensuring that the headers removed are not used directly or indirectly.
 
-        Note that the `CFLAGS` should be set so missing prototypes error instead of warn:
-        With GCC: `-Werror=missing-prototypes`
+        Note that the `CFLAGS` should be set so missing prototypes error instead of warn.
+        With GCC:
+           CMAKE_C_FLAGS=-Werror=missing-prototypes -Werror=undef
+           CMAKE_CXX_FLAGS=-Werror=missing-declarations -Werror=undef
         """
 
         # Non-default because changes to headers may cause breakage on other platforms.
         # Before committing these changes all supported platforms should be tested to compile without problems.
         is_default = False
+
+        @staticmethod
+        def _header_exclude(f_basename: str) -> str:
+            # This header only exists to add additional warnings, removing it doesn't impact generated output.
+            # Skip this file.
+            if f_basename == "BLI_strict_flags.h":
+                return True
+            return False
 
         @staticmethod
         def _header_guard_from_filename(f: str) -> str:
@@ -1226,6 +1489,10 @@ class edit_generators:
                     os.path.join(SOURCE_DIR, 'source'),
                     ('.h', '.hh', '.inl', '.hpp', '.hxx'),
             ):
+                f_basename = os.path.basename(f)
+                if cls._header_exclude(f_basename):
+                    continue
+
                 with open(f, 'r', encoding='utf-8') as fh:
                     data = fh.read()
 
@@ -1266,7 +1533,12 @@ class edit_generators:
             # Remove include.
             for match in re.finditer(r"^(([ \t]*#\s*include\s+\")([^\"]+)(\"[^\n]*\n))", data, flags=re.MULTILINE):
                 header_name = match.group(3)
-                header_guard = cls._header_guard_from_filename(header_name)
+                # Use in case the include has a leading path.
+                header_basename = os.path.basename(header_name)
+                if cls._header_exclude(header_basename):
+                    continue
+
+                header_guard = cls._header_guard_from_filename(header_basename)
                 edits.append(Edit(
                     span=match.span(),
                     content='',  # Remove the header.
@@ -1392,6 +1664,9 @@ def test_edit(
     """
     if os.path.exists(output):
         os.remove(output)
+
+    # Useful when inspecting failure to compile files, so it's possible to run the command manually.
+    # `print("COMMAND: {:s}\nCMD: {:s}\nOUTPUT: {:s}\n".format(" ".join(build_args), str(build_cwd), output))`
 
     with open(source, 'w', encoding='utf-8') as fh:
         fh.write(data_test)
@@ -1563,7 +1838,7 @@ def wash_source_with_edit(
             build_args_for_edit = build_args
             if extra_build_args:
                 # Add directly after the compile command.
-                build_args_for_edit = build_args[:1] + extra_build_args + build_args[1:]
+                build_args_for_edit = tuple(list(build_args[:1]) + list(extra_build_args) + list(build_args[1:]))
 
             data_test = apply_edit(source_relative, data, text, start, end, verbose=verbose_edit_actions)
             if test_edit(
@@ -1664,7 +1939,7 @@ def run_edits_on_directory(
         return 1
 
     if jobs <= 0:
-        jobs = multiprocessing.cpu_count() * 2
+        jobs = multiprocessing.cpu_count()
 
     if args is None:
         # Error will have been reported.
@@ -1714,7 +1989,7 @@ def run_edits_on_directory(
             # print(c)
             if index != -1:
                 # Remove first part of the path, we don't want to match
-                # against paths in Blender's repo.
+                # against paths in Blender's repository.
                 # print(source_path)
                 c_strip = c[index:]
                 for regex in regex_list:
@@ -1889,7 +2164,7 @@ def main() -> int:
     parser = create_parser(edits_all, edits_all_default)
     args = parser.parse_args()
 
-    build_dir = args.build_dir
+    build_dir = os.path.normpath(os.path.abspath(args.build_dir))
     regex_list = []
 
     for expr in args.match:
@@ -1917,7 +2192,7 @@ def main() -> int:
     verbose_edit_actions = False
     verbose_all_from_args = args.verbose.split(",") if args.verbose else []
     while verbose_all_from_args:
-        match (verbose_id := verbose_all_from_args.pop()):
+        match(verbose_id := verbose_all_from_args.pop()):
             case "compile":
                 verbose_compile = True
             case "edit_actions":

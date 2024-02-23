@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,43 +10,40 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
 
-#include "BKE_appdir.h"
-#include "BKE_blendfile.h"
-#include "BKE_context.h"
-#include "BKE_global.h"
-#include "BKE_main.h"
-#include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_appdir.hh"
+#include "BKE_blendfile.hh"
+#include "BKE_context.hh"
+#include "BKE_main.hh"
+#include "BKE_report.hh"
+#include "BKE_screen.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #ifdef WIN32
 #  include "BLI_winstuff.h"
 #endif
 
-#include "ED_asset.h"
-#include "ED_fileselect.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
+#include "ED_fileselect.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "file_intern.h"
-#include "filelist.h"
+#include "file_intern.hh"
+#include "filelist.hh"
 #include "fsmenu.h"
 
 #include <cctype>
@@ -383,15 +380,16 @@ static bool fsmenu_write_file_and_refresh_or_report_error(FSMenu *fsmenu,
 {
   /* NOTE: use warning instead of error here, because the bookmark operation may be part of
    * other actions which should not cause the operator to fail entirely. */
-  const char *cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG, nullptr);
-  if (UNLIKELY(!cfgdir)) {
+  const std::optional<std::string> cfgdir = BKE_appdir_folder_id_create(BLENDER_USER_CONFIG,
+                                                                        nullptr);
+  if (!cfgdir.has_value()) {
     BKE_report(reports, RPT_ERROR, "Unable to create configuration directory to write bookmarks");
     return false;
   }
 
   char filepath[FILE_MAX];
-  BLI_path_join(filepath, sizeof(filepath), cfgdir, BLENDER_BOOKMARK_FILE);
-  if (UNLIKELY(!fsmenu_write_file(fsmenu, filepath))) {
+  BLI_path_join(filepath, sizeof(filepath), cfgdir->c_str(), BLENDER_BOOKMARK_FILE);
+  if (!fsmenu_write_file(fsmenu, filepath)) {
     BKE_reportf(reports, RPT_ERROR, "Unable to open or write bookmark file \"%s\"", filepath);
     return false;
   }
@@ -793,7 +791,7 @@ static bool file_walk_select_selection_set(bContext *C,
 
   /* do the actual selection */
   if (fill) {
-    FileSelection sel = {MIN2(active, last_sel), MAX2(active, last_sel)};
+    FileSelection sel = {std::min(active, last_sel), std::max(active, last_sel)};
 
     /* fill selection between last and first selected file */
     filelist_entries_select_index_range_set(
@@ -1850,13 +1848,13 @@ static int file_external_operation_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
-static char *file_external_operation_description(bContext * /*C*/,
-                                                 wmOperatorType * /*ot*/,
-                                                 PointerRNA *ptr)
+static std::string file_external_operation_description(bContext * /*C*/,
+                                                       wmOperatorType * /*ot*/,
+                                                       PointerRNA *ptr)
 {
   const char *description = "";
   RNA_enum_description(file_external_operation, RNA_enum_get(ptr, "operation"), &description);
-  return BLI_strdup(description);
+  return description;
 }
 
 void FILE_OT_external_operation(wmOperatorType *ot)
@@ -1906,7 +1904,8 @@ static void file_os_operations_menu_item(uiLayout *layout,
   RNA_enum_name(file_external_operation, operation, &title);
 
   PointerRNA props_ptr;
-  uiItemFullO_ptr(layout, ot, title, ICON_NONE, nullptr, WM_OP_INVOKE_DEFAULT, 0, &props_ptr);
+  uiItemFullO_ptr(
+      layout, ot, title, ICON_NONE, nullptr, WM_OP_INVOKE_DEFAULT, UI_ITEM_NONE, &props_ptr);
   RNA_string_set(&props_ptr, "filepath", path);
   if (operation) {
     RNA_enum_set(&props_ptr, "operation", operation);
@@ -2361,7 +2360,7 @@ static int file_smoothscroll_invoke(bContext *C, wmOperator * /*op*/, const wmEv
 
   const int numfiles = filelist_files_ensure(sfile->files);
 
-  /* Due to async nature of file listing, we may execute this code before `file_refresh()`
+  /* Due to asynchronous nature of file listing, we may execute this code before `file_refresh()`
    * editing entry is available in our listing,
    * so we also have to handle switching to rename mode here. */
   FileSelectParams *params = ED_fileselect_get_active_params(sfile);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,14 +22,13 @@
 #  include <io.h>
 #endif
 
-#include "AS_asset_library.h"
 #include "AS_asset_library.hh"
 #include "AS_asset_representation.h"
 #include "AS_asset_representation.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_fileops.h"
@@ -37,9 +36,9 @@
 #include "BLI_fnmatch.h"
 #include "BLI_ghash.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_stack.h"
-#include "BLI_string_utils.h"
+#include "BLI_string_utils.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
@@ -49,42 +48,37 @@
 #  include "BLI_winstuff.h"
 #endif
 
-#include "BKE_asset.h"
-#include "BKE_blendfile.h"
-#include "BKE_context.h"
-#include "BKE_global.h"
+#include "BKE_asset.hh"
+#include "BKE_blendfile.hh"
+#include "BKE_context.hh"
+#include "BKE_global.hh"
 #include "BKE_icons.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_main_idmap.h"
+#include "BKE_idtype.hh"
+#include "BKE_main.hh"
 #include "BKE_preferences.h"
+#include "BKE_preview_image.hh"
 
 #include "DNA_asset_types.h"
 #include "DNA_space_types.h"
 
 #include "ED_datafiles.h"
-#include "ED_fileselect.h"
-#include "ED_screen.h"
+#include "ED_fileselect.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "IMB_thumbs.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+#include "IMB_thumbs.hh"
 
-#include "PIL_time.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
-
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_resources.h"
+#include "UI_interface_icons.hh"
+#include "UI_resources.hh"
 
 #include "atomic_ops.h"
 
-#include "file_indexer.h"
-#include "file_intern.h"
-#include "filelist.h"
+#include "file_indexer.hh"
+#include "file_intern.hh"
+#include "filelist.hh"
 
 using namespace blender;
 
@@ -180,7 +174,6 @@ struct FileListEntryPreview {
   char filepath[FILE_MAX_LIBEXTRA];
   uint flags;
   int index;
-  int attributes; /* from FileDirEntry. */
   int icon_id;
 };
 
@@ -1061,7 +1054,7 @@ static bool filelist_compare_asset_libraries(const AssetLibraryReference *librar
   }
   if (library_a->type == ASSET_LIBRARY_CUSTOM) {
     /* Don't only check the index, also check that it's valid. */
-    bUserAssetLibrary *library_ptr_a = BKE_preferences_asset_library_find_from_index(
+    bUserAssetLibrary *library_ptr_a = BKE_preferences_asset_library_find_index(
         &U, library_a->custom_library_index);
     return (library_ptr_a != nullptr) &&
            (library_a->custom_library_index == library_b->custom_library_index);
@@ -1156,6 +1149,14 @@ void filelist_file_get_full_path(const FileList *filelist,
 
   const char *root = filelist_dir(filelist);
   BLI_path_join(r_filepath, FILE_MAX_LIBEXTRA, root, file->relpath);
+}
+
+bool filelist_file_is_preview_pending(const FileList *filelist, const FileDirEntry *file)
+{
+  /* Actual preview loading is only started after the filelist is loaded, so the file isn't flagged
+   * with #FILE_ENTRY_PREVIEW_LOADING yet. */
+  const bool filelist_ready = filelist_is_ready(filelist);
+  return !filelist_ready || file->flags & FILE_ENTRY_PREVIEW_LOADING;
 }
 
 static FileDirEntry *filelist_geticon_get_file(FileList *filelist, const int index)
@@ -1539,10 +1540,8 @@ static void filelist_cache_preview_runf(TaskPool *__restrict pool, void *taskdat
 
   IMB_thumb_path_lock(preview->filepath);
   /* Always generate biggest preview size for now, it's simpler and avoids having to re-generate
-   * in case user switch to a bigger preview size. Do not create preview when file is offline. */
-  ImBuf *imbuf = (preview->attributes & FILE_ATTR_OFFLINE) ?
-                     IMB_thumb_read(preview->filepath, THB_LARGE) :
-                     IMB_thumb_manage(preview->filepath, THB_LARGE, source);
+   * in case user switch to a bigger preview size. */
+  ImBuf *imbuf = IMB_thumb_manage(preview->filepath, THB_LARGE, source);
   IMB_thumb_path_unlock(preview->filepath);
   if (imbuf) {
     preview->icon_id = BKE_icon_imbuf_create(imbuf);
@@ -1648,7 +1647,8 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
    * some time in heavy files, because otherwise for each missing preview and for each preview
    * reload, we'd reopen the .blend to look for the preview. */
   if ((entry->typeflag & FILE_TYPE_BLENDERLIB) &&
-      (entry->flags & FILE_ENTRY_BLENDERLIB_NO_PREVIEW)) {
+      (entry->flags & FILE_ENTRY_BLENDERLIB_NO_PREVIEW))
+  {
     return;
   }
 
@@ -1679,7 +1679,6 @@ static void filelist_cache_previews_push(FileList *filelist, FileDirEntry *entry
   FileListEntryPreview *preview = MEM_new<FileListEntryPreview>(__func__);
   preview->index = index;
   preview->flags = entry->typeflag;
-  preview->attributes = entry->attributes;
   preview->icon_id = 0;
 
   if (preview_in_memory) {
@@ -1961,9 +1960,9 @@ void filelist_free(FileList *filelist)
   filelist->flags &= ~(FL_NEED_SORTING | FL_NEED_FILTERING);
 }
 
-AssetLibrary *filelist_asset_library(FileList *filelist)
+blender::asset_system::AssetLibrary *filelist_asset_library(FileList *filelist)
 {
-  return reinterpret_cast<::AssetLibrary *>(filelist->asset_library);
+  return filelist->asset_library;
 }
 
 void filelist_freelib(FileList *filelist)
@@ -1977,6 +1976,11 @@ void filelist_freelib(FileList *filelist)
 BlendHandle *filelist_lib(FileList *filelist)
 {
   return filelist->libfiledata;
+}
+
+int filelist_files_num_entries(FileList *filelist)
+{
+  return filelist->filelist.entries_num;
 }
 
 static const char *fileentry_uiname(const char *root, FileListInternEntry *entry, char *buff)
@@ -3541,12 +3545,12 @@ static void filelist_readjob_main_recursive(Main *bmain, FileList *filelist)
 #  if 0 /* XXX TODO: show the selection status of the objects. */
           if (!filelist->has_func) { /* F4 DATA BROWSE */
             if (idcode == ID_OB) {
-              if ( ((Object *)id)->flag & SELECT) {
+              if (((Object *)id)->flag & SELECT) {
                 files->entry->selflag |= FILE_SEL_SELECTED;
               }
             }
             else if (idcode == ID_SCE) {
-              if ( ((Scene *)id)->r.scemode & R_BG_RENDER) {
+              if (((Scene *)id)->r.scemode & R_BG_RENDER) {
                 files->entry->selflag |= FILE_SEL_SELECTED;
               }
             }
@@ -3755,7 +3759,8 @@ static void filelist_readjob_recursive_dir_add_items(const bool do_lib,
       entry->free_name = true;
 
       if (filelist_readjob_should_recurse_into_entry(
-              max_recursion, is_lib, recursion_level, entry)) {
+              max_recursion, is_lib, recursion_level, entry))
+      {
         /* We have a directory we want to list, add it to todo list!
          * Using #BLI_path_join works but isn't needed as `root` has a trailing slash. */
         BLI_string_join(dir, sizeof(dir), root, entry->relpath);
@@ -4056,7 +4061,7 @@ static bool filelist_readjob_is_partial_read(const FileListReadJob *read_job)
  *       some current entries are kept and we just call the readjob to update the main files (see
  *       #FileListReadJob.only_main_data).
  */
-static void filelist_readjob_startjob(void *flrjv, bool *stop, bool *do_update, float *progress)
+static void filelist_readjob_startjob(void *flrjv, wmJobWorkerStatus *worker_status)
 {
   FileListReadJob *flrj = static_cast<FileListReadJob *>(flrjv);
 
@@ -4089,7 +4094,8 @@ static void filelist_readjob_startjob(void *flrjv, bool *stop, bool *do_update, 
 
   BLI_mutex_unlock(&flrj->lock);
 
-  flrj->tmp_filelist->read_job_fn(flrj, stop, do_update, progress);
+  flrj->tmp_filelist->read_job_fn(
+      flrj, &worker_status->stop, &worker_status->do_update, &worker_status->progress);
 }
 
 /**
@@ -4137,7 +4143,7 @@ static void filelist_readjob_update(void *flrjv)
 
   /* if no new_entries_num, this is NOP */
   BLI_movelisttolist(&fl_intern->entries, &new_entries);
-  flrj->filelist->filelist.entries_num = MAX2(entries_num, 0) + new_entries_num;
+  flrj->filelist->filelist.entries_num = std::max(entries_num, 0) + new_entries_num;
 }
 
 static void filelist_readjob_endjob(void *flrjv)
@@ -4204,12 +4210,9 @@ void filelist_readjob_start(FileList *filelist, const int space_notifier, const 
   const bool no_threads = (filelist->tags & FILELIST_TAGS_NO_THREADS) || flrj->only_main_data;
 
   if (no_threads) {
-    bool dummy_stop = false;
-    bool dummy_do_update = false;
-    float dummy_progress = 0.0f;
-
     /* Single threaded execution. Just directly call the callbacks. */
-    filelist_readjob_startjob(flrj, &dummy_stop, &dummy_do_update, &dummy_progress);
+    wmJobWorkerStatus worker_status = {};
+    filelist_readjob_startjob(flrj, &worker_status);
     filelist_readjob_endjob(flrj);
     filelist_readjob_free(flrj);
 

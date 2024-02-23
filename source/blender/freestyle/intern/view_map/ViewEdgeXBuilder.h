@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -77,7 +77,7 @@ class OWXFaceLayer {
 
   OWXFaceLayer()
   {
-    fl = NULL;
+    fl = nullptr;
     order = true;
   }
 
@@ -119,7 +119,7 @@ class OWXEdge {
 
   OWXEdge()
   {
-    e = NULL;
+    e = nullptr;
     order = true;
   }
 

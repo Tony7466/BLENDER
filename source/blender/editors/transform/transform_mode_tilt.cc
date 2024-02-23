@@ -8,17 +8,17 @@
 
 #include <cstdlib>
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -30,7 +30,7 @@
 /** \name Transform (Tilt)
  * \{ */
 
-static void applyTilt(TransInfo *t, const int[2] /*mval*/)
+static void applyTilt(TransInfo *t)
 {
   int i;
   char str[UI_MAX_DRAW_STR];
@@ -50,13 +50,14 @@ static void applyTilt(TransInfo *t, const int[2] /*mval*/)
 
     outputNumInput(&(t->num), c, &t->scene->unit);
 
-    SNPRINTF(str, TIP_("Tilt: %s" BLI_STR_UTF8_DEGREE_SIGN " %s"), &c[0], t->proptext);
+    SNPRINTF(str, IFACE_("Tilt: %s" BLI_STR_UTF8_DEGREE_SIGN " %s"), &c[0], t->proptext);
 
     /* XXX For some reason, this seems needed for this op, else RNA prop is not updated... :/ */
     t->values_final[0] = final;
   }
   else {
-    SNPRINTF(str, TIP_("Tilt: %.2f" BLI_STR_UTF8_DEGREE_SIGN " %s"), RAD2DEGF(final), t->proptext);
+    SNPRINTF(
+        str, IFACE_("Tilt: %.2f" BLI_STR_UTF8_DEGREE_SIGN " %s"), RAD2DEGF(final), t->proptext);
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
@@ -72,7 +73,7 @@ static void applyTilt(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

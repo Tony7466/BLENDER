@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,7 +8,7 @@
 
 #include "DNA_volume_types.h"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 #include "GPU_shader.h"
 
 #include "overlay_private.hh"
@@ -34,6 +34,7 @@ void OVERLAY_volume_cache_init(OVERLAY_Data *vedata)
 
 void OVERLAY_volume_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
+  using namespace blender::draw;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const bool is_select = DRW_state_is_select();
 

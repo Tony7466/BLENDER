@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,17 +25,18 @@ class WingedEdgeBuilder : public SceneVisitor {
  public:
   inline WingedEdgeBuilder() : SceneVisitor()
   {
-    _current_wshape = NULL;
-    _current_frs_material = NULL;
-    _current_matrix = NULL;
+    _current_wshape = nullptr;
+    _current_frs_material = nullptr;
+    _current_matrix = nullptr;
     _winged_edge = new WingedEdge;  // Not deleted by the destructor
-    _pRenderMonitor = NULL;
+    _pRenderMonitor = nullptr;
   }
 
   virtual ~WingedEdgeBuilder()
   {
     for (vector<Matrix44r *>::iterator it = _matrices_stack.begin(); it != _matrices_stack.end();
-         ++it) {
+         ++it)
+    {
       delete *it;
     }
     _matrices_stack.clear();

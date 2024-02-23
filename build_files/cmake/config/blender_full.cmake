@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2014-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2014-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -12,7 +12,6 @@ set(WITH_ALEMBIC             ON  CACHE BOOL "" FORCE)
 set(WITH_AUDASPACE           ON  CACHE BOOL "" FORCE)
 set(WITH_BUILDINFO           ON  CACHE BOOL "" FORCE)
 set(WITH_BULLET              ON  CACHE BOOL "" FORCE)
-set(WITH_CODEC_AVI           ON  CACHE BOOL "" FORCE)
 set(WITH_CODEC_FFMPEG        ON  CACHE BOOL "" FORCE)
 set(WITH_CODEC_SNDFILE       ON  CACHE BOOL "" FORCE)
 set(WITH_COMPOSITOR_CPU      ON  CACHE BOOL "" FORCE)
@@ -57,7 +56,8 @@ set(WITH_QUADRIFLOW          ON  CACHE BOOL "" FORCE)
 set(WITH_SDL                 ON  CACHE BOOL "" FORCE)
 set(WITH_TBB                 ON  CACHE BOOL "" FORCE)
 set(WITH_USD                 ON  CACHE BOOL "" FORCE)
-set(WITH_MATERIALX           OFF CACHE BOOL "" FORCE)
+set(WITH_MATERIALX           ON  CACHE BOOL "" FORCE)
+set(WITH_HYDRA               ON  CACHE BOOL "" FORCE)
 
 set(WITH_MEM_JEMALLOC        ON  CACHE BOOL "" FORCE)
 

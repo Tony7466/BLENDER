@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,16 +9,15 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_fileops.h"
-#include "BLI_math.h"
 
-#include "IMB_filetype.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-
-#include "IMB_colormanagement.h"
-#include "IMB_colormanagement_intern.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_filetype.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "openjpeg.h"
+
+#include <cstring>
 
 #define JP2_FILEHEADER_SIZE 12
 
@@ -91,7 +90,7 @@ static void warning_callback(const char *msg, void *client_data)
   fprintf(stream, "[WARNING] %s", msg);
 }
 
-#ifdef DEBUG
+#ifndef NDEBUG
 /**
  * sample debug callback expecting no client object
  */
@@ -377,7 +376,7 @@ static ImBuf *imb_load_jp2_stream(opj_stream_t *stream,
   /* configure the event callbacks (not required) */
   opj_set_error_handler(codec, error_callback, stderr);
   opj_set_warning_handler(codec, warning_callback, stderr);
-#ifdef DEBUG /* too noisy */
+#ifndef NDEBUG /* too noisy */
   opj_set_info_handler(codec, info_callback, stderr);
 #endif
 
@@ -1234,7 +1233,7 @@ bool imb_save_jp2_stream(ImBuf *ibuf, opj_stream_t *stream, int /*flags*/)
     /* configure the event callbacks (not required) */
     opj_set_error_handler(codec, error_callback, stderr);
     opj_set_warning_handler(codec, warning_callback, stderr);
-#ifdef DEBUG /* too noisy */
+#ifndef NDEBUG /* too noisy */
     opj_set_info_handler(codec, info_callback, stderr);
 #endif
 

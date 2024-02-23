@@ -10,7 +10,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_fileops.h"
 #include "BLI_fileops_types.h"
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
@@ -21,12 +20,12 @@
 #include "DNA_image_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 
-#include "ED_image.h"
+#include "ED_image.hh"
 
 struct ImageFrame {
   ImageFrame *next, *prev;

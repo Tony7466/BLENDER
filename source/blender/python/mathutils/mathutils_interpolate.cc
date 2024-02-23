@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,7 @@
 #include "mathutils.h"
 #include "mathutils_interpolate.h"
 
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
 #include "BLI_utildefines.h"
 
 #ifndef MATH_STANDALONE /* define when building outside blender */
@@ -19,20 +19,25 @@
 #endif
 
 /*-------------------------DOC STRINGS ---------------------------*/
-PyDoc_STRVAR(M_Interpolate_doc, "The Blender interpolate module");
+PyDoc_STRVAR(
+    /* Wrap. */
+    M_Interpolate_doc,
+    "The Blender interpolate module");
 
 /* ---------------------------------WEIGHT CALCULATION ----------------------- */
 
 #ifndef MATH_STANDALONE
 
-PyDoc_STRVAR(M_Interpolate_poly_3d_calc_doc,
-             ".. function:: poly_3d_calc(veclist, pt)\n"
-             "\n"
-             "   Calculate barycentric weights for a point on a polygon.\n"
-             "\n"
-             "   :arg veclist: list of vectors\n"
-             "   :arg pt: point"
-             "   :rtype: list of per-vector weights\n");
+PyDoc_STRVAR(
+    /* Wrap. */
+    M_Interpolate_poly_3d_calc_doc,
+    ".. function:: poly_3d_calc(veclist, pt)\n"
+    "\n"
+    "   Calculate barycentric weights for a point on a polygon.\n"
+    "\n"
+    "   :arg veclist: list of vectors\n"
+    "   :arg pt: point"
+    "   :rtype: list of per-vector weights\n");
 static PyObject *M_Interpolate_poly_3d_calc(PyObject * /*self*/, PyObject *args)
 {
   float fp[3];
@@ -78,7 +83,7 @@ static PyObject *M_Interpolate_poly_3d_calc(PyObject * /*self*/, PyObject *args)
   return ret;
 }
 
-#endif /* MATH_STANDALONE */
+#endif /* !MATH_STANDALONE */
 
 static PyMethodDef M_Interpolate_methods[] = {
 #ifndef MATH_STANDALONE

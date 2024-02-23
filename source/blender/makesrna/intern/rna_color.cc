@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,14 +14,14 @@
 
 #include "BLI_utildefines.h"
 
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
-#include "rna_internal.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
+#include "rna_internal.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 const EnumPropertyItem rna_enum_color_space_convert_default_items[] = {
     {0,
@@ -35,8 +35,10 @@ const EnumPropertyItem rna_enum_color_space_convert_default_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "RNA_access.h"
-#  include "RNA_path.h"
+#  include <fmt/format.h>
+
+#  include "RNA_access.hh"
+#  include "RNA_path.hh"
 
 #  include "DNA_image_types.h"
 #  include "DNA_material_types.h"
@@ -48,22 +50,22 @@ const EnumPropertyItem rna_enum_color_space_convert_default_items[] = {
 
 #  include "MEM_guardedalloc.h"
 
-#  include "BKE_colorband.h"
-#  include "BKE_colortools.h"
+#  include "BKE_colorband.hh"
+#  include "BKE_colortools.hh"
 #  include "BKE_image.h"
 #  include "BKE_linestyle.h"
 #  include "BKE_movieclip.h"
-#  include "BKE_node.h"
+#  include "BKE_node.hh"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
-#  include "ED_node.h"
+#  include "ED_node.hh"
 
-#  include "IMB_colormanagement.h"
-#  include "IMB_imbuf.h"
+#  include "IMB_colormanagement.hh"
+#  include "IMB_imbuf.hh"
 
-#  include "SEQ_iterator.h"
-#  include "SEQ_relations.h"
+#  include "SEQ_iterator.hh"
+#  include "SEQ_relations.hh"
 
 static int rna_CurveMapping_curves_length(PointerRNA *ptr)
 {
@@ -169,10 +171,8 @@ static void rna_CurveMapping_clipmaxy_range(
   *max = 100.0f;
 }
 
-static char *rna_ColorRamp_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ColorRamp_path(const PointerRNA *ptr)
 {
-  char *path = nullptr;
-
   /* handle the cases where a single data-block may have 2 ramp types */
   if (ptr->owner_id) {
     ID *id = ptr->owner_id;
@@ -181,8 +181,6 @@ static char *rna_ColorRamp_path(const PointerRNA *ptr)
       case ID_NT: {
         bNodeTree *ntree = (bNodeTree *)id;
         bNode *node;
-        PointerRNA node_ptr;
-        char *node_path;
 
         for (node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
           if (ELEM(node->type, SH_NODE_VALTORGB, CMP_NODE_VALTORGB, TEX_NODE_VALTORGB)) {
@@ -190,10 +188,9 @@ static char *rna_ColorRamp_path(const PointerRNA *ptr)
               /* all node color ramp properties called 'color_ramp'
                * prepend path from ID to the node
                */
-              RNA_pointer_create(id, &RNA_Node, node, &node_ptr);
-              node_path = RNA_path_from_ID_to_struct(&node_ptr);
-              path = BLI_sprintfN("%s.color_ramp", node_path);
-              MEM_freeN(node_path);
+              PointerRNA node_ptr = RNA_pointer_create(id, &RNA_Node, node);
+              std::string node_path = RNA_path_from_ID_to_struct(&node_ptr).value_or("");
+              return fmt::format("{}.color_ramp", node_path);
             }
           }
         }
@@ -202,29 +199,29 @@ static char *rna_ColorRamp_path(const PointerRNA *ptr)
 
       case ID_LS: {
         /* may be nullptr */
-        path = BKE_linestyle_path_to_color_ramp((FreestyleLineStyle *)id, (ColorBand *)ptr->data);
+        return BKE_linestyle_path_to_color_ramp((FreestyleLineStyle *)id, (ColorBand *)ptr->data);
         break;
       }
 
       default:
         /* everything else just uses 'color_ramp' */
-        path = BLI_strdup("color_ramp");
+        return "color_ramp";
         break;
     }
   }
   else {
     /* everything else just uses 'color_ramp' */
-    path = BLI_strdup("color_ramp");
+    return "color_ramp";
   }
 
-  return path;
+  return std::nullopt;
 }
 
-static char *rna_ColorRampElement_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_ColorRampElement_path(const PointerRNA *ptr)
 {
   PointerRNA ramp_ptr;
   PropertyRNA *prop;
-  char *path = nullptr;
+  std::optional<std::string> path;
   int index;
 
   /* helper macro for use here to try and get the path
@@ -237,9 +234,8 @@ static char *rna_ColorRampElement_path(const PointerRNA *ptr)
       if (prop) { \
         index = RNA_property_collection_lookup_index(&ramp_ptr, prop, ptr); \
         if (index != -1) { \
-          char *texture_path = rna_ColorRamp_path(&ramp_ptr); \
-          path = BLI_sprintfN("%s.elements[%d]", texture_path, index); \
-          MEM_freeN(texture_path); \
+          std::string texture_path = rna_ColorRamp_path(&ramp_ptr).value_or(""); \
+          path = fmt::format("{}.elements[{}]", texture_path, index); \
         } \
       } \
     } \
@@ -257,7 +253,7 @@ static char *rna_ColorRampElement_path(const PointerRNA *ptr)
 
         for (node = static_cast<bNode *>(ntree->nodes.first); node; node = node->next) {
           if (ELEM(node->type, SH_NODE_VALTORGB, CMP_NODE_VALTORGB, TEX_NODE_VALTORGB)) {
-            RNA_pointer_create(id, &RNA_ColorRamp, node->storage, &ramp_ptr);
+            ramp_ptr = RNA_pointer_create(id, &RNA_ColorRamp, node->storage);
             COLRAMP_GETPATH;
           }
         }
@@ -269,7 +265,7 @@ static char *rna_ColorRampElement_path(const PointerRNA *ptr)
 
         BKE_linestyle_modifier_list_color_ramps((FreestyleLineStyle *)id, &listbase);
         for (link = (LinkData *)listbase.first; link; link = link->next) {
-          RNA_pointer_create(id, &RNA_ColorRamp, link->data, &ramp_ptr);
+          ramp_ptr = RNA_pointer_create(id, &RNA_ColorRamp, link->data);
           COLRAMP_GETPATH;
         }
         BLI_freelistN(&listbase);
@@ -279,7 +275,7 @@ static char *rna_ColorRampElement_path(const PointerRNA *ptr)
       default: /* everything else should have a "color_ramp" property */
       {
         /* create pointer to the ID block, and try to resolve "color_ramp" pointer */
-        RNA_id_pointer_create(id, &ramp_ptr);
+        ramp_ptr = RNA_id_pointer_create(id);
         if (RNA_path_resolve(&ramp_ptr, "color_ramp", &ramp_ptr, &prop)) {
           COLRAMP_GETPATH;
         }
@@ -445,14 +441,14 @@ static void rna_ColorManagedDisplaySettings_display_device_update(Main *bmain,
     for (Material *ma = static_cast<Material *>(bmain->materials.first); ma;
          ma = static_cast<Material *>(ma->id.next))
     {
-      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&ma->id, ID_RECALC_SYNC_TO_EVAL);
     }
   }
 }
 
-static char *rna_ColorManagedDisplaySettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_ColorManagedDisplaySettings_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("display_settings");
+  return "display_settings";
 }
 
 static int rna_ColorManagedViewSettings_view_transform_get(PointerRNA *ptr)
@@ -466,10 +462,16 @@ static void rna_ColorManagedViewSettings_view_transform_set(PointerRNA *ptr, int
 {
   ColorManagedViewSettings *view = (ColorManagedViewSettings *)ptr->data;
 
-  const char *name = IMB_colormanagement_view_get_indexed_name(value);
+  const char *view_name = IMB_colormanagement_view_get_indexed_name(value);
+  if (!view_name) {
+    return;
+  }
 
-  if (name) {
-    STRNCPY(view->view_transform, name);
+  STRNCPY(view->view_transform, view_name);
+
+  const char *look_name = IMB_colormanagement_look_validate_for_view(view_name, view->look);
+  if (look_name) {
+    STRNCPY(view->look, look_name);
   }
 }
 
@@ -538,9 +540,9 @@ static void rna_ColorManagedViewSettings_use_curves_set(PointerRNA *ptr, bool va
   }
 }
 
-static char *rna_ColorManagedViewSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_ColorManagedViewSettings_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("view_settings");
+  return "view_settings";
 }
 
 static bool rna_ColorManagedColorspaceSettings_is_data_get(PointerRNA *ptr)
@@ -675,14 +677,16 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
   }
 }
 
-static char *rna_ColorManagedSequencerColorspaceSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_ColorManagedSequencerColorspaceSettings_path(
+    const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("sequencer_colorspace_settings");
+  return "sequencer_colorspace_settings";
 }
 
-static char *rna_ColorManagedInputColorspaceSettings_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_ColorManagedInputColorspaceSettings_path(
+    const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("colorspace_settings");
+  return "colorspace_settings";
 }
 
 static void rna_ColorManagement_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
@@ -746,7 +750,7 @@ static void rna_def_curvemappoint(BlenderRNA *brna)
   RNA_def_property_enum_bitflag_sdna(prop, nullptr, "flag");
   RNA_def_property_enum_items(prop, prop_handle_type_items);
   RNA_def_property_ui_text(
-      prop, "Handle Type", "Curve interpolation at this point: Bezier or vector");
+      prop, "Handle Type", "Curve interpolation at this point: Bézier or vector");
 
   prop = RNA_def_property(srna, "select", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", CUMA_SELECT);
@@ -978,7 +982,7 @@ static void rna_def_color_ramp_element_api(BlenderRNA *brna, PropertyRNA *cprop)
   RNA_def_struct_path_func(srna, "rna_ColorRampElement_path");
   RNA_def_struct_ui_text(srna, "Color Ramp Elements", "Collection of Color Ramp Elements");
 
-  /* TODO: make these functions generic in `texture.c`. */
+  /* TODO: make these functions generic in `texture.cc`. */
   func = RNA_def_function(srna, "new", "rna_ColorRampElement_new");
   RNA_def_function_ui_description(func, "Add element to Color Ramp");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
@@ -1140,6 +1144,12 @@ static void rna_def_scopes(BlenderRNA *brna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem prop_vecscope_mode_items[] = {
+      {SCOPES_VECSCOPE_LUMA, "LUMA", ICON_COLOR, "Luma", ""},
+      {SCOPES_VECSCOPE_RGB, "RGB", ICON_COLOR, "Red Green Blue", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   srna = RNA_def_struct(brna, "Scopes", nullptr);
   RNA_def_struct_ui_text(srna, "Scopes", "Scopes for statistical view of an image");
 
@@ -1172,10 +1182,17 @@ static void rna_def_scopes(BlenderRNA *brna)
   RNA_def_property_range(prop, 0, 1);
   RNA_def_property_ui_text(prop, "Waveform Opacity", "Opacity of the points");
 
+  prop = RNA_def_property(srna, "vectorscope_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, "Scopes", "vecscope_mode");
+  RNA_def_property_enum_items(prop, prop_vecscope_mode_items);
+  RNA_def_property_ui_text(prop, "Vectorscope Mode", "");
+  RNA_def_property_update(prop, 0, "rna_Scopes_update");
+
   prop = RNA_def_property(srna, "vectorscope_alpha", PROP_FLOAT, PROP_FACTOR);
   RNA_def_property_float_sdna(prop, "Scopes", "vecscope_alpha");
   RNA_def_property_range(prop, 0, 1);
   RNA_def_property_ui_text(prop, "Vectorscope Opacity", "Opacity of the points");
+  RNA_def_property_update(prop, 0, "rna_Scopes_update");
 }
 
 static void rna_def_colormanage(BlenderRNA *brna)
@@ -1272,6 +1289,16 @@ static void rna_def_colormanage(BlenderRNA *brna)
   RNA_def_property_boolean_funcs(prop, nullptr, "rna_ColorManagedViewSettings_use_curves_set");
   RNA_def_property_ui_text(prop, "Use Curves", "Use RGB curved for pre-display transformation");
   RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagement_update");
+
+  prop = RNA_def_property(srna, "use_hdr_view", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", COLORMANAGE_VIEW_USE_HDR);
+  RNA_def_property_ui_text(
+      prop,
+      "High Dynamic Range",
+      "Enable high dynamic range display in rendered viewport, uncapping display brightness. This "
+      "requires a monitor with HDR support and a view transform designed for HDR. "
+      "'Filmic' and 'AgX' do not generate HDR colors");
+  RNA_def_property_update(prop, NC_WINDOW, "rna_ColorManagedColorspaceSettings_reload_update");
 
   /* ** Color-space ** */
   srna = RNA_def_struct(brna, "ColorManagedInputColorspaceSettings", nullptr);

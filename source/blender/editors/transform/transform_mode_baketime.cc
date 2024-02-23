@@ -8,17 +8,16 @@
 
 #include <cstdlib>
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -30,7 +29,7 @@
 /** \name Transform (Bake-Time)
  * \{ */
 
-static void applyBakeTime(TransInfo *t, const int mval[2])
+static void applyBakeTime(TransInfo *t)
 {
   float time;
   int i;
@@ -49,7 +48,7 @@ static void applyBakeTime(TransInfo *t, const int mval[2])
   else
 #endif
   {
-    time = float(t->center2d[0] - mval[0]) * fac;
+    time = (t->center2d[0] - t->mval[0]) * fac;
   }
 
   transform_snap_increment(t, &time);
@@ -63,19 +62,19 @@ static void applyBakeTime(TransInfo *t, const int mval[2])
     outputNumInput(&(t->num), c, &t->scene->unit);
 
     if (time >= 0.0f) {
-      SNPRINTF(str, TIP_("Time: +%s %s"), c, t->proptext);
+      SNPRINTF(str, IFACE_("Time: +%s %s"), c, t->proptext);
     }
     else {
-      SNPRINTF(str, TIP_("Time: %s %s"), c, t->proptext);
+      SNPRINTF(str, IFACE_("Time: %s %s"), c, t->proptext);
     }
   }
   else {
     /* default header print */
     if (time >= 0.0f) {
-      SNPRINTF(str, TIP_("Time: +%.3f %s"), time, t->proptext);
+      SNPRINTF(str, IFACE_("Time: +%.3f %s"), time, t->proptext);
     }
     else {
-      SNPRINTF(str, TIP_("Time: %.3f %s"), time, t->proptext);
+      SNPRINTF(str, IFACE_("Time: %.3f %s"), time, t->proptext);
     }
   }
 
@@ -86,19 +85,27 @@ static void applyBakeTime(TransInfo *t, const int mval[2])
         continue;
       }
 
+      float *dst, ival;
       if (td->val) {
-        *td->val = td->ival + time * td->factor;
-        if (td->ext->size && *td->val < *td->ext->size) {
-          *td->val = *td->ext->size;
-        }
-        if (td->ext->quat && *td->val > *td->ext->quat) {
-          *td->val = *td->ext->quat;
-        }
+        dst = td->val;
+        ival = td->ival;
+      }
+      else {
+        dst = &td->loc[0];
+        ival = td->iloc[0];
+      }
+
+      *dst = ival + time * td->factor;
+      if (td->ext->size && *dst < *td->ext->size) {
+        *dst = *td->ext->size;
+      }
+      if (td->ext->quat && *dst > *td->ext->quat) {
+        *dst = *td->ext->quat;
       }
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

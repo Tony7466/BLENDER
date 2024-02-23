@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,7 +29,7 @@ TexturePoolKey::TexturePoolKey(const GPUTexture *texture)
 
 uint64_t TexturePoolKey::hash() const
 {
-  return get_default_hash_3(size.x, size.y, format);
+  return get_default_hash(size.x, size.y, format);
 }
 
 bool operator==(const TexturePoolKey &a, const TexturePoolKey &b)

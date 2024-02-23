@@ -1,38 +1,44 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-/* Shader to convert cubemap to octahedral projection. */
+/* Shader to convert cube-map to octahedral projection. */
 
-#pragma BLENDER_REQUIRE(eevee_octahedron_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_reflection_probe_mapping_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 
 void main()
 {
-  ReflectionProbeData probe_data = reflection_probe_buf[reflection_probe_index];
+  SphereProbeUvArea world_coord = reinterpret_as_atlas_coord(world_coord_packed);
+  SphereProbeUvArea sample_coord = reinterpret_as_atlas_coord(probe_coord_packed);
+  SphereProbePixelArea write_coord = reinterpret_as_write_coord(write_coord_packed);
 
-  ivec3 texture_coord = ivec3(gl_GlobalInvocationID.xyz);
-  ivec3 texture_size = imageSize(octahedral_img);
+  /* Texel in probe. */
+  ivec2 local_texel = ivec2(gl_GlobalInvocationID.xy);
 
-  ivec3 octahedral_coord = ivec3(gl_GlobalInvocationID.xyz);
-  ivec2 octahedral_size = ivec2(texture_size.x >> probe_data.layer_subdivision,
-                                texture_size.y >> probe_data.layer_subdivision);
   /* Exit when pixel being written doesn't fit in the area reserved for the probe. */
-  if (any(greaterThanEqual(octahedral_coord.xy, octahedral_size.xy))) {
+  if (any(greaterThanEqual(local_texel, ivec2(write_coord.extent)))) {
     return;
   }
 
-  vec2 texel_size = vec2(1.0) / vec2(octahedral_size);
+  vec2 wrapped_uv;
+  vec3 direction = sphere_probe_texel_to_direction(
+      local_texel, write_coord, sample_coord, wrapped_uv);
+  vec4 radiance_and_transmittance = texture(cubemap_tx, direction);
+  vec3 radiance = radiance_and_transmittance.xyz;
 
-  vec2 uv = vec2(octahedral_coord.xy) / vec2(octahedral_size.xy);
-  vec2 octahedral_uv = octahedral_uv_from_layer_texture_coords(uv, probe_data, texel_size);
-  vec3 R = octahedral_uv_to_direction(octahedral_uv);
+  float opacity = 1.0 - radiance_and_transmittance.a;
 
-  vec4 col = textureLod(cubemap_tx, R, float(probe_data.layer_subdivision));
+  /* Composite world into reflection probes. */
+  bool is_world = all(equal(write_coord_packed, world_coord_packed));
+  if (!is_world && opacity != 1.0) {
+    vec2 world_uv = wrapped_uv * world_coord.scale + world_coord.offset;
+    vec4 world_radiance = textureLod(atlas_tx, vec3(world_uv, world_coord.layer), 0.0);
+    radiance.rgb = mix(world_radiance.rgb, radiance.rgb, opacity);
+  }
 
-  int probes_per_dimension = 1 << probe_data.layer_subdivision;
-  ivec2 area_coord = ivec2(probe_data.area_index % probes_per_dimension,
-                           probe_data.area_index / probes_per_dimension);
-  ivec2 area_offset = area_coord * octahedral_size;
+  radiance = colorspace_brightness_clamp_max(radiance, probe_brightness_clamp);
 
-  /* Convert transmittance to transparency. */
-  col.a = 1.0 - col.a;
-
-  imageStore(octahedral_img, octahedral_coord + ivec3(area_offset, probe_data.layer), col);
+  ivec3 texel = ivec3(local_texel + write_coord.offset, write_coord.layer);
+  imageStore(atlas_img, texel, vec4(radiance, 1.0));
 }

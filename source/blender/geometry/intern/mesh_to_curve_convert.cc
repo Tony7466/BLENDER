@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,38 +7,15 @@
 #include "BLI_set.hh"
 #include "BLI_task.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.hh"
-#include "BKE_geometry_set.hh"
 #include "BKE_mesh.hh"
 
 #include "GEO_mesh_to_curve.hh"
+#include "GEO_randomize.hh"
 
 namespace blender::geometry {
-
-static bool indices_are_full_ordered_copy(const Span<int> indices)
-{
-  return threading::parallel_reduce(
-      indices.index_range(),
-      4096,
-      true,
-      [&](const IndexRange range, const bool init) {
-        if (!init) {
-          return false;
-        }
-        for (const int i : range) {
-          if (indices[i] != i) {
-            return false;
-          }
-        }
-        return true;
-      },
-      [](const bool a, const bool b) { return a && b; });
-}
 
 BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
     const bke::AttributeAccessor &mesh_attributes,
@@ -58,45 +35,47 @@ BLI_NOINLINE bke::CurvesGeometry create_curve_from_vert_indices(
     curves.cyclic_for_write().slice(cyclic_curves).fill(true);
   }
 
-  const bool share_vert_data = indices_are_full_ordered_copy(vert_indices);
-  if (share_vert_data) {
-    bke::copy_attributes(
-        mesh_attributes, ATTR_DOMAIN_POINT, propagation_info, {}, curves_attributes);
+  /* Don't copy attributes that are built-in on meshes but not on curves. */
+  Set<std::string> skip;
+  for (const bke::AttributeIDRef &id : mesh_attributes.all_ids()) {
+    if (mesh_attributes.is_builtin(id) && !curves_attributes.is_builtin(id)) {
+      skip.add(id.name());
+    }
   }
+
+  bke::gather_attributes(mesh_attributes,
+                         bke::AttrDomain::Point,
+                         propagation_info,
+                         skip,
+                         vert_indices,
+                         curves_attributes);
 
   mesh_attributes.for_all(
       [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
-        if (share_vert_data) {
-          if (meta_data.domain == ATTR_DOMAIN_POINT) {
-            return true;
-          }
+        if (meta_data.domain == bke::AttrDomain::Point) {
+          return true;
         }
-
-        if (mesh_attributes.is_builtin(id) && !curves_attributes.is_builtin(id)) {
-          /* Don't copy attributes that are built-in on meshes but not on curves. */
+        if (skip.contains(id.name())) {
           return true;
         }
         if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
           return true;
         }
 
-        const bke::GAttributeReader src = mesh_attributes.lookup(id, ATTR_DOMAIN_POINT);
+        const bke::GAttributeReader src = mesh_attributes.lookup(id, bke::AttrDomain::Point);
         /* Some attributes might not exist if they were builtin on domains that don't have
          * any elements, i.e. a face attribute on the output of the line primitive node. */
         if (!src) {
           return true;
         }
         bke::GSpanAttributeWriter dst = curves_attributes.lookup_or_add_for_write_only_span(
-            id, ATTR_DOMAIN_POINT, meta_data.data_type);
-        if (share_vert_data) {
-          array_utils::copy(*src, dst.span);
-        }
-        else {
-          bke::attribute_math::gather(*src, vert_indices, dst.span);
-        }
+            id, bke::AttrDomain::Point, meta_data.data_type);
+        bke::attribute_math::gather(*src, vert_indices, dst.span);
         dst.finish();
         return true;
       });
+
+  debug_randomize_curve_order(&curves);
 
   return curves;
 }
@@ -224,7 +203,7 @@ BLI_NOINLINE static bke::CurvesGeometry edges_to_curves_convert(
     const Span<int2> edges,
     const bke::AnonymousAttributePropagationInfo &propagation_info)
 {
-  CurveFromEdgesOutput output = edges_to_curve_point_indices(mesh.totvert, edges);
+  CurveFromEdgesOutput output = edges_to_curve_point_indices(mesh.verts_num, edges);
   return create_curve_from_vert_indices(mesh.attributes(),
                                         output.vert_indices,
                                         output.curve_offsets,

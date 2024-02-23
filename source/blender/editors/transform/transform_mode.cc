@@ -8,25 +8,23 @@
 
 #include <cstdlib>
 
-#include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_windowmanager_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
 #include "BKE_constraint.h"
-#include "BKE_context.h"
-#include "BKE_nla.h"
+#include "BKE_context.hh"
 
-#include "RNA_access.h"
+#include "BLT_translation.hh"
 
-#include "UI_interface.h"
-
-#include "BLT_translation.h"
+#include "ED_sequencer.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -235,7 +233,7 @@ void protectedSizeBits(short protectflag, float size[3])
 /** \name Transform Limits
  * \{ */
 
-void constraintTransLim(const TransInfo *t, TransData *td)
+void constraintTransLim(const TransInfo *t, const TransDataContainer *tc, TransData *td)
 {
   if (td->con) {
     const bConstraintTypeInfo *ctiLoc = BKE_constraint_typeinfo_from_type(
@@ -288,8 +286,10 @@ void constraintTransLim(const TransInfo *t, TransData *td)
       if (cti) {
         /* do space conversions */
         if (con->ownspace == CONSTRAINT_SPACE_WORLD) {
-          /* just multiply by td->mtx (this should be ok) */
-          mul_m4_m3m4(cob.matrix, td->mtx, cob.matrix);
+          mul_m3_v3(td->mtx, cob.matrix[3]);
+          if (tc->use_local_mat) {
+            add_v3_v3(cob.matrix[3], tc->mat[3]);
+          }
         }
         else if (con->ownspace != CONSTRAINT_SPACE_LOCAL) {
           /* skip... incompatible spacetype */
@@ -307,8 +307,10 @@ void constraintTransLim(const TransInfo *t, TransData *td)
 
         /* convert spaces again */
         if (con->ownspace == CONSTRAINT_SPACE_WORLD) {
-          /* just multiply by td->smtx (this should be ok) */
-          mul_m4_m3m4(cob.matrix, td->smtx, cob.matrix);
+          if (tc->use_local_mat) {
+            sub_v3_v3(cob.matrix[3], tc->mat[3]);
+          }
+          mul_m3_v3(td->smtx, cob.matrix[3]);
         }
 
         /* free targets list */
@@ -526,12 +528,12 @@ void headerRotation(TransInfo *t, char *str, const int str_size, float final)
     outputNumInput(&(t->num), c, &t->scene->unit);
 
     ofs += BLI_snprintf_rlen(
-        str + ofs, str_size - ofs, TIP_("Rotation: %s %s %s"), &c[0], t->con.text, t->proptext);
+        str + ofs, str_size - ofs, IFACE_("Rotation: %s %s %s"), &c[0], t->con.text, t->proptext);
   }
   else {
     ofs += BLI_snprintf_rlen(str + ofs,
                              str_size - ofs,
-                             TIP_("Rotation: %.2f%s %s"),
+                             IFACE_("Rotation: %.2f%s %s"),
                              RAD2DEGF(final),
                              t->con.text,
                              t->proptext);
@@ -539,7 +541,7 @@ void headerRotation(TransInfo *t, char *str, const int str_size, float final)
 
   if (t->flag & T_PROP_EDIT_ALL) {
     ofs += BLI_snprintf_rlen(
-        str + ofs, str_size - ofs, TIP_(" Proportional size: %.2f"), t->prop_size);
+        str + ofs, str_size - ofs, IFACE_(" Proportional size: %.2f"), t->prop_size);
   }
 }
 
@@ -558,11 +560,17 @@ void ElementRotation_ex(const TransInfo *t,
 
     /* Apply gpencil falloff. */
     if (t->options & CTX_GPENCIL_STROKES) {
-      bGPDstroke *gps = (bGPDstroke *)td->extra;
-      if (gps->runtime.multi_frame_falloff != 1.0f) {
-        float ident_mat[3][3];
-        unit_m3(ident_mat);
-        interp_m3_m3m3(smat, ident_mat, smat, gps->runtime.multi_frame_falloff);
+      if (t->obedit_type == OB_GPENCIL_LEGACY) {
+
+        bGPDstroke *gps = (bGPDstroke *)td->extra;
+        if (gps->runtime.multi_frame_falloff != 1.0f) {
+          float ident_mat[3][3];
+          unit_m3(ident_mat);
+          interp_m3_m3m3(smat, ident_mat, smat, gps->runtime.multi_frame_falloff);
+        }
+      }
+      else if (t->obedit_type == OB_GREASE_PENCIL) {
+        /* pass */
       }
     }
 
@@ -631,7 +639,7 @@ void ElementRotation_ex(const TransInfo *t,
 
       add_v3_v3v3(td->loc, td->iloc, vec);
 
-      constraintTransLim(t, td);
+      constraintTransLim(t, tc, td);
     }
 
     /* rotation */
@@ -707,7 +715,7 @@ void ElementRotation_ex(const TransInfo *t,
       add_v3_v3v3(td->loc, td->iloc, vec);
     }
 
-    constraintTransLim(t, td);
+    constraintTransLim(t, tc, td);
 
     /* rotation */
     if ((t->flag & T_V3D_ALIGN) == 0) { /* Align mode doesn't rotate objects itself. */
@@ -833,13 +841,17 @@ void headerResize(TransInfo *t, const float vec[3], char *str, const int str_siz
   if (t->con.mode & CON_APPLY) {
     switch (t->num.idx_max) {
       case 0:
-        ofs += BLI_snprintf_rlen(
-            str + ofs, str_size - ofs, TIP_("Scale: %s%s %s"), &tvec[0], t->con.text, t->proptext);
+        ofs += BLI_snprintf_rlen(str + ofs,
+                                 str_size - ofs,
+                                 IFACE_("Scale: %s%s %s"),
+                                 &tvec[0],
+                                 t->con.text,
+                                 t->proptext);
         break;
       case 1:
         ofs += BLI_snprintf_rlen(str + ofs,
                                  str_size - ofs,
-                                 TIP_("Scale: %s : %s%s %s"),
+                                 IFACE_("Scale: %s : %s%s %s"),
                                  &tvec[0],
                                  &tvec[NUM_STR_REP_LEN],
                                  t->con.text,
@@ -848,7 +860,7 @@ void headerResize(TransInfo *t, const float vec[3], char *str, const int str_siz
       case 2:
         ofs += BLI_snprintf_rlen(str + ofs,
                                  str_size - ofs,
-                                 TIP_("Scale: %s : %s : %s%s %s"),
+                                 IFACE_("Scale: %s : %s : %s%s %s"),
                                  &tvec[0],
                                  &tvec[NUM_STR_REP_LEN],
                                  &tvec[NUM_STR_REP_LEN * 2],
@@ -861,7 +873,7 @@ void headerResize(TransInfo *t, const float vec[3], char *str, const int str_siz
     if (t->flag & T_2D_EDIT) {
       ofs += BLI_snprintf_rlen(str + ofs,
                                str_size - ofs,
-                               TIP_("Scale X: %s   Y: %s%s %s"),
+                               IFACE_("Scale X: %s   Y: %s%s %s"),
                                &tvec[0],
                                &tvec[NUM_STR_REP_LEN],
                                t->con.text,
@@ -870,7 +882,7 @@ void headerResize(TransInfo *t, const float vec[3], char *str, const int str_siz
     else {
       ofs += BLI_snprintf_rlen(str + ofs,
                                str_size - ofs,
-                               TIP_("Scale X: %s   Y: %s  Z: %s%s %s"),
+                               IFACE_("Scale X: %s   Y: %s  Z: %s%s %s"),
                                &tvec[0],
                                &tvec[NUM_STR_REP_LEN],
                                &tvec[NUM_STR_REP_LEN * 2],
@@ -881,7 +893,7 @@ void headerResize(TransInfo *t, const float vec[3], char *str, const int str_siz
 
   if (t->flag & T_PROP_EDIT_ALL) {
     ofs += BLI_snprintf_rlen(
-        str + ofs, str_size - ofs, TIP_(" Proportional size: %.2f"), t->prop_size);
+        str + ofs, str_size - ofs, IFACE_(" Proportional size: %.2f"), t->prop_size);
   }
 }
 
@@ -1022,21 +1034,26 @@ void ElementResize(const TransInfo *t,
    *   Operating on copies as a temporary solution.
    */
   if (t->options & CTX_GPENCIL_STROKES) {
-    bGPDstroke *gps = (bGPDstroke *)td->extra;
-    mul_v3_fl(vec, td->factor * gps->runtime.multi_frame_falloff);
+    if (t->obedit_type == OB_GPENCIL_LEGACY) {
+      bGPDstroke *gps = (bGPDstroke *)td->extra;
+      mul_v3_fl(vec, td->factor * gps->runtime.multi_frame_falloff);
 
-    /* Scale stroke thickness. */
-    if (td->val) {
-      NumInput num_evil = t->num;
-      float values_final_evil[4];
-      copy_v4_v4(values_final_evil, t->values_final);
-      transform_snap_increment(t, values_final_evil);
-      applyNumInput(&num_evil, values_final_evil);
+      /* Scale stroke thickness. */
+      if (td->val) {
+        NumInput num_evil = t->num;
+        float values_final_evil[4];
+        copy_v4_v4(values_final_evil, t->values_final);
+        transform_snap_increment(t, values_final_evil);
+        applyNumInput(&num_evil, values_final_evil);
 
-      float ratio = values_final_evil[0];
-      float transformed_value = td->ival * fabs(ratio);
-      *td->val = max_ff(interpf(transformed_value, td->ival, gps->runtime.multi_frame_falloff),
-                        0.001f);
+        float ratio = values_final_evil[0];
+        float transformed_value = td->ival * fabs(ratio);
+        *td->val = max_ff(interpf(transformed_value, td->ival, gps->runtime.multi_frame_falloff),
+                          0.001f);
+      }
+    }
+    else if (t->obedit_type == OB_GREASE_PENCIL) {
+      mul_v3_fl(vec, td->factor);
     }
   }
   else {
@@ -1047,7 +1064,7 @@ void ElementResize(const TransInfo *t,
     if (t->options & CTX_POSE_BONE) {
       /* Without this, the resulting location of scaled bones aren't correct,
        * especially noticeable scaling root or disconnected bones around the cursor, see #92515. */
-      mul_mat3_m4_v3(tc->poseobj->object_to_world, vec);
+      mul_mat3_m4_v3(tc->poseobj->object_to_world().ptr(), vec);
     }
     mul_m3_v3(td->smtx, vec);
   }
@@ -1057,7 +1074,7 @@ void ElementResize(const TransInfo *t,
     add_v3_v3v3(td->loc, td->iloc, vec);
   }
 
-  constraintTransLim(t, td);
+  constraintTransLim(t, tc, td);
 }
 
 /** \} */
@@ -1148,6 +1165,10 @@ void transform_mode_init(TransInfo *t, wmOperator *op, const int mode)
 {
   t->mode = eTfmMode(mode);
   t->mode_info = mode_info_get(t, mode);
+
+  if (t->spacetype == SPACE_SEQ && sequencer_retiming_mode_is_active(t->context)) {
+    t->mode_info = &TransMode_translate;
+  }
 
   if (t->mode_info) {
     t->flag |= eTFlag(t->mode_info->flags);

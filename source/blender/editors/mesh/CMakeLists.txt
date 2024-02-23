@@ -1,10 +1,13 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
   ../uvedit
+  ../../blenkernel
+  ../../blentranslation
+  ../../bmesh
   ../../draw
   ../../functions
   ../../geometry
@@ -12,8 +15,12 @@ set(INC
   ../../imbuf
   ../../makesrna
   ../../render
+  ../../windowmanager
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
+)
+
+set(INC_SYS
 )
 
 set(SRC
@@ -42,6 +49,7 @@ set(SRC
   editmesh_rip_edge.cc
   editmesh_select.cc
   editmesh_select_similar.cc
+  editmesh_set_sharpness_by_angle.cc
   editmesh_tools.cc
   editmesh_undo.cc
   editmesh_utils.cc
@@ -50,20 +58,19 @@ set(SRC
   mesh_ops.cc
   meshtools.cc
 
-  mesh_intern.h
+  mesh_intern.hh
 )
 
 set(LIB
   PRIVATE bf::blenfont
-  PRIVATE bf::blenkernel
+  bf_blenkernel
   PRIVATE bf::blenlib
-  PRIVATE bf::blentranslation
-  PRIVATE bf::bmesh
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
+  PRIVATE bf::extern::fmtlib
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
-  PRIVATE bf::windowmanager
+  bf_windowmanager
 )
 
 if(WITH_FREESTYLE)

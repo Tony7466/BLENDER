@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,22 +25,22 @@
 #include "DNA_windowmanager_types.h"
 #include "DNA_workspace_types.h"
 
-#include "BKE_brush.h"
-#include "BKE_context.h"
+#include "BKE_brush.hh"
+#include "BKE_context.hh"
 #include "BKE_idprop.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
-#include "BKE_paint.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
+#include "BKE_paint.hh"
 #include "BKE_workspace.h"
 
-#include "RNA_access.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_toolsystem.h" /* own include */
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_toolsystem.hh" /* own include */
+#include "WM_types.hh"
 
 static void toolsystem_reinit_with_toolref(bContext *C, WorkSpace * /*workspace*/, bToolRef *tref);
 static bToolRef *toolsystem_reinit_ensure_toolref(bContext *C,
@@ -175,8 +175,8 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
       }
     }
     else {
-      const ePaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
-      BLI_assert(paint_mode != PAINT_MODE_INVALID);
+      const PaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
+      BLI_assert(paint_mode != PaintMode::Invalid);
       const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
       BLI_assert(items != nullptr);
 
@@ -201,11 +201,10 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
 
                 BKE_brush_tool_set(brush, paint, slot_index);
 
-                if (paint_mode == PAINT_MODE_SCULPT) {
+                if (paint_mode == PaintMode::Sculpt) {
                   BKE_brush_sculpt_reset(brush);
                 }
               }
-              BKE_paint_brush_set(paint, brush);
             }
             BKE_paint_brush_set(paint, brush);
           }
@@ -385,7 +384,7 @@ void WM_toolsystem_ref_sync_from_context(Main *bmain, WorkSpace *workspace, bToo
       }
     }
     else {
-      const ePaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
+      const PaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
       Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
       const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
       if (paint && paint->brush && items) {
@@ -507,7 +506,7 @@ void WM_toolsystem_refresh_active(bContext *C)
     ScrArea *area;
     ARegion *region;
     bool is_set;
-  } context_prev = {0};
+  } context_prev = {nullptr};
 
   for (wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first); wm;
        wm = static_cast<wmWindowManager *>(wm->id.next))
@@ -903,7 +902,7 @@ bool WM_toolsystem_ref_properties_get_ex(bToolRef *tref,
 {
   IDProperty *group = WM_toolsystem_ref_properties_get_idprops(tref);
   IDProperty *prop = group ? IDP_GetPropertyFromGroup(group, idname) : nullptr;
-  RNA_pointer_create(nullptr, type, prop, r_ptr);
+  *r_ptr = RNA_pointer_create(nullptr, type, prop);
   return (prop != nullptr);
 }
 
@@ -914,7 +913,7 @@ void WM_toolsystem_ref_properties_ensure_ex(bToolRef *tref,
 {
   IDProperty *group = WM_toolsystem_ref_properties_ensure_idprops(tref);
   IDProperty *prop = idprops_ensure_named_group(group, idname);
-  RNA_pointer_create(nullptr, type, prop, r_ptr);
+  *r_ptr = RNA_pointer_create(nullptr, type, prop);
 }
 
 void WM_toolsystem_ref_properties_init_for_keymap(bToolRef *tref,

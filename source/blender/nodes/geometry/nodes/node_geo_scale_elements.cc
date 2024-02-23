@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,13 +9,12 @@
 #include "BLI_vector.hh"
 #include "BLI_vector_set.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "BKE_mesh.hh"
+
+#include "NOD_rna_define.hh"
 
 #include "node_geometry_util.hh"
 
@@ -42,13 +41,13 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "domain", 0, "", ICON_NONE);
-  uiItemR(layout, ptr, "scale_mode", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "domain", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "scale_mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  node->custom1 = ATTR_DOMAIN_FACE;
+  node->custom1 = int16_t(AttrDomain::Face);
   node->custom2 = GEO_NODE_SCALE_ELEMENTS_UNIFORM;
 }
 
@@ -191,7 +190,7 @@ static void scale_vertex_islands_uniformly(Mesh &mesh,
     }
   });
 
-  BKE_mesh_tag_positions_changed(&mesh);
+  mesh.tag_positions_changed();
 }
 
 static void scale_vertex_islands_on_axis(Mesh &mesh,
@@ -237,7 +236,7 @@ static void scale_vertex_islands_on_axis(Mesh &mesh,
     }
   });
 
-  BKE_mesh_tag_positions_changed(&mesh);
+  mesh.tag_positions_changed();
 }
 
 static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh,
@@ -247,7 +246,7 @@ static Vector<ElementIsland> prepare_face_islands(const Mesh &mesh,
   const Span<int> corner_verts = mesh.corner_verts();
 
   /* Use the disjoint set data structure to determine which vertices have to be scaled together. */
-  DisjointSet<int> disjoint_set(mesh.totvert);
+  DisjointSet<int> disjoint_set(mesh.verts_num);
   face_selection.foreach_index([&](const int face_index) {
     const Span<int> face_verts = corner_verts.slice(faces[face_index]);
     for (const int loop_index : face_verts.index_range().drop_back(1)) {
@@ -302,7 +301,7 @@ static AxisScaleParams evaluate_axis_scale_fields(FieldEvaluator &evaluator,
 
 static void scale_faces_on_axis(Mesh &mesh, const AxisScaleFields &fields)
 {
-  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_FACE};
+  const bke::MeshFieldContext field_context{mesh, AttrDomain::Face};
   FieldEvaluator evaluator{field_context, mesh.faces_num};
   AxisScaleParams params = evaluate_axis_scale_fields(evaluator, fields);
 
@@ -324,7 +323,7 @@ static UniformScaleParams evaluate_uniform_scale_fields(FieldEvaluator &evaluato
 
 static void scale_faces_uniformly(Mesh &mesh, const UniformScaleFields &fields)
 {
-  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_FACE};
+  const bke::MeshFieldContext field_context{mesh, AttrDomain::Face};
   FieldEvaluator evaluator{field_context, mesh.faces_num};
   UniformScaleParams params = evaluate_uniform_scale_fields(evaluator, fields);
 
@@ -338,7 +337,7 @@ static Vector<ElementIsland> prepare_edge_islands(const Mesh &mesh,
   const Span<int2> edges = mesh.edges();
 
   /* Use the disjoint set data structure to determine which vertices have to be scaled together. */
-  DisjointSet<int> disjoint_set(mesh.totvert);
+  DisjointSet<int> disjoint_set(mesh.verts_num);
   edge_selection.foreach_index([&](const int edge_index) {
     const int2 &edge = edges[edge_index];
     disjoint_set.join(edge[0], edge[1]);
@@ -377,8 +376,8 @@ static void get_edge_verts(const Span<int2> edges,
 
 static void scale_edges_uniformly(Mesh &mesh, const UniformScaleFields &fields)
 {
-  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_EDGE};
-  FieldEvaluator evaluator{field_context, mesh.totedge};
+  const bke::MeshFieldContext field_context{mesh, AttrDomain::Edge};
+  FieldEvaluator evaluator{field_context, mesh.edges_num};
   UniformScaleParams params = evaluate_uniform_scale_fields(evaluator, fields);
 
   Vector<ElementIsland> island = prepare_edge_islands(mesh, params.selection);
@@ -387,8 +386,8 @@ static void scale_edges_uniformly(Mesh &mesh, const UniformScaleFields &fields)
 
 static void scale_edges_on_axis(Mesh &mesh, const AxisScaleFields &fields)
 {
-  const bke::MeshFieldContext field_context{mesh, ATTR_DOMAIN_EDGE};
-  FieldEvaluator evaluator{field_context, mesh.totedge};
+  const bke::MeshFieldContext field_context{mesh, AttrDomain::Edge};
+  FieldEvaluator evaluator{field_context, mesh.edges_num};
   AxisScaleParams params = evaluate_axis_scale_fields(evaluator, fields);
 
   Vector<ElementIsland> island = prepare_edge_islands(mesh, params.selection);
@@ -398,7 +397,7 @@ static void scale_edges_on_axis(Mesh &mesh, const AxisScaleFields &fields)
 static void node_geo_exec(GeoNodeExecParams params)
 {
   const bNode &node = params.node();
-  const eAttrDomain domain = eAttrDomain(node.custom1);
+  const AttrDomain domain = AttrDomain(node.custom1);
   const GeometryNodeScaleElementsMode scale_mode = GeometryNodeScaleElementsMode(node.custom2);
 
   GeometrySet geometry = params.extract_input<GeometrySet>("Geometry");
@@ -414,7 +413,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   geometry.modify_geometry_sets([&](GeometrySet &geometry) {
     if (Mesh *mesh = geometry.get_mesh_for_write()) {
       switch (domain) {
-        case ATTR_DOMAIN_FACE: {
+        case AttrDomain::Face: {
           switch (scale_mode) {
             case GEO_NODE_SCALE_ELEMENTS_UNIFORM: {
               scale_faces_uniformly(*mesh, {selection_field, scale_field, center_field});
@@ -427,7 +426,7 @@ static void node_geo_exec(GeoNodeExecParams params)
           }
           break;
         }
-        case ATTR_DOMAIN_EDGE: {
+        case AttrDomain::Edge: {
           switch (scale_mode) {
             case GEO_NODE_SCALE_ELEMENTS_UNIFORM: {
               scale_edges_uniformly(*mesh, {selection_field, scale_field, center_field});
@@ -450,19 +449,62 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Geometry", std::move(geometry));
 }
 
-}  // namespace blender::nodes::node_geo_scale_elements_cc
-
-void register_node_type_geo_scale_elements()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_scale_elements_cc;
+  static const EnumPropertyItem domain_items[] = {
+      {int(AttrDomain::Face),
+       "FACE",
+       ICON_NONE,
+       "Face",
+       "Scale individual faces or neighboring face islands"},
+      {int(AttrDomain::Edge),
+       "EDGE",
+       ICON_NONE,
+       "Edge",
+       "Scale individual edges or neighboring edge islands"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
+  static const EnumPropertyItem scale_mode_items[] = {
+      {GEO_NODE_SCALE_ELEMENTS_UNIFORM,
+       "UNIFORM",
+       ICON_NONE,
+       "Uniform",
+       "Scale elements by the same factor in every direction"},
+      {GEO_NODE_SCALE_ELEMENTS_SINGLE_AXIS,
+       "SINGLE_AXIS",
+       ICON_NONE,
+       "Single Axis",
+       "Scale elements in a single direction"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  RNA_def_node_enum(srna,
+                    "domain",
+                    "Domain",
+                    "Element type to transform",
+                    domain_items,
+                    NOD_inline_enum_accessors(custom1),
+                    int(AttrDomain::Face));
+
+  RNA_def_node_enum(
+      srna, "scale_mode", "Scale Mode", "", scale_mode_items, NOD_inline_enum_accessors(custom2));
+}
+
+static void node_register()
+{
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SCALE_ELEMENTS, "Scale Elements", NODE_CLASS_GEOMETRY);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.initfunc = file_ns::node_init;
-  ntype.updatefunc = file_ns::node_update;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
+  ntype.draw_buttons = node_layout;
+  ntype.initfunc = node_init;
+  ntype.updatefunc = node_update;
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_scale_elements_cc

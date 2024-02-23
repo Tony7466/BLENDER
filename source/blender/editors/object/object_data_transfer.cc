@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,36 +9,34 @@
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
-#include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
 #include "BKE_data_transfer.h"
-#include "BKE_deform.h"
-#include "BKE_mesh_mapping.h"
-#include "BKE_mesh_remap.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_object.h"
-#include "BKE_report.h"
+#include "BKE_deform.hh"
+#include "BKE_mesh_mapping.hh"
+#include "BKE_mesh_remap.hh"
+#include "BKE_object.hh"
+#include "BKE_report.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_object.h"
+#include "ED_object.hh"
 
 #include "object_intern.h"
 
@@ -188,14 +186,14 @@ static const EnumPropertyItem *dt_layers_select_src_itemf(bContext *C,
       *r_free = true;
       return item;
     }
-    int num_data = CustomData_number_of_layers(&me_eval->ldata, CD_PROP_FLOAT2);
+    int num_data = CustomData_number_of_layers(&me_eval->corner_data, CD_PROP_FLOAT2);
 
     RNA_enum_item_add_separator(&item, &totitem);
 
     for (int i = 0; i < num_data; i++) {
       tmp_item.value = i;
       tmp_item.identifier = tmp_item.name = CustomData_get_layer_name(
-          &me_eval->ldata, CD_PROP_FLOAT2, i);
+          &me_eval->corner_data, CD_PROP_FLOAT2, i);
       RNA_enum_item_add(&item, &totitem, &tmp_item);
     }
   }
@@ -225,10 +223,10 @@ static const EnumPropertyItem *dt_layers_select_src_itemf(bContext *C,
     }
 
     if (data_type & (DT_TYPE_MLOOPCOL_VERT | DT_TYPE_MPROPCOL_VERT)) {
-      dt_add_vcol_layers(&me_eval->vdata, cddata_masks.vmask, &item, &totitem);
+      dt_add_vcol_layers(&me_eval->vert_data, cddata_masks.vmask, &item, &totitem);
     }
     if (data_type & (DT_TYPE_MLOOPCOL_LOOP | DT_TYPE_MPROPCOL_LOOP)) {
-      dt_add_vcol_layers(&me_eval->ldata, cddata_masks.lmask, &item, &totitem);
+      dt_add_vcol_layers(&me_eval->corner_data, cddata_masks.lmask, &item, &totitem);
     }
   }
 
@@ -357,35 +355,32 @@ static void data_transfer_exec_preprocess_objects(bContext *C,
                                                   ListBase *ctx_objects,
                                                   const bool reverse_transfer)
 {
-  CollectionPointerLink *ctx_ob;
   CTX_data_selected_editable_objects(C, ctx_objects);
 
   if (reverse_transfer) {
     return; /* Nothing else to do in this case... */
   }
 
-  for (ctx_ob = static_cast<CollectionPointerLink *>(ctx_objects->first); ctx_ob;
-       ctx_ob = ctx_ob->next)
-  {
+  LISTBASE_FOREACH (CollectionPointerLink *, ctx_ob, ctx_objects) {
     Object *ob = static_cast<Object *>(ctx_ob->ptr.data);
-    Mesh *me;
+    Mesh *mesh;
     if ((ob == ob_src) || (ob->type != OB_MESH)) {
       continue;
     }
 
-    me = static_cast<Mesh *>(ob->data);
-    if (ID_IS_LINKED(me) || ID_IS_OVERRIDE_LIBRARY(me)) {
+    mesh = static_cast<Mesh *>(ob->data);
+    if (ID_IS_LINKED(mesh) || ID_IS_OVERRIDE_LIBRARY(mesh)) {
       /* Do not transfer to linked/override data, not supported. */
       BKE_reportf(op->reports,
                   RPT_WARNING,
                   "Skipping object '%s', linked or override data '%s' cannot be modified",
                   ob->id.name + 2,
-                  me->id.name + 2);
-      me->id.tag &= ~LIB_TAG_DOIT;
+                  mesh->id.name + 2);
+      mesh->id.tag &= ~LIB_TAG_DOIT;
       continue;
     }
 
-    me->id.tag |= LIB_TAG_DOIT;
+    mesh->id.tag |= LIB_TAG_DOIT;
   }
 }
 
@@ -395,7 +390,7 @@ static bool data_transfer_exec_is_object_valid(wmOperator *op,
                                                Object *ob_dst,
                                                const bool reverse_transfer)
 {
-  Mesh *me;
+  Mesh *mesh;
   if ((ob_dst == ob_src) || (ob_src->type != OB_MESH) || (ob_dst->type != OB_MESH)) {
     return false;
   }
@@ -404,12 +399,12 @@ static bool data_transfer_exec_is_object_valid(wmOperator *op,
     return true;
   }
 
-  me = static_cast<Mesh *>(ob_dst->data);
-  if (me->id.tag & LIB_TAG_DOIT) {
-    me->id.tag &= ~LIB_TAG_DOIT;
+  mesh = static_cast<Mesh *>(ob_dst->data);
+  if (mesh->id.tag & LIB_TAG_DOIT) {
+    mesh->id.tag &= ~LIB_TAG_DOIT;
     return true;
   }
-  if (!ID_IS_LINKED(me) && !ID_IS_OVERRIDE_LIBRARY(me)) {
+  if (!ID_IS_LINKED(mesh) && !ID_IS_OVERRIDE_LIBRARY(mesh)) {
     /* Do not apply transfer operation more than once. */
     /* XXX This is not nice regarding vgroups, which are half-Object data... :/ */
     BKE_reportf(
@@ -417,7 +412,7 @@ static bool data_transfer_exec_is_object_valid(wmOperator *op,
         RPT_WARNING,
         "Skipping object '%s', data '%s' has already been processed with a previous object",
         ob_dst->id.name + 2,
-        me->id.name + 2);
+        mesh->id.name + 2);
   }
   return false;
 }
@@ -428,7 +423,6 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
   ListBase ctx_objects;
-  CollectionPointerLink *ctx_ob_dst;
 
   bool changed = false;
 
@@ -479,7 +473,7 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
   }
 
   if (reverse_transfer) {
-    SWAP(int, layers_src, layers_dst);
+    std::swap(layers_src, layers_dst);
   }
 
   if (fromto_idx != DT_MULTILAYER_INDEX_INVALID) {
@@ -489,13 +483,11 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
 
   data_transfer_exec_preprocess_objects(C, op, ob_src, &ctx_objects, reverse_transfer);
 
-  for (ctx_ob_dst = static_cast<CollectionPointerLink *>(ctx_objects.first); ctx_ob_dst;
-       ctx_ob_dst = ctx_ob_dst->next)
-  {
+  LISTBASE_FOREACH (CollectionPointerLink *, ctx_ob_dst, &ctx_objects) {
     Object *ob_dst = static_cast<Object *>(ctx_ob_dst->ptr.data);
 
     if (reverse_transfer) {
-      SWAP(Object *, ob_src, ob_dst);
+      std::swap(ob_src, ob_dst);
     }
 
     if (data_transfer_exec_is_object_valid(op, ob_src, ob_dst, reverse_transfer)) {
@@ -528,18 +520,13 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
                                         false,
                                         op->reports))
       {
-
-        if (data_type == DT_TYPE_LNOR && use_create) {
-          ((Mesh *)ob_dst->data)->flag |= ME_AUTOSMOOTH;
-        }
-
         DEG_id_tag_update(&ob_dst->id, ID_RECALC_GEOMETRY);
         changed = true;
       }
     }
 
     if (reverse_transfer) {
-      SWAP(Object *, ob_src, ob_dst);
+      std::swap(ob_src, ob_dst);
     }
   }
 
@@ -646,18 +633,18 @@ static bool data_transfer_poll_property(const bContext * /*C*/,
   return true;
 }
 
-static char *data_transfer_get_description(bContext * /*C*/,
-                                           wmOperatorType * /*ot*/,
-                                           PointerRNA *ptr)
+static std::string data_transfer_get_description(bContext * /*C*/,
+                                                 wmOperatorType * /*ot*/,
+                                                 PointerRNA *ptr)
 {
   const bool reverse_transfer = RNA_boolean_get(ptr, "use_reverse_transfer");
 
   if (reverse_transfer) {
-    return BLI_strdup(TIP_(
-        "Transfer data layer(s) (weights, edge sharp, etc.) from selected meshes to active one"));
+    return TIP_(
+        "Transfer data layer(s) (weights, edge sharp, etc.) from selected meshes to active one");
   }
 
-  return nullptr;
+  return "";
 }
 
 void OBJECT_OT_data_transfer(wmOperatorType *ot)
@@ -868,7 +855,6 @@ static int datalayout_transfer_exec(bContext *C, wmOperator *op)
     Object *ob_src = ob_act;
 
     ListBase ctx_objects;
-    CollectionPointerLink *ctx_ob_dst;
 
     const int data_type = RNA_enum_get(op->ptr, "data_type");
     const bool use_delete = RNA_boolean_get(op->ptr, "use_delete");
@@ -888,9 +874,7 @@ static int datalayout_transfer_exec(bContext *C, wmOperator *op)
 
     data_transfer_exec_preprocess_objects(C, op, ob_src, &ctx_objects, false);
 
-    for (ctx_ob_dst = static_cast<CollectionPointerLink *>(ctx_objects.first); ctx_ob_dst;
-         ctx_ob_dst = ctx_ob_dst->next)
-    {
+    LISTBASE_FOREACH (CollectionPointerLink *, ctx_ob_dst, &ctx_objects) {
       Object *ob_dst = static_cast<Object *>(ctx_ob_dst->ptr.data);
       if (data_transfer_exec_is_object_valid(op, ob_src, ob_dst, false)) {
         BKE_object_data_transfer_layout(depsgraph,
