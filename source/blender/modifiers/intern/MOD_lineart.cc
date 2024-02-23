@@ -46,24 +46,11 @@ static void init_data(ModifierData *md)
   BLI_assert(MEMCMP_STRUCT_AFTER_IS_ZERO(gpmd, modifier));
 
   MEMCPY_STRUCT_AFTER(gpmd, DNA_struct_default_get(GreasePencilLineartModifierData), modifier);
-
-  modifier::greasepencil::init_influence_data(&gpmd->influence, false);
 }
 
 static void copy_data(const ModifierData *md, ModifierData *target, const int flag)
 {
-  const auto *lmd = reinterpret_cast<const GreasePencilLineartModifierData *>(md);
-  auto *tomd = reinterpret_cast<GreasePencilLineartModifierData *>(target);
-
   BKE_modifier_copydata_generic(md, target, flag);
-
-  modifier::greasepencil::copy_influence_data(&lmd->influence, &tomd->influence, flag);
-}
-
-static void free_data(ModifierData *md)
-{
-  auto *lmd = reinterpret_cast<GreasePencilLineartModifierData *>(md);
-  modifier::greasepencil::free_influence_data(&lmd->influence);
 }
 
 static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_render_params*/)
@@ -158,8 +145,6 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   walk(user_data, ob, (ID **)&lmd->source_object, IDWALK_CB_NOP);
   walk(user_data, ob, (ID **)&lmd->source_camera, IDWALK_CB_NOP);
   walk(user_data, ob, (ID **)&lmd->light_contour_object, IDWALK_CB_NOP);
-
-  modifier::greasepencil::foreach_influence_ID_link(&lmd->influence, ob, walk, user_data);
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -815,12 +800,6 @@ static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const Modi
 
   BLO_write_struct(writer, GreasePencilLineartModifierData, lmd);
 }
-
-static void blend_read(BlendDataReader *reader, ModifierData *md)
-{
-  auto *lmd = reinterpret_cast<GreasePencilLineartModifierData *>(md);
-}
-
 }  // namespace blender
 
 ModifierTypeInfo modifierType_GreasePencilLineart = {
@@ -844,7 +823,7 @@ ModifierTypeInfo modifierType_GreasePencilLineart = {
 
     /*init_data*/ blender::init_data,
     /*required_data_mask*/ nullptr,
-    /*free_data*/ blender::free_data,
+    /*free_data*/ nullptr,
     /*is_disabled*/ blender::is_disabled,
     /*update_depsgraph*/ blender::update_depsgraph,
     /*depends_on_time*/ nullptr,
@@ -854,5 +833,5 @@ ModifierTypeInfo modifierType_GreasePencilLineart = {
     /*free_runtime_data*/ nullptr,
     /*panel_register*/ blender::panel_register,
     /*blend_write*/ blender::blend_write,
-    /*blend_read*/ blender::blend_read,
+    /*blend_read*/ nullptr,
 };
