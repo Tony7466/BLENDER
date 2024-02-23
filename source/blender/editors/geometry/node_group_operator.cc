@@ -332,6 +332,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Object *active_object = CTX_data_active_object(C);
+  const RegionView3D *rv3d = CTX_wm_region_view3d(C);
   if (!active_object) {
     return OPERATOR_CANCELLED;
   }
@@ -388,6 +389,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
     operator_eval_data.depsgraph = depsgraph;
     operator_eval_data.self_object = DEG_get_evaluated_object(depsgraph, object);
     operator_eval_data.scene = DEG_get_evaluated_scene(depsgraph);
+    operator_eval_data.rv3d = rv3d;
 
     nodes::GeoNodesCallData call_data{};
     call_data.operator_data = &operator_eval_data;

@@ -170,6 +170,7 @@ struct GeoNodesOperatorData {
   const Object *self_object = nullptr;
   /** Current evaluated depsgraph. */
   Depsgraph *depsgraph = nullptr;
+  const RegionView3D *rv3d = nullptr;
   Scene *scene = nullptr;
 };
 
