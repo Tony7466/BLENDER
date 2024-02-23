@@ -561,25 +561,6 @@ void BKE_modifier_path_init(char *path, int path_maxncpy, const char *name);
 const char *BKE_modifier_path_relbase(Main *bmain, Object *ob);
 const char *BKE_modifier_path_relbase_from_global(Object *ob);
 
-/* Stores the maximum calculation range in the whole modifier stack for line art so the cache can
- * cover everything that will be visible. */
-struct GreasePencilLineartLimitInfo {
-  int16_t edge_types;
-  uint8_t min_level;
-  uint8_t max_level;
-  uint8_t shadow_selection;
-  uint8_t silhouette_selection;
-};
-
-GreasePencilLineartLimitInfo BKE_grease_pencil_get_lineart_modifier_limits(const Object &ob);
-
-void BKE_grease_pencil_set_lineart_modifier_limits(GreasePencilLineartModifierData &lmd,
-                                                   const GreasePencilLineartLimitInfo &info,
-                                                   bool is_first_lineart);
-bool BKE_grease_pencil_is_first_lineart(const GreasePencilLineartModifierData &md);
-GreasePencilLineartModifierData *BKE_grease_pencil_get_first_lineart_modifier(const Object &ob);
-bool BKE_grease_pencil_is_last_line_art(const GreasePencilLineartModifierData &md);
-
 /* Accessors of original/evaluated modifiers. */
 
 /**
