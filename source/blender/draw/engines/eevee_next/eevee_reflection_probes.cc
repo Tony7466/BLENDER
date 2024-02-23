@@ -122,7 +122,7 @@ void SphereProbeModule::end_sync()
   /* Detect if we need to render probe objects. */
   update_probes_next_sample_ = false;
   for (SphereProbe &probe : instance_.light_probes.sphere_map_.values()) {
-    if (world_updated) {
+    if (atlas_resized || world_updated) {
       /* Last minute tagging. */
       probe.do_render = true;
     }
