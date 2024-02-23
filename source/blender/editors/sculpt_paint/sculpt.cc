@@ -3050,12 +3050,21 @@ void SCULPT_calc_brush_plane(
   }
 }
 
-int SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache *cache,
-                      const Brush *brush,
-                      const float val[3])
+float SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache *cache,
+                        const Brush *brush,
+                        const float val[3])
 {
-  return (!(brush->flag & BRUSH_PLANE_TRIM) ||
-          (dot_v3v3(val, val) <= cache->radius_squared * cache->plane_trim_squared));
+  const float lensq = dot_v3v3(val, val);
+  if (!(brush->flag & BRUSH_PLANE_TRIM) ||
+      (lensq <= cache->radius_squared * cache->plane_trim_squared))
+  {
+    return 1;
+  }
+
+  /* Workaround for https://projects.blender.org/blender/blender/issues/116458
+  apply a strong falloff based on the distance to the brush plane */
+  const float decay_rate = cache->plane_trim_decay;
+  return std::exp(-decay_rate * sqrtf(lensq));
 }
 
 int SCULPT_plane_point_side(const float co[3], const float plane[4])
@@ -4211,6 +4220,7 @@ static void sculpt_update_cache_invariants(
   cache->scale[2] = max_scale / ob->scale[2];
 
   cache->plane_trim_squared = brush->plane_trim * brush->plane_trim;
+  cache->plane_trim_decay = brush->plane_trim_decay;
 
   cache->flag = 0;
 

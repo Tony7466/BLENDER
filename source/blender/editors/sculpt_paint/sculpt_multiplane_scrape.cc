@@ -161,26 +161,23 @@ static void do_multiplane_scrape_brush_task(Object *ob,
     }
 
     sub_v3_v3v3(val, intr, vd.co);
-    if (!SCULPT_plane_trim(ss->cache, brush, val)) {
-      continue;
-    }
-
+    const float trim_factor = SCULPT_plane_trim(ss->cache, brush, val);
     auto_mask::node_update(automask_data, vd);
 
     /* Deform the local space along the Y axis to avoid artifacts on curved strokes. */
     /* This produces a not round brush tip. */
     local_co[1] *= 2.0f;
-    const float fade = bstrength * SCULPT_brush_strength_factor(ss,
-                                                                brush,
-                                                                vd.co,
-                                                                len_v3(local_co),
-                                                                vd.no,
-                                                                vd.fno,
-                                                                vd.mask,
-                                                                vd.vertex,
-                                                                thread_id,
-                                                                &automask_data);
-
+    float fade = bstrength * SCULPT_brush_strength_factor(ss,
+                                                          brush,
+                                                          vd.co,
+                                                          len_v3(local_co),
+                                                          vd.no,
+                                                          vd.fno,
+                                                          vd.mask,
+                                                          vd.vertex,
+                                                          thread_id,
+                                                          &automask_data);
+    fade *= trim_factor;
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;

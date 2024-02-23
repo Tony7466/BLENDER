@@ -614,6 +614,7 @@ def brush_settings(layout, context, brush, popover=False):
             sub = row.row()
             sub.active = brush.use_plane_trim
             sub.prop(brush, "plane_trim", slider=True, text="")
+            sub.prop(brush, "plane_trim_decay", slider=True, text="")
 
             layout.separator()
 
