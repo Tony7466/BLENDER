@@ -71,7 +71,7 @@ bool GPU_debug_group_match(const char *ref);
  *
  * \param title: Optional title to set for the frame capture.
  */
-void GPU_debug_capture_begin(const char *title = nullptr);
+void GPU_debug_capture_begin(const char *title);
 void GPU_debug_capture_end(void);
 
 /**

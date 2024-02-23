@@ -402,6 +402,7 @@ bool GLBackend::debug_capture_begin(const char *title)
     return result;
   }
 #endif
+  UNUSED_VARS(title);
   return false;
 }
 

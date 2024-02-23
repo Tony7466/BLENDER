@@ -44,6 +44,7 @@ bool VKBackend::debug_capture_begin(const char *title)
   }
   return result;
 #else
+  UNUSED_VARS(title);
   return false;
 #endif
 }
