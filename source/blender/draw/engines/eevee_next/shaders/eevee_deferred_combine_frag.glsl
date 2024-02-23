@@ -59,7 +59,7 @@ void main()
     if (cl.type == CLOSURE_NONE_ID) {
       continue;
     }
-    int layer_index = gbuffer_closure_layer_get(gbuf, i);
+    int layer_index = gbuffer_closure_get_bin_index(gbuf, i);
     vec3 closure_light = load_radiance_direct(texel, layer_index);
 
     if (!use_combined_lightprobe_eval) {

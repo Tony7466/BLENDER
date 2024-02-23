@@ -86,7 +86,7 @@ void main()
   }
 
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
-    int layer_index = gbuffer_closure_layer_get(gbuf, i);
+    int layer_index = gbuffer_closure_get_bin_index(gbuf, i);
     /* TODO(fclem): Layered texture. */
     if (layer_index == 0) {
       imageStore(direct_radiance_1_img, texel, vec4(stack.cl[i].light_shadowed, 1.0));

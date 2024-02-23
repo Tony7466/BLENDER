@@ -43,7 +43,7 @@ void main()
     g_data_packed = gbuffer_pack(data_in);
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
-    EXPECT_EQ(g_data_packed.layer_data, 1);
+    EXPECT_EQ(g_data_packed.data_len, 1);
     EXPECT_EQ(data_out.closure_count, 1);
 
     ClosureUndetermined out_diffuse = gbuffer_closure_get(data_out, 0);
@@ -66,7 +66,7 @@ void main()
     g_data_packed = gbuffer_pack(data_in);
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
-    EXPECT_EQ(g_data_packed.layer_data, 2);
+    EXPECT_EQ(g_data_packed.data_len, 2);
     EXPECT_EQ(data_out.closure_count, 1);
 
     ClosureUndetermined out_sss_burley = gbuffer_closure_get(data_out, 0);
@@ -90,7 +90,7 @@ void main()
     g_data_packed = gbuffer_pack(data_in);
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
-    EXPECT_EQ(g_data_packed.layer_data, 1);
+    EXPECT_EQ(g_data_packed.data_len, 1);
     EXPECT_EQ(data_out.closure_count, 1);
 
     ClosureUndetermined out_translucent = gbuffer_closure_get(data_out, 0);
@@ -113,7 +113,7 @@ void main()
     g_data_packed = gbuffer_pack(data_in);
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
-    EXPECT_EQ(g_data_packed.layer_data, 2);
+    EXPECT_EQ(g_data_packed.data_len, 2);
     EXPECT_EQ(data_out.closure_count, 1);
 
     ClosureUndetermined out_reflection = gbuffer_closure_get(data_out, 0);
@@ -138,7 +138,7 @@ void main()
     g_data_packed = gbuffer_pack(data_in);
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
-    EXPECT_EQ(g_data_packed.layer_data, 2);
+    EXPECT_EQ(g_data_packed.data_len, 2);
     EXPECT_EQ(data_out.closure_count, 1);
 
     ClosureUndetermined out_refraction = gbuffer_closure_get(data_out, 0);
@@ -172,7 +172,7 @@ void main()
 
     g_data_packed = gbuffer_pack(data_in);
 
-    EXPECT_EQ(g_data_packed.layer_data, 4);
+    EXPECT_EQ(g_data_packed.data_len, 4);
 
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
@@ -213,7 +213,7 @@ void main()
 
     g_data_packed = gbuffer_pack(data_in);
 
-    EXPECT_EQ(g_data_packed.layer_data, 2);
+    EXPECT_EQ(g_data_packed.data_len, 2);
 
     data_out = gbuffer_read(header_tx, closure_tx, normal_tx, ivec2(0));
 
