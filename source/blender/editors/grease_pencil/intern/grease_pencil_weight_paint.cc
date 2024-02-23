@@ -334,7 +334,7 @@ static int weight_gradient_exec(bContext *C, wmOperator *op)
   /* Get gradient type (linear/radial). */
   const int gradient_type = RNA_enum_get(op->ptr, "type");
 
-  /* Get position and length of interactive line in the viewport. */
+  /* Get position and length of the interactive gradient line in the viewport. */
   const int x_start = RNA_int_get(op->ptr, "xstart");
   const int y_start = RNA_int_get(op->ptr, "ystart");
   const int x_end = RNA_int_get(op->ptr, "xend");
@@ -344,7 +344,7 @@ static int weight_gradient_exec(bContext *C, wmOperator *op)
 
   const float2 gradient_vector = gradient_end - gradient_start;
   const float gradient_length_sq = math::length_squared(gradient_vector);
-  const float gradient_radius = sqrtf(gradient_length_sq);
+  const float gradient_length = sqrtf(gradient_length_sq);
   if (gradient_length_sq == 0.0f) {
     return OPERATOR_FINISHED;
   }
@@ -365,7 +365,7 @@ static int weight_gradient_exec(bContext *C, wmOperator *op)
             const float2 vec_point_to_gradient = cache.point_positions[point] - gradient_start;
 
             /* Calculate weight change. */
-            float brush_curve_factor = 0.0f;
+            float gradient_factor = 0.0f;
             if (gradient_type == WPAINT_GRADIENT_TYPE_LINEAR) {
               /* For the linear gradient, get the orthogonal position of the stroke point towards
                * the gradient line. */
@@ -374,20 +374,20 @@ static int weight_gradient_exec(bContext *C, wmOperator *op)
               if (dist_on_gradient_line > gradient_length_sq) {
                 continue;
               }
-              brush_curve_factor = (dist_on_gradient_line / gradient_length_sq) * gradient_radius;
+              gradient_factor = (dist_on_gradient_line / gradient_length_sq) * gradient_length;
             }
             else if (gradient_type == WPAINT_GRADIENT_TYPE_RADIAL) {
               /* For the radial gradient, get the distance of the stroke point to the center of the
                * gradient. */
-              brush_curve_factor = math::length(vec_point_to_gradient);
-              if (brush_curve_factor > gradient_radius) {
+              gradient_factor = math::length(vec_point_to_gradient);
+              if (gradient_factor > gradient_length) {
                 continue;
               }
             }
 
             /* Set new weight. */
             const float gradient_falloff = BKE_brush_curve_strength(
-                tool.brush, brush_curve_factor, gradient_radius);
+                tool.brush, gradient_factor, gradient_length);
             const float weight_change = tool.brush_weight * tool.brush_strength *
                                         tool.weight_direction * gradient_falloff *
                                         cache.multi_frame_falloff;
