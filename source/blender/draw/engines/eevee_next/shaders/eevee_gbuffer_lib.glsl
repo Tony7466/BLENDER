@@ -1029,6 +1029,7 @@ ClosureUndetermined gbuffer_read_bin(samplerGBufferHeader header_tx,
   switch (mode) {
     default:
     case GBUF_NONE:
+      gbuffer_register_closure(gbuf, closure_new(CLOSURE_NONE_ID), gbuf.closure_count);
       break;
     case GBUF_DIFFUSE:
       gbuffer_closure_diffuse_load(gbuf, gbuf.closure_count, closure_tx, normal_tx);
