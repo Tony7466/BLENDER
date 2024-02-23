@@ -90,100 +90,6 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&tmd->influence, ob, walk, user_data);
 }
 
-#if 0 
-/* Create a timeline for an inverse linear time mapping. */
-static void remap_frames_linear(const Map<int, GreasePencilFrame> &src_frames,
-                                const Span<int> src_sorted_keys,
-                                const FrameRange &dst_frame_range,
-                                const int offset,
-                                const float scale,
-                                Map<int, GreasePencilFrame> &dst_frames)
-{
-  const bool reverse = scale < 0.0f;
-
-  /* Inverse linear time mapping function. */
-  auto time_remap = [=](const int key) { return math::floor((key - offset) / scale); };
-
-  auto insert_key = [&](const int key, const GreasePencilFrame &value) {
-    if (key < dst_frame_range.sfra) {
-      /* The frame is outside the range but might influence it.
-       * In that case a null frame is inserted at the start. */
-      // std::cout << "Frame " << (key * scale + offset) << " -> " << key << " outside range ("
-      //           << dst_frame_range.sfra << ".." << dst_frame_range.efra << ")" << std::endl;
-      dst_frames.add_overwrite(dst_frame_range.sfra, value);
-    }
-    else if (key <= dst_frame_range.efra) {
-      /* Inside the frame range insert as a regular keyframe. */
-      // std::cout << "Frame " << (key * scale + offset) << " -> " << key << " inside range ("
-      //           << dst_frame_range.sfra << ".." << dst_frame_range.efra << ")" << std::endl;
-      dst_frames.add_overwrite(key, value);
-    }
-  };
-
-  std::cout << "INSERTING" << std::endl;
-  for (const int i : src_sorted_keys.index_range()) {
-    /* In case of a large scaling factor multiple source frames can map to the same destination
-     * frame. Frames must be inserted in the correct order to ensure the last frame always defines
-     * the following interval. */
-
-    if (reverse) {
-      const int src_key = src_sorted_keys[src_sorted_keys.size() - 1 - i];
-      const GreasePencilFrame &src_value = src_frames.lookup(src_key);
-      /* Reverse mode requires that frames get pushed to the end of their range
-       * in order to cover the preceding interval. */
-      const int src_end_key = (i > 0) ? src_sorted_keys[src_sorted_keys.size() - i] - 1 : 0;
-      const int dst_key = (i > 0) ? time_remap(src_end_key) : dst_frame_range.sfra;
-
-      std::cout << "Reverse: insert value [" << src_key << ".." << src_end_key << "] -> "
-                << dst_key << std::endl;
-      insert_key(dst_key, src_value);
-
-      /* For the last frame a new end key is inserted at the original source key to hold the frame
-       * only up to that key.
-       *
-       * src:
-       *  ----F>>>>F>>>>>>F>>>>
-       * dst:
-       *  ---N<<<<F<<<<<<F<<<<F
-       *
-       * F: key frame
-       * N: null frame
-       */
-      if (i == src_sorted_keys.size() - 1 && !src_value.is_null()) {
-        const int dst_clip_key = time_remap(src_key) + 1;
-        std::cout << "  insert clip frame at " << dst_clip_key << std::endl;
-        insert_key(dst_clip_key, GreasePencilFrame::null());
-      }
-    }
-    else {
-      const int src_key = src_sorted_keys[i];
-      const GreasePencilFrame &src_value = src_frames.lookup(src_key);
-      const int dst_key = time_remap(src_key);
-      insert_key(dst_key, src_value);
-    }
-  }
-
-  { /* DEBUGGING*/
-    struct DebugItem {
-      int dst_frame;
-      int drawing_index;
-    };
-    blender::Vector<DebugItem> frames_debug;
-    for (const auto &item : dst_frames.items()) {
-      frames_debug.append({item.key, item.value.drawing_index});
-    }
-    std::sort(frames_debug.begin(),
-              frames_debug.end(),
-              [&](const DebugItem &a, const DebugItem &b) { return a.dst_frame < b.dst_frame; });
-
-    std::cout << "RESULT" << std::endl;
-    for (const DebugItem &item : frames_debug) {
-      std::cout << item.dst_frame << "(" << item.drawing_index << ")" << std::endl;
-    }
-  } /* DEBUGGING*/
-}
-#endif
-
 struct FrameRange {
   /* Start frame. */
   int sfra;
@@ -205,73 +111,6 @@ struct FrameRange {
     return std::max(efra + 1 - sfra, 0);
   }
 };
-
-// /**
-//  * \param src_interval Start and end of the interval for this keyframe.
-//  * \param src_keyframe_range Overall range of keyframes in the grease pencil data.
-//  * \param src_interval Frame range to fill with transformed keyframes.
-//  */
-// static void add_keyframe_instances(const GreasePencilFrame &value,
-//                                    const FrameRange &src_interval,
-//                                    const FrameRange &src_keyframe_range,
-//                                    const FrameRange &dst_timeline_range,
-//                                    GreasePencilTimeModifierMode mode,
-//                                    const bool loop,
-//                                    const int offset,
-//                                    const float scale,
-//                                    Map<int, GreasePencilFrame> &dst_frames)
-// {
-//   /* Keyframe interval must be contained within the overall range. */
-//   BLI_assert(src_interval.sfra >= src_keyframe_range.sfra &&
-//              src_interval.efra <= src_keyframe_range.efra);
-//   BLI_assert(scale >= 0);
-//   /* Inverse linear time mapping function. */
-//   auto time_transform = [=](const int key) { return math::floor((key - offset) / scale); };
-//   auto has_overlap = [](const FrameRange &a, const FrameRange &b) -> bool {
-//     return a.efra >= b.sfra && a.sfra <= b.efra;
-//   };
-//   // auto try_insert_keyframe_instance = [&](const FrameRange &interval) -> bool {
-//   //   if (has_overlap(interval, dst_timeline_range)) {
-//   //     dst_frames.add(interval.sfra, value);
-//   //   }
-//   // };
-
-//   /* Add a linear section of the source (grease pencil) timeline using the supplied linear
-//    * transform. */
-//   auto add_source_time_section =
-//       [&](const FrameRange src_interval, const float scale, const float offset) {
-
-//       };
-
-//   /* Compute linear transformation first to determine necessary instance range. */
-//   const FrameRange transformed_interval = {time_transform(src_interval.sfra),
-//                                            time_transform(src_interval.efra)};
-//   const FrameRange transformed_keyframe_range = {time_transform(src_keyframe_range.sfra),
-//                                                  time_transform(src_keyframe_range.efra)};
-
-//   switch (mode) {
-//     case MOD_GREASE_PENCIL_TIME_MODE_NORMAL:
-//       if (loop) {
-//         const float fnum = float(dst_timeline_range.sfra - transformed_interval.efra) /
-//                            float(transformed_keyframe_range.efra -
-//                                  transformed_keyframe_range.sfra);
-//       }
-//       else {
-//         // try_insert_keyframe_instance(transformed_interval);
-//         add_source_time_section()
-//       }
-//       break;
-//     case MOD_GREASE_PENCIL_TIME_MODE_REVERSE:
-//       break;
-//     case MOD_GREASE_PENCIL_TIME_MODE_FIX:
-//       break;
-//     case MOD_GREASE_PENCIL_TIME_MODE_PINGPONG:
-//       const float src_duration
-//       break;
-//     case MOD_GREASE_PENCIL_TIME_MODE_CHAIN:
-//       break;
-//   }
-// }
 
 /* Determine how many times the source frame range must be repeated to cover the destination range.
  */
@@ -378,6 +217,51 @@ struct TimeMapping {
   }
 };
 
+/* Insert a key at the next scene frame after time mapping. */
+static void insert_key(const TimeMapping &mapping,
+                       const Map<int, GreasePencilFrame> &frames,
+                       const Span<int> sorted_keys,
+                       const FrameRange gp_src_range,
+                       const int gp_offset,
+                       const int key_index,
+                       Map<int, GreasePencilFrame> &dst_frames)
+{
+  const int gp_key = std::max(sorted_keys[key_index], gp_src_range.sfra);
+  if (gp_key > gp_src_range.efra) {
+    return;
+  }
+
+  const int scene_key = mapping.scene_frame_after_local_frame(gp_key + gp_offset);
+  dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
+}
+
+/* Insert a key at the previous scene frame after time mapping.
+ * This finds the correct scene frame starting at the end of the frame interval. */
+static void insert_reverse_key(const TimeMapping &mapping,
+                               const Map<int, GreasePencilFrame> &frames,
+                               const Span<int> sorted_keys,
+                               const FrameRange gp_src_range,
+                               const int gp_offset,
+                               const int key_index,
+                               Map<int, GreasePencilFrame> &dst_frames)
+{
+  const int gp_key = sorted_keys[key_index];
+  /* The insertion scene time is the end of the keyframe interval instead of the start.
+   * This is the frame after the end frame (efra) to cover the full extent of the end frame
+   * interval. */
+  const int gp_end_key = (key_index < sorted_keys.size() - 1) ?
+                             std::min(sorted_keys[key_index + 1], gp_src_range.efra + 1) :
+                             gp_src_range.efra + 1;
+  if (gp_end_key < gp_src_range.sfra) {
+    return;
+  }
+
+  /* Reverse key frame inside the range. */
+  const int gp_key_rev = gp_src_range.efra + 1 - (gp_end_key - gp_src_range.sfra);
+  const int scene_key = mapping.scene_frame_after_local_frame(gp_key_rev + gp_offset);
+  dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
+}
+
 static void fill_scene_range_forward(const TimeMapping &mapping,
                                      const Map<int, GreasePencilFrame> &frames,
                                      const Span<int> sorted_keys,
@@ -398,12 +282,10 @@ static void fill_scene_range_forward(const TimeMapping &mapping,
   const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
   /* Note: segment_start not included in the index range because it can be negative. */
   for (const int segment : IndexRange(segment_count)) {
-    const int gp_shift = gp_src_duration * (segment_start + segment);
+    const int gp_offset = gp_src_duration * (segment_start + segment);
 
     for (const int i : src_keys) {
-      const int gp_key = sorted_keys[i];
-      const int scene_key = mapping.scene_frame_after_local_frame(gp_key + gp_shift);
-      dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
+      insert_key(mapping, frames, sorted_keys, gp_src_range, gp_offset, i, dst_frames);
     }
   }
 }
@@ -428,23 +310,13 @@ static void fill_scene_range_reverse(const TimeMapping &mapping,
   const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
   for (const int segment : IndexRange(segment_count)) {
     const int segment_rev = segment_count - 1 - segment;
-    const int gp_shift = gp_src_duration * (segment_start + segment_rev);
+    const int gp_offset = gp_src_duration * (segment_start + segment_rev);
 
     for (const int i : src_keys) {
       /* In reverse mode keys need to be inserted in reverse order to ensure "earlier" frames can
        * overwrite "later" frames. */
       const int irev = src_keys.last() - i;
-      const int gp_key = sorted_keys[irev];
-      /* The insertion scene time is the end of the keyframe interval instead of the start.
-       * This is the frame after the end frame (efra) to cover the full extent of the end frame
-       * interval. */
-      const int gp_end_key = (irev < src_keys.last() ?
-                                  std::min(sorted_keys[irev + 1], gp_src_range.efra + 1) :
-                                  gp_src_range.efra + 1);
-      /* Reverse key frame inside the range. */
-      const int gp_key_rev = gp_src_range.efra + 1 - (gp_end_key - gp_src_range.sfra);
-      const int scene_key = mapping.scene_frame_after_local_frame(gp_key_rev + gp_shift);
-      dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
+      insert_reverse_key(mapping, frames, sorted_keys, gp_src_range, gp_offset, irev, dst_frames);
     }
   }
 }
@@ -458,48 +330,38 @@ static void fill_scene_range_ping_pong(const TimeMapping &mapping,
                                        const FrameRange gp_src_range,
                                        Map<int, GreasePencilFrame> &dst_frames)
 {
-  const FrameRange gp_src_range_total = {gp_src_range.sfra,
-                                         2 * gp_src_range.efra - gp_src_range.sfra + 1};
+  /* Double interval for ping-pong mode, start and end frame only appear once. */
+  const FrameRange gp_src_range_ping = {gp_src_range.sfra, gp_src_range.efra - 1};
+  const FrameRange gp_src_range_pong = {gp_src_range.sfra + 1, gp_src_range.efra};
+  const FrameRange gp_range_full = {gp_src_range.sfra,
+                                    2 * gp_src_range.efra - gp_src_range.sfra - 1};
+  const int gp_src_duration_full = gp_range_full.efra + 1 - gp_range_full.sfra;
 
-  const float scene_forward_sfra = mapping.to_scene_time(gp_src_range.sfra);
-  const float scene_forward_efra = mapping.to_scene_time(gp_src_range.efra);
-  const float scene_forward_duration = scene_forward_efra + 1.0f - scene_forward_sfra;
-  const float scene_src_sfra = mapping.to_scene_time(gp_src_range_total.sfra);
-  const float scene_src_efra = mapping.to_scene_time(gp_src_range_total.efra);
-  const float scene_src_duration = scene_src_efra + 1.0f - scene_src_sfra;
-
-  int repeat_start = 0, repeat_count = 1;
+  int segment_start = 0, segment_count = 1;
   if (mapping.use_loop()) {
-    const FrameRange scene_src_range = FrameRange{int(math::floor(scene_src_sfra)),
-                                                  int(math::floor(scene_src_efra))};
-    calculate_repetitions(scene_src_range, scene_dst_range, repeat_start, repeat_count);
+    const int gp_dst_sfra = mapping.local_frame_before_scene_frame(scene_dst_range.sfra);
+    const int gp_dst_efra = mapping.local_frame_after_scene_frame(scene_dst_range.efra);
+    calculate_repetitions(
+        gp_range_full, FrameRange{gp_dst_sfra, gp_dst_efra}, segment_start, segment_count);
   }
 
   const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
-  for (const int r : IndexRange(repeat_count)) {
-    const int rrev = repeat_count - 1 - r;
-    const float scene_shift = (repeat_start + rrev) * scene_src_duration;
+  for (const int segment : IndexRange(segment_count)) {
+    const int segment_rev = segment_count - 1 - segment;
+    const int gp_offset_ping = gp_src_duration_full * (segment_start + segment_rev);
+    const int gp_offset_pong = gp_offset_ping + gp_src_range_ping.duration() - 1;
 
-    /* Forward half. */
+    /* Ping. */
     for (const int i : src_keys) {
-      const int gp_key = sorted_keys[i];
-      const float scene_key = mapping.to_scene_time(gp_key) + scene_shift;
-      dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
+      insert_key(mapping, frames, sorted_keys, gp_src_range_ping, gp_offset_ping, i, dst_frames);
     }
-    /* Reverse half. */
+    /* Pong. */
     for (const int i : src_keys) {
-      /* Reverse iterator. */
+      /* In reverse mode keys need to be inserted in reverse order to ensure "earlier" frames can
+       * overwrite "later" frames. */
       const int irev = src_keys.last() - i;
-      /* In reverse mode keys need to be inserted at the end of each interval instead of the start
-       * of the interval. */
-      const int gp_key = sorted_keys[irev];
-      const int gp_end_key = (irev < src_keys.last() ?
-                                  std::min(sorted_keys[irev + 1] - 1, gp_src_range.efra) :
-                                  gp_src_range.efra);
-      /* Compute insertion key relative to the end frame. */
-      const int gp_key_rev = gp_src_range.sfra + (gp_src_range.efra - gp_end_key);
-      const float scene_end_key = mapping.to_scene_time(gp_key_rev) + scene_shift;
-      dst_frames.add_overwrite(scene_end_key, frames.lookup(gp_key));
+      insert_reverse_key(
+          mapping, frames, sorted_keys, gp_src_range_pong, gp_offset_pong, irev, dst_frames);
     }
   }
 }
