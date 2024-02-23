@@ -140,14 +140,17 @@ class ShareableAnim {
 
   void release_from_strip(Sequence *seq)
   {
-    if (user_count > 1) {
-      user_count--;
+    if (anims.size() == 0 || BLI_listbase_is_empty(&seq->anims)) {
       return;
     }
 
-    for (ImBufAnim *anim : anims) {
-      IMB_free_anim(anim);
+    if (user_count == 1) {
+      for (ImBufAnim *anim : anims) {
+        IMB_free_anim(anim);
+      }
     }
+
+    user_count--;
     BLI_freelist(&seq->anims);
   };
 
@@ -240,7 +243,6 @@ void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile)
   sh_anim.assign_to_strip(scene, seq, filepath);
 }
 
-/* Eeeh I will need to think about how to make this function  */
 void SEQ_relations_sequence_free_anim(const Scene *scene, Sequence *seq)
 {
   ShareableAnim &sh_anim = anim_lookup_by_seq(scene, seq);
