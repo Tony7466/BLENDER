@@ -2190,7 +2190,7 @@ static int grease_pencil_material_select_exec(bContext *C, wmOperator *op)
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
 
     IndexMaskMemory memory;
-    IndexMask strokes = retrieve_editable_strokes_by_material(
+    const IndexMask strokes = retrieve_editable_strokes_by_material(
         *object, info.drawing, material_index, memory);
     if (strokes.is_empty()) {
       return;
