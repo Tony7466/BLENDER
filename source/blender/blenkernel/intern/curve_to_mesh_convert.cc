@@ -4,8 +4,10 @@
 
 #include "BLI_array.hh"
 #include "BLI_array_utils.hh"
+#include "BLI_math_geom.h"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_rotation.h"
+#include "BLI_math_rotation.hh"
 #include "BLI_set.hh"
 #include "BLI_task.hh"
 
@@ -173,37 +175,62 @@ static void mark_bezier_vector_edges_sharp(const int profile_point_num,
   }
 }
 
-static void fill_mesh_positions(const int main_point_num,
-                                const int profile_point_num,
-                                const Span<float3> main_positions,
+static float4x4 calc_profile_matrix(const Span<float3> positions,
+                                    const Span<float3> tangents,
+                                    const Span<float3> normals,
+                                    const Span<float> radii,
+                                    const bool angle_scale,
+                                    const int i)
+{
+  float3x3 matrix = math::from_orthonormal_axes<float3x3>(normals[i], tangents[i]);
+  if (!radii.is_empty()) {
+    matrix = math::scale(matrix, float3(radii[i]));
+  }
+
+  if (angle_scale && !ELEM(i, 0, positions.index_range().last())) {
+    const float3 dir_a = math::normalize(positions[i - 1] - positions[i]);
+    const float3 dir_b = math::normalize(positions[i + 1] - positions[i]);
+    const float factor = shell_v3v3_normalized_to_dist(dir_a, dir_b);
+    if (factor != 1.0f) {
+      const float3 tri_normal = math::normal_tri(positions[i - 1], positions[i], positions[i + 1]);
+
+      const float3x3 scale = math::scale(
+          math::from_orthonormal_axes<float3x3>(tangents[i], tri_normal),
+          float3(1.0f, 1.0f, factor));
+
+      matrix *= scale;
+    }
+  }
+
+  float4x4 final(matrix);
+  final.location() = positions[i];
+  return final;
+}
+
+static void fill_mesh_positions(const Span<float3> main_positions,
                                 const Span<float3> profile_positions,
                                 const Span<float3> tangents,
                                 const Span<float3> normals,
                                 const Span<float> radii,
+                                const bool angle_scale,
                                 MutableSpan<float3> mesh_positions)
 {
-  if (profile_point_num == 1) {
-    for (const int i_ring : IndexRange(main_point_num)) {
-      float4x4 point_matrix = math::from_orthonormal_axes<float4x4>(
-          main_positions[i_ring], normals[i_ring], tangents[i_ring]);
-      if (!radii.is_empty()) {
-        point_matrix = math::scale(point_matrix, float3(radii[i_ring]));
-      }
-      mesh_positions[i_ring] = math::transform_point(point_matrix, profile_positions.first());
+  if (profile_positions.size() == 1) {
+    for (const int i_ring : main_positions.index_range()) {
+      const float4x4 matrix = calc_profile_matrix(
+          main_positions, tangents, normals, radii, angle_scale, i_ring);
+      mesh_positions[i_ring] = math::transform_point(matrix, profile_positions.first());
     }
   }
   else {
-    for (const int i_ring : IndexRange(main_point_num)) {
-      float4x4 point_matrix = math::from_orthonormal_axes<float4x4>(
-          main_positions[i_ring], normals[i_ring], tangents[i_ring]);
-      if (!radii.is_empty()) {
-        point_matrix = math::scale(point_matrix, float3(radii[i_ring]));
-      }
+    for (const int i_ring : main_positions.index_range()) {
+      const float4x4 matrix = calc_profile_matrix(
+          main_positions, tangents, normals, radii, angle_scale, i_ring);
 
-      const int ring_vert_start = i_ring * profile_point_num;
-      for (const int i_profile : IndexRange(profile_point_num)) {
+      const int ring_vert_start = i_ring * profile_positions.size();
+      for (const int i_profile : profile_positions.index_range()) {
         mesh_positions[ring_vert_start + i_profile] = math::transform_point(
-            point_matrix, profile_positions[i_profile]);
+            matrix, profile_positions[i_profile]);
       }
     }
   }
@@ -447,6 +474,7 @@ static void foreach_curve_combination(const CurvesInfo &info,
 
 static void build_mesh_positions(const CurvesInfo &curves_info,
                                  const ResultOffsets &offsets,
+                                 const bool angle_scale,
                                  Vector<std::byte> &eval_buffer,
                                  Mesh &mesh)
 {
@@ -479,13 +507,12 @@ static void build_mesh_positions(const CurvesInfo &curves_info,
     radii_eval = evaluate_attribute(radii, curves_info.main, eval_buffer).typed<float>();
   }
   foreach_curve_combination(curves_info, offsets, [&](const CombinationInfo &info) {
-    fill_mesh_positions(info.main_points.size(),
-                        info.profile_points.size(),
-                        main_positions.slice(info.main_points),
+    fill_mesh_positions(main_positions.slice(info.main_points),
                         profile_positions.slice(info.profile_points),
                         tangents.slice(info.main_points),
                         normals.slice(info.main_points),
                         radii_eval.is_empty() ? radii_eval : radii_eval.slice(info.main_points),
+                        angle_scale,
                         positions.slice(info.vert_range));
   });
 }
@@ -787,6 +814,7 @@ static void write_sharp_bezier_edges(const CurvesInfo &curves_info,
 Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
                           const CurvesGeometry &profile,
                           const bool fill_caps,
+                          const bool angle_scale,
                           const AnonymousAttributePropagationInfo &propagation_info)
 {
   const CurvesInfo curves_info = get_curves_info(main, profile);
@@ -843,7 +871,7 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
 
   Vector<std::byte> eval_buffer;
 
-  build_mesh_positions(curves_info, offsets, eval_buffer, *mesh);
+  build_mesh_positions(curves_info, offsets, angle_scale, eval_buffer, *mesh);
 
   mesh->tag_overlapping_none();
   if (!offsets.any_single_point_main) {
@@ -963,7 +991,7 @@ Mesh *curve_to_wire_mesh(const CurvesGeometry &curve,
                          const AnonymousAttributePropagationInfo &propagation_info)
 {
   static const CurvesGeometry vert_curve = get_curve_single_vert();
-  return curve_to_mesh_sweep(curve, vert_curve, false, propagation_info);
+  return curve_to_mesh_sweep(curve, vert_curve, false, false, propagation_info);
 }
 
 }  // namespace blender::bke
