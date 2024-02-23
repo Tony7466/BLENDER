@@ -399,6 +399,7 @@ bool GLBackend::debug_capture_begin(const char *title)
     if (result && title) {
       renderdoc_.set_frame_capture_title(title);
     }
+    return result;
   }
 #endif
   return false;
