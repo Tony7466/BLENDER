@@ -374,6 +374,11 @@ void action_group_colors_sync(bActionGroup *grp, const bActionGroup *ref_grp)
 
 void action_group_colors_set_from_posebone(bActionGroup *grp, const bPoseChannel *pchan)
 {
+  /* pchan->bone is only set after leaving editmode. */
+  if (pchan == nullptr || pchan->bone == nullptr) {
+    return;
+  }
+
   const BoneColor &color = blender::animrig::ANIM_bonecolor_posebone_get(pchan);
   action_group_colors_set(grp, &color);
 }
