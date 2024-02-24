@@ -31,9 +31,9 @@
 #include "SEQ_time.hh"
 #include "SEQ_transform.hh"
 
+#include "anim_manager.hh"
 #include "sequencer.hh"
 #include "strip_time.hh"
-#include "utils.hh"
 
 float SEQ_time_media_playback_rate_factor_get(const Scene *scene, const Sequence *seq)
 {

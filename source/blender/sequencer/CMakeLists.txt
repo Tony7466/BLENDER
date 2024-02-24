@@ -41,8 +41,8 @@ set(SRC
   SEQ_transform.hh
   SEQ_utils.hh
 
-  intern/anim_lookup.hh
-  intern/anim_lookup.cc
+  intern/anim_manager.hh
+  intern/anim_manager.cc
   intern/animation.cc
   intern/channels.cc
   intern/disk_cache.cc

@@ -42,11 +42,11 @@
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
 
+#include "anim_manager.hh"
 #include "multiview.hh"
 #include "proxy.hh"
 #include "render.hh"
 #include "sequencer.hh"
-#include "utils.hh"
 
 struct SeqIndexBuildContext {
   IndexBuildContext *index_context;

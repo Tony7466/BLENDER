@@ -64,13 +64,13 @@
 #include "SEQ_transform.hh"
 #include "SEQ_utils.hh"
 
+#include "anim_manager.hh"
 #include "effects.hh"
 #include "image_cache.hh"
 #include "multiview.hh"
 #include "prefetch.hh"
 #include "proxy.hh"
 #include "render.hh"
-#include "utils.hh"
 
 #include <algorithm>
 

@@ -20,15 +20,13 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
+#include "SEQ_relations.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_utils.hh"
 
+#include "anim_manager.hh"
 #include "multiview.hh"
 #include "proxy.hh"
-
-/* XXX For now api funcs are declared here. */
-#include "SEQ_relations.hh"
-#include "utils.hh"
 
 static void anim_filepath_get(const Scene *scene,
                               Sequence *seq,
@@ -130,8 +128,6 @@ static blender::Vector<ImBufAnim *> multiview_anims_get(Scene *scene,
   return anims;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
-
 class ShareableAnim {
  public:
   blender::Vector<ImBufAnim *> anims; /* In same order as strip views (`StripAnim` order). */
@@ -221,7 +217,6 @@ static ShareableAnim &anim_lookup_by_seq(const Scene *scene, Sequence *seq)
   anim_filepath_get(scene, seq, sizeof(filepath), filepath);
   return anim_lookup_by_filepath(ed, filepath);
 }
-//////////////////////////////////////////////////////////////////////////////////////////
 
 void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile)
 {

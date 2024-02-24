@@ -5,3 +5,8 @@
 /** \file
  * \ingroup sequencer
  */
+
+struct Scene;
+struct Sequence;
+
+void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile);
