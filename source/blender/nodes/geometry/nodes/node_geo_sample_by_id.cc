@@ -22,8 +22,11 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Int>("ID").implicit_field_on(implicit_field_inputs::id_or_index, {0});
   b.add_input<decl::Int>("Sample ID").supports_field();
 
-  b.add_output<decl::Int>("Index").dependent_field({2});
-  b.add_output<decl::Bool>("Is Valid").dependent_field({2});
+  b.add_output<decl::Int>("Index").dependent_field({2}).description(
+      "First index of sample ID in sampled geometry");
+  b.add_output<decl::Bool>("Is Valid")
+      .dependent_field({2})
+      .description("Sample ID is exists in sempled geometry at least once");
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
