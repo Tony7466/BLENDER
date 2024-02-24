@@ -40,7 +40,13 @@ void export_frame(Depsgraph *depsgraph,
 
   /* If not exporting in batch, create single writer for all objects. */
   if (!export_params.use_batch) {
-    writer = std::make_unique<FileWriter>(export_params.filepath, export_params.ascii_format);
+    try {
+      writer = std::make_unique<FileWriter>(export_params.filepath, export_params.ascii_format);
+    }
+    catch (const std::runtime_error &ex) {
+      fprintf(stderr, "%s\n", ex.what());
+      return;
+    }
   }
 
   DEGObjectIterSettings deg_iter_settings{};
@@ -70,7 +76,13 @@ void export_frame(Depsgraph *depsgraph,
       char filepath[FILE_MAX];
       STRNCPY(filepath, export_params.filepath);
       BLI_path_extension_replace(filepath, FILE_MAX, suffix.c_str());
-      writer = std::make_unique<FileWriter>(filepath, export_params.ascii_format);
+      try {
+        writer = std::make_unique<FileWriter>(filepath, export_params.ascii_format);
+      }
+      catch (const std::runtime_error &ex) {
+        fprintf(stderr, "%s\n", ex.what());
+        return;
+      }
     }
 
     Object *obj_eval = DEG_get_evaluated_object(depsgraph, object);
