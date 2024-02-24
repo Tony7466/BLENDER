@@ -80,6 +80,8 @@
 
 #include "versioning_common.hh"
 
+#define DEG2RADF(_deg) ((_deg) * (float)(M_PI / 180.0))
+
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
 static void version_composite_nodetree_null_id(bNodeTree *ntree, Scene *scene)
@@ -2883,6 +2885,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         /* These identifiers are not necessarily stable for linked data. If the linked data has a
          * new modifier inserted, the identifiers of other modifiers can change. */
         md->persistent_uid = uid++;
+      }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 21)) {
+      if (!DNA_struct_member_exists(fd->filesdna, "ToolSettings", "float", "snap_angle_increment_2d")) {
+       const float default_snap_angle_increment = DEG2RADF(15.0f);
+       const float default_snap_angle_increment_precision = DEG2RADF(5.0f);
+          LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+              scene->toolsettings->snap_angle_increment_2d = default_snap_angle_increment;
+              scene->toolsettings->snap_angle_increment_3d = default_snap_angle_increment;
+              scene->toolsettings->snap_angle_increment_2d_precision = default_snap_angle_increment_precision;
+              scene->toolsettings->snap_angle_increment_3d_precision = default_snap_angle_increment_precision;
       }
     }
   }
