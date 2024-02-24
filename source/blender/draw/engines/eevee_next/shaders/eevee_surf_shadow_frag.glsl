@@ -12,7 +12,6 @@
  */
 
 #pragma BLENDER_REQUIRE(draw_view_lib.glsl)
-#pragma BLENDER_REQUIRE(eevee_attributes_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_transparency_lib.glsl)
@@ -29,7 +28,7 @@ void main()
 #ifdef MAT_TRANSPARENT
   init_globals();
 
-  nodetree_surface();
+  nodetree_surface(0.0);
 
   float noise_offset = sampling_rng_1D_get(SAMPLING_TRANSPARENCY);
   float random_threshold = transparency_hashed_alpha_threshold(1.0, noise_offset, g_data.P);

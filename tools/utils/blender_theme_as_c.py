@@ -29,7 +29,7 @@ C_SOURCE_HEADER = r'''/* SPDX-FileCopyrightText: 2018 Blender Authors
 
 #include "DNA_userdef_types.h"
 
-#include "BLO_readfile.h"
+#include "BLO_userdef_default.h"
 
 /* clang-format off */
 
@@ -138,7 +138,7 @@ def dna_rename_defs(blend):
         for (member_storage, member_runtime) in members:
             struct_name_storage = struct_runtime_to_storage_map.get(struct_name_runtime, struct_name_runtime)
             struct_name_storage = struct_name_storage.encode('utf-8')
-            # The struct it's self may have been renamed.
+            # The struct itself may have been renamed.
             member_storage = member_storage.encode('utf-8')
             member_runtime = member_runtime.encode('utf-8')
             dna_struct = blend.structs[blend.sdna_index_from_id[struct_name_storage]]

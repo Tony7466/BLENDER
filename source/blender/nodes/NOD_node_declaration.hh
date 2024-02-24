@@ -12,7 +12,7 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_node_types.h"
 
@@ -73,8 +73,7 @@ class OutputFieldDependency {
   OutputSocketFieldType field_type() const;
   Span<int> linked_input_indices() const;
 
-  friend bool operator==(const OutputFieldDependency &a, const OutputFieldDependency &b);
-  friend bool operator!=(const OutputFieldDependency &a, const OutputFieldDependency &b);
+  BLI_STRUCT_EQUALITY_OPERATORS_2(OutputFieldDependency, type_, linked_input_indices_)
 };
 
 /**
@@ -84,8 +83,7 @@ struct FieldInferencingInterface {
   Vector<InputSocketFieldType> inputs;
   Vector<OutputFieldDependency> outputs;
 
-  friend bool operator==(const FieldInferencingInterface &a, const FieldInferencingInterface &b);
-  friend bool operator!=(const FieldInferencingInterface &a, const FieldInferencingInterface &b);
+  BLI_STRUCT_EQUALITY_OPERATORS_2(FieldInferencingInterface, inputs, outputs)
 };
 
 namespace anonymous_attribute_lifetime {
@@ -97,11 +95,7 @@ struct PropagateRelation {
   int from_geometry_input;
   int to_geometry_output;
 
-  friend bool operator==(const PropagateRelation &a, const PropagateRelation &b)
-  {
-    return a.from_geometry_input == b.from_geometry_input &&
-           a.to_geometry_output == b.to_geometry_output;
-  }
+  BLI_STRUCT_EQUALITY_OPERATORS_2(PropagateRelation, from_geometry_input, to_geometry_output)
 };
 
 /**
@@ -111,10 +105,7 @@ struct ReferenceRelation {
   int from_field_input;
   int to_field_output;
 
-  friend bool operator==(const ReferenceRelation &a, const ReferenceRelation &b)
-  {
-    return a.from_field_input == b.from_field_input && a.to_field_output == b.to_field_output;
-  }
+  BLI_STRUCT_EQUALITY_OPERATORS_2(ReferenceRelation, from_field_input, to_field_output)
 };
 
 /**
@@ -124,10 +115,7 @@ struct EvalRelation {
   int field_input;
   int geometry_input;
 
-  friend bool operator==(const EvalRelation &a, const EvalRelation &b)
-  {
-    return a.field_input == b.field_input && a.geometry_input == b.geometry_input;
-  }
+  BLI_STRUCT_EQUALITY_OPERATORS_2(EvalRelation, field_input, geometry_input)
 };
 
 /**
@@ -137,10 +125,7 @@ struct AvailableRelation {
   int field_output;
   int geometry_output;
 
-  friend bool operator==(const AvailableRelation &a, const AvailableRelation &b)
-  {
-    return a.field_output == b.field_output && a.geometry_output == b.geometry_output;
-  }
+  BLI_STRUCT_EQUALITY_OPERATORS_2(AvailableRelation, field_output, geometry_output)
 };
 
 struct RelationsInNode {
@@ -149,10 +134,15 @@ struct RelationsInNode {
   Vector<EvalRelation> eval_relations;
   Vector<AvailableRelation> available_relations;
   Vector<int> available_on_none;
+
+  BLI_STRUCT_EQUALITY_OPERATORS_5(RelationsInNode,
+                                  propagate_relations,
+                                  reference_relations,
+                                  eval_relations,
+                                  available_relations,
+                                  available_on_none)
 };
 
-bool operator==(const RelationsInNode &a, const RelationsInNode &b);
-bool operator!=(const RelationsInNode &a, const RelationsInNode &b);
 std::ostream &operator<<(std::ostream &stream, const RelationsInNode &relations);
 
 }  // namespace anonymous_attribute_lifetime
@@ -189,6 +179,8 @@ class SocketDeclaration : public ItemDeclaration {
   bool is_unavailable = false;
   bool is_attribute_name = false;
   bool is_default_link_socket = false;
+  /** Puts this socket on the same line as the previous one in the UI. */
+  bool align_with_previous_socket = false;
 
   InputSocketFieldType input_field_type = InputSocketFieldType::None;
   OutputFieldDependency output_field_dependency;
@@ -313,7 +305,7 @@ class BaseSocketDeclarationBuilder {
 
   /** The input is evaluated on a subset of the geometry inputs. */
   BaseSocketDeclarationBuilder &implicit_field_on(ImplicitInputValueFn fn,
-                                                  const Span<int> input_indices);
+                                                  Span<int> input_indices);
 
   /** For inputs that are evaluated or available on a subset of the geometry sockets. */
   BaseSocketDeclarationBuilder &field_on(Span<int> indices);
@@ -366,6 +358,12 @@ class BaseSocketDeclarationBuilder {
    */
   BaseSocketDeclarationBuilder &make_available(std::function<void(bNode &)> fn);
 
+  /**
+   * Puts this socket on the same row as the previous socket. This only works when one of them is
+   * an input and the other is an output.
+   */
+  BaseSocketDeclarationBuilder &align_with_previous(bool value = true);
+
   int input_index() const
   {
     BLI_assert(decl_in_base_ != nullptr);
@@ -397,7 +395,7 @@ class SocketDeclarationBuilder : public BaseSocketDeclarationBuilder {
 
 using SocketDeclarationPtr = std::unique_ptr<SocketDeclaration>;
 
-typedef void (*PanelDrawButtonsFunction)(uiLayout *, bContext *, PointerRNA *);
+using PanelDrawButtonsFunction = void (*)(uiLayout *, bContext *, PointerRNA *);
 
 /**
  * Describes a panel containing sockets or other panels.
@@ -469,6 +467,10 @@ class NodeDeclaration {
    * outputs | buttons | inputs order. Panels are only supported when using custom socket order. */
   bool use_custom_socket_order = false;
 
+  /** Usually output sockets come before input sockets currently. Only some specific nodes are
+   * exempt from that rule for now. */
+  bool allow_any_socket_order = false;
+
   /**
    * True if any context was used to build this declaration.
    */
@@ -531,6 +533,7 @@ class NodeDeclarationBuilder {
   void finalize();
 
   void use_custom_socket_order(bool enable = true);
+  void allow_any_socket_order(bool enable = true);
 
   template<typename DeclType>
   typename DeclType::Builder &add_input(StringRef name, StringRef identifier = "");
@@ -541,7 +544,13 @@ class NodeDeclarationBuilder {
   BaseSocketDeclarationBuilder &add_input(eNodeSocketDatatype socket_type,
                                           StringRef name,
                                           StringRef identifier = "");
+  BaseSocketDeclarationBuilder &add_input(eCustomDataType data_type,
+                                          StringRef name,
+                                          StringRef identifier = "");
   BaseSocketDeclarationBuilder &add_output(eNodeSocketDatatype socket_type,
+                                           StringRef name,
+                                           StringRef identifier = "");
+  BaseSocketDeclarationBuilder &add_output(eCustomDataType data_type,
                                            StringRef name,
                                            StringRef identifier = "");
 

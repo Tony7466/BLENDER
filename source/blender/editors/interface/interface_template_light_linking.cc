@@ -13,12 +13,12 @@
 
 #include <fmt/format.h>
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_light_linking.h"
 
 #include "RNA_access.hh"
@@ -133,7 +133,7 @@ class ReorderCollectionDropTarget : public TreeViewItemDropTarget {
 
   std::string drop_tooltip(const DragInfo &drag) const override
   {
-    const std::string_view drop_name = std::string_view(drop_id_.name + 2);
+    const StringRef drop_name = drop_id_.name + 2;
 
     switch (drag.drop_location) {
       case DropLocation::Into:
@@ -304,8 +304,6 @@ class CollectionViewItem : public BasicTreeViewItem {
                                   &collection_light_linking_ptr,
                                   "link_state",
                                   0,
-                                  0.0f,
-                                  0.0f,
                                   0.0f,
                                   0.0f,
                                   nullptr);
