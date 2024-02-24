@@ -175,7 +175,6 @@ static void extract_lnor_iter_face_bm(const MeshRenderData &mr,
   l_iter = l_first = BM_FACE_FIRST_LOOP(f);
   do {
     const int l_index = BM_elem_index_get(l_iter);
-    GPUPackedNormal *lnor_data = &(*(GPUPackedNormal **)data)[l_index];
     if (!mr.corner_normals.is_empty()) {
       data[l_index] = GPU_normal_convert_i10_v3(mr.corner_normals[l_index]);
     }
