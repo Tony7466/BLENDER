@@ -94,10 +94,10 @@ static void applyarmature_fix_boneparents(const bContext *C, Scene *scene, Objec
       /* apply current transform from parent (not yet destroyed),
        * then calculate new parent inverse matrix
        */
-      BKE_object_apply_mat4(ob, ob->object_to_world, false, false);
+      BKE_object_apply_mat4(ob, ob->object_to_world().ptr(), false, false);
 
       BKE_object_workob_calc_parent(depsgraph, scene, ob, &workob);
-      invert_m4_m4(ob->parentinv, workob.object_to_world);
+      invert_m4_m4(ob->parentinv, workob.object_to_world().ptr());
     }
   }
 }
@@ -462,7 +462,7 @@ static int apply_armature_pose2bones_exec(bContext *C, wmOperator *op)
 
   /* NOTE: notifier might evolve. */
   WM_event_add_notifier(C, NC_OBJECT | ND_POSE, ob);
-  DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
 
   return OPERATOR_FINISHED;
 }
