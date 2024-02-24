@@ -2,14 +2,15 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
+#include "testing/testing.h"
+
 #include "BLI_array.hh"
 #include "BLI_index_mask.hh"
 #include "BLI_rand.hh"
 #include "BLI_set.hh"
-#include "BLI_strict_flags.h"
 #include "BLI_timeit.hh"
 
-#include "testing/testing.h"
+#include "BLI_strict_flags.h" /* Keep last. */
 
 namespace blender::index_mask::tests {
 
@@ -23,7 +24,7 @@ TEST(index_mask, IndicesToMask)
   EXPECT_EQ(mask.first(), 5);
   EXPECT_EQ(mask.last(), 101000);
   EXPECT_EQ(mask.min_array_size(), 101001);
-  EXPECT_EQ(mask.bounds(), IndexRange(5, 101001 - 5));
+  EXPECT_EQ(mask.bounds(), IndexRange::from_begin_end_inclusive(5, 101000));
 }
 
 TEST(index_mask, FromBits)
