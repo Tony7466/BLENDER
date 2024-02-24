@@ -527,10 +527,21 @@ void register_node_type_reroute()
   nodeRegisterType(ntype);
 }
 
+/* NOTE: This uses the label of the reroute node's output socket to
+ * propagate the label from connected reroute nodes. */
 static void update_reroute_node_auto_labels(bNodeTree *ntree)
 {
   using namespace blender;
   ntree->ensure_topology_cache();
+
+  /* Clear auto-label. */
+  LISTBASE_FOREACH (bNode *, reroute, &ntree->nodes) {
+    if (!reroute->is_reroute()) {
+      continue;
+    }
+    bNodeSocket *output = reroute->output_sockets().first();
+    node_sock_label_clear(output);
+  }
 
   for (bNode *reroute : ntree->toposort_left_to_right()) {
     if (!reroute->is_reroute()) {
@@ -542,53 +553,23 @@ static void update_reroute_node_auto_labels(bNodeTree *ntree)
     const Span<const bNodeSocket *> linked_sockets = input.directly_linked_sockets();
 
     if (linked_sockets.is_empty()) {
-      /* Clear auto-label. */
-      node_sock_label_clear(output);
       continue;
     }
 
     const bNodeSocket &from_sock = *linked_sockets.first();
     const bNode &from_node = from_sock.owner_node();
 
-    if (from_node.is_reroute()) {
-      if (from_node.label[0] != '\0') {
-        node_sock_label(output, from_node.label);
-        continue;
-      }
-      /* Use the socket label directly to also propagate an empty label. */
-      node_sock_label(output, from_sock.label);
+    if (!from_node.is_reroute()) {
       continue;
     }
 
-    static const VectorSet<std::pair<eNodeSocketDatatype, StringRefNull>> template_names = []() {
-      VectorSet<std::pair<eNodeSocketDatatype, StringRefNull>> names;
-      names.add_new({SOCK_FLOAT, "Value"});
-      names.add_new({SOCK_VECTOR, "Vector"});
-      names.add_new({SOCK_RGBA, "Color"});
-      names.add_new({SOCK_SHADER, "Shader"});
-      names.add_new({SOCK_BOOLEAN, "Boolean"});
-      names.add_new({SOCK_INT, "Integer"});
-      names.add_new({SOCK_STRING, "String"});
-      names.add_new({SOCK_OBJECT, "Object"});
-      names.add_new({SOCK_IMAGE, "Image"});
-      names.add_new({SOCK_GEOMETRY, "Geometry"});
-      names.add_new({SOCK_COLLECTION, "Collection"});
-      names.add_new({SOCK_TEXTURE, "Texture"});
-      names.add_new({SOCK_MATERIAL, "Material"});
-      names.add_new({SOCK_ROTATION, "Rotation"});
-      return names;
-    }();
-
-    const char *socket_label = bke::nodeSocketLabel(&from_sock);
-    const bool label_is_trivial = template_names.contains(
-        {eNodeSocketDatatype(from_sock.typeinfo->type), socket_label});
-
-    if (label_is_trivial) {
-      node_sock_label_clear(output);
+    if (from_node.label[0] != '\0') {
+      /* Use the connected reroute's label to also label this reroute. */
+      node_sock_label(output, from_node.label);
       continue;
     }
 
-    node_sock_label(output, socket_label);
+    node_sock_label(output, from_sock.label);
   }
 }
 
