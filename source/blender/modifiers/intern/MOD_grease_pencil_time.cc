@@ -224,49 +224,53 @@ static void calculate_repetitions(const TimeMapping &mapping,
   r_count = math::floor(float(gp_dst.efra - gp_src.sfra) / float(duration)) + 1 - r_start;
 }
 
-/* Insert a key at the next scene frame after time mapping. */
-static void insert_key(const TimeMapping &mapping,
-                       const Map<int, GreasePencilFrame> &frames,
-                       const Span<int> sorted_keys,
-                       const FrameRange gp_src_range,
-                       const int gp_offset,
-                       const int key_index,
-                       Map<int, GreasePencilFrame> &dst_frames)
+static void insert_keys_forward(const TimeMapping &mapping,
+                                const Map<int, GreasePencilFrame> &frames,
+                                const Span<int> sorted_keys,
+                                const FrameRange gp_src_range,
+                                const int gp_offset,
+                                Map<int, GreasePencilFrame> &dst_frames)
 {
-  const int gp_key = std::max(sorted_keys[key_index], gp_src_range.sfra);
-  if (gp_key > gp_src_range.efra) {
-    return;
-  }
+  for (const int i : sorted_keys.index_range()) {
+    const int gp_key = std::max(sorted_keys[i], gp_src_range.sfra);
+    if (gp_key > gp_src_range.efra) {
+      continue;
+    }
 
-  const int scene_key = mapping.scene_frame_after_local_frame(gp_key + gp_offset);
-  dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
+    const int scene_key = mapping.scene_frame_after_local_frame(gp_key + gp_offset);
+    dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
+  }
 }
 
-/* Insert a key at the previous scene frame after time mapping.
- * This finds the correct scene frame starting at the end of the frame interval. */
-static void insert_reverse_key(const TimeMapping &mapping,
-                               const Map<int, GreasePencilFrame> &frames,
-                               const Span<int> sorted_keys,
-                               const FrameRange gp_src_range,
-                               const int gp_offset,
-                               const int key_index,
-                               Map<int, GreasePencilFrame> &dst_frames)
+/* Insert keys in reverse order. */
+static void insert_keys_reverse(const TimeMapping &mapping,
+                                const Map<int, GreasePencilFrame> &frames,
+                                const Span<int> sorted_keys,
+                                const FrameRange gp_src_range,
+                                const int gp_offset,
+                                Map<int, GreasePencilFrame> &dst_frames)
 {
-  const int gp_key = sorted_keys[key_index];
-  /* The insertion scene time is the end of the keyframe interval instead of the start.
-   * This is the frame after the end frame (efra) to cover the full extent of the end frame
-   * interval. */
-  const int gp_end_key = (key_index < sorted_keys.size() - 1) ?
-                             std::min(sorted_keys[key_index + 1], gp_src_range.efra + 1) :
-                             gp_src_range.efra + 1;
-  if (gp_end_key < gp_src_range.sfra) {
-    return;
-  }
+  for (const int i : sorted_keys.index_range()) {
+    /* In reverse mode keys need to be inserted in reverse order to ensure "earlier" frames can
+     * overwrite "later" frames. */
+    const int irev = sorted_keys.size() - 1 - i;
+    /* This finds the correct scene frame starting at the end of the frame interval. */
+    const int gp_key = sorted_keys[irev];
+    /* The insertion scene time is the end of the keyframe interval instead of the start.
+     * This is the frame after the end frame (efra) to cover the full extent of the end frame
+     * interval. */
+    const int gp_end_key = (irev < sorted_keys.size() - 1) ?
+                               std::min(sorted_keys[irev + 1], gp_src_range.efra + 1) :
+                               gp_src_range.efra + 1;
+    if (gp_end_key < gp_src_range.sfra) {
+      return;
+    }
 
-  /* Reverse key frame inside the range. */
-  const int gp_key_rev = gp_src_range.efra + 1 - (gp_end_key - gp_src_range.sfra);
-  const int scene_key = mapping.scene_frame_after_local_frame(gp_key_rev + gp_offset);
-  dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
+    /* Reverse key frame inside the range. */
+    const int gp_key_rev = gp_src_range.efra + 1 - (gp_end_key - gp_src_range.sfra);
+    const int scene_key = mapping.scene_frame_after_local_frame(gp_key_rev + gp_offset);
+    dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
+  }
 }
 
 static void fill_scene_range_forward(const TimeMapping &mapping,
@@ -280,14 +284,11 @@ static void fill_scene_range_forward(const TimeMapping &mapping,
   calculate_repetitions(mapping, gp_src_range, scene_dst_range, segment_start, segment_count);
 
   const int gp_src_duration = gp_src_range.duration();
-  const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
+  const Span<int> src_keys = sorted_keys.slice(find_key_range(sorted_keys, gp_src_range));
   /* Note: segment_start not included in the index range because it can be negative. */
   for (const int segment : IndexRange(segment_count)) {
     const int gp_offset = gp_src_duration * (segment_start + segment);
-
-    for (const int i : src_keys) {
-      insert_key(mapping, frames, sorted_keys, gp_src_range, gp_offset, i, dst_frames);
-    }
+    insert_keys_forward(mapping, frames, src_keys, gp_src_range, gp_offset, dst_frames);
   }
 }
 
@@ -302,17 +303,10 @@ static void fill_scene_range_reverse(const TimeMapping &mapping,
   calculate_repetitions(mapping, gp_src_range, scene_dst_range, segment_start, segment_count);
 
   const int gp_src_duration = gp_src_range.duration();
-  const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
+  const Span<int> src_keys = sorted_keys.slice(find_key_range(sorted_keys, gp_src_range));
   for (const int segment : IndexRange(segment_count)) {
-    const int segment_rev = segment_count - 1 - segment;
-    const int gp_offset = gp_src_duration * (segment_start + segment_rev);
-
-    for (const int i : src_keys) {
-      /* In reverse mode keys need to be inserted in reverse order to ensure "earlier" frames can
-       * overwrite "later" frames. */
-      const int irev = src_keys.last() - i;
-      insert_reverse_key(mapping, frames, sorted_keys, gp_src_range, gp_offset, irev, dst_frames);
-    }
+    const int gp_offset = gp_src_duration * (segment_start + segment);
+    insert_keys_reverse(mapping, frames, src_keys, gp_src_range, gp_offset, dst_frames);
   }
 }
 
@@ -334,24 +328,14 @@ static void fill_scene_range_ping_pong(const TimeMapping &mapping,
   calculate_repetitions(mapping, gp_range_full, scene_dst_range, segment_start, segment_count);
 
   const int gp_src_duration_full = gp_range_full.duration();
-  const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
+  const Span<int> src_keys = sorted_keys.slice(find_key_range(sorted_keys, gp_src_range));
   for (const int segment : IndexRange(segment_count)) {
-    const int segment_rev = segment_count - 1 - segment;
-    const int gp_offset_ping = gp_src_duration_full * (segment_start + segment_rev);
-    const int gp_offset_pong = gp_offset_ping + gp_src_range_ping.duration() - 1;
-
     /* Ping. */
-    for (const int i : src_keys) {
-      insert_key(mapping, frames, sorted_keys, gp_src_range_ping, gp_offset_ping, i, dst_frames);
-    }
+    const int gp_offset_ping = gp_src_duration_full * (segment_start + segment);
+    insert_keys_forward(mapping, frames, src_keys, gp_src_range, gp_offset_ping, dst_frames);
     /* Pong. */
-    for (const int i : src_keys) {
-      /* In reverse mode keys need to be inserted in reverse order to ensure "earlier" frames can
-       * overwrite "later" frames. */
-      const int irev = src_keys.last() - i;
-      insert_reverse_key(
-          mapping, frames, sorted_keys, gp_src_range_pong, gp_offset_pong, irev, dst_frames);
-    }
+    const int gp_offset_pong = gp_offset_ping + gp_src_range_ping.duration() - 1;
+    insert_keys_reverse(mapping, frames, src_keys, gp_src_range, gp_offset_pong, dst_frames);
   }
 }
 
