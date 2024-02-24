@@ -11,6 +11,7 @@ set(INC
   ../../editors/include
   ../../functions
   ../../gpu
+  ../../imbuf
   ../../makesrna
   ../../render
   ../../windowmanager
@@ -129,7 +130,6 @@ set(LIB
   PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_functions
-  PRIVATE bf::imbuf
   PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
   bf_intern_sky
@@ -185,10 +185,7 @@ endif()
 
 blender_add_lib(bf_nodes_shader "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-if(WITH_UNITY_BUILD)
-  set_target_properties(bf_nodes_shader PROPERTIES UNITY_BUILD ON)
-  set_target_properties(bf_nodes_shader PROPERTIES UNITY_BUILD_BATCH_SIZE 10)
-endif()
+blender_set_target_unity_build(bf_nodes_shader 10)
 
 # RNA_prototypes.h
 add_dependencies(bf_nodes_shader bf_rna)
