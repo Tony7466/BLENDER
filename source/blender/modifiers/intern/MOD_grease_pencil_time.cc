@@ -110,6 +110,23 @@ struct FrameRange {
   {
     return std::max(efra + 1 - sfra, 0);
   }
+
+  FrameRange drop_front(const int n) const
+  {
+    BLI_assert(n >= 0);
+    return FrameRange{std::min(sfra + n, efra), efra};
+  }
+
+  FrameRange drop_back(const int n) const
+  {
+    BLI_assert(n >= 0);
+    return FrameRange{sfra, std::max(efra - n, sfra)};
+  }
+
+  FrameRange shift(const int n) const
+  {
+    return FrameRange{sfra + n, efra + n};
+  }
 };
 
 /* Find the index range of sorted keys that covers the frame range, including the key right before
@@ -199,8 +216,7 @@ struct TimeMapping {
   }
 };
 
-/* Determine how many times the source frame range must be repeated to cover the destination range.
- */
+/* Determine how many times the source range must be repeated to cover the destination range. */
 static void calculate_repetitions(const TimeMapping &mapping,
                                   const FrameRange &gp_src,
                                   const FrameRange &scene_dst,
@@ -228,16 +244,17 @@ static void insert_keys_forward(const TimeMapping &mapping,
                                 const Map<int, GreasePencilFrame> &frames,
                                 const Span<int> sorted_keys,
                                 const FrameRange gp_src_range,
-                                const int gp_offset,
+                                const FrameRange gp_dst_range,
                                 Map<int, GreasePencilFrame> &dst_frames)
 {
+  const int offset = gp_dst_range.sfra - gp_src_range.sfra;
   for (const int i : sorted_keys.index_range()) {
     const int gp_key = std::max(sorted_keys[i], gp_src_range.sfra);
     if (gp_key > gp_src_range.efra) {
       continue;
     }
 
-    const int scene_key = mapping.scene_frame_after_local_frame(gp_key + gp_offset);
+    const int scene_key = mapping.scene_frame_after_local_frame(gp_key + offset);
     dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
   }
 }
@@ -247,9 +264,10 @@ static void insert_keys_reverse(const TimeMapping &mapping,
                                 const Map<int, GreasePencilFrame> &frames,
                                 const Span<int> sorted_keys,
                                 const FrameRange gp_src_range,
-                                const int gp_offset,
+                                const FrameRange gp_dst_range,
                                 Map<int, GreasePencilFrame> &dst_frames)
 {
+  const int offset = gp_dst_range.sfra - gp_src_range.sfra;
   for (const int i : sorted_keys.index_range()) {
     /* In reverse mode keys need to be inserted in reverse order to ensure "earlier" frames can
      * overwrite "later" frames. */
@@ -268,7 +286,7 @@ static void insert_keys_reverse(const TimeMapping &mapping,
 
     /* Reverse key frame inside the range. */
     const int gp_key_rev = gp_src_range.efra + 1 - (gp_end_key - gp_src_range.sfra);
-    const int scene_key = mapping.scene_frame_after_local_frame(gp_key_rev + gp_offset);
+    const int scene_key = mapping.scene_frame_after_local_frame(gp_key_rev + offset);
     dst_frames.add_overwrite(scene_key, frames.lookup(gp_key));
   }
 }
@@ -276,37 +294,36 @@ static void insert_keys_reverse(const TimeMapping &mapping,
 static void fill_scene_range_forward(const TimeMapping &mapping,
                                      const Map<int, GreasePencilFrame> &frames,
                                      const Span<int> sorted_keys,
-                                     const FrameRange scene_dst_range,
                                      const FrameRange gp_src_range,
+                                     const FrameRange scene_dst_range,
                                      Map<int, GreasePencilFrame> &dst_frames)
 {
-  int segment_start = 0, segment_count = 1;
-  calculate_repetitions(mapping, gp_src_range, scene_dst_range, segment_start, segment_count);
+  int repeat_start = 0, repeat_count = 1;
+  calculate_repetitions(mapping, gp_src_range, scene_dst_range, repeat_start, repeat_count);
 
-  const int gp_src_duration = gp_src_range.duration();
   const Span<int> src_keys = sorted_keys.slice(find_key_range(sorted_keys, gp_src_range));
-  /* Note: segment_start not included in the index range because it can be negative. */
-  for (const int segment : IndexRange(segment_count)) {
-    const int gp_offset = gp_src_duration * (segment_start + segment);
-    insert_keys_forward(mapping, frames, src_keys, gp_src_range, gp_offset, dst_frames);
+  FrameRange gp_dst_range = gp_src_range.shift(repeat_start * gp_src_range.duration());
+  for ([[maybe_unused]] const int repeat_i : IndexRange(repeat_count)) {
+    insert_keys_forward(mapping, frames, src_keys, gp_src_range, gp_dst_range, dst_frames);
+    gp_dst_range = gp_dst_range.shift(gp_src_range.duration());
   }
 }
 
 static void fill_scene_range_reverse(const TimeMapping &mapping,
                                      const Map<int, GreasePencilFrame> &frames,
                                      const Span<int> sorted_keys,
-                                     const FrameRange scene_dst_range,
                                      const FrameRange gp_src_range,
+                                     const FrameRange scene_dst_range,
                                      Map<int, GreasePencilFrame> &dst_frames)
 {
-  int segment_start = 0, segment_count = 1;
-  calculate_repetitions(mapping, gp_src_range, scene_dst_range, segment_start, segment_count);
+  int repeat_start = 0, repeat_count = 1;
+  calculate_repetitions(mapping, gp_src_range, scene_dst_range, repeat_start, repeat_count);
 
-  const int gp_src_duration = gp_src_range.duration();
   const Span<int> src_keys = sorted_keys.slice(find_key_range(sorted_keys, gp_src_range));
-  for (const int segment : IndexRange(segment_count)) {
-    const int gp_offset = gp_src_duration * (segment_start + segment);
-    insert_keys_reverse(mapping, frames, src_keys, gp_src_range, gp_offset, dst_frames);
+  FrameRange gp_dst_range = gp_src_range.shift(repeat_start * gp_src_range.duration());
+  for ([[maybe_unused]] const int repeat_i : IndexRange(repeat_count)) {
+    insert_keys_reverse(mapping, frames, src_keys, gp_src_range, gp_dst_range, dst_frames);
+    gp_dst_range = gp_dst_range.shift(gp_src_range.duration());
   }
 }
 
@@ -315,8 +332,8 @@ static void fill_scene_range_fixed() {}
 static void fill_scene_range_ping_pong(const TimeMapping &mapping,
                                        const Map<int, GreasePencilFrame> &frames,
                                        const Span<int> sorted_keys,
-                                       const FrameRange scene_dst_range,
                                        const FrameRange gp_src_range,
+                                       const FrameRange scene_dst_range,
                                        Map<int, GreasePencilFrame> &dst_frames)
 {
   /* Double interval for ping-pong mode, start and end frame only appear once. */
@@ -324,22 +341,93 @@ static void fill_scene_range_ping_pong(const TimeMapping &mapping,
   const FrameRange gp_src_range_pong = {gp_src_range.sfra + 1, gp_src_range.efra};
   const FrameRange gp_range_full = {gp_src_range.sfra,
                                     2 * gp_src_range.efra - gp_src_range.sfra - 1};
-  int segment_start = 0, segment_count = 1;
-  calculate_repetitions(mapping, gp_range_full, scene_dst_range, segment_start, segment_count);
+  int repeat_start = 0, repeat_count = 1;
+  calculate_repetitions(mapping, gp_range_full, scene_dst_range, repeat_start, repeat_count);
 
-  const int gp_src_duration_full = gp_range_full.duration();
   const Span<int> src_keys = sorted_keys.slice(find_key_range(sorted_keys, gp_src_range));
-  for (const int segment : IndexRange(segment_count)) {
+  FrameRange gp_dst_range = gp_src_range.shift(repeat_start * gp_range_full.duration());
+  for ([[maybe_unused]] const int repeat_i : IndexRange(repeat_count)) {
     /* Ping. */
-    const int gp_offset_ping = gp_src_duration_full * (segment_start + segment);
-    insert_keys_forward(mapping, frames, src_keys, gp_src_range, gp_offset_ping, dst_frames);
+    insert_keys_forward(mapping, frames, src_keys, gp_src_range, gp_dst_range, dst_frames);
+    gp_dst_range = gp_dst_range.shift(gp_src_range_ping.duration());
     /* Pong. */
-    const int gp_offset_pong = gp_offset_ping + gp_src_range_ping.duration() - 1;
-    insert_keys_reverse(mapping, frames, src_keys, gp_src_range, gp_offset_pong, dst_frames);
+    insert_keys_reverse(mapping, frames, src_keys, gp_src_range, gp_dst_range, dst_frames);
+    gp_dst_range = gp_dst_range.shift(gp_src_range_pong.duration());
   }
 }
 
-static void fill_scene_range_chain() {}
+static void fill_scene_range_chain(const TimeMapping &mapping,
+                                   const Map<int, GreasePencilFrame> &frames,
+                                   const Span<int> sorted_keys,
+                                   const Span<GreasePencilTimeModifierSegment> segments,
+                                   const FrameRange gp_src_range,
+                                   const FrameRange scene_dst_range,
+                                   Map<int, GreasePencilFrame> &dst_frames)
+{
+  using Segment = GreasePencilTimeModifierSegment;
+
+  if (segments.is_empty()) {
+    return;
+  }
+  /* Segment settings tolerate start frame after end frame. */
+  auto segment_base_range = [](const Segment &segment) {
+    return FrameRange{std::min(segment.segment_start, segment.segment_end),
+                      std::max(segment.segment_start, segment.segment_end)};
+  };
+  auto segment_full_range = [](const Segment &segment) {
+    const FrameRange base_range = FrameRange{std::min(segment.segment_start, segment.segment_end),
+                                             std::max(segment.segment_start, segment.segment_end)};
+    const int base_duration = (segment.segment_mode == MOD_GREASE_PENCIL_TIME_SEG_MODE_PINGPONG ?
+                                   base_range.duration() * 2 - 2 :
+                                   base_range.duration());
+    return FrameRange{base_range.sfra,
+                      base_range.sfra + segment.segment_repeat * base_duration - 1};
+  };
+  /* Find src range by adding up all segments. */
+  const FrameRange gp_range_full = [&]() {
+    int duration = segment_full_range(segments.first()).duration();
+    for (const Segment &segment : segments.drop_front(1)) {
+      duration += segment_full_range(segment).duration();
+    }
+    return FrameRange{1, duration};
+  }();
+  int repeat_start = 0, repeat_count = 1;
+  calculate_repetitions(mapping, gp_range_full, scene_dst_range, repeat_start, repeat_count);
+
+  const Span<int> src_keys = sorted_keys;
+
+  FrameRange gp_dst_range = gp_src_range.shift(repeat_start * gp_range_full.duration());
+  for ([[maybe_unused]] const int repeat_i : IndexRange(repeat_count)) {
+    for (const Segment &segment : segments) {
+      const FrameRange gp_src_range = segment_base_range(segment);
+      for ([[maybe_unused]] const int segment_repeat_i : IndexRange(segment.segment_repeat)) {
+        switch (GreasePencilTimeModifierSegmentMode(segment.segment_mode)) {
+          case MOD_GREASE_PENCIL_TIME_SEG_MODE_NORMAL:
+            insert_keys_forward(mapping, frames, src_keys, gp_src_range, gp_dst_range, dst_frames);
+            gp_dst_range = gp_dst_range.shift(gp_src_range.duration());
+            break;
+          case MOD_GREASE_PENCIL_TIME_SEG_MODE_REVERSE:
+            insert_keys_reverse(mapping, frames, src_keys, gp_src_range, gp_dst_range, dst_frames);
+            gp_dst_range = gp_dst_range.shift(gp_src_range.duration());
+            break;
+          case MOD_GREASE_PENCIL_TIME_SEG_MODE_PINGPONG: {
+            /* Ping. */
+            const FrameRange gp_src_range_ping = {gp_src_range.sfra, gp_src_range.efra - 1};
+            insert_keys_forward(
+                mapping, frames, src_keys, gp_src_range_ping, gp_dst_range, dst_frames);
+            gp_dst_range = gp_dst_range.shift(gp_src_range_ping.duration());
+            /* Pong. */
+            const FrameRange gp_src_range_pong = {gp_src_range.sfra + 1, gp_src_range.efra};
+            insert_keys_reverse(
+                mapping, frames, src_keys, gp_src_range_pong, gp_dst_range, dst_frames);
+            gp_dst_range = gp_dst_range.shift(gp_src_range_pong.duration());
+            break;
+          }
+        }
+      }
+    }
+  }
+}
 
 static void fill_scene_timeline(const GreasePencilTimeModifierData &tmd,
                                 const ModifierEvalContext &ctx,
@@ -359,21 +447,22 @@ static void fill_scene_timeline(const GreasePencilTimeModifierData &tmd,
   switch (mode) {
     case MOD_GREASE_PENCIL_TIME_MODE_NORMAL:
       fill_scene_range_forward(
-          tmd, frames, sorted_keys, scene_dst_range, gp_src_range, dst_frames);
+          tmd, frames, sorted_keys, gp_src_range, scene_dst_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_REVERSE:
       fill_scene_range_reverse(
-          tmd, frames, sorted_keys, scene_dst_range, gp_src_range, dst_frames);
+          tmd, frames, sorted_keys, gp_src_range, scene_dst_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_FIX:
       fill_scene_range_fixed();
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_PINGPONG:
       fill_scene_range_ping_pong(
-          tmd, frames, sorted_keys, scene_dst_range, gp_src_range, dst_frames);
+          tmd, frames, sorted_keys, gp_src_range, scene_dst_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_CHAIN:
-      fill_scene_range_chain();
+      fill_scene_range_chain(
+          tmd, frames, sorted_keys, tmd.segments(), gp_src_range, scene_dst_range, dst_frames);
       break;
   }
 }
