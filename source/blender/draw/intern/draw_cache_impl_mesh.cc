@@ -1684,7 +1684,10 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
   if (DRW_batch_requested(cache.batch.edit_vnor, GPU_PRIM_POINTS)) {
     DRW_ibo_request(cache.batch.edit_vnor, &mbuflist->ibo.points);
     DRW_vbo_request(cache.batch.edit_vnor, &mbuflist->vbo.pos);
-    DRW_vbo_request(cache.batch.edit_vnor, &mbuflist->vbo.vnor);
+    if (!do_subdivision) {
+      /* For GPU subdivision, vertex normals are included in the `pos` VBO. */
+      DRW_vbo_request(cache.batch.edit_vnor, &mbuflist->vbo.vnor);
+    }
   }
   assert_deps_valid(MBC_EDIT_LNOR,
                     {BUFFER_INDEX(ibo.tris), BUFFER_INDEX(vbo.pos), BUFFER_INDEX(vbo.nor)});

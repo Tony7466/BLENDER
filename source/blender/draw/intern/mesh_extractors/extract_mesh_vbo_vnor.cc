@@ -53,33 +53,10 @@ static void extract_vnor_iter_face_bm(const MeshRenderData &mr,
   }
 }
 
-static GPUVertFormat *get_subdiv_vnor_format()
-{
-  static GPUVertFormat format = {0};
-  if (format.attr_len == 0) {
-    GPU_vertformat_attr_add(&format, "vnor", GPU_COMP_F32, 4, GPU_FETCH_FLOAT);
-  }
-  return &format;
-}
-
-static void extract_vnor_init_subdiv(const DRWSubdivCache &subdiv_cache,
-                                     const MeshRenderData & /*mr*/,
-                                     MeshBatchCache &cache,
-                                     void *buffer,
-                                     void * /*data*/)
-{
-  GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buffer);
-  GPUVertBuf *pos_nor = cache.final.buff.vbo.pos;
-  BLI_assert(pos_nor);
-  GPU_vertbuf_init_build_on_device(vbo, get_subdiv_vnor_format(), subdiv_cache.num_subdiv_loops);
-  draw_subdiv_build_lnor_buffer(subdiv_cache, pos_nor, vbo);
-}
-
 constexpr MeshExtract create_extractor_vnor()
 {
   MeshExtract extractor = {nullptr};
   extractor.init = extract_vnor_init;
-  extractor.init_subdiv = extract_vnor_init_subdiv;
   extractor.iter_face_bm = extract_vnor_iter_face_bm;
   extractor.data_type = MR_DATA_LOOP_NOR;
   extractor.data_size = sizeof(GPUPackedNormal *);
