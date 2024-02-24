@@ -101,6 +101,7 @@ struct MeshBufferList {
     GPUVertBuf *fdot_idx;
     GPUVertBuf *attr[GPU_MAX_ATTR];
     GPUVertBuf *attr_viewer;
+    GPUVertBuf *vnor;
   } vbo;
   /* Index Buffers:
    * Only need to be updated when topology changes. */

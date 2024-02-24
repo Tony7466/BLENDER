@@ -43,11 +43,21 @@ static void extract_normals(const Span<float3> src, MutableSpan<GPUType> dst)
 }
 
 template<typename GPUType>
-static void extract_vert_normals(const MeshRenderData &mr, MutableSpan<GPUType> normals)
+static void extract_vert_normals_impl(const MeshRenderData &mr, MutableSpan<GPUType> normals)
 {
   Array<GPUType> vert_normals_converted(mr.vert_normals.size());
   extract_normals(mr.vert_normals, vert_normals_converted.as_mutable_span());
   array_utils::gather(vert_normals_converted.as_span(), mr.corner_verts, normals);
+}
+
+template<>
+void extract_vert_normals(const MeshRenderData &mr, MutableSpan<GPUPackedNormal> normals)
+{
+  extract_vert_normals_impl(mr, normals);
+}
+template<> void extract_vert_normals(const MeshRenderData &mr, MutableSpan<short4> normals)
+{
+  extract_vert_normals_impl(mr, normals);
 }
 
 template<typename GPUType>
@@ -161,7 +171,8 @@ static void extract_lnor_init(const MeshRenderData &mr,
     extract_paint_overlay_flags(mr, vbo_data);
   }
   else {
-    *(GPUPackedNormal **)tls_data = static_cast<GPUPackedNormal *>(GPU_vertbuf_get_data(vbo));
+    *static_cast<GPUPackedNormal **>(tls_data) = static_cast<GPUPackedNormal *>(
+        GPU_vertbuf_get_data(vbo));
   }
 }
 

@@ -329,6 +329,9 @@ void mesh_render_data_loop_edge_flag(const MeshRenderData &mr,
                                      BMUVOffsets offsets,
                                      EditLoopData *eattr);
 
+template<typename GPUType>
+void extract_vert_normals(const MeshRenderData &mr, MutableSpan<GPUType> normals);
+
 extern const MeshExtract extract_tris;
 extern const MeshExtract extract_tris_single_mat;
 extern const MeshExtract extract_lines;
@@ -370,5 +373,6 @@ extern const MeshExtract extract_vert_idx;
 extern const MeshExtract extract_fdot_idx;
 extern const MeshExtract extract_attr[GPU_MAX_ATTR];
 extern const MeshExtract extract_attr_viewer;
+extern const MeshExtract extract_vnor;
 
 }  // namespace blender::draw

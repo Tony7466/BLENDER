@@ -653,6 +653,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
     EXTRACT_ADD_REQUESTED(vbo, attr[i]);
   }
   EXTRACT_ADD_REQUESTED(vbo, attr_viewer);
+  EXTRACT_ADD_REQUESTED(vbo, vnor);
 
   EXTRACT_ADD_REQUESTED(ibo, tris);
   if (DRW_ibo_requested(mbuflist->ibo.lines_loose)) {

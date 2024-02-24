@@ -167,6 +167,8 @@ static constexpr DRWBatchFlag batches_that_use_buffer(const int buffer_index)
       return MBC_SURFACE | MBC_SURFACE_PER_MAT;
     case BUFFER_INDEX(vbo.attr_viewer):
       return MBC_VIEWER_ATTRIBUTE_OVERLAY;
+    case BUFFER_INDEX(vbo.vnor):
+      return MBC_EDIT_VNOR;
     case BUFFER_INDEX(ibo.tris):
       return MBC_SURFACE | MBC_SURFACE_WEIGHTS | MBC_EDIT_TRIANGLES | MBC_EDIT_LNOR |
              MBC_EDIT_MESH_ANALYSIS | MBC_EDIT_SELECTION_FACES | MBC_SCULPT_OVERLAYS |
@@ -1677,10 +1679,12 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.pos);
     DRW_vbo_request(cache.batch.edit_edges, &mbuflist->vbo.edit_data);
   }
-  assert_deps_valid(MBC_EDIT_VNOR, {BUFFER_INDEX(ibo.points), BUFFER_INDEX(vbo.pos)});
+  assert_deps_valid(MBC_EDIT_VNOR,
+                    {BUFFER_INDEX(ibo.points), BUFFER_INDEX(vbo.pos), BUFFER_INDEX(vbo.vnor)});
   if (DRW_batch_requested(cache.batch.edit_vnor, GPU_PRIM_POINTS)) {
     DRW_ibo_request(cache.batch.edit_vnor, &mbuflist->ibo.points);
     DRW_vbo_request(cache.batch.edit_vnor, &mbuflist->vbo.pos);
+    DRW_vbo_request(cache.batch.edit_vnor, &mbuflist->vbo.vnor);
   }
   assert_deps_valid(MBC_EDIT_LNOR,
                     {BUFFER_INDEX(ibo.tris), BUFFER_INDEX(vbo.pos), BUFFER_INDEX(vbo.nor)});
@@ -1836,6 +1840,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     assert_final_deps_valid(BUFFER_INDEX(vbo.attr[i]));
   }
   assert_final_deps_valid(BUFFER_INDEX(vbo.attr_viewer));
+  assert_final_deps_valid(BUFFER_INDEX(vbo.vnor));
 
   assert_final_deps_valid(BUFFER_INDEX(ibo.tris));
   assert_final_deps_valid(BUFFER_INDEX(ibo.lines));
