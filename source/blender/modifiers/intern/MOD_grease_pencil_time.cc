@@ -112,24 +112,6 @@ struct FrameRange {
   }
 };
 
-/* Determine how many times the source frame range must be repeated to cover the destination range.
- */
-static void calculate_repetitions(const FrameRange &src,
-                                  const FrameRange &dst,
-                                  int &r_start,
-                                  int &r_count)
-{
-  const int duration = src.duration();
-  if (duration <= 0) {
-    r_start = 0;
-    r_count = 0;
-    return;
-  }
-
-  r_start = math::floor(float(dst.sfra - src.sfra) / float(duration));
-  r_count = math::floor(float(dst.efra - src.sfra) / float(duration)) + 1 - r_start;
-}
-
 /* Find the index range of sorted keys that covers the frame range, including the key right before
  * and after the inverval. The extra keys are needed when frames are held at the beginning or when
  * reversing the direction. */
@@ -217,6 +199,31 @@ struct TimeMapping {
   }
 };
 
+/* Determine how many times the source frame range must be repeated to cover the destination range.
+ */
+static void calculate_repetitions(const TimeMapping &mapping,
+                                  const FrameRange &gp_src,
+                                  const FrameRange &scene_dst,
+                                  int &r_start,
+                                  int &r_count)
+{
+  if (!mapping.use_loop()) {
+    r_start = 0;
+    r_count = 1;
+    return;
+  }
+  const int duration = gp_src.duration();
+  if (duration <= 0) {
+    r_start = 0;
+    r_count = 0;
+    return;
+  }
+  const FrameRange gp_dst = {mapping.local_frame_before_scene_frame(scene_dst.sfra),
+                             mapping.local_frame_after_scene_frame(scene_dst.efra)};
+  r_start = math::floor(float(gp_dst.sfra - gp_src.sfra) / float(duration));
+  r_count = math::floor(float(gp_dst.efra - gp_src.sfra) / float(duration)) + 1 - r_start;
+}
+
 /* Insert a key at the next scene frame after time mapping. */
 static void insert_key(const TimeMapping &mapping,
                        const Map<int, GreasePencilFrame> &frames,
@@ -269,16 +276,10 @@ static void fill_scene_range_forward(const TimeMapping &mapping,
                                      const FrameRange gp_src_range,
                                      Map<int, GreasePencilFrame> &dst_frames)
 {
-  const int gp_src_duration = gp_src_range.efra + 1 - gp_src_range.sfra;
-
   int segment_start = 0, segment_count = 1;
-  if (mapping.use_loop()) {
-    const int gp_dst_sfra = mapping.local_frame_before_scene_frame(scene_dst_range.sfra);
-    const int gp_dst_efra = mapping.local_frame_after_scene_frame(scene_dst_range.efra);
-    calculate_repetitions(
-        gp_src_range, FrameRange{gp_dst_sfra, gp_dst_efra}, segment_start, segment_count);
-  }
+  calculate_repetitions(mapping, gp_src_range, scene_dst_range, segment_start, segment_count);
 
+  const int gp_src_duration = gp_src_range.duration();
   const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
   /* Note: segment_start not included in the index range because it can be negative. */
   for (const int segment : IndexRange(segment_count)) {
@@ -297,16 +298,10 @@ static void fill_scene_range_reverse(const TimeMapping &mapping,
                                      const FrameRange gp_src_range,
                                      Map<int, GreasePencilFrame> &dst_frames)
 {
-  const int gp_src_duration = gp_src_range.efra + 1 - gp_src_range.sfra;
-
   int segment_start = 0, segment_count = 1;
-  if (mapping.use_loop()) {
-    const int gp_dst_sfra = mapping.local_frame_before_scene_frame(scene_dst_range.sfra);
-    const int gp_dst_efra = mapping.local_frame_after_scene_frame(scene_dst_range.efra);
-    calculate_repetitions(
-        gp_src_range, FrameRange{gp_dst_sfra, gp_dst_efra}, segment_start, segment_count);
-  }
+  calculate_repetitions(mapping, gp_src_range, scene_dst_range, segment_start, segment_count);
 
+  const int gp_src_duration = gp_src_range.duration();
   const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
   for (const int segment : IndexRange(segment_count)) {
     const int segment_rev = segment_count - 1 - segment;
@@ -335,16 +330,10 @@ static void fill_scene_range_ping_pong(const TimeMapping &mapping,
   const FrameRange gp_src_range_pong = {gp_src_range.sfra + 1, gp_src_range.efra};
   const FrameRange gp_range_full = {gp_src_range.sfra,
                                     2 * gp_src_range.efra - gp_src_range.sfra - 1};
-  const int gp_src_duration_full = gp_range_full.efra + 1 - gp_range_full.sfra;
-
   int segment_start = 0, segment_count = 1;
-  if (mapping.use_loop()) {
-    const int gp_dst_sfra = mapping.local_frame_before_scene_frame(scene_dst_range.sfra);
-    const int gp_dst_efra = mapping.local_frame_after_scene_frame(scene_dst_range.efra);
-    calculate_repetitions(
-        gp_range_full, FrameRange{gp_dst_sfra, gp_dst_efra}, segment_start, segment_count);
-  }
+  calculate_repetitions(mapping, gp_range_full, scene_dst_range, segment_start, segment_count);
 
+  const int gp_src_duration_full = gp_range_full.duration();
   const IndexRange src_keys = find_key_range(sorted_keys, gp_src_range);
   for (const int segment : IndexRange(segment_count)) {
     const int segment_rev = segment_count - 1 - segment;
