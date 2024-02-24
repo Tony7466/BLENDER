@@ -151,7 +151,7 @@ static int objects_add_active_exec(bContext *C, wmOperator *op)
 
       if (!BKE_collection_object_cyclic_check(bmain, base->object, collection)) {
         BKE_collection_object_add(bmain, collection, base->object);
-        DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
         updated = true;
       }
       else {
@@ -232,7 +232,7 @@ static int objects_remove_active_exec(bContext *C, wmOperator *op)
       /* Remove collections from selected objects */
       CTX_DATA_BEGIN (C, Base *, base, selected_editable_bases) {
         BKE_collection_object_remove(bmain, collection, base->object, false);
-        DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
         ok = true;
       }
       CTX_DATA_END;
@@ -335,7 +335,7 @@ static int collection_objects_remove_exec(bContext *C, wmOperator *op)
     /* now remove all selected objects from the collection */
     CTX_DATA_BEGIN (C, Base *, base, selected_editable_bases) {
       BKE_collection_object_remove(bmain, collection, base->object, false);
-      DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
       updated = true;
     }
     CTX_DATA_END;
@@ -393,7 +393,7 @@ static int collection_create_exec(bContext *C, wmOperator *op)
 
   CTX_DATA_BEGIN (C, Base *, base, selected_bases) {
     BKE_collection_object_add(bmain, collection, base->object);
-    DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   }
   CTX_DATA_END;
 
@@ -694,7 +694,7 @@ static int collection_add_exec(bContext *C, wmOperator * /*op*/)
   id_fake_user_set(&collection->id);
   BKE_collection_object_add(bmain, collection, ob);
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
@@ -762,7 +762,7 @@ static int collection_link_exec(bContext *C, wmOperator *op)
 
   BKE_collection_object_add(bmain, collection, ob);
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
@@ -813,7 +813,7 @@ static int collection_remove_exec(bContext *C, wmOperator *op)
 
   BKE_collection_object_remove(bmain, collection, ob, false);
 
-  DEG_id_tag_update(&collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&collection->id, ID_RECALC_SYNC_TO_EVAL);
   DEG_relations_tag_update(bmain);
 
   WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);

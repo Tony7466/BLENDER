@@ -32,15 +32,6 @@ typedef struct AssetTag {
   char name[64]; /* MAX_NAME */
 } AssetTag;
 
-#
-#
-typedef struct AssetFilterSettings {
-  /** Tags to match against. These are newly allocated, and compared against the
-   * #AssetMetaData.tags. */
-  ListBase tags;     /* AssetTag */
-  uint64_t id_types; /* rna_enum_id_type_filter_items */
-} AssetFilterSettings;
-
 /**
  * \brief The meta-data of an asset.
  * By creating and giving this for a data-block (#ID.asset_data), the data-block becomes an asset.
@@ -177,15 +168,16 @@ typedef struct AssetWeakReference {
 
 #ifdef __cplusplus
   AssetWeakReference();
+  AssetWeakReference(const AssetWeakReference &);
   AssetWeakReference(AssetWeakReference &&);
-  AssetWeakReference(const AssetWeakReference &) = delete;
+  AssetWeakReference &operator=(const AssetWeakReference &);
+  AssetWeakReference &operator=(AssetWeakReference &&);
   ~AssetWeakReference();
 
   /**
-   * See AssetRepresentation::make_weak_reference(). Must be freed using
-   * #BKE_asset_weak_reference_free().
+   * See AssetRepresentation::make_weak_reference().
    */
-  static AssetWeakReference *make_reference(
+  static AssetWeakReference make_reference(
       const blender::asset_system::AssetLibrary &library,
       const blender::asset_system::AssetIdentifier &asset_identifier);
 #endif
