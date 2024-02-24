@@ -11,6 +11,7 @@
 #include <queue>
 
 #include "BKE_attribute.hh"
+#include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
 #include "BLI_array.hh"
@@ -529,7 +530,7 @@ struct StrokeCache {
   float4x4 stroke_local_mat;
   float multiplane_scrape_angle;
 
-  float wet_mix_prev_color[4];
+  float4 wet_mix_prev_color;
   float density_seed;
 
   rcti previous_r; /* previous redraw rectangle */
@@ -1228,6 +1229,28 @@ void triangulate(BMesh *bm);
 
 WarnFlag check_attribute_warning(Scene *scene, Object *ob);
 
+namespace detail_size {
+constexpr float RELATIVE_SCALE_FACTOR = 0.4f;
+
+/**
+ * Converts from Sculpt#constant_detail to equivalent Sculpt#detail_percent value.
+ *
+ * Corresponds to a change from Constant & Manual Detailing to Brush Detailing.
+ */
+float constant_to_brush_detail(const float constant_detail,
+                               const float brush_radius,
+                               const Object *ob);
+
+/**
+ * Converts from Sculpt#constant_detail to equivalent Sculpt#detail_size value.
+ *
+ * Corresponds to a change from Constant & Manual Detailing to Relative Detailing.
+ */
+float constant_to_relative_detail(const float constant_detail,
+                                  const float brush_radius,
+                                  const float pixel_radius,
+                                  const Object *ob);
+}
 }
 
 /** \} */
@@ -1284,8 +1307,14 @@ float factor_get(Cache *automasking,
  * brushes and filter. */
 Cache *active_cache_get(SculptSession *ss);
 
-/* Brush can be null. */
-std::unique_ptr<Cache> cache_init(Sculpt *sd, Brush *brush, Object *ob);
+/**
+ * Creates and initializes an automasking cache.
+ *
+ * For automasking modes that cannot be calculated in real time,
+ * data is also stored at the vertex level prior to the stroke starting.
+ */
+std::unique_ptr<Cache> cache_init(const Sculpt *sd, Object *ob);
+std::unique_ptr<Cache> cache_init(const Sculpt *sd, const Brush *brush, Object *ob);
 void cache_free(Cache *automasking);
 
 bool mode_enabled(const Sculpt *sd, const Brush *br, eAutomasking_flag mode);
@@ -1696,7 +1725,6 @@ namespace blender::ed::sculpt_paint::dyntopo {
 
 void SCULPT_OT_detail_flood_fill(wmOperatorType *ot);
 void SCULPT_OT_sample_detail_size(wmOperatorType *ot);
-void SCULPT_OT_set_detail_size(wmOperatorType *ot);
 void SCULPT_OT_dyntopo_detail_size_edit(wmOperatorType *ot);
 void SCULPT_OT_dynamic_topology_toggle(wmOperatorType *ot);
 
@@ -1893,6 +1921,13 @@ void SCULPT_topology_islands_invalidate(SculptSession *ss);
 int SCULPT_vertex_island_get(const SculptSession *ss, PBVHVertRef vertex);
 
 /** \} */
+
+namespace blender::ed::sculpt_paint {
+float sculpt_calc_radius(ViewContext *vc,
+                         const Brush *brush,
+                         const Scene *scene,
+                         const float3 location);
+}
 
 inline void *SCULPT_vertex_attr_get(const PBVHVertRef vertex, const SculptAttribute *attr)
 {

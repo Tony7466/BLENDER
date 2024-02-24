@@ -480,7 +480,18 @@ int BLI_rename(const char *from, const char *to)
 #elif defined(__GLIBC_PREREQ)
 #  if __GLIBC_PREREQ(2, 28)
   /* Most common Linux cases. */
-  return renameat2(AT_FDCWD, from, AT_FDCWD, to, RENAME_NOREPLACE);
+  int ret = renameat2(AT_FDCWD, from, AT_FDCWD, to, RENAME_NOREPLACE);
+  if (ret < 0 && errno == EINVAL) {
+    /* Most likely a filesystem that doesn't support RENAME_NOREPLACE.
+     * (For example NFS, Samba, exFAT, NTFS, etc)
+     * Retry with a non atomic operation.
+     */
+    if (BLI_exists(to)) {
+      return 1;
+    }
+    return rename(from, to);
+  }
+  return ret;
 #  endif
 #else
   /* At least all BSD's currently. */
@@ -536,7 +547,7 @@ void BLI_get_short_name(char short_name[256], const char *filepath)
   GetShortPathNameW(filepath_16, short_name_16, 256);
 
   for (i = 0; i < 256; i++) {
-    short_name[i] = (char)short_name_16[i];
+    short_name[i] = char(short_name_16[i]);
   }
 
   UTF16_UN_ENCODE(filepath);
