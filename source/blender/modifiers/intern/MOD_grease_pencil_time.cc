@@ -291,6 +291,21 @@ static void insert_keys_reverse(const TimeMapping &mapping,
   }
 }
 
+static void fill_scene_range_fixed(const TimeMapping &mapping,
+                                   const Map<int, GreasePencilFrame> &frames,
+                                   const Span<int> sorted_keys,
+                                   const int gp_src_frame,
+                                   const FrameRange scene_dst_range,
+                                   Map<int, GreasePencilFrame> &dst_frames)
+{
+  const FrameRange gp_src_range = {gp_src_frame, gp_src_frame};
+  const FrameRange gp_dst_range = {mapping.local_frame_before_scene_frame(scene_dst_range.sfra),
+                                   mapping.local_frame_after_scene_frame(scene_dst_range.efra)};
+
+  const Span<int> src_keys = sorted_keys.slice(find_key_range(sorted_keys, gp_src_range));
+  insert_keys_forward(mapping, frames, src_keys, gp_src_range, gp_dst_range, dst_frames);
+}
+
 static void fill_scene_range_forward(const TimeMapping &mapping,
                                      const Map<int, GreasePencilFrame> &frames,
                                      const Span<int> sorted_keys,
@@ -326,8 +341,6 @@ static void fill_scene_range_reverse(const TimeMapping &mapping,
     gp_dst_range = gp_dst_range.shift(gp_src_range.duration());
   }
 }
-
-static void fill_scene_range_fixed() {}
 
 static void fill_scene_range_ping_pong(const TimeMapping &mapping,
                                        const Map<int, GreasePencilFrame> &frames,
@@ -454,7 +467,7 @@ static void fill_scene_timeline(const GreasePencilTimeModifierData &tmd,
           tmd, frames, sorted_keys, gp_src_range, scene_dst_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_FIX:
-      fill_scene_range_fixed();
+      fill_scene_range_fixed(tmd, frames, sorted_keys, tmd.offset, scene_dst_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_PINGPONG:
       fill_scene_range_ping_pong(
