@@ -246,7 +246,7 @@ static void update_depsgraph(GpencilModifierData *md,
    * visibility computation. Line art exclusion is handled inside #add_this_collection. */
   add_this_collection(ctx->scene->master_collection, ctx, mode);
 
-  if (lmd->calculation_flags & LRT_USE_CUSTOM_CAMERA && lmd->source_camera) {
+  if (lmd->calculation_flags & MOD_LINEART_USE_CUSTOM_CAMERA && lmd->source_camera) {
     DEG_add_object_relation(
         ctx->node, lmd->source_camera, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
     DEG_add_object_relation(

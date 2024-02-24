@@ -85,7 +85,7 @@ static bool is_first_lineart(const GreasePencilLineartModifierData &md)
     return false;
   }
   ModifierData *imd = md.modifier.prev;
-  while (imd) {
+  while (imd != nullptr) {
     if (imd->type == eModifierType_GreasePencilLineart) {
       return false;
     }
@@ -100,7 +100,7 @@ static bool is_last_line_art(const GreasePencilLineartModifierData &md)
     return false;
   }
   ModifierData *imd = md.modifier.next;
-  while (imd) {
+  while (imd != nullptr) {
     if (imd->type == eModifierType_GreasePencilLineart) {
       return false;
     }
@@ -154,22 +154,19 @@ static bool is_disabled(const Scene * /*scene*/, ModifierData *md, bool /*use_re
   return false;
 }
 
-static void add_this_collection(Collection *c,
+static void add_this_collection(Collection &collection,
                                 const ModifierUpdateDepsgraphContext *ctx,
                                 const int mode)
 {
-  if (!c) {
-    return;
-  }
   bool default_add = true;
   /* Do not do nested collection usage check, this is consistent with lineart calculation, because
    * collection usage doesn't have a INHERIT mode. This might initially be derived from the fact
    * that an object can be inside multiple collections, but might be irrelevant now with the way
    * objects are iterated. Keep this logic for now. */
-  if (c->lineart_usage & COLLECTION_LRT_EXCLUDE) {
+  if (collection.lineart_usage & COLLECTION_LRT_EXCLUDE) {
     default_add = false;
   }
-  FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (c, ob, mode) {
+  FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_BEGIN (&collection, ob, mode) {
     if (ELEM(ob->type, OB_MESH, OB_MBALL, OB_CURVES_LEGACY, OB_SURF, OB_FONT)) {
       if ((ob->lineart.usage == OBJECT_LRT_INHERIT && default_add) ||
           ob->lineart.usage != OBJECT_LRT_EXCLUDE)
@@ -179,7 +176,10 @@ static void add_this_collection(Collection *c,
       }
     }
     if (ob->type == OB_EMPTY && (ob->transflag & OB_DUPLICOLLECTION)) {
-      add_this_collection(ob->instance_collection, ctx, mode);
+      if (!ob->instance_collection) {
+        continue;
+      }
+      add_this_collection(*ob->instance_collection, ctx, mode);
     }
   }
   FOREACH_COLLECTION_VISIBLE_OBJECT_RECURSIVE_END;
@@ -196,9 +196,9 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
 
   /* Do we need to distinguish DAG_EVAL_VIEWPORT or DAG_EVAL_RENDER here? */
 
-  add_this_collection(ctx->scene->master_collection, ctx, DAG_EVAL_VIEWPORT);
+  add_this_collection(*ctx->scene->master_collection, ctx, DAG_EVAL_VIEWPORT);
 
-  if (lmd->calculation_flags & LRT_USE_CUSTOM_CAMERA && lmd->source_camera) {
+  if (lmd->calculation_flags & MOD_LINEART_USE_CUSTOM_CAMERA && lmd->source_camera) {
     DEG_add_object_relation(
         ctx->node, lmd->source_camera, DEG_OB_COMP_TRANSFORM, "Line Art Modifier");
     DEG_add_object_relation(

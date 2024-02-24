@@ -64,8 +64,11 @@
 
 #include <algorithm> /* For `min/max`. */
 
+using blender::float3;
 using blender::int3;
-using namespace blender;
+using blender::MutableSpan;
+using namespace blender::bke;
+using blender::bke::mesh::corner_tri_get_real_edges;
 
 struct LineartIsecSingle {
   double v1[3], v2[3];
@@ -318,7 +321,7 @@ void lineart_edge_cut(LineartData *ld,
      * flags. See LineartEdgeSegment::shadow_mask_bits for details. */
     if (shadow_bits == LRT_SHADOW_MASK_ENCLOSED_SHAPE) {
       if (seg->shadow_mask_bits & LRT_SHADOW_MASK_ILLUMINATED ||
-          e->flags & LRT_EDGE_FLAG_LIGHT_CONTOUR)
+          e->flags & MOD_LINEART_EDGE_FLAG_LIGHT_CONTOUR)
       {
         seg->shadow_mask_bits |= LRT_SHADOW_MASK_INHIBITED;
       }
@@ -748,9 +751,9 @@ static bool lineart_edge_match(LineartTriangle *tri, LineartEdge *e, int v1, int
 static void lineart_discard_duplicated_edges(LineartEdge *old_e)
 {
   LineartEdge *e = old_e;
-  while (e->flags & LRT_EDGE_FLAG_NEXT_IS_DUPLICATION) {
+  while (e->flags & MOD_LINEART_EDGE_FLAG_NEXT_IS_DUPLICATION) {
     e++;
-    e->flags |= LRT_EDGE_FLAG_CHAIN_PICKED;
+    e->flags |= MOD_LINEART_EDGE_FLAG_CHAIN_PICKED;
   }
 }
 
@@ -816,7 +819,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
   if (tri_adj->e[e_num]) { \
     old_e = tri_adj->e[e_num]; \
     new_flag = old_e->flags; \
-    old_e->flags = LRT_EDGE_FLAG_CHAIN_PICKED; \
+    old_e->flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED; \
     lineart_discard_duplicated_edges(old_e); \
     INCREASE_EDGE \
     e->v1 = (v1_link); \
@@ -839,15 +842,15 @@ static void lineart_triangle_cull_single(LineartData *ld,
 
 #define REMOVE_TRIANGLE_EDGE \
   if (tri_adj->e[0]) { \
-    tri_adj->e[0]->flags = LRT_EDGE_FLAG_CHAIN_PICKED; \
+    tri_adj->e[0]->flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED; \
     lineart_discard_duplicated_edges(tri_adj->e[0]); \
   } \
   if (tri_adj->e[1]) { \
-    tri_adj->e[1]->flags = LRT_EDGE_FLAG_CHAIN_PICKED; \
+    tri_adj->e[1]->flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED; \
     lineart_discard_duplicated_edges(tri_adj->e[1]); \
   } \
   if (tri_adj->e[2]) { \
-    tri_adj->e[2]->flags = LRT_EDGE_FLAG_CHAIN_PICKED; \
+    tri_adj->e[2]->flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED; \
     lineart_discard_duplicated_edges(tri_adj->e[2]); \
   }
 
@@ -912,7 +915,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
         /* New line connecting two new points. */
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         /* NOTE: inverting `e->v1/v2` (left/right point) doesn't matter as long as
@@ -961,7 +964,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
 
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         e->v1 = &vt[0];
@@ -1002,7 +1005,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
 
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         e->v1 = &vt[1];
@@ -1077,7 +1080,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
         /* New line connects two new points. */
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         e->v1 = &vt[1];
@@ -1129,7 +1132,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
 
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         e->v1 = &vt[1];
@@ -1178,7 +1181,7 @@ static void lineart_triangle_cull_single(LineartData *ld,
 
         INCREASE_EDGE
         if (allow_boundaries) {
-          e->flags = LRT_EDGE_FLAG_CONTOUR;
+          e->flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
           lineart_add_edge_to_array(&ld->pending_edges, e);
         }
         e->v1 = &vt[1];
@@ -1402,7 +1405,7 @@ void lineart_main_discard_out_of_frame_edges(LineartData *ld)
     e = (LineartEdge *)eln->pointer;
     for (i = 0; i < eln->element_count; i++) {
       if (LRT_VERT_OUT_OF_BOUND(e[i].v1) && LRT_VERT_OUT_OF_BOUND(e[i].v2)) {
-        e[i].flags = LRT_EDGE_FLAG_CHAIN_PICKED;
+        e[i].flags = MOD_LINEART_EDGE_FLAG_CHAIN_PICKED;
       }
     }
   }
@@ -1435,12 +1438,12 @@ static void lineart_mvert_transform_task(void *__restrict userdata,
 }
 
 static const int LRT_MESH_EDGE_TYPES[] = {
-    LRT_EDGE_FLAG_EDGE_MARK,
-    LRT_EDGE_FLAG_CONTOUR,
-    LRT_EDGE_FLAG_CREASE,
-    LRT_EDGE_FLAG_MATERIAL,
-    LRT_EDGE_FLAG_LOOSE,
-    LRT_EDGE_FLAG_CONTOUR_SECONDARY,
+    MOD_LINEART_EDGE_FLAG_EDGE_MARK,
+    MOD_LINEART_EDGE_FLAG_CONTOUR,
+    MOD_LINEART_EDGE_FLAG_CREASE,
+    MOD_LINEART_EDGE_FLAG_MATERIAL,
+    MOD_LINEART_EDGE_FLAG_LOOSE,
+    MOD_LINEART_EDGE_FLAG_CONTOUR_SECONDARY,
 };
 
 #define LRT_MESH_EDGE_TYPES_COUNT 6
@@ -1562,7 +1565,7 @@ static void lineart_identify_corner_tri_feature_edges(void *__restrict userdata,
       face_mark_filtered = !face_mark_filtered;
     }
     if (!face_mark_filtered) {
-      edge_nabr[i].flags = LRT_EDGE_FLAG_INHIBIT;
+      edge_nabr[i].flags = MOD_LINEART_EDGE_FLAG_INHIBIT;
       if (e_feat_data->ld->conf.filter_face_mark_keep_contour) {
         only_contour = true;
       }
@@ -1575,7 +1578,7 @@ static void lineart_identify_corner_tri_feature_edges(void *__restrict userdata,
 
   /* Mesh boundary */
   if (edge_nabr[i].e == -1) {
-    edge_nabr[i].flags = LRT_EDGE_FLAG_CONTOUR;
+    edge_nabr[i].flags = MOD_LINEART_EDGE_FLAG_CONTOUR;
     reduce_data->feat_edges += 1;
     return;
   }
@@ -1610,7 +1613,7 @@ static void lineart_identify_corner_tri_feature_edges(void *__restrict userdata,
     dot_v2 = dot_v3v3_db(view_vector, tri2->gn);
 
     if ((result = dot_v1 * dot_v2) <= 0 && (dot_v1 + dot_v2)) {
-      edge_flag_result |= LRT_EDGE_FLAG_CONTOUR;
+      edge_flag_result |= MOD_LINEART_EDGE_FLAG_CONTOUR;
     }
 
     if (ld->conf.use_back_face_culling) {
@@ -1644,7 +1647,7 @@ static void lineart_identify_corner_tri_feature_edges(void *__restrict userdata,
     dot_v2 = dot_v3v3_db(view_vector, tri2->gn);
 
     if ((result = dot_v1 * dot_v2) <= 0 && (dot_v1 + dot_v2)) {
-      edge_flag_result |= LRT_EDGE_FLAG_CONTOUR_SECONDARY;
+      edge_flag_result |= MOD_LINEART_EDGE_FLAG_CONTOUR_SECONDARY;
     }
   }
 
@@ -1657,7 +1660,7 @@ static void lineart_identify_corner_tri_feature_edges(void *__restrict userdata,
         do_crease = false;
       }
       if (do_crease && (dot_v3v3_db(tri1->gn, tri2->gn) < e_feat_data->crease_threshold)) {
-        edge_flag_result |= LRT_EDGE_FLAG_CREASE;
+        edge_flag_result |= MOD_LINEART_EDGE_FLAG_CREASE;
       }
     }
 
@@ -1672,11 +1675,11 @@ static void lineart_identify_corner_tri_feature_edges(void *__restrict userdata,
            (m2->lineart.mat_occlusion == 0 && m1->lineart.mat_occlusion != 0)))
       {
         if (ld->conf.use_contour) {
-          edge_flag_result |= LRT_EDGE_FLAG_CONTOUR;
+          edge_flag_result |= MOD_LINEART_EDGE_FLAG_CONTOUR;
         }
       }
       if (ld->conf.use_material) {
-        edge_flag_result |= LRT_EDGE_FLAG_MATERIAL;
+        edge_flag_result |= MOD_LINEART_EDGE_FLAG_MATERIAL;
       }
     }
   }
@@ -1686,17 +1689,16 @@ static void lineart_identify_corner_tri_feature_edges(void *__restrict userdata,
     }
   }
 
-  const blender::int3 real_edges = blender::bke::mesh::corner_tri_get_real_edges(
-      e_feat_data->edges,
-      e_feat_data->corner_verts,
-      e_feat_data->corner_edges,
-      corner_tris[i / 3]);
+  const int3 real_edges = corner_tri_get_real_edges(e_feat_data->edges,
+                                                    e_feat_data->corner_verts,
+                                                    e_feat_data->corner_edges,
+                                                    corner_tris[i / 3]);
 
   if (real_edges[i % 3] >= 0) {
     if (ld->conf.use_crease && ld->conf.sharp_as_crease &&
         e_feat_data->sharp_edges[real_edges[i % 3]])
     {
-      edge_flag_result |= LRT_EDGE_FLAG_CREASE;
+      edge_flag_result |= MOD_LINEART_EDGE_FLAG_CREASE;
     }
 
     if (ld->conf.use_edge_marks && e_feat_data->use_freestyle_edge) {
@@ -1704,7 +1706,7 @@ static void lineart_identify_corner_tri_feature_edges(void *__restrict userdata,
       int index = e_feat_data->freestyle_edge_index;
       fe = &((FreestyleEdge *)mesh->edge_data.layers[index].data)[real_edges[i % 3]];
       if (fe->flag & FREESTYLE_EDGE_MARK) {
-        edge_flag_result |= LRT_EDGE_FLAG_EDGE_MARK;
+        edge_flag_result |= MOD_LINEART_EDGE_FLAG_EDGE_MARK;
       }
     }
   }
@@ -1969,9 +1971,8 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
 
   /* Triangulate. */
   const Span<int3> corner_tris = mesh->corner_tris();
-  const bke::AttributeAccessor attributes = mesh->attributes();
-  const VArraySpan material_indices = *attributes.lookup<int>("material_index",
-                                                              bke::AttrDomain::Face);
+  const AttributeAccessor attributes = mesh->attributes();
+  const VArraySpan material_indices = *attributes.lookup<int>("material_index", AttrDomain::Face);
 
   /* Check if we should look for custom data tags like Freestyle edges or faces. */
   bool can_find_freestyle_edge = false;
@@ -2101,9 +2102,9 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   edge_feat_settings.func_reduce = feat_data_sum_reduce;
 
   const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
-      "sharp_edge", bke::AttrDomain::Edge, false);
+      "sharp_edge", AttrDomain::Edge, false);
   const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
-      "sharp_face", bke::AttrDomain::Face, false);
+      "sharp_face", AttrDomain::Face, false);
 
   EdgeFeatData edge_feat_data = {nullptr};
   edge_feat_data.ld = la_data;
@@ -2144,7 +2145,7 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
   if (la_data->conf.use_loose) {
     /* Only identifying floating edges at this point because other edges has been taken care of
      * inside #lineart_identify_corner_tri_feature_edges function. */
-    const bke::LooseEdgeCache &loose_edges = mesh->loose_edges();
+    const LooseEdgeCache &loose_edges = mesh->loose_edges();
     loose_data.loose_array = static_cast<int *>(
         MEM_malloc_arrayN(loose_edges.count, sizeof(int), __func__));
     if (loose_edges.count > 0) {
@@ -2246,7 +2247,7 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
       }
 
       if (edge_added) {
-        edge_added->flags |= LRT_EDGE_FLAG_NEXT_IS_DUPLICATION;
+        edge_added->flags |= MOD_LINEART_EDGE_FLAG_NEXT_IS_DUPLICATION;
       }
 
       edge_added = la_edge;
@@ -2266,7 +2267,7 @@ static void lineart_geometry_object_load(LineartObjectInfo *ob_info,
       const int2 &edge = edges[loose_data.loose_array[i]];
       la_edge->v1 = &la_v_arr[edge[0]];
       la_edge->v2 = &la_v_arr[edge[1]];
-      la_edge->flags = LRT_EDGE_FLAG_LOOSE;
+      la_edge->flags = MOD_LINEART_EDGE_FLAG_LOOSE;
       la_edge->object_ref = orig_ob;
       la_edge->edge_identifier = LRT_EDGE_IDENTIFIER(ob_info, la_edge);
       BLI_addtail(&la_edge->segments, la_seg);
@@ -2722,7 +2723,7 @@ bool lineart_edge_from_triangle(const LineartTriangle *tri,
                                 bool allow_overlapping_edges)
 {
   const LineartEdge *use_e = e;
-  if (e->flags & LRT_EDGE_FLAG_LIGHT_CONTOUR) {
+  if (e->flags & MOD_LINEART_EDGE_FLAG_LIGHT_CONTOUR) {
     if (((e->target_reference & LRT_LIGHT_CONTOUR_TARGET) == tri->target_reference) ||
         (((e->target_reference >> 32) & LRT_LIGHT_CONTOUR_TARGET) == tri->target_reference))
     {
@@ -2881,11 +2882,11 @@ static bool lineart_triangle_edge_image_space_occlusion(const LineartTriangle *t
   dot_v2 = dot_v3v3_db(dir_v2, tri->gn);
   dot_f = dot_v3v3_db(dir_cam, tri->gn);
 
-  if ((e->flags & LRT_EDGE_FLAG_PROJECTED_SHADOW) &&
+  if ((e->flags & MOD_LINEART_EDGE_FLAG_PROJECTED_SHADOW) &&
       (e->target_reference == tri->target_reference))
   {
-    if (((dot_f > 0) && (e->flags & LRT_EDGE_FLAG_SHADOW_FACING_LIGHT)) ||
-        ((dot_f < 0) && !(e->flags & LRT_EDGE_FLAG_SHADOW_FACING_LIGHT)))
+    if (((dot_f > 0) && (e->flags & MOD_LINEART_EDGE_FLAG_SHADOW_FACING_LIGHT)) ||
+        ((dot_f < 0) && !(e->flags & MOD_LINEART_EDGE_FLAG_SHADOW_FACING_LIGHT)))
     {
       *from = 0.0f;
       *to = 1.0f;
@@ -3697,7 +3698,7 @@ static LineartData *lineart_create_render_buffer_v3(Scene *scene,
   Camera *c = static_cast<Camera *>(camera->data);
   double clipping_offset = 0;
 
-  if (lmd->calculation_flags & LRT_ALLOW_CLIPPING_BOUNDARIES) {
+  if (lmd->calculation_flags & MOD_LINEART_ALLOW_CLIPPING_BOUNDARIES) {
     /* This way the clipped lines are "stably visible" by prevents depth buffer artifacts. */
     clipping_offset = 0.0001;
   }
@@ -3756,24 +3757,31 @@ static LineartData *lineart_create_render_buffer_v3(Scene *scene,
   ld->conf.angle_splitting_threshold = lmd->angle_splitting_threshold;
   ld->conf.chain_smooth_tolerance = lmd->chain_smooth_tolerance;
 
-  ld->conf.fuzzy_intersections = (lmd->calculation_flags & LRT_INTERSECTION_AS_CONTOUR) != 0;
-  ld->conf.fuzzy_everything = (lmd->calculation_flags & LRT_EVERYTHING_AS_CONTOUR) != 0;
-  ld->conf.allow_boundaries = (lmd->calculation_flags & LRT_ALLOW_CLIPPING_BOUNDARIES) != 0;
-  ld->conf.use_loose_as_contour = (lmd->calculation_flags & LRT_LOOSE_AS_CONTOUR) != 0;
-  ld->conf.use_loose_edge_chain = (lmd->calculation_flags & LRT_CHAIN_LOOSE_EDGES) != 0;
-  ld->conf.use_geometry_space_chain = (lmd->calculation_flags & LRT_CHAIN_GEOMETRY_SPACE) != 0;
+  ld->conf.fuzzy_intersections = (lmd->calculation_flags & MOD_LINEART_INTERSECTION_AS_CONTOUR) !=
+                                 0;
+  ld->conf.fuzzy_everything = (lmd->calculation_flags & MOD_LINEART_EVERYTHING_AS_CONTOUR) != 0;
+  ld->conf.allow_boundaries = (lmd->calculation_flags & MOD_LINEART_ALLOW_CLIPPING_BOUNDARIES) !=
+                              0;
+  ld->conf.use_loose_as_contour = (lmd->calculation_flags & MOD_LINEART_LOOSE_AS_CONTOUR) != 0;
+  ld->conf.use_loose_edge_chain = (lmd->calculation_flags & MOD_LINEART_CHAIN_LOOSE_EDGES) != 0;
+  ld->conf.use_geometry_space_chain = (lmd->calculation_flags &
+                                       MOD_LINEART_CHAIN_GEOMETRY_SPACE) != 0;
   ld->conf.use_image_boundary_trimming = (lmd->calculation_flags &
-                                          LRT_USE_IMAGE_BOUNDARY_TRIMMING) != 0;
+                                          MOD_LINEART_USE_IMAGE_BOUNDARY_TRIMMING) != 0;
 
   /* See lineart_edge_from_triangle() for how this option may impact performance. */
-  ld->conf.allow_overlapping_edges = (lmd->calculation_flags & LRT_ALLOW_OVERLAPPING_EDGES) != 0;
+  ld->conf.allow_overlapping_edges = (lmd->calculation_flags &
+                                      MOD_LINEART_ALLOW_OVERLAPPING_EDGES) != 0;
 
-  ld->conf.allow_duplicated_types = (lmd->calculation_flags & LRT_ALLOW_OVERLAP_EDGE_TYPES) != 0;
+  ld->conf.allow_duplicated_types = (lmd->calculation_flags &
+                                     MOD_LINEART_ALLOW_OVERLAP_EDGE_TYPES) != 0;
 
-  ld->conf.force_crease = (lmd->calculation_flags & LRT_USE_CREASE_ON_SMOOTH_SURFACES) != 0;
-  ld->conf.sharp_as_crease = (lmd->calculation_flags & LRT_USE_CREASE_ON_SHARP_EDGES) != 0;
+  ld->conf.force_crease = (lmd->calculation_flags & MOD_LINEART_USE_CREASE_ON_SMOOTH_SURFACES) !=
+                          0;
+  ld->conf.sharp_as_crease = (lmd->calculation_flags & MOD_LINEART_USE_CREASE_ON_SHARP_EDGES) != 0;
 
-  ld->conf.chain_preserve_details = (lmd->calculation_flags & LRT_CHAIN_PRESERVE_DETAILS) != 0;
+  ld->conf.chain_preserve_details = (lmd->calculation_flags &
+                                     MOD_LINEART_CHAIN_PRESERVE_DETAILS) != 0;
 
   /* This is used to limit calculation to a certain level to save time, lines who have higher
    * occlusion levels will get ignored. */
@@ -3782,15 +3790,15 @@ static LineartData *lineart_create_render_buffer_v3(Scene *scene,
   int16_t edge_types = lmd->edge_types_override;
 
   /* lmd->edge_types_override contains all used flags in the modifier stack. */
-  ld->conf.use_contour = (edge_types & LRT_EDGE_FLAG_CONTOUR) != 0;
-  ld->conf.use_crease = (edge_types & LRT_EDGE_FLAG_CREASE) != 0;
-  ld->conf.use_material = (edge_types & LRT_EDGE_FLAG_MATERIAL) != 0;
-  ld->conf.use_edge_marks = (edge_types & LRT_EDGE_FLAG_EDGE_MARK) != 0;
-  ld->conf.use_intersections = (edge_types & LRT_EDGE_FLAG_INTERSECTION) != 0;
-  ld->conf.use_loose = (edge_types & LRT_EDGE_FLAG_LOOSE) != 0;
-  ld->conf.use_light_contour = ((edge_types & LRT_EDGE_FLAG_LIGHT_CONTOUR) != 0 &&
+  ld->conf.use_contour = (edge_types & MOD_LINEART_EDGE_FLAG_CONTOUR) != 0;
+  ld->conf.use_crease = (edge_types & MOD_LINEART_EDGE_FLAG_CREASE) != 0;
+  ld->conf.use_material = (edge_types & MOD_LINEART_EDGE_FLAG_MATERIAL) != 0;
+  ld->conf.use_edge_marks = (edge_types & MOD_LINEART_EDGE_FLAG_EDGE_MARK) != 0;
+  ld->conf.use_intersections = (edge_types & MOD_LINEART_EDGE_FLAG_INTERSECTION) != 0;
+  ld->conf.use_loose = (edge_types & MOD_LINEART_EDGE_FLAG_LOOSE) != 0;
+  ld->conf.use_light_contour = ((edge_types & MOD_LINEART_EDGE_FLAG_LIGHT_CONTOUR) != 0 &&
                                 (lmd->light_contour_object != nullptr));
-  ld->conf.use_shadow = ((edge_types & LRT_EDGE_FLAG_PROJECTED_SHADOW) != 0 &&
+  ld->conf.use_shadow = ((edge_types & MOD_LINEART_EDGE_FLAG_PROJECTED_SHADOW) != 0 &&
                          (lmd->light_contour_object != nullptr));
 
   ld->conf.shadow_selection = lmd->shadow_selection_override;
@@ -3798,14 +3806,16 @@ static LineartData *lineart_create_render_buffer_v3(Scene *scene,
                                    LINEART_SHADOW_FILTER_ILLUMINATED_ENCLOSED_SHAPES;
   ld->conf.shadow_use_silhouette = lmd->shadow_use_silhouette_override != 0;
 
-  ld->conf.use_back_face_culling = (lmd->calculation_flags & LRT_USE_BACK_FACE_CULLING) != 0;
+  ld->conf.use_back_face_culling = (lmd->calculation_flags & MOD_LINEART_USE_BACK_FACE_CULLING) !=
+                                   0;
 
-  ld->conf.filter_face_mark_invert = (lmd->calculation_flags & LRT_FILTER_FACE_MARK_INVERT) != 0;
-  ld->conf.filter_face_mark = (lmd->calculation_flags & LRT_FILTER_FACE_MARK) != 0;
+  ld->conf.filter_face_mark_invert = (lmd->calculation_flags &
+                                      MOD_LINEART_FILTER_FACE_MARK_INVERT) != 0;
+  ld->conf.filter_face_mark = (lmd->calculation_flags & MOD_LINEART_FILTER_FACE_MARK) != 0;
   ld->conf.filter_face_mark_boundaries = (lmd->calculation_flags &
-                                          LRT_FILTER_FACE_MARK_BOUNDARIES) != 0;
+                                          MOD_LINEART_FILTER_FACE_MARK_BOUNDARIES) != 0;
   ld->conf.filter_face_mark_keep_contour = (lmd->calculation_flags &
-                                            LRT_FILTER_FACE_MARK_KEEP_CONTOUR) != 0;
+                                            MOD_LINEART_FILTER_FACE_MARK_KEEP_CONTOUR) != 0;
 
   ld->chain_data_pool = &lc->chain_data_pool;
 
@@ -4782,7 +4792,7 @@ static void lineart_create_edges_from_isec_data(LineartIsecData *d)
       e->t2 = is->tri2;
       /* This is so we can also match intersection edges from shadow to later viewing stage. */
       e->edge_identifier = (uint64_t(e->t1->target_reference) << 32) | e->t2->target_reference;
-      e->flags = LRT_EDGE_FLAG_INTERSECTION;
+      e->flags = MOD_LINEART_EDGE_FLAG_INTERSECTION;
       e->intersection_mask = (is->tri1->intersection_mask | is->tri2->intersection_mask);
       BLI_addtail(&e->segments, es);
 
@@ -5115,7 +5125,7 @@ bool MOD_lineart_compute_feature_lines_v3(Depsgraph *depsgraph,
   }
 
   bool use_render_camera_override = false;
-  if (lmd.calculation_flags & LRT_USE_CUSTOM_CAMERA) {
+  if (lmd.calculation_flags & MOD_LINEART_USE_CUSTOM_CAMERA) {
     if (!lmd.source_camera ||
         (lineart_camera = DEG_get_evaluated_object(depsgraph, lmd.source_camera))->type !=
             OB_CAMERA)
@@ -5171,7 +5181,7 @@ bool MOD_lineart_compute_feature_lines_v3(Depsgraph *depsgraph,
                                scene,
                                lineart_camera,
                                ld,
-                               lmd.calculation_flags & LRT_ALLOW_DUPLI_OBJECTS,
+                               lmd.calculation_flags & MOD_LINEART_ALLOW_DUPLI_OBJECTS,
                                false,
                                shadow_elns);
 
@@ -5399,7 +5409,7 @@ static void lineart_gpencil_generate(LineartCache *cache,
         }
       }
     }
-    if (ec->type & LRT_EDGE_FLAG_INTERSECTION) {
+    if (ec->type & MOD_LINEART_EDGE_FLAG_INTERSECTION) {
       if (mask_switches & MOD_LINEART_INTERSECTION_MATCH) {
         if (ec->intersection_mask != intersection_mask) {
           continue;
@@ -5434,7 +5444,7 @@ static void lineart_gpencil_generate(LineartCache *cache,
         }
       }
     }
-    if (silhouette_mode && (ec->type & (LRT_EDGE_FLAG_CONTOUR))) {
+    if (silhouette_mode && (ec->type & (MOD_LINEART_EDGE_FLAG_CONTOUR))) {
       bool is_silhouette = false;
       if (orig_col) {
         if (!ec->silhouette_backdrop) {
@@ -5717,7 +5727,7 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
         }
       }
     }
-    if (ec->type & LRT_EDGE_FLAG_INTERSECTION) {
+    if (ec->type & MOD_LINEART_EDGE_FLAG_INTERSECTION) {
       if (mask_switches & MOD_LINEART_INTERSECTION_MATCH) {
         if (ec->intersection_mask != intersection_mask) {
           continue;
@@ -5752,7 +5762,7 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
         }
       }
     }
-    if (silhouette_mode && (ec->type & (LRT_EDGE_FLAG_CONTOUR))) {
+    if (silhouette_mode && (ec->type & (MOD_LINEART_EDGE_FLAG_CONTOUR))) {
       bool is_silhouette = false;
       if (orig_col) {
         if (!ec->silhouette_backdrop) {
@@ -5801,27 +5811,26 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
     return;
   }
 
-  bke::CurvesGeometry new_curves(total_point_count, stroke_count);
+  blender::bke::CurvesGeometry new_curves(total_point_count, stroke_count);
   new_curves.fill_curve_types(CURVE_TYPE_POLY);
 
-  bke::MutableAttributeAccessor attributes = new_curves.attributes_for_write();
+  MutableAttributeAccessor attributes = new_curves.attributes_for_write();
   MutableSpan<float3> point_positions = new_curves.positions_for_write();
 
-  bke::SpanAttributeWriter<float> point_radii =
-      attributes.lookup_or_add_for_write_only_span<float>("radius", bke::AttrDomain::Point);
+  SpanAttributeWriter<float> point_radii = attributes.lookup_or_add_for_write_only_span<float>(
+      "radius", AttrDomain::Point);
 
-  bke::SpanAttributeWriter<float> point_opacities = attributes.lookup_or_add_for_write_span<float>(
-      "opacity", bke::AttrDomain::Point);
+  SpanAttributeWriter<float> point_opacities = attributes.lookup_or_add_for_write_span<float>(
+      "opacity", AttrDomain::Point);
 
-  bke::SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
-      "material_index", bke::AttrDomain::Curve);
+  SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
+      "material_index", AttrDomain::Curve);
 
   MutableSpan<int> offsets = new_curves.offsets_for_write();
 
-  bke::SpanAttributeWriter<float> vgroup_weights;
+  SpanAttributeWriter<float> vgroup_weights;
   if (vgname) {
-    vgroup_weights = attributes.lookup_or_add_for_write_span<float>(vgname,
-                                                                    bke::AttrDomain::Point);
+    vgroup_weights = attributes.lookup_or_add_for_write_span<float>(vgname, AttrDomain::Point);
   }
 
   int up_to_point = 0;
@@ -5865,8 +5874,8 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
   }
   offsets[writer.index_range().last() + 1] = up_to_point;
 
-  bke::SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
-      "cyclic", bke::AttrDomain::Curve);
+  SpanAttributeWriter<bool> stroke_cyclic = attributes.lookup_or_add_for_write_span<bool>(
+      "cyclic", AttrDomain::Curve);
   stroke_cyclic.span.fill(false);
   stroke_cyclic.finish();
 
