@@ -677,7 +677,10 @@ struct BlendWriter {
   int64_t next_min_alloc_size = 256;
   bool was_written = false;
 
-  BlendWriter(const WriteData &wd) : root_wd(&wd) {}
+  BlendWriter(const WriteData &wd, const int64_t initial_size = 256)
+      : root_wd(&wd), next_min_alloc_size(initial_size)
+  {
+  }
 
   ~BlendWriter()
   {
@@ -1404,6 +1407,8 @@ static bool write_file_handle(Main *mainvar,
     } while ((bmain != override_storage) && (bmain = override_storage));
   }
 
+  mywrite_flush(wd);
+
   if (wd->use_memfile) {
     for (ID *id : ids_to_write) {
       BlendWriter writer{*wd};
@@ -1435,6 +1440,40 @@ static bool write_file_handle(Main *mainvar,
     //     wd->ww->write(data.data(), s);
     //   }
     // }
+
+    Vector<Span<ID *>> ids_to_write_groups;
+    Vector<std::unique_ptr<BlendWriter>> writers;
+    const int group_size = 10;
+    for (int i = 0; i < ids_to_write.size(); i += group_size) {
+      const int ids_in_next_group = std::min<int>(group_size, ids_to_write.size() - i);
+      ids_to_write_groups.append(ids_to_write.as_span().slice(i, ids_in_next_group));
+      writers.append(std::make_unique<BlendWriter>(*wd, 1e3));
+    }
+
+    blender::threading::parallel_for(
+        ids_to_write_groups.index_range(), 1, [&](const IndexRange groups_range) {
+          BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
+          for (const int64_t group_i : groups_range) {
+            BlendWriter &writer = *writers[group_i];
+            const Span<ID *> ids = ids_to_write_groups[group_i];
+            for (ID *id : ids) {
+              const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
+              id_buffer_init_for_id_type(id_buffer, id_type);
+              id_buffer_init_from_id(id_buffer, id, wd->use_memfile);
+              if (id_type->blend_write) {
+                id_type->blend_write(&writer, id_buffer->temp_id, id);
+              }
+            }
+          }
+          BLO_write_destroy_id_buffer(&id_buffer);
+        });
+
+    for (const int64_t group_i : ids_to_write_groups.index_range()) {
+      BlendWriter &writer = *writers[group_i];
+      for (const Span<std::byte> buffer : writer.buffers) {
+        wd->ww->write(buffer.data(), buffer.size());
+      }
+    }
   }
 
   if (override_storage) {
