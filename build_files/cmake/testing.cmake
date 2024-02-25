@@ -12,12 +12,47 @@ function(get_blender_test_install_dir VARIABLE_NAME)
   set(${VARIABLE_NAME} "${TEST_INSTALL_DIR}" PARENT_SCOPE)
 endfunction()
 
+# Add the necessary LSAN/ASAN options to the given list of environment variables.
+# Typically used after adding a test, before calling
+#   `set_tests_properties(${testname} PROPERTIES ENVIRONMENT "${_envvar_list}")`,
+# to ensure that it will run with the correct sanitizer settings.
+#
+# \param envvars_list: A list of extra environment variables to define for that test.
+#                      Note that this does no check for (re-)definition of a same variable.
+function(blender_test_set_envvars testname envvars_list)
+  if(PLATFORM_ENV_INSTALL)
+    list(APPEND envvar_list "${PLATFORM_ENV_INSTALL}")
+  endif()
+
+  if(NOT CMAKE_BUILD_TYPE MATCHES "Release")
+    if(WITH_COMPILER_ASAN)
+      set(_lsan_options "LSAN_OPTIONS=print_suppressions=false:suppressions=${CMAKE_SOURCE_DIR}/tools/config/analysis/lsan.supp")
+      # FIXME That `allocator_may_return_null=true` ASAN option is only needed for the `guardedalloc` test,
+      #       would be nice to allow tests definition to pass extra envvars better.
+      set(_asan_options "ASAN_OPTIONS=allocator_may_return_null=true")
+      if(DEFINED ENV{LSAN_OPTIONS})
+        set(_lsan_options "${_lsan_options}:$ENV{LSAN_OPTIONS}")
+      endif()
+      if(DEFINED ENV{ASAN_OPTIONS})
+        set(_asan_options "${_asan_options}:$ENV{ASAN_OPTIONS}")
+      endif()
+      list(APPEND envvar_list "${_lsan_options}" "${_asan_options}")
+    endif()
+  endif()
+
+  # Can only be called once per test to define its custom environment variables.
+  set_tests_properties(${testname} PROPERTIES ENVIRONMENT "${envvar_list}")
+endfunction()
+
 macro(blender_src_gtest_ex)
   if(WITH_GTESTS)
     set(options)
     set(oneValueArgs NAME)
     set(multiValueArgs SRC EXTRA_LIBS COMMAND_ARGS)
-    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    unset(options)
+    unset(oneValueArgs)
+    unset(multiValueArgs)
 
     set(TARGET_NAME ${ARG_NAME}_test)
     get_property(_current_include_directories
@@ -128,25 +163,20 @@ function(blender_add_ctests)
       TEST_PREFIX ${ARGS_SUITE_NAME}
       WORKING_DIRECTORY "${TEST_INSTALL_DIR}"
       EXTRA_ARGS
-        --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests"
+        --test-assets-dir "${CMAKE_SOURCE_DIR}/tests/data"
         --test-release-dir "${_test_release_dir}"
     )
   else()
     add_test(
       NAME ${ARGS_SUITE_NAME}
       COMMAND ${ARGS_TARGET}
-        --test-assets-dir "${CMAKE_SOURCE_DIR}/../lib/tests"
+        --test-assets-dir "${CMAKE_SOURCE_DIR}/tests/data"
         --test-release-dir "${_test_release_dir}"
       WORKING_DIRECTORY ${TEST_INSTALL_DIR}
     )
   endif()
+  blender_test_set_envvars("${ARGS_SUITE_NAME}" "")
 
-  if(WIN32)
-    set_tests_properties(
-      ${ARGS_SUITE_NAME} PROPERTIES
-      ENVIRONMENT "PATH=${CMAKE_INSTALL_PREFIX_WITH_CONFIG}/blender.shared/;$ENV{PATH}"
-    )
-  endif()
   unset(_test_release_dir)
 endfunction()
 
@@ -227,7 +257,10 @@ function(blender_add_test_executable_impl
   )
 
   set(oneValueArgs ADD_CTESTS DISCOVER_TESTS)
+  set(multiValueArgs)
   cmake_parse_arguments(ARGS "" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  unset(oneValueArgs)
+  unset(multiValueArgs)
 
   add_cc_flags_custom_test(${name} PARENT_SCOPE)
 
@@ -374,4 +407,3 @@ function(blender_add_test_performance_executable
     DISCOVER_TESTS FALSE
   )
 endfunction()
-

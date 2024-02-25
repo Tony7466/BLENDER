@@ -6,12 +6,12 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_engine.h"
-#include "DRW_render.h"
+#include "DRW_engine.hh"
+#include "DRW_render.hh"
 
 #include "draw_color_management.h" /* TODO: remove dependency. */
 
-#include "BKE_global.h" /* for G.debug_value */
+#include "BKE_global.hh" /* for G.debug_value */
 
 #include "BLI_hash.h"
 #include "BLI_string_utils.hh"

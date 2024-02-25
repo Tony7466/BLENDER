@@ -2,10 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "usd_blend_shape_utils.h"
-#include "usd_skel_convert.h"
+#include "usd_blend_shape_utils.hh"
+#include "usd_skel_convert.hh"
 
-#include "usd.h"
+#include "usd.hh"
 
 #include <pxr/usd/sdf/namespaceEdit.h>
 #include <pxr/usd/usdGeom/primvarsAPI.h>
@@ -27,10 +27,10 @@
 
 #include "BKE_action.h"
 #include "BKE_armature.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_fcurve.h"
-#include "BKE_key.h"
-#include "BKE_lib_id.h"
+#include "BKE_key.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.hh"
@@ -46,7 +46,6 @@
 #include "ED_keyframing.hh"
 #include "ED_mesh.hh"
 
-#include <iostream>
 #include <string>
 #include <vector>
 
@@ -135,7 +134,7 @@ void ensure_blend_shape_skeleton(pxr::UsdStageRefPtr stage, pxr::UsdPrim &mesh_p
     skel.GetRestTransformsAttr().Set(rest_transforms);
 
     /* Some DCCs seem to require joint names to bind the
-     * skeleton to blendshapes. */
+     * skeleton to blend-shapes. */
     pxr::VtTokenArray joints({usdtokens::joint1});
     skel.CreateJointsAttr().Set(joints);
   }
@@ -224,8 +223,9 @@ void create_blend_shapes(pxr::UsdStageRefPtr stage,
   pxr::UsdSkelBindingAPI skel_api = pxr::UsdSkelBindingAPI::Apply(mesh_prim);
 
   if (!skel_api) {
-    printf("WARNING: couldn't apply UsdSkelBindingAPI to prim %s\n",
-           mesh_prim.GetPath().GetAsString().c_str());
+    CLOG_WARN(&LOG,
+              "Couldn't apply UsdSkelBindingAPI to mesh prim %s",
+              mesh_prim.GetPath().GetAsString().c_str());
     return;
   }
 
@@ -284,13 +284,13 @@ void create_blend_shapes(pxr::UsdStageRefPtr stage,
     point_indices_attr.Set(indices);
   }
 
-  /* Set the blendshape names and targets on the shape. */
+  /* Set the blend-shape names and targets on the shape. */
   pxr::UsdAttribute blendshape_attr = skel_api.CreateBlendShapesAttr();
   blendshape_attr.Set(blendshape_names);
   skel_api.CreateBlendShapeTargetsRel().SetTargets(blendshape_paths);
 
   /* Some DCCs seem to require joint indices and weights to
-   * bind the skeleton for blendshapes, so we we create these
+   * bind the skeleton for blend-shapes, so we we create these
    * primvars, if needed. */
 
   if (!skel_api.GetJointIndicesAttr().HasAuthoredValue()) {

@@ -2,18 +2,16 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "usd_skel_root_utils.h"
+#include "usd_skel_root_utils.hh"
 
 #include <pxr/usd/usd/primRange.h>
 #include <pxr/usd/usdGeom/xform.h>
 #include <pxr/usd/usdSkel/bindingAPI.h>
 #include <pxr/usd/usdSkel/root.h>
 
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "WM_types.hh"
-
-#include <iostream>
 
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.usd"};
@@ -95,7 +93,7 @@ void create_skel_roots(pxr::UsdStageRefPtr stage, const USDExportParams &params)
       continue;
     }
 
-    /* Try to find a commmon ancestor of the skinned prim and its bound skeleton. */
+    /* Try to find a common ancestor of the skinned prim and its bound skeleton. */
     pxr::UsdSkelRoot prim_skel_root = pxr::UsdSkelRoot::Find(prim);
     pxr::UsdSkelRoot skel_skel_root = pxr::UsdSkelRoot::Find(skel.GetPrim());
 
@@ -106,7 +104,7 @@ void create_skel_roots(pxr::UsdStageRefPtr stage, const USDExportParams &params)
     if (pxr::UsdGeomXform xf = get_xform_ancestor(prim, skel.GetPrim())) {
       /* We found a common Xform ancestor, so we set its type to UsdSkelRoot. */
       CLOG_INFO(
-          &LOG, 4, "Converting Xform prim %s to a SkelRoot", prim.GetPath().GetAsString().c_str());
+          &LOG, 2, "Converting Xform prim %s to a SkelRoot", prim.GetPath().GetAsString().c_str());
 
       pxr::UsdSkelRoot::Define(stage, xf.GetPath());
       converted_to_usdskel = true;
@@ -116,7 +114,7 @@ void create_skel_roots(pxr::UsdStageRefPtr stage, const USDExportParams &params)
                   RPT_WARNING,
                   "%s: Couldn't find a common Xform ancestor for skinned prim %s "
                   "and skeleton %s to convert to a USD SkelRoot. "
-                  "This can be addressed by setting a root primitive in the export options.\n",
+                  "This can be addressed by setting a root primitive in the export options",
                   __func__,
                   prim.GetPath().GetAsString().c_str(),
                   skel.GetPath().GetAsString().c_str());

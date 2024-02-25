@@ -5,7 +5,6 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_bvhutils.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_sample.hh"
 
 #include "BLI_math_geom.h"
@@ -187,19 +186,20 @@ static void sample_nearest_weights(const Span<float3> vert_positions,
       }
     }
     const int3 &tri = corner_tris[tri_indices[i]];
-    bary_coords[i] = MIN3_PAIR(
+    const std::array<float, 3> distances{
         math::distance_squared(sample_positions[i], vert_positions[corner_verts[tri[0]]]),
         math::distance_squared(sample_positions[i], vert_positions[corner_verts[tri[1]]]),
         math::distance_squared(sample_positions[i], vert_positions[corner_verts[tri[2]]]),
-        float3(1, 0, 0),
-        float3(0, 1, 0),
-        float3(0, 0, 1));
+    };
+    const int index = std::min_element(distances.begin(), distances.end()) - distances.begin();
+    const std::array<float3, 3> weights{float3(1, 0, 0), float3(0, 1, 0), float3(0, 0, 1)};
+    bary_coords[i] = weights[index];
   });
 }
 
 int sample_surface_points_spherical(RandomNumberGenerator &rng,
                                     const Mesh &mesh,
-                                    const Span<int> tri_indices_to_sample,
+                                    const Span<int> tris_to_sample,
                                     const float3 &sample_pos,
                                     const float sample_radius,
                                     const float approximate_density,
@@ -218,7 +218,7 @@ int sample_surface_points_spherical(RandomNumberGenerator &rng,
 
   const int old_num = r_bary_coords.size();
 
-  for (const int tri_index : tri_indices_to_sample) {
+  for (const int tri_index : tris_to_sample) {
     const int3 &tri = corner_tris[tri_index];
 
     const float3 &v0 = positions[corner_verts[tri[0]]];

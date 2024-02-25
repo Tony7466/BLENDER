@@ -2,10 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "usd_writer_armature.h"
-#include "usd_armature_utils.h"
-#include "usd_hierarchy_iterator.h"
-#include "usd_writer_transform.h"
+#include "usd_writer_armature.hh"
+#include "usd_armature_utils.hh"
+#include "usd_hierarchy_iterator.hh"
+#include "usd_writer_transform.hh"
 
 #include "BKE_action.h"
 #include "BKE_armature.hh"
@@ -22,7 +22,6 @@
 #include <pxr/usd/usdSkel/tokens.h>
 
 #include <functional>
-#include <iostream>
 
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.usd"};
@@ -31,9 +30,11 @@ namespace usdtokens {
 static const pxr::TfToken Anim("Anim", pxr::TfToken::Immortal);
 }  // namespace usdtokens
 
-/* Get the pose matrix for the given channe.  The matrix is computed
- * relative to its parent, if a parent exists.  The returned matrix
- * corresponds to the USD joint-local transform. */
+/**
+ * Get the pose matrix for the given channel.
+ * The matrix is computed relative to its parent, if a parent exists.
+ * The returned matrix corresponds to the USD joint-local transform.
+ */
 static pxr::GfMatrix4d parent_relative_pose_mat(const bPoseChannel *pchan)
 {
   /* Note that the float matrix will be returned as GfMatrix4d, because

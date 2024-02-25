@@ -46,6 +46,7 @@
 #include "DNA_modifier_types.h"
 #include "DNA_movieclip_types.h"
 #include "DNA_screen_types.h"
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 #include "DNA_text_types.h"
 #include "DNA_tracking_types.h"
@@ -59,18 +60,18 @@
 #include "BKE_armature.hh"
 #include "BKE_asset.hh"
 #include "BKE_attribute.hh"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_colortools.hh"
 #include "BKE_curve.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_data_transfer.h"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_fcurve.h"
 #include "BKE_fcurve_driver.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
@@ -85,7 +86,7 @@
 #include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "readfile.hh"
 
@@ -1380,18 +1381,11 @@ void do_versions_after_linking_300(FileData * /*fd*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #blo_do_versions_300 in this file.
-   * - `versioning_userdef.cc`, #blo_do_versions_userdef
-   * - `versioning_userdef.cc`, #do_versions_theme
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }
 
 static void version_switch_node_input_prefix(Main *bmain)
@@ -4566,16 +4560,9 @@ void blo_do_versions_300(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   /**
-   * Versioning code until next subversion bump goes here.
-   *
-   * \note Be sure to check when bumping the version:
-   * - #do_versions_after_linking_300 in this file.
-   * - `versioning_userdef.cc`, #blo_do_versions_userdef
-   * - `versioning_userdef.cc`, #do_versions_theme
+   * Always bump subversion in BKE_blender_version.h when adding versioning
+   * code here, and wrap it inside a MAIN_VERSION_FILE_ATLEAST check.
    *
    * \note Keep this message at the bottom of the function.
    */
-  {
-    /* Keep this block, even when empty. */
-  }
 }

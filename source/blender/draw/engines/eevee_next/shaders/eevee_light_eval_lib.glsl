@@ -18,7 +18,7 @@
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_codegen_lib.glsl)
 
-/* If using compute, the shader should define it's own pixel. */
+/* If using compute, the shader should define its own pixel. */
 #if !defined(PIXEL) && defined(GPU_FRAGMENT_SHADER)
 #  define PIXEL gl_FragCoord.xy
 #endif
@@ -59,8 +59,7 @@ void light_shadow_single(uint l_idx,
     return;
   }
 
-  /* TODO(fclem): Enable for OpenGL and Vulkan once they fully support specialization constants. */
-#if defined(SPECIALIZED_SHADOW_PARAMS) && defined(GPU_METAL)
+#if defined(SPECIALIZED_SHADOW_PARAMS)
   int ray_count = shadow_ray_count;
   int ray_step_count = shadow_ray_step_count;
 #else
@@ -105,6 +104,35 @@ struct ClosureLight {
   vec3 light_unshadowed;
 };
 
+ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V)
+{
+  ClosureLight cl_light;
+  cl_light.N = cl.N;
+  cl_light.ltc_mat = LTC_LAMBERT_MAT;
+  cl_light.type = LIGHT_DIFFUSE;
+  cl_light.light_shadowed = vec3(0.0);
+  switch (cl.type) {
+    case CLOSURE_BSDF_TRANSLUCENT_ID:
+      cl_light.N = -cl.N;
+      break;
+    case CLOSURE_BSSRDF_BURLEY_ID:
+    case CLOSURE_BSDF_DIFFUSE_ID:
+      break;
+    case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+      cl_light.ltc_mat = LTC_GGX_MAT(dot(cl.N, V), cl.data.x);
+      cl_light.type = LIGHT_SPECULAR;
+      break;
+    case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+      cl_light.N = -cl.N;
+      cl_light.type = LIGHT_SPECULAR;
+      break;
+    case CLOSURE_NONE_ID:
+      /* TODO(fclem): Assert. */
+      break;
+  }
+  return cl_light;
+}
+
 struct ClosureLightStack {
   /* NOTE: This is wrapped into a struct to avoid array shenanigans on MSL. */
   ClosureLight cl[LIGHT_CLOSURE_EVAL_COUNT];
@@ -139,8 +167,7 @@ void light_eval_single(uint l_idx,
 {
   LightData light = light_buf[l_idx];
 
-  /* TODO(fclem): Enable for OpenGL and Vulkan once they fully support specialization constants. */
-#if defined(SPECIALIZED_SHADOW_PARAMS) && defined(GPU_METAL)
+#if defined(SPECIALIZED_SHADOW_PARAMS)
   int ray_count = shadow_ray_count;
   int ray_step_count = shadow_ray_step_count;
 #else
