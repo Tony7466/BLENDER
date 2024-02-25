@@ -189,7 +189,7 @@ void parallel_for_weighted_impl(
     const FunctionRef<void(IndexRange, MutableSpan<int64_t>)> task_sizes_fn)
 {
   /* Shouldn't be too small, because then there is more overhead when the individual tasks are
-   * small. Also shouldn't be too large because then the serial code to split up tasks cause extra
+   * small. Also shouldn't be too large because then the serial code to split up tasks causes extra
    * overhead. */
   const int64_t outer_grain_size = std::min<int64_t>(grain_size, 512);
   threading::parallel_for(range, outer_grain_size, [&](const IndexRange sub_range) {
@@ -213,7 +213,7 @@ void parallel_for_weighted_impl(
     }
     const OffsetIndices<int64_t> offsets = offsets_vec.as_span();
 
-    /* Run the dynamically split-up tasks in parallel. */
+    /* Run the dynamically split tasks in parallel. */
     threading::parallel_for(offsets.index_range(), 1, [&](const IndexRange offsets_range) {
       for (const int64_t i : offsets_range) {
         const IndexRange actual_range = offsets[i].shift(sub_range.start());

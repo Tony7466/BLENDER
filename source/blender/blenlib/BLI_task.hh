@@ -93,7 +93,11 @@ inline void parallel_for(IndexRange range, int64_t grain_size, const Function &f
  * per index. This allows distributing work to threads more evenly.
  *
  * Using this function makes sense when the work load for each index can differ significantly, so
- * that it is impossible to determine a good grain size.
+ * that it is impossible to determine a good constant grain size.
+ *
+ * This function has a bit more overhead than the unweighted #parallel_for. If that is noticable
+ * highly depends on the use-case. So the overhead should be measured when trying to use this
+ * function for cases where all tasks may be very small.
  *
  * \param task_size_fn: Gets the task index as input and computes that tasks size.
  * \param grain_size: Determines approximately how large a combined task should be. For example, if
