@@ -27,7 +27,6 @@
  */
 static const char *text_format_glsl_literals_builtinfunc_data[] = {
     /* Force single column, sorted list. */
-    /* clang-format off */
     "abs",
     "acos",
     "acosh",
@@ -62,7 +61,7 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
     "determinant",
     "dFdx",
     "dFdy",
-    "distance" ,
+    "distance",
     "dot",
     "EmitStreamVertex",
     "EmitVertex",
@@ -73,14 +72,14 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
     "exp2",
     "faceforward",
     "false",
-    "findLSB"  ,
+    "findLSB",
     "findMSB",
     "floatBitsToInt",
-    "floor" ,
+    "floor",
     "fma",
     "fract",
     "frexp",
-    "ftransform"   ,
+    "ftransform",
     "fwidth",
     "greaterThan",
     "greaterThanEqual",
@@ -136,7 +135,7 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
     "refract",
     "round",
     "roundEven",
-    "sign"    ,
+    "sign",
     "sin",
     "sinh",
     "smoothstep",
@@ -148,7 +147,7 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
     "texelFetchOffset",
     "texture",
     "texture1D",
-    "texture2D" ,
+    "texture2D",
     "texture3D",
     "textureGather",
     "textureGatherOffset",
@@ -178,7 +177,6 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
     "unpackUnorm2x16",
     "unpackUnorm4x8",
     "usubBorrow",
-    /* clang-format on */
 };
 static const Span<const char *> text_format_glsl_literals_builtinfunc(
     text_format_glsl_literals_builtinfunc_data,
@@ -190,7 +188,6 @@ static const Span<const char *> text_format_glsl_literals_builtinfunc(
  */
 static const char *text_format_glsl_literals_reserved_data[] = {
     /* Force single column, sorted list. */
-    /* clang-format off */
     "attribute",
     "bool",
     "break",
@@ -259,7 +256,7 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "sampler2DShadow",
     "sampler3D",
     "samplerBuffer",
-    "samplerCube" ,
+    "samplerCube",
     "samplerCubeArray",
     "samplerCubeArrayShadow",
     "samplerCubeShadow",
@@ -267,12 +264,12 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "smooth",
     "struct",
     "switch",
-    "texel" ,
+    "texel",
     "uniform",
     "using",
     "uvec2",
     "uvec3",
-    "uvec4" ,
+    "uvec4",
     "varying",
     "vec2",
     "vec3",
@@ -296,11 +293,11 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "gl_NumWorkGroups",
     "gl_PatchVerticesIn",
     "gl_PointCoord",
-    "gl_PointSize"    ,
+    "gl_PointSize",
     "gl_Position",
     "gl_PrimitiveID",
     "gl_PrimitiveIDIn",
-    "gl_SampleID"    ,
+    "gl_SampleID",
     "gl_SampleMask",
     "gl_SampleMaskIn",
     "gl_SamplePosition",
@@ -311,7 +308,6 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "gl_ViewportIndex",
     "gl_WorkGroupID",
     "gl_WorkGroupSize",
-    /* clang-format on */
 };
 static const Span<const char *> text_format_glsl_literals_reserved(
     text_format_glsl_literals_reserved_data, ARRAY_SIZE(text_format_glsl_literals_reserved_data));
@@ -319,12 +315,10 @@ static const Span<const char *> text_format_glsl_literals_reserved(
 /* GLSL shader types */
 static const char *text_format_glsl_literals_specialvar_data[] = {
     /* Force single column , sorted list */
-    /* clang-format off */
     "displacement",
     "shader",
     "surface",
     "volume",
-    /* clang-format on */
 };
 static const Span<const char *> text_format_glsl_literals_specialvar(
     text_format_glsl_literals_specialvar_data,
@@ -332,7 +326,6 @@ static const Span<const char *> text_format_glsl_literals_specialvar(
 
 static const char *text_format_glsl_literals_preprocessor_data[] = {
     /* Force single column, sorted list. */
-    /* clang-format off */
     "define",
     "defined",
     "elif",
@@ -343,7 +336,6 @@ static const char *text_format_glsl_literals_preprocessor_data[] = {
     "ifndef",
     "pragma",
     "version",
-    /* clang-format on */
 };
 static const Span<const char *> text_format_glsl_literals_preprocessor(
     text_format_glsl_literals_preprocessor_data,
