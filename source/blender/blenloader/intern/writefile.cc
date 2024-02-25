@@ -1285,98 +1285,117 @@ static bool write_file_handle(Main *mainvar,
                                                  nullptr :
                                                  BKE_lib_override_library_operations_store_init();
 
-  /* This outer loop allows to save first data-blocks from real mainvar,
-   * then the temp ones from override process,
-   * if needed, without duplicating whole code. */
-  Main *bmain = mainvar;
-  BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
-  do {
-    ListBase *lbarray[INDEX_ID_MAX];
-    int a = set_listbasepointers(bmain, lbarray);
-    while (a--) {
-      ID *id = static_cast<ID *>(lbarray[a]->first);
+  struct IDWithWriter {
+    ID *id = nullptr;
+    std::unique_ptr<BlendWriter> writer;
+  };
 
-      if (id == nullptr || GS(id->name) == ID_LI) {
-        continue; /* Libraries are handled separately below. */
-      }
+  blender::Vector<IDWithWriter> ids_to_write;
+  blender::Vector<ID *> ids_to_end_override_storage;
+  /* Gather ids to write and do some serial preprocessing on them. */
+  {
+    /* This outer loop allows to save first data-blocks from real mainvar,
+     * then the temp ones from override process,
+     * if needed, without duplicating whole code. */
+    Main *bmain = mainvar;
+    do {
+      ListBase *lbarray[INDEX_ID_MAX];
+      int a = set_listbasepointers(bmain, lbarray);
+      while (a--) {
+        ID *id = static_cast<ID *>(lbarray[a]->first);
 
-      const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
-      id_buffer_init_for_id_type(id_buffer, id_type);
+        if (id == nullptr || GS(id->name) == ID_LI) {
+          continue; /* Libraries are handled separately below. */
+        }
 
-      for (; id; id = static_cast<ID *>(id->next)) {
-        /* We should never attempt to write non-regular IDs
-         * (i.e. all kind of temp/runtime ones). */
-        BLI_assert(
-            (id->tag & (LIB_TAG_NO_MAIN | LIB_TAG_NO_USER_REFCOUNT | LIB_TAG_NOT_ALLOCATED)) == 0);
+        for (; id; id = static_cast<ID *>(id->next)) {
+          /* We should never attempt to write non-regular IDs
+           * (i.e. all kind of temp/runtime ones). */
+          BLI_assert((id->tag &
+                      (LIB_TAG_NO_MAIN | LIB_TAG_NO_USER_REFCOUNT | LIB_TAG_NOT_ALLOCATED)) == 0);
 
-        /* We only write unused IDs in undo case. */
-        if (!wd->use_memfile) {
-          /* NOTE: All Scenes, WindowManagers and WorkSpaces should always be written to disk, so
-           * their user-count should never be zero currently. */
-          if (id->us == 0) {
-            BLI_assert(!ELEM(GS(id->name), ID_SCE, ID_WM, ID_WS));
+          /* We only write unused IDs in undo case. */
+          if (!wd->use_memfile) {
+            /* NOTE: All Scenes, WindowManagers and WorkSpaces should always be written to disk, so
+             * their user-count should never be zero currently. */
+            if (id->us == 0) {
+              BLI_assert(!ELEM(GS(id->name), ID_SCE, ID_WM, ID_WS));
+              continue;
+            }
+
+            /* XXX Special handling for ShapeKeys, as having unused shapekeys is not a good thing
+             * (and reported as error by e.g. `BLO_main_validate_shapekeys`), skip writing
+             * shapekeys when their 'owner' is not written.
+             *
+             * NOTE: Since ShapeKeys are conceptually embedded IDs (like root node trees e.g.),
+             * this behavior actually makes sense anyway. This remains more of a temp hack until
+             * topic of how to handle unused data on save is properly tackled. */
+            if (GS(id->name) == ID_KE) {
+              Key *shape_key = reinterpret_cast<Key *>(id);
+              /* NOTE: Here we are accessing the real owner ID data, not it's 'proxy' shallow copy
+               * generated for its file-writing. This is not expected to be an issue, but is worth
+               * noting. */
+              if (shape_key->from == nullptr || shape_key->from->us == 0) {
+                continue;
+              }
+            }
+          }
+
+          if ((id->tag & LIB_TAG_RUNTIME) != 0 && !wd->use_memfile) {
+            /* Runtime IDs are never written to .blend files, and they should not influence
+             * (in)direct status of linked IDs they may use. */
             continue;
           }
 
-          /* XXX Special handling for ShapeKeys, as having unused shapekeys is not a good thing
-           * (and reported as error by e.g. `BLO_main_validate_shapekeys`), skip writing shapekeys
-           * when their 'owner' is not written.
-           *
-           * NOTE: Since ShapeKeys are conceptually embedded IDs (like root node trees e.g.), this
-           * behavior actually makes sense anyway. This remains more of a temp hack until topic of
-           * how to handle unused data on save is properly tackled. */
-          if (GS(id->name) == ID_KE) {
-            Key *shape_key = reinterpret_cast<Key *>(id);
-            /* NOTE: Here we are accessing the real owner ID data, not it's 'proxy' shallow copy
-             * generated for its file-writing. This is not expected to be an issue, but is worth
-             * noting. */
-            if (shape_key->from == nullptr || shape_key->from->us == 0) {
-              continue;
-            }
+          const bool do_override = !ELEM(override_storage, nullptr, bmain) &&
+                                   ID_IS_OVERRIDE_LIBRARY_REAL(id);
+
+          /* If not writing undo data, properly set directly linked IDs as `LIB_TAG_EXTERN`. */
+          if (!wd->use_memfile) {
+            BKE_library_foreach_ID_link(
+                bmain, id, write_id_direct_linked_data_process_cb, nullptr, IDWALK_READONLY);
           }
+
+          if (do_override) {
+            BKE_lib_override_library_operations_store_start(bmain, override_storage, id);
+            ids_to_end_override_storage.append(id);
+          }
+
+          ids_to_write.append({id, std::make_unique<BlendWriter>(*wd)});
         }
-
-        if ((id->tag & LIB_TAG_RUNTIME) != 0 && !wd->use_memfile) {
-          /* Runtime IDs are never written to .blend files, and they should not influence
-           * (in)direct status of linked IDs they may use. */
-          continue;
-        }
-
-        const bool do_override = !ELEM(override_storage, nullptr, bmain) &&
-                                 ID_IS_OVERRIDE_LIBRARY_REAL(id);
-
-        /* If not writing undo data, properly set directly linked IDs as `LIB_TAG_EXTERN`. */
-        if (!wd->use_memfile) {
-          BKE_library_foreach_ID_link(
-              bmain, id, write_id_direct_linked_data_process_cb, nullptr, IDWALK_READONLY);
-        }
-
-        if (do_override) {
-          BKE_lib_override_library_operations_store_start(bmain, override_storage, id);
-        }
-
-        mywrite_id_begin(wd, id);
-
-        id_buffer_init_from_id(id_buffer, id, wd->use_memfile);
-
-        if (id_type->blend_write != nullptr) {
-          BlendWriter writer{*wd};
-          id_type->blend_write(&writer, static_cast<ID *>(id_buffer->temp_id), id);
-          writer.write_to_wd(*wd);
-        }
-
-        if (do_override) {
-          BKE_lib_override_library_operations_store_end(override_storage, id);
-        }
-
-        mywrite_id_end(wd, id);
       }
+    } while ((bmain != override_storage) && (bmain = override_storage));
+  }
 
-      mywrite_flush(wd);
+  /* Serialize IDs. */
+  for (IDWithWriter &id_with_writer : ids_to_write) {
+    ID *id = id_with_writer.id;
+    BlendWriter *writer = id_with_writer.writer.get();
+    const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
+    BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
+    id_buffer_init_for_id_type(id_buffer, id_type);
+    id_buffer_init_from_id(id_buffer, id, BLO_write_is_undo(writer));
+
+    if (id_type->blend_write != nullptr) {
+      id_type->blend_write(writer, id_buffer->temp_id, id);
     }
-  } while ((bmain != override_storage) && (bmain = override_storage));
 
-  BLO_write_destroy_id_buffer(&id_buffer);
+    BLO_write_destroy_id_buffer(&id_buffer);
+  }
+
+  for (ID *id : ids_to_end_override_storage) {
+    BKE_lib_override_library_operations_store_end(override_storage, id);
+  }
+
+  /* Actually write IDs. */
+  for (IDWithWriter &id_with_writer : ids_to_write) {
+    ID *id = id_with_writer.id;
+    BlendWriter *writer = id_with_writer.writer.get();
+
+    mywrite_id_begin(wd, id);
+    writer->write_to_wd(*wd);
+    mywrite_id_end(wd, id);
+  }
 
   if (override_storage) {
     BKE_lib_override_library_operations_store_finalize(override_storage);
