@@ -536,8 +536,8 @@ static void mywrite(WriteData *wd, const void *adr, size_t len)
   wd->write_len += len;
 #endif
 
-  writedata_do_write(wd, adr, len);
-  return;
+  // writedata_do_write(wd, adr, len);
+  // return;
 
   if (wd->buffer.buf == nullptr) {
     writedata_do_write(wd, adr, len);
@@ -668,7 +668,6 @@ static void memfile_id_end(WriteData *wd, ID * /*id*/)
 
 struct BlendWriter {
   const WriteData *root_wd;
-  BlendWriter *parent = nullptr;
   Vector<Span<std::byte>> buffers;
   Vector<void *> owned_buffers;
   std::byte *current_buffer = nullptr;
@@ -676,11 +675,13 @@ struct BlendWriter {
   int64_t next_min_alloc_size = 256;
   bool was_written = false;
 
-  BlendWriter(const WriteData &wd, BlendWriter *parent = nullptr) : root_wd(&wd), parent(parent) {}
+  BlendWriter(const WriteData &wd) : root_wd(&wd) {}
 
   ~BlendWriter()
   {
-    // BLI_assert(buffers.is_empty());
+    for (void *buffer : owned_buffers) {
+      MEM_freeN(buffer);
+    }
   }
 
   void write_structs(const int filecode,
@@ -744,7 +745,6 @@ struct BlendWriter {
 
   void write_to_wd(WriteData &wd)
   {
-    BLI_assert(this->parent == nullptr);
     BLI_assert(!this->was_written);
     this->was_written = true;
     for (const Span<std::byte> buffer : this->buffers) {
@@ -1421,7 +1421,7 @@ static bool write_file_handle(Main *mainvar,
     int pipeline_id_index = 0;
 
     /* Write performance test. */
-    // for (int64_t s = 1; s < int64_t(1024) * 1024 * 1024 * 3; s *= 2) {
+    // for (int64_t s = 1; s < int64_t(1024) * 1024 * 1024; s *= 2) {
     //   blender::Array<std::byte> data;
     //   data.reinitialize(s);
     //   data.fill(std::byte(0));
@@ -1432,6 +1432,23 @@ static bool write_file_handle(Main *mainvar,
     //   }
     // }
 
+    struct MergeTask {
+      Vector<std::shared_ptr<BlendWriter>> referenced_writers;
+      Vector<Span<std::byte>> buffers;
+    };
+
+    const int64_t target_chunk_size = 1024 * 1024 * 16;
+
+    struct SerializeResult {
+      std::shared_ptr<BlendWriter> writer;
+      bool is_last = false;
+    };
+
+    MergeTask current_merge_task;
+    int64_t current_merge_size = 0;
+
+    mywrite_flush(wd);
+
     tbb::parallel_pipeline(
         128,
         tbb::make_filter<void, ID *>(tbb::filter::mode::serial_in_order,
@@ -1439,30 +1456,95 @@ static bool write_file_handle(Main *mainvar,
                                        if (pipeline_id_index < ids_to_write.size()) {
                                          return ids_to_write[pipeline_id_index++];
                                        }
+                                       if (pipeline_id_index++ == ids_to_write.size()) {
+                                         return nullptr;
+                                       }
                                        fc.stop();
                                        return nullptr;
                                      }) &
-            tbb::make_filter<ID *, std::unique_ptr<BlendWriter>>(
+            tbb::make_filter<ID *, SerializeResult>(
                 tbb::filter::mode::parallel,
-                [&](ID *id) -> std::unique_ptr<BlendWriter> {
+                [&](ID *id) {
+                  if (id == nullptr) {
+                    return SerializeResult{nullptr, true};
+                  }
                   const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
                   if (id_type->blend_write == nullptr) {
-                    return {};
+                    return SerializeResult{};
                   }
-                  auto writer = std::make_unique<BlendWriter>(*wd);
+                  auto writer = std::make_shared<BlendWriter>(*wd);
                   BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
                   id_buffer_init_for_id_type(id_buffer, id_type);
                   id_buffer_init_from_id(id_buffer, id, wd->use_memfile);
                   id_type->blend_write(writer.get(), id_buffer->temp_id, id);
                   BLO_write_destroy_id_buffer(&id_buffer);
-                  return writer;
+                  return SerializeResult{std::move(writer)};
                 }) &
-            tbb::make_filter<std::unique_ptr<BlendWriter>, void>(
-                tbb::filter::mode::serial_in_order, [&](std::unique_ptr<BlendWriter> writer) {
-                  if (!writer) {
-                    return;
+            tbb::make_filter<SerializeResult, Vector<MergeTask>>(
+                tbb::filter::mode::serial_in_order,
+                [&](SerializeResult serialize_result) {
+                  Vector<MergeTask> tasks;
+                  if (serialize_result.is_last) {
+                    if (current_merge_size > 0) {
+                      tasks.append(std::move(current_merge_task));
+                    }
+                    return tasks;
                   }
-                  writer->write_to_wd(*wd);
+                  if (!serialize_result.writer) {
+                    return tasks;
+                  }
+                  current_merge_task.referenced_writers.append(serialize_result.writer);
+                  for (const Span<std::byte> buffer : serialize_result.writer->buffers) {
+                    current_merge_task.buffers.append(buffer);
+                    current_merge_size += buffer.size();
+                    if (current_merge_size >= target_chunk_size) {
+                      tasks.append(std::move(current_merge_task));
+                      current_merge_task.referenced_writers.append(serialize_result.writer);
+                      current_merge_size = 0;
+                    }
+                  }
+                  return tasks;
+                }) &
+            tbb::make_filter<Vector<MergeTask>, Vector<Vector<std::byte>>>(
+                tbb::filter::mode::parallel,
+                [&](Vector<MergeTask> merge_tasks) {
+                  Vector<Vector<std::byte>> merged_buffers(merge_tasks.size());
+                  blender::threading::parallel_for(
+                      merge_tasks.index_range(), 1, [&](const IndexRange merge_tasks_range) {
+                        for (const int merge_task_i : merge_tasks_range) {
+                          const MergeTask &merge_task = merge_tasks[merge_task_i];
+                          Vector<int64_t> offsets;
+                          offsets.append(0);
+                          for (const Span<std::byte> buffer : merge_task.buffers) {
+                            offsets.append(offsets.last() + buffer.size());
+                          }
+                          Vector<std::byte> &dst_buffer = merged_buffers[merge_task_i];
+                          dst_buffer.resize(offsets.last());
+                          blender::threading::parallel_for_weighted(
+                              merge_task.buffers.index_range(),
+                              4096,
+                              [&](const IndexRange buffers_range) {
+                                for (const int64_t buffer_i : buffers_range) {
+                                  const Span<std::byte> src_buffer = merge_task.buffers[buffer_i];
+                                  const int64_t offset = offsets[buffer_i];
+                                  /* TODO: potentially use multi threading */
+                                  memcpy(dst_buffer.data() + offset,
+                                         src_buffer.data(),
+                                         src_buffer.size());
+                                }
+                              },
+                              [&](const int64_t buffer_i) {
+                                return merge_task.buffers[buffer_i].size();
+                              });
+                        }
+                      });
+                  return merged_buffers;
+                }) &
+            tbb::make_filter<Vector<Vector<std::byte>>, void>(
+                tbb::filter::mode::serial_in_order, [&](Vector<Vector<std::byte>> buffers) {
+                  for (Span<std::byte> buffer : buffers) {
+                    wd->ww->write(buffer.data(), buffer.size());
+                  }
                 }));
   }
 
