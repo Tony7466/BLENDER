@@ -1428,11 +1428,12 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
             "builtin.circle",
             "builtin.polyline",
     }:
-        row = layout.row(align=True)
-        if context.region.type == 'TOOL_HEADER':
-            row.prop(gp_settings, "caps_type", text="", expand=True)
-        else:
-            row.prop(gp_settings, "caps_type", text="Caps Type")
+        # TODO
+        # row = layout.row(align=True)
+        # if context.region.type == 'TOOL_HEADER':
+        #     row.prop(gp_settings, "caps_type", text="", expand=True)
+        # else:
+        #     row.prop(gp_settings, "caps_type", text="Caps Type")
 
         if props is not None:
             row = layout.row(align=True)
@@ -1464,11 +1465,12 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
     elif brush.gpencil_tool == 'DRAW':
         layout.prop(brush.gpencil_settings, "active_smooth_factor")
 
-        row = layout.row(align=True)
-        if context.region.type == 'TOOL_HEADER':
-            row.prop(gp_settings, "caps_type", text="", expand=True)
-        else:
-            row.prop(gp_settings, "caps_type", text="Caps Type")
+        # TODO
+        # row = layout.row(align=True)
+        # if context.region.type == 'TOOL_HEADER':
+        #     row.prop(gp_settings, "caps_type", text="", expand=True)
+        # else:
+        #     row.prop(gp_settings, "caps_type", text="Caps Type")
 
 
 def brush_basic_gpencil_sculpt_settings(layout, _context, brush, *, compact=False):
