@@ -93,6 +93,7 @@
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
 #include "BLI_implicit_sharing.hh"
+#include "BLI_linear_allocator.hh"
 #include "BLI_link_utils.h"
 #include "BLI_linklist.h"
 #include "BLI_math_base.h"
@@ -661,20 +662,13 @@ static void mywrite_id_end(WriteData *wd, ID * /*id*/)
  * \{ */
 
 struct BlendWriter {
-  struct OwnedBuffer {
-    blender::Vector<std::byte> buffer;
-  };
-
-  struct BorrowedBuffer {
-    blender::Span<std::byte> buffer;
-  };
-
-  using Buffer = std::variant<OwnedBuffer, BorrowedBuffer>;
-
   const WriteData *root_wd;
   BlendWriter *parent = nullptr;
-  blender::Vector<BlendWriter *> children;
-  blender::Vector<Buffer> buffers;
+  blender::Vector<blender::Span<std::byte>> buffers;
+  blender::Vector<void *> owned_buffers;
+  std::byte *current_buffer = nullptr;
+  int64_t remaining_capacity = 0;
+  int64_t next_min_alloc_size = 256;
   bool was_written = false;
 
   BlendWriter(const WriteData &wd, BlendWriter *parent = nullptr) : root_wd(&wd), parent(parent) {}
@@ -682,17 +676,6 @@ struct BlendWriter {
   ~BlendWriter()
   {
     BLI_assert(buffers.is_empty());
-  }
-
-  void flush()
-  {
-    if (this->buffers.is_empty()) {
-      return;
-    }
-    if (std::get_if<BorrowedBuffer>(&this->buffers.last())) {
-      return;
-    }
-    this->buffers.append_as();
   }
 
   void write_structs(const int filecode,
@@ -754,29 +737,20 @@ struct BlendWriter {
     this->write(data, write_bytes_num, borrow);
   }
 
-  void move_to_parent()
-  {
-    BLI_assert(this->parent != nullptr);
-    for (Buffer &buffer : this->buffers) {
-      this->parent->buffers.append(std::move(buffer));
-    }
-    this->buffers.clear();
-  }
-
   void write_to_wd(WriteData &wd)
   {
     BLI_assert(this->parent == nullptr);
     BLI_assert(!this->was_written);
     this->was_written = true;
-    for (const Buffer &buffer : this->buffers) {
-      if (auto *owned_buffer = std::get_if<OwnedBuffer>(&buffer)) {
-        mywrite(&wd, owned_buffer->buffer.data(), owned_buffer->buffer.size());
-      }
-      else if (auto *borrowed_buffer = std::get_if<BorrowedBuffer>(&buffer)) {
-        mywrite(&wd, borrowed_buffer->buffer.data(), borrowed_buffer->buffer.size());
-      }
+    for (const blender::Span<std::byte> buffer : this->buffers) {
+      mywrite(&wd, buffer.data(), buffer.size());
     }
     this->buffers.clear();
+    for (void *data : this->owned_buffers) {
+      MEM_freeN(data);
+    }
+    this->owned_buffers.clear();
+    this->remaining_capacity = 0;
   }
 
  private:
@@ -784,16 +758,42 @@ struct BlendWriter {
   {
     switch (borrow) {
       case BlendWriteBufferBorrow::Borrowed: {
-        this->buffers.append(
-            BorrowedBuffer{blender::Span{static_cast<const std::byte *>(data), size}});
+        this->buffers.append({static_cast<const std::byte *>(data), size});
         break;
       }
       case BlendWriteBufferBorrow::NotBorrowed: {
-        if (this->buffers.is_empty() || std::get_if<BorrowedBuffer>(&this->buffers.last())) {
-          this->buffers.append(OwnedBuffer());
+        int64_t remaining_size = size;
+        while (remaining_size > 0) {
+          if (this->remaining_capacity == 0) {
+            const int64_t alloc_size = std::max(remaining_size, this->next_min_alloc_size);
+            this->current_buffer = static_cast<std::byte *>(MEM_mallocN(alloc_size, __func__));
+            this->remaining_capacity = alloc_size;
+            this->owned_buffers.append(this->current_buffer);
+            this->next_min_alloc_size = std::min<int64_t>(2 * this->next_min_alloc_size, 4000);
+          }
+          const int64_t copy_size = std::min(remaining_size, this->remaining_capacity);
+          memcpy(this->current_buffer, data, copy_size);
+
+          const blender::Span<std::byte> copied_data{this->current_buffer, copy_size};
+
+          if (buffers.is_empty()) {
+            buffers.append({copied_data});
+          }
+          else {
+            blender::Span<std::byte> &last_buffer = buffers.last();
+            if (last_buffer.end() == copied_data.begin()) {
+              last_buffer = {last_buffer.data(), last_buffer.size() + copy_size};
+            }
+            else {
+              buffers.append({copied_data});
+            }
+          }
+
+          this->current_buffer += copy_size;
+          this->remaining_capacity -= copy_size;
+          data = POINTER_OFFSET(data, copy_size);
+          remaining_size -= copy_size;
         }
-        OwnedBuffer &buffer = std::get<OwnedBuffer>(this->buffers.last());
-        buffer.buffer.extend({static_cast<const std::byte *>(data), size});
         break;
       }
     }
