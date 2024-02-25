@@ -100,6 +100,7 @@
 #include "BLI_linear_allocator.hh"
 #include "BLI_link_utils.h"
 #include "BLI_linklist.h"
+#include "BLI_map.hh"
 #include "BLI_math_base.h"
 #include "BLI_mempool.h"
 #include "BLI_task.hh"
@@ -135,7 +136,9 @@
 
 #include <zstd.h>
 
+using blender::Array;
 using blender::IndexRange;
+using blender::Map;
 using blender::MutableSpan;
 using blender::Span;
 using blender::Vector;
@@ -676,6 +679,7 @@ struct BlendWriter {
   int64_t remaining_capacity = 0;
   int64_t next_min_alloc_size = 256;
   bool was_written = false;
+  int64_t total_size = 0;
 
   BlendWriter(const WriteData &wd, const int64_t initial_size = 256)
       : root_wd(&wd), next_min_alloc_size(initial_size)
@@ -766,14 +770,13 @@ struct BlendWriter {
  private:
   void write(const void *data, const int64_t size, const BlendWriteBufferBorrow borrow)
   {
-    if (borrow == BlendWriteBufferBorrow::Borrowed) {
-      this->buffers.append({static_cast<const std::byte *>(data), size});
-      return;
-    }
+    this->total_size += size;
+    // if (borrow == BlendWriteBufferBorrow::Borrowed) {
+    //   this->buffers.append({static_cast<const std::byte *>(data), size});
+    //   return;
+    // }
     if (borrow == BlendWriteBufferBorrow::Move) {
-      this->buffers.append({static_cast<const std::byte *>(data), size});
       this->owned_buffers.append(const_cast<void *>(data));
-      return;
     }
     int64_t remaining_size = size;
     while (remaining_size > 0) {
@@ -1245,6 +1248,12 @@ static int write_id_direct_linked_data_process_cb(LibraryIDLinkCallbackData *cb_
   return IDWALK_RET_NOP;
 }
 
+static Map<const ID *, int64_t> &get_id_size_hint_map()
+{
+  static Map<const ID *, int64_t> map;
+  return map;
+}
+
 /**
  * When #MemFile arguments are non-null, this is a file-safe to memory.
  *
@@ -1428,6 +1437,7 @@ static bool write_file_handle(Main *mainvar,
     }
   }
   else {
+    SCOPED_TIMER("chunked write");
 
     /* Write performance test. */
     // for (int64_t s = 1; s < int64_t(1024) * 1024 * 1024; s *= 2) {
@@ -1441,37 +1451,77 @@ static bool write_file_handle(Main *mainvar,
     //   }
     // }
 
-    Vector<Span<ID *>> ids_to_write_groups;
+    Map<const ID *, int64_t> &id_size_hint_map = get_id_size_hint_map();
+
+    const int64_t target_chunk_size = 8 * 1024 * 1024;
+
+    Vector<IndexRange> ids_to_write_groups;
     Vector<std::unique_ptr<BlendWriter>> writers;
-    const int group_size = 10;
-    for (int i = 0; i < ids_to_write.size(); i += group_size) {
-      const int ids_in_next_group = std::min<int>(group_size, ids_to_write.size() - i);
-      ids_to_write_groups.append(ids_to_write.as_span().slice(i, ids_in_next_group));
-      writers.append(std::make_unique<BlendWriter>(*wd, 1e3));
+    Array<int64_t> actual_id_sizes(ids_to_write.size());
+
+    {
+      int64_t next_group_start = 0;
+      int64_t current_size = 0;
+      for (const int id_i : ids_to_write.index_range()) {
+        const ID *id = ids_to_write[id_i];
+        const int64_t size_hint = id_size_hint_map.lookup_default(id, 1000);
+        current_size += size_hint;
+        if (current_size >= target_chunk_size) {
+          ids_to_write_groups.append(IndexRange::from_begin_end_inclusive(next_group_start, id_i));
+          writers.append(std::make_unique<BlendWriter>(*wd, int64_t(current_size * 1.1)));
+          next_group_start = id_i + 1;
+          current_size = 0;
+        }
+      }
+      if (next_group_start < ids_to_write.size()) {
+        ids_to_write_groups.append(
+            IndexRange::from_begin_end(next_group_start, ids_to_write.size()));
+        writers.append(std::make_unique<BlendWriter>(*wd, int64_t(current_size * 1.1)));
+      }
     }
 
-    blender::threading::parallel_for(
-        ids_to_write_groups.index_range(), 1, [&](const IndexRange groups_range) {
-          BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
-          for (const int64_t group_i : groups_range) {
-            BlendWriter &writer = *writers[group_i];
-            const Span<ID *> ids = ids_to_write_groups[group_i];
-            for (ID *id : ids) {
-              const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
-              id_buffer_init_for_id_type(id_buffer, id_type);
-              id_buffer_init_from_id(id_buffer, id, wd->use_memfile);
-              if (id_type->blend_write) {
-                id_type->blend_write(&writer, id_buffer->temp_id, id);
+    {
+      SCOPED_TIMER("serialize");
+      blender::threading::parallel_for(
+          ids_to_write_groups.index_range(), 1, [&](const IndexRange groups_range) {
+            BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
+            for (const int64_t group_i : groups_range) {
+              BlendWriter &writer = *writers[group_i];
+              const IndexRange ids_range = ids_to_write_groups[group_i];
+              for (const int64_t id_i : ids_range) {
+                ID *id = ids_to_write[id_i];
+                const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
+                id_buffer_init_for_id_type(id_buffer, id_type);
+                id_buffer_init_from_id(id_buffer, id, wd->use_memfile);
+                const int64_t prev_size = writer.total_size;
+                if (id_type->blend_write) {
+                  id_type->blend_write(&writer, id_buffer->temp_id, id);
+                }
+                const int64_t after_size = writer.total_size;
+                actual_id_sizes[id_i] = after_size - prev_size;
               }
+              std::cout << group_i << "\n";
             }
-          }
-          BLO_write_destroy_id_buffer(&id_buffer);
-        });
+            BLO_write_destroy_id_buffer(&id_buffer);
+          });
+    }
 
-    for (const int64_t group_i : ids_to_write_groups.index_range()) {
-      BlendWriter &writer = *writers[group_i];
-      for (const Span<std::byte> buffer : writer.buffers) {
-        wd->ww->write(buffer.data(), buffer.size());
+    int64_t size_sum = 0;
+    for (const int64_t i : ids_to_write.index_range()) {
+      const ID *id = ids_to_write[i];
+      const int64_t size = actual_id_sizes[i];
+      size_sum += size;
+      id_size_hint_map.add_overwrite(id, size);
+    }
+    std::cout << "Size Sum: " << size_sum << "\n";
+
+    {
+      SCOPED_TIMER("just write");
+      for (const int64_t group_i : ids_to_write_groups.index_range()) {
+        BlendWriter &writer = *writers[group_i];
+        for (const Span<std::byte> buffer : writer.buffers) {
+          wd->ww->write(buffer.data(), buffer.size());
+        }
       }
     }
   }
