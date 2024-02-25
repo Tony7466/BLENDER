@@ -755,97 +755,6 @@ struct BlendWriter {
   }
 };
 
-static void writestruct_at_address_nr(
-    WriteData *wd, int filecode, const int struct_nr, int nr, const void *adr, const void *data)
-{
-  BHead bh;
-
-  BLI_assert(struct_nr > 0 && struct_nr < SDNA_TYPE_MAX);
-
-  if (adr == nullptr || data == nullptr || nr == 0) {
-    return;
-  }
-
-  /* Initialize #BHead. */
-  bh.code = filecode;
-  bh.old = adr;
-  bh.nr = nr;
-
-  bh.SDNAnr = struct_nr;
-  const SDNA_Struct *struct_info = wd->sdna->structs[bh.SDNAnr];
-
-  bh.len = nr * wd->sdna->types_size[struct_info->type];
-
-  if (bh.len == 0) {
-    return;
-  }
-
-  mywrite(wd, &bh, sizeof(BHead));
-  mywrite(wd, data, size_t(bh.len));
-}
-
-static void writestruct_nr(
-    WriteData *wd, int filecode, const int struct_nr, int nr, const void *adr)
-{
-  writestruct_at_address_nr(wd, filecode, struct_nr, nr, adr, adr);
-}
-
-/**
- * \warning Do not use for structs.
- */
-static void writedata(WriteData *wd, int filecode, size_t len, const void *adr)
-{
-  BHead bh;
-
-  if (adr == nullptr || len == 0) {
-    return;
-  }
-
-  /* Align to 4 (writes uninitialized bytes in some cases). */
-  len = (len + 3) & ~size_t(3);
-
-  if (len > INT_MAX) {
-    BLI_assert_msg(0, "Cannot write chunks bigger than INT_MAX.");
-    return;
-  }
-
-  /* Initialize #BHead. */
-  bh.code = filecode;
-  bh.old = adr;
-  bh.nr = 1;
-  bh.SDNAnr = 0;
-  bh.len = int(len);
-
-  mywrite(wd, &bh, sizeof(BHead));
-  mywrite(wd, adr, len);
-}
-
-#if 0
-static void writelist_id(WriteData *wd, int filecode, const char *structname, const ListBase *lb)
-{
-  const Link *link = lb->first;
-  if (link) {
-
-    const int struct_nr = DNA_struct_find_with_alias(wd->sdna, structname);
-    if (struct_nr == -1) {
-      printf("error: can't find SDNA code <%s>\n", structname);
-      return;
-    }
-
-    while (link) {
-      writestruct_nr(wd, filecode, struct_nr, 1, link);
-      link = link->next;
-    }
-  }
-}
-#endif
-
-#define writestruct_at_address(wd, filecode, struct_id, nr, adr, data) \
-  writestruct_at_address_nr(wd, filecode, SDNA_TYPE_FROM_STRUCT(struct_id), nr, adr, data)
-
-#define writestruct(wd, filecode, struct_id, nr, adr) \
-  writestruct_nr(wd, filecode, SDNA_TYPE_FROM_STRUCT(struct_id), nr, adr)
-
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -908,7 +817,7 @@ struct RenderInfo {
  *
  * See: `scripts/modules/blend_render_info.py`
  */
-static void write_renderinfo(WriteData *wd, Main *mainvar)
+static void write_renderinfo(BlendWriter *writer, Main *mainvar)
 {
   bScreen *curscreen;
   Scene *curscene = nullptr;
@@ -926,7 +835,7 @@ static void write_renderinfo(WriteData *wd, Main *mainvar)
 
       STRNCPY(data.scene_name, sce->id.name + 2);
 
-      writedata(wd, BLO_CODE_REND, sizeof(data), &data);
+      writer->write_buffer(BLO_CODE_REND, sizeof(data), &data, &data);
     }
   }
 }
@@ -1115,9 +1024,9 @@ extern "C" char build_hash[];
  * - for forward compatibility, `curscreen` has to be saved
  * - for undo-file, `curscene` needs to be saved.
  */
-static void write_global(WriteData *wd, int fileflags, Main *mainvar)
+static void write_global(BlendWriter *writer, int fileflags, Main *mainvar)
 {
-  const bool is_undo = wd->use_memfile;
+  const bool is_undo = BLO_write_is_undo(writer);
   FileGlobal fg;
   bScreen *screen;
   Scene *scene;
@@ -1159,7 +1068,7 @@ static void write_global(WriteData *wd, int fileflags, Main *mainvar)
   fg.build_commit_timestamp = 0;
   STRNCPY(fg.build_hash, "unknown");
 #endif
-  writestruct(wd, BLO_CODE_GLOB, FileGlobal, 1, &fg);
+  writer->write_structs(BLO_CODE_GLOB, SDNA_TYPE_FROM_STRUCT(FileGlobal), 1, &fg, &fg);
 }
 
 /**
@@ -1167,10 +1076,11 @@ static void write_global(WriteData *wd, int fileflags, Main *mainvar)
  * second are an RGBA image (uchar).
  * \note this uses 'TEST' since new types will segfault on file load for older blender versions.
  */
-static void write_thumb(WriteData *wd, const BlendThumbnail *thumb)
+static void write_thumb(BlendWriter *writer, const BlendThumbnail *thumb)
 {
   if (thumb) {
-    writedata(wd, BLO_CODE_TEST, BLEN_THUMB_MEMSIZE_FILE(thumb->width, thumb->height), thumb);
+    writer->write_buffer(
+        BLO_CODE_TEST, BLEN_THUMB_MEMSIZE_FILE(thumb->width, thumb->height), thumb, thumb);
   }
 }
 
@@ -1348,9 +1258,13 @@ static bool write_file_handle(Main *mainvar,
 
   mywrite(wd, buf, 12);
 
-  write_renderinfo(wd, mainvar);
-  write_thumb(wd, thumb);
-  write_global(wd, write_flags, mainvar);
+  {
+    BlendWriter writer{*wd};
+    write_renderinfo(&writer, mainvar);
+    write_thumb(&writer, thumb);
+    write_global(&writer, write_flags, mainvar);
+    writer.write_to_wd(*wd);
+  }
 
   /* The window-manager and screen often change,
    * avoid thumbnail detecting changes because of this. */
@@ -1474,7 +1388,11 @@ static bool write_file_handle(Main *mainvar,
    *
    * Note that we *borrow* the pointer to 'DNAstr',
    * so writing each time uses the same address and doesn't cause unnecessary undo overhead. */
-  writedata(wd, BLO_CODE_DNA1, size_t(wd->sdna->data_len), wd->sdna->data);
+  {
+    BlendWriter writer{*wd};
+    writer.write_buffer(BLO_CODE_DNA1, wd->sdna->data_len, wd->sdna->data, wd->sdna->data);
+    writer.write_to_wd(*wd);
+  }
 
   /* End of file. */
   memset(&bhead, 0, sizeof(BHead));
