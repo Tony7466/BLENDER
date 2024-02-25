@@ -65,6 +65,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+#include <fmt/format.h>
 #include <iostream>
 #include <variant>
 
@@ -1422,8 +1423,6 @@ static bool write_file_handle(Main *mainvar,
     }
   }
   else {
-    SCOPED_TIMER("pipeline");
-    int pipeline_id_index = 0;
 
     /* Write performance test. */
     // for (int64_t s = 1; s < int64_t(1024) * 1024 * 1024; s *= 2) {
@@ -1436,145 +1435,6 @@ static bool write_file_handle(Main *mainvar,
     //     wd->ww->write(data.data(), s);
     //   }
     // }
-
-    struct MergeTask {
-      Vector<std::shared_ptr<BlendWriter>> referenced_writers;
-      Vector<Span<std::byte>> buffers;
-    };
-
-    const int64_t target_chunk_size = 1024 * 1024 * 16;
-
-    struct SerializeResult {
-      std::shared_ptr<BlendWriter> writer;
-      bool is_last = false;
-    };
-
-    MergeTask current_merge_task;
-    int64_t current_merge_size = 0;
-
-    struct TimeRange {
-      blender::timeit::TimePoint start;
-      blender::timeit::TimePoint end;
-    };
-
-    Vector<TimeRange> write_time_ranges;
-
-    mywrite_flush(wd);
-
-    std::cout << ids_to_write.size() << "\n";
-
-    tbb::parallel_pipeline(
-        1e5,
-        tbb::make_filter<void, ID *>(tbb::filter::mode::serial_in_order,
-                                     [&](tbb::flow_control &fc) -> ID * {
-                                       //  TimeRange time_range;
-                                       //  time_range.start = blender::timeit::Clock::now();
-                                       //  BLI_SCOPED_DEFER([&]() {
-                                       //    time_range.end = blender::timeit::Clock::now();
-                                       //    write_time_ranges.append(time_range);
-                                       //  });
-                                       if (pipeline_id_index < ids_to_write.size()) {
-                                         return ids_to_write[pipeline_id_index++];
-                                       }
-                                       if (pipeline_id_index++ == ids_to_write.size()) {
-                                         return nullptr;
-                                       }
-                                       fc.stop();
-                                       return nullptr;
-                                     }) &
-            tbb::make_filter<ID *, SerializeResult>(
-                tbb::filter::mode::parallel,
-                [&](ID *id) {
-                  if (id == nullptr) {
-                    return SerializeResult{nullptr, true};
-                  }
-                  const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
-                  if (id_type->blend_write == nullptr) {
-                    return SerializeResult{};
-                  }
-                  auto writer = std::make_shared<BlendWriter>(*wd);
-                  BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
-                  id_buffer_init_for_id_type(id_buffer, id_type);
-                  id_buffer_init_from_id(id_buffer, id, wd->use_memfile);
-                  id_type->blend_write(writer.get(), id_buffer->temp_id, id);
-                  BLO_write_destroy_id_buffer(&id_buffer);
-                  return SerializeResult{std::move(writer)};
-                }) &
-            tbb::make_filter<SerializeResult, Vector<MergeTask>>(
-                tbb::filter::mode::serial_in_order,
-                [&](SerializeResult serialize_result) {
-                  Vector<MergeTask> tasks;
-                  if (serialize_result.is_last) {
-                    if (current_merge_size > 0) {
-                      tasks.append(std::move(current_merge_task));
-                    }
-                    return tasks;
-                  }
-                  if (!serialize_result.writer) {
-                    return tasks;
-                  }
-                  current_merge_task.referenced_writers.append(serialize_result.writer);
-                  for (const Span<std::byte> buffer : serialize_result.writer->buffers) {
-                    current_merge_task.buffers.append(buffer);
-                    current_merge_size += buffer.size();
-                    if (current_merge_size >= target_chunk_size) {
-                      tasks.append(std::move(current_merge_task));
-                      current_merge_task.referenced_writers.append(serialize_result.writer);
-                      current_merge_size = 0;
-                    }
-                  }
-                  return tasks;
-                }) &
-            tbb::make_filter<Vector<MergeTask>, Vector<Vector<std::byte>>>(
-                tbb::filter::mode::parallel,
-                [&](Vector<MergeTask> merge_tasks) {
-                  Vector<Vector<std::byte>> merged_buffers(merge_tasks.size());
-                  blender::threading::parallel_for(
-                      merge_tasks.index_range(), 1, [&](const IndexRange merge_tasks_range) {
-                        for (const int merge_task_i : merge_tasks_range) {
-                          const MergeTask &merge_task = merge_tasks[merge_task_i];
-                          Vector<int64_t> offsets;
-                          offsets.append(0);
-                          for (const Span<std::byte> buffer : merge_task.buffers) {
-                            offsets.append(offsets.last() + buffer.size());
-                          }
-                          Vector<std::byte> &dst_buffer = merged_buffers[merge_task_i];
-                          dst_buffer.resize(offsets.last());
-                          blender::threading::parallel_for_weighted(
-                              merge_task.buffers.index_range(),
-                              4096,
-                              [&](const IndexRange buffers_range) {
-                                for (const int64_t buffer_i : buffers_range) {
-                                  const Span<std::byte> src_buffer = merge_task.buffers[buffer_i];
-                                  const int64_t offset = offsets[buffer_i];
-                                  blender::threading::parallel_for(
-                                      src_buffer.index_range(),
-                                      4096,
-                                      [&](const IndexRange bytes_range) {
-                                        memcpy(dst_buffer.data() + offset + bytes_range.start(),
-                                               src_buffer.data() + bytes_range.start(),
-                                               bytes_range.size());
-                                      });
-                                }
-                              },
-                              [&](const int64_t buffer_i) {
-                                return merge_task.buffers[buffer_i].size();
-                              });
-                        }
-                      });
-                  return merged_buffers;
-                }) &
-            tbb::make_filter<Vector<Vector<std::byte>>, void>(
-                tbb::filter::mode::serial_in_order, [&](Vector<Vector<std::byte>> buffers) {
-                  for (Span<std::byte> buffer : buffers) {
-                    wd->ww->write(buffer.data(), buffer.size());
-                  }
-                }));
-
-    for (const TimeRange &time_range : write_time_ranges) {
-      std::cout << time_range.start.time_since_epoch().count() << " - \t"
-                << time_range.end.time_since_epoch().count() << "\n";
-    }
   }
 
   if (override_storage) {
