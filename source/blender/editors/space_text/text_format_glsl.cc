@@ -192,6 +192,7 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "bvec3",
     "bvec4",
     "case",
+    "coherent",
     "continue",
     "default",
     "discard",
@@ -235,6 +236,8 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "mat4x3",
     "mat4x4",
     "out",
+    "readonly",
+    "restrict",
     "return",
     "sampler",
     "sampler1D",
@@ -270,6 +273,7 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "void",
     "volatile",
     "while",
+    "writeonly",
     /* clang-format on */
 };
 static const Span<const char *> text_format_glsl_literals_reserved(
