@@ -65,6 +65,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+#include <iostream>
 #include <variant>
 
 #include <tbb/pipeline.h>
@@ -1447,12 +1448,27 @@ static bool write_file_handle(Main *mainvar,
     MergeTask current_merge_task;
     int64_t current_merge_size = 0;
 
+    struct TimeRange {
+      blender::timeit::TimePoint start;
+      blender::timeit::TimePoint end;
+    };
+
+    Vector<TimeRange> write_time_ranges;
+
     mywrite_flush(wd);
 
+    std::cout << ids_to_write.size() << "\n";
+
     tbb::parallel_pipeline(
-        128,
+        1e5,
         tbb::make_filter<void, ID *>(tbb::filter::mode::serial_in_order,
                                      [&](tbb::flow_control &fc) -> ID * {
+                                       //  TimeRange time_range;
+                                       //  time_range.start = blender::timeit::Clock::now();
+                                       //  BLI_SCOPED_DEFER([&]() {
+                                       //    time_range.end = blender::timeit::Clock::now();
+                                       //    write_time_ranges.append(time_range);
+                                       //  });
                                        if (pipeline_id_index < ids_to_write.size()) {
                                          return ids_to_write[pipeline_id_index++];
                                        }
@@ -1546,6 +1562,11 @@ static bool write_file_handle(Main *mainvar,
                     wd->ww->write(buffer.data(), buffer.size());
                   }
                 }));
+
+    for (const TimeRange &time_range : write_time_ranges) {
+      std::cout << time_range.start.time_since_epoch().count() << " - \t"
+                << time_range.end.time_since_epoch().count() << "\n";
+    }
   }
 
   if (override_storage) {
