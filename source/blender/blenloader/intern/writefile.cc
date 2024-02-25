@@ -773,7 +773,7 @@ struct BlendWriter {
         this->current_buffer = static_cast<std::byte *>(MEM_mallocN(alloc_size, __func__));
         this->remaining_capacity = alloc_size;
         this->owned_buffers.append(this->current_buffer);
-        this->next_min_alloc_size = std::min<int64_t>(2 * this->next_min_alloc_size, 1024 * 1024);
+        this->next_min_alloc_size = std::min<int64_t>(2 * this->next_min_alloc_size, 1024 * 8);
       }
       const int64_t copy_size = std::min(remaining_size, this->remaining_capacity);
       memcpy(this->current_buffer, data, copy_size);
