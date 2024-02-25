@@ -131,6 +131,9 @@
 
 #include <zstd.h>
 
+using blender::Span;
+using blender::Vector;
+
 /* Make preferences read-only. */
 #define U (*((const UserDef *)&U))
 
@@ -662,8 +665,8 @@ static void memfile_id_end(WriteData *wd, ID * /*id*/)
 struct BlendWriter {
   const WriteData *root_wd;
   BlendWriter *parent = nullptr;
-  blender::Vector<blender::Span<std::byte>> buffers;
-  blender::Vector<void *> owned_buffers;
+  Vector<Span<std::byte>> buffers;
+  Vector<void *> owned_buffers;
   std::byte *current_buffer = nullptr;
   int64_t remaining_capacity = 0;
   int64_t next_min_alloc_size = 256;
@@ -740,7 +743,7 @@ struct BlendWriter {
     BLI_assert(this->parent == nullptr);
     BLI_assert(!this->was_written);
     this->was_written = true;
-    for (const blender::Span<std::byte> buffer : this->buffers) {
+    for (const Span<std::byte> buffer : this->buffers) {
       mywrite(&wd, buffer.data(), buffer.size());
     }
     this->buffers.clear();
@@ -771,13 +774,13 @@ struct BlendWriter {
       const int64_t copy_size = std::min(remaining_size, this->remaining_capacity);
       memcpy(this->current_buffer, data, copy_size);
 
-      const blender::Span<std::byte> copied_data{this->current_buffer, copy_size};
+      const Span<std::byte> copied_data{this->current_buffer, copy_size};
 
       if (buffers.is_empty()) {
         buffers.append({copied_data});
       }
       else {
-        blender::Span<std::byte> &last_buffer = buffers.last();
+        Span<std::byte> &last_buffer = buffers.last();
         if (last_buffer.end() == copied_data.begin()) {
           last_buffer = {last_buffer.data(), last_buffer.size() + copy_size};
         }
@@ -1319,8 +1322,8 @@ static bool write_file_handle(Main *mainvar,
     std::unique_ptr<BlendWriter> writer;
   };
 
-  blender::Vector<IDWithWriter> ids_to_write;
-  blender::Vector<ID *> ids_to_end_override_storage;
+  Vector<IDWithWriter> ids_to_write;
+  Vector<ID *> ids_to_end_override_storage;
   /* Gather ids to write and do some serial preprocessing on them. */
   {
     /* This outer loop allows to save first data-blocks from real mainvar,
@@ -1431,13 +1434,13 @@ static bool write_file_handle(Main *mainvar,
     }
   }
   else {
-    blender::Vector<blender::Span<std::byte>> segments;
-    blender::Vector<void *> owned_buffers;
+    Vector<Span<std::byte>> segments;
+    Vector<void *> owned_buffers;
     for (IDWithWriter &id_with_writer : ids_to_write) {
       segments.extend(id_with_writer.writer->buffers);
       owned_buffers.extend(id_with_writer.writer->owned_buffers);
     }
-    for (const blender::Span<std::byte> segment : segments) {
+    for (const Span<std::byte> segment : segments) {
       mywrite(wd, segment.data(), segment.size());
     }
     for (void *buffer : owned_buffers) {
