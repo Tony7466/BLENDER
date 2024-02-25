@@ -262,7 +262,6 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "switch",
     "true",
     "uniform",
-    "using",
     "uvec2",
     "uvec3",
     "uvec4",
