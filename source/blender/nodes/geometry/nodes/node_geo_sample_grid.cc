@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,24 +6,27 @@
 #include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
-#include "BLI_index_mask.hh"
-#include "BLI_virtual_array.hh"
-
-#include "node_geometry_util.hh"
-
 #include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "RNA_enum_types.hh"
+
 #ifdef WITH_OPENVDB
 #  include <openvdb/tools/Interpolation.h>
 #endif
 
+#include "node_geometry_util.hh"
+
 namespace blender::nodes::node_geo_sample_grid_cc {
 
-NODE_STORAGE_FUNCS(NodeGeometrySampleGrid)
+enum class InterpolationMode {
+  Nearest = 0,
+  TriLinear = 1,
+  TriQuadratic = 2,
+};
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
@@ -31,96 +34,118 @@ static void node_declare(NodeDeclarationBuilder &b)
   if (!node) {
     return;
   }
-  const NodeGeometrySampleGrid &storage = node_storage(*node);
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
+  const eNodeSocketDatatype data_type = eNodeSocketDatatype(node->custom1);
 
-  grids::declare_grid_type_input(b, data_type, "Grid");
+  b.add_input(data_type, "Grid").hide_value();
   b.add_input<decl::Vector>("Position").implicit_field(implicit_field_inputs::position);
 
-  switch (data_type) {
-    case CD_PROP_FLOAT:
-      b.add_output<decl::Float>("Value").dependent_field({1});
-      break;
-    case CD_PROP_FLOAT3:
-      b.add_output<decl::Vector>("Value").dependent_field({1});
-      break;
-    case CD_PROP_BOOL:
-      b.add_output<decl::Bool>("Value").dependent_field({1});
-      break;
-    case CD_PROP_INT32:
-      b.add_output<decl::Int>("Value").dependent_field({1});
-      break;
+  b.add_output(data_type, "Value").dependent_field({1});
+}
+
+static std::optional<eNodeSocketDatatype> node_type_for_socket_type(const bNodeSocket &socket)
+{
+  switch (socket.type) {
+    case SOCK_FLOAT:
+      return SOCK_FLOAT;
+    case SOCK_BOOLEAN:
+      return SOCK_BOOLEAN;
+    case SOCK_INT:
+      return SOCK_INT;
+    case SOCK_VECTOR:
+    case SOCK_RGBA:
+      return SOCK_VECTOR;
     default:
-      BLI_assert_unreachable();
-      break;
+      return std::nullopt;
   }
 }
 
-static void search_link_ops(GatherLinkSearchOpParams &params)
+static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
 {
-  if (U.experimental.use_new_volume_nodes) {
-    nodes::search_link_ops_for_basic_node(params);
+  if (!U.experimental.use_new_volume_nodes) {
+    return;
+  }
+  const std::optional<eNodeSocketDatatype> node_type = node_type_for_socket_type(
+      params.other_socket());
+  if (!node_type) {
+    return;
+  }
+  if (params.in_out() == SOCK_IN) {
+    params.add_item(IFACE_("Grid"), [node_type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("GeometryNodeSampleGrid");
+      node.custom1 = *node_type;
+      params.update_and_connect_available_socket(node, "Grid");
+    });
+    const eNodeSocketDatatype other_type = eNodeSocketDatatype(params.other_socket().type);
+    if (params.node_tree().typeinfo->validate_link(other_type, SOCK_VECTOR)) {
+      params.add_item(IFACE_("Position"), [node_type](LinkSearchOpParams &params) {
+        bNode &node = params.add_node("GeometryNodeSampleGrid");
+        params.update_and_connect_available_socket(node, "Position");
+      });
+    }
+  }
+  else {
+    params.add_item(IFACE_("Value"), [node_type](LinkSearchOpParams &params) {
+      bNode &node = params.add_node("GeometryNodeSampleGrid");
+      node.custom1 = *node_type;
+      params.update_and_connect_available_socket(node, "Value");
+    });
   }
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiLayoutSetPropSep(layout, true);
-  uiLayoutSetPropDecorate(layout, false);
-  uiItemR(layout, ptr, "grid_type", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "data_type", UI_ITEM_NONE, "", ICON_NONE);
   uiItemR(layout, ptr, "interpolation_mode", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
-  NodeGeometrySampleGrid *data = MEM_cnew<NodeGeometrySampleGrid>(__func__);
-  data->data_type = CD_PROP_FLOAT;
-  data->interpolation_mode = GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRILINEAR;
-  node->storage = data;
+  node->custom1 = SOCK_FLOAT;
+  node->custom2 = int16_t(InterpolationMode::TriLinear);
 }
 
 #ifdef WITH_OPENVDB
 
-template<typename T, typename GridType>
-void sample_grid(const GridType &grid,
+template<typename T>
+void sample_grid(const bke::OpenvdbGridType<T> &grid,
+                 const InterpolationMode interpolation,
                  const Span<float3> positions,
                  const IndexMask &mask,
-                 MutableSpan<T> dst,
-                 const GeometryNodeSampleGridInterpolationMode interpolation_mode)
+                 MutableSpan<T> dst)
 {
+  using GridType = bke::OpenvdbGridType<T>;
   using GridValueT = typename GridType::ValueType;
   using AccessorT = typename GridType::ConstAccessor;
-  using ConverterT = bke::grids::Converter<T>;
+  using TraitsT = typename bke::VolumeGridTraits<T>;
   AccessorT accessor = grid.getConstAccessor();
 
   auto sample_data = [&](auto sampler) {
     mask.foreach_index([&](const int64_t i) {
       const float3 &pos = positions[i];
       GridValueT value = sampler.wsSample(openvdb::Vec3R(pos.x, pos.y, pos.z));
-      dst[i] = ConverterT::to_blender(value);
+      dst[i] = TraitsT::to_blender(value);
     });
   };
 
   /* Use to the Nearest Neighbor sampler for Bool grids (no interpolation). */
-  GeometryNodeSampleGridInterpolationMode real_interpolation_mode = interpolation_mode;
+  InterpolationMode real_interpolation = interpolation;
   if constexpr (std::is_same_v<T, bool>) {
-    real_interpolation_mode = GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_NEAREST;
+    real_interpolation = InterpolationMode::Nearest;
   }
-  switch (real_interpolation_mode) {
-    case GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRILINEAR: {
+  switch (real_interpolation) {
+    case InterpolationMode::TriLinear: {
       openvdb::tools::GridSampler<AccessorT, openvdb::tools::BoxSampler> sampler(accessor,
                                                                                  grid.transform());
       sample_data(sampler);
       break;
     }
-    case GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRIQUADRATIC: {
+    case InterpolationMode::TriQuadratic: {
       openvdb::tools::GridSampler<AccessorT, openvdb::tools::QuadraticSampler> sampler(
           accessor, grid.transform());
       sample_data(sampler);
       break;
     }
-    case GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_NEAREST:
-    default: {
+    case InterpolationMode::Nearest: {
       openvdb::tools::GridSampler<AccessorT, openvdb::tools::PointSampler> sampler(
           accessor, grid.transform());
       sample_data(sampler);
@@ -129,57 +154,60 @@ void sample_grid(const GridType &grid,
   }
 }
 
-template<typename T> class SampleGridFunction : public mf::MultiFunction {
-  using GridType = bke::OpenvdbGridType<T>;
-  using GridConstPtr = std::shared_ptr<GridType>;
+template<typename Fn> void convert_to_static_type(const VolumeGridType type, const Fn &fn)
+{
+  switch (type) {
+    case VOLUME_GRID_BOOLEAN:
+      fn(bool());
+      break;
+    case VOLUME_GRID_FLOAT:
+      fn(float());
+      break;
+    case VOLUME_GRID_INT:
+      fn(int());
+      break;
+    case VOLUME_GRID_MASK:
+      fn(bool());
+      break;
+    case VOLUME_GRID_VECTOR_FLOAT:
+      fn(float3());
+      break;
+    default:
+      break;
+  }
+}
 
-  bke::VolumeGrid<T> volume_grid_;
-  GeometryNodeSampleGridInterpolationMode interpolation_mode_;
+class SampleGridFunction : public mf::MultiFunction {
+  bke::GVolumeGrid grid_;
+  InterpolationMode interpolation_;
   mf::Signature signature_;
 
  public:
-  SampleGridFunction(bke::VolumeGrid<T> volume_grid,
-                     GeometryNodeSampleGridInterpolationMode interpolation_mode)
-      : volume_grid_(std::move(volume_grid)), interpolation_mode_(interpolation_mode)
+  SampleGridFunction(bke::GVolumeGrid grid, InterpolationMode interpolation)
+      : grid_(std::move(grid)), interpolation_(interpolation)
   {
-    BLI_assert(volume_grid_);
+    BLI_assert(grid_);
 
-    const CPPType &cpp_type = CPPType::get<T>();
-    mf::SignatureBuilder builder{"Sample Volume", signature_};
+    const std::optional<eNodeSocketDatatype> data_type = bke::grid_type_to_socket_type(
+        grid_->grid_type());
+    const CPPType *cpp_type = bke::socket_type_to_geo_nodes_base_cpp_type(*data_type);
+    mf::SignatureBuilder builder{"Sample Grid", signature_};
     builder.single_input<float3>("Position");
-    builder.single_output("Value", cpp_type);
+    builder.single_output("Value", *cpp_type);
     this->set_signature(&signature_);
   }
 
   void call(const IndexMask &mask, mf::Params params, mf::Context /*context*/) const override
   {
     const VArraySpan<float3> positions = params.readonly_single_input<float3>(0, "Position");
-    MutableSpan<T> dst = params.uninitialized_single_output<T>(1, "Value");
+    GMutableSpan dst = params.uninitialized_single_output(1, "Value");
 
     bke::VolumeTreeAccessToken tree_token;
-    sample_grid<T, GridType>(
-        volume_grid_.grid(tree_token), positions, mask, dst, interpolation_mode_);
-  }
-};
-
-struct SampleGridOp {
-  GeoNodeExecParams params;
-  GeometryNodeSampleGridInterpolationMode interpolation_mode;
-
-  template<typename T> void operator()()
-  {
-    const auto volume_grid = this->params.extract_input<bke::VolumeGrid<T>>("Grid");
-    if (!volume_grid) {
-      this->params.set_default_remaining_outputs();
-      return;
-    }
-
-    fn::Field<float3> position_field = this->params.extract_input<fn::Field<float3>>("Position");
-    auto fn = std::make_shared<SampleGridFunction<T>>(volume_grid, this->interpolation_mode);
-    auto op = FieldOperation::Create(std::move(fn), {position_field});
-    fn::Field<T> output_field = fn::Field<T>(std::move(op));
-
-    params.set_output("Value", output_field);
+    convert_to_static_type(grid_->grid_type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      sample_grid<T>(
+          grid_.typed<T>().grid(tree_token), interpolation_, positions, mask, dst.typed<T>());
+    });
   }
 };
 
@@ -188,56 +216,67 @@ struct SampleGridOp {
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  const NodeGeometrySampleGrid &storage = node_storage(params.node());
-  const eCustomDataType data_type = eCustomDataType(storage.data_type);
-  const GeometryNodeSampleGridInterpolationMode interpolation_mode =
-      GeometryNodeSampleGridInterpolationMode(storage.interpolation_mode);
+  const bNode &node = params.node();
+  const eNodeSocketDatatype data_type = eNodeSocketDatatype(node.custom1);
+  const InterpolationMode interpolation = InterpolationMode(node.custom2);
 
-  SampleGridOp sample_op = {params, interpolation_mode};
-  grids::apply(data_type, sample_op);
+  bke::GVolumeGrid grid = params.extract_input<bke::GVolumeGrid>("Grid");
+  if (!grid) {
+    params.set_default_remaining_outputs();
+    return;
+  }
+
+  auto fn = std::make_shared<SampleGridFunction>(std::move(grid), interpolation);
+  auto op = FieldOperation::Create(std::move(fn),
+                                   {params.extract_input<Field<float3>>("Position")});
+
+  const bke::DataTypeConversions &conversions = bke::get_implicit_type_conversions();
+  const CPPType &output_type = *bke::socket_type_to_geo_nodes_base_cpp_type(data_type);
+  const GField output_field = conversions.try_convert(fn::GField(std::move(op)), output_type);
+  params.set_output("Value", std::move(output_field));
+
 #else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+  node_geo_exec_with_missing_openvdb(params);
 #endif
+}
+
+static const EnumPropertyItem *data_type_filter_fn(bContext * /*C*/,
+                                                   PointerRNA * /*ptr*/,
+                                                   PropertyRNA * /*prop*/,
+                                                   bool *r_free)
+{
+  *r_free = true;
+  return enum_items_filter(
+      rna_enum_node_socket_type_items, [](const EnumPropertyItem &item) -> bool {
+        return ELEM(item.value, SOCK_FLOAT, SOCK_INT, SOCK_BOOLEAN, SOCK_VECTOR);
+      });
 }
 
 static void node_rna(StructRNA *srna)
 {
-  static const EnumPropertyItem interpolation_mode_items[] = {
-      {GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_NEAREST, "NEAREST", 0, "Nearest Neighbor", ""},
-      {GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRILINEAR, "TRILINEAR", 0, "Trilinear", ""},
-      {GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRIQUADRATIC,
-       "TRIQUADRATIC",
-       0,
-       "Triquadratic",
-       ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  static const EnumPropertyItem grid_type_items[] = {
-      {CD_PROP_FLOAT, "FLOAT", 0, "Float", "Floating-point value"},
-      {CD_PROP_FLOAT3, "FLOAT_VECTOR", 0, "Vector", "3D vector with floating-point values"},
-      {CD_PROP_INT32, "INT", 0, "Integer", "32-bit integer"},
-      {CD_PROP_BOOL, "BOOLEAN", 0, "Boolean", "True or false"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   RNA_def_node_enum(srna,
-                    "grid_type",
-                    "Grid Type",
-                    "Type of grid to sample data from",
-                    grid_type_items,
-                    NOD_storage_enum_accessors(data_type),
-                    CD_PROP_FLOAT);
+                    "data_type",
+                    "Data Type",
+                    "Node socket data type",
+                    rna_enum_node_socket_type_items,
+                    NOD_inline_enum_accessors(custom1),
+                    CD_PROP_FLOAT,
+                    data_type_filter_fn);
+
+  static const EnumPropertyItem interpolation_mode_items[] = {
+      {int(InterpolationMode::Nearest), "NEAREST", 0, "Nearest Neighbor", ""},
+      {int(InterpolationMode::TriLinear), "TRILINEAR", 0, "Trilinear", ""},
+      {int(InterpolationMode::TriQuadratic), "TRIQUADRATIC", 0, "Triquadratic", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
 
   RNA_def_node_enum(srna,
                     "interpolation_mode",
                     "Interpolation Mode",
-                    "How to interpolate the values from neighboring voxels",
+                    "How to interpolate the values between neighboring voxels",
                     interpolation_mode_items,
-                    NOD_storage_enum_accessors(interpolation_mode),
-                    GEO_NODE_SAMPLE_GRID_INTERPOLATION_MODE_TRILINEAR);
+                    NOD_inline_enum_accessors(custom2),
+                    int(InterpolationMode::TriLinear));
 }
 
 static void node_register()
@@ -245,11 +284,9 @@ static void node_register()
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SAMPLE_GRID, "Sample Grid", NODE_CLASS_CONVERTER);
-  node_type_storage(
-      &ntype, "NodeGeometrySampleGrid", node_free_standard_storage, node_copy_standard_storage);
   ntype.initfunc = node_init;
   ntype.declare = node_declare;
-  ntype.gather_link_search_ops = search_link_ops;
+  ntype.gather_link_search_ops = node_gather_link_search_ops;
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.geometry_node_execute = node_geo_exec;
