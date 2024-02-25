@@ -808,12 +808,12 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
 
   float2 center = start + offset;
 
-  if (event->modifier & KM_ALT && ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE)) {
+  if (event->modifier & KM_ALT && ptd.segments == 1) {
     center = start;
     offset *= 2.0f;
   }
 
-  const float3 start_pos = ptd.placement_.project(start);
+  const float3 start_pos = ptd.placement_.project(center - offset);
   const float3 end_pos = ptd.placement_.project(center + offset);
 
   switch (ptd.type) {
@@ -833,7 +833,8 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
     }
     case PrimitiveType::POLYLINE:
     case PrimitiveType::LINE: {
-      ptd.control_points.last() = end_pos;
+      ptd.control_points.last(1) = start_pos;
+      ptd.control_points.last(0) = end_pos;
       return;
     }
     case PrimitiveType::ARC: {
