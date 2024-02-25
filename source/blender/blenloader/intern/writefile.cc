@@ -658,13 +658,13 @@ struct BlendWriter {
   BlendWriter *parent = nullptr;
   blender::Vector<BlendWriter *> children;
   blender::Vector<blender::Vector<std::byte>> buffers;
-  mutable bool was_written = false;
+  bool was_written = false;
 
-  BlendWriter(const WriteData &wd) : root_wd(&wd) {}
+  BlendWriter(const WriteData &wd, BlendWriter *parent = nullptr) : root_wd(&wd), parent(parent) {}
 
   ~BlendWriter()
   {
-    BLI_assert(this->was_written || buffers.is_empty());
+    BLI_assert(buffers.is_empty());
   }
 
   void flush()
@@ -735,13 +735,24 @@ struct BlendWriter {
     this->write(data, write_bytes_num);
   }
 
-  void write_to_wd(WriteData &wd) const
+  void move_to_parent()
   {
+    BLI_assert(this->parent != nullptr);
+    for (blender::Vector<std::byte> &buffer : this->buffers) {
+      this->parent->buffers.append(std::move(buffer));
+    }
+    this->buffers.clear();
+  }
+
+  void write_to_wd(WriteData &wd)
+  {
+    BLI_assert(this->parent == nullptr);
     BLI_assert(!this->was_written);
     this->was_written = true;
     for (const blender::Vector<std::byte> &buffer : this->buffers) {
       mywrite(&wd, buffer.data(), buffer.size());
     }
+    this->buffers.clear();
   }
 
  private:
