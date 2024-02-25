@@ -5344,13 +5344,19 @@ void CustomData_blend_write(BlendWriter *writer,
             writer, count, static_cast<const MDisps *>(layer.data), layer.flag & CD_FLAG_EXTERNAL);
         break;
       case CD_PAINT_MASK:
-        BLO_write_raw(writer, sizeof(float) * count, static_cast<const float *>(layer.data));
+        BLO_write_raw(writer,
+                      sizeof(float) * count,
+                      static_cast<const float *>(layer.data),
+                      BlendWriteBufferBorrow::Borrowed);
         break;
       case CD_GRID_PAINT_MASK:
         write_grid_paint_mask(writer, count, static_cast<const GridPaintMask *>(layer.data));
         break;
       case CD_PROP_BOOL:
-        BLO_write_raw(writer, sizeof(bool) * count, static_cast<const bool *>(layer.data));
+        BLO_write_raw(writer,
+                      sizeof(bool) * count,
+                      static_cast<const bool *>(layer.data),
+                      BlendWriteBufferBorrow::Borrowed);
         break;
       default: {
         const char *structname;
@@ -5358,7 +5364,8 @@ void CustomData_blend_write(BlendWriter *writer,
         CustomData_file_write_info(eCustomDataType(layer.type), &structname, &structnum);
         if (structnum) {
           int datasize = structnum * count;
-          BLO_write_struct_array_by_name(writer, structname, datasize, layer.data);
+          BLO_write_struct_array_by_name(
+              writer, structname, datasize, layer.data, BlendWriteBufferBorrow::Borrowed);
         }
         else if (!BLO_write_is_undo(writer)) { /* Do not warn on undo. */
           printf("%s error: layer '%s':%d - can't be written to file\n",

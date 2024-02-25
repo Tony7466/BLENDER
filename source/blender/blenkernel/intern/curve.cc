@@ -178,10 +178,10 @@ static void curve_blend_write(BlendWriter *writer, ID *id, const void *id_addres
     }
     LISTBASE_FOREACH (Nurb *, nu, &cu->nurb) {
       if (nu->type == CU_BEZIER) {
-        BLO_write_struct_array(writer, BezTriple, nu->pntsu, nu->bezt);
+        BLO_write_struct_array_borrow(writer, BezTriple, nu->pntsu, nu->bezt);
       }
       else {
-        BLO_write_struct_array(writer, BPoint, nu->pntsu * nu->pntsv, nu->bp);
+        BLO_write_struct_array_borrow(writer, BPoint, nu->pntsu * nu->pntsv, nu->bp);
         if (nu->knotsu) {
           BLO_write_float_array(writer, KNOTSU(nu), nu->knotsu);
         }

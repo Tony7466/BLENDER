@@ -302,7 +302,8 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
   BLO_write_string(writer, mesh->default_color_attribute);
 
   BLO_write_pointer_array(writer, mesh->totcol, mesh->mat);
-  BLO_write_raw(writer, sizeof(MSelect) * mesh->totselect, mesh->mselect);
+  BLO_write_raw(
+      writer, sizeof(MSelect) * mesh->totselect, mesh->mselect, BlendWriteBufferBorrow::Borrowed);
 
   CustomData_blend_write(
       writer, &mesh->vert_data, vert_layers, mesh->verts_num, CD_MASK_MESH.vmask, &mesh->id);
@@ -313,11 +314,13 @@ static void mesh_blend_write(BlendWriter *writer, ID *id, const void *id_address
       writer, &mesh->fdata_legacy, {}, mesh->totface_legacy, CD_MASK_MESH.fmask, &mesh->id);
   CustomData_blend_write(
       writer, &mesh->corner_data, loop_layers, mesh->corners_num, CD_MASK_MESH.lmask, &mesh->id);
+
   CustomData_blend_write(
       writer, &mesh->face_data, face_layers, mesh->faces_num, CD_MASK_MESH.pmask, &mesh->id);
 
   if (mesh->face_offset_indices) {
-    BLO_write_int32_array(writer, mesh->faces_num + 1, mesh->face_offset_indices);
+    BLO_write_int32_array(
+        writer, mesh->faces_num + 1, mesh->face_offset_indices, BlendWriteBufferBorrow::Borrowed);
   }
 }
 

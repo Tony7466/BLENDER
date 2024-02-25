@@ -65,6 +65,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
+#include <variant>
 
 #ifdef WIN32
 #  include "BLI_winstuff.h"
@@ -91,12 +92,14 @@
 #include "BLI_blenlib.h"
 #include "BLI_endian_defines.h"
 #include "BLI_endian_switch.h"
+#include "BLI_implicit_sharing.hh"
 #include "BLI_link_utils.h"
 #include "BLI_linklist.h"
 #include "BLI_math_base.h"
 #include "BLI_mempool.h"
 #include "BLI_task.hh"
 #include "BLI_threads.h"
+#include "BLI_timeit.hh"
 
 #include "MEM_guardedalloc.h" /* MEM_freeN */
 
@@ -525,6 +528,9 @@ static void mywrite(WriteData *wd, const void *adr, size_t len)
   wd->write_len += len;
 #endif
 
+  // writedata_do_write(wd, adr, len);
+  // return;
+
   if (wd->buffer.buf == nullptr) {
     writedata_do_write(wd, adr, len);
   }
@@ -655,10 +661,20 @@ static void mywrite_id_end(WriteData *wd, ID * /*id*/)
  * \{ */
 
 struct BlendWriter {
+  struct OwnedBuffer {
+    blender::Vector<std::byte> buffer;
+  };
+
+  struct BorrowedBuffer {
+    blender::Span<std::byte> buffer;
+  };
+
+  using Buffer = std::variant<OwnedBuffer, BorrowedBuffer>;
+
   const WriteData *root_wd;
   BlendWriter *parent = nullptr;
   blender::Vector<BlendWriter *> children;
-  blender::Vector<blender::Vector<std::byte>> buffers;
+  blender::Vector<Buffer> buffers;
   bool was_written = false;
 
   BlendWriter(const WriteData &wd, BlendWriter *parent = nullptr) : root_wd(&wd), parent(parent) {}
@@ -673,7 +689,7 @@ struct BlendWriter {
     if (this->buffers.is_empty()) {
       return;
     }
-    if (this->buffers.last().is_empty()) {
+    if (std::get_if<BorrowedBuffer>(&this->buffers.last())) {
       return;
     }
     this->buffers.append_as();
@@ -683,7 +699,8 @@ struct BlendWriter {
                      const int struct_id,
                      const int structs_num,
                      const void *address,
-                     const void *data)
+                     const void *data,
+                     const BlendWriteBufferBorrow borrow = BlendWriteBufferBorrow::NotBorrowed)
   {
     BLI_assert(struct_id > 0 && struct_id < SDNA_TYPE_MAX);
 
@@ -704,14 +721,15 @@ struct BlendWriter {
       return;
     }
 
-    this->write(&bh, sizeof(BHead));
-    this->write(data, bh.len);
+    this->write(&bh, sizeof(BHead), BlendWriteBufferBorrow::NotBorrowed);
+    this->write(data, bh.len, borrow);
   }
 
   void write_buffer(const int filecode,
                     const int64_t bytes_num,
                     const void *address,
-                    const void *data)
+                    const void *data,
+                    const BlendWriteBufferBorrow borrow = BlendWriteBufferBorrow::NotBorrowed)
   {
     if (address == nullptr || bytes_num == 0) {
       return;
@@ -732,14 +750,14 @@ struct BlendWriter {
     bh.SDNAnr = 0;
     bh.len = int(write_bytes_num);
 
-    this->write(&bh, sizeof(BHead));
-    this->write(data, write_bytes_num);
+    this->write(&bh, sizeof(BHead), BlendWriteBufferBorrow::NotBorrowed);
+    this->write(data, write_bytes_num, borrow);
   }
 
   void move_to_parent()
   {
     BLI_assert(this->parent != nullptr);
-    for (blender::Vector<std::byte> &buffer : this->buffers) {
+    for (Buffer &buffer : this->buffers) {
       this->parent->buffers.append(std::move(buffer));
     }
     this->buffers.clear();
@@ -750,20 +768,35 @@ struct BlendWriter {
     BLI_assert(this->parent == nullptr);
     BLI_assert(!this->was_written);
     this->was_written = true;
-    for (const blender::Vector<std::byte> &buffer : this->buffers) {
-      mywrite(&wd, buffer.data(), buffer.size());
+    for (const Buffer &buffer : this->buffers) {
+      if (auto *owned_buffer = std::get_if<OwnedBuffer>(&buffer)) {
+        mywrite(&wd, owned_buffer->buffer.data(), owned_buffer->buffer.size());
+      }
+      else if (auto *borrowed_buffer = std::get_if<BorrowedBuffer>(&buffer)) {
+        mywrite(&wd, borrowed_buffer->buffer.data(), borrowed_buffer->buffer.size());
+      }
     }
     this->buffers.clear();
   }
 
  private:
-  void write(const void *data, const int64_t size)
+  void write(const void *data, const int64_t size, const BlendWriteBufferBorrow borrow)
   {
-    if (this->buffers.is_empty()) {
-      this->buffers.append_as();
+    switch (borrow) {
+      case BlendWriteBufferBorrow::Borrowed: {
+        this->buffers.append(
+            BorrowedBuffer{blender::Span{static_cast<const std::byte *>(data), size}});
+        break;
+      }
+      case BlendWriteBufferBorrow::NotBorrowed: {
+        if (this->buffers.is_empty() || std::get_if<BorrowedBuffer>(&this->buffers.last())) {
+          this->buffers.append(OwnedBuffer());
+        }
+        OwnedBuffer &buffer = std::get<OwnedBuffer>(this->buffers.last());
+        buffer.buffer.extend({static_cast<const std::byte *>(data), size});
+        break;
+      }
     }
-    blender::Vector<std::byte> &buffer = this->buffers.last();
-    buffer.extend({static_cast<const std::byte *>(data), size});
   }
 };
 
@@ -1216,6 +1249,7 @@ static bool write_file_handle(Main *mainvar,
                               bool use_userdef,
                               const BlendThumbnail *thumb)
 {
+  SCOPED_TIMER(__func__);
   BHead bhead;
   ListBase mainlist;
   char buf[16];
@@ -1740,9 +1774,12 @@ void BLO_write_destroy_id_buffer(BLO_Write_IDBuffer **id_buffer)
  * API to write chunks of data.
  */
 
-void BLO_write_raw(BlendWriter *writer, size_t size_in_bytes, const void *data_ptr)
+void BLO_write_raw(BlendWriter *writer,
+                   size_t size_in_bytes,
+                   const void *data_ptr,
+                   const BlendWriteBufferBorrow borrow)
 {
-  writer->write_buffer(BLO_CODE_DATA, size_in_bytes, data_ptr, data_ptr);
+  writer->write_buffer(BLO_CODE_DATA, size_in_bytes, data_ptr, data_ptr, borrow);
 }
 
 void BLO_write_struct_by_name(BlendWriter *writer, const char *struct_name, const void *data_ptr)
@@ -1753,14 +1790,15 @@ void BLO_write_struct_by_name(BlendWriter *writer, const char *struct_name, cons
 void BLO_write_struct_array_by_name(BlendWriter *writer,
                                     const char *struct_name,
                                     int array_size,
-                                    const void *data_ptr)
+                                    const void *data_ptr,
+                                    const BlendWriteBufferBorrow borrow)
 {
   int struct_id = BLO_get_struct_id_by_name(writer, struct_name);
   if (UNLIKELY(struct_id == -1)) {
     CLOG_ERROR(&LOG, "Can't find SDNA code <%s>", struct_name);
     return;
   }
-  BLO_write_struct_array_by_id(writer, struct_id, array_size, data_ptr);
+  BLO_write_struct_array_by_id(writer, struct_id, array_size, data_ptr, borrow);
 }
 
 void BLO_write_struct_by_id(BlendWriter *writer, int struct_id, const void *data_ptr)
@@ -1786,9 +1824,10 @@ void BLO_write_struct_at_address_by_id_with_filecode(
 void BLO_write_struct_array_by_id(BlendWriter *writer,
                                   int struct_id,
                                   int array_size,
-                                  const void *data_ptr)
+                                  const void *data_ptr,
+                                  const BlendWriteBufferBorrow borrow)
 {
-  writer->write_structs(BLO_CODE_DATA, struct_id, array_size, data_ptr, data_ptr);
+  writer->write_structs(BLO_CODE_DATA, struct_id, array_size, data_ptr, data_ptr, borrow);
 }
 
 void BLO_write_struct_array_at_address_by_id(
@@ -1830,9 +1869,12 @@ void BLO_write_int8_array(BlendWriter *writer, uint num, const int8_t *data_ptr)
   BLO_write_raw(writer, sizeof(int8_t) * size_t(num), data_ptr);
 }
 
-void BLO_write_int32_array(BlendWriter *writer, uint num, const int32_t *data_ptr)
+void BLO_write_int32_array(BlendWriter *writer,
+                           uint num,
+                           const int32_t *data_ptr,
+                           const BlendWriteBufferBorrow borrow)
 {
-  BLO_write_raw(writer, sizeof(int32_t) * size_t(num), data_ptr);
+  BLO_write_raw(writer, sizeof(int32_t) * size_t(num), data_ptr, borrow);
 }
 
 void BLO_write_uint32_array(BlendWriter *writer, uint num, const uint32_t *data_ptr)

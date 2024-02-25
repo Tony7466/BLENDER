@@ -75,6 +75,11 @@ struct Main;
  * Those will correct endianness automatically.
  * \{ */
 
+enum class BlendWriteBufferBorrow {
+  NotBorrowed,
+  Borrowed,
+};
+
 /**
  * Mapping between names and ids.
  */
@@ -113,17 +118,27 @@ void BLO_write_struct_at_address_by_id_with_filecode(
 /**
  * Write struct array.
  */
-void BLO_write_struct_array_by_name(BlendWriter *writer,
-                                    const char *struct_name,
-                                    int array_size,
-                                    const void *data_ptr);
-void BLO_write_struct_array_by_id(BlendWriter *writer,
-                                  int struct_id,
-                                  int array_size,
-                                  const void *data_ptr);
+void BLO_write_struct_array_by_name(
+    BlendWriter *writer,
+    const char *struct_name,
+    int array_size,
+    const void *data_ptr,
+    BlendWriteBufferBorrow borrow = BlendWriteBufferBorrow::NotBorrowed);
+void BLO_write_struct_array_by_id(
+    BlendWriter *writer,
+    int struct_id,
+    int array_size,
+    const void *data_ptr,
+    BlendWriteBufferBorrow borrow = BlendWriteBufferBorrow::NotBorrowed);
 #define BLO_write_struct_array(writer, struct_name, array_size, data_ptr) \
   BLO_write_struct_array_by_id( \
       writer, BLO_get_struct_id(writer, struct_name), array_size, data_ptr)
+#define BLO_write_struct_array_borrow(writer, struct_name, array_size, data_ptr) \
+  BLO_write_struct_array_by_id(writer, \
+                               BLO_get_struct_id(writer, struct_name), \
+                               array_size, \
+                               data_ptr, \
+                               BlendWriteBufferBorrow::Borrowed)
 
 /**
  * Write struct array at address.
@@ -167,9 +182,15 @@ void BLO_write_destroy_id_buffer(BLO_Write_IDBuffer **id_buffer);
 /**
  * Write raw data.
  */
-void BLO_write_raw(BlendWriter *writer, size_t size_in_bytes, const void *data_ptr);
+void BLO_write_raw(BlendWriter *writer,
+                   size_t size_in_bytes,
+                   const void *data_ptr,
+                   BlendWriteBufferBorrow borrow = BlendWriteBufferBorrow::NotBorrowed);
 void BLO_write_int8_array(BlendWriter *writer, uint num, const int8_t *data_ptr);
-void BLO_write_int32_array(BlendWriter *writer, uint num, const int32_t *data_ptr);
+void BLO_write_int32_array(BlendWriter *writer,
+                           uint num,
+                           const int32_t *data_ptr,
+                           BlendWriteBufferBorrow borrow = BlendWriteBufferBorrow::NotBorrowed);
 void BLO_write_uint32_array(BlendWriter *writer, uint num, const uint32_t *data_ptr);
 void BLO_write_float_array(BlendWriter *writer, uint num, const float *data_ptr);
 void BLO_write_double_array(BlendWriter *writer, uint num, const double *data_ptr);
