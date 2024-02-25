@@ -1458,6 +1458,7 @@ static bool write_file_handle(Main *mainvar,
       consolidated_segments.append(buffer);
       tasks.append(
           {IndexRange::from_begin_end_inclusive(chunk_start, last_input_segment), buffer});
+      owned_buffers.append(buffer.data());
     };
 
     for (const int i : segments.index_range()) {
