@@ -67,6 +67,8 @@
 #include <fcntl.h>
 #include <variant>
 
+#include <tbb/pipeline.h>
+
 #ifdef WIN32
 #  include "BLI_winstuff.h"
 #  include "winsock2.h"
@@ -534,8 +536,8 @@ static void mywrite(WriteData *wd, const void *adr, size_t len)
   wd->write_len += len;
 #endif
 
-  // writedata_do_write(wd, adr, len);
-  // return;
+  writedata_do_write(wd, adr, len);
+  return;
 
   if (wd->buffer.buf == nullptr) {
     writedata_do_write(wd, adr, len);
@@ -1319,12 +1321,7 @@ static bool write_file_handle(Main *mainvar,
                                                  nullptr :
                                                  BKE_lib_override_library_operations_store_init();
 
-  struct IDWithWriter {
-    ID *id = nullptr;
-    std::unique_ptr<BlendWriter> writer;
-  };
-
-  Vector<IDWithWriter> ids_to_write;
+  Vector<ID *> ids_to_write;
   Vector<ID *> ids_to_end_override_storage;
   /* Gather ids to write and do some serial preprocessing on them. */
   {
@@ -1395,40 +1392,24 @@ static bool write_file_handle(Main *mainvar,
             ids_to_end_override_storage.append(id);
           }
 
-          ids_to_write.append({id, std::make_unique<BlendWriter>(*wd)});
+          ids_to_write.append(id);
         }
       }
     } while ((bmain != override_storage) && (bmain = override_storage));
   }
 
-  /* Serialize IDs. */
-  blender::threading::parallel_for(
-      ids_to_write.index_range(), 1, [&](const blender::IndexRange id_range) {
-        for (IDWithWriter &id_with_writer : ids_to_write.as_mutable_span().slice(id_range)) {
-          ID *id = id_with_writer.id;
-          BlendWriter *writer = id_with_writer.writer.get();
-          const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
-          BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
-          id_buffer_init_for_id_type(id_buffer, id_type);
-          id_buffer_init_from_id(id_buffer, id, BLO_write_is_undo(writer));
-
-          if (id_type->blend_write != nullptr) {
-            id_type->blend_write(writer, id_buffer->temp_id, id);
-          }
-
-          BLO_write_destroy_id_buffer(&id_buffer);
-        }
-      });
-
-  for (ID *id : ids_to_end_override_storage) {
-    BKE_lib_override_library_operations_store_end(override_storage, id);
-  }
-
-  /* Actually write IDs. */
   if (wd->use_memfile) {
-    for (IDWithWriter &id_with_writer : ids_to_write) {
-      ID *id = id_with_writer.id;
-      BlendWriter &writer = *id_with_writer.writer;
+    for (ID *id : ids_to_write) {
+      BlendWriter writer{*wd};
+
+      const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
+      BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
+      id_buffer_init_for_id_type(id_buffer, id_type);
+      id_buffer_init_from_id(id_buffer, id, wd->use_memfile);
+      if (id_type->blend_write) {
+        id_type->blend_write(&writer, id_buffer->temp_id, id);
+      }
+      BLO_write_destroy_id_buffer(&id_buffer);
 
       memfile_id_begin(wd, id);
       writer.write_to_wd(*wd);
@@ -1436,13 +1417,59 @@ static bool write_file_handle(Main *mainvar,
     }
   }
   else {
-    for (IDWithWriter &id_with_writer : ids_to_write) {
-      BlendWriter &writer = *id_with_writer.writer;
-      writer.write_to_wd(*wd);
-    }
+    SCOPED_TIMER("pipeline");
+    int pipeline_id_index = 0;
+
+    /* Write performance test. */
+    // for (int64_t s = 1; s < int64_t(1024) * 1024 * 1024 * 3; s *= 2) {
+    //   blender::Array<std::byte> data;
+    //   data.reinitialize(s);
+    //   data.fill(std::byte(0));
+
+    //   for (int i = 0; i < 3; i++) {
+    //     SCOPED_TIMER(std::to_string(s));
+    //     wd->ww->write(data.data(), s);
+    //   }
+    // }
+
+    tbb::parallel_pipeline(
+        128,
+        tbb::make_filter<void, ID *>(tbb::filter::mode::serial_in_order,
+                                     [&](tbb::flow_control &fc) -> ID * {
+                                       if (pipeline_id_index < ids_to_write.size()) {
+                                         return ids_to_write[pipeline_id_index++];
+                                       }
+                                       fc.stop();
+                                       return nullptr;
+                                     }) &
+            tbb::make_filter<ID *, std::unique_ptr<BlendWriter>>(
+                tbb::filter::mode::parallel,
+                [&](ID *id) -> std::unique_ptr<BlendWriter> {
+                  const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
+                  if (id_type->blend_write == nullptr) {
+                    return {};
+                  }
+                  auto writer = std::make_unique<BlendWriter>(*wd);
+                  BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
+                  id_buffer_init_for_id_type(id_buffer, id_type);
+                  id_buffer_init_from_id(id_buffer, id, wd->use_memfile);
+                  id_type->blend_write(writer.get(), id_buffer->temp_id, id);
+                  BLO_write_destroy_id_buffer(&id_buffer);
+                  return writer;
+                }) &
+            tbb::make_filter<std::unique_ptr<BlendWriter>, void>(
+                tbb::filter::mode::serial_in_order, [&](std::unique_ptr<BlendWriter> writer) {
+                  if (!writer) {
+                    return;
+                  }
+                  writer->write_to_wd(*wd);
+                }));
   }
 
   if (override_storage) {
+    for (ID *id : ids_to_end_override_storage) {
+      BKE_lib_override_library_operations_store_end(override_storage, id);
+    }
     BKE_lib_override_library_operations_store_finalize(override_storage);
     override_storage = nullptr;
   }
