@@ -78,6 +78,7 @@ struct Main;
 enum class BlendWriteBufferBorrow {
   NotBorrowed,
   Borrowed,
+  Move,
 };
 
 /**
@@ -144,10 +145,23 @@ void BLO_write_struct_array_by_id(
  * Write struct array at address.
  */
 void BLO_write_struct_array_at_address_by_id(
-    BlendWriter *writer, int struct_id, int array_size, const void *address, const void *data_ptr);
+    BlendWriter *writer,
+    int struct_id,
+    int array_size,
+    const void *address,
+    const void *data_ptr,
+    BlendWriteBufferBorrow borrow = BlendWriteBufferBorrow::NotBorrowed);
 #define BLO_write_struct_array_at_address(writer, struct_name, array_size, address, data_ptr) \
   BLO_write_struct_array_at_address_by_id( \
       writer, BLO_get_struct_id(writer, struct_name), array_size, address, data_ptr)
+#define BLO_write_struct_array_at_address_move( \
+    writer, struct_name, array_size, address, data_ptr) \
+  BLO_write_struct_array_at_address_by_id(writer, \
+                                          BLO_get_struct_id(writer, struct_name), \
+                                          array_size, \
+                                          address, \
+                                          data_ptr, \
+                                          BlendWriteBufferBorrow::Move)
 
 /**
  * Write struct list.

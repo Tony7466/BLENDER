@@ -589,9 +589,7 @@ static void write_space_outliner(BlendWriter *writer, const SpaceOutliner *space
       ts_flat.data = static_cast<TreeStoreElem *>(data_addr);
 
       BLO_write_struct_at_address(writer, TreeStore, ts, &ts_flat);
-      BLO_write_struct_array_at_address(writer, TreeStoreElem, elems, data_addr, data);
-
-      MEM_freeN(data);
+      BLO_write_struct_array_at_address_move(writer, TreeStoreElem, elems, data_addr, data);
     }
     else {
       SpaceOutliner space_outliner_flat = *space_outliner;

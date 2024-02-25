@@ -762,9 +762,13 @@ struct BlendWriter {
  private:
   void write(const void *data, const int64_t size, const BlendWriteBufferBorrow borrow)
   {
-    const bool use_borrow = borrow == BlendWriteBufferBorrow::Borrowed && size > 1024;
-    if (use_borrow) {
+    if (borrow == BlendWriteBufferBorrow::Borrowed) {
       this->buffers.append({static_cast<const std::byte *>(data), size});
+      return;
+    }
+    if (borrow == BlendWriteBufferBorrow::Move) {
+      this->buffers.append({static_cast<const std::byte *>(data), size});
+      this->owned_buffers.append(const_cast<void *>(data));
       return;
     }
     int64_t remaining_size = size;
@@ -1967,10 +1971,14 @@ void BLO_write_struct_array_by_id(BlendWriter *writer,
   writer->write_structs(BLO_CODE_DATA, struct_id, array_size, data_ptr, data_ptr, borrow);
 }
 
-void BLO_write_struct_array_at_address_by_id(
-    BlendWriter *writer, int struct_id, int array_size, const void *address, const void *data_ptr)
+void BLO_write_struct_array_at_address_by_id(BlendWriter *writer,
+                                             int struct_id,
+                                             int array_size,
+                                             const void *address,
+                                             const void *data_ptr,
+                                             const BlendWriteBufferBorrow borrow)
 {
-  writer->write_structs(BLO_CODE_DATA, struct_id, array_size, address, data_ptr);
+  writer->write_structs(BLO_CODE_DATA, struct_id, array_size, address, data_ptr, borrow);
 }
 
 void BLO_write_struct_list_by_id(BlendWriter *writer, int struct_id, ListBase *list)
