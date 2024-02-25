@@ -324,23 +324,6 @@ static const Span<const char *> text_format_glsl_literals_specialvar(
     text_format_glsl_literals_specialvar_data,
     ARRAY_SIZE(text_format_glsl_literals_specialvar_data));
 
-static const char *text_format_glsl_literals_preprocessor_data[] = {
-    /* Force single column, sorted list. */
-    "define",
-    "defined",
-    "elif",
-    "else",
-    "endif",
-    "if",
-    "ifdef",
-    "ifndef",
-    "pragma",
-    "version",
-};
-static const Span<const char *> text_format_glsl_literals_preprocessor(
-    text_format_glsl_literals_preprocessor_data,
-    ARRAY_SIZE(text_format_glsl_literals_preprocessor_data));
-
 /** \} */
 
 /*---------------------------------------------------------------------*/
@@ -595,8 +578,6 @@ void ED_text_format_register_glsl()
       text_format_string_literals_check_sorted_array(text_format_glsl_literals_builtinfunc));
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_reserved));
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_specialvar));
-  BLI_assert(
-      text_format_string_literals_check_sorted_array(text_format_glsl_literals_preprocessor));
 }
 
 /** \} */
