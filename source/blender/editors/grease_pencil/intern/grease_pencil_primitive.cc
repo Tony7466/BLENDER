@@ -657,25 +657,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   ptd.placement_ = placement_;
 
-  wmWindowManager *wm = CTX_wm_manager(C);
-  wmKeyMap *keymap = WM_keymap_active(wm, op->type->modalkeymap);
-  const wmKeyMapItem *kmi_passthrough = nullptr;
-  // printf("\n");
-  LISTBASE_FOREACH (const wmKeyMapItem *, kmi, &keymap->items) {
-    // printf("kmi->propvalue %i \n", kmi->propvalue);
-    if (kmi->flag & KMI_INACTIVE) {
-      continue;
-    }
-
-    // if (kmi->propvalue == TFM_MODAL_PASSTHROUGH_NAVIGATE) {
-    // if (kmi->propvalue == int(ModelKeyMode::PANNING)) {
-    //   kmi_passthrough = kmi;
-    //   break;
-    // }
-  }
-  // printf("\n");
-
-  ptd.vod = ED_view3d_navigation_init(C, kmi_passthrough);
+  ptd.vod = ED_view3d_navigation_init(C, nullptr);
 
   ptd.subdivision = RNA_int_get(op->ptr, "subdivision");
   ptd.type = PrimitiveType(RNA_enum_get(op->ptr, "type"));
