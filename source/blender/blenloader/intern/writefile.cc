@@ -1547,10 +1547,14 @@ static bool write_file_handle(Main *mainvar,
                                 for (const int64_t buffer_i : buffers_range) {
                                   const Span<std::byte> src_buffer = merge_task.buffers[buffer_i];
                                   const int64_t offset = offsets[buffer_i];
-                                  /* TODO: potentially use multi threading */
-                                  memcpy(dst_buffer.data() + offset,
-                                         src_buffer.data(),
-                                         src_buffer.size());
+                                  blender::threading::parallel_for(
+                                      src_buffer.index_range(),
+                                      4096,
+                                      [&](const IndexRange bytes_range) {
+                                        memcpy(dst_buffer.data() + offset + bytes_range.start(),
+                                               src_buffer.data() + bytes_range.start(),
+                                               bytes_range.size());
+                                      });
                                 }
                               },
                               [&](const int64_t buffer_i) {
