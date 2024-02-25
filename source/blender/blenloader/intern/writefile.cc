@@ -613,31 +613,30 @@ static bool mywrite_end(WriteData *wd)
  *
  * Only does something when storing an undo step.
  */
-static void mywrite_id_begin(WriteData *wd, ID *id)
+static void memfile_id_begin(WriteData *wd, ID *id)
 {
-  if (wd->use_memfile) {
-    wd->mem.current_id_session_uid = id->session_uid;
+  BLI_assert(wd->use_memfile);
+  wd->mem.current_id_session_uid = id->session_uid;
 
-    /* If current next memchunk does not match the ID we are about to write, or is not the _first_
-     * one for said ID, try to find the correct memchunk in the mapping using ID's session_uid. */
-    MemFileChunk *curr_memchunk = wd->mem.reference_current_chunk;
-    MemFileChunk *prev_memchunk = curr_memchunk != nullptr ?
-                                      static_cast<MemFileChunk *>(curr_memchunk->prev) :
-                                      nullptr;
-    if ((curr_memchunk == nullptr || curr_memchunk->id_session_uid != id->session_uid ||
-         (prev_memchunk != nullptr &&
-          (prev_memchunk->id_session_uid == curr_memchunk->id_session_uid))))
+  /* If current next memchunk does not match the ID we are about to write, or is not the _first_
+   * one for said ID, try to find the correct memchunk in the mapping using ID's session_uid. */
+  MemFileChunk *curr_memchunk = wd->mem.reference_current_chunk;
+  MemFileChunk *prev_memchunk = curr_memchunk != nullptr ?
+                                    static_cast<MemFileChunk *>(curr_memchunk->prev) :
+                                    nullptr;
+  if ((curr_memchunk == nullptr || curr_memchunk->id_session_uid != id->session_uid ||
+       (prev_memchunk != nullptr &&
+        (prev_memchunk->id_session_uid == curr_memchunk->id_session_uid))))
+  {
+    if (MemFileChunk *ref = wd->mem.id_session_uid_mapping.lookup_default(id->session_uid,
+                                                                          nullptr))
     {
-      if (MemFileChunk *ref = wd->mem.id_session_uid_mapping.lookup_default(id->session_uid,
-                                                                            nullptr))
-      {
-        wd->mem.reference_current_chunk = static_cast<MemFileChunk *>(ref);
-      }
-      /* Else, no existing memchunk found, i.e. this is supposed to be a new ID. */
+      wd->mem.reference_current_chunk = static_cast<MemFileChunk *>(ref);
     }
-    /* Otherwise, we try with the current memchunk in any case, whether it is matching current
-     * ID's session_uid or not. */
+    /* Else, no existing memchunk found, i.e. this is supposed to be a new ID. */
   }
+  /* Otherwise, we try with the current memchunk in any case, whether it is matching current
+   * ID's session_uid or not. */
 }
 
 /**
@@ -645,14 +644,13 @@ static void mywrite_id_begin(WriteData *wd, ID *id)
  *
  * Only does something when storing an undo step.
  */
-static void mywrite_id_end(WriteData *wd, ID * /*id*/)
+static void memfile_id_end(WriteData *wd, ID * /*id*/)
 {
-  if (wd->use_memfile) {
-    /* Very important to do it after every ID write now, otherwise we cannot know whether a
-     * specific ID changed or not. */
-    mywrite_flush(wd);
-    wd->mem.current_id_session_uid = MAIN_ID_SESSION_UID_UNSET;
-  }
+  BLI_assert(wd->use_memfile);
+  /* Very important to do it after every ID write now, otherwise we cannot know whether a
+   * specific ID changed or not. */
+  mywrite_flush(wd);
+  wd->mem.current_id_session_uid = MAIN_ID_SESSION_UID_UNSET;
 }
 
 /** \} */
@@ -1422,13 +1420,29 @@ static bool write_file_handle(Main *mainvar,
   }
 
   /* Actually write IDs. */
-  for (IDWithWriter &id_with_writer : ids_to_write) {
-    ID *id = id_with_writer.id;
-    BlendWriter *writer = id_with_writer.writer.get();
+  if (wd->use_memfile) {
+    for (IDWithWriter &id_with_writer : ids_to_write) {
+      ID *id = id_with_writer.id;
+      BlendWriter *writer = id_with_writer.writer.get();
 
-    mywrite_id_begin(wd, id);
-    writer->write_to_wd(*wd);
-    mywrite_id_end(wd, id);
+      memfile_id_begin(wd, id);
+      writer->write_to_wd(*wd);
+      memfile_id_end(wd, id);
+    }
+  }
+  else {
+    blender::Vector<blender::Span<std::byte>> segments;
+    blender::Vector<void *> owned_buffers;
+    for (IDWithWriter &id_with_writer : ids_to_write) {
+      segments.extend(id_with_writer.writer->buffers);
+      owned_buffers.extend(id_with_writer.writer->owned_buffers);
+    }
+    for (const blender::Span<std::byte> segment : segments) {
+      mywrite(wd, segment.data(), segment.size());
+    }
+    for (void *buffer : owned_buffers) {
+      MEM_freeN(buffer);
+    }
   }
 
   if (override_storage) {
