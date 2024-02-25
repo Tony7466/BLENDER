@@ -228,6 +228,7 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
     "transpose",
     "trunc",
     "uaddCarry",
+    "uint",
     "umulExtended",
     "unpackDouble2x32",
     "unpackHalf2x16",
