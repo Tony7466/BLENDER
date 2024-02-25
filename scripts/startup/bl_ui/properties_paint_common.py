@@ -1428,12 +1428,11 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
             "builtin.circle",
             "builtin.polyline",
     }:
-        # TODO
-        # row = layout.row(align=True)
-        # if context.region.type == 'TOOL_HEADER':
-        #     row.prop(gp_settings, "caps_type", text="", expand=True)
-        # else:
-        #     row.prop(gp_settings, "caps_type", text="Caps Type")
+        row = layout.row(align=True)
+        if context.region.type == 'TOOL_HEADER':
+            row.prop(gp_settings, "caps_type", text="", expand=True)
+        else:
+            row.prop(gp_settings, "caps_type", text="Caps Type")
 
         if props is not None:
             row = layout.row(align=True)

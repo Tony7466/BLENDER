@@ -489,7 +489,15 @@ static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
       "hardness",
       bke::AttrDomain::Curve,
       bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
+  bke::SpanAttributeWriter<int8_t> start_caps = attributes.lookup_or_add_for_write_span<int8_t>(
+      "start_cap", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<int8_t> end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
+      "end_cap", bke::AttrDomain::Curve);
 
+  const int8_t flag_set = short(ptd.settings_->caps_type);
+
+  start_caps.span.last() = flag_set;
+  end_caps.span.last() = flag_set;
   cyclic.span.last() = ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE);
   materials.span.last() = ptd.material_index;
   hardnesses.span.last() = ptd.hardness;
@@ -497,6 +505,8 @@ static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
   cyclic.finish();
   materials.finish();
   hardnesses.finish();
+  start_caps.finish();
+  end_caps.finish();
 
   curves.curve_types_for_write().last() = CURVE_TYPE_POLY;
   curves.update_curve_types();
@@ -506,10 +516,11 @@ static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
                                     bke::AttrDomain::Point,
                                     {"position", "radius", "opacity", "vertex_color"},
                                     curves.points_range().take_back(1));
-  bke::fill_attribute_range_default(attributes,
-                                    bke::AttrDomain::Curve,
-                                    {"curve_type", "material_index", "cyclic", "hardness"},
-                                    curves.curves_range().take_back(1));
+  bke::fill_attribute_range_default(
+      attributes,
+      bke::AttrDomain::Curve,
+      {"curve_type", "material_index", "cyclic", "hardness", "start_cap", "end_cap"},
+      curves.curves_range().take_back(1));
 
   grease_pencil_primitive_update_curves(ptd);
 }
