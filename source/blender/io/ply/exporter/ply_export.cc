@@ -9,6 +9,7 @@
 #include <cstdio>
 
 #include "BKE_layer.hh"
+#include "BKE_report.h"
 
 #include "DNA_collection_types.h"
 #include "DNA_scene_types.h"
@@ -44,6 +45,10 @@ void exporter_main(bContext *C, const PLYExportParams &export_params)
   }
   catch (const std::system_error &ex) {
     fprintf(stderr, "%s\n", ex.what());
+    BKE_reportf(export_params.reports,
+                RPT_ERROR,
+                "PLY Export: Cannot open file '%s'",
+                export_params.filepath);
     return;
   }
 

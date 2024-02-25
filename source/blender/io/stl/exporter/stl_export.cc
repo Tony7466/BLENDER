@@ -10,8 +10,10 @@
 #include <memory>
 #include <string>
 
+#include "BKE_context.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
+#include "BKE_report.h"
 
 #include "BLI_string.h"
 
@@ -21,7 +23,6 @@
 
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
-#include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 
@@ -45,6 +46,10 @@ void export_frame(Depsgraph *depsgraph,
     }
     catch (const std::runtime_error &ex) {
       fprintf(stderr, "%s\n", ex.what());
+      BKE_reportf(export_params.reports,
+                  RPT_ERROR,
+                  "STL Export: Cannot open file '%s'",
+                  export_params.filepath);
       return;
     }
   }
@@ -81,6 +86,8 @@ void export_frame(Depsgraph *depsgraph,
       }
       catch (const std::runtime_error &ex) {
         fprintf(stderr, "%s\n", ex.what());
+        BKE_reportf(
+            export_params.reports, RPT_ERROR, "STL Export: Cannot open file '%s'", filepath);
         return;
       }
     }
