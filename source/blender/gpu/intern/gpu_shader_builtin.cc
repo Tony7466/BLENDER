@@ -88,11 +88,11 @@ static const char *builtin_shader_create_info_name(eGPUBuiltinShader shader)
     case GPU_SHADER_GPENCIL_STROKE:
       return "gpu_shader_gpencil_stroke";
     case GPU_SHADER_INDEXBUF_POINTS:
-      return "gpu_compute_2d_array_points";
+      return "gpu_shader_index_2d_array_points";
     case GPU_SHADER_INDEXBUF_LINES:
-      return "gpu_compute_2d_array_lines";
+      return "gpu_shader_index_2d_array_lines";
     case GPU_SHADER_INDEXBUF_TRIS:
-      return "gpu_compute_2d_array_tris";
+      return "gpu_shader_index_2d_array_tris";
     default:
       BLI_assert_unreachable();
       return "";
