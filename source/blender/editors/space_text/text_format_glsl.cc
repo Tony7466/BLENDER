@@ -260,6 +260,7 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "textureProjOffset"
     "textureQueryLevels"
     "textureQueryLod"
+    "textureSamples"
     "textureSize"
     "transpose"
     "true"
@@ -271,12 +272,8 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "unpackUnorm2x16"
     "unpackUnorm4x8"
     "usubBorrow"
-    
-  /* Add in future verion when GLSL 4.5 support in Blender */
-  /* "textureSamples" */
 
-  /* Built-In Variable */
-
+    /* Built-In Variable */
     "gl_ClipDistance"
     "gl_FragCoord"
     "gl_FragDepth"
@@ -313,7 +310,6 @@ static const Span<const char *> text_format_glsl_literals_reserved(
 
 /* GLSL shader types */
 static const char *text_format_glsl_literals_specialvar_data[] = {
-
     /* Force single column , sorted list */
     /* clang-format off */
     "displacement",
@@ -326,8 +322,9 @@ static const Span<const char *> text_format_glsl_literals_specialvar(
     text_format_glsl_literals_specialvar_data,
     ARRAY_SIZE(text_format_glsl_literals_specialvar_data));
 
-static const char *text_format_glsl_literals_preprocessor[] = {
-
+static const char *text_format_glsl_literals_preprocessor_data[] = {
+    /* Force single column, sorted list. */
+    /* clang-format off */
     "define"
     "defined"
     "elif"
@@ -337,9 +334,15 @@ static const char *text_format_glsl_literals_preprocessor[] = {
     "ifdef"
     "ifndef"
     "pragma"
-    "version"};
+    "version"
+    /* clang-format on */
+};
 static const Span<const char *> text_format_glsl_literals_preprocessor(
-    text_format_glsl_literals_preprocessor, ARRAY_SIZE(text_format_glsl_literals_preprocessor));
+    text_format_glsl_literals_preprocessor_data,
+    ARRAY_SIZE(text_format_glsl_literals_preprocessor_data));
+
+/** \} */
+
 /*---------------------------------------------------------------------*/
 /* name local functions
  */
@@ -374,10 +377,9 @@ static int txtfmt_glsl_find_specialvar(const char *string)
 }
 static int txtfmt_glsl_find_preprocessor(const char *string)
 {
-  const int i = text_format_string_literal_find(text_format_glsl_literals_preprocessor);
-
   if (string[0] == '#') {
     int i = 1;
+    /* White-space is ok '#  foo'. */
     while (text_check_whitespace(string[i])) {
       i++;
     }
