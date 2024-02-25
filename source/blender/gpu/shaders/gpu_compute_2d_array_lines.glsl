@@ -14,13 +14,14 @@
  */
 void main()
 {
-  uvec3 gid = gl_GlobalInvocationID;
-  uvec3 nthreads = gl_NumWorkGroups * gl_WorkGroupSize;
-  for (uint y = gid.y + gid.z * nthreads.y; y < ncurves; y += nthreads.y * nthreads.z) {
-    for (uint x = gid.x; x < elements_per_curve; x += nthreads.x) {
-      uint store_index = (x + y * elements_per_curve) * 2;
-      out_indices[store_index] = x + y * (elements_per_curve + 1);
-      out_indices[store_index + 1] = x + y * (elements_per_curve + 1) + 1;
+  ivec3 gid = ivec3(gl_GlobalInvocationID);
+  ivec3 nthreads = ivec3(gl_NumWorkGroups) * ivec3(gl_WorkGroupSize);
+  for (int y = gid.y + gid.z * nthreads.y; y < ncurves; y += nthreads.y * nthreads.z) {
+    for (int x = gid.x; x < elements_per_curve; x += nthreads.x) {
+      int store_index = (x + y * elements_per_curve) * 2;
+      uint t = uint(x + y * (elements_per_curve + 1));
+      out_indices[store_index] = t;
+      out_indices[store_index + 1] = t + 1u;
     }
   }
 }
