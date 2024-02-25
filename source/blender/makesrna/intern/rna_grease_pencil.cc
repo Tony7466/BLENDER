@@ -164,6 +164,9 @@ static void rna_iterator_grease_pencil_frames_begin(CollectionPropertyIterator *
   // TODO
   Layer &layer = static_cast<GreasePencilLayer *>(ptr->data)->wrap();
   blender::Span<FramesMapKey> sorted_keys = layer.sorted_keys();
+
+  rna_iterator_array_begin(
+      iter, sorted_keys.data(), sizeof(FramesMapKey), sorted_keys.size(), false, nullptr);
 }
 
 static void rna_iterator_grease_pencil_frames_end(CollectionPropertyIterator *iter,
@@ -256,10 +259,10 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   prop = RNA_def_property(srna, "frames", PROP_COLLECTION, PROP_NONE);
   RNA_def_property_struct_type(prop, "GreasePencilFrame");
   RNA_def_property_collection_funcs(prop,
-                                    "rna_iterator_grease_pencil_frames_begin",   
-                                    "rna_iterator_grease_pencil_frames_next",    
-                                    "rna_iterator_grease_pencil_frames_end",     
-                                    "rna_iterator_grease_pencil_frames_get",     
+                                    "rna_iterator_grease_pencil_frames_begin",
+                                    "rna_iterator_grease_pencil_frames_next",
+                                    "rna_iterator_grease_pencil_frames_end",
+                                    "rna_iterator_grease_pencil_frames_get",
                                     "rna_iterator_grease_pencil_frames_length",
                                     nullptr,
                                     nullptr,
