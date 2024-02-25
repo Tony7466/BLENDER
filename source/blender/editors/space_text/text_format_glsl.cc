@@ -27,6 +27,7 @@
  */
 static const char *text_format_glsl_literals_builtinfunc_data[] = {
     /* Force single column, sorted list. */
+    /* clang-format off */
     "abs",
     "acos",
     "acosh",
@@ -177,6 +178,7 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
     "unpackUnorm2x16",
     "unpackUnorm4x8",
     "usubBorrow",
+    /* clang-format on */
 };
 static const Span<const char *> text_format_glsl_literals_builtinfunc(
     text_format_glsl_literals_builtinfunc_data,
@@ -188,6 +190,7 @@ static const Span<const char *> text_format_glsl_literals_builtinfunc(
  */
 static const char *text_format_glsl_literals_reserved_data[] = {
     /* Force single column, sorted list. */
+    /* clang-format off */
     "attribute",
     "bool",
     "break",
@@ -277,8 +280,18 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "void",
     "volatile",
     "while",
+    /* clang-format on */
+};
+static const Span<const char *> text_format_glsl_literals_reserved(
+    text_format_glsl_literals_reserved_data, ARRAY_SIZE(text_format_glsl_literals_reserved_data));
 
-    /* Built-In Variable */
+/**
+ * GLSL special variables.
+ * https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.4.60.pdf
+ */
+static const char *text_format_glsl_literals_specialvar_data[] = {
+    /* Force single column , sorted list */
+    /* clang-format off */
     "gl_ClipDistance",
     "gl_FragCoord",
     "gl_FragDepth",
@@ -308,17 +321,7 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "gl_ViewportIndex",
     "gl_WorkGroupID",
     "gl_WorkGroupSize",
-};
-static const Span<const char *> text_format_glsl_literals_reserved(
-    text_format_glsl_literals_reserved_data, ARRAY_SIZE(text_format_glsl_literals_reserved_data));
-
-/* GLSL shader types */
-static const char *text_format_glsl_literals_specialvar_data[] = {
-    /* Force single column , sorted list */
-    "displacement",
-    "shader",
-    "surface",
-    "volume",
+    /* clang-format on */
 };
 static const Span<const char *> text_format_glsl_literals_specialvar(
     text_format_glsl_literals_specialvar_data,
