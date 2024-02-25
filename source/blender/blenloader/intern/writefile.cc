@@ -756,46 +756,42 @@ struct BlendWriter {
  private:
   void write(const void *data, const int64_t size, const BlendWriteBufferBorrow borrow)
   {
-    switch (borrow) {
-      case BlendWriteBufferBorrow::Borrowed: {
-        this->buffers.append({static_cast<const std::byte *>(data), size});
-        break;
+    const bool use_borrow = borrow == BlendWriteBufferBorrow::Borrowed && size > 1024;
+    if (use_borrow) {
+      this->buffers.append({static_cast<const std::byte *>(data), size});
+      return;
+    }
+    int64_t remaining_size = size;
+    while (remaining_size > 0) {
+      if (this->remaining_capacity == 0) {
+        const int64_t alloc_size = std::max(remaining_size, this->next_min_alloc_size);
+        this->current_buffer = static_cast<std::byte *>(MEM_mallocN(alloc_size, __func__));
+        this->remaining_capacity = alloc_size;
+        this->owned_buffers.append(this->current_buffer);
+        this->next_min_alloc_size = std::min<int64_t>(2 * this->next_min_alloc_size, 1024 * 1024);
       }
-      case BlendWriteBufferBorrow::NotBorrowed: {
-        int64_t remaining_size = size;
-        while (remaining_size > 0) {
-          if (this->remaining_capacity == 0) {
-            const int64_t alloc_size = std::max(remaining_size, this->next_min_alloc_size);
-            this->current_buffer = static_cast<std::byte *>(MEM_mallocN(alloc_size, __func__));
-            this->remaining_capacity = alloc_size;
-            this->owned_buffers.append(this->current_buffer);
-            this->next_min_alloc_size = std::min<int64_t>(2 * this->next_min_alloc_size, 4000);
-          }
-          const int64_t copy_size = std::min(remaining_size, this->remaining_capacity);
-          memcpy(this->current_buffer, data, copy_size);
+      const int64_t copy_size = std::min(remaining_size, this->remaining_capacity);
+      memcpy(this->current_buffer, data, copy_size);
 
-          const blender::Span<std::byte> copied_data{this->current_buffer, copy_size};
+      const blender::Span<std::byte> copied_data{this->current_buffer, copy_size};
 
-          if (buffers.is_empty()) {
-            buffers.append({copied_data});
-          }
-          else {
-            blender::Span<std::byte> &last_buffer = buffers.last();
-            if (last_buffer.end() == copied_data.begin()) {
-              last_buffer = {last_buffer.data(), last_buffer.size() + copy_size};
-            }
-            else {
-              buffers.append({copied_data});
-            }
-          }
-
-          this->current_buffer += copy_size;
-          this->remaining_capacity -= copy_size;
-          data = POINTER_OFFSET(data, copy_size);
-          remaining_size -= copy_size;
+      if (buffers.is_empty()) {
+        buffers.append({copied_data});
+      }
+      else {
+        blender::Span<std::byte> &last_buffer = buffers.last();
+        if (last_buffer.end() == copied_data.begin()) {
+          last_buffer = {last_buffer.data(), last_buffer.size() + copy_size};
         }
-        break;
+        else {
+          buffers.append({copied_data});
+        }
       }
+
+      this->current_buffer += copy_size;
+      this->remaining_capacity -= copy_size;
+      data = POINTER_OFFSET(data, copy_size);
+      remaining_size -= copy_size;
     }
   }
 };
