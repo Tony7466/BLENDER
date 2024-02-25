@@ -274,12 +274,15 @@ GPUIndexBuf *GPU_indexbuf_build_curves_on_device(GPUPrimType prim_type,
   GPU_memory_barrier(GPU_BARRIER_BUFFER_UPDATE);
   ib = GPU_indexbuf_build_on_device(curves_num * dispatch_x_dim);
   int resolution;
-  if (tris)
+  if (tris) {
     resolution = 6;
-  else if (lines)
+  }
+  else if (lines) {
     resolution = 2;
-  else
+  }
+  else {
     resolution = 1;
+  }
   GPU_shader_uniform_1i(shader, "elements_per_curve", dispatch_x_dim / resolution);
   GPU_shader_uniform_1i(shader, "ncurves", curves_num);
   GPU_indexbuf_bind_as_ssbo(ib, GPU_shader_get_ssbo_binding(shader, "out_indices"));
