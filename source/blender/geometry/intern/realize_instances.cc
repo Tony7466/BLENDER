@@ -332,7 +332,7 @@ static void realize_collections(Collection *collection, bke::Instances *instance
     float4x4 transform = float4x4::identity();
     transform.location() -= float3(collection->instance_offset);
     transform *= child_object->object_to_world();
-    instances->add_instance(handle, transform);instances->add_instance(handle, transform);
+    instances->add_instance(handle, transform);
   }
 }
 
