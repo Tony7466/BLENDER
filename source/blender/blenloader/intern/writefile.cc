@@ -95,6 +95,7 @@
 #include "BLI_linklist.h"
 #include "BLI_math_base.h"
 #include "BLI_mempool.h"
+#include "BLI_task.hh"
 #include "BLI_threads.h"
 
 #include "MEM_guardedalloc.h" /* MEM_freeN */
@@ -1368,20 +1369,23 @@ static bool write_file_handle(Main *mainvar,
   }
 
   /* Serialize IDs. */
-  for (IDWithWriter &id_with_writer : ids_to_write) {
-    ID *id = id_with_writer.id;
-    BlendWriter *writer = id_with_writer.writer.get();
-    const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
-    BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
-    id_buffer_init_for_id_type(id_buffer, id_type);
-    id_buffer_init_from_id(id_buffer, id, BLO_write_is_undo(writer));
+  blender::threading::parallel_for(
+      ids_to_write.index_range(), 1, [&](const blender::IndexRange id_range) {
+        for (IDWithWriter &id_with_writer : ids_to_write.as_mutable_span().slice(id_range)) {
+          ID *id = id_with_writer.id;
+          BlendWriter *writer = id_with_writer.writer.get();
+          const IDTypeInfo *id_type = BKE_idtype_get_info_from_id(id);
+          BLO_Write_IDBuffer *id_buffer = BLO_write_allocate_id_buffer();
+          id_buffer_init_for_id_type(id_buffer, id_type);
+          id_buffer_init_from_id(id_buffer, id, BLO_write_is_undo(writer));
 
-    if (id_type->blend_write != nullptr) {
-      id_type->blend_write(writer, id_buffer->temp_id, id);
-    }
+          if (id_type->blend_write != nullptr) {
+            id_type->blend_write(writer, id_buffer->temp_id, id);
+          }
 
-    BLO_write_destroy_id_buffer(&id_buffer);
-  }
+          BLO_write_destroy_id_buffer(&id_buffer);
+        }
+      });
 
   for (ID *id : ids_to_end_override_storage) {
     BKE_lib_override_library_operations_store_end(override_storage, id);
