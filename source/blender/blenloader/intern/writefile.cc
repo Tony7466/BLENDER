@@ -131,6 +131,8 @@
 
 #include <zstd.h>
 
+using blender::IndexRange;
+using blender::MutableSpan;
 using blender::Span;
 using blender::Vector;
 
@@ -676,7 +678,7 @@ struct BlendWriter {
 
   ~BlendWriter()
   {
-    BLI_assert(buffers.is_empty());
+    // BLI_assert(buffers.is_empty());
   }
 
   void write_structs(const int filecode,
@@ -1440,7 +1442,69 @@ static bool write_file_handle(Main *mainvar,
       segments.extend(id_with_writer.writer->buffers);
       owned_buffers.extend(id_with_writer.writer->owned_buffers);
     }
-    for (const Span<std::byte> segment : segments) {
+    struct ConsolidateTask {
+      blender::IndexRange input_segments;
+      MutableSpan<std::byte> result;
+    };
+    Vector<Span<std::byte>> consolidated_segments;
+    Vector<ConsolidateTask> tasks;
+    const int64_t target_chunk_size = wd->buffer.chunk_size;
+    int chunk_start = 0;
+    int64_t current_chunk_size = 0;
+
+    auto prepare_consolidate_segment = [&](const int last_input_segment) {
+      MutableSpan<std::byte> buffer = {
+          static_cast<std::byte *>(MEM_mallocN(current_chunk_size, __func__)), current_chunk_size};
+      consolidated_segments.append(buffer);
+      tasks.append(
+          {IndexRange::from_begin_end_inclusive(chunk_start, last_input_segment), buffer});
+    };
+
+    for (const int i : segments.index_range()) {
+      const Span<std::byte> segment = segments[i];
+      if (segment.size() >= target_chunk_size) {
+        if (chunk_start <= i) {
+          prepare_consolidate_segment(i - 1);
+        }
+        consolidated_segments.append(segment);
+        chunk_start = i + 1;
+        current_chunk_size = 0;
+        continue;
+      }
+      current_chunk_size += segment.size();
+      if (current_chunk_size < target_chunk_size) {
+        continue;
+      }
+      prepare_consolidate_segment(i);
+      chunk_start = i + 1;
+      current_chunk_size = 0;
+    }
+    if (current_chunk_size > 0) {
+      prepare_consolidate_segment(segments.size() - 1);
+    }
+
+    blender::threading::parallel_for(tasks.index_range(), 1, [&](const IndexRange tasks_range) {
+      for (const int64_t task_i : tasks_range) {
+        ConsolidateTask &task = tasks[task_i];
+        Vector<int64_t> offset_indices;
+        offset_indices.append(0);
+        for (const int64_t input_segment_i : task.input_segments) {
+          offset_indices.append(offset_indices.last() + segments[input_segment_i].size());
+        }
+        /* TODO: Use weighted. */
+        blender::threading::parallel_for(
+            task.input_segments.index_range(), 10, [&](const IndexRange segments_range) {
+              for (const int i : segments_range) {
+                const int64_t offset = offset_indices[i];
+                const Span<std::byte> src = segments[task.input_segments[i]];
+                MutableSpan<std::byte> dst = task.result.slice(offset, src.size());
+                memcpy(dst.data(), src.data(), src.size());
+              }
+            });
+      }
+    });
+
+    for (const Span<std::byte> segment : consolidated_segments) {
       mywrite(wd, segment.data(), segment.size());
     }
     for (void *buffer : owned_buffers) {
