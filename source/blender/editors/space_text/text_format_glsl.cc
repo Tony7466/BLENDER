@@ -22,6 +22,7 @@
  * \{ */
 
 static const char *text_format_glsl_literals_builtinfunc_data[] = {
+    /* Force single column, sorted list. */
     /* clang-format off */
     "attribute"
     "bool"
@@ -115,7 +116,7 @@ static const char *text_format_glsl_literals_builtinfunc_data[] = {
     /* clang-format on */
 };
 static const Span<const char *> text_format_glsl_literals_builtinfunc(
-    text_format_glsl_literals_builtinfunc_data, 
+    text_format_glsl_literals_builtinfunc_data,
     ARRAY_SIZE(text_format_glsl_literals_builtinfunc_data));
 
 static const char *text_format_glsl_literals_reserved_data[] = {
@@ -271,7 +272,7 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     "unpackUnorm4x8"
     "usubBorrow"
     
-  /* Add in futur verion when GLSL 4.5 support in Blender */
+  /* Add in future verion when GLSL 4.5 support in Blender */
   /* "textureSamples" */
 
   /* Built-In Variable */
@@ -308,8 +309,7 @@ static const char *text_format_glsl_literals_reserved_data[] = {
     /* clang-format on */
 };
 static const Span<const char *> text_format_glsl_literals_reserved(
-    text_format_glsl_literals_reserved_data,
-    ARRAY_SIZE(text_format_glsl_literals_reserved_data));
+    text_format_glsl_literals_reserved_data, ARRAY_SIZE(text_format_glsl_literals_reserved_data));
 
 /* GLSL shader types */
 static const char *text_format_glsl_literals_specialvar_data[] = {
@@ -322,8 +322,8 @@ static const char *text_format_glsl_literals_specialvar_data[] = {
     "volume",
     /* clang-format on */
 };
-static const Span<const char*> text_format_glsl_literals_specialvar(
-    text_format_glsl_literals_specialvar_data, 
+static const Span<const char *> text_format_glsl_literals_specialvar(
+    text_format_glsl_literals_specialvar_data,
     ARRAY_SIZE(text_format_glsl_literals_specialvar_data));
 
 static const char *text_format_glsl_literals_preprocessor[] = {
@@ -337,64 +337,62 @@ static const char *text_format_glsl_literals_preprocessor[] = {
     "ifdef"
     "ifndef"
     "pragma"
-    "version"
-};
-static const Span<const char *>text_format_glsl_literals_preprocessor(
-    text_format_glsl_literals_preprocessor,
-    ARRAY_SIZE(text_format_glsl_literals_preprocessor));
+    "version"};
+static const Span<const char *> text_format_glsl_literals_preprocessor(
+    text_format_glsl_literals_preprocessor, ARRAY_SIZE(text_format_glsl_literals_preprocessor));
 /*---------------------------------------------------------------------*/
-/* name local functions 
-*/
+/* name local functions
+ */
 
 static int txtfmt_glsl_find_builtinfunc(const char *string)
 {
-    const int i = text_format_string_literal_find(text_format_glsl_literals_builtinfunc, string);
+  const int i = text_format_string_literal_find(text_format_glsl_literals_builtinfunc, string);
 
-    if (i == 0 || text_check_identifier(string[i])){
-        return -1;
-    }
-    return i;
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
 }
 
-static int txtfmt_glsl_find_reserved(const char *string) 
+static int txtfmt_glsl_find_reserved(const char *string)
 {
-    const int i = text_format_string_literal_find(text_format_glsl_literals_reserved , string);
+  const int i = text_format_string_literal_find(text_format_glsl_literals_reserved, string);
 
-    if (i == 0 || text_check_identifier(string[i])){
-        return -1;
-    }
-    return i;
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
 }
 static int txtfmt_glsl_find_specialvar(const char *string)
 {
-    const int i = text_format_string_literal_find(text_format_glsl_literals_specialvar, string);
+  const int i = text_format_string_literal_find(text_format_glsl_literals_specialvar, string);
 
-    if (i == 0 || text_check_identifier(string[i])){
-        return -1;
-    }
-    return i;
+  if (i == 0 || text_check_identifier(string[i])) {
+    return -1;
+  }
+  return i;
 }
 static int txtfmt_glsl_find_preprocessor(const char *string)
 {
-    const int i = text_format_string_literal_find(text_format_glsl_literals_preprocessor);
+  const int i = text_format_string_literal_find(text_format_glsl_literals_preprocessor);
 
-    if (string[0] == '#'){
-        int i = 1;
-        while (text_check_whitespace(string[i])){
-            i++;
-        }
-        while (text_check_identifier(string[i])){
-            i++;
-        }
-        return i;
+  if (string[0] == '#') {
+    int i = 1;
+    while (text_check_whitespace(string[i])) {
+      i++;
     }
-    return -1;
+    while (text_check_identifier(string[i])) {
+      i++;
+    }
+    return i;
+  }
+  return -1;
 }
 static char txtfmt_glsl_format_identifier(const char *str)
 {
-    char fmt;
+  char fmt;
 
-    /* clang-format off */
+  /* clang-format off */
 
   if        (txtfmt_glsl_find_specialvar(str)    != -1) {fmt = FMT_TYPE_SPECIAL;
   } else if (txtfmt_glsl_find_builtinfunc(str)   != -1) {fmt = FMT_TYPE_KEYWORD;
@@ -402,14 +400,15 @@ static char txtfmt_glsl_format_identifier(const char *str)
   } else if (txtfmt_glsl_find_preprocessor(str)  != -1) {fmt = FMT_TYPE_DIRECTIVE;
   } else                                                {fmt = FMT_TYPE_DEFAULT;
   }
-    /* clang-format on */
 
-    return fmt;
+  /* clang-format on */
+
+  return fmt;
 }
 /*-----------------------------------------------------------------*/
 /* name format line implementation
-*/
-static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool do_next)
+ */
+static void txtfmt_glsl_format_line(SpaceText *st, TextLine *line, const bool do_next)
 {
   FlattenString fs;
   const char *str;
@@ -575,7 +574,7 @@ static void txtfmt_glsl_format_line(SpaceText *st, TextLine * line, const bool d
 /** \} */
 
 /*-----------------------------------------------------------------*/
-/** \name registration 
+/** \name registration
  * \{ */
 
 void ED_text_format_register_glsl()
@@ -590,10 +589,12 @@ void ED_text_format_register_glsl()
 
   ED_text_format_register(&tft);
 
-  BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_builtinfunc));
+  BLI_assert(
+      text_format_string_literals_check_sorted_array(text_format_glsl_literals_builtinfunc));
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_reserved));
   BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_specialvar));
-  BLI_assert(text_format_string_literals_check_sorted_array(text_format_glsl_literals_preprocessor));
+  BLI_assert(
+      text_format_string_literals_check_sorted_array(text_format_glsl_literals_preprocessor));
 }
 
 /** \} */
