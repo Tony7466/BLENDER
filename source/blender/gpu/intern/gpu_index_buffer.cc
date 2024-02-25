@@ -264,14 +264,13 @@ GPUIndexBuf *GPU_indexbuf_build_curves_on_device(GPUPrimType prim_type,
     grid_y = min_uu(grid_y, max_grid_y);
     grid_z = min_uu(grid_z, max_grid_z);
   }
-  GPUIndexBuf *ib;
   bool tris = (prim_type == GPU_PRIM_TRIS);
   bool lines = (prim_type == GPU_PRIM_LINES);
   GPUShader *shader = GPU_shader_get_builtin_shader(
       tris ? GPU_SHADER_INDEXBUF_TRIS :
              (lines ? GPU_SHADER_INDEXBUF_LINES : GPU_SHADER_INDEXBUF_POINTS));
   GPU_shader_bind(shader);
-  ib = GPU_indexbuf_build_on_device(curves_num * dispatch_x_dim);
+  GPUIndexBuf *ibo = GPU_indexbuf_build_on_device(curves_num * dispatch_x_dim);
   int resolution;
   if (tris) {
     resolution = 6;
@@ -284,12 +283,12 @@ GPUIndexBuf *GPU_indexbuf_build_curves_on_device(GPUPrimType prim_type,
   }
   GPU_shader_uniform_1i(shader, "elements_per_curve", dispatch_x_dim / resolution);
   GPU_shader_uniform_1i(shader, "ncurves", curves_num);
-  GPU_indexbuf_bind_as_ssbo(ib, GPU_shader_get_ssbo_binding(shader, "out_indices"));
+  GPU_indexbuf_bind_as_ssbo(ibo, GPU_shader_get_ssbo_binding(shader, "out_indices"));
   GPU_compute_dispatch(shader, grid_x, grid_y, grid_z);
 
   GPU_memory_barrier(GPU_BARRIER_ELEMENT_ARRAY);
   GPU_shader_unbind();
-  return ib;
+  return ibo;
 }
 
 /** \} */
