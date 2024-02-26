@@ -109,6 +109,14 @@ static void modify_curves(ModifierData &md, const ModifierEvalContext &ctx, Draw
   auto &amd = reinterpret_cast<GreasePencilArmatureModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
+  /* The influence flag is where the "invert" flag is stored,
+   * but armature functions expect "deformflags" to have the flag set as well.
+   * Copy to deformflag here to keep old functions happy. */
+  const int deformflag = amd.deformflag |
+                         (amd.influence.flag & GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP ?
+                              ARM_DEF_INVERT_VGROUP :
+                              0);
+
   IndexMaskMemory mask_memory;
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, curves, amd.influence, mask_memory);
@@ -126,7 +134,7 @@ static void modify_curves(ModifierData &md, const ModifierEvalContext &ctx, Draw
                                            std::nullopt,
                                            std::nullopt,
                                            dverts.slice(points),
-                                           amd.deformflag,
+                                           deformflag,
                                            amd.influence.vertex_group_name);
   });
 
@@ -137,20 +145,13 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 bke::GeometrySet *geometry_set)
 {
-  auto *amd = reinterpret_cast<GreasePencilArmatureModifierData *>(md);
+  const auto *amd = reinterpret_cast<GreasePencilArmatureModifierData *>(md);
 
   if (!geometry_set->has_grease_pencil()) {
     return;
   }
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
   const int frame = grease_pencil.runtime->eval_frame;
-
-  /* The influence flag is where the "invert" flag is stored,
-   * but armature functions expect "deformflags" to have the flag set as well.
-   * Copy to deformflag here to keep old functions happy. */
-  SET_FLAG_FROM_TEST(amd->deformflag,
-                     amd->influence.flag & GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP,
-                     ARM_DEF_INVERT_VGROUP);
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
