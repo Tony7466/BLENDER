@@ -89,21 +89,44 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static Array<int> points_per_curve_concurrent(const int stroke_count,
+static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
                                               const IndexMask &selection,
-                                              const OffsetIndices<int> &points_by_curve,
+                                              const int time_alignment,
                                               const int transition,
                                               const float factor,
                                               int &out_curves_num,
                                               int &out_points_num)
 {
+  const int stroke_count = curves.curves_num();
+  const OffsetIndices<int> &points_by_curve = curves.points_by_curve();
+
+  curves.ensure_evaluated_lengths();
+  float max_length = 0;
+  for (const int stroke : curves.curves_range()) {
+    const float len = curves.evaluated_lengths_for_curve(stroke, false).last();
+    max_length = math::max(max_length, len);
+  }
+
   out_curves_num = out_points_num = 0;
   const float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
-                                   factor :
-                                   (1.0f - factor);
+                                   math::clamp(factor, 0.0f, 1.0f) :
+                                   math::clamp(1.0f - factor, 0.0f, 1.0f);
+
+  auto get_factor = [&](const float factor_to_keep, const int index) {
+    const float max_factor = max_length / curves.evaluated_lengths_for_curve(index, false).last();
+    if (time_alignment == MOD_GREASE_PENCIL_BUILD_TIMEALIGN_START) {
+      return std::clamp(factor_to_keep * max_factor, 0.0f, 1.0f);
+    }
+    /* Else: (#MOD_GREASE_PENCIL_BUILD_TIMEALIGN_END). */
+    const float min_factor = max_factor - 1.0f;
+    const float use_factor = factor_to_keep * max_factor;
+    return std::clamp(use_factor - min_factor, 0.0f, 1.0f);
+  };
+
   Array<int> result(stroke_count);
   for (const int i : IndexRange(stroke_count)) {
-    const int points = points_by_curve[i].size() * (selection[i] ? factor_to_keep : 1.0f);
+    const int local_factor = (selection[i] ? get_factor(factor_to_keep, i) : 1.0f);
+    const int points = points_by_curve[i].size() * local_factor;
     result[i] = points;
     out_points_num += points;
     if (points) {
@@ -115,21 +138,18 @@ static Array<int> points_per_curve_concurrent(const int stroke_count,
 
 static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
                                             const IndexMask &selection,
+                                            const int time_alignment,
                                             const int transition,
                                             const float factor)
 {
   int dst_curves_num, dst_points_num;
-  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  Array<int> points_per_curve = points_per_curve_concurrent(curves.curves_num(),
-                                                            selection,
-                                                            points_by_curve,
-                                                            transition,
-                                                            factor,
-                                                            dst_curves_num,
-                                                            dst_points_num);
+  Array<int> points_per_curve = points_per_curve_concurrent(
+      curves, selection, time_alignment, transition, factor, dst_curves_num, dst_points_num);
   if (dst_curves_num == 0) {
     return {};
   }
+
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
   const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
 
@@ -161,14 +181,16 @@ static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
   return dst_curves;
 }
 
-static bool points_info_sequential(const int stroke_count,
+static void points_info_sequential(const bke::CurvesGeometry &curves,
                                    const IndexMask &selection,
-                                   const OffsetIndices<int> &points_by_curve,
                                    const int transition,
                                    const float factor,
                                    int &out_curves_num,
                                    int &out_points_num)
 {
+  const int stroke_count = curves.curves_num();
+  const OffsetIndices<int> &points_by_curve = curves.points_by_curve();
+
   out_curves_num = out_points_num = 0;
   const float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
                                    factor :
@@ -193,7 +215,6 @@ static bool points_info_sequential(const int stroke_count,
       out_curves_num++;
     }
   }
-  return out_curves_num != 0;
 }
 
 static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
@@ -202,17 +223,12 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
                                             const float factor)
 {
   int dst_curves_num, dst_points_num;
-  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  Array<int> points_per_curve = points_info_sequential(curves.curves_num(),
-                                                       selection,
-                                                       points_by_curve,
-                                                       transition,
-                                                       factor,
-                                                       dst_curves_num,
-                                                       dst_points_num);
+  points_info_sequential(curves, selection, transition, factor, dst_curves_num, dst_points_num);
   if (dst_curves_num == 0) {
     return {};
   }
+
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
   const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
 
@@ -222,7 +238,6 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
 
   int next_curve = 1, next_point = 0;
   selection.foreach_index([&](const int stroke) {
-    ;
     for (const int point : points_by_curve[stroke]) {
       dst_to_src_point[next_point] = point;
       next_point++;
@@ -248,10 +263,9 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
     next_curve++;
   });
 
-  BLI_assert(next_curve == dst_curves_num);
+  BLI_assert(next_curve == (dst_curves_num + 1));
   BLI_assert(next_point == dst_points_num);
 
-  OffsetIndices dst_indices = offset_indices::accumulate_counts_to_offsets(dst_offsets);
   dst_curves.offsets_for_write() = dst_offsets;
 
   const bke::AttributeAccessor attributes = curves.attributes();
@@ -260,6 +274,24 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
   gather_attributes(attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
 
   return dst_curves;
+}
+
+static float get_factor(const int time_mode,
+                        const int current_frame,
+                        const int start_frame,
+                        const int length,
+                        const float percentage)
+{
+  if (time_mode == MOD_GREASE_PENCIL_BUILD_TIMEMODE_FRAMES) {
+    return float(current_frame - start_frame) / length;
+  }
+  else if (time_mode == MOD_GREASE_PENCIL_BUILD_TIMEMODE_PERCENTAGE) {
+    return percentage;
+  }
+  else {
+    // TODO: Find a way to implement MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED...
+    return 0;
+  }
 }
 
 static void deform_drawing(const ModifierData &md,
@@ -277,6 +309,23 @@ static void deform_drawing(const ModifierData &md,
   IndexMaskMemory memory;
   const IndexMask selection = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
+
+  const float factor = get_factor(
+      mmd.time_mode, current_time, mmd.start_delay, mmd.length, mmd.percentage_fac);
+
+  if (mmd.mode == MOD_GREASE_PENCIL_BUILD_MODE_CONCURRENT) {
+    curves = build_concurrent(curves, selection, mmd.time_alignment, mmd.transition, factor);
+  }
+  else if (mmd.mode == MOD_GREASE_PENCIL_BUILD_MODE_SEQUENTIAL) {
+    curves = build_sequential(curves, selection, mmd.transition, factor);
+  }
+  else if (mmd.mode == MOD_GREASE_PENCIL_BUILD_MODE_ADDITIVE) {
+    // Todo: I'm not sure what this mode means, looks like the same to me.
+    // The original code path seems to indicate it will only build "extra stroke"
+    // compared to the previous grease pencil frame, but it's by counting strokes
+    // only, so it doesn't guarantee matching strokes...?
+    curves = build_sequential(curves, selection, mmd.transition, factor);
+  }
 
   drawing.tag_topology_changed();
 }
