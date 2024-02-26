@@ -42,7 +42,8 @@ struct LocalRowData {
 };
 
 struct LocalData {
-  Map<int, LocalRowData> rows;
+  LinearAllocator<> allocator;
+  Map<int, destruct_ptr<LocalRowData>> rows;
 };
 
 static int2 uv_to_cell_key(const float2 &uv, const int resolution)
@@ -80,7 +81,7 @@ BLI_NOINLINE static void sort_into_y_buckets(
     const int resolution,
     threading::EnumerableThreadSpecific<LocalData> &data_per_thread)
 {
-  SCOPED_TIMER("sort into y buckets");
+  SCOPED_TIMER_AVERAGED("sort into y buckets");
   corner_tris_mask.foreach_segment(GrainSize(512), [&](const IndexMaskSegment tris) {
     LocalData &local_data = data_per_thread.local();
     for (const int tri_i : tris) {
@@ -93,7 +94,8 @@ BLI_NOINLINE static void sort_into_y_buckets(
       for (const int key_y :
            IndexRange::from_begin_end_inclusive(key_bounds.min.y, key_bounds.max.y))
       {
-        LocalRowData &row = local_data.rows.lookup_or_add_default(key_y);
+        LocalRowData &row = *local_data.rows.lookup_or_add_cb(
+            key_y, [&]() { return local_data.allocator.construct<LocalRowData>(); });
         row.tri_ranges.append(tri_with_range);
         row.x_min = std::min<int>(row.x_min, x_range.first());
         row.x_max = std::max<int>(row.x_max, x_range.last());
@@ -107,15 +109,15 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
                                    const Bounds<int> y_bounds,
                                    ReverseUVSampler::LookupGrid &lookup_grid)
 {
-  SCOPED_TIMER("fill rows");
+  SCOPED_TIMER_AVERAGED("fill rows");
   threading::parallel_for(all_ys.index_range(), 8, [&](const IndexRange all_ys_range) {
     for (const int y : all_ys.slice(all_ys_range)) {
       Row &row = lookup_grid.rows[y - y_bounds.min];
 
       Vector<const LocalRowData *, 32> local_rows;
       for (const LocalData *local_data : local_data_vec) {
-        if (const LocalRowData *local_row = local_data->rows.lookup_ptr(y)) {
-          local_rows.append(local_row);
+        if (const destruct_ptr<LocalRowData> *local_row = local_data->rows.lookup_ptr(y)) {
+          local_rows.append(local_row->get());
         }
       }
 
