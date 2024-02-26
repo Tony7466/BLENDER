@@ -28,7 +28,9 @@ bke::VolumeGridData *fog_volume_grid_add_from_points(Volume *volume,
                                                      float voxel_size,
                                                      float density);
 
-bke::VolumeGrid<float> points_to_sdf_grid(Span<float3> positions, Span<float> radii);
+bke::VolumeGrid<float> points_to_sdf_grid(Span<float3> positions,
+                                          Span<float> radii,
+                                          float voxel_size);
 
 #endif
 }  // namespace blender::geometry

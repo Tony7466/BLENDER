@@ -53,19 +53,6 @@ static void gather_radii_from_component(const GeometryComponent &component,
   evaluator.evaluate();
 }
 
-static void convert_to_grid_index_space(const float voxel_size,
-                                        MutableSpan<float3> positions,
-                                        MutableSpan<float> radii)
-{
-  const float voxel_size_inv = 1.0f / voxel_size;
-  for (const int i : positions.index_range()) {
-    positions[i] *= voxel_size_inv;
-    /* Better align generated grid with source points. */
-    positions[i] -= float3(0.5f);
-    radii[i] *= voxel_size_inv;
-  }
-}
-
 /**
  * Initializes the VolumeComponent of a GeometrySet with a new Volume from points.
  * The grid class should be either openvdb::GRID_FOG_VOLUME or openvdb::GRID_LEVEL_SET.
@@ -95,9 +82,7 @@ static bke::VolumeGrid<float> points_to_grid(const GeometrySet &geometry_set,
     return {};
   }
 
-  convert_to_grid_index_space(voxel_size, positions, radii);
-
-  return geometry::points_to_sdf_grid(positions, radii);
+  return geometry::points_to_sdf_grid(positions, radii, voxel_size);
 }
 
 #endif /* WITH_OPENVDB */
