@@ -186,8 +186,11 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
   // for (const int row_i : lookup_grid_->rows.index_range()) {
   //   const Row &row = lookup_grid_->rows[row_i];
   //   fmt::println("  Row {}:", row_i);
-  //   for (const auto item : row.tris_by_x.items()) {
-  //     fmt::println("    {}: {}", item.key, fmt::join(item.value, ", "));
+  //   const OffsetIndices<int> offsets{row.offsets};
+  //   for (const int x_i : offsets.index_range()) {
+  //     fmt::println("    {}: {}",
+  //                  x_i + row.x_min,
+  //                  fmt::join(row.tri_indices.as_span().slice(offsets[x_i]), ", "));
   //   }
   // }
 }
