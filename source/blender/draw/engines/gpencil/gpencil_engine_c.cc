@@ -685,8 +685,6 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     int vfirst = -1;
     int vcount = 0;
 
-    int v_offset = 0;
-
     const auto gpencil_drawcall_flush = [&]() {
 #if !DISABLE_BATCHING
       if (geom != nullptr) {
@@ -715,6 +713,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
       vcount = v_first + v_count - vfirst;
     };
 
+    int v_offset = 0;
     const Vector<DrawingInfo> drawings = retrieve_visible_drawings(*pd->scene, grease_pencil);
     const Span<const Layer *> layers = grease_pencil.layers();
     for (const DrawingInfo info : drawings) {
@@ -825,7 +824,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
         if (show_fill) {
           int v_first = v_offset * 3;
           int v_count = num_triangles * 3;
-          gpencil_drawcall_add(new_geom, v_first, v_count);
+          gpencil_drawcall_add(geom, v_first, v_count);
         }
 
         v_offset += num_triangles;
@@ -833,7 +832,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
         if (show_stroke) {
           int v_first = v_offset * 3;
           int v_count = stroke_vert_count * 2 * 3;
-          gpencil_drawcall_add(new_geom, v_first, v_count);
+          gpencil_drawcall_add(geom, v_first, v_count);
         }
 
         v_offset += stroke_vert_count * 2;
