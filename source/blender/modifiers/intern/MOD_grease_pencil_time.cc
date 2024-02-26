@@ -490,16 +490,12 @@ static void modify_geometry_set(ModifierData *md,
   auto *tmd = reinterpret_cast<GreasePencilTimeModifierData *>(md);
   const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
   /* Just include the current frame for now. The method can be applied to arbitrary ranges. */
-  // const FrameRange dst_keyframe_range = {scene->r.sfra, scene->r.efra};
   const FrameRange dst_keyframe_range = {scene->r.cfra, scene->r.cfra};
 
   if (!geometry_set->has_grease_pencil()) {
     return;
   }
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
-  // const int frame = grease_pencil.runtime->eval_frame;
-
-  //   const PatternInfo pattern_info = get_pattern_info(*tmd);
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
@@ -512,61 +508,9 @@ static void modify_geometry_set(ModifierData *md,
 
     Map<int, GreasePencilFrame> new_frames;
     fill_scene_timeline(*tmd, *ctx, src_frames, sorted_keys, dst_keyframe_range, new_frames);
-
-#if 0
-    switch (GreasePencilTimeModifierMode(tmd->mode)) {
-      case MOD_GREASE_PENCIL_TIME_MODE_NORMAL: {
-        if (use_loop) {
-          const FrameRange loop_range =
-        }
-        else {
-          remap_frames_linear(layer->frames(),
-                              layer->sorted_keys(),
-                              dst_range,
-                              shift + tmd->offset,
-                              tmd->frame_scale,
-                              new_frames);
-        }
-        break;
-      }
-      case MOD_GREASE_PENCIL_TIME_MODE_REVERSE: {
-        remap_frames_linear(layer->frames(),
-                            layer->sorted_keys(),
-                            dst_range,
-                            dst_range.efra + shift + tmd->offset,
-                            -tmd->frame_scale,
-                            new_frames);
-        break;
-      }
-      case MOD_GREASE_PENCIL_TIME_MODE_FIX:
-        break;
-      case MOD_GREASE_PENCIL_TIME_MODE_PINGPONG: {
-        // const int periods = 3;
-        // IndexRange dst_range();
-        // for (const int i : IndexRange(periods)) {
-        //   remap_frames_linear(layer->frames(),
-        //                       layer->sorted_keys(),
-        //                       dst_range,
-        //                       dst_range.efra + shift + tmd->offset,
-        //                       -tmd->frame_scale,
-        //                       new_frames);
-        // }
-        break;
-      }
-      case MOD_GREASE_PENCIL_TIME_MODE_CHAIN:
-        break;
-    }
-#endif
     layer->frames_for_write() = std::move(new_frames);
-
     layer->tag_frames_map_keys_changed();
   }
-
-  // const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
-  //     grease_pencil, layer_mask, frame);
-  //   threading::parallel_for_each(
-  //       drawings, [&](Drawing *drawing) { modify_drawing(*tmd, *ctx, pattern_info, *drawing);
-  //       });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
