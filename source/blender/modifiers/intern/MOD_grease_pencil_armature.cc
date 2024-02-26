@@ -120,7 +120,6 @@ static void modify_curves(ModifierData &md, const ModifierEvalContext &ctx, Draw
   curves_mask.foreach_index(blender::GrainSize(128), [&](const int curve_i) {
     const IndexRange points = points_by_curve[curve_i];
 
-    /* deform verts */
     BKE_armature_deform_coords_with_curves(*amd.object,
                                            *ctx.object,
                                            positions.slice(points),
