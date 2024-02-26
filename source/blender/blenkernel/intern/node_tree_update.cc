@@ -153,14 +153,10 @@ static int get_internal_link_type_priority(const bNodeSocketType *from, const bN
     case SOCK_ROTATION:
       switch (from->type) {
         case SOCK_ROTATION:
-          return 5;
-        case SOCK_VECTOR:
-          return 4;
-        case SOCK_FLOAT:
           return 3;
-        case SOCK_INT:
+        case SOCK_VECTOR:
           return 2;
-        case SOCK_BOOLEAN:
+        case SOCK_FLOAT:
           return 1;
       }
       return -1;
