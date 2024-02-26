@@ -444,10 +444,11 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
     BP = line_plane_intersect(BP, dot(L, BP) > 0.0 ? L : -L, P, Ng);
   }
   else {
+    mat4 wininv = shadow_punctual_projection_perspective_inverse(light);
     TP = shadow_punctual_reconstruct_position(
-        params, light, params.uv + vec3(uv_offset, 0.0, 0.0));
+        params, wininv, light, params.uv + vec3(uv_offset, 0.0, 0.0));
     BP = shadow_punctual_reconstruct_position(
-        params, light, params.uv + vec3(0.0, uv_offset, 0.0));
+        params, wininv, light, params.uv + vec3(0.0, uv_offset, 0.0));
     /* Project the offset positions into the surface plane. */
     TP = line_plane_intersect(light._position, normalize(TP - light._position), P, Ng);
     BP = line_plane_intersect(light._position, normalize(BP - light._position), P, Ng);

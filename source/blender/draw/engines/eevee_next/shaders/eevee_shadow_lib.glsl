@@ -71,23 +71,39 @@ struct ShadowEvalResult {
  * \{ */
 
 /* TODO(fclem): Remove. Only here to avoid include order hell with common_math_lib. */
-mat4x4 shadow_projection_perspective(
-    float left, float right, float bottom, float top, float near_clip, float far_clip)
+mat4x4 shadow_projection_perspective(float side, float near_clip, float far_clip)
 {
-  float x_delta = right - left;
-  float y_delta = top - bottom;
   float z_delta = far_clip - near_clip;
 
   mat4x4 mat = mat4x4(1.0);
-  if (x_delta != 0.0 && y_delta != 0.0 && z_delta != 0.0) {
-    mat[0][0] = near_clip * 2.0 / x_delta;
-    mat[1][1] = near_clip * 2.0 / y_delta;
-    mat[2][0] = (right + left) / x_delta; /* NOTE: negate Z. */
-    mat[2][1] = (top + bottom) / y_delta;
+  if (side != 0.0 && z_delta != 0.0) {
+    mat[0][0] = near_clip / side;
+    mat[1][1] = near_clip / side;
+    mat[2][0] = 0.0;
+    mat[2][1] = 0.0;
     mat[2][2] = -(far_clip + near_clip) / z_delta;
     mat[2][3] = -1.0;
     mat[3][2] = (-2.0 * near_clip * far_clip) / z_delta;
     mat[3][3] = 0.0;
+  }
+  return mat;
+}
+
+mat4x4 shadow_projection_perspective_inverse(float side, float near_clip, float far_clip)
+{
+  float z_delta = far_clip - near_clip;
+  float d = 2.0 * near_clip * far_clip;
+
+  mat4x4 mat = mat4x4(1.0);
+  if (side != 0.0 && z_delta != 0.0) {
+    mat[0][0] = side / near_clip;
+    mat[1][1] = side / near_clip;
+    mat[2][0] = 0.0;
+    mat[2][1] = 0.0;
+    mat[2][2] = 0.0;
+    mat[2][3] = (near_clip - far_clip) / d;
+    mat[3][2] = -1.0;
+    mat[3][3] = (near_clip + far_clip) / d;
   }
   return mat;
 }
@@ -117,16 +133,25 @@ mat4 shadow_punctual_projection_perspective(LightData light)
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
   float clip_side = light.clip_side;
-  /* TODO: Could be simplified since frustum is completely symmetrical. */
-  return shadow_projection_perspective(
-      -clip_side, clip_side, -clip_side, clip_side, clip_near, clip_far);
+  return shadow_projection_perspective(clip_side, clip_near, clip_far);
 }
 
-vec3 shadow_punctual_reconstruct_position(ShadowSampleParams params, LightData light, vec3 uvw)
+mat4 shadow_punctual_projection_perspective_inverse(LightData light)
+{
+  /* Face Local (View) Space > Clip Space. */
+  float clip_far = intBitsToFloat(light.clip_far);
+  float clip_near = intBitsToFloat(light.clip_near);
+  float clip_side = light.clip_side;
+  return shadow_projection_perspective_inverse(clip_side, clip_near, clip_far);
+}
+
+vec3 shadow_punctual_reconstruct_position(ShadowSampleParams params,
+                                          mat4 wininv,
+                                          LightData light,
+                                          vec3 uvw)
 {
   vec3 clip_P = uvw * 2.0 - 1.0;
-  mat4 winmat = shadow_punctual_projection_perspective(light);
-  vec3 lP = project_point(inverse(winmat), clip_P);
+  vec3 lP = project_point(wininv, clip_P);
   int face_id = params.tilemap_index - light.tilemap_index;
   lP = shadow_punctual_face_local_to_local_position(face_id, lP);
   return mat3(light.object_mat) * lP + light._position;
