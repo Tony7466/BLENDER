@@ -14,9 +14,13 @@
 #include "BLI_utildefines.h"
 #include "DNA_listBase.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct Main;
 
-struct Global {
+typedef struct Global {
 
   /**
    * Data for the current active blend file.
@@ -24,13 +28,13 @@ struct Global {
    * Note that `CTX_data_main(C)` should be used where possible.
    * Otherwise access via #G_MAIN.
    */
-  Main *main;
+  struct Main *main;
 
   /**
    * Preview main is stored to avoid loading the preview file in multiple scenarios.
    * It is actually shared between shader node previews and asset previews.
    */
-  Main *pr_main;
+  struct Main *pr_main;
 
   /** Last saved location for images. */
   char filepath_last_image[/*FILE_MAX*/ 1024];
@@ -41,7 +45,7 @@ struct Global {
    * Strings of recently opened files to show in the file menu.
    * A list of #RecentFile read from #BLENDER_HISTORY_FILE.
    */
-  ListBase recent_files;
+  struct ListBase recent_files;
 
   /**
    * Set when Escape been pressed or `Ctrl-C` pressed in background mode.
@@ -158,7 +162,7 @@ struct Global {
   bool opengl_deprecation_usage_detected;
   const char *opengl_deprecation_usage_filename;
   int opengl_deprecation_usage_lineno;
-};
+} Global;
 
 /* **************** GLOBAL ********************* */
 
@@ -286,3 +290,7 @@ extern Global G;
  * helps with cleanup task.
  */
 #define G_MAIN (G).main
+
+#ifdef __cplusplus
+}
+#endif

@@ -11,19 +11,13 @@
 #include "GPU_texture.h"
 #include "GPU_vertex_buffer.h"
 
-struct ColorManagedDisplay;
-struct FontBLF;
-struct GPUBatch;
-struct GPUVertBuf;
-struct GPUVertBufRaw;
-
 #include FT_MULTIPLE_MASTERS_H /* Variable font support. */
 
 /** Maximum variation axes per font. */
 #define BLF_VARIATIONS_MAX 16
 
 #define MAKE_DVAR_TAG(a, b, c, d) \
-  ((uint32_t(a) << 24u) | (uint32_t(b) << 16u) | (uint32_t(c) << 8u) | (uint32_t(d)))
+  (((uint32_t)a << 24u) | ((uint32_t)b << 16u) | ((uint32_t)c << 8u) | ((uint32_t)d))
 
 #define BLF_VARIATION_AXIS_WEIGHT MAKE_DVAR_TAG('w', 'g', 'h', 't')  /* 'wght' weight axis. */
 #define BLF_VARIATION_AXIS_SLANT MAKE_DVAR_TAG('s', 'l', 'n', 't')   /* 'slnt' slant axis. */
@@ -50,27 +44,27 @@ typedef int32_t ft_pix;
 #define FT_PIX_ROUND(x) FT_PIX_FLOOR((x) + 32)
 #define FT_PIX_CEIL(x) ((x) + 63)
 
-inline int ft_pix_to_int(ft_pix v)
+BLI_INLINE int ft_pix_to_int(ft_pix v)
 {
-  return int(v >> 6);
+  return (int)(v >> 6);
 }
 
-inline int ft_pix_to_int_floor(ft_pix v)
+BLI_INLINE int ft_pix_to_int_floor(ft_pix v)
 {
-  return int(v >> 6); /* No need for explicit floor as the bits are removed when shifting. */
+  return (int)(v >> 6); /* No need for explicit floor as the bits are removed when shifting. */
 }
 
-inline int ft_pix_to_int_ceil(ft_pix v)
+BLI_INLINE int ft_pix_to_int_ceil(ft_pix v)
 {
-  return int(FT_PIX_CEIL(v) >> 6);
+  return (int)(FT_PIX_CEIL(v) >> 6);
 }
 
-inline ft_pix ft_pix_from_int(int v)
+BLI_INLINE ft_pix ft_pix_from_int(int v)
 {
   return v * 64;
 }
 
-inline ft_pix ft_pix_from_float(float v)
+BLI_INLINE ft_pix ft_pix_from_float(float v)
 {
   return lroundf(v * 64.0f);
 }
@@ -85,12 +79,12 @@ inline ft_pix ft_pix_from_float(float v)
 /** A value in the kerning cache that indicates it is not yet set. */
 #define KERNING_ENTRY_UNSET INT_MAX
 
-struct BatchBLF {
+typedef struct BatchBLF {
   /** Can only batch glyph from the same font. */
-  FontBLF *font;
-  GPUBatch *batch;
-  GPUVertBuf *verts;
-  GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step, glyph_comp_len_step,
+  struct FontBLF *font;
+  struct GPUBatch *batch;
+  struct GPUVertBuf *verts;
+  struct GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step, glyph_comp_len_step,
       glyph_mode_step;
   unsigned int pos_loc, col_loc, offset_loc, glyph_size_loc, glyph_comp_len_loc, glyph_mode_loc;
   unsigned int glyph_len;
@@ -99,22 +93,22 @@ struct BatchBLF {
   /* Previous call `modelmatrix`. */
   float mat[4][4];
   bool enabled, active, simple_shader;
-  GlyphCacheBLF *glyph_cache;
-};
+  struct GlyphCacheBLF *glyph_cache;
+} BatchBLF;
 
 extern BatchBLF g_batch;
 
-struct KerningCacheBLF {
+typedef struct KerningCacheBLF {
   /**
    * Cache a ascii glyph pairs. Only store the x offset we are interested in,
    * instead of the full #FT_Vector since it's not used for drawing at the moment.
    */
   int ascii_table[KERNING_CACHE_TABLE_SIZE][KERNING_CACHE_TABLE_SIZE];
-};
+} KerningCacheBLF;
 
-struct GlyphCacheBLF {
-  GlyphCacheBLF *next;
-  GlyphCacheBLF *prev;
+typedef struct GlyphCacheBLF {
+  struct GlyphCacheBLF *next;
+  struct GlyphCacheBLF *prev;
 
   /** Font size. */
   float size;
@@ -139,11 +133,12 @@ struct GlyphCacheBLF {
   int bitmap_len;
   int bitmap_len_landed;
   int bitmap_len_alloc;
-};
 
-struct GlyphBLF {
-  GlyphBLF *next;
-  GlyphBLF *prev;
+} GlyphCacheBLF;
+
+typedef struct GlyphBLF {
+  struct GlyphBLF *next;
+  struct GlyphBLF *prev;
 
   /** The character, as UTF-32. */
   unsigned int c;
@@ -188,10 +183,10 @@ struct GlyphBLF {
    */
   int pos[2];
 
-  GlyphCacheBLF *glyph_cache;
-};
+  struct GlyphCacheBLF *glyph_cache;
+} GlyphBLF;
 
-struct FontBufInfoBLF {
+typedef struct FontBufInfoBLF {
   /** For draw to buffer, always set this to NULL after finish! */
   float *fbuf;
 
@@ -205,16 +200,17 @@ struct FontBufInfoBLF {
   int ch;
 
   /** Display device used for color management. */
-  ColorManagedDisplay *display;
+  struct ColorManagedDisplay *display;
 
   /** The color, the alphas is get from the glyph! (color is sRGB space). */
   float col_init[4];
   /** Cached conversion from 'col_init'. */
   unsigned char col_char[4];
   float col_float[4];
-};
 
-struct FontMetrics {
+} FontBufInfoBLF;
+
+typedef struct FontMetrics {
   /** Indicate that these values have been properly loaded. */
   bool valid;
   /** This font's default weight, 100-900, 400 is normal. */
@@ -278,9 +274,9 @@ struct FontMetrics {
   short superscript_xoffset;
   /** Positive (!) number of font units below baseline for subscript characters. */
   short superscript_yoffset;
-};
+} FontMetrics;
 
-struct FontBLF {
+typedef struct FontBLF {
   /** Full path to font file or NULL if from memory. */
   char *filepath;
 
@@ -386,4 +382,4 @@ struct FontBLF {
 
   /** Mutex lock for glyph cache. */
   ThreadMutex glyph_cache_mutex;
-};
+} FontBLF;

@@ -8,6 +8,7 @@
 #include "BLI_rand.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
+#include "BLI_timeit.hh"
 #include "BLI_vector_set.hh"
 
 #include "DNA_anim_types.h"
@@ -29,6 +30,8 @@
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
+
+#include "DEG_depsgraph_query.hh"
 
 using namespace blender::nodes;
 
@@ -897,6 +900,58 @@ class NodeTreeMainUpdater {
                     *output->default_value_typed<bNodeSocketValueMenu>());
               }
             }
+          }
+        }
+      }
+    }
+
+    /* Find conflicts between on corresponding menu sockets on different group input nodes. */
+    const Span<bNode *> group_input_nodes = ntree.group_input_nodes();
+    for (const int interface_input_i : ntree.interface_inputs().index_range()) {
+      const bNodeTreeInterfaceSocket &interface_socket =
+          *ntree.interface_inputs()[interface_input_i];
+      if (interface_socket.socket_type != StringRef("NodeSocketMenu")) {
+        continue;
+      }
+      const RuntimeNodeEnumItems *found_enum_items = nullptr;
+      bool found_conflict = false;
+      for (bNode *input_node : group_input_nodes) {
+        const bNodeSocket &socket = input_node->output_socket(interface_input_i);
+        const auto &socket_value = *socket.default_value_typed<bNodeSocketValueMenu>();
+        if (socket_value.has_conflict()) {
+          found_conflict = true;
+          break;
+        }
+        if (found_enum_items == nullptr) {
+          found_enum_items = socket_value.enum_items;
+        }
+        else if (socket_value.enum_items != nullptr) {
+          if (found_enum_items != socket_value.enum_items) {
+            found_conflict = true;
+            break;
+          }
+        }
+      }
+      if (found_conflict) {
+        /* Make sure that all group input sockets know that there is a socket.  */
+        for (bNode *input_node : group_input_nodes) {
+          bNodeSocket &socket = input_node->output_socket(interface_input_i);
+          auto &socket_value = *socket.default_value_typed<bNodeSocketValueMenu>();
+          if (socket_value.enum_items) {
+            socket_value.enum_items->remove_user_and_delete_if_last();
+            socket_value.enum_items = nullptr;
+          }
+          socket_value.runtime_flag |= NodeSocketValueMenuRuntimeFlag::NODE_MENU_ITEMS_CONFLICT;
+        }
+      }
+      else if (found_enum_items != nullptr) {
+        /* Make sure all corresponding menu sockets have the same menu reference. */
+        for (bNode *input_node : group_input_nodes) {
+          bNodeSocket &socket = input_node->output_socket(interface_input_i);
+          auto &socket_value = *socket.default_value_typed<bNodeSocketValueMenu>();
+          if (socket_value.enum_items == nullptr) {
+            found_enum_items->add_user();
+            socket_value.enum_items = found_enum_items;
           }
         }
       }

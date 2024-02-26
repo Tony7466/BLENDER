@@ -12,6 +12,10 @@
 
 #define TEXT_DOMAIN_NAME "blender"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 bool BLT_is_default_context(const char *msgctxt);
 const char *BLT_pgettext(const char *msgctxt, const char *msgid);
 
@@ -84,7 +88,7 @@ const char *BLT_translate_do_new_dataname(const char *msgctxt, const char *msgid
 #define BLT_I18NCONTEXT_PLURAL "Plural"
 
 /* ID-types contexts. */
-/* WARNING! Keep it in sync with ID-types in `blenkernel/intern/idtype.cc`. */
+/* WARNING! Keep it in sync with idtypes in blenkernel/intern/idcode.c */
 #define BLT_I18NCONTEXT_ID_ACTION "Action"
 #define BLT_I18NCONTEXT_ID_ARMATURE "Armature"
 #define BLT_I18NCONTEXT_ID_BRUSH "Brush"
@@ -141,11 +145,11 @@ const char *BLT_translate_do_new_dataname(const char *msgctxt, const char *msgid
 #define BLT_I18NCONTEXT_UNIT "Unit"
 
 /* Helper for bpy.app.i18n object... */
-struct BLT_i18n_contexts_descriptor {
+typedef struct {
   const char *c_id;
   const char *py_id;
   const char *value;
-};
+} BLT_i18n_contexts_descriptor;
 
 #define BLT_I18NCONTEXTS_ITEM(ctxt_id, py_id) \
   { \
@@ -214,3 +218,7 @@ struct BLT_i18n_contexts_descriptor {
       NULL, NULL, NULL \
     } \
   }
+
+#ifdef __cplusplus
+};
+#endif

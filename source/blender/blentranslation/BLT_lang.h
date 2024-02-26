@@ -8,7 +8,9 @@
 
 #pragma once
 
-struct EnumPropertyItem;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Search the path directory to the locale files, this try all
  * the case for Linux, Win and Mac.
@@ -46,4 +48,8 @@ void BLT_lang_locale_explode(const char *locale,
                              char **language_variant);
 
 /* Get EnumPropertyItem's for translations menu. */
-EnumPropertyItem *BLT_lang_RNA_enum_properties(void);
+struct EnumPropertyItem *BLT_lang_RNA_enum_properties(void);
+
+#ifdef __cplusplus
+};
+#endif
