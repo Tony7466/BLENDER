@@ -21,13 +21,15 @@
 
 namespace blender::nodes::node_fn_hash_value_cc {
 
-static void node_declare_dynamic(const bNodeTree & /*ntree*/,
-                                 const bNode &node,
-                                 NodeDeclarationBuilder &b)
+static void node_declare(NodeDeclarationBuilder &b)
 {
-  const eNodeSocketDatatype input_type = static_cast<eNodeSocketDatatype>(node.custom1);
   b.is_function_node();
-  b.add_input(input_type, "Value");
+
+  const bNode *node = b.node_or_null();
+  if (node) {
+    const eNodeSocketDatatype input_type = eNodeSocketDatatype(node->custom1);
+    b.add_input(input_type, "Value");
+  }
   b.add_input<decl::Int>("Seed", "Seed");
   b.add_output<decl::Int>("Hash");
 }
@@ -170,7 +172,7 @@ static void node_register()
   static bNodeType ntype;
 
   fn_node_type_base(&ntype, FN_NODE_HASH_VALUE, "Hash Value", NODE_CLASS_CONVERTER);
-  ntype.declare_dynamic = node_declare_dynamic;
+  ntype.declare = node_declare;
   ntype.initfunc = node_init;
   ntype.build_multi_function = node_build_multi_function;
   ntype.draw_buttons = node_layout;

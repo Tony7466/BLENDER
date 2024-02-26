@@ -1849,15 +1849,6 @@ static bool hash_value_type_supported(const EnumPropertyItem *item)
               CD_PROP_QUATERNION);
 }
 
-static const EnumPropertyItem *rna_FunctionNodeHashValue_type_itemf(bContext * /*C*/,
-                                                                    PointerRNA * /*ptr*/,
-                                                                    PropertyRNA * /*prop*/,
-                                                                    bool *r_free)
-{
-  *r_free = true;
-  return itemf_function_check(rna_enum_attribute_type_items, hash_value_type_supported);
-}
-
 static bool generic_attribute_type_supported(const EnumPropertyItem *item)
 {
   return ELEM(item->value,
