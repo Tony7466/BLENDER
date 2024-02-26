@@ -167,7 +167,8 @@ void GeoTreeLogger::log_value(const bNode &node, const bNodeSocket &socket, cons
   auto store_logged_value = [&](destruct_ptr<ValueLog> value_log) {
     auto &socket_values = socket.in_out == SOCK_IN ? this->input_socket_values :
                                                      this->output_socket_values;
-    socket_values.append({node.identifier, socket.index(), std::move(value_log)});
+    socket_values.append(*this->allocator,
+                         {node.identifier, socket.index(), std::move(value_log)});
   };
 
   auto log_generic_value = [&](const CPPType &type, const void *value) {
@@ -287,14 +288,16 @@ void GeoTreeLog::ensure_socket_values()
     return;
   }
   for (GeoTreeLogger *tree_logger : tree_loggers_) {
-    for (const GeoTreeLogger::SocketValueLog &value_log_data : tree_logger->input_socket_values) {
-      this->nodes.lookup_or_add_as(value_log_data.node_id)
-          .input_values_.add(value_log_data.socket_index, value_log_data.value.get());
-    }
-    for (const GeoTreeLogger::SocketValueLog &value_log_data : tree_logger->output_socket_values) {
-      this->nodes.lookup_or_add_as(value_log_data.node_id)
-          .output_values_.add(value_log_data.socket_index, value_log_data.value.get());
-    }
+    tree_logger->input_socket_values.for_each(
+        [&](const GeoTreeLogger::SocketValueLog &value_log_data) {
+          this->nodes.lookup_or_add_as(value_log_data.node_id)
+              .input_values_.add(value_log_data.socket_index, value_log_data.value.get());
+        });
+    tree_logger->output_socket_values.for_each(
+        [&](const GeoTreeLogger::SocketValueLog &value_log_data) {
+          this->nodes.lookup_or_add_as(value_log_data.node_id)
+              .output_values_.add(value_log_data.socket_index, value_log_data.value.get());
+        });
   }
   reduced_socket_values_ = true;
 }

@@ -209,8 +209,8 @@ class GeoTreeLogger {
   };
 
   linear_allocator::UnorderedList<WarningWithNode> node_warnings;
-  Vector<SocketValueLog> input_socket_values;
-  Vector<SocketValueLog> output_socket_values;
+  linear_allocator::UnorderedList<SocketValueLog> input_socket_values;
+  linear_allocator::UnorderedList<SocketValueLog> output_socket_values;
   Vector<NodeExecutionTime> node_execution_times;
   Vector<ViewerNodeLogWithNode, 0> viewer_node_logs;
   Vector<AttributeUsageWithNode, 0> used_named_attributes;
