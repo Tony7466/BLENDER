@@ -212,6 +212,7 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
       continue;
     }
     else {
+      counted_points_num += points_by_curve[i].size();
       out_curves_num++;
     }
   }
@@ -237,7 +238,8 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
   Array<int> dst_to_src_point(dst_points_num);
 
   int next_curve = 1, next_point = 0;
-  selection.foreach_index([&](const int stroke) {
+  IndexMaskMemory memory;
+  selection.complement(curves.curves_range(), memory).foreach_index([&](const int stroke) {
     for (const int point : points_by_curve[stroke]) {
       dst_to_src_point[next_point] = point;
       next_point++;
@@ -247,8 +249,7 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
   });
 
   bool done_scanning = false;
-  IndexMaskMemory memory;
-  selection.complement(curves.curves_range(), memory).foreach_index([&](const int stroke) {
+  selection.foreach_index([&](const int stroke) {
     if (done_scanning) {
       return;
     }
@@ -258,6 +259,7 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
         break;
       }
       dst_to_src_point[next_point] = point;
+      next_point++;
     }
     dst_offsets[next_curve] = next_point;
     next_curve++;
@@ -283,7 +285,7 @@ static float get_factor(const int time_mode,
                         const float percentage)
 {
   if (time_mode == MOD_GREASE_PENCIL_BUILD_TIMEMODE_FRAMES) {
-    return float(current_frame - start_frame) / length;
+    return math::clamp(float(current_frame - start_frame) / length, 0.0f, 1.0f);
   }
   else if (time_mode == MOD_GREASE_PENCIL_BUILD_TIMEMODE_PERCENTAGE) {
     return percentage;
