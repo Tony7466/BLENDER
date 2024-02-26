@@ -276,20 +276,21 @@ static void GREASE_PENCIL_OT_weight_toggle_direction(wmOperatorType *ot)
 /** \name Weight Gradient Operator
  * \{ */
 
-enum {
-  WPAINT_GRADIENT_TYPE_LINEAR,
-  WPAINT_GRADIENT_TYPE_RADIAL,
+enum class WeightGradientType : uint8_t {
+  Linear,
+  Radial,
 };
 
-enum {
-  BRUSH_STROKE_NORMAL,
-  BRUSH_STROKE_INVERT,
+enum class BrushMode : uint8_t {
+  Normal,
+  Invert,
 };
 
-enum {
+enum WeightGradientFlags : uint8_t {
   WPAINT_GRADIENT_POINT_DW_EXISTS = (1 << 0),
   WPAINT_GRADIENT_POINT_IS_MODIFIED = (1 << 1),
 };
+ENUM_OPERATORS(WeightGradientFlags, WPAINT_GRADIENT_POINT_IS_MODIFIED);
 
 struct WeightGradientDrawingCache {
   int active_vertex_group;
@@ -332,7 +333,7 @@ static int weight_gradient_exec(bContext *C, wmOperator *op)
   WeightGradientToolData &tool = *static_cast<WeightGradientToolData *>(gesture->user_data.data);
 
   /* Get gradient type (linear/radial). */
-  const int gradient_type = RNA_enum_get(op->ptr, "type");
+  const WeightGradientType gradient_type = WeightGradientType(RNA_enum_get(op->ptr, "type"));
 
   /* Get position and length of the interactive gradient line in the viewport. */
   const int x_start = RNA_int_get(op->ptr, "xstart");
@@ -366,23 +367,30 @@ static int weight_gradient_exec(bContext *C, wmOperator *op)
 
             /* Calculate weight change. */
             float gradient_factor = 0.0f;
-            if (gradient_type == WPAINT_GRADIENT_TYPE_LINEAR) {
-              /* For the linear gradient, get the orthogonal position of the stroke point towards
-               * the gradient line. */
-              const float dist_on_gradient_line = math::max(
-                  0.0f, math::dot(vec_point_to_gradient, gradient_vector));
-              if (dist_on_gradient_line > gradient_length_sq) {
-                continue;
+            switch (gradient_type) {
+              case WeightGradientType::Linear: {
+                /* For the linear gradient, get the orthogonal position of the stroke point towards
+                 * the gradient line. */
+                const float dist_on_gradient_line = math::max(
+                    0.0f, math::dot(vec_point_to_gradient, gradient_vector));
+                if (dist_on_gradient_line > gradient_length_sq) {
+                  continue;
+                }
+                gradient_factor = (dist_on_gradient_line / gradient_length_sq) * gradient_length;
+                break;
               }
-              gradient_factor = (dist_on_gradient_line / gradient_length_sq) * gradient_length;
-            }
-            else if (gradient_type == WPAINT_GRADIENT_TYPE_RADIAL) {
-              /* For the radial gradient, get the distance of the stroke point to the center of the
-               * gradient. */
-              gradient_factor = math::length(vec_point_to_gradient);
-              if (gradient_factor > gradient_length) {
-                continue;
+              case WeightGradientType::Radial: {
+                /* For the radial gradient, get the distance of the stroke point to the center of
+                 * the gradient. */
+                gradient_factor = math::length(vec_point_to_gradient);
+                if (gradient_factor > gradient_length) {
+                  continue;
+                }
+                break;
               }
+              default:
+                BLI_assert_unreachable();
+                break;
             }
 
             /* Set new weight. */
@@ -495,7 +503,7 @@ static void init_weight_gradient_cache(const bContext &C,
 
   /* Get the add/subtract mode of the gradient tool. */
   tool.weight_direction = (tool.brush->flag & BRUSH_DIR_IN) ? -1.0f : 1.0f;
-  if (RNA_enum_get(op.ptr, "mode") == BRUSH_STROKE_INVERT) {
+  if (RNA_enum_get(op.ptr, "mode") == int(BrushMode::Invert)) {
     tool.weight_direction *= -1.0f;
   }
 
@@ -566,9 +574,10 @@ static void init_weight_gradient_cache(const bContext &C,
           bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
               ob_eval, *tool.object, drawing_info.layer_index, drawing_info.frame_number);
 
-      cache.point_positions = Array<float2>(deformation.positions.size());
-      cache.point_original_weights = Array<float>(deformation.positions.size());
-      cache.point_flags = Array<uint8_t>(deformation.positions.size(), 0);
+      cache.point_positions.reinitialize(deformation.positions.size());
+      cache.point_original_weights.reinitialize(deformation.positions.size());
+      cache.point_flags.reinitialize(deformation.positions.size());
+      cache.point_flags.fill(0);
 
       threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
         for (const int point : point_range) {
@@ -614,13 +623,13 @@ static int weight_gradient_invoke(bContext *C, wmOperator *op, const wmEvent *ev
 static void GREASE_PENCIL_OT_weight_gradient(wmOperatorType *ot)
 {
   static const EnumPropertyItem gradient_types[] = {
-      {WPAINT_GRADIENT_TYPE_LINEAR, "LINEAR", 0, "Linear", ""},
-      {WPAINT_GRADIENT_TYPE_RADIAL, "RADIAL", 0, "Radial", ""},
+      {int(WeightGradientType::Linear), "LINEAR", 0, "Linear", ""},
+      {int(WeightGradientType::Radial), "RADIAL", 0, "Radial", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
   static const EnumPropertyItem brush_modes[] = {
-      {BRUSH_STROKE_NORMAL, "NORMAL", 0, "Normal", ""},
-      {BRUSH_STROKE_INVERT, "INVERT", 0, "Invert", ""},
+      {int(BrushMode::Normal), "NORMAL", 0, "Normal", ""},
+      {int(BrushMode::Invert), "INVERT", 0, "Invert", ""},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
