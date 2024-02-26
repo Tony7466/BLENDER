@@ -12,13 +12,17 @@
 #include "BLI_index_mask.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_task.hh"
 #include "BLI_timeit.hh"
 
 namespace blender::geometry {
 
 struct Row {
-  MultiValueMap<int, int> tris_by_x;
+  int x_min = 0;
+  int x_max = 0;
+  Vector<int> offsets;
+  Vector<int> tri_indices;
 };
 
 struct ReverseUVSampler::LookupGrid {
@@ -69,14 +73,20 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
     IndexRange range;
   };
 
+  struct LocalRowData {
+    Vector<TriWithRange> tri_ranges;
+    int x_min = INT32_MAX;
+    int x_max = INT32_MIN;
+  };
+
   struct LocalData {
-    MultiValueMap<int, TriWithRange> tri_ranges_by_y;
+    Map<int, LocalRowData> rows;
   };
 
   threading::EnumerableThreadSpecific<LocalData> data_per_thread;
 
   {
-    SCOPED_TIMER("sort into y buckets");
+    // SCOPED_TIMER("sort into y buckets");
     corner_tris_mask.foreach_segment(GrainSize(512), [&](const IndexMaskSegment tris) {
       LocalData &local_data = data_per_thread.local();
       for (const int tri_i : tris) {
@@ -89,7 +99,10 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
         for (const int key_y :
              IndexRange::from_begin_end_inclusive(key_bounds.min.y, key_bounds.max.y))
         {
-          local_data.tri_ranges_by_y.add(key_y, tri_with_range);
+          LocalRowData &row = local_data.rows.lookup_or_add_default(key_y);
+          row.tri_ranges.append(tri_with_range);
+          row.x_min = std::min<int>(row.x_min, x_range.first());
+          row.x_max = std::max<int>(row.x_max, x_range.last());
         }
       }
     });
@@ -98,10 +111,10 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
   VectorSet<int> all_ys;
   Vector<const LocalData *> local_data_vec;
   {
-    SCOPED_TIMER("find all ys");
-    for (const LocalData &data : data_per_thread) {
-      local_data_vec.append(&data);
-      for (const int y : data.tri_ranges_by_y.keys()) {
+    // SCOPED_TIMER("find all ys");
+    for (const LocalData &local_data : data_per_thread) {
+      local_data_vec.append(&local_data);
+      for (const int y : local_data.rows.keys()) {
         all_ys.add(y);
       }
     }
@@ -111,22 +124,60 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
 
   const int rows_num = y_bounds.max - y_bounds.min + 1;
   {
-    SCOPED_TIMER("init rows");
+    // SCOPED_TIMER("init rows");
     lookup_grid_->rows.reinitialize(rows_num);
   }
 
   {
-    SCOPED_TIMER("fill rows");
+    // SCOPED_TIMER("fill rows");
     threading::parallel_for(all_ys.index_range(), 8, [&](const IndexRange all_ys_range) {
       for (const int y : all_ys.as_span().slice(all_ys_range)) {
         Row &row = lookup_grid_->rows[y - y_bounds.min];
-        for (const LocalData *data : local_data_vec) {
-          for (const TriWithRange &tri_with_range : data->tri_ranges_by_y.lookup(y)) {
+
+        Vector<const LocalRowData *, 32> local_rows;
+        for (const LocalData *local_data : local_data_vec) {
+          if (const LocalRowData *local_row = local_data->rows.lookup_ptr(y)) {
+            local_rows.append(local_row);
+          }
+        }
+
+        int x_min = INT32_MAX;
+        int x_max = INT32_MIN;
+        for (const LocalRowData *local_row : local_rows) {
+          x_min = std::min(x_min, local_row->x_min);
+          x_max = std::max(x_max, local_row->x_max);
+        }
+
+        const int x_num = x_max - x_min + 1;
+        row.offsets.resize(x_num + 1, 0);
+        {
+          MutableSpan<int> counts = row.offsets;
+          for (const LocalRowData *local_row : local_rows) {
+            for (const TriWithRange &tri_with_range : local_row->tri_ranges) {
+              for (const int x : tri_with_range.range) {
+                counts[x - x_min]++;
+              }
+            }
+          }
+          offset_indices::accumulate_counts_to_offsets(counts);
+        }
+        const int tri_indices_num = row.offsets.last();
+        row.tri_indices.resize(tri_indices_num);
+
+        Array<int, 1000> current_offsets(x_num, 0);
+        for (const LocalRowData *local_row : local_rows) {
+          for (const TriWithRange &tri_with_range : local_row->tri_ranges) {
             for (const int x : tri_with_range.range) {
-              row.tris_by_x.add(x, tri_with_range.tri_index);
+              const int offset_x = x - x_min;
+              row.tri_indices[row.offsets[offset_x] + current_offsets[offset_x]] =
+                  tri_with_range.tri_index;
+              current_offsets[offset_x]++;
             }
           }
         }
+
+        row.x_min = x_min;
+        row.x_max = x_max;
       }
     });
   }
@@ -172,7 +223,15 @@ static Span<int> lookup_tris_in_cell(const int2 cell,
     return {};
   }
   const Row &row = lookup_grid.rows[cell.y - lookup_grid.y_min];
-  return row.tris_by_x.lookup(cell.x);
+  if (cell.x < row.x_min) {
+    return {};
+  }
+  if (cell.y > row.x_max) {
+    return {};
+  }
+  const int offset = row.offsets[cell.x - row.x_min];
+  const int tris_num = row.offsets[cell.x - row.x_min + 1] - offset;
+  return row.tri_indices.as_span().slice(offset, tris_num);
 }
 
 ReverseUVSampler::Result ReverseUVSampler::sample(const float2 &query_uv) const
