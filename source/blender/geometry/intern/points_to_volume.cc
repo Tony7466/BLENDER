@@ -5,6 +5,7 @@
 #include "BLI_math_matrix.hh"
 
 #include "BKE_volume.hh"
+#include "BKE_volume_grid.hh"
 #include "BKE_volume_openvdb.hh"
 
 #include "GEO_points_to_volume.hh"
@@ -40,8 +41,8 @@ struct OpenVDBParticleList {
   }
 };
 
-static openvdb::FloatGrid::Ptr points_to_sdf_grid(const Span<float3> positions,
-                                                  const Span<float> radii)
+static openvdb::FloatGrid::Ptr points_to_sdf_grid_impl(const Span<float3> positions,
+                                                       const Span<float> radii)
 {
   /* Create a new grid that will be filled. #ParticlesToLevelSet requires
    * the background value to be positive */
@@ -59,6 +60,11 @@ static openvdb::FloatGrid::Ptr points_to_sdf_grid(const Span<float3> positions,
   return new_grid;
 }
 
+bke::VolumeGrid<float> points_to_sdf_grid(const Span<float3> positions, const Span<float> radii)
+{
+  return bke::VolumeGrid<float>(points_to_sdf_grid_impl(positions, radii));
+}
+
 bke::VolumeGridData *fog_volume_grid_add_from_points(Volume *volume,
                                                      const StringRefNull name,
                                                      const Span<float3> positions,
@@ -66,7 +72,7 @@ bke::VolumeGridData *fog_volume_grid_add_from_points(Volume *volume,
                                                      const float voxel_size,
                                                      const float density)
 {
-  openvdb::FloatGrid::Ptr new_grid = points_to_sdf_grid(positions, radii);
+  openvdb::FloatGrid::Ptr new_grid = points_to_sdf_grid_impl(positions, radii);
   new_grid->transform().postScale(voxel_size);
   new_grid->setGridClass(openvdb::GRID_FOG_VOLUME);
 
@@ -83,17 +89,5 @@ bke::VolumeGridData *fog_volume_grid_add_from_points(Volume *volume,
   return BKE_volume_grid_add_vdb(*volume, name, std::move(new_grid));
 }
 
-bke::VolumeGridData *sdf_volume_grid_add_from_points(Volume *volume,
-                                                     const StringRefNull name,
-                                                     const Span<float3> positions,
-                                                     const Span<float> radii,
-                                                     const float voxel_size)
-{
-  openvdb::FloatGrid::Ptr new_grid = points_to_sdf_grid(positions, radii);
-  new_grid->transform().postScale(voxel_size);
-  new_grid->setGridClass(openvdb::GRID_LEVEL_SET);
-
-  return BKE_volume_grid_add_vdb(*volume, name, std::move(new_grid));
-}
 }  // namespace blender::geometry
 #endif
