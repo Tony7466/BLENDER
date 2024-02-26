@@ -89,7 +89,7 @@ BLI_NOINLINE static void sort_into_y_buckets(
     threading::EnumerableThreadSpecific<LocalData> &data_per_thread)
 {
   // SCOPED_TIMER_AVERAGED("sort into y buckets");
-  corner_tris_mask.foreach_segment(GrainSize(512), [&](const IndexMaskSegment tris) {
+  corner_tris_mask.foreach_segment(GrainSize(256), [&](const IndexMaskSegment tris) {
     LocalData &local_data = data_per_thread.local();
     for (const int tri_i : tris) {
       const int3 &tri = corner_tris[tri_i];
