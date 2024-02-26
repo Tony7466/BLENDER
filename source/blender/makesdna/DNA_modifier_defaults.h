@@ -962,4 +962,11 @@
     .falloff = 0.0f, \
     .force = 0.5f, \
   }
+
+#define _DNA_DEFAULT_GreasePencilArmatureModifierData \
+  { \
+    .deformflag = ARM_DEF_VGROUP, \
+    .object = NULL, \
+  }
+
 /* clang-format off */

@@ -112,6 +112,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilArray = 75,
   eModifierType_GreasePencilWeightProximity = 76,
   eModifierType_GreasePencilHook = 77,
+  eModifierType_GreasePencilArmature = 78,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -2986,3 +2987,13 @@ typedef enum GreasePencilHookFalloff {
   MOD_GREASE_PENCIL_HOOK_Falloff_Sphere = 7,
   MOD_GREASE_PENCIL_HOOK_Falloff_InvSquare = 8,
 } GreasePencilHookFalloff;
+
+typedef struct GreasePencilArmatureModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  struct Object *object;
+  /** #eArmature_DeformFlag. */
+  short deformflag;
+  char _pad[6];
+} GreasePencilArmatureModifierData;
