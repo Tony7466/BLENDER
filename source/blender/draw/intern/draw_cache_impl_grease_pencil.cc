@@ -294,13 +294,9 @@ static void grease_pencil_weight_batch_ensure(Object &object,
     });
 
     /* Get vertex weights of the active vertex group in this drawing. */
-    const int def_nr = BLI_findstringindex(
-        &curves.vertex_group_names, active_defgroup_name, offsetof(bDeformGroup, name));
     const Span<MDeformVert> dverts = curves.deform_verts();
-    const VArray<float> weights = (def_nr < 0 || layer.is_locked()) ?
-                                      VArray<float>::ForSingle(no_active_weight,
-                                                               curves.points_num()) :
-                                      bke::varray_for_deform_verts(dverts, def_nr);
+    const VArray<float> weights = *curves.attributes().lookup_or_default<float>(
+        active_defgroup_name, bke::AttrDomain::Point, no_active_weight);
     MutableSpan<float> weights_slice = points_weight.slice(points);
     weights.materialize(weights_slice);
 
