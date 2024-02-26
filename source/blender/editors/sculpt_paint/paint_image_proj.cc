@@ -7,6 +7,7 @@
  * \brief Functions to paint images in 2D and 3D.
  */
 
+#include <algorithm>
 #include <cfloat>
 #include <climits>
 #include <cmath>
@@ -26,6 +27,7 @@
 #include "BLI_math_bits.h"
 #include "BLI_math_color_blend.h"
 #include "BLI_math_geom.h"
+#include "BLI_math_vector.hh"
 #include "BLI_memarena.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
@@ -33,10 +35,10 @@
 
 #include "atomic_ops.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_interp.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_customdata_types.h"
@@ -55,11 +57,11 @@
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -69,8 +71,8 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -103,9 +105,9 @@
 #include "RNA_enum_types.hh"
 #include "RNA_types.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
-//#include "bmesh_tools.hh"
+// #include "bmesh_tools.hh"
 
 #include "paint_intern.hh"
 
@@ -136,15 +138,15 @@ BLI_INLINE uchar f_to_char(const float val)
 #define PROJ_BOUNDBOX_DIV 8
 #define PROJ_BOUNDBOX_SQUARED (PROJ_BOUNDBOX_DIV * PROJ_BOUNDBOX_DIV)
 
-//#define PROJ_DEBUG_PAINT 1
-//#define PROJ_DEBUG_NOSEAMBLEED 1
-//#define PROJ_DEBUG_PRINT_CLIP 1
+// #define PROJ_DEBUG_PAINT 1
+// #define PROJ_DEBUG_NOSEAMBLEED 1
+// #define PROJ_DEBUG_PRINT_CLIP 1
 #define PROJ_DEBUG_WINCLIP 1
 
 #ifndef PROJ_DEBUG_NOSEAMBLEED
 /* projectFaceSeamFlags options */
-//#define PROJ_FACE_IGNORE  (1<<0)  /* When the face is hidden, back-facing or occluded. */
-//#define PROJ_FACE_INIT    (1<<1)  /* When we have initialized the faces data */
+// #define PROJ_FACE_IGNORE  (1<<0)  /* When the face is hidden, back-facing or occluded. */
+// #define PROJ_FACE_INIT    (1<<1)  /* When we have initialized the faces data */
 
 /* If this face has a seam on any of its edges. */
 #  define PROJ_FACE_SEAM0 (1 << 0)
@@ -714,35 +716,17 @@ static int project_paint_PickFace(const ProjPaintState *ps, const float pt[2], f
   return best_tri_index;
 }
 
-/* Converts a uv coord into a pixel location wrapping if the uv is outside 0-1 range */
-static void uvco_to_wrapped_pxco(const float uv[2], int ibuf_x, int ibuf_y, float *x, float *y)
-{
-  /* use */
-  *x = fmodf(uv[0], 1.0f);
-  *y = fmodf(uv[1], 1.0f);
-
-  if (*x < 0.0f) {
-    *x += 1.0f;
-  }
-  if (*y < 0.0f) {
-    *y += 1.0f;
-  }
-
-  *x = *x * ibuf_x - 0.5f;
-  *y = *y * ibuf_y - 0.5f;
-}
-
 /* Set the top-most face color that the screen space coord 'pt' touches
  * (or return 0 if none touch) */
 static bool project_paint_PickColor(
     const ProjPaintState *ps, const float pt[2], float *rgba_fp, uchar *rgba, const bool interp)
 {
+  using namespace blender;
   const float *tri_uv[3];
   float w[3], uv[2];
   int tri_index;
   Image *ima;
   ImBuf *ibuf;
-  int xi, yi;
 
   tri_index = project_paint_PickFace(ps, pt, w);
 
@@ -769,58 +753,32 @@ static bool project_paint_PickColor(
     return false;
   }
 
+  float x = uv[0] * ibuf->x;
+  float y = uv[1] * ibuf->y;
   if (interp) {
-    float x, y;
-    uvco_to_wrapped_pxco(uv, ibuf->x, ibuf->y, &x, &y);
+    x -= 0.5f;
+    y -= 0.5f;
+  }
 
-    if (ibuf->float_buffer.data) {
-      if (rgba_fp) {
-        bilinear_interpolation_color_wrap(ibuf, nullptr, rgba_fp, x, y);
-      }
-      else {
-        float rgba_tmp_f[4];
-        bilinear_interpolation_color_wrap(ibuf, nullptr, rgba_tmp_f, x, y);
-        premul_float_to_straight_uchar(rgba, rgba_tmp_f);
-      }
+  if (ibuf->float_buffer.data) {
+    float4 col = interp ? imbuf::interpolate_bilinear_wrap_fl(ibuf, x, y) :
+                          imbuf::interpolate_nearest_wrap_fl(ibuf, x, y);
+    col = math::clamp(col, 0.0f, 1.0f);
+    if (rgba_fp) {
+      memcpy(rgba_fp, &col, sizeof(col));
     }
     else {
-      if (rgba) {
-        bilinear_interpolation_color_wrap(ibuf, rgba, nullptr, x, y);
-      }
-      else {
-        uchar rgba_tmp[4];
-        bilinear_interpolation_color_wrap(ibuf, rgba_tmp, nullptr, x, y);
-        straight_uchar_to_premul_float(rgba_fp, rgba_tmp);
-      }
+      premul_float_to_straight_uchar(rgba, col);
     }
   }
   else {
-    // xi = int((uv[0]*ibuf->x) + 0.5f);
-    // yi = int((uv[1]*ibuf->y) + 0.5f);
-    // if (xi < 0 || xi >= ibuf->x  ||  yi < 0 || yi >= ibuf->y) return false;
-
-    /* wrap */
-    xi = mod_i(int(uv[0] * ibuf->x), ibuf->x);
-    yi = mod_i(int(uv[1] * ibuf->y), ibuf->y);
-
+    uchar4 col = interp ? imbuf::interpolate_bilinear_wrap_byte(ibuf, x, y) :
+                          imbuf::interpolate_nearest_wrap_byte(ibuf, x, y);
     if (rgba) {
-      if (ibuf->float_buffer.data) {
-        const float *rgba_tmp_fp = ibuf->float_buffer.data + (xi + yi * ibuf->x * 4);
-        premul_float_to_straight_uchar(rgba, rgba_tmp_fp);
-      }
-      else {
-        *((uint *)rgba) = *(uint *)(((char *)ibuf->byte_buffer.data) + ((xi + yi * ibuf->x) * 4));
-      }
+      memcpy(rgba, &col, sizeof(col));
     }
-
-    if (rgba_fp) {
-      if (ibuf->float_buffer.data) {
-        copy_v4_v4(rgba_fp, (ibuf->float_buffer.data + ((xi + yi * ibuf->x) * 4)));
-      }
-      else {
-        uchar *tmp_ch = ibuf->byte_buffer.data + ((xi + yi * ibuf->x) * 4);
-        straight_uchar_to_premul_float(rgba_fp, tmp_ch);
-      }
+    else {
+      straight_uchar_to_premul_float(rgba_fp, col);
     }
   }
   BKE_image_release_ibuf(ima, ibuf, nullptr);
@@ -1375,7 +1333,7 @@ static void uv_image_outset(const ProjPaintState *ps,
       len_fact = UNLIKELY(len_fact < FLT_EPSILON) ? FLT_MAX : (1.0f / len_fact);
 
       /* Clamp the length factor, see: #62236. */
-      len_fact = MIN2(len_fact, 10.0f);
+      len_fact = std::min(len_fact, 10.0f);
 
       mul_v2_fl(no, ps->seam_bleed_px * len_fact);
 
@@ -1656,18 +1614,22 @@ static float screen_px_line_point_factor_v2_persp(const ProjPaintState *ps,
 static void project_face_pixel(
     const float *tri_uv[3], ImBuf *ibuf_other, const float w[3], uchar rgba_ub[4], float rgba_f[4])
 {
-  float uv_other[2], x, y;
+  using namespace blender;
+  float uv_other[2];
 
   interp_v2_v2v2v2(uv_other, UNPACK3(tri_uv), w);
 
-  /* use */
-  uvco_to_wrapped_pxco(uv_other, ibuf_other->x, ibuf_other->y, &x, &y);
+  float x = uv_other[0] * ibuf_other->x - 0.5f;
+  float y = uv_other[1] * ibuf_other->y - 0.5f;
 
-  if (ibuf_other->float_buffer.data) { /* from float to float */
-    bilinear_interpolation_color_wrap(ibuf_other, nullptr, rgba_f, x, y);
+  if (ibuf_other->float_buffer.data) {
+    float4 col = imbuf::interpolate_bilinear_wrap_fl(ibuf_other, x, y);
+    col = math::clamp(col, 0.0f, 1.0f);
+    memcpy(rgba_f, &col, sizeof(col));
   }
-  else { /* from char to float */
-    bilinear_interpolation_color_wrap(ibuf_other, rgba_ub, nullptr, x, y);
+  else {
+    uchar4 col = imbuf::interpolate_bilinear_wrap_byte(ibuf_other, x, y);
+    memcpy(rgba_ub, &col, sizeof(col));
   }
 }
 
@@ -2032,14 +1994,16 @@ static ProjPixel *project_paint_uvpixel_init(const ProjPaintState *ps,
        * the faces are already initialized in project_paint_delayed_face_init(...) */
       if (ibuf->float_buffer.data) {
         if (!project_paint_PickColor(
-                ps, co, ((ProjPixelClone *)projPixel)->clonepx.f, nullptr, true)) {
+                ps, co, ((ProjPixelClone *)projPixel)->clonepx.f, nullptr, true))
+        {
           /* zero alpha - ignore */
           ((ProjPixelClone *)projPixel)->clonepx.f[3] = 0;
         }
       }
       else {
         if (!project_paint_PickColor(
-                ps, co, nullptr, ((ProjPixelClone *)projPixel)->clonepx.ch, true)) {
+                ps, co, nullptr, ((ProjPixelClone *)projPixel)->clonepx.ch, true))
+        {
           /* zero alpha - ignore */
           ((ProjPixelClone *)projPixel)->clonepx.ch[3] = 0;
         }
@@ -2577,7 +2541,8 @@ static void project_bucket_clip_face(const bool is_ortho,
     flag = inside_bucket_flag & (ISECT_1 | ISECT_2);
     if (flag && flag != (ISECT_1 | ISECT_2)) {
       if (line_rect_clip(
-              bucket_bounds, v1coSS, v2coSS, uv1co, uv2co, bucket_bounds_uv[*tot], is_ortho)) {
+              bucket_bounds, v1coSS, v2coSS, uv1co, uv2co, bucket_bounds_uv[*tot], is_ortho))
+      {
         (*tot)++;
       }
     }
@@ -2590,7 +2555,8 @@ static void project_bucket_clip_face(const bool is_ortho,
     flag = inside_bucket_flag & (ISECT_2 | ISECT_3);
     if (flag && flag != (ISECT_2 | ISECT_3)) {
       if (line_rect_clip(
-              bucket_bounds, v2coSS, v3coSS, uv2co, uv3co, bucket_bounds_uv[*tot], is_ortho)) {
+              bucket_bounds, v2coSS, v3coSS, uv2co, uv3co, bucket_bounds_uv[*tot], is_ortho))
+      {
         (*tot)++;
       }
     }
@@ -2603,7 +2569,8 @@ static void project_bucket_clip_face(const bool is_ortho,
     flag = inside_bucket_flag & (ISECT_3 | ISECT_1);
     if (flag && flag != (ISECT_3 | ISECT_1)) {
       if (line_rect_clip(
-              bucket_bounds, v3coSS, v1coSS, uv3co, uv1co, bucket_bounds_uv[*tot], is_ortho)) {
+              bucket_bounds, v3coSS, v1coSS, uv3co, uv1co, bucket_bounds_uv[*tot], is_ortho))
+      {
         (*tot)++;
       }
     }
@@ -3182,12 +3149,12 @@ static void project_paint_face_init(const ProjPaintState *ps,
               }
             }
           }
-          //#if 0
+          // #if 0
           else if (has_x_isect) {
             /* assuming the face is not a bow-tie - we know we can't intersect again on the X */
             break;
           }
-          //#endif
+          // #endif
         }
 
 #if 0 /* TODO: investigate why this doesn't work sometimes! it should! */
@@ -3723,7 +3690,7 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
   ps->viewDir[1] = 0.0f;
   ps->viewDir[2] = 1.0f;
 
-  copy_m4_m4(ps->obmat, ps->ob->object_to_world);
+  copy_m4_m4(ps->obmat, ps->ob->object_to_world().ptr());
 
   if (symmetry_flag) {
     int i;
@@ -3745,7 +3712,9 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
     copy_m4_m4(viewmat, ps->rv3d->viewmat);
     copy_m4_m4(viewinv, ps->rv3d->viewinv);
 
-    ED_view3d_ob_project_mat_get_from_obmat(ps->rv3d, ps->obmat, ps->projectMat);
+    blender::float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(
+        ps->rv3d, blender::float4x4(ps->obmat));
+    copy_m4_m4(ps->projectMat, projection.ptr());
 
     ps->is_ortho = ED_view3d_clip_range_get(
         ps->depsgraph, ps->v3d, ps->rv3d, &ps->clip_start, &ps->clip_end, true);
@@ -3781,7 +3750,7 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
       CameraParams params;
 
       /* viewmat & viewinv */
-      copy_m4_m4(viewinv, cam_ob_eval->object_to_world);
+      copy_m4_m4(viewinv, cam_ob_eval->object_to_world().ptr());
       normalize_m4(viewinv);
       invert_m4_m4(viewmat, viewinv);
 
@@ -4221,16 +4190,14 @@ static bool project_paint_check_face_paintable(const ProjPaintState *ps,
     }
     return ps->select_poly_eval && ps->select_poly_eval[face_i];
   }
-  else {
-    int orig_index;
-    const int face_i = ps->corner_tri_faces_eval[tri_i];
-    if ((face_lookup->index_mp_to_orig != nullptr) &&
-        ((orig_index = (face_lookup->index_mp_to_orig[face_i])) != ORIGINDEX_NONE))
-    {
-      return !(face_lookup->hide_poly_orig && face_lookup->hide_poly_orig[orig_index]);
-    }
-    return !(ps->hide_poly_eval && ps->hide_poly_eval[face_i]);
+  int orig_index;
+  const int face_i = ps->corner_tri_faces_eval[tri_i];
+  if ((face_lookup->index_mp_to_orig != nullptr) &&
+      ((orig_index = (face_lookup->index_mp_to_orig[face_i])) != ORIGINDEX_NONE))
+  {
+    return !(face_lookup->hide_poly_orig && face_lookup->hide_poly_orig[orig_index]);
   }
+  return !(ps->hide_poly_eval && ps->hide_poly_eval[face_i]);
 }
 
 struct ProjPaintFaceCoSS {
@@ -4528,7 +4495,7 @@ static void project_paint_begin(const bContext *C,
 
   if (ps->source == PROJ_SRC_VIEW) {
     /* faster clipping lookups */
-    ED_view3d_clipping_local(ps->rv3d, ps->ob->object_to_world);
+    ED_view3d_clipping_local(ps->rv3d, ps->ob->object_to_world().ptr());
   }
 
   ps->do_face_sel = ((((Mesh *)ps->ob->data)->editflag & ME_EDIT_PAINT_FACE_SEL) != 0);
@@ -5384,11 +5351,10 @@ static void do_projectpaint_thread(TaskPool *__restrict /*pool*/, void *ph_v)
           if (is_floatbuf) {
             BLI_assert(ps->reproject_ibuf->float_buffer.data != nullptr);
 
-            bicubic_interpolation_color(ps->reproject_ibuf,
-                                        nullptr,
-                                        projPixel->newColor.f,
-                                        projPixel->projCoSS[0],
-                                        projPixel->projCoSS[1]);
+            blender::imbuf::interpolate_cubic_bspline_fl(ps->reproject_ibuf,
+                                                         projPixel->newColor.f,
+                                                         projPixel->projCoSS[0],
+                                                         projPixel->projCoSS[1]);
             if (projPixel->newColor.f[3]) {
               float mask = float(projPixel->mask) * (1.0f / 65535.0f);
 
@@ -5400,12 +5366,10 @@ static void do_projectpaint_thread(TaskPool *__restrict /*pool*/, void *ph_v)
           }
           else {
             BLI_assert(ps->reproject_ibuf->byte_buffer.data != nullptr);
-
-            bicubic_interpolation_color(ps->reproject_ibuf,
-                                        projPixel->newColor.ch,
-                                        nullptr,
-                                        projPixel->projCoSS[0],
-                                        projPixel->projCoSS[1]);
+            blender::imbuf::interpolate_cubic_bspline_byte(ps->reproject_ibuf,
+                                                           projPixel->newColor.ch,
+                                                           projPixel->projCoSS[0],
+                                                           projPixel->projCoSS[1]);
             if (projPixel->newColor.ch[3]) {
               float mask = float(projPixel->mask) * (1.0f / 65535.0f);
               projPixel->newColor.ch[3] *= mask;
@@ -5840,7 +5804,7 @@ void paint_proj_stroke(const bContext *C,
       return;
     }
 
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
     ED_region_tag_redraw(region);
 
     return;
@@ -6202,7 +6166,7 @@ static int texture_paint_camera_project_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  ED_image_undo_push_begin(op->type->name, PAINT_MODE_TEXTURE_3D);
+  ED_image_undo_push_begin(op->type->name, PaintMode::Texture3D);
 
   const float pos[2] = {0.0, 0.0};
   const float lastpos[2] = {0.0, 0.0};
@@ -6400,10 +6364,10 @@ void ED_paint_data_warning(
   BKE_reportf(reports,
               RPT_WARNING,
               "Missing%s%s%s%s detected!",
-              !has_uvs ? TIP_(" UVs,") : "",
-              !has_mat ? TIP_(" Materials,") : "",
-              !has_tex ? TIP_(" Textures (or linked),") : "",
-              !has_stencil ? TIP_(" Stencil,") : "");
+              !has_uvs ? RPT_(" UVs,") : "",
+              !has_mat ? RPT_(" Materials,") : "",
+              !has_tex ? RPT_(" Textures (or linked),") : "",
+              !has_stencil ? RPT_(" Stencil,") : "");
 }
 
 bool ED_paint_proj_mesh_data_check(Scene *scene,

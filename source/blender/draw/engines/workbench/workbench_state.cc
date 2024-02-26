@@ -152,7 +152,12 @@ void SceneState::init(Object *camera_ob /*=nullptr*/)
     reset_taa = true;
   }
 
-  if (assign_if_different(overlays_enabled, v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS))) {
+  bool _overlays_enabled = v3d && !(v3d->flag2 & V3D_HIDE_OVERLAYS);
+  /* Depth is always required in Wireframe mode. */
+  _overlays_enabled = _overlays_enabled || shading.type < OB_SOLID;
+  /* Some overlay passes can be rendered even with overlays disabled (See #116424). */
+  _overlays_enabled = _overlays_enabled || new_clip_state & DRW_STATE_CLIP_PLANES;
+  if (assign_if_different(overlays_enabled, _overlays_enabled)) {
     /* Reset TAA when enabling overlays, since we won't have valid sample0 depth textures.
      * (See #113741) */
     reset_taa = true;

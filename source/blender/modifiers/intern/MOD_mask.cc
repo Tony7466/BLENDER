@@ -11,10 +11,9 @@
 #include "BLI_utildefines.h"
 
 #include "BLI_array_utils.hh"
-#include "BLI_ghash.h"
 #include "BLI_listbase.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_armature_types.h"
 #include "DNA_defaults.h"
@@ -25,13 +24,11 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_action.h" /* BKE_pose_channel_find_name */
-#include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
-#include "BKE_lib_query.h"
+#include "BKE_deform.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
-#include "BKE_screen.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -40,9 +37,7 @@
 #include "RNA_prototypes.h"
 
 #include "DEG_depsgraph_build.hh"
-#include "DEG_depsgraph_query.hh"
 
-#include "MOD_modifiertypes.hh"
 #include "MOD_ui_common.hh"
 
 #include "BLI_array.hh"
@@ -498,7 +493,8 @@ static void add_interpolated_faces_to_new_mesh(const Mesh &src_mesh,
   int sub_face_index = 0;
   int last_i_src = -1;
   for (const int i_dst :
-       IndexRange(faces_masked_num, masked_face_indices.size() - faces_masked_num)) {
+       IndexRange(faces_masked_num, masked_face_indices.size() - faces_masked_num))
+  {
     const int i_src = masked_face_indices[i_dst];
     if (i_src == last_i_src) {
       sub_face_index++;
@@ -829,4 +825,5 @@ ModifierTypeInfo modifierType_Mask = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };

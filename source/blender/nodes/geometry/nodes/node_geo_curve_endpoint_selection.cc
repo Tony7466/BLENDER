@@ -6,7 +6,6 @@
 
 #include "BKE_curves.hh"
 
-#include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "node_geometry_util.hh"
@@ -65,7 +64,7 @@ class EndpointFieldInput final : public bke::CurvesFieldInput {
     Array<bool> selection(curves.points_num(), false);
     MutableSpan<bool> selection_span = selection.as_mutable_span();
     const OffsetIndices points_by_curve = curves.points_by_curve();
-    devirtualize_varray2(start_size, end_size, [&](const auto &start_size, const auto &end_size) {
+    devirtualize_varray2(start_size, end_size, [&](const auto start_size, const auto end_size) {
       threading::parallel_for(curves.curves_range(), 1024, [&](IndexRange curves_range) {
         for (const int i : curves_range) {
           const IndexRange points = points_by_curve[i];
@@ -89,13 +88,14 @@ class EndpointFieldInput final : public bke::CurvesFieldInput {
 
   uint64_t hash() const override
   {
-    return get_default_hash_2(start_size_, end_size_);
+    return get_default_hash(start_size_, end_size_);
   }
 
   bool is_equal_to(const fn::FieldNode &other) const override
   {
     if (const EndpointFieldInput *other_endpoint = dynamic_cast<const EndpointFieldInput *>(
-            &other)) {
+            &other))
+    {
       return start_size_ == other_endpoint->start_size_ && end_size_ == other_endpoint->end_size_;
     }
     return false;

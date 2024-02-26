@@ -10,19 +10,15 @@
 
 #include "BLI_task.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_modifier_types.h"
-
 #include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-#include "BKE_scene.h"
-
-#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "paint_intern.hh"
 #include "sculpt_intern.hh"
 
 #include "RNA_access.hh"
@@ -64,7 +60,7 @@ static EnumPropertyItem prop_mask_filter_types[] = {
 
 static void mask_filter_task(SculptSession *ss,
                              const int mode,
-                             float *prev_mask,
+                             const Span<float> prev_mask,
                              const SculptMaskWriteInfo mask_write,
                              PBVHNode *node)
 {
@@ -90,7 +86,7 @@ static void mask_filter_task(SculptSession *ss,
     switch (mode) {
       case MASK_FILTER_SMOOTH:
       case MASK_FILTER_SHARPEN: {
-        float val = smooth::neighbor_mask_average(ss, vd.vertex);
+        float val = smooth::neighbor_mask_average(ss, mask_write, vd.vertex);
 
         val -= mask;
 
@@ -165,6 +161,12 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
   const Scene *scene = CTX_data_scene(C);
   int filter_type = RNA_enum_get(op->ptr, "filter_type");
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
   BKE_sculpt_mask_layers_ensure(CTX_data_depsgraph_pointer(C), CTX_data_main(C), ob, mmd);
 
@@ -184,7 +186,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
     undo::push_node(ob, node, undo::Type::Mask);
   }
 
-  float *prev_mask = nullptr;
+  Array<float> prev_mask;
   int iterations = RNA_int_get(op->ptr, "iterations");
 
   /* Auto iteration count calculates the number of iteration based on the vertices of the mesh to
@@ -199,11 +201,7 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
 
   for (int i = 0; i < iterations; i++) {
     if (ELEM(filter_type, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
-      prev_mask = static_cast<float *>(MEM_mallocN(num_verts * sizeof(float), __func__));
-      for (int j = 0; j < num_verts; j++) {
-        PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, j);
-        prev_mask[j] = SCULPT_vertex_mask_get(ss, vertex);
-      }
+      prev_mask = duplicate_mask(*ob);
     }
 
     threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
@@ -211,10 +209,6 @@ static int sculpt_mask_filter_exec(bContext *C, wmOperator *op)
         mask_filter_task(ss, filter_type, prev_mask, mask_write, nodes[i]);
       }
     });
-
-    if (ELEM(filter_type, MASK_FILTER_GROW, MASK_FILTER_SHRINK)) {
-      MEM_freeN(prev_mask);
-    }
   }
 
   undo::push_end(ob);

@@ -489,6 +489,9 @@ bool ANIM_animdata_get_context(const bContext *C, bAnimContext *ac);
  * - AnimContext to write to is provided as pointer to var on stack so that we don't have
  *   allocation/freeing costs (which are not that avoidable with channels).
  * \return whether the operation was successful.
+ *
+ * \note This may also update the space data. For example, `SpaceAction::action`
+ * is set to the currently active object's Action.
  */
 bool ANIM_animdata_context_getdata(bAnimContext *ac);
 
@@ -534,7 +537,7 @@ enum eAnimChannels_SetFlag {
   ACHANNEL_SETFLAG_INVERT = 2,
   /** some on -> all off / all on */
   ACHANNEL_SETFLAG_TOGGLE = 3,
-  /** turn off, keep active flag **/
+  /** Turn off, keep active flag. */
   ACHANNEL_SETFLAG_EXTEND_RANGE = 4,
 };
 

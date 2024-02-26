@@ -13,25 +13,18 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "BLI_blenlib.h"
 #include "BLI_math_color.h"
 #include "BLI_utildefines.h"
 
 /* Types --------------------------------------------------------------- */
 
-#include "DNA_anim_types.h"
-#include "DNA_cachefile_types.h"
-#include "DNA_gpencil_legacy_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_action.h"
 #include "BKE_bake_geometry_nodes_modifier.hh"
-#include "BKE_context.hh"
-#include "BKE_node_runtime.hh"
 #include "BKE_pointcache.h"
 
 /* Everything from source (BIF, BDR, BSE) ------------------------------ */
@@ -88,7 +81,8 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
 
       /* check if visible */
       if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||
-          IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax)) {
+          IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax))
+      {
         /* draw all channels using standard channel-drawing API */
         ANIM_channel_draw(ac, ale, ymin, ymax, channel_index);
       }
@@ -106,7 +100,8 @@ void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region)
 
       /* check if visible */
       if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||
-          IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax)) {
+          IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax))
+      {
         /* draw all channels using standard channel-drawing API */
         rctf channel_rect;
         BLI_rctf_init(&channel_rect, 0, v2d->cur.xmax, ymin, ymax);
@@ -152,7 +147,8 @@ static void draw_channel_action_ranges(ListBase *anim_data, View2D *v2d)
 
     /* check if visible */
     if (IN_RANGE(ymin, v2d->cur.ymin, v2d->cur.ymax) ||
-        IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax)) {
+        IN_RANGE(ymax, v2d->cur.ymin, v2d->cur.ymax))
+    {
       /* check if anything to show for this channel */
       if (ale->datatype != ALE_NONE) {
         action = ANIM_channel_action_get(ale);
