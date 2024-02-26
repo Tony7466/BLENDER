@@ -6,6 +6,7 @@
  * \ingroup modifiers
  */
 
+#include "BLI_array.hh"
 #include "BLI_hash.h"
 #include "BLI_rand.h"
 #include "BLI_task.h"
@@ -75,8 +76,7 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
 {
-  const auto *mmd =
-      reinterpret_cast<const GreasePencilBuildModifierData *>(md);
+  const auto *mmd = reinterpret_cast<const GreasePencilBuildModifierData *>(md);
 
   BLO_write_struct(writer, GreasePencilBuildModifierData, mmd);
   modifier::greasepencil::write_influence_data(writer, &mmd->influence);
@@ -89,13 +89,86 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
+static Array<int> points_per_curve_concurrent(const int stroke_count,
+                                              const IndexMask &selection,
+                                              const OffsetIndices<int> &points_by_curve,
+                                              const int transition,
+                                              const float factor,
+                                              int &out_curves_num,
+                                              int &out_points_num)
+{
+  out_curves_num = out_points_num = 0;
+  const float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
+                                   factor :
+                                   (1.0f - factor);
+  Array<int> result(stroke_count);
+  for (const int i : IndexRange(stroke_count)) {
+    const int points = points_by_curve[i].size() * (selection[i] ? factor_to_keep : 1.0f);
+    result[i] = points;
+    out_points_num += points;
+    if (points) {
+      out_curves_num++;
+    }
+  }
+  return result;
+}
+
+static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
+                                            const IndexMask &selection,
+                                            const int mode,
+                                            const int transition,
+                                            const float factor)
+{
+  int dst_curves_num, dst_points_num;
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  Array<int> points_per_curve = points_per_curve_concurrent(curves.curves_num(),
+                                                            selection,
+                                                            points_by_curve,
+                                                            transition,
+                                                            factor,
+                                                            dst_curves_num,
+                                                            dst_points_num);
+  if (dst_curves_num == 0) {
+    return {};
+  }
+
+  const bool is_vanishing = mode == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
+
+  bke::CurvesGeometry dst_curves(dst_points_num, dst_curves_num);
+  Array<int> dst_offsets(dst_curves_num + 1);
+  Array<int> dst_to_src_point(dst_points_num);
+  int next_curve = 1, next_point = 0;
+  for (const int i : IndexRange(curves.curves_num())) {
+    if (points_per_curve[i]) {
+      dst_offsets[next_curve] = points_per_curve[i];
+
+      const int extra_offset = is_vanishing ? points_by_curve[i].size() - points_per_curve[i] : 0;
+      for (const int stroke_point : IndexRange(points_per_curve[i])) {
+        dst_to_src_point[next_point] = extra_offset + stroke_point;
+      }
+
+      next_curve++;
+    }
+  }
+
+  OffsetIndices dst_indices = offset_indices::accumulate_counts_to_offsets(dst_offsets);
+  dst_curves.offsets_for_write() = dst_offsets;
+
+  const bke::AttributeAccessor attributes = curves.attributes();
+  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+
+  /* Transfer point attributes. */
+  gather_attributes(attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
+
+  return dst_curves;
+}
+
 static void deform_drawing(const ModifierData &md,
                            const Object &ob,
                            bke::greasepencil::Drawing &drawing,
                            const int current_time)
 {
-  const auto &mmd =
-      reinterpret_cast<const GreasePencilBuildModifierData &>(md);
+  const auto &mmd = reinterpret_cast<const GreasePencilBuildModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   if (curves.points_num() == 0) {
@@ -105,9 +178,6 @@ static void deform_drawing(const ModifierData &md,
   IndexMaskMemory memory;
   const IndexMask selection = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
-
-
-
 
   drawing.tag_topology_changed();
 }
@@ -139,7 +209,7 @@ static void modify_geometry_set(ModifierData *md,
 static void panel_draw(const bContext *C, Panel *panel)
 {
   uiLayout *layout = panel->layout;
-  
+
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
@@ -195,37 +265,35 @@ static void panel_draw(const bContext *C, Panel *panel)
   /* Check for incompatible time modifier. */
   Object *ob = static_cast<Object *>(ob_ptr.data);
   auto *md = static_cast<GreasePencilBuildModifierData *>(ptr->data);
-  
+
   // TODO: Time offset modifier not merged yet:
 
-  //if (BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Time) != nullptr) {
-  //  BKE_gpencil_modifier_set_error(md, "Build and Time Offset modifiers are incompatible");
-  //}
+  // if (BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Time) != nullptr) {
+  //   BKE_gpencil_modifier_set_error(md, "Build and Time Offset modifiers are incompatible");
+  // }
 
   if (uiLayout *panel = uiLayoutPanelProp(
           C, layout, ptr, "open_frame_range_panel", "Effective Range"))
   {
     uiLayoutSetPropSep(panel, true);
     uiItemR(
-      panel, ptr, "use_restrict_frame_range", UI_ITEM_NONE, IFACE_("Custom Range"), ICON_NONE);
+        panel, ptr, "use_restrict_frame_range", UI_ITEM_NONE, IFACE_("Custom Range"), ICON_NONE);
 
     const bool active = RNA_boolean_get(ptr, "use_restrict_frame_range");
     uiLayout *col = uiLayoutColumn(panel, false);
-    uiLayoutSetActive(col,active);
+    uiLayoutSetActive(col, active);
     uiItemR(col, ptr, "frame_start", UI_ITEM_NONE, IFACE_("Start"), ICON_NONE);
     uiItemR(col, ptr, "frame_end", UI_ITEM_NONE, IFACE_("End"), ICON_NONE);
   }
 
-  if (uiLayout *panel = uiLayoutPanelProp(
-          C, layout, ptr, "open_fading_panel", "Fading"))
-  {
+  if (uiLayout *panel = uiLayoutPanelProp(C, layout, ptr, "open_fading_panel", "Fading")) {
     uiLayoutSetPropSep(panel, true);
     uiItemR(panel, ptr, "use_fading", UI_ITEM_NONE, IFACE_("Fade"), ICON_NONE);
 
     const bool active = RNA_boolean_get(ptr, "use_fading");
     uiLayout *col = uiLayoutColumn(panel, false);
-    uiLayoutSetActive(col,active);
-    
+    uiLayoutSetActive(col, active);
+
     uiItemR(col, ptr, "fade_factor", UI_ITEM_NONE, IFACE_("Factor"), ICON_NONE);
 
     uiLayout *subcol = uiLayoutColumn(col, true);
@@ -233,12 +301,12 @@ static void panel_draw(const bContext *C, Panel *panel)
     uiItemR(subcol, ptr, "fade_opacity_strength", UI_ITEM_NONE, IFACE_("Opacity"), ICON_NONE);
 
     uiItemPointerR(col,
-                  ptr,
-                  "target_vertex_group",
-                  &ob_ptr,
-                  "vertex_groups",
-                  IFACE_("Weight Output"),
-                  ICON_NONE);
+                   ptr,
+                   "dst_vertex_group",
+                   &ob_ptr,
+                   "vertex_groups",
+                   IFACE_("Weight Output"),
+                   ICON_NONE);
   }
 
   if (uiLayout *influence_panel = uiLayoutPanelProp(
