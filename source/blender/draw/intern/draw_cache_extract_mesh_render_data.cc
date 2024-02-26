@@ -189,48 +189,54 @@ static void accumululate_material_counts_mesh(
     const MeshRenderData &mr, threading::EnumerableThreadSpecific<Array<int>> &all_tri_counts)
 {
   const OffsetIndices faces = mr.faces;
-  if (mr.material_indices.is_empty()) {
-    if (mr.use_hide && !mr.hide_poly.is_empty()) {
-      const Span hide_poly = mr.hide_poly;
-      all_tri_counts.local().first() = threading::parallel_reduce(
-          faces.index_range(),
-          4096,
-          0,
-          [&](const IndexRange range, int count) {
-            for (const int face : range) {
-              if (!hide_poly[face]) {
-                count += bke::mesh::face_triangles_num(faces[face].size());
-              }
-            }
-            return count;
-          },
-          std::plus<int>());
-    }
-    else {
+  const Span material_indices = mr.material_indices;
+  if (material_indices.is_empty()) {
+    if (mr.hide_poly.is_empty()) {
       all_tri_counts.local().first() = poly_to_tri_count(mr.face_len, mr.loop_len);
+      return;
     }
+    const Span hide_poly = mr.hide_poly;
+    all_tri_counts.local().first() = threading::parallel_reduce(
+        faces.index_range(),
+        4096,
+        0,
+        [&](const IndexRange range, int count) {
+          for (const int face : range) {
+            if (!hide_poly[face]) {
+              count += bke::mesh::face_triangles_num(faces[face].size());
+            }
+          }
+          return count;
+        },
+        std::plus<int>());
     return;
   }
 
-  const Span material_indices = mr.material_indices;
+  const Span<bool> hide_poly = mr.hide_poly;
+
   threading::parallel_for(material_indices.index_range(), 1024, [&](const IndexRange range) {
     Array<int> &tri_counts = all_tri_counts.local();
     const int last_index = tri_counts.size() - 1;
-    if (mr.use_hide && !mr.hide_poly.is_empty()) {
-      for (const int i : range) {
-        if (!mr.hide_poly[i]) {
-          const int mat = std::clamp(material_indices[i], 0, last_index);
-          tri_counts[mat] += bke::mesh::face_triangles_num(faces[i].size());
-        }
-      }
-    }
-    else {
+    if (hide_poly.is_empty()) {
       for (const int i : range) {
         const int mat = std::clamp(material_indices[i], 0, last_index);
         tri_counts[mat] += bke::mesh::face_triangles_num(faces[i].size());
       }
     }
+    else {
+      for (const int i : range) {
+        if (!hide_poly[i]) {
+          const int mat = std::clamp(material_indices[i], 0, last_index);
+          tri_counts[mat] += bke::mesh::face_triangles_num(faces[i].size());
+        }
+      }
+    }
   });
+}
+
+static bool single_material(const Span<int> mat_tri_counts)
+{
+  return mat_tri_counts.count(0) == mat_tri_counts.size() - 1;
 }
 
 /* Count how many triangles for each material. */
@@ -246,75 +252,108 @@ static Array<int> mesh_render_data_mat_tri_len_build(const MeshRenderData &mr)
     accumululate_material_counts_mesh(mr, all_tri_counts);
   }
 
-  Array<int> &mat_tri_len = all_tri_counts.local();
+  Array<int> &mat_tri_counts = all_tri_counts.local();
   for (const Array<int> &counts : all_tri_counts) {
-    if (&counts != &mat_tri_len) {
-      for (const int i : mat_tri_len.index_range()) {
-        mat_tri_len[i] += counts[i];
+    if (&counts != &mat_tri_counts) {
+      for (const int i : mat_tri_counts.index_range()) {
+        mat_tri_counts[i] += counts[i];
       }
     }
   }
-  return std::move(mat_tri_len);
+  return std::move(mat_tri_counts);
 }
 
-static void mesh_render_data_faces_sorted_build(MeshRenderData &mr, MeshBufferCache &cache)
+static std::optional<Array<int>> sort_face_tris_by_material_mesh(
+    const MeshRenderData &mr, MutableSpan<int> material_tri_starts)
 {
-  cache.face_sorted.mat_tri_len = mesh_render_data_mat_tri_len_build(mr);
-  const Span<int> mat_tri_len = cache.face_sorted.mat_tri_len;
+  const OffsetIndices faces = mr.faces;
+  const Span<bool> hide_poly = mr.hide_poly;
+  const Span<int> material_indices = mr.material_indices;
 
-  /* Apply offset. */
-  int visible_tri_len = 0;
-  Array<int, 32> mat_tri_offs(mr.mat_len);
-  {
-    for (int i = 0; i < mr.mat_len; i++) {
-      mat_tri_offs[i] = visible_tri_len;
-      visible_tri_len += mat_tri_len[i];
+  Array<int> face_tri_offsets(faces.size());
+
+  // TODO: Multithread this loop somehow?
+
+  const int mat_last = mr.mat_len - 1;
+  if (hide_poly.is_empty()) {
+    for (const int face : faces.index_range()) {
+      const int mat = std::clamp(material_indices[face], 0, mat_last);
+      face_tri_offsets[face] = material_tri_starts[mat];
+      material_tri_starts[mat] += bke::mesh::face_triangles_num(faces[face].size());
     }
   }
-  cache.face_sorted.visible_tri_len = visible_tri_len;
+  else {
+    for (const int face : faces.index_range()) {
+      if (hide_poly[face]) {
+        face_tri_offsets[face] = -1;
+      }
+      else {
+        const int mat = std::clamp(material_indices[face], 0, mat_last);
+        face_tri_offsets[face] = material_tri_starts[mat];
+        material_tri_starts[mat] += bke::mesh::face_triangles_num(faces[face].size());
+      }
+    }
+  }
 
-  cache.face_sorted.tri_first_index.reinitialize(mr.face_len);
-  MutableSpan<int> tri_first_index = cache.face_sorted.tri_first_index;
+  return face_tri_offsets;
+}
+
+static SortedFaceData mesh_render_data_faces_sorted_build(const MeshRenderData &mr)
+{
+  SortedFaceData cache;
+  cache.mat_tri_counts = mesh_render_data_mat_tri_len_build(mr);
+  const Span<int> mat_tri_counts = cache.mat_tri_counts;
+
+  Array<int, 32> material_tri_starts(mr.mat_len + 1);
+  material_tri_starts.as_mutable_span().drop_back(1).copy_from(mat_tri_counts);
+  offset_indices::accumulate_counts_to_offsets(material_tri_starts);
+  cache.visible_tri_len = material_tri_starts.last();
 
   /* Sort per material. */
-  int mat_last = mr.mat_len - 1;
+  const int mat_last = mr.mat_len - 1;
   if (mr.extract_type == MR_EXTRACT_BMESH) {
+    cache.face_tri_offsets.emplace();
+    cache.face_tri_offsets->reinitialize(mr.face_len);
+    MutableSpan<int> face_tri_offsets = cache.face_tri_offsets->as_mutable_span();
+
     BMIter iter;
     BMFace *f;
     int i;
     BM_ITER_MESH_INDEX (f, &iter, mr.bm, BM_FACES_OF_MESH, i) {
       if (!BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
-        const int mat = clamp_i(f->mat_nr, 0, mat_last);
-        tri_first_index[i] = mat_tri_offs[mat];
-        mat_tri_offs[mat] += f->len - 2;
+        const int mat = std::clamp(int(f->mat_nr), 0, mat_last);
+        face_tri_offsets[i] = material_tri_starts[mat];
+        material_tri_starts[mat] += f->len - 2;
       }
       else {
-        tri_first_index[i] = -1;
+        face_tri_offsets[i] = -1;
       }
     }
   }
   else {
-    for (int i = 0; i < mr.face_len; i++) {
-      if (!(mr.use_hide && !mr.hide_poly.is_empty() && mr.hide_poly[i])) {
-        const int mat = mr.material_indices.is_empty() ?
-                            0 :
-                            clamp_i(mr.material_indices[i], 0, mat_last);
-        tri_first_index[i] = mat_tri_offs[mat];
-        mat_tri_offs[mat] += mr.faces[i].size() - 2;
+    if (single_material(mat_tri_counts)) {
+      if (mr.hide_poly.is_empty()) {
+        cache.visible_tri_len = mr.tri_len;
       }
       else {
-        tri_first_index[i] = -1;
+        cache.visible_tri_len = *std::find_if(mat_tri_counts.begin(),
+                                              mat_tri_counts.end(),
+                                              [](const int tri_count) { return tri_count != 0; });
       }
     }
+    else {
+      cache.face_tri_offsets = sort_face_tris_by_material_mesh(mr, material_tri_starts);
+    }
   }
+  return cache;
 }
 
 static void mesh_render_data_faces_sorted_ensure(MeshRenderData &mr, MeshBufferCache &cache)
 {
-  if (!cache.face_sorted.tri_first_index.is_empty()) {
+  if (cache.face_sorted.visible_tri_len > 0) {
     return;
   }
-  mesh_render_data_faces_sorted_build(mr, cache);
+  cache.face_sorted = mesh_render_data_faces_sorted_build(mr);
 }
 
 void mesh_render_data_update_faces_sorted(MeshRenderData &mr,
@@ -544,7 +583,7 @@ MeshRenderData *mesh_render_data_create(Object *object,
                                         const bool is_editmode,
                                         const bool is_paint_mode,
                                         const bool is_mode_active,
-                                        const float obmat[4][4],
+                                        const float4x4 &object_to_world,
                                         const bool do_final,
                                         const bool do_uvedit,
                                         const ToolSettings *ts)
@@ -553,7 +592,7 @@ MeshRenderData *mesh_render_data_create(Object *object,
   mr->toolsettings = ts;
   mr->mat_len = mesh_render_mat_len_get(object, mesh);
 
-  copy_m4_m4(mr->obmat, obmat);
+  mr->object_to_world = object_to_world;
 
   if (is_editmode) {
     Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(object);

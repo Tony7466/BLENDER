@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_math_matrix_types.hh"
 #include "BLI_utildefines.h"
 
 #include "GPU_shader.h"
@@ -216,12 +217,15 @@ struct MeshExtractLooseGeom {
 };
 
 struct SortedFaceData {
-  /** The first triangle index for each polygon, sorted into slices by material. */
-  Array<int> tri_first_index;
   /** The number of visible triangles assigned to each material. */
-  Array<int> mat_tri_len;
-  /* The total number of visible triangles (a sum of the values in #mat_tri_len). */
+  Array<int> mat_tri_counts;
+  /* The total number of visible triangles (a sum of the values in #mat_tri_counts). */
   int visible_tri_len;
+  /**
+   * The first triangle index for each polygon, sorted into slices by material.
+   * May be empty if the mesh only has a single material.
+   */
+  std::optional<Array<int>> face_tri_offsets;
 };
 
 /**
@@ -305,7 +309,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
                                         bool is_editmode,
                                         bool is_paint_mode,
                                         bool is_mode_active,
-                                        const float obmat[4][4],
+                                        const float4x4 &object_to_world,
                                         bool do_final,
                                         bool do_uvedit,
                                         const Scene *scene,

@@ -94,6 +94,16 @@ void GPU_indexbuf_init_build_on_device(GPUIndexBuf *elem, uint index_len)
   elem_->init_build_on_device(index_len);
 }
 
+uint32_t *GPU_indexbuf_get_data(GPUIndexBufBuilder *builder)
+{
+  return builder->data;
+}
+
+uint32_t GPU_indexbuf_get_restart_value(GPUIndexBufBuilder *builder)
+{
+  return builder->restart_index_value;
+}
+
 void GPU_indexbuf_join(GPUIndexBufBuilder *builder_to, const GPUIndexBufBuilder *builder_from)
 {
   BLI_assert(builder_to->data == builder_from->data);
@@ -439,6 +449,24 @@ void GPU_indexbuf_build_in_place(GPUIndexBufBuilder *builder, GPUIndexBuf *elem)
                      builder->index_max,
                      builder->prim_type,
                      builder->uses_restart_indices);
+  builder->data = nullptr;
+}
+
+void GPU_indexbuf_build_in_place_ex(GPUIndexBufBuilder *builder,
+                                    const uint index_min,
+                                    const uint index_max,
+                                    const bool uses_restart_indices,
+                                    GPUIndexBuf *elem)
+{
+  BLI_assert(builder->data != nullptr);
+  /* Transfer data ownership to GPUIndexBuf.
+   * It will be uploaded upon first use. */
+  unwrap(elem)->init(builder->max_index_len,
+                     builder->data,
+                     index_min,
+                     index_max,
+                     builder->prim_type,
+                     uses_restart_indices);
   builder->data = nullptr;
 }
 

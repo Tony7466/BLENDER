@@ -43,6 +43,9 @@ GPUIndexBuf *GPU_indexbuf_build_on_device(uint index_len);
 
 void GPU_indexbuf_init_build_on_device(GPUIndexBuf *elem, uint index_len);
 
+uint32_t *GPU_indexbuf_get_data(GPUIndexBufBuilder *);
+uint32_t GPU_indexbuf_get_restart_value(GPUIndexBufBuilder *);
+
 /*
  * Thread safe.
  *
@@ -69,6 +72,11 @@ void GPU_indexbuf_set_tri_restart(GPUIndexBufBuilder *builder, uint elem);
 
 GPUIndexBuf *GPU_indexbuf_build(GPUIndexBufBuilder *);
 void GPU_indexbuf_build_in_place(GPUIndexBufBuilder *, GPUIndexBuf *);
+void GPU_indexbuf_build_in_place_ex(GPUIndexBufBuilder *builder,
+                                    uint index_min,
+                                    uint index_max,
+                                    bool uses_restart_indices,
+                                    GPUIndexBuf *elem);
 
 void GPU_indexbuf_bind_as_ssbo(GPUIndexBuf *elem, int binding);
 

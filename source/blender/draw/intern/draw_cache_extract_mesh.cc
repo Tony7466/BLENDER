@@ -32,7 +32,7 @@
 
 #include "mesh_extractors/extract_mesh.hh"
 
-// #define DEBUG_TIME
+#define DEBUG_TIME
 
 #ifdef DEBUG_TIME
 #  include "BLI_time_utildefines.h"
@@ -572,7 +572,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
                                         const bool is_editmode,
                                         const bool is_paint_mode,
                                         const bool is_mode_active,
-                                        const float obmat[4][4],
+                                        const float4x4 &object_to_world,
                                         const bool do_final,
                                         const bool do_uvedit,
                                         const Scene *scene,
@@ -611,7 +611,6 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
    */
   const bool do_hq_normals = (scene->r.perf_flag & SCE_PERF_HQ_NORMALS) != 0 ||
                              GPU_use_hq_normals_workaround();
-  const bool override_single_mat = mesh_render_mat_len_get(object, mesh) <= 1;
 
   /* Create an array containing all the extractors that needs to be executed. */
   ExtractorRunDatas extractors;
@@ -621,8 +620,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
 #define EXTRACT_ADD_REQUESTED(type, name) \
   do { \
     if (DRW_##type##_requested(mbuflist->type.name)) { \
-      const MeshExtract *extractor = mesh_extract_override_get( \
-          &extract_##name, do_hq_normals, override_single_mat); \
+      const MeshExtract *extractor = mesh_extract_override_get(&extract_##name, do_hq_normals); \
       extractors.append(extractor); \
     } \
   } while (0)
@@ -696,8 +694,15 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
   double rdata_start = BLI_time_now_seconds();
 #endif
 
-  MeshRenderData *mr = mesh_render_data_create(
-      object, mesh, is_editmode, is_paint_mode, is_mode_active, obmat, do_final, do_uvedit, ts);
+  MeshRenderData *mr = mesh_render_data_create(object,
+                                               mesh,
+                                               is_editmode,
+                                               is_paint_mode,
+                                               is_mode_active,
+                                               object_to_world,
+                                               do_final,
+                                               do_uvedit,
+                                               ts);
   mr->use_hide = use_hide;
   mr->use_subsurf_fdots = mr->mesh && !mr->mesh->runtime->subsurf_face_dot_tags.is_empty();
   mr->use_final_mesh = do_final;
