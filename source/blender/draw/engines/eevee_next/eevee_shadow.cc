@@ -744,7 +744,7 @@ void ShadowModule::init()
   data_.ray_count = clamp_i(inst_.scene->eevee.shadow_ray_count, 1, SHADOW_MAX_RAY);
   data_.step_count = clamp_i(inst_.scene->eevee.shadow_step_count, 1, SHADOW_MAX_STEP);
   data_.normal_bias = max_ff(inst_.scene->eevee.shadow_normal_bias, 0.0f);
-  data_.pcf_radius = max_ff(inst_.scene->eevee.shadow_pcf_radius, 0.0f);
+  data_.pcf_radius = max_ff(inst_.scene->eevee.shadow_filter_radius, 0.0f);
 
   /* Pool size is in MBytes. */
   const size_t pool_byte_size = enabled_ ? scene.eevee.shadow_pool_size * square_i(1024) : 1;

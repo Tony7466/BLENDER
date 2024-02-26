@@ -408,6 +408,8 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 /** \name Shadow Evaluation
  * \{ */
 
+/* Compute the world space offset of the shading position required for
+ * stochastic percentage closer filtering of shadow-maps. */
 vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng)
 {
   if (uniform_buf.shadow.pcf_radius <= 0.001) {
@@ -427,7 +429,7 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
     return vec3(0.0);
   }
 
-  /* Compute shadomap TBN matrix. */
+  /* Compute shadow-map TBN matrix. */
 
   float uv_offset = 1.0 / float(SHADOW_MAP_MAX_RES);
   vec3 TP, BP;
@@ -460,7 +462,7 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
   rand = sampling_rng_2D_get(SAMPLING_SHADOW_V);
 #endif
   vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(0.0), rand);
-  pcf_offset = pcf_offset * vec2(2.0) - vec2(1.0);
+  pcf_offset = pcf_offset * 2.0 - 1.0;
   pcf_offset *= uniform_buf.shadow.pcf_radius;
 
   return TBN * vec3(pcf_offset, 0.0);
