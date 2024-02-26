@@ -115,7 +115,6 @@ static Array<int> points_per_curve_concurrent(const int stroke_count,
 
 static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
                                             const IndexMask &selection,
-                                            const int mode,
                                             const int transition,
                                             const float factor)
 {
@@ -132,7 +131,7 @@ static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
     return {};
   }
 
-  const bool is_vanishing = mode == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
+  const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
 
   bke::CurvesGeometry dst_curves(dst_points_num, dst_curves_num);
   Array<int> dst_offsets(dst_curves_num + 1);
@@ -159,6 +158,70 @@ static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
 
   /* Transfer point attributes. */
   gather_attributes(attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
+
+  return dst_curves;
+}
+
+static bool points_info_sequential(const int stroke_count,
+                                   const IndexMask &selection,
+                                   const OffsetIndices<int> &points_by_curve,
+                                   const int transition,
+                                   const float factor,
+                                   int &out_curves_num,
+                                   int &out_points_num)
+{
+  out_curves_num = out_points_num = 0;
+  const float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
+                                   factor :
+                                   (1.0f - factor);
+
+  int effective_points_num = 0;
+  selection.foreach_index(
+      [&](const int index) { effective_points_num += points_by_curve[index].size(); });
+
+  const int untouched_points_num = points_by_curve.total_size() - effective_points_num;
+  effective_points_num *= factor_to_keep;
+  effective_points_num += untouched_points_num;
+
+  out_points_num = effective_points_num;
+
+  int counted_points_num = 0;
+  for (const int i : IndexRange(stroke_count)) {
+    if (selection[i] && counted_points_num >= effective_points_num) {
+      continue;
+    }
+    else {
+      out_curves_num++;
+    }
+  }
+  return out_curves_num != 0;
+}
+
+static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
+                                            const IndexMask &selection,
+                                            const int transition,
+                                            const float factor)
+{
+  int dst_curves_num, dst_points_num;
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  Array<int> points_per_curve = points_per_curve_concurrent(curves.curves_num(),
+                                                            selection,
+                                                            points_by_curve,
+                                                            transition,
+                                                            factor,
+                                                            dst_curves_num,
+                                                            dst_points_num);
+  if (dst_curves_num == 0) {
+    return {};
+  }
+
+  const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
+
+  bke::CurvesGeometry dst_curves(dst_points_num, dst_curves_num);
+  Array<int> dst_offsets(dst_curves_num + 1);
+  Array<int> dst_to_src_point(dst_points_num);
+
+  /* Hummmm.... */
 
   return dst_curves;
 }
