@@ -134,27 +134,23 @@ struct FrameRange {
  * reversing the direction. */
 static const IndexRange find_key_range(const Span<int> sorted_keys, const FrameRange &frame_range)
 {
-  /* TODO doesn't quite work yet, just return the full range for now. */
-  UNUSED_VARS(frame_range);
-  return sorted_keys.index_range();
-#if 0
   IndexRange result = sorted_keys.index_range();
-  for (const int i : sorted_keys.index_range().drop_front(1)) {
-    if (sorted_keys[i] >= frame_range.sfra) {
-      /* Keep the previous point. */
-      result = result.drop_front(i - 1);
+  for (const int i : result.index_range()) {
+    const int irev = result.size() - 1 - i;
+    if (sorted_keys[result[irev]] <= frame_range.sfra) {
+      /* Found first key affecting the frame range, drop any earlier keys. */
+      result = result.drop_front(irev);
       break;
     }
   }
-  for (const int i : result.index_range().drop_front(1)) {
-    if (sorted_keys[i] > frame_range.sfra) {
-      /* Keep the end point in case the direction is reversed. */
-      result = result.take_front(i + 1);
+  for (const int i : result.index_range()) {
+    if (sorted_keys[result[i]] > frame_range.efra) {
+      /* Found first key outside the frame range, drop this and later keys. */
+      result = result.take_front(i);
       break;
     }
   }
   return result;
-#endif
 }
 
 struct TimeMapping {
