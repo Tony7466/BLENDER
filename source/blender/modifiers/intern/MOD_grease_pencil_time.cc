@@ -398,7 +398,8 @@ static void fill_scene_range_chain(const TimeMapping &mapping,
     for (const Segment &segment : segments.drop_front(1)) {
       duration += segment_full_range(segment).duration();
     }
-    return FrameRange{1, duration};
+    /* Same start as the source range. */
+    return FrameRange{gp_src_range.sfra, gp_src_range.sfra + duration - 1};
   }();
   int repeat_start = 0, repeat_count = 1;
   calculate_repetitions(mapping, gp_range_full, scene_dst_range, repeat_start, repeat_count);
@@ -408,28 +409,32 @@ static void fill_scene_range_chain(const TimeMapping &mapping,
   FrameRange gp_dst_range = gp_src_range.shift(repeat_start * gp_range_full.duration());
   for ([[maybe_unused]] const int repeat_i : IndexRange(repeat_count)) {
     for (const Segment &segment : segments) {
-      const FrameRange gp_src_range = segment_base_range(segment);
+      const FrameRange segment_src_range = segment_base_range(segment);
       for ([[maybe_unused]] const int segment_repeat_i : IndexRange(segment.segment_repeat)) {
         switch (GreasePencilTimeModifierSegmentMode(segment.segment_mode)) {
           case MOD_GREASE_PENCIL_TIME_SEG_MODE_NORMAL:
-            insert_keys_forward(mapping, frames, src_keys, gp_src_range, gp_dst_range, dst_frames);
-            gp_dst_range = gp_dst_range.shift(gp_src_range.duration());
+            insert_keys_forward(
+                mapping, frames, src_keys, segment_src_range, gp_dst_range, dst_frames);
+            gp_dst_range = gp_dst_range.shift(segment_src_range.duration());
             break;
           case MOD_GREASE_PENCIL_TIME_SEG_MODE_REVERSE:
-            insert_keys_reverse(mapping, frames, src_keys, gp_src_range, gp_dst_range, dst_frames);
-            gp_dst_range = gp_dst_range.shift(gp_src_range.duration());
+            insert_keys_reverse(
+                mapping, frames, src_keys, segment_src_range, gp_dst_range, dst_frames);
+            gp_dst_range = gp_dst_range.shift(segment_src_range.duration());
             break;
           case MOD_GREASE_PENCIL_TIME_SEG_MODE_PINGPONG: {
             /* Ping. */
-            const FrameRange gp_src_range_ping = {gp_src_range.sfra, gp_src_range.efra - 1};
+            const FrameRange segment_src_range_ping = {segment_src_range.sfra,
+                                                       segment_src_range.efra - 1};
             insert_keys_forward(
-                mapping, frames, src_keys, gp_src_range_ping, gp_dst_range, dst_frames);
-            gp_dst_range = gp_dst_range.shift(gp_src_range_ping.duration());
+                mapping, frames, src_keys, segment_src_range_ping, gp_dst_range, dst_frames);
+            gp_dst_range = gp_dst_range.shift(segment_src_range_ping.duration());
             /* Pong. */
-            const FrameRange gp_src_range_pong = {gp_src_range.sfra + 1, gp_src_range.efra};
+            const FrameRange segment_src_range_pong = {segment_src_range.sfra + 1,
+                                                       segment_src_range.efra};
             insert_keys_reverse(
-                mapping, frames, src_keys, gp_src_range_pong, gp_dst_range, dst_frames);
-            gp_dst_range = gp_dst_range.shift(gp_src_range_pong.duration());
+                mapping, frames, src_keys, segment_src_range_pong, gp_dst_range, dst_frames);
+            gp_dst_range = gp_dst_range.shift(segment_src_range_pong.duration());
             break;
           }
         }
@@ -450,28 +455,28 @@ static void fill_scene_timeline(const GreasePencilTimeModifierData &tmd,
   const bool use_custom_range = tmd.flag & MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE;
 
   const Scene *scene = DEG_get_evaluated_scene(ctx.depsgraph);
-  const FrameRange gp_src_range = use_custom_range ? FrameRange{tmd.sfra, tmd.efra} :
-                                                     FrameRange{scene->r.sfra, scene->r.efra};
+  const FrameRange scene_range = FrameRange{scene->r.sfra, scene->r.efra};
+  const FrameRange custom_range = use_custom_range ? FrameRange{tmd.sfra, tmd.efra} : scene_range;
 
   switch (mode) {
     case MOD_GREASE_PENCIL_TIME_MODE_NORMAL:
       fill_scene_range_forward(
-          tmd, frames, sorted_keys, gp_src_range, scene_dst_range, dst_frames);
+          tmd, frames, sorted_keys, custom_range, scene_dst_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_REVERSE:
       fill_scene_range_reverse(
-          tmd, frames, sorted_keys, gp_src_range, scene_dst_range, dst_frames);
+          tmd, frames, sorted_keys, custom_range, scene_dst_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_FIX:
       fill_scene_range_fixed(tmd, frames, sorted_keys, tmd.offset, scene_dst_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_PINGPONG:
       fill_scene_range_ping_pong(
-          tmd, frames, sorted_keys, gp_src_range, scene_dst_range, dst_frames);
+          tmd, frames, sorted_keys, custom_range, scene_dst_range, dst_frames);
       break;
     case MOD_GREASE_PENCIL_TIME_MODE_CHAIN:
       fill_scene_range_chain(
-          tmd, frames, sorted_keys, tmd.segments(), gp_src_range, scene_dst_range, dst_frames);
+          tmd, frames, sorted_keys, tmd.segments(), scene_range, scene_dst_range, dst_frames);
       break;
   }
 }
