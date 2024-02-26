@@ -501,16 +501,17 @@ static void modify_geometry_set(ModifierData *md,
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       grease_pencil, tmd->influence, mask_memory);
 
-  for (const int64_t i : layer_mask.index_range()) {
-    Layer *layer = grease_pencil.layers_for_write()[layer_mask[i]];
-    const Span<int> sorted_keys = layer->sorted_keys();
-    const Map<int, GreasePencilFrame> &src_frames = layer->frames();
+  const Span<Layer *> layers_for_write = grease_pencil.layers_for_write();
+  layer_mask.foreach_index([&](const int64_t layer_i) {
+    Layer &layer = *layers_for_write[layer_i];
+    const Span<int> sorted_keys = layer.sorted_keys();
+    const Map<int, GreasePencilFrame> &src_frames = layer.frames();
 
     Map<int, GreasePencilFrame> new_frames;
     fill_scene_timeline(*tmd, *scene, src_frames, sorted_keys, dst_keyframe_range, new_frames);
-    layer->frames_for_write() = std::move(new_frames);
-    layer->tag_frames_map_keys_changed();
-  }
+    layer.frames_for_write() = std::move(new_frames);
+    layer.tag_frames_map_keys_changed();
+  });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
