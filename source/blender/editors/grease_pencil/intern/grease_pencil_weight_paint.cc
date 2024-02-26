@@ -38,7 +38,7 @@ int create_vertex_group_in_object(Object &ob)
   /* Look for an active bone in armature to name the vertex group after. */
   Object *ob_armature = BKE_modifiers_is_deformed_by_armature(&ob);
   if (ob_armature != nullptr) {
-    Bone *actbone = ((bArmature *)ob_armature->data)->act_bone;
+    Bone *actbone = (static_cast<bArmature *>(ob_armature->data))->act_bone;
     if (actbone != nullptr) {
       bPoseChannel *pchan = BKE_pose_channel_find_name(ob_armature->pose, actbone->name);
       if (pchan != nullptr) {
@@ -106,11 +106,11 @@ Set<std::string> get_bone_deformed_vertex_groups(Object &object)
  * Returns false when the normalization failed due to too many locked vertex groups. In that case a
  * second pass can be done with the active vertex group unlocked.
  */
-static bool normalize_vertex_weights_try(const MDeformVert &dvert,
+static bool normalize_vertex_weights_try(MDeformVert &dvert,
                                          const int vertex_groups_num,
                                          const int locked_active_vertex_group,
-                                         const Span<bool> &vertex_group_is_locked,
-                                         const Span<bool> &vertex_group_is_bone_deformed)
+                                         const Span<bool> vertex_group_is_locked,
+                                         const Span<bool> vertex_group_is_bone_deformed)
 {
   /* Nothing to normalize when there are less than two vertex group weights. */
   if (dvert.totweight <= 1) {
@@ -118,9 +118,12 @@ static bool normalize_vertex_weights_try(const MDeformVert &dvert,
   }
 
   /* Get the sum of weights of bone-deformed vertex groups. */
-  float sum_weights_total = 0.0f, sum_weights_locked = 0.0f, sum_weights_unlocked = 0.0f;
-  int locked_num = 0, unlocked_num = 0;
-  for (int i = 0; i < dvert.totweight; i++) {
+  float sum_weights_total = 0.0f;
+  float sum_weights_locked = 0.0f;
+  float sum_weights_unlocked = 0.0f;
+  int locked_num = 0;
+  int unlocked_num = 0;
+  for (const int i : IndexRange(dvert.totweight)) {
     MDeformWeight &dw = dvert.dw[i];
 
     /* Auto-normalize is only applied on bone-deformed vertex groups that have weight already. */
@@ -157,7 +160,7 @@ static bool normalize_vertex_weights_try(const MDeformVert &dvert,
   if (sum_weights_locked >= 1.0f - VERTEX_WEIGHT_LOCK_EPSILON) {
     /* Zero out the weights we are allowed to touch and return false, indicating a second pass is
      * needed. */
-    for (int i = 0; i < dvert.totweight; i++) {
+    for (const int i : IndexRange(dvert.totweight)) {
       MDeformWeight &dw = dvert.dw[i];
       if (dw.def_nr < vertex_groups_num && vertex_group_is_bone_deformed[dw.def_nr] &&
           !vertex_group_is_locked[dw.def_nr] && dw.def_nr != locked_active_vertex_group)
@@ -174,7 +177,7 @@ static bool normalize_vertex_weights_try(const MDeformVert &dvert,
   if (sum_weights_unlocked != 0.0f) {
     const float normalize_factor = (1.0f - sum_weights_locked) / sum_weights_unlocked;
 
-    for (int i = 0; i < dvert.totweight; i++) {
+    for (const int i : IndexRange(dvert.totweight)) {
       MDeformWeight &dw = dvert.dw[i];
       if (dw.def_nr < vertex_groups_num && vertex_group_is_bone_deformed[dw.def_nr] &&
           dw.weight > FLT_EPSILON && !vertex_group_is_locked[dw.def_nr] &&
@@ -191,7 +194,7 @@ static bool normalize_vertex_weights_try(const MDeformVert &dvert,
   const float weight_remainder = math::clamp(
       (1.0f - sum_weights_locked) / unlocked_num, 0.0f, 1.0f);
 
-  for (int i = 0; i < dvert.totweight; i++) {
+  for (const int i : IndexRange(dvert.totweight)) {
     MDeformWeight &dw = dvert.dw[i];
     if (dw.def_nr < vertex_groups_num && vertex_group_is_bone_deformed[dw.def_nr] &&
         dw.weight > FLT_EPSILON && !vertex_group_is_locked[dw.def_nr] &&
@@ -204,10 +207,10 @@ static bool normalize_vertex_weights_try(const MDeformVert &dvert,
   return true;
 }
 
-void normalize_vertex_weights(const MDeformVert &dvert,
+void normalize_vertex_weights(MDeformVert &dvert,
                               const int active_vertex_group,
-                              const Span<bool> &vertex_group_is_locked,
-                              const Span<bool> &vertex_group_is_bone_deformed)
+                              const Span<bool> vertex_group_is_locked,
+                              const Span<bool> vertex_group_is_bone_deformed)
 {
   /* Try to normalize the weights with both active and explicitly locked vertex groups restricted
    * from change. */
@@ -217,14 +220,16 @@ void normalize_vertex_weights(const MDeformVert &dvert,
                                                     vertex_group_is_locked,
                                                     vertex_group_is_bone_deformed);
 
-  if (!success) {
-    /* Do a second pass with the active vertex group unlocked. */
-    normalize_vertex_weights_try(dvert,
-                                 vertex_group_is_locked.size(),
-                                 -1,
-                                 vertex_group_is_locked,
-                                 vertex_group_is_bone_deformed);
+  if (success) {
+    return;
   }
+
+  /* Do a second pass with the active vertex group unlocked. */
+  normalize_vertex_weights_try(dvert,
+                               vertex_group_is_locked.size(),
+                               -1,
+                               vertex_group_is_locked,
+                               vertex_group_is_bone_deformed);
 }
 
 struct ClosestGreasePencilDrawing {

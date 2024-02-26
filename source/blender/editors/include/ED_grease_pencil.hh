@@ -251,9 +251,9 @@ Set<std::string> get_bone_deformed_vertex_groups(Object &object);
 
 /** For a point in a stroke, normalize the weights of vertex groups deformed by bones so that the
  * sum is 1.0f. */
-void normalize_vertex_weights(const MDeformVert &dvert,
+void normalize_vertex_weights(MDeformVert &dvert,
                               int active_vertex_group,
-                              const Span<bool> &vertex_group_is_locked,
-                              const Span<bool> &vertex_group_is_bone_deformed);
+                              const Span<bool> vertex_group_is_locked,
+                              const Span<bool> vertex_group_is_bone_deformed);
 
 }  // namespace blender::ed::greasepencil

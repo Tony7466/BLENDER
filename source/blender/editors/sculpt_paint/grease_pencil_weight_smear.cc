@@ -48,7 +48,7 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
     float point_dot_product[SMEAR_NEIGHBOUR_NUM];
     float min_distance = FLT_MAX, max_distance = -FLT_MAX;
     int smear_point_num = 0;
-    for (int i = 0; i < point_num; i++) {
+    for (const int i : IndexRange(point_num)) {
       /* Skip the point we are about to smear. */
       if (nearest_points[i].dist < FIND_NEAREST_POINT_EPSILON) {
         continue;
@@ -76,7 +76,7 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
     const float distance_normalizer = (min_distance == max_distance) ?
                                           1.0f :
                                           (0.95f / (max_distance - min_distance));
-    for (int i = 0; i < point_num; i++) {
+    for (const int i : IndexRange(point_num)) {
       if (point_dot_product[i] <= 0.0f) {
         continue;
       }
@@ -151,30 +151,26 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
             Array<DrawingWeightData> &drawing_weights = this->drawing_weight_data[frame_group];
             std::atomic<bool> balance_kdtree = false;
 
-            /* Collect all stroke points under the brush in a buffer. */
-            threading::parallel_for(
-                drawing_weights.index_range(), 1, [&](const IndexRange drawing_range) {
-                  for (const int drawing_index : drawing_range) {
-                    DrawingWeightData &drawing_weight = drawing_weights[drawing_index];
+            /* For all layers at this key frame, collect the stroke points under the brush in a
+             * buffer. */
+            threading::parallel_for_each(drawing_weights, [&](DrawingWeightData &drawing_weight) {
+              for (const int point_index : drawing_weight.point_positions.index_range()) {
+                const float2 &co = drawing_weight.point_positions[point_index];
 
-                    for (const int point_index : drawing_weight.point_positions.index_range()) {
-                      const float2 &co = drawing_weight.point_positions[point_index];
+                /* When the point is under the brush, add it to the brush point buffer. */
+                if (!this->add_point_under_brush_to_brush_buffer(co, drawing_weight, point_index))
+                {
+                  continue;
+                }
 
-                      /* When the point is under the brush, add it to the brush point buffer. */
-                      if (!this->add_point_under_brush_to_brush_buffer(
-                              co, drawing_weight, point_index)) {
-                        continue;
-                      }
-
-                      /* And add the point to the stroke point buffer. */
-                      if (this->add_point_to_stroke_buffer(
-                              co, frame_group, point_index, drawing_weight, mutex))
-                      {
-                        balance_kdtree = true;
-                      }
-                    }
-                  }
-                });
+                /* And add the point to the stroke point buffer. */
+                if (this->add_point_to_stroke_buffer(
+                        co, frame_group, point_index, drawing_weight, mutex))
+                {
+                  balance_kdtree = true;
+                }
+              }
+            });
 
             /* Balance the KDtree. */
             if (balance_kdtree) {
@@ -182,31 +178,24 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
             }
 
             /* Apply the Smear tool to all points in the brush buffer. */
-            threading::parallel_for(
-                drawing_weights.index_range(), 1, [&](const IndexRange drawing_range) {
-                  for (const int drawing_index : drawing_range) {
-                    DrawingWeightData &drawing_weight = drawing_weights[drawing_index];
+            threading::parallel_for_each(drawing_weights, [&](DrawingWeightData &drawing_weight) {
+              for (const BrushPoint &point : drawing_weight.points_in_brush) {
+                this->apply_smear_tool(point, drawing_weight, this->points_in_stroke[frame_group]);
 
-                    for (const BrushPoint &point : drawing_weight.points_in_brush) {
-                      this->apply_smear_tool(
-                          point, drawing_weight, this->points_in_stroke[frame_group]);
+                /* Normalize weights of bone-deformed vertex groups to 1.0f. */
+                if (this->auto_normalize) {
+                  normalize_vertex_weights(drawing_weight.deform_verts[point.drawing_point_index],
+                                           drawing_weight.active_vertex_group,
+                                           drawing_weight.locked_vgroups,
+                                           drawing_weight.bone_deformed_vgroups);
+                }
+              }
 
-                      /* Normalize weights of bone-deformed vertex groups to 1.0f. */
-                      if (this->auto_normalize) {
-                        normalize_vertex_weights(
-                            drawing_weight.deform_verts[point.drawing_point_index],
-                            drawing_weight.active_vertex_group,
-                            drawing_weight.locked_vgroups,
-                            drawing_weight.bone_deformed_vgroups);
-                      }
-                    }
-
-                    if (!drawing_weight.points_in_brush.is_empty()) {
-                      changed = true;
-                      drawing_weight.points_in_brush.clear();
-                    }
-                  }
-                });
+              if (!drawing_weight.points_in_brush.is_empty()) {
+                changed = true;
+                drawing_weight.points_in_brush.clear();
+              }
+            });
           }
         });
 
