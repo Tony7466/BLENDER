@@ -46,7 +46,7 @@ struct PLYExportParams {
   bool export_attributes;
   bool export_triangulated_mesh;
 
-  ReportList *reports;
+  ReportList *reports = nullptr;
 };
 
 struct PLYImportParams {
@@ -60,7 +60,7 @@ struct PLYImportParams {
   bool import_attributes;
   bool merge_verts;
 
-  ReportList *reports;
+  ReportList *reports = nullptr;
 };
 
 /**
