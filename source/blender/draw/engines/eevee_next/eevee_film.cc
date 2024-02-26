@@ -445,7 +445,6 @@ void Film::sync()
 
   GPUShader *sh = inst_.shaders.static_shader_get(shader);
   accumulate_ps_.init();
-  /* Casts are needed otherwise it will be interpreted as a bool value. */
   accumulate_ps_.specialize_constant(sh, "enabled_categories", uint(enabled_categories_));
   accumulate_ps_.specialize_constant(sh, "samples_len", &data_.samples_len);
   accumulate_ps_.specialize_constant(sh, "use_reprojection", &use_reprojection_);
