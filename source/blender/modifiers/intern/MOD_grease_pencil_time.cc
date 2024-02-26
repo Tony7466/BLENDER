@@ -444,7 +444,7 @@ static void fill_scene_range_chain(const TimeMapping &mapping,
 }
 
 static void fill_scene_timeline(const GreasePencilTimeModifierData &tmd,
-                                const ModifierEvalContext &ctx,
+                                const Scene &eval_scene,
                                 const Map<int, GreasePencilFrame> &frames,
                                 const Span<int> sorted_keys,
                                 const FrameRange scene_dst_range,
@@ -454,8 +454,7 @@ static void fill_scene_timeline(const GreasePencilTimeModifierData &tmd,
   const auto mode = GreasePencilTimeModifierMode(tmd.mode);
   const bool use_custom_range = tmd.flag & MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE;
 
-  const Scene *scene = DEG_get_evaluated_scene(ctx.depsgraph);
-  const FrameRange scene_range = FrameRange{scene->r.sfra, scene->r.efra};
+  const FrameRange scene_range = FrameRange{eval_scene.r.sfra, eval_scene.r.efra};
   const FrameRange custom_range = use_custom_range ? FrameRange{tmd.sfra, tmd.efra} : scene_range;
 
   switch (mode) {
@@ -508,7 +507,7 @@ static void modify_geometry_set(ModifierData *md,
     const Map<int, GreasePencilFrame> &src_frames = layer->frames();
 
     Map<int, GreasePencilFrame> new_frames;
-    fill_scene_timeline(*tmd, *ctx, src_frames, sorted_keys, dst_keyframe_range, new_frames);
+    fill_scene_timeline(*tmd, *scene, src_frames, sorted_keys, dst_keyframe_range, new_frames);
     layer->frames_for_write() = std::move(new_frames);
     layer->tag_frames_map_keys_changed();
   }
