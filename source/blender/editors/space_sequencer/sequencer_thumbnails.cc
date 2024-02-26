@@ -552,11 +552,10 @@ void draw_seq_strip_thumbnail(View2D *v2d,
       break;
     }
 
-    /* Transparency on overlap / mute. */
+    /* Transparency on mute. */
     bool muted = channels ? SEQ_render_is_muted(channels, seq) : false;
-    bool overlap = seq->flag & SEQ_OVERLAP;
-    if (muted || overlap) {
-      uchar alpha = muted ? 120 : OVERLAP_ALPHA;
+    if (muted) {
+      const uchar alpha = 120;
       GPU_blend(GPU_BLEND_ALPHA);
       if (ibuf->byte_buffer.data) {
         uchar *buf = ibuf->byte_buffer.data;

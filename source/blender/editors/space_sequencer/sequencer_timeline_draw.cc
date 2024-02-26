@@ -1015,15 +1015,11 @@ static void draw_strip_offsets(TimelineDrawContext *timeline_ctx,
   }
 }
 
-static uchar mute_overlap_alpha_factor_get(const ListBase *channels, const Sequence *seq)
+static uchar mute_alpha_factor_get(const ListBase *channels, const Sequence *seq)
 {
   /* Draw muted strips semi-transparent. */
   if (SEQ_render_is_muted(channels, seq)) {
     return MUTE_ALPHA;
-  }
-  /* Draw background semi-transparent when overlapping strips. */
-  if (seq->flag & SEQ_OVERLAP) {
-    return OVERLAP_ALPHA;
   }
   return 255;
 }
@@ -1039,7 +1035,7 @@ static void draw_strip_color_band(TimelineDrawContext *timeline_ctx,
   SolidColorVars *colvars = (SolidColorVars *)seq->effectdata;
   uchar col[4];
   rgb_float_to_uchar(col, colvars->col);
-  col[3] = mute_overlap_alpha_factor_get(timeline_ctx->channels, seq);
+  col[3] = mute_alpha_factor_get(timeline_ctx->channels, seq);
 
   timeline_ctx->quads->add_quad(strip_ctx->left_handle,
                                 strip_ctx->bottom,
@@ -1064,7 +1060,7 @@ static void draw_strip_background(TimelineDrawContext *timeline_ctx,
 
   uchar col[4];
   color3ubv_from_seq(scene, seq, strip_ctx->show_strip_color_tag, col);
-  col[3] = mute_overlap_alpha_factor_get(timeline_ctx->channels, seq);
+  col[3] = mute_alpha_factor_get(timeline_ctx->channels, seq);
   /* Muted strips: turn almost gray. */
   if (col[3] == MUTE_ALPHA) {
     uchar muted_color[3] = {128, 128, 128};
@@ -1120,7 +1116,7 @@ static void draw_seq_transition_strip_half(TimelineDrawContext *timeline_ctx,
     }
   }
 
-  col[3] = mute_overlap_alpha_factor_get(timeline_ctx->channels, strip_ctx->seq);
+  col[3] = mute_alpha_factor_get(timeline_ctx->channels, strip_ctx->seq);
 
   float tri[3][2];
 
@@ -1411,6 +1407,8 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     return;
   }
 
+  UI_view2d_view_ortho(timeline_ctx->v2d);
+
   /* Draw parts of strips below thumbnails. */
   GPU_blend(GPU_BLEND_ALPHA);
   for (const StripDrawContext &strip_ctx : strips) {
@@ -1457,6 +1455,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_LEFTHANDLE);
     draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_RIGHTHANDLE);
     draw_seq_border(timeline_ctx, &strip_ctx);
+    draw_seq_text_overlay(timeline_ctx, &strip_ctx);
   }
 
   /* Draw selected outline separately, since they go outside the strip
@@ -1469,6 +1468,8 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     }
   }
   timeline_ctx->quads->draw();
+
+  UI_view2d_text_cache_draw(timeline_ctx->region);
   GPU_blend(GPU_BLEND_NONE);
 }
 
@@ -1482,21 +1483,6 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx)
   visible_strips_ordered_get(timeline_ctx, unselected, selected);
   draw_seq_strips(timeline_ctx, unselected, false);
   draw_seq_strips(timeline_ctx, selected, true);
-
-  /* Draw text overlay parts in the opposite order: first selected set, then
-   * unselected (UI_view2d_text_cache_add_rectf adds new text in front of
-   * other entries!). This is to make sure selected strip labels are on top
-   * of others while they are being dragged over. */
-  for (const StripDrawContext &strip_ctx : selected) {
-    draw_seq_text_overlay(timeline_ctx, &strip_ctx);
-  }
-  for (const StripDrawContext &strip_ctx : unselected) {
-    draw_seq_text_overlay(timeline_ctx, &strip_ctx);
-  }
-
-  GPU_blend(GPU_BLEND_ALPHA);
-  UI_view2d_text_cache_draw(timeline_ctx->region);
-  GPU_blend(GPU_BLEND_NONE);
 }
 
 static void draw_timeline_sfra_efra(TimelineDrawContext *ctx)
