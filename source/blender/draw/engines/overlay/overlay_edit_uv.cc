@@ -422,6 +422,49 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
   }
 }
 
+static void overlay_edit_uv_display_indices(OVERLAY_Data *vedata, Object *ob)
+{
+  using namespace blender::draw;
+  bool display_indices = true;
+  bool show_text = DRW_state_show_text();
+  if (!display_indices || !show_text) {
+    return;
+  }
+  OVERLAY_PrivateData *pd = vedata->stl->pd;
+  const DRWContextState *draw_ctx = DRW_context_state_get();
+  SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
+  Scene *scene = draw_ctx->scene;
+  ToolSettings *tool_settings = scene->toolsettings;
+  Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
+  Mesh *eval = (Mesh *)DEG_get_evaluated_object(draw_ctx->depsgraph, ob)->data;
+  DRWTextStore *dt = DRW_text_cache_ensure();
+  BMEditMesh *em = mesh->edit_mesh;
+  BMIter it_face;
+  uchar col[4] = {255, 255, 255, 255};
+  UI_GetThemeColor3ubv(TH_DRAWEXTRA_FACEANG, col);
+  const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
+  bool uv_layer = CustomData_has_layer(&em->bm->ldata, CD_PROP_FLOAT2);
+  if (pd->edit_uv.do_verts) {
+    BMVert *vert;
+    BMFace *face;
+    BMLoop *loop;
+    int i = 0, numstr_len = 0;
+    float c = 0;
+    BM_ITER_MESH_INDEX (face, &it_face, em->bm, BM_FACES_OF_MESH, i) {
+      char numstr[32];
+      BMIter it_loop;
+      int li = 0;
+      BM_ITER_ELEM_INDEX (loop, &it_loop, face, BM_LOOPS_OF_FACE, li) {
+        float *luv = BM_ELEM_CD_GET_FLOAT_P(loop, offsets.uv);
+        numstr_len = SNPRINTF_RLEN(numstr, "%d", li);
+        if (BM_elem_flag_test(loop->v, BM_ELEM_SELECT)) {
+          DRW_text_cache_add(dt, luv, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col);
+        }
+      }
+    }
+  }
+}
+
 static void overlay_edit_uv_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
   using namespace blender::draw;
@@ -468,6 +511,7 @@ static void overlay_edit_uv_cache_populate(OVERLAY_Data *vedata, Object *ob)
           DRW_shgroup_call_obmat(pd->edit_uv_face_dots_grp, geom, nullptr);
         }
       }
+      overlay_edit_uv_display_indices(vedata, ob);
     }
 
     if (pd->edit_uv.do_uv_stretching_overlay) {
