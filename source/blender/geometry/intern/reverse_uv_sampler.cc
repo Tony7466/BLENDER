@@ -88,7 +88,7 @@ BLI_NOINLINE static void sort_into_y_buckets(
     const int resolution,
     threading::EnumerableThreadSpecific<LocalData> &data_per_thread)
 {
-  SCOPED_TIMER_AVERAGED("sort into y buckets");
+  // SCOPED_TIMER_AVERAGED("sort into y buckets");
   corner_tris_mask.foreach_segment(GrainSize(512), [&](const IndexMaskSegment tris) {
     LocalData &local_data = data_per_thread.local();
     for (const int tri_i : tris) {
@@ -125,7 +125,7 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
                                    const Bounds<int> y_bounds,
                                    ReverseUVSampler::LookupGrid &lookup_grid)
 {
-  SCOPED_TIMER_AVERAGED("fill rows");
+  // SCOPED_TIMER_AVERAGED("fill rows");
   threading::parallel_for(all_ys.index_range(), 8, [&](const IndexRange all_ys_range) {
     for (const int y : all_ys.slice(all_ys_range)) {
       Row &row = lookup_grid.rows[y - y_bounds.min];
