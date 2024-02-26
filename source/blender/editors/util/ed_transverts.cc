@@ -16,15 +16,13 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_DerivedMesh.h"
-#include "BKE_armature.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
-#include "BKE_editmesh.h"
-#include "BKE_lattice.h"
+#include "BKE_armature.hh"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_lattice.hh"
 #include "BKE_mesh_iterators.hh"
 #include "BKE_object.hh"
 
@@ -33,7 +31,7 @@
 #include "ED_armature.hh"
 #include "ED_curves.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "ED_transverts.hh" /* own include */
 

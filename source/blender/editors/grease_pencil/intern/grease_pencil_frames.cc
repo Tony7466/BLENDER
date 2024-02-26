@@ -10,7 +10,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
 
 #include "DEG_depsgraph.hh"
@@ -34,6 +34,7 @@ void set_selected_frames_type(bke::greasepencil::Layer &layer,
   for (GreasePencilFrame &frame : layer.frames_for_write().values()) {
     if (frame.is_selected()) {
       frame.type = key_type;
+      layer.tag_frames_map_changed();
     }
   }
 }
@@ -152,7 +153,7 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
     }
 
     /* Create the duplicate drawing. */
-    const Drawing *drawing = grease_pencil.get_editable_drawing_at(&layer, frame_number);
+    const Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number);
     if (drawing == nullptr) {
       continue;
     }
@@ -168,6 +169,10 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
     frame.flag ^= GP_FRAME_SELECTED;
 
     changed = true;
+  }
+
+  if (changed) {
+    layer.tag_frames_map_changed();
   }
 
   return changed;
@@ -210,6 +215,7 @@ bool select_frame_at(bke::greasepencil::Layer &layer,
     return false;
   }
   select_frame(*frame, select_mode);
+  layer.tag_frames_map_changed();
   return true;
 }
 
@@ -232,6 +238,7 @@ void select_all_frames(bke::greasepencil::Layer &layer, const short select_mode)
 {
   for (auto item : layer.frames_for_write().items()) {
     select_frame(item.value, select_mode);
+    layer.tag_frames_map_changed();
   }
 }
 
@@ -264,10 +271,13 @@ void select_frames_region(KeyframeEditData *ked,
       }
       else if (tool == BEZT_OK_CHANNEL_CIRCLE) {
         if (keyframe_region_circle_test(static_cast<const KeyframeEdit_CircleData *>(ked->data),
-                                        pt)) {
+                                        pt))
+        {
           select_frame(frame, select_mode);
         }
       }
+
+      node.as_layer().tag_frames_map_changed();
     }
   }
   else if (node.is_group()) {
@@ -287,6 +297,7 @@ void select_frames_range(bke::greasepencil::TreeNode &node,
     for (auto [frame_number, frame] : node.as_layer().frames_for_write().items()) {
       if (IN_RANGE(float(frame_number), min, max)) {
         select_frame(frame, select_mode);
+        node.as_layer().tag_frames_map_changed();
       }
     }
   }
@@ -343,15 +354,14 @@ static int insert_blank_frame_exec(bContext *C, wmOperator *op)
     if (!grease_pencil.has_active_layer()) {
       return OPERATOR_CANCELLED;
     }
-    changed = grease_pencil.insert_blank_frame(*grease_pencil.get_active_layer_for_write(),
-                                               current_frame,
-                                               duration,
-                                               BEZT_KEYTYPE_KEYFRAME);
+    changed = grease_pencil.insert_blank_frame(
+        *grease_pencil.get_active_layer(), current_frame, duration, BEZT_KEYTYPE_KEYFRAME);
   }
 
   if (changed) {
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, &grease_pencil);
+    WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
   }
 
   return OPERATOR_FINISHED;
@@ -376,7 +386,7 @@ static void GREASE_PENCIL_OT_insert_blank_frame(wmOperatorType *ot)
   prop = RNA_def_boolean(
       ot->srna, "all_layers", false, "All Layers", "Insert a blank frame in all editable layers");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
-  RNA_def_int(ot->srna, "duration", 1, 1, MAXFRAME, "Duration", "", 1, 100);
+  RNA_def_int(ot->srna, "duration", 0, 0, MAXFRAME, "Duration", "", 0, 100);
 }
 
 }  // namespace blender::ed::greasepencil

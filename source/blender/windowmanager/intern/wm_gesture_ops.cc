@@ -20,22 +20,18 @@
 #include "BLI_math_vector.h"
 #include "BLI_rect.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "wm.hh"
-#include "wm_event_system.h"
 #include "wm_event_types.hh"
 
 #include "ED_screen.hh"
 #include "ED_select_utils.hh"
 
-#include "UI_interface.hh"
-
 #include "RNA_access.hh"
-#include "RNA_define.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Internal Gesture Utilities

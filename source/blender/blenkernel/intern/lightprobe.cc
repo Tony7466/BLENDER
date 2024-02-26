@@ -17,14 +17,12 @@
 #include "BLI_span.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_anim_data.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_lightprobe.h"
-#include "BKE_main.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BLO_read_write.hh"
 
@@ -55,10 +53,11 @@ static void lightprobe_blend_write(BlendWriter *writer, ID *id, const void *id_a
 IDTypeInfo IDType_ID_LP = {
     /*id_code*/ ID_LP,
     /*id_filter*/ FILTER_ID_LP,
+    /*dependencies_id_types*/ FILTER_ID_IM,
     /*main_listbase_index*/ INDEX_ID_LP,
     /*struct_size*/ sizeof(LightProbe),
     /*name*/ "LightProbe",
-    /*name_plural*/ "lightprobes",
+    /*name_plural*/ N_("lightprobes"),
     /*translation_context*/ BLT_I18NCONTEXT_ID_LIGHTPROBE,
     /*flags*/ IDTYPE_FLAGS_APPEND_IS_REUSABLE,
     /*asset_type_info*/ nullptr,

@@ -16,8 +16,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_boids.h"
-#include "BKE_context.h"
-#include "BKE_main.h"
+#include "BKE_context.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"

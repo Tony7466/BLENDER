@@ -12,6 +12,7 @@
 #include "BKE_geometry_fields.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
+#include "BKE_node_socket_value.hh"
 
 namespace blender::nodes {
 
@@ -21,21 +22,14 @@ static void reset_declaration(NodeDeclaration &declaration)
   new (&declaration) NodeDeclaration();
 }
 
-void build_node_declaration(const bNodeType &typeinfo, NodeDeclaration &r_declaration)
+void build_node_declaration(const bNodeType &typeinfo,
+                            NodeDeclaration &r_declaration,
+                            const bNodeTree *ntree,
+                            const bNode *node)
 {
   reset_declaration(r_declaration);
-  NodeDeclarationBuilder node_decl_builder{r_declaration};
+  NodeDeclarationBuilder node_decl_builder{r_declaration, ntree, node};
   typeinfo.declare(node_decl_builder);
-  node_decl_builder.finalize();
-}
-
-void build_node_declaration_dynamic(const bNodeTree &node_tree,
-                                    const bNode &node,
-                                    NodeDeclaration &r_declaration)
-{
-  reset_declaration(r_declaration);
-  NodeDeclarationBuilder node_decl_builder{r_declaration};
-  node.typeinfo->declare_dynamic(node_tree, node, node_decl_builder);
   node_decl_builder.finalize();
 }
 
@@ -117,6 +111,32 @@ void NodeDeclarationBuilder::finalize()
   BLI_assert(declaration_.is_valid());
 }
 
+NodeDeclarationBuilder::NodeDeclarationBuilder(NodeDeclaration &declaration,
+                                               const bNodeTree *ntree,
+                                               const bNode *node)
+    : declaration_(declaration), ntree_(ntree), node_(node)
+{
+}
+
+void NodeDeclarationBuilder::use_custom_socket_order(bool enable)
+{
+  declaration_.use_custom_socket_order = enable;
+}
+
+void NodeDeclarationBuilder::allow_any_socket_order(bool enable)
+{
+  BLI_assert(declaration_.use_custom_socket_order);
+  declaration_.allow_any_socket_order = enable;
+}
+
+Span<SocketDeclaration *> NodeDeclaration::sockets(eNodeSocketInOut in_out) const
+{
+  if (in_out == SOCK_IN) {
+    return inputs;
+  }
+  return outputs;
+}
+
 void NodeDeclarationBuilder::set_active_panel_builder(const PanelDeclarationBuilder *panel_builder)
 {
   if (panel_builders_.is_empty()) {
@@ -132,19 +152,6 @@ void NodeDeclarationBuilder::set_active_panel_builder(const PanelDeclarationBuil
 }
 
 namespace anonymous_attribute_lifetime {
-
-bool operator==(const RelationsInNode &a, const RelationsInNode &b)
-{
-  return a.propagate_relations == b.propagate_relations &&
-         a.reference_relations == b.reference_relations && a.eval_relations == b.eval_relations &&
-         a.available_relations == b.available_relations &&
-         a.available_on_none == b.available_on_none;
-}
-
-bool operator!=(const RelationsInNode &a, const RelationsInNode &b)
-{
-  return !(a == b);
-}
 
 std::ostream &operator<<(std::ostream &stream, const RelationsInNode &relations)
 {
@@ -202,7 +209,7 @@ bool NodeDeclaration::is_valid() const
     if (const SocketDeclaration *socket_decl = dynamic_cast<const SocketDeclaration *>(
             item_decl.get()))
     {
-      if (state.item_type != NODE_INTERFACE_SOCKET) {
+      if (state.item_type != NODE_INTERFACE_SOCKET && !this->allow_any_socket_order) {
         std::cout << "Socket added after panel" << std::endl;
         return false;
       }
@@ -212,7 +219,7 @@ bool NodeDeclaration::is_valid() const
         /* Start of input sockets. */
         state.socket_in_out = SOCK_IN;
       }
-      if (socket_decl->in_out != state.socket_in_out) {
+      if (socket_decl->in_out != state.socket_in_out && !this->allow_any_socket_order) {
         std::cout << "Output socket added after input socket" << std::endl;
         return false;
       }
@@ -413,6 +420,8 @@ std::unique_ptr<SocketDeclaration> make_declaration_for_socket_type(
       return std::make_unique<decl::Bool>();
     case SOCK_ROTATION:
       return std::make_unique<decl::Rotation>();
+    case SOCK_MATRIX:
+      return std::make_unique<decl::Matrix>();
     case SOCK_INT:
       return std::make_unique<decl::Int>();
     case SOCK_STRING:
@@ -427,6 +436,8 @@ std::unique_ptr<SocketDeclaration> make_declaration_for_socket_type(
       return std::make_unique<decl::Collection>();
     case SOCK_MATERIAL:
       return std::make_unique<decl::Material>();
+    case SOCK_MENU:
+      return std::make_unique<decl::Menu>();
     default:
       return {};
   }
@@ -446,6 +457,8 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(
       return this->add_input<decl::Bool>(name, identifier);
     case SOCK_ROTATION:
       return this->add_input<decl::Rotation>(name, identifier);
+    case SOCK_MATRIX:
+      return this->add_input<decl::Matrix>(name, identifier);
     case SOCK_INT:
       return this->add_input<decl::Int>(name, identifier);
     case SOCK_STRING:
@@ -460,10 +473,19 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(
       return this->add_input<decl::Collection>(name, identifier);
     case SOCK_MATERIAL:
       return this->add_input<decl::Material>(name, identifier);
+    case SOCK_MENU:
+      return this->add_input<decl::Menu>(name, identifier);
     default:
       BLI_assert_unreachable();
       return this->add_input<decl::Float>("", "");
   }
+}
+
+BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_input(const eCustomDataType data_type,
+                                                                const StringRef name,
+                                                                const StringRef identifier)
+{
+  return this->add_input(*bke::custom_data_type_to_socket_type(data_type), name, identifier);
 }
 
 BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(
@@ -480,6 +502,8 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(
       return this->add_output<decl::Bool>(name, identifier);
     case SOCK_ROTATION:
       return this->add_output<decl::Rotation>(name, identifier);
+    case SOCK_MATRIX:
+      return this->add_output<decl::Matrix>(name, identifier);
     case SOCK_INT:
       return this->add_output<decl::Int>(name, identifier);
     case SOCK_STRING:
@@ -494,10 +518,19 @@ BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(
       return this->add_output<decl::Collection>(name, identifier);
     case SOCK_MATERIAL:
       return this->add_output<decl::Material>(name, identifier);
+    case SOCK_MENU:
+      return this->add_output<decl::Menu>(name, identifier);
     default:
       BLI_assert_unreachable();
       return this->add_output<decl::Float>("", "");
   }
+}
+
+BaseSocketDeclarationBuilder &NodeDeclarationBuilder::add_output(const eCustomDataType data_type,
+                                                                 const StringRef name,
+                                                                 const StringRef identifier)
+{
+  return this->add_output(*bke::custom_data_type_to_socket_type(data_type), name, identifier);
 }
 
 BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::supports_field()
@@ -582,6 +615,17 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::field_on(const Span<
       relation.geometry_output = output_index;
       relations.available_relations.append(relation);
     }
+  }
+  return *this;
+}
+
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::short_label(std::string value)
+{
+  if (decl_in_base_) {
+    decl_in_base_->description = std::move(value);
+  }
+  if (decl_out_base_) {
+    decl_out_base_->description = std::move(value);
   }
   return *this;
 }
@@ -677,7 +721,7 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::implicit_field(Impli
   this->hide_value();
   if (decl_in_base_) {
     decl_in_base_->input_field_type = InputSocketFieldType::Implicit;
-    decl_in_base_->implicit_input_fn_ = std::make_unique<ImplicitInputValueFn>(std::move(fn));
+    decl_in_base_->implicit_input_fn = std::make_unique<ImplicitInputValueFn>(std::move(fn));
   }
   return *this;
 }
@@ -774,28 +818,123 @@ BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::make_available(
   return *this;
 }
 
+BaseSocketDeclarationBuilder &BaseSocketDeclarationBuilder::align_with_previous(const bool value)
+{
+  if (decl_in_base_) {
+    decl_in_base_->align_with_previous_socket = value;
+  }
+  if (decl_out_base_) {
+    decl_out_base_->align_with_previous_socket = value;
+  }
+  return *this;
+}
+
+OutputFieldDependency OutputFieldDependency::ForFieldSource()
+{
+  OutputFieldDependency field_dependency;
+  field_dependency.type_ = OutputSocketFieldType::FieldSource;
+  return field_dependency;
+}
+
+OutputFieldDependency OutputFieldDependency::ForDataSource()
+{
+  OutputFieldDependency field_dependency;
+  field_dependency.type_ = OutputSocketFieldType::None;
+  return field_dependency;
+}
+
+OutputFieldDependency OutputFieldDependency::ForDependentField()
+{
+  OutputFieldDependency field_dependency;
+  field_dependency.type_ = OutputSocketFieldType::DependentField;
+  return field_dependency;
+}
+
+OutputFieldDependency OutputFieldDependency::ForPartiallyDependentField(Vector<int> indices)
+{
+  OutputFieldDependency field_dependency;
+  if (indices.is_empty()) {
+    field_dependency.type_ = OutputSocketFieldType::None;
+  }
+  else {
+    field_dependency.type_ = OutputSocketFieldType::PartiallyDependent;
+    field_dependency.linked_input_indices_ = std::move(indices);
+  }
+  return field_dependency;
+}
+
+OutputSocketFieldType OutputFieldDependency::field_type() const
+{
+  return type_;
+}
+
+Span<int> OutputFieldDependency::linked_input_indices() const
+{
+  return linked_input_indices_;
+}
+
+const CompositorInputRealizationOptions &SocketDeclaration::compositor_realization_options() const
+{
+  return compositor_realization_options_;
+}
+
+int SocketDeclaration::compositor_domain_priority() const
+{
+  return compositor_domain_priority_;
+}
+
+bool SocketDeclaration::compositor_expects_single_value() const
+{
+  return compositor_expects_single_value_;
+}
+
+void SocketDeclaration::make_available(bNode &node) const
+{
+  if (make_available_fn_) {
+    make_available_fn_(node);
+  }
+}
+
+PanelDeclarationBuilder &PanelDeclarationBuilder::description(std::string value)
+{
+  decl_->description = std::move(value);
+  return *this;
+}
+
+PanelDeclarationBuilder &PanelDeclarationBuilder::default_closed(bool closed)
+{
+  decl_->default_collapsed = closed;
+  return *this;
+}
+
+PanelDeclarationBuilder &PanelDeclarationBuilder::draw_buttons(PanelDrawButtonsFunction func)
+{
+  decl_->draw_buttons = func;
+  return *this;
+}
+
 namespace implicit_field_inputs {
 
 void position(const bNode & /*node*/, void *r_value)
 {
-  new (r_value) fn::ValueOrField<float3>(bke::AttributeFieldInput::Create<float3>("position"));
+  new (r_value) bke::SocketValueVariant(bke::AttributeFieldInput::Create<float3>("position"));
 }
 
 void normal(const bNode & /*node*/, void *r_value)
 {
   new (r_value)
-      fn::ValueOrField<float3>(fn::Field<float3>(std::make_shared<bke::NormalFieldInput>()));
+      bke::SocketValueVariant(fn::Field<float3>(std::make_shared<bke::NormalFieldInput>()));
 }
 
 void index(const bNode & /*node*/, void *r_value)
 {
-  new (r_value) fn::ValueOrField<int>(fn::Field<int>(std::make_shared<fn::IndexFieldInput>()));
+  new (r_value) bke::SocketValueVariant(fn::Field<int>(std::make_shared<fn::IndexFieldInput>()));
 }
 
 void id_or_index(const bNode & /*node*/, void *r_value)
 {
   new (r_value)
-      fn::ValueOrField<int>(fn::Field<int>(std::make_shared<bke::IDAttributeFieldInput>()));
+      bke::SocketValueVariant(fn::Field<int>(std::make_shared<bke::IDAttributeFieldInput>()));
 }
 
 }  // namespace implicit_field_inputs

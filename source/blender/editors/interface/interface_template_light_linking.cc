@@ -13,12 +13,12 @@
 
 #include <fmt/format.h>
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_light_linking.h"
 
 #include "RNA_access.hh"
@@ -36,11 +36,11 @@ namespace blender::ui::light_linking {
 
 namespace {
 
-class BaseCollectionDropTarget : public TreeViewItemDropTarget {
+class CollectionDropTarget {
   Collection &collection_;
 
  public:
-  bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override
+  bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const
   {
     if (drag.type != WM_DRAG_ID) {
       return false;
@@ -62,11 +62,7 @@ class BaseCollectionDropTarget : public TreeViewItemDropTarget {
     return true;
   }
 
- protected:
-  BaseCollectionDropTarget(AbstractTreeView &view, DropBehavior behavior, Collection &collection)
-      : TreeViewItemDropTarget(view, behavior), collection_(collection)
-  {
-  }
+  CollectionDropTarget(Collection &collection) : collection_(collection) {}
 
   Collection &get_collection() const
   {
@@ -74,11 +70,18 @@ class BaseCollectionDropTarget : public TreeViewItemDropTarget {
   }
 };
 
-class InsertCollectionDropTarget : public BaseCollectionDropTarget {
+/**
+ * Drop target for the view (when dropping into empty space of the view), not for an item.
+ */
+class InsertCollectionDropTarget : public DropTargetInterface {
+  CollectionDropTarget collection_target_;
+
  public:
-  InsertCollectionDropTarget(AbstractTreeView &view, Collection &collection)
-      : BaseCollectionDropTarget(view, DropBehavior::Insert, collection)
+  InsertCollectionDropTarget(Collection &collection) : collection_target_(collection) {}
+
+  bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override
   {
+    return collection_target_.can_drop(drag, r_disabled_hint);
   }
 
   std::string drop_tooltip(const DragInfo & /*drag*/) const override
@@ -92,8 +95,10 @@ class InsertCollectionDropTarget : public BaseCollectionDropTarget {
     Scene *scene = CTX_data_scene(C);
 
     LISTBASE_FOREACH (wmDragID *, drag_id, &drag.drag_data.ids) {
-      BKE_light_linking_add_receiver_to_collection(
-          bmain, &get_collection(), drag_id->id, COLLECTION_LIGHT_LINKING_STATE_INCLUDE);
+      BKE_light_linking_add_receiver_to_collection(bmain,
+                                                   &collection_target_.get_collection(),
+                                                   drag_id->id,
+                                                   COLLECTION_LIGHT_LINKING_STATE_INCLUDE);
     }
 
     /* It is possible that the light linking collection is also used by the view layer.
@@ -107,18 +112,28 @@ class InsertCollectionDropTarget : public BaseCollectionDropTarget {
   }
 };
 
-class ReorderCollectionDropTarget : public BaseCollectionDropTarget {
+class ReorderCollectionDropTarget : public TreeViewItemDropTarget {
+  CollectionDropTarget collection_target_;
   const ID &drop_id_;
 
  public:
-  ReorderCollectionDropTarget(AbstractTreeView &view, Collection &collection, const ID &drop_id)
-      : BaseCollectionDropTarget(view, DropBehavior::Reorder, collection), drop_id_(drop_id)
+  ReorderCollectionDropTarget(AbstractTreeViewItem &item,
+                              Collection &collection,
+                              const ID &drop_id)
+      : TreeViewItemDropTarget(item, DropBehavior::Reorder),
+        collection_target_(collection),
+        drop_id_(drop_id)
   {
+  }
+
+  bool can_drop(const wmDrag &drag, const char **r_disabled_hint) const override
+  {
+    return collection_target_.can_drop(drag, r_disabled_hint);
   }
 
   std::string drop_tooltip(const DragInfo &drag) const override
   {
-    const std::string_view drop_name = std::string_view(drop_id_.name + 2);
+    const StringRef drop_name = drop_id_.name + 2;
 
     switch (drag.drop_location) {
       case DropLocation::Into:
@@ -137,7 +152,7 @@ class ReorderCollectionDropTarget : public BaseCollectionDropTarget {
     Main *bmain = CTX_data_main(C);
     Scene *scene = CTX_data_scene(C);
 
-    Collection &collection = get_collection();
+    Collection &collection = collection_target_.get_collection();
     const eCollectionLightLinkingState link_state = COLLECTION_LIGHT_LINKING_STATE_INCLUDE;
 
     LISTBASE_FOREACH (wmDragID *, drag_id, &drag.drag_data.ids) {
@@ -240,7 +255,7 @@ class CollectionViewItem : public BasicTreeViewItem {
 
   std::unique_ptr<TreeViewItemDropTarget> create_drop_target() override
   {
-    return std::make_unique<ReorderCollectionDropTarget>(get_tree_view(), collection_, id_);
+    return std::make_unique<ReorderCollectionDropTarget>(*this, collection_, id_);
   }
 
  private:
@@ -291,8 +306,6 @@ class CollectionViewItem : public BasicTreeViewItem {
                                   0,
                                   0.0f,
                                   0.0f,
-                                  0.0f,
-                                  0.0f,
                                   nullptr);
 
     UI_but_func_set(button, [&collection_light_linking = collection_light_linking_](bContext &) {
@@ -334,7 +347,7 @@ class CollectionView : public AbstractTreeView {
 
   std::unique_ptr<DropTargetInterface> create_drop_target() override
   {
-    return std::make_unique<InsertCollectionDropTarget>(*this, collection_);
+    return std::make_unique<InsertCollectionDropTarget>(collection_);
   }
 };
 

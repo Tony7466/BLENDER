@@ -10,14 +10,13 @@
  */
 
 #include "DNA_listBase.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_alloca.h"
-#include "BLI_heap.h"
 #include "BLI_linklist.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
@@ -25,12 +24,12 @@
 #include "BLI_polyfill_2d.h"
 #include "BLI_polyfill_2d_beautify.h"
 
-#include "bmesh.h"
-#include "bmesh_tools.h"
+#include "bmesh.hh"
+#include "bmesh_tools.hh"
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
 
-#include "intern/bmesh_private.h"
+#include "intern/bmesh_private.hh"
 
 /**
  * \brief COMPUTE POLY NORMAL (BMFace)
@@ -615,7 +614,7 @@ static void bm_loop_normal_accum(const BMLoop *l, float no[3])
   normalize_v3(vec1);
   normalize_v3(vec2);
 
-  fac = saacos(-dot_v3v3(vec1, vec2));
+  fac = blender::math::safe_acos_approx(-dot_v3v3(vec1, vec2));
 
   madd_v3_v3fl(no, l->f->no, fac);
 }
@@ -944,7 +943,7 @@ bool BM_face_point_inside_test(const BMFace *f, const float co[3])
     mul_v2_m3v3(projverts[i], axis_mat, l_iter->v->co);
   }
 
-  return isect_point_poly_v2(co_2d, projverts, f->len, false);
+  return isect_point_poly_v2(co_2d, projverts, f->len);
 }
 
 void BM_face_triangulate(BMesh *bm,
@@ -1114,9 +1113,9 @@ void BM_face_triangulate(BMesh *bm,
       }
 
       /* copy CD data */
-      BM_elem_attrs_copy(bm, bm, l_tri[0], l_new);
-      BM_elem_attrs_copy(bm, bm, l_tri[1], l_new->next);
-      BM_elem_attrs_copy(bm, bm, l_tri[2], l_new->prev);
+      BM_elem_attrs_copy(bm, l_tri[0], l_new);
+      BM_elem_attrs_copy(bm, l_tri[1], l_new->next);
+      BM_elem_attrs_copy(bm, l_tri[2], l_new->prev);
 
       /* add all but the last face which is swapped and removed (below) */
       if (i != last_tri) {
@@ -1261,7 +1260,8 @@ void BM_face_splits_check_legal(BMesh *bm, BMFace *f, BMLoop *(*loops)[2], int l
       for (j = i + 1; j < len; j++) {
         if ((loops[j][0] != nullptr) && !EDGE_SHARE_VERT(edgeverts[i], edgeverts[j])) {
           if (isect_seg_seg_v2(UNPACK2(edgeverts[i]), UNPACK2(edgeverts[j])) ==
-              ISECT_LINE_LINE_CROSS) {
+              ISECT_LINE_LINE_CROSS)
+          {
             loops[i][0] = nullptr;
             break;
           }

@@ -7,7 +7,7 @@
  * Also contains some sample mapping functions.
  */
 
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 
 /* -------------------------------------------------------------------- */
 /** \name Sampling data.
@@ -103,6 +103,13 @@ vec2 hammersley_2d(int i, int sample_count)
   return hammersley_2d(uint(i), uint(sample_count));
 }
 
+/* Not random but still useful. sample_count should be an even. */
+vec2 regular_grid_2d(int i, int sample_count)
+{
+  int sample_per_dim = int(sqrt(float(sample_count)));
+  return (vec2(i % sample_per_dim, i / sample_per_dim) + 0.5) / float(sample_per_dim);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -114,9 +121,9 @@ vec2 hammersley_2d(int i, int sample_count)
 /* Given 1 random number in [0..1] range, return a random unit circle sample. */
 vec2 sample_circle(float rand)
 {
-  float phi = (rand - 0.5) * M_2PI;
+  float phi = (rand - 0.5) * M_TAU;
   float cos_phi = cos(phi);
-  float sin_phi = sqrt(1.0 - sqr(cos_phi)) * sign(phi);
+  float sin_phi = sqrt(1.0 - square(cos_phi)) * sign(phi);
   return vec2(cos_phi, sin_phi);
 }
 
@@ -149,7 +156,20 @@ vec3 sample_sphere(vec2 rand)
 vec3 sample_hemisphere(vec2 rand)
 {
   float cos_theta = rand.x;
-  float sin_theta = safe_sqrt(1.0 - sqr(cos_theta));
+  float sin_theta = safe_sqrt(1.0 - square(cos_theta));
+  return vec3(sin_theta * sample_circle(rand.y), cos_theta);
+}
+
+/**
+ * Uniform cone distribution.
+ * \a rand is 2 random float in the [0..1] range.
+ * \a cos_angle is the cosine of the half angle.
+ * Returns point on a Z positive hemisphere of radius 1 and centered on the origin.
+ */
+vec3 sample_uniform_cone(vec2 rand, float cos_angle)
+{
+  float cos_theta = mix(cos_angle, 1.0, rand.x);
+  float sin_theta = safe_sqrt(1.0 - square(cos_theta));
   return vec3(sin_theta * sample_circle(rand.y), cos_theta);
 }
 

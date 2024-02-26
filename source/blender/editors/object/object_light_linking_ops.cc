@@ -8,7 +8,7 @@
 
 #include "object_intern.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_light_linking.h"
 
 #include "ED_object.hh"
@@ -24,8 +24,6 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 #include "RNA_prototypes.h"
-
-#include "DEG_depsgraph.hh"
 
 /* -------------------------------------------------------------------- */
 /** \name Create New Light Linking Receiver/Blocker Collection Operators

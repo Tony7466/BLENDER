@@ -14,17 +14,15 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_hash.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_rand.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
-
-#include "PIL_time.h"
+#include "BLT_translation.hh"
 
 #include "DNA_brush_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -35,30 +33,26 @@
 #include "DNA_windowmanager_types.h"
 
 #include "BKE_brush.hh"
-#include "BKE_colortools.h"
-#include "BKE_context.h"
-#include "BKE_deform.h"
-#include "BKE_global.h"
+#include "BKE_colortools.hh"
+#include "BKE_context.hh"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_update_cache_legacy.h"
-#include "BKE_layer.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
-#include "BKE_tracking.h"
 
 #include "UI_view2d.hh"
 
-#include "ED_clip.hh"
 #include "ED_gpencil_legacy.hh"
-#include "ED_keyframing.hh"
-#include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_view3d.hh"
+
+#include "ANIM_keyframing.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
@@ -827,7 +821,7 @@ static short gpencil_stroke_addpoint(tGPsdata *p,
     /* color strength */
     if (brush_settings->flag & GP_BRUSH_USE_STRENGTH_PRESSURE) {
       pt->strength *= BKE_curvemapping_evaluateF(brush_settings->curve_strength, 0, pressure);
-      CLAMP(pt->strength, MIN2(GPENCIL_STRENGTH_MIN, brush_settings->draw_strength), 1.0f);
+      CLAMP(pt->strength, std::min(GPENCIL_STRENGTH_MIN, brush_settings->draw_strength), 1.0f);
     }
 
     /* Set vertex colors for buffer. */
@@ -943,7 +937,7 @@ static bGPDstroke *gpencil_stroke_to_outline(tGPsdata *p, bGPDstroke *gps)
   /* Apply layer thickness change. */
   gps_duplicate->thickness += gpl->line_change;
   /* Apply object scale to thickness. */
-  gps_duplicate->thickness *= mat4_to_scale(p->ob->object_to_world);
+  gps_duplicate->thickness *= mat4_to_scale(p->ob->object_to_world().ptr());
   CLAMP_MIN(gps_duplicate->thickness, 1.0f);
 
   /* Stroke. */
@@ -1089,7 +1083,7 @@ static void gpencil_stroke_newfrombuffer(tGPsdata *p)
       /* copy pressure and time */
       pt->pressure = ptc->pressure;
       pt->strength = ptc->strength;
-      CLAMP(pt->strength, MIN2(GPENCIL_STRENGTH_MIN, brush_settings->draw_strength), 1.0f);
+      CLAMP(pt->strength, std::min(GPENCIL_STRENGTH_MIN, brush_settings->draw_strength), 1.0f);
       copy_v4_v4(pt->vert_color, ptc->vert_color);
       pt->time = ptc->time;
       /* Apply the vertex color to point. */
@@ -1123,7 +1117,7 @@ static void gpencil_stroke_newfrombuffer(tGPsdata *p)
       /* copy pressure and time */
       pt->pressure = ptc->pressure;
       pt->strength = ptc->strength;
-      CLAMP(pt->strength, MIN2(GPENCIL_STRENGTH_MIN, brush_settings->draw_strength), 1.0f);
+      CLAMP(pt->strength, std::min(GPENCIL_STRENGTH_MIN, brush_settings->draw_strength), 1.0f);
       pt->time = ptc->time;
       /* Apply the vertex color to point. */
       ED_gpencil_point_vertex_color_set(ts, brush, pt, ptc);
@@ -1255,7 +1249,7 @@ static void gpencil_stroke_newfrombuffer(tGPsdata *p)
       /* copy pressure and time */
       pt->pressure = ptc->pressure;
       pt->strength = ptc->strength;
-      CLAMP(pt->strength, MIN2(GPENCIL_STRENGTH_MIN, brush_settings->draw_strength), 1.0f);
+      CLAMP(pt->strength, std::min(GPENCIL_STRENGTH_MIN, brush_settings->draw_strength), 1.0f);
       copy_v4_v4(pt->vert_color, ptc->vert_color);
       pt->time = ptc->time;
       pt->uv_fac = ptc->uv_fac;
@@ -1731,7 +1725,8 @@ static void gpencil_stroke_eraser_dostroke(tGPsdata *p,
 
               /* if invisible, delete point */
               if ((pt0) && ((pt0->strength <= GPENCIL_ALPHA_OPACITY_THRESH) ||
-                            (pt0->pressure < cull_thresh))) {
+                            (pt0->pressure < cull_thresh)))
+              {
                 pt0->flag |= GP_SPOINT_TAG;
                 do_cull = true;
               }
@@ -1932,7 +1927,8 @@ static Brush *gpencil_get_default_eraser(Main *bmain, ToolSettings *ts)
       continue;
     }
     if ((brush->ob_mode == OB_MODE_PAINT_GPENCIL_LEGACY) &&
-        (brush->gpencil_tool == GPAINT_TOOL_ERASE)) {
+        (brush->gpencil_tool == GPAINT_TOOL_ERASE))
+    {
       /* save first eraser to use later if no default */
       if (brush_dft == nullptr) {
         brush_dft = brush;
@@ -2026,7 +2022,7 @@ static void gpencil_init_drawing_brush(bContext *C, tGPsdata *p)
 
   /* Need this update to synchronize brush with draw manager. */
   if (changed) {
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 }
 
@@ -2091,7 +2087,7 @@ static bool gpencil_session_initdata(bContext *C, wmOperator *op, tGPsdata *p)
 
     ushort local_view_bits = 0;
     if (v3d->localvd) {
-      local_view_bits = v3d->local_view_uuid;
+      local_view_bits = v3d->local_view_uid;
     }
     /* create new default object */
     obact = ED_gpencil_add_object(C, cur, local_view_bits);
@@ -2163,7 +2159,7 @@ static tGPsdata *gpencil_session_initpaint(bContext *C, wmOperator *op)
   }
 
   /* Random generator, only init once. */
-  uint rng_seed = uint(PIL_check_seconds_timer_i() & UINT_MAX);
+  uint rng_seed = uint(BLI_time_now_seconds_i() & UINT_MAX);
   rng_seed ^= POINTER_AS_UINT(p);
   p->rng = BLI_rng_new(rng_seed);
 
@@ -2192,7 +2188,7 @@ static void gpencil_session_cleanup(tGPsdata *p)
   gpd->runtime.sbuffer_size = 0;
   gpd->runtime.sbuffer_sflag = 0;
   /* This update is required for update-on-write because the sbuffer data is not longer overwritten
-   * by a copy-on-write. */
+   * by a copy-on-evaluation. */
   ED_gpencil_sbuffer_update_eval(gpd, p->ob_eval);
   p->inittime = 0.0;
 }
@@ -2255,7 +2251,7 @@ static void gpencil_paint_initstroke(tGPsdata *p,
         continue;
       }
 
-      if (!IS_AUTOKEY_ON(scene) && (gpl->actframe == nullptr)) {
+      if (!blender::animrig::is_autokey_on(scene) && (gpl->actframe == nullptr)) {
         continue;
       }
 
@@ -2267,7 +2263,8 @@ static void gpencil_paint_initstroke(tGPsdata *p,
        *       -> If there are no strokes in that frame, don't add a new empty frame
        */
       if (gpl->actframe && gpl->actframe->strokes.first) {
-        short frame_mode = IS_AUTOKEY_ON(scene) ? GP_GETFRAME_ADD_COPY : GP_GETFRAME_USE_PREV;
+        short frame_mode = blender::animrig::is_autokey_on(scene) ? GP_GETFRAME_ADD_COPY :
+                                                                    GP_GETFRAME_USE_PREV;
         gpl->actframe = BKE_gpencil_layer_frame_get(
             gpl, scene->r.cfra, eGP_GetFrame_Mode(frame_mode));
         has_layer_to_erase = true;
@@ -2291,7 +2288,7 @@ static void gpencil_paint_initstroke(tGPsdata *p,
     /* Drawing Modes - Add a new frame if needed on the active layer */
     short add_frame_mode;
 
-    if (IS_AUTOKEY_ON(scene)) {
+    if (blender::animrig::is_autokey_on(scene)) {
       if (ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) {
         add_frame_mode = GP_GETFRAME_ADD_COPY;
       }
@@ -2317,7 +2314,7 @@ static void gpencil_paint_initstroke(tGPsdata *p,
 
     if (p->gpf == nullptr) {
       p->status = GP_STATUS_ERROR;
-      if (!IS_AUTOKEY_ON(scene)) {
+      if (!blender::animrig::is_autokey_on(scene)) {
         BKE_report(p->reports, RPT_INFO, "No available frame for creating stroke");
       }
 
@@ -2611,21 +2608,22 @@ static void gpencil_draw_status_indicators(bContext *C, tGPsdata *p)
         case GP_PAINTMODE_ERASER: {
           ED_workspace_status_text(
               C,
-              TIP_("Grease Pencil Erase Session: Hold and drag LMB or RMB to erase | "
-                   "ESC/Enter to end  (or click outside this area)"));
+              IFACE_("Grease Pencil Erase Session: Hold and drag LMB or RMB to erase | "
+                     "ESC/Enter to end  (or click outside this area)"));
           break;
         }
         case GP_PAINTMODE_DRAW_STRAIGHT: {
-          ED_workspace_status_text(C,
-                                   TIP_("Grease Pencil Line Session: Hold and drag LMB to draw | "
-                                        "ESC/Enter to end  (or click outside this area)"));
+          ED_workspace_status_text(
+              C,
+              IFACE_("Grease Pencil Line Session: Hold and drag LMB to draw | "
+                     "ESC/Enter to end  (or click outside this area)"));
           break;
         }
         case GP_PAINTMODE_SET_CP: {
           ED_workspace_status_text(
               C,
-              TIP_("Grease Pencil Guides: LMB click and release to place reference point | "
-                   "Esc/RMB to cancel"));
+              IFACE_("Grease Pencil Guides: LMB click and release to place reference point | "
+                     "Esc/RMB to cancel"));
           break;
         }
         case GP_PAINTMODE_DRAW: {
@@ -2633,19 +2631,19 @@ static void gpencil_draw_status_indicators(bContext *C, tGPsdata *p)
           if (guide->use_guide) {
             ED_workspace_status_text(
                 C,
-                TIP_("Grease Pencil Freehand Session: Hold and drag LMB to draw | "
-                     "M key to flip guide | O key to move reference point"));
+                IFACE_("Grease Pencil Freehand Session: Hold and drag LMB to draw | "
+                       "M key to flip guide | O key to move reference point"));
           }
           else {
             ED_workspace_status_text(
-                C, TIP_("Grease Pencil Freehand Session: Hold and drag LMB to draw"));
+                C, IFACE_("Grease Pencil Freehand Session: Hold and drag LMB to draw"));
           }
           break;
         }
         default: /* unhandled future cases */
         {
           ED_workspace_status_text(
-              C, TIP_("Grease Pencil Session: ESC/Enter to end (or click outside this area)"));
+              C, IFACE_("Grease Pencil Session: ESC/Enter to end (or click outside this area)"));
           break;
         }
       }
@@ -2963,7 +2961,7 @@ static void gpencil_draw_apply_event(bContext *C,
     }
   }
 
-  p->curtime = PIL_check_seconds_timer();
+  p->curtime = BLI_time_now_seconds();
 
   /* handle pressure sensitivity (which is supplied by tablets or otherwise 1.0) */
   p->pressure = event->tablet.pressure;
@@ -3721,7 +3719,7 @@ static int gpencil_draw_modal(bContext *C, wmOperator *op, const wmEvent *event)
       p->paintmode = GP_PAINTMODE_DRAW;
       WM_cursor_modal_restore(p->win);
       ED_gpencil_toggle_brush_cursor(C, true, nullptr);
-      DEG_id_tag_update(&p->scene->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&p->scene->id, ID_RECALC_SYNC_TO_EVAL);
     }
     else {
       return OPERATOR_RUNNING_MODAL;

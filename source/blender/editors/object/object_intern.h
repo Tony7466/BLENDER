@@ -83,6 +83,7 @@ void OBJECT_OT_mode_set_with_submode(struct wmOperatorType *ot);
 void OBJECT_OT_editmode_toggle(struct wmOperatorType *ot);
 void OBJECT_OT_posemode_toggle(struct wmOperatorType *ot);
 void OBJECT_OT_shade_smooth(struct wmOperatorType *ot);
+void OBJECT_OT_shade_smooth_by_angle(struct wmOperatorType *ot);
 void OBJECT_OT_shade_flat(struct wmOperatorType *ot);
 void OBJECT_OT_paths_calculate(struct wmOperatorType *ot);
 void OBJECT_OT_paths_update(struct wmOperatorType *ot);
@@ -224,6 +225,9 @@ void OBJECT_OT_laplaciandeform_bind(struct wmOperatorType *ot);
 void OBJECT_OT_surfacedeform_bind(struct wmOperatorType *ot);
 void OBJECT_OT_geometry_nodes_input_attribute_toggle(struct wmOperatorType *ot);
 void OBJECT_OT_geometry_node_tree_copy_assign(struct wmOperatorType *ot);
+void OBJECT_OT_grease_pencil_dash_modifier_segment_add(struct wmOperatorType *ot);
+void OBJECT_OT_grease_pencil_dash_modifier_segment_remove(struct wmOperatorType *ot);
+void OBJECT_OT_grease_pencil_dash_modifier_segment_move(struct wmOperatorType *ot);
 
 /* object_gpencil_modifiers.c */
 
@@ -328,6 +332,7 @@ void OBJECT_OT_shape_key_clear(struct wmOperatorType *ot);
 void OBJECT_OT_shape_key_retime(struct wmOperatorType *ot);
 void OBJECT_OT_shape_key_mirror(struct wmOperatorType *ot);
 void OBJECT_OT_shape_key_move(struct wmOperatorType *ot);
+void OBJECT_OT_shape_key_lock(struct wmOperatorType *ot);
 
 /* `object_collection.cc` */
 
@@ -347,8 +352,8 @@ void OBJECT_OT_bake(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_calculate_to_frame(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_bake(wmOperatorType *ot);
 void OBJECT_OT_simulation_nodes_cache_delete(wmOperatorType *ot);
-void OBJECT_OT_simulation_nodes_cache_bake_single(wmOperatorType *ot);
-void OBJECT_OT_simulation_nodes_cache_delete_single(wmOperatorType *ot);
+void OBJECT_OT_geometry_node_bake_single(wmOperatorType *ot);
+void OBJECT_OT_geometry_node_bake_delete_single(wmOperatorType *ot);
 
 /* `object_random.cc` */
 

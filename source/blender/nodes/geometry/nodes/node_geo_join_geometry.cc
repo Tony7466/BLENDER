@@ -4,8 +4,6 @@
 
 #include "GEO_join_geometries.hh"
 
-#include "BKE_instances.hh"
-
 #include "node_geometry_util.hh"
 
 namespace blender::nodes::node_geo_join_geometry_cc {
@@ -24,7 +22,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       "Geometry");
 
   for (GeometrySet &geometry : geometry_sets) {
-    GeometryComponentEditData::remember_deformed_curve_positions_if_necessary(geometry);
+    GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry);
   }
 
   GeometrySet geometry_set_result = geometry::join_geometries(geometry_sets, propagation_info);

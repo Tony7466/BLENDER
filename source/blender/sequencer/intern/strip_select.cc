@@ -11,10 +11,8 @@
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
 
-#include "BKE_scene.h"
-
-#include "SEQ_select.h"
-#include "SEQ_sequencer.h"
+#include "SEQ_select.hh"
+#include "SEQ_sequencer.hh"
 
 Sequence *SEQ_select_active_get(Scene *scene)
 {

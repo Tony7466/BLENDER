@@ -28,10 +28,19 @@ struct SpaceType;
 struct uiBlock;
 struct uiLayout;
 struct uiList;
+struct uiListType;
 struct wmDrawBuffer;
 struct wmTimer;
 struct wmTooltipState;
 struct Panel_Runtime;
+#ifdef __cplusplus
+namespace blender::bke {
+struct FileHandlerType;
+}
+using FileHandlerTypeHandle = blender::bke::FileHandlerType;
+#else
+typedef struct FileHandlerTypeHandle FileHandlerTypeHandle;
+#endif
 
 /* TODO: Doing this is quite ugly :)
  * Once the top-bar is merged bScreen should be refactored to use ScrAreaMap. */
@@ -121,6 +130,19 @@ typedef struct ScrAreaMap {
   ListBase areabase;
 } ScrAreaMap;
 
+typedef struct LayoutPanelState {
+  struct LayoutPanelState *next, *prev;
+  /** Identifier of the panel. */
+  char *idname;
+  uint8_t flag;
+  char _pad[7];
+} LayoutPanelState;
+
+enum LayoutPanelStateFlag {
+  /** If set, the panel is currently open. Otherwise it is collapsed. */
+  LAYOUT_PANEL_STATE_FLAG_OPEN = (1 << 0),
+};
+
 /** The part from uiBlock that needs saved in file. */
 typedef struct Panel {
   struct Panel *next, *prev;
@@ -149,6 +171,12 @@ typedef struct Panel {
   void *activedata;
   /** Sub panels. */
   ListBase children;
+
+  /**
+   * List of #LayoutPanelState. This stores the open-close-state of layout-panels created with
+   * `layout.panel(...)` in Python. For more information on layout-panels, see `uiLayoutPanelProp`.
+   */
+  ListBase layout_panel_states;
 
   struct Panel_Runtime *runtime;
 } Panel;
@@ -681,10 +709,16 @@ enum {
   /* Maximum 15. */
 
   /* Flags start here. */
+  /** Region is split into the previous one, they share the same space along a common edge.
+   * Includes the #RGN_ALIGN_HIDE_WITH_PREV behavior. */
   RGN_SPLIT_PREV = 1 << 5,
   /** Always let scaling this region scale the previous region instead. Useful to let regions
    * appear like they are one (while having independent layout, scrolling, etc.). */
   RGN_SPLIT_SCALE_PREV = 1 << 6,
+  /** Whenever the previous region is hidden, this region becomes invisible too. #RGN_FLAG_HIDDEN
+   * should only be set for the previous region, not this. The evaluated visibility respecting this
+   * flag can be queried via #ARegion.visible */
+  RGN_ALIGN_HIDE_WITH_PREV = 1 << 7,
 };
 
 /** Mask out flags so we can check the alignment. */
@@ -816,3 +850,9 @@ typedef enum AssetShelfSettings_DisplayFlag {
   ASSETSHELF_SHOW_NAMES = (1 << 0),
 } AssetShelfSettings_DisplayFlag;
 ENUM_OPERATORS(AssetShelfSettings_DisplayFlag, ASSETSHELF_SHOW_NAMES);
+
+typedef struct FileHandler {
+  DNA_DEFINE_CXX_METHODS(FileHandler)
+  /** Runtime. */
+  FileHandlerTypeHandle *type;
+} FileHandler;

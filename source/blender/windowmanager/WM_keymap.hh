@@ -8,6 +8,9 @@
  * \ingroup wm
  */
 
+#include <optional>
+#include <string>
+
 #include "BLI_utildefines.h"
 #include "DNA_windowmanager_types.h"
 #include "WM_types.hh"
@@ -27,12 +30,21 @@ void WM_keyconfig_free(wmKeyConfig *keyconf);
 
 void WM_keyconfig_set_active(wmWindowManager *wm, const char *idname);
 
+/**
+ * \param keep_properties: When true, the properties for operators which cannot be found are kept.
+ * This is needed for operator reloading that validates key-map items for operators that may have
+ * their operators loaded back in the future, see: #113309.
+ */
+void WM_keyconfig_update_ex(wmWindowManager *wm, bool keep_properties);
 void WM_keyconfig_update(wmWindowManager *wm);
 void WM_keyconfig_update_tag(wmKeyMap *keymap, wmKeyMapItem *kmi);
 void WM_keyconfig_update_operatortype();
 
 void WM_keyconfig_update_suppress_begin();
 void WM_keyconfig_update_suppress_end();
+
+void WM_keyconfig_update_postpone_begin();
+void WM_keyconfig_update_postpone_end();
 
 /* Keymap */
 
@@ -61,10 +73,7 @@ wmKeyMapItem *WM_keymap_add_item(wmKeyMap *keymap,
 wmKeyMapItem *WM_keymap_add_item_copy(wmKeyMap *keymap, wmKeyMapItem *kmi_src);
 
 void WM_keymap_remove_item(wmKeyMap *keymap, wmKeyMapItem *kmi);
-int WM_keymap_item_to_string(const wmKeyMapItem *kmi,
-                             bool compact,
-                             char *result,
-                             int result_maxncpy);
+std::optional<std::string> WM_keymap_item_to_string(const wmKeyMapItem *kmi, bool compact);
 
 wmKeyMap *WM_keymap_list_find(ListBase *lb, const char *idname, int spaceid, int regionid);
 wmKeyMap *WM_keymap_list_find_spaceid_or_empty(ListBase *lb,
@@ -128,16 +137,12 @@ void WM_keymap_fix_linking();
 
 /* Modal Keymap */
 
-int WM_modalkeymap_items_to_string(
-    const wmKeyMap *km, int propvalue, bool compact, char *result, int result_maxncpy);
-int WM_modalkeymap_operator_items_to_string(
-    wmOperatorType *ot, int propvalue, bool compact, char *result, int result_maxncpy);
-char *WM_modalkeymap_operator_items_to_string_buf(wmOperatorType *ot,
-                                                  int propvalue,
-                                                  bool compact,
-                                                  int result_maxncpy,
-                                                  int *r_available_len,
-                                                  char **r_result);
+std::optional<std::string> WM_modalkeymap_items_to_string(const wmKeyMap *km,
+                                                          int propvalue,
+                                                          bool compact);
+std::optional<std::string> WM_modalkeymap_operator_items_to_string(wmOperatorType *ot,
+                                                                   int propvalue,
+                                                                   bool compact);
 
 wmKeyMap *WM_modalkeymap_ensure(wmKeyConfig *keyconf,
                                 const char *idname,
@@ -163,16 +168,14 @@ int WM_keymap_item_map_type_get(const wmKeyMapItem *kmi);
 /* Key Event */
 
 const char *WM_key_event_string(short type, bool compact);
-int WM_keymap_item_raw_to_string(short shift,
-                                 short ctrl,
-                                 short alt,
-                                 short oskey,
-                                 short keymodifier,
-                                 short val,
-                                 short type,
-                                 bool compact,
-                                 char *result,
-                                 int result_maxncpy);
+std::optional<std::string> WM_keymap_item_raw_to_string(short shift,
+                                                        short ctrl,
+                                                        short alt,
+                                                        short oskey,
+                                                        short keymodifier,
+                                                        short val,
+                                                        short type,
+                                                        bool compact);
 /**
  * \param include_mask, exclude_mask:
  * Event types to include/exclude when looking up keys (#eEventType_Mask).
@@ -184,13 +187,11 @@ wmKeyMapItem *WM_key_event_operator(const bContext *C,
                                     short include_mask,
                                     short exclude_mask,
                                     wmKeyMap **r_keymap);
-char *WM_key_event_operator_string(const bContext *C,
-                                   const char *opname,
-                                   wmOperatorCallContext opcontext,
-                                   IDProperty *properties,
-                                   bool is_strict,
-                                   char *result,
-                                   int result_maxncpy);
+std::optional<std::string> WM_key_event_operator_string(const bContext *C,
+                                                        const char *opname,
+                                                        wmOperatorCallContext opcontext,
+                                                        IDProperty *properties,
+                                                        bool is_strict);
 
 wmKeyMapItem *WM_key_event_operator_from_keymap(wmKeyMap *keymap,
                                                 const char *opname,

@@ -7,10 +7,11 @@
 #include "BLI_string.h"
 
 #include "BKE_curves.hh"
+#include "BKE_customdata.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 
 using namespace blender::bke::greasepencil;
 
@@ -64,8 +65,8 @@ TEST(greasepencil, remove_drawings)
   GreasePencilDrawing *drawing = reinterpret_cast<GreasePencilDrawing *>(grease_pencil.drawing(1));
   drawing->wrap().strokes_for_write().resize(0, 10);
 
-  Layer &layer1 = grease_pencil.add_layer(grease_pencil.root_group(), "Layer1");
-  Layer &layer2 = grease_pencil.add_layer(grease_pencil.root_group(), "Layer2");
+  Layer &layer1 = grease_pencil.add_layer("Layer1");
+  Layer &layer2 = grease_pencil.add_layer("Layer2");
 
   layer1.add_frame(0, 0);
   layer1.add_frame(10, 1);
@@ -144,7 +145,7 @@ struct GreasePencilLayerTreeExample {
     grease_pencil.add_layer(group2, names[4]);
     grease_pencil.add_layer(group2, names[5]);
 
-    grease_pencil.add_layer(grease_pencil.root_group(), names[6]);
+    grease_pencil.add_layer(names[6]);
   }
 };
 
@@ -187,6 +188,29 @@ TEST(greasepencil, layer_tree_node_types)
     EXPECT_EQ(child.is_layer(), ex.is_layer[i]);
     EXPECT_EQ(child.is_group(), !ex.is_layer[i]);
   }
+}
+
+TEST(greasepencil, layer_tree_is_child_of)
+{
+  GreasePencilLayerTreeExample ex;
+
+  EXPECT_FALSE(ex.grease_pencil.root_group().is_child_of(ex.grease_pencil.root_group()));
+
+  const LayerGroup &group1 = ex.grease_pencil.find_node_by_name("Group1")->as_group();
+  const LayerGroup &group2 = ex.grease_pencil.find_node_by_name("Group2")->as_group();
+  const Layer &layer1 = ex.grease_pencil.find_node_by_name("Layer1")->as_layer();
+  const Layer &layer3 = ex.grease_pencil.find_node_by_name("Layer3")->as_layer();
+  const Layer &layer5 = ex.grease_pencil.find_node_by_name("Layer5")->as_layer();
+
+  EXPECT_TRUE(layer1.is_child_of(ex.grease_pencil.root_group()));
+  EXPECT_TRUE(layer1.is_child_of(group1));
+  EXPECT_TRUE(layer3.is_child_of(group1));
+  EXPECT_FALSE(layer5.is_child_of(group1));
+
+  EXPECT_TRUE(layer3.is_child_of(group2));
+  EXPECT_FALSE(layer1.is_child_of(group2));
+
+  EXPECT_TRUE(layer5.is_child_of(ex.grease_pencil.root_group()));
 }
 
 /* --------------------------------------------------------------------------------------------- */
@@ -337,6 +361,98 @@ TEST(greasepencil, remove_frame_fixed_duration_overwrite_end)
   EXPECT_EQ(layer.frames().size(), 2);
   EXPECT_EQ(layer.frames().lookup(0).drawing_index, 1);
   EXPECT_TRUE(layer.frames().lookup(5).is_null());
+}
+
+TEST(greasepencil, remove_drawings_no_change)
+{
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(
+      BKE_id_new_nomain(ID_GP, "Grease Pencil test"));
+
+  grease_pencil->add_empty_drawings(3);
+
+  Layer &layer_a = grease_pencil->add_layer("LayerA");
+  Layer &layer_b = grease_pencil->add_layer("LayerB");
+  layer_b.add_frame(10, 0);
+  layer_b.add_frame(20, 1);
+  layer_b.add_frame(30, 2);
+
+  EXPECT_EQ(layer_a.frames().size(), 0);
+  EXPECT_EQ(layer_b.frames().size(), 3);
+  EXPECT_EQ(layer_b.frames().lookup(10).drawing_index, 0);
+  EXPECT_EQ(layer_b.frames().lookup(20).drawing_index, 1);
+  EXPECT_EQ(layer_b.frames().lookup(30).drawing_index, 2);
+  /* Test DNA storage data too. */
+  layer_a.prepare_for_dna_write();
+  layer_b.prepare_for_dna_write();
+  EXPECT_EQ(layer_a.frames_storage.num, 0);
+  EXPECT_EQ(layer_b.frames_storage.num, 3);
+  EXPECT_EQ(layer_b.frames_storage.values[0].drawing_index, 0);
+  EXPECT_EQ(layer_b.frames_storage.values[1].drawing_index, 1);
+  EXPECT_EQ(layer_b.frames_storage.values[2].drawing_index, 2);
+
+  grease_pencil->remove_layer(layer_a);
+  EXPECT_EQ(layer_b.frames().size(), 3);
+  EXPECT_EQ(layer_b.frames().lookup(10).drawing_index, 0);
+  EXPECT_EQ(layer_b.frames().lookup(20).drawing_index, 1);
+  EXPECT_EQ(layer_b.frames().lookup(30).drawing_index, 2);
+  /* Test DNA storage data too. */
+  layer_b.prepare_for_dna_write();
+  EXPECT_EQ(layer_b.frames_storage.num, 3);
+  EXPECT_EQ(layer_b.frames_storage.values[0].drawing_index, 0);
+  EXPECT_EQ(layer_b.frames_storage.values[1].drawing_index, 1);
+  EXPECT_EQ(layer_b.frames_storage.values[2].drawing_index, 2);
+
+  BKE_id_free(nullptr, grease_pencil);
+}
+
+TEST(greasepencil, remove_drawings_with_no_users)
+{
+  GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(
+      BKE_id_new_nomain(ID_GP, "Grease Pencil test"));
+
+  /* Test drawing index correctness: Removing users from drawings should remove those drawings, and
+   * all index references should get updated to match the changed drawing indices. */
+
+  grease_pencil->add_empty_drawings(5);
+
+  Layer &layer_a = grease_pencil->add_layer("LayerA");
+  layer_a.add_frame(10, 0);
+  layer_a.add_frame(20, 1);
+  layer_a.add_frame(30, 2);
+  Layer &layer_b = grease_pencil->add_layer("LayerB");
+  layer_b.add_frame(10, 3);
+  layer_b.add_frame(30, 4);
+
+  EXPECT_EQ(layer_a.frames().size(), 3);
+  EXPECT_EQ(layer_a.frames().lookup(10).drawing_index, 0);
+  EXPECT_EQ(layer_a.frames().lookup(20).drawing_index, 1);
+  EXPECT_EQ(layer_a.frames().lookup(30).drawing_index, 2);
+  EXPECT_EQ(layer_b.frames().size(), 2);
+  EXPECT_EQ(layer_b.frames().lookup(10).drawing_index, 3);
+  EXPECT_EQ(layer_b.frames().lookup(30).drawing_index, 4);
+  /* Test DNA storage data too. */
+  layer_a.prepare_for_dna_write();
+  layer_b.prepare_for_dna_write();
+  EXPECT_EQ(layer_a.frames_storage.num, 3);
+  EXPECT_EQ(layer_a.frames_storage.values[0].drawing_index, 0);
+  EXPECT_EQ(layer_a.frames_storage.values[1].drawing_index, 1);
+  EXPECT_EQ(layer_a.frames_storage.values[2].drawing_index, 2);
+  EXPECT_EQ(layer_b.frames_storage.num, 2);
+  EXPECT_EQ(layer_b.frames_storage.values[0].drawing_index, 3);
+  EXPECT_EQ(layer_b.frames_storage.values[1].drawing_index, 4);
+
+  /* Drawings 0,1,2 get removed, drawings 3,4 move up (order changes). */
+  grease_pencil->remove_layer(layer_a);
+  EXPECT_EQ(layer_b.frames().size(), 2);
+  EXPECT_EQ(layer_b.frames().lookup(10).drawing_index, 1);
+  EXPECT_EQ(layer_b.frames().lookup(30).drawing_index, 0);
+  /* Test DNA storage data too. */
+  layer_b.prepare_for_dna_write();
+  EXPECT_EQ(layer_b.frames_storage.num, 2);
+  EXPECT_EQ(layer_b.frames_storage.values[0].drawing_index, 1);
+  EXPECT_EQ(layer_b.frames_storage.values[1].drawing_index, 0);
+
+  BKE_id_free(nullptr, grease_pencil);
 }
 
 }  // namespace blender::bke::greasepencil::tests

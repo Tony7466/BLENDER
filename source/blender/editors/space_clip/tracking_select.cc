@@ -18,15 +18,13 @@
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_tracking.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "ED_clip.hh"
-#include "ED_mask.hh"
-#include "ED_screen.hh"
 #include "ED_select_utils.hh"
 
 #include "RNA_access.hh"

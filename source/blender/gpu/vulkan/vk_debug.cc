@@ -8,7 +8,7 @@
 
 #include <sstream>
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "CLG_log.h"
 
 #include "vk_backend.hh"
@@ -30,16 +30,21 @@ void VKContext::debug_group_end()
   debug::pop_marker(device);
 }
 
-bool VKContext::debug_capture_begin()
+bool VKContext::debug_capture_begin(const char *title)
 {
-  return VKBackend::get().debug_capture_begin();
+  return VKBackend::get().debug_capture_begin(title);
 }
 
-bool VKBackend::debug_capture_begin()
+bool VKBackend::debug_capture_begin(const char *title)
 {
 #ifdef WITH_RENDERDOC
-  return renderdoc_api_.start_frame_capture(device_get().instance_get(), nullptr);
+  bool result = renderdoc_api_.start_frame_capture(device_get().instance_get(), nullptr);
+  if (result && title) {
+    renderdoc_api_.set_frame_capture_title(title);
+  }
+  return result;
 #else
+  UNUSED_VARS(title);
   return false;
 #endif
 }
@@ -261,6 +266,17 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
                    const VkDebugUtilsMessengerCallbackDataEXT *callback_data,
                    void *user_data)
 {
+  /*
+   * Some message IDs are turned of globally to reduce console flooding.
+   *
+   * - 0xec321b6c: `VUID-VkBufferCreateInfo-size-06409` is disabled as all allocations are reported
+   *   to be larger than the maximum allowed buffer size, although the buffer-size is 4GB. Detected
+   *   on Mesa 23.0.4.
+   */
+  if (ELEM(callback_data->messageIdNumber, 0xec321b6c)) {
+    return VK_FALSE;
+  }
+
   VKDebuggingTools &debugging_tools = *reinterpret_cast<VKDebuggingTools *>(user_data);
   if (debugging_tools.is_ignore(callback_data->messageIdNumber)) {
     return VK_FALSE;

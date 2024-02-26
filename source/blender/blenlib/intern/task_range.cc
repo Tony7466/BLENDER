@@ -12,12 +12,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_listBase.h"
-
+#include "BLI_array.hh"
 #include "BLI_lazy_threading.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_task.h"
 #include "BLI_task.hh"
 #include "BLI_threads.h"
+#include "BLI_vector.hh"
 
 #include "atomic_ops.h"
 
@@ -105,7 +106,7 @@ void BLI_task_parallel_range(const int start,
   /* Multithreading. */
   if (settings->use_threading && BLI_task_scheduler_num_threads() > 1) {
     RangeTask task(func, userdata, settings);
-    const size_t grainsize = MAX2(settings->min_iter_per_thread, 1);
+    const size_t grainsize = std::max(settings->min_iter_per_thread, 1);
     const tbb::blocked_range<int> range(start, stop, grainsize);
 
     blender::lazy_threading::send_hint();
@@ -179,6 +180,47 @@ void parallel_for_impl(const IndexRange range,
   UNUSED_VARS(grain_size);
 #endif
   function(range);
+}
+
+void parallel_for_weighted_impl(
+    const IndexRange range,
+    const int64_t grain_size,
+    const FunctionRef<void(IndexRange)> function,
+    const FunctionRef<void(IndexRange, MutableSpan<int64_t>)> task_sizes_fn)
+{
+  /* Shouldn't be too small, because then there is more overhead when the individual tasks are
+   * small. Also shouldn't be too large because then the serial code to split up tasks causes extra
+   * overhead. */
+  const int64_t outer_grain_size = std::min<int64_t>(grain_size, 512);
+  threading::parallel_for(range, outer_grain_size, [&](const IndexRange sub_range) {
+    /* Compute the size of every task in the current range. */
+    Array<int64_t, 1024> task_sizes(sub_range.size());
+    task_sizes_fn(sub_range, task_sizes);
+
+    /* Split range into multiple segments that have a size that approximates the grain size. */
+    Vector<int64_t, 256> offsets_vec;
+    offsets_vec.append(0);
+    int64_t counter = 0;
+    for (const int64_t i : sub_range.index_range()) {
+      counter += task_sizes[i];
+      if (counter >= grain_size) {
+        offsets_vec.append(i + 1);
+        counter = 0;
+      }
+    }
+    if (offsets_vec.last() < sub_range.size()) {
+      offsets_vec.append(sub_range.size());
+    }
+    const OffsetIndices<int64_t> offsets = offsets_vec.as_span();
+
+    /* Run the dynamically split tasks in parallel. */
+    threading::parallel_for(offsets.index_range(), 1, [&](const IndexRange offsets_range) {
+      for (const int64_t i : offsets_range) {
+        const IndexRange actual_range = offsets[i].shift(sub_range.start());
+        function(actual_range);
+      }
+    });
+  });
 }
 
 }  // namespace blender::threading::detail

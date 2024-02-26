@@ -9,11 +9,19 @@
 namespace blender::compositor {
 
 class KuwaharaClassicOperation : public MultiThreadedOperation {
+  const NodeKuwaharaData *data_;
   SocketReader *image_reader_;
   SocketReader *size_reader_;
+  SocketReader *sat_reader_;
+  SocketReader *sat_squared_reader_;
 
  public:
   KuwaharaClassicOperation();
+
+  void set_data(const NodeKuwaharaData *data)
+  {
+    data_ = data;
+  }
 
   void init_execution() override;
   void deinit_execution() override;

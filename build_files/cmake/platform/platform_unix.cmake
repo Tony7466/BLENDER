@@ -16,13 +16,13 @@ else()
     set(LIBDIR_NATIVE_ABI ${CMAKE_SOURCE_DIR}/../lib/${LIBDIR_NAME})
 
     # Path to precompiled libraries with known glibc 2.28 ABI.
-    set(LIBDIR_GLIBC228_ABI ${CMAKE_SOURCE_DIR}/../lib/linux_x86_64_glibc_228)
+    set(LIBDIR_GLIBC228_ABI ${CMAKE_SOURCE_DIR}/lib/linux_x64)
 
     # Choose the best suitable libraries.
     if(EXISTS ${LIBDIR_NATIVE_ABI})
       set(LIBDIR ${LIBDIR_NATIVE_ABI})
       set(WITH_LIBC_MALLOC_HOOK_WORKAROUND TRUE)
-    elseif(EXISTS ${LIBDIR_GLIBC228_ABI})
+    elseif(EXISTS "${LIBDIR_GLIBC228_ABI}/.git")
       set(LIBDIR ${LIBDIR_GLIBC228_ABI})
       if(WITH_MEM_JEMALLOC)
         # jemalloc provides malloc hooks.
@@ -114,10 +114,28 @@ find_package_wrapper(Epoxy REQUIRED)
 # XXX Linking errors with debian static tiff :/
 # find_package_wrapper(TIFF REQUIRED)
 find_package(TIFF)
+# CMake 3.28.1 defines this, it doesn't seem to be used, hide by default in the UI.
+if(DEFINED tiff_DIR)
+  mark_as_advanced(tiff_DIR)
+endif()
 
 if(WITH_VULKAN_BACKEND)
-  find_package_wrapper(Vulkan REQUIRED)
-  find_package_wrapper(ShaderC REQUIRED)
+  if((DEFINED LIBDIR) AND (EXISTS "${LIBDIR}/vulkan") AND (EXISTS "${LIBDIR}/shaderc"))
+    if(NOT DEFINED VULKAN_ROOT_DIR)
+      set(VULKAN_ROOT_DIR ${LIBDIR}/vulkan)
+    endif()
+    if(NOT DEFINED SHADERC_ROOT_DIR)
+      set(SHADERC_ROOT_DIR ${LIBDIR}/shaderc)
+    endif()
+
+    find_package_wrapper(Vulkan REQUIRED)
+    find_package_wrapper(ShaderC REQUIRED)
+  else()
+    # Use system libs
+    find_package(PkgConfig)
+    pkg_check_modules(VULKAN REQUIRED vulkan)
+    pkg_check_modules(SHADERC REQUIRED shaderc)
+  endif()
 endif()
 add_bundled_libraries(vulkan/lib)
 
@@ -142,6 +160,11 @@ endfunction()
 if(NOT WITH_SYSTEM_FREETYPE)
   # FreeType compiled with Brotli compression for woff2.
   find_package_wrapper(Freetype REQUIRED)
+  # CMake 3.28.1 defines this, it doesn't seem to be used, hide by default in the UI.
+  if(DEFINED freetype_DIR)
+    mark_as_advanced(freetype_DIR)
+  endif()
+
   if(DEFINED LIBDIR)
     find_package_wrapper(Brotli REQUIRED)
 
@@ -157,6 +180,14 @@ if(NOT WITH_SYSTEM_FREETYPE)
     set(BROTLI_LIBRARIES "")
   endif()
   check_freetype_for_brotli()
+endif()
+
+if(WITH_HARFBUZZ)
+  find_package(Harfbuzz)
+endif()
+
+if(WITH_FRIBIDI)
+  find_package(Fribidi)
 endif()
 
 if(WITH_PYTHON)
@@ -333,6 +364,7 @@ if(WITH_CYCLES AND WITH_CYCLES_OSL)
     endif()
   endif()
 endif()
+add_bundled_libraries(osl/lib)
 
 if(WITH_CYCLES AND WITH_CYCLES_DEVICE_ONEAPI)
   set(CYCLES_LEVEL_ZERO ${LIBDIR}/level-zero CACHE PATH "Path to Level Zero installation")
@@ -485,6 +517,7 @@ add_bundled_libraries(embree/lib)
 if(WITH_OPENIMAGEDENOISE)
   find_package_wrapper(OpenImageDenoise)
   set_and_warn_library_found("OpenImageDenoise" OPENIMAGEDENOISE_FOUND WITH_OPENIMAGEDENOISE)
+  add_bundled_libraries(openimagedenoise/lib)
 endif()
 
 if(WITH_LLVM)
@@ -548,6 +581,7 @@ endif()
 
 if(WITH_CYCLES AND WITH_CYCLES_PATH_GUIDING)
   find_package_wrapper(openpgl)
+  mark_as_advanced(openpgl_DIR)
   if(openpgl_FOUND)
     get_target_property(OPENPGL_LIBRARIES openpgl::openpgl LOCATION)
     get_target_property(OPENPGL_INCLUDE_DIR openpgl::openpgl INTERFACE_INCLUDE_DIRECTORIES)
@@ -780,6 +814,8 @@ endif()
 
 if(WITH_GHOST_X11)
   find_package(X11 REQUIRED)
+  # For some reason the finder doesn't mark this.
+  mark_as_advanced(X11_xcb_xkb_INCLUDE_PATH)
 
   find_path(X11_XF86keysym_INCLUDE_PATH X11/XF86keysym.h ${X11_INC_SEARCH_PATH})
   mark_as_advanced(X11_XF86keysym_INCLUDE_PATH)

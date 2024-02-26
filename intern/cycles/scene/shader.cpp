@@ -264,7 +264,7 @@ void Shader::estimate_emission()
   }
 
   ShaderInput *surf = graph->output()->input("Surface");
-  emission_estimate = fabs(output_estimate_emission(surf->link, emission_is_constant));
+  emission_estimate = output_estimate_emission(surf->link, emission_is_constant);
 
   if (is_zero(emission_estimate)) {
     emission_sampling = EMISSION_SAMPLING_NONE;
@@ -274,8 +274,9 @@ void Shader::estimate_emission()
      * using a lot of memory in the light tree and potentially wasting samples
      * where indirect light samples are sufficient.
      * Possible optimization: estimate front and back emission separately. */
-    emission_sampling = (reduce_max(emission_estimate) > 0.5f) ? EMISSION_SAMPLING_FRONT_BACK :
-                                                                 EMISSION_SAMPLING_NONE;
+    emission_sampling = (reduce_max(fabs(emission_estimate)) > 0.5f) ?
+                            EMISSION_SAMPLING_FRONT_BACK :
+                            EMISSION_SAMPLING_NONE;
   }
   else {
     emission_sampling = emission_sampling_method;
@@ -348,13 +349,22 @@ void Shader::tag_update(Scene *scene)
   has_volume = has_volume || output->input("Volume")->link;
   has_displacement = has_displacement || output->input("Displacement")->link;
 
-  if (!has_surface) {
+  if (!has_surface && !has_volume) {
+    /* If we need to output surface AOVs, add a Transparent BSDF so that the
+     * surface shader runs. */
     foreach (ShaderNode *node, graph->nodes) {
       if (node->special_type == SHADER_SPECIAL_TYPE_OUTPUT_AOV) {
         foreach (const ShaderInput *in, node->inputs) {
           if (in->link) {
+            TransparentBsdfNode *transparent = graph->create_node<TransparentBsdfNode>();
+            graph->add(transparent);
+            graph->connect(transparent->output("BSDF"), output->input("Surface"));
             has_surface = true;
+            break;
           }
+        }
+        if (has_surface) {
+          break;
         }
       }
     }

@@ -21,16 +21,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_global.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 
 #include "GHOST_C-api.h"
@@ -53,11 +50,11 @@
 #include "RE_engine.h"
 
 #include "WM_api.hh"
-#include "WM_toolsystem.h"
+#include "WM_toolsystem.hh"
 #include "WM_types.hh"
 #include "wm.hh"
 #include "wm_draw.hh"
-#include "wm_event_system.h"
+#include "wm_event_system.hh"
 #include "wm_surface.hh"
 #include "wm_window.hh"
 
@@ -108,7 +105,7 @@ static void wm_paintcursor_draw(bContext *C, ScrArea *area, ARegion *region)
   /* Don't draw paint cursors with locked interface. Painting is not possible
    * then, and cursor drawing can use scene data that another thread may be
    * modifying. */
-  if (wm->is_interface_locked) {
+  if (wm->runtime->is_interface_locked) {
     return;
   }
 
@@ -230,6 +227,13 @@ static void wm_software_cursor_motion_clear()
   g_software_cursor.winid = -1;
   g_software_cursor.xy[0] = -1;
   g_software_cursor.xy[1] = -1;
+}
+
+static void wm_software_cursor_motion_clear_with_window(const wmWindow *win)
+{
+  if (g_software_cursor.winid == win->winid) {
+    wm_software_cursor_motion_clear();
+  }
 }
 
 static void wm_software_cursor_draw_bitmap(const int event_xy[2],
@@ -596,11 +600,13 @@ static const char *wm_area_name(ScrArea *area)
 struct WindowDrawCB {
   WindowDrawCB *next, *prev;
 
-  void (*draw)(const wmWindow *, void *);
+  void (*draw)(const wmWindow *win, void *customdata);
   void *customdata;
 };
 
-void *WM_draw_cb_activate(wmWindow *win, void (*draw)(const wmWindow *, void *), void *customdata)
+void *WM_draw_cb_activate(wmWindow *win,
+                          void (*draw)(const wmWindow *win, void *customdata),
+                          void *customdata)
 {
   WindowDrawCB *wdc = static_cast<WindowDrawCB *>(MEM_callocN(sizeof(*wdc), "WindowDrawCB"));
 
@@ -1144,7 +1150,8 @@ static void wm_draw_window_onscreen(bContext *C, wmWindow *win, int view)
       wm_software_cursor_motion_update(win);
     }
     else {
-      wm_software_cursor_motion_clear();
+      /* Checking the window is needed so one window doesn't clear the cursor state of another. */
+      wm_software_cursor_motion_clear_with_window(win);
     }
   }
 
@@ -1158,7 +1165,7 @@ static void wm_draw_window(bContext *C, wmWindow *win)
   bScreen *screen = WM_window_get_active_screen(win);
   bool stereo = WM_stereo3d_enabled(win, false);
 
-  /* Avoid any BGL call issued before this to alter the window drawin. */
+  /* Avoid any BGL call issued before this to alter the window drawing. */
   GPU_bgl_end();
 
   /* Draw area regions into their own frame-buffer. This way we can redraw
@@ -1486,7 +1493,7 @@ static bool wm_draw_update_test_window(Main *bmain, bContext *C, wmWindow *win)
     else {
       /* Detect the edge case when the previous draw used the software cursor but this one doesn't,
        * it's important to redraw otherwise the software cursor will remain displayed. */
-      if (g_software_cursor.winid != -1) {
+      if (g_software_cursor.winid == win->winid) {
         return true;
       }
     }
@@ -1583,12 +1590,9 @@ void wm_draw_region_clear(wmWindow *win, ARegion * /*region*/)
   screen->do_draw = true;
 }
 
-void WM_draw_region_free(ARegion *region, bool hide)
+void WM_draw_region_free(ARegion *region)
 {
   wm_draw_region_buffer_free(region);
-  if (hide) {
-    region->visible = 0;
-  }
 }
 
 void wm_draw_region_test(bContext *C, ScrArea *area, ARegion *region)

@@ -12,7 +12,6 @@
 
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
-#pragma BLENDER_REQUIRE(common_math_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
 
 shared int rect_min_x;
@@ -69,7 +68,7 @@ void main()
     ShadowTileData tile = shadow_tile_unpack(tiles_buf[tile_index]);
 
     /* Compute update area. */
-    if (all(equal(gl_LocalInvocationID, uvec3(0)))) {
+    if (gl_LocalInvocationIndex == 0u) {
       rect_min_x = SHADOW_TILEMAP_RES;
       rect_min_y = SHADOW_TILEMAP_RES;
       rect_max_x = 0;
@@ -97,7 +96,7 @@ void main()
     ivec2 viewport_size = viewport_size_get(viewport_index);
 
     /* Issue one view if there is an update in the LOD. */
-    if (all(equal(gl_LocalInvocationID, uvec3(0)))) {
+    if (gl_LocalInvocationIndex == 0u) {
       bool lod_has_update = rect_min.x < rect_max.x;
       if (lod_has_update) {
         view_index = atomicAdd(statistics_buf.view_needed_count, 1);
