@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <fmt/format.h>
+#include <mutex>
 
 #include "GEO_reverse_uv_sampler.hh"
 
@@ -35,8 +36,14 @@ struct TriWithRange {
   IndexRange range;
 };
 
+struct TriWithRangeGroup {
+  int filled_num = 0;
+  std::array<TriWithRange, 8> tris;
+  TriWithRangeGroup *next = nullptr;
+};
+
 struct LocalRowData {
-  Vector<TriWithRange, 16> tri_ranges;
+  TriWithRangeGroup *tris = nullptr;
   int x_min = INT32_MAX;
   int x_max = INT32_MIN;
 };
@@ -96,7 +103,16 @@ BLI_NOINLINE static void sort_into_y_buckets(
       {
         LocalRowData &row = *local_data.rows.lookup_or_add_cb(
             key_y, [&]() { return local_data.allocator.construct<LocalRowData>(); });
-        row.tri_ranges.append(tri_with_range);
+
+        if (row.tris == nullptr || row.tris->filled_num == row.tris->tris.size()) {
+          static_assert(std::is_trivially_destructible_v<TriWithRangeGroup>);
+          TriWithRangeGroup *new_group =
+              local_data.allocator.construct<TriWithRangeGroup>().release();
+          new_group->next = row.tris;
+          row.tris = new_group;
+        }
+
+        row.tris->tris[row.tris->filled_num++] = tri_with_range;
         row.x_min = std::min<int>(row.x_min, x_range.first());
         row.x_max = std::max<int>(row.x_max, x_range.last());
       }
@@ -133,9 +149,12 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
       {
         MutableSpan<int> counts = row.offsets;
         for (const LocalRowData *local_row : local_rows) {
-          for (const TriWithRange &tri_with_range : local_row->tri_ranges) {
-            for (const int x : tri_with_range.range) {
-              counts[x - x_min]++;
+          for (const TriWithRangeGroup *group = local_row->tris; group; group = group->next) {
+            for (const int i : IndexRange(group->filled_num)) {
+              const TriWithRange &tri_with_range = group->tris[i];
+              for (const int x : tri_with_range.range) {
+                counts[x - x_min]++;
+              }
             }
           }
         }
@@ -146,12 +165,15 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
 
       Array<int, 1000> current_offsets(x_num, 0);
       for (const LocalRowData *local_row : local_rows) {
-        for (const TriWithRange &tri_with_range : local_row->tri_ranges) {
-          for (const int x : tri_with_range.range) {
-            const int offset_x = x - x_min;
-            row.tri_indices[row.offsets[offset_x] + current_offsets[offset_x]] =
-                tri_with_range.tri_index;
-            current_offsets[offset_x]++;
+        for (const TriWithRangeGroup *group = local_row->tris; group; group = group->next) {
+          for (const int i : IndexRange(group->filled_num)) {
+            const TriWithRange &tri_with_range = group->tris[i];
+            for (const int x : tri_with_range.range) {
+              const int offset_x = x - x_min;
+              row.tri_indices[row.offsets[offset_x] + current_offsets[offset_x]] =
+                  tri_with_range.tri_index;
+              current_offsets[offset_x]++;
+            }
           }
         }
       }
