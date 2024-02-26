@@ -5854,7 +5854,7 @@ void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
       int point_i = i + up_to_point;
       float *point = (float *)&point_positions[point_i];
       copy_v3_v3(point, eci->gpos);
-      point_radii.span[point_i] = thickness;
+      point_radii.span[point_i] = thickness / 2.0f;
       point_opacities.span[point_i] = opacity;
 
       if (src_deform_group >= 0) {
