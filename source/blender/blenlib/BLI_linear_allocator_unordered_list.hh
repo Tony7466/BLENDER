@@ -7,6 +7,7 @@
 #include <array>
 
 #include "BLI_linear_allocator.hh"
+#include "BLI_struct_equality_utils.hh"
 #include "BLI_utility_mixins.hh"
 
 namespace blender::linear_allocator {
@@ -75,24 +76,76 @@ template<typename T, int64_t SegmentCapacity = 4> class UnorderedList : NonCopya
     new (value) T(std::forward<Args>(args)...);
   }
 
-  template<typename Fn> void for_each(Fn &&fn) const
-  {
-    for (const Segment *segment = current_segment_; segment; segment = segment->next) {
-      for (const int64_t i : IndexRange(segment->size)) {
-        const T &value = *segment->values[i];
-        fn(value);
+  class ConstIterator {
+   private:
+    const Segment *segment_ = nullptr;
+    int64_t index_ = 0;
+
+   public:
+    ConstIterator(const Segment *segment, int64_t index = 0) : segment_(segment), index_(index) {}
+
+    ConstIterator &operator++()
+    {
+      index_++;
+      if (index_ == segment_->size) {
+        segment_ = segment_->next;
+        index_ = 0;
       }
+      return *this;
     }
+
+    const T &operator*() const
+    {
+      return *segment_->values[index_];
+    }
+
+    BLI_STRUCT_EQUALITY_OPERATORS_2(ConstIterator, segment_, index_)
+  };
+
+  class MutableIterator {
+   private:
+    Segment *segment_ = nullptr;
+    int64_t index_ = 0;
+
+   public:
+    MutableIterator(Segment *segment, int64_t index = 0) : segment_(segment), index_(index) {}
+
+    MutableIterator &operator++()
+    {
+      index_++;
+      if (index_ == segment_->size) {
+        segment_ = segment_->next;
+        index_ = 0;
+      }
+      return *this;
+    }
+
+    T &operator*()
+    {
+      return *segment_->values[index_];
+    }
+
+    BLI_STRUCT_EQUALITY_OPERATORS_2(MutableIterator, segment_, index_)
+  };
+
+  ConstIterator begin() const
+  {
+    return ConstIterator(current_segment_, 0);
   }
 
-  template<typename Fn> void for_each(Fn &&fn)
+  ConstIterator end() const
   {
-    for (Segment *segment = current_segment_; segment; segment = segment->next) {
-      for (const int64_t i : IndexRange(segment->size)) {
-        T &value = *segment->values[i];
-        fn(value);
-      }
-    }
+    return ConstIterator(nullptr, 0);
+  }
+
+  MutableIterator begin()
+  {
+    return MutableIterator(current_segment_, 0);
+  }
+
+  MutableIterator end()
+  {
+    return MutableIterator(nullptr, 0);
   }
 };
 

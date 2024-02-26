@@ -330,7 +330,8 @@ class LazyFunctionForGeometryNode : public LazyFunction {
 
     if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(*user_data))
     {
-      tree_logger->node_execution_times.append({node_.identifier, start_time, end_time});
+      tree_logger->node_execution_times.append(*tree_logger->allocator,
+                                               {node_.identifier, start_time, end_time});
     }
   }
 

@@ -235,10 +235,10 @@ void GeoTreeLog::ensure_node_warnings()
     return;
   }
   for (GeoTreeLogger *tree_logger : tree_loggers_) {
-    tree_logger->node_warnings.for_each([&](const GeoTreeLogger::WarningWithNode &warning) {
-      this->nodes.lookup_or_add_default(warning.node_id).warnings.append(warning.warning);
-      this->all_warnings.append(warning.warning);
-    });
+    for (const GeoTreeLogger::WarningWithNode &warnings : tree_logger->node_warnings) {
+      this->nodes.lookup_or_add_default(warnings.node_id).warnings.append(warnings.warning);
+      this->all_warnings.append(warnings.warning);
+    }
   }
   for (const ComputeContextHash &child_hash : children_hashes_) {
     GeoTreeLog &child_log = modifier_log_->get_tree_log(child_hash);
@@ -288,16 +288,14 @@ void GeoTreeLog::ensure_socket_values()
     return;
   }
   for (GeoTreeLogger *tree_logger : tree_loggers_) {
-    tree_logger->input_socket_values.for_each(
-        [&](const GeoTreeLogger::SocketValueLog &value_log_data) {
-          this->nodes.lookup_or_add_as(value_log_data.node_id)
-              .input_values_.add(value_log_data.socket_index, value_log_data.value.get());
-        });
-    tree_logger->output_socket_values.for_each(
-        [&](const GeoTreeLogger::SocketValueLog &value_log_data) {
-          this->nodes.lookup_or_add_as(value_log_data.node_id)
-              .output_values_.add(value_log_data.socket_index, value_log_data.value.get());
-        });
+    for (const GeoTreeLogger::SocketValueLog &value_log_data : tree_logger->input_socket_values) {
+      this->nodes.lookup_or_add_as(value_log_data.node_id)
+          .input_values_.add(value_log_data.socket_index, value_log_data.value.get());
+    }
+    for (const GeoTreeLogger::SocketValueLog &value_log_data : tree_logger->output_socket_values) {
+      this->nodes.lookup_or_add_as(value_log_data.node_id)
+          .output_values_.add(value_log_data.socket_index, value_log_data.value.get());
+    }
   }
   reduced_socket_values_ = true;
 }
