@@ -86,7 +86,7 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
   threading::EnumerableThreadSpecific<LocalData> data_per_thread;
 
   {
-    // SCOPED_TIMER("sort into y buckets");
+    SCOPED_TIMER("sort into y buckets");
     corner_tris_mask.foreach_segment(GrainSize(512), [&](const IndexMaskSegment tris) {
       LocalData &local_data = data_per_thread.local();
       for (const int tri_i : tris) {
@@ -111,7 +111,7 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
   VectorSet<int> all_ys;
   Vector<const LocalData *> local_data_vec;
   {
-    // SCOPED_TIMER("find all ys");
+    SCOPED_TIMER("find all ys");
     for (const LocalData &local_data : data_per_thread) {
       local_data_vec.append(&local_data);
       for (const int y : local_data.rows.keys()) {
@@ -124,12 +124,12 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
 
   const int rows_num = y_bounds.max - y_bounds.min + 1;
   {
-    // SCOPED_TIMER("init rows");
+    SCOPED_TIMER("init rows");
     lookup_grid_->rows.reinitialize(rows_num);
   }
 
   {
-    // SCOPED_TIMER("fill rows");
+    SCOPED_TIMER("fill rows");
     threading::parallel_for(all_ys.index_range(), 8, [&](const IndexRange all_ys_range) {
       for (const int y : all_ys.as_span().slice(all_ys_range)) {
         Row &row = lookup_grid_->rows[y - y_bounds.min];
@@ -190,27 +190,6 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
   //     fmt::println("    {}: {}", item.key, fmt::join(item.value, ", "));
   //   }
   // }
-
-  // for (const int tri_i : corner_tris.index_range()) {
-  //   const int3 &tri = corner_tris[tri_i];
-  //   const float2 &uv_0 = uv_map_[tri[0]];
-  //   const float2 &uv_1 = uv_map_[tri[1]];
-  //   const float2 &uv_2 = uv_map_[tri[2]];
-
-  //   const int2 key_0 = uv_to_cell_key(uv_0, resolution_);
-  //   const int2 key_1 = uv_to_cell_key(uv_1, resolution_);
-  //   const int2 key_2 = uv_to_cell_key(uv_2, resolution_);
-
-  //   const int2 min_key = math::min(math::min(key_0, key_1), key_2);
-  //   const int2 max_key = math::max(math::max(key_0, key_1), key_2);
-
-  //   for (int key_x = min_key.x; key_x <= max_key.x; key_x++) {
-  //     for (int key_y = min_key.y; key_y <= max_key.y; key_y++) {
-  //       const int2 key{key_x, key_y};
-  //       corner_tris_by_cell_.add(key, tri_i);
-  //     }
-  //   }
-  // }
 }
 
 static Span<int> lookup_tris_in_cell(const int2 cell,
@@ -226,7 +205,7 @@ static Span<int> lookup_tris_in_cell(const int2 cell,
   if (cell.x < row.x_min) {
     return {};
   }
-  if (cell.y > row.x_max) {
+  if (cell.x > row.x_max) {
     return {};
   }
   const int offset = row.offsets[cell.x - row.x_min];
