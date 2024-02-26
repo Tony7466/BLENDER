@@ -720,6 +720,9 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     const Span<const Layer *> layers = grease_pencil.layers();
     for (const DrawingInfo info : drawings) {
       const Layer &layer = *layers[info.layer_index];
+
+      gpencil_drawcall_flush();
+
       GPENCIL_tLayer *tgp_layer = grease_pencil_layer_cache_add(pd, ob, layer, {}, tgp_ob);
 
       const bool use_lights = pd->use_lighting &&

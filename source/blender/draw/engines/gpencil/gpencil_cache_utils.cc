@@ -500,7 +500,7 @@ GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
                                pd->vertex_paint_opacity;
   /* Negate thickness sign to tag that strokes are in screen space.
    * Convert to world units (by default, 1 meter = 2000 pixels). */
-  float thickness_scale = (is_screenspace) ? -1.0f : GPENCIL_PIXEL_FACTOR;
+  float thickness_scale = (is_screenspace) ? -1.0f : 0.01f;
   float layer_opacity = grease_pencil_layer_final_opacity_get(pd, ob, grease_pencil, layer);
   float4 layer_tint(0.0f);
   float layer_alpha = pd->xray_alpha;
