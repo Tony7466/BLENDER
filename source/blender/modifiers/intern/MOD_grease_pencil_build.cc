@@ -156,7 +156,6 @@ static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
   const bke::AttributeAccessor attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
-  /* Transfer point attributes. */
   gather_attributes(attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
 
   return dst_curves;
@@ -204,13 +203,13 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
 {
   int dst_curves_num, dst_points_num;
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  Array<int> points_per_curve = points_per_curve_concurrent(curves.curves_num(),
-                                                            selection,
-                                                            points_by_curve,
-                                                            transition,
-                                                            factor,
-                                                            dst_curves_num,
-                                                            dst_points_num);
+  Array<int> points_per_curve = points_info_sequential(curves.curves_num(),
+                                                       selection,
+                                                       points_by_curve,
+                                                       transition,
+                                                       factor,
+                                                       dst_curves_num,
+                                                       dst_points_num);
   if (dst_curves_num == 0) {
     return {};
   }
@@ -221,7 +220,44 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
   Array<int> dst_offsets(dst_curves_num + 1);
   Array<int> dst_to_src_point(dst_points_num);
 
-  /* Hummmm.... */
+  int next_curve = 1, next_point = 0;
+  selection.foreach_index([&](const int stroke) {
+    ;
+    for (const int point : points_by_curve[stroke]) {
+      dst_to_src_point[next_point] = point;
+      next_point++;
+    }
+    dst_offsets[next_curve] = next_point;
+    next_curve++;
+  });
+
+  bool done_scanning = false;
+  IndexMaskMemory memory;
+  selection.complement(curves.curves_range(), memory).foreach_index([&](const int stroke) {
+    if (done_scanning) {
+      return;
+    }
+    for (const int point : points_by_curve[stroke]) {
+      if (next_point >= dst_points_num) {
+        done_scanning = true;
+        break;
+      }
+      dst_to_src_point[next_point] = point;
+    }
+    dst_offsets[next_curve] = next_point;
+    next_curve++;
+  });
+
+  BLI_assert(next_curve == dst_curves_num);
+  BLI_assert(next_point == dst_points_num);
+
+  OffsetIndices dst_indices = offset_indices::accumulate_counts_to_offsets(dst_offsets);
+  dst_curves.offsets_for_write() = dst_offsets;
+
+  const bke::AttributeAccessor attributes = curves.attributes();
+  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+
+  gather_attributes(attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
 
   return dst_curves;
 }
