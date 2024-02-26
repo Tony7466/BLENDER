@@ -34,10 +34,6 @@ constexpr GPUSamplerState with_filter = {GPU_SAMPLER_FILTERING_LINEAR};
 
 #define UBO_MIN_MAX_SUPPORTED_SIZE 1 << 14
 
-#ifndef ENUM_OPERATORS
-#  define ENUM_OPERATORS(a, b)
-#endif
-
 /* -------------------------------------------------------------------- */
 /** \name Debug Mode
  * \{ */
