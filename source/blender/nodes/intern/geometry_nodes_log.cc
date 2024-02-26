@@ -234,10 +234,10 @@ void GeoTreeLog::ensure_node_warnings()
     return;
   }
   for (GeoTreeLogger *tree_logger : tree_loggers_) {
-    for (const GeoTreeLogger::WarningWithNode &warnings : tree_logger->node_warnings) {
-      this->nodes.lookup_or_add_default(warnings.node_id).warnings.append(warnings.warning);
-      this->all_warnings.append(warnings.warning);
-    }
+    tree_logger->node_warnings.for_each([&](const GeoTreeLogger::WarningWithNode &warning) {
+      this->nodes.lookup_or_add_default(warning.node_id).warnings.append(warning.warning);
+      this->all_warnings.append(warning.warning);
+    });
   }
   for (const ComputeContextHash &child_hash : children_hashes_) {
     GeoTreeLog &child_log = modifier_log_->get_tree_log(child_hash);

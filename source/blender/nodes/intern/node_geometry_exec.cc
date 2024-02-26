@@ -22,6 +22,7 @@ void GeoNodeExecParams::error_message_add(const NodeWarningType type,
 {
   if (geo_eval_log::GeoTreeLogger *tree_logger = this->get_local_tree_logger()) {
     tree_logger->node_warnings.append(
+        *tree_logger->allocator,
         {node_.identifier, {type, tree_logger->allocator->copy_string(message)}});
   }
 }

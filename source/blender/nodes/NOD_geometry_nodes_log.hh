@@ -33,6 +33,7 @@
 #include "BLI_compute_context.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_generic_pointer.hh"
+#include "BLI_linear_allocator_unordered_list.hh"
 #include "BLI_multi_value_map.hh"
 
 #include "BKE_geometry_set.hh"
@@ -207,7 +208,7 @@ class GeoTreeLogger {
     StringRefNull message;
   };
 
-  Vector<WarningWithNode> node_warnings;
+  linear_allocator::UnorderedList<WarningWithNode> node_warnings;
   Vector<SocketValueLog> input_socket_values;
   Vector<SocketValueLog> output_socket_values;
   Vector<NodeExecutionTime> node_execution_times;
