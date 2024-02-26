@@ -3,51 +3,182 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
+#include <fmt/format.h>
 
 #include "GEO_reverse_uv_sampler.hh"
 
+#include "BLI_bounds.hh"
+#include "BLI_enumerable_thread_specific.hh"
+#include "BLI_index_mask.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.hh"
 #include "BLI_task.hh"
+#include "BLI_timeit.hh"
 
 namespace blender::geometry {
+
+struct Row {
+  MultiValueMap<int, int> tris_by_x;
+};
+
+struct ReverseUVSampler::LookupGrid {
+  int y_min = 0;
+  Array<Row> rows;
+};
 
 static int2 uv_to_cell_key(const float2 &uv, const int resolution)
 {
   return int2{uv * resolution};
 }
 
-ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map, const Span<int3> corner_tris)
-    : uv_map_(uv_map), corner_tris_(corner_tris)
+static Bounds<int2> tri_to_key_bounds(const int3 &tri,
+                                      const int resolution,
+                                      const Span<float2> uv_map)
 {
-  resolution_ = std::max<int>(3, std::sqrt(corner_tris.size()) * 2);
+  const float2 &uv_0 = uv_map[tri[0]];
+  const float2 &uv_1 = uv_map[tri[1]];
+  const float2 &uv_2 = uv_map[tri[2]];
 
-  for (const int tri_i : corner_tris.index_range()) {
-    const int3 &tri = corner_tris[tri_i];
-    const float2 &uv_0 = uv_map_[tri[0]];
-    const float2 &uv_1 = uv_map_[tri[1]];
-    const float2 &uv_2 = uv_map_[tri[2]];
+  const int2 key_0 = uv_to_cell_key(uv_0, resolution);
+  const int2 key_1 = uv_to_cell_key(uv_1, resolution);
+  const int2 key_2 = uv_to_cell_key(uv_2, resolution);
 
-    const int2 key_0 = uv_to_cell_key(uv_0, resolution_);
-    const int2 key_1 = uv_to_cell_key(uv_1, resolution_);
-    const int2 key_2 = uv_to_cell_key(uv_2, resolution_);
+  const int2 min_key = math::min(math::min(key_0, key_1), key_2);
+  const int2 max_key = math::max(math::max(key_0, key_1), key_2);
 
-    const int2 min_key = math::min(math::min(key_0, key_1), key_2);
-    const int2 max_key = math::max(math::max(key_0, key_1), key_2);
+  return {min_key, max_key};
+}
 
-    for (int key_x = min_key.x; key_x <= max_key.x; key_x++) {
-      for (int key_y = min_key.y; key_y <= max_key.y; key_y++) {
-        const int2 key{key_x, key_y};
-        corner_tris_by_cell_.add(key, tri_i);
+ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map, const Span<int3> corner_tris)
+    : ReverseUVSampler(uv_map, corner_tris, IndexMask(corner_tris.size()))
+{
+}
+
+ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
+                                   const Span<int3> corner_tris,
+                                   const IndexMask &corner_tris_mask)
+    : uv_map_(uv_map), corner_tris_(corner_tris), lookup_grid_(std::make_unique<LookupGrid>())
+{
+  resolution_ = std::max<int>(3, std::sqrt(corner_tris.size()) * 3);
+  if (corner_tris.is_empty()) {
+    return;
+  }
+
+  struct TriWithRange {
+    int tri_index;
+    IndexRange range;
+  };
+
+  struct LocalData {
+    MultiValueMap<int, TriWithRange> tri_ranges_by_y;
+  };
+
+  threading::EnumerableThreadSpecific<LocalData> data_per_thread;
+
+  {
+    SCOPED_TIMER("sort into y buckets");
+    corner_tris_mask.foreach_segment(GrainSize(512), [&](const IndexMaskSegment tris) {
+      LocalData &local_data = data_per_thread.local();
+      for (const int tri_i : tris) {
+        const int3 &tri = corner_tris[tri_i];
+        const Bounds<int2> key_bounds = tri_to_key_bounds(tri, resolution_, uv_map_);
+        const IndexRange x_range = IndexRange::from_begin_end_inclusive(key_bounds.min.x,
+                                                                        key_bounds.max.x);
+        const TriWithRange tri_with_range{tri_i, x_range};
+
+        for (const int key_y :
+             IndexRange::from_begin_end_inclusive(key_bounds.min.y, key_bounds.max.y))
+        {
+          local_data.tri_ranges_by_y.add(key_y, tri_with_range);
+        }
+      }
+    });
+  }
+
+  VectorSet<int> all_ys;
+  Vector<const LocalData *> local_data_vec;
+  {
+    SCOPED_TIMER("find all ys");
+    for (const LocalData &data : data_per_thread) {
+      local_data_vec.append(&data);
+      for (const int y : data.tri_ranges_by_y.keys()) {
+        all_ys.add(y);
       }
     }
   }
+
+  const Bounds<int> y_bounds = *bounds::min_max(all_ys.as_span());
+
+  const int rows_num = y_bounds.max - y_bounds.min + 1;
+  {
+    SCOPED_TIMER("init rows");
+    lookup_grid_->rows.reinitialize(rows_num);
+  }
+
+  {
+    SCOPED_TIMER("fill rows");
+    threading::parallel_for(all_ys.index_range(), 8, [&](const IndexRange all_ys_range) {
+      for (const int y : all_ys.as_span().slice(all_ys_range)) {
+        Row &row = lookup_grid_->rows[y - y_bounds.min];
+        for (const LocalData *data : local_data_vec) {
+          for (const TriWithRange &tri_with_range : data->tri_ranges_by_y.lookup(y)) {
+            for (const int x : tri_with_range.range) {
+              row.tris_by_x.add(x, tri_with_range.tri_index);
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // fmt::println("Rows");
+  // for (const int row_i : lookup_grid_->rows.index_range()) {
+  //   const Row &row = lookup_grid_->rows[row_i];
+  //   fmt::println("  Row {}:", row_i);
+  //   for (const auto item : row.tris_by_x.items()) {
+  //     fmt::println("    {}: {}", item.key, fmt::join(item.value, ", "));
+  //   }
+  // }
+
+  // for (const int tri_i : corner_tris.index_range()) {
+  //   const int3 &tri = corner_tris[tri_i];
+  //   const float2 &uv_0 = uv_map_[tri[0]];
+  //   const float2 &uv_1 = uv_map_[tri[1]];
+  //   const float2 &uv_2 = uv_map_[tri[2]];
+
+  //   const int2 key_0 = uv_to_cell_key(uv_0, resolution_);
+  //   const int2 key_1 = uv_to_cell_key(uv_1, resolution_);
+  //   const int2 key_2 = uv_to_cell_key(uv_2, resolution_);
+
+  //   const int2 min_key = math::min(math::min(key_0, key_1), key_2);
+  //   const int2 max_key = math::max(math::max(key_0, key_1), key_2);
+
+  //   for (int key_x = min_key.x; key_x <= max_key.x; key_x++) {
+  //     for (int key_y = min_key.y; key_y <= max_key.y; key_y++) {
+  //       const int2 key{key_x, key_y};
+  //       corner_tris_by_cell_.add(key, tri_i);
+  //     }
+  //   }
+  // }
+}
+
+static Span<int> lookup_tris_in_cell(const int2 cell,
+                                     const ReverseUVSampler::LookupGrid &lookup_grid)
+{
+  if (cell.y < lookup_grid.y_min) {
+    return {};
+  }
+  if (cell.y >= lookup_grid.y_min + lookup_grid.rows.size()) {
+    return {};
+  }
+  const Row &row = lookup_grid.rows[cell.y - lookup_grid.y_min];
+  return row.tris_by_x.lookup(cell.x);
 }
 
 ReverseUVSampler::Result ReverseUVSampler::sample(const float2 &query_uv) const
 {
   const int2 cell_key = uv_to_cell_key(query_uv, resolution_);
-  const Span<int> tri_indices = corner_tris_by_cell_.lookup(cell_key);
+  const Span<int> tri_indices = lookup_tris_in_cell(cell_key, *lookup_grid_);
 
   float best_dist = FLT_MAX;
   float3 best_bary_weights;
@@ -99,6 +230,8 @@ ReverseUVSampler::Result ReverseUVSampler::sample(const float2 &query_uv) const
 
   return Result{};
 }
+
+ReverseUVSampler::~ReverseUVSampler() = default;
 
 void ReverseUVSampler::sample_many(const Span<float2> query_uvs,
                                    MutableSpan<Result> r_results) const
