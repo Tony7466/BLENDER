@@ -4680,7 +4680,6 @@ class VIEW3D_MT_edit_mesh_edges(Menu):
 
         layout.operator("mesh.set_sharpness_by_angle")
 
-
         if with_freestyle:
             layout.separator()
 
