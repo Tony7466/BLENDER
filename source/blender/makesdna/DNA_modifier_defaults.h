@@ -962,4 +962,24 @@
     .falloff = 0.0f, \
     .force = 0.5f, \
   }
+
+/* Here we deliberately set effective range to the half the default
+ * frame-range to have an immediate effect to suggest use-cases. */
+#define _DNA_DEFAULT_GreasePencilBuildModifierData \
+  { \
+    .start_frame = 1, \
+    .end_frame = 125, \
+    .start_delay = 0.0f, \
+    .length = 100.0f, \
+    .flag = 0, \
+    .mode = 0, \
+    .transition = 0, \
+    .time_alignment = 0, \
+    .time_mode = 0, \
+    .speed_fac = 1.2f, \
+    .speed_maxgap = 0.5f, \
+    .percentage_fac = 0.0f, \
+  }
+
+
 /* clang-format off */
