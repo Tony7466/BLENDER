@@ -1819,7 +1819,7 @@ static void rna_Lineart_start_level_set(PointerRNA *ptr, int value)
 {
   GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)ptr->data;
 
-  CLAMP(value, 0, 128);
+  value = std::clamp(value, 0, 128);
   lmd->level_start = value;
   lmd->level_end = std::max(value, int(lmd->level_end));
 }
@@ -1828,7 +1828,7 @@ static void rna_Lineart_end_level_set(PointerRNA *ptr, int value)
 {
   GreasePencilLineartModifierData *lmd = (GreasePencilLineartModifierData *)ptr->data;
 
-  CLAMP(value, 0, 128);
+  value = std::clamp(value, 0, 128);
   lmd->level_end = value;
   lmd->level_start = std::min(value, int(lmd->level_start));
 }
