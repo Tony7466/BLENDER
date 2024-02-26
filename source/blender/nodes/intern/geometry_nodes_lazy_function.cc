@@ -2006,7 +2006,8 @@ class GeometryNodesLazyFunctionLogger : public lf::GraphExecutor::Logger {
         if (!bsockets.is_empty()) {
           const bNodeSocket &bsocket = *bsockets[0];
           const bNode &bnode = bsocket.owner_node();
-          tree_logger->debug_messages.append({bnode.identifier, thread_id_str});
+          tree_logger->debug_messages.append(*tree_logger->allocator,
+                                             {bnode.identifier, thread_id_str});
           return true;
         }
       }

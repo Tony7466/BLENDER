@@ -226,7 +226,7 @@ void GeoTreeLogger::log_viewer_node(const bNode &viewer_node, bke::GeometrySet g
   destruct_ptr<ViewerNodeLog> log = this->allocator->construct<ViewerNodeLog>();
   log->geometry = std::move(geometry);
   log->geometry.ensure_owns_direct_data();
-  this->viewer_node_logs.append({viewer_node.identifier, std::move(log)});
+  this->viewer_node_logs.append(*this->allocator, {viewer_node.identifier, std::move(log)});
 }
 
 void GeoTreeLog::ensure_node_warnings()

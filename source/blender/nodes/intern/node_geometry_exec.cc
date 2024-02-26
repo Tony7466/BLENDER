@@ -32,6 +32,7 @@ void GeoNodeExecParams::used_named_attribute(const StringRef attribute_name,
 {
   if (geo_eval_log::GeoTreeLogger *tree_logger = this->get_local_tree_logger()) {
     tree_logger->used_named_attributes.append(
+        *tree_logger->allocator,
         {node_.identifier, tree_logger->allocator->copy_string(attribute_name), usage});
   }
 }
