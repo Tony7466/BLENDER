@@ -79,7 +79,7 @@ void Film::init_aovs()
   }
 
   if (!aovs.is_empty()) {
-    enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ | PASS_CATEGORY_AOV);
+    enabled_categories_ |= PASS_CATEGORY_AOV;
   }
 }
 
@@ -213,7 +213,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
   Scene &scene = *inst_.scene;
   SceneEEVEE &scene_eevee = scene.eevee;
 
-  enabled_categories_ = ePassCategoryType(0);
+  enabled_categories_ = PassCategory(0);
   init_aovs();
 
   {
@@ -278,33 +278,29 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     const eViewLayerEEVEEPassType data_passes = EEVEE_RENDER_PASS_Z | EEVEE_RENDER_PASS_NORMAL |
                                                 EEVEE_RENDER_PASS_POSITION |
                                                 EEVEE_RENDER_PASS_VECTOR;
-    const eViewLayerEEVEEPassType light_passes = EEVEE_RENDER_PASS_DIFFUSE_LIGHT |
-                                                 EEVEE_RENDER_PASS_SPECULAR_LIGHT |
-                                                 EEVEE_RENDER_PASS_VOLUME_LIGHT |
-                                                 EEVEE_RENDER_PASS_EMIT;
-    const eViewLayerEEVEEPassType color_passes = EEVEE_RENDER_PASS_DIFFUSE_COLOR |
-                                                 EEVEE_RENDER_PASS_SPECULAR_COLOR |
-                                                 EEVEE_RENDER_PASS_ENVIRONMENT |
-                                                 EEVEE_RENDER_PASS_MIST |
-                                                 EEVEE_RENDER_PASS_SHADOW | EEVEE_RENDER_PASS_AO;
-    const eViewLayerEEVEEPassType transparent_passes = EEVEE_RENDER_PASS_TRANSPARENT;
+    const eViewLayerEEVEEPassType color_passes_1 = EEVEE_RENDER_PASS_DIFFUSE_LIGHT |
+                                                   EEVEE_RENDER_PASS_SPECULAR_LIGHT |
+                                                   EEVEE_RENDER_PASS_VOLUME_LIGHT |
+                                                   EEVEE_RENDER_PASS_EMIT;
+    const eViewLayerEEVEEPassType color_passes_2 = EEVEE_RENDER_PASS_DIFFUSE_COLOR |
+                                                   EEVEE_RENDER_PASS_SPECULAR_COLOR |
+                                                   EEVEE_RENDER_PASS_ENVIRONMENT |
+                                                   EEVEE_RENDER_PASS_MIST |
+                                                   EEVEE_RENDER_PASS_SHADOW | EEVEE_RENDER_PASS_AO;
+    const eViewLayerEEVEEPassType color_passes_3 = EEVEE_RENDER_PASS_TRANSPARENT;
 
     data_.exposure_scale = pow2f(scene.view_settings.exposure);
     if (enabled_passes_ & data_passes) {
-      enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ |
-                                                           PASS_CATEGORY_DATA);
+      enabled_categories_ |= PASS_CATEGORY_DATA;
     }
-    if (enabled_passes_ & light_passes) {
-      enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ |
-                                                           PASS_CATEGORY_LIGHT);
+    if (enabled_passes_ & color_passes_1) {
+      enabled_categories_ |= PASS_CATEGORY_COLOR_1;
     }
-    if (enabled_passes_ & color_passes) {
-      enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ |
-                                                           PASS_CATEGORY_COLOR);
+    if (enabled_passes_ & color_passes_2) {
+      enabled_categories_ |= PASS_CATEGORY_COLOR_2;
     }
-    if (enabled_passes_ & transparent_passes) {
-      enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ |
-                                                           PASS_CATEGORY_TRANSPARENT);
+    if (enabled_passes_ & color_passes_3) {
+      enabled_categories_ |= PASS_CATEGORY_COLOR_3;
     }
   }
   {
@@ -380,8 +376,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
          (EEVEE_RENDER_PASS_CRYPTOMATTE_ASSET | EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL |
           EEVEE_RENDER_PASS_CRYPTOMATTE_OBJECT)) != 0)
     {
-      enabled_categories_ = static_cast<ePassCategoryType>(enabled_categories_ |
-                                                           PASS_CATEGORY_CRYPTOMATTE);
+      enabled_categories_ |= PASS_CATEGORY_CRYPTOMATTE;
     }
   }
   {
@@ -415,7 +410,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
 
     if (reset > 0) {
       data_.use_history = 0;
-      data_.use_reprojection = 0;
+      use_reprojection_ = false;
 
       /* Avoid NaN in uninitialized texture memory making history blending dangerous. */
       color_accum_tx_.clear(float4(0.0f));
@@ -451,11 +446,9 @@ void Film::sync()
   GPUShader *sh = inst_.shaders.static_shader_get(shader);
   accumulate_ps_.init();
   /* Casts are needed otherwise it will be interpreted as a bool value. */
-  accumulate_ps_.specialize_constant(
-      sh, "enabled_categories", static_cast<uint *>(static_cast<void *>(&enabled_categories_)));
+  accumulate_ps_.specialize_constant(sh, "enabled_categories", uint(enabled_categories_));
   accumulate_ps_.specialize_constant(sh, "samples_len", &data_.samples_len);
-  accumulate_ps_.specialize_constant(
-      sh, "use_reprojection", static_cast<bool *>(static_cast<void *>(&data_.use_reprojection)));
+  accumulate_ps_.specialize_constant(sh, "use_reprojection", &use_reprojection_);
   accumulate_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
   accumulate_ps_.shader_set(sh);
   accumulate_ps_.bind_resources(inst_.uniform_data);
@@ -507,11 +500,11 @@ void Film::sync()
 
 void Film::end_sync()
 {
-  data_.use_reprojection = inst_.sampling.interactive_mode();
+  use_reprojection_ = inst_.sampling.interactive_mode();
 
   /* Just bypass the reprojection and reset the accumulation. */
   if (inst_.is_viewport() && force_disable_reprojection_ && inst_.sampling.is_reset()) {
-    data_.use_reprojection = false;
+    use_reprojection_ = false;
     data_.use_history = false;
   }
 
@@ -543,7 +536,7 @@ float2 Film::pixel_jitter_get() const
 
 eViewLayerEEVEEPassType Film::enabled_passes_get() const
 {
-  if (inst_.is_viewport() && data_.use_reprojection) {
+  if (inst_.is_viewport() && use_reprojection_) {
     /* Enable motion vector rendering but not the accumulation buffer. */
     return enabled_passes_ | EEVEE_RENDER_PASS_VECTOR;
   }

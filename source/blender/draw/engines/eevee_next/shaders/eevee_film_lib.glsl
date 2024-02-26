@@ -640,7 +640,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     film_store_combined(dst, src.texel, combined_accum, weight_accum, out_color);
   }
 
-  if ((enabled_categories & PASS_CATEGORY_DATA) != 0) {
+  if (flag_test(enabled_categories, PASS_CATEGORY_DATA)) {
     float film_distance = film_distance_load(texel_film);
 
     /* Get sample closest to target texel. It is always sample 0. */
@@ -676,7 +676,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     }
   }
 
-  if ((enabled_categories & (PASS_CATEGORY_LIGHT)) != 0) {
+  if (flag_test(enabled_categories, PASS_CATEGORY_COLOR_1)) {
     vec4 diffuse_light_accum = vec4(0.0);
     vec4 specular_light_accum = vec4(0.0);
     vec4 volume_light_accum = vec4(0.0);
@@ -711,7 +711,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     film_store_color(dst, uniform_buf.film.emission_id, emission_accum, out_color);
   }
 
-  if ((enabled_categories & PASS_CATEGORY_COLOR) != 0) {
+  if (flag_test(enabled_categories, PASS_CATEGORY_COLOR_2)) {
     vec4 diffuse_color_accum = vec4(0.0);
     vec4 specular_color_accum = vec4(0.0);
     vec4 environment_accum = vec4(0.0);
@@ -760,7 +760,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     film_store_value(dst, uniform_buf.film.mist_id, mist_accum, out_color);
   }
 
-  if ((enabled_categories & PASS_CATEGORY_TRANSPARENT) != 0) {
+  if (flag_test(enabled_categories, PASS_CATEGORY_COLOR_3)) {
     vec4 transparent_accum = vec4(0.0);
 
     for (int i = 0; i < samples_len; i++) {
@@ -777,7 +777,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     film_store_color(dst, uniform_buf.film.transparent_id, transparent_accum, out_color);
   }
 
-  if ((enabled_categories & PASS_CATEGORY_AOV) != 0) {
+  if (flag_test(enabled_categories, PASS_CATEGORY_AOV)) {
     for (int aov = 0; aov < uniform_buf.film.aov_color_len; aov++) {
       vec4 aov_accum = vec4(0.0);
 
@@ -799,7 +799,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     }
   }
 
-  if ((enabled_categories & PASS_CATEGORY_CRYPTOMATTE) != 0) {
+  if (flag_test(enabled_categories, PASS_CATEGORY_CRYPTOMATTE)) {
     if (uniform_buf.film.cryptomatte_samples_len != 0) {
       /* Cryptomatte passes cannot be cleared by a weighted store like other passes. */
       if (!uniform_buf.film.use_history || use_reprojection) {
