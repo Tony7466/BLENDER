@@ -566,7 +566,7 @@ TEST_F(AssetCatalogTest, delete_catalog_leaf)
       "path/without/simplename",
   };
 
-  AssetCatalogTree *tree = service.get_catalog_tree();
+  const AssetCatalogTree &tree = service.catalog_tree();
   AssetCatalogTreeTestFunctions::expect_tree_items(tree, expected_paths);
 }
 
@@ -620,7 +620,7 @@ TEST_F(AssetCatalogTest, delete_catalog_parent_by_path)
       "path/without/simplename",
   };
 
-  AssetCatalogTree *tree = service.get_catalog_tree();
+  const AssetCatalogTree &tree = service.catalog_tree();
   AssetCatalogTreeTestFunctions::expect_tree_items(tree, expected_paths);
 }
 
