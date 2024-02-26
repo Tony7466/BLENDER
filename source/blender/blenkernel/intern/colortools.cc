@@ -660,12 +660,11 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
   CurveMapPoint *cmp = cuma->curve;
   BezTriple *bezt;
 
-  /*
-  Wrapping ensures that the heights of the first and last points are the same. It adds two virtual
-  points, which are copies of the first and last points, and moves them to the opposite side of the
-  curve offset by the table range. The handles of these points are calculated, as if they were
-  between the last and first real points.
-  */
+  /* Wrapping ensures that the heights of the first and last points are the same. It adds two
+   * virtual points, which are copies of the first and last points, and moves them to the opposite
+   * side of the curve offset by the table range. The handles of these points are calculated, as if
+   * they were between the last and first real points. */
+
   const bool use_wrapping = cumap->use_wrapping;
 
   if (cuma->curve == nullptr) {
@@ -808,8 +807,8 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
     /* Handle post point for wrapping */
     curve_eval_bezier_point(bezt[cuma->totpoint - 1].vec, bezt_post.vec, point);
   }
-  /* store first and last handle for extrapolation, unit length
-  (only relevant when not using wrapping) */
+  /* Store first and last handle for extrapolation, unit length. (Only relevant when not using
+   * wrapping.) */
   cuma->ext_in[0] = bezt[0].vec[0][0] - bezt[0].vec[1][0];
   cuma->ext_in[1] = bezt[0].vec[0][1] - bezt[0].vec[1][1];
   float ext_in_range = sqrtf(cuma->ext_in[0] * cuma->ext_in[0] +
