@@ -685,7 +685,6 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     int vfirst = -1;
     int vcount = 0;
 
-    int t_offset = 0;
     int v_offset = 0;
 
     const auto gpencil_drawcall_flush = [&]() {
@@ -819,21 +818,25 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
           DRW_shgroup_buffer_texture(grp, "gp_col_tx", color_tx);
         }
 
+        const int num_triangles = points.size() - 2;
+        const bool is_cyclic = cyclic[stroke_i] && (points.size() > 2);
+        const int stroke_vert_count = (points.size() + int(is_cyclic));
+
         if (show_fill) {
-          const int tot_triangles = points.size() - 2;
-          t_offset += tot_triangles;
-          int v_first = t_offset * 3;
-          int v_count = tot_triangles * 3;
+          int v_first = v_offset * 3;
+          int v_count = num_triangles * 3;
           gpencil_drawcall_add(new_geom, v_first, v_count);
         }
 
+        v_offset += num_triangles;
+
         if (show_stroke) {
-          v_offset += points.start();
           int v_first = v_offset * 3;
-          bool is_cyclic = cyclic[stroke_i] && (points.size() > 2);
-          int v_count = (points.size() + int(is_cyclic)) * 2 * 3;
+          int v_count = stroke_vert_count * 2 * 3;
           gpencil_drawcall_add(new_geom, v_first, v_count);
         }
+
+        v_offset += stroke_vert_count * 2;
 
         /* Only needed by sbuffer. */
         /* stroke_index_last = gps->runtime.vertex_start + gps->totpoints + 1;*/
