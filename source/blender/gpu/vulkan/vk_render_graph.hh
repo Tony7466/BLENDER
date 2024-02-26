@@ -20,62 +20,75 @@
 #include <mutex>
 #include <optional>
 
+#include "BLI_map.hh"
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
 
+#include "vk_render_graph_command_builder.hh"
+#include "vk_render_graph_commands.hh"
+#include "vk_render_graph_nodes.hh"
+#include "vk_render_graph_resources.hh"
+#include "vk_render_graph_sorting.hh"
+
 namespace blender::gpu {
 
-using ResourceHandle = uint64_t;
-using NodeHandle = uint64_t;
 
 class VKRenderGraph {
- public:
-  /**
-   * A node contains a draw/dispatch or transfer command. These commands depends on resources and
-   * may also alter resources.
-   */
-  struct Node {
-    Vector<ResourceHandle> read_resources;
-    Vector<ResourceHandle> write_resources;
-    // TODO: Bindings. shader, push constants
-  };
+  VKRenderGraphResources resources_;
+  VKRenderGraphNodes nodes_;
+  VKRenderGraphCommandBuilder command_builder_;
 
-  /**
-   * A render resource can be a buffer or an image that needs to be tracked during rendering.
-   *
-   * Resources needs to be tracked as usage can alter the content of the resource. For example an
-   * image can be optimized for data transfer, or optimized for sampling which can use a different
-   * pixel layout on the device.
-   */
-  struct Resource {
-    VkBuffer vk_buffer;
-    VkImage vk_image;
-    VkSampler vk_sampler;
-    /**
-     * Node that has altered the buffer/image to this state. Any usage of this resource is
-     * dependant on the modifier.
-     * This is an optional attribute as the last modifier could be rendered in the previous
-     * frame and we are not tracking resource dependencies between frames.
-     */
-    std::optional<NodeHandle> modifier;
-  };
+  std::unique_ptr<VKRenderGraphSortingStrategy> sorting_strategy_;
+  std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer_;
 
- private:
   /**
    * Mutex locks adding new commands to a render graph that is being submitted.
    */
   std::mutex mutex_;
-  Vector<Node> nodes_;
-  Vector<Resource> resources_;
-  // TODO: add resource lookup to latest version of the resource.
 
  public:
-  void add_node(Node &node);
-  ResourceHandle find_or_add_buffer(VkBuffer vk_buffer);
-  ResourceHandle find_or_add_image(VkImage vk_image, VkSampler vk_sampler);
-  void submit();
+  VKRenderGraph(std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer,
+                std::unique_ptr<VKRenderGraphSortingStrategy> sorting_strategy);
+
+  /**
+   * Register a buffer resource to the render graph.
+   */
+  void add_buffer(VkBuffer vk_buffer);
+
+  /**
+   * Register an image resource to the render graph.
+   */
+  void add_image(VkImage vk_image, VkImageLayout vk_image_layout, ResourceOwner owner);
+
+  void add_clear_image_node(VkImage vk_image,
+                            VkClearColorValue &vk_clear_color_value,
+                            VkImageSubresourceRange &vk_image_subresource_range);
+
+  /**
+   * Submit the commands to readback the given vk_buffer to the command queue.
+   */
+  void submit_for_read_back(VkBuffer vk_buffer);
+
+  /**
+   * Submit the commands to readback the given vk_image to the command queue.=
+   */
+  void submit_for_read_back(VkImage vk_image);
+
+  /**
+   * Submit the commands to present the given vk_image to the command queue.
+   *
+   * `vk_image` needs to be a swapchain owned image.
+   */
+  void submit_for_present(VkImage vk_swapchain_image);
+
+  /**
+   * Wait for the submitted work to be finished.
+   */
   void finish();
+
+
+  friend class VKRenderGraphCommandBuilder;
 };
 
 }  // namespace blender::gpu

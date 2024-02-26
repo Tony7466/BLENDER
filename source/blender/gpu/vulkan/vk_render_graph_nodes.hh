@@ -1,0 +1,52 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/** \file
+ * \ingroup gpu
+ */
+
+#pragma once
+
+#include "BLI_vector.hh"
+
+#include "vk_render_graph_resources.hh"
+
+#include "vk_common.hh"
+
+namespace blender::gpu {
+
+using NodeHandle = uint64_t;
+
+class VKRenderGraphNodes {
+ public:
+  struct Node {
+    enum class Type {
+      UNUSED,
+      CLEAR_COLOR_IMAGE,
+    };
+
+    Type type;
+    union {
+      struct {
+        VkImage vk_image;
+        VkClearColorValue vk_clear_color_value;
+        VkImageSubresourceRange vk_image_subresource_range;
+      } clear_color_image;
+    };
+  };
+
+ private:
+  VKRenderGraphList<NodeHandle, Node> nodes_;
+  Vector<Vector<VersionedResource>> read_resources_per_node_;
+  Vector<Vector<VersionedResource>> write_resources_per_node_;
+
+ public:
+  NodeHandle add_clear_image_node(VkImage vk_image,
+                                  VkClearColorValue &vk_clear_color_value,
+                                  VkImageSubresourceRange &vk_image_subresource_range);
+
+  void add_write_resource(NodeHandle handle, VersionedResource resource_handle);
+};
+
+}  // namespace blender::gpu
