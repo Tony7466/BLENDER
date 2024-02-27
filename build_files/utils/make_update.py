@@ -122,7 +122,7 @@ def get_submodule_directories(args: argparse.Namespace):
 
     submodule_directories_output = check_output(
         [args.git_command, "config", "--file", dot_modules, "--get-regexp", "path"])
-    return (Path(line.split(' ', 1)[1]) for line in submodule_directories_output.strip().splitlines())
+    return [Path(line.split(' ', 1)[1]) for line in submodule_directories_output.strip().splitlines()]
 
 
 def ensure_git_lfs(args: argparse.Namespace) -> None:
