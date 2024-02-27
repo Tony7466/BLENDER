@@ -106,12 +106,10 @@ static void set_computed_position_and_offset(GeometryComponent &component,
         curves.calculate_bezier_auto_handles();
         break;
       }
+      const bool positions_are_original = check_positions_are_original(attributes, in_positions);
       AttributeWriter<float3> positions = attributes.lookup_for_write<float3>("position");
-      write_offset_positions(check_positions_are_original(attributes, in_positions),
-                             selection,
-                             in_positions,
-                             in_offsets,
-                             positions.varray);
+      write_offset_positions(
+          positions_are_original, selection, in_positions, in_offsets, positions.varray);
       positions.finish();
       break;
     }
@@ -124,12 +122,10 @@ static void set_computed_position_and_offset(GeometryComponent &component,
       break;
     }
     default: {
+      const bool positions_are_original = check_positions_are_original(attributes, in_positions);
       AttributeWriter<float3> positions = attributes.lookup_for_write<float3>("position");
-      write_offset_positions(check_positions_are_original(attributes, in_positions),
-                             selection,
-                             in_positions,
-                             in_offsets,
-                             positions.varray);
+      write_offset_positions(
+          positions_are_original, selection, in_positions, in_offsets, positions.varray);
       positions.finish();
       break;
     }
