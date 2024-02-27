@@ -9874,7 +9874,6 @@ static void rna_def_modifier_grease_pencil_envelope(BlenderRNA *brna)
       srna, "rna_GreasePencilEnvelopeModifier_material_filter_set");
   rna_def_modifier_grease_pencil_vertex_group(
       srna, "rna_GreasePencilEnvelopeModifier_vertex_group_name_set");
-  rna_def_modifier_grease_pencil_custom_curve(srna);
 
   rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
 
