@@ -163,34 +163,44 @@ static float calc_radius_limit(const Span<float3> positions,
   if (is_cyclic) {
     /* Spread should be limited to half the points in the cyclic case. */
     BLI_assert(spread <= point_num / 2);
+    /* Left side. */
     for (const int line_i : IndexRange(spread)) {
-      const int left_from_i = (point - line_i - 2 + point_num) % point_num;
-      const int left_to_i = (point - line_i - 1 + point_num) % point_num;
-      const int right_from_i = (point + line_i + 1 + point_num) % point_num;
-      const int right_to_i = (point + line_i + 2 + point_num) % point_num;
-
-      const float left_limit = calc_min_radius_v3v3(
-          positions[left_from_i] - center, positions[left_to_i] - center, direction);
-      const float right_limit = calc_min_radius_v3v3(
-          positions[right_from_i] - center, positions[right_to_i] - center, direction);
-      result = std::min(result, std::min(left_limit, right_limit));
+      const int from_i = (point - line_i - 2 + point_num) % point_num;
+      const int to_i = (point - line_i - 1 + point_num) % point_num;
+      const float limit = calc_min_radius_v3v3(
+          positions[from_i] - center, positions[to_i] - center, direction);
+      result = std::min(result, limit);
+    }
+    /* Right side. */
+    for (const int line_i : IndexRange(spread)) {
+      const int from_i = (point + line_i + 1 + point_num) % point_num;
+      const int to_i = (point + line_i + 2 + point_num) % point_num;
+      const float limit = calc_min_radius_v3v3(
+          positions[from_i] - center, positions[to_i] - center, direction);
+      result = std::min(result, limit);
     }
   }
   else {
     if (point == 0 || point >= point_num - 1) {
       return unlimited_radius;
     }
-    for (const int line_i : IndexRange(spread)) {
-      const int left_from_i = std::max(point - line_i - 2, 0);
-      const int left_to_i = std::max(point - line_i - 1, 0);
-      const int right_from_i = std::min(point + line_i + 1, point_num - 1);
-      const int right_to_i = std::min(point + line_i + 2, point_num - 1);
-
-      const float left_limit = calc_min_radius_v3v3(
-          positions[left_from_i] - center, positions[left_to_i] - center, direction);
-      const float right_limit = calc_min_radius_v3v3(
-          positions[right_from_i] - center, positions[right_to_i] - center, direction);
-      result = std::min(result, std::min(left_limit, right_limit));
+    /* Left side. */
+    const int spread_left = std::min(spread, std::max(point - 2, 0));
+    for (const int line_i : IndexRange(spread_left)) {
+      const int from_i = std::max(point - line_i - 2, 0);
+      const int to_i = std::max(point - line_i - 1, 0);
+      const float limit = calc_min_radius_v3v3(
+          positions[from_i] - center, positions[to_i] - center, direction);
+      result = std::min(result, limit);
+    }
+    /* Right side. */
+    const int spread_right = std::min(spread, std::max(point_num - point - 2, 0));
+    for (const int line_i : IndexRange(spread_right)) {
+      const int from_i = std::min(point + line_i + 1, point_num - 1);
+      const int to_i = std::min(point + line_i + 2, point_num - 1);
+      const float limit = calc_min_radius_v3v3(
+          positions[from_i] - center, positions[to_i] - center, direction);
+      result = std::min(result, limit);
     }
   }
   return result;
