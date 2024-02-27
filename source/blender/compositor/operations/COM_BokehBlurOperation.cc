@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,8 +7,6 @@
 
 #include "COM_BokehBlurOperation.h"
 #include "COM_ConstantOperation.h"
-
-#include "COM_OpenCLDevice.h"
 
 namespace blender::compositor {
 
@@ -26,7 +24,6 @@ BokehBlurOperation::BokehBlurOperation()
   this->add_output_socket(DataType::Color);
 
   flags_.complex = true;
-  flags_.open_cl = true;
   flags_.can_be_constant = true;
 
   size_ = 1.0f;
@@ -157,36 +154,6 @@ bool BokehBlurOperation::determine_depending_area_of_interest(rcti *input,
     }
   }
   return false;
-}
-
-void BokehBlurOperation::execute_opencl(OpenCLDevice *device,
-                                        MemoryBuffer *output_memory_buffer,
-                                        cl_mem cl_output_buffer,
-                                        MemoryBuffer **input_memory_buffers,
-                                        std::list<cl_mem> *cl_mem_to_clean_up,
-                                        std::list<cl_kernel> * /*cl_kernels_to_clean_up*/)
-{
-  cl_kernel kernel = device->COM_cl_create_kernel("bokeh_blur_kernel", nullptr);
-  if (!sizeavailable_) {
-    update_size();
-  }
-  const float max_dim = std::max(this->get_width(), this->get_height());
-  cl_int radius = size_ * max_dim / 100.0f;
-  cl_int step = this->get_step();
-
-  device->COM_cl_attach_memory_buffer_to_kernel_parameter(
-      kernel, 0, -1, cl_mem_to_clean_up, input_memory_buffers, input_bounding_box_reader_);
-  device->COM_cl_attach_memory_buffer_to_kernel_parameter(
-      kernel, 1, 4, cl_mem_to_clean_up, input_memory_buffers, input_program_);
-  device->COM_cl_attach_memory_buffer_to_kernel_parameter(
-      kernel, 2, -1, cl_mem_to_clean_up, input_memory_buffers, input_bokeh_program_);
-  device->COM_cl_attach_output_memory_buffer_to_kernel_parameter(kernel, 3, cl_output_buffer);
-  device->COM_cl_attach_memory_buffer_offset_to_kernel_parameter(kernel, 5, output_memory_buffer);
-  clSetKernelArg(kernel, 6, sizeof(cl_int), &radius);
-  clSetKernelArg(kernel, 7, sizeof(cl_int), &step);
-  device->COM_cl_attach_size_to_kernel_parameter(kernel, 8, this);
-
-  device->COM_cl_enqueue_range(kernel, output_memory_buffer, 9, this);
 }
 
 void BokehBlurOperation::update_size()

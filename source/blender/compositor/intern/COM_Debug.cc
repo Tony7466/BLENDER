@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -266,8 +266,7 @@ bool DebugInfo::graphviz_system(const ExecutionSystem *system, char *str, int ma
 
     op_groups[operation].push_back(std::string(""));
 
-    len += graphviz_operation(
-        system, operation, str + len, maxlen > len ? maxlen - len : 0);
+    len += graphviz_operation(system, operation, str + len, maxlen > len ? maxlen - len : 0);
   }
 
   for (NodeOperation *operation : system->operations_) {

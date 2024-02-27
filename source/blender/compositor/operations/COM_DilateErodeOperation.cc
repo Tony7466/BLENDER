@@ -1,9 +1,8 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_DilateErodeOperation.h"
-#include "COM_OpenCLDevice.h"
 
 namespace blender::compositor {
 
@@ -261,7 +260,6 @@ DilateDistanceOperation::DilateDistanceOperation()
   input_program_ = nullptr;
   distance_ = 0.0f;
   flags_.complex = true;
-  flags_.open_cl = true;
   flags_.can_be_constant = true;
 }
 
@@ -332,30 +330,6 @@ bool DilateDistanceOperation::determine_depending_area_of_interest(
   new_input.ymin = input->ymin - scope_;
 
   return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
-}
-
-void DilateDistanceOperation::execute_opencl(OpenCLDevice *device,
-                                             MemoryBuffer *output_memory_buffer,
-                                             cl_mem cl_output_buffer,
-                                             MemoryBuffer **input_memory_buffers,
-                                             std::list<cl_mem> *cl_mem_to_clean_up,
-                                             std::list<cl_kernel> * /*cl_kernels_to_clean_up*/)
-{
-  cl_kernel dilate_kernel = device->COM_cl_create_kernel("dilate_kernel", nullptr);
-
-  cl_int distance_squared = distance_ * distance_;
-  cl_int scope = scope_;
-
-  device->COM_cl_attach_memory_buffer_to_kernel_parameter(
-      dilate_kernel, 0, 2, cl_mem_to_clean_up, input_memory_buffers, input_program_);
-  device->COM_cl_attach_output_memory_buffer_to_kernel_parameter(
-      dilate_kernel, 1, cl_output_buffer);
-  device->COM_cl_attach_memory_buffer_offset_to_kernel_parameter(
-      dilate_kernel, 3, output_memory_buffer);
-  clSetKernelArg(dilate_kernel, 4, sizeof(cl_int), &scope);
-  clSetKernelArg(dilate_kernel, 5, sizeof(cl_int), &distance_squared);
-  device->COM_cl_attach_size_to_kernel_parameter(dilate_kernel, 6, this);
-  device->COM_cl_enqueue_range(dilate_kernel, output_memory_buffer, 7, this);
 }
 
 void DilateDistanceOperation::get_area_of_interest(const int input_idx,
@@ -479,30 +453,6 @@ void ErodeDistanceOperation::execute_pixel(float output[4], int x, int y, void *
     }
   }
   output[0] = value;
-}
-
-void ErodeDistanceOperation::execute_opencl(OpenCLDevice *device,
-                                            MemoryBuffer *output_memory_buffer,
-                                            cl_mem cl_output_buffer,
-                                            MemoryBuffer **input_memory_buffers,
-                                            std::list<cl_mem> *cl_mem_to_clean_up,
-                                            std::list<cl_kernel> * /*cl_kernels_to_clean_up*/)
-{
-  cl_kernel erode_kernel = device->COM_cl_create_kernel("erode_kernel", nullptr);
-
-  cl_int distance_squared = distance_ * distance_;
-  cl_int scope = scope_;
-
-  device->COM_cl_attach_memory_buffer_to_kernel_parameter(
-      erode_kernel, 0, 2, cl_mem_to_clean_up, input_memory_buffers, input_program_);
-  device->COM_cl_attach_output_memory_buffer_to_kernel_parameter(
-      erode_kernel, 1, cl_output_buffer);
-  device->COM_cl_attach_memory_buffer_offset_to_kernel_parameter(
-      erode_kernel, 3, output_memory_buffer);
-  clSetKernelArg(erode_kernel, 4, sizeof(cl_int), &scope);
-  clSetKernelArg(erode_kernel, 5, sizeof(cl_int), &distance_squared);
-  device->COM_cl_attach_size_to_kernel_parameter(erode_kernel, 6, this);
-  device->COM_cl_enqueue_range(erode_kernel, output_memory_buffer, 7, this);
 }
 
 void ErodeDistanceOperation::update_memory_buffer_partial(MemoryBuffer *output,

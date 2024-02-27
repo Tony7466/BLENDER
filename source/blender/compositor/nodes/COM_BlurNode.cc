@@ -93,7 +93,6 @@ void BlurNode::convert_to_operations(NodeConverter &converter,
     GaussianXBlurOperation *operationx = new GaussianXBlurOperation();
     operationx->set_data(data);
     operationx->set_quality(quality);
-    operationx->check_opencl();
     operationx->set_extend_bounds(extend_bounds);
 
     converter.add_operation(operationx);
@@ -102,7 +101,6 @@ void BlurNode::convert_to_operations(NodeConverter &converter,
     GaussianYBlurOperation *operationy = new GaussianYBlurOperation();
     operationy->set_data(data);
     operationy->set_quality(quality);
-    operationy->check_opencl();
     operationy->set_extend_bounds(extend_bounds);
 
     converter.add_operation(operationy);

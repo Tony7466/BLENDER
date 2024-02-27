@@ -1,9 +1,8 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_WriteBufferOperation.h"
-#include "COM_OpenCLDevice.h"
 
 namespace blender::compositor {
 
@@ -91,102 +90,6 @@ void WriteBufferOperation::execute_region(rcti *rect, uint /*tile_number*/)
       }
     }
   }
-}
-
-void WriteBufferOperation::execute_opencl_region(OpenCLDevice *device,
-                                                 rcti * /*rect*/,
-                                                 uint /*chunk_number*/,
-                                                 MemoryBuffer **input_memory_buffers,
-                                                 MemoryBuffer *output_buffer)
-{
-  float *output_float_buffer = output_buffer->get_buffer();
-  cl_int error;
-  /*
-   * 1. create cl_mem from output_buffer.
-   * 2. call NodeOperation (input) executeOpenCLChunk(...).
-   * 3. schedule read back from OPENCL to main device (output_buffer).
-   * 4. schedule native callback.
-   *
-   * NOTE: list of cl_mem will be filled by 2, and needs to be cleaned up by 4
-   */
-  /* STEP 1 */
-  const uint output_buffer_width = output_buffer->get_width();
-  const uint output_buffer_height = output_buffer->get_height();
-
-  const cl_image_format *image_format = OpenCLDevice::determine_image_format(output_buffer);
-
-  cl_mem cl_output_buffer = clCreateImage2D(device->get_context(),
-                                            CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR,
-                                            image_format,
-                                            output_buffer_width,
-                                            output_buffer_height,
-                                            0,
-                                            output_float_buffer,
-                                            &error);
-  if (error != CL_SUCCESS) {
-    printf("CLERROR[%d]: %s\n", error, clewErrorString(error));
-  }
-
-  /* STEP 2 */
-  std::list<cl_mem> *cl_mem_to_clean_up = new std::list<cl_mem>();
-  cl_mem_to_clean_up->push_back(cl_output_buffer);
-  std::list<cl_kernel> *cl_kernels_to_clean_up = new std::list<cl_kernel>();
-
-  input_->execute_opencl(device,
-                         output_buffer,
-                         cl_output_buffer,
-                         input_memory_buffers,
-                         cl_mem_to_clean_up,
-                         cl_kernels_to_clean_up);
-
-  /* STEP 3 */
-
-  size_t origin[3] = {0, 0, 0};
-  size_t region[3] = {output_buffer_width, output_buffer_height, 1};
-
-  //  clFlush(queue);
-  //  clFinish(queue);
-
-  error = clEnqueueBarrier(device->get_queue());
-  if (error != CL_SUCCESS) {
-    printf("CLERROR[%d]: %s\n", error, clewErrorString(error));
-  }
-  error = clEnqueueReadImage(device->get_queue(),
-                             cl_output_buffer,
-                             CL_TRUE,
-                             origin,
-                             region,
-                             0,
-                             0,
-                             output_float_buffer,
-                             0,
-                             nullptr,
-                             nullptr);
-  if (error != CL_SUCCESS) {
-    printf("CLERROR[%d]: %s\n", error, clewErrorString(error));
-  }
-
-  this->get_memory_proxy()->get_buffer()->fill_from(*output_buffer);
-
-  /* STEP 4 */
-  while (!cl_mem_to_clean_up->empty()) {
-    cl_mem mem = cl_mem_to_clean_up->front();
-    error = clReleaseMemObject(mem);
-    if (error != CL_SUCCESS) {
-      printf("CLERROR[%d]: %s\n", error, clewErrorString(error));
-    }
-    cl_mem_to_clean_up->pop_front();
-  }
-
-  while (!cl_kernels_to_clean_up->empty()) {
-    cl_kernel kernel = cl_kernels_to_clean_up->front();
-    error = clReleaseKernel(kernel);
-    if (error != CL_SUCCESS) {
-      printf("CLERROR[%d]: %s\n", error, clewErrorString(error));
-    }
-    cl_kernels_to_clean_up->pop_front();
-  }
-  delete cl_kernels_to_clean_up;
 }
 
 void WriteBufferOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)

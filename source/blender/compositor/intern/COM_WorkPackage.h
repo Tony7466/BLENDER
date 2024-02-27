@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,19 +16,12 @@
 #include <ostream>
 
 namespace blender::compositor {
-/* Forward Declarations. */
-class ExecutionGroup;
 
 /**
  * \brief contains data about work that can be scheduled
  * \see WorkScheduler
  */
 struct WorkPackage {
-  /**
-   * \brief execution_group with the operations-setup to be evaluated
-   */
-  ExecutionGroup *execution_group;
-
   /**
    * \brief number of the chunk to be executed
    */

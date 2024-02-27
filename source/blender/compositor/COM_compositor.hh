@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -119,27 +119,6 @@ struct Render;
  * An ExecutionGroup can have dependencies to other ExecutionGroup's.
  * Data passing from one ExecutionGroup to another one are stored in 'chunks'.
  * If not all input chunks are available the chunk execution will not be scheduled.
- * <pre>
- * +-------------------------------------+              +--------------------------------------+
- * | ExecutionGroup A                    |              | ExecutionGroup B                     |
- * | +----------------+  +-------------+ |              | +------------+   +-----------------+ |
- * | | NodeOperation a|  | WriteBuffer | |              | | ReadBuffer |   | ViewerOperation | |
- * | |                *==* Operation   | |              | | Operation  *===*                 | |
- * | |                |  |             | |              | |            |   |                 | |
- * | +----------------+  +-------------+ |              | +------------+   +-----------------+ |
- * |                                |    |              |   |                                  |
- * +--------------------------------|----+              +---|----------------------------------+
- *                                  |                       |
- *                                  |                       |
- *                                +---------------------------+
- *                                | MemoryProxy               |
- *                                | +----------+  +---------+ |
- *                                | | Chunk a  |  | Chunk b | |
- *                                | |          |  |         | |
- *                                | +----------+  +---------+ |
- *                                |                           |
- *                                +---------------------------+
- * </pre>
  *
  * In the above example ExecutionGroup B has an outputoperation (ViewerOperation)
  * and is being executed.
@@ -151,64 +130,10 @@ struct Render;
  * ExecutionGroup B checks what chunks the area spans, and tries to schedule these chunks.
  * If all input data is available these chunks are scheduled [@ref ExecutionGroup.schedule_chunk]
  *
- * <pre>
- *
- * +-------------------------+        +----------------+                           +----------------+
- * | ExecutionSystem.execute |        | ExecutionGroup |                           | ExecutionGroup |
- * +-------------------------+        | (B)            |                           | (A)            |
- *            O                       +----------------+                           +----------------+
- *            O                                |                                            |
- *            O       ExecutionGroup.execute   |                                            |
- *            O------------------------------->O                                            |
- *            .                                O                                            |
- *            .                                O-------\                                    |
- *            .                                .       | ExecutionGroup.schedule_chunk_when_possible
- *            .                                .  O----/ (*)                                |
- *            .                                .  O                                         |
- *            .                                .  O                                         |
- *            .                                .  O  ExecutionGroup.schedule_area_when_possible|
- *            .                                .  O---------------------------------------->O
- *            .                                .  .                                         O----------\ ExecutionGroup.schedule_chunk_when_possible
- *            .                                .  .                                         .          | (*)
- *            .                                .  .                                         .  O-------/
- *            .                                .  .                                         .  O
- *            .                                .  .                                         .  O
- *            .                                .  .                                         .  O-------\ ExecutionGroup.schedule_chunk
- *            .                                .  .                                         .  .       |
- *            .                                .  .                                         .  .  O----/
- *            .                                .  .                                         .  O<=O
- *            .                                .  .                                         O<=O
- *            .                                .  .                                         O
- *            .                                .  O<========================================O
- *            .                                .  O                                         |
- *            .                                O<=O                                         |
- *            .                                O                                            |
- *            .                                O                                            |
- * </pre>
- *
  * This happens until all chunks of (ExecutionGroup B) are finished executing or the user break's the process.
  *
  * NodeOperation like the ScaleOperation can influence the area of interest by reimplementing the
  * [@ref NodeOperation.determine_area_of_interest] method
- *
- * <pre>
- *
- * +--------------------------+                             +---------------------------------+
- * | ExecutionGroup A         |                             | ExecutionGroup B                |
- * |                          |                             |                                 |
- * +--------------------------+                             +---------------------------------+
- *           Needed chunks from ExecutionGroup A               |   Chunk of ExecutionGroup B (to be evaluated)
- *            +-------+ +-------+                              |                  +--------+
- *            |Chunk 1| |Chunk 2|               +----------------+                |Chunk 1 |
- *            |       | |       |               | ScaleOperation |                |        |
- *            +-------+ +-------+               +----------------+                +--------+
- *
- *            +-------+ +-------+
- *            |Chunk 3| |Chunk 4|
- *            |       | |       |
- *            +-------+ +-------+
- *
- * </pre>
  *
  * \see ExecutionGroup.execute Execute a complete ExecutionGroup.
  * Halts until finished or breaked by user
@@ -255,12 +180,6 @@ struct Render;
  * The WorkScheduler controls all Devices.
  * When initializing the compositor the WorkScheduler selects all
  * devices that will be used during compositor.
- * There are two types of Devices, CPUDevice and OpenCLDevice.
- * When an ExecutionGroup schedules a Chunk the schedule method of the WorkScheduler
- * The Workscheduler determines if the chunk can be run on an OpenCLDevice
- * (and that there are available OpenCLDevice).
- * If this is the case the chunk will be added to the work-list for OpenCLDevice's
- * otherwise the chunk will be added to the work-list of CPUDevices.
  *
  * A thread will read the work-list and sends a work-package to its device.
  *
@@ -276,12 +195,6 @@ struct Render;
  * \see ExecutionGroup
  * \see NodeOperation.execute_region executes a single chunk of a NodeOperation
  * \see CPUDevice.execute
- *
- * \subsection GPUDevice OpenCLDevice
- *
- * To be completed!
- * \see NodeOperation.execute_opencl_region
- * \see OpenCLDevice.execute
  *
  * \section execute_pixel executing a pixel
  * Finally the last step, the node functionality :)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,9 +12,7 @@
 
 namespace blender::compositor {
 
-/* Forward declarations. */
 class MemoryBuffer;
-class ExecutionGroup;
 class WriteBufferOperation;
 
 /**
@@ -31,11 +29,6 @@ class MemoryProxy {
   WriteBufferOperation *write_buffer_operation_;
 
   /**
-   * \brief reference to the executor. the Execution group that can fill a chunk
-   */
-  ExecutionGroup *executor_;
-
-  /**
    * \brief the allocated memory
    */
   MemoryBuffer *buffer_;
@@ -47,14 +40,6 @@ class MemoryProxy {
 
  public:
   MemoryProxy(DataType type);
-
-  /**
-   * \brief get the ExecutionGroup that can be scheduled to calculate a certain chunk.
-   */
-  ExecutionGroup *get_executor() const
-  {
-    return executor_;
-  }
 
   /**
    * \brief set the WriteBufferOperation that is responsible for writing to this MemoryProxy

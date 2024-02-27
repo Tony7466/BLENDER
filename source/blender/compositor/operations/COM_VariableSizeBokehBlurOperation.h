@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -72,13 +72,6 @@ class VariableSizeBokehBlurOperation : public MultiThreadedOperation, public Qua
   {
     do_size_scale_ = scale_size;
   }
-
-  void execute_opencl(OpenCLDevice *device,
-                      MemoryBuffer *output_memory_buffer,
-                      cl_mem cl_output_buffer,
-                      MemoryBuffer **input_memory_buffers,
-                      std::list<cl_mem> *cl_mem_to_clean_up,
-                      std::list<cl_kernel> *cl_kernels_to_clean_up) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,

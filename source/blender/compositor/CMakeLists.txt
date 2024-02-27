@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2011 Blender Authors
+# SPDX-FileCopyrightText: 2024 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -86,13 +86,10 @@ if(WITH_COMPOSITOR_CPU)
     intern/COM_NodeOperation.h
     intern/COM_NodeOperationBuilder.cc
     intern/COM_NodeOperationBuilder.h
-    intern/COM_OpenCLDevice.cc
-    intern/COM_OpenCLDevice.h
     intern/COM_SharedOperationBuffers.cc
     intern/COM_SharedOperationBuffers.h
     intern/COM_SingleThreadedOperation.cc
     intern/COM_SingleThreadedOperation.h
-    intern/COM_WorkPackage.cc
     intern/COM_WorkPackage.h
     intern/COM_WorkScheduler.cc
     intern/COM_WorkScheduler.h
@@ -610,15 +607,6 @@ if(WITH_COMPOSITOR_CPU)
   list(APPEND INC
     ${CMAKE_CURRENT_BINARY_DIR}/operations
   )
-
-  data_to_c(
-    ${CMAKE_CURRENT_SOURCE_DIR}/operations/COM_OpenCLKernels.cl
-    ${CMAKE_CURRENT_BINARY_DIR}/operations/COM_OpenCLKernels.cl.h
-    SRC
-    STRIP_LEADING_C_COMMENTS
-  )
-
-  add_definitions(-DCL_USE_DEPRECATED_OPENCL_1_1_APIS)
 
   set(GENSRC_DIR ${CMAKE_CURRENT_BINARY_DIR}/operations)
   set(GENSRC ${GENSRC_DIR}/COM_SMAAAreaTexture.h)

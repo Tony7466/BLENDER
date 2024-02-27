@@ -1,11 +1,10 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_math_base.hh"
 #include "BLI_math_vector.hh"
 
-#include "COM_OpenCLDevice.h"
 #include "COM_VariableSizeBokehBlurOperation.h"
 
 namespace blender::compositor {
@@ -22,7 +21,6 @@ VariableSizeBokehBlurOperation::VariableSizeBokehBlurOperation()
 #endif
   this->add_output_socket(DataType::Color);
   flags_.complex = true;
-  flags_.open_cl = true;
   flags_.can_be_constant = true;
 
   input_program_ = nullptr;
@@ -136,47 +134,6 @@ void VariableSizeBokehBlurOperation::execute_pixel(float output[4], int x, int y
     float fac = (center_size - threshold_) / threshold_;
     interp_v4_v4v4(output, input_buffer->get_elem(x, y), output, fac);
   }
-}
-
-void VariableSizeBokehBlurOperation::execute_opencl(
-    OpenCLDevice *device,
-    MemoryBuffer *output_memory_buffer,
-    cl_mem cl_output_buffer,
-    MemoryBuffer **input_memory_buffers,
-    std::list<cl_mem> *cl_mem_to_clean_up,
-    std::list<cl_kernel> * /*cl_kernels_to_clean_up*/)
-{
-  cl_kernel defocus_kernel = device->COM_cl_create_kernel("defocus_kernel", nullptr);
-
-  cl_int step = this->get_step();
-  cl_int max_blur;
-  cl_float threshold = threshold_;
-
-  MemoryBuffer *size_memory_buffer = input_size_program_->get_input_memory_buffer(
-      input_memory_buffers);
-
-  const float max_dim = std::max(get_width(), get_height());
-  cl_float scalar = do_size_scale_ ? (max_dim / 100.0f) : 1.0f;
-
-  max_blur = (cl_int)min_ff(size_memory_buffer->get_max_value() * scalar, float(max_blur_));
-
-  device->COM_cl_attach_memory_buffer_to_kernel_parameter(
-      defocus_kernel, 0, -1, cl_mem_to_clean_up, input_memory_buffers, input_program_);
-  device->COM_cl_attach_memory_buffer_to_kernel_parameter(
-      defocus_kernel, 1, -1, cl_mem_to_clean_up, input_memory_buffers, input_bokeh_program_);
-  device->COM_cl_attach_memory_buffer_to_kernel_parameter(
-      defocus_kernel, 2, 4, cl_mem_to_clean_up, input_memory_buffers, input_size_program_);
-  device->COM_cl_attach_output_memory_buffer_to_kernel_parameter(
-      defocus_kernel, 3, cl_output_buffer);
-  device->COM_cl_attach_memory_buffer_offset_to_kernel_parameter(
-      defocus_kernel, 5, output_memory_buffer);
-  clSetKernelArg(defocus_kernel, 6, sizeof(cl_int), &step);
-  clSetKernelArg(defocus_kernel, 7, sizeof(cl_int), &max_blur);
-  clSetKernelArg(defocus_kernel, 8, sizeof(cl_float), &threshold);
-  clSetKernelArg(defocus_kernel, 9, sizeof(cl_float), &scalar);
-  device->COM_cl_attach_size_to_kernel_parameter(defocus_kernel, 10, this);
-
-  device->COM_cl_enqueue_range(defocus_kernel, output_memory_buffer, 11, this);
 }
 
 void VariableSizeBokehBlurOperation::deinit_execution()

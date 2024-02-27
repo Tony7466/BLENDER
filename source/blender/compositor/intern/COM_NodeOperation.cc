@@ -447,9 +447,6 @@ std::ostream &operator<<(std::ostream &os, const NodeOperationFlags &node_operat
   if (node_operation_flags.complex) {
     os << "complex,";
   }
-  if (node_operation_flags.open_cl) {
-    os << "open_cl,";
-  }
   if (node_operation_flags.single_threaded) {
     os << "single_threaded,";
   }

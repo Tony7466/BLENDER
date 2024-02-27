@@ -1,9 +1,8 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_GaussianXBlurOperation.h"
-#include "COM_OpenCLDevice.h"
 
 namespace blender::compositor {
 
@@ -82,42 +81,6 @@ void GaussianXBlurOperation::execute_pixel(float output[4], int x, int y, void *
   }
 #endif
   mul_v4_v4fl(output, color_accum, 1.0f / multiplier_accum);
-}
-
-void GaussianXBlurOperation::execute_opencl(OpenCLDevice *device,
-                                            MemoryBuffer *output_memory_buffer,
-                                            cl_mem cl_output_buffer,
-                                            MemoryBuffer **input_memory_buffers,
-                                            std::list<cl_mem> *cl_mem_to_clean_up,
-                                            std::list<cl_kernel> * /*cl_kernels_to_clean_up*/)
-{
-  cl_kernel gaussian_xblur_operation_kernel = device->COM_cl_create_kernel(
-      "gaussian_xblur_operation_kernel", nullptr);
-  cl_int filter_size = filtersize_;
-
-  cl_mem gausstab = clCreateBuffer(device->get_context(),
-                                   CL_MEM_READ_ONLY | CL_MEM_USE_HOST_PTR,
-                                   sizeof(float) * (filtersize_ * 2 + 1),
-                                   gausstab_,
-                                   nullptr);
-
-  device->COM_cl_attach_memory_buffer_to_kernel_parameter(gaussian_xblur_operation_kernel,
-                                                          0,
-                                                          1,
-                                                          cl_mem_to_clean_up,
-                                                          input_memory_buffers,
-                                                          input_program_);
-  device->COM_cl_attach_output_memory_buffer_to_kernel_parameter(
-      gaussian_xblur_operation_kernel, 2, cl_output_buffer);
-  device->COM_cl_attach_memory_buffer_offset_to_kernel_parameter(
-      gaussian_xblur_operation_kernel, 3, output_memory_buffer);
-  clSetKernelArg(gaussian_xblur_operation_kernel, 4, sizeof(cl_int), &filter_size);
-  device->COM_cl_attach_size_to_kernel_parameter(gaussian_xblur_operation_kernel, 5, this);
-  clSetKernelArg(gaussian_xblur_operation_kernel, 6, sizeof(cl_mem), &gausstab);
-
-  device->COM_cl_enqueue_range(gaussian_xblur_operation_kernel, output_memory_buffer, 7, this);
-
-  clReleaseMemObject(gausstab);
 }
 
 void GaussianXBlurOperation::deinit_execution()

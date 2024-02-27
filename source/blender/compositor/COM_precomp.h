@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,7 +27,6 @@
 #include "COM_MultiThreadedOperation.h"
 #include "COM_Node.h"
 #include "COM_NodeOperation.h"
-#include "COM_OpenCLDevice.h"
 #include "COM_SetAlphaMultiplyOperation.h"
 #include "COM_SetColorOperation.h"
 #include "COM_SetSamplerOperation.h"

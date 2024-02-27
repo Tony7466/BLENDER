@@ -1,9 +1,8 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_DirectionalBlurOperation.h"
-#include "COM_OpenCLDevice.h"
 
 namespace blender::compositor {
 
@@ -12,7 +11,6 @@ DirectionalBlurOperation::DirectionalBlurOperation()
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
   flags_.complex = true;
-  flags_.open_cl = true;
   flags_.can_be_constant = true;
   input_program_ = nullptr;
 }
@@ -78,37 +76,6 @@ void DirectionalBlurOperation::execute_pixel(float output[4], int x, int y, void
   }
 
   mul_v4_v4fl(output, col2, 1.0f / (iterations + 1));
-}
-
-void DirectionalBlurOperation::execute_opencl(OpenCLDevice *device,
-                                              MemoryBuffer *output_memory_buffer,
-                                              cl_mem cl_output_buffer,
-                                              MemoryBuffer **input_memory_buffers,
-                                              std::list<cl_mem> *cl_mem_to_clean_up,
-                                              std::list<cl_kernel> * /*cl_kernels_to_clean_up*/)
-{
-  cl_kernel directional_blur_kernel = device->COM_cl_create_kernel("directional_blur_kernel",
-                                                                   nullptr);
-
-  cl_int iterations = pow(2.0f, data_->iter);
-  cl_float2 ltxy = {{tx_, ty_}};
-  cl_float2 centerpix = {{center_x_pix_, center_y_pix_}};
-  cl_float lsc = sc_;
-  cl_float lrot = rot_;
-
-  device->COM_cl_attach_memory_buffer_to_kernel_parameter(
-      directional_blur_kernel, 0, -1, cl_mem_to_clean_up, input_memory_buffers, input_program_);
-  device->COM_cl_attach_output_memory_buffer_to_kernel_parameter(
-      directional_blur_kernel, 1, cl_output_buffer);
-  device->COM_cl_attach_memory_buffer_offset_to_kernel_parameter(
-      directional_blur_kernel, 2, output_memory_buffer);
-  clSetKernelArg(directional_blur_kernel, 3, sizeof(cl_int), &iterations);
-  clSetKernelArg(directional_blur_kernel, 4, sizeof(cl_float), &lsc);
-  clSetKernelArg(directional_blur_kernel, 5, sizeof(cl_float), &lrot);
-  clSetKernelArg(directional_blur_kernel, 6, sizeof(cl_float2), &ltxy);
-  clSetKernelArg(directional_blur_kernel, 7, sizeof(cl_float2), &centerpix);
-
-  device->COM_cl_enqueue_range(directional_blur_kernel, output_memory_buffer, 8, this);
 }
 
 void DirectionalBlurOperation::deinit_execution()

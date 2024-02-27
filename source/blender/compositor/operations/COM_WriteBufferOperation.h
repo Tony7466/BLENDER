@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,6 @@
 
 namespace blender::compositor {
 
-class OpenCLDevice;
 class MemoryProxy;
 
 /**
@@ -37,11 +36,6 @@ class WriteBufferOperation : public NodeOperation {
   void execute_region(rcti *rect, unsigned int tile_number) override;
   void init_execution() override;
   void deinit_execution() override;
-  void execute_opencl_region(OpenCLDevice *device,
-                             rcti *rect,
-                             unsigned int chunk_number,
-                             MemoryBuffer **memory_buffers,
-                             MemoryBuffer *output_buffer) override;
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
   void read_resolution_from_input_socket();
   inline NodeOperation *get_input()

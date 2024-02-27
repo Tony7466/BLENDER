@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -58,11 +58,6 @@ class CompositorContext {
    * This field is initialized in ExecutionSystem and must only be read from that point on.
    */
   bNodeInstanceHash *previews_;
-
-  /**
-   * \brief does this system have active opencl devices?
-   */
-  bool hasActiveOpenCLDevices_;
 
   /**
    * \brief Skip slow nodes
@@ -179,22 +174,6 @@ class CompositorContext {
    * \brief get the current frame-number of the scene in this context
    */
   int get_framenumber() const;
-
-  /**
-   * \brief has this system active opencl_devices?
-   */
-  bool get_has_active_opencl_devices() const
-  {
-    return hasActiveOpenCLDevices_;
-  }
-
-  /**
-   * \brief set has this system active opencl_devices?
-   */
-  void setHasActiveOpenCLDevices(bool hasAvtiveOpenCLDevices)
-  {
-    hasActiveOpenCLDevices_ = hasAvtiveOpenCLDevices;
-  }
 
   /** Whether it has a view with a specific name and not the default one. */
   bool has_explicit_view() const

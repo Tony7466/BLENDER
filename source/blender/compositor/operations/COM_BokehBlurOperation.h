@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -50,13 +50,6 @@ class BokehBlurOperation : public MultiThreadedOperation, public QualityStepHelp
     size_ = size;
     sizeavailable_ = true;
   }
-
-  void execute_opencl(OpenCLDevice *device,
-                      MemoryBuffer *output_memory_buffer,
-                      cl_mem cl_output_buffer,
-                      MemoryBuffer **input_memory_buffers,
-                      std::list<cl_mem> *cl_mem_to_clean_up,
-                      std::list<cl_kernel> *cl_kernels_to_clean_up) override;
 
   void set_extend_bounds(bool extend_bounds)
   {

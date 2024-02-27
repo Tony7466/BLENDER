@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,13 +22,10 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
-#include "clew.h"
-
 #include "DNA_node_types.h"
 
 namespace blender::compositor {
 
-class OpenCLDevice;
 class ReadBufferOperation;
 class ExecutionSystem;
 class NodeOperation;
@@ -177,11 +174,6 @@ struct NodeOperationFlags {
   bool complex : 1;
 
   /**
-   * Does this operation support OpenCL.
-   */
-  bool open_cl : 1;
-
-  /**
    * TODO: Remove this flag and #SingleThreadedOperation if tiled implementation is removed.
    * Full-frame implementation doesn't need it.
    */
@@ -248,7 +240,6 @@ struct NodeOperationFlags {
   {
     complex = false;
     single_threaded = false;
-    open_cl = false;
     use_render_border = false;
     use_viewer_border = false;
     is_canvas_set = false;
@@ -463,49 +454,6 @@ class NodeOperation {
    */
   virtual void execute_region(rcti * /*rect*/, unsigned int /*chunk_number*/) {}
 
-  /**
-   * \brief when a chunk is executed by an OpenCLDevice, this method is called
-   * \ingroup execution
-   * \note this method is only implemented in WriteBufferOperation
-   * \param context: the OpenCL context
-   * \param program: the OpenCL program containing all compositor kernels
-   * \param queue: the OpenCL command queue of the device the chunk is executed on
-   * \param rect: the rectangle of the chunk (location and size)
-   * \param chunk_number: the chunk_number to be calculated
-   * \param memory_buffers: all input MemoryBuffer's needed
-   * \param output_buffer: the output-buffer to write to
-   */
-  virtual void execute_opencl_region(OpenCLDevice * /*device*/,
-                                     rcti * /*rect*/,
-                                     unsigned int /*chunk_number*/,
-                                     MemoryBuffer ** /*memory_buffers*/,
-                                     MemoryBuffer * /*output_buffer*/)
-  {
-  }
-
-  /**
-   * \brief custom handle to add new tasks to the OpenCL command queue
-   * in order to execute a chunk on an GPUDevice.
-   * \ingroup execution
-   * \param context: the OpenCL context
-   * \param program: the OpenCL program containing all compositor kernels
-   * \param queue: the OpenCL command queue of the device the chunk is executed on
-   * \param output_memory_buffer: the allocated memory buffer in main CPU memory
-   * \param cl_output_buffer: the allocated memory buffer in OpenCLDevice memory
-   * \param input_memory_buffers: all input MemoryBuffer's needed
-   * \param cl_mem_to_clean_up: all created cl_mem references must be added to this list.
-   * Framework will clean this after execution
-   * \param cl_kernels_to_clean_up: all created cl_kernel references must be added to this list.
-   * Framework will clean this after execution
-   */
-  virtual void execute_opencl(OpenCLDevice * /*device*/,
-                              MemoryBuffer * /*output_memory_buffer*/,
-                              cl_mem /*cl_output_buffer*/,
-                              MemoryBuffer ** /*input_memory_buffers*/,
-                              std::list<cl_mem> * /*cl_mem_to_clean_up*/,
-                              std::list<cl_kernel> * /*cl_kernels_to_clean_up*/)
-  {
-  }
   virtual void deinit_execution();
 
   void set_canvas(const rcti &canvas_area);
