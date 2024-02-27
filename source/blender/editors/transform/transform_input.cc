@@ -444,7 +444,7 @@ void initMouseInputMode(TransInfo *t, MouseInput *mi, MouseInputMode mode)
         t->flag |= T_MODAL_CURSOR_SET;
         WM_cursor_modal_set(win, WM_CURSOR_NSEW_SCROLL);
       }
-      if (t->mode == TFM_SEQ_SLIDE && t->is_launch_event_drag) {
+      if (t->mode == TFM_SEQ_SLIDE && (t->launch_event == 1 || t->launch_event == 3)) {
         WM_cursor_modal_set(win, transform_seq_slide_cursor_get(t));
       }
 
