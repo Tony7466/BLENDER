@@ -236,21 +236,25 @@ static void scale_uniformly(const GroupedSpan<int> elem_islands,
                             Mesh &mesh)
 {
   MutableSpan<float3> positions = mesh.vert_positions_for_write();
-  threading::parallel_for(elem_islands.index_range(), 512, [&](const IndexRange range) {
-    for (const int island_index : range) {
-      const Span<int> vert_island = vert_islands[island_index];
-      const Span<int> elem_island = elem_islands[island_index];
+  threading::parallel_for(
+      elem_islands.index_range(),
+      512,
+      [&](const IndexRange range) {
+        for (const int island_index : range) {
+          const Span<int> vert_island = vert_islands[island_index];
+          const Span<int> elem_island = elem_islands[island_index];
 
-      const float scale = gather_mean<float>(scale_varray, elem_island);
-      const float3 center = gather_mean<float3>(center_varray, elem_island);
+          const float scale = gather_mean<float>(scale_varray, elem_island);
+          const float3 center = gather_mean<float3>(center_varray, elem_island);
 
-      threading::parallel_for(vert_island.index_range(), 2048, [&](const IndexRange range) {
-        for (const int vert_i : vert_island.slice(range)) {
-          positions[vert_i] = transform_with_uniform_scale(positions[vert_i], center, scale);
+          threading::parallel_for(vert_island.index_range(), 2048, [&](const IndexRange range) {
+            for (const int vert_i : vert_island.slice(range)) {
+              positions[vert_i] = transform_with_uniform_scale(positions[vert_i], center, scale);
+            }
+          });
         }
-      });
-    }
-  });
+      },
+      [&](const int64_t i) { return vert_islands[i].size(); });
 }
 
 static float4x4 create_single_axis_transform(const float3 &center,
@@ -301,24 +305,28 @@ static void scale_on_axis(const GroupedSpan<int> elem_islands,
                           Mesh &mesh)
 {
   MutableSpan<float3> positions = mesh.vert_positions_for_write();
-  threading::parallel_for(elem_islands.index_range(), 512, [&](const IndexRange range) {
-    for (const int island_index : range) {
-      const Span<int> vert_island = vert_islands[island_index];
-      const Span<int> elem_island = elem_islands[island_index];
+  threading::parallel_for_weighted(
+      elem_islands.index_range(),
+      512,
+      [&](const IndexRange range) {
+        for (const int island_index : range) {
+          const Span<int> vert_island = vert_islands[island_index];
+          const Span<int> elem_island = elem_islands[island_index];
 
-      const float scale = gather_mean<float>(scale_varray, elem_island);
-      const float3 center = gather_mean<float3>(center_varray, elem_island);
-      const float3 axis = gather_mean<float3>(axis_varray, elem_island);
-      const float3 fixed_axis = math::is_zero(axis) ? float3(1.0f, 0.0f, 0.0f) : axis;
+          const float scale = gather_mean<float>(scale_varray, elem_island);
+          const float3 center = gather_mean<float3>(center_varray, elem_island);
+          const float3 axis = gather_mean<float3>(axis_varray, elem_island);
+          const float3 fixed_axis = math::is_zero(axis) ? float3(1.0f, 0.0f, 0.0f) : axis;
 
-      const float4x4 transform = create_single_axis_transform(center, fixed_axis, scale);
-      threading::parallel_for(vert_island.index_range(), 2048, [&](const IndexRange range) {
-        for (const int vert_i : vert_island.slice(range)) {
-          positions[vert_i] = math::transform_point(transform, positions[vert_i]);
+          const float4x4 transform = create_single_axis_transform(center, fixed_axis, scale);
+          threading::parallel_for(vert_island.index_range(), 2048, [&](const IndexRange range) {
+            for (const int vert_i : vert_island.slice(range)) {
+              positions[vert_i] = math::transform_point(transform, positions[vert_i]);
+            }
+          });
         }
-      });
-    }
-  });
+      },
+      [&](const int64_t i) { return vert_islands[i].size(); });
 }
 
 static int face_to_vert_islands(const Mesh &mesh,

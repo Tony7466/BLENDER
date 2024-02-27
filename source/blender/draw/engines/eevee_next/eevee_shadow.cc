@@ -8,7 +8,7 @@
  * The shadow module manages shadow update tagging & shadow rendering.
  */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BLI_math_rotation.h"
 #include "BLI_rect.h"
 
@@ -226,7 +226,7 @@ void ShadowPunctual::sync(eLightType light_type,
                           float max_distance,
                           float softness_factor)
 {
-  if (light_type == LIGHT_SPOT) {
+  if (is_spot_light(light_type)) {
     tilemaps_needed_ = (cone_aperture > DEG2RADF(90.0f)) ? 5 : 1;
   }
   else if (is_area_light(light_type)) {
@@ -773,7 +773,7 @@ void ShadowModule::init()
   /* Make allocation safe. Avoids crash later on. */
   if (!atlas_tx_.is_valid()) {
     atlas_tx_.ensure_2d_array(ShadowModule::atlas_type, int2(1), 1);
-    inst_.info = "Error: Could not allocate shadow atlas. Most likely out of GPU memory.";
+    inst_.info += "Error: Could not allocate shadow atlas. Most likely out of GPU memory.\n";
   }
 
   /* Read end of the swap-chain to avoid stall. */
@@ -794,12 +794,12 @@ void ShadowModule::init()
       std::stringstream ss;
       ss << "Error: Shadow buffer full, may result in missing shadows and lower performance. ("
          << stats.page_used_count << " / " << shadow_page_len_ << ")\n";
-      inst_.info = ss.str();
+      inst_.info += ss.str();
     }
     if (stats.view_needed_count > SHADOW_VIEW_MAX && enabled_) {
       std::stringstream ss;
       ss << "Error: Too many shadow updates, some shadow might be incorrect.\n";
-      inst_.info = ss.str();
+      inst_.info += ss.str();
     }
   }
 
@@ -831,9 +831,9 @@ void ShadowModule::begin_sync()
     pass.init();
 
     if (inst_.is_baking()) {
-      SurfelBuf &surfels_buf = inst_.irradiance_cache.bake.surfels_buf_;
-      CaptureInfoBuf &capture_info_buf = inst_.irradiance_cache.bake.capture_info_buf_;
-      float surfel_coverage_area = inst_.irradiance_cache.bake.surfel_density_;
+      SurfelBuf &surfels_buf = inst_.volume_probes.bake.surfels_buf_;
+      CaptureInfoBuf &capture_info_buf = inst_.volume_probes.bake.capture_info_buf_;
+      float surfel_coverage_area = inst_.volume_probes.bake.surfel_density_;
 
       /* Directional shadows. */
       float texel_size = ShadowDirectional::tile_size_get(0) / float(SHADOW_PAGE_RES);
@@ -850,7 +850,7 @@ void ShadowModule::begin_sync()
       sub.push_constant("directional_level", directional_level);
       sub.push_constant("tilemap_projection_ratio", projection_ratio);
       sub.bind_resources(inst_.lights);
-      sub.dispatch(&inst_.irradiance_cache.bake.dispatch_per_surfel_);
+      sub.dispatch(&inst_.volume_probes.bake.dispatch_per_surfel_);
 
       /* Skip opaque and transparent tagging for light baking. */
       return;
@@ -1273,14 +1273,14 @@ bool ShadowModule::shadow_update_finished()
 {
   if (inst_.is_viewport()) {
     /* For viewport, only run the shadow update once per redraw.
-     * This avoids the stall from the readback and freezes from long shadow update. */
+     * This avoids the stall from the read-back and freezes from long shadow update. */
     return true;
   }
 
   int max_updated_view_count = tilemap_pool.tilemaps_data.size() * SHADOW_TILEMAP_LOD;
   if (max_updated_view_count <= SHADOW_VIEW_MAX) {
-    /* There is enough shadow views to cover all tilemap updates.
-     * No readback needed as it is guaranteed that all of them will be updated. */
+    /* There is enough shadow views to cover all tile-map updates.
+     * No read-back needed as it is guaranteed that all of them will be updated. */
     return true;
   }
 
@@ -1420,16 +1420,16 @@ void ShadowModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
 
   switch (inst_.debug_mode) {
     case DEBUG_SHADOW_TILEMAPS:
-      inst_.info = "Debug Mode: Shadow Tilemap\n";
+      inst_.info += "Debug Mode: Shadow Tilemap\n";
       break;
     case DEBUG_SHADOW_VALUES:
-      inst_.info = "Debug Mode: Shadow Values\n";
+      inst_.info += "Debug Mode: Shadow Values\n";
       break;
     case DEBUG_SHADOW_TILE_RANDOM_COLOR:
-      inst_.info = "Debug Mode: Shadow Tile Random Color\n";
+      inst_.info += "Debug Mode: Shadow Tile Random Color\n";
       break;
     case DEBUG_SHADOW_TILEMAP_RANDOM_COLOR:
-      inst_.info = "Debug Mode: Shadow Tilemap Random Color\n";
+      inst_.info += "Debug Mode: Shadow Tilemap Random Color\n";
       break;
     default:
       break;

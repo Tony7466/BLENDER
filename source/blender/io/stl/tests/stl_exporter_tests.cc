@@ -10,9 +10,11 @@
 #include "BLI_fileops.h"
 #include "BLI_string.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 #include "DEG_depsgraph.hh"
+
+#include "MEM_guardedalloc.h"
 
 #include "IO_stl.hh"
 #include "stl_export.hh"
