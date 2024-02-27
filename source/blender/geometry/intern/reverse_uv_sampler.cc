@@ -33,7 +33,8 @@ struct ReverseUVSampler::LookupGrid {
 
 struct TriWithRange {
   int tri_index;
-  IndexRange range;
+  int x_min;
+  int x_max;
 };
 
 struct TriWithRangeGroup {
@@ -94,15 +95,11 @@ BLI_NOINLINE static void sort_into_y_buckets(
     for (const int tri_i : tris) {
       const int3 &tri = corner_tris[tri_i];
       const Bounds<int2> key_bounds = tri_to_key_bounds(tri, resolution, uv_map);
-      const IndexRange x_range = IndexRange::from_begin_end_inclusive(key_bounds.min.x,
-                                                                      key_bounds.max.x);
-      const TriWithRange tri_with_range{tri_i, x_range};
+      const TriWithRange tri_with_range{tri_i, key_bounds.min.x, key_bounds.max.x};
 
-      for (const int key_y :
-           IndexRange::from_begin_end_inclusive(key_bounds.min.y, key_bounds.max.y))
-      {
+      for (int cell_y = key_bounds.min.y; cell_y <= key_bounds.max.y; cell_y++) {
         LocalRowData &row = *local_data.rows.lookup_or_add_cb(
-            key_y, [&]() { return local_data.allocator.construct<LocalRowData>(); });
+            cell_y, [&]() { return local_data.allocator.construct<LocalRowData>(); });
 
         if (row.tris == nullptr || row.tris->filled_num == row.tris->tris.size()) {
           static_assert(std::is_trivially_destructible_v<TriWithRangeGroup>);
@@ -113,8 +110,8 @@ BLI_NOINLINE static void sort_into_y_buckets(
         }
 
         row.tris->tris[row.tris->filled_num++] = tri_with_range;
-        row.x_min = std::min<int>(row.x_min, x_range.first());
-        row.x_max = std::max<int>(row.x_max, x_range.last());
+        row.x_min = std::min<int>(row.x_min, key_bounds.min.x);
+        row.x_max = std::max<int>(row.x_max, key_bounds.max.x);
       }
     }
   });
@@ -152,7 +149,7 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
           for (const TriWithRangeGroup *group = local_row->tris; group; group = group->next) {
             for (const int i : IndexRange(group->filled_num)) {
               const TriWithRange &tri_with_range = group->tris[i];
-              for (const int x : tri_with_range.range) {
+              for (int x = tri_with_range.x_min; x <= tri_with_range.x_max; x++) {
                 counts[x - x_min]++;
               }
             }
@@ -168,7 +165,7 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
         for (const TriWithRangeGroup *group = local_row->tris; group; group = group->next) {
           for (const int i : IndexRange(group->filled_num)) {
             const TriWithRange &tri_with_range = group->tris[i];
-            for (const int x : tri_with_range.range) {
+            for (int x = tri_with_range.x_min; x <= tri_with_range.x_max; x++) {
               const int offset_x = x - x_min;
               row.tri_indices[row.offsets[offset_x] + current_offsets[offset_x]] =
                   tri_with_range.tri_index;
@@ -207,6 +204,7 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
   }
 
   const Bounds<int> y_bounds = *bounds::min_max(all_ys.as_span());
+  lookup_grid_->y_min = y_bounds.min;
 
   const int rows_num = y_bounds.max - y_bounds.min + 1;
   lookup_grid_->rows.reinitialize(rows_num);
