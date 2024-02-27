@@ -52,7 +52,7 @@ class DebugInfo {
     }
   }
 
-  static void execute_started(const ExecutionSystem *system)
+  static void execute_started()
   {
     if (COM_EXPORT_GRAPHVIZ) {
       file_index_ = 1;

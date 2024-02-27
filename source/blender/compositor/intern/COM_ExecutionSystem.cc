@@ -76,7 +76,7 @@ void ExecutionSystem::set_operations(const Span<NodeOperation *> operations)
 
 void ExecutionSystem::execute()
 {
-  DebugInfo::execute_started(this);
+  DebugInfo::execute_started();
   for (NodeOperation *op : operations_) {
     op->init_data();
   }

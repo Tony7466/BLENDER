@@ -44,10 +44,6 @@ if(WITH_COMPOSITOR_CPU)
     intern/COM_BuffersIterator.h
     intern/COM_CPUDevice.cc
     intern/COM_CPUDevice.h
-    intern/COM_ChunkOrder.cc
-    intern/COM_ChunkOrder.h
-    intern/COM_ChunkOrderHotspot.cc
-    intern/COM_ChunkOrderHotspot.h
     intern/COM_CompositorContext.cc
     intern/COM_CompositorContext.h
     intern/COM_ConstantFolder.cc

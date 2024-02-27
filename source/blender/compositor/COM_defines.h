@@ -74,28 +74,6 @@ constexpr DataType COM_num_channels_data_type(const int num_channels)
   }
 }
 
-/* Configurable items.
- *
- * Chunk size determination.
- *
- * Chunk order. */
-/**
- * \brief The order of chunks to be scheduled
- * \ingroup Execution
- */
-enum class ChunkOrdering {
-  /** \brief order from a distance to centerX/centerY */
-  CenterOut = 0,
-  /** \brief order randomly */
-  Random = 1,
-  /** \brief no ordering */
-  TopDown = 2,
-  /** \brief experimental ordering with 9 hot-spots. */
-  RuleOfThirds = 3,
-
-  Default = ChunkOrdering::CenterOut,
-};
-
 constexpr float COM_PREVIEW_SIZE = 140.f;
 constexpr float COM_RULE_OF_THIRDS_DIVIDER = 100.0f;
 constexpr float COM_BLUR_BOKEH_PIXELS = 512;

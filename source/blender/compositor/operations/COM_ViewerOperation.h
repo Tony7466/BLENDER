@@ -21,7 +21,6 @@ class ViewerOperation : public MultiThreadedOperation {
   bool active_;
   float center_x_;
   float center_y_;
-  ChunkOrdering chunk_order_;
   ImBuf *ibuf_;
   bool use_alpha_input_;
   const RenderData *rd_;
@@ -70,10 +69,6 @@ class ViewerOperation : public MultiThreadedOperation {
   {
     center_y_ = centerY;
   }
-  void set_chunk_order(ChunkOrdering tile_order)
-  {
-    chunk_order_ = tile_order;
-  }
   float getCenterX() const
   {
     return center_x_;
@@ -81,10 +76,6 @@ class ViewerOperation : public MultiThreadedOperation {
   float getCenterY() const
   {
     return center_y_;
-  }
-  ChunkOrdering get_chunk_order() const
-  {
-    return chunk_order_;
   }
   eCompositorPriority get_render_priority() const override;
   void set_use_alpha_input(bool value)

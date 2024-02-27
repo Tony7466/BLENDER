@@ -93,63 +93,6 @@ struct Render;
  * \see NodeOperation.get_render_priority receive the render priority
  * \see ExecutionGroup.execute the main loop to execute a whole ExecutionGroup
  *
- * \section order Chunk order
- *
- * When a ExecutionGroup is executed, first the order of chunks are determined.
- * The settings are stored in the ViewerNode inside the ExecutionGroup.
- * ExecutionGroups that have no viewer-node,
- * will use a default one.
- * There are several possible chunk orders
- *  - [@ref ChunkOrdering.CenterOut]:
- *    Start calculating from a configurable point and order by nearest chunk.
- *  - [@ref ChunkOrdering.Random]:
- *    Randomize all chunks.
- *  - [@ref ChunkOrdering.TopDown]:
- *    Start calculation from the bottom to the top of the image.
- *  - [@ref ChunkOrdering.RuleOfThirds]:
- *    Experimental order based on 9 hot-spots in the image.
- *
- * When the chunk-order is determined, the first few chunks will be checked if they can be scheduled.
- *
- * \see ExecutionGroup.execute
- * \see ViewerOperation.get_chunk_order
- * \see ChunkOrdering
- *
- * \section interest Area of interest
- * An ExecutionGroup can have dependencies to other ExecutionGroup's.
- * Data passing from one ExecutionGroup to another one are stored in 'chunks'.
- * If not all input chunks are available the chunk execution will not be scheduled.
- *
- * In the above example ExecutionGroup B has an outputoperation (ViewerOperation)
- * and is being executed.
- * The first chunk is evaluated [@ref ExecutionGroup.schedule_chunk_when_possible],
- * but not all input chunks are available.
- * The relevant ExecutionGroup (that can calculate the missing chunks; ExecutionGroup A)
- * is asked to calculate the area ExecutionGroup B is missing.
- * [@ref ExecutionGroup.schedule_area_when_possible]
- * ExecutionGroup B checks what chunks the area spans, and tries to schedule these chunks.
- * If all input data is available these chunks are scheduled [@ref ExecutionGroup.schedule_chunk]
- *
- * This happens until all chunks of (ExecutionGroup B) are finished executing or the user break's the process.
- *
- * NodeOperation like the ScaleOperation can influence the area of interest by reimplementing the
- * [@ref NodeOperation.determine_area_of_interest] method
- *
- * \see ExecutionGroup.execute Execute a complete ExecutionGroup.
- * Halts until finished or breaked by user
- * \see ExecutionGroup.schedule_chunk_when_possible Tries to schedule a single chunk,
- * checks if all input data is available. Can trigger dependent chunks to be calculated
- * \see ExecutionGroup.schedule_area_when_possible
- * Tries to schedule an area. This can be multiple chunks
- * (is called from [@ref ExecutionGroup.schedule_chunk_when_possible])
- * \see ExecutionGroup.schedule_chunk Schedule a chunk on the WorkScheduler
- * \see NodeOperation.determine_depending_area_of_interest Influence the area of interest of a chunk.
- * \see WriteBufferOperation Operation to write to a MemoryProxy/MemoryBuffer
- * \see ReadBufferOperation Operation to read from a MemoryProxy/MemoryBuffer
- * \see MemoryProxy proxy for information about memory image
- * (a image consist out of multiple chunks)
- * \see MemoryBuffer Allocated memory for a single chunk
- *
  * \section workscheduler WorkScheduler
  * the WorkScheduler is implemented as a static class. the responsibility of the WorkScheduler
  * is to balance WorkPackages to the available and free devices.
