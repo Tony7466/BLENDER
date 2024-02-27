@@ -237,21 +237,14 @@ static void interpolate_position_with_interpolation(CurvesGeometry &curves,
 }
 
 static void calc_radius_without_interpolation(CurvesGeometry &curves,
-                                              const int old_curves_num,
-                                              const int added_curves_num,
+                                              const IndexRange new_points_range,
                                               const float radius)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
   bke::SpanAttributeWriter radius_attr =
       curves.attributes_for_write().lookup_or_add_for_write_span<float>("radius",
                                                                         bke::AttrDomain::Point);
-  threading::parallel_for(IndexRange(added_curves_num), 256, [&](const IndexRange range) {
-    for (const int i : range) {
-      const int curve_i = old_curves_num + i;
-      const IndexRange points = points_by_curve[curve_i];
-      radius_attr.span.slice(points).fill(radius);
-    }
-  });
+  radius_attr.span.slice(new_points_range).fill(radius);
   radius_attr.finish();
 }
 
@@ -287,12 +280,11 @@ static void calc_radius_with_interpolation(CurvesGeometry &curves,
         continue;
       }
 
-      radii_cu.slice(points).fill(0);
+      radii_cu.slice(points).fill(0.0f);
 
       for (const NeighborCurve &neighbor : neighbors) {
         const int neighbor_curve_i = neighbor.index;
         const IndexRange neighbor_points = points_by_curve[neighbor_curve_i];
-        const float3 &neighbor_root_cu = positions_cu[neighbor_points[0]];
         const Span<float3> neighbor_positions_cu = positions_cu.slice(neighbor_points);
         const Span<float> neighbor_radii_cu = radius_attr.span.slice(neighbor_points);
 
@@ -474,7 +466,7 @@ AddCurvesOnMeshOutputs add_curves_on_mesh(CurvesGeometry &curves,
   }
   else {
     calc_radius_without_interpolation(
-        curves, old_curves_num, added_curves_num, inputs.fallback_curve_radius);
+        curves, outputs.new_points_range, inputs.fallback_curve_radius);
   }
 
   curves.fill_curve_types(new_curves_range, CURVE_TYPE_CATMULL_ROM);
