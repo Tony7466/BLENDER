@@ -219,8 +219,6 @@ static void dial_ghostarc_draw_incremental_angle(const float incremental_angle,
                                                  const float offset,
                                                  const float angle_delta)
 {
- 	const int cur_incr = roundf(angle_delta / incremental_angle);
-  const int tot_incr = roundf((M_PI * 2.0f) / incremental_angle);
 
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
@@ -232,19 +230,21 @@ static void dial_ghostarc_draw_incremental_angle(const float incremental_angle,
   immUniform2fv("viewportSize", &viewport[2]);
   immUniform1f("lineWidth", U.pixelsize);
 
-  immBegin(GPU_PRIM_LINES, tot_incr * 2);
+  const int current_increment = roundf(angle_delta / incremental_angle);
+  const int total_increment = roundf((M_PI * 2.0f) / incremental_angle);
 
-  /* Chop off excess full circles,
-   * draw an arc of ticks centered at current increment;
+  immBegin(GPU_PRIM_LINES, total_increment * 2);
+
+  /* Chop off excess full circles, draw an arc of ticks centered at current increment;
    * if there's no even division of circle by increment,
    * ends of the arc will move with the rotation */
-  const float start_ofs = fmodf(offset + incremental_angle * (cur_incr - tot_incr / 2),
+  const float start_offset = fmodf(offset + incremental_angle * (current_increment - total_increment / 2),
                                 M_PI * 2.0f);
 
   float v[3] = {0};
-  for (int i = 0; i < tot_incr; i++) {
-    v[0] = sinf(start_ofs + incremental_angle * i);
-    v[1] = cosf(start_ofs + incremental_angle * i);
+  for (int i = 0; i < total_increment; i++) {
+    v[0] = sinf(start_offset + incremental_angle * i);
+    v[1] = cosf(start_offset + incremental_angle * i);
 
     mul_v2_fl(v, DIAL_WIDTH * 1.1f);
     immVertex3fv(pos, v);

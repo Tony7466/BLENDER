@@ -41,9 +41,12 @@
 #include "BLI_listbase.h"
 #include "BLI_map.hh"
 #include "BLI_math_vector.h"
+#include "BLI_math_rotation.h"
 #include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
+
+
 
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
@@ -79,8 +82,6 @@
 #include "readfile.hh"
 
 #include "versioning_common.hh"
-
-#define DEG2RADF(_deg) ((_deg) * (float)(M_PI / 180.0))
 
 // static CLG_LogRef LOG = {"blo.readfile.doversion"};
 
@@ -2889,19 +2890,6 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 21)) {
-      if (!DNA_struct_member_exists(fd->filesdna, "ToolSettings", "float", "snap_angle_increment_2d")) {
-       const float default_snap_angle_increment = DEG2RADF(15.0f);
-       const float default_snap_angle_increment_precision = DEG2RADF(5.0f);
-          LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-              scene->toolsettings->snap_angle_increment_2d = default_snap_angle_increment;
-              scene->toolsettings->snap_angle_increment_3d = default_snap_angle_increment;
-              scene->toolsettings->snap_angle_increment_2d_precision = default_snap_angle_increment_precision;
-              scene->toolsettings->snap_angle_increment_3d_precision = default_snap_angle_increment_precision;
-      }
-    }
-  }
-
   /* Keep point/spot light soft falloff for files created before 4.0. */
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 400, 0)) {
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
@@ -2910,6 +2898,19 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
       }
     }
   }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 401, 22)) {
+    if (!DNA_struct_member_exists(fd->filesdna, "ToolSettings", "float", "snap_angle_increment_2d")) {
+      const float default_snap_angle_increment = DEG2RADF(15.0f);
+      const float default_snap_angle_increment_precision = DEG2RADF(5.0f);
+        LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+            scene->toolsettings->snap_angle_increment_2d = default_snap_angle_increment;
+            scene->toolsettings->snap_angle_increment_3d = default_snap_angle_increment;
+            scene->toolsettings->snap_angle_increment_2d_precision = default_snap_angle_increment_precision;
+            scene->toolsettings->snap_angle_increment_3d_precision = default_snap_angle_increment_precision;
+    }
+  }
+}
 
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning
