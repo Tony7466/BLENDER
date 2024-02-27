@@ -16,13 +16,13 @@ else()
     set(LIBDIR_NATIVE_ABI ${CMAKE_SOURCE_DIR}/../lib/${LIBDIR_NAME})
 
     # Path to precompiled libraries with known glibc 2.28 ABI.
-    set(LIBDIR_GLIBC228_ABI ${CMAKE_SOURCE_DIR}/../lib/linux_x86_64_glibc_228)
+    set(LIBDIR_GLIBC228_ABI ${CMAKE_SOURCE_DIR}/lib/linux_x64)
 
     # Choose the best suitable libraries.
     if(EXISTS ${LIBDIR_NATIVE_ABI})
       set(LIBDIR ${LIBDIR_NATIVE_ABI})
       set(WITH_LIBC_MALLOC_HOOK_WORKAROUND TRUE)
-    elseif(EXISTS ${LIBDIR_GLIBC228_ABI})
+    elseif(EXISTS "${LIBDIR_GLIBC228_ABI}/.git")
       set(LIBDIR ${LIBDIR_GLIBC228_ABI})
       if(WITH_MEM_JEMALLOC)
         # jemalloc provides malloc hooks.
@@ -38,13 +38,29 @@ else()
   endif()
 
   if(NOT (EXISTS ${LIBDIR}))
-    message(STATUS
-      "Unable to find LIBDIR: ${LIBDIR}, system libraries may be used "
-      "(disable WITH_LIBS_PRECOMPILED to suppress this message)."
-    )
+    if(WITH_STRICT_BUILD_OPTIONS)
+      message(SEND_ERROR
+        "Unable to find LIBDIR: ${LIBDIR}. "
+        "WITH_LIBS_PRECOMPILED needs to be able to find the LIBDIR for the precompiled libraries."
+      )
+    else()
+      message(STATUS
+        "Unable to find LIBDIR: ${LIBDIR}. system libraries may be used "
+        "(disable WITH_LIBS_PRECOMPILED to suppress this message)."
+      )
+    endif()
     unset(LIBDIR)
+    set(WITH_LIBS_PRECOMPILED OFF)
   endif()
 endif()
+
+# Disable the CPU check if not portable or if we are not using the pre-compiled libs.
+# This is because:
+# 1. We don't install the CPU check library on a non portable build.
+# 2. We assume that people know what systems they are targeting when they build a non
+#    portable build or when not using our precompiled libs.
+set_and_warn_dependency(WITH_INSTALL_PORTABLE WITH_CPU_CHECK OFF)
+set_and_warn_dependency(WITH_LIBS_PRECOMPILED WITH_CPU_CHECK OFF)
 
 # Support restoring this value once pre-compiled libraries have been handled.
 set(WITH_STATIC_LIBS_INIT ${WITH_STATIC_LIBS})
@@ -114,6 +130,10 @@ find_package_wrapper(Epoxy REQUIRED)
 # XXX Linking errors with debian static tiff :/
 # find_package_wrapper(TIFF REQUIRED)
 find_package(TIFF)
+# CMake 3.28.1 defines this, it doesn't seem to be used, hide by default in the UI.
+if(DEFINED tiff_DIR)
+  mark_as_advanced(tiff_DIR)
+endif()
 
 if(WITH_VULKAN_BACKEND)
   if((DEFINED LIBDIR) AND (EXISTS "${LIBDIR}/vulkan") AND (EXISTS "${LIBDIR}/shaderc"))
@@ -156,6 +176,11 @@ endfunction()
 if(NOT WITH_SYSTEM_FREETYPE)
   # FreeType compiled with Brotli compression for woff2.
   find_package_wrapper(Freetype REQUIRED)
+  # CMake 3.28.1 defines this, it doesn't seem to be used, hide by default in the UI.
+  if(DEFINED freetype_DIR)
+    mark_as_advanced(freetype_DIR)
+  endif()
+
   if(DEFINED LIBDIR)
     find_package_wrapper(Brotli REQUIRED)
 

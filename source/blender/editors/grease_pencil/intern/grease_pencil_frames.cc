@@ -37,6 +37,7 @@ void set_selected_frames_type(bke::greasepencil::Layer &layer,
   for (GreasePencilFrame &frame : layer.frames_for_write().values()) {
     if (frame.is_selected()) {
       frame.type = key_type;
+      layer.tag_frames_map_changed();
     }
   }
 }
@@ -155,7 +156,7 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
     }
 
     /* Create the duplicate drawing. */
-    const Drawing *drawing = grease_pencil.get_editable_drawing_at(&layer, frame_number);
+    const Drawing *drawing = grease_pencil.get_editable_drawing_at(layer, frame_number);
     if (drawing == nullptr) {
       continue;
     }
@@ -171,6 +172,10 @@ bool duplicate_selected_frames(GreasePencil &grease_pencil, bke::greasepencil::L
     frame.flag ^= GP_FRAME_SELECTED;
 
     changed = true;
+  }
+
+  if (changed) {
+    layer.tag_frames_map_changed();
   }
 
   return changed;
@@ -213,6 +218,7 @@ bool select_frame_at(bke::greasepencil::Layer &layer,
     return false;
   }
   select_frame(*frame, select_mode);
+  layer.tag_frames_map_changed();
   return true;
 }
 
@@ -235,6 +241,7 @@ void select_all_frames(bke::greasepencil::Layer &layer, const short select_mode)
 {
   for (auto item : layer.frames_for_write().items()) {
     select_frame(item.value, select_mode);
+    layer.tag_frames_map_changed();
   }
 }
 
@@ -272,6 +279,8 @@ void select_frames_region(KeyframeEditData *ked,
           select_frame(frame, select_mode);
         }
       }
+
+      node.as_layer().tag_frames_map_changed();
     }
   }
   else if (node.is_group()) {
@@ -291,6 +300,7 @@ void select_frames_range(bke::greasepencil::TreeNode &node,
     for (auto [frame_number, frame] : node.as_layer().frames_for_write().items()) {
       if (IN_RANGE(float(frame_number), min, max)) {
         select_frame(frame, select_mode);
+        node.as_layer().tag_frames_map_changed();
       }
     }
   }

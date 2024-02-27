@@ -16,7 +16,6 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_colortools.hh"
-#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -659,7 +658,8 @@ static void do_boundary_brush_bend_task(Object *ob, const Brush *brush, PBVHNode
     angle_factor = floorf(angle_factor * 10) / 10.0f;
   }
   const float angle = angle_factor * M_PI;
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (boundary->edit_info[vd.index].propagation_steps_num == -1) {
@@ -675,7 +675,7 @@ static void do_boundary_brush_bend_task(Object *ob, const Brush *brush, PBVHNode
 
     const float mask = 1.0f - vd.mask;
     const float automask = auto_mask::factor_get(
-        ss->cache->automasking, ss, vd.vertex, &automask_data);
+        ss->cache->automasking.get(), ss, vd.vertex, &automask_data);
     float t_orig_co[3];
     float *target_co = SCULPT_brush_deform_target_vertex_co_get(ss, brush->deform_target, &vd);
     sub_v3_v3v3(t_orig_co, orig_data.co, boundary->bend.pivot_positions[vd.index]);
@@ -684,10 +684,6 @@ static void do_boundary_brush_bend_task(Object *ob, const Brush *brush, PBVHNode
                      boundary->bend.pivot_rotation_axis[vd.index],
                      angle * boundary->edit_info[vd.index].strength_factor * mask * automask);
     add_v3_v3(target_co, boundary->bend.pivot_positions[vd.index]);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -706,7 +702,8 @@ static void do_boundary_brush_slide_task(Object *ob, const Brush *brush, PBVHNod
   SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
 
   const float disp = sculpt_boundary_displacement_from_grab_delta_get(ss, boundary);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (boundary->edit_info[vd.index].propagation_steps_num == -1) {
@@ -722,17 +719,13 @@ static void do_boundary_brush_slide_task(Object *ob, const Brush *brush, PBVHNod
 
     const float mask = 1.0f - vd.mask;
     const float automask = auto_mask::factor_get(
-        ss->cache->automasking, ss, vd.vertex, &automask_data);
+        ss->cache->automasking.get(), ss, vd.vertex, &automask_data);
     float *target_co = SCULPT_brush_deform_target_vertex_co_get(ss, brush->deform_target, &vd);
     madd_v3_v3v3fl(target_co,
                    orig_data.co,
                    boundary->slide.directions[vd.index],
                    boundary->edit_info[vd.index].strength_factor * disp * mask * automask *
                        strength);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -749,7 +742,8 @@ static void do_boundary_brush_inflate_task(Object *ob, const Brush *brush, PBVHN
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
   SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   const float disp = sculpt_boundary_displacement_from_grab_delta_get(ss, boundary);
 
@@ -767,17 +761,13 @@ static void do_boundary_brush_inflate_task(Object *ob, const Brush *brush, PBVHN
 
     const float mask = 1.0f - vd.mask;
     const float automask = auto_mask::factor_get(
-        ss->cache->automasking, ss, vd.vertex, &automask_data);
+        ss->cache->automasking.get(), ss, vd.vertex, &automask_data);
     float *target_co = SCULPT_brush_deform_target_vertex_co_get(ss, brush->deform_target, &vd);
     madd_v3_v3v3fl(target_co,
                    orig_data.co,
                    orig_data.no,
                    boundary->edit_info[vd.index].strength_factor * disp * mask * automask *
                        strength);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -794,7 +784,8 @@ static void do_boundary_brush_grab_task(Object *ob, const Brush *brush, PBVHNode
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
   SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (boundary->edit_info[vd.index].propagation_steps_num == -1) {
@@ -810,16 +801,12 @@ static void do_boundary_brush_grab_task(Object *ob, const Brush *brush, PBVHNode
 
     const float mask = 1.0f - vd.mask;
     const float automask = auto_mask::factor_get(
-        ss->cache->automasking, ss, vd.vertex, &automask_data);
+        ss->cache->automasking.get(), ss, vd.vertex, &automask_data);
     float *target_co = SCULPT_brush_deform_target_vertex_co_get(ss, brush->deform_target, &vd);
     madd_v3_v3v3fl(target_co,
                    orig_data.co,
                    ss->cache->grab_delta_symmetry,
                    boundary->edit_info[vd.index].strength_factor * mask * automask * strength);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -836,7 +823,8 @@ static void do_boundary_brush_twist_task(Object *ob, const Brush *brush, PBVHNod
   PBVHVertexIter vd;
   SculptOrigVertData orig_data;
   SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   const float disp = strength * sculpt_boundary_displacement_from_grab_delta_get(ss, boundary);
   float angle_factor = disp / ss->cache->radius;
@@ -860,7 +848,7 @@ static void do_boundary_brush_twist_task(Object *ob, const Brush *brush, PBVHNod
 
     const float mask = 1.0f - vd.mask;
     const float automask = auto_mask::factor_get(
-        ss->cache->automasking, ss, vd.vertex, &automask_data);
+        ss->cache->automasking.get(), ss, vd.vertex, &automask_data);
     float t_orig_co[3];
     float *target_co = SCULPT_brush_deform_target_vertex_co_get(ss, brush->deform_target, &vd);
     sub_v3_v3v3(t_orig_co, orig_data.co, boundary->twist.pivot_position);
@@ -869,10 +857,6 @@ static void do_boundary_brush_twist_task(Object *ob, const Brush *brush, PBVHNod
                      boundary->twist.rotation_axis,
                      angle * mask * automask * boundary->edit_info[vd.index].strength_factor);
     add_v3_v3(target_co, boundary->twist.pivot_position);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -924,10 +908,6 @@ static void do_boundary_brush_smooth_task(Object *ob, const Brush *brush, PBVHNo
     float *target_co = SCULPT_brush_deform_target_vertex_co_get(ss, brush->deform_target, &vd);
     madd_v3_v3v3fl(
         target_co, vd.co, disp, boundary->edit_info[vd.index].strength_factor * mask * strength);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 }
@@ -948,8 +928,7 @@ void do_boundary_brush(Sculpt *sd, Object *ob, Span<PBVHNode *> nodes)
     else {
       float location[3];
       flip_v3_v3(location, SCULPT_active_vertex_co_get(ss), symm_area);
-      initial_vertex = SCULPT_nearest_vertex_get(
-          sd, ob, location, ss->cache->radius_squared, false);
+      initial_vertex = SCULPT_nearest_vertex_get(ob, location, ss->cache->radius_squared, false);
     }
 
     ss->cache->boundaries[symm_area] = data_init(
