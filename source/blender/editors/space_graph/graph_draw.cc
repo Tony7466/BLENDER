@@ -51,6 +51,14 @@ struct KeyVertex {
   ColorTheme4b color;
 };
 
+struct HandleLine {
+  float2 a;
+  ColorTheme4b color_a;
+  float2 b;
+  /* This is a duplicate of data, but the shader expects it this way. */
+  ColorTheme4b color_b;
+};
+
 struct BuildArguments {
   bool draw_extrapolation;
   int2 bounding_indices;
@@ -64,6 +72,19 @@ struct RenderBatch {
   GPUVertBuf *vert_buf;
   KeyVertex *verts;
   int num_verts;
+};
+
+struct FCurveRenderData {
+  Array<KeyVertex> key_points;
+
+  /* Separate selected and unselected so we can draw selected on top. */
+  Vector<KeyVertex> key_handle_points_selected;
+  Vector<KeyVertex> key_handle_points_deselected;
+  Vector<HandleLine> key_handle_lines;
+
+  Vector<float2> line_points;
+  float4 line_color;
+  float line_thickness;
 };
 
 static void draw_batch(RenderBatch &batch)
@@ -1519,15 +1540,6 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region
   GPU_blend(GPU_BLEND_NONE);
 }
 
-struct FCurveRenderData {
-  Array<KeyVertex> key_points;
-  Vector<KeyVertex> key_handle_points;
-  Vector<float4> key_handle_lines;
-  Vector<float2> line_points;
-  float4 line_color;
-  float line_thickness;
-};
-
 /** \name Data build code
  * \{ */
 
@@ -1569,12 +1581,18 @@ static void build_key_handle_render_data(const FCurve *fcu,
 {
   const float size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
 
-  ColorTheme4b color_sel = get_fcurve_vertex_color(fcu, true);
-  ColorTheme4b color_desel = get_fcurve_vertex_color(fcu, false);
-  const float foo = fcurve_display_alpha(fcu) * 255;
+  const uchar alpha = fcurve_display_alpha(fcu) * 255;
+  ColorTheme4b color_sel;
+  UI_GetThemeColor4ubv(TH_HANDLE_VERTEX_SELECT, color_sel);
+  color_sel[3] = alpha;
 
-  fcu_render_data.key_handle_points = Vector<KeyVertex>();
-  fcu_render_data.key_handle_lines = Vector<float4>();
+  ColorTheme4b color_desel;
+  UI_GetThemeColor4ubv(TH_HANDLE_VERTEX, color_desel);
+  color_desel[3] = alpha;
+
+  fcu_render_data.key_handle_points_selected = Vector<KeyVertex>();
+  fcu_render_data.key_handle_points_deselected = Vector<KeyVertex>();
+  fcu_render_data.key_handle_lines = Vector<HandleLine>();
   SpaceGraph *sipo = (SpaceGraph *)args.anim_context->sl;
 
   BezTriple *prevbezt = nullptr;
@@ -1586,11 +1604,48 @@ static void build_key_handle_render_data(const FCurve *fcu,
         continue;
       }
     }
+
     KeyVertex handle_point;
-    handle_point.color = (bezt->f2 & SELECT) ? color_sel : color_desel;
-    handle_point.pos = {bezt->vec[2][0], bezt->vec[2][1]};
     handle_point.size = size;
-    fcu_render_data.key_handle_points.append(handle_point);
+    HandleLine handle_line;
+    handle_line.b = {bezt->vec[1][0], bezt->vec[1][1]};
+    handle_line.color_a[3] = alpha;
+    handle_line.color_b[3] = alpha;
+    if ((!prevbezt && (bezt->ipo == BEZT_IPO_BEZ)) ||
+        (prevbezt && (prevbezt->ipo == BEZT_IPO_BEZ)))
+    {
+      handle_point.pos = {bezt->vec[0][0], bezt->vec[0][1]};
+      handle_line.a = {bezt->vec[0][0], bezt->vec[0][1]};
+      if (bezt->f1 & SELECT) {
+        handle_point.color = color_sel;
+        fcu_render_data.key_handle_points_selected.append(handle_point);
+        UI_GetThemeColor3ubv(TH_HANDLE_SEL_FREE + bezt->h1, handle_line.color_a);
+      }
+      else {
+        handle_point.color = color_desel;
+        fcu_render_data.key_handle_points_deselected.append(handle_point);
+        UI_GetThemeColor3ubv(TH_HANDLE_FREE + bezt->h1, handle_line.color_a);
+      }
+      handle_line.color_b = handle_line.color_a;
+      fcu_render_data.key_handle_lines.append(handle_line);
+    }
+
+    if (bezt->ipo == BEZT_IPO_BEZ) {
+      handle_point.pos = {bezt->vec[2][0], bezt->vec[2][1]};
+      handle_line.a = {bezt->vec[2][0], bezt->vec[2][1]};
+      if (bezt->f3 & SELECT) {
+        handle_point.color = color_sel;
+        fcu_render_data.key_handle_points_selected.append(handle_point);
+        UI_GetThemeColor3ubv(TH_HANDLE_SEL_FREE + bezt->h2, handle_line.color_a);
+      }
+      else {
+        handle_point.color = color_desel;
+        fcu_render_data.key_handle_points_deselected.append(handle_point);
+        UI_GetThemeColor3ubv(TH_HANDLE_FREE + bezt->h2, handle_line.color_a);
+      }
+      handle_line.color_b = handle_line.color_a;
+      fcu_render_data.key_handle_lines.append(handle_line);
+    }
   }
 }
 
@@ -1793,7 +1848,7 @@ static void draw_fcurve_keys(Array<FCurveRenderData> &render_data)
   GPU_program_point_size(false);
 }
 
-static void draw_fcurve_lines(Array<FCurveRenderData> &render_data)
+static void draw_fcurve_lines(const Span<FCurveRenderData> &render_data)
 {
   GPUIndexBufBuilder ibuf_builder;
   GPU_indexbuf_init_ex(&ibuf_builder, GPU_PRIM_LINE_STRIP, MAX_VERTS, MAX_VERTS);
@@ -1864,12 +1919,135 @@ static void draw_fcurve_lines(Array<FCurveRenderData> &render_data)
   GPU_blend(GPU_BLEND_NONE);
 }
 
-static void draw_fcurve_handles(Array<FCurveRenderData> &render_data) {}
+static void draw_fcurve_handle_lines(const Span<FCurveRenderData> &render_data)
+{
+  GPU_blend(GPU_BLEND_ALPHA);
+  if (U.animation_flag & USER_ANIM_HIGH_QUALITY_DRAWING) {
+    GPU_line_smooth(true);
+  }
+
+  GPUIndexBufBuilder ibuf_builder;
+  GPU_indexbuf_init_ex(&ibuf_builder, GPU_PRIM_LINES, MAX_VERTS, MAX_VERTS);
+  for (uint i = 0; i < MAX_VERTS; i += 2) {
+    GPU_indexbuf_add_line_verts(&ibuf_builder, i, i + 1);
+  }
+  GPUIndexBuf *index_buffer = GPU_indexbuf_build(&ibuf_builder);
+
+  GPUVertFormat format;
+  GPU_vertformat_clear(&format);
+  GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  GPU_vertformat_attr_add(&format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+
+  GPUVertBuf *vertex_buffer_lines = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STREAM);
+  GPU_vertbuf_data_alloc(vertex_buffer_lines, MAX_VERTS);
+
+  GPUBatch *batch_lines = GPU_batch_create_ex(GPU_PRIM_LINES,
+                                              vertex_buffer_lines,
+                                              index_buffer,
+                                              GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
+  GPU_batch_program_set_builtin(batch_lines, GPU_SHADER_3D_FLAT_COLOR);
+
+  int verts_in_buffer = 0;
+  int buffer_write_head = 0;
+  HandleLine *vertex_buffer_data = static_cast<HandleLine *>(
+      GPU_vertbuf_get_data(vertex_buffer_lines));
+  for (const FCurveRenderData &fcu_render_data : render_data) {
+    for (const HandleLine &handle_line : fcu_render_data.key_handle_lines) {
+      vertex_buffer_data[buffer_write_head] = handle_line;
+      buffer_write_head++;
+      verts_in_buffer += 2;
+      if (verts_in_buffer >= MAX_VERTS) {
+        GPU_vertbuf_tag_dirty(vertex_buffer_lines);
+        GPU_vertbuf_use(vertex_buffer_lines);
+        GPU_batch_draw(batch_lines);
+        buffer_write_head = 0;
+        verts_in_buffer = 0;
+      }
+    }
+  }
+
+  if (verts_in_buffer != 0) {
+    GPU_vertbuf_tag_dirty(vertex_buffer_lines);
+    GPU_vertbuf_use(vertex_buffer_lines);
+    GPU_batch_draw_range(batch_lines, 0, verts_in_buffer);
+  }
+
+  if (U.animation_flag & USER_ANIM_HIGH_QUALITY_DRAWING) {
+    GPU_line_smooth(false);
+  }
+  GPU_blend(GPU_BLEND_NONE);
+}
+
+static void draw_fcurve_handle_points(const Span<FCurveRenderData> &render_data)
+{
+  GPU_program_point_size(true);
+  GPUIndexBufBuilder ibuf_builder;
+  GPU_indexbuf_init_ex(&ibuf_builder, GPU_PRIM_POINTS, MAX_VERTS, MAX_VERTS);
+  for (uint i = 0; i < MAX_VERTS; i++) {
+    GPU_indexbuf_add_generic_vert(&ibuf_builder, i);
+  }
+  GPUIndexBuf *index_buffer = GPU_indexbuf_build(&ibuf_builder);
+
+  GPUVertFormat format;
+  GPU_vertformat_clear(&format);
+  GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+  GPU_vertformat_attr_add(&format, "size", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+  GPU_vertformat_attr_add(&format, "color", GPU_COMP_U8, 4, GPU_FETCH_INT_TO_FLOAT_UNIT);
+
+  GPUVertBuf *vertex_buffer_handles = GPU_vertbuf_create_with_format_ex(&format, GPU_USAGE_STREAM);
+  GPU_vertbuf_data_alloc(vertex_buffer_handles, MAX_VERTS);
+
+  GPUBatch *batch_handles = GPU_batch_create_ex(GPU_PRIM_POINTS,
+                                                vertex_buffer_handles,
+                                                index_buffer,
+                                                GPU_BATCH_OWNS_VBO | GPU_BATCH_OWNS_INDEX);
+  GPU_batch_program_set_builtin(batch_handles, GPU_SHADER_3D_POINT_VARYING_SIZE_VARYING_COLOR);
+
+  int verts_in_buffer = 0;
+  KeyVertex *vertex_buffer_data = static_cast<KeyVertex *>(
+      GPU_vertbuf_get_data(vertex_buffer_handles));
+  for (const FCurveRenderData &fcu_render_data : render_data) {
+    for (const KeyVertex &kv : fcu_render_data.key_handle_points_deselected) {
+      vertex_buffer_data[verts_in_buffer] = kv;
+      verts_in_buffer++;
+      if (verts_in_buffer >= MAX_VERTS) {
+        GPU_vertbuf_tag_dirty(vertex_buffer_handles);
+        GPU_vertbuf_use(vertex_buffer_handles);
+        GPU_batch_draw(batch_handles);
+        verts_in_buffer = 0;
+      }
+    }
+  }
+
+  for (const FCurveRenderData &fcu_render_data : render_data) {
+    for (const KeyVertex &kv : fcu_render_data.key_handle_points_selected) {
+      vertex_buffer_data[verts_in_buffer] = kv;
+      verts_in_buffer++;
+      if (verts_in_buffer >= MAX_VERTS) {
+        GPU_vertbuf_tag_dirty(vertex_buffer_handles);
+        GPU_vertbuf_use(vertex_buffer_handles);
+        GPU_batch_draw(batch_handles);
+        verts_in_buffer = 0;
+      }
+    }
+  }
+
+  if (verts_in_buffer != 0) {
+    GPU_vertbuf_tag_dirty(vertex_buffer_handles);
+    GPU_vertbuf_use(vertex_buffer_handles);
+    GPU_batch_draw_range(batch_handles, 0, verts_in_buffer);
+  }
+
+  GPU_batch_discard(batch_handles);
+
+  GPU_program_point_size(false);
+}
 
 static void draw_fcurve_render_data(Array<FCurveRenderData> &render_data)
 {
   draw_fcurve_lines(render_data);
-  draw_fcurve_handles(render_data);
+  draw_fcurve_handle_lines(render_data);
+  draw_fcurve_handle_points(render_data);
   draw_fcurve_keys(render_data);
 }
 
