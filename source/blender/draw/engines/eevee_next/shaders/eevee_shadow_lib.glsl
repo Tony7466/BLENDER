@@ -75,16 +75,14 @@ mat4x4 shadow_projection_perspective(float side, float near_clip, float far_clip
   float z_delta = far_clip - near_clip;
 
   mat4x4 mat = mat4x4(1.0);
-  if (side != 0.0 && z_delta != 0.0) {
-    mat[0][0] = near_clip / side;
-    mat[1][1] = near_clip / side;
-    mat[2][0] = 0.0;
-    mat[2][1] = 0.0;
-    mat[2][2] = -(far_clip + near_clip) / z_delta;
-    mat[2][3] = -1.0;
-    mat[3][2] = (-2.0 * near_clip * far_clip) / z_delta;
-    mat[3][3] = 0.0;
-  }
+  mat[0][0] = near_clip / side;
+  mat[1][1] = near_clip / side;
+  mat[2][0] = 0.0;
+  mat[2][1] = 0.0;
+  mat[2][2] = -(far_clip + near_clip) / z_delta;
+  mat[2][3] = -1.0;
+  mat[3][2] = (-2.0 * near_clip * far_clip) / z_delta;
+  mat[3][3] = 0.0;
   return mat;
 }
 
@@ -94,16 +92,14 @@ mat4x4 shadow_projection_perspective_inverse(float side, float near_clip, float 
   float d = 2.0 * near_clip * far_clip;
 
   mat4x4 mat = mat4x4(1.0);
-  if (side != 0.0 && z_delta != 0.0) {
-    mat[0][0] = side / near_clip;
-    mat[1][1] = side / near_clip;
-    mat[2][0] = 0.0;
-    mat[2][1] = 0.0;
-    mat[2][2] = 0.0;
-    mat[2][3] = (near_clip - far_clip) / d;
-    mat[3][2] = -1.0;
-    mat[3][3] = (near_clip + far_clip) / d;
-  }
+  mat[0][0] = side / near_clip;
+  mat[1][1] = side / near_clip;
+  mat[2][0] = 0.0;
+  mat[2][1] = 0.0;
+  mat[2][2] = 0.0;
+  mat[2][3] = (near_clip - far_clip) / d;
+  mat[3][2] = -1.0;
+  mat[3][3] = (near_clip + far_clip) / d;
   return mat;
 }
 
