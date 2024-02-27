@@ -34,12 +34,34 @@ static bool check_positions_are_original(const AttributeAccessor &attributes,
   return false;
 }
 
-static void write_offset_positions(const bool positions_are_original,
+static void calc_positions_and_offsets(const IndexMask &selection,
+                                       const VArray<float3> &in_positions,
+                                       const VArray<float3> &in_offsets,
+                                       MutableSpan<float3> out_positions)
+{
+  devirtualize_varray2(
+      in_positions, in_offsets, [&](const auto in_positions, const auto in_offsets) {
+        selection.foreach_index_optimized<int>(
+            grain_size, [&](const int i) { out_positions[i] = in_positions[i] + in_offsets[i]; });
+      });
+}
+
+static void calc_offsets(const IndexMask &selection,
+                         const VArray<float3> &in_offsets,
+                         MutableSpan<float3> out_positions)
+{
+  devirtualize_varray(in_offsets, [&](const auto in_offsets) {
+    selection.foreach_index_optimized<int>(
+        grain_size, [&](const int i) { out_positions[i] += in_offsets[i]; });
+  });
+}
+
+static void write_offset_positions(MutableAttributeAccessor attributes,
                                    const IndexMask &selection,
                                    const VArray<float3> &in_positions,
-                                   const VArray<float3> &in_offsets,
-                                   VMutableArray<float3> &out_positions)
+                                   const VArray<float3> &in_offsets)
 {
+  const bool positions_are_original = check_positions_are_original(attributes, in_positions);
   if (positions_are_original) {
     if (const std::optional<float3> offset = in_offsets.get_if_single()) {
       if (math::is_zero(*offset)) {
@@ -48,22 +70,14 @@ static void write_offset_positions(const bool positions_are_original,
     }
   }
 
-  MutableVArraySpan<float3> out_positions_span = out_positions;
+  SpanAttributeWriter<float3> out_positions = attributes.lookup_for_write_span<float3>("position");
   if (positions_are_original) {
-    devirtualize_varray(in_offsets, [&](const auto in_offsets) {
-      selection.foreach_index_optimized<int>(
-          grain_size, [&](const int i) { out_positions_span[i] += in_offsets[i]; });
-    });
+    calc_offsets(selection, in_offsets, out_positions.span);
   }
   else {
-    devirtualize_varray2(
-        in_positions, in_offsets, [&](const auto in_positions, const auto in_offsets) {
-          selection.foreach_index_optimized<int>(grain_size, [&](const int i) {
-            out_positions_span[i] = in_positions[i] + in_offsets[i];
-          });
-        });
+    calc_positions_and_offsets(selection, in_positions, in_offsets, out_positions.span);
   }
-  out_positions_span.save();
+  out_positions.finish();
 }
 
 static void set_computed_position_and_offset(GeometryComponent &component,
@@ -106,31 +120,20 @@ static void set_computed_position_and_offset(GeometryComponent &component,
         curves.calculate_bezier_auto_handles();
         break;
       }
-      AttributeWriter<float3> positions = attributes.lookup_for_write<float3>("position");
-      write_offset_positions(check_positions_are_original(attributes, in_positions),
-                             selection,
-                             in_positions,
-                             in_offsets,
-                             positions.varray);
-      positions.finish();
+      write_offset_positions(attributes, selection, in_positions, in_offsets);
       break;
     }
     case GeometryComponent::Type::Instance: {
       /* Special case for "position" which is no longer an attribute on instances. */
       auto &instances_component = reinterpret_cast<bke::InstancesComponent &>(component);
       bke::Instances &instances = *instances_component.get_for_write();
-      VMutableArray<float3> positions = bke::instance_position_varray_for_write(instances);
-      write_offset_positions(false, selection, in_positions, in_offsets, positions);
+      MutableVArraySpan<float3> positions = bke::instance_position_varray_for_write(instances);
+      calc_positions_and_offsets(selection, in_positions, in_offsets, positions);
+      positions.save();
       break;
     }
     default: {
-      AttributeWriter<float3> positions = attributes.lookup_for_write<float3>("position");
-      write_offset_positions(check_positions_are_original(attributes, in_positions),
-                             selection,
-                             in_positions,
-                             in_offsets,
-                             positions.varray);
-      positions.finish();
+      write_offset_positions(attributes, selection, in_positions, in_offsets);
       break;
     }
   }
