@@ -122,7 +122,7 @@ def get_submodule_directories(args: argparse.Namespace):
 
     submodule_directories_output = check_output(
         [args.git_command, "config", "--file", dot_modules, "--get-regexp", "path"])
-    return (Path(line.split(' ', 1)[1]) for line in submodule_directories_output.strip().splitlines())
+    return [Path(line.split(' ', 1)[1]) for line in submodule_directories_output.strip().splitlines()]
 
 
 def ensure_git_lfs(args: argparse.Namespace) -> None:
@@ -131,9 +131,9 @@ def ensure_git_lfs(args: argparse.Namespace) -> None:
     call((args.git_command, "lfs", "install", "--skip-repo"), exit_on_error=True)
 
 
-def update_precompiled_libraries(args: argparse.Namespace) -> None:
+def initialize_precompiled_libraries(args: argparse.Namespace) -> str:
     """
-    Configure and update submodule for precompiled libraries
+    Configure submodule for precompiled libraries
 
     This function detects the current host architecture and enables
     corresponding submodule, and updates the submodule.
@@ -153,31 +153,34 @@ def update_precompiled_libraries(args: argparse.Namespace) -> None:
 
     if sys.platform == "linux" and not args.use_linux_libraries:
         print("Skipping Linux libraries configuration")
-        return
+        return ""
 
     submodule_dir = f"lib/{platform}_{arch}"
 
     submodule_directories = get_submodule_directories(args)
 
     if Path(submodule_dir) not in submodule_directories:
-        print("Skipping libraries update: no configured submodule")
-        return
+        return "Skipping libraries update: no configured submodule\n"
 
-    make_utils.git_enable_submodule(args.git_command, submodule_dir)
-    make_utils.git_update_submodule(args.git_command, submodule_dir)
+    print(f"* Enabling precompiled libraries at {submodule_dir}")
+    make_utils.git_enable_submodule(args.git_command, Path(submodule_dir))
+
+    return ""
 
 
-def update_tests_data_files(args: argparse.Namespace) -> None:
+def initialize_tests_data_files(args: argparse.Namespace) -> str:
     """
-    Configure and update submodule with files used by regression tests
+    Configure submodule with files used by regression tests
     """
 
     print_stage("Configuring Tests Data Files")
 
     submodule_dir = "tests/data"
 
-    make_utils.git_enable_submodule(args.git_command, submodule_dir)
-    make_utils.git_update_submodule(args.git_command, submodule_dir)
+    print(f"* Enabling tests data at {submodule_dir}")
+    make_utils.git_enable_submodule(args.git_command, Path(submodule_dir))
+
+    return ""
 
 
 def git_update_skip(args: argparse.Namespace, check_remote_exists: bool = True) -> str:
@@ -483,16 +486,6 @@ def external_scripts_update(args: argparse.Namespace,
                                     old_submodules_dir=Path("release") / "scripts" / directory_name)
 
 
-def scripts_submodules_update(args: argparse.Namespace, branch: Optional[str]) -> str:
-    """Update working trees of addons and addons_contrib within the scripts/ directory"""
-    msg = ""
-
-    msg += external_scripts_update(args, "blender-addons", "addons", branch)
-    msg += external_scripts_update(args, "blender-addons-contrib", "addons_contrib", branch)
-
-    return msg
-
-
 def floating_libraries_update(args: argparse.Namespace, branch: Optional[str]) -> str:
     """Update libraries checkouts which are floating (not attached as Git submodules)"""
     msg = ""
@@ -544,7 +537,39 @@ def add_submodule_push_url(args: argparse.Namespace):
         make_utils.git_set_config(args.git_command, "remote.origin.pushURL", push_url, str(config))
 
 
-def submodules_update(args: argparse.Namespace, branch: Optional[str]) -> str:
+def submodules_lib_update(args: argparse.Namespace, branch: Optional[str]) -> str:
+    print_stage("Updating Libraries")
+
+    msg = ""
+    msg += floating_libraries_update(args, branch)
+
+    submodule_directories = get_submodule_directories(args)
+    for submodule_path in submodule_directories:
+        if not make_utils.is_git_submodule_enabled(args.git_command, submodule_path):
+            print(f"* Skipping {submodule_path}")
+            continue
+
+        print(f"* Updating {submodule_path} ...")
+
+        if not make_utils.git_update_submodule(args.git_command, submodule_path):
+            msg += f"Error updating Git submodule {submodule_path}\n"
+
+    add_submodule_push_url(args)
+
+    return msg
+
+
+def scripts_submodules_update(args: argparse.Namespace, branch: Optional[str]) -> str:
+    """Update working trees of addons and addons_contrib within the scripts/ directory"""
+    msg = ""
+
+    msg += external_scripts_update(args, "blender-addons", "addons", branch)
+    msg += external_scripts_update(args, "blender-addons-contrib", "addons_contrib", branch)
+
+    return msg
+
+
+def submodules_code_update(args: argparse.Namespace, branch: Optional[str]) -> str:
     """Update submodules or other externally tracked source trees"""
     print_stage("Updating Submodules")
 
@@ -552,21 +577,13 @@ def submodules_update(args: argparse.Namespace, branch: Optional[str]) -> str:
 
     msg += scripts_submodules_update(args, branch)
 
-    msg += floating_libraries_update(args, branch)
-
-    print("* Updating Git submodules")
-    exitcode = call((args.git_command, "submodule", "update", "--init"), exit_on_error=False)
-    if exitcode != 0:
-        msg += "Error updating Git submodules\n"
-
-    add_submodule_push_url(args)
-
     return msg
 
 
 if __name__ == "__main__":
     args = parse_arguments()
     blender_skip_msg = ""
+    libraries_skip_msg = ""
     submodules_skip_msg = ""
 
     blender_version = make_utils. parse_blender_version()
@@ -588,19 +605,19 @@ if __name__ == "__main__":
             blender_skip_msg = "Blender repository skipped: " + blender_skip_msg + "\n"
 
     if not args.no_libraries:
-        update_precompiled_libraries(args)
+        libraries_skip_msg += initialize_precompiled_libraries(args)
         if args.use_tests:
-            update_tests_data_files(args)
+            libraries_skip_msg += initialize_tests_data_files(args)
+        libraries_skip_msg += submodules_lib_update(args, branch)
 
     if not args.no_submodules:
-        submodules_skip_msg = submodules_update(args, branch)
+        submodules_skip_msg += submodules_code_update(args, branch)
 
     # Report any skipped repositories at the end, so it's not as easy to miss.
-    skip_msg = blender_skip_msg + submodules_skip_msg
+    skip_msg = blender_skip_msg + libraries_skip_msg + submodules_skip_msg
     if skip_msg:
-        print()
+        print_stage("Update finished with the following messages")
         print(skip_msg.strip())
-        print()
 
     # For failed submodule update we throw an error, since not having correct
     # submodules can make Blender throw errors.
