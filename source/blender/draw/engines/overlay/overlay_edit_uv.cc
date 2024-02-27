@@ -36,6 +36,7 @@
 
 #include "overlay_private.hh"
 
+#include <map>
 using blender::Vector;
 
 /* Forward declarations. */
@@ -422,6 +423,31 @@ void OVERLAY_edit_uv_cache_init(OVERLAY_Data *vedata)
   }
 }
 
+inline void overlay_edit_uv_display_vert_id(const BMEditMesh *em,
+                                            const BMUVOffsets &offsets,
+                                            DRWTextStore *dt)
+{
+  BMVert *vert;
+  BMLoop *loop;
+  BMIter it_vert;
+  uchar col[4] = {0, 0, 255, 255};
+  int i = 0, li = 0, numstr_len = 0;
+  blender::Map<float2, int> stored_indices;
+  BM_ITER_MESH_INDEX (vert, &it_vert, em->bm, BM_VERTS_OF_MESH, i) {
+    char numstr[32];
+    BMIter it_loop;
+    BM_ITER_ELEM_INDEX (loop, &it_loop, vert, BM_LOOPS_OF_VERT, li) {
+      float *luv = BM_ELEM_CD_GET_FLOAT_P(loop, offsets.uv);
+      float2 fuv(luv[0], luv[1]);
+      if (BM_elem_flag_test(loop->v, BM_ELEM_SELECT) && !stored_indices.contains(fuv)) {
+        numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
+        DRW_text_cache_add(dt, luv, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col);
+        stored_indices.add(fuv, i);
+      }
+    }
+  }
+}
+
 static void overlay_edit_uv_display_indices(OVERLAY_Data *vedata, Object *ob)
 {
   using namespace blender::draw;
@@ -430,38 +456,21 @@ static void overlay_edit_uv_display_indices(OVERLAY_Data *vedata, Object *ob)
   if (!display_indices || !show_text) {
     return;
   }
+
+  Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
+  BMEditMesh *em = mesh->edit_mesh;
+  bool uv_layer = CustomData_has_layer(&em->bm->ldata, CD_PROP_FLOAT2);
+  if (!uv_layer) {
+    return;
+  }
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   const DRWContextState *draw_ctx = DRW_context_state_get();
-  SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
   Scene *scene = draw_ctx->scene;
-  ToolSettings *tool_settings = scene->toolsettings;
-  Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
-  Mesh *eval = (Mesh *)DEG_get_evaluated_object(draw_ctx->depsgraph, ob)->data;
   DRWTextStore *dt = DRW_text_cache_ensure();
-  BMEditMesh *em = mesh->edit_mesh;
-  BMIter it_face;
-  uchar col[4] = {255, 255, 255, 255};
-  UI_GetThemeColor3ubv(TH_DRAWEXTRA_FACEANG, col);
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
-  bool uv_layer = CustomData_has_layer(&em->bm->ldata, CD_PROP_FLOAT2);
+
   if (pd->edit_uv.do_verts) {
-    BMVert *vert;
-    BMFace *face;
-    BMLoop *loop;
-    int i = 0, numstr_len = 0;
-    float c = 0;
-    BM_ITER_MESH_INDEX (face, &it_face, em->bm, BM_FACES_OF_MESH, i) {
-      char numstr[32];
-      BMIter it_loop;
-      int li = 0;
-      BM_ITER_ELEM_INDEX (loop, &it_loop, face, BM_LOOPS_OF_FACE, li) {
-        float *luv = BM_ELEM_CD_GET_FLOAT_P(loop, offsets.uv);
-        numstr_len = SNPRINTF_RLEN(numstr, "%d", li);
-        if (BM_elem_flag_test(loop->v, BM_ELEM_SELECT)) {
-          DRW_text_cache_add(dt, luv, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col);
-        }
-      }
-    }
+    overlay_edit_uv_display_vert_id(em, offsets, dt);
   }
 }
 
