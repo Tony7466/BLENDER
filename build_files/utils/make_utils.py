@@ -132,7 +132,7 @@ def git_set_config(git_command: str, key: str, value: str, file: Optional[str] =
 
 def _git_submodule_config_key(submodule_dir: Path, key: str) -> str:
     submodule_dir_str = submodule_dir.as_posix()
-    return f"submodule.{submodule_dir}.{key}"
+    return f"submodule.{submodule_dir_str}.{key}"
 
 
 def is_git_submodule_enabled(git_command: str, submodule_dir: Path):
