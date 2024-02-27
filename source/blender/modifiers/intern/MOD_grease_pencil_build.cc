@@ -204,6 +204,8 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
                                    factor :
                                    (1.0f - factor);
 
+  const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
+
   int effective_points_num = 0;
   selection.foreach_index(
       [&](const int index) { effective_points_num += points_by_curve[index].size(); });
@@ -219,11 +221,12 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
 
   int counted_points_num = 0;
   for (const int i : IndexRange(stroke_count)) {
-    if (select[i] && counted_points_num >= effective_points_num) {
+    const int stroke = is_vanishing ? stroke_count - i - 1 : i;
+    if (select[stroke] && counted_points_num >= effective_points_num) {
       continue;
     }
     else {
-      counted_points_num += points_by_curve[i].size();
+      counted_points_num += points_by_curve[stroke].size();
       out_curves_num++;
     }
   }
@@ -261,14 +264,18 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
     next_curve++;
   });
 
+  const int stroke_count = curves.curves_num();
   bool done_scanning = false;
-  selection.foreach_index([&](const int stroke) {
+  selection.foreach_index([&](const int i) {
+    const int stroke = is_vanishing ? stroke_count - i - 1 : i;
     if (done_scanning || next_point >= dst_points_num) {
       done_scanning = true;
       return;
     }
     for (const int point : points_by_curve[stroke]) {
-      dst_to_src_point[next_point] = point;
+      dst_to_src_point[next_point] = is_vanishing ? points_by_curve[stroke].last() -
+                                                        (point - points_by_curve[stroke].first()) :
+                                                    point;
       next_point++;
       if (next_point >= dst_points_num) {
         done_scanning = true;
