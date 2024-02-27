@@ -65,6 +65,7 @@ struct BuildArguments {
   ID *id;
   bAnimContext *anim_context;
   bool draw_extrapolation;
+  bool only_keys_of_selected_fcurves;
   bool only_handles_of_selected_keys;
   bool no_handles;
 };
@@ -950,6 +951,11 @@ static void build_keyframe_render_data(const FCurve *fcu,
                                        FCurveRenderData &fcu_render_data,
                                        const BuildArguments &args)
 {
+  if (args.only_keys_of_selected_fcurves && !(fcu->flag & FCURVE_SELECTED)) {
+    fcu_render_data.key_points = Array<KeyVertex>();
+    return;
+  }
+
   float size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
   if (fcu->flag & FCURVE_PROTECTED) {
     size *= 0.8f;
@@ -1189,6 +1195,7 @@ static void build_fcurve_render_data(FCurve *fcu,
   args.draw_extrapolation = (sipo->flag & SIPO_NO_DRAW_EXTRAPOLATION) == 0;
   args.only_handles_of_selected_keys = sipo->flag & SIPO_SELVHANDLESONLY;
   args.no_handles = sipo->flag & SIPO_NOHANDLES;
+  args.only_keys_of_selected_fcurves = U.animation_flag & USER_ANIM_ONLY_SHOW_SELECTED_CURVE_KEYS;
   args.v2d = v2d;
   args.id = id;
   args.anim_context = anim_context;
@@ -1256,6 +1263,11 @@ static void draw_fcurve_keys(Array<FCurveRenderData> &render_data)
 
 static void draw_fcurve_lines(const Span<FCurveRenderData> &render_data)
 {
+  if (U.animation_flag & USER_ANIM_HIGH_QUALITY_DRAWING) {
+    GPU_line_smooth(true);
+  }
+  GPU_blend(GPU_BLEND_ALPHA);
+
   GPUIndexBufBuilder ibuf_builder;
   GPU_indexbuf_init_ex(&ibuf_builder, GPU_PRIM_LINE_STRIP, MAX_VERTS, MAX_VERTS);
   for (uint i = 0; i < MAX_VERTS; i++) {
@@ -1280,11 +1292,6 @@ static void draw_fcurve_lines(const Span<FCurveRenderData> &render_data)
   float viewport_size[4];
   GPU_viewport_size_get_f(viewport_size);
   GPU_shader_uniform_2fv(batch_lines->shader, "viewport_size", &viewport_size[2]);
-
-  if (U.animation_flag & USER_ANIM_HIGH_QUALITY_DRAWING) {
-    GPU_line_smooth(true);
-  }
-  GPU_blend(GPU_BLEND_ALPHA);
 
   int verts_in_buffer = 0;
   float2 *vertex_buffer_data = static_cast<float2 *>(GPU_vertbuf_get_data(vertex_buffer_lines));
