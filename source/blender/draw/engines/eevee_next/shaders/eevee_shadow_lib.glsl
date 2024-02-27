@@ -70,7 +70,6 @@ struct ShadowEvalResult {
 /** \name Shadow Sampling Functions
  * \{ */
 
-/* TODO(fclem): Remove. Only here to avoid include order hell with common_math_lib. */
 mat4x4 shadow_projection_perspective(float side, float near_clip, float far_clip)
 {
   float z_delta = far_clip - near_clip;
