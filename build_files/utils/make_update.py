@@ -163,7 +163,7 @@ def initialize_precompiled_libraries(args: argparse.Namespace) -> str:
         return "Skipping libraries update: no configured submodule\n"
 
     print(f"* Enabling precompiled libraries at {submodule_dir}")
-    make_utils.git_enable_submodule(args.git_command, submodule_dir)
+    make_utils.git_enable_submodule(args.git_command, Path(submodule_dir))
 
     return ""
 
@@ -178,7 +178,7 @@ def initialize_tests_data_files(args: argparse.Namespace) -> str:
     submodule_dir = "tests/data"
 
     print(f"* Enabling tests data at {submodule_dir}")
-    make_utils.git_enable_submodule(args.git_command, submodule_dir)
+    make_utils.git_enable_submodule(args.git_command, Path(submodule_dir))
 
     return ""
 
