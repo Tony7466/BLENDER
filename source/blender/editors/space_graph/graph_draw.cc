@@ -60,12 +60,13 @@ struct HandleLine {
 };
 
 struct BuildArguments {
-  bool draw_extrapolation;
   int2 bounding_indices;
   const View2D *v2d;
   ID *id;
   bAnimContext *anim_context;
-  SpaceGraph *sipo;
+  bool draw_extrapolation;
+  bool only_handles_of_selected_keys;
+  bool no_handles;
 };
 
 struct RenderBatch {
@@ -896,7 +897,6 @@ static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu)
 
 void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region)
 {
-  return;
   /* draw with thick dotted lines */
   GPU_line_width(3.0f);
 
@@ -948,7 +948,7 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region
 
 static void build_keyframe_render_data(const FCurve *fcu,
                                        FCurveRenderData &fcu_render_data,
-                                       BuildArguments &args)
+                                       const BuildArguments &args)
 {
   float size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
   if (fcu->flag & FCURVE_PROTECTED) {
@@ -980,8 +980,15 @@ static void build_keyframe_render_data(const FCurve *fcu,
 
 static void build_key_handle_render_data(const FCurve *fcu,
                                          FCurveRenderData &fcu_render_data,
-                                         BuildArguments &args)
+                                         const BuildArguments &args)
 {
+  fcu_render_data.key_handle_points = Vector<KeyVertex>();
+  fcu_render_data.key_handle_lines = Vector<HandleLine>();
+
+  if (args.no_handles) {
+    return;
+  }
+
   const float size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
 
   const uchar alpha = fcurve_display_alpha(fcu) * 255;
@@ -992,16 +999,12 @@ static void build_key_handle_render_data(const FCurve *fcu,
   ColorTheme4b color_desel;
   UI_GetThemeColor4ubv(TH_HANDLE_VERTEX, color_desel);
   color_desel[3] = alpha;
-  const int max_handle_count = (args.bounding_indices[1] - args.bounding_indices[0] + 1) * 2;
-  fcu_render_data.key_handle_points = Vector<KeyVertex>(max_handle_count);
-  fcu_render_data.key_handle_lines = Vector<HandleLine>(max_handle_count);
-  SpaceGraph *sipo = (SpaceGraph *)args.anim_context->sl;
 
   int handle_count = 0;
   BezTriple *prevbezt = nullptr;
   for (int i = args.bounding_indices[0]; i <= args.bounding_indices[1]; i++) {
     BezTriple *bezt = &fcu->bezt[i];
-    if (sipo->flag & SIPO_SELVHANDLESONLY) {
+    if (args.only_handles_of_selected_keys) {
       if (BEZT_ISSEL_ANY(bezt) == 0) {
         prevbezt = bezt;
         continue;
@@ -1027,9 +1030,9 @@ static void build_key_handle_render_data(const FCurve *fcu,
         handle_point.color = color_desel;
         UI_GetThemeColor3ubv(TH_HANDLE_FREE + bezt->h1, handle_line.color_a);
       }
-      fcu_render_data.key_handle_points[handle_count] = handle_point;
+      fcu_render_data.key_handle_points.append(handle_point);
       handle_line.color_b = handle_line.color_a;
-      fcu_render_data.key_handle_lines[handle_count] = handle_line;
+      fcu_render_data.key_handle_lines.append(handle_line);
       handle_count++;
     }
 
@@ -1044,13 +1047,12 @@ static void build_key_handle_render_data(const FCurve *fcu,
         handle_point.color = color_desel;
         UI_GetThemeColor3ubv(TH_HANDLE_FREE + bezt->h2, handle_line.color_a);
       }
-      fcu_render_data.key_handle_points[handle_count] = handle_point;
+      fcu_render_data.key_handle_points.append(handle_point);
       handle_line.color_b = handle_line.color_a;
-      fcu_render_data.key_handle_lines[handle_count] = handle_line;
+      fcu_render_data.key_handle_lines.append(handle_line);
       handle_count++;
     }
   }
-  fcu_render_data.key_handle_lines.resize(handle_count);
 }
 
 static void build_line_render_data(FCurve *fcu,
@@ -1185,16 +1187,15 @@ static void build_fcurve_render_data(FCurve *fcu,
   BuildArguments args;
   args.bounding_indices = bounding_indices;
   args.draw_extrapolation = (sipo->flag & SIPO_NO_DRAW_EXTRAPOLATION) == 0;
-  args.sipo = sipo;
+  args.only_handles_of_selected_keys = sipo->flag & SIPO_SELVHANDLESONLY;
+  args.no_handles = sipo->flag & SIPO_NOHANDLES;
   args.v2d = v2d;
   args.id = id;
   args.anim_context = anim_context;
 
   build_line_render_data(fcu, fcu_render_data, args);
   build_keyframe_render_data(fcu, fcu_render_data, args);
-  if (draw_fcurve_handles_check(sipo, fcu)) {
-    build_key_handle_render_data(fcu, fcu_render_data, args);
-  }
+  build_key_handle_render_data(fcu, fcu_render_data, args);
 }
 
 /** \} */
