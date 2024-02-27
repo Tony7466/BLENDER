@@ -312,6 +312,7 @@ static int transform_seq_slide_cursor_get(TransInfo *t)
     return WM_CURSOR_NSEW_SCROLL;
   }
 
+  const Scene *scene = t->scene;
   blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(t->context);
 
   if (strips.size() == 1) {
@@ -322,7 +323,8 @@ static int transform_seq_slide_cursor_get(TransInfo *t)
     Sequence *seq1 = strips[0];
     Sequence *seq2 = strips[1];
 
-    if (SEQ_time_start_frame_get(seq1) > SEQ_time_start_frame_get(seq2)) {
+    if (SEQ_time_left_handle_frame_get(scene, seq1) > SEQ_time_left_handle_frame_get(scene, seq2))
+    {
       SWAP(Sequence *, seq1, seq2);
     }
 
@@ -337,8 +339,8 @@ static int transform_seq_slide_cursor_get(TransInfo *t)
       return WM_CURSOR_NSEW_SCROLL;
     }
 
-    int cursor1 = transform_seq_slide_strip_cursor_get(strips[0]);
-    int cursor2 = transform_seq_slide_strip_cursor_get(strips[1]);
+    int cursor1 = transform_seq_slide_strip_cursor_get(seq1);
+    int cursor2 = transform_seq_slide_strip_cursor_get(seq2);
 
     if (cursor1 == WM_CURSOR_RIGHT_HANDLE && cursor2 == WM_CURSOR_LEFT_HANDLE) {
       t->flag |= T_HANDLE_TWEAK;

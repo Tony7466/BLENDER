@@ -29,6 +29,7 @@
 #include "RNA_define.hh"
 
 #include "SEQ_channels.hh"
+#include "SEQ_effects.hh"
 #include "SEQ_iterator.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_retiming.hh"
@@ -886,17 +887,10 @@ static void sequencer_select_strip_impl(const Editing *ed,
   }
 }
 
-/**
- * Returns true if strip can be selected, false otherwise.
- *
- * r_seq1 first strip to be selected. Never nullptr if function returns true
- * r_seq2 second strip to be selected.
- * r_side which handle is selected. This further clarifies result if seq2 is nullptr.
- */
 bool ED_sequencer_handle_selection_refine(const Scene *scene,
                                           ARegion *region,
-                                          float view_x,
-                                          float view_y,
+                                          float mouse_view_x,
+                                          float mouse_view_y,
                                           Sequence **r_seq1,
                                           Sequence **r_seq2,
                                           int *r_side)
@@ -916,23 +910,32 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
 
     rctf rectf;
     seq_rectf(scene, seq, &rectf);
-    if (!BLI_rctf_isect_pt(&rectf, view_x, view_y)) {
+    if (!BLI_rctf_isect_pt(&rectf, mouse_view_x, mouse_view_y)) {
       continue;
     }
 
-    float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx) * 4;
+    float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx) * 2;
     *r_seq1 = seq;
-    if (view_x < rectf.xmin + handsize) {
+
+    if (mouse_view_x < rectf.xmin + handsize) {
       *r_side = SEQ_SIDE_LEFT;
     }
-    if (view_x > rectf.xmax - handsize) {
+    if (mouse_view_x > rectf.xmax - handsize) {
       *r_side = SEQ_SIDE_RIGHT;
     }
+    if (SEQ_effect_get_num_inputs(seq->type) > 0) {
+      *r_side = SEQ_SIDE_NONE;
+    }
+
     break;
   }
 
-  if (*r_seq1 == nullptr || *r_side == 0) {
+  if (*r_seq1 == nullptr || *r_side == SEQ_SIDE_NONE) {
     return false;
+  }
+
+  if (*r_seq1 != nullptr && *r_side == SEQ_SIDE_NONE) {
+    return true;
   }
 
   if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
@@ -940,18 +943,20 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
   }
 
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
-    if (SEQ_transform_is_locked(ed->displayed_channels, seq)) {
+    if (SEQ_transform_is_locked(ed->displayed_channels, seq) ||
+        SEQ_effect_get_num_inputs(seq->type) > 0)
+    {
       break;
     }
     if (seq == *r_seq1) {
       continue;
     }
 
-    float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx) * 4;
+    float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx) * 2;
     rctf rectf;
     seq_rectf(scene, seq, &rectf);
-    rectf.xmin -= handsize / 4;
-    rectf.xmax += handsize / 4;
+    rectf.xmin -= handsize / 2;
+    rectf.xmax += handsize / 2;
 
     int handle1, handle2;
     if (*r_side == SEQ_SIDE_LEFT) {
@@ -966,14 +971,15 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
       continue;
     }
 
-    if (!BLI_rctf_isect_pt(&rectf, view_x, view_y)) {
+    if (!BLI_rctf_isect_pt(&rectf, mouse_view_x, mouse_view_y)) {
       continue;
     }
-    if (view_x < rectf.xmin + handsize / 2 || view_x > rectf.xmax - handsize / 4) {
+    if (mouse_view_x < rectf.xmin + handsize / 2 || mouse_view_x > rectf.xmax - handsize / 2) {
       *r_seq2 = seq;
     }
     break;
   }
+
   return true;
 }
 
