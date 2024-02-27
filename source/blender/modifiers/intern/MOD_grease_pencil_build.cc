@@ -9,6 +9,7 @@
 #include "BLI_array.hh"
 #include "BLI_hash.h"
 #include "BLI_rand.h"
+#include "BLI_sort.hh"
 #include "BLI_task.h"
 
 #include "BLT_translation.hh"
@@ -36,8 +37,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "GEO_extend_curves.hh"
-#include "GEO_trim_curves.hh"
+#include "GEO_reorder.hh"
 
 namespace blender {
 
@@ -72,6 +72,15 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
 {
   auto *omd = reinterpret_cast<GreasePencilBuildModifierData *>(md);
   modifier::greasepencil::foreach_influence_ID_link(&omd->influence, ob, walk, user_data);
+}
+
+static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
+{
+  auto *mmd = reinterpret_cast<GreasePencilArrayModifierData *>(md);
+  if (mmd->object != nullptr) {
+    DEG_add_object_relation(ctx->node, mmd->object, DEG_OB_COMP_TRANSFORM, "Build Modifier");
+  }
+  DEG_add_object_relation(ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Build Modifier");
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
@@ -299,11 +308,51 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
   return dst_curves;
 }
 
+static bke::CurvesGeometry reorder_strokes(const bke::CurvesGeometry &curves,
+                                           const Span<bool> select,
+                                           const Object &object,
+                                           MutableSpan<bool> r_selection)
+{
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const Span<float3> positions = curves.positions();
+  const float3 center = object.object_to_world().location();
+
+  struct _Pair {
+    float value;
+    int index;
+    bool selected;
+  };
+
+  Array<_Pair> distances(curves.curves_num());
+  threading::parallel_for(curves.curves_range(), 65536, [&](const IndexRange range) {
+    for (const int stroke : range) {
+      const float3 p1 = positions[points_by_curve[stroke].first()];
+      const float3 p2 = positions[points_by_curve[stroke].last()];
+      distances[stroke].value = math::max(math::distance(p1, center), math::distance(p2, center));
+      distances[stroke].index = stroke;
+      distances[stroke].selected = select[stroke];
+    }
+  });
+
+  parallel_sort(
+      distances.begin(), distances.end(), [](_Pair &a, _Pair &b) { return a.value < b.value; });
+
+  Array<int> new_order(curves.curves_num());
+  threading::parallel_for(curves.curves_range(), 65536, [&](const IndexRange range) {
+    for (const int i : range) {
+      new_order[i] = distances[i].index;
+      r_selection[i] = distances[i].selected;
+    }
+  });
+
+  return geometry::reorder_curves_geometry(curves, new_order.as_span(), {});
+}
+
 static float get_build_factor(const int time_mode,
-                        const int current_frame,
-                        const int start_frame,
-                        const int length,
-                        const float percentage)
+                              const int current_frame,
+                              const int start_frame,
+                              const int length,
+                              const float percentage)
 {
   if (time_mode == MOD_GREASE_PENCIL_BUILD_TIMEMODE_FRAMES) {
     return math::clamp(float(current_frame - start_frame) / length, 0.0f, 1.0f);
@@ -330,8 +379,17 @@ static void deform_drawing(const ModifierData &md,
   }
 
   IndexMaskMemory memory;
-  const IndexMask selection = modifier::greasepencil::get_filtered_stroke_mask(
+  IndexMask selection = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
+
+  if (mmd.object) {
+    const int curves_num = curves.curves_num();
+    Array<bool> select(curves_num), reordered_select(curves_num);
+    selection.to_bools(select);
+    curves = reorder_strokes(
+        curves, select.as_span(), *mmd.object, reordered_select.as_mutable_span());
+    selection = IndexMask::from_bools(reordered_select, memory);
+  }
 
   const float factor = get_build_factor(
       mmd.time_mode, current_time, mmd.start_delay, mmd.length, mmd.percentage_fac);
@@ -339,7 +397,6 @@ static void deform_drawing(const ModifierData &md,
   switch (mmd.mode) {
     default:
     case MOD_GREASE_PENCIL_BUILD_MODE_SEQUENTIAL:
-
       curves = build_sequential(curves, selection, mmd.transition, factor);
       break;
     case MOD_GREASE_PENCIL_BUILD_MODE_CONCURRENT:
@@ -375,10 +432,10 @@ static void modify_geometry_set(ModifierData *md,
   const Vector<bke::greasepencil::Drawing *> drawings =
       modifier::greasepencil::get_drawings_for_write(
           grease_pencil, layer_mask, grease_pencil.runtime->eval_frame);
-  
+
   const int eval_frame = grease_pencil.runtime->eval_frame;
-  if(mmd->flag & MOD_GREASE_PENCIL_BUILD_RESTRICT_TIME){
-    if(eval_frame < mmd->start_frame || eval_frame > mmd->end_frame){
+  if (mmd->flag & MOD_GREASE_PENCIL_BUILD_RESTRICT_TIME) {
+    if (eval_frame < mmd->start_frame || eval_frame > mmd->end_frame) {
       return;
     }
   }
@@ -527,7 +584,7 @@ ModifierTypeInfo modifierType_GreasePencilBuild = {
     /*required_data_mask*/ nullptr,
     /*free_data*/ blender::free_data,
     /*is_disabled*/ nullptr,
-    /*update_depsgraph*/ nullptr,
+    /*update_depsgraph*/ blender::update_depsgraph,
     /*depends_on_time*/ nullptr,
     /*depends_on_normals*/ nullptr,
     /*foreach_ID_link*/ blender::foreach_ID_link,
