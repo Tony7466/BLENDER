@@ -33,6 +33,7 @@ class OpenVDBParticleList {
                       const float voxel_size)
       : positions_(positions), radii_(radii), voxel_size_inv_(math::rcp(voxel_size))
   {
+    BLI_assert(voxel_size > 0.0f);
   }
 
   size_t size() const
