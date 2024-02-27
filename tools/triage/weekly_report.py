@@ -20,7 +20,7 @@ import argparse
 import datetime
 import json
 import re
-from gitea_utils import gitea_json_activities_get, gitea_json_issue_get, gitea_json_issue_events_filter, git_username_detect
+from gitea_utils import gitea_json_activities_get, gitea_json_issue_get, gitea_json_issue_events_filter, gitea_user_get, git_username_detect
 
 
 def argparse_create():
@@ -35,6 +35,14 @@ def argparse_create():
         type=str,
         required=False,
         help="")
+
+    parser.add_argument(
+        "--weeks-ago",
+        dest="weeks_ago",
+        type=int,
+        default=1,
+        help="Determine which week the report should be generated for. 0 means the current week. "
+             "The default is 1, to create a report for the previous week.")
 
     parser.add_argument(
         "-v",
@@ -74,6 +82,8 @@ def report_personal_weekly_get(username, start, verbose=True):
 
     commits_main = []
 
+    user_data = gitea_user_get(username)
+
     for i in range(7):
         date_curr = start + datetime.timedelta(days=i)
         date_curr_str = date_curr.strftime("%Y-%m-%d")
@@ -98,18 +108,29 @@ def report_personal_weekly_get(username, start, verbose=True):
             elif op_type == "create_pull_request":
                 fullname = activity["repo"]["full_name"] + "/pulls/" + activity["content"].split('|')[0]
                 pulls_created.add(fullname)
+            elif op_type in {"approve_pull_request", "reject_pull_request"}:
+                fullname = activity["repo"]["full_name"] + "/pulls/" + activity["content"].split('|')[0]
+                pulls_reviewed.append(fullname)
             elif op_type == "commit_repo":
-                if activity["ref_name"] == "refs/heads/main":
+                if activity["ref_name"] == "refs/heads/main" and activity["content"] and activity["repo"]["name"] != ".profile":
                     content_json = json.loads(activity["content"])
-                    repo_name = activity["repo"]["name"]
+                    repo_fullname = activity["repo"]["full_name"]
                     for commits in content_json["Commits"]:
+                        # Skip commits that were not made by this user. Using email doesn't seem to
+                        # be possible unfortunately.
+                        if commits["AuthorName"] != user_data["full_name"]:
+                            continue
+
                         title = commits["Message"].split('\n', 1)[0]
 
-                        # Substitute occurrences of "#\d+" with "{{Issue|\d+|repo}}"
-                        title = re.sub(r"#(\d+)", rf"{{{{Issue|\1|{repo_name}}}}}", title)
+                        if title.startswith("Merge branch "):
+                            continue
+
+                        # Substitute occurrences of "#\d+" with "repo#\d+"
+                        title = re.sub(r"#(\d+)", rf"{repo_fullname}#\1", title)
 
                         hash_value = commits["Sha1"][:10]
-                        commits_main.append(f"{title} ({{{{GitCommit|{hash_value}|{repo_name}}}}})")
+                        commits_main.append(f"{title} ({repo_fullname}@{hash_value})")
 
     date_end = date_curr
     len_total = len(issues_closed) + len(issues_commented) + len(pulls_commented)
@@ -175,7 +196,7 @@ def report_personal_weekly_get(username, start, verbose=True):
 
     issues_involved = issues_closed | issues_commented | issues_created
 
-    print("\'\'\'Involved in %s reports:\'\'\'                                     " % len(issues_involved))
+    print("**Involved in %s reports:**                                     " % len(issues_involved))
     print("* Confirmed: %s" % len(issues_confirmed))
     print("* Closed as Resolved: %s" % len(issues_fixed))
     print("* Closed as Archived: %s" % len(issues_archived))
@@ -190,20 +211,20 @@ def report_personal_weekly_get(username, start, verbose=True):
         for pull in pulls:
             pull_data = gitea_json_issue_get_cached(pull)
             title = pull_data["title"]
-            _, repo, _, number = pull.split('/')
-            print(f"* {{{{PullRequest|{number}|{repo}}}}}: {title}")
+            owner, repo, _, number = pull.split('/')
+            print(f"* {title} ({owner}/{repo}!{number})")
 
-    print("'''Review: %s'''" % len(pulls_reviewed))
+    print("**Review: %s**" % len(pulls_reviewed))
     print_pulls(pulls_reviewed)
     print()
 
     # Print created diffs
-    print("'''Created pulls: %s'''" % len(pulls_created))
+    print("**Created Pull Requests: %s**" % len(pulls_created))
     print_pulls(pulls_created)
     print()
 
     # Print commits
-    print("'''Commits:'''")
+    print("**Commits:**")
     for commit in commits_main:
         print("*", commit)
     print()
@@ -218,9 +239,9 @@ def report_personal_weekly_get(username, start, verbose=True):
         print("Debug:")
         print(f"Activities from {start.isoformat()} to {date_end.isoformat()}:")
         print()
-        print("Pulls Created:")
+        print("Pull Requests Created:")
         print_links(pulls_created)
-        print("Pulls Reviewed:")
+        print("Pull Requests Reviewed:")
         print_links(pulls_reviewed)
         print("Issues Confirmed:")
         print_links(issues_confirmed)
@@ -247,7 +268,7 @@ def main() -> None:
             return
 
     # end_date = datetime.datetime(2020, 3, 14)
-    end_date = datetime.datetime.now()
+    end_date = datetime.datetime.now() - datetime.timedelta(weeks=(args.weeks_ago - 1))
     weekday = end_date.weekday()
 
     # Assuming I am lazy and making this at last moment or even later in worst case
@@ -259,13 +280,12 @@ def main() -> None:
         time_delta = weekday
         start_date = end_date - datetime.timedelta(days=time_delta, hours=end_date.hour)
 
-    # Ensure friday :)
-    friday = start_date + datetime.timedelta(days=4)
-    week = start_date.isocalendar()[1]
-    start_date_str = start_date.strftime('%b %d')
-    end_date_str = friday.strftime('%b %d')
+    sunday = start_date + datetime.timedelta(days=6)
+    # week = start_date.isocalendar()[1]
+    start_date_str = start_date.strftime('%B ') + str(start_date.day)
+    end_date_str = str(sunday.day) if start_date.month == sunday.month else sunday.strftime('%B ') + str(sunday.day)
 
-    print("== Week %d (%s - %s) ==\n\n" % (week, start_date_str, end_date_str))
+    print(f"## {start_date_str} - {end_date_str}\n")
     report_personal_weekly_get(username, start_date, verbose=args.verbose)
 
 

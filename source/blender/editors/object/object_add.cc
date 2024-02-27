@@ -42,20 +42,21 @@
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_camera.h"
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_constraint.h"
-#include "BKE_context.h"
-#include "BKE_curve.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
 #include "BKE_curve_to_mesh.hh"
 #include "BKE_curves.h"
+#include "BKE_customdata.hh"
 #include "BKE_displist.h"
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_effect.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
@@ -64,30 +65,32 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_key.h"
-#include "BKE_lattice.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_grease_pencil_legacy_convert.hh"
+#include "BKE_key.hh"
+#include "BKE_lattice.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
-#include "BKE_lib_query.h"
-#include "BKE_lib_remap.h"
+#include "BKE_lib_query.hh"
+#include "BKE_lib_remap.hh"
 #include "BKE_light.h"
 #include "BKE_lightprobe.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_mball.h"
+#include "BKE_mball.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_nla.h"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
+#include "BKE_object_types.hh"
 #include "BKE_particle.h"
-#include "BKE_pointcloud.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_pointcloud.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_speaker.h"
-#include "BKE_vfont.h"
-#include "BKE_volume.h"
+#include "BKE_vfont.hh"
+#include "BKE_volume.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -119,7 +122,7 @@
 #include "ED_transform.hh"
 #include "ED_view3d.hh"
 
-#include "ANIM_bone_collections.h"
+#include "ANIM_bone_collections.hh"
 
 #include "UI_resources.hh"
 
@@ -332,7 +335,7 @@ void ED_object_base_init_transform_on_add(Object *object, const float loc[3], co
     copy_v3_v3(object->rot, rot);
   }
 
-  BKE_object_to_mat4(object, object->object_to_world);
+  BKE_object_to_mat4(object, object->runtime->object_to_world.ptr());
 }
 
 float ED_object_new_primitive_matrix(bContext *C,
@@ -352,14 +355,14 @@ float ED_object_new_primitive_matrix(bContext *C,
   invert_m3(rmat);
 
   /* inverse transform for initial rotation and object */
-  copy_m3_m4(mat, obedit->object_to_world);
+  copy_m3_m4(mat, obedit->object_to_world().ptr());
   mul_m3_m3m3(cmat, rmat, mat);
   invert_m3_m3(imat, cmat);
   copy_m4_m3(r_primmat, imat);
 
   /* center */
   copy_v3_v3(r_primmat[3], loc);
-  sub_v3_v3v3(r_primmat[3], r_primmat[3], obedit->object_to_world[3]);
+  sub_v3_v3v3(r_primmat[3], r_primmat[3], obedit->object_to_world().location());
   invert_m3_m3(imat, mat);
   mul_m3_v3(imat, r_primmat[3]);
 
@@ -496,7 +499,7 @@ bool ED_object_add_generic_get_opts(bContext *C,
 
   if (r_local_view_bits) {
     View3D *v3d = CTX_wm_view3d(C);
-    *r_local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+    *r_local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
   }
 
   /* Location! */
@@ -1445,16 +1448,16 @@ static int object_gpencil_add_exec(bContext *C, wmOperator *op)
       BKE_gpencil_modifier_unique_name(&ob->greasepencil_modifiers, (GpencilModifierData *)md);
 
       if (type == GP_LRT_COLLECTION) {
-        md->source_type = LRT_SOURCE_COLLECTION;
+        md->source_type = LINEART_SOURCE_COLLECTION;
         md->source_collection = CTX_data_collection(C);
       }
       else if (type == GP_LRT_OBJECT) {
-        md->source_type = LRT_SOURCE_OBJECT;
+        md->source_type = LINEART_SOURCE_OBJECT;
         md->source_object = ob_orig;
       }
       else {
         /* Whole scene. */
-        md->source_type = LRT_SOURCE_SCENE;
+        md->source_type = LINEART_SOURCE_SCENE;
       }
       /* Only created one layer and one material. */
       STRNCPY(md->target_layer, ((bGPDlayer *)gpd->layers.first)->info);
@@ -1536,8 +1539,8 @@ static EnumPropertyItem rna_enum_gpencil_add_stroke_depth_order_items[] = {
 void OBJECT_OT_gpencil_add(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Add Grease Pencil (legacy)";
-  ot->description = "Add a Grease Pencil (legacy) object to the scene";
+  ot->name = "Add Grease Pencil";
+  ot->description = "Add a Grease Pencil object to the scene";
   ot->idname = "OBJECT_OT_gpencil_add";
 
   /* api callbacks */
@@ -1807,7 +1810,7 @@ static std::optional<CollectionAddInfo> collection_add_info_get_from_op(bContext
   PropertyRNA *prop_location = RNA_struct_find_property(op->ptr, "location");
 
   add_info.collection = reinterpret_cast<Collection *>(
-      WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_GR));
+      WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, ID_GR));
 
   bool update_location_if_necessary = false;
   if (add_info.collection) {
@@ -1953,7 +1956,7 @@ static int collection_drop_exec(bContext *C, wmOperator *op)
 
   if (RNA_boolean_get(op->ptr, "use_instance")) {
     BKE_collection_child_remove(bmain, active_collection->collection, add_info->collection);
-    DEG_id_tag_update(&active_collection->collection->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&active_collection->collection->id, ID_RECALC_SYNC_TO_EVAL);
     DEG_relations_tag_update(bmain);
 
     Object *ob = ED_object_add_type(C,
@@ -1983,12 +1986,9 @@ static int collection_drop_exec(bContext *C, wmOperator *op)
     translate_m4(delta_mat, UNPACK3(offset));
 
     ObjectsInViewLayerParams params = {0};
-    uint objects_len;
-    Object **objects = BKE_view_layer_array_selected_objects_params(
-        view_layer, nullptr, &objects_len, &params);
-    ED_object_xform_array_m4(objects, objects_len, delta_mat);
-
-    MEM_freeN(objects);
+    blender::Vector<Object *> objects = BKE_view_layer_array_selected_objects_params(
+        view_layer, nullptr, &params);
+    ED_object_xform_array_m4(objects.data(), objects.size(), delta_mat);
   }
 
   return OPERATOR_FINISHED;
@@ -2053,8 +2053,7 @@ static int object_data_instance_add_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop_location = RNA_struct_find_property(op->ptr, "location");
 
   const short id_type = RNA_property_enum_get(op->ptr, prop_type);
-  id = WM_operator_properties_id_lookup_from_name_or_session_uuid(
-      bmain, op->ptr, (ID_Type)id_type);
+  id = WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, (ID_Type)id_type);
   if (id == nullptr) {
     return OPERATOR_CANCELLED;
   }
@@ -2229,7 +2228,7 @@ static int object_curves_empty_hair_add_exec(bContext *C, wmOperator *op)
 
   Object *curves_ob = ED_object_add_type(
       C, OB_CURVES, nullptr, nullptr, nullptr, false, local_view_bits);
-  BKE_object_apply_mat4(curves_ob, surface_ob->object_to_world, false, false);
+  BKE_object_apply_mat4(curves_ob, surface_ob->object_to_world().ptr(), false, false);
 
   /* Set surface object. */
   Curves *curves_id = static_cast<Curves *>(curves_ob->data);
@@ -2241,7 +2240,8 @@ static int object_curves_empty_hair_add_exec(bContext *C, wmOperator *op)
 
   /* Decide which UV map to use for attachment. */
   Mesh *surface_mesh = static_cast<Mesh *>(surface_ob->data);
-  const char *uv_name = CustomData_get_active_layer_name(&surface_mesh->loop_data, CD_PROP_FLOAT2);
+  const char *uv_name = CustomData_get_active_layer_name(&surface_mesh->corner_data,
+                                                         CD_PROP_FLOAT2);
   if (uv_name != nullptr) {
     curves_id->surface_uv_map = BLI_strdup(uv_name);
   }
@@ -2704,7 +2704,7 @@ static void make_object_duplilist_real(bContext *C,
 
     ob_dst->parent = nullptr;
     BKE_constraints_free(&ob_dst->constraints);
-    ob_dst->runtime.curve_cache = nullptr;
+    ob_dst->runtime->curve_cache = nullptr;
     const bool is_dupli_instancer = (ob_dst->transflag & OB_DUPLI) != 0;
     ob_dst->transflag &= ~OB_DUPLI;
     /* Remove instantiated collection, it's annoying to keep it here
@@ -2712,8 +2712,8 @@ static void make_object_duplilist_real(bContext *C,
     id_us_min((ID *)ob_dst->instance_collection);
     ob_dst->instance_collection = nullptr;
 
-    copy_m4_m4(ob_dst->object_to_world, dob->mat);
-    BKE_object_apply_mat4(ob_dst, ob_dst->object_to_world, false, false);
+    copy_m4_m4(ob_dst->runtime->object_to_world.ptr(), dob->mat);
+    BKE_object_apply_mat4(ob_dst, ob_dst->object_to_world().ptr(), false, false);
 
     BLI_ghash_insert(dupli_gh, dob, ob_dst);
     if (parent_gh) {
@@ -2835,7 +2835,7 @@ static void make_object_duplilist_real(bContext *C,
   BKE_main_id_newptr_and_tag_clear(bmain);
 
   base->object->transflag &= ~OB_DUPLI;
-  DEG_id_tag_update(&base->object->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&base->object->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 static int object_duplicates_make_real_exec(bContext *C, wmOperator *op)
@@ -2913,16 +2913,8 @@ static const EnumPropertyItem convert_target_items[] = {
     {OB_GPENCIL_LEGACY,
      "GPENCIL",
      ICON_OUTLINER_OB_GREASEPENCIL,
-#ifdef WITH_GREASE_PENCIL_V3
-     "Grease Pencil (legacy)",
-#else
      "Grease Pencil",
-#endif
-#ifdef WITH_GREASE_PENCIL_V3
-     "Grease Pencil (legacy) from Curve or Mesh objects"},
-#else
      "Grease Pencil from Curve or Mesh objects"},
-#endif
 #ifdef WITH_POINT_CLOUD
     {OB_POINTCLOUD,
      "POINTCLOUD",
@@ -2935,8 +2927,8 @@ static const EnumPropertyItem convert_target_items[] = {
     {OB_GREASE_PENCIL,
      "GREASEPENCIL",
      ICON_OUTLINER_OB_GREASEPENCIL,
-     "Grease Pencil",
-     "Grease Pencil from Grease Pencil (legacy)"},
+     "Grease Pencil v3",
+     "Grease Pencil v3 from Grease Pencil"},
 #endif
     {0, nullptr, 0, nullptr, nullptr},
 };
@@ -3160,11 +3152,11 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob = basen->object;
 
         /* Decrement original mesh's usage count. */
-        Mesh *me = static_cast<Mesh *>(newob->data);
-        id_us_min(&me->id);
+        Mesh *mesh = static_cast<Mesh *>(newob->data);
+        id_us_min(&mesh->id);
 
         /* Make a new copy of the mesh. */
-        newob->data = BKE_id_copy(bmain, &me->id);
+        newob->data = BKE_id_copy(bmain, &mesh->id);
       }
       else {
         newob = ob;
@@ -3183,10 +3175,10 @@ static int object_convert_exec(bContext *C, wmOperator *op)
       ob->flag |= OB_DONE;
 
       /* Create a new grease pencil object and copy transformations. */
-      ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+      ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
       float loc[3], size[3], rot[3][3], eul[3];
       float matrix[4][4];
-      mat4_to_loc_rot_size(loc, rot, size, ob->object_to_world);
+      mat4_to_loc_rot_size(loc, rot, size, ob->object_to_world().ptr());
       mat3_to_eul(eul, rot);
 
       Object *ob_gpencil = ED_gpencil_add_object(C, loc, local_view_bits);
@@ -3231,8 +3223,6 @@ static int object_convert_exec(bContext *C, wmOperator *op)
     {
       ob->flag |= OB_DONE;
 
-      bGPdata *gpd = static_cast<bGPdata *>(ob->data);
-
       if (keep_original) {
         BLI_assert_unreachable();
       }
@@ -3240,24 +3230,15 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob = ob;
       }
 
-      GreasePencil *new_grease_pencil = static_cast<GreasePencil *>(
-          BKE_id_new(bmain, ID_GP, newob->id.name + 2));
-      newob->data = new_grease_pencil;
-      newob->type = OB_GREASE_PENCIL;
-
-      bke::greasepencil::convert::legacy_gpencil_to_grease_pencil(
-          *bmain, *new_grease_pencil, *gpd);
-
-      BKE_object_free_derived_caches(newob);
-      BKE_object_free_modifiers(newob, 0);
+      bke::greasepencil::convert::legacy_gpencil_object(*bmain, *newob);
     }
     else if (target == OB_CURVES) {
       ob->flag |= OB_DONE;
 
       Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
       bke::GeometrySet geometry;
-      if (ob_eval->runtime.geometry_set_eval != nullptr) {
-        geometry = *ob_eval->runtime.geometry_set_eval;
+      if (ob_eval->runtime->geometry_set_eval != nullptr) {
+        geometry = *ob_eval->runtime->geometry_set_eval;
       }
 
       if (geometry.has_curves()) {
@@ -3301,11 +3282,11 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob = basen->object;
 
         /* Decrement original mesh's usage count. */
-        Mesh *me = static_cast<Mesh *>(newob->data);
-        id_us_min(&me->id);
+        Mesh *mesh = static_cast<Mesh *>(newob->data);
+        id_us_min(&mesh->id);
 
         /* Make a new copy of the mesh. */
-        newob->data = BKE_id_copy(bmain, &me->id);
+        newob->data = BKE_id_copy(bmain, &mesh->id);
       }
       else {
         newob = ob;
@@ -3326,11 +3307,11 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         newob = basen->object;
 
         /* Decrement original mesh's usage count. */
-        Mesh *me = static_cast<Mesh *>(newob->data);
-        id_us_min(&me->id);
+        Mesh *mesh = static_cast<Mesh *>(newob->data);
+        id_us_min(&mesh->id);
 
         /* Make a new copy of the mesh. */
-        newob->data = BKE_id_copy(bmain, &me->id);
+        newob->data = BKE_id_copy(bmain, &mesh->id);
       }
       else {
         newob = ob;
@@ -3436,7 +3417,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
         BKE_object_free_curve_cache(newob);
       }
       else if (target == OB_GPENCIL_LEGACY) {
-        ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+        ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
         Object *ob_gpencil = ED_gpencil_add_object(C, newob->loc, local_view_bits);
         copy_v3_v3(ob_gpencil->rot, newob->rot);
         copy_v3_v3(ob_gpencil->scale, newob->scale);
@@ -3479,7 +3460,7 @@ static int object_convert_exec(bContext *C, wmOperator *op)
           /* Create a new grease pencil object and copy transformations.
            * Nurbs Surface are not supported.
            */
-          ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+          ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
           Object *ob_gpencil = ED_gpencil_add_object(C, ob->loc, local_view_bits);
           copy_v3_v3(ob_gpencil->rot, ob->rot);
           copy_v3_v3(ob_gpencil->scale, ob->scale);
@@ -3554,8 +3535,8 @@ static int object_convert_exec(bContext *C, wmOperator *op)
 
       Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
       bke::GeometrySet geometry;
-      if (ob_eval->runtime.geometry_set_eval != nullptr) {
-        geometry = *ob_eval->runtime.geometry_set_eval;
+      if (ob_eval->runtime->geometry_set_eval != nullptr) {
+        geometry = *ob_eval->runtime->geometry_set_eval;
       }
 
       if (keep_original) {
@@ -4004,7 +3985,7 @@ static int duplicate_exec(bContext *C, wmOperator *op)
   ED_outliner_select_sync_from_object_tag(C);
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
 
   WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
   WM_event_add_notifier(C, NC_SCENE | ND_LAYER_CONTENT, scene);
@@ -4060,7 +4041,7 @@ static int object_add_named_exec(bContext *C, wmOperator *op)
   /* Find object, create fake base. */
 
   Object *ob = reinterpret_cast<Object *>(
-      WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_OB));
+      WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, ID_OB));
 
   if (ob == nullptr) {
     BKE_report(op->reports, RPT_ERROR, "Object not found");
@@ -4111,8 +4092,9 @@ static int object_add_named_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop_matrix = RNA_struct_find_property(op->ptr, "matrix");
   if (RNA_property_is_set(op->ptr, prop_matrix)) {
     Object *ob_add = basen->object;
-    RNA_property_float_get_array(op->ptr, prop_matrix, &ob_add->object_to_world[0][0]);
-    BKE_object_apply_mat4(ob_add, ob_add->object_to_world, true, true);
+    RNA_property_float_get_array(
+        op->ptr, prop_matrix, ob_add->runtime->object_to_world.base_ptr());
+    BKE_object_apply_mat4(ob_add, ob_add->object_to_world().ptr(), true, true);
 
     DEG_id_tag_update(&ob_add->id, ID_RECALC_TRANSFORM);
   }
@@ -4174,7 +4156,7 @@ static int object_transform_to_mouse_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
   Object *ob = reinterpret_cast<Object *>(
-      WM_operator_properties_id_lookup_from_name_or_session_uuid(bmain, op->ptr, ID_OB));
+      WM_operator_properties_id_lookup_from_name_or_session_uid(bmain, op->ptr, ID_OB));
 
   if (!ob) {
     BKE_view_layer_synced_ensure(scene, view_layer);
@@ -4198,9 +4180,8 @@ static int object_transform_to_mouse_exec(bContext *C, wmOperator *op)
   PropertyRNA *prop_matrix = RNA_struct_find_property(op->ptr, "matrix");
   if (RNA_property_is_set(op->ptr, prop_matrix)) {
     ObjectsInViewLayerParams params = {0};
-    uint objects_len;
-    Object **objects = BKE_view_layer_array_selected_objects_params(
-        view_layer, nullptr, &objects_len, &params);
+    blender::Vector<Object *> objects = BKE_view_layer_array_selected_objects_params(
+        view_layer, nullptr, &params);
 
     float matrix[4][4];
     RNA_property_float_get_array(op->ptr, prop_matrix, &matrix[0][0]);
@@ -4209,14 +4190,12 @@ static int object_transform_to_mouse_exec(bContext *C, wmOperator *op)
     float mat_dst_unit[4][4];
     float final_delta[4][4];
 
-    normalize_m4_m4(mat_src_unit, ob->object_to_world);
+    normalize_m4_m4(mat_src_unit, ob->object_to_world().ptr());
     normalize_m4_m4(mat_dst_unit, matrix);
     invert_m4(mat_src_unit);
     mul_m4_m4m4(final_delta, mat_dst_unit, mat_src_unit);
 
-    ED_object_xform_array_m4(objects, objects_len, final_delta);
-
-    MEM_freeN(objects);
+    ED_object_xform_array_m4(objects.data(), objects.size(), final_delta);
   }
   else if (CTX_wm_region_view3d(C)) {
     int mval[2];
@@ -4233,7 +4212,7 @@ static int object_transform_to_mouse_exec(bContext *C, wmOperator *op)
        *
        * The caller is responsible for ensuring the selection state gives useful results.
        * Link/append does this using #FILE_AUTOSELECT. */
-      ED_view3d_snap_selected_to_location(C, cursor, V3D_AROUND_ACTIVE);
+      ED_view3d_snap_selected_to_location(C, op, cursor, V3D_AROUND_ACTIVE);
     }
   }
 
@@ -4262,10 +4241,10 @@ void OBJECT_OT_transform_to_mouse(wmOperatorType *ot)
       nullptr,
       MAX_ID_NAME - 2,
       "Name",
-      "Object name to place (uses the active object when this and 'session_uuid' are unset)");
+      "Object name to place (uses the active object when this and 'session_uid' are unset)");
   RNA_def_property_flag(prop, (PropertyFlag)(PROP_SKIP_SAVE | PROP_HIDDEN));
   prop = RNA_def_int(ot->srna,
-                     "session_uuid",
+                     "session_uid",
                      0,
                      INT32_MIN,
                      INT32_MAX,
@@ -4365,7 +4344,7 @@ static int object_join_exec(bContext *C, wmOperator *op)
      * If the zero scale is removed, the data on this axis remains un-scaled
      * (something that wouldn't work for #invert_m4_m4_safe). */
     float imat_test[4][4];
-    if (!invert_m4_m4(imat_test, ob->object_to_world)) {
+    if (!invert_m4_m4(imat_test, ob->object_to_world().ptr())) {
       BKE_report(op->reports,
                  RPT_WARNING,
                  "Active object final transform has one or more zero scaled axes");

@@ -14,7 +14,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "transform.hh"
 #include "transform_snap.hh"
@@ -65,7 +65,7 @@ static void createTransMBallVerts(bContext * /*C*/, TransInfo *t)
     tx = tc->data_ext = static_cast<TransDataExtension *>(
         MEM_callocN(tc->data_len * sizeof(TransDataExtension), "MetaElement_TransExtension"));
 
-    copy_m3_m4(mtx, tc->obedit->object_to_world);
+    copy_m3_m4(mtx, tc->obedit->object_to_world().ptr());
     pseudoinverse_m3_m3(smtx, mtx, PSEUDOINVERSE_EPSILON);
 
     LISTBASE_FOREACH (MetaElem *, ml, mb->editelems) {

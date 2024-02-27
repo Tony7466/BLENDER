@@ -10,31 +10,21 @@
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_defaults.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_context.h"
-#include "BKE_deform.h"
-#include "BKE_editmesh.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
-#include "BKE_mesh.hh"
-#include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.h"
-#include "BKE_screen.hh"
+#include "BKE_deform.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_modifier.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
-
-#include "DEG_depsgraph_query.hh"
 
 #include "MOD_ui_common.hh"
 #include "MOD_util.hh"
@@ -445,11 +435,15 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
 static void deform_verts(ModifierData *md,
                          const ModifierEvalContext *ctx,
                          Mesh *mesh,
-                         float (*vertexCos)[3],
-                         int verts_num)
+                         blender::MutableSpan<blender::float3> positions)
 {
   SimpleDeformModifierData *sdmd = (SimpleDeformModifierData *)md;
-  SimpleDeformModifier_do(sdmd, ctx, ctx->object, mesh, vertexCos, verts_num);
+  SimpleDeformModifier_do(sdmd,
+                          ctx,
+                          ctx->object,
+                          mesh,
+                          reinterpret_cast<float(*)[3]>(positions.data()),
+                          positions.size());
 }
 
 static void panel_draw(const bContext * /*C*/, Panel *panel)
@@ -531,7 +525,7 @@ ModifierTypeInfo modifierType_SimpleDeform = {
     /*struct_name*/ "SimpleDeformModifierData",
     /*struct_size*/ sizeof(SimpleDeformModifierData),
     /*srna*/ &RNA_SimpleDeformModifier,
-    /*type*/ eModifierTypeType_OnlyDeform,
+    /*type*/ ModifierTypeType::OnlyDeform,
 
     /*flags*/ eModifierTypeFlag_AcceptsMesh | eModifierTypeFlag_AcceptsCVs |
         eModifierTypeFlag_AcceptsVertexCosOnly | eModifierTypeFlag_SupportsEditmode |
@@ -560,4 +554,5 @@ ModifierTypeInfo modifierType_SimpleDeform = {
     /*panel_register*/ panel_register,
     /*blend_write*/ nullptr,
     /*blend_read*/ nullptr,
+    /*foreach_cache*/ nullptr,
 };
