@@ -412,7 +412,7 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
  * stochastic percentage closer filtering of shadow-maps. */
 vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng)
 {
-  if (uniform_buf.shadow.pcf_radius <= 0.001) {
+  if (light.pcf_radius <= 0.001) {
     /* Early return. */
     return vec3(0.0);
   }
@@ -464,7 +464,7 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
 #endif
   vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(0.0), rand);
   pcf_offset = pcf_offset * 2.0 - 1.0;
-  pcf_offset *= uniform_buf.shadow.pcf_radius;
+  pcf_offset *= light.pcf_radius;
 
   return TB * pcf_offset;
 }

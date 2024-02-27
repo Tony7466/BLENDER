@@ -1917,7 +1917,7 @@ typedef struct SceneEEVEE {
   int shadow_ray_count;
   int shadow_step_count;
   float shadow_normal_bias;
-  float shadow_filter_radius;
+  float _pad0;
 
   int ray_tracing_method;
 
