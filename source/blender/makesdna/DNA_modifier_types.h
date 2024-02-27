@@ -115,6 +115,7 @@ typedef enum ModifierType {
   eModifierType_GreasePencilLineart = 78,
   eModifierType_GreasePencilArmature = 79,
   eModifierType_GreasePencilTime = 80,
+  eModifierType_GreasePencilOutline = 81,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -3225,3 +3226,25 @@ typedef enum GreasePencilTimeModifierSegmentMode {
   MOD_GREASE_PENCIL_TIME_SEG_MODE_REVERSE = 1,
   MOD_GREASE_PENCIL_TIME_SEG_MODE_PINGPONG = 2,
 } GreasePencilTimeModifierSegmentMode;
+
+typedef struct GreasePencilOutlineModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  /** Target stroke origin. */
+  struct Object *object;
+  /** #GreasePencilOutlineModifierFlag. */
+  int flag;
+  /** Thickness. */
+  int thickness;
+  /** Sample Length. */
+  float sample_length;
+  /** Subdivisions. */
+  int subdiv;
+  /** Material for outline. */
+  struct Material *outline_material;
+} GreasePencilOutlineModifierData;
+
+typedef enum GreasePencilOutlineModifierFlag {
+  MOD_GREASE_PENCIL_OUTLINE_KEEP_SHAPE = (1 << 0),
+} GreasePencilOutlineModifierFlag;
