@@ -1188,10 +1188,11 @@ void BKE_sound_update_scene(Depsgraph *depsgraph, Scene *scene)
   if (DEG_id_type_any_exists(depsgraph, ID_SPK)) {
     DEGObjectIterSettings deg_iter_settings = {nullptr};
     deg_iter_settings.depsgraph = depsgraph;
-    deg_iter_settings.flags = DEG_ITER_OBJECT_FLAG_LINKED_DIRECTLY |
-                              DEG_ITER_OBJECT_FLAG_LINKED_INDIRECTLY |
-                              DEG_ITER_OBJECT_FLAG_LINKED_VIA_SET;
+    deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
     DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, object) {
+      if (object->visibility_flag & OB_HIDE_VIEWPORT) {
+        continue;
+      }
       sound_update_base(scene, object, new_set);
     }
     DEG_OBJECT_ITER_END;
