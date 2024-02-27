@@ -2240,7 +2240,14 @@ static bNodeSocket *rna_Node_inputs_new(ID *id,
   }
 
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(id);
-  bNodeSocket *sock = nodeAddSocket(ntree, node, SOCK_IN, type, identifier, name);
+  bNodeSocket *sock;
+
+  if (node->type == CMP_NODE_OUTPUT_FILE) {
+    sock = ntreeCompositOutputFileAddSocket(ntree, node, name, nullptr);
+  }
+  else {
+    sock = nodeAddSocket(ntree, node, SOCK_IN, type, identifier, name);
+  }
 
   if (sock == nullptr) {
     BKE_report(reports, RPT_ERROR, "Unable to create socket");
