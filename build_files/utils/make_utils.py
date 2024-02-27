@@ -138,7 +138,7 @@ def is_git_submodule_enabled(git_command: str, submodule_dir: str):
 
     # Check whether the submodule actually exists.
     # Request path of an unknown submodule will cause non-zero exit code.
-    path = git_get_config(git_command, f"submodule.{submodule_dir}.path", gitmodules)
+    path = git_get_config(git_command, f"submodule.{submodule_dir}.path", str(gitmodules))
     if not path:
         return False
 
