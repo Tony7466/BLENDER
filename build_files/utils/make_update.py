@@ -543,11 +543,10 @@ def submodules_lib_update(args: argparse.Namespace, branch: Optional[str]) -> st
 
     submodule_directories = get_submodule_directories(args)
     for submodule_path in submodule_directories:
-        if submodule_path.parts[0] not in ("lib", "tests"):
-            continue
-
         if not make_utils.git_update_submodule(args.git_command, submodule_path):
             msg += f"Error updating Git submodule {submodule_path}\n"
+
+    add_submodule_push_url(args)
 
     return msg
 
@@ -569,18 +568,6 @@ def submodules_code_update(args: argparse.Namespace, branch: Optional[str]) -> s
     msg = ""
 
     msg += scripts_submodules_update(args, branch)
-
-    print("* Updating Git submodules")
-
-    submodule_directories = get_submodule_directories(args)
-    for submodule_path in submodule_directories:
-        if submodule_path.parts[0] in ("lib", "tests"):
-            continue
-
-        if not make_utils.git_update_submodule(args.git_command, submodule_path):
-            msg += f"Error updating Git submodule {submodule_path}\n"
-
-    add_submodule_push_url(args)
 
     return msg
 
