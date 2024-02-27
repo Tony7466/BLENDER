@@ -113,6 +113,8 @@ typedef enum ModifierType {
   eModifierType_GreasePencilWeightProximity = 76,
   eModifierType_GreasePencilHook = 77,
   eModifierType_GreasePencilLineart = 78,
+  eModifierType_GreasePencilArmature = 79,
+  eModifierType_GreasePencilTime = 80,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -3164,3 +3166,62 @@ typedef struct GreasePencilLineartModifierData {
   /* Keep a pointer to the render buffer so we can call destroy from #ModifierData. */
   struct LineartData *la_data_ptr;
 } GreasePencilLineartModifierData;
+
+typedef struct GreasePencilArmatureModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  struct Object *object;
+  /** #eArmature_DeformFlag. */
+  short deformflag;
+  char _pad[6];
+} GreasePencilArmatureModifierData;
+
+typedef struct GreasePencilTimeModifierSegment {
+  char name[64];
+  int segment_start;
+  int segment_end;
+  int segment_mode;
+  int segment_repeat;
+} GreasePencilTimeModifierSegment;
+
+typedef struct GreasePencilTimeModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /** #GreasePencilTimeModifierFlag */
+  int flag;
+  int offset;
+  /** Animation scale. */
+  float frame_scale;
+  int mode;
+  /** Start and end frame for custom range. */
+  int sfra, efra;
+
+  GreasePencilTimeModifierSegment *segments_array;
+  int segments_num;
+  int segment_active_index;
+
+#ifdef __cplusplus
+  blender::Span<GreasePencilTimeModifierSegment> segments() const;
+  blender::MutableSpan<GreasePencilTimeModifierSegment> segments();
+#endif
+} GreasePencilTimeModifierData;
+
+typedef enum GreasePencilTimeModifierFlag {
+  MOD_GREASE_PENCIL_TIME_KEEP_LOOP = (1 << 0),
+  MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE = (1 << 1),
+} GreasePencilTimeModifierFlag;
+
+typedef enum GreasePencilTimeModifierMode {
+  MOD_GREASE_PENCIL_TIME_MODE_NORMAL = 0,
+  MOD_GREASE_PENCIL_TIME_MODE_REVERSE = 1,
+  MOD_GREASE_PENCIL_TIME_MODE_FIX = 2,
+  MOD_GREASE_PENCIL_TIME_MODE_PINGPONG = 3,
+  MOD_GREASE_PENCIL_TIME_MODE_CHAIN = 4,
+} GreasePencilTimeModifierMode;
+
+typedef enum GreasePencilTimeModifierSegmentMode {
+  MOD_GREASE_PENCIL_TIME_SEG_MODE_NORMAL = 0,
+  MOD_GREASE_PENCIL_TIME_SEG_MODE_REVERSE = 1,
+  MOD_GREASE_PENCIL_TIME_SEG_MODE_PINGPONG = 2,
+} GreasePencilTimeModifierSegmentMode;
