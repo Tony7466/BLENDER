@@ -65,6 +65,7 @@ struct BuildArguments {
   const View2D *v2d;
   ID *id;
   bAnimContext *anim_context;
+  SpaceGraph *sipo;
 };
 
 struct RenderBatch {
@@ -1177,20 +1178,21 @@ static void build_fcurve_render_data(FCurve *fcu,
                                      FCurveRenderData &fcu_render_data,
                                      ID *id,
                                      bAnimContext *anim_context,
-                                     const bool draw_extrapolation)
+                                     SpaceGraph *sipo)
 {
   const View2D *v2d = &anim_context->region->v2d;
   const int2 bounding_indices = get_bounding_bezt_indices(fcu, v2d->cur.xmin, v2d->cur.xmax);
   BuildArguments args;
   args.bounding_indices = bounding_indices;
-  args.draw_extrapolation = draw_extrapolation;
+  args.draw_extrapolation = (sipo->flag & SIPO_NO_DRAW_EXTRAPOLATION) == 0;
+  args.sipo = sipo;
   args.v2d = v2d;
   args.id = id;
   args.anim_context = anim_context;
 
   build_line_render_data(fcu, fcu_render_data, args);
   build_keyframe_render_data(fcu, fcu_render_data, args);
-  if (draw_fcurve_handles_check((SpaceGraph *)anim_context->sl, fcu)) {
+  if (draw_fcurve_handles_check(sipo, fcu)) {
     build_key_handle_render_data(fcu, fcu_render_data, args);
   }
 }
@@ -1465,8 +1467,6 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
     anim_list_elements[list_index] = ale;
   }
 
-  const bool draw_extrapolation = (sipo->flag & SIPO_NO_DRAW_EXTRAPOLATION) == 0;
-
   Array<FCurveRenderData> render_data(fcurve_count);
   threading::parallel_for(anim_list_elements.index_range(), 64, [&](const IndexRange range) {
     for (const int i : range) {
@@ -1474,7 +1474,7 @@ void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, shor
       AnimData *adt = ANIM_nla_mapping_get(ac, ale);
       FCurve *fcu = (FCurve *)ale->key_data;
       ANIM_nla_mapping_apply_fcurve(adt, fcu, false, false);
-      build_fcurve_render_data(fcu, render_data[i], ale->id, ac, draw_extrapolation);
+      build_fcurve_render_data(fcu, render_data[i], ale->id, ac, sipo);
       ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
     }
   });
