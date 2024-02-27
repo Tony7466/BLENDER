@@ -156,7 +156,9 @@ static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
   bke::CurvesGeometry dst_curves(dst_points_num, dst_curves_num);
   Array<int> dst_offsets(dst_curves_num + 1);
   Array<int> dst_to_src_point(dst_points_num);
-  int next_curve = 1, next_point = 0;
+
+  dst_offsets[0] = 0;
+  int next_curve = 0, next_point = 0;
   for (const int i : IndexRange(curves.curves_num())) {
     if (points_per_curve[i]) {
       dst_offsets[next_curve] = points_per_curve[i];
@@ -164,14 +166,15 @@ static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
       const int extra_offset = is_vanishing ? points_by_curve[i].size() - points_per_curve[i] : 0;
       for (const int stroke_point : IndexRange(points_per_curve[i])) {
         dst_to_src_point[next_point] = extra_offset + stroke_point;
+        next_point++;
       }
 
       next_curve++;
     }
   }
 
-  OffsetIndices dst_indices = offset_indices::accumulate_counts_to_offsets(dst_offsets);
-  dst_curves.offsets_for_write() = dst_offsets;
+  offset_indices::accumulate_counts_to_offsets(dst_offsets);
+  array_utils::copy(dst_offsets.as_span(),dst_curves.offsets_for_write());
 
   const bke::AttributeAccessor attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
