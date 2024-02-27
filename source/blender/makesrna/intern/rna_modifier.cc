@@ -2089,9 +2089,9 @@ static void rna_GreasePencilDashModifier_segments_begin(CollectionPropertyIterat
 }
 
 const EnumPropertyItem *grease_pencil_build_time_mode_filter(bContext * /*C*/,
-                                                       PointerRNA *ptr,
-                                                       PropertyRNA * /*prop*/,
-                                                       bool *r_free)
+                                                             PointerRNA *ptr,
+                                                             PropertyRNA * /*prop*/,
+                                                             bool *r_free)
 {
 
   auto *md = static_cast<ModifierData *>(ptr->data);
@@ -2101,7 +2101,8 @@ const EnumPropertyItem *grease_pencil_build_time_mode_filter(bContext * /*C*/,
   EnumPropertyItem *item_list = nullptr;
   int totitem = 0;
 
-  for (const EnumPropertyItem *item = grease_pencil_build_time_mode_items; item->identifier != nullptr;
+  for (const EnumPropertyItem *item = grease_pencil_build_time_mode_items;
+       item->identifier != nullptr;
        item++)
   {
     if (is_concurrent && (item->value == MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED)) {
@@ -10032,7 +10033,8 @@ static void rna_def_modifier_grease_pencil_build(BlenderRNA *brna)
 
   /* Use percentage bool (used by sequential & concurrent modes) */
   prop = RNA_def_property(srna, "use_percentage", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(prop, nullptr, "time_mode", MOD_GREASE_PENCIL_BUILD_TIMEMODE_PERCENTAGE);
+  RNA_def_property_boolean_sdna(
+      prop, nullptr, "time_mode", MOD_GREASE_PENCIL_BUILD_TIMEMODE_PERCENTAGE);
   RNA_def_property_ui_text(
       prop, "Restrict Visible Points", "Use a percentage factor to determine the visible points");
   RNA_def_property_update(prop, 0, "rna_Modifier_update");

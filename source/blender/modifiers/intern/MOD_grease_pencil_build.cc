@@ -18,7 +18,6 @@
 
 #include "DNA_defaults.h"
 #include "DNA_gpencil_modifier_types.h"
-#include "DNA_node_types.h" /* For `GeometryNodeCurveSampleMode` */
 #include "DNA_object_types.h"
 
 #include "BKE_curves.hh"
@@ -103,8 +102,8 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
                                               const int time_alignment,
                                               const int transition,
                                               const float factor,
-                                              int &out_curves_num,
-                                              int &out_points_num)
+                                              int &r_curves_num,
+                                              int &r_points_num)
 {
   const int stroke_count = curves.curves_num();
   const OffsetIndices<int> &points_by_curve = curves.points_by_curve();
@@ -116,12 +115,12 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
     max_length = math::max(max_length, len);
   }
 
-  out_curves_num = out_points_num = 0;
+  r_curves_num = r_points_num = 0;
   const float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
                                    math::clamp(factor, 0.0f, 1.0f) :
                                    math::clamp(1.0f - factor, 0.0f, 1.0f);
 
-  auto get_factor = [&](const float factor, const int index) {
+  auto get_stroke_factor = [&](const float factor, const int index) {
     const float max_factor = max_length / curves.evaluated_lengths_for_curve(index, false).last();
     if (time_alignment == MOD_GREASE_PENCIL_BUILD_TIMEALIGN_START) {
       return std::clamp(factor * max_factor, 0.0f, 1.0f);
@@ -136,12 +135,12 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
   selection.to_bools(select.as_mutable_span());
   Array<int> result(stroke_count);
   for (const int i : IndexRange(stroke_count)) {
-    const float local_factor = (select[i] ? get_factor(factor_to_keep, i) : 1.0f);
+    const float local_factor = (select[i] ? get_stroke_factor(factor_to_keep, i) : 1.0f);
     const int points = points_by_curve[i].size() * local_factor;
     result[i] = points;
-    out_points_num += points;
+    r_points_num += points;
     if (points) {
-      out_curves_num++;
+      r_curves_num++;
     }
   }
   return result;
@@ -202,13 +201,13 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
                                    const IndexMask &selection,
                                    const int transition,
                                    const float factor,
-                                   int &out_curves_num,
-                                   int &out_points_num)
+                                   int &r_curves_num,
+                                   int &r_points_num)
 {
   const int stroke_count = curves.curves_num();
   const OffsetIndices<int> &points_by_curve = curves.points_by_curve();
 
-  out_curves_num = out_points_num = 0;
+  r_curves_num = r_points_num = 0;
   const float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
                                    factor :
                                    (1.0f - factor);
@@ -223,7 +222,7 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
   effective_points_num *= factor_to_keep;
   effective_points_num += untouched_points_num;
 
-  out_points_num = effective_points_num;
+  r_points_num = effective_points_num;
 
   Array<bool> select(stroke_count);
   selection.to_bools(select.as_mutable_span());
@@ -236,7 +235,7 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
     }
     else {
       counted_points_num += points_by_curve[stroke].size();
-      out_curves_num++;
+      r_curves_num++;
     }
   }
 }
@@ -354,15 +353,14 @@ static float get_build_factor(const int time_mode,
                               const int length,
                               const float percentage)
 {
-  if (time_mode == MOD_GREASE_PENCIL_BUILD_TIMEMODE_FRAMES) {
-    return math::clamp(float(current_frame - start_frame) / length, 0.0f, 1.0f);
-  }
-  else if (time_mode == MOD_GREASE_PENCIL_BUILD_TIMEMODE_PERCENTAGE) {
-    return percentage;
-  }
-  else {
-    // TODO: Find a way to implement MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED...
-    return 0;
+  switch (time_mode) {
+    case MOD_GREASE_PENCIL_BUILD_TIMEMODE_FRAMES:
+      return math::clamp(float(current_frame - start_frame) / length, 0.0f, 1.0f);
+    case MOD_GREASE_PENCIL_BUILD_TIMEMODE_PERCENTAGE:
+      return percentage;
+    default:
+      // TODO: Find a way to implement MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED...
+      return 0;
   }
 }
 
