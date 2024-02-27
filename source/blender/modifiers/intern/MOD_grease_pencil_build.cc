@@ -299,7 +299,7 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
   return dst_curves;
 }
 
-static float get_factor(const int time_mode,
+static float get_build_factor(const int time_mode,
                         const int current_frame,
                         const int start_frame,
                         const int length,
@@ -333,21 +333,25 @@ static void deform_drawing(const ModifierData &md,
   const IndexMask selection = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
 
-  const float factor = get_factor(
+  const float factor = get_build_factor(
       mmd.time_mode, current_time, mmd.start_delay, mmd.length, mmd.percentage_fac);
 
-  if (mmd.mode == MOD_GREASE_PENCIL_BUILD_MODE_CONCURRENT) {
-    curves = build_concurrent(curves, selection, mmd.time_alignment, mmd.transition, factor);
-  }
-  else if (mmd.mode == MOD_GREASE_PENCIL_BUILD_MODE_SEQUENTIAL) {
-    curves = build_sequential(curves, selection, mmd.transition, factor);
-  }
-  else if (mmd.mode == MOD_GREASE_PENCIL_BUILD_MODE_ADDITIVE) {
-    // Todo: I'm not sure what this mode means, looks like the same to me.
-    // The original code path seems to indicate it will only build "extra stroke"
-    // compared to the previous grease pencil frame, but it's by counting strokes
-    // only, so it doesn't guarantee matching strokes...?
-    curves = build_sequential(curves, selection, mmd.transition, factor);
+  switch (mmd.mode) {
+    default:
+    case MOD_GREASE_PENCIL_BUILD_MODE_SEQUENTIAL:
+
+      curves = build_sequential(curves, selection, mmd.transition, factor);
+      break;
+    case MOD_GREASE_PENCIL_BUILD_MODE_CONCURRENT:
+      curves = build_concurrent(curves, selection, mmd.time_alignment, mmd.transition, factor);
+      break;
+    case MOD_GREASE_PENCIL_BUILD_MODE_ADDITIVE:
+      // Todo: I'm not sure what this mode means, looks like the same to me.
+      // The original code path seems to indicate it will only build "extra stroke"
+      // compared to the previous grease pencil frame, but it's by counting strokes
+      // only, so it doesn't guarantee matching strokes...?
+      curves = build_sequential(curves, selection, mmd.transition, factor);
+      break;
   }
 
   drawing.tag_topology_changed();
@@ -371,9 +375,16 @@ static void modify_geometry_set(ModifierData *md,
   const Vector<bke::greasepencil::Drawing *> drawings =
       modifier::greasepencil::get_drawings_for_write(
           grease_pencil, layer_mask, grease_pencil.runtime->eval_frame);
+  
+  const int eval_frame = grease_pencil.runtime->eval_frame;
+  if(mmd->flag & MOD_GREASE_PENCIL_BUILD_RESTRICT_TIME){
+    if(eval_frame < mmd->start_frame || eval_frame > mmd->end_frame){
+      return;
+    }
+  }
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_drawing(*md, *ctx->object, *drawing, grease_pencil.runtime->eval_frame);
+    deform_drawing(*md, *ctx->object, *drawing, eval_frame);
   });
 }
 
@@ -467,7 +478,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
     uiItemPointerR(col,
                    ptr,
-                   "dst_vertex_group",
+                   "target_vertex_group",
                    &ob_ptr,
                    "vertex_groups",
                    IFACE_("Weight Output"),
