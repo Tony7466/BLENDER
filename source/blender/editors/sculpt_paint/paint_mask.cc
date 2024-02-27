@@ -32,6 +32,7 @@
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
 #include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_multires.hh"
@@ -255,7 +256,7 @@ static void fill_mask_mesh(Object &object, const float value, const Span<PBVHNod
     }
   }
 
-  bke::SpanAttributeWriter<float> mask = attributes.lookup_or_add_for_write_only_span<float>(
+  bke::SpanAttributeWriter<float> mask = attributes.lookup_or_add_for_write_span<float>(
       ".sculpt_mask", bke::AttrDomain::Point);
 
   threading::EnumerableThreadSpecific<Vector<int>> all_index_data;
@@ -2021,6 +2022,17 @@ static int paint_mask_gesture_line_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int face_set_gesture_box_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  return WM_gesture_box_invoke(C, op, event);
+}
+
 static int face_set_gesture_box_exec(bContext *C, wmOperator *op)
 {
   SculptGestureContext *sgcontext = sculpt_gesture_init_from_box(C, op);
@@ -2031,6 +2043,17 @@ static int face_set_gesture_box_exec(bContext *C, wmOperator *op)
   sculpt_gesture_apply(C, sgcontext, op);
   sculpt_gesture_context_free(sgcontext);
   return OPERATOR_FINISHED;
+}
+
+static int face_set_gesture_lasso_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
+  return WM_gesture_lasso_invoke(C, op, event);
 }
 
 static int face_set_gesture_lasso_exec(bContext *C, wmOperator *op)
@@ -2074,6 +2097,12 @@ static int sculpt_trim_gesture_box_invoke(bContext *C, wmOperator *op, const wmE
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
 
   SculptCursorGeometryInfo sgi;
   const float mval_fl[2] = {float(event->mval[0]), float(event->mval[1])};
@@ -2119,6 +2148,12 @@ static int sculpt_trim_gesture_lasso_invoke(bContext *C, wmOperator *op, const w
 {
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
 
   SculptCursorGeometryInfo sgi;
   const float mval_fl[2] = {float(event->mval[0]), float(event->mval[1])};
@@ -2213,7 +2248,7 @@ void SCULPT_OT_face_set_lasso_gesture(wmOperatorType *ot)
   ot->idname = "SCULPT_OT_face_set_lasso_gesture";
   ot->description = "Add face set within the lasso as you move the brush";
 
-  ot->invoke = WM_gesture_lasso_invoke;
+  ot->invoke = face_set_gesture_lasso_invoke;
   ot->modal = WM_gesture_lasso_modal;
   ot->exec = face_set_gesture_lasso_exec;
 
@@ -2232,7 +2267,7 @@ void SCULPT_OT_face_set_box_gesture(wmOperatorType *ot)
   ot->idname = "SCULPT_OT_face_set_box_gesture";
   ot->description = "Add face set within the box as you move the brush";
 
-  ot->invoke = WM_gesture_box_invoke;
+  ot->invoke = face_set_gesture_box_invoke;
   ot->modal = WM_gesture_box_modal;
   ot->exec = face_set_gesture_box_exec;
 

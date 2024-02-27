@@ -188,7 +188,7 @@ bool DRW_object_is_renderable(const Object *ob)
   if (ob->type == OB_MESH) {
     if ((ob == DST.draw_ctx.object_edit) || DRW_object_is_in_edit_mode(ob)) {
       View3D *v3d = DST.draw_ctx.v3d;
-      if (v3d && RETOPOLOGY_ENABLED(v3d)) {
+      if (v3d && ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) && RETOPOLOGY_ENABLED(v3d)) {
         return false;
       }
     }
@@ -517,6 +517,8 @@ static void drw_manager_init(DRWManager *dst, GPUViewport *viewport, const int s
   RegionView3D *rv3d = dst->draw_ctx.rv3d;
   ARegion *region = dst->draw_ctx.region;
 
+  dst->in_progress = true;
+
   int view = (viewport) ? GPU_viewport_active_view_get(viewport) : 0;
 
   if (!dst->viewport && dst->vmempool) {
@@ -647,6 +649,7 @@ static void drw_manager_exit(DRWManager *dst)
   /* Avoid accidental reuse. */
   drw_state_ensure_not_reused(dst);
 #endif
+  dst->in_progress = false;
 }
 
 DefaultFramebufferList *DRW_viewport_framebuffer_list_get()
@@ -2930,6 +2933,11 @@ void DRW_draw_depth_object(
   GPU_framebuffer_free(depth_fb);
 }
 
+bool DRW_draw_in_progress()
+{
+  return DST.in_progress;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -3045,7 +3053,7 @@ void DRW_engines_register()
   RE_engines_register(&DRW_engine_viewport_eevee_type);
   /* Always register EEVEE Next so it can be used in background mode with `--factory-startup`.
    * (Needed for tests). */
-  RE_engines_register(&DRW_engine_viewport_eevee_next_type);
+  // RE_engines_register(&DRW_engine_viewport_eevee_next_type);
 
   RE_engines_register(&DRW_engine_viewport_workbench_type);
 
