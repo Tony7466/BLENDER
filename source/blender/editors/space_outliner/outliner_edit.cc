@@ -2350,22 +2350,15 @@ void OUTLINER_OT_orphans_purge(wmOperatorType *ot)
 /** \name Manage Orphan Data-Blocks Operator
  * \{ */
 
-static int outliner_orphans_manage_invoke(bContext *C,
-                                          wmOperator * /*op*/,
-                                          const wmEvent * /*event*/)
+static int outliner_orphans_manage_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
-  int width = 800;
-  int height = 500;
-  if (wm_get_screensize(&width, &height)) {
-    width /= 2;
-    height /= 2;
-  }
-
+  const int sizex = int(450.0f * UI_SCALE_FAC);
+  const int sizey = int(450.0f * UI_SCALE_FAC);
   const rcti window_rect = {
-      /*xmin*/ 0,
-      /*xmax*/ width,
-      /*ymin*/ 0,
-      /*ymax*/ height,
+      /*xmin*/ event->xy[0],
+      /*xmax*/ event->xy[0] + sizex,
+      /*ymin*/ event->xy[1],
+      /*ymax*/ event->xy[1] + sizey,
   };
 
   if (WM_window_open(C,
@@ -2375,11 +2368,11 @@ static int outliner_orphans_manage_invoke(bContext *C,
                      false,
                      false,
                      true,
-                     WIN_ALIGN_PARENT_CENTER,
+                     WIN_ALIGN_LOCATION_CENTER,
                      nullptr,
                      nullptr) != nullptr)
   {
-    SpaceOutliner *soutline = (SpaceOutliner *)CTX_wm_area(C)->spacedata.first;
+    SpaceOutliner *soutline = CTX_wm_space_outliner(C);
     soutline->outlinevis = SO_ID_ORPHANS;
     return OPERATOR_FINISHED;
   }
