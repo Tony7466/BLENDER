@@ -1,9 +1,8 @@
 if "%BUILD_ARCH%" == "arm64" (
-	set BUILD_VS_LIBDIR=windows_arm64
+	set BUILD_VS_LIBDIR=lib/windows_arm64
 ) else (
-	set BUILD_VS_LIBDIR=windows_x64
+	set BUILD_VS_LIBDIR=lib/windows_x64
 )
-set BUILD_VS_LIBDIR="%BLENDER_DIR%..\lib\%BUILD_VS_SVNDIR%"
 
 if NOT "%verbose%" == "" (
 	echo Library Directory = "%BUILD_VS_LIBDIR%"

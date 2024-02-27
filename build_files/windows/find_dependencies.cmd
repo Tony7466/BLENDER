@@ -24,19 +24,19 @@ if EXIST %PYTHON% (
 )
 
 rem Additionally check for the ARM64 version
-set PYTHON=%BLENDER_DIR%\..\lib\winarm64_vc15\python\310\bin\python.exe
+set PYTHON=%BLENDER_DIR%\lib\windows_arm64\python\310\bin\python.exe
 if EXIST %PYTHON% (
 	goto detect_python_done
 )
-set PYTHON=%BLENDER_DIR%\..\lib\winarm64_vc15\python\311\bin\python.exe
+set PYTHON=%BLENDER_DIR%\lib\windows_arm64\python\311\bin\python.exe
 if EXIST %PYTHON% (
 	goto detect_python_done
 )
-set PYTHON=%BLENDER_DIR%\..\lib\winarm64_vc15\python\312\bin\python.exe
+set PYTHON=%BLENDER_DIR%\lib\windows_arm64\python\312\bin\python.exe
 if EXIST %PYTHON% (
 	goto detect_python_done
 )
-set PYTHON=%BLENDER_DIR%\..\lib\winarm64_vc15\python\39\bin\python.exe
+set PYTHON=%BLENDER_DIR%\lib\windows_arm64\python\39\bin\python.exe
 if EXIST %PYTHON% (
 	goto detect_python_done
 )
