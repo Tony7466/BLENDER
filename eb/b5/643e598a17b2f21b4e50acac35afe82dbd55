@@ -6,3 +6,4 @@ Referenced by issue #108923, Regression: crash and assert hit in curve sculpt mo
 Referenced by commit 94e6ab6d718735b9646bd11fb3196c5fe224fd74, Fix #108923: Serious issues in 'undo_preserve' process of Scene's toolsettings.
 Referenced by issue #116734, Measure Tool Undo crash
 Referenced by issue #118693, Regression: Crash on linking collection, then undoing and re-doing operation
+Referenced by commit 40480fe22686266915cbba1ea73525a4fe233807, Fix #118693: Crash on linking collection, then undoing and re-doing operation.
