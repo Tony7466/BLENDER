@@ -346,6 +346,7 @@ SDNA_DEFAULT_DECL_STRUCT(GreasePencilWeightAngleModifierData);
 SDNA_DEFAULT_DECL_STRUCT(GreasePencilArrayModifierData);
 SDNA_DEFAULT_DECL_STRUCT(GreasePencilWeightProximityModifierData);
 SDNA_DEFAULT_DECL_STRUCT(GreasePencilHookModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilArmatureModifierData);
 SDNA_DEFAULT_DECL_STRUCT(GreasePencilEnvelopeModifierData);
 
 #undef SDNA_DEFAULT_DECL_STRUCT
@@ -613,6 +614,7 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL(GreasePencilWeightAngleModifierData),
     SDNA_DEFAULT_DECL(GreasePencilArrayModifierData),
     SDNA_DEFAULT_DECL(GreasePencilWeightProximityModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilArmatureModifierData),
     SDNA_DEFAULT_DECL(GreasePencilEnvelopeModifierData),
 };
 #undef SDNA_DEFAULT_DECL

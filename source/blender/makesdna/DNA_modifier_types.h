@@ -113,7 +113,8 @@ typedef enum ModifierType {
   eModifierType_GreasePencilWeightProximity = 76,
   eModifierType_GreasePencilHook = 77,
   eModifierType_GreasePencilLineart = 78,
-  eModifierType_GreasePencilEnvelope = 79,
+  eModifierType_GreasePencilArmature = 79,
+  eModifierType_GreasePencilEnvelope = 80,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -3165,6 +3166,16 @@ typedef struct GreasePencilLineartModifierData {
   /* Keep a pointer to the render buffer so we can call destroy from #ModifierData. */
   struct LineartData *la_data_ptr;
 } GreasePencilLineartModifierData;
+
+typedef struct GreasePencilArmatureModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  struct Object *object;
+  /** #eArmature_DeformFlag. */
+  short deformflag;
+  char _pad[6];
+} GreasePencilArmatureModifierData;
 
 typedef struct GreasePencilEnvelopeModifierData {
   ModifierData modifier;
