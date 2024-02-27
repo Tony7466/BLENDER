@@ -18,6 +18,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_curves.hh"
+#include "BKE_customdata.hh"
 #include "BKE_duplilist.h"
 #include "BKE_geometry_set.hh"
 
@@ -105,7 +106,7 @@ static void populate_cache_for_instance(Object &object,
 
 static bool attribute_type_supports_viewer_overlay(const eCustomDataType data_type)
 {
-  return (uint64_t(1) << data_type) & (CD_MASK_PROP_ALL & ~CD_MASK_PROP_QUATERNION);
+  return CD_TYPE_AS_MASK(data_type) & (CD_MASK_PROP_ALL & ~CD_MASK_PROP_QUATERNION);
 }
 
 static void populate_cache_for_geometry(Object &object,
