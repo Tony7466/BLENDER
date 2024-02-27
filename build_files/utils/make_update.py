@@ -162,6 +162,7 @@ def initialize_precompiled_libraries(args: argparse.Namespace) -> str:
     if Path(submodule_dir) not in submodule_directories:
         return "Skipping libraries update: no configured submodule\n"
 
+    print(f"* Enabling precompiled libraries at {submodule_dir}")
     make_utils.git_enable_submodule(args.git_command, submodule_dir)
 
     return ""
@@ -176,6 +177,7 @@ def initialize_tests_data_files(args: argparse.Namespace) -> str:
 
     submodule_dir = "tests/data"
 
+    print(f"* Enabling tests data at {submodule_dir}")
     make_utils.git_enable_submodule(args.git_command, submodule_dir)
 
     return ""
@@ -543,6 +545,12 @@ def submodules_lib_update(args: argparse.Namespace, branch: Optional[str]) -> st
 
     submodule_directories = get_submodule_directories(args)
     for submodule_path in submodule_directories:
+        if not make_utils.is_git_submodule_enabled(args.git_command, submodule_path):
+            print(f"* Skipping {submodule_path}")
+            continue
+
+        print(f"* Updating {submodule_path} ...")
+
         if not make_utils.git_update_submodule(args.git_command, submodule_path):
             msg += f"Error updating Git submodule {submodule_path}\n"
 
