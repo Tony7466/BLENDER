@@ -983,6 +983,12 @@
     .shadow_camera_size = 200.0f, \
   }
 
+#define _DNA_DEFAULT_GreasePencilArmatureModifierData \
+  { \
+    .deformflag = ARM_DEF_VGROUP, \
+    .object = NULL, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilTimeModifierData \
   { \
     .flag = MOD_GREASE_PENCIL_TIME_KEEP_LOOP, \

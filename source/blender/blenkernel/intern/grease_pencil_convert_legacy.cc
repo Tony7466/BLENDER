@@ -804,6 +804,32 @@ static void legacy_object_modifier_influence(GreasePencilModifierInfluenceData &
   }
 }
 
+static void legacy_object_modifier_armature(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilArmature, legacy_md);
+  auto &md_armature = reinterpret_cast<GreasePencilArmatureModifierData &>(md);
+  auto &legacy_md_armature = reinterpret_cast<ArmatureGpencilModifierData &>(legacy_md);
+
+  md_armature.object = legacy_md_armature.object;
+  legacy_md_armature.object = nullptr;
+  md_armature.deformflag = legacy_md_armature.deformflag;
+
+  legacy_object_modifier_influence(md_armature.influence,
+                                   "",
+                                   0,
+                                   false,
+                                   false,
+                                   nullptr,
+                                   0,
+                                   false,
+                                   false,
+                                   legacy_md_armature.vgname,
+                                   legacy_md_armature.deformflag & ARM_DEF_INVERT_VGROUP,
+                                   nullptr,
+                                   false);
+}
+
 static void legacy_object_modifier_array(Object &object, GpencilModifierData &legacy_md)
 {
   ModifierData &md = legacy_object_modifier_common(
@@ -1579,6 +1605,9 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
       case eGpencilModifierType_None:
         /* Unknown type, just ignore. */
         break;
+      case eGpencilModifierType_Armature:
+        legacy_object_modifier_armature(object, *gpd_md);
+        break;
       case eGpencilModifierType_Array:
         legacy_object_modifier_array(object, *gpd_md);
         break;
@@ -1636,7 +1665,6 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
 
       case eGpencilModifierType_Build:
       case eGpencilModifierType_Simplify:
-      case eGpencilModifierType_Armature:
       case eGpencilModifierType_Texture:
       case eGpencilModifierType_Lineart:
       case eGpencilModifierType_Shrinkwrap:
