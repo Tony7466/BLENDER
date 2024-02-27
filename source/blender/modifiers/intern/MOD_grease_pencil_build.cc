@@ -112,20 +112,22 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
                                    math::clamp(factor, 0.0f, 1.0f) :
                                    math::clamp(1.0f - factor, 0.0f, 1.0f);
 
-  auto get_factor = [&](const float factor_to_keep, const int index) {
+  auto get_factor = [&](const float factor, const int index) {
     const float max_factor = max_length / curves.evaluated_lengths_for_curve(index, false).last();
     if (time_alignment == MOD_GREASE_PENCIL_BUILD_TIMEALIGN_START) {
-      return std::clamp(factor_to_keep * max_factor, 0.0f, 1.0f);
+      return std::clamp(factor * max_factor, 0.0f, 1.0f);
     }
     /* Else: (#MOD_GREASE_PENCIL_BUILD_TIMEALIGN_END). */
     const float min_factor = max_factor - 1.0f;
-    const float use_factor = factor_to_keep * max_factor;
+    const float use_factor = factor * max_factor;
     return std::clamp(use_factor - min_factor, 0.0f, 1.0f);
   };
 
+  Array<bool> select(stroke_count);
+  selection.to_bools(select.as_mutable_span());
   Array<int> result(stroke_count);
   for (const int i : IndexRange(stroke_count)) {
-    const int local_factor = (selection[i] ? get_factor(factor_to_keep, i) : 1.0f);
+    const float local_factor = (select[i] ? get_factor(factor_to_keep, i) : 1.0f);
     const int points = points_by_curve[i].size() * local_factor;
     result[i] = points;
     out_points_num += points;
@@ -165,7 +167,10 @@ static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
 
       const int extra_offset = is_vanishing ? points_by_curve[i].size() - points_per_curve[i] : 0;
       for (const int stroke_point : IndexRange(points_per_curve[i])) {
-        dst_to_src_point[next_point] = extra_offset + stroke_point;
+        if (stroke_point >= points_per_curve[i]) {
+          break;
+        }
+        dst_to_src_point[next_point] = points_by_curve[i].first() + extra_offset + stroke_point;
         next_point++;
       }
 
@@ -174,7 +179,7 @@ static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
   }
 
   offset_indices::accumulate_counts_to_offsets(dst_offsets);
-  array_utils::copy(dst_offsets.as_span(),dst_curves.offsets_for_write());
+  array_utils::copy(dst_offsets.as_span(), dst_curves.offsets_for_write());
 
   const bke::AttributeAccessor attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
@@ -209,9 +214,12 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
 
   out_points_num = effective_points_num;
 
+  Array<bool> select(stroke_count);
+  selection.to_bools(select.as_mutable_span());
+
   int counted_points_num = 0;
   for (const int i : IndexRange(stroke_count)) {
-    if (selection[i] && counted_points_num >= effective_points_num) {
+    if (select[i] && counted_points_num >= effective_points_num) {
       continue;
     }
     else {
@@ -274,7 +282,7 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
   BLI_assert(next_curve == (dst_curves_num + 1));
   BLI_assert(next_point == dst_points_num);
 
-  array_utils::copy(dst_offsets.as_span(),dst_curves.offsets_for_write());
+  array_utils::copy(dst_offsets.as_span(), dst_curves.offsets_for_write());
 
   const bke::AttributeAccessor attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
@@ -421,12 +429,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   /* Check for incompatible time modifier. */
   Object *ob = static_cast<Object *>(ob_ptr.data);
   auto *md = static_cast<GreasePencilBuildModifierData *>(ptr->data);
-
-  // TODO: Time offset modifier not merged yet:
-
-  // if (BKE_gpencil_modifiers_findby_type(ob, eGpencilModifierType_Time) != nullptr) {
-  //   BKE_gpencil_modifier_set_error(md, "Build and Time Offset modifiers are incompatible");
-  // }
 
   if (uiLayout *panel = uiLayoutPanelProp(
           C, layout, ptr, "open_frame_range_panel", "Effective Range"))
