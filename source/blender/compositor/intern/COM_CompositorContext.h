@@ -262,11 +262,6 @@ class CompositorContext {
   }
 
   Size2f get_render_size() const;
-
-  /**
-   * Get active execution model.
-   */
-  eExecutionModel get_execution_model() const;
 };
 
 }  // namespace blender::compositor

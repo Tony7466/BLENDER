@@ -21,14 +21,12 @@ ProjectorLensDistortionOperation::ProjectorLensDistortionOperation()
 
 void ProjectorLensDistortionOperation::init_data()
 {
-  if (execution_model_ == eExecutionModel::FullFrame) {
-    NodeOperation *dispersion_input = get_input_operation(1);
-    if (dispersion_input->get_flags().is_constant_operation) {
-      dispersion_ = static_cast<ConstantOperation *>(dispersion_input)->get_constant_elem()[0];
-    }
-    kr_ = 0.25f * max_ff(min_ff(dispersion_, 1.0f), 0.0f);
-    kr2_ = kr_ * 20;
+  NodeOperation *dispersion_input = get_input_operation(1);
+  if (dispersion_input->get_flags().is_constant_operation) {
+    dispersion_ = static_cast<ConstantOperation *>(dispersion_input)->get_constant_elem()[0];
   }
+  kr_ = 0.25f * max_ff(min_ff(dispersion_, 1.0f), 0.0f);
+  kr2_ = kr_ * 20;
 }
 
 void ProjectorLensDistortionOperation::init_execution()
@@ -118,17 +116,10 @@ void ProjectorLensDistortionOperation::update_dispersion()
 
 void ProjectorLensDistortionOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
-  switch (execution_model_) {
-    case eExecutionModel::FullFrame: {
-      set_determined_canvas_modifier([=](rcti &canvas) {
-        /* Ensure screen space. */
-        BLI_rcti_translate(&canvas, -canvas.xmin, -canvas.ymin);
-      });
-      break;
-    }
-    default:
-      break;
-  }
+  set_determined_canvas_modifier([=](rcti &canvas) {
+    /* Ensure screen space. */
+    BLI_rcti_translate(&canvas, -canvas.xmin, -canvas.ymin);
+  });
 
   NodeOperation::determine_canvas(preferred_area, r_area);
 }

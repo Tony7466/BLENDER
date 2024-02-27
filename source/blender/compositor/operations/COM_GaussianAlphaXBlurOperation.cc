@@ -27,14 +27,6 @@ void GaussianAlphaXBlurOperation::init_execution()
   GaussianAlphaBlurBaseOperation::init_execution();
 
   init_mutex();
-
-  if (sizeavailable_ && execution_model_ == eExecutionModel::Tiled) {
-    float rad = max_ff(size_ * data_.sizex, 0.0f);
-    filtersize_ = min_ii(ceil(rad), MAX_GAUSSTAB_RADIUS);
-
-    gausstab_ = BlurBaseOperation::make_gausstab(rad, filtersize_);
-    distbuf_inv_ = BlurBaseOperation::make_dist_fac_inverse(rad, filtersize_, falloff_);
-  }
 }
 
 void GaussianAlphaXBlurOperation::update_gauss()

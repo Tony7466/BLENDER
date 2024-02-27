@@ -40,9 +40,7 @@ BokehBlurOperation::BokehBlurOperation()
 
 void BokehBlurOperation::init_data()
 {
-  if (execution_model_ == eExecutionModel::FullFrame) {
-    update_size();
-  }
+  update_size();
 }
 
 void *BokehBlurOperation::initialize_tile_data(rcti * /*rect*/)
@@ -197,23 +195,11 @@ void BokehBlurOperation::update_size()
     return;
   }
 
-  switch (execution_model_) {
-    case eExecutionModel::Tiled: {
-      float result[4];
-      this->get_input_socket_reader(3)->read_sampled(result, 0, 0, PixelSampler::Nearest);
-      size_ = result[0];
-      CLAMP(size_, 0.0f, 10.0f);
-      break;
-    }
-    case eExecutionModel::FullFrame: {
-      NodeOperation *size_input = get_input_operation(SIZE_INPUT_INDEX);
-      if (size_input->get_flags().is_constant_operation) {
-        size_ = *static_cast<ConstantOperation *>(size_input)->get_constant_elem();
-        CLAMP(size_, 0.0f, 10.0f);
-      } /* Else use default. */
-      break;
-    }
-  }
+  NodeOperation *size_input = get_input_operation(SIZE_INPUT_INDEX);
+  if (size_input->get_flags().is_constant_operation) {
+    size_ = *static_cast<ConstantOperation *>(size_input)->get_constant_elem();
+    CLAMP(size_, 0.0f, 10.0f);
+  } /* Else use default. */
   sizeavailable_ = true;
 }
 
@@ -224,27 +210,14 @@ void BokehBlurOperation::determine_canvas(const rcti &preferred_area, rcti &r_ar
     return;
   }
 
-  switch (execution_model_) {
-    case eExecutionModel::Tiled: {
-      NodeOperation::determine_canvas(preferred_area, r_area);
-      const float max_dim = std::max(BLI_rcti_size_x(&r_area), BLI_rcti_size_y(&r_area));
-      float add_size = round_to_even(2 * size_ * max_dim / 100.0f);
-      r_area.xmax += add_size;
-      r_area.ymax += add_size;
-      break;
-    }
-    case eExecutionModel::FullFrame: {
-      set_determined_canvas_modifier([=](rcti &canvas) {
-        const float max_dim = std::max(BLI_rcti_size_x(&canvas), BLI_rcti_size_y(&canvas));
-        /* Rounding to even prevents image jiggling in backdrop while switching size values. */
-        float add_size = round_to_even(2 * size_ * max_dim / 100.0f);
-        canvas.xmax += add_size;
-        canvas.ymax += add_size;
-      });
-      NodeOperation::determine_canvas(preferred_area, r_area);
-      break;
-    }
-  }
+  set_determined_canvas_modifier([=](rcti &canvas) {
+    const float max_dim = std::max(BLI_rcti_size_x(&canvas), BLI_rcti_size_y(&canvas));
+    /* Rounding to even prevents image jiggling in backdrop while switching size values. */
+    float add_size = round_to_even(2 * size_ * max_dim / 100.0f);
+    canvas.xmax += add_size;
+    canvas.ymax += add_size;
+  });
+  NodeOperation::determine_canvas(preferred_area, r_area);
 }
 
 void BokehBlurOperation::get_area_of_interest(const int input_idx,

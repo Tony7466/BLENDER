@@ -23,19 +23,6 @@ void DisplaceOperation::init_execution()
 {
   input_color_program_ = this->get_input_socket_reader(0);
   NodeOperation *vector = this->get_input_socket_reader(1);
-  NodeOperation *scale_x = this->get_input_socket_reader(2);
-  NodeOperation *scale_y = this->get_input_socket_reader(3);
-  if (execution_model_ == eExecutionModel::Tiled) {
-    vector_read_fn_ = [=](float x, float y, float *out) {
-      vector->read_sampled(out, x, y, PixelSampler::Bilinear);
-    };
-    scale_x_read_fn_ = [=](float x, float y, float *out) {
-      scale_x->read_sampled(out, x, y, PixelSampler::Nearest);
-    };
-    scale_y_read_fn_ = [=](float x, float y, float *out) {
-      scale_y->read_sampled(out, x, y, PixelSampler::Nearest);
-    };
-  }
 
   width_x4_ = this->get_width() * 4;
   height_x4_ = this->get_height() * 4;

@@ -137,11 +137,9 @@ PlaneCornerPinMaskOperation::PlaneCornerPinMaskOperation() : corners_ready_(fals
 
 void PlaneCornerPinMaskOperation::init_data()
 {
-  if (execution_model_ == eExecutionModel::FullFrame) {
-    float corners[4][2];
-    read_input_corners(this, 0, corners);
-    calculate_corners(corners, true, 0);
-  }
+  float corners[4][2];
+  read_input_corners(this, 0, corners);
+  calculate_corners(corners, true, 0);
 }
 
 /* TODO(manzanilla): to be removed with tiled implementation. Same for #deinit_execution and do the
@@ -189,10 +187,8 @@ void *PlaneCornerPinMaskOperation::initialize_tile_data(rcti *rect)
 
 void PlaneCornerPinMaskOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
-  if (execution_model_ == eExecutionModel::FullFrame) {
-    /* Determine input canvases. */
-    PlaneDistortMaskOperation::determine_canvas(preferred_area, r_area);
-  }
+  /* Determine input canvases. */
+  PlaneDistortMaskOperation::determine_canvas(preferred_area, r_area);
   r_area = preferred_area;
 }
 
@@ -216,11 +212,9 @@ PlaneCornerPinWarpImageOperation::PlaneCornerPinWarpImageOperation() : corners_r
 
 void PlaneCornerPinWarpImageOperation::init_data()
 {
-  if (execution_model_ == eExecutionModel::FullFrame) {
-    float corners[4][2];
-    read_input_corners(this, 1, corners);
-    calculate_corners(corners, true, 0);
-  }
+  float corners[4][2];
+  read_input_corners(this, 1, corners);
+  calculate_corners(corners, true, 0);
 }
 
 void PlaneCornerPinWarpImageOperation::init_execution()

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,16 +11,6 @@
 namespace blender::compositor {
 
 using Size2f = float2;
-
-enum class eExecutionModel {
-  /**
-   * Operations are executed from outputs to inputs grouped in execution groups and rendered
-   * in tiles.
-   */
-  Tiled,
-  /** Operations are fully rendered in order from inputs to outputs. */
-  FullFrame
-};
 
 enum class eDimension { X, Y };
 

@@ -194,11 +194,6 @@ void ScaleOperation::update_memory_buffer_partial(MemoryBuffer *output,
 
 void ScaleOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
-  if (execution_model_ == eExecutionModel::Tiled) {
-    NodeOperation::determine_canvas(preferred_area, r_area);
-    return;
-  }
-
   const bool image_determined =
       get_input_socket(IMAGE_INPUT_INDEX)->determine_canvas(preferred_area, r_area);
   if (image_determined) {
@@ -395,7 +390,7 @@ void ScaleFixedSizeOperation::init_data(const rcti &input_canvas)
         const float div = asp_src / asp_dst;
         rel_x_ /= div;
         offset_x_ += ((w_src - (w_src * div)) / (w_src / w_dst)) / 2.0f;
-        if (is_crop_ && execution_model_ == eExecutionModel::FullFrame) {
+        if (is_crop_) {
           int fit_width = new_width_ * div;
 
           const int added_width = fit_width - new_width_;
@@ -408,7 +403,7 @@ void ScaleFixedSizeOperation::init_data(const rcti &input_canvas)
         const float div = asp_dst / asp_src;
         rel_y_ /= div;
         offset_y_ += ((h_src - (h_src * div)) / (h_src / h_dst)) / 2.0f;
-        if (is_crop_ && execution_model_ == eExecutionModel::FullFrame) {
+        if (is_crop_) {
           int fit_height = new_height_ * div;
 
           const int added_height = fit_height - new_height_;
@@ -475,12 +470,10 @@ void ScaleFixedSizeOperation::determine_canvas(const rcti &preferred_area, rcti 
   if (input_determined) {
     init_data(input_canvas);
     r_area = input_canvas;
-    if (execution_model_ == eExecutionModel::FullFrame) {
-      r_area.xmin /= rel_x_;
-      r_area.ymin /= rel_y_;
-      r_area.xmin += offset_x_;
-      r_area.ymin += offset_y_;
-    }
+    r_area.xmin /= rel_x_;
+    r_area.ymin /= rel_y_;
+    r_area.xmin += offset_x_;
+    r_area.ymin += offset_y_;
 
     r_area.xmax = r_area.xmin + new_width_;
     r_area.ymax = r_area.ymin + new_height_;

@@ -113,12 +113,7 @@ void RotateOperation::get_rotation_canvas(const rcti &input_canvas,
   BLI_rcti_translate(&r_canvas, -offset_x, -offset_y);
 }
 
-void RotateOperation::init_data()
-{
-  if (execution_model_ == eExecutionModel::Tiled) {
-    get_rotation_center(get_canvas(), center_x_, center_y_);
-  }
-}
+void RotateOperation::init_data() {}
 
 void RotateOperation::init_execution()
 {
@@ -135,22 +130,14 @@ void RotateOperation::deinit_execution()
 inline void RotateOperation::ensure_degree()
 {
   if (!is_degree_set_) {
-    float degree[4];
-    switch (execution_model_) {
-      case eExecutionModel::Tiled:
-        degree_socket_->read_sampled(degree, 0, 0, PixelSampler::Nearest);
-        break;
-      case eExecutionModel::FullFrame:
-        degree[0] = get_input_operation(DEGREE_INPUT_INDEX)->get_constant_value_default(0.0f);
-        break;
-    }
+    float degree = get_input_operation(DEGREE_INPUT_INDEX)->get_constant_value_default(0.0f);
 
     double rad;
     if (do_degree2_rad_conversion_) {
-      rad = DEG2RAD(double(degree[0]));
+      rad = DEG2RAD(double(degree));
     }
     else {
-      rad = degree[0];
+      rad = degree;
     }
     cosine_ = cos(rad);
     sine_ = sin(rad);
@@ -207,11 +194,6 @@ bool RotateOperation::determine_depending_area_of_interest(rcti *input,
 
 void RotateOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
-  if (execution_model_ == eExecutionModel::Tiled) {
-    NodeOperation::determine_canvas(preferred_area, r_area);
-    return;
-  }
-
   const bool image_determined =
       get_input_socket(IMAGE_INPUT_INDEX)->determine_canvas(preferred_area, r_area);
   if (image_determined) {

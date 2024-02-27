@@ -28,9 +28,4 @@ Size2f CompositorContext::get_render_size() const
           get_render_data()->ysch * get_render_percentage_as_factor()};
 }
 
-eExecutionModel CompositorContext::get_execution_model() const
-{
-  return eExecutionModel::FullFrame;
-}
-
 }  // namespace blender::compositor

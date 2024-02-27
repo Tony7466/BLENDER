@@ -343,11 +343,6 @@ class NodeOperation {
   const bNodeTree *btree_;
 
  protected:
-  /**
-   * Compositor execution model.
-   */
-  eExecutionModel execution_model_;
-
   rcti canvas_ = COM_AREA_NONE;
 
   /**
@@ -439,11 +434,6 @@ class NodeOperation {
   virtual bool is_output_operation(bool /*rendering*/) const
   {
     return false;
-  }
-
-  void set_execution_model(const eExecutionModel model)
-  {
-    execution_model_ = model;
   }
 
   void set_bnodetree(const bNodeTree *tree)

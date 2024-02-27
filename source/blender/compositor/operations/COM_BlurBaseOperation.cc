@@ -27,9 +27,7 @@ BlurBaseOperation::BlurBaseOperation(DataType data_type)
 
 void BlurBaseOperation::init_data()
 {
-  if (execution_model_ == eExecutionModel::FullFrame) {
-    update_size();
-  }
+  update_size();
 
   data_.image_in_width = this->get_width();
   data_.image_in_height = this->get_height();
@@ -176,21 +174,10 @@ void BlurBaseOperation::update_size()
     return;
   }
 
-  switch (execution_model_) {
-    case eExecutionModel::Tiled: {
-      float result[4];
-      this->get_input_socket_reader(1)->read_sampled(result, 0, 0, PixelSampler::Nearest);
-      size_ = result[0];
-      break;
-    }
-    case eExecutionModel::FullFrame: {
-      NodeOperation *size_input = get_input_operation(SIZE_INPUT_INDEX);
-      if (size_input->get_flags().is_constant_operation) {
-        size_ = *static_cast<ConstantOperation *>(size_input)->get_constant_elem();
-      } /* Else use default. */
-      break;
-    }
-  }
+  NodeOperation *size_input = get_input_operation(SIZE_INPUT_INDEX);
+  if (size_input->get_flags().is_constant_operation) {
+    size_ = *static_cast<ConstantOperation *>(size_input)->get_constant_elem();
+  } /* Else use default. */
   sizeavailable_ = true;
 }
 
@@ -201,26 +188,15 @@ void BlurBaseOperation::determine_canvas(const rcti &preferred_area, rcti &r_are
     return;
   }
 
-  switch (execution_model_) {
-    case eExecutionModel::Tiled: {
-      NodeOperation::determine_canvas(preferred_area, r_area);
-      r_area.xmax += 2 * size_ * data_.sizex;
-      r_area.ymax += 2 * size_ * data_.sizey;
-      break;
-    }
-    case eExecutionModel::FullFrame: {
-      /* Setting a modifier ensures all non main inputs have extended bounds as preferred
-       * canvas, avoiding unnecessary canvas conversions that would hide constant
-       * operations. */
-      set_determined_canvas_modifier([=](rcti &canvas) {
-        /* Rounding to even prevents jiggling in backdrop while switching size values. */
-        canvas.xmax += round_to_even(2 * size_ * data_.sizex);
-        canvas.ymax += round_to_even(2 * size_ * data_.sizey);
-      });
-      NodeOperation::determine_canvas(preferred_area, r_area);
-      break;
-    }
-  }
+  /* Setting a modifier ensures all non main inputs have extended bounds as preferred
+   * canvas, avoiding unnecessary canvas conversions that would hide constant
+   * operations. */
+  set_determined_canvas_modifier([=](rcti &canvas) {
+    /* Rounding to even prevents jiggling in backdrop while switching size values. */
+    canvas.xmax += round_to_even(2 * size_ * data_.sizex);
+    canvas.ymax += round_to_even(2 * size_ * data_.sizey);
+  });
+  NodeOperation::determine_canvas(preferred_area, r_area);
 }
 
 void BlurBaseOperation::get_area_of_interest(const int input_idx,

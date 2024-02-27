@@ -84,21 +84,14 @@ void NodeOperationBuilder::convert_to_operations(ExecutionSystem *system)
 
   add_datatype_conversions();
 
-  if (context_->get_execution_model() == eExecutionModel::FullFrame) {
-    save_graphviz("compositor_prior_folding");
-    ConstantFolder folder(*this);
-    folder.fold_operations();
-  }
+  save_graphviz("compositor_prior_folding");
+  ConstantFolder folder(*this);
+  folder.fold_operations();
 
   determine_canvases();
 
   save_graphviz("compositor_prior_merging");
   merge_equal_operations();
-
-  if (context_->get_execution_model() == eExecutionModel::Tiled) {
-    /* surround complex ops with read/write buffer */
-    add_complex_operation_buffers();
-  }
 
   /* links not available from here on */
   /* XXX make links_ a local variable to avoid confusion! */
@@ -108,11 +101,6 @@ void NodeOperationBuilder::convert_to_operations(ExecutionSystem *system)
 
   /* ensure topological (link-based) order of nodes */
   // sort_operations(); /* not needed yet. */
-
-  if (context_->get_execution_model() == eExecutionModel::Tiled) {
-    /* create execution groups */
-    group_operations();
-  }
 
   /* transfer resulting operations to the system */
   system->set_operations(operations_, groups_);
@@ -126,7 +114,6 @@ void NodeOperationBuilder::add_operation(NodeOperation *operation)
     operation->set_name(current_node_->get_bnode()->name);
     operation->set_node_instance_key(current_node_->get_instance_key());
   }
-  operation->set_execution_model(context_->get_execution_model());
   operation->set_execution_system(exec_system_);
 }
 

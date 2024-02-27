@@ -36,11 +36,6 @@ void MapUVOperation::init_execution()
 {
   input_color_program_ = this->get_input_socket_reader(0);
   inputUVProgram_ = this->get_input_socket_reader(1);
-  if (execution_model_ == eExecutionModel::Tiled) {
-    uv_input_read_fn_ = [=](float x, float y, float *out) {
-      inputUVProgram_->read_sampled(out, x, y, PixelSampler::Bilinear);
-    };
-  }
 }
 
 void MapUVOperation::execute_pixel_sampled(float output[4],

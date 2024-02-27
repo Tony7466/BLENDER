@@ -44,28 +44,15 @@ void ScreenLensDistortionOperation::init_data()
   cx_ = 0.5f * float(get_width());
   cy_ = 0.5f * float(get_height());
 
-  switch (execution_model_) {
-    case eExecutionModel::FullFrame: {
-      NodeOperation *distortion_op = get_input_operation(1);
-      NodeOperation *dispersion_op = get_input_operation(2);
-      if (!distortion_const_ && distortion_op->get_flags().is_constant_operation) {
-        distortion_ = static_cast<ConstantOperation *>(distortion_op)->get_constant_elem()[0];
-      }
-      if (!dispersion_const_ && distortion_op->get_flags().is_constant_operation) {
-        dispersion_ = static_cast<ConstantOperation *>(dispersion_op)->get_constant_elem()[0];
-      }
-      update_variables(distortion_, dispersion_);
-      break;
-    }
-    case eExecutionModel::Tiled: {
-      /* If both are constant, init variables once. */
-      if (distortion_const_ && dispersion_const_) {
-        update_variables(distortion_, dispersion_);
-        variables_ready_ = true;
-      }
-      break;
-    }
+  NodeOperation *distortion_op = get_input_operation(1);
+  NodeOperation *dispersion_op = get_input_operation(2);
+  if (!distortion_const_ && distortion_op->get_flags().is_constant_operation) {
+    distortion_ = static_cast<ConstantOperation *>(distortion_op)->get_constant_elem()[0];
   }
+  if (!dispersion_const_ && distortion_op->get_flags().is_constant_operation) {
+    dispersion_ = static_cast<ConstantOperation *>(dispersion_op)->get_constant_elem()[0];
+  }
+  update_variables(distortion_, dispersion_);
 }
 
 void ScreenLensDistortionOperation::init_execution()
@@ -160,14 +147,7 @@ void ScreenLensDistortionOperation::accumulate(const MemoryBuffer *buffer,
 
     float xy[2];
     distort_uv(uv, t, xy);
-    switch (execution_model_) {
-      case eExecutionModel::Tiled:
-        buffer->read_bilinear(color, xy[0], xy[1]);
-        break;
-      case eExecutionModel::FullFrame:
-        buffer->read_elem_bilinear(xy[0], xy[1], color);
-        break;
-    }
+    buffer->read_elem_bilinear(xy[0], xy[1], color);
 
     sum[a] += (1.0f - tz) * color[a];
     sum[b] += (tz)*color[b];
@@ -369,17 +349,10 @@ void ScreenLensDistortionOperation::update_variables(float distortion, float dis
 
 void ScreenLensDistortionOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
-  switch (execution_model_) {
-    case eExecutionModel::FullFrame: {
-      set_determined_canvas_modifier([=](rcti &canvas) {
-        /* Ensure screen space. */
-        BLI_rcti_translate(&canvas, -canvas.xmin, -canvas.ymin);
-      });
-      break;
-    }
-    default:
-      break;
-  }
+  set_determined_canvas_modifier([=](rcti &canvas) {
+    /* Ensure screen space. */
+    BLI_rcti_translate(&canvas, -canvas.xmin, -canvas.ymin);
+  });
 
   NodeOperation::determine_canvas(preferred_area, r_area);
 }

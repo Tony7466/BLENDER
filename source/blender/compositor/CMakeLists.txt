@@ -94,8 +94,6 @@ if(WITH_COMPOSITOR_CPU)
     intern/COM_SharedOperationBuffers.h
     intern/COM_SingleThreadedOperation.cc
     intern/COM_SingleThreadedOperation.h
-    intern/COM_TiledExecutionModel.cc
-    intern/COM_TiledExecutionModel.h
     intern/COM_WorkPackage.cc
     intern/COM_WorkPackage.h
     intern/COM_WorkScheduler.cc

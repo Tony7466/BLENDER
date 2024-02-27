@@ -33,14 +33,9 @@ KeyingScreenOperation::KeyingScreenOperation()
 void KeyingScreenOperation::init_execution()
 {
   init_mutex();
-  if (execution_model_ == eExecutionModel::FullFrame) {
-    BLI_assert(cached_marker_points_ == nullptr);
-    if (movie_clip_) {
-      cached_marker_points_ = compute_marker_points();
-    }
-  }
-  else {
-    cached_marker_points_ = nullptr;
+  BLI_assert(cached_marker_points_ == nullptr);
+  if (movie_clip_) {
+    cached_marker_points_ = compute_marker_points();
   }
 }
 

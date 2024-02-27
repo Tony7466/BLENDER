@@ -397,9 +397,6 @@ void *SMAABlendingWeightCalculationOperation::initialize_tile_data(rcti *rect)
 void SMAABlendingWeightCalculationOperation::init_execution()
 {
   image_reader_ = this->get_input_socket_reader(0);
-  if (execution_model_ == eExecutionModel::Tiled) {
-    sample_image_fn_ = [=](int x, int y, float *out) { sample(image_reader_, x, y, out); };
-  }
 }
 
 void SMAABlendingWeightCalculationOperation::set_corner_rounding(float rounding)

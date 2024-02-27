@@ -30,10 +30,8 @@ void GaussianBokehBlurOperation::init_data()
   const float width = this->get_width();
   const float height = this->get_height();
 
-  if (execution_model_ == eExecutionModel::FullFrame) {
-    if (!sizeavailable_) {
-      update_size();
-    }
+  if (!sizeavailable_) {
+    update_size();
   }
 
   radxf_ = size_ * float(data_.sizex);

@@ -26,17 +26,6 @@ void GaussianXBlurOperation::init_execution()
   GaussianBlurBaseOperation::init_execution();
 
   init_mutex();
-
-  if (sizeavailable_ && execution_model_ == eExecutionModel::Tiled) {
-    float rad = max_ff(size_ * data_.sizex, 0.0f);
-    filtersize_ = min_ii(ceil(rad), MAX_GAUSSTAB_RADIUS);
-
-    /* TODO(sergey): De-duplicate with the case below and Y blur. */
-    gausstab_ = BlurBaseOperation::make_gausstab(rad, filtersize_);
-#if BLI_HAVE_SSE2
-    gausstab_sse_ = BlurBaseOperation::convert_gausstab_sse(gausstab_, filtersize_);
-#endif
-  }
 }
 
 /* TODO(manzanilla): to be removed with tiled implementation. */

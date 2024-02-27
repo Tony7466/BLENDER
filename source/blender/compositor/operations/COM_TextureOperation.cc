@@ -68,11 +68,9 @@ void TextureBaseOperation::determine_canvas(const rcti &preferred_area, rcti &r_
     r_area.ymax = preferred_area.ymin + height;
   }
 
-  if (execution_model_ == eExecutionModel::FullFrame) {
-    /* Determine inputs. */
-    rcti temp = COM_AREA_NONE;
-    NodeOperation::determine_canvas(r_area, temp);
-  }
+  /* Determine inputs. */
+  rcti temp = COM_AREA_NONE;
+  NodeOperation::determine_canvas(r_area, temp);
 }
 
 void TextureAlphaOperation::execute_pixel_sampled(float output[4],
