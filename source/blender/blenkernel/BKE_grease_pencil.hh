@@ -890,3 +890,11 @@ void BKE_grease_pencil_material_index_remove(GreasePencil *grease_pencil, int in
 bool BKE_grease_pencil_references_cyclic_check(const GreasePencil *id_reference,
                                                const GreasePencil *grease_pencil);
 bool BKE_grease_pencil_material_index_used(GreasePencil *grease_pencil, int index);
+
+struct LineartGpencilModifierData;
+struct GreasePencilLineartModifierData;
+
+void BKE_grease_pencil_lineart_wrap_v3(const struct LineartGpencilModifierData *lmd_legacy,
+                                       struct GreasePencilLineartModifierData *lmd);
+void BKE_grease_pencil_lineart_unwrap_v3(struct LineartGpencilModifierData *lmd_legacy,
+                                         const struct GreasePencilLineartModifierData *lmd);

@@ -1517,6 +1517,16 @@ static void legacy_object_modifier_weight_proximity(Object &object, GpencilModif
                                    false);
 }
 
+static void legacy_object_modifier_weight_lineart(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilWeightAngle, legacy_md);
+  auto &md_lineart = reinterpret_cast<GreasePencilLineartModifierData &>(md);
+  auto &legacy_md_lineart = reinterpret_cast<LineartGpencilModifierData &>(legacy_md);
+
+  BKE_grease_pencil_lineart_wrap_v3(&legacy_md_lineart, &md_lineart);
+}
+
 static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
 {
   BLI_assert(BLI_listbase_is_empty(&object.modifiers));
@@ -1588,6 +1598,8 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
       case eGpencilModifierType_Time:
       case eGpencilModifierType_Texture:
       case eGpencilModifierType_Lineart:
+        legacy_object_modifier_weight_lineart(object, *gpd_md);
+        break;
       case eGpencilModifierType_Shrinkwrap:
       case eGpencilModifierType_Envelope:
       case eGpencilModifierType_Outline:
