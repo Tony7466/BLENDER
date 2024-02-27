@@ -1530,9 +1530,6 @@ void graph_draw_channel_names(bContext *C,
 
   View2D *v2d = &region->v2d;
 
-  /* Update max-extent of channels here (taking into account scrollers):
-   * - this is done to allow the channel list to be scrollable, but must be done here
-   *   to avoid regenerating the list again and/or also because channels list is drawn first */
   const float channel_step = ANIM_UI_get_channel_step();
 
   /* Loop through channels, and set up drawing depending on their type. */
