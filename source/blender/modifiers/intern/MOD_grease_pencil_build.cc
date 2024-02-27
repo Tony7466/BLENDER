@@ -237,6 +237,8 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
   Array<int> dst_offsets(dst_curves_num + 1);
   Array<int> dst_to_src_point(dst_points_num);
 
+  dst_offsets[0] = 0;
+
   int next_curve = 1, next_point = 0;
   IndexMaskMemory memory;
   selection.complement(curves.curves_range(), memory).foreach_index([&](const int stroke) {
@@ -250,16 +252,17 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
 
   bool done_scanning = false;
   selection.foreach_index([&](const int stroke) {
-    if (done_scanning) {
+    if (done_scanning || next_point >= dst_points_num) {
+      done_scanning = true;
       return;
     }
     for (const int point : points_by_curve[stroke]) {
+      dst_to_src_point[next_point] = point;
+      next_point++;
       if (next_point >= dst_points_num) {
         done_scanning = true;
         break;
       }
-      dst_to_src_point[next_point] = point;
-      next_point++;
     }
     dst_offsets[next_curve] = next_point;
     next_curve++;
@@ -268,7 +271,7 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
   BLI_assert(next_curve == (dst_curves_num + 1));
   BLI_assert(next_point == dst_points_num);
 
-  dst_curves.offsets_for_write() = dst_offsets;
+  array_utils::copy(dst_offsets.as_span(),dst_curves.offsets_for_write());
 
   const bke::AttributeAccessor attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
