@@ -41,7 +41,7 @@
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
-#define MAX_VERTS 1 << 12
+#define MAX_VERTS 1 << 14
 
 static void graph_draw_driver_debug(bAnimContext *ac, ID *id, FCurve *fcu);
 using namespace blender;
@@ -77,9 +77,7 @@ struct RenderBatch {
 struct FCurveRenderData {
   Array<KeyVertex> key_points;
 
-  /* Separate selected and unselected so we can draw selected on top. */
-  Vector<KeyVertex> key_handle_points_selected;
-  Vector<KeyVertex> key_handle_points_deselected;
+  Vector<KeyVertex> key_handle_points;
   Vector<HandleLine> key_handle_lines;
 
   Vector<float2> line_points;
@@ -1589,12 +1587,12 @@ static void build_key_handle_render_data(const FCurve *fcu,
   ColorTheme4b color_desel;
   UI_GetThemeColor4ubv(TH_HANDLE_VERTEX, color_desel);
   color_desel[3] = alpha;
-
-  fcu_render_data.key_handle_points_selected = Vector<KeyVertex>();
-  fcu_render_data.key_handle_points_deselected = Vector<KeyVertex>();
-  fcu_render_data.key_handle_lines = Vector<HandleLine>();
+  const int max_handle_count = (args.bounding_indices[1] - args.bounding_indices[0] + 1) * 2;
+  fcu_render_data.key_handle_points = Vector<KeyVertex>(max_handle_count);
+  fcu_render_data.key_handle_lines = Vector<HandleLine>(max_handle_count);
   SpaceGraph *sipo = (SpaceGraph *)args.anim_context->sl;
 
+  int handle_count = 0;
   BezTriple *prevbezt = nullptr;
   for (int i = args.bounding_indices[0]; i <= args.bounding_indices[1]; i++) {
     BezTriple *bezt = &fcu->bezt[i];
@@ -1618,16 +1616,16 @@ static void build_key_handle_render_data(const FCurve *fcu,
       handle_line.a = {bezt->vec[0][0], bezt->vec[0][1]};
       if (bezt->f1 & SELECT) {
         handle_point.color = color_sel;
-        fcu_render_data.key_handle_points_selected.append(handle_point);
         UI_GetThemeColor3ubv(TH_HANDLE_SEL_FREE + bezt->h1, handle_line.color_a);
       }
       else {
         handle_point.color = color_desel;
-        fcu_render_data.key_handle_points_deselected.append(handle_point);
         UI_GetThemeColor3ubv(TH_HANDLE_FREE + bezt->h1, handle_line.color_a);
       }
+      fcu_render_data.key_handle_points[handle_count] = handle_point;
       handle_line.color_b = handle_line.color_a;
-      fcu_render_data.key_handle_lines.append(handle_line);
+      fcu_render_data.key_handle_lines[handle_count] = handle_line;
+      handle_count++;
     }
 
     if (bezt->ipo == BEZT_IPO_BEZ) {
@@ -1635,18 +1633,19 @@ static void build_key_handle_render_data(const FCurve *fcu,
       handle_line.a = {bezt->vec[2][0], bezt->vec[2][1]};
       if (bezt->f3 & SELECT) {
         handle_point.color = color_sel;
-        fcu_render_data.key_handle_points_selected.append(handle_point);
         UI_GetThemeColor3ubv(TH_HANDLE_SEL_FREE + bezt->h2, handle_line.color_a);
       }
       else {
         handle_point.color = color_desel;
-        fcu_render_data.key_handle_points_deselected.append(handle_point);
         UI_GetThemeColor3ubv(TH_HANDLE_FREE + bezt->h2, handle_line.color_a);
       }
+      fcu_render_data.key_handle_points[handle_count] = handle_point;
       handle_line.color_b = handle_line.color_a;
-      fcu_render_data.key_handle_lines.append(handle_line);
+      fcu_render_data.key_handle_lines[handle_count] = handle_line;
+      handle_count++;
     }
   }
+  fcu_render_data.key_handle_lines.resize(handle_count);
 }
 
 static void build_line_render_data(FCurve *fcu,
@@ -2007,20 +2006,7 @@ static void draw_fcurve_handle_points(const Span<FCurveRenderData> &render_data)
   KeyVertex *vertex_buffer_data = static_cast<KeyVertex *>(
       GPU_vertbuf_get_data(vertex_buffer_handles));
   for (const FCurveRenderData &fcu_render_data : render_data) {
-    for (const KeyVertex &kv : fcu_render_data.key_handle_points_deselected) {
-      vertex_buffer_data[verts_in_buffer] = kv;
-      verts_in_buffer++;
-      if (verts_in_buffer >= MAX_VERTS) {
-        GPU_vertbuf_tag_dirty(vertex_buffer_handles);
-        GPU_vertbuf_use(vertex_buffer_handles);
-        GPU_batch_draw(batch_handles);
-        verts_in_buffer = 0;
-      }
-    }
-  }
-
-  for (const FCurveRenderData &fcu_render_data : render_data) {
-    for (const KeyVertex &kv : fcu_render_data.key_handle_points_selected) {
+    for (const KeyVertex &kv : fcu_render_data.key_handle_points) {
       vertex_buffer_data[verts_in_buffer] = kv;
       verts_in_buffer++;
       if (verts_in_buffer >= MAX_VERTS) {
