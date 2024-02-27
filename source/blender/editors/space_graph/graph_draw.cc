@@ -468,7 +468,7 @@ static bool draw_fcurve_handles_check(SpaceGraph *sipo, FCurve *fcu)
 
 /* draw lines for F-Curve handles only (this is only done in EditMode)
  * NOTE: draw_fcurve_handles_check must be checked before running this. */
-static void draw_fcurve_handles(SpaceGraph *sipo, ARegion *region, FCurve *fcu)
+static void draw_fcurve_handles_legacy(SpaceGraph *sipo, ARegion *region, FCurve *fcu)
 {
   using namespace blender;
 
@@ -1323,7 +1323,7 @@ static void draw_fcurve(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, bAn
 
         if (do_handles) {
           /* only draw handles/vertices on keyframes */
-          draw_fcurve_handles(sipo, region, fcu);
+          draw_fcurve_handles_legacy(sipo, region, fcu);
         }
 
         // draw_fcurve_vertices(region, fcu, do_handles, (sipo->flag & SIPO_SELVHANDLESONLY),
@@ -1521,11 +1521,15 @@ void graph_draw_ghost_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region
 
 struct FCurveRenderData {
   Array<KeyVertex> key_points;
-  Array<KeyVertex> key_handles;
+  Vector<KeyVertex> key_handle_points;
+  Vector<float4> key_handle_lines;
   Vector<float2> line_points;
   float4 line_color;
   float line_thickness;
 };
+
+/** \name Data build code
+ * \{ */
 
 static void build_keyframe_render_data(const FCurve *fcu,
                                        FCurveRenderData &fcu_render_data,
@@ -1544,18 +1548,49 @@ static void build_keyframe_render_data(const FCurve *fcu,
 
   int array_index = 0;
   for (int i = args.bounding_indices[0]; i <= args.bounding_indices[1]; i++) {
-    BezTriple *bezt = &fcu->bezt[i];
-    KeyVertex *key_vertex = &fcu_render_data.key_points[array_index];
-    key_vertex->pos = {bezt->vec[1][0], bezt->vec[1][1]};
-    key_vertex->size = size;
+    BezTriple &bezt = fcu->bezt[i];
+    KeyVertex &key_vertex = fcu_render_data.key_points[array_index];
+    key_vertex.pos = {bezt.vec[1][0], bezt.vec[1][1]};
+    key_vertex.size = size;
 
-    if (bezt->f2 & SELECT) {
-      key_vertex->color = color_sel;
+    if (bezt.f2 & SELECT) {
+      key_vertex.color = color_sel;
     }
     else {
-      key_vertex->color = color_desel;
+      key_vertex.color = color_desel;
     }
     array_index++;
+  }
+}
+
+static void build_key_handle_render_data(const FCurve *fcu,
+                                         FCurveRenderData &fcu_render_data,
+                                         BuildArguments &args)
+{
+  const float size = UI_GetThemeValuef(TH_VERTEX_SIZE) * UI_SCALE_FAC;
+
+  ColorTheme4b color_sel = get_fcurve_vertex_color(fcu, true);
+  ColorTheme4b color_desel = get_fcurve_vertex_color(fcu, false);
+  const float foo = fcurve_display_alpha(fcu) * 255;
+
+  fcu_render_data.key_handle_points = Vector<KeyVertex>();
+  fcu_render_data.key_handle_lines = Vector<float4>();
+  SpaceGraph *sipo = (SpaceGraph *)args.anim_context->sl;
+
+  BezTriple *prevbezt = nullptr;
+  for (int i = args.bounding_indices[0]; i <= args.bounding_indices[1]; i++) {
+    BezTriple *bezt = &fcu->bezt[i];
+    if (sipo->flag & SIPO_SELVHANDLESONLY) {
+      if (BEZT_ISSEL_ANY(bezt) == 0) {
+        prevbezt = bezt;
+        continue;
+      }
+    }
+    KeyVertex handle_point;
+    handle_point.color = (bezt->f2 & SELECT) ? color_sel : color_desel;
+    handle_point.pos = {bezt->vec[2][0], bezt->vec[2][1]};
+    handle_point.size = size;
+    fcu_render_data.key_handle_points.append(handle_point);
   }
 }
 
@@ -1695,9 +1730,14 @@ static void build_fcurve_render_data(FCurve *fcu,
   args.id = id;
   args.anim_context = anim_context;
 
-  build_keyframe_render_data(fcu, fcu_render_data, args);
   build_line_render_data(fcu, fcu_render_data, args);
+  build_keyframe_render_data(fcu, fcu_render_data, args);
+  if (draw_fcurve_handles_check((SpaceGraph *)anim_context->sl, fcu)) {
+    build_key_handle_render_data(fcu, fcu_render_data, args);
+  }
 }
+
+/** \} */
 
 /** \name Drawing Code
  * \{ */
@@ -1824,9 +1864,12 @@ static void draw_fcurve_lines(Array<FCurveRenderData> &render_data)
   GPU_blend(GPU_BLEND_NONE);
 }
 
+static void draw_fcurve_handles(Array<FCurveRenderData> &render_data) {}
+
 static void draw_fcurve_render_data(Array<FCurveRenderData> &render_data)
 {
   draw_fcurve_lines(render_data);
+  draw_fcurve_handles(render_data);
   draw_fcurve_keys(render_data);
 }
 
@@ -1839,6 +1882,7 @@ static void free_fcurve_render_data(Array<FCurveRenderData> &render_data)
 
 void graph_draw_curves(bAnimContext *ac, SpaceGraph *sipo, ARegion *region, short sel)
 {
+  SCOPED_TIMER_AVERAGED("draw_curves");
   ListBase anim_data = {nullptr, nullptr};
   /* build list of curves to draw */
   int filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_CURVE_VISIBLE | ANIMFILTER_FCURVESONLY);
