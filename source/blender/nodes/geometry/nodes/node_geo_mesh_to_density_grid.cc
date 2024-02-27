@@ -22,7 +22,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .min(0.01f)
       .max(FLT_MAX)
       .subtype(PROP_DISTANCE);
-  b.add_input<decl::Float>("Interior Band Width")
+  b.add_input<decl::Float>("Gradient Width")
       .default_value(0.2f)
       .min(0.0001f)
       .max(FLT_MAX)
@@ -46,7 +46,7 @@ static void node_geo_exec(GeoNodeExecParams params)
       mesh->corner_tris(),
       float4x4::identity(),
       params.extract_input<float>("Voxel Size"),
-      params.extract_input<float>("Interior Band Width"),
+      params.extract_input<float>("Gradient Width"),
       params.extract_input<float>("Density"));
   params.set_output("Density Grid", std::move(grid));
 #else
