@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,7 +15,6 @@ KuwaharaAnisotropicStructureTensorOperation::KuwaharaAnisotropicStructureTensorO
 {
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-  this->flags_.is_fullframe_operation = true;
   this->flags_.can_be_constant = true;
 }
 

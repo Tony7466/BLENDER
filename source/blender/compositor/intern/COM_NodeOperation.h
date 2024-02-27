@@ -221,11 +221,6 @@ struct NodeOperationFlags {
   bool use_datatype_conversion : 1;
 
   /**
-   * Has this operation fullframe implementation.
-   */
-  bool is_fullframe_operation : 1;
-
-  /**
    * Whether operation is a primitive constant operation (Color/Vector/Value).
    */
   bool is_constant_operation : 1;
@@ -250,7 +245,6 @@ struct NodeOperationFlags {
     is_viewer_operation = false;
     is_preview_operation = false;
     use_datatype_conversion = true;
-    is_fullframe_operation = false;
     is_constant_operation = false;
     can_be_constant = false;
   }
@@ -717,32 +711,12 @@ class NodeOperation {
   }
 
  private:
-  /* -------------------------------------------------------------------- */
-  /** \name Full Frame Methods
-   * \{ */
-
   /**
    * Renders given areas using operations full frame implementation.
    */
   void render_full_frame(MemoryBuffer *output_buf,
                          Span<rcti> areas,
                          Span<MemoryBuffer *> inputs_bufs);
-
-  /**
-   * Renders given areas using operations tiled implementation.
-   */
-  void render_full_frame_fallback(MemoryBuffer *output_buf,
-                                  Span<rcti> areas,
-                                  Span<MemoryBuffer *> inputs);
-  void render_tile(MemoryBuffer *output_buf, rcti *tile_rect);
-  /**
-   * \return Replaced inputs links.
-   */
-  Vector<NodeOperationOutput *> replace_inputs_with_buffers(Span<MemoryBuffer *> inputs_bufs);
-  void remove_buffers_and_restore_original_inputs(
-      Span<NodeOperationOutput *> original_inputs_links);
-
-  /** \} */
 
   /* allow the DebugInfo class to look at internals */
   friend class DebugInfo;

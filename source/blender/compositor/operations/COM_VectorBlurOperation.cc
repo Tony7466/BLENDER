@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,7 +39,6 @@ VectorBlurOperation::VectorBlurOperation()
   input_speed_program_ = nullptr;
   input_zprogram_ = nullptr;
   flags_.complex = true;
-  flags_.is_fullframe_operation = true;
 }
 void VectorBlurOperation::init_execution()
 {

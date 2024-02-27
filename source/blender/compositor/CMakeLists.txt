@@ -37,8 +37,6 @@ if(WITH_COMPOSITOR_CPU)
     COM_profile.hh
 
     intern/COM_BufferArea.h
-    intern/COM_BufferOperation.cc
-    intern/COM_BufferOperation.h
     intern/COM_BufferRange.h
     intern/COM_BuffersIterator.h
     intern/COM_CPUDevice.cc

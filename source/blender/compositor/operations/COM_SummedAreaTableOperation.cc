@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,7 +17,6 @@ SummedAreaTableOperation::SummedAreaTableOperation()
 
   mode_ = eMode::Identity;
 
-  this->flags_.is_fullframe_operation = true;
   this->flags_.can_be_constant = true;
 }
 

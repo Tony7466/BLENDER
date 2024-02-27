@@ -1,10 +1,9 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <cstdio>
 
-#include "COM_BufferOperation.h"
 #include "COM_ExecutionSystem.h"
 #include "COM_ReadBufferOperation.h"
 
@@ -255,15 +254,7 @@ void NodeOperation::get_area_of_interest(const int input_idx,
                                          const rcti &output_area,
                                          rcti &r_input_area)
 {
-  if (get_flags().is_fullframe_operation) {
-    r_input_area = output_area;
-  }
-  else {
-    /* Non full-frame operations never implement this method. To ensure correctness assume
-     * whole area is used. */
-    NodeOperation *input_op = get_input_operation(input_idx);
-    r_input_area = input_op->get_canvas();
-  }
+  r_input_area = output_area;
 }
 
 void NodeOperation::get_area_of_interest(NodeOperation *input_op,
@@ -283,12 +274,7 @@ void NodeOperation::render(MemoryBuffer *output_buf,
                            Span<rcti> areas,
                            Span<MemoryBuffer *> inputs_bufs)
 {
-  if (get_flags().is_fullframe_operation) {
-    render_full_frame(output_buf, areas, inputs_bufs);
-  }
-  else {
-    render_full_frame_fallback(output_buf, areas, inputs_bufs);
-  }
+  render_full_frame(output_buf, areas, inputs_bufs);
 }
 
 void NodeOperation::render_full_frame(MemoryBuffer *output_buf,
@@ -300,92 +286,6 @@ void NodeOperation::render_full_frame(MemoryBuffer *output_buf,
     update_memory_buffer(output_buf, area, inputs_bufs);
   }
   deinit_execution();
-}
-
-void NodeOperation::render_full_frame_fallback(MemoryBuffer *output_buf,
-                                               Span<rcti> areas,
-                                               Span<MemoryBuffer *> inputs_bufs)
-{
-  Vector<NodeOperationOutput *> orig_input_links = replace_inputs_with_buffers(inputs_bufs);
-
-  init_execution();
-  const bool is_output_operation = get_number_of_output_sockets() == 0;
-  if (!is_output_operation && output_buf->is_a_single_elem()) {
-    float *output_elem = output_buf->get_elem(0, 0);
-    read_sampled(output_elem, 0, 0, PixelSampler::Nearest);
-  }
-  else {
-    for (const rcti &rect : areas) {
-      exec_system_->execute_work(rect, [=](const rcti &split_rect) {
-        rcti tile_rect = split_rect;
-        if (is_output_operation) {
-          execute_region(&tile_rect, 0);
-        }
-        else {
-          render_tile(output_buf, &tile_rect);
-        }
-      });
-    }
-  }
-  deinit_execution();
-
-  remove_buffers_and_restore_original_inputs(orig_input_links);
-}
-
-void NodeOperation::render_tile(MemoryBuffer *output_buf, rcti *tile_rect)
-{
-  const bool is_complex = get_flags().complex;
-  void *tile_data = is_complex ? initialize_tile_data(tile_rect) : nullptr;
-  const int elem_stride = output_buf->elem_stride;
-  for (int y = tile_rect->ymin; y < tile_rect->ymax; y++) {
-    float *output_elem = output_buf->get_elem(tile_rect->xmin, y);
-    if (is_complex) {
-      for (int x = tile_rect->xmin; x < tile_rect->xmax; x++) {
-        read(output_elem, x, y, tile_data);
-        output_elem += elem_stride;
-      }
-    }
-    else {
-      for (int x = tile_rect->xmin; x < tile_rect->xmax; x++) {
-        read_sampled(output_elem, x, y, PixelSampler::Nearest);
-        output_elem += elem_stride;
-      }
-    }
-  }
-  if (tile_data) {
-    deinitialize_tile_data(tile_rect, tile_data);
-  }
-}
-
-Vector<NodeOperationOutput *> NodeOperation::replace_inputs_with_buffers(
-    Span<MemoryBuffer *> inputs_bufs)
-{
-  BLI_assert(inputs_bufs.size() == get_number_of_input_sockets());
-  Vector<NodeOperationOutput *> orig_links(inputs_bufs.size());
-  for (int i = 0; i < inputs_bufs.size(); i++) {
-    NodeOperationInput *input_socket = get_input_socket(i);
-    BufferOperation *buffer_op = new BufferOperation(inputs_bufs[i],
-                                                     input_socket->get_data_type());
-    orig_links[i] = input_socket->get_link();
-    input_socket->set_link(buffer_op->get_output_socket());
-    buffer_op->init_execution();
-  }
-  return orig_links;
-}
-
-void NodeOperation::remove_buffers_and_restore_original_inputs(
-    Span<NodeOperationOutput *> original_inputs_links)
-{
-  BLI_assert(original_inputs_links.size() == get_number_of_input_sockets());
-  for (int i = 0; i < original_inputs_links.size(); i++) {
-    NodeOperation *buffer_op = get_input_operation(i);
-    BLI_assert(buffer_op != nullptr);
-    BLI_assert(typeid(*buffer_op) == typeid(BufferOperation));
-    buffer_op->deinit_execution();
-    NodeOperationInput *input_socket = get_input_socket(i);
-    input_socket->set_link(original_inputs_links[i]);
-    delete buffer_op;
-  }
 }
 
 /** \} */
@@ -479,9 +379,6 @@ std::ostream &operator<<(std::ostream &os, const NodeOperationFlags &node_operat
   }
   if (!node_operation_flags.use_datatype_conversion) {
     os << "no_conversion,";
-  }
-  if (node_operation_flags.is_fullframe_operation) {
-    os << "full_frame,";
   }
   if (node_operation_flags.is_constant_operation) {
     os << "contant_operation,";
