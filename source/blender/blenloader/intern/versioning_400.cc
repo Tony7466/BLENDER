@@ -2992,7 +2992,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 6)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 7)) {
     FOREACH_NODETREE_BEGIN (bmain, ntree, id) {
       versioning_node_hue_correct_set_wrappng(ntree);
     }
