@@ -12,7 +12,6 @@ WriteBufferOperation::WriteBufferOperation(DataType datatype)
   this->add_input_socket(datatype);
   memory_proxy_ = new MemoryProxy(datatype);
   memory_proxy_->set_write_buffer_operation(this);
-  memory_proxy_->set_executor(nullptr);
   flags_.is_write_buffer_operation = true;
 }
 WriteBufferOperation::~WriteBufferOperation()

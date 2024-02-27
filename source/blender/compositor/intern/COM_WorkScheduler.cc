@@ -6,7 +6,6 @@
 
 #include "COM_CPUDevice.h"
 #include "COM_CompositorContext.h"
-#include "COM_ExecutionGroup.h"
 #include "COM_OpenCLDevice.h"
 #include "COM_OpenCLKernels.cl.h"
 #include "COM_WriteBufferOperation.h"
@@ -129,12 +128,6 @@ static void opencl_start(const CompositorContext &context)
 
 static bool opencl_schedule(WorkPackage *package)
 {
-  if (package->type == eWorkPackageType::Tile && package->execution_group->get_flags().open_cl &&
-      g_work_scheduler.opencl.active)
-  {
-    BLI_thread_queue_push(g_work_scheduler.opencl.queue, package);
-    return true;
-  }
   return false;
 }
 

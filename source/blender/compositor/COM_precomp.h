@@ -23,7 +23,6 @@
 #include "COM_ConvertOperation.h"
 #include "COM_Debug.h"
 #include "COM_Enums.h"
-#include "COM_ExecutionGroup.h"
 #include "COM_ExecutionSystem.h"
 #include "COM_MultiThreadedOperation.h"
 #include "COM_Node.h"

@@ -4,7 +4,6 @@
 
 #include "COM_OpenCLDevice.h"
 
-#include "COM_ExecutionGroup.h"
 #include "COM_ReadBufferOperation.h"
 
 namespace blender::compositor {
@@ -57,18 +56,6 @@ OpenCLDevice::~OpenCLDevice()
 
 void OpenCLDevice::execute(WorkPackage *work_package)
 {
-  const uint chunk_number = work_package->chunk_number;
-  ExecutionGroup *execution_group = work_package->execution_group;
-
-  MemoryBuffer **input_buffers = execution_group->get_input_buffers_opencl(chunk_number);
-  MemoryBuffer *output_buffer = execution_group->allocate_output_buffer(work_package->rect);
-
-  execution_group->get_output_operation()->execute_opencl_region(
-      this, &work_package->rect, chunk_number, input_buffers, output_buffer);
-
-  delete output_buffer;
-
-  execution_group->finalize_chunk_execution(chunk_number, input_buffers);
 }
 cl_mem OpenCLDevice::COM_cl_attach_memory_buffer_to_kernel_parameter(
     cl_kernel kernel,

@@ -12,7 +12,6 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
-#include "COM_ExecutionGroup.h"
 #include "COM_ReadBufferOperation.h"
 #include "COM_SetValueOperation.h"
 #include "COM_ViewerOperation.h"
@@ -25,7 +24,6 @@ DebugInfo::NodeNameMap DebugInfo::node_names_;
 DebugInfo::OpNameMap DebugInfo::op_names_;
 std::string DebugInfo::current_node_name_;
 std::string DebugInfo::current_op_name_;
-DebugInfo::GroupStateMap DebugInfo::group_states_;
 
 static std::string operation_class_name(const NodeOperation *op)
 {
@@ -56,7 +54,6 @@ std::string DebugInfo::operation_name(const NodeOperation *op)
 
 int DebugInfo::graphviz_operation(const ExecutionSystem *system,
                                   NodeOperation *operation,
-                                  const ExecutionGroup *group,
                                   char *str,
                                   int maxlen)
 {
@@ -86,12 +83,7 @@ int DebugInfo::graphviz_operation(const ExecutionSystem *system,
   }
 
   len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "// OPERATION: %p\r\n", operation);
-  if (group) {
-    len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "\"O_%p_%p\"", operation, group);
-  }
-  else {
-    len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "\"O_%p\"", operation);
-  }
+  len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "\"O_%p\"", operation);
   len += snprintf(str + len,
                   maxlen > len ? maxlen - len : 0,
                   " [fillcolor=%s,style=filled,shape=record,label=\"{",
@@ -266,38 +258,7 @@ bool DebugInfo::graphviz_system(const ExecutionSystem *system, char *str, int ma
 
   std::map<NodeOperation *, std::vector<std::string>> op_groups;
   int index = 0;
-  for (const ExecutionGroup *group : system->groups_) {
-    len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "// GROUP: %d\r\n", index);
-    len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "subgraph cluster_%d{\r\n", index);
-    /* used as a check for executing group */
-    if (group_states_[group] == EG_WAIT) {
-      len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "style=dashed\r\n");
-    }
-    else if (group_states_[group] == EG_RUNNING) {
-      len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "style=filled\r\n");
-      len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "color=black\r\n");
-      len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "fillcolor=firebrick1\r\n");
-    }
-    else if (group_states_[group] == EG_FINISHED) {
-      len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "style=filled\r\n");
-      len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "color=black\r\n");
-      len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "fillcolor=chartreuse4\r\n");
-    }
 
-    for (NodeOperation *operation : group->operations_) {
-
-      SNPRINTF(strbuf, "_%p", group);
-      op_groups[operation].push_back(std::string(strbuf));
-
-      len += graphviz_operation(
-          system, operation, group, str + len, maxlen > len ? maxlen - len : 0);
-    }
-
-    len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "}\r\n");
-    index++;
-  }
-
-  /* operations not included in any group */
   for (NodeOperation *operation : system->operations_) {
     if (op_groups.find(operation) != op_groups.end()) {
       continue;
@@ -306,7 +267,7 @@ bool DebugInfo::graphviz_system(const ExecutionSystem *system, char *str, int ma
     op_groups[operation].push_back(std::string(""));
 
     len += graphviz_operation(
-        system, operation, nullptr, str + len, maxlen > len ? maxlen - len : 0);
+        system, operation, str + len, maxlen > len ? maxlen - len : 0);
   }
 
   for (NodeOperation *operation : system->operations_) {

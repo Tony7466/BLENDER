@@ -110,13 +110,6 @@ struct Render;
  *    Experimental order based on 9 hot-spots in the image.
  *
  * When the chunk-order is determined, the first few chunks will be checked if they can be scheduled.
- * Chunks can have three states:
- *  - [@ref eWorkPackageState.NotScheduled]:
- *    Chunk is not yet scheduled, or dependencies are not met.
- *  - [@ref eWorkPackageState.Scheduled]:
- *    All dependencies are met, chunk is scheduled, but not finished.
- *  - [@ref eWorkPackageState.Executed]:
- *    Chunk is finished.
  *
  * \see ExecutionGroup.execute
  * \see ViewerOperation.get_chunk_order

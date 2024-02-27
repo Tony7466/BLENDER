@@ -60,8 +60,6 @@ if(WITH_COMPOSITOR_CPU)
     intern/COM_Device.h
     intern/COM_Enums.cc
     intern/COM_Enums.h
-    intern/COM_ExecutionGroup.cc
-    intern/COM_ExecutionGroup.h
     intern/COM_ExecutionModel.cc
     intern/COM_ExecutionModel.h
     intern/COM_ExecutionSystem.cc

@@ -49,15 +49,6 @@ class MemoryProxy {
   MemoryProxy(DataType type);
 
   /**
-   * \brief set the ExecutionGroup that can be scheduled to calculate a certain chunk.
-   * \param group: the ExecutionGroup to set
-   */
-  void set_executor(ExecutionGroup *executor)
-  {
-    executor_ = executor;
-  }
-
-  /**
    * \brief get the ExecutionGroup that can be scheduled to calculate a certain chunk.
    */
   ExecutionGroup *get_executor() const

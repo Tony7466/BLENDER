@@ -5,7 +5,6 @@
 #include "COM_ExecutionSystem.h"
 
 #include "COM_Debug.h"
-#include "COM_ExecutionGroup.h"
 #include "COM_FullFrameExecutionModel.h"
 #include "COM_NodeOperation.h"
 #include "COM_NodeOperationBuilder.h"
@@ -69,18 +68,11 @@ ExecutionSystem::~ExecutionSystem()
     delete operation;
   }
   operations_.clear();
-
-  for (ExecutionGroup *group : groups_) {
-    delete group;
-  }
-  groups_.clear();
 }
 
-void ExecutionSystem::set_operations(const Span<NodeOperation *> operations,
-                                     const Span<ExecutionGroup *> groups)
+void ExecutionSystem::set_operations(const Span<NodeOperation *> operations)
 {
   operations_ = operations;
-  groups_ = groups;
 }
 
 void ExecutionSystem::execute()
@@ -120,7 +112,6 @@ void ExecutionSystem::execute_work(const rcti &work_rect,
     }
 
     WorkPackage &sub_work = sub_works[i];
-    sub_work.type = eWorkPackageType::CustomFunction;
     sub_work.execute_fn = [=, &work_func, &work_rect]() {
       if (is_breaked()) {
         return;

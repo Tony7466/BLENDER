@@ -24,10 +24,6 @@ class ExecutionGroup;
  * \see WorkScheduler
  */
 struct WorkPackage {
-  eWorkPackageType type;
-
-  eWorkPackageState state = eWorkPackageState::NotScheduled;
-
   /**
    * \brief execution_group with the operations-setup to be evaluated
    */

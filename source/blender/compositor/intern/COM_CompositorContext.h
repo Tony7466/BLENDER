@@ -234,11 +234,6 @@ class CompositorContext {
     view_name_ = view_name;
   }
 
-  int get_chunksize() const
-  {
-    return 256;
-  }
-
   void set_fast_calculation(bool fast_calculation)
   {
     fast_calculation_ = fast_calculation;
@@ -246,10 +241,6 @@ class CompositorContext {
   bool is_fast_calculation() const
   {
     return fast_calculation_;
-  }
-  bool is_groupnode_buffer_enabled() const
-  {
-    return false;
   }
 
   /**
