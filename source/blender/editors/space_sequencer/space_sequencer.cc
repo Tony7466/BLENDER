@@ -685,7 +685,7 @@ static void sequencer_cursor(wmWindow *win, ScrArea * /* area */, ARegion *regio
   const int strip_len = SEQ_time_right_handle_frame_get(scene, seq1) -
                         SEQ_time_left_handle_frame_get(scene, seq1);
 
-  if (strip_len * scale_x < 35 * U.pixelsize || scale_y < 16 * U.pixelsize) {
+  if (strip_len * scale_x < 25 * U.pixelsize || scale_y < 16 * U.pixelsize) {
     return;
   }
 

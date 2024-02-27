@@ -887,10 +887,18 @@ static void sequencer_select_strip_impl(const Editing *ed,
   }
 }
 
+/* Similar to `sequence_handle_size_get_clamped()` but allows for larger clickable area. */
+static float clickable_area_get(const Scene *scene, const Sequence *seq, float pixelx)
+{
+  const int strip_len = SEQ_time_right_handle_frame_get(scene, seq) -
+                        SEQ_time_left_handle_frame_get(scene, seq);
+  return min_ii(15.0f * pixelx * U.pixelsize, (strip_len * pixelx) / 4);
+}
+
 bool ED_sequencer_handle_selection_refine(const Scene *scene,
                                           ARegion *region,
-                                          float mouse_view_x,
-                                          float mouse_view_y,
+                                          float mouse_x_view,
+                                          float mouse_y_view,
                                           Sequence **r_seq1,
                                           Sequence **r_seq2,
                                           int *r_side)
@@ -908,19 +916,19 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
       break;
     }
 
-    rctf rectf;
-    seq_rectf(scene, seq, &rectf);
-    if (!BLI_rctf_isect_pt(&rectf, mouse_view_x, mouse_view_y)) {
+    rctf seq_rect;
+    seq_rectf(scene, seq, &seq_rect);
+    if (!BLI_rctf_isect_pt(&seq_rect, mouse_x_view, mouse_y_view)) {
       continue;
     }
 
-    float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx) * 2;
+    float handsize = clickable_area_get(scene, seq, pixelx);
     *r_seq1 = seq;
 
-    if (mouse_view_x < rectf.xmin + handsize) {
+    if (mouse_x_view < seq_rect.xmin + handsize) {
       *r_side = SEQ_SIDE_LEFT;
     }
-    if (mouse_view_x > rectf.xmax - handsize) {
+    if (mouse_x_view > seq_rect.xmax - handsize) {
       *r_side = SEQ_SIDE_RIGHT;
     }
     if (SEQ_effect_get_num_inputs(seq->type) > 0) {
@@ -930,10 +938,18 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
     break;
   }
 
-  if (*r_seq1 == nullptr || *r_side == SEQ_SIDE_NONE) {
+  /* Nothing can be selected. */
+  if (*r_seq1 == nullptr) {
     return false;
   }
 
+  const int strip_len = SEQ_time_right_handle_frame_get(scene, *r_seq1) -
+                        SEQ_time_left_handle_frame_get(scene, *r_seq1);
+  if (strip_len / pixelx < 25 * U.pixelsize) {
+    *r_side = SEQ_SIDE_NONE;
+  }
+
+  /* No further selection refinement needed. */
   if (*r_seq1 != nullptr && *r_side == SEQ_SIDE_NONE) {
     return true;
   }
@@ -952,11 +968,11 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
       continue;
     }
 
-    float handsize = sequence_handle_size_get_clamped(scene, seq, pixelx) * 2;
-    rctf rectf;
-    seq_rectf(scene, seq, &rectf);
-    rectf.xmin -= handsize / 2;
-    rectf.xmax += handsize / 2;
+    float handsize = clickable_area_get(scene, seq, pixelx);
+    rctf seq_rect;
+    seq_rectf(scene, seq, &seq_rect);
+    seq_rect.xmin -= handsize;
+    seq_rect.xmax += handsize;
 
     int handle1, handle2;
     if (*r_side == SEQ_SIDE_LEFT) {
@@ -971,10 +987,10 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
       continue;
     }
 
-    if (!BLI_rctf_isect_pt(&rectf, mouse_view_x, mouse_view_y)) {
+    if (!BLI_rctf_isect_pt(&seq_rect, mouse_x_view, mouse_y_view)) {
       continue;
     }
-    if (mouse_view_x < rectf.xmin + handsize / 2 || mouse_view_x > rectf.xmax - handsize / 2) {
+    if (mouse_x_view < seq_rect.xmin + handsize || mouse_x_view > seq_rect.xmax - handsize) {
       *r_seq2 = seq;
     }
     break;
