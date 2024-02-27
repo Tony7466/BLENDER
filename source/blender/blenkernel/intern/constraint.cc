@@ -25,6 +25,7 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.hh"
+#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 #include "BLT_translation.h"
 
@@ -1658,9 +1659,22 @@ static bConstraintTypeInfo CTI_LOCLIMIT = {
 
 /* -------- Limit Rotation --------- */
 
-/** Clamps an angle between min and max. The values are expected to be in radians. In case `max` is
- * smaller than `min` the whole clockwise range on the unit circle from `min` to `max` is
- * considered a valid range.*/
+/**
+ * Wraps a number to be in [-PI, +PI].
+ *
+ * Can also be implemented as `std::remainder(a, M_PI * 2.0)`.
+ * Not sure which is faster.
+ */
+static inline float pi_wrap(const float a)
+{
+  const float b = a * (0.5 / M_PI) + 0.5;
+  const float c = b - std::floor(b);
+  return (c - 0.5) * (2.0 * M_PI);
+}
+
+/**
+ * Clamps an angle between min and max. ...
+ */
 static float clamp_angle(const float angle, const float min, const float max)
 {
   if ((max - min) >= (2 * M_PI)) {
@@ -1671,43 +1685,34 @@ static float clamp_angle(const float angle, const float min, const float max)
     return min;
   }
 
-  float angle_unit_circle[2];
-  angle_unit_circle[0] = cos(angle);
-  angle_unit_circle[1] = sin(angle);
+  /* For the code below, see: https://www.desmos.com/calculator/awzjzund1u */
 
-  float min_unit_circle[2];
-  min_unit_circle[0] = cos(min);
-  min_unit_circle[1] = sin(min);
+  /* Move min and max into a space where `angle == 0.0`, and wrap them to
+   * [-PI, +PI] in that space. */
+  const float tmin = pi_wrap(min - angle);
+  const float tmax = pi_wrap(max - angle);
 
-  float max_unit_circle[2];
-  max_unit_circle[0] = cos(max);
-  max_unit_circle[1] = sin(max);
-
-  float max_to_angle[2];
-  sub_v2_v2v2(max_to_angle, angle_unit_circle, max_unit_circle);
-
-  float max_to_min[2];
-  sub_v2_v2v2(max_to_min, min_unit_circle, max_unit_circle);
-
-  /* By calculating the cross between those two we can determine if the angle_unit_circle point is
-   * left or right to the max_to_min vector, which tells us if it is in the legal range or not.*/
-  const float cross = cross_v2v2(max_to_angle, max_to_min);
-  if (cross < 0) {
-    return angle;
+  /* Some shenanigans to handle the various special cases of
+   * clamping in a cyclic space. */
+  float tclamped = 0.0;
+  if (tmin < tmax) {
+    tclamped = std::min(std::max(0.0f, tmin), tmax);
+  }
+  else if (tmax < 0.0 && 0.0 < tmin) {
+    if (std::fabs(tmax) < std::fabs(tmin)) {
+      tclamped = tmax;
+    }
+    else {
+      tclamped = tmin;
+    }
   }
 
-  const float dot_min = dot_v2v2(angle_unit_circle, min_unit_circle);
-  const float dot_max = dot_v2v2(angle_unit_circle, max_unit_circle);
-
-  /* Clamps the value to whichever constraint is closer. */
-  if (dot_min > dot_max) {
-    return min;
-  }
-  return max;
+  return tclamped + angle;
 }
 
 static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
+  SCOPED_TIMER_AVERAGED("constraint");
   bRotLimitConstraint *data = static_cast<bRotLimitConstraint *>(con->data);
   float loc[3];
   float eul[3];
