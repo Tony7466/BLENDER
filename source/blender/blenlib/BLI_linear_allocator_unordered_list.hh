@@ -18,6 +18,16 @@ template<typename T, int64_t Capacity> struct UnorderedListSegment {
   std::array<TypedBuffer<T>, Capacity> values;
 };
 
+/**
+ * This data structure can be used as a replacement of #Vector under some specific circumstances:
+ * - The order of elements does not matter.
+ * - No random access is necessary, just iteration over all values.
+ * - The reallocation of #Vector when its capacity is reached is a bottleneck.
+ * - Too large overallocations should be avoided.
+ * - A separate #LinearAllocator should provide the memory instead of a global allocator or an
+ *   allocator owned by the #UnorderedList.
+ * - The `sizeof()` the list should be small.
+ */
 template<typename T, int64_t SegmentCapacity = 4> class UnorderedList : NonCopyable {
  private:
   using Segment = UnorderedListSegment<T, SegmentCapacity>;
