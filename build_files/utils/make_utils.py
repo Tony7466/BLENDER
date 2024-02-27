@@ -149,7 +149,7 @@ def is_git_submodule_enabled(git_command: str, submodule_dir: Path):
         return False
 
     # When the "update" strategy is not provided explicitly in the the local configuration
-    # `git config` returns a non-zero exit code. For those assume the default "chekcout"
+    # `git config` returns a non-zero exit code. For those assume the default "checkout"
     # strategy.
     update = check_output(
         (git_command, "config", "--local", _git_submodule_config_key(submodule_dir, "update")),
