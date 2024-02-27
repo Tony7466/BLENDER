@@ -218,7 +218,7 @@ def blender_update(args):
 
 
 def _is_library_submodule(submodule_path):
-    if submodule_path.parts[0] == "lib":
+    if submodule_path.parts[0] in ("lib", "tests"):
         return True
 
     if submodule_path.is_relative_to(Path("release") / "datafiles"):
