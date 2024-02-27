@@ -16,21 +16,21 @@
 #include "BLI_task.h"
 #include "BLI_threads.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
 #include "BKE_curves.h"
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.h"
 #include "BKE_lattice.hh"
 #include "BKE_main.hh"
-#include "BKE_mball.h"
+#include "BKE_mball.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
@@ -38,7 +38,7 @@
 #include "BKE_paint.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 #include "BKE_screen.hh"
 #include "BKE_subdiv_modifier.hh"
 #include "BKE_viewer_path.hh"
@@ -64,8 +64,6 @@
 #include "GPU_state.h"
 #include "GPU_uniform_buffer.h"
 #include "GPU_viewport.h"
-
-#include "IMB_colormanagement.h"
 
 #include "RE_engine.h"
 #include "RE_pipeline.h"
@@ -190,7 +188,7 @@ bool DRW_object_is_renderable(const Object *ob)
   if (ob->type == OB_MESH) {
     if ((ob == DST.draw_ctx.object_edit) || DRW_object_is_in_edit_mode(ob)) {
       View3D *v3d = DST.draw_ctx.v3d;
-      if (v3d && RETOPOLOGY_ENABLED(v3d)) {
+      if (v3d && ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) && RETOPOLOGY_ENABLED(v3d)) {
         return false;
       }
     }
@@ -978,7 +976,7 @@ void DRW_cache_free_old_batches(Main *bmain)
   using namespace blender::draw;
   Scene *scene;
   static int lasttime = 0;
-  int ctime = int(PIL_check_seconds_timer());
+  int ctime = int(BLI_time_now_seconds());
 
   if (U.vbotimeout == 0 || (ctime - lasttime) < U.vbocollectrate || ctime == lasttime) {
     return;
@@ -1066,7 +1064,7 @@ static void drw_engines_cache_populate(Object *ob)
 {
   DST.ob_handle = 0;
 
-  /* HACK: DrawData is copied by COW from the duplicated object.
+  /* HACK: DrawData is copied by copy-on-eval from the duplicated object.
    * This is valid for IDs that cannot be instantiated but this
    * is not what we want in this case so we clear the pointer
    * ourselves here. */
@@ -1147,21 +1145,14 @@ void DRW_draw_region_engine_info(int xoffset, int *yoffset, int line_height)
     if (data->info[0] != '\0') {
       const int font_id = BLF_default();
       UI_FontThemeColor(font_id, TH_TEXT_HI);
-
-      BLF_enable(font_id, BLF_SHADOW);
-      BLF_shadow(font_id, 5, blender::float4{0.0f, 0.0f, 0.0f, 1.0f});
-      BLF_shadow_offset(font_id, 1, -1);
-
       const char *buf_step = IFACE_(data->info);
       do {
         const char *buf = buf_step;
         buf_step = BLI_strchr_or_end(buf, '\n');
         const int buf_len = buf_step - buf;
         *yoffset -= line_height;
-        BLF_draw_default(xoffset, *yoffset, 0.0f, buf, buf_len);
+        BLF_draw_default_shadowed(xoffset, *yoffset, 0.0f, buf, buf_len);
       } while (*buf_step ? ((void)buf_step++, true) : false);
-
-      BLF_disable(font_id, BLF_SHADOW);
     }
   }
 }
@@ -1478,7 +1469,7 @@ void DRW_draw_callbacks_post_scene()
     /* XXX: Or should we use a proper draw/overlay engine for this case? */
     if (do_annotations) {
       GPU_depth_test(GPU_DEPTH_NONE);
-      /* XXX: as `scene->gpd` is not copied for COW yet. */
+      /* XXX: as `scene->gpd` is not copied for copy-on-eval yet. */
       ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, region, true);
       GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
     }
@@ -1531,7 +1522,7 @@ void DRW_draw_callbacks_post_scene()
     /* XXX: Or should we use a proper draw/overlay engine for this case? */
     if (((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) && (do_annotations)) {
       GPU_depth_test(GPU_DEPTH_NONE);
-      /* XXX: as `scene->gpd` is not copied for COW yet */
+      /* XXX: as `scene->gpd` is not copied for copy-on-eval yet */
       ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, region, false);
     }
 
@@ -1554,7 +1545,7 @@ void DRW_draw_callbacks_post_scene()
   else {
     if (v3d && ((v3d->flag2 & V3D_SHOW_ANNOTATION) != 0)) {
       GPU_depth_test(GPU_DEPTH_NONE);
-      /* XXX: as `scene->gpd` is not copied for COW yet */
+      /* XXX: as `scene->gpd` is not copied for copy-on-eval yet */
       ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, region, true);
       GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
     }
@@ -2863,7 +2854,7 @@ void DRW_draw_depth_object(
 
   GPU_matrix_projection_set(rv3d->winmat);
   GPU_matrix_set(rv3d->viewmat);
-  GPU_matrix_mul(object->object_to_world);
+  GPU_matrix_mul(object->object_to_world().ptr());
 
   /* Setup frame-buffer. */
   GPUTexture *depth_tx = GPU_viewport_depth_texture(viewport);
@@ -2883,11 +2874,11 @@ void DRW_draw_depth_object(
   const bool use_clipping_planes = RV3D_CLIPPING_ENABLED(v3d, rv3d);
   if (use_clipping_planes) {
     GPU_clip_distances(6);
-    ED_view3d_clipping_local(rv3d, object->object_to_world);
+    ED_view3d_clipping_local(rv3d, object->object_to_world().ptr());
     for (int i = 0; i < 6; i++) {
       copy_v4_v4(planes.world[i], rv3d->clip_local[i]);
     }
-    copy_m4_m4(planes.ClipModelMatrix.ptr(), object->object_to_world);
+    copy_m4_m4(planes.ClipModelMatrix.ptr(), object->object_to_world().ptr());
   }
 
   drw_batch_cache_validate(object);
