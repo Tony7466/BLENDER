@@ -1810,7 +1810,7 @@ static ExrHandle *imb_exr_begin_read_mem(IStream &file_stream,
 /* debug only */
 static void exr_printf(const char *fmt, ...)
 {
-#if 1
+#if 0
   va_list args;
   va_start(args, fmt);
   vprintf(fmt, args);
