@@ -936,6 +936,7 @@ static void export_hair_curves_motion(Hair *hair,
   bool have_motion = false;
   int num_motion_keys = 0;
   int curve_index = 0;
+  int num_curves = hair->num_curves();
 
   const blender::Span<blender::float3> b_positions = b_curves.positions();
   const blender::OffsetIndices points_by_curve = b_curves.points_by_curve();
@@ -944,6 +945,9 @@ static void export_hair_curves_motion(Hair *hair,
 
   for (const int i : points_by_curve.index_range()) {
     const blender::IndexRange points = points_by_curve[i];
+    if (curve_index >= num_curves) {
+      break;
+    }
 
     Hair::Curve curve = hair->get_curve(curve_index);
     curve_index++;
