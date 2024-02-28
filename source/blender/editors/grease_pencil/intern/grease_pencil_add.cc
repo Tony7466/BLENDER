@@ -1289,4 +1289,18 @@ void create_suzanne(Main &bmain, Object &object, const float4x4 &matrix, const i
   drawing_fills.tag_topology_changed();
 }
 
+void create_blank_for_lineart(Main &bmain, Object &object, const int frame_number)
+{
+  using namespace blender::bke::greasepencil;
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+
+  int material_index = add_material_from_template(bmain, object, gp_stroke_material_black);
+  object.actcol = material_index + 1;
+
+  Layer &layer_lines = grease_pencil.add_layer(DATA_("Lines"));
+  grease_pencil.set_active_layer(&layer_lines);
+
+  grease_pencil.insert_blank_frame(layer_lines, frame_number, 0, BEZT_KEYTYPE_KEYFRAME);
+}
+
 }  // namespace blender::ed::greasepencil
