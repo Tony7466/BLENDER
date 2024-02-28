@@ -43,8 +43,7 @@ const std::string AssetCatalogDefinitionFile::HEADER =
     "# Other lines are of the format \"UUID:catalog/path/for/assets:simple catalog name\"\n";
 
 AssetCatalogService::AssetCatalogService()
-    : catalog_collection_(std::make_unique<AssetCatalogCollection>()),
-      catalog_tree_(std::make_unique<AssetCatalogTree>())
+    : catalog_collection_(std::make_unique<AssetCatalogCollection>())
 {
 }
 
@@ -116,16 +115,16 @@ bool AssetCatalogService::is_empty() const
   return catalog_collection_->catalogs_.is_empty();
 }
 
-OwningAssetCatalogMap &AssetCatalogService::get_catalogs()
+const OwningAssetCatalogMap &AssetCatalogService::get_catalogs() const
 {
   return catalog_collection_->catalogs_;
 }
-OwningAssetCatalogMap &AssetCatalogService::get_deleted_catalogs()
+const OwningAssetCatalogMap &AssetCatalogService::get_deleted_catalogs() const
 {
   return catalog_collection_->deleted_catalogs_;
 }
 
-AssetCatalogDefinitionFile *AssetCatalogService::get_catalog_definition_file()
+const AssetCatalogDefinitionFile *AssetCatalogService::get_catalog_definition_file() const
 {
   return catalog_collection_->catalog_definition_file_.get();
 }
@@ -237,8 +236,8 @@ void AssetCatalogService::prune_catalogs_by_path(const AssetCatalogPath &path)
     this->delete_catalog_by_id_soft(cat_id);
   }
 
-  this->rebuild_tree();
-  AssetLibraryService::get()->rebuild_all_library();
+  this->invalidate_catalog_tree();
+  AssetLibraryService::get()->tag_all_library_catalogs_dirty();
 }
 
 void AssetCatalogService::prune_catalogs_by_id(const CatalogID catalog_id)
@@ -272,8 +271,9 @@ void AssetCatalogService::update_catalog_path(const CatalogID catalog_id,
      * blend file, and update the catalog simple name stored there. */
   }
 
-  this->rebuild_tree();
-  AssetLibraryService::get()->rebuild_all_library();
+  this->create_missing_catalogs();
+  this->invalidate_catalog_tree();
+  AssetLibraryService::get()->tag_all_library_catalogs_dirty();
 }
 
 AssetCatalog *AssetCatalogService::create_catalog(const AssetCatalogPath &catalog_path)
@@ -297,10 +297,8 @@ AssetCatalog *AssetCatalogService::create_catalog(const AssetCatalogPath &catalo
     catalog_collection_->catalog_definition_file_->add_new(catalog_ptr);
   }
 
-  BLI_assert_msg(catalog_tree_, "An Asset Catalog tree should always exist.");
-  catalog_tree_->insert_item(*catalog_ptr);
-
-  AssetLibraryService::get()->rebuild_all_library();
+  this->invalidate_catalog_tree();
+  AssetLibraryService::get()->tag_all_library_catalogs_dirty();
 
   return catalog_ptr;
 }
@@ -341,12 +339,16 @@ void AssetCatalogService::load_from_disk(const CatalogFilePath &file_or_director
 
   /* TODO: Should there be a sanitize step? E.g. to remove catalogs with identical paths? */
 
-  this->rebuild_tree();
+  this->create_missing_catalogs();
+  this->invalidate_catalog_tree();
 }
 
-void AssetCatalogService::add_from_existing(const AssetCatalogService &other_service)
+void AssetCatalogService::add_from_existing(
+    const AssetCatalogService &other_service,
+    AssetCatalogCollection::OnDuplicateCatalogIdFn on_duplicate_items)
 {
-  catalog_collection_->add_catalogs_from_existing(*other_service.catalog_collection_);
+  catalog_collection_->add_catalogs_from_existing(*other_service.catalog_collection_,
+                                                  on_duplicate_items);
 }
 
 void AssetCatalogService::load_directory_recursive(const CatalogFilePath &directory_path)
@@ -437,7 +439,8 @@ void AssetCatalogService::reload_catalogs()
 
   cdf->parse_catalog_file(cdf->file_path, catalog_parsed_callback);
   this->purge_catalogs_not_listed(cats_in_file);
-  this->rebuild_tree();
+  this->create_missing_catalogs();
+  this->invalidate_catalog_tree();
 }
 
 void AssetCatalogService::purge_catalogs_not_listed(const Set<CatalogID> &catalogs_to_keep)
@@ -486,7 +489,7 @@ bool AssetCatalogService::write_to_disk(const CatalogFilePath &blend_file_path)
   }
 
   this->untag_has_unsaved_changes();
-  this->rebuild_tree();
+  this->invalidate_catalog_tree();
   return true;
 }
 
@@ -560,7 +563,7 @@ CatalogFilePath AssetCatalogService::find_suitable_cdf_path_for_writing(
 }
 
 std::unique_ptr<AssetCatalogDefinitionFile> AssetCatalogService::construct_cdf_in_memory(
-    const CatalogFilePath &file_path)
+    const CatalogFilePath &file_path) const
 {
   auto cdf = std::make_unique<AssetCatalogDefinitionFile>();
   cdf->file_path = file_path;
@@ -572,12 +575,7 @@ std::unique_ptr<AssetCatalogDefinitionFile> AssetCatalogService::construct_cdf_i
   return cdf;
 }
 
-AssetCatalogTree *AssetCatalogService::get_catalog_tree()
-{
-  return catalog_tree_.get();
-}
-
-std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
+std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree() const
 {
   auto tree = std::make_unique<AssetCatalogTree>();
 
@@ -589,10 +587,23 @@ std::unique_ptr<AssetCatalogTree> AssetCatalogService::read_into_tree()
   return tree;
 }
 
-void AssetCatalogService::rebuild_tree()
+void AssetCatalogService::invalidate_catalog_tree()
 {
-  this->create_missing_catalogs();
-  this->catalog_tree_ = this->read_into_tree();
+  std::lock_guard lock{catalog_tree_mutex_};
+  this->catalog_tree_ = nullptr;
+}
+
+const AssetCatalogTree &AssetCatalogService::catalog_tree()
+{
+  std::lock_guard lock{catalog_tree_mutex_};
+  if (!catalog_tree_) {
+    /* Ensure all catalog paths lead to valid catalogs. This is important for the catalog tree to
+     * be usable, e.g. it makes sure every item in the tree maps to an actual catalog. */
+    this->create_missing_catalogs();
+
+    catalog_tree_ = read_into_tree();
+  }
+  return *catalog_tree_;
 }
 
 void AssetCatalogService::create_missing_catalogs()
@@ -651,8 +662,9 @@ void AssetCatalogService::undo()
 
   redo_snapshots_.append(std::move(catalog_collection_));
   catalog_collection_ = undo_snapshots_.pop_last();
-  this->rebuild_tree();
-  AssetLibraryService::get()->rebuild_all_library();
+  this->create_missing_catalogs();
+  this->invalidate_catalog_tree();
+  AssetLibraryService::get()->tag_all_library_catalogs_dirty();
 }
 
 void AssetCatalogService::redo()
@@ -662,8 +674,9 @@ void AssetCatalogService::redo()
 
   undo_snapshots_.append(std::move(catalog_collection_));
   catalog_collection_ = redo_snapshots_.pop_last();
-  this->rebuild_tree();
-  AssetLibraryService::get()->rebuild_all_library();
+  this->create_missing_catalogs();
+  this->invalidate_catalog_tree();
+  AssetLibraryService::get()->tag_all_library_catalogs_dirty();
 }
 
 void AssetCatalogService::undo_push()
@@ -692,24 +705,40 @@ std::unique_ptr<AssetCatalogCollection> AssetCatalogCollection::deep_copy() cons
   return copy;
 }
 
-static void copy_catalog_map_into_existing(const OwningAssetCatalogMap &source,
-                                           OwningAssetCatalogMap &dest)
+static void copy_catalog_map_into_existing(
+    const OwningAssetCatalogMap &source,
+    OwningAssetCatalogMap &dest,
+    AssetCatalogCollection::OnDuplicateCatalogIdFn on_duplicate_items)
 {
   for (const auto &orig_catalog_uptr : source.values()) {
+    if (dest.contains(orig_catalog_uptr->catalog_id)) {
+      if (on_duplicate_items) {
+        on_duplicate_items(*dest.lookup(orig_catalog_uptr->catalog_id), *orig_catalog_uptr);
+      }
+      continue;
+    }
+
     auto copy_catalog_uptr = std::make_unique<AssetCatalog>(*orig_catalog_uptr);
     dest.add_new(copy_catalog_uptr->catalog_id, std::move(copy_catalog_uptr));
   }
 }
 
-void AssetCatalogCollection::add_catalogs_from_existing(const AssetCatalogCollection &other)
+void AssetCatalogCollection::add_catalogs_from_existing(
+    const AssetCatalogCollection &other,
+    AssetCatalogCollection::OnDuplicateCatalogIdFn on_duplicate_items)
 {
-  copy_catalog_map_into_existing(other.catalogs_, catalogs_);
+  copy_catalog_map_into_existing(other.catalogs_, catalogs_, on_duplicate_items);
 }
 
 OwningAssetCatalogMap AssetCatalogCollection::copy_catalog_map(const OwningAssetCatalogMap &orig)
 {
   OwningAssetCatalogMap copy;
-  copy_catalog_map_into_existing(orig, copy);
+  copy_catalog_map_into_existing(
+      orig, copy, /*on_duplicate_items=*/[](const AssetCatalog &, const AssetCatalog &) {
+        /* `copy` was empty before. If this happens it means there was a duplicate in the `orig`
+         * catalog map which should've been caught already. */
+        BLI_assert_unreachable();
+      });
   return copy;
 }
 

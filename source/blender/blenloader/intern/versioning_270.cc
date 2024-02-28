@@ -46,7 +46,7 @@
 
 #undef DNA_GENFILE_VERSIONING_MACROS
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_colortools.hh"
 #include "BKE_customdata.hh"
@@ -54,7 +54,7 @@
 #include "BKE_main.hh"
 #include "BKE_mask.h"
 #include "BKE_modifier.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "DNA_material_types.h"
