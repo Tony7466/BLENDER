@@ -251,7 +251,6 @@ FastGaussianBlurValueOperation::FastGaussianBlurValueOperation()
   inputprogram_ = nullptr;
   sigma_ = 1.0f;
   overlay_ = 0;
-  flags_.complex = true;
 }
 
 void FastGaussianBlurValueOperation::init_execution()

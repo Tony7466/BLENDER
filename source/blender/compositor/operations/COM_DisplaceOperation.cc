@@ -13,7 +13,6 @@ DisplaceOperation::DisplaceOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
-  flags_.complex = true;
   flags_.can_be_constant = true;
 
   input_color_program_ = nullptr;

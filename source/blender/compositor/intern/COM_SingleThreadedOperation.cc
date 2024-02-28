@@ -9,7 +9,6 @@ namespace blender::compositor {
 SingleThreadedOperation::SingleThreadedOperation()
 {
   cached_instance_ = nullptr;
-  flags_.complex = true;
   flags_.single_threaded = true;
 }
 

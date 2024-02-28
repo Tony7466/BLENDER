@@ -23,7 +23,6 @@ TextureBaseOperation::TextureBaseOperation()
   rd_ = nullptr;
   pool_ = nullptr;
   scene_color_manage_ = false;
-  flags_.complex = true;
 }
 TextureOperation::TextureOperation() : TextureBaseOperation()
 {

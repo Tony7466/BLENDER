@@ -10,7 +10,6 @@ DilateErodeThresholdOperation::DilateErodeThresholdOperation()
 {
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  flags_.complex = true;
   flags_.can_be_constant = true;
   input_program_ = nullptr;
   inset_ = 0.0f;
@@ -158,7 +157,6 @@ DilateDistanceOperation::DilateDistanceOperation()
   this->add_output_socket(DataType::Value);
   input_program_ = nullptr;
   distance_ = 0.0f;
-  flags_.complex = true;
   flags_.can_be_constant = true;
 }
 
@@ -286,7 +284,6 @@ DilateStepOperation::DilateStepOperation()
 {
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  flags_.complex = true;
   input_program_ = nullptr;
 }
 void DilateStepOperation::init_execution()

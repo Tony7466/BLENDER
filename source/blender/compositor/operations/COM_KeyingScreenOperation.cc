@@ -26,7 +26,6 @@ KeyingScreenOperation::KeyingScreenOperation()
   movie_clip_ = nullptr;
   framenumber_ = 0;
   tracking_object_[0] = 0;
-  flags_.complex = true;
   cached_marker_points_ = nullptr;
 }
 

@@ -27,39 +27,6 @@ void ReadBufferOperation::determine_canvas(const rcti &preferred_area, rcti &r_a
   }
 }
 
-void ReadBufferOperation::execute_pixel_extend(float output[4],
-                                               float x,
-                                               float y,
-                                               PixelSampler sampler,
-                                               MemoryBufferExtend extend_x,
-                                               MemoryBufferExtend extend_y)
-{
-  if (single_value_) {
-    /* write buffer has a single value stored at (0,0) */
-    buffer_->read(output, 0, 0);
-  }
-  else if (sampler == PixelSampler::Nearest) {
-    buffer_->read(output, x, y, extend_x, extend_y);
-  }
-  else {
-    buffer_->read_bilinear(output, x, y, extend_x, extend_y);
-  }
-}
-
-void ReadBufferOperation::execute_pixel_filtered(
-    float output[4], float x, float y, float dx[2], float dy[2])
-{
-  if (single_value_) {
-    /* write buffer has a single value stored at (0,0) */
-    buffer_->read(output, 0, 0);
-  }
-  else {
-    const float uv[2] = {x, y};
-    const float deriv[2][2] = {{dx[0], dx[1]}, {dy[0], dy[1]}};
-    buffer_->readEWA(output, uv, deriv);
-  }
-}
-
 void ReadBufferOperation::read_resolution_from_write_buffer()
 {
   if (memory_proxy_ != nullptr) {

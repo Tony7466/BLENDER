@@ -20,7 +20,6 @@ VariableSizeBokehBlurOperation::VariableSizeBokehBlurOperation()
   this->add_input_socket(DataType::Color, ResizeMode::None);
 #endif
   this->add_output_socket(DataType::Color);
-  flags_.complex = true;
   flags_.can_be_constant = true;
 
   input_program_ = nullptr;
@@ -168,7 +167,6 @@ InverseSearchRadiusOperation::InverseSearchRadiusOperation()
 {
   this->add_input_socket(DataType::Value, ResizeMode::Align); /* Radius. */
   this->add_output_socket(DataType::Color);
-  this->flags.complex = true;
   input_radius_ = nullptr;
 }
 

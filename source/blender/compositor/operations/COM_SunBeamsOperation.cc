@@ -18,8 +18,6 @@ SunBeamsOperation::SunBeamsOperation()
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
   this->set_canvas_input_index(0);
-
-  flags_.complex = true;
 }
 
 void SunBeamsOperation::init_execution()

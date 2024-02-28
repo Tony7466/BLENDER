@@ -163,17 +163,6 @@ class NodeOperationOutput {
 
 struct NodeOperationFlags {
   /**
-   * Is this an complex operation.
-   *
-   * The input and output buffers of Complex operations are stored in buffers. It allows
-   * sequential and read/write.
-   *
-   * Complex operations are typically doing many reads to calculate the output of a single pixel.
-   * Mostly Filter types (Blurs, Convolution, Defocus etc) need this to be set to true.
-   */
-  bool complex : 1;
-
-  /**
    * TODO: Remove this flag and #SingleThreadedOperation if tiled implementation is removed.
    * Full-frame implementation doesn't need it.
    */
@@ -233,7 +222,6 @@ struct NodeOperationFlags {
 
   NodeOperationFlags()
   {
-    complex = false;
     single_threaded = false;
     use_render_border = false;
     use_viewer_border = false;
@@ -508,11 +496,6 @@ class NodeOperation {
     return BLI_rcti_size_y(&get_canvas());
   }
 
-  inline void read_filtered(float result[4], float x, float y, float dx[2], float dy[2])
-  {
-    execute_pixel_filtered(result, x, y, dx, dy);
-  }
-
   virtual MemoryBuffer *get_input_memory_buffer(MemoryBuffer ** /*memory_buffers*/)
   {
     return 0;
@@ -616,32 +599,6 @@ class NodeOperation {
   void init_mutex();
   void lock_mutex();
   void unlock_mutex();
-
-  /**
-   * \brief set whether this operation is complex
-   *
-   * Complex operations are typically doing many reads to calculate the output of a single pixel.
-   * Mostly Filter types (Blurs, Convolution, Defocus etc) need this to be set to true.
-   */
-  void set_complex(bool complex)
-  {
-    flags_.complex = complex;
-  }
-
-  /**
-   * \brief calculate a single pixel using an EWA filter
-   * \note this method is called for complex
-   * \param result: is a float[4] array to store the result
-   * \param x: the x-coordinate of the pixel to calculate in image space
-   * \param y: the y-coordinate of the pixel to calculate in image space
-   * \param dx:
-   * \param dy:
-   * \param input_buffers: chunks that can be read by their ReadBufferOperation.
-   */
-  virtual void execute_pixel_filtered(
-      float /*output*/[4], float /*x*/, float /*y*/, float /*dx*/[2], float /*dy*/[2])
-  {
-  }
 
  private:
   /**

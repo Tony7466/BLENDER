@@ -310,9 +310,6 @@ void NodeOperationOutput::determine_canvas(const rcti &preferred_area, rcti &r_a
 
 std::ostream &operator<<(std::ostream &os, const NodeOperationFlags &node_operation_flags)
 {
-  if (node_operation_flags.complex) {
-    os << "complex,";
-  }
   if (node_operation_flags.single_threaded) {
     os << "single_threaded,";
   }

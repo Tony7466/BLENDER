@@ -17,7 +17,6 @@ CalculateMeanOperation::CalculateMeanOperation()
   image_reader_ = nullptr;
   is_calculated_ = false;
   setting_ = 1;
-  flags_.complex = true;
   flags_.is_constant_operation = true;
 
   needs_canvas_to_get_constant_ = true;

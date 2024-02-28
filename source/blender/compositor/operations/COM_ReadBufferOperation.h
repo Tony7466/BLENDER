@@ -31,14 +31,6 @@ class ReadBufferOperation : public NodeOperation {
 
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
 
-  void execute_pixel_extend(float output[4],
-                            float x,
-                            float y,
-                            PixelSampler sampler,
-                            MemoryBufferExtend extend_x,
-                            MemoryBufferExtend extend_y);
-  void execute_pixel_filtered(
-      float output[4], float x, float y, float dx[2], float dy[2]) override;
   void set_offset(unsigned int offset)
   {
     offset_ = offset;

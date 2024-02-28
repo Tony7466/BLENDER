@@ -147,7 +147,6 @@ DoubleEdgeMaskOperation::DoubleEdgeMaskOperation()
   input_outer_mask_ = nullptr;
   include_all_inner_edges_ = false;
   include_edges_of_image_ = false;
-  flags_.complex = true;
   flags_.can_be_constant = true;
   is_output_rendered_ = false;
 }

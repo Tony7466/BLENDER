@@ -12,7 +12,6 @@ NormalizeOperation::NormalizeOperation()
   this->add_output_socket(DataType::Value);
   image_reader_ = nullptr;
   cached_instance_ = nullptr;
-  flags_.complex = true;
   flags_.can_be_constant = true;
 }
 void NormalizeOperation::init_execution()

@@ -79,11 +79,6 @@ class InverseSearchRadiusOperation : public NodeOperation {
   InverseSearchRadiusOperation();
 
   /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel_chunk(float output[4], int x, int y, void *data);
-
-  /**
    * Initialize the execution
    */
   void init_execution() override;

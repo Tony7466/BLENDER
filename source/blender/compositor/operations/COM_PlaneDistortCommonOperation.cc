@@ -62,7 +62,6 @@ PlaneDistortWarpImageOperation::PlaneDistortWarpImageOperation() : PlaneDistortB
   this->add_input_socket(DataType::Color, ResizeMode::Align);
   this->add_output_socket(DataType::Color);
   pixel_reader_ = nullptr;
-  flags_.complex = true;
 }
 
 void PlaneDistortWarpImageOperation::calculate_corners(const float corners[4][2],

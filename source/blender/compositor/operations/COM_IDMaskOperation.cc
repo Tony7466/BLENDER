@@ -10,7 +10,6 @@ IDMaskOperation::IDMaskOperation()
 {
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  flags_.complex = true;
   flags_.can_be_constant = true;
 }
 

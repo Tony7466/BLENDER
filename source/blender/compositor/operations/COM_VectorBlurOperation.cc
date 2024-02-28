@@ -38,7 +38,6 @@ VectorBlurOperation::VectorBlurOperation()
   input_image_program_ = nullptr;
   input_speed_program_ = nullptr;
   input_zprogram_ = nullptr;
-  flags_.complex = true;
 }
 void VectorBlurOperation::init_execution()
 {

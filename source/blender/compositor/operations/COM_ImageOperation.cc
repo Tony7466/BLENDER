@@ -90,51 +90,6 @@ void BaseImageOperation::determine_canvas(const rcti & /*preferred_area*/, rcti 
   BKE_image_release_ibuf(image_, stackbuf, nullptr);
 }
 
-static void sample_image_at_location(ImBuf *ibuf,
-                                     float x,
-                                     float y,
-                                     PixelSampler sampler,
-                                     bool make_linear_rgb,
-                                     bool ensure_premultiplied,
-                                     float color[4])
-{
-  if (ibuf->float_buffer.data) {
-    switch (sampler) {
-      case PixelSampler::Nearest:
-        imbuf::interpolate_nearest_fl(ibuf, color, x, y);
-        break;
-      case PixelSampler::Bilinear:
-        imbuf::interpolate_bilinear_border_fl(ibuf, color, x, y);
-        break;
-      case PixelSampler::Bicubic:
-        imbuf::interpolate_cubic_bspline_fl(ibuf, color, x, y);
-        break;
-    }
-  }
-  else {
-    uchar4 byte_color;
-    switch (sampler) {
-      case PixelSampler::Nearest:
-        byte_color = imbuf::interpolate_nearest_byte(ibuf, x, y);
-        break;
-      case PixelSampler::Bilinear:
-        byte_color = imbuf::interpolate_bilinear_border_byte(ibuf, x, y);
-        break;
-      case PixelSampler::Bicubic:
-        byte_color = imbuf::interpolate_cubic_bspline_byte(ibuf, x, y);
-        break;
-    }
-    rgba_uchar_to_float(color, byte_color);
-    if (make_linear_rgb) {
-      IMB_colormanagement_colorspace_to_scene_linear_v4(
-          color, false, ibuf->byte_buffer.colorspace);
-    }
-    if (ensure_premultiplied) {
-      straight_to_premul_v4(color);
-    }
-  }
-}
-
 void ImageOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                   const rcti &area,
                                                   Span<MemoryBuffer *> /*inputs*/)

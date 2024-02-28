@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -466,44 +466,6 @@ void MemoryBuffer::read_elem_filtered(
                  read_ewa_elem,
                  const_cast<MemoryBuffer *>(this),
                  out);
-}
-
-/* TODO(manzanilla): to be removed with tiled implementation. */
-static void read_ewa_pixel_sampled(void *userdata, int x, int y, float result[4])
-{
-  MemoryBuffer *buffer = (MemoryBuffer *)userdata;
-  buffer->read(result, x, y);
-}
-
-/* TODO(manzanilla): to be removed with tiled implementation. */
-void MemoryBuffer::readEWA(float *result, const float uv[2], const float derivatives[2][2])
-{
-  if (is_a_single_elem_) {
-    memcpy(result, buffer_, sizeof(float) * num_channels_);
-  }
-  else {
-    BLI_assert(datatype_ == DataType::Color);
-    float inv_width = 1.0f / float(this->get_width()),
-          inv_height = 1.0f / float(this->get_height());
-    /* TODO(sergey): Render pipeline uses normalized coordinates and derivatives,
-     * but compositor uses pixel space. For now let's just divide the values and
-     * switch compositor to normalized space for EWA later.
-     */
-    float uv_normal[2] = {uv[0] * inv_width, uv[1] * inv_height};
-    float du_normal[2] = {derivatives[0][0] * inv_width, derivatives[0][1] * inv_height};
-    float dv_normal[2] = {derivatives[1][0] * inv_width, derivatives[1][1] * inv_height};
-
-    BLI_ewa_filter(this->get_width(),
-                   this->get_height(),
-                   false,
-                   true,
-                   uv_normal,
-                   du_normal,
-                   dv_normal,
-                   read_ewa_pixel_sampled,
-                   this,
-                   result);
-  }
 }
 
 void MemoryBuffer::copy_single_elem_from(const MemoryBuffer *src,

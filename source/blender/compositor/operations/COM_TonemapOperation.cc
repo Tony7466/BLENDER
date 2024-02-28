@@ -17,7 +17,6 @@ TonemapOperation::TonemapOperation()
   image_reader_ = nullptr;
   data_ = nullptr;
   cached_instance_ = nullptr;
-  flags_.complex = true;
   flags_.can_be_constant = true;
 }
 void TonemapOperation::init_execution()
