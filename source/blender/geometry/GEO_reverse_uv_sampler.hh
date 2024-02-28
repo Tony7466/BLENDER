@@ -26,8 +26,6 @@ class ReverseUVSampler {
   Span<float2> uv_map_;
   Span<int3> corner_tris_;
   int resolution_;
-
-  // MultiValueMap<int2, int> corner_tris_by_cell_;
   std::unique_ptr<LookupGrid> lookup_grid_;
 
  public:
