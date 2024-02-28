@@ -54,27 +54,27 @@ struct LocalData {
   Map<int, destruct_ptr<LocalRowData>> rows;
 };
 
-static int2 uv_to_cell_key(const float2 &uv, const int resolution)
+static int2 uv_to_cell(const float2 &uv, const int resolution)
 {
   return int2{uv * resolution};
 }
 
-static Bounds<int2> tri_to_key_bounds(const int3 &tri,
-                                      const int resolution,
-                                      const Span<float2> uv_map)
+static Bounds<int2> tri_to_cell_bounds(const int3 &tri,
+                                       const int resolution,
+                                       const Span<float2> uv_map)
 {
   const float2 &uv_0 = uv_map[tri[0]];
   const float2 &uv_1 = uv_map[tri[1]];
   const float2 &uv_2 = uv_map[tri[2]];
 
-  const int2 key_0 = uv_to_cell_key(uv_0, resolution);
-  const int2 key_1 = uv_to_cell_key(uv_1, resolution);
-  const int2 key_2 = uv_to_cell_key(uv_2, resolution);
+  const int2 cell_0 = uv_to_cell(uv_0, resolution);
+  const int2 cell_1 = uv_to_cell(uv_1, resolution);
+  const int2 cell_2 = uv_to_cell(uv_2, resolution);
 
-  const int2 min_key = math::min(math::min(key_0, key_1), key_2);
-  const int2 max_key = math::max(math::max(key_0, key_1), key_2);
+  const int2 min_cell = math::min(math::min(cell_0, cell_1), cell_2);
+  const int2 max_cell = math::max(math::max(cell_0, cell_1), cell_2);
 
-  return {min_key, max_key};
+  return {min_cell, max_cell};
 }
 
 BLI_NOINLINE static void sort_into_y_rows(
@@ -88,10 +88,10 @@ BLI_NOINLINE static void sort_into_y_rows(
     LocalData &local_data = data_per_thread.local();
     for (const int tri_i : tris_range) {
       const int3 &tri = corner_tris[tri_i];
-      const Bounds<int2> key_bounds = tri_to_key_bounds(tri, resolution, uv_map);
-      const TriWithRange tri_with_range{tri_i, key_bounds.min.x, key_bounds.max.x};
+      const Bounds<int2> cell_bounds = tri_to_cell_bounds(tri, resolution, uv_map);
+      const TriWithRange tri_with_range{tri_i, cell_bounds.min.x, cell_bounds.max.x};
 
-      for (int cell_y = key_bounds.min.y; cell_y <= key_bounds.max.y; cell_y++) {
+      for (int cell_y = cell_bounds.min.y; cell_y <= cell_bounds.max.y; cell_y++) {
         LocalRowData &row = *local_data.rows.lookup_or_add_cb(
             cell_y, [&]() { return local_data.allocator.construct<LocalRowData>(); });
 
@@ -104,8 +104,8 @@ BLI_NOINLINE static void sort_into_y_rows(
         }
 
         row.tris->tris[row.tris->filled_num++] = tri_with_range;
-        row.x_min = std::min<int>(row.x_min, key_bounds.min.x);
-        row.x_max = std::max<int>(row.x_max, key_bounds.max.x);
+        row.x_min = std::min<int>(row.x_min, cell_bounds.min.x);
+        row.x_max = std::max<int>(row.x_max, cell_bounds.max.x);
       }
     }
   });
@@ -240,8 +240,8 @@ static Span<int> lookup_tris_in_cell(const int2 cell,
 
 ReverseUVSampler::Result ReverseUVSampler::sample(const float2 &query_uv) const
 {
-  const int2 cell_key = uv_to_cell_key(query_uv, resolution_);
-  const Span<int> tri_indices = lookup_tris_in_cell(cell_key, *lookup_grid_);
+  const int2 cell = uv_to_cell(query_uv, resolution_);
+  const Span<int> tri_indices = lookup_tris_in_cell(cell, *lookup_grid_);
 
   float best_dist = FLT_MAX;
   float3 best_bary_weights;
