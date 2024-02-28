@@ -52,6 +52,7 @@
 #include "BLI_math_matrix.h"
 #include "BLI_path_util.h"
 #include "BLI_sort.hh"
+#include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
 
@@ -454,7 +455,7 @@ static void report_job_duration(const ImportJobData *data)
   std::cout << '\n';
 }
 
-static void sort_readers(std::vector<AbcObjectReader *> &readers)
+static void sort_readers(blender::MutableSpan<AbcObjectReader *> readers)
 {
   blender::parallel_sort(
       readers.begin(), readers.end(), [](const AbcObjectReader *a, const AbcObjectReader *b) {
