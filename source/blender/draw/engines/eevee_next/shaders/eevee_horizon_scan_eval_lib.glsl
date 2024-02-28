@@ -68,6 +68,8 @@ struct HorizonScanContext {
   ClosureUndetermined closure;
   HorizonScanContextCommon closure_common;
   vec4 closure_result;
+  SphericalHarmonicL1 sh_slice;
+  SphericalHarmonicL1 sh_result;
 #endif
 };
 
@@ -160,6 +162,8 @@ void horizon_scan_eval(vec3 vP,
                                                             vB,
                                                             context.closure_common.N_length,
                                                             context.closure_common.N_angle);
+
+    context.sh_slice = spherical_harmonics_L1_new();
 #endif
 
     /* For both sides of the view vector. */
@@ -262,6 +266,8 @@ void horizon_scan_eval(vec3 vP,
           context.closure_common.weight_slice += weight;
           context.closure_common.light_slice += sample_radiance * weight;
           context.closure_common.bitmask |= sample_bitmask;
+
+          spherical_harmonics_L1_encode_signal_sample(, , context.sh_slice);
         }
 #endif
       }
