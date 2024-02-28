@@ -66,7 +66,7 @@
 
 #include "BKE_DerivedMesh.hh"
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_anim_path.h"
 #include "BKE_anim_visualization.h"
 #include "BKE_animsys.h"
@@ -1276,7 +1276,7 @@ bool BKE_object_support_modifier_type_check(const Object *ob, int modifier_type)
   }
 
   if (ELEM(ob->type, OB_POINTCLOUD, OB_CURVES)) {
-    return modifier_type == eModifierType_Nodes;
+    return ELEM(modifier_type, eModifierType_Nodes, eModifierType_MeshSequenceCache);
   }
   if (ob->type == OB_VOLUME) {
     return mti->modify_geometry_set != nullptr;
