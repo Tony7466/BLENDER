@@ -2490,9 +2490,6 @@ class VIEW3D_PT_gpencil_brush_presets(Panel, PresetPanel):
     preset_add_operator = "scene.gpencil_brush_preset_add"
 
 
-# ********** grease pencil v3 object tool panels ****************
-
-
 class GreasePencilV3PaintPanel:
     bl_context = ".grease_pencil_paint"
     bl_category = "Tool"
@@ -2538,7 +2535,6 @@ class VIEW3D_PT_tools_grease_pencil_v3_brush_settings(Panel, View3DPanel, Grease
     bl_label = "Brush Settings"
     bl_options = {'DEFAULT_CLOSED'}
 
-    # What is the point of brush presets? Seems to serve the exact same purpose as brushes themselves??
     def draw_header_preset(self, _context):
         VIEW3D_PT_gpencil_brush_presets.draw_panel_header(self.layout)
 
