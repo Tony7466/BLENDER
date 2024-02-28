@@ -53,7 +53,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(0.1f)
       .min(0.0f)
       .max(FLT_MAX)
-      .description("Minimum density of a volume cell to contain a grid point");
+      .description("Minimum density of a voxel to contain a grid point");
   b.add_output<decl::Geometry>("Points").propagate_all();
 }
 
