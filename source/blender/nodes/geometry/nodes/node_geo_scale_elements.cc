@@ -236,7 +236,7 @@ static void scale_uniformly(const GroupedSpan<int> elem_islands,
                             Mesh &mesh)
 {
   MutableSpan<float3> positions = mesh.vert_positions_for_write();
-  threading::parallel_for(
+  threading::parallel_for_weighted(
       elem_islands.index_range(),
       512,
       [&](const IndexRange range) {
