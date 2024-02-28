@@ -21,8 +21,6 @@
 #include "BLI_utility_mixins.hh"
 #include "BLI_virtual_array.hh"
 
-#include "BKE_curves.hh"
-
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_grease_pencil_types.h"
 
