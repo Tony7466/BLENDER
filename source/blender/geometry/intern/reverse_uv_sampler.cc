@@ -177,6 +177,9 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
 ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map, const Span<int3> corner_tris)
     : uv_map_(uv_map), corner_tris_(corner_tris), lookup_grid_(std::make_unique<LookupGrid>())
 {
+  /* A lower resolution means that there will be fewer cells and more triangles in each cell. Fewer
+   * cells make construction faster, but more triangles per cell make lookup slower. This value
+   * needs to be determined experimentally. */
   resolution_ = std::max<int>(3, std::sqrt(corner_tris.size()) * 3);
   if (corner_tris.is_empty()) {
     return;
