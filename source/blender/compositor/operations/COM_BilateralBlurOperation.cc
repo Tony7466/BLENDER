@@ -12,22 +12,11 @@ BilateralBlurOperation::BilateralBlurOperation()
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
   flags_.can_be_constant = true;
-
-  input_color_program_ = nullptr;
-  input_determinator_program_ = nullptr;
 }
 
 void BilateralBlurOperation::init_execution()
 {
-  input_color_program_ = get_input_socket_reader(0);
-  input_determinator_program_ = get_input_socket_reader(1);
   QualityStepHelper::init_execution(COM_QH_INCREASE);
-}
-
-void BilateralBlurOperation::deinit_execution()
-{
-  input_color_program_ = nullptr;
-  input_determinator_program_ = nullptr;
 }
 
 void BilateralBlurOperation::get_area_of_interest(const int /*input_idx*/,

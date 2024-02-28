@@ -14,17 +14,6 @@ GlareBaseOperation::GlareBaseOperation()
   flags_.can_be_constant = true;
   is_output_rendered_ = false;
 }
-void GlareBaseOperation::init_execution()
-{
-  NodeOperation::init_execution();
-  input_program_ = get_input_socket_reader(0);
-}
-
-void GlareBaseOperation::deinit_execution()
-{
-  input_program_ = nullptr;
-  NodeOperation::deinit_execution();
-}
 
 void GlareBaseOperation::get_area_of_interest(const int input_idx,
                                               const rcti & /*output_area*/,

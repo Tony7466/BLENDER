@@ -24,26 +24,11 @@ class VariableSizeBokehBlurOperation : public MultiThreadedOperation, public Qua
   int max_blur_;
   float threshold_;
   bool do_size_scale_; /* scale size, matching 'BokehBlurNode' */
-  SocketReader *input_program_;
-  SocketReader *input_bokeh_program_;
-  SocketReader *input_size_program_;
-  SocketReader *input_mask_program_;
-#ifdef COM_DEFOCUS_SEARCH
-  SocketReader *input_search_program_;
-#endif
 
  public:
   VariableSizeBokehBlurOperation();
 
-  /**
-   * Initialize the execution
-   */
   void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_max_blur(int max_radius)
   {
@@ -71,22 +56,11 @@ class VariableSizeBokehBlurOperation : public MultiThreadedOperation, public Qua
 class InverseSearchRadiusOperation : public NodeOperation {
  private:
   int max_blur_;
-  SocketReader *input_radius_;
 
  public:
   static const int DIVIDER = 4;
 
   InverseSearchRadiusOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
 

@@ -23,8 +23,6 @@ CompositorOperation::CompositorOperation()
 
   this->set_render_data(nullptr);
   output_buffer_ = nullptr;
-  image_input_ = nullptr;
-  alpha_input_ = nullptr;
 
   use_alpha_input_ = false;
   active_ = false;
@@ -43,8 +41,6 @@ void CompositorOperation::init_execution()
   }
 
   /* When initializing the tree during initial load the width and height can be zero. */
-  image_input_ = get_input_socket_reader(0);
-  alpha_input_ = get_input_socket_reader(1);
   if (this->get_width() * this->get_height() != 0) {
     output_buffer_ = (float *)MEM_callocN(
         sizeof(float[4]) * this->get_width() * this->get_height(), "CompositorOperation");
@@ -93,8 +89,6 @@ void CompositorOperation::deinit_execution()
   }
 
   output_buffer_ = nullptr;
-  image_input_ = nullptr;
-  alpha_input_ = nullptr;
 }
 
 void CompositorOperation::set_scene_name(const char *scene_name)

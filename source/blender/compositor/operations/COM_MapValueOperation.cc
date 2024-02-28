@@ -10,18 +10,7 @@ MapValueOperation::MapValueOperation()
 {
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  input_operation_ = nullptr;
   flags_.can_be_constant = true;
-}
-
-void MapValueOperation::init_execution()
-{
-  input_operation_ = this->get_input_socket_reader(0);
-}
-
-void MapValueOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
 }
 
 void MapValueOperation::update_memory_buffer_partial(MemoryBuffer *output,

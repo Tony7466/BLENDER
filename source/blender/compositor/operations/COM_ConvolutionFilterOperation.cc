@@ -12,13 +12,7 @@ ConvolutionFilterOperation::ConvolutionFilterOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
   this->set_canvas_input_index(0);
-  input_operation_ = nullptr;
   flags_.can_be_constant = true;
-}
-void ConvolutionFilterOperation::init_execution()
-{
-  input_operation_ = this->get_input_socket_reader(0);
-  input_value_operation_ = this->get_input_socket_reader(1);
 }
 
 void ConvolutionFilterOperation::set3x3Filter(
@@ -35,12 +29,6 @@ void ConvolutionFilterOperation::set3x3Filter(
   filter_[8] = f9;
   filter_height_ = 3;
   filter_width_ = 3;
-}
-
-void ConvolutionFilterOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
-  input_value_operation_ = nullptr;
 }
 
 void ConvolutionFilterOperation::get_area_of_interest(const int input_idx,

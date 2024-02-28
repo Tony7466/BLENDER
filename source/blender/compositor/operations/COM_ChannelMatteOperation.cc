@@ -11,14 +11,11 @@ ChannelMatteOperation::ChannelMatteOperation()
   add_input_socket(DataType::Color);
   add_output_socket(DataType::Value);
 
-  input_image_program_ = nullptr;
   flags_.can_be_constant = true;
 }
 
 void ChannelMatteOperation::init_execution()
 {
-  input_image_program_ = this->get_input_socket_reader(0);
-
   limit_range_ = limit_max_ - limit_min_;
 
   switch (limit_method_) {
@@ -61,11 +58,6 @@ void ChannelMatteOperation::init_execution()
     default:
       break;
   }
-}
-
-void ChannelMatteOperation::deinit_execution()
-{
-  input_image_program_ = nullptr;
 }
 
 void ChannelMatteOperation::update_memory_buffer_partial(MemoryBuffer *output,

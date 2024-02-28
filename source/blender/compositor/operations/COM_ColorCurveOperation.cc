@@ -16,31 +16,13 @@ ColorCurveOperation::ColorCurveOperation()
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
 
-  input_fac_program_ = nullptr;
-  input_image_program_ = nullptr;
-  input_black_program_ = nullptr;
-  input_white_program_ = nullptr;
-
   this->set_canvas_input_index(1);
 }
 void ColorCurveOperation::init_execution()
 {
   CurveBaseOperation::init_execution();
-  input_fac_program_ = this->get_input_socket_reader(0);
-  input_image_program_ = this->get_input_socket_reader(1);
-  input_black_program_ = this->get_input_socket_reader(2);
-  input_white_program_ = this->get_input_socket_reader(3);
 
   BKE_curvemapping_premultiply(curve_mapping_, false);
-}
-
-void ColorCurveOperation::deinit_execution()
-{
-  CurveBaseOperation::deinit_execution();
-  input_fac_program_ = nullptr;
-  input_image_program_ = nullptr;
-  input_black_program_ = nullptr;
-  input_white_program_ = nullptr;
 }
 
 void ColorCurveOperation::update_memory_buffer_partial(MemoryBuffer *output,
@@ -81,27 +63,15 @@ ConstantLevelColorCurveOperation::ConstantLevelColorCurveOperation()
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
 
-  input_fac_program_ = nullptr;
-  input_image_program_ = nullptr;
-
   this->set_canvas_input_index(1);
 }
 void ConstantLevelColorCurveOperation::init_execution()
 {
   CurveBaseOperation::init_execution();
-  input_fac_program_ = this->get_input_socket_reader(0);
-  input_image_program_ = this->get_input_socket_reader(1);
 
   BKE_curvemapping_premultiply(curve_mapping_, false);
 
   BKE_curvemapping_set_black_white(curve_mapping_, black_, white_);
-}
-
-void ConstantLevelColorCurveOperation::deinit_execution()
-{
-  CurveBaseOperation::deinit_execution();
-  input_fac_program_ = nullptr;
-  input_image_program_ = nullptr;
 }
 
 void ConstantLevelColorCurveOperation::update_memory_buffer_partial(MemoryBuffer *output,

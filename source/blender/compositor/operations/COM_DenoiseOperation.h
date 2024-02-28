@@ -25,28 +25,12 @@ class DenoiseBaseOperation : public NodeOperation {
 class DenoiseOperation : public DenoiseBaseOperation {
  private:
   /**
-   * \brief Cached reference to the input programs
-   */
-  SocketReader *input_program_color_;
-  SocketReader *input_program_albedo_;
-  SocketReader *input_program_normal_;
-
-  /**
    * \brief settings of the denoise node.
    */
   const NodeDenoise *settings_;
 
  public:
   DenoiseOperation();
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_denoise_settings(const NodeDenoise *settings)
   {

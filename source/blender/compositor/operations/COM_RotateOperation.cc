@@ -14,8 +14,6 @@ RotateOperation::RotateOperation()
   this->add_input_socket(DataType::Value, ResizeMode::None);
   this->add_output_socket(DataType::Color);
   this->set_canvas_input_index(0);
-  image_socket_ = nullptr;
-  degree_socket_ = nullptr;
   do_degree2_rad_conversion_ = false;
   is_degree_set_ = false;
   sampler_ = PixelSampler::Bilinear;
@@ -114,18 +112,6 @@ void RotateOperation::get_rotation_canvas(const rcti &input_canvas,
 }
 
 void RotateOperation::init_data() {}
-
-void RotateOperation::init_execution()
-{
-  image_socket_ = this->get_input_socket_reader(0);
-  degree_socket_ = this->get_input_socket_reader(1);
-}
-
-void RotateOperation::deinit_execution()
-{
-  image_socket_ = nullptr;
-  degree_socket_ = nullptr;
-}
 
 inline void RotateOperation::ensure_degree()
 {

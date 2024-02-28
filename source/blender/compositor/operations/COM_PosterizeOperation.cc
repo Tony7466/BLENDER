@@ -11,15 +11,7 @@ PosterizeOperation::PosterizeOperation()
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
-  input_program_ = nullptr;
-  input_steps_program_ = nullptr;
   flags_.can_be_constant = true;
-}
-
-void PosterizeOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
-  input_steps_program_ = this->get_input_socket_reader(1);
 }
 
 void PosterizeOperation::update_memory_buffer_partial(MemoryBuffer *output,
@@ -38,12 +30,6 @@ void PosterizeOperation::update_memory_buffer_partial(MemoryBuffer *output,
     it.out[2] = floor(in_value[2] / steps_inv) * steps_inv;
     it.out[3] = in_value[3];
   }
-}
-
-void PosterizeOperation::deinit_execution()
-{
-  input_program_ = nullptr;
-  input_steps_program_ = nullptr;
 }
 
 }  // namespace blender::compositor

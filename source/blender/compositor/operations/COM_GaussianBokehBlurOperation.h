@@ -22,10 +22,6 @@ class GaussianBokehBlurOperation : public BlurBaseOperation {
   GaussianBokehBlurOperation();
   void init_data() override;
   void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
   void deinit_execution() override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
@@ -49,9 +45,6 @@ class GaussianBlurReferenceOperation : public BlurBaseOperation {
   void init_data() override;
   void init_execution() override;
 
-  /**
-   * Deinitialize the execution
-   */
   void deinit_execution() override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;

@@ -12,20 +12,7 @@ DifferenceMatteOperation::DifferenceMatteOperation()
   add_input_socket(DataType::Color);
   add_output_socket(DataType::Value);
 
-  input_image1_program_ = nullptr;
-  input_image2_program_ = nullptr;
   flags_.can_be_constant = true;
-}
-
-void DifferenceMatteOperation::init_execution()
-{
-  input_image1_program_ = this->get_input_socket_reader(0);
-  input_image2_program_ = this->get_input_socket_reader(1);
-}
-void DifferenceMatteOperation::deinit_execution()
-{
-  input_image1_program_ = nullptr;
-  input_image2_program_ = nullptr;
 }
 
 void DifferenceMatteOperation::update_memory_buffer_partial(MemoryBuffer *output,

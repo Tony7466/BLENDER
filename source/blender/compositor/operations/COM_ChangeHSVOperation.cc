@@ -13,24 +13,7 @@ ChangeHSVOperation::ChangeHSVOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
-  input_operation_ = nullptr;
   flags_.can_be_constant = true;
-}
-
-void ChangeHSVOperation::init_execution()
-{
-  input_operation_ = get_input_socket_reader(0);
-  hue_operation_ = get_input_socket_reader(1);
-  saturation_operation_ = get_input_socket_reader(2);
-  value_operation_ = get_input_socket_reader(3);
-}
-
-void ChangeHSVOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
-  hue_operation_ = nullptr;
-  saturation_operation_ = nullptr;
-  value_operation_ = nullptr;
 }
 
 void ChangeHSVOperation::update_memory_buffer_partial(MemoryBuffer *output,

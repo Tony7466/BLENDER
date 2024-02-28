@@ -9,13 +9,9 @@
 namespace blender::compositor {
 
 class KuwaharaAnisotropicStructureTensorOperation : public MultiThreadedOperation {
-  SocketReader *image_reader_;
-
  public:
   KuwaharaAnisotropicStructureTensorOperation();
 
-  void init_execution() override;
-  void deinit_execution() override;
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;

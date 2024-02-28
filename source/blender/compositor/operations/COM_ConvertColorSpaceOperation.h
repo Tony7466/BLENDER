@@ -12,7 +12,6 @@ namespace blender::compositor {
 
 class ConvertColorSpaceOperation : public MultiThreadedOperation {
  private:
-  SocketReader *input_program_;
   NodeConvertColorSpace *settings_;
   ColormanageProcessor *color_processor_;
 
@@ -21,14 +20,7 @@ class ConvertColorSpaceOperation : public MultiThreadedOperation {
 
   void set_settings(NodeConvertColorSpace *node_color_space);
 
-  /**
-   * Initialize the execution
-   */
   void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
   void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,

@@ -11,11 +11,6 @@ namespace blender::compositor {
 
 class ProjectorLensDistortionOperation : public MultiThreadedOperation {
  private:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_program_;
-
   float dispersion_;
 
   float kr_, kr2_;

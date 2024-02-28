@@ -41,9 +41,6 @@ class ScaleOperation : public BaseScaleOperation {
   static constexpr int X_INPUT_INDEX = 1;
   static constexpr int Y_INPUT_INDEX = 2;
 
-  SocketReader *input_operation_;
-  SocketReader *input_xoperation_;
-  SocketReader *input_yoperation_;
   float canvas_center_x_;
   float canvas_center_y_;
 
@@ -77,8 +74,6 @@ class ScaleOperation : public BaseScaleOperation {
   static void clamp_area_size_max(rcti &area, Size2f max_size);
 
   void init_data() override;
-  void init_execution() override;
-  void deinit_execution() override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,
@@ -128,7 +123,6 @@ class ScaleAbsoluteOperation : public ScaleOperation {
 };
 
 class ScaleFixedSizeOperation : public BaseScaleOperation {
-  SocketReader *input_operation_;
   int new_width_;
   int new_height_;
   float rel_x_;
@@ -148,8 +142,6 @@ class ScaleFixedSizeOperation : public BaseScaleOperation {
   ScaleFixedSizeOperation();
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
 
-  void init_execution() override;
-  void deinit_execution() override;
   void set_new_width(int width)
   {
     new_width_ = width;

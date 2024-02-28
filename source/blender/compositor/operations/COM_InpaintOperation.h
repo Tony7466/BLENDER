@@ -14,7 +14,6 @@ namespace blender::compositor {
 
 class InpaintSimpleOperation : public NodeOperation {
  protected:
-  SocketReader *input_image_program_;
   MemoryBuffer *cached_buffer_;
   bool cached_buffer_ready_;
   int max_distance_;

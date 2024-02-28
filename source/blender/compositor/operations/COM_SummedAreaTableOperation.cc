@@ -20,18 +20,6 @@ SummedAreaTableOperation::SummedAreaTableOperation()
   this->flags_.can_be_constant = true;
 }
 
-void SummedAreaTableOperation::init_execution()
-{
-  NodeOperation::init_execution();
-  image_reader_ = this->get_input_socket_reader(0);
-}
-
-void SummedAreaTableOperation::deinit_execution()
-{
-  image_reader_ = nullptr;
-  NodeOperation::deinit_execution();
-}
-
 void SummedAreaTableOperation::get_area_of_interest(int input_idx,
                                                     const rcti & /*output_area*/,
                                                     rcti &r_input_area)

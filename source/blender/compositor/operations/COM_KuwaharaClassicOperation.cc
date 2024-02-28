@@ -22,22 +22,6 @@ KuwaharaClassicOperation::KuwaharaClassicOperation()
   this->flags_.can_be_constant = true;
 }
 
-void KuwaharaClassicOperation::init_execution()
-{
-  image_reader_ = this->get_input_socket_reader(0);
-  size_reader_ = this->get_input_socket_reader(1);
-  sat_reader_ = this->get_input_socket_reader(2);
-  sat_squared_reader_ = this->get_input_socket_reader(3);
-}
-
-void KuwaharaClassicOperation::deinit_execution()
-{
-  image_reader_ = nullptr;
-  size_reader_ = nullptr;
-  sat_reader_ = nullptr;
-  sat_squared_reader_ = nullptr;
-}
-
 void KuwaharaClassicOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                             const rcti &area,
                                                             Span<MemoryBuffer *> inputs)

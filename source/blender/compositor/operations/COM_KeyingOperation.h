@@ -17,16 +17,10 @@ namespace blender::compositor {
  */
 class KeyingOperation : public MultiThreadedOperation {
  protected:
-  SocketReader *pixel_reader_;
-  SocketReader *screen_reader_;
-
   float screen_balance_;
 
  public:
   KeyingOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void set_screen_balance(float value)
   {

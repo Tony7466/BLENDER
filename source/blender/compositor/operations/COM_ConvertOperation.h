@@ -9,14 +9,8 @@
 namespace blender::compositor {
 
 class ConvertBaseOperation : public MultiThreadedOperation {
- protected:
-  SocketReader *input_operation_;
-
  public:
   ConvertBaseOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
@@ -181,14 +175,10 @@ class ConvertStraightToPremulOperation : public ConvertBaseOperation {
 
 class SeparateChannelOperation : public MultiThreadedOperation {
  private:
-  SocketReader *input_operation_;
   int channel_;
 
  public:
   SeparateChannelOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void set_channel(int channel)
   {
@@ -201,17 +191,8 @@ class SeparateChannelOperation : public MultiThreadedOperation {
 };
 
 class CombineChannelsOperation : public MultiThreadedOperation {
- private:
-  SocketReader *input_channel1_operation_;
-  SocketReader *input_channel2_operation_;
-  SocketReader *input_channel3_operation_;
-  SocketReader *input_channel4_operation_;
-
  public:
   CombineChannelsOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

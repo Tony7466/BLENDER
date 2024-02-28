@@ -19,7 +19,6 @@ PreviewOperation::PreviewOperation(const ColorManagedViewSettings *view_settings
   this->add_input_socket(DataType::Color, ResizeMode::Align);
   preview_ = nullptr;
   output_image_ = nullptr;
-  input_ = nullptr;
   divider_ = 1.0f;
   view_settings_ = view_settings;
   display_settings_ = display_settings;
@@ -39,7 +38,6 @@ void PreviewOperation::verify_preview(bNodeInstanceHash *previews, bNodeInstance
 
 void PreviewOperation::init_execution()
 {
-  input_ = get_input_socket_reader(0);
   output_image_ = preview_->ibuf;
 
   if (this->get_width() == uint(preview_->ibuf->x) &&
@@ -57,7 +55,6 @@ void PreviewOperation::init_execution()
 void PreviewOperation::deinit_execution()
 {
   output_image_ = nullptr;
-  input_ = nullptr;
 }
 
 void PreviewOperation::determine_canvas(const rcti & /*preferred_area*/, rcti &r_area)

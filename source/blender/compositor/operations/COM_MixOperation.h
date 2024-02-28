@@ -35,12 +35,6 @@ class MixBaseOperation : public MultiThreadedOperation {
     }
   };
 
-  /**
-   * Prefetched reference to the input_program
-   */
-  SocketReader *input_value_operation_;
-  SocketReader *input_color1_operation_;
-  SocketReader *input_color2_operation_;
   bool value_alpha_multiply_;
   bool use_clamp_;
 
@@ -52,20 +46,7 @@ class MixBaseOperation : public MultiThreadedOperation {
   }
 
  public:
-  /**
-   * Default constructor
-   */
   MixBaseOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
 

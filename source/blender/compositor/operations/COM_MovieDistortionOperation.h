@@ -14,7 +14,6 @@ namespace blender::compositor {
 
 class MovieDistortionOperation : public MultiThreadedOperation {
  private:
-  SocketReader *input_operation_;
   MovieClip *movie_clip_;
   int margin_[2];
 

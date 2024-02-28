@@ -13,7 +13,6 @@ NormalizeOperation::NormalizeOperation()
   cached_instance_ = nullptr;
   flags_.can_be_constant = true;
 }
-void NormalizeOperation::init_execution() {}
 
 void NormalizeOperation::deinit_execution()
 {

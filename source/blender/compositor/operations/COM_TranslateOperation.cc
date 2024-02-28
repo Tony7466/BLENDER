@@ -14,29 +14,12 @@ TranslateOperation::TranslateOperation(DataType data_type, ResizeMode resize_mod
   this->add_input_socket(DataType::Value, ResizeMode::None);
   this->add_output_socket(data_type);
   this->set_canvas_input_index(0);
-  input_operation_ = nullptr;
-  input_xoperation_ = nullptr;
-  input_yoperation_ = nullptr;
   is_delta_set_ = false;
   is_relative_ = false;
   this->x_extend_mode_ = MemoryBufferExtend::Clip;
   this->y_extend_mode_ = MemoryBufferExtend::Clip;
 
   this->flags_.can_be_constant = true;
-}
-
-void TranslateOperation::init_execution()
-{
-  input_operation_ = this->get_input_socket_reader(0);
-  input_xoperation_ = this->get_input_socket_reader(1);
-  input_yoperation_ = this->get_input_socket_reader(2);
-}
-
-void TranslateOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
-  input_xoperation_ = nullptr;
-  input_yoperation_ = nullptr;
 }
 
 void TranslateOperation::set_wrapping(int wrapping_type)

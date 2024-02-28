@@ -22,20 +22,6 @@ KuwaharaAnisotropicOperation::KuwaharaAnisotropicOperation()
   this->flags_.can_be_constant = true;
 }
 
-void KuwaharaAnisotropicOperation::init_execution()
-{
-  image_reader_ = this->get_input_socket_reader(0);
-  size_reader_ = this->get_input_socket_reader(1);
-  structure_tensor_reader_ = this->get_input_socket_reader(2);
-}
-
-void KuwaharaAnisotropicOperation::deinit_execution()
-{
-  image_reader_ = nullptr;
-  size_reader_ = nullptr;
-  structure_tensor_reader_ = nullptr;
-}
-
 /* An implementation of the Anisotropic Kuwahara filter described in the paper:
  *
  *   Kyprianidis, Jan Eric, Henry Kang, and Jurgen Dollner. "Image and video abstraction by

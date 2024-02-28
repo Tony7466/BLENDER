@@ -12,7 +12,6 @@ GlareThresholdOperation::GlareThresholdOperation()
 {
   this->add_input_socket(DataType::Color, ResizeMode::FitAny);
   this->add_output_socket(DataType::Color);
-  input_program_ = nullptr;
 
   flags_.can_be_constant = true;
 }
@@ -24,16 +23,6 @@ void GlareThresholdOperation::determine_canvas(const rcti &preferred_area, rcti 
   const int height = BLI_rcti_size_y(&r_area) / (1 << settings_->quality);
   r_area.xmax = r_area.xmin + width;
   r_area.ymax = r_area.ymin + height;
-}
-
-void GlareThresholdOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
-}
-
-void GlareThresholdOperation::deinit_execution()
-{
-  input_program_ = nullptr;
 }
 
 void GlareThresholdOperation::update_memory_buffer_partial(MemoryBuffer *output,

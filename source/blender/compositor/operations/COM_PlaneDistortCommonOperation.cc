@@ -61,7 +61,6 @@ PlaneDistortWarpImageOperation::PlaneDistortWarpImageOperation() : PlaneDistortB
 {
   this->add_input_socket(DataType::Color, ResizeMode::Align);
   this->add_output_socket(DataType::Color);
-  pixel_reader_ = nullptr;
 }
 
 void PlaneDistortWarpImageOperation::calculate_corners(const float corners[4][2],
@@ -87,16 +86,6 @@ void PlaneDistortWarpImageOperation::calculate_corners(const float corners[4][2]
       {0.0f, 0.0f}, {float(width), 0.0f}, {float(width), float(height)}, {0.0f, float(height)}};
   BKE_tracking_homography_between_two_quads(
       sample_data->frame_space_corners, frame_corners, sample_data->perspective_matrix);
-}
-
-void PlaneDistortWarpImageOperation::init_execution()
-{
-  pixel_reader_ = this->get_input_socket_reader(0);
-}
-
-void PlaneDistortWarpImageOperation::deinit_execution()
-{
-  pixel_reader_ = nullptr;
 }
 
 void PlaneDistortWarpImageOperation::update_memory_buffer_partial(MemoryBuffer *output,

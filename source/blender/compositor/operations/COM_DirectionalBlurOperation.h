@@ -11,7 +11,6 @@ namespace blender::compositor {
 
 class DirectionalBlurOperation : public MultiThreadedOperation, public QualityStepHelper {
  private:
-  SocketReader *input_program_;
   const NodeDBlurData *data_;
 
   float center_x_pix_, center_y_pix_;
@@ -21,15 +20,7 @@ class DirectionalBlurOperation : public MultiThreadedOperation, public QualitySt
  public:
   DirectionalBlurOperation();
 
-  /**
-   * Initialize the execution
-   */
   void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_data(const NodeDBlurData *data)
   {

@@ -13,18 +13,8 @@ namespace blender::compositor {
  * it assumes we are in sRGB color space.
  */
 class SetAlphaReplaceOperation : public MultiThreadedOperation {
- private:
-  SocketReader *input_color_;
-  SocketReader *input_alpha_;
-
  public:
-  /**
-   * Default constructor
-   */
   SetAlphaReplaceOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

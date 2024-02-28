@@ -17,11 +17,6 @@ namespace blender::compositor {
  */
 class PixelateOperation : public MultiThreadedOperation {
  private:
-  /**
-   * \brief cached reference to the input operation
-   */
-  SocketReader *input_operation_;
-
   int pixel_size_;
 
  public:
@@ -35,16 +30,6 @@ class PixelateOperation : public MultiThreadedOperation {
     }
     pixel_size_ = pixel_size;
   }
-
-  /**
-   * \brief initialization of the execution
-   */
-  void init_execution() override;
-
-  /**
-   * \brief de-initialization of the execution
-   */
-  void deinit_execution() override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,

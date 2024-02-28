@@ -14,19 +14,7 @@ DespeckleOperation::DespeckleOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
   this->set_canvas_input_index(0);
-  input_operation_ = nullptr;
   flags_.can_be_constant = true;
-}
-void DespeckleOperation::init_execution()
-{
-  input_operation_ = this->get_input_socket_reader(0);
-  input_value_operation_ = this->get_input_socket_reader(1);
-}
-
-void DespeckleOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
-  input_value_operation_ = nullptr;
 }
 
 BLI_INLINE int color_diff(const float a[3], const float b[3], const float threshold)

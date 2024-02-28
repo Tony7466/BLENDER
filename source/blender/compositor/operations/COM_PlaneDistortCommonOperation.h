@@ -48,16 +48,10 @@ class PlaneDistortBaseOperation : public MultiThreadedOperation {
 };
 
 class PlaneDistortWarpImageOperation : public PlaneDistortBaseOperation {
- protected:
-  SocketReader *pixel_reader_;
-
  public:
   PlaneDistortWarpImageOperation();
 
   void calculate_corners(const float corners[4][2], bool normalized, int sample) override;
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,

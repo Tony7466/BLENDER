@@ -13,17 +13,10 @@ ColorCorrectionOperation::ColorCorrectionOperation()
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
-  input_image_ = nullptr;
-  input_mask_ = nullptr;
   red_channel_enabled_ = true;
   green_channel_enabled_ = true;
   blue_channel_enabled_ = true;
   flags_.can_be_constant = true;
-}
-void ColorCorrectionOperation::init_execution()
-{
-  input_image_ = this->get_input_socket_reader(0);
-  input_mask_ = this->get_input_socket_reader(1);
 }
 
 /* Calculate x^y if the function is defined. Otherwise return the given fallback value. */
@@ -110,12 +103,6 @@ void ColorCorrectionOperation::update_memory_buffer_row(PixelCursor &p)
     p.out[2] = blue_channel_enabled_ ? b : in_color[2];
     p.out[3] = in_color[3];
   }
-}
-
-void ColorCorrectionOperation::deinit_execution()
-{
-  input_image_ = nullptr;
-  input_mask_ = nullptr;
 }
 
 }  // namespace blender::compositor

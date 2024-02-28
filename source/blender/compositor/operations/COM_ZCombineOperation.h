@@ -13,20 +13,8 @@ namespace blender::compositor {
  * it assumes we are in sRGB color space.
  */
 class ZCombineOperation : public MultiThreadedOperation {
- protected:
-  SocketReader *image1Reader_;
-  SocketReader *depth1Reader_;
-  SocketReader *image2Reader_;
-  SocketReader *depth2Reader_;
-
  public:
-  /**
-   * Default constructor
-   */
   ZCombineOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
@@ -40,16 +28,8 @@ class ZCombineAlphaOperation : public ZCombineOperation {
 };
 
 class ZCombineMaskOperation : public MultiThreadedOperation {
- protected:
-  SocketReader *mask_reader_;
-  SocketReader *image1Reader_;
-  SocketReader *image2Reader_;
-
  public:
   ZCombineMaskOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

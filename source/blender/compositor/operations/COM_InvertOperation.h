@@ -10,27 +10,11 @@ namespace blender::compositor {
 
 class InvertOperation : public MultiThreadedOperation {
  private:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_value_program_;
-  SocketReader *input_color_program_;
-
   bool alpha_;
   bool color_;
 
  public:
   InvertOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_color(bool color)
   {

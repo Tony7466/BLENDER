@@ -16,25 +16,8 @@ MathBaseOperation::MathBaseOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  input_value1_operation_ = nullptr;
-  input_value2_operation_ = nullptr;
-  input_value3_operation_ = nullptr;
   use_clamp_ = false;
   flags_.can_be_constant = true;
-}
-
-void MathBaseOperation::init_execution()
-{
-  input_value1_operation_ = this->get_input_socket_reader(0);
-  input_value2_operation_ = this->get_input_socket_reader(1);
-  input_value3_operation_ = this->get_input_socket_reader(2);
-}
-
-void MathBaseOperation::deinit_execution()
-{
-  input_value1_operation_ = nullptr;
-  input_value2_operation_ = nullptr;
-  input_value3_operation_ = nullptr;
 }
 
 void MathBaseOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)

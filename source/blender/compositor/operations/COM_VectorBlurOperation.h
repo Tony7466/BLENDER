@@ -17,13 +17,6 @@ class VectorBlurOperation : public NodeOperation, public QualityStepHelper {
   static constexpr int SPEED_INPUT_INDEX = 2;
 
   /**
-   * \brief Cached reference to the input_program
-   */
-  SocketReader *input_image_program_;
-  SocketReader *input_speed_program_;
-  SocketReader *input_zprogram_;
-
-  /**
    * \brief settings of the glare node.
    */
   const NodeBlurData *settings_;
@@ -33,14 +26,7 @@ class VectorBlurOperation : public NodeOperation, public QualityStepHelper {
  public:
   VectorBlurOperation();
 
-  /**
-   * Initialize the execution
-   */
   void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
   void deinit_execution() override;
 
   void set_vector_blur_settings(const NodeBlurData *settings)

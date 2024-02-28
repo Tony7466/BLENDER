@@ -18,16 +18,6 @@ KuwaharaAnisotropicStructureTensorOperation::KuwaharaAnisotropicStructureTensorO
   this->flags_.can_be_constant = true;
 }
 
-void KuwaharaAnisotropicStructureTensorOperation::init_execution()
-{
-  image_reader_ = this->get_input_socket_reader(0);
-}
-
-void KuwaharaAnisotropicStructureTensorOperation::deinit_execution()
-{
-  image_reader_ = nullptr;
-}
-
 /* Computes the structure tensor of the image using a Dirac delta window function as described in
  * section "3.2 Local Structure Estimation" of the paper:
  *

@@ -20,7 +20,6 @@ class PreviewOperation : public MultiThreadedOperation {
    * \brief holds reference to the SDNA bNode, where this nodes will render the preview image for
    */
   bNodePreview *preview_;
-  SocketReader *input_;
   float divider_;
   unsigned int default_width_;
   unsigned int default_height_;

@@ -26,11 +26,6 @@ typedef float fRGB[4];
 class GlareBaseOperation : public NodeOperation {
  private:
   /**
-   * \brief Cached reference to the input_program
-   */
-  SocketReader *input_program_;
-
-  /**
    * \brief settings of the glare node.
    */
   const NodeGlare *settings_;
@@ -38,16 +33,6 @@ class GlareBaseOperation : public NodeOperation {
   bool is_output_rendered_;
 
  public:
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
-
   void set_glare_settings(const NodeGlare *settings)
   {
     settings_ = settings;

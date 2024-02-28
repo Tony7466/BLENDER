@@ -10,27 +10,10 @@ namespace blender::compositor {
 
 class BrightnessOperation : public MultiThreadedOperation {
  private:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_program_;
-  SocketReader *input_brightness_program_;
-  SocketReader *input_contrast_program_;
-
   bool use_premultiply_;
 
  public:
   BrightnessOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_use_premultiply(bool use_premultiply);
 

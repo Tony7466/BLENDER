@@ -18,7 +18,6 @@ ScreenLensDistortionOperation::ScreenLensDistortionOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
   flags_.can_be_constant = true;
-  input_program_ = nullptr;
   distortion_ = 0.0f;
   dispersion_ = 0.0f;
   distortion_const_ = false;
@@ -56,10 +55,10 @@ void ScreenLensDistortionOperation::init_data()
 
 void ScreenLensDistortionOperation::init_execution()
 {
-  input_program_ = this->get_input_socket_reader(0);
+  SocketReader *input_reader = this->get_input_socket_reader(0);
 
   uint rng_seed = uint(BLI_time_now_seconds_i() & UINT_MAX);
-  rng_seed ^= uint(POINTER_AS_INT(input_program_));
+  rng_seed ^= uint(POINTER_AS_INT(input_reader));
   rng_ = BLI_rng_new(rng_seed);
 }
 
@@ -125,7 +124,6 @@ void ScreenLensDistortionOperation::accumulate(const MemoryBuffer *buffer,
 
 void ScreenLensDistortionOperation::deinit_execution()
 {
-  input_program_ = nullptr;
   BLI_rng_free(rng_);
 }
 

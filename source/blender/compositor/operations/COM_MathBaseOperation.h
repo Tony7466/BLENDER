@@ -14,19 +14,9 @@ namespace blender::compositor {
  */
 class MathBaseOperation : public MultiThreadedOperation {
  protected:
-  /**
-   * Prefetched reference to the input_program
-   */
-  SocketReader *input_value1_operation_;
-  SocketReader *input_value2_operation_;
-  SocketReader *input_value3_operation_;
-
   bool use_clamp_;
 
  protected:
-  /**
-   * Default constructor
-   */
   MathBaseOperation();
 
   float clamp_when_enabled(float value)
@@ -45,16 +35,6 @@ class MathBaseOperation : public MultiThreadedOperation {
   }
 
  public:
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
-
   /**
    * Determine resolution
    */

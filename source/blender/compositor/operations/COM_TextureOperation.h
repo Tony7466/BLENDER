@@ -23,8 +23,6 @@ class TextureBaseOperation : public MultiThreadedOperation {
  private:
   Tex *texture_;
   const RenderData *rd_;
-  SocketReader *input_size_;
-  SocketReader *input_offset_;
   struct ImagePool *pool_;
   bool scene_color_manage_;
 

@@ -26,8 +26,6 @@ void CalculateMeanOperation::init_execution()
   is_calculated_ = false;
 }
 
-void CalculateMeanOperation::deinit_execution() {}
-
 float CalculateMeanOperation::calculate_mean_tile(MemoryBuffer *tile) const
 {
   float *buffer = tile->get_buffer();

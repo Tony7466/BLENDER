@@ -13,11 +13,6 @@ class DilateErodeThresholdOperation : public MultiThreadedOperation {
   struct PixelData;
 
  private:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_program_;
-
   float distance_;
   float switch_;
   float inset_;
@@ -33,15 +28,6 @@ class DilateErodeThresholdOperation : public MultiThreadedOperation {
   DilateErodeThresholdOperation();
 
   void init_data() override;
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_distance(float distance)
   {
@@ -67,10 +53,6 @@ class DilateDistanceOperation : public MultiThreadedOperation {
   struct PixelData;
 
  protected:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_program_;
   float distance_;
   int scope_;
 
@@ -79,15 +61,6 @@ class DilateDistanceOperation : public MultiThreadedOperation {
   DilateDistanceOperation();
 
   void init_data() override;
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_distance(float distance)
   {
@@ -111,26 +84,11 @@ class ErodeDistanceOperation : public DilateDistanceOperation {
 
 class DilateStepOperation : public MultiThreadedOperation {
  protected:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_program_;
-
   int iterations_;
 
  public:
   /* Dilate step */
   DilateStepOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_iterations(int iterations)
   {

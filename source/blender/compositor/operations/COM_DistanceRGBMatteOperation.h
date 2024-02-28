@@ -15,19 +15,11 @@ namespace blender::compositor {
 class DistanceRGBMatteOperation : public MultiThreadedOperation {
  protected:
   const NodeChroma *settings_;
-  SocketReader *input_image_program_;
-  SocketReader *input_key_program_;
 
   virtual float calculate_distance(const float key[4], const float image[4]);
 
  public:
-  /**
-   * Default constructor
-   */
   DistanceRGBMatteOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void set_settings(const NodeChroma *node_chroma)
   {

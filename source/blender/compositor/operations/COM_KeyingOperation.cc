@@ -32,22 +32,7 @@ KeyingOperation::KeyingOperation()
 
   screen_balance_ = 0.5f;
 
-  pixel_reader_ = nullptr;
-  screen_reader_ = nullptr;
-
   flags_.can_be_constant = true;
-}
-
-void KeyingOperation::init_execution()
-{
-  pixel_reader_ = this->get_input_socket_reader(0);
-  screen_reader_ = this->get_input_socket_reader(1);
-}
-
-void KeyingOperation::deinit_execution()
-{
-  pixel_reader_ = nullptr;
-  screen_reader_ = nullptr;
 }
 
 void KeyingOperation::update_memory_buffer_partial(MemoryBuffer *output,

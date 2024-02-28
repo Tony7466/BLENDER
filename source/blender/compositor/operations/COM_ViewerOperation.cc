@@ -26,8 +26,6 @@ ViewerOperation::ViewerOperation()
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Value);
 
-  image_input_ = nullptr;
-  alpha_input_ = nullptr;
   rd_ = nullptr;
   view_name_ = nullptr;
   flags_.use_viewer_border = true;
@@ -36,10 +34,6 @@ ViewerOperation::ViewerOperation()
 
 void ViewerOperation::init_execution()
 {
-  /* When initializing the tree during initial load the width and height can be zero. */
-  image_input_ = get_input_socket_reader(0);
-  alpha_input_ = get_input_socket_reader(1);
-
   if (is_active_viewer_output() && !exec_system_->is_breaked()) {
     init_image();
   }
@@ -47,8 +41,6 @@ void ViewerOperation::init_execution()
 
 void ViewerOperation::deinit_execution()
 {
-  image_input_ = nullptr;
-  alpha_input_ = nullptr;
   output_buffer_ = nullptr;
 }
 

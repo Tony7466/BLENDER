@@ -141,22 +141,8 @@ SMAAEdgeDetectionOperation::SMAAEdgeDetectionOperation()
   this->add_input_socket(DataType::Value); /* Depth, material ID, etc. TODO: currently unused. */
   this->add_output_socket(DataType::Color);
   flags_.can_be_constant = true;
-  image_reader_ = nullptr;
-  value_reader_ = nullptr;
   this->set_threshold(CMP_DEFAULT_SMAA_THRESHOLD);
   this->set_local_contrast_adaptation_factor(CMP_DEFAULT_SMAA_CONTRAST_LIMIT);
-}
-
-void SMAAEdgeDetectionOperation::init_execution()
-{
-  image_reader_ = this->get_input_socket_reader(0);
-  value_reader_ = this->get_input_socket_reader(1);
-}
-
-void SMAAEdgeDetectionOperation::deinit_execution()
-{
-  image_reader_ = nullptr;
-  value_reader_ = nullptr;
 }
 
 void SMAAEdgeDetectionOperation::set_threshold(float threshold)
@@ -278,13 +264,7 @@ SMAABlendingWeightCalculationOperation::SMAABlendingWeightCalculationOperation()
   this->add_input_socket(DataType::Color); /* edges */
   this->add_output_socket(DataType::Color);
   flags_.can_be_constant = true;
-  image_reader_ = nullptr;
   this->set_corner_rounding(CMP_DEFAULT_SMAA_CORNER_ROUNDING);
-}
-
-void SMAABlendingWeightCalculationOperation::init_execution()
-{
-  image_reader_ = this->get_input_socket_reader(0);
 }
 
 void SMAABlendingWeightCalculationOperation::set_corner_rounding(float rounding)
@@ -398,11 +378,6 @@ void SMAABlendingWeightCalculationOperation::update_memory_buffer_partial(
       }
     }
   }
-}
-
-void SMAABlendingWeightCalculationOperation::deinit_execution()
-{
-  image_reader_ = nullptr;
 }
 
 void SMAABlendingWeightCalculationOperation::get_area_of_interest(const int /*input_idx*/,
@@ -764,14 +739,6 @@ SMAANeighborhoodBlendingOperation::SMAANeighborhoodBlendingOperation()
   this->add_input_socket(DataType::Color); /* blend */
   this->add_output_socket(DataType::Color);
   flags_.can_be_constant = true;
-  image1Reader_ = nullptr;
-  image2Reader_ = nullptr;
-}
-
-void SMAANeighborhoodBlendingOperation::init_execution()
-{
-  image1Reader_ = this->get_input_socket_reader(0);
-  image2Reader_ = this->get_input_socket_reader(1);
 }
 
 void SMAANeighborhoodBlendingOperation::update_memory_buffer_partial(MemoryBuffer *output,
@@ -825,12 +792,6 @@ void SMAANeighborhoodBlendingOperation::update_memory_buffer_partial(MemoryBuffe
     mul_v4_v4fl(it.out, color1, weight1);
     madd_v4_v4fl(it.out, color2, weight2);
   }
-}
-
-void SMAANeighborhoodBlendingOperation::deinit_execution()
-{
-  image1Reader_ = nullptr;
-  image2Reader_ = nullptr;
 }
 
 void SMAANeighborhoodBlendingOperation::get_area_of_interest(const int /*input_idx*/,

@@ -21,16 +21,6 @@ class SummedAreaTableOperation : public NodeOperation {
   void set_mode(const eMode mode);
   eMode get_mode();
 
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
-
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
 
   void update_memory_buffer(MemoryBuffer *output,
@@ -38,7 +28,6 @@ class SummedAreaTableOperation : public NodeOperation {
                             Span<MemoryBuffer *> inputs) override;
 
  private:
-  SocketReader *image_reader_;
   eMode mode_;
 };
 

@@ -11,15 +11,11 @@ EllipseMaskOperation::EllipseMaskOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  input_mask_ = nullptr;
-  input_value_ = nullptr;
   cosine_ = 0.0f;
   sine_ = 0.0f;
 }
 void EllipseMaskOperation::init_execution()
 {
-  input_mask_ = this->get_input_socket_reader(0);
-  input_value_ = this->get_input_socket_reader(1);
   const double rad = double(data_->rotation);
   cosine_ = cos(rad);
   sine_ = sin(rad);
@@ -95,12 +91,6 @@ void EllipseMaskOperation::apply_mask(MemoryBuffer *output,
       out += output->elem_stride;
     }
   }
-}
-
-void EllipseMaskOperation::deinit_execution()
-{
-  input_mask_ = nullptr;
-  input_value_ = nullptr;
 }
 
 }  // namespace blender::compositor

@@ -32,9 +32,6 @@ ScaleOperation::ScaleOperation(DataType data_type) : BaseScaleOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(data_type);
-  input_operation_ = nullptr;
-  input_xoperation_ = nullptr;
-  input_yoperation_ = nullptr;
   flags_.can_be_constant = true;
 }
 
@@ -95,20 +92,6 @@ void ScaleOperation::init_data()
 {
   canvas_center_x_ = canvas_.xmin + get_width() / 2.0f;
   canvas_center_y_ = canvas_.ymin + get_height() / 2.0f;
-}
-
-void ScaleOperation::init_execution()
-{
-  input_operation_ = this->get_input_socket_reader(0);
-  input_xoperation_ = this->get_input_socket_reader(1);
-  input_yoperation_ = this->get_input_socket_reader(2);
-}
-
-void ScaleOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
-  input_xoperation_ = nullptr;
-  input_yoperation_ = nullptr;
 }
 
 void ScaleOperation::get_scale_offset(const rcti &input_canvas,
@@ -232,7 +215,6 @@ ScaleFixedSizeOperation::ScaleFixedSizeOperation() : BaseScaleOperation()
   this->add_input_socket(DataType::Color, ResizeMode::None);
   this->add_output_socket(DataType::Color);
   this->set_canvas_input_index(0);
-  input_operation_ = nullptr;
   is_offset_ = false;
 }
 
@@ -301,16 +283,6 @@ void ScaleFixedSizeOperation::init_data(const rcti &input_canvas)
     }
   }
   /* *** end framing options *** */
-}
-
-void ScaleFixedSizeOperation::init_execution()
-{
-  input_operation_ = this->get_input_socket_reader(0);
-}
-
-void ScaleFixedSizeOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
 }
 
 void ScaleFixedSizeOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)

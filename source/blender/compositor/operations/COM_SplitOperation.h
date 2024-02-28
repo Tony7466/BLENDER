@@ -10,16 +10,11 @@ namespace blender::compositor {
 
 class SplitOperation : public MultiThreadedOperation {
  private:
-  SocketReader *image1Input_;
-  SocketReader *image2Input_;
-
   float split_percentage_;
   bool x_split_;
 
  public:
   SplitOperation();
-  void init_execution() override;
-  void deinit_execution() override;
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
   void set_split_percentage(float split_percentage)
   {

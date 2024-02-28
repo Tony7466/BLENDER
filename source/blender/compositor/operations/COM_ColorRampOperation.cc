@@ -13,18 +13,8 @@ ColorRampOperation::ColorRampOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
 
-  input_program_ = nullptr;
   color_band_ = nullptr;
   flags_.can_be_constant = true;
-}
-void ColorRampOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
-}
-
-void ColorRampOperation::deinit_execution()
-{
-  input_program_ = nullptr;
 }
 
 void ColorRampOperation::update_memory_buffer_partial(MemoryBuffer *output,

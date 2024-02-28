@@ -11,23 +11,8 @@ SplitOperation::SplitOperation()
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-  image1Input_ = nullptr;
-  image2Input_ = nullptr;
 
   flags_.can_be_constant = true;
-}
-
-void SplitOperation::init_execution()
-{
-  /* When initializing the tree during initial load the width and height can be zero. */
-  image1Input_ = get_input_socket_reader(0);
-  image2Input_ = get_input_socket_reader(1);
-}
-
-void SplitOperation::deinit_execution()
-{
-  image1Input_ = nullptr;
-  image2Input_ = nullptr;
 }
 
 void SplitOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)

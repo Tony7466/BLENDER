@@ -153,21 +153,18 @@ InpaintSimpleOperation::InpaintSimpleOperation()
 {
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-  input_image_program_ = nullptr;
   cached_buffer_ = nullptr;
   cached_buffer_ready_ = false;
   flags_.can_be_constant = true;
 }
 void InpaintSimpleOperation::init_execution()
 {
-  input_image_program_ = this->get_input_socket_reader(0);
   cached_buffer_ = nullptr;
   cached_buffer_ready_ = false;
 }
 
 void InpaintSimpleOperation::deinit_execution()
 {
-  input_image_program_ = nullptr;
   if (cached_buffer_) {
     delete cached_buffer_;
     cached_buffer_ = nullptr;

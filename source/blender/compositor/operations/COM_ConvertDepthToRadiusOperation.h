@@ -31,8 +31,6 @@ class ConvertDepthToRadiusOperation : public MultiThreadedOperation {
 
   void init_execution() override;
 
-  void deinit_execution() override;
-
   void set_data(const NodeDefocus *data)
   {
     data_ = data;

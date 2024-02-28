@@ -12,21 +12,7 @@ DistanceRGBMatteOperation::DistanceRGBMatteOperation()
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Value);
 
-  input_image_program_ = nullptr;
-  input_key_program_ = nullptr;
   flags_.can_be_constant = true;
-}
-
-void DistanceRGBMatteOperation::init_execution()
-{
-  input_image_program_ = this->get_input_socket_reader(0);
-  input_key_program_ = this->get_input_socket_reader(1);
-}
-
-void DistanceRGBMatteOperation::deinit_execution()
-{
-  input_image_program_ = nullptr;
-  input_key_program_ = nullptr;
 }
 
 float DistanceRGBMatteOperation::calculate_distance(const float key[4], const float image[4])

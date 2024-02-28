@@ -9,25 +9,8 @@
 namespace blender::compositor {
 
 class PosterizeOperation : public MultiThreadedOperation {
- private:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_program_;
-  SocketReader *input_steps_program_;
-
  public:
   PosterizeOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

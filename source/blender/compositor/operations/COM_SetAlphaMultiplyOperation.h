@@ -14,15 +14,8 @@ namespace blender::compositor {
  * `output color.rgba = input color.rgba * input alpha`
  */
 class SetAlphaMultiplyOperation : public MultiThreadedOperation {
- private:
-  SocketReader *input_color_;
-  SocketReader *input_alpha_;
-
  public:
   SetAlphaMultiplyOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

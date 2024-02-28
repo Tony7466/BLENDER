@@ -15,7 +15,6 @@ MovieDistortionOperation::MovieDistortionOperation(bool distortion)
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
   this->set_canvas_input_index(0);
-  input_operation_ = nullptr;
   movie_clip_ = nullptr;
   apply_ = distortion;
 
@@ -57,7 +56,6 @@ void MovieDistortionOperation::init_data()
 
 void MovieDistortionOperation::init_execution()
 {
-  input_operation_ = this->get_input_socket_reader(0);
   if (movie_clip_) {
     MovieTracking *tracking = &movie_clip_->tracking;
     distortion_ = BKE_tracking_distortion_new(tracking, calibration_width_, calibration_height_);
@@ -69,7 +67,6 @@ void MovieDistortionOperation::init_execution()
 
 void MovieDistortionOperation::deinit_execution()
 {
-  input_operation_ = nullptr;
   movie_clip_ = nullptr;
   if (distortion_ != nullptr) {
     BKE_tracking_distortion_free(distortion_);

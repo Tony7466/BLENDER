@@ -9,15 +9,8 @@
 namespace blender::compositor {
 
 class DotproductOperation : public MultiThreadedOperation {
- private:
-  SocketReader *input1Operation_;
-  SocketReader *input2Operation_;
-
  public:
   DotproductOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

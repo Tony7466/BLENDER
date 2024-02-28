@@ -22,27 +22,13 @@ VariableSizeBokehBlurOperation::VariableSizeBokehBlurOperation()
   this->add_output_socket(DataType::Color);
   flags_.can_be_constant = true;
 
-  input_program_ = nullptr;
-  input_bokeh_program_ = nullptr;
-  input_size_program_ = nullptr;
-  input_mask_program_ = nullptr;
   max_blur_ = 32.0f;
   threshold_ = 1.0f;
   do_size_scale_ = false;
-#ifdef COM_DEFOCUS_SEARCH
-  input_search_program_ = nullptr;
-#endif
 }
 
 void VariableSizeBokehBlurOperation::init_execution()
 {
-  input_program_ = get_input_socket_reader(0);
-  input_bokeh_program_ = get_input_socket_reader(1);
-  input_size_program_ = get_input_socket_reader(2);
-  input_mask_program_ = get_input_socket_reader(3);
-#ifdef COM_DEFOCUS_SEARCH
-  input_search_program_ = get_input_socket_reader(4);
-#endif
   QualityStepHelper::init_execution(COM_QH_INCREASE);
 }
 struct VariableSizeBokehBlurTileData {
@@ -52,17 +38,6 @@ struct VariableSizeBokehBlurTileData {
   MemoryBuffer *mask;
   int max_blur_scalar;
 };
-
-void VariableSizeBokehBlurOperation::deinit_execution()
-{
-  input_program_ = nullptr;
-  input_bokeh_program_ = nullptr;
-  input_size_program_ = nullptr;
-  input_mask_program_ = nullptr;
-#ifdef COM_DEFOCUS_SEARCH
-  input_search_program_ = nullptr;
-#endif
-}
 
 void VariableSizeBokehBlurOperation::get_area_of_interest(const int input_idx,
                                                           const rcti &output_area,
@@ -167,17 +142,6 @@ InverseSearchRadiusOperation::InverseSearchRadiusOperation()
 {
   this->add_input_socket(DataType::Value, ResizeMode::Align); /* Radius. */
   this->add_output_socket(DataType::Color);
-  input_radius_ = nullptr;
-}
-
-void InverseSearchRadiusOperation::init_execution()
-{
-  input_radius_ = this->get_input_socket_reader(0);
-}
-
-void InverseSearchRadiusOperation::deinit_execution()
-{
-  input_radius_ = nullptr;
 }
 
 void InverseSearchRadiusOperation::determine_resolution(uint resolution[2],

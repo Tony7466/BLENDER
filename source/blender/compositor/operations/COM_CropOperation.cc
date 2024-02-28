@@ -12,7 +12,6 @@ CropBaseOperation::CropBaseOperation()
 {
   this->add_input_socket(DataType::Color, ResizeMode::Align);
   this->add_output_socket(DataType::Color);
-  input_operation_ = nullptr;
   settings_ = nullptr;
   flags_.can_be_constant = true;
 }
@@ -47,13 +46,7 @@ void CropBaseOperation::update_area()
 
 void CropBaseOperation::init_execution()
 {
-  input_operation_ = this->get_input_socket_reader(0);
   update_area();
-}
-
-void CropBaseOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
 }
 
 CropOperation::CropOperation() : CropBaseOperation()

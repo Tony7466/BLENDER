@@ -46,11 +46,6 @@ void ConvertDepthToRadiusOperation::init_execution()
   blur_y_operation_->set_size(1.0f);
 }
 
-void ConvertDepthToRadiusOperation::deinit_execution()
-{
-  depth_input_operation_ = nullptr;
-}
-
 /* Given a depth texture, compute the radius of the circle of confusion in pixels based on equation
  * (8) of the paper:
  *

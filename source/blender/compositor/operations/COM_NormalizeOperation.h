@@ -24,14 +24,6 @@ class NormalizeOperation : public MultiThreadedOperation {
  public:
   NormalizeOperation();
 
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
   void deinit_execution() override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;

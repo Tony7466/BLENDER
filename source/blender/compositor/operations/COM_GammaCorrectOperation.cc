@@ -10,12 +10,7 @@ GammaCorrectOperation::GammaCorrectOperation()
 {
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-  input_program_ = nullptr;
   flags_.can_be_constant = true;
-}
-void GammaCorrectOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
 }
 
 void GammaCorrectOperation::update_memory_buffer_partial(MemoryBuffer *output,
@@ -46,21 +41,11 @@ void GammaCorrectOperation::update_memory_buffer_partial(MemoryBuffer *output,
   }
 }
 
-void GammaCorrectOperation::deinit_execution()
-{
-  input_program_ = nullptr;
-}
-
 GammaUncorrectOperation::GammaUncorrectOperation()
 {
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-  input_program_ = nullptr;
   flags_.can_be_constant = true;
-}
-void GammaUncorrectOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
 }
 
 void GammaUncorrectOperation::update_memory_buffer_partial(MemoryBuffer *output,
@@ -88,11 +73,6 @@ void GammaUncorrectOperation::update_memory_buffer_partial(MemoryBuffer *output,
       it.out[2] *= color[3];
     }
   }
-}
-
-void GammaUncorrectOperation::deinit_execution()
-{
-  input_program_ = nullptr;
 }
 
 }  // namespace blender::compositor

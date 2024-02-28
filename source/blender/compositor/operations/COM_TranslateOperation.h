@@ -16,9 +16,6 @@ class TranslateOperation : public MultiThreadedOperation {
   static constexpr int Y_INPUT_INDEX = 2;
 
  private:
-  SocketReader *input_operation_;
-  SocketReader *input_xoperation_;
-  SocketReader *input_yoperation_;
   float delta_x_;
   float delta_y_;
   bool is_delta_set_;
@@ -31,9 +28,6 @@ class TranslateOperation : public MultiThreadedOperation {
  public:
   TranslateOperation();
   TranslateOperation(DataType data_type, ResizeMode mode = ResizeMode::Center);
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   float get_delta_x()
   {

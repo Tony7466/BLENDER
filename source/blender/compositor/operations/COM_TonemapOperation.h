@@ -28,11 +28,6 @@ typedef struct AvgLogLum {
 class TonemapOperation : public MultiThreadedOperation {
  protected:
   /**
-   * \brief Cached reference to the reader
-   */
-  SocketReader *image_reader_;
-
-  /**
    * \brief settings of the Tone-map
    */
   const NodeTonemap *data_;
@@ -44,16 +39,6 @@ class TonemapOperation : public MultiThreadedOperation {
 
  public:
   TonemapOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_data(const NodeTonemap *data)
   {

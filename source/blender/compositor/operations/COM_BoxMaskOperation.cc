@@ -11,15 +11,11 @@ BoxMaskOperation::BoxMaskOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  input_mask_ = nullptr;
-  input_value_ = nullptr;
   cosine_ = 0.0f;
   sine_ = 0.0f;
 }
 void BoxMaskOperation::init_execution()
 {
-  input_mask_ = this->get_input_socket_reader(0);
-  input_value_ = this->get_input_socket_reader(1);
   const double rad = double(data_->rotation);
   cosine_ = cos(rad);
   sine_ = sin(rad);
@@ -82,12 +78,6 @@ void BoxMaskOperation::apply_mask(MemoryBuffer *output,
     const float *value = it.in(1);
     *it.out = mask_func(inside, mask, value);
   }
-}
-
-void BoxMaskOperation::deinit_execution()
-{
-  input_mask_ = nullptr;
-  input_value_ = nullptr;
 }
 
 }  // namespace blender::compositor

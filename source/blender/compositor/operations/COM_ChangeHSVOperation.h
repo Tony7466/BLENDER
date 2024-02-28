@@ -13,20 +13,8 @@ namespace blender::compositor {
  * it assumes we are in sRGB color space.
  */
 class ChangeHSVOperation : public MultiThreadedOperation {
- private:
-  SocketReader *input_operation_;
-  SocketReader *hue_operation_;
-  SocketReader *saturation_operation_;
-  SocketReader *value_operation_;
-
  public:
-  /**
-   * Default constructor
-   */
   ChangeHSVOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

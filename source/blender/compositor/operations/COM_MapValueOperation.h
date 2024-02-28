@@ -15,27 +15,10 @@ namespace blender::compositor {
  */
 class MapValueOperation : public MultiThreadedOperation {
  private:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_operation_;
   const TexMapping *settings_;
 
  public:
-  /**
-   * Default constructor
-   */
   MapValueOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   /**
    * \brief set the TexMapping settings

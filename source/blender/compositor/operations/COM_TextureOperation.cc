@@ -18,8 +18,6 @@ TextureBaseOperation::TextureBaseOperation()
   this->add_input_socket(DataType::Vector);  // offset
   this->add_input_socket(DataType::Vector);  // size
   texture_ = nullptr;
-  input_size_ = nullptr;
-  input_offset_ = nullptr;
   rd_ = nullptr;
   pool_ = nullptr;
   scene_color_manage_ = false;
@@ -35,8 +33,6 @@ TextureAlphaOperation::TextureAlphaOperation() : TextureBaseOperation()
 
 void TextureBaseOperation::init_execution()
 {
-  input_offset_ = get_input_socket_reader(0);
-  input_size_ = get_input_socket_reader(1);
   pool_ = BKE_image_pool_new();
   if (texture_ != nullptr && texture_->nodetree != nullptr && texture_->use_nodes) {
     ntreeTexBeginExecTree(texture_->nodetree);
@@ -45,8 +41,6 @@ void TextureBaseOperation::init_execution()
 }
 void TextureBaseOperation::deinit_execution()
 {
-  input_size_ = nullptr;
-  input_offset_ = nullptr;
   BKE_image_pool_free(pool_);
   pool_ = nullptr;
   if (texture_ != nullptr && texture_->use_nodes && texture_->nodetree != nullptr &&

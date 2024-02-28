@@ -14,20 +14,9 @@ TonemapOperation::TonemapOperation()
 {
   this->add_input_socket(DataType::Color, ResizeMode::Align);
   this->add_output_socket(DataType::Color);
-  image_reader_ = nullptr;
   data_ = nullptr;
   cached_instance_ = nullptr;
   flags_.can_be_constant = true;
-}
-void TonemapOperation::init_execution()
-{
-  image_reader_ = this->get_input_socket_reader(0);
-}
-
-void TonemapOperation::deinit_execution()
-{
-  image_reader_ = nullptr;
-  delete cached_instance_;
 }
 
 void TonemapOperation::get_area_of_interest(const int input_idx,

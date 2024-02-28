@@ -11,19 +11,9 @@ FlipOperation::FlipOperation()
   this->add_input_socket(DataType::Color, ResizeMode::None);
   this->add_output_socket(DataType::Color);
   this->set_canvas_input_index(0);
-  input_operation_ = nullptr;
   flip_x_ = true;
   flip_y_ = false;
   flags_.can_be_constant = true;
-}
-void FlipOperation::init_execution()
-{
-  input_operation_ = this->get_input_socket_reader(0);
-}
-
-void FlipOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
 }
 
 void FlipOperation::update_memory_buffer_partial(MemoryBuffer *output,

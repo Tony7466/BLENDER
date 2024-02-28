@@ -20,11 +20,6 @@ SunBeamsOperation::SunBeamsOperation()
   this->set_canvas_input_index(0);
 }
 
-void SunBeamsOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
-}
-
 void SunBeamsOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                      const rcti &area,
                                                      Span<MemoryBuffer *> inputs)
@@ -82,11 +77,6 @@ void SunBeamsOperation::update_memory_buffer_partial(MemoryBuffer *output,
       copy_v4_v4(output->get_elem(x, y), accumulated_color);
     }
   }
-}
-
-void SunBeamsOperation::deinit_execution()
-{
-  input_program_ = nullptr;
 }
 
 }  // namespace blender::compositor

@@ -13,9 +13,6 @@ class RotateOperation : public MultiThreadedOperation {
   constexpr static int IMAGE_INPUT_INDEX = 0;
   constexpr static int DEGREE_INPUT_INDEX = 1;
 
-  SocketReader *image_socket_;
-  SocketReader *degree_socket_;
-
   float cosine_;
   float sine_;
   bool do_degree2_rad_conversion_;
@@ -55,8 +52,6 @@ class RotateOperation : public MultiThreadedOperation {
                                   rcti &r_canvas);
 
   void init_data() override;
-  void init_execution() override;
-  void deinit_execution() override;
 
   void set_do_degree2_rad_conversion(bool abool)
   {

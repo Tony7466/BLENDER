@@ -9,27 +9,10 @@
 namespace blender::compositor {
 
 class ColorCurveOperation : public CurveBaseOperation {
- private:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_fac_program_;
-  SocketReader *input_image_program_;
-  SocketReader *input_black_program_;
-  SocketReader *input_white_program_;
-
  public:
   ColorCurveOperation();
 
-  /**
-   * Initialize the execution
-   */
   void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
@@ -38,26 +21,13 @@ class ColorCurveOperation : public CurveBaseOperation {
 
 class ConstantLevelColorCurveOperation : public CurveBaseOperation {
  private:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_fac_program_;
-  SocketReader *input_image_program_;
   float black_[3];
   float white_[3];
 
  public:
   ConstantLevelColorCurveOperation();
 
-  /**
-   * Initialize the execution
-   */
   void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_black_level(float black[3])
   {

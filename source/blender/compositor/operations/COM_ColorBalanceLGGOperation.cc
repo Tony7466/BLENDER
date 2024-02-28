@@ -30,16 +30,8 @@ ColorBalanceLGGOperation::ColorBalanceLGGOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-  input_value_operation_ = nullptr;
-  input_color_operation_ = nullptr;
   this->set_canvas_input_index(1);
   flags_.can_be_constant = true;
-}
-
-void ColorBalanceLGGOperation::init_execution()
-{
-  input_value_operation_ = this->get_input_socket_reader(0);
-  input_color_operation_ = this->get_input_socket_reader(1);
 }
 
 void ColorBalanceLGGOperation::update_memory_buffer_row(PixelCursor &p)
@@ -57,12 +49,6 @@ void ColorBalanceLGGOperation::update_memory_buffer_row(PixelCursor &p)
                fac * colorbalance_lgg(in_color[2], lift_[2], gamma_inv_[2], gain_[2]);
     p.out[3] = in_color[3];
   }
-}
-
-void ColorBalanceLGGOperation::deinit_execution()
-{
-  input_value_operation_ = nullptr;
-  input_color_operation_ = nullptr;
 }
 
 }  // namespace blender::compositor

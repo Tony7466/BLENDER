@@ -14,32 +14,13 @@ MapRangeOperation::MapRangeOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  input_operation_ = nullptr;
   use_clamp_ = false;
   flags_.can_be_constant = true;
-}
-
-void MapRangeOperation::init_execution()
-{
-  input_operation_ = this->get_input_socket_reader(0);
-  source_min_operation_ = this->get_input_socket_reader(1);
-  source_max_operation_ = this->get_input_socket_reader(2);
-  dest_min_operation_ = this->get_input_socket_reader(3);
-  dest_max_operation_ = this->get_input_socket_reader(4);
 }
 
 /* The code below assumes all data is inside range +- this, and that input buffer is single channel
  */
 #define BLENDER_ZMAX 10000.0f
-
-void MapRangeOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
-  source_min_operation_ = nullptr;
-  source_max_operation_ = nullptr;
-  dest_min_operation_ = nullptr;
-  dest_max_operation_ = nullptr;
-}
 
 void MapRangeOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                      const rcti &area,

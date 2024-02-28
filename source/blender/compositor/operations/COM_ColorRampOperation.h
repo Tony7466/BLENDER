@@ -11,24 +11,10 @@ namespace blender::compositor {
 
 class ColorRampOperation : public MultiThreadedOperation {
  private:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_program_;
   ColorBand *color_band_;
 
  public:
   ColorRampOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_color_band(ColorBand *color_band)
   {

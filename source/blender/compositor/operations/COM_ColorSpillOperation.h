@@ -15,8 +15,6 @@ namespace blender::compositor {
 class ColorSpillOperation : public MultiThreadedOperation {
  protected:
   NodeColorspill *settings_;
-  SocketReader *input_image_reader_;
-  SocketReader *input_fac_reader_;
   int spill_channel_;
   int spill_method_;
   int channel2_;
@@ -24,13 +22,9 @@ class ColorSpillOperation : public MultiThreadedOperation {
   float rmut_, gmut_, bmut_;
 
  public:
-  /**
-   * Default constructor
-   */
   ColorSpillOperation();
 
   void init_execution() override;
-  void deinit_execution() override;
 
   void set_settings(NodeColorspill *node_color_spill)
   {

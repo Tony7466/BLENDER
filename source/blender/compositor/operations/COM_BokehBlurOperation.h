@@ -11,9 +11,6 @@ namespace blender::compositor {
 
 class BokehBlurOperation : public MultiThreadedOperation, public QualityStepHelper {
  private:
-  SocketReader *input_program_;
-  SocketReader *input_bokeh_program_;
-  SocketReader *input_bounding_box_reader_;
   void update_size();
   float size_;
   bool sizeavailable_;
@@ -25,15 +22,7 @@ class BokehBlurOperation : public MultiThreadedOperation, public QualityStepHelp
 
   void init_data() override;
 
-  /**
-   * Initialize the execution
-   */
   void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_size(float size)
   {

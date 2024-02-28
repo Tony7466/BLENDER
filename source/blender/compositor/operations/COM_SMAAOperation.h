@@ -13,24 +13,11 @@ namespace blender::compositor {
 
 class SMAAEdgeDetectionOperation : public MultiThreadedOperation {
  protected:
-  SocketReader *image_reader_;
-  SocketReader *value_reader_;
-
   float threshold_;
   float contrast_limit_;
 
  public:
   SMAAEdgeDetectionOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_threshold(float threshold);
 
@@ -47,22 +34,11 @@ class SMAAEdgeDetectionOperation : public MultiThreadedOperation {
 
 class SMAABlendingWeightCalculationOperation : public MultiThreadedOperation {
  private:
-  SocketReader *image_reader_;
   std::function<void(int x, int y, float *out)> sample_image_fn_;
   int corner_rounding_;
 
  public:
   SMAABlendingWeightCalculationOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_corner_rounding(float rounding);
 
@@ -104,22 +80,8 @@ class SMAABlendingWeightCalculationOperation : public MultiThreadedOperation {
 /* Neighborhood Blending (Third Pass) */
 
 class SMAANeighborhoodBlendingOperation : public MultiThreadedOperation {
- private:
-  SocketReader *image1Reader_;
-  SocketReader *image2Reader_;
-
  public:
   SMAANeighborhoodBlendingOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,

@@ -14,19 +14,6 @@ HueSaturationValueCorrectOperation::HueSaturationValueCorrectOperation()
 {
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-
-  input_program_ = nullptr;
-}
-void HueSaturationValueCorrectOperation::init_execution()
-{
-  CurveBaseOperation::init_execution();
-  input_program_ = this->get_input_socket_reader(0);
-}
-
-void HueSaturationValueCorrectOperation::deinit_execution()
-{
-  CurveBaseOperation::deinit_execution();
-  input_program_ = nullptr;
 }
 
 void HueSaturationValueCorrectOperation::update_memory_buffer_partial(MemoryBuffer *output,

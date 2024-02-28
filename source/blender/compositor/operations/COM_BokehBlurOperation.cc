@@ -27,9 +27,6 @@ BokehBlurOperation::BokehBlurOperation()
 
   size_ = 1.0f;
   sizeavailable_ = false;
-  input_program_ = nullptr;
-  input_bokeh_program_ = nullptr;
-  input_bounding_box_reader_ = nullptr;
 
   extend_bounds_ = false;
 }
@@ -41,18 +38,7 @@ void BokehBlurOperation::init_data()
 
 void BokehBlurOperation::init_execution()
 {
-  input_program_ = get_input_socket_reader(0);
-  input_bokeh_program_ = get_input_socket_reader(1);
-  input_bounding_box_reader_ = get_input_socket_reader(2);
-
   QualityStepHelper::init_execution(COM_QH_INCREASE);
-}
-
-void BokehBlurOperation::deinit_execution()
-{
-  input_program_ = nullptr;
-  input_bokeh_program_ = nullptr;
-  input_bounding_box_reader_ = nullptr;
 }
 
 void BokehBlurOperation::update_size()

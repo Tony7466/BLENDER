@@ -14,31 +14,13 @@ DisplaceSimpleOperation::DisplaceSimpleOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
 
-  input_color_program_ = nullptr;
-  input_vector_program_ = nullptr;
-  input_scale_xprogram_ = nullptr;
-  input_scale_yprogram_ = nullptr;
-
   flags_.can_be_constant = true;
 }
 
 void DisplaceSimpleOperation::init_execution()
 {
-  input_color_program_ = this->get_input_socket_reader(0);
-  input_vector_program_ = this->get_input_socket_reader(1);
-  input_scale_xprogram_ = this->get_input_socket_reader(2);
-  input_scale_yprogram_ = this->get_input_socket_reader(3);
-
   width_x4_ = this->get_width() * 4;
   height_x4_ = this->get_height() * 4;
-}
-
-void DisplaceSimpleOperation::deinit_execution()
-{
-  input_color_program_ = nullptr;
-  input_vector_program_ = nullptr;
-  input_scale_xprogram_ = nullptr;
-  input_scale_yprogram_ = nullptr;
 }
 
 void DisplaceSimpleOperation::get_area_of_interest(const int input_idx,

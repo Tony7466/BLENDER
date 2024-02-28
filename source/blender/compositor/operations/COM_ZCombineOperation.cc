@@ -14,19 +14,7 @@ ZCombineOperation::ZCombineOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
 
-  image1Reader_ = nullptr;
-  depth1Reader_ = nullptr;
-  image2Reader_ = nullptr;
-  depth2Reader_ = nullptr;
   flags_.can_be_constant = true;
-}
-
-void ZCombineOperation::init_execution()
-{
-  image1Reader_ = this->get_input_socket_reader(0);
-  depth1Reader_ = this->get_input_socket_reader(1);
-  image2Reader_ = this->get_input_socket_reader(2);
-  depth2Reader_ = this->get_input_socket_reader(3);
 }
 
 void ZCombineOperation::update_memory_buffer_partial(MemoryBuffer *output,
@@ -67,14 +55,6 @@ void ZCombineAlphaOperation::update_memory_buffer_partial(MemoryBuffer *output,
   }
 }
 
-void ZCombineOperation::deinit_execution()
-{
-  image1Reader_ = nullptr;
-  depth1Reader_ = nullptr;
-  image2Reader_ = nullptr;
-  depth2Reader_ = nullptr;
-}
-
 // MASK combine
 ZCombineMaskOperation::ZCombineMaskOperation()
 {
@@ -82,17 +62,6 @@ ZCombineMaskOperation::ZCombineMaskOperation()
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-
-  mask_reader_ = nullptr;
-  image1Reader_ = nullptr;
-  image2Reader_ = nullptr;
-}
-
-void ZCombineMaskOperation::init_execution()
-{
-  mask_reader_ = this->get_input_socket_reader(0);
-  image1Reader_ = this->get_input_socket_reader(1);
-  image2Reader_ = this->get_input_socket_reader(2);
 }
 
 void ZCombineMaskOperation::update_memory_buffer_partial(MemoryBuffer *output,
@@ -123,13 +92,6 @@ void ZCombineMaskAlphaOperation::update_memory_buffer_partial(MemoryBuffer *outp
     it.out[2] = color1[2] * mfac + color2[2] * fac;
     it.out[3] = std::max(color1[3], color2[3]);
   }
-}
-
-void ZCombineMaskOperation::deinit_execution()
-{
-  image1Reader_ = nullptr;
-  mask_reader_ = nullptr;
-  image2Reader_ = nullptr;
 }
 
 }  // namespace blender::compositor

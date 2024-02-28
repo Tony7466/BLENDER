@@ -95,14 +95,7 @@ class BokehImageOperation : public MultiThreadedOperation {
  public:
   BokehImageOperation();
 
-  /**
-   * \brief Initialize the execution
-   */
   void init_execution() override;
-
-  /**
-   * \brief De-initialize the execution
-   */
   void deinit_execution() override;
 
   /**

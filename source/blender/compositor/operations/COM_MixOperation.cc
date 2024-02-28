@@ -16,19 +16,9 @@ MixBaseOperation::MixBaseOperation()
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-  input_value_operation_ = nullptr;
-  input_color1_operation_ = nullptr;
-  input_color2_operation_ = nullptr;
   this->set_use_value_alpha_multiply(false);
   this->set_use_clamp(false);
   flags_.can_be_constant = true;
-}
-
-void MixBaseOperation::init_execution()
-{
-  input_value_operation_ = this->get_input_socket_reader(0);
-  input_color1_operation_ = this->get_input_socket_reader(1);
-  input_color2_operation_ = this->get_input_socket_reader(2);
 }
 
 void MixBaseOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
@@ -52,13 +42,6 @@ void MixBaseOperation::determine_canvas(const rcti &preferred_area, rcti &r_area
     }
   }
   NodeOperation::determine_canvas(preferred_area, r_area);
-}
-
-void MixBaseOperation::deinit_execution()
-{
-  input_value_operation_ = nullptr;
-  input_color1_operation_ = nullptr;
-  input_color2_operation_ = nullptr;
 }
 
 void MixBaseOperation::update_memory_buffer_partial(MemoryBuffer *output,

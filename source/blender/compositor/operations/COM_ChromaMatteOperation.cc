@@ -12,21 +12,7 @@ ChromaMatteOperation::ChromaMatteOperation()
   add_input_socket(DataType::Color);
   add_output_socket(DataType::Value);
 
-  input_image_program_ = nullptr;
-  input_key_program_ = nullptr;
   flags_.can_be_constant = true;
-}
-
-void ChromaMatteOperation::init_execution()
-{
-  input_image_program_ = this->get_input_socket_reader(0);
-  input_key_program_ = this->get_input_socket_reader(1);
-}
-
-void ChromaMatteOperation::deinit_execution()
-{
-  input_image_program_ = nullptr;
-  input_key_program_ = nullptr;
 }
 
 void ChromaMatteOperation::update_memory_buffer_partial(MemoryBuffer *output,

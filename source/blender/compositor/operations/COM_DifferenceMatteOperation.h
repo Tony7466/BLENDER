@@ -15,17 +15,9 @@ namespace blender::compositor {
 class DifferenceMatteOperation : public MultiThreadedOperation {
  private:
   NodeChroma *settings_;
-  SocketReader *input_image1_program_;
-  SocketReader *input_image2_program_;
 
  public:
-  /**
-   * Default constructor
-   */
   DifferenceMatteOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void set_settings(NodeChroma *node_chroma)
   {

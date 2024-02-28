@@ -143,29 +143,10 @@ DoubleEdgeMaskOperation::DoubleEdgeMaskOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  input_inner_mask_ = nullptr;
-  input_outer_mask_ = nullptr;
   include_all_inner_edges_ = false;
   include_edges_of_image_ = false;
   flags_.can_be_constant = true;
   is_output_rendered_ = false;
-}
-
-void DoubleEdgeMaskOperation::init_execution()
-{
-  input_inner_mask_ = this->get_input_socket_reader(0);
-  input_outer_mask_ = this->get_input_socket_reader(1);
-  cached_instance_ = nullptr;
-}
-
-void DoubleEdgeMaskOperation::deinit_execution()
-{
-  input_inner_mask_ = nullptr;
-  input_outer_mask_ = nullptr;
-  if (cached_instance_) {
-    MEM_freeN(cached_instance_);
-    cached_instance_ = nullptr;
-  }
 }
 
 void DoubleEdgeMaskOperation::get_area_of_interest(int /*input_idx*/,

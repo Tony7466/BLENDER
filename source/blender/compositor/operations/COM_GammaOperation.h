@@ -9,25 +9,8 @@
 namespace blender::compositor {
 
 class GammaOperation : public MultiThreadedRowOperation {
- private:
-  /**
-   * Cached reference to the input_program
-   */
-  SocketReader *input_program_;
-  SocketReader *input_gamma_program_;
-
  public:
   GammaOperation();
-
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void update_memory_buffer_row(PixelCursor &p) override;
 };

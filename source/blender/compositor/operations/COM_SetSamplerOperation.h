@@ -15,21 +15,14 @@ namespace blender::compositor {
 class SetSamplerOperation : public NodeOperation {
  private:
   PixelSampler sampler_;
-  SocketReader *reader_;
 
  public:
-  /**
-   * Default constructor
-   */
   SetSamplerOperation();
 
   void set_sampler(PixelSampler sampler)
   {
     sampler_ = sampler;
   }
-
-  void init_execution() override;
-  void deinit_execution() override;
 };
 
 }  // namespace blender::compositor

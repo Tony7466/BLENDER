@@ -15,9 +15,6 @@ MapUVOperation::MapUVOperation()
   nearest_neighbour_ = false;
   flags_.can_be_constant = true;
   set_canvas_input_index(UV_INPUT_INDEX);
-
-  inputUVProgram_ = nullptr;
-  input_color_program_ = nullptr;
 }
 
 void MapUVOperation::init_data()
@@ -29,12 +26,6 @@ void MapUVOperation::init_data()
   NodeOperation *uv_input = get_input_operation(UV_INPUT_INDEX);
   uv_width_ = uv_input->get_width();
   uv_height_ = uv_input->get_height();
-}
-
-void MapUVOperation::init_execution()
-{
-  input_color_program_ = this->get_input_socket_reader(0);
-  inputUVProgram_ = this->get_input_socket_reader(1);
 }
 
 bool MapUVOperation::read_uv(float x, float y, float &r_u, float &r_v, float &r_alpha)
@@ -103,12 +94,6 @@ void MapUVOperation::pixel_transform(const float xy[2],
     r_deriv[0][1] *= numinv;
     r_deriv[1][1] *= numinv;
   }
-}
-
-void MapUVOperation::deinit_execution()
-{
-  inputUVProgram_ = nullptr;
-  input_color_program_ = nullptr;
 }
 
 void MapUVOperation::get_area_of_interest(const int input_idx,

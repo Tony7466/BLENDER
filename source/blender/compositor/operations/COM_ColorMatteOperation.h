@@ -15,17 +15,9 @@ namespace blender::compositor {
 class ColorMatteOperation : public MultiThreadedOperation {
  private:
   NodeChroma *settings_;
-  SocketReader *input_image_program_;
-  SocketReader *input_key_program_;
 
  public:
-  /**
-   * Default constructor
-   */
   ColorMatteOperation();
-
-  void init_execution() override;
-  void deinit_execution() override;
 
   void set_settings(NodeChroma *node_chroma)
   {

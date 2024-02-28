@@ -14,13 +14,10 @@ DisplaceOperation::DisplaceOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
   flags_.can_be_constant = true;
-
-  input_color_program_ = nullptr;
 }
 
 void DisplaceOperation::init_execution()
 {
-  input_color_program_ = this->get_input_socket_reader(0);
   NodeOperation *vector = this->get_input_socket_reader(1);
 
   width_x4_ = this->get_width() * 4;
@@ -104,14 +101,6 @@ void DisplaceOperation::pixel_transform(const float xy[2], float r_uv[2], float 
     r_deriv[0][1] *= numinv;
     r_deriv[1][1] *= numinv;
   }
-}
-
-void DisplaceOperation::deinit_execution()
-{
-  input_color_program_ = nullptr;
-  vector_read_fn_ = nullptr;
-  scale_x_read_fn_ = nullptr;
-  scale_y_read_fn_ = nullptr;
 }
 
 void DisplaceOperation::get_area_of_interest(const int input_idx,

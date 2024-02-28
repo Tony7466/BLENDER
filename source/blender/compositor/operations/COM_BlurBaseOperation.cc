@@ -16,7 +16,6 @@ BlurBaseOperation::BlurBaseOperation(DataType data_type)
   this->add_input_socket(DataType::Value);
   this->add_output_socket(data_type);
   flags_.can_be_constant = true;
-  input_program_ = nullptr;
   memset(&data_, 0, sizeof(NodeBlurData));
   size_ = 1.0f;
   sizeavailable_ = false;
@@ -52,9 +51,6 @@ void BlurBaseOperation::init_data()
 
 void BlurBaseOperation::init_execution()
 {
-  input_program_ = this->get_input_socket_reader(0);
-  input_size_ = this->get_input_socket_reader(1);
-
   QualityStepHelper::init_execution(COM_QH_MULTIPLY);
 }
 
@@ -143,12 +139,6 @@ float *BlurBaseOperation::make_dist_fac_inverse(float rad, int size, int falloff
   }
 
   return dist_fac_invert;
-}
-
-void BlurBaseOperation::deinit_execution()
-{
-  input_program_ = nullptr;
-  input_size_ = nullptr;
 }
 
 void BlurBaseOperation::set_data(const NodeBlurData *data)

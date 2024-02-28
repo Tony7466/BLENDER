@@ -29,9 +29,6 @@ class ViewerOperation : public MultiThreadedOperation {
   const ColorManagedViewSettings *view_settings_;
   const ColorManagedDisplaySettings *display_settings_;
 
-  SocketReader *image_input_;
-  SocketReader *alpha_input_;
-
  public:
   ViewerOperation();
   void init_execution() override;

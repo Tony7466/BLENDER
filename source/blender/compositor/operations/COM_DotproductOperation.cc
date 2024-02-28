@@ -12,20 +12,7 @@ DotproductOperation::DotproductOperation()
   this->add_input_socket(DataType::Vector);
   this->add_output_socket(DataType::Value);
   this->set_canvas_input_index(0);
-  input1Operation_ = nullptr;
-  input2Operation_ = nullptr;
   flags_.can_be_constant = true;
-}
-void DotproductOperation::init_execution()
-{
-  input1Operation_ = this->get_input_socket_reader(0);
-  input2Operation_ = this->get_input_socket_reader(1);
-}
-
-void DotproductOperation::deinit_execution()
-{
-  input1Operation_ = nullptr;
-  input2Operation_ = nullptr;
 }
 
 void DotproductOperation::update_memory_buffer_partial(MemoryBuffer *output,

@@ -30,15 +30,7 @@ class CalculateMeanOperation : public ConstantOperation {
  public:
   CalculateMeanOperation();
 
-  /**
-   * Initialize the execution
-   */
   void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void set_setting(int setting);
 

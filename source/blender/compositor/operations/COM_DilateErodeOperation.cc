@@ -11,7 +11,6 @@ DilateErodeThresholdOperation::DilateErodeThresholdOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
   flags_.can_be_constant = true;
-  input_program_ = nullptr;
   inset_ = 0.0f;
   switch_ = 0.5f;
   distance_ = 0.0f;
@@ -33,16 +32,6 @@ void DilateErodeThresholdOperation::init_data()
   if (scope_ < 3) {
     scope_ = 3;
   }
-}
-
-void DilateErodeThresholdOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
-}
-
-void DilateErodeThresholdOperation::deinit_execution()
-{
-  input_program_ = nullptr;
 }
 
 void DilateErodeThresholdOperation::get_area_of_interest(const int input_idx,
@@ -155,7 +144,6 @@ DilateDistanceOperation::DilateDistanceOperation()
 {
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  input_program_ = nullptr;
   distance_ = 0.0f;
   flags_.can_be_constant = true;
 }
@@ -166,16 +154,6 @@ void DilateDistanceOperation::init_data()
   if (scope_ < 3) {
     scope_ = 3;
   }
-}
-
-void DilateDistanceOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
-}
-
-void DilateDistanceOperation::deinit_execution()
-{
-  input_program_ = nullptr;
 }
 
 void DilateDistanceOperation::get_area_of_interest(const int input_idx,
@@ -284,16 +262,6 @@ DilateStepOperation::DilateStepOperation()
 {
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  input_program_ = nullptr;
-}
-void DilateStepOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
-}
-
-void DilateStepOperation::deinit_execution()
-{
-  input_program_ = nullptr;
 }
 
 void DilateStepOperation::get_area_of_interest(const int input_idx,

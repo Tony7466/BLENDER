@@ -11,14 +11,7 @@ ExposureOperation::ExposureOperation()
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
-  input_program_ = nullptr;
   flags_.can_be_constant = true;
-}
-
-void ExposureOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
-  input_exposure_program_ = this->get_input_socket_reader(1);
 }
 
 void ExposureOperation::update_memory_buffer_row(PixelCursor &p)
@@ -32,12 +25,6 @@ void ExposureOperation::update_memory_buffer_row(PixelCursor &p)
     p.out[2] = in_value[2] * exposure;
     p.out[3] = in_value[3];
   }
-}
-
-void ExposureOperation::deinit_execution()
-{
-  input_program_ = nullptr;
-  input_exposure_program_ = nullptr;
 }
 
 }  // namespace blender::compositor

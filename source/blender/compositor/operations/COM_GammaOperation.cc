@@ -11,14 +11,7 @@ GammaOperation::GammaOperation()
   this->add_input_socket(DataType::Color);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
-  input_program_ = nullptr;
-  input_gamma_program_ = nullptr;
   flags_.can_be_constant = true;
-}
-void GammaOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
-  input_gamma_program_ = this->get_input_socket_reader(1);
 }
 
 void GammaOperation::update_memory_buffer_row(PixelCursor &p)
@@ -33,12 +26,6 @@ void GammaOperation::update_memory_buffer_row(PixelCursor &p)
     p.out[2] = in_value[2] > 0.0f ? powf(in_value[2], gamma) : in_value[2];
     p.out[3] = in_value[3];
   }
-}
-
-void GammaOperation::deinit_execution()
-{
-  input_program_ = nullptr;
-  input_gamma_program_ = nullptr;
 }
 
 }  // namespace blender::compositor

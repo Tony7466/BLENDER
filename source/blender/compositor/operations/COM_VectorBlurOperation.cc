@@ -35,24 +35,15 @@ VectorBlurOperation::VectorBlurOperation()
   this->add_output_socket(DataType::Color);
   settings_ = nullptr;
   cached_instance_ = nullptr;
-  input_image_program_ = nullptr;
-  input_speed_program_ = nullptr;
-  input_zprogram_ = nullptr;
 }
 void VectorBlurOperation::init_execution()
 {
-  input_image_program_ = get_input_socket_reader(0);
-  input_zprogram_ = get_input_socket_reader(1);
-  input_speed_program_ = get_input_socket_reader(2);
   cached_instance_ = nullptr;
   QualityStepHelper::init_execution(COM_QH_INCREASE);
 }
 
 void VectorBlurOperation::deinit_execution()
 {
-  input_image_program_ = nullptr;
-  input_speed_program_ = nullptr;
-  input_zprogram_ = nullptr;
   if (cached_instance_) {
     MEM_freeN(cached_instance_);
     cached_instance_ = nullptr;

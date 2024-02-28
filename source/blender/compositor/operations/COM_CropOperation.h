@@ -10,7 +10,6 @@ namespace blender::compositor {
 
 class CropBaseOperation : public MultiThreadedOperation {
  protected:
-  SocketReader *input_operation_;
   NodeTwoXYs *settings_;
   bool relative_;
   int xmax_;
@@ -23,7 +22,6 @@ class CropBaseOperation : public MultiThreadedOperation {
  public:
   CropBaseOperation();
   void init_execution() override;
-  void deinit_execution() override;
   void set_crop_settings(NodeTwoXYs *settings)
   {
     settings_ = settings;

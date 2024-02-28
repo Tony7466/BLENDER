@@ -12,18 +12,7 @@ namespace blender::compositor {
 
 ConvertBaseOperation::ConvertBaseOperation()
 {
-  input_operation_ = nullptr;
   flags_.can_be_constant = true;
-}
-
-void ConvertBaseOperation::init_execution()
-{
-  input_operation_ = this->get_input_socket_reader(0);
-}
-
-void ConvertBaseOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
 }
 
 void ConvertBaseOperation::hash_output_params() {}
@@ -372,17 +361,7 @@ SeparateChannelOperation::SeparateChannelOperation()
 {
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Value);
-  input_operation_ = nullptr;
   flags_.can_be_constant = true;
-}
-void SeparateChannelOperation::init_execution()
-{
-  input_operation_ = this->get_input_socket_reader(0);
-}
-
-void SeparateChannelOperation::deinit_execution()
-{
-  input_operation_ = nullptr;
 }
 
 void SeparateChannelOperation::update_memory_buffer_partial(MemoryBuffer *output,
@@ -404,28 +383,8 @@ CombineChannelsOperation::CombineChannelsOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
   this->set_canvas_input_index(0);
-  input_channel1_operation_ = nullptr;
-  input_channel2_operation_ = nullptr;
-  input_channel3_operation_ = nullptr;
-  input_channel4_operation_ = nullptr;
 
   flags_.can_be_constant = true;
-}
-
-void CombineChannelsOperation::init_execution()
-{
-  input_channel1_operation_ = this->get_input_socket_reader(0);
-  input_channel2_operation_ = this->get_input_socket_reader(1);
-  input_channel3_operation_ = this->get_input_socket_reader(2);
-  input_channel4_operation_ = this->get_input_socket_reader(3);
-}
-
-void CombineChannelsOperation::deinit_execution()
-{
-  input_channel1_operation_ = nullptr;
-  input_channel2_operation_ = nullptr;
-  input_channel3_operation_ = nullptr;
-  input_channel4_operation_ = nullptr;
 }
 
 void CombineChannelsOperation::update_memory_buffer_partial(MemoryBuffer *output,

@@ -10,15 +10,12 @@ namespace blender::compositor {
 
 class FlipOperation : public MultiThreadedOperation {
  private:
-  SocketReader *input_operation_;
   bool flip_x_;
   bool flip_y_;
 
  public:
   FlipOperation();
 
-  void init_execution() override;
-  void deinit_execution() override;
   void setFlipX(bool flipX)
   {
     flip_x_ = flipX;

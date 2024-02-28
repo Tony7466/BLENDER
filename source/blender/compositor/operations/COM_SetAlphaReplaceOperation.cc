@@ -12,21 +12,7 @@ SetAlphaReplaceOperation::SetAlphaReplaceOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
 
-  input_color_ = nullptr;
-  input_alpha_ = nullptr;
   flags_.can_be_constant = true;
-}
-
-void SetAlphaReplaceOperation::init_execution()
-{
-  input_color_ = get_input_socket_reader(0);
-  input_alpha_ = get_input_socket_reader(1);
-}
-
-void SetAlphaReplaceOperation::deinit_execution()
-{
-  input_color_ = nullptr;
-  input_alpha_ = nullptr;
 }
 
 void SetAlphaReplaceOperation::update_memory_buffer_partial(MemoryBuffer *output,

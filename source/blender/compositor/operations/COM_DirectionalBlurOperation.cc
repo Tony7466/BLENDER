@@ -11,12 +11,10 @@ DirectionalBlurOperation::DirectionalBlurOperation()
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
   flags_.can_be_constant = true;
-  input_program_ = nullptr;
 }
 
 void DirectionalBlurOperation::init_execution()
 {
-  input_program_ = get_input_socket_reader(0);
   QualityStepHelper::init_execution(COM_QH_INCREASE);
   const float angle = data_->angle;
   const float zoom = data_->zoom;
@@ -40,11 +38,6 @@ void DirectionalBlurOperation::init_execution()
   ty_ = -itsc * D * sinf(a);
   sc_ = itsc * zoom;
   rot_ = itsc * spin;
-}
-
-void DirectionalBlurOperation::deinit_execution()
-{
-  input_program_ = nullptr;
 }
 
 void DirectionalBlurOperation::get_area_of_interest(const int input_idx,

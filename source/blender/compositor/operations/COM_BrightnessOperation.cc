@@ -14,7 +14,6 @@ BrightnessOperation::BrightnessOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
-  input_program_ = nullptr;
   use_premultiply_ = false;
   flags_.can_be_constant = true;
 }
@@ -22,13 +21,6 @@ BrightnessOperation::BrightnessOperation()
 void BrightnessOperation::set_use_premultiply(bool use_premultiply)
 {
   use_premultiply_ = use_premultiply;
-}
-
-void BrightnessOperation::init_execution()
-{
-  input_program_ = this->get_input_socket_reader(0);
-  input_brightness_program_ = this->get_input_socket_reader(1);
-  input_contrast_program_ = this->get_input_socket_reader(2);
 }
 
 void BrightnessOperation::update_memory_buffer_partial(MemoryBuffer *output,
@@ -73,13 +65,6 @@ void BrightnessOperation::update_memory_buffer_partial(MemoryBuffer *output,
       straight_to_premul_v4(it.out);
     }
   }
-}
-
-void BrightnessOperation::deinit_execution()
-{
-  input_program_ = nullptr;
-  input_brightness_program_ = nullptr;
-  input_contrast_program_ = nullptr;
 }
 
 }  // namespace blender::compositor

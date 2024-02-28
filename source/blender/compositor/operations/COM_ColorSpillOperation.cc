@@ -13,8 +13,6 @@ ColorSpillOperation::ColorSpillOperation()
   add_input_socket(DataType::Value);
   add_output_socket(DataType::Color);
 
-  input_image_reader_ = nullptr;
-  input_fac_reader_ = nullptr;
   spill_channel_ = 1; /* GREEN */
   spill_method_ = 0;
   flags_.can_be_constant = true;
@@ -22,8 +20,6 @@ ColorSpillOperation::ColorSpillOperation()
 
 void ColorSpillOperation::init_execution()
 {
-  input_image_reader_ = this->get_input_socket_reader(0);
-  input_fac_reader_ = this->get_input_socket_reader(1);
   if (spill_channel_ == 0) {
     rmut_ = -1.0f;
     gmut_ = 1.0f;
@@ -61,12 +57,6 @@ void ColorSpillOperation::init_execution()
       settings_->uspillb = 1.0f;
     }
   }
-}
-
-void ColorSpillOperation::deinit_execution()
-{
-  input_image_reader_ = nullptr;
-  input_fac_reader_ = nullptr;
 }
 
 void ColorSpillOperation::update_memory_buffer_partial(MemoryBuffer *output,

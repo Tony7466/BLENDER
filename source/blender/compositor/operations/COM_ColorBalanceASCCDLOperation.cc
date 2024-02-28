@@ -23,16 +23,8 @@ ColorBalanceASCCDLOperation::ColorBalanceASCCDLOperation()
   this->add_input_socket(DataType::Value);
   this->add_input_socket(DataType::Color);
   this->add_output_socket(DataType::Color);
-  input_value_operation_ = nullptr;
-  input_color_operation_ = nullptr;
   this->set_canvas_input_index(1);
   flags_.can_be_constant = true;
-}
-
-void ColorBalanceASCCDLOperation::init_execution()
-{
-  input_value_operation_ = this->get_input_socket_reader(0);
-  input_color_operation_ = this->get_input_socket_reader(1);
 }
 
 void ColorBalanceASCCDLOperation::update_memory_buffer_row(PixelCursor &p)
@@ -50,12 +42,6 @@ void ColorBalanceASCCDLOperation::update_memory_buffer_row(PixelCursor &p)
                fac * colorbalance_cdl(in_color[2], offset_[2], power_[2], slope_[2]);
     p.out[3] = in_color[3];
   }
-}
-
-void ColorBalanceASCCDLOperation::deinit_execution()
-{
-  input_value_operation_ = nullptr;
-  input_color_operation_ = nullptr;
 }
 
 }  // namespace blender::compositor
