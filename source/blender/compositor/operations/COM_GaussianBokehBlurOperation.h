@@ -45,7 +45,7 @@ class GaussianBokehBlurOperation : public BlurBaseOperation {
 
 class GaussianBlurReferenceOperation : public BlurBaseOperation {
  private:
-  float **maintabs_;
+  MemoryBuffer *weights_;
 
   void update_gauss();
   int filtersizex_;
