@@ -2211,9 +2211,15 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
 
   GreasePencilClipboard &grease_pencil_clipboard = get_grease_pencil_clipboard();
 
-  /* Check active layer. */
+  /* Get active layer in the target object. */
   if (!grease_pencil.has_active_layer()) {
     BKE_report(op->reports, RPT_ERROR, "No active Grease Pencil layer");
+    return OPERATOR_CANCELLED;
+  }
+  const bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
+  if (!active_layer.is_editable()) {
+    BKE_report(
+        op->reports, RPT_ERROR, "Cannot paste strokes when active layer is hidden or locked");
     return OPERATOR_CANCELLED;
   }
 
@@ -2221,17 +2227,9 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
   if (!ensure_active_keyframe(C, op, grease_pencil)) {
     return OPERATOR_CANCELLED;
   }
-
-  /* Get active layer in the target object. */
-  const bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
   bke::greasepencil::Drawing *target_drawing = grease_pencil.get_editable_drawing_at(
       active_layer, scene->r.cfra);
   if (target_drawing == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
-  if (!active_layer.is_editable()) {
-    BKE_report(
-        op->reports, RPT_ERROR, "Cannot paste strokes when active layer is hidden or locked");
     return OPERATOR_CANCELLED;
   }
 
