@@ -925,7 +925,7 @@ static void execute_instances_tasks(
     attr.lookup_or_add_for_write_only_span(id, domain, type).finish();
   }
 
-  MutableSpan<float4x4> all_transforms = dst_instances->transforms();
+  MutableSpan<float4x4> all_transforms = dst_instances->transforms_for_write();
   MutableSpan<int> all_handles = dst_instances->reference_handles_for_write();
 
   for (const int component_index : src_components.index_range()) {
@@ -974,7 +974,7 @@ static void execute_instances_tasks(
   }
   result.replace_instances(dst_instances.release());
   auto &dst_component = result.get_component_for_write<bke::InstancesComponent>();
-  join_attributes(src_components, dst_component, {"position", ".reference_index"});
+  join_attributes(src_components, dst_component, {"position", ".reference_index", "instance_transform"});
 }
 
 static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &options,
