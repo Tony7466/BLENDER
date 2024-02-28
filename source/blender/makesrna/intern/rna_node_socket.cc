@@ -257,6 +257,19 @@ static PointerRNA rna_NodeSocket_node_get(PointerRNA *ptr)
   return r_ptr;
 }
 
+static void rna_NodeSocket_type_set(PointerRNA *ptr, int value)
+{
+  bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
+  bNodeSocket *sock = static_cast<bNodeSocket *>(ptr->data);
+  bNode *node;
+  nodeFindNode(ntree, sock, &node, nullptr);
+  if (node->type != NODE_CUSTOM) {
+    /* Can't change the socket type on built-in nodes like this. */
+    return;
+  }
+  nodeModifySocketTypeStatic(ntree, node, sock, value, 0);
+}
+
 static void rna_NodeSocket_update(Main *bmain, Scene * /*scene*/, PointerRNA *ptr)
 {
   bNodeTree *ntree = reinterpret_cast<bNodeTree *>(ptr->owner_id);
@@ -573,8 +586,10 @@ static void rna_def_node_socket(BlenderRNA *brna)
   prop = RNA_def_property(srna, "type", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "type");
   RNA_def_property_enum_items(prop, rna_enum_node_socket_type_items);
-  RNA_def_property_clear_flag(prop, PROP_EDITABLE);
+  RNA_def_property_enum_default(prop, SOCK_FLOAT);
+  RNA_def_property_enum_funcs(prop, nullptr, "rna_NodeSocket_type_set", nullptr);
   RNA_def_property_ui_text(prop, "Type", "Data type");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_NodeSocket_update");
 
   prop = RNA_def_property(srna, "display_shape", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "display_shape");
