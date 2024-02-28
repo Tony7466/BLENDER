@@ -449,6 +449,13 @@ static PyObject *pygpu_offscreen_draw_view3d(BPyGPUOffScreen *self, PyObject *ar
     return nullptr;
   }
 
+  if (ED_view3d_draw_offscreen_check_nested()) {
+    /* NOTE(@ideasman42): Nested draw calls could be supported.
+     * Adding support for this looks to be possible but non-trivial. */
+    PyErr_SetString(PyExc_RuntimeError, "Nested off-screen drawing not supported");
+    return nullptr;
+  }
+
   Main *main = BKE_main_from_id(G_MAIN, &scene->id);
   depsgraph = BKE_scene_ensure_depsgraph(main, scene, view_layer);
 
