@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <memory>
+
 #include "BLI_index_range.hh"
 #include "BLI_math_vector.hh"
 
@@ -327,7 +329,7 @@ void GaussianBlurReferenceOperation::update_gauss()
 
   rcti weights_area;
   BLI_rcti_init(&weights_area, 0, size.x, 0, size.y);
-  weights_ = new MemoryBuffer(DataType::Value, weights_area, false);
+  weights_ = std::make_unique<MemoryBuffer>(DataType::Value, weights_area, false);
 
   float sum = 0.0f;
 
@@ -432,12 +434,6 @@ void GaussianBlurReferenceOperation::execute_pixel(float /*output*/[4],
     output[3] = aval * sum;
   }
 #endif
-}
-
-void GaussianBlurReferenceOperation::deinit_execution()
-{
-  delete weights_;
-  BlurBaseOperation::deinit_execution();
 }
 
 bool GaussianBlurReferenceOperation::determine_depending_area_of_interest(
