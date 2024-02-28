@@ -59,7 +59,7 @@ static void add_bezier_control_point(int cp,
                                      MutableSpan<float3> positions,
                                      MutableSpan<float3> handles_left,
                                      MutableSpan<float3> handles_right,
-                                     const Span<pxr::GfVec3f> &usdPoints)
+                                     const Span<pxr::GfVec3f> usdPoints)
 {
   if (offset == 0) {
     positions[cp] = to_float3(usdPoints[offset]);
