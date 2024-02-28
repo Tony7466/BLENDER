@@ -276,7 +276,8 @@ struct PerimeterData {
 
 static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &drawing,
                                                  const IndexMask &curves_mask,
-                                                 const int subdivisions)
+                                                 const int subdivisions,
+                                                 const float stroke_radius)
 {
   const bke::CurvesGeometry &src_curves = drawing.strokes();
   Span<float3> src_positions = src_curves.positions();
@@ -343,9 +344,12 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
     dst_curve_map.as_mutable_span().slice(curves).copy_from(data.curve_indices);
     /* Curve offsets are accumulated below. */
     dst_offsets.slice(curves).copy_from(data.point_counts);
+    dst_cyclic.span.slice(curves).fill(true);
+
     /* Append point data. */
     dst_positions.slice(points).copy_from(data.positions);
     dst_point_map.as_mutable_span().slice(points).copy_from(data.point_indices);
+    dst_radius.span.slice(points).fill(stroke_radius);
   }
   offset_indices::accumulate_counts_to_offsets(dst_curves.offsets_for_write());
 
@@ -369,13 +373,13 @@ static void modify_drawing(const GreasePencilOutlineModifierData &omd,
     return;
   }
 
-  const int subdivisions = std::max(omd.subdiv, 0);
   /* Selected source curves. */
   IndexMaskMemory curve_mask_memory;
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, drawing.strokes(), omd.influence, curve_mask_memory);
 
-  drawing.strokes_for_write() = create_curves_outline(drawing, curves_mask, subdivisions);
+  drawing.strokes_for_write() = create_curves_outline(
+      drawing, curves_mask, omd.subdiv, omd.thickness);
   drawing.tag_topology_changed();
 }
 
