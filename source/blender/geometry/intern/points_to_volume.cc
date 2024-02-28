@@ -74,6 +74,7 @@ static openvdb::FloatGrid::Ptr points_to_sdf_grid_impl(const Span<float3> positi
   op.finalize();
 
   new_grid->transform().postScale(voxel_size);
+  new_grid->setGridClass(openvdb::GRID_LEVEL_SET);
 
   return new_grid;
 }
