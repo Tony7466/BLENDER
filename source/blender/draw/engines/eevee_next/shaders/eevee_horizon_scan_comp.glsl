@@ -57,6 +57,6 @@ void main()
                     8,
                     false);
 
-  imageStore(horizon_radiance_img, texel, ctx.closure_result);
-  imageStore(horizon_occlusion_img, texel, ctx.closure_result.wwww);
+  imageStore(horizon_radiance_img, texel, ctx.sh_result.L0.M0);
+  imageStore(horizon_occlusion_img, texel, vec4(1.0));
 }

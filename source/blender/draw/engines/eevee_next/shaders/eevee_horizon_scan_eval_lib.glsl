@@ -130,6 +130,8 @@ void horizon_scan_eval(vec3 vP,
 #ifdef HORIZON_CLOSURE
   context.closure_common.light_accum = vec4(0.0);
   context.closure_common.weight_accum = 0.0;
+
+  context.sh_result = spherical_harmonics_L1_new();
 #endif
 
   for (int slice = 0; slice < slice_len; slice++) {
@@ -238,7 +240,7 @@ void horizon_scan_eval(vec3 vP,
          * already consider the sample reflected radiance.
          * Set the weight to allow energy conservation. If we modulate the radiance, we loose
          * energy. */
-        float weight = step(dot(sample_normal, vL_front), 0.0);
+        float facing_weight = saturate(-dot(sample_normal, vL_front));
 
 #ifdef HORIZON_OCCLUSION
         {
@@ -255,19 +257,22 @@ void horizon_scan_eval(vec3 vP,
 #endif
 #ifdef HORIZON_CLOSURE
         {
-          weight *= bsdf_lambert(context.closure.N, vL_front);
+          float sample_weight = facing_weight * bsdf_lambert(context.closure.N, vL_front);
 
           /* Angular bias shrinks the visibility bitmask around the projected normal. */
           vec2 biased_theta = (theta - context.closure_common.N_angle) * angle_bias;
           uint sample_bitmask = horizon_scan_angles_to_bitmask(biased_theta);
-          weight *= horizon_scan_bitmask_to_visibility_uniform(sample_bitmask &
-                                                               ~context.closure_common.bitmask);
+          float weight_bitmask = horizon_scan_bitmask_to_visibility_uniform(
+              sample_bitmask & ~context.closure_common.bitmask);
 
-          context.closure_common.weight_slice += weight;
-          context.closure_common.light_slice += sample_radiance * weight;
+          context.closure_common.weight_slice += sample_weight * weight_bitmask;
+          context.closure_common.light_slice += sample_radiance * sample_weight * weight_bitmask;
           context.closure_common.bitmask |= sample_bitmask;
 
-          spherical_harmonics_L1_encode_signal_sample(, , context.sh_slice);
+          spherical_harmonics_encode_signal_sample(
+              vec3(0.0),
+              vec4(sample_radiance * facing_weight * weight_bitmask, 1.0),
+              context.sh_slice);
         }
 #endif
       }
@@ -291,6 +296,9 @@ void horizon_scan_eval(vec3 vP,
                                                slice_occlusion) *
                                           context.closure_common.N_length;
     context.closure_common.weight_accum += context.closure_common.N_length;
+
+    context.sh_result = spherical_harmonics_madd(
+        context.sh_slice, context.closure_common.N_length, context.sh_result);
 #endif
 
     /* Rotate 90 degrees. */
@@ -304,5 +312,8 @@ void horizon_scan_eval(vec3 vP,
 #ifdef HORIZON_CLOSURE
   context.closure_result = context.closure_common.light_accum *
                            safe_rcp(context.closure_common.weight_accum);
+
+  context.sh_result = spherical_harmonics_mul(
+      context.sh_result, safe_rcp(context.closure_common.weight_accum) * 4.0 * M_PI);
 #endif
 }
