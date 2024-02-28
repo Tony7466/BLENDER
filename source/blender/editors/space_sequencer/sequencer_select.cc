@@ -892,7 +892,7 @@ static float clickable_area_get(const Scene *scene, const Sequence *seq, float p
 {
   const int strip_len = SEQ_time_right_handle_frame_get(scene, seq) -
                         SEQ_time_left_handle_frame_get(scene, seq);
-  return min_ii(15.0f * pixelx * U.pixelsize, (strip_len * pixelx) / 4);
+  return min_ff(15.0f * pixelx * U.pixelsize, strip_len / 4);
 }
 
 bool ED_sequencer_handle_selection_refine(const Scene *scene,
