@@ -288,17 +288,6 @@ class NodeOperation {
   std::function<void(rcti &canvas)> modify_determined_canvas_fn_;
 
   /**
-   * \brief mutex reference for very special node initializations
-   * \note only use when you really know what you are doing.
-   * this mutex is used to share data among chunks in the same operation
-   * \see TonemapOperation for an example of usage
-   * \see NodeOperation.init_mutex initializes this mutex
-   * \see NodeOperation.deinit_mutex deinitializes this mutex
-   * \see NodeOperation.get_mutex retrieve a pointer to this mutex.
-   */
-  ThreadMutex mutex_;
-
-  /**
    * \brief reference to the editing bNodeTree, used for break and update callback
    */
   const bNodeTree *btree_;
@@ -570,11 +559,6 @@ class NodeOperation {
   void add_output_socket(DataType datatype);
 
   SocketReader *get_input_socket_reader(unsigned int index);
-
-  void deinit_mutex();
-  void init_mutex();
-  void lock_mutex();
-  void unlock_mutex();
 
  private:
   /**

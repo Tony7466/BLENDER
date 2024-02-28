@@ -22,11 +22,6 @@ class CalculateMeanOperation : public ConstantOperation {
   };
 
  protected:
-  /**
-   * \brief Cached reference to the reader
-   */
-  SocketReader *image_reader_;
-
   bool is_calculated_;
   float constant_value_;
   int setting_;

@@ -24,7 +24,6 @@ void FastGaussianBlurOperation::init_data()
 void FastGaussianBlurOperation::init_execution()
 {
   BlurBaseOperation::init_execution();
-  BlurBaseOperation::init_mutex();
 }
 
 void FastGaussianBlurOperation::deinit_execution()
@@ -33,7 +32,6 @@ void FastGaussianBlurOperation::deinit_execution()
     delete iirgaus_;
     iirgaus_ = nullptr;
   }
-  BlurBaseOperation::deinit_mutex();
 }
 
 void FastGaussianBlurOperation::set_size(int size_x, int size_y)
@@ -248,16 +246,11 @@ FastGaussianBlurValueOperation::FastGaussianBlurValueOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
   iirgaus_ = nullptr;
-  inputprogram_ = nullptr;
   sigma_ = 1.0f;
   overlay_ = 0;
 }
 
-void FastGaussianBlurValueOperation::init_execution()
-{
-  inputprogram_ = get_input_socket_reader(0);
-  init_mutex();
-}
+void FastGaussianBlurValueOperation::init_execution() {}
 
 void FastGaussianBlurValueOperation::deinit_execution()
 {
@@ -265,7 +258,6 @@ void FastGaussianBlurValueOperation::deinit_execution()
     delete iirgaus_;
     iirgaus_ = nullptr;
   }
-  deinit_mutex();
 }
 
 void FastGaussianBlurValueOperation::get_area_of_interest(const int /*input_idx*/,

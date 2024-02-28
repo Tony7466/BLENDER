@@ -16,11 +16,6 @@ namespace blender::compositor {
 class NormalizeOperation : public MultiThreadedOperation {
  protected:
   /**
-   * \brief Cached reference to the reader
-   */
-  SocketReader *image_reader_;
-
-  /**
    * \brief temporarily cache of the execution storage
    * it stores `x->min` and `y->multiply`.
    */

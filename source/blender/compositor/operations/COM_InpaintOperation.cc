@@ -163,13 +163,11 @@ void InpaintSimpleOperation::init_execution()
   input_image_program_ = this->get_input_socket_reader(0);
   cached_buffer_ = nullptr;
   cached_buffer_ready_ = false;
-  this->init_mutex();
 }
 
 void InpaintSimpleOperation::deinit_execution()
 {
   input_image_program_ = nullptr;
-  this->deinit_mutex();
   if (cached_buffer_) {
     delete cached_buffer_;
     cached_buffer_ = nullptr;

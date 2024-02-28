@@ -21,18 +21,6 @@ struct ImBuf;
 
 namespace blender::compositor {
 
-/**
- * \brief state of a memory buffer
- * \ingroup Memory
- */
-enum class MemoryBufferState {
-  /** \brief memory has been allocated on creator device and CPU machine,
-   * but kernel has not been executed */
-  Default = 0,
-  /** \brief chunk is consolidated from other chunks. special state. */
-  Temporary = 6,
-};
-
 enum class MemoryBufferExtend {
   Clip,
   Extend,
@@ -40,7 +28,7 @@ enum class MemoryBufferExtend {
 };
 
 /**
- * \brief a MemoryBuffer contains access to the data of a chunk
+ * \brief a MemoryBuffer contains access to the data
  */
 class MemoryBuffer {
  public:
@@ -72,11 +60,6 @@ class MemoryBuffer {
    * \brief region of this buffer inside
    */
   rcti rect_;
-
-  /**
-   * \brief state of the buffer
-   */
-  MemoryBufferState state_;
 
   /**
    * \brief the actual float buffer/data
@@ -372,12 +355,6 @@ class MemoryBuffer {
     return buffer_;
   }
 
-  float *release_ownership_buffer()
-  {
-    owns_data_ = false;
-    return buffer_;
-  }
-
   /**
    * Converts a single elem buffer to a full size buffer (allocates memory for all
    * elements in resolution).
@@ -531,14 +508,6 @@ class MemoryBuffer {
                                          extend_x == MemoryBufferExtend::Repeat,
                                          extend_y == MemoryBufferExtend::Repeat);
     }
-  }
-
-  /**
-   * \brief is this MemoryBuffer a temporarily buffer (based on an area, not on a chunk)
-   */
-  inline bool is_temporarily() const
-  {
-    return state_ == MemoryBufferState::Temporary;
   }
 
   /**

@@ -33,47 +33,6 @@ struct Render;
  * \defgroup Operation All operations of the compositor
  * \ingroup compositor
  *
- * \page Introduction of the Blender Compositor
- *
- * \section bcomp Blender compositor
- * This project redesigns the internals of Blender's compositor.
- * The project has been executed in 2011 by At Mind.
- * At Mind is a technology company located in Amsterdam, The Netherlands.
- * The project has been crowd-funded. This code has been released under GPL2 to be used in Blender.
- *
- * \section goals The goals of the project
- * the new compositor has 2 goals.
- *   - Make a faster compositor (speed of calculation)
- *   - Make the compositor work faster for you (workflow)
- *
- * \section speed Faster compositor
- * The speedup has been done by making better use of the hardware Blenders is working on.
- * The previous compositor only used a single threaded model to calculate a node.
- * The only exception to this is the Defocus node.
- * Only when it is possible to calculate two full nodes in parallel a second thread was used.
- * Current workstations have 8-16 threads available, and most of the time these are idle.
- *
- * In the new compositor we want to use as much of threads as possible.
- * Even new OpenCL capable GPU-hardware can be used for calculation.
- *
- * \section workflow Work faster
- * The previous compositor only showed the final image.
- * The compositor could wait a long time before seeing the result of his work.
- * The new compositor will work in a way that it will focus on
- * getting information back to the user. It will prioritize its work to get earlier user feedback.
- *
- * \page memory Memory model
- * The main issue is the type of memory model to use.
- * Blender is used by consumers and professionals.
- * Ranging from low-end machines to very high-end machines.
- * The system should work on high-end machines and on low-end machines.
- * \page executing Executing
- * \section prepare Prepare execution
- *
- * Next all operations will be initialized for execution \see NodeOperation.init_execution
- * Next all ExecutionGroup's will be initialized for execution \see ExecutionGroup.init_execution
- * this all is controlled from \see ExecutionSystem.execute
- *
  * \section priority Render priority
  * Render priority is an priority of an output node.
  * A user has a different need of Render priorities of output nodes
@@ -83,13 +42,6 @@ struct Render;
  * All NodeOperation has a setting for their render-priority,
  * but only for output NodeOperation these have effect.
  * In ExecutionSystem.execute all priorities are checked.
- * For every priority the ExecutionGroup's are check if the
- * priority do match.
- * When match the ExecutionGroup will be executed (this happens in serial)
- *
- * \see ExecutionSystem.execute control of the Render priority
- * \see NodeOperation.get_render_priority receive the render priority
- * \see ExecutionGroup.execute the main loop to execute a whole ExecutionGroup
  *
  * \section workscheduler WorkScheduler
  * the WorkScheduler is implemented as a static class. the responsibility of the WorkScheduler
@@ -110,30 +62,6 @@ struct Render;
  * This is done by changing the `COM_threading_model`
  * to `ThreadingModel::SingleThreaded`. When compiling the work-scheduler
  * will be changes to support no threading and run everything on the CPU.
- *
- * \section devices Devices
- * A Device within the compositor context is a Hardware component that can used to calculate chunks.
- * This chunk is encapsulated in a WorkPackage.
- * the WorkScheduler controls the devices and selects the device where a
- * WorkPackage will be calculated.
- *
- * \subsection WS_Devices Work-scheduler
- * The WorkScheduler controls all Devices.
- * When initializing the compositor the WorkScheduler selects all
- * devices that will be used during compositor.
- *
- * A thread will read the work-list and sends a work-package to its device.
- *
- * \see WorkScheduler.schedule method that is called to schedule a chunk
- * \see Device.execute method called to execute a chunk
- *
- * \subsection CPUDevice CPUDevice
- * When a CPUDevice gets a WorkPackage the Device will get the input-buffer that is needed to
- * calculate the chunk. Allocation is already done by the ExecutionGroup.
- * The output-buffer of the chunk is being created.
- * The OutputOperation of the ExecutionGroup is called to execute the area of the output-buffer.
- *
- * \see CPUDevice.execute
  */
 
 /**

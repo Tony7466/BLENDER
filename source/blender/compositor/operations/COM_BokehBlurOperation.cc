@@ -41,8 +41,6 @@ void BokehBlurOperation::init_data()
 
 void BokehBlurOperation::init_execution()
 {
-  init_mutex();
-
   input_program_ = get_input_socket_reader(0);
   input_bokeh_program_ = get_input_socket_reader(1);
   input_bounding_box_reader_ = get_input_socket_reader(2);
@@ -52,7 +50,6 @@ void BokehBlurOperation::init_execution()
 
 void BokehBlurOperation::deinit_execution()
 {
-  deinit_mutex();
   input_program_ = nullptr;
   input_bokeh_program_ = nullptr;
   input_bounding_box_reader_ = nullptr;

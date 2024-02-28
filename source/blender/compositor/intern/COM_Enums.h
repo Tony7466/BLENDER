@@ -31,11 +31,8 @@ enum class eCompositorQuality {
  * \ingroup Execution
  */
 enum class eCompositorPriority {
-  /** \brief High quality setting */
   High = 2,
-  /** \brief Medium quality setting */
   Medium = 1,
-  /** \brief Low quality setting */
   Low = 0,
 };
 

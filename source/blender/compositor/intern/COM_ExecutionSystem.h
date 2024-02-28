@@ -164,11 +164,6 @@ class ExecutionSystem {
     return context_;
   }
 
-  SharedOperationBuffers &get_active_buffers()
-  {
-    return active_buffers_;
-  }
-
   /**
    * Multi-threadedly execute given work function passing work_rect splits as argument.
    */

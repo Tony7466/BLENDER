@@ -13,7 +13,6 @@ ProjectorLensDistortionOperation::ProjectorLensDistortionOperation()
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Color);
   flags_.can_be_constant = true;
-  input_program_ = nullptr;
   dispersion_ = 0.0f;
 }
 
@@ -25,18 +24,6 @@ void ProjectorLensDistortionOperation::init_data()
   }
   kr_ = 0.25f * max_ff(min_ff(dispersion_, 1.0f), 0.0f);
   kr2_ = kr_ * 20;
-}
-
-void ProjectorLensDistortionOperation::init_execution()
-{
-  this->init_mutex();
-  input_program_ = this->get_input_socket_reader(0);
-}
-
-void ProjectorLensDistortionOperation::deinit_execution()
-{
-  this->deinit_mutex();
-  input_program_ = nullptr;
 }
 
 void ProjectorLensDistortionOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)

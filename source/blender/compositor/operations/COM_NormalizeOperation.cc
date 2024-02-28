@@ -10,22 +10,15 @@ NormalizeOperation::NormalizeOperation()
 {
   this->add_input_socket(DataType::Value);
   this->add_output_socket(DataType::Value);
-  image_reader_ = nullptr;
   cached_instance_ = nullptr;
   flags_.can_be_constant = true;
 }
-void NormalizeOperation::init_execution()
-{
-  image_reader_ = this->get_input_socket_reader(0);
-  NodeOperation::init_mutex();
-}
+void NormalizeOperation::init_execution() {}
 
 void NormalizeOperation::deinit_execution()
 {
-  image_reader_ = nullptr;
   delete cached_instance_;
   cached_instance_ = nullptr;
-  NodeOperation::deinit_mutex();
 }
 
 /* The code below assumes all data is inside range +- this, and that input buffer is single channel

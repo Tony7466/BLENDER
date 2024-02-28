@@ -155,7 +155,6 @@ void DoubleEdgeMaskOperation::init_execution()
 {
   input_inner_mask_ = this->get_input_socket_reader(0);
   input_outer_mask_ = this->get_input_socket_reader(1);
-  init_mutex();
   cached_instance_ = nullptr;
 }
 
@@ -163,7 +162,6 @@ void DoubleEdgeMaskOperation::deinit_execution()
 {
   input_inner_mask_ = nullptr;
   input_outer_mask_ = nullptr;
-  deinit_mutex();
   if (cached_instance_) {
     MEM_freeN(cached_instance_);
     cached_instance_ = nullptr;

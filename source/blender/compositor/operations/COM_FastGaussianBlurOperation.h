@@ -46,7 +46,6 @@ class FastGaussianBlurValueOperation : public MultiThreadedOperation {
  private:
   float sigma_;
   MemoryBuffer *iirgaus_;
-  SocketReader *inputprogram_;
 
   /**
    * -1: re-mix with darker

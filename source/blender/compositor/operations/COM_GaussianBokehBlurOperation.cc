@@ -38,8 +38,6 @@ void GaussianBokehBlurOperation::init_execution()
 {
   BlurBaseOperation::init_execution();
 
-  init_mutex();
-
   if (sizeavailable_) {
     update_gauss();
   }
@@ -92,8 +90,6 @@ void GaussianBokehBlurOperation::deinit_execution()
     MEM_freeN(gausstab_);
     gausstab_ = nullptr;
   }
-
-  deinit_mutex();
 }
 
 void GaussianBokehBlurOperation::get_area_of_interest(const int input_idx,

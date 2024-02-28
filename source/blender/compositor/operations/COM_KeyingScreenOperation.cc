@@ -31,7 +31,6 @@ KeyingScreenOperation::KeyingScreenOperation()
 
 void KeyingScreenOperation::init_execution()
 {
-  init_mutex();
   BLI_assert(cached_marker_points_ == nullptr);
   if (movie_clip_) {
     cached_marker_points_ = compute_marker_points();

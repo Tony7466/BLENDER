@@ -36,7 +36,6 @@ MemoryBuffer::MemoryBuffer(DataType data_type, const rcti &rect, bool is_a_singl
   buffer_ = (float *)MEM_mallocN_aligned(
       sizeof(float) * buffer_len() * num_channels_, 16, "COM_MemoryBuffer");
   owns_data_ = true;
-  state_ = MemoryBufferState::Temporary;
   datatype_ = data_type;
 
   set_strides();
@@ -59,7 +58,6 @@ MemoryBuffer::MemoryBuffer(float *buffer,
   datatype_ = COM_num_channels_data_type(num_channels);
   buffer_ = buffer;
   owns_data_ = false;
-  state_ = MemoryBufferState::Temporary;
 
   set_strides();
 }

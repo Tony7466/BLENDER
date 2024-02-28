@@ -22,14 +22,12 @@ TonemapOperation::TonemapOperation()
 void TonemapOperation::init_execution()
 {
   image_reader_ = this->get_input_socket_reader(0);
-  NodeOperation::init_mutex();
 }
 
 void TonemapOperation::deinit_execution()
 {
   image_reader_ = nullptr;
   delete cached_instance_;
-  NodeOperation::deinit_mutex();
 }
 
 void TonemapOperation::get_area_of_interest(const int input_idx,

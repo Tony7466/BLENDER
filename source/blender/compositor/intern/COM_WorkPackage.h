@@ -8,12 +8,7 @@
 #  include "MEM_guardedalloc.h"
 #endif
 
-#include "COM_Enums.h"
-
-#include "DNA_vec_types.h"
-
 #include <functional>
-#include <ostream>
 
 namespace blender::compositor {
 
@@ -23,17 +18,7 @@ namespace blender::compositor {
  */
 struct WorkPackage {
   /**
-   * \brief number of the chunk to be executed
-   */
-  unsigned int chunk_number;
-
-  /**
-   * Area of the execution group that the work package calculates.
-   */
-  rcti rect;
-
-  /**
-   * Custom function to execute when work package type is CustomFunction.
+   * Called to execute work.
    */
   std::function<void()> execute_fn;
 
@@ -46,7 +31,5 @@ struct WorkPackage {
   MEM_CXX_CLASS_ALLOC_FUNCS("COM:WorkPackage")
 #endif
 };
-
-std::ostream &operator<<(std::ostream &os, const WorkPackage &work_package);
 
 }  // namespace blender::compositor

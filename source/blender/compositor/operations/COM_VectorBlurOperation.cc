@@ -41,7 +41,6 @@ VectorBlurOperation::VectorBlurOperation()
 }
 void VectorBlurOperation::init_execution()
 {
-  init_mutex();
   input_image_program_ = get_input_socket_reader(0);
   input_zprogram_ = get_input_socket_reader(1);
   input_speed_program_ = get_input_socket_reader(2);
@@ -51,7 +50,6 @@ void VectorBlurOperation::init_execution()
 
 void VectorBlurOperation::deinit_execution()
 {
-  deinit_mutex();
   input_image_program_ = nullptr;
   input_speed_program_ = nullptr;
   input_zprogram_ = nullptr;

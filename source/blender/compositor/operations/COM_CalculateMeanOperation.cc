@@ -14,7 +14,6 @@ CalculateMeanOperation::CalculateMeanOperation()
 {
   this->add_input_socket(DataType::Color, ResizeMode::Align);
   this->add_output_socket(DataType::Value);
-  image_reader_ = nullptr;
   is_calculated_ = false;
   setting_ = 1;
   flags_.is_constant_operation = true;
@@ -24,16 +23,10 @@ CalculateMeanOperation::CalculateMeanOperation()
 
 void CalculateMeanOperation::init_execution()
 {
-  image_reader_ = this->get_input_socket_reader(0);
   is_calculated_ = false;
-  NodeOperation::init_mutex();
 }
 
-void CalculateMeanOperation::deinit_execution()
-{
-  image_reader_ = nullptr;
-  NodeOperation::deinit_mutex();
-}
+void CalculateMeanOperation::deinit_execution() {}
 
 float CalculateMeanOperation::calculate_mean_tile(MemoryBuffer *tile) const
 {

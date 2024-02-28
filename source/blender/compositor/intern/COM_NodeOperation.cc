@@ -154,26 +154,6 @@ void NodeOperation::init_execution()
   /* pass */
 }
 
-void NodeOperation::init_mutex()
-{
-  BLI_mutex_init(&mutex_);
-}
-
-void NodeOperation::lock_mutex()
-{
-  BLI_mutex_lock(&mutex_);
-}
-
-void NodeOperation::unlock_mutex()
-{
-  BLI_mutex_unlock(&mutex_);
-}
-
-void NodeOperation::deinit_mutex()
-{
-  BLI_mutex_end(&mutex_);
-}
-
 void NodeOperation::deinit_execution()
 {
   /* pass */

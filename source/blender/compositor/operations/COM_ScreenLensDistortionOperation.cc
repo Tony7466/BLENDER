@@ -57,7 +57,6 @@ void ScreenLensDistortionOperation::init_data()
 void ScreenLensDistortionOperation::init_execution()
 {
   input_program_ = this->get_input_socket_reader(0);
-  this->init_mutex();
 
   uint rng_seed = uint(BLI_time_now_seconds_i() & UINT_MAX);
   rng_seed ^= uint(POINTER_AS_INT(input_program_));
@@ -126,7 +125,6 @@ void ScreenLensDistortionOperation::accumulate(const MemoryBuffer *buffer,
 
 void ScreenLensDistortionOperation::deinit_execution()
 {
-  this->deinit_mutex();
   input_program_ = nullptr;
   BLI_rng_free(rng_);
 }

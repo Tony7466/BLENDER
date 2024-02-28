@@ -24,15 +24,6 @@ class ProjectorLensDistortionOperation : public MultiThreadedOperation {
   ProjectorLensDistortionOperation();
 
   void init_data() override;
-  /**
-   * Initialize the execution
-   */
-  void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
-  void deinit_execution() override;
 
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
