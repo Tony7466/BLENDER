@@ -2673,6 +2673,7 @@ class _defs_sequencer_select:
             keymap="Sequencer Timeline Tool: Select Box",
             draw_settings=draw_settings,
         )
+
     @ToolDef.from_fn
     def select_preview():
         return dict(
