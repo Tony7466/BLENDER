@@ -57,13 +57,12 @@ bke::VolumeGridData *fog_volume_grid_add_from_mesh(Volume *volume,
                                                    float interior_band_width,
                                                    float density);
 
-bke::VolumeGrid<float> mesh_to_density_grid(Span<float3> positions,
-                                            Span<int> corner_verts,
-                                            Span<int3> corner_tris,
-                                            const float4x4 &mesh_to_volume_space_transform,
-                                            float voxel_size,
-                                            float interior_band_width,
-                                            float density);
+bke::VolumeGrid<float> mesh_to_density_grid(const Span<float3> positions,
+                                            const Span<int> corner_verts,
+                                            const Span<int3> corner_tris,
+                                            const float voxel_size,
+                                            const float interior_band_width,
+                                            const float density);
 
 bke::VolumeGrid<float> mesh_to_sdf_grid(Span<float3> positions,
                                         Span<int> corner_verts,

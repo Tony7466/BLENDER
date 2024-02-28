@@ -44,7 +44,6 @@ static void node_geo_exec(GeoNodeExecParams params)
       mesh->vert_positions(),
       mesh->corner_verts(),
       mesh->corner_tris(),
-      float4x4::identity(),
       params.extract_input<float>("Voxel Size"),
       params.extract_input<float>("Gradient Width"),
       params.extract_input<float>("Density"));
