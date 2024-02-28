@@ -28,17 +28,18 @@ void main()
 
   if (depth == 1.0) {
     /* Do not trace for background */
-    imageStore(horizon_radiance_img, texel, vec4(FLT_11_11_10_MAX, 0.0));
+    imageStore(horizon_radiance_img, ivec3(texel, 0), vec4(FLT_11_11_10_MAX, 0.0));
     return;
   }
 
-  HorizonScanContext ctx;
-  ctx.closure = gbuffer_read_bin(
-      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres, closure_index);
-  ctx.closure.N = drw_normal_world_to_view(ctx.closure.N);
+  GBufferReader gbuf = gbuffer_read(
+      gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
-  if (ctx.closure.type == CLOSURE_NONE_ID) {
-    imageStore(horizon_radiance_img, texel, vec4(FLT_11_11_10_MAX, 0.0));
+  HorizonScanContext ctx;
+  ctx.closure.N = drw_normal_world_to_view(gbuf.surface_N);
+
+  if (gbuf.header == 0u) {
+    imageStore(horizon_radiance_img, ivec3(texel, 0), vec4(FLT_11_11_10_MAX, 0.0));
     return;
   }
 
@@ -57,6 +58,8 @@ void main()
                     8,
                     false);
 
-  imageStore(horizon_radiance_img, texel, ctx.sh_result.L0.M0);
-  imageStore(horizon_occlusion_img, texel, vec4(1.0));
+  imageStore(horizon_radiance_img, ivec3(texel, 0), ctx.sh_result.L0.M0);
+  imageStore(horizon_radiance_img, ivec3(texel, 1), ctx.sh_result.L1.Mn1);
+  imageStore(horizon_radiance_img, ivec3(texel, 2), ctx.sh_result.L1.M0);
+  imageStore(horizon_radiance_img, ivec3(texel, 3), ctx.sh_result.L1.Mp1);
 }

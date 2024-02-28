@@ -157,10 +157,8 @@ class RayTraceModule {
   TextureFromPool ray_time_tx_ = {"ray_data_tx"};
   /** Texture containing the ray hit radiance (tracing-res). */
   TextureFromPool ray_radiance_tx_ = {"ray_radiance_tx"};
-  /** Texture containing the horizon visibility mask. */
-  TextureFromPool horizon_occlusion_tx_ = {"horizon_occlusion_tx_"};
   /** Texture containing the horizon local radiance. */
-  TextureFromPool horizon_radiance_tx_ = {"horizon_radiance_tx_"};
+  Texture horizon_radiance_tx_ = {"horizon_radiance_tx_"};
   /** Texture containing the input screen radiance but re-projected. */
   TextureFromPool downsampled_in_radiance_tx_ = {"downsampled_in_radiance_tx_"};
   /** Texture containing the view space normal. The BSDF normal is arbitrarily chosen. */

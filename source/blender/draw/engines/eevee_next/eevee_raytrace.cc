@@ -242,7 +242,6 @@ void RayTraceModule::sync()
     pass.specialize_constant(sh, "closure_index", &data_.closure_index);
     pass.shader_set(sh);
     pass.bind_image("horizon_radiance_img", &horizon_radiance_tx_);
-    pass.bind_image("horizon_occlusion_img", &horizon_occlusion_tx_);
     pass.bind_ssbo("tiles_coord_buf", &horizon_tracing_tiles_buf_);
     pass.bind_texture("screen_radiance_tx", &downsampled_in_radiance_tx_);
     pass.bind_texture("screen_normal_tx", &downsampled_in_normal_tx_);
@@ -262,7 +261,6 @@ void RayTraceModule::sync()
     pass.shader_set(sh);
     pass.bind_texture("depth_tx", &depth_tx);
     pass.bind_image("horizon_radiance_img", &horizon_radiance_tx_);
-    pass.bind_image("horizon_occlusion_img", &horizon_occlusion_tx_);
     pass.bind_image("radiance_img", &horizon_scan_output_tx_);
     pass.bind_image("tile_mask_img", &tile_horizon_denoise_tx_);
     pass.bind_ssbo("tiles_coord_buf", &horizon_denoise_tiles_buf_);
@@ -556,17 +554,16 @@ RayTraceResultTexture RayTraceModule::trace(
   denoise_variance_tx_.release();
 
   if (use_horizon_scan) {
-    horizon_occlusion_tx_.acquire(tracing_res, GPU_R8, usage_rw);
-    horizon_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
+    horizon_radiance_tx_.ensure_2d_array(RAYTRACE_RADIANCE_FORMAT, tracing_res, 4, usage_rw);
 
     inst_.manager->submit(horizon_scan_ps_, render_view);
 
     horizon_scan_output_tx_ = result.get();
 
     inst_.manager->submit(horizon_denoise_ps_, render_view);
-
-    horizon_occlusion_tx_.release();
-    horizon_radiance_tx_.release();
+  }
+  else {
+    horizon_radiance_tx_.free();
   }
 
   DRW_stats_group_end();

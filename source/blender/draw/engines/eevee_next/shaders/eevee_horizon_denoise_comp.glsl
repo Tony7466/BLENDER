@@ -100,6 +100,7 @@ void main()
     return;
   }
 
+  SphericalHarmonicL1 accum_sh = spherical_harmonics_L1_new();
   vec3 accum_radiance = vec3(0.0);
   float accum_occlusion = 0.0;
   float accum_weight = 0.0;
@@ -133,29 +134,36 @@ void main()
 
       float weight = depth_weight * spatial_weight * normal_weight;
 
-      vec3 radiance = imageLoad(horizon_radiance_img, sample_texel).rgb;
+      SphericalHarmonicL1 sample_sh;
+      sample_sh.L0.M0 = imageLoad(horizon_radiance_img, ivec3(sample_texel, 0));
       /* Do not gather unprocessed pixels. */
-      if (all(equal(radiance, FLT_11_11_10_MAX))) {
+      if (all(equal(sample_sh.L0.M0.rgb, FLT_11_11_10_MAX))) {
         continue;
       }
-      float occlusion = imageLoad(horizon_occlusion_img, sample_texel).r;
-      accum_radiance += to_accumulation_space(radiance) * weight;
-      accum_occlusion += occlusion * weight;
+      sample_sh.L1.Mn1 = imageLoad(horizon_radiance_img, ivec3(sample_texel, 1));
+      sample_sh.L1.M0 = imageLoad(horizon_radiance_img, ivec3(sample_texel, 2));
+      sample_sh.L1.Mp1 = imageLoad(horizon_radiance_img, ivec3(sample_texel, 3));
+
+      accum_sh = spherical_harmonics_madd(sample_sh, weight, accum_sh);
       accum_weight += weight;
     }
   }
-  float occlusion = accum_occlusion * safe_rcp(accum_weight);
-  vec3 radiance = from_accumulation_space(accum_radiance * safe_rcp(accum_weight));
+  accum_sh = spherical_harmonics_mul(accum_sh, safe_rcp(accum_weight));
 
   vec3 P = center_P;
   vec3 N = center_N;
   vec3 Ng = center_N;
   vec3 V = drw_world_incident_vector(P);
+
+  /* Evaluate lighting from horizon scan. */
+  /* TODO(fclem): Evaluate depending on BSDF. */
+  vec3 radiance = spherical_harmonics_evaluate_lambert(N, accum_sh);
+
   /* Fallback to nearest light-probe. */
   LightProbeSample samp = lightprobe_load(P, Ng, V);
   vec3 radiance_probe = spherical_harmonics_evaluate_lambert(N, samp.volume_irradiance);
   /* Apply missing distant lighting. */
-  radiance += occlusion * radiance_probe;
+  // radiance += occlusion * radiance_probe;
 
   vec4 radiance_horizon = vec4(radiance, 0.0);
   vec4 radiance_raytrace = use_raytrace ? imageLoad(radiance_img, texel_fullres) : vec4(0.0);
