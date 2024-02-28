@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,7 +22,6 @@ class GaussianBokehBlurOperation : public BlurBaseOperation {
   GaussianBokehBlurOperation();
   void init_data() override;
   void init_execution() override;
-  void *initialize_tile_data(rcti *rect) override;
   /**
    * The inner loop of this operation.
    */
@@ -32,10 +31,6 @@ class GaussianBokehBlurOperation : public BlurBaseOperation {
    * Deinitialize the execution
    */
   void deinit_execution() override;
-
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,
@@ -57,7 +52,6 @@ class GaussianBlurReferenceOperation : public BlurBaseOperation {
   GaussianBlurReferenceOperation();
   void init_data() override;
   void init_execution() override;
-  void *initialize_tile_data(rcti *rect) override;
   /**
    * The inner loop of this operation.
    */
@@ -67,10 +61,6 @@ class GaussianBlurReferenceOperation : public BlurBaseOperation {
    * Deinitialize the execution
    */
   void deinit_execution() override;
-
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,

@@ -41,12 +41,6 @@ void DilateErodeThresholdOperation::init_execution()
   input_program_ = this->get_input_socket_reader(0);
 }
 
-void *DilateErodeThresholdOperation::initialize_tile_data(rcti * /*rect*/)
-{
-  void *buffer = input_program_->initialize_tile_data(nullptr);
-  return buffer;
-}
-
 void DilateErodeThresholdOperation::execute_pixel(float output[4], int x, int y, void *data)
 {
   float input_value[4];
@@ -132,19 +126,6 @@ void DilateErodeThresholdOperation::execute_pixel(float output[4], int x, int y,
 void DilateErodeThresholdOperation::deinit_execution()
 {
   input_program_ = nullptr;
-}
-
-bool DilateErodeThresholdOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-
-  new_input.xmax = input->xmax + scope_;
-  new_input.xmin = input->xmin - scope_;
-  new_input.ymax = input->ymax + scope_;
-  new_input.ymin = input->ymin - scope_;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void DilateErodeThresholdOperation::get_area_of_interest(const int input_idx,
@@ -276,12 +257,6 @@ void DilateDistanceOperation::init_execution()
   input_program_ = this->get_input_socket_reader(0);
 }
 
-void *DilateDistanceOperation::initialize_tile_data(rcti * /*rect*/)
-{
-  void *buffer = input_program_->initialize_tile_data(nullptr);
-  return buffer;
-}
-
 void DilateDistanceOperation::execute_pixel(float output[4], int x, int y, void *data)
 {
   const float distance = distance_;
@@ -317,19 +292,6 @@ void DilateDistanceOperation::execute_pixel(float output[4], int x, int y, void 
 void DilateDistanceOperation::deinit_execution()
 {
   input_program_ = nullptr;
-}
-
-bool DilateDistanceOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-
-  new_input.xmax = input->xmax + scope_;
-  new_input.xmin = input->xmin - scope_;
-  new_input.ymax = input->ymax + scope_;
-  new_input.ymin = input->ymin - scope_;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void DilateDistanceOperation::get_area_of_interest(const int input_idx,
@@ -478,148 +440,11 @@ void DilateStepOperation::init_execution()
   input_program_ = this->get_input_socket_reader(0);
 }
 
-/* Small helper to pass data from initialize_tile_data to execute_pixel. */
-struct tile_info {
-  rcti rect;
-  int width;
-  float *buffer;
-};
-
-static tile_info *create_cache(int xmin, int xmax, int ymin, int ymax)
-{
-  tile_info *result = (tile_info *)MEM_mallocN(sizeof(tile_info), "dilate erode tile");
-  result->rect.xmin = xmin;
-  result->rect.xmax = xmax;
-  result->rect.ymin = ymin;
-  result->rect.ymax = ymax;
-  result->width = xmax - xmin;
-  result->buffer = (float *)MEM_callocN(sizeof(float) * (ymax - ymin) * result->width,
-                                        "dilate erode cache");
-  return result;
-}
-
-void *DilateStepOperation::initialize_tile_data(rcti *rect)
-{
-  MemoryBuffer *tile = (MemoryBuffer *)input_program_->initialize_tile_data(nullptr);
-  int x, y, i;
-  int width = tile->get_width();
-  int height = tile->get_height();
-  float *buffer = tile->get_buffer();
-
-  int half_window = iterations_;
-  int window = half_window * 2 + 1;
-
-  int xmin = std::max(0, rect->xmin - half_window);
-  int ymin = std::max(0, rect->ymin - half_window);
-  int xmax = std::min(width, rect->xmax + half_window);
-  int ymax = std::min(height, rect->ymax + half_window);
-
-  int bwidth = rect->xmax - rect->xmin;
-  int bheight = rect->ymax - rect->ymin;
-
-  /* NOTE: Cache buffer has original tile-size width, but new height.
-   * We have to calculate the additional rows in the first pass,
-   * to have valid data available for the second pass. */
-  tile_info *result = create_cache(rect->xmin, rect->xmax, ymin, ymax);
-  float *rectf = result->buffer;
-
-  /* temp holds maxima for every step in the algorithm, buf holds a
-   * single row or column of input values, padded with FLT_MAX's to
-   * simplify the logic. */
-  float *temp = (float *)MEM_mallocN(sizeof(float) * (2 * window - 1), "dilate erode temp");
-  float *buf = (float *)MEM_mallocN(sizeof(float) * (std::max(bwidth, bheight) + 5 * half_window),
-                                    "dilate erode buf");
-
-  /* The following is based on the van Herk/Gil-Werman algorithm for morphology operations.
-   * first pass, horizontal dilate/erode. */
-  for (y = ymin; y < ymax; y++) {
-    for (x = 0; x < bwidth + 5 * half_window; x++) {
-      buf[x] = -FLT_MAX;
-    }
-    for (x = xmin; x < xmax; x++) {
-      buf[x - rect->xmin + window - 1] = buffer[(y * width + x)];
-    }
-
-    for (i = 0; i < (bwidth + 3 * half_window) / window; i++) {
-      int start = (i + 1) * window - 1;
-
-      temp[window - 1] = buf[start];
-      for (x = 1; x < window; x++) {
-        temp[window - 1 - x] = std::max(temp[window - x], buf[start - x]);
-        temp[window - 1 + x] = std::max(temp[window + x - 2], buf[start + x]);
-      }
-
-      start = half_window + (i - 1) * window + 1;
-      for (x = -std::min(0, start); x < window - std::max(0, start + window - bwidth); x++) {
-        rectf[bwidth * (y - ymin) + (start + x)] = std::max(temp[x], temp[x + window - 1]);
-      }
-    }
-  }
-
-  /* Second pass, vertical dilate/erode. */
-  for (x = 0; x < bwidth; x++) {
-    for (y = 0; y < bheight + 5 * half_window; y++) {
-      buf[y] = -FLT_MAX;
-    }
-    for (y = ymin; y < ymax; y++) {
-      buf[y - rect->ymin + window - 1] = rectf[(y - ymin) * bwidth + x];
-    }
-
-    for (i = 0; i < (bheight + 3 * half_window) / window; i++) {
-      int start = (i + 1) * window - 1;
-
-      temp[window - 1] = buf[start];
-      for (y = 1; y < window; y++) {
-        temp[window - 1 - y] = std::max(temp[window - y], buf[start - y]);
-        temp[window - 1 + y] = std::max(temp[window + y - 2], buf[start + y]);
-      }
-
-      start = half_window + (i - 1) * window + 1;
-      for (y = -std::min(0, start); y < window - std::max(0, start + window - bheight); y++) {
-        rectf[bwidth * (y + start + (rect->ymin - ymin)) + x] = std::max(temp[y],
-                                                                         temp[y + window - 1]);
-      }
-    }
-  }
-
-  MEM_freeN(temp);
-  MEM_freeN(buf);
-
-  return result;
-}
-
-void DilateStepOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  tile_info *tile = (tile_info *)data;
-  int nx = x - tile->rect.xmin;
-  int ny = y - tile->rect.ymin;
-  output[0] = tile->buffer[tile->width * ny + nx];
-}
+void DilateStepOperation::execute_pixel(float output[4], int x, int y, void *data) {}
 
 void DilateStepOperation::deinit_execution()
 {
   input_program_ = nullptr;
-}
-
-void DilateStepOperation::deinitialize_tile_data(rcti * /*rect*/, void *data)
-{
-  tile_info *tile = (tile_info *)data;
-  MEM_freeN(tile->buffer);
-  MEM_freeN(tile);
-}
-
-bool DilateStepOperation::determine_depending_area_of_interest(rcti *input,
-                                                               ReadBufferOperation *read_operation,
-                                                               rcti *output)
-{
-  rcti new_input;
-  int it = iterations_;
-  new_input.xmax = input->xmax + it;
-  new_input.xmin = input->xmin - it;
-  new_input.ymax = input->ymax + it;
-  new_input.ymin = input->ymin - it;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void DilateStepOperation::get_area_of_interest(const int input_idx,
@@ -746,96 +571,6 @@ void DilateStepOperation::update_memory_buffer_partial(MemoryBuffer *output,
 ErodeStepOperation::ErodeStepOperation() : DilateStepOperation()
 {
   /* pass */
-}
-
-void *ErodeStepOperation::initialize_tile_data(rcti *rect)
-{
-  MemoryBuffer *tile = (MemoryBuffer *)input_program_->initialize_tile_data(nullptr);
-  int x, y, i;
-  int width = tile->get_width();
-  int height = tile->get_height();
-  float *buffer = tile->get_buffer();
-
-  int half_window = iterations_;
-  int window = half_window * 2 + 1;
-
-  int xmin = std::max(0, rect->xmin - half_window);
-  int ymin = std::max(0, rect->ymin - half_window);
-  int xmax = std::min(width, rect->xmax + half_window);
-  int ymax = std::min(height, rect->ymax + half_window);
-
-  int bwidth = rect->xmax - rect->xmin;
-  int bheight = rect->ymax - rect->ymin;
-
-  /* NOTE: Cache buffer has original tile-size width, but new height.
-   * We have to calculate the additional rows in the first pass,
-   * to have valid data available for the second pass. */
-  tile_info *result = create_cache(rect->xmin, rect->xmax, ymin, ymax);
-  float *rectf = result->buffer;
-
-  /* temp holds maxima for every step in the algorithm, buf holds a
-   * single row or column of input values, padded with FLT_MAX's to
-   * simplify the logic. */
-  float *temp = (float *)MEM_mallocN(sizeof(float) * (2 * window - 1), "dilate erode temp");
-  float *buf = (float *)MEM_mallocN(sizeof(float) * (std::max(bwidth, bheight) + 5 * half_window),
-                                    "dilate erode buf");
-
-  /* The following is based on the van Herk/Gil-Werman algorithm for morphology operations.
-   * first pass, horizontal dilate/erode */
-  for (y = ymin; y < ymax; y++) {
-    for (x = 0; x < bwidth + 5 * half_window; x++) {
-      buf[x] = FLT_MAX;
-    }
-    for (x = xmin; x < xmax; x++) {
-      buf[x - rect->xmin + window - 1] = buffer[(y * width + x)];
-    }
-
-    for (i = 0; i < (bwidth + 3 * half_window) / window; i++) {
-      int start = (i + 1) * window - 1;
-
-      temp[window - 1] = buf[start];
-      for (x = 1; x < window; x++) {
-        temp[window - 1 - x] = std::min(temp[window - x], buf[start - x]);
-        temp[window - 1 + x] = std::min(temp[window + x - 2], buf[start + x]);
-      }
-
-      start = half_window + (i - 1) * window + 1;
-      for (x = -std::min(0, start); x < window - std::max(0, start + window - bwidth); x++) {
-        rectf[bwidth * (y - ymin) + (start + x)] = std::min(temp[x], temp[x + window - 1]);
-      }
-    }
-  }
-
-  /* Second pass, vertical dilate/erode. */
-  for (x = 0; x < bwidth; x++) {
-    for (y = 0; y < bheight + 5 * half_window; y++) {
-      buf[y] = FLT_MAX;
-    }
-    for (y = ymin; y < ymax; y++) {
-      buf[y - rect->ymin + window - 1] = rectf[(y - ymin) * bwidth + x];
-    }
-
-    for (i = 0; i < (bheight + 3 * half_window) / window; i++) {
-      int start = (i + 1) * window - 1;
-
-      temp[window - 1] = buf[start];
-      for (y = 1; y < window; y++) {
-        temp[window - 1 - y] = std::min(temp[window - y], buf[start - y]);
-        temp[window - 1 + y] = std::min(temp[window + y - 2], buf[start + y]);
-      }
-
-      start = half_window + (i - 1) * window + 1;
-      for (y = -std::min(0, start); y < window - std::max(0, start + window - bheight); y++) {
-        rectf[bwidth * (y + start + (rect->ymin - ymin)) + x] = std::min(temp[y],
-                                                                         temp[y + window - 1]);
-      }
-    }
-  }
-
-  MEM_freeN(temp);
-  MEM_freeN(buf);
-
-  return result;
 }
 
 struct Min2Selector {

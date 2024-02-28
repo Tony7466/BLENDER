@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -48,15 +48,10 @@ class VectorBlurOperation : public NodeOperation, public QualityStepHelper {
    */
   void deinit_execution() override;
 
-  void *initialize_tile_data(rcti *rect) override;
-
   void set_vector_blur_settings(const NodeBlurData *settings)
   {
     settings_ = settings;
   }
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer(MemoryBuffer *output,

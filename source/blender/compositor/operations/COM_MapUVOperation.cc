@@ -156,37 +156,6 @@ void MapUVOperation::deinit_execution()
   input_color_program_ = nullptr;
 }
 
-bool MapUVOperation::determine_depending_area_of_interest(rcti *input,
-                                                          ReadBufferOperation *read_operation,
-                                                          rcti *output)
-{
-  rcti color_input;
-  rcti uv_input;
-  NodeOperation *operation = nullptr;
-
-  /* the uv buffer only needs a 3x3 buffer. The image needs whole buffer */
-
-  operation = get_input_operation(0);
-  color_input.xmax = operation->get_width();
-  color_input.xmin = 0;
-  color_input.ymax = operation->get_height();
-  color_input.ymin = 0;
-  if (operation->determine_depending_area_of_interest(&color_input, read_operation, output)) {
-    return true;
-  }
-
-  operation = get_input_operation(1);
-  uv_input.xmax = input->xmax + 1;
-  uv_input.xmin = input->xmin - 1;
-  uv_input.ymax = input->ymax + 1;
-  uv_input.ymin = input->ymin - 1;
-  if (operation->determine_depending_area_of_interest(&uv_input, read_operation, output)) {
-    return true;
-  }
-
-  return false;
-}
-
 void MapUVOperation::get_area_of_interest(const int input_idx,
                                           const rcti &output_area,
                                           rcti &r_input_area)

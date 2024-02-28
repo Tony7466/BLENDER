@@ -13,17 +13,6 @@ GaussianBokehBlurOperation::GaussianBokehBlurOperation() : BlurBaseOperation(Dat
   gausstab_ = nullptr;
 }
 
-void *GaussianBokehBlurOperation::initialize_tile_data(rcti * /*rect*/)
-{
-  lock_mutex();
-  if (!sizeavailable_) {
-    update_gauss();
-  }
-  void *buffer = get_input_operation(0)->initialize_tile_data(nullptr);
-  unlock_mutex();
-  return buffer;
-}
-
 void GaussianBokehBlurOperation::init_data()
 {
   BlurBaseOperation::init_data();
@@ -163,39 +152,6 @@ void GaussianBokehBlurOperation::deinit_execution()
   deinit_mutex();
 }
 
-bool GaussianBokehBlurOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-  rcti size_input;
-  size_input.xmin = 0;
-  size_input.ymin = 0;
-  size_input.xmax = 5;
-  size_input.ymax = 5;
-  NodeOperation *operation = this->get_input_operation(1);
-
-  if (operation->determine_depending_area_of_interest(&size_input, read_operation, output)) {
-    return true;
-  }
-
-  if (sizeavailable_ && gausstab_ != nullptr) {
-    new_input.xmin = 0;
-    new_input.ymin = 0;
-    new_input.xmax = this->get_width();
-    new_input.ymax = this->get_height();
-  }
-  else {
-    int addx = radx_;
-    int addy = rady_;
-    new_input.xmax = input->xmax + addx;
-    new_input.xmin = input->xmin - addx;
-    new_input.ymax = input->ymax + addy;
-    new_input.ymin = input->ymin - addy;
-  }
-  return BlurBaseOperation::determine_depending_area_of_interest(
-      &new_input, read_operation, output);
-}
-
 void GaussianBokehBlurOperation::get_area_of_interest(const int input_idx,
                                                       const rcti &output_area,
                                                       rcti &r_input_area)
@@ -301,12 +257,6 @@ void GaussianBlurReferenceOperation::init_data()
   rady_ = float(filtersizey_);
 }
 
-void *GaussianBlurReferenceOperation::initialize_tile_data(rcti * /*rect*/)
-{
-  void *buffer = get_input_operation(0)->initialize_tile_data(nullptr);
-  return buffer;
-}
-
 void GaussianBlurReferenceOperation::init_execution()
 {
   BlurBaseOperation::init_execution();
@@ -400,25 +350,6 @@ void GaussianBlurReferenceOperation::deinit_execution()
   }
   MEM_freeN(maintabs_);
   BlurBaseOperation::deinit_execution();
-}
-
-bool GaussianBlurReferenceOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-  NodeOperation *operation = this->get_input_operation(1);
-
-  if (operation->determine_depending_area_of_interest(input, read_operation, output)) {
-    return true;
-  }
-
-  int addx = data_.sizex + 2;
-  int addy = data_.sizey + 2;
-  new_input.xmax = input->xmax + addx;
-  new_input.xmin = input->xmin - addx;
-  new_input.ymax = input->ymax + addy;
-  new_input.ymin = input->ymin - addy;
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void GaussianBlurReferenceOperation::get_area_of_interest(const int input_idx,

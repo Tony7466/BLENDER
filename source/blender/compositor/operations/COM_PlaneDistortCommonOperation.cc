@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -149,36 +149,6 @@ void PlaneDistortWarpImageOperation::update_memory_buffer_partial(MemoryBuffer *
       mul_v4_fl(it.out, 1.0f / float(motion_blur_samples_));
     }
   }
-}
-
-bool PlaneDistortWarpImageOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  float min[2], max[2];
-  INIT_MINMAX2(min, max);
-
-  for (int sample = 0; sample < motion_blur_samples_; sample++) {
-    float UVs[4][2];
-    float deriv[2][2];
-    MotionSample *sample_data = &samples_[sample];
-    /* TODO(sergey): figure out proper way to do this. */
-    warp_coord(input->xmin - 2, input->ymin - 2, sample_data->perspective_matrix, UVs[0], deriv);
-    warp_coord(input->xmax + 2, input->ymin - 2, sample_data->perspective_matrix, UVs[1], deriv);
-    warp_coord(input->xmax + 2, input->ymax + 2, sample_data->perspective_matrix, UVs[2], deriv);
-    warp_coord(input->xmin - 2, input->ymax + 2, sample_data->perspective_matrix, UVs[3], deriv);
-    for (int i = 0; i < 4; i++) {
-      minmax_v2v2_v2(min, max, UVs[i]);
-    }
-  }
-
-  rcti new_input;
-
-  new_input.xmin = min[0] - 1;
-  new_input.ymin = min[1] - 1;
-  new_input.xmax = max[0] + 1;
-  new_input.ymax = max[1] + 1;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void PlaneDistortWarpImageOperation::get_area_of_interest(const int input_idx,

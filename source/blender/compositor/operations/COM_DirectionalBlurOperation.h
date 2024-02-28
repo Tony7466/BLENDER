@@ -36,10 +36,6 @@ class DirectionalBlurOperation : public MultiThreadedOperation, public QualitySt
    */
   void deinit_execution() override;
 
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
-
   void set_data(const NodeDBlurData *data)
   {
     data_ = data;

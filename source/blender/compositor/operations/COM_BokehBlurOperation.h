@@ -25,7 +25,6 @@ class BokehBlurOperation : public MultiThreadedOperation, public QualityStepHelp
 
   void init_data() override;
 
-  void *initialize_tile_data(rcti *rect) override;
   /**
    * The inner loop of this operation.
    */
@@ -40,10 +39,6 @@ class BokehBlurOperation : public MultiThreadedOperation, public QualityStepHelp
    * Deinitialize the execution
    */
   void deinit_execution() override;
-
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void set_size(float size)
   {

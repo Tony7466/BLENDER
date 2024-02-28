@@ -35,10 +35,6 @@ class SingleThreadedOperation : public NodeOperation {
    * Deinitialize the execution
    */
   void deinit_execution() override;
-
-  void *initialize_tile_data(rcti *rect) override;
-
-  virtual MemoryBuffer *create_memory_buffer(rcti *rect) = 0;
 };
 
 }  // namespace blender::compositor

@@ -68,40 +68,6 @@ void VectorBlurOperation::deinit_execution()
     cached_instance_ = nullptr;
   }
 }
-void *VectorBlurOperation::initialize_tile_data(rcti *rect)
-{
-  if (cached_instance_) {
-    return cached_instance_;
-  }
-
-  lock_mutex();
-  if (cached_instance_ == nullptr) {
-    MemoryBuffer *tile = (MemoryBuffer *)input_image_program_->initialize_tile_data(rect);
-    MemoryBuffer *speed = (MemoryBuffer *)input_speed_program_->initialize_tile_data(rect);
-    MemoryBuffer *z = (MemoryBuffer *)input_zprogram_->initialize_tile_data(rect);
-    float *data = (float *)MEM_dupallocN(tile->get_buffer());
-    this->generate_vector_blur(data, tile, speed, z);
-    cached_instance_ = data;
-  }
-  unlock_mutex();
-  return cached_instance_;
-}
-
-bool VectorBlurOperation::determine_depending_area_of_interest(rcti * /*input*/,
-                                                               ReadBufferOperation *read_operation,
-                                                               rcti *output)
-{
-  if (cached_instance_ == nullptr) {
-    rcti new_input;
-    new_input.xmax = this->get_width();
-    new_input.xmin = 0;
-    new_input.ymax = this->get_height();
-    new_input.ymin = 0;
-    return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
-  }
-
-  return false;
-}
 
 void VectorBlurOperation::get_area_of_interest(const int /*input_idx*/,
                                                const rcti & /*output_area*/,

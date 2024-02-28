@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,12 +12,6 @@ IDMaskOperation::IDMaskOperation()
   this->add_output_socket(DataType::Value);
   flags_.complex = true;
   flags_.can_be_constant = true;
-}
-
-void *IDMaskOperation::initialize_tile_data(rcti *rect)
-{
-  void *buffer = get_input_operation(0)->initialize_tile_data(rect);
-  return buffer;
 }
 
 void IDMaskOperation::execute_pixel(float output[4], int x, int y, void *data)

@@ -159,39 +159,6 @@ void RotateOperation::execute_pixel_sampled(float output[4],
   image_socket_->read_sampled(output, nx, ny, sampler);
 }
 
-bool RotateOperation::determine_depending_area_of_interest(rcti *input,
-                                                           ReadBufferOperation *read_operation,
-                                                           rcti *output)
-{
-  ensure_degree();
-  rcti new_input;
-
-  const float dxmin = input->xmin - center_x_;
-  const float dymin = input->ymin - center_y_;
-  const float dxmax = input->xmax - center_x_;
-  const float dymax = input->ymax - center_y_;
-
-  const float x1 = center_x_ + (cosine_ * dxmin + sine_ * dymin);
-  const float x2 = center_x_ + (cosine_ * dxmax + sine_ * dymin);
-  const float x3 = center_x_ + (cosine_ * dxmin + sine_ * dymax);
-  const float x4 = center_x_ + (cosine_ * dxmax + sine_ * dymax);
-  const float y1 = center_y_ + (-sine_ * dxmin + cosine_ * dymin);
-  const float y2 = center_y_ + (-sine_ * dxmax + cosine_ * dymin);
-  const float y3 = center_y_ + (-sine_ * dxmin + cosine_ * dymax);
-  const float y4 = center_y_ + (-sine_ * dxmax + cosine_ * dymax);
-  const float minx = std::min(x1, std::min(x2, std::min(x3, x4)));
-  const float maxx = std::max(x1, std::max(x2, std::max(x3, x4)));
-  const float miny = std::min(y1, std::min(y2, std::min(y3, y4)));
-  const float maxy = std::max(y1, std::max(y2, std::max(y3, y4)));
-
-  new_input.xmax = ceil(maxx) + 1;
-  new_input.xmin = floor(minx) - 1;
-  new_input.ymax = ceil(maxy) + 1;
-  new_input.ymin = floor(miny) - 1;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
-}
-
 void RotateOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
   const bool image_determined =

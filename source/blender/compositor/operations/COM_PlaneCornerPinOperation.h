@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,8 +28,6 @@ class PlaneCornerPinMaskOperation : public PlaneDistortMaskOperation {
   void init_execution() override;
   void deinit_execution() override;
 
-  void *initialize_tile_data(rcti *rect) override;
-
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
@@ -45,12 +43,6 @@ class PlaneCornerPinWarpImageOperation : public PlaneDistortWarpImageOperation {
   void init_data() override;
   void init_execution() override;
   void deinit_execution() override;
-
-  void *initialize_tile_data(rcti *rect) override;
-
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
 };

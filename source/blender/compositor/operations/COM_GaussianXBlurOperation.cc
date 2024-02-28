@@ -8,17 +8,6 @@ namespace blender::compositor {
 
 GaussianXBlurOperation::GaussianXBlurOperation() : GaussianBlurBaseOperation(eDimension::X) {}
 
-void *GaussianXBlurOperation::initialize_tile_data(rcti * /*rect*/)
-{
-  lock_mutex();
-  if (!sizeavailable_) {
-    update_gauss();
-  }
-  void *buffer = get_input_operation(0)->initialize_tile_data(nullptr);
-  unlock_mutex();
-  return buffer;
-}
-
 /* TODO(manzanilla): to be removed with tiled implementation. */
 void GaussianXBlurOperation::init_execution()
 {
@@ -99,39 +88,6 @@ void GaussianXBlurOperation::deinit_execution()
 #endif
 
   deinit_mutex();
-}
-
-bool GaussianXBlurOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-
-  if (!sizeavailable_) {
-    rcti size_input;
-    size_input.xmin = 0;
-    size_input.ymin = 0;
-    size_input.xmax = 5;
-    size_input.ymax = 5;
-    NodeOperation *operation = this->get_input_operation(1);
-    if (operation->determine_depending_area_of_interest(&size_input, read_operation, output)) {
-      return true;
-    }
-  }
-  {
-    if (sizeavailable_ && gausstab_ != nullptr) {
-      new_input.xmax = input->xmax + filtersize_ + 1;
-      new_input.xmin = input->xmin - filtersize_ - 1;
-      new_input.ymax = input->ymax;
-      new_input.ymin = input->ymin;
-    }
-    else {
-      new_input.xmax = this->get_width();
-      new_input.xmin = 0;
-      new_input.ymax = this->get_height();
-      new_input.ymin = 0;
-    }
-    return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
-  }
 }
 
 }  // namespace blender::compositor

@@ -212,40 +212,6 @@ NodeOperation *NodeOperation::get_input_operation(int index)
   return nullptr;
 }
 
-bool NodeOperation::determine_depending_area_of_interest(rcti *input,
-                                                         ReadBufferOperation *read_operation,
-                                                         rcti *output)
-{
-  if (inputs_.is_empty()) {
-    BLI_rcti_init(output, input->xmin, input->xmax, input->ymin, input->ymax);
-    return false;
-  }
-
-  rcti temp_output;
-  bool first = true;
-  for (int i = 0; i < get_number_of_input_sockets(); i++) {
-    NodeOperation *input_operation = this->get_input_operation(i);
-    if (input_operation &&
-        input_operation->determine_depending_area_of_interest(input, read_operation, &temp_output))
-    {
-      if (first) {
-        output->xmin = temp_output.xmin;
-        output->ymin = temp_output.ymin;
-        output->xmax = temp_output.xmax;
-        output->ymax = temp_output.ymax;
-        first = false;
-      }
-      else {
-        output->xmin = std::min(output->xmin, temp_output.xmin);
-        output->ymin = std::min(output->ymin, temp_output.ymin);
-        output->xmax = std::max(output->xmax, temp_output.xmax);
-        output->ymax = std::max(output->ymax, temp_output.ymax);
-      }
-    }
-  }
-  return !first;
-}
-
 /* -------------------------------------------------------------------- */
 /** \name Full Frame Methods
  * \{ */

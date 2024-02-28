@@ -41,57 +41,6 @@ void WriteBufferOperation::deinit_execution()
   memory_proxy_->free();
 }
 
-void WriteBufferOperation::execute_region(rcti *rect, uint /*tile_number*/)
-{
-  MemoryBuffer *memory_buffer = memory_proxy_->get_buffer();
-  float *buffer = memory_buffer->get_buffer();
-  const uint8_t num_channels = memory_buffer->get_num_channels();
-  if (input_->get_flags().complex) {
-    void *data = input_->initialize_tile_data(rect);
-    int x1 = rect->xmin;
-    int y1 = rect->ymin;
-    int x2 = rect->xmax;
-    int y2 = rect->ymax;
-    int x;
-    int y;
-    bool breaked = false;
-    for (y = y1; y < y2 && (!breaked); y++) {
-      int offset4 = (y * memory_buffer->get_width() + x1) * num_channels;
-      for (x = x1; x < x2; x++) {
-        input_->read(&(buffer[offset4]), x, y, data);
-        offset4 += num_channels;
-      }
-      if (is_braked()) {
-        breaked = true;
-      }
-    }
-    if (data) {
-      input_->deinitialize_tile_data(rect, data);
-      data = nullptr;
-    }
-  }
-  else {
-    int x1 = rect->xmin;
-    int y1 = rect->ymin;
-    int x2 = rect->xmax;
-    int y2 = rect->ymax;
-
-    int x;
-    int y;
-    bool breaked = false;
-    for (y = y1; y < y2 && (!breaked); y++) {
-      int offset4 = (y * memory_buffer->get_width() + x1) * num_channels;
-      for (x = x1; x < x2; x++) {
-        input_->read_sampled(&(buffer[offset4]), x, y, PixelSampler::Nearest);
-        offset4 += num_channels;
-      }
-      if (is_braked()) {
-        breaked = true;
-      }
-    }
-  }
-}
-
 void WriteBufferOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
   NodeOperation::determine_canvas(preferred_area, r_area);

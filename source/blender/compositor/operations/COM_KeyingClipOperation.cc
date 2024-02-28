@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,13 +21,6 @@ KeyingClipOperation::KeyingClipOperation()
 
   flags_.complex = true;
   flags_.can_be_constant = true;
-}
-
-void *KeyingClipOperation::initialize_tile_data(rcti *rect)
-{
-  void *buffer = get_input_operation(0)->initialize_tile_data(rect);
-
-  return buffer;
 }
 
 void KeyingClipOperation::execute_pixel(float output[4], int x, int y, void *data)
@@ -94,20 +87,6 @@ void KeyingClipOperation::execute_pixel(float output[4], int x, int y, void *dat
       }
     }
   }
-}
-
-bool KeyingClipOperation::determine_depending_area_of_interest(rcti *input,
-                                                               ReadBufferOperation *read_operation,
-                                                               rcti *output)
-{
-  rcti new_input;
-
-  new_input.xmin = input->xmin - kernel_radius_;
-  new_input.ymin = input->ymin - kernel_radius_;
-  new_input.xmax = input->xmax + kernel_radius_;
-  new_input.ymax = input->ymax + kernel_radius_;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void KeyingClipOperation::get_area_of_interest(const int input_idx,

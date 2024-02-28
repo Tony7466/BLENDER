@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,13 +23,6 @@ class DisplaceSimpleOperation : public MultiThreadedOperation {
 
  public:
   DisplaceSimpleOperation();
-
-  /**
-   * we need a full buffer for the image
-   */
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   /**
    * The inner loop of this operation.

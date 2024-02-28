@@ -43,7 +43,6 @@ class DilateErodeThresholdOperation : public MultiThreadedOperation {
    */
   void init_execution() override;
 
-  void *initialize_tile_data(rcti *rect) override;
   /**
    * Deinitialize the execution
    */
@@ -61,10 +60,6 @@ class DilateErodeThresholdOperation : public MultiThreadedOperation {
   {
     inset_ = inset;
   }
-
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,
@@ -99,7 +94,6 @@ class DilateDistanceOperation : public MultiThreadedOperation {
    */
   void init_execution() override;
 
-  void *initialize_tile_data(rcti *rect) override;
   /**
    * Deinitialize the execution
    */
@@ -109,10 +103,6 @@ class DilateDistanceOperation : public MultiThreadedOperation {
   {
     distance_ = distance;
   }
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
-
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) final;
   virtual void update_memory_buffer_partial(MemoryBuffer *output,
                                             const rcti &area,
@@ -157,21 +147,15 @@ class DilateStepOperation : public MultiThreadedOperation {
    */
   void init_execution() override;
 
-  void *initialize_tile_data(rcti *rect) override;
   /**
    * Deinitialize the execution
    */
   void deinit_execution() override;
-  void deinitialize_tile_data(rcti *rect, void *data) override;
 
   void set_iterations(int iterations)
   {
     iterations_ = iterations;
   }
-
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) final;
   virtual void update_memory_buffer_partial(MemoryBuffer *output,
@@ -184,7 +168,6 @@ class ErodeStepOperation : public DilateStepOperation {
   /** Erode step. */
   ErodeStepOperation();
 
-  void *initialize_tile_data(rcti *rect) override;
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;

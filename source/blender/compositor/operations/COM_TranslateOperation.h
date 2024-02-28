@@ -31,9 +31,6 @@ class TranslateOperation : public MultiThreadedOperation {
  public:
   TranslateOperation();
   TranslateOperation(DataType data_type, ResizeMode mode = ResizeMode::Center);
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
   void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
 
   void init_execution() override;

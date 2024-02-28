@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -43,11 +43,7 @@ class PreviewOperation : public MultiThreadedOperation {
   void deinit_execution() override;
   eCompositorPriority get_render_priority() const override;
 
-  void execute_region(rcti *rect, unsigned int tile_number) override;
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,

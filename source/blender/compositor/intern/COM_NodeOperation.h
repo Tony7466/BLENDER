@@ -439,15 +439,6 @@ class NodeOperation {
 
   virtual void init_execution();
 
-  /**
-   * \brief when a chunk is executed by a CPUDevice, this method is called
-   * \ingroup execution
-   * \param rect: the rectangle of the chunk (location and size)
-   * \param chunk_number: the chunk_number to be calculated
-   * \param memory_buffers: all input MemoryBuffer's needed
-   */
-  virtual void execute_region(rcti * /*rect*/, unsigned int /*chunk_number*/) {}
-
   virtual void deinit_execution();
 
   void set_canvas(const rcti &canvas_area);
@@ -469,10 +460,6 @@ class NodeOperation {
   {
     return false;
   }
-
-  virtual bool determine_depending_area_of_interest(rcti *input,
-                                                    ReadBufferOperation *read_operation,
-                                                    rcti *output);
 
   /**
    * \brief set the index of the input socket that will determine the canvas of this
@@ -543,13 +530,6 @@ class NodeOperation {
                   math::clamp(y, 0, int(this->get_height()) - 1),
                   chunk_data);
   }
-
-  virtual void *initialize_tile_data(rcti * /*rect*/)
-  {
-    return 0;
-  }
-
-  virtual void deinitialize_tile_data(rcti * /*rect*/, void * /*data*/) {}
 
   virtual MemoryBuffer *get_input_memory_buffer(MemoryBuffer ** /*memory_buffers*/)
   {

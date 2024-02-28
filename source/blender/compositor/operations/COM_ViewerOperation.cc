@@ -52,45 +52,6 @@ void ViewerOperation::deinit_execution()
   output_buffer_ = nullptr;
 }
 
-void ViewerOperation::execute_region(rcti *rect, uint /*tile_number*/)
-{
-  float *buffer = output_buffer_;
-  if (!buffer) {
-    return;
-  }
-  const int x1 = rect->xmin;
-  const int y1 = rect->ymin;
-  const int x2 = rect->xmax;
-  const int y2 = rect->ymax;
-  const int offsetadd = (this->get_width() - (x2 - x1));
-  const int offsetadd4 = offsetadd * 4;
-  int offset = (y1 * this->get_width() + x1);
-  int offset4 = offset * 4;
-  float alpha[4];
-  int x;
-  int y;
-  bool breaked = false;
-
-  for (y = y1; y < y2 && (!breaked); y++) {
-    for (x = x1; x < x2; x++) {
-      image_input_->read_sampled(&(buffer[offset4]), x, y, PixelSampler::Nearest);
-      if (use_alpha_input_) {
-        alpha_input_->read_sampled(alpha, x, y, PixelSampler::Nearest);
-        buffer[offset4 + 3] = alpha[0];
-      }
-
-      offset++;
-      offset4 += 4;
-    }
-    if (is_braked()) {
-      breaked = true;
-    }
-    offset += offsetadd;
-    offset4 += offsetadd4;
-  }
-  update_image(rect);
-}
-
 void ViewerOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
   int scene_render_width, scene_render_height;

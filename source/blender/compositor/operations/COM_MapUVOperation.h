@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,13 +29,6 @@ class MapUVOperation : public MultiThreadedOperation {
 
  public:
   MapUVOperation();
-
-  /**
-   * we need a 3x3 differential filter for UV Input and full buffer for the image
-   */
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   /**
    * The inner loop of this operation.

@@ -26,36 +26,6 @@ void GlareBaseOperation::deinit_execution()
   SingleThreadedOperation::deinit_execution();
 }
 
-MemoryBuffer *GlareBaseOperation::create_memory_buffer(rcti *rect2)
-{
-  MemoryBuffer *tile = (MemoryBuffer *)input_program_->initialize_tile_data(rect2);
-  rcti rect;
-  rect.xmin = 0;
-  rect.ymin = 0;
-  rect.xmax = get_width();
-  rect.ymax = get_height();
-  MemoryBuffer *result = new MemoryBuffer(DataType::Color, rect);
-  float *data = result->get_buffer();
-  this->generate_glare(data, tile, settings_);
-  return result;
-}
-
-bool GlareBaseOperation::determine_depending_area_of_interest(rcti * /*input*/,
-                                                              ReadBufferOperation *read_operation,
-                                                              rcti *output)
-{
-  if (is_cached()) {
-    return false;
-  }
-
-  rcti new_input;
-  new_input.xmax = this->get_width();
-  new_input.xmin = 0;
-  new_input.ymax = this->get_height();
-  new_input.ymin = 0;
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
-}
-
 void GlareBaseOperation::get_area_of_interest(const int input_idx,
                                               const rcti & /*output_area*/,
                                               rcti &r_input_area)

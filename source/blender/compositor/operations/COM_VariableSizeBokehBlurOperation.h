@@ -45,18 +45,10 @@ class VariableSizeBokehBlurOperation : public MultiThreadedOperation, public Qua
    */
   void init_execution() override;
 
-  void *initialize_tile_data(rcti *rect) override;
-
-  void deinitialize_tile_data(rcti *rect, void *data) override;
-
   /**
    * Deinitialize the execution
    */
   void deinit_execution() override;
-
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void set_max_blur(int max_radius)
   {
@@ -100,17 +92,12 @@ class InverseSearchRadiusOperation : public NodeOperation {
    * Initialize the execution
    */
   void init_execution() override;
-  void *initialize_tile_data(rcti *rect) override;
-  void deinitialize_tile_data(rcti *rect, void *data) override;
 
   /**
    * Deinitialize the execution
    */
   void deinit_execution() override;
 
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
 
   void set_max_blur(int max_radius)

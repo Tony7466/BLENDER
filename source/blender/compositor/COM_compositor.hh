@@ -135,8 +135,6 @@ struct Render;
  * The output-buffer of the chunk is being created.
  * The OutputOperation of the ExecutionGroup is called to execute the area of the output-buffer.
  *
- * \see ExecutionGroup
- * \see NodeOperation.execute_region executes a single chunk of a NodeOperation
  * \see CPUDevice.execute
  *
  * \section execute_pixel executing a pixel

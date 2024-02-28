@@ -54,32 +54,6 @@ struct VariableSizeBokehBlurTileData {
   int max_blur_scalar;
 };
 
-void *VariableSizeBokehBlurOperation::initialize_tile_data(rcti *rect)
-{
-  VariableSizeBokehBlurTileData *data = new VariableSizeBokehBlurTileData();
-  data->color = (MemoryBuffer *)input_program_->initialize_tile_data(rect);
-  data->bokeh = (MemoryBuffer *)input_bokeh_program_->initialize_tile_data(rect);
-  data->size = (MemoryBuffer *)input_size_program_->initialize_tile_data(rect);
-  data->mask = (MemoryBuffer *)input_mask_program_->initialize_tile_data(rect);
-
-  rcti rect2 = COM_AREA_NONE;
-  this->determine_depending_area_of_interest(
-      rect, (ReadBufferOperation *)input_size_program_, &rect2);
-
-  const float max_dim = std::max(this->get_width(), this->get_height());
-  const float scalar = do_size_scale_ ? (max_dim / 100.0f) : 1.0f;
-
-  data->max_blur_scalar = int(data->size->get_max_value(rect2) * scalar);
-  CLAMP(data->max_blur_scalar, 0, max_blur_);
-  return data;
-}
-
-void VariableSizeBokehBlurOperation::deinitialize_tile_data(rcti * /*rect*/, void *data)
-{
-  VariableSizeBokehBlurTileData *result = (VariableSizeBokehBlurTileData *)data;
-  delete result;
-}
-
 void VariableSizeBokehBlurOperation::execute_pixel(float output[4], int x, int y, void *data)
 {
   VariableSizeBokehBlurTileData *tile_data = (VariableSizeBokehBlurTileData *)data;
@@ -145,58 +119,6 @@ void VariableSizeBokehBlurOperation::deinit_execution()
 #ifdef COM_DEFOCUS_SEARCH
   input_search_program_ = nullptr;
 #endif
-}
-
-bool VariableSizeBokehBlurOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  if (read_operation == (ReadBufferOperation *)get_input_operation(BOKEH_INPUT_INDEX)) {
-    rcti bokeh_input;
-    bokeh_input.xmax = COM_BLUR_BOKEH_PIXELS;
-    bokeh_input.xmin = 0;
-    bokeh_input.ymax = COM_BLUR_BOKEH_PIXELS;
-    bokeh_input.ymin = 0;
-
-    NodeOperation *operation = get_input_operation(BOKEH_INPUT_INDEX);
-    return operation->determine_depending_area_of_interest(&bokeh_input, read_operation, output);
-  }
-
-  const float max_dim = std::max(get_width(), get_height());
-  const float scalar = do_size_scale_ ? (max_dim / 100.0f) : 1.0f;
-  int max_blur_scalar = max_blur_ * scalar;
-
-  rcti new_input;
-  new_input.xmax = input->xmax + max_blur_scalar + 2;
-  new_input.xmin = input->xmin - max_blur_scalar + 2;
-  new_input.ymax = input->ymax + max_blur_scalar - 2;
-  new_input.ymin = input->ymin - max_blur_scalar - 2;
-
-  NodeOperation *operation = get_input_operation(SIZE_INPUT_INDEX);
-  if (operation->determine_depending_area_of_interest(&new_input, read_operation, output)) {
-    return true;
-  }
-#ifdef COM_DEFOCUS_SEARCH
-  rcti search_input;
-  search_input.xmax = (input->xmax / InverseSearchRadiusOperation::DIVIDER) + 1;
-  search_input.xmin = (input->xmin / InverseSearchRadiusOperation::DIVIDER) - 1;
-  search_input.ymax = (input->ymax / InverseSearchRadiusOperation::DIVIDER) + 1;
-  search_input.ymin = (input->ymin / InverseSearchRadiusOperation::DIVIDER) - 1;
-  operation = get_input_operation(DEFOCUS_INPUT_INDEX);
-  if (operation->determine_depending_area_of_interest(&search_input, read_operation, output)) {
-    return true;
-  }
-#endif
-  operation = get_input_operation(IMAGE_INPUT_INDEX);
-  if (operation->determine_depending_area_of_interest(&new_input, read_operation, output)) {
-    return true;
-  }
-
-  operation = get_input_operation(BOUNDING_BOX_INPUT_INDEX);
-  if (operation->determine_depending_area_of_interest(&new_input, read_operation, output)) {
-    return true;
-  }
-
-  return false;
 }
 
 void VariableSizeBokehBlurOperation::get_area_of_interest(const int input_idx,
@@ -311,74 +233,10 @@ void InverseSearchRadiusOperation::init_execution()
   input_radius_ = this->get_input_socket_reader(0);
 }
 
-void *InverseSearchRadiusOperation::initialize_tile_data(rcti *rect)
-{
-  MemoryBuffer *data = new MemoryBuffer(DataType::Color, rect);
-  float *buffer = data->get_buffer();
-  int x, y;
-  int width = input_radius_->get_width();
-  int height = input_radius_->get_height();
-  float temp[4];
-  int offset = 0;
-  for (y = rect->ymin; y < rect->ymax; y++) {
-    for (x = rect->xmin; x < rect->xmax; x++) {
-      int rx = x * DIVIDER;
-      int ry = y * DIVIDER;
-      buffer[offset] = std::max(rx - max_blur_, 0);
-      buffer[offset + 1] = std::max(ry - max_blur_, 0);
-      buffer[offset + 2] = std::min(rx + DIVIDER + max_blur_, width);
-      buffer[offset + 3] = std::min(ry + DIVIDER + max_blur_, height);
-      offset += 4;
-    }
-  }
-#  if 0
-  for (x = rect->xmin; x < rect->xmax; x++) {
-    for (y = rect->ymin; y < rect->ymax; y++) {
-      int rx = x * DIVIDER;
-      int ry = y * DIVIDER;
-      float radius = 0.0f;
-      float maxx = x;
-      float maxy = y;
-
-      for (int x2 = 0; x2 < DIVIDER; x2++) {
-        for (int y2 = 0; y2 < DIVIDER; y2++) {
-          input_radius_->read(temp, rx + x2, ry + y2, PixelSampler::Nearest);
-          if (radius < temp[0]) {
-            radius = temp[0];
-            maxx = x2;
-            maxy = y2;
-          }
-        }
-      }
-      int impact_radius = ceil(radius / DIVIDER);
-      for (int x2 = x - impact_radius; x2 < x + impact_radius; x2++) {
-        for (int y2 = y - impact_radius; y2 < y + impact_radius; y2++) {
-          data->read(temp, x2, y2);
-          temp[0] = std::min(temp[0], maxx);
-          temp[1] = std::min(temp[1], maxy);
-          temp[2] = std::max(temp[2], maxx);
-          temp[3] = std::max(temp[3], maxy);
-          data->write_pixel(x2, y2, temp);
-        }
-      }
-    }
-  }
-#  endif
-  return data;
-}
-
 void InverseSearchRadiusOperation::execute_pixel_chunk(float output[4], int x, int y, void *data)
 {
   MemoryBuffer *buffer = (MemoryBuffer *)data;
   buffer->read_no_check(output, x, y);
-}
-
-void InverseSearchRadiusOperation::deinitialize_tile_data(rcti *rect, void *data)
-{
-  if (data) {
-    MemoryBuffer *mb = (MemoryBuffer *)data;
-    delete mb;
-  }
 }
 
 void InverseSearchRadiusOperation::deinit_execution()
@@ -394,16 +252,6 @@ void InverseSearchRadiusOperation::determine_resolution(uint resolution[2],
   resolution[1] = resolution[1] / DIVIDER;
 }
 
-bool InverseSearchRadiusOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_rect;
-  new_rect.ymin = input->ymin * DIVIDER - max_blur_;
-  new_rect.ymax = input->ymax * DIVIDER + max_blur_;
-  new_rect.xmin = input->xmin * DIVIDER - max_blur_;
-  new_rect.xmax = input->xmax * DIVIDER + max_blur_;
-  return NodeOperation::determine_depending_area_of_interest(&new_rect, read_operation, output);
-}
 #endif
 
 }  // namespace blender::compositor

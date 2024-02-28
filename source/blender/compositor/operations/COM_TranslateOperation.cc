@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -50,22 +50,6 @@ void TranslateOperation::execute_pixel_sampled(float output[4],
   float original_ypos = y - this->get_delta_y();
 
   input_operation_->read_sampled(output, original_xpos, original_ypos, PixelSampler::Bilinear);
-}
-
-bool TranslateOperation::determine_depending_area_of_interest(rcti *input,
-                                                              ReadBufferOperation *read_operation,
-                                                              rcti *output)
-{
-  rcti new_input;
-
-  ensure_delta();
-
-  new_input.xmin = input->xmin - this->get_delta_x();
-  new_input.xmax = input->xmax - this->get_delta_x();
-  new_input.ymin = input->ymin - this->get_delta_y();
-  new_input.ymax = input->ymax - this->get_delta_y();
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void TranslateOperation::set_wrapping(int wrapping_type)

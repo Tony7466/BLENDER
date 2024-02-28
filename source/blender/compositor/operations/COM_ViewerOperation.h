@@ -36,7 +36,6 @@ class ViewerOperation : public MultiThreadedOperation {
   ViewerOperation();
   void init_execution() override;
   void deinit_execution() override;
-  void execute_region(rcti *rect, unsigned int tile_number) override;
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
   bool is_output_operation(bool /*rendering*/) const override
   {

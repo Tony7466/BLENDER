@@ -32,22 +32,6 @@ void SummedAreaTableOperation::deinit_execution()
   SingleThreadedOperation::deinit_execution();
 }
 
-bool SummedAreaTableOperation::determine_depending_area_of_interest(
-    rcti * /*input*/, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti image_input;
-
-  NodeOperation *operation = get_input_operation(0);
-  image_input.xmax = operation->get_width();
-  image_input.xmin = 0;
-  image_input.ymax = operation->get_height();
-  image_input.ymin = 0;
-  if (operation->determine_depending_area_of_interest(&image_input, read_operation, output)) {
-    return true;
-  }
-  return false;
-}
-
 void SummedAreaTableOperation::get_area_of_interest(int input_idx,
                                                     const rcti & /*output_area*/,
                                                     rcti &r_input_area)
@@ -87,41 +71,6 @@ void SummedAreaTableOperation::update_memory_buffer(MemoryBuffer *output,
           }
         }
       });
-}
-
-MemoryBuffer *SummedAreaTableOperation::create_memory_buffer(rcti *area)
-{
-  /* Note: although this is a single threaded call, multithreading is used. */
-  MemoryBuffer *output = new MemoryBuffer(DataType::Color, *area);
-
-  /* First pass: copy input to output and sum horizontally. */
-  threading::parallel_for(
-      IndexRange(area->ymin, area->ymax - area->ymin), 1, [&](const IndexRange range_y) {
-        for (const int y : range_y) {
-          float4 accumulated_color = float4(0.0f);
-          for (const int x : IndexRange(area->xmin, area->xmax - area->xmin)) {
-            float4 color;
-            image_reader_->read(&color.x, x, y, nullptr);
-            accumulated_color += mode_ == eMode::Squared ? color * color : color;
-            copy_v4_v4(output->get_elem(x, y), accumulated_color);
-          }
-        }
-      });
-
-  /* Second pass: vertical sum. */
-  threading::parallel_for(
-      IndexRange(area->xmin, area->xmax - area->xmin), 1, [&](const IndexRange range_x) {
-        for (const int x : range_x) {
-          float4 accumulated_color = float4(0.0f);
-          for (const int y : IndexRange(area->ymin, area->ymax - area->ymin)) {
-
-            accumulated_color += float4(output->get_elem(x, y));
-            copy_v4_v4(output->get_elem(x, y), accumulated_color);
-          }
-        }
-      });
-
-  return output;
 }
 
 void SummedAreaTableOperation::set_mode(eMode mode)

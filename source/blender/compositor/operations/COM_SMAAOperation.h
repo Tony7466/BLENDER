@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -41,10 +41,6 @@ class SMAAEdgeDetectionOperation : public MultiThreadedOperation {
 
   void set_local_contrast_adaptation_factor(float factor);
 
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
-
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
@@ -72,7 +68,6 @@ class SMAABlendingWeightCalculationOperation : public MultiThreadedOperation {
    * Initialize the execution
    */
   void init_execution() override;
-  void *initialize_tile_data(rcti *rect) override;
 
   /**
    * Deinitialize the execution
@@ -80,10 +75,6 @@ class SMAABlendingWeightCalculationOperation : public MultiThreadedOperation {
   void deinit_execution() override;
 
   void set_corner_rounding(float rounding);
-
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_started(MemoryBuffer *output,
@@ -139,16 +130,11 @@ class SMAANeighborhoodBlendingOperation : public MultiThreadedOperation {
    * Initialize the execution
    */
   void init_execution() override;
-  void *initialize_tile_data(rcti *rect) override;
 
   /**
    * Deinitialize the execution
    */
   void deinit_execution() override;
-
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,

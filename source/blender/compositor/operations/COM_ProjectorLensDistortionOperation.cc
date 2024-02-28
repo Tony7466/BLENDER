@@ -35,13 +35,6 @@ void ProjectorLensDistortionOperation::init_execution()
   input_program_ = this->get_input_socket_reader(0);
 }
 
-void *ProjectorLensDistortionOperation::initialize_tile_data(rcti * /*rect*/)
-{
-  update_dispersion();
-  void *buffer = input_program_->initialize_tile_data(nullptr);
-  return buffer;
-}
-
 void ProjectorLensDistortionOperation::execute_pixel(float output[4], int x, int y, void *data)
 {
   float input_value[4];
@@ -63,37 +56,6 @@ void ProjectorLensDistortionOperation::deinit_execution()
 {
   this->deinit_mutex();
   input_program_ = nullptr;
-}
-
-bool ProjectorLensDistortionOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-  if (dispersion_available_) {
-    new_input.ymax = input->ymax;
-    new_input.ymin = input->ymin;
-    new_input.xmin = input->xmin - kr2_ - 2;
-    new_input.xmax = input->xmax + kr2_ + 2;
-  }
-  else {
-    rcti disp_input;
-    BLI_rcti_init(&disp_input, 0, 5, 0, 5);
-    if (this->get_input_operation(1)->determine_depending_area_of_interest(
-            &disp_input, read_operation, output))
-    {
-      return true;
-    }
-    new_input.xmin = input->xmin - 7; /* (0.25f * 20 * 1) + 2 == worse case dispersion */
-    new_input.ymin = input->ymin;
-    new_input.ymax = input->ymax;
-    new_input.xmax = input->xmax + 7; /* (0.25f * 20 * 1) + 2 == worse case dispersion */
-  }
-  if (this->get_input_operation(0)->determine_depending_area_of_interest(
-          &new_input, read_operation, output))
-  {
-    return true;
-  }
-  return false;
 }
 
 /* TODO(manzanilla): to be removed with tiled implementation. */

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -118,21 +118,6 @@ void DespeckleOperation::execute_pixel(float output[4], int x, int y, void * /*d
 #undef TOT_DIV_CNR
 #undef WTOT
 #undef COLOR_ADD
-}
-
-bool DespeckleOperation::determine_depending_area_of_interest(rcti *input,
-                                                              ReadBufferOperation *read_operation,
-                                                              rcti *output)
-{
-  rcti new_input;
-  int addx = 2;  //(filter_width_ - 1) / 2 + 1;
-  int addy = 2;  //(filter_height_ - 1) / 2 + 1;
-  new_input.xmax = input->xmax + addx;
-  new_input.xmin = input->xmin - addx;
-  new_input.ymax = input->ymax + addy;
-  new_input.ymin = input->ymin - addy;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void DespeckleOperation::get_area_of_interest(const int input_idx,

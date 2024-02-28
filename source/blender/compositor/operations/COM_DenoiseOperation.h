@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,10 +19,6 @@ class DenoiseBaseOperation : public SingleThreadedOperation {
   DenoiseBaseOperation();
 
  public:
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
-
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
 };
 
@@ -68,8 +64,6 @@ class DenoiseOperation : public DenoiseBaseOperation {
                         MemoryBuffer *input_normal,
                         MemoryBuffer *input_albedo,
                         const NodeDenoise *settings);
-
-  MemoryBuffer *create_memory_buffer(rcti *rect) override;
 };
 
 class DenoisePrefilterOperation : public DenoiseBaseOperation {
@@ -90,7 +84,6 @@ class DenoisePrefilterOperation : public DenoiseBaseOperation {
 
  protected:
   void hash_output_params() override;
-  MemoryBuffer *create_memory_buffer(rcti *rect) override;
 
  private:
   void generate_denoise(MemoryBuffer *output, MemoryBuffer *input);

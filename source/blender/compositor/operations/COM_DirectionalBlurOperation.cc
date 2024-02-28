@@ -83,19 +83,6 @@ void DirectionalBlurOperation::deinit_execution()
   input_program_ = nullptr;
 }
 
-bool DirectionalBlurOperation::determine_depending_area_of_interest(
-    rcti * /*input*/, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-
-  new_input.xmax = this->get_width();
-  new_input.xmin = 0;
-  new_input.ymax = this->get_height();
-  new_input.ymin = 0;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
-}
-
 void DirectionalBlurOperation::get_area_of_interest(const int input_idx,
                                                     const rcti & /*output_area*/,
                                                     rcti &r_input_area)

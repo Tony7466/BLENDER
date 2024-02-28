@@ -33,7 +33,6 @@ class WriteBufferOperation : public NodeOperation {
     return single_value_;
   }
 
-  void execute_region(rcti *rect, unsigned int tile_number) override;
   void init_execution() override;
   void deinit_execution() override;
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;

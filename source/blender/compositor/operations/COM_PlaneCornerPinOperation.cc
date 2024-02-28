@@ -127,12 +127,6 @@ PlaneCornerPinMaskOperation::PlaneCornerPinMaskOperation() : corners_ready_(fals
   add_input_socket(DataType::Vector);
   add_input_socket(DataType::Vector);
   add_input_socket(DataType::Vector);
-
-  /* XXX this is stupid: we need to make this "complex",
-   * so we can use the initialize_tile_data function
-   * to read corners from input sockets ...
-   */
-  flags_.complex = true;
 }
 
 void PlaneCornerPinMaskOperation::init_data()
@@ -156,33 +150,6 @@ void PlaneCornerPinMaskOperation::deinit_execution()
   PlaneDistortMaskOperation::deinit_execution();
 
   deinit_mutex();
-}
-
-void *PlaneCornerPinMaskOperation::initialize_tile_data(rcti *rect)
-{
-  void *data = PlaneDistortMaskOperation::initialize_tile_data(rect);
-
-  /* get corner values once, by reading inputs at (0,0)
-   * XXX this assumes invariable values (no image inputs),
-   * we don't have a nice generic system for that yet
-   */
-  lock_mutex();
-  if (!corners_ready_) {
-    SocketReader *readers[4] = {
-        get_input_socket_reader(0),
-        get_input_socket_reader(1),
-        get_input_socket_reader(2),
-        get_input_socket_reader(3),
-    };
-    float corners[4][2];
-    read_corners_from_sockets(rect, readers, corners);
-    calculate_corners(corners, true, 0);
-
-    corners_ready_ = true;
-  }
-  unlock_mutex();
-
-  return data;
 }
 
 void PlaneCornerPinMaskOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
@@ -229,60 +196,6 @@ void PlaneCornerPinWarpImageOperation::deinit_execution()
   PlaneDistortWarpImageOperation::deinit_execution();
 
   deinit_mutex();
-}
-
-void *PlaneCornerPinWarpImageOperation::initialize_tile_data(rcti *rect)
-{
-  void *data = PlaneDistortWarpImageOperation::initialize_tile_data(rect);
-
-  /* get corner values once, by reading inputs at (0,0)
-   * XXX this assumes invariable values (no image inputs),
-   * we don't have a nice generic system for that yet
-   */
-  lock_mutex();
-  if (!corners_ready_) {
-    /* corner sockets start at index 1 */
-    SocketReader *readers[4] = {
-        get_input_socket_reader(1),
-        get_input_socket_reader(2),
-        get_input_socket_reader(3),
-        get_input_socket_reader(4),
-    };
-    float corners[4][2];
-    read_corners_from_sockets(rect, readers, corners);
-    calculate_corners(corners, true, 0);
-
-    corners_ready_ = true;
-  }
-  unlock_mutex();
-
-  return data;
-}
-
-bool PlaneCornerPinWarpImageOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  for (int i = 0; i < 4; i++) {
-    if (get_input_operation(i + 1)->determine_depending_area_of_interest(
-            input, read_operation, output))
-    {
-      return true;
-    }
-  }
-
-  /* XXX this is bad, but unavoidable with the current design:
-   * we don't know the actual corners and matrix at this point,
-   * so all we can do is get the full input image
-   */
-  output->xmin = 0;
-  output->ymin = 0;
-  output->xmax = get_input_operation(0)->get_width();
-  output->ymax = get_input_operation(0)->get_height();
-  return true;
-#if 0
-  return PlaneDistortWarpImageOperation::determine_depending_area_of_interest(
-      input, read_operation, output);
-#endif
 }
 
 void PlaneCornerPinWarpImageOperation::get_area_of_interest(const int input_idx,

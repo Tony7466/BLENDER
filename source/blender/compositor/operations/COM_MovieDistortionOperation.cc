@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -116,17 +116,6 @@ void MovieDistortionOperation::execute_pixel_sampled(float output[4],
         v = (out[1] * aspy /* + 0.5 * overscan * h */) * pixel_aspect;
 
   input_operation_->read_sampled(output, u, v, PixelSampler::Bilinear);
-}
-
-bool MovieDistortionOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-  new_input.xmin = input->xmin - margin_[0];
-  new_input.ymin = input->ymin - margin_[1];
-  new_input.xmax = input->xmax + margin_[0];
-  new_input.ymax = input->ymax + margin_[1];
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void MovieDistortionOperation::get_area_of_interest(const int input_idx,

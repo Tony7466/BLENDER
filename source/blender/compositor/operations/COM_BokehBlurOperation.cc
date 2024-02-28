@@ -40,17 +40,6 @@ void BokehBlurOperation::init_data()
   update_size();
 }
 
-void *BokehBlurOperation::initialize_tile_data(rcti * /*rect*/)
-{
-  lock_mutex();
-  if (!sizeavailable_) {
-    update_size();
-  }
-  void *buffer = get_input_operation(0)->initialize_tile_data(nullptr);
-  unlock_mutex();
-  return buffer;
-}
-
 void BokehBlurOperation::init_execution()
 {
   init_mutex();
@@ -103,57 +92,6 @@ void BokehBlurOperation::deinit_execution()
   input_program_ = nullptr;
   input_bokeh_program_ = nullptr;
   input_bounding_box_reader_ = nullptr;
-}
-
-bool BokehBlurOperation::determine_depending_area_of_interest(rcti *input,
-                                                              ReadBufferOperation *read_operation,
-                                                              rcti *output)
-{
-  rcti new_input;
-  rcti bokeh_input;
-  const float max_dim = std::max(this->get_width(), this->get_height());
-
-  if (sizeavailable_) {
-    new_input.xmax = input->xmax + (size_ * max_dim / 100.0f);
-    new_input.xmin = input->xmin - (size_ * max_dim / 100.0f);
-    new_input.ymax = input->ymax + (size_ * max_dim / 100.0f);
-    new_input.ymin = input->ymin - (size_ * max_dim / 100.0f);
-  }
-  else {
-    new_input.xmax = input->xmax + (10.0f * max_dim / 100.0f);
-    new_input.xmin = input->xmin - (10.0f * max_dim / 100.0f);
-    new_input.ymax = input->ymax + (10.0f * max_dim / 100.0f);
-    new_input.ymin = input->ymin - (10.0f * max_dim / 100.0f);
-  }
-
-  NodeOperation *operation = get_input_operation(1);
-  bokeh_input.xmax = operation->get_width();
-  bokeh_input.xmin = 0;
-  bokeh_input.ymax = operation->get_height();
-  bokeh_input.ymin = 0;
-  if (operation->determine_depending_area_of_interest(&bokeh_input, read_operation, output)) {
-    return true;
-  }
-  operation = get_input_operation(0);
-  if (operation->determine_depending_area_of_interest(&new_input, read_operation, output)) {
-    return true;
-  }
-  operation = get_input_operation(2);
-  if (operation->determine_depending_area_of_interest(input, read_operation, output)) {
-    return true;
-  }
-  if (!sizeavailable_) {
-    rcti size_input;
-    size_input.xmin = 0;
-    size_input.ymin = 0;
-    size_input.xmax = 5;
-    size_input.ymax = 5;
-    operation = get_input_operation(3);
-    if (operation->determine_depending_area_of_interest(&size_input, read_operation, output)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 void BokehBlurOperation::update_size()

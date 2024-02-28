@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -65,39 +65,6 @@ void WrapOperation::execute_pixel_sampled(float output[4], float x, float y, Pix
   }
 
   execute_pixel_extend(output, nx, ny, sampler, extend_x, extend_y);
-}
-
-bool WrapOperation::determine_depending_area_of_interest(rcti *input,
-                                                         ReadBufferOperation *read_operation,
-                                                         rcti *output)
-{
-  rcti new_input;
-  new_input.xmin = input->xmin;
-  new_input.xmax = input->xmax;
-  new_input.ymin = input->ymin;
-  new_input.ymax = input->ymax;
-
-  if (ELEM(wrapping_type_, CMP_NODE_WRAP_X, CMP_NODE_WRAP_XY)) {
-    /* Wrap only on the x-axis if tile is wrapping. */
-    new_input.xmin = get_wrapped_original_xpos(input->xmin);
-    new_input.xmax = roundf(get_wrapped_original_xpos(input->xmax));
-    if (new_input.xmin >= new_input.xmax) {
-      new_input.xmin = 0;
-      new_input.xmax = this->get_width();
-    }
-  }
-  if (ELEM(wrapping_type_, CMP_NODE_WRAP_Y, CMP_NODE_WRAP_XY)) {
-    /* Wrap only on the y-axis if tile is wrapping. */
-    new_input.ymin = get_wrapped_original_ypos(input->ymin);
-    new_input.ymax = roundf(get_wrapped_original_ypos(input->ymax));
-    if (new_input.ymin >= new_input.ymax) {
-      new_input.ymin = 0;
-      new_input.ymax = this->get_height();
-    }
-  }
-
-  return ReadBufferOperation::determine_depending_area_of_interest(
-      &new_input, read_operation, output);
 }
 
 void WrapOperation::set_wrapping(int wrapping_type)

@@ -184,18 +184,6 @@ void SMAAEdgeDetectionOperation::set_local_contrast_adaptation_factor(float fact
   contrast_limit_ = scalenorm(1, 10, factor);
 }
 
-bool SMAAEdgeDetectionOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-  new_input.xmax = input->xmax + 1;
-  new_input.xmin = input->xmin - 2;
-  new_input.ymax = input->ymax + 1;
-  new_input.ymin = input->ymin - 2;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
-}
-
 void SMAAEdgeDetectionOperation::get_area_of_interest(const int /*input_idx*/,
                                                       const rcti &output_area,
                                                       rcti &r_input_area)
@@ -387,11 +375,6 @@ SMAABlendingWeightCalculationOperation::SMAABlendingWeightCalculationOperation()
   flags_.can_be_constant = true;
   image_reader_ = nullptr;
   this->set_corner_rounding(CMP_DEFAULT_SMAA_CORNER_ROUNDING);
-}
-
-void *SMAABlendingWeightCalculationOperation::initialize_tile_data(rcti *rect)
-{
-  return get_input_operation(0)->initialize_tile_data(rect);
 }
 
 void SMAABlendingWeightCalculationOperation::init_execution()
@@ -612,21 +595,6 @@ void SMAABlendingWeightCalculationOperation::update_memory_buffer_partial(
 void SMAABlendingWeightCalculationOperation::deinit_execution()
 {
   image_reader_ = nullptr;
-}
-
-bool SMAABlendingWeightCalculationOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-
-  new_input.xmax = input->xmax + fmax(SMAA_MAX_SEARCH_STEPS, SMAA_MAX_SEARCH_STEPS_DIAG + 1);
-  new_input.xmin = input->xmin -
-                   fmax(fmax(SMAA_MAX_SEARCH_STEPS - 1, 1), SMAA_MAX_SEARCH_STEPS_DIAG + 1);
-  new_input.ymax = input->ymax + fmax(SMAA_MAX_SEARCH_STEPS, SMAA_MAX_SEARCH_STEPS_DIAG);
-  new_input.ymin = input->ymin -
-                   fmax(fmax(SMAA_MAX_SEARCH_STEPS - 1, 1), SMAA_MAX_SEARCH_STEPS_DIAG);
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void SMAABlendingWeightCalculationOperation::get_area_of_interest(const int /*input_idx*/,
@@ -993,11 +961,6 @@ SMAANeighborhoodBlendingOperation::SMAANeighborhoodBlendingOperation()
   image2Reader_ = nullptr;
 }
 
-void *SMAANeighborhoodBlendingOperation::initialize_tile_data(rcti *rect)
-{
-  return get_input_operation(0)->initialize_tile_data(rect);
-}
-
 void SMAANeighborhoodBlendingOperation::init_execution()
 {
   image1Reader_ = this->get_input_socket_reader(0);
@@ -1109,19 +1072,6 @@ void SMAANeighborhoodBlendingOperation::deinit_execution()
 {
   image1Reader_ = nullptr;
   image2Reader_ = nullptr;
-}
-
-bool SMAANeighborhoodBlendingOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-
-  new_input.xmax = input->xmax + 1;
-  new_input.xmin = input->xmin - 1;
-  new_input.ymax = input->ymax + 1;
-  new_input.ymin = input->ymin - 1;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void SMAANeighborhoodBlendingOperation::get_area_of_interest(const int /*input_idx*/,

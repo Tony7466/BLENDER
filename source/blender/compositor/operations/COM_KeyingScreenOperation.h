@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -46,8 +46,6 @@ class KeyingScreenOperation : public MultiThreadedOperation {
 
   void init_execution() override;
   void deinit_execution() override;
-
-  void *initialize_tile_data(rcti *rect) override;
 
   void set_movie_clip(MovieClip *clip)
   {

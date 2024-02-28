@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -88,20 +88,6 @@ void CropOperation::update_memory_buffer_partial(MemoryBuffer *output,
 CropImageOperation::CropImageOperation() : CropBaseOperation()
 {
   /* pass */
-}
-
-bool CropImageOperation::determine_depending_area_of_interest(rcti *input,
-                                                              ReadBufferOperation *read_operation,
-                                                              rcti *output)
-{
-  rcti new_input;
-
-  new_input.xmax = input->xmax + xmin_;
-  new_input.xmin = input->xmin + xmin_;
-  new_input.ymax = input->ymax + ymin_;
-  new_input.ymin = input->ymin + ymin_;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void CropImageOperation::get_area_of_interest(const int input_idx,

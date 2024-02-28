@@ -167,23 +167,6 @@ void InpaintSimpleOperation::init_execution()
   this->init_mutex();
 }
 
-void *InpaintSimpleOperation::initialize_tile_data(rcti *rect)
-{
-  if (cached_buffer_ready_) {
-    return cached_buffer_;
-  }
-  lock_mutex();
-  if (!cached_buffer_ready_) {
-    MemoryBuffer *input = (MemoryBuffer *)input_image_program_->initialize_tile_data(rect);
-    cached_buffer_ = new MemoryBuffer(DataType::Color, input->get_rect());
-    inpaint(input, cached_buffer_);
-    cached_buffer_ready_ = true;
-  }
-
-  unlock_mutex();
-  return cached_buffer_;
-}
-
 void InpaintSimpleOperation::execute_pixel(float output[4], int x, int y, void * /*data*/)
 {
   copy_v4_v4(output, cached_buffer_->get_elem(x, y));
@@ -199,23 +182,6 @@ void InpaintSimpleOperation::deinit_execution()
   }
 
   cached_buffer_ready_ = false;
-}
-
-bool InpaintSimpleOperation::determine_depending_area_of_interest(
-    rcti * /*input*/, ReadBufferOperation *read_operation, rcti *output)
-{
-  if (cached_buffer_ready_) {
-    return false;
-  }
-
-  rcti new_input;
-
-  new_input.xmax = get_width();
-  new_input.xmin = 0;
-  new_input.ymax = get_height();
-  new_input.ymin = 0;
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void InpaintSimpleOperation::get_area_of_interest(const int input_idx,

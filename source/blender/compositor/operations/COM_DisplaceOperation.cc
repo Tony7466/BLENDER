@@ -133,50 +133,6 @@ void DisplaceOperation::deinit_execution()
   scale_y_read_fn_ = nullptr;
 }
 
-bool DisplaceOperation::determine_depending_area_of_interest(rcti *input,
-                                                             ReadBufferOperation *read_operation,
-                                                             rcti *output)
-{
-  rcti color_input;
-  rcti vector_input;
-  NodeOperation *operation = nullptr;
-
-  /* the vector buffer only needs a 2x2 buffer. The image needs whole buffer */
-  /* image */
-  operation = get_input_operation(0);
-  color_input.xmax = operation->get_width();
-  color_input.xmin = 0;
-  color_input.ymax = operation->get_height();
-  color_input.ymin = 0;
-  if (operation->determine_depending_area_of_interest(&color_input, read_operation, output)) {
-    return true;
-  }
-
-  /* vector */
-  operation = get_input_operation(1);
-  vector_input.xmax = input->xmax + 1;
-  vector_input.xmin = input->xmin - 1;
-  vector_input.ymax = input->ymax + 1;
-  vector_input.ymin = input->ymin - 1;
-  if (operation->determine_depending_area_of_interest(&vector_input, read_operation, output)) {
-    return true;
-  }
-
-  /* scale x */
-  operation = get_input_operation(2);
-  if (operation->determine_depending_area_of_interest(input, read_operation, output)) {
-    return true;
-  }
-
-  /* scale y */
-  operation = get_input_operation(3);
-  if (operation->determine_depending_area_of_interest(input, read_operation, output)) {
-    return true;
-  }
-
-  return false;
-}
-
 void DisplaceOperation::get_area_of_interest(const int input_idx,
                                              const rcti &output_area,
                                              rcti &r_input_area)

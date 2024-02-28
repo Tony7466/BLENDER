@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,7 +31,6 @@ class ReadBufferOperation : public NodeOperation {
 
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
 
-  void *initialize_tile_data(rcti *rect) override;
   void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
   void execute_pixel_extend(float output[4],
                             float x,
@@ -49,9 +48,6 @@ class ReadBufferOperation : public NodeOperation {
   {
     return offset_;
   }
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
   MemoryBuffer *get_input_memory_buffer(MemoryBuffer **memory_buffers) override
   {
     return memory_buffers[offset_];

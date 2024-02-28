@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -39,36 +39,6 @@ void CalculateMeanOperation::deinit_execution()
 {
   image_reader_ = nullptr;
   NodeOperation::deinit_mutex();
-}
-
-bool CalculateMeanOperation::determine_depending_area_of_interest(
-    rcti * /*input*/, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti image_input;
-  if (is_calculated_) {
-    return false;
-  }
-  NodeOperation *operation = get_input_operation(0);
-  image_input.xmax = operation->get_width();
-  image_input.xmin = 0;
-  image_input.ymax = operation->get_height();
-  image_input.ymin = 0;
-  if (operation->determine_depending_area_of_interest(&image_input, read_operation, output)) {
-    return true;
-  }
-  return false;
-}
-
-void *CalculateMeanOperation::initialize_tile_data(rcti *rect)
-{
-  lock_mutex();
-  if (!is_calculated_) {
-    MemoryBuffer *tile = (MemoryBuffer *)image_reader_->initialize_tile_data(rect);
-    constant_value_ = calculate_mean_tile(tile);
-    is_calculated_ = true;
-  }
-  unlock_mutex();
-  return nullptr;
 }
 
 float CalculateMeanOperation::calculate_mean_tile(MemoryBuffer *tile) const

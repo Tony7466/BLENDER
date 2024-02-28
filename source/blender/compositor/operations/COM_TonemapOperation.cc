@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -76,68 +76,6 @@ void TonemapOperation::deinit_execution()
   image_reader_ = nullptr;
   delete cached_instance_;
   NodeOperation::deinit_mutex();
-}
-
-bool TonemapOperation::determine_depending_area_of_interest(rcti * /*input*/,
-                                                            ReadBufferOperation *read_operation,
-                                                            rcti *output)
-{
-  rcti image_input;
-
-  NodeOperation *operation = get_input_operation(0);
-  image_input.xmax = operation->get_width();
-  image_input.xmin = 0;
-  image_input.ymax = operation->get_height();
-  image_input.ymin = 0;
-  if (operation->determine_depending_area_of_interest(&image_input, read_operation, output)) {
-    return true;
-  }
-  return false;
-}
-
-void *TonemapOperation::initialize_tile_data(rcti *rect)
-{
-  lock_mutex();
-  if (cached_instance_ == nullptr) {
-    MemoryBuffer *tile = (MemoryBuffer *)image_reader_->initialize_tile_data(rect);
-    AvgLogLum *data = new AvgLogLum();
-
-    float *buffer = tile->get_buffer();
-
-    float lsum = 0.0f;
-    int p = tile->get_width() * tile->get_height();
-    float *bc = buffer;
-    float avl, maxl = -1e10f, minl = 1e10f;
-    const float sc = 1.0f / p;
-    float Lav = 0.0f;
-    float cav[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-    while (p--) {
-      float L = IMB_colormanagement_get_luminance(bc);
-      Lav += L;
-      add_v3_v3(cav, bc);
-      lsum += logf(std::max(L, 0.0f) + 1e-5f);
-      maxl = (L > maxl) ? L : maxl;
-      minl = (L < minl) ? L : minl;
-      bc += 4;
-    }
-    data->lav = Lav * sc;
-    mul_v3_v3fl(data->cav, cav, sc);
-    maxl = log(double(maxl) + 1e-5);
-    minl = log(double(minl) + 1e-5);
-    avl = lsum * sc;
-    data->auto_key = (maxl > minl) ? ((maxl - avl) / (maxl - minl)) : 1.0f;
-    float al = exp(double(avl));
-    data->al = (al == 0.0f) ? 0.0f : (data_->key / al);
-    data->igm = (data_->gamma == 0.0f) ? 1 : (1.0f / data_->gamma);
-    cached_instance_ = data;
-  }
-  unlock_mutex();
-  return cached_instance_;
-}
-
-void TonemapOperation::deinitialize_tile_data(rcti * /*rect*/, void * /*data*/)
-{
-  /* pass */
 }
 
 void TonemapOperation::get_area_of_interest(const int input_idx,

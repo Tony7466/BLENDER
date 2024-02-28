@@ -62,7 +62,6 @@ class CompositorOperation : public MultiThreadedOperation {
   {
     return active_;
   }
-  void execute_region(rcti *rect, unsigned int tile_number) override;
   void set_scene(const struct Scene *scene)
   {
     scene_ = scene;

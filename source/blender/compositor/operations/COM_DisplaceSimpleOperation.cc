@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -78,43 +78,6 @@ void DisplaceSimpleOperation::deinit_execution()
   input_vector_program_ = nullptr;
   input_scale_xprogram_ = nullptr;
   input_scale_yprogram_ = nullptr;
-}
-
-bool DisplaceSimpleOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti color_input;
-  NodeOperation *operation = nullptr;
-
-  /* the vector buffer only needs a 2x2 buffer. The image needs whole buffer */
-  /* image */
-  operation = get_input_operation(0);
-  color_input.xmax = operation->get_width();
-  color_input.xmin = 0;
-  color_input.ymax = operation->get_height();
-  color_input.ymin = 0;
-  if (operation->determine_depending_area_of_interest(&color_input, read_operation, output)) {
-    return true;
-  }
-
-  /* vector */
-  if (operation->determine_depending_area_of_interest(input, read_operation, output)) {
-    return true;
-  }
-
-  /* scale x */
-  operation = get_input_operation(2);
-  if (operation->determine_depending_area_of_interest(input, read_operation, output)) {
-    return true;
-  }
-
-  /* scale y */
-  operation = get_input_operation(3);
-  if (operation->determine_depending_area_of_interest(input, read_operation, output)) {
-    return true;
-  }
-
-  return false;
 }
 
 void DisplaceSimpleOperation::get_area_of_interest(const int input_idx,

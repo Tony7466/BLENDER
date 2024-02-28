@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -76,20 +76,6 @@ void BilateralBlurOperation::deinit_execution()
 {
   input_color_program_ = nullptr;
   input_determinator_program_ = nullptr;
-}
-
-bool BilateralBlurOperation::determine_depending_area_of_interest(
-    rcti *input, ReadBufferOperation *read_operation, rcti *output)
-{
-  rcti new_input;
-  int add = radius_ + 1;
-
-  new_input.xmax = input->xmax + (add);
-  new_input.xmin = input->xmin - (add);
-  new_input.ymax = input->ymax + (add);
-  new_input.ymin = input->ymin - (add);
-
-  return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
 }
 
 void BilateralBlurOperation::get_area_of_interest(const int /*input_idx*/,

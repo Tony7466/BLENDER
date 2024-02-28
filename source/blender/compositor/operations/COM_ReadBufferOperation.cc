@@ -17,11 +17,6 @@ ReadBufferOperation::ReadBufferOperation(DataType datatype)
   flags_.is_read_buffer_operation = true;
 }
 
-void *ReadBufferOperation::initialize_tile_data(rcti * /*rect*/)
-{
-  return buffer_;
-}
-
 void ReadBufferOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
   if (memory_proxy_ != nullptr) {
@@ -87,17 +82,6 @@ void ReadBufferOperation::execute_pixel_filtered(
     const float deriv[2][2] = {{dx[0], dx[1]}, {dy[0], dy[1]}};
     buffer_->readEWA(output, uv, deriv);
   }
-}
-
-bool ReadBufferOperation::determine_depending_area_of_interest(rcti *input,
-                                                               ReadBufferOperation *read_operation,
-                                                               rcti *output)
-{
-  if (this == read_operation) {
-    BLI_rcti_init(output, input->xmin, input->xmax, input->ymin, input->ymax);
-    return true;
-  }
-  return false;
 }
 
 void ReadBufferOperation::read_resolution_from_write_buffer()

@@ -30,11 +30,6 @@ class GaussianXBlurOperation : public GaussianBlurBaseOperation {
    * \brief Deinitialize the execution
    */
   void deinit_execution() override;
-
-  void *initialize_tile_data(rcti *rect) override;
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 };
 
 }  // namespace blender::compositor

@@ -139,23 +139,6 @@ Array<KeyingScreenOperation::MarkerPoint> *KeyingScreenOperation::compute_marker
   return marker_points;
 }
 
-void *KeyingScreenOperation::initialize_tile_data(rcti * /*rect*/)
-{
-  if (movie_clip_ == nullptr) {
-    return nullptr;
-  }
-
-  if (!cached_marker_points_) {
-    lock_mutex();
-    if (cached_marker_points_ == nullptr) {
-      cached_marker_points_ = compute_marker_points();
-    }
-    unlock_mutex();
-  }
-
-  return nullptr;
-}
-
 void KeyingScreenOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
   r_area = COM_AREA_NONE;

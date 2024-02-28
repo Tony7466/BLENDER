@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -52,9 +52,6 @@ class GlareBaseOperation : public SingleThreadedOperation {
   {
     settings_ = settings;
   }
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) final;
 
@@ -68,8 +65,6 @@ class GlareBaseOperation : public SingleThreadedOperation {
   virtual void generate_glare(float *data,
                               MemoryBuffer *input_tile,
                               const NodeGlare *settings) = 0;
-
-  MemoryBuffer *create_memory_buffer(rcti *rect) override;
 };
 
 }  // namespace blender::compositor

@@ -91,26 +91,6 @@ void RenderLayersProg::execute_pixel_sampled(float output[4],
                                              float y,
                                              PixelSampler sampler)
 {
-#if 0
-  const RenderData *rd = rd_;
-
-  int dx = 0, dy = 0;
-
-  if (rd->mode & R_BORDER && rd->mode & R_CROP) {
-    /* see comment in execute_region describing coordinate mapping,
-     * here it simply goes other way around
-     */
-    int full_width, full_height;
-    BKE_render_resolution(rd, false, &full_width, &full_height);
-
-    dx = rd->border.xmin * full_width - (full_width - this->get_width()) / 2.0f;
-    dy = rd->border.ymin * full_height - (full_height - this->get_height()) / 2.0f;
-  }
-
-  int ix = x - dx;
-  int iy = y - dy;
-#endif
-
 #ifndef NDEBUG
   {
     const DataType data_type = this->get_output_socket()->get_data_type();
