@@ -1702,8 +1702,8 @@ static int object_grease_pencil_add_exec(bContext *C, wmOperator *op)
         md->source_type = LINEART_SOURCE_SCENE;
       }
       /* Only created one layer and one material. */
-      STRNCPY(md->target_layer, grease_pencil->layers()[0]->name().c_str());
-      md->target_material = grease_pencil->material_array[0];
+      STRNCPY(md->target_layer, grease_pencil->get_active_layer()->name().c_str());
+      md->target_material = BKE_object_material_get(object, 0);
       if (md->target_material) {
         id_us_plus(&md->target_material->id);
       }
@@ -1721,7 +1721,7 @@ static int object_grease_pencil_add_exec(bContext *C, wmOperator *op)
       }
       else {
         if (stroke_depth_order == GP_DRAWMODE_3D) {
-          /* gpd->draw_mode = GP_DRAWMODE_3D; */
+          grease_pencil->flag |= GREASE_PENCIL_STROKE_ORDER_3D;
         }
         md->stroke_depth_offset = stroke_depth_offset;
       }
