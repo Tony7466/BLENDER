@@ -4,14 +4,14 @@
 
 #pragma once
 
-#include "COM_SingleThreadedOperation.h"
+#include "COM_NodeOperation.h"
 
 namespace blender::compositor {
 
 /**
  * \brief SummedAreaTableOperation class computes the summed area table.
  */
-class SummedAreaTableOperation : public SingleThreadedOperation {
+class SummedAreaTableOperation : public NodeOperation {
 
  public:
   SummedAreaTableOperation();

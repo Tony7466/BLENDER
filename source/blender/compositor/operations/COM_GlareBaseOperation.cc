@@ -16,14 +16,14 @@ GlareBaseOperation::GlareBaseOperation()
 }
 void GlareBaseOperation::init_execution()
 {
-  SingleThreadedOperation::init_execution();
+  NodeOperation::init_execution();
   input_program_ = get_input_socket_reader(0);
 }
 
 void GlareBaseOperation::deinit_execution()
 {
   input_program_ = nullptr;
-  SingleThreadedOperation::deinit_execution();
+  NodeOperation::deinit_execution();
 }
 
 void GlareBaseOperation::get_area_of_interest(const int input_idx,

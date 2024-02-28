@@ -61,8 +61,6 @@ if(WITH_COMPOSITOR_CPU)
     intern/COM_FullFrameExecutionModel.h
     intern/COM_MemoryBuffer.cc
     intern/COM_MemoryBuffer.h
-    intern/COM_MemoryProxy.cc
-    intern/COM_MemoryProxy.h
     intern/COM_MetaData.cc
     intern/COM_MetaData.h
     intern/COM_MultiThreadedOperation.cc
@@ -81,8 +79,6 @@ if(WITH_COMPOSITOR_CPU)
     intern/COM_NodeOperationBuilder.h
     intern/COM_SharedOperationBuffers.cc
     intern/COM_SharedOperationBuffers.h
-    intern/COM_SingleThreadedOperation.cc
-    intern/COM_SingleThreadedOperation.h
     intern/COM_WorkPackage.h
     intern/COM_WorkScheduler.cc
     intern/COM_WorkScheduler.h

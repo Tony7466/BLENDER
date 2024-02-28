@@ -39,8 +39,6 @@ enum class MemoryBufferExtend {
   Repeat,
 };
 
-class MemoryProxy;
-
 /**
  * \brief a MemoryBuffer contains access to the data of a chunk
  */
@@ -66,17 +64,12 @@ class MemoryBuffer {
 
  private:
   /**
-   * \brief proxy of the memory (same for all chunks in the same buffer)
-   */
-  MemoryProxy *memory_proxy_;
-
-  /**
    * \brief the type of buffer DataType::Value, DataType::Vector, DataType::Color
    */
   DataType datatype_;
 
   /**
-   * \brief region of this buffer inside relative to the MemoryProxy
+   * \brief region of this buffer inside
    */
   rcti rect_;
 
@@ -113,11 +106,6 @@ class MemoryBuffer {
   int to_positive_y_stride_;
 
  public:
-  /**
-   * \brief construct new temporarily MemoryBuffer for an area
-   */
-  MemoryBuffer(MemoryProxy *memory_proxy, const rcti &rect, MemoryBufferState state);
-
   /**
    * \brief construct new temporarily MemoryBuffer for an area
    */

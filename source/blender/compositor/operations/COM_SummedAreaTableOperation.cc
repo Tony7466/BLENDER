@@ -22,14 +22,14 @@ SummedAreaTableOperation::SummedAreaTableOperation()
 
 void SummedAreaTableOperation::init_execution()
 {
-  SingleThreadedOperation::init_execution();
+  NodeOperation::init_execution();
   image_reader_ = this->get_input_socket_reader(0);
 }
 
 void SummedAreaTableOperation::deinit_execution()
 {
   image_reader_ = nullptr;
-  SingleThreadedOperation::deinit_execution();
+  NodeOperation::deinit_execution();
 }
 
 void SummedAreaTableOperation::get_area_of_interest(int input_idx,

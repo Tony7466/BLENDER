@@ -162,12 +162,6 @@ class NodeOperationOutput {
 
 struct NodeOperationFlags {
   /**
-   * TODO: Remove this flag and #SingleThreadedOperation if tiled implementation is removed.
-   * Full-frame implementation doesn't need it.
-   */
-  bool single_threaded : 1;
-
-  /**
    * Does the operation needs a viewer border.
    * Basically, setting border need to happen for only operations
    * which operates in render resolution buffers (like compositor
@@ -219,7 +213,6 @@ struct NodeOperationFlags {
 
   NodeOperationFlags()
   {
-    single_threaded = false;
     use_render_border = false;
     use_viewer_border = false;
     is_canvas_set = false;

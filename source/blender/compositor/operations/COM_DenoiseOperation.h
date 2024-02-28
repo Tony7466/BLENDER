@@ -4,14 +4,14 @@
 
 #pragma once
 
-#include "COM_SingleThreadedOperation.h"
+#include "COM_NodeOperation.h"
 #include "DNA_node_types.h"
 
 namespace blender::compositor {
 
 bool COM_is_denoise_supported();
 
-class DenoiseBaseOperation : public SingleThreadedOperation {
+class DenoiseBaseOperation : public NodeOperation {
  protected:
   bool output_rendered_;
 

@@ -134,7 +134,7 @@ DenoiseOperation::DenoiseOperation()
 }
 void DenoiseOperation::init_execution()
 {
-  SingleThreadedOperation::init_execution();
+  NodeOperation::init_execution();
   input_program_color_ = get_input_socket_reader(0);
   input_program_normal_ = get_input_socket_reader(1);
   input_program_albedo_ = get_input_socket_reader(2);
@@ -145,7 +145,7 @@ void DenoiseOperation::deinit_execution()
   input_program_color_ = nullptr;
   input_program_normal_ = nullptr;
   input_program_albedo_ = nullptr;
-  SingleThreadedOperation::deinit_execution();
+  NodeOperation::deinit_execution();
 }
 
 static bool are_guiding_passes_noise_free(const NodeDenoise *settings)

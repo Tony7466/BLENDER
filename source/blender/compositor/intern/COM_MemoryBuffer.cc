@@ -4,8 +4,6 @@
 
 #include "COM_MemoryBuffer.h"
 
-#include "COM_MemoryProxy.h"
-
 #include "IMB_colormanagement.hh"
 #include "IMB_imbuf_types.hh"
 
@@ -30,26 +28,10 @@ static rcti create_rect(const int width, const int height)
   return rect;
 }
 
-MemoryBuffer::MemoryBuffer(MemoryProxy *memory_proxy, const rcti &rect, MemoryBufferState state)
-{
-  rect_ = rect;
-  is_a_single_elem_ = false;
-  memory_proxy_ = memory_proxy;
-  num_channels_ = COM_data_type_num_channels(memory_proxy->get_data_type());
-  buffer_ = (float *)MEM_mallocN_aligned(
-      sizeof(float) * buffer_len() * num_channels_, 16, "COM_MemoryBuffer");
-  owns_data_ = true;
-  state_ = state;
-  datatype_ = memory_proxy->get_data_type();
-
-  set_strides();
-}
-
 MemoryBuffer::MemoryBuffer(DataType data_type, const rcti &rect, bool is_a_single_elem)
 {
   rect_ = rect;
   is_a_single_elem_ = is_a_single_elem;
-  memory_proxy_ = nullptr;
   num_channels_ = COM_data_type_num_channels(data_type);
   buffer_ = (float *)MEM_mallocN_aligned(
       sizeof(float) * buffer_len() * num_channels_, 16, "COM_MemoryBuffer");
@@ -73,7 +55,6 @@ MemoryBuffer::MemoryBuffer(float *buffer,
 {
   rect_ = rect;
   is_a_single_elem_ = is_a_single_elem;
-  memory_proxy_ = nullptr;
   num_channels_ = num_channels;
   datatype_ = COM_num_channels_data_type(num_channels);
   buffer_ = buffer;
@@ -85,7 +66,6 @@ MemoryBuffer::MemoryBuffer(float *buffer,
 
 MemoryBuffer::MemoryBuffer(const MemoryBuffer &src) : MemoryBuffer(src.datatype_, src.rect_, false)
 {
-  memory_proxy_ = src.memory_proxy_;
   /* src may be single elem buffer */
   fill_from(src);
 }

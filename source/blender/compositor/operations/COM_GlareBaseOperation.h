@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "COM_SingleThreadedOperation.h"
+#include "COM_NodeOperation.h"
 #include "DNA_node_types.h"
 
 namespace blender::compositor {
@@ -23,7 +23,7 @@ typedef float fRGB[4];
   } \
   (void)0
 
-class GlareBaseOperation : public SingleThreadedOperation {
+class GlareBaseOperation : public NodeOperation {
  private:
   /**
    * \brief Cached reference to the input_program
