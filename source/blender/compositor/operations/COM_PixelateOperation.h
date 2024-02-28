@@ -8,13 +8,6 @@
 
 namespace blender::compositor {
 
-/**
- * \brief Pixelate operation
- *
- * The Tile compositor is by default sub-pixel accurate.
- * For some setups you don want this.
- * This operation will remove the sub-pixel accuracy
- */
 class PixelateOperation : public MultiThreadedOperation {
  private:
   int pixel_size_;

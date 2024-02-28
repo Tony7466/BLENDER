@@ -26,51 +26,6 @@ void CalculateMeanOperation::init_execution()
   is_calculated_ = false;
 }
 
-float CalculateMeanOperation::calculate_mean_tile(MemoryBuffer *tile) const
-{
-  float *buffer = tile->get_buffer();
-  int size = tile->get_width() * tile->get_height();
-  int pixels = 0;
-  float sum = 0.0f;
-  for (int i = 0, offset = 0; i < size; i++, offset += 4) {
-    if (buffer[offset + 3] > 0) {
-      pixels++;
-
-      switch (setting_) {
-        case 1: {
-          sum += IMB_colormanagement_get_luminance(&buffer[offset]);
-          break;
-        }
-        case 2: {
-          sum += buffer[offset];
-          break;
-        }
-        case 3: {
-          sum += buffer[offset + 1];
-          break;
-        }
-        case 4: {
-          sum += buffer[offset + 2];
-          break;
-        }
-        case 5: {
-          float yuv[3];
-          rgb_to_yuv(buffer[offset],
-                     buffer[offset + 1],
-                     buffer[offset + 2],
-                     &yuv[0],
-                     &yuv[1],
-                     &yuv[2],
-                     BLI_YUV_ITU_BT709);
-          sum += yuv[0];
-          break;
-        }
-      }
-    }
-  }
-  return sum / pixels;
-}
-
 void CalculateMeanOperation::set_setting(int setting)
 {
   setting_ = setting;

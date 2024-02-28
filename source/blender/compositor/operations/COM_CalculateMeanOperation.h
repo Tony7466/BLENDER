@@ -48,7 +48,6 @@ class CalculateMeanOperation : public ConstantOperation {
    * The caller takes care of checking the value is only calculated once. */
   virtual float calculate_value(const MemoryBuffer *input) const;
 
-  float calculate_mean_tile(MemoryBuffer *tile) const;
   float calculate_mean(const MemoryBuffer *input) const;
 
  private:

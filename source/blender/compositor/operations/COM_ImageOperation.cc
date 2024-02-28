@@ -15,8 +15,6 @@ BaseImageOperation::BaseImageOperation()
 {
   image_ = nullptr;
   buffer_ = nullptr;
-  image_float_buffer_ = nullptr;
-  image_byte_buffer_ = nullptr;
   image_user_ = nullptr;
   imagewidth_ = 0;
   imageheight_ = 0;
@@ -62,8 +60,6 @@ void BaseImageOperation::init_execution()
   ImBuf *stackbuf = get_im_buf();
   buffer_ = stackbuf;
   if (stackbuf) {
-    image_float_buffer_ = stackbuf->float_buffer.data;
-    image_byte_buffer_ = stackbuf->byte_buffer.data;
     imagewidth_ = stackbuf->x;
     imageheight_ = stackbuf->y;
     number_of_channels_ = stackbuf->channels;
@@ -72,8 +68,6 @@ void BaseImageOperation::init_execution()
 
 void BaseImageOperation::deinit_execution()
 {
-  image_float_buffer_ = nullptr;
-  image_byte_buffer_ = nullptr;
   BKE_image_release_ibuf(image_, buffer_, nullptr);
 }
 

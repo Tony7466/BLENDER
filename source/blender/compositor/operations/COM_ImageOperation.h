@@ -24,9 +24,6 @@ class BaseImageOperation : public MultiThreadedOperation {
   ImBuf *buffer_;
   Image *image_;
   ImageUser *image_user_;
-  /* TODO: Remove raw buffers when removing Tiled implementation. */
-  float *image_float_buffer_;
-  uint8_t *image_byte_buffer_;
 
   int imageheight_;
   int imagewidth_;
