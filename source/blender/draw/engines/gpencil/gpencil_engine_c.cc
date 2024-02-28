@@ -685,7 +685,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     int vfirst = -1;
     int vcount = 0;
 
-    const auto gpencil_drawcall_flush = [&]() {
+    const auto drawcall_flush = [&]() {
 #if !DISABLE_BATCHING
       if (geom != nullptr) {
         DRW_shgroup_call_range(grp, ob, geom, vfirst, vcount);
@@ -696,7 +696,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
       vcount = 0;
     };
 
-    const auto gpencil_drawcall_add = [&](GPUBatch *draw_geom, int v_first, int v_count) {
+    const auto drawcall_add = [&](GPUBatch *draw_geom, int v_first, int v_count) {
 #if DISABLE_BATCHING
       DRW_shgroup_call_range(grp, ob, geom, v_first, v_count);
       return;
@@ -704,7 +704,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
       int last = vfirst + vcount;
       /* Interrupt draw-call grouping if the sequence is not consecutive. */
       if ((draw_geom != geom) || (v_first - last > 0)) {
-        gpencil_drawcall_flush();
+        drawcall_flush();
       }
       geom = draw_geom;
       if (vfirst == -1) {
@@ -713,13 +713,13 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
       vcount = v_first + v_count - vfirst;
     };
 
-    int v_offset = 0;
+    int t_offset = 0;
     const Vector<DrawingInfo> drawings = retrieve_visible_drawings(*pd->scene, grease_pencil);
     const Span<const Layer *> layers = grease_pencil.layers();
     for (const DrawingInfo info : drawings) {
       const Layer &layer = *layers[info.layer_index];
 
-      gpencil_drawcall_flush();
+      drawcall_flush();
 
       GPENCIL_tLayer *tgp_layer = grease_pencil_layer_cache_add(pd, ob, layer, {}, tgp_ob);
 
@@ -788,7 +788,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
                                 (new_tex_stroke && (new_tex_stroke != tex_stroke));
 
         if (resource_changed) {
-          gpencil_drawcall_flush();
+          drawcall_flush();
 
           grp = DRW_shgroup_create_sub(grp);
           if (new_ubo_mat != ubo_mat) {
@@ -808,7 +808,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
         GPUBatch *new_geom = draw::DRW_cache_grease_pencil_get(pd->scene, ob);
         if (geom != new_geom) {
           geom = new_geom;
-          gpencil_drawcall_flush();
+          drawcall_flush();
 
           GPUVertBuf *position_tx = draw::DRW_cache_grease_pencil_position_buffer_get(pd->scene,
                                                                                       ob);
@@ -822,27 +822,27 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
         const int stroke_vert_count = (points.size() + int(is_cyclic));
 
         if (show_fill) {
-          int v_first = v_offset * 3;
+          int v_first = t_offset * 3;
           int v_count = num_triangles * 3;
-          gpencil_drawcall_add(geom, v_first, v_count);
+          drawcall_add(geom, v_first, v_count);
         }
 
-        v_offset += num_triangles;
+        t_offset += num_triangles;
 
         if (show_stroke) {
-          int v_first = v_offset * 3;
+          int v_first = t_offset * 3;
           int v_count = stroke_vert_count * 2 * 3;
-          gpencil_drawcall_add(geom, v_first, v_count);
+          drawcall_add(geom, v_first, v_count);
         }
 
-        v_offset += stroke_vert_count * 2;
+        t_offset += stroke_vert_count * 2;
 
         /* Only needed by sbuffer. */
         /* stroke_index_last = gps->runtime.vertex_start + gps->totpoints + 1;*/
       }
     }
 
-    gpencil_drawcall_flush();
+    drawcall_flush();
 
     gpencil_vfx_cache_populate(vedata, ob, tgp_ob);
   }
