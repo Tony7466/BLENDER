@@ -12,10 +12,8 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
-#include "COM_ReadBufferOperation.h"
 #include "COM_SetValueOperation.h"
 #include "COM_ViewerOperation.h"
-#include "COM_WriteBufferOperation.h"
 
 namespace blender::compositor {
 
@@ -74,12 +72,6 @@ int DebugInfo::graphviz_operation(const ExecutionSystem *system,
   }
   else if (operation->get_flags().is_set_operation) {
     fillcolor = "khaki1";
-  }
-  else if (operation->get_flags().is_read_buffer_operation) {
-    fillcolor = "darkolivegreen3";
-  }
-  else if (operation->get_flags().is_write_buffer_operation) {
-    fillcolor = "darkorange";
   }
 
   len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "// OPERATION: %p\r\n", operation);
@@ -267,27 +259,6 @@ bool DebugInfo::graphviz_system(const ExecutionSystem *system, char *str, int ma
     op_groups[operation].push_back(std::string(""));
 
     len += graphviz_operation(system, operation, str + len, maxlen > len ? maxlen - len : 0);
-  }
-
-  for (NodeOperation *operation : system->operations_) {
-    if (operation->get_flags().is_read_buffer_operation) {
-      ReadBufferOperation *read = (ReadBufferOperation *)operation;
-      WriteBufferOperation *write = read->get_memory_proxy()->get_write_buffer_operation();
-      std::vector<std::string> &read_groups = op_groups[read];
-      std::vector<std::string> &write_groups = op_groups[write];
-
-      for (int k = 0; k < write_groups.size(); k++) {
-        for (int l = 0; l < read_groups.size(); l++) {
-          len += snprintf(str + len,
-                          maxlen > len ? maxlen - len : 0,
-                          "\"O_%p%s\" -> \"O_%p%s\" [style=dotted]\r\n",
-                          write,
-                          write_groups[k].c_str(),
-                          read,
-                          read_groups[l].c_str());
-        }
-      }
-    }
   }
 
   for (NodeOperation *op : system->operations_) {

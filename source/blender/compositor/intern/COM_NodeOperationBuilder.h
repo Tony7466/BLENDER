@@ -23,7 +23,6 @@ class NodeOperationInput;
 class NodeOperationOutput;
 
 class PreviewOperation;
-class WriteBufferOperation;
 class ViewerOperation;
 class ConstantOperation;
 

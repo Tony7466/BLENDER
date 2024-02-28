@@ -5,7 +5,6 @@
 #include <cstdio>
 
 #include "COM_ExecutionSystem.h"
-#include "COM_ReadBufferOperation.h"
 
 #include "COM_NodeOperation.h" /* own include */
 
@@ -325,12 +324,6 @@ std::ostream &operator<<(std::ostream &os, const NodeOperationFlags &node_operat
   if (node_operation_flags.is_set_operation) {
     os << "set_operation,";
   }
-  if (node_operation_flags.is_write_buffer_operation) {
-    os << "write_buffer,";
-  }
-  if (node_operation_flags.is_read_buffer_operation) {
-    os << "read_buffer,";
-  }
   if (node_operation_flags.is_proxy_operation) {
     os << "proxy,";
   }
@@ -362,16 +355,6 @@ std::ostream &operator<<(std::ostream &os, const NodeOperation &node_operation)
     os << ",name=" << node_operation.get_name();
   }
   os << ",flags={" << flags << "}";
-  if (flags.is_read_buffer_operation) {
-    const ReadBufferOperation *read_operation = (const ReadBufferOperation *)&node_operation;
-    const MemoryProxy *proxy = read_operation->get_memory_proxy();
-    if (proxy) {
-      const WriteBufferOperation *write_operation = proxy->get_write_buffer_operation();
-      if (write_operation) {
-        os << ",write=" << (NodeOperation &)*write_operation;
-      }
-    }
-  }
   os << ")";
 
   return os;

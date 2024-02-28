@@ -15,9 +15,6 @@ class RotateOperation : public MultiThreadedOperation {
 
   SocketReader *image_socket_;
   SocketReader *degree_socket_;
-  /* TODO(manzanilla): to be removed with tiled implementation. */
-  float center_x_;
-  float center_y_;
 
   float cosine_;
   float sine_;

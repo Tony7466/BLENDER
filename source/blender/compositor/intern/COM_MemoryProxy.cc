@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,7 +9,6 @@ namespace blender::compositor {
 
 MemoryProxy::MemoryProxy(DataType datatype)
 {
-  write_buffer_operation_ = nullptr;
   buffer_ = nullptr;
   datatype_ = datatype;
 }

@@ -12,12 +12,10 @@
 #include "COM_Debug.h"
 
 #include "COM_PreviewOperation.h"
-#include "COM_ReadBufferOperation.h"
 #include "COM_SetColorOperation.h"
 #include "COM_SetValueOperation.h"
 #include "COM_SetVectorOperation.h"
 #include "COM_ViewerOperation.h"
-#include "COM_WriteBufferOperation.h"
 
 #include "COM_ConstantFolder.h"
 #include "COM_NodeOperationBuilder.h" /* own include */
@@ -518,13 +516,6 @@ static void find_reachable_operations_recursive(Tags &reachable, NodeOperation *
       find_reachable_operations_recursive(reachable, &input->get_link()->get_operation());
     }
   }
-
-  /* associated write-buffer operations are executed as well */
-  if (op->get_flags().is_read_buffer_operation) {
-    ReadBufferOperation *read_op = (ReadBufferOperation *)op;
-    MemoryProxy *memproxy = read_op->get_memory_proxy();
-    find_reachable_operations_recursive(reachable, memproxy->get_write_buffer_operation());
-  }
 }
 
 void NodeOperationBuilder::prune_operations()
@@ -606,15 +597,6 @@ std::ostream &operator<<(std::ostream &os, const NodeOperationBuilder &builder)
   for (const NodeOperationBuilder::Link &link : builder.get_links()) {
     os << "    op" << link.from()->get_operation().get_id() << " -> op"
        << link.to()->get_operation().get_id() << ";\n";
-  }
-  for (const NodeOperation *operation : builder.get_operations()) {
-    if (operation->get_flags().is_read_buffer_operation) {
-      const ReadBufferOperation &read_operation = static_cast<const ReadBufferOperation &>(
-          *operation);
-      const WriteBufferOperation &write_operation =
-          *read_operation.get_memory_proxy()->get_write_buffer_operation();
-      os << "    op" << write_operation.get_id() << " -> op" << read_operation.get_id() << ";\n";
-    }
   }
 
   os << "}\n";

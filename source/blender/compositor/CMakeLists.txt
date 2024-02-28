@@ -459,16 +459,12 @@ if(WITH_COMPOSITOR_CPU)
     operations/COM_GammaOperation.h
     operations/COM_MixOperation.cc
     operations/COM_MixOperation.h
-    operations/COM_ReadBufferOperation.cc
-    operations/COM_ReadBufferOperation.h
     operations/COM_SetColorOperation.cc
     operations/COM_SetColorOperation.h
     operations/COM_SetValueOperation.cc
     operations/COM_SetValueOperation.h
     operations/COM_SetVectorOperation.cc
     operations/COM_SetVectorOperation.h
-    operations/COM_WriteBufferOperation.cc
-    operations/COM_WriteBufferOperation.h
 
     operations/COM_MathBaseOperation.cc
     operations/COM_MathBaseOperation.h
@@ -522,8 +518,6 @@ if(WITH_COMPOSITOR_CPU)
     operations/COM_TransformOperation.h
     operations/COM_TranslateOperation.cc
     operations/COM_TranslateOperation.h
-    operations/COM_WrapOperation.cc
-    operations/COM_WrapOperation.h
 
     # Filter operations
     operations/COM_ConvolutionEdgeFilterOperation.cc

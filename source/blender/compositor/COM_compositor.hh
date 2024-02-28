@@ -70,8 +70,6 @@ struct Render;
  * \page executing Executing
  * \section prepare Prepare execution
  *
- * during the preparation of the execution All ReadBufferOperation will receive an offset.
- * This offset is used during execution as an optimization trick
  * Next all operations will be initialized for execution \see NodeOperation.init_execution
  * Next all ExecutionGroup's will be initialized for execution \see ExecutionGroup.init_execution
  * this all is controlled from \see ExecutionSystem.execute

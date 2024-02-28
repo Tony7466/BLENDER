@@ -6,7 +6,6 @@
 
 #include "COM_CPUDevice.h"
 #include "COM_CompositorContext.h"
-#include "COM_WriteBufferOperation.h"
 
 #include "MEM_guardedalloc.h"
 

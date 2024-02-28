@@ -13,7 +13,6 @@
 namespace blender::compositor {
 
 class MemoryBuffer;
-class WriteBufferOperation;
 
 /**
  * \brief A MemoryProxy is a unique identifier for a memory buffer.
@@ -23,11 +22,6 @@ class WriteBufferOperation;
  */
 class MemoryProxy {
  private:
-  /**
-   * \brief reference to the output operation of the executiongroup
-   */
-  WriteBufferOperation *write_buffer_operation_;
-
   /**
    * \brief the allocated memory
    */
@@ -40,24 +34,6 @@ class MemoryProxy {
 
  public:
   MemoryProxy(DataType type);
-
-  /**
-   * \brief set the WriteBufferOperation that is responsible for writing to this MemoryProxy
-   * \param operation:
-   */
-  void set_write_buffer_operation(WriteBufferOperation *operation)
-  {
-    write_buffer_operation_ = operation;
-  }
-
-  /**
-   * \brief get the WriteBufferOperation that is responsible for writing to this MemoryProxy
-   * \return WriteBufferOperation
-   */
-  WriteBufferOperation *get_write_buffer_operation() const
-  {
-    return write_buffer_operation_;
-  }
 
   /**
    * \brief allocate memory of size width x height

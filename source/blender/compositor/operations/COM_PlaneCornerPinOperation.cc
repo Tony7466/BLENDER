@@ -91,7 +91,7 @@ static void read_input_corners(NodeOperation *op, const int first_input_idx, flo
 
 /* ******** PlaneCornerPinMaskOperation ******** */
 
-PlaneCornerPinMaskOperation::PlaneCornerPinMaskOperation() : corners_ready_(false)
+PlaneCornerPinMaskOperation::PlaneCornerPinMaskOperation()
 {
   add_input_socket(DataType::Vector);
   add_input_socket(DataType::Vector);
@@ -139,7 +139,7 @@ void PlaneCornerPinMaskOperation::get_area_of_interest(const int /*input_idx*/,
 
 /* ******** PlaneCornerPinWarpImageOperation ******** */
 
-PlaneCornerPinWarpImageOperation::PlaneCornerPinWarpImageOperation() : corners_ready_(false)
+PlaneCornerPinWarpImageOperation::PlaneCornerPinWarpImageOperation()
 {
   add_input_socket(DataType::Vector);
   add_input_socket(DataType::Vector);
