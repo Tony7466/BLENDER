@@ -599,13 +599,13 @@ bool DenoiseImage::save_output(const string &out_filepath, string &error)
 
 /* File pattern handling and outer loop over frames */
 
-DenoiserPipeline::DenoiserPipeline(DeviceInfo &device_info, const DenoiseParams &params)
+DenoiserPipeline::DenoiserPipeline(DeviceInfo &denoiser_device_info, const DenoiseParams &params)
 {
   /* Initialize task scheduler. */
   TaskScheduler::init();
 
   /* Initialize device. */
-  device = Device::create(device_info, stats, profiler);
+  device = Device::create(denoiser_device_info, stats, profiler);
   device->load_kernels(KERNEL_FEATURE_DENOISING);
 
   denoiser = Denoiser::create(device, params);

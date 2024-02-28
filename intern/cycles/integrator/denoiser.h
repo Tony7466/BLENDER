@@ -33,7 +33,7 @@ class Denoiser {
    * - The denoiser must be configured. This means that `params.use` must be true.
    *   This is checked in debug builds.
    * - The device might be MultiDevice. */
-  static unique_ptr<Denoiser> create(Device *path_trace_device, const DenoiseParams &params);
+  static unique_ptr<Denoiser> create(Device *denoise_device, const DenoiseParams &params);
 
   virtual ~Denoiser() = default;
 

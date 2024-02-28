@@ -16,30 +16,32 @@
 
 CCL_NAMESPACE_BEGIN
 
-unique_ptr<Denoiser> Denoiser::create(Device *path_trace_device, const DenoiseParams &params)
+unique_ptr<Denoiser> Denoiser::create(Device *denoise_device, const DenoiseParams &params)
 {
   DCHECK(params.use);
 
+  if (denoise_device->info.type != DEVICE_CPU) {
 #ifdef WITH_OPTIX
-  if (params.type == DENOISER_OPTIX && Device::available_devices(DEVICE_MASK_OPTIX).size()) {
-    return make_unique<OptiXDenoiser>(path_trace_device, params);
-  }
+    if (params.type == DENOISER_OPTIX) {
+      return make_unique<OptiXDenoiser>(denoise_device, params);
+    }
 #endif
 
 #ifdef WITH_OPENIMAGEDENOISE
-  /* If available and allowed, then we will use OpenImageDenoise on GPU, otherwise on CPU. */
-  if (params.type == DENOISER_OPENIMAGEDENOISE && params.use_gpu &&
-      path_trace_device->info.type != DEVICE_CPU &&
-      OIDNDenoiserGPU::is_device_supported(path_trace_device->info))
-  {
-    return make_unique<OIDNDenoiserGPU>(path_trace_device, params);
-  }
+    /* If available and allowed, then we will use OpenImageDenoise on GPU, otherwise on CPU. */
+    if (params.type == DENOISER_OPENIMAGEDENOISE && params.use_gpu &&
+        OIDNDenoiserGPU::is_device_supported(denoise_device->info))
+    {
+      return make_unique<OIDNDenoiserGPU>(denoise_device, params);
+    }
 #endif
+  }
 
   /* Always fallback to OIDN. */
   DenoiseParams oidn_params = params;
   oidn_params.type = DENOISER_OPENIMAGEDENOISE;
-  return make_unique<OIDNDenoiser>(path_trace_device, oidn_params);
+  oidn_params.use_gpu = false;
+  return make_unique<OIDNDenoiser>(denoise_device, oidn_params);
 }
 
 Denoiser::Denoiser(Device *path_trace_device, const DenoiseParams &params)
@@ -67,10 +69,20 @@ const DenoiseParams &Denoiser::get_params() const
 
 bool Denoiser::load_kernels(Progress *progress)
 {
-  const Device *denoiser_device = ensure_denoiser_device(progress);
+  Device *denoiser_device = ensure_denoiser_device(progress);
 
   if (!denoiser_device) {
     path_trace_device_->set_error("No device available to denoise on");
+    return false;
+  }
+
+  /* Only need denoising feature, everything else is unused. */
+  if (!denoiser_device->load_kernels(KERNEL_FEATURE_DENOISING)) {
+    string message = denoiser_device->error_message();
+    if (message.empty()) {
+      message = "Failed loading denoising kernel, see console for errors";
+    }
+    path_trace_device_->set_error(message);
     return false;
   }
 
