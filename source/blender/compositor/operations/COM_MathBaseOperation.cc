@@ -52,13 +52,6 @@ void MathBaseOperation::determine_canvas(const rcti &preferred_area, rcti &r_are
   NodeOperation::determine_canvas(preferred_area, r_area);
 }
 
-void MathBaseOperation::clamp_if_needed(float *color)
-{
-  if (use_clamp_) {
-    CLAMP(color[0], 0.0f, 1.0f);
-  }
-}
-
 void MathBaseOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                      const rcti &area,
                                                      Span<MemoryBuffer *> inputs)

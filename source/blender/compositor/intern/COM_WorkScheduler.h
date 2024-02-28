@@ -12,8 +12,6 @@ namespace blender::compositor {
 
 struct WorkPackage;
 
-class CompositorContext;
-
 /** \brief the workscheduler
  * \ingroup execution
  */
@@ -46,7 +44,7 @@ struct WorkScheduler {
    * for every device a thread is created.
    * \see initialize Initialization and query of the number of devices
    */
-  static void start(const CompositorContext &context);
+  static void start();
 
   /**
    * \brief stop the execution

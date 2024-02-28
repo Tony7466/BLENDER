@@ -84,24 +84,12 @@ void PlaneTrackMaskOperation::init_data()
   PlaneTrackCommon::read_and_calculate_corners(this);
 }
 
-/* TODO(manzanilla): to be removed with tiled implementation. */
-void PlaneTrackMaskOperation::init_execution()
-{
-  PlaneDistortMaskOperation::init_execution();
-}
-
 /* ******** PlaneTrackWarpImageOperation ******** */
 
 void PlaneTrackWarpImageOperation::init_data()
 {
   PlaneDistortWarpImageOperation::init_data();
   PlaneTrackCommon::read_and_calculate_corners(this);
-}
-
-/* TODO(manzanilla): to be removed with tiled implementation. */
-void PlaneTrackWarpImageOperation::init_execution()
-{
-  PlaneDistortWarpImageOperation::init_execution();
 }
 
 }  // namespace blender::compositor

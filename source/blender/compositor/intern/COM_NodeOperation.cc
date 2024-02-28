@@ -215,7 +215,7 @@ NodeOperation *NodeOperation::get_input_operation(int index)
 /** \name Full Frame Methods
  * \{ */
 
-void NodeOperation::get_area_of_interest(const int input_idx,
+void NodeOperation::get_area_of_interest(const int /*input_idx*/,
                                          const rcti &output_area,
                                          rcti &r_input_area)
 {

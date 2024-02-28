@@ -29,7 +29,6 @@ class BaseScaleOperation : public MultiThreadedOperation {
   }
 
   int sampler_;
-  /* TODO(manzanilla): to be removed with tiled implementation. */
   bool variable_size_;
 };
 

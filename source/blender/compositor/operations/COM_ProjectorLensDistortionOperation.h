@@ -17,8 +17,6 @@ class ProjectorLensDistortionOperation : public MultiThreadedOperation {
   SocketReader *input_program_;
 
   float dispersion_;
-  /* TODO(manzanilla): to be removed with tiled implementation. */
-  bool dispersion_available_;
 
   float kr_, kr2_;
 

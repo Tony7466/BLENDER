@@ -240,7 +240,6 @@ int DebugInfo::graphviz_legend(char *str, int maxlen)
 
 bool DebugInfo::graphviz_system(const ExecutionSystem *system, char *str, int maxlen)
 {
-  char strbuf[64];
   int len = 0;
 
   len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "digraph compositorexecution {\r\n");
@@ -249,7 +248,6 @@ bool DebugInfo::graphviz_system(const ExecutionSystem *system, char *str, int ma
   len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "splines=false\r\n");
 
   std::map<NodeOperation *, std::vector<std::string>> op_groups;
-  int index = 0;
 
   for (NodeOperation *operation : system->operations_) {
     if (op_groups.find(operation) != op_groups.end()) {

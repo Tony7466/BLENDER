@@ -14,7 +14,6 @@ ProjectorLensDistortionOperation::ProjectorLensDistortionOperation()
   this->add_output_socket(DataType::Color);
   flags_.can_be_constant = true;
   input_program_ = nullptr;
-  dispersion_available_ = false;
   dispersion_ = 0.0f;
 }
 

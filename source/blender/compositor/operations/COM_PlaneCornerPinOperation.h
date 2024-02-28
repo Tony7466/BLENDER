@@ -4,15 +4,7 @@
 
 #pragma once
 
-#include <string.h>
-
 #include "COM_PlaneDistortCommonOperation.h"
-
-#include "DNA_movieclip_types.h"
-#include "DNA_tracking_types.h"
-
-#include "BLI_listbase.h"
-#include "BLI_string.h"
 
 namespace blender::compositor {
 
@@ -21,8 +13,6 @@ class PlaneCornerPinMaskOperation : public PlaneDistortMaskOperation {
   PlaneCornerPinMaskOperation();
 
   void init_data() override;
-  void init_execution() override;
-  void deinit_execution() override;
 
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
 
@@ -34,8 +24,6 @@ class PlaneCornerPinWarpImageOperation : public PlaneDistortWarpImageOperation {
   PlaneCornerPinWarpImageOperation();
 
   void init_data() override;
-  void init_execution() override;
-  void deinit_execution() override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
 };

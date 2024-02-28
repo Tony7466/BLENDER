@@ -5,7 +5,6 @@
 #include "COM_WorkScheduler.h"
 
 #include "COM_CPUDevice.h"
-#include "COM_CompositorContext.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -210,7 +209,7 @@ void WorkScheduler::schedule(WorkPackage *package)
   }
 }
 
-void WorkScheduler::start(const CompositorContext &context)
+void WorkScheduler::start()
 {
   switch (COM_threading_model()) {
     case ThreadingModel::SingleThreaded:

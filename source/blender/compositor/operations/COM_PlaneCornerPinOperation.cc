@@ -106,22 +106,6 @@ void PlaneCornerPinMaskOperation::init_data()
   calculate_corners(corners, true, 0);
 }
 
-/* TODO(manzanilla): to be removed with tiled implementation. Same for #deinit_execution and do the
- * same on #PlaneCornerPinWarpImageOperation. */
-void PlaneCornerPinMaskOperation::init_execution()
-{
-  PlaneDistortMaskOperation::init_execution();
-
-  init_mutex();
-}
-
-void PlaneCornerPinMaskOperation::deinit_execution()
-{
-  PlaneDistortMaskOperation::deinit_execution();
-
-  deinit_mutex();
-}
-
 void PlaneCornerPinMaskOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
   /* Determine input canvases. */
@@ -152,20 +136,6 @@ void PlaneCornerPinWarpImageOperation::init_data()
   float corners[4][2];
   read_input_corners(this, 1, corners);
   calculate_corners(corners, true, 0);
-}
-
-void PlaneCornerPinWarpImageOperation::init_execution()
-{
-  PlaneDistortWarpImageOperation::init_execution();
-
-  init_mutex();
-}
-
-void PlaneCornerPinWarpImageOperation::deinit_execution()
-{
-  PlaneDistortWarpImageOperation::deinit_execution();
-
-  deinit_mutex();
 }
 
 void PlaneCornerPinWarpImageOperation::get_area_of_interest(const int input_idx,

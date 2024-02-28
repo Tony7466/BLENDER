@@ -29,9 +29,6 @@ class MathBaseOperation : public MultiThreadedOperation {
    */
   MathBaseOperation();
 
-  /* TODO(manzanilla): to be removed with tiled implementation. */
-  void clamp_if_needed(float color[4]);
-
   float clamp_when_enabled(float value)
   {
     if (use_clamp_) {
