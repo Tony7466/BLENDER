@@ -11,6 +11,7 @@
 #include "BLI_bounds.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask.hh"
+#include "BLI_linear_allocator_chunked_list.hh"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.hh"
 #include "BLI_offset_indices.hh"
@@ -37,14 +38,8 @@ struct TriWithRange {
   int x_max;
 };
 
-struct TriWithRangeGroup {
-  int filled_num = 0;
-  std::array<TriWithRange, 8> tris;
-  TriWithRangeGroup *next = nullptr;
-};
-
 struct LocalRowData {
-  TriWithRangeGroup *tris = nullptr;
+  linear_allocator::ChunkedList<TriWithRange, 8> tris;
   int x_min = INT32_MAX;
   int x_max = INT32_MIN;
 };
@@ -93,16 +88,7 @@ BLI_NOINLINE static void sort_into_y_rows(
       for (int cell_y = cell_bounds.min.y; cell_y <= cell_bounds.max.y; cell_y++) {
         LocalRowData &row = *local_data.rows.lookup_or_add_cb(
             cell_y, [&]() { return local_data.allocator.construct<LocalRowData>(); });
-
-        if (row.tris == nullptr || row.tris->filled_num == row.tris->tris.size()) {
-          static_assert(std::is_trivially_destructible_v<TriWithRangeGroup>);
-          TriWithRangeGroup *new_group =
-              local_data.allocator.construct<TriWithRangeGroup>().release();
-          new_group->next = row.tris;
-          row.tris = new_group;
-        }
-
-        row.tris->tris[row.tris->filled_num++] = tri_with_range;
+        row.tris.append(local_data.allocator, tri_with_range);
         row.x_min = std::min<int>(row.x_min, cell_bounds.min.x);
         row.x_max = std::max<int>(row.x_max, cell_bounds.max.x);
       }
@@ -139,12 +125,9 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
         MutableSpan<int> counts = row.offsets;
         counts.fill(0);
         for (const LocalRowData *local_row : local_rows) {
-          for (const TriWithRangeGroup *group = local_row->tris; group; group = group->next) {
-            for (const int i : IndexRange(group->filled_num)) {
-              const TriWithRange &tri_with_range = group->tris[i];
-              for (int x = tri_with_range.x_min; x <= tri_with_range.x_max; x++) {
-                counts[x - x_min]++;
-              }
+          for (const TriWithRange &tri_with_range : local_row->tris) {
+            for (int x = tri_with_range.x_min; x <= tri_with_range.x_max; x++) {
+              counts[x - x_min]++;
             }
           }
         }
@@ -155,15 +138,12 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
 
       Array<int, 1000> current_offsets(x_num, 0);
       for (const LocalRowData *local_row : local_rows) {
-        for (const TriWithRangeGroup *group = local_row->tris; group; group = group->next) {
-          for (const int i : IndexRange(group->filled_num)) {
-            const TriWithRange &tri_with_range = group->tris[i];
-            for (int x = tri_with_range.x_min; x <= tri_with_range.x_max; x++) {
-              const int offset_x = x - x_min;
-              row.tri_indices[row.offsets[offset_x] + current_offsets[offset_x]] =
-                  tri_with_range.tri_index;
-              current_offsets[offset_x]++;
-            }
+        for (const TriWithRange &tri_with_range : local_row->tris) {
+          for (int x = tri_with_range.x_min; x <= tri_with_range.x_max; x++) {
+            const int offset_x = x - x_min;
+            row.tri_indices[row.offsets[offset_x] + current_offsets[offset_x]] =
+                tri_with_range.tri_index;
+            current_offsets[offset_x]++;
           }
         }
       }
