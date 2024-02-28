@@ -1678,14 +1678,7 @@ static int object_grease_pencil_add_exec(bContext *C, wmOperator *op)
       const int stroke_depth_order = RNA_enum_get(op->ptr, "stroke_depth_order");
       const float stroke_depth_offset = RNA_float_get(op->ptr, "stroke_depth_offset");
 
-      float radius = RNA_float_get(op->ptr, "radius");
-      float scale[3];
-      copy_v3_fl(scale, radius);
-      float mat[4][4];
-
-      ED_object_new_primitive_matrix(C, object, loc, rot, scale, mat);
-
-      greasepencil::create_blank_for_lineart(*bmain, *object, scene->r.cfra);
+      greasepencil::create_blank(*bmain, *object, scene->r.cfra);
 
       auto *grease_pencil = reinterpret_cast<GreasePencil *>(object->data);
       auto *new_md = reinterpret_cast<ModifierData *>(
