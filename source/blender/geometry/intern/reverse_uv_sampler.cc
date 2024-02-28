@@ -21,14 +21,19 @@
 namespace blender::geometry {
 
 struct Row {
+  /** The min and max horizontal cell index that is used in this row. */
   int x_min = 0;
   int x_max = 0;
+  /** Offsets into the array of indices below. Also see #OffsetIndices. */
   Array<int> offsets;
+  /** A flat array containing the triangle indices contained in each cell. */
   Array<int> tri_indices;
 };
 
 struct ReverseUVSampler::LookupGrid {
+  /** Minimum vertical cell index that contains triangles. */
   int y_min = 0;
+  /** Information about all rows starting at `y_min`. */
   Array<Row> rows;
 };
 
@@ -72,19 +77,26 @@ static Bounds<int2> tri_to_cell_bounds(const int3 &tri,
   return {min_cell, max_cell};
 }
 
-BLI_NOINLINE static void sort_into_y_rows(
-    const Span<float2> uv_map,
-    const Span<int3> corner_tris,
-    const int resolution,
-    threading::EnumerableThreadSpecific<LocalData> &data_per_thread)
+/**
+ * Add each triangle to the rows that it is in. After this, the information about each row is still
+ * scattered across multiple thread-specific lists. Those separate lists are then joined in a
+ * separate step.
+ */
+static void sort_tris_into_rows(const Span<float2> uv_map,
+                                const Span<int3> corner_tris,
+                                const int resolution,
+                                threading::EnumerableThreadSpecific<LocalData> &data_per_thread)
 {
   threading::parallel_for(corner_tris.index_range(), 256, [&](const IndexRange tris_range) {
     LocalData &local_data = data_per_thread.local();
     for (const int tri_i : tris_range) {
       const int3 &tri = corner_tris[tri_i];
+
+      /* Compute the cells that the triangle touches approximately. */
       const Bounds<int2> cell_bounds = tri_to_cell_bounds(tri, resolution, uv_map);
       const TriWithRange tri_with_range{tri_i, cell_bounds.min.x, cell_bounds.max.x};
 
+      /* Go over each row that the triangle is in. */
       for (int cell_y = cell_bounds.min.y; cell_y <= cell_bounds.max.y; cell_y++) {
         LocalRowData &row = *local_data.rows.lookup_or_add_cb(
             cell_y, [&]() { return local_data.allocator.construct<LocalRowData>(); });
@@ -96,16 +108,21 @@ BLI_NOINLINE static void sort_into_y_rows(
   });
 }
 
-BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
-                                   const Span<const LocalData *> local_data_vec,
-                                   const Bounds<int> y_bounds,
-                                   ReverseUVSampler::LookupGrid &lookup_grid)
+/**
+ * Consolidates the data that has been gather for each row so that it is each to look up which
+ * triangles are in each cell.
+ */
+static void finish_rows(const Span<int> all_ys,
+                        const Span<const LocalData *> local_data_vec,
+                        const Bounds<int> y_bounds,
+                        ReverseUVSampler::LookupGrid &lookup_grid)
 {
   threading::parallel_for(all_ys.index_range(), 8, [&](const IndexRange all_ys_range) {
+    Vector<const LocalRowData *, 32> local_rows;
     for (const int y : all_ys.slice(all_ys_range)) {
       Row &row = lookup_grid.rows[y - y_bounds.min];
 
-      Vector<const LocalRowData *, 32> local_rows;
+      local_rows.clear();
       for (const LocalData *local_data : local_data_vec) {
         if (const destruct_ptr<LocalRowData> *local_row = local_data->rows.lookup_ptr(y)) {
           local_rows.append(local_row->get());
@@ -122,6 +139,7 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
       const int x_num = x_max - x_min + 1;
       row.offsets.reinitialize(x_num + 1);
       {
+        /* Count how many triangles are in each cell in the current row. */
         MutableSpan<int> counts = row.offsets;
         counts.fill(0);
         for (const LocalRowData *local_row : local_rows) {
@@ -136,6 +154,7 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
       const int tri_indices_num = row.offsets.last();
       row.tri_indices.reinitialize(tri_indices_num);
 
+      /* Populate the array containing all triangle indices in all cells in this row. */
       Array<int, 1000> current_offsets(x_num, 0);
       for (const LocalRowData *local_row : local_rows) {
         for (const TriWithRange &tri_with_range : local_row->tris) {
@@ -166,7 +185,7 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map, const Span<int3> c
   }
 
   threading::EnumerableThreadSpecific<LocalData> data_per_thread;
-  sort_into_y_rows(uv_map_, corner_tris_, resolution_, data_per_thread);
+  sort_tris_into_rows(uv_map_, corner_tris_, resolution_, data_per_thread);
 
   VectorSet<int> all_ys;
   Vector<const LocalData *> local_data_vec;
@@ -183,19 +202,7 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map, const Span<int3> c
   const int rows_num = y_bounds.max - y_bounds.min + 1;
   lookup_grid_->rows.reinitialize(rows_num);
 
-  fill_rows(all_ys, local_data_vec, y_bounds, *lookup_grid_);
-
-  // fmt::println("Rows");
-  // for (const int row_i : lookup_grid_->rows.index_range()) {
-  //   const Row &row = lookup_grid_->rows[row_i];
-  //   fmt::println("  Row {}:", row_i);
-  //   const OffsetIndices<int> offsets{row.offsets};
-  //   for (const int x_i : offsets.index_range()) {
-  //     fmt::println("    {}: {}",
-  //                  x_i + row.x_min,
-  //                  fmt::join(row.tri_indices.as_span().slice(offsets[x_i]), ", "));
-  //   }
-  // }
+  finish_rows(all_ys, local_data_vec, y_bounds, *lookup_grid_);
 }
 
 static Span<int> lookup_tris_in_cell(const int2 cell,
