@@ -6,6 +6,7 @@
  * \ingroup modifiers
  */
 
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_range.hh"
 #include "BLI_span.hh"
 #include "BLI_string.h"
@@ -93,11 +94,14 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
       ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Grease Pencil Outline Modifier");
 }
 
+/* Generate points in an arc between two points. */
 static void generate_arc_from_point_to_point(const float3 &from,
                                              const float3 &to,
                                              const float3 &center_pt,
                                              const int subdivisions,
-                                             Vector<float3> &r_perimeter)
+                                             const int src_index,
+                                             Vector<float3> &r_perimeter,
+                                             Vector<int> &r_src_indices)
 {
   const float2 vec_from = from.xy() - center_pt.xy();
   const float2 vec_to = to.xy() - center_pt.xy();
@@ -112,7 +116,7 @@ static void generate_arc_from_point_to_point(const float3 &from,
   /* Number of points is 2^(n+1) + 1 on half a circle (n=subdivisions)
    * so we multiply by (angle / pi) to get the right amount of
    * points to insert. */
-  const int num_points = int(((1 << (subdivisions + 1)) - 1) * (angle / M_PI));
+  const int num_points = ((1 << (subdivisions + 1)) - 1) * (angle / M_PI);
   if (num_points <= 0) {
     return;
   }
@@ -122,360 +126,226 @@ static void generate_arc_from_point_to_point(const float3 &from,
   for ([[maybe_unused]] const int i : IndexRange(num_points).drop_back(1)) {
     vec = rotation * vec;
     r_perimeter.append_as(vec);
+    r_src_indices.append(src_index);
   }
 }
 
-static void generate_semi_circle_from_point_to_point(const float3 &from,
-                                                     const float3 &to,
-                                                     int subdivisions,
-                                                     Vector<float3> &r_perimeter)
+static void generate_start_cap(const float3 &point,
+                               const float3 &tangent,
+                               const float radius,
+                               const int subdivisions,
+                               const eGPDstroke_Caps cap_type,
+                               const int src_index,
+                               Vector<float3> &r_perimeter,
+                               Vector<int> &r_src_indices)
 {
-  const int num_points = (1 << (subdivisions + 1)) + 1;
-
-  UNUSED_VARS(from, to, subdivisions, r_perimeter);
-  //   int num_points = (1 << (subdivisions + 1)) + 1;
-  //   float center_pt[3];
-  //   interp_v3_v3v3(center_pt, &from->x, &to->x, 0.5f);
-
-  //   float vec_center[2];
-  //   sub_v2_v2v2(vec_center, &from->x, center_pt);
-  //   if (is_zero_v2(vec_center)) {
-  //     return 0;
-  //   }
-
-  //   float vec_p[3];
-  //   float angle_incr = M_PI / (float(num_points) - 1);
-
-  //   tPerimeterPoint *last_point = from;
-  //   for (int i = 1; i < num_points; i++) {
-  //     float angle = i * angle_incr;
-
-  //     /* Rotate vector around point to get perimeter points. */
-  //     rotate_v2_v2fl(vec_p, vec_center, angle);
-  //     add_v2_v2(vec_p, center_pt);
-  //     vec_p[2] = center_pt[2];
-
-  //     tPerimeterPoint *new_point = new_perimeter_point(vec_p);
-  //     BLI_insertlinkafter(list, last_point, new_point);
-
-  //     last_point = new_point;
-  //   }
-
-  //   return num_points - 1;
+  const float3 normal = {tangent.y, -tangent.x, 0.0f};
+  switch (cap_type) {
+    case GP_STROKE_CAP_ROUND:
+      generate_arc_from_point_to_point(point + normal * radius,
+                                       point - normal * radius,
+                                       point,
+                                       subdivisions,
+                                       src_index,
+                                       r_perimeter,
+                                       r_src_indices);
+      break;
+    case GP_STROKE_CAP_FLAT:
+      r_perimeter.append(point - normal * radius);
+      break;
+    case GP_STROKE_CAP_MAX:
+      BLI_assert_unreachable();
+      break;
+  }
 }
 
-static void generate_perimeter_cap(const float point[4],
-                                   const float other_point[4],
-                                   float radius,
-                                   int subdivisions,
-                                   short cap_type,
-                                   Vector<float3> &r_perimeter)
+static void generate_end_cap(const float3 &point,
+                             const float3 &tangent,
+                             const float radius,
+                             const int subdivisions,
+                             const eGPDstroke_Caps cap_type,
+                             const int src_index,
+                             Vector<float3> &r_perimeter,
+                             Vector<int> &r_src_indices)
 {
-  UNUSED_VARS(point, other_point, radius, subdivisions, cap_type, r_perimeter);
-  //   float cap_vec[2];
-  //   sub_v2_v2v2(cap_vec, other_point, point);
-  //   normalize_v2(cap_vec);
-
-  //   float cap_nvec[2];
-  //   if (is_zero_v2(cap_vec)) {
-  //     cap_nvec[0] = 0;
-  //     cap_nvec[1] = radius;
-  //   }
-  //   else {
-  //     cap_nvec[0] = -cap_vec[1];
-  //     cap_nvec[1] = cap_vec[0];
-  //     mul_v2_fl(cap_nvec, radius);
-  //   }
-  //   float cap_nvec_inv[2];
-  //   negate_v2_v2(cap_nvec_inv, cap_nvec);
-
-  //   float vec_perimeter[3];
-  //   copy_v3_v3(vec_perimeter, point);
-  //   add_v2_v2(vec_perimeter, cap_nvec);
-
-  //   float vec_perimeter_inv[3];
-  //   copy_v3_v3(vec_perimeter_inv, point);
-  //   add_v2_v2(vec_perimeter_inv, cap_nvec_inv);
-
-  //   tPerimeterPoint *p_pt = new_perimeter_point(vec_perimeter);
-  //   tPerimeterPoint *p_pt_inv = new_perimeter_point(vec_perimeter_inv);
-
-  //   BLI_addtail(list, p_pt);
-  //   BLI_addtail(list, p_pt_inv);
-
-  //   int num_points = 0;
-  //   if (cap_type == GP_STROKE_CAP_ROUND) {
-  //     num_points += generate_semi_circle_from_point_to_point(list, p_pt, p_pt_inv,
-  //     subdivisions);
-  //   }
-
-  //   return num_points + 2;
+  const float3 normal = {tangent.y, -tangent.x, 0.0f};
+  switch (cap_type) {
+    case GP_STROKE_CAP_ROUND:
+      generate_arc_from_point_to_point(point - normal * radius,
+                                       point + normal * radius,
+                                       point,
+                                       subdivisions,
+                                       src_index,
+                                       r_perimeter,
+                                       r_src_indices);
+      break;
+    case GP_STROKE_CAP_FLAT:
+      r_perimeter.append(point - normal * radius);
+      break;
+    case GP_STROKE_CAP_MAX:
+      BLI_assert_unreachable();
+      break;
+  }
 }
 
-/**
- * Calculate the perimeter (outline) of a stroke.
- * \param subdivisions: Number of subdivisions for the start and end caps
- */
-static void gpencil_stroke_perimeter_ex(const bGPdata *gpd,
-                                        const bGPDlayer *gpl,
-                                        const bGPDstroke *gps,
-                                        int subdivisions,
-                                        const float thickness_chg,
-                                        Vector<float3> &r_perimeter)
+static void generate_corner(const float3 &pt_a,
+                            const float3 &pt_b,
+                            const float3 &pt_c,
+                            const float radius,
+                            const int src_index,
+                            Vector<float3> &r_perimeter,
+                            Vector<int> &r_src_indices)
 {
-  UNUSED_VARS(gpd, gpl, gps, subdivisions, thickness_chg, r_perimeter);
-  //   /* sanity check */
-  //   if (gps->totpoints < 1) {
-  //     return;
-  //   }
+  const float2 tangent = pt_c.xy() - pt_b.xy();
+  // const float2 tangent_prev = pt_b.xy() - pt_a.xy();
+  const float2 normal = {tangent.y, -tangent.x};
+  r_perimeter.append(float3(pt_b.xy() + normal * radius));
+  r_src_indices.append(src_index);
+  UNUSED_VARS(pt_a);
+}
 
-  //   float defaultpixsize = 1000.0f / gpd->pixfactor;
-  //   float ovr_radius = thickness_chg / defaultpixsize / 2.0f;
-  //   float stroke_radius = ((gps->thickness + gpl->line_change) / defaultpixsize) / 2.0f;
-  //   stroke_radius = max_ff(stroke_radius - ovr_radius, 0.0f);
+static void generate_stroke_perimeter(const Span<float3> all_positions,
+                                      const VArray<float> all_radii,
+                                      const IndexRange points,
+                                      const int subdivisions,
+                                      const bool is_cyclic,
+                                      const eGPDstroke_Caps start_cap_type,
+                                      const eGPDstroke_Caps end_cap_type,
+                                      const float normal_offset,
+                                      Vector<float3> &r_perimeter,
+                                      Vector<int> &r_src_indices)
+{
+  const Span<float3> positions = all_positions.slice(points);
 
-  //   ListBase *perimeter_right_side = MEM_cnew<ListBase>(__func__);
-  //   ListBase *perimeter_left_side = MEM_cnew<ListBase>(__func__);
-  //   int num_perimeter_points = 0;
+  if (positions.size() < 2) {
+    return;
+  }
 
-  //   bGPDspoint *first = &gps->points[0];
-  //   bGPDspoint *last = &gps->points[gps->totpoints - 1];
+  if (is_cyclic) {
+    const float3 &pt_a = positions.last();
+    const float3 &pt_b = positions.first();
+    const float3 &pt_c = positions[1];
+    const float radius = all_radii[points.first()];
+    generate_corner(pt_a, pt_b, pt_c, radius, points.first(), r_perimeter, r_src_indices);
+  }
+  else {
+    const float3 &center = positions.first();
+    const float3 dir = math::normalize(positions[1] - center);
+    const float radius = all_radii[points.first()];
+    generate_start_cap(center,
+                       dir,
+                       radius,
+                       subdivisions,
+                       start_cap_type,
+                       points.first(),
+                       r_perimeter,
+                       r_src_indices);
+  }
+  // for (const int i : positions.index_range().drop_front(1).drop_back(1)) {
+  //   const float2 pt_a = positions[i - 1].xy();
+  //   const float2 pt_b = positions[i].xy();
+  //   const float2 pt_c = positions[i + 1].xy();
+  //   const float2 tangent = pt_c - pt_b;
+  //   const float2 tangent_prev = pt_b - pt_a;
+  //   const float2 normal = {tangent.y, -tangent.x};
+  //   r_perimeter.append(pt_b + normal * radius);
+  // }
 
-  //   float first_radius = stroke_radius * first->pressure;
-  //   float last_radius = stroke_radius * last->pressure;
+  // for (const int i : positions.index_range().drop_front(1).drop_back(1)) {
+  //   const float2 pt_a = positions[i - 1].xy();
+  //   const float2 pt_b = positions[i].xy();
+  //   const float2 pt_c = positions[i + 1].xy();
+  //   const float2 tangent = pt_c - pt_b;
+  //   const float2 tangent_prev = pt_b - pt_a;
+  //   const float2 normal = {tangent.y, -tangent.x};
+  //   r_perimeter.append(pt_b + normal * radius);
+  // }
+  UNUSED_VARS(end_cap_type, normal_offset);
+}
 
-  //   bGPDspoint *first_next;
-  //   bGPDspoint *last_prev;
-  //   if (gps->totpoints > 1) {
-  //     first_next = &gps->points[1];
-  //     last_prev = &gps->points[gps->totpoints - 2];
-  //   }
-  //   else {
-  //     first_next = first;
-  //     last_prev = last;
-  //   }
+struct PerimeterData {
+  /* New points per curve count. */
+  Vector<int> point_counts;
+  /* New point coordinates. */
+  Vector<float3> positions;
+  /* Original point index. */
+  Vector<int> src_indices;
+};
 
-  //   float first_pt[3];
-  //   float last_pt[3];
-  //   float first_next_pt[3];
-  //   float last_prev_pt[3];
-  //   copy_v3_v3(first_pt, &first->x);
-  //   copy_v3_v3(last_pt, &last->x);
-  //   copy_v3_v3(first_next_pt, &first_next->x);
-  //   copy_v3_v3(last_prev_pt, &last_prev->x);
+static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &drawing,
+                                                 const IndexMask &curves_mask,
+                                                 const int subdivisions)
+{
+  const bke::CurvesGeometry &src_curves = drawing.strokes();
+  Span<float3> src_positions = src_curves.positions();
+  bke::AttributeAccessor src_attributes = src_curves.attributes();
+  VArray<float> src_radii = drawing.radii();
+  const VArray<bool> src_cyclic = *src_attributes.lookup_or_default(
+      "cyclic", bke::AttrDomain::Curve, false);
+  VArray<int8_t> src_start_caps = *src_attributes.lookup_or_default<int8_t>(
+      "start_cap", bke::AttrDomain::Curve, GP_STROKE_CAP_ROUND);
+  VArray<int8_t> src_end_caps = *src_attributes.lookup_or_default<int8_t>(
+      "end_cap", bke::AttrDomain::Curve, GP_STROKE_CAP_ROUND);
 
-  //   /* Edge-case if single point. */
-  //   if (gps->totpoints == 1) {
-  //     first_next_pt[0] += 1.0f;
-  //     last_prev_pt[0] -= 1.0f;
-  //   }
+  threading::EnumerableThreadSpecific<PerimeterData> thread_data;
+  curves_mask.foreach_index([&](const int64_t curve_i) {
+    PerimeterData &data = thread_data.local();
 
-  //   /* Generate points for start cap. */
-  //   num_perimeter_points += generate_perimeter_cap(
-  //       first_pt, first_next_pt, first_radius, perimeter_right_side, subdivisions,
-  //       gps->caps[0]);
+    const int prev_point_num = data.positions.size();
+    const IndexRange points = src_curves.points_by_curve()[curve_i];
+    const float normal_offset = 0.0f;
+    generate_stroke_perimeter(src_positions,
+                              src_radii,
+                              points,
+                              subdivisions,
+                              src_cyclic[curve_i],
+                              eGPDstroke_Caps(src_start_caps[curve_i]),
+                              eGPDstroke_Caps(src_end_caps[curve_i]),
+                              normal_offset,
+                              data.positions,
+                              data.src_indices);
+    data.point_counts.append(data.positions.size() - prev_point_num);
+  });
 
-  //   /* Generate perimeter points. */
-  //   float curr_pt[3], next_pt[3], prev_pt[3];
-  //   float vec_next[2], vec_prev[2];
-  //   float nvec_next[2], nvec_prev[2];
-  //   float nvec_next_pt[3], nvec_prev_pt[3];
-  //   float vec_tangent[2];
+  int dst_curve_num = 0;
+  int dst_point_num = 0;
+  for (const PerimeterData &data : thread_data) {
+    BLI_assert(data.positions.size() == data.src_indices.size());
+    dst_curve_num += data.point_counts.size();
+    dst_point_num += data.positions.size();
+  }
 
-  //   float vec_miter_left[2], vec_miter_right[2];
-  //   float miter_left_pt[3], miter_right_pt[3];
+  bke::CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
+  bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
+  bke::SpanAttributeWriter<bool> dst_cyclic = dst_attributes.lookup_or_add_for_write_span<bool>(
+      "cyclic", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<float> dst_radius = dst_attributes.lookup_or_add_for_write_span<float>(
+      "radius", bke::AttrDomain::Point);
 
-  //   for (int i = 1; i < gps->totpoints - 1; i++) {
-  //     bGPDspoint *curr = &gps->points[i];
-  //     bGPDspoint *prev = &gps->points[i - 1];
-  //     bGPDspoint *next = &gps->points[i + 1];
-  //     float radius = stroke_radius * curr->pressure;
+  for (const PerimeterData &data : thread_data) {
+    BLI_assert(data.positions.size() == data.src_indices.size());
+    dst_curve_num += data.point_counts.size();
+    dst_point_num += data.positions.size();
+  }
 
-  //     copy_v3_v3(curr_pt, &curr->x);
-  //     copy_v3_v3(next_pt, &next->x);
-  //     copy_v3_v3(prev_pt, &prev->x);
-
-  //     sub_v2_v2v2(vec_prev, curr_pt, prev_pt);
-  //     sub_v2_v2v2(vec_next, next_pt, curr_pt);
-  //     float prev_length = len_v2(vec_prev);
-  //     float next_length = len_v2(vec_next);
-
-  //     if (normalize_v2(vec_prev) == 0.0f) {
-  //       vec_prev[0] = 1.0f;
-  //       vec_prev[1] = 0.0f;
-  //     }
-  //     if (normalize_v2(vec_next) == 0.0f) {
-  //       vec_next[0] = 1.0f;
-  //       vec_next[1] = 0.0f;
-  //     }
-
-  //     nvec_prev[0] = -vec_prev[1];
-  //     nvec_prev[1] = vec_prev[0];
-
-  //     nvec_next[0] = -vec_next[1];
-  //     nvec_next[1] = vec_next[0];
-
-  //     add_v2_v2v2(vec_tangent, vec_prev, vec_next);
-  //     if (normalize_v2(vec_tangent) == 0.0f) {
-  //       copy_v2_v2(vec_tangent, nvec_prev);
-  //     }
-
-  //     vec_miter_left[0] = -vec_tangent[1];
-  //     vec_miter_left[1] = vec_tangent[0];
-
-  //     /* calculate miter length */
-  //     float an1 = dot_v2v2(vec_miter_left, nvec_prev);
-  //     if (an1 == 0.0f) {
-  //       an1 = 1.0f;
-  //     }
-  //     float miter_length = radius / an1;
-  //     if (miter_length <= 0.0f) {
-  //       miter_length = 0.01f;
-  //     }
-
-  //     normalize_v2_length(vec_miter_left, miter_length);
-
-  //     copy_v2_v2(vec_miter_right, vec_miter_left);
-  //     negate_v2(vec_miter_right);
-
-  //     float angle = dot_v2v2(vec_next, nvec_prev);
-  //     /* Add two points if angle is close to being straight. */
-  //     if (fabsf(angle) < 0.0001f) {
-  //       normalize_v2_length(nvec_prev, radius);
-  //       normalize_v2_length(nvec_next, radius);
-
-  //       copy_v3_v3(nvec_prev_pt, curr_pt);
-  //       add_v2_v2(nvec_prev_pt, nvec_prev);
-
-  //       copy_v3_v3(nvec_next_pt, curr_pt);
-  //       negate_v2(nvec_next);
-  //       add_v2_v2(nvec_next_pt, nvec_next);
-
-  //       tPerimeterPoint *normal_prev = new_perimeter_point(nvec_prev_pt);
-  //       tPerimeterPoint *normal_next = new_perimeter_point(nvec_next_pt);
-
-  //       BLI_addtail(perimeter_left_side, normal_prev);
-  //       BLI_addtail(perimeter_right_side, normal_next);
-  //       num_perimeter_points += 2;
-  //     }
-  //     else {
-  //       /* bend to the left */
-  //       if (angle < 0.0f) {
-  //         normalize_v2_length(nvec_prev, radius);
-  //         normalize_v2_length(nvec_next, radius);
-
-  //         copy_v3_v3(nvec_prev_pt, curr_pt);
-  //         add_v2_v2(nvec_prev_pt, nvec_prev);
-
-  //         copy_v3_v3(nvec_next_pt, curr_pt);
-  //         add_v2_v2(nvec_next_pt, nvec_next);
-
-  //         tPerimeterPoint *normal_prev = new_perimeter_point(nvec_prev_pt);
-  //         tPerimeterPoint *normal_next = new_perimeter_point(nvec_next_pt);
-
-  //         BLI_addtail(perimeter_left_side, normal_prev);
-  //         BLI_addtail(perimeter_left_side, normal_next);
-  //         num_perimeter_points += 2;
-
-  //         num_perimeter_points += generate_arc_from_point_to_point(
-  //             perimeter_left_side, normal_prev, normal_next, curr_pt, subdivisions, true);
-
-  //         if (miter_length < prev_length && miter_length < next_length) {
-  //           copy_v3_v3(miter_right_pt, curr_pt);
-  //           add_v2_v2(miter_right_pt, vec_miter_right);
-  //         }
-  //         else {
-  //           copy_v3_v3(miter_right_pt, curr_pt);
-  //           negate_v2(nvec_next);
-  //           add_v2_v2(miter_right_pt, nvec_next);
-  //         }
-
-  //         tPerimeterPoint *miter_right = new_perimeter_point(miter_right_pt);
-  //         BLI_addtail(perimeter_right_side, miter_right);
-  //         num_perimeter_points++;
-  //       }
-  //       /* bend to the right */
-  //       else {
-  //         normalize_v2_length(nvec_prev, -radius);
-  //         normalize_v2_length(nvec_next, -radius);
-
-  //         copy_v3_v3(nvec_prev_pt, curr_pt);
-  //         add_v2_v2(nvec_prev_pt, nvec_prev);
-
-  //         copy_v3_v3(nvec_next_pt, curr_pt);
-  //         add_v2_v2(nvec_next_pt, nvec_next);
-
-  //         tPerimeterPoint *normal_prev = new_perimeter_point(nvec_prev_pt);
-  //         tPerimeterPoint *normal_next = new_perimeter_point(nvec_next_pt);
-
-  //         BLI_addtail(perimeter_right_side, normal_prev);
-  //         BLI_addtail(perimeter_right_side, normal_next);
-  //         num_perimeter_points += 2;
-
-  //         num_perimeter_points += generate_arc_from_point_to_point(
-  //             perimeter_right_side, normal_prev, normal_next, curr_pt, subdivisions, false);
-
-  //         if (miter_length < prev_length && miter_length < next_length) {
-  //           copy_v3_v3(miter_left_pt, curr_pt);
-  //           add_v2_v2(miter_left_pt, vec_miter_left);
-  //         }
-  //         else {
-  //           copy_v3_v3(miter_left_pt, curr_pt);
-  //           negate_v2(nvec_prev);
-  //           add_v2_v2(miter_left_pt, nvec_prev);
-  //         }
-
-  //         tPerimeterPoint *miter_left = new_perimeter_point(miter_left_pt);
-  //         BLI_addtail(perimeter_left_side, miter_left);
-  //         num_perimeter_points++;
-  //       }
-  //     }
-  //   }
-
-  //   /* generate points for end cap */
-  //   num_perimeter_points += generate_perimeter_cap(
-  //       last_pt, last_prev_pt, last_radius, perimeter_right_side, subdivisions, gps->caps[1]);
-
-  //   /* merge both sides to one list */
-  //   BLI_listbase_reverse(perimeter_right_side);
-  //   BLI_movelisttolist(perimeter_left_side,
-  //                      perimeter_right_side);  // perimeter_left_side contains entire list
-  //   ListBase *perimeter_list = perimeter_left_side;
-
-  //   /* close by creating a point close to the first (make a small gap) */
-  //   float close_pt[3];
-  //   tPerimeterPoint *close_first = (tPerimeterPoint *)perimeter_list->first;
-  //   tPerimeterPoint *close_last = (tPerimeterPoint *)perimeter_list->last;
-  //   interp_v3_v3v3(close_pt, &close_last->x, &close_first->x, 0.99f);
-
-  //   if (compare_v3v3(close_pt, &close_first->x, FLT_EPSILON) == false) {
-  //     tPerimeterPoint *close_p_pt = new_perimeter_point(close_pt);
-  //     BLI_addtail(perimeter_list, close_p_pt);
-  //     num_perimeter_points++;
-  //   }
-
-  //   /* free temp data */
-  //   BLI_freelistN(perimeter_right_side);
-  //   MEM_freeN(perimeter_right_side);
-
-  //   *r_num_perimeter_points = num_perimeter_points;
-  //   return perimeter_list;
+  return dst_curves;
 }
 
 static void modify_drawing(const GreasePencilOutlineModifierData &omd,
                            const ModifierEvalContext &ctx,
                            bke::greasepencil::Drawing &drawing)
 {
-  const bke::CurvesGeometry &src_curves = drawing.strokes();
-  if (src_curves.curve_num == 0) {
+  if (drawing.strokes().curve_num == 0) {
     return;
   }
+
+  const int subdivisions = std::max(omd.subdiv, 0);
   /* Selected source curves. */
   IndexMaskMemory curve_mask_memory;
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
-      ctx.object, src_curves, omd.influence, curve_mask_memory);
+      ctx.object, drawing.strokes(), omd.influence, curve_mask_memory);
 
-  //   drawing.strokes_for_write() = create_dashes(pattern_info, src_curves, curves_mask);
+  drawing.strokes_for_write() = create_curves_outline(drawing, curves_mask, subdivisions);
   drawing.tag_topology_changed();
 }
 
@@ -509,7 +379,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
-  auto *omd = static_cast<GreasePencilOutlineModifierData *>(ptr->data);
+  // auto *omd = static_cast<GreasePencilOutlineModifierData *>(ptr->data);
 
   uiLayoutSetPropSep(layout, true);
 
