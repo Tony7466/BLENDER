@@ -224,7 +224,7 @@ void USDCurvesReader::read_curve_sample(Curves *curves_id, const double motionSa
 
     pxr::TfToken widths_interp = curve_prim_.GetWidthsInterpolation();
     if (widths_interp == pxr::UsdGeomTokens->constant) {
-      radii.span.fill(usdWidths[0] / 2);
+      radii.span.fill(usdWidths[0] / 2.0f);
     }
     else {
       const bool is_bezier_vertex_interp = (type == pxr::UsdGeomTokens->cubic &&
@@ -241,7 +241,7 @@ void USDCurvesReader::read_curve_sample(Curves *curves_id, const double motionSa
 
           int cp_offset = 0;
           for (const int cp : IndexRange(point_count)) {
-            radii.span[point_offset + cp] = usdWidths[usd_point_offset + cp_offset] / 2;
+            radii.span[point_offset + cp] = usdWidths[usd_point_offset + cp_offset] / 2.0f;
             cp_offset += 3;
           }
 
