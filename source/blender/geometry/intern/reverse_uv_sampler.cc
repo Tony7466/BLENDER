@@ -22,8 +22,8 @@ namespace blender::geometry {
 struct Row {
   int x_min = 0;
   int x_max = 0;
-  Vector<int> offsets;
-  Vector<int> tri_indices;
+  Array<int> offsets;
+  Array<int> tri_indices;
 };
 
 struct ReverseUVSampler::LookupGrid {
@@ -136,9 +136,10 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
       }
 
       const int x_num = x_max - x_min + 1;
-      row.offsets.resize(x_num + 1, 0);
+      row.offsets.reinitialize(x_num + 1);
       {
         MutableSpan<int> counts = row.offsets;
+        counts.fill(0);
         for (const LocalRowData *local_row : local_rows) {
           for (const TriWithRangeGroup *group = local_row->tris; group; group = group->next) {
             for (const int i : IndexRange(group->filled_num)) {
@@ -152,7 +153,7 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
         offset_indices::accumulate_counts_to_offsets(counts);
       }
       const int tri_indices_num = row.offsets.last();
-      row.tri_indices.resize(tri_indices_num);
+      row.tri_indices.reinitialize(tri_indices_num);
 
       Array<int, 1000> current_offsets(x_num, 0);
       for (const LocalRowData *local_row : local_rows) {
