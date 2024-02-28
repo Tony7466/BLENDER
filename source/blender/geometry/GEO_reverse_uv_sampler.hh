@@ -32,7 +32,6 @@ class ReverseUVSampler {
 
  public:
   ReverseUVSampler(Span<float2> uv_map, Span<int3> corner_tris);
-  ReverseUVSampler(Span<float2> uv_map, Span<int3> corner_tris, const IndexMask &corner_tris_mask);
   ~ReverseUVSampler();
 
   enum class ResultType {

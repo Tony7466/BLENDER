@@ -77,22 +77,16 @@ static Bounds<int2> tri_to_key_bounds(const int3 &tri,
   return {min_key, max_key};
 }
 
-ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map, const Span<int3> corner_tris)
-    : ReverseUVSampler(uv_map, corner_tris, IndexMask(corner_tris.size()))
-{
-}
-
 BLI_NOINLINE static void sort_into_y_buckets(
     const Span<float2> uv_map,
     const Span<int3> corner_tris,
-    const IndexMask &corner_tris_mask,
     const int resolution,
     threading::EnumerableThreadSpecific<LocalData> &data_per_thread)
 {
   // SCOPED_TIMER_AVERAGED("sort into y buckets");
-  corner_tris_mask.foreach_segment(GrainSize(256), [&](const IndexMaskSegment tris) {
+  threading::parallel_for(corner_tris.index_range(), 256, [&](const IndexRange tris_range) {
     LocalData &local_data = data_per_thread.local();
-    for (const int tri_i : tris) {
+    for (const int tri_i : tris_range) {
       const int3 &tri = corner_tris[tri_i];
       const Bounds<int2> key_bounds = tri_to_key_bounds(tri, resolution, uv_map);
       const TriWithRange tri_with_range{tri_i, key_bounds.min.x, key_bounds.max.x};
@@ -181,9 +175,7 @@ BLI_NOINLINE static void fill_rows(const Span<int> all_ys,
   });
 }
 
-ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
-                                   const Span<int3> corner_tris,
-                                   const IndexMask &corner_tris_mask)
+ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map, const Span<int3> corner_tris)
     : uv_map_(uv_map), corner_tris_(corner_tris), lookup_grid_(std::make_unique<LookupGrid>())
 {
   resolution_ = std::max<int>(3, std::sqrt(corner_tris.size()) * 3);
@@ -192,7 +184,7 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map,
   }
 
   threading::EnumerableThreadSpecific<LocalData> data_per_thread;
-  sort_into_y_buckets(uv_map_, corner_tris_, corner_tris_mask, resolution_, data_per_thread);
+  sort_into_y_buckets(uv_map_, corner_tris_, resolution_, data_per_thread);
 
   VectorSet<int> all_ys;
   Vector<const LocalData *> local_data_vec;
