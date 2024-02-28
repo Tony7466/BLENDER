@@ -12,21 +12,41 @@
 
 namespace blender::linear_allocator {
 
+/**
+ * The list is a linked list of segments containing multiple elements. The capacity of each segment
+ * is a template parameter because that removes the need to store it for every segment.
+ */
 template<typename T, int64_t Capacity> struct UnorderedListSegment {
+  /** Pointer to the next segment in the list. */
   UnorderedListSegment *next = nullptr;
+  /**
+   * Number of constructed elements in this segment. The constructed elements are always at the
+   * beginning of the array below.
+   */
   int64_t size = 0;
+  /**
+   * The memory that actually contains the values in the end. The values are constructed and
+   * destructed by higher level code.
+   */
   std::array<TypedBuffer<T>, Capacity> values;
 };
 
 /**
- * This data structure can be used as a replacement of #Vector under some specific circumstances:
- * - The order of elements does not matter.
- * - No random access is necessary, just iteration over all values.
- * - The reallocation of #Vector when its capacity is reached is a bottleneck.
- * - Too large overallocations should be avoided.
- * - A separate #LinearAllocator should provide the memory instead of a global allocator or an
- *   allocator owned by the #UnorderedList.
- * - The `sizeof()` the list should be small.
+ * This is a special purpose container data structure that can be used to efficiently gather many
+ * elements into many (small) lists for later retrieval. Insertion order is *not* maintained.
+ *
+ * To use this data structure, one has to have a separate #LinearAllocator which is passed to the
+ * `append` function. This allows the same allocator to be used by many lists. Passing it into the
+ * append function also removes the need to store the allocator pointer in every list.
+ *
+ * It is an improvement over #Vector because it does not require any reallocations. #VectorList
+ * could also be used to overcome the reallocation issue.
+ *
+ * This data structure is also an improvement over #VectorList because:
+ * - It has a much lower memory footprint when empty.
+ * - Allows using a #LinearAllocator for all allocations, without storing the pointer to it in
+ *   every vector.
+ * - It wastes less memory due to over-allocations.
  */
 template<typename T, int64_t SegmentCapacity = 4> class UnorderedList : NonCopyable {
  private:
@@ -44,6 +64,9 @@ template<typename T, int64_t SegmentCapacity = 4> class UnorderedList : NonCopya
 
   ~UnorderedList()
   {
+    /* This code assumes that the #UnorderedListSegment does not have to be destructed if the
+     * contained type is trivially destructible. */
+    static_assert(std::is_trivially_destructible_v<UnorderedListSegment<int, 4>>);
     if constexpr (!std::is_trivially_destructible_v<T>) {
       for (Segment *segment = current_segment_; segment; segment = segment->next) {
         for (const int64_t i : IndexRange(segment->size)) {
@@ -64,6 +87,10 @@ template<typename T, int64_t SegmentCapacity = 4> class UnorderedList : NonCopya
     return *this;
   }
 
+  /**
+   * Add an element to the list. The insertion order is not maintained. The given allocator is used
+   * to allocate any extra memory that may be needed.
+   */
   void append(LinearAllocator<> &allocator, const T &value)
   {
     this->append_as(allocator, value);
@@ -77,6 +104,7 @@ template<typename T, int64_t SegmentCapacity = 4> class UnorderedList : NonCopya
   template<typename... Args> void append_as(LinearAllocator<> &allocator, Args &&...args)
   {
     if (current_segment_ == nullptr || current_segment_->size == SegmentCapacity) {
+      /* Allocate a new segment if necessary. */
       static_assert(std::is_trivially_destructible_v<Segment>);
       Segment *new_segment = allocator.construct<Segment>().release();
       new_segment->next = current_segment_;
