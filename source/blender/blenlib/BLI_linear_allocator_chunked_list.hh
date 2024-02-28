@@ -16,9 +16,9 @@ namespace blender::linear_allocator {
  * The list is a linked list of segments containing multiple elements. The capacity of each segment
  * is a template parameter because that removes the need to store it for every segment.
  */
-template<typename T, int64_t Capacity> struct UnorderedListSegment {
+template<typename T, int64_t Capacity> struct ChunkedListSegment {
   /** Pointer to the next segment in the list. */
-  UnorderedListSegment *next = nullptr;
+  ChunkedListSegment *next = nullptr;
   /**
    * Number of constructed elements in this segment. The constructed elements are always at the
    * beginning of the array below.
@@ -48,25 +48,25 @@ template<typename T, int64_t Capacity> struct UnorderedListSegment {
  *   every vector.
  * - It wastes less memory due to over-allocations.
  */
-template<typename T, int64_t SegmentCapacity = 4> class UnorderedList : NonCopyable {
+template<typename T, int64_t SegmentCapacity = 4> class ChunkedList : NonCopyable {
  private:
-  using Segment = UnorderedListSegment<T, SegmentCapacity>;
+  using Segment = ChunkedListSegment<T, SegmentCapacity>;
   Segment *current_segment_ = nullptr;
 
  public:
-  UnorderedList() = default;
+  ChunkedList() = default;
 
-  UnorderedList(UnorderedList &&other)
+  ChunkedList(ChunkedList &&other)
   {
     current_segment_ = other.current_segment_;
     other.current_segment_ = nullptr;
   }
 
-  ~UnorderedList()
+  ~ChunkedList()
   {
-    /* This code assumes that the #UnorderedListSegment does not have to be destructed if the
+    /* This code assumes that the #ChunkedListSegment does not have to be destructed if the
      * contained type is trivially destructible. */
-    static_assert(std::is_trivially_destructible_v<UnorderedListSegment<int, 4>>);
+    static_assert(std::is_trivially_destructible_v<ChunkedListSegment<int, 4>>);
     if constexpr (!std::is_trivially_destructible_v<T>) {
       for (Segment *segment = current_segment_; segment; segment = segment->next) {
         for (const int64_t i : IndexRange(segment->size)) {
@@ -77,13 +77,13 @@ template<typename T, int64_t SegmentCapacity = 4> class UnorderedList : NonCopya
     }
   }
 
-  UnorderedList &operator=(UnorderedList &&other)
+  ChunkedList &operator=(ChunkedList &&other)
   {
     if (this == &other) {
       return *this;
     }
     std::destroy_at(this);
-    new (this) UnorderedList(std::move(other));
+    new (this) ChunkedList(std::move(other));
     return *this;
   }
 

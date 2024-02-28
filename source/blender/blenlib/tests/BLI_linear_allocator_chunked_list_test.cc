@@ -6,24 +6,24 @@
 
 #include <iostream>
 
-#include "BLI_linear_allocator_unordered_list.hh"
+#include "BLI_linear_allocator_chunked_list.hh"
 #include "BLI_set.hh"
 
 #include "BLI_strict_flags.h" /* Keep last. */
 
 namespace blender::linear_allocator::tests {
 
-TEST(LinearAllocator_UnorderedList, Append)
+TEST(LinearAllocator_ChunkedList, Append)
 {
   LinearAllocator<> allocator;
-  UnorderedList<std::string> list;
+  ChunkedList<std::string> list;
 
   list.append(allocator, "1");
   list.append(allocator, "2");
   list.append(allocator, "this_is_an_extra_long_string");
 
   Set<std::string> retrieved_values;
-  for (const std::string &value : const_cast<const UnorderedList<std::string> &>(list)) {
+  for (const std::string &value : const_cast<const ChunkedList<std::string> &>(list)) {
     retrieved_values.add(value);
   }
   EXPECT_EQ(retrieved_values.size(), 3);
@@ -32,10 +32,10 @@ TEST(LinearAllocator_UnorderedList, Append)
   EXPECT_TRUE(retrieved_values.contains("this_is_an_extra_long_string"));
 }
 
-TEST(LinearAllocator_UnorderedList, AppendMany)
+TEST(LinearAllocator_ChunkedList, AppendMany)
 {
   LinearAllocator<> allocator;
-  UnorderedList<int> list;
+  ChunkedList<int> list;
 
   for (const int64_t i : IndexRange(10000)) {
     list.append(allocator, int(i));
@@ -49,12 +49,12 @@ TEST(LinearAllocator_UnorderedList, AppendMany)
   EXPECT_EQ(values.size(), 10000);
 }
 
-TEST(LinearAllocator_UnorderedList, Move)
+TEST(LinearAllocator_ChunkedList, Move)
 {
   LinearAllocator<> allocator;
-  UnorderedList<int> a;
+  ChunkedList<int> a;
   a.append(allocator, 1);
-  UnorderedList<int> b = std::move(a);
+  ChunkedList<int> b = std::move(a);
 
   a.append(allocator, 2);
   b.append(allocator, 3);
