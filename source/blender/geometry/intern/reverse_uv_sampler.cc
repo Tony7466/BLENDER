@@ -77,7 +77,7 @@ static Bounds<int2> tri_to_key_bounds(const int3 &tri,
   return {min_key, max_key};
 }
 
-BLI_NOINLINE static void sort_into_y_buckets(
+BLI_NOINLINE static void sort_into_y_rows(
     const Span<float2> uv_map,
     const Span<int3> corner_tris,
     const int resolution,
@@ -185,7 +185,7 @@ ReverseUVSampler::ReverseUVSampler(const Span<float2> uv_map, const Span<int3> c
   }
 
   threading::EnumerableThreadSpecific<LocalData> data_per_thread;
-  sort_into_y_buckets(uv_map_, corner_tris_, resolution_, data_per_thread);
+  sort_into_y_rows(uv_map_, corner_tris_, resolution_, data_per_thread);
 
   VectorSet<int> all_ys;
   Vector<const LocalData *> local_data_vec;
