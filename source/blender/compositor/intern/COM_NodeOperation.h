@@ -569,18 +569,6 @@ class NodeOperation {
   void add_input_socket(DataType datatype, ResizeMode resize_mode = ResizeMode::Center);
   void add_output_socket(DataType datatype);
 
-  /* TODO(manzanilla): to be removed with tiled implementation. */
-  void set_width(unsigned int width)
-  {
-    canvas_.xmax = canvas_.xmin + width;
-    flags_.is_canvas_set = true;
-  }
-  void set_height(unsigned int height)
-  {
-    canvas_.ymax = canvas_.ymin + height;
-    flags_.is_canvas_set = true;
-  }
-
   SocketReader *get_input_socket_reader(unsigned int index);
 
   void deinit_mutex();

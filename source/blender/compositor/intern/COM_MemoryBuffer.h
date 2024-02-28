@@ -479,8 +479,6 @@ class MemoryBuffer {
     y = y + rect_.ymin;
   }
 
-  /* TODO(manzanilla): to be removed with tiled implementation. For applying #MemoryBufferExtend
-   * use #wrap_pixel. */
   inline void read(float *result,
                    int x,
                    int y,
@@ -502,28 +500,6 @@ class MemoryBuffer {
       memcpy(result, buffer, sizeof(float) * num_channels_);
     }
   }
-
-  /* TODO(manzanilla): to be removed with tiled implementation. */
-  inline void read_no_check(float *result,
-                            int x,
-                            int y,
-                            MemoryBufferExtend extend_x = MemoryBufferExtend::Clip,
-                            MemoryBufferExtend extend_y = MemoryBufferExtend::Clip)
-  {
-    int u = x;
-    int v = y;
-
-    this->wrap_pixel(u, v, extend_x, extend_y);
-    const int offset = get_coords_offset(u, v);
-
-    BLI_assert(offset >= 0);
-    BLI_assert(offset < this->buffer_len() * num_channels_);
-    BLI_assert(!(extend_x == MemoryBufferExtend::Clip && (u < rect_.xmin || u >= rect_.xmax)) &&
-               !(extend_y == MemoryBufferExtend::Clip && (v < rect_.ymin || v >= rect_.ymax)));
-    float *buffer = &buffer_[offset];
-    memcpy(result, buffer, sizeof(float) * num_channels_);
-  }
-
   void write_pixel(int x, int y, const float color[4]);
   void add_pixel(int x, int y, const float color[4]);
   inline void read_bilinear(float *result,
