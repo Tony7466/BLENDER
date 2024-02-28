@@ -102,6 +102,57 @@ struct SphericalHarmonicL2 {
   SphericalHarmonicBandL2 L2;
 };
 
+SphericalHarmonicBandL0 spherical_harmonics_band_L0_new()
+{
+  SphericalHarmonicBandL0 L0;
+  L0.M0 = vec4(0.0);
+  return L0;
+}
+
+SphericalHarmonicBandL1 spherical_harmonics_band_L1_new()
+{
+  SphericalHarmonicBandL1 L1;
+  L1.Mn1 = vec4(0.0);
+  L1.M0 = vec4(0.0);
+  L1.Mp1 = vec4(0.0);
+  return L1;
+}
+
+SphericalHarmonicBandL2 spherical_harmonics_band_L2_new()
+{
+  SphericalHarmonicBandL2 L2;
+  L2.Mn2 = vec4(0.0);
+  L2.Mn1 = vec4(0.0);
+  L2.M0 = vec4(0.0);
+  L2.Mp1 = vec4(0.0);
+  L2.Mp2 = vec4(0.0);
+  return L2;
+}
+
+SphericalHarmonicL0 spherical_harmonics_L0_new()
+{
+  SphericalHarmonicL0 sh;
+  sh.L0 = spherical_harmonics_band_L0_new();
+  return sh;
+}
+
+SphericalHarmonicL1 spherical_harmonics_L1_new()
+{
+  SphericalHarmonicL1 sh;
+  sh.L0 = spherical_harmonics_band_L0_new();
+  sh.L1 = spherical_harmonics_band_L1_new();
+  return sh;
+}
+
+SphericalHarmonicL2 spherical_harmonics_L2_new()
+{
+  SphericalHarmonicL2 sh;
+  sh.L0 = spherical_harmonics_band_L0_new();
+  sh.L1 = spherical_harmonics_band_L1_new();
+  sh.L2 = spherical_harmonics_band_L2_new();
+  return sh;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
