@@ -270,7 +270,7 @@ void horizon_scan_eval(vec3 vP,
           context.closure_common.bitmask |= sample_bitmask;
 
           spherical_harmonics_encode_signal_sample(
-              vec3(0.0),
+              vL_front,
               vec4(sample_radiance * facing_weight * weight_bitmask, 1.0),
               context.sh_slice);
         }

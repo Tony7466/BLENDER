@@ -154,10 +154,11 @@ void main()
   vec3 N = center_N;
   vec3 Ng = center_N;
   vec3 V = drw_world_incident_vector(P);
+  vec3 vN = drw_normal_world_to_view(center_N);
 
   /* Evaluate lighting from horizon scan. */
   /* TODO(fclem): Evaluate depending on BSDF. */
-  vec3 radiance = spherical_harmonics_evaluate_lambert(N, accum_sh);
+  vec3 radiance = spherical_harmonics_evaluate_lambert(vN, accum_sh);
 
   /* Fallback to nearest light-probe. */
   LightProbeSample samp = lightprobe_load(P, Ng, V);
