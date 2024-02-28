@@ -99,7 +99,7 @@ static void generate_arc_from_point_to_point(const float3 &from,
                                              const float3 &to,
                                              const float3 &center_pt,
                                              const int subdivisions,
-                                             const int src_index,
+                                             const int src_point_index,
                                              Vector<float3> &r_perimeter,
                                              Vector<int> &r_src_indices)
 {
@@ -126,7 +126,7 @@ static void generate_arc_from_point_to_point(const float3 &from,
   for ([[maybe_unused]] const int i : IndexRange(num_points).drop_back(1)) {
     vec = rotation * vec;
     r_perimeter.append_as(vec);
-    r_src_indices.append(src_index);
+    r_src_indices.append(src_point_index);
   }
 }
 
@@ -135,7 +135,7 @@ static void generate_start_cap(const float3 &point,
                                const float radius,
                                const int subdivisions,
                                const eGPDstroke_Caps cap_type,
-                               const int src_index,
+                               const int src_point_index,
                                Vector<float3> &r_perimeter,
                                Vector<int> &r_src_indices)
 {
@@ -146,7 +146,7 @@ static void generate_start_cap(const float3 &point,
                                        point - normal * radius,
                                        point,
                                        subdivisions,
-                                       src_index,
+                                       src_point_index,
                                        r_perimeter,
                                        r_src_indices);
       break;
@@ -164,7 +164,7 @@ static void generate_end_cap(const float3 &point,
                              const float radius,
                              const int subdivisions,
                              const eGPDstroke_Caps cap_type,
-                             const int src_index,
+                             const int src_point_index,
                              Vector<float3> &r_perimeter,
                              Vector<int> &r_src_indices)
 {
@@ -175,7 +175,7 @@ static void generate_end_cap(const float3 &point,
                                        point + normal * radius,
                                        point,
                                        subdivisions,
-                                       src_index,
+                                       src_point_index,
                                        r_perimeter,
                                        r_src_indices);
       break;
@@ -192,7 +192,7 @@ static void generate_corner(const float3 &pt_a,
                             const float3 &pt_b,
                             const float3 &pt_c,
                             const float radius,
-                            const int src_index,
+                            const int src_point_index,
                             Vector<float3> &r_perimeter,
                             Vector<int> &r_src_indices)
 {
@@ -200,7 +200,7 @@ static void generate_corner(const float3 &pt_a,
   // const float2 tangent_prev = pt_b.xy() - pt_a.xy();
   const float2 normal = {tangent.y, -tangent.x};
   r_perimeter.append(float3(pt_b.xy() + normal * radius));
-  r_src_indices.append(src_index);
+  r_src_indices.append(src_point_index);
   UNUSED_VARS(pt_a);
 }
 
@@ -268,8 +268,10 @@ struct PerimeterData {
   Vector<int> point_counts;
   /* New point coordinates. */
   Vector<float3> positions;
-  /* Original point index. */
-  Vector<int> src_indices;
+  /* Source curve index. */
+  Vector<int> curve_indices;
+  /* Source point index. */
+  Vector<int> point_indices;
 };
 
 static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &drawing,
@@ -303,14 +305,18 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
                               eGPDstroke_Caps(src_end_caps[curve_i]),
                               normal_offset,
                               data.positions,
-                              data.src_indices);
-    data.point_counts.append(data.positions.size() - prev_point_num);
+                              data.point_indices);
+    if (data.positions.size() > prev_point_num) {
+      data.point_counts.append(data.positions.size() - prev_point_num);
+      data.curve_indices.append(curve_i);
+    }
   });
 
   int dst_curve_num = 0;
   int dst_point_num = 0;
   for (const PerimeterData &data : thread_data) {
-    BLI_assert(data.positions.size() == data.src_indices.size());
+    BLI_assert(data.point_counts.size() == data.curve_indices.size());
+    BLI_assert(data.positions.size() == data.point_indices.size());
     dst_curve_num += data.point_counts.size();
     dst_point_num += data.positions.size();
   }
@@ -321,12 +327,36 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
       "cyclic", bke::AttrDomain::Curve);
   bke::SpanAttributeWriter<float> dst_radius = dst_attributes.lookup_or_add_for_write_span<float>(
       "radius", bke::AttrDomain::Point);
+  const MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
+  const MutableSpan<float3> dst_positions = dst_curves.positions_for_write();
+  /* Source indices for attribute mapping. */
+  Array<int> dst_curve_map(dst_curve_num);
+  Array<int> dst_point_map(dst_point_num);
 
+  IndexRange curves;
+  IndexRange points;
   for (const PerimeterData &data : thread_data) {
-    BLI_assert(data.positions.size() == data.src_indices.size());
-    dst_curve_num += data.point_counts.size();
-    dst_point_num += data.positions.size();
+    curves = curves.after(data.point_counts.size());
+    points = points.after(data.positions.size());
+
+    /* Append curve data. */
+    dst_curve_map.as_mutable_span().slice(curves).copy_from(data.curve_indices);
+    /* Curve offsets are accumulated below. */
+    dst_offsets.slice(curves).copy_from(data.point_counts);
+    /* Append point data. */
+    dst_positions.slice(points).copy_from(data.positions);
+    dst_point_map.as_mutable_span().slice(points).copy_from(data.point_indices);
   }
+  offset_indices::accumulate_counts_to_offsets(dst_curves.offsets_for_write());
+
+  bke::gather_attributes(
+      src_attributes, bke::AttrDomain::Point, {}, {"radius"}, dst_point_map, dst_attributes);
+  bke::gather_attributes(
+      src_attributes, bke::AttrDomain::Curve, {}, {"cyclic"}, dst_curve_map, dst_attributes);
+
+  dst_cyclic.finish();
+  dst_radius.finish();
+  dst_curves.update_curve_types();
 
   return dst_curves;
 }
