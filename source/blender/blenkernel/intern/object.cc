@@ -3389,7 +3389,7 @@ void BKE_object_where_is_calc(Depsgraph *depsgraph, Scene *scene, Object *ob)
   object_where_is_calc_ex(depsgraph, scene, ob, ctime, nullptr, nullptr);
 }
 
-blender::float4x4 BKE_object_workob_calc_parent(Depsgraph *depsgraph, Scene *scene, Object *ob)
+blender::float4x4 BKE_object_calc_parent(Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
   blender::bke::ObjectRuntime workob_runtime;
   Object workob;

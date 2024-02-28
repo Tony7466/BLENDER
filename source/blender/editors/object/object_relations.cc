@@ -263,14 +263,14 @@ static int vertex_parent_set_exec(bContext *C, wmOperator *op)
           ob->par3 = par3;
 
           /* inverse parent matrix */
-          invert_m4_m4(ob->parentinv, BKE_object_workob_calc_parent(depsgraph, scene, ob).ptr());
+          invert_m4_m4(ob->parentinv, BKE_object_calc_parent(depsgraph, scene, ob).ptr());
         }
         else {
           ob->partype = PARVERT1;
           ob->par1 = par1;
 
           /* inverse parent matrix */
-          invert_m4_m4(ob->parentinv, BKE_object_workob_calc_parent(depsgraph, scene, ob).ptr());
+          invert_m4_m4(ob->parentinv, BKE_object_calc_parent(depsgraph, scene, ob).ptr());
         }
       }
     }
@@ -723,7 +723,7 @@ bool ED_object_parent_set(ReportList *reports,
     /* get corrected inverse */
     ob->partype = PAROBJECT;
 
-    invert_m4_m4(ob->parentinv, BKE_object_workob_calc_parent(depsgraph, scene, ob).ptr());
+    invert_m4_m4(ob->parentinv, BKE_object_calc_parent(depsgraph, scene, ob).ptr());
   }
   else if (is_armature_parent && (ob->type == OB_GPENCIL_LEGACY) && (par->type == OB_ARMATURE)) {
     if (partype == PAR_ARMATURE) {
@@ -740,7 +740,7 @@ bool ED_object_parent_set(ReportList *reports,
     /* get corrected inverse */
     ob->partype = PAROBJECT;
 
-    invert_m4_m4(ob->parentinv, BKE_object_workob_calc_parent(depsgraph, scene, ob).ptr());
+    invert_m4_m4(ob->parentinv, BKE_object_calc_parent(depsgraph, scene, ob).ptr());
   }
   else if ((ob->type == OB_GPENCIL_LEGACY) && (par->type == OB_LATTICE)) {
     /* Add Lattice modifier */
@@ -750,11 +750,11 @@ bool ED_object_parent_set(ReportList *reports,
     /* get corrected inverse */
     ob->partype = PAROBJECT;
 
-    invert_m4_m4(ob->parentinv, BKE_object_workob_calc_parent(depsgraph, scene, ob).ptr());
+    invert_m4_m4(ob->parentinv, BKE_object_calc_parent(depsgraph, scene, ob).ptr());
   }
   else {
     /* calculate inverse parent matrix */
-    invert_m4_m4(ob->parentinv, BKE_object_workob_calc_parent(depsgraph, scene, ob).ptr());
+    invert_m4_m4(ob->parentinv, BKE_object_calc_parent(depsgraph, scene, ob).ptr());
   }
 
   DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);

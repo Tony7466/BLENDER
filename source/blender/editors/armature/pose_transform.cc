@@ -95,7 +95,7 @@ static void applyarmature_fix_boneparents(const bContext *C, Scene *scene, Objec
        */
       BKE_object_apply_mat4(ob, ob->object_to_world().ptr(), false, false);
 
-      invert_m4_m4(ob->parentinv, BKE_object_workob_calc_parent(depsgraph, scene, ob).ptr());
+      invert_m4_m4(ob->parentinv, BKE_object_calc_parent(depsgraph, scene, ob).ptr());
     }
   }
 }

@@ -58,7 +58,7 @@ void BKE_object_workob_clear(Object *workob);
  *
  * \return calculated object_to_world.
  */
-blender::float4x4 BKE_object_workob_calc_parent(Depsgraph *depsgraph, Scene *scene, Object *ob);
+blender::float4x4 BKE_object_calc_parent(Depsgraph *depsgraph, Scene *scene, Object *ob);
 
 void BKE_object_transform_copy(Object *ob_tar, const Object *ob_src);
 void BKE_object_copy_softbody(Object *ob_dst, const Object *ob_src, int flag);
