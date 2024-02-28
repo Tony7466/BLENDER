@@ -75,7 +75,7 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
 
 static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphContext *ctx)
 {
-  auto *mmd = reinterpret_cast<GreasePencilArrayModifierData *>(md);
+  auto *mmd = reinterpret_cast<GreasePencilBuildModifierData *>(md);
   if (mmd->object != nullptr) {
     DEG_add_object_relation(ctx->node, mmd->object, DEG_OB_COMP_TRANSFORM, "Build Modifier");
   }
@@ -102,6 +102,7 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
                                               const int time_alignment,
                                               const int transition,
                                               const float factor,
+                                              const bool clamp_points,
                                               int &r_curves_num,
                                               int &r_points_num)
 {
@@ -115,7 +116,9 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
     max_length = math::max(max_length, len);
   }
 
-  r_curves_num = r_points_num = 0;
+  if (clamp_points) {
+    r_curves_num = r_points_num = 0;
+  }
   const float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
                                    math::clamp(factor, 0.0f, 1.0f) :
                                    math::clamp(1.0f - factor, 0.0f, 1.0f);
@@ -123,12 +126,18 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
   auto get_stroke_factor = [&](const float factor, const int index) {
     const float max_factor = max_length / curves.evaluated_lengths_for_curve(index, false).last();
     if (time_alignment == MOD_GREASE_PENCIL_BUILD_TIMEALIGN_START) {
-      return std::clamp(factor * max_factor, 0.0f, 1.0f);
+      if (clamp_points) {
+        return std::clamp(factor * max_factor, 0.0f, 1.0f);
+      }
+      return factor * max_factor;
     }
     /* Else: (#MOD_GREASE_PENCIL_BUILD_TIMEALIGN_END). */
     const float min_factor = max_factor - 1.0f;
     const float use_factor = factor * max_factor;
-    return std::clamp(use_factor - min_factor, 0.0f, 1.0f);
+    if (clamp_points) {
+      return std::clamp(use_factor - min_factor, 0.0f, 1.0f);
+    }
+    return use_factor - min_factor;
   };
 
   Array<bool> select(stroke_count);
@@ -138,61 +147,110 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
     const float local_factor = (select[i] ? get_stroke_factor(factor_to_keep, i) : 1.0f);
     const int points = points_by_curve[i].size() * local_factor;
     result[i] = points;
-    r_points_num += points;
-    if (points) {
-      r_curves_num++;
+    if (clamp_points) {
+      r_points_num += points;
+      if (points) {
+        r_curves_num++;
+      }
     }
   }
   return result;
 }
 
-static bke::CurvesGeometry build_concurrent(const bke::CurvesGeometry &curves,
+static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
+                                            bke::CurvesGeometry &curves,
                                             const IndexMask &selection,
                                             const int time_alignment,
                                             const int transition,
-                                            const float factor)
+                                            const float factor,
+                                            const float factor_start,
+                                            const float factor_opacity,
+                                            const float factor_radii,
+                                            StringRefNull target_vgname)
 {
   int dst_curves_num, dst_points_num;
-  Array<int> points_per_curve = points_per_curve_concurrent(
-      curves, selection, time_alignment, transition, factor, dst_curves_num, dst_points_num);
+  const bool has_fade = factor_start != factor;
+  const Array<int> points_per_curve = points_per_curve_concurrent(
+      curves, selection, time_alignment, transition, factor, true, dst_curves_num, dst_points_num);
   if (dst_curves_num == 0) {
     return {};
   }
+  const Array<int> starts_per_curve = has_fade ? points_per_curve_concurrent(curves,
+                                                                             selection,
+                                                                             time_alignment,
+                                                                             transition,
+                                                                             factor_start,
+                                                                             false,
+                                                                             dst_curves_num,
+                                                                             dst_points_num) :
+                                                 Array<int>(0);
+  const Array<int> ends_per_curve = has_fade ? points_per_curve_concurrent(curves,
+                                                                           selection,
+                                                                           time_alignment,
+                                                                           transition,
+                                                                           factor,
+                                                                           false,
+                                                                           dst_curves_num,
+                                                                           dst_points_num) :
+                                               Array<int>(0);
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  MutableSpan<float> opacities = drawing.opacities_for_write();
+  MutableSpan<float> radii = drawing.radii_for_write();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::SpanAttributeWriter<float> weights = attributes.lookup_for_write_span<float>(target_vgname);
 
   const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
 
   bke::CurvesGeometry dst_curves(dst_points_num, dst_curves_num);
   Array<int> dst_offsets(dst_curves_num + 1);
   Array<int> dst_to_src_point(dst_points_num);
-
   dst_offsets[0] = 0;
+
   int next_curve = 0, next_point = 0;
   for (const int i : IndexRange(curves.curves_num())) {
     if (points_per_curve[i]) {
       dst_offsets[next_curve] = points_per_curve[i];
+
+      auto get_fade_weight = [&](const int local_index) {
+        return std::clamp(float(local_index - starts_per_curve[i]) /
+                              float(abs(ends_per_curve[i] - starts_per_curve[i])),
+                          0.0f,
+                          1.0f);
+      };
 
       const int extra_offset = is_vanishing ? points_by_curve[i].size() - points_per_curve[i] : 0;
       for (const int stroke_point : IndexRange(points_per_curve[i])) {
         if (stroke_point >= points_per_curve[i]) {
           break;
         }
-        dst_to_src_point[next_point] = points_by_curve[i].first() + extra_offset + stroke_point;
+        const int src_point_index = points_by_curve[i].first() + extra_offset + stroke_point;
+        if (has_fade) {
+          const float fade_weight = get_fade_weight(stroke_point);
+          opacities[src_point_index] = opacities[src_point_index] *
+                                       (1.0f - fade_weight * factor_opacity);
+          radii[src_point_index] = radii[src_point_index] * (1.0f - fade_weight * factor_radii);
+          if (!weights.span.is_empty()) {
+            weights.span[src_point_index] = fade_weight;
+          }
+        }
+        dst_to_src_point[next_point] = src_point_index;
         next_point++;
       }
 
       next_curve++;
     }
   }
+  weights.finish();
 
   offset_indices::accumulate_counts_to_offsets(dst_offsets);
   array_utils::copy(dst_offsets.as_span(), dst_curves.offsets_for_write());
 
-  const bke::AttributeAccessor attributes = curves.attributes();
+  const bke::AttributeAccessor src_attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
-  gather_attributes(attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
+  gather_attributes(
+      src_attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
 
   return dst_curves;
 }
@@ -351,13 +409,14 @@ static float get_build_factor(const int time_mode,
                               const int current_frame,
                               const int start_frame,
                               const int length,
-                              const float percentage)
+                              const float percentage,
+                              const float fade)
 {
   switch (time_mode) {
     case MOD_GREASE_PENCIL_BUILD_TIMEMODE_FRAMES:
-      return math::clamp(float(current_frame - start_frame) / length, 0.0f, 1.0f);
+      return math::clamp(float(current_frame - start_frame) / length, 0.0f, 1.0f) * (1.0f + fade);
     case MOD_GREASE_PENCIL_BUILD_TIMEMODE_PERCENTAGE:
-      return percentage;
+      return percentage * (1.0f + fade);
     default:
       // TODO: Find a way to implement MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED...
       return 0;
@@ -389,8 +448,10 @@ static void deform_drawing(const ModifierData &md,
     selection = IndexMask::from_bools(reordered_select, memory);
   }
 
+  const float fade_factor = ((mmd.flag & MOD_GREASE_PENCIL_BUILD_USE_FADING) != 0) ? mmd.fade_fac :
+                                                                                     0.0f;
   const float factor = get_build_factor(
-      mmd.time_mode, current_time, mmd.start_delay, mmd.length, mmd.percentage_fac);
+      mmd.time_mode, current_time, mmd.start_delay, mmd.length, mmd.percentage_fac, fade_factor);
 
   switch (mmd.mode) {
     default:
@@ -398,7 +459,16 @@ static void deform_drawing(const ModifierData &md,
       curves = build_sequential(curves, selection, mmd.transition, factor);
       break;
     case MOD_GREASE_PENCIL_BUILD_MODE_CONCURRENT:
-      curves = build_concurrent(curves, selection, mmd.time_alignment, mmd.transition, factor);
+      curves = build_concurrent(drawing,
+                                curves,
+                                selection,
+                                mmd.time_alignment,
+                                mmd.transition,
+                                factor,
+                                factor - fade_factor,
+                                mmd.fade_opacity_strength,
+                                mmd.fade_thickness_strength,
+                                mmd.target_vgname);
       break;
     case MOD_GREASE_PENCIL_BUILD_MODE_ADDITIVE:
       // Todo: I'm not sure what this mode means, looks like the same to me.
