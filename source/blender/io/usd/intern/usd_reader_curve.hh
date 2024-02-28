@@ -10,15 +10,17 @@
 
 #include <pxr/usd/usdGeom/basisCurves.h>
 
-struct Curve;
-struct Mesh;
+struct Curves;
+namespace blender::bke {
+struct GeometrySet;
+}
 
 namespace blender::io::usd {
 
 class USDCurvesReader : public USDGeomReader {
  protected:
   pxr::UsdGeomBasisCurves curve_prim_;
-  Curve *curve_;
+  Curves *curve_;
 
  public:
   USDCurvesReader(const pxr::UsdPrim &prim,
@@ -36,11 +38,11 @@ class USDCurvesReader : public USDGeomReader {
   void create_object(Main *bmain, double motionSampleTime) override;
   void read_object_data(Main *bmain, double motionSampleTime) override;
 
-  void read_curve_sample(Curve *cu, double motionSampleTime);
+  void read_curve_sample(Curves *curves_id, double motionSampleTime);
 
-  Mesh *read_mesh(struct Mesh *existing_mesh,
-                  USDMeshReadParams params,
-                  const char **err_str) override;
+  void read_geometry(bke::GeometrySet &geometry_set,
+                     USDMeshReadParams params,
+                     const char **err_str) override;
 };
 
 }  // namespace blender::io::usd
