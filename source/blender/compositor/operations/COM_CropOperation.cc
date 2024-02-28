@@ -61,16 +61,6 @@ CropOperation::CropOperation() : CropBaseOperation()
   /* pass */
 }
 
-void CropOperation::execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler)
-{
-  if ((x < xmax_ && x >= xmin_) && (y < ymax_ && y >= ymin_)) {
-    input_operation_->read_sampled(output, x, y, sampler);
-  }
-  else {
-    zero_v4(output);
-  }
-}
-
 void CropOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                  const rcti &area,
                                                  Span<MemoryBuffer *> inputs)
@@ -108,19 +98,6 @@ void CropImageOperation::determine_canvas(const rcti &preferred_area, rcti &r_ar
   update_area();
   r_area.xmax = r_area.xmin + (xmax_ - xmin_);
   r_area.ymax = r_area.ymin + (ymax_ - ymin_);
-}
-
-void CropImageOperation::execute_pixel_sampled(float output[4],
-                                               float x,
-                                               float y,
-                                               PixelSampler sampler)
-{
-  if (x >= 0 && x < get_width() && y >= 0 && y < get_height()) {
-    input_operation_->read_sampled(output, (x + xmin_), (y + ymin_), sampler);
-  }
-  else {
-    zero_v4(output);
-  }
 }
 
 void CropImageOperation::update_memory_buffer_partial(MemoryBuffer *output,

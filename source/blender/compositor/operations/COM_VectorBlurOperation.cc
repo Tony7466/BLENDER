@@ -50,13 +50,6 @@ void VectorBlurOperation::init_execution()
   QualityStepHelper::init_execution(COM_QH_INCREASE);
 }
 
-void VectorBlurOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  float *buffer = (float *)data;
-  int index = (y * this->get_width() + x) * COM_DATA_TYPE_COLOR_CHANNELS;
-  copy_v4_v4(output, &buffer[index]);
-}
-
 void VectorBlurOperation::deinit_execution()
 {
   deinit_mutex();

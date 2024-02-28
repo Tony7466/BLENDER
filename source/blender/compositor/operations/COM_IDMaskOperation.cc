@@ -14,15 +14,6 @@ IDMaskOperation::IDMaskOperation()
   flags_.can_be_constant = true;
 }
 
-void IDMaskOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  MemoryBuffer *input_buffer = (MemoryBuffer *)data;
-  const int buffer_width = input_buffer->get_width();
-  float *buffer = input_buffer->get_buffer();
-  int buffer_index = (y * buffer_width + x);
-  output[0] = (roundf(buffer[buffer_index]) == object_index_) ? 1.0f : 0.0f;
-}
-
 void IDMaskOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                    const rcti &area,
                                                    Span<MemoryBuffer *> inputs)

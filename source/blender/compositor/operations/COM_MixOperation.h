@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -58,11 +58,6 @@ class MixBaseOperation : public MultiThreadedOperation {
   MixBaseOperation();
 
   /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
-  /**
    * Initialize the execution
    */
   void init_execution() override;
@@ -96,161 +91,101 @@ class MixBaseOperation : public MultiThreadedOperation {
 };
 
 class MixAddOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixBlendOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixColorBurnOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixColorOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixDarkenOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixDifferenceOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixExclusionOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixDivideOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixDodgeOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixGlareOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixHueOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixLightenOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixLinearLightOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixMultiplyOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixOverlayOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixSaturationOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixScreenOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixSoftLightOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixSubtractOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };
 
 class MixValueOperation : public MixBaseOperation {
- public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
  protected:
   void update_memory_buffer_row(PixelCursor &p) override;
 };

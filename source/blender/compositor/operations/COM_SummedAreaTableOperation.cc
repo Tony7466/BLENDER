@@ -83,52 +83,6 @@ SummedAreaTableOperation::eMode SummedAreaTableOperation::get_mode()
   return mode_;
 }
 
-float4 summed_area_table_sum_tiled(SocketReader *buffer, const rcti &area)
-{
-  /*
-   * a, b, c and d are the bounding box of the given area. They are defined as follows:
-   *
-   *     y
-   *     ▲
-   *     │
-   *     ├──────x───────x
-   *     │      │c     d│
-   *     ├──────x───────x
-   *     │      │a     b│
-   *     └──────┴───────┴──────► x
-   *
-   * Note: this is the same definition as in https://en.wikipedia.org/wiki/Summed-area_table
-   * but using the blender convention with the origin being at the lower left.
-   */
-
-  BLI_assert(area.xmin <= area.xmax && area.ymin <= area.ymax);
-
-  int2 lower_bound(area.xmin, area.ymin);
-  int2 upper_bound(area.xmax, area.ymax);
-
-  int2 corrected_lower_bound = lower_bound - int2(1, 1);
-  int2 corrected_upper_bound;
-  corrected_upper_bound[0] = math::min(int(buffer->get_width()) - 1, upper_bound[0]);
-  corrected_upper_bound[1] = math::min(int(buffer->get_height()) - 1, upper_bound[1]);
-
-  float4 a, b, c, d, addend, substrahend;
-  buffer->read_sampled(
-      &a.x, corrected_upper_bound[0], corrected_upper_bound[1], PixelSampler::Nearest);
-  buffer->read_sampled(
-      &d.x, corrected_lower_bound[0], corrected_lower_bound[1], PixelSampler::Nearest);
-  addend = a + d;
-
-  buffer->read_sampled(
-      &b.x, corrected_lower_bound[0], corrected_upper_bound[1], PixelSampler::Nearest);
-  buffer->read_sampled(
-      &c.x, corrected_upper_bound[0], corrected_lower_bound[1], PixelSampler::Nearest);
-  substrahend = b + c;
-
-  float4 sum = addend - substrahend;
-
-  return sum;
-}
-
 float4 summed_area_table_sum(MemoryBuffer *buffer, const rcti &area)
 {
   /*

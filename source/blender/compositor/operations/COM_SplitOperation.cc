@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -28,22 +28,6 @@ void SplitOperation::deinit_execution()
 {
   image1Input_ = nullptr;
   image2Input_ = nullptr;
-}
-
-void SplitOperation::execute_pixel_sampled(float output[4],
-                                           float x,
-                                           float y,
-                                           PixelSampler /*sampler*/)
-{
-  int perc = x_split_ ? split_percentage_ * this->get_width() / 100.0f :
-                        split_percentage_ * this->get_height() / 100.0f;
-  bool image1 = x_split_ ? x >= perc : y >= perc;
-  if (image1) {
-    image1Input_->read_sampled(output, x, y, PixelSampler::Nearest);
-  }
-  else {
-    image2Input_->read_sampled(output, x, y, PixelSampler::Nearest);
-  }
 }
 
 void SplitOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)

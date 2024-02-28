@@ -38,50 +38,6 @@ void MapUVOperation::init_execution()
   inputUVProgram_ = this->get_input_socket_reader(1);
 }
 
-void MapUVOperation::execute_pixel_sampled(float output[4],
-                                           float x,
-                                           float y,
-                                           PixelSampler /*sampler*/)
-{
-  float xy[2] = {x, y};
-  float uv[2], deriv[2][2], alpha;
-
-  pixel_transform(xy, uv, deriv, alpha);
-  if (alpha == 0.0f) {
-    zero_v4(output);
-    return;
-  }
-
-  if (nearest_neighbour_) {
-    input_color_program_->read_sampled(output, uv[0], uv[1], PixelSampler::Nearest);
-  }
-  else {
-    /* EWA filtering */
-    input_color_program_->read_filtered(output, uv[0], uv[1], deriv[0], deriv[1]);
-
-    /* UV to alpha threshold */
-    const float threshold = alpha_ * 0.05f;
-    /* XXX alpha threshold is used to fade out pixels on boundaries with invalid derivatives.
-     * this calculation is not very well defined, should be looked into if it becomes a problem ...
-     */
-    float du = len_v2(deriv[0]);
-    float dv = len_v2(deriv[1]);
-    float factor = 1.0f - threshold * (du / input_color_program_->get_width() +
-                                       dv / input_color_program_->get_height());
-    if (factor < 0.0f) {
-      alpha = 0.0f;
-    }
-    else {
-      alpha *= factor;
-    }
-  }
-
-  /* "premul" */
-  if (alpha < 1.0f) {
-    mul_v4_fl(output, alpha);
-  }
-}
-
 bool MapUVOperation::read_uv(float x, float y, float &r_u, float &r_v, float &r_alpha)
 {
   if (x < 0.0f || x >= uv_width_ || y < 0.0f || y >= uv_height_) {

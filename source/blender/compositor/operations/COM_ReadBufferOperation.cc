@@ -26,30 +26,6 @@ void ReadBufferOperation::determine_canvas(const rcti &preferred_area, rcti &r_a
     single_value_ = operation->is_single_value();
   }
 }
-void ReadBufferOperation::execute_pixel_sampled(float output[4],
-                                                float x,
-                                                float y,
-                                                PixelSampler sampler)
-{
-  if (single_value_) {
-    /* write buffer has a single value stored at (0,0) */
-    buffer_->read(output, 0, 0);
-  }
-  else {
-    switch (sampler) {
-      case PixelSampler::Nearest:
-        buffer_->read(output, x, y);
-        break;
-      case PixelSampler::Bilinear:
-      default:
-        buffer_->read_bilinear(output, x, y);
-        break;
-      case PixelSampler::Bicubic:
-        buffer_->read_bilinear(output, x, y);
-        break;
-    }
-  }
-}
 
 void ReadBufferOperation::execute_pixel_extend(float output[4],
                                                float x,

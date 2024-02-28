@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -83,51 +83,6 @@ void RenderLayersProg::do_interpolation(float output[4], float x, float y, Pixel
     case PixelSampler::Bicubic:
       math::interpolate_cubic_bspline_fl(input_buffer_, output, width, height, elementsize_, x, y);
       break;
-  }
-}
-
-void RenderLayersProg::execute_pixel_sampled(float output[4],
-                                             float x,
-                                             float y,
-                                             PixelSampler sampler)
-{
-#ifndef NDEBUG
-  {
-    const DataType data_type = this->get_output_socket()->get_data_type();
-    int actual_element_size = elementsize_;
-    int expected_element_size;
-    if (data_type == DataType::Value) {
-      expected_element_size = 1;
-    }
-    else if (data_type == DataType::Vector) {
-      expected_element_size = 3;
-    }
-    else if (data_type == DataType::Color) {
-      expected_element_size = 4;
-    }
-    else {
-      expected_element_size = 0;
-      BLI_assert_msg(0, "Something horribly wrong just happened");
-    }
-    BLI_assert(expected_element_size == actual_element_size);
-  }
-#endif
-
-  if (input_buffer_ == nullptr) {
-    int elemsize = elementsize_;
-    if (elemsize == 1) {
-      output[0] = 0.0f;
-    }
-    else if (elemsize == 3) {
-      zero_v3(output);
-    }
-    else {
-      BLI_assert(elemsize == 4);
-      zero_v4(output);
-    }
-  }
-  else {
-    do_interpolation(output, x, y, sampler);
   }
 }
 
@@ -220,21 +175,6 @@ void RenderLayersProg::update_memory_buffer_partial(MemoryBuffer *output,
 
 /* ******** Render Layers AO Operation ******** */
 
-void RenderLayersAOOperation::execute_pixel_sampled(float output[4],
-                                                    float x,
-                                                    float y,
-                                                    PixelSampler sampler)
-{
-  float *input_buffer = this->get_input_buffer();
-  if (input_buffer == nullptr) {
-    zero_v3(output);
-  }
-  else {
-    do_interpolation(output, x, y, sampler);
-  }
-  output[3] = 1.0f;
-}
-
 void RenderLayersAOOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                            const rcti &area,
                                                            Span<MemoryBuffer *> /*inputs*/)
@@ -252,23 +192,6 @@ void RenderLayersAOOperation::update_memory_buffer_partial(MemoryBuffer *output,
 
 /* ******** Render Layers Alpha Operation ******** */
 
-void RenderLayersAlphaProg::execute_pixel_sampled(float output[4],
-                                                  float x,
-                                                  float y,
-                                                  PixelSampler sampler)
-{
-  float *input_buffer = this->get_input_buffer();
-
-  if (input_buffer == nullptr) {
-    output[0] = 0.0f;
-  }
-  else {
-    float temp[4];
-    do_interpolation(temp, x, y, sampler);
-    output[0] = temp[3];
-  }
-}
-
 void RenderLayersAlphaProg::update_memory_buffer_partial(MemoryBuffer *output,
                                                          const rcti &area,
                                                          Span<MemoryBuffer *> /*inputs*/)
@@ -284,26 +207,6 @@ void RenderLayersAlphaProg::update_memory_buffer_partial(MemoryBuffer *output,
 }
 
 /* ******** Render Layers Depth Operation ******** */
-
-void RenderLayersDepthProg::execute_pixel_sampled(float output[4],
-                                                  float x,
-                                                  float y,
-                                                  PixelSampler /*sampler*/)
-{
-  int ix = x;
-  int iy = y;
-  float *input_buffer = this->get_input_buffer();
-
-  if (input_buffer == nullptr || ix < 0 || iy < 0 || ix >= int(this->get_width()) ||
-      iy >= int(this->get_height()))
-  {
-    output[0] = 10e10f;
-  }
-  else {
-    uint offset = (iy * this->get_width() + ix);
-    output[0] = input_buffer[offset];
-  }
-}
 
 void RenderLayersDepthProg::update_memory_buffer_partial(MemoryBuffer *output,
                                                          const rcti &area,

@@ -37,8 +37,6 @@ class InpaintSimpleOperation : public NodeOperation {
 
   void inpaint(const MemoryBuffer *input, MemoryBuffer *output);
 
-  void execute_pixel(float output[4], int x, int y, void *data) override;
-
   void init_execution() override;
 
   void deinit_execution() override;

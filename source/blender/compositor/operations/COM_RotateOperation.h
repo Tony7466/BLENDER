@@ -57,7 +57,6 @@ class RotateOperation : public MultiThreadedOperation {
                                   float cosine,
                                   rcti &r_canvas);
 
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
   void init_data() override;
   void init_execution() override;
   void deinit_execution() override;

@@ -27,7 +27,6 @@ class WriteBufferOperation : public NodeOperation {
   {
     return memory_proxy_;
   }
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
   bool is_single_value() const
   {
     return single_value_;

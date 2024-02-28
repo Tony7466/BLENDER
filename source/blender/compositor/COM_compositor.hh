@@ -136,9 +136,6 @@ struct Render;
  * The OutputOperation of the ExecutionGroup is called to execute the area of the output-buffer.
  *
  * \see CPUDevice.execute
- *
- * \section execute_pixel executing a pixel
- * Finally the last step, the node functionality :)
  */
 
 /**

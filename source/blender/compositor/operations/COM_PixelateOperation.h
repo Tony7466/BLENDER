@@ -46,15 +46,6 @@ class PixelateOperation : public MultiThreadedOperation {
    */
   void deinit_execution() override;
 
-  /**
-   * \brief execute_pixel
-   * \param output: result
-   * \param x: x-coordinate
-   * \param y: y-coordinate
-   * \param sampler: sampler
-   */
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

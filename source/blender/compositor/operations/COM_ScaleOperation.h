@@ -103,7 +103,6 @@ class ScaleRelativeOperation : public ScaleOperation {
  public:
   ScaleRelativeOperation();
   ScaleRelativeOperation(DataType data_type);
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
 
   float get_relative_scale_x_factor(float /*width*/) override
   {
@@ -118,8 +117,6 @@ class ScaleRelativeOperation : public ScaleOperation {
 
 class ScaleAbsoluteOperation : public ScaleOperation {
  public:
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
   float get_relative_scale_x_factor(float width) override
   {
     return 1.0f / width;
@@ -151,7 +148,6 @@ class ScaleFixedSizeOperation : public BaseScaleOperation {
   /** Absolute fixed size. */
   ScaleFixedSizeOperation();
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
 
   void init_execution() override;
   void deinit_execution() override;

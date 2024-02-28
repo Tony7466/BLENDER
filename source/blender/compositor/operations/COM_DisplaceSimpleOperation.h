@@ -25,11 +25,6 @@ class DisplaceSimpleOperation : public MultiThreadedOperation {
   DisplaceSimpleOperation();
 
   /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
-  /**
    * Initialize the execution
    */
   void init_execution() override;

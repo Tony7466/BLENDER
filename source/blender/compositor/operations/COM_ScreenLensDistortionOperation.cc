@@ -125,44 +125,6 @@ void ScreenLensDistortionOperation::accumulate(const MemoryBuffer *buffer,
   }
 }
 
-void ScreenLensDistortionOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  MemoryBuffer *buffer = (MemoryBuffer *)data;
-  float xy[2] = {float(x), float(y)};
-  float uv[2];
-  get_uv(xy, uv);
-  float uv_dot = len_squared_v2(uv);
-
-  int count[3] = {0, 0, 0};
-  float delta[3][2];
-  float sum[4] = {0, 0, 0, 0};
-
-  bool valid_r = get_delta(uv_dot, k4_[0], uv, delta[0]);
-  bool valid_g = get_delta(uv_dot, k4_[1], uv, delta[1]);
-  bool valid_b = get_delta(uv_dot, k4_[2], uv, delta[2]);
-
-  if (valid_r && valid_g && valid_b) {
-    accumulate(buffer, 0, 1, uv_dot, uv, delta, sum, count);
-    accumulate(buffer, 1, 2, uv_dot, uv, delta, sum, count);
-
-    if (count[0]) {
-      output[0] = 2.0f * sum[0] / float(count[0]);
-    }
-    if (count[1]) {
-      output[1] = 2.0f * sum[1] / float(count[1]);
-    }
-    if (count[2]) {
-      output[2] = 2.0f * sum[2] / float(count[2]);
-    }
-
-    /* set alpha */
-    output[3] = 1.0f;
-  }
-  else {
-    zero_v4(output);
-  }
-}
-
 void ScreenLensDistortionOperation::deinit_execution()
 {
   this->deinit_mutex();

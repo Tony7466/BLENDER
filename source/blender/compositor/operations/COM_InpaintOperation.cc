@@ -167,11 +167,6 @@ void InpaintSimpleOperation::init_execution()
   this->init_mutex();
 }
 
-void InpaintSimpleOperation::execute_pixel(float output[4], int x, int y, void * /*data*/)
-{
-  copy_v4_v4(output, cached_buffer_->get_elem(x, y));
-}
-
 void InpaintSimpleOperation::deinit_execution()
 {
   input_image_program_ = nullptr;

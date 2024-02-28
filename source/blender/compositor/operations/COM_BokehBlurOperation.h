@@ -26,11 +26,6 @@ class BokehBlurOperation : public MultiThreadedOperation, public QualityStepHelp
   void init_data() override;
 
   /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
-
-  /**
    * Initialize the execution
    */
   void init_execution() override;

@@ -146,19 +146,6 @@ inline void RotateOperation::ensure_degree()
   }
 }
 
-void RotateOperation::execute_pixel_sampled(float output[4],
-                                            float x,
-                                            float y,
-                                            PixelSampler sampler)
-{
-  ensure_degree();
-  const float dy = y - center_y_;
-  const float dx = x - center_x_;
-  const float nx = center_x_ + (cosine_ * dx + sine_ * dy);
-  const float ny = center_y_ + (-sine_ * dx + cosine_ * dy);
-  image_socket_->read_sampled(output, nx, ny, sampler);
-}
-
 void RotateOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)
 {
   const bool image_determined =

@@ -54,62 +54,6 @@ struct VariableSizeBokehBlurTileData {
   int max_blur_scalar;
 };
 
-void VariableSizeBokehBlurOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  VariableSizeBokehBlurTileData *tile_data = (VariableSizeBokehBlurTileData *)data;
-  MemoryBuffer *input_buffer = tile_data->color;
-  MemoryBuffer *bokeh_buffer = tile_data->bokeh;
-  MemoryBuffer *size_buffer = tile_data->size;
-  MemoryBuffer *mask_buffer = tile_data->mask;
-
-  if (*mask_buffer->get_elem(x, y) <= 0.0f) {
-    copy_v4_v4(output, input_buffer->get_elem(x, y));
-    return;
-  }
-
-  const float max_dim = std::max(get_width(), get_height());
-  const float base_size = do_size_scale_ ? (max_dim / 100.0f) : 1.0f;
-  const int search_radius = tile_data->max_blur_scalar;
-  const int2 bokeh_size = int2(bokeh_buffer->get_width(), bokeh_buffer->get_height());
-  const float center_size = math::max(0.0f, *size_buffer->get_elem(x, y) * base_size);
-
-  float4 accumulated_color = float4(input_buffer->get_elem(x, y));
-  float4 accumulated_weight = float4(1.0f);
-  const int step = get_step();
-  if (center_size >= threshold_) {
-    for (int yi = -search_radius; yi <= search_radius; yi += step) {
-      for (int xi = -search_radius; xi <= search_radius; xi += step) {
-        if (xi == 0 && yi == 0) {
-          continue;
-        }
-        const float candidate_size = math::max(
-            0.0f, *size_buffer->get_elem_clamped(x + xi, y + yi) * base_size);
-        const float size = math::min(center_size, candidate_size);
-        if (size < threshold_ || math::max(math::abs(xi), math::abs(yi)) > size) {
-          continue;
-        }
-
-        const float2 normalized_texel = (float2(xi, yi) + size + 0.5f) / (size * 2.0f + 1.0f);
-        const float2 weight_texel = (1.0f - normalized_texel) * float2(bokeh_size - 1);
-        const float4 weight = bokeh_buffer->get_elem(int(weight_texel.x), int(weight_texel.y));
-        const float4 color = input_buffer->get_elem_clamped(x + xi, y + yi);
-        accumulated_color += color * weight;
-        accumulated_weight += weight;
-      }
-    }
-  }
-
-  const float4 final_color = math::safe_divide(accumulated_color, accumulated_weight);
-  copy_v4_v4(output, final_color);
-
-  /* blend in out values over the threshold, otherwise we get sharp, ugly transitions */
-  if ((center_size > threshold_) && (center_size < threshold_ * 2.0f)) {
-    /* factor from 0-1 */
-    float fac = (center_size - threshold_) / threshold_;
-    interp_v4_v4v4(output, input_buffer->get_elem(x, y), output, fac);
-  }
-}
-
 void VariableSizeBokehBlurOperation::deinit_execution()
 {
   input_program_ = nullptr;
@@ -231,12 +175,6 @@ InverseSearchRadiusOperation::InverseSearchRadiusOperation()
 void InverseSearchRadiusOperation::init_execution()
 {
   input_radius_ = this->get_input_socket_reader(0);
-}
-
-void InverseSearchRadiusOperation::execute_pixel_chunk(float output[4], int x, int y, void *data)
-{
-  MemoryBuffer *buffer = (MemoryBuffer *)data;
-  buffer->read_no_check(output, x, y);
 }
 
 void InverseSearchRadiusOperation::deinit_execution()

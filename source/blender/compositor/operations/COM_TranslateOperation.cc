@@ -39,19 +39,6 @@ void TranslateOperation::deinit_execution()
   input_yoperation_ = nullptr;
 }
 
-void TranslateOperation::execute_pixel_sampled(float output[4],
-                                               float x,
-                                               float y,
-                                               PixelSampler /*sampler*/)
-{
-  ensure_delta();
-
-  float original_xpos = x - this->get_delta_x();
-  float original_ypos = y - this->get_delta_y();
-
-  input_operation_->read_sampled(output, original_xpos, original_ypos, PixelSampler::Bilinear);
-}
-
 void TranslateOperation::set_wrapping(int wrapping_type)
 {
   switch (wrapping_type) {

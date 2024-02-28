@@ -14,12 +14,6 @@ FastGaussianBlurOperation::FastGaussianBlurOperation() : BlurBaseOperation(DataT
   data_.filtertype = R_FILTER_FAST_GAUSS;
 }
 
-void FastGaussianBlurOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  MemoryBuffer *new_data = (MemoryBuffer *)data;
-  new_data->read(output, x, y);
-}
-
 void FastGaussianBlurOperation::init_data()
 {
   BlurBaseOperation::init_data();
@@ -258,12 +252,6 @@ FastGaussianBlurValueOperation::FastGaussianBlurValueOperation()
   sigma_ = 1.0f;
   overlay_ = 0;
   flags_.complex = true;
-}
-
-void FastGaussianBlurValueOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  MemoryBuffer *new_data = (MemoryBuffer *)data;
-  new_data->read(output, x, y);
 }
 
 void FastGaussianBlurValueOperation::init_execution()

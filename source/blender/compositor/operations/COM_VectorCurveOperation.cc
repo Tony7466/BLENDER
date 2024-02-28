@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,18 +21,6 @@ void VectorCurveOperation::init_execution()
 {
   CurveBaseOperation::init_execution();
   input_program_ = this->get_input_socket_reader(0);
-}
-
-void VectorCurveOperation::execute_pixel_sampled(float output[4],
-                                                 float x,
-                                                 float y,
-                                                 PixelSampler sampler)
-{
-  float input[4];
-
-  input_program_->read_sampled(input, x, y, sampler);
-
-  BKE_curvemapping_evaluate_premulRGBF(curve_mapping_, output, input);
 }
 
 void VectorCurveOperation::deinit_execution()

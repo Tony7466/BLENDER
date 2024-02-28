@@ -42,36 +42,6 @@ static bool check_corners(float corners[4][2])
   return true;
 }
 
-/* TODO(manzanilla): to be removed with tiled implementation. */
-static void read_corners_from_sockets(rcti *rect, SocketReader *readers[4], float corners[4][2])
-{
-  for (int i = 0; i < 4; i++) {
-    float result[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-    readers[i]->read_sampled(result, rect->xmin, rect->ymin, PixelSampler::Nearest);
-    corners[i][0] = result[0];
-    corners[i][1] = result[1];
-  }
-
-  /* convexity check:
-   * concave corners need to be prevented, otherwise
-   * BKE_tracking_homography_between_two_quads will freeze
-   */
-  if (!check_corners(corners)) {
-    /* simply revert to default corners
-     * there could be a more elegant solution,
-     * this prevents freezing at least.
-     */
-    corners[0][0] = 0.0f;
-    corners[0][1] = 0.0f;
-    corners[1][0] = 1.0f;
-    corners[1][1] = 0.0f;
-    corners[2][0] = 1.0f;
-    corners[2][1] = 1.0f;
-    corners[3][0] = 0.0f;
-    corners[3][1] = 1.0f;
-  }
-}
-
 static void set_default_corner(const int corner_idx, float r_corner[2])
 {
   BLI_assert(corner_idx >= 0 && corner_idx < 4);

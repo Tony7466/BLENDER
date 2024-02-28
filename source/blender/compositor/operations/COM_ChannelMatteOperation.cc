@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -66,45 +66,6 @@ void ChannelMatteOperation::init_execution()
 void ChannelMatteOperation::deinit_execution()
 {
   input_image_program_ = nullptr;
-}
-
-void ChannelMatteOperation::execute_pixel_sampled(float output[4],
-                                                  float x,
-                                                  float y,
-                                                  PixelSampler sampler)
-{
-  float in_color[4];
-  float alpha;
-
-  const float limit_max = limit_max_;
-  const float limit_min = limit_min_;
-  const float limit_range = limit_range_;
-
-  input_image_program_->read_sampled(in_color, x, y, sampler);
-
-  /* matte operation */
-  alpha = in_color[ids_[0]] - std::max(in_color[ids_[1]], in_color[ids_[2]]);
-
-  /* flip because 0.0 is transparent, not 1.0 */
-  alpha = 1.0f - alpha;
-
-  /* test range */
-  if (alpha > limit_max) {
-    alpha = in_color[3]; /* Whatever it was prior. */
-  }
-  else if (alpha < limit_min) {
-    alpha = 0.0f;
-  }
-  else { /* Blend. */
-    alpha = (alpha - limit_min) / limit_range;
-  }
-
-  /* Store matte(alpha) value in [0] to go with
-   * COM_SetAlphaMultiplyOperation and the Value output.
-   */
-
-  /* Don't make something that was more transparent less transparent. */
-  output[0] = std::min(alpha, in_color[3]);
 }
 
 void ChannelMatteOperation::update_memory_buffer_partial(MemoryBuffer *output,

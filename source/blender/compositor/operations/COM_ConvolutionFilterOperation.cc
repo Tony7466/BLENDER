@@ -44,58 +44,6 @@ void ConvolutionFilterOperation::deinit_execution()
   input_value_operation_ = nullptr;
 }
 
-void ConvolutionFilterOperation::execute_pixel(float output[4], int x, int y, void * /*data*/)
-{
-  float in1[4];
-  float in2[4];
-  int x1 = x - 1;
-  int x2 = x;
-  int x3 = x + 1;
-  int y1 = y - 1;
-  int y2 = y;
-  int y3 = y + 1;
-  CLAMP(x1, 0, get_width() - 1);
-  CLAMP(x2, 0, get_width() - 1);
-  CLAMP(x3, 0, get_width() - 1);
-  CLAMP(y1, 0, get_height() - 1);
-  CLAMP(y2, 0, get_height() - 1);
-  CLAMP(y3, 0, get_height() - 1);
-  float value[4];
-  input_value_operation_->read(value, x2, y2, nullptr);
-  const float mval = 1.0f - value[0];
-
-  zero_v4(output);
-  input_operation_->read(in1, x1, y1, nullptr);
-  madd_v4_v4fl(output, in1, filter_[0]);
-  input_operation_->read(in1, x2, y1, nullptr);
-  madd_v4_v4fl(output, in1, filter_[1]);
-  input_operation_->read(in1, x3, y1, nullptr);
-  madd_v4_v4fl(output, in1, filter_[2]);
-  input_operation_->read(in1, x1, y2, nullptr);
-  madd_v4_v4fl(output, in1, filter_[3]);
-  input_operation_->read(in2, x2, y2, nullptr);
-  madd_v4_v4fl(output, in2, filter_[4]);
-  input_operation_->read(in1, x3, y2, nullptr);
-  madd_v4_v4fl(output, in1, filter_[5]);
-  input_operation_->read(in1, x1, y3, nullptr);
-  madd_v4_v4fl(output, in1, filter_[6]);
-  input_operation_->read(in1, x2, y3, nullptr);
-  madd_v4_v4fl(output, in1, filter_[7]);
-  input_operation_->read(in1, x3, y3, nullptr);
-  madd_v4_v4fl(output, in1, filter_[8]);
-
-  output[0] = output[0] * value[0] + in2[0] * mval;
-  output[1] = output[1] * value[0] + in2[1] * mval;
-  output[2] = output[2] * value[0] + in2[2] * mval;
-  output[3] = output[3] * value[0] + in2[3] * mval;
-
-  /* Make sure we don't return negative color. */
-  output[0] = std::max(output[0], 0.0f);
-  output[1] = std::max(output[1], 0.0f);
-  output[2] = std::max(output[2], 0.0f);
-  output[3] = std::max(output[3], 0.0f);
-}
-
 void ConvolutionFilterOperation::get_area_of_interest(const int input_idx,
                                                       const rcti &output_area,
                                                       rcti &r_input_area)

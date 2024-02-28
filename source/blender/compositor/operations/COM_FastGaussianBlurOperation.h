@@ -17,7 +17,6 @@ class FastGaussianBlurOperation : public BlurBaseOperation {
 
  public:
   FastGaussianBlurOperation();
-  void execute_pixel(float output[4], int x, int y, void *data) override;
 
   static void IIR_gauss(MemoryBuffer *src, float sigma, unsigned int channel, unsigned int xy);
   void init_data() override;
@@ -58,7 +57,6 @@ class FastGaussianBlurValueOperation : public MultiThreadedOperation {
 
  public:
   FastGaussianBlurValueOperation();
-  void execute_pixel(float output[4], int x, int y, void *data) override;
 
   void deinit_execution() override;
   void init_execution() override;

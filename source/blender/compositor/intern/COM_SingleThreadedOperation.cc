@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,11 +16,6 @@ SingleThreadedOperation::SingleThreadedOperation()
 void SingleThreadedOperation::init_execution()
 {
   init_mutex();
-}
-
-void SingleThreadedOperation::execute_pixel(float output[4], int x, int y, void * /*data*/)
-{
-  cached_instance_->read_no_check(output, x, y);
 }
 
 void SingleThreadedOperation::deinit_execution()

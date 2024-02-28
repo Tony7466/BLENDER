@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,14 +24,6 @@ void FlipOperation::init_execution()
 void FlipOperation::deinit_execution()
 {
   input_operation_ = nullptr;
-}
-
-void FlipOperation::execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler)
-{
-  float nx = flip_x_ ? (int(this->get_width()) - 1) - x : x;
-  float ny = flip_y_ ? (int(this->get_height()) - 1) - y : y;
-
-  input_operation_->read_sampled(output, nx, ny, sampler);
 }
 
 void FlipOperation::update_memory_buffer_partial(MemoryBuffer *output,

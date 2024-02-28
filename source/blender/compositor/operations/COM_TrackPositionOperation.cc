@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2012 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -110,21 +110,6 @@ void TrackPositionOperation::calc_track_position()
   }
   else {
     track_position_ *= height_;
-  }
-}
-
-void TrackPositionOperation::execute_pixel_sampled(float output[4],
-                                                   float /*x*/,
-                                                   float /*y*/,
-                                                   PixelSampler /*sampler*/)
-{
-  output[0] = marker_pos_[axis_] - relative_pos_[axis_];
-
-  if (axis_ == 0) {
-    output[0] *= width_;
-  }
-  else {
-    output[0] *= height_;
   }
 }
 

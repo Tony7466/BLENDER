@@ -30,11 +30,6 @@ class MapUVOperation : public MultiThreadedOperation {
  public:
   MapUVOperation();
 
-  /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
   void pixel_transform(const float xy[2], float r_uv[2], float r_deriv[2][2], float &r_alpha);
 
   void init_data() override;

@@ -84,62 +84,6 @@ void GaussianBokehBlurOperation::update_gauss()
   }
 }
 
-void GaussianBokehBlurOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  float result[4];
-  input_size_->read_sampled(result, 0, 0, PixelSampler::Nearest);
-  size_ = result[0];
-
-  const float width = this->get_width();
-  const float height = this->get_height();
-
-  radxf_ = size_ * float(data_.sizex);
-  CLAMP(radxf_, 0.0f, width / 2.0f);
-
-  radyf_ = size_ * float(data_.sizey);
-  CLAMP(radyf_, 0.0f, height / 2.0f);
-
-  radx_ = ceil(radxf_);
-  rady_ = ceil(radyf_);
-
-  float temp_color[4];
-  temp_color[0] = 0;
-  temp_color[1] = 0;
-  temp_color[2] = 0;
-  temp_color[3] = 0;
-  float multiplier_accum = 0;
-  MemoryBuffer *input_buffer = (MemoryBuffer *)data;
-  float *buffer = input_buffer->get_buffer();
-  int bufferwidth = input_buffer->get_width();
-  const rcti &input_rect = input_buffer->get_rect();
-  int bufferstartx = input_rect.xmin;
-  int bufferstarty = input_rect.ymin;
-
-  int ymin = max_ii(y - rady_, input_rect.ymin);
-  int ymax = min_ii(y + rady_ + 1, input_rect.ymax);
-  int xmin = max_ii(x - radx_, input_rect.xmin);
-  int xmax = min_ii(x + radx_ + 1, input_rect.xmax);
-
-  int index;
-  int step = QualityStepHelper::get_step();
-  int offsetadd = QualityStepHelper::get_offset_add();
-  const int add_const = (xmin - x + radx_);
-  const int mul_const = (radx_ * 2 + 1);
-  for (int ny = ymin; ny < ymax; ny += step) {
-    index = ((ny - y) + rady_) * mul_const + add_const;
-    int bufferindex = ((xmin - bufferstartx) * 4) + ((ny - bufferstarty) * 4 * bufferwidth);
-    for (int nx = xmin; nx < xmax; nx += step) {
-      const float multiplier = gausstab_[index];
-      madd_v4_v4fl(temp_color, &buffer[bufferindex], multiplier);
-      multiplier_accum += multiplier;
-      index += step;
-      bufferindex += offsetadd;
-    }
-  }
-
-  mul_v4_v4fl(output, temp_color, 1.0f / multiplier_accum);
-}
-
 void GaussianBokehBlurOperation::deinit_execution()
 {
   BlurBaseOperation::deinit_execution();
@@ -271,73 +215,6 @@ void GaussianBlurReferenceOperation::update_gauss()
   maintabs_ = (float **)MEM_mallocN(x * sizeof(float *), "gauss array");
   for (i = 0; i < x; i++) {
     maintabs_[i] = make_gausstab(i + 1, i + 1);
-  }
-}
-
-void GaussianBlurReferenceOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  MemoryBuffer *memorybuffer = (MemoryBuffer *)data;
-  float *buffer = memorybuffer->get_buffer();
-  float *gausstabx, *gausstabcenty;
-  float *gausstaby, *gausstabcentx;
-  int i, j;
-  float *src;
-  float sum, val;
-  float rval, gval, bval, aval;
-  int imgx = get_width();
-  int imgy = get_height();
-  float temp_size[4];
-  input_size_->read(temp_size, x, y, data);
-  float ref_size = temp_size[0];
-  int refradx = int(ref_size * radx_);
-  int refrady = int(ref_size * rady_);
-  if (refradx > filtersizex_) {
-    refradx = filtersizex_;
-  }
-  else if (refradx < 1) {
-    refradx = 1;
-  }
-  if (refrady > filtersizey_) {
-    refrady = filtersizey_;
-  }
-  else if (refrady < 1) {
-    refrady = 1;
-  }
-
-  if (refradx == 1 && refrady == 1) {
-    memorybuffer->read_no_check(output, x, y);
-  }
-  else {
-    int minxr = x - refradx < 0 ? -x : -refradx;
-    int maxxr = x + refradx > imgx ? imgx - x : refradx;
-    int minyr = y - refrady < 0 ? -y : -refrady;
-    int maxyr = y + refrady > imgy ? imgy - y : refrady;
-
-    float *srcd = buffer + COM_DATA_TYPE_COLOR_CHANNELS * ((y + minyr) * imgx + x + minxr);
-
-    gausstabx = maintabs_[refradx - 1];
-    gausstabcentx = gausstabx + refradx;
-    gausstaby = maintabs_[refrady - 1];
-    gausstabcenty = gausstaby + refrady;
-
-    sum = gval = rval = bval = aval = 0.0f;
-    for (i = minyr; i < maxyr; i++, srcd += COM_DATA_TYPE_COLOR_CHANNELS * imgx) {
-      src = srcd;
-      for (j = minxr; j < maxxr; j++, src += COM_DATA_TYPE_COLOR_CHANNELS) {
-
-        val = gausstabcenty[i] * gausstabcentx[j];
-        sum += val;
-        rval += val * src[0];
-        gval += val * src[1];
-        bval += val * src[2];
-        aval += val * src[3];
-      }
-    }
-    sum = 1.0f / sum;
-    output[0] = rval * sum;
-    output[1] = gval * sum;
-    output[2] = bval * sum;
-    output[3] = aval * sum;
   }
 }
 

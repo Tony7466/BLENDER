@@ -17,11 +17,6 @@ class GaussianAlphaXBlurOperation : public GaussianAlphaBlurBaseOperation {
   GaussianAlphaXBlurOperation();
 
   /**
-   * \brief The inner loop of this operation.
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
-
-  /**
    * \brief initialize the execution
    */
   void init_execution() override;

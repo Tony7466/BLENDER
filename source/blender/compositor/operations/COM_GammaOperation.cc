@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,22 +19,6 @@ void GammaOperation::init_execution()
 {
   input_program_ = this->get_input_socket_reader(0);
   input_gamma_program_ = this->get_input_socket_reader(1);
-}
-
-void GammaOperation::execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler)
-{
-  float input_value[4];
-  float input_gamma[4];
-
-  input_program_->read_sampled(input_value, x, y, sampler);
-  input_gamma_program_->read_sampled(input_gamma, x, y, sampler);
-  const float gamma = input_gamma[0];
-  /* check for negative to avoid NAN's */
-  output[0] = input_value[0] > 0.0f ? powf(input_value[0], gamma) : input_value[0];
-  output[1] = input_value[1] > 0.0f ? powf(input_value[1], gamma) : input_value[1];
-  output[2] = input_value[2] > 0.0f ? powf(input_value[2], gamma) : input_value[2];
-
-  output[3] = input_value[3];
 }
 
 void GammaOperation::update_memory_buffer_row(PixelCursor &p)

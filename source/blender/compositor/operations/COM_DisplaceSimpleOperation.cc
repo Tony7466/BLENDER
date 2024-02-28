@@ -33,45 +33,6 @@ void DisplaceSimpleOperation::init_execution()
   height_x4_ = this->get_height() * 4;
 }
 
-/* minimum distance (in pixels) a pixel has to be displaced
- * in order to take effect */
-// #define DISPLACE_EPSILON    0.01f
-
-void DisplaceSimpleOperation::execute_pixel_sampled(float output[4],
-                                                    float x,
-                                                    float y,
-                                                    PixelSampler sampler)
-{
-  float in_vector[4];
-  float in_scale[4];
-
-  float p_dx, p_dy; /* main displacement in pixel space */
-  float u, v;
-
-  input_scale_xprogram_->read_sampled(in_scale, x, y, sampler);
-  float xs = in_scale[0];
-  input_scale_yprogram_->read_sampled(in_scale, x, y, sampler);
-  float ys = in_scale[0];
-
-  /* clamp x and y displacement to triple image resolution -
-   * to prevent hangs from huge values mistakenly plugged in eg. z buffers */
-  CLAMP(xs, -width_x4_, width_x4_);
-  CLAMP(ys, -height_x4_, height_x4_);
-
-  input_vector_program_->read_sampled(in_vector, x, y, sampler);
-  p_dx = in_vector[0] * xs;
-  p_dy = in_vector[1] * ys;
-
-  /* displaced pixel in uv coords, for image sampling */
-  /* clamp nodes to avoid glitches */
-  u = x - p_dx + 0.5f;
-  v = y - p_dy + 0.5f;
-  CLAMP(u, 0.0f, this->get_width() - 1.0f);
-  CLAMP(v, 0.0f, this->get_height() - 1.0f);
-
-  input_color_program_->read_sampled(output, u, v, sampler);
-}
-
 void DisplaceSimpleOperation::deinit_execution()
 {
   input_color_program_ = nullptr;

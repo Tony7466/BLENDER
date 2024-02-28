@@ -23,11 +23,6 @@ class SMAAEdgeDetectionOperation : public MultiThreadedOperation {
   SMAAEdgeDetectionOperation();
 
   /**
-   * the inner loop of this program
-   */
-  virtual void execute_pixel(float output[4], int x, int y, void *data) override;
-
-  /**
    * Initialize the execution
    */
   void init_execution() override;
@@ -58,11 +53,6 @@ class SMAABlendingWeightCalculationOperation : public MultiThreadedOperation {
 
  public:
   SMAABlendingWeightCalculationOperation();
-
-  /**
-   * the inner loop of this program
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
 
   /**
    * Initialize the execution
@@ -120,11 +110,6 @@ class SMAANeighborhoodBlendingOperation : public MultiThreadedOperation {
 
  public:
   SMAANeighborhoodBlendingOperation();
-
-  /**
-   * the inner loop of this program
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
 
   /**
    * Initialize the execution

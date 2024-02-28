@@ -508,27 +508,9 @@ class NodeOperation {
     return BLI_rcti_size_y(&get_canvas());
   }
 
-  inline void read_sampled(float result[4], float x, float y, PixelSampler sampler)
-  {
-    execute_pixel_sampled(result, x, y, sampler);
-  }
-
   inline void read_filtered(float result[4], float x, float y, float dx[2], float dy[2])
   {
     execute_pixel_filtered(result, x, y, dx, dy);
-  }
-
-  inline void read(float result[4], int x, int y, void *chunk_data)
-  {
-    execute_pixel(result, x, y, chunk_data);
-  }
-
-  inline void read_clamped(float result[4], int x, int y, void *chunk_data)
-  {
-    execute_pixel(result,
-                  math::clamp(x, 0, int(this->get_width()) - 1),
-                  math::clamp(y, 0, int(this->get_height()) - 1),
-                  chunk_data);
   }
 
   virtual MemoryBuffer *get_input_memory_buffer(MemoryBuffer ** /*memory_buffers*/)
@@ -644,35 +626,6 @@ class NodeOperation {
   void set_complex(bool complex)
   {
     flags_.complex = complex;
-  }
-
-  /**
-   * \brief calculate a single pixel
-   * \note this method is called for non-complex
-   * \param result: is a float[4] array to store the result
-   * \param x: the x-coordinate of the pixel to calculate in image space
-   * \param y: the y-coordinate of the pixel to calculate in image space
-   * \param input_buffers: chunks that can be read by their ReadBufferOperation.
-   */
-  virtual void execute_pixel_sampled(float /*output*/[4],
-                                     float /*x*/,
-                                     float /*y*/,
-                                     PixelSampler /*sampler*/)
-  {
-  }
-
-  /**
-   * \brief calculate a single pixel
-   * \note this method is called for complex
-   * \param result: is a float[4] array to store the result
-   * \param x: the x-coordinate of the pixel to calculate in image space
-   * \param y: the y-coordinate of the pixel to calculate in image space
-   * \param input_buffers: chunks that can be read by their ReadBufferOperation.
-   * \param chunk_data: chunk specific data a during execution time.
-   */
-  virtual void execute_pixel(float output[4], int x, int y, void * /*chunk_data*/)
-  {
-    execute_pixel_sampled(output, x, y, PixelSampler::Nearest);
   }
 
   /**

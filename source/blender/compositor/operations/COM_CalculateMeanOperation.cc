@@ -30,11 +30,6 @@ void CalculateMeanOperation::init_execution()
   NodeOperation::init_mutex();
 }
 
-void CalculateMeanOperation::execute_pixel(float output[4], int /*x*/, int /*y*/, void * /*data*/)
-{
-  output[0] = constant_value_;
-}
-
 void CalculateMeanOperation::deinit_execution()
 {
   image_reader_ = nullptr;

@@ -227,55 +227,6 @@ ScaleRelativeOperation::ScaleRelativeOperation() : ScaleOperation() {}
 
 ScaleRelativeOperation::ScaleRelativeOperation(DataType data_type) : ScaleOperation(data_type) {}
 
-void ScaleRelativeOperation::execute_pixel_sampled(float output[4],
-                                                   float x,
-                                                   float y,
-                                                   PixelSampler sampler)
-{
-  PixelSampler effective_sampler = get_effective_sampler(sampler);
-
-  float scaleX[4];
-  float scaleY[4];
-
-  input_xoperation_->read_sampled(scaleX, x, y, effective_sampler);
-  input_yoperation_->read_sampled(scaleY, x, y, effective_sampler);
-
-  const float scx = scaleX[0];
-  const float scy = scaleY[0];
-
-  float nx = this->canvas_center_x_ + (x - this->canvas_center_x_) / scx;
-  float ny = this->canvas_center_y_ + (y - this->canvas_center_y_) / scy;
-  input_operation_->read_sampled(output, nx, ny, effective_sampler);
-}
-
-void ScaleAbsoluteOperation::execute_pixel_sampled(float output[4],
-                                                   float x,
-                                                   float y,
-                                                   PixelSampler sampler)
-{
-  PixelSampler effective_sampler = get_effective_sampler(sampler);
-
-  float scaleX[4];
-  float scaleY[4];
-
-  input_xoperation_->read_sampled(scaleX, x, y, effective_sampler);
-  input_yoperation_->read_sampled(scaleY, x, y, effective_sampler);
-
-  const float scx = scaleX[0]; /* Target absolute scale. */
-  const float scy = scaleY[0]; /* Target absolute scale. */
-
-  const float width = this->get_width();
-  const float height = this->get_height();
-  /* Divide. */
-  float relative_xscale = scx / width;
-  float relative_yscale = scy / height;
-
-  float nx = this->canvas_center_x_ + (x - this->canvas_center_x_) / relative_xscale;
-  float ny = this->canvas_center_y_ + (y - this->canvas_center_y_) / relative_yscale;
-
-  input_operation_->read_sampled(output, nx, ny, effective_sampler);
-}
-
 ScaleFixedSizeOperation::ScaleFixedSizeOperation() : BaseScaleOperation()
 {
   this->add_input_socket(DataType::Color, ResizeMode::None);
@@ -360,23 +311,6 @@ void ScaleFixedSizeOperation::init_execution()
 void ScaleFixedSizeOperation::deinit_execution()
 {
   input_operation_ = nullptr;
-}
-
-void ScaleFixedSizeOperation::execute_pixel_sampled(float output[4],
-                                                    float x,
-                                                    float y,
-                                                    PixelSampler sampler)
-{
-  PixelSampler effective_sampler = get_effective_sampler(sampler);
-
-  if (is_offset_) {
-    float nx = ((x - offset_x_) * rel_x_);
-    float ny = ((y - offset_y_) * rel_y_);
-    input_operation_->read_sampled(output, nx, ny, effective_sampler);
-  }
-  else {
-    input_operation_->read_sampled(output, x * rel_x_, y * rel_y_, effective_sampler);
-  }
 }
 
 void ScaleFixedSizeOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)

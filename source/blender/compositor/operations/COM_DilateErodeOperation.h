@@ -32,11 +32,6 @@ class DilateErodeThresholdOperation : public MultiThreadedOperation {
   /* DilateErode Distance Threshold */
   DilateErodeThresholdOperation();
 
-  /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
-
   void init_data() override;
   /**
    * Initialize the execution
@@ -83,11 +78,6 @@ class DilateDistanceOperation : public MultiThreadedOperation {
   /* Dilate Distance. */
   DilateDistanceOperation();
 
-  /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
-
   void init_data() override;
   /**
    * Initialize the execution
@@ -114,11 +104,6 @@ class ErodeDistanceOperation : public DilateDistanceOperation {
   /* Erode Distance */
   ErodeDistanceOperation();
 
-  /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
-
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;
@@ -136,11 +121,6 @@ class DilateStepOperation : public MultiThreadedOperation {
  public:
   /* Dilate step */
   DilateStepOperation();
-
-  /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
 
   /**
    * Initialize the execution

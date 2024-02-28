@@ -21,24 +21,6 @@ void NormalizeOperation::init_execution()
   NodeOperation::init_mutex();
 }
 
-void NormalizeOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  /* using generic two floats struct to store `x: min`, `y: multiply` */
-  NodeTwoFloats *minmult = (NodeTwoFloats *)data;
-
-  image_reader_->read(output, x, y, nullptr);
-
-  output[0] = (output[0] - minmult->x) * minmult->y;
-
-  /* clamp infinities */
-  if (output[0] > 1.0f) {
-    output[0] = 1.0f;
-  }
-  else if (output[0] < 0.0f) {
-    output[0] = 0.0f;
-  }
-}
-
 void NormalizeOperation::deinit_execution()
 {
   image_reader_ = nullptr;

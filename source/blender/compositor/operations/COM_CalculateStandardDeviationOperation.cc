@@ -10,14 +10,6 @@
 
 namespace blender::compositor {
 
-void CalculateStandardDeviationOperation::execute_pixel(float output[4],
-                                                        int /*x*/,
-                                                        int /*y*/,
-                                                        void * /*data*/)
-{
-  output[0] = standard_deviation_;
-}
-
 float CalculateStandardDeviationOperation::calculate_value(const MemoryBuffer *input) const
 {
   const float mean = this->calculate_mean(input);

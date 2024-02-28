@@ -30,36 +30,6 @@ void PixelateOperation::deinit_execution()
   input_operation_ = nullptr;
 }
 
-void PixelateOperation::execute_pixel_sampled(float output[4],
-                                              const float x,
-                                              const float y,
-                                              const PixelSampler sampler)
-{
-  const int width = this->get_width();
-  const int height = this->get_height();
-
-  const int x_start = (int(x) / pixel_size_) * pixel_size_;
-  const int y_start = (int(y) / pixel_size_) * pixel_size_;
-
-  const int x_end = std::min(x_start + pixel_size_, width);
-  const int y_end = std::min(y_start + pixel_size_, height);
-
-  float4 color_accum(0, 0, 0, 0);
-
-  for (int iy = y_start; iy < y_end; ++iy) {
-    for (int ix = x_start; ix < x_end; ++ix) {
-      float4 color;
-      input_operation_->read_sampled(color, ix, iy, sampler);
-
-      color_accum += color;
-    }
-  }
-
-  const int scale = (x_end - x_start) * (y_end - y_start);
-
-  copy_v4_v4(output, color_accum / float(scale));
-}
-
 void PixelateOperation::get_area_of_interest(const int /*input_idx*/,
                                              const rcti &output_area,
                                              rcti &r_input_area)

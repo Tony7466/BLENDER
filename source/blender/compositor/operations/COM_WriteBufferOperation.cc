@@ -21,14 +21,6 @@ WriteBufferOperation::~WriteBufferOperation()
   }
 }
 
-void WriteBufferOperation::execute_pixel_sampled(float output[4],
-                                                 float x,
-                                                 float y,
-                                                 PixelSampler sampler)
-{
-  input_->read_sampled(output, x, y, sampler);
-}
-
 void WriteBufferOperation::init_execution()
 {
   input_ = this->get_input_operation(0);

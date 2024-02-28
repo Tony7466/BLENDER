@@ -31,7 +31,6 @@ class ReadBufferOperation : public NodeOperation {
 
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
 
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
   void execute_pixel_extend(float output[4],
                             float x,
                             float y,

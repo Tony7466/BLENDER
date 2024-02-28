@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -135,22 +135,6 @@ static void sample_image_at_location(ImBuf *ibuf,
   }
 }
 
-void ImageOperation::execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler)
-{
-  int ix = x, iy = y;
-  if (image_float_buffer_ == nullptr && image_byte_buffer_ == nullptr) {
-    zero_v4(output);
-  }
-  else if (ix < 0 || iy < 0 || ix >= buffer_->x || iy >= buffer_->y) {
-    zero_v4(output);
-  }
-  else {
-    const bool ensure_premultiplied = !ELEM(
-        image_->alpha_mode, IMA_ALPHA_CHANNEL_PACKED, IMA_ALPHA_IGNORE);
-    sample_image_at_location(buffer_, x, y, sampler, true, ensure_premultiplied, output);
-  }
-}
-
 void ImageOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                   const rcti &area,
                                                   Span<MemoryBuffer *> /*inputs*/)
@@ -158,23 +142,6 @@ void ImageOperation::update_memory_buffer_partial(MemoryBuffer *output,
   const bool ensure_premultiplied = !ELEM(
       image_->alpha_mode, IMA_ALPHA_CHANNEL_PACKED, IMA_ALPHA_IGNORE);
   output->copy_from(buffer_, area, ensure_premultiplied, true);
-}
-
-void ImageAlphaOperation::execute_pixel_sampled(float output[4],
-                                                float x,
-                                                float y,
-                                                PixelSampler sampler)
-{
-  float tempcolor[4];
-
-  if (image_float_buffer_ == nullptr && image_byte_buffer_ == nullptr) {
-    output[0] = 0.0f;
-  }
-  else {
-    tempcolor[3] = 1.0f;
-    sample_image_at_location(buffer_, x, y, sampler, false, false, tempcolor);
-    output[0] = tempcolor[3];
-  }
 }
 
 void ImageAlphaOperation::update_memory_buffer_partial(MemoryBuffer *output,

@@ -35,45 +35,10 @@ void ProjectorLensDistortionOperation::init_execution()
   input_program_ = this->get_input_socket_reader(0);
 }
 
-void ProjectorLensDistortionOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  float input_value[4];
-  const float height = this->get_height();
-  const float width = this->get_width();
-  const float v = (y + 0.5f) / height;
-  const float u = (x + 0.5f) / width;
-  MemoryBuffer *input_buffer = (MemoryBuffer *)data;
-  input_buffer->read_bilinear(input_value, (u * width + kr2_) - 0.5f, v * height - 0.5f);
-  output[0] = input_value[0];
-  input_buffer->read(input_value, x, y);
-  output[1] = input_value[1];
-  input_buffer->read_bilinear(input_value, (u * width - kr2_) - 0.5f, v * height - 0.5f);
-  output[2] = input_value[2];
-  output[3] = 1.0f;
-}
-
 void ProjectorLensDistortionOperation::deinit_execution()
 {
   this->deinit_mutex();
   input_program_ = nullptr;
-}
-
-/* TODO(manzanilla): to be removed with tiled implementation. */
-void ProjectorLensDistortionOperation::update_dispersion()
-{
-  if (dispersion_available_) {
-    return;
-  }
-  this->lock_mutex();
-  if (!dispersion_available_) {
-    float result[4];
-    this->get_input_socket_reader(1)->read_sampled(result, 1, 1, PixelSampler::Nearest);
-    dispersion_ = result[0];
-    kr_ = 0.25f * max_ff(min_ff(dispersion_, 1.0f), 0.0f);
-    kr2_ = kr_ * 20;
-    dispersion_available_ = true;
-  }
-  this->unlock_mutex();
 }
 
 void ProjectorLensDistortionOperation::determine_canvas(const rcti &preferred_area, rcti &r_area)

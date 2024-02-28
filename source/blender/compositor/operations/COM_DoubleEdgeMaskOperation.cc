@@ -160,13 +160,6 @@ void DoubleEdgeMaskOperation::init_execution()
   cached_instance_ = nullptr;
 }
 
-void DoubleEdgeMaskOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  float *buffer = (float *)data;
-  int index = (y * this->get_width() + x);
-  output[0] = buffer[index];
-}
-
 void DoubleEdgeMaskOperation::deinit_execution()
 {
   input_inner_mask_ = nullptr;

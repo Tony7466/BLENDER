@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -24,72 +24,6 @@ void BoxMaskOperation::init_execution()
   cosine_ = cos(rad);
   sine_ = sin(rad);
   aspect_ratio_ = float(this->get_width()) / this->get_height();
-}
-
-void BoxMaskOperation::execute_pixel_sampled(float output[4],
-                                             float x,
-                                             float y,
-                                             PixelSampler sampler)
-{
-  float input_mask[4];
-  float input_value[4];
-
-  float rx = x / std::max(this->get_width() - 1.0f, FLT_EPSILON);
-  float ry = y / std::max(this->get_height() - 1.0f, FLT_EPSILON);
-
-  const float dy = (ry - data_->y) / aspect_ratio_;
-  const float dx = rx - data_->x;
-  rx = data_->x + (cosine_ * dx + sine_ * dy);
-  ry = data_->y + (-sine_ * dx + cosine_ * dy);
-
-  input_mask_->read_sampled(input_mask, x, y, sampler);
-  input_value_->read_sampled(input_value, x, y, sampler);
-
-  float half_height = data_->height / 2.0f + FLT_EPSILON;
-  float half_width = data_->width / 2.0f + FLT_EPSILON;
-  bool inside = (rx >= data_->x - half_width && rx <= data_->x + half_width &&
-                 ry >= data_->y - half_height && ry <= data_->y + half_height);
-
-  switch (mask_type_) {
-    case CMP_NODE_MASKTYPE_ADD:
-      if (inside) {
-        output[0] = std::max(input_mask[0], input_value[0]);
-      }
-      else {
-        output[0] = input_mask[0];
-      }
-      break;
-    case CMP_NODE_MASKTYPE_SUBTRACT:
-      if (inside) {
-        output[0] = input_mask[0] - input_value[0];
-        CLAMP(output[0], 0, 1);
-      }
-      else {
-        output[0] = input_mask[0];
-      }
-      break;
-    case CMP_NODE_MASKTYPE_MULTIPLY:
-      if (inside) {
-        output[0] = input_mask[0] * input_value[0];
-      }
-      else {
-        output[0] = 0;
-      }
-      break;
-    case CMP_NODE_MASKTYPE_NOT:
-      if (inside) {
-        if (input_mask[0] > 0.0f) {
-          output[0] = 0;
-        }
-        else {
-          output[0] = input_value[0];
-        }
-      }
-      else {
-        output[0] = input_mask[0];
-      }
-      break;
-  }
 }
 
 void BoxMaskOperation::update_memory_buffer_partial(MemoryBuffer *output,

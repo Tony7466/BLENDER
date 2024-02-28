@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,14 +19,6 @@ void SetSamplerOperation::init_execution()
 void SetSamplerOperation::deinit_execution()
 {
   reader_ = nullptr;
-}
-
-void SetSamplerOperation::execute_pixel_sampled(float output[4],
-                                                float x,
-                                                float y,
-                                                PixelSampler /*sampler*/)
-{
-  reader_->read_sampled(output, x, y, sampler_);
 }
 
 }  // namespace blender::compositor

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,8 +11,6 @@ namespace blender::compositor {
 class SunBeamsOperation : public MultiThreadedOperation {
  public:
   SunBeamsOperation();
-
-  void execute_pixel(float output[4], int x, int y, void *data) override;
 
   void init_execution() override;
 

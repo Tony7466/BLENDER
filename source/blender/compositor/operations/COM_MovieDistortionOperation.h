@@ -28,7 +28,6 @@ class MovieDistortionOperation : public MultiThreadedOperation {
 
  public:
   MovieDistortionOperation(bool distortion);
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
 
   void init_data() override;
   void init_execution() override;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,18 +21,6 @@ void SetAlphaReplaceOperation::init_execution()
 {
   input_color_ = get_input_socket_reader(0);
   input_alpha_ = get_input_socket_reader(1);
-}
-
-void SetAlphaReplaceOperation::execute_pixel_sampled(float output[4],
-                                                     float x,
-                                                     float y,
-                                                     PixelSampler sampler)
-{
-  float alpha_input[4];
-
-  input_color_->read_sampled(output, x, y, sampler);
-  input_alpha_->read_sampled(alpha_input, x, y, sampler);
-  output[3] = alpha_input[0];
 }
 
 void SetAlphaReplaceOperation::deinit_execution()

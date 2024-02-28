@@ -25,53 +25,6 @@ void BilateralBlurOperation::init_execution()
   QualityStepHelper::init_execution(COM_QH_INCREASE);
 }
 
-void BilateralBlurOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  /* Read the determinator color at x, y,
-   * this will be used as the reference color for the determinator. */
-  float determinator_reference_color[4];
-  float determinator[4];
-  float temp_color[4];
-  float blur_color[4];
-  float blur_divider;
-  float sigmacolor = data_->sigma_color;
-  float delta_color;
-  input_determinator_program_->read(determinator_reference_color, x, y, data);
-
-  zero_v4(blur_color);
-  blur_divider = 0.0f;
-  /* TODO(sergey): This isn't really good bilateral filter, it should be
-   * using gaussian bell for weights. Also sigma_color doesn't seem to be
-   * used correct at all.
-   */
-  for (int yi = -radius_; yi <= radius_; yi += QualityStepHelper::get_step()) {
-    for (int xi = -radius_; xi <= radius_; xi += QualityStepHelper::get_step()) {
-      /* Read determinator. */
-      input_determinator_program_->read_clamped(determinator, x + xi, y + yi, data);
-      delta_color = (fabsf(determinator_reference_color[0] - determinator[0]) +
-                     fabsf(determinator_reference_color[1] - determinator[1]) +
-                     /* Do not take the alpha channel into account. */
-                     fabsf(determinator_reference_color[2] - determinator[2]));
-      if (delta_color < sigmacolor) {
-        /* Add this to the blur. */
-        input_color_program_->read_clamped(temp_color, x + xi, y + yi, data);
-        add_v4_v4(blur_color, temp_color);
-        blur_divider += 1.0f;
-      }
-    }
-  }
-
-  if (blur_divider > 0.0f) {
-    mul_v4_v4fl(output, blur_color, 1.0f / blur_divider);
-  }
-  else {
-    output[0] = 0.0f;
-    output[1] = 0.0f;
-    output[2] = 0.0f;
-    output[3] = 1.0f;
-  }
-}
-
 void BilateralBlurOperation::deinit_execution()
 {
   input_color_program_ = nullptr;

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -42,17 +42,6 @@ void ConvertColorSpaceOperation::init_execution()
 
   color_processor_ = IMB_colormanagement_colorspace_processor_new(settings_->from_color_space,
                                                                   settings_->to_color_space);
-}
-
-void ConvertColorSpaceOperation::execute_pixel_sampled(float output[4],
-                                                       float x,
-                                                       float y,
-                                                       PixelSampler sampler)
-{
-  this->input_program_->read_sampled(output, x, y, sampler);
-  if (color_processor_ != nullptr) {
-    IMB_colormanagement_processor_apply_pixel(color_processor_, output, 3);
-  }
 }
 
 void ConvertColorSpaceOperation::update_memory_buffer_partial(MemoryBuffer *output,

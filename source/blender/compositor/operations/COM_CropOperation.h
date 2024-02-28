@@ -38,8 +38,6 @@ class CropOperation : public CropBaseOperation {
  private:
  public:
   CropOperation();
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;
@@ -50,8 +48,6 @@ class CropImageOperation : public CropBaseOperation {
  public:
   CropImageOperation();
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
-
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

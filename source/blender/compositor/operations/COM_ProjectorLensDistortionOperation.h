@@ -25,11 +25,6 @@ class ProjectorLensDistortionOperation : public MultiThreadedOperation {
  public:
   ProjectorLensDistortionOperation();
 
-  /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
-
   void init_data() override;
   /**
    * Initialize the execution
@@ -40,8 +35,6 @@ class ProjectorLensDistortionOperation : public MultiThreadedOperation {
    * Deinitialize the execution
    */
   void deinit_execution() override;
-
-  void update_dispersion();
 
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override;
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;

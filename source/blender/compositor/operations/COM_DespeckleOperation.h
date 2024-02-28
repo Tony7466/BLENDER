@@ -25,7 +25,6 @@ class DespeckleOperation : public MultiThreadedOperation {
 
  public:
   DespeckleOperation();
-  void execute_pixel(float output[4], int x, int y, void *data) override;
 
   void set_threshold(float threshold)
   {

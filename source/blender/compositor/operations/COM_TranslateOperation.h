@@ -31,7 +31,6 @@ class TranslateOperation : public MultiThreadedOperation {
  public:
   TranslateOperation();
   TranslateOperation(DataType data_type, ResizeMode mode = ResizeMode::Center);
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
 
   void init_execution() override;
   void deinit_execution() override;

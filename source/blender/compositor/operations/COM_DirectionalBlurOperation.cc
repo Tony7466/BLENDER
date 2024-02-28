@@ -43,41 +43,6 @@ void DirectionalBlurOperation::init_execution()
   rot_ = itsc * spin;
 }
 
-void DirectionalBlurOperation::execute_pixel(float output[4], int x, int y, void * /*data*/)
-{
-  const int iterations = pow(2.0f, data_->iter);
-  float col[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-  float col2[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-  input_program_->read_sampled(col2, x, y, PixelSampler::Bilinear);
-  float ltx = tx_;
-  float lty = ty_;
-  float lsc = sc_;
-  float lrot = rot_;
-  /* blur the image */
-  for (int i = 0; i < iterations; i++) {
-    const float cs = cosf(lrot), ss = sinf(lrot);
-    const float isc = 1.0f / (1.0f + lsc);
-
-    const float v = isc * (y - center_y_pix_) + lty;
-    const float u = isc * (x - center_x_pix_) + ltx;
-
-    input_program_->read_sampled(col,
-                                 cs * u + ss * v + center_x_pix_,
-                                 cs * v - ss * u + center_y_pix_,
-                                 PixelSampler::Bilinear);
-
-    add_v4_v4(col2, col);
-
-    /* double transformations */
-    ltx += tx_;
-    lty += ty_;
-    lrot += rot_;
-    lsc += sc_;
-  }
-
-  mul_v4_v4fl(output, col2, 1.0f / (iterations + 1));
-}
-
 void DirectionalBlurOperation::deinit_execution()
 {
   input_program_ = nullptr;

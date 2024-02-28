@@ -14,7 +14,6 @@ class WrapOperation : public ReadBufferOperation {
 
  public:
   WrapOperation(DataType datatype);
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
 
   void set_wrapping(int wrapping_type);
   float get_wrapped_original_xpos(float x);

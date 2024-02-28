@@ -30,24 +30,6 @@ void DisplaceOperation::init_execution()
   input_vector_height_ = vector->get_height();
 }
 
-void DisplaceOperation::execute_pixel_sampled(float output[4],
-                                              float x,
-                                              float y,
-                                              PixelSampler /*sampler*/)
-{
-  float xy[2] = {x, y};
-  float uv[2], deriv[2][2];
-
-  pixel_transform(xy, uv, deriv);
-  if (is_zero_v2(deriv[0]) && is_zero_v2(deriv[1])) {
-    input_color_program_->read_sampled(output, uv[0], uv[1], PixelSampler::Bilinear);
-  }
-  else {
-    /* EWA filtering (without nearest it gets blurry with NO distortion) */
-    input_color_program_->read_filtered(output, uv[0], uv[1], deriv[0], deriv[1]);
-  }
-}
-
 bool DisplaceOperation::read_displacement(
     float x, float y, float xscale, float yscale, const float origin[2], float &r_u, float &r_v)
 {

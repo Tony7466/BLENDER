@@ -26,51 +26,6 @@ void TonemapOperation::init_execution()
   NodeOperation::init_mutex();
 }
 
-void TonemapOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  AvgLogLum *avg = (AvgLogLum *)data;
-
-  image_reader_->read(output, x, y, nullptr);
-  mul_v3_fl(output, avg->al);
-  float dr = output[0] + data_->offset;
-  float dg = output[1] + data_->offset;
-  float db = output[2] + data_->offset;
-  output[0] /= ((dr == 0.0f) ? 1.0f : dr);
-  output[1] /= ((dg == 0.0f) ? 1.0f : dg);
-  output[2] /= ((db == 0.0f) ? 1.0f : db);
-  const float igm = avg->igm;
-  if (igm != 0.0f) {
-    output[0] = powf(std::max(output[0], 0.0f), igm);
-    output[1] = powf(std::max(output[1], 0.0f), igm);
-    output[2] = powf(std::max(output[2], 0.0f), igm);
-  }
-}
-void PhotoreceptorTonemapOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  AvgLogLum *avg = (AvgLogLum *)data;
-  const NodeTonemap *ntm = data_;
-
-  const float f = expf(-data_->f);
-  const float m = (ntm->m > 0.0f) ? ntm->m : (0.3f + 0.7f * powf(avg->auto_key, 1.4f));
-  const float ic = 1.0f - ntm->c, ia = 1.0f - ntm->a;
-
-  image_reader_->read(output, x, y, nullptr);
-
-  const float L = IMB_colormanagement_get_luminance(output);
-  float I_l = output[0] + ic * (L - output[0]);
-  float I_g = avg->cav[0] + ic * (avg->lav - avg->cav[0]);
-  float I_a = I_l + ia * (I_g - I_l);
-  output[0] /= (output[0] + powf(f * I_a, m));
-  I_l = output[1] + ic * (L - output[1]);
-  I_g = avg->cav[1] + ic * (avg->lav - avg->cav[1]);
-  I_a = I_l + ia * (I_g - I_l);
-  output[1] /= (output[1] + powf(f * I_a, m));
-  I_l = output[2] + ic * (L - output[2]);
-  I_g = avg->cav[2] + ic * (avg->lav - avg->cav[2]);
-  I_a = I_l + ia * (I_g - I_l);
-  output[2] /= (output[2] + powf(f * I_a, m));
-}
-
 void TonemapOperation::deinit_execution()
 {
   image_reader_ = nullptr;

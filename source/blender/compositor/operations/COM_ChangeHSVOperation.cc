@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,31 +31,6 @@ void ChangeHSVOperation::deinit_execution()
   hue_operation_ = nullptr;
   saturation_operation_ = nullptr;
   value_operation_ = nullptr;
-}
-
-void ChangeHSVOperation::execute_pixel_sampled(float output[4],
-                                               float x,
-                                               float y,
-                                               PixelSampler sampler)
-{
-  float input_color1[4];
-  float hue[4], saturation[4], value[4];
-
-  input_operation_->read_sampled(input_color1, x, y, sampler);
-  hue_operation_->read_sampled(hue, x, y, sampler);
-  saturation_operation_->read_sampled(saturation, x, y, sampler);
-  value_operation_->read_sampled(value, x, y, sampler);
-
-  output[0] = input_color1[0] + (hue[0] - 0.5f);
-  if (output[0] > 1.0f) {
-    output[0] -= 1.0f;
-  }
-  else if (output[0] < 0.0f) {
-    output[0] += 1.0f;
-  }
-  output[1] = input_color1[1] * saturation[0];
-  output[2] = input_color1[2] * value[0];
-  output[3] = input_color1[3];
 }
 
 void ChangeHSVOperation::update_memory_buffer_partial(MemoryBuffer *output,

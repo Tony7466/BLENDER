@@ -41,88 +41,6 @@ void DilateErodeThresholdOperation::init_execution()
   input_program_ = this->get_input_socket_reader(0);
 }
 
-void DilateErodeThresholdOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  float input_value[4];
-  const float sw = switch_;
-  const float distance = distance_;
-  float pixelvalue;
-  const float rd = scope_ * scope_;
-  const float inset = inset_;
-  float mindist = rd * 2;
-
-  MemoryBuffer *input_buffer = (MemoryBuffer *)data;
-  float *buffer = input_buffer->get_buffer();
-  const rcti &input_rect = input_buffer->get_rect();
-  const int minx = std::max(x - scope_, input_rect.xmin);
-  const int miny = std::max(y - scope_, input_rect.ymin);
-  const int maxx = std::min(x + scope_, input_rect.xmax);
-  const int maxy = std::min(y + scope_, input_rect.ymax);
-  const int buffer_width = input_buffer->get_width();
-  int offset;
-
-  input_buffer->read(input_value, x, y);
-  if (input_value[0] > sw) {
-    for (int yi = miny; yi < maxy; yi++) {
-      const float dy = yi - y;
-      offset = ((yi - input_rect.ymin) * buffer_width + (minx - input_rect.xmin));
-      for (int xi = minx; xi < maxx; xi++) {
-        if (buffer[offset] < sw) {
-          const float dx = xi - x;
-          const float dis = dx * dx + dy * dy;
-          mindist = std::min(mindist, dis);
-        }
-        offset++;
-      }
-    }
-    pixelvalue = -sqrtf(mindist);
-  }
-  else {
-    for (int yi = miny; yi < maxy; yi++) {
-      const float dy = yi - y;
-      offset = ((yi - input_rect.ymin) * buffer_width + (minx - input_rect.xmin));
-      for (int xi = minx; xi < maxx; xi++) {
-        if (buffer[offset] > sw) {
-          const float dx = xi - x;
-          const float dis = dx * dx + dy * dy;
-          mindist = std::min(mindist, dis);
-        }
-        offset++;
-      }
-    }
-    pixelvalue = sqrtf(mindist);
-  }
-
-  if (distance > 0.0f) {
-    const float delta = distance - pixelvalue;
-    if (delta >= 0.0f) {
-      if (delta >= inset) {
-        output[0] = 1.0f;
-      }
-      else {
-        output[0] = delta / inset;
-      }
-    }
-    else {
-      output[0] = 0.0f;
-    }
-  }
-  else {
-    const float delta = -distance + pixelvalue;
-    if (delta < 0.0f) {
-      if (delta < -inset) {
-        output[0] = 1.0f;
-      }
-      else {
-        output[0] = (-delta) / inset;
-      }
-    }
-    else {
-      output[0] = 0.0f;
-    }
-  }
-}
-
 void DilateErodeThresholdOperation::deinit_execution()
 {
   input_program_ = nullptr;
@@ -257,38 +175,6 @@ void DilateDistanceOperation::init_execution()
   input_program_ = this->get_input_socket_reader(0);
 }
 
-void DilateDistanceOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  const float distance = distance_;
-  const float mindist = distance * distance;
-
-  MemoryBuffer *input_buffer = (MemoryBuffer *)data;
-  float *buffer = input_buffer->get_buffer();
-  const rcti &input_rect = input_buffer->get_rect();
-  const int minx = std::max(x - scope_, input_rect.xmin);
-  const int miny = std::max(y - scope_, input_rect.ymin);
-  const int maxx = std::min(x + scope_, input_rect.xmax);
-  const int maxy = std::min(y + scope_, input_rect.ymax);
-  const int buffer_width = input_buffer->get_width();
-  int offset;
-
-  float value = 0.0f;
-
-  for (int yi = miny; yi < maxy; yi++) {
-    const float dy = yi - y;
-    offset = ((yi - input_rect.ymin) * buffer_width + (minx - input_rect.xmin));
-    for (int xi = minx; xi < maxx; xi++) {
-      const float dx = xi - x;
-      const float dis = dx * dx + dy * dy;
-      if (dis <= mindist) {
-        value = std::max(buffer[offset], value);
-      }
-      offset++;
-    }
-  }
-  output[0] = value;
-}
-
 void DilateDistanceOperation::deinit_execution()
 {
   input_program_ = nullptr;
@@ -385,38 +271,6 @@ ErodeDistanceOperation::ErodeDistanceOperation() : DilateDistanceOperation()
   /* pass */
 }
 
-void ErodeDistanceOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  const float distance = distance_;
-  const float mindist = distance * distance;
-
-  MemoryBuffer *input_buffer = (MemoryBuffer *)data;
-  float *buffer = input_buffer->get_buffer();
-  const rcti &input_rect = input_buffer->get_rect();
-  const int minx = std::max(x - scope_, input_rect.xmin);
-  const int miny = std::max(y - scope_, input_rect.ymin);
-  const int maxx = std::min(x + scope_, input_rect.xmax);
-  const int maxy = std::min(y + scope_, input_rect.ymax);
-  const int buffer_width = input_buffer->get_width();
-  int offset;
-
-  float value = 1.0f;
-
-  for (int yi = miny; yi < maxy; yi++) {
-    const float dy = yi - y;
-    offset = ((yi - input_rect.ymin) * buffer_width + (minx - input_rect.xmin));
-    for (int xi = minx; xi < maxx; xi++) {
-      const float dx = xi - x;
-      const float dis = dx * dx + dy * dy;
-      if (dis <= mindist) {
-        value = std::min(buffer[offset], value);
-      }
-      offset++;
-    }
-  }
-  output[0] = value;
-}
-
 void ErodeDistanceOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                           const rcti &area,
                                                           Span<MemoryBuffer *> inputs)
@@ -439,8 +293,6 @@ void DilateStepOperation::init_execution()
 {
   input_program_ = this->get_input_socket_reader(0);
 }
-
-void DilateStepOperation::execute_pixel(float output[4], int x, int y, void *data) {}
 
 void DilateStepOperation::deinit_execution()
 {

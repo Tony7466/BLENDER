@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -19,24 +19,6 @@ void ExposureOperation::init_execution()
 {
   input_program_ = this->get_input_socket_reader(0);
   input_exposure_program_ = this->get_input_socket_reader(1);
-}
-
-void ExposureOperation::execute_pixel_sampled(float output[4],
-                                              float x,
-                                              float y,
-                                              PixelSampler sampler)
-{
-  float input_value[4];
-  float input_exposure[4];
-  input_program_->read_sampled(input_value, x, y, sampler);
-  input_exposure_program_->read_sampled(input_exposure, x, y, sampler);
-  const float exposure = pow(2, input_exposure[0]);
-
-  output[0] = input_value[0] * exposure;
-  output[1] = input_value[1] * exposure;
-  output[2] = input_value[2] * exposure;
-
-  output[3] = input_value[3];
 }
 
 void ExposureOperation::update_memory_buffer_row(PixelCursor &p)

@@ -30,49 +30,6 @@ void GaussianYBlurOperation::update_gauss()
   }
 }
 
-void GaussianYBlurOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  float ATTR_ALIGN(16) color_accum[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-  float multiplier_accum = 0.0f;
-  MemoryBuffer *input_buffer = (MemoryBuffer *)data;
-  const rcti &input_rect = input_buffer->get_rect();
-  float *buffer = input_buffer->get_buffer();
-  int bufferwidth = input_buffer->get_width();
-  int bufferstartx = input_rect.xmin;
-  int bufferstarty = input_rect.ymin;
-
-  int xmin = max_ii(x, input_rect.xmin);
-  int ymin = max_ii(y - filtersize_, input_rect.ymin);
-  int ymax = min_ii(y + filtersize_ + 1, input_rect.ymax);
-
-  int index;
-  int step = get_step();
-  const int buffer_indexx = ((xmin - bufferstartx) * 4);
-
-#if BLI_HAVE_SSE2
-  __m128 accum_r = _mm_load_ps(color_accum);
-  for (int ny = ymin; ny < ymax; ny += step) {
-    index = (ny - y) + filtersize_;
-    int bufferindex = buffer_indexx + ((ny - bufferstarty) * 4 * bufferwidth);
-    const float multiplier = gausstab_[index];
-    __m128 reg_a = _mm_load_ps(&buffer[bufferindex]);
-    reg_a = _mm_mul_ps(reg_a, gausstab_sse_[index]);
-    accum_r = _mm_add_ps(accum_r, reg_a);
-    multiplier_accum += multiplier;
-  }
-  _mm_store_ps(color_accum, accum_r);
-#else
-  for (int ny = ymin; ny < ymax; ny += step) {
-    index = (ny - y) + filtersize_;
-    int bufferindex = buffer_indexx + ((ny - bufferstarty) * 4 * bufferwidth);
-    const float multiplier = gausstab_[index];
-    madd_v4_v4fl(color_accum, &buffer[bufferindex], multiplier);
-    multiplier_accum += multiplier;
-  }
-#endif
-  mul_v4_v4fl(output, color_accum, 1.0f / multiplier_accum);
-}
-
 void GaussianYBlurOperation::deinit_execution()
 {
   GaussianBlurBaseOperation::deinit_execution();

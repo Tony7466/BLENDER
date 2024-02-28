@@ -22,10 +22,6 @@ class GaussianBokehBlurOperation : public BlurBaseOperation {
   GaussianBokehBlurOperation();
   void init_data() override;
   void init_execution() override;
-  /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
 
   /**
    * Deinitialize the execution
@@ -52,10 +48,6 @@ class GaussianBlurReferenceOperation : public BlurBaseOperation {
   GaussianBlurReferenceOperation();
   void init_data() override;
   void init_execution() override;
-  /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
 
   /**
    * Deinitialize the execution

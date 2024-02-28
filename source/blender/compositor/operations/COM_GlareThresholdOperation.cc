@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -29,28 +29,6 @@ void GlareThresholdOperation::determine_canvas(const rcti &preferred_area, rcti 
 void GlareThresholdOperation::init_execution()
 {
   input_program_ = this->get_input_socket_reader(0);
-}
-
-void GlareThresholdOperation::execute_pixel_sampled(float output[4],
-                                                    float x,
-                                                    float y,
-                                                    PixelSampler sampler)
-{
-  const float threshold = settings_->threshold;
-
-  input_program_->read_sampled(output, x, y, sampler);
-  if (IMB_colormanagement_get_luminance(output) >= threshold) {
-    output[0] -= threshold;
-    output[1] -= threshold;
-    output[2] -= threshold;
-
-    output[0] = std::max(output[0], 0.0f);
-    output[1] = std::max(output[1], 0.0f);
-    output[2] = std::max(output[2], 0.0f);
-  }
-  else {
-    zero_v3(output);
-  }
 }
 
 void GlareThresholdOperation::deinit_execution()
