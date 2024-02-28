@@ -134,7 +134,7 @@ void PlaneDistortWarpImageOperation::update_memory_buffer_partial(MemoryBuffer *
   if (motion_blur_samples_ == 1) {
     for (; !it.is_end(); ++it) {
       warp_coord(it.x, it.y, samples_[0].perspective_matrix, uv, deriv);
-      input_img->read_elem_filtered(uv[0], uv[1], deriv[0], deriv[1], it.out);
+      input_img->read_elem_filtered(uv[0], uv[1], deriv[0], deriv[1], true, it.out);
     }
   }
   else {
@@ -143,7 +143,7 @@ void PlaneDistortWarpImageOperation::update_memory_buffer_partial(MemoryBuffer *
       for (const int sample : IndexRange(motion_blur_samples_)) {
         float color[4];
         warp_coord(it.x, it.y, samples_[sample].perspective_matrix, uv, deriv);
-        input_img->read_elem_filtered(uv[0], uv[1], deriv[0], deriv[1], color);
+        input_img->read_elem_filtered(uv[0], uv[1], deriv[0], deriv[1], true, color);
         add_v4_v4(it.out, color);
       }
       mul_v4_fl(it.out, 1.0f / float(motion_blur_samples_));
@@ -240,63 +240,41 @@ void PlaneDistortWarpImageOperation::get_area_of_interest(const int input_idx,
 PlaneDistortMaskOperation::PlaneDistortMaskOperation() : PlaneDistortBaseOperation()
 {
   add_output_socket(DataType::Value);
-
-  /* Currently hardcoded to 8 samples. */
-  osa_ = 8;
 }
 
-void PlaneDistortMaskOperation::init_execution()
-{
-  BLI_jitter_init(jitter_, osa_);
-}
-
-void PlaneDistortMaskOperation::execute_pixel_sampled(float output[4],
-                                                      float x,
-                                                      float y,
+void PlaneDistortMaskOperation::execute_pixel_sampled(float /*output*/[4],
+                                                      float /*x*/,
+                                                      float /*y*/,
                                                       PixelSampler /*sampler*/)
 {
-  float point[2];
-  int inside_counter = 0;
+#if 0
+  const float2 point = float2(x, y);
   if (motion_blur_samples_ == 1) {
     MotionSample *sample_data = &samples_[0];
-    for (int sample = 0; sample < osa_; sample++) {
-      point[0] = x + jitter_[sample][0];
-      point[1] = y + jitter_[sample][1];
-      if (isect_point_tri_v2(point,
-                             sample_data->frame_space_corners[0],
-                             sample_data->frame_space_corners[1],
-                             sample_data->frame_space_corners[2]) ||
-          isect_point_tri_v2(point,
-                             sample_data->frame_space_corners[0],
-                             sample_data->frame_space_corners[2],
-                             sample_data->frame_space_corners[3]))
-      {
-        inside_counter++;
-      }
-    }
-    output[0] = float(inside_counter) / osa_;
+    const bool is_inside = isect_point_tri_v2(point,
+                                              sample_data->frame_space_corners[0],
+                                              sample_data->frame_space_corners[1],
+                                              sample_data->frame_space_corners[2]) ||
+                           isect_point_tri_v2(point,
+                                              sample_data->frame_space_corners[0],
+                                              sample_data->frame_space_corners[2],
+                                              sample_data->frame_space_corners[3]);
   }
   else {
     for (int motion_sample = 0; motion_sample < motion_blur_samples_; motion_sample++) {
       MotionSample *sample_data = &samples_[motion_sample];
-      for (int osa_sample = 0; osa_sample < osa_; osa_sample++) {
-        point[0] = x + jitter_[osa_sample][0];
-        point[1] = y + jitter_[osa_sample][1];
-        if (isect_point_tri_v2(point,
-                               sample_data->frame_space_corners[0],
-                               sample_data->frame_space_corners[1],
-                               sample_data->frame_space_corners[2]) ||
-            isect_point_tri_v2(point,
-                               sample_data->frame_space_corners[0],
-                               sample_data->frame_space_corners[2],
-                               sample_data->frame_space_corners[3]))
-        {
-          inside_counter++;
-        }
-      }
+      const bool is_inside = isect_point_tri_v2(point,
+                                                sample_data->frame_space_corners[0],
+                                                sample_data->frame_space_corners[1],
+                                                sample_data->frame_space_corners[2]) ||
+                             isect_point_tri_v2(point,
+                                                sample_data->frame_space_corners[0],
+                                                sample_data->frame_space_corners[2],
+                                                sample_data->frame_space_corners[3]);
     }
     output[0] = float(inside_counter) / (osa_ * motion_blur_samples_);
   }
+#endif
 }
 
 void PlaneDistortMaskOperation::update_memory_buffer_partial(MemoryBuffer *output,
@@ -304,37 +282,22 @@ void PlaneDistortMaskOperation::update_memory_buffer_partial(MemoryBuffer *outpu
                                                              Span<MemoryBuffer *> /*inputs*/)
 {
   for (BuffersIterator<float> it = output->iterate_with({}, area); !it.is_end(); ++it) {
-    int inside_count = 0;
+    float accumulated_mask = 0.0f;
+    const float2 point = float2(it.x, it.y);
     for (const int motion_sample : IndexRange(motion_blur_samples_)) {
       MotionSample &sample = samples_[motion_sample];
-      inside_count += get_jitter_samples_inside_count(it.x, it.y, sample);
+      const bool is_inside_plane = isect_point_tri_v2(point,
+                                                      sample.frame_space_corners[0],
+                                                      sample.frame_space_corners[1],
+                                                      sample.frame_space_corners[2]) ||
+                                   isect_point_tri_v2(point,
+                                                      sample.frame_space_corners[0],
+                                                      sample.frame_space_corners[2],
+                                                      sample.frame_space_corners[3]);
+      accumulated_mask += is_inside_plane ? 1.0f : 0.0f;
     }
-    *it.out = float(inside_count) / (osa_ * motion_blur_samples_);
+    *it.out = accumulated_mask / motion_blur_samples_;
   }
-}
-
-int PlaneDistortMaskOperation::get_jitter_samples_inside_count(int x,
-                                                               int y,
-                                                               MotionSample &sample_data)
-{
-  float point[2];
-  int inside_count = 0;
-  for (int sample = 0; sample < osa_; sample++) {
-    point[0] = x + jitter_[sample][0];
-    point[1] = y + jitter_[sample][1];
-    if (isect_point_tri_v2(point,
-                           sample_data.frame_space_corners[0],
-                           sample_data.frame_space_corners[1],
-                           sample_data.frame_space_corners[2]) ||
-        isect_point_tri_v2(point,
-                           sample_data.frame_space_corners[0],
-                           sample_data.frame_space_corners[2],
-                           sample_data.frame_space_corners[3]))
-    {
-      inside_count++;
-    }
-  }
-  return inside_count;
 }
 
 }  // namespace blender::compositor
