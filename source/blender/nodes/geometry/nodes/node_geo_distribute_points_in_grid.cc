@@ -39,7 +39,9 @@ static void node_declare(NodeDeclarationBuilder &b)
       .min(0.0f)
       .max(100000.0f)
       .subtype(PROP_NONE)
-      .description("Number of points to sample per unit volume");
+      .description(
+          "When combined with each voxel's value, determines the number of points to sample per "
+          "unit volume");
   b.add_input<decl::Int>("Seed").min(-10000).max(10000).description(
       "Seed used by the random number generator to generate random points");
   b.add_input<decl::Vector>("Spacing")
