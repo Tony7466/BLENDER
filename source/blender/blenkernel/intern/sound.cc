@@ -1189,8 +1189,10 @@ void BKE_sound_update_scene(Depsgraph *depsgraph, Scene *scene)
     DEGObjectIterSettings deg_iter_settings = {nullptr};
     deg_iter_settings.depsgraph = depsgraph;
     deg_iter_settings.flags = DEG_OBJECT_ITER_FOR_RENDER_ENGINE_FLAGS;
+    const short hide_flag = DEG_get_mode(depsgraph) == DAG_EVAL_VIEWPORT ? OB_HIDE_VIEWPORT :
+                                                                           OB_HIDE_RENDER;
     DEG_OBJECT_ITER_BEGIN (&deg_iter_settings, object) {
-      if (object->visibility_flag & OB_HIDE_VIEWPORT) {
+      if (object->visibility_flag & hide_flag) {
         continue;
       }
       sound_update_base(scene, object, new_set);
