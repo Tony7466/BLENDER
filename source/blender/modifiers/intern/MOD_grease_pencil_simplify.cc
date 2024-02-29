@@ -16,10 +16,10 @@
 #include "DNA_modifier_types.h"
 #include "DNA_screen_types.h"
 
+#include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_modifier.hh"
-#include "BKE_geometry_fields.hh"
 
 #include "GEO_resample_curves.hh"
 
@@ -80,34 +80,36 @@ static void subdivide_drawing(GreasePencilSimplifyModifierData &mmd,
                               bke::greasepencil::Drawing &drawing)
 {
   IndexMaskMemory memory;
-  bke::CurvesGeometry curves=drawing.strokes_for_write();
+  bke::CurvesGeometry curves = drawing.strokes_for_write();
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
-
-  //bke::GreasePencilLayerFieldContext field_context(
-  //    grease_pencil, AttrDomain::Curve, layer_index);
-//
-  //fn::IndexFieldInput
 
   switch (mmd.mode) {
     case MOD_GREASE_PENCIL_SIMPLIFY_FIXED: {
       for (int i = 0; i < mmd.step; i++) {
-        //BKE_gpencil_stroke_simplify_fixed(gpd, gps);
+        const OffsetIndices points_by_curve = curves.points_by_curve();
+        Array<int> target_count(curves.curves_num());
+        strokes.foreach_index(GrainSize(4096), [&](const int i) {
+          target_count[i] = math::round(float(points_by_curve[i].size()) / 2.0f + 0.5);
+          target_count[i] = math::max(target_count[i], 2);
+        });
+        curves = geometry::resample_to_count(
+            curves, strokes, VArray<int>::ForSpan(target_count.as_span()), {});
       }
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_ADAPTIVE: {
       /* simplify stroke using Ramer-Douglas-Peucker algorithm */
-      //geometry::resample_adaptive(curves,strokes,VArray<float>::ForSingle(mmd.factor,curves.curves_num()));
+      // geometry::resample_adaptive(curves,strokes,VArray<float>::ForSingle(mmd.factor,curves.curves_num()));
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_SAMPLE: {
-      //geometry::resample_to_length(drawing.strokes(),field_context,
-      //BKE_gpencil_stroke_sample(gpd, gps, mmd->length, false, mmd->sharp_threshold);
+      curves = geometry::resample_to_length(
+          curves, strokes, VArray<float>::ForSingle(mmd.length, curves.curves_num()), {});
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_MERGE: {
-      //BKE_gpencil_stroke_merge_distance(gpd, gpf, gps, mmd->distance, true);
+      // BKE_gpencil_stroke_merge_distance(gpd, gpf, gps, mmd->distance, true);
       break;
     }
     default:
@@ -153,7 +155,7 @@ static void panel_draw(const bContext * /*C*/, Panel *panel)
   uiLayout *layout = panel->layout;
 
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, nullptr);
-  
+
   int mode = RNA_enum_get(ptr, "mode");
 
   uiLayoutSetPropSep(layout, true);
