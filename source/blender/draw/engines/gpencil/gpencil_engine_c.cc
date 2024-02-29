@@ -772,7 +772,11 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
                          (!pd->simplify_fill);
         /* bool only_lines = !GPENCIL_PAINT_MODE(gpd) && gpl && gpf && gpl->actframe != gpf &&
          *                    pd->use_multiedit_lines_only; */
-        bool only_lines = pd->use_multiedit_lines_only;
+        bool only_lines = !ELEM(ob->mode,
+                                OB_MODE_PAINT_GREASE_PENCIL,
+                                OB_MODE_WEIGHT_PAINT,
+                                OB_MODE_VERTEX_PAINT) &&
+                          pd->use_multiedit_lines_only;
         /* bool is_onion = gpl && gpf && gpf->runtime.onion_id != 0; */
         bool is_onion = false;
         bool hide_onion = is_onion && ((gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN) != 0);
