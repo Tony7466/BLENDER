@@ -269,9 +269,11 @@ void horizon_scan_eval(vec3 vP,
           context.closure_common.light_slice += sample_radiance * sample_weight * weight_bitmask;
           context.closure_common.bitmask |= sample_bitmask;
 
+          /* Encoding using front sample direction gives better result than
+           * `normalize(vL_front + vL_back)` */
           spherical_harmonics_encode_signal_sample(
               vL_front,
-              vec4(sample_radiance * facing_weight * weight_bitmask, 1.0),
+              vec4(sample_radiance * facing_weight * weight_bitmask, weight_bitmask),
               context.sh_slice);
         }
 #endif
@@ -284,8 +286,7 @@ void horizon_scan_eval(vec3 vP,
     context.occlusion_common.weight_accum += context.occlusion_common.N_length;
 #endif
 #ifdef HORIZON_CLOSURE
-    /* Use uniform visibility since this is what we use for near field lighting.
-     * Also the lighting we are going to mask is already containing the cosine lobe. */
+    /* Use uniform visibility since this is what we use for near field lighting. */
     float slice_occlusion = horizon_scan_bitmask_to_visibility_uniform(
         ~context.closure_common.bitmask);
     /* Normalize radiance since BxDF is applied when merging direct and indirect light. */

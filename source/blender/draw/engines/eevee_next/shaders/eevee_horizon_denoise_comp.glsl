@@ -160,11 +160,17 @@ void main()
   /* TODO(fclem): Evaluate depending on BSDF. */
   vec3 radiance = spherical_harmonics_evaluate_lambert(vN, accum_sh);
 
-  /* Fallback to nearest light-probe. */
+  /* Evaluate visibility from horizon scan. */
+  SphericalHarmonicL1 sh_visibility = spherical_harmonics_swizzle_wwww(accum_sh);
+  float occlusion = spherical_harmonics_evaluate_lambert(vN, sh_visibility).x;
+  /* FIXME(fclem): Tried to match the old occlusion look. I don't know why it's needed. */
+  occlusion *= 0.5;
+  float visibility = saturate(1.0 - occlusion);
+
+  /* Apply missing distant lighting. */
   LightProbeSample samp = lightprobe_load(P, Ng, V);
   vec3 radiance_probe = spherical_harmonics_evaluate_lambert(N, samp.volume_irradiance);
-  /* Apply missing distant lighting. */
-  // radiance += occlusion * radiance_probe;
+  radiance += visibility * radiance_probe;
 
   vec4 radiance_horizon = vec4(radiance, 0.0);
   vec4 radiance_raytrace = use_raytrace ? imageLoad(radiance_img, texel_fullres) : vec4(0.0);
