@@ -4615,7 +4615,7 @@ def km_grease_pencil_edit_mode(params):
         # Copy/paste
         ("grease_pencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
         ("grease_pencil.paste", {"type": 'V', "value": 'PRESS', "ctrl": True}, None),
-        ("grease_pencil.paste", {"type": 'V', "value": 'PRESS', "shift": True, "ctrl": True}, 
+        ("grease_pencil.paste", {"type": 'V', "value": 'PRESS', "shift": True, "ctrl": True},
          {"properties": [("paste_back", True)]}),
         # Separate
         ("grease_pencil.separate", {"type": 'P', "value": 'PRESS'}, None),
