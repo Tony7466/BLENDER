@@ -15,6 +15,8 @@ set(INC
 set(INC_SYS
   ${JPEG_INCLUDE_DIR}
   ${ZLIB_INCLUDE_DIRS}
+  # OpenImageIO depends on Imath on APPLE/ARM
+  ${IMATH_INCLUDE_DIRS}
   ${OPENIMAGEIO_INCLUDE_DIRS}
 )
 

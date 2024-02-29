@@ -11,6 +11,8 @@ set(INC
 )
 
 set(INC_SYS
+  # OpenImageIO depends on Imath on APPLE/ARM
+  ${IMATH_INCLUDE_DIRS}
   ${OPENIMAGEIO_INCLUDE_DIRS}
 )
 
