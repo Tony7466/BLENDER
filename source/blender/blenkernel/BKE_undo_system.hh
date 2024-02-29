@@ -81,6 +81,8 @@ struct UndoStep {
   bool use_old_bmain_data;
   /** For use by undo systems that accumulate changes (mesh-sculpt & image-painting). */
   bool is_applied;
+  /** Time that this step was created. */
+  time_t timestamp;
   /* Over alloc 'type->struct_size'. */
 };
 

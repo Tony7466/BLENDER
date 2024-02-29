@@ -556,6 +556,8 @@ eUndoPushReturn BKE_undosys_step_push_with_type(UndoStack *ustack,
     us->type = ut;
     /* True by default, code needs to explicitly set it to false if necessary. */
     us->use_old_bmain_data = true;
+    us->timestamp = time(nullptr);
+
     /* Initialized, not added yet. */
 
     CLOG_INFO(&LOG, 1, "addr=%p, name='%s', type='%s'", us, us->name, us->type->name);

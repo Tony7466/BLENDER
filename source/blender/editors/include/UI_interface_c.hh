@@ -2677,6 +2677,7 @@ void uiTemplateColormanagedViewSettings(uiLayout *layout,
 
 int uiTemplateRecentFiles(uiLayout *layout, int rows);
 void uiTemplateFileSelectPath(uiLayout *layout, bContext *C, FileSelectParams *params);
+int uiTemplateUndoHistory(uiLayout *layout, wmWindowManager *wm);
 
 enum {
   UI_TEMPLATE_ASSET_DRAW_NO_NAMES = (1 << 0),

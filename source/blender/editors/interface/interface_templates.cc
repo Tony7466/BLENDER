@@ -65,6 +65,7 @@
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_shader_fx.h"
+#include "BKE_undo_system.hh"
 
 #include "BLO_readfile.hh"
 
@@ -7203,6 +7204,64 @@ int uiTemplateRecentFiles(uiLayout *layout, int rows)
   }
 
   return i;
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name History List Template
+ * \{ */
+
+int uiTemplateUndoHistory(uiLayout *layout, wmWindowManager *wm)
+{
+  if (wm->undo_stack == nullptr) {
+    return 0;
+  }
+
+  uiLayout *split = uiLayoutSplit(layout, 0.0f, false);
+  uiLayout *column = uiLayoutColumn(split, false);
+  int rows = 0;
+
+  int undo_steps = BLI_listbase_count(&wm->undo_stack->steps);
+  const int col_size = 20 + (undo_steps / 12);
+
+  struct tm *tm_local;
+  char str[FILE_MAX];
+
+  /* Reverse the order so the most recent state is first in the menu. */
+  int i = undo_steps;
+  LISTBASE_FOREACH_BACKWARD (UndoStep *, us, &wm->undo_stack->steps) {
+    i--;
+    if (us->skip) {
+      continue;
+    }
+    if (rows > 0 && !(rows % col_size)) {
+      column = uiLayoutColumn(split, false);
+    }
+    const bool is_active = (us == wm->undo_stack->step_active);
+
+    uiLayout *row = uiLayoutRow(column, false);
+    uiLayoutSetEnabled(row, !is_active);
+
+    tm_local = localtime(&us->timestamp);
+    SNPRINTF_RLEN(str,
+                  "%s|%02i:%02i:%02i",
+                  CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, us->name),
+                  tm_local->tm_hour,
+                  tm_local->tm_min,
+                  tm_local->tm_sec);
+
+    uiItemIntO(
+        row, str, is_active ? ICON_LAYER_ACTIVE : ICON_NONE, "ED_OT_undo_history", "item", i);
+
+    uiBlock *block = uiLayoutGetBlock(row);
+    uiBut *but = ui_but_last(block);
+    UI_but_flag_enable(but, UI_BUT_HAS_SEP_CHAR);
+
+    rows += 1;
+  }
+
+  return rows;
 }
 
 /** \} */

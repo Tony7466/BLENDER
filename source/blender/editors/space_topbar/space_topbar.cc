@@ -18,7 +18,6 @@
 
 #include "BKE_context.hh"
 #include "BKE_screen.hh"
-#include "BKE_undo_system.hh"
 
 #include "ED_screen.hh"
 #include "ED_space_api.hh"
@@ -211,49 +210,7 @@ static void recent_files_menu_register()
 
 static void undo_history_draw_menu(const bContext *C, Menu *menu)
 {
-  wmWindowManager *wm = CTX_wm_manager(C);
-  if (wm->undo_stack == nullptr) {
-    return;
-  }
-
-  int undo_step_count = 0;
-  int undo_step_count_all = 0;
-  LISTBASE_FOREACH_BACKWARD (UndoStep *, us, &wm->undo_stack->steps) {
-    undo_step_count_all += 1;
-    if (us->skip) {
-      continue;
-    }
-    undo_step_count += 1;
-  }
-
-  uiLayout *split = uiLayoutSplit(menu->layout, 0.0f, false);
-  uiLayout *column = nullptr;
-
-  const int col_size = 20 + (undo_step_count / 12);
-
-  undo_step_count = 0;
-
-  /* Reverse the order so the most recent state is first in the menu. */
-  int i = undo_step_count_all - 1;
-  for (UndoStep *us = static_cast<UndoStep *>(wm->undo_stack->steps.last); us; us = us->prev, i--)
-  {
-    if (us->skip) {
-      continue;
-    }
-    if (!(undo_step_count % col_size)) {
-      column = uiLayoutColumn(split, false);
-    }
-    const bool is_active = (us == wm->undo_stack->step_active);
-    uiLayout *row = uiLayoutRow(column, false);
-    uiLayoutSetEnabled(row, !is_active);
-    uiItemIntO(row,
-               CTX_IFACE_(BLT_I18NCONTEXT_OPERATOR_DEFAULT, us->name),
-               is_active ? ICON_LAYER_ACTIVE : ICON_NONE,
-               "ED_OT_undo_history",
-               "item",
-               i);
-    undo_step_count += 1;
-  }
+  uiTemplateUndoHistory(menu->layout, CTX_wm_manager(C));
 }
 
 static void undo_history_menu_register()
