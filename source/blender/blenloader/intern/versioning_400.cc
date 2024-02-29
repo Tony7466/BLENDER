@@ -43,7 +43,7 @@
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_attribute.hh"
@@ -2972,6 +2972,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
         settings->flag |= BRUSH_CURVES_SCULPT_FLAG_INTERPOLATE_RADIUS;
         settings->curve_radius = 0.01f;
       }
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 8)) {
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      light->shadow_filter_radius = 3.0f;
     }
   }
 
