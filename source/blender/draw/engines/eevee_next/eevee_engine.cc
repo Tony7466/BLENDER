@@ -48,10 +48,7 @@ static void eevee_engine_init(void *vedata)
 
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   int2 size = int2(GPU_texture_width(dtxl->color), GPU_texture_height(dtxl->color));
-  int scaling_factor = 1;
-  if (v3d) {
-    scaling_factor = BKE_render_preview_pixel_size(&scene->r);
-  }
+  const int scaling_factor = v3d ? BKE_render_preview_pixel_size(&scene->r) : 1;
 
   const DRWView *default_view = DRW_view_default_get();
 
