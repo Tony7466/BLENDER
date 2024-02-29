@@ -55,7 +55,10 @@
 /** \name Channel List
  * \{ */
 
-void draw_channel_names(bContext *C, bAnimContext *ac, ARegion *region, const ListBase &anim_data)
+void draw_channel_names(bContext *C,
+                        bAnimContext *ac,
+                        ARegion *region,
+                        const ListBase /* bAnimListElem */ &anim_data)
 {
   bAnimListElem *ale;
   View2D *v2d = &region->v2d;
