@@ -2,180 +2,13 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#include <boost/fusion/include/adapt_struct.hpp>
-#include <boost/spirit/home/x3.hpp>
 #include <iostream>
-#include <optional>
-#include <variant>
 
 #include "dna_parser.hh"
 
-BOOST_FUSION_ADAPT_STRUCT(blender::dna::parser::ast::ConstInt, name, value);
-BOOST_FUSION_ADAPT_STRUCT(blender::dna::parser::ast::Variable::Item, ptr, name, size);
-BOOST_FUSION_ADAPT_STRUCT(blender::dna::parser::ast::Variable, const_tag, type, items);
-BOOST_FUSION_ADAPT_STRUCT(blender::dna::parser::ast::Struct, name, items);
-BOOST_FUSION_ADAPT_STRUCT(blender::dna::parser::ast::FunctionPtr, type, name, params);
-BOOST_FUSION_ADAPT_STRUCT(blender::dna::parser::ast::Enum::Item, name, value);
-BOOST_FUSION_ADAPT_STRUCT(blender::dna::parser::ast::Enum, name, type, items);
-
-/** Required traits so `blender::Vector` could be used by `x3`. */
-namespace boost::spirit::x3::traits {
-template<typename T> struct push_back_container<blender::Vector<T>> {
-  static bool call(blender::Vector<T> &c, T &&val)
-  {
-    c.append(std::move(val));
-    return true;
-  }
-  static bool call(blender::Vector<T> &c, blender::dna::parser::ast::Omitted &&val)
-  {
-    return true;
-  }
-};
-
-template<typename T> struct is_empty_container<blender::Vector<T>> {
-  static bool call(blender::Vector<T> const &c)
-  {
-    return c.is_empty();
-  }
-};
-}  // namespace boost::spirit::x3::traits
+#ifdef DEBUG_PRINT_DNA_PARSER
 
 namespace blender::dna::parser {
-
-namespace x3 = boost::spirit::x3;
-
-#define DEF_RULE(name, type) x3::rule<struct name, type> const name{#name};
-
-DEF_RULE(const_int, ast::ConstInt);
-
-DEF_RULE(identifier, std::string);
-DEF_RULE(int_string, std::string);
-
-DEF_RULE(variable_type, std::string);
-DEF_RULE(variable_ptr, std::string);
-DEF_RULE(variable_item, ast::Variable::Item);
-DEF_RULE(variable, ast::Variable);
-
-DEF_RULE(param, ast::Variable);
-DEF_RULE(function_ptr, ast::FunctionPtr);
-DEF_RULE(type_struct, ast::Struct);
-DEF_RULE(enum_item_expr, std::string);
-DEF_RULE(enum_item_value, ast::Enum::Item::Value);
-DEF_RULE(enum_item, ast::Enum::Item);
-DEF_RULE(type_enum, ast::Enum);
-DEF_RULE(cpp, Vector<ast::CppType>);
-
-/** Identifier is a combination of alphanumeric and underscore characters. */
-auto identifier_def = x3::lexeme[(x3::alpha | x3::char_('_')) >> *(x3::alnum | x3::char_('_'))];
-
-auto int_string_def = x3::lexeme[+x3::digit >> -x3::char_('u')];
-
-/** Simple integer constant declaration. */
-auto const_int_def = "#define" >> identifier >> x3::int32;
-
-/* -------------------------------------------------------------------- */
-/** \name Variable definition
- * \{ */
-
-auto variable_type_def = -(x3::string("unsigned") | x3::lit("struct")) >> identifier;
-
-auto variable_ptr_def = +x3::char_('*');
-
-auto variable_size_def = ('[' >> (identifier | x3::int32) >> ']');
-
-auto variable_item_def = -variable_ptr >> identifier >> *variable_size_def;
-
-auto variable_def = x3::matches[x3::string("const")] >> variable_type >> (variable_item % ',');
-
-/** \} */
-
-/** Struct definition. */
-auto type_struct_def = -x3::lit("typedef") >> "struct" >> identifier >> '{' >>
-                       *((function_ptr | variable) >> ';') >> '}' >> -x3::omit[identifier] >> ";";
-
-/* -------------------------------------------------------------------- */
-/** \name Enum definition
- * \{ */
-
-auto enum_item_expr_def = (identifier | int_string) >>
-                          +((x3::string("<<") | x3::string("|")) >> (identifier | int_string));
-
-auto enum_item_value_def = (enum_item_expr | identifier | x3::int32) |
-                           ('(' >> (enum_item_expr | identifier | x3::int32) >> ')');
-
-auto enum_item_def = identifier >> -('=' >> enum_item_value);
-
-auto type_enum_def = -x3::lit("typedef") >> "enum" >> -identifier >> -(':' >> identifier) >> '{' >>
-                     *(enum_item >> ',') >> "}" >> -x3::omit[identifier] >> ";";
-
-/** \} */
-
-/** Struct forward declaration. */
-auto fw_declare_def = -x3::lit("typedef") >> "struct" >> (identifier % ',') >> ";";
-
-/* -------------------------------------------------------------------- */
-/** \name Function definition
- * \{ */
-
-/** Function parameter, same as a variable. */
-auto param_def = x3::matches[x3::string("const")] >> variable_type >> x3::repeat(1)[variable_item];
-
-/** Function pointer definition. */
-auto function_ptr_def = variable_type >> '(' >> '*' >> identifier >> ')' >> '(' >>
-                        *(param % ',') >> ')';
-
-/** \} */
-
-auto cpp_def = *((const_int                                                      //
-                  | type_enum                                                    //
-                  | x3::omit[(x3::char_('#') >> x3::char_('#') >> type_struct)]  //
-                  | type_struct                                                  //
-                  | x3::omit[fw_declare_def]                                     //
-                  | (function_ptr >> ';')                                        //
-                  | x3::omit[x3::lit("#pragma once")]                            //
-                  ));
-
-auto multiline_comment_def = "/*" >> *(x3::char_ - "*/") >> "*/";
-auto line_comment_def = "//" >> *(x3::char_ - x3::eol) >> x3::eol;
-
-auto define_def = ("#define" >> *(x3::char_ - (x3::eol | ('\\' >> x3::eol))) % ('\\' >> x3::eol)) -
-                  (("#define ") >> identifier >> ' ' >> x3::int32);
-
-auto ifdef_def = (x3::lit("#ifdef") | x3::lit("#ifndef") | x3::lit("#if")) >>
-                 *(x3::char_ - "#endif") >> "#endif";
-
-auto dna_deprecated_def = x3::lit("DNA_DEPRECATED");
-auto dna_define_cxx_def = "DNA_DEFINE_CXX_METHODS" >> *~x3::char_(")") >> x3::lit(')');
-auto enum_operators_def = "ENUM_OPERATORS" >> *(~x3::char_(")")) >> x3::lit(')') >> -x3::lit(';');
-auto include_def = x3::lit("#include") >> *(x3::char_ - x3::eol);
-
-auto skippers = multiline_comment_def  //
-                | line_comment_def     //
-                | ifdef_def            //
-                | define_def           //
-                | dna_deprecated_def   //
-                | dna_define_cxx_def   //
-                | include_def          //
-                | enum_operators_def   //
-    ;
-
-BOOST_SPIRIT_DEFINE(const_int);
-BOOST_SPIRIT_DEFINE(int_string);
-BOOST_SPIRIT_DEFINE(identifier);
-BOOST_SPIRIT_DEFINE(variable_ptr);
-BOOST_SPIRIT_DEFINE(variable_type);
-BOOST_SPIRIT_DEFINE(variable_item);
-BOOST_SPIRIT_DEFINE(variable);
-BOOST_SPIRIT_DEFINE(param);
-BOOST_SPIRIT_DEFINE(function_ptr);
-BOOST_SPIRIT_DEFINE(type_struct);
-BOOST_SPIRIT_DEFINE(enum_item_expr);
-BOOST_SPIRIT_DEFINE(enum_item_value);
-BOOST_SPIRIT_DEFINE(enum_item);
-BOOST_SPIRIT_DEFINE(type_enum);
-BOOST_SPIRIT_DEFINE(cpp);
-
-#ifdef DEBUG_PRINT_DNA_PARSER
 struct StructMemberPrinter {
 
   void operator()(ast::Variable &var) const
@@ -194,8 +27,8 @@ struct StructMemberPrinter {
       first = false;
       std::cout << variable_item.ptr.value_or("") << variable_item.name;
       for (auto &size : variable_item.size) {
-        if (std::holds_alternative<std::string>(size)) {
-          std::cout << "[" << std::get<std::string>(size) << "]";
+        if (std::holds_alternative<std::string_view>(size)) {
+          std::cout << "[" << std::get<std::string_view>(size) << "]";
         }
         else {
           std::cout << "[" << std::get<int32_t>(size) << "]";
@@ -205,7 +38,10 @@ struct StructMemberPrinter {
   }
   void operator()(ast::FunctionPtr &fn) const
   {
-    std::cout << fn.type << " (*" << fn.name << ")(";
+    if (fn.const_tag) {
+      std::cout << "const ";
+    }
+    std::cout << fn.type << " *(*" << fn.name << ")(";
     for (ast::Variable &var : fn.params) {
       if (var.const_tag) {
         std::cout << "const " << var.type << " ";
@@ -217,8 +53,8 @@ struct StructMemberPrinter {
 
       std::cout << var.items[0].ptr.value_or("") << var.items[0].name;
       for (auto &size : var.items[0].size) {
-        if (std::holds_alternative<std::string>(size)) {
-          std::cout << "[" << std::get<std::string>(size) << "]";
+        if (std::holds_alternative<std::string_view>(size)) {
+          std::cout << "[" << std::get<std::string_view>(size) << "]";
         }
         else {
           std::cout << "[" << std::get<int32_t>(size) << "]";
@@ -233,31 +69,17 @@ struct StructMemberPrinter {
 };
 
 struct ParserDebugPrinter {
-  void operator()(ast::Omitted & /*val*/) const
-  {
-    std::cout << "{}\n";
-  }
   void operator()(ast::ConstInt &val) const
   {
     std::cout << "#define " << val.name << " " << val.value << "\n";
   }
   void operator()(ast::Enum &val) const
   {
-    std::cout << "enum " << val.name.value_or("unnamed")
-              << (val.type ? ": " + val.type.value() : "") << " {\n";
-    for (auto &item : val.items) {
-      std::cout << "   " << item.name;
-      if (item.value) {
-        if (std::holds_alternative<std::string>(item.value.value())) {
-          std::cout << " = " << std::get<std::string>(item.value.value());
-        }
-        else {
-          std::cout << " = " << std::get<int32_t>(item.value.value());
-        }
-      }
-      std::cout << ",\n";
+    std::cout << "enum " << val.name.value_or("unnamed");
+    if (val.type) {
+      std::cout << ": " << val.type.value();
     }
-    std::cout << "};\n";
+    std::cout << " {...};\n";
   }
   void operator()(ast::Struct &val) const
   {
@@ -274,33 +96,627 @@ struct ParserDebugPrinter {
     StructMemberPrinter().operator()(fn);
     std::cout << "\n";
   }
+  void operator()(ast::Variable &var) const
+  {
+    StructMemberPrinter().operator()(var);
+    std::cout << "\n";
+  }
 };
 #endif
 
-bool parse_include(std::string_view text, std::string_view file, Vector<ast::CppType> &c)
-{
-  auto itr = text.begin();
-  auto end = text.end();
+}  // namespace blender::dna::parser
 
-  bool result = phrase_parse(itr, end, cpp, skippers | x3::space, c);
-  if (itr != end) {
-    int line = 0;
-    int chart = 0;
-    for (auto test_itr = text.begin(); test_itr < itr; test_itr++) {
-      if (test_itr[0] == '\n') {
-        line++;
-        chart = 0;
-      }
-      chart++;
+namespace blender::dna::parser::ast {
+
+/* Sequence of elements, fails if any `Args` in `Args...` fails to parse. */
+template<class... Args> struct Sequence : public std::tuple<Args...> {
+
+ private:
+  template<std::size_t I, typename Type>
+  static inline bool parse_type(TokenIterator &cont, Sequence &sequence)
+  {
+    std::optional<Type> val = Type::parse(cont);
+    if (val.has_value()) {
+      std::get<I>(sequence) = std::move(val.value());
     }
-    std::cout << file << "(" << line << "," << chart << ")\n";
+    return val.has_value();
+  };
+
+  template<std::size_t... I>
+  static inline bool parse_impl(std::index_sequence<I...>, TokenIterator &cont, Sequence &sequence)
+  {
+    if ((parse_type<I, Args>(cont, sequence) && ...)) {
+      return true;
+    };
     return false;
+  };
+
+ public:
+  static std::optional<Sequence> parse(TokenIterator &cont)
+  {
+    cont.push_waypoint();
+    Sequence sequence;
+    if (parse_impl(std::make_index_sequence<sizeof...(Args)>{}, cont, sequence)) {
+      cont.end_waypoint(true);
+      return sequence;
+    }
+    cont.end_waypoint(false);
+    return std::nullopt;
   }
-#ifdef DEBUG_PRINT_DNA_PARSER
-  for (auto &item : c) {
-    std::visit(ParserDebugPrinter{}, item);
+};
+
+/* Optional element that don't fails if `Type` can't be parsed. */
+template<typename Type> struct Optional : public std::optional<Type> {
+  static std::optional<Optional> parse(TokenIterator &cont)
+  {
+    cont.push_waypoint();
+    std::optional<Type> result = Type::parse(cont);
+    cont.end_waypoint(result.has_value());
+    return Optional{std::move(result)};
   }
-#endif
+};
+
+/* A variant element. */
+template<class... Args> struct Variant : public std::variant<Args...> {
+ private:
+  template<typename Type> static inline bool parse_type(TokenIterator &cont, Variant &where)
+  {
+    cont.push_waypoint();
+    std::optional<Type> val = Type::parse(cont);
+    if (val.has_value()) {
+      where.emplace<Type>(std::move(val.value()));
+    }
+    cont.end_waypoint(val.has_value());
+    return val.has_value();
+  };
+
+ public:
+  static std::optional<Variant> parse(TokenIterator &cont)
+  {
+    Variant tmp;
+    if ((parse_type<Args>(cont, tmp) || ...)) {
+      return tmp;
+    }
+    return std::nullopt;
+  }
+};
+
+static bool parse_keyword(TokenIterator &cont, KeywordType keyword_type)
+{
+  KeywordToken *keyword = cont.next<KeywordToken>();
+  if (keyword && keyword->type == keyword_type) {
+    return true;
+  }
+  else if (keyword) {
+    cont.step_back();
+  }
+  return false;
+}
+
+template<KeywordType keyword> struct Keyword {
+  static std::optional<Keyword> parse(TokenIterator &cont)
+  {
+    if (parse_keyword(cont, keyword)) {
+      return Keyword{};
+    }
+    return std::nullopt;
+  }
+};
+
+using ConstKeyword = Keyword<KeywordType::CONST>;
+using IncludeKeyword = Keyword<KeywordType::INCLUDE>;
+using UnsignedKeyword = Keyword<KeywordType::UNSIGNED>;
+using StructKeyword = Keyword<KeywordType::STRUCT>;
+using DefineKeyword = Keyword<KeywordType::DEFINE>;
+using IntKeyword = Keyword<KeywordType::INT>;
+using FloatKeyword = Keyword<KeywordType::FLOAT>;
+using VoidKeyword = Keyword<KeywordType::VOID>;
+using ShortKeyword = Keyword<KeywordType::SHORT>;
+using CharKeyword = Keyword<KeywordType::CHAR>;
+using IfKeyword = Keyword<KeywordType::IF>;
+using IfDefKeyword = Keyword<KeywordType::IFDEF>;
+using TypedefKeyword = Keyword<KeywordType::TYPEDEF>;
+using PragmaKeyword = Keyword<KeywordType::PRAGMA>;
+using OnceKeyword = Keyword<KeywordType::ONCE>;
+using EnumKeyword = Keyword<KeywordType::ENUM>;
+using ClassKeyword = Keyword<KeywordType::CLASS>;
+using DNA_DEF_CCXKeyword = Keyword<KeywordType::DNA_DEFINE_CXX_METHODS>;
+using DNADepecratedKeyword = Keyword<KeywordType::DNA_DEPRECATED>;
+using EnumOperatorsKeyword = Keyword<KeywordType::ENUM_OPERATORS>;
+
+static bool parse_symbol(TokenIterator &cont, SymbolType symbol_type)
+{
+  SymbolToken *symbol = cont.next<SymbolToken>();
+  if (symbol && symbol->type == symbol_type) {
+    return true;
+  }
+  else if (symbol) {
+    cont.step_back();
+  }
+  return false;
+}
+
+template<SymbolType symbol> struct Symbol {
+  static std::optional<Symbol> parse(TokenIterator &cont)
+  {
+    if (parse_symbol(cont, symbol)) {
+      return Symbol{};
+    }
+    return {};
+  }
+};
+
+using LBracketSymbol = Symbol<SymbolType::LBRACKET>;
+using RBracketSymbol = Symbol<SymbolType::RBRACKET>;
+using LBraceSymbol = Symbol<SymbolType::LBRACE>;
+using RBraceSymbol = Symbol<SymbolType::RBRACE>;
+using LParenSymbol = Symbol<SymbolType::LPAREN>;
+using RParenSymbol = Symbol<SymbolType::RPAREN>;
+using StarSymbol = Symbol<SymbolType::STAR>;
+using SemicolonSymbol = Symbol<SymbolType::SEMICOLON>;
+using ColonSymbol = Symbol<SymbolType::COLON>;
+using CommaSymbol = Symbol<SymbolType::COMMA>;
+using HashSymbol = Symbol<SymbolType::HASH>;
+using LessSymbol = Symbol<SymbolType::LESS>;
+using GreatherSymbol = Symbol<SymbolType::GREATHER>;
+using AssignSymbol = Symbol<SymbolType::ASSIGN>;
+using MinusSymbol = Symbol<SymbolType::MINUS>;
+
+struct StringLiteral {
+  std::string_view value;
+  static std::optional<StringLiteral> parse(TokenIterator &cont)
+  {
+    if (StringLiteralToken *literal = cont.next<StringLiteralToken>(); literal) {
+      return StringLiteral{literal->where};
+    }
+    return std::nullopt;
+  }
+};
+
+struct Identifier {
+  std::string_view str;
+  static std::optional<Identifier> parse(TokenIterator &cont)
+  {
+    if (IdentifierToken *identifier = cont.next<IdentifierToken>(); identifier) {
+      return Identifier{identifier->where};
+    }
+    return std::nullopt;
+  }
+};
+
+struct Include {
+  static std::optional<Include> parse(TokenIterator &cont)
+  {
+    if (Sequence<HashSymbol, IncludeKeyword>::parse(cont).has_value()) {
+      TokenVariant *token = cont.next_variant();
+      while (token && !std::holds_alternative<BreakLineToken>(*token)) {
+      }
+      return Include{};
+    }
+    return std::nullopt;
+  }
+};
+
+struct Define {
+  static std::optional<Define> parse(TokenIterator &cont)
+  {
+    if (!Sequence<HashSymbol, DefineKeyword>::parse(cont)) {
+      return std::nullopt;
+    }
+    TokenVariant *carried = cont.next_variant();
+    for (TokenVariant *current = carried; current; current = cont.next_variant()) {
+      if (std::holds_alternative<BreakLineToken>(*current) &&
+          !(std::holds_alternative<SymbolToken>(*carried) &&
+            std::get<SymbolToken>(*carried).type == SymbolType::BACKSLASH))
+      {
+        break;
+      }
+      carried = current;
+    }
+    return Define{};
+  }
+};
+
+struct IntLiteral {
+  int value;
+  static std::optional<IntLiteral> parse(TokenIterator &cont)
+  {
+    if (IntLiteralToken *value = cont.next<IntLiteralToken>(); value) {
+      return IntLiteral{value->val};
+    }
+    return std::nullopt;
+  }
+};
+
+std::optional<ConstInt> ConstInt::parse(TokenIterator &cont)
+{
+  using DefineConstIntSeq = Sequence<HashSymbol, DefineKeyword, Identifier, IntLiteral>;
+  std::optional<DefineConstIntSeq> val = DefineConstIntSeq::parse(cont);
+  if (!val.has_value() || !cont.next<BreakLineToken>()) {
+    return std::nullopt;
+  }
+  return ConstInt{std::get<2>(val.value()).str, std::get<3>(val.value()).value};
+}
+
+struct PrimitiveType {
+  std::string_view str;
+  static std::optional<PrimitiveType> parse(TokenIterator &cont)
+  {
+    /* TODO: Add all primitive types. */
+    using PrimitiveTypeVariants = Variant<IntKeyword,
+                                          CharKeyword,
+                                          Sequence<UnsignedKeyword, IntKeyword>,
+                                          FloatKeyword,
+                                          VoidKeyword,
+                                          ShortKeyword>;
+    std::optional<PrimitiveTypeVariants> type = PrimitiveTypeVariants::parse(cont);
+    if (!type.has_value()) {
+      return std::nullopt;
+    }
+    switch (type.value().index()) {
+      case 0:
+        return PrimitiveType{std::string_view{"int"}};
+      case 1:
+        return PrimitiveType{std::string_view{"char"}};
+      case 2:
+        return PrimitiveType{std::string_view{"unsigned int"}};
+      case 3:
+        return PrimitiveType{std::string_view{"float"}};
+      case 4:
+        return PrimitiveType{std::string_view{"void"}};
+      case 5:
+        return PrimitiveType{std::string_view{"short"}};
+      case 6:
+        return PrimitiveType{std::string_view{"char"}};
+      default:
+        break;
+    }
+    return std::nullopt;
+  }
+};
+
+struct TypeOrStruct {
+  bool const_tag{false};
+  std::string_view str;
+  static std::optional<TypeOrStruct> parse(TokenIterator &cont)
+  {
+    using TypeVariant = Variant<PrimitiveType, Sequence<Optional<StructKeyword>, Identifier>>;
+    using TypeSequence = Sequence<Optional<ConstKeyword>, TypeVariant>;
+
+    const std::optional<TypeSequence> type_seq = TypeSequence::parse(cont);
+    if (!type_seq) {
+      return std::nullopt;
+    }
+    const bool const_tag = std::get<0>(type_seq.value()).has_value();
+    const TypeVariant &type_variant = std::get<1>(type_seq.value());
+    if (std::holds_alternative<PrimitiveType>(type_variant)) {
+      return TypeOrStruct{const_tag, std::get<0>(type_variant).str};
+    }
+    else {
+      return TypeOrStruct{const_tag, std::get<1>(std::get<1>(type_variant)).str};
+    }
+  }
+};
+
+static Vector<std::variant<std::string_view, int32_t>> variable_size_array_part(
+    TokenIterator &cont)
+{
+  Vector<std::variant<std::string_view, int32_t>> result;
+  while (true) {
+    using ArraySyze = Sequence<LBracketSymbol, Variant<IntLiteral, Identifier>, RBracketSymbol>;
+    const std::optional<ArraySyze> size_seq = ArraySyze::parse(cont);
+    if (!size_seq.has_value()) {
+      break;
+    }
+    auto &item_size = std::get<1>(size_seq.value());
+    if (std::holds_alternative<IntLiteral>(item_size)) {
+      result.append(std::get<IntLiteral>(item_size).value);
+    }
+    else {
+      result.append(std::get<Identifier>(item_size).str);
+    }
+  }
+  return result;
+}
+
+template<bool stop_at_first = false>
+std::optional<Variable> parse_variable_impl(TokenIterator &cont)
+{
+  const std::optional<TypeOrStruct> type{TypeOrStruct::parse(cont)};
+  if (!type) {
+    return std::nullopt;
+  }
+  Variable var;
+  var.const_tag = type.value().const_tag;
+  var.type = type.value().str;
+
+  while (true) {
+    std::string start = "";
+    for (; StarSymbol::parse(cont);) {
+      start += '*';
+    }
+    std::optional<Identifier> name{Identifier::parse(cont)};
+    if (!name.has_value()) {
+      return std::nullopt;
+    }
+    var.items.append({});
+    Variable::Item &item = var.items.last();
+    item.ptr = !start.empty() ? std::optional{start} : std::nullopt;
+    item.name = name.value().str;
+    item.size = variable_size_array_part(cont);
+    DNADepecratedKeyword::parse(cont);
+    if constexpr (stop_at_first) {
+      break;
+    }
+    if (SemicolonSymbol::parse(cont).has_value()) {
+      break;
+    }
+    else if (!CommaSymbol::parse(cont).has_value()) {
+      return std::nullopt;
+    }
+  }
+  return var;
+}
+
+std::optional<Variable> Variable::parse(TokenIterator &cont)
+{
+  return parse_variable_impl(cont);
+}
+
+std::optional<FunctionPtr> FunctionPtr::parse(TokenIterator &cont)
+{
+  using FunctionPtrBegin = Sequence<TypeOrStruct,
+                                    Optional<StarSymbol>,
+                                    LParenSymbol,
+                                    StarSymbol,
+                                    Identifier,
+                                    RParenSymbol,
+                                    LParenSymbol>;
+  const std::optional<FunctionPtrBegin> fn = FunctionPtrBegin::parse(cont);
+  if (!fn.has_value()) {
+    return {};
+  }
+  FunctionPtr fn_ptr{};
+  fn_ptr.const_tag = std::get<0>(fn.value()).const_tag;
+  fn_ptr.type = std::get<0>(fn.value()).str;
+  fn_ptr.name = std::get<4>(fn.value()).str;
+  /* Function params. */
+  while (true) {
+    std::optional<Variable> var = parse_variable_impl<true>(cont);
+    if (!var.has_value()) {
+      break;
+    }
+    fn_ptr.params.append(std::move(var.value()));
+    if (!CommaSymbol::parse(cont).has_value()) {
+      break;
+    }
+  }
+  /* Closing sequence. */
+  if (!Sequence<RParenSymbol, SemicolonSymbol>::parse(cont).has_value()) {
+    return {};
+  }
+  return fn_ptr;
+}
+
+struct IfDefSection {
+  static std::optional<IfDefSection> parse(TokenIterator &cont)
+  {
+    using IfDefBeginSequence = Sequence<HashSymbol, Variant<IfDefKeyword, IfKeyword>>;
+    const std::optional<IfDefBeginSequence> val = IfDefBeginSequence::parse(cont);
+    if (!val.has_value()) {
+      return std::nullopt;
+    };
+    auto match_closing = [](TokenVariant *carried, TokenVariant *current) {
+      return (std::holds_alternative<SymbolToken>(*carried) &&
+              std::get<SymbolToken>(*carried).type == SymbolType::HASH &&
+              std::holds_alternative<KeywordToken>(*current) &&
+              std::get<KeywordToken>(*current).type == KeywordType::ENDIF);
+    };
+    auto match_opening = [](TokenVariant *carried, TokenVariant *current) {
+      return (std::holds_alternative<SymbolToken>(*carried) &&
+              std::get<SymbolToken>(*carried).type == SymbolType::HASH &&
+              std::holds_alternative<KeywordToken>(*current) &&
+              (std::get<KeywordToken>(*current).type == KeywordType::IF ||
+               std::get<KeywordToken>(*current).type == KeywordType::IFDEF));
+    };
+    int ifdef_deep = 1;
+    TokenVariant *carried = cont.next_variant();
+    for (TokenVariant *current = carried; current && ifdef_deep != 0;
+         current = cont.next_variant())
+    {
+      if (match_opening(carried, current)) {
+        ifdef_deep++;
+      }
+      if (match_closing(carried, current)) {
+        ifdef_deep--;
+      }
+      carried = current;
+    }
+    /* Not matching #endif. */
+    if (ifdef_deep != 0) {
+      return std::nullopt;
+    }
+    return IfDefSection{};
+  }
+};
+
+std::optional<Struct> ast::Struct::parse(TokenIterator &cont)
+{
+  using StructBeginSequence =
+      Sequence<Optional<TypedefKeyword>, StructKeyword, Identifier, LBraceSymbol>;
+  std::optional<StructBeginSequence> struct_seq = StructBeginSequence::parse(cont);
+  if (!struct_seq.has_value()) {
+    return std::nullopt;
+  }
+  Struct result{};
+  result.name = std::get<2>(struct_seq.value()).str;
+  while (true) {
+    using DNA_DEF_CCX_SEQ = Sequence<DNA_DEF_CCXKeyword,
+                                     LParenSymbol,
+                                     Identifier,
+                                     RParenSymbol,
+                                     Optional<SemicolonSymbol>>;
+    if (auto member = Variant<Variable, FunctionPtr>::parse(cont); member.has_value()) {
+      result.items.append(std::move(member.value()));
+    }
+    else if (DNA_DEF_CCX_SEQ::parse(cont).has_value()) {
+    }
+    else if (IfDefSection::parse(cont).has_value()) {
+    }
+    else {
+      break;
+    }
+  }
+  if (!Sequence<RBraceSymbol, Optional<Identifier>, SemicolonSymbol>::parse(cont).has_value()) {
+    return std::nullopt;
+  }
+  return result;
+}
+
+struct Skippers {
+  static std::optional<Skippers> parse(TokenIterator &cont)
+  {
+    /* #pragma one. */
+    if (Sequence<HashSymbol, PragmaKeyword, OnceKeyword>::parse(cont).has_value()) {
+      return Skippers{};
+    }
+    /* Forward declare. */
+    if (Sequence<StructKeyword, Identifier>::parse(cont).has_value()) {
+      for (; Sequence<CommaSymbol, Identifier>::parse(cont).has_value();) {
+      }
+      if (SemicolonSymbol::parse(cont).has_value()) {
+        return Skippers{};
+      }
+    }
+    /* Break lines. */
+    if (cont.next<BreakLineToken>()) {
+      return Skippers{};
+    }
+    return std::nullopt;
+  }
+};
+
+std::optional<Enum> ast::Enum::parse(TokenIterator &cont)
+{
+  /* Opening enum define sequence. */
+  using EnumBeginSequence = Sequence<Optional<TypedefKeyword>,
+                                     EnumKeyword,
+                                     Optional<ClassKeyword>,
+                                     Optional<Identifier>,
+                                     Optional<Sequence<ColonSymbol, PrimitiveType>>,
+                                     LBraceSymbol>;
+  std::optional<EnumBeginSequence> enum_begin = EnumBeginSequence::parse(cont);
+  if (!enum_begin.has_value()) {
+    return std::nullopt;
+  }
+  Enum enum_def;
+  if (std::get<3>(enum_begin.value()).has_value()) {
+    enum_def.name = std::get<3>(enum_begin.value()).value().str;
+  }
+  if (std::get<4>(enum_begin.value()).has_value()) {
+    enum_def.type = std::get<1>(std::get<4>(enum_begin.value()).value()).str;
+  }
+
+  /* Skip tokens until match closing `}`. */
+  int brace_deep = 1;
+  for (TokenVariant *token = cont.next_variant(); token && brace_deep != 0;
+       token = cont.next_variant())
+  {
+    if (!std::holds_alternative<SymbolToken>(*token)) {
+      continue;
+    }
+    if (std::get<SymbolToken>(*token).type == SymbolType::RBRACE) {
+      brace_deep--;
+    }
+    else if (std::get<SymbolToken>(*token).type == SymbolType::LBRACE) {
+      brace_deep++;
+    }
+  }
+  /* Optional enum operator defines. */
+  using EnumOperatorsSeq = Sequence<EnumOperatorsKeyword,
+                                    LParenSymbol,
+                                    Identifier,
+                                    CommaSymbol,
+                                    Identifier,
+                                    RParenSymbol,
+                                    Optional<SemicolonSymbol>>;
+  /* Closing enum defines. */
+  if (!Sequence<Optional<Identifier>,
+                Optional<DNADepecratedKeyword>,
+                SemicolonSymbol,
+                Optional<EnumOperatorsSeq>>::parse(cont)
+           .has_value())
+  {
+    return std::nullopt;
+  }
+  return enum_def;
+}
+
+}  // namespace blender::dna::parser::ast
+
+namespace blender::dna::parser {
+static void print_unhandled_token_error(std::string_view filepath,
+                                        std::string_view text,
+                                        lex::TokenVariant *what)
+{
+
+  std::visit(
+      [text, filepath](auto &&token) {
+        std::string_view::iterator itr = text.begin();
+        size_t line = 1;
+        while (itr < token.where.begin()) {
+          if (itr[0] == '\n') {
+            line++;
+          }
+          itr++;
+        }
+        std::cout << filepath << "(" << line << ") Unhandled token: \"" << token.where << "\"\n";
+      },
+      *what);
+}
+bool parse_include(std::string_view filepath,
+                   std::string_view text,
+                   lex::TokenIterator &cont,
+                   Vector<ast::CppType> &c)
+{
+  using namespace ast;
+  while (!cont.has_finish()) {
+    using CPPTypeVariant = Variant<Struct,
+                                   Enum,
+                                   FunctionPtr,
+                                   Variable,
+                                   ConstInt,
+                                   Define,
+                                   Include,
+                                   IfDefSection,
+                                   Skippers,
+                                   Sequence<HashSymbol, HashSymbol, Struct>>;
+    std::optional<CPPTypeVariant> val = CPPTypeVariant::parse(cont);
+    if (!val.has_value()) {
+     // print_unhandled_token_error(filepath, text, cont.last);
+      return false;
+    }
+    if (std::holds_alternative<Struct>(val.value())) {
+      c.append(std::move(std::get<Struct>(val.value())));
+    }
+    else if (std::holds_alternative<FunctionPtr>(val.value())) {
+      c.append(std::move(std::get<FunctionPtr>(val.value())));
+    }
+    else if (std::holds_alternative<ConstInt>(val.value())) {
+      c.append(std::move(std::get<ConstInt>(val.value())));
+    }
+    else if (std::holds_alternative<Variable>(val.value())) {
+      c.append(std::move(std::get<Variable>(val.value())));
+    }
+    else if (std::holds_alternative<Enum>(val.value())) {
+      c.append(std::move(std::get<Enum>(val.value())));
+    }
+  }
+  for (auto &val : c) {
+    // std::visit(ParserDebugPrinter{}, val);
+  }
+
   return true;
 }
+
 }  // namespace blender::dna::parser

@@ -12,18 +12,13 @@ set(INC
 )
 
 set(INC_SYS
-  ${BOOST_INCLUDE_DIR}
 )
 
 set(LIB
   PRIVATE bf::intern::atomic
   PRIVATE bf::intern::guardedalloc
-  ${BOOST_LIBRARIES}
 )
 
-list(APPEND LIB
-  ${BOOST_LIBRARIES}
-)
 add_definitions(-DWITH_DNA_GHASH)
 
 # Needed for `mallocn.c`.
@@ -71,6 +66,7 @@ set(SRC_BLENLIB
 
 set(SRC
   dna_utils.cc
+  dna_lexer.cc
   dna_parser.cc
   makesdna.cc
   ${SRC_BLENLIB}
@@ -128,6 +124,7 @@ add_custom_command(
 set(SRC
   dna_defaults.c
   dna_genfile.cc
+  dna_lexer.cc
   dna_parser.cc
   dna_utils.cc
   ${CMAKE_CURRENT_BINARY_DIR}/dna.c
@@ -136,6 +133,7 @@ set(SRC
 
   ${CMAKE_CURRENT_BINARY_DIR}/dna_type_offsets.h
   dna_rename_defs.h
+  dna_lexer.hh
   dna_parser.hh
   dna_utils.h
 )
@@ -160,7 +158,6 @@ set(INC
 )
 
 set(INC_SYS
-  ${BOOST_INCLUDE_DIR}
 )
 
 set(SRC
