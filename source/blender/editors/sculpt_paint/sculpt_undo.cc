@@ -1847,20 +1847,15 @@ static void sculpt_undosys_step_decode_redo(bContext *C, Depsgraph *depsgraph, S
     us_iter = (SculptUndoStep *)us_iter->step.prev;
   }
   while (us_iter && (us_iter->step.is_applied == false)) {
-    SculptAttrRef color_start = ((SculptUndoStep *)us_iter)->active_color_start;
-    SculptAttrRef color_end = ((SculptUndoStep *)us_iter)->active_color_end;
-
-    /* Fix for https://projects.blender.org/blender/blender/issues/117824 */
-    if (color_start.domain != bke::AttrDomain::Auto) {
-      set_active_layer(C, &color_start);
+    if (us_iter != us) {
+      set_active_layer(C, &((SculptUndoStep *)us_iter)->active_color_start);
     }
     else {
-      set_active_layer(C, &color_end);
+      set_active_layer(C, &((SculptUndoStep *)us_iter)->active_color_end);
     }
     sculpt_undosys_step_decode_redo_impl(C, depsgraph, us_iter);
 
     if (us_iter == us) {
-      set_active_layer(C, &color_end);
       break;
     }
     us_iter = (SculptUndoStep *)us_iter->step.next;
