@@ -1862,8 +1862,11 @@ static int object_mode_set_exec(bContext *C, wmOperator *op)
     }
   }
 
-  if (G.autosave_scheduled) {
-    WM_autosave_write(CTX_data_main(C));
+  wmWindowManager *wm = CTX_wm_manager(C);
+  if (wm) {
+    if (wm->autosave_scheduled) {
+      WM_autosave_write(wm, CTX_data_main(C));
+    }
   }
 
   return OPERATOR_FINISHED;

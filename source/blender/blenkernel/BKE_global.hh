@@ -158,9 +158,6 @@ struct Global {
   bool opengl_deprecation_usage_detected;
   const char *opengl_deprecation_usage_filename;
   int opengl_deprecation_usage_lineno;
-
-  /** Auto-save timer was up, but it wasn't possible to auto-save in the current mode. */
-  bool autosave_scheduled;
 };
 
 /* **************** GLOBAL ********************* */

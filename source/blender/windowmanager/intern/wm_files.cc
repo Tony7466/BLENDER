@@ -2121,14 +2121,14 @@ static bool wm_autosave_write_try(Main *bmain, wmWindowManager *wm)
     return true;
   }
   if ((U.uiflag & USER_GLOBALUNDO) == 0) {
-    WM_autosave_write(bmain);
+    WM_autosave_write(wm, bmain);
     return true;
   }
   /* Can't auto-save with MemFile right now, try again later. */
   return false;
 }
 
-void WM_autosave_write(Main *bmain)
+void WM_autosave_write(wmWindowManager *wm, Main *bmain)
 {
   ED_editors_flush_edits(bmain);
 
@@ -2141,7 +2141,7 @@ void WM_autosave_write(Main *bmain)
   BlendFileWriteParams params{};
   BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
 
-  G.autosave_scheduled = false;
+  wm->autosave_scheduled = false;
 }
 
 static void wm_autosave_timer_begin_ex(wmWindowManager *wm, double timestep)
@@ -2189,9 +2189,9 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer * /*wt*/)
     }
   }
 
-  G.autosave_scheduled = false;
+  wm->autosave_scheduled = false;
   if (!wm_autosave_write_try(bmain, wm)) {
-    G.autosave_scheduled = true;
+    wm->autosave_scheduled = true;
   }
   /* Restart the timer after file write, just in case file write takes a long time. */
   wm_autosave_timer_begin(wm);
@@ -3418,7 +3418,7 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
      * often saving manually. */
     wm_autosave_timer_end(wm);
     wm_autosave_timer_begin(wm);
-    G.autosave_scheduled = false;
+    wm->autosave_scheduled = false;
   }
 
   if (!is_save_as && RNA_boolean_get(op->ptr, "exit")) {
