@@ -4969,7 +4969,8 @@ void BLO_read_shared_impl(
       if (memfile.shared_storage) {
         /* Check if the data was saved with sharing-info. */
         if (const blender::ImplicitSharingInfo *sharing_info =
-                memfile.shared_storage->map.lookup_default(data, nullptr)) {
+                memfile.shared_storage->map.lookup_default(data, nullptr))
+        {
           /* Add a new owner of the data that is passed to the caller. */
           sharing_info->add_user();
           *r_sharing_info = sharing_info;
