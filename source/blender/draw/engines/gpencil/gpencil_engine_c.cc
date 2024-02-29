@@ -750,7 +750,12 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
           "material_index", bke::AttrDomain::Curve, 0);
       VArray<bool> cyclic = *attributes.lookup_or_default<bool>(
           "cyclic", bke::AttrDomain::Curve, false);
-      for (const int stroke_i : curves.curves_range()) {
+
+      IndexMaskMemory memory;
+      const IndexMask visible_strokes = ed::greasepencil::retrieve_visible_strokes(
+          *ob, info.drawing, memory);
+
+      visible_strokes.foreach_index([&](const int stroke_i) {
         const IndexRange points = points_by_curve[stroke_i];
         const int material_index = stroke_materials[stroke_i];
         MaterialGPencilStyle *gp_style = BKE_object_material_get(ob, material_index + 1)->gp_style;
@@ -774,7 +779,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
         if ((hide_material) || (!show_stroke && !show_fill) || (only_lines && !is_onion) ||
             (hide_onion))
         {
-          continue;
+          return;
         }
 
         GPUUniformBuf *new_ubo_mat;
@@ -839,7 +844,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
 
         /* Only needed by sbuffer. */
         /* stroke_index_last = gps->runtime.vertex_start + gps->totpoints + 1;*/
-      }
+      });
     }
 
     drawcall_flush();
