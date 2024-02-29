@@ -48,6 +48,10 @@ static void eevee_engine_init(void *vedata)
 
   DefaultTextureList *dtxl = DRW_viewport_texture_list_get();
   int2 size = int2(GPU_texture_width(dtxl->color), GPU_texture_height(dtxl->color));
+  int scaling_factor = 1;
+  if (v3d) {
+    scaling_factor = BKE_render_preview_pixel_size(&scene->r);
+  }
 
   const DRWView *default_view = DRW_view_default_get();
 
@@ -96,8 +100,17 @@ static void eevee_engine_init(void *vedata)
     }
   }
 
-  ved->instance->init(
-      size, &rect, &visible_rect, nullptr, depsgraph, camera, nullptr, default_view, v3d, rv3d);
+  ved->instance->init(size,
+                      &rect,
+                      &visible_rect,
+                      scaling_factor,
+                      nullptr,
+                      depsgraph,
+                      camera,
+                      nullptr,
+                      default_view,
+                      v3d,
+                      rv3d);
 }
 
 static void eevee_draw_scene(void *vedata)
@@ -158,13 +171,15 @@ static void eevee_render_to_image(void *vedata,
   Object *camera_original_ob = RE_GetCamera(engine->re);
   const char *viewname = RE_GetActiveRenderView(engine->re);
   int size[2] = {engine->resolution_x, engine->resolution_y};
+  const int scaling_factor = 1;
 
   rctf view_rect;
   rcti rect;
   RE_GetViewPlane(render, &view_rect, &rect);
   rcti visible_rect = rect;
 
-  instance->init(size, &rect, &visible_rect, engine, depsgraph, camera_original_ob, layer);
+  instance->init(
+      size, &rect, &visible_rect, scaling_factor, engine, depsgraph, camera_original_ob, layer);
   instance->render_frame(layer, viewname);
 
   EEVEE_Data *ved = static_cast<EEVEE_Data *>(vedata);

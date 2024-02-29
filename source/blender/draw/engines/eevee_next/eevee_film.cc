@@ -207,7 +207,7 @@ static eViewLayerEEVEEPassType enabled_passes(const ViewLayer *view_layer)
   return result;
 }
 
-void Film::init(const int2 &extent, const rcti *output_rect)
+void Film::init(const int2 &extent, const rcti *output_rect, const int scaling_factor)
 {
   Sampling &sampling = inst_.sampling;
   Scene &scene = *inst_.scene;
@@ -253,9 +253,9 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     data_.extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
     data_.offset = int2(output_rect->xmin, output_rect->ymin);
     data_.extent_inv = 1.0f / float2(data_.extent);
-    /* TODO(fclem): parameter hidden in experimental.
-     * We need to figure out LOD bias first in order to preserve texture crispiness. */
-    data_.scaling_factor = 1;
+    /* TODO(fclem): For better result we need to figure out LOD bias to preserve texture
+     * crispiness. */
+    data_.scaling_factor = scaling_factor;
     data_.render_extent = math::divide_ceil(extent, int2(data_.scaling_factor));
     data_.render_offset = data_.offset;
 

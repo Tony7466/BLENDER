@@ -6,7 +6,8 @@
 
 void main()
 {
-  ivec2 texel_film = ivec2(gl_FragCoord.xy) - uniform_buf.film.offset;
+  ivec2 texel_film = (ivec2(gl_FragCoord.xy) - uniform_buf.film.offset) /
+                     uniform_buf.film.scaling_factor;
   float out_depth;
 
   if (uniform_buf.film.display_only) {
