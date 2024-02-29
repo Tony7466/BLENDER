@@ -8,6 +8,12 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
+#ifdef WIN32
+#  include "BLI_winstuff.h" /* For `W_OK`. */
+#else
+#  include <unistd.h>
+#endif
+
 bool BLI_temp_directory_path_copy_if_valid(char *temp_directory,
                                            const size_t buffer_size,
                                            const char *dirpath)
@@ -26,6 +32,10 @@ bool BLI_temp_directory_path_copy_if_valid(char *temp_directory,
     return false;
   }
   if (!BLI_is_dir(dirpath)) {
+    return false;
+  }
+  /* Check the path is writable. */
+  if (BLI_access(dirpath, W_OK) != 0) {
     return false;
   }
 
