@@ -142,11 +142,31 @@ inline void interpolate_nearest_wrap_fl(
 }
 
 /**
- * Bilinear sampling.
+ * Bilinear sampling (with black border).
  *
  * Takes four image samples at floor(u,v) and floor(u,v)+1, and blends them
  * based on fractional parts of u,v. Samples outside the image are turned
  * into transparent black.
+ *
+ * Note that you probably want to subtract 0.5 from u,v before this function,
+ * to get proper filtering.
+ */
+
+[[nodiscard]] uchar4 interpolate_bilinear_border_byte(
+    const uchar *buffer, int width, int height, float u, float v);
+
+[[nodiscard]] float4 interpolate_bilinear_border_fl(
+    const float *buffer, int width, int height, float u, float v);
+
+void interpolate_bilinear_border_fl(
+    const float *buffer, float *output, int width, int height, int components, float u, float v);
+
+/**
+ * Bilinear sampling.
+ *
+ * Takes four image samples at floor(u,v) and floor(u,v)+1, and blends them
+ * based on fractional parts of u,v.
+ * Samples outside the image are clamped to texels at image edge.
  *
  * Note that you probably want to subtract 0.5 from u,v before this function,
  * to get proper filtering.
@@ -203,12 +223,33 @@ void interpolate_bilinear_wrap_fl(const float *buffer,
 void interpolate_cubic_bspline_fl(
     const float *buffer, float *output, int width, int height, int components, float u, float v);
 
+/**
+ * Cubic Mitchell sampling.
+ *
+ * Takes 4x4 image samples at floor(u,v)-1 .. floor(u,v)+2, and blends them
+ * based on fractional parts of u,v. Uses Mitchell-Netravali filter (B=C=1/3),
+ * which has a good compromise between blur and ringing.
+ * Samples outside the image are clamped to texels at image edge.
+ *
+ * Note that you probably want to subtract 0.5 from u,v before this function,
+ * to get proper filtering.
+ */
+
+[[nodiscard]] uchar4 interpolate_cubic_mitchell_byte(
+    const uchar *buffer, int width, int height, float u, float v);
+
+[[nodiscard]] float4 interpolate_cubic_mitchell_fl(
+    const float *buffer, int width, int height, float u, float v);
+
+void interpolate_cubic_mitchell_fl(
+    const float *buffer, float *output, int width, int height, int components, float u, float v);
+
 }  // namespace blender::math
 
 #define EWA_MAXIDX 255
 extern const float EWA_WTS[EWA_MAXIDX + 1];
 
-typedef void (*ewa_filter_read_pixel_cb)(void *userdata, int x, int y, float result[4]);
+using ewa_filter_read_pixel_cb = void (*)(void *userdata, int x, int y, float result[4]);
 
 void BLI_ewa_imp2radangle(
     float A, float B, float C, float F, float *a, float *b, float *th, float *ecc);

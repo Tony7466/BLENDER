@@ -147,10 +147,10 @@ class Report:
     def set_engine_name(self, engine_name):
         self.engine_name = engine_name
 
-    def run(self, dirpath, blender, arguments_cb, batch=False):
+    def run(self, dirpath, blender, arguments_cb, batch=False, fail_silently=False):
         # Run tests and output report.
         dirname = os.path.basename(dirpath)
-        ok = self._run_all_tests(dirname, dirpath, blender, arguments_cb, batch)
+        ok = self._run_all_tests(dirname, dirpath, blender, arguments_cb, batch, fail_silently)
         self._write_data(dirname)
         self._write_html()
         if self.compare_engine:
@@ -429,7 +429,7 @@ class Report:
             "-o", diff_color_img,
         )
         try:
-            subprocess.check_output(command)
+            subprocess.check_output(command, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             if self.verbose:
                 print_message(e.output.decode("utf-8", 'ignore'))
@@ -447,10 +447,14 @@ class Report:
             "-o", diff_alpha_img,
         )
         try:
-            subprocess.check_output(command)
+            subprocess.check_output(command, stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             if self.verbose:
-                print_message(e.output.decode("utf-8", 'ignore'))
+                msg = e.output.decode("utf-8", 'ignore')
+                for line in msg.splitlines():
+                    # Ignore warnings for images without alpha channel.
+                    if "--ch: Unknown channel name" not in line:
+                        print_message(line)
 
         return not failed
 
@@ -534,9 +538,10 @@ class Report:
 
         return errors
 
-    def _run_all_tests(self, dirname, dirpath, blender, arguments_cb, batch):
+    def _run_all_tests(self, dirname, dirpath, blender, arguments_cb, batch, fail_silently):
         passed_tests = []
         failed_tests = []
+        silently_failed_tests = []
         all_files = list(blend_list(dirpath, self.device, self.blacklist))
         all_files.sort()
         print_message("Running {} tests from 1 test case." .
@@ -551,7 +556,11 @@ class Report:
                     return False
                 elif error == "NO_START":
                     return False
-                failed_tests.append(testname)
+
+                if fail_silently and error != 'CRASH':
+                    silently_failed_tests.append(testname)
+                else:
+                    failed_tests.append(testname)
             else:
                 passed_tests.append(testname)
             self._write_test_html(dirname, filepath, error)
@@ -564,12 +573,13 @@ class Report:
         print_message("{} tests." .
                       format(len(passed_tests)),
                       'SUCCESS', 'PASSED')
-        if failed_tests:
+        all_failed_tests = silently_failed_tests + failed_tests
+        if all_failed_tests:
             print_message("{} tests, listed below:" .
-                          format(len(failed_tests)),
+                          format(len(all_failed_tests)),
                           'FAILURE', 'FAILED')
-            failed_tests.sort()
-            for test in failed_tests:
+            all_failed_tests.sort()
+            for test in all_failed_tests:
                 print_message("{}" . format(test), 'FAILURE', "FAILED")
 
         return not bool(failed_tests)

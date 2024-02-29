@@ -25,7 +25,7 @@
 #include "BKE_appdir.hh" /* own include */
 #include "BKE_blender_version.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "GHOST_Path-api.hh"
 
@@ -1118,16 +1118,9 @@ void BKE_appdir_app_templates(ListBase *templates)
  */
 static void where_is_temp(char *tempdir, const size_t tempdir_maxncpy, const char *userdir)
 {
-
-  tempdir[0] = '\0';
-
-  if (userdir && userdir[0] != '\0' && BLI_is_dir(userdir)) {
-    BLI_strncpy(tempdir, userdir, tempdir_maxncpy);
-    /* Add a trailing slash if needed. */
-    BLI_path_slash_ensure(tempdir, tempdir_maxncpy);
+  if (BLI_temp_directory_path_copy_if_valid(tempdir, tempdir_maxncpy, userdir)) {
     return;
   }
-
   BLI_temp_directory_path_get(tempdir, tempdir_maxncpy);
 }
 

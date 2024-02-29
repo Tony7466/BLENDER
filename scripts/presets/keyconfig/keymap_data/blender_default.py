@@ -3920,27 +3920,18 @@ def km_grease_pencil_stroke_paint_draw_brush(params):
     )
 
     # Draw
-    if params.use_experimental_grease_pencil_version3:
-        items.extend([
-            ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
-            ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-             {"properties": [("mode", 'INVERT')]}),
-            ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("mode", 'SMOOTH')]}),
-        ])
-    else:
-        items.extend([
-            ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS'},
-             {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
-            ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
-             {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
-            # Draw - straight lines
-            ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
-             {"properties": [("mode", 'DRAW_STRAIGHT'), ("wait_for_input", False)]}),
-            # Erase
-            ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
-             {"properties": [("mode", 'ERASER'), ("wait_for_input", False)]}),
-        ])
+    items.extend([
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS'},
+            {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
+            {"properties": [("mode", 'DRAW'), ("wait_for_input", False)]}),
+        # Draw - straight lines
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "alt": True},
+            {"properties": [("mode", 'DRAW_STRAIGHT'), ("wait_for_input", False)]}),
+        # Erase
+        ("gpencil.draw", {"type": 'LEFTMOUSE', "value": 'PRESS', "ctrl": True},
+            {"properties": [("mode", 'ERASER'), ("wait_for_input", False)]}),
+    ])
 
     items.extend([
         # Tablet Mappings for Drawing ------------------ */
@@ -4566,7 +4557,8 @@ def km_grease_pencil_stroke_vertex_replace(_params):
     return keymap
 
 
-def km_grease_pencil_paint(_params):
+# Grease Pencil v3
+def km_grease_pencil_paint_mode(_params):
     items = []
     keymap = (
         "Grease Pencil Paint Mode",
@@ -4575,7 +4567,6 @@ def km_grease_pencil_paint(_params):
     )
 
     items.extend([
-        *_template_paint_radial_control("gpencil_paint"),
         ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 0.9)]}),
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
@@ -4585,6 +4576,7 @@ def km_grease_pencil_paint(_params):
          {"properties": [("mode", 'INVERT')]}),
         ("grease_pencil.brush_stroke", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
          {"properties": [("mode", 'SMOOTH')]}),
+        *_template_paint_radial_control("gpencil_paint"),
         # Active material
         op_menu("VIEW3D_MT_greasepencil_material_active", {"type": 'U', "value": 'PRESS'}),
         # Active layer
@@ -4594,12 +4586,15 @@ def km_grease_pencil_paint(_params):
         *_template_items_hide_reveal_actions("grease_pencil.layer_hide", "grease_pencil.layer_reveal"),
 
         ("paint.sample_color", {"type": 'X', "value": 'PRESS', "shift": True}, None),
+
+        # Isolate Layer
+         ("grease_pencil.layer_isolate", {"type": 'NUMPAD_ASTERIX', "value": 'PRESS'}, None),
     ])
 
     return keymap
 
 
-def km_grease_pencil_edit(params):
+def km_grease_pencil_edit_mode(params):
     items = []
     keymap = (
         "Grease Pencil Edit Mode",
@@ -4620,6 +4615,8 @@ def km_grease_pencil_edit(params):
         # Dissolve
         ("grease_pencil.dissolve", {"type": 'X', "value": 'PRESS', "ctrl": True}, None),
         ("grease_pencil.dissolve", {"type": 'DEL', "value": 'PRESS', "ctrl": True}, None),
+        # Separate
+        ("grease_pencil.separate", {"type": 'P', "value": 'PRESS'}, None),
         # Delete all active frames
         ("grease_pencil.delete_frame", {"type": 'DEL', "value": 'PRESS', "shift": True},
          {"properties": [("type", "ALL_FRAMES")]}),
@@ -4650,8 +4647,24 @@ def km_grease_pencil_edit(params):
         # Active layer
         op_menu("GREASE_PENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
 
+        # Move to layer
+        op_menu("GREASE_PENCIL_MT_move_to_layer", {"type": 'M', "value": 'PRESS'}),
+
         # Context menu
         *_template_items_context_menu("VIEW3D_MT_greasepencil_edit_context_menu", params.context_menu_event),
+
+        # Reorder
+        ("grease_pencil.reorder", {"type": 'UP_ARROW', "value": 'PRESS',
+         "ctrl": True, "shift": True}, {"properties": [("direction", "TOP")]}),
+        ("grease_pencil.reorder", {"type": 'UP_ARROW', "value": 'PRESS',
+         "ctrl": True, "repeat": True}, {"properties": [("direction", "UP")]}),
+        ("grease_pencil.reorder", {"type": 'DOWN_ARROW', "value": 'PRESS',
+         "ctrl": True, "repeat": True}, {"properties": [("direction", "DOWN")]}),
+        ("grease_pencil.reorder", {"type": 'DOWN_ARROW', "value": 'PRESS',
+         "ctrl": True, "shift": True}, {"properties": [("direction", "BOTTOM")]}),
+
+         # Isolate Layer
+         ("grease_pencil.layer_isolate", {"type": 'NUMPAD_ASTERIX', "value": 'PRESS'}, None),
     ])
 
     return keymap
@@ -8573,8 +8586,9 @@ def generate_keymaps(params=None):
         km_grease_pencil_stroke_vertex_average(params),
         km_grease_pencil_stroke_vertex_smear(params),
         km_grease_pencil_stroke_vertex_replace(params),
-        km_grease_pencil_paint(params),
-        km_grease_pencil_edit(params),
+        # Grease Pencil v3
+        km_grease_pencil_paint_mode(params),
+        km_grease_pencil_edit_mode(params),
         # Object mode.
         km_object_mode(params),
         km_object_non_modal(params),
