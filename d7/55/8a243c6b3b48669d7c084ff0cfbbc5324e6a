@@ -3,3 +3,4 @@ Referenced by issue #113656, [Python] change gobal keymaps like "3D View" no lon
 Referenced by issue #113881, Sculpt Curves: R shortcut conflict
 Referenced by issue #115025, Unable to trigger  G,R,S in Particle editing point selection mode for blender 4.0
 Referenced by issue #116844, Transform > Move menu entry shows wrong shortcut
+Referenced by commit f4cc9840381f51896855dc4c21e644b697aca3a3, Fix #116844: Transform -> Move shows mouse button shortcut
