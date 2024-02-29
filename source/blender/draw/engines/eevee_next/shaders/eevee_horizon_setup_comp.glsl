@@ -19,6 +19,10 @@ void main()
   ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
                         uniform_buf.raytrace.resolution_bias;
 
+  /* Avoid loading texels outside texture range. */
+  ivec2 extent = textureSize(gbuf_header_tx, 0).xy;
+  texel_fullres = min(texel_fullres, extent - 1);
+
   /* Load Gbuffer. */
   GBufferReader gbuf = gbuffer_read(
       gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);

@@ -17,10 +17,15 @@ void main()
   ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
                         uniform_buf.raytrace.resolution_bias;
 
+  /* Avoid tracing the outside border if dispatch is too big. */
   ivec2 extent = textureSize(gbuf_header_tx, 0).xy;
-  if (any(greaterThanEqual(texel_fullres, extent))) {
+  if (any(greaterThanEqual(texel * uniform_buf.raytrace.resolution_scale, extent))) {
     return;
   }
+
+  /* Avoid loading texels outside texture range.
+   * This can happen even after the check above in non-power-of-2 textures. */
+  texel_fullres = min(texel_fullres, extent - 1);
 
   /* Do not trace where nothing was rendered. */
   if (texelFetch(gbuf_header_tx, texel_fullres, 0).r == 0u) {
