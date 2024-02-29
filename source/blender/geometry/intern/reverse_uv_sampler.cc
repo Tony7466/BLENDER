@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <fmt/format.h>
-#include <mutex>
 
 #include "GEO_reverse_uv_sampler.hh"
 

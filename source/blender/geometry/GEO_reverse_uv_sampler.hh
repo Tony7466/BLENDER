@@ -6,7 +6,6 @@
 
 #include <optional>
 
-#include "BLI_index_mask_fwd.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_multi_value_map.hh"
 #include "BLI_span.hh"
