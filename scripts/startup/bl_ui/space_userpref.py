@@ -1597,7 +1597,7 @@ class USERPREF_UL_asset_libraries(UIList):
 class USERPREF_UL_extension_repos(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         repo = item
-        icon = 'NETWORK_DRIVE' if repo.use_remote_path else 'DISK_DRIVE'
+        icon = 'URL' if repo.use_remote_path else 'FILE_FOLDER'
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             layout.prop(repo, "name", text="", icon=icon, emboss=False)
         elif self.layout_type == 'GRID':
@@ -2075,6 +2075,8 @@ class USERPREF_PT_extensions_repos(Panel):
         paths = context.preferences.filepaths
         active_repo_index = paths.active_extension_repo
 
+        layout.label(text="Repositories")
+
         row = layout.row()
 
         row.template_list(
@@ -2090,6 +2092,7 @@ class USERPREF_PT_extensions_repos(Panel):
 
         col.separator()
         col.operator("preferences.extension_repo_sync", text="", icon='FILE_REFRESH')
+        col.separator()
         col.operator("preferences.extension_repo_upgrade", text="", icon='IMPORT')
 
         try:
