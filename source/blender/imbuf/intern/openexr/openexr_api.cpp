@@ -1432,22 +1432,22 @@ static int imb_exr_split_token(const char *str, const char *end, const char **to
 
 static void imb_exr_pass_name_from_channel(char *passname,
                                            const ExrChannel *echan,
-                                           const char *name,
+                                           const char *channelname,
                                            const bool has_xyz_channels)
 {
   const int passname_maxncpy = EXR_TOT_MAXNAME;
 
-  if (echan->chan_id == 'Z' && (!has_xyz_channels || STRCASEEQ(name, "depth"))) {
+  if (echan->chan_id == 'Z' && (!has_xyz_channels || BLI_strcaseeq(channelname, "depth"))) {
     BLI_strncpy(passname, "Depth", passname_maxncpy);
   }
   else if (echan->chan_id == 'Y' && !has_xyz_channels) {
-    BLI_strncpy(passname, name, passname_maxncpy);
+    BLI_strncpy(passname, channelname, passname_maxncpy);
   }
   else if (ELEM(echan->chan_id, 'R', 'G', 'B', 'A', 'V', 'X', 'Y', 'Z')) {
     BLI_strncpy(passname, "Combined", passname_maxncpy);
   }
   else {
-    BLI_strncpy(passname, name, passname_maxncpy);
+    BLI_strncpy(passname, channelname, passname_maxncpy);
   }
 }
 
@@ -1539,7 +1539,7 @@ static int imb_exr_split_channel_name(ExrChannel *echan,
   }
   else {
     /* Single token, determine pass name from channel name. */
-    imb_exr_pass_name_from_channel(passname, echan, name, has_xyz_channels);
+    imb_exr_pass_name_from_channel(passname, echan, channelname, has_xyz_channels);
   }
 
   /* all preceding tokens combined as layer name */
