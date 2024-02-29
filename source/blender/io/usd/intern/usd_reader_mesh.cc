@@ -240,6 +240,8 @@ void USDMeshReader::create_object(Main *bmain, const double /*motionSampleTime*/
 
   object_ = BKE_object_add_only_object(bmain, OB_MESH, name_.c_str());
   object_->data = mesh;
+
+  set_props(&object_->id, prim_, use_parent_xform());
 }
 
 void USDMeshReader::read_object_data(Main *bmain, const double motionSampleTime)

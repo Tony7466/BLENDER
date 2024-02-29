@@ -29,6 +29,8 @@ void USDXformReader::create_object(Main *bmain, const double /*motionSampleTime*
   object_ = BKE_object_add_only_object(bmain, OB_EMPTY, name_.c_str());
   object_->empty_drawsize = 0.1f;
   object_->data = nullptr;
+
+  set_props(&object_->id, prim_);
 }
 
 void USDXformReader::read_object_data(Main * /*bmain*/, const double motionSampleTime)
@@ -53,6 +55,9 @@ void USDXformReader::read_object_data(Main * /*bmain*/, const double motionSampl
   }
 
   BKE_object_apply_mat4(object_, transform_from_usd, true, false);
+
+  /* Make sure to collect custom attributes */
+  USDPrimReader::read_object_data(nullptr, motionSampleTime);
 }
 
 void USDXformReader::read_matrix(float r_mat[4][4] /* local matrix */,

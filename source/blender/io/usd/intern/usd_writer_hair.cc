@@ -62,6 +62,11 @@ void USDHairWriter::do_write(HierarchyContext &context)
     curves.CreateDisplayColorAttr(pxr::VtValue(colors));
   }
 
+  if (usd_export_context_.export_params.export_custom_properties && psys->part) {
+    auto prim = curves.GetPrim();
+    write_id_properties(prim, psys->part->id, timecode);
+  }
+
   this->author_extent(timecode, curves);
 }
 

@@ -53,6 +53,8 @@ void USDPointInstancerReader::create_object(Main *bmain, const double /* motionS
   void *point_cloud = BKE_pointcloud_add(bmain, name_.c_str());
   this->object_ = BKE_object_add_only_object(bmain, OB_POINTCLOUD, name_.c_str());
   this->object_->data = point_cloud;
+
+  set_props(&object_->id, prim_, use_parent_xform());
 }
 
 void USDPointInstancerReader::read_object_data(Main *bmain, const double motionSampleTime)

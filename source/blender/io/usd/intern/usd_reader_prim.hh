@@ -16,6 +16,7 @@
 #include <pxr/usd/sdf/path.h>
 #include <pxr/usd/usd/prim.h>
 
+#include <optional>
 #include <string>
 
 struct CacheFile;
@@ -108,7 +109,7 @@ class USDPrimReader {
   virtual bool valid() const;
 
   virtual void create_object(Main *bmain, double motionSampleTime) = 0;
-  virtual void read_object_data(Main * /*bmain*/, double /*motionSampleTime*/){};
+  virtual void read_object_data(Main * /*bmain*/, double motionSampleTime);
 
   Object *object() const;
   void object(Object *ob);
@@ -161,6 +162,12 @@ class USDPrimReader {
   }
 
   bool is_in_proto() const;
+
+ protected:
+  void set_props(ID *id,
+                 const pxr::UsdPrim &prim,
+                 const bool use_parent = false,
+                 std::optional<double> motionSampleTime = std::nullopt);
 };
 
 }  // namespace blender::io::usd

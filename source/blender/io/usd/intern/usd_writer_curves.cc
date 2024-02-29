@@ -511,6 +511,13 @@ void USDCurvesWriter::do_write(HierarchyContext &context)
   set_writer_attributes(usd_curves, verts, control_point_counts, widths, timecode, interpolation);
 
   assign_materials(context, usd_curves);
+
+  if (usd_export_context_.export_params.export_custom_properties && curves &&
+      curves->id.properties)
+  {
+    auto prim = usd_curves.GetPrim();
+    write_id_properties(prim, curves->id, timecode);
+  }
 }
 
 void USDCurvesWriter::assign_materials(const HierarchyContext &context,

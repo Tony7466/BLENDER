@@ -24,6 +24,8 @@ void USDSkeletonReader::create_object(Main *bmain, const double /*motionSampleTi
 
   bArmature *arm = BKE_armature_add(bmain, name_.c_str());
   object_->data = arm;
+
+  set_props(&object_->id, prim_, use_parent_xform());
 }
 
 void USDSkeletonReader::read_object_data(Main *bmain, const double motionSampleTime)
