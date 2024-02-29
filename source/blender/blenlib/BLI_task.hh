@@ -69,6 +69,9 @@ namespace detail {
 void parallel_for_impl(IndexRange range,
                        int64_t grain_size,
                        FunctionRef<void(IndexRange)> function);
+void parallel_for_bandwidth_limited_impl(IndexRange range,
+                                         int64_t grain_size,
+                                         FunctionRef<void(IndexRange)> function);
 void parallel_for_weighted_impl(IndexRange range,
                                 int64_t grain_size,
                                 FunctionRef<void(IndexRange)> function,
@@ -86,6 +89,27 @@ inline void parallel_for(IndexRange range, int64_t grain_size, const Function &f
     return;
   }
   detail::parallel_for_impl(range, grain_size, function);
+}
+
+/**
+ * Similar to #parallel_for but for tasks that read/write a lot of memory compared to how much
+ * processing they do. For such tasks, using too many threads doesn't help because the memory
+ * bandwidth is limited. In fact, experiments show that using more threads actually hurts
+ * performance in this case.
+ */
+template<typename Function>
+inline void parallel_for_memory_bandwidth_bound(const IndexRange range,
+                                                const int64_t grain_size,
+                                                const Function &function)
+{
+  if (range.is_empty()) {
+    return;
+  }
+  if (range.size() <= grain_size) {
+    function(range);
+    return;
+  }
+  detail::parallel_for_bandwidth_limited_impl(range, grain_size, function);
 }
 
 /**

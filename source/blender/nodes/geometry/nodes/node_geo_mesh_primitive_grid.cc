@@ -38,6 +38,7 @@ static void node_declare(NodeDeclarationBuilder &b)
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
+  SCOPED_TIMER_AVERAGED("grid");
   const float size_x = params.extract_input<float>("Size X");
   const float size_y = params.extract_input<float>("Size Y");
   const int verts_x = params.extract_input<int>("Vertices X");

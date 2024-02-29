@@ -182,6 +182,21 @@ void parallel_for_impl(const IndexRange range,
   function(range);
 }
 
+void parallel_for_bandwidth_limited_impl(const IndexRange range,
+                                         const int64_t grain_size,
+                                         const FunctionRef<void(IndexRange)> function)
+{
+#ifdef WITH_TBB
+  /* This value is highly hardware dependent. The current value is on the upper end we measured to
+   * be optimal so far. */
+  static const int num_threads = 5;
+  static tbb::task_arena arena{num_threads};
+  arena.execute([&]() { detail::parallel_for_impl(range, grain_size, function); });
+#else
+  function(range);
+#endif
+}
+
 void parallel_for_weighted_impl(
     const IndexRange range,
     const int64_t grain_size,

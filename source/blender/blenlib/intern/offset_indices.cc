@@ -24,11 +24,12 @@ OffsetIndices<int> accumulate_counts_to_offsets(MutableSpan<int> counts_to_offse
 
 void fill_constant_group_size(const int size, const int start_offset, MutableSpan<int> offsets)
 {
-  threading::parallel_for(offsets.index_range(), 1024, [&](const IndexRange range) {
-    for (const int64_t i : range) {
-      offsets[i] = size * i + start_offset;
-    }
-  });
+  threading::parallel_for_memory_bandwidth_bound(
+      offsets.index_range(), 1024, [&](const IndexRange range) {
+        for (const int64_t i : range) {
+          offsets[i] = size * i + start_offset;
+        }
+      });
 }
 
 void copy_group_sizes(const OffsetIndices<int> offsets,
@@ -52,11 +53,12 @@ void gather_group_sizes(const OffsetIndices<int> offsets,
                         const Span<int> indices,
                         MutableSpan<int> sizes)
 {
-  threading::parallel_for(indices.index_range(), 4096, [&](const IndexRange range) {
-    for (const int i : range) {
-      sizes[i] = offsets[indices[i]].size();
-    }
-  });
+  threading::parallel_for_memory_bandwidth_bound(
+      indices.index_range(), 4096, [&](const IndexRange range) {
+        for (const int i : range) {
+          sizes[i] = offsets[indices[i]].size();
+        }
+      });
 }
 
 OffsetIndices<int> gather_selected_offsets(const OffsetIndices<int> src_offsets,
