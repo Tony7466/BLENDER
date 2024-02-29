@@ -11,6 +11,7 @@
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
+#include "BKE_mesh.hh"
 #include "BKE_mesh_wrapper.hh"
 #include "BKE_modifier.hh"
 #include "BKE_volume.hh"
@@ -122,8 +123,8 @@ static Volume *mesh_to_volume(ModifierData *md,
     return input_volume;
   }
 
-  const float4x4 mesh_to_own_object_space_transform = float4x4(ctx->object->world_to_object) *
-                                                      float4x4(object_to_convert->object_to_world);
+  const float4x4 mesh_to_own_object_space_transform = ctx->object->world_to_object() *
+                                                      object_to_convert->object_to_world();
   geometry::MeshToVolumeResolution resolution;
   resolution.mode = (MeshToVolumeModifierResolutionMode)mvmd->resolution_mode;
   if (resolution.mode == MESH_TO_VOLUME_RESOLUTION_MODE_VOXEL_AMOUNT) {
@@ -158,7 +159,9 @@ static Volume *mesh_to_volume(ModifierData *md,
   /* Convert mesh to grid and add to volume. */
   geometry::fog_volume_grid_add_from_mesh(volume,
                                           "density",
-                                          mesh,
+                                          mesh->vert_positions(),
+                                          mesh->corner_verts(),
+                                          mesh->corner_tris(),
                                           mesh_to_own_object_space_transform,
                                           voxel_size,
                                           mvmd->interior_band_width,

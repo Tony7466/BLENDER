@@ -1267,11 +1267,13 @@ typedef struct SpaceImage {
   char gizmo_flag;
 
   char grid_shape_source;
-  char _pad1[2];
+  char _pad1[6];
 
   int flag;
 
   float uv_opacity;
+
+  float stretch_opacity;
 
   int tile_grid_shape[2];
   /**
@@ -2037,6 +2039,7 @@ typedef enum eSpreadsheetColumnValueType {
   SPREADSHEET_VALUE_TYPE_INT8 = 9,
   SPREADSHEET_VALUE_TYPE_INT32_2D = 10,
   SPREADSHEET_VALUE_TYPE_QUATERNION = 11,
+  SPREADSHEET_VALUE_TYPE_FLOAT4X4 = 12,
 } eSpreadsheetColumnValueType;
 
 /**

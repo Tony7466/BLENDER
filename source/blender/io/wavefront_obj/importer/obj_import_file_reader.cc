@@ -6,6 +6,8 @@
  * \ingroup obj
  */
 
+#include "BKE_report.hh"
+
 #include "BLI_map.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
@@ -441,6 +443,10 @@ OBJParser::OBJParser(const OBJImportParams &import_params, size_t read_buffer_si
   obj_file_ = BLI_fopen(import_params_.filepath, "rb");
   if (!obj_file_) {
     fprintf(stderr, "Cannot read from OBJ file:'%s'.\n", import_params_.filepath);
+    BKE_reportf(import_params_.reports,
+                RPT_ERROR,
+                "OBJ Import: Cannot open file '%s'",
+                import_params_.filepath);
     return;
   }
 }
@@ -474,7 +480,7 @@ static bool parse_keyword(const char *&p, const char *end, StringRef keyword)
 /* Special case: if there were no faces/edges in any geometries,
  * treat all the vertices as a point cloud. */
 static void use_all_vertices_if_no_faces(Geometry *geom,
-                                         const Vector<std::unique_ptr<Geometry>> &all_geometries,
+                                         const Span<std::unique_ptr<Geometry>> all_geometries,
                                          const GlobalVertices &global_vertices)
 {
   if (!global_vertices.vertices.is_empty() && geom && geom->geom_type_ == GEOM_MESH) {
