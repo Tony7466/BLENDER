@@ -195,6 +195,7 @@ set(SRC
   BLI_bounds.hh
   BLI_bounds_types.hh
   BLI_boxpack_2d.h
+  BLI_build_config.h
   BLI_buffer.h
   BLI_cache_mutex.hh
   BLI_color.hh
