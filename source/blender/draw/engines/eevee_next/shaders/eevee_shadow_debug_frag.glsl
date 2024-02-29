@@ -45,9 +45,6 @@ vec3 debug_tile_state_color(ShadowTileData tile)
     /* Uses data from another LOD. */
     return neon_gradient(float(tile.lod) / float(SHADOW_TILEMAP_LOD));
   }
-  if (!tile.is_allocated) {
-    return vec3(0.0);
-  }
   if (tile.do_update && tile.is_used) {
     /* Updated. */
     return vec3(0.5, 1, 0);
