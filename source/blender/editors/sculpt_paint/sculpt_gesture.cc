@@ -32,7 +32,7 @@
 
 namespace blender::ed::sculpt_paint::gesture {
 
-void sculpt_gesture_operator_properties(wmOperatorType *ot)
+void operator_properties(wmOperatorType *ot)
 {
   RNA_def_boolean(ot->srna,
                   "use_front_faces_only",
@@ -48,9 +48,7 @@ void sculpt_gesture_operator_properties(wmOperatorType *ot)
                   "segment without extending its effect to the entire line");
 }
 
-static void sculpt_gesture_context_init_common(bContext *C,
-                                               wmOperator *op,
-                                               SculptGestureContext *sgcontext)
+static void init_common(bContext *C, wmOperator *op, Context *sgcontext)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   sgcontext->vc = ED_view3d_viewcontext_init(C, depsgraph);
@@ -81,10 +79,10 @@ static void sculpt_gesture_context_init_common(bContext *C,
   copy_v3_v3(sgcontext->true_view_origin, sgcontext->vc.rv3d->viewinv[3]);
 }
 
-static void sculpt_gesture_lasso_px_cb(int x, int x_end, int y, void *user_data)
+static void lasso_px_cb(int x, int x_end, int y, void *user_data)
 {
-  SculptGestureContext *mcontext = static_cast<SculptGestureContext *>(user_data);
-  LassoGestureData *lasso = &mcontext->lasso;
+  Context *mcontext = static_cast<Context *>(user_data);
+  LassoData *lasso = &mcontext->lasso;
   int index = (y * lasso->width) + x;
   int index_end = (y * lasso->width) + x_end;
   do {
@@ -92,12 +90,12 @@ static void sculpt_gesture_lasso_px_cb(int x, int x_end, int y, void *user_data)
   } while (++index != index_end);
 }
 
-SculptGestureContext *sculpt_gesture_init_from_lasso(bContext *C, wmOperator *op)
+Context *init_from_lasso(bContext *C, wmOperator *op)
 {
-  SculptGestureContext *sgcontext = MEM_new<SculptGestureContext>(__func__);
+  Context *sgcontext = MEM_new<Context>(__func__);
   sgcontext->shape_type = SCULPT_GESTURE_SHAPE_LASSO;
 
-  sculpt_gesture_context_init_common(C, op, sgcontext);
+  init_common(C, op, sgcontext);
 
   int mcoords_len;
   const int(*mcoords)[2] = WM_gesture_lasso_path_to_array(C, op, &mcoords_len);
@@ -120,7 +118,7 @@ SculptGestureContext *sculpt_gesture_init_from_lasso(bContext *C, wmOperator *op
                                 sgcontext->lasso.boundbox.ymax,
                                 mcoords,
                                 mcoords_len,
-                                sculpt_gesture_lasso_px_cb,
+                                lasso_px_cb,
                                 sgcontext);
 
   BoundBox bb;
@@ -143,12 +141,12 @@ SculptGestureContext *sculpt_gesture_init_from_lasso(bContext *C, wmOperator *op
   return sgcontext;
 }
 
-SculptGestureContext *sculpt_gesture_init_from_box(bContext *C, wmOperator *op)
+Context *init_from_box(bContext *C, wmOperator *op)
 {
-  SculptGestureContext *sgcontext = MEM_new<SculptGestureContext>(__func__);
+  Context *sgcontext = MEM_new<Context>(__func__);
   sgcontext->shape_type = SCULPT_GESTURE_SHAPE_BOX;
 
-  sculpt_gesture_context_init_common(C, op, sgcontext);
+  init_common(C, op, sgcontext);
 
   rcti rect;
   WM_operator_properties_border_to_rcti(op, &rect);
@@ -175,12 +173,12 @@ SculptGestureContext *sculpt_gesture_init_from_box(bContext *C, wmOperator *op)
   return sgcontext;
 }
 
-static void sculpt_gesture_line_plane_from_tri(float *r_plane,
-                                               SculptGestureContext *sgcontext,
-                                               const bool flip,
-                                               const float p1[3],
-                                               const float p2[3],
-                                               const float p3[3])
+static void line_plane_from_tri(float *r_plane,
+                                Context *sgcontext,
+                                const bool flip,
+                                const float p1[3],
+                                const float p2[3],
+                                const float p3[3])
 {
   float normal[3];
   normal_tri_v3(normal, p1, p2, p3);
@@ -195,10 +193,10 @@ static void sculpt_gesture_line_plane_from_tri(float *r_plane,
 
 /* Creates 4 points in the plane defined by the line and 2 extra points with an offset relative to
  * this plane. */
-static void sculpt_gesture_line_calculate_plane_points(SculptGestureContext *sgcontext,
-                                                       float line_points[2][2],
-                                                       float r_plane_points[4][3],
-                                                       float r_offset_plane_points[2][3])
+static void line_calculate_plane_points(Context *sgcontext,
+                                        float line_points[2][2],
+                                        float r_plane_points[4][3],
+                                        float r_offset_plane_points[2][3])
 {
   float depth_point[3];
   add_v3_v3v3(depth_point, sgcontext->true_view_origin, sgcontext->true_view_normal);
@@ -219,12 +217,12 @@ static void sculpt_gesture_line_calculate_plane_points(SculptGestureContext *sgc
   add_v3_v3v3(r_offset_plane_points[1], r_plane_points[3], normal);
 }
 
-SculptGestureContext *sculpt_gesture_init_from_line(bContext *C, wmOperator *op)
+Context *init_from_line(bContext *C, wmOperator *op)
 {
-  SculptGestureContext *sgcontext = MEM_new<SculptGestureContext>(__func__);
+  Context *sgcontext = MEM_new<Context>(__func__);
   sgcontext->shape_type = SCULPT_GESTURE_SHAPE_LINE;
 
-  sculpt_gesture_context_init_common(C, op, sgcontext);
+  init_common(C, op, sgcontext);
 
   float line_points[2][2];
   line_points[0][0] = RNA_int_get(op->ptr, "xstart");
@@ -236,36 +234,35 @@ SculptGestureContext *sculpt_gesture_init_from_line(bContext *C, wmOperator *op)
 
   float plane_points[4][3];
   float offset_plane_points[2][3];
-  sculpt_gesture_line_calculate_plane_points(
-      sgcontext, line_points, plane_points, offset_plane_points);
+  line_calculate_plane_points(sgcontext, line_points, plane_points, offset_plane_points);
 
   /* Calculate line plane and normal. */
   const bool flip = sgcontext->line.flip ^ (!sgcontext->vc.rv3d->is_persp);
-  sculpt_gesture_line_plane_from_tri(sgcontext->line.true_plane,
-                                     sgcontext,
-                                     flip,
-                                     plane_points[0],
-                                     plane_points[1],
-                                     plane_points[2]);
+  line_plane_from_tri(sgcontext->line.true_plane,
+                      sgcontext,
+                      flip,
+                      plane_points[0],
+                      plane_points[1],
+                      plane_points[2]);
 
   /* Calculate the side planes. */
-  sculpt_gesture_line_plane_from_tri(sgcontext->line.true_side_plane[0],
-                                     sgcontext,
-                                     false,
-                                     plane_points[1],
-                                     plane_points[0],
-                                     offset_plane_points[0]);
-  sculpt_gesture_line_plane_from_tri(sgcontext->line.true_side_plane[1],
-                                     sgcontext,
-                                     false,
-                                     plane_points[3],
-                                     plane_points[2],
-                                     offset_plane_points[1]);
+  line_plane_from_tri(sgcontext->line.true_side_plane[0],
+                      sgcontext,
+                      false,
+                      plane_points[1],
+                      plane_points[0],
+                      offset_plane_points[0]);
+  line_plane_from_tri(sgcontext->line.true_side_plane[1],
+                      sgcontext,
+                      false,
+                      plane_points[3],
+                      plane_points[2],
+                      offset_plane_points[1]);
 
   return sgcontext;
 }
 
-void sculpt_gesture_context_free(SculptGestureContext *sgcontext)
+void free(Context *sgcontext)
 {
   MEM_SAFE_FREE(sgcontext->gesture_points);
   MEM_SAFE_FREE(sgcontext->operation);
@@ -296,8 +293,7 @@ static void flip_plane(float out[4], const float in[4], const char symm)
   out[3] = in[3];
 }
 
-static void sculpt_gesture_flip_for_symmetry_pass(SculptGestureContext *sgcontext,
-                                                  const ePaintSymmetryFlags symmpass)
+static void flip_for_symmetry_pass(Context *sgcontext, const ePaintSymmetryFlags symmpass)
 {
   sgcontext->symmpass = symmpass;
   for (int j = 0; j < 4; j++) {
@@ -313,8 +309,7 @@ static void sculpt_gesture_flip_for_symmetry_pass(SculptGestureContext *sgcontex
   flip_plane(sgcontext->line.side_plane[1], sgcontext->line.true_side_plane[1], symmpass);
 }
 
-static Vector<PBVHNode *> sculpt_gesture_update_effected_nodes_by_line_plane(
-    SculptGestureContext *sgcontext)
+static Vector<PBVHNode *> update_affected_nodes_by_line_plane(Context *sgcontext)
 {
   SculptSession *ss = sgcontext->ss;
   float clip_planes[3][4];
@@ -331,7 +326,7 @@ static Vector<PBVHNode *> sculpt_gesture_update_effected_nodes_by_line_plane(
          });
 }
 
-static void sculpt_gesture_update_effected_nodes_by_clip_planes(SculptGestureContext *sgcontext)
+static void update_affected_nodes_by_clip_planes(Context *sgcontext)
 {
   SculptSession *ss = sgcontext->ss;
   float clip_planes[4][4];
@@ -347,20 +342,20 @@ static void sculpt_gesture_update_effected_nodes_by_clip_planes(SculptGestureCon
   });
 }
 
-static void sculpt_gesture_update_effected_nodes(SculptGestureContext *sgcontext)
+static void update_affected_nodes(Context *sgcontext)
 {
   switch (sgcontext->shape_type) {
     case SCULPT_GESTURE_SHAPE_BOX:
     case SCULPT_GESTURE_SHAPE_LASSO:
-      sculpt_gesture_update_effected_nodes_by_clip_planes(sgcontext);
+      update_affected_nodes_by_clip_planes(sgcontext);
       break;
     case SCULPT_GESTURE_SHAPE_LINE:
-      sculpt_gesture_update_effected_nodes_by_line_plane(sgcontext);
+      update_affected_nodes_by_line_plane(sgcontext);
       break;
   }
 }
 
-static bool sculpt_gesture_is_effected_lasso(SculptGestureContext *sgcontext, const float co[3])
+static bool is_affected_lasso(Context *sgcontext, const float co[3])
 {
   int scr_co_s[2];
   float co_final[3];
@@ -375,7 +370,7 @@ static bool sculpt_gesture_is_effected_lasso(SculptGestureContext *sgcontext, co
   scr_co_s[1] = scr_co_f[1];
 
   /* Clip against lasso boundbox. */
-  LassoGestureData *lasso = &sgcontext->lasso;
+  LassoData *lasso = &sgcontext->lasso;
   if (!BLI_rcti_isect_pt(&lasso->boundbox, scr_co_s[0], scr_co_s[1])) {
     return false;
   }
@@ -386,9 +381,7 @@ static bool sculpt_gesture_is_effected_lasso(SculptGestureContext *sgcontext, co
   return lasso->mask_px[scr_co_s[1] * lasso->width + scr_co_s[0]].test();
 }
 
-bool sculpt_gesture_is_effected(SculptGestureContext *sgcontext,
-                                const float3 &co,
-                                const float3 &vertex_normal)
+bool is_affected(Context *sgcontext, const float3 &co, const float3 &vertex_normal)
 {
   float dot = dot_v3v3(sgcontext->view_normal, vertex_normal);
   const bool is_effected_front_face = !(sgcontext->front_faces_only && dot < 0.0f);
@@ -401,7 +394,7 @@ bool sculpt_gesture_is_effected(SculptGestureContext *sgcontext,
     case SCULPT_GESTURE_SHAPE_BOX:
       return isect_point_planes_v3(sgcontext->clip_planes, 4, co);
     case SCULPT_GESTURE_SHAPE_LASSO:
-      return sculpt_gesture_is_effected_lasso(sgcontext, co);
+      return is_affected_lasso(sgcontext, co);
     case SCULPT_GESTURE_SHAPE_LINE:
       if (sgcontext->line.use_side_planes) {
         return plane_point_side_v3(sgcontext->line.plane, co) > 0.0f &&
@@ -413,23 +406,23 @@ bool sculpt_gesture_is_effected(SculptGestureContext *sgcontext,
   return false;
 }
 
-void sculpt_gesture_apply(bContext *C, SculptGestureContext *sgcontext, wmOperator *op)
+void apply(bContext *C, Context *sgcontext, wmOperator *op)
 {
-  SculptGestureOperation *operation = sgcontext->operation;
+  Operation *operation = sgcontext->operation;
   undo::push_begin(CTX_data_active_object(C), op);
 
-  operation->sculpt_gesture_begin(C, sgcontext);
+  operation->begin(C, sgcontext);
 
   for (int symmpass = 0; symmpass <= sgcontext->symm; symmpass++) {
     if (SCULPT_is_symmetry_iteration_valid(symmpass, sgcontext->symm)) {
-      sculpt_gesture_flip_for_symmetry_pass(sgcontext, ePaintSymmetryFlags(symmpass));
-      sculpt_gesture_update_effected_nodes(sgcontext);
+      flip_for_symmetry_pass(sgcontext, ePaintSymmetryFlags(symmpass));
+      update_affected_nodes(sgcontext);
 
-      operation->sculpt_gesture_apply_for_symmetry_pass(C, sgcontext);
+      operation->apply_for_symmetry_pass(C, sgcontext);
     }
   }
 
-  operation->sculpt_gesture_end(C, sgcontext);
+  operation->end(C, sgcontext);
 
   Object *ob = CTX_data_active_object(C);
   undo::push_end(ob);

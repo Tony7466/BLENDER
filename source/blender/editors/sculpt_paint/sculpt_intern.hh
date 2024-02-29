@@ -1665,13 +1665,13 @@ void modal_keymap(wmKeyConfig *keyconf);
  * \{ */
 
 namespace blender::ed::sculpt_paint::gesture {
-enum eSculptGestureShapeType {
+enum eShapeType {
   SCULPT_GESTURE_SHAPE_BOX,
   SCULPT_GESTURE_SHAPE_LASSO,
   SCULPT_GESTURE_SHAPE_LINE,
 };
 
-struct LassoGestureData {
+struct LassoData {
   float4x4 projviewobjmat;
 
   rcti boundbox;
@@ -1681,7 +1681,7 @@ struct LassoGestureData {
   blender::BitVector<> mask_px;
 };
 
-struct LineGestureData {
+struct LineData {
   /* Plane aligned to the gesture line. */
   float true_plane[4];
   float plane[4];
@@ -1695,10 +1695,10 @@ struct LineGestureData {
   bool flip;
 };
 
-struct SculptGestureOperation;
+struct Operation;
 
 /* Common data used for executing a gesture operation. */
-struct SculptGestureContext {
+struct Context {
   SculptSession *ss;
   ViewContext vc;
 
@@ -1707,10 +1707,10 @@ struct SculptGestureContext {
   ePaintSymmetryFlags symmpass;
 
   /* Operation parameters. */
-  eSculptGestureShapeType shape_type;
+  eShapeType shape_type;
   bool front_faces_only;
 
-  SculptGestureOperation *operation;
+  Operation *operation;
 
   /* Gesture data. */
   /* Screen space points that represent the gesture shape. */
@@ -1736,46 +1736,44 @@ struct SculptGestureContext {
   float3 world_space_view_normal;
 
   /* Lasso Gesture. */
-  LassoGestureData lasso;
+  LassoData lasso;
 
   /* Line Gesture. */
-  LineGestureData line;
+  LineData line;
 
   /* Task Callback Data. */
   Vector<PBVHNode *> nodes;
 };
 
 /* Common abstraction structure for gesture operations. */
-struct SculptGestureOperation {
+struct Operation {
   /* Initial setup (data updates, special undo push...). */
-  void (*sculpt_gesture_begin)(bContext *, SculptGestureContext *);
+  void (*begin)(bContext *, Context *);
 
   /* Apply the gesture action for each symmetry pass. */
-  void (*sculpt_gesture_apply_for_symmetry_pass)(bContext *, SculptGestureContext *);
+  void (*apply_for_symmetry_pass)(bContext *, Context *);
 
   /* Remaining actions after finishing the symmetry passes iterations
    * (updating data-layers, tagging PBVH updates...). */
-  void (*sculpt_gesture_end)(bContext *, SculptGestureContext *);
+  void (*end)(bContext *, Context *);
 };
 
 /* Determines whether or not a gesture action should be applied. */
-bool sculpt_gesture_is_effected(SculptGestureContext *sgcontext,
-                                const float3 &co,
-                                const float3 &vertex_normal);
+bool is_affected(Context *sgcontext, const float3 &co, const float3 &vertex_normal);
 
 /* Initialization functions. */
-SculptGestureContext *sculpt_gesture_init_from_box(bContext *C, wmOperator *op);
-SculptGestureContext *sculpt_gesture_init_from_lasso(bContext *C, wmOperator *op);
-SculptGestureContext *sculpt_gesture_init_from_line(bContext *C, wmOperator *op);
+Context *init_from_box(bContext *C, wmOperator *op);
+Context *init_from_lasso(bContext *C, wmOperator *op);
+Context *init_from_line(bContext *C, wmOperator *op);
 
 /* Common gesture operator properties. */
-void sculpt_gesture_operator_properties(wmOperatorType *ot);
+void operator_properties(wmOperatorType *ot);
 
 /* Apply the gesture action to the selected nodes. */
-void sculpt_gesture_apply(bContext *C, SculptGestureContext *sgcontext, wmOperator *op);
+void apply(bContext *C, Context *sgcontext, wmOperator *op);
 
 /* Free the relevant allocated resources. */
-void sculpt_gesture_context_free(SculptGestureContext *sgcontext);
+void free(Context *sgcontext);
 }
 
 namespace blender::ed::sculpt_paint::mask {
