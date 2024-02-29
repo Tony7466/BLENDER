@@ -682,7 +682,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
 
     GPUBatch *geom = nullptr;
     DRWShadingGroup *grp;
-    int vfirst = -1;
+    int vfirst = 0;
     int vcount = 0;
 
     const auto drawcall_flush = [&]() {
