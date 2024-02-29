@@ -191,10 +191,14 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr);
  * Check if the data can be written more efficiently by making use of implicit-sharing. If yes, the
  * user count of the sharing-info is increased making the data immutable. The provided callback
  * should serialize the potentially shared data. It is only called when necessary.
+ *
+ * \param approximate_size_in_bytes: Used to be able to approximate how large the undo step is in
+ * total.
+ * \param write_fn: Use the #BlendWrite to serialize the potentially shared data.
  */
 void BLO_write_shared(BlendWriter *writer,
                       const void *data,
-                      size_t size_in_bytes,
+                      size_t approximate_size_in_bytes,
                       const blender::ImplicitSharingInfo *sharing_info,
                       blender::FunctionRef<void()> write_fn);
 

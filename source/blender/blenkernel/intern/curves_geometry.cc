@@ -1575,7 +1575,7 @@ void CurvesGeometry::blend_write(BlendWriter &writer,
     BLO_write_shared(
         &writer,
         this->curve_offsets,
-        sizeof(int) * this->curve_num,
+        sizeof(int) * (this->curve_num + 1),
         this->runtime->curve_offsets_sharing_info,
         [&]() { BLO_write_int32_array(&writer, this->curve_num + 1, this->curve_offsets); });
   }

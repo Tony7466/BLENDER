@@ -1827,7 +1827,7 @@ void BLO_write_string(BlendWriter *writer, const char *data_ptr)
 
 void BLO_write_shared(BlendWriter *writer,
                       const void *data,
-                      const size_t size_in_bytes,
+                      const size_t approximate_size_in_bytes,
                       const blender::ImplicitSharingInfo *sharing_info,
                       const blender::FunctionRef<void()> write_fn)
 {
@@ -1843,12 +1843,12 @@ void BLO_write_shared(BlendWriter *writer,
       if (memfile.shared_storage->map.add(data, sharing_info)) {
         /* The undo-step takes (shared) ownership of the data, which also makes it immutable. */
         sharing_info->add_user();
+        /* This size is an estimate, but good enough to count data with many users less. */
+        memfile.size += approximate_size_in_bytes / sharing_info->strong_users();
         return;
       }
-      /* This size is an estimate, but good enough to count data with many users less. */
-      memfile.size += size_in_bytes / sharing_info->strong_users();
     }
-    memfile.size += size_in_bytes;
+    memfile.size += approximate_size_in_bytes;
   }
   write_fn();
 }
