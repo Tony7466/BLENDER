@@ -14,6 +14,7 @@
 #include "BKE_global.hh"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
+#include "BKE_grease_pencil_legacy_convert.hh"
 #include "BKE_object.hh"
 
 #include "BLI_math_matrix.h"
@@ -25,6 +26,8 @@
 #include "DNA_modifier_types.h"
 
 #include "MEM_guardedalloc.h"
+
+using namespace blender::bke::greasepencil::convert;
 
 /* Shadow loading etc. ================== */
 
@@ -1301,7 +1304,7 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
 {
   bool ret = false;
   GreasePencilLineartModifierData lmd;
-  BKE_grease_pencil_lineart_wrap_v3(lmd_legacy, &lmd);
+  lineart_wrap_v3(lmd_legacy, &lmd);
   ret = lineart_main_try_generate_shadow_v3(depsgraph,
                                             scene,
                                             original_ld,
@@ -1311,7 +1314,7 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
                                             r_eeln,
                                             r_calculated_edges_eln_list,
                                             r_shadow_ld_if_reproject);
-  BKE_grease_pencil_lineart_unwrap_v3(lmd_legacy, &lmd);
+  lineart_unwrap_v3(lmd_legacy, &lmd);
   return ret;
 }
 

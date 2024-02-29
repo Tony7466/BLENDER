@@ -36,6 +36,7 @@
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_grease_pencil.hh"
+#include "BKE_grease_pencil_legacy_convert.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -3577,9 +3578,9 @@ void MOD_lineart_destroy_render_data_v3(GreasePencilLineartModifierData *lmd)
 void MOD_lineart_destroy_render_data(LineartGpencilModifierData *lmd_legacy)
 {
   GreasePencilLineartModifierData lmd;
-  BKE_grease_pencil_lineart_wrap_v3(lmd_legacy, &lmd);
+  greasepencil::convert::lineart_wrap_v3(lmd_legacy, &lmd);
   MOD_lineart_destroy_render_data_v3(&lmd);
-  BKE_grease_pencil_lineart_unwrap_v3(lmd_legacy, &lmd);
+  greasepencil::convert::lineart_unwrap_v3(lmd_legacy, &lmd);
 }
 
 LineartCache *MOD_lineart_init_cache()
@@ -5231,10 +5232,10 @@ bool MOD_lineart_compute_feature_lines(Depsgraph *depsgraph,
 {
   bool ret = false;
   GreasePencilLineartModifierData lmd;
-  BKE_grease_pencil_lineart_wrap_v3(lmd_legacy, &lmd);
+  greasepencil::convert::lineart_wrap_v3(lmd_legacy, &lmd);
   ret = MOD_lineart_compute_feature_lines_v3(
       depsgraph, lmd, cached_result, enable_stroke_depth_offset);
-  BKE_grease_pencil_lineart_unwrap_v3(lmd_legacy, &lmd);
+  greasepencil::convert::lineart_unwrap_v3(lmd_legacy, &lmd);
   return ret;
 }
 
