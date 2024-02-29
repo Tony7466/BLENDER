@@ -2121,18 +2121,27 @@ static bool wm_autosave_write_try(Main *bmain, wmWindowManager *wm)
     return true;
   }
   if ((U.uiflag & USER_GLOBALUNDO) == 0) {
-    /* Save as regular blend file with recovery information. */
-    const int fileflags = (G.fileflags & ~G_FILE_COMPRESS) | G_FILE_RECOVER_WRITE;
-
-    ED_editors_flush_edits(bmain);
-
-    /* Error reporting into console. */
-    BlendFileWriteParams params{};
-    BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
+    WM_autosave_write(bmain);
     return true;
   }
   /* Can't auto-save with MemFile right now, try again later. */
   return false;
+}
+
+void WM_autosave_write(Main *bmain)
+{
+  ED_editors_flush_edits(bmain);
+
+  char filepath[FILE_MAX];
+  wm_autosave_location(filepath);
+  /* Save as regular blend file with recovery information. */
+  const int fileflags = (G.fileflags & ~G_FILE_COMPRESS) | G_FILE_RECOVER_WRITE;
+
+  /* Error reporting into console. */
+  BlendFileWriteParams params{};
+  BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
+
+  G.autosave_scheduled = false;
 }
 
 static void wm_autosave_timer_begin_ex(wmWindowManager *wm, double timestep)
@@ -2180,14 +2189,12 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer * /*wt*/)
     }
   }
 
-  if (wm_autosave_write_try(bmain, wm)) {
-    /* Restart the timer after file write, just in case file write takes a long time. */
-    wm_autosave_timer_begin(wm);
+  G.autosave_scheduled = false;
+  if (!wm_autosave_write_try(bmain, wm)) {
+    G.autosave_scheduled = true;
   }
-  else {
-    /* Couldn't auto-save right now, try again later. */
-    wm_autosave_timer_begin_ex(wm, 0.01);
-  }
+  /* Restart the timer after file write, just in case file write takes a long time. */
+  wm_autosave_timer_begin(wm);
 }
 
 void wm_autosave_delete()
@@ -3411,6 +3418,7 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
      * often saving manually. */
     wm_autosave_timer_end(wm);
     wm_autosave_timer_begin(wm);
+    G.autosave_scheduled = false;
   }
 
   if (!is_save_as && RNA_boolean_get(op->ptr, "exit")) {

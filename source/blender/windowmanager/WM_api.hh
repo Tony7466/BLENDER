@@ -1720,6 +1720,9 @@ void WM_main_playanim(int argc, const char **argv);
  */
 bool write_crash_blend();
 
+/** Flushes all changes from edit modes and stores the auto-save file. */
+void WM_autosave_write(Main *bmain);
+
 /**
  * Lock the interface for any communication.
  */

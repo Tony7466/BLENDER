@@ -1862,6 +1862,10 @@ static int object_mode_set_exec(bContext *C, wmOperator *op)
     }
   }
 
+  if (G.autosave_scheduled) {
+    WM_autosave_write(CTX_data_main(C));
+  }
+
   return OPERATOR_FINISHED;
 }
 
