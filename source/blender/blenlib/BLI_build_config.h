@@ -15,7 +15,7 @@
  * ==========================
  *
  * An operating system is detected is defined as an `OS_<NAME>` symbols. For example, on Windows
- * the `OS_WIN` is defined to 1, and all the other symbols prefixed with `OS_` are defined to 0
+ * the `OS_WINDOWS` is defined to 1, and all the other symbols prefixed with `OS_` are defined to 0
  * (except of the aggregates described above).
  *
  * The is an aggregates which allows to access "family" of the operating system:
@@ -51,8 +51,8 @@
 /**
  * All commonly used symbols (which are checked on a "top" level, from outside of any
  * platform-specific ifdef block) are to be explicitly defined to 0 when they are not "active".
- * Such approach helps catching cases when one is attempted to access build configuration variable
- * without including the header by simply using the -Wundef compiler attribute.
+ * Such an approach helps catching cases when one is attempted to access build configuration
+ * variable without including the header by simply using the -Wundef compiler attribute.
  */
 
 /* -------------------------------------------------------------------- */
@@ -96,7 +96,7 @@
 #elif defined(__sgi)
 #  define OS_IRIX 1
 #elif defined(_WIN32)
-#  define OS_WIN 1
+#  define OS_WINDOWS 1
 #elif defined(__Fuchsia__)
 #  define OS_FUCHSIA 1
 #elif defined(__DragonFly__)
@@ -158,8 +158,8 @@
 #if !defined(LIBC_GLIBC)
 #  define LIBC_GLIBC 0
 #endif
-#if !defined(OS_WIN)
-#  define OS_WIN 0
+#if !defined(OS_WINDOWS)
+#  define OS_WINDOWS 0
 #endif
 #if !defined(OS_FUCHSIA)
 #  define OS_FUCHSIA 0
