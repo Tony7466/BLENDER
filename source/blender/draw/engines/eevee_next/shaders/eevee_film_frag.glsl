@@ -6,8 +6,13 @@
 
 void main()
 {
+#if 0
   ivec2 texel_film = ivec2(
       round((gl_FragCoord.xy - vec2(uniform_buf.film.offset)) / uniform_buf.film.scaling_factor));
+#else
+  ivec2 texel_film = ivec2(
+      ((gl_FragCoord.xy - vec2(uniform_buf.film.offset)) / uniform_buf.film.scaling_factor));
+#endif
   float out_depth;
 
   if (uniform_buf.film.display_only) {
@@ -35,5 +40,6 @@ void main()
 
   gl_FragDepth = drw_depth_view_to_screen(-out_depth);
 
-  gl_FragDepth = film_display_depth_ammend(texel_film, gl_FragDepth);
+  gl_FragDepth = film_display_depth_ammend(
+      texel_film, gl_FragDepth, uniform_buf.film.scaling_factor);
 }

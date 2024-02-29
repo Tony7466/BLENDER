@@ -591,7 +591,7 @@ void film_store_weight(ivec2 texel, float value)
   imageStore(out_weight_img, ivec3(texel, FILM_WEIGHT_LAYER_ACCUMULATION), vec4(value));
 }
 
-float film_display_depth_ammend(ivec2 texel, float depth)
+float film_display_depth_ammend(ivec2 texel, float depth, int scaling_factor)
 {
   /* This effectively offsets the depth of the whole 2x2 region to the lowest value of the region
    * twice. One for X and one for Y direction. */
@@ -601,7 +601,19 @@ float film_display_depth_ammend(ivec2 texel, float depth)
   depth += fwidth(depth);
 #endif
   /* Small offset to avoid depth test lessEqual failing because of all the conversions loss. */
-  depth += 2.4e-7 * 4.0;
+  if (scaling_factor == 1) {
+    depth += 2.4e-7 * 4.0;
+  }
+  else if (scaling_factor == 2) {
+    depth += 0.0005;
+  }
+  else if (scaling_factor == 4) {
+    depth += 0.002;
+  }
+  else if (scaling_factor == 8) {
+    depth += 0.004;
+  }
+
   return saturate(depth);
 }
 
