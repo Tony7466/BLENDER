@@ -447,7 +447,8 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
         params, wininv, light, params.uv + vec3(0.0, uv_offset, 0.0));
   }
 
-  mat2x3 TB = mat2x3(TP - P, BP - P);
+  /* TODO: Use a mat2x3 (Currently not supported by the Metal backend). */
+  mat3 TBN = mat3(TP - P, BP - P, Ng);
 
   /* Compute the actual offset. */
 
@@ -459,7 +460,7 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
   pcf_offset = pcf_offset * 2.0 - 1.0;
   pcf_offset *= light.pcf_radius;
 
-  vec3 ws_offset = TB * pcf_offset;
+  vec3 ws_offset = TBN * vec3(pcf_offset, 0.0);
   vec3 offset_P = P + ws_offset;
 
   /* Project the offset position into the surface */
