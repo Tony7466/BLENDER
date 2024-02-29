@@ -27,8 +27,6 @@
 
 #include "MEM_guardedalloc.h"
 
-using namespace blender::bke::greasepencil::convert;
-
 /* Shadow loading etc. ================== */
 
 LineartElementLinkNode *lineart_find_matching_eln(ListBase *shadow_elns, int obindex)
@@ -1304,7 +1302,7 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
 {
   bool ret = false;
   GreasePencilLineartModifierData lmd;
-  lineart_wrap_v3(lmd_legacy, &lmd);
+  blender::bke::greasepencil::convert::lineart_wrap_v3(lmd_legacy, &lmd);
   ret = lineart_main_try_generate_shadow_v3(depsgraph,
                                             scene,
                                             original_ld,
@@ -1314,7 +1312,7 @@ bool lineart_main_try_generate_shadow(Depsgraph *depsgraph,
                                             r_eeln,
                                             r_calculated_edges_eln_list,
                                             r_shadow_ld_if_reproject);
-  lineart_unwrap_v3(lmd_legacy, &lmd);
+  blender::bke::greasepencil::convert::lineart_unwrap_v3(lmd_legacy, &lmd);
   return ret;
 }
 
