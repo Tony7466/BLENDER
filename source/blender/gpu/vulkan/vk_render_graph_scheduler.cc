@@ -6,7 +6,7 @@
  * \ingroup gpu
  */
 
-#include "vk_render_graph_sorting.hh"
+#include "vk_render_graph_scheduler.hh"
 
 namespace blender::gpu {
 

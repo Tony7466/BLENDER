@@ -40,7 +40,7 @@ enum class ResourceOwner {
    *
    * These resources cannot be destroyed and might be recreated by the swap chain at all times.
    */
-  SWAPCHAIN,
+  SWAP_CHAIN,
 };
 
 class VKRenderGraphResources {

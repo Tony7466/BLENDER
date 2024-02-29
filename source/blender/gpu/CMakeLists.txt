@@ -220,12 +220,12 @@ set(VULKAN_SRC
   vulkan/vk_pixel_buffer.cc
   vulkan/vk_push_constants.cc
   vulkan/vk_query.cc
-  vulkan/vk_render_graph.cc
+  vulkan/vk_render_graph_command_builder.cc
+  vulkan/vk_render_graph_commands.cc
   vulkan/vk_render_graph_nodes.cc
   vulkan/vk_render_graph_resources.cc
-  vulkan/vk_render_graph_commands.cc
-  vulkan/vk_render_graph_command_builder.cc
-  vulkan/vk_render_graph_sorting.cc
+  vulkan/vk_render_graph_scheduler.cc
+  vulkan/vk_render_graph.cc
   vulkan/vk_resource_tracker.cc
   vulkan/vk_sampler.cc
   vulkan/vk_samplers.cc
@@ -267,10 +267,12 @@ set(VULKAN_SRC
   vulkan/vk_pixel_buffer.hh
   vulkan/vk_push_constants.hh
   vulkan/vk_query.hh
+  vulkan/vk_render_graph_command_builder.hh
   vulkan/vk_render_graph_commands.hh
-  vulkan/vk_render_graph_resources.hh
-  vulkan/vk_render_graph_sorting.hh
+  vulkan/vk_render_graph_list.hh
   vulkan/vk_render_graph_nodes.hh
+  vulkan/vk_render_graph_resources.hh
+  vulkan/vk_render_graph_scheduler.hh
   vulkan/vk_render_graph.hh
   vulkan/vk_resource_tracker.hh
   vulkan/vk_sampler.hh

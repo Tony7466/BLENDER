@@ -29,7 +29,7 @@ void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
 
 void VKRenderGraphCommandBuilder::build_image(VKRenderGraph &render_graph, VkImage vk_image)
 {
-  render_graph.sorting_strategy_->select_nodes_for_image(vk_image, selected_nodes_);
+  render_graph.scheduler_->select_nodes_for_image(vk_image, selected_nodes_);
 }
 
 void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_graph,

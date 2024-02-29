@@ -11,8 +11,8 @@
 namespace blender::gpu {
 
 VKRenderGraph::VKRenderGraph(std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer,
-                             std::unique_ptr<VKRenderGraphSortingStrategy> sorting_strategy)
-    : sorting_strategy_(std::move(sorting_strategy)), command_buffer_(std::move(command_buffer))
+                             std::unique_ptr<VKRenderGraphScheduler> scheduler)
+    : scheduler_(std::move(scheduler)), command_buffer_(std::move(command_buffer))
 {
 }
 

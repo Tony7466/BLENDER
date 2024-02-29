@@ -29,17 +29,16 @@
 #include "vk_render_graph_commands.hh"
 #include "vk_render_graph_nodes.hh"
 #include "vk_render_graph_resources.hh"
-#include "vk_render_graph_sorting.hh"
+#include "vk_render_graph_scheduler.hh"
 
 namespace blender::gpu {
-
 
 class VKRenderGraph {
   VKRenderGraphResources resources_;
   VKRenderGraphNodes nodes_;
   VKRenderGraphCommandBuilder command_builder_;
 
-  std::unique_ptr<VKRenderGraphSortingStrategy> sorting_strategy_;
+  std::unique_ptr<VKRenderGraphScheduler> scheduler_;
   std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer_;
 
   /**
@@ -49,7 +48,7 @@ class VKRenderGraph {
 
  public:
   VKRenderGraph(std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer,
-                std::unique_ptr<VKRenderGraphSortingStrategy> sorting_strategy);
+                std::unique_ptr<VKRenderGraphScheduler> sorting_strategy);
 
   /**
    * Register a buffer resource to the render graph.
@@ -86,7 +85,6 @@ class VKRenderGraph {
    * Wait for the submitted work to be finished.
    */
   void finish();
-
 
   friend class VKRenderGraphCommandBuilder;
 };
