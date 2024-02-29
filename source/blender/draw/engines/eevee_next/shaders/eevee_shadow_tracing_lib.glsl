@@ -474,9 +474,9 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
   ws_offset = offset_P - P;
 
   if (dot(ws_offset, L) < 0.0) {
-    /* Project the offset position into the the perpendicular plane, since it's closer to the light
+    /* Project the offset position into the perpendicular plane, since it's closer to the light
      * (avoids overshadowing at geometry angles). */
-    float3 perpendicular_plane_normal = cross(Ng, normalize(cross(Ng, L)));
+    vec3 perpendicular_plane_normal = cross(Ng, normalize(cross(Ng, L)));
     offset_P = line_plane_intersect(offset_P, L, P, perpendicular_plane_normal);
     ws_offset = offset_P - P;
   }
