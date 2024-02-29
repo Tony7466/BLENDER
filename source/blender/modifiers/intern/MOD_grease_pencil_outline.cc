@@ -179,16 +179,19 @@ static void generate_corner(const float3 &pt_a,
                             Vector<float3> &r_perimeter,
                             Vector<int> &r_src_indices)
 {
+  const float length = math::length(pt_c - pt_b);
+  const float length_prev = math::length(pt_b - pt_a);
   const float3 tangent = math::normalize(pt_c - pt_b);
   const float3 tangent_prev = math::normalize(pt_b - pt_a);
-  const float cos_angle = math::dot(tangent, tangent_prev);
+  const float3 normal = {tangent.y, -tangent.x, 0.0f};
+  const float3 normal_prev = {tangent_prev.y, -tangent_prev.x, 0.0f};
+
+  // const float cos_angle = math::dot(tangent, tangent_prev);
   const float sin_angle = tangent_prev.x * tangent.y - tangent_prev.y * tangent.x;
   /* Whether the corner is an inside or outside corner.
    * This determines whether an arc is added or a single miter point. */
   const bool is_outside_corner = (sin_angle >= 0.0f);
   if (is_outside_corner) {
-    const float3 normal = {tangent.y, -tangent.x, 0.0f};
-    const float3 normal_prev = {tangent_prev.y, -tangent_prev.x, 0.0f};
     generate_arc_from_point_to_point(pt_b + normal_prev * radius,
                                      pt_b + normal * radius,
                                      pt_b,
@@ -198,10 +201,17 @@ static void generate_corner(const float3 &pt_a,
                                      r_src_indices);
   }
   else {
-    // const float3 miter = math::normalize(tangent_prev + tangent);
-    const float3 normal = {tangent.y, -tangent.x, 0.0f};
-    const float3 normal_prev = {tangent_prev.y, -tangent_prev.x, 0.0f};
-    r_perimeter.append(pt_b + normal * radius);
+    const float3 avg_tangent = math::normalize(tangent_prev + tangent);
+    const float3 miter = {avg_tangent.y, -avg_tangent.x, 0.0f};
+    const float miter_invscale = math::dot(normal, miter);
+
+    /* Avoid division by tiny values for steep angles. */
+    const float3 miter_point = (radius < length * miter_invscale &&
+                                radius < length_prev * miter_invscale) ?
+                                   pt_b + miter * radius / miter_invscale :
+                                   pt_b + miter * radius;
+
+    r_perimeter.append(miter_point);
     r_src_indices.append(src_point_index);
   }
 }
