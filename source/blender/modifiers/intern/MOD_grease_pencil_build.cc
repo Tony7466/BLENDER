@@ -119,9 +119,11 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
   if (clamp_points) {
     r_curves_num = r_points_num = 0;
   }
-  const float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
-                                   math::clamp(factor, 0.0f, 1.0f) :
-                                   math::clamp(1.0f - factor, 0.0f, 1.0f);
+  float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ? factor :
+                                                                                 1.0f - factor;
+  if (clamp_points) {
+    factor_to_keep = std::clamp(factor_to_keep, 0.0f, 1.0f);
+  }
 
   auto get_stroke_factor = [&](const float factor, const int index) {
     const float max_factor = max_length / curves.evaluated_lengths_for_curve(index, false).last();
@@ -212,11 +214,20 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
     if (points_per_curve[i]) {
       dst_offsets[next_curve] = points_per_curve[i];
 
+      const int curve_size = points_by_curve[i].size();
+
       auto get_fade_weight = [&](const int local_index) {
-        return std::clamp(float(local_index - starts_per_curve[i]) /
-                              float(abs(ends_per_curve[i] - starts_per_curve[i])),
-                          0.0f,
-                          1.0f);
+        if (is_vanishing) {
+          return 1.0f - std::clamp(float(local_index - curve_size + ends_per_curve[i]) /
+                                       float(abs(ends_per_curve[i] - starts_per_curve[i])),
+                                   0.0f,
+                                   1.0f);
+        }
+        const float weight = std::clamp(float(local_index - starts_per_curve[i]) /
+                                            float(abs(ends_per_curve[i] - starts_per_curve[i])),
+                                        0.0f,
+                                        1.0f);
+        return weight;
       };
 
       const int extra_offset = is_vanishing ? points_by_curve[i].size() - points_per_curve[i] : 0;
@@ -226,7 +237,7 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
         }
         const int src_point_index = points_by_curve[i].first() + extra_offset + stroke_point;
         if (has_fade) {
-          const float fade_weight = get_fade_weight(stroke_point);
+          const float fade_weight = get_fade_weight(extra_offset + stroke_point);
           opacities[src_point_index] = opacities[src_point_index] *
                                        (1.0f - fade_weight * factor_opacity);
           radii[src_point_index] = radii[src_point_index] * (1.0f - fade_weight * factor_radii);
@@ -448,11 +459,20 @@ static void deform_drawing(const ModifierData &md,
     selection = IndexMask::from_bools(reordered_select, memory);
   }
 
+  const bool is_vanishing = mmd.transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
+
   const float fade_factor = ((mmd.flag & MOD_GREASE_PENCIL_BUILD_USE_FADING) != 0) ? mmd.fade_fac :
                                                                                      0.0f;
-  const float factor = get_build_factor(
+  float factor = get_build_factor(
       mmd.time_mode, current_time, mmd.start_delay, mmd.length, mmd.percentage_fac, fade_factor);
+  float factor_start = factor - fade_factor;
+  if (mmd.transition!=MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW) {
+    std::swap(factor, factor_start);
+  }
 
+  const float use_time_alignment = mmd.transition != MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
+                                      !mmd.time_alignment :
+                                      mmd.time_alignment;
   switch (mmd.mode) {
     default:
     case MOD_GREASE_PENCIL_BUILD_MODE_SEQUENTIAL:
@@ -462,10 +482,10 @@ static void deform_drawing(const ModifierData &md,
       curves = build_concurrent(drawing,
                                 curves,
                                 selection,
-                                mmd.time_alignment,
+                                use_time_alignment,
                                 mmd.transition,
                                 factor,
-                                factor - fade_factor,
+                                factor_start,
                                 mmd.fade_opacity_strength,
                                 mmd.fade_thickness_strength,
                                 mmd.target_vgname);
