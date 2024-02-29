@@ -32,7 +32,7 @@
 #include "BLF_api.hh"
 #include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_collection.hh"
 #include "BKE_context.hh"
 #include "BKE_fcurve.h"
@@ -184,7 +184,9 @@ bool RNA_pointer_is_null(const PointerRNA *ptr)
   return (ptr->data == nullptr) || (ptr->owner_id == nullptr) || (ptr->type == nullptr);
 }
 
-static void rna_pointer_inherit_id(StructRNA *type, PointerRNA *parent, PointerRNA *ptr)
+static void rna_pointer_inherit_id(const StructRNA *type,
+                                   const PointerRNA *parent,
+                                   PointerRNA *ptr)
 {
   if (type && type->flag & STRUCT_ID) {
     ptr->owner_id = static_cast<ID *>(ptr->data);
@@ -203,7 +205,7 @@ PointerRNA RNA_blender_rna_pointer_create()
   return ptr;
 }
 
-PointerRNA rna_pointer_inherit_refine(PointerRNA *ptr, StructRNA *type, void *data)
+PointerRNA rna_pointer_inherit_refine(const PointerRNA *ptr, StructRNA *type, void *data)
 {
   if (data) {
     PointerRNA result;
@@ -2094,7 +2096,7 @@ int RNA_property_ui_icon(const PropertyRNA *prop)
   return rna_ensure_property((PropertyRNA *)prop)->icon;
 }
 
-static bool rna_property_editable_do(PointerRNA *ptr,
+static bool rna_property_editable_do(const PointerRNA *ptr,
                                      PropertyRNA *prop_orig,
                                      const int index,
                                      const char **r_info)
@@ -2160,17 +2162,17 @@ static bool rna_property_editable_do(PointerRNA *ptr,
   return true;
 }
 
-bool RNA_property_editable(PointerRNA *ptr, PropertyRNA *prop)
+bool RNA_property_editable(const PointerRNA *ptr, PropertyRNA *prop)
 {
   return rna_property_editable_do(ptr, prop, -1, nullptr);
 }
 
-bool RNA_property_editable_info(PointerRNA *ptr, PropertyRNA *prop, const char **r_info)
+bool RNA_property_editable_info(const PointerRNA *ptr, PropertyRNA *prop, const char **r_info)
 {
   return rna_property_editable_do(ptr, prop, -1, r_info);
 }
 
-bool RNA_property_editable_flag(PointerRNA *ptr, PropertyRNA *prop)
+bool RNA_property_editable_flag(const PointerRNA *ptr, PropertyRNA *prop)
 {
   int flag;
   const char *dummy_info;
@@ -2180,7 +2182,7 @@ bool RNA_property_editable_flag(PointerRNA *ptr, PropertyRNA *prop)
   return (flag & PROP_EDITABLE) != 0;
 }
 
-bool RNA_property_editable_index(PointerRNA *ptr, PropertyRNA *prop, const int index)
+bool RNA_property_editable_index(const PointerRNA *ptr, PropertyRNA *prop, const int index)
 {
   BLI_assert(index >= 0);
 
@@ -5946,7 +5948,7 @@ static void rna_array_as_string_elem(int type, void **buf_p, int len, std::strin
     case PROP_FLOAT: {
       float *buf = static_cast<float *>(*buf_p);
       for (int i = 0; i < len; i++, buf++) {
-        ss << fmt::format((i < end || !end) ? "%g, " : "%g", *buf);
+        ss << fmt::format((i < end || !end) ? "{:g}, " : "{:g}", *buf);
       }
       *buf_p = buf;
       break;
@@ -6076,7 +6078,7 @@ std::string RNA_property_as_string(
             bool is_first = true;
             for (; item->identifier; item++) {
               if (item->identifier[0] && item->value & val) {
-                ss << fmt::format(is_first ? "'%s'" : ", '%s'", item->identifier);
+                ss << fmt::format(is_first ? "'{}'" : ", '{}'", item->identifier);
                 is_first = false;
               }
             }
