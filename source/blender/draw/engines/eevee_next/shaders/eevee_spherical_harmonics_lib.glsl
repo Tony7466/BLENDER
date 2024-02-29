@@ -153,6 +153,51 @@ SphericalHarmonicL2 spherical_harmonics_L2_new()
   return sh;
 }
 
+SphericalHarmonicBandL0 spherical_harmonics_band_L0_swizzle_wwww(SphericalHarmonicBandL0 L0)
+{
+  L0.M0 = L0.M0.wwww;
+  return L0;
+}
+
+SphericalHarmonicBandL1 spherical_harmonics_band_L1_swizzle_wwww(SphericalHarmonicBandL1 L1)
+{
+  L1.Mn1 = L1.Mn1.wwww;
+  L1.M0 = L1.M0.wwww;
+  L1.Mp1 = L1.Mp1.wwww;
+  return L1;
+}
+
+SphericalHarmonicBandL2 spherical_harmonics_band_L2_swizzle_wwww(SphericalHarmonicBandL2 L2)
+{
+  L2.Mn2 = L2.Mn2.wwww;
+  L2.Mn1 = L2.Mn1.wwww;
+  L2.M0 = L2.M0.wwww;
+  L2.Mp1 = L2.Mp1.wwww;
+  L2.Mp2 = L2.Mp2.wwww;
+  return L2;
+}
+
+SphericalHarmonicL0 spherical_harmonics_swizzle_wwww(SphericalHarmonicL0 sh)
+{
+  sh.L0 = spherical_harmonics_band_L0_swizzle_wwww(sh.L0);
+  return sh;
+}
+
+SphericalHarmonicL1 spherical_harmonics_swizzle_wwww(SphericalHarmonicL1 sh)
+{
+  sh.L0 = spherical_harmonics_band_L0_swizzle_wwww(sh.L0);
+  sh.L1 = spherical_harmonics_band_L1_swizzle_wwww(sh.L1);
+  return sh;
+}
+
+SphericalHarmonicL2 spherical_harmonics_swizzle_wwww(SphericalHarmonicL2 sh)
+{
+  sh.L0 = spherical_harmonics_band_L0_swizzle_wwww(sh.L0);
+  sh.L1 = spherical_harmonics_band_L1_swizzle_wwww(sh.L1);
+  sh.L2 = spherical_harmonics_band_L2_swizzle_wwww(sh.L2);
+  return sh;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
