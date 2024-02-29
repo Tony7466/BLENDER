@@ -265,7 +265,7 @@ void BLO_read_pointer_array(BlendDataReader *reader, void **ptr_p);
 
 /* Misc. */
 
-void BLO_read_shared_impl(BlendDataReader *reader,
+void blo_read_shared_impl(BlendDataReader *reader,
                           void *data,
                           const blender::ImplicitSharingInfo **r_sharing_info,
                           blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn);
@@ -281,7 +281,7 @@ const blender::ImplicitSharingInfo *BLO_read_shared(
     blender::FunctionRef<const blender::ImplicitSharingInfo *()> read_fn)
 {
   const blender::ImplicitSharingInfo *sharing_info;
-  BLO_read_shared_impl(reader, *data_ptr, &sharing_info, read_fn);
+  blo_read_shared_impl(reader, *data_ptr, &sharing_info, read_fn);
   return sharing_info;
 }
 
