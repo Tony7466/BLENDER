@@ -1664,6 +1664,120 @@ void modal_keymap(wmKeyConfig *keyconf);
 /** \name Gesture Operators
  * \{ */
 
+namespace blender::ed::sculpt_paint::gesture {
+enum eSculptGestureShapeType {
+  SCULPT_GESTURE_SHAPE_BOX,
+  SCULPT_GESTURE_SHAPE_LASSO,
+  SCULPT_GESTURE_SHAPE_LINE,
+};
+
+struct LassoGestureData {
+  float4x4 projviewobjmat;
+
+  rcti boundbox;
+  int width;
+
+  /* 2D bitmap to test if a vertex is affected by the lasso shape. */
+  blender::BitVector<> mask_px;
+};
+
+struct LineGestureData {
+  /* Plane aligned to the gesture line. */
+  float true_plane[4];
+  float plane[4];
+
+  /* Planes to limit the action to the length of the gesture segment at both sides of the affected
+   * area. */
+  float side_plane[2][4];
+  float true_side_plane[2][4];
+  bool use_side_planes;
+
+  bool flip;
+};
+
+struct SculptGestureOperation;
+
+/* Common data used for executing a gesture operation. */
+struct SculptGestureContext {
+  SculptSession *ss;
+  ViewContext vc;
+
+  /* Enabled and currently active symmetry. */
+  ePaintSymmetryFlags symm;
+  ePaintSymmetryFlags symmpass;
+
+  /* Operation parameters. */
+  eSculptGestureShapeType shape_type;
+  bool front_faces_only;
+
+  SculptGestureOperation *operation;
+
+  /* Gesture data. */
+  /* Screen space points that represent the gesture shape. */
+  float (*gesture_points)[2];
+  int tot_gesture_points;
+
+  /* View parameters. */
+  float3 true_view_normal;
+  float3 view_normal;
+
+  float3 true_view_origin;
+  float3 view_origin;
+
+  float true_clip_planes[4][4];
+  float clip_planes[4][4];
+
+  /* These store the view origin and normal in world space, which is used in some gestures to
+   * generate geometry aligned from the view directly in world space. */
+  /* World space view origin and normal are not affected by object symmetry when doing symmetry
+   * passes, so there is no separate variables with the `true_` prefix to store their original
+   * values without symmetry modifications. */
+  float3 world_space_view_origin;
+  float3 world_space_view_normal;
+
+  /* Lasso Gesture. */
+  LassoGestureData lasso;
+
+  /* Line Gesture. */
+  LineGestureData line;
+
+  /* Task Callback Data. */
+  Vector<PBVHNode *> nodes;
+};
+
+/* Common abstraction structure for gesture operations. */
+struct SculptGestureOperation {
+  /* Initial setup (data updates, special undo push...). */
+  void (*sculpt_gesture_begin)(bContext *, SculptGestureContext *);
+
+  /* Apply the gesture action for each symmetry pass. */
+  void (*sculpt_gesture_apply_for_symmetry_pass)(bContext *, SculptGestureContext *);
+
+  /* Remaining actions after finishing the symmetry passes iterations
+   * (updating data-layers, tagging PBVH updates...). */
+  void (*sculpt_gesture_end)(bContext *, SculptGestureContext *);
+};
+
+/* Determines whether or not a gesture action should be applied. */
+bool sculpt_gesture_is_effected(SculptGestureContext *sgcontext,
+                                const float3 &co,
+                                const float3 &vertex_normal);
+
+/* Initialization functions. */
+SculptGestureContext *sculpt_gesture_init_from_box(bContext *C, wmOperator *op);
+SculptGestureContext *sculpt_gesture_init_from_lasso(bContext *C, wmOperator *op);
+SculptGestureContext *sculpt_gesture_init_from_line(bContext *C, wmOperator *op);
+
+/* Common gesture operator properties. */
+void sculpt_gesture_operator_properties(wmOperatorType *ot);
+
+/* Apply the gesture action to the selected nodes. */
+void sculpt_gesture_apply(bContext *C, SculptGestureContext *sgcontext, wmOperator *op);
+
+/* Free the relevant allocated resources. */
+void sculpt_gesture_context_free(SculptGestureContext *sgcontext);
+}
+
 namespace blender::ed::sculpt_paint::mask {
 
 void SCULPT_OT_face_set_lasso_gesture(wmOperatorType *ot);
