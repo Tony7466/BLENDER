@@ -2128,6 +2128,11 @@ static bool wm_autosave_write_try(Main *bmain, wmWindowManager *wm)
   return false;
 }
 
+bool WM_autosave_is_scheduled(wmWindowManager *wm)
+{
+  return wm->autosave_scheduled;
+}
+
 void WM_autosave_write(wmWindowManager *wm, Main *bmain)
 {
   ED_editors_flush_edits(bmain);
