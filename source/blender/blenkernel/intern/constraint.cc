@@ -1661,53 +1661,60 @@ static bConstraintTypeInfo CTI_LOCLIMIT = {
 
 /**
  * Wraps a number to be in [-PI, +PI].
- *
- * Can also be implemented as `std::remainder(a, M_PI * 2.0)`.
- * Not sure which is faster.
  */
-static inline float pi_wrap(const float a)
+static inline float wrap_rad_angle(const float angle)
 {
-  const float b = a * (0.5 / M_PI) + 0.5;
-  const float c = b - std::floor(b);
-  return (c - 0.5) * (2.0 * M_PI);
+  const float b = angle * (0.5 / M_PI) + 0.5;
+  return ((b - std::floor(b)) - 0.5) * (2.0 * M_PI);
 }
 
 /**
- * Clamps an angle between min and max. ...
+ * Clamps an angle between min and max.
+ *
+ * All angles are in radians.
+ *
+ * This function treats angles as existing in a looping (cyclic) space, and is therefore
+ * specifically not equivalent to a simple `clamp(angle, min, max)`. `min` and `max` are treated as
+ * a directed range on the unit circle and `angle` is treated as a point on the unit circle.
+ * `angle` is then clamped to be within the directed range defined by `min` and `max`.
  */
 static float clamp_angle(const float angle, const float min, const float max)
 {
+  /* If the allowed range exceeds 360 degrees no clamping can occur. */
   if ((max - min) >= (2 * M_PI)) {
     return angle;
   }
 
+  /* Invalid case, just return min. */
   if (max <= min) {
     return min;
   }
 
-  /* For the code below, see: https://www.desmos.com/calculator/awzjzund1u */
-
   /* Move min and max into a space where `angle == 0.0`, and wrap them to
-   * [-PI, +PI] in that space. */
-  const float tmin = pi_wrap(min - angle);
-  const float tmax = pi_wrap(max - angle);
+   * [-PI, +PI] in that space.  This simplifies the cases below, as we can
+   * just use 0.0 in place of `angle` and know that everything is in
+   * [-PI, +PI]. */
+  const float min_wrapped = wrap_rad_angle(min - angle);
+  const float max_wrapped = wrap_rad_angle(max - angle);
 
-  /* Some shenanigans to handle the various special cases of
-   * clamping in a cyclic space. */
-  float tclamped = 0.0;
-  if (tmin < tmax) {
-    tclamped = std::min(std::max(0.0f, tmin), tmax);
-  }
-  else if (tmax < 0.0 && 0.0 < tmin) {
-    if (std::fabs(tmax) < std::fabs(tmin)) {
-      tclamped = tmax;
-    }
-    else {
-      tclamped = tmin;
-    }
+  /* If the range defined by `min`/`max` doesn't contain the boundary at
+   * PI/-PI.  This is the simple case, because it means we can do a simple
+   * clamp. */
+  if (min_wrapped < max_wrapped) {
+    return angle + std::clamp(0.0f, min_wrapped, max_wrapped);
   }
 
-  return tclamped + angle;
+  /* At this point we know that `min_wrapped` >= `max_wrapped`, meaning the boundary is crossed.
+   * With that we know that no clamping is needed in the following case. */
+  if (max_wrapped >= 0.0 || min_wrapped <= 0.0) {
+    return angle;
+  }
+
+  /* If zero is outside of the range, we clamp to the closest of `min_wrapped` or `max_wrapped`. */
+  if (std::fabs(max_wrapped) < std::fabs(min_wrapped)) {
+    return angle + max_wrapped;
+  }
+  return angle + min_wrapped;
 }
 
 static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
