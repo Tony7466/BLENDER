@@ -43,7 +43,8 @@
 
 #pragma once
 
-/* Based on Chromium's build_config.h, with tweaks and extensions needed for Blender.
+/**
+ * Based on Chromium's build_config.h, with tweaks and extensions needed for Blender.
  *
  * All commonly used symbols (which are checked on a "top" level, from outside of any
  * platform-specific ifdef block) are to be explicitly defined to 0 when they are not "active".
@@ -53,7 +54,7 @@
  */
 
 /* -------------------------------------------------------------------- */
-/** \name Mesh Connectivity Mapping
+/** \name A set of macros to use for platform detection.
  * \{ */
 
 #if defined(__native_client__)
