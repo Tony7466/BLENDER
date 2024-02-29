@@ -165,6 +165,9 @@ void main()
   float occlusion = spherical_harmonics_evaluate_lambert(vN, sh_visibility).x;
   /* FIXME(fclem): Tried to match the old occlusion look. I don't know why it's needed. */
   occlusion *= 0.5;
+  /* TODO(fclem): Ideally, we should just combine both local and distant irradiance and evaluate
+   * once. Unfortunately, I couldn't find a way to do the same (1.0 - occlusion) with the
+   * spherical harmonic coefficients. */
   float visibility = saturate(1.0 - occlusion);
 
   /* Apply missing distant lighting. */
