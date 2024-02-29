@@ -2977,6 +2977,12 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 8)) {
+    LISTBASE_FOREACH (Light *, light, &bmain->lights) {
+      light->shadow_filter_radius = 3.0f;
+    }
+  }
+
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 9)) {
     if (!DNA_struct_member_exists(fd->filesdna, "ToolSettings", "float", "snap_angle_increment_2d")) {
       const float default_snap_angle_increment = DEG2RADF(15.0f);
       const float default_snap_angle_increment_precision = DEG2RADF(5.0f);
