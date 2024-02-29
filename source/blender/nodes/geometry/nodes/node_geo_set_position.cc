@@ -103,9 +103,20 @@ static void set_instances_position(bke::Instances &instances,
   const bke::InstancesFieldContext context(instances);
   fn::FieldEvaluator evaluator(context, instances.instances_num());
   evaluator.set_selection(selection_field);
-  evaluator.add_with_destination(position_field,
-                                 bke::instance_position_varray_for_write(instances));
+
+  /* Use a temporary array for the output to avoid potentially reading from freed memory if
+   * retrieving the transforms has to make a mutable copy (then we can't depend on the user count
+   * of the original read-only data). */
+  Array<float3> result(instances.instances_num());
+  evaluator.add_with_destination(position_field, result.as_mutable_span());
   evaluator.evaluate();
+
+  MutableSpan<float4x4> transforms = instances.transforms_for_write();
+  threading::parallel_for(transforms.index_range(), 2048, [&](const IndexRange range) {
+    for (const int i : range) {
+      transforms[i].location() = result[i];
+    }
+  });
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
