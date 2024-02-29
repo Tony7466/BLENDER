@@ -2184,17 +2184,17 @@ static void GREASE_PENCIL_OT_separate(wmOperatorType *ot)
  * \{ */
 
 /* Global clipboard for Grease Pencil curves. */
-struct GreasePencilClipboard {
+struct Clipboard {
   bke::CurvesGeometry curves;
-  /* We store the material names of the copied curves, so we can match those when pasting the
+  /* We store the material uid's of the copied curves, so we can match those when pasting the
    * clipboard into another object. */
-  Vector<std::pair<std::string, int>> materials;
-  int materials_num;
+  Vector<std::pair<unsigned int, int>> materials;
+  int materials_in_source_num;
 };
 
-static GreasePencilClipboard &get_grease_pencil_clipboard()
+static Clipboard &get_grease_pencil_clipboard()
 {
-  static GreasePencilClipboard clipboard;
+  static Clipboard clipboard;
   return clipboard;
 }
 
@@ -2203,13 +2203,13 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
   using namespace blender::bke;
 
   Main *bmain = CTX_data_main(C);
-  const Scene *scene = CTX_data_scene(C);
+  const Scene &scene = *CTX_data_scene(C);
   Object *object = CTX_data_active_object(C);
-  const AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
+  const AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene.toolsettings);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const bool paste_on_back = RNA_boolean_get(op->ptr, "paste_back");
 
-  GreasePencilClipboard &grease_pencil_clipboard = get_grease_pencil_clipboard();
+  Clipboard &clipboard = get_grease_pencil_clipboard();
 
   /* Get active layer in the target object. */
   if (!grease_pencil.has_active_layer()) {
@@ -2218,17 +2218,17 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
   }
   const bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
   if (!active_layer.is_editable()) {
-    BKE_report(
-        op->reports, RPT_ERROR, "Cannot paste strokes when active layer is hidden or locked");
+    BKE_report(op->reports, RPT_ERROR, "Active layer is locked or hidden");
     return OPERATOR_CANCELLED;
   }
 
   /* Ensure active keyframe. */
-  if (!ensure_active_keyframe(C, op, grease_pencil)) {
+  if (!ensure_active_keyframe(scene, grease_pencil)) {
+    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
   }
-  bke::greasepencil::Drawing *target_drawing = grease_pencil.get_editable_drawing_at(
-      active_layer, scene->r.cfra);
+  bke::greasepencil::Drawing *target_drawing = grease_pencil.get_editable_drawing_at(active_layer,
+                                                                                     scene.r.cfra);
   if (target_drawing == nullptr) {
     return OPERATOR_CANCELLED;
   }
@@ -2241,44 +2241,35 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
   selection_in_target.finish();
 
   /* Keep a copy of the original material indices of the curves on the clipboard. */
-  MutableAttributeAccessor clipboard_attributes =
-      grease_pencil_clipboard.curves.attributes_for_write();
+  MutableAttributeAccessor clipboard_attributes = clipboard.curves.attributes_for_write();
   SpanAttributeWriter<int> clipboard_material_indices =
       clipboard_attributes.lookup_or_add_for_write_span<int>("material_index", AttrDomain::Curve);
   Array<int> original_clipboard_materials(clipboard_material_indices.span.size());
   clipboard_material_indices.span.varray().materialize(original_clipboard_materials);
 
   /* Get a list of all materials in the scene. */
-  Map<std::string, Material *> scene_materials;
+  Map<unsigned int, Material *> scene_materials;
   LISTBASE_FOREACH (Material *, material, &bmain->materials) {
-    scene_materials.add(material->id.name + 2, material);
+    scene_materials.add(material->id.session_uid, material);
   }
 
   /* Map the material used in the clipboard curves to the materials in the target object. */
-  Array<int> clipboard_material_remap(grease_pencil_clipboard.materials_num, 0);
-  for (const int i : grease_pencil_clipboard.materials.index_range()) {
+  Array<int> clipboard_material_remap(clipboard.materials_in_source_num, 0);
+  for (const int i : clipboard.materials.index_range()) {
     /* Check if the material name exists in the scene. */
     int target_index;
-    std::string material_name = grease_pencil_clipboard.materials[i].first;
-    if (!scene_materials.contains(material_name)) {
-      /* Material is removed or renamed, so create a new material. */
-      BKE_grease_pencil_object_material_new(bmain, object, material_name.c_str(), &target_index);
-      clipboard_material_remap[grease_pencil_clipboard.materials[i].second] = target_index;
+    unsigned int material_id = clipboard.materials[i].first;
+    Material *material = scene_materials.lookup_default(material_id, nullptr);
+    if (!material) {
+      /* Material is removed, so create a new material. */
+      BKE_grease_pencil_object_material_new(bmain, object, nullptr, &target_index);
+      clipboard_material_remap[clipboard.materials[i].second] = target_index;
       continue;
     }
 
-    /* Check if the material name exists in the target object. */
-    Material *material = scene_materials.lookup(material_name);
-    target_index = BKE_grease_pencil_object_material_index_get_by_name(object,
-                                                                       material_name.c_str());
-    if (target_index == -1) {
-      /* Add material to target object. */
-      BKE_object_material_slot_add(bmain, object);
-      BKE_object_material_assign(bmain, object, material, object->totcol, BKE_MAT_ASSIGN_USERPREF);
-      target_index = object->actcol - 1;
-    }
-
-    clipboard_material_remap[grease_pencil_clipboard.materials[i].second] = target_index;
+    /* Find or add the material to the target object. */
+    target_index = BKE_object_material_ensure(bmain, object, material);
+    clipboard_material_remap[clipboard.materials[i].second] = target_index;
   }
 
   /* Remap the material indices of the clipboard curves to the target object material indices. */
@@ -2289,7 +2280,7 @@ static int grease_pencil_paste_strokes_exec(bContext *C, wmOperator *op)
   clipboard_material_indices.finish();
 
   /* Append the geometry from the clipboard to the target layer. */
-  Curves *clipboard_curves = curves_new_nomain(grease_pencil_clipboard.curves);
+  Curves *clipboard_curves = curves_new_nomain(clipboard.curves);
   Curves *target_curves = curves_new_nomain(std::move(target_drawing->strokes_for_write()));
   Array<GeometrySet> geometry_sets = {
       GeometrySet::from_curves(paste_on_back ? clipboard_curves : target_curves),
@@ -2320,10 +2311,10 @@ static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
   const AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(scene->toolsettings);
 
-  GreasePencilClipboard &grease_pencil_clipboard = get_grease_pencil_clipboard();
+  Clipboard &clipboard = get_grease_pencil_clipboard();
 
   bool anything_copied = false;
-  int32_t num_copied = 0;
+  int num_copied = 0;
   Vector<GeometrySet> set_of_copied_curves;
 
   /* Collect all selected strokes/points on all editable layers. */
@@ -2339,22 +2330,17 @@ static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
     }
 
     /* Get a copy of the selected geometry on this layer. */
-    const AnonymousAttributePropagationInfo propagation_info{};
     IndexMaskMemory memory;
     CurvesGeometry copied_curves;
 
     if (selection_domain == AttrDomain::Curve) {
       const IndexMask selected_curves = ed::curves::retrieve_selected_curves(curves, memory);
-
-      copied_curves = curves_copy_curve_selection(curves, selected_curves, propagation_info);
-
+      copied_curves = curves_copy_curve_selection(curves, selected_curves, {});
       num_copied += copied_curves.curves_num();
     }
     else if (selection_domain == AttrDomain::Point) {
       const IndexMask selected_points = ed::curves::retrieve_selected_points(curves, memory);
-
-      copied_curves = curves_copy_point_selection(curves, selected_points, propagation_info);
-
+      copied_curves = curves_copy_point_selection(curves, selected_points, {});
       num_copied += copied_curves.points_num();
     }
 
@@ -2370,14 +2356,13 @@ static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
 
   /* Merge all copied curves into one CurvesGeometry object and assign it to the clipboard. */
   GeometrySet joined_copied_curves = geometry::join_geometries(set_of_copied_curves, {});
-  grease_pencil_clipboard.curves = std::move(
-      joined_copied_curves.get_curves_for_write()->geometry.wrap());
+  clipboard.curves = std::move(joined_copied_curves.get_curves_for_write()->geometry.wrap());
 
-  /* Store the names of the materials used by the curves in the clipboard. We use the names to
+  /* Store the session uid of the materials used by the curves in the clipboard. We use the uid to
    * remap the material indices when pasting. */
-  grease_pencil_clipboard.materials.clear();
-  grease_pencil_clipboard.materials_num = grease_pencil.material_array_num;
-  const AttributeAccessor attributes = grease_pencil_clipboard.curves.attributes();
+  clipboard.materials.clear();
+  clipboard.materials_in_source_num = grease_pencil.material_array_num;
+  const AttributeAccessor attributes = clipboard.curves.attributes();
   const VArraySpan<int> material_indices = *attributes.lookup_or_default<int>(
       "material_index", AttrDomain::Curve, 0);
   for (const int material_index : IndexRange(grease_pencil.material_array_num)) {
@@ -2385,7 +2370,7 @@ static int grease_pencil_copy_strokes_exec(bContext *C, wmOperator *op)
       continue;
     }
     const Material *material = grease_pencil.material_array[material_index];
-    grease_pencil_clipboard.materials.append({material->id.name + 2, material_index});
+    clipboard.materials.append({material->id.session_uid, material_index});
   }
 
   /* Report the numbers. */
@@ -2406,8 +2391,8 @@ static bool grease_pencil_paste_strokes_poll(bContext *C)
   }
 
   /* Check for curves in the Grease Pencil clipboard. */
-  GreasePencilClipboard &grease_pencil_clipboard = get_grease_pencil_clipboard();
-  return (grease_pencil_clipboard.curves.curves_num() > 0);
+  Clipboard &clipboard = get_grease_pencil_clipboard();
+  return (clipboard.curves.curves_num() > 0);
 }
 
 static void GREASE_PENCIL_OT_paste(wmOperatorType *ot)

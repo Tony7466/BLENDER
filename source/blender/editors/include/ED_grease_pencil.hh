@@ -163,7 +163,7 @@ bool has_any_frame_selected(const bke::greasepencil::Layer &layer);
  * Autokey is on (taking Additive drawing setting into account).
  * Returns false when no keyframe could be found or created.
  */
-bool ensure_active_keyframe(const bContext *C, const wmOperator *op, GreasePencil &grease_pencil);
+bool ensure_active_keyframe(const Scene &scene, GreasePencil &grease_pencil);
 
 void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer &layer);

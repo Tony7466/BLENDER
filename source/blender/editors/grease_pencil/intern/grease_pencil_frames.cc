@@ -333,14 +333,12 @@ void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
   }
 }
 
-bool ensure_active_keyframe(const bContext *C, const wmOperator *op, GreasePencil &grease_pencil)
+bool ensure_active_keyframe(const Scene &scene, GreasePencil &grease_pencil)
 {
-  const Scene *scene = CTX_data_scene(C);
-  const int current_frame = scene->r.cfra;
+  const int current_frame = scene.r.cfra;
   bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
 
-  if (!active_layer.has_drawing_at(current_frame) && !blender::animrig::is_autokey_on(scene)) {
-    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
+  if (!active_layer.has_drawing_at(current_frame) && !blender::animrig::is_autokey_on(&scene)) {
     return false;
   }
 
@@ -351,9 +349,8 @@ bool ensure_active_keyframe(const bContext *C, const wmOperator *op, GreasePenci
   const bool needs_new_drawing = is_first ||
                                  (*active_layer.frame_key_at(current_frame) < current_frame);
 
-  if (blender::animrig::is_autokey_on(scene) && needs_new_drawing) {
-    const ToolSettings *ts = CTX_data_tool_settings(C);
-    if ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) {
+  if (blender::animrig::is_autokey_on(&scene) && needs_new_drawing) {
+    if ((scene.toolsettings->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) {
       /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
        * current frame. */
       grease_pencil.insert_duplicate_frame(
