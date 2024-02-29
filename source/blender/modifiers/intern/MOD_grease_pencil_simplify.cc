@@ -75,7 +75,7 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static void subdivide_drawing(GreasePencilSimplifyModifierData &mmd,
+static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
                               Object &ob,
                               bke::greasepencil::Drawing &drawing)
 {
@@ -84,9 +84,13 @@ static void subdivide_drawing(GreasePencilSimplifyModifierData &mmd,
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
 
+  if(strokes.is_empty()){
+    return;
+  }
+
   switch (mmd.mode) {
     case MOD_GREASE_PENCIL_SIMPLIFY_FIXED: {
-      for (int i = 0; i < mmd.step; i++) {
+      for (const int times :IndexRange(mmd.step)) {
         const OffsetIndices points_by_curve = curves.points_by_curve();
         Array<int> target_count(curves.curves_num());
         strokes.foreach_index(GrainSize(4096), [&](const int i) {
@@ -139,7 +143,7 @@ static void modify_geometry_set(ModifierData *md,
       modifier::greasepencil::get_drawings_for_write(grease_pencil, layer_mask, current_frame);
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    subdivide_drawing(*mmd, *ctx->object, *drawing);
+    simplify_drawing(*mmd, *ctx->object, *drawing);
   });
 }
 
