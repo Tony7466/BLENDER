@@ -25,11 +25,7 @@ std::string DebugInfo::current_op_name_;
 
 static std::string operation_class_name(const NodeOperation *op)
 {
-  std::string full_name = typeid(*op).name();
-  /* Remove name-spaces. */
-  size_t pos = full_name.find_last_of(':');
-  BLI_assert(pos != std::string::npos);
-  return full_name.substr(pos + 1);
+  return typeid(*op).name();
 }
 
 std::string DebugInfo::node_name(const Node *node)
