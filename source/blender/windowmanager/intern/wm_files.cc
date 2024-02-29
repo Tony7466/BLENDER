@@ -2131,6 +2131,7 @@ static bool wm_autosave_write_try(Main *bmain, wmWindowManager *wm)
     BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
     return true;
   }
+  /* Can't auto-save with MemFile right now, try again later. */
   return false;
 }
 
