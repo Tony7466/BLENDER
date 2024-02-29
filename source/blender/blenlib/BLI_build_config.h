@@ -2,7 +2,12 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-/* Compile-time detection of compiler and hardware platform configuration.
+/**
+ * Based on Chromium's build_config.h, governed by a BSD-style license,
+ * with tweaks and extensions needed for the Blender project. */
+
+/**
+ * Compile-time detection of compiler and hardware platform configuration.
  * There are few categories of the defined symbols this header provides.
  *
  *
@@ -35,7 +40,7 @@
  *
  * The commonly detected CPU capabilities are:
  * - Family: `ARCH_CPU_<FAMILY>_FAMILY`
- * - CPO bitness: `ARCH_CPU_<32|64>_BITS`
+ * - CPU bitness: `ARCH_CPU_<32|64>_BITS`
  * - Endianess: `ARCH_CPU_<LITTLE|BIG>_ENDIAN`
  *
  * Supported CPU families: X86, S390, PPC, ARM, MIPS.
@@ -44,13 +49,10 @@
 #pragma once
 
 /**
- * Based on Chromium's build_config.h, with tweaks and extensions needed for Blender.
- *
  * All commonly used symbols (which are checked on a "top" level, from outside of any
  * platform-specific ifdef block) are to be explicitly defined to 0 when they are not "active".
- * This is extra lines of code in this file, but is not being edited that often. Such approach
- * helps catching cases when one attempted to access build configuration variable without including
- * the header by simply using -Wundef compiler attribute.
+ * Such approach helps catching cases when one is attempted to access build configuration variable
+ * without including the header by simply using the -Wundef compiler attribute.
  */
 
 /* -------------------------------------------------------------------- */
@@ -98,7 +100,7 @@
 #elif defined(__Fuchsia__)
 #  define OS_FUCHSIA 1
 #elif defined(__DragonFly__)
-#  define OS_DRAGONGLYBSD 1
+#  define OS_DRAGONFLYBSD 1
 #elif defined(__FreeBSD__)
 #  define OS_FREEBSD 1
 #elif defined(__NetBSD__)
@@ -182,10 +184,6 @@
 #endif
 #if !defined(OS_ZOS)
 #  define OS_ZOS 0
-#endif
-
-#if !defined(OS_GENERIC)
-#  define OS_GENERIC 0
 #endif
 
 /** \} */
