@@ -680,18 +680,18 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
     GPUTexture *tex_fill = txl->dummy_texture;
     GPUTexture *tex_stroke = txl->dummy_texture;
 
-    GPUBatch *geom = nullptr;
+    GPUBatch *iter_geom = nullptr;
     DRWShadingGroup *grp;
     int vfirst = 0;
     int vcount = 0;
 
     const auto drawcall_flush = [&]() {
 #if !DISABLE_BATCHING
-      if (geom != nullptr) {
-        DRW_shgroup_call_range(grp, ob, geom, vfirst, vcount);
+      if (iter_geom != nullptr) {
+        DRW_shgroup_call_range(grp, ob, iter_geom, vfirst, vcount);
       }
 #endif
-      geom = nullptr;
+      iter_geom = nullptr;
       vfirst = -1;
       vcount = 0;
     };
@@ -703,10 +703,10 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
 #endif
       int last = vfirst + vcount;
       /* Interrupt draw-call grouping if the sequence is not consecutive. */
-      if ((draw_geom != geom) || (v_first - last > 0)) {
+      if ((draw_geom != iter_geom) || (v_first - last > 0)) {
         drawcall_flush();
       }
-      geom = draw_geom;
+      iter_geom = draw_geom;
       if (vfirst == -1) {
         vfirst = v_first;
       }
@@ -740,7 +740,7 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
       DRW_shgroup_uniform_texture(grp, "gpStrokeTexture", tex_stroke);
       DRW_shgroup_uniform_int_copy(grp, "gpMaterialOffset", mat_ofs);
       /* Since we don't use the sbuffer in GPv3, this is always 0. */
-      DRW_shgroup_uniform_float_copy(grp, "gpStrokeIndexOffset", 0);
+      DRW_shgroup_uniform_float_copy(grp, "gpStrokeIndexOffset", 0.0f);
       DRW_shgroup_uniform_vec2_copy(grp, "viewportSize", DRW_viewport_size_get());
 
       const bke::CurvesGeometry &curves = info.drawing.strokes();
@@ -810,9 +810,8 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
           }
         }
 
-        GPUBatch *new_geom = draw::DRW_cache_grease_pencil_get(pd->scene, ob);
-        if (geom != new_geom) {
-          geom = new_geom;
+        GPUBatch *geom = draw::DRW_cache_grease_pencil_get(pd->scene, ob);
+        if (iter_geom != geom) {
           drawcall_flush();
 
           GPUVertBuf *position_tx = draw::DRW_cache_grease_pencil_position_buffer_get(pd->scene,
