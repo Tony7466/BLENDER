@@ -1848,7 +1848,6 @@ void BLO_write_shared(BlendWriter *writer,
         return;
       }
     }
-    memfile.size += approximate_size_in_bytes;
   }
   write_fn();
 }
