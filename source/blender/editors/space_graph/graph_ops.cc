@@ -468,7 +468,6 @@ void graphedit_operatortypes()
   WM_operatortype_append(GRAPH_OT_blend_to_neighbor);
   WM_operatortype_append(GRAPH_OT_breakdown);
   WM_operatortype_append(GRAPH_OT_ease);
-  WM_operatortype_append(GRAPH_OT_ease_to_ease);
   WM_operatortype_append(GRAPH_OT_shear);
   WM_operatortype_append(GRAPH_OT_scale_average);
   WM_operatortype_append(GRAPH_OT_scale_from_neighbor);

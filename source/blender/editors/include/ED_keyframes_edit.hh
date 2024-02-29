@@ -469,13 +469,10 @@ void smooth_fcurve_segment(FCurve *fcu,
                            float factor,
                            int kernel_size,
                            double *kernel);
-void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 /** Snap the keys on the given FCurve segment to an S-Curve. By modifying the `factor` the part of
  * the S-Curve that the keys are snapped to is moved on the x-axis.*/
-void ease_to_ease_fcurve_segment(struct FCurve *fcu,
-                                 struct FCurveSegment *segment,
-                                 float factor,
-                                 float width);
+void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor, float width);
+
 enum tShearDirection {
   SHEAR_FROM_LEFT = 1,
   SHEAR_FROM_RIGHT,

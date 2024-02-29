@@ -662,45 +662,6 @@ void smooth_fcurve_segment(FCurve *fcu,
 }
 /* ---------------- */
 
-void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, const float factor)
-{
-  const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
-  const float left_x = left_key->vec[1][0];
-  const float left_y = left_key->vec[1][1];
-
-  const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
-
-  const float key_x_range = right_key->vec[1][0] - left_x;
-  const float key_y_range = right_key->vec[1][1] - left_y;
-
-  /* Happens if there is only 1 key on the FCurve. Needs to be skipped because it
-   * would be a divide by 0. */
-  if (IS_EQF(key_x_range, 0.0f)) {
-    return;
-  }
-
-  /* In order to have a curve that favors the right key, the curve needs to be mirrored in x and y.
-   * Having an exponent that is a fraction of 1 would produce a similar but inferior result. */
-  const bool inverted = factor > 0;
-  const float exponent = 1 + fabs(factor) * 4;
-
-  for (int i = segment->start_index; i < segment->start_index + segment->length; i++) {
-    /* For easy calculation of the curve, the values are normalized. */
-    const float normalized_x = (fcu->bezt[i].vec[1][0] - left_x) / key_x_range;
-
-    float normalized_y = 0;
-    if (inverted) {
-      normalized_y = 1 - pow(1 - normalized_x, exponent);
-    }
-    else {
-      normalized_y = pow(normalized_x, exponent);
-    }
-
-    const float key_y_value = left_y + normalized_y * key_y_range;
-    BKE_fcurve_keyframe_move_value_with_handles(&fcu->bezt[i], key_y_value);
-  }
-}
-
 static float ease_to_ease_function(const float x, const float width, const float shift)
 {
   const float x_shift = (x - shift) * width;
@@ -709,10 +670,10 @@ static float ease_to_ease_function(const float x, const float width, const float
   return (y + 1) * 0.5f;
 }
 
-void ease_to_ease_fcurve_segment(FCurve *fcu,
-                                 FCurveSegment *segment,
-                                 const float factor,
-                                 const float width)
+void ease_fcurve_segment(FCurve *fcu,
+                         FCurveSegment *segment,
+                         const float factor,
+                         const float width)
 {
   const BezTriple *left_key = fcurve_segment_start_get(fcu, segment->start_index);
   const BezTriple *right_key = fcurve_segment_end_get(fcu, segment->start_index + segment->length);
