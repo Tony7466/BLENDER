@@ -10,6 +10,7 @@
 
 #include "BLI_linklist.h"
 #include "BLI_listbase.h"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector.h"
 #include "BLI_threads.h"
 
@@ -878,11 +879,6 @@ struct GreasePencilLineartModifierData;
 struct LineartData;
 struct Scene;
 
-void MOD_lineart_wrap_modifier_v3(const LineartGpencilModifierData *lmd_legacy,
-                                  GreasePencilLineartModifierData *lmd);
-void MOD_lineart_unwrap_modifier_v3(LineartGpencilModifierData *lmd_legacy,
-                                    const GreasePencilLineartModifierData *lmd);
-
 void MOD_lineart_destroy_render_data(struct LineartGpencilModifierData *lmd_legacy);
 void MOD_lineart_destroy_render_data_v3(struct GreasePencilLineartModifierData *lmd);
 
@@ -963,6 +959,7 @@ namespace blender::bke::greasepencil {
 class Drawing;
 }
 void MOD_lineart_gpencil_generate_v3(const LineartCache *cache,
+                                     const blender::float4x4 &mat,
                                      Depsgraph *depsgraph,
                                      blender::bke::greasepencil::Drawing &drawing,
                                      int8_t source_type,

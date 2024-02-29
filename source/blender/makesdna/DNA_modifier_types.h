@@ -113,6 +113,8 @@ typedef enum ModifierType {
   eModifierType_GreasePencilWeightProximity = 76,
   eModifierType_GreasePencilHook = 77,
   eModifierType_GreasePencilLineart = 78,
+  eModifierType_GreasePencilArmature = 79,
+  eModifierType_GreasePencilTime = 80,
   NUM_MODIFIER_TYPES,
 } ModifierType;
 
@@ -3064,7 +3066,7 @@ typedef struct GreasePencilLineartModifierData {
    *
    * Do not change any of the data below since the layout of these
    * data is currently shared with the old line art modifier.
-   * See `MOD_lineart_wrap_modifier_v3` for how it works. */
+   * See `BKE_grease_pencil_lineart_wrap_v3` for how it works. */
 
   uint16_t edge_types; /* line type enable flags, bits in eLineartEdgeFlag */
 
@@ -3081,7 +3083,7 @@ typedef struct GreasePencilLineartModifierData {
   struct Object *source_object;
   struct Collection *source_collection;
 
-  /* These are redundant in GPv3, see above for explainations. */
+  /* These are redundant in GPv3, see above for explanations. */
   struct Material *target_material;
   char target_layer[64];
 
@@ -3089,7 +3091,7 @@ typedef struct GreasePencilLineartModifierData {
    * These two variables are to pass on vertex group information from mesh to strokes.
    * `vgname` specifies which vertex groups our strokes from source_vertex_group will go to.
    *
-   * These are redundant in GPv3, see above for explainations.
+   * These are redundant in GPv3, see above for explanations.
    */
   char source_vertex_group[64];
   char vgname[64];
@@ -3164,3 +3166,62 @@ typedef struct GreasePencilLineartModifierData {
   /* Keep a pointer to the render buffer so we can call destroy from #ModifierData. */
   struct LineartData *la_data_ptr;
 } GreasePencilLineartModifierData;
+
+typedef struct GreasePencilArmatureModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+
+  struct Object *object;
+  /** #eArmature_DeformFlag. */
+  short deformflag;
+  char _pad[6];
+} GreasePencilArmatureModifierData;
+
+typedef struct GreasePencilTimeModifierSegment {
+  char name[64];
+  int segment_start;
+  int segment_end;
+  int segment_mode;
+  int segment_repeat;
+} GreasePencilTimeModifierSegment;
+
+typedef struct GreasePencilTimeModifierData {
+  ModifierData modifier;
+  GreasePencilModifierInfluenceData influence;
+  /** #GreasePencilTimeModifierFlag */
+  int flag;
+  int offset;
+  /** Animation scale. */
+  float frame_scale;
+  int mode;
+  /** Start and end frame for custom range. */
+  int sfra, efra;
+
+  GreasePencilTimeModifierSegment *segments_array;
+  int segments_num;
+  int segment_active_index;
+
+#ifdef __cplusplus
+  blender::Span<GreasePencilTimeModifierSegment> segments() const;
+  blender::MutableSpan<GreasePencilTimeModifierSegment> segments();
+#endif
+} GreasePencilTimeModifierData;
+
+typedef enum GreasePencilTimeModifierFlag {
+  MOD_GREASE_PENCIL_TIME_KEEP_LOOP = (1 << 0),
+  MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE = (1 << 1),
+} GreasePencilTimeModifierFlag;
+
+typedef enum GreasePencilTimeModifierMode {
+  MOD_GREASE_PENCIL_TIME_MODE_NORMAL = 0,
+  MOD_GREASE_PENCIL_TIME_MODE_REVERSE = 1,
+  MOD_GREASE_PENCIL_TIME_MODE_FIX = 2,
+  MOD_GREASE_PENCIL_TIME_MODE_PINGPONG = 3,
+  MOD_GREASE_PENCIL_TIME_MODE_CHAIN = 4,
+} GreasePencilTimeModifierMode;
+
+typedef enum GreasePencilTimeModifierSegmentMode {
+  MOD_GREASE_PENCIL_TIME_SEG_MODE_NORMAL = 0,
+  MOD_GREASE_PENCIL_TIME_SEG_MODE_REVERSE = 1,
+  MOD_GREASE_PENCIL_TIME_SEG_MODE_PINGPONG = 2,
+} GreasePencilTimeModifierSegmentMode;
