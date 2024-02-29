@@ -80,7 +80,7 @@ static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
                              bke::greasepencil::Drawing &drawing)
 {
   IndexMaskMemory memory;
-  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexMask strokes = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
 
@@ -92,13 +92,14 @@ static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
     case MOD_GREASE_PENCIL_SIMPLIFY_FIXED: {
       const OffsetIndices points_by_curve = curves.points_by_curve();
       Array<int> target_count(curves.curves_num());
+      target_count.fill(2);
       strokes.foreach_index(GrainSize(4096), [&](const int i) {
         target_count[i] = math::max(int(math::round(float(points_by_curve[i].size()) /
                                                     math::pow(2.0f, float(mmd.step - 1)))),
                                     2);
       });
-      curves = geometry::resample_to_count(
-          curves, strokes, VArray<int>::ForSpan(target_count.as_span()), {});
+      drawing.strokes_for_write() = std::move(geometry::resample_to_count(
+          curves, strokes, VArray<int>::ForSpan(target_count.as_span()), {}));
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_ADAPTIVE: {
@@ -107,8 +108,8 @@ static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_SAMPLE: {
-      curves = geometry::resample_to_length(
-          curves, strokes, VArray<float>::ForSingle(mmd.length, curves.curves_num()), {});
+      drawing.strokes_for_write() = std::move(geometry::resample_to_length(
+          curves, strokes, VArray<float>::ForSingle(mmd.length, curves.curves_num()), {}));
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_MERGE: {
