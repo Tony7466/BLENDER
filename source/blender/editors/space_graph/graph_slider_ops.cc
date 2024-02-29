@@ -2508,11 +2508,52 @@ static void ease_ease_modal_update(bContext *C, wmOperator *op)
 
   /* Reset keyframes to the state at invoke. */
   reset_bezts(gso);
-  const float factor = slider_factor_get_and_remember(op);
-  const float width = RNA_float_get(op->ptr, "sharpness");
+  float factor;
+  float width;
+  if (strcmp(RNA_property_identifier(gso->factor_prop), "factor") == 0) {
+    factor = slider_factor_get_and_remember(op);
+    width = RNA_float_get(op->ptr, "sharpness");
+  }
+  else {
+    factor = RNA_float_get(op->ptr, "factor");
+    width = slider_factor_get_and_remember(op);
+  }
 
   ease_ease_graph_keys(&gso->ac, factor, width);
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_EDITED, NULL);
+}
+
+static int ease_ease_modal(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  if (event->val != KM_PRESS) {
+    return graph_slider_modal(C, op, event);
+  }
+
+  switch (event->type) {
+    case EVT_TABKEY: {
+      tGraphSliderOp *gso = static_cast<tGraphSliderOp *>(op->customdata);
+      if (strcmp(RNA_property_identifier(gso->factor_prop), "factor") == 0) {
+        /* Switch to sharpness. */
+        ED_slider_allow_overshoot_set(gso->slider, false, true);
+        ED_slider_factor_bounds_set(gso->slider, 0.001f, 8);
+        ED_slider_factor_set(gso->slider, RNA_float_get(op->ptr, "sharpness"));
+        gso->factor_prop = RNA_struct_find_property(op->ptr, "sharpness");
+      }
+      else {
+        ED_slider_allow_overshoot_set(gso->slider, false, false);
+        ED_slider_factor_bounds_set(gso->slider, -1, 1);
+        ED_slider_factor_set(gso->slider, 0.0f);
+        ED_slider_factor_set(gso->slider, RNA_float_get(op->ptr, "factor"));
+        gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
+      }
+      ease_ease_modal_update(C, op);
+      break;
+    }
+
+    default:
+      return graph_slider_modal(C, op, event);
+  }
+  return OPERATOR_RUNNING_MODAL;
 }
 
 static int ease_ease_invoke(bContext *C, wmOperator *op, const wmEvent *event)
@@ -2561,7 +2602,7 @@ void GRAPH_OT_ease_to_ease(wmOperatorType *ot)
 
   /* API callbacks. */
   ot->invoke = ease_ease_invoke;
-  ot->modal = graph_slider_modal;
+  ot->modal = ease_ease_modal;
   ot->exec = ease_ease_exec;
   ot->poll = graphop_editable_keyframes_poll;
 
