@@ -2975,7 +2975,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 6)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 8)) {
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
       light->shadow_filter_radius = 3.0f;
     }
