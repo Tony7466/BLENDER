@@ -236,11 +236,9 @@ void horizon_scan_eval(vec3 vP,
         /* Take emitter surface normal into consideration. */
         vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
         /* Discard back-facing samples.
-         * The paper suggests a smooth test which is not physically correct since we
-         * already consider the sample reflected radiance.
-         * Set the weight to allow energy conservation. If we modulate the radiance, we loose
-         * energy. */
-        float facing_weight = saturate(-dot(sample_normal, vL_front));
+         * The 2 factor is to match cycles and avoid loosing energy (which is something not
+         * explained in the paper...). */
+        float facing_weight = saturate(-dot(sample_normal, vL_front)) * 2.0;
 
 #ifdef HORIZON_OCCLUSION
         {
