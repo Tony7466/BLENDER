@@ -8,13 +8,13 @@
 
 #include "DNA_material_types.h"
 
+#include "BKE_attribute.hh"
 #include "BKE_context.hh"
 #include "BKE_curves_utils.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
 #include "BLI_vector.hh"
-#include "BLI_vector_set.hh"
 
 #include "DEG_depsgraph.hh"
 
@@ -41,7 +41,7 @@ static int grease_pencil_material_reveal_exec(bContext *C, wmOperator * /*op*/)
     if (Material *ma = BKE_gpencil_material(object, i + 1)) {
       MaterialGPencilStyle &gp_style = *ma->gp_style;
       gp_style.flag &= ~GP_MATERIAL_HIDE;
-      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&ma->id, ID_RECALC_SYNC_TO_EVAL);
       changed = true;
     }
   }
@@ -93,7 +93,7 @@ static int grease_pencil_material_hide_exec(bContext *C, wmOperator *op)
     if (Material *ma = BKE_object_material_get(object, i + 1)) {
       MaterialGPencilStyle &gp_style = *ma->gp_style;
       gp_style.flag |= GP_MATERIAL_HIDE;
-      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&ma->id, ID_RECALC_SYNC_TO_EVAL);
       changed = true;
     }
   }
@@ -140,7 +140,7 @@ static int grease_pencil_material_lock_all_exec(bContext *C, wmOperator * /*op*/
     if (Material *ma = BKE_object_material_get(object, i + 1)) {
       MaterialGPencilStyle &gp_style = *ma->gp_style;
       gp_style.flag |= GP_MATERIAL_LOCKED;
-      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&ma->id, ID_RECALC_SYNC_TO_EVAL);
       changed = true;
     }
   }
@@ -184,7 +184,7 @@ static int grease_pencil_material_unlock_all_exec(bContext *C, wmOperator * /*op
     if (Material *ma = BKE_object_material_get(object, i + 1)) {
       MaterialGPencilStyle &gp_style = *ma->gp_style;
       gp_style.flag &= ~GP_MATERIAL_LOCKED;
-      DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&ma->id, ID_RECALC_SYNC_TO_EVAL);
       changed = true;
     }
   }
@@ -228,7 +228,7 @@ static int grease_pencil_material_lock_unused_exec(bContext *C, wmOperator * /*o
       if (Material *ma = BKE_object_material_get(object, material_index + 1)) {
         MaterialGPencilStyle &gp_style = *ma->gp_style;
         gp_style.flag |= GP_MATERIAL_HIDE | GP_MATERIAL_LOCKED;
-        DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_id_tag_update(&ma->id, ID_RECALC_SYNC_TO_EVAL);
         changed = true;
       }
     }
@@ -271,7 +271,7 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   bool changed = false;
-  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
 
   Set<int> materials_used;
 
@@ -285,7 +285,7 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
 
     AttributeAccessor attributes = info.drawing.strokes().attributes();
     const VArray<int> material_indices = *attributes.lookup_or_default<int>(
-        "material_index", ATTR_DOMAIN_CURVE, 0);
+        "material_index", AttrDomain::Curve, 0);
 
     if (const std::optional<int> single = material_indices.get_if_single()) {
       materials_used.add(*single);
@@ -303,7 +303,7 @@ static int grease_pencil_material_lock_unselected_exec(bContext *C, wmOperator *
       if (Material *ma = BKE_object_material_get(object, i + 1)) {
         MaterialGPencilStyle &gp_style = *ma->gp_style;
         gp_style.flag |= GP_MATERIAL_LOCKED;
-        DEG_id_tag_update(&ma->id, ID_RECALC_COPY_ON_WRITE);
+        DEG_id_tag_update(&ma->id, ID_RECALC_SYNC_TO_EVAL);
         changed = true;
       }
     }
@@ -333,6 +333,76 @@ static void GREASE_PENCIL_OT_material_lock_unselected(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Copy Materials to Selected Objects
+ * \{ */
+
+static int grease_pencil_material_copy_to_object_exec(bContext *C, wmOperator *op)
+{
+  using namespace blender;
+  using namespace blender::bke;
+
+  Main *bmain = CTX_data_main(C);
+  const bool only_active = RNA_boolean_get(op->ptr, "only_active");
+  Object *ob_src = CTX_data_active_object(C);
+  Material *ma_active = BKE_object_material_get(ob_src, ob_src->actcol);
+  if (ma_active == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+
+  CTX_DATA_BEGIN (C, Object *, ob, selected_objects) {
+    if ((ob == ob_src) || (ob->type != OB_GREASE_PENCIL)) {
+      continue;
+    }
+    /* Duplicate materials. */
+    for (const int i : IndexRange(ob_src->totcol)) {
+      Material *ma_src = BKE_object_material_get(ob_src, i + 1);
+      if (only_active && ma_src != ma_active) {
+        continue;
+      }
+
+      if (ma_src == nullptr) {
+        continue;
+      }
+
+      BKE_object_material_ensure(bmain, ob, ma_src);
+    }
+
+    DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
+  }
+  CTX_DATA_END;
+
+  WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
+
+  return OPERATOR_FINISHED;
+}
+
+static void GREASE_PENCIL_OT_material_copy_to_object(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* Identifiers. */
+  ot->name = "Copy Materials to Selected Object";
+  ot->idname = "GREASE_PENCIL_OT_material_copy_to_object";
+  ot->description = "Append Materials of the active Grease Pencil to other object";
+
+  /* Callbacks. */
+  ot->exec = grease_pencil_material_copy_to_object_exec;
+  ot->poll = active_grease_pencil_poll;
+
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  prop = RNA_def_boolean(ot->srna,
+                         "only_active",
+                         true,
+                         "Only Active",
+                         "Append only active material, uncheck to append all materials");
+
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+}
+
+/** \} */
+
 }  // namespace blender::ed::greasepencil
 
 void ED_operatortypes_grease_pencil_material()
@@ -344,4 +414,5 @@ void ED_operatortypes_grease_pencil_material()
   WM_operatortype_append(GREASE_PENCIL_OT_material_unlock_all);
   WM_operatortype_append(GREASE_PENCIL_OT_material_lock_unused);
   WM_operatortype_append(GREASE_PENCIL_OT_material_lock_unselected);
+  WM_operatortype_append(GREASE_PENCIL_OT_material_copy_to_object);
 }

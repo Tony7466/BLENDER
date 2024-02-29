@@ -14,7 +14,7 @@
 
 #include "GEO_points_to_volume.hh"
 
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_volume.hh"
 
 #include "NOD_rna_define.hh"
@@ -22,8 +22,10 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+namespace blender::nodes::node_geo_points_to_volume_cc {
+
 #ifdef WITH_OPENVDB
-namespace blender::nodes {
+
 static void gather_point_data_from_component(Field<float> radius_field,
                                              const GeometryComponent &component,
                                              Vector<float3> &r_positions,
@@ -34,8 +36,8 @@ static void gather_point_data_from_component(Field<float> radius_field,
   }
   const VArray<float3> positions = *component.attributes()->lookup<float3>("position");
 
-  const bke::GeometryFieldContext field_context{component, ATTR_DOMAIN_POINT};
-  const int domain_num = component.attribute_domain_size(ATTR_DOMAIN_POINT);
+  const bke::GeometryFieldContext field_context{component, AttrDomain::Point};
+  const int domain_num = component.attribute_domain_size(AttrDomain::Point);
 
   r_positions.resize(r_positions.size() + domain_num);
   positions.materialize(r_positions.as_mutable_span().take_back(domain_num));
@@ -67,23 +69,13 @@ static float compute_voxel_size_from_amount(const float voxel_amount,
   return voxel_size;
 }
 
-static void convert_to_grid_index_space(const float voxel_size,
-                                        MutableSpan<float3> positions,
-                                        MutableSpan<float> radii)
-{
-  const float voxel_size_inv = 1.0f / voxel_size;
-  for (const int i : positions.index_range()) {
-    positions[i] *= voxel_size_inv;
-    /* Better align generated grid with source points. */
-    positions[i] -= float3(0.5f);
-    radii[i] *= voxel_size_inv;
-  }
-}
-
-void initialize_volume_component_from_points(GeoNodeExecParams &params,
-                                             const NodeGeometryPointsToVolume &storage,
-                                             GeometrySet &r_geometry_set,
-                                             openvdb::GridClass gridClass)
+/**
+ * Initializes the VolumeComponent of a GeometrySet with a new Volume from points.
+ * The grid class should be either openvdb::GRID_FOG_VOLUME or openvdb::GRID_LEVEL_SET.
+ */
+static void initialize_volume_component_from_points(GeoNodeExecParams &params,
+                                                    const NodeGeometryPointsToVolume &storage,
+                                                    GeometrySet &r_geometry_set)
 {
   Vector<float3> positions;
   Vector<float> radii;
@@ -123,24 +115,15 @@ void initialize_volume_component_from_points(GeoNodeExecParams &params,
 
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
 
-  convert_to_grid_index_space(voxel_size, positions, radii);
+  const float density = params.get_input<float>("Density");
+  blender::geometry::fog_volume_grid_add_from_points(
+      volume, "density", positions, radii, voxel_size, density);
 
-  if (gridClass == openvdb::GRID_FOG_VOLUME) {
-    const float density = params.get_input<float>("Density");
-    blender::geometry::fog_volume_grid_add_from_points(
-        volume, "density", positions, radii, voxel_size, density);
-  }
-  else if (gridClass == openvdb::GRID_LEVEL_SET) {
-    blender::geometry::sdf_volume_grid_add_from_points(
-        volume, "distance", positions, radii, voxel_size);
-  }
   r_geometry_set.keep_only_during_modify({GeometryComponent::Type::Volume});
   r_geometry_set.replace_volume(volume);
 }
-}  // namespace blender::nodes
-#endif
 
-namespace blender::nodes::node_geo_points_to_volume_cc {
+#endif /* WITH_OPENVDB */
 
 NODE_STORAGE_FUNCS(NodeGeometryPointsToVolume)
 
@@ -204,14 +187,11 @@ static void node_geo_exec(GeoNodeExecParams params)
   GeometrySet geometry_set = params.extract_input<GeometrySet>("Points");
   const NodeGeometryPointsToVolume &storage = node_storage(params.node());
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    initialize_volume_component_from_points(
-        params, storage, geometry_set, openvdb::GRID_FOG_VOLUME);
+    initialize_volume_component_from_points(params, storage, geometry_set);
   });
   params.set_output("Volume", std::move(geometry_set));
 #else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+  node_geo_exec_with_missing_openvdb(params);
 #endif
 }
 

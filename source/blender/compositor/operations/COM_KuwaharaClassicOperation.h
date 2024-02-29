@@ -9,17 +9,15 @@
 namespace blender::compositor {
 
 class KuwaharaClassicOperation : public MultiThreadedOperation {
-  SocketReader *image_reader_;
-  SocketReader *size_reader_;
-  SocketReader *sat_reader_;
-  SocketReader *sat_squared_reader_;
+  const NodeKuwaharaData *data_;
 
  public:
   KuwaharaClassicOperation();
 
-  void init_execution() override;
-  void deinit_execution() override;
-  void execute_pixel_sampled(float output[4], float x, float y, PixelSampler sampler) override;
+  void set_data(const NodeKuwaharaData *data)
+  {
+    data_ = data;
+  }
 
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,

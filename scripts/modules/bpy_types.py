@@ -538,6 +538,22 @@ class EditBone(StructRNA, _GenericBone, metaclass=StructMetaPropGroup):
             self.align_roll(matrix @ z_vec)
 
 
+class BoneCollection(StructRNA, metaclass=StructMetaPropGroup):
+    __slots__ = ()
+
+    @property
+    def bones_recursive(self):
+        """A set of all bones assigned to this bone collection and its child collections."""
+        bones = set()
+        collections = [self]
+
+        while collections:
+            visit = collections.pop()
+            bones.update(visit.bones)
+            collections.extend(visit.children)
+        return bones
+
+
 def ord_ind(i1, i2):
     if i1 < i2:
         return i1, i2
@@ -1028,7 +1044,12 @@ class _GenericUI:
 
     @classmethod
     def is_extended(cls):
-        return bool(getattr(cls.draw, "_draw_funcs", None))
+        draw_funcs = getattr(cls.draw, "_draw_funcs", None)
+        if draw_funcs is None:
+            return False
+        # Ignore the first item (the original draw function).
+        # This can happen when enabling then disabling add-ons.
+        return len(draw_funcs) > 1
 
     @classmethod
     def append(cls, draw_func):

@@ -119,7 +119,7 @@ int ArmatureImporter::create_bone(SkinInfo *skin,
       Object *ob_arm = skin->BKE_armature_from_object();
       if (ob_arm) {
         float invmat[4][4];
-        invert_m4_m4(invmat, ob_arm->object_to_world);
+        invert_m4_m4(invmat, ob_arm->object_to_world().ptr());
         mul_m4_m4m4(mat, invmat, mat);
       }
 
@@ -641,7 +641,8 @@ Object *ArmatureImporter::create_armature_bones(Main *bmain, SkinInfo &skin)
           &skin, node, nullptr, node->getChildNodes().getCount(), nullptr, armature, layer_labels);
 
       if (joint_parent_map.find(node->getUniqueId()) != joint_parent_map.end() &&
-          !skin.get_parent()) {
+          !skin.get_parent())
+      {
         skin.set_parent(joint_parent_map[node->getUniqueId()]);
       }
     }
@@ -714,7 +715,7 @@ void ArmatureImporter::set_pose(Object *ob_arm,
 
     copy_m4_m4(mat, obmat);
     float invObmat[4][4];
-    invert_m4_m4(invObmat, ob_arm->object_to_world);
+    invert_m4_m4(invObmat, ob_arm->object_to_world().ptr());
     mul_m4_m4m4(pchan->pose_mat, invObmat, mat);
   }
 
@@ -799,7 +800,8 @@ void ArmatureImporter::make_armatures(bContext *C, std::vector<Object *> &object
         }
 
         if (std::find(objects_to_scale.begin(), objects_to_scale.end(), ob_arm) ==
-            objects_to_scale.end()) {
+            objects_to_scale.end())
+        {
           objects_to_scale.push_back(ob_arm);
         }
 
