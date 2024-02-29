@@ -2109,24 +2109,18 @@ static void wm_autosave_location(char filepath[FILE_MAX])
   BLI_path_join(filepath, FILE_MAX, tempdir_base, filename);
 }
 
-static void wm_autosave_write(Main *bmain, wmWindowManager *wm)
+static bool wm_autosave_write_try(Main *bmain, wmWindowManager *wm)
 {
   char filepath[FILE_MAX];
 
   wm_autosave_location(filepath);
 
-  /* Fast save of last undo-buffer, now with UI. */
-  const bool use_memfile = (U.uiflag & USER_GLOBALUNDO) != 0;
-  MemFile *memfile = use_memfile ? ED_undosys_stack_memfile_get_active(wm->undo_stack) : nullptr;
-  if (memfile != nullptr) {
+  if (MemFile *memfile = ED_undosys_stack_memfile_get_if_active(wm->undo_stack)) {
+    /* Fast save of last undo-buffer, now with UI. */
     BLO_memfile_write_file(memfile, filepath);
+    return true;
   }
-  else {
-    if (use_memfile) {
-      /* This is very unlikely, alert developers of this unexpected case. */
-      CLOG_WARN(&LOG, "undo-data not found for writing, fallback to regular file write!");
-    }
-
+  if ((U.uiflag & USER_GLOBALUNDO) != 0) {
     /* Save as regular blend file with recovery information. */
     const int fileflags = (G.fileflags & ~G_FILE_COMPRESS) | G_FILE_RECOVER_WRITE;
 
@@ -2135,7 +2129,9 @@ static void wm_autosave_write(Main *bmain, wmWindowManager *wm)
     /* Error reporting into console. */
     BlendFileWriteParams params{};
     BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
+    return true;
   }
+  return false;
 }
 
 static void wm_autosave_timer_begin_ex(wmWindowManager *wm, double timestep)
@@ -2183,10 +2179,14 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer * /*wt*/)
     }
   }
 
-  wm_autosave_write(bmain, wm);
-
-  /* Restart the timer after file write, just in case file write takes a long time. */
-  wm_autosave_timer_begin(wm);
+  if (wm_autosave_write_try(bmain, wm)) {
+    /* Restart the timer after file write, just in case file write takes a long time. */
+    wm_autosave_timer_begin(wm);
+  }
+  else {
+    /* Couldn't auto-save right now, try again later. */
+    wm_autosave_timer_begin_ex(wm, 0.01);
+  }
 }
 
 void wm_autosave_delete()
