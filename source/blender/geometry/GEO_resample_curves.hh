@@ -50,12 +50,4 @@ CurvesGeometry resample_to_evaluated(const CurvesGeometry &src_curves,
                                      const fn::Field<bool> &selection_field,
                                      const ResampleCurvesOutputAttributeIDs &output_ids = {});
 
-/**
- * Resamples the selected curves using the Ramer-Douglas-Peucker algorithm by removing points that
- * don't change the shape of the curve within distance #epsilon.
- */
-CurvesGeometry resample_adaptive(const CurvesGeometry &src_curves,
-                                 const IndexMask &selection,
-                                 const VArray<float> epsilons);
-
 }  // namespace blender::geometry
