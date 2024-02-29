@@ -33,25 +33,23 @@ void main()
   vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
   float depth = texelFetch(hiz_tx, texel_fullres, 0).r;
   vec3 vP = drw_point_screen_to_view(vec3(uv, depth));
-
-  HorizonScanContext ctx;
-  ctx.closure.N = horizon_scan_sample_normal(uv);
+  vec3 vN = horizon_scan_sample_normal(uv);
 
   vec2 noise = utility_tx_fetch(utility_tx, vec2(texel), UTIL_BLUE_NOISE_LAYER).rg;
   noise = fract(noise + sampling_rng_2D_get(SAMPLING_AO_U));
 
-  horizon_scan_eval(vP,
-                    ctx,
-                    noise,
-                    uniform_buf.ao.pixel_size,
-                    1.0e16,
-                    uniform_buf.ao.thickness,
-                    uniform_buf.ao.angle_bias,
-                    8,
-                    false);
+  HorizonScanResult scan = horizon_scan_eval(vP,
+                                             vN,
+                                             noise,
+                                             uniform_buf.ao.pixel_size,
+                                             1.0e16,
+                                             uniform_buf.ao.thickness,
+                                             uniform_buf.ao.angle_bias,
+                                             8,
+                                             false);
 
-  imageStore(horizon_radiance_img, ivec3(texel, 0), ctx.sh_result.L0.M0);
-  imageStore(horizon_radiance_img, ivec3(texel, 1), ctx.sh_result.L1.Mn1);
-  imageStore(horizon_radiance_img, ivec3(texel, 2), ctx.sh_result.L1.M0);
-  imageStore(horizon_radiance_img, ivec3(texel, 3), ctx.sh_result.L1.Mp1);
+  imageStore(horizon_radiance_img, ivec3(texel, 0), scan.result.L0.M0);
+  imageStore(horizon_radiance_img, ivec3(texel, 1), scan.result.L1.Mn1);
+  imageStore(horizon_radiance_img, ivec3(texel, 2), scan.result.L1.M0);
+  imageStore(horizon_radiance_img, ivec3(texel, 3), scan.result.L1.Mp1);
 }
