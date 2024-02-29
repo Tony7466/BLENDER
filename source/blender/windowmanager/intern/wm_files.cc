@@ -2120,7 +2120,7 @@ static bool wm_autosave_write_try(Main *bmain, wmWindowManager *wm)
     BLO_memfile_write_file(memfile, filepath);
     return true;
   }
-  if ((U.uiflag & USER_GLOBALUNDO) != 0) {
+  if ((U.uiflag & USER_GLOBALUNDO) == 0) {
     /* Save as regular blend file with recovery information. */
     const int fileflags = (G.fileflags & ~G_FILE_COMPRESS) | G_FILE_RECOVER_WRITE;
 
