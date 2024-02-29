@@ -116,12 +116,10 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
     max_length = math::max(max_length, len);
   }
 
-  if (clamp_points) {
-    r_curves_num = r_points_num = 0;
-  }
   float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ? factor :
                                                                                  1.0f - factor;
   if (clamp_points) {
+    r_curves_num = r_points_num = 0;
     factor_to_keep = std::clamp(factor_to_keep, 0.0f, 1.0f);
   }
 
@@ -213,7 +211,6 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
   for (const int i : IndexRange(curves.curves_num())) {
     if (points_per_curve[i]) {
       dst_offsets[next_curve] = points_per_curve[i];
-
       const int curve_size = points_by_curve[i].size();
 
       auto get_fade_weight = [&](const int local_index) {
@@ -223,11 +220,10 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
                                    0.0f,
                                    1.0f);
         }
-        const float weight = std::clamp(float(local_index - starts_per_curve[i]) /
-                                            float(abs(ends_per_curve[i] - starts_per_curve[i])),
-                                        0.0f,
-                                        1.0f);
-        return weight;
+        return std::clamp(float(local_index - starts_per_curve[i]) /
+                              float(abs(ends_per_curve[i] - starts_per_curve[i])),
+                          0.0f,
+                          1.0f);
       };
 
       const int extra_offset = is_vanishing ? points_by_curve[i].size() - points_per_curve[i] : 0;
@@ -270,6 +266,7 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
                                    const IndexMask &selection,
                                    const int transition,
                                    const float factor,
+                                   const bool clamp_points,
                                    int &r_curves_num,
                                    int &r_points_num)
 {
@@ -277,9 +274,11 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
   const OffsetIndices<int> &points_by_curve = curves.points_by_curve();
 
   r_curves_num = r_points_num = 0;
-  const float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
-                                   factor :
-                                   (1.0f - factor);
+  float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ? factor :
+                                                                                 (1.0f - factor);
+  if (clamp_points) {
+    factor_to_keep = std::clamp(factor_to_keep, 0.0f, 1.0f);
+  }
 
   const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
 
@@ -309,18 +308,36 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
   }
 }
 
-static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
+static bke::CurvesGeometry build_sequential(bke::greasepencil::Drawing &drawing,
+                                            bke::CurvesGeometry &curves,
                                             const IndexMask &selection,
                                             const int transition,
-                                            const float factor)
+                                            const float factor,
+                                            const float factor_start,
+                                            const float factor_opacity,
+                                            const float factor_radii,
+                                            StringRefNull target_vgname)
 {
+  const bool has_fade = factor_start != factor;
   int dst_curves_num, dst_points_num;
-  points_info_sequential(curves, selection, transition, factor, dst_curves_num, dst_points_num);
+  int start_points_num, end_points_num, dummy_curves_num;
+  points_info_sequential(
+      curves, selection, transition, factor, true, dst_curves_num, dst_points_num);
+
   if (dst_curves_num == 0) {
     return {};
   }
 
+  points_info_sequential(
+      curves, selection, transition, factor_start, false, dummy_curves_num, start_points_num);
+  points_info_sequential(
+      curves, selection, transition, factor, false, dummy_curves_num, end_points_num);
+
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  MutableSpan<float> opacities = drawing.opacities_for_write();
+  MutableSpan<float> radii = drawing.radii_for_write();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::SpanAttributeWriter<float> weights = attributes.lookup_for_write_span<float>(target_vgname);
 
   const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
 
@@ -349,10 +366,30 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
       done_scanning = true;
       return;
     }
+
+    auto get_fade_weight = [&](const int next_point_count) {
+      return std::clamp(float(next_point_count - start_points_num) /
+                            float(abs(end_points_num - start_points_num)),
+                        0.0f,
+                        1.0f);
+    };
+
     for (const int point : points_by_curve[stroke]) {
-      dst_to_src_point[next_point] = is_vanishing ? points_by_curve[stroke].last() -
-                                                        (point - points_by_curve[stroke].first()) :
-                                                    point;
+      const int local_index = point - points_by_curve[stroke].first();
+      const int src_point_index = is_vanishing ? points_by_curve[stroke].last() - local_index :
+                                                 point;
+      dst_to_src_point[next_point] = src_point_index;
+
+      if (has_fade) {
+        const float fade_weight = get_fade_weight(next_point);
+        opacities[src_point_index] = opacities[src_point_index] *
+                                     (1.0f - fade_weight * factor_opacity);
+        radii[src_point_index] = radii[src_point_index] * (1.0f - fade_weight * factor_radii);
+        if (!weights.span.is_empty()) {
+          weights.span[src_point_index] = fade_weight;
+        }
+      }
+
       next_point++;
       if (next_point >= dst_points_num) {
         done_scanning = true;
@@ -362,16 +399,18 @@ static bke::CurvesGeometry build_sequential(const bke::CurvesGeometry &curves,
     dst_offsets[next_curve] = next_point;
     next_curve++;
   });
+  weights.finish();
 
   BLI_assert(next_curve == (dst_curves_num + 1));
   BLI_assert(next_point == dst_points_num);
 
   array_utils::copy(dst_offsets.as_span(), dst_curves.offsets_for_write());
 
-  const bke::AttributeAccessor attributes = curves.attributes();
+  const bke::AttributeAccessor src_attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
-  gather_attributes(attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
+  gather_attributes(
+      src_attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
 
   return dst_curves;
 }
@@ -466,17 +505,25 @@ static void deform_drawing(const ModifierData &md,
   float factor = get_build_factor(
       mmd.time_mode, current_time, mmd.start_delay, mmd.length, mmd.percentage_fac, fade_factor);
   float factor_start = factor - fade_factor;
-  if (mmd.transition!=MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW) {
+  if (mmd.transition != MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW) {
     std::swap(factor, factor_start);
   }
 
   const float use_time_alignment = mmd.transition != MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ?
-                                      !mmd.time_alignment :
-                                      mmd.time_alignment;
+                                       !mmd.time_alignment :
+                                       mmd.time_alignment;
   switch (mmd.mode) {
     default:
     case MOD_GREASE_PENCIL_BUILD_MODE_SEQUENTIAL:
-      curves = build_sequential(curves, selection, mmd.transition, factor);
+      curves = build_sequential(drawing,
+                                curves,
+                                selection,
+                                mmd.transition,
+                                factor,
+                                factor_start,
+                                mmd.fade_opacity_strength,
+                                mmd.fade_thickness_strength,
+                                mmd.target_vgname);
       break;
     case MOD_GREASE_PENCIL_BUILD_MODE_CONCURRENT:
       curves = build_concurrent(drawing,
@@ -495,7 +542,15 @@ static void deform_drawing(const ModifierData &md,
       // The original code path seems to indicate it will only build "extra stroke"
       // compared to the previous grease pencil frame, but it's by counting strokes
       // only, so it doesn't guarantee matching strokes...?
-      curves = build_sequential(curves, selection, mmd.transition, factor);
+      curves = build_sequential(drawing,
+                                curves,
+                                selection,
+                                mmd.transition,
+                                factor,
+                                factor_start,
+                                mmd.fade_opacity_strength,
+                                mmd.fade_thickness_strength,
+                                mmd.target_vgname);
       break;
   }
 
