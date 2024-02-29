@@ -314,6 +314,36 @@ Binding &Animation::binding_add()
   return binding;
 }
 
+Binding *Animation::find_suitable_binding_for(const ID &animated_id)
+{
+  AnimData *adt = BKE_animdata_from_id(&animated_id);
+
+  /* The stable index is only valid when this animation has already been
+   * assigned. Otherwise it's meaningless. */
+  if (adt && adt->animation == this) {
+    Binding *binding = this->binding_for_handle(adt->binding_handle);
+    if (binding && binding->is_suitable_for(animated_id)) {
+      return binding;
+    }
+  }
+
+  /* Try the binding name from the AnimData, if it is set,*/
+  if (adt && adt->binding_name[0]) {
+    Binding *binding = this->binding_find_by_name(adt->binding_name);
+    if (binding && binding->is_suitable_for(animated_id)) {
+      return binding;
+    }
+  }
+
+  /* As a last resort, search for the ID name. */
+  Binding *binding = this->binding_find_by_name(animated_id.name);
+  if (binding && binding->is_suitable_for(animated_id)) {
+    return binding;
+  }
+
+  return nullptr;
+}
+
 void Animation::free_data()
 {
   /* Free layers. */
@@ -329,6 +359,62 @@ void Animation::free_data()
   }
   MEM_SAFE_FREE(this->binding_array);
   this->binding_array_num = 0;
+}
+
+bool Animation::assign_id(Binding *binding, ID &animated_id)
+{
+  AnimData *adt = BKE_animdata_ensure_id(&animated_id);
+  if (!adt) {
+    return false;
+  }
+
+  if (adt->animation) {
+    /* Unassign the ID from its existing animation first, or use the top-level
+     * function `assign_animation(anim, ID)`. */
+    return false;
+  }
+
+  if (binding) {
+    if (!binding->connect_id(animated_id)) {
+      return false;
+    }
+
+    /* If the binding is not yet named, use the ID name. */
+    if (binding->name[0] == '\0') {
+      this->binding_name_set(*binding, animated_id.name);
+    }
+    /* Always make sure the ID's binding name matches the assigned binding. */
+    STRNCPY_UTF8(adt->binding_name, binding->name);
+  }
+  else {
+    adt->binding_handle = 0;
+    /* Keep adt->binding_name untouched, as A) it's not necessary to erase it
+     * because `adt->binding_handle = 0` already indicates "no binding yet",
+     * and B) it would erase information that can later be used when trying to
+     * identify which binding this was once attached to.  */
+  }
+
+  adt->animation = this;
+  id_us_plus(&this->id);
+
+  return true;
+}
+
+void Animation::unassign_id(ID &animated_id)
+{
+  AnimData *adt = BKE_animdata_from_id(&animated_id);
+  BLI_assert_msg(adt->animation == this, "ID is not assigned to this Animation");
+
+  /* Before unassigning, make sure that the stored Binding name is up to date.
+   * If Blender would be bug-free, and we could assume that `Animation::binding_name_propagate()`
+   * would always be called when appropriate, this code could be removed. */
+  const Binding *binding = this->binding_for_handle(adt->binding_handle);
+  if (binding) {
+    STRNCPY_UTF8(adt->binding_name, binding->name);
+  }
+
+  id_us_min(&this->id);
+  adt->animation = nullptr;
 }
 
 /* ----- AnimationLayer implementation ----------- */
@@ -413,12 +499,59 @@ int64_t Layer::find_strip_index(const Strip &strip) const
 }
 
 /* ----- AnimationBinding implementation ----------- */
+bool Binding::connect_id(ID &animated_id)
+{
+  if (!this->is_suitable_for(animated_id)) {
+    return false;
+  }
+
+  AnimData *adt = BKE_animdata_ensure_id(&animated_id);
+  if (!adt) {
+    return false;
+  }
+
+  if (this->idtype == 0) {
+    this->idtype = GS(animated_id.name);
+  }
+
+  adt->binding_handle = this->handle;
+  return true;
+}
 
 bool Binding::is_suitable_for(const ID &animated_id) const
 {
   /* Check that the ID type is compatible with this binding. */
   const int animated_idtype = GS(animated_id.name);
   return this->idtype == 0 || this->idtype == animated_idtype;
+}
+
+bool assign_animation(Animation &anim, ID &animated_id)
+{
+  unassign_animation(animated_id);
+
+  Binding *binding = anim.find_suitable_binding_for(animated_id);
+  return anim.assign_id(binding, animated_id);
+}
+
+void unassign_animation(ID &animated_id)
+{
+  Animation *anim = get_animation(animated_id);
+  if (!anim) {
+    return;
+  }
+  anim->unassign_id(animated_id);
+}
+
+Animation *get_animation(ID &animated_id)
+{
+  AnimData *adt = BKE_animdata_from_id(&animated_id);
+  if (!adt) {
+    return nullptr;
+  }
+  if (!adt->animation) {
+    return nullptr;
+  }
+  return &adt->animation->wrap();
 }
 
 /* ----- AnimationStrip implementation ----------- */

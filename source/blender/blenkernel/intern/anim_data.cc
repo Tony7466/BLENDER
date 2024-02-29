@@ -10,6 +10,8 @@
 #include <cstring>
 #include <optional>
 
+#include "ANIM_animation.hh"
+
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
@@ -276,6 +278,11 @@ bool BKE_animdata_id_is_animated(const ID *id)
   const AnimData *adt = BKE_animdata_from_id((ID *)id);
   if (adt == nullptr) {
     return false;
+  }
+
+  if (adt->animation) {
+    blender::animrig::Animation &anim = adt->animation->wrap();
+    return anim.binding_for_id(*id) != nullptr;
   }
 
   if (adt->action != nullptr && !BLI_listbase_is_empty(&adt->action->curves)) {
