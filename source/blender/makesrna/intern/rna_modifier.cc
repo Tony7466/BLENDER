@@ -129,6 +129,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_VERTEX_WEIGHT,
      "Vertex Weight Angle",
      "Generate vertex weights base on stroke angle"},
+    {eModifierType_GreasePencilTime,
+     "GREASE_PENCIL_TIME",
+     ICON_MOD_TIME,
+     "Time Offset",
+     "Offset keyframes"},
 
     RNA_ENUM_ITEM_HEADING(N_("Generate"), nullptr),
     {eModifierType_Array,
@@ -369,6 +374,11 @@ const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
      ICON_MOD_DASH,
      "Dot Dash",
      "Generate dot-dash styled strokes"},
+    {eModifierType_GreasePencilArmature,
+     "GREASE_PENCIL_ARMATURE",
+     ICON_MOD_ARMATURE,
+     "Armature",
+     "Deform stroke points using armature object"},
 
     RNA_ENUM_ITEM_HEADING(N_("Physics"), nullptr),
     {eModifierType_Cloth, "CLOTH", ICON_MOD_CLOTH, "Cloth", ""},
@@ -1000,6 +1010,7 @@ RNA_MOD_OBJECT_SET(GreasePencilTint, object, OB_EMPTY);
 RNA_MOD_OBJECT_SET(GreasePencilLattice, object, OB_LATTICE);
 RNA_MOD_OBJECT_SET(GreasePencilWeightProximity, object, OB_EMPTY);
 RNA_MOD_OBJECT_SET(GreasePencilHook, object, OB_EMPTY);
+RNA_MOD_OBJECT_SET(GreasePencilArmature, object, OB_ARMATURE);
 
 static void rna_HookModifier_object_set(PointerRNA *ptr,
                                         PointerRNA value,
@@ -1948,6 +1959,7 @@ RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilLattice);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilWeightAngle);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilWeightProximity);
 RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilHook);
+RNA_MOD_GREASE_PENCIL_VERTEX_GROUP_SET(GreasePencilArmature);
 
 static void rna_GreasePencilLineartModifier_material_set(PointerRNA *ptr,
                                                          PointerRNA value,
@@ -2052,6 +2064,102 @@ static void rna_GreasePencilDashModifier_segments_begin(CollectionPropertyIterat
                            dmd->segments_num,
                            false,
                            nullptr);
+}
+
+static const GreasePencilTimeModifierData *find_grease_pencil_time_modifier_of_segment(
+    const Object &ob, const GreasePencilTimeModifierSegment &time_segment)
+{
+  LISTBASE_FOREACH (const ModifierData *, md, &ob.modifiers) {
+    if (md->type == eModifierType_GreasePencilTime) {
+      const auto *tmd = reinterpret_cast<const GreasePencilTimeModifierData *>(md);
+      if (tmd->segments().contains_ptr(&time_segment)) {
+        return tmd;
+      }
+    }
+  }
+  return nullptr;
+}
+
+static std::optional<std::string> rna_GreasePencilTimeModifierSegment_path(const PointerRNA *ptr)
+
+{
+  const Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
+  const auto *segment = static_cast<GreasePencilTimeModifierSegment *>(ptr->data);
+  const GreasePencilTimeModifierData *tmd = find_grease_pencil_time_modifier_of_segment(*ob,
+                                                                                        *segment);
+  BLI_assert(tmd != nullptr);
+
+  char name_esc[sizeof(tmd->modifier.name) * 2];
+  BLI_str_escape(name_esc, tmd->modifier.name, sizeof(name_esc));
+
+  char ds_name_esc[sizeof(segment->name) * 2];
+  BLI_str_escape(ds_name_esc, segment->name, sizeof(ds_name_esc));
+
+  return fmt::format("modifiers[\"{}\"].segments[\"{}\"]", name_esc, ds_name_esc);
+}
+
+static void rna_GreasePencilTimeModifierSegment_name_set(PointerRNA *ptr, const char *value)
+{
+  const Object *ob = reinterpret_cast<Object *>(ptr->owner_id);
+  auto *segment = static_cast<GreasePencilTimeModifierSegment *>(ptr->data);
+  const GreasePencilTimeModifierData *tmd = find_grease_pencil_time_modifier_of_segment(*ob,
+                                                                                        *segment);
+  BLI_assert(tmd != nullptr);
+
+  const std::string oldname = segment->name;
+  STRNCPY_UTF8(segment->name, value);
+  BLI_uniquename_cb(
+      [tmd, segment](const blender::StringRef name) {
+        for (const GreasePencilTimeModifierSegment &ds : tmd->segments()) {
+          if (&ds != segment && ds.name == name) {
+            return true;
+          }
+        }
+        return false;
+      },
+      '.',
+      segment->name);
+
+  /* Fix all the animation data which may link to this. */
+  char name_esc[sizeof(tmd->modifier.name) * 2];
+  BLI_str_escape(name_esc, tmd->modifier.name, sizeof(name_esc));
+  char rna_path_prefix[36 + sizeof(name_esc) + 1];
+  SNPRINTF(rna_path_prefix, "modifiers[\"%s\"].segments", name_esc);
+  BKE_animdata_fix_paths_rename_all(nullptr, rna_path_prefix, oldname.c_str(), segment->name);
+}
+
+static void rna_GreasePencilTimeModifier_segments_begin(CollectionPropertyIterator *iter,
+                                                        PointerRNA *ptr)
+{
+  auto *tmd = static_cast<GreasePencilTimeModifierData *>(ptr->data);
+  rna_iterator_array_begin(iter,
+                           tmd->segments_array,
+                           sizeof(GreasePencilTimeModifierSegment),
+                           tmd->segments_num,
+                           false,
+                           nullptr);
+}
+
+static void rna_GreasePencilTimeModifier_start_frame_set(PointerRNA *ptr, int value)
+{
+  auto *tmd = static_cast<GreasePencilTimeModifierData *>(ptr->data);
+  CLAMP(value, MINFRAME, MAXFRAME);
+  tmd->sfra = value;
+
+  if (tmd->sfra >= tmd->efra) {
+    tmd->efra = std::min(tmd->sfra, MAXFRAME);
+  }
+}
+
+static void rna_GreasePencilTimeModifier_end_frame_set(PointerRNA *ptr, int value)
+{
+  auto *tmd = static_cast<GreasePencilTimeModifierData *>(ptr->data);
+  CLAMP(value, MINFRAME, MAXFRAME);
+  tmd->efra = value;
+
+  if (tmd->sfra >= tmd->efra) {
+    tmd->sfra = std::max(tmd->efra, MINFRAME);
+  }
 }
 
 #else
@@ -9380,9 +9488,8 @@ static void rna_def_modifier_grease_pencil_dash_segment(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Name", "Name of the dash segment");
   RNA_def_property_string_funcs(
       prop, nullptr, nullptr, "rna_GreasePencilDashModifierSegment_name_set");
-  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER | NA_RENAME, nullptr);
   RNA_def_struct_name_property(srna, prop);
-  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER | NA_RENAME, nullptr);
 
   prop = RNA_def_property(srna, "dash", PROP_INT, PROP_NONE);
   RNA_def_property_range(prop, 1, INT16_MAX);
@@ -9779,6 +9886,225 @@ static void rna_def_modifier_grease_pencil_weight_proximity(BlenderRNA *brna)
   RNA_define_lib_overridable(false);
 }
 
+static void rna_def_modifier_grease_pencil_armature(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  srna = RNA_def_struct(brna, "GreasePencilArmatureModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Armature Modifier", "Deform stroke points using armature object");
+  RNA_def_struct_sdna(srna, "GreasePencilArmatureModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_ARMATURE);
+
+  rna_def_modifier_grease_pencil_vertex_group(
+      srna, "rna_GreasePencilArmatureModifier_vertex_group_name_set");
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "object", PROP_POINTER, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Object", "Armature object to deform with");
+  RNA_def_property_pointer_funcs(prop,
+                                 nullptr,
+                                 "rna_GreasePencilArmatureModifier_object_set",
+                                 nullptr,
+                                 "rna_Armature_object_poll");
+  RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
+  RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
+
+  prop = RNA_def_property(srna, "use_bone_envelopes", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "deformflag", ARM_DEF_ENVELOPE);
+  RNA_def_property_ui_text(prop, "Use Bone Envelopes", "Bind Bone envelopes to armature modifier");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_vertex_groups", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "deformflag", ARM_DEF_VGROUP);
+  RNA_def_property_ui_text(prop, "Use Vertex Groups", "Bind vertex groups to armature modifier");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_deform_preserve_volume", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "deformflag", ARM_DEF_QUATERNION);
+  RNA_def_property_ui_text(
+      prop, "Preserve Volume", "Deform rotation interpolation with quaternions");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  RNA_define_lib_overridable(false);
+}
+
+static void rna_def_modifier_grease_pencil_time_segment(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem segment_mode_items[] = {
+      {MOD_GREASE_PENCIL_TIME_SEG_MODE_NORMAL,
+       "NORMAL",
+       0,
+       "Regular",
+       "Apply offset in usual animation direction"},
+      {MOD_GREASE_PENCIL_TIME_SEG_MODE_REVERSE,
+       "REVERSE",
+       0,
+       "Reverse",
+       "Apply offset in reverse animation direction"},
+      {MOD_GREASE_PENCIL_TIME_SEG_MODE_PINGPONG,
+       "PINGPONG",
+       0,
+       "Ping Pong",
+       "Loop back and forth"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  srna = RNA_def_struct(brna, "GreasePencilTimeModifierSegment", nullptr);
+  RNA_def_struct_ui_text(srna, "Time Modifier Segment", "Configuration for a single dash segment");
+  RNA_def_struct_sdna(srna, "GreasePencilTimeModifierSegment");
+  RNA_def_struct_path_func(srna, "rna_GreasePencilTimeModifierSegment_path");
+
+  prop = RNA_def_property(srna, "name", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(prop, "Name", "Name of the dash segment");
+  RNA_def_property_string_funcs(
+      prop, nullptr, nullptr, "rna_GreasePencilTimeModifierSegment_name_set");
+  RNA_def_struct_name_property(srna, prop);
+  RNA_def_property_update(prop, NC_OBJECT | ND_MODIFIER | NA_RENAME, nullptr);
+
+  prop = RNA_def_property(srna, "segment_start", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, INT16_MAX);
+  RNA_def_property_ui_text(prop, "Frame Start", "First frame of the segment");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "segment_end", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 0, INT16_MAX);
+  RNA_def_property_ui_text(prop, "End", "Last frame of the segment");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "segment_repeat", PROP_INT, PROP_NONE);
+  RNA_def_property_range(prop, 1, INT16_MAX);
+  RNA_def_property_ui_text(prop, "Repeat", "Number of cycle repeats");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "segment_mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "segment_mode");
+  RNA_def_property_enum_items(prop, segment_mode_items);
+  RNA_def_property_ui_text(prop, "Mode", "");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+}
+
+static void rna_def_modifier_grease_pencil_time(BlenderRNA *brna)
+{
+  StructRNA *srna;
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem time_mode_items[] = {
+      {MOD_GREASE_PENCIL_TIME_MODE_NORMAL,
+       "NORMAL",
+       0,
+       "Regular",
+       "Apply offset in usual animation direction"},
+      {MOD_GREASE_PENCIL_TIME_MODE_REVERSE,
+       "REVERSE",
+       0,
+       "Reverse",
+       "Apply offset in reverse animation direction"},
+      {MOD_GREASE_PENCIL_TIME_MODE_FIX,
+       "FIX",
+       0,
+       "Fixed Frame",
+       "Keep frame and do not change with time"},
+      {MOD_GREASE_PENCIL_TIME_MODE_PINGPONG,
+       "PINGPONG",
+       0,
+       "Ping Pong",
+       "Loop back and forth starting in reverse"},
+      {MOD_GREASE_PENCIL_TIME_MODE_CHAIN,
+       "CHAIN",
+       0,
+       "Chain",
+       "List of chained animation segments"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  srna = RNA_def_struct(brna, "GreasePencilTimeModifier", "Modifier");
+  RNA_def_struct_ui_text(srna, "Grease Pencil Time Modifier", "Offset keyframes");
+  RNA_def_struct_sdna(srna, "GreasePencilTimeModifierData");
+  RNA_def_struct_ui_icon(srna, ICON_MOD_TIME);
+
+  rna_def_modifier_grease_pencil_layer_filter(srna);
+
+  rna_def_modifier_panel_open_prop(srna, "open_influence_panel", 0);
+  rna_def_modifier_panel_open_prop(srna, "open_custom_range_panel", 1);
+
+  RNA_define_lib_overridable(true);
+
+  prop = RNA_def_property(srna, "segments", PROP_COLLECTION, PROP_NONE);
+  RNA_def_property_struct_type(prop, "GreasePencilTimeModifierSegment");
+  RNA_def_property_collection_sdna(prop, nullptr, "segments_array", nullptr);
+  RNA_def_property_collection_funcs(prop,
+                                    "rna_GreasePencilTimeModifier_segments_begin",
+                                    "rna_iterator_array_next",
+                                    "rna_iterator_array_end",
+                                    "rna_iterator_array_get",
+                                    nullptr,
+                                    nullptr,
+                                    nullptr,
+                                    nullptr);
+  RNA_def_property_ui_text(prop, "Segments", "");
+
+  prop = RNA_def_property(srna, "segment_active_index", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_ui_text(prop, "Active Time Segment Index", "Active index in the segment list");
+
+  prop = RNA_def_property(srna, "mode", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "mode");
+  RNA_def_property_enum_items(prop, time_mode_items);
+  RNA_def_property_ui_text(prop, "Mode", "");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "offset", PROP_INT, PROP_NONE);
+  RNA_def_property_int_sdna(prop, nullptr, "offset");
+  RNA_def_property_range(prop, SHRT_MIN, SHRT_MAX);
+  RNA_def_property_ui_text(
+      prop, "Frame Offset", "Number of frames to offset original keyframe number or frame to fix");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "frame_scale", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "frame_scale");
+  RNA_def_property_range(prop, 0.001f, 100.0f);
+  RNA_def_property_ui_text(prop, "Frame Scale", "Evaluation time in seconds");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "frame_start", PROP_INT, PROP_TIME);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_int_sdna(prop, nullptr, "sfra");
+  RNA_def_property_int_funcs(
+      prop, nullptr, "rna_GreasePencilTimeModifier_start_frame_set", nullptr);
+  RNA_def_property_range(prop, MINFRAME, MAXFRAME);
+  RNA_def_property_ui_text(prop, "Start Frame", "First frame of the range");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "frame_end", PROP_INT, PROP_TIME);
+  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+  RNA_def_property_int_sdna(prop, nullptr, "efra");
+  RNA_def_property_int_funcs(prop, nullptr, "rna_GreasePencilTimeModifier_end_frame_set", nullptr);
+  RNA_def_property_range(prop, MINFRAME, MAXFRAME);
+  RNA_def_property_ui_text(prop, "End Frame", "Final frame of the range");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_keep_loop", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_GREASE_PENCIL_TIME_KEEP_LOOP);
+  RNA_def_property_ui_text(
+      prop, "Keep Loop", "Retiming end frames and move to start of animation to keep loop");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  prop = RNA_def_property(srna, "use_custom_frame_range", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", MOD_GREASE_PENCIL_TIME_CUSTOM_RANGE);
+  RNA_def_property_ui_text(
+      prop, "Custom Range", "Define a custom range of frames to use in modifier");
+  RNA_def_property_update(prop, 0, "rna_Modifier_update");
+
+  RNA_define_lib_overridable(false);
+}
+
 void RNA_def_modifier(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -9965,6 +10291,9 @@ void RNA_def_modifier(BlenderRNA *brna)
   rna_def_modifier_grease_pencil_weight_proximity(brna);
   rna_def_modifier_grease_pencil_hook(brna);
   rna_def_modifier_grease_pencil_lineart(brna);
+  rna_def_modifier_grease_pencil_armature(brna);
+  rna_def_modifier_grease_pencil_time_segment(brna);
+  rna_def_modifier_grease_pencil_time(brna);
 }
 
 #endif

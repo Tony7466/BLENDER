@@ -49,6 +49,7 @@ set(SRC
   intern/MOD_edgesplit.cc
   intern/MOD_explode.cc
   intern/MOD_fluid.cc
+  intern/MOD_grease_pencil_armature.cc
   intern/MOD_grease_pencil_array.cc
   intern/MOD_grease_pencil_color.cc
   intern/MOD_grease_pencil_dash.cc
@@ -63,6 +64,7 @@ set(SRC
   intern/MOD_grease_pencil_smooth.cc
   intern/MOD_grease_pencil_subdiv.cc
   intern/MOD_grease_pencil_thickness.cc
+  intern/MOD_grease_pencil_time.cc
   intern/MOD_grease_pencil_tint.cc
   intern/MOD_grease_pencil_util.cc
   intern/MOD_grease_pencil_weight_angle.cc
