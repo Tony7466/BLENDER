@@ -467,6 +467,7 @@ DefNode(GeometryNode, GEO_NODE_TOOL_FACE_SET, 0, "TOOL_FACE_SET", ToolFaceSet, "
 DefNode(GeometryNode, GEO_NODE_TOOL_SELECTION, 0, "TOOL_SELECTION", ToolSelection, "Selection", "User selection of the edited geometry, for tool execution")
 DefNode(GeometryNode, GEO_NODE_TOOL_SET_FACE_SET, 0, "TOOL_SET_FACE_SET", ToolSetFaceSet, "Set Face Set", "Set sculpt face set values for faces")
 DefNode(GeometryNode, GEO_NODE_TOOL_SET_SELECTION, 0, "TOOL_SELECTION_SET", ToolSetSelection, "Set Selection", "Set selection of the edited geometry, for tool execution")
+DefNode(GeometryNode, GEO_NODE_TOOL_VIEWPORT_TRANSFORM, 0, "VIEWPORT_TRANFORM", ViewportTransform, "Viewport Transform", "Retrieve the view direction and location of the 3D viewport")
 DefNode(GeometryNode, GEO_NODE_TRANSFORM_GEOMETRY, 0, "TRANSFORM_GEOMETRY", Transform, "Transform Geometry", "Translate, rotate or scale the geometry")
 DefNode(GeometryNode, GEO_NODE_TRANSLATE_INSTANCES, 0, "TRANSLATE_INSTANCES",TranslateInstances, "Translate Instances", "Move top-level geometry instances in local or global space")
 DefNode(GeometryNode, GEO_NODE_TRIANGULATE, 0, "TRIANGULATE", Triangulate, "Triangulate", "Convert all faces in a mesh to triangular faces")
@@ -474,7 +475,6 @@ DefNode(GeometryNode, GEO_NODE_TRIM_CURVE, 0, "TRIM_CURVE", TrimCurve, "Trim Cur
 DefNode(GeometryNode, GEO_NODE_UV_PACK_ISLANDS, 0, "UV_PACK_ISLANDS", UVPackIslands, "Pack UV Islands", "Scale islands of a UV map and move them so they fill the UV space as much as possible")
 DefNode(GeometryNode, GEO_NODE_UV_UNWRAP, 0, "UV_UNWRAP", UVUnwrap, "UV Unwrap", "Generate a UV map based on seam edges")
 DefNode(GeometryNode, GEO_NODE_VIEWER, 0, "VIEWER", Viewer, "Viewer", "Display the input data in the Spreadsheet Editor")
-DefNode(GeometryNode, GEO_NODE_TOOL_VIEWPORT_TRANSFORM, 0, "VIEWPORT_TRANFORM", ViewportTransform, "Viewport Transform", "Retrieve the view direction and location of the 3D viewport")
 DefNode(GeometryNode, GEO_NODE_VOLUME_CUBE, 0, "VOLUME_CUBE", VolumeCube, "Volume Cube", "Generate a dense volume with a field that controls the density at each grid voxel based on its position")
 DefNode(GeometryNode, GEO_NODE_VOLUME_TO_MESH, 0, "VOLUME_TO_MESH", VolumeToMesh, "Volume to Mesh", "Generate a mesh on the \"surface\" of a volume")
 
