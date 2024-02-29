@@ -2146,6 +2146,10 @@ void WM_autosave_write(wmWindowManager *wm, Main *bmain)
   BlendFileWriteParams params{};
   BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
 
+  /* Restart auto-save timer. */
+  wm_autosave_timer_end(wm);
+  wm_autosave_timer_begin(wm);
+
   wm->autosave_scheduled = false;
 }
 
