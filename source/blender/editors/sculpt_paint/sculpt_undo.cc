@@ -1050,6 +1050,12 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, UndoSculpt &usculpt)
         *ss->pbvh, {}, [&](PBVHNode &node) { update_modified_node_mesh(node, data); });
   }
 
+  if (changed_color) {
+    /* Force a redraw to fix color update
+     when redo from initial state */
+    SCULPT_pbvh_clear(ob);
+  }
+
   if (changed_position) {
     bke::pbvh::update_bounds(*ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
   }
