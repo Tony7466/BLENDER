@@ -1081,7 +1081,14 @@ void wm_gizmomap_modal_set(
       gzmap->gzmap_context.event_xy[0] = INT_MAX;
     }
 
-    wmGizmoOpElem *gzop = WM_gizmo_operator_get(gz, gz->highlight_part);
+    struct wmGizmoOpElem *gzop = NULL;
+    if (event->modifier & KM_SHIFT) {
+      gzop = WM_gizmo_operator_get(gz, 16);
+    }
+
+    if (!gzop) {
+      gzop = WM_gizmo_operator_get(gz, gz->highlight_part);
+    }
     if (gzop && gzop->type) {
       const int retval = WM_gizmo_operator_invoke(C, gz, gzop, event);
       if ((retval & OPERATOR_RUNNING_MODAL) == 0) {
