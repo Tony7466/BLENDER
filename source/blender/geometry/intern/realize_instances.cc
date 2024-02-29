@@ -736,6 +736,149 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
   }
 }
 
+bool attribute_foreach(const bke::GeometrySet& geometry_set,
+                       const Span<bke::GeometryComponent::Type> component_types,
+                       const int current_depth,
+                       const int depth_target,
+                       const VArray<int> instance_depth,
+                       const IndexMask selection,
+                       const bke::GeometrySet::AttributeForeachCallback callback)
+{
+  /**
+   * This function iterates through a set of geometries, applying a callback to each attribute of
+   * eligible children based on specified conditions. Relevant children are determined by three
+   * criteria: the component type (e.g., mesh, curve), a depth value greater than 0 and a
+   * selection. If the primary component is an instance, the condition is true only when the depth
+   * is exactly 0. Additionally, the function extends its operation to instances if any of their
+   * nested children meet the first condition. Also, an initial depth of 0 is equal to infinity for
+   * easier use.
+   */
+
+  /*Initialize flag to track if child instances have the specified components.*/
+  bool is_child_has_component = true;
+
+  if (geometry_set.has_instances()) {
+    is_child_has_component = false;
+
+    const Instances &instances = *geometry_set.get_instances();
+    /*ensure objects and collection are included.*/
+    Instances ensure_instances = instances;
+    ensure_instances.ensure_geometry_instances();
+    const IndexMask indices = (current_depth == 0) ?
+                                  selection :
+                                  IndexMask(IndexRange(ensure_instances.instances_num()));
+    for (const int index : indices.index_range()) {
+      const int i = indices[index];
+      const int depth_target_tmp = (current_depth == 0) ? instance_depth[i] : depth_target;
+      bke::InstanceReference reference =
+          ensure_instances.references()[ensure_instances.reference_handles()[i]];
+
+      /*Process child instances with a recursive call.*/
+      if (reference.type() == InstanceReference::Type::GeometrySet) {
+        bke::GeometrySet instance_geometry_set = reference.geometry_set();
+        if (current_depth != depth_target_tmp) {
+          is_child_has_component = attribute_foreach(instance_geometry_set,
+                                                     component_types,
+                                                     current_depth + 1,
+                                                     depth_target_tmp,
+                                                     instance_depth,
+                                                     selection,
+                                                     callback) ||
+                                   is_child_has_component;
+        }
+      }
+    }
+  }
+
+  /*Flag to track if any relevant attributes were found.*/
+  bool is_relevant = false;
+
+  for (const bke::GeometryComponent::Type component_type : component_types) {
+    if (!geometry_set.has(component_type)) {
+      continue;
+    }
+
+    /*Check if the current instance components is the main one*/
+    const bool is_special_instance = (component_type == bke::GeometryComponent::Type::Instance) &&
+                                     (component_types.size() > 1);
+    if (is_special_instance && !is_child_has_component) {
+      continue;
+    }
+    /*Process attributes for the current component.*/
+    const bke::GeometryComponent &component = *geometry_set.get_component(component_type);
+    const std::optional<bke::AttributeAccessor> attributes = component.attributes();
+    if (attributes.has_value()) {
+      attributes->for_all(
+          [&](const AttributeIDRef &attributeId, const AttributeMetaData &metaData) {
+            callback(attributeId, metaData, component);
+            return true;
+          });
+
+      is_relevant = true;
+    }
+  }
+
+  return is_relevant;
+}
+
+
+void gather_attributes_for_propagation(
+    bke::GeometrySet re_geometry_set,
+    const Span<bke::GeometryComponent::Type> component_types,
+    const bke::GeometryComponent::Type dst_component_type,
+    const VArray<int> instance_depth,
+    const IndexMask selection,
+    const bke::AnonymousAttributePropagationInfo &propagation_info,
+    Map<AttributeIDRef, AttributeKind> &r_attributes)
+{
+  /* Only needed right now to check if an attribute is built-in on this component type.
+   * TODO: Get rid of the dummy component. */
+  const bke::GeometryComponentPtr dummy_component = bke::GeometryComponent::create(dst_component_type);
+  attribute_foreach(
+      re_geometry_set,
+      component_types,
+      0,
+      -1,
+      instance_depth,
+      selection,
+      [&](const AttributeIDRef &attribute_id,
+          const AttributeMetaData &meta_data,
+          const bke::GeometryComponent &component) {
+        if (component.attributes()->is_builtin(attribute_id)) {
+          if (!dummy_component->attributes()->is_builtin(attribute_id)) {
+            /* Don't propagate built-in attributes that are not built-in on the destination
+             * component. */
+            return;
+          }
+        }
+        if (meta_data.data_type == CD_PROP_STRING) {
+          /* Propagating string attributes is not supported yet. */
+          return;
+        }
+        if (attribute_id.is_anonymous() &&
+            !propagation_info.propagate(attribute_id.anonymous_id())) {
+          return;
+        }
+
+        AttrDomain domain = meta_data.domain;
+        if (dst_component_type != bke::GeometryComponent::Type::Instance &&
+            domain == AttrDomain::Instance) {
+          domain = AttrDomain::Point;
+        }
+
+        auto add_info = [&](AttributeKind *attribute_kind) {
+          attribute_kind->domain = domain;
+          attribute_kind->data_type = meta_data.data_type;
+        };
+        auto modify_info = [&](AttributeKind *attribute_kind) {
+          attribute_kind->domain = bke::attribute_domain_highest_priority(
+              {attribute_kind->domain, domain});
+          attribute_kind->data_type = bke::attribute_data_type_highest_complexity(
+              {attribute_kind->data_type, meta_data.data_type});
+        };
+        r_attributes.add_or_modify(attribute_id, add_info, modify_info);
+      });
+}
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -751,12 +894,13 @@ static OrderedAttributes gather_generic_instance_attributes_to_propagate(
   src_component_types.append(bke::GeometryComponent::Type::Instance);
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
-  in_geometry_set.gather_attributes_for_propagation(src_component_types,
-                                                    bke::GeometryComponent::Type::Instance,
-                                                    options.depths,
-                                                    options.selection,
-                                                    options.propagation_info,
-                                                    attributes_to_propagate);
+  gather_attributes_for_propagation(in_geometry_set,
+                                    src_component_types,
+                                    bke::GeometryComponent::Type::Instance,
+                                    options.depths,
+                                    options.selection,
+                                    options.propagation_info,
+                                    attributes_to_propagate);
   attributes_to_propagate.remove("position");
   attributes_to_propagate.remove("radius");
   r_create_id = attributes_to_propagate.pop_try("id").has_value();
@@ -780,12 +924,19 @@ static OrderedAttributes gather_generic_pointcloud_attributes_to_propagate(
     src_component_types.append(bke::GeometryComponent::Type::Instance);
   }
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
-  in_geometry_set.gather_attributes_for_propagation(src_component_types,
-                                                    bke::GeometryComponent::Type::PointCloud,
-                                                    options.depths,
-                                                    options.selection,
-                                                    options.propagation_info,
-                                                    attributes_to_propagate);
+  // in_geometry_set.gather_attributes_for_propagation(src_component_types,
+  //                                                   bke::GeometryComponent::Type::PointCloud,
+  //                                                   options.depths,
+  //                                                   options.selection,
+  //                                                   options.propagation_info,
+  //                                                   attributes_to_propagate);
+  gather_attributes_for_propagation(in_geometry_set,
+                                    src_component_types,
+                                    bke::GeometryComponent::Type::PointCloud,
+                                    options.depths,
+                                    options.selection,
+                                    options.propagation_info,
+                                    attributes_to_propagate);
   attributes_to_propagate.remove("position");
   r_create_id = attributes_to_propagate.pop_try("id").has_value();
   r_create_radii = attributes_to_propagate.pop_try("radius").has_value();
@@ -1067,12 +1218,13 @@ static OrderedAttributes gather_generic_mesh_attributes_to_propagate(
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
-  in_geometry_set.gather_attributes_for_propagation(src_component_types,
-                                                    bke::GeometryComponent::Type::Mesh,
-                                                    options.depths,
-                                                    options.selection,
-                                                    options.propagation_info,
-                                                    attributes_to_propagate);
+  gather_attributes_for_propagation(in_geometry_set,
+                                    src_component_types,
+                                    bke::GeometryComponent::Type::Mesh,
+                                    options.depths,
+                                    options.selection,
+                                    options.propagation_info,
+                                    attributes_to_propagate);
   attributes_to_propagate.remove("position");
   attributes_to_propagate.remove(".edge_verts");
   attributes_to_propagate.remove(".corner_vert");
@@ -1430,12 +1582,13 @@ static OrderedAttributes gather_generic_curve_attributes_to_propagate(
   }
 
   Map<AttributeIDRef, AttributeKind> attributes_to_propagate;
-  in_geometry_set.gather_attributes_for_propagation(src_component_types,
-                                                    bke::GeometryComponent::Type::Curve,
-                                                    options.depths,
-                                                    options.selection,
-                                                    options.propagation_info,
-                                                    attributes_to_propagate);
+  gather_attributes_for_propagation(in_geometry_set,
+                                    src_component_types,
+                                    bke::GeometryComponent::Type::Curve,
+                                    options.depths,
+                                    options.selection,
+                                    options.propagation_info,
+                                    attributes_to_propagate);
   attributes_to_propagate.remove("position");
   attributes_to_propagate.remove("radius");
   attributes_to_propagate.remove("nurbs_weight");

@@ -9,7 +9,6 @@
 #include "BLT_translation.hh"
 
 #include "BKE_attribute.hh"
-#include "BKE_collection.hh"
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
@@ -574,89 +573,6 @@ GreasePencil *GeometrySet::get_grease_pencil_for_write()
   return component == nullptr ? nullptr : component->get_for_write();
 }
 
-bool GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> component_types,
-                                    const int current_depth,
-                                    const int depth_target,
-                                    const VArray<int> instance_depth,
-                                    const IndexMask selection,
-                                    const AttributeForeachCallback callback) const
-{
-  /**
-   * This function iterates through a set of geometries, applying a callback to each attribute of
-   * eligible children based on specified conditions. Relevant children are determined by three
-   * criteria: the component type (e.g., mesh, curve), a depth value greater than 0 and a
-   * selection. If the primary component is an instance, the condition is true only when the depth
-   * is exactly 0. Additionally, the function extends its operation to instances if any of their
-   * nested children meet the first condition. Also, an initial depth of 0 is equal to infinity for
-   * easier use.
-   */
-
-  /*Initialize flag to track if child instances have the specified components.*/
-  bool is_child_has_component = true;
-
-  if (this->has_instances()) {
-    is_child_has_component = false;
-
-    const Instances &instances = *this->get_instances();
-    /*ensure objects and collection are included.*/
-    Instances ensure_instances = instances;
-    ensure_instances.ensure_geometry_instances();
-    const IndexMask indices = (current_depth == 0) ?
-                                  selection :
-                                  IndexMask(IndexRange(ensure_instances.instances_num()));
-    for (const int index : indices.index_range()) {
-      const int i = indices[index];
-      const int depth_target_tmp = (current_depth == 0) ? instance_depth[i] : depth_target;
-      bke::InstanceReference reference =
-          ensure_instances.references()[ensure_instances.reference_handles()[i]];
-
-      /*Process child instances with a recursive call.*/
-      if (reference.type() == InstanceReference::Type::GeometrySet) {
-        bke::GeometrySet instance_geometry_set = reference.geometry_set();
-        if (current_depth != depth_target_tmp) {
-          is_child_has_component = instance_geometry_set.attribute_foreach(component_types,
-                                                                           current_depth + 1,
-                                                                           depth_target_tmp,
-                                                                           instance_depth,
-                                                                           selection,
-                                                                           callback) ||
-                                   is_child_has_component;
-        }
-      }
-    }
-  }
-
-  /*Flag to track if any relevant attributes were found.*/
-  bool is_relevant = false;
-
-  for (const GeometryComponent::Type component_type : component_types) {
-    if (!this->has(component_type)) {
-      continue;
-    }
-
-    /*Check if the current instance components is the main one*/
-    const bool is_special_instance = (component_type == GeometryComponent::Type::Instance) &&
-                                     (component_types.size() > 1);
-    if (is_special_instance && !is_child_has_component) {
-      continue;
-    }
-    /*Process attributes for the current component.*/
-    const GeometryComponent &component = *this->get_component(component_type);
-    const std::optional<AttributeAccessor> attributes = component.attributes();
-    if (attributes.has_value()) {
-      attributes->for_all(
-          [&](const AttributeIDRef &attributeId, const AttributeMetaData &metaData) {
-            callback(attributeId, metaData, component);
-            return true;
-          });
-
-      is_relevant = true;
-    }
-  }
-
-  return is_relevant;
-}
-
 void GeometrySet::attribute_foreach(const Span<GeometryComponent::Type> component_types,
                                     const bool include_instances,
                                     const AttributeForeachCallback callback) const
@@ -723,62 +639,6 @@ void GeometrySet::gather_attributes_for_propagation(
   this->attribute_foreach(
       component_types,
       include_instances,
-      [&](const AttributeIDRef &attribute_id,
-          const AttributeMetaData &meta_data,
-          const GeometryComponent &component) {
-        if (component.attributes()->is_builtin(attribute_id)) {
-          if (!dummy_component->attributes()->is_builtin(attribute_id)) {
-            /* Don't propagate built-in attributes that are not built-in on the destination
-             * component. */
-            return;
-          }
-        }
-        if (meta_data.data_type == CD_PROP_STRING) {
-          /* Propagating string attributes is not supported yet. */
-          return;
-        }
-        if (attribute_id.is_anonymous() &&
-            !propagation_info.propagate(attribute_id.anonymous_id())) {
-          return;
-        }
-
-        AttrDomain domain = meta_data.domain;
-        if (dst_component_type != GeometryComponent::Type::Instance &&
-            domain == AttrDomain::Instance) {
-          domain = AttrDomain::Point;
-        }
-
-        auto add_info = [&](AttributeKind *attribute_kind) {
-          attribute_kind->domain = domain;
-          attribute_kind->data_type = meta_data.data_type;
-        };
-        auto modify_info = [&](AttributeKind *attribute_kind) {
-          attribute_kind->domain = bke::attribute_domain_highest_priority(
-              {attribute_kind->domain, domain});
-          attribute_kind->data_type = bke::attribute_data_type_highest_complexity(
-              {attribute_kind->data_type, meta_data.data_type});
-        };
-        r_attributes.add_or_modify(attribute_id, add_info, modify_info);
-      });
-}
-
-void GeometrySet::gather_attributes_for_propagation(
-    const Span<GeometryComponent::Type> component_types,
-    const GeometryComponent::Type dst_component_type,
-    const VArray<int> instance_depth,
-    const IndexMask selection,
-    const AnonymousAttributePropagationInfo &propagation_info,
-    Map<AttributeIDRef, AttributeKind> &r_attributes) const
-{
-  /* Only needed right now to check if an attribute is built-in on this component type.
-   * TODO: Get rid of the dummy component. */
-  const GeometryComponentPtr dummy_component = GeometryComponent::create(dst_component_type);
-  this->attribute_foreach(
-      component_types,
-      0,
-      -1,
-      instance_depth,
-      selection,
       [&](const AttributeIDRef &attribute_id,
           const AttributeMetaData &meta_data,
           const GeometryComponent &component) {
