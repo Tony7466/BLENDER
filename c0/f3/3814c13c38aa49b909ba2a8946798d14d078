@@ -1,2 +1,2 @@
 Referenced by issue #102611, No longer able to remove file output input sockets from python.
-Referenced by pull request #118807, Fix #103824: CompositorNodeOutputFile inputs.new() crash
+Referenced by pull request #118807, WIP: Fix #103824: CompositorNodeOutputFile inputs.new() crash
