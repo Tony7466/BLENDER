@@ -250,7 +250,7 @@ void RayTraceModule::sync()
     pass.bind_resources(inst_.hiz_buffer.front);
     pass.bind_resources(inst_.sampling);
     pass.bind_resources(inst_.gbuffer);
-    pass.dispatch(horizon_tracing_dispatch_buf_);
+    pass.dispatch(&tracing_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
   {
@@ -353,9 +353,16 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   if (use_horizon_scan) {
     downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
     downsampled_in_normal_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
+    /* TODO(fclem): Texture array in texture pool _or_ split this into many textures _or_ change
+     * data layout to be in 2D. */
+    horizon_radiance_tx_.ensure_2d_array(GPU_RGBA16F, tracing_res, 4, usage_rw);
 
     screen_radiance_front_tx_ = screen_radiance_front_tx;
     inst_.manager->submit(horizon_setup_ps_, render_view);
+    inst_.manager->submit(horizon_scan_ps_, render_view);
+  }
+  else {
+    horizon_radiance_tx_.free();
   }
 
   if (active_closures != CLOSURE_NONE) {
@@ -554,16 +561,8 @@ RayTraceResultTexture RayTraceModule::trace(
   denoise_variance_tx_.release();
 
   if (use_horizon_scan) {
-    horizon_radiance_tx_.ensure_2d_array(RAYTRACE_RADIANCE_FORMAT, tracing_res, 4, usage_rw);
-
-    inst_.manager->submit(horizon_scan_ps_, render_view);
-
     horizon_scan_output_tx_ = result.get();
-
     inst_.manager->submit(horizon_denoise_ps_, render_view);
-  }
-  else {
-    horizon_radiance_tx_.free();
   }
 
   DRW_stats_group_end();
