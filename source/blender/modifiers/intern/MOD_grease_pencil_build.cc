@@ -476,6 +476,7 @@ static float get_build_factor(const int time_mode,
 static void deform_drawing(const ModifierData &md,
                            const Object &ob,
                            bke::greasepencil::Drawing &drawing,
+                           bke::greasepencil::Drawing *previous_drawing,
                            const int current_time)
 {
   const auto &mmd = reinterpret_cast<const GreasePencilBuildModifierData &>(md);
@@ -488,6 +489,21 @@ static void deform_drawing(const ModifierData &md,
   IndexMaskMemory memory;
   IndexMask selection = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
+
+  /* Remove a count of #prev_strokes  */
+  if (mmd.mode == MOD_GREASE_PENCIL_BUILD_MODE_ADDITIVE && previous_drawing != nullptr) {
+    const bke::CurvesGeometry &prev_curves = drawing.strokes_for_write();
+    const int prev_strokes = prev_curves.curves_num();
+    const int added_strokes = curves.curves_num() - prev_strokes;
+    if (added_strokes > 0) {
+      Array<bool> work_on_select(curves.curves_num());
+      selection.to_bools(work_on_select.as_mutable_span());
+      for (const int i : IndexRange(prev_strokes)) {
+        work_on_select[i] = false;
+      }
+      selection.from_bools(work_on_select,memory);
+    }
+  }
 
   if (mmd.object) {
     const int curves_num = curves.curves_num();
@@ -584,7 +600,17 @@ static void modify_geometry_set(ModifierData *md,
   }
 
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    deform_drawing(*md, *ctx->object, *drawing, eval_frame);
+    const bke::greasepencil::Drawing *prev_drawing=nullptr;
+    //modifier::greasepencil::get_drawing_infos_by_layer(,)
+    //std::optional<bke::greasepencil::FramesMapKey> prev_key = layer.frame_key_at(frame_number - 1);
+    //if (prev_key.has_value()) {
+    //  const int prev_drawing_index = layer.frames().lookup(*prev_key).drawing_index;
+    //  GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(prev_drawing_index);
+    //  if (drawing_base->type == GP_DRAWING) {
+    //    prev_drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
+    //  }
+    //}
+    deform_drawing(*md, *ctx->object, *drawing, prev_drawing, eval_frame);
   });
 }
 
