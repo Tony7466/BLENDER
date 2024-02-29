@@ -97,7 +97,7 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
       ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Grease Pencil Outline Modifier");
 }
 
-/* Generate points in an arc between two points. */
+/* Generate points in an arc between two directions. */
 static void generate_arc_from_point_to_point(const float3 &from,
                                              const float3 &to,
                                              const float3 &center_pt,
@@ -112,70 +112,39 @@ static void generate_arc_from_point_to_point(const float3 &from,
     return;
   }
 
-  const float dot = math::dot(vec_from, vec_to);
+  const float dot = math::dot(vec_from.xy(), vec_to.xy());
   const float det = vec_from.x * vec_to.y - vec_from.y * vec_to.x;
-  const float angle = math::atan2(det, dot) + M_PI;
+  const float angle = math::atan2(det, dot);
 
   /* Number of points is 2^(n+1) + 1 on half a circle (n=subdivisions)
    * so we multiply by (angle / pi) to get the right amount of
    * points to insert. */
-  const int num_points = ((1 << (subdivisions + 1)) - 1) * (angle / M_PI);
-  if (num_points <= 0) {
-    return;
-  }
-
-  const float delta_angle = angle / float(num_points);
+  const int num_points = ((1 << (subdivisions + 1)) + 1) * (angle / M_PI);
+  BLI_assert(num_points >= 2);
+  const float delta_angle = angle / float(num_points - 1);
   const float delta_cos = math::cos(delta_angle);
   const float delta_sin = math::sin(delta_angle);
 
   float3 vec = vec_from;
-  for ([[maybe_unused]] const int i : IndexRange(num_points).drop_back(1)) {
+  for ([[maybe_unused]] const int i : IndexRange(num_points)) {
+    r_perimeter.append(center_pt + vec);
+    r_src_indices.append(src_point_index);
+
     const float x = delta_cos * vec.x - delta_sin * vec.y;
     const float y = delta_sin * vec.x + delta_cos * vec.y;
     vec = float3(x, y, 0.0f);
-
-    r_perimeter.append(center_pt + vec);
-    r_src_indices.append(src_point_index);
   }
 }
 
-static void generate_start_cap(const float3 &point,
-                               const float3 &tangent,
-                               const float radius,
-                               const int subdivisions,
-                               const eGPDstroke_Caps cap_type,
-                               const int src_point_index,
-                               Vector<float3> &r_perimeter,
-                               Vector<int> &r_src_indices)
-{
-  const float3 normal = {tangent.y, -tangent.x, 0.0f};
-  switch (cap_type) {
-    case GP_STROKE_CAP_ROUND:
-      generate_arc_from_point_to_point(point + normal * radius,
-                                       point - normal * radius,
-                                       point,
-                                       subdivisions,
-                                       src_point_index,
-                                       r_perimeter,
-                                       r_src_indices);
-      break;
-    case GP_STROKE_CAP_FLAT:
-      r_perimeter.append(point - normal * radius);
-      break;
-    case GP_STROKE_CAP_MAX:
-      BLI_assert_unreachable();
-      break;
-  }
-}
-
-static void generate_end_cap(const float3 &point,
-                             const float3 &tangent,
-                             const float radius,
-                             const int subdivisions,
-                             const eGPDstroke_Caps cap_type,
-                             const int src_point_index,
-                             Vector<float3> &r_perimeter,
-                             Vector<int> &r_src_indices)
+/* Generate a semi-circle around a point, opposite the direction. */
+static void generate_cap(const float3 &point,
+                         const float3 &tangent,
+                         const float radius,
+                         const int subdivisions,
+                         const eGPDstroke_Caps cap_type,
+                         const int src_point_index,
+                         Vector<float3> &r_perimeter,
+                         Vector<int> &r_src_indices)
 {
   const float3 normal = {tangent.y, -tangent.x, 0.0f};
   switch (cap_type) {
@@ -189,7 +158,7 @@ static void generate_end_cap(const float3 &point,
                                        r_src_indices);
       break;
     case GP_STROKE_CAP_FLAT:
-      r_perimeter.append(point - normal * radius);
+      r_perimeter.append(point + normal * radius);
       break;
     case GP_STROKE_CAP_MAX:
       BLI_assert_unreachable();
@@ -197,6 +166,8 @@ static void generate_end_cap(const float3 &point,
   }
 }
 
+/* Generate a corner between two segments, with a rounded outer perimeter.
+ * Note: radius can be negative or positive, making a left/right corner respectively. */
 static void generate_corner(const float3 &pt_a,
                             const float3 &pt_b,
                             const float3 &pt_c,
@@ -205,9 +176,9 @@ static void generate_corner(const float3 &pt_a,
                             Vector<float3> &r_perimeter,
                             Vector<int> &r_src_indices)
 {
-  const float3 tangent = pt_c - pt_b;
-  // const float3 tangent_prev = pt_b - pt_a;
-  const float3 normal = {tangent.y, -tangent.x, 0.0f};
+  const float3 tangent = math::normalize(pt_c - pt_b);
+  // const float3 tangent_prev = math::normalize(pt_b - pt_a);
+  const float3 normal = float3(tangent.y, -tangent.x, 0.0f);
   r_perimeter.append(pt_b + normal * radius);
   r_src_indices.append(src_point_index);
   UNUSED_VARS(pt_a);
@@ -222,56 +193,103 @@ static void generate_stroke_perimeter(const Span<float3> all_positions,
                                       const eGPDstroke_Caps end_cap_type,
                                       const float normal_offset,
                                       Vector<float3> &r_perimeter,
-                                      Vector<int> &r_src_indices)
+                                      Vector<int> &r_point_counts,
+                                      Vector<int> &r_point_indices)
 {
   const Span<float3> positions = all_positions.slice(points);
-
-  if (positions.size() < 2) {
+  const int point_num = points.size();
+  if (point_num < 2) {
     return;
   }
 
+  auto add_corner = [&](const int a, const int b, const int c) {
+    const int point = points[b];
+    const float3 pt_a = positions[a];
+    const float3 pt_b = positions[b];
+    const float3 pt_c = positions[c];
+    const float radius = all_radii[point];
+    generate_corner(pt_a, pt_b, pt_c, radius, point, r_perimeter, r_point_indices);
+  };
+
   if (is_cyclic) {
-    const float3 &pt_a = positions.last();
-    const float3 &pt_b = positions.first();
-    const float3 &pt_c = positions[1];
-    const float radius = all_radii[points.first()];
-    generate_corner(pt_a, pt_b, pt_c, radius, points.first(), r_perimeter, r_src_indices);
+    /* Cyclic curves have an inside and an outside perimeter. */
+
+    /* Left side perimeter. */
+    const int left_perimeter_start = r_perimeter.size();
+    add_corner(point_num - 1, 0, 1);
+    for (const int i : points.index_range().drop_front(1).drop_back(1)) {
+      add_corner(i - 1, i, i + 1);
+    }
+    add_corner(point_num - 2, point_num - 1, 0);
+    const int left_perimeter_count = r_perimeter.size() - left_perimeter_start;
+    if (left_perimeter_count > 0) {
+      r_point_counts.append(left_perimeter_count);
+    }
+
+    /* Right side perimeter. */
+    const int right_perimeter_start = r_perimeter.size();
+    add_corner(0, point_num - 1, point_num - 2);
+    for (const int i : points.index_range().drop_front(1).drop_back(1)) {
+      add_corner(point_num - i, point_num - i - 1, point_num - i - 2);
+    }
+    add_corner(1, 0, point_num - 1);
+    const int right_perimeter_count = r_perimeter.size() - right_perimeter_start;
+    if (right_perimeter_count > 0) {
+      r_point_counts.append(right_perimeter_count);
+    }
   }
   else {
-    const float3 &center = positions.first();
-    const float3 dir = math::normalize(positions[1] - center);
-    const float radius = all_radii[points.first()];
-    generate_start_cap(center,
-                       dir,
-                       radius,
-                       subdivisions,
-                       start_cap_type,
-                       points.first(),
-                       r_perimeter,
-                       r_src_indices);
-  }
-  for (const int i : positions.index_range().drop_front(1).drop_back(1)) {
-    r_perimeter.append(positions[i]);
-    r_src_indices.append(points[i]);
-    //   const float2 pt_a = positions[i - 1].xy();
-    //   const float2 pt_b = positions[i].xy();
-    //   const float2 pt_c = positions[i + 1].xy();
-    //   const float2 tangent = pt_c - pt_b;
-    //   const float2 tangent_prev = pt_b - pt_a;
-    //   const float2 normal = {tangent.y, -tangent.x};
-    //   r_perimeter.append(pt_b + normal * radius);
+    /* Open curves generate a start and end cap and a connecting stroke on either side. */
+    const int perimeter_start = r_perimeter.size();
+
+    /* Start cap. */
+    {
+      const float3 &center = positions.first();
+      const float3 dir = math::normalize(positions[1] - center);
+      const float radius = all_radii[points.first()];
+      generate_cap(center,
+                   dir,
+                   radius,
+                   subdivisions,
+                   start_cap_type,
+                   points.first(),
+                   r_perimeter,
+                   r_point_indices);
+    }
+
+    /* Left perimeter half. */
+    for (const int i : points.index_range().drop_front(1).drop_back(1)) {
+      add_corner(i - 1, i, i + 1);
+    }
+
+    /* End cap. */
+    {
+      const float3 &center = positions.last();
+      const float3 dir = math::normalize(positions[point_num - 2] - center);
+      const float radius = all_radii[points.last()];
+      generate_cap(center,
+                   dir,
+                   radius,
+                   subdivisions,
+                   end_cap_type,
+                   points.last(),
+                   r_perimeter,
+                   r_point_indices);
+    }
+
+    /* Right perimeter half. */
+    for (const int i : points.index_range().drop_front(1).drop_back(1)) {
+      add_corner(point_num - i, point_num - i - 1, point_num - i - 2);
+    }
+
+    /* Open curves have a single perimeter curve. */
+    const int perimeter_count = r_perimeter.size() - perimeter_start;
+    if (perimeter_count > 0) {
+      r_point_counts.append(perimeter_count);
+    }
   }
 
-  // for (const int i : positions.index_range().drop_front(1).drop_back(1)) {
-  //   const float2 pt_a = positions[i - 1].xy();
-  //   const float2 pt_b = positions[i].xy();
-  //   const float2 pt_c = positions[i + 1].xy();
-  //   const float2 tangent = pt_c - pt_b;
-  //   const float2 tangent_prev = pt_b - pt_a;
-  //   const float2 normal = {tangent.y, -tangent.x};
-  //   r_perimeter.append(pt_b + normal * radius);
-  // }
-  UNUSED_VARS(end_cap_type, normal_offset);
+  UNUSED_VARS(normal_offset);
 }
 
 struct PerimeterData {
@@ -316,6 +334,7 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
     PerimeterData &data = thread_data.local();
 
     const int prev_point_num = data.positions.size();
+    const int prev_curve_num = data.point_counts.size();
     const IndexRange points = src_curves.points_by_curve()[curve_i];
     const float normal_offset = 0.0f;
     generate_stroke_perimeter(view_positions,
@@ -327,6 +346,7 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
                               eGPDstroke_Caps(src_end_caps[curve_i]),
                               normal_offset,
                               data.positions,
+                              data.point_counts,
                               data.point_indices);
 
     /* Transform perimeter positions back into object space. */
@@ -334,10 +354,7 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
       pos = math::transform_point(viewinv, pos);
     }
 
-    if (data.positions.size() > prev_point_num) {
-      data.point_counts.append(data.positions.size() - prev_point_num);
-      data.curve_indices.append(curve_i);
-    }
+    data.curve_indices.append_n_times(curve_i, data.point_counts.size() - prev_curve_num);
   });
 
   int dst_curve_num = 0;
