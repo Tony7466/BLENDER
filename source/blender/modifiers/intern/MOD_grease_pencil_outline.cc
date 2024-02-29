@@ -8,6 +8,7 @@
 
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_range.hh"
+#include "BLI_math_matrix.hh"
 #include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -25,6 +26,8 @@
 #include "BKE_screen.hh"
 
 #include "BLO_read_write.hh"
+
+#include "DEG_depsgraph_query.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -275,6 +278,7 @@ struct PerimeterData {
 };
 
 static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawing &drawing,
+                                                 const float4x4 &viewmat,
                                                  const IndexMask &curves_mask,
                                                  const int subdivisions,
                                                  const float stroke_radius)
@@ -290,6 +294,15 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
   VArray<int8_t> src_end_caps = *src_attributes.lookup_or_default<int8_t>(
       "end_cap", bke::AttrDomain::Curve, GP_STROKE_CAP_ROUND);
 
+  /* Transform positions into view space. */
+  Array<float3> view_positions(src_positions.size());
+  threading::parallel_for(view_positions.index_range(), 4096, [&](const IndexRange range) {
+    for (const int i : range) {
+      view_positions[i] = math::transform_point(viewmat, src_positions[i]);
+    }
+  });
+
+  const float4x4 viewinv = math::invert(viewmat);
   threading::EnumerableThreadSpecific<PerimeterData> thread_data;
   curves_mask.foreach_index([&](const int64_t curve_i) {
     PerimeterData &data = thread_data.local();
@@ -297,7 +310,7 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
     const int prev_point_num = data.positions.size();
     const IndexRange points = src_curves.points_by_curve()[curve_i];
     const float normal_offset = 0.0f;
-    generate_stroke_perimeter(src_positions,
+    generate_stroke_perimeter(view_positions,
                               src_radii,
                               points,
                               subdivisions,
@@ -307,6 +320,12 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
                               normal_offset,
                               data.positions,
                               data.point_indices);
+
+    /* Transform perimeter positions back into object space. */
+    for (float3 &pos : data.positions) {
+      pos = math::transform_point(viewinv, pos);
+    }
+
     if (data.positions.size() > prev_point_num) {
       data.point_counts.append(data.positions.size() - prev_point_num);
       data.curve_indices.append(curve_i);
@@ -367,7 +386,8 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
 
 static void modify_drawing(const GreasePencilOutlineModifierData &omd,
                            const ModifierEvalContext &ctx,
-                           bke::greasepencil::Drawing &drawing)
+                           bke::greasepencil::Drawing &drawing,
+                           const float4x4 &viewmat)
 {
   if (drawing.strokes().curve_num == 0) {
     return;
@@ -380,7 +400,8 @@ static void modify_drawing(const GreasePencilOutlineModifierData &omd,
 
   /* Legacy thickness setting is diameter in pixels, divide by 2000 to get radius. */
   const float radius = omd.thickness * 0.0005f;
-  drawing.strokes_for_write() = create_curves_outline(drawing, curves_mask, omd.subdiv, radius);
+  drawing.strokes_for_write() = create_curves_outline(
+      drawing, viewmat, curves_mask, omd.subdiv, radius);
   drawing.tag_topology_changed();
 }
 
@@ -391,6 +412,12 @@ static void modify_geometry_set(ModifierData *md,
   using bke::greasepencil::Drawing;
 
   auto *omd = reinterpret_cast<GreasePencilOutlineModifierData *>(md);
+
+  const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
+  if (!scene->camera) {
+    return;
+  }
+  const float4x4 viewmat = math::invert(scene->camera->object_to_world());
 
   if (!geometry_set->has_grease_pencil()) {
     return;
@@ -404,8 +431,8 @@ static void modify_geometry_set(ModifierData *md,
 
   const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
       grease_pencil, layer_mask, frame);
-  threading::parallel_for_each(drawings,
-                               [&](Drawing *drawing) { modify_drawing(*omd, *ctx, *drawing); });
+  threading::parallel_for_each(
+      drawings, [&](Drawing *drawing) { modify_drawing(*omd, *ctx, *drawing, viewmat); });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
