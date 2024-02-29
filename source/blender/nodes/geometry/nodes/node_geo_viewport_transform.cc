@@ -25,7 +25,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
   const Object &self_object = *params.self_object();
   const RegionView3D &rv3d = *params.user_data()->call_data->operator_data->rv3d;
-  params.set_output("Viewport Transform", self_object.world_to_object() * float4x4(rv3d.viewmat));
+  params.set_output("Viewport Transform", float4x4(rv3d.persmat) * self_object.object_to_world());
   params.set_output("Orthographic", bool(rv3d.is_persp));
 }
 
