@@ -106,8 +106,8 @@ static void generate_arc_from_point_to_point(const float3 &from,
                                              Vector<float3> &r_perimeter,
                                              Vector<int> &r_src_indices)
 {
-  const float2 vec_from = from.xy() - center_pt.xy();
-  const float2 vec_to = to.xy() - center_pt.xy();
+  const float3 vec_from = from - center_pt;
+  const float3 vec_to = to - center_pt;
   if (math::is_zero(vec_from) || math::is_zero(vec_to)) {
     return;
   }
@@ -124,11 +124,17 @@ static void generate_arc_from_point_to_point(const float3 &from,
     return;
   }
 
-  const float2x2 rotation = math::from_rotation<float2x2>(angle / float(num_points));
-  float2 vec = vec_from;
+  const float delta_angle = angle / float(num_points);
+  const float delta_cos = math::cos(delta_angle);
+  const float delta_sin = math::sin(delta_angle);
+
+  float3 vec = vec_from;
   for ([[maybe_unused]] const int i : IndexRange(num_points).drop_back(1)) {
-    vec = rotation * vec;
-    r_perimeter.append_as(vec);
+    const float x = delta_cos * vec.x - delta_sin * vec.y;
+    const float y = delta_sin * vec.x + delta_cos * vec.y;
+    vec = float3(x, y, 0.0f);
+
+    r_perimeter.append(center_pt + vec);
     r_src_indices.append(src_point_index);
   }
 }
@@ -199,10 +205,10 @@ static void generate_corner(const float3 &pt_a,
                             Vector<float3> &r_perimeter,
                             Vector<int> &r_src_indices)
 {
-  const float2 tangent = pt_c.xy() - pt_b.xy();
-  // const float2 tangent_prev = pt_b.xy() - pt_a.xy();
-  const float2 normal = {tangent.y, -tangent.x};
-  r_perimeter.append(float3(pt_b.xy() + normal * radius));
+  const float3 tangent = pt_c - pt_b;
+  // const float3 tangent_prev = pt_b - pt_a;
+  const float3 normal = {tangent.y, -tangent.x, 0.0f};
+  r_perimeter.append(pt_b + normal * radius);
   r_src_indices.append(src_point_index);
   UNUSED_VARS(pt_a);
 }
@@ -244,15 +250,17 @@ static void generate_stroke_perimeter(const Span<float3> all_positions,
                        r_perimeter,
                        r_src_indices);
   }
-  // for (const int i : positions.index_range().drop_front(1).drop_back(1)) {
-  //   const float2 pt_a = positions[i - 1].xy();
-  //   const float2 pt_b = positions[i].xy();
-  //   const float2 pt_c = positions[i + 1].xy();
-  //   const float2 tangent = pt_c - pt_b;
-  //   const float2 tangent_prev = pt_b - pt_a;
-  //   const float2 normal = {tangent.y, -tangent.x};
-  //   r_perimeter.append(pt_b + normal * radius);
-  // }
+  for (const int i : positions.index_range().drop_front(1).drop_back(1)) {
+    r_perimeter.append(positions[i]);
+    r_src_indices.append(points[i]);
+    //   const float2 pt_a = positions[i - 1].xy();
+    //   const float2 pt_b = positions[i].xy();
+    //   const float2 pt_c = positions[i + 1].xy();
+    //   const float2 tangent = pt_c - pt_b;
+    //   const float2 tangent_prev = pt_b - pt_a;
+    //   const float2 normal = {tangent.y, -tangent.x};
+    //   r_perimeter.append(pt_b + normal * radius);
+  }
 
   // for (const int i : positions.index_range().drop_front(1).drop_back(1)) {
   //   const float2 pt_a = positions[i - 1].xy();
@@ -322,7 +330,7 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
                               data.point_indices);
 
     /* Transform perimeter positions back into object space. */
-    for (float3 &pos : data.positions) {
+    for (float3 &pos : data.positions.as_mutable_span().drop_front(prev_point_num)) {
       pos = math::transform_point(viewinv, pos);
     }
 
@@ -372,8 +380,12 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
   }
   offset_indices::accumulate_counts_to_offsets(dst_curves.offsets_for_write());
 
-  bke::gather_attributes(
-      src_attributes, bke::AttrDomain::Point, {}, {"radius"}, dst_point_map, dst_attributes);
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Point,
+                         {},
+                         {"position", "radius"},
+                         dst_point_map,
+                         dst_attributes);
   bke::gather_attributes(
       src_attributes, bke::AttrDomain::Curve, {}, {"cyclic"}, dst_curve_map, dst_attributes);
 
@@ -410,6 +422,8 @@ static void modify_geometry_set(ModifierData *md,
                                 bke::GeometrySet *geometry_set)
 {
   using bke::greasepencil::Drawing;
+  using bke::greasepencil::Layer;
+  using modifier::greasepencil::LayerDrawingInfo;
 
   auto *omd = reinterpret_cast<GreasePencilOutlineModifierData *>(md);
 
@@ -417,7 +431,7 @@ static void modify_geometry_set(ModifierData *md,
   if (!scene->camera) {
     return;
   }
-  const float4x4 viewmat = math::invert(scene->camera->object_to_world());
+  const float4x4 viewinv = scene->camera->world_to_object();
 
   if (!geometry_set->has_grease_pencil()) {
     return;
@@ -429,10 +443,13 @@ static void modify_geometry_set(ModifierData *md,
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       grease_pencil, omd->influence, mask_memory);
 
-  const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
+  const Vector<LayerDrawingInfo> drawings = modifier::greasepencil::get_drawing_infos_by_layer(
       grease_pencil, layer_mask, frame);
-  threading::parallel_for_each(
-      drawings, [&](Drawing *drawing) { modify_drawing(*omd, *ctx, *drawing, viewmat); });
+  threading::parallel_for_each(drawings, [&](const LayerDrawingInfo &info) {
+    const Layer &layer = *grease_pencil.layers()[info.layer_index];
+    const float4x4 viewmat = viewinv * layer.to_world_space(*ctx->object);
+    modify_drawing(*omd, *ctx, *info.drawing, viewmat);
+  });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
