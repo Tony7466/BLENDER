@@ -236,7 +236,12 @@ void memory_bandwidth_bound_task_impl(const FunctionRef<void()> function)
    * time which may be more compute intensive. */
   const int num_threads = 6;
   static tbb::task_arena arena{num_threads};
-  /* TODO: isolate hint? */
+
+  /* Make sure the lazy threading hints are send now, because they shouldn't be sind out of an
+   * isolated region. */
+  lazy_threading::send_hint();
+  lazy_threading::ReceiverIsolation isolation;
+
   arena.execute(function);
 #else
   function();
