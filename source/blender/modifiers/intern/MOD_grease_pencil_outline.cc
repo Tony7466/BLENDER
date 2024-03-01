@@ -31,6 +31,8 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#include "GEO_resample_curves.hh"
+
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
@@ -493,8 +495,16 @@ static void modify_drawing(const GreasePencilOutlineModifierData &omd,
                           BKE_object_material_index_get(ctx.object, omd.outline_material) :
                           -1);
 
-  drawing.strokes_for_write() = create_curves_outline(
+  bke::CurvesGeometry curves = create_curves_outline(
       drawing, viewmat, curves_mask, omd.subdiv, radius, mat_nr, keep_shape);
+
+  if (omd.sample_length > 0.0f) {
+    VArray<float> sample_lengths = VArray<float>::ForSingle(omd.sample_length,
+                                                            curves.curves_num());
+    curves = geometry::resample_to_length(curves, curves.curves_range(), sample_lengths);
+  }
+
+  drawing.strokes_for_write() = std::move(curves);
   drawing.tag_topology_changed();
 }
 
