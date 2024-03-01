@@ -29,6 +29,7 @@ set(SRC
   intern/format_bmp.cc
   intern/format_dds.cc
   intern/format_hdr.cc
+  intern/format_jxl.cc
   intern/format_png.cc
   intern/format_psd.cc
   intern/format_svg.cc

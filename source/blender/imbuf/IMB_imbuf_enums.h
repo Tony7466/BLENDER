@@ -43,6 +43,7 @@ enum eImbFileType {
 #ifdef WITH_WEBP
   IMB_FTYPE_WEBP = 14,
 #endif
+  IMB_FTYPE_JXL = 15,
 };
 
 typedef enum IMB_Timecode_Type {
