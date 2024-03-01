@@ -187,6 +187,7 @@ using VoidKeyword = Keyword<KeywordType::VOID>;
 using IfKeyword = Keyword<KeywordType::IF>;
 using IfDefKeyword = Keyword<KeywordType::IFDEF>;
 using IfnDefKeyword = Keyword<KeywordType::IFNDEF>;
+using ExternKeyword = Keyword<KeywordType::EXTERN>;
 using TypedefKeyword = Keyword<KeywordType::TYPEDEF>;
 using PragmaKeyword = Keyword<KeywordType::PRAGMA>;
 using OnceKeyword = Keyword<KeywordType::ONCE>;
@@ -581,7 +582,8 @@ struct Skip {
                                        Include,
                                        IfDefSection,
                                        Sequence<HashSymbol, PragmaKeyword, OnceKeyword>,
-                                       Sequence<HashSymbol, HashSymbol, Struct>>;
+                                       Sequence<HashSymbol, HashSymbol, Struct>,
+                                       Sequence<ExternKeyword, Variable>>;
     if (UnusedDeclarations::parse(cont).has_value()) {
       return Skip{};
     }

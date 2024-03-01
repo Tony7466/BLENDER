@@ -66,6 +66,7 @@ enum class KeywordType : int8_t {
   IFDEF,
   IFNDEF,
   ENDIF,
+  EXTERN,
   PRAGMA,
   ONCE,
   DNA_DEFINE_CXX_METHODS,
