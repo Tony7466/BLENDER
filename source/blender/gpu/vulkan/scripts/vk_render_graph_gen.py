@@ -1,3 +1,7 @@
+"""
+clear && /bin/python3 /home/jeroen/blender-git/blender/source/blender/gpu/vulkan/scripts/vk_render_graph_gen.py
+"""
+
 import xml.etree.ElementTree as ET
 
 
@@ -63,7 +67,7 @@ def generate_render_graph_commands_declaration(commands):
 
 def generate_command_buffer_wrapper_declaration(commands):
     result = ""
-    result += "class VKCommandBufferWrapper {\n"
+    result += "class VKCommandBufferWrapper: public VKRenderGraphCommandBuffer {\n"
     result += " public:\n"
     result += "  void begin_recording() override;\n"
     result += "  void end_recording() override;\n"
@@ -219,5 +223,5 @@ for enum_to_generate in ENUMS_TO_GENERATE:
 print(vk_render_graph_commands_hpp)
 print(vk_render_graph_commands_cpp)
 
-# print(vk_common_hpp)
-# print(vk_common_cpp)
+print(vk_common_hpp)
+print(vk_common_cpp)

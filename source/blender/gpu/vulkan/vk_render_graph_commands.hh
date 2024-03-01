@@ -35,6 +35,11 @@ class VKCommandBufferWrapper : public VKRenderGraphCommandBuffer {
  public:
   void begin_recording() override;
   void end_recording() override;
+  void clear_color_image(VkImage image,
+                         VkImageLayout image_layout,
+                         const VkClearColorValue *p_color,
+                         uint32_t range_count,
+                         const VkImageSubresourceRange *p_ranges) override;
   void pipeline_barrier(VkPipelineStageFlags src_stage_mask,
                         VkPipelineStageFlags dst_stage_mask,
                         VkDependencyFlags dependency_flags,
@@ -44,11 +49,6 @@ class VKCommandBufferWrapper : public VKRenderGraphCommandBuffer {
                         const VkBufferMemoryBarrier *p_buffer_memory_barriers,
                         uint32_t image_memory_barrier_count,
                         const VkImageMemoryBarrier *p_image_memory_barriers) override;
-  virtual void clear_color_image(VkImage image,
-                                 VkImageLayout image_layout,
-                                 const VkClearColorValue *p_color,
-                                 uint32_t range_count,
-                                 const VkImageSubresourceRange *p_ranges) override;
 };
 
 }  // namespace blender::gpu
