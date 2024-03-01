@@ -1812,6 +1812,7 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
 
       case eGpencilModifierType_Build:
         legacy_object_modifier_build(object, *gpd_md);
+        break;
       case eGpencilModifierType_Simplify:
       case eGpencilModifierType_Texture:
       case eGpencilModifierType_Lineart:
