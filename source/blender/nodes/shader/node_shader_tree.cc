@@ -164,7 +164,8 @@ static bool shader_node_tree_socket_type_valid(bNodeTreeType * /*ntreetype*/,
                                                                    SOCK_BOOLEAN,
                                                                    SOCK_VECTOR,
                                                                    SOCK_RGBA,
-                                                                   SOCK_SHADER);
+                                                                   SOCK_SHADER,
+                                                                   SOCK_STRING);
 }
 
 bNodeTreeType *ntreeType_Shader;
