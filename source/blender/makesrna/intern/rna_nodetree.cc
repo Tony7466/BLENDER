@@ -10362,7 +10362,7 @@ static void rna_def_node_link(BlenderRNA *brna)
   func = RNA_def_function(
       srna, "swap_multi_input_sort_id", "rna_NodeLink_swap_multi_input_sort_id");
   RNA_def_function_ui_description(
-      func, "Swaps the order of two links connected to the same multi-input socket");
+      func, "Swap the order of two links connected to the same multi-input socket");
   RNA_def_function_flag(func, FUNC_USE_SELF_ID | FUNC_USE_MAIN | FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func,
                          "other",
