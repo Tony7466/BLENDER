@@ -273,7 +273,7 @@ GPUIndexBuf *GPU_indexbuf_build_curves_on_device(GPUPrimType prim_type,
   int index_len = curves_num * dispatch_x_dim;
   /* Expects buffer's index_type to be GPU_INDEX_U32.
    * This will make buffer size multiple of 16 after multiplying by sizeof(uint32_t). */
-  int multiple_of_4 = (((index_len - 1) | 3) + 1);
+  int multiple_of_4 = max_ii(((index_len - 1) | 3) + 1, 4);
   GPUIndexBuf *ibo = GPU_indexbuf_build_on_device(multiple_of_4);
   int resolution;
   if (tris) {
