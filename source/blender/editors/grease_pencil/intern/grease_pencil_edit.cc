@@ -466,7 +466,7 @@ static int grease_pencil_stroke_split_exec(bContext *C, wmOperator * /*op*/)
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
 
   std::atomic<bool> changed = false;
-  const Array<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
+  const Vector<MutableDrawingInfo> drawings = retrieve_editable_drawings(*scene, grease_pencil);
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask mask = ed::greasepencil::retrieve_editable_and_selected_points(
