@@ -45,8 +45,8 @@
 #include "BLI_utildefines.h"
 #include BLI_SYSTEM_PID_H
 
-#include "BLO_readfile.h"
-#include "BLT_translation.h"
+#include "BLO_readfile.hh"
+#include "BLT_translation.hh"
 
 #include "BLF_api.hh"
 
@@ -64,12 +64,12 @@
 #include "BKE_addon.h"
 #include "BKE_appdir.hh"
 #include "BKE_autoexec.hh"
-#include "BKE_blender.h"
+#include "BKE_blender.hh"
 #include "BKE_blender_version.h"
 #include "BKE_blendfile.hh"
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.h"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
@@ -77,8 +77,8 @@
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
 #include "BKE_packedFile.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "BKE_sound.h"
 #include "BKE_undo_system.hh"
@@ -610,7 +610,7 @@ void WM_file_autoexec_init(const char *filepath)
 void wm_file_read_report(Main *bmain, wmWindow *win)
 {
   wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
-  ReportList *reports = &wm->reports;
+  ReportList *reports = &wm->runtime->reports;
   bool found = false;
   LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
     if (scene->r.engine[0] &&
@@ -1022,7 +1022,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
 
     BlendFileReadReport bf_reports{};
     bf_reports.reports = reports;
-    bf_reports.duration.whole = BLI_check_seconds_timer();
+    bf_reports.duration.whole = BLI_time_now_seconds();
     BlendFileData *bfd = BKE_blendfile_read(filepath, &params, &bf_reports);
     if (bfd != nullptr) {
       wm_file_read_pre(use_data, use_userdef);
@@ -1069,7 +1069,7 @@ bool WM_file_read(bContext *C, const char *filepath, ReportList *reports)
       read_file_post_params.is_alloc = false;
       wm_file_read_post(C, filepath, &read_file_post_params);
 
-      bf_reports.duration.whole = BLI_check_seconds_timer() - bf_reports.duration.whole;
+      bf_reports.duration.whole = BLI_time_now_seconds() - bf_reports.duration.whole;
       file_read_reports_finalize(&bf_reports);
 
       success = true;
@@ -2109,33 +2109,51 @@ static void wm_autosave_location(char filepath[FILE_MAX])
   BLI_path_join(filepath, FILE_MAX, tempdir_base, filename);
 }
 
-static void wm_autosave_write(Main *bmain, wmWindowManager *wm)
+static bool wm_autosave_write_try(Main *bmain, wmWindowManager *wm)
 {
   char filepath[FILE_MAX];
 
   wm_autosave_location(filepath);
 
-  /* Fast save of last undo-buffer, now with UI. */
-  const bool use_memfile = (U.uiflag & USER_GLOBALUNDO) != 0;
-  MemFile *memfile = use_memfile ? ED_undosys_stack_memfile_get_active(wm->undo_stack) : nullptr;
-  if (memfile != nullptr) {
-    BLO_memfile_write_file(memfile, filepath);
+  /* Technically, we could always just save here, but that would cause performance regressions
+   * compared to when the #MemFile undo step was used for saving undo-steps. So for now just skip
+   * auto-save when we are in a mode where auto-save wouldn't have worked previously anyway. This
+   * check can be removed once the performance regressions have been solved. */
+  if (ED_undosys_stack_memfile_get_if_active(wm->undo_stack) != nullptr) {
+    WM_autosave_write(wm, bmain);
+    return true;
   }
-  else {
-    if (use_memfile) {
-      /* This is very unlikely, alert developers of this unexpected case. */
-      CLOG_WARN(&LOG, "undo-data not found for writing, fallback to regular file write!");
-    }
-
-    /* Save as regular blend file with recovery information. */
-    const int fileflags = (G.fileflags & ~G_FILE_COMPRESS) | G_FILE_RECOVER_WRITE;
-
-    ED_editors_flush_edits(bmain);
-
-    /* Error reporting into console. */
-    BlendFileWriteParams params{};
-    BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
+  if ((U.uiflag & USER_GLOBALUNDO) == 0) {
+    WM_autosave_write(wm, bmain);
+    return true;
   }
+  /* Can't auto-save with MemFile right now, try again later. */
+  return false;
+}
+
+bool WM_autosave_is_scheduled(wmWindowManager *wm)
+{
+  return wm->autosave_scheduled;
+}
+
+void WM_autosave_write(wmWindowManager *wm, Main *bmain)
+{
+  ED_editors_flush_edits(bmain);
+
+  char filepath[FILE_MAX];
+  wm_autosave_location(filepath);
+  /* Save as regular blend file with recovery information. */
+  const int fileflags = (G.fileflags & ~G_FILE_COMPRESS) | G_FILE_RECOVER_WRITE;
+
+  /* Error reporting into console. */
+  BlendFileWriteParams params{};
+  BLO_write_file(bmain, filepath, fileflags, &params, nullptr);
+
+  /* Restart auto-save timer. */
+  wm_autosave_timer_end(wm);
+  wm_autosave_timer_begin(wm);
+
+  wm->autosave_scheduled = false;
 }
 
 static void wm_autosave_timer_begin_ex(wmWindowManager *wm, double timestep)
@@ -2183,8 +2201,10 @@ void wm_autosave_timer(Main *bmain, wmWindowManager *wm, wmTimer * /*wt*/)
     }
   }
 
-  wm_autosave_write(bmain, wm);
-
+  wm->autosave_scheduled = false;
+  if (!wm_autosave_write_try(bmain, wm)) {
+    wm->autosave_scheduled = true;
+  }
   /* Restart the timer after file write, just in case file write takes a long time. */
   wm_autosave_timer_begin(wm);
 }
@@ -3410,6 +3430,7 @@ static int wm_save_as_mainfile_exec(bContext *C, wmOperator *op)
      * often saving manually. */
     wm_autosave_timer_end(wm);
     wm_autosave_timer_begin(wm);
+    wm->autosave_scheduled = false;
   }
 
   if (!is_save_as && RNA_boolean_get(op->ptr, "exit")) {

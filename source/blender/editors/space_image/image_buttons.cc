@@ -17,13 +17,12 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_node.h"
-#include "BKE_scene.h"
+#include "BKE_node.hh"
 #include "BKE_screen.hh"
 
 #include "RE_pipeline.h"
@@ -32,7 +31,6 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
-#include "ED_gpencil_legacy.hh"
 #include "ED_image.hh"
 #include "ED_screen.hh"
 
@@ -90,8 +88,6 @@ static void ui_imageuser_slot_menu(bContext * /*C*/, uiLayout *layout, void *ima
               &image->render_slot,
               float(slot_id),
               0.0,
-              0,
-              -1,
               "");
   }
 
@@ -184,8 +180,6 @@ static void ui_imageuser_layer_menu(bContext * /*C*/, uiLayout *layout, void *rn
               &iuser->layer,
               0.0,
               0.0,
-              0,
-              -1,
               "");
   }
 
@@ -202,8 +196,6 @@ static void ui_imageuser_layer_menu(bContext * /*C*/, uiLayout *layout, void *rn
               &iuser->layer,
               float(nr),
               0.0,
-              0,
-              -1,
               "");
   }
 
@@ -278,8 +270,6 @@ static void ui_imageuser_pass_menu(bContext * /*C*/, uiLayout *layout, void *rnd
               &iuser->pass,
               float(nr),
               0.0,
-              0,
-              -1,
               "");
   }
 
@@ -357,8 +347,6 @@ static void ui_imageuser_view_menu_rr(bContext * /*C*/, uiLayout *layout, void *
               &iuser->view,
               float(nr),
               0.0,
-              0,
-              -1,
               "");
   }
 
@@ -407,8 +395,6 @@ static void ui_imageuser_view_menu_multiview(bContext * /*C*/, uiLayout *layout,
               &iuser->view,
               float(nr),
               0.0,
-              0,
-              -1,
               "");
   }
 }
