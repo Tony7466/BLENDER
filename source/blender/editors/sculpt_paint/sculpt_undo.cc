@@ -1050,12 +1050,6 @@ static void restore_list(bContext *C, Depsgraph *depsgraph, UndoSculpt &usculpt)
         *ss->pbvh, {}, [&](PBVHNode &node) { update_modified_node_mesh(node, data); });
   }
 
-  if (changed_color) {
-    /* Force a redraw to fix color update
-     when redo from initial state */
-    SCULPT_pbvh_clear(ob);
-  }
-
   if (changed_position) {
     bke::pbvh::update_bounds(*ss->pbvh, PBVH_UpdateBB | PBVH_UpdateOriginalBB | PBVH_UpdateRedraw);
   }
@@ -1750,6 +1744,7 @@ static void set_active_layer(bContext *C, SculptAttrRef *attr)
     mesh->attributes_for_write().add(
         attr->name, attr->domain, attr->type, bke::AttributeInitDefaultValue());
     layer = BKE_id_attribute_find(&mesh->id, attr->name, attr->type, attr->domain);
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
 
   if (layer) {
