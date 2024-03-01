@@ -856,8 +856,7 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 
   {
     LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
-      if (!brush->automasking_cavity_curve)
-      {
+      if (!brush->automasking_cavity_curve) {
         brush->automasking_cavity_curve = BKE_sculpt_default_cavity_curve();
       }
     }
