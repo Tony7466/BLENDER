@@ -202,9 +202,9 @@ HorizonScanResult horizon_scan_eval(vec3 vP,
         /* Take emitter surface normal into consideration. */
         vec3 sample_normal = horizon_scan_sample_normal(sample_uv);
         /* Discard back-facing samples.
-         * The 2 factor is to match cycles and avoid loosing energy (which is something not
-         * explained in the paper...). */
-        float facing_weight = saturate(-dot(sample_normal, vL_front)) * 2.0;
+         * The 2 factor is to avoid loosing too much energy (which is something not
+         * explained in the paper...). Likely to be wrong, but we need a soft falloff. */
+        float facing_weight = saturate(-dot(sample_normal, vL_front) * 2.0);
 
         float sample_weight = facing_weight * bsdf_lambert(vN, vL_front);
 
