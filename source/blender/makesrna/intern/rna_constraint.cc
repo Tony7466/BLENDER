@@ -2638,36 +2638,42 @@ static void rna_def_constraint_rotation_limit(BlenderRNA *brna)
   prop = RNA_def_property(srna, "min_x", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "xmin");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Minimum X", "Lower X angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "min_y", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "ymin");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Minimum Y", "Lower Y angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "min_z", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "zmin");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Minimum Z", "Lower Z angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "max_x", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "xmax");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Maximum X", "Higher X angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "max_y", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "ymax");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Maximum Y", "Higher Y angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
   prop = RNA_def_property(srna, "max_z", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "zmax");
   RNA_def_property_range(prop, -1000.0, 1000.0f);
+  RNA_def_property_ui_range(prop, -2 * M_PI, 2 * M_PI, 10.0f, 1.0f);
   RNA_def_property_ui_text(prop, "Maximum Z", "Higher Z angle bound");
   RNA_def_property_update(prop, NC_OBJECT | ND_CONSTRAINT, "rna_Constraint_update");
 
