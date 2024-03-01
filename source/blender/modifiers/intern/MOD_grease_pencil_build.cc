@@ -519,12 +519,12 @@ static float get_build_factor(const int time_mode,
   }
 }
 
-static void deform_drawing(const ModifierData &md,
-                           const Object &ob,
-                           bke::greasepencil::Drawing &drawing,
-                           const bke::greasepencil::Drawing *previous_drawing,
-                           const int current_time,
-                           const float scene_fps)
+static void build_drawing(const ModifierData &md,
+                          const Object &ob,
+                          bke::greasepencil::Drawing &drawing,
+                          const bke::greasepencil::Drawing *previous_drawing,
+                          const int current_time,
+                          const float scene_fps)
 {
   const auto &mmd = reinterpret_cast<const GreasePencilBuildModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
@@ -666,7 +666,7 @@ static void modify_geometry_set(ModifierData *md,
     //     prev_drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
     //   }
     // }
-    deform_drawing(*md, *ctx->object, *drawing, prev_drawing, eval_frame, scene_fps);
+    build_drawing(*md, *ctx->object, *drawing, prev_drawing, eval_frame, scene_fps);
   });
 }
 
@@ -677,8 +677,8 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
 
-  const int mode = RNA_enum_get(ptr, "mode");
-  int time_mode = RNA_enum_get(ptr, "time_mode");
+  const GreasePencilBuildMode mode = GreasePencilBuildMode(RNA_enum_get(ptr, "mode"));
+  GreasePencilBuildTimeMode time_mode = GreasePencilBuildTimeMode(RNA_enum_get(ptr, "time_mode"));
 
   uiLayoutSetPropSep(layout, true);
 
