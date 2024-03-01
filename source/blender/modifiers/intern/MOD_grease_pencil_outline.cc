@@ -464,9 +464,13 @@ static void modify_drawing(const GreasePencilOutlineModifierData &omd,
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, drawing.strokes(), omd.influence, curve_mask_memory);
 
+  /* Unit object scale is applied to the stroke radius. */
+  const float object_scale = math::length(
+      math::transform_direction(ctx.object->object_to_world(), float3(M_SQRT1_3)));
   /* Legacy thickness setting is diameter in pixels, divide by 2000 to get radius. */
-  const float radius = omd.thickness * 0.0005f;
+  const float radius = math::max(omd.thickness * object_scale, 1.0f) * 0.0005f;
   const bool keep_shape = omd.flag & MOD_GREASE_PENCIL_OUTLINE_KEEP_SHAPE;
+
   drawing.strokes_for_write() = create_curves_outline(
       drawing, viewmat, curves_mask, omd.subdiv, radius, keep_shape);
   drawing.tag_topology_changed();
