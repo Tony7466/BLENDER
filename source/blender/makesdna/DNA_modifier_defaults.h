@@ -1005,6 +1005,17 @@
     .segment_repeat = 1, \
   }
 
+#define _DNA_DEFAULT_GreasePencilEnvelopeModifierData \
+  { \
+    .spread = 10, \
+    .mode = MOD_GREASE_PENCIL_ENVELOPE_SEGMENTS, \
+    .mat_nr = -1, \
+    .thickness = 1.0f, \
+    .strength = 1.0f, \
+    .skip = 0, \
+  }
+
+
 #define _DNA_DEFAULT_GreasePencilArmatureModifierData \
   { \
     .deformflag = ARM_DEF_VGROUP, \
@@ -1028,5 +1039,5 @@
     .speed_maxgap = 0.5f, \
     .percentage_fac = 0.0f, \
   }
-
+  
 /* clang-format off */
