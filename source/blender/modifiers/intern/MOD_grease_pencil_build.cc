@@ -459,7 +459,9 @@ static bke::CurvesGeometry reorder_strokes(const bke::CurvesGeometry &curves,
 }
 
 static float get_factor_from_draw_speed(const bke::CurvesGeometry &curves,
-                                        const float time_elapsed)
+                                        const float time_elapsed,
+                                        const float speed_fac,
+                                        const float max_gap)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   Array<float> times(curves.points_num());
@@ -473,7 +475,7 @@ static float get_factor_from_draw_speed(const bke::CurvesGeometry &curves,
   float previous_init_time = init_times.varray[0];
   for (const int i : IndexRange(curves.curves_num())) {
     if (i > 0) {
-      current_time += init_times.varray[i] - previous_init_time;
+      current_time += math::max(init_times.varray[i] - previous_init_time, max_gap);
       previous_init_time = init_times.varray[i];
     }
     for (const int p : points_by_curve[i].index_range()) {
@@ -483,7 +485,8 @@ static float get_factor_from_draw_speed(const bke::CurvesGeometry &curves,
     }
   }
   for (const int p : curves.points_range()) {
-    if (times[p] >= time_elapsed) {
+    const float limit = time_elapsed * speed_fac;
+    if (times[p] >= limit) {
       return math::clamp(float(p) / float(curves.points_num()), 0.0f, 1.0f);
     }
   }
@@ -497,6 +500,8 @@ static float get_build_factor(const int time_mode,
                               const float percentage,
                               const bke::CurvesGeometry &curves,
                               const float scene_fps,
+                              const float speed_fac,
+                              const float max_gap,
                               const float fade)
 {
 
@@ -506,7 +511,9 @@ static float get_build_factor(const int time_mode,
     case MOD_GREASE_PENCIL_BUILD_TIMEMODE_PERCENTAGE:
       return percentage * (1.0f + fade);
     case MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED:
-      return get_factor_from_draw_speed(curves, float(current_frame) / scene_fps) * (1.0f + fade);
+      return get_factor_from_draw_speed(
+                 curves, float(current_frame) / scene_fps, speed_fac, max_gap) *
+             (1.0f + fade);
     default:
       return 0;
   }
@@ -563,6 +570,8 @@ static void deform_drawing(const ModifierData &md,
                                   mmd.percentage_fac,
                                   curves,
                                   scene_fps,
+                                  mmd.speed_fac,
+                                  mmd.speed_maxgap,
                                   fade_factor);
   float factor_start = factor - fade_factor;
   if (mmd.transition != MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW) {
