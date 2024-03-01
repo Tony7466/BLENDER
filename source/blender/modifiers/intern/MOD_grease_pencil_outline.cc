@@ -108,6 +108,16 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
       ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Grease Pencil Outline Modifier");
 }
 
+/* Utility functions based on gather_attributes_group_to_group.
+ * This allows "rotating" groups of elements, moving some elements from
+ * the head to the tail. This is used to change the starting point of curve,
+ * without changing the curves themselves.
+ *
+ * gather_attributes_group_to_group cannot be used directly for this purpose
+ * because it uses OffsetIndices for both source and destination.
+ * These have to be ordered, so for swapping elements either the source or
+ * destination indices would be invalid.
+ */
 namespace array_utils {
 
 template<typename T>
@@ -119,16 +129,25 @@ inline void rotate_group_to_group(const OffsetIndices<int> src_offsets,
 {
   selection.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
     const IndexRange range = src_offsets[src_i];
+    if (range.size() < 2) {
+      dst.slice(range).copy_from(src.slice(range));
+      return;
+    }
     const int shift_raw = dst_shifts[dst_i];
     const int shift = shift_raw >= 0 ? shift_raw % range.size() :
                                        range.size() - ((-shift_raw) % range.size());
     BLI_assert(0 <= shift && shift < range.size());
-    const IndexRange src_front = range.take_front(shift);
-    const IndexRange src_back = range.drop_front(shift);
-    const IndexRange dst_front = range.drop_back(shift);
-    const IndexRange dst_back = range.take_back(shift);
-    dst.slice(dst_front).copy_from(src.slice(src_back));
-    dst.slice(dst_back).copy_from(src.slice(src_front));
+    if (shift == 0) {
+      dst.slice(range).copy_from(src.slice(range));
+      return;
+    }
+
+    if (dst.data() == src.data()) {
+      std::rotate(dst.begin(), dst.begin() + shift, dst.end());
+    }
+    else {
+      std::rotate_copy(src.begin(), src.begin() + shift, src.end(), dst.begin());
+    }
   });
 }
 
@@ -192,30 +211,9 @@ static void reorder_cyclic_curve_points(bke::CurvesGeometry &curves,
                                         const Span<int> curve_offsets)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  // const VArray<bool> is_cyclic = *attributes.lookup_or_default(
-  //     "cyclic", bke::AttrDomain::Curve, false);
 
   BLI_assert(curve_offsets.size() == curves.curves_num());
 
-  // index_mask.foreach_index([&](const int64_t curve_i) {
-  //   const IndexRange points = curves.points_by_curve()[curve_i];
-  //   /* Only cyclic curves support reordering. */
-  //   const int offset = is_cyclic[curve_i] ? point_offsets_by_curve[curve_i] : 0;
-  //   BLI_assert(offset >= 0 && offset <= points.size());
-  //   std::cout << "Curve " << curve_i << " offset " << offset << std::endl;
-
-  //   // MutableSpan<int> src_indices_front = src_indices.as_mutable_span().slice(points.first(),
-  //   //                                                                          offset);
-  //   // MutableSpan<int> src_indices_back = src_indices.as_mutable_span().slice(
-  //   //     points.first() + offset, points.size() - offset);
-  //   // std::cout << "  front=" << IndexRange(points.first(), offset)
-  //   //           << " back=" << IndexRange(points.first() + offset, points.size() - offset)
-  //   //           << std::endl;
-  //   // array_utils::fill_index_range<int>(src_indices_front, points.last() - offset);
-  //   // array_utils::fill_index_range<int>(src_indices_back, points.first());
-  // });
-
-  // bke::gather_attributes(attributes, bke::AttrDomain::Point, {}, {}, src_indices, attributes);
   rotate_attributes_group_to_group(attributes,
                                    bke::AttrDomain::Point,
                                    {},
