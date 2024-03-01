@@ -19,61 +19,43 @@ namespace ast {
 using namespace lex;
 
 /* Constant int defined value. */
-struct ConstInt {
+struct DefineInt {
   std::string_view name;
   int32_t value{0};
 
-  static std::optional<ConstInt> parse(TokenIterator &cont);
-
-  bool operator==(const ConstInt &other) const
-  {
-    return name == other.name && value == other.value;
-  }
+  static std::optional<DefineInt> parse(TokenIterator &cont);
+  bool operator==(const DefineInt &other) const;
 };
 
 /**
- * Variable declaration, for convenience defined as type group since multiple variables can be
- * defined in a single line, accepts followings declarations:
+ * Variable declaration, allows multiple inline declarations:
  * `int value;`
  * `int value[256][DEFINE_VALUE];`
  * `float value1,value2[256][256];`
  */
-
 struct Variable {
   struct Item {
-    /** Pointer specification is owned by each item. */
     std::optional<std::string> ptr;
     std::string_view name;
-    using Size = std::variant<std::string_view, int32_t>;
     /** Item array size definition, empty for not arrays items. */
-    Vector<Size> size;
-    bool operator==(const Item &other) const
-    {
-      return ptr == other.ptr && name == other.name && size == other.size;
-    }
+    Vector<std::variant<std::string_view, int32_t>> size;
+    bool operator==(const Item &other) const;
   };
   bool const_tag{false};
-  /** Shared type for variables declaration. */
   std::string_view type;
   Vector<Item> items;
-  bool operator==(const Variable &other) const
-  {
-    return type == other.type && items == other.items;
-  }
+
+  bool operator==(const Variable &other) const;
   static std::optional<Variable> parse(TokenIterator &cont);
 };
 
 /* Function pointer declaration. */
 struct FunctionPtr {
-
   bool const_tag{false};
   std::string_view type;
   std::string_view name;
-  Vector<Variable> params;
-  bool operator==(const FunctionPtr &other) const
-  {
-    return type == other.type && name == other.name && params == other.params;
-  }
+
+  bool operator==(const FunctionPtr &other) const;
   static std::optional<FunctionPtr> parse(TokenIterator &cont);
 };
 
@@ -81,11 +63,9 @@ struct FunctionPtr {
 struct Struct {
   std::string_view name;
   Vector<std::variant<Variable, FunctionPtr>> items;
-  bool operator==(const Struct &other) const
-  {
-    return name == other.name && items == other.items;
-  }
+
   static std::optional<Struct> parse(TokenIterator &cont);
+  bool operator==(const Struct &other) const;
 };
 
 /* Enum declaration. */
@@ -94,14 +74,11 @@ struct Enum {
   std::optional<std::string_view> name;
   /** Fixed type specification. */
   std::optional<std::string_view> type;
-  bool operator==(const Enum &other) const
-  {
-    return name == other.name && type == other.type;
-  }
+  bool operator==(const Enum &other) const;
   static std::optional<Enum> parse(TokenIterator &cont);
 };
 
-using CppType = std::variant<ConstInt, Enum, Struct, FunctionPtr, Variable>;
+using CppType = std::variant<DefineInt, Enum, Struct, FunctionPtr, Variable>;
 
 }  // namespace ast
 

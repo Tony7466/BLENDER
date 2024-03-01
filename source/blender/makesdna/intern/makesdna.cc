@@ -714,6 +714,10 @@ static int convert_include(const char *filepath)
     fprintf(stderr, "Can't read file %s\n", filepath);
     return 1;
   }
+  blender::dna::lex::TokenIterator iterator;
+  iterator.process_text(filepath, std::string_view{maindata, size_t(maindata_len)});
+   blender::Vector<blender::dna::parser::ast::CppType> c;
+  blender::dna::parser::parse_include(filepath,std::string_view{maindata, size_t(maindata_len)}, iterator, c);
   //   blender::Vector<blender::dna::parser::ast::CppType> c;
   //   blender::dna::parser::parse_include(maindata, filepath, c);
   maindata_len = preprocess_include(maindata, maindata_len);

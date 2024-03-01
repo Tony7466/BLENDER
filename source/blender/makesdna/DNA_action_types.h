@@ -24,7 +24,7 @@ struct Collection;
 struct GHash;
 struct Object;
 struct SpaceLink;
-
+ 
 /* ************************************************ */
 /* Visualization */
 
@@ -51,6 +51,9 @@ typedef enum eMotionPathVert_Flag {
 /* Motion Path data cache (mpath)
  * - for elements providing transforms (i.e. Objects or PoseChannels)
  */
+
+#define ASDASD
+
 typedef struct bMotionPath {
   /** Path samples. */
   bMotionPathVert *points;

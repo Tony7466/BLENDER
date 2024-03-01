@@ -41,35 +41,12 @@ struct StructMemberPrinter {
     if (fn.const_tag) {
       std::cout << "const ";
     }
-    std::cout << fn.type << " *(*" << fn.name << ")(";
-    for (ast::Variable &var : fn.params) {
-      if (var.const_tag) {
-        std::cout << "const " << var.type << " ";
-      }
-      else {
-        std::cout << var.type << " ";
-      }
-      const bool is_last = &fn.params.last() != &var;
-
-      std::cout << var.items[0].ptr.value_or("") << var.items[0].name;
-      for (auto &size : var.items[0].size) {
-        if (std::holds_alternative<std::string_view>(size)) {
-          std::cout << "[" << std::get<std::string_view>(size) << "]";
-        }
-        else {
-          std::cout << "[" << std::get<int32_t>(size) << "]";
-        }
-      }
-      if (is_last) {
-        std::cout << ",";
-      }
-    }
-    std::cout << ")";
+    std::cout << fn.type << " *(*" << fn.name << ")(...);";
   }
 };
 
 struct ParserDebugPrinter {
-  void operator()(ast::ConstInt &val) const
+  void operator()(ast::DefineInt &val) const
   {
     std::cout << "#define " << val.name << " " << val.value << "\n";
   }
@@ -125,10 +102,7 @@ template<class... Args> struct Sequence : public std::tuple<Args...> {
   template<std::size_t... I>
   static inline bool parse_impl(std::index_sequence<I...>, TokenIterator &cont, Sequence &sequence)
   {
-    if ((parse_type<I, Args>(cont, sequence) && ...)) {
-      return true;
-    };
-    return false;
+    return (parse_type<I, Args>(cont, sequence) && ...);
   };
 
  public:
@@ -136,11 +110,11 @@ template<class... Args> struct Sequence : public std::tuple<Args...> {
   {
     cont.push_waypoint();
     Sequence sequence;
-    if (parse_impl(std::make_index_sequence<sizeof...(Args)>{}, cont, sequence)) {
-      cont.end_waypoint(true);
+    const bool success = parse_impl(std::make_index_sequence<sizeof...(Args)>{}, cont, sequence);
+    cont.end_waypoint(success);
+    if (success) {
       return sequence;
     }
-    cont.end_waypoint(false);
     return std::nullopt;
   }
 };
@@ -181,22 +155,10 @@ template<class... Args> struct Variant : public std::variant<Args...> {
   }
 };
 
-static bool parse_keyword(TokenIterator &cont, KeywordType keyword_type)
-{
-  KeywordToken *keyword = cont.next<KeywordToken>();
-  if (keyword && keyword->type == keyword_type) {
-    return true;
-  }
-  else if (keyword) {
-    cont.step_back();
-  }
-  return false;
-}
-
-template<KeywordType keyword> struct Keyword {
+template<KeywordType Type> struct Keyword {
   static std::optional<Keyword> parse(TokenIterator &cont)
   {
-    if (parse_keyword(cont, keyword)) {
+    if (cont.next_keyword(Type)) {
       return Keyword{};
     }
     return std::nullopt;
@@ -205,16 +167,26 @@ template<KeywordType keyword> struct Keyword {
 
 using ConstKeyword = Keyword<KeywordType::CONST>;
 using IncludeKeyword = Keyword<KeywordType::INCLUDE>;
-using UnsignedKeyword = Keyword<KeywordType::UNSIGNED>;
 using StructKeyword = Keyword<KeywordType::STRUCT>;
 using DefineKeyword = Keyword<KeywordType::DEFINE>;
+using UnsignedKeyword = Keyword<KeywordType::UNSIGNED>;
 using IntKeyword = Keyword<KeywordType::INT>;
+using Int8Keyword = Keyword<KeywordType::INT8_T>;
+using Int16Keyword = Keyword<KeywordType::INT16_T>;
+using Int32Keyword = Keyword<KeywordType::INT32_T>;
+using Int64Keyword = Keyword<KeywordType::INT64_T>;
+using UInt8Keyword = Keyword<KeywordType::UINT8_T>;
+using UInt16Keyword = Keyword<KeywordType::UINT16_T>;
+using UInt32Keyword = Keyword<KeywordType::UINT32_T>;
+using UInt64Keyword = Keyword<KeywordType::UINT64_T>;
 using FloatKeyword = Keyword<KeywordType::FLOAT>;
-using VoidKeyword = Keyword<KeywordType::VOID>;
+using DoubleKeyword = Keyword<KeywordType::DOUBLE>;
 using ShortKeyword = Keyword<KeywordType::SHORT>;
 using CharKeyword = Keyword<KeywordType::CHAR>;
+using VoidKeyword = Keyword<KeywordType::VOID>;
 using IfKeyword = Keyword<KeywordType::IF>;
 using IfDefKeyword = Keyword<KeywordType::IFDEF>;
+using IfnDefKeyword = Keyword<KeywordType::IFNDEF>;
 using TypedefKeyword = Keyword<KeywordType::TYPEDEF>;
 using PragmaKeyword = Keyword<KeywordType::PRAGMA>;
 using OnceKeyword = Keyword<KeywordType::ONCE>;
@@ -224,25 +196,13 @@ using DNA_DEF_CCXKeyword = Keyword<KeywordType::DNA_DEFINE_CXX_METHODS>;
 using DNADepecratedKeyword = Keyword<KeywordType::DNA_DEPRECATED>;
 using EnumOperatorsKeyword = Keyword<KeywordType::ENUM_OPERATORS>;
 
-static bool parse_symbol(TokenIterator &cont, SymbolType symbol_type)
-{
-  SymbolToken *symbol = cont.next<SymbolToken>();
-  if (symbol && symbol->type == symbol_type) {
-    return true;
-  }
-  else if (symbol) {
-    cont.step_back();
-  }
-  return false;
-}
-
-template<SymbolType symbol> struct Symbol {
+template<SymbolType type> struct Symbol {
   static std::optional<Symbol> parse(TokenIterator &cont)
   {
-    if (parse_symbol(cont, symbol)) {
+    if (cont.next_symbol(type)) {
       return Symbol{};
     }
-    return {};
+    return std::nullopt;
   }
 };
 
@@ -290,6 +250,7 @@ struct Include {
     if (Sequence<HashSymbol, IncludeKeyword>::parse(cont).has_value()) {
       TokenVariant *token = cont.next_variant();
       while (token && !std::holds_alternative<BreakLineToken>(*token)) {
+        token = cont.next_variant();
       }
       return Include{};
     }
@@ -303,15 +264,13 @@ struct Define {
     if (!Sequence<HashSymbol, DefineKeyword>::parse(cont)) {
       return std::nullopt;
     }
-    TokenVariant *carried = cont.next_variant();
-    for (TokenVariant *current = carried; current; current = cont.next_variant()) {
-      if (std::holds_alternative<BreakLineToken>(*current) &&
-          !(std::holds_alternative<SymbolToken>(*carried) &&
-            std::get<SymbolToken>(*carried).type == SymbolType::BACKSLASH))
-      {
+    bool scape_bl = false;
+    for (TokenVariant *token = cont.next_variant(); token; token = cont.next_variant()) {
+      if (std::holds_alternative<BreakLineToken>(*token) && !scape_bl) {
         break;
       }
-      carried = current;
+      scape_bl = std::holds_alternative<SymbolToken>(*token) &&
+                 std::get<SymbolToken>(*token).type == SymbolType::BACKSLASH;
     }
     return Define{};
   }
@@ -328,14 +287,19 @@ struct IntLiteral {
   }
 };
 
-std::optional<ConstInt> ConstInt::parse(TokenIterator &cont)
+std::optional<DefineInt> DefineInt::parse(TokenIterator &cont)
 {
   using DefineConstIntSeq = Sequence<HashSymbol, DefineKeyword, Identifier, IntLiteral>;
   std::optional<DefineConstIntSeq> val = DefineConstIntSeq::parse(cont);
   if (!val.has_value() || !cont.next<BreakLineToken>()) {
     return std::nullopt;
   }
-  return ConstInt{std::get<2>(val.value()).str, std::get<3>(val.value()).value};
+  return DefineInt{std::get<2>(val.value()).str, std::get<3>(val.value()).value};
+}
+
+bool DefineInt::operator==(const DefineInt &other) const
+{
+  return name == other.name && value == other.value;
 }
 
 struct PrimitiveType {
@@ -345,33 +309,46 @@ struct PrimitiveType {
     /* TODO: Add all primitive types. */
     using PrimitiveTypeVariants = Variant<IntKeyword,
                                           CharKeyword,
-                                          Sequence<UnsignedKeyword, IntKeyword>,
+                                          ShortKeyword,
                                           FloatKeyword,
+                                          DoubleKeyword,
                                           VoidKeyword,
-                                          ShortKeyword>;
+                                          Sequence<UnsignedKeyword, IntKeyword>,
+                                          Sequence<UnsignedKeyword, ShortKeyword>,
+                                          Sequence<UnsignedKeyword, CharKeyword>,
+                                          Int8Keyword,
+                                          Int16Keyword,
+                                          Int32Keyword,
+                                          Int64Keyword,
+                                          UInt8Keyword,
+                                          UInt16Keyword,
+                                          UInt32Keyword,
+                                          UInt64Keyword>;
     std::optional<PrimitiveTypeVariants> type = PrimitiveTypeVariants::parse(cont);
     if (!type.has_value()) {
       return std::nullopt;
     }
-    switch (type.value().index()) {
-      case 0:
-        return PrimitiveType{std::string_view{"int"}};
-      case 1:
-        return PrimitiveType{std::string_view{"char"}};
-      case 2:
-        return PrimitiveType{std::string_view{"unsigned int"}};
-      case 3:
-        return PrimitiveType{std::string_view{"float"}};
-      case 4:
-        return PrimitiveType{std::string_view{"void"}};
-      case 5:
-        return PrimitiveType{std::string_view{"short"}};
-      case 6:
-        return PrimitiveType{std::string_view{"char"}};
-      default:
-        break;
-    }
-    return std::nullopt;
+    /* Use `unsigned int` as uint32?.... */
+    static constexpr std::string_view primitive_types[]{
+        "int",
+        "char",
+        "short",
+        "float",
+        "double",
+        "void",
+        "unsigned int",
+        "unsigned short",
+        "unsigned char",
+        "int8_t",
+        "int16_t",
+        "int32_t",
+        "int64_t",
+        "uint8_t",
+        "uint16_t",
+        "uint32_t",
+        "uint64_t",
+    };
+    return PrimitiveType{primitive_types[type.value().index()]};
   }
 };
 
@@ -419,16 +396,15 @@ static Vector<std::variant<std::string_view, int32_t>> variable_size_array_part(
   return result;
 }
 
-template<bool stop_at_first = false>
-std::optional<Variable> parse_variable_impl(TokenIterator &cont)
+std::optional<Variable> Variable::parse(TokenIterator &cont)
 {
   const std::optional<TypeOrStruct> type{TypeOrStruct::parse(cont)};
   if (!type) {
     return std::nullopt;
   }
-  Variable var;
-  var.const_tag = type.value().const_tag;
-  var.type = type.value().str;
+  Variable variable;
+  variable.const_tag = type.value().const_tag;
+  variable.type = type.value().str;
 
   while (true) {
     std::string start = "";
@@ -439,15 +415,12 @@ std::optional<Variable> parse_variable_impl(TokenIterator &cont)
     if (!name.has_value()) {
       return std::nullopt;
     }
-    var.items.append({});
-    Variable::Item &item = var.items.last();
+    Variable::Item item{};
     item.ptr = !start.empty() ? std::optional{start} : std::nullopt;
     item.name = name.value().str;
     item.size = variable_size_array_part(cont);
+    variable.items.append(std::move(item));
     DNADepecratedKeyword::parse(cont);
-    if constexpr (stop_at_first) {
-      break;
-    }
     if (SemicolonSymbol::parse(cont).has_value()) {
       break;
     }
@@ -455,13 +428,39 @@ std::optional<Variable> parse_variable_impl(TokenIterator &cont)
       return std::nullopt;
     }
   }
-  return var;
+  return variable;
 }
 
-std::optional<Variable> Variable::parse(TokenIterator &cont)
+bool Variable::Item::operator==(const Variable::Item &other) const
 {
-  return parse_variable_impl(cont);
+  return ptr == other.ptr && name == other.name && size == other.size;
 }
+
+bool Variable::operator==(const Variable &other) const
+{
+  return type == other.type && items == other.items;
+}
+
+/* Skips tokens until match the closing right symbol, like function body braces `{}`. */
+static void skip_until_match_symbols(SymbolType left, SymbolType right, TokenIterator &cont)
+{
+  int left_count = 1;
+  for (TokenVariant *token = cont.next_variant(); token; token = cont.next_variant()) {
+    if (!std::holds_alternative<SymbolToken>(*token)) {
+      continue;
+    }
+    const SymbolType type = std::get<SymbolToken>(*token).type;
+    if (type == right) {
+      left_count--;
+    }
+    else if (type == left) {
+      left_count++;
+    }
+    if (left_count == 0) {
+      break;
+    }
+  }
+};
 
 std::optional<FunctionPtr> FunctionPtr::parse(TokenIterator &cont)
 {
@@ -474,63 +473,60 @@ std::optional<FunctionPtr> FunctionPtr::parse(TokenIterator &cont)
                                     LParenSymbol>;
   const std::optional<FunctionPtrBegin> fn = FunctionPtrBegin::parse(cont);
   if (!fn.has_value()) {
-    return {};
+    return std::nullopt;
   }
   FunctionPtr fn_ptr{};
   fn_ptr.const_tag = std::get<0>(fn.value()).const_tag;
   fn_ptr.type = std::get<0>(fn.value()).str;
   fn_ptr.name = std::get<4>(fn.value()).str;
-  /* Function params. */
-  while (true) {
-    std::optional<Variable> var = parse_variable_impl<true>(cont);
-    if (!var.has_value()) {
-      break;
-    }
-    fn_ptr.params.append(std::move(var.value()));
-    if (!CommaSymbol::parse(cont).has_value()) {
-      break;
-    }
-  }
+  /* Skip Function params. */
+  skip_until_match_symbols(SymbolType::LPAREN, SymbolType::RPAREN, cont);
+
   /* Closing sequence. */
-  if (!Sequence<RParenSymbol, SemicolonSymbol>::parse(cont).has_value()) {
-    return {};
+  if (!SemicolonSymbol::parse(cont).has_value()) {
+    return std::nullopt;
   }
   return fn_ptr;
+}
+
+bool FunctionPtr::operator==(const FunctionPtr &other) const
+{
+  return type == other.type && name == other.name;
 }
 
 struct IfDefSection {
   static std::optional<IfDefSection> parse(TokenIterator &cont)
   {
-    using IfDefBeginSequence = Sequence<HashSymbol, Variant<IfDefKeyword, IfKeyword>>;
+    using IfDefBeginSequence =
+        Sequence<HashSymbol, Variant<IfDefKeyword, IfKeyword, IfnDefKeyword>>;
     const std::optional<IfDefBeginSequence> val = IfDefBeginSequence::parse(cont);
     if (!val.has_value()) {
       return std::nullopt;
     };
-    auto match_closing = [](TokenVariant *carried, TokenVariant *current) {
-      return (std::holds_alternative<SymbolToken>(*carried) &&
-              std::get<SymbolToken>(*carried).type == SymbolType::HASH &&
-              std::holds_alternative<KeywordToken>(*current) &&
-              std::get<KeywordToken>(*current).type == KeywordType::ENDIF);
+    auto match_closing = [](TokenVariant *token) {
+      return std::holds_alternative<KeywordToken>(*token) &&
+             std::get<KeywordToken>(*token).type == KeywordType::ENDIF;
     };
-    auto match_opening = [](TokenVariant *carried, TokenVariant *current) {
-      return (std::holds_alternative<SymbolToken>(*carried) &&
-              std::get<SymbolToken>(*carried).type == SymbolType::HASH &&
-              std::holds_alternative<KeywordToken>(*current) &&
-              (std::get<KeywordToken>(*current).type == KeywordType::IF ||
-               std::get<KeywordToken>(*current).type == KeywordType::IFDEF));
+    auto match_opening = [](TokenVariant *token) {
+      return (std::holds_alternative<KeywordToken>(*token) &&
+              (std::get<KeywordToken>(*token).type == KeywordType::IF ||
+               std::get<KeywordToken>(*token).type == KeywordType::IFDEF ||
+               std::get<KeywordToken>(*token).type == KeywordType::IFNDEF));
     };
     int ifdef_deep = 1;
-    TokenVariant *carried = cont.next_variant();
-    for (TokenVariant *current = carried; current && ifdef_deep != 0;
-         current = cont.next_variant())
-    {
-      if (match_opening(carried, current)) {
+    bool hash_carried = false;
+    for (TokenVariant *token = cont.next_variant(); token; token = cont.next_variant()) {
+      if (hash_carried && match_opening(token)) {
         ifdef_deep++;
       }
-      if (match_closing(carried, current)) {
+      if (hash_carried && match_closing(token)) {
         ifdef_deep--;
       }
-      carried = current;
+      if (ifdef_deep == 0) {
+        break;
+      }
+      hash_carried = std::holds_alternative<SymbolToken>(*token) &&
+                     std::get<SymbolToken>(*token).type == SymbolType::HASH;
     }
     /* Not matching #endif. */
     if (ifdef_deep != 0) {
@@ -540,7 +536,7 @@ struct IfDefSection {
   }
 };
 
-std::optional<Struct> ast::Struct::parse(TokenIterator &cont)
+std::optional<Struct> Struct::parse(TokenIterator &cont)
 {
   using StructBeginSequence =
       Sequence<Optional<TypedefKeyword>, StructKeyword, Identifier, LBraceSymbol>;
@@ -573,24 +569,32 @@ std::optional<Struct> ast::Struct::parse(TokenIterator &cont)
   return result;
 }
 
-struct Skippers {
-  static std::optional<Skippers> parse(TokenIterator &cont)
+bool Struct::operator==(const Struct &other) const
+{
+  return name == other.name && items == other.items;
+}
+
+struct Skip {
+  static std::optional<Skip> parse(TokenIterator &cont)
   {
-    /* #pragma one. */
-    if (Sequence<HashSymbol, PragmaKeyword, OnceKeyword>::parse(cont).has_value()) {
-      return Skippers{};
+    using UnusedDeclarations = Variant<Define,
+                                       Include,
+                                       IfDefSection,
+                                       Sequence<HashSymbol, PragmaKeyword, OnceKeyword>,
+                                       Sequence<HashSymbol, HashSymbol, Struct>>;
+    if (UnusedDeclarations::parse(cont).has_value()) {
+      return Skip{};
     }
     /* Forward declare. */
-    if (Sequence<StructKeyword, Identifier>::parse(cont).has_value()) {
+    else if (Sequence<StructKeyword, Identifier>::parse(cont).has_value()) {
       for (; Sequence<CommaSymbol, Identifier>::parse(cont).has_value();) {
       }
       if (SemicolonSymbol::parse(cont).has_value()) {
-        return Skippers{};
+        return Skip{};
       }
     }
-    /* Break lines. */
-    if (cont.next<BreakLineToken>()) {
-      return Skippers{};
+    else if (cont.next<BreakLineToken>()) {
+      return Skip{};
     }
     return std::nullopt;
   }
@@ -598,7 +602,7 @@ struct Skippers {
 
 std::optional<Enum> ast::Enum::parse(TokenIterator &cont)
 {
-  /* Opening enum define sequence. */
+  /* Enum begin sequence. */
   using EnumBeginSequence = Sequence<Optional<TypedefKeyword>,
                                      EnumKeyword,
                                      Optional<ClassKeyword>,
@@ -616,40 +620,25 @@ std::optional<Enum> ast::Enum::parse(TokenIterator &cont)
   if (std::get<4>(enum_begin.value()).has_value()) {
     enum_def.type = std::get<1>(std::get<4>(enum_begin.value()).value()).str;
   }
+  /* Skip enum body. */
+  skip_until_match_symbols(SymbolType::LBRACE, SymbolType::RBRACE, cont);
 
-  /* Skip tokens until match closing `}`. */
-  int brace_deep = 1;
-  for (TokenVariant *token = cont.next_variant(); token && brace_deep != 0;
-       token = cont.next_variant())
-  {
-    if (!std::holds_alternative<SymbolToken>(*token)) {
-      continue;
-    }
-    if (std::get<SymbolToken>(*token).type == SymbolType::RBRACE) {
-      brace_deep--;
-    }
-    else if (std::get<SymbolToken>(*token).type == SymbolType::LBRACE) {
-      brace_deep++;
-    }
-  }
-  /* Optional enum operator defines. */
-  using EnumOperatorsSeq = Sequence<EnumOperatorsKeyword,
-                                    LParenSymbol,
-                                    Identifier,
-                                    CommaSymbol,
-                                    Identifier,
-                                    RParenSymbol,
-                                    Optional<SemicolonSymbol>>;
-  /* Closing enum defines. */
-  if (!Sequence<Optional<Identifier>,
-                Optional<DNADepecratedKeyword>,
-                SemicolonSymbol,
-                Optional<EnumOperatorsSeq>>::parse(cont)
+  /* Enum end sequence. */
+  if (!Sequence<Optional<Identifier>, Optional<DNADepecratedKeyword>, SemicolonSymbol>::parse(cont)
            .has_value())
   {
     return std::nullopt;
   }
+  /* Optional enum operator defines. */
+  if (Sequence<EnumOperatorsKeyword, LParenSymbol>::parse(cont).has_value()) {
+    skip_until_match_symbols(SymbolType::LPAREN, SymbolType::RPAREN, cont);
+    SemicolonSymbol::parse(cont);
+  }
   return enum_def;
+}
+bool Enum::operator==(const Enum &other) const
+{
+  return name == other.name && type == other.type;
 }
 
 }  // namespace blender::dna::parser::ast
@@ -683,27 +672,26 @@ bool parse_include(std::string_view filepath,
   while (!cont.has_finish()) {
     using CPPTypeVariant = Variant<Struct,
                                    Enum,
-                                   FunctionPtr,
+                                   Sequence<Optional<TypedefKeyword>, FunctionPtr>,
                                    Variable,
-                                   ConstInt,
-                                   Define,
-                                   Include,
-                                   IfDefSection,
-                                   Skippers,
-                                   Sequence<HashSymbol, HashSymbol, Struct>>;
+                                   DefineInt,
+                                   Skip>;
     std::optional<CPPTypeVariant> val = CPPTypeVariant::parse(cont);
     if (!val.has_value()) {
-     // print_unhandled_token_error(filepath, text, cont.last);
+      print_unhandled_token_error(filepath, text, cont.last);
       return false;
     }
     if (std::holds_alternative<Struct>(val.value())) {
       c.append(std::move(std::get<Struct>(val.value())));
     }
-    else if (std::holds_alternative<FunctionPtr>(val.value())) {
-      c.append(std::move(std::get<FunctionPtr>(val.value())));
-    }
-    else if (std::holds_alternative<ConstInt>(val.value())) {
-      c.append(std::move(std::get<ConstInt>(val.value())));
+    // else if (std::holds_alternative<Sequence<Optional<TypedefKeyword>,
+    // FunctionPtr>>(val.value()))
+    //{
+    //   c.append(std::move(std::get<1>(
+    //       std::get<Sequence<Optional<TypedefKeyword>, FunctionPtr>>(val.value()))));
+    // }
+    else if (std::holds_alternative<DefineInt>(val.value())) {
+      c.append(std::move(std::get<DefineInt>(val.value())));
     }
     else if (std::holds_alternative<Variable>(val.value())) {
       c.append(std::move(std::get<Variable>(val.value())));

@@ -64,6 +64,7 @@ enum class KeywordType : int8_t {
   DOUBLE,
   IF,
   IFDEF,
+  IFNDEF,
   ENDIF,
   PRAGMA,
   ONCE,
@@ -112,11 +113,8 @@ struct TokenIterator {
    */
   void end_waypoint(bool success);
 
-  /* Return the pointer to the next tokent, and advances the iterator. */
+  /* Return the pointer to the next token, and advances the iterator. */
   TokenVariant *next_variant();
-
-  /* Step the iterator just one token. */
-  void step_back();
 
   /* Checks if token stream dont still contains tokens. */
   bool has_finish();
@@ -141,16 +139,21 @@ struct TokenIterator {
    */
   template<class Type> Type *next()
   {
+    TokenVariant *current_next = next_;
     if constexpr (!std::is_same_v<Type, BreakLineToken>) {
       skip_break_lines();
     }
-    if (next_ && next_ < token_stream_.end()) {
-      if (std::holds_alternative<Type>(*next_)) {
-        return &std::get<Type>(*next_++);
-      }
+    if (next_ < token_stream_.end() && std::holds_alternative<Type>(*next_)) {
+      return &std::get<Type>(*next_++);
     }
+    if (last < next_) {
+      last = next_;
+    }
+    next_ = current_next;
     return nullptr;
   }
+  KeywordToken *next_keyword(KeywordType type);
+  SymbolToken *next_symbol(SymbolType type);
 };
 
 void print_line_error(std::string_view::iterator start, std::string_view::iterator where);

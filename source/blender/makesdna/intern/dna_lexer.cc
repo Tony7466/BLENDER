@@ -2,7 +2,6 @@
 #include <charconv>
 #include <iostream>
 
-#include <algorithm>
 namespace blender::dna::lex {
 
 /* Match any withe space except break lines. */
@@ -43,7 +42,7 @@ static void eval_identifier(std::string_view::iterator &itr,
     std::string_view word;
     KeywordType type;
   };
-  constexpr KeywordItem keywords[]{
+  static constexpr KeywordItem keywords[]{
       {"DNA_DEFINE_CXX_METHODS", KeywordType::DNA_DEFINE_CXX_METHODS},
       {"DNA_DEPRECATED", KeywordType::DNA_DEPRECATED},
       {"ENUM_OPERATORS", KeywordType::ENUM_OPERATORS},
@@ -59,6 +58,7 @@ static void eval_identifier(std::string_view::iterator &itr,
       {"float", KeywordType::FLOAT},
       {"if", KeywordType::IF},
       {"ifdef", KeywordType::IFDEF},
+      {"ifndef", KeywordType::IFNDEF},
       {"include", KeywordType::INCLUDE},
       {"int", KeywordType::INT},
       {"int16_t", KeywordType::INT16_T},
@@ -97,7 +97,7 @@ static void eval_line_comment(std::string_view::iterator &itr,
                               std::string_view::iterator last,
                               TokenIterator & /*cont*/)
 {
-  if (std::distance(itr, last) < 2) {
+  if (last - itr < 2) {
     return;
   }
   if (!(itr[0] == '/' && itr[1] == '/')) {
@@ -114,7 +114,7 @@ static void eval_int_literal(std::string_view::iterator &itr,
                              std::string_view::iterator last,
                              TokenIterator &cont)
 {
-  std::string_view::iterator start{itr};
+  const std::string_view::iterator start{itr};
   while (itr < last && std::isdigit(itr[0])) {
     itr++;
   }
@@ -122,9 +122,8 @@ static void eval_int_literal(std::string_view::iterator &itr,
     return;
   }
   int val{};
-  const std::string_view str{start._Unwrapped(), size_t(itr - start)};
   auto transform_Result = std::from_chars(start._Unwrapped(), itr._Unwrapped(), val);
-  cont.append(IntLiteralToken{str, val});
+  cont.append(IntLiteralToken{std::string_view{start._Unwrapped(), size_t(itr - start)}, val});
 }
 
 /* Match a c-style comment. */
@@ -158,7 +157,7 @@ static void eval_symbol(std::string_view::iterator &itr,
     char value;
     SymbolType type;
   };
-  constexpr SymbolItem symbols[] = {
+  static constexpr SymbolItem symbols[]{
       {'!', SymbolType::EXCLAMATION}, {'#', SymbolType::HASH},       {'%', SymbolType::PERCENT},
       {'&', SymbolType::BIT_AND},     {'(', SymbolType::LPAREN},     {')', SymbolType::RPAREN},
       {'*', SymbolType::STAR},        {'+', SymbolType::PLUS},       {',', SymbolType::COMMA},
@@ -169,28 +168,28 @@ static void eval_symbol(std::string_view::iterator &itr,
       {'^', SymbolType::CARET},       {'{', SymbolType::LBRACE},     {'|', SymbolType::BIT_OR},
       {'}', SymbolType::RBRACE},      {'~', SymbolType::TILDE},
   };
-  auto test_symbol = [itr](const SymbolItem &item) -> bool { return item.value == itr[0]; };
+  const char value = itr[0];
+  auto test_symbol = [value](const SymbolItem &item) -> bool { return item.value == value; };
   auto symbol_itr = std::find_if(std::begin(symbols), std::end(symbols), test_symbol);
   if (symbol_itr != std::end(symbols)) {
-    const std::string_view str{itr._Unwrapped(), 1};
-    cont.append(SymbolToken{str, symbol_itr->type});
+    cont.append(SymbolToken{std::string_view{itr._Unwrapped(), 1}, symbol_itr->type});
     itr++;
   }
 }
 
-/* Match a string literal. */
+/* Match a string or char literal. */
 static void eval_string_literal(std::string_view::iterator &itr,
                                 std::string_view::iterator last,
                                 TokenIterator &cont)
 {
-  if (!(itr[0] == '"')) {
+  const char opening = itr[0];
+  if (!(opening == '"' || opening == '\'')) {
     return;
   }
-  std::string_view::iterator start{itr};
-  char carry = '"';
-  itr++;
-  while (itr < last && !(carry != '\\' && itr[0] == '"')) {
-    carry = itr[0];
+  const std::string_view::iterator start{itr++};
+  bool scape{false};
+  while (itr < last && !(!scape && itr[0] == opening)) {
+    scape = itr[0] == '\\' && !scape;
     itr++;
   }
   if (!(itr < last)) {
@@ -217,10 +216,7 @@ void TokenIterator::print_unkown_token(std::string_view filepath,
 
 void TokenIterator::skip_break_lines()
 {
-  if (!next_) {
-    return;
-  }
-  while (next_ < token_stream_.end() && (std::holds_alternative<BreakLineToken>(*next_))) {
+  while (next_ < token_stream_.end() && std::holds_alternative<BreakLineToken>(*next_)) {
     next_++;
   }
 }
@@ -230,10 +226,11 @@ void TokenIterator::process_text(std::string_view filepath, std::string_view tex
   std::string_view::iterator itr = text.begin();
   const std::string_view::iterator end = text.end();
 
-  auto eval_token =
-      [this](std::string_view::iterator &itr, std::string_view::iterator end, auto &&fn) -> bool {
+  auto eval_token = [this](std::string_view::iterator &itr,
+                           std::string_view::iterator end,
+                           auto &&eval_fn) -> bool {
     std::string_view::iterator current = itr;
-    fn(itr, end, *this);
+    eval_fn(itr, end, *this);
     return current != itr;
   };
 
@@ -254,33 +251,20 @@ void TokenIterator::process_text(std::string_view filepath, std::string_view tex
       break;
     }
   }
-  if (!token_stream_.is_empty()) {
-    next_ = token_stream_.begin();
-  }
-  else {
-    next_ = nullptr;
-  }
+  next_ = token_stream_.begin();
 };
 
 TokenVariant *TokenIterator::next_variant()
 {
-  if (next_ && next_ < token_stream_.end()) {
+  if (next_ < token_stream_.end()) {
     return next_++;
   }
   return nullptr;
 }
 
-void TokenIterator::step_back()
-{
-  if (last < next_) {
-    last = next_;
-  }
-  next_--;
-}
-
 bool TokenIterator::has_finish()
 {
-  return next_ == nullptr || !(next_ < token_stream_.end());
+  return !(next_ < token_stream_.end());
 }
 
 void TokenIterator::push_waypoint()
@@ -297,5 +281,25 @@ void TokenIterator::end_waypoint(bool success)
     next_ = waypoints_.last();
   }
   waypoints_.remove_last();
+}
+
+KeywordToken *TokenIterator::next_keyword(KeywordType type)
+{
+  TokenVariant *tmp = next_;
+  if (KeywordToken *keyword = next<KeywordToken>(); keyword && keyword->type == type) {
+    return keyword;
+  }
+  next_ = tmp;
+  return nullptr;
+}
+
+SymbolToken *TokenIterator::next_symbol(SymbolType type)
+{
+  TokenVariant *tmp = next_;
+  if (SymbolToken *symbol = next<SymbolToken>(); symbol && symbol->type == type) {
+    return symbol;
+  }
+  next_ = tmp;
+  return nullptr;
 }
 }  // namespace blender::dna::lex
