@@ -6,15 +6,20 @@
  * \ingroup modifiers
  */
 
+#include "BKE_anonymous_attribute_id.hh"
+#include "BKE_attribute.hh"
 #include "BKE_material.h"
+#include "BLI_array_utils.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_math_vector.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
+#include "BLI_virtual_array.hh"
 #include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
@@ -46,6 +51,8 @@
 
 #include "MOD_grease_pencil_util.hh"
 #include "MOD_ui_common.hh"
+
+#include <iostream>
 
 namespace blender {
 
@@ -99,6 +106,142 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   }
   DEG_add_object_relation(
       ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Grease Pencil Outline Modifier");
+}
+
+namespace array_utils {
+
+template<typename T>
+inline void rotate_group_to_group(const OffsetIndices<int> src_offsets,
+                                  const Span<int> dst_shifts,
+                                  const IndexMask &selection,
+                                  const Span<T> src,
+                                  MutableSpan<T> dst)
+{
+  selection.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
+    const IndexRange range = src_offsets[src_i];
+    const int shift_raw = dst_shifts[dst_i];
+    const int shift = shift_raw >= 0 ? shift_raw % range.size() :
+                                       range.size() - ((-shift_raw) % range.size());
+    BLI_assert(0 <= shift && shift < range.size());
+    const IndexRange src_front = range.take_front(shift);
+    const IndexRange src_back = range.drop_front(shift);
+    const IndexRange dst_front = range.drop_back(shift);
+    const IndexRange dst_back = range.take_back(shift);
+    dst.slice(dst_front).copy_from(src.slice(src_back));
+    dst.slice(dst_back).copy_from(src.slice(src_front));
+  });
+}
+
+}  // namespace array_utils
+
+namespace attribute_math {
+
+static void rotate_group_to_group(const OffsetIndices<int> src_offsets,
+                                  const Span<int> dst_shifts,
+                                  const IndexMask &selection,
+                                  const GSpan src,
+                                  GMutableSpan dst)
+{
+  bke::attribute_math::convert_to_static_type(src.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    array_utils::rotate_group_to_group(
+        src_offsets, dst_shifts, selection, src.typed<T>(), dst.typed<T>());
+  });
+}
+
+}  // namespace attribute_math
+
+static void rotate_attributes_group_to_group(
+    const bke::AttributeAccessor src_attributes,
+    const bke::AttrDomain domain,
+    const bke::AnonymousAttributePropagationInfo &propagation_info,
+    const Set<std::string> &skip,
+    const OffsetIndices<int> src_offsets,
+    const Span<int> dst_shifts,
+    const IndexMask &selection,
+    bke::MutableAttributeAccessor dst_attributes)
+{
+  src_attributes.for_all(
+      [&](const bke::AttributeIDRef &id, const bke::AttributeMetaData meta_data) {
+        if (meta_data.domain != domain) {
+          return true;
+        }
+        if (meta_data.data_type == CD_PROP_STRING) {
+          return true;
+        }
+        if (id.is_anonymous() && !propagation_info.propagate(id.anonymous_id())) {
+          return true;
+        }
+        if (skip.contains(id.name())) {
+          return true;
+        }
+        const GVArraySpan src = *src_attributes.lookup(id, domain);
+        bke::GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
+            id, domain, meta_data.data_type);
+        if (!dst) {
+          return true;
+        }
+        attribute_math::rotate_group_to_group(src_offsets, dst_shifts, selection, src, dst.span);
+        dst.finish();
+        return true;
+      });
+}
+
+static void reorder_cyclic_curve_points(bke::CurvesGeometry &curves,
+                                        const IndexMask &curve_selection,
+                                        const Span<int> curve_offsets)
+{
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  // const VArray<bool> is_cyclic = *attributes.lookup_or_default(
+  //     "cyclic", bke::AttrDomain::Curve, false);
+
+  BLI_assert(curve_offsets.size() == curves.curves_num());
+
+  // index_mask.foreach_index([&](const int64_t curve_i) {
+  //   const IndexRange points = curves.points_by_curve()[curve_i];
+  //   /* Only cyclic curves support reordering. */
+  //   const int offset = is_cyclic[curve_i] ? point_offsets_by_curve[curve_i] : 0;
+  //   BLI_assert(offset >= 0 && offset <= points.size());
+  //   std::cout << "Curve " << curve_i << " offset " << offset << std::endl;
+
+  //   // MutableSpan<int> src_indices_front = src_indices.as_mutable_span().slice(points.first(),
+  //   //                                                                          offset);
+  //   // MutableSpan<int> src_indices_back = src_indices.as_mutable_span().slice(
+  //   //     points.first() + offset, points.size() - offset);
+  //   // std::cout << "  front=" << IndexRange(points.first(), offset)
+  //   //           << " back=" << IndexRange(points.first() + offset, points.size() - offset)
+  //   //           << std::endl;
+  //   // array_utils::fill_index_range<int>(src_indices_front, points.last() - offset);
+  //   // array_utils::fill_index_range<int>(src_indices_back, points.first());
+  // });
+
+  // bke::gather_attributes(attributes, bke::AttrDomain::Point, {}, {}, src_indices, attributes);
+  rotate_attributes_group_to_group(attributes,
+                                   bke::AttrDomain::Point,
+                                   {},
+                                   {},
+                                   curves.points_by_curve(),
+                                   curve_offsets,
+                                   curve_selection,
+                                   attributes);
+}
+
+static int find_closest_point(const Span<float3> positions, const float3 &target)
+{
+  if (positions.is_empty()) {
+    return -1;
+  }
+
+  int closest_i = 0;
+  float min_dist_squared = math::distance_squared(positions.first(), target);
+  for (const int i : positions.index_range().drop_front(1)) {
+    const float dist_squared = math::distance_squared(positions[i], target);
+    if (dist_squared < min_dist_squared) {
+      closest_i = i;
+      min_dist_squared = dist_squared;
+    }
+  }
+  return closest_i;
 }
 
 /* Generate points in an arc between two directions. */
@@ -498,6 +641,23 @@ static void modify_drawing(const GreasePencilOutlineModifierData &omd,
   bke::CurvesGeometry curves = create_curves_outline(
       drawing, viewmat, curves_mask, omd.subdiv, radius, mat_nr, keep_shape);
 
+  /* Cyclic curve reordering feature. */
+  if (omd.object) {
+    const OffsetIndices points_by_curve = curves.points_by_curve();
+
+    /* Computes the offset of the closest point to the object from the curve start. */
+    Array<int> offset_by_curve(curves.curves_num());
+    for (const int i : curves.curves_range()) {
+      const IndexRange points = points_by_curve[i];
+      const int closest_i = find_closest_point(curves.positions().slice(points), omd.object->loc);
+      /* Result is already relative to the point range and can be used as offset. */
+      offset_by_curve[i] = closest_i >= 0 ? closest_i : 0;
+    }
+
+    reorder_cyclic_curve_points(curves, curves.curves_range(), offset_by_curve);
+  }
+
+  /* Resampling feature. */
   if (omd.sample_length > 0.0f) {
     VArray<float> sample_lengths = VArray<float>::ForSingle(omd.sample_length,
                                                             curves.curves_num());
