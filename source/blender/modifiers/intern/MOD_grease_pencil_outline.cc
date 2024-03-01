@@ -224,7 +224,7 @@ static void generate_stroke_perimeter(const Span<float3> all_positions,
                                       const bool use_caps,
                                       const eGPDstroke_Caps start_cap_type,
                                       const eGPDstroke_Caps end_cap_type,
-                                      const float normal_offset,
+                                      const float radius_offset,
                                       Vector<float3> &r_perimeter,
                                       Vector<int> &r_point_counts,
                                       Vector<int> &r_point_indices)
@@ -240,13 +240,13 @@ static void generate_stroke_perimeter(const Span<float3> all_positions,
     const float3 pt_a = positions[a];
     const float3 pt_b = positions[b];
     const float3 pt_c = positions[c];
-    const float radius = all_radii[point];
+    const float radius = all_radii[point] + radius_offset;
     generate_corner(pt_a, pt_b, pt_c, radius, subdivisions, point, r_perimeter, r_point_indices);
   };
   auto add_cap = [&](const int center_i, const int next_i, const eGPDstroke_Caps cap_type) {
     const float3 &center = positions[center_i];
     const float3 dir = math::normalize(positions[next_i] - center);
-    const float radius = all_radii[center_i];
+    const float radius = all_radii[center_i] + radius_offset;
     generate_cap(
         center, dir, radius, subdivisions, cap_type, center_i, r_perimeter, r_point_indices);
   };
@@ -318,8 +318,6 @@ static void generate_stroke_perimeter(const Span<float3> all_positions,
       r_point_counts.append(right_perimeter_count);
     }
   }
-
-  UNUSED_VARS(normal_offset);
 }
 
 struct PerimeterData {
@@ -337,7 +335,8 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
                                                  const float4x4 &viewmat,
                                                  const IndexMask &curves_mask,
                                                  const int subdivisions,
-                                                 const float stroke_radius)
+                                                 const float stroke_radius,
+                                                 const bool keep_shape)
 {
   const bke::CurvesGeometry &src_curves = drawing.strokes();
   Span<float3> src_positions = src_curves.positions();
@@ -372,7 +371,8 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
     const int prev_point_num = data.positions.size();
     const int prev_curve_num = data.point_counts.size();
     const IndexRange points = src_curves.points_by_curve()[curve_i];
-    const float normal_offset = 0.0f;
+    /* Offset the strokes by the radius so the outside aligns with the input stroke. */
+    const float radius_offset = keep_shape ? -stroke_radius : 0.0f;
     generate_stroke_perimeter(view_positions,
                               src_radii,
                               points,
@@ -381,7 +381,7 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
                               use_caps,
                               eGPDstroke_Caps(src_start_caps[curve_i]),
                               eGPDstroke_Caps(src_end_caps[curve_i]),
-                              normal_offset,
+                              radius_offset,
                               data.positions,
                               data.point_counts,
                               data.point_indices);
@@ -466,8 +466,9 @@ static void modify_drawing(const GreasePencilOutlineModifierData &omd,
 
   /* Legacy thickness setting is diameter in pixels, divide by 2000 to get radius. */
   const float radius = omd.thickness * 0.0005f;
+  const bool keep_shape = omd.flag & MOD_GREASE_PENCIL_OUTLINE_KEEP_SHAPE;
   drawing.strokes_for_write() = create_curves_outline(
-      drawing, viewmat, curves_mask, omd.subdiv, radius);
+      drawing, viewmat, curves_mask, omd.subdiv, radius, keep_shape);
   drawing.tag_topology_changed();
 }
 
