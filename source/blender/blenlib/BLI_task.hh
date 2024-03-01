@@ -69,13 +69,11 @@ namespace detail {
 void parallel_for_impl(IndexRange range,
                        int64_t grain_size,
                        FunctionRef<void(IndexRange)> function);
-void parallel_for_bandwidth_limited_impl(IndexRange range,
-                                         int64_t grain_size,
-                                         FunctionRef<void(IndexRange)> function);
 void parallel_for_weighted_impl(IndexRange range,
                                 int64_t grain_size,
                                 FunctionRef<void(IndexRange)> function,
                                 FunctionRef<void(IndexRange, MutableSpan<int64_t>)> task_sizes_fn);
+void memory_bandwidth_bound_task_impl(FunctionRef<void()> function);
 }  // namespace detail
 
 template<typename Function>
@@ -89,27 +87,6 @@ inline void parallel_for(IndexRange range, int64_t grain_size, const Function &f
     return;
   }
   detail::parallel_for_impl(range, grain_size, function);
-}
-
-/**
- * Similar to #parallel_for but for tasks that read/write a lot of memory compared to how much
- * processing they do. For such tasks, using too many threads doesn't help because the memory
- * bandwidth is limited. In fact, experiments show that using more threads actually hurts
- * performance in this case.
- */
-template<typename Function>
-inline void parallel_for_memory_bandwidth_bound(const IndexRange range,
-                                                const int64_t grain_size,
-                                                const Function &function)
-{
-  if (range.is_empty()) {
-    return;
-  }
-  if (range.size() <= grain_size) {
-    function(range);
-    return;
-  }
-  detail::parallel_for_bandwidth_limited_impl(range, grain_size, function);
 }
 
 /**
@@ -269,6 +246,28 @@ template<typename Function> inline void isolate_task(const Function &function)
 #else
   function();
 #endif
+}
+
+/**
+ * Should surround parallel code that is highly bandwidth intensive, e.g. it just fills a buffer
+ * with no or just few additional operations. If the buffers are large, it's benefitial to limit
+ * the number of threads doing the work because that just creates more overhead on the hardware
+ * level and doesn't provide a notable performance benefit beyond a certain point.
+ */
+template<typename Function>
+inline void memory_bandwidth_bound_task(const int64_t approximate_bytes_touched,
+                                        const Function &function)
+{
+  /* Don't limit threading when all touched memory can stay in the CPU cache, because there a much
+   * higher memory bandwidth is available compared to accessing RAM. This value is supposed to be
+   * on the order of the L3 cache size. Accessing that value is not quite straight forward and even
+   * if it was, it's not clear if using the exact cache size would be benefitial because there is
+   * often more stuff going on on the CPU at the same time. */
+  if (approximate_bytes_touched <= 8 * 1024 * 1024) {
+    function();
+    return;
+  }
+  detail::memory_bandwidth_bound_task_impl(function);
 }
 
 }  // namespace blender::threading

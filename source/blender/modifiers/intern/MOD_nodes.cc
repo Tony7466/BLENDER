@@ -1654,6 +1654,7 @@ static void modifyGeometry(ModifierData *md,
                            const ModifierEvalContext *ctx,
                            bke::GeometrySet &geometry_set)
 {
+  SCOPED_TIMER(__func__);
   using namespace blender;
   NodesModifierData *nmd = reinterpret_cast<NodesModifierData *>(md);
   if (nmd->node_group == nullptr) {

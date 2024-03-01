@@ -184,70 +184,6 @@ void parallel_for_impl(const IndexRange range,
   function(range);
 }
 
-[[maybe_unused]] static int find_best_limit_thread_count_for_bandwidth_limited_tasks()
-{
-#if WITH_TBB
-  using Clock = std::chrono::steady_clock;
-  using TimePoint = std::chrono::time_point<Clock>;
-  using Duration = std::chrono::nanoseconds;
-  const int max_threads = BLI_system_thread_count();
-  const int64_t buffer_size = uint64_t(100) * 1024 * 1024;
-
-  Vector<char> buffer(buffer_size);
-  /* This ensure that all the memory is already backed by physical memory. */
-  buffer.fill(1);
-
-  struct Result {
-    int threads_num;
-    Duration duration;
-  };
-
-  std::optional<Result> best;
-
-  for (const int threads_num : IndexRange::from_begin_end_inclusive(1, max_threads)) {
-    tbb::task_arena arena{threads_num};
-    SCOPED_TIMER(std::to_string(threads_num));
-    const TimePoint start = Clock::now();
-    for ([[maybe_unused]] const int64_t _ : IndexRange(3)) {
-      arena.execute([&]() {
-        parallel_for(IndexRange(buffer_size), 16 * 1024, [&](const IndexRange range) {
-          memset(buffer.data() + range.first(), 10, range.size());
-        });
-      });
-    }
-    const TimePoint end = Clock::now();
-    const Duration duration = end - start;
-    if (best) {
-      if (duration < best->duration) {
-        best = Result{threads_num, duration};
-      }
-    }
-    else {
-      best = Result{threads_num, duration};
-    }
-  }
-  printf("Best Threads Amount: %d\n", best->threads_num);
-  return best->threads_num;
-#else
-  return 1;
-#endif
-}
-
-void parallel_for_bandwidth_limited_impl(const IndexRange range,
-                                         const int64_t grain_size,
-                                         const FunctionRef<void(IndexRange)> function)
-{
-#ifdef WITH_TBB
-  /* This value is highly hardware dependent. Still need to find a good way to determine it. Maybe
-   * we also have to differentiate between read-bandwidth and write-bandwidth somehow. */
-  static const int num_threads = 6;
-  static tbb::task_arena arena{num_threads};
-  arena.execute([&]() { detail::parallel_for_impl(range, grain_size, function); });
-#else
-  function(range);
-#endif
-}
-
 void parallel_for_weighted_impl(
     const IndexRange range,
     const int64_t grain_size,
@@ -287,6 +223,25 @@ void parallel_for_weighted_impl(
       }
     });
   });
+}
+
+void memory_bandwidth_bound_task_impl(const FunctionRef<void()> function)
+{
+#ifdef WITH_TBB
+  /* This is the maximum number of threads that may perform these memory bandwidth bound tasks at
+   * the same time. Often fewer threads are already enough to use up the full bandwidth capacity.
+   * Additional threads usually have a negilible benefit and can even make performance worse.
+   *
+   * It's better to use fewer threads here so that the CPU cores can do other tasks at the same
+   * time which may be more compute intensive. */
+  const int num_threads = 6;
+  static tbb::task_arena arena{num_threads};
+  /* TODO: isolate hint? */
+  printf("isolated\n");
+  arena.execute(function);
+#else
+  function();
+#endif
 }
 
 }  // namespace blender::threading::detail
