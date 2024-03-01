@@ -16,6 +16,18 @@ template<typename T> struct Bounds {
   Bounds() = default;
   Bounds(const T &value) : min(value), max(value) {}
   Bounds(const T &min, const T &max) : min(min), max(max) {}
+
+  bool is_empty() const;
+  T center() const;
+  T size() const;
+
+  void translate(const T &offset);
+  void scale_from_center(const T &scale);
+
+  void resize(const T &new_size);
+  void recenter(const T&new_center);
+
+  void pad(const T& padding);
 };
 
 }  // namespace blender

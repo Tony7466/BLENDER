@@ -17,7 +17,9 @@
 #include "BLI_math_vector.hh"
 #include "BLI_task.hh"
 
-namespace blender::bounds {
+namespace blender {
+
+namespace bounds {
 
 template<typename T> [[nodiscard]] inline Bounds<T> merge(const Bounds<T> &a, const Bounds<T> &b)
 {
@@ -115,4 +117,67 @@ template<typename T, typename RadiusT>
       [](const Bounds<T> &a, const Bounds<T> &b) { return merge(a, b); });
 }
 
-}  // namespace blender::bounds
+}  // namespace bounds
+
+template<typename T, int Size>
+[[nodiscard]] inline bool less_or_equal_than(const VecBase<T, Size> &a, const VecBase<T, Size> &b)
+{
+  for (int i = 0; i < Size; i++) {
+    if (a[i] > b[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+template<typename T> inline bool Bounds<T>::is_empty() const
+{
+  if (std::is_integral<T>::value || std::is_floating_point<T>::value) {
+    return this->max <= this->min;
+  }
+  return less_or_equal_than(this->max, this->min);
+}
+
+template<typename T> inline T Bounds<T>::center() const
+{
+  return (this->min + this->max) / T(2);
+}
+
+template<typename T> inline T Bounds<T>::size() const
+{
+  return math::abs(max - min);
+}
+
+template<typename T> void Bounds<T>::translate(const T &offset)
+{
+  this->min += offset;
+  this->max += offset;
+}
+
+template<typename T> void Bounds<T>::scale_from_center(const T &scale)
+{
+  const T center = this->center();
+  const T new_half_size = this->size() / T(2) * scale;
+  this->min = center - new_half_size;
+  this->max = center + new_half_size;
+}
+
+template<typename T> void Bounds<T>::resize(const T &new_size)
+{
+  this->min = this->center() - (new_size / T(2));
+  this->max = this->min + new_size;
+}
+
+template<typename T> void Bounds<T>::recenter(const T &new_center)
+{
+  const T offset = new_center - this->center();
+  this->translate(offset);
+}
+
+template<typename T> void Bounds<T>::pad(const T &padding)
+{
+  this->min -= padding;
+  this->max += padding;
+}
+
+}  // namespace blender
