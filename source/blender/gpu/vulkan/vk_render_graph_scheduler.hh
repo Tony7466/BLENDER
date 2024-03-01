@@ -16,9 +16,13 @@
 // TODO: Decide if scheduler is a better name... but scheduling is part of the command builder as
 // well....
 namespace blender::gpu {
+class VKRenderGraph;
+
 class VKRenderGraphScheduler {
  public:
-  virtual void select_nodes_for_image(VkImage vk_image, Vector<NodeHandle> &r_selected_nodes) = 0;
+  virtual void select_nodes_for_image(const VKRenderGraph &render_graph,
+                                      VkImage vk_image,
+                                      Vector<NodeHandle> &r_selected_nodes) = 0;
 };
 
 /**
@@ -33,7 +37,9 @@ class Sequential : public VKRenderGraphScheduler {
   /**
    * Select all nodes to the last access (read or write) of the given image.
    */
-  void select_nodes_for_image(VkImage vk_image, Vector<NodeHandle> &r_selected_nodes) override;
+  void select_nodes_for_image(const VKRenderGraph &render_graph,
+                              VkImage vk_image,
+                              Vector<NodeHandle> &r_selected_nodes) override;
 };
 
 }  // namespace blender::gpu

@@ -10,6 +10,15 @@
 
 namespace blender::gpu {
 
+void VKCommandBufferWrapper::clear_color_image(VkImage image,
+                                               VkImageLayout image_layout,
+                                               const VkClearColorValue *p_color,
+                                               uint32_t range_count,
+                                               const VkImageSubresourceRange *p_ranges)
+{
+  BLI_assert_unreachable();
+}
+
 void VKCommandBufferWrapper::pipeline_barrier(
     VkPipelineStageFlags src_stage_mask,
     VkPipelineStageFlags dst_stage_mask,

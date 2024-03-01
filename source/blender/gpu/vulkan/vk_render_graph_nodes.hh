@@ -16,6 +16,8 @@
 
 namespace blender::gpu {
 
+class VKRenderGraphCommandBuilder;
+
 using NodeHandle = uint64_t;
 
 class VKRenderGraphNodes {
@@ -47,6 +49,24 @@ class VKRenderGraphNodes {
                                   VkImageSubresourceRange &vk_image_subresource_range);
 
   void add_write_resource(NodeHandle handle, VersionedResource resource_handle);
+
+  Span<const std::optional<Node>> nodes() const
+  {
+    return nodes_.as_span();
+  }
+
+  const Node &get(NodeHandle node_handle) const
+  {
+    return nodes_.get(node_handle);
+  }
+  Node &get(NodeHandle node_handle)
+  {
+    return nodes_.get(node_handle);
+  }
+  int64_t size() const
+  {
+    return nodes_.size();
+  }
 };
 
 }  // namespace blender::gpu

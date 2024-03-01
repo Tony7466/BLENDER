@@ -33,6 +33,10 @@ class VKRenderGraphCommandBuilder {
   void ensure_image_layout(VKRenderGraph &render_graph,
                            VkImage vk_image,
                            VkImageLayout vk_image_layout);
+
+ private:
+  void build_node(VKRenderGraph &render_graph, VKRenderGraphNodes::Node &node);
+  void build_node_clear_color_image(VKRenderGraph &render_graph, VKRenderGraphNodes::Node &node);
 };
 
 }  // namespace blender::gpu

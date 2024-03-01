@@ -4,6 +4,7 @@
 
 #include "testing/testing.h"
 
+#include "vk_common.hh"
 #include "vk_render_graph.hh"
 
 namespace blender::gpu {
@@ -12,6 +13,9 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
  public:
   CommandBufferLog(Vector<std::string> &log) : log(log) {}
   Vector<std::string> &log;
+
+  void begin_recording() {}
+  void end_recording() {}
 
   void pipeline_barrier(VkPipelineStageFlags src_stage_mask,
                         VkPipelineStageFlags dst_stage_mask,
@@ -30,12 +34,26 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
     {
       ss << " - image_barrier(image=";
       ss << image_barrier.image;
-      ss << ", old_layout=" << image_barrier.oldLayout;
-      ss << ", new_layout=" << image_barrier.newLayout;
+      ss << ", old_layout=" << to_string(image_barrier.oldLayout);
+      ss << ", new_layout=" << to_string(image_barrier.newLayout);
       ss << ")\n";
     }
     ss << ")\n";
 
+    log.append(ss.str());
+  }
+
+  virtual void clear_color_image(VkImage image,
+                                 VkImageLayout image_layout,
+                                 const VkClearColorValue *p_color,
+                                 uint32_t range_count,
+                                 const VkImageSubresourceRange *p_ranges) override
+  {
+    std::stringstream ss;
+    ss << "clear_color_image(";
+    ss << "image=" << image;
+    ss << ", image_layout=" << to_string(image_layout);
+    ss << ")\n";
     log.append(ss.str());
   }
 };
@@ -68,11 +86,10 @@ TEST(vk_render_graph, transfer_and_present)
   EXPECT_EQ(1, log.size());
   EXPECT_EQ(
       "pipeline_barrier(\n"
-      " - image_barrier(image=0x1, old_layout=7, new_layout=1000001002)\n"
+      " - image_barrier(image=0x1, old_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
+      "new_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)\n"
       ")\n",
       log[0]);
-
-  // Test for transition to present
 }
 
 TEST(vk_render_graph, clear_and_present)

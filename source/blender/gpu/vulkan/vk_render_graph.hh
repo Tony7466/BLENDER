@@ -87,6 +87,7 @@ class VKRenderGraph {
   void finish();
 
   friend class VKRenderGraphCommandBuilder;
+  friend class Sequential;
 };
 
 }  // namespace blender::gpu

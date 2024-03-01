@@ -19,6 +19,8 @@ namespace blender::gpu {
  * List for working with handles and items.
  * Reference to the first empty slot is stored internally to stop iterating over all the elements.
  */
+// TODO: Also keep track of last filled position to reduce the amount of items as_span/size will
+// return
 template<typename Handle, typename Item> class VKRenderGraphList {
  private:
   const int64_t grow_size_ = 64;
@@ -36,6 +38,17 @@ template<typename Handle, typename Item> class VKRenderGraphList {
     items_[handle] = new_item;
     mark_filled(handle);
     return handle;
+  }
+
+  const Item &get(Handle handle) const
+  {
+    BLI_assert(items_[handle].has_value());
+    return *items_[handle];
+  }
+
+  Span<const std::optional<Item>> as_span() const
+  {
+    return Span<const std::optional<Item>>(items_.data(), size());
   }
 
   Item &get(Handle handle)

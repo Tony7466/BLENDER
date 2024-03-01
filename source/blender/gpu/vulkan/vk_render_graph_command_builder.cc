@@ -29,7 +29,44 @@ void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
 
 void VKRenderGraphCommandBuilder::build_image(VKRenderGraph &render_graph, VkImage vk_image)
 {
-  render_graph.scheduler_->select_nodes_for_image(vk_image, selected_nodes_);
+  render_graph.scheduler_->select_nodes_for_image(render_graph, vk_image, selected_nodes_);
+  if (selected_nodes_.is_empty()) {
+    return;
+  }
+  render_graph.command_buffer_->begin_recording();
+  for (NodeHandle node_handle : selected_nodes_) {
+    VKRenderGraphNodes::Node &node = render_graph.nodes_.get(node_handle);
+    build_node(render_graph, node);
+  }
+
+  render_graph.command_buffer_->end_recording();
+}
+void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
+                                             VKRenderGraphNodes::Node &node)
+{
+  switch (node.type) {
+    case VKRenderGraphNodes::Node::Type::UNUSED: {
+      break;
+    }
+
+    case VKRenderGraphNodes::Node::Type::CLEAR_COLOR_IMAGE: {
+      build_node_clear_color_image(render_graph, node);
+      break;
+    }
+  }
+}
+
+void VKRenderGraphCommandBuilder::build_node_clear_color_image(VKRenderGraph &render_graph,
+                                                               VKRenderGraphNodes::Node &node)
+{
+  const VkImageLayout vk_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+  ensure_image_layout(render_graph, node.clear_color_image.vk_image, vk_image_layout);
+  render_graph.command_buffer_->clear_color_image(
+      node.clear_color_image.vk_image,
+      vk_image_layout,
+      &node.clear_color_image.vk_clear_color_value,
+      1,
+      &node.clear_color_image.vk_image_subresource_range);
 }
 
 void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_graph,
