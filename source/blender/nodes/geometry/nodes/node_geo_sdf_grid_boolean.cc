@@ -14,6 +14,7 @@
 #include "UI_resources.hh"
 
 #include "NOD_rna_define.hh"
+#include "NOD_socket_search_link.hh"
 
 #include "node_geometry_util.hh"
 
@@ -42,6 +43,14 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
   node->custom1 = int16_t(Operation::Union);
 }
 
+static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
+{
+  if (U.experimental.use_new_volume_nodes) {
+    nodes::search_link_ops_for_basic_node(params);
+  }
+}
+
+#ifdef WITH_OPENVDB
 static openvdb::FloatGrid &get_resampled_grid(bke::VolumeGrid<float> &volume_grid,
                                               bke::VolumeTreeAccessToken &tree_token,
                                               const openvdb::math::Transform::Ptr &transform,
@@ -61,6 +70,7 @@ static openvdb::FloatGrid &get_resampled_grid(bke::VolumeGrid<float> &volume_gri
 
   return *storage;
 }
+#endif
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
@@ -140,6 +150,7 @@ static void node_register()
   ntype.geometry_node_execute = node_geo_exec;
   ntype.draw_buttons = node_layout;
   ntype.initfunc = node_init;
+  ntype.gather_link_search_ops = node_gather_link_search_ops;
   nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);
