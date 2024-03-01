@@ -41,7 +41,11 @@ struct StructMemberPrinter {
     if (fn.const_tag) {
       std::cout << "const ";
     }
-    std::cout << fn.type << " *(*" << fn.name << ")(...);";
+    std::cout << fn.type << " *(*" << fn.name << ")(...)";
+  }
+  void operator()(ast::PointerToArray &ptr) const
+  {
+    std::cout << ptr.type << " (*" << ptr.name << ")[" << ptr.size << "]";
   }
 };
 
@@ -495,6 +499,33 @@ bool FunctionPtr::operator==(const FunctionPtr &other) const
   return type == other.type && name == other.name;
 }
 
+bool PointerToArray::operator==(const PointerToArray &other) const
+{
+  return type == other.type && name == other.name && size == other.size;
+}
+
+std::optional<PointerToArray> PointerToArray::parse(TokenIterator &cont)
+{
+  using PointerToArraySequence = Sequence<TypeOrStruct,
+                                          LParenSymbol,
+                                          StarSymbol,
+                                          Identifier,
+                                          RParenSymbol,
+                                          LBracketSymbol,
+                                          IntLiteral,
+                                          RBracketSymbol,
+                                          SemicolonSymbol>;
+  std::optional<PointerToArraySequence> val = PointerToArraySequence::parse(cont);
+  if (!val.has_value()) {
+    return std::nullopt;
+  }
+  PointerToArray ptr{};
+  ptr.type = std::get<0>(val.value()).str;
+  ptr.name = std::get<3>(val.value()).str;
+  ptr.size = std::get<6>(val.value()).value;
+  return ptr;
+}
+
 struct IfDefSection {
   static std::optional<IfDefSection> parse(TokenIterator &cont)
   {
@@ -553,7 +584,9 @@ std::optional<Struct> Struct::parse(TokenIterator &cont)
                                      Identifier,
                                      RParenSymbol,
                                      Optional<SemicolonSymbol>>;
-    if (auto member = Variant<Variable, FunctionPtr>::parse(cont); member.has_value()) {
+    if (auto member = Variant<Variable, FunctionPtr, PointerToArray>::parse(cont);
+        member.has_value())
+    {
       result.items.append(std::move(member.value()));
     }
     else if (DNA_DEF_CCX_SEQ::parse(cont).has_value()) {

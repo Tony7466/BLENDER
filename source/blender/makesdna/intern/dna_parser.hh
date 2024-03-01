@@ -59,10 +59,19 @@ struct FunctionPtr {
   static std::optional<FunctionPtr> parse(TokenIterator &cont);
 };
 
+/* Pointer to array declaration. */
+struct PointerToArray {
+  std::string_view type;
+  std::string_view name;
+  int32_t size;
+  bool operator==(const PointerToArray &other) const;
+  static std::optional<PointerToArray> parse(TokenIterator &cont);
+};
+
 /* Struct declaration.*/
 struct Struct {
   std::string_view name;
-  Vector<std::variant<Variable, FunctionPtr>> items;
+  Vector<std::variant<Variable, FunctionPtr, PointerToArray>> items;
 
   static std::optional<Struct> parse(TokenIterator &cont);
   bool operator==(const Struct &other) const;
