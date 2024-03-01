@@ -27,6 +27,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_userdef_types.h"
+#include "DNA_vfont_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_color.h"
@@ -36,6 +37,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
+#include "BKE_image.h"
 #include "BKE_paint.hh"
 #include "BKE_screen.hh"
 
@@ -53,6 +55,7 @@
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
+#include "RNA_prototypes.h"
 
 #include "UI_interface.hh"
 
@@ -1487,22 +1490,61 @@ ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz)
 }
 
 static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
-    const uiSearchItemTooltipData *item_tooltip_data)
+    bContext *C, const uiSearchItemTooltipData *item_tooltip_data)
 {
   uiTooltipData *data = MEM_new<uiTooltipData>(__func__);
 
-  if (item_tooltip_data->description[0]) {
-    UI_tooltip_text_field_add(
-        data, item_tooltip_data->description, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL, true);
+  const ID_Type type_id = GS(item_tooltip_data->id->name);
+  if (type_id == ID_IM) {
+    Image *ima = reinterpret_cast<Image *>(item_tooltip_data->id);
+    ImageUser *iuser = static_cast<ImageUser *>(
+        CTX_data_pointer_get_type(C, "image_user", &RNA_ImageUser).data);
+    if (ima != nullptr) {
+      void *lock;
+      ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
+      if (ibuf) {
+        UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+        float scale = (200.0f * UI_SCALE_FAC) / float(std::max(ibuf->x, ibuf->y));
+        short size[2] = {short(float(ibuf->x) * scale), short(float(ibuf->y) * scale)};
+        UI_tooltip_image_field_add(data, ibuf, size);
+        BKE_image_release_ibuf(ima, ibuf, lock);
+      }
+    }
   }
+  else if (type_id == ID_VF) {
+    VFont *font = reinterpret_cast<VFont *>(item_tooltip_data->id);
+    printf("Could make font thumbnail here");
+  }
+  else {
 
-  if (item_tooltip_data->name && item_tooltip_data->name[0]) {
-    UI_tooltip_text_field_add(
-        data, item_tooltip_data->name, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_VALUE, true);
-  }
-  if (item_tooltip_data->hint[0]) {
-    UI_tooltip_text_field_add(
-        data, item_tooltip_data->hint, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL, true);
+    char description[UI_MAX_DRAW_STR] = {0};
+    /* The full name of the item, without prefixes or suffixes (e.g. hint with UI_SEP_CHARP). */
+    const char *name;
+    /** Additional info about the item (e.g. library name of a linked data-block). */
+    char hint[UI_MAX_DRAW_STR] = {0};
+
+    name = item_tooltip_data->id->name + 2;
+    SNPRINTF(description,
+             TIP_("Choose %s data-block to be assigned to this user"),
+             RNA_struct_ui_name(item_tooltip_data->type));
+    if (ID_IS_LINKED(item_tooltip_data->id)) {
+      SNPRINTF(hint,
+               TIP_("Source library: %s\n%s"),
+               item_tooltip_data->id->lib->id.name + 2,
+               item_tooltip_data->id->lib->filepath);
+    }
+
+    if (description[0]) {
+      UI_tooltip_text_field_add(
+          data, description, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_NORMAL, true);
+    }
+
+    if (name && name[0]) {
+      UI_tooltip_text_field_add(data, name, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_VALUE, true);
+    }
+    if (hint[0]) {
+      UI_tooltip_text_field_add(data, hint, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL, true);
+    }
   }
 
   if (data->fields.is_empty()) {
@@ -1518,7 +1560,7 @@ ARegion *UI_tooltip_create_from_search_item_generic(
     const rcti *item_rect,
     const uiSearchItemTooltipData *item_tooltip_data)
 {
-  uiTooltipData *data = ui_tooltip_data_from_search_item_tooltip_data(item_tooltip_data);
+  uiTooltipData *data = ui_tooltip_data_from_search_item_tooltip_data(C, item_tooltip_data);
   if (data == nullptr) {
     return nullptr;
   }

@@ -3295,12 +3295,8 @@ ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz);
 void UI_tooltip_free(bContext *C, bScreen *screen, ARegion *region);
 
 struct uiSearchItemTooltipData {
-  /** A description for the item, e.g. what happens when selecting it. */
-  char description[UI_MAX_DRAW_STR];
-  /* The full name of the item, without prefixes or suffixes (e.g. hint with UI_SEP_CHARP). */
-  const char *name;
-  /** Additional info about the item (e.g. library name of a linked data-block). */
-  char hint[UI_MAX_DRAW_STR];
+  ID *id;
+  StructRNA *type;
 };
 
 /**
