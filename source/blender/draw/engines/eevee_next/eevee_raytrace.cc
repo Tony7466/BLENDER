@@ -239,12 +239,14 @@ void RayTraceModule::sync()
     PassSimple &pass = horizon_scan_ps_;
     pass.init();
     GPUShader *sh = inst_.shaders.static_shader_get(HORIZON_SCAN);
-    pass.specialize_constant(sh, "closure_index", &data_.closure_index);
     pass.shader_set(sh);
-    pass.bind_image("horizon_radiance_img", &horizon_radiance_tx_);
     pass.bind_ssbo("tiles_coord_buf", &horizon_tracing_tiles_buf_);
     pass.bind_texture("screen_radiance_tx", &downsampled_in_radiance_tx_);
     pass.bind_texture("screen_normal_tx", &downsampled_in_normal_tx_);
+    pass.bind_image("horizon_radiance_0_img", &horizon_radiance_0_tx_);
+    pass.bind_image("horizon_radiance_1_img", &horizon_radiance_1_tx_);
+    pass.bind_image("horizon_radiance_2_img", &horizon_radiance_2_tx_);
+    pass.bind_image("horizon_radiance_3_img", &horizon_radiance_3_tx_);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.hiz_buffer.front);
@@ -257,19 +259,23 @@ void RayTraceModule::sync()
     PassSimple &pass = horizon_denoise_ps_;
     pass.init();
     GPUShader *sh = inst_.shaders.static_shader_get(HORIZON_DENOISE);
-    pass.specialize_constant(sh, "closure_index", &data_.closure_index);
     pass.shader_set(sh);
     pass.bind_texture("depth_tx", &depth_tx);
-    pass.bind_image("horizon_radiance_img", &horizon_radiance_tx_);
-    pass.bind_image("radiance_img", &horizon_scan_output_tx_);
-    pass.bind_image("tile_mask_img", &tile_horizon_denoise_tx_);
+    pass.bind_texture("horizon_radiance_0_tx", &horizon_radiance_0_tx_);
+    pass.bind_texture("horizon_radiance_1_tx", &horizon_radiance_1_tx_);
+    pass.bind_texture("horizon_radiance_2_tx", &horizon_radiance_2_tx_);
+    pass.bind_texture("horizon_radiance_3_tx", &horizon_radiance_3_tx_);
+    pass.bind_image("closure0_img", &horizon_scan_output_0_tx_);
+    pass.bind_image("closure1_img", &horizon_scan_output_1_tx_);
+    pass.bind_image("closure2_img", &horizon_scan_output_2_tx_);
     pass.bind_ssbo("tiles_coord_buf", &horizon_denoise_tiles_buf_);
     pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.sampling);
     pass.bind_resources(inst_.gbuffer);
     pass.bind_resources(inst_.volume_probes);
     pass.bind_resources(inst_.sphere_probes);
-    pass.dispatch(horizon_denoise_dispatch_buf_);
+    /* TODO(fclem): Tile based. */
+    pass.dispatch(&tile_classify_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
 }
@@ -350,22 +356,9 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   DRW_stats_group_start("Raytracing");
 
-  if (use_horizon_scan) {
-    downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
-    downsampled_in_normal_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
-    /* TODO(fclem): Texture array in texture pool _or_ split this into many textures _or_ change
-     * data layout to be in 2D. */
-    horizon_radiance_tx_.ensure_2d_array(GPU_RGBA16F, tracing_res, 4, usage_rw);
+  const bool has_active_closure = active_closures != CLOSURE_NONE;
 
-    screen_radiance_front_tx_ = screen_radiance_front_tx;
-    inst_.manager->submit(horizon_setup_ps_, render_view);
-    inst_.manager->submit(horizon_scan_ps_, render_view);
-  }
-  else {
-    horizon_radiance_tx_.free();
-  }
-
-  if (active_closures != CLOSURE_NONE) {
+  if (has_active_closure) {
     inst_.manager->submit(tile_classify_ps_);
   }
 
@@ -380,12 +373,35 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
                                screen_radiance_front_tx,
                                screen_radiance_persmat,
                                main_view,
-                               render_view,
-                               use_horizon_scan);
+                               render_view);
   }
 
-  downsampled_in_radiance_tx_.release();
-  downsampled_in_normal_tx_.release();
+  if (has_active_closure) {
+    if (use_horizon_scan) {
+      downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
+      downsampled_in_normal_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
+      horizon_radiance_0_tx_.acquire(tracing_res, GPU_RGBA16F, usage_rw);
+      horizon_radiance_1_tx_.acquire(tracing_res, GPU_RGBA16F, usage_rw);
+      horizon_radiance_2_tx_.acquire(tracing_res, GPU_RGBA16F, usage_rw);
+      horizon_radiance_3_tx_.acquire(tracing_res, GPU_RGBA16F, usage_rw);
+
+      screen_radiance_front_tx_ = screen_radiance_front_tx;
+      horizon_scan_output_0_tx_ = result.closures[0].get();
+      horizon_scan_output_1_tx_ = result.closures[1].get();
+      horizon_scan_output_2_tx_ = result.closures[2].get();
+
+      inst_.manager->submit(horizon_setup_ps_, render_view);
+      inst_.manager->submit(horizon_scan_ps_, render_view);
+      inst_.manager->submit(horizon_denoise_ps_, render_view);
+
+      horizon_radiance_0_tx_.release();
+      horizon_radiance_1_tx_.release();
+      horizon_radiance_2_tx_.release();
+      horizon_radiance_3_tx_.release();
+      downsampled_in_radiance_tx_.release();
+      downsampled_in_normal_tx_.release();
+    }
+  }
 
   DRW_stats_group_end();
 
@@ -402,8 +418,7 @@ RayTraceResultTexture RayTraceModule::trace(
     const float4x4 &screen_radiance_persmat,
     /* TODO(fclem): Maybe wrap these two in some other class. */
     View &main_view,
-    View &render_view,
-    bool use_horizon_scan)
+    View &render_view)
 {
   RayTraceBuffer::DenoiseBuffer *denoise_buf = &rt_buffer.closures[closure_index];
 
@@ -559,11 +574,6 @@ RayTraceResultTexture RayTraceModule::trace(
   }
 
   denoise_variance_tx_.release();
-
-  if (use_horizon_scan) {
-    horizon_scan_output_tx_ = result.get();
-    inst_.manager->submit(horizon_denoise_ps_, render_view);
-  }
 
   DRW_stats_group_end();
 

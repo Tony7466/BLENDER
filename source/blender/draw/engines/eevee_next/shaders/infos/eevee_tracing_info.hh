@@ -203,9 +203,11 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
                      "draw_view")
     .sampler(0, ImageType::FLOAT_2D, "screen_radiance_tx")
     .sampler(1, ImageType::FLOAT_2D, "screen_normal_tx")
-    .image(2, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D_ARRAY, "horizon_radiance_img")
+    .image(2, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_0_img")
+    .image(3, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_1_img")
+    .image(4, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_2_img")
+    .image(5, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_3_img")
     .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
-    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_horizon_scan_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_horizon_denoise)
@@ -218,11 +220,14 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_denoise)
                      "eevee_lightprobe_data",
                      "draw_view")
     .sampler(1, ImageType::DEPTH_2D, "depth_tx")
-    .image(2, GPU_RGBA16F, Qualifier::READ, ImageType::FLOAT_2D_ARRAY, "horizon_radiance_img")
-    .image(4, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "radiance_img")
-    .image(6, RAYTRACE_TILEMASK_FORMAT, Qualifier::READ, ImageType::UINT_2D_ARRAY, "tile_mask_img")
+    .sampler(2, ImageType::FLOAT_2D, "horizon_radiance_0_tx")
+    .sampler(3, ImageType::FLOAT_2D, "horizon_radiance_1_tx")
+    .sampler(4, ImageType::FLOAT_2D, "horizon_radiance_2_tx")
+    .sampler(5, ImageType::FLOAT_2D, "horizon_radiance_3_tx")
+    .image(3, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "closure0_img")
+    .image(4, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "closure1_img")
+    .image(5, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "closure2_img")
     .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
-    .specialization_constant(Type::INT, "closure_index", 0)
     .compute_source("eevee_horizon_denoise_comp.glsl");
 
 #undef image_out

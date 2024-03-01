@@ -145,7 +145,9 @@ class RayTraceModule {
   /** Indirect dispatch denoise full-resolution tiles. */
   DispatchIndirectBuf horizon_denoise_dispatch_buf_ = {"horizon_denoise_dispatch_buf_"};
   /** Pointer to the texture to store the result of horizon scan in. */
-  GPUTexture *horizon_scan_output_tx_ = nullptr;
+  GPUTexture *horizon_scan_output_0_tx_ = nullptr;
+  GPUTexture *horizon_scan_output_1_tx_ = nullptr;
+  GPUTexture *horizon_scan_output_2_tx_ = nullptr;
   /** Tile buffer that contains tile coordinates. */
   RayTraceTileBuf raytrace_tracing_tiles_buf_ = {"raytrace_tracing_tiles_buf_"};
   RayTraceTileBuf raytrace_denoise_tiles_buf_ = {"raytrace_denoise_tiles_buf_"};
@@ -158,7 +160,10 @@ class RayTraceModule {
   /** Texture containing the ray hit radiance (tracing-res). */
   TextureFromPool ray_radiance_tx_ = {"ray_radiance_tx"};
   /** Texture containing the horizon local radiance. */
-  Texture horizon_radiance_tx_ = {"horizon_radiance_tx_"};
+  TextureFromPool horizon_radiance_0_tx_ = {"horizon_radiance_L0_tx_"};
+  TextureFromPool horizon_radiance_1_tx_ = {"horizon_radiance_L1_tx_"};
+  TextureFromPool horizon_radiance_2_tx_ = {"horizon_radiance_L2_tx_"};
+  TextureFromPool horizon_radiance_3_tx_ = {"horizon_radiance_L3_tx_"};
   /** Texture containing the input screen radiance but re-projected. */
   TextureFromPool downsampled_in_radiance_tx_ = {"downsampled_in_radiance_tx_"};
   /** Texture containing the view space normal. The BSDF normal is arbitrarily chosen. */
@@ -239,8 +244,7 @@ class RayTraceModule {
                               const float4x4 &screen_radiance_persmat,
                               /* TODO(fclem): Maybe wrap these two in some other class. */
                               View &main_view,
-                              View &render_view,
-                              bool use_horizon_scan);
+                              View &render_view);
 };
 
 /** \} */

@@ -26,7 +26,7 @@ void main()
 
   /* Do not trace where nothing was rendered. */
   if (texelFetch(gbuf_header_tx, texel_fullres, 0).r == 0u) {
-    imageStore(horizon_radiance_img, ivec3(texel, 0), vec4(FLT_11_11_10_MAX, 0.0));
+    imageStore(horizon_radiance_0_img, texel, vec4(FLT_11_11_10_MAX, 0.0));
     return;
   }
 
@@ -48,8 +48,8 @@ void main()
                                              8,
                                              false);
 
-  imageStore(horizon_radiance_img, ivec3(texel, 0), scan.result.L0.M0);
-  imageStore(horizon_radiance_img, ivec3(texel, 1), scan.result.L1.Mn1);
-  imageStore(horizon_radiance_img, ivec3(texel, 2), scan.result.L1.M0);
-  imageStore(horizon_radiance_img, ivec3(texel, 3), scan.result.L1.Mp1);
+  imageStore(horizon_radiance_0_img, texel, scan.result.L0.M0);
+  imageStore(horizon_radiance_1_img, texel, scan.result.L1.Mn1);
+  imageStore(horizon_radiance_2_img, texel, scan.result.L1.M0);
+  imageStore(horizon_radiance_3_img, texel, scan.result.L1.Mp1);
 }
