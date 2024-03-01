@@ -8,7 +8,6 @@
  * Task parallel range functions.
  */
 
-#include <chrono>
 #include <cstdlib>
 
 #include "MEM_guardedalloc.h"
@@ -19,7 +18,6 @@
 #include "BLI_task.h"
 #include "BLI_task.hh"
 #include "BLI_threads.h"
-#include "BLI_timeit.hh"
 #include "BLI_vector.hh"
 
 #include "atomic_ops.h"
