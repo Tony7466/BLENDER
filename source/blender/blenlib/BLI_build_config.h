@@ -18,7 +18,7 @@
  * the `OS_WINDOWS` is defined to 1, and all the other symbols prefixed with `OS_` are defined to 0
  * (except of the aggregates described above).
  *
- * The is an aggregates which allows to access "family" of the operating system:
+ * There are  aggregates which allows to access "family" of the operating system:
  *
  * - OS_BSD is defined for 1 for all BSD family of OS (FreeBSD, NextBSD, DragonFly...).
  * - OS_POSIX is defined to 1 if the OS implements POSIX API.
@@ -27,7 +27,7 @@
  * Compiler detection
  * ==================
  *
- * The following compilers are detected: CLANG, GCC, MSVS, MINGW32, MINGW64.
+ * The following compilers are detected: CLANG, GCC, MSVC, MINGW32, MINGW64.
  *
  * The COMPILER_<family> for the detected compiler is defined to 1, and all the rest of the
  * compiler defines are set to 0.
@@ -372,5 +372,3 @@
 #endif
 
 /** \} */
-
-/* TODO: Consider adding portable/easy-to-use flags for micro-architecture detection. */
