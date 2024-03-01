@@ -237,7 +237,6 @@ void memory_bandwidth_bound_task_impl(const FunctionRef<void()> function)
   const int num_threads = 6;
   static tbb::task_arena arena{num_threads};
   /* TODO: isolate hint? */
-  printf("isolated\n");
   arena.execute(function);
 #else
   function();
