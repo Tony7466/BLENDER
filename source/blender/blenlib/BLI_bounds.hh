@@ -180,10 +180,12 @@ template<typename T> inline void Bounds<T>::recenter(const T &new_center)
   this->translate(offset);
 }
 
-template<typename T> void Bounds<T>::pad(const T &padding)
+template<typename T>
+template<typename PaddingT>
+inline void Bounds<T>::pad(const PaddingT &padding)
 {
-  this->min -= padding;
-  this->max += padding;
+  this->min = this->min - padding;
+  this->max = this->max + padding;
 }
 
 }  // namespace blender

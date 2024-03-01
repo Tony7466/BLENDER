@@ -103,13 +103,17 @@ TEST(bounds, Recenter)
 TEST(bounds, Pad)
 {
   Bounds<float2> bounds1(float2(0.0f));
-  Bounds<float2> bounds2(float2(-3.0f, -5.0f), float2(2.0f, 4.0f));
+  Bounds<float2> bounds2(float2(-1.0f), float2(1.0f));
+  Bounds<float2> bounds3(float2(-3.0f, -5.0f), float2(2.0f, 4.0f));
   bounds1.pad(float2(1.0f));
-  bounds2.pad(float2(1.0f, 2.0f));
+  bounds2.pad(1.0f);
+  bounds3.pad(float2(1.0f, 2.0f));
   EXPECT_EQ(bounds1.min, float2(-1.0f));
   EXPECT_EQ(bounds1.max, float2(1.0f));
-  EXPECT_EQ(bounds2.min, float2(-4.0f, -7.0f));
-  EXPECT_EQ(bounds2.max, float2(3.0f, 6.0f));
+  EXPECT_EQ(bounds2.min, float2(-2.0f));
+  EXPECT_EQ(bounds2.max, float2(2.0f));
+  EXPECT_EQ(bounds3.min, float2(-4.0f, -7.0f));
+  EXPECT_EQ(bounds3.max, float2(3.0f, 6.0f));
 }
 
 TEST(bounds, MinMaxEmpty)
