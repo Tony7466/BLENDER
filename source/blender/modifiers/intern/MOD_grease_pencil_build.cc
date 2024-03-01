@@ -19,6 +19,9 @@
 #include "DNA_defaults.h"
 #include "DNA_gpencil_modifier_types.h"
 #include "DNA_object_types.h"
+#include "DNA_scene_types.h"
+
+#include "DEG_depsgraph_query.hh"
 
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
@@ -273,7 +276,6 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
   const int stroke_count = curves.curves_num();
   const OffsetIndices<int> &points_by_curve = curves.points_by_curve();
 
-  r_curves_num = r_points_num = 0;
   float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ? factor :
                                                                                  (1.0f - factor);
   if (clamp_points) {
@@ -455,20 +457,56 @@ static bke::CurvesGeometry reorder_strokes(const bke::CurvesGeometry &curves,
   return geometry::reorder_curves_geometry(curves, new_order.as_span(), {});
 }
 
+static float get_factor_from_draw_speed(const bke::CurvesGeometry &curves,
+                                        const float time_elapsed)
+{
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  Array<float> times(curves.points_num());
+  bke::AttributeAccessor time_attributes = curves.attributes();
+  bke::AttributeReader<float> init_times = time_attributes.lookup_or_default<float>(
+      "init_time", bke::AttrDomain::Curve, 0.0f);
+  bke::AttributeReader<float> delta_times = time_attributes.lookup_or_default<float>(
+      "delta_time", bke::AttrDomain::Point, 0.0f);
+
+  float current_time = 0;
+  float previous_init_time = init_times.varray[0];
+  for (const int i : IndexRange(curves.curves_num())) {
+    if (i > 0) {
+      current_time += init_times.varray[i] - previous_init_time;
+      previous_init_time = init_times.varray[i];
+    }
+    for (const int p : points_by_curve[i].index_range()) {
+      const int index = p + points_by_curve[i].first();
+      current_time += delta_times.varray[index];
+      times[index] = current_time;
+    }
+  }
+  for (const int p : curves.points_range()) {
+    if (times[p] >= time_elapsed) {
+      return math::clamp(float(p) / float(curves.points_num()), 0.0f, 1.0f);
+    }
+  }
+  return 1.0f;
+}
+
 static float get_build_factor(const int time_mode,
                               const int current_frame,
                               const int start_frame,
                               const int length,
                               const float percentage,
+                              const bke::CurvesGeometry &curves,
+                              const float scene_fps,
                               const float fade)
 {
+
   switch (time_mode) {
     case MOD_GREASE_PENCIL_BUILD_TIMEMODE_FRAMES:
       return math::clamp(float(current_frame - start_frame) / length, 0.0f, 1.0f) * (1.0f + fade);
     case MOD_GREASE_PENCIL_BUILD_TIMEMODE_PERCENTAGE:
       return percentage * (1.0f + fade);
+    case MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED:
+      return get_factor_from_draw_speed(curves, float(current_frame) / scene_fps) * (1.0f + fade);
     default:
-      // TODO: Find a way to implement MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED...
       return 0;
   }
 }
@@ -476,8 +514,9 @@ static float get_build_factor(const int time_mode,
 static void deform_drawing(const ModifierData &md,
                            const Object &ob,
                            bke::greasepencil::Drawing &drawing,
-                           bke::greasepencil::Drawing *previous_drawing,
-                           const int current_time)
+                           const bke::greasepencil::Drawing *previous_drawing,
+                           const int current_time,
+                           const float scene_fps)
 {
   const auto &mmd = reinterpret_cast<const GreasePencilBuildModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
@@ -501,7 +540,7 @@ static void deform_drawing(const ModifierData &md,
       for (const int i : IndexRange(prev_strokes)) {
         work_on_select[i] = false;
       }
-      selection.from_bools(work_on_select,memory);
+      selection.from_bools(work_on_select, memory);
     }
   }
 
@@ -514,12 +553,16 @@ static void deform_drawing(const ModifierData &md,
     selection = IndexMask::from_bools(reordered_select, memory);
   }
 
-  const bool is_vanishing = mmd.transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
-
   const float fade_factor = ((mmd.flag & MOD_GREASE_PENCIL_BUILD_USE_FADING) != 0) ? mmd.fade_fac :
                                                                                      0.0f;
-  float factor = get_build_factor(
-      mmd.time_mode, current_time, mmd.start_delay, mmd.length, mmd.percentage_fac, fade_factor);
+  float factor = get_build_factor(mmd.time_mode,
+                                  current_time,
+                                  mmd.start_delay,
+                                  mmd.length,
+                                  mmd.percentage_fac,
+                                  curves,
+                                  scene_fps,
+                                  fade_factor);
   float factor_start = factor - fade_factor;
   if (mmd.transition != MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW) {
     std::swap(factor, factor_start);
@@ -599,18 +642,21 @@ static void modify_geometry_set(ModifierData *md,
     }
   }
 
+  const Scene &scene = *DEG_get_evaluated_scene(ctx->depsgraph);
+  const float scene_fps = float(scene.r.frs_sec) / scene.r.frs_sec_base;
+
   threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    const bke::greasepencil::Drawing *prev_drawing=nullptr;
-    //modifier::greasepencil::get_drawing_infos_by_layer(,)
-    //std::optional<bke::greasepencil::FramesMapKey> prev_key = layer.frame_key_at(frame_number - 1);
-    //if (prev_key.has_value()) {
-    //  const int prev_drawing_index = layer.frames().lookup(*prev_key).drawing_index;
-    //  GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(prev_drawing_index);
-    //  if (drawing_base->type == GP_DRAWING) {
-    //    prev_drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
-    //  }
-    //}
-    deform_drawing(*md, *ctx->object, *drawing, prev_drawing, eval_frame);
+    bke::greasepencil::Drawing *prev_drawing = nullptr;
+    // modifier::greasepencil::get_drawing_infos_by_layer(,)
+    // std::optional<bke::greasepencil::FramesMapKey> prev_key = layer.frame_key_at(frame_number -
+    // 1); if (prev_key.has_value()) {
+    //   const int prev_drawing_index = layer.frames().lookup(*prev_key).drawing_index;
+    //   GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(prev_drawing_index);
+    //   if (drawing_base->type == GP_DRAWING) {
+    //     prev_drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
+    //   }
+    // }
+    deform_drawing(*md, *ctx->object, *drawing, prev_drawing, eval_frame, scene_fps);
   });
 }
 
@@ -666,13 +712,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   }
   uiItemS(layout);
   uiItemR(layout, ptr, "object", UI_ITEM_NONE, nullptr, ICON_NONE);
-
-  /* Some housekeeping to prevent clashes between incompatible
-   * options */
-
-  /* Check for incompatible time modifier. */
-  Object *ob = static_cast<Object *>(ob_ptr.data);
-  auto *md = static_cast<GreasePencilBuildModifierData *>(ptr->data);
 
   if (uiLayout *panel = uiLayoutPanelProp(
           C, layout, ptr, "open_frame_range_panel", "Effective Range"))
