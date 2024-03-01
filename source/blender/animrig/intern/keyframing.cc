@@ -395,10 +395,8 @@ bool insert_keyframe_direct(ReportList *reports,
     current_value = values[index];
   }
 
-  const bool curval_valid = BLI_BITMAP_TEST_BOOL(successful_remaps, index);
-
   /* This happens if NLA rejects this insertion. */
-  if (!curval_valid) {
+  if (!successful_remaps[index]) {
     return false;
   }
 
@@ -550,7 +548,7 @@ int insert_keyframe(Main *bmain,
       int exclude = -1;
 
       for (array_index = 0; array_index < values.size(); array_index++) {
-        if (!BLI_BITMAP_TEST_BOOL(successful_remaps, array_index)) {
+        if (!successful_remaps[array_index]) {
           continue;
         }
 
@@ -577,7 +575,7 @@ int insert_keyframe(Main *bmain,
         flag &= ~(INSERTKEY_REPLACE | INSERTKEY_AVAILABLE);
 
         for (array_index = 0; array_index < values.size(); array_index++) {
-          if (!BLI_BITMAP_TEST_BOOL(successful_remaps, array_index)) {
+          if (!successful_remaps[array_index]) {
             continue;
           }
 
@@ -601,7 +599,7 @@ int insert_keyframe(Main *bmain,
     /* Simply insert all channels. */
     else {
       for (array_index = 0; array_index < values.size(); array_index++) {
-        if (!BLI_BITMAP_TEST_BOOL(successful_remaps, array_index)) {
+        if (!successful_remaps[array_index]) {
           continue;
         }
 
@@ -622,9 +620,7 @@ int insert_keyframe(Main *bmain,
   }
   /* Key a single index. */
   else {
-    if (array_index >= 0 && array_index < values.size() &&
-        BLI_BITMAP_TEST_BOOL(successful_remaps, array_index))
-    {
+    if (array_index >= 0 && array_index < values.size() && successful_remaps[array_index]) {
       key_count += insert_keyframe_fcurve_value(bmain,
                                                 reports,
                                                 &ptr,
