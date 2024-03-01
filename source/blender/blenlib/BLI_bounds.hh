@@ -154,13 +154,13 @@ template<typename T> inline T Bounds<T>::size() const
   return math::abs(max - min);
 }
 
-template<typename T> void Bounds<T>::translate(const T &offset)
+template<typename T> inline void Bounds<T>::translate(const T &offset)
 {
   this->min += offset;
   this->max += offset;
 }
 
-template<typename T> void Bounds<T>::scale_from_center(const T &scale)
+template<typename T> inline void Bounds<T>::scale_from_center(const T &scale)
 {
   const T center = this->center();
   const T new_half_size = this->size() / T(2) * scale;
@@ -168,13 +168,13 @@ template<typename T> void Bounds<T>::scale_from_center(const T &scale)
   this->max = center + new_half_size;
 }
 
-template<typename T> void Bounds<T>::resize(const T &new_size)
+template<typename T> inline void Bounds<T>::resize(const T &new_size)
 {
   this->min = this->center() - (new_size / T(2));
   this->max = this->min + new_size;
 }
 
-template<typename T> void Bounds<T>::recenter(const T &new_center)
+template<typename T> inline void Bounds<T>::recenter(const T &new_center)
 {
   const T offset = new_center - this->center();
   this->translate(offset);
