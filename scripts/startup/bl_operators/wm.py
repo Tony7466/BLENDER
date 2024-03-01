@@ -2723,79 +2723,250 @@ class WM_OT_batch_rename(Operator):
             if id.library is None
         ]))
 
-    @classmethod
-    def _data_from_context(cls, context, data_type, only_selected, *, check_context=False):
+    @staticmethod
+    def _data_type_from_context(context):
+        space_type = None if (context.space_data is None) else context.space_data.type
+        space_type_mapping = {
+            'SEQUENCE_EDITOR': 'SEQUENCE_STRIP',
+            'NODE_EDITOR': 'NODE',
+            'OUTLINER': 'COLLECTION',
+        }
+        if space_type in space_type_mapping:
+            return space_type_mapping[space_type]
 
-        mode = context.mode
+        mode_mapping = {
+            'POSE': 'BONE',
+            'EDIT_ARMATURE': 'BONE',
+            'WEIGHT_PAINT': 'BONE' if context.pose_object else 'OBJECT',
+        }
+
+        return mode_mapping.get(context.mode, 'OBJECT')
+
+    @staticmethod
+    def _get_sequence_editor_data(context, data_type, only_selected):
         scene = context.scene
+        data_type_test = 'SEQUENCE_STRIP'
+        if data_type != data_type_test:
+            return None
+        data = (
+            context.selected_sequences
+            if only_selected else
+            scene.sequence_editor.sequences_all,
+            "name",
+            iface_("Strip(s)"),
+        )
+        return data
+
+    @staticmethod
+    def _get_node_editor_data(context, data_type, only_selected):
+        data_type_test = 'NODE'
+        if data_type != data_type_test:
+            return None
+        data = (
+            context.selected_nodes
+            if only_selected else
+            list(space.node_tree.nodes),
+            "name",
+            iface_("Node(s)"),
+        )
+        return data
+
+    @staticmethod
+    def _get_outliner_data(context, data_type, only_selected):
+        data_type_test = 'COLLECTION'
+        if data_type != data_type_test:
+            return None
+        data = (
+            WM_OT_batch_rename._selected_ids_from_outliner_by_type(context, bpy.types.Collection)
+            if only_selected else
+            context.scene.collection.children_recursive,
+            "name",
+            iface_("Collection(s)"),
+        )
+        return data
+
+    @staticmethod
+    def _get_bone_data(context, data_type, only_selected):
+        data_type_test = 'BONE'
+        if data_type != data_type_test:
+            return None
+        data = (
+            [pchan.bone for pchan in context.selected_pose_bones]
+            if only_selected else
+            [pbone.bone for ob in context.objects_in_mode_unique_data for pbone in ob.pose.bones],
+            "name",
+            iface_("Bone(s)"),
+        )
+        return data
+
+    @staticmethod
+    def _get_edit_bone_data(context, data_type, only_selected):
+        data_type_test = 'BONE'
+        if data_type != data_type_test:
+            return None
+        data = (
+            context.selected_editable_bones
+            if only_selected else
+            [ebone for ob in context.objects_in_mode_unique_data for ebone in ob.data.edit_bones],
+            "name",
+            iface_("Edit Bone(s)"),
+        )
+
+    @staticmethod
+    def _get_object_data(context, only_selected):
         space = context.space_data
         space_type = None if (space is None) else space.type
+        data = (
+            (
+                # Outliner.
+                WM_OT_batch_rename._selected_ids_from_outliner_by_type(context, bpy.types.Object)
+                if space_type == 'OUTLINER' else
+                # 3D View (default).
+                context.selected_editable_objects
+            )
+            if only_selected else
+            [id for id in bpy.data.objects if id.library is None],
+            "name",
+            iface_("Object(s)"),
+        )
+        return data
 
-        data = None
-        if space_type == 'SEQUENCE_EDITOR':
-            data_type_test = 'SEQUENCE_STRIP'
-            if check_context:
-                return data_type_test
-            if data_type == data_type_test:
-                data = (
-                    context.selected_sequences
-                    if only_selected else
-                    scene.sequence_editor.sequences_all,
-                    "name",
-                    iface_("Strip(s)"),
-                )
-        elif space_type == 'NODE_EDITOR':
-            data_type_test = 'NODE'
-            if check_context:
-                return data_type_test
-            if data_type == data_type_test:
-                data = (
-                    context.selected_nodes
-                    if only_selected else
-                    list(space.node_tree.nodes),
-                    "name",
-                    iface_("Node(s)"),
-                )
-        elif space_type == 'OUTLINER':
-            data_type_test = 'COLLECTION'
-            if check_context:
-                return data_type_test
-            if data_type == data_type_test:
-                data = (
-                    cls._selected_ids_from_outliner_by_type(context, bpy.types.Collection)
-                    if only_selected else
-                    scene.collection.children_recursive,
-                    "name",
-                    iface_("Collection(s)"),
-                )
-        else:
-            if mode == 'POSE' or (mode == 'WEIGHT_PAINT' and context.pose_object):
-                data_type_test = 'BONE'
-                if check_context:
-                    return data_type_test
-                if data_type == data_type_test:
-                    data = (
-                        [pchan.bone for pchan in context.selected_pose_bones]
-                        if only_selected else
-                        [pbone.bone for ob in context.objects_in_mode_unique_data for pbone in ob.pose.bones],
-                        "name",
-                        iface_("Bone(s)"),
-                    )
-            elif mode == 'EDIT_ARMATURE':
-                data_type_test = 'BONE'
-                if check_context:
-                    return data_type_test
-                if data_type == data_type_test:
-                    data = (
-                        context.selected_editable_bones
-                        if only_selected else
-                        [ebone for ob in context.objects_in_mode_unique_data for ebone in ob.data.edit_bones],
-                        "name",
-                        iface_("Edit Bone(s)"),
-                    )
+    @staticmethod
+    def _get_collection_data(context, only_selected):
+        # Outliner is expected to be handled already.
+        data = (
+            tuple(set(
+                ob.instance_collection
+                for ob in context.selected_objects
+                if ((ob.instance_type == 'COLLECTION') and
+                    (collection := ob.instance_collection) is not None and
+                    (collection.library is None))
+            ))
+            if only_selected else
+            [id for id in bpy.data.collections if id.library is None],
+            "name",
+            iface_("Collection(s)"),
+        )
+        return data
 
-        if check_context:
-            return 'OBJECT'
+    @staticmethod
+    def _get_material_data(context, only_selected):
+        space = context.space_data
+        space_type = None if (space is None) else space.type
+        data = (
+            (
+                # Outliner.
+                WM_OT_batch_rename._selected_ids_from_outliner_by_type(context, bpy.types.Material)
+                if space_type == 'OUTLINER' else
+                # 3D View (default).
+                tuple(set(
+                    id
+                    for ob in context.selected_objects
+                    for slot in ob.material_slots
+                    if (id := slot.material) is not None and id.library is None
+                ))
+            )
+            if only_selected else
+            [id for id in bpy.data.materials if id.library is None],
+            "name",
+            iface_("Material(s)"),
+        )
+        return data
+
+    @staticmethod
+    def _get_action_clip_data(context, only_selected):
+        space = context.space_data
+        space_type = None if (space is None) else space.type
+        data = (
+            (
+                # Outliner.
+                tuple(set(
+                    action for id in context.selected_ids
+                    if (((animation_data := id.animation_data) is not None) and
+                        ((action := animation_data.action) is not None) and
+                        (action.library is None))
+                ))
+                if space_type == 'OUTLINER' else
+                # 3D View (default).
+                tuple(set(
+                    action for ob in context.selected_objects
+                    if (((animation_data := ob.animation_data) is not None) and
+                        ((action := animation_data.action) is not None) and
+                        (action.library is None))
+                ))
+            )
+            if only_selected else
+            [id for id in bpy.data.actions if id.library is None],
+            "name",
+            iface_("Action(s)"),
+        )
+        return data
+
+    @staticmethod
+    def _get_scene_data(context, only_selected):
+        space = context.space_data
+        space_type = None if (space is None) else space.type
+        data = (
+            (
+                # Outliner.
+                WM_OT_batch_rename._selected_ids_from_outliner_by_type(context, bpy.types.Scene)
+                if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.scenes if id.library is None]
+            ),
+            "name",
+            iface_("Scene(s)"),
+        )
+        return data
+
+    @staticmethod
+    def _get_brush_data(context, only_selected):
+        space = context.space_data
+        space_type = None if (space is None) else space.type
+        data = (
+            (
+                # Outliner.
+                WM_OT_batch_rename._selected_ids_from_outliner_by_type(context, bpy.types.Brush)
+                if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.brushes if id.library is None]
+            ),
+            "name",
+            iface_("Brush(es)"),
+        )
+        return data
+
+    @classmethod
+    def _data_from_context(cls, context, data_type, only_selected):
+        mode = context.mode
+        space = context.space_data
+        space_type = None if (space is None) else space.type
+        space_type_mapping = {
+            'SEQUENCE_EDITOR': WM_OT_batch_rename._get_sequence_editor_data,
+            'NODE_EDITOR': WM_OT_batch_rename._get_node_editor_data,
+            'OUTLINER': WM_OT_batch_rename._get_outliner_data
+        }
+        if space_type_mapping.get(space_type) is not None:
+            return space_type_mapping[space_type](context, data_type, only_selected)
+
+        # Unable to get data from the space_type. Try the mode next.
+        mode_mapping = {
+            'POSE': WM_OT_batch_rename._get_bone_data,
+            'WEIGHT_PAINT': WM_OT_batch_rename._get_bone_data if context.pose_object else None,
+            'EDIT_ARMATURE': None,
+        }
+
+        if mode_mapping.get(mode) is not None:
+            return mode_mapping[mode](context, data_type, only_selected)
+
+        # Finish with data types.
+        data_type_map = {
+            'OBJECT': WM_OT_batch_rename._get_object_data,
+            'COLLECTION': WM_OT_batch_rename._get_collection_data,
+            'MATERIAL': WM_OT_batch_rename._get_material_data,
+            'ACTION_CLIP': WM_OT_batch_rename._get_action_clip_data,
+            'SCENE': WM_OT_batch_rename._get_scene_data,
+            'BRUSH': None,
+        }
+
+        if data_type_map.get(data_type) is not None:
+            return data_type_map[data_type](context, only_selected)
 
         object_data_type_attrs_map = {
             'MESH': ("meshes", iface_("Mesh(es)"), bpy.types.Mesh),
@@ -2810,122 +2981,27 @@ class WM_OT_batch_rename(Operator):
             'CAMERA': ("cameras", iface_("Camera(s)"), bpy.types.Camera),
             'SPEAKER': ("speakers", iface_("Speaker(s)"), bpy.types.Speaker),
         }
-
-        # Finish with space types.
-        if data is None:
-
-            if data_type == 'OBJECT':
-                data = (
-                    (
-                        # Outliner.
-                        cls._selected_ids_from_outliner_by_type(context, bpy.types.Object)
-                        if space_type == 'OUTLINER' else
-                        # 3D View (default).
-                        context.selected_editable_objects
-                    )
-                    if only_selected else
-                    [id for id in bpy.data.objects if id.library is None],
-                    "name",
-                    iface_("Object(s)"),
-                )
-            elif data_type == 'COLLECTION':
-                data = (
-                    # Outliner case is handled already.
+        data = None
+        if data_type in object_data_type_attrs_map.keys():
+            attr, descr, ty = object_data_type_attrs_map[data_type]
+            data = (
+                (
+                    # Outliner.
+                    cls._selected_ids_from_outliner_by_type_for_object_data(context, ty)
+                    if space_type == 'OUTLINER' else
+                    # 3D View (default).
                     tuple(set(
-                        ob.instance_collection
+                        id
                         for ob in context.selected_objects
-                        if ((ob.instance_type == 'COLLECTION') and
-                            (collection := ob.instance_collection) is not None and
-                            (collection.library is None))
+                        if ob.type == data_type
+                        if (id := ob.data) is not None and id.library is None
                     ))
-                    if only_selected else
-                    [id for id in bpy.data.collections if id.library is None],
-                    "name",
-                    iface_("Collection(s)"),
                 )
-            elif data_type == 'MATERIAL':
-                data = (
-                    (
-                        # Outliner.
-                        cls._selected_ids_from_outliner_by_type(context, bpy.types.Material)
-                        if space_type == 'OUTLINER' else
-                        # 3D View (default).
-                        tuple(set(
-                            id
-                            for ob in context.selected_objects
-                            for slot in ob.material_slots
-                            if (id := slot.material) is not None and id.library is None
-                        ))
-                    )
-                    if only_selected else
-                    [id for id in bpy.data.materials if id.library is None],
-                    "name",
-                    iface_("Material(s)"),
-                )
-            elif data_type == 'ACTION_CLIP':
-                data = (
-                    (
-                        # Outliner.
-                        tuple(set(
-                            action for id in context.selected_ids
-                            if (((animation_data := id.animation_data) is not None) and
-                                ((action := animation_data.action) is not None) and
-                                (action.library is None))
-                        ))
-                        if space_type == 'OUTLINER' else
-                        # 3D View (default).
-                        tuple(set(
-                            action for ob in context.selected_objects
-                            if (((animation_data := ob.animation_data) is not None) and
-                                ((action := animation_data.action) is not None) and
-                                (action.library is None))
-                        ))
-                    )
-                    if only_selected else
-                    [id for id in bpy.data.actions if id.library is None],
-                    "name",
-                    iface_("Action(s)"),
-                )
-            elif data_type == 'SCENE':
-                data = (
-                    (
-                        # Outliner.
-                        cls._selected_ids_from_outliner_by_type(context, bpy.types.Scene)
-                        if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.scenes if id.library is None]
-                    ),
-                    "name",
-                    iface_("Scene(s)"),
-                )
-            elif data_type == 'BRUSH':
-                data = (
-                    (
-                        # Outliner.
-                        cls._selected_ids_from_outliner_by_type(context, bpy.types.Brush)
-                        if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.brushes if id.library is None]
-                    ),
-                    "name",
-                    iface_("Brush(es)"),
-                )
-            elif data_type in object_data_type_attrs_map.keys():
-                attr, descr, ty = object_data_type_attrs_map[data_type]
-                data = (
-                    (
-                        # Outliner.
-                        cls._selected_ids_from_outliner_by_type_for_object_data(context, ty)
-                        if space_type == 'OUTLINER' else
-                        # 3D View (default).
-                        tuple(set(
-                            id
-                            for ob in context.selected_objects
-                            if ob.type == data_type
-                            if (id := ob.data) is not None and id.library is None
-                        ))
-                    )
-                    if only_selected else
-                    [id for id in getattr(bpy.data, attr) if id.library is None],
-                    "name",
-                    descr,
-                )
+                if only_selected else
+                [id for id in getattr(bpy.data, attr) if id.library is None],
+                "name",
+                descr,
+            )
 
         return data
 
@@ -3001,7 +3077,7 @@ class WM_OT_batch_rename(Operator):
 
         self._data = self._data_from_context(context, self.data_type, only_selected)
         if self._data is None:
-            self.data_type = self._data_from_context(context, None, False, check_context=True)
+            self.data_type = self._data_type_from_context(context)
             self._data = self._data_from_context(context, self.data_type, only_selected)
 
         self._data_source_prev = self.data_source
