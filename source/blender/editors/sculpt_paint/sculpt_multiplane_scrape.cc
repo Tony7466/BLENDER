@@ -161,7 +161,10 @@ static void do_multiplane_scrape_brush_task(Object *ob,
     }
 
     sub_v3_v3v3(val, intr, vd.co);
-    const float trim_factor = SCULPT_plane_trim(ss->cache, brush, val);
+    if (!SCULPT_plane_trim(ss->cache, brush, val)) {
+      continue;
+    }
+
     auto_mask::node_update(automask_data, vd);
 
     /* Deform the local space along the Y axis to avoid artifacts on curved strokes. */
@@ -177,7 +180,7 @@ static void do_multiplane_scrape_brush_task(Object *ob,
                                                           vd.vertex,
                                                           thread_id,
                                                           &automask_data);
-    fade *= trim_factor;
+    // fade *= trim_factor;
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;

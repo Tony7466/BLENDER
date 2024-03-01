@@ -3011,13 +3011,13 @@ static void rna_def_brush(BlenderRNA *brna)
       "If a vertex is further away from offset plane than this, then it is not affected");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
-  prop = RNA_def_property(srna, "plane_trim_decay", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "plane_trim_decay");
-  RNA_def_property_range(prop, 0, 50.0f);
-  RNA_def_property_ui_text(
-      prop,
-      "Plane Trim Decay",
-      "Exponential decay's rate of the brush strength based on the distance from the offset plane");
+  prop = RNA_def_property(srna, "flatten_hardness", PROP_FLOAT, PROP_NONE);
+  RNA_def_property_float_sdna(prop, nullptr, "flatten_hardness");
+  RNA_def_property_range(prop, 0, 1.0f);
+  RNA_def_property_ui_text(prop,
+                           "Flatten hardness",
+                           "Exponential decay's rate of the brush strength based on the distance "
+                           "from the offset plane");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "height", PROP_FLOAT, PROP_DISTANCE);

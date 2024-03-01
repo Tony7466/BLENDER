@@ -3050,20 +3050,21 @@ void SCULPT_calc_brush_plane(
   }
 }
 
-float SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache *cache,
-                        const Brush *brush,
-                        const float val[3])
+bool SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache *cache,
+                       const Brush *brush,
+                       const float val[3])
+{
+  return (!(brush->flag & BRUSH_PLANE_TRIM) ||
+          (dot_v3v3(val, val) <= cache->radius_squared * cache->plane_trim_squared));
+}
+
+float SCULPT_decay_hardness(const blender::ed::sculpt_paint::StrokeCache *cache,
+                            const float val[3])
 {
   const float lensq = dot_v3v3(val, val);
-  if (!(brush->flag & BRUSH_PLANE_TRIM) ||
-      (lensq <= cache->radius_squared * cache->plane_trim_squared))
-  {
-    return 1;
-  }
-
   /* Workaround for https://projects.blender.org/blender/blender/issues/116458
   apply a strong falloff based on the distance to the brush plane */
-  const float decay_rate = cache->plane_trim_decay;
+  const float decay_rate = 40.0f * cache->flatten_hardness;
   return std::exp(-decay_rate * sqrtf(lensq));
 }
 
@@ -4220,7 +4221,7 @@ static void sculpt_update_cache_invariants(
   cache->scale[2] = max_scale / ob->scale[2];
 
   cache->plane_trim_squared = brush->plane_trim * brush->plane_trim;
-  cache->plane_trim_decay = brush->plane_trim_decay;
+  cache->flatten_hardness = brush->flatten_hardness;
 
   cache->flag = 0;
 

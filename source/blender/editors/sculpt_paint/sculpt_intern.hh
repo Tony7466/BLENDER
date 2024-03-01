@@ -520,7 +520,7 @@ struct StrokeCache {
   bool alt_smooth;
 
   float plane_trim_squared;
-  float plane_trim_decay;
+  float flatten_hardness;
 
   bool supports_gravity;
   float3 true_gravity_direction;
@@ -1049,9 +1049,12 @@ PBVHVertRef SCULPT_nearest_vertex_get(Object *ob,
                                       bool use_original);
 
 int SCULPT_plane_point_side(const float co[3], const float plane[4]);
-float SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache *cache,
-                        const Brush *brush,
-                        const float val[3]);
+bool SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache *cache,
+                       const Brush *brush,
+                       const float val[3]);
+float SCULPT_flatten_hardness(const blender::ed::sculpt_paint::StrokeCache *cache,
+                              const Brush *brush,
+                              const float val[3]);
 /**
  * Handles clipping against a mirror modifier and #SCULPT_LOCK_X/Y/Z axis flags.
  */

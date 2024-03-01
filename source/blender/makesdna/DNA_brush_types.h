@@ -306,7 +306,7 @@ typedef struct Brush {
   float wet_paint_radius_factor;
 
   float plane_trim;
-  float plane_trim_decay;
+  float flatten_hardness;
   /** Affectable height of brush (layer height for layer tool, i.e.). */
   float height;
 

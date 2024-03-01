@@ -8679,7 +8679,7 @@ class VIEW3D_PT_sculpt_context_menu(Panel):
         if capabilities.has_plane_offset:
             layout.prop(brush, "plane_offset", slider=True)
             layout.prop(brush, "plane_trim", slider=True, text="Distance")
-            layout.prop(brush, "plane_trim_decay", slider=True, text="Decay")
+            layout.prop(brush, "flatten_hardness", slider=True, text="Flatten hardness")
 
         if capabilities.has_height:
             layout.prop(brush, "height", slider=True, text="Height")

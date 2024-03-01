@@ -368,7 +368,9 @@ static void do_fill_brush_task(
     closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
     sub_v3_v3v3(val, intr, vd.co);
 
-    const float trim_factor = SCULPT_plane_trim(ss->cache, brush, val);
+    if (!SCULPT_plane_trim(ss->cache, brush, val)) {
+      continue;
+    }
     auto_mask::node_update(automask_data, vd);
     float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                           brush,
@@ -380,7 +382,7 @@ static void do_fill_brush_task(
                                                           vd.vertex,
                                                           thread_id,
                                                           &automask_data);
-    fade *= trim_factor;
+    // fade *= trim_factor;
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;
@@ -452,7 +454,9 @@ static void do_scrape_brush_task(
     closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
     sub_v3_v3v3(val, intr, vd.co);
 
-    const float trim_factor = SCULPT_plane_trim(ss->cache, brush, val);
+    if (!SCULPT_plane_trim(ss->cache, brush, val)) {
+      continue;
+    }
     auto_mask::node_update(automask_data, vd);
     float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                           brush,
@@ -464,7 +468,7 @@ static void do_scrape_brush_task(
                                                           vd.vertex,
                                                           thread_id,
                                                           &automask_data);
-    fade *= trim_factor;
+    // fade *= trim_factor;
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;
@@ -695,7 +699,9 @@ static void do_flatten_brush_task(
 
     sub_v3_v3v3(val, intr, vd.co);
 
-    const float trim_factor = SCULPT_plane_trim(ss->cache, brush, val);
+    if (!SCULPT_plane_trim(ss->cache, brush, val)) {
+      continue;
+    }
     auto_mask::node_update(automask_data, vd);
     float fade = bstrength * SCULPT_brush_strength_factor(ss,
                                                           brush,
@@ -707,7 +713,7 @@ static void do_flatten_brush_task(
                                                           vd.vertex,
                                                           thread_id,
                                                           &automask_data);
-    fade *= trim_factor;
+    // fade *= trim_factor;
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;
@@ -938,7 +944,9 @@ static void do_clay_strips_brush_task(Object *ob,
     closest_to_plane_normalized_v3(intr, test.plane_tool, vd.co);
     sub_v3_v3v3(val, intr, vd.co);
 
-    const float trim_factor = SCULPT_plane_trim(ss->cache, brush, val);
+    if (!SCULPT_plane_trim(ss->cache, brush, val)) {
+      continue;
+    }
     auto_mask::node_update(automask_data, vd);
 
     /* The normal from the vertices is ignored, it causes glitch with planes, see: #44390. */
@@ -952,7 +960,7 @@ static void do_clay_strips_brush_task(Object *ob,
                                                           vd.vertex,
                                                           thread_id,
                                                           &automask_data);
-    fade *= trim_factor;
+    // fade *= trim_factor;
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;
