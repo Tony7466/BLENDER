@@ -171,6 +171,15 @@ int DocumentExporter::exportCurrentScene()
   clear_global_id_map();
 
   COLLADABU::NativeString native_filename = make_temp_filepath(nullptr, ".dae");
+
+  /* Avoid crash if temp file cannot be written to. */
+  if (BLI_access(native_filename.c_str(), W_OK) != 0) {
+    fprintf(stderr,
+            "Collada: Temp file (%s) cannot be written to. No Objects will be exported.\n",
+            native_filename.c_str());
+    return 1;
+  }
+
   COLLADASW::StreamWriter *writer = new COLLADASW::StreamWriter(native_filename);
 
   /* open <collada> */
