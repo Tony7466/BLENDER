@@ -1263,7 +1263,8 @@ class NodeSocket(StructRNA, metaclass=RNAMetaPropGroup):
 
         if not self.is_output:
             links = sorted(links,
-                           key=lambda link: link.multi_input_socket_index)
+                           key=lambda link: link.multi_input_sort_id,
+                           reverse=True)
 
         return tuple(links)
 
