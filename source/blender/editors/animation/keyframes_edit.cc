@@ -668,7 +668,7 @@ bool keyframe_region_circle_test(const KeyframeEdit_CircleData *data_circle, con
 static short ok_bezier_region_circle(KeyframeEditData *ked, BezTriple *bezt)
 {
   /* check for circle select customdata (KeyframeEdit_CircleData) */
-  if (ked->data) {
+  if (!ked->data) {
     return 0;
   }
 
