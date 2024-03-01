@@ -109,6 +109,10 @@ extern "C" char build_hash[];
 
 #include <cerrno>
 
+#ifdef WIN32
+#  include "BLI_winstuff.h" /* For `W_OK`. */
+#endif
+
 const char *bc_CustomData_get_layer_name(const CustomData *data, const eCustomDataType type, int n)
 {
   int layer_index = CustomData_get_layer_index(data, type);
