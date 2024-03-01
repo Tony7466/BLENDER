@@ -56,6 +56,86 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
     ss << ")\n";
     log.append(ss.str());
   }
+  void bind_pipeline(VkPipelineBindPoint pipeline_bind_point, VkPipeline pipeline) override;
+  void bind_descriptor_sets(VkPipelineBindPoint pipeline_bind_point,
+                            VkPipelineLayout layout,
+                            uint32_t first_set,
+                            uint32_t descriptor_set_count,
+                            const VkDescriptorSet *p_descriptor_sets,
+                            uint32_t dynamic_offset_count,
+                            const uint32_t *p_dynamic_offsets) override;
+  void bind_index_buffer(VkBuffer buffer, VkDeviceSize offset, VkIndexType index_type) override;
+  void bind_vertex_buffers(uint32_t first_binding,
+                           uint32_t binding_count,
+                           const VkBuffer *p_buffers,
+                           const VkDeviceSize *p_offsets) override;
+  void draw(uint32_t vertex_count,
+            uint32_t instance_count,
+            uint32_t first_vertex,
+            uint32_t first_instance) override;
+  void draw_indexed(uint32_t index_count,
+                    uint32_t instance_count,
+                    uint32_t first_index,
+                    int32_t vertex_offset,
+                    uint32_t first_instance) override;
+  void draw_indirect(VkBuffer buffer,
+                     VkDeviceSize offset,
+                     uint32_t draw_count,
+                     uint32_t stride) override;
+  void draw_indexed_indirect(VkBuffer buffer,
+                             VkDeviceSize offset,
+                             uint32_t draw_count,
+                             uint32_t stride) override;
+  void dispatch(uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z) override;
+  void dispatch_indirect(VkBuffer buffer, VkDeviceSize offset) override;
+  void copy_buffer(VkBuffer src_buffer,
+                   VkBuffer dst_buffer,
+                   uint32_t region_count,
+                   const VkBufferCopy *p_regions) override;
+  void copy_image(VkImage src_image,
+                  VkImageLayout src_image_layout,
+                  VkImage dst_image,
+                  VkImageLayout dst_image_layout,
+                  uint32_t region_count,
+                  const VkImageCopy *p_regions) override;
+  void blit_image(VkImage src_image,
+                  VkImageLayout src_image_layout,
+                  VkImage dst_image,
+                  VkImageLayout dst_image_layout,
+                  uint32_t region_count,
+                  const VkImageBlit *p_regions,
+                  VkFilter filter) override;
+  void copy_buffer_to_image(VkBuffer src_buffer,
+                            VkImage dst_image,
+                            VkImageLayout dst_image_layout,
+                            uint32_t region_count,
+                            const VkBufferImageCopy *p_regions) override;
+  void copy_image_to_buffer(VkImage src_image,
+                            VkImageLayout src_image_layout,
+                            VkBuffer dst_buffer,
+                            uint32_t region_count,
+                            const VkBufferImageCopy *p_regions) override;
+  void fill_buffer(VkBuffer dst_buffer,
+                   VkDeviceSize dst_offset,
+                   VkDeviceSize size,
+                   uint32_t data) override;
+  void clear_depth_stencil_image(VkImage image,
+                                 VkImageLayout image_layout,
+                                 const VkClearDepthStencilValue *p_depth_stencil,
+                                 uint32_t range_count,
+                                 const VkImageSubresourceRange *p_ranges) override;
+  void clear_attachments(uint32_t attachment_count,
+                         const VkClearAttachment *p_attachments,
+                         uint32_t rect_count,
+                         const VkClearRect *p_rects) override;
+  void push_constants(VkPipelineLayout layout,
+                      VkShaderStageFlags stage_flags,
+                      uint32_t offset,
+                      uint32_t size,
+                      const void *p_values) override;
+  void begin_render_pass(const VkRenderPassBeginInfo *p_render_pass_begin,
+                         VkSubpassContents contents) override;
+  void end_render_pass() override;
 };
 
 /**

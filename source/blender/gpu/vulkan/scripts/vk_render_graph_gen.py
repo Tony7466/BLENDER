@@ -87,7 +87,14 @@ def generate_command_buffer_wrapper_implementation(commands):
         result += generate_render_graph_commands_function_declaration(command, namespace="VKCommandBufferWrapper")
         result += "\n"
         result += "{\n"
-        result += "  BLI_assert_unreachable();\n"
+        result += f"  {command_name}(command_buffer_"
+        for param in command.findall("param"):
+            param_type = param.findtext("type")
+            if param_type == "VkCommandBuffer":
+                continue
+            param_name = to_lower_snake_case(param.findtext("name"))
+            result += f", {param_name}"
+        result += ");\n"
         result += "}\n"
         result += "\n"
     return result
