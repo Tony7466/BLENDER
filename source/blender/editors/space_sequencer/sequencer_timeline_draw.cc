@@ -1,4 +1,5 @@
 /* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ * SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -48,6 +49,7 @@
 #include "SEQ_transform.hh"
 #include "SEQ_utils.hh"
 
+#include "UI_interface_icons.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
@@ -67,6 +69,8 @@
 #define SEQ_HANDLE_SIZE 8.0f
 #define MUTE_ALPHA 120
 
+constexpr float MISSING_ICON_SIZE = 16.0f;
+
 struct StripDrawContext {
   Sequence *seq;
   /* Strip boundary in timeline space. Content start/end is clamped by left/right handle. */
@@ -82,6 +86,7 @@ struct StripDrawContext {
   bool is_active_strip;
   bool is_single_image; /* Strip has single frame of content. */
   bool show_strip_color_tag;
+  bool missing_data_block;
 };
 
 struct TimelineDrawContext {
@@ -209,6 +214,7 @@ static StripDrawContext strip_draw_context_get(TimelineDrawContext *ctx, Sequenc
   strip_ctx.handle_width = sequence_handle_size_get_clamped(ctx->scene, seq, ctx->pixelx);
   strip_ctx.show_strip_color_tag = (ctx->sseq->timeline_overlay.flag &
                                     SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG);
+  strip_ctx.missing_data_block = !SEQ_sequence_has_source(seq);
 
   if (strip_ctx.can_draw_text_overlay) {
     strip_ctx.strip_content_top = strip_ctx.top - min_ff(0.40f, 20 * UI_SCALE_FAC * ctx->pixely);
@@ -907,6 +913,89 @@ static size_t draw_seq_text_get_overlay_string(TimelineDrawContext *timeline_ctx
   return BLI_string_join_array(r_overlay_string, overlay_string_len, text_array, i);
 }
 
+static void get_strip_text_color(const TimelineDrawContext *ctx,
+                                 const StripDrawContext *strip,
+                                 uchar r_col[4])
+{
+  /* Text: white at 75% opacity, fully opaque when selected/active. */
+  const Sequence *seq = strip->seq;
+  const bool active_or_sel = strip->is_active_strip || (seq->flag & SELECT);
+  r_col[0] = r_col[1] = r_col[2] = 255;
+  r_col[3] = active_or_sel ? 255 : 192;
+
+  /* Muted strips: gray color, reduce opacity. */
+  if (SEQ_render_is_muted(ctx->channels, seq)) {
+    r_col[0] = r_col[1] = r_col[2] = 192;
+    r_col[3] *= 0.66f;
+  }
+}
+
+static void draw_icon_centered(TimelineDrawContext &ctx,
+                               const rctf &rect,
+                               int icon_id,
+                               const uchar color[4])
+{
+  const float icon_size_x = MISSING_ICON_SIZE * ctx.pixelx * UI_SCALE_FAC;
+  const float icon_size_y = MISSING_ICON_SIZE * ctx.pixely * UI_SCALE_FAC;
+  if (BLI_rctf_size_x(&rect) * 1.1f < icon_size_x || BLI_rctf_size_y(&rect) * 1.1f < icon_size_y) {
+    return;
+  }
+
+  UI_icon_draw_mono_rect(BLI_rctf_cent_x(&rect) - icon_size_x * 0.5f,
+                         BLI_rctf_cent_y(&rect) - icon_size_y * 0.5f,
+                         icon_size_x,
+                         icon_size_y,
+                         icon_id,
+                         color);
+}
+
+static void draw_missing_icons(TimelineDrawContext *timeline_ctx,
+                               const blender::Vector<StripDrawContext> &strips)
+{
+  timeline_ctx->quads->draw();
+  GPU_blend(GPU_BLEND_ALPHA);
+
+  UI_icon_draw_cache_begin();
+
+  const float icon_size_x = MISSING_ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
+
+  for (const StripDrawContext &strip : strips) {
+    if (!strip.missing_data_block) {
+      continue;
+    }
+
+    /* Draw icon in the title bar area. */
+    if ((timeline_ctx->sseq->flag & SEQ_SHOW_OVERLAY) != 0 && !strip.strip_is_too_small &&
+        strip.can_draw_text_overlay)
+    {
+      uchar col[4];
+      get_strip_text_color(timeline_ctx, &strip, col);
+
+      float icon_indent = 2.0f * strip.handle_width - 4 * timeline_ctx->pixelx * UI_SCALE_FAC;
+      rctf rect;
+      rect.xmin = max_ff(strip.left_handle, timeline_ctx->v2d->cur.xmin) + icon_indent;
+      rect.xmax = min_ff(strip.right_handle - strip.handle_width, rect.xmin + icon_size_x);
+      rect.ymin = strip.strip_content_top;
+      rect.ymax = strip.top;
+      draw_icon_centered(*timeline_ctx, rect, ICON_LIBRARY_DATA_BROKEN, col);
+    }
+
+    /* Draw icon in center of content. */
+    if (strip.can_draw_strip_content) {
+      rctf rect;
+      rect.xmin = strip.left_handle + strip.handle_width;
+      rect.xmax = strip.right_handle - strip.handle_width;
+      rect.ymin = strip.bottom;
+      rect.ymax = strip.strip_content_top;
+      uchar col[4] = {112, 0, 0, 255};
+      draw_icon_centered(*timeline_ctx, rect, ICON_LIBRARY_DATA_BROKEN, col);
+    }
+  }
+
+  UI_icon_draw_cache_end();
+  GPU_blend(GPU_BLEND_NONE);
+}
+
 /* Draw info text on a sequence strip. */
 static void draw_seq_text_overlay(TimelineDrawContext *timeline_ctx,
                                   const StripDrawContext *strip_ctx)
@@ -929,29 +1018,23 @@ static void draw_seq_text_overlay(TimelineDrawContext *timeline_ctx,
     return;
   }
 
-  const Sequence *seq = strip_ctx->seq;
-
-  /* Text: white at 75% opacity, fully opaque when selected/active. */
-  const bool active_or_sel = strip_ctx->is_active_strip || (seq->flag & SELECT);
   uchar col[4];
-  col[0] = col[1] = col[2] = 255;
-  col[3] = active_or_sel ? 255 : 192;
-
-  /* Muted strips: gray color, reduce opacity. */
-  if (SEQ_render_is_muted(timeline_ctx->channels, seq)) {
-    col[0] = col[1] = col[2] = 192;
-    col[3] *= 0.66f;
-  }
+  get_strip_text_color(timeline_ctx, strip_ctx, col);
 
   float text_margin = 2.0f * strip_ctx->handle_width;
   rctf rect;
-  rect.xmin = strip_ctx->left_handle + 2.0f * strip_ctx->handle_width;
-  rect.xmax = strip_ctx->right_handle - 2.0f * strip_ctx->handle_width;
+  rect.xmin = strip_ctx->left_handle + text_margin;
+  rect.xmax = strip_ctx->right_handle - text_margin;
   rect.ymax = strip_ctx->top;
   /* Depending on the vertical space, draw text on top or in the center of strip. */
   rect.ymin = !strip_ctx->can_draw_strip_content ? strip_ctx->bottom :
                                                    strip_ctx->strip_content_top;
-  CLAMP(rect.xmin, timeline_ctx->v2d->cur.xmin + text_margin, timeline_ctx->v2d->cur.xmax);
+  rect.xmin = max_ff(rect.xmin, timeline_ctx->v2d->cur.xmin + text_margin);
+  if (strip_ctx->missing_data_block) {
+    rect.xmin += MISSING_ICON_SIZE * timeline_ctx->pixelx * UI_SCALE_FAC;
+  }
+  rect.xmin = min_ff(rect.xmin, timeline_ctx->v2d->cur.xmax);
+
   CLAMP(rect.xmax, timeline_ctx->v2d->cur.xmin + text_margin, timeline_ctx->v2d->cur.xmax);
 
   UI_view2d_text_cache_add_rectf(
@@ -1178,15 +1261,24 @@ static void draw_seq_locked(TimelineDrawContext *timeline_ctx,
 
 static void draw_seq_invalid(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx)
 {
-  if (SEQ_sequence_has_source(strip_ctx->seq)) {
+  if (!strip_ctx->missing_data_block) {
     return;
   }
-  uchar color[4] = {255, 0, 0, 230};
+  /* Do not tint title area for muted strips; we want to see gray for them. */
+  if (!SEQ_render_is_muted(timeline_ctx->channels, strip_ctx->seq)) {
+    uchar col_top[4] = {112, 0, 0, 230};
+    timeline_ctx->quads->add_quad(strip_ctx->left_handle,
+                                  strip_ctx->top,
+                                  strip_ctx->right_handle,
+                                  strip_ctx->strip_content_top,
+                                  col_top);
+  }
+  uchar col_main[4] = {64, 0, 0, 230};
   timeline_ctx->quads->add_quad(strip_ctx->left_handle,
-                                strip_ctx->top,
-                                strip_ctx->right_handle,
                                 strip_ctx->strip_content_top,
-                                color);
+                                strip_ctx->right_handle,
+                                strip_ctx->bottom,
+                                col_main);
 }
 
 /**
@@ -1438,6 +1530,7 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   for (const StripDrawContext &strip_ctx : strips) {
     draw_seq_fcurve_overlay(timeline_ctx, &strip_ctx);
     draw_seq_waveform_overlay(timeline_ctx, &strip_ctx);
+    draw_seq_invalid(timeline_ctx, &strip_ctx);
   }
   timeline_ctx->quads->draw();
   GPU_blend(GPU_BLEND_NONE);
@@ -1448,7 +1541,6 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
   /* Draw the rest. */
   GPU_blend(GPU_BLEND_ALPHA);
   for (const StripDrawContext &strip_ctx : strips) {
-    draw_seq_invalid(timeline_ctx, &strip_ctx);
     draw_effect_inputs_highlight(timeline_ctx, &strip_ctx);
     draw_multicam_highlight(timeline_ctx, &strip_ctx);
     draw_seq_solo_highlight(timeline_ctx, &strip_ctx);
@@ -1457,6 +1549,9 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     draw_seq_border(timeline_ctx, &strip_ctx);
     draw_seq_text_overlay(timeline_ctx, &strip_ctx);
   }
+
+  /* Draw icons for missing media strips. */
+  draw_missing_icons(timeline_ctx, strips);
 
   /* Draw selected outline separately, since they go outside the strip
    * boundaries a bit; we want all outlines to be "on top" of any neighboring
