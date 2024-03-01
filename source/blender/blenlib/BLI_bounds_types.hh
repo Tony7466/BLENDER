@@ -46,7 +46,7 @@ template<typename T> struct Bounds {
   void scale_from_center(const T &scale);
 
   /**
-   * Resize the bounds in-place to ensure the size is #new_size.
+   * Resize the bounds in-place to ensure their size is #new_size.
    * The center of the bounds doesn't change.
    * This matches the behavior of #BLI_rctf_resize/#BLI_rcti_resize.
    */
