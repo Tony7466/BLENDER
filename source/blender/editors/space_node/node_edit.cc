@@ -655,8 +655,9 @@ void ED_node_composit_default(const bContext *C, Scene *sce)
   /* Links from color to color. */
   bNodeSocket *fromsock = (bNodeSocket *)in->outputs.first;
   bNodeSocket *tosock = (bNodeSocket *)out->inputs.first;
-  nodeAddLink(sce->nodetree, in, fromsock, out, tosock);
-
+  if (fromsock && tosock) {
+    nodeAddLink(sce->nodetree, in, fromsock, out, tosock);
+  }
   BKE_ntree_update_main_tree(CTX_data_main(C), sce->nodetree, nullptr);
 }
 

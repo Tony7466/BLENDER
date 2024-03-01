@@ -438,13 +438,13 @@ static void cmp_node_create_sockets(void *userdata,
     builder->add_output(type, name);
   }
   else {
+    builder->add_output<decl::Color>("Image");
     builder->add_output<decl::Float>("Alpha");
   }
 }
 
 static void node_rlayer_declare(NodeDeclarationBuilder &builder)
 {
-  builder.add_output<decl::Color>("Image");
   const bNode *node = builder.node_or_null();
   if (node == nullptr || node->id == nullptr) {
     return;
