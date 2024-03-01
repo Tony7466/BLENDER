@@ -700,6 +700,7 @@ static pxr::TfToken get_node_tex_image_wrap(bNode *node)
       break;
     case SHD_IMAGE_EXTENSION_MIRROR:
       wrap = usdtokens::mirror;
+      break;
   }
 
   return wrap;
