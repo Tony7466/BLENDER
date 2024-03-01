@@ -146,7 +146,7 @@ template<typename T> inline bool Bounds<T>::is_empty() const
 
 template<typename T> inline T Bounds<T>::center() const
 {
-  return (this->min + this->max) / T(2);
+  return math::midpoint(this->min, this->max);
 }
 
 template<typename T> inline T Bounds<T>::size() const
