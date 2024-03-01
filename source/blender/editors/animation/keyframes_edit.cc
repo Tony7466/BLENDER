@@ -14,6 +14,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_function_ref.hh"
 #include "BLI_lasso_2d.h"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
@@ -490,7 +491,7 @@ void ANIM_editkeyframes_refresh(bAnimContext *ac)
 static short keyframe_ok_checks(
     KeyframeEditData *ked,
     BezTriple *bezt,
-    std::function<bool(KeyframeEditData *ked, BezTriple *bezt, const int index)> check)
+    blender::FunctionRef<bool(KeyframeEditData *ked, BezTriple *bezt, const int index)> check)
 {
   short ok = 0;
   if (check(ked, bezt, 1)) {
