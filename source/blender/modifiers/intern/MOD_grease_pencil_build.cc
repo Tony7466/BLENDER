@@ -293,6 +293,7 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
   effective_points_num += untouched_points_num;
 
   r_points_num = effective_points_num;
+  r_curves_num = 0;
 
   Array<bool> select(stroke_count);
   selection.to_bools(select.as_mutable_span());
