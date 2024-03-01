@@ -2949,7 +2949,7 @@ class WM_OT_batch_rename(Operator):
         mode_mapping = {
             'POSE': WM_OT_batch_rename._get_bone_data,
             'WEIGHT_PAINT': WM_OT_batch_rename._get_bone_data if context.pose_object else None,
-            'EDIT_ARMATURE': None,
+            'EDIT_ARMATURE': WM_OT_batch_rename._get_edit_bone_data,
         }
 
         if mode_mapping.get(mode) is not None:
@@ -2962,7 +2962,7 @@ class WM_OT_batch_rename(Operator):
             'MATERIAL': WM_OT_batch_rename._get_material_data,
             'ACTION_CLIP': WM_OT_batch_rename._get_action_clip_data,
             'SCENE': WM_OT_batch_rename._get_scene_data,
-            'BRUSH': None,
+            'BRUSH': WM_OT_batch_rename._get_brush_data,
         }
 
         if data_type_map.get(data_type) is not None:
