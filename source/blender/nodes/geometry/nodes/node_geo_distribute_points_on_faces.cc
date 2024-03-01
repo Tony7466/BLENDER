@@ -463,23 +463,19 @@ static Array<float> calc_full_density_factors_with_selection(const Mesh &mesh,
 }
 
 static void distribute_points_random(const Mesh &mesh,
-                                     const Field<float> &density_field,
-                                     const Field<bool> &selection_field,
+                                     const Span<float> densities,
                                      const int seed,
                                      Vector<float3> &positions,
                                      Vector<float3> &bary_coords,
                                      Vector<int> &tri_indices)
 {
-  const Array<float> densities = calc_full_density_factors_with_selection(
-      mesh, density_field, selection_field);
   sample_mesh_surface(mesh, 1.0f, densities, seed, positions, bary_coords, tri_indices);
 }
 
 static void distribute_points_poisson_disk(const Mesh &mesh,
                                            const float minimum_distance,
                                            const float max_density,
-                                           const Field<float> &density_factor_field,
-                                           const Field<bool> &selection_field,
+                                           const Span<float> density_factors,
                                            const int seed,
                                            Vector<float3> &positions,
                                            Vector<float3> &bary_coords,
@@ -489,9 +485,6 @@ static void distribute_points_poisson_disk(const Mesh &mesh,
 
   Array<bool> elimination_mask(positions.size(), false);
   update_elimination_mask_for_close_points(positions, minimum_distance, elimination_mask);
-
-  const Array<float> density_factors = calc_full_density_factors_with_selection(
-      mesh, density_factor_field, selection_field);
 
   update_elimination_mask_based_on_density_factors(
       mesh, density_factors, bary_coords, tri_indices, elimination_mask.as_mutable_span());
@@ -519,19 +512,24 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
   switch (method) {
     case GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_RANDOM: {
       const Field<float> density_field = params.get_input<Field<float>>("Density");
-      distribute_points_random(
-          mesh, density_field, selection_field, seed, positions, bary_coords, tri_indices);
+      const Array<float> densities = calc_full_density_factors_with_selection(
+          mesh, density_field, selection_field);
+
+      distribute_points_random(mesh, densities, seed, positions, bary_coords, tri_indices);
       break;
     }
     case GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON: {
       const float minimum_distance = params.get_input<float>("Distance Min");
       const float density_max = params.get_input<float>("Density Max");
+
       const Field<float> density_factors_field = params.get_input<Field<float>>("Density Factor");
+      const Array<float> density_factors = calc_full_density_factors_with_selection(
+          mesh, density_factors_field, selection_field);
+
       distribute_points_poisson_disk(mesh,
                                      minimum_distance,
                                      density_max,
-                                     density_factors_field,
-                                     selection_field,
+                                     density_factors,
                                      seed,
                                      positions,
                                      bary_coords,
