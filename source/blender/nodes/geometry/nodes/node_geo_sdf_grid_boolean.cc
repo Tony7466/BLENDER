@@ -2,7 +2,6 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#define WITH_OPENVDB
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
 #  include <openvdb/tools/Composite.h>
@@ -56,8 +55,7 @@ static openvdb::FloatGrid &get_resampled_grid(bke::VolumeGrid<float> &volume_gri
   storage = openvdb::FloatGrid::create();
   storage->setTransform(transform);
 
-  /* TODO: Consider using doResampleToMatch in some cases, which doesn't handle scaling or
-   * non-affine transformations but should be faster. */
+  /* TODO: #doResampleToMatch when the transform is affine and non-scaled may be faster. */
   openvdb::tools::resampleToMatch<openvdb::tools::BoxSampler>(grid, *storage);
   openvdb::tools::pruneLevelSet(storage->tree());
 
