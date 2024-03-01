@@ -1853,15 +1853,11 @@ static void sculpt_undosys_step_decode_redo(bContext *C, Depsgraph *depsgraph, S
     us_iter = (SculptUndoStep *)us_iter->step.prev;
   }
   while (us_iter && (us_iter->step.is_applied == false)) {
-    if (us_iter != us) {
-      set_active_layer(C, &((SculptUndoStep *)us_iter)->active_color_start);
-    }
-    else {
-      set_active_layer(C, &((SculptUndoStep *)us_iter)->active_color_end);
-    }
+    set_active_layer(C, &((SculptUndoStep *)us_iter)->active_color_end);
     sculpt_undosys_step_decode_redo_impl(C, depsgraph, us_iter);
 
     if (us_iter == us) {
+      set_active_layer(C, &((SculptUndoStep *)us_iter)->active_color_start);
       break;
     }
     us_iter = (SculptUndoStep *)us_iter->step.next;
