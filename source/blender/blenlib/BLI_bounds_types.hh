@@ -25,9 +25,9 @@ template<typename T> struct Bounds {
   void scale_from_center(const T &scale);
 
   void resize(const T &new_size);
-  void recenter(const T&new_center);
+  void recenter(const T &new_center);
 
-  void pad(const T& padding);
+  void pad(const T &padding);
 };
 
 }  // namespace blender
