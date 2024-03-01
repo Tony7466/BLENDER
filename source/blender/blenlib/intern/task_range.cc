@@ -234,7 +234,7 @@ void memory_bandwidth_bound_task_impl(const FunctionRef<void()> function)
    *
    * It's better to use fewer threads here so that the CPU cores can do other tasks at the same
    * time which may be more compute intensive. */
-  const int num_threads = 6;
+  const int num_threads = 8;
   static tbb::task_arena arena{num_threads};
 
   /* Make sure the lazy threading hints are send now, because they shouldn't be sind out of an
