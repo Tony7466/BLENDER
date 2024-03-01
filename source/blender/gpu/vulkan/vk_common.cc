@@ -870,6 +870,21 @@ VkSamplerAddressMode to_vk_sampler_address_mode(const GPUSamplerExtendMode exten
   return VK_SAMPLER_ADDRESS_MODE_REPEAT;
 }
 
+const char *to_string(const VkFilter vk_filter)
+{
+  switch (vk_filter) {
+    case VK_FILTER_NEAREST:
+      return STRINGIFY(VK_FILTER_NEAREST);
+
+    case VK_FILTER_LINEAR:
+      return STRINGIFY(VK_FILTER_LINEAR);
+
+    default:
+      break;
+  }
+  return STRINGIFY_ARG(vk_filter);
+}
+
 const char *to_string(const VkImageLayout vk_image_layout)
 {
   switch (vk_image_layout) {
@@ -928,6 +943,21 @@ const char *to_string(const VkImageLayout vk_image_layout)
       break;
   }
   return STRINGIFY_ARG(vk_image_layout);
+}
+
+const char *to_string(const VkIndexType vk_index_type)
+{
+  switch (vk_index_type) {
+    case VK_INDEX_TYPE_UINT16:
+      return STRINGIFY(VK_INDEX_TYPE_UINT16);
+
+    case VK_INDEX_TYPE_UINT32:
+      return STRINGIFY(VK_INDEX_TYPE_UINT32);
+
+    default:
+      break;
+  }
+  return STRINGIFY_ARG(vk_index_type);
 }
 
 const char *to_string(const VkObjectType vk_object_type)
@@ -1026,6 +1056,36 @@ const char *to_string(const VkObjectType vk_object_type)
       break;
   }
   return STRINGIFY_ARG(vk_object_type);
+}
+
+const char *to_string(const VkPipelineBindPoint vk_pipeline_bind_point)
+{
+  switch (vk_pipeline_bind_point) {
+    case VK_PIPELINE_BIND_POINT_GRAPHICS:
+      return STRINGIFY(VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+    case VK_PIPELINE_BIND_POINT_COMPUTE:
+      return STRINGIFY(VK_PIPELINE_BIND_POINT_COMPUTE);
+
+    default:
+      break;
+  }
+  return STRINGIFY_ARG(vk_pipeline_bind_point);
+}
+
+const char *to_string(const VkSubpassContents vk_subpass_contents)
+{
+  switch (vk_subpass_contents) {
+    case VK_SUBPASS_CONTENTS_INLINE:
+      return STRINGIFY(VK_SUBPASS_CONTENTS_INLINE);
+
+    case VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS:
+      return STRINGIFY(VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
+    default:
+      break;
+  }
+  return STRINGIFY_ARG(vk_subpass_contents);
 }
 
 }  // namespace blender::gpu

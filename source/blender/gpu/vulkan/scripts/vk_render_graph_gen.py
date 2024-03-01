@@ -156,6 +156,33 @@ EXTENSIONS = [
 
 COMMANDS_TO_GEN = [
     "vkCmdClearColorImage",
+    "vkCmdClearDepthStencilImage",
+    "vkCmdClearAttachments",
+
+    "vkCmdCopyImageToBuffer",
+    "vkCmdCopyBufferToImage",
+    "vkCmdCopyImage",
+    "vkCmdCopyBuffer",
+
+    "vkCmdFillBuffer",
+    "vkCmdBlitImage",
+
+    "vkCmdBindDescriptorSets",
+    "vkCmdPushConstants",
+    "vkCmdBindIndexBuffer",
+    "vkCmdBindVertexBuffers",
+    "vkCmdBindPipeline",
+
+    "vkCmdBeginRenderPass",
+    "vkCmdEndRenderPass",
+    "vkCmdDraw",
+    "vkCmdDrawIndexed",
+    "vkCmdDrawIndirect",
+    "vkCmdDrawIndexedIndirect",
+
+    "vkCmdDispatch",
+    "vkCmdDispatchIndirect",
+
     "vkCmdPipelineBarrier",
 ]
 

@@ -43,11 +43,11 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
     log.append(ss.str());
   }
 
-  virtual void clear_color_image(VkImage image,
-                                 VkImageLayout image_layout,
-                                 const VkClearColorValue *p_color,
-                                 uint32_t range_count,
-                                 const VkImageSubresourceRange *p_ranges) override
+  void clear_color_image(VkImage image,
+                         VkImageLayout image_layout,
+                         const VkClearColorValue *p_color,
+                         uint32_t range_count,
+                         const VkImageSubresourceRange *p_ranges) override
   {
     std::stringstream ss;
     ss << "clear_color_image(";
