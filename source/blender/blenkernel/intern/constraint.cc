@@ -25,7 +25,6 @@
 #include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_string_utils.hh"
-#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 #include "BLT_translation.hh"
 
@@ -1720,7 +1719,6 @@ static float clamp_angle(const float angle, const float min, const float max)
 
 static void rotlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase * /*targets*/)
 {
-  SCOPED_TIMER_AVERAGED("constraint");
   bRotLimitConstraint *data = static_cast<bRotLimitConstraint *>(con->data);
   float loc[3];
   float eul[3];
