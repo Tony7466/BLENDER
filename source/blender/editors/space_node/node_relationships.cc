@@ -2163,8 +2163,8 @@ void node_insert_on_link_flags(Main &bmain, SpaceNode &snode)
 
   old_link->flag &= ~NODE_LINKFLAG_HILITE;
 
-  bNodeSocket *best_input = get_main_socket(ntree, *node_to_insert, SOCK_IN, old_link);
-  bNodeSocket *best_output = get_main_socket(ntree, *node_to_insert, SOCK_OUT, old_link);
+  bNodeSocket *best_input = get_main_socket(ntree, *node_to_insert, SOCK_IN);
+  bNodeSocket *best_output = get_main_socket(ntree, *node_to_insert, SOCK_OUT);
 
   if (node_to_insert->type != NODE_REROUTE) {
     /* Ignore main sockets when the types don't match. */
@@ -2253,10 +2253,7 @@ static int get_main_socket_priority(const bNodeSocket *socket)
 }
 
 /** Get the "main" socket based on the node declaration or an heuristic. */
-bNodeSocket *get_main_socket(bNodeTree &ntree,
-                             bNode &node,
-                             eNodeSocketInOut in_out,
-                             bNodeLink *old_link)
+bNodeSocket *get_main_socket(bNodeTree &ntree, bNode &node, eNodeSocketInOut in_out)
 {
   ListBase *sockets = (in_out == SOCK_IN) ? &node.inputs : &node.outputs;
 
@@ -2271,13 +2268,6 @@ bNodeSocket *get_main_socket(bNodeTree &ntree,
       const nodes::SocketDeclaration &socket_decl = *socket_decls[index];
       if (!socket->is_visible()) {
         continue;
-      }
-      if (old_link != nullptr) {
-        eNodeSocketDatatype sock_type = static_cast<eNodeSocketDatatype>(
-            (in_out == SOCK_IN) ? old_link->fromsock->type : old_link->tosock->type);
-        if (sock_type == socket->type) {
-          return socket;
-        }
       }
       if (socket_decl.is_default_link_socket) {
         return socket;
