@@ -21,6 +21,16 @@ TEST(bounds, Empty)
   EXPECT_FALSE(bounds3.is_empty());
 }
 
+TEST(bounds, EmptyInt)
+{
+  Bounds<int> bounds1(0);
+  Bounds<int> bounds2(1, -1);
+  Bounds<int> bounds3(-1, 1);
+  EXPECT_TRUE(bounds1.is_empty());
+  EXPECT_TRUE(bounds2.is_empty());
+  EXPECT_FALSE(bounds3.is_empty());
+}
+
 TEST(bounds, Center)
 {
   Bounds<float2> bounds1(float2(0.0f));

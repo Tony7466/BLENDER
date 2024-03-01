@@ -132,10 +132,12 @@ template<typename T, int Size>
 
 template<typename T> inline bool Bounds<T>::is_empty() const
 {
-  if (std::is_integral<T>::value || std::is_floating_point<T>::value) {
+  if constexpr (std::is_integral<T>::value || std::is_floating_point<T>::value) {
     return this->max <= this->min;
   }
-  return less_or_equal_than(this->max, this->min);
+  else {
+    return less_or_equal_than(this->max, this->min);
+  }
 }
 
 template<typename T> inline T Bounds<T>::center() const
