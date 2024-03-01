@@ -384,6 +384,10 @@ static Vector<std::variant<std::string_view, int32_t>> variable_size_array_part(
     TokenIterator &cont)
 {
   Vector<std::variant<std::string_view, int32_t>> result;
+  /* Dynamic array. */
+  if (Sequence<LBracketSymbol, RBracketSymbol>::parse(cont).has_value()) {
+    result.append(std::string_view{""});
+  }
   while (true) {
     using ArraySyze = Sequence<LBracketSymbol, Variant<IntLiteral, Identifier>, RBracketSymbol>;
     const std::optional<ArraySyze> size_seq = ArraySyze::parse(cont);
@@ -503,7 +507,6 @@ bool PointerToArray::operator==(const PointerToArray &other) const
 {
   return type == other.type && name == other.name && size == other.size;
 }
-
 std::optional<PointerToArray> PointerToArray::parse(TokenIterator &cont)
 {
   using PointerToArraySequence = Sequence<TypeOrStruct,
@@ -736,7 +739,7 @@ bool parse_include(std::string_view filepath,
     }
   }
   for (auto &val : c) {
-    // std::visit(ParserDebugPrinter{}, val);
+    //std::visit(ParserDebugPrinter{}, val);
   }
 
   return true;
