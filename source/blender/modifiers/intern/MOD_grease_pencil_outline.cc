@@ -6,6 +6,7 @@
  * \ingroup modifiers
  */
 
+#include "BKE_material.h"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_range.hh"
 #include "BLI_math_matrix.hh"
@@ -336,18 +337,21 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
                                                  const IndexMask &curves_mask,
                                                  const int subdivisions,
                                                  const float stroke_radius,
+                                                 int stroke_mat_nr,
                                                  const bool keep_shape)
 {
   const bke::CurvesGeometry &src_curves = drawing.strokes();
   Span<float3> src_positions = src_curves.positions();
   bke::AttributeAccessor src_attributes = src_curves.attributes();
-  VArray<float> src_radii = drawing.radii();
+  const VArray<float> src_radii = drawing.radii();
   const VArray<bool> src_cyclic = *src_attributes.lookup_or_default(
       "cyclic", bke::AttrDomain::Curve, false);
-  VArray<int8_t> src_start_caps = *src_attributes.lookup_or_default<int8_t>(
+  const VArray<int8_t> src_start_caps = *src_attributes.lookup_or_default<int8_t>(
       "start_cap", bke::AttrDomain::Curve, GP_STROKE_CAP_ROUND);
-  VArray<int8_t> src_end_caps = *src_attributes.lookup_or_default<int8_t>(
+  const VArray<int8_t> src_end_caps = *src_attributes.lookup_or_default<int8_t>(
       "end_cap", bke::AttrDomain::Curve, GP_STROKE_CAP_ROUND);
+  const VArray<int> src_material_index = *src_attributes.lookup_or_default(
+      "material_index", bke::AttrDomain::Curve, -1);
 
   /* Transform positions into view space. */
   Array<float3> view_positions(src_positions.size());
@@ -407,6 +411,8 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   bke::SpanAttributeWriter<bool> dst_cyclic = dst_attributes.lookup_or_add_for_write_span<bool>(
       "cyclic", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<int> dst_material = dst_attributes.lookup_or_add_for_write_span<int>(
+      "material_index", bke::AttrDomain::Curve);
   bke::SpanAttributeWriter<float> dst_radius = dst_attributes.lookup_or_add_for_write_span<float>(
       "radius", bke::AttrDomain::Point);
   const MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
@@ -426,6 +432,14 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
     /* Curve offsets are accumulated below. */
     dst_offsets.slice(curves).copy_from(data.point_counts);
     dst_cyclic.span.slice(curves).fill(true);
+    if (stroke_mat_nr >= 0) {
+      dst_material.span.slice(curves).fill(stroke_mat_nr);
+    }
+    else {
+      for (const int i : curves.index_range()) {
+        dst_material.span[curves[i]] = src_material_index[data.curve_indices[i]];
+      }
+    }
 
     /* Append point data. */
     dst_positions.slice(points).copy_from(data.positions);
@@ -440,10 +454,15 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
                          {"position", "radius"},
                          dst_point_map,
                          dst_attributes);
-  bke::gather_attributes(
-      src_attributes, bke::AttrDomain::Curve, {}, {"cyclic"}, dst_curve_map, dst_attributes);
+  bke::gather_attributes(src_attributes,
+                         bke::AttrDomain::Curve,
+                         {},
+                         {"cyclic", "material_index"},
+                         dst_curve_map,
+                         dst_attributes);
 
   dst_cyclic.finish();
+  dst_material.finish();
   dst_radius.finish();
   dst_curves.update_curve_types();
 
@@ -470,9 +489,12 @@ static void modify_drawing(const GreasePencilOutlineModifierData &omd,
   /* Legacy thickness setting is diameter in pixels, divide by 2000 to get radius. */
   const float radius = math::max(omd.thickness * object_scale, 1.0f) * 0.0005f;
   const bool keep_shape = omd.flag & MOD_GREASE_PENCIL_OUTLINE_KEEP_SHAPE;
+  const int mat_nr = (omd.outline_material ?
+                          BKE_object_material_index_get(ctx.object, omd.outline_material) :
+                          -1);
 
   drawing.strokes_for_write() = create_curves_outline(
-      drawing, viewmat, curves_mask, omd.subdiv, radius, keep_shape);
+      drawing, viewmat, curves_mask, omd.subdiv, radius, mat_nr, keep_shape);
   drawing.tag_topology_changed();
 }
 
