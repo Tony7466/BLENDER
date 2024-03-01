@@ -119,6 +119,8 @@ template<typename T, typename RadiusT>
 
 }  // namespace bounds
 
+namespace detail {
+
 template<typename T, int Size>
 [[nodiscard]] inline bool less_or_equal_than(const VecBase<T, Size> &a, const VecBase<T, Size> &b)
 {
@@ -130,13 +132,15 @@ template<typename T, int Size>
   return true;
 }
 
+}  // namespace detail
+
 template<typename T> inline bool Bounds<T>::is_empty() const
 {
   if constexpr (std::is_integral<T>::value || std::is_floating_point<T>::value) {
     return this->max <= this->min;
   }
   else {
-    return less_or_equal_than(this->max, this->min);
+    return detail::less_or_equal_than(this->max, this->min);
   }
 }
 
