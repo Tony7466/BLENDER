@@ -221,6 +221,7 @@ static void generate_stroke_perimeter(const Span<float3> all_positions,
                                       const IndexRange points,
                                       const int subdivisions,
                                       const bool is_cyclic,
+                                      const bool use_caps,
                                       const eGPDstroke_Caps start_cap_type,
                                       const eGPDstroke_Caps end_cap_type,
                                       const float normal_offset,
@@ -242,9 +243,55 @@ static void generate_stroke_perimeter(const Span<float3> all_positions,
     const float radius = all_radii[point];
     generate_corner(pt_a, pt_b, pt_c, radius, subdivisions, point, r_perimeter, r_point_indices);
   };
+  auto add_cap = [&](const int center_i, const int next_i, const eGPDstroke_Caps cap_type) {
+    const float3 &center = positions[center_i];
+    const float3 dir = math::normalize(positions[next_i] - center);
+    const float radius = all_radii[center_i];
+    generate_cap(
+        center, dir, radius, subdivisions, cap_type, center_i, r_perimeter, r_point_indices);
+  };
 
-  if (is_cyclic) {
-    /* Cyclic curves have an "inside" and an "outside" perimeter.
+  /* Creates a single cyclic curve with end caps. */
+  if (use_caps) {
+    /* Open curves generate a start and end cap and a connecting stroke on either side. */
+    const int perimeter_start = r_perimeter.size();
+
+    /* Start cap. */
+    add_cap(0, 1, start_cap_type);
+
+    /* Left perimeter half. */
+    for (const int i : points.index_range().drop_front(1).drop_back(1)) {
+      add_corner(i - 1, i, i + 1);
+    }
+    if (is_cyclic) {
+      add_corner(point_num - 2, point_num - 1, 0);
+    }
+
+    /* End cap. */
+    if (is_cyclic) {
+      /* End point is same as start point. */
+      add_cap(0, point_num - 1, end_cap_type);
+    }
+    else {
+      /* End point is last point of the curve. */
+      add_cap(point_num - 1, point_num - 2, end_cap_type);
+    }
+
+    /* Right perimeter half. */
+    if (is_cyclic) {
+      add_corner(0, point_num - 1, point_num - 2);
+    }
+    for (const int i : points.index_range().drop_front(1).drop_back(1)) {
+      add_corner(point_num - i, point_num - i - 1, point_num - i - 2);
+    }
+
+    const int perimeter_count = r_perimeter.size() - perimeter_start;
+    if (perimeter_count > 0) {
+      r_point_counts.append(perimeter_count);
+    }
+  }
+  else {
+    /* Generate separate "inside" and an "outside" perimeter curves.
      * The distinction is arbitrary, called left/right here. */
 
     /* Left side perimeter. */
@@ -269,56 +316,6 @@ static void generate_stroke_perimeter(const Span<float3> all_positions,
     const int right_perimeter_count = r_perimeter.size() - right_perimeter_start;
     if (right_perimeter_count > 0) {
       r_point_counts.append(right_perimeter_count);
-    }
-  }
-  else {
-    /* Open curves generate a start and end cap and a connecting stroke on either side. */
-    const int perimeter_start = r_perimeter.size();
-
-    /* Start cap. */
-    {
-      const float3 &center = positions.first();
-      const float3 dir = math::normalize(positions[1] - center);
-      const float radius = all_radii[points.first()];
-      generate_cap(center,
-                   dir,
-                   radius,
-                   subdivisions,
-                   start_cap_type,
-                   points.first(),
-                   r_perimeter,
-                   r_point_indices);
-    }
-
-    /* Left perimeter half. */
-    for (const int i : points.index_range().drop_front(1).drop_back(1)) {
-      add_corner(i - 1, i, i + 1);
-    }
-
-    /* End cap. */
-    {
-      const float3 &center = positions.last();
-      const float3 dir = math::normalize(positions[point_num - 2] - center);
-      const float radius = all_radii[points.last()];
-      generate_cap(center,
-                   dir,
-                   radius,
-                   subdivisions,
-                   end_cap_type,
-                   points.last(),
-                   r_perimeter,
-                   r_point_indices);
-    }
-
-    /* Right perimeter half. */
-    for (const int i : points.index_range().drop_front(1).drop_back(1)) {
-      add_corner(point_num - i, point_num - i - 1, point_num - i - 2);
-    }
-
-    /* Open curves have a single perimeter curve. */
-    const int perimeter_count = r_perimeter.size() - perimeter_start;
-    if (perimeter_count > 0) {
-      r_point_counts.append(perimeter_count);
     }
   }
 
@@ -366,6 +363,12 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
   curves_mask.foreach_index([&](const int64_t curve_i) {
     PerimeterData &data = thread_data.local();
 
+    const bool is_cyclic_curve = src_cyclic[curve_i];
+    /* Note: Cyclic curves would better be represented by a cyclic perimeter without end caps, but
+     * we always generate caps for compatibility with GPv2. Fill materials cannot create holes, so
+     * a cyclic outline does not work well. */
+    const bool use_caps = true /*!is_cyclic_curve*/;
+
     const int prev_point_num = data.positions.size();
     const int prev_curve_num = data.point_counts.size();
     const IndexRange points = src_curves.points_by_curve()[curve_i];
@@ -374,7 +377,8 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
                               src_radii,
                               points,
                               subdivisions,
-                              src_cyclic[curve_i],
+                              is_cyclic_curve,
+                              use_caps,
                               eGPDstroke_Caps(src_start_caps[curve_i]),
                               eGPDstroke_Caps(src_end_caps[curve_i]),
                               normal_offset,
