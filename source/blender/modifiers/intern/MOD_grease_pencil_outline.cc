@@ -599,7 +599,7 @@ static void modify_geometry_set(ModifierData *md,
   using bke::greasepencil::Layer;
   using modifier::greasepencil::LayerDrawingInfo;
 
-  auto *omd = reinterpret_cast<GreasePencilOutlineModifierData *>(md);
+  const auto &omd = *reinterpret_cast<const GreasePencilOutlineModifierData *>(md);
 
   const Scene *scene = DEG_get_evaluated_scene(ctx->depsgraph);
   if (!scene->camera) {
@@ -615,14 +615,14 @@ static void modify_geometry_set(ModifierData *md,
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
-      grease_pencil, omd->influence, mask_memory);
+      grease_pencil, omd.influence, mask_memory);
 
   const Vector<LayerDrawingInfo> drawings = modifier::greasepencil::get_drawing_infos_by_layer(
       grease_pencil, layer_mask, frame);
   threading::parallel_for_each(drawings, [&](const LayerDrawingInfo &info) {
     const Layer &layer = *grease_pencil.layers()[info.layer_index];
     const float4x4 viewmat = viewinv * layer.to_world_space(*ctx->object);
-    modify_drawing(*omd, *ctx, *info.drawing, viewmat);
+    modify_drawing(omd, *ctx, *info.drawing, viewmat);
   });
 }
 
