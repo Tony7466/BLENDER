@@ -141,7 +141,8 @@ static bke::CurvesGeometry reorder_cyclic_curve_points(const bke::CurvesGeometry
     array_utils::fill_index_range(point_indices.take_back(shift), point_start);
   });
 
-  /* Have to make a copy of the input geometry, gather_attributes does not work in-place when the source indices are not ordered. */
+  /* Have to make a copy of the input geometry, gather_attributes does not work in-place when the
+   * source indices are not ordered. */
   bke::CurvesGeometry dst_curves(src_curves);
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   bke::gather_attributes(src_attributes, bke::AttrDomain::Point, {}, {}, indices, dst_attributes);
@@ -635,7 +636,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
   PointerRNA ob_ptr;
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
-  
+
   uiLayoutSetPropSep(layout, true);
 
   uiItemR(layout, ptr, "thickness", UI_ITEM_NONE, nullptr, ICON_NONE);
