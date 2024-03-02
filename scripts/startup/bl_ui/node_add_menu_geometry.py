@@ -720,7 +720,9 @@ class NODE_MT_geometry_node_GEO_VOLUME_OPERATIONS(Menu):
         node_add_menu.add_node_type(layout, "GeometryNodeVolumeToMesh")
         if context.preferences.experimental.use_new_volume_nodes:
             node_add_menu.add_node_type(layout, "GeometryNodeGridToMesh")
-            node_add_menu.add_node_type(layout, "GeometryNodeSDFGridBoolean")
+            node_add_menu.add_node_type(layout, "GeometryNodeSDFGridDifference")
+            node_add_menu.add_node_type(layout, "GeometryNodeSDFGridIntersection")
+            node_add_menu.add_node_type(layout, "GeometryNodeSDFGridUnion")
         node_add_menu.draw_assets_for_catalog(layout, "Volume/Operations")
 
 

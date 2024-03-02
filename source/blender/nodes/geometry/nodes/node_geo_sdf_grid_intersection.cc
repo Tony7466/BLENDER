@@ -2,45 +2,23 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#define WITH_OPENVDB
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
 #  include <openvdb/tools/Composite.h>
 #  include <openvdb/tools/GridTransformer.h>
 #endif
 
-#include "BKE_volume_grid.hh"
-
-#include "UI_interface.hh"
-#include "UI_resources.hh"
-
-#include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
 
 #include "node_geometry_util.hh"
 
-namespace blender::nodes::node_geo_sdf_grid_boolean_cc {
-
-enum class Operation {
-  Union = 0,
-  Difference = 1,
-  Intersection = 2,
-};
+namespace blender::nodes::node_geo_sdf_grid_intersection_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("SDF Grid 1").hide_value();
-  b.add_input<decl::Float>("SDF Grid 2").hide_value();
+  b.add_input<decl::Float>("SDF Grid").hide_value().multi_input();
   b.add_output<decl::Float>("SDF Grid").hide_value();
-}
-
-static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
-{
-  uiItemR(layout, ptr, "operation", UI_ITEM_NONE, "", ICON_NONE);
-}
-
-static void node_init(bNodeTree * /*tree*/, bNode *node)
-{
-  node->custom1 = int16_t(Operation::Union);
 }
 
 static void node_gather_link_search_ops(GatherLinkSearchOpParams &params)
@@ -75,27 +53,9 @@ static openvdb::FloatGrid &get_resampled_grid(bke::VolumeGrid<float> &volume_gri
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  const Operation operation = Operation(params.node().custom1);
-  bke::VolumeGrid<float> grid_a = params.extract_input<bke::VolumeGrid<float>>("SDF Grid 1");
-  bke::VolumeGrid<float> grid_b = params.extract_input<bke::VolumeGrid<float>>("SDF Grid 2");
-  if (!grid_a || !grid_b) {
-    switch (operation) {
-      case Operation::Union:
-        params.set_output("SDF Grid", grid_a ? std::move(grid_a) : std::move(grid_b));
-        break;
-      case Operation::Difference:
-        if (grid_a) {
-          params.set_output("SDF Grid", std::move(grid_a));
-        }
-        else {
-          params.set_default_remaining_outputs();
-        }
-        break;
-      case Operation::Intersection:
-        params.set_default_remaining_outputs();
-    }
-    return;
-  }
+  Vector<bke::VolumeGrid<float>> grids = params.extract_input<Vector<bke::VolumeGrid<float>>>(
+      "SDF Grid");
+  grids.remove_if([](const bke::VolumeGrid<float> &grid) { return !grid; });
 
   bke::VolumeTreeAccessToken tree_token_a;
   bke::VolumeTreeAccessToken tree_token_b;
@@ -123,38 +83,17 @@ static void node_geo_exec(GeoNodeExecParams params)
 #endif
 }
 
-static void node_rna(StructRNA *srna)
-{
-  static const EnumPropertyItem items[] = {
-      {int(Operation::Union), "UNION", 0, "Union", ""},
-      {int(Operation::Difference), "DIFFERENCE", 0, "Difference", ""},
-      {int(Operation::Intersection), "INTERSECT", 0, "Intersect", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  RNA_def_node_enum(srna,
-                    "operation",
-                    "Operation",
-                    "",
-                    items,
-                    NOD_inline_enum_accessors(custom1),
-                    int(Operation::Union));
-}
-
 static void node_register()
 {
   static bNodeType ntype;
 
-  geo_node_type_base(&ntype, GEO_NODE_SDF_GRID_BOOLEAN, "SDF Grid Boolean", NODE_CLASS_GEOMETRY);
+  geo_node_type_base(
+      &ntype, GEO_NODE_SDF_GRID_INTERSECTION, "SDF Grid Intersection", NODE_CLASS_GEOMETRY);
   ntype.declare = node_declare;
   ntype.geometry_node_execute = node_geo_exec;
-  ntype.draw_buttons = node_layout;
-  ntype.initfunc = node_init;
   ntype.gather_link_search_ops = node_gather_link_search_ops;
   nodeRegisterType(&ntype);
-
-  node_rna(ntype.rna_ext.srna);
 }
 NOD_REGISTER_NODE(node_register)
 
-}  // namespace blender::nodes::node_geo_sdf_grid_boolean_cc
+}  // namespace blender::nodes::node_geo_sdf_grid_intersection_cc
