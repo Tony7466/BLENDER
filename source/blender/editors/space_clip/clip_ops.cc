@@ -595,7 +595,8 @@ static int view_zoom_exec(bContext *C, wmOperator *op)
 {
   sclip_zoom_set_factor(C, RNA_float_get(op->ptr, "factor"), nullptr, false);
 
-  ED_area_tag_redraw(CTX_wm_area(C));
+  ED_region_tag_redraw(CTX_wm_region(C));
+  ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
   return OPERATOR_FINISHED;
 }

@@ -575,7 +575,7 @@ static int image_view_zoom_exec(bContext *C, wmOperator *op)
 
   sima_zoom_set_factor(sima, region, RNA_float_get(op->ptr, "factor"), nullptr, false);
 
-  ED_area_tag_redraw(CTX_wm_area(C));
+  ED_region_tag_redraw(region);
   ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
   return OPERATOR_FINISHED;
