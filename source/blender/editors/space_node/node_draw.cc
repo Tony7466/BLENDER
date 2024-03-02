@@ -3042,13 +3042,16 @@ static void node_draw_basis(const bContext &C,
     }
   }
 
+  const float padding = 0.5f;
+  const float corner_radius = BASIS_RAD + padding;
   /* Header. */
   {
+    /* Add some padding to prevent transparent gaps with the outline. */
     const rctf rect = {
-        rct.xmin,
-        rct.xmax,
-        rct.ymax - NODE_DY,
-        rct.ymax,
+        rct.xmin - padding,
+        rct.xmax + padding,
+        rct.ymax - NODE_DY - padding,
+        rct.ymax + padding,
     };
 
     float color_header[4];
@@ -3062,7 +3065,7 @@ static void node_draw_basis(const bContext &C,
     }
 
     UI_draw_roundbox_corner_set(UI_CNR_TOP_LEFT | UI_CNR_TOP_RIGHT);
-    UI_draw_roundbox_4fv(&rect, true, BASIS_RAD, color_header);
+    UI_draw_roundbox_4fv(&rect, true, corner_radius, color_header);
   }
 
   /* Show/hide icons. */
@@ -3242,15 +3245,16 @@ static void node_draw_basis(const bContext &C,
       color[3] -= 0.2f;
     }
 
+    /* Add some padding to prevent transparent gaps with the outline. */
     const rctf rect = {
-        rct.xmin,
-        rct.xmax,
-        rct.ymin,
-        rct.ymax - (NODE_DY + outline_width),
+        rct.xmin - padding,
+        rct.xmax + padding,
+        rct.ymin - padding,
+        rct.ymax - (NODE_DY + outline_width) + padding,
     };
 
     UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_LEFT | UI_CNR_BOTTOM_RIGHT);
-    UI_draw_roundbox_4fv(&rect, true, BASIS_RAD, color);
+    UI_draw_roundbox_4fv(&rect, true, corner_radius, color);
 
     if (is_node_panels_supported(node)) {
       node_draw_panels_background(node, block);
@@ -3262,7 +3266,7 @@ static void node_draw_basis(const bContext &C,
     float color_underline[4];
 
     if (node.flag & NODE_MUTED) {
-      UI_GetThemeColor4fv(TH_WIRE, color_underline);
+      UI_GetThemeColorBlend4f(TH_BACK, color_id, 0.05f, color_underline);
       color_underline[3] = 1.0f;
     }
     else {
@@ -3381,7 +3385,16 @@ static void node_draw_hidden(const bContext &C,
       color[3] -= 0.2f;
     }
 
-    UI_draw_roundbox_4fv(&rct, true, hiddenrad, color);
+    /* Add some padding to prevent transparent gaps with the outline. */
+    const float padding = 0.5f;
+    const rctf rect = {
+        rct.xmin - padding,
+        rct.xmax + padding,
+        rct.ymin - padding,
+        rct.ymax + padding,
+    };
+
+    UI_draw_roundbox_4fv(&rect, true, hiddenrad + padding, color);
   }
 
   /* Title. */
@@ -3457,7 +3470,7 @@ static void node_draw_hidden(const bContext &C,
     }
 
     UI_draw_roundbox_corner_set(UI_CNR_ALL);
-    UI_draw_roundbox_4fv(&rect, false, hiddenrad, color_outline);
+    UI_draw_roundbox_4fv(&rect, false, hiddenrad + outline_width, color_outline);
   }
 
   if (node.flag & NODE_MUTED) {
