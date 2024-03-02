@@ -130,26 +130,27 @@ enum VisArea {
   Masked = 3,
 };
 
+struct HideShowOperation {
+  gesture::Operation op;
+
+  VisAction action;
+  VisArea area;
+};
+
 static bool action_to_hide(const VisAction action)
 {
   return action == VisAction::Hide;
 }
 
 /* Return true if the element should be hidden/shown. */
-static bool is_effected(const VisArea area,
-                        const float planes[4][4],
-                        const float co[3],
-                        const float mask)
+static bool is_affected(const VisArea area, const float mask)
 {
+  BLI_assert(ELEM(area, VisArea::All, VisArea::Masked));
   if (area == VisArea::All) {
     return true;
   }
-  if (area == VisArea::Masked) {
-    return mask > 0.5f;
-  }
 
-  const bool inside = isect_point_planes_v3(planes, 4, co);
-  return ((inside && area == VisArea::Inside) || (!inside && area == VisArea::Outside));
+  return mask > 0.5f;
 }
 
 void mesh_show_all(Object &object, const Span<PBVHNode *> nodes)
@@ -218,10 +219,8 @@ static void vert_hide_update(Object &object,
 static void partialvis_update_mesh(Object &object,
                                    const VisAction action,
                                    const VisArea area,
-                                   const float planes[4][4],
                                    const Span<PBVHNode *> nodes)
 {
-  PBVH &pbvh = *object.sculpt->pbvh;
   Mesh &mesh = *static_cast<Mesh *>(object.data);
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   if (action == VisAction::Show && !attributes.contains(".hide_vert")) {
@@ -231,18 +230,6 @@ static void partialvis_update_mesh(Object &object,
 
   const bool value = action_to_hide(action);
   switch (area) {
-    case VisArea::Inside:
-    case VisArea::Outside: {
-      const Span<float3> positions = BKE_pbvh_get_vert_positions(&pbvh);
-      vert_hide_update(object, nodes, [&](const Span<int> verts, MutableSpan<bool> hide) {
-        for (const int i : verts.index_range()) {
-          if (isect_point_planes_v3(planes, 4, positions[verts[i]]) == (area == VisArea::Inside)) {
-            hide[i] = value;
-          }
-        }
-      });
-      break;
-    }
     case VisArea::All:
       switch (action) {
         case VisAction::Hide:
@@ -272,7 +259,36 @@ static void partialvis_update_mesh(Object &object,
       }
       break;
     }
+    default:
+      BLI_assert_unreachable();
+      break;
   }
+}
+
+static void partialvis_update_mesh(gesture::GestureData *gesture_data)
+{
+  HideShowOperation *operation = (HideShowOperation *)gesture_data->operation;
+  Object *object = gesture_data->vc.obact;
+  const VisAction action = operation->action;
+  const Span<PBVHNode *> nodes = gesture_data->nodes;
+
+  PBVH *pbvh = object->sculpt->pbvh;
+  Mesh *mesh = static_cast<Mesh *>(object->data);
+  bke::MutableAttributeAccessor attributes = mesh->attributes_for_write();
+  if (action == VisAction::Show && !attributes.contains(".hide_vert")) {
+    /* If everything is already visible, don't do anything. */
+    return;
+  }
+
+  const bool value = action_to_hide(action);
+  const Span<float3> positions = BKE_pbvh_get_vert_positions(pbvh);
+  const Span<float3> normals = BKE_pbvh_get_vert_normals(pbvh);
+  vert_hide_update(*object, nodes, [&](const Span<int> verts, MutableSpan<bool> hide) {
+    for (const int i : verts.index_range()) {
+      if (gesture::is_affected(gesture_data, positions[verts[i]], normals[verts[i]]))
+        hide[i] = value;
+    }
+  });
 }
 
 void grids_show_all(Depsgraph &depsgraph, Object &object, const Span<PBVHNode *> nodes)
@@ -355,12 +371,10 @@ static void grid_hide_update(Depsgraph &depsgraph,
     BKE_pbvh_sync_visibility_from_verts(&pbvh, &mesh);
   }
 }
-
 static void partialvis_update_grids(Depsgraph &depsgraph,
                                     Object &object,
                                     const VisAction action,
                                     const VisArea area,
-                                    const float planes[4][4],
                                     const Span<PBVHNode *> nodes)
 {
   PBVH &pbvh = *object.sculpt->pbvh;
@@ -372,26 +386,6 @@ static void partialvis_update_grids(Depsgraph &depsgraph,
 
   const bool value = action_to_hide(action);
   switch (area) {
-    case VisArea::Inside:
-    case VisArea::Outside: {
-      const CCGKey key = *BKE_pbvh_get_grid_key(&pbvh);
-      const Span<CCGElem *> grids = subdiv_ccg.grids;
-      grid_hide_update(
-          depsgraph, object, nodes, [&](const int grid_index, MutableBoundedBitSpan hide) {
-            CCGElem *grid = grids[grid_index];
-            for (const int y : IndexRange(key.grid_size)) {
-              for (const int x : IndexRange(key.grid_size)) {
-                CCGElem *elem = CCG_grid_elem(&key, grid, x, y);
-                if (isect_point_planes_v3(planes, 4, CCG_elem_co(&key, elem)) ==
-                    (area == VisArea::Inside))
-                {
-                  hide[y * key.grid_size + x].set(value);
-                }
-              }
-            }
-          });
-      break;
-    }
     case VisArea::All:
       switch (action) {
         case VisAction::Hide:
@@ -430,23 +424,77 @@ static void partialvis_update_grids(Depsgraph &depsgraph,
       }
       break;
     }
+    default:
+      BLI_assert_unreachable();
+      break;
   }
+}
+
+static void partialvis_update_grids(Depsgraph &depsgraph, gesture::GestureData *gesture_data)
+{
+  HideShowOperation *operation = (HideShowOperation *)gesture_data->operation;
+  Object *object = gesture_data->vc.obact;
+  const VisAction action = operation->action;
+  const Span<PBVHNode *> nodes = gesture_data->nodes;
+
+  PBVH *pbvh = object->sculpt->pbvh;
+  SubdivCCG *subdiv_ccg = object->sculpt->subdiv_ccg;
+
+  const bool value = action_to_hide(action);
+  const CCGKey key = *BKE_pbvh_get_grid_key(pbvh);
+  const Span<CCGElem *> grids = subdiv_ccg->grids;
+  grid_hide_update(
+      depsgraph, *object, nodes, [&](const int grid_index, MutableBoundedBitSpan hide) {
+        CCGElem *grid = grids[grid_index];
+        for (const int y : IndexRange(key.grid_size)) {
+          for (const int x : IndexRange(key.grid_size)) {
+            CCGElem *elem = CCG_grid_elem(&key, grid, x, y);
+            if (gesture::is_affected(
+                    gesture_data, CCG_elem_co(&key, elem), CCG_elem_no(&key, elem))) {
+              hide[y * key.grid_size + x].set(value);
+            }
+          }
+        }
+      });
 }
 
 static void partialvis_update_bmesh_verts(BMesh *bm,
                                           const Set<BMVert *, 0> &verts,
                                           const VisAction action,
                                           const VisArea area,
-                                          const float planes[4][4],
                                           bool *any_changed,
                                           bool *any_visible)
 {
   const int mask_offset = CustomData_get_offset_named(&bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
   for (BMVert *v : verts) {
     const float vmask = BM_ELEM_CD_GET_FLOAT(v, mask_offset);
+    if (is_affected(area, vmask)) {
+      if (action == VisAction::Hide) {
+        BM_elem_flag_enable(v, BM_ELEM_HIDDEN);
+      }
+      else {
+        BM_elem_flag_disable(v, BM_ELEM_HIDDEN);
+      }
+      (*any_changed) = true;
+    }
 
-    /* Hide vertex if in the hide volume. */
-    if (is_effected(area, planes, v->co, vmask)) {
+    if (!BM_elem_flag_test(v, BM_ELEM_HIDDEN)) {
+      (*any_visible) = true;
+    }
+  }
+}
+
+static void partialvis_update_bmesh_verts(gesture::GestureData *gesture_data,
+                                          BMesh *bm,
+                                          const Set<BMVert *, 0> &verts,
+                                          bool *any_changed,
+                                          bool *any_visible)
+{
+  HideShowOperation *operation = (HideShowOperation *)gesture_data->operation;
+  const VisAction action = operation->action;
+
+  for (BMVert *v : verts) {
+    if (gesture::is_affected(gesture_data, v->co, v->no)) {
       if (action == VisAction::Hide) {
         BM_elem_flag_enable(v, BM_ELEM_HIDDEN);
       }
@@ -478,7 +526,6 @@ static void partialvis_update_bmesh(Object *ob,
                                     PBVH *pbvh,
                                     const VisAction action,
                                     const VisArea area,
-                                    const float planes[4][4],
                                     const Span<PBVHNode *> nodes)
 {
   BMesh *bm = BKE_pbvh_get_bmesh(pbvh);
@@ -488,21 +535,11 @@ static void partialvis_update_bmesh(Object *ob,
 
     undo::push_node(ob, node, undo::Type::HideVert);
 
-    partialvis_update_bmesh_verts(bm,
-                                  BKE_pbvh_bmesh_node_unique_verts(node),
-                                  action,
-                                  area,
-                                  planes,
-                                  &any_changed,
-                                  &any_visible);
+    partialvis_update_bmesh_verts(
+        bm, BKE_pbvh_bmesh_node_unique_verts(node), action, area, &any_changed, &any_visible);
 
-    partialvis_update_bmesh_verts(bm,
-                                  BKE_pbvh_bmesh_node_other_verts(node),
-                                  action,
-                                  area,
-                                  planes,
-                                  &any_changed,
-                                  &any_visible);
+    partialvis_update_bmesh_verts(
+        bm, BKE_pbvh_bmesh_node_other_verts(node), action, area, &any_changed, &any_visible);
 
     /* Finally loop over node faces and tag the ones that are fully hidden. */
     partialvis_update_bmesh_faces(BKE_pbvh_bmesh_node_faces(node));
@@ -514,73 +551,108 @@ static void partialvis_update_bmesh(Object *ob,
   }
 }
 
-static void rect_from_props(rcti *rect, PointerRNA *ptr)
+static void partialvis_update_bmesh(gesture::GestureData *gesture_data)
 {
-  rect->xmin = RNA_int_get(ptr, "xmin");
-  rect->ymin = RNA_int_get(ptr, "ymin");
-  rect->xmax = RNA_int_get(ptr, "xmax");
-  rect->ymax = RNA_int_get(ptr, "ymax");
-}
+  Object *ob = gesture_data->vc.obact;
+  PBVH *pbvh = gesture_data->ss->pbvh;
+  const Span<PBVHNode *> nodes = gesture_data->nodes;
 
-static void clip_planes_from_rect(bContext *C,
-                                  Depsgraph *depsgraph,
-                                  float clip_planes[4][4],
-                                  const rcti *rect)
-{
-  view3d_operator_needs_opengl(C);
-  ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
-  BoundBox bb;
-  ED_view3d_clipping_calc(&bb, clip_planes, vc.region, vc.obact, rect);
-}
+  BMesh *bm = BKE_pbvh_get_bmesh(pbvh);
+  for (PBVHNode *node : nodes) {
+    bool any_changed = false;
+    bool any_visible = false;
 
-/* If mode is inside, get all PBVH nodes that lie at least partially
- * inside the clip_planes volume. If mode is outside, get all nodes
- * that lie at least partially outside the volume. If showing all, get
- * all nodes. */
-static Vector<PBVHNode *> get_pbvh_nodes(PBVH *pbvh,
-                                         const float clip_planes[4][4],
-                                         const VisArea area)
-{
-  PBVHFrustumPlanes frustum{};
-  frustum.planes = const_cast<float(*)[4]>(clip_planes);
-  frustum.num_planes = 4;
-  return bke::pbvh::search_gather(pbvh, [&](PBVHNode &node) {
-    switch (area) {
-      case VisArea::Inside:
-        return BKE_pbvh_node_frustum_contain_AABB(&node, &frustum);
-      case VisArea::Outside:
-        return BKE_pbvh_node_frustum_exclude_AABB(&node, &frustum);
-      case VisArea::All:
-      case VisArea::Masked:
-        return true;
+    undo::push_node(ob, node, undo::Type::HideVert);
+
+    partialvis_update_bmesh_verts(
+        gesture_data, bm, BKE_pbvh_bmesh_node_unique_verts(node), &any_changed, &any_visible);
+
+    partialvis_update_bmesh_verts(
+        gesture_data, bm, BKE_pbvh_bmesh_node_other_verts(node), &any_changed, &any_visible);
+
+    /* Finally loop over node faces and tag the ones that are fully hidden. */
+    partialvis_update_bmesh_faces(BKE_pbvh_bmesh_node_faces(node));
+
+    if (any_changed) {
+      BKE_pbvh_node_mark_rebuild_draw(node);
+      BKE_pbvh_node_fully_hidden_set(node, !any_visible);
     }
-    BLI_assert_unreachable();
-    return true;
-  });
+  }
 }
 
-static int hide_show_exec(bContext *C, wmOperator *op)
+static int hide_show_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  const VisArea area = VisArea(RNA_enum_get(op->ptr, "area"));
+  if (!ELEM(area, VisArea::All, VisArea::Masked)) {
+    return WM_gesture_box_invoke(C, op, event);
+  }
+  return op->type->exec(C, op);
+}
+
+static void hide_show_begin(bContext *C, gesture::GestureData * /*gesture_data*/)
 {
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
 
-  /* Read operator properties. */
+  PBVH *pbvh = BKE_sculpt_object_pbvh_ensure(depsgraph, ob);
+  BLI_assert(BKE_object_sculpt_pbvh_get(ob) == pbvh);
+}
+
+static void hide_show_apply_for_symmetry_pass(bContext *C, gesture::GestureData *gesture_data)
+{
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+
+  switch (BKE_pbvh_type(gesture_data->ss->pbvh)) {
+    case PBVH_FACES:
+      partialvis_update_mesh(gesture_data);
+      break;
+    case PBVH_GRIDS:
+      partialvis_update_grids(*depsgraph, gesture_data);
+      break;
+    case PBVH_BMESH:
+      partialvis_update_bmesh(gesture_data);
+      break;
+  }
+}
+static void hide_show_end(bContext *C, gesture::GestureData *gesture_data)
+{
+  SCULPT_topology_islands_invalidate(gesture_data->vc.obact->sculpt);
+  tag_update_visibility(*C);
+}
+
+static void hide_show_init_properties(bContext * /*C*/,
+                                      gesture::GestureData *gesture_data,
+                                      wmOperator *op)
+{
+  gesture_data->operation = reinterpret_cast<gesture::Operation *>(
+      MEM_cnew<HideShowOperation>(__func__));
+
+  HideShowOperation *operation = (HideShowOperation *)gesture_data->operation;
+
+  operation->op.begin = hide_show_begin;
+  operation->op.apply_for_symmetry_pass = hide_show_apply_for_symmetry_pass;
+  operation->op.end = hide_show_end;
+
+  operation->action = VisAction(RNA_enum_get(op->ptr, "action"));
+  operation->area = VisArea(RNA_enum_get(op->ptr, "area"));
+  if (operation->area == VisArea::Outside) {
+    gesture_data->selection_type = gesture::eSelectionType::OUTSIDE;
+  }
+}
+
+/* Handles cases where the action is effectively global on the mesh
+ * (i.e. not subject to user selection via box, lasso, etc )*/
+static int hide_show_global_exec(bContext *C, wmOperator *op)
+{
+  Object *ob = CTX_data_active_object(C);
+  Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
+
   const VisAction action = VisAction(RNA_enum_get(op->ptr, "action"));
   const VisArea area = VisArea(RNA_enum_get(op->ptr, "area"));
-
-  rcti rect;
-  rect_from_props(&rect, op->ptr);
-
-  float clip_planes[4][4];
-  clip_planes_from_rect(C, depsgraph, clip_planes, &rect);
+  BLI_assert(ELEM(area, VisArea::All, VisArea::Masked));
 
   PBVH *pbvh = BKE_sculpt_object_pbvh_ensure(depsgraph, ob);
   BLI_assert(BKE_object_sculpt_pbvh_get(ob) == pbvh);
-
-  Vector<PBVHNode *> nodes = get_pbvh_nodes(pbvh, clip_planes, area);
-  const PBVHType pbvh_type = BKE_pbvh_type(pbvh);
-
-  negate_m4(clip_planes);
 
   /* Start undo. */
   switch (action) {
@@ -592,15 +664,18 @@ static int hide_show_exec(bContext *C, wmOperator *op)
       break;
   }
 
-  switch (pbvh_type) {
+  Vector<PBVHNode *> nodes = bke::pbvh::search_gather(pbvh,
+                                                      [&](PBVHNode & /* node */) { return true; });
+
+  switch (BKE_pbvh_type(pbvh)) {
     case PBVH_FACES:
-      partialvis_update_mesh(*ob, action, area, clip_planes, nodes);
+      partialvis_update_mesh(*ob, action, area, nodes);
       break;
     case PBVH_GRIDS:
-      partialvis_update_grids(*depsgraph, *ob, action, area, clip_planes, nodes);
+      partialvis_update_grids(*depsgraph, *ob, action, area, nodes);
       break;
     case PBVH_BMESH:
-      partialvis_update_bmesh(ob, pbvh, action, area, clip_planes, nodes);
+      partialvis_update_bmesh(ob, pbvh, action, area, nodes);
       break;
   }
 
@@ -613,13 +688,21 @@ static int hide_show_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static int hide_show_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int hide_show_gesture_box_exec(bContext *C, wmOperator *op)
 {
   const VisArea area = VisArea(RNA_enum_get(op->ptr, "area"));
-  if (!ELEM(area, VisArea::All, VisArea::Masked)) {
-    return WM_gesture_box_invoke(C, op, event);
+  if (ELEM(area, VisArea::All, VisArea::Masked)) {
+    return hide_show_global_exec(C, op);
   }
-  return op->type->exec(C, op);
+
+  gesture::GestureData *gesture_data = gesture::init_from_box(C, op);
+  if (!gesture_data) {
+    return OPERATOR_CANCELLED;
+  }
+  hide_show_init_properties(C, gesture_data, op);
+  gesture::apply(C, gesture_data, op);
+  gesture::free_data(gesture_data);
+  return OPERATOR_FINISHED;
 }
 
 void PAINT_OT_hide_show(wmOperatorType *ot)
@@ -650,9 +733,12 @@ void PAINT_OT_hide_show(wmOperatorType *ot)
   ot->idname = "PAINT_OT_hide_show";
   ot->description = "Hide/show some vertices";
 
+  /* Because this operator handles both interactive viewport functionality and predefined menu
+   * actions, we cannot currently just default this to WM_gesture_box_invoke like other gesture
+   * operators. */
   ot->invoke = hide_show_invoke;
   ot->modal = WM_gesture_box_modal;
-  ot->exec = hide_show_exec;
+  ot->exec = hide_show_gesture_box_exec;
   /* Sculpt-only for now. */
   ot->poll = SCULPT_mode_poll_view3d;
 
@@ -671,6 +757,7 @@ void PAINT_OT_hide_show(wmOperatorType *ot)
                "Visibility Area",
                "Which vertices to hide or show");
   WM_operator_properties_border(ot);
+  gesture::operator_properties(ot);
 }
 
 static void invert_visibility_mesh(Object &object, const Span<PBVHNode *> nodes)

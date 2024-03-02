@@ -1671,6 +1671,11 @@ enum eShapeType {
   SCULPT_GESTURE_SHAPE_LINE,
 };
 
+enum eSelectionType {
+  INSIDE,
+  OUTSIDE,
+};
+
 struct LassoData {
   float4x4 projviewobjmat;
 
@@ -1709,6 +1714,7 @@ struct GestureData {
   /* Operation parameters. */
   eShapeType shape_type;
   bool front_faces_only;
+  eSelectionType selection_type;
 
   Operation *operation;
 
