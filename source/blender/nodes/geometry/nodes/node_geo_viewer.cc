@@ -4,6 +4,7 @@
 
 #include "BKE_context.hh"
 
+#include "NOD_node_extra_info.hh"
 #include "NOD_rna_define.hh"
 #include "NOD_socket_search_link.hh"
 
@@ -36,8 +37,7 @@ static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeGeometryViewer *data = MEM_cnew<NodeGeometryViewer>(__func__);
   data->data_type = CD_PROP_FLOAT;
-  data->domain = ATTR_DOMAIN_AUTO;
-
+  data->domain = int8_t(AttrDomain::Auto);
   node->storage = data;
 }
 
@@ -103,6 +103,19 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
   }
 }
 
+static void node_extra_info(NodeExtraInfoParams &params)
+{
+  const auto data_type = eCustomDataType(node_storage(params.node).data_type);
+  if (data_type == CD_PROP_QUATERNION) {
+    NodeExtraInfoRow row;
+    row.icon = ICON_INFO;
+    row.text = TIP_("No color overlay");
+    row.tooltip = TIP_(
+        "Rotation values can only be displayed with the text overlay in the 3D view");
+    params.rows.append(std::move(row));
+  }
+}
+
 static void node_rna(StructRNA *srna)
 {
   RNA_def_node_enum(srna,
@@ -120,7 +133,7 @@ static void node_rna(StructRNA *srna)
                     "Domain to evaluate the field on",
                     rna_enum_attribute_domain_with_auto_items,
                     NOD_storage_enum_accessors(domain),
-                    ATTR_DOMAIN_POINT);
+                    int(AttrDomain::Point));
 }
 
 static void node_register()
@@ -136,6 +149,7 @@ static void node_register()
   ntype.draw_buttons_ex = node_layout_ex;
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.no_muting = true;
+  ntype.get_extra_info = node_extra_info;
   nodeRegisterType(&ntype);
 
   node_rna(ntype.rna_ext.srna);

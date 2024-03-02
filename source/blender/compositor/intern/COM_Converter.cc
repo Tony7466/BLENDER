@@ -50,6 +50,7 @@
 #include "COM_DistanceMatteNode.h"
 #include "COM_DoubleEdgeMaskNode.h"
 #include "COM_EllipseMaskNode.h"
+#include "COM_FileOutputNode.h"
 #include "COM_FilterNode.h"
 #include "COM_FlipNode.h"
 #include "COM_GammaNode.h"
@@ -75,7 +76,6 @@
 #include "COM_MovieDistortionNode.h"
 #include "COM_NormalNode.h"
 #include "COM_NormalizeNode.h"
-#include "COM_OutputFileNode.h"
 #include "COM_PixelateNode.h"
 #include "COM_PlaneTrackDeformNode.h"
 #include "COM_PosterizeNode.h"
@@ -347,7 +347,7 @@ Node *COM_convert_bnode(bNode *b_node)
       node = new ColorSpillNode(b_node);
       break;
     case CMP_NODE_OUTPUT_FILE:
-      node = new OutputFileNode(b_node);
+      node = new FileOutputNode(b_node);
       break;
     case CMP_NODE_MAP_VALUE:
       node = new MapValueNode(b_node);
@@ -550,13 +550,11 @@ void COM_convert_canvas(NodeOperationBuilder &builder,
     builder.add_operation(syop);
 
     rcti scale_canvas = from_operation->get_canvas();
-    if (builder.context().get_execution_model() == eExecutionModel::FullFrame) {
-      ScaleOperation::scale_area(scale_canvas, scaleX, scaleY);
-      scale_canvas.xmax = scale_canvas.xmin + to_operation->get_width();
-      scale_canvas.ymax = scale_canvas.ymin + to_operation->get_height();
-      addX = 0;
-      addY = 0;
-    }
+    ScaleOperation::scale_area(scale_canvas, scaleX, scaleY);
+    scale_canvas.xmax = scale_canvas.xmin + to_operation->get_width();
+    scale_canvas.ymax = scale_canvas.ymin + to_operation->get_height();
+    addX = 0;
+    addY = 0;
     scale_operation->set_canvas(scale_canvas);
     sxop->set_canvas(scale_canvas);
     syop->set_canvas(scale_canvas);

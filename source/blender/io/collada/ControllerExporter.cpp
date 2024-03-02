@@ -17,10 +17,10 @@
 
 #include "BKE_action.h"
 #include "BKE_armature.hh"
-#include "BKE_deform.h"
-#include "BKE_global.h"
+#include "BKE_deform.hh"
+#include "BKE_global.hh"
 #include "BKE_idprop.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 
 #include "ED_armature.hh"
@@ -66,7 +66,7 @@ bool ControllerExporter::add_instance_controller(Object *ob)
   ins.setUrl(COLLADASW::URI(COLLADABU::Utils::EMPTY_STRING, controller_id));
 
   Mesh *mesh = (Mesh *)ob->data;
-  if (BKE_mesh_deform_verts(mesh) == nullptr) {
+  if (mesh->deform_verts().is_empty()) {
     return false;
   }
 
@@ -162,7 +162,7 @@ void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm)
   bool use_instantiation = this->export_settings.get_use_object_instantiation();
   Mesh *mesh;
 
-  if (BKE_mesh_deform_verts((Mesh *)ob->data) == nullptr) {
+  if (((Mesh *)ob->data)->deform_verts().is_empty()) {
     return;
   }
 
@@ -205,9 +205,9 @@ void ControllerExporter::export_skin_controller(Object *ob, Object *ob_arm)
       }
     }
 
-    const MDeformVert *dvert = BKE_mesh_deform_verts(mesh);
+    const MDeformVert *dvert = mesh->deform_verts().data();
     int oob_counter = 0;
-    for (i = 0; i < mesh->totvert; i++) {
+    for (i = 0; i < mesh->verts_num; i++) {
       const MDeformVert *vert = &dvert[i];
       std::map<int, float> jw;
 
@@ -408,7 +408,7 @@ void ControllerExporter::add_bind_shape_mat(Object *ob)
     bc_add_global_transform(f_obmat, export_settings.get_global_transform());
   }
 
-  // UnitConverter::mat4_to_dae_double(bind_mat, ob->object_to_world);
+  // UnitConverter::mat4_to_dae_double(bind_mat, ob->object_to_world().ptr());
   UnitConverter::mat4_to_dae_double(bind_mat, f_obmat);
   if (this->export_settings.get_limit_precision()) {
     BCMatrix::sanitize(bind_mat, LIMITTED_PRECISION);
@@ -524,7 +524,7 @@ std::string ControllerExporter::add_inv_bind_mats_source(Object *ob_arm,
       }
 
       /* make world-space matrix (bind_mat is armature-space) */
-      mul_m4_m4m4(world, ob_arm->object_to_world, bind_mat);
+      mul_m4_m4m4(world, ob_arm->object_to_world().ptr(), bind_mat);
 
       if (!has_bindmat) {
         if (export_settings.get_apply_global_orientation()) {

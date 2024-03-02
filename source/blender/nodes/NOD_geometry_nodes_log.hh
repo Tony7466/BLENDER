@@ -33,9 +33,9 @@
 #include "BLI_compute_context.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_generic_pointer.hh"
+#include "BLI_linear_allocator_chunked_list.hh"
 #include "BLI_multi_value_map.hh"
 
-#include "BKE_attribute.h"
 #include "BKE_geometry_set.hh"
 #include "BKE_node_tree_zones.hh"
 #include "BKE_viewer_path.hh"
@@ -112,7 +112,7 @@ class FieldInfoLog : public ValueLog {
 struct GeometryAttributeInfo {
   std::string name;
   /** Can be empty when #name does not actually exist on a geometry yet. */
-  std::optional<eAttrDomain> domain;
+  std::optional<bke::AttrDomain> domain;
   std::optional<eCustomDataType> data_type;
 };
 
@@ -208,13 +208,13 @@ class GeoTreeLogger {
     StringRefNull message;
   };
 
-  Vector<WarningWithNode> node_warnings;
-  Vector<SocketValueLog> input_socket_values;
-  Vector<SocketValueLog> output_socket_values;
-  Vector<NodeExecutionTime> node_execution_times;
-  Vector<ViewerNodeLogWithNode, 0> viewer_node_logs;
-  Vector<AttributeUsageWithNode, 0> used_named_attributes;
-  Vector<DebugMessage, 0> debug_messages;
+  linear_allocator::ChunkedList<WarningWithNode> node_warnings;
+  linear_allocator::ChunkedList<SocketValueLog, 16> input_socket_values;
+  linear_allocator::ChunkedList<SocketValueLog, 16> output_socket_values;
+  linear_allocator::ChunkedList<NodeExecutionTime, 16> node_execution_times;
+  linear_allocator::ChunkedList<ViewerNodeLogWithNode> viewer_node_logs;
+  linear_allocator::ChunkedList<AttributeUsageWithNode> used_named_attributes;
+  linear_allocator::ChunkedList<DebugMessage> debug_messages;
 
   GeoTreeLogger();
   ~GeoTreeLogger();

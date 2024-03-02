@@ -10,32 +10,29 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_light_types.h"
 #include "DNA_material_types.h"
 #include "DNA_node_types.h"
 #include "DNA_text_types.h"
 #include "DNA_world_types.h"
 
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
-#include "BKE_image_format.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
-#include "BKE_workspace.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
+#include "BKE_scene_runtime.hh"
 
-#include "BLI_set.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
@@ -49,12 +46,10 @@
 #include "ED_node.hh" /* own include */
 #include "ED_render.hh"
 #include "ED_screen.hh"
-#include "ED_select_utils.hh"
 #include "ED_viewer_path.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
-#include "RNA_enum_types.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
@@ -63,9 +58,9 @@
 #include "UI_view2d.hh"
 
 #include "GPU_capabilities.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "NOD_composite.hh"
 #include "NOD_geometry.hh"
@@ -73,6 +68,8 @@
 #include "NOD_socket.hh"
 #include "NOD_texture.h"
 #include "node_intern.hh" /* own include */
+
+#include "COM_profile.hh"
 
 namespace blender::ed::space_node {
 
@@ -104,6 +101,8 @@ struct CompoJob {
   bool *do_update;
   float *progress;
   bool cancelled;
+
+  blender::compositor::ProfilerData profiler_data;
 };
 
 float node_socket_calculate_height(const bNodeSocket &socket)
@@ -223,7 +222,8 @@ static void compo_freejob(void *cjv)
   if (cj->compositor_depsgraph != nullptr) {
     DEG_graph_free(cj->compositor_depsgraph);
   }
-  MEM_freeN(cj);
+
+  MEM_delete(cj);
 }
 
 /* Only now we copy the nodetree, so adding many jobs while
@@ -296,14 +296,23 @@ static void compo_startjob(void *cjv, wmJobWorkerStatus *worker_status)
   BKE_callback_exec_id(cj->bmain, &scene->id, BKE_CB_EVT_COMPOSITE_PRE);
 
   if ((cj->scene->r.scemode & R_MULTIVIEW) == 0) {
-    ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, false, true, "");
+    ntreeCompositExecTree(
+        cj->re, cj->scene, ntree, &cj->scene->r, false, true, "", nullptr, cj->profiler_data);
   }
   else {
     LISTBASE_FOREACH (SceneRenderView *, srv, &scene->r.views) {
       if (BKE_scene_multiview_is_render_view_active(&scene->r, srv) == false) {
         continue;
       }
-      ntreeCompositExecTree(cj->re, cj->scene, ntree, &cj->scene->r, false, true, srv->name);
+      ntreeCompositExecTree(cj->re,
+                            cj->scene,
+                            ntree,
+                            &cj->scene->r,
+                            false,
+                            true,
+                            srv->name,
+                            nullptr,
+                            cj->profiler_data);
     }
   }
 
@@ -319,6 +328,8 @@ static void compo_canceljob(void *cjv)
   Scene *scene = cj->scene;
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_CANCEL);
   cj->cancelled = true;
+
+  scene->runtime->compositor.per_node_execution_time = cj->profiler_data.per_node_execution_time;
 }
 
 static void compo_completejob(void *cjv)
@@ -327,6 +338,8 @@ static void compo_completejob(void *cjv)
   Main *bmain = cj->bmain;
   Scene *scene = cj->scene;
   BKE_callback_exec_id(bmain, &scene->id, BKE_CB_EVT_COMPOSITE_POST);
+
+  scene->runtime->compositor.per_node_execution_time = cj->profiler_data.per_node_execution_time;
 }
 
 /** \} */
@@ -344,7 +357,7 @@ static bool is_compositing_possible(const bContext *C)
   Scene *scene = CTX_data_scene(C);
   /* CPU compositor can always run. */
   if (!U.experimental.use_full_frame_compositor ||
-      scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_REALTIME)
+      scene->nodetree->execution_mode != NTREE_EXECUTION_MODE_GPU)
   {
     return true;
   }
@@ -394,7 +407,7 @@ void ED_node_composite_job(const bContext *C, bNodeTree *nodetree, Scene *scene_
                               "Compositing",
                               WM_JOB_EXCL_RENDER | WM_JOB_PROGRESS,
                               WM_JOB_TYPE_COMPOSITE);
-  CompoJob *cj = MEM_cnew<CompoJob>("compo job");
+  CompoJob *cj = MEM_new<CompoJob>("compo job");
 
   /* Custom data for preview thread. */
   cj->bmain = bmain;
@@ -493,7 +506,7 @@ void ED_node_tree_propagate_change(const bContext *C, Main *bmain, bNodeTree *ro
   NodeTreeUpdateExtraParams params = {nullptr};
   params.tree_changed_fn = [](ID *id, bNodeTree *ntree, void * /*user_data*/) {
     blender::ed::space_node::send_notifiers_after_tree_change(id, ntree);
-    DEG_id_tag_update(&ntree->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&ntree->id, ID_RECALC_SYNC_TO_EVAL);
   };
   params.tree_output_changed_fn = [](ID * /*id*/, bNodeTree *ntree, void * /*user_data*/) {
     DEG_id_tag_update(&ntree->id, ID_RECALC_NTREE_OUTPUT);
@@ -620,7 +633,6 @@ void ED_node_composit_default(const bContext *C, Scene *sce)
   sce->nodetree = blender::bke::ntreeAddTreeEmbedded(
       nullptr, &sce->id, "Compositing Nodetree", ntreeType_Composite->idname);
 
-  sce->nodetree->chunksize = 256;
   sce->nodetree->edit_quality = NTREE_QUALITY_HIGH;
   sce->nodetree->render_quality = NTREE_QUALITY_HIGH;
 
@@ -1224,6 +1236,12 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
   };
 
   for (bNode *node : sorted_nodes) {
+    const bool node_hidden = node->flag & NODE_HIDDEN;
+    if (!node->is_reroute() && !node_hidden && node->runtime->totr.ymax - cursor.y < NODE_DY) {
+      /* Don't pick socket when cursor is over node header. This allows the user to always resize
+       * by dragging on the left and right side of the header. */
+      continue;
+    }
     if (in_out & SOCK_IN) {
       for (bNodeSocket *sock : node->input_sockets()) {
         if (!node->is_socket_icon_drawn(*sock)) {
@@ -1231,7 +1249,7 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
         }
         const float2 location = sock->runtime->location;
         const float distance = math::distance(location, cursor);
-        if (sock->flag & SOCK_MULTI_INPUT && !(node->flag & NODE_HIDDEN)) {
+        if (sock->flag & SOCK_MULTI_INPUT && !node_hidden) {
           if (cursor_isect_multi_input_socket(cursor, *sock)) {
             update_best_socket(sock, distance);
             continue;
@@ -1250,7 +1268,7 @@ bNodeSocket *node_find_indicated_socket(SpaceNode &snode,
         const float2 location = sock->runtime->location;
         const float distance = math::distance(location, cursor);
         if (distance < max_distance) {
-          if (node->flag & NODE_HIDDEN) {
+          if (node_hidden) {
             if (location.x - cursor.x > padded_socket_size) {
               /* Needed to be able to resize collapsed nodes. */
               continue;
@@ -1506,8 +1524,8 @@ static int node_read_viewlayers_exec(bContext *C, wmOperator * /*op*/)
   }
 
   for (bNode *node : edit_tree.all_nodes()) {
-    if ((node->type == CMP_NODE_R_LAYERS) ||
-        (node->type == CMP_NODE_CRYPTOMATTE && node->custom1 == CMP_CRYPTOMATTE_SRC_RENDER))
+    if ((node->type == CMP_NODE_R_LAYERS) || (node->type == CMP_NODE_CRYPTOMATTE &&
+                                              node->custom1 == CMP_NODE_CRYPTOMATTE_SOURCE_RENDER))
     {
       ID *id = node->id;
       if (id == nullptr) {

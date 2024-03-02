@@ -12,17 +12,13 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_span.hh"
-#include "BLI_task.h"
-
-#include "DNA_meshdata_types.h"
 
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_kelvinlet.h"
+#include "BKE_layer.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
-
-#include "DEG_depsgraph.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -176,10 +172,6 @@ static void sculpt_transform_task(Object *ob, const float transform_mats[8][4][4
     sub_v3_v3v3(disp, transformed_co, start_co);
     mul_v3_fl(disp, 1.0f - fade);
     add_v3_v3v3(vd.co, start_co, disp);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 
@@ -246,10 +238,6 @@ static void sculpt_elastic_transform_task(Object *ob,
     mul_v3_fl(final_disp, 20.0f * (1.0f - fade));
 
     copy_v3_v3(proxy[vd.i], final_disp);
-
-    if (vd.is_mesh) {
-      BKE_pbvh_vert_tag_update_normal(ss->pbvh, vd.vertex);
-    }
   }
   BKE_pbvh_vertex_iter_end;
 
@@ -268,9 +256,6 @@ static void sculpt_transform_radius_elastic(Sculpt *sd, Object *ob, const float 
   float transform_mats[8][4][4];
   sculpt_transform_matrices_init(
       ss, symm, ss->filter_cache->transform_displacement_mode, transform_mats);
-
-  TaskParallelSettings settings;
-  BKE_pbvh_parallel_range_settings(&settings, true, ss->filter_cache->nodes.size());
 
   /* Elastic transform needs to apply all transform matrices to all vertices and then combine the
    * displacement proxies as all vertices are modified by all symmetry passes. */
@@ -400,6 +385,12 @@ static int sculpt_set_pivot_position_exec(bContext *C, wmOperator *op)
   const char symm = SCULPT_mesh_symmetry_xyz_get(ob);
 
   int mode = RNA_enum_get(op->ptr, "mode");
+
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
 

@@ -22,16 +22,18 @@ namespace blender::eevee {
 /** \name LightData
  * \{ */
 
-static eLightType to_light_type(short blender_light_type, short blender_area_type)
+static eLightType to_light_type(short blender_light_type,
+                                short blender_area_type,
+                                bool use_soft_falloff)
 {
   switch (blender_light_type) {
     default:
     case LA_LOCAL:
-      return LIGHT_POINT;
+      return use_soft_falloff ? LIGHT_OMNI_DISK : LIGHT_OMNI_SPHERE;
     case LA_SUN:
       return LIGHT_SUN;
     case LA_SPOT:
-      return LIGHT_SPOT;
+      return use_soft_falloff ? LIGHT_SPOT_DISK : LIGHT_SPOT_SPHERE;
     case LA_AREA:
       return ELEM(blender_area_type, LA_AREA_DISK, LA_AREA_ELLIPSE) ? LIGHT_ELLIPSE : LIGHT_RECT;
   }
@@ -60,7 +62,7 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   this->influence_radius_invsqr_volume = 1.0f / square_f(max_ff(influence_radius_volume, 1e-8f));
 
   this->color = float3(&la->r) * la->energy;
-  normalize_m4_m4_ex(this->object_mat.ptr(), ob->object_to_world, scale);
+  normalize_m4_m4_ex(this->object_mat.ptr(), ob->object_to_world().ptr(), scale);
   /* Make sure we have consistent handedness (in case of negatively scaled Z axis). */
   float3 cross = math::cross(float3(this->_right), float3(this->_up));
   if (math::dot(cross, float3(this->_back)) < 0.0f) {
@@ -76,7 +78,9 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   this->power[LIGHT_SPECULAR] = la->spec_fac * shape_power;
   this->power[LIGHT_VOLUME] = la->volume_fac * point_power;
 
-  eLightType new_type = to_light_type(la->type, la->area_shape);
+  this->pcf_radius = la->shadow_filter_radius;
+
+  eLightType new_type = to_light_type(la->type, la->area_shape, la->mode & LA_USE_SOFT_FALLOFF);
   if (assign_if_different(this->type, new_type)) {
     shadow_discard_safe(shadows);
   }
@@ -172,7 +176,9 @@ void Light::shape_parameters_set(const ::Light *la, const float scale[3])
       _area_size_x = tanf(min_ff(la->sun_angle, DEG2RADF(179.9f)) / 2.0f);
     }
     else {
-      _area_size_x = la->radius;
+      /* Ensure a minimum radius/energy ratio to avoid harsh cut-offs. (See 114284) */
+      float min_radius = la->energy * 2e-05f;
+      _area_size_x = std::max(la->radius, min_radius);
     }
     _area_size_y = _area_size_x = max_ff(0.001f, _area_size_x);
     radius_squared = square_f(_area_size_x);
@@ -334,7 +340,7 @@ void LightModule::end_sync()
   if (sun_lights_len_ + local_lights_len_ > CULLING_MAX_ITEM) {
     sun_lights_len_ = min_ii(sun_lights_len_, CULLING_MAX_ITEM);
     local_lights_len_ = min_ii(local_lights_len_, CULLING_MAX_ITEM - sun_lights_len_);
-    inst_.info = "Error: Too many lights in the scene.";
+    inst_.info += "Error: Too many lights in the scene.\n";
   }
   lights_len_ = sun_lights_len_ + local_lights_len_;
 
@@ -352,6 +358,7 @@ void LightModule::end_sync()
     /* Default to 32 as this is likely to be the maximum
      * tile size used by hardware or compute shading. */
     uint tile_size = 16;
+    bool tile_size_valid = false;
     do {
       tile_size *= 2;
       tiles_extent = math::divide_ceil(render_extent, int2(tile_size));
@@ -360,8 +367,9 @@ void LightModule::end_sync()
         continue;
       }
       total_word_count_ = tile_count * word_per_tile;
+      tile_size_valid = true;
 
-    } while (total_word_count_ > max_word_count_threshold);
+    } while (total_word_count_ > max_word_count_threshold || !tile_size_valid);
     /* Keep aligned with storage buffer requirements. */
     total_word_count_ = ceil_to_multiple_u(total_word_count_, 32);
 
@@ -437,8 +445,8 @@ void LightModule::debug_pass_sync()
     debug_draw_ps_.init();
     debug_draw_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_BLEND_CUSTOM);
     debug_draw_ps_.shader_set(inst_.shaders.static_shader_get(LIGHT_CULLING_DEBUG));
-    inst_.bind_uniform_data(&debug_draw_ps_);
-    inst_.hiz_buffer.bind_resources(debug_draw_ps_);
+    debug_draw_ps_.bind_resources(inst_.uniform_data);
+    debug_draw_ps_.bind_resources(inst_.hiz_buffer.front);
     debug_draw_ps_.bind_ssbo("light_buf", &culling_light_buf_);
     debug_draw_ps_.bind_ssbo("light_cull_buf", &culling_data_buf_);
     debug_draw_ps_.bind_ssbo("light_zbin_buf", &culling_zbin_buf_);
@@ -465,7 +473,7 @@ void LightModule::set_view(View &view, const int2 extent)
 void LightModule::debug_draw(View &view, GPUFrameBuffer *view_fb)
 {
   if (inst_.debug_mode == eDebugMode::DEBUG_LIGHT_CULLING) {
-    inst_.info = "Debug Mode: Light Culling Validation";
+    inst_.info += "Debug Mode: Light Culling Validation\n";
     inst_.hiz_buffer.update();
     GPU_framebuffer_bind(view_fb);
     inst_.manager->submit(debug_draw_ps_, view);

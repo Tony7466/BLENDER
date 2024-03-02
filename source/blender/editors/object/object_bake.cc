@@ -10,46 +10,35 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
-#include "DNA_world_types.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_DerivedMesh.hh"
-#include "BKE_blender.h"
+#include "BKE_attribute.hh"
 #include "BKE_cdderivedmesh.h"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_customdata.hh"
+#include "BKE_global.hh"
 #include "BKE_image.h"
-#include "BKE_material.h"
-#include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
-
-#include "DEG_depsgraph.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "RE_multires_bake.h"
 #include "RE_pipeline.h"
-#include "RE_texture.h"
 
-#include "PIL_time.h"
-
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "ED_object.hh"
 #include "ED_screen.hh"
 #include "ED_uvedit.hh"
 
@@ -114,6 +103,7 @@ struct MultiresBakeJob {
 
 static bool multiresbake_check(bContext *C, wmOperator *op)
 {
+  using namespace blender;
   Scene *scene = CTX_data_scene(C);
   Object *ob;
   Mesh *mesh;
@@ -157,16 +147,19 @@ static bool multiresbake_check(bContext *C, wmOperator *op)
       break;
     }
 
-    if (!CustomData_has_layer(&mesh->loop_data, CD_PROP_FLOAT2)) {
+    if (!CustomData_has_layer(&mesh->corner_data, CD_PROP_FLOAT2)) {
       BKE_report(op->reports, RPT_ERROR, "Mesh should be unwrapped before multires data baking");
 
       ok = false;
     }
     else {
-      const int *material_indices = BKE_mesh_material_indices(mesh);
+      const bke::AttributeAccessor attributes = mesh->attributes();
+      const VArraySpan material_indices = *attributes.lookup<int>("material_index",
+                                                                  bke::AttrDomain::Face);
       a = mesh->faces_num;
       while (ok && a--) {
-        Image *ima = bake_object_image_get(ob, material_indices ? material_indices[a] : 0);
+        Image *ima = bake_object_image_get(ob,
+                                           material_indices.is_empty() ? 0 : material_indices[a]);
 
         if (!ima) {
           BKE_report(

@@ -22,23 +22,16 @@
 #include "BLI_string_utf8.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "DNA_constraint_types.h"
-#include "DNA_material_types.h"
-#include "DNA_node_types.h"
-#include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
-#include "DNA_space_types.h"
 #include "DNA_text_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BKE_bpath.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
+#include "BKE_bpath.hh"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_node.h"
 #include "BKE_text.h"
 
 #include "BLO_read_write.hh"
@@ -106,7 +99,7 @@ static void text_init_data(ID *id)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
  */
 static void text_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int /*flag*/)
 {
@@ -229,6 +222,7 @@ static void text_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_TXT = {
     /*id_code*/ ID_TXT,
     /*id_filter*/ FILTER_ID_TXT,
+    /*dependencies_id_types*/ 0,
     /*main_listbase_index*/ INDEX_ID_TXT,
     /*struct_size*/ sizeof(Text),
     /*name*/ "Text",
@@ -1283,7 +1277,6 @@ void txt_sel_line(Text *text)
 void txt_sel_set(Text *text, int startl, int startc, int endl, int endc)
 {
   TextLine *froml, *tol;
-  int fromllen, tollen;
 
   /* Support negative indices. */
   if (startl < 0 || endl < 0) {
@@ -1312,19 +1305,15 @@ void txt_sel_set(Text *text, int startl, int startc, int endl, int endc)
     }
   }
 
-  fromllen = BLI_strlen_utf8(froml->line);
-  tollen = BLI_strlen_utf8(tol->line);
-
   /* Support negative indices. */
   if (startc < 0) {
-    startc = fromllen + startc + 1;
+    const int fromllen = BLI_strlen_utf8(froml->line);
+    startc = std::max(0, fromllen + startc + 1);
   }
   if (endc < 0) {
-    endc = tollen + endc + 1;
+    const int tollen = BLI_strlen_utf8(tol->line);
+    endc = std::max(0, tollen + endc + 1);
   }
-
-  CLAMP(startc, 0, fromllen);
-  CLAMP(endc, 0, tollen);
 
   text->curl = froml;
   text->curc = BLI_str_utf8_offset_from_index(froml->line, froml->len, startc);

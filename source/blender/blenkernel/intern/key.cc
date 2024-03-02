@@ -19,11 +19,12 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
 
+#include "BKE_attribute.hh"
 #include "DNA_ID.h"
 #include "DNA_anim_types.h"
 #include "DNA_key_types.h"
@@ -33,19 +34,19 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_curve.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_idtype.h"
-#include "BKE_key.h"
+#include "BKE_idtype.hh"
+#include "BKE_key.hh"
 #include "BKE_lattice.hh"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
@@ -190,6 +191,8 @@ static void shapekey_blend_read_after_liblink(BlendLibReader * /*reader*/, ID *i
 IDTypeInfo IDType_ID_KE = {
     /*id_code*/ ID_KE,
     /*id_filter*/ FILTER_ID_KE,
+    /* Warning! key->from, could be more types in future? */
+    /*dependencies_id_types*/ FILTER_ID_ME | FILTER_ID_CU_LEGACY | FILTER_ID_LT,
     /*main_listbase_index*/ INDEX_ID_KE,
     /*struct_size*/ sizeof(Key),
     /*name*/ "Key",
@@ -1273,8 +1276,8 @@ static float *get_weights_array(Object *ob, char *vgroup, WeightsArrayCache *cac
   /* gather dvert and totvert */
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    dvert = BKE_mesh_deform_verts(mesh);
-    totvert = mesh->totvert;
+    dvert = mesh->deform_verts().data();
+    totvert = mesh->verts_num;
 
     if (mesh->edit_mesh && mesh->edit_mesh->bm->totvert == totvert) {
       em = mesh->edit_mesh;
@@ -1525,7 +1528,7 @@ float *BKE_key_evaluate_object_ex(
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-    tot = mesh->totvert;
+    tot = mesh->verts_num;
     size = tot * sizeof(float[KEYELEM_FLOAT_LEN_COORD]);
   }
   else if (ob->type == OB_LATTICE) {
@@ -1603,10 +1606,10 @@ float *BKE_key_evaluate_object_ex(
     switch (GS(obdata->name)) {
       case ID_ME: {
         Mesh *mesh = (Mesh *)obdata;
-        const int totvert = min_ii(tot, mesh->totvert);
+        const int totvert = min_ii(tot, mesh->verts_num);
         mesh->vert_positions_for_write().take_front(totvert).copy_from(
             {reinterpret_cast<const blender::float3 *>(out), totvert});
-        BKE_mesh_tag_positions_changed(mesh);
+        mesh->tag_positions_changed();
         break;
       }
       case ID_LT: {
@@ -1896,12 +1899,7 @@ KeyBlock *BKE_keyblock_from_object(Object *ob)
 {
   Key *key = BKE_key_from_object(ob);
 
-  if (key) {
-    KeyBlock *kb = static_cast<KeyBlock *>(BLI_findlink(&key->block, ob->shapenr - 1));
-    return kb;
-  }
-
-  return nullptr;
+  return BKE_keyblock_find_by_index(key, ob->shapenr - 1);
 }
 
 KeyBlock *BKE_keyblock_from_object_reference(Object *ob)
@@ -1915,21 +1913,13 @@ KeyBlock *BKE_keyblock_from_object_reference(Object *ob)
   return nullptr;
 }
 
-KeyBlock *BKE_keyblock_from_key(Key *key, int index)
+KeyBlock *BKE_keyblock_find_by_index(Key *key, int index)
 {
-  if (key) {
-    KeyBlock *kb = static_cast<KeyBlock *>(key->block.first);
-
-    for (int i = 1; i < key->totkey; i++) {
-      kb = kb->next;
-
-      if (index == i) {
-        return kb;
-      }
-    }
+  if (!key) {
+    return nullptr;
   }
 
-  return nullptr;
+  return static_cast<KeyBlock *>(BLI_findlink(&key->block, index));
 }
 
 KeyBlock *BKE_keyblock_find_name(Key *key, const char name[])
@@ -1958,21 +1948,13 @@ void BKE_keyblock_copy_settings(KeyBlock *kb_dst, const KeyBlock *kb_src)
   kb_dst->slidermax = kb_src->slidermax;
 }
 
-char *BKE_keyblock_curval_rnapath_get(const Key *key, const KeyBlock *kb)
+std::optional<std::string> BKE_keyblock_curval_rnapath_get(const Key *key, const KeyBlock *kb)
 {
-  PropertyRNA *prop;
-
-  /* sanity checks */
   if (ELEM(nullptr, key, kb)) {
     return nullptr;
   }
-
-  /* create the RNA pointer */
   PointerRNA ptr = RNA_pointer_create((ID *)&key->id, &RNA_ShapeKey, (KeyBlock *)kb);
-  /* get pointer to the property too */
-  prop = RNA_struct_find_property(&ptr, "value");
-
-  /* return the path */
+  PropertyRNA *prop = RNA_struct_find_property(&ptr, "value");
   return RNA_path_from_ID_to_property(&ptr, prop);
 }
 
@@ -2183,9 +2165,9 @@ void BKE_keyblock_convert_to_curve(KeyBlock *kb, Curve * /*cu*/, ListBase *nurb)
 
 void BKE_keyblock_update_from_mesh(const Mesh *mesh, KeyBlock *kb)
 {
-  BLI_assert(mesh->totvert == kb->totelem);
+  BLI_assert(mesh->verts_num == kb->totelem);
 
-  const int tot = mesh->totvert;
+  const int tot = mesh->verts_num;
   if (tot == 0) {
     return;
   }
@@ -2196,9 +2178,9 @@ void BKE_keyblock_update_from_mesh(const Mesh *mesh, KeyBlock *kb)
 
 void BKE_keyblock_convert_from_mesh(const Mesh *mesh, const Key *key, KeyBlock *kb)
 {
-  const int len = mesh->totvert;
+  const int len = mesh->verts_num;
 
-  if (mesh->totvert == 0) {
+  if (mesh->verts_num == 0) {
     return;
   }
 
@@ -2224,12 +2206,15 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
                                     float (*r_face_normals)[3],
                                     float (*r_loop_normals)[3])
 {
+  using namespace blender;
+  using namespace blender::bke;
   if (r_vert_normals == nullptr && r_face_normals == nullptr && r_loop_normals == nullptr) {
     return;
   }
 
   blender::Array<blender::float3> positions(mesh->vert_positions());
-  BKE_keyblock_convert_to_mesh(kb, reinterpret_cast<float(*)[3]>(positions.data()), mesh->totvert);
+  BKE_keyblock_convert_to_mesh(
+      kb, reinterpret_cast<float(*)[3]>(positions.data()), mesh->verts_num);
   const blender::Span<blender::int2> edges = mesh->edges();
   const blender::OffsetIndices faces = mesh->faces();
   const blender::Span<int> corner_verts = mesh->corner_verts();
@@ -2246,7 +2231,7 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
   bool free_face_normals = false;
   if (vert_normals_needed && r_vert_normals == nullptr) {
     vert_normals = static_cast<float(*)[3]>(
-        MEM_malloc_arrayN(mesh->totvert, sizeof(float[3]), __func__));
+        MEM_malloc_arrayN(mesh->verts_num, sizeof(float[3]), __func__));
     free_vert_normals = true;
   }
   if (face_normals_needed && r_face_normals == nullptr) {
@@ -2256,36 +2241,34 @@ void BKE_keyblock_mesh_calc_normals(const KeyBlock *kb,
   }
 
   if (face_normals_needed) {
-    blender::bke::mesh::normals_calc_faces(
-        positions,
-        faces,
-        corner_verts,
-        {reinterpret_cast<blender::float3 *>(face_normals), faces.size()});
+    mesh::normals_calc_faces(positions,
+                             faces,
+                             corner_verts,
+                             {reinterpret_cast<blender::float3 *>(face_normals), faces.size()});
   }
   if (vert_normals_needed) {
-    blender::bke::mesh::normals_calc_verts(
+    mesh::normals_calc_verts(
         positions,
         faces,
         corner_verts,
         mesh->vert_to_face_map(),
         {reinterpret_cast<const blender::float3 *>(face_normals), faces.size()},
-        {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert});
+        {reinterpret_cast<blender::float3 *>(vert_normals), mesh->verts_num});
   }
   if (loop_normals_needed) {
     const blender::short2 *clnors = static_cast<const blender::short2 *>(
-        CustomData_get_layer(&mesh->loop_data, CD_CUSTOMLOOPNORMAL));
-    const bool *sharp_edges = static_cast<const bool *>(
-        CustomData_get_layer_named(&mesh->edge_data, CD_PROP_BOOL, "sharp_edge"));
-    const bool *sharp_faces = static_cast<const bool *>(
-        CustomData_get_layer_named(&mesh->face_data, CD_PROP_BOOL, "sharp_face"));
-    blender::bke::mesh::normals_calc_loop(
+        CustomData_get_layer(&mesh->corner_data, CD_CUSTOMLOOPNORMAL));
+    const AttributeAccessor attributes = mesh->attributes();
+    const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", AttrDomain::Edge);
+    const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
+    mesh::normals_calc_corners(
         positions,
         edges,
         faces,
         corner_verts,
         corner_edges,
         mesh->corner_to_face_map(),
-        {reinterpret_cast<blender::float3 *>(vert_normals), mesh->totvert},
+        {reinterpret_cast<blender::float3 *>(vert_normals), mesh->verts_num},
         {reinterpret_cast<blender::float3 *>(face_normals), faces.size()},
         sharp_edges,
         sharp_faces,
@@ -2321,7 +2304,7 @@ void BKE_keyblock_update_from_vertcos(const Object *ob, KeyBlock *kb, const floa
   }
   else if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    BLI_assert(mesh->totvert == kb->totelem);
+    BLI_assert(mesh->verts_num == kb->totelem);
   }
   else {
     BLI_assert(0 == kb->totelem);
@@ -2372,7 +2355,7 @@ void BKE_keyblock_convert_from_vertcos(const Object *ob, KeyBlock *kb, const flo
   /* Count of vertex coords in array */
   if (ob->type == OB_MESH) {
     const Mesh *mesh = (const Mesh *)ob->data;
-    tot = mesh->totvert;
+    tot = mesh->verts_num;
     elemsize = mesh->key->elemsize;
   }
   else if (ob->type == OB_LATTICE) {
@@ -2405,7 +2388,7 @@ float (*BKE_keyblock_convert_to_vertcos(const Object *ob, const KeyBlock *kb))[3
   /* Count of vertex coords in array */
   if (ob->type == OB_MESH) {
     const Mesh *mesh = (const Mesh *)ob->data;
-    tot = mesh->totvert;
+    tot = mesh->verts_num;
   }
   else if (ob->type == OB_LATTICE) {
     const Lattice *lt = (const Lattice *)ob->data;

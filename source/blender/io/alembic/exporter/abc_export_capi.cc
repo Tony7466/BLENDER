@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "ABC_alembic.h"
+#include "IO_subdiv_disabler.hh"
 #include "abc_archive.h"
 #include "abc_hierarchy_iterator.h"
-#include "abc_subdiv_disabler.h"
 
 #include "MEM_guardedalloc.h"
 
@@ -18,9 +18,9 @@
 
 #include "BKE_blender_version.h"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_main.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
@@ -83,7 +83,6 @@ static void export_startjob(void *customdata, wmJobWorkerStatus *worker_status)
   worker_status->progress = 0.0f;
   worker_status->do_update = true;
 
-  build_depsgraph(data->depsgraph, data->params.visible_objects_only);
   SubdivModifierDisabler subdiv_disabler(data->depsgraph);
   if (!data->params.apply_subdiv) {
     subdiv_disabler.disable_modifiers();
@@ -207,6 +206,12 @@ bool ABC_export(Scene *scene,
 
   job->depsgraph = DEG_graph_new(job->bmain, scene, view_layer, params->evaluation_mode);
   job->params = *params;
+
+  /* Construct the depsgraph for exporting.
+   *
+   * Has to be done from main thread currently, as it may affect Main original data (e.g. when
+   * doing deferred update of the view-layers, see #112534 for details). */
+  blender::io::alembic::build_depsgraph(job->depsgraph, job->params.visible_objects_only);
 
   bool export_ok = false;
   if (as_background_job) {
