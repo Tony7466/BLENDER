@@ -476,6 +476,10 @@ static bke::CurvesGeometry create_curves_outline(const bke::greasepencil::Drawin
   }
 
   bke::CurvesGeometry dst_curves(dst_point_num, dst_curve_num);
+  if (dst_point_num == 0 || dst_curve_num == 0) {
+    return dst_curves;
+  }
+
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
   bke::SpanAttributeWriter<bool> dst_cyclic = dst_attributes.lookup_or_add_for_write_span<bool>(
       "cyclic", bke::AttrDomain::Curve);
