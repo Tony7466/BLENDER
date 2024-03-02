@@ -507,6 +507,7 @@ struct ViewZoomData {
   /* */
   SpaceImage *sima;
   ARegion *region;
+  ScrArea *area;
 };
 
 static void image_view_zoom_init(bContext *C, wmOperator *op, const wmEvent *event)
@@ -541,6 +542,7 @@ static void image_view_zoom_init(bContext *C, wmOperator *op, const wmEvent *eve
 
   vpd->sima = sima;
   vpd->region = region;
+  vpd->area = CTX_wm_area(C);
 
   WM_event_add_modal_handler(C, op);
 }
@@ -553,6 +555,7 @@ static void image_view_zoom_exit(bContext *C, wmOperator *op, bool cancel)
   if (cancel) {
     sima->zoom = vpd->zoom;
     ED_region_tag_redraw(CTX_wm_region(C));
+    ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
   }
 
   if (vpd->timer) {
@@ -572,7 +575,8 @@ static int image_view_zoom_exec(bContext *C, wmOperator *op)
 
   sima_zoom_set_factor(sima, region, RNA_float_get(op->ptr, "factor"), nullptr, false);
 
-  ED_region_tag_redraw(region);
+  ED_area_tag_redraw(CTX_wm_area(C));
+  ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
   return OPERATOR_FINISHED;
 }
@@ -608,6 +612,7 @@ static int image_view_zoom_invoke(bContext *C, wmOperator *op, const wmEvent *ev
                   location,
                   (use_cursor_init && (U.uiflag & USER_ZOOM_TO_MOUSEPOS)));
     ED_region_tag_redraw(region);
+    ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
     return OPERATOR_FINISHED;
   }
@@ -661,6 +666,7 @@ static void image_zoom_apply(ViewZoomData *vpd,
   RNA_float_set(op->ptr, "factor", factor);
   sima_zoom_set(vpd->sima, vpd->region, vpd->zoom * factor, vpd->location, zoom_to_pos);
   ED_region_tag_redraw(vpd->region);
+  ED_area_tag_redraw_regiontype(vpd->area, RGN_TYPE_HEADER);
 }
 
 static int image_view_zoom_modal(bContext *C, wmOperator *op, const wmEvent *event)
@@ -786,6 +792,7 @@ static int image_view_ndof_invoke(bContext *C, wmOperator * /*op*/, const wmEven
   sima->yof += pan_vec[1];
 
   ED_region_tag_redraw(region);
+  ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
   return OPERATOR_FINISHED;
 }
@@ -829,6 +836,7 @@ static int image_view_all_exec(bContext *C, wmOperator *op)
   image_view_all(sima, region, op);
 
   ED_region_tag_redraw(region);
+  ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
   return OPERATOR_FINISHED;
 }
@@ -975,6 +983,7 @@ static int image_view_selected_exec(bContext *C, wmOperator * /*op*/)
   sima_zoom_set_from_bounds(sima, region, &bounds);
 
   ED_region_tag_redraw(region);
+  ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
   return OPERATOR_FINISHED;
 }
@@ -1014,6 +1023,7 @@ static int image_view_zoom_in_exec(bContext *C, wmOperator *op)
       sima, region, powf(2.0f, 1.0f / 3.0f), location, U.uiflag & USER_ZOOM_TO_MOUSEPOS);
 
   ED_region_tag_redraw(region);
+  ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
   return OPERATOR_FINISHED;
 }
@@ -1073,6 +1083,7 @@ static int image_view_zoom_out_exec(bContext *C, wmOperator *op)
       sima, region, powf(0.5f, 1.0f / 3.0f), location, U.uiflag & USER_ZOOM_TO_MOUSEPOS);
 
   ED_region_tag_redraw(region);
+  ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
   return OPERATOR_FINISHED;
 }
@@ -1138,6 +1149,7 @@ static int image_view_zoom_ratio_exec(bContext *C, wmOperator *op)
   sima->yof = int(sima->yof);
 
   ED_region_tag_redraw(region);
+  ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
   return OPERATOR_FINISHED;
 }
@@ -1204,6 +1216,7 @@ static int image_view_zoom_border_exec(bContext *C, wmOperator *op)
   }
 
   ED_region_tag_redraw(region);
+  ED_area_tag_redraw_regiontype(CTX_wm_area(C), RGN_TYPE_HEADER);
 
   return OPERATOR_FINISHED;
 }
