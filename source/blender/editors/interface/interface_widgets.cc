@@ -1323,9 +1323,8 @@ static void widget_draw_icon(
   }
   else if (but->type == UI_BTYPE_LABEL) {
     /* extra feature allows more alpha blending */
-    if (but->a1 == 1.0f) {
-      alpha *= but->a2;
-    }
+    const uiButLabel *but_label = reinterpret_cast<const uiButLabel *>(but);
+    alpha *= but_label->alpha_factor;
   }
   else if (ELEM(but->type, UI_BTYPE_BUT, UI_BTYPE_DECORATOR)) {
     uiWidgetStateInfo state = {0};
@@ -3693,10 +3692,13 @@ static void widget_scroll(uiBut *but,
                           int /*roundboxalign*/,
                           const float /*zoom*/)
 {
+  const uiButScrollBar *but_scroll = reinterpret_cast<const uiButScrollBar *>(but);
+  const float height = but_scroll->visual_height;
+
   /* calculate slider part */
   const float value = float(ui_but_value_get(but));
 
-  const float size = max_ff((but->softmax + but->a1 - but->softmin), 2.0f);
+  const float size = max_ff((but->softmax + height - but->softmin), 2.0f);
 
   /* position */
   rcti rect1 = *rect;
@@ -3707,7 +3709,7 @@ static void widget_scroll(uiBut *but,
   if (horizontal) {
     const float fac = BLI_rcti_size_x(rect) / size;
     rect1.xmin = rect1.xmin + ceilf(fac * (value - but->softmin));
-    rect1.xmax = rect1.xmin + ceilf(fac * (but->a1 - but->softmin));
+    rect1.xmax = rect1.xmin + ceilf(fac * (height - but->softmin));
 
     /* Ensure minimum size. */
     const float min = BLI_rcti_size_y(rect);
@@ -3724,7 +3726,7 @@ static void widget_scroll(uiBut *but,
   else {
     const float fac = BLI_rcti_size_y(rect) / size;
     rect1.ymax = rect1.ymax - ceilf(fac * (value - but->softmin));
-    rect1.ymin = rect1.ymax - ceilf(fac * (but->a1 - but->softmin));
+    rect1.ymin = rect1.ymax - ceilf(fac * (height - but->softmin));
 
     /* Ensure minimum size. */
     const float min = BLI_rcti_size_x(rect);
