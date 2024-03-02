@@ -3218,7 +3218,7 @@ static void node_draw_basis(const bContext &C,
   }
 
   /* Body. */
-  const float outline_width = 1.0f;
+  const float outline_width = U.pixelsize;
   {
     /* Use warning color to indicate undefined types. */
     if (bke::node_type_is_undefined(&node)) {
@@ -3448,7 +3448,7 @@ static void node_draw_hidden(const bContext &C,
 
   /* Outline. */
   {
-    const float outline_width = 1.0f;
+    const float outline_width = U.pixelsize;
     const rctf rect = {
         rct.xmin - outline_width,
         rct.xmax + outline_width,
