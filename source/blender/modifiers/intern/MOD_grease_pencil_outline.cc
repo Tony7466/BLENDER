@@ -118,8 +118,8 @@ static bke::CurvesGeometry reorder_cyclic_curve_points(const bke::CurvesGeometry
   bke::AttributeAccessor src_attributes = src_curves.attributes();
 
   Array<int> indices(src_curves.points_num());
-  curve_selection.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
-    const IndexRange points = src_offsets[src_i];
+  curve_selection.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
+    const IndexRange points = src_offsets[curve_i];
     const int point_num = points.size();
     const int point_start = points.start();
     MutableSpan<int> point_indices = indices.as_mutable_span().slice(points);
@@ -127,7 +127,7 @@ static bke::CurvesGeometry reorder_cyclic_curve_points(const bke::CurvesGeometry
       array_utils::fill_index_range(point_indices, point_start);
       return;
     }
-    const int shift_raw = curve_offsets[dst_i];
+    const int shift_raw = curve_offsets[curve_i];
     const int shift = shift_raw >= 0 ? shift_raw % points.size() :
                                        points.size() - ((-shift_raw) % points.size());
     BLI_assert(0 <= shift && shift < points.size());
@@ -184,7 +184,7 @@ static void generate_arc_from_point_to_point(const float3 &from,
 
   const float dot = math::dot(vec_from.xy(), vec_to.xy());
   const float det = vec_from.x * vec_to.y - vec_from.y * vec_to.x;
-  const float angle = math::atan2(det, dot);
+  const float angle = math::atan2(-det, -dot) + M_PI;
 
   /* Number of points is 2^(n+1) + 1 on half a circle (n=subdivisions)
    * so we multiply by (angle / pi) to get the right amount of
@@ -255,7 +255,6 @@ static void generate_corner(const float3 &pt_a,
   const float3 normal = {tangent.y, -tangent.x, 0.0f};
   const float3 normal_prev = {tangent_prev.y, -tangent_prev.x, 0.0f};
 
-  // const float cos_angle = math::dot(tangent, tangent_prev);
   const float sin_angle = tangent_prev.x * tangent.y - tangent_prev.y * tangent.x;
   /* Whether the corner is an inside or outside corner.
    * This determines whether an arc is added or a single miter point. */
@@ -313,11 +312,11 @@ static void generate_stroke_perimeter(const Span<float3> all_positions,
     generate_corner(pt_a, pt_b, pt_c, radius, subdivisions, point, r_perimeter, r_point_indices);
   };
   auto add_cap = [&](const int center_i, const int next_i, const eGPDstroke_Caps cap_type) {
+    const int point = points[center_i];
     const float3 &center = positions[center_i];
     const float3 dir = math::normalize(positions[next_i] - center);
-    const float radius = all_radii[center_i] + radius_offset;
-    generate_cap(
-        center, dir, radius, subdivisions, cap_type, center_i, r_perimeter, r_point_indices);
+    const float radius = all_radii[point] + radius_offset;
+    generate_cap(center, dir, radius, subdivisions, cap_type, point, r_perimeter, r_point_indices);
   };
 
   /* Creates a single cyclic curve with end caps. */
