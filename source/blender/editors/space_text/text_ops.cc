@@ -2455,7 +2455,6 @@ static int text_jump_exec(bContext *C, wmOperator *op)
 
 static int text_jump_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  op->type->prop = RNA_struct_find_property(op->ptr, "line");
   return WM_operator_props_dialog_popup(C, op, 200, IFACE_("Jump to Line Number"));
 }
 
@@ -2474,8 +2473,8 @@ void TEXT_OT_jump(wmOperatorType *ot)
   ot->poll = text_edit_poll;
 
   /* properties */
-  prop = RNA_def_int(ot->srna, "line", 1, 1, INT_MAX, "Line", "Line number to jump to", 1, 10000);
-  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_TEXT);
+  ot->prop = RNA_def_int(ot->srna, "line", 1, 1, INT_MAX, "Line", "Line number to jump to", 1, 10000);
+  RNA_def_property_translation_context(ot->prop, BLT_I18NCONTEXT_ID_TEXT);
 }
 
 /** \} */

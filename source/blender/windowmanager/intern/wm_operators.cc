@@ -1829,7 +1829,6 @@ static int wm_debug_menu_exec(bContext *C, wmOperator *op)
 static int wm_debug_menu_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   RNA_int_set(op->ptr, "debug_value", G.debug_value);
-  op->type->prop = RNA_struct_find_property(op->ptr, "debug_value");
   return WM_operator_props_dialog_popup(C, op, 250, IFACE_("Set Debug Value"), IFACE_("Set"));
 }
 
@@ -1843,7 +1842,8 @@ static void WM_OT_debug_menu(wmOperatorType *ot)
   ot->exec = wm_debug_menu_exec;
   ot->poll = WM_operator_winactive;
 
-  RNA_def_int(ot->srna, "debug_value", 0, SHRT_MIN, SHRT_MAX, "Debug Value", "", -10000, 10000);
+  ot->prop = RNA_def_int(
+      ot->srna, "debug_value", 0, SHRT_MIN, SHRT_MAX, "Debug Value", "", -10000, 10000);
 }
 
 /** \} */
