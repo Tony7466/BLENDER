@@ -389,7 +389,7 @@ static Vector<std::variant<std::string_view, int32_t>> variable_size_array_part(
 {
   Vector<std::variant<std::string_view, int32_t>> result;
   /* Dynamic array. */
-  if (Sequence<LBracketSymbol, RBraceSymbol>::parse(cont).has_value()) {
+  if (Sequence<LBracketSymbol, RBracketSymbol>::parse(cont).has_value()) {
     result.append(std::string_view{""});
   }
   while (true) {
@@ -547,12 +547,12 @@ struct IfDefSection {
     int ifdef_deep = 1;
     bool hash_carried = false;
     for (TokenVariant *token = cont.next_variant(); token; token = cont.next_variant()) {
-      if (hash_carried && is_keyword_type<KeywordType::ENDIF>(*token)) {
-        ifdef_deep++;
-      }
       if (hash_carried &&
           is_keyword_type<KeywordType::IF, KeywordType::IFDEF, KeywordType::IFNDEF>(*token))
       {
+        ifdef_deep++;
+      }
+      if (hash_carried && is_keyword_type<KeywordType::ENDIF>(*token)) {
         ifdef_deep--;
       }
       if (ifdef_deep == 0) {
