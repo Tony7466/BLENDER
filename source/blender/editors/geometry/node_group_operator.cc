@@ -223,18 +223,31 @@ static void store_result_geometry(
         new_mesh->attributes_for_write().remove_anonymous();
 
         BKE_object_material_from_eval_data(&bmain, &object, &new_mesh->id);
-        BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
+        if (object.mode == OB_MODE_EDIT) {
+          /* Version of #EDBM_mesh_make with a mesh that is not in the object. */
+          BMeshCreateParams create_params{};
+          create_params.use_toolflags = true;
+          if (mesh.edit_mesh) {
+            EDBM_mesh_free_data(mesh.edit_mesh);
+            MEM_freeN(mesh.edit_mesh);
+          }
+          BMesh *bm = BKE_mesh_to_bmesh(new_mesh, &object, true, &create_params);
+          mesh.edit_mesh = BKE_editmesh_create(bm);
+          mesh.edit_mesh->selectmode = mesh.edit_mesh->bm->selectmode =
+              scene.toolsettings->selectmode;
+          mesh.edit_mesh->mat_nr = (object.actcol > 0) ? object.actcol - 1 : 0;
+          BKE_editmesh_looptris_and_normals_calc(mesh.edit_mesh);
+        }
+        else {
+          BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
+        }
       }
 
       if (has_shape_keys && !mesh.key) {
         BKE_report(op.reports, RPT_WARNING, "Mesh shape key data removed");
       }
 
-      if (object.mode == OB_MODE_EDIT) {
-        EDBM_mesh_make(&object, scene.toolsettings->selectmode, true);
-        BKE_editmesh_looptris_and_normals_calc(mesh.edit_mesh);
-      }
-      else if (object.mode == OB_MODE_SCULPT) {
+      if (object.mode == OB_MODE_SCULPT) {
         sculpt_paint::undo::geometry_end(&object);
       }
       break;
