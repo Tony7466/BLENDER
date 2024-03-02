@@ -2455,6 +2455,7 @@ static int text_jump_exec(bContext *C, wmOperator *op)
 
 static int text_jump_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
+  op->type->prop = RNA_struct_find_property(op->ptr, "line");
   return WM_operator_props_dialog_popup(C, op, 200, IFACE_("Jump to Line Number"));
 }
 

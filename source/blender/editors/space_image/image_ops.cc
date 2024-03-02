@@ -2622,6 +2622,7 @@ static int image_new_invoke(bContext *C, wmOperator *op, const wmEvent * /*event
 
   /* Better for user feedback. */
   RNA_string_set(op->ptr, "name", DATA_(IMA_DEF_NAME));
+  op->type->prop = RNA_struct_find_property(op->ptr, "name");
   return WM_operator_props_dialog_popup(
       C, op, 300, IFACE_("Create a New Image"), IFACE_("New Image"));
 }

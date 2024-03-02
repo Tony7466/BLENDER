@@ -1829,6 +1829,7 @@ static int wm_debug_menu_exec(bContext *C, wmOperator *op)
 static int wm_debug_menu_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   RNA_int_set(op->ptr, "debug_value", G.debug_value);
+  op->type->prop = RNA_struct_find_property(op->ptr, "debug_value");
   return WM_operator_props_dialog_popup(C, op, 250, IFACE_("Set Debug Value"), IFACE_("Set"));
 }
 
