@@ -845,6 +845,7 @@ bke::GeometrySet execute_geometry_nodes_on_geometry(const bNodeTree &btree,
 
   bke::GeometrySet output_geometry = std::move(*param_outputs[0].get<bke::GeometrySet>());
   output_geometry.modify_geometry_sets([&](bke::GeometrySet &geometry) {
+    /* Instance attributes should only be created for the top-level geometry. */
     const bool do_instances = &output_geometry == &geometry;
     store_output_attributes(geometry, btree, properties, param_outputs, do_instances);
   });
