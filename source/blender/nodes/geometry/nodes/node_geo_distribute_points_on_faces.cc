@@ -2,6 +2,9 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include <iostream>
+
+#include "BLI_array_utils.hh"
 #include "BLI_kdtree.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_rotation.h"
@@ -165,15 +168,11 @@ BLI_NOINLINE static KDTree_3d *build_kdtree(Span<float3> positions)
 BLI_NOINLINE static void update_elimination_mask_for_close_points(
     Span<float3> positions, const float minimum_distance, MutableSpan<bool> elimination_mask)
 {
-  if (minimum_distance <= 0.0f) {
-    return;
-  }
-
   KDTree_3d *kdtree = build_kdtree(positions);
   BLI_SCOPED_DEFER([&]() { BLI_kdtree_3d_free(kdtree); });
 
   for (const int i : positions.index_range()) {
-    if (elimination_mask[i]) {
+    if (!elimination_mask[i]) {
       continue;
     }
 
@@ -189,7 +188,7 @@ BLI_NOINLINE static void update_elimination_mask_for_close_points(
         [](void *user_data, int index, const float * /*co*/, float /*dist_sq*/) {
           CallbackData &callback_data = *static_cast<CallbackData *>(user_data);
           if (index != callback_data.index) {
-            callback_data.elimination_mask[index] = true;
+            callback_data.elimination_mask[index] = false;
           }
           return true;
         },
@@ -199,105 +198,130 @@ BLI_NOINLINE static void update_elimination_mask_for_close_points(
 
 BLI_NOINLINE static void update_elimination_mask_based_on_density_factors(
     const Mesh &mesh,
-    const Span<float> density_factors,
-    const Span<float3> bary_coords,
-    const Span<int> tri_indices,
+    const VArray<float> &density_factors,
+    const GroupedSpan<float3> tre_bary_coords,
     const MutableSpan<bool> elimination_mask)
 {
   const Span<int3> corner_tris = mesh.corner_tris();
-  for (const int i : bary_coords.index_range()) {
-    if (elimination_mask[i]) {
-      continue;
-    }
+  devirtualize_varray(density_factors, [&](const auto density_factors) {
+    threading::parallel_for(tre_bary_coords.index_range(), 2048, [&](const IndexRange range) {
+      for (const int tri_i : range) {
+        const int3 &tri = corner_tris[tri_i];
+        const float a = std::max(0.0f, density_factors[tri[0]]);
+        const float b = std::max(0.0f, density_factors[tri[1]]);
+        const float c = std::max(0.0f, density_factors[tri[2]]);
 
-    const int3 &tri = corner_tris[tri_indices[i]];
-    const float3 bary_coord = bary_coords[i];
+        for (const int i : tre_bary_coords.offsets[tri_i]) {
+          if (!elimination_mask[i]) {
+            continue;
+          }
 
-    const float v0_density_factor = std::max(0.0f, density_factors[tri[0]]);
-    const float v1_density_factor = std::max(0.0f, density_factors[tri[1]]);
-    const float v2_density_factor = std::max(0.0f, density_factors[tri[2]]);
-
-    const float probability = v0_density_factor * bary_coord.x + v1_density_factor * bary_coord.y +
-                              v2_density_factor * bary_coord.z;
-
-    const float hash = noise::hash_float_to_float(bary_coord);
-    if (hash > probability) {
-      elimination_mask[i] = true;
-    }
-  }
+          const float3 bary_coord = tre_bary_coords.data[i];
+          const float probability = bke::attribute_math::mix3<float>(bary_coord, a, b, c);
+          const float hash = noise::hash_float_to_float(bary_coord);
+          if (hash > probability) {
+            elimination_mask[i] = false;
+          }
+        }
+      }
+    });
+  });
 }
 
-BLI_NOINLINE static void eliminate_points_based_on_mask(const Span<bool> elimination_mask,
-                                                        Vector<float3> &positions,
-                                                        Vector<float3> &bary_coords,
-                                                        Vector<int> &tri_indices)
+static void interpolate_vert_attribute(const Mesh &mesh,
+                                       const GroupedSpan<float3> tri_bary_coords,
+                                       const GVArray &src,
+                                       GMutableSpan dst)
 {
-  for (int i = positions.size() - 1; i >= 0; i--) {
-    if (elimination_mask[i]) {
-      positions.remove_and_reorder(i);
-      bary_coords.remove_and_reorder(i);
-      tri_indices.remove_and_reorder(i);
-    }
-  }
+  const Span<int> corner_verts = mesh.corner_verts();
+  const Span<int3> corner_tris = mesh.corner_tris();
+
+  bke::attribute_math::convert_to_static_type(dst.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    const VArraySpan<T> src_typed(src.typed<T>());
+    MutableSpan<T> dst_typed = dst.typed<T>();
+
+    threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
+      for (const int64_t tri_i : range) {
+        const int3 face_tri = corner_tris[tri_i];
+        const T &a = src_typed[corner_verts[face_tri[0]]];
+        const T &b = src_typed[corner_verts[face_tri[1]]];
+        const T &c = src_typed[corner_verts[face_tri[2]]];
+
+        const Span<float3> bary_coords = tri_bary_coords[tri_i];
+        MutableSpan<T> dst = dst_typed.slice(tri_bary_coords.offsets[tri_i]);
+
+        std::transform(
+            bary_coords.begin(), bary_coords.end(), dst.begin(), [&](const float3 &bary_coord) {
+              return bke::attribute_math::mix3(bary_coord, a, b, c);
+            });
+      }
+    });
+  });
 }
 
-BLI_NOINLINE static void interpolate_attribute(const Mesh &mesh,
-                                               const Span<float3> bary_coords,
-                                               const Span<int> tri_indices,
-                                               const AttrDomain source_domain,
-                                               const GVArray &source_data,
-                                               GMutableSpan output_data)
+static void interpolate_face_attribute(const Mesh &mesh,
+                                       const GroupedSpan<float3> tri_bary_coords,
+                                       const GVArray &src,
+                                       GMutableSpan dst)
 {
-  switch (source_domain) {
-    case AttrDomain::Point: {
-      bke::mesh_surface_sample::sample_point_attribute(mesh.corner_verts(),
-                                                       mesh.corner_tris(),
-                                                       tri_indices,
-                                                       bary_coords,
-                                                       source_data,
-                                                       IndexMask(output_data.size()),
-                                                       output_data);
-      break;
-    }
-    case AttrDomain::Corner: {
-      bke::mesh_surface_sample::sample_corner_attribute(mesh.corner_tris(),
-                                                        tri_indices,
-                                                        bary_coords,
-                                                        source_data,
-                                                        IndexMask(output_data.size()),
-                                                        output_data);
-      break;
-    }
-    case AttrDomain::Face: {
-      bke::mesh_surface_sample::sample_face_attribute(mesh.corner_tri_faces(),
-                                                      tri_indices,
-                                                      source_data,
-                                                      IndexMask(output_data.size()),
-                                                      output_data);
-      break;
-    }
-    default: {
-      /* Not supported currently. */
-      return;
-    }
-  }
+  const Span<int> face_index = mesh.corner_tri_faces();
+  const Span<int3> corner_tris = mesh.corner_tris();
+
+  bke::attribute_math::convert_to_static_type(dst.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    const VArraySpan<T> src_typed(src.typed<T>());
+    MutableSpan<T> dst_typed = dst.typed<T>();
+    threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
+      for (const int64_t tri_i : range) {
+        dst_typed.slice(tri_bary_coords.offsets[tri_i]).fill(src_typed[face_index[tri_i]]);
+      }
+    });
+  });
+}
+
+static void interpolate_corner_attribute(const Mesh &mesh,
+                                         const GroupedSpan<float3> tri_bary_coords,
+                                         const GVArray &src,
+                                         GMutableSpan dst)
+{
+  const Span<int3> corner_tris = mesh.corner_tris();
+
+  bke::attribute_math::convert_to_static_type(dst.type(), [&](auto dummy) {
+    using T = decltype(dummy);
+    const VArraySpan<T> src_typed(src.typed<T>());
+    MutableSpan<T> dst_typed = dst.typed<T>();
+    threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
+      for (const int64_t tri_i : range) {
+        const int3 face_tri = corner_tris[tri_i];
+        const T &a = src_typed[face_tri[0]];
+        const T &b = src_typed[face_tri[1]];
+        const T &c = src_typed[face_tri[2]];
+
+        const Span<float3> bary_coords = tri_bary_coords[tri_i];
+        MutableSpan<T> dst = dst_typed.slice(tri_bary_coords.offsets[tri_i]);
+
+        std::transform(
+            bary_coords.begin(), bary_coords.end(), dst.begin(), [&](const float3 &bary_coord) {
+              return bke::attribute_math::mix3(bary_coord, a, b, c);
+            });
+      }
+    });
+  });
 }
 
 BLI_NOINLINE static void propagate_existing_attributes(
     const Mesh &mesh,
+    const GroupedSpan<float3> bary_coords,
+    const bke::AttributeAccessor src_attributes,
     const Map<AttributeIDRef, AttributeKind> &attributes,
-    PointCloud &points,
-    const Span<float3> bary_coords,
-    const Span<int> tri_indices)
+    bke::MutableAttributeAccessor dst_attributes)
 {
-  const AttributeAccessor mesh_attributes = mesh.attributes();
-  MutableAttributeAccessor point_attributes = points.attributes_for_write();
-
   for (MapItem<AttributeIDRef, AttributeKind> entry : attributes.items()) {
     const AttributeIDRef attribute_id = entry.key;
     const eCustomDataType output_data_type = entry.value.data_type;
 
-    GAttributeReader src = mesh_attributes.lookup(attribute_id);
+    GAttributeReader src = src_attributes.lookup(attribute_id);
     if (!src) {
       continue;
     }
@@ -305,13 +329,30 @@ BLI_NOINLINE static void propagate_existing_attributes(
       continue;
     }
 
-    GSpanAttributeWriter dst = point_attributes.lookup_or_add_for_write_only_span(
+    GSpanAttributeWriter dst = dst_attributes.lookup_or_add_for_write_only_span(
         attribute_id, AttrDomain::Point, output_data_type);
     if (!dst) {
       continue;
     }
 
-    interpolate_attribute(mesh, bary_coords, tri_indices, src.domain, src.varray, dst.span);
+    switch (src.domain) {
+      case AttrDomain::Point: {
+        interpolate_vert_attribute(mesh, bary_coords, src.varray, dst.span);
+        break;
+      }
+      case AttrDomain::Face: {
+        interpolate_face_attribute(mesh, bary_coords, src.varray, dst.span);
+        break;
+      }
+      case AttrDomain::Corner: {
+        interpolate_corner_attribute(mesh, bary_coords, src.varray, dst.span);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+
     dst.finish();
   }
 }
@@ -323,69 +364,6 @@ struct AttributeOutputs {
 };
 }  // namespace
 
-static void compute_normal_outputs(const Mesh &mesh,
-                                   const Span<float3> bary_coords,
-                                   const Span<int> tri_indices,
-                                   MutableSpan<float3> r_normals)
-{
-  switch (mesh.normals_domain()) {
-    case bke::MeshNormalDomain::Point: {
-      const Span<int> corner_verts = mesh.corner_verts();
-      const Span<int3> corner_tris = mesh.corner_tris();
-      const Span<float3> vert_normals = mesh.vert_normals();
-      threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
-        bke::mesh_surface_sample::sample_point_normals(
-            corner_verts, corner_tris, tri_indices, bary_coords, vert_normals, range, r_normals);
-      });
-      break;
-    }
-    case bke::MeshNormalDomain::Face: {
-      const Span<int> tri_faces = mesh.corner_tri_faces();
-      VArray<float3> face_normals = VArray<float3>::ForSpan(mesh.face_normals());
-      threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
-        bke::mesh_surface_sample::sample_face_attribute(
-            tri_faces, tri_indices, face_normals, range, r_normals);
-      });
-      break;
-    }
-    case bke::MeshNormalDomain::Corner: {
-      const Span<int3> corner_tris = mesh.corner_tris();
-      const Span<float3> corner_normals = mesh.corner_normals();
-      threading::parallel_for(bary_coords.index_range(), 512, [&](const IndexRange range) {
-        bke::mesh_surface_sample::sample_corner_normals(
-            corner_tris, tri_indices, bary_coords, corner_normals, range, r_normals);
-      });
-      break;
-    }
-  }
-}
-
-static void compute_legacy_normal_outputs(const Mesh &mesh,
-                                          const Span<float3> bary_coords,
-                                          const Span<int> tri_indices,
-                                          MutableSpan<float3> r_normals)
-{
-  const Span<float3> positions = mesh.vert_positions();
-  const Span<int> corner_verts = mesh.corner_verts();
-  const Span<int3> corner_tris = mesh.corner_tris();
-
-  for (const int i : bary_coords.index_range()) {
-    const int tri_i = tri_indices[i];
-    const int3 &tri = corner_tris[tri_i];
-
-    const int v0_index = corner_verts[tri[0]];
-    const int v1_index = corner_verts[tri[1]];
-    const int v2_index = corner_verts[tri[2]];
-    const float3 v0_pos = positions[v0_index];
-    const float3 v1_pos = positions[v1_index];
-    const float3 v2_pos = positions[v2_index];
-
-    float3 normal;
-    normal_tri_v3(normal, v0_pos, v1_pos, v2_pos);
-    r_normals[i] = normal;
-  }
-}
-
 static void compute_rotation_output(const Span<float3> normals,
                                     MutableSpan<math::Quaternion> r_rotations)
 {
@@ -396,54 +374,117 @@ static void compute_rotation_output(const Span<float3> normals,
   });
 }
 
-BLI_NOINLINE static void compute_attribute_outputs(const Mesh &mesh,
-                                                   PointCloud &points,
-                                                   const Span<float3> bary_coords,
-                                                   const Span<int> tri_indices,
-                                                   const AttributeOutputs &attribute_outputs,
-                                                   const bool use_legacy_normal)
+static void normalize_all(MutableSpan<float3> vectors)
 {
-  MutableAttributeAccessor point_attributes = points.attributes_for_write();
+  threading::parallel_for(vectors.index_range(), 4096, [&](const IndexRange range) {
+    MutableSpan<float3> local_vectors = vectors.slice(range);
+    std::transform(local_vectors.begin(),
+                   local_vectors.end(),
+                   local_vectors.begin(),
+                   [](const float3 &vector) { return math::normalize(vector); });
+  });
+}
 
-  SpanAttributeWriter<int> ids = point_attributes.lookup_or_add_for_write_only_span<int>(
-      "id", AttrDomain::Point);
-
-  SpanAttributeWriter<float3> normals;
-  SpanAttributeWriter<math::Quaternion> rotations;
-
-  if (attribute_outputs.normal_id) {
-    normals = point_attributes.lookup_or_add_for_write_only_span<float3>(
-        attribute_outputs.normal_id.get(), AttrDomain::Point);
+static void compute_normal_outputs(const Mesh &mesh,
+                                   const GroupedSpan<float3> tri_bary_coords,
+                                   MutableSpan<float3> r_normals)
+{
+  switch (mesh.normals_domain()) {
+    case bke::MeshNormalDomain::Point: {
+      const Span<float3> vert_normals = mesh.vert_normals();
+      interpolate_vert_attribute(
+          mesh, tri_bary_coords, VArray<float3>::ForSpan(vert_normals), r_normals);
+      normalize_all(r_normals);
+      break;
+    }
+    case bke::MeshNormalDomain::Face: {
+      const Span<float3> face_normals = mesh.face_normals();
+      interpolate_face_attribute(
+          mesh, tri_bary_coords, VArray<float3>::ForSpan(face_normals), r_normals);
+      break;
+    }
+    case bke::MeshNormalDomain::Corner: {
+      const Span<float3> corner_normals = mesh.corner_normals();
+      interpolate_corner_attribute(
+          mesh, tri_bary_coords, VArray<float3>::ForSpan(corner_normals), r_normals);
+      normalize_all(r_normals);
+      break;
+    }
   }
-  if (attribute_outputs.rotation_id) {
-    rotations = point_attributes.lookup_or_add_for_write_only_span<math::Quaternion>(
-        attribute_outputs.rotation_id.get(), AttrDomain::Point);
-  }
+}
 
-  threading::parallel_for(bary_coords.index_range(), 1024, [&](const IndexRange range) {
-    for (const int i : range) {
-      const int tri_i = tri_indices[i];
-      const float3 &bary_coord = bary_coords[i];
-      ids.span[i] = noise::hash(noise::hash_float(bary_coord), tri_i);
+static void compute_legacy_normal_outputs(const Mesh &mesh,
+                                          const OffsetIndices<int> tris,
+                                          MutableSpan<float3> r_normals)
+{
+  const Span<float3> positions = mesh.vert_positions();
+  const Span<int> corner_verts = mesh.corner_verts();
+  const Span<int3> corner_tris = mesh.corner_tris();
+
+  threading::parallel_for(tris.index_range(), 2048, [&](const IndexRange range) {
+    for (const int tri_i : range) {
+      const int3 tri = corner_tris[tri_i];
+
+      const float3 a = positions[corner_verts[tri[0]]];
+      const float3 b = positions[corner_verts[tri[1]]];
+      const float3 c = positions[corner_verts[tri[2]]];
+
+      float3 normal;
+      normal_tri_v3(normal, a, b, c);
+
+      r_normals.slice(tris[tri_i]).fill(normal);
     }
   });
+}
 
-  if (normals) {
+static void compute_hashes(const GroupedSpan<float3> tri_bary_coords, MutableSpan<int> hashs)
+{
+  threading::parallel_for(tri_bary_coords.index_range(), 1024, [&](const IndexRange range) {
+    for (const int tri_i : range) {
+      const Span<float3> coords = tri_bary_coords[tri_i];
+      MutableSpan<int> local_hashs = hashs.slice(tri_bary_coords.offsets[tri_i]);
+
+      std::transform(
+          coords.begin(), coords.end(), local_hashs.begin(), [tri_i](const float3 &coord) {
+            return noise::hash(noise::hash_float(coord), tri_i);
+          });
+    }
+  });
+}
+
+static void compute_attribute_outputs(const Mesh &mesh,
+                                      const GroupedSpan<float3> tri_bary_coords,
+                                      const AttributeOutputs &attribute_outputs,
+                                      const bool use_legacy_normal,
+                                      MutableAttributeAccessor dst_attributes)
+{
+  SpanAttributeWriter<int> ids = dst_attributes.lookup_or_add_for_write_only_span<int>(
+      "id", AttrDomain::Point);
+  compute_hashes(tri_bary_coords, ids.span);
+  ids.finish();
+
+  if (attribute_outputs.normal_id) {
+    SpanAttributeWriter<float3> normals = dst_attributes.lookup_or_add_for_write_only_span<float3>(
+        attribute_outputs.normal_id.get(), AttrDomain::Point);
     if (use_legacy_normal) {
-      compute_legacy_normal_outputs(mesh, bary_coords, tri_indices, normals.span);
+      compute_legacy_normal_outputs(mesh, tri_bary_coords.offsets, normals.span);
     }
     else {
-      compute_normal_outputs(mesh, bary_coords, tri_indices, normals.span);
+      compute_normal_outputs(mesh, tri_bary_coords, normals.span);
     }
-
-    if (rotations) {
-      compute_rotation_output(normals.span, rotations.span);
-    }
+    normals.finish();
   }
 
-  ids.finish();
-  normals.finish();
-  rotations.finish();
+  if (attribute_outputs.rotation_id) {
+    BLI_assert(attribute_outputs.normal_id);
+    const VArraySpan<float3> normals = *dst_attributes.lookup<float3>(
+        attribute_outputs.normal_id.get(), AttrDomain::Point);
+    SpanAttributeWriter<math::Quaternion> rotations =
+        dst_attributes.lookup_or_add_for_write_only_span<math::Quaternion>(
+            attribute_outputs.rotation_id.get(), AttrDomain::Point);
+    compute_rotation_output(normals, rotations.span);
+    rotations.finish();
+  }
 }
 
 static Array<float> calc_full_density_factors_with_selection(const Mesh &mesh,
@@ -462,34 +503,118 @@ static Array<float> calc_full_density_factors_with_selection(const Mesh &mesh,
   return densities;
 }
 
-static void distribute_points_random(const Mesh &mesh,
-                                     const Span<float> densities,
-                                     const int seed,
-                                     Vector<float3> &positions,
-                                     Vector<float3> &bary_coords,
-                                     Vector<int> &tri_indices)
+static void distribute_points_random_old(const Mesh &mesh,
+                                         const Span<float> densities,
+                                         const int seed,
+                                         Vector<float3> &positions,
+                                         Vector<float3> &bary_coords,
+                                         Vector<int> &tri_indices)
 {
   sample_mesh_surface(mesh, 1.0f, densities, seed, positions, bary_coords, tri_indices);
 }
 
-static void distribute_points_poisson_disk(const Mesh &mesh,
-                                           const float minimum_distance,
-                                           const float max_density,
-                                           const Span<float> density_factors,
-                                           const int seed,
-                                           Vector<float3> &positions,
-                                           Vector<float3> &bary_coords,
-                                           Vector<int> &tri_indices)
+static void distribute_points_random(const Mesh &mesh,
+                                     const VArray<float> &densities,
+                                     const int seed,
+                                     Array<int> &r_offsets,
+                                     Array<float3> &r_bary_coords)
 {
-  sample_mesh_surface(mesh, max_density, {}, seed, positions, bary_coords, tri_indices);
+  const Span<float3> positions = mesh.vert_positions();
+  const Span<int> corner_verts = mesh.corner_verts();
+  const Span<int3> corner_tris = mesh.corner_tris();
 
-  Array<bool> elimination_mask(positions.size(), false);
-  update_elimination_mask_for_close_points(positions, minimum_distance, elimination_mask);
+  r_offsets.reinitialize(corner_tris.size() + 1);
 
-  update_elimination_mask_based_on_density_factors(
-      mesh, density_factors, bary_coords, tri_indices, elimination_mask.as_mutable_span());
+  devirtualize_varray(densities, [&](const auto densities) {
+    threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
+      for (const int64_t tri_i : range) {
+        const int3 tri = corner_tris[tri_i];
+        const int v0_loop = tri[0];
+        const int v1_loop = tri[1];
+        const int v2_loop = tri[2];
+        const float3 &v0_pos = positions[corner_verts[v0_loop]];
+        const float3 &v1_pos = positions[corner_verts[v1_loop]];
+        const float3 &v2_pos = positions[corner_verts[v2_loop]];
 
-  eliminate_points_based_on_mask(elimination_mask.as_span(), positions, bary_coords, tri_indices);
+        const float v0_density_factor = std::max(0.0f, densities[v0_loop]);
+        const float v1_density_factor = std::max(0.0f, densities[v1_loop]);
+        const float v2_density_factor = std::max(0.0f, densities[v2_loop]);
+        const float tri_mean_density = (v0_density_factor + v1_density_factor +
+                                        v2_density_factor) /
+                                       3.0f;
+
+        const float area = area_tri_v3(v0_pos, v1_pos, v2_pos);
+
+        const int corner_tri_seed = noise::hash(tri_i, seed);
+        RandomNumberGenerator corner_tri_rng(corner_tri_seed);
+
+        const int point_amount = corner_tri_rng.round_probabilistic(area * tri_mean_density);
+        r_offsets[tri_i] = point_amount;
+      }
+    });
+  });
+
+  const OffsetIndices<int> offsets = offset_indices::accumulate_counts_to_offsets(r_offsets);
+  r_bary_coords.reinitialize(offsets.total_size());
+
+  threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
+    for (const int64_t tri_i : range) {
+      const int corner_tri_seed = noise::hash(tri_i, seed);
+      RandomNumberGenerator corner_tri_rng(corner_tri_seed);
+      corner_tri_rng.skip(1);
+
+      const IndexRange points = offsets[tri_i];
+      for (const int index : points) {
+        r_bary_coords[index] = corner_tri_rng.get_barycentric_coordinates();
+      }
+    }
+  });
+}
+
+static void reduce_offsets_by_mask_selections(const OffsetIndices<int> offsets,
+                                              const IndexMask &mask,
+                                              MutableSpan<int> r_offsets)
+{
+  BLI_assert(offsets.data().size() == r_offsets.size());
+  threading::parallel_for(offsets.index_range(), 1024, [&](const IndexRange range) {
+    const IndexMask local_mask = mask.slice_content(offsets[range]);
+    if (local_mask.is_empty()) {
+      r_offsets.slice(range).fill(0);
+      return;
+    }
+    for (const int i : range) {
+      r_offsets[i] = local_mask.slice_content(offsets[i]).size();
+    }
+  });
+  offset_indices::accumulate_counts_to_offsets(r_offsets);
+}
+
+static VArray<float> ensure_size(const int size, VArray<float> varray)
+{
+  if (varray.size() == size) {
+    return varray;
+  }
+
+  if (const std::optional<float> value = varray.get_if_single()) {
+    return VArray<float>::ForSingle(*value, size);
+  }
+
+  if (varray.is_span()) {
+    const Span<float> span = varray.get_internal_span();
+    if (span.size() >= size) {
+      return VArray<float>::ForSpan(span.take_front(size));
+    }
+  }
+
+  if (varray.size() > size) {
+    /* Huh? Where? */
+    // return varray.slice(0, size);
+  }
+
+  Array<float> full_span(size);
+  full_span.as_mutable_span().fill(0.0f);
+  array_utils::copy(varray, full_span.as_mutable_span().take_front(varray.size()));
+  return VArray<float>::ForContainer(std::move(full_span));
 }
 
 static void point_distribution_calculate(GeometrySet &geometry_set,
@@ -497,7 +622,7 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
                                          const GeometryNodeDistributePointsOnFacesMode method,
                                          const int seed,
                                          const AttributeOutputs &attribute_outputs,
-                                         const GeoNodeExecParams &params)
+                                         GeoNodeExecParams &params)
 {
   if (!geometry_set.has_mesh()) {
     return;
@@ -505,48 +630,77 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
 
   const Mesh &mesh = *geometry_set.get_mesh();
 
-  Vector<float3> positions;
-  Vector<float3> bary_coords;
-  Vector<int> tri_indices;
+  const bke::MeshFieldContext field_context(mesh, AttrDomain::Corner);
+  fn::FieldEvaluator evaluator(field_context, mesh.corners_num);
+
+  Array<int> offsets;
+  Array<float3> bary_coords;
 
   switch (method) {
     case GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_RANDOM: {
-      const Field<float> density_field = params.get_input<Field<float>>("Density");
-      const Array<float> densities = calc_full_density_factors_with_selection(
-          mesh, density_field, selection_field);
-
-      distribute_points_random(mesh, densities, seed, positions, bary_coords, tri_indices);
+      evaluator.add(params.extract_input<Field<float>>("Density"));
+      /* TODO: For some reason there is just single value for mask... */
+      evaluator.set_selection(selection_field);
+      evaluator.evaluate();
+      const VArray<float> densities = ensure_size(mesh.corners_num,
+                                                  evaluator.get_evaluated<float>(0));
+      distribute_points_random(mesh, densities, seed, offsets, bary_coords);
       break;
     }
     case GEO_NODE_POINT_DISTRIBUTE_POINTS_ON_FACES_POISSON: {
-      const float minimum_distance = params.get_input<float>("Distance Min");
       const float density_max = params.get_input<float>("Density Max");
+      distribute_points_random(mesh,
+                               VArray<float>::ForSingle(density_max, mesh.corners_num),
+                               seed,
+                               offsets,
+                               bary_coords);
+      const GroupedSpan<float3> tre_bary_coords(offsets.as_span(), bary_coords);
 
-      const Field<float> density_factors_field = params.get_input<Field<float>>("Density Factor");
-      const Array<float> density_factors = calc_full_density_factors_with_selection(
-          mesh, density_factors_field, selection_field);
+      evaluator.add(params.extract_input<Field<float>>("Density Factor"));
+      evaluator.set_selection(selection_field);
+      evaluator.evaluate();
+      const VArray<float> density_factors = ensure_size(mesh.corners_num,
+                                                        evaluator.get_evaluated<float>(0));
 
-      distribute_points_poisson_disk(mesh,
-                                     minimum_distance,
-                                     density_max,
-                                     density_factors,
-                                     seed,
-                                     positions,
-                                     bary_coords,
-                                     tri_indices);
+      /* Delete all too-near points. */
+      const float minimum_distance = params.get_input<float>("Distance Min");
+      const std::optional<float> density_factor = density_factors.get_if_single();
+      if (minimum_distance <= 0.0f && density_factor.has_value() && *density_factor == 1.0f) {
+        break;
+      }
+
+      Array<float3> positions(bary_coords.size());
+      interpolate_vert_attribute(mesh,
+                                 tre_bary_coords,
+                                 VArray<float3>::ForSpan(mesh.vert_positions()),
+                                 positions.as_mutable_span());
+
+      Array<bool> elimination_mask(positions.size(), true);
+      update_elimination_mask_for_close_points(positions, minimum_distance, elimination_mask);
+      update_elimination_mask_based_on_density_factors(
+          mesh, density_factors, tre_bary_coords, elimination_mask.as_mutable_span());
+
+      IndexMaskMemory memory;
+      const IndexMask mask = IndexMask::from_bools(elimination_mask.as_span(), memory);
+
+      Array<int> result_offsets(offsets.size());
+      Array<float3> result_bary_coords(mask.size());
+
+      reduce_offsets_by_mask_selections(offsets.as_span(), mask, result_offsets);
+      array_utils::gather(bary_coords.as_span(), mask, result_bary_coords.as_mutable_span());
+
+      offsets = std::move(result_offsets);
+      bary_coords = std::move(result_bary_coords);
       break;
     }
   }
 
-  if (positions.is_empty()) {
-    return;
-  }
+  const GroupedSpan<float3> tri_bary_coords(offsets.as_span(), bary_coords);
 
-  PointCloud *pointcloud = BKE_pointcloud_new_nomain(positions.size());
+  PointCloud *pointcloud = BKE_pointcloud_new_nomain(bary_coords.size());
   bke::MutableAttributeAccessor point_attributes = pointcloud->attributes_for_write();
   bke::SpanAttributeWriter<float> point_radii =
       point_attributes.lookup_or_add_for_write_only_span<float>("radius", AttrDomain::Point);
-  pointcloud->positions_for_write().copy_from(positions);
   point_radii.span.fill(0.05f);
   point_radii.finish();
 
@@ -559,14 +713,15 @@ static void point_distribution_calculate(GeometrySet &geometry_set,
                                                  params.get_output_propagation_info("Points"),
                                                  attributes);
 
-  /* Position is set separately. */
-  attributes.remove("position");
-
-  propagate_existing_attributes(mesh, attributes, *pointcloud, bary_coords, tri_indices);
+  propagate_existing_attributes(
+      mesh, tri_bary_coords, mesh.attributes(), attributes, pointcloud->attributes_for_write());
 
   const bool use_legacy_normal = params.node().custom2 != 0;
-  compute_attribute_outputs(
-      mesh, *pointcloud, bary_coords, tri_indices, attribute_outputs, use_legacy_normal);
+  compute_attribute_outputs(mesh,
+                            tri_bary_coords,
+                            attribute_outputs,
+                            use_legacy_normal,
+                            pointcloud->attributes_for_write());
 
   geometry::debug_randomize_point_order(pointcloud);
 }

@@ -372,7 +372,7 @@ class FieldEvaluator : NonMovable, NonCopyable {
   {
     /* While this assert isn't strictly necessary, and could be replaced with a warning,
      * it will catch cases where someone forgets to call #evaluate(). */
-    BLI_assert(is_evaluated_);
+    BLI_assert(is_evaluated_ || fields_to_evaluate_.is_empty());
   }
 
   /**
