@@ -4,6 +4,12 @@
 
 namespace blender::dna::lex {
 
+static std::string_view range_string_view(const std::string_view::iterator first,
+                                          const std::string_view::iterator last)
+{
+  return std::string_view{first._Unwrapped(), size_t(last - first)};
+}
+
 /* Match any withe space except break lines. */
 static void eval_space(std::string_view::iterator &itr,
                        std::string_view::iterator last,
@@ -22,7 +28,7 @@ static void eval_break_line(std::string_view::iterator &itr,
   if (itr[0] != '\n') {
     return;
   }
-  cont.append(BreakLineToken{});
+  cont.append(BreakLineToken{range_string_view(itr, itr + 1)});
   itr++;
 }
 
@@ -42,48 +48,49 @@ static void eval_identifier(std::string_view::iterator &itr,
     std::string_view word;
     KeywordType type;
   };
+  using namespace std::string_view_literals;
   static constexpr KeywordItem keywords[]{
-      {"DNA_DEFINE_CXX_METHODS", KeywordType::DNA_DEFINE_CXX_METHODS},
-      {"DNA_DEPRECATED", KeywordType::DNA_DEPRECATED},
-      {"ENUM_OPERATORS", KeywordType::ENUM_OPERATORS},
-      {"extern", KeywordType::EXTERN},
-      {"char", KeywordType::CHAR},
-      {"char16_t", KeywordType::CHAR16_T},
-      {"char32_t", KeywordType::CHAR32_T},
-      {"class", KeywordType::CLASS},
-      {"const", KeywordType::CONST},
-      {"define", KeywordType::DEFINE},
-      {"double", KeywordType::DOUBLE},
-      {"endif", KeywordType::ENDIF},
-      {"enum", KeywordType::ENUM},
-      {"float", KeywordType::FLOAT},
-      {"if", KeywordType::IF},
-      {"ifdef", KeywordType::IFDEF},
-      {"ifndef", KeywordType::IFNDEF},
-      {"include", KeywordType::INCLUDE},
-      {"int", KeywordType::INT},
-      {"int16_t", KeywordType::INT16_T},
-      {"int32_t", KeywordType::INT32_T},
-      {"int64_t", KeywordType::INT64_T},
-      {"int8_t", KeywordType::INT8_T},
-      {"long", KeywordType::LONG},
-      {"once", KeywordType::ONCE},
-      {"pragma", KeywordType::PRAGMA},
-      {"private", KeywordType::PRIVATE},
-      {"public", KeywordType::PUBLIC},
-      {"short", KeywordType::SHORT},
-      {"signed", KeywordType::SIGNED},
-      {"struct", KeywordType::STRUCT},
-      {"typedef", KeywordType::TYPEDEF},
-      {"uint16_t", KeywordType::UINT16_T},
-      {"uint32_t", KeywordType::UINT32_T},
-      {"uint64_t", KeywordType::UINT64_T},
-      {"uint8_t", KeywordType::UINT8_T},
-      {"unsigned", KeywordType::UNSIGNED},
-      {"void", KeywordType::VOID},
+      {"DNA_DEFINE_CXX_METHODS"sv, KeywordType::DNA_DEFINE_CXX_METHODS},
+      {"DNA_DEPRECATED"sv, KeywordType::DNA_DEPRECATED},
+      {"ENUM_OPERATORS"sv, KeywordType::ENUM_OPERATORS},
+      {"extern"sv, KeywordType::EXTERN},
+      {"char"sv, KeywordType::CHAR},
+      {"char16_t"sv, KeywordType::CHAR16_T},
+      {"char32_t"sv, KeywordType::CHAR32_T},
+      {"class"sv, KeywordType::CLASS},
+      {"const"sv, KeywordType::CONST},
+      {"define"sv, KeywordType::DEFINE},
+      {"double"sv, KeywordType::DOUBLE},
+      {"endif"sv, KeywordType::ENDIF},
+      {"enum"sv, KeywordType::ENUM},
+      {"float"sv, KeywordType::FLOAT},
+      {"if"sv, KeywordType::IF},
+      {"ifdef"sv, KeywordType::IFDEF},
+      {"ifndef"sv, KeywordType::IFNDEF},
+      {"include"sv, KeywordType::INCLUDE},
+      {"int"sv, KeywordType::INT},
+      {"int16_t"sv, KeywordType::INT16_T},
+      {"int32_t"sv, KeywordType::INT32_T},
+      {"int64_t"sv, KeywordType::INT64_T},
+      {"int8_t"sv, KeywordType::INT8_T},
+      {"long"sv, KeywordType::LONG},
+      {"once"sv, KeywordType::ONCE},
+      {"pragma"sv, KeywordType::PRAGMA},
+      {"private"sv, KeywordType::PRIVATE},
+      {"public"sv, KeywordType::PUBLIC},
+      {"short"sv, KeywordType::SHORT},
+      {"signed"sv, KeywordType::SIGNED},
+      {"struct"sv, KeywordType::STRUCT},
+      {"typedef"sv, KeywordType::TYPEDEF},
+      {"uint16_t"sv, KeywordType::UINT16_T},
+      {"uint32_t"sv, KeywordType::UINT32_T},
+      {"uint64_t"sv, KeywordType::UINT64_T},
+      {"uint8_t"sv, KeywordType::UINT8_T},
+      {"unsigned"sv, KeywordType::UNSIGNED},
+      {"void"sv, KeywordType::VOID},
   };
 
-  std::string_view str{start._Unwrapped(), size_t(itr - start)};
+  std::string_view str = range_string_view(start, itr);
   auto test_keyword_fn = [str](const KeywordItem &val) -> bool { return val.word == str; };
   auto keyword_itr = std::find_if(std::begin(keywords), std::end(keywords), test_keyword_fn);
   if (keyword_itr != std::end(keywords)) {
@@ -124,7 +131,7 @@ static void eval_int_literal(std::string_view::iterator &itr,
   }
   int val{};
   auto transform_Result = std::from_chars(start._Unwrapped(), itr._Unwrapped(), val);
-  cont.append(IntLiteralToken{std::string_view{start._Unwrapped(), size_t(itr - start)}, val});
+  cont.append(IntLiteralToken{range_string_view(start, itr), val});
 }
 
 /* Match a c-style comment. */
@@ -173,7 +180,7 @@ static void eval_symbol(std::string_view::iterator &itr,
   auto test_symbol = [value](const SymbolItem &item) -> bool { return item.value == value; };
   auto symbol_itr = std::find_if(std::begin(symbols), std::end(symbols), test_symbol);
   if (symbol_itr != std::end(symbols)) {
-    cont.append(SymbolToken{std::string_view{itr._Unwrapped(), 1}, symbol_itr->type});
+    cont.append(SymbolToken{range_string_view(itr, itr + 1), symbol_itr->type});
     itr++;
   }
 }
@@ -198,7 +205,7 @@ static void eval_string_literal(std::string_view::iterator &itr,
     return;
   }
   itr++;
-  cont.append(StringLiteralToken{std::string_view{start._Unwrapped(), size_t(itr - start)}});
+  cont.append(StringLiteralToken{range_string_view(start, itr)});
 }
 
 void TokenIterator::print_unkown_token(std::string_view filepath,
@@ -212,7 +219,7 @@ void TokenIterator::print_unkown_token(std::string_view filepath,
     }
     start++;
   }
-  std::cout << filepath << "(" << line << ") Unknown token: (" << (where[0]) << ")\n";
+  printf("%.*s(%zd) Unknown token: (%c)\n", uint32_t(filepath.size()), filepath.data(), line, where[0]);
 }
 
 void TokenIterator::skip_break_lines()

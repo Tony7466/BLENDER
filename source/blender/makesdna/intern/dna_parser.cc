@@ -2,36 +2,34 @@
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
-#include <iostream>
-
 #include "dna_parser.hh"
 
 #ifdef DEBUG_PRINT_DNA_PARSER
-
+#  define STR_VIEW_PRINT(name) uint32_t(name.size()), name.data()
 namespace blender::dna::parser {
 struct StructMemberPrinter {
 
   void operator()(ast::Variable &var) const
   {
     if (var.const_tag) {
-      std::cout << "const " << var.type << " ";
+      printf("const ");
     }
-    else {
-      std::cout << var.type << " ";
-    }
+    printf("%.*s ", STR_VIEW_PRINT(var.type));
+
     bool first = true;
     for (auto &variable_item : var.items) {
       if (!first) {
-        std::cout << ",";
+        printf(",");
       }
       first = false;
-      std::cout << variable_item.ptr.value_or("") << variable_item.name;
+      printf("%s%.*s", variable_item.ptr.value_or("").c_str(), STR_VIEW_PRINT(variable_item.name));
       for (auto &size : variable_item.size) {
         if (std::holds_alternative<std::string_view>(size)) {
-          std::cout << "[" << std::get<std::string_view>(size) << "]";
+          std::string_view size_str = std::get<std::string_view>(size);
+          printf("[%.*s]", STR_VIEW_PRINT(size_str));
         }
         else {
-          std::cout << "[" << std::get<int32_t>(size) << "]";
+          printf("[%d]", std::get<int32_t>(size));
         }
       }
     }
@@ -39,48 +37,48 @@ struct StructMemberPrinter {
   void operator()(ast::FunctionPtr &fn) const
   {
     if (fn.const_tag) {
-      std::cout << "const ";
+      printf("const ");
     }
-    std::cout << fn.type << " *(*" << fn.name << ")(...)";
+    printf("%.*s *(*%.*s)(...)", STR_VIEW_PRINT(fn.type), STR_VIEW_PRINT(fn.name));
   }
   void operator()(ast::PointerToArray &ptr) const
   {
-    std::cout << ptr.type << " (*" << ptr.name << ")[" << ptr.size << "]";
+    printf("%.*s (*%.*s)[%d]", STR_VIEW_PRINT(ptr.type), STR_VIEW_PRINT(ptr.name), ptr.size);
   }
 };
 
 struct ParserDebugPrinter {
   void operator()(ast::DefineInt &val) const
   {
-    std::cout << "#define " << val.name << " " << val.value << "\n";
+    printf("#define %.*s %d\n", STR_VIEW_PRINT(val.name), val.value);
   }
   void operator()(ast::Enum &val) const
   {
-    std::cout << "enum " << val.name.value_or("unnamed");
+    printf("enum %.*s", STR_VIEW_PRINT(val.name.value_or("unnamed")));
     if (val.type) {
-      std::cout << ": " << val.type.value();
+      printf(": %.*s", STR_VIEW_PRINT(val.type.value()));
     }
-    std::cout << " {...};\n";
+    printf(" {...};\n");
   }
   void operator()(ast::Struct &val) const
   {
-    std::cout << "struct " << val.name << " {\n";
+    printf("struct %.*s {\n", STR_VIEW_PRINT(val.name));
     for (auto &item : val.items) {
-      std::cout << "    ";
+      printf("    ");
       std::visit(StructMemberPrinter{}, item);
-      std::cout << ";\n";
+      printf(";\n");
     }
-    std::cout << "};\n";
+    printf("};\n");
   }
   void operator()(ast::FunctionPtr &fn) const
   {
     StructMemberPrinter().operator()(fn);
-    std::cout << "\n";
+    printf("\n");
   }
   void operator()(ast::Variable &var) const
   {
     StructMemberPrinter().operator()(var);
-    std::cout << "\n";
+    printf("\n");
   }
 };
 #endif
@@ -238,6 +236,17 @@ struct StringLiteral {
   }
 };
 
+struct IntLiteral {
+  int value;
+  static std::optional<IntLiteral> parse(TokenIterator &cont)
+  {
+    if (IntLiteralToken *value = cont.next<IntLiteralToken>(); value) {
+      return IntLiteral{value->val};
+    }
+    return std::nullopt;
+  }
+};
+
 struct Identifier {
   std::string_view str;
   static std::optional<Identifier> parse(TokenIterator &cont)
@@ -263,6 +272,11 @@ struct Include {
   }
 };
 
+static bool inline is_symbol_type(const TokenVariant &token, const SymbolType type)
+{
+  return std::holds_alternative<SymbolToken>(token) && std::get<SymbolToken>(token).type == type;
+}
+
 struct Define {
   static std::optional<Define> parse(TokenIterator &cont)
   {
@@ -274,21 +288,9 @@ struct Define {
       if (std::holds_alternative<BreakLineToken>(*token) && !scape_bl) {
         break;
       }
-      scape_bl = std::holds_alternative<SymbolToken>(*token) &&
-                 std::get<SymbolToken>(*token).type == SymbolType::BACKSLASH;
+      scape_bl = is_symbol_type(*token, SymbolType::BACKSLASH);
     }
     return Define{};
-  }
-};
-
-struct IntLiteral {
-  int value;
-  static std::optional<IntLiteral> parse(TokenIterator &cont)
-  {
-    if (IntLiteralToken *value = cont.next<IntLiteralToken>(); value) {
-      return IntLiteral{value->val};
-    }
-    return std::nullopt;
   }
 };
 
@@ -333,25 +335,27 @@ struct PrimitiveType {
     if (!type.has_value()) {
       return std::nullopt;
     }
+
     /* Use `unsigned int` as uint32?.... */
+    using namespace std::string_view_literals;
     static constexpr std::string_view primitive_types[]{
-        "int",
-        "char",
-        "short",
-        "float",
-        "double",
-        "void",
-        "unsigned int",
-        "unsigned short",
-        "unsigned char",
-        "int8_t",
-        "int16_t",
-        "int32_t",
-        "int64_t",
-        "uint8_t",
-        "uint16_t",
-        "uint32_t",
-        "uint64_t",
+        "int"sv,
+        "char"sv,
+        "short"sv,
+        "float"sv,
+        "double"sv,
+        "void"sv,
+        "int"sv,    // makesdna ignores `unsigned` keyword
+        "short"sv,  // makesdna ignores `unsigned` keyword
+        "char"sv,   // makesdna ignores `unsigned` keyword
+        "int8_t"sv,
+        "int16_t"sv,
+        "int32_t"sv,
+        "int64_t"sv,
+        "uint8_t"sv,
+        "uint16_t"sv,
+        "uint32_t"sv,
+        "uint64_t"sv,
     };
     return PrimitiveType{primitive_types[type.value().index()]};
   }
@@ -385,7 +389,7 @@ static Vector<std::variant<std::string_view, int32_t>> variable_size_array_part(
 {
   Vector<std::variant<std::string_view, int32_t>> result;
   /* Dynamic array. */
-  if (Sequence<LBracketSymbol, RBracketSymbol>::parse(cont).has_value()) {
+  if (Sequence<LBracketSymbol, RBraceSymbol>::parse(cont).has_value()) {
     result.append(std::string_view{""});
   }
   while (true) {
@@ -455,18 +459,14 @@ static void skip_until_match_symbols(SymbolType left, SymbolType right, TokenIte
 {
   int left_count = 1;
   for (TokenVariant *token = cont.next_variant(); token; token = cont.next_variant()) {
-    if (!std::holds_alternative<SymbolToken>(*token)) {
-      continue;
-    }
-    const SymbolType type = std::get<SymbolToken>(*token).type;
-    if (type == right) {
+    if (is_symbol_type(*token, right)) {
       left_count--;
+      if (left_count == 0) {
+        break;
+      }
     }
-    else if (type == left) {
+    else if (is_symbol_type(*token, left)) {
       left_count++;
-    }
-    if (left_count == 0) {
-      break;
     }
   }
 };
@@ -529,6 +529,12 @@ std::optional<PointerToArray> PointerToArray::parse(TokenIterator &cont)
   return ptr;
 }
 
+template<KeywordType... type> static bool is_keyword_type(TokenVariant token)
+{
+  return std::holds_alternative<KeywordToken>(token) &&
+         ((std::get<KeywordToken>(token).type == type) || ...);
+}
+
 struct IfDefSection {
   static std::optional<IfDefSection> parse(TokenIterator &cont)
   {
@@ -538,30 +544,21 @@ struct IfDefSection {
     if (!val.has_value()) {
       return std::nullopt;
     };
-    auto match_closing = [](TokenVariant *token) {
-      return std::holds_alternative<KeywordToken>(*token) &&
-             std::get<KeywordToken>(*token).type == KeywordType::ENDIF;
-    };
-    auto match_opening = [](TokenVariant *token) {
-      return (std::holds_alternative<KeywordToken>(*token) &&
-              (std::get<KeywordToken>(*token).type == KeywordType::IF ||
-               std::get<KeywordToken>(*token).type == KeywordType::IFDEF ||
-               std::get<KeywordToken>(*token).type == KeywordType::IFNDEF));
-    };
     int ifdef_deep = 1;
     bool hash_carried = false;
     for (TokenVariant *token = cont.next_variant(); token; token = cont.next_variant()) {
-      if (hash_carried && match_opening(token)) {
+      if (hash_carried && is_keyword_type<KeywordType::ENDIF>(*token)) {
         ifdef_deep++;
       }
-      if (hash_carried && match_closing(token)) {
+      if (hash_carried &&
+          is_keyword_type<KeywordType::IF, KeywordType::IFDEF, KeywordType::IFNDEF>(*token))
+      {
         ifdef_deep--;
       }
       if (ifdef_deep == 0) {
         break;
       }
-      hash_carried = std::holds_alternative<SymbolToken>(*token) &&
-                     std::get<SymbolToken>(*token).type == SymbolType::HASH;
+      hash_carried = is_symbol_type(*token, SymbolType::HASH);
     }
     /* Not matching #endif. */
     if (ifdef_deep != 0) {
@@ -686,20 +683,21 @@ static void print_unhandled_token_error(std::string_view filepath,
                                         std::string_view text,
                                         lex::TokenVariant *what)
 {
-
-  std::visit(
-      [text, filepath](auto &&token) {
-        std::string_view::iterator itr = text.begin();
-        size_t line = 1;
-        while (itr < token.where.begin()) {
-          if (itr[0] == '\n') {
-            line++;
-          }
-          itr++;
-        }
-        std::cout << filepath << "(" << line << ") Unhandled token: \"" << token.where << "\"\n";
-      },
-      *what);
+  auto visit_fn = [text, filepath](auto &&token) {
+    std::string_view::iterator itr = text.begin();
+    size_t line = 1;
+    while (itr < token.where.begin()) {
+      if (itr[0] == '\n') {
+        line++;
+      }
+      itr++;
+    }
+    printf("%.*s(%zd) Unhandled token: \"%.*s\"\n",
+           STR_VIEW_PRINT(filepath),
+           line,
+           STR_VIEW_PRINT(token.where));
+  };
+  std::visit(visit_fn, *what);
 }
 bool parse_include(std::string_view filepath,
                    std::string_view text,
@@ -739,7 +737,7 @@ bool parse_include(std::string_view filepath,
     }
   }
   for (auto &val : c) {
-    //std::visit(ParserDebugPrinter{}, val);
+    // std::visit(ParserDebugPrinter{}, val);
   }
 
   return true;
