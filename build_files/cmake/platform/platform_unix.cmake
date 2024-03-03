@@ -37,19 +37,19 @@ else()
     unset(LIBDIR_GLIBC228_ABI)
   endif()
 
-  if(DEFINED LIBDIR)
-    if(NOT (EXISTS ${LIBDIR}))
-      if(WITH_STRICT_BUILD_OPTIONS)
-        message(SEND_ERROR
-          "Unable to find LIBDIR: ${LIBDIR}. "
-          "WITH_LIBS_PRECOMPILED needs to be able to find the LIBDIR for the precompiled libraries."
-        )
-      else()
-        message(STATUS
-          "Unable to find LIBDIR: ${LIBDIR}. system libraries may be used "
-          "(disable WITH_LIBS_PRECOMPILED to suppress this message)."
-        )
-      endif()
+  if(NOT DEFINED LIBDIR OR NOT (EXISTS ${LIBDIR}))
+    if(WITH_STRICT_BUILD_OPTIONS)
+      message(SEND_ERROR
+        "Unable to find LIBDIR: ${LIBDIR}. "
+        "WITH_LIBS_PRECOMPILED needs to be able to find the LIBDIR for the precompiled libraries."
+      )
+    else()
+      message(STATUS
+        "Unable to find LIBDIR: ${LIBDIR}. system libraries may be used "
+        "(disable WITH_LIBS_PRECOMPILED to suppress this message)."
+      )
+    endif()
+    if(DEFINED LIBDIR)
       unset(LIBDIR)
     endif()
     set(WITH_LIBS_PRECOMPILED OFF)
