@@ -136,7 +136,7 @@ GPUVertBuf **DRW_curves_texture_for_evaluated_attribute(Curves *curves,
                                                         bool *r_is_point_domain);
 
 GPUBatch *DRW_curves_batch_cache_get_edit_points(Curves *curves);
-// GPUBatch *DRW_curves_batch_cache_get_edit_lines(Curves *curves);
+GPUBatch *DRW_curves_batch_cache_get_edit_curves_lines(Curves *curves);
 
 void DRW_curves_batch_cache_create_requested(Object *ob);
 
