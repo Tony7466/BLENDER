@@ -78,6 +78,7 @@ void main()
     bool premul = flag_test(gp_interp_flat.mat_flag, GP_FILL_TEXTURE_PREMUL);
     col = texture_read_as_linearrgb(gpFillTexture, premul, uvs);
 
+    /* TODO: Remove this once we can render textures. */
     /* Debug color. (Because textures are not yet implemented) */
     col = debug_texture(gp_interp.uv);
   }

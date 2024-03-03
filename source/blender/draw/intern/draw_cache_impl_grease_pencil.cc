@@ -568,7 +568,6 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       s_vert.packed_asp_hard_rot = pack_rotation_aspect_hardness(
           rotations[point_i], stroke_point_aspect_ratios[curve_i], stroke_hardnesses[curve_i]);
       s_vert.u_stroke = length;
-      /* TODO: Populate fill UVs. */
       copy_v2_v2(s_vert.uv_fill, texture_matrix * float4(pos, 1.0f));
 
       copy_v4_v4(c_vert.vcol, vertex_colors[point_i]);

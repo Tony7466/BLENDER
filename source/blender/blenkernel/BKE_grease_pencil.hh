@@ -866,14 +866,15 @@ void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil
                                                GreasePencil *grease_pencil_dst);
 
 /*
- * Returns the three points uv(1,0) uv(0,1) and uv(0,0) respectively in local-space for the stroke
- * `curve_i` Note: the matrix returned does not represent an actual matrix and instead just stores
- * three points.
+ * Returns the three points UV(1,0), UV(0,1) and UV(0,0) respectively in local-space for the stroke
+ * `curve_i` Note: the matrix returned does not represent an actual transformation and instead just
+ * stores the three points.
  */
 blender::float3x3 get_texture_points(const blender::bke::CurvesGeometry &curves, int curve_i);
 /*
  * Sets the three points in local-space for the stroke `curve_i`
- * Note: `texture_points` does not represent an actual matrix and instead just stores three points.
+ * Note: `texture_points` does not represent an actual transformation and instead just stores the
+ * three points.
  */
 void set_texture_points(blender::bke::CurvesGeometry &curves,
                         int curve_i,

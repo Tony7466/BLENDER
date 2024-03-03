@@ -1468,7 +1468,7 @@ blender::float3x3 get_texture_points(const blender::bke::CurvesGeometry &curves,
 
   const AttributeAccessor attributes = curves.attributes();
 
-  /* Default is the front draw plane. */
+  /* The default is the front draw plane (XZ). */
   const VArray<float3> text_u = *attributes.lookup_or_default<float3>(
       "texture_u", bke::AttrDomain::Curve, float3(1.0f, 0.0f, 0.0f));
   const VArray<float3> text_v = *attributes.lookup_or_default<float3>(
@@ -1482,8 +1482,8 @@ blender::float3x3 get_texture_points(const blender::bke::CurvesGeometry &curves,
 
   const float3x3 texture_points = float3x3(locu, locv, loco);
 
-  /* Note: `texture_points` does not represent an actual matrix and instead just stores three
-   * points.*/
+  /* Note: `texture_points` does not represent an actual transformation and instead just stores the
+   * three points.*/
   return texture_points;
 }
 
@@ -1533,8 +1533,8 @@ blender::float4x2 get_texture_matrix(const blender::bke::CurvesGeometry &curves,
    * We want to solve for `uv` in the equation: `pos = uv * uv_to_pos`
    * Because these matrices are not square we can not use a normal inverse.
    *
-   * This has the form of: `X = A * Y`
-   * `A` can be solve use: `A = X * B`
+   * Our problem has the form of: `X = A * Y`
+   * We can solve for `A` using: `A = X * B`
    *
    * Where `B` is the Right-sided inverse, calculated as:
    *

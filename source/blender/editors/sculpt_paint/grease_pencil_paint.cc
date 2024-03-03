@@ -178,7 +178,7 @@ struct PaintOperationExecutor {
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
 
     /* TODO: Align with the view or drawing plane. */
-    /* Default is the front draw plane. */
+    /* The default is the front draw plane (XZ). */
     texture_points_ = float3x3(
         float3(1.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 1.0f), float3(0.0f, 0.0f, 0.0f));
 
