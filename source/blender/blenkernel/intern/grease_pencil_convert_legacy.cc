@@ -182,7 +182,7 @@ float3x2 convert_texture_to_matrix(const float2 uv_translation,
 
   /* Apply bounding box rescaling. */
   textmat[2] -= minv;
-  textmat = from_scale<float2x2>(1.0f / d) * textmat;
+  textmat = math::from_scale<float2x2>(1.0f / d) * textmat;
 
   /* Apply translation. */
   textmat[2] += uv_translation;
@@ -193,7 +193,7 @@ float3x2 convert_texture_to_matrix(const float2 uv_translation,
   textmat[2] += center;
 
   /* Apply scale. */
-  textmat = from_scale<float2x2>(uv_scale_inv) * textmat;
+  textmat = math::from_scale<float2x2>(uv_scale_inv) * textmat;
 
   return textmat;
 }
