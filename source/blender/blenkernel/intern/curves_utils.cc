@@ -43,7 +43,7 @@ IndexMask indices_for_type(const VArray<int8_t> &types,
     return selection;
   }
   if (types.is_single()) {
-    return types.get_internal_single() == type ? IndexMask(types.size()) : IndexMask(0);
+    return types.get_internal_single() == type ? selection : IndexMask(0);
   }
   Span<int8_t> types_span = types.get_internal_span();
   return IndexMask::from_predicate(selection, GrainSize(4096), memory, [&](const int index) {
