@@ -63,33 +63,33 @@ void file_handler_remove(FileHandlerType *file_handler)
       });
 }
 
-static bool ends_with_case(StringRef str, StringRef find)
-{
-  if (find.size() > str.size() || find.is_empty()) {
-    return false;
-  }
-  return BLI_strcaseeq(str.end() - find.size(), find.data()) == 1;
-}
-
 blender::Vector<FileHandlerType *> file_handlers_poll_file_drop(
     const bContext *C, const blender::Span<std::string> paths)
 {
+  blender::Vector<std::string> path_extensions;
+  for (const std::string &path : paths) {
+    const char *extension = BLI_path_extension(path.c_str());
+    if (!extension) {
+      continue;
+    }
+    path_extensions.append_non_duplicates(extension);
+  }
 
   blender::Vector<FileHandlerType *> result;
   for (const std::unique_ptr<FileHandlerType> &file_handler_ptr : file_handlers()) {
     FileHandlerType &file_handler = *file_handler_ptr;
     const auto &file_extensions = file_handler.file_extensions;
-    bool support_any_path = false;
-    for (const std::string &path : paths) {
-      auto test_path_fn = [&path](const std::string &extension) {
-        return ends_with_case(path, extension);
+    bool support_any_extension = false;
+    for (const std::string &extension : path_extensions) {
+      auto test_fn = [&extension](const std::string &test_extension) {
+        return BLI_strcaseeq(extension.c_str(), test_extension.c_str()) == 1;
       };
-      support_any_path = std::any_of(file_extensions.begin(), file_extensions.end(), test_path_fn);
-      if (support_any_path) {
+      support_any_extension = std::any_of(file_extensions.begin(), file_extensions.end(), test_fn);
+      if (support_any_extension) {
         break;
       }
     }
-    if (!support_any_path) {
+    if (!support_any_extension) {
       continue;
     }
 
@@ -108,12 +108,15 @@ blender::Vector<int64_t> FileHandlerType::filter_supported_paths(
   blender::Vector<int64_t> indices;
 
   for (const int idx : paths.index_range()) {
-    auto test_path_fn = [&path = paths[idx]](const std::string &extension) {
-      return ends_with_case(path, extension);
+    const char *extension = BLI_path_extension(paths[idx].c_str());
+    if (!extension) {
+      continue;
+    }
+    auto test_fn = [extension](const std::string &test_extension) {
+      return BLI_strcaseeq(extension, test_extension.c_str()) == 1;
     };
-    if (std::find_if(file_extensions.begin(), file_extensions.end(), test_path_fn) !=
-        file_extensions.end())
-    {
+
+    if (std::any_of(file_extensions.begin(), file_extensions.end(), test_fn)) {
       indices.append(idx);
     }
   }
