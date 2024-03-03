@@ -108,6 +108,9 @@ static bool has_libdecor = true;
 #  endif
 #endif
 
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+
 /* -------------------------------------------------------------------- */
 /** \name Forward Declarations
  * \{ */
@@ -7473,6 +7476,21 @@ void GHOST_SystemWayland::putClipboard(const char *buffer, bool selection) const
   }
 }
 
+GHOST_TSuccess GHOST_SystemWayland::hasClipboardImage(void) const
+{
+  return GHOST_kSuccess;
+}
+
+uint *GHOST_SystemWayland::getClipboardImage(int *r_width, int *r_height) const
+{
+  return nullptr;
+}
+
+GHOST_TSuccess GHOST_SystemWayland::putClipboardImage(uint *rgba, int width, int height) const
+{
+  return GHOST_kSuccess;
+}
+
 uint8_t GHOST_SystemWayland::getNumDisplays() const
 {
 #ifdef USE_EVENT_BACKGROUND_THREAD
@@ -8048,9 +8066,7 @@ GHOST_TCapabilityFlag GHOST_SystemWayland::getCapabilities() const
            * is negligible. */
           GHOST_kCapabilityGPUReadFrontBuffer |
           /* This WAYLAND back-end has not yet implemented desktop color sample. */
-          GHOST_kCapabilityDesktopSample |
-          /* This WAYLAND back-end has not yet implemented image copy/paste. */
-          GHOST_kCapabilityClipboardImages));
+          GHOST_kCapabilityDesktopSample));
 }
 
 bool GHOST_SystemWayland::cursor_grab_use_software_display_get(const GHOST_TGrabCursorMode mode)
