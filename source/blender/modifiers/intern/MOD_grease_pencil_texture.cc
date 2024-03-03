@@ -77,6 +77,71 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&tmd->influence, ob, walk, user_data);
 }
 
+/* Funky GPv2 method of calculating a planar transform of a stroke. */
+static float4x4 get_legacy_plane_transform(const Span<float3> positions)
+{
+  if (positions.size() < 2) {
+    return float4x4::identity();
+  }
+
+  const float3 &pt0 = positions[0];
+  const float3 &pt1 = positions[1];
+  const float3 &pt3 = positions[int(positions.size() * 0.75)];
+  /* Point vector at 3/4 */
+  const float3 loc3 = (positions.size() == 2 ? pt3 * 0.001f : pt3) - pt0;
+
+  /* Local X axis. */
+  const float3 locx = math::normalize(pt1 - pt0);
+  /* Vector orthogonal to polygon plane. */
+  const float3 normal = math::normalize(math::cross(locx, loc3));
+
+  return math::from_orthonormal_axes<float4x4>(pt0, locx, normal);
+}
+
+static float4x4 get_stroke_transform(const GreasePencilTextureModifierData &tmd,
+                                     const float3 &minv = {-1.0f, -1.0f, -1.0f},
+                                     const float3 &maxv = {1.0f, 1.0f, 1.0f})
+{
+  const float4x4 minmax_transform = math::scale(math::from_location<float4x4>(-minv),
+                                                math::safe_rcp(maxv - minv));
+  const float4x4 stroke_rotation = math::from_rotation<float4x4>(
+      math::AxisAngle(math::AxisSigned::Z_POS, tmd.fill_rotation));
+  const float3 rotation_center = {0.5f, 0.5f, 0.0f};
+  const float3 stroke_inv_scale = float3(math::safe_rcp(tmd.fill_scale));
+  const float4x4 curve_transform = math::from_scale<float4x4>(stroke_inv_scale) *
+                                   math::from_origin_transform(stroke_rotation, rotation_center) *
+                                   math::from_location<float4x4>(tmd.fill_offset) *
+                                   minmax_transform;
+  return curve_transform;
+}
+
+static void modify_curves(const GreasePencilTextureModifierData &tmd,
+                          const ModifierEvalContext &ctx,
+                          bke::greasepencil::Drawing &drawing)
+{
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const Span<float3> positions = curves.positions();
+
+  IndexMaskMemory mask_memory;
+  const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
+      ctx.object, curves, tmd.influence, mask_memory);
+
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::SpanAttributeWriter<float2> fill_uvs = attributes.lookup_or_add_for_write_span<float2>(
+      "uv_fill", bke::AttrDomain::Point);
+
+  curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+    const float4x4 plane_transform = get_legacy_plane_transform(positions.slice(points));
+    const float4x4 transform = math::invert(plane_transform * get_stroke_transform(tmd));
+    for (const int point_i : points) {
+      fill_uvs.span[point_i] = math::transform_point(transform, positions[point_i]).xy();
+    }
+  });
+
+  fill_uvs.finish();
+}
 
 static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
@@ -100,7 +165,7 @@ static void modify_geometry_set(ModifierData *md,
       grease_pencil, layer_mask, frame);
   threading::parallel_for_each(
       drawings, [&](Drawing *drawing) {
-      /*modify_curves(md, ctx, drawing->strokes_for_write());*/
+      modify_curves(tmd, *ctx, *drawing);
     });
 }
 
