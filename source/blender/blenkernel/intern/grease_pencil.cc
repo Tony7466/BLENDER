@@ -10,7 +10,7 @@
 
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_deform.hh"
