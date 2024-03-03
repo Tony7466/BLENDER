@@ -62,45 +62,43 @@ class AverageWeightPaintOperation : public WeightPaintOperation {
     /* Iterate over the drawings grouped per frame number. Collect all stroke points under the
      * brush and average them. */
     std::atomic<bool> changed = false;
-    threading::parallel_for(
-        this->drawing_weight_data.index_range(), 1, [&](const IndexRange frame_group_range) {
-          for (const int frame_group : frame_group_range) {
-            Array<DrawingWeightData> &drawing_weights = this->drawing_weight_data[frame_group];
+    threading::parallel_for_each(
+        this->drawing_weight_data.index_range(), [&](const int frame_group) {
+          Array<DrawingWeightData> &drawing_weights = this->drawing_weight_data[frame_group];
 
-            /* For all layers at this key frame, collect the stroke points under the brush in a
-             * buffer. */
-            threading::parallel_for_each(drawing_weights, [&](DrawingWeightData &drawing_weight) {
-              for (const int point_index : drawing_weight.point_positions.index_range()) {
-                const float2 &co = drawing_weight.point_positions[point_index];
+          /* For all layers at this key frame, collect the stroke points under the brush in a
+           * buffer. */
+          threading::parallel_for_each(drawing_weights, [&](DrawingWeightData &drawing_weight) {
+            for (const int point_index : drawing_weight.point_positions.index_range()) {
+              const float2 &co = drawing_weight.point_positions[point_index];
 
-                /* When the point is under the brush, add it to the brush point buffer. */
-                this->add_point_under_brush_to_brush_buffer(co, drawing_weight, point_index);
+              /* When the point is under the brush, add it to the brush point buffer. */
+              this->add_point_under_brush_to_brush_buffer(co, drawing_weight, point_index);
+            }
+          });
+
+          /* Get the average weight of the points in the brush buffer. */
+          const float average_weight = this->get_average_weight_in_brush_buffer(drawing_weights);
+
+          /* Apply the Average tool to all points in the brush buffer. */
+          threading::parallel_for_each(drawing_weights, [&](DrawingWeightData &drawing_weight) {
+            for (const BrushPoint &point : drawing_weight.points_in_brush) {
+              this->apply_weight_to_point(point, average_weight, drawing_weight);
+
+              /* Normalize weights of bone-deformed vertex groups to 1.0f. */
+              if (this->auto_normalize) {
+                normalize_vertex_weights(drawing_weight.deform_verts[point.drawing_point_index],
+                                         drawing_weight.active_vertex_group,
+                                         drawing_weight.locked_vgroups,
+                                         drawing_weight.bone_deformed_vgroups);
               }
-            });
+            }
 
-            /* Get the average weight of the points in the brush buffer. */
-            const float average_weight = this->get_average_weight_in_brush_buffer(drawing_weights);
-
-            /* Apply the Average tool to all points in the brush buffer. */
-            threading::parallel_for_each(drawing_weights, [&](DrawingWeightData &drawing_weight) {
-              for (const BrushPoint &point : drawing_weight.points_in_brush) {
-                this->apply_weight_to_point(point, average_weight, drawing_weight);
-
-                /* Normalize weights of bone-deformed vertex groups to 1.0f. */
-                if (this->auto_normalize) {
-                  normalize_vertex_weights(drawing_weight.deform_verts[point.drawing_point_index],
-                                           drawing_weight.active_vertex_group,
-                                           drawing_weight.locked_vgroups,
-                                           drawing_weight.bone_deformed_vgroups);
-                }
-              }
-
-              if (!drawing_weight.points_in_brush.is_empty()) {
-                changed = true;
-                drawing_weight.points_in_brush.clear();
-              }
-            });
-          }
+            if (!drawing_weight.points_in_brush.is_empty()) {
+              changed = true;
+              drawing_weight.points_in_brush.clear();
+            }
+          });
         });
 
     if (changed) {

@@ -243,17 +243,14 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   float angle_threshold,
                                   IndexMaskMemory &memory);
 
-/** Create a vertex group in a GP object with a general name or the name of an active bone. */
-int create_vertex_group_in_object(Object &ob);
-
 /** Returns a set of vertex group names that are deformed by a bone in an armature. */
-Set<std::string> get_bone_deformed_vertex_groups(Object &object);
+Set<std::string> get_bone_deformed_vertex_group_names(Object &object);
 
 /** For a point in a stroke, normalize the weights of vertex groups deformed by bones so that the
  * sum is 1.0f. */
 void normalize_vertex_weights(MDeformVert &dvert,
                               int active_vertex_group,
-                              const Span<bool> vertex_group_is_locked,
-                              const Span<bool> vertex_group_is_bone_deformed);
+                              Span<bool> vertex_group_is_locked,
+                              Span<bool> vertex_group_is_bone_deformed);
 
 }  // namespace blender::ed::greasepencil

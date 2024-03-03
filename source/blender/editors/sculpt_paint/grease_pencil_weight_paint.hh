@@ -12,6 +12,7 @@
 #include "BKE_deform.hh"
 #include "BKE_grease_pencil_vertex_groups.hh"
 #include "BKE_modifier.hh"
+#include "BKE_object_deform.h"
 #include "BKE_scene.hh"
 
 #include "DEG_depsgraph_query.hh"
@@ -27,7 +28,7 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-static constexpr int POINT_CACHE_CHUNK = 1024;
+static constexpr int POINT_CACHE_CHUNK = 2048;
 static constexpr float FIND_NEAREST_POINT_EPSILON = 1e-6f;
 static constexpr int BLUR_NEIGHBOUR_NUM = 5;
 static constexpr int SMEAR_NEIGHBOUR_NUM = 8;
@@ -108,19 +109,21 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
   {
     /* We take a little margin here, to be thread safe. */
     PointsInBrushStroke &buffer = this->points_in_stroke[frame_group];
-    if (this->points_in_stroke_num[frame_group] >= buffer.nearest_points_size - 32) {
-      std::lock_guard lock{mutex};
-      BLI_kdtree_2d_free(buffer.nearest_points);
-      buffer.nearest_points_size += POINT_CACHE_CHUNK;
+    if (this->points_in_stroke_num[frame_group] < buffer.nearest_points_size - 32) {
+      return;
+    }
 
-      buffer.nearest_points_positions.resize(buffer.nearest_points_size);
-      buffer.nearest_points_weights.resize(buffer.nearest_points_size);
+    std::lock_guard lock{mutex};
+    BLI_kdtree_2d_free(buffer.nearest_points);
+    buffer.nearest_points_size += POINT_CACHE_CHUNK;
 
-      /* Rebuild KDtree. */
-      buffer.nearest_points = BLI_kdtree_2d_new(buffer.nearest_points_size);
-      for (const int i : IndexRange(this->points_in_stroke_num[frame_group])) {
-        BLI_kdtree_2d_insert(buffer.nearest_points, i, buffer.nearest_points_positions[i]);
-      }
+    buffer.nearest_points_positions.resize(buffer.nearest_points_size);
+    buffer.nearest_points_weights.resize(buffer.nearest_points_size);
+
+    /* Rebuild KDtree. */
+    buffer.nearest_points = BLI_kdtree_2d_new(buffer.nearest_points_size);
+    for (const int i : IndexRange(this->points_in_stroke_num[frame_group])) {
+      BLI_kdtree_2d_insert(buffer.nearest_points, i, buffer.nearest_points_positions[i]);
     }
   }
 
@@ -171,7 +174,8 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
   {
     int object_defgroup_nr = BKE_object_defgroup_active_index_get(this->object) - 1;
     if (object_defgroup_nr == -1) {
-      object_defgroup_nr = ed::greasepencil::create_vertex_group_in_object(*this->object);
+      BKE_object_defgroup_add(this->object);
+      object_defgroup_nr = 0;
     }
     this->object_defgroup = static_cast<bDeformGroup *>(
         BLI_findlink(BKE_object_defgroup_list(this->object), object_defgroup_nr));
@@ -186,7 +190,7 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
         this->object_locked_defgroups.add(dg->name);
       }
     }
-    this->object_bone_deformed_defgroups = ed::greasepencil::get_bone_deformed_vertex_groups(
+    this->object_bone_deformed_defgroups = ed::greasepencil::get_bone_deformed_vertex_group_names(
         *this->object);
   }
 

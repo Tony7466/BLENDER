@@ -6,18 +6,12 @@
  * \ingroup edgreasepencil
  */
 
-#include "BLI_math_vector.hh"
-#include "BLI_set.hh"
-
-#include "BKE_action.h"
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_deform.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_modifier.hh"
-#include "BKE_object.hh"
-#include "BKE_object_deform.h"
 #include "BKE_paint.hh"
 
 #include "DNA_meshdata_types.h"
@@ -27,38 +21,11 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "WM_toolsystem.hh"
-
 #include "ED_grease_pencil.hh"
 
 namespace blender::ed::greasepencil {
 
-int create_vertex_group_in_object(Object &ob)
-{
-  /* Look for an active bone in armature to name the vertex group after. */
-  Object *ob_armature = BKE_modifiers_is_deformed_by_armature(&ob);
-  if (ob_armature != nullptr) {
-    Bone *actbone = (static_cast<bArmature *>(ob_armature->data))->act_bone;
-    if (actbone != nullptr) {
-      bPoseChannel *pchan = BKE_pose_channel_find_name(ob_armature->pose, actbone->name);
-      if (pchan != nullptr) {
-        const int channel_def_nr = BKE_object_defgroup_name_index(&ob, pchan->name);
-        if (channel_def_nr == -1) {
-          BKE_object_defgroup_add_name(&ob, pchan->name);
-          return (BKE_object_defgroup_active_index_get(&ob) - 1);
-        }
-        return channel_def_nr;
-      }
-    }
-  }
-
-  /* Create a vertex group with a general name. */
-  BKE_object_defgroup_add(&ob);
-
-  return 0;
-}
-
-Set<std::string> get_bone_deformed_vertex_groups(Object &object)
+Set<std::string> get_bone_deformed_vertex_group_names(Object &object)
 {
   /* Get all vertex group names in the object. */
   const ListBase *defbase = BKE_object_defgroup_list(&object);
@@ -67,37 +34,32 @@ Set<std::string> get_bone_deformed_vertex_groups(Object &object)
     defgroups.add(dg->name);
   }
 
-  /* Lambda function for finding deforming bones with a name matching a vertex group. */
+  /* Inspect all armature modifiers in the object. */
   Set<std::string> bone_deformed_vgroups;
-  const auto find_pose_channels = [&](ModifierData *md) {
-    for (; md; md = md->next) {
-      if (!(md->mode & (eModifierMode_Realtime | eModifierMode_Virtual)) ||
-          md->type != eModifierType_Armature)
-      {
-        continue;
-      }
-      ArmatureModifierData *amd = reinterpret_cast<ArmatureModifierData *>(md);
-      if (!amd->object || !amd->object->pose) {
-        continue;
-      }
+  VirtualModifierData virtual_modifier_data;
+  ModifierData *md = BKE_modifiers_get_virtual_modifierlist(&object, &virtual_modifier_data);
+  for (; md; md = md->next) {
+    if (!(md->mode & (eModifierMode_Realtime | eModifierMode_Virtual)) ||
+        md->type != eModifierType_Armature)
+    {
+      continue;
+    }
+    ArmatureModifierData *amd = reinterpret_cast<ArmatureModifierData *>(md);
+    if (!amd->object || !amd->object->pose) {
+      continue;
+    }
 
-      bPose *pose = amd->object->pose;
-      LISTBASE_FOREACH (bPoseChannel *, channel, &pose->chanbase) {
-        if (channel->bone->flag & BONE_NO_DEFORM) {
-          continue;
-        }
-        if (defgroups.contains(channel->name)) {
-          bone_deformed_vgroups.add(channel->name);
-        }
+    bPose *pose = amd->object->pose;
+    LISTBASE_FOREACH (bPoseChannel *, channel, &pose->chanbase) {
+      if (channel->bone->flag & BONE_NO_DEFORM) {
+        continue;
+      }
+      /* When a vertex group name matches the bone name, it is bone-deformed. */
+      if (defgroups.contains(channel->name)) {
+        bone_deformed_vgroups.add(channel->name);
       }
     }
-  };
-
-  /* Inspect all armature modifiers in the object. */
-  VirtualModifierData virtual_modifier_data;
-  ModifierData *md = static_cast<ModifierData *>(object.modifiers.first);
-  find_pose_channels(md);
-  find_pose_channels(BKE_modifiers_get_virtual_modifierlist(&object, &virtual_modifier_data));
+  }
 
   return bone_deformed_vgroups;
 }
@@ -108,9 +70,8 @@ Set<std::string> get_bone_deformed_vertex_groups(Object &object)
  */
 static bool normalize_vertex_weights_try(MDeformVert &dvert,
                                          const int vertex_groups_num,
-                                         const int locked_active_vertex_group,
-                                         const Span<bool> vertex_group_is_locked,
-                                         const Span<bool> vertex_group_is_bone_deformed)
+                                         const Span<bool> vertex_group_is_bone_deformed,
+                                         const FunctionRef<bool(int)> vertex_group_is_locked)
 {
   /* Nothing to normalize when there are less than two vertex group weights. */
   if (dvert.totweight <= 1) {
@@ -135,7 +96,7 @@ static bool normalize_vertex_weights_try(MDeformVert &dvert,
 
     sum_weights_total += dw.weight;
 
-    if (vertex_group_is_locked[dw.def_nr] || dw.def_nr == locked_active_vertex_group) {
+    if (vertex_group_is_locked(dw.def_nr)) {
       locked_num++;
       sum_weights_locked += dw.weight;
     }
@@ -163,7 +124,7 @@ static bool normalize_vertex_weights_try(MDeformVert &dvert,
     for (const int i : IndexRange(dvert.totweight)) {
       MDeformWeight &dw = dvert.dw[i];
       if (dw.def_nr < vertex_groups_num && vertex_group_is_bone_deformed[dw.def_nr] &&
-          !vertex_group_is_locked[dw.def_nr] && dw.def_nr != locked_active_vertex_group)
+          !vertex_group_is_locked(dw.def_nr))
       {
         dw.weight = 0.0f;
       }
@@ -180,8 +141,7 @@ static bool normalize_vertex_weights_try(MDeformVert &dvert,
     for (const int i : IndexRange(dvert.totweight)) {
       MDeformWeight &dw = dvert.dw[i];
       if (dw.def_nr < vertex_groups_num && vertex_group_is_bone_deformed[dw.def_nr] &&
-          dw.weight > FLT_EPSILON && !vertex_group_is_locked[dw.def_nr] &&
-          dw.def_nr != locked_active_vertex_group)
+          dw.weight > FLT_EPSILON && !vertex_group_is_locked(dw.def_nr))
       {
         dw.weight = math::clamp(dw.weight * normalize_factor, 0.0f, 1.0f);
       }
@@ -197,8 +157,7 @@ static bool normalize_vertex_weights_try(MDeformVert &dvert,
   for (const int i : IndexRange(dvert.totweight)) {
     MDeformWeight &dw = dvert.dw[i];
     if (dw.def_nr < vertex_groups_num && vertex_group_is_bone_deformed[dw.def_nr] &&
-        dw.weight > FLT_EPSILON && !vertex_group_is_locked[dw.def_nr] &&
-        dw.def_nr != locked_active_vertex_group)
+        dw.weight > FLT_EPSILON && !vertex_group_is_locked(dw.def_nr))
     {
       dw.weight = weight_remainder;
     }
@@ -214,22 +173,26 @@ void normalize_vertex_weights(MDeformVert &dvert,
 {
   /* Try to normalize the weights with both active and explicitly locked vertex groups restricted
    * from change. */
+  const auto active_vertex_group_is_locked = [&](const int vertex_group_index) {
+    return vertex_group_is_locked[vertex_group_index] || vertex_group_index == active_vertex_group;
+  };
   const bool success = normalize_vertex_weights_try(dvert,
                                                     vertex_group_is_locked.size(),
-                                                    active_vertex_group,
-                                                    vertex_group_is_locked,
-                                                    vertex_group_is_bone_deformed);
+                                                    vertex_group_is_bone_deformed,
+                                                    active_vertex_group_is_locked);
 
   if (success) {
     return;
   }
 
   /* Do a second pass with the active vertex group unlocked. */
+  const auto active_vertex_group_is_unlocked = [&](const int vertex_group_index) {
+    return vertex_group_is_locked[vertex_group_index];
+  };
   normalize_vertex_weights_try(dvert,
                                vertex_group_is_locked.size(),
-                               -1,
-                               vertex_group_is_locked,
-                               vertex_group_is_bone_deformed);
+                               vertex_group_is_bone_deformed,
+                               active_vertex_group_is_unlocked);
 }
 
 struct ClosestGreasePencilDrawing {
@@ -238,7 +201,7 @@ struct ClosestGreasePencilDrawing {
   ed::curves::FindClosestData elem = {};
 };
 
-static int sample_weight(bContext *C, wmOperator * /*op*/, const wmEvent *event)
+static int weight_sample_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
@@ -340,7 +303,7 @@ static void GREASE_PENCIL_OT_weight_sample(wmOperatorType *ot)
 
   /* Callbacks. */
   ot->poll = grease_pencil_weight_painting_poll;
-  ot->invoke = sample_weight;
+  ot->invoke = weight_sample_invoke;
 
   /* Flags. */
   ot->flag = OPTYPE_UNDO | OPTYPE_DEPENDS_ON_CURSOR;
