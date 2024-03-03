@@ -537,6 +537,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
             "fill_color", bke::AttrDomain::Curve, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
     const VArray<int> materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
+    const VArray<float2> stroke_uvs = *attributes.lookup<float2>(
+        "stroke_uv", bke::AttrDomain::Point);
     const Span<uint3> triangles = info.drawing.triangles();
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];
     const Span<int> tris_start_offsets = tris_start_offsets_per_visible_drawing[drawing_i];
@@ -608,7 +610,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       /* Write all the point attributes to the vertex buffers. Create a quad for each point. */
       for (const int i : IndexRange(points.size())) {
         const int idx = i + 1;
-        const float length = (i >= 1) ? lengths[i - 1] : 0.0f;
+        const float length = (stroke_uvs.is_empty() ? ((i >= 1) ? lengths[i - 1] : 0.0f) :
+                                                      stroke_uvs[points[i]].x);
         populate_point(verts_range,
                        curve_i,
                        start_caps[curve_i],
