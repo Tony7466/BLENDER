@@ -151,7 +151,7 @@ static void panel_draw(const bContext *C, Panel *panel)
 
 static void panel_register(ARegionType *region_type)
 {
-  modifier_panel_register(region_type, eModifierType_GreasePencilTime, panel_draw);
+  modifier_panel_register(region_type, eModifierType_GreasePencilTexture, panel_draw);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
