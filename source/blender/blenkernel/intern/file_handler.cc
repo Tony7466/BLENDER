@@ -84,8 +84,7 @@ blender::Vector<FileHandlerType *> file_handlers_poll_file_drop(
       auto test_path_fn = [&path](const std::string &extension) {
         return ends_with_case(path, extension);
       };
-      support_any_path = support_any_path ||
-                         std::any_of(file_extensions.begin(), file_extensions.end(), test_path_fn);
+      support_any_path = std::any_of(file_extensions.begin(), file_extensions.end(), test_path_fn);
       if (support_any_path) {
         break;
       }
