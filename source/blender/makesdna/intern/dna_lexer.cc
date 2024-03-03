@@ -93,7 +93,8 @@ static void eval_identifier(std::string_view::iterator &itr,
 
   std::string_view str = range_string_view(start, itr);
   auto test_keyword_fn = [str](const KeywordItem &val) -> bool { return val.word == str; };
-  auto keyword_itr = std::find_if(std::begin(keywords), std::end(keywords), test_keyword_fn);
+  const KeywordItem *keyword_itr = std::find_if(
+      std::begin(keywords), std::end(keywords), test_keyword_fn);
   if (keyword_itr != std::end(keywords)) {
     cont.append(KeywordToken{str, keyword_itr->type});
     return;
@@ -172,14 +173,14 @@ static void eval_symbol(std::string_view::iterator &itr,
       {'*', SymbolType::STAR},        {'+', SymbolType::PLUS},       {',', SymbolType::COMMA},
       {'-', SymbolType::MINUS},       {'.', SymbolType::DOT},        {'/', SymbolType::SLASH},
       {':', SymbolType::COLON},       {';', SymbolType::SEMICOLON},  {'<', SymbolType::LESS},
-      {'=', SymbolType::ASSIGN},      {'>', SymbolType::GREATER},   {'?', SymbolType::QUESTION},
+      {'=', SymbolType::ASSIGN},      {'>', SymbolType::GREATER},    {'?', SymbolType::QUESTION},
       {'[', SymbolType::LBRACKET},    {'\\', SymbolType::BACKSLASH}, {']', SymbolType::RBRACKET},
       {'^', SymbolType::CARET},       {'{', SymbolType::LBRACE},     {'|', SymbolType::BIT_OR},
       {'}', SymbolType::RBRACE},      {'~', SymbolType::TILDE},
   };
   const char value = itr[0];
   auto test_symbol = [value](const SymbolItem &item) -> bool { return item.value == value; };
-  auto symbol_itr = std::find_if(std::begin(symbols), std::end(symbols), test_symbol);
+  const SymbolItem *symbol_itr = std::find_if(std::begin(symbols), std::end(symbols), test_symbol);
   if (symbol_itr != std::end(symbols)) {
     cont.append(SymbolToken{range_string_view(itr, itr + 1), symbol_itr->type});
     itr++;

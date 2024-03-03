@@ -8,10 +8,10 @@
 #  define STR_VIEW_PRINT(name) uint32_t(name.size()), name.data()
 namespace blender::dna::parser {
 
-void printf_struct(ast::Struct &val, size_t paddin);
+void printf_struct(ast::Struct &val, size_t padding);
 
 struct StructMemberPrinter {
-  size_t paddin;
+  size_t padding;
   void operator()(ast::Variable &var) const
   {
     if (var.const_tag) {
@@ -50,7 +50,7 @@ struct StructMemberPrinter {
   }
   void operator()(ast::Struct &val) const
   {
-    printf_struct(val, paddin);
+    printf_struct(val, padding);
   }
 };
 
@@ -84,17 +84,17 @@ struct ParserDebugPrinter {
     printf("\n");
   }
 };
-void printf_struct(ast::Struct &val, size_t paddin)
+void printf_struct(ast::Struct &val, size_t padding)
 {
   printf("struct %.*s {\n", STR_VIEW_PRINT(val.name));
   for (auto &item : val.items) {
-    for (size_t x = 0; x < paddin + 1; x++) {
+    for (size_t x = 0; x < padding + 1; x++) {
       printf("    ");
     }
-    std::visit(StructMemberPrinter{paddin + 1}, item);
+    std::visit(StructMemberPrinter{padding + 1}, item);
     printf(";\n");
   }
-  for (size_t x = 0; x < paddin; x++) {
+  for (size_t x = 0; x < padding; x++) {
     printf("    ");
   }
   printf("}");
@@ -120,7 +120,9 @@ template<class... Args> struct Sequence : public std::tuple<Args...> {
   };
 
   template<std::size_t... I>
-  static inline bool parse_impl(std::index_sequence<I...>, TokenIterator &cont, Sequence &sequence)
+  static inline bool parse_impl(std::index_sequence<I...> /*indices*/,
+                                TokenIterator &cont,
+                                Sequence &sequence)
   {
     return (parse_type<I, Args>(cont, sequence) && ...);
   };
@@ -213,7 +215,7 @@ using PragmaKeyword = Keyword<KeywordType::PRAGMA>;
 using OnceKeyword = Keyword<KeywordType::ONCE>;
 using EnumKeyword = Keyword<KeywordType::ENUM>;
 using ClassKeyword = Keyword<KeywordType::CLASS>;
-using DNADepecratedKeyword = Keyword<KeywordType::DNA_DEPRECATED>;
+using DNADeprecatedKeyword = Keyword<KeywordType::DNA_DEPRECATED>;
 
 template<SymbolType type> struct Symbol {
   static std::optional<Symbol> parse(TokenIterator &cont)
@@ -408,9 +410,7 @@ struct TypeOrStruct {
     if (std::holds_alternative<PrimitiveType>(type_variant)) {
       return TypeOrStruct{const_tag, std::get<0>(type_variant).str};
     }
-    else {
-      return TypeOrStruct{const_tag, std::get<1>(std::get<1>(type_variant)).str};
-    }
+    return TypeOrStruct{const_tag, std::get<1>(std::get<1>(type_variant)).str};
   }
 };
 
@@ -423,12 +423,12 @@ static Vector<std::variant<std::string_view, int32_t>> variable_size_array_part(
     result.append(std::string_view{""});
   }
   while (true) {
-    using ArraySyze = Sequence<LBracketSymbol, Variant<IntLiteral, Identifier>, RBracketSymbol>;
-    const std::optional<ArraySyze> size_seq = ArraySyze::parse(cont);
+    using ArraySize = Sequence<LBracketSymbol, Variant<IntLiteral, Identifier>, RBracketSymbol>;
+    const std::optional<ArraySize> size_seq = ArraySize::parse(cont);
     if (!size_seq.has_value()) {
       break;
     }
-    auto &item_size = std::get<1>(size_seq.value());
+    const auto &item_size = std::get<1>(size_seq.value());
     if (std::holds_alternative<IntLiteral>(item_size)) {
       result.append(std::get<IntLiteral>(item_size).value);
     }
@@ -450,7 +450,7 @@ std::optional<Variable> Variable::parse(TokenIterator &cont)
   variable.type = type.value().str;
 
   while (true) {
-    std::string start = "";
+    std::string start;
     for (; StarSymbol::parse(cont);) {
       start += '*';
     }
@@ -463,11 +463,11 @@ std::optional<Variable> Variable::parse(TokenIterator &cont)
     item.name = name.value().str;
     item.size = variable_size_array_part(cont);
     variable.items.append(std::move(item));
-    DNADepecratedKeyword::parse(cont);
+    DNADeprecatedKeyword::parse(cont);
     if (SemicolonSymbol::parse(cont).has_value()) {
       break;
     }
-    else if (!CommaSymbol::parse(cont).has_value()) {
+    if (!CommaSymbol::parse(cont).has_value()) {
       return std::nullopt;
     }
   }
@@ -611,16 +611,14 @@ std::optional<Struct> Struct::parse(TokenIterator &cont)
     result.name = std::get<2>(struct_seq.value()).value().str;
   }
   while (true) {
-    using DNA_DEF_CCX_SEQ = MacroCall<lex::KeywordType::DNA_DEFINE_CXX_METHODS>;
+    using DNA_DEF_CCX_Macro = MacroCall<lex::KeywordType::DNA_DEFINE_CXX_METHODS>;
 
     if (auto member = Variant<Variable, FunctionPtr, PointerToArray, Struct>::parse(cont);
         member.has_value())
     {
       result.items.append(std::move(member.value()));
     }
-    else if (DNA_DEF_CCX_SEQ::parse(cont).has_value()) {
-    }
-    else if (IfDefSection::parse(cont).has_value()) {
+    else if (DNA_DEF_CCX_Macro::parse(cont).has_value() || IfDefSection::parse(cont).has_value()) {
     }
     else {
       break;
@@ -634,7 +632,7 @@ std::optional<Struct> Struct::parse(TokenIterator &cont)
   if (std::get<1>(struct_end.value()).has_value()) {
     result.member_name = std::get<1>(struct_end.value()).value().str;
   }
-  if (result.member_name == result.name && result.name == "") {
+  if (result.member_name == result.name && result.name.empty()) {
     return std::nullopt;
   }
   return result;
@@ -657,13 +655,12 @@ struct Skip {
                 Sequence<ExternKeyword, Variable>,
                 MacroCall<lex::KeywordType::BLI_STATIC_ASSERT_ALIGN>,
                 MacroCall<lex::KeywordType::ENUM_OPERATORS>,
-
                 Sequence<TypedefKeyword, StructKeyword, Identifier, Identifier, SemicolonSymbol>>;
     if (UnusedDeclarations::parse(cont).has_value()) {
       return Skip{};
     }
     /* Forward declare. */
-    else if (Sequence<StructKeyword, Identifier>::parse(cont).has_value()) {
+    if (Sequence<StructKeyword, Identifier>::parse(cont).has_value()) {
       for (; Sequence<CommaSymbol, Identifier>::parse(cont).has_value();) {
       }
       if (SemicolonSymbol::parse(cont).has_value()) {
@@ -701,7 +698,7 @@ std::optional<Enum> ast::Enum::parse(TokenIterator &cont)
   skip_until_match_symbols(SymbolType::LBRACE, SymbolType::RBRACE, cont);
 
   /* Enum end sequence. */
-  if (!Sequence<Optional<Identifier>, Optional<DNADepecratedKeyword>, SemicolonSymbol>::parse(cont)
+  if (!Sequence<Optional<Identifier>, Optional<DNADeprecatedKeyword>, SemicolonSymbol>::parse(cont)
            .has_value())
   {
     return std::nullopt;
