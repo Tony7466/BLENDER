@@ -50,6 +50,7 @@ static void eval_identifier(std::string_view::iterator &itr,
   };
   using namespace std::string_view_literals;
   static constexpr KeywordItem keywords[]{
+      {"BLI_STATIC_ASSERT_ALIGN"sv, KeywordType::BLI_STATIC_ASSERT_ALIGN},
       {"DNA_DEFINE_CXX_METHODS"sv, KeywordType::DNA_DEFINE_CXX_METHODS},
       {"DNA_DEPRECATED"sv, KeywordType::DNA_DEPRECATED},
       {"ENUM_OPERATORS"sv, KeywordType::ENUM_OPERATORS},
@@ -171,7 +172,7 @@ static void eval_symbol(std::string_view::iterator &itr,
       {'*', SymbolType::STAR},        {'+', SymbolType::PLUS},       {',', SymbolType::COMMA},
       {'-', SymbolType::MINUS},       {'.', SymbolType::DOT},        {'/', SymbolType::SLASH},
       {':', SymbolType::COLON},       {';', SymbolType::SEMICOLON},  {'<', SymbolType::LESS},
-      {'=', SymbolType::ASSIGN},      {'>', SymbolType::GREATHER},   {'?', SymbolType::QUESTION},
+      {'=', SymbolType::ASSIGN},      {'>', SymbolType::GREATER},   {'?', SymbolType::QUESTION},
       {'[', SymbolType::LBRACKET},    {'\\', SymbolType::BACKSLASH}, {']', SymbolType::RBRACKET},
       {'^', SymbolType::CARET},       {'{', SymbolType::LBRACE},     {'|', SymbolType::BIT_OR},
       {'}', SymbolType::RBRACE},      {'~', SymbolType::TILDE},
@@ -219,7 +220,11 @@ void TokenIterator::print_unkown_token(std::string_view filepath,
     }
     start++;
   }
-  printf("%.*s(%zd) Unknown token: (%c)\n", uint32_t(filepath.size()), filepath.data(), line, where[0]);
+  printf("%.*s(%zd) Unknown token: (%c)\n",
+         uint32_t(filepath.size()),
+         filepath.data(),
+         line,
+         where[0]);
 }
 
 void TokenIterator::skip_break_lines()

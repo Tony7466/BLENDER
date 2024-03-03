@@ -20,7 +20,7 @@ enum class SymbolType : int8_t {
   COMMA,
   STAR,
   LESS,
-  GREATHER,
+  GREATER,
   BIT_OR,
   BIT_AND,
   PLUS,
@@ -72,6 +72,7 @@ enum class KeywordType : int8_t {
   DNA_DEFINE_CXX_METHODS,
   DNA_DEPRECATED,
   ENUM_OPERATORS,
+  BLI_STATIC_ASSERT_ALIGN,
 };
 struct Token {
   std::string_view where;

@@ -7,8 +7,11 @@
 #ifdef DEBUG_PRINT_DNA_PARSER
 #  define STR_VIEW_PRINT(name) uint32_t(name.size()), name.data()
 namespace blender::dna::parser {
-struct StructMemberPrinter {
 
+void printf_struct(ast::Struct &val, size_t paddin);
+
+struct StructMemberPrinter {
+  size_t paddin;
   void operator()(ast::Variable &var) const
   {
     if (var.const_tag) {
@@ -45,9 +48,14 @@ struct StructMemberPrinter {
   {
     printf("%.*s (*%.*s)[%d]", STR_VIEW_PRINT(ptr.type), STR_VIEW_PRINT(ptr.name), ptr.size);
   }
+  void operator()(ast::Struct &val) const
+  {
+    printf_struct(val, paddin);
+  }
 };
 
 struct ParserDebugPrinter {
+  size_t padding;
   void operator()(ast::DefineInt &val) const
   {
     printf("#define %.*s %d\n", STR_VIEW_PRINT(val.name), val.value);
@@ -62,24 +70,34 @@ struct ParserDebugPrinter {
   }
   void operator()(ast::Struct &val) const
   {
-    printf("struct %.*s {\n", STR_VIEW_PRINT(val.name));
-    for (auto &item : val.items) {
-      printf("    ");
-      std::visit(StructMemberPrinter{}, item);
-      printf(";\n");
-    }
-    printf("};\n");
+    printf_struct(val, padding);
+    printf(";\n");
   }
   void operator()(ast::FunctionPtr &fn) const
   {
-    StructMemberPrinter().operator()(fn);
+    StructMemberPrinter{padding + 1}.operator()(fn);
     printf("\n");
   }
   void operator()(ast::Variable &var) const
   {
-    StructMemberPrinter().operator()(var);
+    StructMemberPrinter{padding + 1}.operator()(var);
     printf("\n");
   }
+};
+void printf_struct(ast::Struct &val, size_t paddin)
+{
+  printf("struct %.*s {\n", STR_VIEW_PRINT(val.name));
+  for (auto &item : val.items) {
+    for (size_t x = 0; x < paddin + 1; x++) {
+      printf("    ");
+    }
+    std::visit(StructMemberPrinter{paddin + 1}, item);
+    printf(";\n");
+  }
+  for (size_t x = 0; x < paddin; x++) {
+    printf("    ");
+  }
+  printf("}");
 };
 #endif
 
@@ -195,9 +213,7 @@ using PragmaKeyword = Keyword<KeywordType::PRAGMA>;
 using OnceKeyword = Keyword<KeywordType::ONCE>;
 using EnumKeyword = Keyword<KeywordType::ENUM>;
 using ClassKeyword = Keyword<KeywordType::CLASS>;
-using DNA_DEF_CCXKeyword = Keyword<KeywordType::DNA_DEFINE_CXX_METHODS>;
 using DNADepecratedKeyword = Keyword<KeywordType::DNA_DEPRECATED>;
-using EnumOperatorsKeyword = Keyword<KeywordType::ENUM_OPERATORS>;
 
 template<SymbolType type> struct Symbol {
   static std::optional<Symbol> parse(TokenIterator &cont)
@@ -221,9 +237,23 @@ using ColonSymbol = Symbol<SymbolType::COLON>;
 using CommaSymbol = Symbol<SymbolType::COMMA>;
 using HashSymbol = Symbol<SymbolType::HASH>;
 using LessSymbol = Symbol<SymbolType::LESS>;
-using GreatherSymbol = Symbol<SymbolType::GREATHER>;
+using GreaterSymbol = Symbol<SymbolType::GREATER>;
 using AssignSymbol = Symbol<SymbolType::ASSIGN>;
 using MinusSymbol = Symbol<SymbolType::MINUS>;
+
+static void skip_until_match_symbols(SymbolType left, SymbolType right, TokenIterator &cont);
+
+template<lex::KeywordType Type> struct MacroCall {
+  static std::optional<MacroCall> parse(TokenIterator &cont)
+  {
+    if (Sequence<Keyword<Type>, LParenSymbol>::parse(cont).has_value()) {
+      skip_until_match_symbols(SymbolType::LPAREN, SymbolType::RPAREN, cont);
+      SemicolonSymbol::parse(cont);
+      return MacroCall{};
+    }
+    return std::nullopt;
+  }
+};
 
 struct StringLiteral {
   std::string_view value;
@@ -571,20 +601,19 @@ struct IfDefSection {
 std::optional<Struct> Struct::parse(TokenIterator &cont)
 {
   using StructBeginSequence =
-      Sequence<Optional<TypedefKeyword>, StructKeyword, Identifier, LBraceSymbol>;
+      Sequence<Optional<TypedefKeyword>, StructKeyword, Optional<Identifier>, LBraceSymbol>;
   std::optional<StructBeginSequence> struct_seq = StructBeginSequence::parse(cont);
   if (!struct_seq.has_value()) {
     return std::nullopt;
   }
   Struct result{};
-  result.name = std::get<2>(struct_seq.value()).str;
+  if (std::get<2>(struct_seq.value()).has_value()) {
+    result.name = std::get<2>(struct_seq.value()).value().str;
+  }
   while (true) {
-    using DNA_DEF_CCX_SEQ = Sequence<DNA_DEF_CCXKeyword,
-                                     LParenSymbol,
-                                     Identifier,
-                                     RParenSymbol,
-                                     Optional<SemicolonSymbol>>;
-    if (auto member = Variant<Variable, FunctionPtr, PointerToArray>::parse(cont);
+    using DNA_DEF_CCX_SEQ = MacroCall<lex::KeywordType::DNA_DEFINE_CXX_METHODS>;
+
+    if (auto member = Variant<Variable, FunctionPtr, PointerToArray, Struct>::parse(cont);
         member.has_value())
     {
       result.items.append(std::move(member.value()));
@@ -597,7 +626,15 @@ std::optional<Struct> Struct::parse(TokenIterator &cont)
       break;
     }
   }
-  if (!Sequence<RBraceSymbol, Optional<Identifier>, SemicolonSymbol>::parse(cont).has_value()) {
+  using StructEndSequence = Sequence<RBraceSymbol, Optional<Identifier>, SemicolonSymbol>;
+  std::optional<StructEndSequence> struct_end = StructEndSequence ::parse(cont);
+  if (!struct_end.has_value()) {
+    return std::nullopt;
+  }
+  if (std::get<1>(struct_end.value()).has_value()) {
+    result.member_name = std::get<1>(struct_end.value()).value().str;
+  }
+  if (result.member_name == result.name && result.name == "") {
     return std::nullopt;
   }
   return result;
@@ -611,12 +648,17 @@ bool Struct::operator==(const Struct &other) const
 struct Skip {
   static std::optional<Skip> parse(TokenIterator &cont)
   {
-    using UnusedDeclarations = Variant<Define,
-                                       Include,
-                                       IfDefSection,
-                                       Sequence<HashSymbol, PragmaKeyword, OnceKeyword>,
-                                       Sequence<HashSymbol, HashSymbol, Struct>,
-                                       Sequence<ExternKeyword, Variable>>;
+    using UnusedDeclarations =
+        Variant<Define,
+                Include,
+                IfDefSection,
+                Sequence<HashSymbol, PragmaKeyword, OnceKeyword>,
+                Sequence<HashSymbol, HashSymbol, Struct>,
+                Sequence<ExternKeyword, Variable>,
+                MacroCall<lex::KeywordType::BLI_STATIC_ASSERT_ALIGN>,
+                MacroCall<lex::KeywordType::ENUM_OPERATORS>,
+
+                Sequence<TypedefKeyword, StructKeyword, Identifier, Identifier, SemicolonSymbol>>;
     if (UnusedDeclarations::parse(cont).has_value()) {
       return Skip{};
     }
@@ -663,11 +705,6 @@ std::optional<Enum> ast::Enum::parse(TokenIterator &cont)
            .has_value())
   {
     return std::nullopt;
-  }
-  /* Optional enum operator defines. */
-  if (Sequence<EnumOperatorsKeyword, LParenSymbol>::parse(cont).has_value()) {
-    skip_until_match_symbols(SymbolType::LPAREN, SymbolType::RPAREN, cont);
-    SemicolonSymbol::parse(cont);
   }
   return enum_def;
 }
@@ -736,9 +773,9 @@ bool parse_include(std::string_view filepath,
       c.append(std::move(std::get<Enum>(val.value())));
     }
   }
-  for (auto &val : c) {
-    // std::visit(ParserDebugPrinter{}, val);
-  }
+  // for (auto &val : c) {
+  //  std::visit(ParserDebugPrinter{}, val);
+  //}
 
   return true;
 }

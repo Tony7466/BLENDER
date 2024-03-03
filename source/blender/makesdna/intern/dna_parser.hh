@@ -71,8 +71,10 @@ struct PointerToArray {
 /* Struct declaration.*/
 struct Struct {
   std::string_view name;
-  Vector<std::variant<Variable, FunctionPtr, PointerToArray>> items;
-
+  /* Keep inline buffer capacity to 0 to allow recursive Struct declarations. */
+  Vector<std::variant<Variable, FunctionPtr, PointerToArray, Struct>, 0> items;
+  /* Name set if struct is declared as member variable. */
+  std::string_view member_name;
   static std::optional<Struct> parse(TokenIterator &cont);
   bool operator==(const Struct &other) const;
 };
