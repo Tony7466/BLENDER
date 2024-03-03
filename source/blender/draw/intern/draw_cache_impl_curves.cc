@@ -245,7 +245,7 @@ static void curves_batch_cache_ensure_procedural_pos(const bke::CurvesGeometry &
 }
 
 static void curves_batch_cache_ensure_edit_points_pos(const bke::CurvesGeometry &curves,
-                                                      Span<float3> deformed_positions,
+                                                      const Span<float3> deformed_positions,
                                                       CurvesBatchCache &cache)
 {
   static GPUVertFormat format_pos = {0};
@@ -254,9 +254,37 @@ static void curves_batch_cache_ensure_edit_points_pos(const bke::CurvesGeometry 
     pos = GPU_vertformat_attr_add(&format_pos, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   }
 
+  IndexMaskMemory memory;
+  const IndexMask bezier_curves = curves.indices_for_curve_type(CURVE_TYPE_BEZIER, memory);
+
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+  int bezier_points_num = 0;
+  bezier_curves.foreach_index([&](const int curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
+    bezier_points_num += points.size();
+  });
+
+  const int control_points_num = curves.points_num() + bezier_points_num * 2;
+
   GPU_vertbuf_init_with_format(cache.edit_points_pos, &format_pos);
-  GPU_vertbuf_data_alloc(cache.edit_points_pos, curves.points_num());
-  GPU_vertbuf_attr_fill(cache.edit_points_pos, pos, deformed_positions.data());
+  GPU_vertbuf_data_alloc(cache.edit_points_pos, control_points_num);
+  MutableSpan dst_positions = {static_cast<float3 *>(GPU_vertbuf_get_data(cache.edit_points_pos)),
+                               control_points_num};
+  dst_positions.take_front(curves.points_num()).copy_from(deformed_positions);
+
+  if (!bezier_curves.is_empty()) {
+    const Span<float3> left_handles = curves.handle_positions_left();
+    const Span<float3> right_handles = curves.handle_positions_right();
+
+    int current_index = curves.points_num();
+    bezier_curves.foreach_index([&](const int curve_i) {
+      const IndexRange points = points_by_curve[curve_i];
+      for (const int point_i : points) {
+        dst_positions[current_index++] = left_handles[point_i];
+        dst_positions[current_index++] = right_handles[point_i];
+      }
+    });
+  }
 }
 
 static void curves_batch_cache_ensure_edit_points_selection(const bke::CurvesGeometry &curves,
