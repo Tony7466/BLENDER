@@ -1,3 +1,4 @@
 Referenced by issue #77247, extrude dissolve and intersect is leaving behind verts on ngons.
 Referenced by issue #77181, Deleting rigid body deletes object that is not selected but leaves the one that you tried to delete
 Referenced by issue #60695, Optimized per-datablock global undo
+Referenced by issue #38888, Rotate around selection using incorrect center point
