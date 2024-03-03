@@ -188,9 +188,9 @@ static const CustomData *get_custom_data_for_domain(const BMesh &bm, bke::AttrDo
   }
 }
 
-static void extract_attr(const MeshRenderData &mr,
-                         const DRW_AttributeRequest &request,
-                         GPUVertBuf &vbo)
+static void extract_attribute(const MeshRenderData &mr,
+                              const DRW_AttributeRequest &request,
+                              GPUVertBuf &vbo)
 {
   if (mr.extract_type == MR_EXTRACT_BMESH) {
     const CustomData &custom_data = *get_custom_data_for_domain(*mr.bm, request.domain);
@@ -199,21 +199,23 @@ static void extract_attr(const MeshRenderData &mr,
 
     bke::attribute_math::convert_to_static_type(request.cd_type, [&](auto dummy) {
       using T = decltype(dummy);
-      switch (request.domain) {
-        case bke::AttrDomain::Point:
-          extract_data_bmesh_vert<T>(*mr.bm, cd_offset, vbo);
-          break;
-        case bke::AttrDomain::Edge:
-          extract_data_bmesh_edge<T>(*mr.bm, cd_offset, vbo);
-          break;
-        case bke::AttrDomain::Face:
-          extract_data_bmesh_face<T>(*mr.bm, cd_offset, vbo);
-          break;
-        case bke::AttrDomain::Corner:
-          extract_data_bmesh_loop<T>(*mr.bm, cd_offset, vbo);
-          break;
-        default:
-          BLI_assert_unreachable();
+      if constexpr (!std::is_void_v<typename AttributeConverter<T>::VBOType>) {
+        switch (request.domain) {
+          case bke::AttrDomain::Point:
+            extract_data_bmesh_vert<T>(*mr.bm, cd_offset, vbo);
+            break;
+          case bke::AttrDomain::Edge:
+            extract_data_bmesh_edge<T>(*mr.bm, cd_offset, vbo);
+            break;
+          case bke::AttrDomain::Face:
+            extract_data_bmesh_face<T>(*mr.bm, cd_offset, vbo);
+            break;
+          case bke::AttrDomain::Corner:
+            extract_data_bmesh_loop<T>(*mr.bm, cd_offset, vbo);
+            break;
+          default:
+            BLI_assert_unreachable();
+        }
       }
     });
   }
@@ -225,21 +227,23 @@ static void extract_attr(const MeshRenderData &mr,
 
     bke::attribute_math::convert_to_static_type(request.cd_type, [&](auto dummy) {
       using T = decltype(dummy);
-      switch (request.domain) {
-        case bke::AttrDomain::Point:
-          extract_data_mesh_mapped_corner(attribute.typed<T>(), mr.corner_verts, vbo);
-          break;
-        case bke::AttrDomain::Edge:
-          extract_data_mesh_mapped_corner(attribute.typed<T>(), mr.corner_edges, vbo);
-          break;
-        case bke::AttrDomain::Face:
-          extract_data_mesh_face(mr.faces, attribute.typed<T>(), vbo);
-          break;
-        case bke::AttrDomain::Corner:
-          vertbuf_data_extract_direct(attribute.typed<T>(), vbo);
-          break;
-        default:
-          BLI_assert_unreachable();
+      if constexpr (!std::is_void_v<typename AttributeConverter<T>::VBOType>) {
+        switch (request.domain) {
+          case bke::AttrDomain::Point:
+            extract_data_mesh_mapped_corner(attribute.typed<T>(), mr.corner_verts, vbo);
+            break;
+          case bke::AttrDomain::Edge:
+            extract_data_mesh_mapped_corner(attribute.typed<T>(), mr.corner_edges, vbo);
+            break;
+          case bke::AttrDomain::Face:
+            extract_data_mesh_face(mr.faces, attribute.typed<T>(), vbo);
+            break;
+          case bke::AttrDomain::Corner:
+            vertbuf_data_extract_direct(attribute.typed<T>(), vbo);
+            break;
+          default:
+            BLI_assert_unreachable();
+        }
       }
     });
   }
@@ -251,7 +255,7 @@ static void extract_attr_init(
   const DRW_AttributeRequest &request = cache.attr_used.requests[index];
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   init_vbo_for_attribute(mr, vbo, request, false, uint32_t(mr.loop_len));
-  extract_attr(mr, request, *vbo);
+  extract_attribute(mr, request, *vbo);
 }
 
 static void extract_attr_init_subdiv(const DRWSubdivCache &subdiv_cache,
@@ -272,7 +276,7 @@ static void extract_attr_init_subdiv(const DRWSubdivCache &subdiv_cache,
   GPU_vertbuf_init_with_format_ex(src_data, &coarse_format, GPU_USAGE_STATIC);
   GPU_vertbuf_data_alloc(src_data, uint32_t(coarse_mesh->corners_num));
 
-  extract_attr(mr, request, *src_data);
+  extract_attribute(mr, request, *src_data);
 
   GPUVertBuf *dst_buffer = static_cast<GPUVertBuf *>(buffer);
   init_vbo_for_attribute(mr, dst_buffer, request, true, subdiv_cache.num_subdiv_loops);
@@ -282,12 +286,14 @@ static void extract_attr_init_subdiv(const DRWSubdivCache &subdiv_cache,
   bke::attribute_math::convert_to_static_type(request.cd_type, [&](auto dummy) {
     using T = decltype(dummy);
     using Converter = AttributeConverter<T>;
-    draw_subdiv_interp_custom_data(subdiv_cache,
-                                   src_data,
-                                   dst_buffer,
-                                   Converter::gpu_component_type,
-                                   Converter::gpu_component_len,
-                                   0);
+    if constexpr (!std::is_void_v<typename Converter::VBOType>) {
+      draw_subdiv_interp_custom_data(subdiv_cache,
+                                     src_data,
+                                     dst_buffer,
+                                     Converter::gpu_component_type,
+                                     Converter::gpu_component_len,
+                                     0);
+    }
   });
 
   GPU_vertbuf_discard(src_data);
@@ -375,11 +381,8 @@ constexpr MeshExtract create_extractor_attr_viewer()
 
 /** \} */
 
-}  // namespace blender::draw
-
 #define CREATE_EXTRACTOR_ATTR(index) \
-  blender::draw::create_extractor_attr<index>(blender::draw::extract_attr_init##index, \
-                                              blender::draw::extract_attr_init_subdiv##index)
+  create_extractor_attr<index>(extract_attr_init##index, extract_attr_init_subdiv##index)
 
 const MeshExtract extract_attr[GPU_MAX_ATTR] = {
     CREATE_EXTRACTOR_ATTR(0),
@@ -399,4 +402,6 @@ const MeshExtract extract_attr[GPU_MAX_ATTR] = {
     CREATE_EXTRACTOR_ATTR(14),
 };
 
-const MeshExtract extract_attr_viewer = blender::draw::create_extractor_attr_viewer();
+const MeshExtract extract_attr_viewer = create_extractor_attr_viewer();
+
+}  // namespace blender::draw

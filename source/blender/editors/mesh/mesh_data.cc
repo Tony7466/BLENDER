@@ -19,31 +19,28 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh.hh"
+#include "BKE_key.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 
-#include "RNA_access.hh"
-#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "ED_mesh.hh"
 #include "ED_object.hh"
 #include "ED_paint.hh"
 #include "ED_screen.hh"
-#include "ED_uvedit.hh"
-#include "ED_view3d.hh"
 
 #include "GEO_mesh_split_edges.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
 
 using blender::Array;
 using blender::float2;
@@ -235,8 +232,7 @@ int ED_mesh_uv_add(
     name = DATA_("UVMap");
   }
 
-  char unique_name[MAX_CUSTOMDATA_LAYER_NAME];
-  BKE_id_attribute_calc_unique_name(&mesh->id, name, unique_name);
+  const std::string unique_name = BKE_id_attribute_calc_unique_name(mesh->id, name);
   bool is_init = false;
 
   if (mesh->edit_mesh) {
@@ -248,7 +244,7 @@ int ED_mesh_uv_add(
       return -1;
     }
 
-    BM_data_layer_add_named(em->bm, &em->bm->ldata, CD_PROP_FLOAT2, unique_name);
+    BM_data_layer_add_named(em->bm, &em->bm->ldata, CD_PROP_FLOAT2, unique_name.c_str());
     BM_uv_map_ensure_select_and_pin_attrs(em->bm);
     /* copy data from active UV */
     if (layernum_dst && do_init) {
@@ -338,10 +334,10 @@ const bool *ED_mesh_uv_map_pin_layer_get(const Mesh *mesh, const int uv_index)
 static bool *ensure_corner_boolean_attribute(Mesh &mesh, const blender::StringRefNull name)
 {
   bool *data = static_cast<bool *>(CustomData_get_layer_named_for_write(
-      &mesh.corner_data, CD_PROP_BOOL, name.c_str(), mesh.corners_num));
+      &mesh.corner_data, CD_PROP_BOOL, name, mesh.corners_num));
   if (!data) {
     data = static_cast<bool *>(CustomData_add_layer_named(
-        &mesh.corner_data, CD_PROP_BOOL, CD_SET_DEFAULT, mesh.faces_num, name.c_str()));
+        &mesh.corner_data, CD_PROP_BOOL, CD_SET_DEFAULT, mesh.faces_num, name));
   }
   return data;
 }
@@ -438,8 +434,7 @@ bool ED_mesh_color_ensure(Mesh *mesh, const char *name)
     return true;
   }
 
-  char unique_name[MAX_CUSTOMDATA_LAYER_NAME];
-  BKE_id_attribute_calc_unique_name(&mesh->id, name, unique_name);
+  const std::string unique_name = BKE_id_attribute_calc_unique_name(mesh->id, name);
   if (!mesh->attributes_for_write().add(unique_name,
                                         bke::AttrDomain::Corner,
                                         CD_PROP_BYTE_COLOR,
@@ -448,8 +443,8 @@ bool ED_mesh_color_ensure(Mesh *mesh, const char *name)
     return false;
   }
 
-  BKE_id_attributes_active_color_set(&mesh->id, unique_name);
-  BKE_id_attributes_default_color_set(&mesh->id, unique_name);
+  BKE_id_attributes_active_color_set(&mesh->id, unique_name.c_str());
+  BKE_id_attributes_default_color_set(&mesh->id, unique_name.c_str());
   BKE_mesh_tessface_clear(mesh);
   DEG_id_tag_update(&mesh->id, 0);
 
@@ -577,7 +572,7 @@ static int mesh_customdata_clear_exec__internal(bContext *C,
       CustomData_free_layers(data, type, tot);
     }
 
-    DEG_id_tag_update(&mesh->id, 0);
+    DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);
 
     return OPERATOR_FINISHED;
@@ -759,14 +754,28 @@ static int mesh_customdata_custom_splitnormals_clear_exec(bContext *C, wmOperato
 {
   Mesh *mesh = ED_mesh_context(C);
 
-  if (BKE_mesh_has_custom_loop_normals(mesh)) {
-    BMEditMesh *em = mesh->edit_mesh;
-    if (em != nullptr && em->bm->lnor_spacearr != nullptr) {
-      BKE_lnor_spacearr_clear(em->bm->lnor_spacearr);
+  if (BMEditMesh *em = mesh->edit_mesh) {
+    BMesh &bm = *em->bm;
+    if (!CustomData_has_layer(&bm.ldata, CD_CUSTOMLOOPNORMAL)) {
+      return OPERATOR_CANCELLED;
     }
-    return mesh_customdata_clear_exec__internal(C, BM_LOOP, CD_CUSTOMLOOPNORMAL);
+    BM_data_layer_free(&bm, &bm.ldata, CD_CUSTOMLOOPNORMAL);
+    if (bm.lnor_spacearr) {
+      BKE_lnor_spacearr_clear(bm.lnor_spacearr);
+    }
   }
-  return OPERATOR_CANCELLED;
+  else {
+    if (!CustomData_has_layer(&mesh->corner_data, CD_CUSTOMLOOPNORMAL)) {
+      return OPERATOR_CANCELLED;
+    }
+    CustomData_free_layers(&mesh->corner_data, CD_CUSTOMLOOPNORMAL, mesh->corners_num);
+  }
+
+  mesh->tag_custom_normals_changed();
+  DEG_id_tag_update(&mesh->id, ID_RECALC_GEOMETRY);
+  WM_event_add_notifier(C, NC_GEOM | ND_DATA, mesh);
+
+  return OPERATOR_FINISHED;
 }
 
 void MESH_OT_customdata_custom_splitnormals_clear(wmOperatorType *ot)
@@ -1108,6 +1117,13 @@ void ED_mesh_report_mirror_ex(wmOperator *op, int totmirr, int totfail, char sel
 void ED_mesh_report_mirror(wmOperator *op, int totmirr, int totfail)
 {
   ED_mesh_report_mirror_ex(op, totmirr, totfail, SCE_SELECT_VERTEX);
+}
+
+KeyBlock *ED_mesh_get_edit_shape_key(const Mesh *me)
+{
+  BLI_assert(me->edit_mesh && me->edit_mesh->bm);
+
+  return BKE_keyblock_find_by_index(me->key, me->edit_mesh->bm->shapenr - 1);
 }
 
 Mesh *ED_mesh_context(bContext *C)

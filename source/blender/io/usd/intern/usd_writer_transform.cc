@@ -1,17 +1,16 @@
 /* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
-#include "usd_writer_transform.h"
-#include "usd_hierarchy_iterator.h"
+#include "usd_writer_transform.hh"
+#include "usd_hierarchy_iterator.hh"
 
+#include <pxr/base/gf/matrix4d.h>
 #include <pxr/base/gf/matrix4f.h>
 #include <pxr/usd/usdGeom/xform.h>
 
 #include "BKE_object.hh"
 
 #include "BLI_math_matrix.h"
-
-#include "DNA_layer_types.h"
 
 namespace blender::io::usd {
 
@@ -28,7 +27,9 @@ void USDTransformWriter::do_write(HierarchyContext &context)
   if (!xformOp_) {
     xformOp_ = xform.AddTransformOp();
   }
-  xformOp_.Set(pxr::GfMatrix4d(parent_relative_matrix), get_export_time_code());
+
+  pxr::GfMatrix4d mat_val(parent_relative_matrix);
+  usd_value_writer_.SetAttribute(xformOp_.GetAttr(), mat_val, get_export_time_code());
 }
 
 bool USDTransformWriter::check_is_animated(const HierarchyContext &context) const

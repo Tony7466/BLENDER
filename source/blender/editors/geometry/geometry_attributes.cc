@@ -16,17 +16,18 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_context.hh"
-#include "BKE_deform.h"
+#include "BKE_customdata.hh"
+#include "BKE_deform.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object_deform.h"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "BLI_string.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -686,7 +687,8 @@ static int geometry_attribute_convert_invoke(bContext *C,
     RNA_property_enum_set(op->ptr, prop, meta_data.data_type);
   }
 
-  return WM_operator_props_dialog_popup(C, op, 300);
+  return WM_operator_props_dialog_popup(
+      C, op, 300, IFACE_("Convert Attribute Domain"), IFACE_("Convert"));
 }
 
 static void geometry_attribute_convert_ui(bContext * /*C*/, wmOperator *op)
@@ -769,7 +771,8 @@ static int geometry_color_attribute_convert_invoke(bContext *C,
     RNA_property_enum_set(op->ptr, prop, meta_data.data_type);
   }
 
-  return WM_operator_props_dialog_popup(C, op, 300);
+  return WM_operator_props_dialog_popup(
+      C, op, 300, IFACE_("Convert Color Attribute Domain"), IFACE_("Convert"));
 }
 
 static void geometry_color_attribute_convert_ui(bContext * /*C*/, wmOperator *op)
