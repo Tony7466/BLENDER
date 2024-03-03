@@ -434,23 +434,24 @@ static void overlay_edit_uv_display_vert_id(const BMEditMesh *em,
                                             const BMUVOffsets &offsets,
                                             DRWTextStore *dt)
 {
-  BMVert *vert;
-  BMLoop *loop;
+  BMVert *vert = nullptr;
+  BMLoop *loop = nullptr;
   BMIter it_vert, it_loop;
   const uchar col[4] = {0, 0, 255, 255};
-  int i = 0, li = 0, numstr_len = 0;
+  int vi = 0, li = 0, numstr_len = 0;
+
   /* Map of unique UV coordinates , to avoid displaying duplicate indices on the same UV*/
-  blender::Map<float2, int> stored_indices;
-  BM_ITER_MESH_INDEX (vert, &it_vert, em->bm, BM_VERTS_OF_MESH, i) {
-    char numstr[32];
+  blender::Map<float2, int> vertex_uvs;
+  BM_ITER_MESH_INDEX (vert, &it_vert, em->bm, BM_VERTS_OF_MESH, vi) {
     if (BM_elem_flag_test(vert, BM_ELEM_SELECT)) {
       BM_ITER_ELEM_INDEX (loop, &it_loop, vert, BM_LOOPS_OF_VERT, li) {
         float2 f_uv = BM_ELEM_CD_GET_FLOAT2_P(loop, offsets.uv);
         float uv[2] = {f_uv.x, f_uv.y};
-        if (!stored_indices.contains(f_uv)) {
-          numstr_len = SNPRINTF_RLEN(numstr, "%d", i);
+        if (!vertex_uvs.contains(f_uv)) {
+          char numstr[32];
+          numstr_len = SNPRINTF_RLEN(numstr, "%d", vi);
           DRW_text_cache_add(dt, uv, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col);
-          stored_indices.add(f_uv, i);
+          vertex_uvs.add(f_uv, vi);
         }
       }
     }
@@ -465,21 +466,13 @@ static void overlay_edit_uv_display_edge_id(const BMEditMesh *em,
   BMFace *face = nullptr;
   BMIter it_loop, it_face;
   const uchar col[4] = {0, 0, 255, 255};
-  int numstr_len;
-  char numstr[32];
 
-  /* 1) Iterates through each face and computes every edge UV of that face
-   * 2) Save every edge index */
-  struct EdgeData {
-    int index;
-    float2 mid_pos;
-  };
-  blender::Map<BMEdge *, blender::Vector<EdgeData>> edges_pos;
+  blender::Map<float2, bool> written_pos;
   BM_ITER_MESH (face, &it_face, em->bm, BM_FACES_OF_MESH) {
     float2 prev, first;
     bool skip = true;
-    EdgeData e_data;
     BM_ITER_ELEM (loop, &it_loop, face, BM_LOOPS_OF_FACE) {
+      /* Needed for computing the first edge*/
       if (skip) {
         prev = BM_ELEM_CD_GET_FLOAT2_P(loop->prev, offsets.uv);
         first = prev;
@@ -490,36 +483,16 @@ static void overlay_edit_uv_display_edge_id(const BMEditMesh *em,
       float v2[2] = {prev.x, prev.y};
       float uv[2];
       mid_v2_v2v2(uv, v1, v2);
-      blender::Vector<EdgeData> *e_pos = edges_pos.lookup_ptr(loop->prev->e);
-      e_data.index = BM_elem_index_get(loop->prev->e);
-      e_data.mid_pos = {uv[0], uv[1]};
-      if (!e_pos) {
-        blender::Vector<EdgeData> t;
-        t.append(e_data);
-        edges_pos.add(loop->prev->e, t);
-      }
-      else {
-        e_pos->append(e_data);
-      }
+      float2 mid_uv = {uv[0], uv[1]};
       prev = p;
-    }
-  }
-  // TODO : Compute the edge UVs in one go up there
-  /* Displays every indices on the edges */
-  blender::Map<float2, bool> written_pos;
-  for (BMEdge *edge : edges_pos.keys()) {
-    if (!BM_elem_flag_test(edge, BM_ELEM_SELECT)) {
-      continue;
-    }
-    blender::Vector<EdgeData> &positions = edges_pos.lookup(edge);
-    for (const EdgeData &p : positions) {
-      if (written_pos.contains(p.mid_pos)) {
+      if (!BM_elem_flag_test(loop->prev->e, BM_ELEM_SELECT) || written_pos.contains(mid_uv)) {
         continue;
       }
-      float uv[2] = {p.mid_pos.x, p.mid_pos.y};
-      numstr_len = SNPRINTF_RLEN(numstr, "%d", p.index);
+      int edge_index = BM_elem_index_get(loop->prev->e);
+      char numstr[32];
+      int numstr_len = SNPRINTF_RLEN(numstr, "%d", edge_index);
       DRW_text_cache_add(dt, uv, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col);
-      written_pos.add(p.mid_pos, true);
+      written_pos.add(mid_uv, true);
     }
   }
 }
