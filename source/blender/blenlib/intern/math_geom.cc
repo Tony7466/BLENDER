@@ -411,11 +411,7 @@ void closest_to_plane_v3(float r_close[3], const float plane[4], const float pt[
   const float side = plane_point_side_v3(plane, pt);
   madd_v3_v3v3fl(r_close, pt, plane, -side / len_sq);
 }
-/* This function computes the closest point on a plane to a given point in 3D space,
-  taking into account the signed distance from the point to the plane. The plane is
-  assumed to be defined by a 4-element array, where the first three elements represent
-  the normalized normal vector of the plane, and the fourth element is the distance
-  from the origin along the normal. */
+
 void closest_to_plane_normalized_v3(float r_close[3], const float plane[4], const float pt[3])
 {
   const float side = plane_point_side_v3(plane, pt);

@@ -1053,7 +1053,6 @@ bool SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache *cache,
                        const Brush *brush,
                        const float val[3]);
 float SCULPT_flatten_hardness(const blender::ed::sculpt_paint::StrokeCache *cache,
-                              const Brush *brush,
                               const float val[3]);
 /**
  * Handles clipping against a mirror modifier and #SCULPT_LOCK_X/Y/Z axis flags.

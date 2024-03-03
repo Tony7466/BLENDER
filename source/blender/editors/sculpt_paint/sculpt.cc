@@ -3058,7 +3058,7 @@ bool SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache *cache,
           (dot_v3v3(val, val) <= cache->radius_squared * cache->plane_trim_squared));
 }
 
-float SCULPT_decay_hardness(const blender::ed::sculpt_paint::StrokeCache *cache,
+float SCULPT_flatten_hardness(const blender::ed::sculpt_paint::StrokeCache *cache,
                             const float val[3])
 {
   const float lensq = dot_v3v3(val, val);

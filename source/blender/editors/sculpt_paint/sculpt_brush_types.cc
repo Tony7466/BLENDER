@@ -383,7 +383,7 @@ static void do_fill_brush_task(
                                                           vd.vertex,
                                                           thread_id,
                                                           &automask_data);
-    // fade *= trim_factor;
+    fade *= SCULPT_flatten_hardness(ss->cache,val);
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;
@@ -470,7 +470,7 @@ static void do_scrape_brush_task(
                                                           vd.vertex,
                                                           thread_id,
                                                           &automask_data);
-    // fade *= trim_factor;
+    fade *= SCULPT_flatten_hardness(ss->cache,val);
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;
@@ -713,7 +713,7 @@ static void do_flatten_brush_task(
                                                               vd.vertex,
                                                               thread_id,
                                                               &automask_data);
-        // fade *= trim_factor;
+        fade *= SCULPT_flatten_hardness(ss->cache,val);
         mul_v3_v3fl(proxy[vd.i], val, fade);
     }
   }
@@ -962,7 +962,7 @@ static void do_clay_strips_brush_task(Object *ob,
                                                           vd.vertex,
                                                           thread_id,
                                                           &automask_data);
-    // fade *= trim_factor;
+    fade *= SCULPT_flatten_hardness(ss->cache,val);
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;
