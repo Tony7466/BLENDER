@@ -1106,7 +1106,7 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, const bContext
   });
 
   if (!tree->unassigned_assets.is_empty() || unassigned_local_poll(C)) {
-    uiItemM(&layout, "GEO_MT_node_operator_unassigned", "", ICON_FILE_HIDDEN);
+    uiItemM(&layout, "GEO_MT_node_operator_unassigned", "", ICON_FILE_HIDDEN, false);
   }
 }
 

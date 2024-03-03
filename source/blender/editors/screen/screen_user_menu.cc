@@ -259,7 +259,7 @@ static void screen_user_menu_draw(const bContext *C, Menu *menu)
         bUserMenuItem_Menu *umi_mt = (bUserMenuItem_Menu *)umi;
         MenuType *mt = WM_menutype_find(umi_mt->mt_idname, false);
         if (mt != nullptr) {
-          uiItemM_ptr(menu->layout, mt, ui_name, ICON_NONE);
+          uiItemM_ptr(menu->layout, mt, ui_name, ICON_NONE, false);
           is_empty = false;
         }
         else {

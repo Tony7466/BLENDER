@@ -3046,7 +3046,7 @@ static uiBut *ui_item_menu(uiLayout *layout,
   return but;
 }
 
-void uiItemM_ptr(uiLayout *layout, MenuType *mt, const char *name, int icon)
+void uiItemM_ptr(uiLayout *layout, MenuType *mt, const char *name, int icon, bool force_menu)
 {
   uiBlock *block = layout->root->block;
   bContext *C = static_cast<bContext *>(block->evil_C);
@@ -3069,17 +3069,17 @@ void uiItemM_ptr(uiLayout *layout, MenuType *mt, const char *name, int icon)
                mt,
                nullptr,
                mt->description ? TIP_(mt->description) : "",
-               false);
+               force_menu);
 }
 
-void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon)
+void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon, bool force_menu)
 {
   MenuType *mt = WM_menutype_find(menuname, false);
   if (mt == nullptr) {
     RNA_warning("not found %s", menuname);
     return;
   }
-  uiItemM_ptr(layout, mt, name, icon);
+  uiItemM_ptr(layout, mt, name, icon, force_menu);
 }
 
 void uiItemMContents(uiLayout *layout, const char *menuname)

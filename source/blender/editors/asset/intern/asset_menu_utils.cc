@@ -165,7 +165,7 @@ void draw_menu_for_catalog(const bScreen &owner_screen,
 
   uiLayout *col = uiLayoutColumn(&layout, false);
   uiLayoutSetContextPointer(col, "asset_catalog_path", &path_ptr);
-  uiItemM(col, menu_name.c_str(), IFACE_(item.get_name().c_str()), ICON_NONE);
+  uiItemM(col, menu_name.c_str(), IFACE_(item.get_name().c_str()), ICON_NONE, false);
 }
 
 }  // namespace blender::ed::asset

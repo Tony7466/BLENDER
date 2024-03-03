@@ -2896,8 +2896,8 @@ void uiItemLDrag(uiLayout *layout, PointerRNA *ptr, const char *name, int icon);
 /**
  * Menu.
  */
-void uiItemM_ptr(uiLayout *layout, MenuType *mt, const char *name, int icon);
-void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon);
+void uiItemM_ptr(uiLayout *layout, MenuType *mt, const char *name, int icon, bool force_menu);
+void uiItemM(uiLayout *layout, const char *menuname, const char *name, int icon, bool force_menu);
 /**
  * Menu contents.
  */

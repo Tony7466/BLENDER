@@ -2721,7 +2721,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
     block->ui_operator = op;
 
     row = uiLayoutRow(layout, true);
-    uiItemM(row, "WM_MT_operator_presets", nullptr, ICON_NONE);
+    uiItemM(row, "WM_MT_operator_presets", nullptr, ICON_NONE, false);
 
     wmOperatorType *ot = WM_operatortype_find("WM_OT_operator_preset_add", false);
     uiItemFullO_ptr(row, ot, "", ICON_ADD, nullptr, WM_OP_INVOKE_DEFAULT, UI_ITEM_NONE, &op_ptr);
