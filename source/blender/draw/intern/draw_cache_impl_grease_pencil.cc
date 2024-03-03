@@ -537,8 +537,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
             "fill_color", bke::AttrDomain::Curve, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
     const VArray<int> materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
-    const VArray<float2> stroke_uvs = *attributes.lookup<float2>(
-        "stroke_uv", bke::AttrDomain::Point);
+    const VArray<float> stroke_us = *attributes.lookup<float>("u_stroke", bke::AttrDomain::Point);
+    const VArray<float2> fill_uvs = *attributes.lookup<float2>("uv_fill", bke::AttrDomain::Point);
     const Span<uint3> triangles = info.drawing.triangles();
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];
     const Span<int> tris_start_offsets = tris_start_offsets_per_visible_drawing[drawing_i];
@@ -554,7 +554,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
                               int8_t end_cap,
                               int point_i,
                               int idx,
-                              float length,
+                              float u_stroke,
+                              const float2 uv_fill,
                               GreasePencilStrokeVert &s_vert,
                               GreasePencilColorVert &c_vert) {
       copy_v3_v3(s_vert.pos,
@@ -568,9 +569,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
       s_vert.packed_asp_hard_rot = pack_rotation_aspect_hardness(
           rotations[point_i], stroke_point_aspect_ratios[curve_i], stroke_hardnesses[curve_i]);
-      s_vert.u_stroke = length;
-      /* TODO: Populate fill UVs. */
-      s_vert.uv_fill[0] = s_vert.uv_fill[1] = 0;
+      s_vert.u_stroke = u_stroke;
+      copy_v2_v2(s_vert.uv_fill, uv_fill);
 
       copy_v4_v4(c_vert.vcol, vertex_colors[point_i]);
       copy_v4_v4(c_vert.fcol, stroke_fill_colors[curve_i]);
@@ -610,29 +610,35 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       /* Write all the point attributes to the vertex buffers. Create a quad for each point. */
       for (const int i : IndexRange(points.size())) {
         const int idx = i + 1;
-        const float length = (stroke_uvs.is_empty() ? ((i >= 1) ? lengths[i - 1] : 0.0f) :
-                                                      stroke_uvs[points[i]].x);
+        const float u_stroke = stroke_us.is_empty() ? ((i >= 1) ? lengths[i - 1] : 0.0f) :
+                                                      stroke_us[points[i]];
+        const float2 uv_fill = fill_uvs.is_empty() ? float2(0.0f, 0.0f) : fill_uvs[points[i]];
         populate_point(verts_range,
                        curve_i,
                        start_caps[curve_i],
                        end_caps[curve_i],
                        points[i],
                        idx,
-                       length,
+                       u_stroke,
+                       uv_fill,
                        verts_slice[idx],
                        cols_slice[idx]);
       }
 
       if (is_cyclic) {
         const int idx = points.size() + 1;
-        const float length = points.size() > 1 ? lengths[points.size() - 1] : 0.0f;
+        const float u_stroke = (stroke_us.is_empty() ?
+                                    (points.size() > 1 ? lengths[points.size() - 1] : 0.0f) :
+                                    stroke_us[points.size() - 1]);
+        const float2 uv_fill = fill_uvs.is_empty() ? float2(0.0f, 0.0f) : fill_uvs[points.last()];
         populate_point(verts_range,
                        curve_i,
                        start_caps[curve_i],
                        end_caps[curve_i],
                        points[0],
                        idx,
-                       length,
+                       u_stroke,
+                       uv_fill,
                        verts_slice[idx],
                        cols_slice[idx]);
       }
