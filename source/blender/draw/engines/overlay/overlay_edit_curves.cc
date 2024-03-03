@@ -76,9 +76,9 @@ static void overlay_edit_curves_add_ob_to_pass(OVERLAY_PrivateData *pd, Object *
     DRW_shgroup_call_no_cull(point_shgrp, geom_points, ob);
   }
 
-  DRWShadingGroup *lines_shgrp = pd->edit_curves_lines_grp[in_front];
-  GPUBatch *geom_lines = DRW_curves_batch_cache_get_edit_lines(curves);
-  DRW_shgroup_call_no_cull(lines_shgrp, geom_lines, ob);
+  // DRWShadingGroup *lines_shgrp = pd->edit_curves_lines_grp[in_front];
+  // GPUBatch *geom_lines = DRW_curves_batch_cache_get_edit_lines(curves);
+  // DRW_shgroup_call_no_cull(lines_shgrp, geom_lines, ob);
 }
 
 void OVERLAY_edit_curves_cache_populate(OVERLAY_Data *vedata, Object *ob)
