@@ -501,6 +501,33 @@ static Vector<std::pair<int, GSpan>> prepare_attribute_fallbacks(
  * Calls #fn for every geometry in the given #InstanceReference. Also passes on the transformation
  * that is applied to every instance.
  */
+static bke::GeometrySet geometry_set_from_reference(const InstanceReference &reference)
+{
+  switch (reference.type()) {
+    case InstanceReference::Type::Object: {
+      const Object &object = reference.object();
+      return bke::object_get_evaluated_geometry_set(object);
+    }
+    case InstanceReference::Type::Collection: {
+      Collection *collection_ptr = &reference.collection();
+      std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
+      realize_collections(collection_ptr, instances.get());
+      bke::GeometrySet collection_geometry = bke::GeometrySet::from_instances(instances.release());
+      collection_geometry.get_component(bke::GeometryComponent::Type::Instance)->add_user();
+      return collection_geometry;
+    }
+    case InstanceReference::Type::GeometrySet: {
+      return reference.geometry_set();
+    }
+    case InstanceReference::Type::None: {
+      return bke::GeometrySet();  // Return an empty GeometrySet for None type
+    }
+    default: {
+      return bke::GeometrySet();
+    }
+  }
+}
+
 static void foreach_geometry_in_reference(
     const InstanceReference &reference,
     const float4x4 &base_transform,
@@ -508,33 +535,8 @@ static void foreach_geometry_in_reference(
     FunctionRef<void(const bke::GeometrySet &geometry_set, const float4x4 &transform, uint32_t id)>
         fn)
 {
-  switch (reference.type()) {
-    case InstanceReference::Type::Object: {
-      const Object &object = reference.object();
-      const bke::GeometrySet object_geometry = bke::object_get_evaluated_geometry_set(object);
-      fn(object_geometry, base_transform, id);
-      break;
-    }
-    case InstanceReference::Type::Collection: {
-      Collection *collection_ptr = &reference.collection();
-      std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
-      realize_collections(collection_ptr, instances.get());
-      const bke::GeometrySet colleciton_geometry = bke::GeometrySet::from_instances(
-          instances.release());
-      /* important as otherwise the Instances pointer would be deleted with the GeomtrySet*/
-      colleciton_geometry.get_component(bke::GeometryComponent::Type::Instance)->add_user();
-      fn(colleciton_geometry, base_transform, id);
-      break;
-    }
-    case InstanceReference::Type::GeometrySet: {
-      const bke::GeometrySet &instance_geometry_set = reference.geometry_set();
-      fn(instance_geometry_set, base_transform, id);
-      break;
-    }
-    case InstanceReference::Type::None: {
-      break;
-    }
-  }
+  const bke::GeometrySet geometry_set = geometry_set_from_reference(reference);
+  fn(geometry_set, base_transform, id);
 }
 
 static void gather_realize_tasks_for_instances(GatherTasksInfo &gather_info,
@@ -736,13 +738,13 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
   }
 }
 
-bool attribute_foreach(const bke::GeometrySet& geometry_set,
-                       const Span<bke::GeometryComponent::Type> component_types,
-                       const int current_depth,
-                       const int depth_target,
-                       const VArray<int> instance_depth,
-                       const IndexMask selection,
-                       const bke::GeometrySet::AttributeForeachCallback callback)
+bool static attribute_foreach(const bke::GeometrySet &geometry_set,
+                              const Span<bke::GeometryComponent::Type> component_types,
+                              const int current_depth,
+                              const int depth_target,
+                              const VArray<int> instance_depth,
+                              const IndexMask selection,
+                              const bke::GeometrySet::AttributeForeachCallback callback)
 {
   /**
    * This function iterates through a set of geometries, applying a callback to each attribute of
@@ -763,29 +765,24 @@ bool attribute_foreach(const bke::GeometrySet& geometry_set,
     const Instances &instances = *geometry_set.get_instances();
     /*ensure objects and collection are included.*/
     Instances ensure_instances = instances;
-    ensure_instances.ensure_geometry_instances();
     const IndexMask indices = (current_depth == 0) ?
                                   selection :
-                                  IndexMask(IndexRange(ensure_instances.instances_num()));
+                                  IndexMask(IndexRange(instances.instances_num()));
     for (const int index : indices.index_range()) {
       const int i = indices[index];
       const int depth_target_tmp = (current_depth == 0) ? instance_depth[i] : depth_target;
-      bke::InstanceReference reference =
-          ensure_instances.references()[ensure_instances.reference_handles()[i]];
-
+      bke::GeometrySet instance_geometry_set = geometry_set_from_reference(
+          instances.references()[instances.reference_handles()[i]]);
       /*Process child instances with a recursive call.*/
-      if (reference.type() == InstanceReference::Type::GeometrySet) {
-        bke::GeometrySet instance_geometry_set = reference.geometry_set();
-        if (current_depth != depth_target_tmp) {
-          is_child_has_component = attribute_foreach(instance_geometry_set,
-                                                     component_types,
-                                                     current_depth + 1,
-                                                     depth_target_tmp,
-                                                     instance_depth,
-                                                     selection,
-                                                     callback) ||
-                                   is_child_has_component;
-        }
+      if (current_depth != depth_target_tmp) {
+        is_child_has_component = attribute_foreach(instance_geometry_set,
+                                                   component_types,
+                                                   current_depth + 1,
+                                                   depth_target_tmp,
+                                                   instance_depth,
+                                                   selection,
+                                                   callback) ||
+                                 is_child_has_component;
       }
     }
   }
@@ -821,8 +818,7 @@ bool attribute_foreach(const bke::GeometrySet& geometry_set,
   return is_relevant;
 }
 
-
-void gather_attributes_for_propagation(
+void static gather_attributes_for_propagation(
     bke::GeometrySet re_geometry_set,
     const Span<bke::GeometryComponent::Type> component_types,
     const bke::GeometryComponent::Type dst_component_type,
@@ -833,51 +829,52 @@ void gather_attributes_for_propagation(
 {
   /* Only needed right now to check if an attribute is built-in on this component type.
    * TODO: Get rid of the dummy component. */
-  const bke::GeometryComponentPtr dummy_component = bke::GeometryComponent::create(dst_component_type);
-  attribute_foreach(
-      re_geometry_set,
-      component_types,
-      0,
-      -1,
-      instance_depth,
-      selection,
-      [&](const AttributeIDRef &attribute_id,
-          const AttributeMetaData &meta_data,
-          const bke::GeometryComponent &component) {
-        if (component.attributes()->is_builtin(attribute_id)) {
-          if (!dummy_component->attributes()->is_builtin(attribute_id)) {
-            /* Don't propagate built-in attributes that are not built-in on the destination
-             * component. */
-            return;
-          }
-        }
-        if (meta_data.data_type == CD_PROP_STRING) {
-          /* Propagating string attributes is not supported yet. */
-          return;
-        }
-        if (attribute_id.is_anonymous() &&
-            !propagation_info.propagate(attribute_id.anonymous_id())) {
-          return;
-        }
+  const bke::GeometryComponentPtr dummy_component = bke::GeometryComponent::create(
+      dst_component_type);
+  attribute_foreach(re_geometry_set,
+                    component_types,
+                    0,
+                    -1,
+                    instance_depth,
+                    selection,
+                    [&](const AttributeIDRef &attribute_id,
+                        const AttributeMetaData &meta_data,
+                        const bke::GeometryComponent &component) {
+                      if (component.attributes()->is_builtin(attribute_id)) {
+                        if (!dummy_component->attributes()->is_builtin(attribute_id)) {
+                          /* Don't propagate built-in attributes that are not built-in on the
+                           * destination component. */
+                          return;
+                        }
+                      }
+                      if (meta_data.data_type == CD_PROP_STRING) {
+                        /* Propagating string attributes is not supported yet. */
+                        return;
+                      }
+                      if (attribute_id.is_anonymous() &&
+                          !propagation_info.propagate(attribute_id.anonymous_id())) {
+                        return;
+                      }
 
-        AttrDomain domain = meta_data.domain;
-        if (dst_component_type != bke::GeometryComponent::Type::Instance &&
-            domain == AttrDomain::Instance) {
-          domain = AttrDomain::Point;
-        }
+                      AttrDomain domain = meta_data.domain;
+                      if (dst_component_type != bke::GeometryComponent::Type::Instance &&
+                          domain == AttrDomain::Instance)
+                      {
+                        domain = AttrDomain::Point;
+                      }
 
-        auto add_info = [&](AttributeKind *attribute_kind) {
-          attribute_kind->domain = domain;
-          attribute_kind->data_type = meta_data.data_type;
-        };
-        auto modify_info = [&](AttributeKind *attribute_kind) {
-          attribute_kind->domain = bke::attribute_domain_highest_priority(
-              {attribute_kind->domain, domain});
-          attribute_kind->data_type = bke::attribute_data_type_highest_complexity(
-              {attribute_kind->data_type, meta_data.data_type});
-        };
-        r_attributes.add_or_modify(attribute_id, add_info, modify_info);
-      });
+                      auto add_info = [&](AttributeKind *attribute_kind) {
+                        attribute_kind->domain = domain;
+                        attribute_kind->data_type = meta_data.data_type;
+                      };
+                      auto modify_info = [&](AttributeKind *attribute_kind) {
+                        attribute_kind->domain = bke::attribute_domain_highest_priority(
+                            {attribute_kind->domain, domain});
+                        attribute_kind->data_type = bke::attribute_data_type_highest_complexity(
+                            {attribute_kind->data_type, meta_data.data_type});
+                      };
+                      r_attributes.add_or_modify(attribute_id, add_info, modify_info);
+                    });
 }
 /** \} */
 
@@ -1125,7 +1122,8 @@ static void execute_instances_tasks(
   }
   result.replace_instances(dst_instances.release());
   auto &dst_component = result.get_component_for_write<bke::InstancesComponent>();
-  join_attributes(src_components, dst_component, {"position", ".reference_index", "instance_transform"});
+  join_attributes(
+      src_components, dst_component, {"position", ".reference_index", "instance_transform"});
 }
 
 static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &options,
