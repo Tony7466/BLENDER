@@ -709,13 +709,11 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
       const bool show_fill = (points.size() >= 3) &&
                              ((gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0) &&
                              (!pd->simplify_fill);
-      /* bool only_lines = !GPENCIL_PAINT_MODE(gpd) && gpl && gpf && gpl->actframe != gpf &&
-       *                    pd->use_multiedit_lines_only; */
       const bool only_lines = !ELEM(ob->mode,
                                     OB_MODE_PAINT_GREASE_PENCIL,
                                     OB_MODE_WEIGHT_PAINT,
                                     OB_MODE_VERTEX_PAINT) &&
-                              pd->use_multiedit_lines_only;
+                              info.frame_number != pd->cfra && pd->use_multiedit_lines_only;
       /* bool is_onion = gpl && gpf && gpf->runtime.onion_id != 0; */
       bool is_onion = false;
       bool hide_onion = is_onion && ((gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN) != 0);
