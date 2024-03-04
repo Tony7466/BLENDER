@@ -47,7 +47,8 @@ static void animation_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, 
 /** Free (or release) any data used by this animation (does not free the animation itself). */
 static void animation_free_data(ID *id)
 {
-  ((Animation *)id)->wrap().free_data();
+  animrig::Animation &anim = reinterpret_cast<Animation *>(id)->wrap();
+  anim.free_data();
 }
 
 void BKE_anim_channels_for_output_free_data(AnimationChannelBag *channels)

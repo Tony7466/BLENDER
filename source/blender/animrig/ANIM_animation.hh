@@ -70,14 +70,59 @@ class Animation : public ::Animation {
   const Layer *layer(int64_t index) const;
   Layer *layer(int64_t index);
 
+  Layer &layer_add(StringRefNull name);
+
+  /**
+   * Remove the layer from this animation.
+   *
+   * After this call, the passed reference is no longer valid, as the memory
+   * will have been freed. Any strips on the layer will be freed too.
+   *
+   * \return true when the layer was found & removed, false if it wasn't found. */
+  bool layer_remove(Layer &layer_to_remove);
+
   /* Animation Output access. */
   blender::Span<const Output *> outputs() const;
   blender::MutableSpan<Output *> outputs();
   const Output *output(int64_t index) const;
   Output *output(int64_t index);
 
+  Output *output_for_handle(output_handle_t handle);
+  const Output *output_for_handle(output_handle_t handle) const;
+
+  /**
+   * Set the output name.
+   *
+   * This has to be done on the Animation level to ensure each output has a
+   * unique name within the Animation.
+   *
+   * \see Animation::output_name_propagate
+   */
+  void output_name_set(Output &out, StringRefNull new_name);
+
+  /**
+   * Update the `AnimData::animation_output_name` field of any ID that is animated by this.Output.
+   *
+   * Should be called after `output_name_set(out)`. This is implemented as a separate function due
+   * to the need to access bmain, which is available in the RNA on-property-update handler, but not
+   * in the RNA property setter. */
+  void output_name_propagate(Main &bmain, const Output &out);
+
+  Output *output_find_by_name(StringRefNull output_name);
+
+  Output *output_for_id(const ID &animated_id);
+  const Output *output_for_id(const ID &animated_id) const;
+
+  Output &output_add();
   /** Free all data in the `Animation`. Doesn't delete the `Animation` itself. */
   void free_data();
+
+ protected:
+  /** Return the layer's index, or -1 if not found in this animation. */
+  int64_t find_layer_index(const Layer &layer) const;
+
+ private:
+  Output &output_allocate();
 };
 static_assert(sizeof(Animation) == sizeof(::Animation),
               "DNA struct and its C++ wrapper must have the same size");
@@ -164,6 +209,20 @@ class Layer : public ::AnimationLayer {
   blender::MutableSpan<Strip *> strips();
   const Strip *strip(int64_t index) const;
   Strip *strip(int64_t index);
+  Strip &strip_add(Strip::Type strip_type);
+
+  /**
+   * Remove the strip from this layer.
+   *
+   * After this call, the passed reference is no longer valid, as the memory
+   * will have been freed.
+   *
+   * \return true when the strip was found & removed, false if it wasn't found. */
+  bool strip_remove(Strip &strip);
+
+ protected:
+  /** Return the strip's index, or -1 if not found in this layer. */
+  int64_t find_strip_index(const Strip &strip) const;
 };
 static_assert(sizeof(Layer) == sizeof(::AnimationLayer),
               "DNA struct and its C++ wrapper must have the same size");
@@ -187,6 +246,9 @@ class Output : public ::AnimationOutput {
   Output() = default;
   Output(const Output &other) = default;
   ~Output() = default;
+
+  /** Return whether this Output is usable by this ID type. */
+  bool is_suitable_for(const ID &animated_id) const;
 };
 static_assert(sizeof(Output) == sizeof(::AnimationOutput),
               "DNA struct and its C++ wrapper must have the same size");
@@ -205,6 +267,23 @@ class KeyframeStrip : public ::KeyframeAnimationStrip {
   blender::MutableSpan<ChannelBag *> channelbags();
   const ChannelBag *channelbag(int64_t index) const;
   ChannelBag *channelbag(int64_t index);
+
+  /**
+   * Find the animation channels for this output.
+   *
+   * \return nullptr if there is none yet for this output.
+   */
+  const ChannelBag *channelbag_for_output(const Output &out) const;
+  ChannelBag *channelbag_for_output(const Output &out);
+  const ChannelBag *channelbag_for_output(output_handle_t output_handle) const;
+  ChannelBag *channelbag_for_output(output_handle_t output_handle);
+
+  /**
+   * Add the animation channels for this output.
+   *
+   * Should only be called when there is no `ChannelBag` for this output yet.
+   */
+  ChannelBag &channelbag_for_output_add(const Output &out);
 };
 static_assert(sizeof(KeyframeStrip) == sizeof(::KeyframeAnimationStrip),
               "DNA struct and its C++ wrapper must have the same size");
