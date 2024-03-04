@@ -1351,7 +1351,7 @@ void GREASE_PENCIL_OT_primitive_box(wmOperatorType *ot)
   /* Identifiers. */
   ot->name = "Grease Pencil Box Shape";
   ot->idname = "GREASE_PENCIL_OT_primitive_box";
-  ot->description = "Create predefined grease pencil stroke boxs";
+  ot->description = "Create predefined grease pencil stroke boxes";
 
   /* Properties, Callbacks and Flags. */
   grease_pencil_primitive_common_props(ot, 3, PrimitiveType::BOX);
