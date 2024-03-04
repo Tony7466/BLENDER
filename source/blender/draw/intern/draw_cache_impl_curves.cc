@@ -498,11 +498,11 @@ static void curves_batch_ensure_attribute(const Curves &curves,
 
   const bke::AttributeAccessor attributes = curves.geometry.wrap().attributes();
 
-  /* TODO(@kevindietrich): float4 is used for scalar attributes as the implicit conversion
-   * done by OpenGL to vec4 for a scalar `s` will produce a `vec4(s, 0, 0, 1)`. However,
-   * following the Blender convention, it should be `vec4(s, s, s, 1)`. This could be
-   * resolved using a similar texture state swizzle to map the attribute correctly as for
-   * volume attributes, so we can control the conversion ourselves. */
+  /* TODO(@kevindietrich): float4 is used for scalar attributes as the implicit conversion done
+   * by OpenGL to vec4 for a scalar `s` will produce a `vec4(s, 0, 0, 1)`. However, following
+   * the Blender convention, it should be `vec4(s, s, s, 1)`. This could be resolved using a
+   * similar texture state swizzle to map the attribute correctly as for volume attributes, so we
+   * can control the conversion ourselves. */
   bke::AttributeReader<ColorGeometry4f> attribute = attributes.lookup_or_default<ColorGeometry4f>(
       request.attribute_name, request.domain, {0.0f, 0.0f, 0.0f, 1.0f});
 
@@ -512,8 +512,8 @@ static void curves_batch_ensure_attribute(const Curves &curves,
 
   attribute.varray.materialize(vbo_span);
 
-  /* Existing final data may have been for a different attribute (with a different name or
-   * domain), free the data. */
+  /* Existing final data may have been for a different attribute (with a different name or domain),
+   * free the data. */
   GPU_VERTBUF_DISCARD_SAFE(cache.final[subdiv].attributes_buf[index]);
 
   /* Ensure final data for points. */
