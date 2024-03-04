@@ -593,7 +593,8 @@ static void gpencil_sbuffer_cache_populate_fast(GPENCIL_Data *vedata, gpIterPopu
   gpencil_stroke_cache_populate(nullptr, nullptr, iter->pd->sbuffer_stroke, iter);
   gpencil_drawcall_flush(iter);
 
-  gpencil_vfx_cache_populate(vedata, iter->ob, iter->tgp_ob);
+  gpencil_vfx_cache_populate(
+      vedata, iter->ob, iter->tgp_ob, (gpd != nullptr && GPENCIL_ANY_EDIT_MODE(gpd)));
 
   /* Restore state. */
   iter->do_sbuffer_call = 0;
@@ -659,7 +660,8 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
       gpencil_sbuffer_cache_populate(&iter);
     }
 
-    gpencil_vfx_cache_populate(vedata, ob, iter.tgp_ob);
+    gpencil_vfx_cache_populate(
+        vedata, ob, iter.tgp_ob, (gpd != nullptr && GPENCIL_ANY_EDIT_MODE(gpd)));
 
     if (pd->do_fast_drawing) {
       gpencil_sbuffer_cache_populate_fast(vedata, &iter);
@@ -852,7 +854,8 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
 
     drawcall_flush();
 
-    gpencil_vfx_cache_populate(vedata, ob, tgp_ob);
+    gpencil_vfx_cache_populate(
+        vedata, ob, tgp_ob, ELEM(ob->mode, OB_MODE_EDIT, OB_MODE_SCULPT, OB_MODE_WEIGHT_PAINT));
   }
 
   if (ob->type == OB_LAMP && pd->use_lights) {
