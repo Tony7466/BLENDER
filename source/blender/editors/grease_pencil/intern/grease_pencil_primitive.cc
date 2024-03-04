@@ -336,11 +336,9 @@ static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
     }
     case PrimitiveType::BOX: {
       const T center = control_points[1];
-      const T A = control_points.first();
-      const T B = control_points.last();
-      const T C = -(A - center) + center;
-      const T D = -(B - center) + center;
       /*
+       * Calculate the 4 corners of the box.
+       * Here's a diagram.
        *
        * +-----------+
        * |A         B|
@@ -351,6 +349,10 @@ static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
        * +-----------+
        *
        */
+      const T A = control_points.first();
+      const T B = control_points.last();
+      const T C = -(A - center) + center;
+      const T D = -(B - center) + center;
       const T corners[4] = {A, B, C, D};
       for (const int i : new_positions.index_range()) {
         const float t = math::mod(i / float(subdivision + 1), 1.0f);
@@ -530,7 +532,7 @@ static void grease_pencil_primitive_undo_curves(PrimitiveTool_OpData &ptd)
   ptd.drawing_->tag_topology_changed();
 }
 
-/* Helper: Draw status message while the user is running the operator */
+/* Helper: Draw status message while the user is running the operator. */
 static void grease_pencil_primitive_status_indicators(bContext *C,
                                                       wmOperator *op,
                                                       PrimitiveTool_OpData &ptd)
@@ -609,7 +611,7 @@ static void grease_pencil_primitive_update_view(bContext *C, PrimitiveTool_OpDat
   ED_region_tag_redraw(ptd.region);
 }
 
-/* Invoke handler: Initialize the operator */
+/* Invoke handler: Initialize the operator. */
 static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   int return_value = ed::sculpt_paint::grease_pencil_draw_operator_invoke(C, op);
@@ -617,14 +619,13 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
     return return_value;
   }
 
-  /* if in tools region, wait till we get to the main (3D-space)
-   * region before allowing drawing to take place.
-   */
+  /* If in tools region, wait till we get to the main (3D-space)
+   * region before allowing drawing to take place. */
   op->flag |= OP_IS_MODAL_CURSOR_REGION;
 
   wmWindow *win = CTX_wm_window(C);
 
-  /* set cursor to indicate modal */
+  /* Set cursor to indicate modal. */
   WM_cursor_modal_set(win, WM_CURSOR_CROSS);
 
   ViewContext vc = ED_view3d_viewcontext_init(C, CTX_data_depsgraph_pointer(C));
@@ -724,13 +725,13 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   /* Updates indicator in header. */
   grease_pencil_primitive_status_indicators(C, op, ptd);
 
-  /* add a modal handler for this operator */
+  /* Add a modal handler for this operator. */
   WM_event_add_modal_handler(C, op);
 
   return OPERATOR_RUNNING_MODAL;
 }
 
-/* Exit and free memory */
+/* Exit and free memory. */
 static void grease_pencil_primitive_exit(bContext *C, wmOperator *op)
 {
   PrimitiveTool_OpData *ptd = static_cast<PrimitiveTool_OpData *>(op->customdata);
@@ -758,7 +759,7 @@ static float2 snap_diagonals(float2 p)
   return sign(p) * float2(1.0f / numbers::sqrt2) * length(p);
 }
 
-/* Uses Chebychev distance instead of Euclidean. */
+/* Using Chebychev distance instead of Euclidean. */
 static float2 snap_diagonals_box(float2 p)
 {
   using namespace math;
@@ -1244,7 +1245,7 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
     }
   }
 
-  /* Updating is done every event not just MOUSEMOVE. */
+  /* Updating is done every event not just `MOUSEMOVE`. */
   grease_pencil_primitive_operator_update(ptd, event);
   grease_pencil_primitive_update_curves(ptd);
 
@@ -1256,7 +1257,7 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
   return OPERATOR_RUNNING_MODAL;
 }
 
-/* Cancel handler */
+/* Cancel handler. */
 static void grease_pencil_primitive_cancel(bContext *C, wmOperator *op)
 {
   /* This is just a wrapper around exit() */
