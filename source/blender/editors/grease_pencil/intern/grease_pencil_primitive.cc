@@ -482,15 +482,22 @@ static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
       "hardness",
       bke::AttrDomain::Curve,
       bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
-  bke::SpanAttributeWriter<int8_t> start_caps = attributes.lookup_or_add_for_write_span<int8_t>(
-      "start_cap", bke::AttrDomain::Curve);
-  bke::SpanAttributeWriter<int8_t> end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
-      "end_cap", bke::AttrDomain::Curve);
 
-  const int8_t flag_set = short(ptd.settings_->caps_type);
+  /* Only set the attribute if the type is not the default or if it already exists. */
+  if (ptd.settings_->caps_type != GP_STROKE_CAP_TYPE_ROUND || attributes.contains("start_cap")) {
+    bke::SpanAttributeWriter<int8_t> start_caps = attributes.lookup_or_add_for_write_span<int8_t>(
+        "start_cap", bke::AttrDomain::Curve);
+    start_caps.span.last() = ptd.settings_->caps_type;
+    start_caps.finish();
+  }
 
-  start_caps.span.last() = flag_set;
-  end_caps.span.last() = flag_set;
+  if (ptd.settings_->caps_type != GP_STROKE_CAP_TYPE_ROUND || attributes.contains("end_cap")) {
+    bke::SpanAttributeWriter<int8_t> end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
+        "end_cap", bke::AttrDomain::Curve);
+    end_caps.span.last() = ptd.settings_->caps_type;
+    end_caps.finish();
+  }
+
   cyclic.span.last() = ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE);
   materials.span.last() = ptd.material_index;
   hardnesses.span.last() = ptd.hardness;
@@ -498,8 +505,6 @@ static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
   cyclic.finish();
   materials.finish();
   hardnesses.finish();
-  start_caps.finish();
-  end_caps.finish();
 
   curves.curve_types_for_write().last() = CURVE_TYPE_POLY;
   curves.update_curve_types();
