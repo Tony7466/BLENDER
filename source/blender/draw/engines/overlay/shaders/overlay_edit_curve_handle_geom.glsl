@@ -43,12 +43,12 @@ void main()
   if ((uint(curveHandleDisplay) != CURVE_HANDLE_ALL) && (!handle_selected)) {
     /* Nurbs must show the handles always. */
     bool is_u_segment = (((vert[1].flag ^ vert[0].flag) & EVEN_U_BIT) != 0u);
-    if ((!is_u_segment) && (color_id <= 4u)) {
-      return;
-    }
-    if (is_gpencil) {
-      return;
-    }
+    // if ((!is_u_segment) && (color_id <= 4u)) {
+    //   return;
+    // }
+    // if (is_gpencil) {
+    //   return;
+    // }
   }
 
   vec4 inner_color;

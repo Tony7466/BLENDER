@@ -58,6 +58,7 @@ struct CurvesBatchCache {
   GPUVertBuf *edit_points_pos;
 
   GPUIndexBuf *edit_points_edges_ibo;
+  GPUVertBuf *edit_points_flags;
   GPUBatch *edit_points_edges;
 
   /* Selection of original points. */
@@ -120,6 +121,7 @@ static void curves_batch_cache_clear_edit_data(CurvesBatchCache *cache)
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_pos);
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_selection);
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_curves_lines_pos);
+  GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_flags);
 
   GPU_INDEXBUF_DISCARD_SAFE(cache->edit_curves_lines_ibo);
   GPU_INDEXBUF_DISCARD_SAFE(cache->edit_points_edges_ibo);
@@ -289,6 +291,24 @@ static void curves_batch_cache_ensure_edit_points_pos(const bke::CurvesGeometry 
       }
     });
   }
+}
+
+static void curves_batch_cache_ensure_edit_points_flags(const bke::CurvesGeometry &curves,
+                                                        CurvesBatchCache &cache)
+{
+  static GPUVertFormat format_flags = {0};
+  if (format_flags.attr_len == 0) {
+    GPU_vertformat_attr_add(&format_flags, "data", GPU_COMP_U8, 3, GPU_FETCH_INT);
+  }
+
+  const int edit_points_num = GPU_vertbuf_get_vertex_len(cache.edit_points_pos);
+  GPU_vertbuf_init_with_format(cache.edit_points_flags, &format_flags);
+  GPU_vertbuf_data_alloc(cache.edit_points_flags, edit_points_num);
+
+  MutableSpan point_flags = {static_cast<uint8_t *>(GPU_vertbuf_get_data(cache.edit_points_flags)),
+                             edit_points_num};
+  /*TODO*/
+  point_flags.fill(-1);
 }
 
 static void curves_batch_cache_ensure_edit_points_edges_ibo(const bke::CurvesGeometry &curves,
@@ -862,6 +882,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
   }
   if (DRW_batch_requested(cache.edit_points_edges, GPU_PRIM_LINE_STRIP)) {
     DRW_vbo_request(cache.edit_points_edges, &cache.edit_points_pos);
+    DRW_vbo_request(cache.edit_points_edges, &cache.edit_points_flags);
     DRW_ibo_request(cache.edit_points_edges, &cache.edit_points_edges_ibo);
   }
   if (DRW_batch_requested(cache.edit_curves_lines, GPU_PRIM_LINE_STRIP)) {
@@ -876,6 +897,9 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
   }
   if (DRW_vbo_requested(cache.edit_curves_lines_pos)) {
     curves_batch_cache_ensure_edit_curves_lines_pos(curves_orig, deformation, cache);
+  }
+  if (DRW_vbo_requested(cache.edit_points_flags)) {
+    curves_batch_cache_ensure_edit_points_flags(curves_orig, cache);
   }
   if (DRW_ibo_requested(cache.edit_curves_lines_ibo)) {
     curves_batch_cache_ensure_edit_curves_lines_ibo(curves_orig, cache);
