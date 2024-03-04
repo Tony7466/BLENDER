@@ -6,6 +6,7 @@
  * \ingroup draw
  */
 
+#include "DNA_space_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_math_geom.h"
@@ -764,9 +765,11 @@ static void overlay_edit_uv_display_face_id(const BMEditMesh *em,
 void DRW_text_edit_uv_measure_stats(Object *ob)
 {
   using namespace blender::draw;
-  bool display_indices = true;  // replace by UI button call
+
+  const DRWContextState *draw_ctx = DRW_context_state_get();
   bool show_text = DRW_state_show_text();
-  if (!display_indices || !show_text) {
+  SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
+  if (!(sima->flag & SI_SHOW_INDICES) || !show_text) {
     return;
   }
 
@@ -776,7 +779,6 @@ void DRW_text_edit_uv_measure_stats(Object *ob)
   if (!uv_layer) {
     return;
   }
-  const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
   DRWTextStore *dt = DRW_text_cache_ensure();
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);

@@ -3672,6 +3672,12 @@ static void rna_def_space_image_uv(BlenderRNA *brna)
       prop, "Display Texture Paint UVs", "Display overlay of texture paint UV layer");
   RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
 
+  prop = RNA_def_property(srna, "show_indices", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SI_SHOW_INDICES);
+  RNA_def_property_ui_text(
+      prop, "Indices", "Display the index numbers of selected vertices, edges, and faces.");
+  RNA_def_property_update(prop, NC_SPACE | ND_SPACE_IMAGE, nullptr);
+
   prop = RNA_def_property(srna, "show_pixel_coords", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_negative_sdna(prop, nullptr, "flag", SI_COORDFLOATS);
   RNA_def_property_ui_text(

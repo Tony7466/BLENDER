@@ -1673,6 +1673,21 @@ class IMAGE_PT_overlay_image(Panel):
         layout.active = overlay.show_overlays
         layout.prop(uvedit, "show_metadata")
 
+class IMAGE_PT_overlay_uv_indices(Panel):
+    bl_space_type = 'IMAGE_EDITOR'
+    bl_region_type = 'HEADER'
+    bl_label = "Debug"
+    bl_parent_id = "IMAGE_PT_overlay"
+
+    def draw(self , context):
+        layout = self.layout
+
+        sima = context.space_data
+        uvedit = sima.uv_editor
+        overlay = sima.overlay
+
+        layout.active = overlay.show_overlays
+        layout.prop(uvedit , "show_indices")
 
 # Grease Pencil properties
 class IMAGE_PT_annotation(AnnotationDataPanel, Panel):
@@ -1756,6 +1771,7 @@ classes = (
     IMAGE_PT_overlay_uv_edit_geometry,
     IMAGE_PT_overlay_texture_paint,
     IMAGE_PT_overlay_image,
+    IMAGE_PT_overlay_uv_indices
 )
 
 
