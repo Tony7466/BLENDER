@@ -19,6 +19,7 @@
 #include "COLLADASWColorOrTexture.h"
 #include "COLLADASWConstants.h"
 #include "COLLADASWEffectProfile.h"
+#include "COLLADASWException.h"
 #include "COLLADASWImage.h"
 #include "COLLADASWInputList.h"
 #include "COLLADASWInstanceCamera.h"
@@ -109,10 +110,6 @@ extern "C" char build_hash[];
 
 #include <cerrno>
 
-#ifdef WIN32
-#  include "BLI_winstuff.h" /* For `W_OK`. */
-#endif
-
 const char *bc_CustomData_get_layer_name(const CustomData *data, const eCustomDataType type, int n)
 {
   int layer_index = CustomData_get_layer_index(data, type);
@@ -175,16 +172,15 @@ int DocumentExporter::exportCurrentScene()
   clear_global_id_map();
 
   COLLADABU::NativeString native_filename = make_temp_filepath(nullptr, ".dae");
-
-  /* Avoid crash if temp file cannot be written to. */
-  if (BLI_access(native_filename.c_str(), W_OK) != 0) {
-    fprintf(stderr,
-            "Collada: Temp file (%s) cannot be written to. No Objects will be exported.\n",
-            native_filename.c_str());
+  COLLADASW::StreamWriter *writer;
+  try {
+    writer = new COLLADASW::StreamWriter(native_filename);
+  }
+  catch (COLLADASW::StreamWriterException &e) {
+    e.printMessage();
+    fprintf(stderr, "Collada: No Objects will be exported.\n");
     return 1;
   }
-
-  COLLADASW::StreamWriter *writer = new COLLADASW::StreamWriter(native_filename);
 
   /* open <collada> */
   writer->startDocument();
