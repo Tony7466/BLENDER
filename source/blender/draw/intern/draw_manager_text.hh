@@ -37,6 +37,7 @@ void DRW_text_edit_mesh_measure_stats(ARegion *region,
                                       Object *ob,
                                       const UnitSettings *unit);
 
+void DRW_text_edit_uv_measure_stats(Object *ob);
 enum {
   // DRW_UNUSED_1 = (1 << 0),  /* dirty */
   DRW_TEXT_CACHE_GLOBALSPACE = (1 << 1),
