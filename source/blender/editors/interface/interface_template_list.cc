@@ -6,6 +6,7 @@
  * \ingroup edinterface
  */
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 
@@ -19,9 +20,8 @@
 
 #include "BKE_screen.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "ED_asset.hh"
 #include "ED_screen.hh"
 
 #include "MEM_guardedalloc.h"
@@ -639,7 +639,7 @@ static void *uilist_item_use_dynamic_tooltip(PointerRNA *itemptr, const char *pr
   return nullptr;
 }
 
-static char *uilist_item_tooltip_func(bContext * /*C*/, void *argN, const char *tip)
+static std::string uilist_item_tooltip_func(bContext * /*C*/, void *argN, const char *tip)
 {
   char *dyn_tooltip = static_cast<char *>(argN);
   std::string tooltip_string = dyn_tooltip;
@@ -647,7 +647,7 @@ static char *uilist_item_tooltip_func(bContext * /*C*/, void *argN, const char *
     tooltip_string += '\n';
     tooltip_string += tip;
   }
-  return BLI_strdupn(tooltip_string.c_str(), tooltip_string.size());
+  return tooltip_string;
 }
 
 /**
@@ -779,8 +779,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                                0,
                                0,
                                org_i,
-                               0,
-                               0,
                                editable ? TIP_("Double click to rename") : "");
           if ((dyntip_data = uilist_item_use_dynamic_tooltip(itemptr,
                                                              input_data->item_dyntip_propname)))
@@ -826,20 +824,20 @@ static void ui_template_list_layout_draw(const bContext *C,
       /* Add scroll-bar. */
       if (items->tot_items > visual_info.visual_items) {
         uiLayoutColumn(row, false);
-        uiDefButI(block,
-                  UI_BTYPE_SCROLL,
-                  0,
-                  "",
-                  0,
-                  0,
-                  V2D_SCROLL_WIDTH,
-                  UI_UNIT_Y * dyn_data->visual_height,
-                  &ui_list->list_scroll,
-                  0,
-                  dyn_data->height - dyn_data->visual_height,
-                  dyn_data->visual_height,
-                  0,
-                  "");
+        but = uiDefButI(block,
+                        UI_BTYPE_SCROLL,
+                        0,
+                        "",
+                        0,
+                        0,
+                        V2D_SCROLL_WIDTH,
+                        UI_UNIT_Y * dyn_data->visual_height,
+                        &ui_list->list_scroll,
+                        0,
+                        dyn_data->height - dyn_data->visual_height,
+                        "");
+        uiButScrollBar *but_scroll = reinterpret_cast<uiButScrollBar *>(but);
+        but_scroll->visual_height = dyn_data->visual_height;
       }
       break;
     }
@@ -885,8 +883,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                                    UI_UNIT_Y,
                                    &input_data->active_dataptr,
                                    input_data->activeprop,
-                                   0,
-                                   0,
                                    0,
                                    0,
                                    0,
@@ -938,8 +934,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                                0,
                                0,
                                org_i,
-                               0,
-                               0,
                                nullptr);
           UI_but_drawflag_enable(but, UI_BUT_NO_TOOLTIP);
 
@@ -977,20 +971,20 @@ static void ui_template_list_layout_draw(const bContext *C,
       /* Add scroll-bar. */
       if (items->tot_items > visual_info.visual_items) {
         /* col = */ uiLayoutColumn(row, false);
-        uiDefButI(block,
-                  UI_BTYPE_SCROLL,
-                  0,
-                  "",
-                  0,
-                  0,
-                  V2D_SCROLL_WIDTH,
-                  UI_UNIT_Y * dyn_data->visual_height,
-                  &ui_list->list_scroll,
-                  0,
-                  dyn_data->height - dyn_data->visual_height,
-                  dyn_data->visual_height,
-                  0,
-                  "");
+        but = uiDefButI(block,
+                        UI_BTYPE_SCROLL,
+                        0,
+                        "",
+                        0,
+                        0,
+                        V2D_SCROLL_WIDTH,
+                        UI_UNIT_Y * dyn_data->visual_height,
+                        &ui_list->list_scroll,
+                        0,
+                        dyn_data->height - dyn_data->visual_height,
+                        "");
+        uiButScrollBar *but_scroll = reinterpret_cast<uiButScrollBar *>(but);
+        but_scroll->visual_height = dyn_data->visual_height;
       }
       break;
     }
@@ -1006,7 +1000,8 @@ static void ui_template_list_layout_draw(const bContext *C,
       const int size_x = UI_preview_tile_size_x();
       const int size_y = show_names ? UI_preview_tile_size_y() : UI_preview_tile_size_y_no_label();
 
-      const int cols_per_row = MAX2((uiLayoutGetWidth(box) - V2D_SCROLL_WIDTH) / size_x, 1);
+      const int cols_per_row = std::max(int((uiLayoutGetWidth(box) - V2D_SCROLL_WIDTH) / size_x),
+                                        1);
       uiLayout *grid = uiLayoutGridFlow(row, true, cols_per_row, true, true, true);
 
       TemplateListLayoutDrawData adjusted_layout_data = *layout_data;
@@ -1039,8 +1034,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                                0,
                                0,
                                org_i,
-                               0,
-                               0,
                                nullptr);
           UI_but_drawflag_enable(but, UI_BUT_NO_TOOLTIP);
 
@@ -1073,20 +1066,20 @@ static void ui_template_list_layout_draw(const bContext *C,
 
       if (items->tot_items > visual_info.visual_items) {
         /* col = */ uiLayoutColumn(row, false);
-        uiDefButI(block,
-                  UI_BTYPE_SCROLL,
-                  0,
-                  "",
-                  0,
-                  0,
-                  V2D_SCROLL_WIDTH,
-                  size_y * dyn_data->visual_height,
-                  &ui_list->list_scroll,
-                  0,
-                  dyn_data->height - dyn_data->visual_height,
-                  dyn_data->visual_height,
-                  0,
-                  "");
+        but = uiDefButI(block,
+                        UI_BTYPE_SCROLL,
+                        0,
+                        "",
+                        0,
+                        0,
+                        V2D_SCROLL_WIDTH,
+                        size_y * dyn_data->visual_height,
+                        &ui_list->list_scroll,
+                        0,
+                        dyn_data->height - dyn_data->visual_height,
+                        "");
+        uiButScrollBar *but_scroll = reinterpret_cast<uiButScrollBar *>(but);
+        but_scroll->visual_height = dyn_data->visual_height;
       }
       break;
   }
@@ -1128,8 +1121,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                              &(ui_list->filter_flag),
                              0,
                              0,
-                             0,
-                             0,
                              TIP_("Hide filtering options"));
       UI_but_flag_disable(but, UI_BUT_UNDO); /* skip undo on screen buttons */
 
@@ -1145,8 +1136,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                             &dyn_data->resize,
                             0.0,
                             0.0,
-                            0,
-                            0,
                             "");
         UI_but_func_set(but, [ui_list](bContext &C) { uilist_resize_update(&C, ui_list); });
       }
@@ -1166,8 +1155,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                nullptr,
                0.0,
                0.0,
-               0,
-               0,
                "");
 
       layout_data->draw_filter(ui_list, C, col);
@@ -1185,8 +1172,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                              &(ui_list->filter_flag),
                              0,
                              0,
-                             0,
-                             0,
                              TIP_("Show filtering options"));
       UI_but_flag_disable(but, UI_BUT_UNDO); /* skip undo on screen buttons */
 
@@ -1202,8 +1187,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                             &dyn_data->resize,
                             0.0,
                             0.0,
-                            0,
-                            0,
                             "");
         UI_but_func_set(but, [ui_list](bContext &C) { uilist_resize_update(&C, ui_list); });
       }

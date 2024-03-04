@@ -18,21 +18,21 @@
 #include "BLI_listbase.h"
 #include "BLI_math_base.h"
 #include "BLI_threads.h"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
-#include "BKE_collection.h"
+#include "BKE_anim_data.hh"
+#include "BKE_collection.hh"
 #include "BKE_idprop.h"
-#include "BKE_idtype.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_idtype.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_object.hh"
 #include "BKE_preview_image.hh"
 #include "BKE_rigidbody.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "DNA_defaults.h"
 
@@ -130,7 +130,7 @@ static void collection_init_data(ID *id)
  *
  * WARNING! This function will not handle ID user count!
  *
- * \param flag: Copying options (see BKE_lib_id.h's LIB_ID_COPY_... flags for more).
+ * \param flag: Copying options (see BKE_lib_id.hh's LIB_ID_COPY_... flags for more).
  */
 static void collection_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
 {
@@ -182,7 +182,7 @@ static void collection_free_data(ID *id)
   BLI_freelistN(&collection->children);
   BLI_freelistN(&collection->runtime.parents);
 
-  /* No need for depsgraph taging here, since the data is being deleted. */
+  /* No need for depsgraph tagging here, since the data is being deleted. */
   collection_object_cache_free(nullptr, collection, LIB_ID_CREATE_NO_DEG_TAG, 0);
 }
 
@@ -238,7 +238,6 @@ static ID **collection_owner_pointer_get(ID *id)
   if ((id->flag & LIB_EMBEDDED_DATA) == 0) {
     return nullptr;
   }
-  BLI_assert((id->tag & LIB_TAG_NO_MAIN) == 0);
 
   Collection *master_collection = (Collection *)id;
   BLI_assert((master_collection->flag & COLLECTION_IS_MASTER) != 0);
@@ -352,6 +351,7 @@ static void collection_blend_read_after_liblink(BlendLibReader * /*reader*/, ID 
 IDTypeInfo IDType_ID_GR = {
     /*id_code*/ ID_GR,
     /*id_filter*/ FILTER_ID_GR,
+    /*dependencies_id_types*/ FILTER_ID_OB | FILTER_ID_GR,
     /*main_listbase_index*/ INDEX_ID_GR,
     /*struct_size*/ sizeof(Collection),
     /*name*/ "Collection",
@@ -844,15 +844,15 @@ static void collection_object_cache_free(const Main *bmain,
   BLI_freelistN(&collection->runtime.object_cache);
   BLI_freelistN(&collection->runtime.object_cache_instanced);
 
-  /* Although it may seem abusive to call depsgraph updates from this util function, it is called
-   * from any codepath modifying the collections hierarchy and/or their objects. Including the
-   * reversed-hierarchy walked by #collection_object_cache_free_parent_recursive.
+  /* Although it may seem abusive to call depsgraph updates from this utility function,
+   * it is called from any code-path modifying the collections hierarchy and/or their objects.
+   * Including the reversed-hierarchy walked by #collection_object_cache_free_parent_recursive.
    *
    * Plus, the main reason to tag the hierarchy of parents for deg update is because their object
    * caches are being freed.
    *
-   * Having this code here avoids the need for another util tagging function processing the parent
-   * hierarchy as well. */
+   * Having this code here avoids the need for another utility tagging function processing the
+   * parent hierarchy as well. */
   if (id_recalc_flag && (id_create_flag & (LIB_ID_CREATE_NO_MAIN | LIB_ID_CREATE_NO_DEG_TAG)) == 0)
   {
     BLI_assert(bmain != nullptr);
@@ -1858,7 +1858,7 @@ void BKE_collection_parent_relations_rebuild(Collection *collection)
 
     /* Can happen when remapping data partially out-of-Main (during advanced ID management
      * operations like lib-override resync e.g.). */
-    if ((child->collection->id.tag & (LIB_TAG_NO_MAIN | LIB_TAG_COPIED_ON_WRITE)) != 0) {
+    if ((child->collection->id.tag & (LIB_TAG_NO_MAIN | LIB_TAG_COPIED_ON_EVAL)) != 0) {
       continue;
     }
 
@@ -1882,7 +1882,7 @@ static void collection_parents_rebuild_recursive(Collection *collection)
 
   LISTBASE_FOREACH (CollectionChild *, child, &collection->children) {
     /* See comment above in `BKE_collection_parent_relations_rebuild`. */
-    if ((child->collection->id.tag & (LIB_TAG_NO_MAIN | LIB_TAG_COPIED_ON_WRITE)) != 0) {
+    if ((child->collection->id.tag & (LIB_TAG_NO_MAIN | LIB_TAG_COPIED_ON_EVAL)) != 0) {
       continue;
     }
     collection_parents_rebuild_recursive(child->collection);

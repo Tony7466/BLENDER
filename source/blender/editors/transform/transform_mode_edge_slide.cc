@@ -15,7 +15,6 @@
 #include "BLI_string.h"
 #include "BLI_utildefines_stack.h"
 
-#include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_editmesh_bvh.h"
 #include "BKE_unit.hh"
@@ -35,7 +34,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_constraints.hh"
@@ -471,7 +470,7 @@ static void calcEdgeSlide_mval_range(TransInfo *t,
       int l_nr = sv->loop_nr;
       if (dot_v3v3(loop_dir[l_nr], mval_dir) < 0.0f) {
         swap_v3_v3(sv->dir_side[0], sv->dir_side[1]);
-        SWAP(BMVert *, sv->v_side[0], sv->v_side[1]);
+        std::swap(sv->v_side[0], sv->v_side[1]);
       }
     }
 
@@ -1135,7 +1134,7 @@ static void drawEdgeSlide(TransInfo *t)
   GPU_blend(GPU_BLEND_ALPHA);
 
   GPU_matrix_push();
-  GPU_matrix_mul(TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->object_to_world);
+  GPU_matrix_mul(TRANS_DATA_CONTAINER_FIRST_OK(t)->obedit->object_to_world().ptr());
 
   uint pos = GPU_vertformat_attr_add(immVertexFormat(), "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
@@ -1363,10 +1362,10 @@ static void edge_slide_apply_elem(const TransDataEdgeSlideVert *sv,
   }
   else {
     /**
-     * Implementation note, even mode ignores the starting positions and uses
+     * NOTE(@ideasman42): Implementation note, even mode ignores the starting positions and uses
      * only the a/b verts, this could be changed/improved so the distance is
      * still met but the verts are moved along their original path (which may not be straight),
-     * however how it works now is OK and matches 2.4x - Campbell
+     * however how it works now is OK and matches 2.4x.
      *
      * \note `len_v3v3(curr_sv->dir_side[0], curr_sv->dir_side[1])`
      * is the same as the distance between the original vert locations,

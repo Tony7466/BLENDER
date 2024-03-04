@@ -15,7 +15,7 @@
 
 #include "BLI_string_ref.hh"
 #include "BLI_vector.hh"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 #include "GPU_texture.h"
 
 #include <iostream>
@@ -668,12 +668,6 @@ struct ShaderCreateInfo {
     return *(Self *)this;
   }
 
-  /**
-   * IMPORTANT: invocations count is only used if GL_ARB_gpu_shader5 is supported. On
-   * implementations that do not supports it, the max_vertices will be multiplied by invocations.
-   * Your shader needs to account for this fact. Use `#ifdef GPU_ARB_gpu_shader5` and make a code
-   * path that does not rely on #gl_InvocationID.
-   */
   Self &geometry_layout(PrimitiveIn prim_in,
                         PrimitiveOut prim_out,
                         int max_vertices,
@@ -1037,9 +1031,10 @@ struct ShaderCreateInfo {
   /** \} */
 
   /* -------------------------------------------------------------------- */
-  /** \name API-specific parameters.
-   * Optional parameters exposed by specific backends to enable additional features and performance
-   * tuning.
+  /** \name API-Specific Parameters
+   *
+   * Optional parameters exposed by specific back-ends to enable additional features and
+   * performance tuning.
    * NOTE: These functions can be exposed as a pass-through on unsupported configurations.
    * \{ */
 
@@ -1050,6 +1045,8 @@ struct ShaderCreateInfo {
   {
 #ifdef WITH_METAL_BACKEND
     mtl_max_threads_per_threadgroup_ = max_total_threads_per_threadgroup;
+#else
+    UNUSED_VARS(max_total_threads_per_threadgroup);
 #endif
     return *(Self *)this;
   }

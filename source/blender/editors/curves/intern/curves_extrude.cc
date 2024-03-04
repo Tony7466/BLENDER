@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_attribute.hh"
-#include "BKE_context.hh"
 #include "BKE_curves_utils.hh"
 
 #include "WM_api.hh"
@@ -17,7 +16,7 @@ namespace blender::ed::curves {
 
 /**
  * Merges copy intervals at curve endings to minimize number of copy operations.
- * For example above intervals [0, 3, 4, 4, 4] became [0, 4, 4].
+ * For example given in function 'extrude_curves' intervals [0, 3, 4, 4, 4] became [0, 4, 4].
  * Leading to only two copy operations.
  */
 static Span<int> compress_intervals(const Span<IndexRange> curve_interval_ranges,
@@ -145,7 +144,7 @@ static void finish_curve_or_full_copy(int &curve_index,
                  is_first_selected);
   }
   else {
-    /* Copy full curve if previous selected point vas not on this curve. */
+    /* Copy full curve if previous selected point was not on this curve. */
     const int first = offsets[curve_index];
     curve_interval_ranges[curve_index] = IndexRange(interval_offset, 1);
     is_first_selected[curve_index] = false;
@@ -248,7 +247,6 @@ static void extrude_curves(Curves &curves_id)
   const int curves_num = curves.curves_num();
   const int curve_intervals_size = extruded_points.size() * 2 + curves_num * 2;
 
-  new_curves.resize(0, curves_num);
   MutableSpan<int> new_offsets = new_curves.offsets_for_write();
 
   /* Buffer for intervals of all curves. Beginning and end of a curve can be determined only by
@@ -263,7 +261,8 @@ static void extrude_curves(Curves &curves_id)
   Array<IndexRange> curve_interval_ranges(curves_num);
 
   /* Per curve boolean indicating if first interval in a curve is selected.
-   * Other can be calculated as in a curve two adjacent intervals can have same selection state. */
+   * Other can be calculated as in a curve two adjacent intervals can not have same selection
+   * state. */
   Array<bool> is_first_selected(curves_num);
 
   calc_curves_extrusion(extruded_points,
@@ -276,7 +275,11 @@ static void extrude_curves(Curves &curves_id)
   new_curves.resize(new_offsets.last(), new_curves.curves_num());
 
   const bke::AttributeAccessor src_attributes = curves.attributes();
-  const GVArraySpan src_selection = *src_attributes.lookup(".selection", bke::AttrDomain::Point);
+  GVArray src_selection_array = *src_attributes.lookup(".selection", bke::AttrDomain::Point);
+  if (!src_selection_array) {
+    src_selection_array = VArray<bool>::ForSingle(true, curves.points_num());
+  }
+  const GVArraySpan src_selection = src_selection_array;
   const CPPType &src_selection_type = src_selection.type();
   bke::GSpanAttributeWriter dst_selection = ensure_selection_attribute(
       new_curves,
