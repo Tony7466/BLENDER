@@ -57,7 +57,7 @@ static void init_common(bContext *C, wmOperator *op, GestureData *gesture_data)
   /* Operator properties. */
   gesture_data->front_faces_only = RNA_boolean_get(op->ptr, "use_front_faces_only");
   gesture_data->line.use_side_planes = RNA_boolean_get(op->ptr, "use_limit_to_segment");
-  gesture_data->selection_type = INSIDE;
+  gesture_data->selection_type = eSelectionType::INSIDE;
 
   /* SculptSession */
   gesture_data->ss = ob->sculpt;
@@ -355,9 +355,9 @@ static void update_affected_nodes_by_clip_planes(GestureData *gesture_data)
 
   gesture_data->nodes = bke::pbvh::search_gather(ss->pbvh, [&](PBVHNode &node) {
     switch (gesture_data->selection_type) {
-      case INSIDE:
+      case eSelectionType::INSIDE:
         return BKE_pbvh_node_frustum_contain_AABB(&node, &frustum);
-      case OUTSIDE:
+      case eSelectionType::OUTSIDE:
         return BKE_pbvh_node_frustum_exclude_AABB(&node, &frustum);
       default:
         BLI_assert_unreachable();
@@ -417,8 +417,8 @@ bool is_affected(GestureData *gesture_data, const float3 &co, const float3 &vert
   switch (gesture_data->shape_type) {
     case SCULPT_GESTURE_SHAPE_BOX: {
       const bool is_contained = isect_point_planes_v3(gesture_data->clip_planes, 4, co);
-      return ((is_contained && gesture_data->selection_type == INSIDE) ||
-              (!is_contained && gesture_data->selection_type == OUTSIDE));
+      return ((is_contained && gesture_data->selection_type == eSelectionType::INSIDE) ||
+              (!is_contained && gesture_data->selection_type == eSelectionType::OUTSIDE));
     }
     case SCULPT_GESTURE_SHAPE_LASSO:
       return is_affected_lasso(gesture_data, co);
