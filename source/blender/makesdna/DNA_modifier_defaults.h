@@ -1021,6 +1021,15 @@
     .skip = 0, \
   }
 
+#define _DNA_DEFAULT_GreasePencilOutlineModifierData \
+  { \
+    .flag = MOD_GREASE_PENCIL_OUTLINE_KEEP_SHAPE, \
+    .thickness = 1, \
+    .sample_length = 0.0f, \
+    .subdiv = 3, \
+    .outline_material = NULL, \
+  }
+
 #define _DNA_DEFAULT_GreasePencilTextureModifierData \
   { \
     .uv_offset = 0.0f, \
