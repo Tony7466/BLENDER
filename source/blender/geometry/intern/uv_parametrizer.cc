@@ -5114,7 +5114,8 @@ static void slim_transfer_data_to_slim(ParamHandle *phandle, const ParamSlimOpti
 static void slim_flush_uvs(ParamHandle *phandle,
                            slim::MatrixTransfer *mt,
                            int *count_changed,
-                           int *count_failed)
+                           int *count_failed,
+                           bool live = false)
 {
   int vid;
   PVert *v;
@@ -5145,10 +5146,13 @@ static void slim_flush_uvs(ParamHandle *phandle,
         (*count_failed)++;
       }
 
-      for (v = chart->verts; v; v = v->nextlink) {
-        v->uv[0] = 0.0f;
-        v->uv[1] = 0.0f;
+      if (!live) {
+        for (v = chart->verts; v; v = v->nextlink) {
+          v->uv[0] = 0.0f;
+          v->uv[1] = 0.0f;
+        }
       }
+
     }
   }
 }
@@ -5332,7 +5336,7 @@ void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
   }
 
   /* Assign new UVs back to each vertex. */
-  slim_flush_uvs(phandle, mt, nullptr, nullptr);
+  slim_flush_uvs(phandle, mt, nullptr, nullptr, true /* live */);
 }
 
 void uv_parametrizer_slim_live_end(ParamHandle *phandle)

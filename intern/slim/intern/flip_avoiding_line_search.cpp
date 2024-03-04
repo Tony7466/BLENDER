@@ -75,8 +75,10 @@ static inline double get_smallest_pos_quad_zero(double a, double b, double c)
   else {
     t1 = t2 = -b / c;
   }
-  assert(std::isfinite(t1));
-  assert(std::isfinite(t2));
+
+  if (!std::isfinite(t1) || !std::isfinite(t2)) {
+    throw SlimFailedException();
+  }
 
   double tmp_n = min(t1, t2);
   t1 = max(t1, t2);
