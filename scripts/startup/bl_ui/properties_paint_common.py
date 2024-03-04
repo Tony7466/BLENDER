@@ -1454,8 +1454,10 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
 
         if props is not None:
             row = layout.row(align=True)
-            row.prop(props, "interpolate_mode", icon="VIEW_ORTHO", text="", invert_checkbox=True)
-            row.prop(props, "interpolate_mode", icon="VIEW_PERSPECTIVE", text="")
+            if context.region.type == 'TOOL_HEADER':
+                row.prop(props, "interpolate_mode", text="", expand=True)
+            else:
+                row.prop(props, "interpolate_mode")
 
         settings = context.tool_settings.gpencil_sculpt
         if compact:

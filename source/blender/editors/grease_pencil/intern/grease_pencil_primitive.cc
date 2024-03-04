@@ -82,9 +82,9 @@ enum class ControlPointType : int8_t {
   HANDLE_POINT = 1,
 };
 
-enum class InterpolationMode : bool {
-  Mode2D = false,
-  Mode3D = true,
+enum class InterpolationMode : int8_t {
+  Mode2D = 0,
+  Mode3D = 1,
 };
 
 enum class ModelKeyMode : int8_t {
@@ -660,7 +660,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   ptd.subdivision = RNA_int_get(op->ptr, "subdivision");
   ptd.type = PrimitiveType(RNA_enum_get(op->ptr, "type"));
-  ptd.interpolate_mode = InterpolationMode(RNA_boolean_get(op->ptr, "interpolate_mode"));
+  ptd.interpolate_mode = InterpolationMode(RNA_enum_get(op->ptr, "interpolate_mode"));
   ptd.control_points = Vector<float3>();
   ptd.temp_control_points = Vector<float3>();
 
@@ -1278,6 +1278,12 @@ static void grease_pencil_primitive_common_props(wmOperatorType *ot,
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem grease_pencil_interpolation_mode[] = {
+      {int(InterpolationMode::Mode2D), "MODE2D", ICON_VIEW_ORTHO, "2D", ""},
+      {int(InterpolationMode::Mode3D), "MODE3D", ICON_VIEW_PERSPECTIVE, "3D", ""},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
   PropertyRNA *prop;
 
   prop = RNA_def_int(ot->srna,
@@ -1294,12 +1300,12 @@ static void grease_pencil_primitive_common_props(wmOperatorType *ot,
   RNA_def_enum(
       ot->srna, "type", grease_pencil_primitive_type, int(default_type), "Type", "Type of shape");
 
-  prop = RNA_def_boolean(
-      ot->srna,
-      "interpolate_mode",
-      false,
-      "Interpolation Mode",
-      "Whether the interpolation happens in 2D view space or in 3D world space");
+  prop = RNA_def_enum(ot->srna,
+                      "interpolate_mode",
+                      grease_pencil_interpolation_mode,
+                      int(InterpolationMode::Mode2D),
+                      "Interpolation Mode",
+                      "Whether the interpolation happens in 2D view space or in 3D world space");
 }
 
 void GREASE_PENCIL_OT_primitive_line(wmOperatorType *ot)
