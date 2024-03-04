@@ -291,7 +291,7 @@ typedef struct Brush {
   char gpencil_weight_tool;
   /** Active curves sculpt tool (#eBrushCurvesSculptTool). */
   char curves_sculpt_tool;
-  char _pad1;
+  char _pad1[5];
 
   float autosmooth_factor;
 
@@ -306,7 +306,10 @@ typedef struct Brush {
   float wet_paint_radius_factor;
 
   float plane_trim;
+
+  /* Affect depth and strenght of the brush's effect */
   float flatten_hardness;
+  float flatten_depth;
   /** Affectable height of brush (layer height for layer tool, i.e.). */
   float height;
 

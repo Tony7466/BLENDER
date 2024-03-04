@@ -3059,13 +3059,20 @@ bool SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache *cache,
 }
 
 float SCULPT_flatten_hardness(const blender::ed::sculpt_paint::StrokeCache *cache,
-                            const float val[3])
+                              const float val[3])
 {
-  const float lensq = dot_v3v3(val, val);
+  /* if the vertex is over the sculpt plane, no adjusted fallof is applied. */
+  if (dot_v3v3(val, cache->sculpt_normal) < 0) {
+    return 1.0;
+  }
   /* Workaround for https://projects.blender.org/blender/blender/issues/116458
-  apply a strong falloff based on the distance to the brush plane */
-  const float decay_rate = 40.0f * cache->flatten_hardness;
-  return std::exp(-decay_rate * sqrtf(lensq));
+  apply a falloff based on the distance to the brush plane */
+  float len = len_v3(val);
+  const float threshold = cache->radius * cache->flatten_depth;
+  if (len > threshold) {
+    return 0.f;
+  }
+  return (1.0f - len / threshold) * cache->flatten_hardness;
 }
 
 int SCULPT_plane_point_side(const float co[3], const float plane[4])
@@ -4222,6 +4229,7 @@ static void sculpt_update_cache_invariants(
 
   cache->plane_trim_squared = brush->plane_trim * brush->plane_trim;
   cache->flatten_hardness = brush->flatten_hardness;
+  cache->flatten_depth = brush->flatten_depth;
 
   cache->flag = 0;
 

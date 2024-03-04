@@ -180,7 +180,8 @@ static void do_multiplane_scrape_brush_task(Object *ob,
                                                           vd.vertex,
                                                           thread_id,
                                                           &automask_data);
-    // fade *= trim_factor;
+
+    fade *= SCULPT_flatten_hardness(ss->cache, val);
     mul_v3_v3fl(proxy[vd.i], val, fade);
   }
   BKE_pbvh_vertex_iter_end;

@@ -436,6 +436,10 @@ class FalloffPanel(BrushPanel):
 
         col = layout.column(align=True)
         row = col.row(align=True)
+        row.prop(brush, "flatten_hardness", slider=True, text="Flatten hardness")
+        row.prop(brush, "flatten_depth", slider=True, text="Flatten depth")
+
+        row = col.row(align=True)
         row.prop(brush, "curve_preset", text="")
 
         if brush.curve_preset == 'CUSTOM':
@@ -614,7 +618,6 @@ def brush_settings(layout, context, brush, popover=False):
             sub = row.row()
             sub.active = brush.use_plane_trim
             sub.prop(brush, "plane_trim", slider=True, text="")
-            sub.prop(brush, "flatten_hardness", slider=True, text="")
 
             layout.separator()
 

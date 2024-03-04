@@ -521,6 +521,7 @@ struct StrokeCache {
 
   float plane_trim_squared;
   float flatten_hardness;
+  float flatten_depth;
 
   bool supports_gravity;
   float3 true_gravity_direction;
@@ -1052,6 +1053,7 @@ int SCULPT_plane_point_side(const float co[3], const float plane[4]);
 bool SCULPT_plane_trim(const blender::ed::sculpt_paint::StrokeCache *cache,
                        const Brush *brush,
                        const float val[3]);
+
 float SCULPT_flatten_hardness(const blender::ed::sculpt_paint::StrokeCache *cache,
                               const float val[3]);
 /**

@@ -1750,7 +1750,9 @@ void BKE_brush_debug_print_state(Brush *br)
   BR_TEST(crease_pinch_factor, f);
 
   BR_TEST(plane_trim, f);
+
   BR_TEST(flatten_hardness, f);
+  BR_TEST(flatten_depth, f);
 
   BR_TEST(texture_sample_bias, f);
   BR_TEST(texture_overlay_alpha, d);
