@@ -1,7 +1,7 @@
 /* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
-
+#define WITH_OPENVDB
 #ifdef WITH_OPENVDB
 #  include <openvdb/openvdb.h>
 #  include <openvdb/tools/Composite.h>
@@ -17,21 +17,27 @@ namespace blender::nodes::node_geo_sdf_grid_difference_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("SDF Grid 1").hide_value();
-  b.add_input<decl::Float>("SDF Grid 2").hide_value();
+  b.add_input<decl::Float>("SDF Grid").hide_value();
+  b.add_input<decl::Float>("Operands").hide_value().multi_input();
   b.add_output<decl::Float>("SDF Grid").hide_value();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  bke::VolumeGrid<float> grid_a = params.extract_input<bke::VolumeGrid<float>>("SDF Grid 1");
-  bke::VolumeGrid<float> grid_b = params.extract_input<bke::VolumeGrid<float>>("SDF Grid 2");
+  bke::VolumeGrid<float> grid_a = params.extract_input<bke::VolumeGrid<float>>("SDF Grid");
   if (!grid_a) {
     params.set_default_remaining_outputs();
     return;
   }
-  if (!grid_b) {
+  Vector<SocketValueVariant> inputs = params.extract_input<Vector<SocketValueVariant>>("Operands");
+  Vector<bke::VolumeGrid<float>> operands;
+  for (SocketValueVariant &input : inputs) {
+    if (bke::VolumeGrid<float> grid = input.extract<bke::VolumeGrid<float>>()) {
+      operands.append(std::move(grid));
+    }
+  }
+  if (operands.is_empty()) {
     params.set_output("SDF Grid", std::move(grid_a));
     return;
   }
@@ -40,18 +46,20 @@ static void node_geo_exec(GeoNodeExecParams params)
   openvdb::FloatGrid &result_grid = grid_a.grid_for_write(result_token);
   const openvdb::math::Transform &transform = result_grid.transform();
 
-  bke::VolumeTreeAccessToken tree_token;
-  std::shared_ptr<openvdb::FloatGrid> resampled_storage;
-  openvdb::FloatGrid &vdb_b = geometry::resample_sdf_grid_if_necessary(
-      grid_b, tree_token, transform, resampled_storage);
+  for (bke::VolumeGrid<float> &volume_grid : operands) {
+    bke::VolumeTreeAccessToken tree_token;
+    std::shared_ptr<openvdb::FloatGrid> resampled_storage;
+    openvdb::FloatGrid &grid = geometry::resample_sdf_grid_if_necessary(
+        volume_grid, tree_token, transform, resampled_storage);
 
-  try {
-    openvdb::tools::csgDifference(result_grid, vdb_b);
-  }
-  catch (const openvdb::ValueError & /*ex*/) {
-    /* May happen if a grid is empty. */
-    params.set_default_remaining_outputs();
-    return;
+    try {
+      openvdb::tools::csgDifference(result_grid, grid);
+    }
+    catch (const openvdb::ValueError & /*ex*/) {
+      /* May happen if a grid is empty. */
+      params.set_default_remaining_outputs();
+      return;
+    }
   }
 
   params.set_output("SDF Grid", std::move(grid_a));
