@@ -29,6 +29,7 @@ void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
 
 void VKRenderGraphCommandBuilder::build_image(VKRenderGraph &render_graph, VkImage vk_image)
 {
+  BLI_assert(selected_nodes_.is_empty());
   render_graph.scheduler_->select_nodes_for_image(render_graph, vk_image, selected_nodes_);
   if (selected_nodes_.is_empty()) {
     return;
@@ -41,6 +42,23 @@ void VKRenderGraphCommandBuilder::build_image(VKRenderGraph &render_graph, VkIma
 
   render_graph.command_buffer_->end_recording();
 }
+
+void VKRenderGraphCommandBuilder::build_buffer(VKRenderGraph &render_graph, VkBuffer vk_buffer)
+{
+  BLI_assert(selected_nodes_.is_empty());
+  render_graph.scheduler_->select_nodes_for_buffer(render_graph, vk_buffer, selected_nodes_);
+  if (selected_nodes_.is_empty()) {
+    return;
+  }
+  render_graph.command_buffer_->begin_recording();
+  for (NodeHandle node_handle : selected_nodes_) {
+    VKRenderGraphNodes::Node &node = render_graph.nodes_.get(node_handle);
+    build_node(render_graph, node);
+  }
+
+  render_graph.command_buffer_->end_recording();
+}
+
 void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
                                              VKRenderGraphNodes::Node &node)
 {
@@ -53,12 +71,22 @@ void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
       build_node_clear_color_image(render_graph, node);
       break;
     }
+
+    case VKRenderGraphNodes::Node::Type::FILL_BUFFER: {
+      build_node_fill_buffer(render_graph, node);
+      break;
+    }
+
+    default:
+      BLI_assert_unreachable();
+      break;
   }
 }
 
 void VKRenderGraphCommandBuilder::build_node_clear_color_image(VKRenderGraph &render_graph,
                                                                VKRenderGraphNodes::Node &node)
 {
+  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::CLEAR_COLOR_IMAGE);
   const VkImageLayout vk_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   ensure_image_layout(render_graph, node.clear_color_image.vk_image, vk_image_layout);
   render_graph.command_buffer_->clear_color_image(
@@ -67,6 +95,15 @@ void VKRenderGraphCommandBuilder::build_node_clear_color_image(VKRenderGraph &re
       &node.clear_color_image.vk_clear_color_value,
       1,
       &node.clear_color_image.vk_image_subresource_range);
+}
+
+void VKRenderGraphCommandBuilder::build_node_fill_buffer(VKRenderGraph &render_graph,
+                                                         VKRenderGraphNodes::Node &node)
+{
+  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::FILL_BUFFER);
+  // TODO: add pipeline barrier for sync issues.
+  render_graph.command_buffer_->fill_buffer(
+      node.fill_buffer.vk_buffer, 0, node.fill_buffer.size, node.fill_buffer.data);
 }
 
 void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_graph,

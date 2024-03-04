@@ -49,6 +49,14 @@ void VKRenderGraph::add_clear_image_node(VkImage vk_image,
   nodes_.add_write_resource(handle, resource);
 }
 
+void VKRenderGraph::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data)
+{
+  std::scoped_lock lock(mutex_);
+  NodeHandle handle = nodes_.add_fill_buffer_node(vk_buffer, size, data);
+  VersionedResource resource = resources_.get_buffer_and_increase_version(vk_buffer);
+  nodes_.add_write_resource(handle, resource);
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Submit graph
  * \{ */
@@ -61,6 +69,16 @@ void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
   command_builder_.ensure_image_layout(*this, vk_swapchain_image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
   // submit
   // update state
+}
+
+void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
+{
+  std::scoped_lock lock(mutex_);
+  command_builder_.reset(*this);
+  command_builder_.build_buffer(*this, vk_buffer);
+  // submit
+  // update state
+  // wait
 }
 
 /** \} */

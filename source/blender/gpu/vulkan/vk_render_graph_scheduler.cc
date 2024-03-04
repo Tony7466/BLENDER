@@ -17,9 +17,21 @@ void Sequential::select_nodes_for_image(const VKRenderGraph &render_graph,
                                         VkImage vk_image,
                                         Vector<NodeHandle> &r_selected_nodes)
 {
-  // select all nodes from the start of the graph to the last write access
-  // For the time being we will select all nodes. In the future we could only select a subset,
-  // But still in sequence.
+  UNUSED_VARS(vk_image);
+  select_all_nodes(render_graph, r_selected_nodes);
+}
+
+void Sequential::select_nodes_for_buffer(const VKRenderGraph &render_graph,
+                                         VkBuffer vk_buffer,
+                                         Vector<NodeHandle> &r_selected_nodes)
+{
+  UNUSED_VARS(vk_buffer);
+  select_all_nodes(render_graph, r_selected_nodes);
+}
+
+void Sequential::select_all_nodes(const VKRenderGraph &render_graph,
+                                  Vector<NodeHandle> &r_selected_nodes)
+{
   NodeHandle node_handle = 0;
 
   for (const std::optional<VKRenderGraphNodes::Node> &optional_node : render_graph.nodes_.nodes())

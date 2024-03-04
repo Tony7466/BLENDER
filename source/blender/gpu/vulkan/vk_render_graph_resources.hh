@@ -103,9 +103,21 @@ class VKRenderGraphResources {
    * Return the current version of the resource, and increase the version.
    */
   VersionedResource get_image_and_increase_version(VkImage vk_image);
-  ResourceHandle get_image_handle(VkImage vk_image);
+
+  /**
+   * Return the current version of the resource, and increase the version.
+   */
+  VersionedResource get_buffer_and_increase_version(VkBuffer vk_buffer);
+  ResourceHandle get_image_handle(VkImage vk_image) const;
+  ResourceHandle get_buffer_handle(VkBuffer vk_buffer) const;
 
   friend class VKRenderGraphCommandBuilder;
+
+ private:
+  /**
+   * Get the current version of the resource and increase the version.
+   */
+  static VersionedResource get_and_increase_version(ResourceHandle handle, Resource &resource);
 };
 
 }  // namespace blender::gpu

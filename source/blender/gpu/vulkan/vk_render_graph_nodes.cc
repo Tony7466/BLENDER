@@ -27,6 +27,22 @@ NodeHandle VKRenderGraphNodes::add_clear_image_node(
   return handle;
 }
 
+NodeHandle VKRenderGraphNodes::add_fill_buffer_node(VkBuffer vk_buffer,
+                                                    VkDeviceSize size,
+                                                    uint32_t data)
+{
+  NodeHandle handle = nodes_.allocate();
+  Node &node = nodes_.get(handle);
+  BLI_assert(node.type == Node::Type::UNUSED);
+
+  node.type = Node::Type::FILL_BUFFER;
+  node.fill_buffer.vk_buffer = vk_buffer;
+  node.fill_buffer.size = size;
+  node.fill_buffer.data = data;
+
+  return handle;
+}
+
 void VKRenderGraphNodes::add_write_resource(NodeHandle handle, VersionedResource resource_handle)
 {
   if (write_resources_per_node_.size() < nodes_.size()) {

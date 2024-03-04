@@ -26,6 +26,7 @@ class VKRenderGraphNodes {
     enum class Type {
       UNUSED,
       CLEAR_COLOR_IMAGE,
+      FILL_BUFFER,
     };
 
     Type type;
@@ -35,6 +36,12 @@ class VKRenderGraphNodes {
         VkClearColorValue vk_clear_color_value;
         VkImageSubresourceRange vk_image_subresource_range;
       } clear_color_image;
+
+      struct {
+        VkBuffer vk_buffer;
+        VkDeviceSize size;
+        uint32_t data;
+      } fill_buffer;
     };
   };
 
@@ -47,6 +54,7 @@ class VKRenderGraphNodes {
   NodeHandle add_clear_image_node(VkImage vk_image,
                                   VkClearColorValue &vk_clear_color_value,
                                   VkImageSubresourceRange &vk_image_subresource_range);
+  NodeHandle add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data);
 
   void add_write_resource(NodeHandle handle, VersionedResource resource_handle);
 

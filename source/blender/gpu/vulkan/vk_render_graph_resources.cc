@@ -52,21 +52,37 @@ void VKRenderGraphResources::add_buffer(VkBuffer vk_buffer)
 
 /** \} */
 
-ResourceHandle VKRenderGraphResources::get_image_handle(VkImage vk_image)
+ResourceHandle VKRenderGraphResources::get_image_handle(VkImage vk_image) const
 {
   return image_resources_.lookup(vk_image);
+}
+ResourceHandle VKRenderGraphResources::get_buffer_handle(VkBuffer vk_buffer) const
+{
+  return buffer_resources_.lookup(vk_buffer);
+}
+
+VersionedResource VKRenderGraphResources::get_and_increase_version(ResourceHandle handle,
+                                                                   Resource &resource)
+{
+  VersionedResource result;
+  result.handle = handle;
+  result.version = resource.graph_version;
+  resource.graph_version += 1;
+  return result;
 }
 
 VersionedResource VKRenderGraphResources::get_image_and_increase_version(VkImage vk_image)
 {
   ResourceHandle handle = get_image_handle(vk_image);
   Resource &resource = resources_.get(handle);
-  VersionedResource result;
-  result.handle = handle;
-  result.version = resource.graph_version;
+  return get_and_increase_version(handle, resource);
+}
 
-  resource.graph_version += 1;
-  return result;
+VersionedResource VKRenderGraphResources::get_buffer_and_increase_version(VkBuffer vk_buffer)
+{
+  ResourceHandle handle = get_buffer_handle(vk_buffer);
+  Resource &resource = resources_.get(handle);
+  return get_and_increase_version(handle, resource);
 }
 
 }  // namespace blender::gpu

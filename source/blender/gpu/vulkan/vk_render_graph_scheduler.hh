@@ -23,6 +23,9 @@ class VKRenderGraphScheduler {
   virtual void select_nodes_for_image(const VKRenderGraph &render_graph,
                                       VkImage vk_image,
                                       Vector<NodeHandle> &r_selected_nodes) = 0;
+  virtual void select_nodes_for_buffer(const VKRenderGraph &render_graph,
+                                       VkBuffer vk_buffer,
+                                       Vector<NodeHandle> &r_selected_nodes) = 0;
 };
 
 /**
@@ -40,6 +43,17 @@ class Sequential : public VKRenderGraphScheduler {
   void select_nodes_for_image(const VKRenderGraph &render_graph,
                               VkImage vk_image,
                               Vector<NodeHandle> &r_selected_nodes) override;
+  void select_nodes_for_buffer(const VKRenderGraph &render_graph,
+                               VkBuffer vk_buffer,
+                               Vector<NodeHandle> &r_selected_nodes) override;
+
+ private:
+  /**
+   * Select all nodes in the graph.
+   *
+   * In the future we could only select a subset to build a resource, but still in sequence.
+   */
+  void select_all_nodes(const VKRenderGraph &render_graph, Vector<NodeHandle> &r_selected_nodes);
 };
 
 }  // namespace blender::gpu

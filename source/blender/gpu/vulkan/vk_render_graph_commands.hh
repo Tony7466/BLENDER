@@ -13,6 +13,9 @@
 namespace blender::gpu {
 class VKRenderGraphCommandBuffer {
  public:
+  VKRenderGraphCommandBuffer() {}
+  virtual ~VKRenderGraphCommandBuffer() = default;
+
   virtual void begin_recording() = 0;
   virtual void end_recording() = 0;
   virtual void bind_pipeline(VkPipelineBindPoint pipeline_bind_point, VkPipeline pipeline) = 0;
@@ -118,6 +121,7 @@ class VKCommandBufferWrapper : public VKRenderGraphCommandBuffer {
   VkCommandBuffer command_buffer_ = VK_NULL_HANDLE;
 
  public:
+  virtual ~VKCommandBufferWrapper() = default;
   void begin_recording() override;
   void end_recording() override;
   void bind_pipeline(VkPipelineBindPoint pipeline_bind_point, VkPipeline pipeline) override;

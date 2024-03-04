@@ -63,16 +63,17 @@ class VKRenderGraph {
   void add_clear_image_node(VkImage vk_image,
                             VkClearColorValue &vk_clear_color_value,
                             VkImageSubresourceRange &vk_image_subresource_range);
+  void add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data_);
 
   /**
    * Submit the commands to readback the given vk_buffer to the command queue.
    */
-  void submit_for_read_back(VkBuffer vk_buffer);
+  void submit_buffer_for_read_back(VkBuffer vk_buffer);
 
   /**
    * Submit the commands to readback the given vk_image to the command queue.=
    */
-  void submit_for_read_back(VkImage vk_image);
+  void submit_image_for_read_back(VkImage vk_image);
 
   /**
    * Submit the commands to present the given vk_image to the command queue.

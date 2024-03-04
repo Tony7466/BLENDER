@@ -20,11 +20,23 @@ class VKRenderGraphCommandBuilder {
   Vector<VkImageLayout> image_layouts_;
 
  public:
+  /**
+   * Reset the command builder.
+   *
+   * Needs to be called before each build_image/buffer.
+   * Internal resources are reused to reduce memory operations.
+   */
   void reset(VKRenderGraph &render_graph);
+
   /**
    * Build the commands to update the given vk_image to the last version
    */
   void build_image(VKRenderGraph &render_graph, VkImage vk_image);
+
+  /**
+   * Build the commands to update the given vk_buffer to the last version
+   */
+  void build_buffer(VKRenderGraph &render_graph, VkBuffer vk_buffer);
 
   /**
    * Ensure that the vk_image_layout is the given layout. If not it adds a transition to ensure the
@@ -37,6 +49,7 @@ class VKRenderGraphCommandBuilder {
  private:
   void build_node(VKRenderGraph &render_graph, VKRenderGraphNodes::Node &node);
   void build_node_clear_color_image(VKRenderGraph &render_graph, VKRenderGraphNodes::Node &node);
+  void build_node_fill_buffer(VKRenderGraph &render_graph, VKRenderGraphNodes::Node &node);
 };
 
 }  // namespace blender::gpu

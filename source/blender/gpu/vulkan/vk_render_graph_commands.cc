@@ -9,7 +9,8 @@
 #include "vk_render_graph_commands.hh"
 
 namespace blender::gpu {
-
+void VKCommandBufferWrapper::begin_recording() {}
+void VKCommandBufferWrapper::end_recording() {}
 void VKCommandBufferWrapper::bind_pipeline(VkPipelineBindPoint pipeline_bind_point,
                                            VkPipeline pipeline)
 {
@@ -173,7 +174,6 @@ void VKCommandBufferWrapper::clear_color_image(VkImage image,
 {
   vkCmdClearColorImage(command_buffer_, image, image_layout, p_color, range_count, p_ranges);
 }
-
 void VKCommandBufferWrapper::clear_depth_stencil_image(
     VkImage image,
     VkImageLayout image_layout,
