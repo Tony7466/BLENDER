@@ -53,6 +53,7 @@ void ED_operatortypes_grease_pencil_edit();
 void ED_operatortypes_grease_pencil_material();
 void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
+void GREASE_PENCIL_OT_stroke_cutter(wmOperatorType *ot);
 
 void ED_undosys_type_grease_pencil(UndoType *undo_type);
 /**

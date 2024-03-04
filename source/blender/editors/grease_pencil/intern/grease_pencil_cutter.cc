@@ -15,7 +15,7 @@
 #include "BKE_context.hh"
 #include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -596,8 +596,6 @@ static int stroke_cutter_execute(wmOperator *op,
                                  const int mcoords[][2],
                                  const int mcoords_len)
 {
-  using namespace blender::bke::greasepencil;
-
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
   RegionView3D *rv3d = CTX_wm_region_view3d(C);
@@ -614,8 +612,12 @@ static int stroke_cutter_execute(wmOperator *op,
 
   if (active_layer_only) {
     /* Apply cutter on drawings of active layer. */
-    const Array<ed::greasepencil::MutableDrawingInfo> drawings =
-        ed::greasepencil::retrieve_editable_drawings_of_active_layer(*scene, grease_pencil);
+    if (!grease_pencil.has_active_layer()) {
+      return OPERATOR_CANCELLED;
+    }
+    const bke::greasepencil::Layer &layer = *grease_pencil.get_active_layer();
+    const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
+        ed::greasepencil::retrieve_editable_drawings_from_layer(*scene, grease_pencil, layer);
     threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
       if (execute_cutter_on_drawing(info.layer_index,
                                     info.frame_number,
@@ -634,7 +636,7 @@ static int stroke_cutter_execute(wmOperator *op,
   }
   else {
     /* Apply cutter on every editable drawing. */
-    const Array<ed::greasepencil::MutableDrawingInfo> drawings =
+    const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
         ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
     threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
       if (execute_cutter_on_drawing(info.layer_index,
