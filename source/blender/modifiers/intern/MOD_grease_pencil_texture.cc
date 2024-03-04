@@ -8,6 +8,7 @@
 
 #include "BLI_index_range.hh"
 #include "BLI_map.hh"
+#include "BLI_math_matrix_types.hh"
 #include "BLI_span.hh"
 #include "BLI_string.h"
 #include "BLI_string_utf8.h"
@@ -115,17 +116,47 @@ static float4x4 get_stroke_transform(const GreasePencilTextureModifierData &tmd,
   return curve_transform;
 }
 
-static void modify_curves(const GreasePencilTextureModifierData &tmd,
-                          const ModifierEvalContext &ctx,
-                          bke::greasepencil::Drawing &drawing)
+static void write_stroke_us(bke::greasepencil::Drawing &drawing,
+                            const IndexMask &curves_mask,
+                            const float offset,
+                            const float rotation,
+                            const float scale)
+{
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const VArray<bool> cyclic = curves.cyclic();
+
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::SpanAttributeWriter<float> stroke_us = attributes.lookup_or_add_for_write_span<float>(
+      "u_stroke", bke::AttrDomain::Point);
+  bke::SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
+      "rotation", bke::AttrDomain::Point);
+
+  curves.ensure_evaluated_lengths();
+
+  curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
+    const bool is_cyclic = cyclic[curve_i];
+    const Span<float> lengths = curves.evaluated_lengths_for_curve(curve_i, is_cyclic);
+    const IndexRange points = points_by_curve[curve_i];
+    stroke_us.span[points.first()] = offset;
+    rotations.span[points.first()] += rotation;
+    for (const int point_i : points.drop_front(1)) {
+      stroke_us.span[point_i] = lengths[point_i - 1] * scale + offset;
+      rotations.span[point_i] += rotation;
+    }
+  });
+
+  stroke_us.finish();
+  rotations.finish();
+}
+
+static void write_fill_uvs(bke::greasepencil::Drawing &drawing,
+                           const IndexMask &curves_mask,
+                           const float4x4 &stroke_transform)
 {
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const Span<float3> positions = curves.positions();
-
-  IndexMaskMemory mask_memory;
-  const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
-      ctx.object, curves, tmd.influence, mask_memory);
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   bke::SpanAttributeWriter<float2> fill_uvs = attributes.lookup_or_add_for_write_span<float2>(
@@ -134,13 +165,37 @@ static void modify_curves(const GreasePencilTextureModifierData &tmd,
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
     const IndexRange points = points_by_curve[curve_i];
     const float4x4 plane_transform = get_legacy_plane_transform(positions.slice(points));
-    const float4x4 transform = math::invert(plane_transform * get_stroke_transform(tmd));
+    const float4x4 transform = math::invert(plane_transform * stroke_transform);
     for (const int point_i : points) {
       fill_uvs.span[point_i] = math::transform_point(transform, positions[point_i]).xy();
     }
   });
 
   fill_uvs.finish();
+}
+
+static void modify_curves(const GreasePencilTextureModifierData &tmd,
+                          const ModifierEvalContext &ctx,
+                          bke::greasepencil::Drawing &drawing)
+{
+  IndexMaskMemory mask_memory;
+  const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
+      ctx.object, drawing.strokes(), tmd.influence, mask_memory);
+
+  const float4x4 stroke_transform = get_stroke_transform(tmd);
+
+  switch (GreasePencilTextureModifierMode(tmd.mode)) {
+    case MOD_GREASE_PENCIL_TEXTURE_STROKE:
+      write_stroke_us(drawing, curves_mask, tmd.uv_offset, tmd.alignment_rotation, tmd.uv_scale);
+      break;
+    case MOD_GREASE_PENCIL_TEXTURE_FILL:
+      write_fill_uvs(drawing, curves_mask, stroke_transform);
+      break;
+    case MOD_GREASE_PENCIL_TEXTURE_STROKE_AND_FILL:
+      write_stroke_us(drawing, curves_mask, tmd.uv_offset, tmd.alignment_rotation, tmd.uv_scale);
+      write_fill_uvs(drawing, curves_mask, stroke_transform);
+      break;
+  }
 }
 
 static void modify_geometry_set(ModifierData *md,
@@ -163,10 +218,8 @@ static void modify_geometry_set(ModifierData *md,
   const int frame = grease_pencil.runtime->eval_frame;
   const Vector<Drawing *> drawings = modifier::greasepencil::get_drawings_for_write(
       grease_pencil, layer_mask, frame);
-  threading::parallel_for_each(
-      drawings, [&](Drawing *drawing) {
-      modify_curves(tmd, *ctx, *drawing);
-    });
+  threading::parallel_for_each(drawings,
+                               [&](Drawing *drawing) { modify_curves(tmd, *ctx, *drawing); });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
