@@ -702,8 +702,8 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
                                                object_to_world,
                                                do_final,
                                                do_uvedit,
+                                               use_hide,
                                                ts);
-  mr->use_hide = use_hide;
   mr->use_subsurf_fdots = mr->mesh && !mr->mesh->runtime->subsurf_face_dot_tags.is_empty();
   mr->use_final_mesh = do_final;
   mr->use_simplify_normals = (scene->r.mode & R_SIMPLIFY) && (scene->r.mode & R_SIMPLIFY_NORMALS);

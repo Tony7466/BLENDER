@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "BLI_math_matrix_types.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_virtual_array.hh"
 
@@ -283,6 +284,7 @@ MeshRenderData *mesh_render_data_create(Object *object,
                                         const float4x4 &object_to_world,
                                         bool do_final,
                                         bool do_uvedit,
+                                        bool use_hide,
                                         const ToolSettings *ts);
 void mesh_render_data_free(MeshRenderData *mr);
 void mesh_render_data_update_normals(MeshRenderData &mr, eMRDataType data_flag);

@@ -2172,8 +2172,8 @@ static bool draw_subdiv_create_requested_buffers(Object *ob,
                                                object_to_world,
                                                do_final,
                                                do_uvedit,
+                                               use_hide,
                                                ts);
-  mr->use_hide = use_hide;
   draw_cache.use_hide = use_hide;
 
   /* Used for setting loop normals flags. Mapped extraction is only used during edit mode.

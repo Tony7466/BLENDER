@@ -35,7 +35,7 @@
 #include "BLT_translation.hh"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_anim_visualization.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
@@ -199,7 +199,7 @@ static void action_blend_write(BlendWriter *writer, ID *id, const void *id_addre
   BLO_write_id_struct(writer, bAction, id_address, &act->id);
   BKE_id_blend_write(writer, &act->id);
 
-  BKE_fcurve_blend_write(writer, &act->curves);
+  BKE_fcurve_blend_write_listbase(writer, &act->curves);
 
   LISTBASE_FOREACH (bActionGroup *, grp, &act->groups) {
     BLO_write_struct(writer, bActionGroup, grp);
@@ -229,7 +229,7 @@ static void action_blend_read_data(BlendDataReader *reader, ID *id)
   }
   /* >>> XXX deprecated - old animation system */
 
-  BKE_fcurve_blend_read_data(reader, &act->curves);
+  BKE_fcurve_blend_read_data_listbase(reader, &act->curves);
 
   LISTBASE_FOREACH (bActionGroup *, agrp, &act->groups) {
     BLO_read_data_address(reader, &agrp->channels.first);
@@ -375,6 +375,12 @@ void action_group_colors_sync(bActionGroup *grp, const bActionGroup *ref_grp)
 
 void action_group_colors_set_from_posebone(bActionGroup *grp, const bPoseChannel *pchan)
 {
+  BLI_assert_msg(pchan, "cannot 'set action group colors from posebone' without a posebone");
+  if (!pchan->bone) {
+    /* pchan->bone is only set after leaving editmode. */
+    return;
+  }
+
   const BoneColor &color = blender::animrig::ANIM_bonecolor_posebone_get(pchan);
   action_group_colors_set(grp, &color);
 }
@@ -1773,6 +1779,8 @@ void what_does_obaction(Object *ob,
     /* execute effects of Action on to workob (or its PoseChannels) */
     BKE_animsys_evaluate_animdata(&workob->id, &adt, anim_eval_context, ADT_RECALC_ANIM, false);
   }
+  /* Ensure stack memory set here isn't accessed later, see !118847. */
+  workob->runtime = nullptr;
 }
 
 void BKE_pose_check_uids_unique_and_report(const bPose *pose)
