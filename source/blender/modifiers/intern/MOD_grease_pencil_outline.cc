@@ -132,18 +132,20 @@ static bke::CurvesGeometry reorder_cyclic_curve_points(const bke::CurvesGeometry
       array_utils::fill_index_range(point_indices, point_start);
       return;
     }
-    const int shift_raw = curve_offsets[curve_i];
-    const int shift = shift_raw >= 0 ? shift_raw % points.size() :
-                                       points.size() - ((-shift_raw) % points.size());
-    BLI_assert(0 <= shift && shift < points.size());
-    if (shift == 0) {
+    /* Offset can be negative or larger than the buffer. Use modulo to get an
+     * equivalent offset within buffer size to simplify copying. */
+    const int offset_raw = curve_offsets[curve_i];
+    const int offset = offset_raw >= 0 ? offset_raw % points.size() :
+                                         points.size() - ((-offset_raw) % points.size());
+    BLI_assert(0 <= offset && offset < points.size());
+    if (offset == 0) {
       array_utils::fill_index_range(point_indices, point_start);
       return;
     }
 
-    const int point_middle = point_start + shift;
-    array_utils::fill_index_range(point_indices.take_front(point_num - shift), point_middle);
-    array_utils::fill_index_range(point_indices.take_back(shift), point_start);
+    const int point_middle = point_start + offset;
+    array_utils::fill_index_range(point_indices.take_front(point_num - offset), point_middle);
+    array_utils::fill_index_range(point_indices.take_back(offset), point_start);
   });
 
   /* Have to make a copy of the input geometry, gather_attributes does not work in-place when the
