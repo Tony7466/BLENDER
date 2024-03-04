@@ -32,10 +32,6 @@
 
 #include <sys/stat.h>
 
-/* Set to 0 to allow devices that do not have the required features.
- * This allows development on OSX until we really needs these features. */
-#define STRICT_REQUIREMENTS true
-
 /*
  * Should we only select surfaces that are known to be compatible. Or should we in case no
  * compatible surfaces have been found select the first one.
@@ -226,14 +222,15 @@ class GHOST_DeviceVK {
     queue_create_infos.push_back(graphic_queue_create_info);
 
     VkPhysicalDeviceFeatures device_features = {};
-#if STRICT_REQUIREMENTS
+#ifndef __APPLE__
     device_features.geometryShader = VK_TRUE;
-    device_features.dualSrcBlend = VK_TRUE;
+#endif
+    /* MoltenVK supports logicOp, needs to be build with MVK_USE_METAL_PRIVATE_API. */
     device_features.logicOp = VK_TRUE;
+    device_features.dualSrcBlend = VK_TRUE;
     device_features.imageCubeArray = VK_TRUE;
     device_features.multiViewport = VK_TRUE;
     device_features.shaderClipDistance = VK_TRUE;
-#endif
     device_features.drawIndirectFirstInstance = VK_TRUE;
     device_features.fragmentStoresAndAtomics = VK_TRUE;
     device_features.samplerAnisotropy = features.features.samplerAnisotropy;
@@ -355,7 +352,11 @@ static GHOST_TSuccess ensure_vulkan_device(VkInstance vk_instance,
       }
     }
 
-#if STRICT_REQUIREMENTS
+#ifdef __APPLE__
+    if (!device_vk.features.features.dualSrcBlend || !device_vk.features.features.imageCubeArray) {
+      continue;
+    }
+#else
     if (!device_vk.features.features.geometryShader || !device_vk.features.features.dualSrcBlend ||
         !device_vk.features.features.logicOp || !device_vk.features.features.imageCubeArray)
     {
