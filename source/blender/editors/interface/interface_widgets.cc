@@ -1323,9 +1323,8 @@ static void widget_draw_icon(
   }
   else if (but->type == UI_BTYPE_LABEL) {
     /* extra feature allows more alpha blending */
-    if (but->a1 == 1.0f) {
-      alpha *= but->a2;
-    }
+    const uiButLabel *but_label = reinterpret_cast<const uiButLabel *>(but);
+    alpha *= but_label->alpha_factor;
   }
   else if (ELEM(but->type, UI_BTYPE_BUT, UI_BTYPE_DECORATOR)) {
     uiWidgetStateInfo state = {0};
@@ -3271,6 +3270,9 @@ static void ui_draw_but_HSVCUBE(uiBut *but, const rcti *rect)
   float *hsv = cpicker->hsv_perceptual;
   float hsv_n[3];
 
+  /* Is this the larger color canvas or narrow color slider? */
+  bool is_canvas = ELEM(hsv_but->gradient_type, UI_GRAD_SV, UI_GRAD_HV, UI_GRAD_HS);
+
   /* Initialize for compatibility. */
   copy_v3_v3(hsv_n, hsv);
 
@@ -3292,15 +3294,15 @@ static void ui_draw_but_HSVCUBE(uiBut *but, const rcti *rect)
   imm_draw_box_wire_2d(pos, (rect->xmin), (rect->ymin), (rect->xmax), (rect->ymax));
   immUnbindProgram();
 
-  if (BLI_rcti_size_x(rect) / BLI_rcti_size_y(rect) < 3) {
-    /* This is for the full square HSV cube. */
+  if (is_canvas) {
+    /* Round cursor in the large square area. */
     float margin = (4.0f * UI_SCALE_FAC);
     CLAMP(x, rect->xmin + margin, rect->xmax - margin);
     CLAMP(y, rect->ymin + margin, rect->ymax - margin);
     ui_hsv_cursor(x, y, zoom, rgb, hsv, but->flag & UI_SELECT);
   }
   else {
-    /* This is for the narrow horizontal gradient. */
+    /* Square indicator in the narrow area. */
     rctf rectf;
     BLI_rctf_rcti_copy(&rectf, rect);
     const float margin = (2.0f * UI_SCALE_FAC);
@@ -3386,7 +3388,8 @@ static void ui_draw_but_HSV_v(uiBut *but, const rcti *rect)
 /** Separator line. */
 static void ui_draw_separator(const uiWidgetColors *wcol, uiBut *but, const rcti *rect)
 {
-  const bool vertical = but->a1 == 1.0f;
+  const uiButSeparatorLine *but_line = static_cast<uiButSeparatorLine *>(but);
+  const bool vertical = but_line->is_vertical;
   const int mid = vertical ? BLI_rcti_cent_x(rect) : BLI_rcti_cent_y(rect);
   const uchar col[4] = {
       wcol->text[0],
@@ -3689,10 +3692,13 @@ static void widget_scroll(uiBut *but,
                           int /*roundboxalign*/,
                           const float /*zoom*/)
 {
+  const uiButScrollBar *but_scroll = reinterpret_cast<const uiButScrollBar *>(but);
+  const float height = but_scroll->visual_height;
+
   /* calculate slider part */
   const float value = float(ui_but_value_get(but));
 
-  const float size = max_ff((but->softmax + but->a1 - but->softmin), 2.0f);
+  const float size = max_ff((but->softmax + height - but->softmin), 2.0f);
 
   /* position */
   rcti rect1 = *rect;
@@ -3703,7 +3709,7 @@ static void widget_scroll(uiBut *but,
   if (horizontal) {
     const float fac = BLI_rcti_size_x(rect) / size;
     rect1.xmin = rect1.xmin + ceilf(fac * (value - but->softmin));
-    rect1.xmax = rect1.xmin + ceilf(fac * (but->a1 - but->softmin));
+    rect1.xmax = rect1.xmin + ceilf(fac * (height - but->softmin));
 
     /* Ensure minimum size. */
     const float min = BLI_rcti_size_y(rect);
@@ -3720,7 +3726,7 @@ static void widget_scroll(uiBut *but,
   else {
     const float fac = BLI_rcti_size_y(rect) / size;
     rect1.ymax = rect1.ymax - ceilf(fac * (value - but->softmin));
-    rect1.ymin = rect1.ymax - ceilf(fac * (but->a1 - but->softmin));
+    rect1.ymin = rect1.ymax - ceilf(fac * (height - but->softmin));
 
     /* Ensure minimum size. */
     const float min = BLI_rcti_size_x(rect);

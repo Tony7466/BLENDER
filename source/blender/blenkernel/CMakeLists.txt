@@ -318,13 +318,13 @@ set(SRC
   intern/wm_runtime.cc
   intern/workspace.cc
   intern/world.cc
-  intern/writeavi.cc
+  intern/writemovie.cc
 
   BKE_DerivedMesh.hh
   BKE_action.h
   BKE_action.hh
   BKE_addon.h
-  BKE_anim_data.h
+  BKE_anim_data.hh
   BKE_anim_path.h
   BKE_anim_visualization.h
   BKE_animsys.h
@@ -526,7 +526,7 @@ set(SRC
   BKE_wm_runtime.hh
   BKE_workspace.h
   BKE_world.h
-  BKE_writeavi.h
+  BKE_writemovie.hh
 
   nla_private.h
   particle_private.h

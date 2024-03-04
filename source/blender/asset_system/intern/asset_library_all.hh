@@ -8,11 +8,15 @@
 
 #pragma once
 
+#include <atomic>
+
 #include "AS_asset_library.hh"
 
 namespace blender::asset_system {
 
 class AllAssetLibrary : public AssetLibrary {
+  std::atomic<bool> catalogs_dirty_ = true;
+
  public:
   AllAssetLibrary();
 
@@ -26,6 +30,9 @@ class AllAssetLibrary : public AssetLibrary {
    * merge them into the in-memory representations.
    */
   void rebuild_catalogs_from_nested(bool reload_nested_catalogs);
+
+  void tag_catalogs_dirty();
+  bool is_catalogs_dirty() const;
 };
 
 }  // namespace blender::asset_system

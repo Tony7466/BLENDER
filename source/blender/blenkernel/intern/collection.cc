@@ -20,7 +20,7 @@
 #include "BLI_threads.h"
 #include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_collection.hh"
 #include "BKE_idprop.h"
 #include "BKE_idtype.hh"
@@ -238,7 +238,6 @@ static ID **collection_owner_pointer_get(ID *id)
   if ((id->flag & LIB_EMBEDDED_DATA) == 0) {
     return nullptr;
   }
-  BLI_assert((id->tag & LIB_TAG_NO_MAIN) == 0);
 
   Collection *master_collection = (Collection *)id;
   BLI_assert((master_collection->flag & COLLECTION_IS_MASTER) != 0);
