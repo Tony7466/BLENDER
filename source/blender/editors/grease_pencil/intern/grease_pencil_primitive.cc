@@ -913,7 +913,8 @@ static void grease_pencil_primitive_rotate_all_update(PrimitiveTool_OpData &ptd,
     const float2 dif = start_pos2 - center_of_mass;
     const float c = math::cos(rotation);
     const float s = math::sin(rotation);
-    const float2 pos2 = float2(dif[0] * c - dif[1] * s, dif[0] * s + dif[1] * c) + center_of_mass;
+    const float2x2 rot = float2x2(float2(c, s), float2(-s, c));
+    const float2 pos2 = rot * dif + center_of_mass;
     float3 pos = ptd.placement_.project(pos2);
     ptd.control_points[point_index] = pos;
   }
