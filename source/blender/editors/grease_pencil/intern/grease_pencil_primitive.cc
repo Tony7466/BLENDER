@@ -177,14 +177,14 @@ static void control_point_colors_and_sizes(const PrimitiveTool_OpData &ptd,
                                            MutableSpan<ColorGeometry4f> colors,
                                            MutableSpan<float> sizes)
 {
-  ColorGeometry4f color_redalert;
   ColorGeometry4f color_gizmo_primary;
   ColorGeometry4f color_gizmo_secondary;
   ColorGeometry4f color_gizmo_a;
-  UI_GetThemeColor4fv(TH_REDALERT, color_redalert);
+  ColorGeometry4f color_gizmo_b;
   UI_GetThemeColor4fv(TH_GIZMO_PRIMARY, color_gizmo_primary);
   UI_GetThemeColor4fv(TH_GIZMO_SECONDARY, color_gizmo_secondary);
   UI_GetThemeColor4fv(TH_GIZMO_A, color_gizmo_a);
+  UI_GetThemeColor4fv(TH_GIZMO_B, color_gizmo_b);
 
   const float size_primary = UI_PRIMARY_POINT_DRAW_SIZE_PX;
   const float size_secondary = UI_SECONDARY_POINT_DRAW_SIZE_PX;
@@ -195,7 +195,7 @@ static void control_point_colors_and_sizes(const PrimitiveTool_OpData &ptd,
     sizes.fill(size_primary);
 
     /* Set the center point's color. */
-    colors[1] = color_redalert;
+    colors[1] = color_gizmo_b;
     sizes[1] = size_secondary;
   }
   else {
@@ -206,7 +206,7 @@ static void control_point_colors_and_sizes(const PrimitiveTool_OpData &ptd,
       const ControlPointType control_point_type = get_control_point_type(ptd, i);
 
       if (control_point_type == ControlPointType::JOIN_POINT) {
-        colors[i] = color_redalert;
+        colors[i] = color_gizmo_b;
         sizes[i] = size_tertiary;
       }
     }
