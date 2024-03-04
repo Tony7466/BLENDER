@@ -172,7 +172,10 @@ static int grease_pencil_brush_stroke_invoke(bContext *C, wmOperator *op, const 
 
   if (blender::animrig::is_autokey_on(scene) && needs_new_drawing) {
     const ToolSettings *ts = CTX_data_tool_settings(C);
-    if ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) {
+    const Brush *brush = ts->gp_paint->paint.brush;
+    if (((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0) ||
+        (brush->gpencil_tool == GPAINT_TOOL_ERASE))
+    {
       /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
        * current frame. */
       grease_pencil.insert_duplicate_frame(
