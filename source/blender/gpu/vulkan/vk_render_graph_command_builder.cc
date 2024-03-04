@@ -14,7 +14,18 @@ void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
 {
   selected_nodes_.clear();
   const int64_t resource_len = render_graph.resources_.resources_.size();
-  // reset image_layouts
+
+  // Reset access_masks, keep last known access masks around.
+  // NOTE: Access masks should be resetted when resources are removed. Handles can be reused and
+  // that isn't take into account.
+  if (read_access_.size() < resource_len) {
+    read_access_.resize(resource_len, VK_ACCESS_NONE);
+  }
+  if (write_access_.size() < resource_len) {
+    write_access_.resize(resource_len, VK_ACCESS_NONE);
+  }
+
+  // Reset image_layouts
   if (image_layouts_.size() < resource_len) {
     image_layouts_.resize(resource_len);
   }
@@ -37,7 +48,7 @@ void VKRenderGraphCommandBuilder::build_image(VKRenderGraph &render_graph, VkIma
   render_graph.command_buffer_->begin_recording();
   for (NodeHandle node_handle : selected_nodes_) {
     VKRenderGraphNodes::Node &node = render_graph.nodes_.get(node_handle);
-    build_node(render_graph, node);
+    build_node(render_graph, node_handle, node);
   }
 
   render_graph.command_buffer_->end_recording();
@@ -53,13 +64,14 @@ void VKRenderGraphCommandBuilder::build_buffer(VKRenderGraph &render_graph, VkBu
   render_graph.command_buffer_->begin_recording();
   for (NodeHandle node_handle : selected_nodes_) {
     VKRenderGraphNodes::Node &node = render_graph.nodes_.get(node_handle);
-    build_node(render_graph, node);
+    build_node(render_graph, node_handle, node);
   }
 
   render_graph.command_buffer_->end_recording();
 }
 
 void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
+                                             NodeHandle node_handle,
                                              VKRenderGraphNodes::Node &node)
 {
   switch (node.type) {
@@ -68,12 +80,12 @@ void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
     }
 
     case VKRenderGraphNodes::Node::Type::CLEAR_COLOR_IMAGE: {
-      build_node_clear_color_image(render_graph, node);
+      build_node_clear_color_image(render_graph, node_handle, node);
       break;
     }
 
     case VKRenderGraphNodes::Node::Type::FILL_BUFFER: {
-      build_node_fill_buffer(render_graph, node);
+      build_node_fill_buffer(render_graph, node_handle, node);
       break;
     }
 
@@ -84,11 +96,13 @@ void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
 }
 
 void VKRenderGraphCommandBuilder::build_node_clear_color_image(VKRenderGraph &render_graph,
+                                                               NodeHandle node_handle,
                                                                VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::CLEAR_COLOR_IMAGE);
   const VkImageLayout vk_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
   ensure_image_layout(render_graph, node.clear_color_image.vk_image, vk_image_layout);
+
   render_graph.command_buffer_->clear_color_image(
       node.clear_color_image.vk_image,
       vk_image_layout,
@@ -98,10 +112,14 @@ void VKRenderGraphCommandBuilder::build_node_clear_color_image(VKRenderGraph &re
 }
 
 void VKRenderGraphCommandBuilder::build_node_fill_buffer(VKRenderGraph &render_graph,
+                                                         NodeHandle node_handle,
                                                          VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::FILL_BUFFER);
-  // TODO: add pipeline barrier for sync issues.
+  add_buffer_barriers(render_graph, node_handle, VK_ACCESS_TRANSFER_WRITE_BIT);
+  ResourceHandle buffer_handle = render_graph.resources_.get_buffer_handle(
+      node.fill_buffer.vk_buffer);
+
   render_graph.command_buffer_->fill_buffer(
       node.fill_buffer.vk_buffer, 0, node.fill_buffer.size, node.fill_buffer.data);
 }
@@ -133,6 +151,114 @@ void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_grap
                                                  &image_memory_barrier);
 
   image_layouts_[image_handle] = vk_image_layout;
+}
+
+void VKRenderGraphCommandBuilder::add_buffer_barriers(VKRenderGraph &render_graph,
+                                                      NodeHandle node_handle,
+                                                      VkAccessFlags new_write_access)
+{
+  vk_buffer_memory_barriers_.clear();
+  add_buffer_read_barriers(render_graph, node_handle, new_write_access);
+  add_buffer_write_barriers(render_graph, node_handle, new_write_access);
+  if (vk_buffer_memory_barriers_.is_empty()) {
+    return;
+  }
+
+  const VkPipelineStageFlags stage_masks = VK_PIPELINE_STAGE_TRANSFER_BIT |
+                                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
+                                           VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+  render_graph.command_buffer_->pipeline_barrier(stage_masks,
+                                                 stage_masks,
+                                                 VK_DEPENDENCY_BY_REGION_BIT,
+                                                 0,
+                                                 nullptr,
+                                                 vk_buffer_memory_barriers_.size(),
+                                                 vk_buffer_memory_barriers_.data(),
+                                                 0,
+                                                 nullptr);
+}
+
+void VKRenderGraphCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
+                                                           NodeHandle node_handle,
+                                                           VkAccessFlags new_access)
+{
+  for (VersionedResource versioned_resource : render_graph.nodes_.get_read_resources(node_handle))
+  {
+    const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
+        versioned_resource.handle);
+    // If resource version has not be read, no barrier needs to be added.
+    VkAccessFlags read_access = read_access_[versioned_resource.handle];
+    VkAccessFlags write_access = write_access_[versioned_resource.handle];
+    VkAccessFlags wait_access = VK_ACCESS_NONE;
+
+    if (read_access == (read_access | new_access)) {
+      // has already been covered in a previous call no need to add this one.
+      // TODO: we should merge all read accesses with the first available read barrier.
+      continue;
+    }
+
+    read_access |= new_access;
+    wait_access |= write_access;
+
+    read_access_[versioned_resource.handle] = read_access;
+    write_access_[versioned_resource.handle] = VK_ACCESS_NONE;
+
+    add_buffer_barrier(resource.vk_buffer, wait_access, read_access);
+  }
+}
+
+void VKRenderGraphCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
+                                                            NodeHandle node_handle,
+                                                            VkAccessFlags new_write_access)
+{
+  vk_buffer_memory_barriers_.clear();
+
+  for (VersionedResource versioned_resource : render_graph.nodes_.get_write_resources(node_handle))
+  {
+    const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
+        versioned_resource.handle);
+    if (resource.vk_buffer == VK_NULL_HANDLE) {
+      /* Ignore image resources. */
+      continue;
+    }
+    // If resource version has not be read, no barrier needs to be added.
+    VkAccessFlags read_access = read_access_[versioned_resource.handle];
+    VkAccessFlags write_access = write_access_[versioned_resource.handle];
+    VkAccessFlags wait_access = VK_ACCESS_NONE;
+
+    if (read_access != VK_ACCESS_NONE) {
+      wait_access |= read_access;
+    }
+    if (read_access == VK_ACCESS_NONE && write_access != VK_ACCESS_NONE) {
+      // Add write_write_buffer_barrier
+      wait_access |= write_access;
+    }
+
+    read_access_[versioned_resource.handle] = VK_ACCESS_NONE;
+    write_access_[versioned_resource.handle] = new_write_access;
+
+    if (wait_access != VK_ACCESS_NONE) {
+      add_buffer_barrier(resource.vk_buffer, wait_access, new_write_access);
+    }
+  }
+}
+
+void VKRenderGraphCommandBuilder::add_buffer_barrier(VkBuffer vk_buffer,
+                                                     VkAccessFlags src_access_mask,
+                                                     VkAccessFlags dst_access_mask)
+{
+  VkBufferMemoryBarrier vk_buffer_memory_barrier = {};
+  vk_buffer_memory_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  vk_buffer_memory_barrier.pNext = nullptr;
+  vk_buffer_memory_barrier.srcAccessMask = src_access_mask;
+  vk_buffer_memory_barrier.dstAccessMask = dst_access_mask;
+  vk_buffer_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  vk_buffer_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  vk_buffer_memory_barrier.buffer = vk_buffer;
+  vk_buffer_memory_barrier.offset = 0;
+  vk_buffer_memory_barrier.size = VK_WHOLE_SIZE;
+
+  vk_buffer_memory_barriers_.append(vk_buffer_memory_barrier);
 }
 
 }  // namespace blender::gpu

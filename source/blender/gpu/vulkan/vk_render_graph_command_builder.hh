@@ -19,6 +19,13 @@ class VKRenderGraphCommandBuilder {
   Vector<NodeHandle> selected_nodes_;
   Vector<VkImageLayout> image_layouts_;
 
+  // TODO: make a struct containing both accesses.
+  Vector<VkAccessFlags> write_access_;
+  Vector<VkAccessFlags> read_access_;
+
+  /* Pool of VKBufferMemoryBarriers that can be reused when building barriers */
+  Vector<VkBufferMemoryBarrier> vk_buffer_memory_barriers_;
+
  public:
   /**
    * Reset the command builder.
@@ -47,9 +54,28 @@ class VKRenderGraphCommandBuilder {
                            VkImageLayout vk_image_layout);
 
  private:
-  void build_node(VKRenderGraph &render_graph, VKRenderGraphNodes::Node &node);
-  void build_node_clear_color_image(VKRenderGraph &render_graph, VKRenderGraphNodes::Node &node);
-  void build_node_fill_buffer(VKRenderGraph &render_graph, VKRenderGraphNodes::Node &node);
+  void build_node(VKRenderGraph &render_graph,
+                  NodeHandle node_handle,
+                  VKRenderGraphNodes::Node &node);
+  void build_node_clear_color_image(VKRenderGraph &render_graph,
+                                    NodeHandle node_handle,
+                                    VKRenderGraphNodes::Node &node);
+  void build_node_fill_buffer(VKRenderGraph &render_graph,
+                              NodeHandle node_handle,
+                              VKRenderGraphNodes::Node &node);
+
+  void add_buffer_barriers(VKRenderGraph &render_graph,
+                           NodeHandle node_handle,
+                           VkAccessFlags new_write_access);
+  void add_buffer_barrier(VkBuffer vk_buffer,
+                          VkAccessFlags src_access_mask,
+                          VkAccessFlags dst_access_mask);
+  void add_buffer_read_barriers(VKRenderGraph &render_graph,
+                                NodeHandle node_handle,
+                                VkAccessFlags new_write_access);
+  void add_buffer_write_barriers(VKRenderGraph &render_graph,
+                                 NodeHandle node_handle,
+                                 VkAccessFlags new_write_access);
 };
 
 }  // namespace blender::gpu

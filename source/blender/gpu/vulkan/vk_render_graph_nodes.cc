@@ -15,7 +15,7 @@ NodeHandle VKRenderGraphNodes::add_clear_image_node(
     VkClearColorValue &vk_clear_color_value,
     VkImageSubresourceRange &vk_image_subresource_range)
 {
-  NodeHandle handle = nodes_.allocate();
+  NodeHandle handle = allocate();
   Node &node = nodes_.get(handle);
   BLI_assert(node.type == Node::Type::UNUSED);
 
@@ -31,7 +31,7 @@ NodeHandle VKRenderGraphNodes::add_fill_buffer_node(VkBuffer vk_buffer,
                                                     VkDeviceSize size,
                                                     uint32_t data)
 {
-  NodeHandle handle = nodes_.allocate();
+  NodeHandle handle = allocate();
   Node &node = nodes_.get(handle);
   BLI_assert(node.type == Node::Type::UNUSED);
 
@@ -43,13 +43,31 @@ NodeHandle VKRenderGraphNodes::add_fill_buffer_node(VkBuffer vk_buffer,
   return handle;
 }
 
+void VKRenderGraphNodes::add_read_resource(NodeHandle handle, VersionedResource resource_handle)
+{
+  read_resources_per_node_[handle].append(resource_handle);
+}
+
 void VKRenderGraphNodes::add_write_resource(NodeHandle handle, VersionedResource resource_handle)
 {
+  write_resources_per_node_[handle].append(resource_handle);
+}
+
+NodeHandle VKRenderGraphNodes::allocate()
+{
+  NodeHandle node_handle = nodes_.allocate();
+  ensure_vector_sizes();
+  return node_handle;
+}
+
+void VKRenderGraphNodes::ensure_vector_sizes()
+{
+  if (read_resources_per_node_.size() < nodes_.size()) {
+    read_resources_per_node_.resize(nodes_.size());
+  }
   if (write_resources_per_node_.size() < nodes_.size()) {
     write_resources_per_node_.resize(nodes_.size());
   }
-
-  write_resources_per_node_[handle].append(resource_handle);
 }
 
 }  // namespace blender::gpu

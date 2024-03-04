@@ -56,6 +56,7 @@ class VKRenderGraphNodes {
                                   VkImageSubresourceRange &vk_image_subresource_range);
   NodeHandle add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data);
 
+  void add_read_resource(NodeHandle handle, VersionedResource resource_handle);
   void add_write_resource(NodeHandle handle, VersionedResource resource_handle);
 
   Span<const std::optional<Node>> nodes() const
@@ -75,6 +76,19 @@ class VKRenderGraphNodes {
   {
     return nodes_.size();
   }
+
+  Span<VersionedResource> get_write_resources(NodeHandle node_handle)
+  {
+    return write_resources_per_node_[node_handle];
+  }
+
+  Span<VersionedResource> get_read_resources(NodeHandle node_handle)
+  {
+    return read_resources_per_node_[node_handle];
+  }
+ private:
+ NodeHandle allocate();
+  void ensure_vector_sizes();
 };
 
 }  // namespace blender::gpu

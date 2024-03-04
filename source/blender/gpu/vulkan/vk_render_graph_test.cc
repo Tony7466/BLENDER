@@ -20,6 +20,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
   void end_recording() override {}
   void bind_pipeline(VkPipelineBindPoint pipeline_bind_point, VkPipeline pipeline) override
   {
+    UNUSED_VARS(pipeline_bind_point, pipeline);
     BLI_assert_unreachable();
   }
 
@@ -31,11 +32,19 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                             uint32_t dynamic_offset_count,
                             const uint32_t *p_dynamic_offsets) override
   {
+    UNUSED_VARS(pipeline_bind_point,
+                layout,
+                first_set,
+                descriptor_set_count,
+                p_descriptor_sets,
+                dynamic_offset_count,
+                p_dynamic_offsets);
     BLI_assert_unreachable();
   }
 
   void bind_index_buffer(VkBuffer buffer, VkDeviceSize offset, VkIndexType index_type) override
   {
+    UNUSED_VARS(buffer, offset, index_type);
     BLI_assert_unreachable();
   }
 
@@ -44,6 +53,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                            const VkBuffer *p_buffers,
                            const VkDeviceSize *p_offsets) override
   {
+    UNUSED_VARS(first_binding, binding_count, p_buffers, p_offsets);
     BLI_assert_unreachable();
   }
 
@@ -52,6 +62,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
             uint32_t first_vertex,
             uint32_t first_instance) override
   {
+    UNUSED_VARS(vertex_count, instance_count, first_vertex, first_instance);
     BLI_assert_unreachable();
   }
 
@@ -61,6 +72,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                     int32_t vertex_offset,
                     uint32_t first_instance) override
   {
+    UNUSED_VARS(index_count, instance_count, first_index, vertex_offset, first_instance);
     BLI_assert_unreachable();
   }
 
@@ -69,6 +81,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                      uint32_t draw_count,
                      uint32_t stride) override
   {
+    UNUSED_VARS(buffer, offset, draw_count, stride);
     BLI_assert_unreachable();
   }
 
@@ -77,16 +90,19 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                              uint32_t draw_count,
                              uint32_t stride) override
   {
+    UNUSED_VARS(buffer, offset, draw_count, stride);
     BLI_assert_unreachable();
   }
 
   void dispatch(uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z) override
   {
+    UNUSED_VARS(group_count_x, group_count_y, group_count_z);
     BLI_assert_unreachable();
   }
 
   void dispatch_indirect(VkBuffer buffer, VkDeviceSize offset) override
   {
+    UNUSED_VARS(buffer, offset);
     BLI_assert_unreachable();
   }
 
@@ -95,6 +111,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                    uint32_t region_count,
                    const VkBufferCopy *p_regions) override
   {
+    UNUSED_VARS(src_buffer, dst_buffer, region_count, p_regions);
     BLI_assert_unreachable();
   }
 
@@ -105,6 +122,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                   uint32_t region_count,
                   const VkImageCopy *p_regions) override
   {
+    UNUSED_VARS(src_image, src_image_layout, dst_image, dst_image_layout, region_count, p_regions);
     BLI_assert_unreachable();
   }
 
@@ -116,6 +134,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                   const VkImageBlit *p_regions,
                   VkFilter filter) override
   {
+    UNUSED_VARS(
+        src_image, src_image_layout, dst_image, dst_image_layout, region_count, p_regions, filter);
     BLI_assert_unreachable();
   }
 
@@ -125,6 +145,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                             uint32_t region_count,
                             const VkBufferImageCopy *p_regions) override
   {
+    UNUSED_VARS(src_buffer, dst_image, dst_image_layout, region_count, p_regions);
     BLI_assert_unreachable();
   }
 
@@ -134,6 +155,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                             uint32_t region_count,
                             const VkBufferImageCopy *p_regions) override
   {
+    UNUSED_VARS(src_image, src_image_layout, dst_buffer, region_count, p_regions);
     BLI_assert_unreachable();
   }
 
@@ -158,6 +180,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                          uint32_t range_count,
                          const VkImageSubresourceRange *p_ranges) override
   {
+    UNUSED_VARS(p_color, range_count, p_ranges);
     std::stringstream ss;
     ss << "clear_color_image(";
     ss << "image=" << image;
@@ -172,6 +195,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                                  uint32_t range_count,
                                  const VkImageSubresourceRange *p_ranges) override
   {
+    UNUSED_VARS(image, image_layout, p_depth_stencil, range_count, p_ranges);
     BLI_assert_unreachable();
   }
 
@@ -180,6 +204,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                          uint32_t rect_count,
                          const VkClearRect *p_rects) override
   {
+    UNUSED_VARS(attachment_count, p_attachments, rect_count, p_rects);
     BLI_assert_unreachable();
   }
 
@@ -193,6 +218,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                         uint32_t image_memory_barrier_count,
                         const VkImageMemoryBarrier *p_image_memory_barriers) override
   {
+    UNUSED_VARS(
+        src_stage_mask, dst_stage_mask, dependency_flags, memory_barrier_count, p_memory_barriers);
     std::stringstream ss;
     ss << "pipeline_barrier(\n";
     for (VkImageMemoryBarrier image_barrier :
@@ -202,6 +229,15 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
       ss << image_barrier.image;
       ss << ", old_layout=" << to_string(image_barrier.oldLayout);
       ss << ", new_layout=" << to_string(image_barrier.newLayout);
+      ss << ")\n";
+    }
+    for (VkBufferMemoryBarrier buffer_barrier :
+         Span<VkBufferMemoryBarrier>(p_buffer_memory_barriers, buffer_memory_barrier_count))
+    {
+      ss << " - buffer_barrier(";
+      ss << "buffer=" << buffer_barrier.buffer;
+      ss << ", src_access_mask=" << buffer_barrier.srcAccessMask;
+      ss << ", dst_access_mask=" << buffer_barrier.dstAccessMask;
       ss << ")\n";
     }
     ss << ")";
@@ -215,12 +251,14 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                       uint32_t size,
                       const void *p_values) override
   {
+    UNUSED_VARS(layout, stage_flags, offset, size, p_values);
     BLI_assert_unreachable();
   }
 
   void begin_render_pass(const VkRenderPassBeginInfo *p_render_pass_begin,
                          VkSubpassContents contents) override
   {
+    UNUSED_VARS(p_render_pass_begin, contents);
     BLI_assert_unreachable();
   }
 
@@ -248,6 +286,9 @@ template<typename VKObjectType> union VkHandle {
   }
 };
 
+/**
+ * Fill a single buffer and read it back.
+ */
 TEST(vk_render_graph, fill_and_read_back)
 {
   VkHandle<VkBuffer> buffer(1u);
@@ -258,11 +299,66 @@ TEST(vk_render_graph, fill_and_read_back)
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
                              std::make_unique<Sequential>());
   render_graph.add_buffer(buffer);
-  render_graph.add_fill_buffer_node(buffer, 1024, 0);
+  render_graph.add_fill_buffer_node(buffer, 1024, 42);
   render_graph.submit_buffer_for_read_back(buffer);
 
   EXPECT_EQ(1, log.size());
+  EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=42)", log[0]);
+}
+
+/**
+ * Fill a single buffer, copy it to a staging buffer and read the staging buffer back.
+ */
+TEST(vk_render_graph, fill_transfer_and_read_back)
+{
+  VkHandle<VkBuffer> buffer(1u);
+  VkHandle<VkBuffer> staging_buffer(2u);
+
+  Vector<std::string> log;
+  CommandBufferLog l(log);
+  VKCommandBufferWrapper wrapper;
+  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
+                             std::make_unique<Sequential>());
+  render_graph.add_buffer(buffer);
+  render_graph.add_fill_buffer_node(buffer, 1024, 42);
+  render_graph.add_buffer(staging_buffer);
+  // render_graph.add_copy_buffer_node(buffer, staging_buffer);
+  render_graph.submit_buffer_for_read_back(staging_buffer);
+
+  EXPECT_EQ(1, log.size());
   EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=0)", log[0]);
+  EXPECT_EQ("pipeline barrier (wait for completion of fill buffer, before we can perform a copy)",
+            log[1]);
+  EXPECT_EQ("copy from buffer to staging buffer", log[2]);
+}
+
+/**
+ * Fill a buffer twice, before reading back.
+ *
+ * Between the two fills a write->write barrier should be created.
+ */
+TEST(vk_render_graph, fill_fill_read_back)
+{
+  VkHandle<VkBuffer> buffer(1u);
+
+  Vector<std::string> log;
+  CommandBufferLog l(log);
+  VKCommandBufferWrapper wrapper;
+  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
+                             std::make_unique<Sequential>());
+  render_graph.add_buffer(buffer);
+  render_graph.add_fill_buffer_node(buffer, 1024, 0);
+  render_graph.add_fill_buffer_node(buffer, 1024, 42);
+  render_graph.submit_buffer_for_read_back(buffer);
+
+  EXPECT_EQ(3, log.size());
+  EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=0)", log[0]);
+  EXPECT_EQ(
+      "pipeline_barrier(\n"
+      " - buffer_barrier(buffer=0x1, src_access_mask=4096, dst_access_mask=4096)\n"
+      ")",
+      log[1]);
+  EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=42)", log[2]);
 }
 
 TEST(vk_render_graph, transfer_and_present)
