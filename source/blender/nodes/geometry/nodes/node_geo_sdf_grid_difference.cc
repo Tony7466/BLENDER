@@ -45,7 +45,14 @@ static void node_geo_exec(GeoNodeExecParams params)
   openvdb::FloatGrid &vdb_b = geometry::resample_sdf_grid_if_necessary(
       grid_b, tree_token, transform, resampled_storage);
 
-  openvdb::tools::csgDifference(result_grid, vdb_b);
+  try {
+    openvdb::tools::csgDifference(result_grid, vdb_b);
+  }
+  catch (const openvdb::ValueError &ex) {
+    /* May happen if a grid is empty. */
+    params.set_default_remaining_outputs();
+    return;
+  }
 
   params.set_output("SDF Grid", std::move(grid_a));
 #else
