@@ -7,11 +7,13 @@
  */
 
 #include <cstdio>
-#include <exception>
 #include <memory>
+#include <system_error>
 
 #include "BKE_collection.hh"
+#include "BKE_context.hh"
 #include "BKE_lib_id.hh"
+#include "BKE_report.hh"
 #include "BKE_scene.hh"
 
 #include "BLI_path_util.h"
@@ -277,6 +279,7 @@ void export_frame(Depsgraph *depsgraph, const OBJExportParams &export_params, co
   }
   catch (const std::system_error &ex) {
     print_exception_error(ex);
+    BKE_reportf(export_params.reports, RPT_ERROR, "OBJ Export: Cannot open file '%s'", filepath);
     return;
   }
   if (!frame_writer) {
@@ -290,6 +293,10 @@ void export_frame(Depsgraph *depsgraph, const OBJExportParams &export_params, co
     }
     catch (const std::system_error &ex) {
       print_exception_error(ex);
+      BKE_reportf(export_params.reports,
+                  RPT_WARNING,
+                  "OBJ Export: Cannot create mtl file for '%s'",
+                  filepath);
     }
   }
 
