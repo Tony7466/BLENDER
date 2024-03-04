@@ -122,14 +122,14 @@ struct PrimitiveTool_OpData {
   InterpolationMode interpolate_mode;
   float4x4 projection;
   /* Helper class to project screen space coordinates to 3D. */
-  ed::greasepencil::DrawingPlacement placement_;
+  ed::greasepencil::DrawingPlacement placement;
 
-  bke::greasepencil::Drawing *drawing_;
-  BrushGpencilSettings *settings_;
-  float4 vertex_color_;
+  bke::greasepencil::Drawing *drawing;
+  BrushGpencilSettings *settings;
+  float4 vertex_color;
   int material_index;
   float hardness;
-  Brush *brush_;
+  Brush *brush;
 
   OperatorMode mode;
   float2 start_position_2d;
@@ -409,7 +409,7 @@ static int grease_pencil_primitive_curve_points_number(PrimitiveTool_OpData &ptd
 
 static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
 {
-  bke::CurvesGeometry &curves = ptd.drawing_->strokes_for_write();
+  bke::CurvesGeometry &curves = ptd.drawing->strokes_for_write();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
   const int last_points = curves.points_by_curve()[curves.curves_range().last()].size();
@@ -430,19 +430,19 @@ static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
       positions_2d[point] = ED_view3d_project_float_v2_m4(
           ptd.vc.region, positions_3d[point], ptd.projection);
     }
-    ptd.placement_.project(positions_2d, positions_3d);
+    ptd.placement.project(positions_2d, positions_3d);
   }
   else { /* 2D */
     primitive_calulate_curve_positions_2d(ptd, positions_2d);
-    ptd.placement_.project(positions_2d, positions_3d);
+    ptd.placement.project(positions_2d, positions_3d);
   }
 
-  MutableSpan<float> new_radii = ptd.drawing_->radii_for_write().slice(curve_points);
-  MutableSpan<float> new_opacities = ptd.drawing_->opacities_for_write().slice(curve_points);
-  MutableSpan<ColorGeometry4f> new_vertex_colors = ptd.drawing_->vertex_colors_for_write().slice(
+  MutableSpan<float> new_radii = ptd.drawing->radii_for_write().slice(curve_points);
+  MutableSpan<float> new_opacities = ptd.drawing->opacities_for_write().slice(curve_points);
+  MutableSpan<ColorGeometry4f> new_vertex_colors = ptd.drawing->vertex_colors_for_write().slice(
       curve_points);
 
-  new_vertex_colors.fill(ColorGeometry4f(ptd.vertex_color_));
+  new_vertex_colors.fill(ColorGeometry4f(ptd.vertex_color));
 
   ToolSettings *ts = ptd.vc.scene->toolsettings;
   GP_Sculpt_Settings *gset = &ts->gp_sculpt;
@@ -456,21 +456,21 @@ static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
     }
 
     const float radius = ed::sculpt_paint::greasepencil::radius_from_input_sample(
-        pressure, positions_3d[point_id], ptd.vc, ptd.brush_, ptd.vc.scene, ptd.settings_);
+        pressure, positions_3d[point_id], ptd.vc, ptd.brush, ptd.vc.scene, ptd.settings);
     const float opacity = ed::sculpt_paint::greasepencil::opacity_from_input_sample(
-        pressure, ptd.brush_, ptd.vc.scene, ptd.settings_);
+        pressure, ptd.brush, ptd.vc.scene, ptd.settings);
 
     new_radii[point_id] = radius;
     new_opacities[point_id] = opacity;
   }
 
-  ptd.drawing_->tag_topology_changed();
+  ptd.drawing->tag_topology_changed();
 }
 
 static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
 {
   /* Resize the curves geometry so there is one more curve with a single point. */
-  bke::CurvesGeometry &curves = ptd.drawing_->strokes_for_write();
+  bke::CurvesGeometry &curves = ptd.drawing->strokes_for_write();
   const int num_old_points = curves.points_num();
   curves.resize(curves.points_num() + 1, curves.curves_num() + 1);
   curves.offsets_for_write().last(1) = num_old_points;
@@ -486,17 +486,17 @@ static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
       bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
 
   /* Only set the attribute if the type is not the default or if it already exists. */
-  if (ptd.settings_->caps_type != GP_STROKE_CAP_TYPE_ROUND || attributes.contains("start_cap")) {
+  if (ptd.settings->caps_type != GP_STROKE_CAP_TYPE_ROUND || attributes.contains("start_cap")) {
     bke::SpanAttributeWriter<int8_t> start_caps = attributes.lookup_or_add_for_write_span<int8_t>(
         "start_cap", bke::AttrDomain::Curve);
-    start_caps.span.last() = ptd.settings_->caps_type;
+    start_caps.span.last() = ptd.settings->caps_type;
     start_caps.finish();
   }
 
-  if (ptd.settings_->caps_type != GP_STROKE_CAP_TYPE_ROUND || attributes.contains("end_cap")) {
+  if (ptd.settings->caps_type != GP_STROKE_CAP_TYPE_ROUND || attributes.contains("end_cap")) {
     bke::SpanAttributeWriter<int8_t> end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
         "end_cap", bke::AttrDomain::Curve);
-    end_caps.span.last() = ptd.settings_->caps_type;
+    end_caps.span.last() = ptd.settings->caps_type;
     end_caps.finish();
   }
 
@@ -527,9 +527,9 @@ static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
 
 static void grease_pencil_primitive_undo_curves(PrimitiveTool_OpData &ptd)
 {
-  bke::CurvesGeometry &curves = ptd.drawing_->strokes_for_write();
+  bke::CurvesGeometry &curves = ptd.drawing->strokes_for_write();
   curves.remove_curves(IndexMask({curves.curves_range().last(), 1}), {});
-  ptd.drawing_->tag_topology_changed();
+  ptd.drawing->tag_topology_changed();
 }
 
 /* Helper: Draw status message while the user is running the operator. */
@@ -644,17 +644,17 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(vc.obact->data);
 
   /* Initialize helper class for projecting screen space coordinates. */
-  ed::greasepencil::DrawingPlacement placement_ = ed::greasepencil::DrawingPlacement(
+  ed::greasepencil::DrawingPlacement placement = ed::greasepencil::DrawingPlacement(
       *vc.scene, *vc.region, *view3d, *vc.obact, *grease_pencil->get_active_layer());
-  if (placement_.use_project_to_surface()) {
-    placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(C), vc.region, view3d);
+  if (placement.use_project_to_surface()) {
+    placement.cache_viewport_depths(CTX_data_depsgraph_pointer(C), vc.region, view3d);
   }
-  else if (placement_.use_project_to_nearest_stroke()) {
-    placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(C), vc.region, view3d);
-    placement_.set_origin_to_nearest_stroke(start_coords);
+  else if (placement.use_project_to_nearest_stroke()) {
+    placement.cache_viewport_depths(CTX_data_depsgraph_pointer(C), vc.region, view3d);
+    placement.set_origin_to_nearest_stroke(start_coords);
   }
 
-  ptd.placement_ = placement_;
+  ptd.placement = placement;
 
   ptd.vod = ED_view3d_navigation_init(C, nullptr);
 
@@ -666,25 +666,25 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   ptd.mode = OperatorMode::EXTRUDING;
   ptd.start_position_2d = start_coords;
-  const float3 pos = ptd.placement_.project(ptd.start_position_2d);
+  const float3 pos = ptd.placement.project(ptd.start_position_2d);
   ptd.segments = 1;
   /* Add the points for the segment and one point for the beginning. */
   ptd.control_points.append_n_times(pos, control_points_per_segment(ptd) + 1);
   ptd.active_control_point_index = -1;
 
   Paint *paint = &vc.scene->toolsettings->gp_paint->paint;
-  ptd.brush_ = BKE_paint_brush(paint);
-  ptd.settings_ = ptd.brush_->gpencil_settings;
+  ptd.brush = BKE_paint_brush(paint);
+  ptd.settings = ptd.brush->gpencil_settings;
 
-  BKE_curvemapping_init(ptd.settings_->curve_sensitivity);
-  BKE_curvemapping_init(ptd.settings_->curve_strength);
-  BKE_curvemapping_init(ptd.settings_->curve_jitter);
-  BKE_curvemapping_init(ptd.settings_->curve_rand_pressure);
-  BKE_curvemapping_init(ptd.settings_->curve_rand_strength);
-  BKE_curvemapping_init(ptd.settings_->curve_rand_uv);
-  BKE_curvemapping_init(ptd.settings_->curve_rand_hue);
-  BKE_curvemapping_init(ptd.settings_->curve_rand_saturation);
-  BKE_curvemapping_init(ptd.settings_->curve_rand_value);
+  BKE_curvemapping_init(ptd.settings->curve_sensitivity);
+  BKE_curvemapping_init(ptd.settings->curve_strength);
+  BKE_curvemapping_init(ptd.settings->curve_jitter);
+  BKE_curvemapping_init(ptd.settings->curve_rand_pressure);
+  BKE_curvemapping_init(ptd.settings->curve_rand_strength);
+  BKE_curvemapping_init(ptd.settings->curve_rand_uv);
+  BKE_curvemapping_init(ptd.settings->curve_rand_hue);
+  BKE_curvemapping_init(ptd.settings->curve_rand_saturation);
+  BKE_curvemapping_init(ptd.settings->curve_rand_value);
 
   ToolSettings *ts = vc.scene->toolsettings;
   GP_Sculpt_Settings *gset = &ts->gp_sculpt;
@@ -694,27 +694,27 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   }
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
-      CTX_data_main(C), vc.obact, ptd.brush_);
+      CTX_data_main(C), vc.obact, ptd.brush);
   ptd.material_index = BKE_object_material_index_get(vc.obact, material);
 
   const bool use_vertex_color = (vc.scene->toolsettings->gp_paint->mode ==
                                  GPPAINT_FLAG_USE_VERTEXCOLOR);
-  const bool use_vertex_color_stroke = use_vertex_color && ELEM(ptd.settings_->vertex_mode,
+  const bool use_vertex_color_stroke = use_vertex_color && ELEM(ptd.settings->vertex_mode,
                                                                 GPPAINT_MODE_STROKE,
                                                                 GPPAINT_MODE_BOTH);
-  ptd.vertex_color_ = use_vertex_color_stroke ? float4(ptd.brush_->rgb[0],
-                                                       ptd.brush_->rgb[1],
-                                                       ptd.brush_->rgb[2],
-                                                       ptd.settings_->vertex_factor) :
-                                                float4(0.0f);
-  srgb_to_linearrgb_v4(ptd.vertex_color_, ptd.vertex_color_);
+  ptd.vertex_color = use_vertex_color_stroke ? float4(ptd.brush->rgb[0],
+                                                      ptd.brush->rgb[1],
+                                                      ptd.brush->rgb[2],
+                                                      ptd.settings->vertex_factor) :
+                                               float4(0.0f);
+  srgb_to_linearrgb_v4(ptd.vertex_color, ptd.vertex_color);
 
   /* TODO: Add UI. */
   ptd.hardness = 1.0f;
 
   BLI_assert(grease_pencil->has_active_layer());
-  ptd.drawing_ = grease_pencil->get_editable_drawing_at(*grease_pencil->get_active_layer(),
-                                                        vc.scene->r.cfra);
+  ptd.drawing = grease_pencil->get_editable_drawing_at(*grease_pencil->get_active_layer(),
+                                                       vc.scene->r.cfra);
 
   grease_pencil_primitive_init_curves(ptd);
   grease_pencil_primitive_update_view(C, ptd);
@@ -805,22 +805,22 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
     offset *= 2.0f;
   }
 
-  const float3 start_pos = ptd.placement_.project(center - offset);
-  const float3 end_pos = ptd.placement_.project(center + offset);
+  const float3 start_pos = ptd.placement.project(center - offset);
+  const float3 end_pos = ptd.placement.project(center + offset);
 
   switch (ptd.type) {
     case PrimitiveType::BOX: {
 
-      ptd.control_points[0] = ptd.placement_.project(offset * float2(-1.0f, 1.0f) + center);
-      ptd.control_points[1] = ptd.placement_.project(center);
-      ptd.control_points[2] = ptd.placement_.project(offset * float2(1.0f, 1.0f) + center);
+      ptd.control_points[0] = ptd.placement.project(offset * float2(-1.0f, 1.0f) + center);
+      ptd.control_points[1] = ptd.placement.project(center);
+      ptd.control_points[2] = ptd.placement.project(offset * float2(1.0f, 1.0f) + center);
       return;
     }
     case PrimitiveType::CIRCLE: {
 
-      ptd.control_points[0] = ptd.placement_.project(offset * float2(1.0f, 0.0f) + center);
-      ptd.control_points[1] = ptd.placement_.project(center);
-      ptd.control_points[2] = ptd.placement_.project(offset * float2(0.0f, 1.0f) + center);
+      ptd.control_points[0] = ptd.placement.project(offset * float2(1.0f, 0.0f) + center);
+      ptd.control_points[1] = ptd.placement.project(center);
+      ptd.control_points[2] = ptd.placement.project(offset * float2(0.0f, 1.0f) + center);
       return;
     }
     case PrimitiveType::POLYLINE:
@@ -850,7 +850,7 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
 static void grease_pencil_primitive_grab_update(PrimitiveTool_OpData &ptd, const wmEvent *event)
 {
   BLI_assert(ptd.active_control_point_index != -1);
-  float3 pos = ptd.placement_.project(float2(event->mval));
+  float3 pos = ptd.placement.project(float2(event->mval));
   ptd.control_points[ptd.active_control_point_index] = pos;
 }
 
@@ -864,7 +864,7 @@ static void grease_pencil_primitive_drag_update(PrimitiveTool_OpData &ptd, const
   const float2 start_pos2 = ED_view3d_project_float_v2_m4(
       ptd.vc.region, ptd.temp_control_points[ptd.active_control_point_index], ptd.projection);
 
-  float3 pos = ptd.placement_.project(start_pos2 + dif);
+  float3 pos = ptd.placement.project(start_pos2 + dif);
   ptd.control_points[ptd.active_control_point_index] = pos;
 }
 
@@ -879,7 +879,7 @@ static void grease_pencil_primitive_drag_all_update(PrimitiveTool_OpData &ptd,
     const float2 start_pos2 = ED_view3d_project_float_v2_m4(
         ptd.vc.region, ptd.temp_control_points[point_index], ptd.projection);
 
-    float3 pos = ptd.placement_.project(start_pos2 + dif);
+    float3 pos = ptd.placement.project(start_pos2 + dif);
     ptd.control_points[point_index] = pos;
   }
 }
@@ -921,7 +921,7 @@ static void grease_pencil_primitive_rotate_all_update(PrimitiveTool_OpData &ptd,
     const float s = math::sin(rotation);
     const float2x2 rot = float2x2(float2(c, s), float2(-s, c));
     const float2 pos2 = rot * dif + center_of_mass;
-    float3 pos = ptd.placement_.project(pos2);
+    float3 pos = ptd.placement.project(pos2);
     ptd.control_points[point_index] = pos;
   }
 }
@@ -941,7 +941,7 @@ static void grease_pencil_primitive_scale_all_update(PrimitiveTool_OpData &ptd,
         ptd.vc.region, ptd.temp_control_points[point_index], ptd.projection);
 
     const float2 pos2 = (start_pos2 - center_of_mass) * scale + center_of_mass;
-    float3 pos = ptd.placement_.project(pos2);
+    float3 pos = ptd.placement.project(pos2);
     ptd.control_points[point_index] = pos;
   }
 }
@@ -1032,7 +1032,7 @@ static int grease_pencil_primtive_event_model_map(bContext *C,
         ptd.mode = OperatorMode::EXTRUDING;
         ptd.start_position_2d = ED_view3d_project_float_v2_m4(
             ptd.vc.region, ptd.control_points.last(), ptd.projection);
-        const float3 pos = ptd.placement_.project(ptd.start_position_2d);
+        const float3 pos = ptd.placement.project(ptd.start_position_2d);
 
         const int number_control_points = control_points_per_segment(ptd);
         ptd.control_points.append_n_times(pos, number_control_points);
@@ -1048,7 +1048,7 @@ static int grease_pencil_primtive_event_model_map(bContext *C,
         ptd.mode = OperatorMode::EXTRUDING;
         ptd.start_position_2d = ED_view3d_project_float_v2_m4(
             ptd.vc.region, ptd.control_points.last(), ptd.projection);
-        ptd.control_points.append(ptd.placement_.project(float2(event->mval)));
+        ptd.control_points.append(ptd.placement.project(float2(event->mval)));
         ptd.active_control_point_index = -1;
         ptd.segments++;
 
@@ -1161,7 +1161,7 @@ static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const 
     ptd.mode = OperatorMode::EXTRUDING;
     ptd.start_position_2d = ED_view3d_project_float_v2_m4(
         ptd.vc.region, ptd.control_points.last(), ptd.projection);
-    ptd.control_points.append(ptd.placement_.project(float2(event->mval)));
+    ptd.control_points.append(ptd.placement.project(float2(event->mval)));
     ptd.segments++;
   }
 
