@@ -69,7 +69,7 @@ struct CurvesBatchCache {
 
   GPUVertBuf *edit_points_data;
 
-  GPUUniformBuf *curvess_ubo_storage;
+  GPUUniformBuf *curves_ubo_storage;
 
   /* Selection of original points. */
   GPUVertBuf *edit_points_selection;
@@ -99,7 +99,7 @@ static void curves_batch_cache_init(Curves &curves)
 
   if (!cache) {
     cache = MEM_new<CurvesBatchCache>(__func__);
-    cache->curvess_ubo_storage = GPU_uniformbuf_create_ex(
+    cache->curves_ubo_storage = GPU_uniformbuf_create_ex(
         sizeof(CurvesUboStorage), nullptr, "CurvesUboStorage");
     curves.batch_cache = cache;
   }
@@ -363,8 +363,8 @@ static void curves_batch_cache_ensure_edit_points_selection(const bke::CurvesGeo
   const int vert_count = curves.points_num() + bezier_point_count * 2;
   GPU_vertbuf_init_with_format(cache.edit_points_selection, &format_data);
   GPU_vertbuf_data_alloc(cache.edit_points_selection, vert_count);
-  float *buffer_data = static_cast<float *>(GPU_vertbuf_get_data(cache.edit_points_selection));
-  MutableSpan<float> data(buffer_data, vert_count);
+  MutableSpan<float> data(static_cast<float *>(GPU_vertbuf_get_data(cache.edit_points_selection)),
+                          vert_count);
 
   const VArray<float> attribute = *curves.attributes().lookup_or_default<float>(
       ".selection", bke::AttrDomain::Point, 1.0f);
@@ -453,7 +453,7 @@ static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curv
   GPU_indexbuf_join(&elb, &left_elb);
   GPU_indexbuf_join(&elb, &right_elb);
   GPU_indexbuf_build_in_place(&elb, cache.edit_lines_ibo);
-  GPU_uniformbuf_update(cache.curvess_ubo_storage, &ubo_storage);
+  GPU_uniformbuf_update(cache.curves_ubo_storage, &ubo_storage);
 }
 
 static void curves_batch_cache_ensure_procedural_final_attr(CurvesEvalCache &cache,
@@ -789,7 +789,7 @@ void DRW_curves_batch_cache_free(Curves *curves)
 {
   curves_batch_cache_clear(*curves);
   CurvesBatchCache *batch_cache = static_cast<CurvesBatchCache *>(curves->batch_cache);
-  DRW_UBO_FREE_SAFE(batch_cache->curvess_ubo_storage);
+  DRW_UBO_FREE_SAFE(batch_cache->curves_ubo_storage);
   MEM_delete(batch_cache);
   curves->batch_cache = nullptr;
 }
@@ -830,7 +830,7 @@ int DRW_curves_material_count_get(const Curves *curves)
 GPUUniformBuf *DRW_curves_batch_cache_ubo_storage(Curves *curves)
 {
   CurvesBatchCache &cache = curves_batch_cache_get(*curves);
-  return cache.curvess_ubo_storage;
+  return cache.curves_ubo_storage;
 }
 
 GPUBatch *DRW_curves_batch_cache_get_edit_points(Curves *curves)
