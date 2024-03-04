@@ -759,7 +759,7 @@ static float2 snap_diagonals(float2 p)
   return sign(p) * float2(1.0f / numbers::sqrt2) * length(p);
 }
 
-/* Using Chebychev distance instead of Euclidean. */
+/* Using Chebyshev distance instead of Euclidean. */
 static float2 snap_diagonals_box(float2 p)
 {
   using namespace math;
