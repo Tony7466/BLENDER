@@ -161,7 +161,7 @@ int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op)
     BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
     return OPERATOR_CANCELLED;
   }
-  
+
   return OPERATOR_RUNNING_MODAL;
 }
 
