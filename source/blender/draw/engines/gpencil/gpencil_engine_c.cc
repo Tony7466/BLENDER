@@ -760,23 +760,23 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
         const int material_index = stroke_materials[stroke_i];
         MaterialGPencilStyle *gp_style = BKE_object_material_get(ob, material_index + 1)->gp_style;
 
-        const bool is_render = pd->is_render;
-        bool hide_material = (gp_style->flag & GP_MATERIAL_HIDE) != 0;
+        const bool hide_material = (gp_style->flag & GP_MATERIAL_HIDE) != 0;
         /* bool show_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0) ||
          *                 (!is_render && ((gps->flag & GP_STROKE_NOFILL) != 0)); */
-        bool show_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0) || !is_render;
+        const bool show_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0);
         /* bool show_fill = (gps->tot_triangles > 0) &&
          *               ((gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0) && (!pd->simplify_fill) &&
          *               ((gps->flag & GP_STROKE_NOFILL) == 0); */
-        bool show_fill = (points.size() >= 3) && ((gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0) &&
-                         (!pd->simplify_fill);
+        const bool show_fill = (points.size() >= 3) &&
+                               ((gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0) &&
+                               (!pd->simplify_fill);
         /* bool only_lines = !GPENCIL_PAINT_MODE(gpd) && gpl && gpf && gpl->actframe != gpf &&
          *                    pd->use_multiedit_lines_only; */
-        bool only_lines = !ELEM(ob->mode,
-                                OB_MODE_PAINT_GREASE_PENCIL,
-                                OB_MODE_WEIGHT_PAINT,
-                                OB_MODE_VERTEX_PAINT) &&
-                          pd->use_multiedit_lines_only;
+        const bool only_lines = !ELEM(ob->mode,
+                                      OB_MODE_PAINT_GREASE_PENCIL,
+                                      OB_MODE_WEIGHT_PAINT,
+                                      OB_MODE_VERTEX_PAINT) &&
+                                pd->use_multiedit_lines_only;
         /* bool is_onion = gpl && gpf && gpf->runtime.onion_id != 0; */
         bool is_onion = false;
         bool hide_onion = is_onion && ((gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN) != 0);
@@ -825,25 +825,25 @@ void GPENCIL_cache_populate(void *ved, Object *ob)
           DRW_shgroup_buffer_texture(grp, "gp_col_tx", color_tx);
         }
 
-        const int num_triangles = points.size() - 2;
         const bool is_cyclic = cyclic[stroke_i] && (points.size() > 2);
-        const int stroke_vert_count = (points.size() + int(is_cyclic));
+        const int num_stroke_triangles = points.size() - 2;
+        const int num_stroke_vertices = (points.size() + int(is_cyclic));
 
         if (show_fill) {
           int v_first = t_offset * 3;
-          int v_count = num_triangles * 3;
+          int v_count = num_stroke_triangles * 3;
           drawcall_add(geom, v_first, v_count);
         }
 
-        t_offset += num_triangles;
+        t_offset += num_stroke_triangles;
 
         if (show_stroke) {
           int v_first = t_offset * 3;
-          int v_count = stroke_vert_count * 2 * 3;
+          int v_count = num_stroke_vertices * 2 * 3;
           drawcall_add(geom, v_first, v_count);
         }
 
-        t_offset += stroke_vert_count * 2;
+        t_offset += num_stroke_vertices * 2;
 
         /* Only needed by sbuffer. */
         /* stroke_index_last = gps->runtime.vertex_start + gps->totpoints + 1;*/
