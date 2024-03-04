@@ -752,8 +752,18 @@ static void overlay_edit_uv_display_face_id(const BMEditMesh *em,
   int fi = 0;
   const uchar col[4] = {0, 0, 255, 255};
   BM_ITER_MESH_INDEX (face, &it_face, em->bm, BM_FACES_OF_MESH, fi) {
-    BM_ITER_ELEM (loop, &it_loop, face, BM_LOOPS_OF_FACE) {
+    if (!BM_elem_flag_test(face, BM_ELEM_SELECT)) {
+      continue;
     }
+    float2 uv_acc{0, 0};
+    BM_ITER_ELEM (loop, &it_loop, face, BM_LOOPS_OF_FACE) {
+      uv_acc += BM_ELEM_CD_GET_FLOAT2_P(loop, offsets.uv);
+    }
+    float2 center = uv_acc / face->len;
+    float uv[2] = {center.x, center.y};
+    char numstr[32];
+    int numstr_len = SNPRINTF_RLEN(numstr, "%d", fi);
+    DRW_text_cache_add(dt, uv, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col);
   }
 }
 
