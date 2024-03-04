@@ -35,7 +35,7 @@
 #include "BLT_translation.hh"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_anim_visualization.h"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
@@ -1779,6 +1779,8 @@ void what_does_obaction(Object *ob,
     /* execute effects of Action on to workob (or its PoseChannels) */
     BKE_animsys_evaluate_animdata(&workob->id, &adt, anim_eval_context, ADT_RECALC_ANIM, false);
   }
+  /* Ensure stack memory set here isn't accessed later, see !118847. */
+  workob->runtime = nullptr;
 }
 
 void BKE_pose_check_uids_unique_and_report(const bPose *pose)

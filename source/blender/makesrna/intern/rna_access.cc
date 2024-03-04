@@ -17,6 +17,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_ID.h"
+#include "DNA_anim_types.h"
 #include "DNA_constraint_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
@@ -32,7 +33,7 @@
 #include "BLF_api.hh"
 #include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_collection.hh"
 #include "BKE_context.hh"
 #include "BKE_fcurve.h"
@@ -2196,13 +2197,45 @@ bool RNA_property_animateable(const PointerRNA *ptr, PropertyRNA *prop)
     return false;
   }
 
+  /* Linked or LibOverride Action IDs are not editable at the FCurve level. */
+  if (ptr->owner_id) {
+    AnimData *anim_data = BKE_animdata_from_id(ptr->owner_id);
+    if (anim_data && anim_data->action &&
+        (ID_IS_LINKED(anim_data->action) || ID_IS_OVERRIDE_LIBRARY(anim_data->action)))
+    {
+      return false;
+    }
+  }
+
   prop = rna_ensure_property(prop);
 
   if (!(prop->flag & PROP_ANIMATABLE)) {
     return false;
   }
 
-  return (prop->flag & PROP_EDITABLE) != 0;
+  return RNA_property_editable(const_cast<PointerRNA *>(ptr), prop);
+}
+
+bool RNA_property_drivable(const PointerRNA *ptr, PropertyRNA *prop)
+{
+  if (!RNA_property_animateable(ptr, prop)) {
+    return false;
+  }
+
+  /* LibOverrides can only get drivers if their animdata (if any) was created for the local
+   * liboverride, and there is none in the linked reference.
+   *
+   * See also #rna_AnimaData_override_apply. */
+  if (ptr->owner_id && ID_IS_OVERRIDE_LIBRARY(ptr->owner_id)) {
+    IDOverrideLibrary *liboverride = BKE_lib_override_library_get(
+        nullptr, ptr->owner_id, nullptr, nullptr);
+    AnimData *linked_reference_anim_data = BKE_animdata_from_id(liboverride->reference);
+    if (linked_reference_anim_data) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool RNA_property_animated(PointerRNA *ptr, PropertyRNA *prop)
@@ -5948,7 +5981,7 @@ static void rna_array_as_string_elem(int type, void **buf_p, int len, std::strin
     case PROP_FLOAT: {
       float *buf = static_cast<float *>(*buf_p);
       for (int i = 0; i < len; i++, buf++) {
-        ss << fmt::format((i < end || !end) ? "%g, " : "%g", *buf);
+        ss << fmt::format((i < end || !end) ? "{:g}, " : "{:g}", *buf);
       }
       *buf_p = buf;
       break;
@@ -6078,7 +6111,7 @@ std::string RNA_property_as_string(
             bool is_first = true;
             for (; item->identifier; item++) {
               if (item->identifier[0] && item->value & val) {
-                ss << fmt::format(is_first ? "'%s'" : ", '%s'", item->identifier);
+                ss << fmt::format(is_first ? "'{}'" : ", '{}'", item->identifier);
                 is_first = false;
               }
             }
