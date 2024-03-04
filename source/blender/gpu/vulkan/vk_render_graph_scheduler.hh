@@ -20,6 +20,7 @@ class VKRenderGraph;
 
 class VKRenderGraphScheduler {
  public:
+  virtual ~VKRenderGraphScheduler() = default;
   virtual void select_nodes_for_image(const VKRenderGraph &render_graph,
                                       VkImage vk_image,
                                       Vector<NodeHandle> &r_selected_nodes) = 0;
