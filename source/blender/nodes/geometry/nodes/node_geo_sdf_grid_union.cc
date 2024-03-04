@@ -17,14 +17,15 @@ namespace blender::nodes::node_geo_sdf_grid_union_cc {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>("SDF Grid").hide_value().multi_input();
+  b.add_input<decl::Float>("SDF Grids").hide_value().multi_input();
   b.add_output<decl::Float>("SDF Grid").hide_value();
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_OPENVDB
-  Vector<SocketValueVariant> inputs = params.extract_input<Vector<SocketValueVariant>>("SDF Grid");
+  Vector<SocketValueVariant> inputs = params.extract_input<Vector<SocketValueVariant>>(
+      "SDF Grids");
   Vector<bke::VolumeGrid<float>> grids;
   for (SocketValueVariant &input : inputs) {
     if (bke::VolumeGrid<float> grid = input.extract<bke::VolumeGrid<float>>()) {
