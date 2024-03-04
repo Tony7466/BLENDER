@@ -1472,7 +1472,7 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
             row.prop(settings, "use_thickness_curve", text="Use Thickness Profile")
             sub = row.row(align=True)
             if settings.use_thickness_curve:
-                # Curve
+                # Pressure curve.
                 layout.template_curve_mapping(settings, "thickness_primitive_curve", brush=True)
     elif grease_pencil_tool == 'DRAW':
         layout.prop(gp_settings, "active_smooth_factor")

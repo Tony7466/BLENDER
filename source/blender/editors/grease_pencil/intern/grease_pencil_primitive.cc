@@ -447,6 +447,7 @@ static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
 
   for (const int point_id : curve_points.index_range()) {
     float pressure = 1.0f;
+    /* Apply pressure curve. */
     if (gset->flag & GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE) {
       const float t = point_id / float(new_points_num - 1);
       pressure = BKE_curvemapping_evaluateF(gset->cur_primitive, 0, t);
@@ -661,7 +662,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   ptd.start_position_2d = start_coords;
   const float3 pos = ptd.placement_.project(ptd.start_position_2d);
   ptd.segments = 1;
-  /* Add one point for the beginning. */
+  /* Add the points for the segment and one point for the beginning. */
   ptd.control_points.append_n_times(pos, control_points_per_segment(ptd) + 1);
   ptd.active_control_point_index = -1;
 
@@ -681,6 +682,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   ToolSettings *ts = vc.scene->toolsettings;
   GP_Sculpt_Settings *gset = &ts->gp_sculpt;
+  /* Initialize pressure curve. */
   if (gset->flag & GP_SCULPT_SETT_FLAG_PRIMITIVE_CURVE) {
     BKE_curvemapping_init(ts->gp_sculpt.cur_primitive);
   }
@@ -709,7 +711,6 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
                                                         vc.scene->r.cfra);
 
   grease_pencil_primitive_init_curves(ptd);
-
   grease_pencil_primitive_update_view(C, ptd);
 
   ptd.draw_handle = ED_region_draw_cb_activate(
@@ -759,7 +760,7 @@ static float2 snap_diagonals_box(float2 p)
   return sign(p) * float2(std::max(abs(p[0]), abs(p[1])));
 }
 
-/* Snaps to diagonals, horizontal and vertical. */
+/* Snaps to the closest diagonal, horizontal or vertical. */
 static float2 snap_8_angles(float2 p)
 {
   using namespace math;
@@ -949,12 +950,14 @@ static int primitive_check_ui_hover(const PrimitiveTool_OpData &ptd, const wmEve
         ptd.vc.region, ptd.control_points[point_id], ptd.projection);
     const float radius_sq = UI_POINT_HIT_SIZE_PX * UI_POINT_HIT_SIZE_PX;
     const float distance_squared = math::distance_squared(pos_proj, float2(event->mval));
+    /* If the mouse is over a control point. */
     if (distance_squared <= radius_sq) {
       return point_id;
     }
 
     const ControlPointType control_point_type = get_control_point_type(ptd, point_id);
 
+    /* Save the closest extrinsic point. */
     if (distance_squared < closest_distance_squared &&
         control_point_type == ControlPointType::EXTRINSIC_POINT &&
         distance_squared < UI_POINT_MAX_HIT_SIZE_PX * UI_POINT_MAX_HIT_SIZE_PX)
@@ -1024,10 +1027,6 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
   }
 
   ptd.projection = ED_view3d_ob_project_mat_get(ptd.vc.rv3d, ptd.vc.obact);
-  // printf("\naaaaaaaaaaaaaaaaaa-----------aaaaaaaaaaaaaaaaaa\n\n");
-
-  // WM_event_print(event);
-
   grease_pencil_primitive_cursor_update(C, ptd, event);
 
   if (event->type == EVT_MODAL_MAP) {
@@ -1074,10 +1073,6 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
 
         break;
       }
-      // case int(ModelKeyMode::LEFTCLICK): {
-      //   printf("LEFTCLICK\n");
-      //   break;
-      // }
       case int(ModelKeyMode::GRAB): {
         if (ptd.mode == OperatorMode::IDLE) {
           ptd.start_position_2d = float2(event->mval);
@@ -1280,10 +1275,6 @@ static void grease_pencil_primitive_common_props(wmOperatorType *ot,
 
   RNA_def_enum(
       ot->srna, "type", grease_pencil_primitive_type, int(default_type), "Type", "Type of shape");
-
-  // /* Internal prop. */
-  // prop = RNA_def_boolean(ot->srna, "wait_for_input", true, "Wait for Input", "");
-  // RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 
   prop = RNA_def_boolean(
       ot->srna,
