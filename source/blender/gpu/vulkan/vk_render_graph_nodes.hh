@@ -86,8 +86,9 @@ class VKRenderGraphNodes {
   {
     return read_resources_per_node_[node_handle];
   }
+
  private:
- NodeHandle allocate();
+  NodeHandle allocate();
   void ensure_vector_sizes();
 };
 

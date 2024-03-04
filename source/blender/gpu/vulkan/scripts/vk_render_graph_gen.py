@@ -151,6 +151,55 @@ def generate_enum_to_string_cpp(enum, features, extensions):
     return result
 
 
+def generate_bitflag_to_string_hpp(vk_name):
+    result = ""
+    result += f"std::string to_string({vk_name} {to_lower_snake_case(vk_name)});\n"
+    return result
+
+
+def generate_bitflag_to_string_cpp_case(vk_parameter_name, elem):
+    vk_elem_name = elem.get("name")
+
+    result = ""
+    result += f"  if ({vk_parameter_name} & {vk_elem_name}) {{\n"
+    result += f"    ss << STRINGIFY({vk_elem_name}) << \", \";\n"
+    result += f"  }}\n"
+    return result
+
+
+def generate_bitflag_to_string_cpp(vk_name, enum, features, extensions):
+    vk_enum_name = enum.get("name")
+    vk_name_parameter = to_lower_snake_case(vk_name)
+    result = ""
+    result += f"std::string to_string(const {vk_name} {vk_name_parameter})\n"
+    result += "{\n"
+    result += "  std::stringstream ss;\n"
+    result += "\n"
+    for elem in enum.findall("enum"):
+        result += generate_bitflag_to_string_cpp_case(vk_name_parameter, elem)
+    for feature in features:
+        enum_extensions = feature.findall(f"require/enum[@extends='{vk_enum_name}']")
+        if not enum_extensions:
+            continue
+        feature_name = feature.get("name")
+        result += f"  /* Extensions for {feature_name}. */\n"
+        for elem in enum_extensions:
+            result += generate_bitflag_to_string_cpp_case(vk_name_parameter, elem)
+    for extension in extensions:
+        enum_extensions = extension.findall(f"require/enum[@extends='{vk_enum_name}']")
+        if not enum_extensions:
+            continue
+        extension_name = extension.get("name")
+        result += f"  /* Extensions for {extension_name}. */\n"
+        for elem in enum_extensions:
+            result += generate_bitflag_to_string_cpp_case(vk_name_parameter, elem)
+
+    result += "\n"
+    result += f"  return ss.str();\n"
+    result += "}\n"
+    return result
+
+
 # List of features that we use. These can extend our enum types and these extensions should also be parsed.
 FEATURES = [
     "VK_VERSION_1_0",
@@ -197,6 +246,13 @@ ENUMS_TO_GENERATE = [
     "VkObjectType"
 ]
 
+FLAGS_TO_GENERATE = [
+]
+
+ALL_FLAGS = {
+}
+
+
 STRUCTS_TO_GENERATE = []
 
 VK_XML = "/home/jeroen/blender-git/blender/lib/linux_x64/vulkan/share/vulkan/registry/vk.xml"
@@ -211,6 +267,13 @@ for command in root.findall("commands/command"):
     if command_name in COMMANDS_TO_GEN:
         commands.append(command)
 
+for flag_type in root.findall("types/type[@category='bitmask']"):
+    flag_type_name = flag_type.findtext("name")
+    flag_type_bits_name = flag_type.get("requires")
+    if flag_type_name and flag_type_bits_name:
+        ALL_FLAGS[flag_type_name] = flag_type_bits_name
+
+
 # - Extract structs
 types_undetermined = []
 extract_type_names(commands, types_undetermined)
@@ -218,10 +281,13 @@ for type_name in types_undetermined:
     if root.find(f"enums[@name='{type_name}']"):
         if type_name not in ENUMS_TO_GENERATE:
             ENUMS_TO_GENERATE.append(type_name)
+    elif type_name in ALL_FLAGS and type_name not in FLAGS_TO_GENERATE:
+        FLAGS_TO_GENERATE.append(type_name)
+
 types_undetermined = []
 
 ENUMS_TO_GENERATE.sort()
-
+FLAGS_TO_GENERATE.sort()
 
 vk_render_graph_commands_hpp = ""
 vk_render_graph_commands_cpp = ""
@@ -254,8 +320,15 @@ for enum_to_generate in ENUMS_TO_GENERATE:
         vk_common_cpp += generate_enum_to_string_cpp(enum, features, extensions)
         vk_common_cpp += "\n"
 
-print(vk_render_graph_commands_hpp)
-print(vk_render_graph_commands_cpp)
+for flag_to_generate in FLAGS_TO_GENERATE:
+    enum_to_generate = ALL_FLAGS[flag_to_generate]
+    for enum in root.findall(f"enums[@name='{enum_to_generate}']"):
+        vk_common_hpp += generate_bitflag_to_string_hpp(flag_to_generate)
+        vk_common_cpp += generate_bitflag_to_string_cpp(flag_to_generate, enum, features, extensions)
+        vk_common_cpp += "\n"
+
+# print(vk_render_graph_commands_hpp)
+# print(vk_render_graph_commands_cpp)
 
 print(vk_common_hpp)
-print(vk_common_cpp)
+# print(vk_common_cpp)
