@@ -683,21 +683,15 @@ static void overlay_edit_uv_display_vert_id(const BMEditMesh *em,
   BMLoop *loop = nullptr;
   BMIter it_vert, it_loop;
   const uchar col[4] = {0, 0, 255, 255};
-  int vi = 0, li = 0, numstr_len = 0;
-
-  /* Map of unique UV coordinates , to avoid displaying duplicate indices on the same UV*/
-  blender::Map<float2, int> vertex_uvs;
+  int vi = 0, li = 0;
   BM_ITER_MESH_INDEX (vert, &it_vert, em->bm, BM_VERTS_OF_MESH, vi) {
     if (BM_elem_flag_test(vert, BM_ELEM_SELECT)) {
       BM_ITER_ELEM_INDEX (loop, &it_loop, vert, BM_LOOPS_OF_VERT, li) {
         float2 f_uv = BM_ELEM_CD_GET_FLOAT2_P(loop, offsets.uv);
         float uv[2] = {f_uv.x, f_uv.y};
-        if (!vertex_uvs.contains(f_uv)) {
-          char numstr[32];
-          numstr_len = SNPRINTF_RLEN(numstr, "%d", vi);
-          DRW_text_cache_add(dt, uv, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col);
-          vertex_uvs.add(f_uv, vi);
-        }
+        char numstr[32];
+        int numstr_len = SNPRINTF_RLEN(numstr, "%d", vi);
+        DRW_text_cache_add(dt, uv, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col);
       }
     }
   }
@@ -787,6 +781,8 @@ void DRW_text_edit_uv_measure_stats(Object *ob)
   DRWTextStore *dt = DRW_text_cache_ensure();
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
   const ToolSettings *ts = scene->toolsettings;
+
+  // TODO : use UV sync selection as additional check
   if (ts->uv_selectmode == UV_SELECT_VERTEX) {
     overlay_edit_uv_display_vert_id(em, offsets, dt);
   }
