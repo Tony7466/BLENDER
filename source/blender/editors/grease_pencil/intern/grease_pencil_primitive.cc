@@ -1170,6 +1170,39 @@ static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const 
   return OPERATOR_RUNNING_MODAL;
 }
 
+static void grease_pencil_primitive_operator_update(PrimitiveTool_OpData &ptd,
+                                                    const wmEvent *event)
+{
+  switch (ptd.mode) {
+    case OperatorMode::EXTRUDING: {
+      grease_pencil_primitive_extruding_update(ptd, event);
+      break;
+    }
+    case OperatorMode::GRAB: {
+      grease_pencil_primitive_grab_update(ptd, event);
+      break;
+    }
+    case OperatorMode::DRAG: {
+      grease_pencil_primitive_drag_update(ptd, event);
+      break;
+    }
+    case OperatorMode::DRAG_ALL: {
+      grease_pencil_primitive_drag_all_update(ptd, event);
+      break;
+    }
+    case OperatorMode::SCALE_ALL: {
+      grease_pencil_primitive_scale_all_update(ptd, event);
+      break;
+    }
+    case OperatorMode::ROTATE_ALL: {
+      grease_pencil_primitive_rotate_all_update(ptd, event);
+      break;
+    }
+    case OperatorMode::IDLE: {
+    }
+  }
+}
+
 /* Modal handler: Events handling during interactive part. */
 static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -1207,40 +1240,11 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
   }
 
   /* Updating is done every event not just MOUSEMOVE. */
-  switch (ptd.mode) {
-    case OperatorMode::EXTRUDING: {
-      grease_pencil_primitive_extruding_update(ptd, event);
-      break;
-    }
-    case OperatorMode::GRAB: {
-      grease_pencil_primitive_grab_update(ptd, event);
-      break;
-    }
-    case OperatorMode::DRAG: {
-      grease_pencil_primitive_drag_update(ptd, event);
-      break;
-    }
-    case OperatorMode::DRAG_ALL: {
-      grease_pencil_primitive_drag_all_update(ptd, event);
-      break;
-    }
-    case OperatorMode::SCALE_ALL: {
-      grease_pencil_primitive_scale_all_update(ptd, event);
-      break;
-    }
-    case OperatorMode::ROTATE_ALL: {
-      grease_pencil_primitive_rotate_all_update(ptd, event);
-      break;
-    }
-    case OperatorMode::IDLE: {
-    }
-  }
-
+  grease_pencil_primitive_operator_update(ptd, event);
   grease_pencil_primitive_update_curves(ptd);
 
   /* Updates indicator in header. */
   grease_pencil_primitive_status_indicators(C, op, ptd);
-
   grease_pencil_primitive_update_view(C, ptd);
 
   /* Still running... */
