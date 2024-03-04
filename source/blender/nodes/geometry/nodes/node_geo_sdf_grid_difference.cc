@@ -48,7 +48,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   try {
     openvdb::tools::csgDifference(result_grid, vdb_b);
   }
-  catch (const openvdb::ValueError &ex) {
+  catch (const openvdb::ValueError & /*ex*/) {
     /* May happen if a grid is empty. */
     params.set_default_remaining_outputs();
     return;
