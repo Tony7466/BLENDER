@@ -769,14 +769,10 @@ void DRW_text_edit_uv_measure_stats(Object *ob)
   const DRWContextState *draw_ctx = DRW_context_state_get();
   bool show_text = DRW_state_show_text();
   SpaceImage *sima = (SpaceImage *)draw_ctx->space_data;
-  if (!(sima->flag & SI_SHOW_INDICES) || !show_text) {
-    return;
-  }
-
   Mesh *mesh = BKE_object_get_editmesh_eval_cage(ob);
   BMEditMesh *em = mesh->edit_mesh;
   bool uv_layer = CustomData_has_layer(&em->bm->ldata, CD_PROP_FLOAT2);
-  if (!uv_layer) {
+  if (!(sima->flag & SI_SHOW_INDICES) || !show_text || !uv_layer) {
     return;
   }
   Scene *scene = draw_ctx->scene;
@@ -791,7 +787,6 @@ void DRW_text_edit_uv_measure_stats(Object *ob)
   const bool use_vert = uv_sync ? ts->selectmode & SCE_SELECT_VERTEX :
                                   ts->uv_selectmode & UV_SELECT_VERTEX;
 
-  // TODO : use UV sync selection as additional check
   if (use_vert) {
     overlay_edit_uv_display_vert_id(em, offsets, dt);
   }
