@@ -78,8 +78,8 @@ enum class OperatorMode : int8_t {
 enum class ControlPointType : int8_t {
   /* The points that are at the end of segments. */
   JOIN_POINT = 0,
-  /* The points inside of the segments. */
-  EXTRINSIC_POINT = 1,
+  /* The points inside of the segments not including the end points. */
+  HANDLE_POINT = 1,
 };
 
 enum class InterpolationMode : bool {
@@ -170,7 +170,7 @@ static ControlPointType get_control_point_type(const PrimitiveTool_OpData &ptd, 
   if (math::mod(point_id, num_shared_points) == 0) {
     return ControlPointType::JOIN_POINT;
   }
-  return ControlPointType::EXTRINSIC_POINT;
+  return ControlPointType::HANDLE_POINT;
 }
 
 static void control_point_colors_and_sizes(const PrimitiveTool_OpData &ptd,
@@ -963,9 +963,9 @@ static int primitive_check_ui_hover(const PrimitiveTool_OpData &ptd, const wmEve
 
     const ControlPointType control_point_type = get_control_point_type(ptd, point_id);
 
-    /* Save the closest extrinsic point. */
+    /* Save the closest handle point. */
     if (distance_squared < closest_distance_squared &&
-        control_point_type == ControlPointType::EXTRINSIC_POINT &&
+        control_point_type == ControlPointType::HANDLE_POINT &&
         distance_squared < UI_POINT_MAX_HIT_SIZE_PX * UI_POINT_MAX_HIT_SIZE_PX)
     {
       closest_point = point_id;
@@ -1009,7 +1009,7 @@ static void grease_pencil_primitive_cursor_update(bContext *C,
     WM_cursor_modal_set(win, WM_CURSOR_NSEW_SCROLL);
     return;
   }
-  else if (control_point_type == ControlPointType::EXTRINSIC_POINT) {
+  else if (control_point_type == ControlPointType::HANDLE_POINT) {
     WM_cursor_modal_set(win, WM_CURSOR_NSEW_SCROLL);
     return;
   }
@@ -1150,7 +1150,7 @@ static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const 
             ptd.vc.region, ptd.control_points[ptd.active_control_point_index], ptd.projection);
         ptd.mode = OperatorMode::GRAB;
       }
-      else if (control_point_type == ControlPointType::EXTRINSIC_POINT) {
+      else if (control_point_type == ControlPointType::HANDLE_POINT) {
         ptd.start_position_2d = float2(event->mval);
         ptd.mode = OperatorMode::DRAG;
 
