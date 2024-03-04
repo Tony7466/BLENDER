@@ -7189,6 +7189,12 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
                            "section of the preferences");
   RNA_def_property_boolean_funcs(
       prop, nullptr, "rna_PreferencesExperimental_use_extension_repos_set");
+
+  prop = RNA_def_property(srna, "use_animation_baklava", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "use_animation_baklava", 1);
+  RNA_def_property_ui_text(
+      prop, "Animation: Project Baklava", "Enable the new multi-id, layered animation system");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)
