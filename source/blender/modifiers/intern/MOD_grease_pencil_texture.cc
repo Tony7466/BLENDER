@@ -8,6 +8,7 @@
 
 #include "BLI_index_range.hh"
 #include "BLI_map.hh"
+#include "BLI_math_base.hh"
 #include "BLI_math_matrix_types.hh"
 #include "BLI_span.hh"
 #include "BLI_string.h"
@@ -120,7 +121,8 @@ static void write_stroke_us(bke::greasepencil::Drawing &drawing,
                             const IndexMask &curves_mask,
                             const float offset,
                             const float rotation,
-                            const float scale)
+                            const float scale,
+                            const bool normalize_u)
 {
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -138,10 +140,12 @@ static void write_stroke_us(bke::greasepencil::Drawing &drawing,
     const bool is_cyclic = cyclic[curve_i];
     const Span<float> lengths = curves.evaluated_lengths_for_curve(curve_i, is_cyclic);
     const IndexRange points = points_by_curve[curve_i];
+    const float norm = normalize_u ? math::safe_rcp(lengths.last()) : 1.0f;
+
     stroke_us.span[points.first()] = offset;
     rotations.span[points.first()] += rotation;
     for (const int point_i : points.drop_front(1)) {
-      stroke_us.span[point_i] = lengths[point_i - 1] * scale + offset;
+      stroke_us.span[point_i] = lengths[point_i - 1] * norm * scale + offset;
       rotations.span[point_i] += rotation;
     }
   });
@@ -184,15 +188,18 @@ static void modify_curves(const GreasePencilTextureModifierData &tmd,
 
   const float4x4 stroke_transform = get_stroke_transform(tmd);
 
+  const bool normalize_u = (tmd.fit_method == MOD_GREASE_PENCIL_TEXTURE_FIT_STROKE);
   switch (GreasePencilTextureModifierMode(tmd.mode)) {
     case MOD_GREASE_PENCIL_TEXTURE_STROKE:
-      write_stroke_us(drawing, curves_mask, tmd.uv_offset, tmd.alignment_rotation, tmd.uv_scale);
+      write_stroke_us(
+          drawing, curves_mask, tmd.uv_offset, tmd.alignment_rotation, tmd.uv_scale, normalize_u);
       break;
     case MOD_GREASE_PENCIL_TEXTURE_FILL:
       write_fill_uvs(drawing, curves_mask, stroke_transform);
       break;
     case MOD_GREASE_PENCIL_TEXTURE_STROKE_AND_FILL:
-      write_stroke_us(drawing, curves_mask, tmd.uv_offset, tmd.alignment_rotation, tmd.uv_scale);
+      write_stroke_us(
+          drawing, curves_mask, tmd.uv_offset, tmd.alignment_rotation, tmd.uv_scale, normalize_u);
       write_fill_uvs(drawing, curves_mask, stroke_transform);
       break;
   }
@@ -230,7 +237,6 @@ static void panel_draw(const bContext *C, Panel *panel)
   PointerRNA *ptr = modifier_panel_get_property_pointers(panel, &ob_ptr);
   const auto &tmd = *static_cast<GreasePencilTextureModifierData *>(ptr->data);
   const auto mode = GreasePencilTextureModifierMode(tmd.mode);
-  const auto fit_method = GreasePencilTextureModifierFit(tmd.fit_method);
   uiLayout *col;
 
   uiLayoutSetPropSep(layout, true);
