@@ -3018,14 +3018,14 @@ static void rna_def_brush(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop,
       "Flatten hardness",
-      "How strong the flattening effect diminishes with the distance to the brush's plane");
+      "How strong the flattening effect is");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "flatten_depth", PROP_FLOAT, PROP_NONE);
   RNA_def_property_float_sdna(prop, nullptr, "flatten_depth");
   RNA_def_property_range(prop, 0, 1.0f);
   RNA_def_property_float_default(prop, 1.0f);
-  RNA_def_property_ui_text(prop, "Flatten depth", "Limit on flattening effect from the radius");
+  RNA_def_property_ui_text(prop, "Flatten depth", "Depth limit on the flattening effect, from 0 to 1 (radius)");
   RNA_def_property_update(prop, 0, "rna_Brush_update");
 
   prop = RNA_def_property(srna, "height", PROP_FLOAT, PROP_DISTANCE);
