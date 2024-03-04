@@ -637,15 +637,14 @@ static void modify_geometry_set(ModifierData *md,
   }
 
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
+  const int eval_frame = grease_pencil.runtime->eval_frame;
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
       grease_pencil, mmd->influence, mask_memory);
-  const Vector<bke::greasepencil::Drawing *> drawings =
-      modifier::greasepencil::get_drawings_for_write(
-          grease_pencil, layer_mask, grease_pencil.runtime->eval_frame);
+  const Vector<modifier::greasepencil::LayerDrawingInfo> drawing_infos =
+      modifier::greasepencil::get_drawing_infos_by_layer(grease_pencil, layer_mask, eval_frame);
 
-  const int eval_frame = grease_pencil.runtime->eval_frame;
   if (mmd->flag & MOD_GREASE_PENCIL_BUILD_RESTRICT_TIME) {
     if (eval_frame < mmd->start_frame || eval_frame > mmd->end_frame) {
       return;
@@ -654,20 +653,15 @@ static void modify_geometry_set(ModifierData *md,
 
   const Scene &scene = *DEG_get_evaluated_scene(ctx->depsgraph);
   const float scene_fps = float(scene.r.frs_sec) / scene.r.frs_sec_base;
+  const Span<const bke::greasepencil::Layer *> layers = grease_pencil.layers();
 
-  threading::parallel_for_each(drawings, [&](bke::greasepencil::Drawing *drawing) {
-    bke::greasepencil::Drawing *prev_drawing = nullptr;
-    // modifier::greasepencil::get_drawing_infos_by_layer(,)
-    // std::optional<bke::greasepencil::FramesMapKey> prev_key = layer.frame_key_at(frame_number -
-    // 1); if (prev_key.has_value()) {
-    //   const int prev_drawing_index = layer.frames().lookup(*prev_key).drawing_index;
-    //   GreasePencilDrawingBase *drawing_base = grease_pencil.drawing(prev_drawing_index);
-    //   if (drawing_base->type == GP_DRAWING) {
-    //     prev_drawing = reinterpret_cast<const GreasePencilDrawing *>(drawing_base)->wrap();
-    //   }
-    // }
-    build_drawing(*md, *ctx->object, *drawing, prev_drawing, eval_frame, scene_fps);
-  });
+  threading::parallel_for_each(
+      drawing_infos, [&](modifier::greasepencil::LayerDrawingInfo drawing_info) {
+        const bke::greasepencil::Drawing *prev_drawing = grease_pencil.get_drawing_at(
+            *layers[drawing_info.layer_index], eval_frame - 1);
+        build_drawing(
+            *md, *ctx->object, *drawing_info.drawing, prev_drawing, eval_frame, scene_fps);
+      });
 }
 
 static void panel_draw(const bContext *C, Panel *panel)
