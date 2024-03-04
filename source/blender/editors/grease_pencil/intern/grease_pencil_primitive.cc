@@ -1109,6 +1109,67 @@ static int grease_pencil_primtive_event_model_map(bContext *C,
   return OPERATOR_RUNNING_MODAL;
 }
 
+static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const wmEvent *event)
+{
+  if (event->val == KM_RELEASE && ELEM(ptd.mode,
+                                       OperatorMode::GRAB,
+                                       OperatorMode::DRAG,
+                                       OperatorMode::EXTRUDING,
+                                       OperatorMode::DRAG_ALL,
+                                       OperatorMode::ROTATE_ALL,
+                                       OperatorMode::SCALE_ALL))
+  {
+    ptd.mode = OperatorMode::IDLE;
+    return OPERATOR_RUNNING_MODAL;
+  }
+
+  if (ptd.mode == OperatorMode::IDLE && event->val == KM_PRESS) {
+    const int ui_id = primitive_check_ui_hover(ptd, event);
+    ptd.active_control_point_index = ui_id;
+    if (ui_id == -1) {
+      if (ptd.type != PrimitiveType::POLYLINE) {
+        ptd.start_position_2d = float2(event->mval);
+        ptd.mode = OperatorMode::DRAG_ALL;
+
+        ptd.temp_control_points.resize(ptd.control_points.size());
+        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+
+        return OPERATOR_RUNNING_MODAL;
+      }
+    }
+    else {
+      const ControlPointType control_point_type = get_control_point_type(ptd, ui_id);
+
+      if (control_point_type == ControlPointType::JOIN_POINT) {
+        ptd.start_position_2d = ED_view3d_project_float_v2_m4(
+            ptd.vc.region, ptd.control_points[ptd.active_control_point_index], ptd.projection);
+        ptd.mode = OperatorMode::GRAB;
+      }
+      else if (control_point_type == ControlPointType::EXTRINSIC_POINT) {
+        ptd.start_position_2d = float2(event->mval);
+        ptd.mode = OperatorMode::DRAG;
+
+        ptd.temp_control_points.resize(ptd.control_points.size());
+        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+      }
+
+      return OPERATOR_RUNNING_MODAL;
+    }
+  }
+
+  if (ptd.type == PrimitiveType::POLYLINE && ptd.mode == OperatorMode::IDLE &&
+      event->val == KM_PRESS)
+  {
+    ptd.mode = OperatorMode::EXTRUDING;
+    ptd.start_position_2d = ED_view3d_project_float_v2_m4(
+        ptd.vc.region, ptd.control_points.last(), ptd.projection);
+    ptd.control_points.append(ptd.placement_.project(float2(event->mval)));
+    ptd.segments++;
+  }
+
+  return OPERATOR_RUNNING_MODAL;
+}
+
 /* Modal handler: Events handling during interactive part. */
 static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
@@ -1138,67 +1199,10 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
 
   switch (event->type) {
     case LEFTMOUSE: {
-      if (event->val == KM_RELEASE && ELEM(ptd.mode,
-                                           OperatorMode::GRAB,
-                                           OperatorMode::DRAG,
-                                           OperatorMode::EXTRUDING,
-                                           OperatorMode::DRAG_ALL,
-                                           OperatorMode::ROTATE_ALL,
-                                           OperatorMode::SCALE_ALL))
-      {
-        ptd.mode = OperatorMode::IDLE;
-        break;
+      const int return_val = grease_pencil_primitive_mouse_event(ptd, event);
+      if (return_val != OPERATOR_RUNNING_MODAL) {
+        return return_val;
       }
-
-      if (ptd.mode == OperatorMode::IDLE && event->val == KM_PRESS) {
-        const int ui_id = primitive_check_ui_hover(ptd, event);
-        ptd.active_control_point_index = ui_id;
-        if (ui_id == -1) {
-          if (ptd.type != PrimitiveType::POLYLINE) {
-            ptd.start_position_2d = float2(event->mval);
-            ptd.mode = OperatorMode::DRAG_ALL;
-
-            ptd.temp_control_points.resize(ptd.control_points.size());
-            array_utils::copy(ptd.control_points.as_span(),
-                              ptd.temp_control_points.as_mutable_span());
-
-            break;
-          }
-        }
-        else {
-          const ControlPointType control_point_type = get_control_point_type(ptd, ui_id);
-
-          if (control_point_type == ControlPointType::JOIN_POINT) {
-            ptd.start_position_2d = ED_view3d_project_float_v2_m4(
-                ptd.vc.region, ptd.control_points[ptd.active_control_point_index], ptd.projection);
-            ptd.mode = OperatorMode::GRAB;
-            break;
-          }
-          else if (control_point_type == ControlPointType::EXTRINSIC_POINT) {
-            ptd.start_position_2d = float2(event->mval);
-            ptd.mode = OperatorMode::DRAG;
-
-            ptd.temp_control_points.resize(ptd.control_points.size());
-            array_utils::copy(ptd.control_points.as_span(),
-                              ptd.temp_control_points.as_mutable_span());
-
-            break;
-          }
-        }
-      }
-
-      if (ptd.type == PrimitiveType::POLYLINE && ptd.mode == OperatorMode::IDLE &&
-          event->val == KM_PRESS)
-      {
-        ptd.mode = OperatorMode::EXTRUDING;
-        ptd.start_position_2d = ED_view3d_project_float_v2_m4(
-            ptd.vc.region, ptd.control_points.last(), ptd.projection);
-        ptd.control_points.append(ptd.placement_.project(float2(event->mval)));
-        ptd.segments++;
-        break;
-      }
-
-      break;
     }
   }
 
