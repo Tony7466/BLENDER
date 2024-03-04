@@ -180,6 +180,25 @@ static void strip_draw_context_set_strip_content_visibility(TimelineDrawContext 
                                       threshold;
 }
 
+static bool meta_strip_has_missing_data(const Sequence *seq)
+{
+  if (seq->type != SEQ_TYPE_META) {
+    return false;
+  }
+
+  const ListBase *seqbase = &seq->seqbase;
+  if (!seqbase || BLI_listbase_is_empty(seqbase)) {
+    return false;
+  }
+
+  LISTBASE_FOREACH (const Sequence *, sub, seqbase) {
+    if (!SEQ_sequence_has_source(sub)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static StripDrawContext strip_draw_context_get(TimelineDrawContext *ctx, Sequence *seq)
 {
   StripDrawContext strip_ctx;
@@ -214,7 +233,7 @@ static StripDrawContext strip_draw_context_get(TimelineDrawContext *ctx, Sequenc
   strip_ctx.handle_width = sequence_handle_size_get_clamped(ctx->scene, seq, ctx->pixelx);
   strip_ctx.show_strip_color_tag = (ctx->sseq->timeline_overlay.flag &
                                     SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG);
-  strip_ctx.missing_data_block = !SEQ_sequence_has_source(seq);
+  strip_ctx.missing_data_block = !SEQ_sequence_has_source(seq) || meta_strip_has_missing_data(seq);
 
   if (strip_ctx.can_draw_text_overlay) {
     strip_ctx.strip_content_top = strip_ctx.top - min_ff(0.40f, 20 * UI_SCALE_FAC * ctx->pixely);
@@ -581,7 +600,7 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
   int chan_min = MAXSEQ;
   int chan_max = 0;
   int chan_range = 0;
-  float draw_range = strip_ctx->top - strip_ctx->bottom;
+  float draw_range = strip_ctx->strip_content_top - strip_ctx->bottom;
   float draw_height;
 
   Editing *ed = SEQ_editing_get(scene);
@@ -637,6 +656,12 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
       }
       else {
         col[3] = 196;
+      }
+
+      if (!SEQ_sequence_has_source(seq)) {
+        col[0] = 112;
+        col[1] = 0;
+        col[2] = 0;
       }
 
       /* Clamp within parent sequence strip bounds. */
@@ -981,7 +1006,7 @@ static void draw_missing_icons(TimelineDrawContext *timeline_ctx,
     }
 
     /* Draw icon in center of content. */
-    if (strip.can_draw_strip_content) {
+    if (strip.can_draw_strip_content && strip.seq->type != SEQ_TYPE_META) {
       rctf rect;
       rect.xmin = strip.left_handle + strip.handle_width;
       rect.xmax = strip.right_handle - strip.handle_width;
@@ -1273,12 +1298,15 @@ static void draw_seq_invalid(TimelineDrawContext *timeline_ctx, const StripDrawC
                                   strip_ctx->strip_content_top,
                                   col_top);
   }
-  uchar col_main[4] = {64, 0, 0, 230};
-  timeline_ctx->quads->add_quad(strip_ctx->left_handle,
-                                strip_ctx->strip_content_top,
-                                strip_ctx->right_handle,
-                                strip_ctx->bottom,
-                                col_main);
+  /* Do not tint content area for meta strips; we want to display children. */
+  if (strip_ctx->seq->type != SEQ_TYPE_META) {
+    uchar col_main[4] = {64, 0, 0, 230};
+    timeline_ctx->quads->add_quad(strip_ctx->left_handle,
+                                  strip_ctx->strip_content_top,
+                                  strip_ctx->right_handle,
+                                  strip_ctx->bottom,
+                                  col_main);
+  }
 }
 
 /**
