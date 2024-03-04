@@ -49,7 +49,8 @@ struct GeometryData {
 
   void construct_slim_data(SLIMData &slim_data,
                            bool skip_initialization,
-                           int reflection_mode) const;
+                           int reflection_mode,
+                           int n_iterations) const;
 
   void retrieve_pinned_vertices(bool border_vertices_are_pinned);
 
@@ -58,6 +59,8 @@ struct GeometryData {
   bool has_valid_preinitialized_map() const;
   bool can_initialization_be_skipped(bool skip_initialization) const;
   void combine_matrices_of_pinned_and_boundary_vertices();
+  void initialize_if_needed(SLIMData &slim_data) const;
+  void initialize_uvs(SLIMData &slim_data) const;
 };
 
 }  // namespace slim

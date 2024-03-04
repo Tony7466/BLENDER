@@ -8,6 +8,11 @@
 #include <Eigen/Dense>
 
 #include "BLI_assert.h"
+#include "area_compensation.h"
+#include "geometry_data_retrieval.h"
+#include "least_squares_relocator.h"
+
+#include "BLI_assert.h"
 
 using namespace Eigen;
 
@@ -39,6 +44,7 @@ GeometryData::GeometryData(const MatrixTransfer &mt, MatrixTransferChart &chart)
       boundary_vertex_indices(chart.b_vectors.data(), number_of_boundary_vertices),
       weights_per_vertex(chart.w_vectors.data(), number_of_vertices)
 {
+  retrieve_pinned_vertices(mt.fixed_boundary);
 }
 
 static void create_weights_per_face(SLIMData &slim_data)
@@ -110,19 +116,35 @@ bool GeometryData::can_initialization_be_skipped(bool skip_initialization) const
 
 void GeometryData::construct_slim_data(SLIMData &slim_data,
                                        bool skip_initialization,
-                                       int reflection_mode) const
+                                       int reflection_mode,
+                                       int n_iterations) const
 {
   BLI_assert(slim_data.valid);
 
   slim_data.skipInitialization = can_initialization_be_skipped(skip_initialization);
   slim_data.weightInfluence = weight_influence;
   slim_data.reflection_mode = reflection_mode;
+  slim_data.nIterations = n_iterations;
   slim_data.withWeightedParameterization = use_weights;
   set_geometry_data_matrices(slim_data);
 
   double penalty_for_violating_pinned_positions = 10.0e100;
   slim_data.soft_const_p = penalty_for_violating_pinned_positions;
   slim_data.slim_energy = SLIMData::SYMMETRIC_DIRICHLET;
+
+  initialize_if_needed(slim_data);
+
+  transform_initialization_if_necessary(slim_data);
+  correct_mesh_surface_area_if_necessary(slim_data);
+
+  slim_precompute(slim_data.V,
+                  slim_data.F,
+                  slim_data.V_o,
+                  slim_data,
+                  slim_data.slim_energy,
+                  slim_data.b,
+                  slim_data.bc,
+                  slim_data.soft_const_p);
 }
 
 void GeometryData::combine_matrices_of_pinned_and_boundary_vertices()
@@ -168,6 +190,35 @@ void GeometryData::retrieve_pinned_vertices(bool border_vertices_are_pinned)
     pinned_vertex_indices = VectorXi(explicitly_pinned_vertex_indices);
     positions_of_pinned_vertices2d = MatrixXd(positions_of_explicitly_pinned_vertices2d);
   }
+}
+
+void GeometryData::initialize_if_needed(SLIMData &slim_data) const
+{
+  BLI_assert(slim_data.valid);
+
+  if (!slim_data.skipInitialization) {
+    initialize_uvs(slim_data);
+  }
+}
+
+void GeometryData::initialize_uvs(SLIMData &slim_data) const
+{
+  Eigen::MatrixXd uv_positions_of_boundary(boundary_vertex_indices.rows(), 2);
+  map_vertices_to_convex_border(uv_positions_of_boundary);
+
+  bool all_vertices_on_boundary = (slim_data.V_o.rows() == uv_positions_of_boundary.rows());
+  if (all_vertices_on_boundary) {
+    slim_data.V_o = uv_positions_of_boundary;
+    return;
+  }
+
+  mvc(faces_by_vertexindices,
+      vertex_positions3d,
+      edges_by_vertexindices,
+      edge_lengths,
+      boundary_vertex_indices,
+      uv_positions_of_boundary,
+      slim_data.V_o);
 }
 
 }  // namespace slim
