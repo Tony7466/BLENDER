@@ -116,7 +116,7 @@ class PaintOperation : public GreasePencilStrokeOperation {
   Vector<float2> screen_space_smoothed_coords_;
   /* The start index of the smoothing window. */
   int active_smooth_start_index_ = 0;
-  float3x3 texture_points_;
+  std::array<float3, 3> texture_points_;
 
   /* Helper class to project screen space coordinates to 3d. */
   ed::greasepencil::DrawingPlacement placement_;
@@ -145,7 +145,7 @@ struct PaintOperationExecutor {
 
   BrushGpencilSettings *settings_;
   float4 vertex_color_;
-  blender::float3x3 texture_points_;
+  std::array<float3, 3> texture_points_;
   float hardness_;
 
   bke::greasepencil::Drawing *drawing_;
@@ -179,8 +179,8 @@ struct PaintOperationExecutor {
 
     /* TODO: Align with the view or drawing plane. */
     /* The default is the front draw plane (XZ). */
-    texture_points_ = float3x3(
-        float3(1.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 1.0f), float3(0.0f, 0.0f, 0.0f));
+    texture_points_ = std::array<float3, 3>{
+        float3(1.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 1.0f), float3(0.0f, 0.0f, 0.0f)};
 
     BLI_assert(grease_pencil->has_active_layer());
     drawing_ = grease_pencil->get_editable_drawing_at(*grease_pencil->get_active_layer(),

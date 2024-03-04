@@ -1461,7 +1461,7 @@ void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil
 /** \name Grease Pencil texture coordinate functions
  * \{ */
 
-blender::float3x3 get_texture_points(const blender::bke::CurvesGeometry &curves, int curve_i)
+std::array<float3, 3> get_texture_points(const blender::bke::CurvesGeometry &curves, int curve_i)
 {
   using namespace blender;
   using namespace blender::bke;
@@ -1480,16 +1480,12 @@ blender::float3x3 get_texture_points(const blender::bke::CurvesGeometry &curves,
   const float3 locv = text_v[curve_i];
   const float3 loco = text_origin[curve_i];
 
-  const float3x3 texture_points = float3x3(locu, locv, loco);
-
-  /* Note: `texture_points` does not represent an actual transformation and instead just stores the
-   * three points.*/
-  return texture_points;
+  return std::array<float3, 3>{locu, locv, loco};
 }
 
 void set_texture_points(blender::bke::CurvesGeometry &curves,
                         int curve_i,
-                        const blender::float3x3 texture_points)
+                        const std::array<float3, 3> texture_points)
 {
   using namespace blender;
   using namespace blender::bke;
@@ -1517,7 +1513,7 @@ blender::float4x2 get_texture_matrix(const blender::bke::CurvesGeometry &curves,
   using namespace blender;
   using namespace blender::math;
 
-  const float3x3 texture_points = get_texture_points(curves, curve_i);
+  const std::array<float3, 3> texture_points = get_texture_points(curves, curve_i);
 
   const float3 locu = texture_points[0];
   const float3 locv = texture_points[1];

@@ -197,12 +197,8 @@ float3x2 convert_texture_to_matrix(const float2 uv_translation,
   return textmat;
 }
 
-/*
- * This gets the legacy stroke points in local-space.
- * the matrix returned does not represent an actual transformation and instead just stores the
- * three points.
- */
-blender::float3x3 get_legacy_stroke_points(bGPDstroke *gps)
+/* This gets the legacy stroke points in local-space. */
+std::array<float3, 3> get_legacy_stroke_points(bGPDstroke *gps)
 {
   using namespace blender;
   using namespace blender::math;
@@ -212,7 +208,8 @@ blender::float3x3 get_legacy_stroke_points(bGPDstroke *gps)
 
   if (totpoints < 2) {
     /* The default is the front draw plane (XZ). */
-    return float3x3(float3(1.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 1.0f), float3(0.0f, 0.0f, 0.0f));
+    return std::array<float3, 3>{
+        float3(1.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 1.0f), float3(0.0f, 0.0f, 0.0f)};
   }
 
   const bGPDspoint *point0 = &points[0];
@@ -237,28 +234,22 @@ blender::float3x3 get_legacy_stroke_points(bGPDstroke *gps)
   const float3 locy = normalize(cross(normal, locx));
 
   /* Get local stroke points using `pt0` as origin. */
-  const float3x3 stroke_points = float3x3(pt0 + locx, pt0 + locy, pt0);
-
-  return stroke_points;
+  return std::array<float3, 3>{pt0 + locx, pt0 + locy, pt0};
 }
 
-/*
- * This gets the legacy texture points in local-space.
- * the matrix returned does not represent an actual transformation and instead just stores three
- * points.
- */
-blender::float3x3 get_legacy_texture_points(bGPDstroke *gps)
+/* This gets the legacy texture points in local-space. */
+std::array<float3, 3> get_legacy_texture_points(bGPDstroke *gps)
 {
-  const float3x3 stroke_points = get_legacy_stroke_points(gps);
+  const std::array<float3, 3> stroke_points = get_legacy_stroke_points(gps);
   const float3x2 texture_tranformation_mat = convert_texture_to_matrix(
       float2(gps->uv_translation), gps->uv_rotation, float2(gps->uv_scale));
 
-  const float3x3 stroke_bases = stroke_points -
-                                float3x3(stroke_points[2], stroke_points[2], float3(0.0f));
+  const float3x3 stroke_bases = float3x3(
+      stroke_points[0] - stroke_points[2], stroke_points[1] - stroke_points[2], stroke_points[2]);
   const float3x3 texture_bases = stroke_bases * math::invert(float3x3(texture_tranformation_mat));
   const float3x3 texture_points = texture_bases +
                                   float3x3(texture_bases[2], texture_bases[2], float3(0.0f));
-  return texture_points;
+  return std::array<float3, 3>{texture_points[0], texture_points[1], texture_points[2]};
 }
 
 void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
@@ -464,7 +455,7 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       BLI_assert_unreachable();
     }
 
-    const float3x3 texture_points = get_legacy_texture_points(gps);
+    const std::array<float3, 3> texture_points = get_legacy_texture_points(gps);
     set_texture_points(curves, stroke_i, texture_points);
   }
 
