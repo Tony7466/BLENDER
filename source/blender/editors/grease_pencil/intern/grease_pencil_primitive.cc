@@ -1004,16 +1004,8 @@ static void grease_pencil_primitive_cursor_update(bContext *C,
     return;
   }
 
-  const ControlPointType control_point_type = get_control_point_type(ptd, ui_id);
-
-  if (control_point_type == ControlPointType::JOIN_POINT) {
-    WM_cursor_modal_set(win, WM_CURSOR_NSEW_SCROLL);
-    return;
-  }
-  else if (control_point_type == ControlPointType::HANDLE_POINT) {
-    WM_cursor_modal_set(win, WM_CURSOR_NSEW_SCROLL);
-    return;
-  }
+  WM_cursor_modal_set(win, WM_CURSOR_NSEW_SCROLL);
+  return;
 }
 
 static int grease_pencil_primtive_event_model_map(bContext *C,
