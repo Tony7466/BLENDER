@@ -781,15 +781,22 @@ void DRW_text_edit_uv_measure_stats(Object *ob)
   DRWTextStore *dt = DRW_text_cache_ensure();
   const BMUVOffsets offsets = BM_uv_map_get_offsets(em->bm);
   const ToolSettings *ts = scene->toolsettings;
+  const bool uv_sync = ts->uv_flag & UV_SYNC_SELECTION;
+  const bool use_edge = uv_sync ? ts->selectmode & SCE_SELECT_EDGE :
+                                  ts->uv_selectmode & UV_SELECT_EDGE;
+  const bool use_face = uv_sync ? ts->selectmode & SCE_SELECT_FACE :
+                                  ts->uv_selectmode & UV_SELECT_FACE;
+  const bool use_vert = uv_sync ? ts->selectmode & SCE_SELECT_VERTEX :
+                                  ts->uv_selectmode & UV_SELECT_VERTEX;
 
   // TODO : use UV sync selection as additional check
-  if (ts->uv_selectmode == UV_SELECT_VERTEX) {
+  if (use_vert) {
     overlay_edit_uv_display_vert_id(em, offsets, dt);
   }
-  if (ts->uv_selectmode == UV_SELECT_EDGE) {
+  if (use_edge) {
     overlay_edit_uv_display_edge_id(em, offsets, dt);
   }
-  if (ts->uv_selectmode == UV_SELECT_FACE) {
+  if (use_face) {
     overlay_edit_uv_display_face_id(em, offsets, dt);
   }
 }
