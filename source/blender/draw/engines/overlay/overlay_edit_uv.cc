@@ -5,8 +5,6 @@
 /** \file
  * \ingroup draw_engine
  */
-#include "BLI_map.hh"
-#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "DRW_render.hh"
 
@@ -38,8 +36,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "intern/bmesh_inline.hh"
-#include "intern/bmesh_iterators.hh"
 #include "overlay_private.hh"
 
 using blender::Vector;
