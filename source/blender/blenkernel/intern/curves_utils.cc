@@ -33,6 +33,24 @@ CurvesGeometry copy_only_curve_domain(const CurvesGeometry &src_curves)
   return dst_curves;
 }
 
+void count_curve_type(const CurvesGeometry &curves,
+                      const int8_t curve_type,
+                      int &curve_count,
+                      int &point_count)
+{
+  curve_count = 0;
+  point_count = 0;
+  const VArray<int8_t> types = curves.curve_types();
+  const Span<int> offsets = curves.offsets();
+
+  for (const int curve : curves.curves_range()) {
+    if (types[curve] == curve_type) {
+      curve_count++;
+      point_count += offsets[curve + 1] - offsets[curve];
+    }
+  }
+}
+
 IndexMask indices_for_type(const VArray<int8_t> &types,
                            const std::array<int, CURVE_TYPES_NUM> &type_counts,
                            const CurveType type,

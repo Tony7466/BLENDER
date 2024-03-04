@@ -737,6 +737,7 @@ GPUShader *OVERLAY_shader_depth_only();
 GPUShader *OVERLAY_shader_edit_curve_handle();
 GPUShader *OVERLAY_shader_edit_curve_point();
 GPUShader *OVERLAY_shader_edit_curve_wire();
+GPUShader *OVERLAY_shader_edit_curves_handle();
 GPUShader *OVERLAY_shader_edit_gpencil_guide_point();
 GPUShader *OVERLAY_shader_edit_gpencil_point();
 GPUShader *OVERLAY_shader_edit_gpencil_wire();
