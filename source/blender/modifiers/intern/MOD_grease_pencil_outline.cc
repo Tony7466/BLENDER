@@ -160,7 +160,7 @@ static bke::CurvesGeometry reorder_cyclic_curve_points(const bke::CurvesGeometry
 static int find_closest_point(const Span<float3> positions, const float3 &target)
 {
   if (positions.is_empty()) {
-    return -1;
+    return 0;
   }
 
   int closest_i = 0;
@@ -584,9 +584,8 @@ static void modify_drawing(const GreasePencilOutlineModifierData &omd,
     Array<int> offset_by_curve(curves.curves_num());
     for (const int i : curves.curves_range()) {
       const IndexRange points = points_by_curve[i];
-      const int closest_i = find_closest_point(curves.positions().slice(points), omd.object->loc);
-      /* Result is already relative to the point range and can be used as offset. */
-      offset_by_curve[i] = closest_i >= 0 ? closest_i : 0;
+      /* Closest point index is already relative to the point range and can be used as offset. */
+      offset_by_curve[i] = find_closest_point(curves.positions().slice(points), omd.object->loc);
     }
 
     curves = reorder_cyclic_curve_points(curves, curves.curves_range(), offset_by_curve);
