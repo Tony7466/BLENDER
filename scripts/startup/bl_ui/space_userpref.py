@@ -1122,6 +1122,7 @@ class USERPREF_PT_theme_text_style(ThemePanel, CenterAlignMixIn, Panel):
         layout.label(text="Widget")
         self._ui_font_style(layout, style.widget)
 
+
 class USERPREF_PT_theme_bone_color_sets(ThemePanel, CenterAlignMixIn, Panel):
     bl_label = "Bone Color Sets"
     bl_options = {'DEFAULT_CLOSED'}
@@ -1596,13 +1597,40 @@ class USERPREF_UL_asset_libraries(UIList):
 class USERPREF_UL_extension_repos(UIList):
     def draw_item(self, _context, layout, _data, item, icon, _active_data, _active_propname, _index):
         repo = item
-
+        icon = 'NETWORK_DRIVE' if repo.use_remote_path else 'DISK_DRIVE'
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
-            layout.prop(repo, "name", text="", emboss=False)
+            layout.prop(repo, "name", text="", icon=icon, emboss=False)
         elif self.layout_type == 'GRID':
             layout.alignment = 'CENTER'
-            layout.prop(repo, "name", text="", emboss=False)
+            layout.prop(repo, "name", text="", icon=icon, emboss=False)
+
+        # Show an error icon if this repository has unusable settings.
+        if repo.enabled:
+            if (
+                    (repo.use_custom_directory and repo.custom_directory == "") or
+                    (repo.use_remote_path and repo.remote_path == "")
+            ):
+                layout.label(text="", icon='ERROR')
+
         layout.prop(repo, "enabled", text="", emboss=False, icon='CHECKBOX_HLT' if repo.enabled else 'CHECKBOX_DEHLT')
+
+    def filter_items(self, _context, data, propname):
+        # Repositories has no index, converting to a list.
+        items = list(getattr(data, propname))
+
+        flags = [self.bitflag_filter_item] * len(items)
+
+        indices = [None] * len(items)
+        for index, orig_index in enumerate(sorted(
+            range(len(items)),
+            key=lambda i: (
+                items[i].use_remote_path is False,
+                items[i].name.lower(),
+            )
+        )):
+            indices[orig_index] = index
+
+        return flags, indices
 
 
 # -----------------------------------------------------------------------------
@@ -1727,7 +1755,15 @@ class USERPREF_PT_input_touchpad(InputPanel, CenterAlignMixIn, Panel):
     @classmethod
     def poll(cls, context):
         import sys
-        return sys.platform[:3] == "win" or sys.platform == "darwin"
+        if sys.platform[:3] == "win" or sys.platform == "darwin":
+            return True
+
+        # WAYLAND supports multi-touch, X11 and SDL don't.
+        from _bpy import _ghost_backend
+        if _ghost_backend() == 'WAYLAND':
+            return True
+
+        return False
 
     def draw_centered(self, context, layout):
         prefs = context.preferences
@@ -2007,7 +2043,7 @@ class USERPREF_PT_extensions_repos(Panel):
     bl_region_type = 'HEADER'
 
     # Show wider than most panels so the URL & directory aren't overly clipped.
-    bl_ui_units_x = 24
+    bl_ui_units_x = 16
 
     # NOTE: ideally `if panel := layout.panel("extensions_repo_advanced", default_closed=True):`
     # would be used but it isn't supported here, use a kludge to achieve a similar UI.
@@ -2037,7 +2073,9 @@ class USERPREF_PT_extensions_repos(Panel):
         layout.use_property_decorate = False
 
         paths = context.preferences.filepaths
-        active_library_index = paths.active_extension_repo
+        active_repo_index = paths.active_extension_repo
+
+        layout.label(text="Repositories")
 
         row = layout.row()
 
@@ -2048,24 +2086,53 @@ class USERPREF_PT_extensions_repos(Panel):
         )
 
         col = row.column(align=True)
-        col.operator("preferences.extension_repo_add", text="", icon='ADD')
-        props = col.operator("preferences.extension_repo_remove", text="", icon='REMOVE')
-        props.index = active_library_index
+        col.operator_menu_enum("preferences.extension_repo_add", "type", text="", icon='ADD')
+        props = col.operator_menu_enum("preferences.extension_repo_remove", "type", text="", icon='REMOVE')
+        props.index = active_repo_index
+
+        col.separator()
+        col.operator("preferences.extension_repo_sync", text="", icon='FILE_REFRESH')
+        col.operator("preferences.extension_repo_upgrade", text="", icon='IMPORT')
 
         try:
-            active_repo = None if active_library_index < 0 else paths.extension_repos[active_library_index]
+            active_repo = None if active_repo_index < 0 else paths.extension_repos[active_repo_index]
         except IndexError:
             active_repo = None
 
         if active_repo is None:
             return
 
-        layout.separator()
+        # NOTE: changing repositories from remote to local & vice versa could be supported but is obscure enough
+        # that it can be hidden entirely. If there is a some justification to show this, it can be exposed.
+        # For now it can be accessed from Python if someone is.
+        # `layout.prop(active_repo, "use_remote_path", text="Use Remote URL")`
 
-        layout.prop(active_repo, "remote_path")
+        if active_repo.use_remote_path:
+            row = layout.row()
+            split = row.split(factor=0.936)
+            if active_repo.remote_path == "":
+                split.alert = True
+            split.prop(active_repo, "remote_path", text="URL")
+            split = row.split()
 
         if layout_panel := self._panel_layout_kludge(layout, text="Advanced"):
-            layout_panel.prop(active_repo, "directory")
+
+            layout_panel.prop(active_repo, "use_custom_directory")
+
+            row = layout_panel.row()
+            if active_repo.use_custom_directory:
+                if active_repo.custom_directory == "":
+                    row.alert = True
+                row.prop(active_repo, "custom_directory", text="")
+            else:
+                # Show the read-only directory property.
+                # Apart from being consistent with the custom directory UI,
+                # prefer a read-only property over a label because this is not necessarily
+                # valid UTF-8 which will raise a Python exception when passed in as text.
+                row.prop(active_repo, "directory", text="")
+
+            layout_panel.separator()
+
             row = layout_panel.row()
             row.prop(active_repo, "use_cache")
             row.prop(active_repo, "module")
@@ -2626,8 +2693,9 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_sculpt_texture_paint"}, ("blender/blender/issues/96225", "#96225")),
                 ({"property": "use_experimental_compositors"}, ("blender/blender/issues/88150", "#88150")),
                 ({"property": "use_grease_pencil_version3"}, ("blender/blender/projects/6", "Grease Pencil 3.0")),
+                ({"property": "use_new_matrix_socket"}, ("blender/blender/issues/116067", "Matrix Socket")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
-                ({"property": "use_extension_repos"}, ("/blender/blender/issues/106254", "#106254")),
+                ({"property": "use_extension_repos"}, ("/blender/blender/issues/117286", "#117286")),
             ),
         )
 

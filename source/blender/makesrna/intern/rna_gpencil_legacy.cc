@@ -22,7 +22,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -323,7 +323,7 @@ static std::optional<std::string> rna_GPencilLayer_path(const PointerRNA *ptr)
   return fmt::format("layers[\"{}\"]", name_esc);
 }
 
-static int rna_GPencilLayer_active_frame_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_GPencilLayer_active_frame_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   bGPDlayer *gpl = (bGPDlayer *)ptr->data;
 
@@ -340,13 +340,13 @@ static int rna_GPencilLayer_active_frame_editable(PointerRNA *ptr, const char **
 static void set_parent(bGPDlayer *gpl, Object *par, const int type, const char *substr)
 {
   if (type == PAROBJECT) {
-    invert_m4_m4(gpl->inverse, par->object_to_world);
+    invert_m4_m4(gpl->inverse, par->object_to_world().ptr());
     gpl->parent = par;
     gpl->partype |= PAROBJECT;
     gpl->parsubstr[0] = 0;
   }
   else if (type == PARSKEL) {
-    invert_m4_m4(gpl->inverse, par->object_to_world);
+    invert_m4_m4(gpl->inverse, par->object_to_world().ptr());
     gpl->parent = par;
     gpl->partype |= PARSKEL;
     gpl->parsubstr[0] = 0;
@@ -355,7 +355,7 @@ static void set_parent(bGPDlayer *gpl, Object *par, const int type, const char *
     bPoseChannel *pchan = BKE_pose_channel_find_name(par->pose, substr);
     if (pchan) {
       float tmp_mat[4][4];
-      mul_m4_m4m4(tmp_mat, par->object_to_world, pchan->pose_mat);
+      mul_m4_m4m4(tmp_mat, par->object_to_world().ptr(), pchan->pose_mat);
 
       invert_m4_m4(gpl->inverse, tmp_mat);
       gpl->parent = par;
@@ -363,7 +363,7 @@ static void set_parent(bGPDlayer *gpl, Object *par, const int type, const char *
       STRNCPY(gpl->parsubstr, substr);
     }
     else {
-      invert_m4_m4(gpl->inverse, par->object_to_world);
+      invert_m4_m4(gpl->inverse, par->object_to_world().ptr());
       gpl->parent = par;
       gpl->partype |= PAROBJECT;
       gpl->parsubstr[0] = 0;
@@ -756,8 +756,7 @@ static void rna_GPencil_stroke_point_add(
     /* Calc geometry data. */
     BKE_gpencil_stroke_geometry_update(gpd, stroke);
 
-    DEG_id_tag_update(&gpd->id,
-                      ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
     WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   }
@@ -819,7 +818,7 @@ static void rna_GPencil_stroke_point_pop(ID *id,
   /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gpd, stroke);
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
 }
@@ -832,8 +831,7 @@ static void rna_GPencil_stroke_point_update(ID *id, bGPDstroke *stroke)
   if (stroke) {
     BKE_gpencil_stroke_geometry_update(gpd, stroke);
 
-    DEG_id_tag_update(&gpd->id,
-                      ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
     WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
   }
@@ -913,7 +911,7 @@ static void rna_GPencil_stroke_remove(ID *id,
   BKE_gpencil_free_stroke(stroke);
   RNA_POINTER_INVALIDATE(stroke_ptr);
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 }
 
@@ -931,7 +929,7 @@ static void rna_GPencil_stroke_close(ID *id,
 
   BKE_gpencil_stroke_close(stroke);
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 }
 
@@ -1438,7 +1436,7 @@ static void rna_def_gpencil_curve_point(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "GPencilEditCurvePoint", nullptr);
   RNA_def_struct_sdna(srna, "bGPDcurve_point");
-  RNA_def_struct_ui_text(srna, "Bezier Curve Point", "Bezier curve point with two handles");
+  RNA_def_struct_ui_text(srna, "Bézier Curve Point", "Bézier curve point with two handles");
 
   /* Boolean values */
   prop = RNA_def_property(srna, "select_left_handle", PROP_BOOLEAN, PROP_NONE);
@@ -1969,7 +1967,7 @@ static void rna_def_gpencil_layer_mask(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "invert", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_MASK_INVERT);
-  RNA_def_property_ui_icon(prop, ICON_CLIPUV_HLT, -1);
+  RNA_def_property_ui_icon(prop, ICON_SELECT_INTERSECT, 1);
   RNA_def_property_ui_text(prop, "Invert", "Invert mask");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 }

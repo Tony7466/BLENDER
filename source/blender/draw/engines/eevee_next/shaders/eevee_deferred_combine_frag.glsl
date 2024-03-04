@@ -47,31 +47,23 @@ void main()
 
   GBufferReader gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
-  /* TODO: use stencil buffer to avoid fragment invocations here. */
-  out_combined = vec4(0.0, 0.0, 0.0, 0.0);
-  if (gbuf.closure_count == 0) {
-    return;
-  }
-
   vec3 diffuse_color = vec3(0.0);
   vec3 diffuse_light = vec3(0.0);
   vec3 specular_color = vec3(0.0);
   vec3 specular_light = vec3(0.0);
   vec3 average_normal = vec3(0.0);
 
+  out_combined = vec4(0.0, 0.0, 0.0, 0.0);
   for (int i = 0; i < GBUFFER_LAYER_MAX && i < gbuf.closure_count; i++) {
-    vec3 closure_light = load_radiance_direct(texel, i);
     ClosureUndetermined cl = gbuffer_closure_get(gbuf, i);
+    if (cl.type == CLOSURE_NONE_ID) {
+      continue;
+    }
+    int layer_index = gbuffer_closure_get_bin_index(gbuf, i);
+    vec3 closure_light = load_radiance_direct(texel, layer_index);
 
     if (!use_combined_lightprobe_eval) {
-      vec3 closure_indirect = load_radiance_indirect(texel, i);
-      if (cl.type == CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID) {
-        /* TODO(fclem): Add instead of replacing when we support correct refracted light. */
-        closure_light = closure_indirect;
-      }
-      else {
-        closure_light += closure_indirect;
-      }
+      closure_light += load_radiance_indirect(texel, layer_index);
     }
 
     switch (cl.type) {
