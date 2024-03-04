@@ -171,8 +171,7 @@ float3x2 convert_texture_to_matrix(const float2 uv_translation,
   /* Center of rotation. */
   const float2 center = float2(0.5f, 0.5f);
 
-  const float2 uv_scale_inv = float2(uv_scale.x != 0.0f ? 1.0f / uv_scale.x : 1.0f,
-                                     uv_scale.y != 0.0f ? 1.0f / uv_scale.y : 1.0f);
+  const float2 uv_scale_inv = math::safe_rcp(uv_scale);
   const float2 d = maxv - minv;
   const float s = sin(uv_rotation);
   const float c = cos(uv_rotation);
