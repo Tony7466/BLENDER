@@ -8072,7 +8072,6 @@ def km_grease_pencil_primitive_tool_modal_map(params):
         ("PANNING", {"type": 'MIDDLEMOUSE', "value": 'ANY', "any": True}, None),
         ("CONFIRM", {"type": 'RET', "value": 'PRESS', "any": True}, None),
         ("CONFIRM", {"type": 'NUMPAD_ENTER', "value": 'PRESS', "any": True}, None),
-        # ("LEFTCLICK", {"type": 'LEFTMOUSE', "value": 'ANY', "any": True}, None),
         ("EXTRUDE", {"type": 'E', "value": 'PRESS'}, None),
         ("GRAB", {"type": 'G', "value": 'PRESS'}, None),
         ("ROTATE", {"type": 'R', "value": 'PRESS'}, None),
