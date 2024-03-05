@@ -4532,39 +4532,43 @@ static void deselect_all_fcurves(bAnimContext *ac, const bool hide)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static rctf calculate_fcurve_bounds_and_unhide(bContext *C,
-                                               ID *id,
-                                               PointerRNA *ptr,
-                                               PropertyRNA *prop,
-                                               const bool whole_array,
-                                               const int index)
+static int count_fcurves_hidden_by_filter(bAnimContext *ac, const blender::Span<FCurve *> fcurves)
 {
-  rctf bounds;
-  bounds.xmin = INFINITY;
-  bounds.xmax = -INFINITY;
-  bounds.ymin = INFINITY;
-  bounds.ymax = -INFINITY;
-
-  SpaceLink *ge_space_link = CTX_wm_space_data(C);
-  if (ge_space_link->spacetype != SPACE_GRAPH) {
-    return bounds;
+  ListBase anim_data = {nullptr, nullptr};
+  if (ac->sl->spacetype != SPACE_GRAPH) {
+    return 0;
   }
+  SpaceGraph *sipo = (SpaceGraph *)ac->sl;
+  const eAnimFilter_Flags filter = eAnimFilter_Flags(sipo->ads->filterflag);
+  ANIM_animdata_filter(ac, &anim_data, filter, ac->data, eAnimCont_Types(ac->datatype));
+
+  /* Adding FCurves to a map for quicker lookup times. */
+  blender::Map<FCurve *, bool> filtered_fcurves;
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
+    FCurve *fcu = (FCurve *)ale->key_data;
+    filtered_fcurves.add(fcu, true);
+  }
+
+  int hidden_fcurve_count = fcurves.size();
+  for (FCurve *fcu : fcurves) {
+    if (filtered_fcurves.contains(fcu)) {
+      hidden_fcurve_count--;
+    }
+  }
+  ANIM_animdata_freelist(&anim_data);
+  return hidden_fcurve_count;
+}
+
+static blender::Vector<FCurve *> get_fcurves_of_property(
+    ID *id, PointerRNA *ptr, PropertyRNA *prop, const bool whole_array, const int index)
+{
+  using namespace blender;
 
   AnimData *anim_data = BKE_animdata_from_id(id);
   if (anim_data == nullptr) {
-    return bounds;
+    return Vector<FCurve *>();
   }
 
-  Scene *scene = CTX_data_scene(C);
-  float frame_range[2];
-  get_view_range(scene, true, frame_range);
-  float mapped_frame_range[2];
-  mapped_frame_range[0] = BKE_nla_tweakedit_remap(
-      anim_data, frame_range[0], NLATIME_CONVERT_UNMAP);
-  mapped_frame_range[1] = BKE_nla_tweakedit_remap(
-      anim_data, frame_range[1], NLATIME_CONVERT_UNMAP);
-
-  const bool include_handles = false;
   const std::optional<std::string> path = RNA_path_from_ID_to_property(ptr, prop);
 
   blender::Vector<FCurve *> fcurves;
@@ -4585,13 +4589,45 @@ static rctf calculate_fcurve_bounds_and_unhide(bContext *C,
       fcurves.append(fcurve);
     }
   }
+  return fcurves;
+}
+
+static rctf calculate_fcurve_bounds_and_unhide(SpaceLink *space_link,
+                                               Scene *scene,
+                                               ID *id,
+                                               const blender::Span<FCurve *> fcurves)
+{
+  rctf bounds;
+  bounds.xmin = INFINITY;
+  bounds.xmax = -INFINITY;
+  bounds.ymin = INFINITY;
+  bounds.ymax = -INFINITY;
+
+  if (space_link->spacetype != SPACE_GRAPH) {
+    return bounds;
+  }
+
+  AnimData *anim_data = BKE_animdata_from_id(id);
+  if (anim_data == nullptr) {
+    return bounds;
+  }
+
+  float frame_range[2];
+  get_view_range(scene, true, frame_range);
+  float mapped_frame_range[2];
+  mapped_frame_range[0] = BKE_nla_tweakedit_remap(
+      anim_data, frame_range[0], NLATIME_CONVERT_UNMAP);
+  mapped_frame_range[1] = BKE_nla_tweakedit_remap(
+      anim_data, frame_range[1], NLATIME_CONVERT_UNMAP);
+
+  const bool include_handles = false;
 
   for (FCurve *fcurve : fcurves) {
     fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
     rctf fcu_bounds;
     get_normalized_fcurve_bounds(fcurve,
                                  anim_data,
-                                 ge_space_link,
+                                 space_link,
                                  scene,
                                  id,
                                  include_handles,
@@ -4606,12 +4642,13 @@ static rctf calculate_fcurve_bounds_and_unhide(bContext *C,
   return bounds;
 }
 
-static rctf calculate_selection_fcurve_bounds(bContext *C,
+static rctf calculate_selection_fcurve_bounds(bAnimContext *ac,
                                               ListBase /* CollectionPointerLink */ *selection,
                                               PropertyRNA *prop,
                                               const blender::StringRefNull id_to_prop_path,
                                               const int index,
-                                              const bool whole_array)
+                                              const bool whole_array,
+                                              int *r_filtered_fcurve_count)
 {
   rctf bounds;
   bounds.xmin = INFINITY;
@@ -4637,9 +4674,10 @@ static rctf calculate_selection_fcurve_bounds(bContext *C,
       resolved_ptr = selected->ptr;
       resolved_prop = prop;
     }
-    rctf fcu_bounds = calculate_fcurve_bounds_and_unhide(
-        C, selected_id, &resolved_ptr, resolved_prop, whole_array, index);
-
+    blender::Vector<FCurve *> fcurves = get_fcurves_of_property(
+        selected_id, &resolved_ptr, resolved_prop, whole_array, index);
+    *r_filtered_fcurve_count += count_fcurves_hidden_by_filter(ac, fcurves);
+    rctf fcu_bounds = calculate_fcurve_bounds_and_unhide(ac->sl, ac->scene, selected_id, fcurves);
     if (BLI_rctf_is_valid(&fcu_bounds)) {
       BLI_rctf_union(&bounds, &fcu_bounds);
     }
@@ -4707,19 +4745,32 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
       bounds.xmax = -INFINITY;
       bounds.ymin = INFINITY;
       bounds.ymax = -INFINITY;
+      int filtered_fcurve_count = 0;
       if (selected_list_success && !BLI_listbase_is_empty(&selection)) {
-        rctf selection_bounds = calculate_selection_fcurve_bounds(
-            C, &selection, button_prop, id_to_prop_path.value_or(""), index, whole_array);
+        rctf selection_bounds = calculate_selection_fcurve_bounds(&ac,
+                                                                  &selection,
+                                                                  button_prop,
+                                                                  id_to_prop_path.value_or(""),
+                                                                  index,
+                                                                  whole_array,
+                                                                  &filtered_fcurve_count);
         if (BLI_rctf_is_valid(&selection_bounds)) {
           BLI_rctf_union(&bounds, &selection_bounds);
         }
       }
 
       /* The object to which the button belongs might not be selected, or selectable. */
+      blender::Vector<FCurve *> button_fcurves = get_fcurves_of_property(
+          button_ptr.owner_id, &button_ptr, button_prop, whole_array, index);
+      filtered_fcurve_count += count_fcurves_hidden_by_filter(&ac, button_fcurves);
       rctf button_bounds = calculate_fcurve_bounds_and_unhide(
-          C, button_ptr.owner_id, &button_ptr, button_prop, whole_array, index);
+          ac.sl, ac.scene, button_ptr.owner_id, button_fcurves);
       if (BLI_rctf_is_valid(&button_bounds)) {
         BLI_rctf_union(&bounds, &button_bounds);
+      }
+
+      if (filtered_fcurve_count > 0) {
+        WM_report(RPT_WARNING, "One or more F-Curves are not visible due to filter settings");
       }
 
       if (!BLI_rctf_is_valid(&bounds)) {
