@@ -181,19 +181,6 @@ PyDoc_STRVAR(
     "   :type program: :class:`gpu.types.GPUShader`\n");
 static PyObject *pygpu_batch_program_set(BPyGPUBatch *self, BPyGPUShader *py_shader)
 {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
-  static bool deprecation_warning_issued = false;
-
-  /*raising Deprecation Warning when calling `gpu.types.GPUBatch.program_set` */
-  if (!deprecation_warning_issued) {
-    PyErr_WarnEx(PyExc_DeprecationWarning,
-                 "Calls to GPUBatch.program_set are deprecated."
-                 "Please set the shader via the 'program' parameter when calling GPUBatch.draw/draw_instanced/draw_range.",
-=======
-
   static bool deprecation_warning_issued = false;
 
   /* Deprecation warning raised when calling `gpu.types.GPUBatch.program_set`.  */
@@ -202,15 +189,10 @@ static PyObject *pygpu_batch_program_set(BPyGPUBatch *self, BPyGPUShader *py_sha
                  "Calls to GPUBatch.program_set are deprecated."
                  "Please set the shader via the 'program' parameter when calling "
                  "GPUBatch.draw/draw_instanced/draw_range.",
->>>>>>> upstream/main
                  1);
     deprecation_warning_issued = true;
   }
 
-<<<<<<< HEAD
->>>>>>> 902011ba93d (changes fixed)
-=======
->>>>>>> upstream/main
   if (!BPyGPUShader_Check(py_shader)) {
     PyErr_Format(PyExc_TypeError, "Expected a GPUShader, got %s", Py_TYPE(py_shader)->tp_name);
     return nullptr;
