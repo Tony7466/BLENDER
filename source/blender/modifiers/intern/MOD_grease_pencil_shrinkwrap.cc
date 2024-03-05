@@ -66,6 +66,11 @@ static void free_data(ModifierData *md)
 {
   auto *smd = reinterpret_cast<GreasePencilShrinkwrapModifierData *>(md);
   modifier::greasepencil::free_influence_data(&smd->influence);
+
+  if (smd->cache_data) {
+    BKE_shrinkwrap_free_tree(smd->cache_data);
+    MEM_SAFE_FREE(smd->cache_data);
+  }
 }
 
 static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void *user_data)
@@ -131,18 +136,33 @@ static void modify_drawing(const GreasePencilShrinkwrapModifierData &smd,
                            const ModifierEvalContext &ctx,
                            bke::greasepencil::Drawing &drawing)
 {
-  if (drawing.strokes().curve_num == 0) {
-    return;
-  }
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   /* Selected source curves. */
   IndexMaskMemory curve_mask_memory;
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, drawing.strokes(), smd.influence, curve_mask_memory);
 
-  UNUSED_VARS(curves_mask);
-  // drawing.strokes_for_write() = std::move(curves);
   drawing.tag_topology_changed();
+}
+
+static void ensure_shrinkwrap_cache_data(GreasePencilShrinkwrapModifierData &smd,
+                                         const ModifierEvalContext &ctx)
+{
+  if (smd.cache_data) {
+    BKE_shrinkwrap_free_tree(smd.cache_data);
+    MEM_SAFE_FREE(smd.cache_data);
+  }
+  Object *target_ob = DEG_get_evaluated_object(ctx.depsgraph, smd.target);
+  Mesh *target_mesh = BKE_modifier_get_evaluated_mesh_from_evaluated_object(target_ob);
+
+  smd.cache_data = static_cast<ShrinkwrapTreeData *>(
+      MEM_callocN(sizeof(ShrinkwrapTreeData), __func__));
+  const bool tree_ok = BKE_shrinkwrap_init_tree(
+      smd.cache_data, target_mesh, smd.shrink_type, smd.shrink_mode, false);
+  if (!tree_ok) {
+    MEM_SAFE_FREE(smd.cache_data);
+  }
 }
 
 static void modify_geometry_set(ModifierData *md,
@@ -153,13 +173,18 @@ static void modify_geometry_set(ModifierData *md,
   using bke::greasepencil::Layer;
   using modifier::greasepencil::LayerDrawingInfo;
 
-  const auto &smd = *reinterpret_cast<const GreasePencilShrinkwrapModifierData *>(md);
-
+  auto &smd = *reinterpret_cast<GreasePencilShrinkwrapModifierData *>(md);
+  BLI_assert(smd.target != nullptr);
+  if (smd.target == ctx->object || smd.aux_target == ctx->object) {
+    return;
+  }
   if (!geometry_set->has_grease_pencil()) {
     return;
   }
   GreasePencil &grease_pencil = *geometry_set->get_grease_pencil_for_write();
   const int frame = grease_pencil.runtime->eval_frame;
+
+  ensure_shrinkwrap_cache_data(smd, *ctx);
 
   IndexMaskMemory mask_memory;
   const IndexMask layer_mask = modifier::greasepencil::get_filtered_layer_mask(
