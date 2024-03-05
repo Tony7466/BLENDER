@@ -13,7 +13,7 @@
 #include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_fcurve_driver.h"
 #include "BKE_global.hh"
 #include "BKE_idtype.hh"
@@ -1450,7 +1450,7 @@ void BKE_animdata_blend_write(BlendWriter *writer, ID *id)
   BLO_write_struct(writer, AnimData, adt);
 
   /* write drivers */
-  BKE_fcurve_blend_write(writer, &adt->drivers);
+  BKE_fcurve_blend_write_listbase(writer, &adt->drivers);
 
   /* write overrides */
   /* FIXME: are these needed? */
@@ -1480,7 +1480,7 @@ void BKE_animdata_blend_read_data(BlendDataReader *reader, ID *id)
 
   /* link drivers */
   BLO_read_list(reader, &adt->drivers);
-  BKE_fcurve_blend_read_data(reader, &adt->drivers);
+  BKE_fcurve_blend_read_data_listbase(reader, &adt->drivers);
   adt->driver_array = nullptr;
 
   /* link overrides */
