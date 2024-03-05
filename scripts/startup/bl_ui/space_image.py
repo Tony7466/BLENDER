@@ -1676,8 +1676,13 @@ class IMAGE_PT_overlay_image(Panel):
 class IMAGE_PT_overlay_uv_indices(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
-    bl_label = "Debug"
+    bl_label = "Developer"
     bl_parent_id = "IMAGE_PT_overlay"
+
+    @classmethod
+    def poll(cls , context):
+        sima = context.space_data
+        return (sima and (sima.show_uvedit))
 
     def draw(self , context):
         layout = self.layout
