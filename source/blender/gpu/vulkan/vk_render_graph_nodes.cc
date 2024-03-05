@@ -69,6 +69,22 @@ void VKRenderGraphNodes::add_write_resource(NodeHandle handle, VersionedResource
   write_resources_per_node_[handle].append(resource_handle);
 }
 
+void VKRenderGraphNodes::remove_nodes(Span<NodeHandle> node_handles)
+{
+  for (NodeHandle node_handle : node_handles) {
+    read_resources_per_node_[node_handle].clear();
+    write_resources_per_node_[node_handle].clear();
+    mark_unused(get(node_handle));
+  }
+}
+
+void VKRenderGraphNodes::mark_unused(Node &node)
+{
+  BLI_assert(node.type != Node::Type::UNUSED);
+  memset(&node, 0, sizeof(Node));
+  node.type = Node::Type::UNUSED;
+}
+
 NodeHandle VKRenderGraphNodes::allocate()
 {
   NodeHandle node_handle = nodes_.allocate();

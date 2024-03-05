@@ -9,8 +9,27 @@
 #include "vk_render_graph_commands.hh"
 
 namespace blender::gpu {
-void VKCommandBufferWrapper::begin_recording() {}
-void VKCommandBufferWrapper::end_recording() {}
+
+void VKCommandBufferWrapper::begin_recording()
+{
+  BLI_assert_unreachable();
+}
+
+void VKCommandBufferWrapper::end_recording()
+{
+  BLI_assert_unreachable();
+}
+
+void VKCommandBufferWrapper::submit_with_cpu_synchronization()
+{
+  BLI_assert_unreachable();
+}
+
+void VKCommandBufferWrapper::wait_for_cpu_synchronization()
+{
+  BLI_assert_unreachable();
+}
+
 void VKCommandBufferWrapper::bind_pipeline(VkPipelineBindPoint pipeline_bind_point,
                                            VkPipeline pipeline)
 {

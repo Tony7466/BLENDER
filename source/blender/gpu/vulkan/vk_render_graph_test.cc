@@ -12,16 +12,53 @@ namespace blender::gpu {
 
 class CommandBufferLog : public VKRenderGraphCommandBuffer {
   Vector<std::string> &log_;
+  bool is_recording_ = false;
+  bool is_cpu_synchronizing_ = false;
 
  public:
   CommandBufferLog(Vector<std::string> &log) : log_(log) {}
   virtual ~CommandBufferLog() {}
 
-  void begin_recording() override {}
-  void end_recording() override {}
+  void begin_recording() override
+  {
+    BLI_assert_msg(!is_recording_,
+                   "`CommandBufferLog::begin_recording` is called, when the command buffer is "
+                   "already recording.");
+    is_recording_ = true;
+  }
+
+  void end_recording() override
+  {
+    BLI_assert_msg(is_recording_,
+                   "`CommandBufferLog::end_recording` is called, when the command buffer is "
+                   "not recording.");
+    is_recording_ = false;
+  }
+
+  void submit_with_cpu_synchronization() override
+  {
+    BLI_assert_msg(!is_recording_, "`CommandBufferLog` is submitted when still recording.");
+    BLI_assert_msg(!is_cpu_synchronizing_,
+                   "`CommandBufferLog::submit_with_cpu_synchronization` is called, when the "
+                   "command buffer is "
+                   "still synchronizing.");
+    is_cpu_synchronizing_ = true;
+  };
+  void wait_for_cpu_synchronization() override
+  {
+    BLI_assert_msg(!is_recording_, "`CommandBufferLog` is synchronizing when still recording.");
+    BLI_assert_msg(
+        is_cpu_synchronizing_,
+        "`CommandBufferLog::wait_for_cpu_synchronization` is called, when the command buffer is "
+        "not synchronizing.");
+    is_cpu_synchronizing_ = false;
+  };
+
   void bind_pipeline(VkPipelineBindPoint pipeline_bind_point, VkPipeline pipeline) override
   {
     UNUSED_VARS(pipeline_bind_point, pipeline);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -40,12 +77,16 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                 p_descriptor_sets,
                 dynamic_offset_count,
                 p_dynamic_offsets);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
   void bind_index_buffer(VkBuffer buffer, VkDeviceSize offset, VkIndexType index_type) override
   {
     UNUSED_VARS(buffer, offset, index_type);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -55,6 +96,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                            const VkDeviceSize *p_offsets) override
   {
     UNUSED_VARS(first_binding, binding_count, p_buffers, p_offsets);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -64,6 +107,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
             uint32_t first_instance) override
   {
     UNUSED_VARS(vertex_count, instance_count, first_vertex, first_instance);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -74,6 +119,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                     uint32_t first_instance) override
   {
     UNUSED_VARS(index_count, instance_count, first_index, vertex_offset, first_instance);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -83,6 +130,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                      uint32_t stride) override
   {
     UNUSED_VARS(buffer, offset, draw_count, stride);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -92,18 +141,24 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                              uint32_t stride) override
   {
     UNUSED_VARS(buffer, offset, draw_count, stride);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
   void dispatch(uint32_t group_count_x, uint32_t group_count_y, uint32_t group_count_z) override
   {
     UNUSED_VARS(group_count_x, group_count_y, group_count_z);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
   void dispatch_indirect(VkBuffer buffer, VkDeviceSize offset) override
   {
     UNUSED_VARS(buffer, offset);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -113,6 +168,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                    const VkBufferCopy *p_regions) override
   {
     UNUSED_VARS(src_buffer, dst_buffer, region_count, p_regions);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "copy_buffer(";
     ss << "src_buffer=" << src_buffer;
@@ -133,6 +190,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                   const VkImageCopy *p_regions) override
   {
     UNUSED_VARS(src_image, src_image_layout, dst_image, dst_image_layout, region_count, p_regions);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -146,6 +205,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
   {
     UNUSED_VARS(
         src_image, src_image_layout, dst_image, dst_image_layout, region_count, p_regions, filter);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -156,6 +217,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                             const VkBufferImageCopy *p_regions) override
   {
     UNUSED_VARS(src_buffer, dst_image, dst_image_layout, region_count, p_regions);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -166,6 +229,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                             const VkBufferImageCopy *p_regions) override
   {
     UNUSED_VARS(src_image, src_image_layout, dst_buffer, region_count, p_regions);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -174,6 +239,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                    VkDeviceSize size,
                    uint32_t data) override
   {
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "fill_buffer(";
     ss << "dst_buffer=" << dst_buffer;
@@ -191,6 +258,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                          const VkImageSubresourceRange *p_ranges) override
   {
     UNUSED_VARS(p_color, range_count, p_ranges);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "clear_color_image(";
     ss << "image=" << image;
@@ -206,6 +275,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                                  const VkImageSubresourceRange *p_ranges) override
   {
     UNUSED_VARS(image, image_layout, p_depth_stencil, range_count, p_ranges);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -215,6 +286,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                          const VkClearRect *p_rects) override
   {
     UNUSED_VARS(attachment_count, p_attachments, rect_count, p_rects);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -229,6 +302,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                         const VkImageMemoryBarrier *p_image_memory_barriers) override
   {
     UNUSED_VARS(dependency_flags, memory_barrier_count, p_memory_barriers);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "pipeline_barrier(";
     ss << "src_stage_mask=" << to_string_vk_shader_stage_flags(src_stage_mask);
@@ -256,6 +331,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                       const void *p_values) override
   {
     UNUSED_VARS(layout, stage_flags, offset, size, p_values);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
@@ -263,11 +340,15 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                          VkSubpassContents contents) override
   {
     UNUSED_VARS(p_render_pass_begin, contents);
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 
   void end_render_pass() override
   {
+    BLI_assert_msg(is_recording_,
+                   "Command is added to command buffer, which isn't in recording state.");
     BLI_assert_unreachable();
   }
 };

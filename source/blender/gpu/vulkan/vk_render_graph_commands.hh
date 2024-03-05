@@ -18,6 +18,9 @@ class VKRenderGraphCommandBuffer {
 
   virtual void begin_recording() = 0;
   virtual void end_recording() = 0;
+  virtual void submit_with_cpu_synchronization() = 0;
+  virtual void wait_for_cpu_synchronization() = 0;
+
   virtual void bind_pipeline(VkPipelineBindPoint pipeline_bind_point, VkPipeline pipeline) = 0;
   virtual void bind_descriptor_sets(VkPipelineBindPoint pipeline_bind_point,
                                     VkPipelineLayout layout,
@@ -122,8 +125,12 @@ class VKCommandBufferWrapper : public VKRenderGraphCommandBuffer {
 
  public:
   virtual ~VKCommandBufferWrapper() = default;
+
   void begin_recording() override;
   void end_recording() override;
+  void submit_with_cpu_synchronization() override;
+  void wait_for_cpu_synchronization() override;
+
   void bind_pipeline(VkPipelineBindPoint pipeline_bind_point, VkPipeline pipeline) override;
   void bind_descriptor_sets(VkPipelineBindPoint pipeline_bind_point,
                             VkPipelineLayout layout,

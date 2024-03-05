@@ -62,10 +62,14 @@ class VKRenderGraphNodes {
                                   VkClearColorValue &vk_clear_color_value,
                                   VkImageSubresourceRange &vk_image_subresource_range);
   NodeHandle add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data);
-  NodeHandle add_copy_buffer_node(VkBuffer src_buffer, VkBuffer dst_buffer, const VkBufferCopy &region);
+  NodeHandle add_copy_buffer_node(VkBuffer src_buffer,
+                                  VkBuffer dst_buffer,
+                                  const VkBufferCopy &region);
 
   void add_read_resource(NodeHandle handle, VersionedResource resource_handle);
   void add_write_resource(NodeHandle handle, VersionedResource resource_handle);
+
+  void remove_nodes(Span<NodeHandle> node_handles);
 
   Span<const std::optional<Node>> nodes() const
   {
@@ -98,6 +102,7 @@ class VKRenderGraphNodes {
  private:
   NodeHandle allocate();
   void ensure_vector_sizes();
+  void mark_unused(Node &node);
 };
 
 }  // namespace blender::gpu

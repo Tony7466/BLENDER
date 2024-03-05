@@ -45,13 +45,10 @@ void VKRenderGraphCommandBuilder::build_image(VKRenderGraph &render_graph, VkIma
   if (selected_nodes_.is_empty()) {
     return;
   }
-  render_graph.command_buffer_->begin_recording();
   for (NodeHandle node_handle : selected_nodes_) {
     VKRenderGraphNodes::Node &node = render_graph.nodes_.get(node_handle);
     build_node(render_graph, node_handle, node);
   }
-
-  render_graph.command_buffer_->end_recording();
 }
 
 void VKRenderGraphCommandBuilder::build_buffer(VKRenderGraph &render_graph, VkBuffer vk_buffer)
@@ -61,13 +58,10 @@ void VKRenderGraphCommandBuilder::build_buffer(VKRenderGraph &render_graph, VkBu
   if (selected_nodes_.is_empty()) {
     return;
   }
-  render_graph.command_buffer_->begin_recording();
   for (NodeHandle node_handle : selected_nodes_) {
     VKRenderGraphNodes::Node &node = render_graph.nodes_.get(node_handle);
     build_node(render_graph, node_handle, node);
   }
-
-  render_graph.command_buffer_->end_recording();
 }
 
 void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
@@ -266,6 +260,11 @@ void VKRenderGraphCommandBuilder::add_buffer_barrier(VkBuffer vk_buffer,
   vk_buffer_memory_barrier.size = VK_WHOLE_SIZE;
 
   vk_buffer_memory_barriers_.append(vk_buffer_memory_barrier);
+}
+
+void VKRenderGraphCommandBuilder::update_state_after_submission(VKRenderGraph &render_graph)
+{
+  render_graph.nodes_.remove_nodes(selected_nodes_);
 }
 
 }  // namespace blender::gpu

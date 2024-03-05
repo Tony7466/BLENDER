@@ -80,20 +80,26 @@ void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
 {
   std::scoped_lock lock(mutex_);
   command_builder_.reset(*this);
+  command_buffer_->begin_recording();
   command_builder_.build_image(*this, vk_swapchain_image);
   command_builder_.ensure_image_layout(*this, vk_swapchain_image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-  // submit
-  // update state
+  command_buffer_->end_recording();
+  /* TODO: Can we implement gpu synchronization when presenting? */
+  command_buffer_->submit_with_cpu_synchronization();
+  command_builder_.update_state_after_submission(*this);
+  command_buffer_->wait_for_cpu_synchronization();
 }
 
 void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
 {
   std::scoped_lock lock(mutex_);
   command_builder_.reset(*this);
+  command_buffer_->begin_recording();
   command_builder_.build_buffer(*this, vk_buffer);
-  // submit
-  // update state
-  // wait
+  command_buffer_->end_recording();
+  command_buffer_->submit_with_cpu_synchronization();
+  command_builder_.update_state_after_submission(*this);
+  command_buffer_->wait_for_cpu_synchronization();
 }
 
 /** \} */

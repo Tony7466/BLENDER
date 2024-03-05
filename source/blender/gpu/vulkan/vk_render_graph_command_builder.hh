@@ -46,6 +46,11 @@ class VKRenderGraphCommandBuilder {
   void build_buffer(VKRenderGraph &render_graph, VkBuffer vk_buffer);
 
   /**
+   * After the commands have been submitted the state needs to be updated.
+   */
+  void update_state_after_submission(VKRenderGraph &render_graph);
+
+  /**
    * Ensure that the vk_image_layout is the given layout. If not it adds a transition to ensure the
    * given layout.
    */
