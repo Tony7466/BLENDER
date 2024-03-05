@@ -4736,7 +4736,8 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
     }
     else {
       const bool isolate = RNA_boolean_get(op->ptr, "isolate");
-      const bool whole_array = RNA_boolean_get(op->ptr, "all");
+      /* The index can be less than 0 e.g. on color properties. */
+      const bool whole_array = RNA_boolean_get(op->ptr, "all") || index < 0;
 
       deselect_all_fcurves(&ac, isolate);
 
