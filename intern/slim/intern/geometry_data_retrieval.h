@@ -49,8 +49,7 @@ struct GeometryData {
 
   void construct_slim_data(SLIMData &slim_data,
                            bool skip_initialization,
-                           int reflection_mode,
-                           int n_iterations) const;
+                           int reflection_mode) const;
 
   void retrieve_pinned_vertices(bool border_vertices_are_pinned);
 

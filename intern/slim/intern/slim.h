@@ -64,8 +64,6 @@ struct SLIMData {
 
   double energy; /* Objective value. */
 
-  int nIterations;
-
   /* Internal. */
   Eigen::VectorXd M;
   double mesh_area;

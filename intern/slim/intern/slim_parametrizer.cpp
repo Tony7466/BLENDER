@@ -177,7 +177,7 @@ void MatrixTransfer::parametrize_live(MatrixTransferChart &chart,
 void MatrixTransfer::parametrize()
 {
   for (MatrixTransferChart &chart : charts) {
-    setup_slim_data(chart, n_iterations);
+    setup_slim_data(chart);
 
     chart.try_slim_solve(n_iterations);
 

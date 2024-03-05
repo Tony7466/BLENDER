@@ -86,7 +86,7 @@ struct MatrixTransfer {
                         int n_selected_pins,
                         const std::vector<int> &selected_pins);
 
-  void setup_slim_data(MatrixTransferChart &chart, int n_iterations = 0) const;
+  void setup_slim_data(MatrixTransferChart &chart) const;
 };
 
 }  // namespace slim
