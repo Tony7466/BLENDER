@@ -9,10 +9,12 @@
 #include "BKE_material.h"
 
 #include "DNA_defaults.h"
+#include "DNA_meshdata_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_curves.hh"
+#include "BKE_deform.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
@@ -132,65 +134,46 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   DEG_add_depends_on_transform_relation(ctx->node, "Grease Pencil Shrinkwrap Modifier");
 }
 
-void shrinkwrapGreasePencilModifier_deform(const GreasePencilShrinkwrapModifierData &smd,
-                                           const Object &ob,
-                                           const blender::Span<MDeformVert> dvert,
-                                           const int defgrp_index,
-                                           blender::MutableSpan<blender::float3> vertex_cos)
-{
-  ShrinkwrapCalcData calc = NULL_ShrinkwrapCalcData;
-  /* Convert gpencil struct to use the same struct and function used with meshes. */
-  ShrinkwrapModifierData smd;
-  smd.target = mmd->target;
-  smd.auxTarget = mmd->aux_target;
-  smd.keepDist = mmd->keep_dist;
-  smd.shrinkType = mmd->shrink_type;
-  smd.shrinkOpts = mmd->shrink_opts;
-  smd.shrinkMode = mmd->shrink_mode;
-  smd.projLimit = mmd->proj_limit;
-  smd.projAxis = mmd->proj_axis;
-
-  /* Configure Shrinkwrap calc data. */
-  calc.smd = &smd;
-  calc.ob = ob;
-  calc.numVerts = numVerts;
-  calc.vertexCos = vertexCos;
-  calc.dvert = dvert;
-  calc.vgroup = defgrp_index;
-  calc.invert_vgroup = (mmd->flag & GP_SHRINKWRAP_INVERT_VGROUP) != 0;
-
-  BLI_SPACE_TRANSFORM_SETUP(&calc.local2target, ob, mmd->target);
-  calc.keepDist = mmd->keep_dist;
-  calc.tree = mmd->cache_data;
-
-  switch (mmd->shrink_type) {
-    case MOD_SHRINKWRAP_NEAREST_SURFACE:
-    case MOD_SHRINKWRAP_TARGET_PROJECT:
-      TIMEIT_BENCH(shrinkwrap_calc_nearest_surface_point(&calc), gpdeform_surface);
-      break;
-
-    case MOD_SHRINKWRAP_PROJECT:
-      TIMEIT_BENCH(shrinkwrap_calc_normal_projection(&calc), gpdeform_project);
-      break;
-
-    case MOD_SHRINKWRAP_NEAREST_VERTEX:
-      TIMEIT_BENCH(shrinkwrap_calc_nearest_vertex(&calc), gpdeform_vertex);
-      break;
-  }
-}
-
 static void modify_drawing(const GreasePencilShrinkwrapModifierData &smd,
                            const ModifierEvalContext &ctx,
                            bke::greasepencil::Drawing &drawing)
 {
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const Span<MDeformVert> dverts = curves.deform_verts();
+  const MutableSpan<float3> positions = curves.positions_for_write();
+  const int defgrp_idx = BKE_object_defgroup_name_index(ctx.object, smd.influence.vertex_group_name);
 
   /* Selected source curves. */
   IndexMaskMemory curve_mask_memory;
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, drawing.strokes(), smd.influence, curve_mask_memory);
 
-  drawing.tag_topology_changed();
+  ShrinkwrapParams params;
+  params.target = smd.target;
+  params.aux_target = smd.aux_target;
+  params.invert_vertex_weights = smd.influence.flag & GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP;
+  params.keep_distance = smd.keep_dist;
+  params.shrink_type = smd.shrink_type;
+  params.shrink_options = smd.shrink_opts;
+  params.shrink_mode = smd.shrink_mode;
+  params.projection_limit = smd.proj_limit;
+  params.projection_axis = smd.proj_axis;
+  params.subsurf_levels = smd.subsurf_levels;
+
+  curves_mask.foreach_index([&](const int curve_i) {
+    const IndexRange points = curves.points_by_curve()[curve_i];
+    const Span<MDeformVert> curve_dverts = dverts.is_empty() ? dverts : dverts.slice(points);
+    const MutableSpan<float3> curve_positions = positions.slice(points);
+
+    shrinkwrapParams_deform(params,
+                            *ctx.object,
+                            *smd.cache_data,
+                            curve_dverts,
+                            defgrp_idx,
+                            curve_positions);
+  });
+
+  drawing.tag_positions_changed();
 }
 
 static void ensure_shrinkwrap_cache_data(GreasePencilShrinkwrapModifierData &smd,
