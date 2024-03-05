@@ -327,17 +327,6 @@ static void curves_batch_cache_ensure_edit_points_pos(
       const Span<float3> curve_right_handles = right_handle_positions.slice(curve_points);
       right_handles.slice(handle_offset, curve_points.size()).copy_from(curve_right_handles);
 
-      if (deformation.deform_mats.size()) {
-        for (const int point : curve_points) {
-          const int handle_index = point - curve_points.start() + handle_offset;
-
-          left_handles[handle_index] = math::transform_point(deformation.deform_mats[point],
-                                                             left_handles[handle_index]);
-          right_handles[handle_index] = math::transform_point(deformation.deform_mats[point],
-                                                              right_handles[handle_index]);
-        }
-      }
-
       for (const int point : curve_points) {
         const int point_in_curve = point - curve_points.start();
 
@@ -427,6 +416,7 @@ static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curv
 
   CurvesUboStorage ubo_storage;
   int &right_handle_line_offset = ubo_storage.right_handles_offset;
+  right_handle_line_offset = 0;
 
   for (const int curve : curves.curves_range()) {
     IndexRange curve_points = points_by_curve[curve];
@@ -893,19 +883,9 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
   draw::CurvesBatchCache &cache = draw::curves_batch_cache_get(*curves_id);
   bke::CurvesGeometry &curves_orig = curves_orig_id->geometry.wrap();
 
-  const bke::crazyspace::GeometryDeformation deformation =
-      bke::crazyspace::get_evaluated_curves_deformation(ob, *ob_orig);
-
   int bezier_curve_count;
   int bezier_point_count;
-  if (deformation.positions.size() == curves_orig_id->geometry.point_num) {
-    bke::curves::count_curve_type(
-        curves_orig, CURVE_TYPE_BEZIER, bezier_curve_count, bezier_point_count);
-  }
-  else {
-    bezier_curve_count = 0;
-    bezier_point_count = 0;
-  }
+  bke::curves::count_curve_type(curves_orig, CURVE_TYPE_BEZIER, bezier_curve_count, bezier_point_count);
 
   if (DRW_batch_requested(cache.edit_points, GPU_PRIM_POINTS)) {
     DRW_vbo_request(cache.edit_points, &cache.edit_points_pos);
@@ -919,6 +899,8 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     DRW_vbo_request(cache.edit_lines, &cache.edit_points_selection);
   }
   if (DRW_vbo_requested(cache.edit_points_pos)) {
+    const bke::crazyspace::GeometryDeformation deformation =
+    bke::crazyspace::get_evaluated_curves_deformation(ob, *ob_orig);
     curves_batch_cache_ensure_edit_points_pos(curves_orig, bezier_point_count, deformation, cache);
   }
   if (DRW_vbo_requested(cache.edit_points_selection)) {
