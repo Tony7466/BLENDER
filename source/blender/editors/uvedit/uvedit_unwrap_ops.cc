@@ -2032,7 +2032,6 @@ void ED_uvedit_live_unwrap_re_solve()
   if (g_live_unwrap.handles) {
     for (int i = 0; i < g_live_unwrap.len; i++) {
       if (uv_parametrizer_is_slim(g_live_unwrap.handles[i])) {
-        uv_parametrizer_slim_reload_all_uvs(g_live_unwrap.handles[i]);
         uv_parametrizer_slim_live_solve_iteration(g_live_unwrap.handles[i]);
       }
       else {

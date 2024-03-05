@@ -121,7 +121,6 @@ struct ParamSlimOptions {
   bool skip_initialization = false;
 };
 
-void uv_parametrizer_slim_reload_all_uvs(ParamHandle *handle);
 void uv_parametrizer_slim_solve(ParamHandle *handle,
                                 const ParamSlimOptions *mt_options,
                                 int *count_changed,

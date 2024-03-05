@@ -5215,18 +5215,6 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
   mt_chart.n_pinned_vertices = pinned_vertex_indices.size();
 }
 
-void uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
-{
-  PVert *v;
-  for (int i = 0; i < phandle->ncharts; i++) {
-    PChart *chart = phandle->charts[i];
-
-    for (v = chart->verts; v; v = v->nextlink) {
-      p_vert_load_pin_select_uvs(phandle, v); /* reload v */
-    }
-  }
-}
-
 void uv_parametrizer_slim_solve(ParamHandle *phandle,
                                 const ParamSlimOptions *slim_options,
                                 int *count_changed,
