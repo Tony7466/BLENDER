@@ -57,7 +57,7 @@
 #  include "BLI_math_matrix_types.hh"
 #  include "BLI_math_vector_types.hh"
 
-using bool1 = int32_t;
+using bool32_t = int32_t;
 // using bool2 = blender::int2; /* Size is not consistent across backend. */
 // using bool3 = blender::int3; /* Size is not consistent across backend. */
 // using bool4 = blender::int4; /* Size is not consistent across backend. */

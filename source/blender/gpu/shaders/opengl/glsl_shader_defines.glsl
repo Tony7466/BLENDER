@@ -7,7 +7,7 @@
  * in C++ shared code. */
 
 /* Boolean in GLSL are 32bit in interface structs. */
-#define bool1 bool
+#define bool32_t bool
 #define bool2 bvec2
 #define bool3 bvec3
 #define bool4 bvec4

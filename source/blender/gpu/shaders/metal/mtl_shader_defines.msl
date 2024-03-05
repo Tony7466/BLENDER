@@ -22,7 +22,7 @@
 #define DFDY_SIGN 1.0
 
 /* Type definitions. */
-using bool1 = int;
+using bool32_t = int;
 using vec3_1010102_Unorm = uint;
 using vec3_1010102_Inorm = int;
 /* GLSL types aliases. */
