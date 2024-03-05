@@ -1260,11 +1260,6 @@ static void grease_pencil_primitive_common_props(wmOperatorType *ot,
                                                  const int default_subdiv,
                                                  const PrimitiveType default_type)
 {
-  /* Callbacks. */
-  ot->invoke = grease_pencil_primitive_invoke;
-  ot->modal = grease_pencil_primitive_modal;
-  ot->cancel = grease_pencil_primitive_cancel;
-
   /* Flags. */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING;
 
@@ -1315,7 +1310,12 @@ static void GREASE_PENCIL_OT_primitive_line(wmOperatorType *ot)
   ot->idname = "GREASE_PENCIL_OT_primitive_line";
   ot->description = "Create predefined grease pencil stroke lines";
 
-  /* Properties, Callbacks and Flags. */
+  /* Callbacks. */
+  ot->invoke = grease_pencil_primitive_invoke;
+  ot->modal = grease_pencil_primitive_modal;
+  ot->cancel = grease_pencil_primitive_cancel;
+
+  /* Properties and Flags. */
   grease_pencil_primitive_common_props(ot, 6, PrimitiveType::LINE);
 }
 
@@ -1326,7 +1326,12 @@ static void GREASE_PENCIL_OT_primitive_polyline(wmOperatorType *ot)
   ot->idname = "GREASE_PENCIL_OT_primitive_polyline";
   ot->description = "Create predefined grease pencil stroke polylines";
 
-  /* Properties, Callbacks and Flags. */
+  /* Callbacks. */
+  ot->invoke = grease_pencil_primitive_invoke;
+  ot->modal = grease_pencil_primitive_modal;
+  ot->cancel = grease_pencil_primitive_cancel;
+
+  /* Properties and Flags. */
   grease_pencil_primitive_common_props(ot, 6, PrimitiveType::POLYLINE);
 }
 
@@ -1337,7 +1342,12 @@ static void GREASE_PENCIL_OT_primitive_arc(wmOperatorType *ot)
   ot->idname = "GREASE_PENCIL_OT_primitive_arc";
   ot->description = "Create predefined grease pencil stroke arcs";
 
-  /* Properties, Callbacks and Flags. */
+  /* Callbacks. */
+  ot->invoke = grease_pencil_primitive_invoke;
+  ot->modal = grease_pencil_primitive_modal;
+  ot->cancel = grease_pencil_primitive_cancel;
+
+  /* Properties and Flags. */
   grease_pencil_primitive_common_props(ot, 62, PrimitiveType::ARC);
 }
 
@@ -1348,7 +1358,12 @@ static void GREASE_PENCIL_OT_primitive_curve(wmOperatorType *ot)
   ot->idname = "GREASE_PENCIL_OT_primitive_curve";
   ot->description = "Create predefined grease pencil stroke curve shapes";
 
-  /* Properties, Callbacks and Flags. */
+  /* Callbacks. */
+  ot->invoke = grease_pencil_primitive_invoke;
+  ot->modal = grease_pencil_primitive_modal;
+  ot->cancel = grease_pencil_primitive_cancel;
+
+  /* Properties and Flags. */
   grease_pencil_primitive_common_props(ot, 62, PrimitiveType::CURVE);
 }
 
@@ -1359,7 +1374,12 @@ static void GREASE_PENCIL_OT_primitive_box(wmOperatorType *ot)
   ot->idname = "GREASE_PENCIL_OT_primitive_box";
   ot->description = "Create predefined grease pencil stroke boxes";
 
-  /* Properties, Callbacks and Flags. */
+  /* Callbacks. */
+  ot->invoke = grease_pencil_primitive_invoke;
+  ot->modal = grease_pencil_primitive_modal;
+  ot->cancel = grease_pencil_primitive_cancel;
+
+  /* Properties and Flags. */
   grease_pencil_primitive_common_props(ot, 3, PrimitiveType::BOX);
 }
 
@@ -1370,7 +1390,12 @@ static void GREASE_PENCIL_OT_primitive_circle(wmOperatorType *ot)
   ot->idname = "GREASE_PENCIL_OT_primitive_circle";
   ot->description = "Create predefined grease pencil stroke circles";
 
-  /* Properties, Callbacks and Flags. */
+  /* Callbacks. */
+  ot->invoke = grease_pencil_primitive_invoke;
+  ot->modal = grease_pencil_primitive_modal;
+  ot->cancel = grease_pencil_primitive_cancel;
+
+  /* Properties and Flags. */
   grease_pencil_primitive_common_props(ot, 94, PrimitiveType::CIRCLE);
 }
 
