@@ -13,12 +13,15 @@
 
 namespace blender::gpu {
 
+class VKDevice;
+
 using ComputePipelineHandle = int64_t;
 
 /**
  * Pipelines are lazy initialized.
  */
-class VKRenderGraphPipelines {
+// TODO: Add Mutex
+class VKPipelines {
  public:
   /**
    * To reuse pipelines the key information about the pipeline are stored in these structs.
@@ -36,15 +39,16 @@ class VKRenderGraphPipelines {
 
  private:
   Map<ComputeInfo, VkPipeline> compute_pipelines_;
-
+  /* Partially initialized structures to reuse. */
   VkComputePipelineCreateInfo vk_compute_pipeline_create_info_;
   VkSpecializationInfo vk_specialization_info_;
 
   struct GraphicsPipelineInfo {};
 
  public:
-  VKRenderGraphPipelines();
+  VKPipelines();
   VkPipeline get_or_create_compute_pipeline(ComputeInfo &compute_info);
+  void deinitialize();
 };
 
 }  // namespace blender::gpu

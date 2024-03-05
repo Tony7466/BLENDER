@@ -6,11 +6,13 @@
  * \ingroup gpu
  */
 
-#include "vk_render_graph_pipelines.hh"
+#include "vk_pipelines.hh"
+#include "vk_backend.hh"
+#include "vk_memory.hh"
 
 namespace blender::gpu {
 
-VKRenderGraphPipelines::VKRenderGraphPipelines()
+VKPipelines::VKPipelines()
 {
   /* Initialize VkComputePipelineCreateInfo*/
   vk_compute_pipeline_create_info_.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -35,7 +37,7 @@ VKRenderGraphPipelines::VKRenderGraphPipelines()
   vk_specialization_info_.pData = nullptr;
 }
 
-VkPipeline VKRenderGraphPipelines::get_or_create_compute_pipeline(ComputeInfo &compute_info)
+VkPipeline VKPipelines::get_or_create_compute_pipeline(ComputeInfo &compute_info)
 {
 #if 0
     const VkPipeline *found_pipeline = compute_pipelines_.lookup_ptr(compute_info);
@@ -59,7 +61,17 @@ VkPipeline VKRenderGraphPipelines::get_or_create_compute_pipeline(ComputeInfo &c
   }
 
   /* Build pipeline. */
+  VKBackend &backend = VKBackend::get();
+  VKDevice &device = backend.device_get();
+  VK_ALLOCATION_CALLBACKS;
+
   VkPipeline pipeline = VK_NULL_HANDLE;
+  vkCreateComputePipelines(device.device_get(),
+                           device.vk_pipeline_cache_get(),
+                           1,
+                           &vk_compute_pipeline_create_info_,
+                           vk_allocation_callbacks,
+                           &pipeline);
 #if 0
   compute_pipelines_.add(compute_info, pipeline);
 #endif
@@ -71,6 +83,11 @@ VkPipeline VKRenderGraphPipelines::get_or_create_compute_pipeline(ComputeInfo &c
   vk_specialization_info_.pData = nullptr;
 
   return pipeline;
+}
+
+void VKPipelines::deinitialize()
+{
+  // TODO: free all resources;
 }
 
 }  // namespace blender::gpu
