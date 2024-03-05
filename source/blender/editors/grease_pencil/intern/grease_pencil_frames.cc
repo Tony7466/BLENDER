@@ -355,7 +355,8 @@ bool ensure_active_keyframe(const Scene &scene, GreasePencil &grease_pencil)
         (brush->gpencil_tool == GPAINT_TOOL_ERASE))
     {
       /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
-       * current frame. */
+       * current frame. Also duplicate the frame when erasing, Otherwise empty drawing is added,
+       * see !119051 */
       grease_pencil.insert_duplicate_frame(
           active_layer, *active_layer.frame_key_at(current_frame), current_frame, false);
     }
