@@ -9,3 +9,9 @@
 #pragma once
 
 void ED_operatortypes_userpref();
+
+int ED_userpref_tabs_list(SpaceUserPref *sprefs, short *context_tabs_array);
+bool ED_userpref_tab_has_search_result(SpaceUserPref *sprefs, int index);
+void ED_userpref_search_string_set(SpaceUserPref *sprefs, const char *value);
+int ED_userpref_search_string_length(SpaceUserPref *sprefs);
+const char *ED_userpref_search_string_get(SpaceUserPref *sprefs);

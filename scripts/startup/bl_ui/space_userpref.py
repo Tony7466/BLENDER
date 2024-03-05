@@ -63,8 +63,11 @@ class USERPREF_PT_navigation_bar(Panel):
 
     def draw(self, context):
         layout = self.layout
+        view = context.space_data
 
         prefs = context.preferences
+
+        layout.prop(view, "search_filter", icon='VIEWZOOM', text="")
 
         col = layout.column()
 

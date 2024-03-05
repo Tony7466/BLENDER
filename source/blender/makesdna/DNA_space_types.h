@@ -56,6 +56,9 @@ typedef struct AssetRepresentationHandle AssetRepresentationHandle;
 /** Defined in `buttons_intern.h`. */
 typedef struct SpaceProperties_Runtime SpaceProperties_Runtime;
 
+/** Defined in `userpref_intern.h`. */
+typedef struct SpaceUserPref_Runtime SpaceUserPref_Runtime;
+
 #ifdef __cplusplus
 namespace blender::ed::space_node {
 struct SpaceNode_Runtime;
@@ -1723,6 +1726,7 @@ typedef struct SpaceConsole {
  * \{ */
 
 typedef struct SpaceUserPref {
+  DNA_DEFINE_CXX_METHODS(SpaceUserPref)
   SpaceLink *next, *prev;
   /** Storage of regions for inactive spaces. */
   ListBase regionbase;
@@ -1735,6 +1739,7 @@ typedef struct SpaceUserPref {
   char filter_type;
   /** Search term for filtering in the UI. */
   char filter[64];
+  struct SpaceUserPref_Runtime *runtime;
 } SpaceUserPref;
 
 /** \} */
