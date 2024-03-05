@@ -20,22 +20,6 @@ namespace slim {
 
 using namespace Eigen;
 
-static void transfer_uvs_back_to_native_part_live(MatrixTransferChart &chart, Eigen::MatrixXd &uv)
-{
-  if (!chart.succeeded) {
-    return;
-  }
-
-  auto &uv_coordinate_array = chart.uv_matrices;
-  size_t uv_idx = 0;
-  int number_of_vertices = chart.n_verts;
-
-  for (int i = 0; i < number_of_vertices; i++) {
-    uv_coordinate_array[uv_idx++] = uv(i, 0);
-    uv_coordinate_array[uv_idx++] = uv(i, 1);
-  }
-}
-
 static void transfer_uvs_back_to_native_part(MatrixTransferChart &chart, Eigen::MatrixXd &uv)
 {
   if (!chart.succeeded) {
@@ -119,7 +103,7 @@ void MatrixTransferChart::transfer_uvs_blended_live()
     return;
   }
   correct_map_surface_area_if_necessary(*data);
-  transfer_uvs_back_to_native_part_live(*this, data->V_o);
+  transfer_uvs_back_to_native_part(*this, data->V_o);
 }
 
 /* Called from the native part during each iteration of interactive parametrisation.
