@@ -9,6 +9,7 @@
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
+#include "BKE_scene.hh"
 
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_color.h"
@@ -145,7 +146,6 @@ struct PaintOperationExecutor {
 
   BrushGpencilSettings *settings_;
   float4 vertex_color_;
-  std::array<float3, 3> texture_points_;
   float hardness_;
 
   bke::greasepencil::Drawing *drawing_;
@@ -176,11 +176,6 @@ struct PaintOperationExecutor {
 
     // const bool use_vertex_color_fill = use_vertex_color && ELEM(
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
-
-    /* TODO: Align with the view or drawing plane. */
-    /* The default is the front draw plane (XZ). */
-    texture_points_ = std::array<float3, 3>{
-        float3(1.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 1.0f), float3(0.0f, 0.0f, 0.0f)};
 
     BLI_assert(grease_pencil->has_active_layer());
     drawing_ = grease_pencil->get_editable_drawing_at(*grease_pencil->get_active_layer(),
@@ -220,8 +215,6 @@ struct PaintOperationExecutor {
     const float start_radius = this->radius_from_input_sample(self, C, start_sample);
     const float start_opacity = this->opacity_from_input_sample(start_sample);
     const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
-
-    self.texture_points_ = texture_points_;
 
     self.screen_space_coords_orig_.append(start_coords);
     self.screen_space_curve_fitted_coords_.append(Vector<float2>({start_coords}));
@@ -278,11 +271,20 @@ struct PaintOperationExecutor {
                                       bke::AttrDomain::Point,
                                       {"position", "radius", "opacity", "vertex_color"},
                                       curves.points_range().take_back(1));
-    bke::fill_attribute_range_default(
-        attributes,
-        bke::AttrDomain::Curve,
-        {"curve_type", "material_index", "cyclic", "hardness", "start_cap", "end_cap"},
-        curves.curves_range().take_back(1));
+    bke::fill_attribute_range_default(attributes,
+                                      bke::AttrDomain::Curve,
+                                      {"curve_type",
+                                       "material_index",
+                                       "cyclic",
+                                       "hardness",
+                                       "start_cap",
+                                       "end_cap",
+                                       "texture_u",
+                                       "texture_v",
+                                       "texture_origin"},
+                                      curves.curves_range().take_back(1));
+
+    set_texture_points(curves, curves.curves_range().last(), self.texture_points_);
 
     drawing_->tag_topology_changed();
   }
@@ -445,8 +447,6 @@ struct PaintOperationExecutor {
                                       bke::AttrDomain::Point,
                                       {"position", "radius", "opacity", "vertex_color"},
                                       curves.points_range().take_back(1));
-
-    set_texture_points(curves, curves.curves_range().last(), texture_points_);
   }
 
   void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
@@ -492,6 +492,35 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
   else if (placement_.use_project_to_nearest_stroke()) {
     placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
     placement_.set_origin_to_nearest_stroke(start_sample.mouse_position);
+  }
+
+  /* Align texture with the drawing plane. */
+  switch (scene->toolsettings->gp_sculpt.lock_axis) {
+    case GP_LOCKAXIS_VIEW:
+      texture_points_ = std::array<float3, 3>{placement_.project(float2(region->winx, 0.0f)),
+                                              placement_.project(float2(0.0f, region->winy)),
+                                              placement_.project(float2(0.0f, 0.0f))};
+      break;
+    case GP_LOCKAXIS_Y:
+      texture_points_ = std::array<float3, 3>{
+          float3(1.0f, 0.0f, 0.0f), float3(0.0f, 0.0f, 1.0f), float3(0.0f)};
+      break;
+    case GP_LOCKAXIS_X:
+      texture_points_ = std::array<float3, 3>{
+          float3(0.0f, 1.0f, 0.0f), float3(0.0f, 0.0f, 1.0f), float3(0.0f)};
+      break;
+    case GP_LOCKAXIS_Z:
+      texture_points_ = std::array<float3, 3>{
+          float3(1.0f, 0.0f, 0.0f), float3(0.0f, 1.0f, 0.0f), float3(0.0f)};
+      break;
+    case GP_LOCKAXIS_CURSOR: {
+      float3x3 mat;
+      BKE_scene_cursor_rot_to_mat3(&scene->cursor, mat.ptr());
+      float3 loc = float3(scene->cursor.location);
+      texture_points_ = std::array<float3, 3>{
+          mat * float3(1.0f, 0.0f, 0.0f) + loc, mat * float3(0.0f, 1.0f, 0.0f) + loc, loc};
+      break;
+    }
   }
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
