@@ -258,7 +258,7 @@ void TokenIterator::process_text(std::string_view filepath, std::string_view tex
     {
       continue;
     }
-    /* A token could not be parsed. */
+    /* Unkown token found. */
     if (current == itr) {
       print_unkown_token(filepath, text.begin(), itr);
       token_stream_.clear();

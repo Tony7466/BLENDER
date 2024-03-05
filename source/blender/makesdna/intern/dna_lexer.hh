@@ -33,6 +33,7 @@ enum class SymbolType : int8_t {
   BACKSLASH,
   SLASH,
 };
+
 enum class KeywordType : int8_t {
   INCLUDE = 0,
   STRUCT,
@@ -74,18 +75,25 @@ enum class KeywordType : int8_t {
   ENUM_OPERATORS,
   BLI_STATIC_ASSERT_ALIGN,
 };
+
 struct Token {
   std::string_view where;
 };
+
 struct BreakLineToken : public Token {};
+
 struct IdentifierToken : public Token {};
+
 struct StringLiteralToken : public Token {};
+
 struct IntLiteralToken : public Token {
   int32_t val{0};
 };
+
 struct SymbolToken : public Token {
   SymbolType type;
 };
+
 struct KeywordToken : public Token {
   KeywordType type;
 };
@@ -96,6 +104,7 @@ using TokenVariant = std::variant<BreakLineToken,
                                   SymbolToken,
                                   KeywordToken,
                                   StringLiteralToken>;
+
 struct TokenIterator {
   TokenVariant *last{nullptr};
 
@@ -104,30 +113,6 @@ struct TokenIterator {
   Vector<TokenVariant *> waypoints_;
   TokenVariant *next_{nullptr};
 
- public:
-  /* Iterates over the input text looking for tokens. */
-  void process_text(std::string_view filepath, std::string_view text);
-
-  /* Add a return point in case the token parser fails create an item. */
-  void push_waypoint();
-
-  /* Removes the las return point, if `success==false` the iterator steps back to the return point.
-   */
-  void end_waypoint(bool success);
-
-  /* Return the pointer to the next token, and advances the iterator. */
-  TokenVariant *next_variant();
-
-  /* Checks if token stream dont still contains tokens. */
-  bool has_finish();
-
-  /* Appends a token. */
-  template<class Type> void append(Type &&val)
-  {
-    token_stream_.append(val);
-  }
-
- private:
   /* Print line where a unkown token was found. */
   void print_unkown_token(std::string_view filepath,
                           std::string_view::iterator start,
@@ -136,7 +121,31 @@ struct TokenIterator {
   void skip_break_lines();
 
  public:
-  /** Return the next token if it type matches to `Type`.
+  /* Iterates over the input text looking for tokens. */
+  void process_text(std::string_view filepath, std::string_view text);
+
+  /* Add a return point in case the token parser fails create an item. */
+  void push_waypoint();
+
+  /**
+   * Removes the las return point, if `success==false` the iterator steps back to the return point.
+   */
+  void end_waypoint(bool success);
+
+  /* Return the pointer to the next token, and advances the iterator. */
+  TokenVariant *next_variant();
+
+  /* Checks if the token iterator has reach the last token. */
+  bool has_finish();
+
+  /* Appends a token. */
+  template<class TokenType> void append(TokenType &&token)
+  {
+    token_stream_.append(token);
+  }
+
+  /**
+   * Return the next token if it type matches to `Type`.
    * Break lines are skipped for not break lines requested tokens.
    */
   template<class Type> Type *next()
@@ -154,10 +163,12 @@ struct TokenIterator {
     next_ = current_next;
     return nullptr;
   }
+
+  /* Return the next token if it matches to the requested keyword type. */
   KeywordToken *next_keyword(KeywordType type);
+
+  /* Return the next token if it matches to the requested symbol type. */
   SymbolToken *next_symbol(SymbolType type);
 };
-
-void print_line_error(std::string_view::iterator start, std::string_view::iterator where);
 
 }  // namespace blender::dna::lex

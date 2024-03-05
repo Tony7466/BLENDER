@@ -28,10 +28,8 @@ struct DefineInt {
 };
 
 /**
- * Variable declaration, allows multiple inline declarations:
- * `int value;`
- * `int value[256][DEFINE_VALUE];`
- * `float value1,value2[256][256];`
+ * Variable declaration, can hold multiple inline declarations, like:
+ * `float *value1,value2[256][256];`
  */
 struct Variable {
   struct Item {
@@ -39,6 +37,7 @@ struct Variable {
     std::string_view name;
     /** Item array size definition, empty for not arrays items. */
     Vector<std::variant<std::string_view, int32_t>> size;
+
     bool operator==(const Item &other) const;
   };
   bool const_tag{false};
@@ -64,6 +63,7 @@ struct PointerToArray {
   std::string_view type;
   std::string_view name;
   int32_t size;
+
   bool operator==(const PointerToArray &other) const;
   static std::optional<PointerToArray> parse(TokenIterator &cont);
 };
@@ -71,10 +71,11 @@ struct PointerToArray {
 /* Struct declaration.*/
 struct Struct {
   std::string_view name;
-  /* Keep inline buffer capacity to 0 to allow recursive Struct declarations. */
+  /* Recursive struct keep inline buffer capacity to 0. */
   Vector<std::variant<Variable, FunctionPtr, PointerToArray, Struct>, 0> items;
   /* Name set if struct is declared as member variable. */
   std::string_view member_name;
+
   static std::optional<Struct> parse(TokenIterator &cont);
   bool operator==(const Struct &other) const;
 };
@@ -85,6 +86,7 @@ struct Enum {
   std::optional<std::string_view> name;
   /** Fixed type specification. */
   std::optional<std::string_view> type;
+
   bool operator==(const Enum &other) const;
   static std::optional<Enum> parse(TokenIterator &cont);
 };

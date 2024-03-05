@@ -24,7 +24,7 @@ struct Collection;
 struct GHash;
 struct Object;
 struct SpaceLink;
- 
+
 /* ************************************************ */
 /* Visualization */
 
