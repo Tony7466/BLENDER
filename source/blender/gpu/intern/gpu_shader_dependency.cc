@@ -104,6 +104,7 @@ struct GPUSource {
     if (filename.endswith(".h") || filename.endswith(".hh")) {
       enum_preprocess();
       quote_preprocess();
+      small_types_check();
     }
     else {
       if (source.find("'") != StringRef::not_found) {
@@ -234,6 +235,27 @@ struct GPUSource {
     std::replace(processed_source.begin(), processed_source.end(), '"', ' ');
 
     source = processed_source.c_str();
+  }
+
+  /**
+   * Assert not small types are present inside shader shared files.
+   */
+  void small_types_check()
+  {
+    auto check_type = [&](StringRefNull type_str) {
+      int64_t cursor = -1;
+      while (true) {
+        cursor = find_keyword(source, type_str, cursor + 1);
+        if (cursor == -1) {
+          break;
+        }
+        print_error(source, cursor, "small types are forbidden in shader interfaces");
+      }
+    };
+
+    check_type("char ");
+    check_type("short ");
+    check_type("half ");
   }
 
   /**
