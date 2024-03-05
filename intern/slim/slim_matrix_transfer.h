@@ -55,9 +55,7 @@ struct MatrixTransferChart {
   void try_slim_solve(int iter_num);
   void parametrize_single_iteration();
 
-  void transfer_uvs_blended_live();
   void transfer_uvs_blended(float blend);
-
   void free_slim_data();
 };
 

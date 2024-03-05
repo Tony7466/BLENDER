@@ -5300,7 +5300,6 @@ void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
                                 mt->pinned_vertex_data);
 
     mt->parametrize_live(mt_chart, mt->pinned_vertex_data);
-    mt_chart.transfer_uvs_blended_live();
   }
 
   /* Assign new UVs back to each vertex. */

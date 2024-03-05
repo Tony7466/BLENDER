@@ -97,15 +97,6 @@ static void adjust_pins(SLIMData &slim_data, const PinnedVertexData &pinned_vert
   }
 }
 
-void MatrixTransferChart::transfer_uvs_blended_live()
-{
-  if (!succeeded) {
-    return;
-  }
-  correct_map_surface_area_if_necessary(*data);
-  transfer_uvs_back_to_native_part(*this, data->V_o);
-}
-
 /* Called from the native part during each iteration of interactive parametrisation.
  * The blend parameter decides the linear blending between the original UV map and the one
  * optained from the accumulated SLIM iterations so far. */
@@ -149,6 +140,9 @@ void MatrixTransfer::parametrize_live(MatrixTransferChart &chart,
   adjust_pins(*chart.data, pinned_vertex_data);
 
   chart.try_slim_solve(number_of_iterations);
+
+  correct_map_surface_area_if_necessary(*chart.data);
+  transfer_uvs_back_to_native_part(chart, chart.data->V_o);
 }
 
 void MatrixTransfer::parametrize()
