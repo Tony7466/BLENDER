@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2020 Blender Foundation
+# SPDX-FileCopyrightText: 2020 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -32,7 +32,6 @@ blender_src_gtest_ex(
   NAME blender
   SRC "${SRC}"
   EXTRA_LIBS "${TEST_LIBS}"
-  SKIP_ADD_TEST
 )
 setup_platform_linker_libs(blender_test)
 

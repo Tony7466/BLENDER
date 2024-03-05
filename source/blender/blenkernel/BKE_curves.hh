@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,9 +21,21 @@
 #include "BLI_vector.hh"
 #include "BLI_virtual_array.hh"
 
-#include "BKE_attribute.hh"
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.h"
+
+struct BlendDataReader;
+struct BlendWriter;
+struct MDeformVert;
+namespace blender::bke {
+class AnonymousAttributePropagationInfo;
+class AttributeAccessor;
+class MutableAttributeAccessor;
+enum class AttrDomain : int8_t;
+}  // namespace blender::bke
+namespace blender::bke::bake {
+struct BakeMaterialsList;
+}
 
 namespace blender::bke {
 
@@ -102,6 +114,9 @@ class CurvesGeometryRuntime {
 
   /** Normal direction vectors for each evaluated point. */
   mutable SharedCache<Vector<float3>> evaluated_normal_cache;
+
+  /** Stores weak references to material data blocks. */
+  std::unique_ptr<bake::BakeMaterialsList> bake_materials;
 };
 
 /**
@@ -157,7 +172,7 @@ class CurvesGeometry : public ::CurvesGeometry {
   /**
    * Mutable access to curve types. Call #tag_topology_changed and #update_curve_types after
    * changing any type. Consider using the other methods to change types below.
-   * */
+   */
   MutableSpan<int8_t> curve_types_for_write();
   /** Set all curve types to the value and call #update_curve_types. */
   void fill_curve_types(CurveType type);
@@ -258,6 +273,13 @@ class CurvesGeometry : public ::CurvesGeometry {
   MutableSpan<float2> surface_uv_coords_for_write();
 
   /**
+   * Vertex group data, encoded as an array of indices and weights for every vertex.
+   * \warning: May be empty.
+   */
+  Span<MDeformVert> deform_verts() const;
+  MutableSpan<MDeformVert> deform_verts_for_write();
+
+  /**
    * The largest and smallest position values of evaluated points.
    */
   std::optional<Bounds<float3>> bounds_min_max() const;
@@ -335,8 +357,10 @@ class CurvesGeometry : public ::CurvesGeometry {
 
  public:
   /**
-   * Change the number of elements. New values for existing attributes should be properly
-   * initialized afterwards.
+   * Change the number of curves and/or points.
+   *
+   * \warning To avoid redundant writes, newly created attribute values are not initialized.
+   * They must be initialized by the caller afterwards.
    */
   void resize(int points_num, int curves_num);
 
@@ -361,9 +385,9 @@ class CurvesGeometry : public ::CurvesGeometry {
   void calculate_bezier_auto_handles();
 
   void remove_points(const IndexMask &points_to_delete,
-                     const AnonymousAttributePropagationInfo &propagation_info = {});
+                     const AnonymousAttributePropagationInfo &propagation_info);
   void remove_curves(const IndexMask &curves_to_delete,
-                     const AnonymousAttributePropagationInfo &propagation_info = {});
+                     const AnonymousAttributePropagationInfo &propagation_info);
 
   /**
    * Change the direction of selected curves (switch the start and end) without changing their
@@ -383,9 +407,9 @@ class CurvesGeometry : public ::CurvesGeometry {
    * Attributes.
    */
 
-  GVArray adapt_domain(const GVArray &varray, eAttrDomain from, eAttrDomain to) const;
+  GVArray adapt_domain(const GVArray &varray, AttrDomain from, AttrDomain to) const;
   template<typename T>
-  VArray<T> adapt_domain(const VArray<T> &varray, eAttrDomain from, eAttrDomain to) const
+  VArray<T> adapt_domain(const VArray<T> &varray, AttrDomain from, AttrDomain to) const
   {
     return this->adapt_domain(GVArray(varray), from, to).typed<T>();
   }
@@ -393,9 +417,22 @@ class CurvesGeometry : public ::CurvesGeometry {
   /* --------------------------------------------------------------------
    * File Read/Write.
    */
-
   void blend_read(BlendDataReader &reader);
-  void blend_write(BlendWriter &writer, ID &id);
+  /**
+   * Helper struct for `CurvesGeometry::blend_write_*` functions.
+   */
+  struct BlendWriteData {
+    /* The point custom data layers to be written. */
+    Vector<CustomDataLayer, 16> point_layers;
+    /* The curve custom data layers to be written. */
+    Vector<CustomDataLayer, 16> curve_layers;
+  };
+  /**
+   * This function needs to be called before `blend_write` and before the `CurvesGeometry` struct
+   * is written because it can mutate the `CustomData` struct.
+   */
+  BlendWriteData blend_write_prepare();
+  void blend_write(BlendWriter &writer, ID &id, const BlendWriteData &write_data);
 };
 
 static_assert(sizeof(blender::bke::CurvesGeometry) == sizeof(::CurvesGeometry));
@@ -429,6 +466,8 @@ class CurvesEditHints {
    */
   bool is_valid() const;
 };
+
+void curves_normals_point_domain_calc(const CurvesGeometry &curves, MutableSpan<float3> normals);
 
 namespace curves {
 
@@ -630,11 +669,9 @@ void set_handle_position(const float3 &position,
  * points are referred to as the control points, and the middle points are the corresponding
  * handles.
  */
-void evaluate_segment(const float3 &point_0,
-                      const float3 &point_1,
-                      const float3 &point_2,
-                      const float3 &point_3,
-                      MutableSpan<float3> result);
+template<typename T>
+void evaluate_segment(
+    const T &point_0, const T &point_1, const T &point_2, const T &point_3, MutableSpan<T> result);
 
 /**
  * Calculate all evaluated points for the Bezier curve.

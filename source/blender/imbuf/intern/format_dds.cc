@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2009 Google Inc. All rights reserved. (BSD-3-Clause)
- * SPDX-FileCopyrightText: 2023 Blender Foundation (GPL-2.0-or-later).
+ * SPDX-FileCopyrightText: 2023 Blender Authors (GPL-2.0-or-later).
  *
  * SPDX-License-Identifier: GPL-2.0-or-later AND BSD-3-Clause */
 
@@ -15,8 +15,8 @@
 
 #include "oiio/openimageio_support.hh"
 
-#include "IMB_filetype.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_filetype.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "BLI_path_util.h"
 #include "BLI_string.h"

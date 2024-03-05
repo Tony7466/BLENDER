@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,14 +14,15 @@
 #include "BLI_listbase.h"
 #include "BLI_string.h"
 #include "BLI_string_ref.hh"
-#include "BLI_string_utils.h"
+#include "BLI_string_utf8.h"
+#include "BLI_string_utils.hh"
 #include "BLI_uuid.h"
 
-#include "BKE_asset.h"
-#include "BKE_icons.h"
+#include "BKE_asset.hh"
 #include "BKE_idprop.h"
+#include "BKE_preview_image.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -51,18 +52,10 @@ AssetMetaData *BKE_asset_metadata_copy(const AssetMetaData *source)
 
   BKE_asset_metadata_catalog_id_set(copy, source->catalog_id, source->catalog_simple_name);
 
-  if (source->author) {
-    copy->author = BLI_strdup(source->author);
-  }
-  if (source->description) {
-    copy->description = BLI_strdup(source->description);
-  }
-  if (source->copyright) {
-    copy->copyright = BLI_strdup(source->copyright);
-  }
-  if (source->license) {
-    copy->license = BLI_strdup(source->license);
-  }
+  copy->author = BLI_strdup_null(source->author);
+  copy->description = BLI_strdup_null(source->description);
+  copy->copyright = BLI_strdup_null(source->copyright);
+  copy->license = BLI_strdup_null(source->license);
 
   BLI_duplicatelist(&copy->tags, &source->tags);
   copy->active_tag = source->active_tag;
@@ -86,7 +79,7 @@ AssetMetaData::~AssetMetaData()
 static AssetTag *asset_metadata_tag_add(AssetMetaData *asset_data, const char *const name)
 {
   AssetTag *tag = (AssetTag *)MEM_callocN(sizeof(*tag), __func__);
-  STRNCPY(tag->name, name);
+  STRNCPY_UTF8(tag->name, name);
 
   BLI_addtail(&asset_data->tags, tag);
   asset_data->tot_tags++;

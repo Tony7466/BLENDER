@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,6 +7,8 @@
  *
  * Random number generator, contains persistent state and sample count logic.
  */
+
+#include "BKE_colortools.hh"
 
 #include "BLI_rand.h"
 
@@ -75,7 +77,8 @@ void Sampling::end_sync()
 
     interactive_mode_ = viewport_sample_ < interactive_mode_threshold;
 
-    bool interactive_mode_disabled = (inst_.scene->eevee.flag & SCE_EEVEE_TAA_REPROJECTION) == 0;
+    bool interactive_mode_disabled = (inst_.scene->eevee.flag & SCE_EEVEE_TAA_REPROJECTION) == 0 ||
+                                     inst_.is_viewport_image_render();
     if (interactive_mode_disabled) {
       interactive_mode_ = false;
       sample_ = viewport_sample_;
@@ -98,7 +101,10 @@ void Sampling::end_sync()
 void Sampling::step()
 {
   {
-    uint64_t sample_filter = sample_ % interactive_sample_aa_;
+    uint64_t sample_filter = sample_;
+    if (interactive_mode()) {
+      sample_filter = sample_filter % interactive_sample_aa_;
+    }
     /* TODO(fclem) we could use some persistent states to speedup the computation. */
     double2 r, offset = {0, 0};
     /* Using 2,3 primes as per UE4 Temporal AA presentation.
@@ -131,11 +137,15 @@ void Sampling::step()
     data_.dimensions[SAMPLING_CURVES_U] = r[0];
   }
   {
+    uint64_t sample_raytrace = sample_;
+    if (interactive_mode()) {
+      sample_raytrace = sample_raytrace % interactive_sample_raytrace_;
+    }
     /* Using leaped Halton sequence so we can reused the same primes as lens. */
     double3 r, offset = {0, 0, 0};
     uint64_t leap = 11;
     uint3 primes = {5, 4, 7};
-    BLI_halton_3d(primes, offset, sample_ * leap, r);
+    BLI_halton_3d(primes, offset, sample_raytrace * leap, r);
     data_.dimensions[SAMPLING_SHADOW_U] = r[0];
     data_.dimensions[SAMPLING_SHADOW_V] = r[1];
     data_.dimensions[SAMPLING_SHADOW_W] = r[2];
@@ -143,6 +153,10 @@ void Sampling::step()
     data_.dimensions[SAMPLING_RAYTRACE_U] = r[0];
     data_.dimensions[SAMPLING_RAYTRACE_V] = r[1];
     data_.dimensions[SAMPLING_RAYTRACE_W] = r[2];
+    /* TODO de-correlate. */
+    data_.dimensions[SAMPLING_VOLUME_U] = r[0];
+    data_.dimensions[SAMPLING_VOLUME_V] = r[1];
+    data_.dimensions[SAMPLING_VOLUME_W] = r[2];
   }
   {
     /* Using leaped Halton sequence so we can reused the same primes. */

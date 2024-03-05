@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,9 @@ using namespace Freestyle;
 
 //------------------------INSTANCE METHODS ----------------------------------
 
-static char Normal2DF0D___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    Normal2DF0D___doc__,
     "Class hierarchy: :class:`freestyle.types.UnaryFunction0D` > "
     ":class:`freestyle.types.UnaryFunction0DVec2f` > :class:`Normal2DF0D`\n"
     "\n"
@@ -39,7 +41,7 @@ static char Normal2DF0D___doc__[] =
     "   :type it: :class:`freestyle.types.Interface0DIterator`\n"
     "   :return: The 2D normal of the 1D element evaluated at the pointed\n"
     "      Interface0D.\n"
-    "   :rtype: :class:`mathutils.Vector`\n";
+    "   :rtype: :class:`mathutils.Vector`\n");
 
 static int Normal2DF0D___init__(BPy_Normal2DF0D *self, PyObject *args, PyObject *kwds)
 {
@@ -56,7 +58,7 @@ static int Normal2DF0D___init__(BPy_Normal2DF0D *self, PyObject *args, PyObject 
 /*-----------------------BPy_Normal2DF0D type definition ------------------------------*/
 
 PyTypeObject Normal2DF0D_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "Normal2DF0D",
     /*tp_basicsize*/ sizeof(BPy_Normal2DF0D),
     /*tp_itemsize*/ 0,

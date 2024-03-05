@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -46,7 +46,9 @@ int UnaryFunction0DVec3f_Init(PyObject *module)
 
 //------------------------INSTANCE METHODS ----------------------------------
 
-static char UnaryFunction0DVec3f___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    UnaryFunction0DVec3f___doc__,
     "Class hierarchy: :class:`UnaryFunction0D` > :class:`UnaryFunction0DVec3f`\n"
     "\n"
     "Base class for unary functions (functors) that work on\n"
@@ -54,7 +56,7 @@ static char UnaryFunction0DVec3f___doc__[] =
     "\n"
     ".. method:: __init__()\n"
     "\n"
-    "   Default constructor.\n";
+    "   Default constructor.\n");
 
 static int UnaryFunction0DVec3f___init__(BPy_UnaryFunction0DVec3f *self,
                                          PyObject *args,
@@ -111,7 +113,7 @@ static PyObject *UnaryFunction0DVec3f___call__(BPy_UnaryFunction0DVec3f *self,
 /*-----------------------BPy_UnaryFunction0DVec3f type definition ------------------------------*/
 
 PyTypeObject UnaryFunction0DVec3f_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "UnaryFunction0DVec3f",
     /*tp_basicsize*/ sizeof(BPy_UnaryFunction0DVec3f),
     /*tp_itemsize*/ 0,

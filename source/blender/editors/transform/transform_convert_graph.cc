@@ -11,23 +11,23 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_fcurve.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 #include "BKE_nla.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
-#include "ED_anim_api.h"
-#include "ED_keyframes_edit.h"
-#include "ED_markers.h"
+#include "ED_anim_api.hh"
+#include "ED_keyframes_edit.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "transform.hh"
+#include "transform_constraints.hh"
 #include "transform_convert.hh"
-#include "transform_mode.hh"
 #include "transform_snap.hh"
 
 struct TransDataGraph {
@@ -144,6 +144,24 @@ static bool graph_edit_use_local_center(TransInfo *t)
   return ((t->around == V3D_AROUND_LOCAL_ORIGINS) && (graph_edit_is_translation_mode(t) == false));
 }
 
+static void enable_autolock(TransInfo *t, SpaceGraph *space_graph)
+{
+  /* Locking the axis makes most sense for translation. We may want to enable it for scaling as
+   * well if artists require that. */
+  if (t->mode != TFM_TRANSLATION) {
+    return;
+  }
+
+  /* These flags are set when using tweak mode on handles. */
+  if ((space_graph->runtime.flag & SIPO_RUNTIME_FLAG_TWEAK_HANDLES_LEFT) ||
+      (space_graph->runtime.flag & SIPO_RUNTIME_FLAG_TWEAK_HANDLES_RIGHT))
+  {
+    return;
+  }
+
+  initSelectConstraint(t);
+}
+
 /**
  * Get the effective selection of a triple for transform, i.e. return if the left handle, right
  * handle and/or the center point should be affected by transform.
@@ -223,7 +241,6 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
 
   bAnimContext ac;
   ListBase anim_data = {nullptr, nullptr};
-  bAnimListElem *ale;
   int filter;
 
   BezTriple *bezt;
@@ -240,7 +257,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
     return;
   }
 
-  anim_map_flag |= ANIM_get_normalization_flags(&ac);
+  anim_map_flag |= ANIM_get_normalization_flags(ac.sl);
 
   /* filter data */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_CURVE_VISIBLE |
@@ -260,7 +277,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
 
   /* Loop 1: count how many BezTriples (specifically their verts)
    * are selected (or should be edited). */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
     FCurve *fcu = (FCurve *)ale->key_data;
     float cfra;
@@ -367,8 +384,10 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
     }
   }
 
+  bool at_least_one_key_selected = false;
+
   /* loop 2: build transdata arrays */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
     FCurve *fcu = (FCurve *)ale->key_data;
     bool intvals = (fcu->flag & FCURVE_INT_VALUES) != 0;
@@ -405,7 +424,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
         TransDataCurveHandleFlags *hdata = nullptr;
 
         graph_bezt_get_transform_selection(t, bezt, use_handle, &sel_left, &sel_key, &sel_right);
-
+        at_least_one_key_selected |= sel_key;
         if (is_prop_edit) {
           bool is_sel = (sel_key || sel_left || sel_right);
           /* we always select all handles for proportional editing if central handle is selected */
@@ -561,7 +580,7 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
     /* loop 2: build transdata arrays */
     td = tc->data;
 
-    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+    LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
       AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
       FCurve *fcu = (FCurve *)ale->key_data;
       TransData *td_start = td;
@@ -616,6 +635,10 @@ static void createTransGraphEditData(bContext *C, TransInfo *t)
     }
   }
 
+  if (sipo->flag & SIPO_AUTOLOCK_AXIS && at_least_one_key_selected) {
+    enable_autolock(t, sipo);
+  }
+
   /* cleanup temp list */
   ANIM_animdata_freelist(&anim_data);
 }
@@ -632,19 +655,19 @@ static bool fcu_test_selected(FCurve *fcu)
   uint i;
 
   if (bezt == nullptr) { /* ignore baked */
-    return 0;
+    return false;
   }
 
   for (i = 0; i < fcu->totvert; i++, bezt++) {
     if (BEZT_ISSEL_ANY(bezt)) {
-      return 1;
+      return true;
     }
   }
 
-  return 0;
+  return false;
 }
 
-/* This function is called on recalcData to apply the transforms applied
+/* This function is called on recalc_data to apply the transforms applied
  * to the transdata on to the actual keyframe data
  */
 static void flushTransGraphData(TransInfo *t)
@@ -654,9 +677,9 @@ static void flushTransGraphData(TransInfo *t)
   TransDataGraph *tdg;
   int a;
 
-  const short autosnap = getAnimEdit_SnapMode(t);
-  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
+  eSnapMode snap_mode = t->tsnap.mode;
 
+  TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
   /* flush to 2d vector from internally used 3d vector */
   for (a = 0,
       td = tc->data,
@@ -675,8 +698,8 @@ static void flushTransGraphData(TransInfo *t)
      * - Only apply to keyframes (but never to handles).
      * - Don't do this when canceling, or else these changes won't go away.
      */
-    if ((autosnap != SACTSNAP_OFF) && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
-      transform_snap_anim_flush_data(t, td, eAnimEdit_AutoSnap(autosnap), td->loc);
+    if ((t->tsnap.flag & SCE_SNAP) && (t->state != TRANS_CANCEL) && !(td->flag & TD_NOTIMESNAP)) {
+      transform_snap_anim_flush_data(t, td, snap_mode, td->loc);
     }
 
     /* we need to unapply the nla-mapping from the time in some situations */
@@ -757,7 +780,7 @@ static void sort_time_beztmaps(BeztMap *bezms, int totvert)
           bezm->newIndex++;
           (bezm + 1)->newIndex--;
 
-          SWAP(BeztMap, *bezm, *(bezm + 1));
+          std::swap(*bezm, *(bezm + 1));
 
           ok = 1;
         }
@@ -869,7 +892,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
   MEM_freeN(adjusted);
 }
 
-/* This function is called by recalcData during the Transform loop to recalculate
+/* This function is called by recalc_data during the Transform loop to recalculate
  * the handles of curves and sort the keyframes so that the curves draw correctly.
  * It is only called if some keyframes have moved out of order.
  *
@@ -879,11 +902,10 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
 static void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
 {
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
-  bAnimListElem *ale;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
   /* sort and reassign verts */
-  for (ale = static_cast<bAnimListElem *>(anim_data->first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     if (fcu->bezt) {
@@ -916,7 +938,6 @@ static void recalcData_graphedit(TransInfo *t)
   bAnimContext ac = {nullptr};
   int filter;
 
-  bAnimListElem *ale;
   int dosort = 0;
 
   BKE_view_layer_synced_ensure(t->scene, t->view_layer);
@@ -945,7 +966,7 @@ static void recalcData_graphedit(TransInfo *t)
       &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
   /* now test if there is a need to re-sort */
-  for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+  LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
 
     /* ignore FC-Curves without any selected verts */
@@ -991,7 +1012,7 @@ static void special_aftertrans_update__graph(bContext *C, TransInfo *t)
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
   const bool canceled = (t->state == TRANS_CANCEL);
-  const bool duplicate = (t->flag & T_AUTOMERGE) != 0;
+  const bool duplicate = (t->flag & T_DUPLICATED_KEYFRAMES) != 0;
 
   /* initialize relevant anim-context 'context' data */
   if (ANIM_animdata_get_context(C, &ac) == 0) {
@@ -1000,7 +1021,6 @@ static void special_aftertrans_update__graph(bContext *C, TransInfo *t)
 
   if (ac.datatype) {
     ListBase anim_data = {nullptr, nullptr};
-    bAnimListElem *ale;
     short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_CURVE_VISIBLE |
                     ANIMFILTER_FCURVESONLY);
 
@@ -1008,7 +1028,7 @@ static void special_aftertrans_update__graph(bContext *C, TransInfo *t)
     ANIM_animdata_filter(
         &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-    for (ale = static_cast<bAnimListElem *>(anim_data.first); ale; ale = ale->next) {
+    LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
       AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
       FCurve *fcu = (FCurve *)ale->key_data;
 
@@ -1021,9 +1041,9 @@ static void special_aftertrans_update__graph(bContext *C, TransInfo *t)
        */
       if ((sipo->flag & SIPO_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
         if (adt) {
-          ANIM_nla_mapping_apply_fcurve(adt, fcu, 0, 0);
+          ANIM_nla_mapping_apply_fcurve(adt, fcu, false, false);
           BKE_fcurve_merge_duplicate_keys(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
-          ANIM_nla_mapping_apply_fcurve(adt, fcu, 1, 0);
+          ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
         }
         else {
           BKE_fcurve_merge_duplicate_keys(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
@@ -1049,7 +1069,7 @@ static void special_aftertrans_update__graph(bContext *C, TransInfo *t)
 
 TransConvertTypeInfo TransConvertType_Graph = {
     /*flags*/ (T_POINTS | T_2D_EDIT),
-    /*createTransData*/ createTransGraphEditData,
-    /*recalcData*/ recalcData_graphedit,
+    /*create_trans_data*/ createTransGraphEditData,
+    /*recalc_data*/ recalcData_graphedit,
     /*special_aftertrans_update*/ special_aftertrans_update__graph,
 };

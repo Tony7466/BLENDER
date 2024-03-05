@@ -6,24 +6,24 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
 
-#include "BKE_context.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -279,7 +279,7 @@ static bool clip_uv_transform_shear(const TransInfo *t, float *vec, float *vec_i
   return true;
 }
 
-static void apply_shear(TransInfo *t, const int[2] /*mval*/)
+static void apply_shear(TransInfo *t)
 {
   float value = t->values[0] + t->values_modal_offset[0];
   transform_snap_increment(t, &value);
@@ -293,27 +293,24 @@ static void apply_shear(TransInfo *t, const int[2] /*mval*/)
       apply_shear_value(t, t->values_final[0]);
     }
 
-    /* In proportional edit it can happen that */
-    /* vertices in the radius of the brush end */
-    /* outside the clipping area               */
-    /* XXX HACK - dg */
+    /* Not ideal, see #clipUVData code-comment. */
     if (t->flag & T_PROP_EDIT) {
       clipUVData(t);
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   char str[UI_MAX_DRAW_STR];
   /* header print for NumInput */
   if (hasNumInput(&t->num)) {
     char c[NUM_STR_REP_LEN];
     outputNumInput(&(t->num), c, &t->scene->unit);
-    SNPRINTF(str, TIP_("Shear: %s %s"), c, t->proptext);
+    SNPRINTF(str, IFACE_("Shear: %s %s"), c, t->proptext);
   }
   else {
     /* default header print */
-    SNPRINTF(str, TIP_("Shear: %.3f %s (Press X or Y to set shear axis)"), value, t->proptext);
+    SNPRINTF(str, IFACE_("Shear: %.3f %s (Press X or Y to set shear axis)"), value, t->proptext);
   }
 
   ED_area_status_text(t->area, str);

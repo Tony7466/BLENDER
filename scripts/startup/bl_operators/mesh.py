@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -9,7 +9,7 @@ from bpy.props import (
     EnumProperty,
     IntProperty,
 )
-from bpy.app.translations import pgettext_tip as tip_
+from bpy.app.translations import pgettext_rpt as rpt_
 
 
 class MeshMirrorUV(Operator):
@@ -85,7 +85,7 @@ class MeshMirrorUV(Operator):
             puvs_cpy[i] = tuple(uv.copy() for uv in puvs[i])
             puvsel[i] = (False not in
                          (uv.select for uv in uv_loops[lstart:lend]))
-            # Vert idx of the poly.
+            # Vert index of the poly.
             vidxs[i] = tuple(l.vertex_index for l in loops[lstart:lend])
             pcents[i] = p.center
             # Preparing next step finding matching polys.
@@ -141,8 +141,10 @@ class MeshMirrorUV(Operator):
         if is_editmode:
             bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
 
-        meshes = [ob.data for ob in context.view_layer.objects.selected
-                  if ob.type == 'MESH' and ob.data.library is None]
+        meshes = [
+            ob.data for ob in context.view_layer.objects.selected
+            if ob.type == 'MESH' and ob.data.library is None
+        ]
 
         for mesh in meshes:
             mesh.tag = False
@@ -167,18 +169,18 @@ class MeshMirrorUV(Operator):
 
         if total_duplicates and total_no_active_UV:
             self.report({'WARNING'},
-                        tip_("%d mesh(es) with no active UV layer, "
+                        rpt_("%d mesh(es) with no active UV layer, "
                              "%d duplicates found in %d mesh(es), mirror may be incomplete")
                         % (total_no_active_UV,
                            total_duplicates,
                            meshes_with_duplicates))
         elif total_no_active_UV:
             self.report({'WARNING'},
-                        tip_("%d mesh(es) with no active UV layer")
+                        rpt_("%d mesh(es) with no active UV layer")
                         % (total_no_active_UV,))
         elif total_duplicates:
             self.report({'WARNING'},
-                        tip_("%d duplicates found in %d mesh(es), mirror may be incomplete")
+                        rpt_("%d duplicates found in %d mesh(es), mirror may be incomplete")
                         % (total_duplicates, meshes_with_duplicates))
 
         return {'FINISHED'}

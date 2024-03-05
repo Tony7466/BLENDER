@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,6 +15,8 @@
 #include "gpu_shader_create_info.hh"
 
 #include "eevee_private.h"
+
+#include <sstream>
 
 using blender::gpu::shader::StageInterfaceInfo;
 
@@ -52,6 +54,8 @@ void eevee_shader_material_create_info_amend(GPUMaterial *gpumat,
   }
 
   info.auto_resource_location(true);
+
+  info.define("UNI_ATTR(a)", "a");
 
   if (GPU_material_flag_get(gpumat, GPU_MATFLAG_SUBSURFACE)) {
     info.define("USE_SSS");
@@ -127,7 +131,7 @@ void eevee_shader_material_create_info_amend(GPUMaterial *gpumat,
 
   attr_load << "void attrib_load()\n";
   attr_load << "{\n";
-  attr_load << ((codegen.attr_load) ? codegen.attr_load : "");
+  attr_load << ((!codegen.attr_load.empty()) ? codegen.attr_load : "");
   attr_load << "}\n\n";
 
   std::stringstream vert_gen, frag_gen, geom_gen;
@@ -148,20 +152,18 @@ void eevee_shader_material_create_info_amend(GPUMaterial *gpumat,
 
   {
     frag_gen << frag;
-    if (codegen.material_functions) {
-      frag_gen << codegen.material_functions;
-    }
+    frag_gen << codegen.material_functions;
     frag_gen << "Closure nodetree_exec()\n";
     frag_gen << "{\n";
     if (is_volume) {
-      frag_gen << ((codegen.volume) ? codegen.volume : "return CLOSURE_DEFAULT;\n");
+      frag_gen << ((!codegen.volume.empty()) ? codegen.volume : "return CLOSURE_DEFAULT;\n");
     }
     else {
-      frag_gen << ((codegen.surface) ? codegen.surface : "return CLOSURE_DEFAULT;\n");
+      frag_gen << ((!codegen.surface.empty()) ? codegen.surface : "return CLOSURE_DEFAULT;\n");
     }
     frag_gen << "}\n\n";
 
-    if (codegen.displacement && (is_hair || is_mesh)) {
+    if (!codegen.displacement.empty() && (is_hair || is_mesh)) {
       info.define("EEVEE_DISPLACEMENT_BUMP");
 
       frag_gen << "vec3 displacement_exec()\n";

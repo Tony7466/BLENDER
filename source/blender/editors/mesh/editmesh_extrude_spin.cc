@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,26 +8,29 @@
 
 #include "DNA_object_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
-#include "BKE_layer.h"
-#include "BKE_report.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_layer.hh"
+#include "BKE_report.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "ED_mesh.h"
-#include "ED_screen.h"
-#include "ED_view3d.h"
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
+#include "ED_view3d.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
+
+using blender::Vector;
 
 #define USE_GIZMO
 
@@ -56,12 +59,10 @@ static int edbm_spin_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
+  const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     BMesh *bm = em->bm;
     BMOperator spinop;
@@ -78,7 +79,7 @@ static int edbm_spin_exec(bContext *C, wmOperator *op)
                       d,
                       steps,
                       -angle,
-                      obedit->object_to_world,
+                      obedit->object_to_world().ptr(),
                       use_normal_flip,
                       dupli,
                       use_auto_merge))
@@ -96,13 +97,11 @@ static int edbm_spin_exec(bContext *C, wmOperator *op)
     }
 
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = false;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(obedit->data), &params);
   }
-
-  MEM_freeN(objects);
 
   return OPERATOR_FINISHED;
 }
@@ -142,7 +141,7 @@ static int edbm_spin_invoke(bContext *C, wmOperator *op, const wmEvent * /*event
     if (v3d && ((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0)) {
       wmGizmoGroupType *gzgt = WM_gizmogrouptype_find("MESH_GGT_spin_redo", false);
       if (!WM_gizmo_group_type_ensure_ptr(gzgt)) {
-        struct Main *bmain = CTX_data_main(C);
+        Main *bmain = CTX_data_main(C);
         WM_gizmo_group_type_reinit_ptr(bmain, gzgt);
       }
     }
@@ -189,7 +188,7 @@ void MESH_OT_spin(wmOperatorType *ot)
   /* props */
   RNA_def_int(ot->srna, "steps", 12, 0, 1000000, "Steps", "Steps", 0, 1000);
 
-  prop = RNA_def_boolean(ot->srna, "dupli", 0, "Use Duplicates", "");
+  prop = RNA_def_boolean(ot->srna, "dupli", false, "Use Duplicates", "");
   RNA_def_property_flag(prop, PROP_SKIP_SAVE);
 
   prop = RNA_def_float(ot->srna,
@@ -207,7 +206,7 @@ void MESH_OT_spin(wmOperatorType *ot)
                   true,
                   "Auto Merge",
                   "Merge first/last when the angle is a full revolution");
-  RNA_def_boolean(ot->srna, "use_normal_flip", 0, "Flip Normals", "");
+  RNA_def_boolean(ot->srna, "use_normal_flip", false, "Flip Normals", "");
 
   RNA_def_float_vector_xyz(ot->srna,
                            "center",

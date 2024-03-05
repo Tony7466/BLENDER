@@ -10,7 +10,7 @@
 
 struct BoundBox;
 struct Object;
-struct RenderEngine;
+struct ViewRender;
 struct SmoothView3DStore;
 struct SpaceLink;
 struct bGPdata;
@@ -24,10 +24,6 @@ struct wmTimer;
 #include "DNA_view3d_enums.h"
 #include "DNA_viewer_path_types.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef struct RegionView3D {
 
   /** GL_PROJECTION matrix. */
@@ -40,7 +36,7 @@ typedef struct RegionView3D {
   float persmat[4][4];
   /** Inverse of persmat. */
   float persinv[4][4];
-  /** Offset/scale for camera glsl texcoords. */
+  /** Offset/scale for camera GLSL texture-coordinates. */
   float viewcamtexcofac[4];
 
   /** viewmat/persmat multiplied with object matrix, while drawing and selection. */
@@ -58,7 +54,7 @@ typedef struct RegionView3D {
 
   /** Allocated backup of itself while in local-view. */
   struct RegionView3D *localvd;
-  struct RenderEngine *render_engine;
+  struct ViewRender *view_render;
 
   /** Animated smooth view. */
   struct SmoothView3DStore *sms;
@@ -196,7 +192,6 @@ typedef struct View3DOverlay {
   int edit_flag;
   float normals_length;
   float normals_constant_screen_size;
-  float backwire_opacity;
 
   /** Paint mode settings. */
   int paint_flag;
@@ -236,7 +231,6 @@ typedef struct View3DOverlay {
 
   /** Curves sculpt mode settings. */
   float sculpt_curves_cage_opacity;
-  char _pad[4];
 } View3DOverlay;
 
 /** #View3DOverlay.handle_display */
@@ -252,6 +246,7 @@ typedef enum eHandleDisplay {
 typedef struct View3D_Runtime {
   /** Nkey panel stores stuff here. */
   void *properties_storage;
+  void (*properties_storage_free)(void *properties_storage);
   /** Runtime only flags. */
   int flag;
 
@@ -302,10 +297,10 @@ typedef struct View3D {
   /** Optional string for armature bone to define center, MAXBONENAME. */
   char ob_center_bone[64];
 
-  unsigned short local_view_uuid;
+  unsigned short local_view_uid;
   char _pad6[2];
   int layact DNA_DEPRECATED;
-  unsigned short local_collections_uuid;
+  unsigned short local_collections_uid;
   short _pad7[2];
 
   short debug_flag;
@@ -578,6 +573,7 @@ enum {
   V3D_OVERLAY_SCULPT_SHOW_FACE_SETS = (1 << 15),
   V3D_OVERLAY_SCULPT_CURVES_CAGE = (1 << 16),
   V3D_OVERLAY_SHOW_LIGHT_COLORS = (1 << 17),
+  V3D_OVERLAY_VIEWER_ATTRIBUTE_TEXT = (1 << 18),
 };
 
 /** #View3DOverlay.edit_flag */
@@ -590,7 +586,7 @@ enum {
 
   V3D_OVERLAY_EDIT_WEIGHT = (1 << 4),
 
-  V3D_OVERLAY_EDIT_EDGES = (1 << 5),
+  V3D_OVERLAY_EDIT_EDGES_DEPRECATED = (1 << 5),
   V3D_OVERLAY_EDIT_FACES = (1 << 6),
   V3D_OVERLAY_EDIT_FACE_DOT = (1 << 7),
 
@@ -721,7 +717,3 @@ typedef enum {
 /** #BKE_screen_view3d_zoom_to_fac() values above */
 #define RV3D_CAMZOOM_MIN_FACTOR 0.1657359312880714853f
 #define RV3D_CAMZOOM_MAX_FACTOR 44.9852813742385702928f
-
-#ifdef __cplusplus
-}
-#endif

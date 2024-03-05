@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,10 +10,10 @@
 
 #pragma once
 
-#include "BKE_object.h"
-#include "DEG_depsgraph.h"
+#include "BKE_object.hh"
+#include "DEG_depsgraph.hh"
 #include "DNA_lightprobe_types.h"
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "eevee_ambient_occlusion.hh"
 #include "eevee_camera.hh"
@@ -29,6 +29,8 @@
 #include "eevee_material.hh"
 #include "eevee_motion_blur.hh"
 #include "eevee_pipeline.hh"
+#include "eevee_planar_probes.hh"
+#include "eevee_raytrace.hh"
 #include "eevee_reflection_probes.hh"
 #include "eevee_renderbuffers.hh"
 #include "eevee_sampling.hh"
@@ -37,9 +39,25 @@
 #include "eevee_subsurface.hh"
 #include "eevee_sync.hh"
 #include "eevee_view.hh"
+#include "eevee_volume.hh"
 #include "eevee_world.hh"
 
 namespace blender::eevee {
+
+/* Combines data from several modules to avoid wasting binding slots. */
+struct UniformDataModule {
+  UniformDataBuf data;
+
+  void push_update()
+  {
+    data.push_update();
+  }
+
+  template<typename PassType> void bind_resources(PassType &pass)
+  {
+    pass.bind_ubo(UNIFORM_BUF_SLOT, &data);
+  }
+};
 
 /**
  * \class Instance
@@ -49,16 +67,25 @@ class Instance {
   friend VelocityModule;
   friend MotionBlurModule;
 
+  /** Debug scopes. */
+  static void *debug_scope_render_sample;
+  static void *debug_scope_irradiance_setup;
+  static void *debug_scope_irradiance_sample;
+
+  uint64_t depsgraph_last_update_ = 0;
+  bool overlays_enabled_;
+
  public:
   ShaderModule &shaders;
   SyncModule sync;
+  UniformDataModule uniform_data;
   MaterialModule materials;
   SubsurfaceModule subsurface;
   PipelineModule pipelines;
   ShadowModule shadows;
   LightModule lights;
   AmbientOcclusion ambient_occlusion;
-  ReflectionProbeModule reflection_probes;
+  RayTraceModule raytracing;
   VelocityModule velocity;
   MotionBlurModule motion_blur;
   DepthOfField depth_of_field;
@@ -72,9 +99,13 @@ class Instance {
   MainView main_view;
   CaptureView capture_view;
   World world;
+  LookdevView lookdev_view;
   LookdevModule lookdev;
+  SphereProbeModule sphere_probes;
+  PlanarProbeModule planar_probes;
+  VolumeProbeModule volume_probes;
   LightProbeModule light_probes;
-  IrradianceCache irradiance_cache;
+  VolumeModule volume;
 
   /** Input data. */
   Depsgraph *depsgraph;
@@ -97,6 +128,10 @@ class Instance {
   bool gpencil_engine_enabled;
   /** True if the instance is created for light baking. */
   bool is_light_bake = false;
+  /** View-layer overrides. */
+  bool use_surfaces = true;
+  bool use_curves = true;
+  bool use_volumes = true;
 
   /** Info string displayed at the top of the render / viewport. */
   std::string info = "";
@@ -108,33 +143,38 @@ class Instance {
       : shaders(*ShaderModule::module_get()),
         sync(*this),
         materials(*this),
-        subsurface(*this),
-        pipelines(*this),
-        shadows(*this),
+        subsurface(*this, uniform_data.data.subsurface),
+        pipelines(*this, uniform_data.data.pipeline),
+        shadows(*this, uniform_data.data.shadow),
         lights(*this),
-        ambient_occlusion(*this),
-        reflection_probes(*this),
+        ambient_occlusion(*this, uniform_data.data.ao),
+        raytracing(*this, uniform_data.data.raytrace),
         velocity(*this),
         motion_blur(*this),
         depth_of_field(*this),
         cryptomatte(*this),
-        hiz_buffer(*this),
+        hiz_buffer(*this, uniform_data.data.hiz),
         sampling(*this),
-        camera(*this),
-        film(*this),
-        render_buffers(*this),
+        camera(*this, uniform_data.data.camera),
+        film(*this, uniform_data.data.film),
+        render_buffers(*this, uniform_data.data.render_pass),
         main_view(*this),
         capture_view(*this),
         world(*this),
+        lookdev_view(*this),
         lookdev(*this),
+        sphere_probes(*this),
+        planar_probes(*this),
+        volume_probes(*this),
         light_probes(*this),
-        irradiance_cache(*this){};
+        volume(*this, uniform_data.data.volumes){};
   ~Instance(){};
 
   /* Render & Viewport. */
   /* TODO(fclem): Split for clarity. */
   void init(const int2 &output_res,
             const rcti *output_rect,
+            const rcti *visible_rect,
             RenderEngine *render,
             Depsgraph *depsgraph,
             Object *camera_object = nullptr,
@@ -143,6 +183,8 @@ class Instance {
             const View3D *v3d = nullptr,
             const RegionView3D *rv3d = nullptr);
 
+  void view_update();
+
   void begin_sync();
   void object_sync(Object *ob);
   void end_sync();
@@ -150,7 +192,8 @@ class Instance {
   /**
    * Return true when probe pipeline is used during this sample.
    */
-  bool do_probe_sync() const;
+  bool do_reflection_probe_sync() const;
+  bool do_planar_probe_sync() const;
 
   /* Render. */
 
@@ -160,7 +203,8 @@ class Instance {
 
   /* Viewport. */
 
-  void draw_viewport(DefaultFramebufferList *dfbl);
+  void draw_viewport();
+  void draw_viewport_image_render();
 
   /* Light bake. */
 
@@ -179,6 +223,11 @@ class Instance {
     return render == nullptr && !is_baking();
   }
 
+  bool is_viewport_image_render() const
+  {
+    return DRW_state_is_viewport_image_render();
+  }
+
   bool is_baking() const
   {
     return is_light_bake;
@@ -186,7 +235,7 @@ class Instance {
 
   bool overlays_enabled() const
   {
-    return v3d && ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0);
+    return overlays_enabled_;
   }
 
   bool use_scene_lights() const
@@ -207,6 +256,33 @@ class Instance {
                       ((v3d->shading.flag & V3D_SHADING_SCENE_WORLD_RENDER) == 0)));
   }
 
+  bool use_lookdev_overlay() const
+  {
+    return (v3d) &&
+           ((v3d->shading.type == OB_MATERIAL) && (v3d->overlay.flag & V3D_OVERLAY_LOOK_DEV));
+  }
+
+  int get_recalc_flags(const ObjectRef &ob_ref)
+  {
+    auto get_flags = [&](const ObjectRuntimeHandle &runtime) {
+      int flags = 0;
+      SET_FLAG_FROM_TEST(
+          flags, runtime.last_update_transform > depsgraph_last_update_, ID_RECALC_TRANSFORM);
+      SET_FLAG_FROM_TEST(
+          flags, runtime.last_update_geometry > depsgraph_last_update_, ID_RECALC_GEOMETRY);
+      SET_FLAG_FROM_TEST(
+          flags, runtime.last_update_shading > depsgraph_last_update_, ID_RECALC_SHADING);
+      return flags;
+    };
+
+    int flags = get_flags(*ob_ref.object->runtime);
+    if (ob_ref.dupli_parent) {
+      flags |= get_flags(*ob_ref.dupli_parent->runtime);
+    }
+
+    return flags;
+  }
+
  private:
   static void object_sync_render(void *instance_,
                                  Object *ob,
@@ -215,12 +291,29 @@ class Instance {
   void render_sample();
   void render_read_result(RenderLayer *render_layer, const char *view_name);
 
-  void scene_sync();
   void mesh_sync(Object *ob, ObjectHandle &ob_handle);
 
   void update_eval_members();
 
   void set_time(float time);
+
+  struct DebugScope {
+    void *scope;
+
+    DebugScope(void *&scope_p, const char *name)
+    {
+      if (scope_p == nullptr) {
+        scope_p = GPU_debug_capture_scope_create(name);
+      }
+      scope = scope_p;
+      GPU_debug_capture_scope_begin(scope);
+    }
+
+    ~DebugScope()
+    {
+      GPU_debug_capture_scope_end(scope);
+    }
+  };
 };
 
 }  // namespace blender::eevee

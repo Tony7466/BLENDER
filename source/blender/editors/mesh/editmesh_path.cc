@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004 Blender Foundation
+/* SPDX-FileCopyrightText: 2004 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,38 +14,39 @@
 #include "DNA_windowmanager_types.h"
 
 #ifdef WITH_FREESTYLE
-#  include "BKE_customdata.h"
 #  include "DNA_meshdata_types.h"
 #endif
 
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
-#include "BKE_layer.h"
-#include "BKE_report.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_layer.hh"
+#include "BKE_report.hh"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
-#include "ED_select_utils.h"
-#include "ED_uvedit.h"
-#include "ED_view3d.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
+#include "ED_select_utils.hh"
+#include "ED_uvedit.hh"
+#include "ED_view3d.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "bmesh.h"
-#include "bmesh_tools.h"
+#include "bmesh.hh"
+#include "bmesh_tools.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
+
+using blender::Vector;
 
 /* -------------------------------------------------------------------- */
 /** \name Path Select Struct & Properties
@@ -67,7 +68,7 @@ struct PathSelectParams {
   bool use_face_step;
   bool use_fill;
   char edge_mode;
-  struct CheckerIntervalParams interval_params;
+  CheckerIntervalParams interval_params;
 };
 
 static void path_select_properties(wmOperatorType *ot)
@@ -109,7 +110,7 @@ static void path_select_properties(wmOperatorType *ot)
 
 static void path_select_params_from_op(wmOperator *op,
                                        ToolSettings *ts,
-                                       struct PathSelectParams *op_params)
+                                       PathSelectParams *op_params)
 {
   {
     PropertyRNA *prop = RNA_struct_find_property(op->ptr, "edge_mode");
@@ -149,9 +150,9 @@ static bool path_select_poll_property(const bContext *C,
 
 struct UserData {
   BMesh *bm;
-  Mesh *me;
+  Mesh *mesh;
   int cd_offset;
-  const struct PathSelectParams *op_params;
+  const PathSelectParams *op_params;
 };
 
 /** \} */
@@ -171,13 +172,13 @@ static bool verttag_test_cb(BMVert *v, void * /*user_data_v*/)
 }
 static void verttag_set_cb(BMVert *v, bool val, void *user_data_v)
 {
-  struct UserData *user_data = static_cast<UserData *>(user_data_v);
+  UserData *user_data = static_cast<UserData *>(user_data_v);
   BM_vert_select_set(user_data->bm, v, val);
 }
 
 static void mouse_mesh_shortest_path_vert(Scene * /*scene*/,
                                           Object *obedit,
-                                          const struct PathSelectParams *op_params,
+                                          const PathSelectParams *op_params,
                                           BMVert *v_act,
                                           BMVert *v_dst)
 {
@@ -201,7 +202,7 @@ static void mouse_mesh_shortest_path_vert(Scene * /*scene*/,
       break;
   }
 
-  struct UserData user_data = {bm, static_cast<Mesh *>(obedit->data), cd_offset, op_params};
+  UserData user_data = {bm, static_cast<Mesh *>(obedit->data), cd_offset, op_params};
   LinkNode *path = nullptr;
   bool is_path_ordered = false;
 
@@ -273,7 +274,7 @@ static void mouse_mesh_shortest_path_vert(Scene * /*scene*/,
   }
 
   EDBMUpdate_Params params{};
-  params.calc_looptri = false;
+  params.calc_looptris = false;
   params.calc_normals = false;
   params.is_destructive = false;
   EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -292,7 +293,7 @@ static bool edgetag_filter_cb(BMEdge *e, void * /*user_data_v*/)
 }
 static bool edgetag_test_cb(BMEdge *e, void *user_data_v)
 {
-  struct UserData *user_data = static_cast<UserData *>(user_data_v);
+  UserData *user_data = static_cast<UserData *>(user_data_v);
   const char edge_mode = user_data->op_params->edge_mode;
 
   switch (edge_mode) {
@@ -314,11 +315,11 @@ static bool edgetag_test_cb(BMEdge *e, void *user_data_v)
     }
 #endif
   }
-  return 0;
+  return false;
 }
 static void edgetag_set_cb(BMEdge *e, bool val, void *user_data_v)
 {
-  struct UserData *user_data = static_cast<UserData *>(user_data_v);
+  UserData *user_data = static_cast<UserData *>(user_data_v);
   const char edge_mode = user_data->op_params->edge_mode;
   BMesh *bm = user_data->bm;
 
@@ -353,9 +354,9 @@ static void edgetag_set_cb(BMEdge *e, bool val, void *user_data_v)
   }
 }
 
-static void edgetag_ensure_cd_flag(Mesh *me, const char edge_mode)
+static void edgetag_ensure_cd_flag(Mesh *mesh, const char edge_mode)
 {
-  BMesh *bm = me->edit_mesh->bm;
+  BMesh *bm = mesh->edit_mesh->bm;
 
   switch (edge_mode) {
     case EDGE_MODE_TAG_CREASE:
@@ -383,11 +384,8 @@ static void edgetag_ensure_cd_flag(Mesh *me, const char edge_mode)
 /* Mesh shortest path select, uses previously-selected edge. */
 
 /* since you want to create paths with multiple selects, it doesn't have extend option */
-static void mouse_mesh_shortest_path_edge(Scene *scene,
-                                          Object *obedit,
-                                          const struct PathSelectParams *op_params,
-                                          BMEdge *e_act,
-                                          BMEdge *e_dst)
+static void mouse_mesh_shortest_path_edge(
+    Scene *scene, Object *obedit, const PathSelectParams *op_params, BMEdge *e_act, BMEdge *e_dst)
 {
   BMEditMesh *em = BKE_editmesh_from_object(obedit);
   BMesh *bm = em->bm;
@@ -409,7 +407,7 @@ static void mouse_mesh_shortest_path_edge(Scene *scene,
       break;
   }
 
-  struct UserData user_data = {bm, static_cast<Mesh *>(obedit->data), cd_offset, op_params};
+  UserData user_data = {bm, static_cast<Mesh *>(obedit->data), cd_offset, op_params};
   LinkNode *path = nullptr;
   bool is_path_ordered = false;
 
@@ -497,13 +495,13 @@ static void mouse_mesh_shortest_path_edge(Scene *scene,
   }
 
   EDBMUpdate_Params params{};
-  params.calc_looptri = false;
+  params.calc_looptris = false;
   params.calc_normals = false;
   params.is_destructive = false;
   EDBM_update(static_cast<Mesh *>(obedit->data), &params);
 
   if (op_params->edge_mode == EDGE_MODE_TAG_SEAM) {
-    ED_uvedit_live_unwrap(scene, &obedit, 1);
+    ED_uvedit_live_unwrap(scene, {obedit});
   }
 }
 
@@ -526,13 +524,13 @@ static bool facetag_test_cb(BMFace *f, void * /*user_data_v*/)
 // static void facetag_set_cb(BMesh *bm, Scene * /*scene*/, BMFace *f, const bool val)
 static void facetag_set_cb(BMFace *f, bool val, void *user_data_v)
 {
-  struct UserData *user_data = static_cast<UserData *>(user_data_v);
+  UserData *user_data = static_cast<UserData *>(user_data_v);
   BM_face_select_set(user_data->bm, f, val);
 }
 
 static void mouse_mesh_shortest_path_face(Scene * /*scene*/,
                                           Object *obedit,
-                                          const struct PathSelectParams *op_params,
+                                          const PathSelectParams *op_params,
                                           BMFace *f_act,
                                           BMFace *f_dst)
 {
@@ -556,7 +554,7 @@ static void mouse_mesh_shortest_path_face(Scene * /*scene*/,
       break;
   }
 
-  struct UserData user_data = {bm, static_cast<Mesh *>(obedit->data), cd_offset, op_params};
+  UserData user_data = {bm, static_cast<Mesh *>(obedit->data), cd_offset, op_params};
   LinkNode *path = nullptr;
   bool is_path_ordered = false;
 
@@ -631,7 +629,7 @@ static void mouse_mesh_shortest_path_face(Scene * /*scene*/,
   }
 
   EDBMUpdate_Params params{};
-  params.calc_looptri = false;
+  params.calc_looptris = false;
   params.calc_normals = false;
   params.is_destructive = false;
   EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -645,7 +643,7 @@ static void mouse_mesh_shortest_path_face(Scene * /*scene*/,
 
 static bool edbm_shortest_path_pick_ex(Scene *scene,
                                        Object *obedit,
-                                       const struct PathSelectParams *op_params,
+                                       const PathSelectParams *op_params,
                                        BMElem *ele_src,
                                        BMElem *ele_dst)
 {
@@ -716,10 +714,9 @@ static int edbm_shortest_path_pick_invoke(bContext *C, wmOperator *op, const wmE
   BMEdge *eed = nullptr;
   BMFace *efa = nullptr;
 
-  ViewContext vc;
   bool track_active = true;
 
-  em_setup_viewcontext(C, &vc);
+  ViewContext vc = em_setup_viewcontext(C);
   copy_v2_v2_int(vc.mval, event->mval);
   BKE_view_layer_synced_ensure(vc.scene, vc.view_layer);
   Base *basact = BKE_view_layer_active_base_get(vc.view_layer);
@@ -729,15 +726,13 @@ static int edbm_shortest_path_pick_invoke(bContext *C, wmOperator *op, const wmE
 
   {
     int base_index = -1;
-    uint bases_len = 0;
-    Base **bases = BKE_view_layer_array_from_bases_in_edit_mode(
-        vc.scene, vc.view_layer, vc.v3d, &bases_len);
-    if (EDBM_unified_findnearest(&vc, bases, bases_len, &base_index, &eve, &eed, &efa)) {
+    Vector<Base *> bases = BKE_view_layer_array_from_bases_in_edit_mode(
+        vc.scene, vc.view_layer, vc.v3d);
+    if (EDBM_unified_findnearest(&vc, bases, &base_index, &eve, &eed, &efa)) {
       basact = bases[base_index];
       ED_view3d_viewcontext_init_object(&vc, basact->object);
       em = vc.em;
     }
-    MEM_freeN(bases);
   }
 
   /* If nothing is selected, let's select the picked vertex/edge/face. */
@@ -751,7 +746,7 @@ static int edbm_shortest_path_pick_invoke(bContext *C, wmOperator *op, const wmE
     return OPERATOR_FINISHED;
   }
 
-  struct PathSelectParams op_params;
+  PathSelectParams op_params;
   path_select_params_from_op(op, vc.scene->toolsettings, &op_params);
 
   BMElem *ele_src, *ele_dst;
@@ -810,7 +805,7 @@ static int edbm_shortest_path_pick_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  struct PathSelectParams op_params;
+  PathSelectParams op_params;
   path_select_params_from_op(op, scene->toolsettings, &op_params);
   op_params.track_active = true;
 
@@ -859,11 +854,9 @@ static int edbm_shortest_path_select_exec(bContext *C, wmOperator *op)
   bool found_valid_elements = false;
 
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-      scene, view_layer, CTX_wm_view3d(C), &objects_len);
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *obedit = objects[ob_index];
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+      scene, view_layer, CTX_wm_view3d(C));
+  for (Object *obedit : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(obedit);
     BMesh *bm = em->bm;
     BMIter iter;
@@ -935,7 +928,7 @@ static int edbm_shortest_path_select_exec(bContext *C, wmOperator *op)
     }
 
     if (ele_src && ele_dst) {
-      struct PathSelectParams op_params;
+      PathSelectParams op_params;
       path_select_params_from_op(op, scene->toolsettings, &op_params);
 
       edbm_shortest_path_pick_ex(scene, obedit, &op_params, ele_src, ele_dst);
@@ -943,7 +936,6 @@ static int edbm_shortest_path_select_exec(bContext *C, wmOperator *op)
       found_valid_elements = true;
     }
   }
-  MEM_freeN(objects);
 
   if (!found_valid_elements) {
     BKE_report(

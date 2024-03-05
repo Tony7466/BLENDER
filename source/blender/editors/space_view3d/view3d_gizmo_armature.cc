@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,31 +6,27 @@
  * \ingroup spview3d
  */
 
-#include "BLI_blenlib.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
-#include "BKE_context.h"
-#include "BKE_layer.h"
-#include "BKE_object.h"
+#include "BKE_context.hh"
+#include "BKE_layer.hh"
+#include "BKE_object.hh"
 
 #include "DNA_armature_types.h"
 #include "DNA_object_types.h"
 
-#include "ED_armature.h"
-#include "ED_gizmo_library.h"
-#include "ED_screen.h"
+#include "ED_gizmo_library.hh"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_types.hh"
 
 #include "view3d_intern.h" /* own include */
 
@@ -58,12 +54,12 @@ struct BoneSplineHandle {
 };
 
 struct BoneSplineWidgetGroup {
-  struct BoneSplineHandle handles[2];
+  BoneSplineHandle handles[2];
 };
 
 static void gizmo_bbone_offset_get(const wmGizmo * /*gz*/, wmGizmoProperty *gz_prop, void *value_p)
 {
-  struct BoneSplineHandle *bh = static_cast<BoneSplineHandle *>(gz_prop->custom_func.user_data);
+  BoneSplineHandle *bh = static_cast<BoneSplineHandle *>(gz_prop->custom_func.user_data);
   bPoseChannel *pchan = bh->pchan;
 
   float *value = static_cast<float *>(value_p);
@@ -86,7 +82,7 @@ static void gizmo_bbone_offset_set(const wmGizmo * /*gz*/,
                                    wmGizmoProperty *gz_prop,
                                    const void *value_p)
 {
-  struct BoneSplineHandle *bh = static_cast<BoneSplineHandle *>(gz_prop->custom_func.user_data);
+  BoneSplineHandle *bh = static_cast<BoneSplineHandle *>(gz_prop->custom_func.user_data);
   bPoseChannel *pchan = bh->pchan;
 
   const float *value = static_cast<const float *>(value_p);
@@ -122,7 +118,7 @@ static bool WIDGETGROUP_armature_spline_poll(const bContext *C, wmGizmoGroupType
     if (ob) {
       const bArmature *arm = static_cast<const bArmature *>(ob->data);
       if (arm->drawtype == ARM_B_BONE) {
-        bPoseChannel *pchan = BKE_pose_channel_active_if_layer_visible(ob);
+        bPoseChannel *pchan = BKE_pose_channel_active_if_bonecoll_visible(ob);
         if (pchan && pchan->bone->segments > 1) {
           return true;
         }
@@ -138,11 +134,11 @@ static void WIDGETGROUP_armature_spline_setup(const bContext *C, wmGizmoGroup *g
   ViewLayer *view_layer = CTX_data_view_layer(C);
   BKE_view_layer_synced_ensure(scene, view_layer);
   Object *ob = BKE_object_pose_armature_get(BKE_view_layer_active_object_get(view_layer));
-  bPoseChannel *pchan = BKE_pose_channel_active_if_layer_visible(ob);
+  bPoseChannel *pchan = BKE_pose_channel_active_if_bonecoll_visible(ob);
 
   const wmGizmoType *gzt_move = WM_gizmotype_find("GIZMO_GT_move_3d", true);
 
-  struct BoneSplineWidgetGroup *bspline_group = static_cast<BoneSplineWidgetGroup *>(
+  BoneSplineWidgetGroup *bspline_group = static_cast<BoneSplineWidgetGroup *>(
       MEM_callocN(sizeof(BoneSplineWidgetGroup), __func__));
   gzgroup->customdata = bspline_group;
 
@@ -178,9 +174,8 @@ static void WIDGETGROUP_armature_spline_refresh(const bContext *C, wmGizmoGroup 
     return;
   }
 
-  struct BoneSplineWidgetGroup *bspline_group = static_cast<BoneSplineWidgetGroup *>(
-      gzgroup->customdata);
-  bPoseChannel *pchan = BKE_pose_channel_active_if_layer_visible(ob);
+  BoneSplineWidgetGroup *bspline_group = static_cast<BoneSplineWidgetGroup *>(gzgroup->customdata);
+  bPoseChannel *pchan = BKE_pose_channel_active_if_bonecoll_visible(ob);
 
   /* Handles */
   for (int i = 0; i < ARRAY_SIZE(bspline_group->handles); i++) {
@@ -189,7 +184,8 @@ static void WIDGETGROUP_armature_spline_refresh(const bContext *C, wmGizmoGroup 
     bspline_group->handles[i].index = i;
 
     float mat[4][4];
-    mul_m4_m4m4(mat, ob->object_to_world, (i == 0) ? pchan->disp_mat : pchan->disp_tail_mat);
+    mul_m4_m4m4(
+        mat, ob->object_to_world().ptr(), (i == 0) ? pchan->disp_mat : pchan->disp_tail_mat);
     copy_m4_m4(gz->matrix_space, mat);
 
     /* need to set property here for undo. TODO: would prefer to do this in _init. */

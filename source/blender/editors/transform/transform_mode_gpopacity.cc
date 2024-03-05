@@ -6,21 +6,20 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -32,7 +31,7 @@
 /** \name Transform (GPencil Strokes Opacity)
  * \{ */
 
-static void applyGPOpacity(TransInfo *t, const int[2] /*mval*/)
+static void applyGPOpacity(TransInfo *t)
 {
   float ratio;
   int i;
@@ -51,19 +50,25 @@ static void applyGPOpacity(TransInfo *t, const int[2] /*mval*/)
     char c[NUM_STR_REP_LEN];
 
     outputNumInput(&(t->num), c, &t->scene->unit);
-    SNPRINTF(str, TIP_("Opacity: %s"), c);
+    SNPRINTF(str, IFACE_("Opacity: %s"), c);
   }
   else {
-    SNPRINTF(str, TIP_("Opacity: %3f"), ratio);
+    SNPRINTF(str, IFACE_("Opacity: %3f"), ratio);
   }
 
   bool recalc = false;
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
     TransData *td = tc->data;
-    bGPdata *gpd = static_cast<bGPdata *>(td->ob->data);
-    const bool is_curve_edit = (bool)GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd);
-    /* Only recalculate data when in curve edit mode. */
-    if (is_curve_edit) {
+
+    if (t->obedit_type == OB_GPENCIL_LEGACY) {
+      bGPdata *gpd = static_cast<bGPdata *>(td->ob->data);
+      const bool is_curve_edit = bool(GPENCIL_CURVE_EDIT_SESSIONS_ON(gpd));
+      /* Only recalculate data when in curve edit mode. */
+      if (is_curve_edit) {
+        recalc = true;
+      }
+    }
+    else if (t->obedit_type == OB_GREASE_PENCIL) {
       recalc = true;
     }
 
@@ -82,7 +87,7 @@ static void applyGPOpacity(TransInfo *t, const int[2] /*mval*/)
   }
 
   if (recalc) {
-    recalcData(t);
+    recalc_data(t);
   }
 
   ED_area_status_text(t->area, str);

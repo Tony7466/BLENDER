@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation, Joshua Leung.
+/* SPDX-FileCopyrightText: 2009 Blender Authors, Joshua Leung.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -30,11 +30,11 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array.hh"
 #include "BLI_blenlib.h"
-#include "BLI_dlrbTree.h"
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
@@ -45,42 +45,34 @@
 #include "BKE_fcurve.h"
 #include "BKE_nla.h"
 
-#include "BKE_context.h"
-#include "BKE_layer.h"
-#include "BKE_object.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
-#include "BKE_screen.h"
-#include "BKE_unit.h"
+#include "BKE_context.hh"
+#include "BKE_layer.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
+#include "BKE_unit.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "ED_armature.h"
-#include "ED_keyframes_keylist.h"
-#include "ED_keyframing.h"
-#include "ED_markers.h"
-#include "ED_numinput.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_util.h"
+#include "ED_keyframes_edit.hh"
+#include "ED_keyframes_keylist.hh"
+#include "ED_markers.hh"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
+#include "ED_util.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "ANIM_fcurve.hh"
 
-#include "armature_intern.h"
+#include "armature_intern.hh"
 
-#include "BLF_api.h"
+using blender::Vector;
 
 /* Pixel distance from 0% to 100%. */
 #define SLIDE_PIXEL_DISTANCE (300 * U.pixelsize)
@@ -104,8 +96,7 @@ enum ePoseSlide_Modes {
   POSESLIDE_RELAX,
   /** Slide between the endpoint poses, finding a 'soft' spot. */
   POSESLIDE_BREAKDOWN,
-  POSESLIDE_PUSH_REST,
-  POSESLIDE_RELAX_REST,
+  POSESLIDE_BLEND_REST,
   POSESLIDE_BLEND,
 };
 
@@ -122,6 +113,16 @@ enum ePoseSlide_Channels {
   PS_TFM_PROPS, /* Custom Properties */
 };
 
+struct tPoseSlideObject {
+  /** Active object that Pose Info comes from. */
+  Object *ob;
+  /** `prev_frame`, but in local action time (for F-Curve look-ups to work). */
+  float prev_frame;
+  /** `next_frame`, but in local action time (for F-Curve look-ups to work). */
+  float next_frame;
+  bool valid;
+};
+
 /** Temporary data shared between these operators. */
 struct tPoseSlideOp {
   /** current scene */
@@ -131,12 +132,11 @@ struct tPoseSlideOp {
   /** Region we're operating in (needed for modal()). */
   ARegion *region;
   /** len of the PoseSlideObject array. */
-  uint objects_len;
 
   /** links between posechannels and f-curves for all the pose objects. */
   ListBase pfLinks;
   /** binary tree for quicker searching for keyframes (when applicable) */
-  struct AnimKeylist *keylist;
+  AnimKeylist *keylist;
 
   /** current frame number - global time */
   int current_frame;
@@ -159,22 +159,12 @@ struct tPoseSlideOp {
   /** Axis-limits for transforms. */
   ePoseSlide_AxisLock axislock;
 
-  struct tSlider *slider;
+  tSlider *slider;
 
   /** Numeric input. */
   NumInput num;
 
-  struct tPoseSlideObject *ob_data_array;
-};
-
-struct tPoseSlideObject {
-  /** Active object that Pose Info comes from. */
-  Object *ob;
-  /** `prev_frame`, but in local action time (for F-Curve look-ups to work). */
-  float prev_frame;
-  /** `next_frame`, but in local action time (for F-Curve look-ups to work). */
-  float next_frame;
-  bool valid;
+  blender::Array<tPoseSlideObject> ob_data_array;
 };
 
 /** Property enum for #ePoseSlide_Channels. */
@@ -206,11 +196,8 @@ static const EnumPropertyItem prop_axis_lock_types[] = {
 /** Operator custom-data initialization. */
 static int pose_slide_init(bContext *C, wmOperator *op, ePoseSlide_Modes mode)
 {
-  tPoseSlideOp *pso;
-
-  /* Init slide-op data. */
-  pso = static_cast<tPoseSlideOp *>(
-      op->customdata = MEM_callocN(sizeof(tPoseSlideOp), "tPoseSlideOp"));
+  tPoseSlideOp *pso = MEM_new<tPoseSlideOp>(__func__);
+  op->customdata = pso;
 
   /* Get info from context. */
   pso->scene = CTX_data_scene(C);
@@ -235,15 +222,11 @@ static int pose_slide_init(bContext *C, wmOperator *op, ePoseSlide_Modes mode)
    * and set the relevant transform flags. */
   poseAnim_mapping_get(C, &pso->pfLinks);
 
-  Object **objects = BKE_view_layer_array_from_objects_in_mode_unique_data(CTX_data_scene(C),
-                                                                           CTX_data_view_layer(C),
-                                                                           CTX_wm_view3d(C),
-                                                                           &pso->objects_len,
-                                                                           OB_MODE_POSE);
-  pso->ob_data_array = static_cast<tPoseSlideObject *>(
-      MEM_callocN(pso->objects_len * sizeof(tPoseSlideObject), "pose slide objects data"));
+  const Vector<Object *> objects = BKE_view_layer_array_from_objects_in_mode_unique_data(
+      CTX_data_scene(C), CTX_data_view_layer(C), CTX_wm_view3d(C), OB_MODE_POSE);
+  pso->ob_data_array.reinitialize(objects.size());
 
-  for (uint ob_index = 0; ob_index < pso->objects_len; ob_index++) {
+  for (const int ob_index : objects.index_range()) {
     tPoseSlideObject *ob_data = &pso->ob_data_array[ob_index];
     Object *ob_iter = poseAnim_object_get(objects[ob_index]);
 
@@ -266,7 +249,6 @@ static int pose_slide_init(bContext *C, wmOperator *op, ePoseSlide_Modes mode)
     ob_data->ob->pose->flag |= POSE_LOCKED;
     ob_data->ob->pose->flag &= ~POSE_DO_UNLOCK;
   }
-  MEM_freeN(objects);
 
   /* Do basic initialize of RB-BST used for finding keyframes, but leave the filling of it up
    * to the caller of this (usually only invoke() will do it, to make things more efficient). */
@@ -274,8 +256,7 @@ static int pose_slide_init(bContext *C, wmOperator *op, ePoseSlide_Modes mode)
 
   /* Initialize numeric input. */
   initNumInput(&pso->num);
-  pso->num.idx_max = 0; /* One axis. */
-  pso->num.val_flag[0] |= NUM_NO_NEGATIVE;
+  pso->num.idx_max = 0;                /* One axis. */
   pso->num.unit_type[0] = B_UNIT_NONE; /* Percentages don't have any units. */
 
   /* Return status is whether we've got all the data we were requested to get. */
@@ -303,12 +284,8 @@ static void pose_slide_exit(bContext *C, wmOperator *op)
   /* Free RB-BST for keyframes (if it contained data). */
   ED_keylist_free(pso->keylist);
 
-  if (pso->ob_data_array != nullptr) {
-    MEM_freeN(pso->ob_data_array);
-  }
-
   /* Free data itself. */
-  MEM_freeN(pso);
+  MEM_delete(pso);
 
   /* Cleanup. */
   op->customdata = nullptr;
@@ -322,10 +299,9 @@ static void pose_slide_exit(bContext *C, wmOperator *op)
 static void pose_slide_refresh(bContext *C, tPoseSlideOp *pso)
 {
   /* Wrapper around the generic version, allowing us to add some custom stuff later still. */
-  for (uint ob_index = 0; ob_index < pso->objects_len; ob_index++) {
-    tPoseSlideObject *ob_data = &pso->ob_data_array[ob_index];
-    if (ob_data->valid) {
-      poseAnim_mapping_refresh(C, pso->scene, ob_data->ob);
+  for (tPoseSlideObject &ob_data : pso->ob_data_array) {
+    if (ob_data.valid) {
+      poseAnim_mapping_refresh(C, pso->scene, ob_data.ob);
     }
   }
 }
@@ -339,13 +315,12 @@ static bool pose_frame_range_from_object_get(tPoseSlideOp *pso,
                                              float *prev_frame,
                                              float *next_frame)
 {
-  for (uint ob_index = 0; ob_index < pso->objects_len; ob_index++) {
-    tPoseSlideObject *ob_data = &pso->ob_data_array[ob_index];
-    Object *ob_iter = ob_data->ob;
+  for (tPoseSlideObject &ob_data : pso->ob_data_array) {
+    Object *ob_iter = ob_data.ob;
 
     if (ob_iter == ob) {
-      *prev_frame = ob_data->prev_frame;
-      *next_frame = ob_data->next_frame;
+      *prev_frame = ob_data.prev_frame;
+      *next_frame = ob_data.next_frame;
       return true;
     }
   }
@@ -428,8 +403,7 @@ static void pose_slide_apply_val(tPoseSlideOp *pso, FCurve *fcu, Object *ob, flo
       break;
     }
     /* Those are handled in pose_slide_rest_pose_apply. */
-    case POSESLIDE_PUSH_REST:
-    case POSESLIDE_RELAX_REST: {
+    case POSESLIDE_BLEND_REST: {
       break;
     }
   }
@@ -477,19 +451,17 @@ static void pose_slide_apply_props(tPoseSlideOp *pso,
                                    tPChanFCurveLink *pfl,
                                    const char prop_prefix[])
 {
-  PointerRNA ptr = {nullptr};
-  LinkData *ld;
   int len = strlen(pfl->pchan_path);
 
   /* Setup pointer RNA for resolving paths. */
-  RNA_pointer_create(nullptr, &RNA_PoseBone, pfl->pchan, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_PoseBone, pfl->pchan);
 
   /* - custom properties are just denoted using ["..."][etc.] after the end of the base path,
    *   so just check for opening pair after the end of the path
    * - bbone properties are similar, but they always start with a prefix "bbone_*",
    *   so a similar method should work here for those too
    */
-  for (ld = static_cast<LinkData *>(pfl->fcurves.first); ld; ld = ld->next) {
+  LISTBASE_FOREACH (LinkData *, ld, &pfl->fcurves) {
     FCurve *fcu = (FCurve *)ld->data;
     const char *bPtr, *pPtr;
 
@@ -735,13 +707,7 @@ static void pose_slide_rest_pose_apply_vec3(tPoseSlideOp *pso, float vec[3], flo
         ((lock & PS_LOCK_Z) && (idx == 2)))
     {
       float diff_val = default_value - vec[idx];
-      if (pso->mode == POSESLIDE_RELAX_REST) {
-        vec[idx] += factor * diff_val;
-      }
-      else {
-        /* Push */
-        vec[idx] -= factor * diff_val;
-      }
+      vec[idx] += factor * diff_val;
     }
   }
 }
@@ -758,13 +724,7 @@ static void pose_slide_rest_pose_apply_other_rot(tPoseSlideOp *pso, float vec[4]
   const float factor = ED_slider_factor_get(pso->slider);
   for (int idx = 0; idx < 4; idx++) {
     float diff_val = default_values[idx] - vec[idx];
-    if (pso->mode == POSESLIDE_RELAX_REST) {
-      vec[idx] += factor * diff_val;
-    }
-    else {
-      /* Push */
-      vec[idx] -= factor * diff_val;
-    }
+    vec[idx] += factor * diff_val;
   }
 }
 
@@ -773,10 +733,8 @@ static void pose_slide_rest_pose_apply_other_rot(tPoseSlideOp *pso, float vec[4]
  */
 static void pose_slide_rest_pose_apply(bContext *C, tPoseSlideOp *pso)
 {
-  tPChanFCurveLink *pfl;
-
   /* For each link, handle each set of transforms. */
-  for (pfl = static_cast<tPChanFCurveLink *>(pso->pfLinks.first); pfl; pfl = pfl->next) {
+  LISTBASE_FOREACH (tPChanFCurveLink *, pfl, &pso->pfLinks) {
     /* Valid transforms for each #bPoseChannel should have been noted already.
      * - Sliding the pose should be a straightforward exercise for location+rotation,
      *   but rotations get more complicated since we may want to use quaternion blending
@@ -832,31 +790,27 @@ static void pose_slide_rest_pose_apply(bContext *C, tPoseSlideOp *pso)
  */
 static void pose_slide_apply(bContext *C, tPoseSlideOp *pso)
 {
-  tPChanFCurveLink *pfl;
-
   /* Sanitize the frame ranges. */
   if (pso->prev_frame == pso->next_frame) {
     /* Move out one step either side. */
     pso->prev_frame--;
     pso->next_frame++;
 
-    for (uint ob_index = 0; ob_index < pso->objects_len; ob_index++) {
-      tPoseSlideObject *ob_data = &pso->ob_data_array[ob_index];
-
-      if (!ob_data->valid) {
+    for (tPoseSlideObject &ob_data : pso->ob_data_array) {
+      if (!ob_data.valid) {
         continue;
       }
 
       /* Apply NLA mapping corrections so the frame look-ups work. */
-      ob_data->prev_frame = BKE_nla_tweakedit_remap(
-          ob_data->ob->adt, pso->prev_frame, NLATIME_CONVERT_UNMAP);
-      ob_data->next_frame = BKE_nla_tweakedit_remap(
-          ob_data->ob->adt, pso->next_frame, NLATIME_CONVERT_UNMAP);
+      ob_data.prev_frame = BKE_nla_tweakedit_remap(
+          ob_data.ob->adt, pso->prev_frame, NLATIME_CONVERT_UNMAP);
+      ob_data.next_frame = BKE_nla_tweakedit_remap(
+          ob_data.ob->adt, pso->next_frame, NLATIME_CONVERT_UNMAP);
     }
   }
 
   /* For each link, handle each set of transforms. */
-  for (pfl = static_cast<tPChanFCurveLink *>(pso->pfLinks.first); pfl; pfl = pfl->next) {
+  LISTBASE_FOREACH (tPChanFCurveLink *, pfl, &pso->pfLinks) {
     /* Valid transforms for each #bPoseChannel should have been noted already
      * - sliding the pose should be a straightforward exercise for location+rotation,
      *   but rotations get more complicated since we may want to use quaternion blending
@@ -941,38 +895,38 @@ static void pose_slide_draw_status(bContext *C, tPoseSlideOp *pso)
 
   switch (pso->mode) {
     case POSESLIDE_PUSH:
-      STRNCPY(mode_str, TIP_("Push Pose"));
+      STRNCPY(mode_str, IFACE_("Push Pose"));
       break;
     case POSESLIDE_RELAX:
-      STRNCPY(mode_str, TIP_("Relax Pose"));
+      STRNCPY(mode_str, IFACE_("Relax Pose"));
       break;
     case POSESLIDE_BREAKDOWN:
-      STRNCPY(mode_str, TIP_("Breakdown"));
+      STRNCPY(mode_str, IFACE_("Breakdown"));
       break;
     case POSESLIDE_BLEND:
-      STRNCPY(mode_str, TIP_("Blend to Neighbor"));
+      STRNCPY(mode_str, IFACE_("Blend to Neighbor"));
       break;
 
     default:
       /* Unknown. */
-      STRNCPY(mode_str, TIP_("Sliding-Tool"));
+      STRNCPY(mode_str, IFACE_("Sliding-Tool"));
       break;
   }
 
   switch (pso->axislock) {
     case PS_LOCK_X:
-      STRNCPY(axis_str, TIP_("[X]/Y/Z axis only (X to clear)"));
+      STRNCPY(axis_str, IFACE_("[X]/Y/Z axis only (X to clear)"));
       break;
     case PS_LOCK_Y:
-      STRNCPY(axis_str, TIP_("X/[Y]/Z axis only (Y to clear)"));
+      STRNCPY(axis_str, IFACE_("X/[Y]/Z axis only (Y to clear)"));
       break;
     case PS_LOCK_Z:
-      STRNCPY(axis_str, TIP_("X/Y/[Z] axis only (Z to clear)"));
+      STRNCPY(axis_str, IFACE_("X/Y/[Z] axis only (Z to clear)"));
       break;
 
     default:
       if (ELEM(pso->channels, PS_TFM_LOC, PS_TFM_ROT, PS_TFM_SIZE)) {
-        STRNCPY(axis_str, TIP_("X/Y/Z = Axis Constraint"));
+        STRNCPY(axis_str, IFACE_("X/Y/Z = Axis Constraint"));
       }
       else {
         axis_str[0] = '\0';
@@ -982,26 +936,26 @@ static void pose_slide_draw_status(bContext *C, tPoseSlideOp *pso)
 
   switch (pso->channels) {
     case PS_TFM_LOC:
-      SNPRINTF(limits_str, TIP_("[G]/R/S/B/C - Location only (G to clear) | %s"), axis_str);
+      SNPRINTF(limits_str, IFACE_("[G]/R/S/B/C - Location only (G to clear) | %s"), axis_str);
       break;
     case PS_TFM_ROT:
-      SNPRINTF(limits_str, TIP_("G/[R]/S/B/C - Rotation only (R to clear) | %s"), axis_str);
+      SNPRINTF(limits_str, IFACE_("G/[R]/S/B/C - Rotation only (R to clear) | %s"), axis_str);
       break;
     case PS_TFM_SIZE:
-      SNPRINTF(limits_str, TIP_("G/R/[S]/B/C - Scale only (S to clear) | %s"), axis_str);
+      SNPRINTF(limits_str, IFACE_("G/R/[S]/B/C - Scale only (S to clear) | %s"), axis_str);
       break;
     case PS_TFM_BBONE_SHAPE:
-      STRNCPY(limits_str, TIP_("G/R/S/[B]/C - Bendy Bone properties only (B to clear) | %s"));
+      STRNCPY(limits_str, IFACE_("G/R/S/[B]/C - Bendy Bone properties only (B to clear) | %s"));
       break;
     case PS_TFM_PROPS:
-      STRNCPY(limits_str, TIP_("G/R/S/B/[C] - Custom Properties only (C to clear) | %s"));
+      STRNCPY(limits_str, IFACE_("G/R/S/B/[C] - Custom Properties only (C to clear) | %s"));
       break;
     default:
-      STRNCPY(limits_str, TIP_("G/R/S/B/C - Limit to Transform/Property Set"));
+      STRNCPY(limits_str, IFACE_("G/R/S/B/C - Limit to Transform/Property Set"));
       break;
   }
 
-  STRNCPY(bone_vis_str, TIP_("[H] - Toggle bone visibility"));
+  STRNCPY(bone_vis_str, IFACE_("[H] - Toggle bone visibility"));
 
   ED_slider_status_string_get(pso->slider, slider_str, sizeof(slider_str));
 
@@ -1026,7 +980,6 @@ static void pose_slide_draw_status(bContext *C, tPoseSlideOp *pso)
  */
 static int pose_slide_invoke_common(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  tPChanFCurveLink *pfl;
   wmWindow *win = CTX_wm_window(C);
 
   tPoseSlideOp *pso = static_cast<tPoseSlideOp *>(op->customdata);
@@ -1034,13 +987,11 @@ static int pose_slide_invoke_common(bContext *C, wmOperator *op, const wmEvent *
   ED_slider_init(pso->slider, event);
 
   /* For each link, add all its keyframes to the search tree. */
-  for (pfl = static_cast<tPChanFCurveLink *>(pso->pfLinks.first); pfl; pfl = pfl->next) {
-    LinkData *ld;
-
+  LISTBASE_FOREACH (tPChanFCurveLink *, pfl, &pso->pfLinks) {
     /* Do this for each F-Curve. */
-    for (ld = static_cast<LinkData *>(pfl->fcurves.first); ld; ld = ld->next) {
+    LISTBASE_FOREACH (LinkData *, ld, &pfl->fcurves) {
       FCurve *fcu = (FCurve *)ld->data;
-      fcurve_to_keylist(pfl->ob->adt, fcu, pso->keylist, 0);
+      fcurve_to_keylist(pfl->ob->adt, fcu, pso->keylist, 0, {-FLT_MAX, FLT_MAX});
     }
   }
 
@@ -1081,19 +1032,18 @@ static int pose_slide_invoke_common(bContext *C, wmOperator *op, const wmEvent *
   }
 
   /* Apply NLA mapping corrections so the frame look-ups work. */
-  for (uint ob_index = 0; ob_index < pso->objects_len; ob_index++) {
-    tPoseSlideObject *ob_data = &pso->ob_data_array[ob_index];
-    if (ob_data->valid) {
-      ob_data->prev_frame = BKE_nla_tweakedit_remap(
-          ob_data->ob->adt, pso->prev_frame, NLATIME_CONVERT_UNMAP);
-      ob_data->next_frame = BKE_nla_tweakedit_remap(
-          ob_data->ob->adt, pso->next_frame, NLATIME_CONVERT_UNMAP);
+  for (tPoseSlideObject &ob_data : pso->ob_data_array) {
+    if (ob_data.valid) {
+      ob_data.prev_frame = BKE_nla_tweakedit_remap(
+          ob_data.ob->adt, pso->prev_frame, NLATIME_CONVERT_UNMAP);
+      ob_data.next_frame = BKE_nla_tweakedit_remap(
+          ob_data.ob->adt, pso->next_frame, NLATIME_CONVERT_UNMAP);
     }
   }
 
   /* Initial apply for operator. */
   /* TODO: need to calculate factor for initial round too. */
-  if (!ELEM(pso->mode, POSESLIDE_PUSH_REST, POSESLIDE_RELAX_REST)) {
+  if (!ELEM(pso->mode, POSESLIDE_BLEND_REST)) {
     pose_slide_apply(C, pso);
   }
   else {
@@ -1251,7 +1201,6 @@ static int pose_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
         applyNumInput(&pso->num, &value);
 
         float factor = value / 100;
-        CLAMP(factor, 0.0f, 1.0f);
         ED_slider_factor_set(pso->slider, factor);
         RNA_float_set(op->ptr, "factor", ED_slider_factor_get(pso->slider));
 
@@ -1346,7 +1295,7 @@ static int pose_slide_modal(bContext *C, wmOperator *op, const wmEvent *event)
     pose_slide_reset(pso);
 
     /* Apply. */
-    if (!ELEM(pso->mode, POSESLIDE_PUSH_REST, POSESLIDE_RELAX_REST)) {
+    if (!ELEM(pso->mode, POSESLIDE_BLEND_REST)) {
       pose_slide_apply(C, pso);
     }
     else {
@@ -1373,7 +1322,7 @@ static void pose_slide_cancel(bContext *C, wmOperator *op)
 static int pose_slide_exec_common(bContext *C, wmOperator *op, tPoseSlideOp *pso)
 {
   /* Settings should have been set up ok for applying, so just apply! */
-  if (!ELEM(pso->mode, POSESLIDE_PUSH_REST, POSESLIDE_RELAX_REST)) {
+  if (!ELEM(pso->mode, POSESLIDE_BLEND_REST)) {
     pose_slide_apply(C, pso);
   }
   else {
@@ -1561,15 +1510,19 @@ void POSE_OT_relax(wmOperatorType *ot)
 
 /* ........................ */
 /**
- * Operator `invoke()` - for 'push from rest pose' mode.
+ * Operator `invoke()` - for 'blend with rest pose' mode.
  */
-static int pose_slide_push_rest_invoke(bContext *C, wmOperator *op, const wmEvent *event)
+static int pose_slide_blend_rest_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   /* Initialize data. */
-  if (pose_slide_init(C, op, POSESLIDE_PUSH_REST) == 0) {
+  if (pose_slide_init(C, op, POSESLIDE_BLEND_REST) == 0) {
     pose_slide_exit(C, op);
     return OPERATOR_CANCELLED;
   }
+
+  tPoseSlideOp *pso = static_cast<tPoseSlideOp *>(op->customdata);
+  ED_slider_factor_set(pso->slider, 0);
+  ED_slider_factor_bounds_set(pso->slider, -1, 1);
 
   /* do common setup work */
   return pose_slide_invoke_common(C, op, event);
@@ -1578,12 +1531,12 @@ static int pose_slide_push_rest_invoke(bContext *C, wmOperator *op, const wmEven
 /**
  * Operator `exec()` - for push.
  */
-static int pose_slide_push_rest_exec(bContext *C, wmOperator *op)
+static int pose_slide_blend_rest_exec(bContext *C, wmOperator *op)
 {
   tPoseSlideOp *pso;
 
   /* Initialize data (from RNA-props). */
-  if (pose_slide_init(C, op, POSESLIDE_PUSH_REST) == 0) {
+  if (pose_slide_init(C, op, POSESLIDE_BLEND_REST) == 0) {
     pose_slide_exit(C, op);
     return OPERATOR_CANCELLED;
   }
@@ -1594,73 +1547,16 @@ static int pose_slide_push_rest_exec(bContext *C, wmOperator *op)
   return pose_slide_exec_common(C, op, pso);
 }
 
-void POSE_OT_push_rest(wmOperatorType *ot)
+void POSE_OT_blend_with_rest(wmOperatorType *ot)
 {
   /* identifiers */
-  ot->name = "Push Pose from Rest Pose";
-  ot->idname = "POSE_OT_push_rest";
-  ot->description = "Push the current pose further away from the rest pose";
+  ot->name = "Blend Pose with Rest Pose";
+  ot->idname = "POSE_OT_blend_with_rest";
+  ot->description = "Make the current pose more similar to, or further away from, the rest pose";
 
   /* callbacks */
-  ot->exec = pose_slide_push_rest_exec;
-  ot->invoke = pose_slide_push_rest_invoke;
-  ot->modal = pose_slide_modal;
-  ot->cancel = pose_slide_cancel;
-  ot->poll = ED_operator_posemode;
-
-  /* flags */
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO | OPTYPE_BLOCKING | OPTYPE_GRAB_CURSOR_X;
-
-  /* Properties */
-  pose_slide_opdef_properties(ot);
-}
-
-/* ........................ */
-
-/**
- * Operator `invoke()` - for 'relax' mode.
- */
-static int pose_slide_relax_rest_invoke(bContext *C, wmOperator *op, const wmEvent *event)
-{
-  /* Initialize data. */
-  if (pose_slide_init(C, op, POSESLIDE_RELAX_REST) == 0) {
-    pose_slide_exit(C, op);
-    return OPERATOR_CANCELLED;
-  }
-
-  /* Do common setup work. */
-  return pose_slide_invoke_common(C, op, event);
-}
-
-/**
- * Operator `exec()` - for relax.
- */
-static int pose_slide_relax_rest_exec(bContext *C, wmOperator *op)
-{
-  tPoseSlideOp *pso;
-
-  /* Initialize data (from RNA-props). */
-  if (pose_slide_init(C, op, POSESLIDE_RELAX_REST) == 0) {
-    pose_slide_exit(C, op);
-    return OPERATOR_CANCELLED;
-  }
-
-  pso = static_cast<tPoseSlideOp *>(op->customdata);
-
-  /* Do common exec work. */
-  return pose_slide_exec_common(C, op, pso);
-}
-
-void POSE_OT_relax_rest(wmOperatorType *ot)
-{
-  /* identifiers */
-  ot->name = "Relax Pose to Rest Pose";
-  ot->idname = "POSE_OT_relax_rest";
-  ot->description = "Make the current pose more similar to the rest pose";
-
-  /* callbacks */
-  ot->exec = pose_slide_relax_rest_exec;
-  ot->invoke = pose_slide_relax_rest_invoke;
+  ot->exec = pose_slide_blend_rest_exec;
+  ot->invoke = pose_slide_blend_rest_invoke;
   ot->modal = pose_slide_modal;
   ot->cancel = pose_slide_cancel;
   ot->poll = ED_operator_posemode;
@@ -1802,7 +1698,7 @@ enum ePosePropagate_Termination {
 /* --------------------------------- */
 
 struct FrameLink {
-  struct FrameLink *next, *prev;
+  FrameLink *next, *prev;
   float frame;
 };
 
@@ -1810,13 +1706,15 @@ static void propagate_curve_values(ListBase /*tPChanFCurveLink*/ *pflinks,
                                    const float source_frame,
                                    ListBase /*FrameLink*/ *target_frames)
 {
+  using namespace blender::animrig;
+  const KeyframeSettings settings = get_keyframe_settings(true);
   LISTBASE_FOREACH (tPChanFCurveLink *, pfl, pflinks) {
     LISTBASE_FOREACH (LinkData *, ld, &pfl->fcurves) {
       FCurve *fcu = (FCurve *)ld->data;
       const float current_fcu_value = evaluate_fcurve(fcu, source_frame);
       LISTBASE_FOREACH (FrameLink *, target_frame, target_frames) {
         insert_vert_fcurve(
-            fcu, target_frame->frame, current_fcu_value, BEZT_KEYTYPE_KEYFRAME, INSERTKEY_NEEDED);
+            fcu, {target_frame->frame, current_fcu_value}, settings, INSERTKEY_NEEDED);
       }
     }
   }
@@ -1874,11 +1772,11 @@ static void get_keyed_frames_in_range(ListBase *pflinks,
                                       const float end_frame,
                                       ListBase /*FrameLink*/ *target_frames)
 {
-  struct AnimKeylist *keylist = ED_keylist_create();
+  AnimKeylist *keylist = ED_keylist_create();
   LISTBASE_FOREACH (tPChanFCurveLink *, pfl, pflinks) {
     LISTBASE_FOREACH (LinkData *, ld, &pfl->fcurves) {
       FCurve *fcu = (FCurve *)ld->data;
-      fcurve_to_keylist(nullptr, fcu, keylist, 0);
+      fcurve_to_keylist(nullptr, fcu, keylist, 0, {start_frame, end_frame});
     }
   }
   LISTBASE_FOREACH (ActKeyColumn *, column, ED_keylist_listbase(keylist)) {
@@ -1897,11 +1795,11 @@ static void get_keyed_frames_in_range(ListBase *pflinks,
 
 static void get_selected_frames(ListBase *pflinks, ListBase /*FrameLink*/ *target_frames)
 {
-  struct AnimKeylist *keylist = ED_keylist_create();
+  AnimKeylist *keylist = ED_keylist_create();
   LISTBASE_FOREACH (tPChanFCurveLink *, pfl, pflinks) {
     LISTBASE_FOREACH (LinkData *, ld, &pfl->fcurves) {
       FCurve *fcu = (FCurve *)ld->data;
-      fcurve_to_keylist(nullptr, fcu, keylist, 0);
+      fcurve_to_keylist(nullptr, fcu, keylist, 0, {-FLT_MAX, FLT_MAX});
     }
   }
   LISTBASE_FOREACH (ActKeyColumn *, column, ED_keylist_listbase(keylist)) {

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,9 +6,7 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
-
-#include "BLI_math.h"
+#include <cstdlib>
 
 #include "DNA_brush_types.h"
 #include "DNA_curve_types.h"
@@ -19,17 +17,20 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
 /* parent type */
 static const EnumPropertyItem parent_type_items[] = {
@@ -148,30 +149,33 @@ static const EnumPropertyItem rna_enum_gpencil_caps_modes_items[] = {
 
 #ifdef RNA_RUNTIME
 
+#  include <fmt/format.h>
+
 #  include "BLI_ghash.h"
 #  include "BLI_listbase.h"
-#  include "BLI_string_utils.h"
+#  include "BLI_string_utils.hh"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 #  include "BKE_action.h"
 #  include "BKE_animsys.h"
-#  include "BKE_deform.h"
+#  include "BKE_deform.hh"
 #  include "BKE_gpencil_curve_legacy.h"
 #  include "BKE_gpencil_geom_legacy.h"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_gpencil_update_cache_legacy.h"
 #  include "BKE_icons.h"
 
-#  include "DEG_depsgraph.h"
-#  include "DEG_depsgraph_build.h"
+#  include "DEG_depsgraph.hh"
+#  include "DEG_depsgraph_build.hh"
 
 static void rna_GPencil_update(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
 #  if 0
   /* In case a property on a layer changed, tag it with a light update. */
   if (ptr->type == &RNA_GPencilLayer) {
-    BKE_gpencil_tag_light_update((bGPdata *)(ptr->owner_id), (bGPDlayer *)(ptr->data), nullptr, nullptr);
+    BKE_gpencil_tag_light_update(
+        (bGPdata *)(ptr->owner_id), (bGPDlayer *)(ptr->data), nullptr, nullptr);
   }
 #  endif
   DEG_id_tag_update(ptr->owner_id, ID_RECALC_GEOMETRY);
@@ -309,17 +313,17 @@ bool rna_GPencil_datablocks_obdata_poll(PointerRNA * /*ptr*/, const PointerRNA v
   return (gpd->flag & GP_DATA_ANNOTATIONS) == 0;
 }
 
-static char *rna_GPencilLayer_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_GPencilLayer_path(const PointerRNA *ptr)
 {
   bGPDlayer *gpl = (bGPDlayer *)ptr->data;
   char name_esc[sizeof(gpl->info) * 2];
 
   BLI_str_escape(name_esc, gpl->info, sizeof(name_esc));
 
-  return BLI_sprintfN("layers[\"%s\"]", name_esc);
+  return fmt::format("layers[\"{}\"]", name_esc);
 }
 
-static int rna_GPencilLayer_active_frame_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_GPencilLayer_active_frame_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   bGPDlayer *gpl = (bGPDlayer *)ptr->data;
 
@@ -336,13 +340,13 @@ static int rna_GPencilLayer_active_frame_editable(PointerRNA *ptr, const char **
 static void set_parent(bGPDlayer *gpl, Object *par, const int type, const char *substr)
 {
   if (type == PAROBJECT) {
-    invert_m4_m4(gpl->inverse, par->object_to_world);
+    invert_m4_m4(gpl->inverse, par->object_to_world().ptr());
     gpl->parent = par;
     gpl->partype |= PAROBJECT;
     gpl->parsubstr[0] = 0;
   }
   else if (type == PARSKEL) {
-    invert_m4_m4(gpl->inverse, par->object_to_world);
+    invert_m4_m4(gpl->inverse, par->object_to_world().ptr());
     gpl->parent = par;
     gpl->partype |= PARSKEL;
     gpl->parsubstr[0] = 0;
@@ -351,7 +355,7 @@ static void set_parent(bGPDlayer *gpl, Object *par, const int type, const char *
     bPoseChannel *pchan = BKE_pose_channel_find_name(par->pose, substr);
     if (pchan) {
       float tmp_mat[4][4];
-      mul_m4_m4m4(tmp_mat, par->object_to_world, pchan->pose_mat);
+      mul_m4_m4m4(tmp_mat, par->object_to_world().ptr(), pchan->pose_mat);
 
       invert_m4_m4(gpl->inverse, tmp_mat);
       gpl->parent = par;
@@ -359,7 +363,7 @@ static void set_parent(bGPDlayer *gpl, Object *par, const int type, const char *
       STRNCPY(gpl->parsubstr, substr);
     }
     else {
-      invert_m4_m4(gpl->inverse, par->object_to_world);
+      invert_m4_m4(gpl->inverse, par->object_to_world().ptr());
       gpl->parent = par;
       gpl->partype |= PAROBJECT;
       gpl->parsubstr[0] = 0;
@@ -409,7 +413,7 @@ static void rna_GPencilLayer_parent_bone_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static char *rna_GPencilLayerMask_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_GPencilLayerMask_path(const PointerRNA *ptr)
 {
   bGPdata *gpd = (bGPdata *)ptr->owner_id;
   bGPDlayer *gpl = BKE_gpencil_layer_active_get(gpd);
@@ -421,7 +425,7 @@ static char *rna_GPencilLayerMask_path(const PointerRNA *ptr)
   BLI_str_escape(gpl_info_esc, gpl->info, sizeof(gpl_info_esc));
   BLI_str_escape(mask_name_esc, mask->name, sizeof(mask_name_esc));
 
-  return BLI_sprintfN("layers[\"%s\"].mask_layers[\"%s\"]", gpl_info_esc, mask_name_esc);
+  return fmt::format("layers[\"{}\"].mask_layers[\"{}\"]", gpl_info_esc, mask_name_esc);
 }
 
 static int rna_GPencil_active_mask_index_get(PointerRNA *ptr)
@@ -575,7 +579,7 @@ static const EnumPropertyItem *rna_GPencil_active_layer_itemf(bContext *C,
   int i = 0;
 
   if (ELEM(nullptr, C, gpd)) {
-    return DummyRNA_NULL_items;
+    return rna_enum_dummy_NULL_items;
   }
 
   /* Existing layers */
@@ -752,8 +756,7 @@ static void rna_GPencil_stroke_point_add(
     /* Calc geometry data. */
     BKE_gpencil_stroke_geometry_update(gpd, stroke);
 
-    DEG_id_tag_update(&gpd->id,
-                      ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
     WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   }
@@ -815,7 +818,7 @@ static void rna_GPencil_stroke_point_pop(ID *id,
   /* Calc geometry data. */
   BKE_gpencil_stroke_geometry_update(gpd, stroke);
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
 }
@@ -828,8 +831,7 @@ static void rna_GPencil_stroke_point_update(ID *id, bGPDstroke *stroke)
   if (stroke) {
     BKE_gpencil_stroke_geometry_update(gpd, stroke);
 
-    DEG_id_tag_update(&gpd->id,
-                      ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
 
     WM_main_add_notifier(NC_GPENCIL | NA_EDITED, nullptr);
   }
@@ -909,7 +911,7 @@ static void rna_GPencil_stroke_remove(ID *id,
   BKE_gpencil_free_stroke(stroke);
   RNA_POINTER_INVALIDATE(stroke_ptr);
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 }
 
@@ -927,7 +929,7 @@ static void rna_GPencil_stroke_close(ID *id,
 
   BKE_gpencil_stroke_close(stroke);
 
-  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 }
 
@@ -1134,9 +1136,9 @@ static void rna_GPencil_clear(bGPdata *gpd)
   WM_main_add_notifier(NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
 }
 
-static char *rna_GreasePencilGrid_path(const PointerRNA * /*ptr*/)
+static std::optional<std::string> rna_GreasePencilGrid_path(const PointerRNA * /*ptr*/)
 {
-  return BLI_strdup("grid");
+  return "grid";
 }
 
 static void rna_GpencilCurvePoint_BezTriple_handle1_get(PointerRNA *ptr, float *values)
@@ -1214,7 +1216,7 @@ static void rna_GpencilCurvePoint_BezTriple_ctrlpoint_select_set(PointerRNA *ptr
 static bool rna_GpencilCurvePoint_BezTriple_hide_get(PointerRNA *ptr)
 {
   bGPDcurve_point *cpt = (bGPDcurve_point *)ptr->data;
-  return (bool)cpt->bezt.hide;
+  return bool(cpt->bezt.hide);
 }
 
 static void rna_GpencilCurvePoint_BezTriple_hide_set(PointerRNA *ptr, const bool value)
@@ -1434,7 +1436,7 @@ static void rna_def_gpencil_curve_point(BlenderRNA *brna)
 
   srna = RNA_def_struct(brna, "GPencilEditCurvePoint", nullptr);
   RNA_def_struct_sdna(srna, "bGPDcurve_point");
-  RNA_def_struct_ui_text(srna, "Bezier Curve Point", "Bezier curve point with two handles");
+  RNA_def_struct_ui_text(srna, "Bézier Curve Point", "Bézier curve point with two handles");
 
   /* Boolean values */
   prop = RNA_def_property(srna, "select_left_handle", PROP_BOOLEAN, PROP_NONE);
@@ -1671,12 +1673,14 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
   RNA_def_property_enum_sdna(prop, nullptr, "caps[0]");
   RNA_def_property_enum_items(prop, rna_enum_gpencil_caps_modes_items);
   RNA_def_property_ui_text(prop, "Start Cap", "Stroke start extreme cap style");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
   prop = RNA_def_property(srna, "end_cap_mode", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "caps[1]");
   RNA_def_property_enum_items(prop, rna_enum_gpencil_caps_modes_items);
   RNA_def_property_ui_text(prop, "End Cap", "Stroke end extreme cap style");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_GPENCIL);
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 
   /* No fill: The stroke never must fill area and must use fill color as stroke color
@@ -1696,7 +1700,7 @@ static void rna_def_gpencil_stroke(BlenderRNA *brna)
 
   /* gradient control along y */
   prop = RNA_def_property(srna, "hardness", PROP_FLOAT, PROP_FACTOR);
-  RNA_def_property_float_sdna(prop, nullptr, "hardeness");
+  RNA_def_property_float_sdna(prop, nullptr, "hardness");
   RNA_def_property_range(prop, 0.001f, 1.0f);
   RNA_def_property_float_default(prop, 1.0f);
   RNA_def_property_ui_text(prop, "Hardness", "Amount of gradient along section of stroke");
@@ -1881,7 +1885,7 @@ static void rna_def_gpencil_frames_api(BlenderRNA *brna, PropertyRNA *cprop)
                      MINAFRAME,
                      MAXFRAME);
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  RNA_def_boolean(func, "active", 0, "Active", "");
+  RNA_def_boolean(func, "active", false, "Active", "");
   parm = RNA_def_pointer(func, "frame", "GPencilFrame", "", "The newly created frame");
   RNA_def_function_return(func, parm);
 
@@ -1963,7 +1967,7 @@ static void rna_def_gpencil_layer_mask(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "invert", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "flag", GP_MASK_INVERT);
-  RNA_def_property_ui_icon(prop, ICON_CLIPUV_HLT, -1);
+  RNA_def_property_ui_icon(prop, ICON_SELECT_INTERSECT, 1);
   RNA_def_property_ui_text(prop, "Invert", "Invert mask");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 }
@@ -2383,7 +2387,7 @@ static void rna_def_gpencil_layers_api(BlenderRNA *brna, PropertyRNA *cprop)
                               "rna_GPencil_active_layer_index_set",
                               "rna_GPencil_active_layer_itemf");
   RNA_def_property_enum_items(
-      prop, DummyRNA_DEFAULT_items); /* purely dynamic, as it maps to user-data */
+      prop, rna_enum_dummy_DEFAULT_items); /* purely dynamic, as it maps to user-data */
   RNA_def_property_ui_text(prop, "Active Note", "Note/Layer to add annotation strokes to");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_GPencil_update");
 }
@@ -2474,7 +2478,7 @@ static void rna_def_gpencil_data(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, nullptr, "mat", "totcol");
   RNA_def_property_struct_type(prop, "Material");
   RNA_def_property_ui_text(prop, "Materials", "");
-  RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.c */
+  RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.cc */
   RNA_def_property_collection_funcs(prop,
                                     nullptr,
                                     nullptr,

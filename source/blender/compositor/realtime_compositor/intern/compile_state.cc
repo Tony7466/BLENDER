@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -74,7 +74,8 @@ ShaderCompileUnit &CompileState::get_shader_compile_unit()
 
 void CompileState::reset_shader_compile_unit()
 {
-  return shader_compile_unit_.clear();
+  shader_compile_unit_.clear();
+  shader_compile_unit_domain_ = Domain::identity();
 }
 
 bool CompileState::should_compile_shader_compile_unit(DNode node)
@@ -150,8 +151,8 @@ Domain CompileState::compute_shader_node_domain(DNode node)
       continue;
     }
 
-    /* An input that skips realization can't be a domain input. */
-    if (input_descriptor.skip_realization) {
+    /* An input that skips operation domain realization can't be a domain input. */
+    if (!input_descriptor.realization_options.realize_on_operation_domain) {
       continue;
     }
 

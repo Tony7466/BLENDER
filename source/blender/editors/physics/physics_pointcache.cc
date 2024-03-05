@@ -6,30 +6,27 @@
  * \ingroup edphys
  */
 
-#include <stdlib.h>
-#include <string.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "DNA_scene_types.h"
-
-#include "BKE_context.h"
-#include "BKE_global.h"
-#include "BKE_layer.h"
+#include "BKE_context.hh"
+#include "BKE_global.hh"
+#include "BKE_layer.hh"
 #include "BKE_pointcache.h"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_particle.h"
+#include "ED_particle.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 #include "RNA_prototypes.h"
 
 #include "physics_intern.h"
@@ -127,13 +124,13 @@ static void ptcache_job_update(void *customdata, float progress, int *cancel)
   *(job->progress) = progress;
 }
 
-static void ptcache_job_startjob(void *customdata, bool *stop, bool *do_update, float *progress)
+static void ptcache_job_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 {
   PointCacheJob *job = static_cast<PointCacheJob *>(customdata);
 
-  job->stop = stop;
-  job->do_update = do_update;
-  job->progress = progress;
+  job->stop = &worker_status->stop;
+  job->do_update = &worker_status->do_update;
+  job->progress = &worker_status->progress;
 
   G.is_break = false;
 
@@ -144,8 +141,8 @@ static void ptcache_job_startjob(void *customdata, bool *stop, bool *do_update, 
 
   BKE_ptcache_bake(job->baker);
 
-  *do_update = true;
-  *stop = false;
+  worker_status->do_update = true;
+  worker_status->stop = false;
 }
 
 static void ptcache_job_endjob(void *customdata)
@@ -162,7 +159,7 @@ static void ptcache_job_endjob(void *customdata)
 static void ptcache_free_bake(PointCache *cache)
 {
   if (cache->edit) {
-    if (!cache->edit->edited || 1) {  // XXX okee("Lose changes done in particle mode?")) {
+    if (!cache->edit->edited || true) {  // XXX okee("Lose changes done in particle mode?")) {
       PE_free_ptcache_edit(cache->edit);
       cache->edit = nullptr;
       cache->flag &= ~PTCACHE_BAKED;
@@ -184,8 +181,8 @@ static PTCacheBaker *ptcache_baker_create(bContext *C, wmOperator *op, bool all)
   /* Depsgraph is used to sweep the frame range and evaluate scene at different times. */
   baker->depsgraph = CTX_data_depsgraph_pointer(C);
   baker->bake = RNA_boolean_get(op->ptr, "bake");
-  baker->render = 0;
-  baker->anim_init = 0;
+  baker->render = false;
+  baker->anim_init = false;
   baker->quick_step = 1;
 
   if (!all) {
@@ -268,13 +265,12 @@ static void ptcache_bake_cancel(bContext *C, wmOperator *op)
 static int ptcache_free_bake_all_exec(bContext *C, wmOperator * /*op*/)
 {
   Scene *scene = CTX_data_scene(C);
-  PTCacheID *pid;
   ListBase pidlist;
 
   FOREACH_SCENE_OBJECT_BEGIN (scene, ob) {
     BKE_ptcache_ids_from_object(&pidlist, ob, scene, MAX_DUPLI_RECUR);
 
-    for (pid = static_cast<PTCacheID *>(pidlist.first); pid; pid = pid->next) {
+    LISTBASE_FOREACH (PTCacheID *, pid, &pidlist) {
       ptcache_free_bake(pid->cache);
     }
 
@@ -306,7 +302,7 @@ void PTCACHE_OT_bake_all(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "bake", 1, "Bake", "");
+  RNA_def_boolean(ot->srna, "bake", true, "Bake", "");
 }
 void PTCACHE_OT_free_bake_all(wmOperatorType *ot)
 {
@@ -364,7 +360,7 @@ void PTCACHE_OT_bake(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  RNA_def_boolean(ot->srna, "bake", 0, "Bake", "");
+  RNA_def_boolean(ot->srna, "bake", false, "Bake", "");
 }
 void PTCACHE_OT_free_bake(wmOperatorType *ot)
 {
@@ -429,7 +425,7 @@ static int ptcache_remove_exec(bContext *C, wmOperator * /*op*/)
     BKE_ptcache_free(pid.cache);
     *(pid.cache_ptr) = static_cast<PointCache *>(pid.ptcaches->first);
 
-    DEG_id_tag_update(&ob->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
     WM_event_add_notifier(C, NC_OBJECT | ND_POINTCACHE, ob);
   }
 

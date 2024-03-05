@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,9 +10,6 @@
 
 #include "DNA_movieclip_types.h"
 #include "DNA_tracking_types.h"
-
-#include "BLI_listbase.h"
-#include "BLI_string.h"
 
 namespace blender::compositor {
 
@@ -59,8 +56,6 @@ class PlaneTrackMaskOperation : public PlaneDistortMaskOperation, public PlaneTr
 
   void init_data() override;
 
-  void init_execution() override;
-
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override
   {
     PlaneTrackCommon::determine_canvas(preferred_area, r_area);
@@ -77,8 +72,6 @@ class PlaneTrackWarpImageOperation : public PlaneDistortWarpImageOperation,
   PlaneTrackWarpImageOperation() : PlaneTrackCommon() {}
 
   void init_data() override;
-
-  void init_execution() override;
 
   void determine_canvas(const rcti &preferred_area, rcti &r_area) override
   {

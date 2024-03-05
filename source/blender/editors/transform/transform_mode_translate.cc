@@ -6,34 +6,35 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
 
-#include "BKE_context.h"
 #include "BKE_image.h"
-#include "BKE_report.h"
-#include "BKE_unit.h"
+#include "BKE_report.hh"
+#include "BKE_unit.hh"
 
-#include "ED_node.h"
-#include "ED_screen.h"
+#include "ED_node.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
+#include "UI_interface.hh"
 
-#include "UI_interface.h"
-
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
 #include "transform_mode.hh"
 #include "transform_snap.hh"
+
+using namespace blender;
 
 /* -------------------------------------------------------------------- */
 /** \name Transform (Translate) Custom Data
@@ -69,16 +70,16 @@ struct TranslateCustomData {
 struct TransDataArgs_Translate {
   const TransInfo *t;
   const TransDataContainer *tc;
-  float pivot_local[3];
-  float vec[3];
+  float3 snap_source_local;
+  float3 vec;
   enum eTranslateRotateMode rotate_mode;
 };
 
 static void transdata_elem_translate(const TransInfo *t,
                                      const TransDataContainer *tc,
                                      TransData *td,
-                                     const float pivot_local[3],
-                                     const float vec[3],
+                                     const float3 &snap_source_local,
+                                     const float3 &vec,
                                      enum eTranslateRotateMode rotate_mode)
 {
   float rotate_offset[3] = {0};
@@ -94,7 +95,7 @@ static void transdata_elem_translate(const TransInfo *t,
     else {
       BLI_assert(rotate_mode == TRANSLATE_ROTATE_ON);
 
-      const float *original_normal;
+      float3 original_normal;
 
       /* In pose mode, we want to align normals with Y axis of bones. */
       if (t->options & CTX_POSE_BONE) {
@@ -104,10 +105,16 @@ static void transdata_elem_translate(const TransInfo *t,
         original_normal = td->axismtx[2];
       }
 
+      if (t->flag & T_POINTS) {
+        /* Convert to Global Space since #ElementRotation_ex operates with the matrix in global
+         * space. */
+        original_normal = math::transform_direction(float3x3(td->mtx), original_normal);
+      }
+
       rotation_between_vecs_to_mat3(mat, original_normal, t->tsnap.snapNormal);
     }
 
-    ElementRotation_ex(t, tc, td, mat, pivot_local);
+    ElementRotation_ex(t, tc, td, mat, snap_source_local);
 
     if (td->loc) {
       use_rotate_offset = true;
@@ -151,7 +158,7 @@ static void transdata_elem_translate(const TransInfo *t,
     add_v3_v3v3(td->loc, td->iloc, tvec);
   }
 
-  constraintTransLim(t, td);
+  constraintTransLim(t, tc, td);
 }
 
 static void transdata_elem_translate_fn(void *__restrict iter_data_v,
@@ -163,7 +170,8 @@ static void transdata_elem_translate_fn(void *__restrict iter_data_v,
   if (td->flag & TD_SKIP) {
     return;
   }
-  transdata_elem_translate(data->t, data->tc, td, data->pivot_local, data->vec, data->rotate_mode);
+  transdata_elem_translate(
+      data->t, data->tc, td, data->snap_source_local, data->vec, data->rotate_mode);
 }
 
 /** \} */
@@ -210,10 +218,10 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
       /* WORKAROUND:
        * Special case where snapping is done in #recalData.
        * Update the header based on the #center_local. */
-      const short autosnap = getAnimEdit_SnapMode(t);
+      eSnapMode autosnap = t->tsnap.mode;
       float ival = TRANS_DATA_CONTAINER_FIRST_OK(t)->center_local[0];
       float val = ival + dvec[0];
-      snapFrameTransform(t, eAnimEdit_AutoSnap(autosnap), ival, val, &val);
+      snapFrameTransform(t, autosnap, ival, val, &val);
       dvec[0] = val - ival;
     }
 
@@ -253,7 +261,7 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
     ofs += BLI_snprintf_rlen(str + ofs,
                              UI_MAX_DRAW_STR - ofs,
                              "%s %s: %s   ",
-                             TIP_("Proportional Size"),
+                             IFACE_("Proportional Size"),
                              t->proptext,
                              prop_str);
   }
@@ -262,7 +270,7 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
     short chainlen = t->settings->autoik_chainlen;
     if (chainlen) {
       ofs += BLI_snprintf_rlen(
-          str + ofs, UI_MAX_DRAW_STR - ofs, TIP_("Auto IK Length: %d"), chainlen);
+          str + ofs, UI_MAX_DRAW_STR - ofs, IFACE_("Auto IK Length: %d"), chainlen);
       ofs += BLI_strncpy_rlen(str + ofs, "   ", UI_MAX_DRAW_STR - ofs);
     }
   }
@@ -297,25 +305,13 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
   else {
     if (t->spacetype == SPACE_NODE) {
       SpaceNode *snode = (SpaceNode *)t->area->spacedata.first;
-      if ((snode->flag & SNODE_SKIP_INSOFFSET) == 0) {
+      if (U.uiflag & USER_NODE_AUTO_OFFSET) {
         const char *str_dir = (snode->insert_ofs_dir == SNODE_INSERTOFS_DIR_RIGHT) ?
-                                  TIP_("right") :
-                                  TIP_("left");
-        char str_dir_km[64];
-        WM_modalkeymap_items_to_string(
-            t->keymap, TFM_MODAL_INSERTOFS_TOGGLE_DIR, true, str_dir_km, sizeof(str_dir_km));
-        ofs += BLI_snprintf_rlen(str,
-                                 UI_MAX_DRAW_STR,
-                                 TIP_("%s: Toggle auto-offset direction (%s)"),
-                                 str_dir_km,
-                                 str_dir);
+                                  IFACE_("right") :
+                                  IFACE_("left");
+        ofs += BLI_snprintf_rlen(
+            str, UI_MAX_DRAW_STR, IFACE_("Auto-offset direction: %s"), str_dir);
       }
-
-      char str_attach_km[64];
-      WM_modalkeymap_items_to_string(
-          t->keymap, TFM_MODAL_NODE_ATTACH_OFF, true, str_attach_km, sizeof(str_attach_km));
-      ofs += BLI_snprintf_rlen(
-          str + ofs, UI_MAX_DRAW_STR - ofs, TIP_(", %s: Toggle auto-attach"), str_attach_km);
     }
     else {
       if (t->flag & T_2D_EDIT) {
@@ -382,7 +378,9 @@ static void translate_snap_grid_apply(TransInfo *t,
 
   float in[3];
   if (t->con.mode & CON_APPLY) {
-    BLI_assert(t->tsnap.target_type == SCE_SNAP_TO_NONE);
+    /* We need to clear the previous Snap to Grid result,
+     * otherwise #t->con.applyVec will have no effect. */
+    t->tsnap.target_type = SCE_SNAP_TO_NONE;
     t->con.applyVec(t, nullptr, nullptr, loc, in);
   }
   else {
@@ -392,6 +390,13 @@ static void translate_snap_grid_apply(TransInfo *t,
   for (int i = 0; i <= max_index; i++) {
     const float iter_fac = grid_dist[i] * asp[i];
     r_out[i] = iter_fac * roundf((in[i] + center_global[i]) / iter_fac) - center_global[i];
+  }
+
+  if ((t->con.mode & CON_APPLY) &&
+      (t->spacemtx[0][0] != 1.0f || t->spacemtx[1][1] != 1.0f || t->spacemtx[2][2] != 1.0f))
+  {
+    /* The space matrix is not identity, we need to constrain the result again. */
+    t->con.applyVec(t, nullptr, nullptr, r_out, r_out);
   }
 }
 
@@ -452,7 +457,8 @@ static void ApplySnapTranslation(TransInfo *t, float vec[3])
     if (t->spacetype == SPACE_VIEW3D) {
       if (t->options & CTX_PAINT_CURVE) {
         if (ED_view3d_project_float_global(t->region, point, point, V3D_PROJ_TEST_NOP) !=
-            V3D_PROJ_RET_OK) {
+            V3D_PROJ_RET_OK)
+        {
           zero_v3(point); /* no good answer here... */
         }
       }
@@ -496,12 +502,12 @@ static void applyTranslationValue(TransInfo *t, const float vec[3])
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    float pivot_local[3];
+    float3 snap_source_local(0);
     if (rotate_mode != TRANSLATE_ROTATE_OFF) {
-      copy_v3_v3(pivot_local, t->tsnap.snap_source);
-      /* The pivot has to be in local-space (see #49494) */
+      snap_source_local = t->tsnap.snap_source;
       if (tc->use_local_mat) {
-        mul_m4_v3(tc->imat, pivot_local);
+        /* The pivot has to be in local-space (see #49494) */
+        snap_source_local = math::transform_point(float4x4(tc->imat), snap_source_local);
       }
     }
 
@@ -511,15 +517,15 @@ static void applyTranslationValue(TransInfo *t, const float vec[3])
         if (td->flag & TD_SKIP) {
           continue;
         }
-        transdata_elem_translate(t, tc, td, pivot_local, vec, rotate_mode);
+        transdata_elem_translate(t, tc, td, snap_source_local, vec, rotate_mode);
       }
     }
     else {
       TransDataArgs_Translate data{};
       data.t = t;
       data.tc = tc;
-      copy_v3_v3(data.pivot_local, pivot_local);
-      copy_v3_v3(data.vec, vec);
+      data.snap_source_local = snap_source_local;
+      data.vec = vec;
       data.rotate_mode = rotate_mode;
 
       TaskParallelSettings settings;
@@ -573,9 +579,9 @@ static bool clip_uv_transform_translation(TransInfo *t, float vec[2])
   return result;
 }
 
-static void applyTranslation(TransInfo *t, const int[2] /*mval*/)
+static void applyTranslation(TransInfo *t)
 {
-  char str[UI_MAX_DRAW_STR];
+  char str[UI_MAX_DRAW_STR] = "";
   float global_dir[3] = {0.0f};
 
   if (t->flag & T_INPUT_IS_VALUES_FINAL) {
@@ -640,10 +646,7 @@ static void applyTranslation(TransInfo *t, const int[2] /*mval*/)
   if (t->flag & T_CLIP_UV && clip_uv_transform_translation(t, global_dir)) {
     applyTranslationValue(t, global_dir);
 
-    /* In proportional edit it can happen that */
-    /* vertices in the radius of the brush end */
-    /* outside the clipping area               */
-    /* XXX HACK - dg */
+    /* Not ideal, see #clipUVData code-comment. */
     if (t->flag & T_PROP_EDIT) {
       clipUVData(t);
     }
@@ -653,8 +656,8 @@ static void applyTranslation(TransInfo *t, const int[2] /*mval*/)
   mul_v3_m3v3(t->values_final, t->spacemtx_inv, global_dir);
   headerTranslation(t, (t->con.mode & CON_APPLY) ? t->values_final : global_dir, str);
 
-  recalcData(t);
-  ED_area_status_text(t->area, str);
+  recalc_data(t);
+  ED_area_status_text(t->area, (str[0] == '\0') ? nullptr : str);
 }
 
 static void applyTranslationMatrix(TransInfo *t, float mat_xform[4][4])

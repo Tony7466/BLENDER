@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,34 +10,37 @@
 
 #include "DNA_object_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_context.h"
-#include "BKE_editmesh.h"
-#include "BKE_global.h"
-#include "BKE_layer.h"
-#include "BKE_unit.h"
+#include "BKE_context.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_global.hh"
+#include "BKE_layer.hh"
+#include "BKE_unit.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "ED_mesh.h"
-#include "ED_numinput.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_transform.h"
-#include "ED_util.h"
-#include "ED_view3d.h"
+#include "ED_mesh.hh"
+#include "ED_numinput.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_transform.hh"
+#include "ED_util.hh"
+#include "ED_view3d.hh"
 
-#include "mesh_intern.h" /* own include */
+#include "mesh_intern.hh" /* own include */
+
+using blender::Vector;
 
 struct InsetObjectStore {
   /** Must have a valid edit-mesh. */
@@ -70,8 +73,8 @@ static void edbm_inset_update_header(wmOperator *op, bContext *C)
 {
   InsetData *opdata = static_cast<InsetData *>(op->customdata);
 
-  const char *str = TIP_(
-      "Confirm: Enter/LClick, Cancel: (Esc/RClick), Thickness: %s, "
+  const char *str = IFACE_(
+      "Confirm: Enter/LMB, Cancel: (Esc/RMB), Thickness: %s, "
       "Depth (Ctrl to tweak): %s (%s), Outset (O): (%s), Boundary (B): (%s), Individual (I): "
       "(%s)");
 
@@ -132,14 +135,13 @@ static bool edbm_inset_init(bContext *C, wmOperator *op, const bool is_modal)
   opdata->max_obj_scale = FLT_MIN;
 
   {
-    uint ob_store_len = 0;
-    Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
-        scene, view_layer, CTX_wm_view3d(C), &ob_store_len);
+    Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data(
+        scene, view_layer, CTX_wm_view3d(C));
     opdata->ob_store = static_cast<InsetObjectStore *>(
-        MEM_malloc_arrayN(ob_store_len, sizeof(*opdata->ob_store), __func__));
-    for (uint ob_index = 0; ob_index < ob_store_len; ob_index++) {
+        MEM_malloc_arrayN(objects.size(), sizeof(*opdata->ob_store), __func__));
+    for (uint ob_index = 0; ob_index < objects.size(); ob_index++) {
       Object *obedit = objects[ob_index];
-      float scale = mat4_to_scale(obedit->object_to_world);
+      float scale = mat4_to_scale(obedit->object_to_world().ptr());
       opdata->max_obj_scale = max_ff(opdata->max_obj_scale, scale);
       BMEditMesh *em = BKE_editmesh_from_object(obedit);
       if (em->bm->totvertsel > 0) {
@@ -147,7 +149,6 @@ static bool edbm_inset_init(bContext *C, wmOperator *op, const bool is_modal)
         objects_used_len++;
       }
     }
-    MEM_freeN(objects);
     opdata->ob_store_len = objects_used_len;
   }
 
@@ -216,7 +217,7 @@ static void edbm_inset_cancel(bContext *C, wmOperator *op)
       BMEditMesh *em = BKE_editmesh_from_object(obedit);
       EDBM_redo_state_restore_and_free(&opdata->ob_store[ob_index].mesh_backup, em, true);
       EDBMUpdate_Params params{};
-      params.calc_looptri = false;
+      params.calc_looptris = false;
       params.calc_normals = false;
       params.is_destructive = true;
       EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -261,7 +262,7 @@ static bool edbm_inset_calc(wmOperator *op)
       EDBM_op_init(em,
                    &bmop,
                    op,
-                   "inset_individual faces=%hf use_even_offset=%b  use_relative_offset=%b "
+                   "inset_individual faces=%hf use_even_offset=%b use_relative_offset=%b "
                    "use_interpolate=%b thickness=%f depth=%f",
                    BM_ELEM_SELECT,
                    use_even_offset,
@@ -310,7 +311,7 @@ static bool edbm_inset_calc(wmOperator *op)
     }
 
     EDBMUpdate_Params params{};
-    params.calc_looptri = true;
+    params.calc_looptris = true;
     params.calc_normals = false;
     params.is_destructive = true;
     EDBM_update(static_cast<Mesh *>(obedit->data), &params);
@@ -617,6 +618,6 @@ void MESH_OT_inset(wmOperatorType *ot)
   RNA_def_boolean(
       ot->srna, "use_interpolate", true, "Interpolate", "Blend face data across the inset");
 
-  prop = RNA_def_boolean(ot->srna, "release_confirm", 0, "Confirm on Release", "");
+  prop = RNA_def_boolean(ot->srna, "release_confirm", false, "Confirm on Release", "");
   RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
 }

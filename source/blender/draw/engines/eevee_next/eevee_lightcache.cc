@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,27 +8,28 @@
  * Contains everything about light baking.
  */
 
-#include "DRW_render.h"
+#include <mutex>
 
-#include "BKE_global.h"
+#include "DRW_render.hh"
+
+#include "BKE_global.hh"
 #include "BKE_lightprobe.h"
 
 #include "DNA_lightprobe_types.h"
 
 #include "BLI_threads.h"
+#include "BLI_time.h"
 
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
-
-#include "PIL_time.h"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "GPU_capabilities.h"
 #include "GPU_context.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "wm_window.h"
+#include "wm_window.hh"
 
 #include "eevee_engine.h"
 #include "eevee_instance.hh"
@@ -128,7 +129,7 @@ class LightBake {
         bake_result_[i] = nullptr;
       }
       /* Propagate the cache to evaluated object. */
-      DEG_id_tag_update(&orig_ob->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&orig_ob->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SHADING);
     }
   }
 
@@ -141,7 +142,7 @@ class LightBake {
     DEG_evaluate_on_framechange(depsgraph_, frame_);
 
     if (delay_ms_ > 0) {
-      PIL_sleep_ms(delay_ms_);
+      BLI_time_sleep_ms(delay_ms_);
     }
 
     context_enable();
@@ -177,7 +178,12 @@ class LightBake {
             }
           });
 
-      if ((G.is_break == true) || ((stop != nullptr && *stop == true))) {
+      if (instance_->info != "") {
+        /** TODO: Print to the Status Bar UI. */
+        printf("%s\n", instance_->info.c_str());
+      }
+
+      if ((G.is_break == true) || (stop != nullptr && *stop == true)) {
         break;
       }
     }
@@ -272,11 +278,13 @@ class LightBake {
 
 }  // namespace blender::eevee
 
-using namespace blender::eevee;
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name Light Bake Job
  * \{ */
+
+using namespace blender::eevee;
 
 wmJob *EEVEE_NEXT_lightbake_job_create(wmWindowManager *wm,
                                        wmWindow *win,
@@ -293,7 +301,7 @@ wmJob *EEVEE_NEXT_lightbake_job_create(wmWindowManager *wm,
   }
 
   /* Stop existing baking job. */
-  WM_jobs_stop(wm, nullptr, (void *)EEVEE_NEXT_lightbake_job);
+  WM_jobs_stop(wm, nullptr, EEVEE_NEXT_lightbake_job);
 
   wmJob *wm_job = WM_jobs_get(wm,
                               win,
@@ -340,9 +348,10 @@ void EEVEE_NEXT_lightbake_update(void *job_data)
   static_cast<LightBake *>(job_data)->update();
 }
 
-void EEVEE_NEXT_lightbake_job(void *job_data, bool *stop, bool *do_update, float *progress)
+void EEVEE_NEXT_lightbake_job(void *job_data, wmJobWorkerStatus *worker_status)
 {
-  static_cast<LightBake *>(job_data)->run(stop, do_update, progress);
+  static_cast<LightBake *>(job_data)->run(
+      &worker_status->stop, &worker_status->do_update, &worker_status->progress);
 }
 
 /** \} */

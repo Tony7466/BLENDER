@@ -6,27 +6,29 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
 
-#include "BKE_context.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -180,7 +182,7 @@ static eRedrawFlag handleEventBend(TransInfo * /*t*/, const wmEvent *event)
   return status;
 }
 
-static void Bend(TransInfo *t, const int[2] /*mval*/)
+static void Bend(TransInfo *t)
 {
   float pivot_global[3];
   float warp_end_radius_global[3];
@@ -226,7 +228,7 @@ static void Bend(TransInfo *t, const int[2] /*mval*/)
     outputNumInput(&(t->num), c, &t->scene->unit);
 
     SNPRINTF(str,
-             TIP_("Bend Angle: %s Radius: %s Alt, Clamp %s"),
+             IFACE_("Bend Angle: %s, Radius: %s, Alt: Clamp %s"),
              &c[0],
              &c[NUM_STR_REP_LEN],
              WM_bool_as_string(is_clamp));
@@ -234,7 +236,7 @@ static void Bend(TransInfo *t, const int[2] /*mval*/)
   else {
     /* default header print */
     SNPRINTF(str,
-             TIP_("Bend Angle: %.3f Radius: %.4f, Alt, Clamp %s"),
+             IFACE_("Bend Angle: %.3f, Radius: %.4f, Alt: Clamp %s"),
              RAD2DEGF(values.angle),
              values.scale * bend_data->warp_init_dist,
              WM_bool_as_string(is_clamp));
@@ -318,14 +320,13 @@ static void Bend(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }
 
 static void initBend(TransInfo *t, wmOperator * /*op*/)
 {
-  const float mval_fl[2] = {float(t->mval[0]), float(t->mval[1])};
   const float *curs;
   float tvec[3];
   BendCustomData *data;
@@ -356,7 +357,7 @@ static void initBend(TransInfo *t, wmOperator * /*op*/)
   curs = t->scene->cursor.location;
   copy_v3_v3(data->warp_sta, curs);
   ED_view3d_win_to_3d(
-      (View3D *)t->area->spacedata.first, t->region, curs, mval_fl, data->warp_end);
+      (View3D *)t->area->spacedata.first, t->region, curs, t->mval, data->warp_end);
 
   copy_v3_v3(data->warp_nor, t->viewinv[2]);
   normalize_v3(data->warp_nor);

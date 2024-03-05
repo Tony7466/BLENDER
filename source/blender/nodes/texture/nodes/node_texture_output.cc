@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,8 +8,8 @@
 
 #include "BLI_string.h"
 
-#include "NOD_texture.h"
 #include "node_texture_util.hh"
+#include "node_util.hh"
 
 /* **************** COMPOSITE ******************** */
 static bNodeSocketTemplate inputs[] = {
@@ -64,7 +64,8 @@ static void unique_name(bNode *node)
   }
   for (; i; i = i->next) {
     if (i == node || i->type != TEX_NODE_OUTPUT ||
-        !STREQ(name, ((TexNodeOutput *)(i->storage))->name)) {
+        !STREQ(name, ((TexNodeOutput *)(i->storage))->name))
+    {
       continue;
     }
 

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,50 +6,49 @@
  * \ingroup edphys
  */
 
-#include <math.h>
-#include <stdio.h>
-#include <string.h>
+#include <cmath>
+#include <cstdio>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_string.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_dynamicpaint_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_attribute.h"
-#include "BKE_context.h"
-#include "BKE_deform.h"
+#include "BKE_attribute.hh"
+#include "BKE_context.hh"
+#include "BKE_deform.hh"
 #include "BKE_dynamicpaint.h"
-#include "BKE_global.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
+#include "BKE_global.hh"
+#include "BKE_main.hh"
+#include "BKE_modifier.hh"
 #include "BKE_object_deform.h"
-#include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_report.hh"
+#include "BKE_screen.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
-#include "ED_screen.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
+#include "ED_screen.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "PIL_time.h"
-
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "physics_intern.h" /* own include */
 
@@ -328,7 +327,7 @@ static void dpaint_bake_endjob(void *customdata)
   if (job->success) {
     /* Show bake info */
     WM_reportf(
-        RPT_INFO, "DynamicPaint: Bake complete! (%.2f)", PIL_check_seconds_timer() - job->start);
+        RPT_INFO, "DynamicPaint: Bake complete! (%.2f)", BLI_time_now_seconds() - job->start);
   }
   else {
     if (strlen(canvas->error)) { /* If an error occurred */
@@ -432,14 +431,14 @@ static void dynamicPaint_bakeImageSequence(DynamicPaintBakeJob *job)
   ED_update_for_newframe(job->bmain, job->depsgraph);
 }
 
-static void dpaint_bake_startjob(void *customdata, bool *stop, bool *do_update, float *progress)
+static void dpaint_bake_startjob(void *customdata, wmJobWorkerStatus *worker_status)
 {
   DynamicPaintBakeJob *job = static_cast<DynamicPaintBakeJob *>(customdata);
 
-  job->stop = stop;
-  job->do_update = do_update;
-  job->progress = progress;
-  job->start = PIL_check_seconds_timer();
+  job->stop = &worker_status->stop;
+  job->do_update = &worker_status->do_update;
+  job->progress = &worker_status->progress;
+  job->start = BLI_time_now_seconds();
   job->success = 1;
 
   G.is_break = false;
@@ -452,8 +451,8 @@ static void dpaint_bake_startjob(void *customdata, bool *stop, bool *do_update, 
 
   dynamicPaint_bakeImageSequence(job);
 
-  *do_update = true;
-  *stop = false;
+  worker_status->do_update = true;
+  worker_status->stop = false;
 }
 
 /*

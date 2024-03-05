@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,9 @@ using namespace Freestyle;
 
 //------------------------INSTANCE METHODS ----------------------------------
 
-static char ThicknessNoiseShader___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ThicknessNoiseShader___doc__,
     "Class hierarchy: :class:`freestyle.types.StrokeShader` > :class:`ThicknessNoiseShader`\n"
     "\n"
     "[Thickness shader]\n"
@@ -39,7 +41,7 @@ static char ThicknessNoiseShader___doc__[] =
     "   Adds some noise to the stroke thickness.\n"
     "\n"
     "   :arg stroke: A Stroke object.\n"
-    "   :type stroke: :class:`freestyle.types.Stroke`\n";
+    "   :type stroke: :class:`freestyle.types.Stroke`\n");
 
 static int ThicknessNoiseShader___init__(BPy_ThicknessNoiseShader *self,
                                          PyObject *args,
@@ -58,7 +60,7 @@ static int ThicknessNoiseShader___init__(BPy_ThicknessNoiseShader *self,
 /*-----------------------BPy_ThicknessNoiseShader type definition ------------------------------*/
 
 PyTypeObject ThicknessNoiseShader_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "ThicknessNoiseShader",
     /*tp_basicsize*/ sizeof(BPy_ThicknessNoiseShader),
     /*tp_itemsize*/ 0,

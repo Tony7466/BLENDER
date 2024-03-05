@@ -7,39 +7,38 @@
  * Making screenshots of the entire window or sub-regions.
  */
 
-#include <errno.h>
-#include <string.h>
+#include <cerrno>
+#include <cstring>
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 
-#include "BKE_context.h"
-#include "BKE_global.h"
+#include "BKE_context.hh"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_main.h"
-#include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_main.hh"
+#include "BKE_report.hh"
+#include "BKE_screen.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
 #include "screen_intern.h"
 
@@ -217,8 +216,7 @@ static void screenshot_draw(bContext * /*C*/, wmOperator *op)
   uiLayoutSetPropDecorate(layout, false);
 
   /* image template */
-  PointerRNA ptr;
-  RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, &scd->im_format, &ptr);
+  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_ImageFormatSettings, &scd->im_format);
   uiTemplateImageSettings(layout, &ptr, false);
 
   /* main draw call */

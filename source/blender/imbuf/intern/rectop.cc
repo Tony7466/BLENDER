@@ -6,7 +6,7 @@
  * \ingroup imbuf
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
 #include "BLI_math_base.h"
 #include "BLI_math_color.h"
@@ -15,12 +15,14 @@
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "MEM_guardedalloc.h"
+
+#include <cstring>
 
 void IMB_blend_color_byte(uchar dst[4],
                           const uchar src1[4],
@@ -486,8 +488,8 @@ void IMB_rectcpy(ImBuf *dbuf,
                 false);
 }
 
-typedef void (*IMB_blend_func)(uchar *dst, const uchar *src1, const uchar *src2);
-typedef void (*IMB_blend_func_float)(float *dst, const float *src1, const float *src2);
+using IMB_blend_func = void (*)(uchar *dst, const uchar *src1, const uchar *src2);
+using IMB_blend_func_float = void (*)(float *dst, const float *src1, const float *src2);
 
 void IMB_rectblend(ImBuf *dbuf,
                    const ImBuf *obuf,
@@ -1096,10 +1098,10 @@ void IMB_rectfill_area_replace(
   CLAMP(y2, 0, height);
 
   if (x1 > x2) {
-    SWAP(int, x1, x2);
+    std::swap(x1, x2);
   }
   if (y1 > y2) {
-    SWAP(int, y1, y2);
+    std::swap(y1, y2);
   }
   if (x1 == x2 || y1 == y2) {
     return;
@@ -1151,10 +1153,10 @@ void buf_rectfill_area(uchar *rect,
   CLAMP(y2, 0, height);
 
   if (x1 > x2) {
-    SWAP(int, x1, x2);
+    std::swap(x1, x2);
   }
   if (y1 > y2) {
-    SWAP(int, y1, y2);
+    std::swap(y1, y2);
   }
   if (x1 == x2 || y1 == y2) {
     return;

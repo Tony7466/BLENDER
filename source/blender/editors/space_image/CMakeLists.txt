@@ -1,21 +1,19 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
-  ../../blenfont
+  ../../blenkernel
   ../../blenloader
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../draw
   ../../gpu
   ../../imbuf
   ../../makesrna
   ../../render
   ../../windowmanager
-  ../../../../intern/clog
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -33,14 +31,17 @@ set(SRC
   image_undo.cc
   space_image.cc
 
-  image_intern.h
+  image_intern.hh
 )
 
 set(LIB
-  PRIVATE bf::blenkernel
+  PRIVATE bf::blenfont
+  bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_uvedit
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
 )
 

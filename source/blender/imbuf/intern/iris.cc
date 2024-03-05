@@ -6,24 +6,21 @@
  * \ingroup imbuf
  */
 
-#include <string.h>
+#include <cstring>
 
 #include "BLI_fileops.h"
 #include "BLI_utildefines.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "IMB_filetype.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-#include "imbuf.h"
-
-#include "IMB_colormanagement.h"
-#include "IMB_colormanagement_intern.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_filetype.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #define IMAGIC 0732
 
-typedef struct {
+struct IMAGE {
   ushort imagic; /* Stuff saved on disk. */
   ushort type;
   ushort dim;
@@ -36,7 +33,7 @@ typedef struct {
   char name[80];
   uint colormap;
   uchar _pad2[404];
-} IMAGE;
+};
 
 #define HEADER_SIZE 512
 
@@ -59,9 +56,9 @@ BLI_STATIC_ASSERT(sizeof(IMAGE) == HEADER_SIZE, "Invalid header size");
 #define BPPMASK 0x00ff
 // #define ITYPE_VERBATIM      0x0000 /* UNUSED */
 #define ITYPE_RLE 0x0100
-#define ISRLE(type) (((type)&0xff00) == ITYPE_RLE)
+#define ISRLE(type) (((type) & 0xff00) == ITYPE_RLE)
 // #define ISVERBATIM(type)    (((type) & 0xff00) == ITYPE_VERBATIM)
-#define BPP(type) ((type)&BPPMASK)
+#define BPP(type) ((type) & BPPMASK)
 #define RLE(bpp) (ITYPE_RLE | (bpp))
 // #define VERBATIM(bpp)       (ITYPE_VERBATIM | (bpp)) /* UNUSED */
 // #define IBUFSIZE(pixels)    ((pixels + (pixels >> 6)) << 2) /* UNUSED */
@@ -598,7 +595,7 @@ static int expandrow2(
 
   optr += z;
   optr_end += z;
-  while (1) {
+  while (true) {
     const uchar *iptr_next = iptr + 2;
     EXPAND_CAPACITY_AT_INPUT_OK_OR_FAIL(iptr_next);
     pixel = (iptr[0] << 8) | (iptr[1] << 0);
@@ -685,7 +682,7 @@ static int expandrow(
 
   optr += z;
   optr_end += z;
-  while (1) {
+  while (true) {
     const uchar *iptr_next = iptr + 1;
     EXPAND_CAPACITY_AT_INPUT_OK_OR_FAIL(iptr_next);
     pixel = *iptr;
@@ -782,7 +779,7 @@ static bool output_iris(const char *filepath,
   goodwrite = 1;
   outf = BLI_fopen(filepath, "wb");
   if (!outf) {
-    return 0;
+    return false;
   }
 
   tablen = ysize * zsize * sizeof(int);
@@ -851,11 +848,11 @@ static bool output_iris(const char *filepath,
   MEM_freeN(lumbuf);
   fclose(outf);
   if (goodwrite) {
-    return 1;
+    return true;
   }
 
   fprintf(stderr, "output_iris: not enough space for image!!\n");
-  return 0;
+  return false;
 }
 
 /* static utility functions for output_iris */

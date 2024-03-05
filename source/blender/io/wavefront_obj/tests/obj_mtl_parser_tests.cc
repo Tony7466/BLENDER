@@ -1,10 +1,10 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
 #include <gtest/gtest.h>
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 
 #include "testing/testing.h"
 
@@ -13,7 +13,7 @@
 
 namespace blender::io::obj {
 
-class obj_mtl_parser_test : public testing::Test {
+class OBJMTLParserTest : public testing::Test {
  public:
   void check_string(const char *text, const MTLMaterial *expect, size_t expect_count)
   {
@@ -83,7 +83,7 @@ class obj_mtl_parser_test : public testing::Test {
   }
 };
 
-TEST_F(obj_mtl_parser_test, string_newlines_whitespace)
+TEST_F(OBJMTLParserTest, string_newlines_whitespace)
 {
   const char *text =
       "# a comment\n"
@@ -130,7 +130,7 @@ TEST_F(obj_mtl_parser_test, string_newlines_whitespace)
   check_string(text, mat, ARRAY_SIZE(mat));
 }
 
-TEST_F(obj_mtl_parser_test, cube)
+TEST_F(OBJMTLParserTest, cube)
 {
   MTLMaterial mat;
   mat.name = "red";
@@ -139,7 +139,7 @@ TEST_F(obj_mtl_parser_test, cube)
   check("cube.mtl", &mat, 1);
 }
 
-TEST_F(obj_mtl_parser_test, all_objects)
+TEST_F(OBJMTLParserTest, all_objects)
 {
   MTLMaterial mat[7];
   for (auto &m : mat) {
@@ -168,7 +168,7 @@ TEST_F(obj_mtl_parser_test, all_objects)
   check("all_objects.mtl", mat, ARRAY_SIZE(mat));
 }
 
-TEST_F(obj_mtl_parser_test, materials)
+TEST_F(OBJMTLParserTest, materials)
 {
   MTLMaterial mat[6];
   mat[0].name = "no_textures_red";
@@ -274,7 +274,7 @@ TEST_F(obj_mtl_parser_test, materials)
   check("materials.mtl", mat, ARRAY_SIZE(mat));
 }
 
-TEST_F(obj_mtl_parser_test, materials_without_pbr)
+TEST_F(OBJMTLParserTest, materials_without_pbr)
 {
   MTLMaterial mat[2];
   mat[0].name = "Mat1";
@@ -304,7 +304,7 @@ TEST_F(obj_mtl_parser_test, materials_without_pbr)
   check("materials_without_pbr.mtl", mat, ARRAY_SIZE(mat));
 }
 
-TEST_F(obj_mtl_parser_test, materials_pbr)
+TEST_F(OBJMTLParserTest, materials_pbr)
 {
   MTLMaterial mat[2];
   mat[0].name = "Mat1";
@@ -316,7 +316,7 @@ TEST_F(obj_mtl_parser_test, materials_pbr)
   mat[0].illum_mode = 3;
   mat[0].roughness = 0.4f;
   mat[0].metallic = 0.9f;
-  mat[0].sheen = 0.3f;
+  mat[0].sheen = 0.06f;
   mat[0].cc_thickness = 0.393182f;
   mat[0].cc_roughness = 0.05f;
   mat[0].aniso = 0.2f;

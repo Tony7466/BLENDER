@@ -1,8 +1,15 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_string.h"
+
+#include "BKE_attribute.hh"
+#include "BKE_customdata.hh"
+
 #include "draw_attributes.hh"
+
+namespace blender::draw {
 
 /* Return true if the given DRW_AttributeRequest is already in the requests. */
 static bool drw_attributes_has_request(const DRW_Attributes *requests,
@@ -38,7 +45,7 @@ static void drw_attributes_merge_requests(const DRW_Attributes *src_requests,
 
 void drw_attributes_clear(DRW_Attributes *attributes)
 {
-  memset(attributes, 0, sizeof(DRW_Attributes));
+  *attributes = {};
 }
 
 void drw_attributes_merge(DRW_Attributes *dst, const DRW_Attributes *src, std::mutex &render_mutex)
@@ -62,7 +69,7 @@ void drw_attributes_add_request(DRW_Attributes *attrs,
                                 const char *name,
                                 const eCustomDataType type,
                                 const int layer_index,
-                                const eAttrDomain domain)
+                                const blender::bke::AttrDomain domain)
 {
   if (attrs->num_requests >= GPU_MAX_ATTR ||
       drw_attributes_has_request(attrs, {type, layer_index, domain}))
@@ -110,3 +117,5 @@ bool drw_custom_data_match_attribute(const CustomData *custom_data,
 
   return false;
 }
+
+}  // namespace blender::draw

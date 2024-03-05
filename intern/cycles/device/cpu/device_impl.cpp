@@ -267,6 +267,7 @@ void CPUDevice::build_bvh(BVH *bvh, Progress &progress, bool refit)
   if (bvh->params.bvh_layout == BVH_LAYOUT_EMBREE ||
       bvh->params.bvh_layout == BVH_LAYOUT_MULTI_OPTIX_EMBREE ||
       bvh->params.bvh_layout == BVH_LAYOUT_MULTI_METAL_EMBREE ||
+      bvh->params.bvh_layout == BVH_LAYOUT_MULTI_HIPRT_EMBREE ||
       bvh->params.bvh_layout == BVH_LAYOUT_MULTI_EMBREEGPU_EMBREE)
   {
     BVHEmbree *const bvh_embree = static_cast<BVHEmbree *>(bvh);
@@ -312,7 +313,7 @@ void CPUDevice::get_cpu_kernel_thread_globals(
   kernel_thread_globals.clear();
   void *osl_memory = get_cpu_osl_memory();
   for (int i = 0; i < info.cpu_threads; i++) {
-    kernel_thread_globals.emplace_back(kernel_globals, osl_memory, profiler);
+    kernel_thread_globals.emplace_back(kernel_globals, osl_memory, profiler, i);
   }
 }
 

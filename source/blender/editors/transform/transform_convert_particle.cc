@@ -11,14 +11,15 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 
-#include "BKE_context.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
+#include "BKE_object_types.hh"
 #include "BKE_particle.h"
 #include "BKE_pointcache.h"
 
-#include "ED_particle.h"
+#include "ED_particle.hh"
 
 #include "transform.hh"
 #include "transform_snap.hh"
@@ -97,7 +98,7 @@ static void createTransParticleVerts(bContext * /*C*/, TransInfo *t)
 
     unit_m4(mat);
 
-    invert_m4_m4(ob->world_to_object, ob->object_to_world);
+    invert_m4_m4(ob->runtime->world_to_object.ptr(), ob->object_to_world().ptr());
 
     for (i = 0, point = edit->points; i < edit->totpoint; i++, point++) {
       TransData *head, *tail;
@@ -252,7 +253,7 @@ static void recalcData_particles(TransInfo *t)
 
 TransConvertTypeInfo TransConvertType_Particle = {
     /*flags*/ T_POINTS,
-    /*createTransData*/ createTransParticleVerts,
-    /*recalcData*/ recalcData_particles,
+    /*create_trans_data*/ createTransParticleVerts,
+    /*recalc_data*/ recalcData_particles,
     /*special_aftertrans_update*/ nullptr,
 };

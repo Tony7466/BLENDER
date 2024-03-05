@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
  * Sort a buffer of surfel list by distance along a direction.
@@ -106,8 +109,8 @@ void main()
 
   List unsorted_list = list_split_after(sorted_list, sorted_list.first);
 
-  /* Mutable foreach. */
-  for (int i = unsorted_list.first, next; i > -1; i = next) {
+  /* Mutable for-each. */
+  for (int i = unsorted_list.first, next = 0; i > -1; i = next) {
     next = surfel_buf[i].next;
 
     bool insert = false;
@@ -136,7 +139,7 @@ void main()
    * are not directly perpendicular to the surface. */
 
   /* Mutable foreach. */
-  for (int i = sorted_list.first, next; i > -1; i = next) {
+  for (int i = sorted_list.first, next = 0; i > -1; i = next) {
     next = surfel_buf[i].next;
 
     int valid_next = surfel_buf[i].next;

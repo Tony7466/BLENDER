@@ -10,34 +10,34 @@
 
 #include "DNA_armature_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
 #include "MEM_guardedalloc.h"
 
-#include "BLI_math.h"
-#include "BLI_string_utils.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
+#include "BLI_string_utils.hh"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
-#include "BKE_deform.h"
-#include "BKE_mesh.h"
-#include "BKE_mesh_iterators.h"
-#include "BKE_mesh_runtime.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_armature.hh"
+#include "BKE_attribute.hh"
+#include "BKE_deform.hh"
+#include "BKE_mesh_iterators.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_object_deform.h"
-#include "BKE_report.h"
-#include "BKE_subsurf.h"
+#include "BKE_report.hh"
+#include "BKE_subsurf.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "ED_armature.h"
-#include "ED_mesh.h"
+#include "ED_armature.hh"
+#include "ED_mesh.hh"
 
-#include "armature_intern.h"
+#include "ANIM_bone_collections.hh"
+
+#include "armature_intern.hh"
 #include "meshlaplacian.h"
 
 /* ******************************* Bone Skinning *********************************************** */
@@ -78,7 +78,8 @@ static int bone_skinnable_cb(Object * /*ob*/, Bone *bone, void *datap)
   if (!(data->is_weight_paint) || !(bone->flag & BONE_HIDDEN_P)) {
     if (!(bone->flag & BONE_NO_DEFORM)) {
       if (data->heat && data->armob->pose &&
-          BKE_pose_channel_find_name(data->armob->pose, bone->name)) {
+          BKE_pose_channel_find_name(data->armob->pose, bone->name))
+      {
         segments = bone->segments;
       }
       else {
@@ -152,14 +153,17 @@ static int dgroup_skinnable_cb(Object *ob, Bone *bone, void *datap)
   if (!data->is_weight_paint || !(bone->flag & BONE_HIDDEN_P)) {
     if (!(bone->flag & BONE_NO_DEFORM)) {
       if (data->heat && data->armob->pose &&
-          BKE_pose_channel_find_name(data->armob->pose, bone->name)) {
+          BKE_pose_channel_find_name(data->armob->pose, bone->name))
+      {
         segments = bone->segments;
       }
       else {
         segments = 1;
       }
 
-      if (!data->is_weight_paint || ((arm->layer & bone->layer) && (bone->flag & BONE_SELECTED))) {
+      if (!data->is_weight_paint ||
+          (ANIM_bone_in_visible_collection(arm, bone) && (bone->flag & BONE_SELECTED)))
+      {
         if (!(defgroup = BKE_object_defgroup_find_name(ob, bone->name))) {
           defgroup = BKE_object_defgroup_add_name(ob, bone->name);
         }
@@ -195,6 +199,7 @@ static void envelope_bone_weighting(Object *ob,
                                     const int *selected,
                                     float scale)
 {
+  using namespace blender;
   /* Create vertex group weights from envelopes */
 
   bool use_topology = (mesh->editflag & ME_EDIT_MIRROR_TOPO) != 0;
@@ -206,11 +211,11 @@ static void envelope_bone_weighting(Object *ob,
     use_mask = true;
   }
 
-  const bool *select_vert = (const bool *)CustomData_get_layer_named(
-      &mesh->vdata, CD_PROP_BOOL, ".select_vert");
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const VArray select_vert = *attributes.lookup<bool>(".select_vert", bke::AttrDomain::Point);
 
   /* for each vertex in the mesh */
-  for (int i = 0; i < mesh->totvert; i++) {
+  for (int i = 0; i < mesh->verts_num; i++) {
 
     if (use_mask && !(select_vert && select_vert[i])) {
       continue;
@@ -371,12 +376,12 @@ static void add_verts_to_dgroups(ReportList *reports,
       copy_v3_v3(tip[j], bone->arm_tail);
     }
 
-    mul_m4_v3(par->object_to_world, root[j]);
-    mul_m4_v3(par->object_to_world, tip[j]);
+    mul_m4_v3(par->object_to_world().ptr(), root[j]);
+    mul_m4_v3(par->object_to_world().ptr(), tip[j]);
 
     /* set selected */
     if (wpmode) {
-      if ((arm->layer & bone->layer) && (bone->flag & BONE_SELECTED)) {
+      if (ANIM_bone_in_visible_collection(arm, bone) && (bone->flag & BONE_SELECTED)) {
         selected[j] = 1;
       }
     }
@@ -396,14 +401,14 @@ static void add_verts_to_dgroups(ReportList *reports,
   /* create verts */
   mesh = (Mesh *)ob->data;
   verts = static_cast<float(*)[3]>(
-      MEM_callocN(mesh->totvert * sizeof(*verts), "closestboneverts"));
+      MEM_callocN(mesh->verts_num * sizeof(*verts), "closestboneverts"));
 
   if (wpmode) {
     /* if in weight paint mode, use final verts from evaluated mesh */
     const Object *ob_eval = DEG_get_evaluated_object(depsgraph, ob);
     const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
     if (me_eval) {
-      BKE_mesh_foreach_mapped_vert_coords_get(me_eval, verts, mesh->totvert);
+      BKE_mesh_foreach_mapped_vert_coords_get(me_eval, verts, mesh->verts_num);
       vertsfilled = 1;
     }
   }
@@ -416,12 +421,12 @@ static void add_verts_to_dgroups(ReportList *reports,
   }
 
   /* transform verts to global space */
-  const float(*positions)[3] = BKE_mesh_vert_positions(mesh);
-  for (int i = 0; i < mesh->totvert; i++) {
+  const blender::Span<blender::float3> positions = mesh->vert_positions();
+  for (int i = 0; i < mesh->verts_num; i++) {
     if (!vertsfilled) {
       copy_v3_v3(verts[i], positions[i]);
     }
-    mul_m4_v3(ob->object_to_world, verts[i]);
+    mul_m4_v3(ob->object_to_world().ptr(), verts[i]);
   }
 
   /* compute the weights based on gathered vertices and bones */
@@ -445,7 +450,7 @@ static void add_verts_to_dgroups(ReportList *reports,
                             root,
                             tip,
                             selected,
-                            mat4_to_scale(par->object_to_world));
+                            mat4_to_scale(par->object_to_world().ptr()));
   }
 
   /* only generated in some cases but can call anyway */

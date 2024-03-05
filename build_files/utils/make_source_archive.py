@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2021-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2021-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -8,6 +8,7 @@ import make_utils
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import Iterable, TextIO, Optional, Any, Union
 
@@ -176,9 +177,14 @@ def create_tarball(
     packages_dir: Optional[Path],
 ) -> None:
     print(f'Creating archive:            "{tarball}" ...', end="", flush=True)
-    command = ["tar"]
 
     # Requires GNU `tar`, since `--transform` is used.
+    if sys.platform == "darwin":
+        # Provided by `brew install gnu-tar`.
+        command = ["gtar"]
+    else:
+        command = ["tar"]
+
     if packages_dir:
         command += ["--transform", f"s,{packages_dir}/,packages/,g"]
 

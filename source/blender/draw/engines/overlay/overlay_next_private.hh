@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,9 +8,11 @@
 
 #pragma once
 
+#include "BLI_function_ref.hh"
+
 #include "DRW_gpu_wrapper.hh"
-#include "DRW_render.h"
-#include "UI_resources.h"
+#include "DRW_render.hh"
+#include "UI_resources.hh"
 #include "draw_manager.hh"
 #include "draw_pass.hh"
 #include "gpu_shader_create_info.hh"
@@ -97,7 +99,7 @@ class ShaderModule {
   using ShaderPtr = std::unique_ptr<GPUShader, ShaderDeleter>;
 
   /** Shared shader module across all engine instances. */
-  static ShaderModule *g_shader_modules[2 /*Selection Instance*/][2 /*Clipping Enabled*/];
+  static ShaderModule *g_shader_modules[2 /* Selection Instance. */][2 /* Clipping Enabled. */];
 
   const SelectionType selection_type_;
   /** TODO: Support clipping. This global state should be set by the overlay::Instance and switch
@@ -129,7 +131,7 @@ class ShaderModule {
   }
   ShaderPtr selectable_shader(const char *create_info_name);
   ShaderPtr selectable_shader(const char *create_info_name,
-                              std::function<void(gpu::shader::ShaderCreateInfo &info)> patch);
+                              FunctionRef<void(gpu::shader::ShaderCreateInfo &info)> patch);
 };
 
 struct Resources : public select::SelectMap {
@@ -256,7 +258,7 @@ template<typename InstanceDataT> struct ShapeInstanceBuf : private select::Selec
 
   void end_sync(PassSimple &pass, GPUBatch *shape)
   {
-    if (data_buf.size() == 0) {
+    if (data_buf.is_empty()) {
       return;
     }
     this->select_bind(pass);

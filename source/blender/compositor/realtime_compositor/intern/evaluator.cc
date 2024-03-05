@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -129,7 +129,8 @@ void Evaluator::map_node_operation_inputs_to_their_results(DNode node,
      * origin is the input socket itself or the input is connected to an unlinked input of a group
      * input node and the origin is the input of the group input node. So map the input to the
      * result of a newly created Input Single Value Operation. */
-    auto *input_operation = new InputSingleValueOperation(context_, DInputSocket(dorigin));
+    InputSingleValueOperation *input_operation = new InputSingleValueOperation(
+        context_, DInputSocket(dorigin));
     operation->map_input_to_result(input->identifier, &input_operation->get_result());
 
     operations_stream_.append(std::unique_ptr<InputSingleValueOperation>(input_operation));
@@ -141,7 +142,8 @@ void Evaluator::map_node_operation_inputs_to_their_results(DNode node,
 void Evaluator::compile_and_evaluate_shader_compile_unit(CompileState &compile_state)
 {
   ShaderCompileUnit &compile_unit = compile_state.get_shader_compile_unit();
-  ShaderOperation *operation = new ShaderOperation(context_, compile_unit);
+  const Schedule &schedule = compile_state.get_schedule();
+  ShaderOperation *operation = new ShaderOperation(context_, compile_unit, schedule);
 
   for (DNode node : compile_unit) {
     compile_state.map_node_to_shader_operation(node, operation);

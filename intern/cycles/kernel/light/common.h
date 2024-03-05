@@ -31,7 +31,7 @@ typedef struct LightSample {
 
 ccl_device_inline float3 ellipse_sample(float3 ru, float3 rv, float2 rand)
 {
-  const float2 uv = concentric_sample_disk(rand);
+  const float2 uv = sample_uniform_disk(rand);
   return ru * uv.x + rv * uv.y;
 }
 
@@ -49,7 +49,7 @@ ccl_device float3 disk_light_sample(float3 n, float2 rand)
   return ellipse_sample(ru, rv, rand);
 }
 
-ccl_device float lamp_light_pdf(const float3 Ng, const float3 I, float t)
+ccl_device float light_pdf_area_to_solid_angle(const float3 Ng, const float3 I, float t)
 {
   float cos_pi = dot(Ng, I);
 

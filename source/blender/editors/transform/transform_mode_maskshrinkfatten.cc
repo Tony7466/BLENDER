@@ -6,19 +6,18 @@
  * \ingroup edtransform
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.h"
-#include "BKE_unit.h"
+#include "BKE_unit.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -30,7 +29,7 @@
 /** \name Transform (Mask Shrink/Fatten)
  * \{ */
 
-static void applyMaskShrinkFatten(TransInfo *t, const int[2] /*mval*/)
+static void applyMaskShrinkFatten(TransInfo *t)
 {
   float ratio;
   int i;
@@ -50,10 +49,10 @@ static void applyMaskShrinkFatten(TransInfo *t, const int[2] /*mval*/)
     char c[NUM_STR_REP_LEN];
 
     outputNumInput(&(t->num), c, &t->scene->unit);
-    SNPRINTF(str, TIP_("Feather Shrink/Fatten: %s"), c);
+    SNPRINTF(str, IFACE_("Feather Shrink/Fatten: %s"), c);
   }
   else {
-    SNPRINTF(str, TIP_("Feather Shrink/Fatten: %3f"), ratio);
+    SNPRINTF(str, IFACE_("Feather Shrink/Fatten: %3f"), ratio);
   }
 
   /* detect if no points have feather yet */
@@ -99,7 +98,7 @@ static void applyMaskShrinkFatten(TransInfo *t, const int[2] /*mval*/)
     }
   }
 
-  recalcData(t);
+  recalc_data(t);
 
   ED_area_status_text(t->area, str);
 }

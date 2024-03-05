@@ -3,10 +3,15 @@ if "%GIT%" == "" (
 	goto EOF
 )
 cd "%BLENDER_DIR%"
+for /f "delims=" %%i in ('"%GIT%" rev-parse --abbrev-ref HEAD') do echo Branch_name=%%i
 for /f "delims=" %%i in ('"%GIT%" rev-parse HEAD') do echo Branch_hash=%%i
-cd "%BLENDER_DIR%/locale"
-for /f "delims=" %%i in ('"%GIT%" rev-parse HEAD') do echo Locale_hash=%%i
 cd "%BLENDER_DIR%/scripts/addons"
-for /f "delims=" %%i in ('"%GIT%" rev-parse HEAD') do echo Addons_Hash=%%i
+for /f "delims=" %%i in ('"%GIT%" rev-parse --abbrev-ref HEAD') do echo Addons_Branch_name=%%i
+for /f "delims=" %%i in ('"%GIT%" rev-parse HEAD') do echo Addons_Branch_hash=%%i
+
+cd "%BLENDER_DIR%/lib/windows_x64"
+for /f "delims=" %%i in ('"%GIT%" rev-parse --abbrev-ref HEAD') do echo Libs_Branch_name=%%i
+for /f "delims=" %%i in ('"%GIT%" rev-parse HEAD') do echo Libs_Branch_hash=%%i
+
 cd "%BLENDER_DIR%"
 :EOF
