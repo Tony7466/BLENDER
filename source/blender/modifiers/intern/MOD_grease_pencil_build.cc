@@ -147,7 +147,7 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
   selection.to_bools(select.as_mutable_span());
   Array<int> result(stroke_count);
   for (const int i : IndexRange(stroke_count)) {
-    const float local_factor = (select[i] ? get_stroke_factor(factor_to_keep, i) : 1.0f);
+    const float local_factor = select[i] ? get_stroke_factor(factor_to_keep, i) : 1.0f;
     const int points = points_by_curve[i].size() * local_factor;
     result[i] = points;
     if (clamp_points) {
@@ -206,50 +206,49 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
   const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
 
   bke::CurvesGeometry dst_curves(dst_points_num, dst_curves_num);
-  Array<int> dst_offsets(dst_curves_num + 1);
   Array<int> dst_to_src_point(dst_points_num);
+  MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
   dst_offsets[0] = 0;
 
-  int next_curve = 0, next_point = 0;
+  int next_curve = 0;
+  int next_point = 0;
   for (const int i : IndexRange(curves.curves_num())) {
-    if (points_per_curve[i]) {
-      dst_offsets[next_curve] = points_per_curve[i];
-      const int curve_size = points_by_curve[i].size();
-
-      auto get_fade_weight = [&](const int local_index) {
-        if (is_vanishing) {
-          return 1.0f - std::clamp(float(local_index - curve_size + ends_per_curve[i]) /
-                                       float(abs(ends_per_curve[i] - starts_per_curve[i])),
-                                   0.0f,
-                                   1.0f);
-        }
-        return std::clamp(float(local_index - starts_per_curve[i]) /
-                              float(abs(ends_per_curve[i] - starts_per_curve[i])),
-                          0.0f,
-                          1.0f);
-      };
-
-      const int extra_offset = is_vanishing ? points_by_curve[i].size() - points_per_curve[i] : 0;
-      for (const int stroke_point : IndexRange(points_per_curve[i])) {
-        if (stroke_point >= points_per_curve[i]) {
-          break;
-        }
-        const int src_point_index = points_by_curve[i].first() + extra_offset + stroke_point;
-        if (has_fade) {
-          const float fade_weight = get_fade_weight(extra_offset + stroke_point);
-          opacities[src_point_index] = opacities[src_point_index] *
-                                       (1.0f - fade_weight * factor_opacity);
-          radii[src_point_index] = radii[src_point_index] * (1.0f - fade_weight * factor_radii);
-          if (!weights.span.is_empty()) {
-            weights.span[src_point_index] = fade_weight;
-          }
-        }
-        dst_to_src_point[next_point] = src_point_index;
-        next_point++;
-      }
-
-      next_curve++;
+    if (!points_per_curve[i]) {
+      continue;
     }
+    dst_offsets[next_curve] = points_per_curve[i];
+    const int curve_size = points_by_curve[i].size();
+
+    auto get_fade_weight = [&](const int local_index) {
+      const float fade_range = std::abs(ends_per_curve[i] - starts_per_curve[i]);
+      if (is_vanishing) {
+        const float factor_from_start = local_index - curve_size + ends_per_curve[i];
+        return 1.0f - std::clamp(factor_from_start / fade_range, 0.0f, 1.0f);
+      }
+      const float factor_from_start = local_index - starts_per_curve[i];
+      return std::clamp(factor_from_start / fade_range, 0.0f, 1.0f);
+    };
+
+    const int extra_offset = is_vanishing ? points_by_curve[i].size() - points_per_curve[i] : 0;
+    for (const int stroke_point : IndexRange(points_per_curve[i])) {
+      if (stroke_point >= points_per_curve[i]) {
+        break;
+      }
+      const int src_point_index = points_by_curve[i].first() + extra_offset + stroke_point;
+      if (has_fade) {
+        const float fade_weight = get_fade_weight(extra_offset + stroke_point);
+        opacities[src_point_index] = opacities[src_point_index] *
+                                     (1.0f - fade_weight * factor_opacity);
+        radii[src_point_index] = radii[src_point_index] * (1.0f - fade_weight * factor_radii);
+        if (!weights.span.is_empty()) {
+          weights.span[src_point_index] = fade_weight;
+        }
+      }
+      dst_to_src_point[next_point] = src_point_index;
+      next_point++;
+    }
+
+    next_curve++;
   }
   weights.finish();
 
@@ -259,6 +258,7 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
   const bke::AttributeAccessor src_attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
+  copy_attributes(src_attributes, bke::AttrDomain::Curve, {}, {}, dst_attributes);
   gather_attributes(
       src_attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
 
@@ -274,7 +274,7 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
                                    int &r_points_num)
 {
   const int stroke_count = curves.curves_num();
-  const OffsetIndices<int> &points_by_curve = curves.points_by_curve();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
   float factor_to_keep = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW ? factor :
                                                                                  (1.0f - factor);
@@ -304,10 +304,8 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
     if (select[stroke] && counted_points_num >= effective_points_num) {
       continue;
     }
-    else {
-      counted_points_num += points_by_curve[stroke].size();
-      r_curves_num++;
-    }
+    counted_points_num += points_by_curve[stroke].size();
+    r_curves_num++;
   }
 }
 
@@ -427,33 +425,29 @@ static bke::CurvesGeometry reorder_strokes(const bke::CurvesGeometry &curves,
   const Span<float3> positions = curves.positions();
   const float3 center = object.object_to_world().location();
 
-  struct _Pair {
+  struct Pair {
     float value;
     int index;
     bool selected;
   };
 
-  Array<_Pair> distances(curves.curves_num());
-  threading::parallel_for(curves.curves_range(), 65536, [&](const IndexRange range) {
-    for (const int stroke : range) {
-      const float3 p1 = positions[points_by_curve[stroke].first()];
-      const float3 p2 = positions[points_by_curve[stroke].last()];
-      distances[stroke].value = math::max(math::distance(p1, center), math::distance(p2, center));
-      distances[stroke].index = stroke;
-      distances[stroke].selected = select[stroke];
-    }
-  });
+  Array<Pair> distances(curves.curves_num());
+  for (const int stroke : curves.curves_range()) {
+    const float3 p1 = positions[points_by_curve[stroke].first()];
+    const float3 p2 = positions[points_by_curve[stroke].last()];
+    distances[stroke].value = math::max(math::distance(p1, center), math::distance(p2, center));
+    distances[stroke].index = stroke;
+    distances[stroke].selected = select[stroke];
+  }
 
   parallel_sort(
-      distances.begin(), distances.end(), [](_Pair &a, _Pair &b) { return a.value < b.value; });
+      distances.begin(), distances.end(), [](Pair &a, Pair &b) { return a.value < b.value; });
 
   Array<int> new_order(curves.curves_num());
-  threading::parallel_for(curves.curves_range(), 65536, [&](const IndexRange range) {
-    for (const int i : range) {
-      new_order[i] = distances[i].index;
-      r_selection[i] = distances[i].selected;
-    }
-  });
+  for (const int i : curves.curves_range()) {
+    new_order[i] = distances[i].index;
+    r_selection[i] = distances[i].selected;
+  }
 
   return geometry::reorder_curves_geometry(curves, new_order.as_span(), {});
 }
