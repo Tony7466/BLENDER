@@ -242,6 +242,12 @@ static bool lineart_do_closest_segment(bool is_persp,
 {
   int side = 0;
   int z_index = is_persp ? 3 : 2;
+
+  /* No need to do anything if the segment has no length. */
+  if (s2_fb_co_1[z_index] == s2_fb_co_2[z_index]) {
+    return false;
+  }
+
   /* Always use the closest point to the light camera. */
   if (s1_fb_co_1[z_index] >= s2_fb_co_1[z_index]) {
     copy_v4_v4_db(r_fb_co_1, s2_fb_co_1);
