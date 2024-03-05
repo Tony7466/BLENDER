@@ -455,7 +455,7 @@ bool BKE_animsys_write_to_rna_path(PathResolvedRNA *anim_rna, const float value)
   int array_index = anim_rna->prop_index;
 
   /* caller must ensure this is animatable */
-  BLI_assert(RNA_property_animateable(ptr, prop) || ptr->owner_id == nullptr);
+  BLI_assert(RNA_property_anim_editable(ptr, prop) || ptr->owner_id == nullptr);
 
   /* Check whether value is new. Otherwise we skip all the updates. */
   float old_value;
