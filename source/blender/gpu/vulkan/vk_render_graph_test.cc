@@ -113,7 +113,20 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                    const VkBufferCopy *p_regions) override
   {
     UNUSED_VARS(src_buffer, dst_buffer, region_count, p_regions);
-    BLI_assert_unreachable();
+    std::stringstream ss;
+    ss << "copy_buffer(";
+    ss << "src_buffer=" << src_buffer;
+    ss << ", dst_buffer=" << dst_buffer;
+    ss << "\n";
+    for (const VkBufferCopy &region : Span<const VkBufferCopy>(p_regions, region_count)) {
+      ss << " - region(";
+      ss << "src_offset=" << region.srcOffset;
+      ss << ", dst_offset=" << region.dstOffset;
+      ss << ", size=" << region.size;
+      ss << ")\n";
+    }
+    ss << ")";
+    log_.append(ss.str());
   }
 
   void copy_image(VkImage src_image,
@@ -299,7 +312,6 @@ TEST(vk_render_graph, fill_and_read_back)
   VkHandle<VkBuffer> buffer(1u);
 
   Vector<std::string> log;
-  CommandBufferLog l(log);
   VKCommandBufferWrapper wrapper;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
                              std::make_unique<Sequential>());
@@ -320,23 +332,31 @@ TEST(vk_render_graph, fill_transfer_and_read_back)
   VkHandle<VkBuffer> staging_buffer(2u);
 
   Vector<std::string> log;
-  CommandBufferLog l(log);
   VKCommandBufferWrapper wrapper;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
                              std::make_unique<Sequential>());
   render_graph.add_buffer(buffer);
   render_graph.add_fill_buffer_node(buffer, 1024, 42);
   render_graph.add_buffer(staging_buffer);
- // render_graph.add_copy_buffer_node(buffer, staging_buffer);
+  VkBufferCopy region = {};
+  region.srcOffset = 0;
+  region.dstOffset = 0;
+  region.size = 1024;
+  render_graph.add_copy_buffer_node(buffer, staging_buffer, region);
   render_graph.submit_buffer_for_read_back(staging_buffer);
 
-  EXPECT_EQ(1, log.size());
-  /*
-  EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=0)", log[0]);
-  EXPECT_EQ("pipeline barrier (wait for completion of fill buffer, before we can perform a copy)",
-            log[1]);
-  EXPECT_EQ("copy from buffer to staging buffer", log[2]);
-  */
+  EXPECT_EQ(3, log.size());
+  EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=42)", log[0]);
+  EXPECT_EQ(
+      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
+      " - buffer_barrier(buffer=0x1, src_access_mask=4096, dst_access_mask=4096)\n"
+      ")",
+      log[1]);
+  EXPECT_EQ(
+      "copy_buffer(src_buffer=0x1, dst_buffer=0x2\n"
+      " - region(src_offset=0, dst_offset=0, size=1024)\n"
+      ")",
+      log[2]);
 }
 
 /**
@@ -349,7 +369,6 @@ TEST(vk_render_graph, fill_fill_read_back)
   VkHandle<VkBuffer> buffer(1u);
 
   Vector<std::string> log;
-  CommandBufferLog l(log);
   VKCommandBufferWrapper wrapper;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
                              std::make_unique<Sequential>());
@@ -373,7 +392,6 @@ TEST(vk_render_graph, transfer_and_present)
   VkHandle<VkImage> back_buffer(1u);
 
   Vector<std::string> log;
-  CommandBufferLog l(log);
   VKCommandBufferWrapper wrapper;
   VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
                              std::make_unique<Sequential>());

@@ -43,6 +43,22 @@ NodeHandle VKRenderGraphNodes::add_fill_buffer_node(VkBuffer vk_buffer,
   return handle;
 }
 
+NodeHandle VKRenderGraphNodes::add_copy_buffer_node(VkBuffer src_buffer,
+                                                    VkBuffer dst_buffer,
+                                                    const VkBufferCopy &region)
+{
+  NodeHandle handle = allocate();
+  Node &node = nodes_.get(handle);
+  BLI_assert(node.type == Node::Type::UNUSED);
+
+  node.type = Node::Type::COPY_BUFFER;
+  node.copy_buffer.src_buffer = src_buffer;
+  node.copy_buffer.dst_buffer = dst_buffer;
+  node.copy_buffer.region = region;
+
+  return handle;
+}
+
 void VKRenderGraphNodes::add_read_resource(NodeHandle handle, VersionedResource resource_handle)
 {
   read_resources_per_node_[handle].append(resource_handle);

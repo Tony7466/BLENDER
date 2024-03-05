@@ -108,12 +108,20 @@ class VKRenderGraphResources {
    * Return the current version of the resource, and increase the version.
    */
   VersionedResource get_buffer_and_increase_version(VkBuffer vk_buffer);
+  /**
+   * Return the current version of the resource.
+   */
+  VersionedResource get_buffer(VkBuffer vk_buffer) const;
   ResourceHandle get_image_handle(VkImage vk_image) const;
   ResourceHandle get_buffer_handle(VkBuffer vk_buffer) const;
 
   friend class VKRenderGraphCommandBuilder;
 
  private:
+  /**
+   * Get the current version of the resource.
+   */
+  static VersionedResource get_version(ResourceHandle handle, const Resource &resource);
   /**
    * Get the current version of the resource and increase the version.
    */

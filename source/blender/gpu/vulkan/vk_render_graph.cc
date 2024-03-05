@@ -45,6 +45,7 @@ void VKRenderGraph::add_clear_image_node(VkImage vk_image,
   std::scoped_lock lock(mutex_);
   NodeHandle handle = nodes_.add_clear_image_node(
       vk_image, vk_clear_color_value, vk_image_subresource_range);
+
   VersionedResource resource = resources_.get_image_and_increase_version(vk_image);
   nodes_.add_write_resource(handle, resource);
 }
@@ -53,8 +54,22 @@ void VKRenderGraph::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, 
 {
   std::scoped_lock lock(mutex_);
   NodeHandle handle = nodes_.add_fill_buffer_node(vk_buffer, size, data);
+
   VersionedResource resource = resources_.get_buffer_and_increase_version(vk_buffer);
   nodes_.add_write_resource(handle, resource);
+}
+
+void VKRenderGraph::add_copy_buffer_node(VkBuffer src_buffer,
+                                         VkBuffer dst_buffer,
+                                         const VkBufferCopy &region)
+{
+  std::scoped_lock lock(mutex_);
+  NodeHandle handle = nodes_.add_copy_buffer_node(src_buffer, dst_buffer, region);
+
+  VersionedResource src_resource = resources_.get_buffer(src_buffer);
+  VersionedResource dst_resource = resources_.get_buffer_and_increase_version(dst_buffer);
+  nodes_.add_read_resource(handle, src_resource);
+  nodes_.add_write_resource(handle, dst_resource);
 }
 
 /* -------------------------------------------------------------------- */

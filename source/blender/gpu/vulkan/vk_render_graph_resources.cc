@@ -61,12 +61,19 @@ ResourceHandle VKRenderGraphResources::get_buffer_handle(VkBuffer vk_buffer) con
   return buffer_resources_.lookup(vk_buffer);
 }
 
-VersionedResource VKRenderGraphResources::get_and_increase_version(ResourceHandle handle,
-                                                                   Resource &resource)
+VersionedResource VKRenderGraphResources::get_version(ResourceHandle handle,
+                                                      const Resource &resource)
 {
   VersionedResource result;
   result.handle = handle;
   result.version = resource.graph_version;
+  return result;
+}
+
+VersionedResource VKRenderGraphResources::get_and_increase_version(ResourceHandle handle,
+                                                                   Resource &resource)
+{
+  VersionedResource result = get_version(handle, resource);
   resource.graph_version += 1;
   return result;
 }
@@ -83,6 +90,13 @@ VersionedResource VKRenderGraphResources::get_buffer_and_increase_version(VkBuff
   ResourceHandle handle = get_buffer_handle(vk_buffer);
   Resource &resource = resources_.get(handle);
   return get_and_increase_version(handle, resource);
+}
+
+VersionedResource VKRenderGraphResources::get_buffer(VkBuffer vk_buffer) const
+{
+  ResourceHandle handle = get_buffer_handle(vk_buffer);
+  const Resource &resource = resources_.get(handle);
+  return get_version(handle, resource);
 }
 
 }  // namespace blender::gpu

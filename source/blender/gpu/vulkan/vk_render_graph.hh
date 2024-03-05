@@ -64,6 +64,7 @@ class VKRenderGraph {
                             VkClearColorValue &vk_clear_color_value,
                             VkImageSubresourceRange &vk_image_subresource_range);
   void add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data_);
+  void add_copy_buffer_node(VkBuffer src_buffer, VkBuffer dst_buffer, const VkBufferCopy &region);
 
   /**
    * Submit the commands to readback the given vk_buffer to the command queue.

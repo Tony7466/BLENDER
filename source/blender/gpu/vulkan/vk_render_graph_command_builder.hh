@@ -56,13 +56,16 @@ class VKRenderGraphCommandBuilder {
  private:
   void build_node(VKRenderGraph &render_graph,
                   NodeHandle node_handle,
-                  VKRenderGraphNodes::Node &node);
+                  const VKRenderGraphNodes::Node &node);
   void build_node_clear_color_image(VKRenderGraph &render_graph,
                                     NodeHandle node_handle,
-                                    VKRenderGraphNodes::Node &node);
+                                    const VKRenderGraphNodes::Node &node);
   void build_node_fill_buffer(VKRenderGraph &render_graph,
                               NodeHandle node_handle,
-                              VKRenderGraphNodes::Node &node);
+                              const VKRenderGraphNodes::Node &node);
+  void build_node_copy_buffer(VKRenderGraph &render_graph,
+                              NodeHandle node_handle,
+                              const VKRenderGraphNodes::Node &node);
 
   void add_buffer_barriers(VKRenderGraph &render_graph,
                            NodeHandle node_handle,

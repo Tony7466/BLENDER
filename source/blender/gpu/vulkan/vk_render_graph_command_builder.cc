@@ -72,7 +72,7 @@ void VKRenderGraphCommandBuilder::build_buffer(VKRenderGraph &render_graph, VkBu
 
 void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
                                              NodeHandle node_handle,
-                                             VKRenderGraphNodes::Node &node)
+                                             const VKRenderGraphNodes::Node &node)
 {
   switch (node.type) {
     case VKRenderGraphNodes::Node::Type::UNUSED: {
@@ -89,15 +89,19 @@ void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
       break;
     }
 
+    case VKRenderGraphNodes::Node::Type::COPY_BUFFER: {
+      build_node_copy_buffer(render_graph, node_handle, node);
+      break;
+    }
+
     default:
       BLI_assert_unreachable();
       break;
   }
 }
 
-void VKRenderGraphCommandBuilder::build_node_clear_color_image(VKRenderGraph &render_graph,
-                                                               NodeHandle node_handle,
-                                                               VKRenderGraphNodes::Node &node)
+void VKRenderGraphCommandBuilder::build_node_clear_color_image(
+    VKRenderGraph &render_graph, NodeHandle node_handle, const VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::CLEAR_COLOR_IMAGE);
   const VkImageLayout vk_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -113,15 +117,22 @@ void VKRenderGraphCommandBuilder::build_node_clear_color_image(VKRenderGraph &re
 
 void VKRenderGraphCommandBuilder::build_node_fill_buffer(VKRenderGraph &render_graph,
                                                          NodeHandle node_handle,
-                                                         VKRenderGraphNodes::Node &node)
+                                                         const VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::FILL_BUFFER);
   add_buffer_barriers(render_graph, node_handle, VK_ACCESS_TRANSFER_WRITE_BIT);
-  ResourceHandle buffer_handle = render_graph.resources_.get_buffer_handle(
-      node.fill_buffer.vk_buffer);
-
   render_graph.command_buffer_->fill_buffer(
       node.fill_buffer.vk_buffer, 0, node.fill_buffer.size, node.fill_buffer.data);
+}
+
+void VKRenderGraphCommandBuilder::build_node_copy_buffer(VKRenderGraph &render_graph,
+                                                         NodeHandle node_handle,
+                                                         const VKRenderGraphNodes::Node &node)
+{
+  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::COPY_BUFFER);
+  add_buffer_barriers(render_graph, node_handle, VK_ACCESS_TRANSFER_WRITE_BIT);
+  render_graph.command_buffer_->copy_buffer(
+      node.copy_buffer.src_buffer, node.copy_buffer.dst_buffer, 1, &node.copy_buffer.region);
 }
 
 void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_graph,
@@ -209,8 +220,6 @@ void VKRenderGraphCommandBuilder::add_buffer_write_barriers(VKRenderGraph &rende
                                                             NodeHandle node_handle,
                                                             VkAccessFlags new_write_access)
 {
-  vk_buffer_memory_barriers_.clear();
-
   for (VersionedResource versioned_resource : render_graph.nodes_.get_write_resources(node_handle))
   {
     const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(

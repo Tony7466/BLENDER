@@ -27,6 +27,7 @@ class VKRenderGraphNodes {
       UNUSED,
       CLEAR_COLOR_IMAGE,
       FILL_BUFFER,
+      COPY_BUFFER,
     };
 
     Type type;
@@ -42,6 +43,12 @@ class VKRenderGraphNodes {
         VkDeviceSize size;
         uint32_t data;
       } fill_buffer;
+
+      struct {
+        VkBuffer src_buffer;
+        VkBuffer dst_buffer;
+        VkBufferCopy region;
+      } copy_buffer;
     };
   };
 
@@ -55,6 +62,7 @@ class VKRenderGraphNodes {
                                   VkClearColorValue &vk_clear_color_value,
                                   VkImageSubresourceRange &vk_image_subresource_range);
   NodeHandle add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data);
+  NodeHandle add_copy_buffer_node(VkBuffer src_buffer, VkBuffer dst_buffer, const VkBufferCopy &region);
 
   void add_read_resource(NodeHandle handle, VersionedResource resource_handle);
   void add_write_resource(NodeHandle handle, VersionedResource resource_handle);
