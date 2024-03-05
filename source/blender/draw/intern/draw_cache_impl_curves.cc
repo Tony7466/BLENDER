@@ -305,6 +305,9 @@ static void curves_batch_cache_ensure_edit_points_pos(
   MutableSpan<float3> right_handles(
       pos_buffer_data + deformed_positions.size() + bezier_point_count, bezier_point_count);
 
+  MutableSpan<uint32_t> handle_data(data_buffer_data + deformed_positions.size(),
+                                    2 * bezier_point_count);
+
   const Span<float3> left_handle_positions = curves.handle_positions_left();
   const Span<float3> right_handle_positions = curves.handle_positions_right();
   const VArray<int8_t> left_handle_types = curves.handle_types_left();
@@ -327,14 +330,16 @@ static void curves_batch_cache_ensure_edit_points_pos(
       const Span<float3> curve_right_handles = right_handle_positions.slice(curve_points);
       right_handles.slice(handle_offset, curve_points.size()).copy_from(curve_right_handles);
 
+      MutableSpan<uint32_t> data_left = handle_data.slice(handle_offset, curve_points.size());
+      MutableSpan<uint32_t> data_right = handle_data.slice(handle_offset + bezier_point_count,
+                                                           curve_points.size());
+
       for (const int point : curve_points) {
         const int point_in_curve = point - curve_points.start();
 
         data_span[point] = data_value(left_handle_types[point], right_handle_types[point]);
-        data_span[curves.points_num() + handle_offset + point_in_curve] = data_value(
-            left_handle_types[point]);
-        data_span[curves.points_num() + handle_offset + bezier_point_count + point_in_curve] =
-            data_value(right_handle_types[point]);
+        data_left[point_in_curve] = data_value(left_handle_types[point]);
+        data_right[point_in_curve] = data_value(right_handle_types[point]);
       }
       handle_offset += curve_left_handles.size();
     }
@@ -371,17 +376,19 @@ static void curves_batch_cache_ensure_edit_points_selection(const bke::CurvesGeo
       ".selection_handle_right", bke::AttrDomain::Point, 0.0f);
 
   int left_handle_offset = curves.points_num();
+  int right_handle_offset = curves.points_num() + bezier_point_count;
 
   for (const int curve : curves.curves_range()) {
     IndexRange curve_points = points_by_curve[curve];
     if (curve_types[curve] == CURVE_TYPE_BEZIER) {
+      /** Subtracting curve_points.start() is needed because data is written on at the offset of
+       * curve_points.start() of destination. */
       attribute_left.materialize(
           curve_points,
           data.slice(left_handle_offset - curve_points.start(), curve_points.size()));
       attribute_right.materialize(
           curve_points,
-          data.slice(left_handle_offset + bezier_point_count - curve_points.start(),
-                     curve_points.size()));
+          data.slice(right_handle_offset - curve_points.start(), curve_points.size()));
       left_handle_offset += curve_points.size();
     }
   }
@@ -885,7 +892,8 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
 
   int bezier_curve_count;
   int bezier_point_count;
-  bke::curves::count_curve_type(curves_orig, CURVE_TYPE_BEZIER, bezier_curve_count, bezier_point_count);
+  bke::curves::count_curve_type(
+      curves_orig, CURVE_TYPE_BEZIER, bezier_curve_count, bezier_point_count);
 
   if (DRW_batch_requested(cache.edit_points, GPU_PRIM_POINTS)) {
     DRW_vbo_request(cache.edit_points, &cache.edit_points_pos);
@@ -900,7 +908,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
   }
   if (DRW_vbo_requested(cache.edit_points_pos)) {
     const bke::crazyspace::GeometryDeformation deformation =
-    bke::crazyspace::get_evaluated_curves_deformation(ob, *ob_orig);
+        bke::crazyspace::get_evaluated_curves_deformation(ob, *ob_orig);
     curves_batch_cache_ensure_edit_points_pos(curves_orig, bezier_point_count, deformation, cache);
   }
   if (DRW_vbo_requested(cache.edit_points_selection)) {
