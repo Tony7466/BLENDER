@@ -115,7 +115,7 @@ ccl_device_forceinline float ray_triangle_rcp(const float x)
 #ifdef __KERNEL_NEON__
   /* Move scalar to vector register and do rcp. */
   __m128 a = {0};
-  vsetq_lane_f32(x, a, 0);
+  a = vsetq_lane_f32(x, a, 0);
   float32x4_t reciprocal = vrecpeq_f32(a);
   reciprocal = vmulq_f32(vrecpsq_f32(a, reciprocal), reciprocal);
   reciprocal = vmulq_f32(vrecpsq_f32(a, reciprocal), reciprocal);
