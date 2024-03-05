@@ -132,6 +132,53 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
   DEG_add_depends_on_transform_relation(ctx->node, "Grease Pencil Shrinkwrap Modifier");
 }
 
+void shrinkwrapGreasePencilModifier_deform(const GreasePencilShrinkwrapModifierData &smd,
+                                           const Object &ob,
+                                           const blender::Span<MDeformVert> dvert,
+                                           const int defgrp_index,
+                                           blender::MutableSpan<blender::float3> vertex_cos)
+{
+  ShrinkwrapCalcData calc = NULL_ShrinkwrapCalcData;
+  /* Convert gpencil struct to use the same struct and function used with meshes. */
+  ShrinkwrapModifierData smd;
+  smd.target = mmd->target;
+  smd.auxTarget = mmd->aux_target;
+  smd.keepDist = mmd->keep_dist;
+  smd.shrinkType = mmd->shrink_type;
+  smd.shrinkOpts = mmd->shrink_opts;
+  smd.shrinkMode = mmd->shrink_mode;
+  smd.projLimit = mmd->proj_limit;
+  smd.projAxis = mmd->proj_axis;
+
+  /* Configure Shrinkwrap calc data. */
+  calc.smd = &smd;
+  calc.ob = ob;
+  calc.numVerts = numVerts;
+  calc.vertexCos = vertexCos;
+  calc.dvert = dvert;
+  calc.vgroup = defgrp_index;
+  calc.invert_vgroup = (mmd->flag & GP_SHRINKWRAP_INVERT_VGROUP) != 0;
+
+  BLI_SPACE_TRANSFORM_SETUP(&calc.local2target, ob, mmd->target);
+  calc.keepDist = mmd->keep_dist;
+  calc.tree = mmd->cache_data;
+
+  switch (mmd->shrink_type) {
+    case MOD_SHRINKWRAP_NEAREST_SURFACE:
+    case MOD_SHRINKWRAP_TARGET_PROJECT:
+      TIMEIT_BENCH(shrinkwrap_calc_nearest_surface_point(&calc), gpdeform_surface);
+      break;
+
+    case MOD_SHRINKWRAP_PROJECT:
+      TIMEIT_BENCH(shrinkwrap_calc_normal_projection(&calc), gpdeform_project);
+      break;
+
+    case MOD_SHRINKWRAP_NEAREST_VERTEX:
+      TIMEIT_BENCH(shrinkwrap_calc_nearest_vertex(&calc), gpdeform_vertex);
+      break;
+  }
+}
+
 static void modify_drawing(const GreasePencilShrinkwrapModifierData &smd,
                            const ModifierEvalContext &ctx,
                            bke::greasepencil::Drawing &drawing)
