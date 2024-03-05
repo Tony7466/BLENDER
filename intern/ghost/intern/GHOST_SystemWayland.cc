@@ -7478,16 +7478,57 @@ void GHOST_SystemWayland::putClipboard(const char *buffer, bool selection) const
 
 GHOST_TSuccess GHOST_SystemWayland::hasClipboardImage(void) const
 {
+  // TODO
   return GHOST_kSuccess;
 }
 
 uint *GHOST_SystemWayland::getClipboardImage(int *r_width, int *r_height) const
 {
+  // TODO
   return nullptr;
 }
 
 GHOST_TSuccess GHOST_SystemWayland::putClipboardImage(uint *rgba, int width, int height) const
 {
+  // Create a wl_data_source object
+  GWL_Seat *seat = gwl_display_seat_active_get(display_);
+  if (UNLIKELY(!seat)) {
+    return GHOST_kFailure;
+  }
+  std::lock_guard lock(seat->data_source_mutex);
+
+  GWL_DataSource *data_source = seat->data_source;
+
+  /* Load buffer into an ImBuf and convert to PNG */
+  ImBuf *ibuf = IMB_allocFromBuffer(reinterpret_cast<uint8_t *>(rgba), nullptr, width, height, 32);
+  ibuf->ftype = IMB_FTYPE_PNG;
+  ibuf->foptions.quality = 15;
+  if (!IMB_saveiff(ibuf, "<memory>", IB_rect | IB_mem)) {
+    IMB_freeImBuf(ibuf);
+    return GHOST_kFailure;
+  }
+
+  /* Copy ImBuf encoded_buffer to data source */
+  GWL_SimpleBuffer *imgbuffer = &data_source->buffer_out;
+  gwl_simple_buffer_free_data(imgbuffer);
+  imgbuffer->data_size = ibuf->encoded_buffer_size;
+  uint8_t *data = static_cast<uint8_t *>(malloc(imgbuffer->data_size));
+  std::memcpy(data, ibuf->encoded_buffer.data, ibuf->encoded_buffer_size);
+
+  // Advertise the mime types supported with wl_data_source.offer
+  data_source->wl.source =
+    wl_data_device_manager_create_data_source(display_->wl.data_device_manager);
+  wl_data_source_add_listener(data_source->wl.source, &data_source_listener, seat);
+
+  wl_data_source_offer(data_source->wl.source, "image/png");
+
+  if (seat->wl.data_device) {
+    wl_data_device_set_selection(
+      seat->wl.data_device, data_source->wl.source, seat->data_source_serial);
+  }
+
+  // Generate a wl_data_source.send event, and write the data to the given file descriptor.
+  IMB_freeImBuf(ibuf);
   return GHOST_kSuccess;
 }
 
