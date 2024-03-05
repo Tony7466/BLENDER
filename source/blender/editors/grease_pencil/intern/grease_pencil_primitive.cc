@@ -1308,7 +1308,7 @@ static void grease_pencil_primitive_common_props(wmOperatorType *ot,
                       "Whether the interpolation happens in 2D view space or in 3D world space");
 }
 
-void GREASE_PENCIL_OT_primitive_line(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_primitive_line(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Grease Pencil Line Shape";
@@ -1319,7 +1319,7 @@ void GREASE_PENCIL_OT_primitive_line(wmOperatorType *ot)
   grease_pencil_primitive_common_props(ot, 6, PrimitiveType::LINE);
 }
 
-void GREASE_PENCIL_OT_primitive_polyline(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_primitive_polyline(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Grease Pencil Polyline Shape";
@@ -1330,7 +1330,7 @@ void GREASE_PENCIL_OT_primitive_polyline(wmOperatorType *ot)
   grease_pencil_primitive_common_props(ot, 6, PrimitiveType::POLYLINE);
 }
 
-void GREASE_PENCIL_OT_primitive_arc(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_primitive_arc(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Grease Pencil Arc Shape";
@@ -1341,7 +1341,7 @@ void GREASE_PENCIL_OT_primitive_arc(wmOperatorType *ot)
   grease_pencil_primitive_common_props(ot, 62, PrimitiveType::ARC);
 }
 
-void GREASE_PENCIL_OT_primitive_curve(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_primitive_curve(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Grease Pencil Curve Shape";
@@ -1352,7 +1352,7 @@ void GREASE_PENCIL_OT_primitive_curve(wmOperatorType *ot)
   grease_pencil_primitive_common_props(ot, 62, PrimitiveType::CURVE);
 }
 
-void GREASE_PENCIL_OT_primitive_box(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_primitive_box(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Grease Pencil Box Shape";
@@ -1363,7 +1363,7 @@ void GREASE_PENCIL_OT_primitive_box(wmOperatorType *ot)
   grease_pencil_primitive_common_props(ot, 3, PrimitiveType::BOX);
 }
 
-void GREASE_PENCIL_OT_primitive_circle(wmOperatorType *ot)
+static void GREASE_PENCIL_OT_primitive_circle(wmOperatorType *ot)
 {
   /* Identifiers. */
   ot->name = "Grease Pencil Circle Shape";
