@@ -75,6 +75,7 @@ void VKRenderGraphNodes::remove_nodes(Span<NodeHandle> node_handles)
     read_resources_per_node_[node_handle].clear();
     write_resources_per_node_[node_handle].clear();
     mark_unused(get(node_handle));
+    nodes_.free(node_handle);
   }
 }
 

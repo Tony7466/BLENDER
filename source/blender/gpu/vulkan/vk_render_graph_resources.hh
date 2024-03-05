@@ -63,12 +63,7 @@ class VKRenderGraphResources {
     /**
      * Current version of the resource in the graph.
      */
-    ResourceVersion graph_version = 0;
-
-    /**
-     * Last version of the resource that has been submitted to the queued.
-     */
-    ResourceVersion queue_version = 0;
+    ResourceVersion version = 0;
 
     /** Who owns the resource. */
     ResourceOwner owner = ResourceOwner::APPLICATION;

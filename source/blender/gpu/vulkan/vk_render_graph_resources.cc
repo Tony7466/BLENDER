@@ -30,8 +30,7 @@ void VKRenderGraphResources::add_image(VkImage vk_image,
   resource.vk_buffer = VK_NULL_HANDLE;
   resource.vk_image = vk_image;
   resource.vk_image_layout = vk_image_layout;
-  resource.graph_version = 0;
-  resource.queue_version = 0;
+  resource.version = 0;
 }
 
 void VKRenderGraphResources::add_buffer(VkBuffer vk_buffer)
@@ -46,8 +45,7 @@ void VKRenderGraphResources::add_buffer(VkBuffer vk_buffer)
   resource.vk_buffer = vk_buffer;
   resource.vk_image = VK_NULL_HANDLE;
   resource.vk_image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
-  resource.queue_version = 0;
-  resource.graph_version = 0;
+  resource.version = 0;
 }
 
 /** \} */
@@ -66,7 +64,7 @@ VersionedResource VKRenderGraphResources::get_version(ResourceHandle handle,
 {
   VersionedResource result;
   result.handle = handle;
-  result.version = resource.graph_version;
+  result.version = resource.version;
   return result;
 }
 
@@ -74,7 +72,7 @@ VersionedResource VKRenderGraphResources::get_and_increase_version(ResourceHandl
                                                                    Resource &resource)
 {
   VersionedResource result = get_version(handle, resource);
-  resource.graph_version += 1;
+  resource.version += 1;
   return result;
 }
 
