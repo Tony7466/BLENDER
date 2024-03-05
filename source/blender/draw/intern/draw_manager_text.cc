@@ -680,15 +680,17 @@ static void overlay_edit_uv_display_vert_id(const BMEditMesh *em,
                                             const BMUVOffsets &offsets,
                                             DRWTextStore *dt)
 {
-  BMVert *vert = nullptr;
-  BMLoop *loop = nullptr;
-  BMIter it_vert, it_loop;
+  BMVert *vert;
+  BMIter it_vert;
   const uchar col[4] = {0, 0, 255, 255};
-  int vi = 0, li = 0;
+  int vi = 0;
   BM_ITER_MESH_INDEX (vert, &it_vert, em->bm, BM_VERTS_OF_MESH, vi) {
     if (!BM_elem_flag_test(vert, BM_ELEM_SELECT)) {
       continue;
     }
+    BMLoop *loop;
+    BMIter it_loop;
+    int li = 0;
     BM_ITER_ELEM_INDEX (loop, &it_loop, vert, BM_LOOPS_OF_VERT, li) {
       float2 f_uv = BM_ELEM_CD_GET_FLOAT2_P(loop, offsets.uv);
       float uv[2] = {f_uv.x, f_uv.y};
@@ -703,32 +705,25 @@ static void overlay_edit_uv_display_edge_id(const BMEditMesh *em,
                                             const BMUVOffsets &offsets,
                                             DRWTextStore *dt)
 {
-  BMLoop *loop = nullptr;
-  BMFace *face = nullptr;
-  BMIter it_loop, it_face;
+  BMEdge *edge;
+  BMIter it_edge;
+  int ei = 0;
   const uchar col[4] = {0, 0, 255, 255};
-  BM_ITER_MESH (face, &it_face, em->bm, BM_FACES_OF_MESH) {
-    float2 prev, first;
-    bool skip = true;
-    BM_ITER_ELEM (loop, &it_loop, face, BM_LOOPS_OF_FACE) {
-      if (!BM_elem_flag_test(loop->prev->e, BM_ELEM_SELECT)) {
-        continue;
-      }
-      /* Needed for computing the first edge*/
-      if (skip) {
-        prev = BM_ELEM_CD_GET_FLOAT2_P(loop->prev, offsets.uv);
-        first = prev;
-        skip = false;
-      }
-      float2 p = BM_ELEM_CD_GET_FLOAT2_P(loop, offsets.uv);
-      float v1[2] = {p.x, p.y};
-      float v2[2] = {prev.x, prev.y};
+  BM_ITER_MESH_INDEX (edge, &it_edge, em->bm, BM_EDGES_OF_MESH, ei) {
+    if (!BM_elem_flag_test(edge, BM_ELEM_SELECT)) {
+      continue;
+    }
+    BMLoop *loop;
+    BMIter it_loop;
+    BM_ITER_ELEM (loop, &it_loop, edge, BM_LOOPS_OF_EDGE) {
+      float2 v1 = BM_ELEM_CD_GET_FLOAT2_P(loop, offsets.uv);
+      float2 v2 = BM_ELEM_CD_GET_FLOAT2_P(loop->next, offsets.uv);
+      float uv1[2] = {v1.x, v1.y};
+      float uv2[2] = {v2.x, v2.y};
       float uv[2];
-      mid_v2_v2v2(uv, v1, v2);
-      prev = p;
-      int edge_index = BM_elem_index_get(loop->prev->e);
+      mid_v2_v2v2(uv, uv1, uv2);
       char numstr[32];
-      int numstr_len = SNPRINTF_RLEN(numstr, "%d", edge_index);
+      int numstr_len = SNPRINTF_RLEN(numstr, "%d", ei);
       DRW_text_cache_add(dt, uv, numstr, numstr_len, 0, 0, DRW_TEXT_CACHE_GLOBALSPACE, col);
     }
   }
@@ -738,9 +733,8 @@ static void overlay_edit_uv_display_face_id(const BMEditMesh *em,
                                             const BMUVOffsets &offsets,
                                             DRWTextStore *dt)
 {
-  BMFace *face = nullptr;
-  BMLoop *loop = nullptr;
-  BMIter it_face, it_loop;
+  BMFace *face;
+  BMIter it_face;
   int fi = 0;
   const uchar col[4] = {0, 0, 255, 255};
   BM_ITER_MESH_INDEX (face, &it_face, em->bm, BM_FACES_OF_MESH, fi) {
@@ -748,6 +742,8 @@ static void overlay_edit_uv_display_face_id(const BMEditMesh *em,
       continue;
     }
     float2 uv_acc{0, 0};
+    BMLoop *loop;
+    BMIter it_loop;
     BM_ITER_ELEM (loop, &it_loop, face, BM_LOOPS_OF_FACE) {
       uv_acc += BM_ELEM_CD_GET_FLOAT2_P(loop, offsets.uv);
     }
