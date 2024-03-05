@@ -267,8 +267,9 @@ static void partialvis_gesture_update_mesh(gesture::GestureData *gesture_data)
   const Span<float3> normals = BKE_pbvh_get_vert_normals(pbvh);
   vert_hide_update(*object, nodes, [&](const Span<int> verts, MutableSpan<bool> hide) {
     for (const int i : verts.index_range()) {
-      if (gesture::is_affected(gesture_data, positions[verts[i]], normals[verts[i]]))
+      if (gesture::is_affected(gesture_data, positions[verts[i]], normals[verts[i]])) {
         hide[i] = value;
+      }
     }
   });
 }
@@ -515,7 +516,7 @@ static void partialvis_global_update_bmesh(Object *ob,
                                            const VisAction action,
                                            const Span<PBVHNode *> nodes)
 {
-  partialvis_update_bmesh_nodes(ob, nodes, action, {});
+  partialvis_update_bmesh_nodes(ob, nodes, action, [](const BMVert * /*vert*/) { return true; });
 }
 
 static void partialvis_gesture_update_bmesh(gesture::GestureData *gesture_data)
@@ -575,7 +576,7 @@ static void hide_show_init_properties(bContext * /*C*/,
   operation->op.end = hide_show_end;
 
   operation->action = VisAction(RNA_enum_get(op->ptr, "action"));
-  gesture_data->selection_type = gesture::eSelectionType(RNA_enum_get(op->ptr, "area"));
+  gesture_data->selection_type = gesture::SelectionType(RNA_enum_get(op->ptr, "area"));
 }
 
 static int hide_show_global_exec(bContext *C, wmOperator *op)
@@ -695,13 +696,13 @@ void hide_show_operator_properties(wmOperatorType *ot)
 void hide_show_operator_gesture_properties(wmOperatorType *ot)
 {
   static const EnumPropertyItem area_items[] = {
-      {int(gesture::eSelectionType::OUTSIDE),
+      {int(gesture::SelectionType::Outside),
        "OUTSIDE",
        0,
        "Outside",
        "Hide or show vertices outside the selection"},
-      {int(gesture::eSelectionType::INSIDE),
-       "INSIDE",
+      {int(gesture::SelectionType::Inside),
+       "Inside",
        0,
        "Inside",
        "Hide or show vertices inside the selection"},
@@ -711,7 +712,7 @@ void hide_show_operator_gesture_properties(wmOperatorType *ot)
   RNA_def_enum(ot->srna,
                "area",
                area_items,
-               int(gesture::eSelectionType::INSIDE),
+               int(gesture::SelectionType::Inside),
                "Visibility Area",
                "Which vertices to hide or show");
 }

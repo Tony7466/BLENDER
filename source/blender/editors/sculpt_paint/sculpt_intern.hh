@@ -1671,9 +1671,9 @@ enum eShapeType {
   SCULPT_GESTURE_SHAPE_LINE,
 };
 
-enum class eSelectionType {
-  INSIDE = 0,
-  OUTSIDE = 1,
+enum class SelectionType {
+  Inside = 0,
+  Outside = 1,
 };
 
 struct LassoData {
@@ -1714,7 +1714,7 @@ struct GestureData {
   /* Operation parameters. */
   eShapeType shape_type;
   bool front_faces_only;
-  eSelectionType selection_type;
+  SelectionType selection_type;
 
   Operation *operation;
 
