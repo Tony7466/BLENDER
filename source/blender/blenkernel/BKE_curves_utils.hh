@@ -511,11 +511,6 @@ void foreach_curve_by_type(const VArray<int8_t> &types,
 
 /** \} */
 
-void count_curve_type(const CurvesGeometry &curves,
-                      const int8_t curve_type,
-                      int &curve_count,
-                      int &point_count);
-
 /* -------------------------------------------------------------------- */
 /** \name #CurvePoint Inline Methods
  * \{ */
