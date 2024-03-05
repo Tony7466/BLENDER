@@ -15,7 +15,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_function_ref.hh"
-#include "BLI_lasso_2d.h"
+#include "BLI_lasso_2d.hh"
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
@@ -596,9 +596,7 @@ bool keyframe_region_lasso_test(const KeyframeEdit_LassoData *data_lasso, const 
 
     BLI_rctf_transform_pt_v(data_lasso->rectf_view, data_lasso->rectf_scaled, xy_view, xy);
 
-    if (BLI_lasso_is_point_inside(
-            data_lasso->mcoords, data_lasso->mcoords_len, xy_view[0], xy_view[1], INT_MAX))
-    {
+    if (BLI_lasso_is_point_inside(data_lasso->mcoords, xy_view[0], xy_view[1], INT_MAX)) {
       return true;
     }
   }
