@@ -119,11 +119,7 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
     ss << ", dst_buffer=" << dst_buffer;
     ss << "\n";
     for (const VkBufferCopy &region : Span<const VkBufferCopy>(p_regions, region_count)) {
-      ss << " - region(";
-      ss << "src_offset=" << region.srcOffset;
-      ss << ", dst_offset=" << region.dstOffset;
-      ss << ", size=" << region.size;
-      ss << ")\n";
+      ss << " - region(" << to_string(region, 1) << ")\n";
     }
     ss << ")";
     log_.append(ss.str());
@@ -241,22 +237,12 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
     for (VkImageMemoryBarrier image_barrier :
          Span<VkImageMemoryBarrier>(p_image_memory_barriers, image_memory_barrier_count))
     {
-      ss << " - image_barrier(";
-      ss << "image=" << image_barrier.image;
-      ss << ", src_access_mask=" << image_barrier.srcAccessMask;
-      ss << ", dst_access_mask=" << image_barrier.dstAccessMask;
-      ss << ", old_layout=" << to_string(image_barrier.oldLayout);
-      ss << ", new_layout=" << to_string(image_barrier.newLayout);
-      ss << ")\n";
+      ss << " - image_barrier(" << to_string(image_barrier, 1) << ")\n";
     }
     for (VkBufferMemoryBarrier buffer_barrier :
          Span<VkBufferMemoryBarrier>(p_buffer_memory_barriers, buffer_memory_barrier_count))
     {
-      ss << " - buffer_barrier(";
-      ss << "buffer=" << buffer_barrier.buffer;
-      ss << ", src_access_mask=" << buffer_barrier.srcAccessMask;
-      ss << ", dst_access_mask=" << buffer_barrier.dstAccessMask;
-      ss << ")\n";
+      ss << " - buffer_barrier(" << to_string(buffer_barrier, 1) << ")\n";
     }
     ss << ")";
 
@@ -349,7 +335,9 @@ TEST(vk_render_graph, fill_transfer_and_read_back)
   EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=42)", log[0]);
   EXPECT_EQ(
       "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
-      " - buffer_barrier(buffer=0x1, src_access_mask=4096, dst_access_mask=4096)\n"
+      " - buffer_barrier(src_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
+      "dst_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, buffer=0x1, offset=0, "
+      "size=18446744073709551615)\n"
       ")",
       log[1]);
   EXPECT_EQ(
@@ -381,7 +369,9 @@ TEST(vk_render_graph, fill_fill_read_back)
   EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=0)", log[0]);
   EXPECT_EQ(
       "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
-      " - buffer_barrier(buffer=0x1, src_access_mask=4096, dst_access_mask=4096)\n"
+      " - buffer_barrier(src_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
+      "dst_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, buffer=0x1, offset=0, "
+      "size=18446744073709551615)\n"
       ")",
       log[1]);
   EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=42)", log[2]);
@@ -403,9 +393,10 @@ TEST(vk_render_graph, transfer_and_present)
   EXPECT_EQ(1, log.size());
   EXPECT_EQ(
       "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
-      " - image_barrier(image=0x1, src_access_mask=0, dst_access_mask=0, "
+      " - image_barrier(src_access_mask=, dst_access_mask=, "
       "old_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
-      "new_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)\n"
+      "new_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, image=0x1, subresource_range=\n"
+      "    aspect_mask=, base_mip_level=0, level_count=0, base_array_layer=0, layer_count=0  )\n"
       ")",
       log[0]);
 }
@@ -429,17 +420,21 @@ TEST(vk_render_graph, clear_and_present)
 
   EXPECT_EQ(
       "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
-      " - image_barrier(image=0x1, src_access_mask=0, dst_access_mask=0, "
+      " - image_barrier(src_access_mask=, dst_access_mask=, "
       "old_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, "
-      "new_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)\n)",
+      "new_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, image=0x1, subresource_range=\n"
+      "    aspect_mask=, base_mip_level=0, level_count=0, base_array_layer=0, layer_count=0  )\n"
+      ")",
       log[0]);
   EXPECT_EQ("clear_color_image(image=0x1, image_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)",
             log[1]);
   EXPECT_EQ(
       "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
-      " - image_barrier(image=0x1, src_access_mask=0, dst_access_mask=0, "
+      " - image_barrier(src_access_mask=, dst_access_mask=, "
       "old_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
-      "new_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)\n)",
+      "new_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, image=0x1, subresource_range=\n"
+      "    aspect_mask=, base_mip_level=0, level_count=0, base_array_layer=0, layer_count=0  )\n"
+      ")",
       log[2]);
 }
 
