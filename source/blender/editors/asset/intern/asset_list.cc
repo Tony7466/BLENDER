@@ -26,8 +26,6 @@
 
 #include "DNA_space_types.h"
 
-#include "BKE_preferences.h"
-
 #include "WM_api.hh"
 
 /* XXX uses private header of file-space. */
@@ -116,7 +114,7 @@ class AssetList : NonCopyable {
   void setup();
   void fetch(const bContext &C);
   void ensurePreviewsJob(const bContext *C);
-  void clear(bContext *C);
+  void clear(const bContext *C);
 
   AssetHandle asset_get_by_index(int index) const;
 
@@ -257,7 +255,7 @@ void AssetList::ensurePreviewsJob(const bContext *C)
   }
 }
 
-void AssetList::clear(bContext *C)
+void AssetList::clear(const bContext *C)
 {
   /* Based on #ED_fileselect_clear() */
 
@@ -477,7 +475,7 @@ void ensure_previews_job(const AssetLibraryReference *library_reference, const b
   }
 }
 
-void clear(const AssetLibraryReference *library_reference, bContext *C)
+void clear(const AssetLibraryReference *library_reference, const bContext *C)
 {
   AssetList *list = AssetListStorage::lookup_list(*library_reference);
   if (list) {

@@ -113,6 +113,20 @@ static PyObject *pygpu_max_textures_frag_get(PyObject * /*self*/)
 
 PyDoc_STRVAR(
     /* Wrap. */
+    pygpu_max_images_get_doc,
+    ".. function:: max_images_get()\n"
+    "\n"
+    "   Get maximum supported number of image units.\n"
+    "\n"
+    "   :return: Number of image units.\n"
+    "   :rtype: int\n");
+static PyObject *pygpu_max_images_get(PyObject * /*self*/)
+{
+  return PyLong_FromLong(GPU_max_images());
+}
+
+PyDoc_STRVAR(
+    /* Wrap. */
     pygpu_max_uniforms_vert_get_doc,
     ".. function:: max_uniforms_vert_get()\n"
     "\n"
@@ -245,7 +259,8 @@ PyDoc_STRVAR(
     "   :rtype: bool\n");
 static PyObject *pygpu_shader_image_load_store_support_get(PyObject * /*self*/)
 {
-  return PyBool_FromLong(GPU_shader_image_load_store_support());
+  /* Now required to start Blender. */
+  return PyBool_FromLong(true);
 }
 
 PyDoc_STRVAR(
@@ -344,6 +359,7 @@ static PyMethodDef pygpu_capabilities__tp_methods[] = {
      (PyCFunction)pygpu_max_textures_frag_get,
      METH_NOARGS,
      pygpu_max_textures_frag_get_doc},
+    {"max_images_get", (PyCFunction)pygpu_max_images_get, METH_NOARGS, pygpu_max_images_get_doc},
     {"max_uniforms_vert_get",
      (PyCFunction)pygpu_max_uniforms_vert_get,
      METH_NOARGS,

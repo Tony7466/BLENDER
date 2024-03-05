@@ -8,7 +8,7 @@
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
@@ -154,7 +154,7 @@ void OBJMesh::set_world_axes_transform(const Object &obj_eval,
   /* +Y-forward and +Z-up are the default Blender axis settings. */
   mat3_from_axis_conversion(forward, up, IO_AXIS_Y, IO_AXIS_Z, axes_transform.ptr());
 
-  const float4x4 object_to_world(obj_eval.object_to_world);
+  const float4x4 &object_to_world = obj_eval.object_to_world();
   const float3x3 transform = axes_transform * float3x3(object_to_world);
 
   world_and_axes_transform_ = float4x4(transform);

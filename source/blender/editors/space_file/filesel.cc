@@ -37,9 +37,9 @@
 #include "BLI_math_base.h"
 #include "BLI_utildefines.h"
 
-#include "BLO_readfile.h"
+#include "BLO_userdef_default.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_appdir.hh"
 #include "BKE_context.hh"
@@ -47,7 +47,7 @@
 #include "BKE_main.hh"
 #include "BKE_preferences.h"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "ED_fileselect.hh"
 #include "ED_screen.hh"

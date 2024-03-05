@@ -15,7 +15,6 @@
 
 #include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_main.hh"
 
 #include "ED_gizmo_library.hh"
 #include "ED_screen.hh"
@@ -27,7 +26,6 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "node_intern.hh"
@@ -543,7 +541,7 @@ static void WIDGETGROUP_node_corner_pin_setup(const bContext * /*C*/, wmGizmoGro
 
     RNA_enum_set(gz->ptr, "draw_style", ED_GIZMO_MOVE_STYLE_CROSS_2D);
 
-    gz->scale_basis = 0.01f / 75.0;
+    gz->scale_basis = 0.05f / 75.0;
   }
 
   gzgroup->customdata = cpin_group;

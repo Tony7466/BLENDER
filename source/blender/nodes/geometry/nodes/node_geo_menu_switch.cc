@@ -8,7 +8,6 @@
 
 #include "DNA_node_types.h"
 
-#include "BLI_array_utils.hh"
 #include "BLI_string.h"
 
 #include "FN_multi_function.hh"
@@ -20,10 +19,7 @@
 #include "NOD_socket.hh"
 #include "NOD_socket_search_link.hh"
 
-#include "RNA_access.hh"
 #include "RNA_enum_types.hh"
-
-#include "WM_api.hh"
 
 namespace blender::nodes::node_geo_menu_switch_cc {
 
@@ -122,8 +118,10 @@ static void node_enum_definition_copy(NodeEnumDefinition &dst_enum_def,
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   NodeMenuSwitch *data = MEM_cnew<NodeMenuSwitch>(__func__);
-  node_enum_definition_init(data->enum_definition);
   data->data_type = SOCK_GEOMETRY;
+  node_enum_definition_init(data->enum_definition);
+  data->enum_definition.add_item("A");
+  data->enum_definition.add_item("B");
   node->storage = data;
 }
 
@@ -145,12 +143,10 @@ static void node_copy_storage(bNodeTree * /*dst_tree*/, bNode *dst_node, const b
   dst_node->storage = dst_storage;
 }
 
-static void node_update(bNodeTree * /*ntree*/, bNode * /*node*/) {}
-
 static void node_gather_link_searches(GatherLinkSearchOpParams &params)
 {
+  const eNodeSocketDatatype data_type = eNodeSocketDatatype(params.other_socket().type);
   if (params.in_out() == SOCK_IN) {
-    const eNodeSocketDatatype data_type = eNodeSocketDatatype(params.other_socket().type);
     if (data_type == SOCK_MENU) {
       params.add_item(IFACE_("Menu"), [](LinkSearchOpParams &params) {
         bNode &node = params.add_node("GeometryNodeMenuSwitch");
@@ -159,17 +155,19 @@ static void node_gather_link_searches(GatherLinkSearchOpParams &params)
     }
   }
   else {
-    params.add_item(IFACE_("Output"), [](LinkSearchOpParams &params) {
-      bNode &node = params.add_node("GeometryNodeMenuSwitch");
-      node_storage(node).data_type = params.socket.type;
-      params.update_and_connect_available_socket(node, "Output");
-    });
+    if (data_type != SOCK_MENU) {
+      params.add_item(IFACE_("Output"), [](LinkSearchOpParams &params) {
+        bNode &node = params.add_node("GeometryNodeMenuSwitch");
+        node_storage(node).data_type = params.socket.type;
+        params.update_and_connect_available_socket(node, "Output");
+      });
+    }
   }
 }
 
 /**
- * Multifunction which evaluates the switch input for each enum item and partially fills the output
- * array with values from the input array where the identifier matches.
+ * Multi-function which evaluates the switch input for each enum item and partially fills the
+ * output array with values from the input array where the identifier matches.
  */
 class MenuSwitchFn : public mf::MultiFunction {
   const NodeEnumDefinition &enum_def_;
@@ -403,7 +401,6 @@ static void register_node()
   geo_node_type_base(&ntype, GEO_NODE_MENU_SWITCH, "Menu Switch", NODE_CLASS_CONVERTER);
   ntype.declare = node_declare;
   ntype.initfunc = node_init;
-  ntype.updatefunc = node_update;
   node_type_storage(&ntype, "NodeMenuSwitch", node_free_storage, node_copy_storage);
   ntype.gather_link_search_ops = node_gather_link_searches;
   ntype.draw_buttons = node_layout;

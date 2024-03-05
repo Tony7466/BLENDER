@@ -1044,7 +1044,12 @@ class _GenericUI:
 
     @classmethod
     def is_extended(cls):
-        return bool(getattr(cls.draw, "_draw_funcs", None))
+        draw_funcs = getattr(cls.draw, "_draw_funcs", None)
+        if draw_funcs is None:
+            return False
+        # Ignore the first item (the original draw function).
+        # This can happen when enabling then disabling add-ons.
+        return len(draw_funcs) > 1
 
     @classmethod
     def append(cls, draw_func):
@@ -1253,10 +1258,15 @@ class NodeSocket(StructRNA, metaclass=RNAMetaPropGroup):
         List of node links from or to this socket.
 
         .. note:: Takes ``O(len(nodetree.links))`` time."""
-        return tuple(
-            link for link in self.id_data.links
-            if (link.from_socket == self or
-                link.to_socket == self))
+        links = (link for link in self.id_data.links
+                 if self in (link.from_socket, link.to_socket))
+
+        if not self.is_output:
+            links = sorted(links,
+                           key=lambda link: link.multi_input_sort_id,
+                           reverse=True)
+
+        return tuple(links)
 
 
 class NodeTreeInterfaceItem(StructRNA):
@@ -1305,19 +1315,6 @@ class GeometryNode(NodeInternal):
 
 class RenderEngine(StructRNA, metaclass=RNAMeta):
     __slots__ = ()
-
-
-class UserExtensionRepo(StructRNA):
-    __slots__ = ()
-
-    @property
-    def directory_or_default(self):
-        """Return ``directory`` or a default path derived from the users scripts path."""
-        if directory := self.directory:
-            return directory
-        import os
-        import bpy
-        return os.path.join(bpy.utils.user_resource('SCRIPTS', path="extensions"), self.module)
 
 
 class HydraRenderEngine(RenderEngine):

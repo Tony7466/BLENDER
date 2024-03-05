@@ -112,10 +112,14 @@ struct wmWindowManager;
 #include "BLI_compiler_attrs.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
+
 #include "DNA_listBase.h"
 #include "DNA_uuid_types.h"
 #include "DNA_vec_types.h"
 #include "DNA_xr_types.h"
+
+#include "BKE_wm_runtime.hh"
+
 #include "RNA_types.hh"
 
 /* exported types for WM */
@@ -919,26 +923,14 @@ struct wmTimer {
   bool sleep;
 };
 
-enum wmConfirmSize {
-  WM_WARNING_SIZE_SMALL = 0,
-  WM_WARNING_SIZE_LARGE,
+enum wmPopupSize {
+  WM_POPUP_SIZE_SMALL = 0,
+  WM_POPUP_SIZE_LARGE,
 };
 
-enum wmConfirmPosition {
-  WM_WARNING_POSITION_MOUSE = 0,
-  WM_WARNING_POSITION_CENTER,
-};
-
-struct wmConfirmDetails {
-  std::string title;
-  std::string message;
-  std::string message2;
-  std::string confirm_text;
-  int icon;
-  wmConfirmSize size;
-  wmConfirmPosition position;
-  bool cancel_default;
-  bool mouse_move_quit;
+enum wmPopupPosition {
+  WM_POPUP_POSITION_MOUSE = 0,
+  WM_POPUP_POSITION_CENTER,
 };
 
 /**
@@ -1068,11 +1060,6 @@ struct wmOperatorType {
    */
   std::string (*get_description)(bContext *C, wmOperatorType *ot, PointerRNA *ptr);
 
-  /**
-   * If using WM_operator_confirm the following can override all parts of the dialog.
-   */
-  void (*confirm)(bContext *C, wmOperator *, wmConfirmDetails *details);
-
   /** RNA for properties */
   StructRNA *srna;
 
@@ -1156,7 +1143,14 @@ enum eWM_DragDataType {
   WM_DRAG_RNA,
   WM_DRAG_PATH,
   WM_DRAG_NAME,
-  WM_DRAG_VALUE,
+  /**
+   * Arbitrary text such as dragging from a text editor,
+   * this is also used when dragging a URL from a browser.
+   *
+   * An #std::string expected to be UTF8 encoded.
+   * Callers that require valid UTF8 sequences must validate the text.
+   */
+  WM_DRAG_STRING,
   WM_DRAG_COLOR,
   WM_DRAG_DATASTACK,
   WM_DRAG_ASSET_CATALOG,
@@ -1268,7 +1262,6 @@ struct wmDrag {
   int icon;
   eWM_DragDataType type;
   void *poin;
-  double value;
 
   /** If no icon but imbuf should be drawn around cursor. */
   const ImBuf *imb;

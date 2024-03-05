@@ -77,7 +77,7 @@ typedef struct Light {
   float spec_fac, att_dist;
   float shadow_softness_factor;
   float shadow_trace_distance;
-  float _pad3;
+  float shadow_filter_radius;
 
   /* Preview */
   struct PreviewImage *preview;
@@ -139,6 +139,7 @@ enum {
   // LA_SHOW_SHADOW_BOX = 1 << 18,
   LA_SHAD_CONTACT = 1 << 19,
   LA_CUSTOM_ATTENUATION = 1 << 20,
+  LA_USE_SOFT_FALLOFF = 1 << 21,
 };
 
 /** #Light::falloff_type */
