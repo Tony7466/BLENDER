@@ -22,9 +22,10 @@
 #define DFDY_SIGN 1.0
 
 /* Type definitions. */
-using bool32_t = int;
-using vec3_1010102_Unorm = uint;
-using vec3_1010102_Inorm = int;
+/* int implicitly cast to bool in MSL. */
+using bool32_t = int32_t;
+using vec3_1010102_Unorm = uint32_t;
+using vec3_1010102_Inorm = int32_t;
 /* GLSL types aliases. */
 using vec2 = float2;
 using vec3 = float3;
