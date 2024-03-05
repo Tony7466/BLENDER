@@ -1,5 +1,5 @@
 """
-clear && /bin/python3 /home/jeroen/blender-git/blender/source/blender/gpu/vulkan/scripts/vk_render_graph_gen.py
+clear && python3 ~/blender-git/blender/source/blender/gpu/vulkan/scripts/vk_render_graph_gen.py
 """
 
 import xml.etree.ElementTree as ET
@@ -104,7 +104,7 @@ def generate_command_buffer_wrapper_implementation(commands):
 def generate_enum_to_string_hpp(enum):
     vk_name = enum.get("name")
     result = ""
-    result += f"const char* to_string({vk_name} {to_lower_snake_case(vk_name)});\n"
+    result += f"const char *to_string({vk_name} {to_lower_snake_case(vk_name)});\n"
     return result
 
 
@@ -120,7 +120,7 @@ def generate_enum_to_string_cpp(enum, features, extensions):
     vk_name = enum.get("name")
     vk_name_parameter = to_lower_snake_case(vk_name)
     result = ""
-    result += f"const char* to_string(const {vk_name} {vk_name_parameter})\n"
+    result += f"const char *to_string(const {vk_name} {vk_name_parameter})\n"
     result += "{\n"
     result += f"  switch ({vk_name_parameter}) {{\n"
     for elem in enum.findall("enum"):
@@ -152,11 +152,12 @@ def generate_enum_to_string_cpp(enum, features, extensions):
 
 
 def generate_bitflag_to_string_hpp(vk_name):
+    vk_name_parameter = to_lower_snake_case(vk_name)
     result = ""
-    result += f"std::string to_string({vk_name} {to_lower_snake_case(vk_name)});\n"
+    result += f"std::string to_string_{vk_name_parameter}({vk_name} {to_lower_snake_case(vk_name)});\n"
     return result
 
-
+### Bitflags ###
 def generate_bitflag_to_string_cpp_case(vk_parameter_name, elem):
     vk_elem_name = elem.get("name")
 
@@ -171,7 +172,7 @@ def generate_bitflag_to_string_cpp(vk_name, enum, features, extensions):
     vk_enum_name = enum.get("name")
     vk_name_parameter = to_lower_snake_case(vk_name)
     result = ""
-    result += f"std::string to_string(const {vk_name} {vk_name_parameter})\n"
+    result += f"std::string to_string_{vk_name_parameter}(const {vk_name} {vk_name_parameter})\n"
     result += "{\n"
     result += "  std::stringstream ss;\n"
     result += "\n"
@@ -195,7 +196,11 @@ def generate_bitflag_to_string_cpp(vk_name, enum, features, extensions):
             result += generate_bitflag_to_string_cpp_case(vk_name_parameter, elem)
 
     result += "\n"
-    result += f"  return ss.str();\n"
+    result += f"  std::string result = ss.str();\n"
+    result += f"  if (result.size() >= 2) {{\n";
+    result += f"    result.erase(result.size() - 2, 2);\n"
+    result += f"  }}\n";
+    result += f"  return result;\n"
     result += "}\n"
     return result
 
@@ -255,7 +260,8 @@ ALL_FLAGS = {
 
 STRUCTS_TO_GENERATE = []
 
-VK_XML = "/home/jeroen/blender-git/blender/lib/linux_x64/vulkan/share/vulkan/registry/vk.xml"
+# VK_XML = "/home/jeroen/blender-git/blender/lib/linux_x64/vulkan/share/vulkan/registry/vk.xml"
+VK_XML = "/Users/jeroen/blender-git/blender/lib/macos_arm64/vulkan/share/vulkan/registry/vk.xml"
 
 tree = ET.parse(VK_XML)
 root = tree.getroot()
@@ -298,8 +304,8 @@ vk_render_graph_commands_hpp += generate_command_buffer_wrapper_declaration(comm
 vk_render_graph_commands_cpp += generate_command_buffer_wrapper_implementation(commands)
 
 
-vk_common_hpp = ""
-vk_common_cpp = ""
+vk_to_string_hpp = ""
+vk_to_string_cpp = ""
 
 # Find all features that we use.
 features = []
@@ -316,19 +322,19 @@ for extension_name in EXTENSIONS:
 
 for enum_to_generate in ENUMS_TO_GENERATE:
     for enum in root.findall(f"enums[@name='{enum_to_generate}']"):
-        vk_common_hpp += generate_enum_to_string_hpp(enum)
-        vk_common_cpp += generate_enum_to_string_cpp(enum, features, extensions)
-        vk_common_cpp += "\n"
+        vk_to_string_hpp += generate_enum_to_string_hpp(enum)
+        vk_to_string_cpp += generate_enum_to_string_cpp(enum, features, extensions)
+        vk_to_string_cpp += "\n"
 
 for flag_to_generate in FLAGS_TO_GENERATE:
     enum_to_generate = ALL_FLAGS[flag_to_generate]
     for enum in root.findall(f"enums[@name='{enum_to_generate}']"):
-        vk_common_hpp += generate_bitflag_to_string_hpp(flag_to_generate)
-        vk_common_cpp += generate_bitflag_to_string_cpp(flag_to_generate, enum, features, extensions)
-        vk_common_cpp += "\n"
+        vk_to_string_hpp += generate_bitflag_to_string_hpp(flag_to_generate)
+        vk_to_string_cpp += generate_bitflag_to_string_cpp(flag_to_generate, enum, features, extensions)
+        vk_to_string_cpp += "\n"
 
 # print(vk_render_graph_commands_hpp)
 # print(vk_render_graph_commands_cpp)
 
-print(vk_common_hpp)
-# print(vk_common_cpp)
+#print(vk_to_string_hpp)
+print(vk_to_string_cpp)

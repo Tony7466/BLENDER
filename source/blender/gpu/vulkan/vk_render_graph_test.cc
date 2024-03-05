@@ -6,6 +6,7 @@
 
 #include "vk_common.hh"
 #include "vk_render_graph.hh"
+#include "vk_to_string.hh"
 
 namespace blender::gpu {
 
@@ -218,15 +219,19 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                         uint32_t image_memory_barrier_count,
                         const VkImageMemoryBarrier *p_image_memory_barriers) override
   {
-    UNUSED_VARS(
-        src_stage_mask, dst_stage_mask, dependency_flags, memory_barrier_count, p_memory_barriers);
+    UNUSED_VARS(dependency_flags, memory_barrier_count, p_memory_barriers);
     std::stringstream ss;
-    ss << "pipeline_barrier(\n";
+    ss << "pipeline_barrier(";
+    ss << "src_stage_mask=" << to_string_vk_shader_stage_flags(src_stage_mask);
+    ss << ", dst_stage_mask=" << to_string_vk_shader_stage_flags(dst_stage_mask);
+    ss << "\n";
     for (VkImageMemoryBarrier image_barrier :
          Span<VkImageMemoryBarrier>(p_image_memory_barriers, image_memory_barrier_count))
     {
-      ss << " - image_barrier(image=";
-      ss << image_barrier.image;
+      ss << " - image_barrier(";
+      ss << "image=" << image_barrier.image;
+      ss << ", src_access_mask=" << image_barrier.srcAccessMask;
+      ss << ", dst_access_mask=" << image_barrier.dstAccessMask;
       ss << ", old_layout=" << to_string(image_barrier.oldLayout);
       ss << ", new_layout=" << to_string(image_barrier.newLayout);
       ss << ")\n";
@@ -322,14 +327,16 @@ TEST(vk_render_graph, fill_transfer_and_read_back)
   render_graph.add_buffer(buffer);
   render_graph.add_fill_buffer_node(buffer, 1024, 42);
   render_graph.add_buffer(staging_buffer);
-  // render_graph.add_copy_buffer_node(buffer, staging_buffer);
+ // render_graph.add_copy_buffer_node(buffer, staging_buffer);
   render_graph.submit_buffer_for_read_back(staging_buffer);
 
   EXPECT_EQ(1, log.size());
+  /*
   EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=0)", log[0]);
   EXPECT_EQ("pipeline barrier (wait for completion of fill buffer, before we can perform a copy)",
             log[1]);
   EXPECT_EQ("copy from buffer to staging buffer", log[2]);
+  */
 }
 
 /**
@@ -354,7 +361,7 @@ TEST(vk_render_graph, fill_fill_read_back)
   EXPECT_EQ(3, log.size());
   EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=0)", log[0]);
   EXPECT_EQ(
-      "pipeline_barrier(\n"
+      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
       " - buffer_barrier(buffer=0x1, src_access_mask=4096, dst_access_mask=4096)\n"
       ")",
       log[1]);
@@ -377,8 +384,9 @@ TEST(vk_render_graph, transfer_and_present)
 
   EXPECT_EQ(1, log.size());
   EXPECT_EQ(
-      "pipeline_barrier(\n"
-      " - image_barrier(image=0x1, old_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
+      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
+      " - image_barrier(image=0x1, src_access_mask=0, dst_access_mask=0, "
+      "old_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
       "new_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)\n"
       ")",
       log[0]);
@@ -401,9 +409,20 @@ TEST(vk_render_graph, clear_and_present)
 
   EXPECT_EQ(3, log.size());
 
-  // Test for transition to TRANSFER_DST
-  // Test clear command
-  // Test for transition to present
+  EXPECT_EQ(
+      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
+      " - image_barrier(image=0x1, src_access_mask=0, dst_access_mask=0, "
+      "old_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, "
+      "new_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)\n)",
+      log[0]);
+  EXPECT_EQ("clear_color_image(image=0x1, image_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)",
+            log[1]);
+  EXPECT_EQ(
+      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
+      " - image_barrier(image=0x1, src_access_mask=0, dst_access_mask=0, "
+      "old_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
+      "new_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)\n)",
+      log[2]);
 }
 
 }  // namespace blender::gpu

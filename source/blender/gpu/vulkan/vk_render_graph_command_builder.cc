@@ -140,8 +140,8 @@ void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_grap
   image_memory_barrier.oldLayout = current_layout;
   image_memory_barrier.newLayout = vk_image_layout;
   // TODO: should get the src stage flags from usage
-  render_graph.command_buffer_->pipeline_barrier(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                                                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+  render_graph.command_buffer_->pipeline_barrier(VK_PIPELINE_STAGE_NONE_KHR,
+                                                 VK_PIPELINE_STAGE_NONE_KHR,
                                                  0,
                                                  0,
                                                  nullptr,
@@ -164,9 +164,7 @@ void VKRenderGraphCommandBuilder::add_buffer_barriers(VKRenderGraph &render_grap
     return;
   }
 
-  const VkPipelineStageFlags stage_masks = VK_PIPELINE_STAGE_TRANSFER_BIT |
-                                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+  const VkPipelineStageFlags stage_masks = VK_PIPELINE_STAGE_NONE_KHR;
   render_graph.command_buffer_->pipeline_barrier(stage_masks,
                                                  stage_masks,
                                                  VK_DEPENDENCY_BY_REGION_BIT,
