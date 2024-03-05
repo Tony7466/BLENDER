@@ -143,13 +143,13 @@ char *BLI_cpu_brand_string(void)
   // No CPUID on ARM64, so we pull from the registry (on Windows) instead
   DWORD vendorIdentifierLength = 255;
   char vendorIdentifier[255];
-  if(RegGetValueA(HKEY_LOCAL_MACHINE, 
-                 "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
-                 "VendorIdentifier",
-                 RRF_RT_REG_SZ,
-                 NULL,
-                 &vendorIdentifier,
-                 &vendorIdentifierLength) == ERROR_SUCCESS)
+  if (RegGetValueA(HKEY_LOCAL_MACHINE,
+                   "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+                   "VendorIdentifier",
+                   RRF_RT_REG_SZ,
+                   NULL,
+                   &vendorIdentifier,
+                   &vendorIdentifierLength) == ERROR_SUCCESS)
   {
     return BLI_strdup(vendorIdentifier);
   }

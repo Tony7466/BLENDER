@@ -23,7 +23,7 @@
 #endif
 
 #ifdef WIN32
-#include "BLI_path_util.h"
+#  include "BLI_path_util.h"
 #endif
 
 #include <Dwmapi.h>
@@ -132,8 +132,8 @@ GHOST_WindowWin32::GHOST_WindowWin32(GHOST_SystemWin32 *system,
   if (!setDrawingContextType(type)) {
     const char *title = "Blender - Unsupported Graphics Card Configuration";
     const char *text = "";
-# if defined(WIN32)
-    if(strncmp(BLI_getenv("PROCESSOR_IDENTIFIER"), "ARM", 3) == 0) {
+#if defined(WIN32)
+    if (strncmp(BLI_getenv("PROCESSOR_IDENTIFIER"), "ARM", 3) == 0) {
       text =
           "A driver with support for OpenGL 4.3 or higher is required.\n\n"
           "If you are on a Qualcomm 8cx Gen3 device or newer, you need to download the"

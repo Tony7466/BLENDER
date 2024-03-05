@@ -99,13 +99,13 @@ string system_cpu_brand_string()
 #elif defined(_M_ARM64)
   DWORD vendorIdentifierLength = 255;
   char vendorIdentifier[255];
-  if(RegGetValueA(HKEY_LOCAL_MACHINE, 
-                 "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
-                 "VendorIdentifier",
-                 RRF_RT_REG_SZ,
-                 nullptr,
-                 &vendorIdentifier,
-                 &vendorIdentifierLength) == ERROR_SUCCESS)
+  if (RegGetValueA(HKEY_LOCAL_MACHINE,
+                   "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+                   "VendorIdentifier",
+                   RRF_RT_REG_SZ,
+                   nullptr,
+                   &vendorIdentifier,
+                   &vendorIdentifierLength) == ERROR_SUCCESS)
   {
     return vendorIdentifier;
   }
