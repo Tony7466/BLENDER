@@ -197,7 +197,7 @@ static void vert_hide_update(Object &object,
   }
 }
 
-static void partialvis_global_update_mesh(Object &object,
+static void partialvis_all_update_mesh(Object &object,
                                           const VisAction action,
                                           const Span<PBVHNode *> nodes)
 {
@@ -355,7 +355,7 @@ static void grid_hide_update(Depsgraph &depsgraph,
   }
 }
 
-static void partialvis_global_update_grids(Depsgraph &depsgraph,
+static void partialvis_all_update_grids(Depsgraph &depsgraph,
                                            Object &object,
                                            const VisAction action,
                                            const Span<PBVHNode *> nodes)
@@ -512,7 +512,7 @@ static void partialvis_masked_update_bmesh(Object *ob,
   partialvis_update_bmesh_nodes(ob, nodes, action, mask_test_fn);
 }
 
-static void partialvis_global_update_bmesh(Object *ob,
+static void partialvis_all_update_bmesh(Object *ob,
                                            const VisAction action,
                                            const Span<PBVHNode *> nodes)
 {
@@ -579,7 +579,7 @@ static void hide_show_init_properties(bContext * /*C*/,
   gesture_data->selection_type = gesture::SelectionType(RNA_enum_get(op->ptr, "area"));
 }
 
-static int hide_show_global_exec(bContext *C, wmOperator *op)
+static int hide_show_all_exec(bContext *C, wmOperator *op)
 {
   Object *ob = CTX_data_active_object(C);
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
@@ -603,13 +603,13 @@ static int hide_show_global_exec(bContext *C, wmOperator *op)
 
   switch (BKE_pbvh_type(pbvh)) {
     case PBVH_FACES:
-      partialvis_global_update_mesh(*ob, action, nodes);
+      partialvis_all_update_mesh(*ob, action, nodes);
       break;
     case PBVH_GRIDS:
-      partialvis_global_update_grids(*depsgraph, *ob, action, nodes);
+      partialvis_all_update_grids(*depsgraph, *ob, action, nodes);
       break;
     case PBVH_BMESH:
-      partialvis_global_update_bmesh(ob, action, nodes);
+      partialvis_all_update_bmesh(ob, action, nodes);
       break;
   }
 
@@ -733,13 +733,13 @@ void PAINT_OT_hide_show_masked(wmOperatorType *ot)
   hide_show_operator_properties(ot);
 }
 
-void PAINT_OT_hide_show_global(wmOperatorType *ot)
+void PAINT_OT_hide_show_all(wmOperatorType *ot)
 {
   ot->name = "Hide/Show All";
-  ot->idname = "PAINT_OT_hide_show_global";
+  ot->idname = "PAINT_OT_hide_show_all";
   ot->description = "Hide/show all vertices";
 
-  ot->exec = hide_show_global_exec;
+  ot->exec = hide_show_all_exec;
   /* Sculpt-only for now. */
   ot->poll = SCULPT_mode_poll_view3d;
 

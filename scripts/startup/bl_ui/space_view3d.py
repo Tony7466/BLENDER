@@ -3586,7 +3586,7 @@ class VIEW3D_MT_sculpt(Menu):
         props = layout.operator("sculpt.face_set_change_visibility", text="Hide Active Face Set")
         props.mode = 'HIDE_ACTIVE'
 
-        props = layout.operator("paint.hide_show_global", text="Show All")
+        props = layout.operator("paint.hide_show_all", text="Show All")
         props.action = 'SHOW'
 
         layout.operator("paint.visibility_invert", text="Invert Visible")
@@ -6139,7 +6139,7 @@ class VIEW3D_MT_sculpt_face_sets_edit_pie(Menu):
 
         pie.operator("paint.visibility_invert", text="Invert Visible")
 
-        props = pie.operator("paint.hide_show_global", text="Show All")
+        props = pie.operator("paint.hide_show_all", text="Show All")
         props.action = "SHOW"
 
 
