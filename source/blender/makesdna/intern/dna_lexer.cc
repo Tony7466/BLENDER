@@ -1,11 +1,11 @@
 #include "dna_lexer.hh"
+#include <cctype>
 #include <charconv>
-#include <iostream>
 
 namespace blender::dna::lex {
 
-static std::string_view range_string_view(const std::string_view::iterator first,
-                                          const std::string_view::iterator last)
+static std::string_view string_view_from_range(const std::string_view::iterator first,
+                                               const std::string_view::iterator last)
 {
   return std::string_view{first._Unwrapped(), size_t(last - first)};
 }
@@ -28,7 +28,7 @@ static void eval_break_line(std::string_view::iterator &itr,
   if (itr[0] != '\n') {
     return;
   }
-  cont.append(BreakLineToken{range_string_view(itr, itr + 1)});
+  cont.append(BreakLineToken{string_view_from_range(itr, itr + 1)});
   itr++;
 }
 
@@ -75,6 +75,7 @@ static void eval_identifier(std::string_view::iterator &itr,
       {"int64_t"sv, KeywordType::INT64_T},
       {"int8_t"sv, KeywordType::INT8_T},
       {"long"sv, KeywordType::LONG},
+      {"ulong"sv, KeywordType::ULONG},
       {"once"sv, KeywordType::ONCE},
       {"pragma"sv, KeywordType::PRAGMA},
       {"private"sv, KeywordType::PRIVATE},
@@ -91,7 +92,7 @@ static void eval_identifier(std::string_view::iterator &itr,
       {"void"sv, KeywordType::VOID},
   };
 
-  std::string_view str = range_string_view(start, itr);
+  std::string_view str = string_view_from_range(start, itr);
   auto test_keyword_fn = [str](const KeywordItem &val) -> bool { return val.word == str; };
   const KeywordItem *keyword_itr = std::find_if(
       std::begin(keywords), std::end(keywords), test_keyword_fn);
@@ -133,7 +134,7 @@ static void eval_int_literal(std::string_view::iterator &itr,
   }
   int val{};
   auto transform_Result = std::from_chars(start._Unwrapped(), itr._Unwrapped(), val);
-  cont.append(IntLiteralToken{range_string_view(start, itr), val});
+  cont.append(IntLiteralToken{string_view_from_range(start, itr), val});
 }
 
 /* Match a c-style comment. */
@@ -182,7 +183,7 @@ static void eval_symbol(std::string_view::iterator &itr,
   auto test_symbol = [value](const SymbolItem &item) -> bool { return item.value == value; };
   const SymbolItem *symbol_itr = std::find_if(std::begin(symbols), std::end(symbols), test_symbol);
   if (symbol_itr != std::end(symbols)) {
-    cont.append(SymbolToken{range_string_view(itr, itr + 1), symbol_itr->type});
+    cont.append(SymbolToken{string_view_from_range(itr, itr + 1), symbol_itr->type});
     itr++;
   }
 }
@@ -207,7 +208,7 @@ static void eval_string_literal(std::string_view::iterator &itr,
     return;
   }
   itr++;
-  cont.append(StringLiteralToken{range_string_view(start, itr)});
+  cont.append(StringLiteralToken{string_view_from_range(start, itr)});
 }
 
 void TokenIterator::print_unkown_token(std::string_view filepath,
@@ -289,8 +290,8 @@ void TokenIterator::push_waypoint()
 void TokenIterator::end_waypoint(bool success)
 {
   if (!success) {
-    if (last < next_) {
-      last = next_;
+    if (last_unmatched < next_) {
+      last_unmatched = next_;
     }
     next_ = waypoints_.last();
   }

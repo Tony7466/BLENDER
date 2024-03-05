@@ -52,6 +52,7 @@ enum class KeywordType : int8_t {
   SIGNED,
   SHORT,
   LONG,
+  ULONG,
   INT,
   INT8_T,
   INT16_T,
@@ -106,11 +107,15 @@ using TokenVariant = std::variant<BreakLineToken,
                                   StringLiteralToken>;
 
 struct TokenIterator {
-  TokenVariant *last{nullptr};
+  /** LAst token that fails to match a token request. */
+  TokenVariant *last_unmatched{nullptr};
 
  private:
+  /* Token stream. */
   Vector<TokenVariant> token_stream_;
+  /* Return points to use if the parser fails when parsing tokens. */
   Vector<TokenVariant *> waypoints_;
+  /* Pointer to next token to use. */
   TokenVariant *next_{nullptr};
 
   /* Print line where a unkown token was found. */
@@ -157,8 +162,8 @@ struct TokenIterator {
     if (next_ < token_stream_.end() && std::holds_alternative<Type>(*next_)) {
       return &std::get<Type>(*next_++);
     }
-    if (last < next_) {
-      last = next_;
+    if (last_unmatched < next_) {
+      last_unmatched = next_;
     }
     next_ = current_next;
     return nullptr;

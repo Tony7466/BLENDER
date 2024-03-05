@@ -613,6 +613,13 @@ struct StrucMemberRegister {
   {
     /** TODO: if type is enum, replace by it fixed size.  */
     const std::string type_str = fmt::format("{}", type);
+    if (ELEM(type, "long", "ulong")) {
+      fprintf(stderr,
+              "File '%s' contains use of \"%s\" in DNA struct which is not allowed\n",
+              filepath,
+              type_str.c_str());
+      return -1;
+    }
     const int type_result = add_type(type_str.c_str(), 0);
     if (type_result == -1) {
       fprintf(

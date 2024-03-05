@@ -391,7 +391,9 @@ struct PrimitiveType {
                                           UInt8Keyword,
                                           UInt16Keyword,
                                           UInt32Keyword,
-                                          UInt64Keyword>;
+                                          UInt64Keyword,
+                                          Keyword<KeywordType::LONG>,
+                                          Keyword<KeywordType::ULONG>>;
     std::optional<PrimitiveTypeVariants> type = PrimitiveTypeVariants::parse(cont);
     if (!type.has_value()) {
       return std::nullopt;
@@ -399,24 +401,12 @@ struct PrimitiveType {
 
     /* Use `unsigned int` as uint32?.... */
     using namespace std::string_view_literals;
+    /* Note: makesdna ignores `unsigned` keyword. */
     static constexpr std::string_view primitive_types[]{
-        "int"sv,
-        "char"sv,
-        "short"sv,
-        "float"sv,
-        "double"sv,
-        "void"sv,
-        "int"sv,    // makesdna ignores `unsigned` keyword
-        "short"sv,  // makesdna ignores `unsigned` keyword
-        "char"sv,   // makesdna ignores `unsigned` keyword
-        "int8_t"sv,
-        "int16_t"sv,
-        "int32_t"sv,
-        "int64_t"sv,
-        "uint8_t"sv,
-        "uint16_t"sv,
-        "uint32_t"sv,
-        "uint64_t"sv,
+        "int"sv,      "char"sv,     "short"sv,   "float"sv,   "double"sv,
+        "void"sv,     "int"sv,      "short"sv,   "char"sv,    "int8_t"sv,
+        "int16_t"sv,  "int32_t"sv,  "int64_t"sv, "uint8_t"sv, "uint16_t"sv,
+        "uint32_t"sv, "uint64_t"sv, "long"sv,    "ulong"sv,
     };
     return PrimitiveType{primitive_types[type.value().index()]};
   }
@@ -799,7 +789,7 @@ bool parse_include(std::string_view filepath,
                                    Skip>;
     std::optional<CPPTypeVariant> val = CPPTypeVariant::parse(cont);
     if (!val.has_value()) {
-      print_unhandled_token_error(filepath, text, cont.last);
+      print_unhandled_token_error(filepath, text, cont.last_unmatched);
       return false;
     }
     if (std::holds_alternative<Struct>(val.value())) {
@@ -827,9 +817,9 @@ bool parse_include(std::string_view filepath,
       c.append(enum_def);
     }
   }
-//   for (auto &val : c) {
-//     std::visit(ParserDebugPrinter{}, val);
-//   }
+  //   for (auto &val : c) {
+  //     std::visit(ParserDebugPrinter{}, val);
+  //   }
 
   return true;
 }
