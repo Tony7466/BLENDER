@@ -97,6 +97,12 @@ static int sculpt_detail_flood_fill_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
 
+  const View3D *v3d = CTX_wm_view3d(C);
+  const Base *base = CTX_data_active_base(C);
+  if (!BKE_base_is_visible(v3d, base)) {
+    return OPERATOR_CANCELLED;
+  }
+
   Vector<PBVHNode *> nodes = bke::pbvh::search_gather(ss->pbvh, {});
 
   if (nodes.is_empty()) {
@@ -395,75 +401,6 @@ void SCULPT_OT_sample_detail_size(wmOperatorType *ot)
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Dynamic-topology detail size
- *
- * Currently, there are two operators editing the detail size:
- * - #SCULPT_OT_set_detail_size uses radial control for all methods
- * - #SCULPT_OT_dyntopo_detail_size_edit shows a triangle grid representation of the detail
- *   resolution (for constant detail method,
- *   falls back to radial control for the remaining methods).
- * \{ */
-
-static void set_brush_rc_props(PointerRNA *ptr, const char *prop)
-{
-  char *path = BLI_sprintfN("tool_settings.sculpt.brush.%s", prop);
-  RNA_string_set(ptr, "data_path_primary", path);
-  MEM_freeN(path);
-}
-
-static void sculpt_detail_size_set_radial_control(bContext *C)
-{
-  Sculpt *sd = CTX_data_tool_settings(C)->sculpt;
-
-  PointerRNA props_ptr;
-  wmOperatorType *ot = WM_operatortype_find("WM_OT_radial_control", true);
-
-  WM_operator_properties_create_ptr(&props_ptr, ot);
-
-  if (sd->flags & (SCULPT_DYNTOPO_DETAIL_CONSTANT | SCULPT_DYNTOPO_DETAIL_MANUAL)) {
-    set_brush_rc_props(&props_ptr, "constant_detail_resolution");
-    RNA_string_set(
-        &props_ptr, "data_path_primary", "tool_settings.sculpt.constant_detail_resolution");
-  }
-  else if (sd->flags & SCULPT_DYNTOPO_DETAIL_BRUSH) {
-    set_brush_rc_props(&props_ptr, "constant_detail_resolution");
-    RNA_string_set(&props_ptr, "data_path_primary", "tool_settings.sculpt.detail_percent");
-  }
-  else {
-    set_brush_rc_props(&props_ptr, "detail_size");
-    RNA_string_set(&props_ptr, "data_path_primary", "tool_settings.sculpt.detail_size");
-  }
-
-  WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &props_ptr, nullptr);
-
-  WM_operator_properties_free(&props_ptr);
-}
-
-static int sculpt_set_detail_size_exec(bContext *C, wmOperator * /*op*/)
-{
-  sculpt_detail_size_set_radial_control(C);
-
-  return OPERATOR_FINISHED;
-}
-
-void SCULPT_OT_set_detail_size(wmOperatorType *ot)
-{
-  /* Identifiers. */
-  ot->name = "Set Detail Size";
-  ot->idname = "SCULPT_OT_set_detail_size";
-  ot->description =
-      "Set the mesh detail (either relative or constant one, depending on current dyntopo mode)";
-
-  /* API callbacks. */
-  ot->exec = sculpt_set_detail_size_exec;
-  ot->poll = sculpt_and_dynamic_topology_poll;
-
-  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Dyntopo Detail Size Edit Operator
  * \{ */
 
@@ -517,17 +454,16 @@ static void dyntopo_detail_size_parallel_lines_draw(uint pos3d,
 {
   float object_space_constant_detail;
   if (cd->mode == DETAILING_MODE_RESOLUTION) {
-    object_space_constant_detail = 1.0f /
-                                   (cd->current_value *
-                                    mat4_to_scale(cd->active_object->object_to_world().ptr()));
+    object_space_constant_detail = detail_size::constant_to_detail_size(cd->current_value,
+                                                                        cd->active_object);
   }
   else if (cd->mode == DETAILING_MODE_BRUSH_PERCENT) {
-    object_space_constant_detail = cd->brush_radius * cd->current_value / 100.0f;
+    object_space_constant_detail = detail_size::brush_to_detail_size(cd->current_value,
+                                                                     cd->brush_radius);
   }
   else {
-    object_space_constant_detail = (cd->brush_radius / cd->pixel_radius) *
-                                   (cd->current_value * U.pixelsize) /
-                                   detail_size::RELATIVE_SCALE_FACTOR;
+    object_space_constant_detail = detail_size::relative_to_detail_size(
+        cd->current_value, cd->brush_radius, cd->pixel_radius, U.pixelsize);
   }
 
   /* The constant detail represents the maximum edge length allowed before subdividing it. If the
@@ -677,7 +613,7 @@ static void dyntopo_detail_size_sample_from_surface(Object *ob,
     }
     else {
       sampled_value = detail_size::constant_to_relative_detail(
-          detail_size, cd->brush_radius, cd->pixel_radius, cd->active_object);
+          detail_size, cd->brush_radius, cd->pixel_radius, U.pixelsize, cd->active_object);
     }
     cd->current_value = clamp_f(sampled_value, cd->min_value, cd->max_value);
   }
@@ -933,6 +869,24 @@ void SCULPT_OT_dyntopo_detail_size_edit(wmOperatorType *ot)
 }  // namespace blender::ed::sculpt_paint::dyntopo
 
 namespace blender::ed::sculpt_paint::dyntopo::detail_size {
+float constant_to_detail_size(const float constant_detail, const Object *ob)
+{
+  return 1.0f / (constant_detail * mat4_to_scale(ob->object_to_world().ptr()));
+}
+
+float brush_to_detail_size(const float brush_percent, const float brush_radius)
+{
+  return brush_radius * brush_percent / 100.0f;
+}
+
+float relative_to_detail_size(const float relative_detail,
+                              const float brush_radius,
+                              const float pixel_radius,
+                              const float pixel_size)
+{
+  return (brush_radius / pixel_radius) * (relative_detail * pixel_size) / RELATIVE_SCALE_FACTOR;
+}
+
 float constant_to_brush_detail(const float constant_detail,
                                const float brush_radius,
                                const Object *ob)
@@ -945,11 +899,12 @@ float constant_to_brush_detail(const float constant_detail,
 float constant_to_relative_detail(const float constant_detail,
                                   const float brush_radius,
                                   const float pixel_radius,
+                                  const float pixel_size,
                                   const Object *ob)
 {
   const float object_scale = mat4_to_scale(ob->object_to_world().ptr());
 
-  return (pixel_radius / brush_radius) * (RELATIVE_SCALE_FACTOR / U.pixelsize) *
+  return (pixel_radius / brush_radius) * (RELATIVE_SCALE_FACTOR / pixel_size) *
          (1.0f / (constant_detail * object_scale));
 }
 }  // namespace blender::ed::sculpt_paint::dyntopo::detail_size
