@@ -551,7 +551,7 @@ struct EraseOperationExecutor {
             dst_start_caps.span[dst_curve] = GP_STROKE_CAP_TYPE_FLAT;
           }
 
-          if (dst_curve == dst_curves.last()) {
+          if ((dst_curve == dst_curves.last()) || (dst.curves_num() == src.curves_num())) {
             continue;
           }
 
