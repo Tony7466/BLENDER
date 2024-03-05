@@ -187,6 +187,8 @@ static void generate_arc_from_point_to_point(const float3 &from,
   const float3 vec_from = from - center_pt;
   const float3 vec_to = to - center_pt;
   if (math::is_zero(vec_from) || math::is_zero(vec_to)) {
+    r_perimeter.append(center_pt);
+    r_src_indices.append(src_point_index);
     return;
   }
 
