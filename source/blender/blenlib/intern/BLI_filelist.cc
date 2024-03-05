@@ -143,7 +143,7 @@ static void bli_builddir(BuildDirCtx *dir_ctx, const char *dirname)
       else if (FILENAME_IS_CURRENT(dlink->name)) {
         has_current = true;
       }
-      BLI_addhead(&dirbase, dlink);
+      BLI_addtail(&dirbase, dlink);
       newnum++;
     }
   }
@@ -156,7 +156,7 @@ static void bli_builddir(BuildDirCtx *dir_ctx, const char *dirname)
       dirlink *const dlink = (dirlink *)malloc(sizeof(dirlink));
       if (dlink != nullptr) {
         dlink->name = BLI_strdup(FILENAME_PARENT);
-        BLI_addhead(&dirbase, dlink);
+        BLI_addtail(&dirbase, dlink);
         newnum++;
       }
     }
@@ -165,7 +165,7 @@ static void bli_builddir(BuildDirCtx *dir_ctx, const char *dirname)
     dirlink *const dlink = (dirlink *)malloc(sizeof(dirlink));
     if (dlink != nullptr) {
       dlink->name = BLI_strdup(FILENAME_CURRENT);
-      BLI_addhead(&dirbase, dlink);
+      BLI_addtail(&dirbase, dlink);
       newnum++;
     }
   }
