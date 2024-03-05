@@ -61,15 +61,16 @@ static Eigen::MatrixXd get_interactive_result_blended_with_original(float blend,
 }
 
 static void adjust_pins(SLIMData &slim_data,
-                        int n_pins,
                         const std::vector<int> &pinned_vertex_indices,
                         const std::vector<double> &pinned_vertex_positions2d,
-                        int n_selected_pins,
                         const std::vector<int> &selected_pins)
 {
   if (!slim_data.valid) {
     return;
   }
+
+  int n_pins = pinned_vertex_indices.size();
+  int n_selected_pins = selected_pins.size();
 
   Eigen::VectorXi old_pin_indices = slim_data.b;
   Eigen::MatrixXd old_pin_positions = slim_data.bc;
@@ -157,18 +158,14 @@ void MatrixTransferChart::parametrize_single_iteration()
 
 /* Executes slim iterations during live unwrap. needs to provide new selected-pin positions. */
 void MatrixTransfer::parametrize_live(MatrixTransferChart &chart,
-                                      int n_pins,
                                       const std::vector<int> &pinned_vertex_indices,
                                       const std::vector<double> &pinned_vertex_positions_2D,
-                                      int n_selected_pins,
                                       const std::vector<int> &selected_pins)
 {
   int number_of_iterations = 3;
   adjust_pins(*chart.data,
-              n_pins,
               pinned_vertex_indices,
               pinned_vertex_positions_2D,
-              n_selected_pins,
               selected_pins);
 
   chart.try_slim_solve(number_of_iterations);

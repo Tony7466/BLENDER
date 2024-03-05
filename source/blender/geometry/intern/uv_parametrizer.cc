@@ -5167,14 +5167,14 @@ static void slim_free_matrix_transfer(ParamHandle *phandle)
 static void slim_get_pinned_vertex_data(ParamHandle *phandle,
                                         PChart *chart,
                                         slim::MatrixTransferChart *mt_chart,
-                                        int &n_pins,
                                         std::vector<int> &pinned_vertex_indices,
                                         std::vector<double> &pinned_vertex_positions_2D,
-                                        int &n_selected_pins,
                                         std::vector<int> &selected_pins)
 {
-  /* Index of pinned vertex. */
-  int i = 0;
+  pinned_vertex_indices.clear();
+  pinned_vertex_positions_2D.clear();
+  selected_pins.clear();
+
 
   /* Boundary vertices have lower slim_ids, process them first. */
   PEdge *outer;
@@ -5186,15 +5186,12 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
       p_vert_load_pin_select_uvs(phandle, be->vert);
 
       if (be->vert->flag & PVERT_SELECT) {
-        selected_pins[n_selected_pins] = be->vert->slim_id;
-        ++(n_selected_pins);
+        selected_pins.push_back(be->vert->slim_id);
       }
 
-      pinned_vertex_indices[i] = be->vert->slim_id;
-      pinned_vertex_positions_2D[2 * i] = be->vert->uv[0];
-      pinned_vertex_positions_2D[2 * i + 1] = be->vert->uv[1];
-
-      ++i;
+      pinned_vertex_indices.push_back(be->vert->slim_id);
+      pinned_vertex_positions_2D.push_back(be->vert->uv[0]);
+      pinned_vertex_positions_2D.push_back(be->vert->uv[1]);
     }
     be = p_boundary_edge_next(be);
   } while (be != outer);
@@ -5205,18 +5202,15 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
       p_vert_load_pin_select_uvs(phandle, v); /* reload v */
 
       if (v->flag & PVERT_SELECT) {
-        selected_pins[n_selected_pins] = v->slim_id;
-        ++(n_selected_pins);
+        selected_pins.push_back(v->slim_id);
       }
-      pinned_vertex_indices[i] = v->slim_id;
-      pinned_vertex_positions_2D[2 * i] = v->uv[0];
-      pinned_vertex_positions_2D[2 * i + 1] = v->uv[1];
-      ++i;
+      pinned_vertex_indices.push_back(v->slim_id);
+      pinned_vertex_positions_2D.push_back(v->uv[0]);
+      pinned_vertex_positions_2D.push_back(v->uv[1]);
     }
   }
 
-  n_pins = i;
-  mt_chart->n_pinned_vertices = i;
+  mt_chart->n_pinned_vertices = pinned_vertex_indices.size();
 }
 
 void uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
@@ -5301,6 +5295,10 @@ void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
 {
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
+  std::vector<int> pinned_vertex_indices;
+  std::vector<double> pinned_vertex_positions_2D;
+  std::vector<int> selected_pins;
+
   /* Do one iteration and tranfer UVs */
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
@@ -5310,27 +5308,16 @@ void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
       continue;
     }
 
-    std::vector<int> pinned_vertex_indices(mt_chart->n_verts, 0);
-    std::vector<double> pinned_vertex_positions_2D(2 * mt_chart->n_verts, 0.0);
-    std::vector<int> selected_pins(mt_chart->n_verts, 0);
-
-    int n_pins = 0;
-    int n_selected_pins = 0;
-
     slim_get_pinned_vertex_data(phandle,
                                 chart,
                                 mt_chart,
-                                n_pins,
                                 pinned_vertex_indices,
                                 pinned_vertex_positions_2D,
-                                n_selected_pins,
                                 selected_pins);
 
     mt->parametrize_live(*mt_chart,
-                         n_pins,
                          pinned_vertex_indices,
                          pinned_vertex_positions_2D,
-                         n_selected_pins,
                          selected_pins);
     mt_chart->transfer_uvs_blended_live();
   }

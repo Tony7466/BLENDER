@@ -80,10 +80,8 @@ struct MatrixTransfer {
   void parametrize();
 
   void parametrize_live(MatrixTransferChart &chart,
-                        int n_pins,
                         const std::vector<int> &pinned_vertex_indices,
                         const std::vector<double> &pinned_vertex_positions_2D,
-                        int n_selected_pins,
                         const std::vector<int> &selected_pins);
 
   void setup_slim_data(MatrixTransferChart &chart) const;
