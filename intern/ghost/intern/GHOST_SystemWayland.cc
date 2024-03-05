@@ -7476,21 +7476,111 @@ void GHOST_SystemWayland::putClipboard(const char *buffer, bool selection) const
   }
 }
 
+static constexpr const char *ghost_wl_mime_img_png = "image/png";
+
 GHOST_TSuccess GHOST_SystemWayland::hasClipboardImage(void) const
 {
-  // TODO
-  return GHOST_kSuccess;
+  GWL_Seat *seat = gwl_display_seat_active_get(display_);
+  if (UNLIKELY(!seat)) {
+    return GHOST_kFailure;
+  }
+
+  GWL_DataOffer *data_offer = seat->data_offer_copy_paste;
+  if (data_offer) {
+    if (data_offer->types.count(ghost_wl_mime_img_png)) {
+      return GHOST_kSuccess;
+    }
+  }
+
+  return GHOST_kFailure;
 }
 
 uint *GHOST_SystemWayland::getClipboardImage(int *r_width, int *r_height) const
 {
-  // TODO
-  return nullptr;
+  #ifdef USE_EVENT_BACKGROUND_THREAD
+    std::lock_guard lock_server_guard{*server_mutex};
+  #endif
+
+  GWL_Seat *seat = gwl_display_seat_active_get(display_);
+  if (UNLIKELY(!seat)) {
+    return nullptr;
+  };
+
+  std::mutex &mutex = seat->data_offer_copy_paste_mutex;
+  mutex.lock();
+  bool mutex_locked = true;
+
+  uint *rgba = nullptr;
+
+  GWL_DataOffer *data_offer = seat->data_offer_copy_paste;
+  if (data_offer) {
+    /* Check if the source offers a supported mime type.
+     * This check could be skipped, because the paste option is not supposed to be enabled
+     * otherwise. */
+    if (data_offer->types.count(ghost_wl_mime_img_png)) {
+      /* Receive the clipboard in a thread, performing round-trips while waiting,
+       * so pasting content from own 'primary->data_source' doesn't hang. */
+      struct ThreadResult {
+        char *data = nullptr;
+        std::atomic<bool> done = false;
+      } thread_result;
+
+      size_t data_len = 0;
+      auto read_clipboard_fn = [&data_len](GWL_DataOffer *data_offer,
+                                  const char *mime_receive,
+                                  std::mutex *mutex,
+                                  ThreadResult *thread_result) {
+          thread_result->data = read_buffer_from_data_offer(data_offer,
+                                                            mime_receive,
+                                                            mutex,
+                                                           true,
+                                                           &data_len);
+          thread_result->done = true;
+        };
+      std::thread read_thread(read_clipboard_fn,
+                              data_offer,
+                              ghost_wl_mime_img_png,
+                              &mutex,
+                              &thread_result);
+      read_thread.detach();
+
+      while (!thread_result.done) {
+        wl_display_roundtrip(display_->wl.display);
+      }
+
+      /* Generate the image buffer with the recieved data */
+      ImBuf *ibuf = IMB_ibImageFromMemory((uint8_t *)thread_result.data,
+                                          data_len,
+                                          IB_rect,
+                                          nullptr,
+                                          "<clipboard>");
+      if (ibuf) {
+        *r_width = ibuf->x;
+        *r_height = ibuf->y;
+        const uint64_t byte_count = uint64_t(ibuf->x) * ibuf->y * 4;
+        rgba = (uint *)malloc(byte_count);
+        std::memcpy(rgba, ibuf->byte_buffer.data, byte_count);
+        IMB_freeImBuf(ibuf);
+      }
+
+      /* After reading the data offer, the mutex gets unlocked */
+      mutex_locked = false;
+    }
+  }
+
+  if (mutex_locked) {
+    mutex.unlock();
+  }
+  return rgba;
 }
 
 GHOST_TSuccess GHOST_SystemWayland::putClipboardImage(uint *rgba, int width, int height) const
 {
-  // Create a wl_data_source object
+  #ifdef USE_EVENT_BACKGROUND_THREAD
+    std::lock_guard lock_server_guard{*server_mutex};
+  #endif
+
+  /* Create a wl_data_source object */
   GWL_Seat *seat = gwl_display_seat_active_get(display_);
   if (UNLIKELY(!seat)) {
     return GHOST_kFailure;
@@ -7512,22 +7602,23 @@ GHOST_TSuccess GHOST_SystemWayland::putClipboardImage(uint *rgba, int width, int
   GWL_SimpleBuffer *imgbuffer = &data_source->buffer_out;
   gwl_simple_buffer_free_data(imgbuffer);
   imgbuffer->data_size = ibuf->encoded_buffer_size;
-  uint8_t *data = static_cast<uint8_t *>(malloc(imgbuffer->data_size));
+  char *data = static_cast<char *>(malloc(imgbuffer->data_size));
   std::memcpy(data, ibuf->encoded_buffer.data, ibuf->encoded_buffer_size);
+  imgbuffer->data = data;
 
-  // Advertise the mime types supported with wl_data_source.offer
   data_source->wl.source =
     wl_data_device_manager_create_data_source(display_->wl.data_device_manager);
   wl_data_source_add_listener(data_source->wl.source, &data_source_listener, seat);
 
+  /* Advertise the mime types supported */
   wl_data_source_offer(data_source->wl.source, "image/png");
 
   if (seat->wl.data_device) {
-    wl_data_device_set_selection(
-      seat->wl.data_device, data_source->wl.source, seat->data_source_serial);
+    wl_data_device_set_selection(seat->wl.data_device,
+                                 data_source->wl.source,
+                                 seat->data_source_serial);
   }
 
-  // Generate a wl_data_source.send event, and write the data to the given file descriptor.
   IMB_freeImBuf(ibuf);
   return GHOST_kSuccess;
 }

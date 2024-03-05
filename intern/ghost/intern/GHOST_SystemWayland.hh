@@ -162,7 +162,7 @@ class GHOST_SystemWayland : public GHOST_System {
     /**
    * Returns GHOST_kSuccess if the clipboard contains an image.
    */
-  GHOST_TSuccess hasClipboardImage(void) const;
+  GHOST_TSuccess hasClipboardImage(void) const override;
 
   /**
    * Get image data from the Clipboard
@@ -170,7 +170,7 @@ class GHOST_SystemWayland : public GHOST_System {
    * \param r_height: the returned image height in pixels.
    * \return pointer uint array in RGBA byte order. Caller must free.
    */
-  uint *getClipboardImage(int *r_width, int *r_height) const;
+  uint *getClipboardImage(int *r_width, int *r_height) const override;
 
   /**
    * Put image data to the Clipboard
@@ -178,7 +178,7 @@ class GHOST_SystemWayland : public GHOST_System {
    * \param width: the image width in pixels.
    * \param height: the image height in pixels.
    */
-  GHOST_TSuccess putClipboardImage(uint *rgba, int width, int height) const;
+  GHOST_TSuccess putClipboardImage(uint *rgba, int width, int height) const override;
 
   uint8_t getNumDisplays() const override;
 
