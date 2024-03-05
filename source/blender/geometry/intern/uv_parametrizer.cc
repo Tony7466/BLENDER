@@ -5166,11 +5166,13 @@ static void slim_free_matrix_transfer(ParamHandle *phandle)
 
 static void slim_get_pinned_vertex_data(ParamHandle *phandle,
                                         PChart *chart,
-                                        slim::MatrixTransferChart *mt_chart,
-                                        std::vector<int> &pinned_vertex_indices,
-                                        std::vector<double> &pinned_vertex_positions_2D,
-                                        std::vector<int> &selected_pins)
+                                        slim::MatrixTransferChart& mt_chart,
+                                        slim::PinnedVertexData& pinned_vertex_data)
 {
+  auto &pinned_vertex_indices = pinned_vertex_data.pinned_vertex_indices;
+  auto &pinned_vertex_positions_2D = pinned_vertex_data.pinned_vertex_positions_2D;
+  auto &selected_pins = pinned_vertex_data.selected_pins;
+
   pinned_vertex_indices.clear();
   pinned_vertex_positions_2D.clear();
   selected_pins.clear();
@@ -5210,7 +5212,7 @@ static void slim_get_pinned_vertex_data(ParamHandle *phandle,
     }
   }
 
-  mt_chart->n_pinned_vertices = pinned_vertex_indices.size();
+  mt_chart.n_pinned_vertices = pinned_vertex_indices.size();
 }
 
 void uv_parametrizer_slim_reload_all_uvs(ParamHandle *phandle)
@@ -5295,31 +5297,22 @@ void uv_parametrizer_slim_live_solve_iteration(ParamHandle *phandle)
 {
   slim::MatrixTransfer *mt = phandle->slim_mt;
 
-  std::vector<int> pinned_vertex_indices;
-  std::vector<double> pinned_vertex_positions_2D;
-  std::vector<int> selected_pins;
-
   /* Do one iteration and tranfer UVs */
   for (int i = 0; i < phandle->ncharts; i++) {
     PChart *chart = phandle->charts[i];
-    slim::MatrixTransferChart *mt_chart = &mt->charts[i];
+    slim::MatrixTransferChart& mt_chart = mt->charts[i];
 
-    if (!mt_chart->data) {
+    if (!mt_chart.data) {
       continue;
     }
 
     slim_get_pinned_vertex_data(phandle,
                                 chart,
                                 mt_chart,
-                                pinned_vertex_indices,
-                                pinned_vertex_positions_2D,
-                                selected_pins);
+                                mt->pinned_vertex_data);
 
-    mt->parametrize_live(*mt_chart,
-                         pinned_vertex_indices,
-                         pinned_vertex_positions_2D,
-                         selected_pins);
-    mt_chart->transfer_uvs_blended_live();
+    mt->parametrize_live(mt_chart, mt->pinned_vertex_data);
+    mt_chart.transfer_uvs_blended_live();
   }
 
   /* Assign new UVs back to each vertex. */

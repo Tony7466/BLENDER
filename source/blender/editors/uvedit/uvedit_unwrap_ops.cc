@@ -1989,8 +1989,6 @@ void ED_uvedit_live_unwrap_begin(bContext *C, Scene *scene, Object *obedit)
   options.topology_from_uvs = false;
   options.only_selected_faces = false;
   options.only_selected_uvs = false;
-  options.fill_holes = (scene->toolsettings->uvcalc_flag & UVCALC_FILLHOLES) != 0;
-  options.correct_aspect = (scene->toolsettings->uvcalc_flag & UVCALC_NO_ASPECT_CORRECT) == 0;
 
   if (options.use_subsurf) {
     handle = construct_param_handle_subsurfed(scene, obedit, em, &options, nullptr);

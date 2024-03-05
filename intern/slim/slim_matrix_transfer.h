@@ -61,6 +61,12 @@ struct MatrixTransferChart {
   void free_slim_data();
 };
 
+struct PinnedVertexData {
+  std::vector<int> pinned_vertex_indices;
+  std::vector<double> pinned_vertex_positions_2D;
+  std::vector<int> selected_pins;
+};
+
 struct MatrixTransfer {
   bool fixed_boundary = false;
   bool use_weights = false;
@@ -72,6 +78,9 @@ struct MatrixTransfer {
 
   std::vector<MatrixTransferChart> charts;
 
+  /* Used for pins update in live unwrap */
+  PinnedVertexData pinned_vertex_data;
+
   MatrixTransfer();
   MatrixTransfer(const MatrixTransfer &) = delete;
   MatrixTransfer &operator=(const MatrixTransfer &) = delete;
@@ -80,9 +89,7 @@ struct MatrixTransfer {
   void parametrize();
 
   void parametrize_live(MatrixTransferChart &chart,
-                        const std::vector<int> &pinned_vertex_indices,
-                        const std::vector<double> &pinned_vertex_positions_2D,
-                        const std::vector<int> &selected_pins);
+                        const PinnedVertexData &pinned_vertex_data);
 
   void setup_slim_data(MatrixTransferChart &chart) const;
 };

@@ -60,14 +60,15 @@ static Eigen::MatrixXd get_interactive_result_blended_with_original(float blend,
   return original_map_weighted + interactive_result_map;
 }
 
-static void adjust_pins(SLIMData &slim_data,
-                        const std::vector<int> &pinned_vertex_indices,
-                        const std::vector<double> &pinned_vertex_positions2d,
-                        const std::vector<int> &selected_pins)
+static void adjust_pins(SLIMData &slim_data, const PinnedVertexData &pinned_vertex_data)
 {
   if (!slim_data.valid) {
     return;
   }
+
+  auto &pinned_vertex_indices = pinned_vertex_data.pinned_vertex_indices;
+  auto &pinned_vertex_positions_2D = pinned_vertex_data.pinned_vertex_positions_2D;
+  auto &selected_pins = pinned_vertex_data.selected_pins;
 
   int n_pins = pinned_vertex_indices.size();
   int n_selected_pins = selected_pins.size();
@@ -106,8 +107,8 @@ static void adjust_pins(SLIMData &slim_data,
       slim_data.bc.row(new_pin_pointer) = old_pin_positions.row(old_pin_pointer);
     }
     else {
-      slim_data.bc(new_pin_pointer, 0) = pinned_vertex_positions2d[2 * new_pin_pointer];
-      slim_data.bc(new_pin_pointer, 1) = pinned_vertex_positions2d[2 * new_pin_pointer + 1];
+      slim_data.bc(new_pin_pointer, 0) = pinned_vertex_positions_2D[2 * new_pin_pointer];
+      slim_data.bc(new_pin_pointer, 1) = pinned_vertex_positions_2D[2 * new_pin_pointer + 1];
     }
   }
 }
@@ -158,15 +159,10 @@ void MatrixTransferChart::parametrize_single_iteration()
 
 /* Executes slim iterations during live unwrap. needs to provide new selected-pin positions. */
 void MatrixTransfer::parametrize_live(MatrixTransferChart &chart,
-                                      const std::vector<int> &pinned_vertex_indices,
-                                      const std::vector<double> &pinned_vertex_positions_2D,
-                                      const std::vector<int> &selected_pins)
+                                      const PinnedVertexData &pinned_vertex_data)
 {
   int number_of_iterations = 3;
-  adjust_pins(*chart.data,
-              pinned_vertex_indices,
-              pinned_vertex_positions_2D,
-              selected_pins);
+  adjust_pins(*chart.data, pinned_vertex_data);
 
   chart.try_slim_solve(number_of_iterations);
 }
