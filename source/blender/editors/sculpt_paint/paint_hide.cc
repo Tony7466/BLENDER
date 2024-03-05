@@ -442,7 +442,7 @@ static void partialvis_update_bmesh_verts(const Set<BMVert *, 0> &verts,
                                           bool *any_visible)
 {
   for (BMVert *v : verts) {
-    if (!should_update || should_update(v)) {
+    if (should_update(v)) {
       if (action == VisAction::Hide) {
         BM_elem_flag_enable(v, BM_ELEM_HIDDEN);
       }
