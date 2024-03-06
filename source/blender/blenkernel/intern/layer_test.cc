@@ -6,7 +6,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_appdir.hh"
-#include "BKE_appdir.h"
 #include "BKE_idtype.hh"
 #include "BKE_layer.hh"
 
@@ -23,7 +22,7 @@
 
 #include "GHOST_Path-api.hh"
 
-    namespace blender::bke::tests
+namespace blender::bke::tests
 {
 
   TEST(view_layer, aov_unique_names)
