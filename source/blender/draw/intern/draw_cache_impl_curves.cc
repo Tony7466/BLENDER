@@ -88,6 +88,16 @@ struct CurvesBatchCache {
   std::mutex render_mutex;
 };
 
+static GPUVertFormat single_attr_vertbuffer_format(const char *name,
+                                                   GPUVertCompType comp_type,
+                                                   uint comp_len,
+                                                   GPUVertFetchMode fetch_mode)
+{
+  GPUVertFormat format{};
+  GPU_vertformat_attr_add(&format, name, comp_type, comp_len, fetch_mode);
+  return format;
+}
+
 static bool curves_batch_cache_valid(const Curves &curves)
 {
   const CurvesBatchCache *cache = static_cast<CurvesBatchCache *>(curves.batch_cache);
@@ -276,12 +286,11 @@ static void curves_batch_cache_ensure_edit_points_pos(
     bke::crazyspace::GeometryDeformation deformation,
     CurvesBatchCache &cache)
 {
-  static GPUVertFormat format_pos = {0};
-  static GPUVertFormat format_data = {0};
-  if (format_pos.attr_len == 0) {
-    GPU_vertformat_attr_add(&format_pos, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    GPU_vertformat_attr_add(&format_data, "data", GPU_COMP_U32, 1, GPU_FETCH_INT);
-  }
+  static GPUVertFormat format_pos = single_attr_vertbuffer_format(
+      "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  static GPUVertFormat format_data = single_attr_vertbuffer_format(
+      "data", GPU_COMP_U32, 1, GPU_FETCH_INT);
+
   Span<float3> deformed_positions = deformation.positions;
   const int bezier_point_count = bezier_dst_offsets.total_size();
   const int size = deformed_positions.size() + bezier_point_count * 2;
@@ -350,10 +359,9 @@ static void curves_batch_cache_ensure_edit_points_selection(
     const OffsetIndices<int> bezier_dst_offsets,
     CurvesBatchCache &cache)
 {
-  static GPUVertFormat format_data = {0};
-  if (format_data.attr_len == 0) {
-    GPU_vertformat_attr_add(&format_data, "selection", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
-  }
+  static GPUVertFormat format_data = single_attr_vertbuffer_format(
+      "selection", GPU_COMP_F32, 1, GPU_FETCH_FLOAT);
+
   const int bezier_point_count = bezier_dst_offsets.total_size();
   const int vert_count = curves.points_num() + bezier_point_count * 2;
   GPU_vertbuf_init_with_format(cache.edit_points_selection, &format_data);
