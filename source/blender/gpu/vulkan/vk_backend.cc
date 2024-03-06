@@ -130,7 +130,7 @@ void VKBackend::delete_resources() {}
 void VKBackend::samplers_update()
 {
   VKDevice &device = VKBackend::get().device_;
-  if (device.is_intialized()) {
+  if (device.is_initialized()) {
     device.reinit();
   }
 }
