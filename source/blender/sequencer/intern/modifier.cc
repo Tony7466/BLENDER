@@ -869,7 +869,7 @@ static void hue_correct_init_data(SequenceModifierData *smd)
         cuma, &hcmd->curve_mapping.clipr, hcmd->curve_mapping.preset, CURVEMAP_SLOPE_POSITIVE);
   }
   /* use wrapping for all hue correct modifiers */
-  BKE_curvemap_set_wrapping(&hcmd->curve_mapping, true);
+  hcmd->curve_mapping.flag |= CUMA_USE_WRAPPING;
   /* default to showing Saturation */
   hcmd->curve_mapping.cur = 1;
 }

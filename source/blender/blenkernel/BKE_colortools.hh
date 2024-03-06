@@ -170,11 +170,6 @@ void BKE_curvemapping_blend_write(BlendWriter *writer, const CurveMapping *cumap
 void BKE_curvemapping_curves_blend_write(BlendWriter *writer, const CurveMapping *cumap);
 
 /**
- * Set the wrapping mode for the curve map.
- */
-void BKE_curvemap_set_wrapping(CurveMapping *cumap, bool use_wrapping);
-
-/**
  * \note `cumap` itself has been read already.
  */
 void BKE_curvemapping_blend_read(BlendDataReader *reader, CurveMapping *cumap);

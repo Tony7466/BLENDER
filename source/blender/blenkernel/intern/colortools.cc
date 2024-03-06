@@ -274,11 +274,6 @@ CurveMapPoint *BKE_curvemap_insert(CurveMap *cuma, float x, float y)
   return newcmp;
 }
 
-void BKE_curvemap_set_wrapping(CurveMapping *cumapping, bool use_wrapping)
-{
-  cumapping->use_wrapping = use_wrapping;
-}
-
 void BKE_curvemap_reset(CurveMap *cuma, const rctf *clipr, int preset, int slope)
 {
   if (cuma->curve) {
@@ -665,7 +660,7 @@ static void curvemap_make_table(const CurveMapping *cumap, CurveMap *cuma)
    * side of the curve offset by the table range. The handles of these points are calculated, as if
    * they were between the last and first real points. */
 
-  const bool use_wrapping = cumap->use_wrapping;
+  const bool use_wrapping = cumap->flag & CUMA_USE_WRAPPING;
 
   if (cuma->curve == nullptr) {
     return;
@@ -1472,7 +1467,7 @@ void BKE_histogram_update_sample_line(Histogram *hist,
   hist->channels = 3;
   hist->x_resolution = 256;
   hist->xmax = 1.0f;
-  /* hist->ymax = 1.0f; /* now do this on the operator _only_ */
+  // hist->ymax = 1.0f; /* now do this on the operator _only_ */
 
   if (ibuf->byte_buffer.data == nullptr && ibuf->float_buffer.data == nullptr) {
     return;

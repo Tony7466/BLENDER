@@ -1953,7 +1953,7 @@ static bool seq_hue_correct_set_wrapping(Sequence *seq, void * /*user_data*/)
     if (smd->type == seqModifierType_HueCorrect) {
       HueCorrectModifierData *hcmd = (HueCorrectModifierData *)smd;
       CurveMapping *cumap = (CurveMapping *)&hcmd->curve_mapping;
-      cumap->use_wrapping = true;
+      cumap->flag |= CUMA_USE_WRAPPING;
     }
   }
   return true;
@@ -1966,7 +1966,7 @@ static void versioning_node_hue_correct_set_wrappng(bNodeTree *ntree)
 
       if (node->type == CMP_NODE_HUECORRECT) {
         CurveMapping *cumap = (CurveMapping *)node->storage;
-        cumap->use_wrapping = true;
+        cumap->flag |= CUMA_USE_WRAPPING;
       }
     }
   }
