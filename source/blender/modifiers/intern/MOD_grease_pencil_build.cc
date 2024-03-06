@@ -205,8 +205,10 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
 
   const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
 
-  bke::CurvesGeometry dst_curves(dst_points_num, dst_curves_num);
+  bke::CurvesGeometry dst_curves(curves);
+  dst_curves.resize(dst_points_num, dst_curves_num);
   Array<int> dst_to_src_point(dst_points_num);
+  Array<int> dst_to_src_curve(dst_curves_num);
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
   dst_offsets[0] = 0;
 
@@ -247,7 +249,7 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
       dst_to_src_point[next_point] = src_point_index;
       next_point++;
     }
-
+    dst_to_src_curve[next_curve] = i;
     next_curve++;
   }
   weights.finish();
@@ -258,9 +260,10 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
   const bke::AttributeAccessor src_attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
-  copy_attributes(src_attributes, bke::AttrDomain::Curve, {}, {}, dst_attributes);
   gather_attributes(
       src_attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
+  gather_attributes(
+      src_attributes, bke::AttrDomain::Curve, {}, {}, dst_to_src_curve, dst_attributes);
 
   return dst_curves;
 }
