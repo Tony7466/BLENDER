@@ -24,7 +24,6 @@
 
 namespace blender::bke::tests
 {
-
   TEST(view_layer, aov_unique_names)
   {
     /* Set Up */
