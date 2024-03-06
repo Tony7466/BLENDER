@@ -325,12 +325,15 @@ int sequencer_retiming_box_select_exec(bContext *C, wmOperator *op);
 
 /* `sequencer_retiming_draw.cc` */
 void sequencer_draw_retiming(const bContext *C, SeqQuadsBatch *quads);
-blender::Vector<Sequence *> sequencer_visible_strips_get(const bContext *C);
 SeqRetimingKey *try_to_realize_virtual_key(const bContext *C, Sequence *seq, const int mval[2]);
 SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], Sequence **r_seq);
 int left_fake_key_frame_get(const bContext *C, const Sequence *seq);
 int right_fake_key_frame_get(const bContext *C, const Sequence *seq);
 bool retiming_keys_are_visible(const bContext *C);
+
+/* `sequencer_timeline_draw.cc` */
+blender::Vector<Sequence *> sequencer_visible_strips_get(const bContext *C);
+blender::Vector<Sequence *> sequencer_visible_strips_get(const Scene *scene, const View2D *v2d);
 
 /* `sequencer_clipboard.cc` */
 int sequencer_clipboard_copy_exec(bContext *C, wmOperator *op);

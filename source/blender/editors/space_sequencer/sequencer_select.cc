@@ -888,11 +888,116 @@ static void sequencer_select_strip_impl(const Editing *ed,
 }
 
 /* Similar to `sequence_handle_size_get_clamped()` but allows for larger clickable area. */
-static float clickable_area_get(const Scene *scene, const Sequence *seq, float pixelx)
+static float clickable_handle_size_get(const Scene *scene, const Sequence *seq, const View2D *v2d)
 {
+  float pixelx = 1 / UI_view2d_scale_get_x(v2d);
   const int strip_len = SEQ_time_right_handle_frame_get(scene, seq) -
                         SEQ_time_left_handle_frame_get(scene, seq);
   return min_ff(15.0f * pixelx * U.pixelsize, strip_len / 4);
+}
+
+static bool can_select_handle(const Scene *scene, Sequence *seq, const View2D *v2d)
+{
+  float pixelx = 1 / UI_view2d_scale_get_x(v2d);
+  const int strip_len = SEQ_time_right_handle_frame_get(scene, seq) -
+                        SEQ_time_left_handle_frame_get(scene, seq);
+  if (strip_len / pixelx < 25 * U.pixelsize) {
+    return false;
+  }
+  return true;
+}
+
+static void clickable_areas_get(const Scene *scene,
+                                Sequence *seq,
+                                const View2D *v2d,
+                                rctf *r_body,
+                                rctf *r_left_handle,
+                                rctf *r_right_handle)
+{
+  seq_rectf(scene, seq, r_body);
+  memcpy(r_left_handle, r_body, sizeof(*r_left_handle));
+  memcpy(r_right_handle, r_body, sizeof(*r_right_handle));
+
+  float handsize = clickable_handle_size_get(scene, seq, v2d);
+  BLI_rctf_pad(r_left_handle, handsize / 3, 0.0f);
+  BLI_rctf_pad(r_right_handle, handsize / 3, 0.0f);
+  r_left_handle->xmax = r_body->xmin + handsize;
+  r_right_handle->xmin = r_body->xmax - handsize;
+  BLI_rctf_pad(r_body, -handsize, 0.0f);
+}
+
+static rctf clickable_area_get(const Scene *scene, const View2D *v2d, Sequence *seq)
+{
+  rctf body, left, right;
+  clickable_areas_get(scene, seq, v2d, &body, &left, &right);
+  BLI_rctf_union(&body, &left);
+  BLI_rctf_union(&body, &right);
+  return body;
+}
+
+static float distance_to_strip(const Scene *scene,
+                               const View2D *v2d,
+                               Sequence *seq,
+                               float mouse_co[2])
+{
+  rctf body, left, right;
+  clickable_areas_get(scene, seq, v2d, &body, &left, &right);
+  return BLI_rctf_length_x(&body, mouse_co[0]);
+}
+
+/* Get strips that can be selected by click. First  */
+static void mouseover_strips_get(
+    const Scene *scene, const View2D *v2d, float mouse_co[2], Sequence **r_seq1, Sequence **r_seq2)
+{
+  blender::Vector<Sequence *> strips = sequencer_visible_strips_get(scene, v2d);
+  Editing *ed = SEQ_editing_get(scene);
+
+  strips.remove_if([scene, ed, v2d, mouse_co](Sequence *seq) {
+    rctf body = clickable_area_get(scene, v2d, seq);
+    if (!BLI_rctf_isect_pt_v(&body, mouse_co)) {
+      return true;
+    }
+    if (SEQ_transform_is_locked(ed->displayed_channels, seq)) {
+      return true;
+    }
+    return false;
+  });
+
+  if (strips.size() == 0) {
+    return;
+  }
+
+  if (strips.size() == 1) {
+    *r_seq1 = strips[0];
+    return;
+  }
+
+  BLI_assert(strips.size() == 2);
+
+  if (distance_to_strip(scene, v2d, strips[0], mouse_co) <
+      distance_to_strip(scene, v2d, strips[1], mouse_co))
+  {
+    *r_seq1 = strips[0];
+    *r_seq2 = strips[1];
+  }
+  else {
+    *r_seq1 = strips[1];
+    *r_seq2 = strips[0];
+  }
+}
+
+static bool strips_are_touching(const Scene *scene, const Sequence *seq1, const Sequence *seq2)
+{
+  const int s1_left = SEQ_time_left_handle_frame_get(scene, seq1);
+  const int s1_right = SEQ_time_right_handle_frame_get(scene, seq1);
+  const int s2_left = SEQ_time_left_handle_frame_get(scene, seq2);
+  const int s2_right = SEQ_time_right_handle_frame_get(scene, seq2);
+
+  if (s1_left < s2_left) {
+    return s1_right == s2_left;
+  }
+
+  return s2_right == s1_left;
 }
 
 bool ED_sequencer_handle_selection_refine(const Scene *scene,
@@ -904,96 +1009,54 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
                                           int *r_side)
 {
   View2D *v2d = &region->v2d;
-  Editing *ed = SEQ_editing_get(scene);
-  float pixelx = BLI_rctf_size_x(&v2d->cur) / BLI_rcti_size_x(&v2d->mask);
-
-  *r_seq1 = nullptr;
-  *r_seq2 = nullptr;
+  float mouse_co[2]{mouse_x_view, mouse_y_view};
   *r_side = SEQ_SIDE_NONE;
+  *r_seq1 = *r_seq2 = nullptr;
 
-  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
-    if (SEQ_transform_is_locked(ed->displayed_channels, seq)) {
-      break;
-    }
-
-    rctf seq_rect;
-    seq_rectf(scene, seq, &seq_rect);
-    if (!BLI_rctf_isect_pt(&seq_rect, mouse_x_view, mouse_y_view)) {
-      continue;
-    }
-
-    float handsize = clickable_area_get(scene, seq, pixelx);
-    *r_seq1 = seq;
-
-    if (mouse_x_view < seq_rect.xmin + handsize) {
-      *r_side = SEQ_SIDE_LEFT;
-    }
-    if (mouse_x_view > seq_rect.xmax - handsize) {
-      *r_side = SEQ_SIDE_RIGHT;
-    }
-    if (SEQ_effect_get_num_inputs(seq->type) > 0) {
-      *r_side = SEQ_SIDE_NONE;
-    }
-
-    break;
-  }
+  mouseover_strips_get(scene, v2d, mouse_co, r_seq1, r_seq2);
 
   /* Nothing can be selected. */
   if (*r_seq1 == nullptr) {
     return false;
   }
 
-  const int strip_len = SEQ_time_right_handle_frame_get(scene, *r_seq1) -
-                        SEQ_time_left_handle_frame_get(scene, *r_seq1);
-  if (strip_len / pixelx < 25 * U.pixelsize) {
-    *r_side = SEQ_SIDE_NONE;
-  }
-
-  /* No further selection refinement needed. */
-  if (*r_seq1 != nullptr && *r_side == SEQ_SIDE_NONE) {
+  if (!can_select_handle(scene, *r_seq1, v2d)) {
     return true;
   }
 
+  /* Refine what part is selected. */
+
+  rctf body, left, right;
+  clickable_areas_get(scene, *r_seq1, v2d, &body, &left, &right);
+
+  if (BLI_rctf_isect_pt_v(&left, mouse_co)) {
+    *r_side = SEQ_SIDE_LEFT;
+  }
+  else if (BLI_rctf_isect_pt_v(&right, mouse_co)) {
+    *r_side = SEQ_SIDE_RIGHT;
+  }
+  if (*r_seq1 != nullptr && *r_side == SEQ_SIDE_NONE) {
+    return true; /* No further selection refinement needed. */
+  }
+  if (*r_seq2 == nullptr) {
+    return true;
+  }
   if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
     return true;
   }
+  if (!strips_are_touching(scene, *r_seq1, *r_seq2)) {
+    *r_seq2 = nullptr;
+    return true;
+  }
 
-  LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
-    if (SEQ_transform_is_locked(ed->displayed_channels, seq) ||
-        SEQ_effect_get_num_inputs(seq->type) > 0)
-    {
-      break;
-    }
-    if (seq == *r_seq1) {
-      continue;
-    }
+  /* Refine what part is selected for second strip. */
+  clickable_areas_get(scene, *r_seq2, v2d, &body, &left, &right);
 
-    float handsize = clickable_area_get(scene, seq, pixelx);
-    rctf seq_rect;
-    seq_rectf(scene, seq, &seq_rect);
-    seq_rect.xmin -= handsize;
-    seq_rect.xmax += handsize;
-
-    int handle1, handle2;
-    if (*r_side == SEQ_SIDE_LEFT) {
-      handle1 = SEQ_time_left_handle_frame_get(scene, *r_seq1);
-      handle2 = SEQ_time_right_handle_frame_get(scene, seq);
-    }
-    else {
-      handle1 = SEQ_time_right_handle_frame_get(scene, *r_seq1);
-      handle2 = SEQ_time_left_handle_frame_get(scene, seq);
-    }
-    if (handle1 != handle2) {
-      continue;
-    }
-
-    if (!BLI_rctf_isect_pt(&seq_rect, mouse_x_view, mouse_y_view)) {
-      continue;
-    }
-    if (mouse_x_view < seq_rect.xmin + handsize || mouse_x_view > seq_rect.xmax - handsize) {
-      *r_seq2 = seq;
-    }
-    break;
+  if (BLI_rctf_isect_pt_v(&left, mouse_co) && *r_side == SEQ_SIDE_RIGHT) {
+    *r_side = SEQ_SIDE_BOTH;
+  }
+  else if (!BLI_rctf_isect_pt_v(&right, mouse_co) && *r_side == SEQ_SIDE_LEFT) {
+    *r_side = SEQ_SIDE_BOTH;
   }
 
   return true;
