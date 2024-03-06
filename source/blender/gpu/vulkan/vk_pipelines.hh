@@ -18,9 +18,23 @@ class VKDevice;
 using ComputePipelineHandle = int64_t;
 
 /**
- * Pipelines are lazy initialized.
+ * Pipelines are lazy initialized and same pipelines should share their handle.
+ *
+ * To improve performance we want to keep track of pipelines globally. Same pipeline should share
+ * the same VKPipeline. This makes it easier to detect if pipelines are actually changed.
+ *
+ * VkPipelineCache is normally used to share internal resources of pipelines. However it the
+ * responsibility of the driver how this is handled. Some drivers might do ref-counting other may
+ * return a differnent pipeline handle. Due to this we cannot rely on the pipeline cache to merge
+ * same pipelines.
+ *
+ * Many information is needed to create a graphics pipeline. Some of the information is
+ * boilerplating; or at least from Blender point of view. To improve lookup performance we use a
+ * slimmed down version of the pipeline create info structs. The idea is that we can limit the
+ * required data because we control which data we actually use, removing te boiler plating and
+ * improve hashing performance. See #VKPipelines::ComputeInfo.
  */
-// TODO: Add Mutex
+// TODO: Make thread safe by adding a mutex.
 class VKPipelines {
  public:
   /**
@@ -47,7 +61,14 @@ class VKPipelines {
 
  public:
   VKPipelines();
+  /**
+   * Get an existing or create a new compute pipeline based on the provided ComputeInfo.
+   */
   VkPipeline get_or_create_compute_pipeline(ComputeInfo &compute_info);
+
+  /**
+   * Destroy all created pipelines.
+   */
   void deinitialize();
 };
 

@@ -42,6 +42,7 @@ void VKRenderGraph::remove_buffer(VkBuffer vk_buffer)
 {
   std::scoped_lock lock(mutex_);
   resources_.remove_buffer(vk_buffer);
+  // TODO: also remove resource from command_builder_ internals.
 }
 
 /** \} */

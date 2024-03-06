@@ -56,6 +56,9 @@ class VKRenderGraph : public NonCopyable {
    * Register a buffer resource to the render graph.
    */
   void add_buffer(VkBuffer vk_buffer);
+  /**
+   * Remove a buffer resource from the render graph.
+   */
   void remove_buffer(VkBuffer vk_buffer);
 
   /**
@@ -87,12 +90,16 @@ class VKRenderGraph : public NonCopyable {
    */
   void submit_for_present(VkImage vk_swapchain_image);
 
-  /**
-   * Wait for the submitted work to be finished.
-   */
-  void finish();
-
  private:
+  /**
+   * Add resources to a node handle.
+   *
+   * Clear + Copy nodes have a straight forward resource access. Drawing and compute nodes on the
+   * other hand can have complex setups where the resources can be used in different shader stages
+   * and access masks. #add_resources was added for these complex setups. In stead of determining
+   * how the resource is accessed these nodes will provide the essential information via the
+   * provided #VKResourceAccessInfo.
+   */
   void add_resources(NodeHandle node_handle, const VKResourceAccessInfo &resources);
 
   friend class VKRenderGraphCommandBuilder;
