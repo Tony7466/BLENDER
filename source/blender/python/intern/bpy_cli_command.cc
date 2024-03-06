@@ -34,26 +34,22 @@ static const char *bpy_cli_command_capsule_name_invalid = "bpy_cli_command<inval
 static PyObject *py_argv_from_bytes(const int argc, const char **argv)
 {
   /* Copy functionality from Python's internal `sys.argv` initialization. */
-  bool success = true;
-  PyObject *args = PyList_New(argc);
-  for (int i = 0; i < argc; i++) {
-    size_t arg_len;
-    wchar_t *arg = Py_DecodeLocale(argv[i], &arg_len);
-    if (arg == nullptr) {
-      success = false;
-      break;
+  PyConfig config;
+  PyConfig_InitPythonConfig(&config);
+  PyStatus status = PyConfig_SetBytesArgv(&config, argc, (char *const *)argv);
+  PyObject *py_argv = nullptr;
+  if (UNLIKELY(PyStatus_Exception(status))) {
+    PyErr_Format(PyExc_ValueError, "%s", status.err_msg);
+  }
+  else {
+    BLI_assert(argc == config.argv.length);
+    py_argv = PyList_New(config.argv.length);
+    for (Py_ssize_t i = 0; i < config.argv.length; i++) {
+      PyList_SET_ITEM(py_argv, i, PyUnicode_FromWideChar(config.argv.items[i], -1));
     }
-    PyList_SET_ITEM(args, i, PyUnicode_FromWideChar(arg, arg_len));
-    PyMem_RawFree(arg);
   }
-
-  if (success == false) {
-    /* It's OK if this is only partially initialized. */
-    Py_DECREF(args);
-    args = nullptr;
-  }
-
-  return args;
+  PyConfig_Clear(&config);
+  return py_argv;
 }
 
 struct BPyCLI_CommandUserData {
