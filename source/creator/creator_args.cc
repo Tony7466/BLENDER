@@ -930,7 +930,7 @@ static const char arg_handle_command_set_doc[] =
     "<command>\n"
     "\tRun a command which consumes all remaining arguments.\n"
     "\tUse '-c help' to list all other commands.\n"
-    "\tPass '--help' after the command to see it's help text.\n"
+    "\tPass '--help' after the command to see its help text.\n"
     "\n"
     "\tThis implies '--background' mode.";
 static int arg_handle_command_set(int argc, const char **argv, void * /*data*/)
