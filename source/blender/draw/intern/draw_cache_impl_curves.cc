@@ -420,7 +420,7 @@ static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curv
   right_elb.index_len = left_handles_offset + 3 * bezier_point_count;
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
-  const VArray<int8_t> curve_types = curves.curve_types();
+  const VArray<bool> cyclic = curves.cyclic();
 
   CurvesUboStorage ubo_storage;
   int &right_handle_line_offset = ubo_storage.right_handles_offset;
@@ -446,7 +446,11 @@ static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curv
     for (const int point : curve_points) {
       GPU_indexbuf_add_generic_vert(&elb, point);
     }
-    right_handle_line_offset += max_ii(curve_points.size() - 1, 1);
+    if (cyclic[src_i] && curve_points.size() > 2) {
+      GPU_indexbuf_add_generic_vert(&elb, curve_points.start());
+    }
+    right_handle_line_offset += bke::curves::segments_num(
+        curve_points.size(), cyclic[src_i] && (curve_points.size() > 2));
     GPU_indexbuf_add_primitive_restart(&elb);
   });
 
