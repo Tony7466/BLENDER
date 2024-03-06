@@ -1518,55 +1518,6 @@ void shrinkwrapGpencilModifier_deform(ShrinkwrapGpencilModifierData *mmd,
   }
 }
 
-void shrinkwrapGreasePencil_deform(const GreasePencilShrinkwrapModifierData &md,
-                                   Object &object,
-                                   const blender::Span<MDeformVert> dvert,
-                                   const int defgrp_index,
-                                   const blender::MutableSpan<blender::float3> positions)
-{
-  using namespace blender::bke;
-
-  ShrinkwrapCalcData calc = NULL_ShrinkwrapCalcData;
-  /* Convert modifier struct to use the same struct and function used with meshes. */
-  ShrinkwrapModifierData smd;
-  smd.target = md.target;
-  smd.auxTarget = md.aux_target;
-  smd.keepDist = md.keep_dist;
-  smd.shrinkType = md.shrink_type;
-  smd.shrinkOpts = md.shrink_opts;
-  smd.shrinkMode = md.shrink_mode;
-  smd.projLimit = md.proj_limit;
-  smd.projAxis = md.proj_axis;
-
-  /* Configure Shrinkwrap calc data. */
-  calc.smd = &smd;
-  calc.ob = &object;
-  calc.numVerts = int(positions.size());
-  calc.vertexCos = reinterpret_cast<float(*)[3]>(positions.data());
-  calc.dvert = dvert.is_empty() ? nullptr : dvert.data();
-  calc.vgroup = defgrp_index;
-  calc.invert_vgroup = md.influence.flag & GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP;
-
-  BLI_SPACE_TRANSFORM_SETUP(&calc.local2target, &object, md.target);
-  calc.keepDist = md.keep_dist;
-  calc.tree = md.cache_data;
-
-  switch (md.shrink_type) {
-    case MOD_SHRINKWRAP_NEAREST_SURFACE:
-    case MOD_SHRINKWRAP_TARGET_PROJECT:
-      TIMEIT_BENCH(shrinkwrap_calc_nearest_surface_point(&calc), gpdeform_surface);
-      break;
-
-    case MOD_SHRINKWRAP_PROJECT:
-      TIMEIT_BENCH(shrinkwrap_calc_normal_projection(&calc), gpdeform_project);
-      break;
-
-    case MOD_SHRINKWRAP_NEAREST_VERTEX:
-      TIMEIT_BENCH(shrinkwrap_calc_nearest_vertex(&calc), gpdeform_vertex);
-      break;
-  }
-}
-
 void shrinkwrapParams_deform(const ShrinkwrapParams &params,
                              Object &object,
                              ShrinkwrapTreeData &tree,

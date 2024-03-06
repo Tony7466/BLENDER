@@ -119,12 +119,6 @@ void shrinkwrapGpencilModifier_deform(ShrinkwrapGpencilModifierData *mmd,
                                       float (*vertexCos)[3],
                                       int numVerts);
 
-void shrinkwrapGreasePencil_deform(const GreasePencilShrinkwrapModifierData &md,
-                                   Object &object,
-                                   blender::Span<MDeformVert> dvert,
-                                   int defgrp_index,
-                                   blender::MutableSpan<blender::float3> positions);
-
 struct ShrinkwrapParams {
   /** Shrink target. */
   Object *target = nullptr;
