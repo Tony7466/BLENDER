@@ -329,11 +329,8 @@ static void curves_batch_cache_ensure_edit_points_pos(
   const VArray<int8_t> right_handle_types = curves.handle_types_right();
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
-  other_curves.foreach_index(GrainSize(512), [&](const int64_t i) {
-    // test
-    IndexRange range = points_by_curve[i];
-    data_span.slice(range).fill(0);
-  });
+  other_curves.foreach_index(
+      GrainSize(512), [&](const int64_t i) { data_span.slice(points_by_curve[i]).fill(0); });
 
   array_utils::gather_group_to_group(
       points_by_curve, bezier_dst_offsets, bezier_curves, left_handle_positions, left_handles);
