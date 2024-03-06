@@ -52,7 +52,8 @@ TEST(vk_render_graph, fill_transfer_and_read_back)
   EXPECT_EQ(3, log.size());
   EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=42)", log[0]);
   EXPECT_EQ(
-      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT\n"
       " - buffer_barrier(src_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
       "dst_access_mask=VK_ACCESS_TRANSFER_READ_BIT, buffer=0x1, offset=0, "
       "size=18446744073709551615)\n"
@@ -86,7 +87,8 @@ TEST(vk_render_graph, fill_fill_read_back)
   EXPECT_EQ(3, log.size());
   EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=0)", log[0]);
   EXPECT_EQ(
-      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT\n"
       " - buffer_barrier(src_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
       "dst_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, buffer=0x1, offset=0, "
       "size=18446744073709551615)\n"

@@ -324,8 +324,8 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                    "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
     ss << "pipeline_barrier(";
-    ss << "src_stage_mask=" << to_string_vk_shader_stage_flags(src_stage_mask);
-    ss << ", dst_stage_mask=" << to_string_vk_shader_stage_flags(dst_stage_mask);
+    ss << "src_stage_mask=" << to_string_vk_pipeline_stage_flags(src_stage_mask);
+    ss << ", dst_stage_mask=" << to_string_vk_pipeline_stage_flags(dst_stage_mask);
     ss << "\n";
     for (VkImageMemoryBarrier image_barrier :
          Span<VkImageMemoryBarrier>(p_image_memory_barriers, image_memory_barrier_count))

@@ -19,9 +19,11 @@ class VKRenderGraphCommandBuilder {
   Vector<NodeHandle> selected_nodes_;
   Vector<VkImageLayout> image_layouts_;
 
-  // TODO: make a struct containing both accesses.
+  // TODO: make a struct containing accesses / stages as they are often used at the same time.
   Vector<VkAccessFlags> write_access_;
   Vector<VkAccessFlags> read_access_;
+  Vector<VkPipelineStageFlags> write_stages_;
+  Vector<VkPipelineStageFlags> read_stages_;
 
   /* Pool of VKBufferMemoryBarriers that can be reused when building barriers */
   Vector<VkBufferMemoryBarrier> vk_buffer_memory_barriers_;
@@ -78,12 +80,22 @@ class VKRenderGraphCommandBuilder {
                            NodeHandle node_handle,
                            const VKRenderGraphNodes::Node &node);
 
-  void add_buffer_barriers(VKRenderGraph &render_graph, NodeHandle node_handle);
+  void add_buffer_barriers(VKRenderGraph &render_graph,
+                           NodeHandle node_handle,
+                           VkPipelineStageFlags node_stages);
   void add_buffer_barrier(VkBuffer vk_buffer,
                           VkAccessFlags src_access_mask,
                           VkAccessFlags dst_access_mask);
-  void add_buffer_read_barriers(VKRenderGraph &render_graph, NodeHandle node_handle);
-  void add_buffer_write_barriers(VKRenderGraph &render_graph, NodeHandle node_handle);
+  void add_buffer_read_barriers(VKRenderGraph &render_graph,
+                                NodeHandle node_handle,
+                                VkPipelineStageFlags node_stages,
+                                VkPipelineStageFlags &r_src_stage_mask,
+                                VkPipelineStageFlags &r_dst_stage_mask);
+  void add_buffer_write_barriers(VKRenderGraph &render_graph,
+                                 NodeHandle node_handle,
+                                 VkPipelineStageFlags node_stages,
+                                 VkPipelineStageFlags &r_src_stage_mask,
+                                 VkPipelineStageFlags &r_dst_stage_mask);
 };
 
 }  // namespace blender::gpu

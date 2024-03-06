@@ -24,6 +24,12 @@ void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
   if (write_access_.size() < resource_len) {
     write_access_.resize(resource_len, VK_ACCESS_NONE);
   }
+  if (read_stages_.size() < resource_len) {
+    read_stages_.resize(resource_len, VK_PIPELINE_STAGE_NONE);
+  }
+  if (write_stages_.size() < resource_len) {
+    write_stages_.resize(resource_len, VK_PIPELINE_STAGE_NONE);
+  }
 
   // Reset image_layouts
   if (image_layouts_.size() < resource_len) {
@@ -123,7 +129,7 @@ void VKRenderGraphCommandBuilder::build_node_fill_buffer(VKRenderGraph &render_g
                                                          const VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::FILL_BUFFER);
-  add_buffer_barriers(render_graph, node_handle);
+  add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
   render_graph.command_buffer_->fill_buffer(
       node.fill_buffer.vk_buffer, 0, node.fill_buffer.size, node.fill_buffer.data);
 }
@@ -133,7 +139,7 @@ void VKRenderGraphCommandBuilder::build_node_copy_buffer(VKRenderGraph &render_g
                                                          const VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::COPY_BUFFER);
-  add_buffer_barriers(render_graph, node_handle);
+  add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
   render_graph.command_buffer_->copy_buffer(
       node.copy_buffer.src_buffer, node.copy_buffer.dst_buffer, 1, &node.copy_buffer.region);
 }
@@ -143,7 +149,7 @@ void VKRenderGraphCommandBuilder::build_node_dispatch(VKRenderGraph &render_grap
                                                       const VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::DISPATCH);
-  add_buffer_barriers(render_graph, node_handle);
+  add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
 
   if (assign_if_different(active_compute_pipeline_, node.dispatch.vk_pipeline)) {
     render_graph.command_buffer_->bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -198,19 +204,23 @@ void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_grap
 }
 
 void VKRenderGraphCommandBuilder::add_buffer_barriers(VKRenderGraph &render_graph,
-                                                      NodeHandle node_handle)
+                                                      NodeHandle node_handle,
+                                                      VkPipelineStageFlags node_stages)
 {
   vk_buffer_memory_barriers_.clear();
-  add_buffer_read_barriers(render_graph, node_handle);
-  add_buffer_write_barriers(render_graph, node_handle);
-  if (vk_buffer_memory_barriers_.is_empty()) {
+  VkPipelineStageFlags src_stage_mask = VK_PIPELINE_STAGE_NONE;
+  VkPipelineStageFlags dst_stage_mask = VK_PIPELINE_STAGE_NONE;
+  add_buffer_read_barriers(render_graph, node_handle, node_stages, src_stage_mask, dst_stage_mask);
+  add_buffer_write_barriers(
+      render_graph, node_handle, node_stages, src_stage_mask, dst_stage_mask);
+  if (vk_buffer_memory_barriers_.is_empty() || src_stage_mask == VK_PIPELINE_STAGE_NONE ||
+      dst_stage_mask == VK_PIPELINE_STAGE_NONE)
+  {
     return;
   }
 
-  // TODO: determine stage masks from added barriers.
-  const VkPipelineStageFlags stage_masks = VK_PIPELINE_STAGE_NONE_KHR;
-  render_graph.command_buffer_->pipeline_barrier(stage_masks,
-                                                 stage_masks,
+  render_graph.command_buffer_->pipeline_barrier(src_stage_mask,
+                                                 dst_stage_mask,
                                                  VK_DEPENDENCY_BY_REGION_BIT,
                                                  0,
                                                  nullptr,
@@ -221,7 +231,10 @@ void VKRenderGraphCommandBuilder::add_buffer_barriers(VKRenderGraph &render_grap
 }
 
 void VKRenderGraphCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
-                                                           NodeHandle node_handle)
+                                                           NodeHandle node_handle,
+                                                           VkPipelineStageFlags node_stages,
+                                                           VkPipelineStageFlags &r_src_stage_mask,
+                                                           VkPipelineStageFlags &r_dst_stage_mask)
 {
   for (const VKRenderGraphNodes::ResourceUsage &usage :
        render_graph.nodes_.get_read_resources(node_handle))
@@ -242,16 +255,23 @@ void VKRenderGraphCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render
 
     read_access |= usage.vk_access_flags;
     wait_access |= write_access;
+    r_src_stage_mask |= write_stages_[versioned_resource.handle];
+    r_dst_stage_mask |= node_stages;
 
     read_access_[versioned_resource.handle] = read_access;
     write_access_[versioned_resource.handle] = VK_ACCESS_NONE;
+    read_stages_[versioned_resource.handle] |= node_stages;
+    write_stages_[versioned_resource.handle] = VK_PIPELINE_STAGE_NONE;
 
     add_buffer_barrier(resource.vk_buffer, wait_access, read_access);
   }
 }
 
 void VKRenderGraphCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
-                                                            NodeHandle node_handle)
+                                                            NodeHandle node_handle,
+                                                            VkPipelineStageFlags node_stages,
+                                                            VkPipelineStageFlags &r_src_stage_mask,
+                                                            VkPipelineStageFlags &r_dst_stage_mask)
 {
   for (const VKRenderGraphNodes::ResourceUsage usage :
        render_graph.nodes_.get_write_resources(node_handle))
@@ -276,8 +296,14 @@ void VKRenderGraphCommandBuilder::add_buffer_write_barriers(VKRenderGraph &rende
       wait_access |= write_access;
     }
 
+    r_src_stage_mask |= read_stages_[versioned_resource.handle] |
+                        write_stages_[versioned_resource.handle];
+    r_dst_stage_mask |= node_stages;
+
     read_access_[versioned_resource.handle] = VK_ACCESS_NONE;
     write_access_[versioned_resource.handle] = usage.vk_access_flags;
+    read_stages_[versioned_resource.handle] = VK_PIPELINE_STAGE_NONE;
+    write_stages_[versioned_resource.handle] = node_stages;
 
     if (wait_access != VK_ACCESS_NONE) {
       add_buffer_barrier(resource.vk_buffer, wait_access, usage.vk_access_flags);

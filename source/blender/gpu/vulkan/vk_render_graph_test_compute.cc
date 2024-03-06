@@ -89,7 +89,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back)
       log[1]);
   EXPECT_EQ("dispatch(group_count_x=1, group_count_y=1, group_count_z=1)", log[2]);
   EXPECT_EQ(
-      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT\n"
       " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
       "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
       "size=18446744073709551615)\n"
@@ -148,7 +149,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_descriptor_sets)
       log[1]);
   EXPECT_EQ("dispatch(group_count_x=1, group_count_y=1, group_count_z=1)", log[2]);
   EXPECT_EQ(
-      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT\n"
       " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
       "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
       "size=18446744073709551615)\n"
@@ -210,7 +212,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines)
       log[1]);
   EXPECT_EQ("dispatch(group_count_x=1, group_count_y=1, group_count_z=1)", log[2]);
   EXPECT_EQ(
-      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT\n"
       " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
       "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
       "size=18446744073709551615)\n"
@@ -272,7 +275,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines_descri
       log[1]);
   EXPECT_EQ("dispatch(group_count_x=1, group_count_y=1, group_count_z=1)", log[2]);
   EXPECT_EQ(
-      "pipeline_barrier(src_stage_mask=, dst_stage_mask=\n"
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT\n"
       " - buffer_barrier(src_access_mask=VK_ACCESS_SHADER_WRITE_BIT, "
       "dst_access_mask=VK_ACCESS_SHADER_WRITE_BIT, buffer=0x1, offset=0, "
       "size=18446744073709551615)\n"
