@@ -205,8 +205,7 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
 
   const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
 
-  bke::CurvesGeometry dst_curves(curves);
-  dst_curves.resize(dst_points_num, dst_curves_num);
+  bke::CurvesGeometry dst_curves(dst_points_num, dst_curves_num);
   Array<int> dst_to_src_point(dst_points_num);
   Array<int> dst_to_src_curve(dst_curves_num);
   MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
@@ -264,6 +263,8 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
       src_attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
   gather_attributes(
       src_attributes, bke::AttrDomain::Curve, {}, {}, dst_to_src_curve, dst_attributes);
+
+  dst_curves.update_curve_types();
 
   return dst_curves;
 }
