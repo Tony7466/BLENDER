@@ -62,12 +62,7 @@
 #include "AS_asset_library.hh"
 
 #include "BKE_addon.h"
-<<<<<<< HEAD
 #include "BKE_appdir.hh"
-    == == ==
-    =
-#include "BKE_appdir.h"
-        >>>>>>> 6a5246537f9 (Cleanup: Move `BKE_autoexec.h` to full Cpp header `BKE_autoexec.hh`.)
 #include "BKE_autoexec.hh"
 #include "BKE_blender.hh"
 #include "BKE_blender_version.h"
@@ -143,8 +138,7 @@
 
 #include "CLG_log.h"
 
-        static RecentFile *
-        wm_file_history_find(const char *filepath);
+static RecentFile *wm_file_history_find(const char *filepath);
 static void wm_history_file_free(RecentFile *recent);
 static void wm_history_files_free();
 static void wm_history_file_update();

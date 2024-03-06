@@ -181,6 +181,7 @@ PyDoc_STRVAR(
     "   :type program: :class:`gpu.types.GPUShader`\n");
 static PyObject *pygpu_batch_program_set(BPyGPUBatch *self, BPyGPUShader *py_shader)
 {
+
   static bool deprecation_warning_issued = false;
 
   /* Deprecation warning raised when calling `gpu.types.GPUBatch.program_set`.  */
