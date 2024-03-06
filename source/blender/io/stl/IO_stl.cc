@@ -6,6 +6,7 @@
  * \ingroup stl
  */
 
+#include "BKE_mesh.hh"
 #include "BLI_timeit.hh"
 
 #include "IO_stl.hh"
@@ -22,4 +23,9 @@ void STL_export(bContext *C, const STLExportParams *export_params)
 {
   SCOPED_TIMER("STL Export");
   blender::io::stl::exporter_main(C, *export_params);
+}
+
+Mesh* STL_import_mesh(const STLImportParams *import_params)
+{
+  return blender::io::stl::importer_mesh(*import_params);
 }

@@ -10,6 +10,8 @@
 
 #include "IO_stl.hh"
 
+struct Mesh; // forward declare
+
 namespace blender::io::stl {
 
 void stl_import_report_error(FILE *file);
@@ -22,5 +24,8 @@ void importer_main(Main *bmain,
                    Scene *scene,
                    ViewLayer *view_layer,
                    const STLImportParams &import_params);
+
+/* Used from geo nodes, where full bContext does not exist */
+Mesh *importer_mesh(const STLImportParams &import_params);
 
 }  // namespace blender::io::stl

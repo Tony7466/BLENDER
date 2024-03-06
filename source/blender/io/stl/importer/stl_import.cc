@@ -148,4 +148,58 @@ void importer_main(Main *bmain,
   DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
   DEG_relations_tag_update(bmain);
 }
+
+Mesh* importer_mesh(const STLImportParams& import_params)
+{
+  FILE *file = BLI_fopen(import_params.filepath, "rb");
+  if (!file) {
+    fprintf(stderr, "Failed to open STL file:'%s'.\n", import_params.filepath);
+    BKE_reportf(import_params.reports,
+                RPT_ERROR,
+                "STL Import: Cannot open file '%s'",
+                import_params.filepath);
+    return nullptr;
+  }
+  BLI_SCOPED_DEFER([&]() { fclose(file); });
+
+  /* Detect STL file type by comparing file size with expected file size,
+   * could check if file starts with "solid", but some files do not adhere,
+   * this is the same as the old Python importer.
+   */
+  uint32_t num_tri = 0;
+  size_t file_size = BLI_file_size(import_params.filepath);
+  fseek(file, BINARY_HEADER_SIZE, SEEK_SET);
+  if (fread(&num_tri, sizeof(uint32_t), 1, file) != 1) {
+    stl_import_report_error(file);
+    BKE_reportf(import_params.reports,
+                RPT_ERROR,
+                "STL Import: Failed to read file '%s'",
+                import_params.filepath);
+    return nullptr;
+  }
+  bool is_ascii_stl = (file_size != (BINARY_HEADER_SIZE + 4 + BINARY_STRIDE * num_tri));
+
+  Mesh *mesh = is_ascii_stl ?
+                   read_stl_ascii(import_params.filepath, import_params.use_facet_normal) :
+                   read_stl_binary(file, import_params.use_facet_normal);
+
+  if (mesh == nullptr) {
+    fprintf(stderr, "STL Importer: Failed to import mesh '%s'\n", import_params.filepath);
+    BKE_reportf(import_params.reports,
+                RPT_ERROR,
+                "STL Import: Failed to import mesh from file '%s'",
+                import_params.filepath);
+    return nullptr;
+  }
+
+  if (import_params.use_mesh_validate) {
+    bool verbose_validate = false;
+#ifndef NDEBUG
+    verbose_validate = true;
+#endif
+    BKE_mesh_validate(mesh, verbose_validate, false);
+  }
+
+  return mesh;
+}
 }  // namespace blender::io::stl

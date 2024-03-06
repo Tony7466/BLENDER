@@ -1,17 +1,44 @@
 #include "node_geometry_util.hh"
 
+#include "BKE_mesh.hh"
+
+#include "BLI_string.h"
+
+#include "IO_stl.hh"
+
 namespace blender::nodes::node_geo_import_stl {
 
 static void node_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::String>("Path");
+  b.add_input<decl::String>("Path").default_value("");
 
   b.add_output<decl::Geometry>("Mesh");
 }
 
 static void node_geo_exec(GeoNodeExecParams params)
 {
+  const std::string path = params.extract_input<std::string>("Path");
 
+  if (path.empty())
+    return;
+
+  STLImportParams p;
+
+  STRNCPY(p.filepath, path.c_str());
+
+  p.forward_axis = IO_AXIS_NEGATIVE_Z;
+  p.up_axis = IO_AXIS_Y;
+  p.use_facet_normal = false;
+  p.use_scene_unit = false;
+  p.global_scale = 1.0f;
+  p.use_mesh_validate = true;
+
+  Mesh *mesh = STL_import_mesh(&p);
+
+  if (mesh != nullptr)
+  {
+    params.set_output("Mesh", GeometrySet::from_mesh(mesh));
+  }
 }
 
 static void node_register()
