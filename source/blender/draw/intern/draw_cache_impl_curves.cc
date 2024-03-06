@@ -396,62 +396,67 @@ static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curv
                                                  const IndexMask other_curves,
                                                  CurvesBatchCache &cache)
 {
-  const int bezier_curve_count = bezier_offsets.size();
   const int bezier_point_count = bezier_offsets.total_size();
   // Left and right handle will be appended for each Bezier point.
   const int vert_len = curves.points_num() + 2 * bezier_point_count;
-  // Curve count excluding Bezier curves.
-  const int curve_len = curves.curves_num() - bezier_curve_count;
-  /* To vertex count (vert_len) prim restart is added for each non Bezier curve (+ curve_len).
-   * Also each Bezier point generates two handle lines,
-   * that will require extra reference and two restarts ( + 3 * bezier_point_count). */
-  const int index_len = vert_len + curve_len + 3 * bezier_point_count;
-
-  GPUIndexBufBuilder elb, left_elb, right_elb;
-  GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINE_STRIP, index_len, vert_len);
-
-  memcpy(&left_elb, &elb, sizeof(elb));
-  memcpy(&right_elb, &elb, sizeof(elb));
-  const int left_handles_offset = curves.points_num() - bezier_point_count + curve_len;
-  left_elb.index_len = left_handles_offset;
-  right_elb.index_len = left_handles_offset + 3 * bezier_point_count;
-
+  // For each point has 2 lines from 2 point and one restart entry.
+  const int index_len_for_bezier = 6 * bezier_point_count;
   const OffsetIndices points_by_curve = curves.points_by_curve();
   const VArray<bool> cyclic = curves.cyclic();
 
   CurvesUboStorage ubo_storage;
-  int &right_handle_line_offset = ubo_storage.right_handles_offset;
-  right_handle_line_offset = 0;
+  // Number of segments excluding right handles
+  int &segment_count = ubo_storage.right_handles_offset;
+  segment_count = 0;
 
-  bezier_curves.foreach_index([&](const int64_t src_i, const int64_t dst_i) {
-    IndexRange bezier_points = points_by_curve[src_i];
-    for (const int point : bezier_points) {
-      const int point_dst_left = curves.points_num() + point - bezier_points.start() +
-                                 bezier_offsets[dst_i].start();
-      GPU_indexbuf_add_generic_vert(&left_elb, point_dst_left);
-      GPU_indexbuf_add_generic_vert(&left_elb, point);
-      GPU_indexbuf_add_primitive_restart(&left_elb);
-      GPU_indexbuf_add_generic_vert(&right_elb, point_dst_left + bezier_point_count);
-      GPU_indexbuf_add_generic_vert(&right_elb, point);
-      GPU_indexbuf_add_primitive_restart(&right_elb);
+  int index_len_for_other = 0;
+  other_curves.foreach_index([&](const int64_t src_i) {
+    const int points_num = points_by_curve[src_i].size();
+    if (points_num <= 1) {
+      return;
     }
-    right_handle_line_offset += bezier_points.size();
+    const int segments_for_curve = bke::curves::segments_num(points_num,
+                                                             cyclic[src_i] && points_num > 2);
+    segment_count += segments_for_curve;
+    index_len_for_other += segments_for_curve + 2;
   });
+
+  const int index_len = index_len_for_bezier + index_len_for_other;
+  GPUIndexBufBuilder elb, right_elb;
+  GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINE_STRIP, index_len, vert_len);
+  memcpy(&right_elb, &elb, sizeof(elb));
 
   other_curves.foreach_index([&](const int64_t src_i) {
     IndexRange curve_points = points_by_curve[src_i];
+    if (curve_points.size() <= 1) {
+      return;
+    }
     for (const int point : curve_points) {
       GPU_indexbuf_add_generic_vert(&elb, point);
     }
     if (cyclic[src_i] && curve_points.size() > 2) {
       GPU_indexbuf_add_generic_vert(&elb, curve_points.start());
     }
-    right_handle_line_offset += bke::curves::segments_num(
-        curve_points.size(), cyclic[src_i] && (curve_points.size() > 2));
     GPU_indexbuf_add_primitive_restart(&elb);
   });
 
-  GPU_indexbuf_join(&elb, &left_elb);
+  right_elb.index_len = elb.index_len + 3 * bezier_point_count;
+
+  bezier_curves.foreach_index([&](const int64_t src_i, const int64_t dst_i) {
+    IndexRange bezier_points = points_by_curve[src_i];
+    for (const int point : bezier_points) {
+      const int point_dst_left = curves.points_num() + point - bezier_points.start() +
+                                 bezier_offsets[dst_i].start();
+      GPU_indexbuf_add_generic_vert(&elb, point_dst_left);
+      GPU_indexbuf_add_generic_vert(&elb, point);
+      GPU_indexbuf_add_primitive_restart(&elb);
+      GPU_indexbuf_add_generic_vert(&right_elb, point_dst_left + bezier_point_count);
+      GPU_indexbuf_add_generic_vert(&right_elb, point);
+      GPU_indexbuf_add_primitive_restart(&right_elb);
+    }
+    segment_count += bezier_points.size();
+  });
+
   GPU_indexbuf_join(&elb, &right_elb);
   GPU_indexbuf_build_in_place(&elb, cache.edit_lines_ibo);
   GPU_uniformbuf_update(cache.curves_ubo_storage, &ubo_storage);
