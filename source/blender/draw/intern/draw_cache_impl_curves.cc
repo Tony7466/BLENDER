@@ -909,7 +909,6 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
 
   if (DRW_batch_requested(cache.edit_points, GPU_PRIM_POINTS)) {
     DRW_vbo_request(cache.edit_points, &cache.edit_points_pos);
-    DRW_vbo_request(cache.edit_points, &cache.edit_points_data);
     DRW_vbo_request(cache.edit_points, &cache.edit_points_selection);
   }
   if (DRW_batch_requested(cache.edit_lines, GPU_PRIM_LINE_STRIP)) {
