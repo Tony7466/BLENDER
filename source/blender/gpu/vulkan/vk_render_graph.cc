@@ -150,6 +150,7 @@ void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
   command_builder_.reset(*this);
   command_buffer_->begin_recording();
   command_builder_.build_buffer(*this, vk_buffer);
+  // TODO: add sync?
   command_buffer_->end_recording();
   command_buffer_->submit_with_cpu_synchronization();
   command_builder_.update_state_after_submission(*this);

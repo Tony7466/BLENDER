@@ -124,9 +124,12 @@ class VKCommandBufferWrapper : public VKRenderGraphCommandBuffer {
   VkCommandPoolCreateInfo vk_command_pool_create_info_;
   VkCommandBufferAllocateInfo vk_command_buffer_allocate_info_;
   VkCommandBufferBeginInfo vk_command_buffer_begin_info_;
+  VkFenceCreateInfo vk_fence_create_info_;
+  VkSubmitInfo vk_submit_info_;
 
   VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
   VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;
+  VkFence vk_fence_ = VK_NULL_HANDLE;
 
  public:
   VKCommandBufferWrapper();

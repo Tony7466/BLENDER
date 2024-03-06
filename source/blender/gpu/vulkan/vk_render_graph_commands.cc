@@ -26,11 +26,26 @@ VKCommandBufferWrapper::VKCommandBufferWrapper()
 
   vk_command_buffer_begin_info_ = {};
   vk_command_buffer_begin_info_.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+  vk_fence_create_info_ = {};
+  vk_fence_create_info_.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+  vk_fence_create_info_.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+  vk_submit_info_ = {};
+  vk_submit_info_.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  vk_submit_info_.waitSemaphoreCount = 0;
+  vk_submit_info_.pWaitSemaphores = nullptr;
+  vk_submit_info_.pWaitDstStageMask = nullptr;
+  vk_submit_info_.commandBufferCount = 1;
+  vk_submit_info_.pCommandBuffers = &vk_command_buffer_;
+  vk_submit_info_.signalSemaphoreCount = 0;
+  vk_submit_info_.pSignalSemaphores = nullptr;
 }
 
 VKCommandBufferWrapper::~VKCommandBufferWrapper()
 {
   // TODO: destroy pool
+  // TODO: destroy fence
 }
 
 void VKCommandBufferWrapper::begin_recording()
@@ -46,6 +61,10 @@ void VKCommandBufferWrapper::begin_recording()
     vk_command_buffer_allocate_info_.commandPool = vk_command_pool_;
     vk_command_pool_create_info_.queueFamilyIndex = 0;
   }
+  if (vk_fence_ == VK_NULL_HANDLE) {
+    vkCreateFence(
+        device.device_get(), &vk_fence_create_info_, vk_allocation_callbacks, &vk_fence_);
+  }
   BLI_assert(vk_command_buffer_ == VK_NULL_HANDLE);
   vkAllocateCommandBuffers(
       device.device_get(), &vk_command_buffer_allocate_info_, &vk_command_buffer_);
@@ -60,12 +79,16 @@ void VKCommandBufferWrapper::end_recording()
 
 void VKCommandBufferWrapper::submit_with_cpu_synchronization()
 {
-  BLI_assert_unreachable();
+  VKDevice &device = VKBackend::get().device_get();
+  vkResetFences(device.device_get(), 1, &vk_fence_);
+  vkQueueSubmit(device.queue_get(), 1, &vk_submit_info_, vk_fence_);
 }
 
 void VKCommandBufferWrapper::wait_for_cpu_synchronization()
 {
-  BLI_assert_unreachable();
+  VKDevice &device = VKBackend::get().device_get();
+  while (vkWaitForFences(device.device_get(), 1, &vk_fence_, true, UINT64_MAX) == VK_TIMEOUT) {
+  }
 }
 
 void VKCommandBufferWrapper::bind_pipeline(VkPipelineBindPoint pipeline_bind_point,
