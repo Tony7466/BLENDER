@@ -6,6 +6,7 @@
  * \ingroup modifiers
  */
 
+#include "BKE_attribute.hh"
 #include "BKE_material.h"
 
 #include "DNA_defaults.h"
@@ -26,6 +27,8 @@
 #include "BLO_read_write.hh"
 
 #include "DEG_depsgraph_query.hh"
+
+#include "GEO_smooth_curves.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -139,9 +142,12 @@ static void modify_drawing(const GreasePencilShrinkwrapModifierData &smd,
                            bke::greasepencil::Drawing &drawing)
 {
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   const Span<MDeformVert> dverts = curves.deform_verts();
   const MutableSpan<float3> positions = curves.positions_for_write();
-  const int defgrp_idx = BKE_object_defgroup_name_index(ctx.object, smd.influence.vertex_group_name);
+  const int defgrp_idx = BKE_object_defgroup_name_index(ctx.object,
+                                                        smd.influence.vertex_group_name);
 
   /* Selected source curves. */
   IndexMaskMemory curve_mask_memory;
@@ -161,17 +167,27 @@ static void modify_drawing(const GreasePencilShrinkwrapModifierData &smd,
   params.subsurf_levels = smd.subsurf_levels;
 
   curves_mask.foreach_index([&](const int curve_i) {
-    const IndexRange points = curves.points_by_curve()[curve_i];
+    const IndexRange points = points_by_curve[curve_i];
     const Span<MDeformVert> curve_dverts = dverts.is_empty() ? dverts : dverts.slice(points);
     const MutableSpan<float3> curve_positions = positions.slice(points);
 
-    shrinkwrapParams_deform(params,
-                            *ctx.object,
-                            *smd.cache_data,
-                            curve_dverts,
-                            defgrp_idx,
-                            curve_positions);
+    shrinkwrapParams_deform(
+        params, *ctx.object, *smd.cache_data, curve_dverts, defgrp_idx, curve_positions);
   });
+
+  /* Optional smoothing after shrinkwrap. */
+  const VArray<bool> point_selection = VArray<bool>::ForSingle(true, curves.points_num());
+  const bool smooth_ends = false;
+  const bool keep_shape = true;
+  geometry::smooth_curve_attribute(curves_mask,
+                                   points_by_curve,
+                                   point_selection,
+                                   curves.cyclic(),
+                                   smd.smooth_step,
+                                   smd.smooth_factor,
+                                   smooth_ends,
+                                   keep_shape,
+                                   positions);
 
   drawing.tag_positions_changed();
 }
