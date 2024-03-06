@@ -12,6 +12,7 @@
 #include "vk_common.hh"
 
 namespace blender::gpu {
+class VKRenderGraph;
 
 /**
  * Utility class to copy data from host to device and vise versa.
@@ -56,7 +57,7 @@ class VKStagingBuffer {
   /**
    * Copy the content of the device buffer to the host buffer.
    */
-  void copy_from_device(VKContext &context);
+  void copy_from_device(VKRenderGraph &render_graph);
 
   /**
    * Get the reference to the host buffer to update/load the data.

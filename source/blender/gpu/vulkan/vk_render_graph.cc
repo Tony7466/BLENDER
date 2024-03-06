@@ -35,6 +35,18 @@ void VKRenderGraph::add_image(VkImage vk_image, VkImageLayout vk_image_layout, R
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Adding resources
+ * \{ */
+
+void VKRenderGraph::remove_buffer(VkBuffer vk_buffer)
+{
+  std::scoped_lock lock(mutex_);
+  resources_.remove_buffer(vk_buffer);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Add Node
  * \{ */
 

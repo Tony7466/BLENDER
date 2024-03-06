@@ -21,6 +21,7 @@
 #include <optional>
 
 #include "BLI_map.hh"
+#include "BLI_utility_mixins.hh"
 #include "BLI_vector.hh"
 
 #include "vk_common.hh"
@@ -34,7 +35,7 @@
 
 namespace blender::gpu {
 
-class VKRenderGraph {
+class VKRenderGraph : public NonCopyable {
   VKRenderGraphResources resources_;
   VKRenderGraphNodes nodes_;
   VKRenderGraphCommandBuilder command_builder_;
@@ -55,6 +56,7 @@ class VKRenderGraph {
    * Register a buffer resource to the render graph.
    */
   void add_buffer(VkBuffer vk_buffer);
+  void remove_buffer(VkBuffer vk_buffer);
 
   /**
    * Register an image resource to the render graph.

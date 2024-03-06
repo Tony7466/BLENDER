@@ -12,6 +12,8 @@
 #include "vk_context.hh"
 #include "vk_device.hh"
 #include "vk_memory.hh"
+#include "vk_render_graph_commands.hh"
+#include "vk_render_graph_scheduler.hh"
 #include "vk_state_manager.hh"
 #include "vk_storage_buffer.hh"
 #include "vk_texture.hh"
@@ -26,6 +28,11 @@
 extern "C" char datatoc_glsl_shader_defines_glsl[];
 
 namespace blender::gpu {
+
+VKDevice::VKDevice()
+    : render_graph_(std::make_unique<VKCommandBufferWrapper>(), std::make_unique<Sequential>())
+{
+}
 
 void VKDevice::deinit()
 {
@@ -366,6 +373,7 @@ void VKDevice::destroy_discarded_resources()
 
   while (!discarded_buffers_.is_empty()) {
     std::pair<VkBuffer, VmaAllocation> buffer_allocation = discarded_buffers_.pop_last();
+    render_graph_.remove_buffer(buffer_allocation.first);
     vmaDestroyBuffer(mem_allocator_get(), buffer_allocation.first, buffer_allocation.second);
   }
 

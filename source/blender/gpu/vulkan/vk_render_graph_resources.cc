@@ -50,6 +50,18 @@ void VKRenderGraphResources::add_buffer(VkBuffer vk_buffer)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Remove resources
+ * \{ */
+
+void VKRenderGraphResources::remove_buffer(VkBuffer vk_buffer)
+{
+  ResourceHandle handle = buffer_resources_.pop(vk_buffer);
+  resources_.free(handle);
+}
+
+/** \} */
+
 ResourceHandle VKRenderGraphResources::get_image_handle(VkImage vk_image) const
 {
   return image_resources_.lookup(vk_image);

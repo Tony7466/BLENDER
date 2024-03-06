@@ -7,17 +7,55 @@
  */
 
 #include "vk_render_graph_commands.hh"
+#include "vk_backend.hh"
+#include "vk_memory.hh"
 
 namespace blender::gpu {
+VKCommandBufferWrapper::VKCommandBufferWrapper()
+{
+  vk_command_pool_create_info_ = {};
+  vk_command_pool_create_info_.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+  vk_command_pool_create_info_.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  vk_command_pool_create_info_.queueFamilyIndex = 0;
+
+  vk_command_buffer_allocate_info_ = {};
+  vk_command_buffer_allocate_info_.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+  vk_command_buffer_allocate_info_.commandPool = VK_NULL_HANDLE;
+  vk_command_buffer_allocate_info_.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  vk_command_buffer_allocate_info_.commandBufferCount = 1;
+
+  vk_command_buffer_begin_info_ = {};
+  vk_command_buffer_begin_info_.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+}
+
+VKCommandBufferWrapper::~VKCommandBufferWrapper()
+{
+  // TODO: destroy pool
+}
 
 void VKCommandBufferWrapper::begin_recording()
 {
-  BLI_assert_unreachable();
+  VK_ALLOCATION_CALLBACKS;
+  VKDevice &device = VKBackend::get().device_get();
+  if (vk_command_pool_ == VK_NULL_HANDLE) {
+    vk_command_pool_create_info_.queueFamilyIndex = device.queue_family_get();
+    vkCreateCommandPool(device.device_get(),
+                        &vk_command_pool_create_info_,
+                        vk_allocation_callbacks,
+                        &vk_command_pool_);
+    vk_command_buffer_allocate_info_.commandPool = vk_command_pool_;
+    vk_command_pool_create_info_.queueFamilyIndex = 0;
+  }
+  BLI_assert(vk_command_buffer_ == VK_NULL_HANDLE);
+  vkAllocateCommandBuffers(
+      device.device_get(), &vk_command_buffer_allocate_info_, &vk_command_buffer_);
+
+  vkBeginCommandBuffer(vk_command_buffer_, &vk_command_buffer_begin_info_);
 }
 
 void VKCommandBufferWrapper::end_recording()
 {
-  BLI_assert_unreachable();
+  vkEndCommandBuffer(vk_command_buffer_);
 }
 
 void VKCommandBufferWrapper::submit_with_cpu_synchronization()
@@ -33,7 +71,7 @@ void VKCommandBufferWrapper::wait_for_cpu_synchronization()
 void VKCommandBufferWrapper::bind_pipeline(VkPipelineBindPoint pipeline_bind_point,
                                            VkPipeline pipeline)
 {
-  vkCmdBindPipeline(command_buffer_, pipeline_bind_point, pipeline);
+  vkCmdBindPipeline(vk_command_buffer_, pipeline_bind_point, pipeline);
 }
 
 void VKCommandBufferWrapper::bind_descriptor_sets(VkPipelineBindPoint pipeline_bind_point,
@@ -44,7 +82,7 @@ void VKCommandBufferWrapper::bind_descriptor_sets(VkPipelineBindPoint pipeline_b
                                                   uint32_t dynamic_offset_count,
                                                   const uint32_t *p_dynamic_offsets)
 {
-  vkCmdBindDescriptorSets(command_buffer_,
+  vkCmdBindDescriptorSets(vk_command_buffer_,
                           pipeline_bind_point,
                           layout,
                           first_set,
@@ -58,7 +96,7 @@ void VKCommandBufferWrapper::bind_index_buffer(VkBuffer buffer,
                                                VkDeviceSize offset,
                                                VkIndexType index_type)
 {
-  vkCmdBindIndexBuffer(command_buffer_, buffer, offset, index_type);
+  vkCmdBindIndexBuffer(vk_command_buffer_, buffer, offset, index_type);
 }
 
 void VKCommandBufferWrapper::bind_vertex_buffers(uint32_t first_binding,
@@ -66,7 +104,7 @@ void VKCommandBufferWrapper::bind_vertex_buffers(uint32_t first_binding,
                                                  const VkBuffer *p_buffers,
                                                  const VkDeviceSize *p_offsets)
 {
-  vkCmdBindVertexBuffers(command_buffer_, first_binding, binding_count, p_buffers, p_offsets);
+  vkCmdBindVertexBuffers(vk_command_buffer_, first_binding, binding_count, p_buffers, p_offsets);
 }
 
 void VKCommandBufferWrapper::draw(uint32_t vertex_count,
@@ -74,7 +112,7 @@ void VKCommandBufferWrapper::draw(uint32_t vertex_count,
                                   uint32_t first_vertex,
                                   uint32_t first_instance)
 {
-  vkCmdDraw(command_buffer_, vertex_count, instance_count, first_vertex, first_instance);
+  vkCmdDraw(vk_command_buffer_, vertex_count, instance_count, first_vertex, first_instance);
 }
 
 void VKCommandBufferWrapper::draw_indexed(uint32_t index_count,
@@ -84,7 +122,7 @@ void VKCommandBufferWrapper::draw_indexed(uint32_t index_count,
                                           uint32_t first_instance)
 {
   vkCmdDrawIndexed(
-      command_buffer_, index_count, instance_count, first_index, vertex_offset, first_instance);
+      vk_command_buffer_, index_count, instance_count, first_index, vertex_offset, first_instance);
 }
 
 void VKCommandBufferWrapper::draw_indirect(VkBuffer buffer,
@@ -92,7 +130,7 @@ void VKCommandBufferWrapper::draw_indirect(VkBuffer buffer,
                                            uint32_t draw_count,
                                            uint32_t stride)
 {
-  vkCmdDrawIndirect(command_buffer_, buffer, offset, draw_count, stride);
+  vkCmdDrawIndirect(vk_command_buffer_, buffer, offset, draw_count, stride);
 }
 
 void VKCommandBufferWrapper::draw_indexed_indirect(VkBuffer buffer,
@@ -100,19 +138,19 @@ void VKCommandBufferWrapper::draw_indexed_indirect(VkBuffer buffer,
                                                    uint32_t draw_count,
                                                    uint32_t stride)
 {
-  vkCmdDrawIndexedIndirect(command_buffer_, buffer, offset, draw_count, stride);
+  vkCmdDrawIndexedIndirect(vk_command_buffer_, buffer, offset, draw_count, stride);
 }
 
 void VKCommandBufferWrapper::dispatch(uint32_t group_count_x,
                                       uint32_t group_count_y,
                                       uint32_t group_count_z)
 {
-  vkCmdDispatch(command_buffer_, group_count_x, group_count_y, group_count_z);
+  vkCmdDispatch(vk_command_buffer_, group_count_x, group_count_y, group_count_z);
 }
 
 void VKCommandBufferWrapper::dispatch_indirect(VkBuffer buffer, VkDeviceSize offset)
 {
-  vkCmdDispatchIndirect(command_buffer_, buffer, offset);
+  vkCmdDispatchIndirect(vk_command_buffer_, buffer, offset);
 }
 
 void VKCommandBufferWrapper::copy_buffer(VkBuffer src_buffer,
@@ -120,7 +158,7 @@ void VKCommandBufferWrapper::copy_buffer(VkBuffer src_buffer,
                                          uint32_t region_count,
                                          const VkBufferCopy *p_regions)
 {
-  vkCmdCopyBuffer(command_buffer_, src_buffer, dst_buffer, region_count, p_regions);
+  vkCmdCopyBuffer(vk_command_buffer_, src_buffer, dst_buffer, region_count, p_regions);
 }
 
 void VKCommandBufferWrapper::copy_image(VkImage src_image,
@@ -130,7 +168,7 @@ void VKCommandBufferWrapper::copy_image(VkImage src_image,
                                         uint32_t region_count,
                                         const VkImageCopy *p_regions)
 {
-  vkCmdCopyImage(command_buffer_,
+  vkCmdCopyImage(vk_command_buffer_,
                  src_image,
                  src_image_layout,
                  dst_image,
@@ -147,7 +185,7 @@ void VKCommandBufferWrapper::blit_image(VkImage src_image,
                                         const VkImageBlit *p_regions,
                                         VkFilter filter)
 {
-  vkCmdBlitImage(command_buffer_,
+  vkCmdBlitImage(vk_command_buffer_,
                  src_image,
                  src_image_layout,
                  dst_image,
@@ -164,7 +202,7 @@ void VKCommandBufferWrapper::copy_buffer_to_image(VkBuffer src_buffer,
                                                   const VkBufferImageCopy *p_regions)
 {
   vkCmdCopyBufferToImage(
-      command_buffer_, src_buffer, dst_image, dst_image_layout, region_count, p_regions);
+      vk_command_buffer_, src_buffer, dst_image, dst_image_layout, region_count, p_regions);
 }
 
 void VKCommandBufferWrapper::copy_image_to_buffer(VkImage src_image,
@@ -174,7 +212,7 @@ void VKCommandBufferWrapper::copy_image_to_buffer(VkImage src_image,
                                                   const VkBufferImageCopy *p_regions)
 {
   vkCmdCopyImageToBuffer(
-      command_buffer_, src_image, src_image_layout, dst_buffer, region_count, p_regions);
+      vk_command_buffer_, src_image, src_image_layout, dst_buffer, region_count, p_regions);
 }
 
 void VKCommandBufferWrapper::fill_buffer(VkBuffer dst_buffer,
@@ -182,7 +220,7 @@ void VKCommandBufferWrapper::fill_buffer(VkBuffer dst_buffer,
                                          VkDeviceSize size,
                                          uint32_t data)
 {
-  vkCmdFillBuffer(command_buffer_, dst_buffer, dst_offset, size, data);
+  vkCmdFillBuffer(vk_command_buffer_, dst_buffer, dst_offset, size, data);
 }
 
 void VKCommandBufferWrapper::clear_color_image(VkImage image,
@@ -191,7 +229,7 @@ void VKCommandBufferWrapper::clear_color_image(VkImage image,
                                                uint32_t range_count,
                                                const VkImageSubresourceRange *p_ranges)
 {
-  vkCmdClearColorImage(command_buffer_, image, image_layout, p_color, range_count, p_ranges);
+  vkCmdClearColorImage(vk_command_buffer_, image, image_layout, p_color, range_count, p_ranges);
 }
 void VKCommandBufferWrapper::clear_depth_stencil_image(
     VkImage image,
@@ -201,7 +239,7 @@ void VKCommandBufferWrapper::clear_depth_stencil_image(
     const VkImageSubresourceRange *p_ranges)
 {
   vkCmdClearDepthStencilImage(
-      command_buffer_, image, image_layout, p_depth_stencil, range_count, p_ranges);
+      vk_command_buffer_, image, image_layout, p_depth_stencil, range_count, p_ranges);
 }
 
 void VKCommandBufferWrapper::clear_attachments(uint32_t attachment_count,
@@ -209,7 +247,7 @@ void VKCommandBufferWrapper::clear_attachments(uint32_t attachment_count,
                                                uint32_t rect_count,
                                                const VkClearRect *p_rects)
 {
-  vkCmdClearAttachments(command_buffer_, attachment_count, p_attachments, rect_count, p_rects);
+  vkCmdClearAttachments(vk_command_buffer_, attachment_count, p_attachments, rect_count, p_rects);
 }
 
 void VKCommandBufferWrapper::pipeline_barrier(
@@ -223,7 +261,7 @@ void VKCommandBufferWrapper::pipeline_barrier(
     uint32_t image_memory_barrier_count,
     const VkImageMemoryBarrier *p_image_memory_barriers)
 {
-  vkCmdPipelineBarrier(command_buffer_,
+  vkCmdPipelineBarrier(vk_command_buffer_,
                        src_stage_mask,
                        dst_stage_mask,
                        dependency_flags,
@@ -241,17 +279,17 @@ void VKCommandBufferWrapper::push_constants(VkPipelineLayout layout,
                                             uint32_t size,
                                             const void *p_values)
 {
-  vkCmdPushConstants(command_buffer_, layout, stage_flags, offset, size, p_values);
+  vkCmdPushConstants(vk_command_buffer_, layout, stage_flags, offset, size, p_values);
 }
 
 void VKCommandBufferWrapper::begin_render_pass(const VkRenderPassBeginInfo *p_render_pass_begin,
                                                VkSubpassContents contents)
 {
-  vkCmdBeginRenderPass(command_buffer_, p_render_pass_begin, contents);
+  vkCmdBeginRenderPass(vk_command_buffer_, p_render_pass_begin, contents);
 }
 
 void VKCommandBufferWrapper::end_render_pass()
 {
-  vkCmdEndRenderPass(command_buffer_);
+  vkCmdEndRenderPass(vk_command_buffer_);
 }
 }  // namespace blender::gpu

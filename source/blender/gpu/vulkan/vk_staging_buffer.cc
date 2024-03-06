@@ -7,6 +7,7 @@
  */
 
 #include "vk_staging_buffer.hh"
+#include "vk_backend.hh"
 #include "vk_command_buffers.hh"
 #include "vk_context.hh"
 
@@ -38,15 +39,14 @@ void VKStagingBuffer::copy_to_device(VKContext &context)
   command_buffers.submit();
 }
 
-void VKStagingBuffer::copy_from_device(VKContext &context)
+void VKStagingBuffer::copy_from_device(VKRenderGraph &render_graph)
 {
   BLI_assert(host_buffer_.is_allocated() && host_buffer_.is_mapped());
-  VkBufferCopy buffer_copy = {};
-  buffer_copy.size = device_buffer_.size_in_bytes();
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  command_buffers.copy(
-      host_buffer_, device_buffer_.vk_handle(), Span<VkBufferCopy>(&buffer_copy, 1));
-  command_buffers.submit();
+  VkBufferCopy region = {};
+  region.srcOffset = 0;
+  region.dstOffset = 0;
+  region.size = device_buffer_.size_in_bytes();
+  render_graph.add_copy_buffer_node(device_buffer_.vk_handle(), host_buffer_.vk_handle(), region);
 }
 
 void VKStagingBuffer::free()

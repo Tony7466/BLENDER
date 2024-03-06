@@ -61,7 +61,7 @@ bool VKBuffer::create(int64_t size_in_bytes,
   BLI_assert(mapped_memory_ == nullptr);
 
   size_in_bytes_ = size_in_bytes;
-  const VKDevice &device = VKBackend::get().device_get();
+  VKDevice &device = VKBackend::get().device_get();
 
   VmaAllocator allocator = device.mem_allocator_get();
   VkBufferCreateInfo create_info = {};
@@ -92,6 +92,8 @@ bool VKBuffer::create(int64_t size_in_bytes,
     return false;
   }
 
+  device.render_graph_get().add_buffer(vk_buffer_);
+
   if (is_host_visible) {
     return map();
   }
@@ -114,8 +116,9 @@ void VKBuffer::flush() const
 
 void VKBuffer::clear(VKContext &context, uint32_t clear_value)
 {
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  command_buffers.fill(*this, clear_value);
+  // TODO: replace context with render graph.
+  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph.add_fill_buffer_node(vk_buffer_, size_in_bytes_, clear_value);
 }
 
 void VKBuffer::read(void *data) const

@@ -16,6 +16,7 @@
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
 #include "vk_pipelines.hh"
+#include "vk_render_graph.hh"
 #include "vk_samplers.hh"
 #include "vk_timeline_semaphore.hh"
 
@@ -63,6 +64,7 @@ class VKDevice : public NonCopyable {
 
   VKSamplers samplers_;
   VKPipelines pipelines_;
+  VKRenderGraph render_graph_;
 
   /* Semaphore for CPU GPU synchronization when submitting commands to the queue. */
   VKTimelineSemaphore timeline_semaphore_;
@@ -109,6 +111,8 @@ class VKDevice : public NonCopyable {
   std::string glsl_patch_;
 
  public:
+  VKDevice();
+
   VkPhysicalDevice physical_device_get() const
   {
     return vk_physical_device_;
@@ -177,6 +181,10 @@ class VKDevice : public NonCopyable {
   VKSamplers &samplers()
   {
     return samplers_;
+  }
+  VKRenderGraph &render_graph_get()
+  {
+    return render_graph_;
   }
 
   bool is_initialized() const;

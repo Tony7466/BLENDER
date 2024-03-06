@@ -107,11 +107,10 @@ void VKStorageBuffer::async_flush_to_host()
 void VKStorageBuffer::read(void *data)
 {
   ensure_allocated();
-  VKContext &context = *VKContext::get();
-  context.flush();
-
+  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::DeviceToHost);
-  staging_buffer.copy_from_device(context);
+  staging_buffer.copy_from_device(render_graph);
+  render_graph.submit_buffer_for_read_back(staging_buffer.host_buffer_get().vk_handle());
   staging_buffer.host_buffer_get().read(data);
 }
 

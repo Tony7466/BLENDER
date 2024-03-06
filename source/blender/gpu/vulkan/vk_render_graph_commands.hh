@@ -121,10 +121,16 @@ class VKRenderGraphCommandBuffer {
 
 class VKCommandBufferWrapper : public VKRenderGraphCommandBuffer {
  private:
-  VkCommandBuffer command_buffer_ = VK_NULL_HANDLE;
+  VkCommandPoolCreateInfo vk_command_pool_create_info_;
+  VkCommandBufferAllocateInfo vk_command_buffer_allocate_info_;
+  VkCommandBufferBeginInfo vk_command_buffer_begin_info_;
+
+  VkCommandPool vk_command_pool_ = VK_NULL_HANDLE;
+  VkCommandBuffer vk_command_buffer_ = VK_NULL_HANDLE;
 
  public:
-  virtual ~VKCommandBufferWrapper() = default;
+  VKCommandBufferWrapper();
+  virtual ~VKCommandBufferWrapper();
 
   void begin_recording() override;
   void end_recording() override;
