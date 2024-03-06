@@ -738,9 +738,9 @@ static std::optional<Bounds<float2>> calculate_fpt_bounds(const FCurve &fcu,
   Bounds<float2> bounds;
   /* X range can be directly calculated from end verts. */
   bounds.min.x = fcu.fpt[start_index].vec[0];
-  bounds.max.x = fcu.fpt[start_index].vec[0];
+  bounds.max.x = fcu.fpt[end_index].vec[0];
 
-  for (const int i : IndexRange(start_index, end_index - start_index)) {
+  for (const int i : IndexRange(start_index, end_index - start_index + 1)) {
     bounds.min.y = math::min(bounds.min.y, fcu.fpt[i].vec[1]);
     bounds.max.y = math::max(bounds.max.y, fcu.fpt[i].vec[1]);
   }
