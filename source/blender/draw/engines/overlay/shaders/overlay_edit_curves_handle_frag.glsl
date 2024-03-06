@@ -4,5 +4,5 @@
 
 void main()
 {
-  fragColor = gl_PrimitiveID < curvesInfoBlock[0] ? finalColor : rightColor;
+  fragColor = gl_PrimitiveID < curvesInfoBlock[0] ? leftColor : finalColor;
 }

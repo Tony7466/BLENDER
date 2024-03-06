@@ -28,8 +28,8 @@ void main()
   gl_Position = point_world_to_ndc(world_pos);
 
   if ((data & BEZIER_HANDLE) != 0u) {
-    finalColor = get_bezier_handle_color((data >> (COLOR_SHIFT + 2)) & 3, selection);
-    rightColor = get_bezier_handle_color((data >> COLOR_SHIFT) & 3, selection);
+    leftColor = get_bezier_handle_color((data >> (COLOR_SHIFT + 2)) & 3, selection);
+    finalColor = get_bezier_handle_color((data >> COLOR_SHIFT) & 3, selection);
   }
   else {
     finalColor = mix(colorWire, colorVertexSelect, selection);
