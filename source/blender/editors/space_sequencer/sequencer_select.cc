@@ -825,6 +825,9 @@ static Sequence *seq_select_seq_from_preview(
 
 static bool element_already_selected(const Sequence *seq1, const Sequence *seq2)
 {
+  if (seq1 == nullptr) {
+    return false;
+  }
   bool seq1_already_selected = ((seq1->flag & SELECT) != 0);
   if (seq2 == nullptr) {
     return seq1_already_selected;
@@ -1002,14 +1005,12 @@ static bool strips_are_touching(const Scene *scene, const Sequence *seq1, const 
 
 bool ED_sequencer_handle_selection_refine(const Scene *scene,
                                           ARegion *region,
-                                          float mouse_x_view,
-                                          float mouse_y_view,
+                                          float mouse_co[2],
                                           Sequence **r_seq1,
                                           Sequence **r_seq2,
                                           int *r_side)
 {
   View2D *v2d = &region->v2d;
-  float mouse_co[2]{mouse_x_view, mouse_y_view};
   *r_side = SEQ_SIDE_NONE;
   *r_seq1 = *r_seq2 = nullptr;
 
@@ -1102,8 +1103,8 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
   int mval[2];
   mval[0] = RNA_int_get(op->ptr, "mouse_x");
   mval[1] = RNA_int_get(op->ptr, "mouse_y");
-  float mouse_view[2];
-  UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_view[0], &mouse_view[1]);
+  float mouse_co[2];
+  UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_co[0], &mouse_co[1]);
 
   int handle_clicked = SEQ_SIDE_NONE;
   Sequence *seq = nullptr;
@@ -1112,8 +1113,7 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
     seq = seq_select_seq_from_preview(C, mval, toggle, extend, center);
   }
   else {
-    ED_sequencer_handle_selection_refine(
-        scene, region, mouse_view[0], mouse_view[1], &seq, &seq2, &handle_clicked);
+    ED_sequencer_handle_selection_refine(scene, region, mouse_co, &seq, &seq2, &handle_clicked);
   }
 
   if (RNA_boolean_get(op->ptr, "handles_only") && handle_clicked == SEQ_SIDE_NONE) {
@@ -1954,20 +1954,24 @@ static int sequencer_box_select_exec(bContext *C, wmOperator *op)
 static int sequencer_box_select_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   Scene *scene = CTX_data_scene(C);
-  View2D *v2d = &CTX_wm_region(C)->v2d;
+  View2D *v2d = UI_view2d_fromcontext(C);
   ARegion *region = CTX_wm_region(C);
 
   if (region->regiontype == RGN_TYPE_PREVIEW && !sequencer_view_preview_only_poll(C)) {
     return OPERATOR_CANCELLED;
   }
 
-  const bool tweak = RNA_boolean_get(op->ptr, "tweak");
-
-  if (tweak) {
-    int hand_dummy;
+  if (RNA_boolean_get(op->ptr, "tweak")) {
     int mval[2];
+    float mouse_co[2];
     WM_event_drag_start_mval(event, region, mval);
-    Sequence *seq = find_nearest_seq(scene, v2d, mval, &hand_dummy);
+    UI_view2d_region_to_view(v2d, mval[0], mval[1], &mouse_co[0], &mouse_co[1]);
+
+    int handle_clicked = SEQ_SIDE_NONE;
+    Sequence *seq = nullptr;
+    Sequence *seq2 = nullptr;
+    ED_sequencer_handle_selection_refine(scene, region, mouse_co, &seq, &seq2, &handle_clicked);
+
     if (seq != nullptr) {
       return OPERATOR_CANCELLED | OPERATOR_PASS_THROUGH;
     }

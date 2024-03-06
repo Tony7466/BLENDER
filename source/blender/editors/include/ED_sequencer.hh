@@ -57,8 +57,7 @@ bool sequencer_retiming_mode_is_active(const bContext *C);
  */
 bool ED_sequencer_handle_selection_refine(const struct Scene *scene,
                                           struct ARegion *region,
-                                          const float view_x,
-                                          const float view_y,
+                                          float mouse_co[2],
                                           struct Sequence **r_seq1,
                                           struct Sequence **r_seq2,
                                           int *r_side);

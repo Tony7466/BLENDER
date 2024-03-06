@@ -228,13 +228,12 @@ static bool sequencer_skip_for_handle_tweak(bContext *C, const wmEvent *event)
   Scene *scene = CTX_data_scene(C);
   View2D *v2d = UI_view2d_fromcontext(C);
 
-  float view_x;
-  float view_y;
-  UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &view_x, &view_y);
+  float mouse_co[2];
+  UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &mouse_co[0], &mouse_co[1]);
   Sequence *seq1, *seq2;
   int side;
 
-  ED_sequencer_handle_selection_refine(scene, region, view_x, view_y, &seq1, &seq2, &side);
+  ED_sequencer_handle_selection_refine(scene, region, mouse_co, &seq1, &seq2, &side);
 
   return side != SEQ_SIDE_NONE;
 }

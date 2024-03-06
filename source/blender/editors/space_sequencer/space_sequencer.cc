@@ -662,17 +662,16 @@ static void sequencer_cursor(wmWindow *win, ScrArea * /* area */, ARegion *regio
     return;
   }
 
-  float view_x;
-  float view_y;
+  float mouse_co[2];
   UI_view2d_region_to_view(&region->v2d,
                            win->eventstate->xy[0] - region->winrct.xmin,
                            win->eventstate->xy[1] - region->winrct.ymin,
-                           &view_x,
-                           &view_y);
+                           &mouse_co[0],
+                           &mouse_co[1]);
   Sequence *seq1, *seq2;
   int side;
 
-  ED_sequencer_handle_selection_refine(scene, region, view_x, view_y, &seq1, &seq2, &side);
+  ED_sequencer_handle_selection_refine(scene, region, mouse_co, &seq1, &seq2, &side);
 
   if (seq1 == nullptr) {
     WM_cursor_set(win, wmcursor);
