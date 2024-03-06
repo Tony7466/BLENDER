@@ -397,35 +397,30 @@ static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curv
                                                  CurvesBatchCache &cache)
 {
   const int bezier_point_count = bezier_offsets.total_size();
-  // Left and right handle will be appended for each Bezier point.
+  /* Left and right handle will be appended for each Bezier point. */
   const int vert_len = curves.points_num() + 2 * bezier_point_count;
-  // For each point has 2 lines from 2 point and one restart entry.
-  const int index_len_for_bezier = 6 * bezier_point_count;
-  const OffsetIndices points_by_curve = curves.points_by_curve();
+  /* For each point has 2 lines from 2 point and one restart entry. */
+  const int index_len_for_bezier_handles = 6 * bezier_point_count;
   const VArray<bool> cyclic = curves.cyclic();
-
-  int index_len_for_other = 0;
-  other_curves.foreach_index([&](const int64_t src_i) {
-    const int points_num = points_by_curve[src_i].size();
-    if (points_num <= 1) {
-      return;
-    }
-    const int segments_for_curve = bke::curves::segments_num(points_num,
-                                                             cyclic[src_i] && points_num > 2);
-    index_len_for_other += segments_for_curve + 2;
-  });
-
-  const int index_len = index_len_for_bezier + index_len_for_other;
+  /* All points excluding Beziez plus restart for every non-Bezier curve.
+   * Add space for possible cyclic curves.
+   * If one point curves or two point cyclic curves are present, not all builder's buffer space
+   * will be used. */
+  const int index_len_for_other = curves.points_num() - bezier_point_count + other_curves.size() +
+                                  array_utils::count_booleans(cyclic, other_curves);
+  const int index_len = index_len_for_bezier_handles + index_len_for_other;
   GPUIndexBufBuilder elb, right_elb;
   GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINE_STRIP, index_len, vert_len);
   memcpy(&right_elb, &elb, sizeof(elb));
   right_elb.index_len = 3 * bezier_point_count;
 
+  const OffsetIndices points_by_curve = curves.points_by_curve();
+
   bezier_curves.foreach_index([&](const int64_t src_i, const int64_t dst_i) {
     IndexRange bezier_points = points_by_curve[src_i];
     for (const int point : bezier_points) {
-      const int point_left_i = curves.points_num() + point - bezier_points.start() +
-                               bezier_offsets[dst_i].start();
+      const int point_left_i = curves.points_num() + point - bezier_points.first() +
+                               bezier_offsets[dst_i].first();
       GPU_indexbuf_add_generic_vert(&elb, point_left_i);
       GPU_indexbuf_add_generic_vert(&elb, point);
       GPU_indexbuf_add_primitive_restart(&elb);
@@ -443,12 +438,12 @@ static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curv
       GPU_indexbuf_add_generic_vert(&right_elb, point);
     }
     if (cyclic[src_i] && curve_points.size() > 2) {
-      GPU_indexbuf_add_generic_vert(&right_elb, curve_points.start());
+      GPU_indexbuf_add_generic_vert(&right_elb, curve_points.first());
     }
     GPU_indexbuf_add_primitive_restart(&right_elb);
   });
-  GPU_indexbuf_join(&right_elb, &right_elb);
-  GPU_indexbuf_build_in_place(&right_elb, cache.edit_lines_ibo);
+  GPU_indexbuf_join(&elb, &right_elb);
+  GPU_indexbuf_build_in_place(&elb, cache.edit_lines_ibo);
 
   CurvesUboStorage ubo_storage{bezier_point_count};
   GPU_uniformbuf_update(cache.curves_ubo_storage, &ubo_storage);
