@@ -158,7 +158,7 @@ def generate_bitflag_to_string_hpp(vk_name):
     result += f"std::string to_string_{vk_name_parameter}({vk_name} {to_lower_snake_case(vk_name)});\n"
     return result
 
-    
+
 def generate_bitflag_to_string_cpp_case(vk_parameter_name, elem):
     vk_elem_name = elem.get("name")
 
@@ -198,9 +198,9 @@ def generate_bitflag_to_string_cpp(vk_name, enum, features, extensions):
 
     result += "\n"
     result += f"  std::string result = ss.str();\n"
-    result += f"  if (result.size() >= 2) {{\n";
+    result += f"  if (result.size() >= 2) {{\n"
     result += f"    result.erase(result.size() - 2, 2);\n"
-    result += f"  }}\n";
+    result += f"  }}\n"
     result += f"  return result;\n"
     result += "}\n"
     return result
@@ -233,7 +233,7 @@ def generate_struct_to_string_cpp(struct):
         if member_name in MEMBERS_TO_IGNORE:
             continue
 
-        result += f"  ss << \"{pre}{member_name_parameter}=\" << ";
+        result += f"  ss << \"{pre}{member_name_parameter}=\" << "
         if member_type in FLAGS_TO_GENERATE:
             result += f"to_string_{member_type_parameter}({vk_name_parameter}.{member_name})"
         elif member_type in ENUMS_TO_GENERATE:
@@ -360,7 +360,7 @@ while types_undetermined:
                 STRUCTS_TO_GENERATE.append(type_name)
                 for member in struct.findall("member/type"):
                     newly_found_types.append(member.text)
-        
+
     types_undetermined = newly_found_types
 
 

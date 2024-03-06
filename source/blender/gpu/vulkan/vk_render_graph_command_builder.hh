@@ -26,6 +26,9 @@ class VKRenderGraphCommandBuilder {
   /* Pool of VKBufferMemoryBarriers that can be reused when building barriers */
   Vector<VkBufferMemoryBarrier> vk_buffer_memory_barriers_;
 
+  VkPipeline active_compute_pipeline_ = VK_NULL_HANDLE;
+  VkDescriptorSet active_compute_descriptor_set_ = VK_NULL_HANDLE;
+
  public:
   /**
    * Reset the command builder.
@@ -71,19 +74,16 @@ class VKRenderGraphCommandBuilder {
   void build_node_copy_buffer(VKRenderGraph &render_graph,
                               NodeHandle node_handle,
                               const VKRenderGraphNodes::Node &node);
-
-  void add_buffer_barriers(VKRenderGraph &render_graph,
+  void build_node_dispatch(VKRenderGraph &render_graph,
                            NodeHandle node_handle,
-                           VkAccessFlags new_write_access);
+                           const VKRenderGraphNodes::Node &node);
+
+  void add_buffer_barriers(VKRenderGraph &render_graph, NodeHandle node_handle);
   void add_buffer_barrier(VkBuffer vk_buffer,
                           VkAccessFlags src_access_mask,
                           VkAccessFlags dst_access_mask);
-  void add_buffer_read_barriers(VKRenderGraph &render_graph,
-                                NodeHandle node_handle,
-                                VkAccessFlags new_write_access);
-  void add_buffer_write_barriers(VKRenderGraph &render_graph,
-                                 NodeHandle node_handle,
-                                 VkAccessFlags new_write_access);
+  void add_buffer_read_barriers(VKRenderGraph &render_graph, NodeHandle node_handle);
+  void add_buffer_write_barriers(VKRenderGraph &render_graph, NodeHandle node_handle);
 };
 
 }  // namespace blender::gpu

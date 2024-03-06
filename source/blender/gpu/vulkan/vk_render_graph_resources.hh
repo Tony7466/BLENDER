@@ -107,6 +107,10 @@ class VKRenderGraphResources {
    * Return the current version of the resource.
    */
   VersionedResource get_buffer(VkBuffer vk_buffer) const;
+  /**
+   * Return the current version of the resource.ß
+   */
+  VersionedResource get_image(VkImage vk_image) const;
   ResourceHandle get_image_handle(VkImage vk_image) const;
   ResourceHandle get_buffer_handle(VkBuffer vk_buffer) const;
 

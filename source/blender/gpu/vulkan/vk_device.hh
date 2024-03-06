@@ -15,9 +15,9 @@
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
+#include "vk_pipelines.hh"
 #include "vk_samplers.hh"
 #include "vk_timeline_semaphore.hh"
-#include "vk_pipelines.hh"
 
 namespace blender::gpu {
 class VKBackend;

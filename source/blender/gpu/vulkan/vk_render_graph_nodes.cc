@@ -59,21 +59,44 @@ NodeHandle VKRenderGraphNodes::add_copy_buffer_node(VkBuffer src_buffer,
   return handle;
 }
 
-void VKRenderGraphNodes::add_read_resource(NodeHandle handle, VersionedResource resource_handle)
+NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_info)
 {
-  read_resources_per_node_[handle].append(resource_handle);
+  NodeHandle handle = allocate();
+  Node &node = nodes_.get(handle);
+  BLI_assert(node.type == Node::Type::UNUSED);
+
+  node.type = Node::Type::DISPATCH;
+  node.dispatch = dispatch_info.dispatch_node;
+
+  return handle;
 }
 
-void VKRenderGraphNodes::add_write_resource(NodeHandle handle, VersionedResource resource_handle)
+void VKRenderGraphNodes::add_read_resource(NodeHandle handle,
+                                           VersionedResource resource_handle,
+                                           VkAccessFlags vk_access_flags)
 {
-  write_resources_per_node_[handle].append(resource_handle);
+  ResourceUsage usage = {};
+  usage.resource = resource_handle;
+  usage.vk_access_flags = vk_access_flags;
+  read_resources_per_node_[handle].resources.append(usage);
+}
+
+void VKRenderGraphNodes::add_write_resource(NodeHandle handle,
+                                            VersionedResource resource_handle,
+                                            VkAccessFlags vk_access_flags)
+{
+  ResourceUsage usage = {};
+  usage.resource = resource_handle;
+  usage.vk_access_flags = vk_access_flags;
+  write_resources_per_node_[handle].resources.append(usage);
 }
 
 void VKRenderGraphNodes::remove_nodes(Span<NodeHandle> node_handles)
 {
   for (NodeHandle node_handle : node_handles) {
-    read_resources_per_node_[node_handle].clear();
-    write_resources_per_node_[node_handle].clear();
+    // TODO: move resources.clear to functions.
+    read_resources_per_node_[node_handle].resources.clear();
+    write_resources_per_node_[node_handle].resources.clear();
     mark_unused(get(node_handle));
     nodes_.free(node_handle);
   }

@@ -30,6 +30,7 @@
 #include "vk_render_graph_nodes.hh"
 #include "vk_render_graph_resources.hh"
 #include "vk_render_graph_scheduler.hh"
+#include "vk_render_graph_types.hh"
 
 namespace blender::gpu {
 
@@ -65,6 +66,7 @@ class VKRenderGraph {
                             VkImageSubresourceRange &vk_image_subresource_range);
   void add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data_);
   void add_copy_buffer_node(VkBuffer src_buffer, VkBuffer dst_buffer, const VkBufferCopy &region);
+  void add_dispatch_node(const VKDispatchInfo &dispatch_info);
 
   /**
    * Submit the commands to readback the given vk_buffer to the command queue.
@@ -87,6 +89,9 @@ class VKRenderGraph {
    * Wait for the submitted work to be finished.
    */
   void finish();
+
+ private:
+  void add_resources(NodeHandle node_handle, const VKResourceAccessInfo &resources);
 
   friend class VKRenderGraphCommandBuilder;
   friend class Sequential;

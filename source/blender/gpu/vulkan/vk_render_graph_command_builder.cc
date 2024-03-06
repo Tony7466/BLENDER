@@ -36,6 +36,10 @@ void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
         image_handle);
     image_layouts_[image_handle] = resource.vk_image_layout;
   }
+
+  // Reset pipelines
+  active_compute_pipeline_ = VK_NULL_HANDLE;
+  active_compute_descriptor_set_ = VK_NULL_HANDLE;
 }
 
 void VKRenderGraphCommandBuilder::build_image(VKRenderGraph &render_graph, VkImage vk_image)
@@ -88,6 +92,11 @@ void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
       break;
     }
 
+    case VKRenderGraphNodes::Node::Type::DISPATCH: {
+      build_node_dispatch(render_graph, node_handle, node);
+      break;
+    }
+
     default:
       BLI_assert_unreachable();
       break;
@@ -114,7 +123,7 @@ void VKRenderGraphCommandBuilder::build_node_fill_buffer(VKRenderGraph &render_g
                                                          const VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::FILL_BUFFER);
-  add_buffer_barriers(render_graph, node_handle, VK_ACCESS_TRANSFER_WRITE_BIT);
+  add_buffer_barriers(render_graph, node_handle);
   render_graph.command_buffer_->fill_buffer(
       node.fill_buffer.vk_buffer, 0, node.fill_buffer.size, node.fill_buffer.data);
 }
@@ -124,9 +133,39 @@ void VKRenderGraphCommandBuilder::build_node_copy_buffer(VKRenderGraph &render_g
                                                          const VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::COPY_BUFFER);
-  add_buffer_barriers(render_graph, node_handle, VK_ACCESS_TRANSFER_WRITE_BIT);
+  add_buffer_barriers(render_graph, node_handle);
   render_graph.command_buffer_->copy_buffer(
       node.copy_buffer.src_buffer, node.copy_buffer.dst_buffer, 1, &node.copy_buffer.region);
+}
+
+void VKRenderGraphCommandBuilder::build_node_dispatch(VKRenderGraph &render_graph,
+                                                      NodeHandle node_handle,
+                                                      const VKRenderGraphNodes::Node &node)
+{
+  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::DISPATCH);
+  add_buffer_barriers(render_graph, node_handle);
+
+  if (assign_if_different(active_compute_pipeline_, node.dispatch.vk_pipeline)) {
+    render_graph.command_buffer_->bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                                active_compute_pipeline_);
+  }
+
+  if (assign_if_different(active_compute_descriptor_set_,
+                          node.dispatch.descriptor_set.vk_descriptor_set))
+  {
+    render_graph.command_buffer_->bind_descriptor_sets(
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        node.dispatch.descriptor_set.vk_pipeline_layout,
+        0,
+        1,
+        &node.dispatch.descriptor_set.vk_descriptor_set,
+        0,
+        nullptr);
+  }
+
+  // TODO: Check changes in push constants.
+  render_graph.command_buffer_->dispatch(
+      node.dispatch.group_count_x, node.dispatch.group_count_y, node.dispatch.group_count_z);
 }
 
 void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_graph,
@@ -159,16 +198,16 @@ void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_grap
 }
 
 void VKRenderGraphCommandBuilder::add_buffer_barriers(VKRenderGraph &render_graph,
-                                                      NodeHandle node_handle,
-                                                      VkAccessFlags new_write_access)
+                                                      NodeHandle node_handle)
 {
   vk_buffer_memory_barriers_.clear();
-  add_buffer_read_barriers(render_graph, node_handle, new_write_access);
-  add_buffer_write_barriers(render_graph, node_handle, new_write_access);
+  add_buffer_read_barriers(render_graph, node_handle);
+  add_buffer_write_barriers(render_graph, node_handle);
   if (vk_buffer_memory_barriers_.is_empty()) {
     return;
   }
 
+  // TODO: determine stage masks from added barriers.
   const VkPipelineStageFlags stage_masks = VK_PIPELINE_STAGE_NONE_KHR;
   render_graph.command_buffer_->pipeline_barrier(stage_masks,
                                                  stage_masks,
@@ -182,11 +221,12 @@ void VKRenderGraphCommandBuilder::add_buffer_barriers(VKRenderGraph &render_grap
 }
 
 void VKRenderGraphCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render_graph,
-                                                           NodeHandle node_handle,
-                                                           VkAccessFlags new_access)
+                                                           NodeHandle node_handle)
 {
-  for (VersionedResource versioned_resource : render_graph.nodes_.get_read_resources(node_handle))
+  for (const VKRenderGraphNodes::ResourceUsage &usage :
+       render_graph.nodes_.get_read_resources(node_handle))
   {
+    const VersionedResource &versioned_resource = usage.resource;
     const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
     // If resource version has not be read, no barrier needs to be added.
@@ -194,13 +234,13 @@ void VKRenderGraphCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render
     VkAccessFlags write_access = write_access_[versioned_resource.handle];
     VkAccessFlags wait_access = VK_ACCESS_NONE;
 
-    if (read_access == (read_access | new_access)) {
+    if (read_access == (read_access | usage.vk_access_flags)) {
       // has already been covered in a previous call no need to add this one.
       // TODO: we should merge all read accesses with the first available read barrier.
       continue;
     }
 
-    read_access |= new_access;
+    read_access |= usage.vk_access_flags;
     wait_access |= write_access;
 
     read_access_[versioned_resource.handle] = read_access;
@@ -211,11 +251,12 @@ void VKRenderGraphCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render
 }
 
 void VKRenderGraphCommandBuilder::add_buffer_write_barriers(VKRenderGraph &render_graph,
-                                                            NodeHandle node_handle,
-                                                            VkAccessFlags new_write_access)
+                                                            NodeHandle node_handle)
 {
-  for (VersionedResource versioned_resource : render_graph.nodes_.get_write_resources(node_handle))
+  for (const VKRenderGraphNodes::ResourceUsage usage :
+       render_graph.nodes_.get_write_resources(node_handle))
   {
+    const VersionedResource &versioned_resource = usage.resource;
     const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
     if (resource.vk_buffer == VK_NULL_HANDLE) {
@@ -236,10 +277,10 @@ void VKRenderGraphCommandBuilder::add_buffer_write_barriers(VKRenderGraph &rende
     }
 
     read_access_[versioned_resource.handle] = VK_ACCESS_NONE;
-    write_access_[versioned_resource.handle] = new_write_access;
+    write_access_[versioned_resource.handle] = usage.vk_access_flags;
 
     if (wait_access != VK_ACCESS_NONE) {
-      add_buffer_barrier(resource.vk_buffer, wait_access, new_write_access);
+      add_buffer_barrier(resource.vk_buffer, wait_access, usage.vk_access_flags);
     }
   }
 }

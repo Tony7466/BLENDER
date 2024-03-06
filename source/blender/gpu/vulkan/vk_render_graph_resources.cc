@@ -97,4 +97,11 @@ VersionedResource VKRenderGraphResources::get_buffer(VkBuffer vk_buffer) const
   return get_version(handle, resource);
 }
 
+VersionedResource VKRenderGraphResources::get_image(VkImage vk_image) const
+{
+  ResourceHandle handle = get_image_handle(vk_image);
+  const Resource &resource = resources_.get(handle);
+  return get_version(handle, resource);
+}
+
 }  // namespace blender::gpu

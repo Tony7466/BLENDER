@@ -928,7 +928,9 @@ if(WITH_GTESTS)
     list(APPEND TEST_SRC
       vulkan/vk_data_conversion_test.cc
       vulkan/vk_memory_layout_test.cc
-      vulkan/vk_render_graph_test.cc
+      vulkan/vk_render_graph_test_transfer.cc
+      vulkan/vk_render_graph_test_compute.cc
+      vulkan/vk_render_graph_test_present.cc
     )
   endif()
 

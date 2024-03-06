@@ -47,7 +47,7 @@ void VKRenderGraph::add_clear_image_node(VkImage vk_image,
       vk_image, vk_clear_color_value, vk_image_subresource_range);
 
   VersionedResource resource = resources_.get_image_and_increase_version(vk_image);
-  nodes_.add_write_resource(handle, resource);
+  nodes_.add_write_resource(handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT);
 }
 
 void VKRenderGraph::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data)
@@ -56,7 +56,7 @@ void VKRenderGraph::add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, 
   NodeHandle handle = nodes_.add_fill_buffer_node(vk_buffer, size, data);
 
   VersionedResource resource = resources_.get_buffer_and_increase_version(vk_buffer);
-  nodes_.add_write_resource(handle, resource);
+  nodes_.add_write_resource(handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT);
 }
 
 void VKRenderGraph::add_copy_buffer_node(VkBuffer src_buffer,
@@ -68,8 +68,50 @@ void VKRenderGraph::add_copy_buffer_node(VkBuffer src_buffer,
 
   VersionedResource src_resource = resources_.get_buffer(src_buffer);
   VersionedResource dst_resource = resources_.get_buffer_and_increase_version(dst_buffer);
-  nodes_.add_read_resource(handle, src_resource);
-  nodes_.add_write_resource(handle, dst_resource);
+  nodes_.add_read_resource(handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT);
+  nodes_.add_write_resource(handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT);
+}
+
+void VKRenderGraph::add_dispatch_node(const VKDispatchInfo &dispatch_info)
+{
+  std::scoped_lock lock(mutex_);
+  NodeHandle handle = nodes_.add_dispatch_node(dispatch_info);
+  add_resources(handle, dispatch_info.resources);
+  // TODO: we should add descriptor sets and push constants as well.
+}
+
+void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo &resources)
+{
+  // TODO: validate. resources should be unique (merged).
+  for (const VKBufferAccess &buffer_access : resources.buffers) {
+    VkAccessFlags read_access = buffer_access.vk_access_flags & VK_ACCESS_READ_MASK;
+    if (read_access != VK_ACCESS_NONE) {
+      VersionedResource versioned_resource = resources_.get_buffer(buffer_access.vk_buffer);
+      nodes_.add_read_resource(handle, versioned_resource, read_access);
+    }
+
+    VkAccessFlags write_access = buffer_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
+    if (write_access != VK_ACCESS_NONE) {
+      VersionedResource versioned_resource = resources_.get_buffer_and_increase_version(
+          buffer_access.vk_buffer);
+      nodes_.add_write_resource(handle, versioned_resource, write_access);
+    }
+  }
+
+  for (const VKImageAccess &image_access : resources.images) {
+    VkAccessFlags read_access = image_access.vk_access_flags & VK_ACCESS_READ_MASK;
+    if (read_access != VK_ACCESS_NONE) {
+      VersionedResource versioned_resource = resources_.get_image(image_access.vk_image);
+      nodes_.add_read_resource(handle, versioned_resource, read_access);
+    }
+
+    VkAccessFlags write_access = image_access.vk_access_flags & VK_ACCESS_WRITE_MASK;
+    if (write_access != VK_ACCESS_NONE) {
+      VersionedResource versioned_resource = resources_.get_image_and_increase_version(
+          image_access.vk_image);
+      nodes_.add_write_resource(handle, versioned_resource, write_access);
+    }
+  }
 }
 
 /* -------------------------------------------------------------------- */
