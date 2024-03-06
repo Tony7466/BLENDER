@@ -6,11 +6,13 @@
  * \ingroup bke
  */
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cwctype>
+#include <optional>
 
 #include "CLG_log.h"
 
@@ -28,7 +30,7 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_curve_types.h"
 #include "DNA_object_types.h"
@@ -36,16 +38,16 @@
 #include "DNA_vfont_types.h"
 
 #include "BKE_anim_path.h"
-#include "BKE_bpath.h"
-#include "BKE_curve.h"
-#include "BKE_global.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_bpath.hh"
+#include "BKE_curve.hh"
+#include "BKE_global.hh"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_object_types.hh"
 #include "BKE_packedFile.h"
-#include "BKE_vfont.h"
-#include "BKE_vfontdata.h"
+#include "BKE_vfont.hh"
+#include "BKE_vfontdata.hh"
 
 #include "BLO_read_write.hh"
 
@@ -57,6 +59,9 @@ static ThreadRWMutex vfont_rwlock = BLI_RWLOCK_INITIALIZER;
 static PackedFile *get_builtin_packedfile(void);
 
 /****************************** VFont Datablock ************************/
+
+const void *builtin_font_data = nullptr;
+int builtin_font_size = 0;
 
 static void vfont_init_data(ID *id)
 {
@@ -78,7 +83,11 @@ static void vfont_init_data(ID *id)
   }
 }
 
-static void vfont_copy_data(Main * /*bmain*/, ID *id_dst, const ID * /*id_src*/, const int flag)
+static void vfont_copy_data(Main * /*bmain*/,
+                            std::optional<Library *> /*owner_library*/,
+                            ID *id_dst,
+                            const ID * /*id_src*/,
+                            const int flag)
 {
   VFont *vfont_dst = (VFont *)id_dst;
 
@@ -114,7 +123,8 @@ static void vfont_foreach_path(ID *id, BPathForeachPathData *bpath_data)
   VFont *vfont = (VFont *)id;
 
   if ((vfont->packedfile != nullptr) &&
-      (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0) {
+      (bpath_data->flag & BKE_BPATH_FOREACH_PATH_SKIP_PACKED) != 0)
+  {
     return;
   }
 
@@ -158,6 +168,7 @@ static void vfont_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_VF = {
     /*id_code*/ ID_VF,
     /*id_filter*/ FILTER_ID_VF,
+    /*dependencies_id_types*/ 0,
     /*main_listbase_index*/ INDEX_ID_VF,
     /*struct_size*/ sizeof(VFont),
     /*name*/ "Font",
@@ -217,9 +228,6 @@ void BKE_vfont_free_data(VFont *vfont)
     vfont->temp_pf = nullptr;
   }
 }
-
-static const void *builtin_font_data = nullptr;
-static int builtin_font_size = 0;
 
 bool BKE_vfont_is_builtin(const VFont *vfont)
 {
@@ -1004,10 +1012,8 @@ static bool vfont_to_curve(Object *ob,
       che = find_vfont_char(vfd, ascii);
       BLI_rw_mutex_unlock(&vfont_rwlock);
 
-      /* The character wasn't in the current curve base so load it.
-       * But if the font is built-in then do not try loading since
-       * whole font is in the memory already. */
-      if (che == nullptr && BKE_vfont_is_builtin(vfont) == false) {
+      /* The character wasn't in the current curve base so load it. */
+      if (che == nullptr) {
         BLI_rw_mutex_lock(&vfont_rwlock, THREAD_LOCK_WRITE);
         /* Check it once again, char might have been already load
          * between previous #BLI_rw_mutex_unlock() and this #BLI_rw_mutex_lock().
@@ -1132,7 +1138,7 @@ static bool vfont_to_curve(Object *ob,
         current_line_length += twidth;
       }
       else {
-        longest_line_length = MAX2(current_line_length, longest_line_length);
+        longest_line_length = std::max(current_line_length, longest_line_length);
         current_line_length = 0.0f;
       }
 
@@ -1191,7 +1197,7 @@ static bool vfont_to_curve(Object *ob,
   }
 
   current_line_length += xof + twidth - MARGIN_X_MIN;
-  longest_line_length = MAX2(current_line_length, longest_line_length);
+  longest_line_length = std::max(current_line_length, longest_line_length);
 
   cu->lines = 1;
   for (i = 0; i <= slen; i++) {
@@ -1251,7 +1257,8 @@ static bool vfont_to_curve(Object *ob,
       }
       for (i = 0; i <= slen; i++) {
         for (j = i; !ELEM(mem[j], '\0', '\n') && (chartransdata[j].dobreak == 0) && (j < slen);
-             j++) {
+             j++)
+        {
           /* do nothing */
         }
 
@@ -1265,7 +1272,8 @@ static bool vfont_to_curve(Object *ob,
       float curofs = 0.0f;
       for (i = 0; i <= slen; i++) {
         for (j = i; (mem[j]) && (mem[j] != '\n') && (chartransdata[j].dobreak == 0) && (j < slen);
-             j++) {
+             j++)
+        {
           /* pass */
         }
 
@@ -1421,14 +1429,14 @@ static bool vfont_to_curve(Object *ob,
       float timeofs, sizefac;
 
       if (ob != nullptr) {
-        invert_m4_m4(imat, ob->object_to_world);
+        invert_m4_m4(imat, ob->object_to_world().ptr());
       }
       else {
         unit_m4(imat);
       }
       copy_m3_m4(imat3, imat);
 
-      copy_m3_m4(cmat, cu->textoncurve->object_to_world);
+      copy_m3_m4(cmat, cu->textoncurve->object_to_world().ptr());
       mul_m3_m3m3(cmat, cmat, imat3);
       sizefac = normalize_v3(cmat[0]) / font_size;
 

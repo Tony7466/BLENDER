@@ -20,21 +20,18 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_screen.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
-#include "RNA_access.hh"
-
 #include "UI_interface.hh"
 #include "UI_view2d.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "ED_screen.hh"
-#include "ED_undo.hh"
 
 #include "GPU_framebuffer.h"
 #include "interface_intern.hh"

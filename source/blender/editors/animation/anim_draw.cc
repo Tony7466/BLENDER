@@ -9,41 +9,34 @@
 #include "BLI_sys_types.h"
 
 #include "DNA_anim_types.h"
-#include "DNA_gpencil_legacy_types.h"
-#include "DNA_mask_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BLI_dlrbTree.h"
 #include "BLI_math_rotation.h"
 #include "BLI_rect.h"
-#include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_curve.h"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_context.hh"
+#include "BKE_curve.hh"
+#include "BKE_fcurve.hh"
+#include "BKE_global.hh"
 #include "BKE_mask.h"
 #include "BKE_nla.h"
 
 #include "ED_anim_api.hh"
-#include "ED_keyframes_draw.hh"
 #include "ED_keyframes_edit.hh"
 #include "ED_keyframes_keylist.hh"
 
 #include "RNA_access.hh"
 #include "RNA_path.hh"
 
-#include "UI_interface.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
 #include "GPU_immediate.h"
-#include "GPU_matrix.h"
 #include "GPU_state.h"
 
 /* *************************************************** */
@@ -588,11 +581,11 @@ static bool find_prev_next_keyframes(bContext *C, int *r_nextfra, int *r_prevfra
   }
 
   /* populate tree with keyframe nodes */
-  scene_to_keylist(&ads, scene, keylist, 0);
+  scene_to_keylist(&ads, scene, keylist, 0, {-FLT_MAX, FLT_MAX});
   gpencil_to_keylist(&ads, scene->gpd, keylist, false);
 
   if (ob) {
-    ob_to_keylist(&ads, ob, keylist, 0);
+    ob_to_keylist(&ads, ob, keylist, 0, {-FLT_MAX, FLT_MAX});
     gpencil_to_keylist(&ads, static_cast<bGPdata *>(ob->data), keylist, false);
   }
 

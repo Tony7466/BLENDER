@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,12 +17,9 @@
 
 #include "DNA_ID.h" /* ID property definitions. */
 
-#include "MEM_guardedalloc.h"
+#include "IMB_imbuf_types.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
-
-#include "IMB_metadata.h"
+#include "IMB_metadata.hh"
 
 void IMB_metadata_ensure(IDProperty **metadata)
 {
@@ -63,12 +60,12 @@ bool IMB_metadata_get_field(IDProperty *metadata,
   return false;
 }
 
-void IMB_metadata_copy(ImBuf *dimb, ImBuf *simb)
+void IMB_metadata_copy(ImBuf *ibuf_dst, const ImBuf *ibuf_src)
 {
-  BLI_assert(dimb != simb);
-  if (simb->metadata) {
-    IMB_metadata_free(dimb->metadata);
-    dimb->metadata = IDP_CopyProperty(simb->metadata);
+  BLI_assert(ibuf_dst != ibuf_src);
+  if (ibuf_src->metadata) {
+    IMB_metadata_free(ibuf_dst->metadata);
+    ibuf_dst->metadata = IDP_CopyProperty(ibuf_src->metadata);
   }
 }
 

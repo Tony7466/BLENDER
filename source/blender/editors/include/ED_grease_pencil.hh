@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "BKE_attribute.h"
 #include "BKE_grease_pencil.hh"
 
 #include "BLI_generic_span.hh"
@@ -18,14 +17,26 @@
 
 #include "ED_keyframes_edit.hh"
 
+#include "WM_api.hh"
+
 struct bContext;
 struct GreasePencilDrawing;
 struct Main;
 struct Object;
 struct KeyframeEditData;
-struct ViewContext;
 struct wmKeyConfig;
+struct wmOperator;
 struct ToolSettings;
+struct Scene;
+struct UndoType;
+struct ViewContext;
+struct ViewDepths;
+struct View3D;
+namespace blender {
+namespace bke {
+enum class AttrDomain : int8_t;
+}
+}  // namespace blender
 
 enum {
   LAYER_REORDER_ABOVE,
@@ -42,16 +53,63 @@ void ED_operatortypes_grease_pencil_frames();
 void ED_operatortypes_grease_pencil_layers();
 void ED_operatortypes_grease_pencil_select();
 void ED_operatortypes_grease_pencil_edit();
+void ED_operatortypes_grease_pencil_material();
 void ED_operatortypes_grease_pencil_fill();
+void ED_operatormacros_grease_pencil();
 void ED_keymap_grease_pencil(wmKeyConfig *keyconf);
+
+void ED_undosys_type_grease_pencil(UndoType *undo_type);
 /**
  * Get the selection mode for Grease Pencil selection operators: point, stroke, segment.
  */
-eAttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_settings);
+blender::bke::AttrDomain ED_grease_pencil_selection_domain_get(const ToolSettings *tool_settings);
 
 /** \} */
 
 namespace blender::ed::greasepencil {
+
+enum class DrawingPlacementDepth { ObjectOrigin, Cursor, Surface, NearestStroke };
+
+enum class DrawingPlacementPlane { View, Front, Side, Top, Cursor };
+
+class DrawingPlacement {
+  const ARegion *region_;
+  const View3D *view3d_;
+
+  DrawingPlacementDepth depth_;
+  DrawingPlacementPlane plane_;
+  ViewDepths *depth_cache_ = nullptr;
+  float surface_offset_;
+
+  float3 placement_loc_;
+  float3 placement_normal_;
+  float4 placement_plane_;
+
+  float4x4 layer_space_to_world_space_;
+  float4x4 world_space_to_layer_space_;
+
+ public:
+  DrawingPlacement() = default;
+  DrawingPlacement(const Scene &scene,
+                   const ARegion &region,
+                   const View3D &view3d,
+                   const Object &eval_object,
+                   const bke::greasepencil::Layer &layer);
+  ~DrawingPlacement();
+
+ public:
+  bool use_project_to_surface() const;
+  bool use_project_to_nearest_stroke() const;
+
+  void cache_viewport_depths(Depsgraph *depsgraph, ARegion *region, View3D *view3d);
+  void set_origin_to_nearest_stroke(float2 co);
+
+  /**
+   * Projects a screen space coordinate to the local drawing space.
+   */
+  float3 project(float2 co) const;
+  void project(Span<float2> src, MutableSpan<float3> dst) const;
+};
 
 void set_selected_frames_type(bke::greasepencil::Layer &layer,
                               const eBezTriple_KeyframeType key_type);
@@ -104,13 +162,19 @@ void select_frames_range(bke::greasepencil::TreeNode &node,
  */
 bool has_any_frame_selected(const bke::greasepencil::Layer &layer);
 
+/**
+ * Check for an active keyframe at the current scene time. When there is not,
+ * create one when auto-key is on (taking additive drawing setting into account).
+ * \return false when no keyframe could be found or created.
+ */
+bool ensure_active_keyframe(const Scene &scene, GreasePencil &grease_pencil);
+
 void create_keyframe_edit_data_selected_frames_list(KeyframeEditData *ked,
                                                     const bke::greasepencil::Layer &layer);
 
-float brush_radius_world_space(bContext &C, int x, int y);
-
 bool active_grease_pencil_poll(bContext *C);
 bool editable_grease_pencil_poll(bContext *C);
+bool active_grease_pencil_layer_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
 
@@ -123,26 +187,50 @@ struct MutableDrawingInfo {
   bke::greasepencil::Drawing &drawing;
   const int layer_index;
   const int frame_number;
+  const float multi_frame_falloff;
 };
-Array<int> get_frame_numbers_for_layer(const bke::greasepencil::Layer &layer,
-                                       const int current_frame,
-                                       const bool use_multi_frame_editing);
-Array<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
-                                                     GreasePencil &grease_pencil);
-Array<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
-                                             const GreasePencil &grease_pencil);
+Vector<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
+                                                      GreasePencil &grease_pencil);
+Vector<MutableDrawingInfo> retrieve_editable_drawings_with_falloff(const Scene &scene,
+                                                                   GreasePencil &grease_pencil);
+Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
+    const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
+Vector<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
+                                              const GreasePencil &grease_pencil);
+
+IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
+                                    const bke::greasepencil::Drawing &drawing,
+                                    IndexMaskMemory &memory);
+IndexMask retrieve_editable_strokes_by_material(Object &object,
+                                                const bke::greasepencil::Drawing &drawing,
+                                                const int mat_i,
+                                                IndexMaskMemory &memory);
+IndexMask retrieve_editable_points(Object &object,
+                                   const bke::greasepencil::Drawing &drawing,
+                                   IndexMaskMemory &memory);
+IndexMask retrieve_editable_elements(Object &object,
+                                     const bke::greasepencil::Drawing &drawing,
+                                     bke::AttrDomain selection_domain,
+                                     IndexMaskMemory &memory);
+
+IndexMask retrieve_visible_strokes(Object &grease_pencil_object,
+                                   const bke::greasepencil::Drawing &drawing,
+                                   IndexMaskMemory &memory);
+
+IndexMask retrieve_editable_and_selected_strokes(Object &grease_pencil_object,
+                                                 const bke::greasepencil::Drawing &drawing,
+                                                 IndexMaskMemory &memory);
+IndexMask retrieve_editable_and_selected_points(Object &object,
+                                                const bke::greasepencil::Drawing &drawing,
+                                                IndexMaskMemory &memory);
+IndexMask retrieve_editable_and_selected_elements(Object &object,
+                                                  const bke::greasepencil::Drawing &drawing,
+                                                  bke::AttrDomain selection_domain,
+                                                  IndexMaskMemory &memory);
 
 void create_blank(Main &bmain, Object &object, int frame_number);
-void create_stroke(Main &bmain, Object &object, float4x4 matrix, int frame_number);
-void create_suzanne(Main &bmain, Object &object, float4x4 matrix, const int frame_number);
-
-void gaussian_blur_1D(const GSpan src,
-                      int64_t iterations,
-                      float influence,
-                      bool smooth_ends,
-                      bool keep_shape,
-                      bool is_cyclic,
-                      GMutableSpan dst);
+void create_stroke(Main &bmain, Object &object, const float4x4 &matrix, int frame_number);
+void create_suzanne(Main &bmain, Object &object, const float4x4 &matrix, int frame_number);
 
 int64_t ramer_douglas_peucker_simplify(IndexRange range,
                                        float epsilon,

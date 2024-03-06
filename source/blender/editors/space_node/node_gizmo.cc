@@ -13,21 +13,19 @@
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"
 
 #include "ED_gizmo_library.hh"
 #include "ED_screen.hh"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "node_intern.hh"
@@ -103,7 +101,7 @@ static bool WIDGETGROUP_node_transform_poll(const bContext *C, wmGizmoGroupType 
   if (snode && snode->edittree && snode->edittree->type == NTREE_COMPOSIT) {
     bNode *node = nodeGetActive(snode->edittree);
 
-    if (node && ELEM(node->type, CMP_NODE_VIEWER, CMP_NODE_SPLITVIEWER)) {
+    if (node && ELEM(node->type, CMP_NODE_VIEWER)) {
       return true;
     }
   }
@@ -543,7 +541,7 @@ static void WIDGETGROUP_node_corner_pin_setup(const bContext * /*C*/, wmGizmoGro
 
     RNA_enum_set(gz->ptr, "draw_style", ED_GIZMO_MOVE_STYLE_CROSS_2D);
 
-    gz->scale_basis = 0.01f / 75.0;
+    gz->scale_basis = 0.05f / 75.0;
   }
 
   gzgroup->customdata = cpin_group;

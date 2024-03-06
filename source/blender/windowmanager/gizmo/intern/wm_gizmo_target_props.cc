@@ -8,27 +8,20 @@
 
 #include "BLI_listbase.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "RNA_access.hh"
 
-#include "WM_api.hh"
 #include "WM_message.hh"
 #include "WM_types.hh"
 
-#include "wm.hh"
-
-#include "ED_keyframing.hh"
 #include "ED_screen.hh"
-#include "ED_view3d.hh"
 
 #include "ANIM_keyframing.hh"
 
 /* own includes */
-#include "wm_gizmo_intern.h"
-#include "wm_gizmo_wmapi.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Property Definition

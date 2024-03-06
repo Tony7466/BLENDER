@@ -15,7 +15,7 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_dlrbTree.h"
-#include "BLI_lasso_2d.h"
+#include "BLI_lasso_2d.hh"
 #include "BLI_utildefines.h"
 
 #include "DNA_anim_types.h"
@@ -27,8 +27,8 @@
 #include "RNA_access.hh"
 #include "RNA_define.hh"
 
-#include "BKE_context.h"
-#include "BKE_fcurve.h"
+#include "BKE_context.hh"
+#include "BKE_fcurve.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
 #include "BKE_nla.h"
@@ -98,38 +98,40 @@ static void actkeys_list_element_to_keylist(bAnimContext *ac,
     ads = static_cast<bDopeSheet *>(ac->data);
   }
 
+  blender::float2 range = {ac->region->v2d.cur.xmin, ac->region->v2d.cur.xmax};
+
   if (ale->key_data) {
     switch (ale->datatype) {
       case ALE_SCE: {
         Scene *scene = (Scene *)ale->key_data;
-        scene_to_keylist(ads, scene, keylist, 0);
+        scene_to_keylist(ads, scene, keylist, 0, range);
         break;
       }
       case ALE_OB: {
         Object *ob = (Object *)ale->key_data;
-        ob_to_keylist(ads, ob, keylist, 0);
+        ob_to_keylist(ads, ob, keylist, 0, range);
         break;
       }
       case ALE_ACT: {
         bAction *act = (bAction *)ale->key_data;
-        action_to_keylist(adt, act, keylist, 0);
+        action_to_keylist(adt, act, keylist, 0, range);
         break;
       }
       case ALE_FCURVE: {
         FCurve *fcu = (FCurve *)ale->key_data;
-        fcurve_to_keylist(adt, fcu, keylist, 0);
+        fcurve_to_keylist(adt, fcu, keylist, 0, range);
         break;
       }
     }
   }
   else if (ale->type == ANIMTYPE_SUMMARY) {
     /* dopesheet summary covers everything */
-    summary_to_keylist(ac, keylist, 0);
+    summary_to_keylist(ac, keylist, 0, range);
   }
   else if (ale->type == ANIMTYPE_GROUP) {
     /* TODO: why don't we just give groups key_data too? */
     bActionGroup *agrp = (bActionGroup *)ale->data;
-    action_group_to_keylist(adt, agrp, keylist, 0);
+    action_group_to_keylist(adt, agrp, keylist, 0, range);
   }
   else if (ale->type == ANIMTYPE_GREASE_PENCIL_LAYER) {
     /* TODO: why don't we just give grease pencil layers key_data too? */
@@ -466,7 +468,8 @@ static void box_select_elem(
       Mask *mask = static_cast<Mask *>(ale->data);
       MaskLayer *masklay;
       for (masklay = static_cast<MaskLayer *>(mask->masklayers.first); masklay;
-           masklay = masklay->next) {
+           masklay = masklay->next)
+      {
         ED_masklayer_frames_select_box(masklay, xmin, xmax, sel_data->selectmode);
       }
       break;
@@ -749,7 +752,8 @@ static void region_select_elem(RegionSelectData *sel_data, bAnimListElem *ale, b
       Mask *mask = static_cast<Mask *>(ale->data);
       MaskLayer *masklay;
       for (masklay = static_cast<MaskLayer *>(mask->masklayers.first); masklay;
-           masklay = masklay->next) {
+           masklay = masklay->next)
+      {
         ED_masklayer_frames_select_region(
             &sel_data->ked, masklay, sel_data->mode, sel_data->selectmode);
       }
@@ -898,8 +902,8 @@ static int actkeys_lassoselect_exec(bContext *C, wmOperator *op)
   }
 
   data_lasso.rectf_view = &rect_fl;
-  data_lasso.mcoords = WM_gesture_lasso_path_to_array(C, op, &data_lasso.mcoords_len);
-  if (data_lasso.mcoords == nullptr) {
+  data_lasso.mcoords = WM_gesture_lasso_path_to_array(C, op);
+  if (data_lasso.mcoords.is_empty()) {
     return OPERATOR_CANCELLED;
   }
 
@@ -910,13 +914,11 @@ static int actkeys_lassoselect_exec(bContext *C, wmOperator *op)
   }
 
   /* get settings from operator */
-  BLI_lasso_boundbox(&rect, data_lasso.mcoords, data_lasso.mcoords_len);
+  BLI_lasso_boundbox(&rect, data_lasso.mcoords);
   BLI_rctf_rcti_copy(&rect_fl, &rect);
 
   /* apply box_select action */
   region_select_action_keys(&ac, &rect_fl, BEZT_OK_CHANNEL_LASSO, selectmode, &data_lasso);
-
-  MEM_freeN((void *)data_lasso.mcoords);
 
   /* send notifier that keyframe selection has changed */
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_SELECTED, nullptr);

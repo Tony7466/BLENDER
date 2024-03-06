@@ -17,22 +17,22 @@
 
 #include "BLI_bitmap_draw_2d.h"
 #include "BLI_blenlib.h"
-#include "BLI_lasso_2d.h"
+#include "BLI_lasso_2d.hh"
 #include "BLI_utildefines.h"
-
-#include "BKE_context.h"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
 
 #include "wm.hh"
-#include "wm_draw.hh"
 
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
 #include "BIF_glutil.hh"
+
+using blender::Array;
+using blender::int2;
 
 wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent *event, int type)
 {
@@ -56,7 +56,8 @@ wmGesture *WM_gesture_new(wmWindow *window, const ARegion *region, const wmEvent
            WM_GESTURE_RECT,
            WM_GESTURE_CROSS_RECT,
            WM_GESTURE_CIRCLE,
-           WM_GESTURE_STRAIGHTLINE)) {
+           WM_GESTURE_STRAIGHTLINE))
+  {
     rcti *rect = static_cast<rcti *>(MEM_callocN(sizeof(rcti), "gesture rect new"));
 
     gesture->customdata = rect;
@@ -290,8 +291,7 @@ static void draw_filled_lasso(wmGesture *gt)
 {
   const short *lasso = (short *)gt->customdata;
   const int mcoords_len = gt->points;
-  int(*mcoords)[2] = static_cast<int(*)[2]>(
-      MEM_mallocN(sizeof(*mcoords) * (mcoords_len + 1), __func__));
+  Array<int2> mcoords(mcoords_len);
   int i;
   rcti rect;
   const float red[4] = {1.0f, 0.0f, 0.0f, 0.0f};
@@ -301,7 +301,7 @@ static void draw_filled_lasso(wmGesture *gt)
     mcoords[i][1] = lasso[1];
   }
 
-  BLI_lasso_boundbox(&rect, mcoords, mcoords_len);
+  BLI_lasso_boundbox(&rect, mcoords);
 
   BLI_rcti_translate(&rect, gt->winrct.xmin, gt->winrct.ymin);
   BLI_rcti_isect(&gt->winrct, &rect, &rect);
@@ -319,7 +319,6 @@ static void draw_filled_lasso(wmGesture *gt)
                                   rect.xmax,
                                   rect.ymax,
                                   mcoords,
-                                  mcoords_len,
                                   draw_filled_lasso_px_cb,
                                   &lasso_fill_data);
 
@@ -339,8 +338,6 @@ static void draw_filled_lasso(wmGesture *gt)
 
     GPU_blend(GPU_BLEND_NONE);
   }
-
-  MEM_freeN(mcoords);
 }
 
 static void wm_gesture_draw_lasso(wmGesture *gt, bool filled)

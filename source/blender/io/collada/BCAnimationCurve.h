@@ -9,8 +9,8 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BKE_armature.h"
-#include "BKE_fcurve.h"
+#include "BKE_armature.hh"
+#include "BKE_fcurve.hh"
 #include "BKE_material.h"
 
 #include "ED_anim_api.hh"

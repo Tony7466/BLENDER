@@ -2,20 +2,12 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "DEG_depsgraph_query.hh"
 #include "node_geometry_util.hh"
 
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_runtime.hh"
-#include "BKE_mesh_wrapper.hh"
-#include "BKE_object.hh"
-#include "BKE_volume.h"
 
 #include "GEO_mesh_to_volume.hh"
-
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 
 #include "NOD_rna_define.hh"
 
@@ -98,29 +90,27 @@ static Volume *create_volume_from_mesh(const Mesh &mesh, GeoNodeExecParams &para
     }
   }
 
-  if (mesh.totvert == 0 || mesh.faces_num == 0) {
+  if (mesh.verts_num == 0 || mesh.faces_num == 0) {
     return nullptr;
   }
 
   const float4x4 mesh_to_volume_space_transform = float4x4::identity();
 
-  auto bounds_fn = [&](float3 &r_min, float3 &r_max) {
-    float3 min{std::numeric_limits<float>::max()};
-    float3 max{-std::numeric_limits<float>::max()};
-    BKE_mesh_wrapper_minmax(&mesh, min, max);
-    r_min = min;
-    r_max = max;
-  };
-
   const float voxel_size = geometry::volume_compute_voxel_size(
-      params.depsgraph(), bounds_fn, resolution, 0.0f, mesh_to_volume_space_transform);
+      params.depsgraph(),
+      [&]() { return *mesh.bounds_min_max(); },
+      resolution,
+      0.0f,
+      mesh_to_volume_space_transform);
 
   Volume *volume = reinterpret_cast<Volume *>(BKE_id_new_nomain(ID_VO, nullptr));
 
   /* Convert mesh to grid and add to volume. */
   geometry::fog_volume_grid_add_from_mesh(volume,
                                           "density",
-                                          &mesh,
+                                          mesh.vert_positions(),
+                                          mesh.corner_verts(),
+                                          mesh.corner_tris(),
                                           mesh_to_volume_space_transform,
                                           voxel_size,
                                           interior_band_width,
@@ -144,9 +134,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   });
   params.set_output("Volume", std::move(geometry_set));
 #else
-  params.set_default_remaining_outputs();
-  params.error_message_add(NodeWarningType::Error,
-                           TIP_("Disabled, Blender was compiled without OpenVDB"));
+  node_geo_exec_with_missing_openvdb(params);
   return;
 #endif
 }

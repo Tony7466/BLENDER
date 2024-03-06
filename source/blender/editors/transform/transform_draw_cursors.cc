@@ -12,12 +12,11 @@
 
 #include "BLI_math_rotation.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "DNA_screen_types.h"
 #include "DNA_userdef_types.h"
 
-#include "UI_interface.hh"
 #include "UI_resources.hh"
 
 #include "transform.hh"

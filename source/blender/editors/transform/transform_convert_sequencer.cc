@@ -6,6 +6,7 @@
  * \ingroup edtransform
  */
 
+#include "DNA_sequence_types.h"
 #include "DNA_space_types.h"
 
 #include "MEM_guardedalloc.h"
@@ -14,23 +15,17 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 
-#include "BKE_context.h"
-#include "BKE_main.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "ED_markers.hh"
-#include "ED_time_scrub_ui.hh"
 
 #include "SEQ_animation.hh"
 #include "SEQ_channels.hh"
-#include "SEQ_edit.hh"
-#include "SEQ_effects.hh"
 #include "SEQ_iterator.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
 #include "SEQ_transform.hh"
-#include "SEQ_utils.hh"
 
 #include "UI_view2d.hh"
 
@@ -220,6 +215,10 @@ static TransData *SeqToTransData(Scene *scene,
 
   unit_m3(td->mtx);
   unit_m3(td->smtx);
+
+  /* Time Transform (extend) */
+  td->val = td2d->loc;
+  td->ival = td2d->loc[0];
 
   return td;
 }

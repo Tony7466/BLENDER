@@ -4,16 +4,17 @@
 
 set(INC
   ../include
+  ../../blenfont
   ../../blenkernel
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../gpu
   ../../imbuf
   ../../makesrna
   ../../sequencer
   ../../windowmanager
-  ../../../../intern/clog
+
+  ../../../../extern/fmtlib/include
 
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -134,9 +135,12 @@ set(LIB
   PRIVATE bf::animrig
   bf_blenkernel
   PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
   PRIVATE bf::dna
   bf_editor_undo
+  PRIVATE bf::intern::clog
   PRIVATE bf::intern::guardedalloc
+  extern_fmtlib
 )
 
 

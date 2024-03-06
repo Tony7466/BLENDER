@@ -11,7 +11,7 @@
 #include "BLI_rect.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_tracking.h"
 
 #include "WM_api.hh"
@@ -19,8 +19,6 @@
 
 #include "ED_clip.hh"
 #include "ED_screen.hh"
-
-#include "UI_interface.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"

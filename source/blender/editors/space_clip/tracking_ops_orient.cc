@@ -18,10 +18,10 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_constraint.h"
-#include "BKE_context.h"
-#include "BKE_layer.h"
+#include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_tracking.h"
 
 #include "DEG_depsgraph.hh"

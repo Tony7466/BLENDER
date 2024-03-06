@@ -17,11 +17,10 @@
 #include "DNA_userdef_types.h"
 
 #include "BLI_blenlib.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "PIL_time.h"
-
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_screen.hh"
 
 #include "WM_api.hh"
@@ -33,9 +32,7 @@
 
 #include "UI_interface.hh"
 
-#include "BLT_translation.h"
-
-#include "ED_screen.hh"
+#include "BLT_translation.hh"
 
 #include "interface_intern.hh"
 #include "interface_regions_intern.hh"
@@ -157,30 +154,16 @@ uiPieMenu *UI_pie_menu_begin(bContext *C, const char *title, int icon, const wmE
                              nullptr,
                              0.0,
                              0.0,
-                             0,
-                             0,
                              "");
     }
     else {
       w = ui_pie_menu_title_width(title, 0);
-      but = uiDefBut(pie->block_radial,
-                     UI_BTYPE_LABEL,
-                     0,
-                     title,
-                     0,
-                     0,
-                     w,
-                     UI_UNIT_Y,
-                     nullptr,
-                     0.0,
-                     0.0,
-                     0,
-                     0,
-                     "");
+      but = uiDefBut(
+          pie->block_radial, UI_BTYPE_LABEL, 0, title, 0, 0, w, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
     }
     /* do not align left */
     but->drawflag &= ~UI_BUT_TEXT_LEFT;
-    pie->block_radial->pie_data.title = but->str;
+    pie->block_radial->pie_data.title = but->str.c_str();
     pie->block_radial->pie_data.icon = icon;
   }
 
@@ -194,7 +177,7 @@ void UI_pie_menu_end(bContext *C, uiPieMenu *pie)
 
   menu = ui_popup_block_create(C, nullptr, nullptr, nullptr, ui_block_func_PIE, pie, nullptr);
   menu->popup = true;
-  menu->towardstime = PIL_check_seconds_timer();
+  menu->towardstime = BLI_time_now_seconds();
 
   UI_popup_handlers_add(C, &window->modalhandlers, menu, WM_HANDLER_ACCEPT_DBL_CLICK);
   WM_event_add_mousemove(window);
@@ -394,8 +377,6 @@ void ui_pie_menu_level_create(uiBlock *block,
                                 UI_UNIT_X * 3,
                                 UI_UNIT_Y,
                                 nullptr,
-                                0.0f,
-                                0.0f,
                                 0.0f,
                                 0.0f,
                                 "Show more items of this menu");

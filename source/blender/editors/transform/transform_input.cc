@@ -10,9 +10,8 @@
 #include <cstdlib>
 
 #include "DNA_screen_types.h"
-#include "DNA_space_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
