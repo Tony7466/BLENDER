@@ -29,6 +29,7 @@
  */
 
 struct BVHTree;
+struct GreasePencilShrinkwrapModifierData;
 struct MDeformVert;
 struct Mesh;
 struct ModifierEvalContext;
@@ -118,6 +119,12 @@ void shrinkwrapGpencilModifier_deform(ShrinkwrapGpencilModifierData *mmd,
                                       float (*vertexCos)[3],
                                       int numVerts);
 
+void shrinkwrapGreasePencil_deform(const GreasePencilShrinkwrapModifierData &md,
+                                   Object &object,
+                                   blender::Span<MDeformVert> dvert,
+                                   int defgrp_index,
+                                   blender::MutableSpan<blender::float3> positions);
+
 struct ShrinkwrapParams {
   /** Shrink target. */
   Object *target = nullptr;
@@ -130,9 +137,9 @@ struct ShrinkwrapParams {
   /** Shrink type projection. */
   short shrink_type = 0 /*MOD_SHRINKWRAP_NEAREST_SURFACE*/;
   /** Shrink options. */
-  char shrink_options = 0/*MOD_SHRINKWRAP_PROJECT_ALLOW_POS_DIR*/;
+  char shrink_options = 0 /*MOD_SHRINKWRAP_PROJECT_ALLOW_POS_DIR*/;
   /** Shrink to surface mode. */
-  char shrink_mode = 0/*MOD_SHRINKWRAP_ON_SURFACE*/;
+  char shrink_mode = 0 /*MOD_SHRINKWRAP_ON_SURFACE*/;
   /** Limit the projection ray cast. */
   float projection_limit = 0.0f;
   /** Axis to project over. */
@@ -147,9 +154,9 @@ struct ShrinkwrapParams {
 void shrinkwrapParams_deform(const ShrinkwrapParams &params,
                              Object &object,
                              ShrinkwrapTreeData &tree,
-                             const blender::Span<MDeformVert> dvert,
+                             blender::Span<MDeformVert> dvert,
                              int defgrp_index,
-                             const blender::MutableSpan<blender::float3> positions);
+                             blender::MutableSpan<blender::float3> positions);
 
 /**
  * Used in `editmesh_mask_extract.cc` to shrink-wrap the extracted mesh to the sculpt.
