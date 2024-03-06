@@ -51,22 +51,17 @@ static void node_declare(NodeDeclarationBuilder &b)
           "Specifies microfacet roughness of the surface for specular reflection and transmission"
           " (0.0 is a perfect mirror reflection, 1.0 is completely rough)");
 #define SOCK_ROUGHNESS_ID 2
-  b.add_input<decl::Float>("IOR")
-      .default_value(1.5f)
-      .min(1.0f)
-      .max(1000.0f)
-      .description(
-          "Index of refraction for specular reflection and transmission. "
-          "For most materials, the IOR is between 1.0 (vacuum and air) and 4.0 (germanium). "
-          "The default value of 1.5 is a good approximation for glass");
+  b.add_input<decl::Float>("IOR").default_value(1.5f).min(1.0f).max(1000.0f).description(
+      "Index of refraction for specular reflection and transmission. "
+      "For most materials, the IOR is between 1.0 (vacuum and air) and 4.0 (germanium). "
+      "The default value of 1.5 is a good approximation for glass");
 #define SOCK_IOR_ID 3
   b.add_input<decl::Float>("Alpha")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .subtype(PROP_FACTOR)
-      .description(
-          "Controls the transparency of the surface, with 1.0 fully opaque");
+      .description("Controls the transparency of the surface, with 1.0 fully opaque");
 #define SOCK_ALPHA_ID 4
   b.add_input<decl::Vector>("Normal").hide_value();
 #define SOCK_NORMAL_ID 5
@@ -122,7 +117,7 @@ static void node_declare(NodeDeclarationBuilder &b)
       .description(
           "Directionanltiy of volume scattering within the subsurface medium. "
           "Zero scatters uniformly in all directions, with higher values "
-          "scattering more strongly forward. For example skin has been measure "
+          "scattering more strongly forward. For example skin has been measured "
           "to have an anisotropy of 0.8");
 #define SOCK_SUBSURFACE_ANISOTROPY_ID 11
 
@@ -169,9 +164,8 @@ static void node_declare(NodeDeclarationBuilder &b)
       .subtype(PROP_FACTOR)
       .description("Rotates the direction of anisotropy, with 1.0 going full circle");
 #define SOCK_ANISOTROPIC_ROTATION_ID 15
-  spec.add_input<decl::Vector>("Tangent")
-      .hide_value()
-      .description("Controls the tangent line for the Anisotropic layer");
+  spec.add_input<decl::Vector>("Tangent").hide_value().description(
+      "Controls the tangent line for the Anisotropic layer");
 #define SOCK_TANGENT_ID 16
 
   /* Panel for Transmission settings. */
