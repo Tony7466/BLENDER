@@ -3060,83 +3060,84 @@ static int filelist_readjob_list_dir(FileListReadJob *job_params,
   char full_path[FILE_MAX];
 
   const int files_num = BLI_filelist_dir_contents(root, &files);
+  if (files) {
+    int i = files_num;
+    while (i--) {
+      FileListInternEntry *entry;
 
-  for (int i = 0; i < files_num; i++) {
-    if (skip_currpar && FILENAME_IS_CURRPAR(files[i].relname)) {
-      continue;
-    }
+      if (skip_currpar && FILENAME_IS_CURRPAR(files[i].relname)) {
+        continue;
+      }
 
-    FileListInternEntry *entry = MEM_cnew<FileListInternEntry>(__func__);
-    entry->relpath = current_relpath_append(job_params, files[i].relname);
-    entry->st = files[i].s;
+      entry = MEM_cnew<FileListInternEntry>(__func__);
+      entry->relpath = current_relpath_append(job_params, files[i].relname);
+      entry->st = files[i].s;
 
-    BLI_path_join(full_path, FILE_MAX, root, files[i].relname);
-    char *target = full_path;
+      BLI_path_join(full_path, FILE_MAX, root, files[i].relname);
+      char *target = full_path;
 
-    /* Set initial file type and attributes. */
-    entry->attributes = BLI_file_attributes(full_path);
-    if (S_ISDIR(files[i].s.st_mode)
+      /* Set initial file type and attributes. */
+      entry->attributes = BLI_file_attributes(full_path);
+      if (S_ISDIR(files[i].s.st_mode)
 #ifdef __APPLE__
-        && !(ED_path_extension_type(full_path) & FILE_TYPE_BUNDLE)
+          && !(ED_path_extension_type(full_path) & FILE_TYPE_BUNDLE)
 #endif
-    )
-    {
-      entry->typeflag = FILE_TYPE_DIR;
-    }
+      )
+      {
+        entry->typeflag = FILE_TYPE_DIR;
+      }
 
-    /* Is this a file that points to another file? */
-    if (entry->attributes & FILE_ATTR_ALIAS) {
-      entry->redirection_path = MEM_cnew_array<char>(FILE_MAXDIR, __func__);
-      if (BLI_file_alias_target(full_path, entry->redirection_path)) {
-        if (BLI_is_dir(entry->redirection_path)) {
-          entry->typeflag = FILE_TYPE_DIR;
-          BLI_path_slash_ensure(entry->redirection_path, FILE_MAXDIR);
+      /* Is this a file that points to another file? */
+      if (entry->attributes & FILE_ATTR_ALIAS) {
+        entry->redirection_path = MEM_cnew_array<char>(FILE_MAXDIR, __func__);
+        if (BLI_file_alias_target(full_path, entry->redirection_path)) {
+          if (BLI_is_dir(entry->redirection_path)) {
+            entry->typeflag = FILE_TYPE_DIR;
+            BLI_path_slash_ensure(entry->redirection_path, FILE_MAXDIR);
+          }
+          else {
+            entry->typeflag = (eFileSel_File_Types)ED_path_extension_type(entry->redirection_path);
+          }
+          target = entry->redirection_path;
+#ifdef WIN32
+          /* On Windows don't show `.lnk` extension for valid shortcuts. */
+          BLI_path_extension_strip(entry->relpath);
+#endif
         }
         else {
-          entry->typeflag = (eFileSel_File_Types)ED_path_extension_type(entry->redirection_path);
+          MEM_freeN(entry->redirection_path);
+          entry->redirection_path = nullptr;
+          entry->attributes |= FILE_ATTR_HIDDEN;
         }
-        target = entry->redirection_path;
-#ifdef WIN32
-        /* On Windows don't show `.lnk` extension for valid shortcuts. */
-        BLI_path_extension_strip(entry->relpath);
-#endif
       }
-      else {
-        MEM_freeN(entry->redirection_path);
-        entry->redirection_path = nullptr;
-        entry->attributes |= FILE_ATTR_HIDDEN;
-      }
-    }
 
-    if (!(entry->typeflag & FILE_TYPE_DIR)) {
-      if (do_lib && BKE_blendfile_extension_check(target)) {
-        /* If we are considering .blend files as libraries, promote them to directory status. */
-        entry->typeflag = FILE_TYPE_BLENDER;
-        /* prevent current file being used as acceptable dir */
-        if (BLI_path_cmp(main_filepath, target) != 0) {
-          entry->typeflag |= FILE_TYPE_DIR;
+      if (!(entry->typeflag & FILE_TYPE_DIR)) {
+        if (do_lib && BKE_blendfile_extension_check(target)) {
+          /* If we are considering .blend files as libraries, promote them to directory status. */
+          entry->typeflag = FILE_TYPE_BLENDER;
+          /* prevent current file being used as acceptable dir */
+          if (BLI_path_cmp(main_filepath, target) != 0) {
+            entry->typeflag |= FILE_TYPE_DIR;
+          }
+        }
+        else {
+          entry->typeflag = (eFileSel_File_Types)ED_path_extension_type(target);
+          if (filter_glob[0] && BLI_path_extension_check_glob(target, filter_glob)) {
+            entry->typeflag |= FILE_TYPE_OPERATOR;
+          }
         }
       }
-      else {
-        entry->typeflag = (eFileSel_File_Types)ED_path_extension_type(target);
-        if (filter_glob[0] && BLI_path_extension_check_glob(target, filter_glob)) {
-          entry->typeflag |= FILE_TYPE_OPERATOR;
-        }
-      }
-    }
 
 #ifndef WIN32
-    /* Set linux-style dot files hidden too. */
-    if (is_hidden_dot_filename(entry->relpath, entry)) {
-      entry->attributes |= FILE_ATTR_HIDDEN;
-    }
+      /* Set linux-style dot files hidden too. */
+      if (is_hidden_dot_filename(entry->relpath, entry)) {
+        entry->attributes |= FILE_ATTR_HIDDEN;
+      }
 #endif
 
-    BLI_addtail(entries, entry);
-    entries_num++;
-  }
-
-  if (files) {
+      BLI_addhead(entries, entry);
+      entries_num++;
+    }
     BLI_filelist_free(files, files_num);
   }
   return entries_num;
