@@ -118,9 +118,11 @@ if(WIN32)
   set(PLATFORM_CXX_FLAGS)
 
   if(BLENDER_PLATFORM_ARM)
-    # In some cases on ARM64 (unsure why), dep builds using the "Ninja" generator appear to use the x86 host tools
-    # (ie, x86 cl.exe producing ARM64 binaries). This is problematic when building things like LLVM, as memory is limited to 3GB, resulting in internal compiler errors
-    # Here, we set CMAKE_C_COMPILER et al via PLATFORM_CMAKE_FLAGS to point to the ARM64 native binary, which doesn't have this issue.
+    # In some cases on ARM64 (unsure why), dep builds using the "Ninja" generator appear to use
+    # the x86 host tools (ie, x86 cl.exe producing ARM64 binaries). This is problematic when
+    # building things like LLVM, as memory is limited to 3GB, giving internal compiler errors.
+    # Here, we set CMAKE_C_COMPILER et al via PLATFORM_CMAKE_FLAGS to point to the ARM64 native
+    # binary, which doesn't have this issue.
     # We make an assumption that the tools (ie, right now in the code) are the ones we want
     set(PLATFORM_CMAKE_FLAGS
       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
