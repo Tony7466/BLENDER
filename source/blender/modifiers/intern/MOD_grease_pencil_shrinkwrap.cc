@@ -143,7 +143,6 @@ static void modify_drawing(const GreasePencilShrinkwrapModifierData &smd,
 {
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   const Span<MDeformVert> dverts = curves.deform_verts();
   const MutableSpan<float3> positions = curves.positions_for_write();
   const int defgrp_idx = BKE_object_defgroup_name_index(ctx.object,
