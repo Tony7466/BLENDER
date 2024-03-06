@@ -62,6 +62,7 @@ template<typename T> struct Bounds {
    * This matches the behavior of #BLI_rcti_pad/#BLI_rctf_pad.
    */
   template<typename PaddingT> void pad(const PaddingT &padding);
+  template<typename BoundaryT> void pad(const BoundaryT &boundary_size, const T &padding_min, const T &padding_max);
 };
 
 }  // namespace blender

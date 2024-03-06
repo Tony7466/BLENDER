@@ -188,4 +188,20 @@ inline void Bounds<T>::pad(const PaddingT &padding)
   this->max = this->max + padding;
 }
 
+template<typename T>
+template<typename BoundaryT>
+inline void Bounds<T>::pad(const BoundaryT &boundary_size,
+                           const T &padding_min,
+                           const T &padding_max)
+{
+  T total_pad = padding_min + padding_max;
+  if (total_pad == T(0)) {
+    return;
+  }
+
+  T total_extend = this->size() * total_pad / (boundary_size - total_pad);
+  this->max += total_extend * (padding_max / total_pad);
+  this->min += total_extend * (padding_min / total_pad);
+}
+
 }  // namespace blender

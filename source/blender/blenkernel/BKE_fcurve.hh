@@ -8,6 +8,9 @@
  * \ingroup bke
  */
 
+#include <optional>
+
+#include "BLI_bounds.hh"
 #include "BLI_math_vector_types.hh"
 #include "DNA_curve_types.h"
 
@@ -368,17 +371,19 @@ int BKE_fcurve_pathcache_find_array(FCurvePathCache *fcache,
  */
 bool BKE_fcurve_calc_range(const FCurve *fcu, float *r_min, float *r_max, bool selected_keys_only);
 
+namespace blender::bke {
 /**
  * Calculate the x and y extents of F-Curve's data.
  * \param frame_range: Only calculate the bounds of the FCurve in the given range.
  * Does the full range if NULL.
- * \return true if the bounds have been found.
+ * \return the bounds if they have been found, otherwise std::nullopt.
  */
-bool BKE_fcurve_calc_bounds(const FCurve *fcu,
-                            bool selected_keys_only,
-                            bool include_handles,
-                            const float frame_range[2],
-                            rctf *r_bounds);
+std::optional<Bounds<float2>> fcurve_calc_bounds(const FCurve &fcu,
+                                                 bool selected_keys_only,
+                                                 bool include_handles,
+                                                 const float frame_range[2]);
+
+}  // namespace blender::bke
 
 /**
  * Return an array of keyed frames, rounded to `interval`.

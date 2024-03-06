@@ -578,6 +578,8 @@ int BKE_fcurve_bezt_binarysearch_index(const BezTriple array[],
 
 /* ...................................... */
 
+namespace blender::bke {
+
 /**
  * Get the first and last index to the bezt array that satisfies the given parameters.
  *
@@ -585,28 +587,26 @@ int BKE_fcurve_bezt_binarysearch_index(const BezTriple array[],
  * Is a subset of frame_range.
  * \param frame_range: Only consider keyframes in that frame interval. Can be nullptr.
  */
-static bool get_bounding_bezt_indices(const FCurve *fcu,
+static bool get_bounding_bezt_indices(const FCurve &fcu,
                                       const bool selected_keys_only,
                                       const float frame_range[2],
                                       int *r_first,
                                       int *r_last)
 {
   /* Sanity checks. */
-  if (fcu->bezt == nullptr) {
+  if (fcu.bezt == nullptr) {
     return false;
   }
 
   *r_first = 0;
-  *r_last = fcu->totvert - 1;
+  *r_last = fcu.totvert - 1;
 
   bool found = false;
   if (frame_range != nullptr) {
     /* If a range is passed in find the first and last keyframe within that range. */
     bool replace = false;
-    *r_first = BKE_fcurve_bezt_binarysearch_index(
-        fcu->bezt, frame_range[0], fcu->totvert, &replace);
-    *r_last = BKE_fcurve_bezt_binarysearch_index(
-        fcu->bezt, frame_range[1], fcu->totvert, &replace);
+    *r_first = BKE_fcurve_bezt_binarysearch_index(fcu.bezt, frame_range[0], fcu.totvert, &replace);
+    *r_last = BKE_fcurve_bezt_binarysearch_index(fcu.bezt, frame_range[1], fcu.totvert, &replace);
 
     /* If first and last index are the same, no keyframes were found in the range. */
     if (*r_first == *r_last) {
@@ -615,15 +615,15 @@ static bool get_bounding_bezt_indices(const FCurve *fcu,
 
     /* The binary search returns an index where a keyframe would be inserted,
      * so it needs to be clamped to ensure it is in range of the array. */
-    *r_first = clamp_i(*r_first, 0, fcu->totvert - 1);
-    *r_last = clamp_i(*r_last - 1, 0, fcu->totvert - 1);
+    *r_first = clamp_i(*r_first, 0, fcu.totvert - 1);
+    *r_last = clamp_i(*r_last - 1, 0, fcu.totvert - 1);
   }
 
   /* Only include selected items? */
   if (selected_keys_only) {
     /* Find first selected. */
     for (int i = *r_first; i <= *r_last; i++) {
-      BezTriple *bezt = &fcu->bezt[i];
+      BezTriple *bezt = &fcu.bezt[i];
       if (BEZT_ISSEL_ANY(bezt)) {
         *r_first = i;
         found = true;
@@ -633,7 +633,7 @@ static bool get_bounding_bezt_indices(const FCurve *fcu,
 
     /* Find last selected. */
     for (int i = *r_last; i >= *r_first; i--) {
-      BezTriple *bezt = &fcu->bezt[i];
+      BezTriple *bezt = &fcu.bezt[i];
       if (BEZT_ISSEL_ANY(bezt)) {
         *r_last = i;
         found = true;
@@ -694,97 +694,88 @@ static void calculate_bezt_bounds_y(BezTriple *bezt_array,
   }
 }
 
-static bool calculate_bezt_bounds(const FCurve *fcu,
-                                  const bool selected_keys_only,
-                                  const bool include_handles,
-                                  const float frame_range[2],
-                                  rctf *r_bounds)
+static std::optional<Bounds<float2>> calculate_bezt_bounds(const FCurve &fcu,
+                                                           const bool selected_keys_only,
+                                                           const bool include_handles,
+                                                           const float frame_range[2])
 {
   int index_range[2];
   const bool found_indices = get_bounding_bezt_indices(
       fcu, selected_keys_only, frame_range, &index_range[0], &index_range[1]);
   if (!found_indices) {
-    return false;
+    return {};
   }
-  calculate_bezt_bounds_x(
-      fcu->bezt, index_range, include_handles, &r_bounds->xmin, &r_bounds->xmax);
-  calculate_bezt_bounds_y(fcu->bezt,
-                          index_range,
-                          selected_keys_only,
-                          include_handles,
-                          &r_bounds->ymin,
-                          &r_bounds->ymax);
-  return true;
+  Bounds<float2> bounds;
+  calculate_bezt_bounds_x(fcu.bezt, index_range, include_handles, &bounds.min.x, &bounds.max.x);
+  calculate_bezt_bounds_y(
+      fcu.bezt, index_range, selected_keys_only, include_handles, &bounds.min.y, &bounds.max.y);
+  return bounds;
 }
 
-static bool calculate_fpt_bounds(const FCurve *fcu, const float frame_range[2], rctf *r_bounds)
+static std::optional<Bounds<float2>> calculate_fpt_bounds(const FCurve &fcu,
+                                                          const float frame_range[2])
 {
-  r_bounds->xmin = INFINITY;
-  r_bounds->xmax = -INFINITY;
-  r_bounds->ymin = INFINITY;
-  r_bounds->ymax = -INFINITY;
-
   const int first_index = 0;
-  const int last_index = fcu->totvert - 1;
+  const int last_index = fcu.totvert - 1;
   int start_index = first_index;
   int end_index = last_index;
 
   if (frame_range != nullptr) {
     /* Start index can be calculated because fpt has a key on every full frame. */
-    const float start_index_f = frame_range[0] - fcu->fpt[0].vec[0];
+    const float start_index_f = frame_range[0] - fcu.fpt[0].vec[0];
     const float end_index_f = start_index_f + frame_range[1] - frame_range[0];
 
-    if (start_index_f > fcu->totvert - 1 || end_index_f < 0) {
+    if (start_index_f > fcu.totvert - 1 || end_index_f < 0) {
       /* Range is outside of keyframe samples. */
-      return false;
+      return {};
     }
 
     /* Range might be partially covering keyframe samples. */
-    start_index = clamp_i(start_index_f, 0, fcu->totvert - 1);
-    end_index = clamp_i(end_index_f, 0, fcu->totvert - 1);
+    start_index = math::clamp(int(start_index_f), 0, int(fcu.totvert) - 1);
+    end_index = math::clamp(int(end_index_f), 0, int(fcu.totvert) - 1);
   }
 
+  Bounds<float2> bounds;
   /* X range can be directly calculated from end verts. */
-  r_bounds->xmin = fcu->fpt[start_index].vec[0];
-  r_bounds->xmax = fcu->fpt[end_index].vec[0];
+  bounds.min.x = fcu.fpt[start_index].vec[0];
+  bounds.max.x = fcu.fpt[start_index].vec[0];
 
-  for (int i = start_index; i <= end_index; i++) {
-    r_bounds->ymin = min_ff(r_bounds->ymin, fcu->fpt[i].vec[1]);
-    r_bounds->ymax = max_ff(r_bounds->ymax, fcu->fpt[i].vec[1]);
+  for (const int i : IndexRange(start_index, end_index - start_index)) {
+    bounds.min.y = math::min(bounds.min.y, fcu.fpt[i].vec[1]);
+    bounds.max.y = math::max(bounds.max.y, fcu.fpt[i].vec[1]);
   }
 
-  return BLI_rctf_is_valid(r_bounds);
+  return bounds;
 }
 
-bool BKE_fcurve_calc_bounds(const FCurve *fcu,
-                            const bool selected_keys_only,
-                            const bool include_handles,
-                            const float frame_range[2],
-                            rctf *r_bounds)
+std::optional<Bounds<float2>> fcurve_calc_bounds(const FCurve &fcu,
+                                                 const bool selected_keys_only,
+                                                 const bool include_handles,
+                                                 const float frame_range[2])
 {
-  if (fcu->totvert == 0) {
-    return false;
+  if (fcu.totvert == 0) {
+    return {};
   }
 
-  if (fcu->bezt) {
-    const bool found_bounds = calculate_bezt_bounds(
-        fcu, selected_keys_only, include_handles, frame_range, r_bounds);
-    return found_bounds;
+  if (fcu.bezt) {
+    return calculate_bezt_bounds(fcu, selected_keys_only, include_handles, frame_range);
   }
 
-  if (fcu->fpt) {
-    const bool founds_bounds = calculate_fpt_bounds(fcu, frame_range, r_bounds);
-    return founds_bounds;
+  if (fcu.fpt) {
+    return calculate_fpt_bounds(fcu, frame_range);
   }
 
-  return false;
+  return {};
 }
+
+}  // namespace blender::bke
 
 bool BKE_fcurve_calc_range(const FCurve *fcu,
                            float *r_start,
                            float *r_end,
                            const bool selected_keys_only)
 {
+  using namespace blender::bke;
   float min = 0.0f;
   float max = 0.0f;
   bool foundvert = false;
@@ -796,7 +787,7 @@ bool BKE_fcurve_calc_range(const FCurve *fcu,
   if (fcu->bezt) {
     int index_range[2];
     foundvert = get_bounding_bezt_indices(
-        fcu, selected_keys_only, nullptr, &index_range[0], &index_range[1]);
+        *fcu, selected_keys_only, nullptr, &index_range[0], &index_range[1]);
     if (!foundvert) {
       return false;
     }

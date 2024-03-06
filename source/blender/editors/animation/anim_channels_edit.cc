@@ -10,6 +10,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <optional>
+
 #include "MEM_guardedalloc.h"
 
 #include "BLI_blenlib.h"
@@ -64,21 +66,21 @@
 /** \name Channel helper functions
  * \{ */
 
-static bool get_normalized_fcurve_bounds(FCurve *fcu,
-                                         AnimData *anim_data,
-                                         SpaceLink *space_link,
-                                         Scene *scene,
-                                         ID *id,
-                                         const bool include_handles,
-                                         const float range[2],
-                                         rctf *r_bounds)
+namespace blender {
+
+static std::optional<Bounds<float2>> get_normalized_fcurve_bounds(FCurve *fcu,
+                                                                  AnimData *anim_data,
+                                                                  SpaceLink *space_link,
+                                                                  Scene *scene,
+                                                                  ID *id,
+                                                                  const bool include_handles,
+                                                                  const float range[2])
 {
   const bool fcu_selection_only = false;
-  const bool found_bounds = BKE_fcurve_calc_bounds(
-      fcu, fcu_selection_only, include_handles, range, r_bounds);
-
-  if (!found_bounds) {
-    return false;
+  std::optional<Bounds<float2>> bounds = bke::fcurve_calc_bounds(
+      *fcu, fcu_selection_only, include_handles, range);
+  if (!bounds.has_value()) {
+    return {};
   }
 
   const short mapping_flag = ANIM_get_normalization_flags(space_link);
@@ -86,22 +88,21 @@ static bool get_normalized_fcurve_bounds(FCurve *fcu,
   float offset;
   const float unit_fac = ANIM_unit_mapping_get_factor(scene, id, fcu, mapping_flag, &offset);
 
-  r_bounds->ymin = (r_bounds->ymin + offset) * unit_fac;
-  r_bounds->ymax = (r_bounds->ymax + offset) * unit_fac;
+  bounds->min.y = (bounds->min.y + offset) * unit_fac;
+  bounds->max.y = (bounds->max.y + offset) * unit_fac;
 
   const float min_height = 0.01f;
-  const float height = BLI_rctf_size_y(r_bounds);
+  const float height = bounds->size().y;
   if (height < min_height) {
-    r_bounds->ymin -= (min_height - height) / 2;
-    r_bounds->ymax += (min_height - height) / 2;
+    bounds->min.y -= (min_height - height) / 2;
+    bounds->max.y += (min_height - height) / 2;
   }
-  r_bounds->xmin = BKE_nla_tweakedit_remap(anim_data, r_bounds->xmin, NLATIME_CONVERT_MAP);
-  r_bounds->xmax = BKE_nla_tweakedit_remap(anim_data, r_bounds->xmax, NLATIME_CONVERT_MAP);
-
-  return true;
+  bounds->min.x = BKE_nla_tweakedit_remap(anim_data, bounds->min.x, NLATIME_CONVERT_MAP);
+  bounds->max.x = BKE_nla_tweakedit_remap(anim_data, bounds->max.x, NLATIME_CONVERT_MAP);
+  return bounds;
 }
 
-static bool get_gpencil_bounds(bGPDlayer *gpl, const float range[2], rctf *r_bounds)
+static std::optional<Bounds<float2>> get_gpencil_bounds(bGPDlayer *gpl, const float range[2])
 {
   bool found_start = false;
   int start_frame = 0;
@@ -119,17 +120,14 @@ static bool get_gpencil_bounds(bGPDlayer *gpl, const float range[2], rctf *r_bou
     }
     end_frame = gpf->framenum;
   }
-  r_bounds->xmin = start_frame;
-  r_bounds->xmax = end_frame;
-  r_bounds->ymin = 0;
-  r_bounds->ymax = 1;
-
-  return found_start;
+  if (!found_start) {
+    return {};
+  }
+  return Bounds<float2>(float2(float(start_frame), 0.0f), float2(float(end_frame), 1.0f));
 }
 
-static bool get_grease_pencil_layer_bounds(const GreasePencilLayer *gplayer,
-                                           const float range[2],
-                                           rctf *r_bounds)
+static std::optional<Bounds<float2>> get_grease_pencil_layer_bounds(
+    const GreasePencilLayer *gplayer, const float range[2])
 {
   using namespace blender::bke::greasepencil;
   const Layer &layer = gplayer->wrap();
@@ -152,55 +150,54 @@ static bool get_grease_pencil_layer_bounds(const GreasePencilLayer *gplayer,
     }
     end_frame = key;
   }
-  r_bounds->xmin = start_frame;
-  r_bounds->xmax = end_frame;
-  r_bounds->ymin = 0;
-  r_bounds->ymax = 1;
-
-  return found_start;
+  if (!found_start) {
+    return {};
+  }
+  return Bounds<float2>(float2(float(start_frame), 0.0f), float2(float(end_frame), 1.0f));
 }
 
-static bool get_channel_bounds(bAnimContext *ac,
-                               bAnimListElem *ale,
-                               const float range[2],
-                               const bool include_handles,
-                               rctf *r_bounds)
+static std::optional<Bounds<float2>> get_channel_bounds(bAnimContext *ac,
+                                                        bAnimListElem *ale,
+                                                        const float range[2],
+                                                        const bool include_handles)
 {
-  bool found_bounds = false;
   switch (ale->datatype) {
     case ALE_GPFRAME: {
       bGPDlayer *gpl = (bGPDlayer *)ale->data;
-      found_bounds = get_gpencil_bounds(gpl, range, r_bounds);
+      return get_gpencil_bounds(gpl, range);
       break;
     }
     case ALE_GREASE_PENCIL_CEL:
-      found_bounds = get_grease_pencil_layer_bounds(
-          static_cast<const GreasePencilLayer *>(ale->data), range, r_bounds);
+      return get_grease_pencil_layer_bounds(static_cast<const GreasePencilLayer *>(ale->data),
+                                            range);
       break;
 
     case ALE_FCURVE: {
       FCurve *fcu = (FCurve *)ale->key_data;
       AnimData *anim_data = ANIM_nla_mapping_get(ac, ale);
-      found_bounds = get_normalized_fcurve_bounds(
-          fcu, anim_data, ac->sl, ac->scene, ale->id, include_handles, range, r_bounds);
+      return get_normalized_fcurve_bounds(
+          fcu, anim_data, ac->sl, ac->scene, ale->id, include_handles, range);
       break;
     }
   }
-  return found_bounds;
+  return {};
 }
 
 /* Pad the given rctf with regions that could block the view.
  * For example Markers and Time Scrubbing. */
-static void add_region_padding(bContext *C, ARegion *region, rctf *bounds)
+static void add_region_padding(bContext *C, ARegion *region, Bounds<float2> &r_bounds)
 {
-  BLI_rctf_scale(bounds, 1.1f);
+  r_bounds.scale_from_center(float2(1.1f));
 
   const float pad_top = UI_TIME_SCRUB_MARGIN_Y;
   const float pad_bottom = BLI_listbase_is_empty(ED_context_get_markers(C)) ?
                                V2D_SCROLL_HANDLE_HEIGHT :
                                UI_MARKER_MARGIN_Y;
-  BLI_rctf_pad_y(bounds, region->winy, pad_bottom, pad_top);
+  // BLI_rctf_pad_y(bounds, region->winy, pad_bottom, pad_top);
+  r_bounds.pad(float(region->winy), float2(0.0f, pad_bottom), float2(0.0f, pad_top));
 }
+
+}  // namespace blender
 
 /** \} */
 
@@ -852,7 +849,7 @@ void ANIM_flush_setting_anim_channels(bAnimContext *ac,
 
 void ANIM_frame_channel_y_extents(bContext *C, bAnimContext *ac)
 {
-
+  using namespace blender;
   ARegion *window_region = BKE_area_find_region_type(ac->area, RGN_TYPE_WINDOW);
 
   if (!window_region) {
@@ -865,11 +862,6 @@ void ANIM_frame_channel_y_extents(bContext *C, bAnimContext *ac)
   ANIM_animdata_filter(
       ac, &anim_data, eAnimFilter_Flags(filter), ac->data, eAnimCont_Types(ac->datatype));
 
-  rctf bounds{};
-  bounds.xmin = FLT_MAX;
-  bounds.xmax = -FLT_MAX;
-  bounds.ymin = FLT_MAX;
-  bounds.ymax = -FLT_MAX;
   const bool include_handles = false;
   float frame_range[2] = {window_region->v2d.cur.xmin, window_region->v2d.cur.xmax};
   if (ac->scene->r.flag & SCER_PRV_RANGE) {
@@ -877,24 +869,24 @@ void ANIM_frame_channel_y_extents(bContext *C, bAnimContext *ac)
     frame_range[1] = ac->scene->r.pefra;
   }
 
+  Bounds<float2> bounds(float2(FLT_MAX), float2(-FLT_MAX));
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    rctf channel_bounds;
-    const bool found_bounds = get_channel_bounds(
-        ac, ale, frame_range, include_handles, &channel_bounds);
-    if (found_bounds) {
-      BLI_rctf_union(&bounds, &channel_bounds);
+    if (std::optional<Bounds<float2>> channel_bounds = get_channel_bounds(
+            ac, ale, frame_range, include_handles))
+    {
+      bounds = bounds::merge(bounds, *channel_bounds);
     }
   }
 
-  if (!BLI_rctf_is_valid(&bounds)) {
+  if (bounds.is_empty()) {
     ANIM_animdata_freelist(&anim_data);
     return;
   }
 
-  add_region_padding(C, window_region, &bounds);
+  add_region_padding(C, window_region, bounds);
 
-  window_region->v2d.cur.ymin = bounds.ymin;
-  window_region->v2d.cur.ymax = bounds.ymax;
+  window_region->v2d.cur.ymin = bounds.min.y;
+  window_region->v2d.cur.ymax = bounds.max.y;
 
   ANIM_animdata_freelist(&anim_data);
 }
@@ -4134,6 +4126,7 @@ static void get_view_range(Scene *scene, const bool use_preview_range, float r_r
 
 static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender;
   bAnimContext ac;
 
   /* Get editor data. */
@@ -4161,40 +4154,34 @@ static int graphkeys_view_selected_channels_exec(bContext *C, wmOperator *op)
   const bool use_preview_range = RNA_boolean_get(op->ptr, "use_preview_range");
   get_view_range(ac.scene, use_preview_range, range);
 
-  rctf bounds{};
-  bounds.xmin = FLT_MAX;
-  bounds.xmax = -FLT_MAX;
-  bounds.ymin = FLT_MAX;
-  bounds.ymax = -FLT_MAX;
-
   const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");
 
-  bool valid_bounds = false;
+  Bounds<float2> bounds(float2(FLT_MAX), float2(-FLT_MAX));
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-    rctf channel_bounds;
-    const bool found_bounds = get_channel_bounds(
-        &ac, ale, range, include_handles, &channel_bounds);
-    if (found_bounds) {
-      BLI_rctf_union(&bounds, &channel_bounds);
-      valid_bounds = true;
+    if (std::optional<Bounds<float2>> channel_bounds = get_channel_bounds(
+            &ac, ale, range, include_handles))
+    {
+      bounds = bounds::merge(bounds, *channel_bounds);
     }
   }
 
-  if (!valid_bounds) {
+  if (bounds.is_empty()) {
     ANIM_animdata_freelist(&anim_data);
     WM_report(RPT_WARNING, "No keyframes to focus on");
     return OPERATOR_CANCELLED;
   }
 
-  add_region_padding(C, window_region, &bounds);
+  add_region_padding(C, window_region, bounds);
 
   if (ac.spacetype == SPACE_ACTION) {
-    bounds.ymin = window_region->v2d.cur.ymin;
-    bounds.ymax = window_region->v2d.cur.ymax;
+    bounds.min.y = window_region->v2d.cur.ymin;
+    bounds.max.y = window_region->v2d.cur.ymax;
   }
 
+  rctf rect;
+  BLI_rctf_init(&rect, bounds.min.x, bounds.max.x, bounds.min.y, bounds.max.y);
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
-  UI_view2d_smooth_view(C, window_region, &bounds, smooth_viewtx);
+  UI_view2d_smooth_view(C, window_region, &rect, smooth_viewtx);
 
   ANIM_animdata_freelist(&anim_data);
 
@@ -4234,6 +4221,7 @@ static void ANIM_OT_channels_view_selected(wmOperatorType *ot)
 
 static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  using namespace blender;
   bAnimContext ac;
 
   if (ANIM_animdata_get_context(C, &ac) == 0) {
@@ -4265,25 +4253,25 @@ static int graphkeys_channel_view_pick_invoke(bContext *C, wmOperator *op, const
 
   get_view_range(ac.scene, use_preview_range, range);
 
-  rctf bounds;
   const bool include_handles = RNA_boolean_get(op->ptr, "include_handles");
-  const bool found_bounds = get_channel_bounds(&ac, ale, range, include_handles, &bounds);
-
-  if (!found_bounds) {
+  std::optional<Bounds<float2>> bounds = get_channel_bounds(&ac, ale, range, include_handles);
+  if (!bounds.has_value()) {
     ANIM_animdata_freelist(&anim_data);
     WM_report(RPT_WARNING, "No keyframes to focus on");
     return OPERATOR_CANCELLED;
   }
 
-  add_region_padding(C, window_region, &bounds);
+  add_region_padding(C, window_region, *bounds);
 
   if (ac.spacetype == SPACE_ACTION) {
-    bounds.ymin = window_region->v2d.cur.ymin;
-    bounds.ymax = window_region->v2d.cur.ymax;
+    bounds->min.y = window_region->v2d.cur.ymin;
+    bounds->max.y = window_region->v2d.cur.ymax;
   }
 
+  rctf rect;
+  BLI_rctf_init(&rect, bounds->min.x, bounds->max.x, bounds->min.y, bounds->max.y);
   const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
-  UI_view2d_smooth_view(C, window_region, &bounds, smooth_viewtx);
+  UI_view2d_smooth_view(C, window_region, &rect, smooth_viewtx);
 
   ANIM_animdata_freelist(&anim_data);
 
@@ -4531,7 +4519,9 @@ static void deselect_all_fcurves(bAnimContext *ac, const bool hide)
   ANIM_animdata_freelist(&anim_data);
 }
 
-static rctf calculate_selection_fcurve_bounds_and_unhide(
+namespace blender {
+
+static std::optional<Bounds<float2>> calculate_selection_fcurve_bounds_and_unhide(
     bContext *C,
     ListBase /* CollectionPointerLink */ *selection,
     PropertyRNA *prop,
@@ -4539,16 +4529,12 @@ static rctf calculate_selection_fcurve_bounds_and_unhide(
     const int index,
     const bool whole_array)
 {
-  rctf bounds;
-  bounds.xmin = INFINITY;
-  bounds.xmax = -INFINITY;
-  bounds.ymin = INFINITY;
-  bounds.ymax = -INFINITY;
-
   SpaceLink *ge_space_link = CTX_wm_space_data(C);
   if (ge_space_link->spacetype != SPACE_GRAPH) {
-    return bounds;
+    return {};
   }
+
+  Bounds<float2> bounds(float2(FLT_MAX), float2(-FLT_MAX));
 
   Scene *scene = CTX_data_scene(C);
   float frame_range[2];
@@ -4598,29 +4584,34 @@ static rctf calculate_selection_fcurve_bounds_and_unhide(
 
     for (FCurve *fcurve : fcurves) {
       fcurve->flag |= (FCURVE_SELECTED | FCURVE_VISIBLE);
-      rctf fcu_bounds;
+
       float mapped_frame_range[2];
       mapped_frame_range[0] = BKE_nla_tweakedit_remap(
           anim_data, frame_range[0], NLATIME_CONVERT_UNMAP);
       mapped_frame_range[1] = BKE_nla_tweakedit_remap(
           anim_data, frame_range[1], NLATIME_CONVERT_UNMAP);
-      get_normalized_fcurve_bounds(fcurve,
-                                   anim_data,
-                                   ge_space_link,
-                                   scene,
-                                   selected_id,
-                                   include_handles,
-                                   mapped_frame_range,
-                                   &fcu_bounds);
-      BLI_rctf_union(&bounds, &fcu_bounds);
+      if (std::optional<Bounds<float2>> fcu_bounds = get_normalized_fcurve_bounds(
+              fcurve,
+              anim_data,
+              ge_space_link,
+              scene,
+              selected_id,
+              include_handles,
+              mapped_frame_range))
+      {
+        bounds = bounds::merge(bounds, *fcu_bounds);
+      }
     }
   }
 
   return bounds;
 }
 
+}  // namespace blender
+
 static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 {
+  using namespace blender;
   PointerRNA ptr = {nullptr};
   PropertyRNA *prop = nullptr;
   uiBut *but;
@@ -4677,20 +4668,23 @@ static int view_curve_in_graph_editor_exec(bContext *C, wmOperator *op)
 
       const bool whole_array = RNA_boolean_get(op->ptr, "all");
 
-      rctf bounds = calculate_selection_fcurve_bounds_and_unhide(
+      std::optional<Bounds<float2>> bounds = calculate_selection_fcurve_bounds_and_unhide(
           C, &selection, prop, id_to_prop_path.value_or(""), index, whole_array);
 
-      if (!BLI_rctf_is_valid(&bounds)) {
+      if (!bounds.has_value() || bounds->is_empty()) {
         WM_report(RPT_ERROR, "F-Curves have no valid size");
         retval = OPERATOR_CANCELLED;
       }
       else {
         ARegion *region = wm_context_temp.region;
         ScrArea *area = wm_context_temp.area;
-        add_region_padding(C, region, &bounds);
 
+        add_region_padding(C, region, *bounds);
+
+        rctf rect;
+        BLI_rctf_init(&rect, bounds->min.x, bounds->max.x, bounds->min.y, bounds->max.y);
         const int smooth_viewtx = WM_operator_smooth_viewtx_get(op);
-        UI_view2d_smooth_view(C, region, &bounds, smooth_viewtx);
+        UI_view2d_smooth_view(C, region, &rect, smooth_viewtx);
 
         /* This ensures the channel list updates. */
         ED_area_tag_redraw(area);

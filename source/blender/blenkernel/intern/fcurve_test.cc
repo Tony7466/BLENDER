@@ -447,7 +447,7 @@ TEST(BKE_fcurve, BKE_fcurve_calc_range)
   BKE_fcurve_free(fcu);
 }
 
-TEST(BKE_fcurve, BKE_fcurve_calc_bounds)
+TEST(BKE_fcurve, fcurve_calc_bounds)
 {
   FCurve *fcu = BKE_fcurve_create();
 
@@ -467,130 +467,116 @@ TEST(BKE_fcurve, BKE_fcurve_calc_bounds)
   fcu->bezt[0].vec[0][0] = -5.0f;
   fcu->bezt[4].vec[2][0] = 25.0f;
 
-  rctf bounds;
-  bool success;
-
+  std::optional<Bounds<float2>> bounds;
   /* All keys. */
-  success = BKE_fcurve_calc_bounds(fcu,
-                                   false /* select only */,
-                                   false /* include handles */,
-                                   nullptr /* frame range */,
-                                   &bounds);
-  EXPECT_TRUE(success) << "A non-empty FCurve should have bounds.";
-  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[1][0], bounds.xmin);
-  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[1][0], bounds.xmax);
-  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[1][1], bounds.ymin);
-  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds.ymax);
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, false /* select only */, false /* include handles */, nullptr /* frame range */);
+
+  EXPECT_TRUE(bounds.has_value()) << "A non-empty FCurve should have bounds.";
+  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[1][0], bounds->min.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[1][0], bounds->max.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[1][1], bounds->min.y);
+  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds->max.y);
 
   /* Only selected. */
-  success = BKE_fcurve_calc_bounds(fcu,
-                                   true /* select only */,
-                                   false /* include handles */,
-                                   nullptr /* frame range */,
-                                   &bounds);
-  EXPECT_FALSE(success)
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, true /* select only */, false /* include handles */, nullptr /* frame range */);
+  EXPECT_FALSE(bounds.has_value())
       << "Using selected keyframes only should not find bounds if nothing is selected.";
 
   fcu->bezt[1].f2 |= SELECT;
   fcu->bezt[3].f2 |= SELECT;
 
-  success = BKE_fcurve_calc_bounds(fcu,
-                                   true /* select only */,
-                                   false /* include handles */,
-                                   nullptr /* frame range */,
-                                   &bounds);
-  EXPECT_TRUE(success) << "Selected keys should have been found.";
-  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][0], bounds.xmin);
-  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[1][0], bounds.xmax);
-  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][1], bounds.ymin);
-  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[1][1], bounds.ymax);
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, true /* select only */, false /* include handles */, nullptr /* frame range */);
+  EXPECT_TRUE(bounds.has_value()) << "Selected keys should have been found.";
+  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][0], bounds->min.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[1][0], bounds->max.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][1], bounds->min.y);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[1][1], bounds->max.y);
 
   /* Including handles. */
-  success = BKE_fcurve_calc_bounds(fcu,
-                                   false /* select only */,
-                                   true /* include handles */,
-                                   nullptr /* frame range */,
-                                   &bounds);
-  EXPECT_TRUE(success) << "A non-empty FCurve should have bounds including handles.";
-  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[0][0], bounds.xmin);
-  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[2][0], bounds.xmax);
-  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[1][1], bounds.ymin);
-  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds.ymax);
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, false /* select only */, true /* include handles */, nullptr /* frame range */);
+  EXPECT_TRUE(bounds.has_value()) << "A non-empty FCurve should have bounds including handles.";
+  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[0][0], bounds->min.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[2][0], bounds->max.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[4].vec[1][1], bounds->min.y);
+  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds->max.y);
 
   /* Range. */
   float range[2];
 
   range[0] = 25;
   range[1] = 30;
-  success = BKE_fcurve_calc_bounds(
-      fcu, false /* select only */, false /* include handles */, range /* frame range */, &bounds);
-  EXPECT_FALSE(success) << "A frame range outside the range of keyframes should not find bounds.";
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, false /* select only */, false /* include handles */, range /* frame range */);
+  EXPECT_FALSE(bounds.has_value())
+      << "A frame range outside the range of keyframes should not find bounds.";
 
   range[0] = 0;
   range[1] = 18.2f;
-  success = BKE_fcurve_calc_bounds(
-      fcu, false /* select only */, false /* include handles */, range /* frame range */, &bounds);
-  EXPECT_TRUE(success) << "A frame range within the range of keyframes should find bounds.";
-  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[1][0], bounds.xmin);
-  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[1][0], bounds.xmax);
-  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][1], bounds.ymin);
-  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds.ymax);
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, false /* select only */, false /* include handles */, range /* frame range */);
+  EXPECT_TRUE(bounds.has_value())
+      << "A frame range within the range of keyframes should find bounds.";
+  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[1][0], bounds->min.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[1][0], bounds->max.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][1], bounds->min.y);
+  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds->max.y);
 
   /* Range and handles. */
-  success = BKE_fcurve_calc_bounds(
-      fcu, false /* select only */, true /* include handles */, range /* frame range */, &bounds);
-  EXPECT_TRUE(success)
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, false /* select only */, true /* include handles */, range /* frame range */);
+  EXPECT_TRUE(bounds.has_value())
       << "A frame range within the range of keyframes should find bounds with handles.";
-  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[0][0], bounds.xmin);
-  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[2][0], bounds.xmax);
-  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][1], bounds.ymin);
-  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds.ymax);
+  EXPECT_FLOAT_EQ(fcu->bezt[0].vec[0][0], bounds->min.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[2][0], bounds->max.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[1].vec[1][1], bounds->min.y);
+  EXPECT_FLOAT_EQ(fcu->bezt[2].vec[1][1], bounds->max.y);
 
   /* Range, handles and only selection. */
   range[0] = 8.0f;
   range[1] = 18.2f;
-  success = BKE_fcurve_calc_bounds(
-      fcu, true /* select only */, true /* include handles */, range /* frame range */, &bounds);
-  EXPECT_TRUE(success)
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, true /* select only */, true /* include handles */, range /* frame range */);
+  EXPECT_TRUE(bounds.has_value())
       << "A frame range within the range of keyframes should find bounds of selected keyframes.";
-  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[0][0], bounds.xmin);
-  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[2][0], bounds.xmax);
-  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[2][1], bounds.ymin);
-  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[0][1], bounds.ymax);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[0][0], bounds->min.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[2][0], bounds->max.x);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[2][1], bounds->min.y);
+  EXPECT_FLOAT_EQ(fcu->bezt[3].vec[0][1], bounds->max.y);
 
   /* Curve samples. */
   const int sample_start = 1;
   const int sample_end = 20;
   fcurve_store_samples(fcu, nullptr, sample_start, sample_end, fcurve_samplingcb_evalcurve);
 
-  success = BKE_fcurve_calc_bounds(fcu,
-                                   false /* select only */,
-                                   false /* include handles */,
-                                   nullptr /* frame range */,
-                                   &bounds);
-  EXPECT_TRUE(success) << "FCurve samples should have a range.";
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, false /* select only */, false /* include handles */, nullptr /* frame range */);
+  EXPECT_TRUE(bounds.has_value()) << "FCurve samples should have a range.";
 
-  EXPECT_FLOAT_EQ(sample_start, bounds.xmin);
-  EXPECT_FLOAT_EQ(sample_end, bounds.xmax);
-  EXPECT_FLOAT_EQ(-20.0f, bounds.ymin);
-  EXPECT_FLOAT_EQ(15.0f, bounds.ymax);
+  EXPECT_FLOAT_EQ(sample_start, bounds->min.x);
+  EXPECT_FLOAT_EQ(sample_end, bounds->max.x);
+  EXPECT_FLOAT_EQ(-20.0f, bounds->min.y);
+  EXPECT_FLOAT_EQ(15.0f, bounds->max.y);
 
   range[0] = 8.0f;
   range[1] = 20.0f;
-  success = BKE_fcurve_calc_bounds(
-      fcu, false /* select only */, false /* include handles */, range /* frame range */, &bounds);
-  EXPECT_TRUE(success) << "FCurve samples should have a range.";
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, false /* select only */, false /* include handles */, range /* frame range */);
+  EXPECT_TRUE(bounds.has_value()) << "FCurve samples should have a range.";
 
-  EXPECT_FLOAT_EQ(range[0], bounds.xmin);
-  EXPECT_FLOAT_EQ(range[1], bounds.xmax);
-  EXPECT_FLOAT_EQ(-20.0f, bounds.ymin);
-  EXPECT_FLOAT_EQ(15.0f, bounds.ymax);
+  EXPECT_FLOAT_EQ(range[0], bounds->min.x);
+  EXPECT_FLOAT_EQ(range[1], bounds->max.x);
+  EXPECT_FLOAT_EQ(-20.0f, bounds->min.y);
+  EXPECT_FLOAT_EQ(15.0f, bounds->max.y);
 
   range[0] = 20.1f;
   range[1] = 30.0f;
-  success = BKE_fcurve_calc_bounds(
-      fcu, false /* select only */, false /* include handles */, range /* frame range */, &bounds);
-  EXPECT_FALSE(success)
+  bounds = blender::bke::fcurve_calc_bounds(
+      *fcu, false /* select only */, false /* include handles */, range /* frame range */);
+  EXPECT_FALSE(bounds.has_value())
       << "A frame range outside the range of keyframe samples should not have bounds.";
 
   BKE_fcurve_free(fcu);

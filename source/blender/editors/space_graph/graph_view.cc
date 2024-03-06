@@ -10,6 +10,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_bounds.hh"
 #include "BLI_listbase.h"
 #include "BLI_rect.h"
 
@@ -47,6 +48,7 @@ void get_graph_keyframe_extents(bAnimContext *ac,
                                 const bool do_sel_only,
                                 const bool include_handles)
 {
+  using namespace blender;
   Scene *scene = ac->scene;
 
   ListBase anim_data = {nullptr, nullptr};
@@ -84,39 +86,40 @@ void get_graph_keyframe_extents(bAnimContext *ac,
     LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
       AnimData *adt = ANIM_nla_mapping_get(ac, ale);
       FCurve *fcu = (FCurve *)ale->key_data;
-      rctf bounds;
       float unitFac, offset;
 
       /* Get range. */
-      if (BKE_fcurve_calc_bounds(fcu, do_sel_only, include_handles, nullptr, &bounds)) {
+      if (std::optional<Bounds<float2>> bounds = blender::bke::fcurve_calc_bounds(
+              *fcu, do_sel_only, include_handles, nullptr))
+      {
         short mapping_flag = ANIM_get_normalization_flags(ac->sl);
 
         /* Apply NLA scaling. */
         if (adt) {
-          bounds.xmin = BKE_nla_tweakedit_remap(adt, bounds.xmin, NLATIME_CONVERT_MAP);
-          bounds.xmax = BKE_nla_tweakedit_remap(adt, bounds.xmax, NLATIME_CONVERT_MAP);
+          bounds->min.x = BKE_nla_tweakedit_remap(adt, bounds->min.x, NLATIME_CONVERT_MAP);
+          bounds->max.x = BKE_nla_tweakedit_remap(adt, bounds->max.x, NLATIME_CONVERT_MAP);
         }
 
         /* Apply unit corrections. */
         unitFac = ANIM_unit_mapping_get_factor(ac->scene, ale->id, fcu, mapping_flag, &offset);
-        bounds.ymin += offset;
-        bounds.ymax += offset;
-        bounds.ymin *= unitFac;
-        bounds.ymax *= unitFac;
+        bounds->min.y += offset;
+        bounds->max.y += offset;
+        bounds->min.y *= unitFac;
+        bounds->max.y *= unitFac;
 
         /* Try to set cur using these values, if they're more extreme than previously set values.
          */
-        if ((xmin) && (bounds.xmin < *xmin)) {
-          *xmin = bounds.xmin;
+        if ((xmin) && (bounds->min.x < *xmin)) {
+          *xmin = bounds->min.x;
         }
-        if ((xmax) && (bounds.xmax > *xmax)) {
-          *xmax = bounds.xmax;
+        if ((xmax) && (bounds->max.x > *xmax)) {
+          *xmax = bounds->max.x;
         }
-        if ((ymin) && (bounds.ymin < *ymin)) {
-          *ymin = bounds.ymin;
+        if ((ymin) && (bounds->min.y < *ymin)) {
+          *ymin = bounds->min.y;
         }
-        if ((ymax) && (bounds.ymax > *ymax)) {
-          *ymax = bounds.ymax;
+        if ((ymax) && (bounds->max.y > *ymax)) {
+          *ymax = bounds->max.y;
         }
 
         foundBounds = true;
