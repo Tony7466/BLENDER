@@ -151,11 +151,11 @@ void VKVertexBuffer::upload_data_direct(const VKBuffer &host_buffer)
   }
 }
 
-void VKVertexBuffer::upload_data_via_staging_buffer(VKContext &context)
+void VKVertexBuffer::upload_data_via_staging_buffer(VKRenderGraph &render_graph)
 {
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::HostToDevice);
   upload_data_direct(staging_buffer.host_buffer_get());
-  staging_buffer.copy_to_device(context);
+  staging_buffer.copy_to_device(render_graph);
 }
 
 void VKVertexBuffer::upload_data()
@@ -173,8 +173,8 @@ void VKVertexBuffer::upload_data()
       upload_data_direct(buffer_);
     }
     else {
-      VKContext &context = *VKContext::get();
-      upload_data_via_staging_buffer(context);
+      VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+      upload_data_via_staging_buffer(render_graph);
     }
     if (usage_ == GPU_USAGE_STATIC) {
       MEM_SAFE_FREE(data);

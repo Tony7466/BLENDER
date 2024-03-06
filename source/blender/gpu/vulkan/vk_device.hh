@@ -194,7 +194,7 @@ class VKDevice : public NonCopyable {
    *
    * Dummy buffer can only be initialized after the command buffer of the context is retrieved.
    */
-  void init_dummy_buffer(VKContext &context);
+  void init_dummy_buffer();
   void init_dummy_color_attachment();
   void deinit();
 

@@ -151,7 +151,7 @@ void VKDevice::init_pipeline_cache()
   vkCreatePipelineCache(vk_device_, &create_info, vk_allocation_callbacks, &vk_pipeline_cache_);
 }
 
-void VKDevice::init_dummy_buffer(VKContext &context)
+void VKDevice::init_dummy_buffer()
 {
   if (dummy_buffer_.is_allocated()) {
     return;
@@ -160,7 +160,7 @@ void VKDevice::init_dummy_buffer(VKContext &context)
   dummy_buffer_.create(sizeof(float4x4),
                        GPU_USAGE_DEVICE_ONLY,
                        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-  dummy_buffer_.clear(context, 0);
+  dummy_buffer_.clear(render_graph_get(), 0);
 }
 
 void VKDevice::init_dummy_color_attachment()

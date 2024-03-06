@@ -29,10 +29,10 @@ void VKIndexBuffer::ensure_updated()
     return;
   }
 
-  VKContext &context = *VKContext::get();
+  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::HostToDevice);
   staging_buffer.host_buffer_get().update(data_);
-  staging_buffer.copy_to_device(context);
+  staging_buffer.copy_to_device(render_graph);
   MEM_SAFE_FREE(data_);
 }
 

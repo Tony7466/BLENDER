@@ -22,11 +22,11 @@ VKStorageBuffer::VKStorageBuffer(int size, GPUUsageType usage, const char *name)
 
 void VKStorageBuffer::update(const void *data)
 {
-  VKContext &context = *VKContext::get();
   ensure_allocated();
+  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
   VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::HostToDevice);
   staging_buffer.host_buffer_get().update(data);
-  staging_buffer.copy_to_device(context);
+  staging_buffer.copy_to_device(render_graph);
 }
 
 void VKStorageBuffer::ensure_allocated()
@@ -77,8 +77,8 @@ void VKStorageBuffer::unbind()
 void VKStorageBuffer::clear(uint32_t clear_value)
 {
   ensure_allocated();
-  VKContext &context = *VKContext::get();
-  buffer_.clear(context, clear_value);
+  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  buffer_.clear(render_graph, clear_value);
 }
 
 void VKStorageBuffer::copy_sub(VertBuf *src, uint dst_offset, uint src_offset, uint copy_size)
@@ -93,10 +93,8 @@ void VKStorageBuffer::copy_sub(VertBuf *src, uint dst_offset, uint src_offset, u
   region.dstOffset = dst_offset;
   region.size = copy_size;
 
-  VKContext &context = *VKContext::get();
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  command_buffers.copy(buffer_, src_vertex_buffer.vk_handle(), Span<VkBufferCopy>(&region, 1));
-  context.flush();
+  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  render_graph.add_copy_buffer_node(src_vertex_buffer.vk_handle(), buffer_.vk_handle(), region);
 }
 
 void VKStorageBuffer::async_flush_to_host()

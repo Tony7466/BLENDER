@@ -52,7 +52,7 @@ class VKStagingBuffer {
   /**
    * Copy the content of the host buffer to the device buffer.
    */
-  void copy_to_device(VKContext &context);
+  void copy_to_device(VKRenderGraph &render_graph);
 
   /**
    * Copy the content of the device buffer to the host buffer.

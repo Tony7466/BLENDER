@@ -20,14 +20,14 @@ void VKUniformBuffer::update(const void *data)
   if (!buffer_.is_allocated()) {
     allocate();
   }
-  VKContext &context = *VKContext::get();
   if (buffer_.is_mapped()) {
     buffer_.update(data);
   }
   else {
+    VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
     VKStagingBuffer staging_buffer(buffer_, VKStagingBuffer::Direction::HostToDevice);
     staging_buffer.host_buffer_get().update(data);
-    staging_buffer.copy_to_device(context);
+    staging_buffer.copy_to_device(render_graph);
   }
 }
 
@@ -52,8 +52,8 @@ void VKUniformBuffer::clear_to_zero()
   if (!buffer_.is_allocated()) {
     allocate();
   }
-  VKContext &context = *VKContext::get();
-  buffer_.clear(context, 0);
+  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
+  buffer_.clear(render_graph, 0);
 }
 
 void VKUniformBuffer::bind(int slot,

@@ -114,10 +114,8 @@ void VKBuffer::flush() const
   vmaFlushAllocation(allocator, allocation_, 0, max_ii(size_in_bytes(), 1));
 }
 
-void VKBuffer::clear(VKContext &context, uint32_t clear_value)
+void VKBuffer::clear(VKRenderGraph &render_graph, uint32_t clear_value)
 {
-  // TODO: replace context with render graph.
-  VKRenderGraph &render_graph = VKBackend::get().device_get().render_graph_get();
   render_graph.add_fill_buffer_node(vk_buffer_, size_in_bytes_, clear_value);
 }
 
