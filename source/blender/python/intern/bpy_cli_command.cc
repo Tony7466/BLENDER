@@ -75,9 +75,13 @@ static int bpy_cli_command_exec(struct bContext *C,
    * - We may want to support invoking commands directly,
    *   where the arguments aren't necessarily from `sys.argv`.
    */
+  bool has_error = false;
   PyObject *py_argv = py_argv_from_bytes(argc, argv);
 
-  if (py_argv) {
+  if (py_argv == nullptr) {
+    has_error = true;
+  }
+  else {
     PyObject *exec_args = PyTuple_New(1);
     PyTuple_SET_ITEM(exec_args, 0, py_argv);
 
@@ -85,8 +89,6 @@ static int bpy_cli_command_exec(struct bContext *C,
     PyObject *result = PyObject_Call(data->py_execute_fn, exec_args, nullptr);
 
     Py_DECREF(exec_args); /* Frees `py_argv` too. */
-
-    bool has_error = false;
 
     /* Convert `sys.exit` into a return-value.
      * NOTE: typically `sys.exit` *doesn't* need any special handling,
@@ -131,11 +133,11 @@ static int bpy_cli_command_exec(struct bContext *C,
       }
       Py_DECREF(result);
     }
+  }
 
-    if (has_error) {
-      PyErr_Print();
-      PyErr_Clear();
-    }
+  if (has_error) {
+    PyErr_Print();
+    PyErr_Clear();
   }
 
   bpy_context_clear(C, &gilstate);
