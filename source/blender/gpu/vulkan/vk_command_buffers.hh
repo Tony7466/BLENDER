@@ -93,7 +93,9 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   void copy(VKBuffer &dst_buffer, VKTexture &src_texture, Span<VkBufferImageCopy> regions);
   void copy(VKTexture &dst_texture, VKBuffer &src_buffer, Span<VkBufferImageCopy> regions);
   void copy(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageCopy> regions);
-  void copy(const VKBuffer &dst_buffer, VkBuffer src_buffer, Span<VkBufferCopy> regions);
+  [[deprecated]] void copy(const VKBuffer &dst_buffer,
+                           VkBuffer src_buffer,
+                           Span<VkBufferCopy> regions);
   void blit(VKTexture &dst_texture, VKTexture &src_texture, Span<VkImageBlit> regions);
   void blit(VKTexture &dst_texture,
             VkImageLayout dst_layout,
@@ -124,7 +126,7 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
    * Clear attachments of the active framebuffer.
    */
   void clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas);
-  void fill(VKBuffer &buffer, uint32_t data);
+  [[deprecated]]void fill(VKBuffer &buffer, uint32_t data);
 
   void draw(int v_first, int v_count, int i_first, int i_count);
   void draw_indexed(
