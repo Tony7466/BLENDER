@@ -1043,6 +1043,7 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
     return true;
   }
   if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
+    *r_seq2 = nullptr;
     return true;
   }
   if (!strips_are_touching(scene, *r_seq1, *r_seq2)) {
@@ -1053,11 +1054,13 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
   /* Refine what part is selected for second strip. */
   clickable_areas_get(scene, *r_seq2, v2d, &body, &left, &right);
 
-  if (BLI_rctf_isect_pt_v(&left, mouse_co) && *r_side == SEQ_SIDE_RIGHT) {
-    *r_side = SEQ_SIDE_BOTH;
+  if (*r_side == SEQ_SIDE_RIGHT && !BLI_rctf_isect_pt_v(&left, mouse_co)) {
+    *r_seq2 = nullptr;
+    return true;
   }
-  else if (!BLI_rctf_isect_pt_v(&right, mouse_co) && *r_side == SEQ_SIDE_LEFT) {
-    *r_side = SEQ_SIDE_BOTH;
+  else if (*r_side == SEQ_SIDE_LEFT && !BLI_rctf_isect_pt_v(&right, mouse_co)) {
+    *r_seq2 = nullptr;
+    return true;
   }
 
   return true;
