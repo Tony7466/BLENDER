@@ -634,6 +634,7 @@ typedef enum eSpaceSeq_SequencerTimelineOverlay_Flag {
   SEQ_TIMELINE_SHOW_STRIP_COLOR_TAG = (1 << 3),
   SEQ_TIMELINE_SHOW_STRIP_RETIMING = (1 << 4),
   SEQ_TIMELINE_SHOW_FCURVES = (1 << 5),
+  SEQ_TIMELINE_SHOW_HANDLES = (1 << 6),
   /** Draw all wave-forms. */
   SEQ_TIMELINE_ALL_WAVEFORMS = (1 << 7),
   /** Draw no wave-forms. */

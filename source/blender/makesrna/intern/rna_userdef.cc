@@ -5576,7 +5576,7 @@ static void rna_def_userdef_edit(BlenderRNA *brna)
   RNA_def_property_boolean_sdna(
       prop, nullptr, "sequencer_editor_flag", USER_SEQ_ED_SIMPLE_TWEAKING);
   RNA_def_property_ui_text(
-      prop, "Simplified Handle Tweaking", "Allows dragging handles without selecting them first");
+      prop, "Tweak Handles", "Allows dragging handles without selecting them first");
 
   /* duplication linking */
   prop = RNA_def_property(srna, "use_duplicate_mesh", PROP_BOOLEAN, PROP_NONE);

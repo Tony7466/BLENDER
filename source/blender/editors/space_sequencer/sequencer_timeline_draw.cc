@@ -680,7 +680,7 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
 }
 
 static void draw_handle_transform_text(TimelineDrawContext *timeline_ctx,
-                                       StripDrawContext *strip_ctx,
+                                       const StripDrawContext *strip_ctx,
                                        const short direction)
 {
   /* Draw numbers for start and end of the strip next to its handles. */
@@ -698,7 +698,7 @@ static void draw_handle_transform_text(TimelineDrawContext *timeline_ctx,
       numstr, "%d%d", int(strip_ctx->left_handle), int(strip_ctx->right_handle));
   float tot_width = BLF_width(BLF_default(), numstr, numstr_len);
 
-  if (strip_ctx->strip_length / timeline_ctx->pixelx > 20 + tot_width) {
+  if (strip_ctx->strip_length / timeline_ctx->pixelx < 20 + tot_width) {
     return;
   }
 
@@ -735,7 +735,11 @@ static void draw_seq_handle(TimelineDrawContext *timeline_ctx,
                             const short direction)
 {
   Sequence *seq = strip_ctx->seq;
-  if ((seq->flag & SELECT) == 0 || (seq->flag & direction) == 0) {
+  bool show_handles = (timeline_ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_HANDLES) != 0;
+  bool strip_selected = (seq->flag & SELECT) != 0;
+  bool handle_selected = (seq->flag & direction) != 0;
+
+  if ((!strip_selected || !handle_selected) && !show_handles) {
     return;
   }
   if (SEQ_transform_is_locked(timeline_ctx->channels, seq)) {
@@ -746,11 +750,15 @@ static void draw_seq_handle(TimelineDrawContext *timeline_ctx,
   }
 
   uchar col[4];
-  if (seq == SEQ_select_active_get(timeline_ctx->scene)) {
+  if (strip_selected && handle_selected && seq == SEQ_select_active_get(timeline_ctx->scene)) {
     UI_GetThemeColor4ubv(TH_SEQ_ACTIVE, col);
   }
-  else {
+  else if (strip_selected && handle_selected) {
     UI_GetThemeColor4ubv(TH_SEQ_SELECTED, col);
+  }
+  else {
+    col[0] = col[1] = col[2] = 0;
+    col[3] = 50;
   }
 
   rctf handle = {0, 0, strip_ctx->bottom, strip_ctx->top};
@@ -1488,6 +1496,8 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     draw_seq_solo_highlight(timeline_ctx, &strip_ctx);
     draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_LEFTSEL);
     draw_seq_handle(timeline_ctx, &strip_ctx, SEQ_RIGHTSEL);
+    draw_handle_transform_text(timeline_ctx, &strip_ctx, SEQ_LEFTSEL);
+    draw_handle_transform_text(timeline_ctx, &strip_ctx, SEQ_RIGHTSEL);
     draw_seq_outline(timeline_ctx, &strip_ctx);
   }
   timeline_ctx->quads->draw();
