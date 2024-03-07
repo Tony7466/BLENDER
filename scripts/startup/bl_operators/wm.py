@@ -2759,6 +2759,7 @@ class WM_OT_batch_rename(Operator):
 
     @staticmethod
     def _get_node_editor_data(context, data_type, only_selected):
+        space = context.space_data
         data_type_test = 'NODE'
         if data_type != data_type_test:
             return None
@@ -2771,13 +2772,13 @@ class WM_OT_batch_rename(Operator):
         )
         return data
 
-    @staticmethod
-    def _get_outliner_data(context, data_type, only_selected):
+    @classmethod
+    def _get_outliner_data(cls, context, data_type, only_selected):
         data_type_test = 'COLLECTION'
         if data_type != data_type_test:
             return None
         data = (
-            WM_OT_batch_rename._selected_ids_from_outliner_by_type(context, bpy.types.Collection)
+            cls._selected_ids_from_outliner_by_type(context, bpy.types.Collection)
             if only_selected else
             context.scene.collection.children_recursive,
             "name",
@@ -2811,15 +2812,16 @@ class WM_OT_batch_rename(Operator):
             "name",
             iface_("Edit Bone(s)"),
         )
+        return data
 
-    @staticmethod
-    def _get_object_data(context, only_selected):
+    @classmethod
+    def _get_object_data(cls, context, only_selected):
         space = context.space_data
         space_type = None if (space is None) else space.type
         data = (
             (
                 # Outliner.
-                WM_OT_batch_rename._selected_ids_from_outliner_by_type(context, bpy.types.Object)
+                cls._selected_ids_from_outliner_by_type(context, bpy.types.Object)
                 if space_type == 'OUTLINER' else
                 # 3D View (default).
                 context.selected_editable_objects
@@ -2849,14 +2851,14 @@ class WM_OT_batch_rename(Operator):
         )
         return data
 
-    @staticmethod
-    def _get_material_data(context, only_selected):
+    @classmethod
+    def _get_material_data(cls, context, only_selected):
         space = context.space_data
         space_type = None if (space is None) else space.type
         data = (
             (
                 # Outliner.
-                WM_OT_batch_rename._selected_ids_from_outliner_by_type(context, bpy.types.Material)
+                cls._selected_ids_from_outliner_by_type(context, bpy.types.Material)
                 if space_type == 'OUTLINER' else
                 # 3D View (default).
                 tuple(set(
@@ -2902,14 +2904,14 @@ class WM_OT_batch_rename(Operator):
         )
         return data
 
-    @staticmethod
-    def _get_scene_data(context, only_selected):
+    @classmethod
+    def _get_scene_data(cls, context, only_selected):
         space = context.space_data
         space_type = None if (space is None) else space.type
         data = (
             (
                 # Outliner.
-                WM_OT_batch_rename._selected_ids_from_outliner_by_type(context, bpy.types.Scene)
+                cls._selected_ids_from_outliner_by_type(context, bpy.types.Scene)
                 if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.scenes if id.library is None]
             ),
             "name",
@@ -2917,14 +2919,14 @@ class WM_OT_batch_rename(Operator):
         )
         return data
 
-    @staticmethod
-    def _get_brush_data(context, only_selected):
+    @classmethod
+    def _get_brush_data(cls, context, only_selected):
         space = context.space_data
         space_type = None if (space is None) else space.type
         data = (
             (
                 # Outliner.
-                WM_OT_batch_rename._selected_ids_from_outliner_by_type(context, bpy.types.Brush)
+                cls._selected_ids_from_outliner_by_type(context, bpy.types.Brush)
                 if ((space_type == 'OUTLINER') and only_selected) else [id for id in bpy.data.brushes if id.library is None]
             ),
             "name",
