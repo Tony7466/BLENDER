@@ -37,19 +37,21 @@ VKPipelines::VKPipelines()
   vk_specialization_info_.pData = nullptr;
 }
 
-VkPipeline VKPipelines::get_or_create_compute_pipeline(ComputeInfo &compute_info)
+VkPipeline VKPipelines::get_or_create_compute_pipeline(VKComputeInfo &compute_info,
+                                                       VkPipeline vk_pipeline_base)
 {
-#if 0
-    const VkPipeline *found_pipeline = compute_pipelines_.lookup_ptr(compute_info);
-    if (found_pipeline) {
-        VkPipeline result = *found_pipeline;
-        BLI_assert(result != VK_NULL_HANDLE);
-        return result;
-    }
-#endif
 
-  vk_compute_pipeline_create_info_.layout = compute_info.layout;
-  vk_compute_pipeline_create_info_.stage.module = compute_info.shader_module;
+  std::scoped_lock lock(mutex_);
+  const VkPipeline *found_pipeline = compute_pipelines_.lookup_ptr(compute_info);
+  if (found_pipeline) {
+    VkPipeline result = *found_pipeline;
+    BLI_assert(result != VK_NULL_HANDLE);
+    return result;
+  }
+
+  vk_compute_pipeline_create_info_.layout = compute_info.vk_pipeline_layout;
+  vk_compute_pipeline_create_info_.stage.module = compute_info.vk_shader_module;
+  vk_compute_pipeline_create_info_.basePipelineHandle = vk_pipeline_base;
   if (compute_info.specialization_constants.is_empty()) {
     vk_compute_pipeline_create_info_.stage.pSpecializationInfo = nullptr;
   }
@@ -72,22 +74,46 @@ VkPipeline VKPipelines::get_or_create_compute_pipeline(ComputeInfo &compute_info
                            &vk_compute_pipeline_create_info_,
                            vk_allocation_callbacks,
                            &pipeline);
-#if 0
   compute_pipelines_.add(compute_info, pipeline);
-#endif
 
   /* Reset values to initial value. */
   vk_compute_pipeline_create_info_.layout = VK_NULL_HANDLE;
   vk_compute_pipeline_create_info_.stage.module = VK_NULL_HANDLE;
+  vk_compute_pipeline_create_info_.basePipelineHandle = VK_NULL_HANDLE;
   vk_specialization_info_.dataSize = 0;
   vk_specialization_info_.pData = nullptr;
 
   return pipeline;
 }
 
-void VKPipelines::deinitialize()
+void VKPipelines::remove(Span<VkShaderModule> vk_shader_modules)
 {
-  // TODO: free all resources;
+  std::scoped_lock lock(mutex_);
+  Vector<VkPipeline> pipelines_to_destroy;
+  compute_pipelines_.remove_if([&](auto item) {
+    if (vk_shader_modules.contains(item.key.vk_shader_module)) {
+      pipelines_to_destroy.append(item.value);
+      return true;
+    }
+    return false;
+  });
+
+  VKDevice &device = VKBackend::get().device_get();
+  VK_ALLOCATION_CALLBACKS;
+  for (VkPipeline vk_pipeline : pipelines_to_destroy) {
+    vkDestroyPipeline(device.device_get(), vk_pipeline, vk_allocation_callbacks);
+  }
+}
+
+void VKPipelines::deinit()
+{
+  std::scoped_lock lock(mutex_);
+  VKDevice &device = VKBackend::get().device_get();
+  VK_ALLOCATION_CALLBACKS;
+  for (VkPipeline &vk_pipeline : compute_pipelines_.values()) {
+    vkDestroyPipeline(device.device_get(), vk_pipeline, vk_allocation_callbacks);
+  }
+  compute_pipelines_.clear();
 }
 
 }  // namespace blender::gpu
