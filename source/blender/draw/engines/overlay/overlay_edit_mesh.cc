@@ -20,6 +20,7 @@
 #include "draw_manager_text.hh"
 
 #include "overlay_private.hh"
+#include <GPU_debug.h>
 
 #define OVERLAY_EDIT_TEXT \
   (V3D_OVERLAY_EDIT_EDGE_LEN | V3D_OVERLAY_EDIT_FACE_AREA | V3D_OVERLAY_EDIT_FACE_ANG | \
@@ -357,6 +358,7 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   OVERLAY_FramebufferList *fbl = vedata->fbl;
 
+  GPU_debug_capture_begin("normal test");
   if (DRW_state_is_fbo()) {
     GPU_framebuffer_bind(fbl->overlay_default_fb);
   }
@@ -402,4 +404,5 @@ void OVERLAY_edit_mesh_draw(OVERLAY_Data *vedata)
 
     overlay_edit_mesh_draw_components(psl, pd, true);
   }
+  GPU_debug_capture_end();
 }

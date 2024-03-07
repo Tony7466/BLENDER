@@ -24,12 +24,12 @@ void do_vertex(const int i, vec4 pos, vec2 ofs)
 {
   interp_out.final_color = interp_in[1].final_color;
 
-  interp_noperspective.smoothline = (2.0f /* lineWidth */ + 1.0f /* SMOOTH_WIDTH */) * 0.5;
+  interp_noperspective.smoothline = (LINE_WIDTH + SMOOTH_WIDTH) * 0.5;
   gl_Position = pos;
   gl_Position.xy += ofs * pos.w;
   gpu_EmitVertex();
 
-  interp_noperspective.smoothline = -(2.0f /* lineWidth */ + 1.0f /* SMOOTH_WIDTH */) * 0.5;
+  interp_noperspective.smoothline = -(LINE_WIDTH + SMOOTH_WIDTH) * 0.5;
   gl_Position = pos;
   gl_Position.xy -= ofs * pos.w;
   gpu_EmitVertex();
@@ -48,7 +48,7 @@ void main(void)
   vec2 ofs = vec2(-e.y, e.x);
 #endif
   ofs /= sizeViewport.xy;
-  ofs *= 2.0f /* lineWidth */ + 1.0f /* SMOOTH_WIDTH */;
+  ofs *= LINE_WIDTH + SMOOTH_WIDTH;
 
   do_vertex(0, p0, ofs);
   do_vertex(1, p1, ofs);
