@@ -482,11 +482,13 @@ static void recalcData_uv(TransInfo *t)
  * \{ */
 
 struct UVGroups {
-  Vector<int> groups_offs_buffer;
-  Vector<int> _groups_offs;
-  OffsetIndices<int> groups_offs;
   int sd_len;
 
+ private:
+  Vector<int> groups_offs_buffer;
+  Vector<int> groups_offs_indices;
+
+ public:
   void init(const TransDataContainer *tc, BMesh *bm, const BMUVOffsets &offsets)
   {
     /* To identify #TransData by the corner, we first need to set all values in `index` to `-1`. */
@@ -517,7 +519,7 @@ struct UVGroups {
 
     /* Create the groups. */
     this->groups_offs_buffer.reserve(this->sd_len);
-    this->_groups_offs.reserve((this->sd_len / 4) + 2);
+    this->groups_offs_indices.reserve((this->sd_len / 4) + 2);
 
     td = tc->data;
     for (int i = 0; i < tc->data_len; i++, td++) {
@@ -528,7 +530,7 @@ struct UVGroups {
       }
 
       const float2 &uv_orig = BM_ELEM_CD_GET_FLOAT_P(l_orig, offsets.uv);
-      this->_groups_offs.append(this->groups_offs_buffer.size());
+      this->groups_offs_indices.append(this->groups_offs_buffer.size());
 
       BMIter liter;
       BMLoop *l_iter;
@@ -549,20 +551,24 @@ struct UVGroups {
         BM_elem_index_set(l_iter, -1);
       }
     }
-    this->_groups_offs.append(this->groups_offs_buffer.size());
-    groups_offs = OffsetIndices<int>(_groups_offs);
+    this->groups_offs_indices.append(this->groups_offs_buffer.size());
+  }
+
+  OffsetIndices<int> groups() const
+  {
+    return OffsetIndices<int>(this->groups_offs_indices);
   }
 
   Span<int> td_indices_get(const int group_index) const
   {
-    return this->groups_offs_buffer.as_span().slice(this->groups_offs[group_index]);
+    return this->groups_offs_buffer.as_span().slice(this->groups()[group_index]);
   }
 
   Array<TransDataVertSlideVert> sd_array_create_and_init(TransDataContainer *tc)
   {
     Array<TransDataVertSlideVert> r_sv(this->sd_len);
     TransDataVertSlideVert *sv = &r_sv[0];
-    for (const int group_index : this->groups_offs.index_range()) {
+    for (const int group_index : this->groups().index_range()) {
       for (int td_index : this->td_indices_get(group_index)) {
         TransData *td = &tc->data[td_index];
         sv->td = td;
@@ -577,7 +583,7 @@ struct UVGroups {
   {
     Array<TransDataEdgeSlideVert> r_sv(this->sd_len);
     TransDataEdgeSlideVert *sv = &r_sv[0];
-    for (const int group_index : this->groups_offs.index_range()) {
+    for (const int group_index : this->groups().index_range()) {
       for (int td_index : this->td_indices_get(group_index)) {
         TransData *td = &tc->data[td_index];
         sv->td = td;
@@ -593,13 +599,13 @@ struct UVGroups {
   MutableSpan<TransDataVertSlideVert> sd_group_get(MutableSpan<TransDataVertSlideVert> sd_array,
                                                    const int group_index)
   {
-    return sd_array.slice(this->groups_offs[group_index]);
+    return sd_array.slice(this->groups()[group_index]);
   }
 
   MutableSpan<TransDataEdgeSlideVert> sd_group_get(MutableSpan<TransDataEdgeSlideVert> sd_array,
                                                    const int group_index)
   {
-    return sd_array.slice(this->groups_offs[group_index]);
+    return sd_array.slice(this->groups()[group_index]);
   }
 };
 
@@ -644,7 +650,7 @@ Array<TransDataVertSlideVert> transform_mesh_uv_vert_slide_data_create(
 
   r_loc_dst_buffer.reserve(r_sv.size() * 4);
 
-  for (const int group_index : uv_groups->groups_offs.index_range()) {
+  for (const int group_index : uv_groups->groups().index_range()) {
     const int size_prev = r_loc_dst_buffer.size();
 
     for (int td_index : uv_groups->td_indices_get(group_index)) {
@@ -827,7 +833,7 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
   const bool check_edge = ED_uvedit_select_mode_get(t->scene) == UV_SELECT_EDGE;
 
   UVGroups *uv_groups = mesh_uv_groups_get(tc, bm, offsets);
-  Array<int2> groups_linked(uv_groups->groups_offs.size(), int2(-1, -1));
+  Array<int2> groups_linked(uv_groups->groups().size(), int2(-1, -1));
 
   {
     /* Identify the group to which a loop belongs through the element's index value. */
@@ -846,7 +852,7 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
     }
 
     /* Now set the group indexes. */
-    for (const int group_index : uv_groups->groups_offs.index_range()) {
+    for (const int group_index : uv_groups->groups().index_range()) {
       for (int td_index : uv_groups->td_indices_get(group_index)) {
         TransData *td = &tc->data[td_index];
         BMLoop *l = static_cast<BMLoop *>(td->extra);
@@ -856,7 +862,7 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
     bm->elem_index_dirty |= BM_LOOP;
   }
 
-  for (const int group_index : uv_groups->groups_offs.index_range()) {
+  for (const int group_index : uv_groups->groups().index_range()) {
     int2 &group_linked_pair = groups_linked[group_index];
 
     for (int td_index : uv_groups->td_indices_get(group_index)) {
