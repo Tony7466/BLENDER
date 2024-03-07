@@ -422,7 +422,7 @@ static bke::CurvesGeometry build_sequential(bke::greasepencil::Drawing &drawing,
       src_attributes, bke::AttrDomain::Curve, {}, {}, dst_to_src_curve, dst_attributes);
 
   dst_curves.update_curve_types();
-  
+
   return dst_curves;
 }
 

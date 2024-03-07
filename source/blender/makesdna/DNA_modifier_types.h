@@ -3402,5 +3402,5 @@ typedef enum GreasePencilBuildTimeMode {
 typedef enum GreasePencilBuildFlag {
   /* Restrict modifier to only operating between the nominated frames */
   MOD_GREASE_PENCIL_BUILD_RESTRICT_TIME = (1 << 0),
-  MOD_GREASE_PENCIL_BUILD_USE_FADING = (1 <<14),
+  MOD_GREASE_PENCIL_BUILD_USE_FADING = (1 << 14),
 } GreasePencilBuildFlag;

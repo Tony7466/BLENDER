@@ -2145,7 +2145,6 @@ const EnumPropertyItem *grease_pencil_build_time_mode_filter(bContext * /*C*/,
   return item_list;
 }
 
-
 static const GreasePencilTimeModifierData *find_grease_pencil_time_modifier_of_segment(
     const Object &ob, const GreasePencilTimeModifierSegment &time_segment)
 {
@@ -10704,7 +10703,7 @@ static void rna_def_modifier_grease_pencil_build(BlenderRNA *brna)
       prop, nullptr, "rna_GreasePencilBuildModifier_object_set", nullptr, nullptr);
   RNA_def_property_flag(prop, PROP_EDITABLE | PROP_ID_SELF_CHECK);
   RNA_def_property_update(prop, 0, "rna_Modifier_dependency_update");
-  
+
   RNA_define_lib_overridable(false);
 }
 
