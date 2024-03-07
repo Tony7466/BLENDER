@@ -85,12 +85,15 @@ static float4 karis_brightness_weighted_sum(float4 color1,
                                             float4 color3,
                                             float4 color4)
 {
-  float4 brightness = float4(math::reduce_max(color1.xyz()),
-                             math::reduce_max(color2.xyz()),
-                             math::reduce_max(color3.xyz()),
-                             math::reduce_max(color4.xyz()));
-  float4 weights = 1.0f / (brightness + 1.0);
-  return color1 * weights[0] + color2 * weights[1] + color3 * weights[2] + color4 * weights[3];
+  const float4 brightness = float4(math::reduce_max(color1.xyz()),
+                                   math::reduce_max(color2.xyz()),
+                                   math::reduce_max(color3.xyz()),
+                                   math::reduce_max(color4.xyz()));
+  const float4 weights = 1.0f / (brightness + 1.0);
+  const float weights_sum = math::reduce_add(weights);
+  const float4 sum = color1 * weights[0] + color2 * weights[1] + color3 * weights[2] +
+                     color4 * weights[3];
+  return math::safe_divide(sum, weights_sum);
 }
 
 static void downsample(const MemoryBuffer &input, MemoryBuffer &output, bool use_karis_average)
