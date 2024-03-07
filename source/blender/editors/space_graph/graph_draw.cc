@@ -25,6 +25,7 @@
 
 #include "BKE_anim_data.hh"
 #include "BKE_curve.hh"
+#include "BKE_curves.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_nla.h"
 
@@ -598,45 +599,13 @@ static void add_bezt_vertices(BezTriple *bezt,
    * accumulating floating point issues in BKE_curve_forward_diff_bezier.*/
   resolution = min_ii(64, resolution);
 
-  float prev_key[2], prev_handle[2], bez_handle[2], bez_key[2];
-  /* Allocation needs +1 on resolution because BKE_curve_forward_diff_bezier uses it to iterate
-   * inclusively. */
-  float *bezier_diff_points = static_cast<float *>(
-      MEM_mallocN(sizeof(float) * ((resolution + 1) * 2), "Draw bezt data"));
+  curve_vertices.resize(curve_vertices.size() + resolution);
 
-  prev_key[0] = prevbezt->vec[1][0];
-  prev_key[1] = prevbezt->vec[1][1];
-  prev_handle[0] = prevbezt->vec[2][0];
-  prev_handle[1] = prevbezt->vec[2][1];
-
-  bez_handle[0] = bezt->vec[0][0];
-  bez_handle[1] = bezt->vec[0][1];
-  bez_key[0] = bezt->vec[1][0];
-  bez_key[1] = bezt->vec[1][1];
-
-  BKE_fcurve_correct_bezpart(prev_key, prev_handle, bez_handle, bez_key);
-
-  BKE_curve_forward_diff_bezier(prev_key[0],
-                                prev_handle[0],
-                                bez_handle[0],
-                                bez_key[0],
-                                bezier_diff_points,
-                                resolution,
-                                sizeof(float[2]));
-  BKE_curve_forward_diff_bezier(prev_key[1],
-                                prev_handle[1],
-                                bez_handle[1],
-                                bez_key[1],
-                                bezier_diff_points + 1,
-                                resolution,
-                                sizeof(float[2]));
-
-  for (float *fp = bezier_diff_points; resolution; resolution--, fp += 2) {
-    const float x = *fp;
-    const float y = *(fp + 1);
-    curve_vertices.append({x, y});
-  }
-  MEM_freeN(bezier_diff_points);
+  bke::curves::bezier::evaluate_segment(float2(prevbezt->vec[1][0], prevbezt->vec[1][1]),
+                                        float2(prevbezt->vec[2][0], prevbezt->vec[2][1]),
+                                        float2(bezt->vec[0][0], bezt->vec[0][1]),
+                                        float2(bezt->vec[1][0], bezt->vec[1][1]),
+                                        curve_vertices.as_mutable_span().take_back(resolution));
 }
 
 static void add_extrapolation_point_left(const FCurve *fcu,
