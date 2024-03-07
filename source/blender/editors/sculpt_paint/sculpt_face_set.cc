@@ -1643,7 +1643,7 @@ void SCULPT_OT_face_sets_edit(wmOperatorType *ot)
 
   ot->prop = RNA_def_boolean(ot->srna,
                              "modify_hidden",
-                             true,
+                             false,
                              "Modify Hidden",
                              "Apply the edit operation to hidden geometry");
 }
