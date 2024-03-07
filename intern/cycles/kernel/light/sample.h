@@ -423,6 +423,12 @@ ccl_device_inline float light_sample_mis_weight_forward_surface(KernelGlobals kg
                                                                 const uint32_t path_flag,
                                                                 const ccl_private ShaderData *sd)
 {
+  /* TODO(weizhen): revisit this condition. */
+  if (kernel_data.integrator.use_direct_light && INTEGRATOR_STATE(state, path, bounce) == 1) {
+    /* Direct illumination is handled with RIS. */
+    return 0.0f;
+  }
+
   bool has_mis = !(path_flag & PATH_RAY_MIS_SKIP) &&
                  (sd->flag & ((sd->flag & SD_BACKFACING) ? SD_MIS_BACK : SD_MIS_FRONT));
 
@@ -467,6 +473,11 @@ ccl_device_inline float light_sample_mis_weight_forward_lamp(KernelGlobals kg,
                                                              const ccl_private LightSample *ls,
                                                              const float3 P)
 {
+  if (kernel_data.integrator.use_direct_light && INTEGRATOR_STATE(state, path, bounce) == 1) {
+    /* Direct illumination is handled with RIS. */
+    return 0.0f;
+  }
+
   if (path_flag & PATH_RAY_MIS_SKIP) {
     return 1.0f;
   }

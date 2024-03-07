@@ -332,6 +332,10 @@ enum PathTraceDimension {
   PRNG_SUBSURFACE_DISK = 0,
   PRNG_SUBSURFACE_DISK_RESAMPLE = 1,
 
+  /* TODO(weizhen): Temp for RIS, revisit later for stratified sampling. */
+  PRNG_RIS = 12,
+  PRNG_PICK = 13,
+
   /* High enough number so we don't need to change it when adding new dimensions,
    * low enough so there is no uint16_t overflow with many bounces. */
   PRNG_BOUNCE_NUM = 16,

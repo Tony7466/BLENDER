@@ -26,6 +26,11 @@ ccl_device float power_heuristic(float a, float b)
   return (a * a) / (a * a + b * b);
 }
 
+ccl_device float power_heuristic(int num_a, float pdf_a, int num_b, float pdf_b)
+{
+  return (pdf_a * pdf_a) / (pdf_a * pdf_a * (float)num_a + pdf_b * pdf_b * (float)num_b);
+}
+
 ccl_device float power_heuristic_3(float a, float b, float c)
 {
   return (a * a) / (a * a + b * b + c * c);

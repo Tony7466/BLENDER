@@ -279,6 +279,7 @@ integrate_direct_light_shadow_init_common(KernelGlobals kg,
   return shadow_state;
 }
 
+/* TODO(weizhen): split function to direct/indirect illumination and rename. */
 /* Path tracing: sample point on light and evaluate light shader, then
  * queue shadow ray to be traced. */
 template<uint node_feature_mask>
@@ -299,13 +300,38 @@ ccl_device
     return;
   }
 
-  /* Sample position on a light. */
-  LightSample ls ccl_optional_struct_init;
-  {
-    const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
-    const uint bounce = INTEGRATOR_STATE(state, path, bounce);
-    const float3 rand_light = path_state_rng_3D(kg, rng_state, PRNG_LIGHT);
+  const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
+  const uint bounce = INTEGRATOR_STATE(state, path, bounce);
 
+  /* Use Resampled Importance Sampling for direct illumination based on Talbot, Justin F.
+   * Importance resampling for global illumination. Brigham Young University, 2005. */
+  /* TODO(weizhen): add MNEE back? */
+  const bool use_ris = (bounce == 0);
+
+  /* TODO(weizhen): find optimal values automatically? */
+  const int num_light_samples = use_ris ? 8 : 1;
+  const int num_bsdf_samples = use_ris ? 3 : 1;
+
+  /* Sample position on a light. */
+  LightSample light_sample ccl_optional_struct_init;
+  BsdfEval radiance ccl_optional_struct_init;
+
+  float total_weight = 0.0f;
+
+  for (int i = 0; i < num_light_samples; i++) {
+    LightSample ls ccl_optional_struct_init;
+    BsdfEval bsdf_eval ccl_optional_struct_init;
+
+    /* TODO(weizhen): does this result in correlated samples if different sample numbers are used
+     * when using RIS? */
+    const float3 rand_light = path_branched_rng_3D(
+        kg, rng_state, i, num_light_samples, PRNG_LIGHT);
+
+    const float rand_pick = path_branched_rng_1D(
+        kg, rng_state, i, num_light_samples + num_bsdf_samples, PRNG_PICK);
+
+    /* TODO(weizhen): use higher-level nodes in light tree, or use light tile as in the ReSTIR PT
+     * paper. */
     if (!light_sample_from_position(kg,
                                     rand_light,
                                     sd->time,
@@ -317,83 +343,296 @@ ccl_device
                                     path_flag,
                                     &ls))
     {
-      return;
+      continue;
     }
-  }
 
-  kernel_assert(ls.pdf != 0.0f);
+    kernel_assert(ls.pdf != 0.0f);
 
-  const bool is_transmission = dot(ls.D, sd->N) < 0.0f;
+    const bool is_transmission = dot(ls.D, sd->N) < 0.0f;
 
-  if (ls.prim != PRIM_NONE && ls.prim == sd->prim && ls.object == sd->object) {
-    /* Skip self intersection if light direction lies in the same hemisphere as the geometric
-     * normal. */
-    if (dot(ls.D, is_transmission ? -sd->Ng : sd->Ng) > 0.0f) {
-      return;
-    }
-  }
-
-  /* Evaluate light shader.
-   *
-   * TODO: can we reuse sd memory? In theory we can move this after
-   * integrate_surface_bounce, evaluate the BSDF, and only then evaluate
-   * the light shader. This could also move to its own kernel, for
-   * non-constant light sources. */
-  ShaderDataCausticsStorage emission_sd_storage;
-  ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
-
-  Ray ray ccl_optional_struct_init;
-  BsdfEval bsdf_eval ccl_optional_struct_init;
-
-  int mnee_vertex_count = 0;
-#ifdef __MNEE__
-  IF_KERNEL_FEATURE(MNEE)
-  {
-    if (ls.lamp != LAMP_NONE) {
-      /* Is this a caustic light? */
-      const bool use_caustics = kernel_data_fetch(lights, ls.lamp).use_caustics;
-      if (use_caustics) {
-        /* Are we on a caustic caster? */
-        if (is_transmission && (sd->object_flag & SD_OBJECT_CAUSTICS_CASTER)) {
-          return;
-        }
-
-        /* Are we on a caustic receiver? */
-        if (!is_transmission && (sd->object_flag & SD_OBJECT_CAUSTICS_RECEIVER)) {
-          mnee_vertex_count = kernel_path_mnee_sample(
-              kg, state, sd, emission_sd, rng_state, &ls, &bsdf_eval);
-        }
+    if (ls.prim != PRIM_NONE && ls.prim == sd->prim && ls.object == sd->object) {
+      /* Skip self intersection if light direction lies in the same hemisphere as the geometric
+       * normal. */
+      if (dot(ls.D, is_transmission ? -sd->Ng : sd->Ng) > 0.0f) {
+        continue;
       }
     }
-  }
-  if (mnee_vertex_count > 0) {
-    /* Create shadow ray after successful manifold walk:
-     * emission_sd contains the last interface intersection and
-     * the light sample ls has been updated */
-    light_sample_to_surface_shadow_ray(kg, emission_sd, &ls, &ray);
-  }
-  else
-#endif /* __MNEE__ */
-  {
-    const Spectrum light_eval = light_sample_shader_eval(kg, state, emission_sd, &ls, sd->time);
-    if (is_zero(light_eval)) {
-      return;
+
+    /* Evaluate light shader.
+     *
+     * TODO: can we reuse sd memory? In theory we can move this after
+     * integrate_surface_bounce, evaluate the BSDF, and only then evaluate
+     * the light shader. This could also move to its own kernel, for
+     * non-constant light sources. */
+    ShaderDataCausticsStorage emission_sd_storage;
+    ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
+
+    const Spectrum L = light_sample_shader_eval(kg, state, emission_sd, &ls, sd->time);
+    if (is_zero(L)) {
+      continue;
     }
 
     /* Evaluate BSDF. */
     const float bsdf_pdf = surface_shader_bsdf_eval(kg, state, sd, ls.D, &bsdf_eval, ls.shader);
-    const float mis_weight = light_sample_mis_weight_nee(kg, ls.pdf, bsdf_pdf);
-    bsdf_eval_mul(&bsdf_eval, light_eval / ls.pdf * mis_weight);
 
-    /* Path termination. */
-    const float terminate = path_state_rng_light_termination(kg, rng_state);
-    if (light_sample_terminate(kg, &bsdf_eval, terminate)) {
-      return;
+    /* TODO(weizhen): this should be called radiance instead of bsdf eval. */
+    bsdf_eval_mul(&bsdf_eval, L / ls.pdf);
+
+    const float mis_weight = power_heuristic(
+        num_light_samples, ls.pdf, num_bsdf_samples, bsdf_pdf);
+
+    const float current_weight = reduce_add(fabs(bsdf_eval.sum)) * mis_weight;
+
+    if (!isfinite_safe(current_weight)) {
+      continue;
     }
 
-    /* Create shadow ray. */
-    light_sample_to_surface_shadow_ray(kg, sd, &ls, &ray);
+    total_weight += current_weight;
+
+    const float thresh = current_weight / total_weight;
+    if (rand_pick <= thresh) {
+      light_sample = ls;
+      radiance = bsdf_eval;
+    }
   }
+
+  /* If `use_ris`, draw BSDF samples in #integrate_surface_bsdf_bssrdf_bounce(). */
+  for (int i = 0; i < num_bsdf_samples * use_ris; i++) {
+    kernel_assert(bounce == 0);
+
+    LightSample ls ccl_optional_struct_init;
+    BsdfEval bsdf_eval ccl_optional_struct_init;
+    float3 bsdf_wo ccl_optional_struct_init;
+    float bsdf_pdf = 0.0f;
+
+    float2 bsdf_sampled_roughness = make_float2(1.0f, 1.0f);
+    float bsdf_eta = 1.0f;
+
+    float3 rand_bsdf = path_branched_rng_3D(kg, rng_state, i, num_bsdf_samples, PRNG_SURFACE_BSDF);
+
+    const float rand_pick = path_branched_rng_1D(
+        kg, rng_state, num_light_samples + i, num_light_samples + num_bsdf_samples, PRNG_PICK);
+
+    ccl_private const ShaderClosure *sc = surface_shader_bsdf_bssrdf_pick(sd, &rand_bsdf);
+
+    /* TODO(weizhen): what to do with subsurface? */
+    surface_shader_bsdf_sample_closure(kg,
+                                       sd,
+                                       sc,
+                                       path_flag,
+                                       rand_bsdf,
+                                       &bsdf_eval,
+                                       &bsdf_wo,
+                                       &bsdf_pdf,
+                                       &bsdf_sampled_roughness,
+                                       &bsdf_eta);
+
+    if (bsdf_pdf == 0.0f || bsdf_eval_is_zero(&bsdf_eval)) {
+      continue;
+    }
+
+    /* Set up ray. */
+    Ray ray ccl_optional_struct_init;
+    ray.D = normalize(bsdf_wo);
+    ray.P = integrate_surface_ray_offset(kg, sd, sd->P, ray.D);
+    ray.tmin = 0.0f;
+    ray.tmax = FLT_MAX;
+
+    /* Scene Intersection. */
+    Intersection isect ccl_optional_struct_init;
+    isect.object = OBJECT_NONE;
+    isect.prim = PRIM_NONE;
+    ray.self.object = sd->object;
+    ray.self.prim = sd->prim;
+    ray.self.light_object = OBJECT_NONE;
+    ray.self.light_prim = PRIM_NONE;
+    ray.self.light = LAMP_NONE;
+
+    /* Potential intersection of emissive triangles. */
+    /* TODO(weizhen): is it worth to set up the next `path_flag`? */
+    const uint32_t next_path_flag = PATH_RAY_ALL_VISIBILITY & ~PATH_RAY_CAMERA;
+
+    bool hit = scene_intersect(kg, &ray, next_path_flag, &isect);
+
+    if (!hit) {
+      isect.prim = PRIM_NONE;
+    }
+
+    /* Potential intersection of spot, point, and area lights. */
+    /* TODO(weizhen): delay shadow ray tracing, or delay this whole BSDF sampling? */
+    /* FIXME(weizhen): this has artefacts when `num_hits > 1` due to transparent lights. */
+    hit = lights_intersect(
+              kg, state, &ray, &isect, sd->prim, sd->object, sd->type, next_path_flag) ||
+          hit;
+
+    Spectrum L = zero_spectrum();
+    /* TODO(weizhen): volume? */
+    if (hit) {
+      /* TODO(weizhen): is this the flag for `sc`? */
+      const uint32_t transmission_flag = (sd->flag & SD_BSDF_HAS_TRANSMISSION) ?
+                                             PATH_RAY_MIS_HAD_TRANSMISSION :
+                                             ~PATH_RAY_MIS_HAD_TRANSMISSION;
+
+      if (isect.type & PRIMITIVE_LAMP) {
+        if (!light_sample_from_intersection(
+                kg, &isect, ray.P, ray.D, sd->N, transmission_flag, &ls))
+        {
+          continue;
+        }
+        ShaderDataTinyStorage emission_sd_storage;
+        ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
+
+        L = light_sample_shader_eval(kg, state, emission_sd, &ls, sd->time);
+
+        /* TODO(weizhen): maybe merge with `light_sample_mis_weight_forward_lamp` */
+        /* Light selection pdf. */
+#ifdef __LIGHT_TREE__
+        if (kernel_data.integrator.use_light_tree) {
+          ls.pdf *= light_tree_pdf<false>(kg,
+                                          ray.P,
+                                          sd->N,
+                                          0.0f,
+                                          transmission_flag,
+                                          0,
+                                          kernel_data_fetch(light_to_tree, ls.lamp),
+                                          light_link_receiver_forward(kg, state));
+        }
+        else
+#endif
+        {
+          ls.pdf *= light_distribution_pdf_lamp(kg);
+        }
+      }
+      else {
+        /* TODO(weizhen): this is too costly. */
+        ShaderData emission_sd;
+        shader_setup_from_ray(kg, &emission_sd, &ray, &isect);
+
+        /* TODO(weizhen):  can't use `nullptr` with aov. */
+        surface_shader_eval<node_feature_mask>(
+            kg, state, &emission_sd, nullptr, transmission_flag);
+
+        /* Emissive triangle. */
+        if (emission_sd.flag & SD_EMISSION) {
+          /* Evaluate emissive closure. */
+          L = surface_shader_emission(&emission_sd);
+
+          ls.shader = emission_sd.shader;
+          ls.D = ray.D;
+          ls.t = isect.t;
+          ls.P = ray.P + ray.D * ls.t;
+          ls.object = isect.object;
+          ls.prim = isect.prim;
+          ls.lamp = LAMP_NONE;
+
+          /* TODO(weizhen): PATH_RAY_MIS_SKIP?  */
+          const bool has_mis = (emission_sd.type & PRIMITIVE_TRIANGLE) &&
+                               (emission_sd.flag &
+                                ((emission_sd.flag & SD_BACKFACING) ? SD_MIS_BACK : SD_MIS_FRONT));
+
+          if (has_mis) {
+            ls.pdf = triangle_light_pdf(kg, &emission_sd, isect.t);
+
+            /* TODO(weizhen): maybe merge with `light_sample_mis_weight_forward_surface` */
+            /* Light selection pdf. */
+#ifdef __LIGHT_TREE__
+            if (kernel_data.integrator.use_light_tree) {
+              uint lookup_offset = kernel_data_fetch(object_lookup_offset, emission_sd.object);
+              uint prim_offset = kernel_data_fetch(object_prim_offset, emission_sd.object);
+              uint triangle = kernel_data_fetch(triangle_to_tree,
+                                                emission_sd.prim - prim_offset + lookup_offset);
+
+              ls.pdf *= light_tree_pdf<false>(kg,
+                                              sd->P,
+                                              sd->N,
+                                              0.0f,
+                                              transmission_flag,
+                                              emission_sd.object,
+                                              triangle,
+                                              light_link_receiver_forward(kg, state));
+            }
+#endif
+          }
+          else {
+            ls.pdf = 0.0f;
+          }
+        }
+      }
+    }
+    else {
+      /* ShaderDataTinyStorage emission_sd_storage; */
+      /* ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage); */
+
+      /* /\* Distant light. *\/ */
+      /* for (int lamp = 0; lamp < kernel_data.integrator.num_lights; lamp++) { */
+      /*   if (distant_light_sample_from_intersection(kg, ray.D, lamp, &ls)) { */
+      /*     /\* TODO(weizhen): how to do distant light pdf? *\/ */
+      /*     L += light_sample_shader_eval(kg, state, emission_sd, &ls, sd->time); */
+      /*   } */
+      /* } */
+
+      /* /\* Background light. *\/ */
+      /* const int background_shader = kernel_data.background.surface_shader; */
+
+      /* /\* Use fast constant background color if available. *\/ */
+      /* Spectrum background_eval = zero_spectrum(); */
+      /* if (surface_shader_constant_emission(kg, background_shader, &background_eval)) { */
+      /*   L = background_eval; */
+      /* } */
+
+      /* /\* Evaluate background shader. *\/ */
+      /* shader_setup_from_background(kg, emission_sd, ray.P, ray.D, sd->time); */
+      /* TODO(weizhen): can't use `nullptr` with aov. */
+      /* surface_shader_eval<KERNEL_FEATURE_NODE_MASK_SURFACE_BACKGROUND>( */
+      /*     kg, state, emission_sd, nullptr, PATH_RAY_EMISSION); */
+      /* L = surface_shader_background(emission_sd); */
+      /* /\* TODO(weizhen): how to do background light pdf? *\/ */
+    }
+
+    if (is_zero(L)) {
+      continue;
+    }
+
+    bsdf_eval_mul(&bsdf_eval, L / bsdf_pdf);
+
+    const float mis_weight = power_heuristic(
+        num_bsdf_samples, bsdf_pdf, num_light_samples, ls.pdf);
+
+    const float current_weight = reduce_add(fabs(bsdf_eval.sum)) * mis_weight;
+
+    if (!isfinite_safe(current_weight)) {
+      continue;
+    }
+
+    total_weight += current_weight;
+
+    const float thresh = current_weight / total_weight;
+    if (rand_pick <= thresh) {
+      light_sample = ls;
+      radiance = bsdf_eval;
+    }
+  }
+
+  if (!(total_weight > 0.0f)) {
+    return;
+  }
+
+  const float unbiased_contribution_weight = total_weight / reduce_add(fabs(radiance.sum));
+
+  bsdf_eval_mul(&radiance, unbiased_contribution_weight);
+
+  int mnee_vertex_count = 0;
+  const bool is_transmission = dot(light_sample.D, sd->N) < 0.0f;
+  Ray ray ccl_optional_struct_init;
+
+  /* Path termination. */
+  const float terminate = path_state_rng_light_termination(kg, rng_state);
+  if (light_sample_terminate(kg, &radiance, terminate)) {
+    return;
+  }
+
+  /* Create shadow ray. */
+  light_sample_to_surface_shadow_ray(kg, sd, &light_sample, &ray);
 
   if (ray.self.object != OBJECT_NONE) {
     ray.P = integrate_surface_ray_offset(kg, sd, ray.P, ray.D);
@@ -401,7 +640,7 @@ ccl_device
 
   /* Branch off shadow kernel. */
   IntegratorShadowState shadow_state = integrate_direct_light_shadow_init_common(
-      kg, state, &ray, bsdf_eval_sum(&bsdf_eval), ls.group, mnee_vertex_count);
+      kg, state, &ray, bsdf_eval_sum(&radiance), light_sample.group, mnee_vertex_count);
 
   if (is_transmission) {
 #ifdef __VOLUME__
@@ -423,8 +662,8 @@ ccl_device
     else {
       /* Direct light, use BSDFs at this bounce. */
       shadow_flag |= PATH_RAY_SURFACE_PASS;
-      pass_diffuse_weight = PackedSpectrum(bsdf_eval_pass_diffuse_weight(&bsdf_eval));
-      pass_glossy_weight = PackedSpectrum(bsdf_eval_pass_glossy_weight(&bsdf_eval));
+      pass_diffuse_weight = PackedSpectrum(bsdf_eval_pass_diffuse_weight(&radiance));
+      pass_glossy_weight = PackedSpectrum(bsdf_eval_pass_glossy_weight(&radiance));
     }
 
     INTEGRATOR_STATE_WRITE(shadow_state, shadow_path, pass_diffuse_weight) = pass_diffuse_weight;
