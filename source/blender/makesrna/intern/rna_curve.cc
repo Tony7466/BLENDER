@@ -16,7 +16,7 @@
 #include "BLI_math_vector.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -271,7 +271,7 @@ static void rna_Curve_texspace_set(Main * /*bmain*/, Scene * /*scene*/, PointerR
   }
 }
 
-static int rna_Curve_texspace_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_Curve_texspace_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   Curve *cu = static_cast<Curve *>(ptr->data);
   return (cu->texspace_flag & CU_TEXSPACE_FLAG_AUTO) ? PropertyFlag(0) : PROP_EDITABLE;

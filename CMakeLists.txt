@@ -84,6 +84,11 @@ if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
 
+# find_package() uses uppercase <PackageName>_ROOT variables.
+if(POLICY CMP0144)
+  cmake_policy(SET CMP0144 NEW)
+endif()
+
 # Install CODE|SCRIPT allow the use of generator expressions.
 if(POLICY CMP0087)
   cmake_policy(SET CMP0087 NEW)
@@ -124,7 +129,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
 The minimum supported version of CLANG is 8.0, found ${CMAKE_C_COMPILER_VERSION}"
     )
   endif()
-elseif(CMAKE_CXX_COMPILER_ID MATCHES MSVC)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   if(MSVC_VERSION VERSION_LESS "1928")
     # MSVC_VERSION is an internal version number, it doesn't map to something
     # the end user would recognize as a version. Because of this, for MSVC we do
@@ -259,6 +264,28 @@ else()
   set(WITH_UNITY_BUILD OFF)
 endif()
 
+if(COMMAND target_precompile_headers)
+  # Disabling is needed for `./tools/utils_maintenance/code_clean.py` to function.
+  option(WITH_COMPILER_PRECOMPILED_HEADERS "\
+Use pre-compiled headers to speed up compilation."
+    ON
+  )
+  mark_as_advanced(WITH_COMPILER_PRECOMPILED_HEADERS)
+
+  if(WITH_CLANG_TIDY AND CMAKE_COMPILER_IS_GNUCC)
+    if(WITH_COMPILER_PRECOMPILED_HEADERS)
+      message(STATUS
+        "Clang-Tidy and GCC precompiled headers are incompatible, disabling precompiled headers"
+      )
+      set(WITH_COMPILER_PRECOMPILED_HEADERS OFF)
+    endif()
+  endif()
+
+  if(NOT WITH_COMPILER_PRECOMPILED_HEADERS)
+    set(CMAKE_DISABLE_PRECOMPILE_HEADERS ON)
+  endif()
+endif()
+
 option(WITH_IK_ITASC "\
 Enable ITASC IK solver (only disable for development & for incompatible C++ compilers)"
   ON
@@ -387,6 +414,18 @@ else()
   set(WITH_SYSTEM_EIGEN3 OFF)
 endif()
 
+if((NOT WITH_PYTHON_MODULE) AND (
+      (WIN32 AND (CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")) OR
+      ((UNIX AND NOT APPLE) AND (CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"))))
+  option(WITH_CPU_CHECK "\
+Report when a CPU is not compatible on startup \
+instead of failing to start with an inscrutable error."
+    ON
+  )
+  mark_as_advanced(WITH_CPU_CHECK)
+else()
+  set(WITH_CPU_CHECK OFF)
+endif()
 
 # Modifiers
 option(WITH_MOD_FLUID "Enable Mantaflow Fluid Simulation Framework" ON)
@@ -400,7 +439,6 @@ option(WITH_IMAGE_CINEON "Enable CINEON and DPX Image Support" ON)
 option(WITH_IMAGE_WEBP "Enable WebP Image Support" ON)
 
 # Audio/Video format support
-option(WITH_CODEC_AVI "Enable Blenders own AVI file support (raw/jpeg)" ON)
 option(WITH_CODEC_FFMPEG "Enable FFMPeg Support (http://ffmpeg.org)" ON)
 option(WITH_CODEC_SNDFILE "Enable libsndfile Support (http://www.mega-nerd.com/libsndfile)" ON)
 
@@ -607,7 +645,7 @@ mark_as_advanced(WITH_CYCLES_PRECOMPUTE)
 mark_as_advanced(CYCLES_TEST_DEVICES)
 
 # NVIDIA CUDA & OptiX
-if(NOT APPLE)
+if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
   option(WITH_CYCLES_DEVICE_CUDA "Enable Cycles NVIDIA CUDA compute support" ON)
   option(WITH_CYCLES_DEVICE_OPTIX "Enable Cycles NVIDIA OptiX support" ON)
   mark_as_advanced(WITH_CYCLES_DEVICE_CUDA)
@@ -642,7 +680,7 @@ When set, this path will be used at runtime to compile OptiX kernels."
 endif()
 
 # AMD HIP
-if(NOT APPLE)
+if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
   option(WITH_CYCLES_DEVICE_HIP "Enable Cycles AMD HIP support" ON)
   option(WITH_CYCLES_HIP_BINARIES "Build Cycles AMD HIP binaries" OFF)
   # Radeon VII (gfx906) not currently working with HIP SDK, so left out of the list.
@@ -669,7 +707,7 @@ if(APPLE)
 endif()
 
 # oneAPI
-if(NOT APPLE)
+if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
   option(WITH_CYCLES_DEVICE_ONEAPI "Enable Cycles oneAPI compute support" OFF)
   option(WITH_CYCLES_ONEAPI_BINARIES "\
 Enable Ahead-Of-Time compilation for Cycles oneAPI device"
@@ -703,12 +741,7 @@ mark_as_advanced(WITH_DRAW_DEBUG)
 
 # LLVM
 option(WITH_LLVM "Use LLVM" OFF)
-if(APPLE)
-  # We prefer static llvm build on Apple, dyn build possible though.
-  option(LLVM_STATIC "Link with LLVM static libraries" ON)
-else()
-  option(LLVM_STATIC "Link with LLVM static libraries" OFF)
-endif()
+option(LLVM_STATIC "Link with LLVM static libraries" OFF)
 mark_as_advanced(LLVM_STATIC)
 option(WITH_CLANG "Use Clang" OFF)
 
@@ -753,8 +786,10 @@ if(WIN32)
   option(WITH_TBB_MALLOC_PROXY "Enable the TBB malloc replacement" ON)
 endif()
 
+option(WITH_EXPERIMENTAL_FEATURES "Enable experimental features" ON)
+
 # This should be turned off when Blender enter beta/rc/release
-if("${BLENDER_VERSION_CYCLE}" STREQUAL "alpha")
+if("${BLENDER_VERSION_CYCLE}" STREQUAL "alpha" AND WITH_EXPERIMENTAL_FEATURES)
   set(WITH_EXPERIMENTAL_FEATURES ON)
 else()
   set(WITH_EXPERIMENTAL_FEATURES OFF)
@@ -762,9 +797,19 @@ endif()
 
 # Unit testing
 option(WITH_GTESTS "Enable GTest unit testing" OFF)
-option(WITH_GPU_RENDER_TESTS "Enable GPU render related unit testing (EEVEE, Workbench and Grease Pencil)" OFF)
-option(WITH_GPU_RENDER_TESTS_SILENT "Run GPU render tests silently (finished tests will pass). Generated report will show failing tests" ON)
-option(WITH_GPU_DRAW_TESTS "Enable GPU drawing related unit testing (GPU backends and draw manager)" OFF)
+option(WITH_GPU_RENDER_TESTS "\
+Enable GPU render related unit testing (EEVEE, Workbench and Grease Pencil)"
+  OFF
+)
+option(WITH_GPU_RENDER_TESTS_SILENT "\
+Run GPU render tests silently (finished tests will pass). \
+Generated report will show failing tests"
+  ON
+)
+option(WITH_GPU_DRAW_TESTS "\
+Enable GPU drawing related unit testing (GPU backends and draw manager)"
+  OFF
+)
 option(WITH_COMPOSITOR_REALTIME_TESTS "Enable regression testing for realtime compositor" OFF)
 if(UNIX AND NOT (APPLE OR HAIKU))
   option(WITH_UI_TESTS "\
@@ -781,7 +826,10 @@ endif()
 # Enabled by default for typical use cases to speed up development cycles. However, when looking
 # into threading or memory related issues (in dependency graph, out-of-bounds, etc) forcing single
 # test per Blender instance could give much better clues about the root of the problem.
-option(WITH_TESTS_BATCHED "Run multiple tests in a single Blender invocation, for faster test execution" ON)
+option(WITH_TESTS_BATCHED "\
+Run multiple tests in a single Blender invocation, for faster test execution"
+  ON
+)
 mark_as_advanced(WITH_TESTS_BATCHED)
 
 option(WITH_TESTS_SINGLE_BINARY "\
@@ -1156,14 +1204,7 @@ set_and_warn_dependency(WITH_IMAGE_OPENEXR WITH_CYCLES_OSL OFF)
 # Hydra requires USD.
 set_and_warn_dependency(WITH_USD WITH_HYDRA OFF)
 
-# auto enable openimageio for cycles
-if(WITH_CYCLES)
-  # auto enable llvm for cycles_osl
-  if(WITH_CYCLES_OSL)
-    set(WITH_LLVM ON CACHE BOOL "" FORCE)
-    set(WITH_CLANG ON CACHE BOOL "" FORCE)
-  endif()
-else()
+if(NOT WITH_CYCLES)
   set(WITH_CYCLES_OSL OFF)
 endif()
 
@@ -1326,7 +1367,7 @@ if(NOT CMAKE_BUILD_TYPE MATCHES "Release")
       # affect on the printed backtrace, and exception handling was correct as well.
       #
       # Related discussion:
-      #  https://stackoverflow.com/questions/26300819/why-gcc-compiled-c-program-needs-eh-frame-section
+      #  https://stackoverflow.com/questions/26300819
       add_compile_options("$<${_is_CONFIG_DEBUG}:-fno-unwind-tables>")
       add_compile_options("$<${_is_CONFIG_DEBUG}:-fno-asynchronous-unwind-tables>")
 
@@ -1380,18 +1421,6 @@ endif()
 
 if(NOT WITH_FFTW3 AND WITH_MOD_OCEANSIM)
   message(FATAL_ERROR "WITH_MOD_OCEANSIM requires WITH_FFTW3 to be ON")
-endif()
-
-if(WITH_CYCLES)
-  if(WITH_CYCLES_OSL)
-    if(NOT WITH_LLVM)
-      message(
-        FATAL_ERROR
-        "Cycles OSL requires WITH_LLVM, the library may not have been found. "
-        "Configure LLVM or disable WITH_CYCLES_OSL"
-      )
-    endif()
-  endif()
 endif()
 
 if(WITH_INTERNATIONAL)
@@ -1548,8 +1577,10 @@ if(WITH_OPENMP)
     if(NOT WITH_OPENMP_STATIC)
       string(APPEND CMAKE_C_FLAGS " ${OpenMP_C_FLAGS}")
       string(APPEND CMAKE_CXX_FLAGS " ${OpenMP_CXX_FLAGS}")
-      string(APPEND CMAKE_EXE_LINKER_FLAGS " ${OpenMP_LINKER_FLAGS}")
-      string(APPEND CMAKE_MODULE_LINKER_FLAGS " ${OpenMP_LINKER_FLAGS}")
+      if(DEFINED OpenMP_LINKER_FLAGS)
+        string(APPEND CMAKE_EXE_LINKER_FLAGS " ${OpenMP_LINKER_FLAGS}")
+        string(APPEND CMAKE_MODULE_LINKER_FLAGS " ${OpenMP_LINKER_FLAGS}")
+      endif()
     else()
       # Typically avoid adding flags as defines but we can't
       # pass OpenMP flags to the linker for static builds, meaning
@@ -1657,12 +1688,14 @@ if("${CMAKE_GENERATOR}" MATCHES "Ninja" AND WITH_NINJA_POOL_JOBS)
     # but this also accounts for the part of the physical RAM being used by other unrelated
     # processes on the system, and the part being used by the 'regular' compile and linking jobs.
     #
-    # Also always cap heavy jobs amount to `number of available threads - 1`, to ensure that even if
-    # there would be enough RAM, the machine never ends up handling only heavy jobs at some point.
-    # This can have annoying sides effects, like lack of output in the console for several minutes,
-    # which can lead to a wrong detection of 'unresponsive' state by the buildbots e.g.
+    # Also always cap heavy jobs amount to `number of available threads - 1`,
+    # to ensure that even if there would be enough RAM, the machine never ends up
+    # handling only heavy jobs at some point.
+    # This can have annoying sides effects, like lack of output in the console for several
+    # minutes, which can lead to a wrong detection of 'unresponsive' state by the build-bots e.g.
     #
-    # Currently, these settings applied to a 64GB/16threads linux machine will use, for a full build:
+    # Currently, these settings applied to a 64GB/16threads linux machine will use,
+    # for a full build:
     #   - release build:
     #      * RAM: typically less than 20%, with some peaks at 25%.
     #      * CPU: over 90% of usage on average over the whole build time.
@@ -1909,6 +1942,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
   endif()
 
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
+  # Matches both "Clang" & "AppleClang" on macOS.
 
   add_check_c_compiler_flags(
     C_WARNINGS
@@ -2016,7 +2050,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     CXX_WARN_NO_UNDEF_PREFIX -Wno-undef-prefix
   )
 
-elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
 
   add_check_c_compiler_flags(
     C_WARNINGS
@@ -2037,7 +2071,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
   # Disable numbered, false positives.
   string(APPEND C_WARNINGS " -wd188,186,144,913,556,858,597,177,1292,167,279,592,94,2722,3199")
   string(APPEND CXX_WARNINGS " -wd188,186,144,913,556,858,597,177,1292,167,279,592,94,2722,3199")
-elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
+elseif(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
   # most msvc warnings are C & C++
   set(_WARNINGS
     # warning level:
@@ -2127,8 +2161,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Make MSVC properly report the value of the __cplusplus preprocessor macro
 # Available MSVC 15.7 (1914) and up, without this it reports 199711L regardless
 # of the C++ standard chosen above.
+# In addition, for ARM64 devices, we need to tell MSVC to use the new preprocessor
+# This is because sse2neon requires it.
 if(MSVC)
   string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus")
+  if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+    string(APPEND CMAKE_CXX_FLAGS " /Zc:preprocessor")
+    string(APPEND CMAKE_C_FLAGS " /Zc:preprocessor")
+  endif()
 endif()
 
 # Visual Studio has all standards it supports available by default
@@ -2136,7 +2176,7 @@ endif()
 if(
   CMAKE_COMPILER_IS_GNUCC OR
   (CMAKE_C_COMPILER_ID MATCHES "Clang" AND (NOT MSVC)) OR
-  (CMAKE_C_COMPILER_ID MATCHES "Intel")
+  (CMAKE_C_COMPILER_ID STREQUAL "Intel")
 )
   # Use C11 + GNU extensions, works with GCC, Clang, ICC
   string(APPEND CMAKE_C_FLAGS " -std=gnu11")
@@ -2402,7 +2442,6 @@ if(FIRST_RUN)
   info_cfg_option(WITH_IMAGE_OPENJPEG)
 
   info_cfg_text("Audio:")
-  info_cfg_option(WITH_CODEC_AVI)
   info_cfg_option(WITH_CODEC_FFMPEG)
   info_cfg_option(WITH_CODEC_SNDFILE)
   info_cfg_option(WITH_COREAUDIO)

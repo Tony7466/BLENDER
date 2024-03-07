@@ -17,8 +17,6 @@ class NLA_HT_header(Header):
     def draw(self, context):
         layout = self.layout
 
-        st = context.space_data
-
         layout.template_header()
 
         NLA_MT_editor_menus.draw_collapsible(context, layout)
@@ -206,6 +204,7 @@ class NLA_MT_add(Menu):
 
 class NLA_MT_tracks(Menu):
     bl_label = "Track"
+    bl_translation_context = i18n_contexts.id_action
 
     def draw(self, _context):
         layout = self.layout

@@ -15,7 +15,8 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_simd.h"
-#include "BLI_strict_flags.h"
+
+#include "BLI_strict_flags.h" /* Keep last. */
 
 namespace blender::math {
 
@@ -297,7 +298,7 @@ BLI_INLINE void bilinear_fl_impl(const float *buffer,
       x2 = 0;
     }
   }
-  else if (x2 < 0 || x1 >= width) {
+  else if (border && (x2 < 0 || x1 >= width)) {
     copy_vn_fl(output, components, 0.0f);
     return;
   }
@@ -306,7 +307,7 @@ BLI_INLINE void bilinear_fl_impl(const float *buffer,
       y2 = 0;
     }
   }
-  else if (y2 < 0 || y1 >= height) {
+  else if (border && (y2 < 0 || y1 >= height)) {
     copy_vn_fl(output, components, 0.0f);
     return;
   }

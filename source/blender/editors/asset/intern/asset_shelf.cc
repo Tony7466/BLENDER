@@ -19,7 +19,7 @@
 #include "BKE_main.hh"
 #include "BKE_screen.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_screen_types.h"
 
@@ -658,8 +658,6 @@ static uiBut *add_tab_button(uiBlock &block, StringRefNull name)
       but_width,
       UI_UNIT_Y,
       nullptr,
-      0,
-      0,
       0,
       0,
       TIP_("Enable catalog, making contained assets visible in the asset shelf"));

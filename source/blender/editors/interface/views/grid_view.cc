@@ -154,8 +154,6 @@ void AbstractGridViewItem::add_grid_tile_button(uiBlock &block)
                                              nullptr,
                                              0,
                                              0,
-                                             0,
-                                             0,
                                              "");
 
   view_item_but_->view_item = reinterpret_cast<uiViewItemHandle *>(this);
@@ -300,8 +298,6 @@ void BuildOnlyVisibleButtonsHelper::add_spacer_button(uiBlock &block, const int 
              nullptr,
              0,
              0,
-             0,
-             0,
              "");
     remaining_rows -= row_count_this_iter;
   }
@@ -417,14 +413,12 @@ void PreviewGridItem::build_grid_tile(uiLayout &layout) const
   uiBut *but = uiDefBut(block,
                         UI_BTYPE_PREVIEW_TILE,
                         0,
-                        hide_label_ ? "" : label.c_str(),
+                        hide_label_ ? "" : label,
                         0,
                         0,
                         style.tile_width,
                         style.tile_height,
                         nullptr,
-                        0,
-                        0,
                         0,
                         0,
                         "");
