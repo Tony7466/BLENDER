@@ -349,6 +349,7 @@ static bke::CurvesGeometry build_sequential(bke::greasepencil::Drawing &drawing,
   bke::CurvesGeometry dst_curves(dst_points_num, dst_curves_num);
   Array<int> dst_offsets(dst_curves_num + 1);
   Array<int> dst_to_src_point(dst_points_num);
+  Array<int> dst_to_src_curve(dst_curves_num);
 
   dst_offsets[0] = 0;
 
@@ -402,6 +403,7 @@ static bke::CurvesGeometry build_sequential(bke::greasepencil::Drawing &drawing,
       }
     }
     dst_offsets[next_curve] = next_point;
+    dst_to_src_curve[next_curve - 1] = i;
     next_curve++;
   });
   weights.finish();
@@ -416,7 +418,11 @@ static bke::CurvesGeometry build_sequential(bke::greasepencil::Drawing &drawing,
 
   gather_attributes(
       src_attributes, bke::AttrDomain::Point, {}, {}, dst_to_src_point, dst_attributes);
+  gather_attributes(
+      src_attributes, bke::AttrDomain::Curve, {}, {}, dst_to_src_curve, dst_attributes);
 
+  dst_curves.update_curve_types();
+  
   return dst_curves;
 }
 
