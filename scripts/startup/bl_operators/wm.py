@@ -2725,7 +2725,7 @@ class WM_OT_batch_rename(Operator):
 
     @staticmethod
     def _data_type_from_context(context):
-        space_type = None if (context.space_data is None) else context.space_data.type
+        space_type = space_type = context.space_data and context.space_data.type
         space_type_mapping = {
             'SEQUENCE_EDITOR': 'SEQUENCE_STRIP',
             'NODE_EDITOR': 'NODE',
@@ -2938,18 +2938,18 @@ class WM_OT_batch_rename(Operator):
         space = context.space_data
         space_type = None if (space is None) else space.type
         space_type_mapping = {
-            'SEQUENCE_EDITOR': WM_OT_batch_rename._get_sequence_editor_data,
-            'NODE_EDITOR': WM_OT_batch_rename._get_node_editor_data,
-            'OUTLINER': WM_OT_batch_rename._get_outliner_data
+            'SEQUENCE_EDITOR': cls._get_sequence_editor_data,
+            'NODE_EDITOR': cls._get_node_editor_data,
+            'OUTLINER': cls._get_outliner_data
         }
         if space_type_mapping.get(space_type) is not None:
             return space_type_mapping[space_type](context, data_type, only_selected)
 
         # Unable to get data from the space_type. Try the mode next.
         mode_mapping = {
-            'POSE': WM_OT_batch_rename._get_bone_data,
-            'WEIGHT_PAINT': WM_OT_batch_rename._get_bone_data if context.pose_object else None,
-            'EDIT_ARMATURE': WM_OT_batch_rename._get_edit_bone_data,
+            'POSE': cls._get_bone_data,
+            'WEIGHT_PAINT': cls._get_bone_data if context.pose_object else None,
+            'EDIT_ARMATURE': cls._get_edit_bone_data,
         }
 
         if mode_mapping.get(mode) is not None:
@@ -2957,12 +2957,12 @@ class WM_OT_batch_rename(Operator):
 
         # Finish with data types.
         data_type_map = {
-            'OBJECT': WM_OT_batch_rename._get_object_data,
-            'COLLECTION': WM_OT_batch_rename._get_collection_data,
-            'MATERIAL': WM_OT_batch_rename._get_material_data,
-            'ACTION_CLIP': WM_OT_batch_rename._get_action_clip_data,
-            'SCENE': WM_OT_batch_rename._get_scene_data,
-            'BRUSH': WM_OT_batch_rename._get_brush_data,
+            'OBJECT': cls._get_object_data,
+            'COLLECTION': cls._get_collection_data,
+            'MATERIAL': cls._get_material_data,
+            'ACTION_CLIP': cls._get_action_clip_data,
+            'SCENE': cls._get_scene_data,
+            'BRUSH': cls._get_brush_data,
         }
 
         if data_type_map.get(data_type) is not None:
