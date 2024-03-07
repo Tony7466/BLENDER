@@ -529,7 +529,7 @@ bool AbstractTreeViewItem::set_collapsed(const bool collapsed)
 
 void AbstractTreeViewItem::uncollapse_by_default()
 {
-  BLI_assert_msg(get_tree_view().is_reconstructed() == false,
+  BLI_assert_msg(this->get_tree_view().is_reconstructed() == false,
                  "Default state should only be set while building the tree");
   BLI_assert(this->supports_collapsing());
   /* Set the open state. Note that this may be overridden later by #should_be_collapsed(). */
