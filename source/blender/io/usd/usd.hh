@@ -166,7 +166,7 @@ bool USD_import(bContext *C,
                 bool as_background_job,
                 ReportList *reports);
 
-int USD_get_version(void);
+int USD_get_version();
 
 /* USD Import and Mesh Cache interface. */
 
