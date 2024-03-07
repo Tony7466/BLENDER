@@ -237,8 +237,8 @@ static void dial_ghostarc_draw_incremental_angle(const float incremental_angle,
   /* Chop off excess full circles, draw an arc of ticks centered at current increment;
    * if there's no even division of circle by increment,
    * ends of the arc will move with the rotation */
-  const float start_offset = fmodf(offset + incremental_angle * (current_increment - total_increment / 2),
-                                M_PI * 2.0f);
+  const float start_offset = fmodf(
+      offset + incremental_angle * (current_increment - total_increment / 2), M_PI * 2.0f);
 
   float v[3] = {0};
   for (int i = 0; i < total_increment; i++) {
@@ -649,7 +649,7 @@ static void dial_3d_draw_util(const float matrix_final[4][4],
   }
 
   if (params->angle_increment) {
-   dial_ghostarc_draw_incremental_angle(
+    dial_ghostarc_draw_incremental_angle(
         params->angle_increment, params->angle_ofs, params->angle_delta);
   }
 

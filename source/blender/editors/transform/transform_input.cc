@@ -187,7 +187,7 @@ static void InputAngle(TransInfo * /*t*/, MouseInput *mi, const double mval[2], 
     if (cross_v2v2(dir_prev, dir_curr) > 0.0f) {
       dphi = -dphi;
     }
-    
+
     data->angle += double(dphi) * (mi->precision ? double(mi->precision_factor) : 1.0);
 
     data->mval_prev[0] = mval[0];

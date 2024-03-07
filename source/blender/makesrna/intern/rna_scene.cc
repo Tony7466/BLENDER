@@ -3521,19 +3521,16 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "snap_angle_increment_2d", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "snap_angle_increment_2d");
   RNA_def_property_ui_text(
-      prop,
-      "Rotation Increment",
-      "Angle used for rotation increments in 2D editors");
+      prop, "Rotation Increment", "Angle used for rotation increments in 2D editors");
   RNA_def_property_range(prop, 0, M_PI);
   RNA_def_property_ui_range(prop, 0.0, M_PI, 15, 5);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "snap_angle_increment_2d_precision", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "snap_angle_increment_2d_precision");
-  RNA_def_property_ui_text(
-      prop,
-      "Rotation Precision Increment",
-      "Precision Angle used for rotation increments in 2D editors");
+  RNA_def_property_ui_text(prop,
+                           "Rotation Precision Increment",
+                           "Precision Angle used for rotation increments in 2D editors");
   RNA_def_property_range(prop, 0, M_PI);
   RNA_def_property_ui_range(prop, 0.0, M_PI, 15, 5);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
@@ -3541,19 +3538,16 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   prop = RNA_def_property(srna, "snap_angle_increment_3d", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "snap_angle_increment_3d");
   RNA_def_property_ui_text(
-      prop,
-      "Rotation Increment",
-      "Angle used for rotation increments in 3D editors");
+      prop, "Rotation Increment", "Angle used for rotation increments in 3D editors");
   RNA_def_property_range(prop, 0, M_PI);
   RNA_def_property_ui_range(prop, 0.0, M_PI, 15, 5);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "snap_angle_increment_3d_precision", PROP_FLOAT, PROP_ANGLE);
   RNA_def_property_float_sdna(prop, nullptr, "snap_angle_increment_3d_precision");
-  RNA_def_property_ui_text(
-      prop,
-      "Rotation Precision Increment",
-      "Precision Angle used for rotation increments in 3D editors");
+  RNA_def_property_ui_text(prop,
+                           "Rotation Precision Increment",
+                           "Precision Angle used for rotation increments in 3D editors");
   RNA_def_property_range(prop, 0, M_PI);
   RNA_def_property_ui_range(prop, 0.0, M_PI, 15, 5);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */

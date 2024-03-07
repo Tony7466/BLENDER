@@ -2983,17 +2983,17 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
   }
 
   if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 9)) {
-    if (!DNA_struct_member_exists(fd->filesdna, "ToolSettings", "float", "snap_angle_increment_2d")) {
-      const float default_snap_angle_increment = DEG2RADF(15.0f);
-      const float default_snap_angle_increment_precision = DEG2RADF(5.0f);
-        LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
-            scene->toolsettings->snap_angle_increment_2d = default_snap_angle_increment;
-            scene->toolsettings->snap_angle_increment_3d = default_snap_angle_increment;
-            scene->toolsettings->snap_angle_increment_2d_precision = default_snap_angle_increment_precision;
-            scene->toolsettings->snap_angle_increment_3d_precision = default_snap_angle_increment_precision;
+    const float default_snap_angle_increment = DEG2RADF(15.0f);
+    const float default_snap_angle_increment_precision = DEG2RADF(5.0f);
+    LISTBASE_FOREACH (Scene *, scene, &bmain->scenes) {
+      scene->toolsettings->snap_angle_increment_2d = default_snap_angle_increment;
+      scene->toolsettings->snap_angle_increment_3d = default_snap_angle_increment;
+      scene->toolsettings->snap_angle_increment_2d_precision =
+          default_snap_angle_increment_precision;
+      scene->toolsettings->snap_angle_increment_3d_precision =
+          default_snap_angle_increment_precision;
     }
   }
-}
 
   /**
    * Always bump subversion in BKE_blender_version.h when adding versioning

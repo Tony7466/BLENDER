@@ -971,7 +971,6 @@ void initSnapAngleIncrements(TransInfo *t)
     t->snap[0] = t->settings->snap_angle_increment_2d;
     t->snap[1] = t->settings->snap_angle_increment_2d_precision;
   }
-
 }
 
 static void setSnappingCallback(TransInfo *t)
