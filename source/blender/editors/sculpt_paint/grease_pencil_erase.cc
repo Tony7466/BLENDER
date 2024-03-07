@@ -391,7 +391,7 @@ struct EraseOperationExecutor {
       /* The src_next_point index increments for all points except the last, where it is set to the
        * first point index. This can be used to detect the curve end from the source index alone.
        */
-      return src_point < src_next_point;
+      return is_src_point && src_point >= src_next_point;
     }
   };
 
@@ -558,19 +558,17 @@ struct EraseOperationExecutor {
       threading::parallel_for(dst.curves_range(), 4096, [&](const IndexRange dst_curves) {
         for (const int dst_curve : dst_curves) {
           const IndexRange dst_curve_points = dst_points_by_curve[dst_curve];
-          const PointTransferData &point_transfer = dst_transfer_data[dst_curve_points.first()];
-          if (point_transfer.is_cut) {
+          const PointTransferData &start_point_transfer =
+              dst_transfer_data[dst_curve_points.first()];
+          const PointTransferData &end_point_transfer = dst_transfer_data[dst_curve_points.last()];
+
+          if (start_point_transfer.is_cut) {
             dst_start_caps.span[dst_curve] = GP_STROKE_CAP_TYPE_FLAT;
           }
-
-          if (dst_curve != dst_curves.last()) {
-            /* End cap becomes flat if the next point is cut. */
-            const IndexRange next_dst_curve_points = dst_points_by_curve[dst_curve + 1];
-            const PointTransferData &next_point_transfer =
-                dst_transfer_data[next_dst_curve_points.first()];
-            if (!point_transfer.is_src_end_point() && next_point_transfer.is_cut) {
-              dst_end_caps.span[dst_curve] = GP_STROKE_CAP_TYPE_FLAT;
-            }
+          /* The is_cut flag does not work for end points, but any end point that isn't the source
+           * point must also be a cut. */
+          if (!end_point_transfer.is_src_end_point()) {
+            dst_end_caps.span[dst_curve] = GP_STROKE_CAP_TYPE_FLAT;
           }
         }
       });
