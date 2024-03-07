@@ -2689,7 +2689,7 @@ class VIEW3D_PT_tools_grease_pencil_fill_options(View3DPanel, Panel):
         layout.use_property_split = True
         layout.use_property_decorate = False
 
-        tool_settings = context.scene.tool_settings
+        tool_settings = context.tool_settings
         brush = tool_settings.gpencil_paint.brush
         if brush is None:
             return
@@ -2717,7 +2717,6 @@ class VIEW3D_PT_tools_grease_pencil_fill_options(View3DPanel, Panel):
                 text="",
             )
         
-        if is_flood_fill:
             col.separator()
             col.prop(gp_settings, "fill_simplify_level", text="Simplify")
         

@@ -177,6 +177,7 @@ bool editable_grease_pencil_poll(bContext *C);
 bool active_grease_pencil_layer_poll(bContext *C);
 bool editable_grease_pencil_point_selection_poll(bContext *C);
 bool grease_pencil_painting_poll(bContext *C);
+bool grease_pencil_painting_fill_poll(bContext *C);
 
 struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;
@@ -189,6 +190,9 @@ struct MutableDrawingInfo {
   const int frame_number;
   const float multi_frame_falloff;
 };
+Array<int> get_frame_numbers_for_layer(const bke::greasepencil::Layer &layer,
+                                       const int current_frame,
+                                       const bool use_multi_frame_editing);
 Vector<MutableDrawingInfo> retrieve_editable_drawings(const Scene &scene,
                                                       GreasePencil &grease_pencil);
 Vector<MutableDrawingInfo> retrieve_editable_drawings_with_falloff(const Scene &scene,

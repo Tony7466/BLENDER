@@ -232,9 +232,9 @@ static std::pair<int, int> get_minmax_selected_frame_numbers(const GreasePencil 
   return std::pair<int, int>(frame_min, frame_max);
 }
 
-static Array<int> get_frame_numbers_for_layer(const bke::greasepencil::Layer &layer,
-                                              const int current_frame,
-                                              const bool use_multi_frame_editing)
+Array<int> get_frame_numbers_for_layer(const bke::greasepencil::Layer &layer,
+                                       const int current_frame,
+                                       const bool use_multi_frame_editing)
 {
   Vector<int> frame_numbers;
   if (use_multi_frame_editing) {
@@ -616,8 +616,7 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
                                      const bool get_stroke_flag)
 {
   /* Get viewport projection matrix and evaluated GP object. */
-  float4x4 projection;
-  ED_view3d_ob_project_mat_get(vc->rv3d, ob, projection.ptr());
+  float4x4 projection = ED_view3d_ob_project_mat_get(vc->rv3d, ob);
   const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, ob);
 
   /* Count total number of editable curves and points in given Grease Pencil drawings. */
@@ -660,7 +659,7 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
       VArray<int> materials;
       if (get_stroke_flag) {
         materials = *curves.attributes().lookup_or_default<int>(
-            "material_index", ATTR_DOMAIN_CURVE, 0);
+            "material_index", bke::AttrDomain::Curve, 0);
       }
 
       /* Get the initial point index in the contiguous 2D point array for the curves in this
@@ -688,11 +687,9 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
 
         /* Loop all stroke points. */
         for (const int point_i : points) {
-          float2 pos;
-
           /* Convert point to 2D. */
-          ED_view3d_project_float_v2_m4(
-              vc->region, deformation.positions[point_i], pos, projection.ptr());
+          const float2 pos = ED_view3d_project_float_v2_m4(
+              vc->region, deformation.positions[point_i], projection);
 
           /* Store 2D point in contiguous array. */
           cv2d.points_2d[point_contiguous] = pos;

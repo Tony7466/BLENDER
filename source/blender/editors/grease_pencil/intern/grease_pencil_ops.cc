@@ -87,8 +87,8 @@ bool grease_pencil_painting_fill_poll(bContext *C)
     return false;
   }
 
+  /* FIXME: Can we avoid explicitly checking the tool here? */
   ToolSettings *ts = CTX_data_tool_settings(C);
-
   return (ts->gp_paint->paint.brush->gpencil_tool == GPAINT_TOOL_FILL);
 }
 
@@ -108,7 +108,8 @@ static void keymap_grease_pencil_paint_mode(wmKeyConfig *keyconf)
 
 static void keymap_grease_pencil_painting_fill(wmKeyConfig *keyconf)
 {
-  wmKeyMap *keymap = WM_keymap_ensure(keyconf, "Grease Pencil Paint Mode (Fill)", 0, 0);
+  wmKeyMap *keymap = WM_keymap_ensure(
+      keyconf, "Grease Pencil Paint Mode (Fill)", SPACE_EMPTY, RGN_TYPE_WINDOW);
   keymap->poll = grease_pencil_painting_fill_poll;
 }
 
@@ -155,4 +156,5 @@ void ED_keymap_grease_pencil(wmKeyConfig *keyconf)
   using namespace blender::ed::greasepencil;
   keymap_grease_pencil_edit_mode(keyconf);
   keymap_grease_pencil_paint_mode(keyconf);
+  keymap_grease_pencil_painting_fill(keyconf);
 }

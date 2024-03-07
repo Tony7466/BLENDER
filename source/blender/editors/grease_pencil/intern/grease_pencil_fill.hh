@@ -11,10 +11,11 @@
 /* DEBUG: show developer extra's in viewport and console. */
 /* #define GP_FILL_DEBUG_MODE */
 
-#include "BKE_brush.hh"
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_report.h"
+#include "BKE_material.h"
+#include "BKE_paint.hh"
+#include "BKE_report.hh"
 
 #include "BLI_kdtree.h"
 
@@ -39,7 +40,7 @@
 #include "grease_pencil_fill_vector.hh"
 
 #ifdef GP_FILL_DEBUG_MODE
-#  include "BLF_api.h"
+#  include "BLF_api.hh"
 #  include "UI_interface.hh"
 #  include "UI_resources.hh"
 #endif

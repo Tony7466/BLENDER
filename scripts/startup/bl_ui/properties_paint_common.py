@@ -1404,33 +1404,34 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
 
     grease_pencil_tool = brush.gpencil_tool
 
-    UnifiedPaintPanel.prop_unified(
-        layout,
-        context,
-        brush,
-        "size",
-        unified_name="use_unified_size",
-        pressure_name="use_pressure_size",
-        text="Radius",
-        slider=True,
-        header=compact,
-    )
+    if grease_pencil_tool != 'FILL':    
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "size",
+            unified_name="use_unified_size",
+            pressure_name="use_pressure_size",
+            text="Radius",
+            slider=True,
+            header=compact,
+        )
 
-    if brush.use_pressure_size and not compact:
-        col = layout.column()
-        col.template_curve_mapping(gp_settings, "curve_sensitivity", brush=True,
-                                   use_negative_slope=True)
+        if brush.use_pressure_size and not compact:
+            col = layout.column()
+            col.template_curve_mapping(gp_settings, "curve_sensitivity", brush=True,
+                                    use_negative_slope=True)
 
-    UnifiedPaintPanel.prop_unified(
-        layout,
-        context,
-        brush,
-        "strength",
-        unified_name="use_unified_strength",
-        pressure_name="use_pressure_strength",
-        slider=True,
-        header=compact,
-    )
+        UnifiedPaintPanel.prop_unified(
+            layout,
+            context,
+            brush,
+            "strength",
+            unified_name="use_unified_strength",
+            pressure_name="use_pressure_strength",
+            slider=True,
+            header=compact,
+        )
 
     if brush.use_pressure_strength and not compact:
         col = layout.column()
@@ -1449,7 +1450,12 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
         if gp_settings.eraser_mode == "HARD":
             layout.prop(gp_settings, "use_keep_caps_eraser")
         layout.prop(gp_settings, "use_active_layer_only")
-
+    elif grease_pencil_tool == 'FILL':
+        if brush.gpencil_settings.fill_mode == 'FLOOD':
+            layout.prop(brush.gpencil_settings, "fill_factor")
+        layout.prop(brush.gpencil_settings, "dilate")
+        layout.prop(brush, "size", text="Thickness")
+        layout.popover("VIEW3D_PT_tools_grease_pencil_fill_options")
 
 def brush_basic_gpencil_sculpt_settings(layout, _context, brush, *, compact=False):
     if brush is None:

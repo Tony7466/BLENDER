@@ -637,14 +637,14 @@ static void create_fill_geometry(FillData *fd)
   /* Ensure active frame (autokey is on, we checked on operator invoke). */
   const bke::greasepencil::Layer *active_layer = fd->grease_pencil->get_active_layer();
   if (!fd->grease_pencil->get_active_layer()->frames().contains(fd->frame_number)) {
-    bke::greasepencil::Layer &active_layer = *fd->grease_pencil->get_active_layer_for_write();
+    bke::greasepencil::Layer &active_layer = *fd->grease_pencil->get_active_layer();
 
     /* For additive drawing, we duplicate the frame that's currently visible and insert it at the
      * current frame. */
     bool frame_created = false;
     if (fd->additive_drawing) {
       if (!fd->grease_pencil->insert_duplicate_frame(
-              active_layer, active_layer.frame_key_at(fd->frame_number), fd->frame_number, false))
+              active_layer, *active_layer.frame_key_at(fd->frame_number), fd->frame_number, false))
       {
         frame_created = true;
       }
@@ -726,17 +726,18 @@ static void create_fill_geometry(FillData *fd)
 
   drawing.vertex_colors_for_write().slice(new_points_range).fill(vertex_color_stroke);
   bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
-      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", ATTR_DOMAIN_CURVE);
+      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
+                                                               bke::AttrDomain::Curve);
   fill_colors.span.slice(new_curves_range).fill(vertex_color_fill);
   fill_colors.finish();
 
   /* Set material. */
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
       fd->vc.bmain, fd->vc.obact, fd->brush);
-  const int material_index = BKE_grease_pencil_object_material_index_get(fd->vc.obact, material);
+  const int material_index = BKE_object_material_index_get(fd->vc.obact, material);
 
   bke::SpanAttributeWriter<int> materials = attributes.lookup_or_add_for_write_span<int>(
-      "material_index", ATTR_DOMAIN_CURVE);
+      "material_index", bke::AttrDomain::Curve);
   materials.span.slice(new_curves_range).fill(material_index);
   materials.finish();
 
@@ -757,7 +758,7 @@ static void create_fill_geometry(FillData *fd)
         bke::GSpanAttributeWriter attribute = attributes.lookup_for_write_span(id);
         const CPPType &type = attribute.span.type();
         GMutableSpan new_data = attribute.span.slice(
-            attribute.domain == ATTR_DOMAIN_POINT ? new_points_range : new_curves_range);
+            attribute.domain == bke::AttrDomain::Point ? new_points_range : new_curves_range);
         type.fill_assign_n(type.default_value(), new_data.data(), new_data.size());
         attribute.finish();
         return true;
@@ -923,7 +924,8 @@ static bool segments_have_overlap(EdgeSegment *head, EdgeSegment *tail, FillData
   if (head->curve_index_2d == tail->curve_index_2d) {
     /* Check overlap in curve points. */
     if (head->point_range[0] <= tail->point_range[1] &&
-        head->point_range[1] >= tail->point_range[0]) {
+        head->point_range[1] >= tail->point_range[0])
+    {
       remove_overlapping_edge_tail_points(head, tail, head->point_range, tail->point_range);
       return true;
     }

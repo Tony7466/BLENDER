@@ -804,7 +804,7 @@ static void get_fill_edge_layers(FillData *fd,
     }
 
     if (add) {
-      if (const Drawing *drawing = fd->grease_pencil->get_editable_drawing_at(layers[layer_index],
+      if (const Drawing *drawing = fd->grease_pencil->get_editable_drawing_at(*layers[layer_index],
                                                                               frame_number))
       {
         r_drawings.append(drawing);
@@ -855,7 +855,7 @@ static bool get_drawings_and_gap_closures_at_frame(FillData *fd, const int frame
 /**
  * Initialize the fill operator data.
  */
-static bool operator_init(bContext *C, wmOperator *op)
+static bool fill_init(bContext *C, wmOperator *op)
 {
   FillData *fd = static_cast<FillData *>(op->customdata);
 
@@ -909,7 +909,7 @@ static bool operator_init(bContext *C, wmOperator *op)
 /**
  * Clean up the fill operator data.
  */
-static void operator_exit(bContext *C, wmOperator *op)
+static void fill_exit(bContext *C, wmOperator *op)
 {
   WM_cursor_modal_restore(CTX_wm_window(C));
 
@@ -930,7 +930,7 @@ static void operator_exit(bContext *C, wmOperator *op)
   }
 }
 
-static bool fill_do(FillData *fd)
+static bool fill_exec(FillData *fd)
 {
   /* DEBUG: measure time. */
   auto t1 = std::chrono::high_resolution_clock::now();
@@ -990,7 +990,7 @@ static bool fill_do(FillData *fd)
  * - Change gap closure radius
  * - Perform the fill at second mouse click
  */
-static int operator_modal(bContext *C, wmOperator *op, const wmEvent *event)
+static int fill_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
   FillData *fd = static_cast<FillData *>(op->customdata);
   int modal_state = OPERATOR_RUNNING_MODAL;
@@ -1031,7 +1031,7 @@ static int operator_modal(bContext *C, wmOperator *op, const wmEvent *event)
       fd->mouse_pos[1] = float(event->mval[1]);
 
       /* Perform the fill operation. */
-      if (fill_do(fd)) {
+      if (fill_exec(fd)) {
         modal_state = OPERATOR_FINISHED;
       }
       else {
@@ -1046,12 +1046,12 @@ static int operator_modal(bContext *C, wmOperator *op, const wmEvent *event)
 
   switch (modal_state) {
     case OPERATOR_FINISHED:
-      operator_exit(C, op);
+      fill_exit(C, op);
       WM_event_add_notifier(C, NC_GPENCIL | NA_EDITED, nullptr);
       break;
 
     case OPERATOR_CANCELLED:
-      operator_exit(C, op);
+      fill_exit(C, op);
       break;
 
     default:
@@ -1061,15 +1061,15 @@ static int operator_modal(bContext *C, wmOperator *op, const wmEvent *event)
   return modal_state;
 }
 
-static void operator_cancel(bContext *C, wmOperator *op)
+static void fill_cancel(bContext *C, wmOperator *op)
 {
-  operator_exit(C, op);
+  fill_exit(C, op);
 }
 
 /**
  * Invoke the fill operator at first mouse click in the viewport.
  */
-static int operator_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static int fill_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   const Scene *scene = CTX_data_scene(C);
   const Object *object = CTX_data_active_object(C);
@@ -1099,8 +1099,8 @@ static int operator_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*
   /* Init tool data. */
   FillData *fd = MEM_new<FillData>(__func__);
   op->customdata = fd;
-  if (!operator_init(C, op)) {
-    operator_exit(C, op);
+  if (!fill_init(C, op)) {
+    fill_exit(C, op);
     BKE_report(
         op->reports,
         RPT_ERROR,
@@ -1126,10 +1126,10 @@ static void GREASE_PENCIL_OT_fill(wmOperatorType *ot)
   ot->idname = __func__;
   ot->description = "Fill a shape formed by strokes";
 
-  ot->poll = active_grease_pencil_poll;
-  ot->invoke = operator_invoke;
-  ot->modal = operator_modal;
-  ot->cancel = operator_cancel;
+  ot->poll = grease_pencil_painting_fill_poll;
+  ot->invoke = fill_invoke;
+  ot->modal = fill_modal;
+  ot->cancel = fill_cancel;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
