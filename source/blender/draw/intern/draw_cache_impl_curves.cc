@@ -418,9 +418,10 @@ static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curv
 
   bezier_curves.foreach_index([&](const int64_t src_i, const int64_t dst_i) {
     IndexRange bezier_points = points_by_curve[src_i];
+    const int index_shift = curves.points_num() - bezier_points.first() +
+                            bezier_offsets[dst_i].first();
     for (const int point : bezier_points) {
-      const int point_left_i = curves.points_num() + point - bezier_points.first() +
-                               bezier_offsets[dst_i].first();
+      const int point_left_i = index_shift + point;
       GPU_indexbuf_add_generic_vert(&elb, point_left_i);
       GPU_indexbuf_add_generic_vert(&elb, point);
       GPU_indexbuf_add_primitive_restart(&elb);
