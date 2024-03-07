@@ -160,7 +160,7 @@ static void bpy_cli_command_free(PyObject *py_exec_fn)
 /** \name Internal Class
  * \{ */
 
-class BPyCommandHandler : CommandHandler {
+class BPyCommandHandler : public CommandHandler {
  public:
   BPyCommandHandler(const std::string &id, PyObject *py_exec_fn)
       : CommandHandler(id), py_exec_fn(py_exec_fn)
@@ -236,12 +236,14 @@ static PyObject *bpy_cli_command_register(PyObject * /*self*/, PyObject *args, P
   }
 
   const char *id = PyUnicode_AsUTF8(py_id);
-  BPyCommandHandler *cmd = MEM_new<BPyCommandHandler>(
-      __func__, std::string(id), Py_INCREF_RET(py_exec_fn));
 
-  BKE_blender_cli_command_register((CommandHandler *)cmd);
+  std::unique_ptr<CommandHandler> cmd_ptr = std::make_unique<BPyCommandHandler>(
+      std::string(id), Py_INCREF_RET(py_exec_fn));
+  void *cmd_p = cmd_ptr.get();
 
-  return PyCapsule_New(cmd, bpy_cli_command_capsule_name, nullptr);
+  BKE_blender_cli_command_register(std::move(cmd_ptr));
+
+  return PyCapsule_New(cmd_p, bpy_cli_command_capsule_name, nullptr);
 }
 
 PyDoc_STRVAR(

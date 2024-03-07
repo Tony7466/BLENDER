@@ -14,6 +14,7 @@
 
 #include "BLI_compiler_attrs.h"
 
+#include <memory>
 #include <string>
 
 /**
@@ -39,7 +40,7 @@ class CommandHandler {
 /**
  * \param cmd: The memory for a command type (ownership is transferred).
  */
-void BKE_blender_cli_command_register(CommandHandler *cmd);
+void BKE_blender_cli_command_register(std::unique_ptr<CommandHandler> cmd);
 
 /**
  * Unregister a previously registered command.

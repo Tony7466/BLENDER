@@ -35,15 +35,7 @@
 /** \name Internal API
  * \{ */
 
-class CommandHandlerDeleter {
- public:
-  void operator()(CommandHandler *cmd)
-  {
-    MEM_delete(cmd);
-  }
-};
-
-using CommandHandlerPtr = std::unique_ptr<CommandHandler, CommandHandlerDeleter>;
+using CommandHandlerPtr = std::unique_ptr<CommandHandler>;
 
 /**
  * All registered command handlers.
@@ -79,7 +71,7 @@ static int blender_cli_command_index(const CommandHandler *cmd)
 /** \name Public API
  * \{ */
 
-void BKE_blender_cli_command_register(CommandHandler *cmd)
+void BKE_blender_cli_command_register(std::unique_ptr<CommandHandler> cmd)
 {
   bool is_duplicate = false;
   if (CommandHandler *cmd_exists = blender_cli_command_lookup(cmd->id)) {
@@ -89,7 +81,7 @@ void BKE_blender_cli_command_register(CommandHandler *cmd)
     is_duplicate = true;
   }
   cmd->is_duplicate = is_duplicate;
-  g_command_handlers.append(CommandHandlerPtr(cmd));
+  g_command_handlers.append(std::move(cmd));
 }
 
 bool BKE_blender_cli_command_unregister(CommandHandler *cmd)
