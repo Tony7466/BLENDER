@@ -112,7 +112,7 @@ void OVERLAY_edit_mesh_cache_init(OVERLAY_Data *vedata)
   {
     /* Normals */
     state = DRW_STATE_WRITE_DEPTH | DRW_STATE_WRITE_COLOR | DRW_STATE_DEPTH_LESS_EQUAL |
-            (pd->edit_mesh.do_zbufclip ? DRW_STATE_BLEND_ALPHA : DRWState(0));
+            DRW_STATE_BLEND_ALPHA;
     DRW_PASS_CREATE(psl->edit_mesh_normals_ps, state | pd->clipping_state);
 
     sh = OVERLAY_shader_edit_mesh_normal();

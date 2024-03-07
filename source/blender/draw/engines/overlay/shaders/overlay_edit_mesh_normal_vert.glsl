@@ -16,7 +16,7 @@ void main()
   GPU_INTEL_VERTEX_SHADER_WORKAROUND
 
   /* Avoid undefined behavior after return. */
-  finalColor = vec4(0.0);
+  interp.final_color = vec4(0.0);
   gl_Position = vec4(0.0);
 
   vec3 nor;
@@ -26,21 +26,21 @@ void main()
       return;
     }
     nor = lnor.xyz;
-    finalColor = colorLNormal;
+    interp.final_color = colorLNormal;
   }
   else if (!all(equal(vnor.xyz, vec3(0)))) {
     if (vnor.w < 0.0) {
       return;
     }
     nor = vnor.xyz;
-    finalColor = colorVNormal;
+    interp.final_color = colorVNormal;
   }
   else {
     nor = norAndFlag.xyz;
     if (all(equal(nor, vec3(0)))) {
       return;
     }
-    finalColor = colorNormal;
+    interp.final_color = colorNormal;
   }
 
   vec3 n = normalize(normal_object_to_world(nor));
@@ -66,7 +66,7 @@ void main()
 
   gl_Position = point_world_to_ndc(world_pos);
 
-  finalColor.a *= (test_occlusion()) ? alpha : 1.0;
+  interp.final_color.a *= (test_occlusion()) ? alpha : 1.0;
 
   view_clipping_distances(world_pos);
 }

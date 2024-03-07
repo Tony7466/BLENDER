@@ -8,6 +8,10 @@ GPU_SHADER_INTERFACE_INFO(overlay_edit_flat_color_iface, "").flat(Type::VEC4, "f
 GPU_SHADER_INTERFACE_INFO(overlay_edit_smooth_color_iface, "").smooth(Type::VEC4, "finalColor");
 GPU_SHADER_INTERFACE_INFO(overlay_edit_nopersp_color_iface, "")
     .no_perspective(Type::VEC4, "finalColor");
+GPU_SHADER_INTERFACE_INFO(overlay_edit_mesh_normale_iface, "interp")
+    .smooth(Type::VEC4, "final_color");
+GPU_SHADER_INTERFACE_INFO(overlay_edit_mesh_normal_noperspective_iface, "interp_noperspective")
+    .no_perspective(Type::FLOAT, "smoothline");
 
 /* -------------------------------------------------------------------- */
 /** \name Edit Mesh
@@ -159,10 +163,14 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_normal)
     .push_constant(Type::FLOAT, "normalScreenSize")
     .push_constant(Type::FLOAT, "alpha")
     .push_constant(Type::BOOL, "isConstantScreenSizeNormals")
-    .vertex_out(overlay_edit_flat_color_iface)
+    .vertex_out(overlay_edit_mesh_normale_iface)
+    .geometry_layout(PrimitiveIn::LINES, PrimitiveOut::TRIANGLE_STRIP, 4)
+    .geometry_out(overlay_edit_mesh_normale_iface)
+    .geometry_out(overlay_edit_mesh_normal_noperspective_iface)
     .fragment_out(0, Type::VEC4, "fragColor")
     .vertex_source("overlay_edit_mesh_normal_vert.glsl")
-    .fragment_source("overlay_varying_color.glsl")
+    .geometry_source("overlay_edit_mesh_normal_geom.glsl")
+    .fragment_source("overlay_edit_mesh_normal_frag.glsl")
     .additional_info("draw_modelmat_instanced_attr", "draw_globals");
 
 GPU_SHADER_INTERFACE_INFO(overlay_edit_mesh_analysis_iface, "").smooth(Type::VEC4, "weightColor");
