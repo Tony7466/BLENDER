@@ -936,7 +936,7 @@ static const char arg_handle_command_set_doc[] =
 static int arg_handle_command_set(int argc, const char **argv, void * /*data*/)
 {
   if (argc < 2) {
-    fprintf(stderr, "%s requires one argument\n", argv[0]);
+    fprintf(stderr, "%s requires at least one argument\n", argv[0]);
     exit(EXIT_FAILURE);
     BLI_assert_unreachable();
   }
