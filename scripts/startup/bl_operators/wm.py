@@ -2725,7 +2725,7 @@ class WM_OT_batch_rename(Operator):
 
     @staticmethod
     def _data_type_from_context(context):
-        space_type = space_type = context.space_data and context.space_data.type
+        space_type = context.space_data and context.space_data.type
         space_type_mapping = {
             'SEQUENCE_EDITOR': 'SEQUENCE_STRIP',
             'NODE_EDITOR': 'NODE',
