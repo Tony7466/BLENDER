@@ -7,6 +7,7 @@
  */
 
 #include <iostream>
+#include <optional>
 
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
@@ -49,6 +50,7 @@
 #include "DNA_ID.h"
 #include "DNA_ID_enums.h"
 #include "DNA_brush_types.h"
+#include "DNA_gpencil_modifier_types.h"
 #include "DNA_grease_pencil_types.h"
 #include "DNA_material_types.h"
 #include "DNA_modifier_types.h"
@@ -87,6 +89,7 @@ static void grease_pencil_init_data(ID *id)
 }
 
 static void grease_pencil_copy_data(Main * /*bmain*/,
+                                    std::optional<Library *> /*owner_library*/,
                                     ID *id_dst,
                                     const ID *id_src,
                                     const int /*flag*/)
@@ -682,8 +685,6 @@ Layer::Layer(const Layer &other) : Layer()
 
   /* TODO: duplicate masks. */
 
-  /* Note: We do not duplicate the frame storage since it is only needed for writing to file. */
-
   this->blend_mode = other.blend_mode;
   this->opacity = other.opacity;
 
@@ -694,8 +695,12 @@ Layer::Layer(const Layer &other) : Layer()
   copy_v3_v3(this->rotation, other.rotation);
   copy_v3_v3(this->scale, other.scale);
 
+  /* Note: We do not duplicate the frame storage since it is only needed for writing to file. */
   this->runtime->frames_ = other.runtime->frames_;
   this->runtime->sorted_keys_cache_ = other.runtime->sorted_keys_cache_;
+  /* Tag the frames map, so the frame storage is recreated once the DNA is saved.*/
+  this->tag_frames_map_changed();
+
   /* TODO: what about masks cache? */
 }
 
@@ -2769,5 +2774,3 @@ static void write_layer_tree(GreasePencil &grease_pencil, BlendWriter *writer)
   grease_pencil.root_group_ptr->wrap().prepare_for_dna_write();
   write_layer_tree_group(writer, grease_pencil.root_group_ptr);
 }
-
-/** \} */
