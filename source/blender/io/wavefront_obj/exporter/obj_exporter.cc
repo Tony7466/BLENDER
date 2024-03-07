@@ -10,7 +10,6 @@
 #include <memory>
 #include <system_error>
 
-#include "BKE_collection.hh"
 #include "BKE_context.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_report.hh"
@@ -23,6 +22,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#include "DNA_collection_types.h"
 #include "DNA_scene_types.h"
 
 #include "ED_object.hh"
@@ -37,35 +37,29 @@ namespace blender::io::obj {
 
 OBJDepsgraph::OBJDepsgraph(const bContext *C,
                            const eEvaluationMode eval_mode,
-                           const char *collection_name)
+                           Collection *collection)
 {
   Scene *scene = CTX_data_scene(C);
   Main *bmain = CTX_data_main(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  depsgraph_ = DEG_graph_new(bmain, scene, view_layer, eval_mode);
-  needs_free_ = true;
 
-  if (collection_name[0] != '\0') {
-    Collection *collection = reinterpret_cast<Collection *>(
-        BKE_libblock_find_name(bmain, ID_GR, collection_name));
-    Base *base = BKE_collection_or_layer_objects(scene, view_layer, collection);
-    const bool for_render = (DEG_get_mode(depsgraph_) == DAG_EVAL_RENDER);
-    const int base_flag = (for_render) ? BASE_ENABLED_RENDER : BASE_ENABLED_VIEWPORT;
-
-    blender::Vector<ID *> ids;
-    for (; base; base = base->next) {
-      if (base->flag & base_flag) {
-        ids.append(&base->object->id);
-      }
-    }
-
-    DEG_graph_build_from_ids(depsgraph_, ids.data(), ids.size());
+  /* If a collection was provided, use it. */
+  if (collection) {
+    depsgraph_ = DEG_graph_new(bmain, scene, view_layer, eval_mode);
+    needs_free_ = true;
+    DEG_graph_build_from_collection(depsgraph_, collection);
+    BKE_scene_graph_evaluated_ensure(depsgraph_, bmain);
+  }
+  else if (eval_mode == DAG_EVAL_RENDER) {
+    depsgraph_ = DEG_graph_new(bmain, scene, view_layer, eval_mode);
+    needs_free_ = true;
+    DEG_graph_build_for_all_objects(depsgraph_);
+    BKE_scene_graph_evaluated_ensure(depsgraph_, bmain);
   }
   else {
-    DEG_graph_build_for_all_objects(depsgraph_);
+    depsgraph_ = CTX_data_ensure_evaluated_depsgraph(C);
+    needs_free_ = false;
   }
-
-  BKE_scene_graph_evaluated_ensure(depsgraph_, bmain);
 }
 
 OBJDepsgraph::~OBJDepsgraph()
@@ -336,7 +330,22 @@ bool append_frame_to_filename(const char *filepath, const int frame, char *r_fil
 void exporter_main(bContext *C, const OBJExportParams &export_params)
 {
   ED_object_mode_set(C, OB_MODE_OBJECT);
-  OBJDepsgraph obj_depsgraph(C, export_params.export_eval_mode, export_params.collection);
+
+  Collection *collection = nullptr;
+  if (strlen(export_params.collection) > 0) {
+    Main *bmain = CTX_data_main(C);
+    collection = reinterpret_cast<Collection *>(
+        BKE_libblock_find_name(bmain, ID_GR, export_params.collection));
+    if (!collection) {
+      BKE_reportf(export_params.reports,
+                  RPT_ERROR,
+                  "OBJ Export: Unable to find collection %s",
+                  export_params.collection);
+      return;
+    }
+  }
+
+  OBJDepsgraph obj_depsgraph(C, export_params.export_eval_mode, collection);
   Scene *scene = DEG_get_input_scene(obj_depsgraph.get());
   const char *filepath = export_params.filepath;
 

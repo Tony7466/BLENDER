@@ -8,6 +8,7 @@
 
 #include <cstring>
 
+#include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
@@ -445,12 +446,13 @@ static int collection_io_handler_add_exec(bContext *C, wmOperator *op)
   STRNCPY(data->fh_idname, fh->idname);
 
   IDPropertyTemplate val{};
-  data->export_properties = IDP_New(IDP_GROUP, &val, "wmOpItemProp");
+  data->export_properties = IDP_New(IDP_GROUP, &val, "io_wmOpItemProp");
   data->flag |= IO_HANDLER_PANEL_OPEN;
 
   BLI_addtail(io_handlers, data);
 
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
+  WM_event_add_notifier(C, NC_SPACE | ND_SPACE_OUTLINER, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -489,6 +491,7 @@ static int collection_io_handler_remove_exec(bContext *C, wmOperator *op)
   MEM_freeN(data);
 
   WM_event_add_notifier(C, NC_SPACE | ND_SPACE_PROPERTIES, nullptr);
+  WM_event_add_notifier(C, NC_SPACE | ND_SPACE_OUTLINER, nullptr);
 
   return OPERATOR_FINISHED;
 }
@@ -523,13 +526,27 @@ static int io_handler_export(bContext *C, IOHandlerData *data, Collection *colle
     return OPERATOR_CANCELLED;
   }
 
-  /* Execute operator with our stored properties and against the specified Collection. */
-  PointerRNA properties = RNA_pointer_create(nullptr, ot->srna, data->export_properties);
+  /* Execute operator with our stored properties. */
+  /* TODO: Cascade settings down from parent collections(?) */
+  IDProperty *op_props = IDP_CopyProperty(data->export_properties);
+  PointerRNA properties = RNA_pointer_create(nullptr, ot->srna, op_props);
+
+  /* Ensure we have a filepath set. Generate a default path if not. */
+  char filepath[FILE_MAX];
+  RNA_string_get(&properties, "filepath", filepath);
+  if (strlen(filepath) == 0) {
+    STRNCPY(filepath, fh->generate_default_path(collection->id.name + 2).c_str());
+  }
+
+  const Main *bmain = CTX_data_main(C);
+  BLI_path_abs(filepath, BKE_main_blendfile_path(bmain));
+
+  RNA_string_set(&properties, "filepath", filepath);
   RNA_string_set(&properties, "collection", collection->id.name + 2);
+  int op_result = WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &properties, nullptr);
 
-  /* TODO: Cascade settings down from parent collections(??) */
-
-  return WM_operator_name_call_ptr(C, ot, WM_OP_EXEC_DEFAULT, &properties, nullptr);
+  IDP_FreeProperty(op_props);
+  return op_result;
 }
 
 static int collection_io_handler_export_exec(bContext *C, wmOperator *op)

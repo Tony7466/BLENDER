@@ -30,7 +30,6 @@
 
 #include "BKE_appdir.hh"
 #include "BKE_blender_version.h"
-#include "BKE_collection.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
 #include "BKE_lib_id.hh"
@@ -41,7 +40,6 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 #include "BLI_timeit.hh"
-#include "BLI_vector.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -487,21 +485,18 @@ bool USD_export(bContext *C,
    *
    * Has to be done from main thread currently, as it may affect Main original data (e.g. when
    * doing deferred update of the view-layers, see #112534 for details). */
-  if (job->params.collection[0] != '\0') {
+  if (strlen(job->params.collection) > 0) {
     Collection *collection = reinterpret_cast<Collection *>(
         BKE_libblock_find_name(job->bmain, ID_GR, job->params.collection));
-    Base *base = BKE_collection_or_layer_objects(scene, view_layer, collection);
-    const bool for_render = (DEG_get_mode(job->depsgraph) == DAG_EVAL_RENDER);
-    const int base_flag = (for_render) ? BASE_ENABLED_RENDER : BASE_ENABLED_VIEWPORT;
-
-    blender::Vector<ID *> ids;
-    for (; base; base = base->next) {
-      if (base->flag & base_flag) {
-        ids.append(&base->object->id);
-      }
+    if (!collection) {
+      BKE_reportf(job->params.worker_status->reports,
+                  RPT_ERROR,
+                  "USD Export: Unable to find collection %s",
+                  job->params.collection);
+      return false;
     }
 
-    DEG_graph_build_from_ids(job->depsgraph, ids.data(), ids.size());
+    DEG_graph_build_from_collection(job->depsgraph, collection);
   }
   else if (job->params.visible_objects_only) {
     DEG_graph_build_from_view_layer(job->depsgraph);

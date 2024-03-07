@@ -13,7 +13,6 @@
 #include "BLI_iterator.h"
 #include "BLI_sys_types.h"
 
-#include "DNA_collection_types.h"
 #include "DNA_listBase.h"
 
 /* Structs */
@@ -26,6 +25,7 @@ struct BlendWriter;
 struct Collection;
 struct Depsgraph;
 struct ID;
+struct IOHandlerData;
 struct Library;
 struct Main;
 struct Object;

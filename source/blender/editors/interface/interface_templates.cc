@@ -2983,10 +2983,15 @@ static void draw_export_controls(
   }
 }
 
-static void draw_export_properties(bContext *C, uiLayout *layout, wmOperator *op)
+static void draw_export_properties(bContext *C,
+                                   uiLayout *layout,
+                                   wmOperator *op,
+                                   const std::string &path)
 {
   uiLayout *box = uiLayoutBox(layout);
-  uiItemR(box, op->ptr, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
+
+  PropertyRNA *prop = RNA_struct_find_property(op->ptr, "filepath");
+  uiItemFullR(box, op->ptr, prop, RNA_NO_INDEX, 0, UI_ITEM_NONE, nullptr, ICON_NONE, path.c_str());
 
   template_operator_property_buts_draw_single(C, op, layout, UI_BUT_LABEL_ALIGN_NONE, 0);
 }
@@ -3026,7 +3031,8 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
     std::string label(fh->label);
     draw_export_controls(C, panel.header, label, index, true);
     if (panel.body) {
-      draw_export_properties(C, panel.body, op);
+      draw_export_properties(
+          C, panel.body, op, fh->generate_default_path(collection->id.name + 2));
     }
   }
 }

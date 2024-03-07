@@ -123,4 +123,10 @@ blender::Vector<int64_t> FileHandlerType::filter_supported_paths(
   return indices;
 }
 
+std::string FileHandlerType::generate_default_path(const StringRefNull filename)
+{
+  return std::string("//") + filename.c_str() +
+         (file_extensions.is_empty() ? "" : file_extensions.first().c_str());
+}
+
 }  // namespace blender::bke

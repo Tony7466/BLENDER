@@ -42,6 +42,11 @@ struct FileHandlerType {
    * Return a vector of indices in #paths of file paths supported by the file handler.
    */
   blender::Vector<int64_t> filter_supported_paths(const blender::Span<std::string> paths) const;
+
+  /**
+   * Generate a default file path for use with this file handler.
+   */
+  std::string generate_default_path(const StringRefNull filename);
 };
 
 /**
