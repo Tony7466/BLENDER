@@ -14,37 +14,36 @@
 
 #include "BLI_compiler_attrs.h"
 
+#include <string>
+
 /**
  * Run the command with an argument list.
  * The arguments begin at the first argument after the command identifier.
  * The return value is used as the commands exit-code.
  */
-using CommandExecFn = int(struct bContext *C, void *user_data, int argc, const char **argv);
-/**
- * Frees user data (called on exit).
- */
-using CommandFreeFn = void(void *user_data);
-/**
- * Opaque pointer, use for un-registering previously registered commands.
- */
-using CommandHandle = void;
 
+class CommandHandler {
+ public:
+  CommandHandler(const std::string &id) : id(id) {}
+
+  /** Matched against `--command ARG`. */
+  const std::string id;
+
+  /** The main execution function. */
+  virtual int exec(struct bContext *C, int argc, const char **argv) = 0;
+
+  /** True when one or more registered commands share an ID. */
+  bool is_duplicate = false;
+};
 /**
- * \param id: The command identifier (non-empty string).
- * \param exec_fn: The callback to execute the command.
- * \param free_fn: The callback to free the `user_data` (optional).
- * \param user_data: User data passed to `exec_fn` & may be freed by `free_fn`.
- * \return Command handle (allowing this to be unregistered).
+ * \param cmd: The memory for a command type (ownership is transferred).
  */
-CommandHandle *BKE_blender_cli_command_register(const char *id,
-                                                CommandExecFn *exec_fn,
-                                                CommandFreeFn *free_fn,
-                                                void *user_data) ATTR_NONNULL(1, 2);
+void BKE_blender_cli_command_register(CommandHandler *cmd);
 
 /**
  * Unregister a previously registered command.
  */
-bool BKE_blender_cli_command_unregister(CommandHandle *cmd_handle);
+bool BKE_blender_cli_command_unregister(CommandHandler *cmd);
 
 /**
  * Run the command by `id`, passing in the argument list & context.

@@ -25,7 +25,7 @@ static const char *bpy_cli_command_capsule_name = "bpy_cli_command";
 static const char *bpy_cli_command_capsule_name_invalid = "bpy_cli_command<invalid>";
 
 /* -------------------------------------------------------------------- */
-/** \name Internal Implementation
+/** \name Internal Utilities
  * \{ */
 
 /**
@@ -52,12 +52,14 @@ static PyObject *py_argv_from_bytes(const int argc, const char **argv)
   return py_argv;
 }
 
-struct BPyCLI_CommandUserData {
-  PyObject *py_execute_fn = nullptr;
-};
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Internal Implementation
+ * \{ */
 
 static int bpy_cli_command_exec(struct bContext *C,
-                                void *user_data,
+                                PyObject *py_exec_fn,
                                 const int argc,
                                 const char **argv)
 {
@@ -65,8 +67,8 @@ static int bpy_cli_command_exec(struct bContext *C,
   PyGILState_STATE gilstate;
   bpy_context_set(C, &gilstate);
 
-  /* For the most part `sys.argv[-argc:]` is sufficient & less trouble than re-creating this list.
-   * Don't do this because:
+  /* For the most part `sys.argv[-argc:]` is sufficient & less trouble than re-creating this
+   * list. Don't do this because:
    * - Python scripts *could* have manipulated `sys.argv` (although it's bad practice).
    * - We may want to support invoking commands directly,
    *   where the arguments aren't necessarily from `sys.argv`.
@@ -81,8 +83,7 @@ static int bpy_cli_command_exec(struct bContext *C,
     PyObject *exec_args = PyTuple_New(1);
     PyTuple_SET_ITEM(exec_args, 0, py_argv);
 
-    BPyCLI_CommandUserData *data = static_cast<BPyCLI_CommandUserData *>(user_data);
-    PyObject *result = PyObject_Call(data->py_execute_fn, exec_args, nullptr);
+    PyObject *result = PyObject_Call(py_exec_fn, exec_args, nullptr);
 
     Py_DECREF(exec_args); /* Frees `py_argv` too. */
 
@@ -141,12 +142,40 @@ static int bpy_cli_command_exec(struct bContext *C,
   return exit_code;
 }
 
-static void bpy_cli_command_free(void *user_data)
+static void bpy_cli_command_free(PyObject *py_exec_fn)
 {
-  BPyCLI_CommandUserData *data = static_cast<BPyCLI_CommandUserData *>(user_data);
-  Py_DECREF(data->py_execute_fn);
-  MEM_delete(data);
+  /* An explicit unregister clears to avoid acquiring a lock. */
+  if (py_exec_fn) {
+    PyGILState_STATE gilstate = PyGILState_Ensure();
+    Py_DECREF(py_exec_fn);
+    PyGILState_Release(gilstate);
+  }
 }
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Internal Class
+ * \{ */
+
+class BPyCommandHandler : CommandHandler {
+ public:
+  BPyCommandHandler(const std::string &id, PyObject *py_exec_fn)
+      : CommandHandler(id), py_exec_fn(py_exec_fn)
+  {
+  }
+  ~BPyCommandHandler()
+  {
+    bpy_cli_command_free(this->py_exec_fn);
+  }
+
+  int exec(struct bContext *C, int argc, const char **argv) override
+  {
+    return bpy_cli_command_exec(C, this->py_exec_fn, argc, argv);
+  }
+
+  PyObject *py_exec_fn = nullptr;
+};
 
 /** \} */
 
@@ -176,7 +205,7 @@ PyDoc_STRVAR(
 static PyObject *bpy_cli_command_register(PyObject * /*self*/, PyObject *args, PyObject *kw)
 {
   PyObject *py_id;
-  PyObject *py_execute_fn;
+  PyObject *py_exec_fn;
 
   static const char *_keywords[] = {
       "id",
@@ -191,8 +220,7 @@ static PyObject *bpy_cli_command_register(PyObject * /*self*/, PyObject *args, P
       _keywords,
       nullptr,
   };
-  if (!_PyArg_ParseTupleAndKeywordsFast(
-          args, kw, &_parser, &PyUnicode_Type, &py_id, &py_execute_fn))
+  if (!_PyArg_ParseTupleAndKeywordsFast(args, kw, &_parser, &PyUnicode_Type, &py_id, &py_exec_fn))
   {
     return nullptr;
   }
@@ -200,19 +228,18 @@ static PyObject *bpy_cli_command_register(PyObject * /*self*/, PyObject *args, P
     PyErr_SetString(PyExc_ValueError, "The command id is not a valid identifier");
     return nullptr;
   }
-  if (!PyCallable_Check(py_execute_fn)) {
+  if (!PyCallable_Check(py_exec_fn)) {
     PyErr_SetString(PyExc_ValueError, "The execute argument must be callable");
     return nullptr;
   }
 
-  BPyCLI_CommandUserData *data = MEM_new<BPyCLI_CommandUserData>(__func__);
-  data->py_execute_fn = Py_INCREF_RET(py_execute_fn);
-
   const char *id = PyUnicode_AsUTF8(py_id);
-  CommandHandle *cmd_handle = BKE_blender_cli_command_register(
-      id, bpy_cli_command_exec, bpy_cli_command_free, static_cast<void *>(data));
+  BPyCommandHandler *cmd = MEM_new<BPyCommandHandler>(
+      __func__, std::string(id), Py_INCREF_RET(py_exec_fn));
 
-  return PyCapsule_New(cmd_handle, bpy_cli_command_capsule_name, nullptr);
+  BKE_blender_cli_command_register((CommandHandler *)cmd);
+
+  return PyCapsule_New(cmd, bpy_cli_command_capsule_name, nullptr);
 }
 
 PyDoc_STRVAR(
@@ -233,8 +260,9 @@ static PyObject *bpy_cli_command_unregister(PyObject * /*self*/, PyObject *value
     return nullptr;
   }
 
-  CommandHandle *cmd_handle = PyCapsule_GetPointer(value, bpy_cli_command_capsule_name);
-  if (cmd_handle == nullptr) {
+  BPyCommandHandler *cmd = static_cast<BPyCommandHandler *>(
+      PyCapsule_GetPointer(value, bpy_cli_command_capsule_name));
+  if (cmd == nullptr) {
     const char *capsule_name = PyCapsule_GetName(value);
     if (capsule_name == bpy_cli_command_capsule_name_invalid) {
       PyErr_SetString(PyExc_ValueError, "The command has already been removed");
@@ -246,10 +274,14 @@ static PyObject *bpy_cli_command_unregister(PyObject * /*self*/, PyObject *value
     }
     return nullptr;
   }
+
+  /* Don't acquire the GIL when un-registering. */
+  Py_CLEAR(cmd->py_exec_fn);
+
   /* Don't allow removing again. */
   PyCapsule_SetName(value, bpy_cli_command_capsule_name_invalid);
 
-  BKE_blender_cli_command_unregister(cmd_handle);
+  BKE_blender_cli_command_unregister((CommandHandler *)cmd);
 
   Py_RETURN_NONE;
 }

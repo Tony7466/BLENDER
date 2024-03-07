@@ -23,55 +23,54 @@
  * isn't under user control.
  */
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#include <iostream>
 
-#include "BLI_array.hh"
-#include "BLI_listbase.h"
+#include "BLI_vector.hh"
 
 #include "BKE_blender_cli_command.hh" /* own include */
 
 #include "MEM_guardedalloc.h"
 
 /* -------------------------------------------------------------------- */
-/** \name Internal Types
- * \{ */
-
-struct CommandData {
-  CommandData *next, *prev;
-  CommandExecFn *exec_fn;
-  CommandFreeFn *free_fn;
-
-  void *user_data;
-
-  /** See top-level description for handling of duplicate commands. */
-  bool is_duplicate;
-
-  /** Over allocate. */
-  char id[0];
-};
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Internal API
  * \{ */
 
-static ListBase g_command_handlers = {};
+class CommandHandlerDeleter {
+ public:
+  void operator()(CommandHandler *cmd)
+  {
+    MEM_delete(cmd);
+  }
+};
 
-static CommandData *blender_cli_command_lookup(const char *id)
+using CommandHandlerPtr = std::unique_ptr<CommandHandler, CommandHandlerDeleter>;
+
+/**
+ * All registered command handlers.
+ * \note the order doesn't matter as duplicates are detected and prevented from running.
+ */
+blender::Vector<CommandHandlerPtr> g_command_handlers;
+
+static CommandHandler *blender_cli_command_lookup(const std::string &id)
 {
-  return static_cast<CommandData *>(
-      BLI_findstring(&g_command_handlers, id, offsetof(CommandData, id)));
+  for (CommandHandlerPtr &cmd_iter : g_command_handlers) {
+    if (id == cmd_iter->id) {
+      return cmd_iter.get();
+    }
+  }
+  return nullptr;
 }
 
-static void blender_cli_command_free(CommandData *cmd)
+static int blender_cli_command_index(const CommandHandler *cmd)
 {
-  if (cmd->free_fn) {
-    cmd->free_fn(cmd->user_data);
+  int index = 0;
+  for (CommandHandlerPtr &cmd_iter : g_command_handlers) {
+    if (cmd_iter.get() == cmd) {
+      return index;
+    }
+    index++;
   }
-  MEM_freeN(static_cast<void *>(cmd));
+  return -1;
 }
 
 /** \} */
@@ -80,108 +79,103 @@ static void blender_cli_command_free(CommandData *cmd)
 /** \name Public API
  * \{ */
 
-CommandHandle *BKE_blender_cli_command_register(const char *id,
-                                                CommandExecFn *exec_fn,
-                                                CommandFreeFn *free_fn,
-                                                void *user_data)
+void BKE_blender_cli_command_register(CommandHandler *cmd)
 {
   bool is_duplicate = false;
-  if (CommandData *cmd_exists = blender_cli_command_lookup(id)) {
-    fprintf(
-        stderr, "warning: registered duplicate command \"%s\", this will be inaccessible.\n", id);
+  if (CommandHandler *cmd_exists = blender_cli_command_lookup(cmd->id)) {
+    std::cerr << "warning: registered duplicate command \"" << cmd->id
+              << "\", this will be inaccessible" << std::endl;
     cmd_exists->is_duplicate = true;
     is_duplicate = true;
   }
-  size_t id_size = strlen(id) + 1;
-  CommandData *cmd = static_cast<CommandData *>(MEM_mallocN(sizeof(*cmd) + id_size, __func__));
-  cmd->exec_fn = exec_fn;
-  cmd->free_fn = free_fn;
-  cmd->user_data = user_data;
   cmd->is_duplicate = is_duplicate;
-  memcpy(cmd->id, id, id_size);
-  BLI_addtail(&g_command_handlers, cmd);
-  return static_cast<CommandHandle *>(cmd);
+  g_command_handlers.append(CommandHandlerPtr(cmd));
 }
 
-bool BKE_blender_cli_command_unregister(CommandHandle *cmd_handle)
+bool BKE_blender_cli_command_unregister(CommandHandler *cmd)
 {
-  CommandData *cmd = (CommandData *)cmd_handle;
-  if (!BLI_remlink_safe(&g_command_handlers, cmd)) {
-    fprintf(stderr, "failed to unregister command handler\n");
+  const int cmd_index = blender_cli_command_index(cmd);
+  if (cmd_index == -1) {
+    std::cerr << "failed to unregister command handler" << std::endl;
     return false;
   }
 
   /* Update duplicates after removal. */
   if (cmd->is_duplicate) {
-    CommandData *cmd_other = nullptr;
-    int duplicate_count = 0;
-    LISTBASE_FOREACH (CommandData *, cmd_iter, &g_command_handlers) {
-      if (cmd_iter->is_duplicate && STREQ(cmd_iter->id, cmd->id)) {
-        duplicate_count += 1;
-        cmd_other = cmd_iter;
+    CommandHandler *cmd_other = nullptr;
+    for (CommandHandlerPtr &cmd_iter : g_command_handlers) {
+      /* Skip self. */
+      if (cmd == cmd_iter.get()) {
+        continue;
+      }
+      if (cmd_iter->is_duplicate && (cmd_iter->id == cmd->id)) {
+        if (cmd_other) {
+          /* Two or more found, clear and break. */
+          cmd_other = nullptr;
+          break;
+        }
+        cmd_other = cmd_iter.get();
       }
     }
-    if (duplicate_count == 1) {
+    if (cmd_other) {
       cmd_other->is_duplicate = false;
     }
   }
 
-  blender_cli_command_free(cmd);
+  g_command_handlers.remove_and_reorder(cmd_index);
+
   return true;
 }
 
 int BKE_blender_cli_command_exec(bContext *C, const char *id, const int argc, const char **argv)
 {
-  CommandData *cmd = blender_cli_command_lookup(id);
+  CommandHandler *cmd = blender_cli_command_lookup(id);
   if (cmd == nullptr) {
-    fprintf(stderr, "Unrecognized command: \"%s\"\n", id);
+    std::cerr << "Unrecognized command: \"" << id << "\"" << std::endl;
     return EXIT_FAILURE;
   }
   if (cmd->is_duplicate) {
-    fprintf(stderr,
-            "Command: \"%s\" was registered multiple times, must be resolved, aborting!\n",
-            id);
+    std::cerr << "Command: \"" << id
+              << "\" was registered multiple times, must be resolved, aborting!" << std::endl;
     return EXIT_FAILURE;
   }
 
-  return cmd->exec_fn(C, cmd->user_data, argc, argv);
+  return cmd->exec(C, argc, argv);
 }
 
 void BKE_blender_cli_command_print_help()
 {
-  printf("Blender Command Listing:\n");
-  const int command_num = BLI_listbase_count(&g_command_handlers);
-  blender::Array<const char *> command_ids(command_num);
+  /* As this is isn't ordered sorting in-place is acceptable,
+   * sort alphabetically for display purposes only. */
+  std::sort(g_command_handlers.begin(),
+            g_command_handlers.end(),
+            [](const CommandHandlerPtr &a, const CommandHandlerPtr &b) { return a->id < b->id; });
 
-  /* First show commands, then duplicate commands (which are skipped). */
   for (int pass = 0; pass < 2; pass++) {
+    std::cout << ((pass == 0) ? "Blender Command Listing:" :
+                                "Duplicate Command Listing (ignored):")
+              << std::endl;
+
     const bool is_duplicate = pass > 0;
-    int command_num_for_pass = 0;
-    LISTBASE_FOREACH (CommandData *, cmd_iter, &g_command_handlers) {
+    bool found = false;
+    bool has_duplicate = false;
+    for (CommandHandlerPtr &cmd_iter : g_command_handlers) {
+      if (cmd_iter->is_duplicate) {
+        has_duplicate = true;
+      }
       if (cmd_iter->is_duplicate != is_duplicate) {
         continue;
       }
-      command_ids[command_num_for_pass++] = cmd_iter->id;
+
+      std::cout << "\t" << cmd_iter->id << std::endl;
+      found = true;
     }
-    if (command_num_for_pass == 0) {
-      printf("\tNone found.\n");
+
+    if (!found) {
+      std::cout << "\tNone found" << std::endl;
     }
-    else {
-      std::sort(command_ids.begin(), command_ids.begin() + command_num_for_pass, strcmp);
-      if (is_duplicate) {
-        printf("Duplicate Command Listing (ignored):\n");
-      }
-      for (int i = 0; i < command_num_for_pass; i++) {
-        if (is_duplicate) {
-          if ((i > 0) && STREQ(command_ids[i - 1], command_ids[i])) {
-            continue;
-          }
-        }
-        printf("\t%s\n", command_ids[i]);
-      }
-    }
-    /* No duplicates for pass zero. */
-    if (command_num_for_pass == command_num) {
+    /* Don't print that no duplicates are found as it's not helpful. */
+    if (pass == 0 && !has_duplicate) {
       break;
     }
   }
@@ -189,9 +183,7 @@ void BKE_blender_cli_command_print_help()
 
 void BKE_blender_cli_command_free_all()
 {
-  while (CommandData *cmd = static_cast<CommandData *>(BLI_pophead(&g_command_handlers))) {
-    blender_cli_command_free(cmd);
-  }
+  g_command_handlers.clear();
 }
 
 /** \} */
