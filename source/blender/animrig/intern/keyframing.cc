@@ -956,8 +956,6 @@ int insert_key_action(Main *bmain,
       property_array_index++;
       continue;
     }
-    FCurve *fcurve = action_fcurve_ensure(
-        bmain, action, group.c_str(), ptr, rna_path.c_str(), property_array_index);
     const SingleKeyingResult inserted_key = insert_keyframe_fcurve_value(bmain,
                                                                          ptr,
                                                                          prop,
