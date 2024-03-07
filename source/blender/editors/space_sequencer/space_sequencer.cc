@@ -685,6 +685,7 @@ static void sequencer_cursor(wmWindow *win, ScrArea * /* area */, ARegion *regio
                         SEQ_time_left_handle_frame_get(scene, seq1);
 
   if (strip_len * scale_x < 25 * U.pixelsize || scale_y < 16 * U.pixelsize) {
+    WM_cursor_set(win, wmcursor);
     return;
   }
 

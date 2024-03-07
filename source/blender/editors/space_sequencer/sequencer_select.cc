@@ -1022,6 +1022,7 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
   }
 
   if (!can_select_handle(scene, *r_seq1, v2d)) {
+    *r_seq2 = nullptr;
     return true;
   }
 
