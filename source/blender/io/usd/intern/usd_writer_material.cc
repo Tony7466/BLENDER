@@ -100,17 +100,7 @@ static const pxr::TfToken rotation("rotation", pxr::TfToken::Immortal);
 }  // namespace usdtokens
 
 namespace cyclestokens {
-static const pxr::TfToken cycles("cycles", pxr::TfToken::Immortal);
 static const pxr::TfToken UVMap("UVMap", pxr::TfToken::Immortal);
-static const pxr::TfToken filename("filename", pxr::TfToken::Immortal);
-static const pxr::TfToken interpolation("interpolation", pxr::TfToken::Immortal);
-static const pxr::TfToken projection("projection", pxr::TfToken::Immortal);
-static const pxr::TfToken extension("extension", pxr::TfToken::Immortal);
-static const pxr::TfToken colorspace("colorspace", pxr::TfToken::Immortal);
-static const pxr::TfToken attribute("attribute", pxr::TfToken::Immortal);
-static const pxr::TfToken bsdf("bsdf", pxr::TfToken::Immortal);
-static const pxr::TfToken closure("closure", pxr::TfToken::Immortal);
-static const pxr::TfToken vector("vector", pxr::TfToken::Immortal);
 }  // namespace cyclestokens
 
 namespace blender::io::usd {
