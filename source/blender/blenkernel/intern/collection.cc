@@ -1817,6 +1817,7 @@ static bool collection_child_remove(Main *bmain,
 
 bool BKE_collection_child_add(Main *bmain, Collection *parent, Collection *child)
 {
+  parent = collection_parent_editable_find_recursive(nullptr, parent);
   if (!collection_child_add(bmain, parent, child, nullptr, 0, true)) {
     return false;
   }
