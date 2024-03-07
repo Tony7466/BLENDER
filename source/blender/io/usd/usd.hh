@@ -84,6 +84,7 @@ struct USDExportParams {
   bool export_textures = true;
   bool overwrite_textures = true;
   bool relative_paths = true;
+  bool generate_cycles_shaders = false;
   char root_prim_path[1024] = ""; /* FILE_MAX */
 
   /** Communication structure between the wmJob management code and the worker code. Currently used

@@ -189,6 +189,8 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
   const bool export_shapekeys = RNA_boolean_get(op->ptr, "export_shapekeys");
   const bool only_deform_bones = RNA_boolean_get(op->ptr, "only_deform_bones");
 
+  const bool generate_cycles_shaders = RNA_boolean_get(op->ptr, "generate_cycles_shaders");
+
   char root_prim_path[FILE_MAX];
   RNA_string_get(op->ptr, "root_prim_path", root_prim_path);
   process_prim_path(root_prim_path);
@@ -212,6 +214,7 @@ static int wm_usd_export_exec(bContext *C, wmOperator *op)
       export_textures,
       overwrite_textures,
       relative_paths,
+      generate_cycles_shaders,
   };
 
   STRNCPY(params.root_prim_path, root_prim_path);
@@ -259,6 +262,7 @@ static void wm_usd_export_draw(bContext * /*C*/, wmOperator *op)
   box = uiLayoutBox(layout);
   col = uiLayoutColumnWithHeading(box, true, IFACE_("Materials"));
   uiItemR(col, ptr, "generate_preview_surface", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(col, ptr, "generate_cycles_shaders", UI_ITEM_NONE, nullptr, ICON_NONE);
   const bool export_mtl = RNA_boolean_get(ptr, "export_materials");
   uiLayoutSetActive(col, export_mtl);
 
@@ -419,6 +423,12 @@ void WM_OT_usd_export(wmOperatorType *ot)
                   "To USD Preview Surface",
                   "Generate an approximate USD Preview Surface shader "
                   "representation of a Principled BSDF node network");
+
+  RNA_def_boolean(ot->srna,
+                  "generate_cycles_shaders",
+                  false,
+                  "Export Cycles Shaders",
+                  "Export Cycles shader nodes to USD");
 
   RNA_def_boolean(ot->srna,
                   "export_textures",

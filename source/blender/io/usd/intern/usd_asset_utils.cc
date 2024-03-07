@@ -3,19 +3,21 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd_asset_utils.hh"
-#include "usd.hh"
 
 #include <pxr/usd/ar/asset.h>
 #include <pxr/usd/ar/packageUtils.h>
 #include <pxr/usd/ar/resolver.h>
 #include <pxr/usd/ar/writableAsset.h>
 
+#include "BKE_appdir.hh"
 #include "BKE_main.hh"
 #include "BKE_report.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
+
+#include "WM_api.hh"
 
 #include <string_view>
 
@@ -328,6 +330,31 @@ bool is_udim_path(const std::string &path)
 {
   return path.find(UDIM_PATTERN) != std::string::npos ||
          path.find(UDIM_PATTERN2) != std::string::npos;
+}
+
+void USD_path_abs(char *path, const char *basepath, bool for_import)
+{
+  if (!BLI_path_is_rel(path)) {
+    pxr::ArResolvedPath resolved_path = for_import ? pxr::ArGetResolver().Resolve(path) :
+                                                     pxr::ArGetResolver().ResolveForNewAsset(path);
+
+    std::string path_str = resolved_path.GetPathString();
+
+    if (!path_str.empty()) {
+      if (path_str.length() < FILE_MAX) {
+        BLI_strncpy(path, path_str.c_str(), FILE_MAX);
+        return;
+      }
+      WM_reportf(RPT_ERROR,
+                 "In %s: resolved path %s exceeds path buffer length.",
+                 __func__,
+                 path_str.c_str());
+    }
+  }
+
+  /* If we got here, the path couldn't be resolved by the ArResolver, so we
+   * fall back on the standard Blender absolute path resolution. */
+  BLI_path_abs(path, basepath);
 }
 
 }  // namespace blender::io::usd

@@ -61,4 +61,6 @@ std::string import_asset(const char *src,
  */
 bool is_udim_path(const std::string &path);
 
+void USD_path_abs(char *path, const char *basepath, bool for_import);
+
 }  // namespace blender::io::usd
