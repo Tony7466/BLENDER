@@ -153,7 +153,7 @@ static void downsample(const MemoryBuffer &input, MemoryBuffer &output, bool use
         float4 lower_right_far = input.texture_bilinear_extend(coordinates +
                                                                pixel_size * float2(2.0f, -2.0f));
 
-        if (use_karis_average) {
+        if (!use_karis_average) {
           /* The original weights equation mentioned in slide 153 is:
            *   0.5 + 0.125 + 0.125 + 0.125 + 0.125 = 1
            * The 0.5 corresponds to the center group of pixels and the 0.125 corresponds to the
