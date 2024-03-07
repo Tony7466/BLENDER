@@ -329,7 +329,7 @@ void AssetList::remap_id(ID * /*id_old*/, ID * /*id_new*/) const
 /**
  * A global asset list map, each entry being a list for a specific asset library.
  */
-using AssetListMap = Map<AssetLibraryReferenceWrapper, AssetList>;
+using AssetListMap = Map<AssetLibraryReference, AssetList>;
 
 /**
  * Wrapper for Construct on First Use idiom, to avoid the Static Initialization Fiasco.
