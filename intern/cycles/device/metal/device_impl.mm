@@ -340,11 +340,6 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
     }
   }
 
-  if (@available(macos 14.0, *)) {
-    /* Use Program Scope Global Built-ins, when available. */
-    global_defines += "#define __METAL_GLOBAL_BUILTINS__\n";
-  }
-
 #  ifdef WITH_CYCLES_DEBUG
   global_defines += "#define __KERNEL_DEBUG__\n";
 #  endif
@@ -366,6 +361,12 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
       break;
     case METAL_GPU_APPLE:
       global_defines += "#define __KERNEL_METAL_APPLE__\n";
+
+      if (@available(macos 14.0, *)) {
+        /* Use Program Scope Global Built-ins, when available. */
+        global_defines += "#define __METAL_GLOBAL_BUILTINS__\n";
+      }
+
 #  ifdef WITH_NANOVDB
       /* Compiling in NanoVDB results in a marginal drop in render performance,
        * so disable it for specialized PSOs when no textures are using it. */
