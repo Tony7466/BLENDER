@@ -14,6 +14,8 @@
 
 #include "BLI_compiler_attrs.h"
 
+#include "BLI_utility_mixins.hh"
+
 #include <memory>
 #include <string>
 
@@ -23,7 +25,7 @@
  * The return value is used as the commands exit-code.
  */
 
-class CommandHandler {
+class CommandHandler : blender::NonCopyable, blender::NonMovable {
  public:
   CommandHandler(const std::string &id) : id(id) {}
   virtual ~CommandHandler() = default;
