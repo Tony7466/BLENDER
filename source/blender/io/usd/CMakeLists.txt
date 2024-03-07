@@ -92,6 +92,7 @@ set(SRC
   intern/usd_writer_armature.cc
   intern/usd_writer_camera.cc
   intern/usd_writer_curves.cc
+  intern/usd_writer_cycles.cc
   intern/usd_writer_hair.cc
   intern/usd_writer_light.cc
   intern/usd_writer_material.cc
@@ -132,6 +133,7 @@ set(SRC
   intern/usd_writer_armature.hh
   intern/usd_writer_camera.hh
   intern/usd_writer_curves.hh
+  intern/usd_writer_cycles.hh
   intern/usd_writer_hair.hh
   intern/usd_writer_light.hh
   intern/usd_writer_material.hh
