@@ -697,9 +697,7 @@ int insert_keyframe(Main *bmain,
   }
   /* Key a single index. */
   else {
-    if (array_index >= 0 && array_index < values.size() &&
-        successful_remaps[array_index])
-    {
+    if (array_index >= 0 && array_index < values.size() && successful_remaps[array_index]) {
       const SingleKeyingResult result = insert_keyframe_fcurve_value(bmain,
                                                                      &ptr,
                                                                      prop,
@@ -961,16 +959,16 @@ int insert_key_action(Main *bmain,
     FCurve *fcurve = action_fcurve_ensure(
         bmain, action, group.c_str(), ptr, rna_path.c_str(), property_array_index);
     const SingleKeyingResult inserted_key = insert_keyframe_fcurve_value(bmain,
-                                                           ptr,
-                                                           prop,
-                                                           action,
-                                                           group.c_str(),
-                                                           rna_path.c_str(),
-                                                           property_array_index,
-                                                           frame,
-                                                           value,
-                                                           key_type,
-                                                           insert_key_flag);
+                                                                         ptr,
+                                                                         prop,
+                                                                         action,
+                                                                         group.c_str(),
+                                                                         rna_path.c_str(),
+                                                                         property_array_index,
+                                                                         frame,
+                                                                         value,
+                                                                         key_type,
+                                                                         insert_key_flag);
     if (inserted_key == SingleKeyingResult::SUCCESS) {
       inserted_keys++;
     }
