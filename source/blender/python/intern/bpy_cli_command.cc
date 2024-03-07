@@ -166,7 +166,7 @@ class BPyCommandHandler : CommandHandler {
       : CommandHandler(id), py_exec_fn(py_exec_fn)
   {
   }
-  ~BPyCommandHandler()
+  ~BPyCommandHandler() override
   {
     bpy_cli_command_free(this->py_exec_fn);
   }

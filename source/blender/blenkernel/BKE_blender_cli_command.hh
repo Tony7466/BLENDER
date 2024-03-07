@@ -25,6 +25,7 @@
 class CommandHandler {
  public:
   CommandHandler(const std::string &id) : id(id) {}
+  virtual ~CommandHandler() = default;
 
   /** Matched against `--command ARG`. */
   const std::string id;
