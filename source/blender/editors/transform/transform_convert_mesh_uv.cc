@@ -809,7 +809,8 @@ static float2 isect_face_dst(const BMLoop *l,
 
   float2 ray_dir = (uv - uv_prev) + (uv_next - uv);
   ray_dir = math::orthogonal(ray_dir * aspect);
-  ray_dir /= aspect;
+  ray_dir[0] /= aspect[0];
+  ray_dir[1] /= aspect[1];
 
   float2 isect_co;
   if (!bm_loop_uv_calc_opposite_co(l, uv, offsets, ray_dir, isect_co)) {
