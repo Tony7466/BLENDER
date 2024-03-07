@@ -3446,6 +3446,27 @@ static void ui_but_free(const bContext *C, uiBut *but)
   MEM_delete(but);
 }
 
+static void ui_block_free_active_operator(uiBlock *block)
+{
+  if (block->ui_operator_free) {
+    MEM_freeN(block->ui_operator->ptr);
+    MEM_freeN(block->ui_operator);
+  }
+
+  block->ui_operator_free = false;
+  block->ui_operator = nullptr;
+}
+
+void UI_block_set_active_operator(uiBlock *block, wmOperator *op, const bool free)
+{
+  if (op != block->ui_operator) {
+    ui_block_free_active_operator(block);
+
+    block->ui_operator = op;
+    block->ui_operator_free = free;
+  }
+}
+
 void UI_block_free(const bContext *C, uiBlock *block)
 {
   UI_butstore_clear(block);
@@ -3461,6 +3482,8 @@ void UI_block_free(const bContext *C, uiBlock *block)
   if (block->func_argN) {
     MEM_freeN(block->func_argN);
   }
+
+  ui_block_free_active_operator(block);
 
   BLI_freelistN(&block->saferct);
   BLI_freelistN(&block->color_pickers.list);

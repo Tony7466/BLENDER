@@ -7,6 +7,7 @@ from bpy.types import (
     Menu,
     Operator,
     OperatorFileListElement,
+    Panel,
     WindowManager,
 )
 from bpy.props import (
@@ -18,6 +19,7 @@ from bpy.app.translations import (
     pgettext_rpt as rpt_,
     pgettext_data as data_,
 )
+from bl_ui.utils import PresetPanel
 
 
 # For preset popover menu
@@ -657,6 +659,24 @@ class WM_MT_operator_presets(Menu):
     preset_operator = "script.execute_preset"
 
 
+class WM_PT_operator_presets(PresetPanel, Panel):
+    bl_label = "Operator Presets"
+    preset_add_operator = "wm.operator_preset_add"
+    preset_operator = "script.execute_preset"
+
+    @property
+    def preset_subdir(self):
+        return AddPresetOperator.operator_path(self.operator)
+
+    @property
+    def preset_add_operator_properties(self):
+        return {"operator": self.operator}
+
+    def draw(self, context):
+        self.operator = context.active_operator.bl_idname
+        PresetPanel.draw(self, context)
+
+
 class WM_OT_operator_presets_cleanup(Operator):
     """Remove outdated operator properties from presets that may cause problems"""
 
@@ -825,5 +845,6 @@ classes = (
     AddPresetEEVEERaytracing,
     ExecutePreset,
     WM_MT_operator_presets,
+    WM_PT_operator_presets,
     WM_OT_operator_presets_cleanup,
 )

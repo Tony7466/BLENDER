@@ -35,6 +35,7 @@
 #include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
+#include "BLI_string_ref.hh"
 #include "BLI_string_utils.hh"
 #include "BLI_time.h"
 #include "BLI_timecode.h"
@@ -2719,7 +2720,7 @@ static eAutoPropButsReturn template_operator_property_buts_draw_single(
     PointerRNA op_ptr;
     uiLayout *row;
 
-    block->ui_operator = op;
+    UI_block_set_active_operator(block, op, false);
 
     row = uiLayoutRow(layout, true);
     uiItemM(row, "WM_MT_operator_presets", nullptr, ICON_NONE);
@@ -2971,33 +2972,23 @@ static wmOperator *minimal_operator_create(wmOperatorType *ot, PointerRNA *prope
   return op;
 }
 
-static void minimal_operator_free(wmOperator *op)
-{
-  MEM_freeN(op->ptr);
-  MEM_freeN(op);
-}
-
-static void draw_export_controls(uiLayout *layout, const std::string &label, int index, bool valid)
+static void draw_export_controls(
+    bContext *C, uiLayout *layout, const std::string &label, int index, bool valid)
 {
   uiItemL(layout, label.c_str(), ICON_NONE);
   if (valid) {
+    uiItemPopoverPanel(layout, C, "WM_PT_operator_presets", "", ICON_PRESET);
     uiItemIntO(layout, "", ICON_EXPORT, "COLLECTION_OT_io_handler_export", "index", index);
     uiItemIntO(layout, "", ICON_X, "COLLECTION_OT_io_handler_remove", "index", index);
   }
 }
 
-static void draw_export_properties(
-    bContext *C, uiLayout *layout, ID *id, wmOperatorType *ot, IOHandlerData *data)
+static void draw_export_properties(bContext *C, uiLayout *layout, wmOperator *op)
 {
-  PointerRNA properties = RNA_pointer_create(id, ot->srna, data->export_properties);
-
   uiLayout *box = uiLayoutBox(layout);
-  uiItemR(box, &properties, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
+  uiItemR(box, op->ptr, "filepath", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-  wmOperator *op = minimal_operator_create(ot, &properties);
-  op->type->flag &= ~OPTYPE_PRESET; /* TODO: Presets will not work currently. */
   template_operator_property_buts_draw_single(C, op, layout, UI_BUT_LABEL_ALIGN_NONE, 0);
-  minimal_operator_free(op);
 }
 
 void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
@@ -3015,21 +3006,27 @@ void uiTemplateCollectionExporters(uiLayout *layout, bContext *C)
     bke::FileHandlerType *fh = bke::file_handler_find(data->fh_idname);
     if (!fh) {
       std::string label = std::string(IFACE_("Undefined")) + " " + data->fh_idname;
-      draw_export_controls(panel.header, label, index, false);
+      draw_export_controls(C, panel.header, label, index, false);
       continue;
     }
 
     wmOperatorType *ot = WM_operatortype_find(fh->export_operator, false);
     if (!ot) {
       std::string label = std::string(IFACE_("Undefined")) + " " + fh->export_operator;
-      draw_export_controls(panel.header, label, index, false);
+      draw_export_controls(C, panel.header, label, index, false);
       continue;
     }
 
+    /* Assign temporary operator to uiBlock, which takes ownership. */
+    PointerRNA properties = RNA_pointer_create(&collection->id, ot->srna, data->export_properties);
+    wmOperator *op = minimal_operator_create(ot, &properties);
+    UI_block_set_active_operator(uiLayoutGetBlock(panel.header), op, true);
+
+    /* Draw panel header and contents. */
     std::string label(fh->label);
-    draw_export_controls(panel.header, label, index, true);
+    draw_export_controls(C, panel.header, label, index, true);
     if (panel.body) {
-      draw_export_properties(C, panel.body, &collection->id, ot, data);
+      draw_export_properties(C, panel.body, op);
     }
   }
 }
