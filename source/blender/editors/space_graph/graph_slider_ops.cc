@@ -1011,6 +1011,8 @@ static int ease_modal(bContext *C, wmOperator *op, const wmEvent *event)
         ED_slider_allow_overshoot_set(gso->slider, false, true);
         ED_slider_factor_bounds_set(gso->slider, 0.001f, 10);
         ED_slider_factor_set(gso->slider, RNA_float_get(op->ptr, "sharpness"));
+        ED_slider_mode_set(gso->slider, SLIDER_MODE_FLOAT);
+        ED_slider_unit_set(gso->slider, "");
         gso->factor_prop = RNA_struct_find_property(op->ptr, "sharpness");
       }
       else {
@@ -1018,6 +1020,8 @@ static int ease_modal(bContext *C, wmOperator *op, const wmEvent *event)
         ED_slider_factor_bounds_set(gso->slider, -1, 1);
         ED_slider_factor_set(gso->slider, 0.0f);
         ED_slider_factor_set(gso->slider, RNA_float_get(op->ptr, "factor"));
+        ED_slider_mode_set(gso->slider, SLIDER_MODE_PERCENT);
+        ED_slider_unit_set(gso->slider, "%");
         gso->factor_prop = RNA_struct_find_property(op->ptr, "factor");
       }
       ease_modal_update(C, op);
