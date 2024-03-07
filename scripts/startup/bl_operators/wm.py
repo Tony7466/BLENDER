@@ -2723,8 +2723,27 @@ class WM_OT_batch_rename(Operator):
             if id.library is None
         ]))
 
+    @staticmethod
+    def _data_type_from_context(context):
+        space_type = space_type = context.space_data and context.space_data.type
+        space_type_mapping = {
+            'SEQUENCE_EDITOR': 'SEQUENCE_STRIP',
+            'NODE_EDITOR': 'NODE',
+            'OUTLINER': 'COLLECTION',
+        }
+        if space_type in space_type_mapping:
+            return space_type_mapping[space_type]
+
+        mode_mapping = {
+            'POSE': 'BONE',
+            'EDIT_ARMATURE': 'BONE',
+            'WEIGHT_PAINT': 'BONE' if context.pose_object else 'OBJECT',
+        }
+
+        return mode_mapping.get(context.mode, 'OBJECT')
+
     @classmethod
-    def _data_from_context(cls, context, data_type, only_selected, *, check_context=False):
+    def _data_from_context(cls, context, data_type, only_selected):
 
         mode = context.mode
         scene = context.scene
@@ -2734,8 +2753,6 @@ class WM_OT_batch_rename(Operator):
         data = None
         if space_type == 'SEQUENCE_EDITOR':
             data_type_test = 'SEQUENCE_STRIP'
-            if check_context:
-                return data_type_test
             if data_type == data_type_test:
                 data = (
                     context.selected_sequences
@@ -2746,8 +2763,6 @@ class WM_OT_batch_rename(Operator):
                 )
         elif space_type == 'NODE_EDITOR':
             data_type_test = 'NODE'
-            if check_context:
-                return data_type_test
             if data_type == data_type_test:
                 data = (
                     context.selected_nodes
@@ -2758,8 +2773,6 @@ class WM_OT_batch_rename(Operator):
                 )
         elif space_type == 'OUTLINER':
             data_type_test = 'COLLECTION'
-            if check_context:
-                return data_type_test
             if data_type == data_type_test:
                 data = (
                     cls._selected_ids_from_outliner_by_type(context, bpy.types.Collection)
@@ -2771,8 +2784,6 @@ class WM_OT_batch_rename(Operator):
         else:
             if mode == 'POSE' or (mode == 'WEIGHT_PAINT' and context.pose_object):
                 data_type_test = 'BONE'
-                if check_context:
-                    return data_type_test
                 if data_type == data_type_test:
                     data = (
                         [pchan.bone for pchan in context.selected_pose_bones]
@@ -2783,8 +2794,6 @@ class WM_OT_batch_rename(Operator):
                     )
             elif mode == 'EDIT_ARMATURE':
                 data_type_test = 'BONE'
-                if check_context:
-                    return data_type_test
                 if data_type == data_type_test:
                     data = (
                         context.selected_editable_bones
@@ -2793,9 +2802,6 @@ class WM_OT_batch_rename(Operator):
                         "name",
                         iface_("Edit Bone(s)"),
                     )
-
-        if check_context:
-            return 'OBJECT'
 
         object_data_type_attrs_map = {
             'MESH': ("meshes", iface_("Mesh(es)"), bpy.types.Mesh),
@@ -3001,7 +3007,7 @@ class WM_OT_batch_rename(Operator):
 
         self._data = self._data_from_context(context, self.data_type, only_selected)
         if self._data is None:
-            self.data_type = self._data_from_context(context, None, False, check_context=True)
+            self.data_type = self._data_type_from_context(context)
             self._data = self._data_from_context(context, self.data_type, only_selected)
 
         self._data_source_prev = self.data_source
