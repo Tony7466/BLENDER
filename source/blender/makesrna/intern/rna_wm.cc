@@ -616,6 +616,13 @@ static bool rna_Operator_has_reports_get(PointerRNA *ptr)
   return (op->reports && op->reports->list.first);
 }
 
+static PointerRNA rna_Operator_layout_get(PointerRNA *ptr)
+{
+  /* Operator owner is not inherited, layout is owned by WM. */
+  wmOperator *op = (wmOperator *)ptr->data;
+  return RNA_pointer_create(nullptr, &RNA_UILayout, op->layout);
+}
+
 static PointerRNA rna_Operator_options_get(PointerRNA *ptr)
 {
   return rna_pointer_inherit_refine(ptr, &RNA_OperatorOptions, ptr->data);
@@ -627,6 +634,7 @@ static PointerRNA rna_Operator_properties_get(PointerRNA *ptr)
 
   PointerRNA result;
   WM_operator_properties_create_ptr(&result, op->type);
+  result.owner_id = (ptr->owner_id) ? ptr->owner_id : result.owner_id;
   result.data = op->properties;
   return result;
 }
@@ -638,6 +646,7 @@ static PointerRNA rna_OperatorMacro_properties_get(PointerRNA *ptr)
 
   PointerRNA result;
   WM_operator_properties_create_ptr(&result, ot);
+  result.owner_id = (ptr->owner_id) ? ptr->owner_id : result.owner_id;
   result.data = otmacro->properties;
   return result;
 }
@@ -1443,7 +1452,11 @@ static void rna_operator_draw_cb(bContext *C, wmOperator *op)
   ParameterList list;
   FunctionRNA *func;
 
-  PointerRNA opr = RNA_pointer_create(nullptr, op->type->rna_ext.srna, op);
+  /* Operator draw gets reused for drawing stored properties, in which
+   * case we need a proper owner. */
+  ID *owner_id = (op->ptr) ? op->ptr->owner_id : nullptr;
+
+  PointerRNA opr = RNA_pointer_create(owner_id, op->type->rna_ext.srna, op);
   func = &rna_Operator_draw_func; /* RNA_struct_find_function(&opr, "draw"); */
 
   RNA_parameter_list_create(&list, &opr, func);
@@ -2033,6 +2046,7 @@ static void rna_def_operator(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "layout", PROP_POINTER, PROP_NONE);
   RNA_def_property_struct_type(prop, "UILayout");
+  RNA_def_property_pointer_funcs(prop, "rna_Operator_layout_get", nullptr, nullptr, nullptr);
 
   prop = RNA_def_property(srna, "options", PROP_POINTER, PROP_NONE);
   RNA_def_property_flag(prop, PROP_NEVER_NULL);
