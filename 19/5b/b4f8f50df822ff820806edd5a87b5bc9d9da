@@ -1,1 +1,2 @@
 Referenced by issue #71244, Renaming an ID through RNA does not consistently increment OTHER or CURRENT ID in case of name collision
+Referenced by issue #119139, Autorenaming (swapping names) of object with the same name doesn't work anymore.
