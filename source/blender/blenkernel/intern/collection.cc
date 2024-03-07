@@ -1232,7 +1232,7 @@ static void collection_gobject_assert_internal_consistency(Collection *collectio
   }
 }
 
-static Collection *collection_parent_editable_find_recursive(const ViewLayer *view_layer,
+Collection *BKE_collection_parent_editable_find_recursive(const ViewLayer *view_layer,
                                                              Collection *collection)
 {
   if (!ID_IS_LINKED(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
@@ -1258,7 +1258,7 @@ static Collection *collection_parent_editable_find_recursive(const ViewLayer *vi
       }
       return collection_parent->collection;
     }
-    Collection *editable_collection = collection_parent_editable_find_recursive(
+    Collection *editable_collection = BKE_collection_parent_editable_find_recursive(
         view_layer, collection_parent->collection);
     if (editable_collection != nullptr) {
       return editable_collection;
@@ -1386,7 +1386,7 @@ bool BKE_collection_viewlayer_object_add(Main *bmain,
     return false;
   }
 
-  collection = collection_parent_editable_find_recursive(view_layer, collection);
+  collection = BKE_collection_parent_editable_find_recursive(view_layer, collection);
 
   if (collection == nullptr) {
     return false;
@@ -1817,7 +1817,6 @@ static bool collection_child_remove(Main *bmain,
 
 bool BKE_collection_child_add(Main *bmain, Collection *parent, Collection *child)
 {
-  parent = collection_parent_editable_find_recursive(nullptr, parent);
   if (!collection_child_add(bmain, parent, child, nullptr, 0, true)) {
     return false;
   }

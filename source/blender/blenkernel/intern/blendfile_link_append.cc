@@ -524,7 +524,8 @@ static void loose_data_instantiate_ensure_active_collection(
   if (instantiate_context->active_collection == nullptr) {
     if (lapp_context->params->flag & FILE_ACTIVE_COLLECTION) {
       LayerCollection *lc = BKE_layer_collection_get_active(view_layer);
-      instantiate_context->active_collection = lc->collection;
+      instantiate_context->active_collection = BKE_collection_parent_editable_find_recursive(
+          view_layer, lc->collection);
     }
     else {
       if (lapp_context->params->flag & FILE_LINK) {
