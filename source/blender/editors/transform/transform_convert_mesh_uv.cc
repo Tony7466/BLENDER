@@ -683,11 +683,10 @@ Array<TransDataVertSlideVert> transform_mesh_uv_vert_slide_data_create(
     }
   }
 
-  float2 aspect(t->aspect);
-  if (aspect[0] != 1.0f || aspect[1] != 1.0f) {
+  if (t->aspect[0] != 1.0f || t->aspect[1] != 1.0f) {
     for (float3 &dest : r_loc_dst_buffer) {
-      dest[0] *= aspect[0];
-      dest[1] *= aspect[1];
+      dest[0] *= t->aspect[0];
+      dest[1] *= t->aspect[1];
     }
   }
 
@@ -810,8 +809,7 @@ static float2 isect_face_dst(const BMLoop *l,
 
   float2 ray_dir = (uv - uv_prev) + (uv_next - uv);
   ray_dir = math::orthogonal(ray_dir * aspect);
-  ray_dir[0] /= aspect[0];
-  ray_dir[1] /= aspect[1];
+  ray_dir /= aspect;
 
   float2 isect_co;
   if (!bm_loop_uv_calc_opposite_co(l, uv, offsets, ray_dir, isect_co)) {
@@ -902,8 +900,6 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
   }
 
   /* Alloc and initialize the #TransDataEdgeSlideVert. */
-  float2 aspect(t->aspect);
-
   r_sv = uv_groups->sd_array_create_and_init_edge(tc);
 
   /* Compute the sliding groups. */
@@ -1005,7 +1001,7 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
               best_slide = int(curr.fdata[0].f != nullptr);
               curr.fdata[best_slide].f = f_curr;
               if (curr.vert_is_inner) {
-                curr.fdata[best_slide].dst = isect_face_dst(l_curr, src, aspect, offsets);
+                curr.fdata[best_slide].dst = isect_face_dst(l_curr, src, t->aspect, offsets);
               }
               else {
                 curr.fdata[best_slide].dst = dst;
@@ -1047,7 +1043,7 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
             if (BM_elem_index_get(l2_dst) != -1 || next.vert_is_inner) {
               /* Case where the vertex slides over the face. */
               const float2 &src_next = BM_ELEM_CD_GET_FLOAT_P(l_next, offsets.uv);
-              next.fdata[best_slide].dst = isect_face_dst(l_next, src_next, aspect, offsets);
+              next.fdata[best_slide].dst = isect_face_dst(l_next, src_next, t->aspect, offsets);
             }
             else {
               /* Case where the vertex slides over an edge. */
@@ -1084,6 +1080,7 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
         else {
           sv_first = &sv;
           float2 iloc = sv.td->iloc;
+          const float2 &aspect = t->aspect;
           if (curr.fdata[0].f) {
             float2 dst = curr.fdata[0].dst * aspect;
             sv.dir_side[0] = float3(dst - iloc, 0.0f);
