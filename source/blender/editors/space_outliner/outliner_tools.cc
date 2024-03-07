@@ -43,7 +43,7 @@
 #include "BKE_collection.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_global.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idtype.hh"
@@ -147,6 +147,7 @@ static void get_element_operation_type(
       case ID_KE:
       case ID_WO:
       case ID_AC:
+      case ID_AN:
       case ID_TXT:
       case ID_GR:
       case ID_LS:
