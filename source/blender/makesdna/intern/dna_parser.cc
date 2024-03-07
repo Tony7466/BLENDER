@@ -17,7 +17,7 @@ struct StructMemberPrinter {
     if (var.const_tag) {
       printf("const ");
     }
-    printf(fmt::format("{} ", var.type).c_str());
+    printf("%s", fmt::format("{} ", var.type).c_str());
 
     bool first = true;
     for (auto &variable_item : var.items) {
@@ -25,13 +25,14 @@ struct StructMemberPrinter {
         printf(",");
       }
       first = false;
-      printf(fmt::format("{}{}", variable_item.ptr.value_or(""), variable_item.name).c_str());
+      printf("%s",
+             fmt::format("{}{}", variable_item.ptr.value_or(""), variable_item.name).c_str());
       for (auto &size : variable_item.size) {
         if (std::holds_alternative<std::string_view>(size)) {
-          printf(fmt::format("[{}]", std::get<std::string_view>(size)).c_str());
+          printf("%s", fmt::format("[{}]", std::get<std::string_view>(size)).c_str());
         }
         else {
-          printf(fmt::format("[{}]", std::get<int32_t>(size)).c_str());
+          printf("%s", fmt::format("[{}]", std::get<int32_t>(size)).c_str());
         }
       }
     }
@@ -39,13 +40,13 @@ struct StructMemberPrinter {
   void operator()(ast::FunctionPtr &fn) const
   {
     if (fn.const_tag) {
-      printf("const ");
+      printf("%s", "const ");
     }
-    printf(fmt::format("{} (*{})(...)", fn.type, fn.name).c_str());
+    printf("%s", fmt::format("{} (*{})(...)", fn.type, fn.name).c_str());
   }
   void operator()(ast::PointerToArray &ptr) const
   {
-    printf(fmt::format("{} (*{})[{}]", ptr.type, ptr.name, ptr.size).c_str());
+    printf("%s", fmt::format("{} (*{})[{}]", ptr.type, ptr.name, ptr.size).c_str());
   }
   void operator()(ast::Struct &val) const
   {
@@ -57,13 +58,13 @@ struct ParserDebugPrinter {
   size_t padding;
   void operator()(ast::DefineInt &val) const
   {
-    printf(fmt::format("#define {} {}\n", val.name, val.value).c_str());
+    printf("%s\n", fmt::format("#define {} {}", val.name, val.value).c_str());
   }
   void operator()(ast::Enum &val) const
   {
-    printf(fmt::format("enum {}", val.name.value_or("unnamed")).c_str());
+    printf("%s", fmt::format("enum {}", val.name.value_or("unnamed")).c_str());
     if (val.type) {
-      printf(fmt::format(": {}", val.type.value()).c_str());
+      printf("%s", fmt::format(": {}", val.type.value()).c_str());
     }
     printf(" {...};\n");
   }
@@ -86,7 +87,7 @@ struct ParserDebugPrinter {
 
 void printf_struct(ast::Struct &val, size_t padding)
 {
-  printf(fmt::format("struct {} {{\n", val.name).c_str());
+  printf("%s\n", fmt::format("struct {} {{", val.name).c_str());
   for (auto &item : val.items) {
     for (size_t x = 0; x < padding + 1; x++) {
       printf("    ");
@@ -168,12 +169,12 @@ template<typename Type> struct Optional : public std::optional<Type> {
  */
 template<class... Args> struct Variant : public std::variant<Args...> {
  private:
-  template<typename Type> static inline bool parse_type(TokenIterator &cont, Variant &where)
+  template<typename Type> static inline bool parse_type(TokenIterator &cont, Variant &variant)
   {
     cont.push_waypoint();
     std::optional<Type> val = Type::parse(cont);
     if (val.has_value()) {
-      where.emplace<Type>(std::move(val.value()));
+      variant.template emplace<Type>(std::move(val.value()));
     }
     cont.end_waypoint(val.has_value());
     return val.has_value();
@@ -770,7 +771,8 @@ static void print_unhandled_token_error(std::string_view filepath,
       }
       itr++;
     }
-    printf(fmt::format("{}{} Unhandled token: \"{}\"\n", filepath, line, token.where).c_str());
+    printf("%s\n",
+           fmt::format("{}{} Unhandled token: \"{}\"", filepath, line, token.where).c_str());
   };
   std::visit(visit_fn, *what);
 }

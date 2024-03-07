@@ -1,16 +1,17 @@
 #include "dna_lexer.hh"
 #include <cctype>
 #include <charconv>
+#include <fmt/format.h>
 
 namespace blender::dna::lex {
 
 static std::string_view string_view_from_range(const std::string_view::iterator first,
                                                const std::string_view::iterator last)
 {
-  return std::string_view{first._Unwrapped(), size_t(last - first)};
+  return std::string_view{&*first, size_t(last - first)};
 }
 
-/* Match any withe space except break lines. */
+/* Match any white space except break lines. */
 static void eval_space(std::string_view::iterator &itr,
                        std::string_view::iterator last,
                        TokenIterator & /*cont*/)
@@ -20,7 +21,7 @@ static void eval_space(std::string_view::iterator &itr,
   }
 }
 
-/* Match break lines, added as tokens since are needed for `#define` blocks. */
+/* Match break lines, added as tokens as they are needed for `#define` blocks. */
 static void eval_break_line(std::string_view::iterator &itr,
                             std::string_view::iterator /*last*/,
                             TokenIterator &cont)
@@ -32,7 +33,7 @@ static void eval_break_line(std::string_view::iterator &itr,
   itr++;
 }
 
-/* Match any identifier substring, also matches c++ keywords. */
+/* Match any identifier substring, also matches C++ keywords. */
 static void eval_identifier(std::string_view::iterator &itr,
                             std::string_view::iterator last,
                             TokenIterator &cont)
@@ -114,7 +115,6 @@ static void eval_line_comment(std::string_view::iterator &itr,
   if (!(itr[0] == '/' && itr[1] == '/')) {
     return;
   }
-  std::string_view::iterator start{itr++};
   while (itr != last && itr[0] != '\n') {
     itr++;
   }
@@ -133,7 +133,7 @@ static void eval_int_literal(std::string_view::iterator &itr,
     return;
   }
   int val{};
-  auto transform_Result = std::from_chars(start._Unwrapped(), itr._Unwrapped(), val);
+  std::from_chars(&*start, &*itr, val);
   cont.append(IntLiteralToken{string_view_from_range(start, itr), val});
 }
 
@@ -222,11 +222,7 @@ void TokenIterator::print_unkown_token(std::string_view filepath,
     }
     start++;
   }
-  printf("%.*s(%zd) Unknown token: (%c)\n",
-         uint32_t(filepath.size()),
-         filepath.data(),
-         line,
-         where[0]);
+  printf("%s\n", fmt::format("{}({}) Unknown token: ({})", filepath, line, where[0]).c_str());
 }
 
 void TokenIterator::skip_break_lines()
