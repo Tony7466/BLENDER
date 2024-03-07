@@ -15,6 +15,8 @@ namespace blender::gpu {
 /**
  * Super class for resources that can be bound to a shader.
  */
+// TODO: Consider adding a template parameter for shader create info data resource type.
+// This can reduce some code duplications. This is a cleanup that can be done in main directly.
 class VKBindableResource {
  protected:
   virtual ~VKBindableResource();
@@ -23,6 +25,8 @@ class VKBindableResource {
   /**
    * Bind the resource to the shader.
    */
+  // TODO: should split up to add_to_descriptor_set and add_to_resouces or resource access should
+  // become part of the descriptor set.
   virtual void bind(int binding,
                     shader::ShaderCreateInfo::Resource::BindType bind_type,
                     const GPUSamplerState sampler_state) = 0;

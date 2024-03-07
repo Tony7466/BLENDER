@@ -30,7 +30,8 @@ class VKShader : public Shader {
   /* TODO: Should we move descriptor set layout and pipeline layout to VKShaderInterface? */
   VkDescriptorSetLayout vk_descriptor_set_layout_ = VK_NULL_HANDLE;
   VkPipelineLayout vk_pipeline_layout_ = VK_NULL_HANDLE;
-  VKPipeline pipeline_;
+  [[deprecated]] VKPipeline pipeline_;
+  VkPipeline vk_pipeline_ = VK_NULL_HANDLE;
 
  public:
   VKShader(const char *name);
@@ -75,6 +76,31 @@ class VKShader : public Shader {
 
   /* DEPRECATED: Kept only because of BGL API. */
   int program_handle_get() const override;
+
+  VkPipeline ensure_and_get_compute_pipeline()
+  {
+    BLI_assert(compute_module_ != VK_NULL_HANDLE);
+    BLI_assert(vk_pipeline_layout_ != VK_NULL_HANDLE);
+
+    /* Early exit when no specialization constants are used and the vk_pipeline_ is already
+     * valid. This would handle most cases. */
+    if (constants.values.is_empty() && vk_pipeline_ != VK_NULL_HANDLE) {
+      return vk_pipeline_;
+    }
+
+    // TODO: we could store the compute_info as an attribute to reduce reallocations when filling
+    // the specialization constants. In that case we should prefill the compute_info where the
+    // compute_module_ and vk_pipeline_layout_ are actually created.
+    VKComputeInfo compute_info = {};
+    compute_info.specialization_constants.extend(constants.values);
+    compute_info.vk_shader_module = compute_module_;
+    compute_info.vk_pipeline_layout = vk_pipeline_layout_;
+
+    VKDevice &device = VKBackend::get().device_get();
+    VKPipelines &pipelines = device.pipelines_get();
+    vk_pipeline_ = pipelines.get_or_create_compute_pipeline(compute_info, vk_pipeline_);
+    return vk_pipeline_;
+  }
 
   VKPipeline &pipeline_get();
   VkPipelineLayout vk_pipeline_layout_get() const

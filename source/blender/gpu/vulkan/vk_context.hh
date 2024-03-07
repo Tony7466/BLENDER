@@ -16,6 +16,7 @@
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
+#include "vk_render_graph_types.hh"
 
 namespace blender::gpu {
 class VKFrameBuffer;
@@ -33,6 +34,8 @@ class VKContext : public Context, NonCopyable {
   VkFormat swap_chain_format_ = {};
   GPUTexture *surface_texture_ = nullptr;
   void *ghost_context_;
+
+  VKDispatchInfo dispatch_info_ = {};
 
  public:
   VKContext(void *ghost_window, void *ghost_context);
@@ -61,7 +64,9 @@ class VKContext : public Context, NonCopyable {
   void deactivate_framebuffer();
   VKFrameBuffer *active_framebuffer_get() const;
 
-  void bind_compute_pipeline();
+  [[deprecated]] void bind_compute_pipeline();
+  void update_dispatch_info();
+  VKDispatchInfo &update_and_get_dispatch_info();
   void bind_graphics_pipeline(const GPUPrimType prim_type,
                               const VKVertexAttributeObject &vertex_attribute_object);
   void sync_backbuffer();

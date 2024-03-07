@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "BLI_utility_mixins.hh"
+
 namespace blender::gpu {
 
 struct VKDescriptorSetData {
@@ -56,12 +58,18 @@ struct VKBufferAccess {
 struct VKResourceAccessInfo {
   Vector<VKBufferAccess> buffers;
   Vector<VKImageAccess> images;
+
+  void clear()
+  {
+    buffers.clear();
+    images.clear();
+  }
 };
 
 /**
  * All information to add a dispatch node.
  */
-struct VKDispatchInfo {
+struct VKDispatchInfo : NonCopyable {
   VKDispatchNode dispatch_node;
   VKResourceAccessInfo resources;
 };

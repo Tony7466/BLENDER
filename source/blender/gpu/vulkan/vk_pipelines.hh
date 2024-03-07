@@ -11,6 +11,8 @@
 #include "vk_common.hh"
 #include "vk_render_graph_list.hh"
 
+#include "BLI_utility_mixins.hh"
+
 namespace blender {
 namespace gpu {
 struct VKComputeInfo {
@@ -76,7 +78,7 @@ using ComputePipelineHandle = int64_t;
  * improve hashing performance. See #VKPipelines::ComputeInfo.
  */
 // TODO: Make thread safe by adding a mutex.
-class VKPipelines {
+class VKPipelines : NonCopyable {
  public:
  private:
   Map<VKComputeInfo, VkPipeline> compute_pipelines_;

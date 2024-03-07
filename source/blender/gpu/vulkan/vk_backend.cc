@@ -136,11 +136,15 @@ void VKBackend::samplers_update()
 
 void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
 {
+  // TODO: Move most code to context. as here it is glued all together and ensured to be thread
+  // safe. context.update_and_get_dispatch_info()
   VKContext &context = *VKContext::get();
-  context.state_manager_get().apply_bindings();
-  context.bind_compute_pipeline();
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  command_buffers.dispatch(groups_x_len, groups_y_len, groups_z_len);
+  VKDispatchInfo &dispatch_info = context.update_and_get_dispatch_info();
+  dispatch_info.dispatch_node.group_count_x = groups_x_len;
+  dispatch_info.dispatch_node.group_count_y = groups_y_len;
+  dispatch_info.dispatch_node.group_count_z = groups_z_len;
+  VKRenderGraph &render_graph = device_get().render_graph_get();
+  render_graph.add_dispatch_node(dispatch_info);
 }
 
 void VKBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)

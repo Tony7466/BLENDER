@@ -87,7 +87,7 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   void push_constants(const VKPushConstants &push_constants,
                       const VkPipelineLayout vk_pipeline_layout,
                       const VkShaderStageFlags vk_shader_stages);
-  void dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
+  [[deprecated]] void dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
   void dispatch(VKStorageBuffer &command_buffer);
   /** Copy the contents of a texture MIP level to the dst buffer. */
   void copy(VKBuffer &dst_buffer, VKTexture &src_texture, Span<VkBufferImageCopy> regions);
@@ -126,7 +126,7 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
    * Clear attachments of the active framebuffer.
    */
   void clear(Span<VkClearAttachment> attachments, Span<VkClearRect> areas);
-  [[deprecated]]void fill(VKBuffer &buffer, uint32_t data);
+  [[deprecated]] void fill(VKBuffer &buffer, uint32_t data);
 
   void draw(int v_first, int v_count, int i_first, int i_count);
   void draw_indexed(

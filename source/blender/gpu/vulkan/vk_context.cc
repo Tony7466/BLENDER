@@ -200,6 +200,41 @@ void VKContext::bind_compute_pipeline()
   }
 }
 
+void VKContext::update_dispatch_info()
+{
+  dispatch_info_.dispatch_node = {};
+  dispatch_info_.resources.clear();
+  state_manager_get().apply_bindings(/*TODO: dispatch_info_.resources*/);
+
+  VKShader &vk_shader = unwrap(*shader);
+  VkPipeline vk_pipeline = vk_shader.ensure_and_get_compute_pipeline();
+  // TODO: push constants aren't added yet.
+  dispatch_info_.dispatch_node.vk_pipeline = vk_pipeline;
+
+  if (vk_shader.has_descriptor_set()) {
+    dispatch_info_.dispatch_node.descriptor_set.vk_pipeline_layout =
+        vk_shader.vk_pipeline_layout_get();
+    dispatch_info_.dispatch_node.descriptor_set.vk_descriptor_set =
+        descriptor_set_get().active_descriptor_set()->vk_handle();
+    // TODO: add resource dependencies. This is currently a combination from descriptor set bound
+    // resources and shader create info that contains the data where these resources are used and
+    // how. In stead of using the descriptor set we could also determine this when the
+    // state_manager updates its bindings. In this case we already take some parts of the shader
+    // create info into account, but we don't access the access flags.
+    // context.descriptor_set_get().active_descriptor_set().build(dispatch_info.resources);
+    //
+    // New approach is to add resource access to the descriptor set where it will be build during
+    // apply_bindings. This Seems to be thread safe, main issue might still be where to locate the
+    // resources list to reduce memory operations.
+  }
+}
+
+VKDispatchInfo &VKContext::update_and_get_dispatch_info()
+{
+  update_dispatch_info();
+  return dispatch_info_;
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

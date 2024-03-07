@@ -167,6 +167,10 @@ class VKDevice : public NonCopyable {
   {
     return vk_pipeline_cache_;
   }
+  VKPipelines &pipelines_get()
+  {
+    return pipelines_;
+  }
 
   debug::VKDebuggingTools &debugging_tools_get()
   {
