@@ -260,6 +260,17 @@ struct PointTransferData {
   float factor;
   bool is_src_point;
   bool is_cut;
+
+  /**
+   * Source point is the last of the curve.
+   */
+  bool is_src_end_point() const
+  {
+    /* The src_next_point index increments for all points except the last, where it is set to the
+     * first point index. This can be used to detect the curve end from the source index alone.
+     */
+    return is_src_point && src_point >= src_next_point;
+  }
 };
 
 /**
