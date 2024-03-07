@@ -203,7 +203,8 @@ class MemoryBuffer {
   }
 
   /* Equivalent to the GLSL texture() function with bilinear interpolation and extended boundary
-   * conditions. The coordinates are thus expected to have half-pixels offsets. */
+   * conditions. The coordinates are thus expected to have half-pixels offsets. For float buffers,
+   * the green and green channels will be zero and the alpha will be one. */
   float4 texture_bilinear_extend(float2 coordinates) const
   {
     const int2 size = int2(get_width(), get_height());
