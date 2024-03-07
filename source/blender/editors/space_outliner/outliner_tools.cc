@@ -43,7 +43,7 @@
 #include "BKE_collection.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_global.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_idtype.hh"
@@ -854,8 +854,6 @@ static uiBlock *merged_element_search_menu(bContext *C, ARegion *region, void *d
            menu_width,
            UI_searchbox_size_y(),
            nullptr,
-           0,
-           0,
            0,
            0,
            nullptr);

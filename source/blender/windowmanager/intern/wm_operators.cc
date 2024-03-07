@@ -610,7 +610,7 @@ std::optional<std::string> WM_context_path_resolve_property_full(const bContext 
       if (prop != nullptr) {
         std::string prop_str = RNA_path_property_py(ptr, prop, index);
         if (prop_str[0] == '[') {
-          member_id_data_path = fmt::format("{}.{}", *data_path, prop_str);
+          member_id_data_path = fmt::format("{}.{}{}", member_id, *data_path, prop_str);
         }
         else {
           member_id_data_path = fmt::format("{}.{}.{}", member_id, *data_path, prop_str);
@@ -1110,8 +1110,6 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *region, void *arg)
            nullptr,
            0.0,
            0.0,
-           0,
-           0,
            "");
 #endif
   uiBut *but = uiDefSearchButO_ptr(block,
@@ -1137,8 +1135,6 @@ static uiBlock *wm_enum_search_menu(bContext *C, ARegion *region, void *arg)
            width,
            height,
            nullptr,
-           0,
-           0,
            0,
            0,
            nullptr);
@@ -1570,14 +1566,12 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
                              nullptr,
                              0,
                              0,
-                             0,
-                             0,
                              "");
       uiLayoutColumn(col, false);
     }
 
     cancel_but = uiDefBut(
-        col_block, UI_BTYPE_BUT, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, 0, 0, "");
+        col_block, UI_BTYPE_BUT, 0, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, "");
 
     if (!windows_layout) {
       uiLayoutColumn(col, false);
@@ -1590,8 +1584,6 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
                              0,
                              UI_UNIT_Y,
                              nullptr,
-                             0,
-                             0,
                              0,
                              0,
                              "");
@@ -1850,7 +1842,8 @@ static void WM_OT_debug_menu(wmOperatorType *ot)
   ot->exec = wm_debug_menu_exec;
   ot->poll = WM_operator_winactive;
 
-  RNA_def_int(ot->srna, "debug_value", 0, SHRT_MIN, SHRT_MAX, "Debug Value", "", -10000, 10000);
+  ot->prop = RNA_def_int(
+      ot->srna, "debug_value", 0, SHRT_MIN, SHRT_MAX, "Debug Value", "", -10000, 10000);
 }
 
 /** \} */
@@ -1949,8 +1942,6 @@ static uiBlock *wm_block_search_menu(bContext *C, ARegion *region, void *userdat
            init_data->size[0],
            init_data->size[1],
            nullptr,
-           0,
-           0,
            0,
            0,
            nullptr);

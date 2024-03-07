@@ -2353,13 +2353,39 @@ static int wm_homefile_write_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
+static int wm_homefile_write_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (!U.app_template[0]) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Overwrite Main Startup File"),
+                                  IFACE_("Make the current file the default startup blend file."),
+                                  IFACE_("Overwrite"),
+                                  ALERT_ICON_QUESTION,
+                                  false);
+  }
+
+  /* A different message if this is overriding a specific template startup file. */
+  char display_name[FILE_MAX];
+  BLI_path_to_display_name(display_name, sizeof(display_name), IFACE_(U.app_template));
+  std::string message = fmt::format(
+      IFACE_("Make the current file the default \"{}\" startup file."), IFACE_(display_name));
+  return WM_operator_confirm_ex(C,
+                                op,
+                                IFACE_("Overwrite Template Startup File"),
+                                message.c_str(),
+                                IFACE_("Overwrite"),
+                                ALERT_ICON_QUESTION,
+                                false);
+}
+
 void WM_OT_save_homefile(wmOperatorType *ot)
 {
   ot->name = "Save Startup File";
   ot->idname = "WM_OT_save_homefile";
-  ot->description = "Make the current file the default .blend file";
+  ot->description = "Make the current file the default startup file";
 
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = wm_homefile_write_invoke;
   ot->exec = wm_homefile_write_exec;
 }
 
@@ -2524,6 +2550,32 @@ void WM_OT_read_userpref(wmOperatorType *ot)
   ot->exec = wm_userpref_read_exec;
 }
 
+static int wm_userpref_read_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  std::string title;
+
+  const bool template_only = U.app_template[0] &&
+                             RNA_boolean_get(op->ptr, "use_factory_startup_app_template_only");
+
+  if (template_only) {
+    char display_name[FILE_MAX];
+    BLI_path_to_display_name(display_name, sizeof(display_name), IFACE_(U.app_template));
+    title = fmt::format(IFACE_("Load Factory \"{}\" Preferences."), IFACE_(display_name));
+  }
+  else {
+    title = IFACE_("Load Factory Blender Preferences");
+  }
+
+  return WM_operator_confirm_ex(
+      C,
+      op,
+      title.c_str(),
+      IFACE_("To make changes to Preferences permanent, use \"Save Preferences.\""),
+      IFACE_("Load"),
+      ALERT_ICON_WARNING,
+      false);
+}
+
 void WM_OT_read_factory_userpref(wmOperatorType *ot)
 {
   ot->name = "Load Factory Preferences";
@@ -2532,7 +2584,7 @@ void WM_OT_read_factory_userpref(wmOperatorType *ot)
       "Load factory default preferences. "
       "To make changes to preferences permanent, use \"Save Preferences\"";
 
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = wm_userpref_read_invoke;
   ot->exec = wm_userpref_read_exec;
 
   read_factory_reset_props(ot);
@@ -2756,6 +2808,37 @@ void WM_OT_read_homefile(wmOperatorType *ot)
   /* omit poll to run in background mode */
 }
 
+static int wm_read_factory_settings_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  const bool unsaved = wm_file_or_session_data_has_unsaved_changes(CTX_data_main(C),
+                                                                   CTX_wm_manager(C));
+  std::string title;
+  const bool template_only = U.app_template[0] &&
+                             RNA_boolean_get(op->ptr, "use_factory_startup_app_template_only");
+
+  if (template_only) {
+    char display_name[FILE_MAX];
+    BLI_path_to_display_name(display_name, sizeof(display_name), IFACE_(U.app_template));
+    title = fmt::format(IFACE_("Load Factory \"{}\" Startup File and Preferences"),
+                        IFACE_(display_name));
+  }
+  else {
+    title = IFACE_("Load Factory Default Startup File and Preferences");
+  }
+
+  return WM_operator_confirm_ex(
+      C,
+      op,
+      title.c_str(),
+      unsaved ? IFACE_("To make changes to Preferences permanent, use \"Save "
+                       "Preferences\"\nWarning: Your file is "
+                       "unsaved! Proceeding will abandon your changes.") :
+                IFACE_("To make changes to Preferences permanent, use \"Save Preferences.\""),
+      IFACE_("Load"),
+      ALERT_ICON_WARNING,
+      false);
+}
+
 void WM_OT_read_factory_settings(wmOperatorType *ot)
 {
   ot->name = "Load Factory Settings";
@@ -2764,7 +2847,7 @@ void WM_OT_read_factory_settings(wmOperatorType *ot)
       "Load factory default startup file and preferences. "
       "To make changes permanent, use \"Save Startup File\" and \"Save Preferences\"";
 
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = wm_read_factory_settings_invoke;
   ot->exec = wm_homefile_read_exec;
   /* Omit poll to run in background mode. */
 
@@ -3749,8 +3832,6 @@ static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void 
                            nullptr,
                            0,
                            0,
-                           0,
-                           0,
                            TIP_("Reload file with execution of Python scripts enabled"));
     UI_but_func_set(
         but, [block](bContext &C) { wm_block_autorun_warning_reload_with_scripts(&C, block); });
@@ -3766,8 +3847,6 @@ static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void 
                            50,
                            UI_UNIT_Y,
                            nullptr,
-                           0,
-                           0,
                            0,
                            0,
                            TIP_("Enable scripts"));
@@ -3787,8 +3866,6 @@ static uiBlock *block_create_autorun_warning(bContext *C, ARegion *region, void 
                          50,
                          UI_UNIT_Y,
                          nullptr,
-                         0,
-                         0,
                          0,
                          0,
                          TIP_("Continue using file without Python scripts"));
@@ -3864,6 +3941,11 @@ void wm_test_autorun_warning(bContext *C)
   wmWindow *win = (wm->winactive) ? wm->winactive : static_cast<wmWindow *>(wm->windows.first);
 
   if (win) {
+    /* We want this warning on the Main window, not a child window even if active. See #118765. */
+    if (win->parent) {
+      win = win->parent;
+    }
+
     wmWindow *prevwin = CTX_wm_window(C);
     CTX_wm_window_set(C, win);
     UI_popup_block_invoke(C, block_create_autorun_warning, nullptr, nullptr);
@@ -3933,21 +4015,8 @@ static void save_file_forwardcompat_cancel(bContext *C, void *arg_block, void * 
 
 static void save_file_forwardcompat_cancel_button(uiBlock *block, wmGenericCallback *post_action)
 {
-  uiBut *but = uiDefIconTextBut(block,
-                                UI_BTYPE_BUT,
-                                0,
-                                ICON_NONE,
-                                IFACE_("Cancel"),
-                                0,
-                                0,
-                                0,
-                                UI_UNIT_Y,
-                                nullptr,
-                                0,
-                                0,
-                                0,
-                                0,
-                                "");
+  uiBut *but = uiDefIconTextBut(
+      block, UI_BTYPE_BUT, 0, ICON_NONE, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, "");
   UI_but_func_set(but, save_file_forwardcompat_cancel, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
@@ -3990,8 +4059,6 @@ static void save_file_forwardcompat_overwrite_button(uiBlock *block,
                                 nullptr,
                                 0,
                                 0,
-                                0,
-                                0,
                                 "");
   UI_but_func_set(but, save_file_forwardcompat_overwrite, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
@@ -4018,8 +4085,6 @@ static void save_file_forwardcompat_saveas_button(uiBlock *block, wmGenericCallb
                                 0,
                                 UI_UNIT_Y,
                                 nullptr,
-                                0,
-                                0,
                                 0,
                                 0,
                                 "");
@@ -4185,21 +4250,8 @@ static void wm_block_file_close_save(bContext *C, void *arg_block, void *arg_dat
 
 static void wm_block_file_close_cancel_button(uiBlock *block, wmGenericCallback *post_action)
 {
-  uiBut *but = uiDefIconTextBut(block,
-                                UI_BTYPE_BUT,
-                                0,
-                                ICON_NONE,
-                                IFACE_("Cancel"),
-                                0,
-                                0,
-                                0,
-                                UI_UNIT_Y,
-                                nullptr,
-                                0,
-                                0,
-                                0,
-                                0,
-                                "");
+  uiBut *but = uiDefIconTextBut(
+      block, UI_BTYPE_BUT, 0, ICON_NONE, IFACE_("Cancel"), 0, 0, 0, UI_UNIT_Y, nullptr, 0, 0, "");
   UI_but_func_set(but, wm_block_file_close_cancel, block, post_action);
   UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
 }
@@ -4216,8 +4268,6 @@ static void wm_block_file_close_discard_button(uiBlock *block, wmGenericCallback
                                 0,
                                 UI_UNIT_Y,
                                 nullptr,
-                                0,
-                                0,
                                 0,
                                 0,
                                 "");
@@ -4241,8 +4291,6 @@ static void wm_block_file_close_save_button(uiBlock *block,
       0,
       UI_UNIT_Y,
       nullptr,
-      0,
-      0,
       0,
       0,
       "");
