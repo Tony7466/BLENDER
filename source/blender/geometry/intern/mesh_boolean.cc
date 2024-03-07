@@ -893,68 +893,98 @@ static Mesh *mesh_boolean_mesh_arr(Span<const Mesh *> meshes,
  */
 static int face_boolean_operand(BMFace *f, void * /*user_data*/)
 {
-  return BM_elem_flag_test(f, BM_FACE_TAG) ? 1 : 0;
+  return BM_elem_flag_test(f, BM_FACE_TAG) ? 0 : 1;
 }
 
-/* Create a BMesh that is the concatenation of the two given meshes.
+/* Create a BMesh that is the concatenation of the given meshes.
  * The corresponding mesh-to-world transformations are also given,
  * as well as a target_tranform.
  * A triangulation is also calculated and returned in the last two
  * parameters.
+ * The faces of the first mesh are tagged with BM_FACE_TAG so that the
+ * face_boolean_operand() function can distinguish those faces from the
+ * rest.
  * The caller is responsible for using `BM_mesh_free` on the returned
  * BMesh, and calling `MEM_freeN` on the returned looptris.
+ * 
+ * TODO: maybe figure out how to use the join_geometries() function
+ * to join all the meshes into one mesh first, and then convert
+ * that single mesh to BMesh.
  */
-static BMesh *mesh_bm_create(const Mesh *mesh0,
-                             const Mesh *mesh1,
-                             const float4x4 *trans0,
-                             const float4x4 *trans1,
+static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
+                             Span<float4x4> transforms,
                              const float4x4 &target_transform,
                              BMLoop *(**r_looptris)[3],
                              int *r_looptris_tot)
 {
+  const int n = meshes.size();
+  BLI_assert(n >= 1);
   bool ok;
   float4x4 inv_target_mat = math::invert(target_transform, ok);
   if (!ok) {
     BLI_assert(false);
     inv_target_mat = float4x4::identity();
   }
-  float4x4 to_target0 = trans0 ? inv_target_mat * (*trans0) : inv_target_mat;
-  float4x4 to_target1 = trans1 ? inv_target_mat * (*trans1) : inv_target_mat;
-  bool is_negative_transform0 = trans0 ? math::is_negative(*trans0) : false;
-  bool is_negative_transform1 = trans1 ? math::is_negative(*trans1) : false;
-  bool is_flip1 = is_negative_transform0 != is_negative_transform1;
-
-  /* Make a BMesh that will be a concatenation of first the elements
-   * of mesh1, followed by the elements of mesh0. */
-  const BMAllocTemplate allocsize = BMALLOC_TEMPLATE_FROM_ME(mesh0, mesh1);
-  BMeshCreateParams bmesh_create_params{};
-  BMesh *bm = BM_mesh_create(&allocsize, &bmesh_create_params);
-  const Mesh *mesh_array[2] = {mesh0, mesh1};
-
-  BM_mesh_copy_init_customdata_from_mesh_array(bm, mesh_array, ARRAY_SIZE(mesh_array), &allocsize);
-
-  BMeshFromMeshParams bmesh_from_mesh_params{};
-
-  /* For reasons relative to "active" elements, the float boolean puts the second
-   * operand first. */
-
-  /* First put the mesh1 elements in, calculating normals. */
-  bmesh_from_mesh_params.calc_face_normal = true;
-  bmesh_from_mesh_params.calc_vert_normal = true;
-  BM_mesh_bm_from_me(bm, mesh1, &bmesh_from_mesh_params);
-
-  if (UNLIKELY(is_flip1)) {
-    /* Need to flip the face normals of the mesh1 faces. */
-    const int cd_loop_mdisp_offset = CustomData_get_offset(&bm->ldata, CD_MDISPS);
-    BMIter iter;
-    BMFace *efa;
-    BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
-      BM_face_normal_flip_ex(bm, efa, cd_loop_mdisp_offset, true);
+  Array<float4x4> to_target(n);
+  Array<bool> is_negative_transform(n);
+  Array<bool> is_flip(n);
+  const int tsize = transforms.size();
+  for (const int i : IndexRange(n)) {
+    if (tsize > i) {
+      to_target[i] = inv_target_mat * transforms[i];
+      is_negative_transform[i] = math::is_negative(transforms[i]);
+      is_flip[i] = is_negative_transform[i] != is_negative_transform[0];
+    }
+    else {
+      to_target[i] = inv_target_mat;
+      is_negative_transform[i] = false;
+      is_flip[i] = 0;
     }
   }
 
-  /* Now append the mesh0 elements. */
-  BM_mesh_bm_from_me(bm, mesh0, &bmesh_from_mesh_params);
+  /* Make a BMesh that will be a concatenation of the elements of all the meshes */
+  BMAllocTemplate allocsize;
+  allocsize.totvert = 0;
+  allocsize.totedge = 0;
+  allocsize.totloop = 0;
+  allocsize.totface = 0;
+  for (const int i : IndexRange(n)) {
+    allocsize.totvert += meshes[i]->verts_num;
+    allocsize.totedge += meshes[i]->edges_num;
+    allocsize.totloop += meshes[i]->corners_num;
+    allocsize.totface += meshes[i]->faces_num;
+  }
+
+  BMeshCreateParams bmesh_create_params{};
+  BMesh *bm = BM_mesh_create(&allocsize, &bmesh_create_params);
+
+  BM_mesh_copy_init_customdata_from_mesh_array(bm, const_cast<const Mesh **>(meshes.begin()), n, &allocsize);
+
+  BMeshFromMeshParams bmesh_from_mesh_params{};
+  bmesh_from_mesh_params.calc_face_normal = true;
+  bmesh_from_mesh_params.calc_vert_normal = true;
+
+  Array<int> verts_end(n);
+  Array<int> faces_end(n);
+  verts_end[0] = meshes[0]->verts_num;
+  faces_end[0] = meshes[0]->faces_num;
+  for (const int i : IndexRange(n)) {
+    /* Append meshes[i] elements and data to bm. */
+    BM_mesh_bm_from_me(bm, meshes[i], &bmesh_from_mesh_params);
+    if (i > 0) {
+      verts_end[i] = verts_end[i - 1] + meshes[i]->verts_num;
+      faces_end[i] = faces_end[i - 1] + meshes[i]->faces_num;
+      if (is_flip[i]) {
+        /* Need to flip face normals to match that of mesh[0]. */
+        const int cd_loop_mdisp_offset = CustomData_get_offset(&bm->ldata, CD_MDISPS);
+        BM_mesh_elem_table_ensure(bm, BM_FACE);
+        for (int j = faces_end[i - 1]; j < faces_end[i]; j++) {
+          BMFace *efa = bm->ftable[j];
+          BM_face_normal_flip_ex(bm, efa, cd_loop_mdisp_offset, true);
+        }
+      }
+    }
+  }
 
   /* Make a triangulation of all polys before transforming vertices
    * so we can use the original normals. */
@@ -966,48 +996,48 @@ static BMesh *mesh_bm_create(const Mesh *mesh0,
   *r_looptris_tot = looptris_tot;
 
   /* Tranform the vertices that into the desired target_transform space. */
-  const int i_verts1_end = mesh1->verts_num;
-  const int i_polys1_end = mesh1->faces_num;
-
   BMIter iter;
   BMVert *eve;
   int i = 0;
+  int mesh_index = 0;
   BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
-    mul_m4_v3(i < i_verts1_end ? to_target1.ptr() : to_target0.ptr(), eve->co);
+    mul_m4_v3(to_target[mesh_index].ptr(), eve->co);
     ++i;
+    if (i == verts_end[mesh_index]) {
+      mesh_index++;
+    }
   }
 
-  /* We need face normals because of 'BM_face_split_edgenet'
-   * we could calculate on the fly too (before calling split). */
-  float nmat0[3][3];
-  float nmat1[3][3];
-  copy_m3_m4(nmat0, to_target0.ptr());
-  copy_m3_m4(nmat1, to_target1.ptr());
-  invert_m3(nmat0);
-  invert_m3(nmat1);
-  if (UNLIKELY(is_negative_transform0)) {
-    negate_m3(nmat0);
-  }
-  if (UNLIKELY(is_negative_transform1)) {
-    negate_m3(nmat1);
+  /* We need face normals because of 'BM_face_split_edgenet' */
+  Array<float[3][3]> nmat(n);
+  for (const int i : IndexRange(n)) {
+    copy_m3_m4(nmat[i], to_target[i].ptr());
+    if (is_negative_transform[i]) {
+      negate_m3(nmat[i]);
+    }
   }
 
   /* Transform face normals and tag the first-operand faces. */
   BMFace *efa;
   i = 0;
+  mesh_index = 0;
   BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
-    mul_transposed_m3_v3(i < i_polys1_end ? nmat1 : nmat0, efa->no);
+    mul_transposed_m3_v3(nmat[mesh_index], efa->no);
     normalize_v3(efa->no);
 
     /* Temp tag used in `face_boolean_operand()` to test for operand 0. */
-    if (i < i_polys1_end) {
+    if (i < faces_end[0]) {
       BM_elem_flag_enable(efa, BM_FACE_TAG);
     }
     ++i;
+    if (i == faces_end[mesh_index]) {
+      mesh_index++;
+    }
   }
 
   return bm;
 }
+
 
 static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
                                 Span<float4x4> transforms,
@@ -1019,21 +1049,11 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
   BLI_assert(meshes.size() == transforms.size() || transforms.size() == 0);
 
   BLI_assert(material_remaps.size() == 0 || material_remaps.size() == meshes.size());
-  if (meshes.size() <= 0) {
-    return nullptr;
-  }
-
-  const int dbg_level = 0;
-  if (dbg_level > 0) {
-    std::cout << "\nFLOAT MESH BOOLEAN, nmeshes = " << meshes.size() << "\n";
-  }
-  if (meshes.size() == 2) {
+  if (meshes.size() >= 2) {
     BMLoop *(*looptris)[3];
     int looptris_tot;
-    BMesh *bm = mesh_bm_create(meshes[0],
-                               meshes[1],
-                               transforms.size() > 1 ? &transforms[0] : nullptr,
-                               transforms.size() > 1 ? &transforms[1] : nullptr,
+    BMesh *bm = mesh_bm_concat(meshes,
+                               transforms,
                                target_transform,
                                &looptris,
                                &looptris_tot);
@@ -1055,10 +1075,13 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
     BM_mesh_free(bm);
     return result;
   }
-  else {
-    std::cout << "\nIMPLEMENT ME: fast_mesh_boolean when #operands != 2\n";
-    return nullptr;
+  else if (meshes.size() == 1) {
+    /* The float solver doesn't do self union. Just return nullptr, which will
+     * cause geometry nodes to leave the input as is. */
+    return BKE_mesh_copy_for_eval(meshes[0]);
   }
+  /* Here: meshes.size() == 0. */
+  return nullptr;
 }
 
 Mesh *GEO_mesh_boolean(Span<const Mesh *> meshes,

@@ -64,13 +64,4 @@ Mesh *GEO_mesh_boolean(Span<const Mesh *> meshes,
                        GeometryNodeBooleanSolver solver,
                        Vector<int> *r_intersecting_edges);
 
-/* We could move this into an intern/mesh_boolean_ember.hh files,
- * but for now just declare this here. This is the ember-solver entry. */
-Mesh *mesh_boolean_ember(Span<const Mesh *> meshes,
-                         Span<float4x4> transforms,
-                         const float4x4 &target_transform,
-                         Span<Array<short>> material_remaps,
-                         BooleanOpParameters op_params,
-                         Vector<int> *r_intersecting_edges);
-
 }  // namespace blender::geometry::boolean
