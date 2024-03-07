@@ -33,12 +33,12 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
   /** Apply the Smear tool to a point under the brush. */
   void apply_smear_tool(const BrushPoint &point,
                         DrawingWeightData &drawing_weight,
-                        PointsInBrushStroke &points_in_stroke)
+                        PointsTouchedByBrush &touched_points)
   {
     /* Find the nearest neighbours of the to-be-smeared point. */
     KDTreeNearest_2d nearest_points[SMEAR_NEIGHBOUR_NUM];
     const int point_num = BLI_kdtree_2d_find_nearest_n(
-        points_in_stroke.nearest_points,
+        touched_points.kdtree,
         drawing_weight.point_positions[point.drawing_point_index],
         nearest_points,
         SMEAR_NEIGHBOUR_NUM);
@@ -55,7 +55,7 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
       }
       const float2 direction_nearest_to_point = math::normalize(
           drawing_weight.point_positions[point.drawing_point_index] -
-          points_in_stroke.nearest_points_positions[nearest_points[i].index]);
+          float2(nearest_points[i].co));
 
       /* Match point direction with brush direction. */
       point_dot_product[i] = math::dot(direction_nearest_to_point, this->brush_direction);
@@ -90,8 +90,7 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
     if (best_match == -1) {
       return;
     }
-    const float smear_weight =
-        points_in_stroke.nearest_points_weights[nearest_points[best_match].index];
+    const float smear_weight = touched_points.weights[nearest_points[best_match].index];
 
     apply_weight_to_point(point, smear_weight, drawing_weight);
   }
@@ -114,16 +113,10 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
         retrieve_editable_drawings_grouped_per_frame(*scene, *this->grease_pencil);
 
     this->drawing_weight_data = Array<Array<DrawingWeightData>>(drawings_per_frame.size());
-    this->points_in_stroke = Array<PointsInBrushStroke>(drawings_per_frame.size());
-    this->points_in_stroke_num = std::vector<std::atomic<int>>(drawings_per_frame.size());
 
+    /* Get weight data for all drawings in this frame group. */
     for (const int frame_group : drawings_per_frame.index_range()) {
       const Vector<MutableDrawingInfo> &drawings = drawings_per_frame[frame_group];
-
-      /* Create a buffer for points under the brush during the brush stroke. */
-      this->init_stroke_point_buffer(frame_group);
-
-      /* Get weight data for all drawings in this frame group. */
       this->init_weight_data_for_drawings(C, drawings, frame_group);
     }
   }
@@ -144,7 +137,6 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
     /* Iterate over the drawings grouped per frame number. Collect all stroke points under the
      * brush and smear them. */
     std::atomic<bool> changed = false;
-    std::mutex mutex;
     threading::parallel_for_each(
         this->drawing_weight_data.index_range(), [&](const int frame_group) {
           Array<DrawingWeightData> &drawing_weights = this->drawing_weight_data[frame_group];
@@ -157,28 +149,19 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
               const float2 &co = drawing_weight.point_positions[point_index];
 
               /* When the point is under the brush, add it to the brush point buffer. */
-              if (!this->add_point_under_brush_to_brush_buffer(co, drawing_weight, point_index)) {
-                continue;
-              }
-
-              /* And add the point to the stroke point buffer. */
-              if (this->add_point_to_stroke_buffer(
-                      co, frame_group, point_index, drawing_weight, mutex))
-              {
-                balance_kdtree = true;
-              }
+              this->add_point_under_brush_to_brush_buffer(co, drawing_weight, point_index);
             }
           });
 
-          /* Balance the KDtree. */
-          if (balance_kdtree) {
-            BLI_kdtree_2d_balance(this->points_in_stroke[frame_group].nearest_points);
-          }
+          /* Create a KDTree with all stroke points touched by the brush during the weight paint
+           * operation. */
+          PointsTouchedByBrush touched_points = this->create_kdtree_of_points_touched_by_the_brush(
+              drawing_weights);
 
           /* Apply the Smear tool to all points in the brush buffer. */
           threading::parallel_for_each(drawing_weights, [&](DrawingWeightData &drawing_weight) {
             for (const BrushPoint &point : drawing_weight.points_in_brush) {
-              this->apply_smear_tool(point, drawing_weight, this->points_in_stroke[frame_group]);
+              this->apply_smear_tool(point, drawing_weight, touched_points);
 
               /* Normalize weights of bone-deformed vertex groups to 1.0f. */
               if (this->auto_normalize) {
@@ -194,6 +177,8 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
               drawing_weight.points_in_brush.clear();
             }
           });
+
+          BLI_kdtree_2d_free(touched_points.kdtree);
         });
 
     if (changed) {
@@ -202,13 +187,7 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
     }
   }
 
-  void on_stroke_done(const bContext & /*C*/)
-  {
-    /* Clean up KDtrees. */
-    for (const PointsInBrushStroke &point_buffer : this->points_in_stroke) {
-      BLI_kdtree_2d_free(point_buffer.nearest_points);
-    }
-  }
+  void on_stroke_done(const bContext & /*C*/) {}
 };
 
 std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_smear_operation()

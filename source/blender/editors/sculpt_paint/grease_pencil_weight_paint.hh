@@ -28,7 +28,6 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-static constexpr int POINT_CACHE_CHUNK = 2048;
 static constexpr float FIND_NEAREST_POINT_EPSILON = 1e-6f;
 static constexpr int BLUR_NEIGHBOUR_NUM = 5;
 static constexpr int SMEAR_NEIGHBOUR_NUM = 8;
@@ -50,18 +49,19 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
     Vector<bool> bone_deformed_vgroups;
 
     Array<float2> point_positions;
-    Array<int> point_index_in_kdtree;
+
+    /* Flag for all stroke points in a drawing: true when the point was touched by the brush during
+     * a #GreasePencilStrokeOperation. */
+    Array<bool> points_touched_by_brush;
+    int points_touched_by_brush_num;
 
     /* Collected points under the brush in one #on_stroke_extended action. */
     Vector<BrushPoint> points_in_brush;
   };
 
-  struct PointsInBrushStroke {
-    KDTree_2d *nearest_points;
-    Vector<float2> nearest_points_positions;
-    Vector<float> nearest_points_weights;
-    /* Size of the KDtree. */
-    int nearest_points_size;
+  struct PointsTouchedByBrush {
+    KDTree_2d *kdtree;
+    Array<float> weights;
   };
 
   Object *object;
@@ -86,14 +86,6 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
   /* Active vertex group in GP object. */
   bDeformGroup *object_defgroup;
 
-  /* Collected points under the brush during the entire brush stroke. Used for finding nearest
-   * points for Smear and Blur. Stored per frame group. */
-  Array<PointsInBrushStroke> points_in_stroke;
-
-  /* The number of points stored in the stroke point buffers. Per frame group.
-   * Note: we can't use Array or Vector here, because it doesn't support atomic types. */
-  std::vector<std::atomic<int>> points_in_stroke_num;
-
   /* Weight paint data per editable drawing. Stored per frame group. */
   Array<Array<DrawingWeightData>> drawing_weight_data;
 
@@ -103,29 +95,6 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
   Set<std::string> object_locked_defgroups;
 
   ~WeightPaintOperation() override {}
-
-  /* Ensure there is enough space in the buffer with brush stroke points to add a new point. */
-  void ensure_stroke_buffer_size(const int frame_group, std::mutex &mutex)
-  {
-    /* We take a little margin here, to be thread safe. */
-    PointsInBrushStroke &buffer = this->points_in_stroke[frame_group];
-    if (this->points_in_stroke_num[frame_group] < buffer.nearest_points_size - 32) {
-      return;
-    }
-
-    std::lock_guard lock{mutex};
-    BLI_kdtree_2d_free(buffer.nearest_points);
-    buffer.nearest_points_size += POINT_CACHE_CHUNK;
-
-    buffer.nearest_points_positions.resize(buffer.nearest_points_size);
-    buffer.nearest_points_weights.resize(buffer.nearest_points_size);
-
-    /* Rebuild KDtree. */
-    buffer.nearest_points = BLI_kdtree_2d_new(buffer.nearest_points_size);
-    for (const int i : IndexRange(this->points_in_stroke_num[frame_group])) {
-      BLI_kdtree_2d_insert(buffer.nearest_points, i, buffer.nearest_points_positions[i]);
-    }
-  }
 
   /* Apply a weight to a point under the brush. */
   void apply_weight_to_point(const BrushPoint &point,
@@ -194,17 +163,6 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
         *this->object);
   }
 
-  /* Init point buffer for all stroke points hit by the brush during a stroke operation. */
-  void init_stroke_point_buffer(const int frame_group)
-  {
-    this->points_in_stroke_num[frame_group] = 0;
-    PointsInBrushStroke &points_in_stroke = this->points_in_stroke[frame_group];
-    points_in_stroke.nearest_points_size = POINT_CACHE_CHUNK;
-    points_in_stroke.nearest_points_positions = Vector<float2>(POINT_CACHE_CHUNK);
-    points_in_stroke.nearest_points_weights = Vector<float>(POINT_CACHE_CHUNK);
-    points_in_stroke.nearest_points = BLI_kdtree_2d_new(POINT_CACHE_CHUNK);
-  }
-
   /* For each drawing, retrieve pointers to the vertex weight data of the active vertex group,
    * so that we can read and write to them later. And create buffers for points under the brush
    * during one #on_stroke_extended action. */
@@ -252,13 +210,17 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *this->object, drawing_info.layer_index, drawing_info.frame_number);
         drawing_weight_data.point_positions = Array<float2>(deformation.positions.size());
-        drawing_weight_data.point_index_in_kdtree = Array<int>(deformation.positions.size(), -1);
         threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
           for (const int point : point_range) {
             drawing_weight_data.point_positions[point] = ED_view3d_project_float_v2_m4(
                 region, deformation.positions[point], projection);
           }
         });
+
+        /* Initialize the flag for stroke points being touched by the brush. */
+        drawing_weight_data.points_touched_by_brush_num = 0;
+        drawing_weight_data.points_touched_by_brush = Array<bool>(deformation.positions.size(),
+                                                                  false);
       }
     });
   }
@@ -285,21 +247,27 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
                   this->mouse_position.y + this->brush_radius_wide);
   }
 
-  /* Add a point to the brush buffer when it is within the brush radius.
-   * Returns false when the point is outside the brush. */
-  bool add_point_under_brush_to_brush_buffer(const float2 point_position,
+  /* Add a point to the brush buffer when it is within the brush radius. */
+  void add_point_under_brush_to_brush_buffer(const float2 point_position,
                                              DrawingWeightData &drawing_weight,
                                              const int point_index)
   {
     if (!BLI_rctf_isect_pt_v(&this->brush_bbox, point_position)) {
-      return false;
+      return;
     }
     const float dist_point_to_brush_center = math::distance(point_position, this->mouse_position);
     if (dist_point_to_brush_center > this->brush_radius_wide) {
-      return false;
+      return;
     }
+
+    /* Point is touched by the (wide) brush, set flag for that. */
+    if (!drawing_weight.points_touched_by_brush[point_index]) {
+      drawing_weight.points_touched_by_brush_num++;
+    }
+    drawing_weight.points_touched_by_brush[point_index] = true;
+
     if (dist_point_to_brush_center > this->brush_radius) {
-      return true;
+      return;
     }
 
     /* When the point is under the brush, add it to the brush buffer. */
@@ -309,37 +277,35 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
     if (influence != 0.0f) {
       drawing_weight.points_in_brush.append({influence, point_index});
     }
-
-    return true;
   }
 
-  /* Add a point to the stroke point buffer. Returns true when the point is newly added. */
-  bool add_point_to_stroke_buffer(const float2 point_position,
-                                  const int frame_group,
-                                  const int point_index,
-                                  DrawingWeightData &drawing_weight,
-                                  std::mutex &mutex)
+  /* Create KDTree for all stroke points touched by the brush during a weight paint operation. */
+  PointsTouchedByBrush create_kdtree_of_points_touched_by_the_brush(
+      const Span<DrawingWeightData> drawing_weights)
   {
-    PointsInBrushStroke &points_in_stroke = this->points_in_stroke[frame_group];
-
-    /* Add the point only once to the buffer, avoid duplicates. */
-    if (drawing_weight.point_index_in_kdtree[point_index] == -1) {
-      this->ensure_stroke_buffer_size(frame_group, mutex);
-      const int buffer_index = (this->points_in_stroke_num[frame_group]++);
-      points_in_stroke.nearest_points_positions[buffer_index] = point_position;
-      points_in_stroke.nearest_points_weights[buffer_index] =
-          drawing_weight.deform_weights[point_index];
-      BLI_kdtree_2d_insert(points_in_stroke.nearest_points, buffer_index, point_position);
-      drawing_weight.point_index_in_kdtree[point_index] = buffer_index;
-
-      return true;
+    /* Get number of stroke points touched by the brush. */
+    int point_num = 0;
+    for (const DrawingWeightData &drawing_weight : drawing_weights) {
+      point_num += drawing_weight.points_touched_by_brush_num;
     }
 
-    /* When the point was already in the stroke buffer, update the weight. */
-    points_in_stroke.nearest_points_weights[drawing_weight.point_index_in_kdtree[point_index]] =
-        drawing_weight.deform_weights[point_index];
+    /* Create KDTree of stroke points touched by the brush. */
+    KDTree_2d *touched_points = BLI_kdtree_2d_new(point_num);
+    Array<float> touched_points_weights(point_num);
+    int kdtree_index = 0;
+    for (const DrawingWeightData &drawing_weight : drawing_weights) {
+      for (const int point_index : drawing_weight.point_positions.index_range()) {
+        if (drawing_weight.points_touched_by_brush[point_index]) {
+          BLI_kdtree_2d_insert(
+              touched_points, kdtree_index, drawing_weight.point_positions[point_index]);
+          touched_points_weights[kdtree_index] = drawing_weight.deform_weights[point_index];
+          kdtree_index++;
+        }
+      }
+    }
+    BLI_kdtree_2d_balance(touched_points);
 
-    return false;
+    return {touched_points, touched_points_weights};
   }
 };
 

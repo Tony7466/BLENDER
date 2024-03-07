@@ -36,10 +36,9 @@ class DrawWeightPaintOperation : public WeightPaintOperation {
 
     this->drawing_weight_data = Array<Array<DrawingWeightData>>(drawings_per_frame.size());
 
+    /* Get weight data for all drawings in this frame group. */
     for (const int frame_group : drawings_per_frame.index_range()) {
       const Vector<MutableDrawingInfo> &drawings = drawings_per_frame[frame_group];
-
-      /* Get weight data for all drawings in this frame group. */
       this->init_weight_data_for_drawings(C, drawings, frame_group);
     }
   }
