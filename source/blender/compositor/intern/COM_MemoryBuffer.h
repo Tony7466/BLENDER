@@ -203,14 +203,14 @@ class MemoryBuffer {
   }
 
   /* Equivalent to the GLSL texture() function with bilinear interpolation and extended boundary
-   * conditions. */
+   * conditions. The coordinates are thus expected to have half-pixels offsets. */
   float4 texture_bilinear_extend(float2 coordinates) const
   {
     const int2 size = int2(get_width(), get_height());
     const float2 texel_coordinates = (coordinates * float2(size)) - 0.5f;
 
     float4 result = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    math::interpolate_bilinear_border_fl(
+    math::interpolate_bilinear_fl(
         buffer_, result, size.x, size.y, num_channels_, texel_coordinates.x, texel_coordinates.y);
     return result;
   }
