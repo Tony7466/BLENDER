@@ -684,9 +684,11 @@ static void draw_handle_transform_text(TimelineDrawContext *timeline_ctx,
                                        const short direction)
 {
   /* Draw numbers for start and end of the strip next to its handles. */
-  if (strip_ctx->strip_is_too_small || (strip_ctx->seq->flag & SELECT) == 0 ||
-      (G.moving & G_TRANSFORM_SEQ) == 0)
-  {
+  if (strip_ctx->strip_is_too_small || (strip_ctx->seq->flag & SELECT) == 0) {
+    return;
+  }
+
+  if ((strip_ctx->seq->flag & direction) == 0 && (G.moving & G_TRANSFORM_SEQ) == 0) {
     return;
   }
 
@@ -707,7 +709,7 @@ static void draw_handle_transform_text(TimelineDrawContext *timeline_ctx,
   float text_x = strip_ctx->left_handle;
   const float text_y = strip_ctx->bottom + 0.09f;
 
-  if (direction == SEQ_RIGHTSEL) {
+  if (direction == SEQ_LEFTSEL) {
     numstr_len = SNPRINTF_RLEN(numstr, "%d", int(strip_ctx->left_handle));
     text_x += text_margin;
   }
