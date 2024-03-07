@@ -1,1 +1,2 @@
 Referenced by issue #54544, "Copy Materials to Selected" only works when materials are defined on the mesh
+Referenced by pull request #119161, Fix #114552: Copy material to selected crash on object lacking slot
