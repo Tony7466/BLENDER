@@ -2440,7 +2440,7 @@ void ED_view3d_depths_free(ViewDepths *depths)
   MEM_freeN(depths);
 }
 
-bool view3d_has_depth_buffer_being_used(const Depsgraph *depsgraph, const View3D *v3d)
+bool ED_view3d_has_depth_buffer_being_used(const Depsgraph *depsgraph, const View3D *v3d)
 {
   const char *engine_name = DEG_get_evaluated_scene(depsgraph)->r.engine;
   RenderEngineType *engine_type = RE_engines_find(engine_name);
