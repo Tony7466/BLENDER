@@ -224,6 +224,7 @@ using VoidKeyword = Keyword<KeywordType::VOID>;
 using IfKeyword = Keyword<KeywordType::IF>;
 using IfDefKeyword = Keyword<KeywordType::IFDEF>;
 using IfnDefKeyword = Keyword<KeywordType::IFNDEF>;
+using EndIfKeyword = Keyword<KeywordType::ENDIF>;
 using ExternKeyword = Keyword<KeywordType::EXTERN>;
 using TypedefKeyword = Keyword<KeywordType::TYPEDEF>;
 using PragmaKeyword = Keyword<KeywordType::PRAGMA>;
@@ -231,6 +232,7 @@ using OnceKeyword = Keyword<KeywordType::ONCE>;
 using EnumKeyword = Keyword<KeywordType::ENUM>;
 using ClassKeyword = Keyword<KeywordType::CLASS>;
 using DNADeprecatedKeyword = Keyword<KeywordType::DNA_DEPRECATED>;
+using DNADeprecatedAllowKeyword = Keyword<KeywordType::DNA_DEPRECATED_ALLOW>;
 
 /** Symbol parser. */
 template<SymbolType type> struct Symbol {
@@ -782,12 +784,18 @@ bool parse_include(std::string_view filepath,
                    Vector<ast::CppType> &c)
 {
   using namespace ast;
+  int dna_deprecated_allow_count = 0;
+  using DNADeprecatedAllowSeq = Sequence<HashSymbol, IfDefKeyword, DNADeprecatedAllowKeyword>;
+  using EndIfSeq = Sequence<HashSymbol, EndIfKeyword>;
+
   while (!cont.has_finish()) {
     using CPPTypeVariant = Variant<Struct,
                                    Enum,
                                    Sequence<Optional<TypedefKeyword>, FunctionPtr>,
                                    Variable,
                                    DefineInt,
+                                   DNADeprecatedAllowSeq,
+                                   EndIfSeq,
                                    Skip>;
     std::optional<CPPTypeVariant> val = CPPTypeVariant::parse(cont);
     if (!val.has_value()) {
@@ -817,6 +825,15 @@ bool parse_include(std::string_view filepath,
         continue;
       }
       c.append(enum_def);
+    }
+    else if (std::holds_alternative<DNADeprecatedAllowSeq>(val.value())) {
+      dna_deprecated_allow_count++;
+    }
+    else if (std::holds_alternative<EndIfSeq>(val.value())) {
+      dna_deprecated_allow_count++;
+      if (dna_deprecated_allow_count < 0) {
+        return false;
+      }
     }
   }
   //   for (auto &val : c) {

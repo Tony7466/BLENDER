@@ -1175,7 +1175,7 @@ static int make_structDNA(const char *base_directory,
     SNPRINTF(str, "%s%s", base_directory, includefiles[i]);
     DEBUG_PRINTF(0, "\t|-- Converting %s\n", str);
     /* `DNA_genfile.h` only contains functions declarations that can't be parsed at the moment. */
-    if (std::string_view{"DNA_genfile.h"} == includefiles[i]) {
+    if (ELEM(includefiles[i], std::string_view{"DNA_defs.h"}, std::string_view{"DNA_genfile.h"})) {
       continue;
     }
     if (convert_include(str)) {

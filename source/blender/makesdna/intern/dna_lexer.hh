@@ -75,6 +75,7 @@ enum class KeywordType : int8_t {
   DNA_DEPRECATED,
   ENUM_OPERATORS,
   BLI_STATIC_ASSERT_ALIGN,
+  DNA_DEPRECATED_ALLOW
 };
 
 struct Token {
@@ -107,7 +108,7 @@ using TokenVariant = std::variant<BreakLineToken,
                                   StringLiteralToken>;
 
 struct TokenIterator {
-  /** LAst token that fails to match a token request. */
+  /** Last token that fails to match a token request. */
   TokenVariant *last_unmatched{nullptr};
 
  private:
