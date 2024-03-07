@@ -29,15 +29,20 @@ void VKStateManager::apply_state()
   }
 }
 
-void VKStateManager::apply_bindings()
+void VKStateManager::apply_bindings(VKContext &context, VKResourceAccessInfo &resource_access_info)
 {
-  VKContext &context = *VKContext::get();
-  if (context.shader) {
-    textures_.apply_bindings();
-    images_.apply_bindings();
-    uniform_buffers_.apply_bindings();
-    storage_buffers_.apply_bindings();
+  VKShader *shader = unwrap(context.shader);
+  if (shader == nullptr) {
+    return;
   }
+
+  resource_access_info.clear();
+  AddToDescriptorSetData data(
+      context.descriptor_set_get(), shader->interface_get(), resource_access_info);
+  textures_.apply_bindings(data);
+  images_.apply_bindings(data);
+  uniform_buffers_.apply_bindings(data);
+  storage_buffers_.apply_bindings(data);
 }
 
 void VKStateManager::force_state()

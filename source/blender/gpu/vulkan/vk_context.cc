@@ -204,7 +204,7 @@ void VKContext::update_dispatch_info()
 {
   dispatch_info_.dispatch_node = {};
   dispatch_info_.resources.clear();
-  state_manager_get().apply_bindings(/*TODO: dispatch_info_.resources*/);
+  state_manager_get().apply_bindings(*this, dispatch_info_.resources);
 
   VKShader &vk_shader = unwrap(*shader);
   VkPipeline vk_pipeline = vk_shader.ensure_and_get_compute_pipeline();

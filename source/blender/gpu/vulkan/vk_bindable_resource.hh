@@ -10,7 +10,32 @@
 
 #include "gpu_shader_create_info.hh"
 
+#include "BLI_utility_mixins.hh"
+
 namespace blender::gpu {
+class VKDescriptorSetTracker;
+class VKShaderInterface;
+struct VKResourceAccessInfo;
+
+/**
+ * When applying the bindings many data is repeatably being retrieved.
+ * This struct contains data so we don't need to retrieve them for each resource that is being
+ * bound.
+ */
+struct AddToDescriptorSetData : NonCopyable {
+  VKDescriptorSetTracker &descriptor_set;
+  const VKShaderInterface &shader_interface;
+  VKResourceAccessInfo &resource_access_info;
+
+  AddToDescriptorSetData(VKDescriptorSetTracker &descriptor_set,
+                         const VKShaderInterface &shader_interface,
+                         VKResourceAccessInfo &resource_access_info)
+      : descriptor_set(descriptor_set),
+        shader_interface(shader_interface),
+        resource_access_info(resource_access_info)
+  {
+  }
+};
 
 /**
  * Super class for resources that can be bound to a shader.
@@ -27,9 +52,10 @@ class VKBindableResource {
    */
   // TODO: should split up to add_to_descriptor_set and add_to_resouces or resource access should
   // become part of the descriptor set.
-  virtual void bind(int binding,
-                    shader::ShaderCreateInfo::Resource::BindType bind_type,
-                    const GPUSamplerState sampler_state) = 0;
+  virtual void try_add_to_descriptor_set(AddToDescriptorSetData &data,
+                                         int binding,
+                                         shader::ShaderCreateInfo::Resource::BindType bind_type,
+                                         const GPUSamplerState sampler_state) = 0;
 
  protected:
   void unbind_from_active_context();
@@ -74,10 +100,11 @@ template<shader::ShaderCreateInfo::Resource::BindType BindType> class VKBindSpac
   /**
    * Apply registered bindings to the active shader.
    */
-  void apply_bindings()
+  void apply_bindings(AddToDescriptorSetData &data)
   {
     for (ResourceBinding &binding : bindings_) {
-      binding.resource->bind(binding.binding, BindType, binding.sampler_state);
+      binding.resource->try_add_to_descriptor_set(
+          data, binding.binding, BindType, binding.sampler_state);
     }
   }
 

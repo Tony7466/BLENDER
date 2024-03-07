@@ -55,7 +55,7 @@ struct VKBufferAccess {
   VkAccessFlags vk_access_flags;
 };
 
-struct VKResourceAccessInfo {
+struct VKResourceAccessInfo : NonCopyable {
   Vector<VKBufferAccess> buffers;
   Vector<VKImageAccess> images;
 

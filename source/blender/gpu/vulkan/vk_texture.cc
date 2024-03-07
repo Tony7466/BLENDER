@@ -548,24 +548,21 @@ bool VKTexture::allocate()
   return result == VK_SUCCESS;
 }
 
-void VKTexture::bind(int binding,
-                     shader::ShaderCreateInfo::Resource::BindType bind_type,
-                     const GPUSamplerState sampler_state)
+void VKTexture::try_add_to_descriptor_set(AddToDescriptorSetData &data,
+                                          int binding,
+                                          shader::ShaderCreateInfo::Resource::BindType bind_type,
+                                          const GPUSamplerState sampler_state)
 {
-  VKContext &context = *VKContext::get();
-  VKShader *shader = static_cast<VKShader *>(context.shader);
-  const VKShaderInterface &shader_interface = shader->interface_get();
   const std::optional<VKDescriptorSet::Location> location =
-      shader_interface.descriptor_set_location(bind_type, binding);
+      data.shader_interface.descriptor_set_location(bind_type, binding);
   if (location) {
-    VKDescriptorSetTracker &descriptor_set = context.descriptor_set_get();
     if (bind_type == shader::ShaderCreateInfo::Resource::BindType::IMAGE) {
-      descriptor_set.image_bind(*this, *location);
+      data.descriptor_set.image_bind(*this, *location);
     }
     else {
       VKDevice &device = VKBackend::get().device_get();
       const VKSampler &sampler = device.samplers().get(sampler_state);
-      descriptor_set.bind(*this, *location, sampler);
+      data.descriptor_set.bind(*this, *location, sampler);
     }
   }
 }

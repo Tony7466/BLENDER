@@ -151,7 +151,9 @@ void VKBackend::compute_dispatch_indirect(StorageBuf *indirect_buf)
 {
   BLI_assert(indirect_buf);
   VKContext &context = *VKContext::get();
-  context.state_manager_get().apply_bindings();
+  VKResourceAccessInfo resource_access_info = {};
+  BLI_assert_unreachable();
+  context.state_manager_get().apply_bindings(context, resource_access_info);
   context.bind_compute_pipeline();
   VKStorageBuffer &indirect_buffer = *unwrap(indirect_buf);
   VKCommandBuffers &command_buffers = context.command_buffers_get();

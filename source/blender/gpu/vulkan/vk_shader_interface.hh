@@ -18,7 +18,7 @@
 #include "vk_push_constants.hh"
 
 namespace blender::gpu {
-class VKShaderInterface : public ShaderInterface {
+class VKShaderInterface : public ShaderInterface, NonCopyable {
  private:
   /**
    * Offset when searching for a shader input based on a binding number.

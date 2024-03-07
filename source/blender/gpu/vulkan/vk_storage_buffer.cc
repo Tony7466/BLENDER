@@ -53,19 +53,17 @@ void VKStorageBuffer::bind(int slot)
   context.state_manager_get().storage_buffer_bind(*this, slot);
 }
 
-void VKStorageBuffer::bind(int slot,
-                           shader::ShaderCreateInfo::Resource::BindType bind_type,
-                           const GPUSamplerState /*sampler_state*/)
+void VKStorageBuffer::try_add_to_descriptor_set(
+    AddToDescriptorSetData &data,
+    int binding,
+    shader::ShaderCreateInfo::Resource::BindType bind_type,
+    const GPUSamplerState /*sampler_state*/)
 {
-  VKContext &context = *VKContext::get();
-  VKShader *shader = static_cast<VKShader *>(context.shader);
   ensure_allocated();
-  const VKShaderInterface &shader_interface = shader->interface_get();
   const std::optional<VKDescriptorSet::Location> location =
-      shader_interface.descriptor_set_location(bind_type, slot);
+      data.shader_interface.descriptor_set_location(bind_type, binding);
   if (location) {
-    VKDescriptorSetTracker &descriptor_set = context.descriptor_set_get();
-    descriptor_set.bind(*this, *location);
+    data.descriptor_set.bind(*this, *location);
   }
 }
 

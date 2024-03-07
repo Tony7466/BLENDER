@@ -54,7 +54,9 @@ void VKImmediate::end()
   BLI_assert(context.shader == unwrap(shader));
   VKStateManager &state_manager = context.state_manager_get();
   state_manager.apply_state();
-  state_manager.apply_bindings();
+  VKResourceAccessInfo resource_access_info;
+  BLI_assert_unreachable();
+  state_manager.apply_bindings(context, resource_access_info);
   vertex_attributes_.update_bindings(*this);
   context.bind_graphics_pipeline(prim_type, vertex_attributes_);
   vertex_attributes_.bind(context);

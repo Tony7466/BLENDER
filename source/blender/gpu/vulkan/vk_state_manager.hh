@@ -20,6 +20,7 @@ class VKUniformBuffer;
 class VKVertexBuffer;
 class VKStorageBuffer;
 class VKIndexBuffer;
+class VKContext;
 
 class VKStateManager : public StateManager {
 
@@ -37,7 +38,7 @@ class VKStateManager : public StateManager {
   void issue_barrier(eGPUBarrier barrier_bits) override;
 
   /** Apply resources to the bindings of the active shader. */
-  void apply_bindings();
+  void apply_bindings(VKContext &context, VKResourceAccessInfo &resource_access_info);
 
   void texture_bind(Texture *tex, GPUSamplerState sampler, int unit) override;
   void texture_unbind(Texture *tex) override;

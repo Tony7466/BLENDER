@@ -51,20 +51,19 @@ void VKIndexBuffer::bind_as_ssbo(uint binding)
   VKContext::get()->state_manager_get().storage_buffer_bind(*this, binding);
 }
 
-void VKIndexBuffer::bind(int binding,
-                         shader::ShaderCreateInfo::Resource::BindType bind_type,
-                         const GPUSamplerState /*sampler_state*/)
+void VKIndexBuffer::try_add_to_descriptor_set(
+    AddToDescriptorSetData &data,
+    int binding,
+    shader::ShaderCreateInfo::Resource::BindType bind_type,
+    const GPUSamplerState /*sampler_state*/)
 {
   BLI_assert(bind_type == shader::ShaderCreateInfo::Resource::BindType::STORAGE_BUFFER);
   ensure_updated();
 
-  VKContext &context = *VKContext::get();
-  VKShader *shader = static_cast<VKShader *>(context.shader);
-  const VKShaderInterface &shader_interface = shader->interface_get();
   const std::optional<VKDescriptorSet::Location> location =
-      shader_interface.descriptor_set_location(bind_type, binding);
+      data.shader_interface.descriptor_set_location(bind_type, binding);
   if (location) {
-    context.descriptor_set_get().bind_as_ssbo(*this, *location);
+    data.descriptor_set.bind_as_ssbo(*this, *location);
   }
 }
 

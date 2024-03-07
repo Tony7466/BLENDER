@@ -84,9 +84,11 @@ class VKTexture : public Texture, public VKBindableResource {
   /* TODO(fclem): Legacy. Should be removed at some point. */
   uint gl_bindcode_get() const override;
 
-  void bind(int location,
-            shader::ShaderCreateInfo::Resource::BindType bind_type,
-            const GPUSamplerState sampler_state) override;
+  void try_add_to_descriptor_set(
+    AddToDescriptorSetData&data,
+                                 int binding,
+                                 shader::ShaderCreateInfo::Resource::BindType bind_type,
+                                 const GPUSamplerState sampler_state) override;
 
   VkImage vk_image_handle() const
   {
