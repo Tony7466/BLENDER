@@ -424,7 +424,7 @@ void storage_fetch(const AssetLibraryReference *library_reference, const bContex
 
 bool is_loaded(const AssetLibraryReference *library_reference)
 {
-  static AssetList *list = lookup_list(*library_reference);
+  AssetList *list = lookup_list(*library_reference);
   if (!list) {
     return false;
   }
@@ -436,8 +436,7 @@ bool is_loaded(const AssetLibraryReference *library_reference)
 
 void ensure_previews_job(const AssetLibraryReference *library_reference, const bContext *C)
 {
-
-  static AssetList *list = lookup_list(*library_reference);
+  AssetList *list = lookup_list(*library_reference);
   if (list) {
     list->ensure_previews_job(C);
   }
@@ -445,7 +444,7 @@ void ensure_previews_job(const AssetLibraryReference *library_reference, const b
 
 void clear(const AssetLibraryReference *library_reference, const bContext *C)
 {
-  static AssetList *list = lookup_list(*library_reference);
+  AssetList *list = lookup_list(*library_reference);
   if (list) {
     list->clear(C);
   }
