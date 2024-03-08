@@ -213,6 +213,21 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
 GPU_SHADER_CREATE_INFO(eevee_horizon_denoise)
     .do_static_compilation(true)
     .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
+    .additional_info("eevee_shared", "eevee_global_ubo", "eevee_sampling_data", "draw_view")
+    .sampler(2, ImageType::FLOAT_2D, "in_sh_0_tx")
+    .sampler(3, ImageType::FLOAT_2D, "in_sh_1_tx")
+    .sampler(4, ImageType::FLOAT_2D, "in_sh_2_tx")
+    .sampler(5, ImageType::FLOAT_2D, "in_sh_3_tx")
+    .image(2, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "out_sh_0_img")
+    .image(3, GPU_RGBA8, Qualifier::WRITE, ImageType::FLOAT_2D, "out_sh_1_img")
+    .image(4, GPU_RGBA8, Qualifier::WRITE, ImageType::FLOAT_2D, "out_sh_2_img")
+    .image(5, GPU_RGBA8, Qualifier::WRITE, ImageType::FLOAT_2D, "out_sh_3_img")
+    .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
+    .compute_source("eevee_horizon_denoise_comp.glsl");
+
+GPU_SHADER_CREATE_INFO(eevee_horizon_resolve)
+    .do_static_compilation(true)
+    .local_group_size(RAYTRACE_GROUP_SIZE, RAYTRACE_GROUP_SIZE)
     .additional_info("eevee_shared",
                      "eevee_gbuffer_data",
                      "eevee_global_ubo",
@@ -228,7 +243,7 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_denoise)
     .image(4, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "closure1_img")
     .image(5, RAYTRACE_RADIANCE_FORMAT, Qualifier::READ_WRITE, ImageType::FLOAT_2D, "closure2_img")
     .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
-    .compute_source("eevee_horizon_denoise_comp.glsl");
+    .compute_source("eevee_horizon_resolve_comp.glsl");
 
 #undef image_out
 #undef image_in
