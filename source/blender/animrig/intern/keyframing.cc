@@ -115,6 +115,13 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
         error_count > 1 ? "s have" : " has"));
   }
 
+  if (this->get_count(SingleKeyingResult::UNABLE_TO_INSERT_TO_NLA_STACK) > 0) {
+    const int error_count = this->get_count(SingleKeyingResult::UNABLE_TO_INSERT_TO_NLA_STACK);
+    error.append(fmt::format("\n- Due to the NLA stack setup, {} keyframe{} not been inserted.",
+                             error_count,
+                             error_count > 1 ? "s have" : " has"));
+  }
+
   BKE_reportf(reports, RPT_ERROR, "%s", error.c_str());
 }
 
@@ -948,6 +955,7 @@ CombinedKeyingResult insert_key_action(Main *bmain,
   CombinedKeyingResult combined_result;
   for (float value : values) {
     if (!keying_mask[property_array_index]) {
+      combined_result.add(SingleKeyingResult::UNABLE_TO_INSERT_TO_NLA_STACK);
       property_array_index++;
       continue;
     }

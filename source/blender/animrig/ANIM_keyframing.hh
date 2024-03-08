@@ -35,6 +35,7 @@ enum class SingleKeyingResult {
   CANNOT_CREATE_FCURVE,
   FCURVE_NOT_KEYFRAMEABLE,
   NO_KEY_NEEDED,
+  UNABLE_TO_INSERT_TO_NLA_STACK,
   /* Make sure to always keep this at the end of the enum. */
   _KEYING_RESULT_MAX,
 };
