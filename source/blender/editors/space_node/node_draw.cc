@@ -3357,28 +3357,7 @@ static void frame_node_prepare_for_draw(bNode &node, Span<bNode *> nodes)
   node.runtime->totr = rect;
 }
 
-#define NODE_REROUTE_SIZE (3.0f * NODE_SOCKSIZE)
-#define NODE_REROUTE_HIDDEN_SIZE 8.0f
-static void reroute_node_prepare_for_draw_basis(bNode &node)
-{
-  /* Get "global" coordinates. */
-  const float2 loc = node_to_view(node, float2(0));
-
-  const float half_width = NODE_REROUTE_SIZE;
-  const float half_height = NODE_SOCKSIZE;
-  const float2 x_offset(half_width - half_height, 0);
-
-  /* Reroute nodes have exactly one input and one output. */
-  node.input_socket(0).runtime->location = loc - x_offset;
-  node.output_socket(0).runtime->location = loc + x_offset;
-
-  node.width = half_width * 2;
-  node.runtime->totr.xmin = (loc.x - half_width);
-  node.runtime->totr.xmax = (loc.x + half_width);
-  node.runtime->totr.ymax = (loc.y + half_height);
-  node.runtime->totr.ymin = (loc.y - half_height);
-}
-static void reroute_node_prepare_for_draw_hidden(bNode &node)
+static void reroute_node_prepare_for_draw(bNode &node)
 {
   const float2 loc = node_to_view(node, float2(0));
 
@@ -3392,16 +3371,6 @@ static void reroute_node_prepare_for_draw_hidden(bNode &node)
   node.runtime->totr.xmax = loc.x + radius;
   node.runtime->totr.ymax = loc.y + radius;
   node.runtime->totr.ymin = loc.y - radius;
-}
-
-static void reroute_node_prepare_for_draw(bNode &node)
-{
-  if (node.flag & NODE_HIDDEN) {
-    reroute_node_prepare_for_draw_hidden(node);
-  }
-  else {
-    reroute_node_prepare_for_draw_basis(node);
-  }
 }
 
 static void node_update_nodetree(const bContext &C,
@@ -3616,49 +3585,6 @@ static void reroute_node_draw_label(const bNode &node, uiBlock &block)
   UI_but_drawflag_disable(label_but, UI_BUT_TEXT_LEFT);
 }
 
-static void reroute_node_draw_basis(const bContext &C, const bNodeTree &ntree, const bNode &node)
-{
-  rctf *rct = &node.runtime->totr;
-  const bool selected = (node.flag & NODE_SELECT);
-
-  reroute_node_draw_body(C, ntree, node, selected);
-
-  /* Grip area. */
-  const float grip_width = UI_icon_get_width(ICON_GRIP) * UI_SCALE_FAC;
-  const float grip_height = UI_icon_get_height(ICON_GRIP) * UI_SCALE_FAC;
-  const float grip_x = BLI_rctf_cent_x(rct) - 0.5f * grip_width;
-  const float grip_y = BLI_rctf_cent_y(rct) - 0.5f * grip_height;
-
-  /* Make the grip match the socket outline color. */
-  const bNodeSocket &sock = *static_cast<bNodeSocket *>(node.inputs.first);
-  ColorTheme4f outline_color;
-  node_socket_outline_color_get(selected, sock.type, outline_color);
-
-  uchar icon_color[4] = {
-      (uchar)(outline_color.r * 255),
-      (uchar)(outline_color.g * 255),
-      (uchar)(outline_color.b * 255),
-      (uchar)(outline_color.a * 255),
-  };
-
-  UI_icon_draw_ex(grip_x,
-                  grip_y,
-                  ICON_GRIP,
-                  UI_INV_SCALE_FAC,
-                  1.0f,
-                  0,
-                  icon_color,
-                  false,
-                  UI_NO_ICON_OVERLAY_TEXT);
-}
-
-static void reroute_node_draw_hidden(const bContext &C, const bNodeTree &ntree, const bNode &node)
-{
-  /* Only draw the input socket, since all sockets are at the same location. */
-  const bool selected = node.flag & NODE_SELECT;
-  reroute_node_draw_body(C, ntree, node, selected);
-}
-
 static void reroute_node_draw(
     const bContext &C, ARegion &region, const bNodeTree &ntree, const bNode &node, uiBlock &block)
 {
@@ -3674,15 +3600,14 @@ static void reroute_node_draw(
   }
 
   if (draw_node_details(v2d)) {
-    reroute_node_draw_label(node, block);
+    if (node.label[0] != '\n') {
+      reroute_node_draw_label(node, block);
+    }
   }
 
-  if (node.flag & NODE_HIDDEN) {
-    reroute_node_draw_hidden(C, ntree, node);
-  }
-  else {
-    reroute_node_draw_basis(C, ntree, node);
-  }
+  /* Only draw the input socket, since all sockets are at the same location. */
+  const bool selected = node.flag & NODE_SELECT;
+  reroute_node_draw_body(C, ntree, node, selected);
 
   UI_block_end(&C, &block);
   UI_block_draw(&C, &block);
