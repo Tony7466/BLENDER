@@ -658,3 +658,31 @@ SphericalHarmonicL2 spherical_harmonics_add(SphericalHarmonicL2 a, SphericalHarm
 }
 
 /** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Compression
+ * \{ */
+
+SphericalHarmonicL1 spherical_harmonics_compress(SphericalHarmonicL1 in_sh)
+{
+  SphericalHarmonicL1 out_sh;
+  out_sh.L0 = in_sh.L0;
+  vec4 fac = 1.0 / max(in_sh.L0.M0, 1e-4);
+  out_sh.L1.Mn1 = in_sh.L1.Mn1 * fac;
+  out_sh.L1.M0 = in_sh.L1.M0 * fac;
+  out_sh.L1.Mp1 = in_sh.L1.Mp1 * fac;
+  return out_sh;
+}
+
+SphericalHarmonicL1 spherical_harmonics_decompress(SphericalHarmonicL1 in_sh)
+{
+  SphericalHarmonicL1 out_sh;
+  out_sh.L0 = in_sh.L0;
+  vec4 fac = max(in_sh.L0.M0, 1e-4);
+  out_sh.L1.Mn1 = in_sh.L1.Mn1 * fac;
+  out_sh.L1.M0 = in_sh.L1.M0 * fac;
+  out_sh.L1.Mp1 = in_sh.L1.Mp1 * fac;
+  return out_sh;
+}
+
+/** \} */

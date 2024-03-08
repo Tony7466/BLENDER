@@ -122,9 +122,11 @@ void main()
       if (all(equal(sample_sh.L0.M0.rgb, FLT_11_11_10_MAX))) {
         continue;
       }
-      sample_sh.L1.Mn1 = texelFetch(horizon_radiance_1_tx, sample_texel, 0);
-      sample_sh.L1.M0 = texelFetch(horizon_radiance_2_tx, sample_texel, 0);
-      sample_sh.L1.Mp1 = texelFetch(horizon_radiance_3_tx, sample_texel, 0);
+      sample_sh.L1.Mn1 = texelFetch(horizon_radiance_1_tx, sample_texel, 0) * 2.0 - 1.0;
+      sample_sh.L1.M0 = texelFetch(horizon_radiance_2_tx, sample_texel, 0) * 2.0 - 1.0;
+      sample_sh.L1.Mp1 = texelFetch(horizon_radiance_3_tx, sample_texel, 0) * 2.0 - 1.0;
+
+      sample_sh = spherical_harmonics_decompress(sample_sh);
 
       accum_sh = spherical_harmonics_madd(sample_sh, weight, accum_sh);
       accum_weight += weight;

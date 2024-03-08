@@ -204,9 +204,9 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
     .sampler(0, ImageType::FLOAT_2D, "screen_radiance_tx")
     .sampler(1, ImageType::FLOAT_2D, "screen_normal_tx")
     .image(2, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_0_img")
-    .image(3, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_1_img")
-    .image(4, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_2_img")
-    .image(5, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_3_img")
+    .image(3, GPU_RGBA8, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_1_img")
+    .image(4, GPU_RGBA8, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_2_img")
+    .image(5, GPU_RGBA8, Qualifier::WRITE, ImageType::FLOAT_2D, "horizon_radiance_3_img")
     .storage_buf(7, Qualifier::READ, "uint", "tiles_coord_buf[]")
     .compute_source("eevee_horizon_scan_comp.glsl");
 

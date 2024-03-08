@@ -381,9 +381,9 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
       downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
       downsampled_in_normal_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
       horizon_radiance_0_tx_.acquire(tracing_res, GPU_RGBA16F, usage_rw);
-      horizon_radiance_1_tx_.acquire(tracing_res, GPU_RGBA16F, usage_rw);
-      horizon_radiance_2_tx_.acquire(tracing_res, GPU_RGBA16F, usage_rw);
-      horizon_radiance_3_tx_.acquire(tracing_res, GPU_RGBA16F, usage_rw);
+      horizon_radiance_1_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
+      horizon_radiance_2_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
+      horizon_radiance_3_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
 
       screen_radiance_front_tx_ = screen_radiance_front_tx;
       horizon_scan_output_0_tx_ = result.closures[0].get();
