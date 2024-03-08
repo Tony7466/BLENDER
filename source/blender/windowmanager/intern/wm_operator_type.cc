@@ -620,8 +620,8 @@ bool WM_operator_depends_on_cursor(bContext &C, wmOperatorType &ot, PointerRNA *
   if (ot.flag & OPTYPE_DEPENDS_ON_CURSOR) {
     return true;
   }
-  if (ot.depends_on_cursor && properties) {
-    return ot.depends_on_cursor(C, ot, *properties);
+  if (ot.depends_on_cursor) {
+    return ot.depends_on_cursor(C, ot, properties);
   }
   return false;
 }

@@ -1061,7 +1061,7 @@ struct wmOperatorType {
   std::string (*get_description)(bContext *C, wmOperatorType *ot, PointerRNA *ptr);
 
   /** A dynamic version of #OPTYPE_DEPENDS_ON_CURSOR which can depend on operator properties. */
-  bool (*depends_on_cursor)(bContext &C, wmOperatorType &ot, PointerRNA &ptr);
+  bool (*depends_on_cursor)(bContext &C, wmOperatorType &ot, PointerRNA *ptr);
 
   /** RNA for properties */
   StructRNA *srna;
