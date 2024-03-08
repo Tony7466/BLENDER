@@ -238,24 +238,18 @@ void UI_draw_node_socket(const rctf *rect,
 {
   /* WATCH: This is assuming the ModelViewProjectionMatrix is area pixel space.
    * If it has been scaled, then it's no longer valid. */
+  BLI_assert((color_inner != nullptr) && (color_outline != nullptr));
+
   uiNodeSocketParameters socket_params = {};
   socket_params.rect = *rect;
-  socket_params.color_inner[0] = color_inner ? color_inner[0] : 0.0f;
-  socket_params.color_inner[1] = color_inner ? color_inner[1] : 0.0f;
-  socket_params.color_inner[2] = color_inner ? color_inner[2] : 0.0f;
-  socket_params.color_inner[3] = color_inner ? color_inner[3] : 0.0f;
-  socket_params.color_outline[0] = color_outline ? color_outline[0] :
-                                   color_inner   ? color_inner[0] :
-                                                   0.0f;
-  socket_params.color_outline[1] = color_outline ? color_outline[1] :
-                                   color_inner   ? color_inner[1] :
-                                                   0.0f;
-  socket_params.color_outline[2] = color_outline ? color_outline[2] :
-                                   color_inner   ? color_inner[2] :
-                                                   0.0f;
-  socket_params.color_outline[3] = color_outline ? color_outline[3] :
-                                   color_inner   ? color_inner[3] :
-                                                   0.0f;
+  socket_params.color_inner[0] = color_inner[0];
+  socket_params.color_inner[1] = color_inner[1];
+  socket_params.color_inner[2] = color_inner[2];
+  socket_params.color_inner[3] = color_inner[3];
+  socket_params.color_outline[0] = color_outline[0];
+  socket_params.color_outline[1] = color_outline[1];
+  socket_params.color_outline[2] = color_outline[2];
+  socket_params.color_outline[3] = color_outline[3];
   socket_params.outline_thickness = outline_thickness;
   socket_params.dot_thickness = dot_thickness;
   socket_params.border_offset = border_offset;
