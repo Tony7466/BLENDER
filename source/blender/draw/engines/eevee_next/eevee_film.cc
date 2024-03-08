@@ -387,7 +387,8 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     }
   }
   {
-    int2 weight_extent = inst_.camera.is_panoramic() ? data_.extent : int2(scaling_factor_);
+    int2 weight_extent = (inst_.camera.is_panoramic() || (scaling_factor_ > 1)) ? data_.extent :
+                                                                                  int2(1);
 
     eGPUTextureFormat color_format = GPU_RGBA16F;
     eGPUTextureFormat float_format = GPU_R16F;

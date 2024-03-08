@@ -82,13 +82,14 @@ FilmSample film_sample_get(int sample_n, ivec2 texel_film)
 /* Returns the combined weights of all samples affecting this film pixel. */
 float film_weight_accumulation(ivec2 texel_film)
 {
-#if 0 /* TODO(fclem): Reference implementation, also needed for panoramic cameras. */
-  float weight = 0.0;
-  for (int i = 0; i < uniform_buf.film.samples_len; i++) {
-    weight += film_sample_get(i, texel_film).weight;
+  /* TODO(fclem): Reference implementation, also needed for panoramic cameras. */
+  if (scaling_factor > 1) {
+    float weight = 0.0;
+    for (int i = 0; i < uniform_buf.film.samples_len; i++) {
+      weight += film_sample_get(i, texel_film).weight;
+    }
+    return weight;
   }
-  return weight;
-#endif
   return uniform_buf.film.samples_weight_total;
 }
 
