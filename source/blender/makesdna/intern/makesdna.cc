@@ -725,9 +725,13 @@ static int convert_include(const char *filepath)
       continue;
     }
     Struct &struct_def = std::get<Struct>(cpp_type);
-    const int strct = add_type(fmt::format("{}", struct_def.name).c_str(), 0);
+    const std::string struct_name = fmt::format("{}", struct_def.name);
+    const int strct = add_type(struct_name.c_str(), 0);
     if (strct == -1) {
-      fprintf(stderr, "File '%s' contains struct we can't parse \"%s\"\n", filepath, "aaaa");
+      fprintf(stderr,
+              "File '%s' contains struct we can't parse \"%s\"\n",
+              filepath,
+              struct_name.c_str());
       return 1;
     }
     short *structpoin = add_struct(strct);
