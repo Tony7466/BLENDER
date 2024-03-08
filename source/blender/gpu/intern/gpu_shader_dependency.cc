@@ -242,6 +242,7 @@ struct GPUSource {
    */
   void small_types_check()
   {
+#ifndef NDEBUG
     auto check_type = [&](StringRefNull type_str) {
       int64_t cursor = -1;
       while (true) {
@@ -252,10 +253,27 @@ struct GPUSource {
         print_error(source, cursor, "small types are forbidden in shader interfaces");
       }
     };
-
     check_type("char ");
+    check_type("char2 ");
+    check_type("char3 ");
+    check_type("char4 ");
+    check_type("uchar ");
+    check_type("uchar2 ");
+    check_type("uchar3 ");
+    check_type("uchar4 ");
     check_type("short ");
+    check_type("short2 ");
+    check_type("short3 ");
+    check_type("short4 ");
+    check_type("ushort ");
+    check_type("ushort2 ");
+    check_type("ushort3 ");
+    check_type("ushort4 ");
     check_type("half ");
+    check_type("half2 ");
+    check_type("half3 ");
+    check_type("half4 ");
+#endif
   }
 
   /**
