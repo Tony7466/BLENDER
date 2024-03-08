@@ -239,7 +239,9 @@ void initTransInfo(bContext *C, TransInfo *t, wmOperator *op, const wmEvent *eve
     /* background mode */
     t->spacetype = SPACE_EMPTY;
   }
-  else if ((region == nullptr) && (area->spacetype == SPACE_VIEW3D)) {
+  else if (((region == nullptr) || (region->regiondata == nullptr)) &&
+           (area->spacetype == SPACE_VIEW3D))
+  {
     /* running in the text editor */
     t->spacetype = SPACE_EMPTY;
   }
