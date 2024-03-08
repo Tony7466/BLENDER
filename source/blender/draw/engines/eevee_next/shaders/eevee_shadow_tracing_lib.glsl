@@ -522,8 +522,11 @@ ShadowEvalResult shadow_eval(LightData light,
   /* Avoid self intersection. */
   P = offset_ray(P, Ng);
   /* The above offset isn't enough in most situation. Still add a bigger bias. */
-  /* TODO(fclem): Scale based on depth. */
   P += Ng * normal_offset;
+#ifdef DEPTH_RECONSTRUCTION_BIAS
+  vec3 L = light_vector_get(light, is_directional, P).L;
+  P += L * g_depth_reconstructionn_bias;
+#endif
 
   vec3 lP = is_directional ? light_world_to_local(light, P) :
                              light_world_to_local(light, P - light._position);

@@ -14,6 +14,10 @@
 #  define SHADOW_ATLAS_TYPE usampler2DArray
 #endif
 
+#ifdef DEPTH_RECONSTRUCTION_BIAS
+float g_depth_reconstructionn_bias = 0.0;
+#endif
+
 struct ShadowSampleParams {
   vec3 lP;
   vec3 uv;
@@ -280,6 +284,11 @@ ShadowEvalResult shadow_sample(const bool is_directional,
                                LightData light,
                                vec3 P)
 {
+#ifdef DEPTH_RECONSTRUCTION_BIAS
+  vec3 L = light_vector_get(light, is_directional, P).L;
+  P += L * g_depth_reconstructionn_bias;
+#endif
+
   if (is_directional) {
     return shadow_directional_sample_get(atlas_tx, tilemaps_tx, light, P);
   }

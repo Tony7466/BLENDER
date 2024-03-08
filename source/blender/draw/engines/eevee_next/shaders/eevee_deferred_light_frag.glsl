@@ -15,6 +15,13 @@
 #pragma BLENDER_REQUIRE(eevee_subsurface_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_lightprobe_eval_lib.glsl)
 
+float depth_reconstruction_precision(vec3 vP, float depth)
+{
+  float nextafter2 = uintBitsToFloat(floatBitsToUint(depth) + 2);
+  vec3 offset_vP = drw_point_screen_to_view(vec3(uvcoordsvar.xy, nextafter2));
+  return distance(vP, offset_vP);
+}
+
 void main()
 {
   ivec2 texel = ivec2(gl_FragCoord.xy);
@@ -22,10 +29,13 @@ void main()
   float depth = texelFetch(hiz_tx, texel, 0).r;
   GBufferReader gbuf = gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel);
 
-  vec3 P = drw_point_screen_to_world(vec3(uvcoordsvar.xy, depth));
+  vec3 vP = drw_point_screen_to_view(vec3(uvcoordsvar.xy, depth));
+  vec3 P = drw_point_view_to_world(vP);
   vec3 Ng = gbuf.surface_N;
   vec3 V = drw_world_incident_vector(P);
   float vPz = dot(drw_view_forward(), P) - dot(drw_view_forward(), drw_view_position());
+
+  g_depth_reconstructionn_bias = depth_reconstruction_precision(vP, depth);
 
   ClosureLightStack stack;
   for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {

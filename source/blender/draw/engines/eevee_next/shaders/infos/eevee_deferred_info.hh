@@ -64,6 +64,7 @@ GPU_SHADER_CREATE_INFO(eevee_deferred_light)
     .specialization_constant(Type::BOOL, "use_lightprobe_eval", false)
     .specialization_constant(Type::BOOL, "render_pass_shadow_enabled", true)
     .define("SPECIALIZED_SHADOW_PARAMS")
+    .define("DEPTH_RECONSTRUCTION_BIAS")
     .specialization_constant(Type::INT, "shadow_ray_count", 1)
     .specialization_constant(Type::INT, "shadow_ray_step_count", 6)
     .additional_info("eevee_shared",
