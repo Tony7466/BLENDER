@@ -117,7 +117,11 @@ ImBuf *IMB_allocFromBuffer(const uint8_t *byte_buffer,
  */
 void IMB_assign_byte_buffer(ImBuf *ibuf, uint8_t *buffer_data, ImBufOwnership ownership);
 void IMB_assign_float_buffer(ImBuf *ibuf, float *buffer_data, ImBufOwnership ownership);
-void IMB_assign_encoded_buffer(ImBuf *ibuf, uint8_t *buffer_data, ImBufOwnership ownership);
+void IMB_assign_encoded_buffer(ImBuf *ibuf,
+                               uint8_t *buffer_data,
+                               unsigned int buffer_size,
+                               unsigned int size,
+                               ImBufOwnership ownership);
 
 /**
  * Make corresponding buffers available for modification.
