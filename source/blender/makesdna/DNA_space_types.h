@@ -463,6 +463,7 @@ typedef struct SpaceGraph_Runtime {
   char _pad[7];
   /** Sampled snapshots of F-Curves used as in-session guides */
   ListBase ghost_curves;
+  void *render_data;
 } SpaceGraph_Runtime;
 
 /** 'Graph' Editor (formerly known as the IPO Editor). */
