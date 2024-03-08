@@ -34,6 +34,7 @@
 #include <fmt/format.h>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <sstream>
 
 #include "MEM_guardedalloc.h"
@@ -609,7 +610,7 @@ struct StrucMemberRegister {
   short *sp{nullptr};
   const char *filepath{nullptr};
 
-  int _add_type(std::string_view type)
+  std::optional<int> _add_type(std::string_view type)
   {
     /** TODO: if type is enum, replace by it fixed size.  */
     const std::string type_str = fmt::format("{}", type);
@@ -624,7 +625,7 @@ struct StrucMemberRegister {
     if (type_result == -1) {
       fprintf(
           stderr, "File '%s' contains struct we can't parse \"%s\"\n", filepath, type_str.c_str());
-      return false;
+      return std::nullopt;
     }
     return type_result;
   }
@@ -648,22 +649,22 @@ struct StrucMemberRegister {
 
   bool operator()(FunctionPtr &fn_ptr)
   {
-    int type = _add_type(fn_ptr.type);
-    if (type == -1) {
+    std::optional<int> type = _add_type(fn_ptr.type);
+    if (!type.has_value()) {
       return false;
     }
     const std::string name = fmt::format("(*{})()", fn_ptr.name);
-    return _add_name(type, name);
+    return _add_name(type.value(), name);
   }
 
   bool operator()(PointerToArray &array_ptr)
   {
-    int type = _add_type(array_ptr.type);
-    if (type == -1) {
+    std::optional<int> type = _add_type(array_ptr.type);
+    if (!type.has_value()) {
       return false;
     }
     const std::string name = fmt::format("(*{})[{}]", array_ptr.name, array_ptr.size);
-    return _add_name(type, name);
+    return _add_name(type.value(), name);
   }
 
   bool operator()(Struct & /*struct*/)
@@ -674,8 +675,8 @@ struct StrucMemberRegister {
 
   bool operator()(Variable &var)
   {
-    int type = _add_type(var.type);
-    if (type == -1) {
+    std::optional<int> type = _add_type(var.type);
+    if (!type.has_value()) {
       return false;
     }
     for (auto &var_item : var.items) {
@@ -690,7 +691,7 @@ struct StrucMemberRegister {
           name_str += fmt::format("[{}]", std::get<int32_t>(size));
         }
       }
-      if (!_add_name(type, name_str)) {
+      if (!_add_name(type.value(), name_str)) {
         return false;
       }
     }
