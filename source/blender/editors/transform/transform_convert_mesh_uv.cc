@@ -989,23 +989,23 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
 
             /* Identify the slot to slide according to the directions already computed in `curr`.
              */
-            int best_slide = -1;
+            int best_dir = -1;
             if (f_curr == curr.fdata[0].f || compare_v2v2(dst, curr.fdata[0].dst, FLT_EPSILON)) {
-              best_slide = 0;
+              best_dir = 0;
             }
             else if (f_curr == curr.fdata[1].f ||
                      compare_v2v2(dst, curr.fdata[1].dst, FLT_EPSILON))
             {
-              best_slide = 1;
+              best_dir = 1;
             }
             else if (ELEM(nullptr, curr.fdata[0].f, curr.fdata[1].f)) {
-              best_slide = int(curr.fdata[0].f != nullptr);
-              curr.fdata[best_slide].f = f_curr;
+              best_dir = int(curr.fdata[0].f != nullptr);
+              curr.fdata[best_dir].f = f_curr;
               if (curr.vert_is_inner) {
-                curr.fdata[best_slide].dst = isect_face_dst(l_curr, src, t->aspect, offsets);
+                curr.fdata[best_dir].dst = isect_face_dst(l_curr, src, t->aspect, offsets);
               }
               else {
-                curr.fdata[best_slide].dst = dst;
+                curr.fdata[best_dir].dst = dst;
               }
             }
             else {
@@ -1018,50 +1018,50 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
               BMLoop *l_other = l1_slide->radial_next;
               while (l_other != l1_slide) {
                 if (l_other->f == curr.fdata[0].f) {
-                  best_slide = 0;
+                  best_dir = 0;
                   break;
                 }
                 if (l_other->f == curr.fdata[1].f) {
-                  best_slide = 1;
+                  best_dir = 1;
                   break;
                 }
                 l_other = (l_other->v == l_curr->v ? l_other->prev : l_other->next)->radial_next;
               }
 
-              if (best_slide == -1) {
+              if (best_dir == -1) {
                 /* Find the closest direction. */
                 float2 dir_curr = dst - src;
                 float2 dir0 = math::normalize(curr.fdata[0].dst - src);
                 float2 dir1 = math::normalize(curr.fdata[1].dst - src);
                 float dot0 = math::dot(dir_curr, dir0);
                 float dot1 = math::dot(dir_curr, dir1);
-                best_slide = int(dot0 < dot1);
+                best_dir = int(dot0 < dot1);
               }
             }
 
             /* Compute `next`. */
-            next.fdata[best_slide].f = f_curr;
+            next.fdata[best_dir].f = f_curr;
             if (BM_elem_index_get(l2_dst) != -1 || next.vert_is_inner) {
               /* Case where the vertex slides over the face. */
               const float2 &src_next = BM_ELEM_CD_GET_FLOAT_P(l_next, offsets.uv);
-              next.fdata[best_slide].dst = isect_face_dst(l_next, src_next, t->aspect, offsets);
+              next.fdata[best_dir].dst = isect_face_dst(l_next, src_next, t->aspect, offsets);
             }
             else {
               /* Case where the vertex slides over an edge. */
               const float2 &dst_next = BM_ELEM_CD_GET_FLOAT_P(l2_dst, offsets.uv);
-              next.fdata[best_slide].dst = dst_next;
+              next.fdata[best_dir].dst = dst_next;
             }
 
             if (isect_curr_dirs) {
-              /* The `best_slide` can only have one direction. */
-              const float2 &dst0 = prev.fdata[best_slide].dst;
-              const float2 &dst1 = curr.fdata[best_slide].dst;
+              /* The `best_dir` can only have one direction. */
+              const float2 &dst0 = prev.fdata[best_dir].dst;
+              const float2 &dst1 = curr.fdata[best_dir].dst;
               const float2 &dst2 = dst;
-              const float2 &dst3 = next.fdata[best_slide].dst;
-              if (isect_line_line_v2_point(dst0, dst1, dst2, dst3, curr.fdata[best_slide].dst) ==
+              const float2 &dst3 = next.fdata[best_dir].dst;
+              if (isect_line_line_v2_point(dst0, dst1, dst2, dst3, curr.fdata[best_dir].dst) ==
                   ISECT_LINE_LINE_COLINEAR)
               {
-                curr.fdata[best_slide].dst = math::midpoint(dst1, dst2);
+                curr.fdata[best_dir].dst = math::midpoint(dst1, dst2);
               }
             }
             /* There is only one pair of corners to slide per face, we don't need to keep checking
