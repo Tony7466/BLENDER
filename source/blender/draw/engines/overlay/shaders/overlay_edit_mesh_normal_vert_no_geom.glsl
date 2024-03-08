@@ -24,7 +24,7 @@ vec4 clip_line_point_homogeneous_space(vec4 p, vec4 q)
   return p;
 }
 
-void do_vertex(int index, vec4 pos, vec2 ofs, float flip)
+void do_vertex(uint index, vec4 pos, vec2 ofs, float flip)
 {
   interp_noperspective.smoothline = flip * (LINE_WIDTH + SMOOTH_WIDTH) * 0.5;
   gl_Position = pos;
@@ -110,8 +110,8 @@ void main()
   int quad_vertex_id = gl_VertexID % 6;
 
   /* Get current point attributes. */
-  uint src_index_a = 0;
-  uint src_index_b = 1;
+  uint src_index_a = quad_id * 2;
+  uint src_index_b = quad_id * 2 + 1;
 
   vec3 in_pos[2];
   in_pos[0] = vertex_fetch_attribute(src_index_a, pos, vec3);
@@ -136,9 +136,9 @@ void main()
 
   /* Geometry shader main area. */
   vec4 clippedP[2];
-  vec4 clippedP[0] = clip_line_point_homogeneous_space(out_pos[0], out_pos[1]);
-  vec4 clippedP[1] = clip_line_point_homogeneous_space(out_pos[1], out_pos[0]);
-  vec2 e = normalize(((clippedP[1].xy / clippedP[1].w) - (clippedP[0].xy / clippedP[0].w)) * viewportSize.xy);
+  clippedP[0] = clip_line_point_homogeneous_space(out_pos[0], out_pos[1]);
+  clippedP[1] = clip_line_point_homogeneous_space(out_pos[1], out_pos[0]);
+  vec2 e = normalize(((clippedP[1].xy / clippedP[1].w) - (clippedP[0].xy / clippedP[0].w)) * sizeViewport.xy);
 
 #if 0 /* Hard turn when line direction changes quadrant. */
   e = abs(e);
@@ -147,19 +147,19 @@ void main()
   vec2 ofs = vec2(-e.y, e.x);
 #endif
 
-  ofs /= viewportSize.xy;
+  ofs /= sizeViewport.xy;
   ofs *= LINE_WIDTH + SMOOTH_WIDTH;
 
   if (quad_vertex_id == 0) {
-    do_vertex(0, p[0], ofs, 1.0);
+    do_vertex(0, clippedP[0], ofs, 1.0);
   }
   else if (quad_vertex_id == 1 || quad_vertex_id == 3) {
-    do_vertex(0, p[0], ofs, -1.0);
+    do_vertex(0, clippedP[0], ofs, -1.0);
   }
   else if (quad_vertex_id == 2 || quad_vertex_id == 5) {
-    do_vertex(1, p[1], ofs, 1.0);
+    do_vertex(1, clippedP[1], ofs, 1.0);
   }
   else if (quad_vertex_id == 4) {
-    do_vertex(1, p[1], ofs, -1.0);
+    do_vertex(1, clippedP[1], ofs, -1.0);
   }
 }

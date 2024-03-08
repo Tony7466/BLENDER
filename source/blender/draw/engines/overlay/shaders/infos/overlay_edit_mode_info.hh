@@ -175,6 +175,7 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_normal)
     .fragment_source("overlay_edit_mesh_normal_frag.glsl")
     .additional_info("draw_modelmat_instanced_attr", "draw_globals");
 
+#ifdef WITH_METAL_BACKEND
 GPU_SHADER_CREATE_INFO(overlay_edit_mesh_normal_no_geom)
     .do_static_compilation(true)
     .define("LINE_WIDTH", "1")
@@ -194,6 +195,7 @@ GPU_SHADER_CREATE_INFO(overlay_edit_mesh_normal_no_geom)
     .vertex_source("overlay_edit_mesh_normal_vert_no_geom.glsl")
     .fragment_source("overlay_edit_mesh_normal_frag.glsl")
     .additional_info("draw_modelmat_instanced_attr", "draw_globals");
+#endif
 
 GPU_SHADER_INTERFACE_INFO(overlay_edit_mesh_analysis_iface, "").smooth(Type::VEC4, "weightColor");
 
