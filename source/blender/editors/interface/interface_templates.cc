@@ -1206,7 +1206,6 @@ static uiBut *template_id_def_new_but(uiBlock *block,
                                       StructRNA *type,
                                       const char *const newop,
                                       const bool editable,
-                                      const bool /*id_open*/,
                                       const bool use_tab_but,
                                       int but_height)
 {
@@ -1511,8 +1510,7 @@ static void template_ID(const bContext *C,
   }
 
   if ((flag & UI_ID_ADD_NEW) && (hide_buttons == false)) {
-    template_id_def_new_but(
-        block, id, template_ui, type, newop, editable, flag & UI_ID_OPEN, false, UI_UNIT_X);
+    template_id_def_new_but(block, id, template_ui, type, newop, editable, false, UI_UNIT_X);
   }
 
   /* Due to space limit in UI - skip the "open" icon for packed data, and allow to unpack.
@@ -1704,7 +1702,6 @@ static void template_ID_tabs(const bContext *C,
                                   type,
                                   newop,
                                   editable,
-                                  flag & UI_ID_OPEN,
                                   true,
                                   but_height);
     UI_but_drawflag_enable(but, but_align);
