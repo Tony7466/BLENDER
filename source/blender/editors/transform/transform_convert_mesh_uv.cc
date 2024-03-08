@@ -587,6 +587,7 @@ struct UVGroups {
       for (int td_index : this->td_indices_get(group_index)) {
         TransData *td = &tc->data[td_index];
         sv->td = td;
+        sv->dir_side[0] = float3(0);
         sv->dir_side[1] = float3(0);
         sv->loop_nr = -1;
         sv++;
@@ -939,6 +940,60 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
         float2 dst;
       } fdata[2];
       bool vert_is_inner;
+      int find_best_dir(const BMFace *f_curr,
+                        const BMLoop *l_src,
+                        const BMLoop *l_dst,
+                        const float2 &src,
+                        const float2 &dst,
+                        bool *r_do_isect_curr_dirs) const
+      {
+        *r_do_isect_curr_dirs = false;
+
+        if (f_curr == this->fdata[0].f || compare_v2v2(dst, this->fdata[0].dst, FLT_EPSILON)) {
+          return 0;
+        }
+
+        if (f_curr == this->fdata[1].f || compare_v2v2(dst, this->fdata[1].dst, FLT_EPSILON)) {
+          return 1;
+        }
+
+        if (this->fdata[0].f || this->fdata[1].f) {
+          /* Find the best direction checking the edges that share faces between them. */
+          int best_dir = -1;
+          const BMLoop *l_edge = l_src->next == l_dst ? l_src : l_src->prev;
+          const BMLoop *l_other = l_edge->radial_next;
+          while (l_other != l_edge) {
+            if (l_other->f == this->fdata[0].f) {
+              best_dir = 0;
+              break;
+            }
+            if (l_other->f == this->fdata[1].f) {
+              best_dir = 1;
+              break;
+            }
+            l_other = (l_other->v == l_src->v ? l_other->prev : l_other->next)->radial_next;
+          }
+
+          if (best_dir != -1) {
+            *r_do_isect_curr_dirs = true;
+            return best_dir;
+          }
+        }
+
+        if (ELEM(nullptr, this->fdata[0].f, this->fdata[1].f)) {
+          return int(this->fdata[0].f != nullptr);
+        }
+
+        /* Find the closest direction. */
+        *r_do_isect_curr_dirs = true;
+
+        float2 dir_curr = dst - src;
+        float2 dir0 = math::normalize(this->fdata[0].dst - src);
+        float2 dir1 = math::normalize(this->fdata[1].dst - src);
+        float dot0 = math::dot(dir_curr, dir0);
+        float dot1 = math::dot(dir_curr, dir1);
+        return int(dot0 < dot1);
+      }
     } prev = {}, curr = {}, next = {};
 
     curr.i = i_curr;
@@ -970,13 +1025,12 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
 
             BLI_assert(l_curr != l_next);
 
-            BMLoop *l1_dst, *l2_dst, *l1_slide;
+            BMLoop *l1_dst, *l2_dst;
             if (l_curr->next == l_next) {
-              l1_dst = l1_slide = l_curr->prev;
+              l1_dst = l_curr->prev;
               l2_dst = l_next->next;
             }
             else {
-              l1_slide = l_curr;
               l1_dst = l_curr->next;
               l2_dst = l_next->prev;
             }
@@ -989,53 +1043,15 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
 
             /* Identify the slot to slide according to the directions already computed in `curr`.
              */
-            int best_dir = -1;
-            if (f_curr == curr.fdata[0].f || compare_v2v2(dst, curr.fdata[0].dst, FLT_EPSILON)) {
-              best_dir = 0;
-            }
-            else if (f_curr == curr.fdata[1].f ||
-                     compare_v2v2(dst, curr.fdata[1].dst, FLT_EPSILON))
-            {
-              best_dir = 1;
-            }
-            else if (ELEM(nullptr, curr.fdata[0].f, curr.fdata[1].f)) {
-              best_dir = int(curr.fdata[0].f != nullptr);
+            int best_dir = curr.find_best_dir(f_curr, l_curr, l1_dst, src, dst, &isect_curr_dirs);
+
+            if (curr.fdata[best_dir].f == nullptr) {
               curr.fdata[best_dir].f = f_curr;
               if (curr.vert_is_inner) {
                 curr.fdata[best_dir].dst = isect_face_dst(l_curr, src, t->aspect, offsets);
               }
               else {
                 curr.fdata[best_dir].dst = dst;
-              }
-            }
-            else {
-              isect_curr_dirs = true;
-
-              /* Find the best direction among those already computed.
-               * Prioritizing in order:
-               * - Edge that share faces between them.
-               * - Edge that points to the closest direction. */
-              BMLoop *l_other = l1_slide->radial_next;
-              while (l_other != l1_slide) {
-                if (l_other->f == curr.fdata[0].f) {
-                  best_dir = 0;
-                  break;
-                }
-                if (l_other->f == curr.fdata[1].f) {
-                  best_dir = 1;
-                  break;
-                }
-                l_other = (l_other->v == l_curr->v ? l_other->prev : l_other->next)->radial_next;
-              }
-
-              if (best_dir == -1) {
-                /* Find the closest direction. */
-                float2 dir_curr = dst - src;
-                float2 dir0 = math::normalize(curr.fdata[0].dst - src);
-                float2 dir1 = math::normalize(curr.fdata[1].dst - src);
-                float dot0 = math::dot(dir_curr, dir0);
-                float dot1 = math::dot(dir_curr, dir1);
-                best_dir = int(dot0 < dot1);
               }
             }
 
