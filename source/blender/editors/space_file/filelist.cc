@@ -101,6 +101,9 @@ struct FileListInternEntry {
   const char *name;
   bool free_name;
 
+  int sequence_start;
+  int sequence_end;
+
   /**
    * This is data from the current main, represented by this file. It's crucial that this is
    * updated correctly on undo, redo and file reading (without UI). The space is responsible to
@@ -683,6 +686,11 @@ static bool is_filtered_hidden(const char *filename,
   if (!(file->typeflag & FILE_TYPE_DIR) && (file->typeflag & FILE_TYPE_BLENDERLIB) &&
       (filter->flags & FLF_ASSETS_ONLY) && !(file->typeflag & FILE_TYPE_ASSET))
   {
+    return true;
+  }
+
+  /* Let's just reuse this filter setting for image sequences for now. */
+  if ((filter->flags & FLF_HIDE_DOT) && file->sequence_start && !file->sequence_end) {
     return true;
   }
 
@@ -2103,7 +2111,27 @@ static FileDirEntry *filelist_file_create_entry(FileList *filelist, const int in
 
   ret->relpath = BLI_strdup(entry->relpath);
   if (entry->free_name) {
-    ret->name = BLI_strdup(entry->name);
+    if ((filelist->filter_data.flags & FLF_HIDE_DOT) && entry->typeflag & FILE_TYPE_IMAGE &&
+        entry->sequence_start && entry->sequence_end &&
+        (entry->sequence_start != entry->sequence_end))
+    {
+      char head[FILE_MAX], tail[FILE_MAX];
+      ushort digits;
+      int num = BLI_path_sequence_decode(
+          entry->relpath, head, sizeof(head), tail, sizeof(tail), &digits);
+      ret->name = BLI_sprintfN("%s%.*s%s (%0*i-%0*i)",
+                               head,
+                               digits,
+                               "####################",
+                               tail,
+                               digits,
+                               entry->sequence_start,
+                               digits,
+                               entry->sequence_end);
+    }
+    else {
+      ret->name = BLI_strdup(entry->name);
+    }
     ret->flags |= FILE_ENTRY_NAME_FREE;
   }
   else {
@@ -3060,85 +3088,127 @@ static int filelist_readjob_list_dir(FileListReadJob *job_params,
   /* Full path of the item. */
   char full_path[FILE_MAX];
 
+  FileListInternEntry *entry = nullptr;
+
+  /* Used to find image sequences. */
+  FileListInternEntry *image_sequence_start = nullptr;
+  char seq_head[FILE_MAX] = {0};
+  char seq_tail[FILE_MAX] = {0};
+  ushort seq_digits;
+
   const int files_num = BLI_filelist_dir_contents(root, &files);
-  if (files) {
-    int i = files_num;
-    while (i--) {
-      FileListInternEntry *entry;
 
-      if (skip_currpar && FILENAME_IS_CURRPAR(files[i].relname)) {
-        continue;
-      }
+  for (int i = 0; i < files_num; i++) {
+    if (skip_currpar && FILENAME_IS_CURRPAR(files[i].relname)) {
+      continue;
+    }
 
-      entry = MEM_cnew<FileListInternEntry>(__func__);
-      entry->relpath = current_relpath_append(job_params, files[i].relname);
-      entry->st = files[i].s;
+    if (skip_currpar && FILENAME_IS_CURRPAR(files[i].relname)) {
+      continue;
+    }
 
-      BLI_path_join(full_path, FILE_MAX, root, files[i].relname);
-      char *target = full_path;
+    entry = MEM_cnew<FileListInternEntry>(__func__);
+    entry->relpath = current_relpath_append(job_params, files[i].relname);
+    entry->st = files[i].s;
 
-      /* Set initial file type and attributes. */
-      entry->attributes = BLI_file_attributes(full_path);
-      if (S_ISDIR(files[i].s.st_mode)
+    BLI_path_join(full_path, FILE_MAX, root, files[i].relname);
+    char *target = full_path;
+
+    /* Set initial file type and attributes. */
+    entry->attributes = BLI_file_attributes(full_path);
+    if (S_ISDIR(files[i].s.st_mode)
 #ifdef __APPLE__
-          && !(ED_path_extension_type(full_path) & FILE_TYPE_BUNDLE)
+        && !(ED_path_extension_type(full_path) & FILE_TYPE_BUNDLE)
 #endif
-      )
-      {
-        entry->typeflag = FILE_TYPE_DIR;
-      }
+    )
+    {
+      entry->typeflag = FILE_TYPE_DIR;
+    }
 
-      /* Is this a file that points to another file? */
-      if (entry->attributes & FILE_ATTR_ALIAS) {
-        entry->redirection_path = MEM_cnew_array<char>(FILE_MAXDIR, __func__);
-        if (BLI_file_alias_target(full_path, entry->redirection_path)) {
-          if (BLI_is_dir(entry->redirection_path)) {
-            entry->typeflag = FILE_TYPE_DIR;
-            BLI_path_slash_ensure(entry->redirection_path, FILE_MAXDIR);
-          }
-          else {
-            entry->typeflag = (eFileSel_File_Types)ED_path_extension_type(entry->redirection_path);
-          }
-          target = entry->redirection_path;
+    /* Is this a file that points to another file? */
+    if (entry->attributes & FILE_ATTR_ALIAS) {
+      entry->redirection_path = MEM_cnew_array<char>(FILE_MAXDIR, __func__);
+      if (BLI_file_alias_target(full_path, entry->redirection_path)) {
+        if (BLI_is_dir(entry->redirection_path)) {
+          entry->typeflag = FILE_TYPE_DIR;
+          BLI_path_slash_ensure(entry->redirection_path, FILE_MAXDIR);
+        }
+        else {
+          entry->typeflag = (eFileSel_File_Types)ED_path_extension_type(entry->redirection_path);
+        }
+        target = entry->redirection_path;
 #ifdef WIN32
-          /* On Windows don't show `.lnk` extension for valid shortcuts. */
-          BLI_path_extension_strip(entry->relpath);
+        /* On Windows don't show `.lnk` extension for valid shortcuts. */
+        BLI_path_extension_strip(entry->relpath);
 #endif
-        }
-        else {
-          MEM_freeN(entry->redirection_path);
-          entry->redirection_path = nullptr;
-          entry->attributes |= FILE_ATTR_HIDDEN;
-        }
       }
-
-      if (!(entry->typeflag & FILE_TYPE_DIR)) {
-        if (do_lib && BKE_blendfile_extension_check(target)) {
-          /* If we are considering .blend files as libraries, promote them to directory status. */
-          entry->typeflag = FILE_TYPE_BLENDER;
-          /* prevent current file being used as acceptable dir */
-          if (BLI_path_cmp(main_filepath, target) != 0) {
-            entry->typeflag |= FILE_TYPE_DIR;
-          }
-        }
-        else {
-          entry->typeflag = (eFileSel_File_Types)ED_path_extension_type(target);
-          if (filter_glob[0] && BLI_path_extension_check_glob(target, filter_glob)) {
-            entry->typeflag |= FILE_TYPE_OPERATOR;
-          }
-        }
-      }
-
-#ifndef WIN32
-      /* Set linux-style dot files hidden too. */
-      if (is_hidden_dot_filename(entry->relpath, entry)) {
+      else {
+        MEM_freeN(entry->redirection_path);
+        entry->redirection_path = nullptr;
         entry->attributes |= FILE_ATTR_HIDDEN;
       }
+    }
+
+    if (!(entry->typeflag & FILE_TYPE_DIR)) {
+      if (do_lib && BKE_blendfile_extension_check(target)) {
+        /* If we are considering .blend files as libraries, promote them to directory status. */
+        entry->typeflag = FILE_TYPE_BLENDER;
+        /* prevent current file being used as acceptable dir */
+        if (BLI_path_cmp(main_filepath, target) != 0) {
+          entry->typeflag |= FILE_TYPE_DIR;
+        }
+      }
+      else {
+        entry->typeflag = (eFileSel_File_Types)ED_path_extension_type(target);
+        if (filter_glob[0] && BLI_path_extension_check_glob(target, filter_glob)) {
+          entry->typeflag |= FILE_TYPE_OPERATOR;
+        }
+
+        if (entry->typeflag & FILE_TYPE_IMAGE) {
+          char head[FILE_MAX], tail[FILE_MAX];
+          ushort digits;
+          int num = BLI_path_sequence_decode(
+              entry->relpath, head, sizeof(head), tail, sizeof(tail), &digits);
+          if (num) {
+            entry->sequence_start = num;
+            if (image_sequence_start && (num == image_sequence_start->sequence_end + 1) &&
+                (digits == seq_digits) && (STREQLEN(head, seq_head, sizeof(head))) &&
+                (STREQLEN(tail, seq_tail, sizeof(tail))))
+            {
+              /* This is a child member of an image sequence. */
+              entry->sequence_end = 0;
+              /* Mark the parent as valid. */
+              image_sequence_start->sequence_end++;
+            }
+            else {
+              /* This one might be the start if valid children follow. */
+              image_sequence_start = entry;
+              image_sequence_start->sequence_end = num;
+              seq_digits = digits;
+              STRNCPY(seq_head, head);
+              STRNCPY(seq_tail, tail);
+            }
+          }
+          else {
+            image_sequence_start = nullptr;
+          }
+        }
+
+      }
+    }
+
+#ifndef WIN32
+    /* Set linux-style dot files hidden too. */
+    if (is_hidden_dot_filename(entry->relpath, entry)) {
+      entry->attributes |= FILE_ATTR_HIDDEN;
+    }
 #endif
 
-      BLI_addtail(entries, entry);
-      entries_num++;
-    }
+    BLI_addtail(entries, entry);
+    entries_num++;
+  }
+
+  if (files) {
     BLI_filelist_free(files, files_num);
   }
   return entries_num;
