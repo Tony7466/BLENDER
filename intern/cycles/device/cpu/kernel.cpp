@@ -28,6 +28,7 @@ CPUKernels::CPUKernels()
       REGISTER_KERNEL(integrator_shade_background),
       REGISTER_KERNEL(integrator_shade_light),
       REGISTER_KERNEL(integrator_shade_shadow),
+      REGISTER_KERNEL(integrator_restir),
       REGISTER_KERNEL(integrator_shade_surface),
       REGISTER_KERNEL(integrator_shade_volume),
       REGISTER_KERNEL(integrator_shade_dedicated_light),

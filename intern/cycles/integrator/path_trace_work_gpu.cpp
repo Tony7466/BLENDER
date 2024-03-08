@@ -557,6 +557,7 @@ void PathTraceWorkGPU::enqueue_path_iteration(DeviceKernel kernel, const int num
       queue_->enqueue(kernel, work_size, args);
       break;
     }
+    case DEVICE_KERNEL_INTEGRATOR_RESTIR:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_BACKGROUND:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_LIGHT:
     case DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW:
@@ -685,7 +686,8 @@ void PathTraceWorkGPU::compact_shadow_paths()
   IntegratorQueueCounter *queue_counter = integrator_queue_counter_.data();
   const int num_active_paths =
       queue_counter->num_queued[DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW] +
-      queue_counter->num_queued[DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW];
+      queue_counter->num_queued[DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW] +
+      queue_counter->num_queued[DEVICE_KERNEL_INTEGRATOR_RESTIR];
 
   /* Early out if there is nothing that needs to be compacted. */
   if (num_active_paths == 0) {
@@ -1221,6 +1223,7 @@ bool PathTraceWorkGPU::kernel_uses_sorting(DeviceKernel kernel)
           kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE_MNEE);
 }
 
+/* TODO(weizhen): does RESTIR create shadow paths? */
 bool PathTraceWorkGPU::kernel_creates_shadow_paths(DeviceKernel kernel)
 {
   return (kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE ||
@@ -1241,7 +1244,8 @@ bool PathTraceWorkGPU::kernel_creates_ao_paths(DeviceKernel kernel)
 bool PathTraceWorkGPU::kernel_is_shadow_path(DeviceKernel kernel)
 {
   return (kernel == DEVICE_KERNEL_INTEGRATOR_INTERSECT_SHADOW ||
-          kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW);
+          kernel == DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW ||
+          kernel == DEVICE_KERNEL_INTEGRATOR_RESTIR);
 }
 
 int PathTraceWorkGPU::kernel_max_active_main_path_index(DeviceKernel kernel)

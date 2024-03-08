@@ -10,6 +10,7 @@
 #include "kernel/integrator/intersect_shadow.h"
 #include "kernel/integrator/intersect_subsurface.h"
 #include "kernel/integrator/intersect_volume_stack.h"
+#include "kernel/integrator/restir.h"
 #include "kernel/integrator/shade_background.h"
 #include "kernel/integrator/shade_dedicated_light.h"
 #include "kernel/integrator/shade_light.h"
@@ -36,6 +37,9 @@ ccl_device void integrator_megakernel(KernelGlobals kg,
           break;
         case DEVICE_KERNEL_INTEGRATOR_SHADE_SHADOW:
           integrator_shade_shadow(kg, &state->shadow, render_buffer);
+          break;
+        case DEVICE_KERNEL_INTEGRATOR_RESTIR:
+          integrator_restir(kg, &state->shadow, render_buffer);
           break;
         default:
           kernel_assert(0);
