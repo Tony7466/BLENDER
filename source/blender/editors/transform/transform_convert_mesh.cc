@@ -2574,7 +2574,9 @@ Array<TransDataEdgeSlideVert> transform_mesh_edge_slide_data_create(const TransD
             float3 &dst2 = dst;
             float3 &dst3 = next.fdata[best_dir].dst;
             float3 isect0, isect1;
-            if (isect_line_line_epsilon_v3(dst0, dst1, dst2, dst3, isect0, isect1, FLT_EPSILON)) {
+            if (isect_line_line_epsilon_v3(dst0, dst1, dst2, dst3, isect0, isect1, FLT_EPSILON) ==
+                2)
+            {
               curr.fdata[best_dir].dst = math::midpoint(isect0, isect1);
             }
             else {
