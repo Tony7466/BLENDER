@@ -48,3 +48,5 @@ ImBuf *seq_render_mask(const SeqRenderData *context,
                        float frame_index,
                        bool make_float);
 void seq_imbuf_assign_spaces(const Scene *scene, ImBuf *ibuf);
+void seq_render_mutex_lock(void);
+void seq_render_mutex_unlock(void);

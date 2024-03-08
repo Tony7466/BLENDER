@@ -272,48 +272,6 @@ void SEQ_relations_free_imbuf(Scene *scene, ListBase *seqbase, bool for_render)
   }
 }
 
-static void sequencer_all_free_anim_ibufs(const Scene *scene,
-                                          ListBase *seqbase,
-                                          int timeline_frame,
-                                          const int frame_range[2])
-{
-  Editing *ed = SEQ_editing_get(scene);
-  for (Sequence *seq = static_cast<Sequence *>(seqbase->first); seq != nullptr; seq = seq->next) {
-    if (!SEQ_time_strip_intersects_frame(scene, seq, timeline_frame) ||
-        !((frame_range[0] <= timeline_frame) && (frame_range[1] > timeline_frame)))
-    {
-      SEQ_relations_sequence_free_anim(scene, seq);
-    }
-    if (seq->type == SEQ_TYPE_META) {
-      int meta_range[2];
-
-      MetaStack *ms = SEQ_meta_stack_active_get(ed);
-      if (ms != nullptr && ms->parseq == seq) {
-        meta_range[0] = -MAXFRAME;
-        meta_range[1] = MAXFRAME;
-      }
-      else {
-        /* Limit frame range to meta strip. */
-        meta_range[0] = max_ii(frame_range[0], SEQ_time_left_handle_frame_get(scene, seq));
-        meta_range[1] = min_ii(frame_range[1], SEQ_time_right_handle_frame_get(scene, seq));
-      }
-
-      sequencer_all_free_anim_ibufs(scene, &seq->seqbase, timeline_frame, meta_range);
-    }
-  }
-}
-
-void SEQ_relations_free_all_anim_ibufs(Scene *scene, int timeline_frame)
-{
-  Editing *ed = SEQ_editing_get(scene);
-  if (ed == nullptr) {
-    return;
-  }
-
-  const int frame_range[2] = {-MAXFRAME, MAXFRAME};
-  sequencer_all_free_anim_ibufs(scene, &ed->seqbase, timeline_frame, frame_range);
-}
-
 static Sequence *sequencer_check_scene_recursion(Scene *scene, ListBase *seqbase)
 {
   LISTBASE_FOREACH (Sequence *, seq, seqbase) {

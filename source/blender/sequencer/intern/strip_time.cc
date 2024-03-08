@@ -326,7 +326,8 @@ float SEQ_time_sequence_get_fps(Scene *scene, Sequence *seq)
 {
   switch (seq->type) {
     case SEQ_TYPE_MOVIE: {
-      seq_open_anim_file(scene, seq, true);
+      seq_open_anim_file(scene, seq, true);  // This is bit annoying, but think it is legal to have
+                                             // API to open anim on demand anyway...
       if (BLI_listbase_is_empty(&seq->anims)) {
         return 0.0f;
       }
@@ -617,4 +618,20 @@ static void seq_time_slip_strip_ex(const Scene *scene, Sequence *seq, int delta,
 void SEQ_time_slip_strip(const Scene *scene, Sequence *seq, int delta)
 {
   seq_time_slip_strip_ex(scene, seq, delta, false);
+}
+
+int seq_time_distance_from_frame(const Scene *scene, const Sequence *seq, int timeline_frame)
+{
+  const int left_handle = SEQ_time_left_handle_frame_get(scene, seq);
+  const int right_handle = SEQ_time_right_handle_frame_get(scene, seq);
+
+  if (SEQ_time_strip_intersects_frame(scene, seq, timeline_frame)) {
+    return 0;
+  }
+
+  if (timeline_frame < left_handle) {
+    return left_handle - timeline_frame;
+  }
+
+  return timeline_frame - right_handle;
 }

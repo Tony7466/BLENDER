@@ -40,10 +40,6 @@ void SEQ_relations_invalidate_cache_in_range(Scene *scene,
                                              Sequence *range_mask,
                                              int invalidate_types);
 /**
- * Release FFmpeg handles of strips that are not currently displayed to minimize memory usage.
- */
-void SEQ_relations_free_all_anim_ibufs(Scene *scene, int timeline_frame);
-/**
  * A debug and development function which checks whether sequences have unique UIDs.
  * Errors will be reported to the console.
  */

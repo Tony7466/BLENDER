@@ -23,4 +23,4 @@ void seq_multiview_name(
 /**
  * The number of files will vary according to the stereo format.
  */
-int seq_num_files(Scene *scene, char views_format, bool is_multiview);
+int seq_num_files(const Scene *scene, char views_format, bool is_multiview);

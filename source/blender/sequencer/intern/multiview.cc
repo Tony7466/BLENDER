@@ -24,7 +24,7 @@ void seq_anim_add_suffix(Scene *scene, ImBufAnim *anim, const int view_id)
   IMB_suffix_anim(anim, suffix);
 }
 
-int seq_num_files(Scene *scene, char views_format, const bool is_multiview)
+int seq_num_files(const Scene *scene, char views_format, const bool is_multiview)
 {
   if (!is_multiview) {
     return 1;

@@ -45,3 +45,4 @@ void seq_time_translate_handles(const Scene *scene, Sequence *seq, const int off
 float seq_time_media_playback_rate_factor_get(const Scene *scene, const Sequence *seq);
 int seq_time_strip_original_content_length_get(const Scene *scene, const Sequence *seq);
 float seq_retiming_evaluate(const Sequence *seq, const float frame_index);
+int seq_time_distance_from_frame(const Scene *scene, const Sequence *seq, int timeline_frame);

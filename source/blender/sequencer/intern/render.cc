@@ -76,15 +76,23 @@
 
 using namespace blender;
 
+ThreadMutex seq_render_mutex = BLI_MUTEX_INITIALIZER;
 static ImBuf *seq_render_strip_stack(const SeqRenderData *context,
                                      SeqRenderState *state,
                                      ListBase *channels,
                                      ListBase *seqbasep,
                                      float timeline_frame,
                                      int chanshown);
-
-static ThreadMutex seq_render_mutex = BLI_MUTEX_INITIALIZER;
 SequencerDrawView sequencer_view3d_fn = nullptr; /* nullptr in background mode */
+
+void seq_render_mutex_lock(void)
+{
+  BLI_mutex_lock(&seq_render_mutex);
+}
+void seq_render_mutex_unlock(void)
+{
+  BLI_mutex_unlock(&seq_render_mutex);
+}
 
 /* -------------------------------------------------------------------- */
 /** \name Color-space utility functions
@@ -1123,6 +1131,7 @@ static ImBuf *seq_render_movie_strip_custom_file_proxy(const SeqRenderData *cont
 
   if (proxy->anim == nullptr) {
     if (seq_proxy_get_custom_file_filepath(seq, filepath, context->view_id)) {
+      // eeeh probably should be managed by manager as well
       proxy->anim = openanim(filepath, IB_rect, 0, seq->strip->colorspace_settings.name);
     }
     if (proxy->anim == nullptr) {
@@ -1167,7 +1176,7 @@ static ImBuf *seq_render_movie_strip_view(const SeqRenderData *context,
     {
       ibuf = seq_render_movie_strip_custom_file_proxy(context, seq, timeline_frame);
     }
-    else {
+    else if (sanim != nullptr) {
       ibuf = IMB_anim_absolute(sanim->anim,
                                frame_index + seq->anim_startofs,
                                seq_render_movie_strip_timecode_get(seq),
@@ -1180,7 +1189,7 @@ static ImBuf *seq_render_movie_strip_view(const SeqRenderData *context,
   }
 
   /* Fetching for requested proxy size failed, try fetching the original instead. */
-  if (ibuf == nullptr) {
+  if (ibuf == nullptr && sanim != nullptr) {
     ibuf = IMB_anim_absolute(sanim->anim,
                              frame_index + seq->anim_startofs,
                              seq_render_movie_strip_timecode_get(seq),
@@ -1206,7 +1215,7 @@ static ImBuf *seq_render_movie_strip(const SeqRenderData *context,
                                      bool *r_is_proxy_image)
 {
   /* Load all the videos. */
-  seq_open_anim_file(context->scene, seq, false);
+  // seq_open_anim_file(context->scene, seq, false);
 
   ImBuf *ibuf = nullptr;
   StripAnim *sanim = static_cast<StripAnim *>(seq->anims.first);
@@ -2096,11 +2105,18 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
   }
 
   seq_cache_free_temp_cache(context->scene, context->task_id, timeline_frame);
-  /* Make sure we only keep the `anim` data for strips that are in view. */
-  SEQ_relations_free_all_anim_ibufs(context->scene, timeline_frame);
+
+  seq_anim_lookup_ensure(ed);
+  AnimManager *lookup = ed->runtime.anim_lookup;
+  if (lookup->working) {
+    printf("Oh noooooooo, prefetch is blocking main!!!!!\n");
+  }
 
   if (!strips.is_empty() && !out) {
     BLI_mutex_lock(&seq_render_mutex);
+
+    /* Load anims in main thread for the first time and lock them, so they can't be freed. */
+    lookup->load_set(scene, strips);
     out = seq_render_strip_stack(context, &state, channels, seqbasep, timeline_frame, chanshown);
 
     if (context->is_prefetch_render) {
@@ -2110,10 +2126,12 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
       seq_cache_put_if_possible(
           context, strips.last(), timeline_frame, SEQ_CACHE_STORE_FINAL_OUT, out);
     }
+    // printf("main is unlocking strips\n");
     BLI_mutex_unlock(&seq_render_mutex);
   }
 
   seq_prefetch_start(context, timeline_frame);
+  lookup->manage_anims(scene);
 
   return out;
 }

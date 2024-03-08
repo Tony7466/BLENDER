@@ -8,7 +8,10 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_hash_mm3.hh"
-#include "BLI_map.hh"
+#include "BLI_index_range.hh"
+#include "BLI_math_base.h"
+#include "BLI_task.hh"
+#include "BLI_timeit.hh"
 
 #include "BKE_image.h"
 #include "BKE_main.hh"
@@ -20,6 +23,7 @@
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
+#include "SEQ_iterator.hh"
 #include "SEQ_relations.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_utils.hh"
@@ -27,6 +31,10 @@
 #include "anim_manager.hh"
 #include "multiview.hh"
 #include "proxy.hh"
+#include "render.hh"
+#include "strip_time.hh"
+
+#define PREFETCH_DIST 512
 
 static void anim_filepath_get(const Scene *scene,
                               Sequence *seq,
@@ -93,24 +101,24 @@ static ImBufAnim *anim_get(Sequence *seq, const char *filepath, bool openfile)
   return anim;
 }
 
-static bool is_multiview(Scene *scene, Sequence *seq, const char *filepath)
+static bool is_multiview(const Scene *scene, Sequence *seq, const char *filepath)
 {
   bool use_multiview = (seq->flag & SEQ_USE_VIEWS) != 0 && (scene->r.scemode & R_MULTIVIEW) != 0;
   char prefix[FILE_MAX];
   const char *ext = nullptr;
-  BKE_scene_multiview_view_prefix_get(scene, filepath, prefix, &ext);
+  BKE_scene_multiview_view_prefix_get(const_cast<Scene *>(scene), filepath, prefix, &ext);
 
   return use_multiview && seq->views_format == R_IMF_VIEWS_INDIVIDUAL && prefix[0] != '\0';
 }
 
-static blender::Vector<ImBufAnim *> multiview_anims_get(Scene *scene,
+static blender::Vector<ImBufAnim *> multiview_anims_get(const Scene *scene,
                                                         Sequence *seq,
                                                         const char *filepath)
 {
   int totfiles = seq_num_files(scene, seq->views_format, true);
   char prefix[FILE_MAX];
   const char *ext = nullptr;
-  BKE_scene_multiview_view_prefix_get(scene, filepath, prefix, &ext);
+  BKE_scene_multiview_view_prefix_get(const_cast<Scene *>(scene), filepath, prefix, &ext);
   blender::Vector<ImBufAnim *> anims;
 
   for (int i = 0; i < totfiles; i++) {
@@ -128,119 +136,248 @@ static blender::Vector<ImBufAnim *> multiview_anims_get(Scene *scene,
   return anims;
 }
 
-class ShareableAnim {
- public:
-  blender::Vector<ImBufAnim *> anims; /* In same order as strip views (`StripAnim` order). */
-  bool multiview_loaded = false;
-  int user_count = 0;
-
-  void release_from_strip(Sequence *seq)
-  {
-    if (anims.size() == 0 || BLI_listbase_is_empty(&seq->anims)) {
-      return;
-    }
-
-    if (user_count == 1) {
-      for (ImBufAnim *anim : anims) {
-        IMB_free_anim(anim);
-      }
-    }
-
-    user_count--;
-    BLI_freelist(&seq->anims);
-  };
-
-  void assign_to_strip(Scene *scene, Sequence *seq, const char *filepath)
-  {
-    Editing *ed = SEQ_editing_get(scene);
-
-    for (int i = 0; i < anims.size(); i++) {
-      ImBufAnim *anim = anims[i];
-      StripAnim *sanim = static_cast<StripAnim *>(MEM_mallocN(sizeof(StripAnim), "Strip Anim"));
-      sanim->anim = anim;
-      BLI_addtail(&seq->anims, sanim);
-      index_dir_set(ed, seq, sanim);
-      if (is_multiview(scene, seq, filepath)) {
-        const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
-        IMB_suffix_anim(sanim->anim, suffix);
-      }
-    }
-
-    user_count++;
-  };
-
-  void acquire_anims(Scene *scene, Sequence *seq, const char *filepath, bool openfile)
-  {
-    if (is_multiview(scene, seq, filepath)) {
-      anims = multiview_anims_get(scene, seq, filepath);
-      multiview_loaded = true;
-      return;
-    }
-
-    anims.append(anim_get(seq, filepath, openfile));
-  }
-
-  bool has_anim(Scene *scene, Sequence *seq, const char *filepath)
-  {
-    if (is_multiview(scene, seq, filepath) && !multiview_loaded) {
-      return false;
-    }
-
-    return !anims.is_empty();
-  }
-
-  ShareableAnim() = default;
-};
-
-struct AnimLookup {
-  blender::Map<std::string, ShareableAnim> anims;
-};
-
-static void anim_lookup_ensure(Editing *ed)
+void ShareableAnim::release_from_strip(Sequence *seq)
 {
-  if (ed->runtime.anim_lookup == nullptr) {
-    ed->runtime.anim_lookup = MEM_new<AnimLookup>(__func__);
+  if (anims.size() == 0 || BLI_listbase_is_empty(&seq->anims)) {
+    return;
   }
+
+  BLI_mutex_lock(mutex);
+
+  LISTBASE_FOREACH (StripAnim *, sanim, &seq->anims) {
+    MEM_freeN(sanim);
+  }
+  BLI_listbase_clear(&seq->anims);
+
+  users.remove_if([seq](Sequence *seq_user) { return seq == seq_user; });
+
+  if (users.size() == 0) {
+    for (ImBufAnim *anim : anims) {
+      IMB_free_anim(anim);
+    }
+    anims.clear();
+  }
+  BLI_mutex_unlock(mutex);
+};
+
+void ShareableAnim::release_from_all_strips(void)
+{
+  for (Sequence *user : users) {
+    release_from_strip(user);
+  }
+}
+
+void ShareableAnim::assign_to_strip(const Scene *scene, Sequence *seq)
+{
+  // XXX check this out
+  // BLI_assert(BLI_listbase_is_empty(&seq->anims));
+  Editing *ed = SEQ_editing_get(scene);
+
+  for (int i = 0; i < anims.size(); i++) {
+    ImBufAnim *anim = anims[i];
+    StripAnim *sanim = static_cast<StripAnim *>(MEM_mallocN(sizeof(StripAnim), "Strip Anim"));
+    sanim->anim = anim;
+    BLI_addtail(&seq->anims, sanim);
+    index_dir_set(ed, seq, sanim);
+    if (is_multiview(scene, seq, filepath.c_str())) {
+      const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
+      IMB_suffix_anim(sanim->anim, suffix);
+    }
+  }
+
+  users.append(seq);
+};
+
+void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq, bool openfile)
+{
+  if (is_multiview(scene, seq, filepath.c_str())) {
+    anims = multiview_anims_get(scene, seq, filepath.c_str());
+    multiview_loaded = true;
+    return;
+  }
+
+  ImBufAnim *anim = anim_get(seq, filepath.c_str(), openfile);
+  if (anim != nullptr) {
+    anims.append(anim);
+  }
+}
+
+bool ShareableAnim::has_anim(const Scene *scene, Sequence *seq)
+{
+  if (is_multiview(scene, seq, filepath.c_str()) && !multiview_loaded) {
+    return false;
+  }
+
+  return !anims.is_empty();
+}
+
+ShareableAnim::ShareableAnim()
+{
+  mutex = BLI_mutex_alloc();
 }
 
 static ShareableAnim &anim_lookup_by_filepath(Editing *ed, const char *filepath)
 {
   blender::Map<std::string, ShareableAnim> &anims = ed->runtime.anim_lookup->anims;
-  return anims.lookup_or_add_default(std::string(filepath));
+  BLI_mutex_lock(ed->runtime.anim_lookup->mutex);
+  ShareableAnim &sh_anim = anims.lookup_or_add_default(std::string(filepath));
+  sh_anim.filepath = filepath;
+  BLI_mutex_unlock(ed->runtime.anim_lookup->mutex);
+  return sh_anim;
 }
 
 static ShareableAnim &anim_lookup_by_seq(const Scene *scene, Sequence *seq)
 {
   Editing *ed = SEQ_editing_get(scene);
-  anim_lookup_ensure(ed);
+  seq_anim_lookup_ensure(ed);
   char filepath[FILE_MAX];
   anim_filepath_get(scene, seq, sizeof(filepath), filepath);
-  return anim_lookup_by_filepath(ed, filepath);
+  ShareableAnim &sh_anim = anim_lookup_by_filepath(ed, filepath);
+  return sh_anim;
 }
 
-void seq_open_anim_file(Scene *scene, Sequence *seq, bool openfile)
+void seq_open_anim_file(const Scene *scene, Sequence *seq, bool openfile)
 {
-  if ((seq->anims.first != nullptr) && (((StripAnim *)seq->anims.first)->anim != nullptr) &&
-      !openfile)
-  {
+  if ((seq->anims.first != nullptr) && (((StripAnim *)seq->anims.first)->anim != nullptr)) {
     return;
   }
-  BLI_assert(BLI_listbase_is_empty(&seq->anims));
 
   Editing *ed = SEQ_editing_get(scene);
-  anim_lookup_ensure(ed);
+  seq_anim_lookup_ensure(ed);
   char filepath[FILE_MAX];
   anim_filepath_get(scene, seq, sizeof(filepath), filepath);
   ShareableAnim &sh_anim = anim_lookup_by_filepath(ed, filepath);
 
-  if (!sh_anim.has_anim(scene, seq, filepath)) {
-    sh_anim.acquire_anims(scene, seq, filepath, openfile);
+  BLI_mutex_lock(sh_anim.mutex);
+  if (!sh_anim.has_anim(scene, seq)) {
+    sh_anim.acquire_anims(scene, seq, openfile);
   }
-  sh_anim.assign_to_strip(scene, seq, filepath);
+  sh_anim.assign_to_strip(scene, seq);
+  BLI_mutex_unlock(sh_anim.mutex);
 }
 
 void SEQ_relations_sequence_free_anim(const Scene *scene, Sequence *seq)
 {
   ShareableAnim &sh_anim = anim_lookup_by_seq(scene, seq);
   sh_anim.release_from_strip(seq);
+}
+
+static blender::Vector<Sequence *> strips_to_prefetch_get(const Scene *scene)
+{
+  Editing *ed = SEQ_editing_get(scene);
+  ListBase *seqbase = SEQ_active_seqbase_get(ed);
+  blender::VectorSet<Sequence *> strips = SEQ_query_all_strips_recursive(seqbase);
+  const int timeline_frame = BKE_scene_frame_get(scene);
+  strips.remove_if([scene, timeline_frame](Sequence *seq) {
+    if (seq->type != SEQ_TYPE_MOVIE) {
+      return true;
+    }
+
+    if (seq_time_distance_from_frame(scene, seq, timeline_frame) > PREFETCH_DIST) {
+      return true;
+    }
+    return false;
+  });
+
+  blender::Vector<Sequence *> strips_2;
+
+  for (Sequence *seq : strips) {
+    strips_2.append(seq);
+  }
+  // XXX is VectorSet not sortable?
+  std::sort(strips_2.begin(), strips_2.end(), [&](const Sequence *a, const Sequence *b) {
+    return seq_time_distance_from_frame(scene, a, timeline_frame) <
+           seq_time_distance_from_frame(scene, b, timeline_frame);
+  });
+
+  return strips_2;
+}
+
+static void free_unused_anims(const Editing *ed, blender::Vector<Sequence *> &strips)
+{
+  seq_render_mutex_lock();
+  blender::Map<std::string, ShareableAnim> &anims = ed->runtime.anim_lookup->anims;
+  for (ShareableAnim &sh_anim : anims.values()) {
+    bool strips_use_anim = false;
+    for (Sequence *user : sh_anim.users) {
+      if (strips.contains(user)) {
+        strips_use_anim = true;
+        break;
+      }
+    }
+
+    // TODO has users func? could be nicer anyway...
+    if (!strips_use_anim && sh_anim.users.size() > 0) {
+      sh_anim.release_from_all_strips();
+    }
+  }
+  seq_render_mutex_unlock();
+}
+
+/* This function single-handedly manages all* anims VSE could ever need.
+ * Well, not all, but all for playback purposes, not counting proxies, which is TODO...
+ */
+static void *manage_anims_thread(void *data)
+{
+  const Scene *scene = static_cast<const Scene *>(data);
+  Editing *ed = SEQ_editing_get(scene);
+  blender::Vector<Sequence *> strips = strips_to_prefetch_get(scene);
+
+  free_unused_anims(ed, strips);
+
+  // TODO why is this not working?
+  /*using namespace blender;
+  threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
+    for (int i : range) {
+      Sequence *seq = strips[i];
+      seq_open_anim_file(scene, seq, true);
+    }
+  });*/
+
+  for (Sequence *seq : strips) {
+    seq_open_anim_file(scene, seq, true);
+  }
+
+  ed->runtime.anim_lookup->working = false;
+  return 0;
+}
+
+void seq_anim_lookup_ensure(Editing *ed)
+{
+  if (ed->runtime.anim_lookup == nullptr) {
+    ed->runtime.anim_lookup = MEM_new<AnimManager>(__func__);
+  }
+}
+
+AnimManager::AnimManager()
+{
+  BLI_threadpool_init(&threads, manage_anims_thread, 1);
+  mutex = BLI_mutex_alloc();
+}
+
+void AnimManager::manage_anims(Scene *scene)
+{
+  if (working) {
+    return;
+  }
+
+  working = true;
+  BLI_threadpool_clear(&threads);
+  BLI_threadpool_insert(&threads, static_cast<void *>(scene));
+}
+
+void AnimManager::load_set(const Scene *scene, blender::Vector<Sequence *> &strips)
+{
+  // TODO why is this not working?
+  /*using namespace blender;
+  threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
+    for (int i : range) {
+      Sequence *seq = strips[i];
+      seq_open_anim_file(scene, seq, true);
+    }
+  });*/
+
+  for (Sequence *seq : strips) {
+    seq_open_anim_file(scene, seq, true);
+  }
 }
