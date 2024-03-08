@@ -3,3 +3,4 @@ Referenced by commit 328d5bcc3cad55f0c871d503fa53a9cdd29358a3, Fix Context.temp_
 Referenced by pull request #114269, Fix #108763: temp_override to consider context's screen
 Referenced by commit 12c4d22e6dd4ff7d700630ae111463c0811ae90e, Fix #115937: Context override fails to restore screen
 Referenced by issue #116297, Keymap: Error in wm.py line 54, can also segfault
+Referenced by issue #119202, Regression: Python API: 'bpy.ops.screen.area_close' crashes in Blender 4.1
