@@ -2357,13 +2357,13 @@ static bool customdata_typemap_is_valid(const CustomData *data)
 static void *copy_layer_data(const eCustomDataType type,
                              const void *data,
                              const int totelem,
-                             bool preserve_data = true)
+                             const bool for_write_only = false)
 {
   const LayerTypeInfo &type_info = *layerType_getInfo(type);
   const int64_t size_in_bytes = int64_t(totelem) * type_info.size;
   void *new_data = MEM_mallocN_aligned(size_in_bytes, type_info.alignment, __func__);
-  if (!preserve_data) {
-    return new_data;
+  if (for_write_only) {
+    return;
   }
   if (type_info.copy) {
     type_info.copy(data, new_data, totelem);
@@ -2568,7 +2568,7 @@ static const ImplicitSharingInfo *make_implicit_sharing_info_for_layer(const eCu
  */
 static void ensure_layer_data_is_mutable(CustomDataLayer &layer,
                                          const int totelem,
-                                         bool preserve_data = true)
+                                         const bool for_write_only = true)
 {
   if (layer.data == nullptr) {
     return;
@@ -2585,7 +2585,7 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer,
     const void *old_data = layer.data;
     /* Copy the layer before removing the user because otherwise the data might be freed while
      * we're still copying from it here. */
-    layer.data = copy_layer_data(type, old_data, totelem, preserve_data);
+    layer.data = copy_layer_data(type, old_data, totelem, for_write_only);
     layer.sharing_info->remove_user_and_delete_if_last();
     layer.sharing_info = make_implicit_sharing_info_for_layer(type, layer.data, totelem);
   }
@@ -3782,14 +3782,14 @@ void *CustomData_get_layer_named_for_write(CustomData *data,
                                            const eCustomDataType type,
                                            const StringRef name,
                                            const int totelem,
-                                           bool for_write_only)
+                                           const bool for_write_only)
 {
   const int layer_index = CustomData_get_named_layer_index(data, type, name);
   if (layer_index == -1) {
     return nullptr;
   }
   CustomDataLayer &layer = data->layers[layer_index];
-  ensure_layer_data_is_mutable(layer, totelem, !for_write_only);
+  ensure_layer_data_is_mutable(layer, totelem, for_write_only);
   return layer.data;
 }
 
