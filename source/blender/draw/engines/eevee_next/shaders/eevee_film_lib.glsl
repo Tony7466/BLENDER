@@ -54,10 +54,8 @@ FilmSample film_sample_get(int sample_n, ivec2 texel_film)
    * reprojecting the incoming pixel data into film pixel space. */
 #else
 
-  texel_film /= scaling_factor;
-
   FilmSample film_sample = uniform_buf.film.samples[sample_n];
-  film_sample.texel += texel_film + uniform_buf.film.render_offset;
+  film_sample.texel += (texel_film / scaling_factor) + uniform_buf.film.render_offset;
   /* Use extend on borders. */
   film_sample.texel = clamp(film_sample.texel, ivec2(0, 0), uniform_buf.film.render_extent - 1);
 
@@ -66,7 +64,9 @@ FilmSample film_sample_get(int sample_n, ivec2 texel_film)
   if (scaling_factor > 1) {
     /* We need to compute the real distance and weight since a sample
      * can be used by many final pixel. */
-    vec2 offset = uniform_buf.film.subpixel_offset - vec2(texel_film % scaling_factor);
+    vec2 offset = (vec2(film_sample.texel) + 0.5 - uniform_buf.film.subpixel_offset) *
+                      scaling_factor -
+                  (vec2(texel_film) + 0.5);
     film_sample.weight = film_filter_weight(uniform_buf.film.filter_radius,
                                             length_squared(offset));
   }
