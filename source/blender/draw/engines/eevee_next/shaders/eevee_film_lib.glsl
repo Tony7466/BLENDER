@@ -602,7 +602,6 @@ float film_display_depth_ammend(ivec2 texel, float depth)
 #endif
   /* Small offset to avoid depth test lessEqual failing because of all the conversions loss. */
   depth += 2.4e-7 * 4.0;
-
   return saturate(depth);
 }
 
