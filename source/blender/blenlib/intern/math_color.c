@@ -374,11 +374,6 @@ void cpack_to_rgb(uint col, float *r_r, float *r_g, float *r_b)
   *r_b = (float)((col >> 16) & 0xFF) * (1.0f / 255.0f);
 }
 
-float uchar_to_float(const uchar value)
-{
-  return ((float)value) * (1.0f / 255.0f);
-}
-
 void rgb_uchar_to_float(float r_col[3], const uchar col_ub[3])
 {
   r_col[0] = ((float)col_ub[0]) * (1.0f / 255.0f);
