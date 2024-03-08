@@ -29,7 +29,8 @@ PropertyRNA *RNA_def_node_enum(StructRNA *srna,
                                const EnumPropertyItem *static_items,
                                const EnumRNAAccessors accessors,
                                std::optional<int> default_value,
-                               const EnumPropertyItemFunc item_func)
+                               const EnumPropertyItemFunc item_func,
+                               const bool allow_animation = false)
 {
   PropertyRNA *prop = RNA_def_property(srna, identifier, PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_funcs_runtime(prop, accessors.getter, accessors.setter, item_func);
