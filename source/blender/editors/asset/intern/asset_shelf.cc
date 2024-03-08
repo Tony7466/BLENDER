@@ -52,9 +52,9 @@ void send_redraw_notifier(const bContext &C)
 /** \name Shelf Type
  * \{ */
 
-static bool asset_shelf_type_poll(const bContext &C,
-                                  const SpaceType &space_type,
-                                  AssetShelfType *shelf_type)
+bool asset_shelf_type_poll(const bContext &C,
+                           const SpaceType &space_type,
+                           const AssetShelfType *shelf_type)
 {
   if (!shelf_type) {
     return false;
@@ -71,13 +71,24 @@ static bool asset_shelf_type_poll(const bContext &C,
   return !shelf_type->poll || shelf_type->poll(&C, shelf_type);
 }
 
-static AssetShelfType *asset_shelf_type_ensure(SpaceType &space_type, AssetShelf &shelf)
+AssetShelfType *asset_shelf_type_find_from_idname(const SpaceType &space_type,
+                                                  StringRefNull idname)
+{
+  for (const std::unique_ptr<AssetShelfType> &shelf_type : space_type.asset_shelf_types) {
+    if (STREQ(idname.c_str(), shelf_type->idname)) {
+      return shelf_type.get();
+    }
+  }
+  return nullptr;
+}
+
+AssetShelfType *asset_shelf_type_ensure(const SpaceType &space_type, AssetShelf &shelf)
 {
   if (shelf.type) {
     return shelf.type;
   }
 
-  for (std::unique_ptr<AssetShelfType> &shelf_type : space_type.asset_shelf_types) {
+  for (const std::unique_ptr<AssetShelfType> &shelf_type : space_type.asset_shelf_types) {
     if (STREQ(shelf.idname, shelf_type->idname)) {
       shelf.type = shelf_type.get();
       return shelf_type.get();
@@ -87,7 +98,7 @@ static AssetShelfType *asset_shelf_type_ensure(SpaceType &space_type, AssetShelf
   return nullptr;
 }
 
-static AssetShelf *create_shelf_from_type(AssetShelfType &type)
+AssetShelf *create_shelf_from_type(AssetShelfType &type)
 {
   AssetShelf *shelf = MEM_new<AssetShelf>(__func__);
   *shelf = dna::shallow_zero_initialize();

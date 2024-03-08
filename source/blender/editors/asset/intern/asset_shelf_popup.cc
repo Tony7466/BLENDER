@@ -1,0 +1,94 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/** \file
+ * \ingroup edasset
+ */
+
+#include "asset_shelf.hh"
+
+#include "BKE_screen.hh"
+
+#include "UI_interface_c.hh"
+
+#include "ED_asset_shelf.hh"
+
+#include "RNA_access.hh"
+#include "RNA_prototypes.h"
+
+namespace blender::ed::asset::shelf {
+
+static AssetShelf *get_shelf_for_popup(const bContext *C,
+                                       const ScrArea *area,
+                                       AssetShelfType &shelf_type)
+{
+  ARegion *shelf_region = BKE_area_find_region_type(area, RGN_TYPE_ASSET_SHELF);
+  if (!shelf_region) {
+    BLI_assert_unreachable();
+    return nullptr;
+  }
+
+  if (!shelf_region->regiondata) {
+    shelf_region->regiondata = MEM_cnew<RegionAssetShelf>("RegionAssetShelf");
+  }
+
+  RegionAssetShelf *shelf_regiondata = RegionAssetShelf::get_from_asset_shelf_region(
+      *shelf_region);
+
+  const SpaceType *space_type = area->type;
+  LISTBASE_FOREACH (AssetShelf *, shelf, &shelf_regiondata->shelves) {
+    if (STREQ(shelf->idname, shelf_type.idname)) {
+      if (asset_shelf_type_poll(*C, *space_type, asset_shelf_type_ensure(*space_type, *shelf))) {
+        return shelf;
+      }
+      break;
+    }
+  }
+
+  if (asset_shelf_type_poll(*C, *space_type, &shelf_type)) {
+    AssetShelf *new_shelf = create_shelf_from_type(shelf_type);
+    BLI_addtail(&shelf_regiondata->shelves, new_shelf);
+    return new_shelf;
+  }
+
+  return nullptr;
+}
+
+uiBlock *asset_shelf_popup_block(const bContext *C, ARegion *region, AssetShelfType *shelf_type)
+{
+  uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
+  UI_block_flag_enable(block, UI_BLOCK_LOOP);
+  UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+
+  AssetShelf *shelf = get_shelf_for_popup(C, CTX_wm_area(C), *shelf_type);
+  if (!shelf) {
+    BLI_assert_unreachable();
+    return block;
+  }
+
+  const uiStyle *style = UI_style_get_dpi();
+
+  const float pad = 0.2f * UI_UNIT_Y; /* UI_MENU_PADDING */
+  uiLayout *layout = UI_block_layout(
+      block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, pad, 0, UI_UNIT_X * 40, 0, pad / 2, style);
+
+  PointerRNA library_ref_ptr = RNA_pointer_create(
+      &CTX_wm_screen(C)->id, &RNA_AssetLibraryReference, &shelf->settings.asset_library_reference);
+  uiLayoutSetContextPointer(layout, "asset_library_reference", &library_ref_ptr);
+
+  uiLayout *row = uiLayoutRow(layout, false);
+  uiLayout *sub = uiLayoutRow(row, false);
+  uiLayoutSetUnitsX(sub, 10);
+  uiLayoutSetFixedSize(sub, true);
+  uiLayout *catalogs_col = uiLayoutColumn(sub, false);
+  library_selector_draw(C, catalogs_col, *shelf);
+  catalog_selector_tree_draw(catalogs_col, *shelf);
+
+  uiLayout *asset_view_col = uiLayoutColumn(row, false);
+  build_asset_view(*asset_view_col, shelf->settings.asset_library_reference, *shelf, *C, *region);
+
+  return block;
+}
+
+}  // namespace blender::ed::asset::shelf

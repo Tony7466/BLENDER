@@ -2266,6 +2266,20 @@ void RNA_api_ui_layout(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_pointer(func, "node", "Node", "Node", "Display inputs of this node");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
+
+  func = RNA_def_function(srna, "template_asset_shelf_popover", "uiTemplateAssetShelfPopover");
+  RNA_def_function_ui_description(func, "Create a button to open an asset shelf in a popover");
+  RNA_def_function_flag(func, FUNC_USE_CONTEXT);
+  parm = RNA_def_string(func,
+                        "asset_shelf",
+                        nullptr,
+                        0,
+                        "",
+                        "Identifier of the asset shelf to display (`bl_idname`)");
+  RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  parm = RNA_def_property(func, "icon", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_items(parm, rna_enum_icon_items);
+  RNA_def_property_ui_text(parm, "Icon", "Determine icon for the popover button");
 }
 
 #endif
