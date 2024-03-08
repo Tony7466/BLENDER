@@ -319,8 +319,6 @@ struct FilmData {
   float mist_scale, mist_bias, mist_exponent;
   /** Scene exposure used for better noise reduction. */
   float exposure_scale;
-  /** Scaling factor for scaled resolution rendering. */
-  // int scaling_factor;
   /** Film pixel filter radius. */
   float filter_radius;
   /** Precomputed samples. First in the table is the closest one. The rest is unordered. */
