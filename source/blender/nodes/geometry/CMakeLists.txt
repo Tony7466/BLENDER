@@ -67,6 +67,7 @@ set(SRC
   nodes/node_geo_deform_curves_on_surface.cc
   nodes/node_geo_delete_geometry.cc
   nodes/node_geo_dilate_grid.cc
+  nodes/node_geo_distribute_points_in_grid.cc
   nodes/node_geo_distribute_points_in_volume.cc
   nodes/node_geo_distribute_points_on_faces.cc
   nodes/node_geo_dual_mesh.cc
@@ -88,6 +89,7 @@ set(SRC
   nodes/node_geo_grid_poisson_solver.cc
   nodes/node_geo_grid_primitive_cube.cc
   nodes/node_geo_grid_primitive_sphere.cc
+  nodes/node_geo_grid_to_mesh.cc
   nodes/node_geo_grid_to_points.cc
   nodes/node_geo_image.cc
   nodes/node_geo_image_info.cc
@@ -131,8 +133,8 @@ set(SRC
   nodes/node_geo_join_geometry.cc
   nodes/node_geo_material_replace.cc
   nodes/node_geo_material_selection.cc
-  nodes/node_geo_merge_by_distance.cc
   nodes/node_geo_menu_switch.cc
+  nodes/node_geo_merge_by_distance.cc
   nodes/node_geo_mesh_face_group_boundaries.cc
   nodes/node_geo_mesh_primitive_circle.cc
   nodes/node_geo_mesh_primitive_cone.cc
@@ -144,7 +146,9 @@ set(SRC
   nodes/node_geo_mesh_primitive_uv_sphere.cc
   nodes/node_geo_mesh_subdivide.cc
   nodes/node_geo_mesh_to_curve.cc
+  nodes/node_geo_mesh_to_density_grid.cc
   nodes/node_geo_mesh_to_points.cc
+  nodes/node_geo_mesh_to_sdf_grid.cc
   nodes/node_geo_mesh_to_volume.cc
   nodes/node_geo_mesh_topology_corners_of_edge.cc
   nodes/node_geo_mesh_topology_corners_of_face.cc
@@ -158,6 +162,7 @@ set(SRC
   nodes/node_geo_offset_point_in_curve.cc
   nodes/node_geo_points.cc
   nodes/node_geo_points_to_curves.cc
+  nodes/node_geo_points_to_sdf_grid.cc
   nodes/node_geo_points_to_vertices.cc
   nodes/node_geo_points_to_volume.cc
   nodes/node_geo_proximity.cc
