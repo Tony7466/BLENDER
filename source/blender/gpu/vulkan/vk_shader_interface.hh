@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "BLI_array.hh"
 
 #include "gpu_shader_create_info.hh"
@@ -30,6 +32,7 @@ class VKShaderInterface : public ShaderInterface, NonCopyable {
   uint32_t image_offset_ = 0;
   Array<VKDescriptorSet::Location> descriptor_set_locations_;
   Array<shader::ShaderCreateInfo::Resource::BindType> descriptor_set_bind_types_;
+  Array<VkAccessFlags> access_masks_;
 
   VKPushConstants::Layout push_constants_layout_;
 
@@ -44,6 +47,9 @@ class VKShaderInterface : public ShaderInterface, NonCopyable {
       const shader::ShaderCreateInfo::Resource &resource) const;
   const std::optional<VKDescriptorSet::Location> descriptor_set_location(
       const shader::ShaderCreateInfo::Resource::BindType &bind_type, int binding) const;
+  const VkAccessFlags access_mask(const ShaderInput *shader_input) const;
+  const VkAccessFlags access_mask(const shader::ShaderCreateInfo::Resource::BindType &bind_type,
+                                  int binding) const;
 
   /** Get the Layout of the shader. */
   const VKPushConstants::Layout &push_constants_layout_get() const
@@ -77,7 +83,8 @@ class VKShaderInterface : public ShaderInterface, NonCopyable {
   void descriptor_set_location_update(
       const ShaderInput *shader_input,
       const VKDescriptorSet::Location location,
-      const shader::ShaderCreateInfo::Resource::BindType bind_type);
+      const shader::ShaderCreateInfo::Resource::BindType bind_type,
+      std::optional<const shader::ShaderCreateInfo::Resource> resource);
 };
 
 }  // namespace blender::gpu

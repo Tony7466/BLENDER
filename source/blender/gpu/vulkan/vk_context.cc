@@ -214,6 +214,7 @@ void VKContext::update_dispatch_info()
   if (vk_shader.has_descriptor_set()) {
     dispatch_info_.dispatch_node.descriptor_set.vk_pipeline_layout =
         vk_shader.vk_pipeline_layout_get();
+    descriptor_set_.update(*this);
     dispatch_info_.dispatch_node.descriptor_set.vk_descriptor_set =
         descriptor_set_get().active_descriptor_set()->vk_handle();
     // TODO: add resource dependencies. This is currently a combination from descriptor set bound

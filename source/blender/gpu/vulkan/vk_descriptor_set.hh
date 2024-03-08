@@ -178,22 +178,22 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
   }
 
   /* Update and bind active descriptor set to pipeline. */
-  void bind(VKContext &context,
-            VkPipelineLayout vk_pipeline_layout,
-            VkPipelineBindPoint vk_pipeline_bind_point);
+  [[deprecated]] void bind(VKContext &context,
+                           VkPipelineLayout vk_pipeline_layout,
+                           VkPipelineBindPoint vk_pipeline_bind_point);
 
   void debug_print() const;
+
+  /**
+   * Update the descriptor set on the device.
+   */
+  void update(VKContext &context);
 
  protected:
   std::unique_ptr<VKDescriptorSet> create_resource(VKContext &context) override;
 
  private:
   Binding &ensure_location(VKDescriptorSet::Location location);
-
-  /**
-   * Update the descriptor set on the device.
-   */
-  void update(VKContext &context);
 };
 
 }  // namespace blender::gpu

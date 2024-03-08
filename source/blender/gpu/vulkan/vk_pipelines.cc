@@ -79,6 +79,7 @@ VkPipeline VKPipelines::get_or_create_compute_pipeline(VKComputeInfo &compute_in
   /* Reset values to initial value. */
   vk_compute_pipeline_create_info_.layout = VK_NULL_HANDLE;
   vk_compute_pipeline_create_info_.stage.module = VK_NULL_HANDLE;
+  vk_compute_pipeline_create_info_.stage.pSpecializationInfo = nullptr;
   vk_compute_pipeline_create_info_.basePipelineHandle = VK_NULL_HANDLE;
   vk_specialization_info_.dataSize = 0;
   vk_specialization_info_.pData = nullptr;

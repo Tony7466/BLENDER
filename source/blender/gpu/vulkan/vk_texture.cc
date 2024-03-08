@@ -564,6 +564,10 @@ void VKTexture::try_add_to_descriptor_set(AddToDescriptorSetData &data,
       const VKSampler &sampler = device.samplers().get(sampler_state);
       data.descriptor_set.bind(*this, *location, sampler);
     }
+    VKImageAccess image_access = {};
+    image_access.vk_image = vk_image_handle();
+    image_access.vk_access_flags = data.shader_interface.access_mask(bind_type, *location);
+    data.resource_access_info.images.append(image_access);
   }
 }
 

@@ -48,10 +48,8 @@ class VKBindableResource {
 
  public:
   /**
-   * Bind the resource to the shader.
+   * Bind the resource to the given descriptor set and add the access mask to the resources.
    */
-  // TODO: should split up to add_to_descriptor_set and add_to_resouces or resource access should
-  // become part of the descriptor set.
   virtual void try_add_to_descriptor_set(AddToDescriptorSetData &data,
                                          int binding,
                                          shader::ShaderCreateInfo::Resource::BindType bind_type,
