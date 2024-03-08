@@ -86,7 +86,7 @@ class Film {
   Film(Instance &inst, FilmData &data) : inst_(inst), data_(data){};
   ~Film(){};
 
-  void init(const int2 &full_extent, const rcti *output_rect, int scaling_factor);
+  void init(const int2 &full_extent, const rcti *output_rect);
 
   void sync();
   void end_sync();

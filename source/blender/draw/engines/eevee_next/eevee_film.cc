@@ -207,7 +207,7 @@ static eViewLayerEEVEEPassType enabled_passes(const ViewLayer *view_layer)
   return result;
 }
 
-void Film::init(const int2 &extent, const rcti *output_rect, const int scaling_factor)
+void Film::init(const int2 &extent, const rcti *output_rect)
 {
   Sampling &sampling = inst_.sampling;
   Scene &scene = *inst_.scene;
@@ -249,6 +249,11 @@ void Film::init(const int2 &extent, const rcti *output_rect, const int scaling_f
     }
 
     display_extent = extent;
+
+    int scaling_factor = 1;
+    if (inst_.is_viewport()) {
+      scaling_factor = BKE_render_preview_pixel_size(&inst_.scene->r);
+    }
 
     data_.extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
     data_.offset = int2(output_rect->xmin, output_rect->ymin);

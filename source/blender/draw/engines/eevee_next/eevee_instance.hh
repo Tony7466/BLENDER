@@ -175,7 +175,6 @@ class Instance {
   void init(const int2 &output_res,
             const rcti *output_rect,
             const rcti *visible_rect,
-            int scaling_factor,
             RenderEngine *render,
             Depsgraph *depsgraph,
             Object *camera_object = nullptr,

@@ -46,7 +46,6 @@ void *Instance::debug_scope_irradiance_sample = nullptr;
 void Instance::init(const int2 &output_res,
                     const rcti *output_rect,
                     const rcti *visible_rect,
-                    const int scaling_factor,
                     RenderEngine *render_,
                     Depsgraph *depsgraph_,
                     Object *camera_object_,
@@ -90,7 +89,7 @@ void Instance::init(const int2 &output_res,
 
   sampling.init(scene);
   camera.init();
-  film.init(output_res, output_rect, scaling_factor);
+  film.init(output_res, output_rect);
   ambient_occlusion.init();
   velocity.init();
   raytracing.init();
@@ -128,7 +127,7 @@ void Instance::init_light_bake(Depsgraph *depsgraph, draw::Manager *manager)
   camera.init();
   /* Film isn't used but init to avoid side effects in other module. */
   rcti empty_rect{0, 0, 0, 0};
-  film.init(int2(1), &empty_rect, 1);
+  film.init(int2(1), &empty_rect);
   velocity.init();
   depth_of_field.init();
   shadows.init();
