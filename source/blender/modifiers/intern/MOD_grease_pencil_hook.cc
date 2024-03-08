@@ -87,6 +87,8 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   auto *mmd = reinterpret_cast<GreasePencilHookModifierData *>(md);
 
   modifier::greasepencil::foreach_influence_ID_link(&mmd->influence, ob, walk, user_data);
+
+  walk(user_data, ob, (ID **)&mmd->object, IDWALK_CB_NOP);
 }
 
 static void blend_write(BlendWriter *writer, const ID * /*id_owner*/, const ModifierData *md)
@@ -171,7 +173,7 @@ static void deform_drawing(const ModifierData &md,
   const float falloff_sq = square_f(falloff);
   const float fac_orig = mmd.force;
   const bool use_falloff = falloff_sq != 0.0f;
-  const bool use_uniform = (mmd.flag & MOD_GRAESE_PENCIL_HOOK_UNIFORM_SPACE) != 0;
+  const bool use_uniform = (mmd.flag & MOD_GREASE_PENCIL_HOOK_UNIFORM_SPACE) != 0;
 
   const float3x3 mat_uniform = use_uniform ? float3x3(float4x4(mmd.parentinv)) :
                                              float3x3::identity();

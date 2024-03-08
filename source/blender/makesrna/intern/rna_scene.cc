@@ -1918,6 +1918,19 @@ static std::optional<std::string> rna_ViewLayerEEVEE_path(const PointerRNA *ptr)
   return rna_path;
 }
 
+static void rna_SceneEEVEE_gi_cubemap_resolution_update(Main * /*main*/,
+                                                        Scene *scene,
+                                                        PointerRNA * /*ptr*/)
+{
+  /* Tag all light probes to recalc transform. This signals EEVEE to update the light probes. */
+  FOREACH_SCENE_OBJECT_BEGIN (scene, ob) {
+    if (ob->type == OB_LIGHTPROBE) {
+      DEG_id_tag_update(&ob->id, ID_RECALC_TRANSFORM);
+    }
+  }
+  FOREACH_SCENE_OBJECT_END;
+}
+
 static std::optional<std::string> rna_SceneRenderView_path(const PointerRNA *ptr)
 {
   const SceneRenderView *srv = (SceneRenderView *)ptr->data;
@@ -3553,7 +3566,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       "Snap to Same Target",
       "Snap only to target that source was initially near (Face Nearest Only)");
 
-  /* node editor uses own set of snap modes */
+  /* node editor uses its own set of snap modes */
   prop = RNA_def_property(srna, "snap_node_element", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_bitflag_sdna(prop, nullptr, "snap_node_mode");
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
@@ -3583,7 +3596,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
   RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_UNIT);
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
-  /* image editor uses own set of snap modes */
+  /* image editor uses its own set of snap modes */
   prop = RNA_def_property(srna, "snap_uv_element", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_bitflag_sdna(prop, nullptr, "snap_uv_mode");
   RNA_def_property_flag(prop, PROP_DEG_SYNC_ONLY);
@@ -7799,6 +7812,7 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, eevee_shadow_size_items);
   RNA_def_property_ui_text(prop, "Cubemap Size", "Size of every cubemaps");
   RNA_def_property_override_flag(prop, PROPOVERRIDE_OVERRIDABLE_LIBRARY);
+  RNA_def_property_update(prop, 0, "rna_SceneEEVEE_gi_cubemap_resolution_update");
 
   prop = RNA_def_property(srna, "gi_visibility_resolution", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(prop, eevee_gi_visibility_size_items);

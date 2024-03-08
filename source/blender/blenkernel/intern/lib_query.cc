@@ -17,7 +17,7 @@
 #include "BLI_set.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_idprop.h"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
@@ -616,7 +616,7 @@ struct UnusedIDsData {
   std::array<int, INDEX_ID_MAX> *num_local;
   std::array<int, INDEX_ID_MAX> *num_linked;
 
-  blender::Set<ID *> unused_ids{};
+  blender::Set<ID *> unused_ids;
 
   UnusedIDsData(Main *bmain, const int id_tag, LibQueryUnusedIDsData &parameters)
       : bmain(bmain),
@@ -624,6 +624,7 @@ struct UnusedIDsData {
         do_local_ids(parameters.do_local_ids),
         do_linked_ids(parameters.do_linked_ids),
         do_recursive(parameters.do_recursive),
+        filter_fn(parameters.filter_fn),
         num_total(&parameters.num_total),
         num_local(&parameters.num_local),
         num_linked(&parameters.num_linked)
