@@ -105,9 +105,9 @@ GPUContext *GPU_context_create(void *ghost_window, void *ghost_context)
     num_backend_users++;
   }
 
+  GPU_render_begin();
   Context *ctx = GPUBackend::get()->context_alloc(ghost_window, ghost_context);
 
-  GPU_render_begin();
   GPU_context_active_set(wrap(ctx));
   GPU_render_end();
   return wrap(ctx);
