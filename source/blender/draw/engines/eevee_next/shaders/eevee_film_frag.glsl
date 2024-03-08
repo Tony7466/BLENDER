@@ -35,6 +35,5 @@ void main()
 
   gl_FragDepth = drw_depth_view_to_screen(-out_depth);
 
-  gl_FragDepth = film_display_depth_ammend(
-      texel_film, gl_FragDepth, uniform_buf.film.scaling_factor);
+  gl_FragDepth = film_display_depth_ammend(texel_film, gl_FragDepth);
 }
