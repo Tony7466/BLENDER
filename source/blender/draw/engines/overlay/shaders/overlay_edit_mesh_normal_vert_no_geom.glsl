@@ -39,7 +39,7 @@ bool test_occlusion()
   return (ndc.z - 0.00035) > texture(depthTex, ndc.xy).r;
 }
 
-vec4 vertex_main(uint src_index
+vec4 vertex_main(uint src_index,
                  vec3 in_pos,
                  vec4 in_lnor,
                  vec4 in_vnor,
@@ -53,14 +53,14 @@ vec4 vertex_main(uint src_index
   /* Select the right normal by checking if the generic attribute is used. */
   if (!all(equal(in_lnor.xyz, vec3(0)))) {
     if (in_lnor.w < 0.0) {
-      return;
+      return vec4(0, 0, 0, 0);
     }
     nor = in_lnor.xyz;
     interp.final_color = colorLNormal;
   }
   else if (!all(equal(in_vnor.xyz, vec3(0)))) {
     if (in_vnor.w < 0.0) {
-      return;
+      return vec4(0, 0, 0, 0);
     }
     nor = in_vnor.xyz;
     interp.final_color = colorVNormal;
@@ -68,7 +68,7 @@ vec4 vertex_main(uint src_index
   else {
     nor = in_norAndFlag.xyz;
     if (all(equal(nor, vec3(0)))) {
-      return;
+      return vec4(0, 0, 0, 0);
     }
     interp.final_color = colorNormal;
   }
@@ -131,14 +131,14 @@ void main()
 
   /* Convert to ndc space. Vertex shader main area. */
   vec4 out_pos[2];
-  out_pos[0] = vert_main(src_index_a, in_pos[0], in_lnor[0], in_vnor[0], in_norAndFlag[0]);
-  out_pos[1] = vert_main(src_index_b, in_pos[1], in_lnor[1], in_vnor[1], in_norAndFlag[1]);
+  out_pos[0] = vertex_main(src_index_a, in_pos[0], in_lnor[0], in_vnor[0], in_norAndFlag[0]);
+  out_pos[1] = vertex_main(src_index_b, in_pos[1], in_lnor[1], in_vnor[1], in_norAndFlag[1]);
 
   /* Geometry shader main area. */
-  vec4 p[2];
-  vec4 p[0] = clip_line_point_homogeneous_space(out_pos[0], out_pos[1]);
-  vec4 p[1] = clip_line_point_homogeneous_space(out_pos[1], out_pos[0]);
-  vec2 e = normalize(((p[1].xy / p[1].w) - (p[0].xy / p[0].w)) * viewportSize.xy);
+  vec4 clippedP[2];
+  vec4 clippedP[0] = clip_line_point_homogeneous_space(out_pos[0], out_pos[1]);
+  vec4 clippedP[1] = clip_line_point_homogeneous_space(out_pos[1], out_pos[0]);
+  vec2 e = normalize(((clippedP[1].xy / clippedP[1].w) - (clippedP[0].xy / clippedP[0].w)) * viewportSize.xy);
 
 #if 0 /* Hard turn when line direction changes quadrant. */
   e = abs(e);
