@@ -349,24 +349,35 @@ static int insert_key(bContext *C, wmOperator *op)
   const AnimationEvalContext anim_eval_context = BKE_animsys_eval_context_construct(
       depsgraph, BKE_scene_frame_get(scene));
 
+  animrig::CombinedKeyingResult combined_result;
   LISTBASE_FOREACH (CollectionPointerLink *, collection_ptr_link, &selection) {
     ID *selected_id = collection_ptr_link->ptr.owner_id;
+    if (!id_can_have_animdata(selected_id)) {
+      BKE_reportf(op->reports,
+                  RPT_ERROR,
+                  "Could not insert keyframe, as this type does not support animation data (ID = "
+                  "%s)",
+                  selected_id->name);
+      continue;
+    }
     if (!BKE_id_is_editable(bmain, selected_id)) {
       BKE_reportf(op->reports, RPT_ERROR, "'%s' is not editable", selected_id->name + 2);
       continue;
     }
+
     PointerRNA id_ptr = collection_ptr_link->ptr;
     Vector<std::string> rna_paths = construct_rna_paths(&collection_ptr_link->ptr);
 
-    animrig::insert_key_rna(&id_ptr,
-                            rna_paths.as_span(),
-                            scene_frame,
-                            insert_key_flags,
-                            key_type,
-                            bmain,
-                            op->reports,
-                            anim_eval_context);
+    combined_result.merge(animrig::insert_key_rna(&id_ptr,
+                                                  rna_paths.as_span(),
+                                                  scene_frame,
+                                                  insert_key_flags,
+                                                  key_type,
+                                                  bmain,
+                                                  anim_eval_context));
   }
+
+  combined_result.generate_reports(op->reports);
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
   BLI_freelistN(&selection);
