@@ -320,14 +320,14 @@ struct FilmData {
   /** Scene exposure used for better noise reduction. */
   float exposure_scale;
   /** Scaling factor for scaled resolution rendering. */
-  int scaling_factor;
+  // int scaling_factor;
   /** Film pixel filter radius. */
   float filter_radius;
   /** Precomputed samples. First in the table is the closest one. The rest is unordered. */
   int samples_len;
   /** Sum of the weights of all samples in the sample table. */
   float samples_weight_total;
-  int _pad1;
+  int _pad1[2];
   FilmSample samples[FILM_PRECOMP_SAMPLE_MAX];
 };
 BLI_STATIC_ASSERT_ALIGN(FilmData, 16)

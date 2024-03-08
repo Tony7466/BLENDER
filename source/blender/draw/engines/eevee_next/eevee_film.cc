@@ -152,8 +152,7 @@ inline bool operator==(const FilmData &a, const FilmData &b)
 {
   return (a.extent == b.extent) && (a.offset == b.offset) &&
          (a.render_extent == b.render_extent) && (a.render_offset == b.render_offset) &&
-         (a.filter_radius == b.filter_radius) && (a.scaling_factor == b.scaling_factor) &&
-         (a.background_opacity == b.background_opacity);
+         (a.filter_radius == b.filter_radius) && (a.background_opacity == b.background_opacity);
 }
 
 inline bool operator!=(const FilmData &a, const FilmData &b)
@@ -242,6 +241,14 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     }
   }
   {
+    /* TODO(fclem): For better result we need to figure out LOD bias to preserve texture
+     * crispiness. */
+    scaling_factor_ = 1;
+    if (inst_.is_viewport()) {
+      scaling_factor_ = BKE_render_preview_pixel_size(&inst_.scene->r);
+    }
+  }
+  {
     rcti fallback_rect;
     if (BLI_rcti_is_empty(output_rect)) {
       BLI_rcti_init(&fallback_rect, 0, extent[0], 0, extent[1]);
@@ -250,18 +257,10 @@ void Film::init(const int2 &extent, const rcti *output_rect)
 
     display_extent = extent;
 
-    int scaling_factor = 1;
-    if (inst_.is_viewport()) {
-      scaling_factor = BKE_render_preview_pixel_size(&inst_.scene->r);
-    }
-
     data_.extent = int2(BLI_rcti_size_x(output_rect), BLI_rcti_size_y(output_rect));
     data_.offset = int2(output_rect->xmin, output_rect->ymin);
     data_.extent_inv = 1.0f / float2(data_.extent);
-    /* TODO(fclem): For better result we need to figure out LOD bias to preserve texture
-     * crispiness. */
-    data_.scaling_factor = scaling_factor;
-    data_.render_extent = math::divide_ceil(extent, int2(data_.scaling_factor));
+    data_.render_extent = math::divide_ceil(extent, int2(scaling_factor_));
     data_.render_offset = data_.offset;
 
     if (inst_.camera.overscan() != 0.0f) {
@@ -385,7 +384,7 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     }
   }
   {
-    int2 weight_extent = inst_.camera.is_panoramic() ? data_.extent : int2(data_.scaling_factor);
+    int2 weight_extent = inst_.camera.is_panoramic() ? data_.extent : int2(scaling_factor_);
 
     eGPUTextureFormat color_format = GPU_RGBA16F;
     eGPUTextureFormat float_format = GPU_R16F;
@@ -453,6 +452,7 @@ void Film::sync()
   accumulate_ps_.specialize_constant(sh, "enabled_categories", uint(enabled_categories_));
   accumulate_ps_.specialize_constant(sh, "samples_len", &data_.samples_len);
   accumulate_ps_.specialize_constant(sh, "use_reprojection", &use_reprojection_);
+  accumulate_ps_.specialize_constant(sh, "scaling_factor", scaling_factor_);
   accumulate_ps_.state_set(DRW_STATE_WRITE_COLOR | DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_ALWAYS);
   accumulate_ps_.shader_set(sh);
   accumulate_ps_.bind_resources(inst_.uniform_data);

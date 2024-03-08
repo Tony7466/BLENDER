@@ -54,9 +54,7 @@ FilmSample film_sample_get(int sample_n, ivec2 texel_film)
    * reprojecting the incoming pixel data into film pixel space. */
 #else
 
-#  ifdef SCALED_RENDERING
-  texel_film /= uniform_buf.film.scaling_factor;
-#  endif
+  texel_film /= scaling_factor;
 
   FilmSample film_sample = uniform_buf.film.samples[sample_n];
   film_sample.texel += texel_film + uniform_buf.film.render_offset;
@@ -65,13 +63,13 @@ FilmSample film_sample_get(int sample_n, ivec2 texel_film)
 
   /* TODO(fclem): Panoramic projection will need to compute the sample weight in the shader
    * instead of precomputing it on CPU. */
-#  ifdef SCALED_RENDERING
-  /* We need to compute the real distance and weight since a sample
-   * can be used by many final pixel. */
-  vec2 offset = uniform_buf.film.subpixel_offset -
-                vec2(texel_film % uniform_buf.film.scaling_factor);
-  film_sample.weight = film_filter_weight(uniform_buf.film.filter_size, length_squared(offset));
-#  endif
+  if (scaling_factor > 1) {
+    /* We need to compute the real distance and weight since a sample
+     * can be used by many final pixel. */
+    vec2 offset = uniform_buf.film.subpixel_offset - vec2(texel_film % scaling_factor);
+    film_sample.weight = film_filter_weight(uniform_buf.film.filter_radius,
+                                            length_squared(offset));
+  }
 
 #endif /* PANORAMIC */
 
