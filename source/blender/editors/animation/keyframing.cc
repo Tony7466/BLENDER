@@ -377,7 +377,9 @@ static int insert_key(bContext *C, wmOperator *op)
                                                   anim_eval_context));
   }
 
-  combined_result.generate_reports(op->reports);
+  if (combined_result.get_count(animrig::SingleKeyingResult::SUCCESS) == 0) {
+    combined_result.generate_reports(op->reports);
+  }
 
   WM_event_add_notifier(C, NC_ANIMATION | ND_KEYFRAME | NA_ADDED, nullptr);
   BLI_freelistN(&selection);
