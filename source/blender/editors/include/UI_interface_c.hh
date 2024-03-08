@@ -491,6 +491,13 @@ void UI_draw_roundbox_4fv_ex(const rctf *rect,
                              const float outline[4],
                              float outline_width,
                              float rad);
+void UI_draw_node_socket(const rctf *rect,
+                         const float color_inner[4],
+                         const float color_outline[4],
+                         float outline_thickness,
+                         float dot_thickness,
+                         float border_offset,
+                         int flags);
 
 #if 0 /* unused */
 int UI_draw_roundbox_corner_get();
