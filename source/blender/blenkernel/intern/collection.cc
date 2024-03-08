@@ -1233,7 +1233,7 @@ static void collection_gobject_assert_internal_consistency(Collection *collectio
 }
 
 Collection *BKE_collection_parent_editable_find_recursive(const ViewLayer *view_layer,
-                                                             Collection *collection)
+                                                          Collection *collection)
 {
   if (!ID_IS_LINKED(collection) && !ID_IS_OVERRIDE_LIBRARY(collection) &&
       (view_layer == nullptr || BKE_view_layer_has_collection(view_layer, collection)))
