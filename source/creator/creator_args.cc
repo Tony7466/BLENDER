@@ -698,6 +698,8 @@ static void print_help(bArgs *ba, bool all)
   PRINT("\n");
   BLI_args_print_arg_doc(ba, "-noaudio");
   BLI_args_print_arg_doc(ba, "-setaudio");
+  PRINT("\n");
+  BLI_args_print_arg_doc(ba, "--command");
 
   PRINT("\n");
 
@@ -764,12 +766,16 @@ static void print_help(bArgs *ba, bool all)
   if (defs.with_ocio) {
     PRINT("  $OCIO                     Path to override the OpenColorIO config file.\n");
   }
-  if (defs.win32) {
-    PRINT("  $TEMP                     Store temporary files here (MS-Windows).\n");
+  if (defs.win32 || all) {
+    PRINT("  $TEMP                      Store temporary files here (MS-Windows).\n");
   }
   if (!defs.win32 || all) {
-    PRINT("  $TMP or $TMPDIR           Store temporary files here (UNIX Systems).\n");
+    /* NOTE: while `TMP` checked, don't include here as it's non-standard & may be removed. */
+    PRINT("  $TMPDIR                    Store temporary files here (UNIX Systems).\n");
   }
+  PRINT(
+      "                             The path must reference an existing directory "
+      "or it will be ignored.\n");
 
 #  undef printf
 #  undef PRINT
@@ -889,15 +895,9 @@ static int arg_handle_debug_exit_on_error(int /*argc*/, const char ** /*argv*/, 
   return 0;
 }
 
-static const char arg_handle_background_mode_set_doc[] =
-    "\n"
-    "\tRun in background (often used for UI-less rendering).\n"
-    "\n"
-    "\tThe audio device is disabled in background-mode by default\n"
-    "\tand can be re-enabled by passing in '-setaudo Default' afterwards.";
-static int arg_handle_background_mode_set(int /*argc*/, const char ** /*argv*/, void * /*data*/)
+/** Shared by `--background` & `--command`. */
+static void background_mode_set()
 {
-  print_version_short();
   G.background = true;
 
   /* Background Mode Defaults:
@@ -916,8 +916,46 @@ static int arg_handle_background_mode_set(int /*argc*/, const char ** /*argv*/, 
    * - A quiet but audible click when Blender starts & configures its audio device.
    */
   BKE_sound_force_device("None");
+}
 
+static const char arg_handle_background_mode_set_doc[] =
+    "\n"
+    "\tRun in background (often used for UI-less rendering).\n"
+    "\n"
+    "\tThe audio device is disabled in background-mode by default\n"
+    "\tand can be re-enabled by passing in '-setaudo Default' afterwards.";
+static int arg_handle_background_mode_set(int /*argc*/, const char ** /*argv*/, void * /*data*/)
+{
+  print_version_short();
+  background_mode_set();
   return 0;
+}
+
+static const char arg_handle_command_set_doc[] =
+    "<command>\n"
+    "\tRun a command which consumes all remaining arguments.\n"
+    "\tUse '-c help' to list all other commands.\n"
+    "\tPass '--help' after the command to see its help text.\n"
+    "\n"
+    "\tThis implies '--background' mode.";
+static int arg_handle_command_set(int argc, const char **argv, void * /*data*/)
+{
+  if (argc < 2) {
+    fprintf(stderr, "%s requires at least one argument\n", argv[0]);
+    exit(EXIT_FAILURE);
+    BLI_assert_unreachable();
+  }
+
+  /* Application "info" messages get in the way of command line output, suppress them. */
+  G.quiet = true;
+
+  background_mode_set();
+
+  app_state.command.argc = argc - 1;
+  app_state.command.argv = argv + 1;
+
+  /* Consume remaining arguments. */
+  return argc - 1;
 }
 
 static const char arg_handle_log_level_set_doc[] =
@@ -2370,6 +2408,8 @@ void main_args_setup(bContext *C, bArgs *ba, bool all)
       ba, nullptr, "--disable-abort-handler", CB(arg_handle_abort_handler_disable), nullptr);
 
   BLI_args_add(ba, "-b", "--background", CB(arg_handle_background_mode_set), nullptr);
+  /* Command implies background mode. */
+  BLI_args_add(ba, "-c", "--command", CB(arg_handle_command_set), nullptr);
 
   BLI_args_add(ba, "-a", nullptr, CB(arg_handle_playback_mode), nullptr);
 
