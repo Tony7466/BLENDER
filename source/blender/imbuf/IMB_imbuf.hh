@@ -144,6 +144,8 @@ uint8_t *IMB_steal_encoded_buffer(ImBuf *ibuf);
 void IMB_refImBuf(ImBuf *ibuf);
 ImBuf *IMB_makeSingleUser(ImBuf *ibuf);
 
+/* Creates a copy of the given buffer. If the shallow arguement is false, the internals buffers
+ * will be copied as well, if true, the buffers will be shared using IB_DO_NOT_TAKE_OWNERSHIP. */
 ImBuf *IMB_dupImBuf(const ImBuf *ibuf1, bool shallow = false);
 
 /**
