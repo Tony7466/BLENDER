@@ -161,28 +161,24 @@ CachedImage::CachedImage(Context &context,
   ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user_for_pass, nullptr);
 
   /* The image buffer might be stored as an sRGB 8-bit image, while the compositor expects linear
-   * float images, so compute a float buffer for the image buffer. This will also do linear space
-   * conversion and alpha pre-multiplication as needed. We could store those images in sRGB GPU
-   * textures and let the GPU do the linear space conversion, but the issues is that we don't
+   * float images, so compute a linear float buffer for the image buffer. This will also do linear
+   * space conversion and alpha pre-multiplication as needed. We could store those images in sRGB
+   * GPU textures and let the GPU do the linear space conversion, but the issues is that we don't
    * control how the GPU does the conversion and so we get tiny differences across CPU and GPU
    * compositing, and potentially even across GPUs/Drivers. Further, if alpha pre-multiplication is
    * needed, we would need to do it ourself, which means alpha pre-multiplication will happen
    * before linear space conversion, which would produce yet another difference. So we just do
-   * everything on the CPU, since this is already a cached resource. Notice that we don't own the
-   * image buffer, so we need to free he computed float buffer before releasing it back. */
-  const bool should_compute_float_buffer = image_buffer->float_buffer.data == nullptr;
-  if (should_compute_float_buffer) {
-    IMB_float_from_rect(image_buffer);
+   * everything on the CPU, since this is already a cached resource. To avoid conflicts with other
+   * threads, create a shallow duplicate buffer and eventually free it. */
+  ImBuf *linear_image_buffer = IMB_dupImBuf(image_buffer, true);
+  if (!linear_image_buffer->float_buffer.data) {
+    IMB_float_from_rect(linear_image_buffer);
   }
 
-  texture_ = IMB_create_gpu_texture("Image Texture", image_buffer, true, true);
+  texture_ = IMB_create_gpu_texture("Image Texture", linear_image_buffer, true, true);
   GPU_texture_update_mipmap_chain(texture_);
 
-  /* Free the float buffer if we computed it ourselves since we don't own the image buffer and
-   * shouldn't change it.  */
-  if (should_compute_float_buffer) {
-    IMB_assign_float_buffer(image_buffer, nullptr, IB_TAKE_OWNERSHIP);
-  }
+  IMB_freeImBuf(linear_image_buffer);
   BKE_image_release_ibuf(image, image_buffer, nullptr);
 }
 

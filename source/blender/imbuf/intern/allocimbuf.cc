@@ -472,6 +472,24 @@ void IMB_assign_float_buffer(ImBuf *ibuf, float *buffer_data, const ImBufOwnersh
   }
 }
 
+void IMB_assign_encoded_buffer(ImBuf *ibuf,
+                               uint8_t *buffer_data,
+                               unsigned int buffer_size,
+                               unsigned int size,
+                               const ImBufOwnership ownership)
+{
+  freeencodedbufferImBuf(ibuf);
+
+  if (buffer_data) {
+    ibuf->encoded_buffer_size = buffer_size;
+    ibuf->encoded_size = size;
+    ibuf->encoded_buffer.data = buffer_data;
+    ibuf->encoded_buffer.ownership = ownership;
+
+    ibuf->flags |= IB_mem;
+  }
+}
+
 ImBuf *IMB_allocFromBufferOwn(
     uint8_t *byte_buffer, float *float_buffer, uint w, uint h, uint channels)
 {
@@ -579,7 +597,7 @@ bool IMB_initImBuf(ImBuf *ibuf, uint x, uint y, uchar planes, uint flags)
   return true;
 }
 
-ImBuf *IMB_dupImBuf(const ImBuf *ibuf1)
+ImBuf *IMB_dupImBuf(const ImBuf *ibuf1, bool shallow)
 {
   ImBuf *ibuf2, tbuf;
   int flags = IB_uninitialized_pixels;
@@ -589,11 +607,13 @@ ImBuf *IMB_dupImBuf(const ImBuf *ibuf1)
     return nullptr;
   }
 
-  if (ibuf1->byte_buffer.data) {
-    flags |= IB_rect;
-  }
-  if (ibuf1->float_buffer.data) {
-    flags |= IB_rectfloat;
+  if (!shallow) {
+    if (ibuf1->byte_buffer.data) {
+      flags |= IB_rect;
+    }
+    if (ibuf1->float_buffer.data) {
+      flags |= IB_rectfloat;
+    }
   }
 
   x = ibuf1->x;
@@ -604,24 +624,46 @@ ImBuf *IMB_dupImBuf(const ImBuf *ibuf1)
     return nullptr;
   }
 
-  if (flags & IB_rect) {
-    memcpy(ibuf2->byte_buffer.data, ibuf1->byte_buffer.data, size_t(x) * y * 4 * sizeof(uint8_t));
-  }
-
-  if (flags & IB_rectfloat) {
-    memcpy(ibuf2->float_buffer.data,
-           ibuf1->float_buffer.data,
-           size_t(ibuf1->channels) * x * y * sizeof(float));
-  }
-
-  if (ibuf1->encoded_buffer.data) {
-    ibuf2->encoded_buffer_size = ibuf1->encoded_buffer_size;
-    if (imb_addencodedbufferImBuf(ibuf2) == false) {
-      IMB_freeImBuf(ibuf2);
-      return nullptr;
+  uint8_t *source_byte_data = ibuf1->byte_buffer.data;
+  if (source_byte_data) {
+    if (shallow) {
+      IMB_assign_byte_buffer(ibuf2, source_byte_data, IB_DO_NOT_TAKE_OWNERSHIP);
     }
+    else {
+      memcpy(ibuf2->byte_buffer.data, source_byte_data, size_t(x) * y * 4 * sizeof(uint8_t));
+    }
+  }
 
-    memcpy(ibuf2->encoded_buffer.data, ibuf1->encoded_buffer.data, ibuf1->encoded_size);
+  float *source_float_data = ibuf1->float_buffer.data;
+  if (source_float_data) {
+    if (shallow) {
+      IMB_assign_float_buffer(ibuf2, source_float_data, IB_DO_NOT_TAKE_OWNERSHIP);
+    }
+    else {
+      memcpy(ibuf2->float_buffer.data,
+             source_float_data,
+             size_t(ibuf1->channels) * x * y * sizeof(float));
+    }
+  }
+
+  uint8_t *source_encoded_data = ibuf1->encoded_buffer.data;
+  if (source_encoded_data) {
+    if (shallow) {
+      IMB_assign_encoded_buffer(ibuf2,
+                                source_encoded_data,
+                                ibuf1->encoded_buffer_size,
+                                ibuf1->encoded_size,
+                                IB_DO_NOT_TAKE_OWNERSHIP);
+    }
+    else {
+      ibuf2->encoded_buffer_size = ibuf1->encoded_buffer_size;
+      if (imb_addencodedbufferImBuf(ibuf2) == false) {
+        IMB_freeImBuf(ibuf2);
+        return nullptr;
+      }
+
+      memcpy(ibuf2->encoded_buffer.data, ibuf1->encoded_buffer.data, ibuf1->encoded_size);
+    }
   }
 
   ibuf2->byte_buffer.colorspace = ibuf1->byte_buffer.colorspace;
