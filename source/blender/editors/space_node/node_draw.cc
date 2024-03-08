@@ -1818,8 +1818,9 @@ static void node_draw_sockets_ex(const bContext &C,
     if (!node.is_socket_icon_drawn(*sock)) {
       continue;
     }
+    const bool selected = (sock->flag & SELECT) || select_all;
     node_draw_socket_ex(
-        C, ntree, node, nodeptr, *sock, outline_thickness, border_offset, dot_radius, select_all);
+        C, ntree, node, nodeptr, *sock, outline_thickness, border_offset, dot_radius, selected);
   }
 
   /* Socket outputs. */
@@ -1827,8 +1828,9 @@ static void node_draw_sockets_ex(const bContext &C,
     if (!node.is_socket_icon_drawn(*sock)) {
       continue;
     }
+    const bool selected = (sock->flag & SELECT) || select_all;
     node_draw_socket_ex(
-        C, ntree, node, nodeptr, *sock, outline_thickness, border_offset, dot_radius, select_all);
+        C, ntree, node, nodeptr, *sock, outline_thickness, border_offset, dot_radius, selected);
   }
 }
 
