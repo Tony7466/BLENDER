@@ -325,7 +325,8 @@ struct FilmData {
   int samples_len;
   /** Sum of the weights of all samples in the sample table. */
   float samples_weight_total;
-  int _pad1[2];
+  int _pad1;
+  int _pad2;
   FilmSample samples[FILM_PRECOMP_SAMPLE_MAX];
 };
 BLI_STATIC_ASSERT_ALIGN(FilmData, 16)
