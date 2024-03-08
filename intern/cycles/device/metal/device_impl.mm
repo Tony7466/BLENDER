@@ -354,9 +354,12 @@ string MetalDevice::preprocess_source(MetalPipelineType pso_type,
       global_defines += "#define __KERNEL_METAL_AMD__\n";
       /* The increased amount of BSDF code leads to a big performance regression
        * on AMD. There is currently no workaround to fix this general. Instead
-       * disable Principled Hair. */
+       * disable Principled Hair and patch evaluation. */
       if (kernel_features & KERNEL_FEATURE_NODE_PRINCIPLED_HAIR) {
         global_defines += "#define WITH_PRINCIPLED_HAIR\n";
+      }
+      if (kernel_features & KERNEL_FEATURE_PATCH_EVALUATION) {
+        global_defines += "#define WITH_PATCH_EVAL\n";
       }
       break;
     case METAL_GPU_APPLE:
