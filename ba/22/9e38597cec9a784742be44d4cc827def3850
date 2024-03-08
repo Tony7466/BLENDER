@@ -1,1 +1,2 @@
 Referenced by issue #54468, Segmentation fault when selecting context.area.type before applying operator (scripting)
+Referenced by pull request #119205, Fix #54468: crash calling transform operators with incomplete regiondata
