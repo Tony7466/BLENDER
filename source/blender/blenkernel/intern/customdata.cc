@@ -2363,13 +2363,17 @@ static void *copy_layer_data(const eCustomDataType type,
   const int64_t size_in_bytes = int64_t(totelem) * type_info.size;
   void *new_data = MEM_mallocN_aligned(size_in_bytes, type_info.alignment, __func__);
   if (for_write_only) {
-    return;
-  }
-  if (type_info.copy) {
-    type_info.copy(data, new_data, totelem);
+    if (type_info.construct) {
+      type_info.construct(new_data, totelem);
+    }
   }
   else {
-    memcpy(new_data, data, size_in_bytes);
+    if (type_info.copy) {
+      type_info.copy(data, new_data, totelem);
+    }
+    else {
+      memcpy(new_data, data, size_in_bytes);
+    }
   }
   return new_data;
 }
