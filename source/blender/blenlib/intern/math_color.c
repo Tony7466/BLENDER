@@ -381,17 +381,17 @@ float uchar_to_float(const uchar value)
 
 void rgb_uchar_to_float(float r_col[3], const uchar col_ub[3])
 {
-  r_col[0] = uchar_to_float(col_ub[0]);
-  r_col[1] = uchar_to_float(col_ub[1]);
-  r_col[2] = uchar_to_float(col_ub[2]);
+  r_col[0] = ((float)col_ub[0]) * (1.0f / 255.0f);
+  r_col[1] = ((float)col_ub[1]) * (1.0f / 255.0f);
+  r_col[2] = ((float)col_ub[2]) * (1.0f / 255.0f);
 }
 
 void rgba_uchar_to_float(float r_col[4], const uchar col_ub[4])
 {
-  r_col[0] = uchar_to_float(col_ub[0]);
-  r_col[1] = uchar_to_float(col_ub[1]);
-  r_col[2] = uchar_to_float(col_ub[2]);
-  r_col[3] = uchar_to_float(col_ub[3]);
+  r_col[0] = ((float)col_ub[0]) * (1.0f / 255.0f);
+  r_col[1] = ((float)col_ub[1]) * (1.0f / 255.0f);
+  r_col[2] = ((float)col_ub[2]) * (1.0f / 255.0f);
+  r_col[3] = ((float)col_ub[3]) * (1.0f / 255.0f);
 }
 
 void rgb_float_to_uchar(uchar r_col[3], const float col_f[3])

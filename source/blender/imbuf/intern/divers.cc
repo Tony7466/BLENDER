@@ -349,75 +349,19 @@ void IMB_buffer_byte_from_float_mask(uchar *rect_to,
 
 void IMB_buffer_float_from_byte(float *rect_to,
                                 const uchar *rect_from,
-                                int profile_to,
-                                int profile_from,
-                                bool predivide,
                                 int channels,
                                 int width,
                                 int height,
                                 int stride_to,
                                 int stride_from)
 {
-  /* we need valid profiles */
-  BLI_assert(profile_to != IB_PROFILE_NONE);
-  BLI_assert(profile_from != IB_PROFILE_NONE);
-
-  /* RGBA input */
   for (int y = 0; y < height; y++) {
     const uchar *from = rect_from + size_t(stride_from) * y * channels;
     float *to = rect_to + size_t(stride_to) * y * channels;
 
-    if (profile_to == profile_from) {
-      /* no color space conversion */
-      for (int x = 0; x < width; x++) {
-        for (int i = 0; i < channels; i++, from++, to++) {
-          *to = uchar_to_float(*from);
-        }
-      }
-    }
-    else if (profile_to == IB_PROFILE_LINEAR_RGB) {
-      /* convert sRGB to linear */
-      if (predivide && channels == 4) {
-        for (int x = 0; x < width; x++, from += 4, to += 4) {
-          srgb_to_linearrgb_uchar4_predivide(to, from);
-        }
-      }
-      else if (channels == 4) {
-        for (int x = 0; x < width; x++, from += 4, to += 4) {
-          srgb_to_linearrgb_uchar4(to, from);
-        }
-      }
-      else {
-        for (int x = 0; x < width; x++) {
-          for (int i = 0; i < channels; i++, from++, to++) {
-            *to = BLI_color_from_srgb_table[*from];
-          }
-        }
-      }
-    }
-    else if (profile_to == IB_PROFILE_SRGB) {
-      /* convert linear to sRGB */
-      if (predivide && channels == 4) {
-        for (int x = 0; x < width; x++, from += 4, to += 4) {
-          float float_value[4];
-          rgba_uchar_to_float(float_value, from);
-          linearrgb_to_srgb_predivide_v4(to, float_value);
-        }
-      }
-      else if (channels == 4) {
-        for (int x = 0; x < width; x++, from += 4, to += 4) {
-          float float_value[4];
-          rgba_uchar_to_float(float_value, from);
-          linearrgb_to_srgb_v4(to, float_value);
-        }
-      }
-      else {
-        for (int x = 0; x < width; x++) {
-          for (int i = 0; i < channels; i++, from++, to++) {
-            const float float_value = uchar_to_float(*from);
-            *to = linearrgb_to_srgb(float_value);
-          }
-        }
+    for (int x = 0; x < width; x++) {
+      for (int i = 0; i < channels; i++, from++, to++) {
+        *to = float(*from) / 255.0f;
       }
     }
   }
@@ -772,7 +716,7 @@ void IMB_float_from_rect_ex(ImBuf *dst, const ImBuf *src, const rcti *region_to_
                  "Source buffer should have a byte buffer assigned.");
   BLI_assert_msg(dst->x == src->x, "Source and destination buffer should have the same dimension");
   BLI_assert_msg(dst->y == src->y, "Source and destination buffer should have the same dimension");
-  BLI_assert_msg(dst->channels = src->channels,
+  BLI_assert_msg(dst->channels == src->channels,
                  "Spurce and destination buffers should have the same number of channels.");
   BLI_assert_msg(region_to_update->xmin >= 0,
                  "Region to update should be clipped to the given buffers.");
@@ -791,16 +735,8 @@ void IMB_float_from_rect_ex(ImBuf *dst, const ImBuf *src, const rcti *region_to_
   const int region_height = BLI_rcti_size_y(region_to_update);
 
   /* Convert byte buffer to float buffer without color or alpha conversion. */
-  IMB_buffer_float_from_byte(rect_float,
-                             rect,
-                             IB_PROFILE_SRGB,
-                             IB_PROFILE_SRGB,
-                             false,
-                             dst->channels,
-                             region_width,
-                             region_height,
-                             src->x,
-                             dst->x);
+  IMB_buffer_float_from_byte(
+      rect_float, rect, dst->channels, region_width, region_height, src->x, dst->x);
 
   /* Perform color space conversion from rect color space to linear. */
   float *float_ptr = rect_float;

@@ -1651,16 +1651,8 @@ static void *do_display_buffer_apply_thread(void *handle_v)
     }
 
     if (display_buffer) {
-      IMB_buffer_float_from_byte(display_buffer,
-                                 handle->byte_buffer,
-                                 IB_PROFILE_SRGB,
-                                 IB_PROFILE_SRGB,
-                                 false,
-                                 channels,
-                                 width,
-                                 height,
-                                 width,
-                                 width);
+      IMB_buffer_float_from_byte(
+          display_buffer, handle->byte_buffer, channels, width, height, width, width);
     }
   }
   else {
@@ -1904,16 +1896,7 @@ static void *do_processor_transform_thread(void *handle_v)
   const bool float_from_byte = handle->float_from_byte;
 
   if (float_from_byte) {
-    IMB_buffer_float_from_byte(float_buffer,
-                               byte_buffer,
-                               IB_PROFILE_SRGB,
-                               IB_PROFILE_SRGB,
-                               false,
-                               channels,
-                               width,
-                               height,
-                               width,
-                               width);
+    IMB_buffer_float_from_byte(float_buffer, byte_buffer, channels, width, height, width, width);
     IMB_colormanagement_processor_apply(
         handle->cm_processor, float_buffer, width, height, channels, predivide);
     IMB_premultiply_rect_float(float_buffer, 4, width, height);
@@ -2065,16 +2048,7 @@ void IMB_colormanagement_transform_from_byte(float *float_buffer,
                                              const char *from_colorspace,
                                              const char *to_colorspace)
 {
-  IMB_buffer_float_from_byte(float_buffer,
-                             byte_buffer,
-                             IB_PROFILE_SRGB,
-                             IB_PROFILE_SRGB,
-                             true,
-                             channels,
-                             width,
-                             height,
-                             width,
-                             width);
+  IMB_buffer_float_from_byte(float_buffer, byte_buffer, channels, width, height, width, width);
   IMB_colormanagement_transform(
       float_buffer, width, height, channels, from_colorspace, to_colorspace, true);
 }
@@ -3621,16 +3595,8 @@ static void partial_buffer_update_rect(ImBuf *ibuf,
   else {
     if (display_buffer_float) {
       /* huh, for dither we need float buffer first, no cheaper way. currently */
-      IMB_buffer_float_from_byte(display_buffer_float,
-                                 byte_buffer,
-                                 IB_PROFILE_SRGB,
-                                 IB_PROFILE_SRGB,
-                                 true,
-                                 channels,
-                                 width,
-                                 height,
-                                 width,
-                                 display_stride);
+      IMB_buffer_float_from_byte(
+          display_buffer_float, byte_buffer, channels, width, height, width, display_stride);
     }
     else {
       int i;
