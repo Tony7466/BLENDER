@@ -1938,7 +1938,7 @@ static int edbm_select_all_exec(bContext *C, wmOperator *op)
     action = SEL_SELECT;
     for (Object *obedit : objects) {
       BMEditMesh *em = BKE_editmesh_from_object(obedit);
-      if (em->bm->totvertsel || em->bm->totedgesel || em->bm->totfacesel) {
+      if (em->bm->totvertsel == em->bm->totvert) {
         action = SEL_DESELECT;
         break;
       }
