@@ -1057,6 +1057,7 @@ CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                                           successful_remaps);
     combined_result.merge(result);
   }
+  BKE_animsys_free_nla_keyframing_context_cache(&nla_cache);
 
   return combined_result;
 }
