@@ -51,10 +51,22 @@ void TranslateOperation::get_area_of_interest(const int input_idx,
       const int delta_x = this->get_delta_x();
       BLI_rcti_translate(&r_input_area, -delta_x, 0);
     }
+    else if (x_extend_mode_ == MemoryBufferExtend::Repeat) {
+      BLI_assert(BLI_rcti_is_valid(&get_canvas()));
+      const int canvas_x = BLI_rcti_size_x(&get_canvas());
+      BLI_rcti_resize_x(&r_input_area, canvas_x);
+    }
+
     if (y_extend_mode_ == MemoryBufferExtend::Clip) {
       const int delta_y = this->get_delta_y();
       BLI_rcti_translate(&r_input_area, 0, -delta_y);
     }
+    else if (y_extend_mode_ == MemoryBufferExtend::Repeat) {
+      BLI_assert(BLI_rcti_is_valid(&get_canvas()));
+      const int canvas_y = BLI_rcti_size_y(&get_canvas());
+      BLI_rcti_resize_y(&r_input_area, canvas_y);
+    }
+
   }
   else {
     r_input_area = output_area;
