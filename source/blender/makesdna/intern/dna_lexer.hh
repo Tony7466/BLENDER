@@ -134,7 +134,8 @@ struct TokenIterator {
   void push_waypoint();
 
   /**
-   * Removes the las return point, if `success==false` the iterator steps back to the return point.
+   * Removes the last return point, if `success==false` the iterator steps back to the return
+   * point.
    */
   void end_waypoint(bool success);
 

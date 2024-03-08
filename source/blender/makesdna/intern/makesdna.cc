@@ -716,11 +716,11 @@ static int convert_include(const char *filepath)
   blender::dna::lex::TokenIterator iterator;
   iterator.process_text(filepath, text);
   /* Parse tokens. */
-  blender::Vector<blender::dna::parser::ast::CppType> c;
-  blender::dna::parser::parse_include(filepath, text, iterator, c);
+  blender::Vector<blender::dna::parser::ast::CppType> cpp_defines;
+  blender::dna::parser::parse_include(filepath, text, iterator, cpp_defines);
 
   /* Generate DNA. */
-  for (auto &cpp_type : c) {
+  for (auto &cpp_type : cpp_defines) {
     if (!std::holds_alternative<Struct>(cpp_type)) {
       continue;
     }

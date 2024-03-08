@@ -23,7 +23,7 @@ struct DefineInt {
   std::string_view name;
   int32_t value{0};
 
-  static std::optional<DefineInt> parse(TokenIterator &cont);
+  static std::optional<DefineInt> parse(TokenIterator &token_iterator);
   bool operator==(const DefineInt &other) const;
 };
 
@@ -45,7 +45,7 @@ struct Variable {
   Vector<Item> items;
 
   bool operator==(const Variable &other) const;
-  static std::optional<Variable> parse(TokenIterator &cont);
+  static std::optional<Variable> parse(TokenIterator &token_iterator);
 };
 
 /* Function pointer declaration. */
@@ -55,7 +55,7 @@ struct FunctionPtr {
   std::string_view name;
 
   bool operator==(const FunctionPtr &other) const;
-  static std::optional<FunctionPtr> parse(TokenIterator &cont);
+  static std::optional<FunctionPtr> parse(TokenIterator &token_iterator);
 };
 
 /* Pointer to array declaration. */
@@ -65,7 +65,7 @@ struct PointerToArray {
   int32_t size;
 
   bool operator==(const PointerToArray &other) const;
-  static std::optional<PointerToArray> parse(TokenIterator &cont);
+  static std::optional<PointerToArray> parse(TokenIterator &token_iterator);
 };
 
 /* Struct declaration.*/
@@ -76,7 +76,7 @@ struct Struct {
   /* Name set if struct is declared as member variable. */
   std::string_view member_name;
 
-  static std::optional<Struct> parse(TokenIterator &cont);
+  static std::optional<Struct> parse(TokenIterator &token_iterator);
   bool operator==(const Struct &other) const;
 };
 
@@ -88,7 +88,7 @@ struct Enum {
   std::optional<std::string_view> type;
 
   bool operator==(const Enum &other) const;
-  static std::optional<Enum> parse(TokenIterator &cont);
+  static std::optional<Enum> parse(TokenIterator &token_iterator);
 };
 
 using CppType = std::variant<DefineInt, Enum, Struct, FunctionPtr, Variable>;
@@ -97,6 +97,6 @@ using CppType = std::variant<DefineInt, Enum, Struct, FunctionPtr, Variable>;
 
 bool parse_include(std::string_view filepath,
                    std::string_view text,
-                   lex::TokenIterator &cont,
+                   lex::TokenIterator &token_iterator,
                    Vector<ast::CppType> &c);
 }  // namespace blender::dna::parser
