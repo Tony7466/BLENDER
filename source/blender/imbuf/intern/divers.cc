@@ -769,19 +769,19 @@ void IMB_float_from_rect(ImBuf *ibuf)
    */
   float *rect_float = ibuf->float_buffer.data;
   if (rect_float == nullptr) {
-    const size_t size = IMB_get_rect_len(ibuf) * ibuf->channels * sizeof(float);
-    rect_float = static_cast<float *>(MEM_callocN(size, "IMB_float_from_rect"));
-
-    if (rect_float == nullptr) {
-      return;
-    }
-
     /* For color spaces other than sRGB and linear, we force full RGBA channels since color space
      * conversion might introduce color shifts even for greyscale images. */
     if (!(IMB_colormanagement_space_is_srgb(ibuf->byte_buffer.colorspace) ||
           IMB_colormanagement_space_is_scene_linear(ibuf->byte_buffer.colorspace)))
     {
       ibuf->channels = 4;
+    }
+
+    const size_t size = IMB_get_rect_len(ibuf) * ibuf->channels * sizeof(float);
+    rect_float = static_cast<float *>(MEM_callocN(size, "IMB_float_from_rect"));
+
+    if (rect_float == nullptr) {
+      return;
     }
 
     IMB_assign_float_buffer(ibuf, rect_float, IB_TAKE_OWNERSHIP);
