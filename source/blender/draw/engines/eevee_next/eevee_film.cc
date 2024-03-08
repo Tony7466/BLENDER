@@ -246,9 +246,6 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     scaling_factor_ = 1;
     if (inst_.is_viewport()) {
       scaling_factor_ = BKE_render_preview_pixel_size(&inst_.scene->r);
-      if (DRW_state_is_navigating()) {
-        scaling_factor_ = max_ii(scaling_factor_, 2);
-      }
     }
   }
   {
