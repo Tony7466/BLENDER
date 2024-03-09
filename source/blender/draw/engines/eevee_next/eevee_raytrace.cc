@@ -261,21 +261,19 @@ void RayTraceModule::sync()
     pass.init();
     GPUShader *sh = inst_.shaders.static_shader_get(HORIZON_DENOISE);
     pass.shader_set(sh);
-    pass.bind_texture("depth_tx", &depth_tx);
     pass.bind_texture("in_sh_0_tx", &horizon_radiance_tx_[0]);
     pass.bind_texture("in_sh_1_tx", &horizon_radiance_tx_[1]);
     pass.bind_texture("in_sh_2_tx", &horizon_radiance_tx_[2]);
     pass.bind_texture("in_sh_3_tx", &horizon_radiance_tx_[3]);
-    pass.bind_image("out_sh_0_tx", &horizon_radiance_denoised_tx_[0]);
-    pass.bind_image("out_sh_1_tx", &horizon_radiance_denoised_tx_[1]);
-    pass.bind_image("out_sh_2_tx", &horizon_radiance_denoised_tx_[2]);
-    pass.bind_image("out_sh_3_tx", &horizon_radiance_denoised_tx_[3]);
+    pass.bind_texture("screen_normal_tx", &downsampled_in_normal_tx_);
+    pass.bind_image("out_sh_0_img", &horizon_radiance_denoised_tx_[0]);
+    pass.bind_image("out_sh_1_img", &horizon_radiance_denoised_tx_[1]);
+    pass.bind_image("out_sh_2_img", &horizon_radiance_denoised_tx_[2]);
+    pass.bind_image("out_sh_3_img", &horizon_radiance_denoised_tx_[3]);
     pass.bind_ssbo("tiles_coord_buf", &horizon_denoise_tiles_buf_);
     pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.sampling);
-    pass.bind_resources(inst_.gbuffer);
-    pass.bind_resources(inst_.volume_probes);
-    pass.bind_resources(inst_.sphere_probes);
+    pass.bind_resources(inst_.hiz_buffer.front);
     /* TODO(fclem): Tile based. */
     pass.dispatch(&tracing_dispatch_size_);
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
@@ -410,28 +408,19 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
       for (int i : IndexRange(4)) {
         horizon_radiance_tx_[i].acquire(tracing_res, GPU_RGBA16F, usage_rw);
+        horizon_radiance_denoised_tx_[i].acquire(tracing_res, GPU_RGBA16F, usage_rw);
       }
-
       for (int i : IndexRange(3)) {
         horizon_scan_output_tx_[i] = result.closures[i].get();
       }
 
       inst_.manager->submit(horizon_setup_ps_, render_view);
       inst_.manager->submit(horizon_scan_ps_, render_view);
-
-      for (int i : IndexRange(4)) {
-        horizon_radiance_denoised_tx_[i].acquire(tracing_res, GPU_RGBA16F, usage_rw);
-      }
-
       inst_.manager->submit(horizon_denoise_ps_, render_view);
-
-      for (int i : IndexRange(4)) {
-        horizon_radiance_tx_[i].release();
-      }
-
       inst_.manager->submit(horizon_resolve_ps_, render_view);
 
       for (int i : IndexRange(4)) {
+        horizon_radiance_tx_[i].release();
         horizon_radiance_denoised_tx_[i].release();
       }
       downsampled_in_radiance_tx_.release();

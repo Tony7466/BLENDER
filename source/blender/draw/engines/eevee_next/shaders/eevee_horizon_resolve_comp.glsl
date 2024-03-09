@@ -38,22 +38,6 @@ float bilateral_normal_weight(vec3 center_N, vec3 sample_N)
   return weight;
 }
 
-/* In order to remove some more fireflies, "tone-map" the color samples during the accumulation. */
-vec3 to_accumulation_space(vec3 color)
-{
-  /* This 4 factor is to avoid killing too much energy. */
-  /* TODO(fclem): Parameter? */
-  color /= 4.0;
-  color = color / (1.0 + reduce_add(color));
-  return color;
-}
-vec3 from_accumulation_space(vec3 color)
-{
-  color = color / (1.0 - reduce_add(color));
-  color *= 4.0;
-  return color;
-}
-
 vec3 load_normal(ivec2 texel)
 {
   return gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel).surface_N;
@@ -87,49 +71,12 @@ void main()
 
   vec3 center_N = gbuf.surface_N;
 
-  SphericalHarmonicL1 accum_sh = spherical_harmonics_L1_new();
-  float accum_weight = 0.0;
-  for (int x = -1; x <= 1; x++) {
-    for (int y = -1; y <= 1; y++) {
-      ivec2 sample_texel = texel + offset;
-      ivec2 sample_texel_fullres = sample_texel * uniform_buf.raytrace.resolution_scale +
-                                   uniform_buf.raytrace.resolution_bias;
-
-      float sample_depth = texelFetch(depth_tx, sample_texel_fullres, 0).r;
-      vec2 sample_uv = (vec2(sample_texel_fullres) + 0.5) *
-                       uniform_buf.raytrace.full_resolution_inv;
-      vec3 sample_P = drw_point_screen_to_world(vec3(sample_uv, sample_depth));
-
-      /* Background case. */
-      if (sample_depth == 0.0) {
-        continue;
-      }
-
-      vec3 sample_N = load_normal(sample_texel_fullres);
-
-      float depth_weight = bilateral_depth_weight(center_N, center_P, sample_P);
-      float spatial_weight = bilateral_spatial_weight(1.5, vec2(offset));
-      float normal_weight = bilateral_normal_weight(center_N, sample_N);
-
-      float weight = depth_weight * spatial_weight * normal_weight;
-
-      SphericalHarmonicL1 sample_sh;
-      sample_sh.L0.M0 = texelFetch(horizon_radiance_0_tx, sample_texel, 0);
-      /* Do not gather unprocessed pixels. */
-      if (all(equal(sample_sh.L0.M0.rgb, FLT_11_11_10_MAX))) {
-        continue;
-      }
-      sample_sh.L1.Mn1 = texelFetch(horizon_radiance_1_tx, sample_texel, 0) * 2.0 - 1.0;
-      sample_sh.L1.M0 = texelFetch(horizon_radiance_2_tx, sample_texel, 0) * 2.0 - 1.0;
-      sample_sh.L1.Mp1 = texelFetch(horizon_radiance_3_tx, sample_texel, 0) * 2.0 - 1.0;
-
-      sample_sh = spherical_harmonics_decompress(sample_sh);
-
-      accum_sh = spherical_harmonics_madd(sample_sh, weight, accum_sh);
-      accum_weight += weight;
-    }
-  }
-  accum_sh = spherical_harmonics_mul(accum_sh, safe_rcp(accum_weight));
+  /* TODO(fclem): Bilateral weighting. */
+  SphericalHarmonicL1 accum_sh;
+  accum_sh.L0.M0 = texture(horizon_radiance_0_tx, center_uv);
+  accum_sh.L1.Mn1 = texture(horizon_radiance_1_tx, center_uv);
+  accum_sh.L1.M0 = texture(horizon_radiance_2_tx, center_uv);
+  accum_sh.L1.Mp1 = texture(horizon_radiance_3_tx, center_uv);
 
   vec3 P = center_P;
   vec3 Ng = center_N;

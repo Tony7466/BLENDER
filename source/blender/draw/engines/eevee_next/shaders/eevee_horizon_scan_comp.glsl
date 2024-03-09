@@ -48,10 +48,8 @@ void main()
                                              8,
                                              false);
 
-  SphericalHarmonicL1 sh_out = spherical_harmonics_compress(scan.result);
-
-  imageStore(horizon_radiance_0_img, texel, sh_out.L0.M0);
-  imageStore(horizon_radiance_1_img, texel, sh_out.L1.Mn1 * 0.5 + 0.5);
-  imageStore(horizon_radiance_2_img, texel, sh_out.L1.M0 * 0.5 + 0.5);
-  imageStore(horizon_radiance_3_img, texel, sh_out.L1.Mp1 * 0.5 + 0.5);
+  imageStore(horizon_radiance_0_img, texel, scan.result.L0.M0);
+  imageStore(horizon_radiance_1_img, texel, scan.result.L1.Mn1);
+  imageStore(horizon_radiance_2_img, texel, scan.result.L1.M0);
+  imageStore(horizon_radiance_3_img, texel, scan.result.L1.Mp1);
 }

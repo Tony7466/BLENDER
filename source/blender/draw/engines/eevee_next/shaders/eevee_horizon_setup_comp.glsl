@@ -29,12 +29,16 @@ void main()
 
   /* Export normal. */
   vec3 N = gbuf.surface_N;
+  /* Background has invalid data. */
+  /* FIXME: This is zero for opaque layer when we are processing the refraction layer. */
   if (is_zero(N)) {
     /* Avoid NaN. But should be fixed in any case. */
     N = vec3(1.0, 0.0, 0.0);
   }
   vec3 vN = drw_normal_world_to_view(N);
-  imageStore(out_normal_img, texel, vec4(vN * 0.5 + 0.5, 0.0));
+  /* Tag processed pixel in the normal buffer for denoising speed. */
+  bool is_processed = gbuf.header != 0u;
+  imageStore(out_normal_img, texel, vec4(vN * 0.5 + 0.5, float(is_processed)));
 
   /* Re-project radiance. */
   vec2 uv = (vec2(texel_fullres) + 0.5) / vec2(textureSize(depth_tx, 0).xy);
