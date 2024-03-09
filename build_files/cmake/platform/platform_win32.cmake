@@ -197,7 +197,7 @@ endif()
 # /Zc:__cplusplus : Available from MSVC 15.7 (1914) and up. Ensures correct value of the __cplusplus
 #                   preprocessor macro.
 # /Zc:inline      : Enforces C++11 requirement that all functions declared 'inline' must have a
-#                   definition available in the same TU if they're used.
+#                   definition available in the same translation unit if they're used.
 # /Zc:preprocessor: Available from MSVC 16.5 (1925) and up. Enables standards-conforming
 #                   preprocessor.
 if(NOT MSVC_CLANG)
