@@ -18,10 +18,9 @@
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_memarena.h"
-#include "BLI_string.h"
 #include "BLI_task.h"
 
-#include "BKE_attribute.h"
+#include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
 #include "BKE_multires.hh"
 
@@ -150,7 +149,7 @@ void BM_face_interp_from_face_ex(BMesh *bm,
   float co[2];
 
   if (f_src != f_dst) {
-    BM_elem_attrs_copy(*bm, f_src, f_dst);
+    BM_elem_attrs_copy(bm, f_src, f_dst);
   }
 
   /* interpolate */

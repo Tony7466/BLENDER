@@ -10,7 +10,7 @@
 #include "BLI_set.hh"
 
 #include "BKE_idprop.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 struct bNodeTree;
 struct bNodeSocket;
@@ -32,7 +32,8 @@ namespace blender::nodes {
 
 void find_node_tree_dependencies(const bNodeTree &tree,
                                  Set<ID *> &r_ids,
-                                 bool &r_needs_own_transform_relation);
+                                 bool &r_needs_own_transform_relation,
+                                 bool &r_needs_scene_camera_relation);
 
 StringRef input_use_attribute_suffix();
 StringRef input_attribute_name_suffix();

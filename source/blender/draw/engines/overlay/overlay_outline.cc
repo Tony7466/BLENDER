@@ -8,9 +8,9 @@
 
 #include "BLI_math_vector.hh"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 
 #include "BKE_object.hh"
@@ -38,7 +38,7 @@ static void gpencil_depth_plane(Object *ob, float r_plane[4])
    * computationally heavy and should go into the GPData evaluation. */
   const std::optional<Bounds<float3>> bounds = BKE_object_boundbox_get(ob).value_or(
       Bounds(float3(0)));
-  float3 size = bounds->max - bounds->min;
+  float3 size = (bounds->max - bounds->min) * 0.5f;
   float3 center = math::midpoint(bounds->min, bounds->max);
   /* Convert bbox to matrix */
   float mat[4][4];
@@ -48,7 +48,7 @@ static void gpencil_depth_plane(Object *ob, float r_plane[4])
   add_v3_fl(size, 1e-8f);
   rescale_m4(mat, size);
   /* BBox space to World. */
-  mul_m4_m4m4(mat, ob->object_to_world, mat);
+  mul_m4_m4m4(mat, ob->object_to_world().ptr(), mat);
   /* BBox center in world space. */
   copy_v3_v3(center, mat[3]);
   /* View Vector. */
@@ -187,13 +187,14 @@ static void gpencil_layer_cache_populate(bGPDlayer *gpl,
                                          bGPDstroke * /*gps*/,
                                          void *thunk)
 {
+  using namespace blender::draw;
   iterData *iter = (iterData *)thunk;
   bGPdata *gpd = (bGPdata *)iter->ob->data;
 
   const bool is_screenspace = (gpd->flag & GP_DATA_STROKE_KEEPTHICKNESS) != 0;
   const bool is_stroke_order_3d = (gpd->draw_mode == GP_DRAWMODE_3D);
 
-  float object_scale = mat4_to_scale(iter->ob->object_to_world);
+  float object_scale = mat4_to_scale(iter->ob->object_to_world().ptr());
   /* Negate thickness sign to tag that strokes are in screen space.
    * Convert to world units (by default, 1 meter = 2000 pixels). */
   float thickness_scale = (is_screenspace) ? -1.0f : (gpd->pixfactor / 2000.0f);
@@ -216,6 +217,7 @@ static void gpencil_stroke_cache_populate(bGPDlayer * /*gpl*/,
                                           bGPDstroke *gps,
                                           void *thunk)
 {
+  using namespace blender::draw;
   iterData *iter = (iterData *)thunk;
 
   MaterialGPencilStyle *gp_style = BKE_gpencil_material_settings(iter->ob, gps->mat_nr + 1);
@@ -273,6 +275,7 @@ static void OVERLAY_outline_gpencil(OVERLAY_PrivateData *pd, Object *ob)
 
 static void OVERLAY_outline_volume(OVERLAY_PrivateData *pd, Object *ob)
 {
+  using namespace blender::draw;
   GPUBatch *geom = DRW_cache_volume_selection_surface_get(ob);
   if (geom == nullptr) {
     return;
@@ -284,12 +287,14 @@ static void OVERLAY_outline_volume(OVERLAY_PrivateData *pd, Object *ob)
 
 static void OVERLAY_outline_curves(OVERLAY_PrivateData *pd, Object *ob)
 {
+  using namespace blender::draw;
   DRWShadingGroup *shgroup = pd->outlines_curves_grp;
   DRW_shgroup_curves_create_sub(ob, shgroup, nullptr);
 }
 
 static void OVERLAY_outline_pointcloud(OVERLAY_PrivateData *pd, Object *ob)
 {
+  using namespace blender::draw;
   if (pd->wireframe_mode) {
     /* Looks bad in this case. Could be relaxed if we draw a
      * wireframe of some sort in the future. */

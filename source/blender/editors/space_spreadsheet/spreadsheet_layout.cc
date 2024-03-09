@@ -5,10 +5,10 @@
 #include <iomanip>
 #include <sstream>
 
-#include "BLI_math_color.hh"
+#include <fmt/format.h>
+
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
-#include "BLI_string.h"
 
 #include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"
@@ -23,9 +23,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BLF_api.h"
-
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 namespace blender::ed::spreadsheet {
 
@@ -49,14 +47,12 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                   UI_BTYPE_LABEL,
                                   0,
                                   ICON_NONE,
-                                  name.c_str(),
+                                  name,
                                   params.xmin,
                                   params.ymin,
                                   params.width,
                                   params.height,
                                   nullptr,
-                                  0,
-                                  0,
                                   0,
                                   0,
                                   nullptr);
@@ -73,14 +69,12 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                   UI_BTYPE_LABEL,
                                   0,
                                   ICON_NONE,
-                                  index_str.c_str(),
+                                  index_str,
                                   params.xmin,
                                   params.ymin,
                                   params.width,
                                   params.height,
                                   nullptr,
-                                  0,
-                                  0,
                                   0,
                                   0,
                                   nullptr);
@@ -106,14 +100,12 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin,
                                     params.ymin,
                                     params.width,
                                     params.height,
                                     nullptr,
-                                    0,
-                                    0,
                                     0,
                                     0,
                                     nullptr);
@@ -128,14 +120,12 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin,
                                     params.ymin,
                                     params.width,
                                     params.height,
                                     nullptr,
-                                    0,
-                                    0,
                                     0,
                                     0,
                                     nullptr);
@@ -156,14 +146,12 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin,
                                     params.ymin,
                                     params.width,
                                     params.height,
                                     nullptr,
-                                    0,
-                                    0,
                                     0,
                                     0,
                                     nullptr);
@@ -184,8 +172,6 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     params.width,
                                     params.height,
                                     nullptr,
-                                    0,
-                                    0,
                                     0,
                                     0,
                                     nullptr);
@@ -211,6 +197,9 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
       const float4 value = float4(data.get<math::Quaternion>(real_index));
       this->draw_float_vector(params, Span(&value.x, 4));
     }
+    else if (data.type().is<float4x4>()) {
+      this->draw_float4x4(params, data.get<float4x4>(real_index));
+    }
     else if (data.type().is<bke::InstanceReference>()) {
       const bke::InstanceReference value = data.get<bke::InstanceReference>(real_index);
       switch (value.type()) {
@@ -226,8 +215,6 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                            params.width,
                            params.height,
                            nullptr,
-                           0,
-                           0,
                            0,
                            0,
                            nullptr);
@@ -247,8 +234,6 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                            nullptr,
                            0,
                            0,
-                           0,
-                           0,
                            nullptr);
           break;
         }
@@ -265,8 +250,6 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                            nullptr,
                            0,
                            0,
-                           0,
-                           0,
                            nullptr);
           break;
         }
@@ -280,14 +263,12 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                        UI_BTYPE_LABEL,
                        0,
                        ICON_NONE,
-                       data.get<std::string>(real_index).c_str(),
+                       data.get<std::string>(real_index),
                        params.xmin,
                        params.ymin,
                        params.width,
                        params.height,
                        nullptr,
-                       0,
-                       0,
                        0,
                        0,
                        nullptr);
@@ -307,14 +288,12 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin + i * segment_width,
                                     params.ymin,
                                     segment_width,
                                     params.height,
                                     nullptr,
-                                    0,
-                                    0,
                                     0,
                                     0,
                                     nullptr);
@@ -337,14 +316,12 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin + i * segment_width,
                                     params.ymin,
                                     segment_width,
                                     params.height,
                                     nullptr,
-                                    0,
-                                    0,
                                     0,
                                     0,
                                     nullptr);
@@ -368,14 +345,12 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
                                     UI_BTYPE_LABEL,
                                     0,
                                     ICON_NONE,
-                                    value_str.c_str(),
+                                    value_str,
                                     params.xmin + i * segment_width,
                                     params.ymin,
                                     segment_width,
                                     params.height,
                                     nullptr,
-                                    0,
-                                    0,
                                     0,
                                     0,
                                     nullptr);
@@ -389,15 +364,47 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
           [](bContext * /*C*/, void *argN, const char * /*tip*/) {
             const uint32_t uint_color = POINTER_AS_UINT(argN);
             ColorGeometry4b color = *(ColorGeometry4b *)&uint_color;
-            return BLI_sprintfN(TIP_("Byte Color (sRGB encoded):\n%3d  %3d  %3d  %3d"),
-                                color.r,
-                                color.g,
-                                color.b,
-                                color.a);
+            return fmt::format(TIP_("Byte Color (sRGB encoded):\n{}  {}  {}  {}"),
+                               color.r,
+                               color.g,
+                               color.b,
+                               color.a);
           },
           POINTER_FROM_UINT(*(uint32_t *)&color),
           nullptr);
     }
+  }
+
+  void draw_float4x4(const CellDrawParams &params, const float4x4 &value) const
+  {
+    uiBut *but = uiDefIconTextBut(params.block,
+                                  UI_BTYPE_LABEL,
+                                  0,
+                                  ICON_NONE,
+                                  "...",
+                                  params.xmin,
+                                  params.ymin,
+                                  params.width,
+                                  params.height,
+                                  nullptr,
+                                  0,
+                                  0,
+                                  nullptr);
+    /* Center alignment. */
+    UI_but_drawflag_disable(but, UI_BUT_TEXT_LEFT);
+    UI_but_func_tooltip_set(
+        but,
+        [](bContext * /*C*/, void *argN, const char * /*tip*/) {
+          const float4x4 &value = *static_cast<const float4x4 *>(argN);
+          std::stringstream ss;
+          ss << value[0] << ",\n";
+          ss << value[1] << ",\n";
+          ss << value[2] << ",\n";
+          ss << value[3];
+          return ss.str();
+        },
+        MEM_new<float4x4>(__func__, value),
+        MEM_freeN);
   }
 
   int column_width(int column_index) const final

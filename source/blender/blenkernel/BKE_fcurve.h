@@ -8,6 +8,7 @@
  * \ingroup bke
  */
 
+#include "BLI_math_vector_types.hh"
 #include "DNA_curve_types.h"
 
 #ifdef __cplusplus
@@ -484,9 +485,29 @@ bool BKE_fcurve_bezt_subdivide_handles(struct BezTriple *bezt,
 void BKE_fcurve_bezt_shrink(struct FCurve *fcu, int new_totvert);
 
 /**
+ * Merge the two given BezTriple arrays `a` and `b` into a newly allocated BezTriple array of size
+ * `r_merged_size`. In case of keys on identical frames, `a` takes precedence.
+ * Does not free `a` or `b`.
+ * Assumes that both arrays are sorted for the x-position.
+ * Has a complexity of O(N) with respect to the length of `size_a` + `size_b`.
+ *
+ * \return The merged BezTriple array of length `r_merged_size`.
+ */
+BezTriple *BKE_bezier_array_merge(
+    const BezTriple *a, int size_a, const BezTriple *b, int size_b, int *r_merged_size);
+
+/**
  * Delete a keyframe from an F-curve at a specific index.
  */
 void BKE_fcurve_delete_key(struct FCurve *fcu, int index);
+
+/** Delete an index range of keyframes from an F-curve. This is more performant than individually
+ * removing keys.
+ * Has a complexity of O(N) with respect to number of keys in `fcu`.
+ *
+ * \param index_range: is right exclusive.
+ */
+void BKE_fcurve_delete_keys(FCurve *fcu, blender::uint2 index_range);
 
 /**
  * Delete selected keyframes from an F-curve.
@@ -636,8 +657,15 @@ void BKE_fmodifiers_blend_read_data(struct BlendDataReader *reader,
                                     ListBase *fmodifiers,
                                     struct FCurve *curve);
 
-void BKE_fcurve_blend_write(struct BlendWriter *writer, struct ListBase *fcurves);
-void BKE_fcurve_blend_read_data(struct BlendDataReader *reader, struct ListBase *fcurves);
+/**
+ * Write the FCurve's data to the writer.
+ * If this is used to write an FCurve, be sure to call `BLO_write_struct(writer, FCurve, fcurve);`
+ * before calling this function.
+ */
+void BKE_fcurve_blend_write_data(struct BlendWriter *writer, struct FCurve *fcurve);
+void BKE_fcurve_blend_write_listbase(struct BlendWriter *writer, struct ListBase *fcurves);
+void BKE_fcurve_blend_read_data(BlendDataReader *reader, FCurve *fcu);
+void BKE_fcurve_blend_read_data_listbase(struct BlendDataReader *reader, struct ListBase *fcurves);
 
 #ifdef __cplusplus
 }

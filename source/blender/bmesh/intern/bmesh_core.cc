@@ -16,9 +16,7 @@
 #include "BLI_utildefines_stack.h"
 #include "BLI_vector.hh"
 
-#include "BLT_translation.h"
-
-#include "DNA_meshdata_types.h"
+#include "BLT_translation.hh"
 
 #include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
@@ -98,7 +96,7 @@ BMVert *BM_vert_create(BMesh *bm,
       int *keyi;
 
       /* handles 'v->no' too */
-      BM_elem_attrs_copy(*bm, v_example, v);
+      BM_elem_attrs_copy(bm, v_example, v);
 
       /* Exception: don't copy the original shape-key index. */
       keyi = static_cast<int *>(CustomData_bmesh_get(&bm->vdata, v->head.data, CD_SHAPE_KEYINDEX));
@@ -179,7 +177,7 @@ BMEdge *BM_edge_create(
 
   if (!(create_flag & BM_CREATE_SKIP_CD)) {
     if (e_example) {
-      BM_elem_attrs_copy(*bm, e_example, e);
+      BM_elem_attrs_copy(bm, e_example, e);
     }
     else {
       CustomData_bmesh_set_default(&bm->edata, &e->head.data);
@@ -359,13 +357,13 @@ BMFace *BM_face_copy(BMesh *bm_dst, BMFace *f, const bool copy_verts, const bool
   BMFace *f_copy = bm_face_copy_impl(bm_dst, f, copy_verts, copy_edges);
 
   /* Copy custom-data. */
-  BM_elem_attrs_copy(*bm_dst, f, f_copy);
+  BM_elem_attrs_copy(bm_dst, f, f_copy);
 
   BMLoop *l_first = BM_FACE_FIRST_LOOP(f);
   BMLoop *l_copy = BM_FACE_FIRST_LOOP(f_copy);
   BMLoop *l_iter = l_first;
   do {
-    BM_elem_attrs_copy(*bm_dst, l_iter, l_copy);
+    BM_elem_attrs_copy(bm_dst, l_iter, l_copy);
     l_copy = l_copy->next;
   } while ((l_iter = l_iter->next) != l_first);
   return f_copy;
@@ -474,7 +472,7 @@ BMFace *BM_face_create(BMesh *bm,
 
   if (!(create_flag & BM_CREATE_SKIP_CD)) {
     if (f_example) {
-      BM_elem_attrs_copy(*bm, f_example, f);
+      BM_elem_attrs_copy(bm, f_example, f);
     }
     else {
       CustomData_bmesh_set_default(&bm->pdata, &f->head.data);
@@ -677,7 +675,8 @@ int bmesh_elem_check(void *element, const char htype)
         }
         if (l_iter->e && l_iter->v) {
           if (!BM_vert_in_edge(l_iter->e, l_iter->v) ||
-              !BM_vert_in_edge(l_iter->e, l_iter->next->v)) {
+              !BM_vert_in_edge(l_iter->e, l_iter->next->v))
+          {
             err |= IS_FACE_LOOP_VERT_NOT_IN_EDGE;
           }
 
@@ -1045,7 +1044,7 @@ void bmesh_kernel_loop_reverse(BMesh *bm,
     l_iter->e = e_prev;
 #endif
 
-    SWAP(BMLoop *, l_iter->next, l_iter->prev);
+    std::swap(l_iter->next, l_iter->prev);
 
     if (cd_loop_mdisp_offset != -1) {
       MDisps *md = static_cast<MDisps *>(BM_ELEM_CD_GET_VOID_P(l_iter, cd_loop_mdisp_offset));
@@ -1278,7 +1277,7 @@ BMFace *BM_faces_join(BMesh *bm, BMFace **faces, int totface, const bool do_del)
       }
       BLI_assert(l_iter->v == l2->v);
 
-      BM_elem_attrs_copy(*bm, l2, l_iter);
+      BM_elem_attrs_copy(bm, l2, l_iter);
     }
   } while ((l_iter = l_iter->next) != l_first);
 
@@ -1361,7 +1360,7 @@ static BMFace *bm_face_create__sfme(BMesh *bm, BMFace *f_example)
   f->totbounds = 1;
 #endif
 
-  BM_elem_attrs_copy(*bm, f_example, f);
+  BM_elem_attrs_copy(bm, f_example, f);
 
   return f;
 }
@@ -2178,7 +2177,7 @@ void bmesh_kernel_vert_separate(
       if (edges_found == v_edges_num) {
         /* We're done! The remaining edges in 'edges' form the last fan,
          * which can be left as is.
-         * if 'edges' were alloc'd it'd be freed here. */
+         * if 'edges' were allocated it'd be freed here. */
         break;
       }
 
@@ -2692,9 +2691,9 @@ void bmesh_face_swap_data(BMFace *f_a, BMFace *f_b)
     l_iter->f = f_a;
   } while ((l_iter = l_iter->next) != l_first);
 
-  SWAP(BMFace, (*f_a), (*f_b));
+  std::swap((*f_a), (*f_b));
 
   /* swap back */
-  SWAP(void *, f_a->head.data, f_b->head.data);
-  SWAP(int, f_a->head.index, f_b->head.index);
+  std::swap(f_a->head.data, f_b->head.data);
+  std::swap(f_a->head.index, f_b->head.index);
 }

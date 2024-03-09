@@ -10,10 +10,9 @@
 
 #include <cstring>
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 #include "MEM_guardedalloc.h"
 
-#include "ED_keyframing.hh"
 #include "ED_outliner.hh"
 #include "ED_sequencer.hh"
 
@@ -27,19 +26,17 @@
 #include "BLI_listbase.h"
 #include "BLI_path_util.h"
 
-#include "BKE_appdir.h"
-#include "BKE_blender_copybuffer.h"
-#include "BKE_blendfile.h"
+#include "BKE_appdir.hh"
+#include "BKE_blender_copybuffer.hh"
+#include "BKE_blendfile.hh"
 #include "BKE_context.hh"
 #include "BKE_fcurve.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
-
-#include "RNA_access.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "SEQ_animation.hh"
 #include "SEQ_select.hh"
@@ -50,6 +47,8 @@
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
+
+#include "ANIM_animdata.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -67,10 +66,11 @@
 
 static int gather_strip_data_ids_to_null(LibraryIDLinkCallbackData *cb_data)
 {
-  IDRemapper *id_remapper = static_cast<IDRemapper *>(cb_data->user_data);
+  blender::bke::id::IDRemapper &id_remapper = *static_cast<blender::bke::id::IDRemapper *>(
+      cb_data->user_data);
   ID *id = *cb_data->id_pointer;
 
-  /* We don't care about embedded, loopback, or internal IDs. */
+  /* We don't care about embedded, loop-back, or internal IDs. */
   if (cb_data->cb_flag & (IDWALK_CB_EMBEDDED | IDWALK_CB_EMBEDDED_NOT_OWNING)) {
     return IDWALK_RET_NOP;
   }
@@ -81,10 +81,9 @@ static int gather_strip_data_ids_to_null(LibraryIDLinkCallbackData *cb_data)
   if (id) {
     ID_Type id_type = GS((id)->name);
     /* Nullify everything that is not:
-     * Sound, Movieclip, Image, Text, Vfont, Action, or Collection IDs.
-     */
+     * #bSound, #MovieClip, #Image, #Text, #VFont, #bAction, or #Collection IDs. */
     if (!ELEM(id_type, ID_SO, ID_MC, ID_IM, ID_TXT, ID_VF, ID_AC)) {
-      BKE_id_remapper_add(id_remapper, id, nullptr);
+      id_remapper.add(id, nullptr);
       return IDWALK_RET_STOP_RECURSION;
     }
   }
@@ -142,7 +141,7 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
 
 {
   /* Ideally, scene should not be added to the global Main. There currently is no good
-   * solution to avoid it if we want to properly pull in all strip dependecies. */
+   * solution to avoid it if we want to properly pull in all strip dependencies. */
   Scene *scene_dst = BKE_scene_add(bmain_src, "copybuffer_vse_scene");
 
   /* Create a temporary scene that we will copy from.
@@ -151,7 +150,7 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
   scene_dst->ed = MEM_cnew<Editing>(__func__);
   scene_dst->ed->seqbasep = &scene_dst->ed->seqbase;
   SEQ_sequence_base_dupli_recursive(
-      scene_src, scene_dst, &scene_dst->ed->seqbase, &scene_src->ed->seqbase, 0, 0);
+      scene_src, scene_dst, &scene_dst->ed->seqbase, scene_src->ed->seqbasep, 0, 0);
 
   BLI_duplicatelist(&scene_dst->ed->channels, &scene_src->ed->channels);
   scene_dst->ed->displayed_channels = &scene_dst->ed->channels;
@@ -176,7 +175,7 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
 
   if (!BLI_listbase_is_empty(&fcurves_dst) || !BLI_listbase_is_empty(&drivers_dst)) {
     BLI_assert(scene_dst->adt == nullptr);
-    bAction *act_dst = ED_id_action_ensure(bmain_src, &scene_dst->id);
+    bAction *act_dst = blender::animrig::id_action_ensure(bmain_src, &scene_dst->id);
     BLI_movelisttolist(&act_dst->curves, &fcurves_dst);
     BLI_movelisttolist(&scene_dst->adt->drivers, &drivers_dst);
   }
@@ -185,16 +184,19 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
    * to copy whole scenes. We have to come up with a proper idea of how to copy and
    * paste scene strips.
    */
-  IDRemapper *id_remapper = BKE_id_remapper_create();
+  blender::bke::id::IDRemapper id_remapper;
   BKE_library_foreach_ID_link(
-      bmain_src, &scene_dst->id, gather_strip_data_ids_to_null, id_remapper, IDWALK_RECURSE);
+      bmain_src, &scene_dst->id, gather_strip_data_ids_to_null, &id_remapper, IDWALK_RECURSE);
 
-  BKE_libblock_remap_multiple(bmain_src, id_remapper, 0);
-  BKE_id_remapper_free(id_remapper);
+  BKE_libblock_relink_multiple(bmain_src,
+                               {&scene_dst->id},
+                               ID_REMAP_TYPE_REMAP,
+                               id_remapper,
+                               (ID_REMAP_SKIP_USER_CLEAR | ID_REMAP_SKIP_USER_REFCOUNT));
 
   /* Ensure that there are no old copy tags around */
   BKE_blendfile_write_partial_begin(bmain_src);
-  /* Tag the scene copy so we can pull in all scrip deps */
+  /* Tag the scene copy so we can pull in all scrip dependencies. */
   BKE_copybuffer_copy_tag_ID(&scene_dst->id);
   /* Create the copy/paste temp file */
   bool retval = BKE_copybuffer_copy_end(bmain_src, filepath, reports);
@@ -230,7 +232,8 @@ int sequencer_clipboard_copy_exec(bContext *C, wmOperator *op)
   }
 
   /* We are all done! */
-  BKE_report(op->reports, RPT_INFO, "Copied the selected VSE strips to internal clipboard");
+  BKE_report(
+      op->reports, RPT_INFO, "Copied the selected Video Sequencer strips to internal clipboard");
   return OPERATOR_FINISHED;
 }
 
@@ -251,7 +254,7 @@ static bool sequencer_paste_animation(Main *bmain_dst, Scene *scene_dst, Scene *
   }
   else {
     /* get action to add F-Curve+keyframe to */
-    act_dst = ED_id_action_ensure(bmain_dst, &scene_dst->id);
+    act_dst = blender::animrig::id_action_ensure(bmain_dst, &scene_dst->id);
   }
 
   LISTBASE_FOREACH (FCurve *, fcu, &scene_src->adt->action->curves) {
@@ -291,7 +294,7 @@ int sequencer_clipboard_paste_exec(bContext *C, wmOperator *op)
   }
 
   if (!scene_src || !scene_src->ed) {
-    BKE_report(op->reports, RPT_ERROR, "No clipboard scene to paste VSE data from");
+    BKE_report(op->reports, RPT_ERROR, "No clipboard scene to paste Video Sequencer data from");
     BKE_main_free(bmain_src);
     return OPERATOR_CANCELLED;
   }
@@ -348,7 +351,7 @@ int sequencer_clipboard_paste_exec(bContext *C, wmOperator *op)
 
   ListBase nseqbase = {nullptr, nullptr};
   /* NOTE: SEQ_sequence_base_dupli_recursive() takes care of generating
-   * new UUIDs for sequences in the new list. */
+   * new UIDs for sequences in the new list. */
   SEQ_sequence_base_dupli_recursive(
       scene_src, scene_dst, &nseqbase, &scene_src->ed->seqbase, 0, 0);
 
@@ -366,7 +369,7 @@ int sequencer_clipboard_paste_exec(bContext *C, wmOperator *op)
   nseqbase.first = iseq_first;
 
   LISTBASE_FOREACH (Sequence *, iseq, &nseqbase) {
-    if (STREQ(iseq->name, active_seq_name.c_str())) {
+    if (iseq->name == active_seq_name) {
       SEQ_select_active_set(scene_dst, iseq);
     }
     /* Make sure, that pasted strips have unique names. This has to be done after

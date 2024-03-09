@@ -5,7 +5,7 @@
 #include "../eevee_next/eevee_lut.hh" /* TODO: find somewhere to share blue noise Table. */
 #include "BKE_studiolight.h"
 #include "BLI_math_rotation.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "workbench_private.hh"
 
@@ -55,7 +55,7 @@ static float4x4 get_world_shading_rotation_matrix(float studiolight_rot_z)
 }
 
 static LightData get_light_data_from_studio_solidlight(const SolidLight *sl,
-                                                       float4x4 world_shading_rotation)
+                                                       const float4x4 &world_shading_rotation)
 {
   LightData light = {};
   if (sl && sl->flag) {

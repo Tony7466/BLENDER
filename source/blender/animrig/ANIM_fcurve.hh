@@ -7,6 +7,7 @@
  *
  * \brief Functions to modify FCurves.
  */
+#pragma once
 
 #include "BLI_math_vector_types.hh"
 #include "DNA_anim_types.h"
@@ -25,7 +26,7 @@ struct KeyframeSettings {
 /**
  * Helper function to generate the KeyframeSettings struct.
  *
- * \param from_userprefs if true read the user preferences for the settings, else return static
+ * \param from_userprefs: if true read the user preferences for the settings, else return static
  * defaults.
  */
 KeyframeSettings get_keyframe_settings(bool from_userprefs);

@@ -1,10 +1,10 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'72b6c44e759b')\n"
+"Project-Id-Version: Blender 4.1.0 Beta (b'e938b516a994')\n"
 "(b'0000000000000000000000000000000000000000')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-12-04 11:06:00\n"
+"POT-Creation-Date: 2024-02-26 11:48+0000\n"
 "PO-Revision-Date: 2013-11-05 13:47+0600\n"
 "Last-Translator: Chyngyz Dzhumaliev <kyrgyzl10n@gmail.com>\n"
 "Language-Team: Kirghiz <kyrgyzl10n@gmail.com>\n"
@@ -550,10 +550,6 @@ msgid "Poly"
 msgstr "Полисызык"
 
 
-msgid "Bezier"
-msgstr "Безье"
-
-
 msgid "Depth"
 msgstr "Тереңдиги"
 
@@ -785,6 +781,10 @@ msgstr "Ариптер"
 
 msgid "Save"
 msgstr "Сактоо"
+
+
+msgid "Operator"
+msgstr "Оператор"
 
 
 msgid "End"
@@ -1377,10 +1377,6 @@ msgid "Text Input"
 msgstr "Текстти киргизүү"
 
 
-msgid "Bezier Curve"
-msgstr "Безье ийриси"
-
-
 msgid "Circles"
 msgstr "Тегеректер"
 
@@ -1425,10 +1421,6 @@ msgstr "Түздөө"
 msgctxt "Operator"
 msgid "Add"
 msgstr "Кошуу"
-
-
-msgid "Tracking"
-msgstr "Трекинг"
 
 
 msgid "Node"
@@ -1613,6 +1605,10 @@ msgstr "Айлантуу"
 
 msgid "Translate"
 msgstr "Жылдыруу"
+
+
+msgid "Bake"
+msgstr "Бышыруу"
 
 
 msgid "Background"
@@ -1819,11 +1815,6 @@ msgstr "Өлчөмүн өзгөртүү"
 
 msgid "Trackball"
 msgstr "Трекбол"
-
-
-msgctxt "Operator"
-msgid "Add Bezier"
-msgstr "Безьени кошуу"
 
 
 msgctxt "Operator"
@@ -2289,10 +2280,6 @@ msgid "Refresh"
 msgstr "Жаңылоо"
 
 
-msgid "Bake"
-msgstr "Бышыруу"
-
-
 msgctxt "Operator"
 msgid "Render"
 msgstr "Визуалдаштыруу"
@@ -2403,10 +2390,6 @@ msgstr "Темалар"
 
 msgid "Editing"
 msgstr "Оңдоо"
-
-
-msgid "Operator"
-msgstr "Оператор"
 
 
 msgctxt "Operator"
@@ -3168,6 +3151,10 @@ msgid "Statistics"
 msgstr "Статистика"
 
 
+msgid "Tracking"
+msgstr "Трекинг"
+
+
 msgctxt "Operator"
 msgid "New"
 msgstr "Жаңы"
@@ -3364,6 +3351,10 @@ msgid "New Data"
 msgstr "Жаңы маалыматтар"
 
 
+msgid "Error (see console)"
+msgstr "Ката (консолду караңыз)"
+
+
 msgid "Description:"
 msgstr "Баяндамасы:"
 
@@ -3388,21 +3379,9 @@ msgid "Internet:"
 msgstr "Интернет:"
 
 
-msgid "description"
-msgstr "баяндама"
-
-
-msgid "location"
-msgstr "жайгашкан жери"
-
-
 msgctxt "Operator"
 msgid "Documentation"
 msgstr "Документация"
-
-
-msgid "Error (see console)"
-msgstr "Ката (консолду караңыз)"
 
 
 msgctxt "Operator"
@@ -3448,11 +3427,6 @@ msgstr "Тор сызык"
 msgctxt "Operator"
 msgid "Monkey"
 msgstr "Маймыл"
-
-
-msgctxt "Operator"
-msgid "Bezier"
-msgstr "Безье"
 
 
 msgctxt "Operator"
@@ -3634,6 +3608,10 @@ msgstr "Жаңы"
 msgctxt "FreestyleLineStyle"
 msgid "New"
 msgstr "Жаңы"
+
+
+msgid "Rigging"
+msgstr "Риггинг"
 
 
 msgctxt "Mesh"
@@ -3905,10 +3883,6 @@ msgstr "Ийрилерди кошуу"
 
 msgid "Import-Export"
 msgstr "Импорт-экспорт"
-
-
-msgid "Rigging"
-msgstr "Риггинг"
 
 
 msgid "English (English)"

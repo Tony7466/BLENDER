@@ -12,9 +12,10 @@
 #include "draw_manager.h"
 #include "draw_pbvh.hh"
 
+#include "BKE_attribute.hh"
 #include "BKE_curve.hh"
-#include "BKE_duplilist.h"
-#include "BKE_global.h"
+#include "BKE_duplilist.hh"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
@@ -44,7 +45,7 @@
 #endif
 
 #include "GPU_capabilities.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 #include "GPU_uniform_buffer.h"
 
 #include "intern/gpu_codegen.h"
@@ -644,11 +645,16 @@ static void drw_call_calc_orco(const Object *ob, float (*r_orcofacs)[4])
     switch (GS(ob_data->name)) {
       case ID_VO: {
         const Volume &volume = *reinterpret_cast<const Volume *>(ob_data);
-        const blender::Bounds<blender::float3> bounds = *BKE_volume_min_max(&volume);
-        mid_v3_v3v3(static_buf.texspace_location, bounds.max, bounds.min);
-        sub_v3_v3v3(static_buf.texspace_size, bounds.max, bounds.min);
-        texspace_location = static_buf.texspace_location;
-        texspace_size = static_buf.texspace_size;
+        const std::optional<blender::Bounds<blender::float3>> bounds = BKE_volume_min_max(&volume);
+        if (bounds) {
+          texspace_location = static_buf.texspace_location;
+          texspace_size = static_buf.texspace_size;
+          mid_v3_v3v3(texspace_location, bounds->max, bounds->min);
+          sub_v3_v3v3(texspace_size, bounds->max, bounds->min);
+          texspace_size[0] = std::max(texspace_size[0], 0.001f);
+          texspace_size[1] = std::max(texspace_size[1], 0.001f);
+          texspace_size[2] = std::max(texspace_size[2], 0.001f);
+        }
         break;
       }
       case ID_ME:
@@ -692,7 +698,7 @@ BLI_INLINE void drw_call_matrix_init(DRWObjectMatrix *ob_mats,
 {
   copy_m4_m4(ob_mats->model, obmat);
   if (ob) {
-    copy_m4_m4(ob_mats->modelinverse, ob->world_to_object);
+    copy_m4_m4(ob_mats->modelinverse, ob->world_to_object().ptr());
   }
   else {
     /* WATCH: Can be costly. */
@@ -709,7 +715,7 @@ static void drw_call_obinfos_init(DRWObjectInfos *ob_infos, const Object *ob)
   drw_call_calc_orco(ob, ob_infos->orcotexfac);
   /* Random float value. */
   uint random = (DST.dupli_source) ?
-                     DST.dupli_source->random_id :
+                    DST.dupli_source->random_id :
                      /* TODO(fclem): this is rather costly to do at runtime. Maybe we can
                       * put it in ob->runtime and make depsgraph ensure it is up to date. */
                      BLI_hash_int_2d(BLI_hash_string(ob->id.name + 2), 0);
@@ -739,8 +745,8 @@ static void drw_call_culling_init(DRWCullingState *cull, const Object *ob)
     float corner[3];
     /* Get BoundSphere center and radius from the BoundBox. */
     mid_v3_v3v3(cull->bsphere.center, bounds->max, bounds->min);
-    mul_v3_m4v3(corner, ob->object_to_world, bounds->max);
-    mul_m4_v3(ob->object_to_world, cull->bsphere.center);
+    mul_v3_m4v3(corner, ob->object_to_world().ptr(), bounds->max);
+    mul_m4_v3(ob->object_to_world().ptr(), cull->bsphere.center);
     cull->bsphere.radius = len_v3v3(cull->bsphere.center, corner);
 
     /* Bypass test for very large objects (see #67319). */
@@ -1032,7 +1038,8 @@ void DRW_shgroup_call_ex(DRWShadingGroup *shgroup,
   if (G.f & G_FLAG_PICKSEL) {
     drw_command_set_select_id(shgroup, nullptr, DST.select_id);
   }
-  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->object_to_world : obmat, ob);
+  DRWResourceHandle handle = drw_resource_handle(
+      shgroup, ob ? ob->object_to_world().ptr() : obmat, ob);
   drw_command_draw(shgroup, geom, handle);
 
   /* Culling data. */
@@ -1057,7 +1064,8 @@ void DRW_shgroup_call_range(
   if (G.f & G_FLAG_PICKSEL) {
     drw_command_set_select_id(shgroup, nullptr, DST.select_id);
   }
-  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->object_to_world : nullptr, ob);
+  DRWResourceHandle handle = drw_resource_handle(
+      shgroup, ob ? ob->object_to_world().ptr() : nullptr, ob);
   drw_command_draw_range(shgroup, geom, handle, v_sta, v_num);
 }
 
@@ -1068,7 +1076,8 @@ void DRW_shgroup_call_instance_range(
   if (G.f & G_FLAG_PICKSEL) {
     drw_command_set_select_id(shgroup, nullptr, DST.select_id);
   }
-  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->object_to_world : nullptr, ob);
+  DRWResourceHandle handle = drw_resource_handle(
+      shgroup, ob ? ob->object_to_world().ptr() : nullptr, ob);
   drw_command_draw_intance_range(shgroup, geom, handle, i_sta, i_num);
 }
 
@@ -1114,7 +1123,8 @@ static void drw_shgroup_call_procedural_add_ex(DRWShadingGroup *shgroup,
   if (G.f & G_FLAG_PICKSEL) {
     drw_command_set_select_id(shgroup, nullptr, DST.select_id);
   }
-  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->object_to_world : nullptr, ob);
+  DRWResourceHandle handle = drw_resource_handle(
+      shgroup, ob ? ob->object_to_world().ptr() : nullptr, ob);
   drw_command_draw_procedural(shgroup, geom, handle, vert_count);
 }
 
@@ -1168,7 +1178,8 @@ void DRW_shgroup_call_procedural_indirect(DRWShadingGroup *shgroup,
   if (G.f & G_FLAG_PICKSEL) {
     drw_command_set_select_id(shgroup, nullptr, DST.select_id);
   }
-  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->object_to_world : nullptr, ob);
+  DRWResourceHandle handle = drw_resource_handle(
+      shgroup, ob ? ob->object_to_world().ptr() : nullptr, ob);
   drw_command_draw_indirect(shgroup, geom, handle, indirect_buf);
 }
 
@@ -1181,7 +1192,8 @@ void DRW_shgroup_call_instances(DRWShadingGroup *shgroup,
   if (G.f & G_FLAG_PICKSEL) {
     drw_command_set_select_id(shgroup, nullptr, DST.select_id);
   }
-  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->object_to_world : nullptr, ob);
+  DRWResourceHandle handle = drw_resource_handle(
+      shgroup, ob ? ob->object_to_world().ptr() : nullptr, ob);
   drw_command_draw_instance(shgroup, geom, handle, count, false);
 }
 
@@ -1195,7 +1207,8 @@ void DRW_shgroup_call_instances_with_attrs(DRWShadingGroup *shgroup,
   if (G.f & G_FLAG_PICKSEL) {
     drw_command_set_select_id(shgroup, nullptr, DST.select_id);
   }
-  DRWResourceHandle handle = drw_resource_handle(shgroup, ob ? ob->object_to_world : nullptr, ob);
+  DRWResourceHandle handle = drw_resource_handle(
+      shgroup, ob ? ob->object_to_world().ptr() : nullptr, ob);
   GPUBatch *batch = DRW_temp_batch_instance_request(
       DST.vmempool->idatalist, nullptr, inst_attributes, geom);
   drw_command_draw_instance(shgroup, batch, handle, 0, true);
@@ -1299,7 +1312,7 @@ static void drw_sculpt_get_frustum_planes(const Object *ob, float planes[6][4])
    * 4x4 matrix is done by multiplying with the transpose inverse.
    * The inverse cancels out here since we transform by inverse(obmat). */
   float tmat[4][4];
-  transpose_m4_m4(tmat, ob->object_to_world);
+  transpose_m4_m4(tmat, ob->object_to_world().ptr());
   for (int i = 0; i < 6; i++) {
     mul_m4_v4(tmat, planes[i]);
   }
@@ -1307,6 +1320,7 @@ static void drw_sculpt_get_frustum_planes(const Object *ob, float planes[6][4])
 
 static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
 {
+  using namespace blender;
   /* PBVH should always exist for non-empty meshes, created by depsgraph eval. */
   PBVH *pbvh = (scd->ob->sculpt) ? scd->ob->sculpt->pbvh : nullptr;
   if (!pbvh) {
@@ -1331,12 +1345,12 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   if (p && (p->flags & PAINT_SCULPT_DELAY_UPDATES)) {
     update_frustum.planes = update_planes;
     update_frustum.num_planes = 6;
-    BKE_pbvh_get_frustum_planes(pbvh, &update_frustum);
+    bke::pbvh::get_frustum_planes(pbvh, &update_frustum);
     if (!navigating) {
       drw_sculpt_get_frustum_planes(scd->ob, update_planes);
       update_frustum.planes = update_planes;
       update_frustum.num_planes = 6;
-      BKE_pbvh_set_frustum_planes(pbvh, &update_frustum);
+      bke::pbvh::set_frustum_planes(pbvh, &update_frustum);
     }
   }
   else {
@@ -1363,9 +1377,9 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
   }
 
   Mesh *mesh = static_cast<Mesh *>(scd->ob->data);
-  BKE_pbvh_update_normals(pbvh, mesh->runtime->subdiv_ccg.get());
+  bke::pbvh::update_normals(*pbvh, mesh->runtime->subdiv_ccg.get());
 
-  BKE_pbvh_draw_cb(
+  bke::pbvh::draw_cb(
       *mesh,
       pbvh,
       update_only_visible,
@@ -1376,10 +1390,10 @@ static void drw_sculpt_generate_calls(DRWSculptCallbackData *scd)
 
   if (SCULPT_DEBUG_BUFFERS) {
     int debug_node_nr = 0;
-    DRW_debug_modelmat(scd->ob->object_to_world);
+    DRW_debug_modelmat(scd->ob->object_to_world().ptr());
     BKE_pbvh_draw_debug_cb(
         pbvh,
-        (void (*)(PBVHNode * n, void *d, const float min[3], const float max[3], PBVHNodeFlags f))
+        (void (*)(PBVHNode *n, void *d, const float min[3], const float max[3], PBVHNodeFlags f))
             DRW_sculpt_debug_cb,
         &debug_node_nr);
   }
@@ -1420,15 +1434,16 @@ void DRW_shgroup_call_sculpt(DRWShadingGroup *shgroup,
   if (use_color) {
     if (const char *name = mesh->active_color_attribute) {
       if (const std::optional<bke::AttributeMetaData> meta_data = attributes.lookup_meta_data(
-              name)) {
+              name))
+      {
         attrs.append(pbvh::GenericRequest{name, meta_data->data_type, meta_data->domain});
       }
     }
   }
 
   if (use_uv) {
-    if (const char *name = CustomData_get_active_layer_name(&mesh->loop_data, CD_PROP_FLOAT2)) {
-      attrs.append(pbvh::GenericRequest{name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER});
+    if (const char *name = CustomData_get_active_layer_name(&mesh->corner_data, CD_PROP_FLOAT2)) {
+      attrs.append(pbvh::GenericRequest{name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
     }
   }
 
@@ -1442,6 +1457,7 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
                                             int num_shgroups,
                                             const Object *ob)
 {
+  using namespace blender;
   using namespace blender::draw;
   DRW_Attributes draw_attrs;
   DRW_MeshCDMask cd_needed;
@@ -1469,10 +1485,10 @@ void DRW_shgroup_call_sculpt_with_materials(DRWShadingGroup **shgroups,
   /* UV maps are not in attribute requests. */
   for (uint i = 0; i < 32; i++) {
     if (cd_needed.uv & (1 << i)) {
-      int layer_i = CustomData_get_layer_index_n(&mesh->loop_data, CD_PROP_FLOAT2, i);
-      CustomDataLayer *layer = layer_i != -1 ? mesh->loop_data.layers + layer_i : nullptr;
+      int layer_i = CustomData_get_layer_index_n(&mesh->corner_data, CD_PROP_FLOAT2, i);
+      CustomDataLayer *layer = layer_i != -1 ? mesh->corner_data.layers + layer_i : nullptr;
       if (layer) {
-        attrs.append(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, ATTR_DOMAIN_CORNER});
+        attrs.append(pbvh::GenericRequest{layer->name, CD_PROP_FLOAT2, bke::AttrDomain::Corner});
       }
     }
   }
@@ -1795,18 +1811,15 @@ void DRW_shgroup_add_material_resources(DRWShadingGroup *grp, GPUMaterial *mater
   /* Bind all textures needed by the material. */
   LISTBASE_FOREACH (GPUMaterialTexture *, tex, &textures) {
     if (tex->ima) {
-      /* Image */
-      GPUTexture *gputex;
+      const bool use_tile_mapping = tex->tiled_mapping_name[0];
       ImageUser *iuser = tex->iuser_available ? &tex->iuser : nullptr;
-      if (tex->tiled_mapping_name[0]) {
-        gputex = BKE_image_get_gpu_tiles(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(grp, gputex, tex->sampler_name, tex->sampler_state);
-        gputex = BKE_image_get_gpu_tilemap(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(grp, gputex, tex->tiled_mapping_name, tex->sampler_state);
-      }
-      else {
-        gputex = BKE_image_get_gpu_texture(tex->ima, iuser, nullptr);
-        drw_shgroup_material_texture(grp, gputex, tex->sampler_name, tex->sampler_state);
+      ImageGPUTextures gputex = BKE_image_get_gpu_material_texture(
+          tex->ima, iuser, use_tile_mapping);
+
+      drw_shgroup_material_texture(grp, gputex.texture, tex->sampler_name, tex->sampler_state);
+      if (gputex.tile_mapping) {
+        drw_shgroup_material_texture(
+            grp, gputex.tile_mapping, tex->tiled_mapping_name, tex->sampler_state);
       }
     }
     else if (tex->colorband) {
