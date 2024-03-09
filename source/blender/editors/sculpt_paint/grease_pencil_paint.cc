@@ -444,8 +444,8 @@ struct PaintOperationExecutor {
                                       bke::AttrDomain::Point,
                                       {"position", "radius", "opacity", "vertex_color"},
                                       curves.points_range().take_back(1));
-    
-    set_texture_matrix(curves, curves.curves_num() - 1, texture_space_);
+
+    set_texture_matrix(curves, curves.curves_range().last(), texture_space_);
   }
 
   void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
@@ -585,7 +585,7 @@ void PaintOperation::process_stroke_end(bke::greasepencil::Drawing &drawing)
     curves.offsets_for_write().last() = curves.points_num();
   }
 
-  set_texture_matrix(curves, curves.curves_num() - 1, this->texture_space_);
+  set_texture_matrix(curves, curves.curves_range().last(), this->texture_space_);
 }
 
 void PaintOperation::on_stroke_done(const bContext &C)
