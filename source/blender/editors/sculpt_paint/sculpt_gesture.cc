@@ -341,7 +341,7 @@ static void update_affected_nodes_by_clip_planes(GestureData &gesture_data)
         /* Certain degenerate cases of a lasso shape can cause the resulting
          * frustum planes to enclose a node's AABB, therefore we must submit it
          * to be more throughly evaluated. */
-        if (gesture_data->shape_type == ShapeType::Lasso) {
+        if (gesture_data.shape_type == ShapeType::Lasso) {
           return true;
         }
         return BKE_pbvh_node_frustum_exclude_AABB(&node, &frustum);
@@ -382,15 +382,15 @@ static bool is_affected_lasso(GestureData &gesture_data, const float co[3])
   /* Clip against lasso boundbox. */
   LassoData *lasso = &gesture_data.lasso;
   if (!BLI_rcti_isect_pt(&lasso->boundbox, scr_co_s[0], scr_co_s[1])) {
-    return gesture_data->selection_type == SelectionType::Outside;
+    return gesture_data.selection_type == SelectionType::Outside;
   }
 
   scr_co_s[0] -= lasso->boundbox.xmin;
   scr_co_s[1] -= lasso->boundbox.ymin;
 
   const bool bitmap_result = lasso->mask_px[scr_co_s[1] * lasso->width + scr_co_s[0]].test();
-  return (bitmap_result && gesture_data->selection_type == SelectionType::Inside) ||
-         (!bitmap_result && gesture_data->selection_type == SelectionType::Outside);
+  return (bitmap_result && gesture_data.selection_type == SelectionType::Inside) ||
+         (!bitmap_result && gesture_data.selection_type == SelectionType::Outside);
 }
 
 bool is_affected(GestureData &gesture_data, const float3 &co, const float3 &vertex_normal)

@@ -677,13 +677,12 @@ static int hide_show_gesture_box_exec(bContext *C, wmOperator *op)
 
 static int hide_show_gesture_lasso_exec(bContext *C, wmOperator *op)
 {
-  gesture::GestureData *gesture_data = gesture::init_from_lasso(C, op);
+  std::unique_ptr<gesture::GestureData> gesture_data = gesture::init_from_lasso(C, op);
   if (!gesture_data) {
     return OPERATOR_CANCELLED;
   }
-  hide_show_init_properties(C, gesture_data, op);
-  gesture::apply(C, gesture_data, op);
-  gesture::free_data(gesture_data);
+  hide_show_init_properties(*C, *gesture_data, *op);
+  gesture::apply(*C, *gesture_data, *op);
   return OPERATOR_FINISHED;
 }
 
