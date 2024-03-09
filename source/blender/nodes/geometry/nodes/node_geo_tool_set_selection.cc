@@ -61,6 +61,8 @@ static void node_geo_exec(GeoNodeExecParams params)
           bke::mesh_select_vert_flush(*mesh);
           break;
         case AttrDomain::Edge:
+          mesh->attributes_for_write().remove(".select_vert");
+          mesh->attributes_for_write().remove(".select_poly");          
           bke::try_capture_field_on_geometry(geometry.get_component_for_write<MeshComponent>(),
                                              ".select_edge",
                                              AttrDomain::Edge,
