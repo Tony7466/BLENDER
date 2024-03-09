@@ -1001,19 +1001,10 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
   int i = 0;
   int mesh_index = 0;
   BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
-    mul_m4_v3(to_target[mesh_index].ptr(), eve->co);
+    *reinterpret_cast<float3 *>(&eve->co) = math::transform_point(to_target[mesh_index], float3(eve->co));
     ++i;
     if (i == verts_end[mesh_index]) {
       mesh_index++;
-    }
-  }
-
-  /* We need face normals because of 'BM_face_split_edgenet' */
-  Array<float[3][3]> nmat(n);
-  for (const int i : IndexRange(n)) {
-    copy_m3_m4(nmat[i], to_target[i].ptr());
-    if (is_negative_transform[i]) {
-      negate_m3(nmat[i]);
     }
   }
 
@@ -1022,7 +1013,10 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
   i = 0;
   mesh_index = 0;
   BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
-    mul_transposed_m3_v3(nmat[mesh_index], efa->no);
+    *reinterpret_cast<float3 *>(&efa->no) = math::transform_direction(to_target[mesh_index], float3(efa->no));
+    if (is_negative_transform[mesh_index]) {
+      negate_v3(efa->no);
+    }
     normalize_v3(efa->no);
 
     /* Temp tag used in `face_boolean_operand()` to test for operand 0. */
