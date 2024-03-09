@@ -26,7 +26,8 @@ void main()
    * texture funcs and early exit if not. */
   if (any(greaterThanEqual(texel_fullres, textureSize(depth_tx, 0).xy)) ||
       any(lessThan(texel_fullres, ivec2(0))) ||
-      any(greaterThanEqual(texel, textureSize(ray_time_img, 0).xy)) || any(lessThan(texel, ivec2(0))))
+      any(greaterThanEqual(texel, textureSize(ray_time_img, 0).xy)) ||
+      any(lessThan(texel, ivec2(0))))
   {
     return;
   }
