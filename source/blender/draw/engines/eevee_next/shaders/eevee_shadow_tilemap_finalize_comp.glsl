@@ -134,8 +134,6 @@ void main()
 
           view_infos_buf[view_index].winmat = winmat;
           view_infos_buf[view_index].wininv = inverse(winmat);
-          /* NOTE: We may not end up using this due to potential imprecision. */
-          view_infos_buf[view_index].persmat_sh = winmat * tilemap_data.viewmat;
         }
       }
     }
