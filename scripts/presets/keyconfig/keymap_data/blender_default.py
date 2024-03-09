@@ -7901,6 +7901,8 @@ def km_3d_view_tool_sculpt_lasso_hide(params):
              {"properties": [("action", 'HIDE')]}),
             ("paint.hide_show_lasso_gesture", {**params.tool_maybe_tweak_event, "ctrl": True},
              {"properties": [("action", 'SHOW')]}),
+            ("paint.hide_show_all", {"type": params.select_mouse, "value": params.select_mouse_value},
+             {"properties": [("action", 'SHOW')]}),
         ]},
     )
 
