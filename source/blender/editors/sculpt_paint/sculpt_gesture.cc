@@ -389,8 +389,14 @@ static bool is_affected_lasso(GestureData &gesture_data, const float co[3])
   scr_co_s[1] -= lasso->boundbox.ymin;
 
   const bool bitmap_result = lasso->mask_px[scr_co_s[1] * lasso->width + scr_co_s[0]].test();
-  return (bitmap_result && gesture_data.selection_type == SelectionType::Inside) ||
-         (!bitmap_result && gesture_data.selection_type == SelectionType::Outside);
+  switch (gesture_data.selection_type) {
+    case SelectionType::Inside:
+      return bitmap_result;
+    case SelectionType::Outside:
+      return !bitmap_result;
+  }
+  BLI_assert_unreachable();
+  return false;
 }
 
 bool is_affected(GestureData &gesture_data, const float3 &co, const float3 &vertex_normal)
