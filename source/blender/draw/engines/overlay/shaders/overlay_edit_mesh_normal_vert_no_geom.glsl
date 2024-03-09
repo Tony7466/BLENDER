@@ -102,6 +102,55 @@ vec4 vertex_main(uint src_index,
 
 /* Real main */
 
+#ifndef INT16_MAX
+#define INT16_MAX 32767
+#endif
+
+ivec4 Inor_1010102_to_ivec4(int data) {
+  ivec4 out_vec;
+
+  /* 0b11,1111,1111 in hex */
+  int mask = 0x3FF;
+  out_vec.x = data & mask;
+  if (out_vec.x & 0x200 /* 0b10,0000,0000 */) {
+    out_vec.x |= ~mask;
+  }
+
+  int shifted = data >> 10;
+  out_vec.y = shifted & mask;
+  if(out_vec.y & 0x200){
+    out_vec.y |= ~mask;
+  }
+
+  shifted = data >> 20;
+  out_vec.z = shifted & mask;
+  if (out_vec.z & 0x200) {
+    out_vec.z |= ~mask;
+  }
+
+  out_vec.w = (data >> 30) & 0b11;
+  if (out_vec.w & 0b10) {
+    out_vec.w |= ~0b11;
+  }
+
+  return out_vec;
+}
+
+#define nor_to_vec4(index, in_data, out_vec) \
+{ \
+  if (vertex_fetch_get_attr_type(in_data) == GPU_SHADER_ATTR_TYPE_SHORT) { \
+    out_vec = (vec4)vertex_fetch_attribute(index, in_data, short4) / vec4(INT16_MAX); \
+  } else if (vertex_fetch_get_attr_type(in_data) == GPU_SHADER_ATTR_TYPE_INT1010102_NORM) { \
+    ivec4 tt = Inor_1010102_to_ivec4(vertex_fetch_attribute(index, in_data, vec3_1010102_Inorm)); \
+    out_vec.x = float(tt.x) / 255.0; \
+    out_vec.y = float(tt.y) / 255.0; \
+    out_vec.z = float(tt.z) / 255.0; \
+    out_vec.w = float(tt.w); \
+  } else { \
+    out_vec = vertex_fetch_attribute(index, in_data, vec4); \
+  } \
+}
+
 void main()
 {
   /* Index of the quad primitive. Each quad corresponds to one line in the input primitive. */
@@ -118,16 +167,16 @@ void main()
   in_pos[1] = vertex_fetch_attribute(src_index_b, pos, vec3);
 
   vec4 in_lnor[2];
-  in_lnor[0] = vertex_fetch_attribute(src_index_a, lnor, vec4);
-  in_lnor[1] = vertex_fetch_attribute(src_index_b, lnor, vec4);
+  nor_to_vec4(src_index_a, lnor, in_lnor[0]);
+  nor_to_vec4(src_index_b, lnor, in_lnor[1]);
 
   vec4 in_vnor[2];
-  in_vnor[0] = vertex_fetch_attribute(src_index_a, vnor, vec4);
-  in_vnor[1] = vertex_fetch_attribute(src_index_b, vnor, vec4);
+  nor_to_vec4(src_index_a, vnor, in_vnor[0]);
+  nor_to_vec4(src_index_b, vnor, in_vnor[1]);
 
   vec4 in_norAndFlag[2];
-  in_norAndFlag[0] = vertex_fetch_attribute(src_index_a, norAndFlag, vec4);
-  in_norAndFlag[1] = vertex_fetch_attribute(src_index_b, norAndFlag, vec4);
+  nor_to_vec4(src_index_a, norAndFlag, in_norAndFlag[0]);
+  nor_to_vec4(src_index_b, norAndFlag, in_norAndFlag[1]);
 
   /* Convert to ndc space. Vertex shader main area. */
   vec4 out_pos[2];
