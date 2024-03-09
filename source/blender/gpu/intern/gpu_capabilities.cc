@@ -71,6 +71,11 @@ int GPU_max_textures()
   return GCaps.max_textures;
 }
 
+int GPU_max_images()
+{
+  return GCaps.max_images;
+}
+
 int GPU_max_work_group_count(int index)
 {
   return GCaps.max_work_group_count[index];
@@ -165,11 +170,6 @@ bool GPU_compute_shader_support()
 bool GPU_geometry_shader_support()
 {
   return GCaps.geometry_shader_support;
-}
-
-bool GPU_shader_image_load_store_support()
-{
-  return GCaps.shader_image_load_store_support;
 }
 
 bool GPU_shader_draw_parameters_support()

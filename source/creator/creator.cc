@@ -12,6 +12,9 @@
 #ifdef WIN32
 #  include "utfconv.hh"
 #  include <windows.h>
+#  ifdef WITH_CPU_CHECK
+#    pragma comment(linker, "/include:cpu_check_win32")
+#  endif
 #endif
 
 #if defined(WITH_TBB_MALLOC) && defined(_MSC_VER) && defined(NDEBUG)
@@ -32,19 +35,20 @@
 #include "BLI_utildefines.h"
 
 /* Mostly initialization functions. */
-#include "BKE_appdir.h"
-#include "BKE_blender.h"
+#include "BKE_appdir.hh"
+#include "BKE_blender.hh"
+#include "BKE_blender_cli_command.hh"
 #include "BKE_brush.hh"
-#include "BKE_cachefile.h"
-#include "BKE_callbacks.h"
+#include "BKE_cachefile.hh"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_cpp_types.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_idtype.h"
+#include "BKE_idtype.hh"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_particle.h"
 #include "BKE_shader_fx.h"
 #include "BKE_sound.h"
@@ -57,7 +61,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "IMB_imbuf.h" /* For #IMB_init. */
+#include "IMB_imbuf.hh" /* For #IMB_init. */
 
 #include "RE_engine.h"
 #include "RE_texture.h"
@@ -65,7 +69,6 @@
 #include "ED_datafiles.h"
 
 #include "WM_api.hh"
-#include "WM_toolsystem.hh"
 
 #include "RNA_define.hh"
 
@@ -195,7 +198,7 @@ static void callback_clg_fatal(void *fp)
 /** \name Blender as a Stand-Alone Python Module (bpy)
  *
  * While not officially supported, this can be useful for Python developers.
- * See: https://wiki.blender.org/wiki/Building_Blender/Other/BlenderAsPyModule
+ * See: https://developer.blender.org/docs/handbook/building_blender/python_module/
  * \{ */
 
 #ifdef WITH_PYTHON_MODULE
@@ -278,7 +281,6 @@ int main(int argc,
 )
 {
   bContext *C;
-
 #ifndef WITH_PYTHON_MODULE
   bArgs *ba;
 #endif
@@ -565,8 +567,23 @@ int main(int argc,
 
 #ifndef WITH_PYTHON_MODULE
   if (G.background) {
+    int exit_code;
+    if (app_state.command.argv) {
+      const char *id = app_state.command.argv[0];
+      if (STREQ(id, "help")) {
+        BKE_blender_cli_command_print_help();
+        exit_code = EXIT_SUCCESS;
+      }
+      else {
+        exit_code = BKE_blender_cli_command_exec(
+            C, id, app_state.command.argc - 1, app_state.command.argv + 1);
+      }
+    }
+    else {
+      exit_code = G.is_break ? EXIT_FAILURE : EXIT_SUCCESS;
+    }
     /* Using window-manager API in background-mode is a bit odd, but works fine. */
-    WM_exit(C, G.is_break ? EXIT_FAILURE : EXIT_SUCCESS);
+    WM_exit(C, exit_code);
   }
   else {
     /* Shows the splash as needed. */

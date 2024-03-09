@@ -177,9 +177,9 @@ Batch *VKBackend::batch_alloc()
   return new VKBatch();
 }
 
-DrawList *VKBackend::drawlist_alloc(int /*list_length*/)
+DrawList *VKBackend::drawlist_alloc(int list_length)
 {
-  return new VKDrawList();
+  return new VKDrawList(list_length);
 }
 
 Fence *VKBackend::fence_alloc()
@@ -252,7 +252,6 @@ void VKBackend::capabilities_init(VKDevice &device)
   GCaps = {};
   GCaps.compute_shader_support = true;
   GCaps.geometry_shader_support = true;
-  GCaps.shader_image_load_store_support = true;
   GCaps.shader_draw_parameters_support =
       device.physical_device_vulkan_11_features_get().shaderDrawParameters;
 
@@ -264,6 +263,7 @@ void VKBackend::capabilities_init(VKDevice &device)
   GCaps.max_textures_geom = limits.maxPerStageDescriptorSampledImages;
   GCaps.max_textures_frag = limits.maxPerStageDescriptorSampledImages;
   GCaps.max_samplers = limits.maxSamplerAllocationCount;
+  GCaps.max_images = limits.maxPerStageDescriptorStorageImages;
   for (int i = 0; i < 3; i++) {
     GCaps.max_work_group_count[i] = limits.maxComputeWorkGroupCount[i];
     GCaps.max_work_group_size[i] = limits.maxComputeWorkGroupSize[i];

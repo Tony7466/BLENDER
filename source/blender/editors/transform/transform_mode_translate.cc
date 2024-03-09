@@ -18,19 +18,16 @@
 #include "BLI_string.h"
 #include "BLI_task.h"
 
-#include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_unit.hh"
 
 #include "ED_node.hh"
 #include "ED_screen.hh"
 
-#include "WM_api.hh"
-
 #include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -264,7 +261,7 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
     ofs += BLI_snprintf_rlen(str + ofs,
                              UI_MAX_DRAW_STR - ofs,
                              "%s %s: %s   ",
-                             RPT_("Proportional Size"),
+                             IFACE_("Proportional Size"),
                              t->proptext,
                              prop_str);
   }
@@ -273,7 +270,7 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
     short chainlen = t->settings->autoik_chainlen;
     if (chainlen) {
       ofs += BLI_snprintf_rlen(
-          str + ofs, UI_MAX_DRAW_STR - ofs, RPT_("Auto IK Length: %d"), chainlen);
+          str + ofs, UI_MAX_DRAW_STR - ofs, IFACE_("Auto IK Length: %d"), chainlen);
       ofs += BLI_strncpy_rlen(str + ofs, "   ", UI_MAX_DRAW_STR - ofs);
     }
   }
@@ -310,9 +307,10 @@ static void headerTranslation(TransInfo *t, const float vec[3], char str[UI_MAX_
       SpaceNode *snode = (SpaceNode *)t->area->spacedata.first;
       if (U.uiflag & USER_NODE_AUTO_OFFSET) {
         const char *str_dir = (snode->insert_ofs_dir == SNODE_INSERTOFS_DIR_RIGHT) ?
-                                  RPT_("right") :
-                                  RPT_("left");
-        ofs += BLI_snprintf_rlen(str, UI_MAX_DRAW_STR, RPT_("Auto-offset direction: %s"), str_dir);
+                                  IFACE_("right") :
+                                  IFACE_("left");
+        ofs += BLI_snprintf_rlen(
+            str, UI_MAX_DRAW_STR, IFACE_("Auto-offset direction: %s"), str_dir);
       }
     }
     else {
@@ -413,7 +411,7 @@ static bool translate_snap_grid(TransInfo *t, float *val)
     return false;
   }
 
-  /* Don't do grid snapping if not in 3D viewport or UV editor */
+  /* Don't do grid snapping if not in 3D viewport or UV editor. */
   if (!ELEM(t->spacetype, SPACE_VIEW3D, SPACE_IMAGE)) {
     return false;
   }
@@ -428,7 +426,7 @@ static bool translate_snap_grid(TransInfo *t, float *val)
     mul_v3_fl(grid_dist, t->snap_spatial_precision);
   }
 
-  /* Early bailing out if no need to snap */
+  /* Early bailing out if no need to snap. */
   if (is_zero_v3(grid_dist)) {
     return false;
   }
@@ -461,7 +459,7 @@ static void ApplySnapTranslation(TransInfo *t, float vec[3])
         if (ED_view3d_project_float_global(t->region, point, point, V3D_PROJ_TEST_NOP) !=
             V3D_PROJ_RET_OK)
         {
-          zero_v3(point); /* no good answer here... */
+          zero_v3(point); /* No good answer here... */
         }
       }
     }
@@ -504,11 +502,11 @@ static void applyTranslationValue(TransInfo *t, const float vec[3])
   }
 
   FOREACH_TRANS_DATA_CONTAINER (t, tc) {
-    float3 snap_source_local;
+    float3 snap_source_local(0);
     if (rotate_mode != TRANSLATE_ROTATE_OFF) {
       snap_source_local = t->tsnap.snap_source;
       if (tc->use_local_mat) {
-        /* The pivot has to be in local-space (see #49494) */
+        /* The pivot has to be in local-space (see #49494). */
         snap_source_local = math::transform_point(float4x4(tc->imat), snap_source_local);
       }
     }
@@ -644,7 +642,7 @@ static void applyTranslation(TransInfo *t)
 
   applyTranslationValue(t, global_dir);
 
-  /* evil hack - redo translation if clipping needed */
+  /* Evil hack - redo translation if clipping needed. */
   if (t->flag & T_CLIP_UV && clip_uv_transform_translation(t, global_dir)) {
     applyTranslationValue(t, global_dir);
 
@@ -672,7 +670,7 @@ static void applyTranslationMatrix(TransInfo *t, float mat_xform[4][4])
 static void initTranslation(TransInfo *t, wmOperator * /*op*/)
 {
   if (t->spacetype == SPACE_ACTION) {
-    /* this space uses time translate */
+    /* This space uses time translate. */
     BKE_report(t->reports,
                RPT_ERROR,
                "Use 'Time_Translate' transform mode instead of 'Translation' mode "

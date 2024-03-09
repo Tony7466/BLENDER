@@ -135,7 +135,7 @@ void VKFrameBuffer::build_clear_attachments_color(const float (*clear_colors)[4]
 /** \name Clear
  * \{ */
 
-void VKFrameBuffer::clear(const Vector<VkClearAttachment> &attachments) const
+void VKFrameBuffer::clear(const Span<VkClearAttachment> attachments) const
 {
   if (attachments.is_empty()) {
     return;
@@ -229,8 +229,8 @@ void VKFrameBuffer::attachment_set_loadstore_op(GPUAttachmentType /*type*/, GPUL
 /** \name Sub-pass transition
  * \{ */
 
-void VKFrameBuffer::subpass_transition(const GPUAttachmentState /*depth_attachment_state*/,
-                                       Span<GPUAttachmentState> /*color_attachment_states*/)
+void VKFrameBuffer::subpass_transition_impl(const GPUAttachmentState /*depth_attachment_state*/,
+                                            Span<GPUAttachmentState> /*color_attachment_states*/)
 {
   NOT_YET_IMPLEMENTED;
 }

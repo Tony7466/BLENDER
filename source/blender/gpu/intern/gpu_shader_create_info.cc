@@ -12,6 +12,8 @@
 #include "BLI_set.hh"
 #include "BLI_string_ref.hh"
 
+#include "BKE_global.hh"
+
 #include "GPU_capabilities.h"
 #include "GPU_context.h"
 #include "GPU_platform.h"
@@ -132,6 +134,14 @@ void ShaderCreateInfo::finalize()
     batch_resources_.extend_non_duplicates(info.batch_resources_);
     pass_resources_.extend_non_duplicates(info.pass_resources_);
     typedef_sources_.extend_non_duplicates(info.typedef_sources_);
+
+    /* API-specific parameters.
+     * We will only copy API-specific parameters if they are otherwise unassigned. */
+#ifdef WITH_METAL_BACKEND
+    if (mtl_max_threads_per_threadgroup_ == 0) {
+      mtl_max_threads_per_threadgroup_ = info.mtl_max_threads_per_threadgroup_;
+    }
+#endif
 
     if (info.early_fragment_test_) {
       early_fragment_test_ = true;
@@ -262,7 +272,16 @@ std::string ShaderCreateInfo::check_error() const
     }
   }
 
-#ifndef NDEBUG
+  if ((G.debug & G_DEBUG_GPU) == 0) {
+    return error;
+  }
+
+  /*
+   * The next check has been disabled. 'eevee_legacy_surface_common_iface' is known to fail.
+   * The check was added to validate if shader would be able to compile on Vulkan.
+   * TODO(jbakker): Enable the check after EEVEE is replaced by EEVEE-Next.
+   */
+#if 0
   if (bool(this->builtins_ &
            (BuiltinBits::BARYCENTRIC_COORD | BuiltinBits::VIEWPORT_INDEX | BuiltinBits::LAYER)))
   {
@@ -274,6 +293,7 @@ std::string ShaderCreateInfo::check_error() const
       }
     }
   }
+#endif
 
   if (!this->is_vulkan_compatible()) {
     error += this->name_ +
@@ -290,7 +310,6 @@ std::string ShaderCreateInfo::check_error() const
       }
     }
   }
-#endif
 
   return error;
 }
@@ -405,6 +424,15 @@ void ShaderCreateInfo::validate_vertex_attributes(const ShaderCreateInfo *other_
 
 using namespace blender::gpu::shader;
 
+#ifdef _MSC_VER
+/* Disable optimization for this function with MSVC. It does not like the fact
+ * shaders info are declared in the same function (same basic block or not does
+ * not change anything).
+ * Since it is just a function called to register shaders (once),
+ * the fact it's optimized or not does not matter, it's not on any hot
+ * code path. */
+#  pragma optimize("", off)
+#endif
 void gpu_shader_create_info_init()
 {
   g_create_infos = new CreateInfoDictionnary();
@@ -545,6 +573,9 @@ void gpu_shader_create_info_init()
   /* TEST */
   // gpu_shader_create_info_compile(nullptr);
 }
+#ifdef _MSC_VER
+#  pragma optimize("", on)
+#endif
 
 void gpu_shader_create_info_exit()
 {
@@ -578,7 +609,6 @@ bool gpu_shader_create_info_compile(const char *name_starts_with_filter)
       if ((info->metal_backend_only_ && GPU_backend_get_type() != GPU_BACKEND_METAL) ||
           (GPU_compute_shader_support() == false && info->compute_source_ != nullptr) ||
           (GPU_geometry_shader_support() == false && info->geometry_source_ != nullptr) ||
-          (GPU_shader_image_load_store_support() == false && info->has_resource_image()) ||
           (GPU_transform_feedback_support() == false && info->tf_type_ != GPU_SHADER_TFB_NONE))
       {
         skipped++;

@@ -172,7 +172,7 @@ void transform_mode_snap_source_init(TransInfo *t, wmOperator * /*op*/)
   }
 
   if (ELEM(t->mode, TFM_INIT, TFM_DUMMY)) {
-    /* Fallback */
+    /* Fallback. */
     transform_mode_init(t, nullptr, TFM_TRANSLATION);
   }
 
@@ -237,7 +237,9 @@ void transform_mode_snap_source_init(TransInfo *t, wmOperator * /*op*/)
     const wmEvent *event = CTX_wm_window(t->context)->eventstate;
 #  ifdef RESET_TRANSFORMATION
     wmGizmoFnModal modal_fn = gz->custom_modal ? gz->custom_modal : gz->type->modal;
-    modal_fn(t->context, gz, event, eWM_GizmoFlagTweak(0));
+    if (modal_fn) {
+      modal_fn(t->context, gz, event, eWM_GizmoFlagTweak(0));
+    }
 #  endif
 
     WM_gizmo_modal_set_while_modal(t->region->gizmo_map, t->context, nullptr, event);

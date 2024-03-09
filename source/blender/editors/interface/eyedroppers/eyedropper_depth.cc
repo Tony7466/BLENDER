@@ -23,7 +23,7 @@
 #include "BLI_string.h"
 
 #include "BKE_context.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_screen.hh"
 #include "BKE_unit.hh"
 
@@ -163,7 +163,9 @@ static void depthdropper_depth_sample_pt(bContext *C,
         View3D *v3d = static_cast<View3D *>(area->spacedata.first);
         RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
         /* weak, we could pass in some reference point */
-        const float *view_co = v3d->camera ? v3d->camera->object_to_world[3] : rv3d->viewinv[3];
+        const blender::float3 &view_co = v3d->camera ? v3d->camera->object_to_world().location() :
+                                                       rv3d->viewinv[3];
+
         const int mval[2] = {m_xy[0] - region->winrct.xmin, m_xy[1] - region->winrct.ymin};
         copy_v2_v2_int(ddr->name_pos, mval);
 
@@ -177,7 +179,10 @@ static void depthdropper_depth_sample_pt(bContext *C,
 
         view3d_operator_needs_opengl(C);
 
-        if (ED_view3d_autodist(depsgraph, region, v3d, mval, co, true, nullptr)) {
+        /* Ensure the depth buffer is updated for #ED_view3d_autodist. */
+        ED_view3d_depth_override(depsgraph, region, v3d, nullptr, V3D_DEPTH_NO_GPENCIL, nullptr);
+
+        if (ED_view3d_autodist(region, v3d, mval, co, nullptr)) {
           const float mval_center_fl[2] = {float(region->winx) / 2, float(region->winy) / 2};
           float co_align[3];
 

@@ -474,7 +474,7 @@ static void build_mesh_positions(const CurvesInfo &curves_info,
   }
   const Span<float3> tangents = curves_info.main.evaluated_tangents();
   const Span<float3> normals = curves_info.main.evaluated_normals();
-  Span<float> radii_eval = {};
+  Span<float> radii_eval;
   if (const GVArray radii = *curves_info.main.attributes().lookup("radius", AttrDomain::Point)) {
     radii_eval = evaluate_attribute(radii, curves_info.main, eval_buffer).typed<float>();
   }
@@ -711,7 +711,7 @@ static void copy_indices_to_offset_ranges(const VArray<T> &src,
   /* This unnecessarily instantiates the "is single" case (which should be handled elsewhere if
    * it's ever used for attributes), but the alternative is duplicating the function for spans and
    * other virtual arrays. */
-  devirtualize_varray(src, [&](const auto &src) {
+  devirtualize_varray(src, [&](const auto src) {
     threading::parallel_for(curve_indices.index_range(), 512, [&](IndexRange range) {
       for (const int i : range) {
         dst.slice(mesh_offsets[i]).fill(src[curve_indices[i]]);

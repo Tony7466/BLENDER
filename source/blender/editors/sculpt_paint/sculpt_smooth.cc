@@ -13,7 +13,6 @@
 
 #include "DNA_brush_types.h"
 
-#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
@@ -135,7 +134,7 @@ void neighbor_coords_average(SculptSession *ss, float result[3], PBVHVertRef ver
 }
 
 float neighbor_mask_average(SculptSession *ss,
-                            const SculptMaskWriteInfo mask_write,
+                            const SculptMaskWriteInfo write_info,
                             PBVHVertRef vertex)
 {
   float avg = 0.0f;
@@ -144,7 +143,7 @@ float neighbor_mask_average(SculptSession *ss,
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
       SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex, ni) {
-        avg += mask_write.layer[ni.vertex.i];
+        avg += write_info.layer[ni.vertex.i];
         total++;
       }
       SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
@@ -152,15 +151,15 @@ float neighbor_mask_average(SculptSession *ss,
     case PBVH_GRIDS:
       SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex, ni) {
         avg += SCULPT_mask_get_at_grids_vert_index(
-            *ss->subdiv_ccg, *BKE_pbvh_get_grid_key(ss->pbvh), vertex.i);
+            *ss->subdiv_ccg, *BKE_pbvh_get_grid_key(ss->pbvh), ni.vertex.i);
         total++;
       }
       SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
       break;
     case PBVH_BMESH:
       SCULPT_VERTEX_NEIGHBORS_ITER_BEGIN (ss, vertex, ni) {
-        BMVert *vert = reinterpret_cast<BMVert *>(vertex.i);
-        avg += BM_ELEM_CD_GET_FLOAT(vert, mask_write.bm_offset);
+        BMVert *vert = reinterpret_cast<BMVert *>(ni.vertex.i);
+        avg += BM_ELEM_CD_GET_FLOAT(vert, write_info.bm_offset);
         total++;
       }
       SCULPT_VERTEX_NEIGHBORS_ITER_END(ni);
@@ -211,7 +210,8 @@ static void do_enhance_details_brush_task(Object *ob,
       ss, &test, brush->falloff_shape);
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -284,7 +284,8 @@ static void smooth_mask_node(Object *ob,
       ss, &test, brush->falloff_shape);
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -355,7 +356,8 @@ static void smooth_position_node(
       ss, &test, brush->falloff_shape);
 
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {
@@ -495,7 +497,8 @@ static void do_surface_smooth_brush_laplacian_task(Object *ob, const Brush *brus
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
 
   SCULPT_orig_vert_data_init(&orig_data, ob, node, undo::Type::Position);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     SCULPT_orig_vert_data_update(&orig_data, &vd);
@@ -536,7 +539,8 @@ static void do_surface_smooth_brush_displace_task(Object *ob, const Brush *brush
   SculptBrushTestFn sculpt_brush_test_sq_fn = SCULPT_brush_test_init_with_falloff_shape(
       ss, &test, brush->falloff_shape);
   const int thread_id = BLI_task_parallel_thread_id(nullptr);
-  auto_mask::NodeData automask_data = auto_mask::node_begin(*ob, ss->cache->automasking, *node);
+  auto_mask::NodeData automask_data = auto_mask::node_begin(
+      *ob, ss->cache->automasking.get(), *node);
 
   BKE_pbvh_vertex_iter_begin (ss->pbvh, node, vd, PBVH_ITER_UNIQUE) {
     if (!sculpt_brush_test_sq_fn(&test, vd.co)) {

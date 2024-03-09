@@ -6,6 +6,7 @@
  * \ingroup bke
  */
 
+#include <algorithm>
 #include <cstdio>
 
 #include "MEM_guardedalloc.h"
@@ -17,7 +18,7 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_armature_types.h"
 #include "DNA_gpencil_legacy_types.h"
@@ -30,13 +31,13 @@
 #include "DNA_screen_types.h"
 
 #include "BKE_colortools.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
 #include "BKE_lattice.hh"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
@@ -226,13 +227,14 @@ GpencilLineartLimitInfo BKE_gpencil_get_lineart_modifier_limits(const Object *ob
   LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
     if (md->type == eGpencilModifierType_Lineart) {
       LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
-      if (is_first || (lmd->flags & LRT_GPENCIL_USE_CACHE)) {
-        info.min_level = MIN2(info.min_level, lmd->level_start);
-        info.max_level = MAX2(info.max_level,
-                              (lmd->use_multiple_levels ? lmd->level_end : lmd->level_start));
+      if (is_first || (lmd->flags & MOD_LINEART_USE_CACHE)) {
+        info.min_level = std::min<char>(info.min_level, lmd->level_start);
+        info.max_level = std::max<char>(
+            info.max_level, (lmd->use_multiple_levels ? lmd->level_end : lmd->level_start));
         info.edge_types |= lmd->edge_types;
-        info.shadow_selection = MAX2(lmd->shadow_selection, info.shadow_selection);
-        info.silhouette_selection = MAX2(lmd->silhouette_selection, info.silhouette_selection);
+        info.shadow_selection = std::max<char>(lmd->shadow_selection, info.shadow_selection);
+        info.silhouette_selection = std::max<char>(lmd->silhouette_selection,
+                                                   info.silhouette_selection);
         is_first = false;
       }
     }
@@ -246,7 +248,7 @@ void BKE_gpencil_set_lineart_modifier_limits(GpencilModifierData *md,
 {
   BLI_assert(md->type == eGpencilModifierType_Lineart);
   LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
-  if (is_first_lineart || lmd->flags & LRT_GPENCIL_USE_CACHE) {
+  if (is_first_lineart || lmd->flags & MOD_LINEART_USE_CACHE) {
     lmd->level_start_override = info->min_level;
     lmd->level_end_override = info->max_level;
     lmd->edge_types_override = info->edge_types;
@@ -328,7 +330,7 @@ void BKE_gpencil_frame_active_set(Depsgraph *depsgraph, bGPdata *gpd)
     bGPdata *gpd_orig = (bGPdata *)DEG_get_original_id(&gpd->id);
 
     /* sync "actframe" changes back to main-db too,
-     * so that editing tools work with copy-on-write
+     * so that editing tools work with copy-on-evaluation
      * when the current frame changes
      */
     LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd_orig->layers) {
@@ -638,13 +640,13 @@ bGPDframe *BKE_gpencil_frame_retime_get(Depsgraph *depsgraph,
 
 static void gpencil_assign_object_eval(Object *object)
 {
-  BLI_assert(object->id.tag & LIB_TAG_COPIED_ON_WRITE);
+  BLI_assert(object->id.tag & LIB_TAG_COPIED_ON_EVAL);
 
   bGPdata *gpd_eval = object->runtime->gpd_eval;
 
-  gpd_eval->id.tag |= LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT;
+  gpd_eval->id.tag |= LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT;
 
-  if (object->id.tag & LIB_TAG_COPIED_ON_WRITE) {
+  if (object->id.tag & LIB_TAG_COPIED_ON_EVAL) {
     object->data = gpd_eval;
   }
 }
@@ -961,6 +963,7 @@ void BKE_gpencil_modifier_blend_read_data(BlendDataReader *reader, ListBase *lb,
       BLO_read_data_address(reader, &hmd->curfalloff);
       if (hmd->curfalloff) {
         BKE_curvemapping_blend_read(reader, hmd->curfalloff);
+        BKE_curvemapping_init(hmd->curfalloff);
       }
     }
     else if (md->type == eGpencilModifierType_Noise) {

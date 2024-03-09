@@ -8,19 +8,17 @@
  * \ingroup bke
  */
 
-namespace blender {
-namespace index_mask {
-class IndexMask;
-}
-using index_mask::IndexMask;
-}  // namespace blender
-
+#include "BLI_index_mask_fwd.hh"
 #include "BLI_offset_indices.hh"
 
 #include "BKE_mesh.h"
 #include "BKE_mesh_types.hh"
 
 namespace blender::bke {
+
+enum class AttrDomain : int8_t;
+class AttributeIDRef;
+
 namespace mesh {
 /* -------------------------------------------------------------------- */
 /** \name Polygon Data Evaluation
@@ -293,6 +291,17 @@ inline int face_triangles_num(const int face_size)
 }
 
 /**
+ * Return the range of triangles that belong to the given face.
+ */
+inline IndexRange face_triangles_range(OffsetIndices<int> faces, int face_i)
+{
+  const IndexRange face = faces[face_i];
+  /* This is the same as #poly_to_tri_count which is not included here. */
+  const int start_triangle = face.start() - face_i * 2;
+  return IndexRange(start_triangle, face_triangles_num(face.size()));
+}
+
+/**
  * Return the index of the edge's vertex that is not the \a vert.
  */
 inline int edge_other_vert(const int2 edge, const int vert)
@@ -308,10 +317,15 @@ inline int edge_other_vert(const int2 edge, const int vert)
 
 }  // namespace mesh
 
+/** Create a mesh with no built-in attributes. */
+Mesh *mesh_new_no_attributes(int verts_num, int edges_num, int faces_num, int corners_num);
+
 /** Calculate edges from faces. */
 void mesh_calc_edges(Mesh &mesh, bool keep_existing_edges, bool select_new_edges);
 
 void mesh_flip_faces(Mesh &mesh, const IndexMask &selection);
+
+void mesh_ensure_required_data_layers(Mesh &mesh);
 
 /** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
 void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals);
@@ -319,8 +333,8 @@ void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals);
 /** Set mesh vertex normals to known-correct values, avoiding future lazy computation. */
 void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals);
 
-void mesh_smooth_set(Mesh &mesh, bool use_smooth);
-void mesh_sharp_edges_set_from_angle(Mesh &mesh, float angle);
+void mesh_smooth_set(Mesh &mesh, bool use_smooth, bool keep_sharp_edges = false);
+void mesh_sharp_edges_set_from_angle(Mesh &mesh, float angle, bool keep_sharp_edges = false);
 
 /** Make edge and face visibility consistent with vertices. */
 void mesh_hide_vert_flush(Mesh &mesh);
@@ -333,5 +347,11 @@ void mesh_select_vert_flush(Mesh &mesh);
 void mesh_select_edge_flush(Mesh &mesh);
 /** Make vertex and edge visibility consistent with faces. */
 void mesh_select_face_flush(Mesh &mesh);
+
+/** Set the default name when adding a color attribute if there is no default yet. */
+void mesh_ensure_default_color_attribute_on_add(Mesh &mesh,
+                                                const AttributeIDRef &id,
+                                                AttrDomain domain,
+                                                eCustomDataType data_type);
 
 }  // namespace blender::bke

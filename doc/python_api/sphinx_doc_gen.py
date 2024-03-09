@@ -7,7 +7,7 @@ API dump in RST files
 ---------------------
   Run this script from Blender's root path once you have compiled Blender
 
-    blender --background --factory-startup -noaudio --python doc/python_api/sphinx_doc_gen.py
+    blender --background --factory-startup --python doc/python_api/sphinx_doc_gen.py
 
   This will generate python files in doc/python_api/sphinx-in/
   providing ./blender is or links to the blender executable
@@ -239,12 +239,12 @@ BPY_LOGGER.setLevel(logging.DEBUG)
 """
 # for quick rebuilds
 rm -rf /b/doc/python_api/sphinx-* && \
-./blender -b -noaudio --factory-startup -P doc/python_api/sphinx_doc_gen.py && \
+./blender -b --factory-startup -P doc/python_api/sphinx_doc_gen.py && \
 sphinx-build doc/python_api/sphinx-in doc/python_api/sphinx-out
 
 or
 
-./blender -b -noaudio --factory-startup -P doc/python_api/sphinx_doc_gen.py -- -f -B
+./blender -b --factory-startup -P doc/python_api/sphinx_doc_gen.py -- -f -B
 """
 
 # Switch for quick testing so doc-builds don't take so long.
@@ -1247,6 +1247,7 @@ context_type_map = {
     "soft_body": ("SoftBodyModifier", False),
     "speaker": ("Speaker", False),
     "texture": ("Texture", False),
+    "texture_node": ("Node", False),
     "texture_slot": ("TextureSlot", False),
     "texture_user": ("ID", False),
     "texture_user_property": ("Property", False),

@@ -144,17 +144,24 @@ def show_device_active(context):
     return backend_has_active_gpu(context)
 
 
-def get_effective_preview_denoiser(context):
+def get_effective_preview_denoiser(context, has_oidn_gpu):
     scene = context.scene
     cscene = scene.cycles
 
     if cscene.preview_denoiser != "AUTO":
         return cscene.preview_denoiser
 
+    if has_oidn_gpu:
+        return 'OPENIMAGEDENOISE'
+
     if context.preferences.addons[__package__].preferences.get_devices_for_type('OPTIX'):
         return 'OPTIX'
 
-    return 'OIDN'
+    return 'OPENIMAGEDENOISE'
+
+
+def has_oidn_gpu_devices(context):
+    return context.preferences.addons[__package__].preferences.has_oidn_gpu_devices()
 
 
 def use_mnee(context):
@@ -230,11 +237,18 @@ class CYCLES_RENDER_PT_sampling_viewport_denoise(CyclesButtonsPanel, Panel):
         col.prop(cscene, "preview_denoiser", text="Denoiser")
         col.prop(cscene, "preview_denoising_input_passes", text="Passes")
 
-        effective_preview_denoiser = get_effective_preview_denoiser(context)
+        has_oidn_gpu = has_oidn_gpu_devices(context)
+        effective_preview_denoiser = get_effective_preview_denoiser(context, has_oidn_gpu)
+        print(has_oidn_gpu, effective_preview_denoiser)
         if effective_preview_denoiser == 'OPENIMAGEDENOISE':
             col.prop(cscene, "preview_denoising_prefilter", text="Prefilter")
 
         col.prop(cscene, "preview_denoising_start_sample", text="Start Sample")
+
+        if effective_preview_denoiser == 'OPENIMAGEDENOISE':
+            row = col.row()
+            row.active = not use_cpu(context) and has_oidn_gpu
+            row.prop(cscene, "preview_denoising_use_gpu", text="Use GPU")
 
 
 class CYCLES_RENDER_PT_sampling_render(CyclesButtonsPanel, Panel):
@@ -294,6 +308,11 @@ class CYCLES_RENDER_PT_sampling_render_denoise(CyclesButtonsPanel, Panel):
         col.prop(cscene, "denoising_input_passes", text="Passes")
         if cscene.denoiser == 'OPENIMAGEDENOISE':
             col.prop(cscene, "denoising_prefilter", text="Prefilter")
+
+        if cscene.denoiser == 'OPENIMAGEDENOISE':
+            row = col.row()
+            row.active = not use_cpu(context) and has_oidn_gpu_devices(context)
+            row.prop(cscene, "denoising_use_gpu", text="Use GPU")
 
 
 class CYCLES_RENDER_PT_sampling_path_guiding(CyclesButtonsPanel, Panel):
@@ -639,7 +658,7 @@ class CYCLES_RENDER_PT_motion_blur(CyclesButtonsPanel, Panel):
         layout.active = rd.use_motion_blur
 
         col = layout.column()
-        col.prop(cscene, "motion_blur_position", text="Position")
+        col.prop(rd, "motion_blur_position", text="Position")
         col.prop(rd, "motion_blur_shutter")
         col.separator()
         col.prop(cscene, "rolling_shutter_type", text="Rolling Shutter")
@@ -913,6 +932,7 @@ class CYCLES_RENDER_PT_override(CyclesButtonsPanel, Panel):
         view_layer = context.view_layer
 
         layout.prop(view_layer, "material_override")
+        layout.prop(view_layer, "world_override")
         layout.prop(view_layer, "samples")
 
 
@@ -1573,6 +1593,7 @@ class CYCLES_LIGHT_PT_light(CyclesButtonsPanel, Panel):
         col.separator()
 
         if light.type in {'POINT', 'SPOT'}:
+            col.prop(light, "use_soft_falloff")
             col.prop(light, "shadow_soft_size", text="Radius")
         elif light.type == 'SUN':
             col.prop(light, "angle")
@@ -1587,6 +1608,7 @@ class CYCLES_LIGHT_PT_light(CyclesButtonsPanel, Panel):
                 sub.prop(light, "size_y", text="Y")
 
         if not (light.type == 'AREA' and clamp.is_portal):
+            col.separator()
             sub = col.column()
             sub.prop(clamp, "max_bounces")
 
@@ -2217,8 +2239,7 @@ class CYCLES_RENDER_PT_debug(CyclesDebugButtonsPanel, Panel):
         col = layout.column(heading="CPU")
 
         row = col.row(align=True)
-        row.prop(cscene, "debug_use_cpu_sse2", toggle=True)
-        row.prop(cscene, "debug_use_cpu_sse41", toggle=True)
+        row.prop(cscene, "debug_use_cpu_sse42", toggle=True)
         row.prop(cscene, "debug_use_cpu_avx2", toggle=True)
         col.prop(cscene, "debug_bvh_layout", text="BVH")
 
