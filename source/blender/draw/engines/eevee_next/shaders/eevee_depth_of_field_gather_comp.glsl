@@ -96,7 +96,7 @@ void main()
   }
 
   ivec2 out_texel = ivec2(gl_GlobalInvocationID.xy);
-  imageStoreFast(out_color_img, out_texel, out_color);
-  imageStoreFast(out_weight_img, out_texel, vec4(out_weight));
-  imageStoreFast(out_occlusion_img, out_texel, out_occlusion.xyxy);
+  imageStore(out_color_img, out_texel, out_color);
+  imageStore(out_weight_img, out_texel, vec4(out_weight));
+  imageStore(out_occlusion_img, out_texel, out_occlusion.xyxy);
 }

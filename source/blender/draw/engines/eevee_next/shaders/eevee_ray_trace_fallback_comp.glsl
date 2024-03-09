@@ -22,6 +22,15 @@ void main()
   ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
                         uniform_buf.raytrace.resolution_bias;
 
+  /* Check whether texel_fullres and texel are out of bounds for all cases, so we can utilise fast
+   * texture funcs and early exit if not. */
+  if (any(greaterThanEqual(texel_fullres, textureSize(depth_tx, 0).xy)) ||
+      any(lessThan(texel_fullres, ivec2(0))) ||
+      any(greaterThanEqual(texel, textureSize(ray_time_img, 0).xy)) || any(lessThan(texel, ivec2(0))))
+  {
+    return;
+  }
+
   float depth = texelFetch(depth_tx, texel_fullres, 0).r;
   vec2 uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
 

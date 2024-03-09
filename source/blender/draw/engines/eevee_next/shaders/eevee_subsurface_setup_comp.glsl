@@ -49,7 +49,7 @@ void main(void)
   }
   else {
     /* No need to write radiance_img since the radiance won't be used at all. */
-    imageStoreFast(object_id_img, texel, uvec4(0));
+    imageStore(object_id_img, texel, uvec4(0));
   }
 
   barrier();

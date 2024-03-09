@@ -25,7 +25,7 @@ void main()
       gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres, closure_index);
 
   if (closure.type == CLOSURE_NONE_ID) {
-    imageStoreFast(out_ray_data_img, texel, vec4(0.0));
+    imageStore(out_ray_data_img, texel, vec4(0.0));
     return;
   }
 

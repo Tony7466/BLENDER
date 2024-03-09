@@ -114,7 +114,7 @@ void main()
     ivec2 sample_texel = texel_fullres + offset;
     ivec3 sample_tile = ivec3(sample_texel / RAYTRACE_GROUP_SIZE, closure_index);
     /* Make sure the sample has been processed and do not contain garbage data. */
-    if (imageLoadFast(tile_mask_img, sample_tile).r == 0u) {
+    if (imageLoad(tile_mask_img, sample_tile).r == 0u) {
       continue;
     }
 

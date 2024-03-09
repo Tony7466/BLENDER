@@ -75,7 +75,7 @@ void main()
   bool do_skip_denoise = uniform_buf.raytrace.skip_denoise;
 #endif
   if (do_skip_denoise) {
-    imageStoreFast(out_radiance_img, texel_fullres, imageLoadFast(ray_radiance_img, texel));
+    imageStore(out_radiance_img, texel_fullres, imageLoad(ray_radiance_img, texel));
     return;
   }
 

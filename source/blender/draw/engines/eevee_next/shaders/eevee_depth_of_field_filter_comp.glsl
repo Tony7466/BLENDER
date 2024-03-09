@@ -165,6 +165,6 @@ void main()
   median = filter_median(low, median, high);
 
   ivec2 out_texel = ivec2(gl_GlobalInvocationID.xy);
-  imageStoreFast(out_color_img, out_texel, median.color);
-  imageStoreFast(out_weight_img, out_texel, vec4(median.weight));
+  imageStore(out_color_img, out_texel, median.color);
+  imageStore(out_weight_img, out_texel, vec4(median.weight));
 }
