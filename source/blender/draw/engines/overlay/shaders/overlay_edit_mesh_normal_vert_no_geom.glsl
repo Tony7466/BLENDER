@@ -39,11 +39,7 @@ bool test_occlusion()
   return (ndc.z - 0.00035) > texture(depthTex, ndc.xy).r;
 }
 
-vec4 vertex_main(uint src_index,
-                 vec3 in_pos,
-                 vec4 in_lnor,
-                 vec4 in_vnor,
-                 vec4 in_norAndFlag)
+vec4 vertex_main(uint src_index, vec3 in_pos, vec4 in_lnor, vec4 in_vnor, vec4 in_norAndFlag)
 {
   /* Avoid undefined behavior after return. */
   interp.final_color = vec4(0.0);
@@ -103,10 +99,11 @@ vec4 vertex_main(uint src_index,
 /* Real main */
 
 #ifndef INT16_MAX
-#define INT16_MAX 32767
+#  define INT16_MAX 32767
 #endif
 
-ivec4 Inor_1010102_to_ivec4(int data) {
+ivec4 Inor_1010102_to_ivec4(int data)
+{
   ivec4 out_vec;
 
   /* 0b11,1111,1111 in hex */
@@ -118,7 +115,7 @@ ivec4 Inor_1010102_to_ivec4(int data) {
 
   int shifted = data >> 10;
   out_vec.y = shifted & mask;
-  if(out_vec.y & 0x200){
+  if (out_vec.y & 0x200) {
     out_vec.y |= ~mask;
   }
 
@@ -137,19 +134,22 @@ ivec4 Inor_1010102_to_ivec4(int data) {
 }
 
 #define nor_to_vec4(index, in_data, out_vec) \
-{ \
-  if (vertex_fetch_get_attr_type(in_data) == GPU_SHADER_ATTR_TYPE_SHORT) { \
-    out_vec = (vec4)vertex_fetch_attribute(index, in_data, short4) / vec4(INT16_MAX); \
-  } else if (vertex_fetch_get_attr_type(in_data) == GPU_SHADER_ATTR_TYPE_INT1010102_NORM) { \
-    ivec4 tt = Inor_1010102_to_ivec4(vertex_fetch_attribute(index, in_data, vec3_1010102_Inorm)); \
-    out_vec.x = float(tt.x) / 255.0; \
-    out_vec.y = float(tt.y) / 255.0; \
-    out_vec.z = float(tt.z) / 255.0; \
-    out_vec.w = float(tt.w); \
-  } else { \
-    out_vec = vertex_fetch_attribute(index, in_data, vec4); \
-  } \
-}
+  { \
+    if (vertex_fetch_get_attr_type(in_data) == GPU_SHADER_ATTR_TYPE_SHORT) { \
+      out_vec = (vec4)vertex_fetch_attribute(index, in_data, short4) / vec4(INT16_MAX); \
+    } \
+    else if (vertex_fetch_get_attr_type(in_data) == GPU_SHADER_ATTR_TYPE_INT1010102_NORM) { \
+      ivec4 tt = Inor_1010102_to_ivec4( \
+          vertex_fetch_attribute(index, in_data, vec3_1010102_Inorm)); \
+      out_vec.x = float(tt.x) / 255.0; \
+      out_vec.y = float(tt.y) / 255.0; \
+      out_vec.z = float(tt.z) / 255.0; \
+      out_vec.w = float(tt.w); \
+    } \
+    else { \
+      out_vec = vertex_fetch_attribute(index, in_data, vec4); \
+    } \
+  }
 
 void main()
 {
@@ -187,7 +187,8 @@ void main()
   vec4 clippedP[2];
   clippedP[0] = clip_line_point_homogeneous_space(out_pos[0], out_pos[1]);
   clippedP[1] = clip_line_point_homogeneous_space(out_pos[1], out_pos[0]);
-  vec2 e = normalize(((clippedP[1].xy / clippedP[1].w) - (clippedP[0].xy / clippedP[0].w)) * sizeViewport.xy);
+  vec2 e = normalize(((clippedP[1].xy / clippedP[1].w) - (clippedP[0].xy / clippedP[0].w)) *
+                     sizeViewport.xy);
 
 #if 0 /* Hard turn when line direction changes quadrant. */
   e = abs(e);
