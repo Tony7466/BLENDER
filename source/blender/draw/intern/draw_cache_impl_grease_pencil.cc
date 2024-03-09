@@ -556,8 +556,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
                               float4x2 texture_matrix,
                               GreasePencilStrokeVert &s_vert,
                               GreasePencilColorVert &c_vert) {
-      copy_v3_v3(s_vert.pos,
-                 math::transform_point(layer_space_to_object_space, positions[point_i]));
+      const float3 pos = math::transform_point(layer_space_to_object_space, positions[point_i]);
+      copy_v3_v3(s_vert.pos, pos);
       s_vert.radius = radii[point_i] * ((end_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);
       s_vert.opacity = opacities[point_i] *
                        ((start_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);

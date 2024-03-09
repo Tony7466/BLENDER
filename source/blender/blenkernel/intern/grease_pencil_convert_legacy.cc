@@ -154,6 +154,8 @@ static void find_used_vertex_groups(const bGPDframe &gpf,
     bDeformGroup *def_group_copy = static_cast<bDeformGroup *>(MEM_dupallocN(def_group));
     BLI_addtail(&r_vertex_group_names, def_group_copy);
   }
+}
+
 /*
  * This takes the legacy uv tranforms and returns the texture matrix.
  */
@@ -180,7 +182,7 @@ float3x2 convert_texture_to_matrix(const float2 uv_translation,
 
   /* Apply bounding box rescaling. */
   textmat[2] -= minv;
-  textmat = float2x2::diagonal(1.0f / d) * textmat;
+  textmat = math::from_scale<float2x2>(1.0f / d) * textmat;
 
   /* Apply translation. */
   textmat[2] += uv_translation;
@@ -191,7 +193,7 @@ float3x2 convert_texture_to_matrix(const float2 uv_translation,
   textmat[2] += center;
 
   /* Apply scale. */
-  textmat = float2x2::diagonal(uv_scale_inv) * textmat;
+  textmat = math::from_scale<float2x2>(uv_scale_inv) * textmat;
 
   return textmat;
 }

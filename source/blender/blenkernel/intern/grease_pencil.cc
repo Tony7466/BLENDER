@@ -1523,14 +1523,15 @@ blender::float3x2 get_stroke_to_texture_matrix(const blender::bke::CurvesGeometr
                                                const int curve_i)
 {
   using namespace blender;
-  const bke::AttributeAccessor attributes = curves.attributes();
+  using namespace blender::bke;
+  const AttributeAccessor attributes = curves.attributes();
   /* Matrices can not be stored as attributes so must be broke into two parts. */
 
   /* Default with the 3x2 identity. */
   const VArray<float3> textmatA = *attributes.lookup_or_default<float3>(
-      "fill_matrixA", ATTR_DOMAIN_CURVE, float3(1.0f, 0.0f, 0.0f));
+      "fill_matrixA", AttrDomain::Curve, float3(1.0f, 0.0f, 0.0f));
   const VArray<float3> textmatB = *attributes.lookup_or_default<float3>(
-      "fill_matrixB", ATTR_DOMAIN_CURVE, float3(0.0f, 1.0f, 0.0f));
+      "fill_matrixB", AttrDomain::Curve, float3(0.0f, 1.0f, 0.0f));
 
   const float3x2 textmat = math::transpose(float2x3(textmatA[curve_i], textmatB[curve_i]));
 
@@ -1548,9 +1549,9 @@ void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
   /* Matrices can not be stored as attributes so must be broke into two parts. */
 
   SpanAttributeWriter<float3> textmatA = attributes.lookup_or_add_for_write_span<float3>(
-      "fill_matrixA", ATTR_DOMAIN_CURVE);
+      "fill_matrixA", AttrDomain::Curve);
   SpanAttributeWriter<float3> textmatB = attributes.lookup_or_add_for_write_span<float3>(
-      "fill_matrixB", ATTR_DOMAIN_CURVE);
+      "fill_matrixB", AttrDomain::Curve);
 
   const float2x3 textmatT = math::transpose(textmat);
   textmatA.span[curve_i] = textmatT[0];
