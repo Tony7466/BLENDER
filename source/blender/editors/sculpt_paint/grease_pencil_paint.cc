@@ -9,6 +9,7 @@
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
+#include "BKE_scene.hh"
 
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_color.h"
@@ -146,7 +147,6 @@ struct PaintOperationExecutor {
   BrushGpencilSettings *settings_;
   float4 vertex_color_;
   float hardness_;
-  blender::float4x2 texture_space_;
 
   bke::greasepencil::Drawing *drawing_;
 
@@ -176,10 +176,6 @@ struct PaintOperationExecutor {
 
     // const bool use_vertex_color_fill = use_vertex_color && ELEM(
     //     brush->gpencil_settings->vertex_mode, GPPAINT_MODE_STROKE, GPPAINT_MODE_BOTH);
-
-    /* TODO: Align with the view or drawing plane. */
-    texture_space_ = math::transpose(
-        float2x4(float4(1.0f, 0.0f, 0.0f, 0.0f), float4(0.0f, 0.0f, 1.0f, 0.0f)));
 
     BLI_assert(grease_pencil->has_active_layer());
     drawing_ = grease_pencil->get_editable_drawing_at(*grease_pencil->get_active_layer(),
@@ -219,8 +215,6 @@ struct PaintOperationExecutor {
     const float start_radius = this->radius_from_input_sample(self, C, start_sample);
     const float start_opacity = this->opacity_from_input_sample(start_sample);
     const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
-
-    self.texture_space_ = texture_space_;
 
     self.screen_space_coords_orig_.append(start_coords);
     self.screen_space_curve_fitted_coords_.append(Vector<float2>({start_coords}));
@@ -445,7 +439,7 @@ struct PaintOperationExecutor {
                                       {"position", "radius", "opacity", "vertex_color"},
                                       curves.points_range().take_back(1));
 
-    set_texture_matrix(curves, curves.curves_range().last(), texture_space_);
+    set_texture_matrix(curves, curves.curves_range().last(), self.texture_space_);
   }
 
   void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
@@ -492,6 +486,41 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
     placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
     placement_.set_origin_to_nearest_stroke(start_sample.mouse_position);
   }
+
+  float3 u_dir;
+  float3 v_dir;
+  float3 origin = float3(0.0f);
+  /* Align texture with the drawing plane. */
+  switch (scene->toolsettings->gp_sculpt.lock_axis) {
+    case GP_LOCKAXIS_VIEW:
+      origin = placement_.project(float2(0.0f, 0.0f));
+      u_dir = math::normalize(placement_.project(float2(region->winx, 0.0f)) - origin);
+      v_dir = math::normalize(placement_.project(float2(0.0f, region->winy)) - origin);
+      break;
+    case GP_LOCKAXIS_Y:
+      u_dir = float3(1.0f, 0.0f, 0.0f);
+      v_dir = float3(0.0f, 0.0f, 1.0f);
+      break;
+    case GP_LOCKAXIS_X:
+      u_dir = float3(0.0f, 1.0f, 0.0f);
+      v_dir = float3(0.0f, 0.0f, 1.0f);
+      break;
+    case GP_LOCKAXIS_Z:
+      u_dir = float3(1.0f, 0.0f, 0.0f);
+      v_dir = float3(0.0f, 1.0f, 0.0f);
+      break;
+    case GP_LOCKAXIS_CURSOR: {
+      float3x3 mat;
+      BKE_scene_cursor_rot_to_mat3(&scene->cursor, mat.ptr());
+      u_dir = mat * float3(1.0f, 0.0f, 0.0f);
+      v_dir = mat * float3(0.0f, 1.0f, 0.0f);
+      origin = float3(scene->cursor.location);
+      break;
+    }
+  }
+
+  this->texture_space_ = math::transpose(float2x4(float4(u_dir, -math::dot(u_dir, origin)),
+                                                  float4(v_dir, -math::dot(v_dir, origin))));
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
       CTX_data_main(&C), object, brush);
