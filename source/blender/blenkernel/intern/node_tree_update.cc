@@ -616,6 +616,14 @@ class NodeTreeMainUpdater {
     return false;
   }
 
+  struct InternalLink {
+    bNodeSocket *from;
+    bNodeSocket *to;
+    int input_index = 0;
+
+    BLI_STRUCT_EQUALITY_OPERATORS_3(InternalLink, from, to, input_index);
+  };
+
   void update_internal_links(bNodeTree &ntree)
   {
     bke::node_tree_runtime::AllowUsingOutdatedInfo allow_outdated_info{ntree};
@@ -625,7 +633,7 @@ class NodeTreeMainUpdater {
         continue;
       }
       /* Find all expected internal links. */
-      Vector<std::pair<bNodeSocket *, bNodeSocket *>> expected_internal_links;
+      Vector<InternalLink> expected_internal_links;
       for (const bNodeSocket *output_socket : node->output_sockets()) {
         if (!output_socket->is_available()) {
           continue;
@@ -637,31 +645,48 @@ class NodeTreeMainUpdater {
           continue;
         }
         const bNodeSocket *input_socket = this->find_internally_linked_input(output_socket);
-        if (input_socket != nullptr) {
-          expected_internal_links.append(
-              {const_cast<bNodeSocket *>(input_socket), const_cast<bNodeSocket *>(output_socket)});
+        if (input_socket == nullptr) {
+          continue;
         }
+
+        /* Multi-input index of link. */
+        const Span<const bNodeLink *> connected_links = input_socket->directly_linked_links();
+        const int index = std::distance(
+            connected_links.begin(),
+            std::find_if(
+                connected_links.begin(), connected_links.end(), [&](const bNodeLink *link) {
+                  return !bke::nodeIsDanglingReroute(&ntree, link->fromnode);
+                }));
+
+        const int total_links = connected_links.size();
+        /* Legacy order requer inversion of index and use last index as default if there is no
+         * non-dangling connection. */
+        const int r_index = total_links - 1 - (index == total_links ? 0 : index);
+        expected_internal_links.append(InternalLink{const_cast<bNodeSocket *>(input_socket),
+                                                    const_cast<bNodeSocket *>(output_socket),
+                                                    r_index});
       }
+
       /* Rebuilt internal links if they have changed. */
       if (node->runtime->internal_links.size() != expected_internal_links.size()) {
         this->update_internal_links_in_node(ntree, *node, expected_internal_links);
+        continue;
       }
-      else {
-        for (auto &item : expected_internal_links) {
-          const bNodeSocket *from_socket = item.first;
-          const bNodeSocket *to_socket = item.second;
-          bool found = false;
-          for (const bNodeLink &internal_link : node->runtime->internal_links) {
-            if (from_socket == internal_link.fromsock && to_socket == internal_link.tosock) {
-              found = true;
-            }
-          }
-          if (!found) {
-            this->update_internal_links_in_node(ntree, *node, expected_internal_links);
-            break;
-          }
-        }
+
+      const bool skip = std::all_of(
+          node->runtime->internal_links.begin(),
+          node->runtime->internal_links.end(),
+          [&](const bNodeLink &link) {
+            const InternalLink internal_link{
+                link.fromsock, link.tosock, link.multi_input_socket_index};
+            return expected_internal_links.as_span().contains(internal_link);
+          });
+
+      if (skip) {
+        continue;
       }
+
+      this->update_internal_links_in_node(ntree, *node, expected_internal_links);
     }
   }
 
@@ -701,18 +726,17 @@ class NodeTreeMainUpdater {
 
   void update_internal_links_in_node(bNodeTree &ntree,
                                      bNode &node,
-                                     Span<std::pair<bNodeSocket *, bNodeSocket *>> links)
+                                     Span<InternalLink> internal_links)
   {
     node.runtime->internal_links.clear();
-    node.runtime->internal_links.reserve(links.size());
-    for (const auto &item : links) {
-      bNodeSocket *from_socket = item.first;
-      bNodeSocket *to_socket = item.second;
+    node.runtime->internal_links.reserve(internal_links.size());
+    for (const InternalLink &internal_link : internal_links) {
       bNodeLink link{};
       link.fromnode = &node;
-      link.fromsock = from_socket;
+      link.fromsock = internal_link.from;
       link.tonode = &node;
-      link.tosock = to_socket;
+      link.tosock = internal_link.to;
+      link.multi_input_socket_index = internal_link.input_index;
       link.flag |= NODE_LINK_VALID;
       node.runtime->internal_links.append(link);
     }
