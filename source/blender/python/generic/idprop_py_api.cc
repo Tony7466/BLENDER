@@ -743,8 +743,10 @@ bool BPy_IDProperty_Map_ValidateAndCreate(PyObject *name_obj, IDProperty *group,
      * obviously this isn't a complete solution, but helps for common cases. */
     prop_exist = IDP_GetPropertyFromGroup(group, prop->name);
     if ((prop_exist != nullptr) &&
-        ((prop_exist->type == prop->type) || (ELEM(prop_exist->type, IDP_FLOAT, IDP_DOUBLE) &&
-                                              ELEM(prop->type, IDP_FLOAT, IDP_DOUBLE))) &&
+        ((prop_exist->type == prop->type) ||
+         /* Can convert between float and double types without loosing ui data. */
+         (ELEM(prop_exist->type, IDP_FLOAT, IDP_DOUBLE) &&
+          ELEM(prop->type, IDP_FLOAT, IDP_DOUBLE))) &&
         (prop_exist->subtype == prop->subtype))
     {
       BLI_assert(IDP_ui_data_type(prop_exist) == IDP_ui_data_type(prop));
