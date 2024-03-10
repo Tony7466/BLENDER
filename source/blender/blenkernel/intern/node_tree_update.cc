@@ -665,7 +665,7 @@ class NodeTreeMainUpdater {
         const bNodeLink *connected_link = first_non_dangling_link(ntree, connected_links);
 
         const int index = connected_link ? connected_link->multi_input_socket_index :
-                                           connected_links.size() - 1;
+                                           math::max<int>(0, connected_links.size() - 1);
         expected_internal_links.append(InternalLink{const_cast<bNodeSocket *>(input_socket),
                                                     const_cast<bNodeSocket *>(output_socket),
                                                     index});
