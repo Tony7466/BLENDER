@@ -848,10 +848,10 @@ template<typename Interrupter = NullInterupter>
 static void solve_binary_constraints(const ConstraintSet &constraints,
                                      BitGroupVector<> &variable_domains)
 {
-  /* TODO sorting the worklist could have significant impact on performance.
+  /* TODO sorting the worklist could have significant impact on performance
+   * by reducing unnecessary repetition of constraints.
    * Using the topological sorting of sockets should make a decent "preconditioner".
-   * This should get the algorithm to behave mostly like the current R-L/L-R solver.
-   */
+   * This is similar to what the current R-L/L-R solver does. */
   Stack<int2> worklist;
   Interrupter::notify("== Binary Constraint Solve ==");
   for (const int i : variable_domains.index_range()) {
@@ -907,9 +907,104 @@ static void solve_constraints(const ConstraintSet &constraints,
 
 }  // namespace ac3
 
-static void test_ac3_field_inferencing(const bNodeTree &tree)
+static void test_ac3_field_inferencing(const bNodeTree &tree) {
+  using Interrupter = ac3::PrintInterupter;
+
+  const int num_vars = tree.all_sockets().size();
+  /* Domain has two values: Single and Field.
+   * The result can be a combination of both. */
+  const int domain_size = 2;
+  enum DomainValue {
+    Single = 0,
+    Field = 1,
+  };
+
+  const Span<const bNode *> nodes = tree.toposort_right_to_left();
+  ResourceScope scope;
+  Array<const FieldInferencingInterface *> interface_by_node(nodes.size());
+  prepare_inferencing_interfaces(nodes, interface_by_node, scope);
+
+  ac3::ConstraintSet constraints;
+  for (const bNode *node : nodes) {
+    const FieldInferencingInterface &inferencing_interface = *interface_by_node[node->index()];
+    for (const bNodeSocket *output_socket : node->output_sockets()) {
+      const int var_index = output_socket->index_in_tree();
+      //SocketFieldState &state = field_state_by_socket_id[output_socket->index_in_tree()];
+
+      const OutputFieldDependency &field_dependency =
+          inferencing_interface.outputs[output_socket->index()];
+
+      if (field_dependency.field_type() == OutputSocketFieldType::FieldSource) {
+        constraints.add(var_index, [](const int value) { return value == DomainValue::Field; });
+        continue;
+      }
+      if (field_dependency.field_type() == OutputSocketFieldType::None) {
+        constraints.add(var_index, [](const int value) { return value == DomainValue::Single; });
+        continue;
+      }
+
+      /* The output is required to be a single value when it is connected to any input that does
+       * not support fields. */
+      for (const bNodeSocket *target_socket : output_socket->directly_linked_sockets()) {
+        if (target_socket->is_available()) {
+          constraints.add(var_index, target_socket->index_in_tree(), [](int value_a, int value_b) {
+            return value_a == DomainValue::Single || value_b == DomainValue::Field;
+          });
+        }
+      }
+
+      //if (state.requires_single) {
+      //  bool any_input_is_field_implicitly = false;
+      //  const Vector<const bNodeSocket *> connected_inputs = gather_input_socket_dependencies(
+      //      field_dependency, *node);
+      //  for (const bNodeSocket *input_socket : connected_inputs) {
+      //    if (!input_socket->is_available()) {
+      //      continue;
+      //    }
+      //    if (inferencing_interface.inputs[input_socket->index()] ==
+      //        InputSocketFieldType::Implicit)
+      //    {
+      //      if (!input_socket->is_logically_linked()) {
+      //        any_input_is_field_implicitly = true;
+      //        break;
+      //      }
+      //    }
+      //  }
+      //  if (any_input_is_field_implicitly) {
+      //    /* This output isn't a single value actually. */
+      //    state.requires_single = false;
+      //  }
+      //  else {
+      //    /* If the output is required to be a single value, the connected inputs in the same
+      //     * node must not be fields as well. */
+      //    for (const bNodeSocket *input_socket : connected_inputs) {
+      //      field_state_by_socket_id[input_socket->index_in_tree()].requires_single = true;
+      //    }
+      //  }
+      //}
+    }
+
+    /* Some inputs do not require fields independent of what the outputs are connected to. */
+    for (const bNodeSocket *input_socket : node->input_sockets()) {
+      SocketFieldState &state = field_state_by_socket_id[input_socket->index_in_tree()];
+      if (inferencing_interface.inputs[input_socket->index()] == InputSocketFieldType::None) {
+        state.requires_single = true;
+        state.is_always_single = true;
+      }
+    }
+
+    /* Find reverse dependencies and resolve conflicts, which may require another pass. */
+    if (propagate_special_data_requirements(tree, *node, field_state_by_socket_id)) {
+      need_update = true;
+    }
+  }
+
+  ac3::solve_constraints<Interrupter>(constraints, num_vars, domain_size);
+}
+
+static void test_ac3_example()
 {
-  using T = float;
+  using Interrupter = ac3::PrintInterupter;
 
   /* Example taken from
    * https://www.boristhebrave.com/2021/08/30/arc-consistency-explained/
@@ -997,7 +1092,7 @@ static void test_ac3_field_inferencing(const bNodeTree &tree)
     return value_a > value_b;
   });
 
-  ac3::solve_constraints<ac3::PrintInterupter>(constraints, num_vars, domain_size);
+  ac3::solve_constraints<Interrupter>(constraints, num_vars, domain_size);
 }
 
 bool update_field_inferencing(const bNodeTree &tree)
