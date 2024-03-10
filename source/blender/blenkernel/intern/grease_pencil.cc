@@ -1515,16 +1515,46 @@ blender::float3x2 get_stroke_to_texture_matrix(const blender::bke::CurvesGeometr
 {
   using namespace blender;
   using namespace blender::bke;
+  using namespace blender::math;
   const AttributeAccessor attributes = curves.attributes();
-  /* Matrices can not be stored as attributes so must be broke into two parts. */
 
-  /* Default with the 3x2 identity. */
-  const VArray<float3> textmatA = *attributes.lookup_or_default<float3>(
-      "fill_matrixA", AttrDomain::Curve, float3(1.0f, 0.0f, 0.0f));
-  const VArray<float3> textmatB = *attributes.lookup_or_default<float3>(
-      "fill_matrixB", AttrDomain::Curve, float3(0.0f, 1.0f, 0.0f));
+  const VArray<float> uv_rotations = *attributes.lookup_or_default<float>(
+      "uv_rotation", AttrDomain::Curve, 0.0f);
+  const VArray<float2> uv_translations = *attributes.lookup_or_default<float2>(
+      "uv_translation", AttrDomain::Curve, float2(0.0f, 0.0f));
+  const VArray<float2> uv_scales = *attributes.lookup_or_default<float2>(
+      "uv_scale", AttrDomain::Curve, float2(1.0f, 1.0f));
 
-  const float3x2 textmat = math::transpose(float2x3(textmatA[curve_i], textmatB[curve_i]));
+  const float uv_rotation = uv_rotations[curve_i];
+  const float2 uv_translation = uv_translations[curve_i];
+  const float2 uv_scale = uv_scales[curve_i];
+
+  const float2 uv_scale_inv = safe_rcp(uv_scale);
+  const float s = sin(uv_rotation);
+  const float c = cos(uv_rotation);
+  const float2x2 rot = float2x2(float2(c, s), float2(-s, c));
+
+  float3x2 textmat = float3x2::identity();
+  /*
+   * The order in which the three transforms are applied, has been carefully chosen to be easy to
+   * invert.
+   *
+   * The translation is applied last so that the origin goes to `uv_translation`
+   * The rotation is applied after the scale so that the `u` direction's angle is `uv_rotation`
+   * Scale is the only transform that changes the length of the basis vectors and if it is applied
+   * first it's independent of the other transforms.
+   *
+   * These properties are not true with a different order.
+   */
+
+  /* Apply scale. */
+  textmat = from_scale<float2x2>(uv_scale_inv) * textmat;
+
+  /* Apply rotation. */
+  textmat = rot * textmat;
+
+  /* Apply translation. */
+  textmat[2] += uv_translation;
 
   return textmat;
 }
@@ -1535,21 +1565,36 @@ void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
 {
   using namespace blender;
   using namespace blender::bke;
+  using namespace blender::math;
+
+  /* Solve for translation, the translation is simply the origin. */
+  const float2 uv_translation = textmat[2];
+
+  /* Solve rotation, the angle of the `u` basis is the rotation. */
+  const float uv_rotation = atan2(textmat[0][1], textmat[0][0]);
+
+  /* Calculate the determinant to check if the `v` scale is negative. */
+  const float det = determinant(float2x2(textmat));
+
+  /* Solve scale, scaling is the only transformation that changes the length, so scale factor is
+   * simply the length. And flip the sign of `v` if the determinant is negative. */
+  const float2 uv_scale = safe_rcp(float2(length(textmat[0]), sign(det) * length(textmat[1])));
 
   MutableAttributeAccessor attributes = curves.attributes_for_write();
-  /* Matrices can not be stored as attributes so must be broke into two parts. */
+  SpanAttributeWriter<float> uv_rotations = attributes.lookup_or_add_for_write_span<float>(
+      "uv_rotation", AttrDomain::Curve);
+  SpanAttributeWriter<float2> uv_translations = attributes.lookup_or_add_for_write_span<float2>(
+      "uv_translation", AttrDomain::Curve);
+  SpanAttributeWriter<float2> uv_scales = attributes.lookup_or_add_for_write_span<float2>(
+      "uv_scale", AttrDomain::Curve);
 
-  SpanAttributeWriter<float3> textmatA = attributes.lookup_or_add_for_write_span<float3>(
-      "fill_matrixA", AttrDomain::Curve);
-  SpanAttributeWriter<float3> textmatB = attributes.lookup_or_add_for_write_span<float3>(
-      "fill_matrixB", AttrDomain::Curve);
+  uv_rotations.span[curve_i] = uv_rotation;
+  uv_translations.span[curve_i] = uv_translation;
+  uv_scales.span[curve_i] = uv_scale;
 
-  const float2x3 textmatT = math::transpose(textmat);
-  textmatA.span[curve_i] = textmatT[0];
-  textmatB.span[curve_i] = textmatT[1];
-
-  textmatA.finish();
-  textmatB.finish();
+  uv_rotations.finish();
+  uv_translations.finish();
+  uv_scales.finish();
 }
 
 blender::float4x2 get_texture_matrix(const blender::bke::greasepencil::Drawing &drawing,
