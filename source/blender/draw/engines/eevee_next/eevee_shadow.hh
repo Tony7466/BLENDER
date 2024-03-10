@@ -228,6 +228,7 @@ class ShadowModule {
 
   Framebuffer usage_tag_fb;
 
+  PassSimple caster_update_ps_ = {"CasterUpdate"};
   /** List of Resource IDs (to get bounds) for tagging passes. */
   StorageVectorBuffer<uint, 128> past_casters_updated_ = {"PastCastersUpdated"};
   StorageVectorBuffer<uint, 128> curr_casters_updated_ = {"CurrCastersUpdated"};
@@ -361,6 +362,7 @@ class ShadowModule {
  private:
   void remove_unused();
   void debug_page_map_call(DRWPass *pass);
+  bool shadow_update_finished();
 
   /** Compute approximate screen pixel space radius. */
   float screen_pixel_radius(const View &view, const int2 &extent);
@@ -393,6 +395,11 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   int tilemaps_needed_;
   /** Scaling factor to the light shape for shadow ray casting. */
   float softness_factor_;
+  /**
+   * `radius * softness_factor` (Bypasses LightModule radius modifications
+   * to avoid unnecessary padding in the shadow projection).
+   */
+  float shadow_radius_;
 
  public:
   ShadowPunctual(ShadowModule &module) : shadows_(module){};
@@ -412,7 +419,8 @@ class ShadowPunctual : public NonCopyable, NonMovable {
             float cone_aperture,
             float light_shape_radius,
             float max_distance,
-            float softness_factor);
+            float softness_factor,
+            float shadow_radius);
 
   /**
    * Release the tile-maps that will not be used in the current frame.

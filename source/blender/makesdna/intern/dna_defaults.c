@@ -26,6 +26,9 @@
  *
  * Magic numbers should be replaced with flags before committing.
  *
+ * \note Defaults must be registered by adding the #SDNA_DEFAULT_DECL_STRUCT and
+ * #SDNA_DEFAULT_DECL macro calls to the lists below.
+ *
  * Public API
  * ----------
  *
@@ -72,6 +75,7 @@
 
 #include "DNA_defaults.h"
 
+#include "DNA_anim_types.h"
 #include "DNA_armature_types.h"
 #include "DNA_asset_types.h"
 #include "DNA_brush_types.h"
@@ -105,6 +109,7 @@
 #include "DNA_volume_types.h"
 #include "DNA_world_types.h"
 
+#include "DNA_anim_defaults.h"
 #include "DNA_armature_defaults.h"
 #include "DNA_asset_defaults.h"
 #include "DNA_brush_defaults.h"
@@ -138,6 +143,10 @@
 
 #define SDNA_DEFAULT_DECL_STRUCT(struct_name) \
   static const struct_name DNA_DEFAULT_##struct_name = _DNA_DEFAULT_##struct_name
+
+/* DNA_anim_defaults.h */
+SDNA_DEFAULT_DECL_STRUCT(AnimationLayer);
+SDNA_DEFAULT_DECL_STRUCT(AnimationStrip);
 
 /* DNA_asset_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(AssetMetaData);
@@ -293,6 +302,12 @@ SDNA_DEFAULT_DECL_STRUCT(WeightVGProximityModifierData);
 SDNA_DEFAULT_DECL_STRUCT(WeldModifierData);
 SDNA_DEFAULT_DECL_STRUCT(WireframeModifierData);
 SDNA_DEFAULT_DECL_STRUCT(GreasePencilSubdivModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilNoiseModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilLengthModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilLineartModifierData);
+
+/* Grease Pencil 3.0 modifiers. */
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilSmoothModifierData);
 
 /* DNA_gpencil_modifier_defaults.h */
 SDNA_DEFAULT_DECL_STRUCT(ArmatureGpencilModifierData);
@@ -326,6 +341,23 @@ SDNA_DEFAULT_DECL_STRUCT(EnvelopeGpencilModifierData);
 SDNA_DEFAULT_DECL_STRUCT(GreasePencilOpacityModifierData);
 SDNA_DEFAULT_DECL_STRUCT(GreasePencilColorModifierData);
 SDNA_DEFAULT_DECL_STRUCT(GreasePencilTintModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilOffsetModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilMirrorModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilThickModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilLatticeModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilDashModifierSegment);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilDashModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilMultiModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilWeightAngleModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilArrayModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilWeightProximityModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilHookModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilArmatureModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilTimeModifierSegment);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilTimeModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilEnvelopeModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilOutlineModifierData);
+SDNA_DEFAULT_DECL_STRUCT(GreasePencilShrinkwrapModifierData);
 
 #undef SDNA_DEFAULT_DECL_STRUCT
 
@@ -354,6 +386,10 @@ extern const bTheme U_theme_default;
 /* NOTE: Keep headers sorted. */
 
 const void *DNA_default_table[SDNA_TYPE_MAX] = {
+
+    /* DNA_anim_defaults.h */
+    SDNA_DEFAULT_DECL(AnimationLayer),
+    SDNA_DEFAULT_DECL(AnimationStrip),
 
     /* DNA_asset_defaults.h */
     SDNA_DEFAULT_DECL(AssetMetaData),
@@ -541,6 +577,13 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL(WeldModifierData),
     SDNA_DEFAULT_DECL(WireframeModifierData),
     SDNA_DEFAULT_DECL(GreasePencilSubdivModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilNoiseModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilLengthModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilHookModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilLineartModifierData),
+
+    /* Grease Pencil 3.0 defaults. */
+    SDNA_DEFAULT_DECL(GreasePencilSmoothModifierData),
 
     /* DNA_gpencil_modifier_defaults.h */
     SDNA_DEFAULT_DECL(ArmatureGpencilModifierData),
@@ -574,6 +617,22 @@ const void *DNA_default_table[SDNA_TYPE_MAX] = {
     SDNA_DEFAULT_DECL(GreasePencilOpacityModifierData),
     SDNA_DEFAULT_DECL(GreasePencilColorModifierData),
     SDNA_DEFAULT_DECL(GreasePencilTintModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilOffsetModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilMirrorModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilThickModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilLatticeModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilDashModifierSegment),
+    SDNA_DEFAULT_DECL(GreasePencilDashModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilMultiModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilWeightAngleModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilArrayModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilWeightProximityModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilArmatureModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilTimeModifierSegment),
+    SDNA_DEFAULT_DECL(GreasePencilTimeModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilEnvelopeModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilOutlineModifierData),
+    SDNA_DEFAULT_DECL(GreasePencilShrinkwrapModifierData),
 };
 #undef SDNA_DEFAULT_DECL
 #undef SDNA_DEFAULT_DECL_EX
