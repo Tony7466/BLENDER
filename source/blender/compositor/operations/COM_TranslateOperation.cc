@@ -56,7 +56,7 @@ void TranslateOperation::get_area_of_interest(const int input_idx,
        * e.g. by prior scaling or rotating. Note: this is still consistent with immediate
        * realization of transform nodes in GPU compositor, where nodes are to be evaluated from
        * left to right. */
-      const int in_width = get_input_operation(0)->get_width();
+      const int in_width = get_width();
       BLI_rcti_resize_x(&r_input_area, in_width);
     }
 
@@ -65,7 +65,7 @@ void TranslateOperation::get_area_of_interest(const int input_idx,
       BLI_rcti_translate(&r_input_area, 0, -delta_y);
     }
     else if (y_extend_mode_ == MemoryBufferExtend::Repeat) {
-      const int in_height = get_input_operation(0)->get_height();
+      const int in_height = get_height();
       BLI_rcti_resize_y(&r_input_area, in_height);
     }
   }
