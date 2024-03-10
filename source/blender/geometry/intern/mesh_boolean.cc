@@ -909,11 +909,13 @@ static int face_boolean_operand(BMFace *f, void * /*user_data*/)
  * 
  * TODO: maybe figure out how to use the join_geometries() function
  * to join all the meshes into one mesh first, and then convert
- * that single mesh to BMesh.
+ * that single mesh to BMesh. Issues with that include needing
+ * to apply the transforms and material remaps.
  */
 static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
                              Span<float4x4> transforms,
                              const float4x4 &target_transform,
+                             Span<Array<short>> material_remaps,
                              BMLoop *(**r_looptris)[3],
                              int *r_looptris_tot)
 {
@@ -1008,7 +1010,8 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
     }
   }
 
-  /* Transform face normals and tag the first-operand faces. */
+  /* Transform face normals and tag the first-operand faces.
+   * Also, apply material remaps. */
   BMFace *efa;
   i = 0;
   mesh_index = 0;
@@ -1023,6 +1026,13 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
     if (i < faces_end[0]) {
       BM_elem_flag_enable(efa, BM_FACE_TAG);
     }
+
+    /* Remap material. */
+    int cur_mat = efa->mat_nr;
+    if (cur_mat < material_remaps[mesh_index].size()) {
+      efa->mat_nr = material_remaps[mesh_index][cur_mat];
+    }
+  
     ++i;
     if (i == faces_end[mesh_index]) {
       mesh_index++;
@@ -1043,12 +1053,14 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
   BLI_assert(meshes.size() == transforms.size() || transforms.size() == 0);
 
   BLI_assert(material_remaps.size() == 0 || material_remaps.size() == meshes.size());
-  if (meshes.size() >= 2) {
-    BMLoop *(*looptris)[3];
-    int looptris_tot;
+  const int nmesh = meshes.size();
+  BMLoop *(*looptris)[3];
+  int looptris_tot;
+  if (nmesh == 2 || (nmesh > 2 && boolean_mode != GEO_NODE_BOOLEAN_INTERSECT)) {
     BMesh *bm = mesh_bm_concat(meshes,
                                transforms,
                                target_transform,
+                               material_remaps,
                                &looptris,
                                &looptris_tot);
     BM_mesh_intersect(bm,
@@ -1068,6 +1080,53 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
     Mesh *result = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, meshes[0]);
     BM_mesh_free(bm);
     return result;
+  }
+  else if (nmesh > 2) {
+    /* When operation is intersection, have to iteratively subtract each operand. */
+    BLI_assert(boolean_mode == GEO_NODE_BOOLEAN_INTERSECT);
+    Array<const Mesh *> two_meshes = {meshes[0], meshes[1]};
+    Array<float4x4> two_transforms = {transforms[0], transforms[1]};
+    Array<Array<short>> two_remaps = {material_remaps[0], material_remaps[1]};
+    for (int i = 0; i < nmesh - 1; i++) {
+      BMesh *bm = mesh_bm_concat(two_meshes.as_span(),
+                                 two_transforms.as_span(),
+                                 float4x4::identity(),
+                                 two_remaps.as_span(),
+                                 &looptris,
+                                 &looptris_tot);
+      BM_mesh_intersect(bm,
+                        looptris,
+                        looptris_tot,
+                        face_boolean_operand,
+                        nullptr,
+                        false,
+                        false,
+                        true,
+                        true,
+                        false,
+                        false,
+                        boolean_mode,
+                        1e-6f);
+      MEM_freeN(looptris);
+      Mesh *result_i_mesh = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, meshes[0]);
+      BM_mesh_free(bm);
+      if (i > 0) {
+        /* Except in the first iteration, two_meshes[0] holds the intermediate
+         * mesh result from the previous iteraiton. */
+        delete two_meshes[0];
+      }
+      if (i < nmesh - 2) {
+        two_meshes[0] = result_i_mesh;
+        two_meshes[1] = meshes[i + 2];
+        two_transforms[0] = float4x4::identity();
+        two_transforms[1] = transforms[i + 2];
+        two_remaps[0] = {};
+        two_remaps[1] = material_remaps[i + 2];
+      }
+      else {
+        return result_i_mesh;
+      }
+    }
   }
   else if (meshes.size() == 1) {
     /* The float solver doesn't do self union. Just return nullptr, which will
