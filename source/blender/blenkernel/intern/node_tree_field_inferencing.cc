@@ -751,19 +751,36 @@ static bool reduce_binary(const BinaryConstraintFn &constraint,
 }
 
 struct NullInterupter {
-  static bool step(StringRef /*message*/)
+  static bool notify(StringRef /*message*/)
   {
     return true;
   }
 };
 
 struct PrintInterupter {
-  static bool step(StringRef message)
+  static bool notify(StringRef message)
   {
     std::cout << message << std::endl;
     return true;
   }
 };
+
+template<typename Interrupter>
+static void print_variable_state(BitGroupVector<> &variable_domains, StringRef prefix = "")
+{
+  for (const int i : variable_domains.index_range()) {
+    std::string s = std::to_string(i) + ": ";
+    for (const int d : IndexRange(variable_domains.group_size())) {
+      if (variable_domains[i][d]) {
+        s += std::to_string(d) + ", ";
+      }
+      else {
+        s += "   ";
+      }
+    }
+    Interrupter::notify(prefix + s);
+  }
+}
 
 /* Apply all unitary constraints. */
 template<typename Interrupter = NullInterupter>
@@ -781,36 +798,42 @@ template<typename Interrupter = NullInterupter>
 static void solve_binary_constraints(const Map<int, Map<int, BinaryConstraintFn>> &constraints,
                                      BitGroupVector<> &variable_domains)
 {
+  /* TODO sorting the worklist could have significant impact on performance.
+   * Using the topological sorting of sockets should make a decent "preconditioner".
+   * This should get the algorithm to behave mostly like the current R-L/L-R solver.
+   */
   Stack<int2> worklist;
-  Interrupter::step("== Binary Constraint Solve ==");
+  Interrupter::notify("== Binary Constraint Solve ==");
   for (const auto &item : constraints.items()) {
     for (const int &target_key : item.value.keys()) {
-      Interrupter::step("  Initial constraint " + std::to_string(item.key) + ", " +
+      Interrupter::notify("  Initial constraint " + std::to_string(item.key) + ", " +
                         std::to_string(target_key));
       worklist.push({item.key, target_key});
     }
   }
+  print_variable_state<Interrupter>(variable_domains, "----");
 
   while (!worklist.is_empty()) {
     const int2 key = worklist.pop();
-    Interrupter::step("  Applying " + std::to_string(key[0]) + ", " + std::to_string(key[1]));
+    Interrupter::notify("  Applying " + std::to_string(key[0]) + ", " + std::to_string(key[1]));
     const BinaryConstraintFn &constraint = constraints.lookup(key[0]).lookup(key[1]);
     const MutableBitSpan domain_a = variable_domains[key[0]];
     const BitSpan domain_b = variable_domains[key[1]];
     if (reduce_binary(constraint, domain_a, domain_b)) {
-      Interrupter::step("    Reduced domain!");
+      Interrupter::notify("    Reduced domain!");
       if (!bits::any_bit_set(domain_a)) {
         /* TODO FAILURE CASE! */
-        Interrupter::step("      FAILED! No possible values for " + std::to_string(key[0]));
+        Interrupter::notify("      FAILED! No possible values for " + std::to_string(key[0]));
         break;
       }
+      print_variable_state<Interrupter>(variable_domains, "----");
 
       /* Add arcs from b to all dependencies except a. */
       for (const auto &item : constraints.lookup(key[1]).items()) {
         if (item.key == key[0]) {
           continue;
         }
-        Interrupter::step("      Adding " + std::to_string(key[1]) + ", " + std::to_string(item.key));
+        Interrupter::notify("      Adding " + std::to_string(key[1]) + ", " + std::to_string(item.key));
         worklist.push({key[1], item.key});
       }
     }
@@ -828,17 +851,8 @@ static void solve_constraints(const Map<int, UnaryConstraintFn> &unary_constrain
   solve_unary_constraints<Interrupter>(unary_constraints, variable_domains);
   solve_binary_constraints<Interrupter>(binary_constraints, variable_domains);
 
-  Interrupter::step("Constraint Solve:");
-  for (const int i : variable_domains.index_range()) {
-    const BitSpan domain = variable_domains[i];
-    std::string s = "  " +std::to_string(i) + ": ";
-    for (const int k : domain.index_range()) {
-      if (domain[k]) {
-        s += std::to_string(k) + ", ";
-      }
-    }
-    Interrupter::step(s);
-  }
+  Interrupter::notify("Constraint Solve:");
+  print_variable_state<Interrupter>(variable_domains, "----");
 }
 
 }  // namespace ac3
@@ -875,7 +889,7 @@ static void test_ac3_field_inferencing(const bNodeTree &tree)
         const auto anti_constraint = [constraint](int value_a, int value_b) {
           return constraint(value_b, value_a);
         };
-        binary_constraints.lookup_or_add(b, {}).add_new(a, std::move(anti_constraint));
+        binary_constraints.lookup_or_add(b, {}).add_new(a, anti_constraint);
         break;
       }
     }
