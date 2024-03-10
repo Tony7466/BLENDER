@@ -52,12 +52,11 @@ void TranslateOperation::get_area_of_interest(const int input_idx,
       BLI_rcti_translate(&r_input_area, -delta_x, 0);
     }
     else if (x_extend_mode_ == MemoryBufferExtend::Repeat) {
-      /* The region of interest should consider the whole canvas to avoid cropping effects, e.g. by
+      /* The region of interest should consider the whole input image to avoid cropping effects, e.g. by
        * prior scaling or rotating. Note: this is still consistent with immediate realization of
        * transform nodes in GPU compositor, where nodes are to be evaluated from left to right. */
-      BLI_assert(BLI_rcti_is_valid(&get_canvas()));
-      const int canvas_x = BLI_rcti_size_x(&get_canvas());
-      BLI_rcti_resize_x(&r_input_area, canvas_x);
+      const int in_width = get_input_operation(0)->get_width();
+      BLI_rcti_resize_x(&r_input_area, in_width);
     }
 
     if (y_extend_mode_ == MemoryBufferExtend::Clip) {
@@ -65,9 +64,8 @@ void TranslateOperation::get_area_of_interest(const int input_idx,
       BLI_rcti_translate(&r_input_area, 0, -delta_y);
     }
     else if (y_extend_mode_ == MemoryBufferExtend::Repeat) {
-      BLI_assert(BLI_rcti_is_valid(&get_canvas()));
-      const int canvas_y = BLI_rcti_size_y(&get_canvas());
-      BLI_rcti_resize_y(&r_input_area, canvas_y);
+      const int in_height = get_input_operation(0)->get_height();
+      BLI_rcti_resize_y(&r_input_area, in_height);
     }
   }
   else {
