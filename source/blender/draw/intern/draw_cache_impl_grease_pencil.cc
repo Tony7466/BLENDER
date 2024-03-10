@@ -510,6 +510,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     const ed::greasepencil::DrawingInfo &info = drawings[drawing_i];
     const Layer &layer = *grease_pencil.layers()[info.layer_index];
     const float4x4 layer_space_to_object_space = layer.to_object_space(object);
+    const float4x4 object_space_to_layer_space = math::invert(layer_space_to_object_space);
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const bke::AttributeAccessor attributes = curves.attributes();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -588,7 +589,8 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
       MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
       MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
-      const float4x2 texture_matrix = get_texture_matrix(info.drawing, curve_i);
+      const float4x2 texture_matrix = get_texture_matrix(info.drawing, curve_i) *
+                                      object_space_to_layer_space;
 
       const Span<float> lengths = curves.evaluated_lengths_for_curve(curve_i, is_cyclic);
 
