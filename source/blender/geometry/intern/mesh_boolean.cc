@@ -1030,7 +1030,10 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
     /* Remap material. */
     int cur_mat = efa->mat_nr;
     if (cur_mat < material_remaps[mesh_index].size()) {
-      efa->mat_nr = material_remaps[mesh_index][cur_mat];
+      int new_mat = material_remaps[mesh_index][cur_mat];
+      if (new_mat >= 0) {
+        efa->mat_nr = material_remaps[mesh_index][cur_mat];
+      }
     }
   
     ++i;
@@ -1056,7 +1059,7 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
   const int nmesh = meshes.size();
   BMLoop *(*looptris)[3];
   int looptris_tot;
-  if (nmesh == 2 || (nmesh > 2 && boolean_mode != GEO_NODE_BOOLEAN_INTERSECT)) {
+  if (nmesh == 2) {
     BMesh *bm = mesh_bm_concat(meshes,
                                transforms,
                                target_transform,
@@ -1082,8 +1085,7 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
     return result;
   }
   else if (nmesh > 2) {
-    /* When operation is intersection, have to iteratively subtract each operand. */
-    BLI_assert(boolean_mode == GEO_NODE_BOOLEAN_INTERSECT);
+    /* Iteratively operate with each operand. */
     Array<const Mesh *> two_meshes = {meshes[0], meshes[1]};
     Array<float4x4> two_transforms = {transforms[0], transforms[1]};
     Array<Array<short>> two_remaps = {material_remaps[0], material_remaps[1]};
@@ -1113,7 +1115,8 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
       if (i > 0) {
         /* Except in the first iteration, two_meshes[0] holds the intermediate
          * mesh result from the previous iteraiton. */
-        delete two_meshes[0];
+        Mesh *me = const_cast<Mesh*>(two_meshes[0]);
+        BKE_mesh_eval_delete(me);
       }
       if (i < nmesh - 2) {
         two_meshes[0] = result_i_mesh;
