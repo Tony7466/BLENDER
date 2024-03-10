@@ -165,15 +165,15 @@ struct ModifierEvalContext {
 struct ModifierTypeInfo {
   /* A unique identifier for this modifier. Used to generate the panel id type name.
    * See #BKE_modifier_type_panel_id. */
-  char idname[32];
+  char idname[64];
 
   /* The user visible name for this modifier */
-  char name[32];
+  char name[64];
 
   /* The DNA struct name for the modifier data type, used to
    * write the DNA data out.
    */
-  char struct_name[32];
+  char struct_name[64];
 
   /* The size of the modifier data type, used by allocation. */
   int struct_size;
@@ -588,7 +588,7 @@ void BKE_modifier_deform_vertsEM(ModifierData *md,
 /**
  * Get evaluated mesh for other evaluated object, which is used as an operand for the modifier,
  * e.g. second operand for boolean modifier.
- * Note that modifiers in stack always get fully evaluated COW ID pointers,
+ * Note that modifiers in stack always get fully evaluated ID pointers,
  * never original ones. Makes things simpler.
  */
 Mesh *BKE_modifier_get_evaluated_mesh_from_evaluated_object(Object *ob_eval);

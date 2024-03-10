@@ -12,7 +12,7 @@
 #include "BKE_layer.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DNA_collection_types.h"
 #include "DNA_layer_types.h"
@@ -21,7 +21,6 @@
 #include "BLI_fileops.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
-#include "BLI_math_vector.h"
 #include "BLI_memory_utils.hh"
 #include "BLI_string.h"
 
@@ -141,7 +140,7 @@ void importer_main(Main *bmain,
   rescale_m4(obmat4x4, scale_vec);
   BKE_object_apply_mat4(obj, obmat4x4, true, false);
 
-  DEG_id_tag_update(&lc->collection->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&lc->collection->id, ID_RECALC_SYNC_TO_EVAL);
   int flags = ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_ANIMATION |
               ID_RECALC_BASE_FLAGS;
   DEG_id_tag_update_ex(bmain, &obj->id, flags);

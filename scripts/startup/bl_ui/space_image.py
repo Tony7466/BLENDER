@@ -996,6 +996,10 @@ class IMAGE_PT_snapping(Panel):
         row.prop(tool_settings, "use_snap_translate", text="Move", toggle=True)
         row.prop(tool_settings, "use_snap_rotate", text="Rotate", toggle=True)
         row.prop(tool_settings, "use_snap_scale", text="Scale", toggle=True)
+        col.label(text="Rotation Increment")
+        row = col.row(align=True)
+        row.prop(tool_settings, "snap_angle_increment_2d", text="")
+        row.prop(tool_settings, "snap_angle_increment_2d_precision", text="")
 
 
 class IMAGE_PT_proportional_edit(Panel):
@@ -1575,10 +1579,10 @@ class IMAGE_PT_overlay_guides(Panel):
             layout.prop(uvedit, "tile_grid_shape", text="Tiles")
 
 
-class IMAGE_PT_overlay_uv_edit(Panel):
+class IMAGE_PT_overlay_uv_stretch(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
-    bl_label = "UV Editing"
+    bl_label = "UV Stretch"
     bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
@@ -1595,12 +1599,12 @@ class IMAGE_PT_overlay_uv_edit(Panel):
 
         layout.active = overlay.show_overlays
 
-        # UV Stretching
-        row = layout.row()
-        row.prop(uvedit, "show_stretch")
-        subrow = row.row(align=True)
+        row = layout.row(align=True)
+        row.row().prop(uvedit, "show_stretch", text="")
+        subrow = row.row()
         subrow.active = uvedit.show_stretch
         subrow.prop(uvedit, "display_stretch_type", text="")
+        subrow.prop(uvedit, "stretch_opacity", text="Opacity")
 
 
 class IMAGE_PT_overlay_uv_edit_geometry(Panel):
@@ -1752,7 +1756,7 @@ classes = (
     IMAGE_PT_gizmo_display,
     IMAGE_PT_overlay,
     IMAGE_PT_overlay_guides,
-    IMAGE_PT_overlay_uv_edit,
+    IMAGE_PT_overlay_uv_stretch,
     IMAGE_PT_overlay_uv_edit_geometry,
     IMAGE_PT_overlay_texture_paint,
     IMAGE_PT_overlay_image,
