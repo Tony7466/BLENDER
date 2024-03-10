@@ -738,7 +738,7 @@ static bool reduce_binary(const BinaryConstraintFn &constraint,
     }
     bool valid = false;
     for (const int j : domain_b.index_range()) {
-      if (constraint(i, j)) {
+      if (domain_b[j] && constraint(i, j)) {
         valid = true;
       }
     }
@@ -782,20 +782,70 @@ static void print_variable_state(BitGroupVector<> &variable_domains, StringRef p
   }
 }
 
+class ConstraintSet {
+ public:
+  struct Target {
+    int variable;
+    BinaryConstraintFn constraint;
+  };
+  struct Source {
+    int variable;
+    BinaryConstraintFn constraint;
+  };
+
+ private:
+  MultiValueMap<int, UnaryConstraintFn> unary_;
+  MultiValueMap<int, Target> forward_;
+  MultiValueMap<int, Source> reverse_;
+
+ public:
+  Span<UnaryConstraintFn> get_unary_constraints(const int source_key) const
+  {
+    return unary_.lookup(source_key);
+  }
+  Span<Target> get_target_constraints(const int source_key) const
+  {
+    return forward_.lookup(source_key);
+  }
+  Span<Source> get_source_constraints(const int target_key) const
+  {
+    return reverse_.lookup(target_key);
+  }
+  BinaryConstraintFn get_binary_constraint(const int source_key, const int target_key) const
+  {
+    for (const Target &target : forward_.lookup(source_key)) {
+      if (target.variable == target_key) {
+        return target.constraint;
+      }
+    }
+    return nullptr;
+  }
+
+  void add(const int variable, UnaryConstraintFn constraint)
+  {
+    unary_.add(variable, constraint);
+  }
+  void add(const int source, const int target, BinaryConstraintFn constraint)
+  {
+    forward_.add(source, {target, constraint});
+    reverse_.add(target, {source, constraint});
+  }
+};
+
 /* Apply all unitary constraints. */
 template<typename Interrupter = NullInterupter>
-static void solve_unary_constraints(const Map<int, UnaryConstraintFn> &constraints,
+static void solve_unary_constraints(const ConstraintSet &constraints,
                                     BitGroupVector<> &variable_domains)
 {
   for (const int i : variable_domains.index_range()) {
-    if (const UnaryConstraintFn *constraint_fn = constraints.lookup_ptr(i)) {
-      reduce_unary(*constraint_fn, variable_domains[i]);
+    for (const UnaryConstraintFn &constraint : constraints.get_unary_constraints(i)) {
+      reduce_unary(constraint, variable_domains[i]);
     }
   }
 }
 
 template<typename Interrupter = NullInterupter>
-static void solve_binary_constraints(const Map<int, Map<int, BinaryConstraintFn>> &constraints,
+static void solve_binary_constraints(const ConstraintSet &constraints,
                                      BitGroupVector<> &variable_domains)
 {
   /* TODO sorting the worklist could have significant impact on performance.
@@ -804,11 +854,11 @@ static void solve_binary_constraints(const Map<int, Map<int, BinaryConstraintFn>
    */
   Stack<int2> worklist;
   Interrupter::notify("== Binary Constraint Solve ==");
-  for (const auto &item : constraints.items()) {
-    for (const int &target_key : item.value.keys()) {
-      Interrupter::notify("  Initial constraint " + std::to_string(item.key) + ", " +
-                        std::to_string(target_key));
-      worklist.push({item.key, target_key});
+  for (const int i : variable_domains.index_range()) {
+    for (const ConstraintSet::Target &target : constraints.get_target_constraints(i)) {
+      Interrupter::notify("  Initial constraint " + std::to_string(i) + ", " +
+                          std::to_string(target.variable));
+      worklist.push({i, target.variable});
     }
   }
   print_variable_state<Interrupter>(variable_domains, "----");
@@ -816,7 +866,7 @@ static void solve_binary_constraints(const Map<int, Map<int, BinaryConstraintFn>
   while (!worklist.is_empty()) {
     const int2 key = worklist.pop();
     Interrupter::notify("  Applying " + std::to_string(key[0]) + ", " + std::to_string(key[1]));
-    const BinaryConstraintFn &constraint = constraints.lookup(key[0]).lookup(key[1]);
+    const BinaryConstraintFn &constraint = constraints.get_binary_constraint(key[0], key[1]);
     const MutableBitSpan domain_a = variable_domains[key[0]];
     const BitSpan domain_b = variable_domains[key[1]];
     if (reduce_binary(constraint, domain_a, domain_b)) {
@@ -828,28 +878,28 @@ static void solve_binary_constraints(const Map<int, Map<int, BinaryConstraintFn>
       }
       print_variable_state<Interrupter>(variable_domains, "----");
 
-      /* Add arcs from b to all dependencies except a. */
-      for (const auto &item : constraints.lookup(key[1]).items()) {
-        if (item.key == key[0]) {
+      /* Add arcs from a to all dependencies except a. */
+      for (const ConstraintSet::Source &source : constraints.get_source_constraints(key[0])) {
+        if (source.variable == key[1]) {
           continue;
         }
-        Interrupter::notify("      Adding " + std::to_string(key[1]) + ", " + std::to_string(item.key));
-        worklist.push({key[1], item.key});
+        Interrupter::notify("      Adding " + std::to_string(source.variable) + ", " +
+                            std::to_string(key[0]));
+        worklist.push({source.variable, key[0]});
       }
     }
   }
 }
 
 template<typename Interrupter = NullInterupter>
-static void solve_constraints(const Map<int, UnaryConstraintFn> &unary_constraints,
-                              const Map<int, Map<int, BinaryConstraintFn>> &binary_constraints,
+static void solve_constraints(const ConstraintSet &constraints,
                               const int num_vars,
                               const int domain_size)
 {
   BitGroupVector variable_domains(num_vars, domain_size, true);
 
-  solve_unary_constraints<Interrupter>(unary_constraints, variable_domains);
-  solve_binary_constraints<Interrupter>(binary_constraints, variable_domains);
+  solve_unary_constraints<Interrupter>(constraints, variable_domains);
+  solve_binary_constraints<Interrupter>(constraints, variable_domains);
 
   Interrupter::notify("Constraint Solve:");
   print_variable_state<Interrupter>(variable_domains, "----");
@@ -867,8 +917,7 @@ static void test_ac3_field_inferencing(const bNodeTree &tree)
   const int num_vars = 5;
   const int domain_size = 4;
 
-  Map<int, ac3::UnaryConstraintFn> unary_constraints;
-  Map<int, Map<int, ac3::BinaryConstraintFn>> binary_constraints;
+  ac3::ConstraintSet constraints;
   enum Symmetry {
     None,
     Symmetric,
@@ -878,18 +927,18 @@ static void test_ac3_field_inferencing(const bNodeTree &tree)
                                    const int b,
                                    const Symmetry symmetry,
                                    const ac3::BinaryConstraintFn &constraint) {
-    binary_constraints.lookup_or_add(a, {}).add_new(b, constraint);
+    constraints.add(a, b, constraint);
     switch (symmetry) {
       case None:
         break;
       case Symmetric:
-        binary_constraints.lookup_or_add(b, {}).add_new(a, constraint);
+        constraints.add(b, a, constraint);
         break;
       case Antisymmetric: {
         const auto anti_constraint = [constraint](int value_a, int value_b) {
           return constraint(value_b, value_a);
         };
-        binary_constraints.lookup_or_add(b, {}).add_new(a, anti_constraint);
+        constraints.add(b, a, anti_constraint);
         break;
       }
     }
@@ -907,9 +956,9 @@ static void test_ac3_field_inferencing(const bNodeTree &tree)
   const int value_4 = 3;
 
   /* C = {1, 2, 4} */
-  unary_constraints.add_new(var_B, [](const int value) { return value != value_3; });
+  constraints.add(var_B, [](const int value) { return value != value_3; });
   /* C = {1, 3, 4} */
-  unary_constraints.add_new(var_C, [](const int value) { return value != value_2; });
+  constraints.add(var_C, [](const int value) { return value != value_2; });
 
   /* A != B */
   add_binary_constraint(var_A, var_B, Symmetric, [](const int value_a, const int value_b) {
@@ -948,8 +997,7 @@ static void test_ac3_field_inferencing(const bNodeTree &tree)
     return value_a > value_b;
   });
 
-  ac3::solve_constraints<ac3::PrintInterupter>(
-      unary_constraints, binary_constraints, num_vars, domain_size);
+  ac3::solve_constraints<ac3::PrintInterupter>(constraints, num_vars, domain_size);
 }
 
 bool update_field_inferencing(const bNodeTree &tree)
