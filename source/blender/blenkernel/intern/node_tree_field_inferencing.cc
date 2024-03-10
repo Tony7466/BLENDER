@@ -9,9 +9,15 @@
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
 
+#include "BLI_bit_group_vector.hh"
+#include "BLI_bit_span_ops.hh"
+#include "BLI_multi_value_map.hh"
+#include "BLI_offset_indices.hh"
 #include "BLI_resource_scope.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
+
+#include <iostream>
 
 namespace blender::bke::node_field_inferencing {
 
@@ -699,6 +705,182 @@ static void prepare_inferencing_interfaces(
   }
 }
 
+namespace ac3 {
+
+/** Unary constraint function, returns true if the value is allowed. */
+using UnaryConstraintFn = std::function<bool(int value)>;
+/** Binary constraint function, returns true if both values are compatible. */
+using BinaryConstraintFn = std::function<bool(int value_a, int value_b)>;
+
+/* Remove all domain values that are not allowed by the constraint. */
+static void reduce_unary(const UnaryConstraintFn &constraint, MutableBitSpan domain)
+{
+  for (const int i : domain.index_range()) {
+    if (!domain[i]) {
+      continue;
+    }
+    if (!constraint(i)) {
+      domain[i].reset();
+    }
+  }
+}
+
+/* Remove all domain values from A that can not be paired with any value in B. */
+static bool reduce_binary(const BinaryConstraintFn &constraint,
+                          MutableBitSpan domain_a,
+                          BitSpan domain_b)
+{
+  bool changed = false;
+  for (const int i : domain_a.index_range()) {
+    if (!domain_a[i]) {
+      continue;
+    }
+    bool valid = false;
+    for (const int j : domain_b.index_range()) {
+      if (constraint(i, j)) {
+        valid = true;
+      }
+    }
+    if (!valid) {
+      domain_a[i].reset();
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+struct NullInterupter {
+  static bool step(StringRef /*message*/)
+  {
+    return true;
+  }
+};
+
+/* Apply all unitary constraints. */
+template<typename Interrupter = NullInterupter>
+static void solve_unary_constraints(const Map<int, UnaryConstraintFn> &constraints,
+                                    BitGroupVector<> &variable_domains)
+{
+  for (const int i : variable_domains.index_range()) {
+    if (const UnaryConstraintFn *constraint_fn = constraints.lookup_ptr(i)) {
+      reduce_unary(*constraint_fn, variable_domains[i]);
+    }
+  }
+}
+
+template<typename Interrupter = NullInterupter>
+static void solve_binary_constraints(const Map<int, Map<int, BinaryConstraintFn>> &constraints,
+                                     BitGroupVector<> &variable_domains)
+{
+  Stack<int2> worklist;
+  for (const auto &item : constraints.items()) {
+    for (const int &target_key : item.value.keys()) {
+      worklist.push({item.key, target_key});
+    }
+  }
+
+  while (!worklist.is_empty()) {
+    const int2 key = worklist.pop();
+    const BinaryConstraintFn &constraint = constraints.lookup(key[0]).lookup(key[1]);
+    const MutableBitSpan domain_a = variable_domains[key[0]];
+    const BitSpan domain_b = variable_domains[key[1]];
+    if (reduce_binary(constraint, domain_a, domain_b)) {
+      if (!bits::any_bit_set(domain_a)) {
+        /* TODO FAILURE CASE! */
+        break;
+      }
+
+      /* Add arcs from b to all dependencies except a. */
+      for (const auto &item : constraints.lookup(key[1]).items()) {
+        if (item.key == key[0]) {
+          continue;
+        }
+        worklist.push({key[1], item.key});
+      }
+    }
+  }
+}
+
+template<typename Interrupter = NullInterupter>
+static void solve_constraints(const Map<int, UnaryConstraintFn> &unary_constraints,
+                              const Map<int, Map<int, BinaryConstraintFn>> &binary_constraints,
+                              const int num_vars,
+                              const int domain_size)
+{
+  BitGroupVector variable_domains(num_vars, domain_size, true);
+
+  solve_unary_constraints<Interrupter>(unary_constraints, variable_domains);
+  solve_binary_constraints<Interrupter>(binary_constraints, variable_domains);
+
+  std::cout << "Constraint Solve:" << std::endl;
+  for (const int i : variable_domains.index_range()) {
+    const BitSpan domain = variable_domains[i];
+    std::cout << "  " << i << ": ";
+    for (const int k : domain.index_range()) {
+      if (domain[k]) {
+        std::cout << k << ", ";
+      }
+    }
+    std::cout << std::endl;
+  }
+}
+
+}  // namespace ac3
+
+static void test_ac3_field_inferencing(const bNodeTree &tree)
+{
+  using T = float;
+
+  /* Example taken from
+   * https://www.boristhebrave.com/2021/08/30/arc-consistency-explained/
+   */
+  const int num_vars = 5;
+  const int domain_size = 4;
+
+  Map<int, ac3::UnaryConstraintFn> unary_constraints;
+  Map<int, Map<int, ac3::BinaryConstraintFn>> binary_constraints;
+  auto add_binary_constraint = [&](const int a,
+                                   const int b,
+                                   const bool is_symmetric,
+                                   const ac3::BinaryConstraintFn &constraint) {
+    binary_constraints.lookup_or_add(a, {}).add_new(b, constraint);
+    if (is_symmetric) {
+      binary_constraints.lookup_or_add(b, {}).add_new(a, constraint);
+    }
+  };
+
+  const int var_A = 0;
+  const int var_B = 1;
+  const int var_C = 2;
+  const int var_D = 3;
+  const int var_E = 4;
+
+  const int value_1 = 0;
+  const int value_2 = 1;
+  const int value_3 = 2;
+  const int value_4 = 3;
+
+  /* C = {1, 2, 4} */
+  unary_constraints.add_new(var_B, [](const int value) { return value != value_3; });
+  /* C = {1, 3, 4} */
+  unary_constraints.add_new(var_C, [](const int value) { return value != value_2; });
+
+  /* A != B */
+  add_binary_constraint(
+      var_A, var_B, true, [](const int value_a, const int value_b) { return value_a != value_b; });
+  /* A == D */
+  add_binary_constraint(
+      var_A, var_D, true, [](const int value_a, const int value_b) { return value_a == value_b; });
+  /* A > E */
+  add_binary_constraint(
+      var_A, var_E, true, [](const int value_a, const int value_b) { return value_a > value_b; });
+  ///* A == D */
+  //add_binary_constraint(
+  //    var_A, var_D, true, [](const int value_a, const int value_b) { return value_a == value_b; });
+
+  ac3::solve_constraints<>(unary_constraints, binary_constraints, num_vars, domain_size);
+}
+
 bool update_field_inferencing(const bNodeTree &tree)
 {
   BLI_assert(tree.type == NTREE_GEOMETRY);
@@ -734,6 +916,8 @@ bool update_field_inferencing(const bNodeTree &tree)
                                        *tree.runtime->field_inferencing_interface !=
                                            *new_inferencing_interface;
   tree.runtime->field_inferencing_interface = std::move(new_inferencing_interface);
+
+  test_ac3_field_inferencing(tree);
 
   return group_interface_changed;
 }
