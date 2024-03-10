@@ -742,9 +742,12 @@ bool BPy_IDProperty_Map_ValidateAndCreate(PyObject *name_obj, IDProperty *group,
     /* avoid freeing when types match in case they are referenced by the UI, see: #37073
      * obviously this isn't a complete solution, but helps for common cases. */
     prop_exist = IDP_GetPropertyFromGroup(group, prop->name);
-    if ((prop_exist != nullptr) && (prop_exist->type == prop->type) &&
+    if ((prop_exist != nullptr) &&
+        ((prop_exist->type == prop->type) || (ELEM(prop_exist->type, IDP_FLOAT, IDP_DOUBLE) &&
+                                              ELEM(prop->type, IDP_FLOAT, IDP_DOUBLE))) &&
         (prop_exist->subtype == prop->subtype))
     {
+      BLI_assert(IDP_ui_data_type(prop_exist) == IDP_ui_data_type(prop));
       /* Preserve prev/next links!!! See #42593. */
       prop->prev = prop_exist->prev;
       prop->next = prop_exist->next;
