@@ -476,9 +476,9 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_saturation);
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
 
+  const bke::greasepencil::Layer layer = *grease_pencil->get_active_layer();
   /* Initialize helper class for projecting screen space coordinates. */
-  placement_ = ed::greasepencil::DrawingPlacement(
-      *scene, *region, *view3d, *eval_object, *grease_pencil->get_active_layer());
+  placement_ = ed::greasepencil::DrawingPlacement(*scene, *region, *view3d, *eval_object, layer);
   if (placement_.use_project_to_surface()) {
     placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
   }
@@ -521,6 +521,11 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
 
   this->texture_space_ = math::transpose(float2x4(float4(u_dir, -math::dot(u_dir, origin)),
                                                   float4(v_dir, -math::dot(v_dir, origin))));
+
+  /* `View` is already stored in object space but all others are in layer space. */
+  if (scene->toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_VIEW) {
+    this->texture_space_ = this->texture_space_ * layer.to_object_space(*object);
+  }
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
       CTX_data_main(&C), object, brush);
