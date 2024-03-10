@@ -1487,7 +1487,7 @@ blender::float4x2 get_local_to_stroke_matrix(const blender::bke::greasepencil::D
   }
 
   const float3 pt0 = positions[points.first()];
-  const float3 pt1 = positions[points.last()];
+  const float3 pt1 = positions[points.first() + 1];
 
   /* Local X axis (p0 -> p1) */
   const float3 locx = normalize(pt1 - pt0);
