@@ -31,7 +31,6 @@
 #include "BKE_curves_utils.hh"
 #include "BKE_customdata.hh"
 #include "BKE_deform.hh"
-#include "BKE_grease_pencil.hh"
 
 namespace blender::bke {
 

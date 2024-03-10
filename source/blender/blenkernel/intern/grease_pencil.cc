@@ -11,7 +11,6 @@
 
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
-#include "BKE_attribute.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_deform.hh"
@@ -32,11 +31,9 @@
 #include "BLI_math_geom.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_matrix_types.hh"
-#include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_memarena.h"
 #include "BLI_memory_utils.hh"
-#include "BLI_offset_indices.hh"
 #include "BLI_polyfill_2d.h"
 #include "BLI_span.hh"
 #include "BLI_stack.hh"
@@ -1466,7 +1463,7 @@ void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil
  * \{ */
 
 /*
- * Returns the matrix that transforms from a 3D point in local-space to a 2D point in
+ * Returns the matrix that transforms from a 3D point in layer-space to a 2D point in
  * stroke-space for the stroke `curve_i`
  */
 blender::float4x2 get_local_to_stroke_matrix(const blender::bke::greasepencil::Drawing &drawing,
@@ -1494,7 +1491,6 @@ blender::float4x2 get_local_to_stroke_matrix(const blender::bke::greasepencil::D
   /* Local Y axis (cross to normal/x axis). */
   const float3 locy = normalize(cross(normal, locx));
 
-  /* If either is zero return. */
   if (length_squared(locx) == 0.0f || length_squared(locy) == 0.0f) {
     return float4x2::identity();
   }
@@ -1613,7 +1609,16 @@ blender::float4x2 get_texture_matrix(const blender::bke::greasepencil::Drawing &
 
   float4x3 strokemat4x3 = float4x3(strokemat);
 
-  /* We want the diagonal of ones to start from the bottom right instead top left. */
+  /*
+   * We need the diagonal of ones to start from the bottom right instead top left to properly apply
+   * the two matrices.
+   *
+   * i.e.
+   *          # # 0              # # 0
+   * We need  # # 0  Instead of  # # 0
+   *          # # 0              # # 1
+   *          # # 1              # # 0
+   */
   strokemat4x3[2][2] = 0.0f;
   strokemat4x3[3][2] = 1.0f;
 
@@ -1638,10 +1643,12 @@ void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
   double4x3 strokemat4x3 = double4x3(strokemat);
 
   /*
-   * We want the diagonal of ones to start from the bottom right instead top left.
+   * We need the diagonal of ones to start from the bottom right instead top left to properly apply
+   * the two matrices.
+   *
    * i.e.
    *          # # 0              # # 0
-   * We want  # # 0  Instead of  # # 0
+   * We need  # # 0  Instead of  # # 0
    *          # # 0              # # 1
    *          # # 1              # # 0
    */
@@ -1650,10 +1657,10 @@ void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
 
   /*
    * We want to solve for `textmat` in the equation: `textspace = textmat * strokemat4x3`
-   * Because these matrices are not square we can not use a normal inverse.
+   * Because these matrices are not square we can not use a standard inverse.
    *
-   * This has the form of: `X = A * Y`
-   * `A` can be solve use: `A = X * B`
+   * Our problem has the form of: `X = A * Y`
+   * We can solve for `A` using: `A = X * B`
    *
    * Where `B` is the Right-sided inverse, calculated as:
    *
@@ -1661,7 +1668,7 @@ void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
    *  | B = T(Y) * (Y * T(Y))^-1 |
    *  |--------------------------|
    *
-   * And `T()` is transpose and `()^-1` is the inverse
+   * And `T()` is transpose and `()^-1` is the inverse.
    */
 
   const double3x4 transpose_strokemat = transpose(strokemat4x3);
@@ -1672,9 +1679,9 @@ void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
   set_stroke_to_texture_matrix(drawing.strokes_for_write(), curve_i, textmat);
 }
 
-void transfer_texture_matrics(const blender::bke::greasepencil::Drawing &src,
-                              blender::bke::greasepencil::Drawing &dst,
-                              const Span<int> dst_to_src_curve)
+void transfer_texture_matrices(const blender::bke::greasepencil::Drawing &src,
+                               blender::bke::greasepencil::Drawing &dst,
+                               const Span<int> dst_to_src_curve)
 {
   for (const int dst_curve_i : dst_to_src_curve.index_range()) {
     const blender::float4x2 textspace = get_texture_matrix(src, dst_to_src_curve[dst_curve_i]);
@@ -1682,11 +1689,11 @@ void transfer_texture_matrics(const blender::bke::greasepencil::Drawing &src,
   }
 }
 
-void transfer_texture_matrics(const blender::bke::greasepencil::Drawing &src,
-                              blender::bke::greasepencil::Drawing &dst,
-                              const blender::IndexMask &indices)
+void transfer_texture_matrices(const blender::bke::greasepencil::Drawing &src,
+                               blender::bke::greasepencil::Drawing &dst,
+                               const blender::IndexMask &dst_to_src_curve)
 {
-  indices.foreach_index([&](const int64_t index, const int64_t pos) {
+  dst_to_src_curve.foreach_index([&](const int64_t index, const int64_t pos) {
     const blender::float4x2 textspace = get_texture_matrix(src, index);
     set_texture_matrix(dst, pos, textspace);
   });

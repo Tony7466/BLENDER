@@ -157,11 +157,11 @@ static void find_used_vertex_groups(const bGPDframe &gpf,
 }
 
 /*
- * This takes the legacy uv tranforms and returns the texture matrix.
+ * This takes the legacy uv tranforms and returns the stroke-space to texture-space matrix.
  */
-float3x2 convert_legacy_texture_to_matrix(const float2 uv_translation,
-                                          const float uv_rotation,
-                                          const float2 uv_scale)
+static float3x2 get_legacy_stroke_to_texture_matrix(const float2 uv_translation,
+                                                    const float uv_rotation,
+                                                    const float2 uv_scale)
 {
   using namespace blender;
 
@@ -198,9 +198,9 @@ float3x2 convert_legacy_texture_to_matrix(const float2 uv_translation,
 }
 
 /*
- * This gets the legacy local-space to stroke-space matrix.
+ * This gets the legacy layer-space to stroke-space matrix.
  */
-blender::float4x2 get_legacy_local_to_stroke_matrix(bGPDstroke *gps)
+static blender::float4x2 get_legacy_layer_to_stroke_matrix(bGPDstroke *gps)
 {
   using namespace blender;
   using namespace blender::math;
@@ -238,6 +238,29 @@ blender::float4x2 get_legacy_local_to_stroke_matrix(bGPDstroke *gps)
       float2x4(float4(locx, -dot(pt0, locx)), float4(locy, -dot(pt0, locy))));
 
   return mat;
+}
+
+static blender::float4x2 get_legacy_texture_matrix(bGPDstroke *gps)
+{
+  const float3x2 textmat = get_legacy_stroke_to_texture_matrix(
+      float2(gps->uv_translation), gps->uv_rotation, float2(gps->uv_scale));
+
+  const float4x2 strokemat = get_legacy_layer_to_stroke_matrix(gps);
+  float4x3 strokemat4x3 = float4x3(strokemat);
+  /*
+   * We need the diagonal of ones to start from the bottom right instead top left to properly apply
+   * the two matrices.
+   *
+   * i.e.
+   *          # # 0              # # 0
+   * We need  # # 0  Instead of  # # 0
+   *          # # 0              # # 1
+   *          # # 1              # # 0
+   */
+  strokemat4x3[2][2] = 0.0f;
+  strokemat4x3[3][2] = 1.0f;
+
+  return textmat * strokemat4x3;
 }
 
 void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
@@ -443,17 +466,10 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       BLI_assert_unreachable();
     }
 
-    const float3x2 textmat = convert_legacy_texture_to_matrix(
-        float2(gps->uv_translation), gps->uv_rotation, float2(gps->uv_scale));
-
-    const float4x2 strokemat = get_legacy_local_to_stroke_matrix(gps);
-    float4x3 strokemat4x3 = float4x3(strokemat);
-    strokemat4x3[2][2] = 0.0f;
-    strokemat4x3[3][2] = 1.0f;
-
+    const float4x2 legacy_texture_matrix = get_legacy_texture_matrix(gps);
     /* Ensure that everything is up to date. */
     drawing.tag_positions_changed();
-    set_texture_matrix(drawing, stroke_i, textmat * strokemat4x3);
+    set_texture_matrix(drawing, stroke_i, legacy_texture_matrix);
   }
 
   delta_times.finish();
