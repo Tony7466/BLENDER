@@ -159,9 +159,9 @@ static void find_used_vertex_groups(const bGPDframe &gpf,
 /*
  * This takes the legacy uv tranforms and returns the texture matrix.
  */
-float3x2 convert_texture_to_matrix(const float2 uv_translation,
-                                   const float uv_rotation,
-                                   const float2 uv_scale)
+float3x2 convert_legacy_texture_to_matrix(const float2 uv_translation,
+                                          const float uv_rotation,
+                                          const float2 uv_scale)
 {
   using namespace blender;
 
@@ -443,14 +443,14 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       BLI_assert_unreachable();
     }
 
-    const float3x2 textmat = convert_texture_to_matrix(
+    const float3x2 textmat = convert_legacy_texture_to_matrix(
         float2(gps->uv_translation), gps->uv_rotation, float2(gps->uv_scale));
 
     const float4x2 strokemat = get_legacy_local_to_stroke_matrix(gps);
     float4x3 strokemat4x3 = float4x3(strokemat);
     strokemat4x3[2][2] = 0.0f;
     strokemat4x3[3][2] = 1.0f;
-    set_texture_matrix(curves, stroke_i, textmat * strokemat4x3);
+    set_texture_matrix(drawing, stroke_i, textmat * strokemat4x3);
   }
 
   delta_times.finish();

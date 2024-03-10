@@ -1469,41 +1469,28 @@ void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil
  * Returns the matrix that transforms from a 3D point in local-space to a 2D point in
  * stroke-space for the stroke `curve_i`
  */
-blender::float4x2 get_local_to_stroke_matrix(const blender::bke::CurvesGeometry &curves,
+blender::float4x2 get_local_to_stroke_matrix(const blender::bke::greasepencil::Drawing &drawing,
                                              int curve_i)
 {
   using namespace blender;
   using namespace blender::math;
 
+  const bke::CurvesGeometry &curves = drawing.strokes();
   const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const Span<float3> positions = curves.positions();
+  const Span<float3> normals = drawing.curve_plane_normals();
   const IndexRange points = points_by_curve[curve_i];
-  const int totpoints = points.size();
+  const float3 normal = normals[curve_i];
 
-  if (totpoints < 2) {
+  if (points.size() <= 2) {
     return float4x2::identity();
   }
 
   const float3 pt0 = positions[points.first()];
-  const float3 pt1 = positions[points.first() + 1];
-  const float3 pt3 = positions[points[int(totpoints * 0.75f)]];
+  const float3 pt1 = positions[points.last()];
 
   /* Local X axis (p0 -> p1) */
-  float3 locx = normalize(pt1 - pt0);
-
-  /* If the first two points are the same use the 1/4 point. */
-  if (totpoints > 3 && length_squared(locx) == 0.0f) {
-    const float3 pt2 = positions[int(totpoints * 0.25f)];
-    locx = normalize(pt2 - pt0);
-  }
-
-  /* Point vector at 3/4 */
-  const float3 v3 = totpoints == 2 ? pt3 * 0.001f : pt3;
-  const float3 loc3 = v3 - pt0;
-
-  /* Vector orthogonal to polygon plane. */
-  const float3 normal = cross(locx, loc3);
-
+  const float3 locx = normalize(pt1 - pt0);
   /* Local Y axis (cross to normal/x axis). */
   const float3 locy = normalize(cross(normal, locx));
 
@@ -1565,12 +1552,13 @@ void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
   textmatB.finish();
 }
 
-blender::float4x2 get_texture_matrix(const blender::bke::CurvesGeometry &curves, int curve_i)
+blender::float4x2 get_texture_matrix(const blender::bke::greasepencil::Drawing &drawing,
+                                     int curve_i)
 {
   using namespace blender;
 
-  const float4x2 strokemat = get_local_to_stroke_matrix(curves, curve_i);
-  const float3x2 textmat = get_stroke_to_texture_matrix(curves, curve_i);
+  const float4x2 strokemat = get_local_to_stroke_matrix(drawing, curve_i);
+  const float3x2 textmat = get_stroke_to_texture_matrix(drawing.strokes(), curve_i);
 
   float4x3 strokemat4x3 = float4x3(strokemat);
 
@@ -1583,14 +1571,14 @@ blender::float4x2 get_texture_matrix(const blender::bke::CurvesGeometry &curves,
   return textspace;
 }
 
-void set_texture_matrix(blender::bke::CurvesGeometry &curves,
+void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
                         int curve_i,
                         const blender::float4x2 textspace)
 {
   using namespace blender;
   using namespace blender::math;
 
-  const float4x2 strokemat = get_local_to_stroke_matrix(curves, curve_i);
+  const float4x2 strokemat = get_local_to_stroke_matrix(drawing, curve_i);
 
   /*
    * WORKAROUND: This algorithm could work with floats but is prone to numerical error.
@@ -1630,11 +1618,11 @@ void set_texture_matrix(blender::bke::CurvesGeometry &curves,
 
   const float3x2 textmat = float3x2(double4x2(textspace) * right_inverse);
 
-  set_stroke_to_texture_matrix(curves, curve_i, textmat);
+  set_stroke_to_texture_matrix(drawing.strokes_for_write(), curve_i, textmat);
 }
 
-void transfer_texture_matrics(const blender::bke::CurvesGeometry &src,
-                              blender::bke::CurvesGeometry &dst,
+void transfer_texture_matrics(const blender::bke::greasepencil::Drawing &src,
+                              blender::bke::greasepencil::Drawing &dst,
                               const Span<int> dst_to_src_curve)
 {
   for (const int dst_curve_i : dst_to_src_curve.index_range()) {
@@ -1643,8 +1631,8 @@ void transfer_texture_matrics(const blender::bke::CurvesGeometry &src,
   }
 }
 
-void transfer_texture_matrics(const blender::bke::CurvesGeometry &src,
-                              blender::bke::CurvesGeometry &dst,
+void transfer_texture_matrics(const blender::bke::greasepencil::Drawing &src,
+                              blender::bke::greasepencil::Drawing &dst,
                               const blender::IndexMask &indices)
 {
   indices.foreach_index([&](const int64_t index, const int64_t pos) {

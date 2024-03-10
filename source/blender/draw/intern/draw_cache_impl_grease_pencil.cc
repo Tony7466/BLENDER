@@ -588,7 +588,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
       MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
       MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
-      const float4x2 texture_matrix = get_texture_matrix(curves, curve_i);
+      const float4x2 texture_matrix = get_texture_matrix(info.drawing, curve_i);
 
       const Span<float> lengths = curves.evaluated_lengths_for_curve(curve_i, is_cyclic);
 
