@@ -1582,11 +1582,17 @@ void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
 
   MutableAttributeAccessor attributes = curves.attributes_for_write();
   SpanAttributeWriter<float> uv_rotations = attributes.lookup_or_add_for_write_span<float>(
-      "uv_rotation", AttrDomain::Curve);
+      "uv_rotation",
+      AttrDomain::Curve,
+      AttributeInitVArray(VArray<float>::ForSingle(0.0f, curves.curves_num())));
   SpanAttributeWriter<float2> uv_translations = attributes.lookup_or_add_for_write_span<float2>(
-      "uv_translation", AttrDomain::Curve);
+      "uv_translation",
+      AttrDomain::Curve,
+      AttributeInitVArray(VArray<float2>::ForSingle(float2(0.0f, 0.0f), curves.curves_num())));
   SpanAttributeWriter<float2> uv_scales = attributes.lookup_or_add_for_write_span<float2>(
-      "uv_scale", AttrDomain::Curve);
+      "uv_scale",
+      AttrDomain::Curve,
+      AttributeInitVArray(VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
 
   uv_rotations.span[curve_i] = uv_rotation;
   uv_translations.span[curve_i] = uv_translation;
