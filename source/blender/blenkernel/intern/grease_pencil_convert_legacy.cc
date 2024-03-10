@@ -450,6 +450,9 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     float4x3 strokemat4x3 = float4x3(strokemat);
     strokemat4x3[2][2] = 0.0f;
     strokemat4x3[3][2] = 1.0f;
+
+    /* Ensure that everything is up to date. */
+    drawing.tag_positions_changed();
     set_texture_matrix(drawing, stroke_i, textmat * strokemat4x3);
   }
 
