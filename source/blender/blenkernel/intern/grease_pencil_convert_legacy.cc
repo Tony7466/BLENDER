@@ -252,10 +252,10 @@ static blender::float4x2 get_legacy_texture_matrix(bGPDstroke *gps)
    * the two matrices.
    *
    * i.e.
-   *          # # 0              # # 0
-   * We need  # # 0  Instead of  # # 0
-   *          # # 0              # # 1
-   *          # # 1              # # 0
+   *          # # # #              # # # #
+   * We need  # # # #  Instead of  # # # #
+   *          0 0 0 1              0 0 1 0
+   *
    */
   strokemat4x3[2][2] = 0.0f;
   strokemat4x3[3][2] = 1.0f;

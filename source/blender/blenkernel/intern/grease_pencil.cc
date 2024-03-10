@@ -1614,10 +1614,10 @@ blender::float4x2 get_texture_matrix(const blender::bke::greasepencil::Drawing &
    * the two matrices.
    *
    * i.e.
-   *          # # 0              # # 0
-   * We need  # # 0  Instead of  # # 0
-   *          # # 0              # # 1
-   *          # # 1              # # 0
+   *          # # # #              # # # #
+   * We need  # # # #  Instead of  # # # #
+   *          0 0 0 1              0 0 1 0
+   *
    */
   strokemat4x3[2][2] = 0.0f;
   strokemat4x3[3][2] = 1.0f;
@@ -1647,10 +1647,10 @@ void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
    * the two matrices.
    *
    * i.e.
-   *          # # 0              # # 0
-   * We need  # # 0  Instead of  # # 0
-   *          # # 0              # # 1
-   *          # # 1              # # 0
+   *          # # # #              # # # #
+   * We need  # # # #  Instead of  # # # #
+   *          0 0 0 1              0 0 1 0
+   *
    */
   strokemat4x3[2][2] = 0.0;
   strokemat4x3[3][2] = 1.0;
