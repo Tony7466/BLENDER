@@ -7,6 +7,7 @@
  * Implements the Sculpt Mode tools.
  */
 
+#include "DNA_ID.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_ghash.h"
@@ -566,6 +567,18 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static bool sculpt_mode_toggle_poll(bContext *C)
+{
+  Object *ob = ED_object_active_context(C);
+  if (!ED_operator_object_active_editable_ex(C, ob) || ID_IS_OVERRIDE_LIBRARY(ob)) {
+    return false;
+  }
+  if (ELEM(ob->type, OB_MESH, OB_GREASE_PENCIL)) {
+    return !ID_IS_LINKED(ob->data) && !ID_IS_OVERRIDE_LIBRARY(ob->data);
+  }
+  return false;
+}
+
 static void SCULPT_OT_sculptmode_toggle(wmOperatorType *ot)
 {
   /* Identifiers. */
@@ -575,7 +588,7 @@ static void SCULPT_OT_sculptmode_toggle(wmOperatorType *ot)
 
   /* API callbacks. */
   ot->exec = sculpt_mode_toggle_exec;
-  ot->poll = ED_operator_object_active_editable_mesh;
+  ot->poll = sculpt_mode_toggle_poll;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }
