@@ -50,7 +50,8 @@ static bool is_td2d_int(TransData2D *td2d)
  * \{ */
 
 static bool grease_pencil_layer_initialize_trans_data(blender::bke::greasepencil::Layer &layer,
-                                                      const blender::Span<int> frames_affected)
+                                                      const blender::Span<int> frames_affected,
+                                                      const bool use_duplicates)
 {
   using namespace blender::bke::greasepencil;
   LayerTransformData &trans_data = layer.runtime->trans_data_;
@@ -66,7 +67,8 @@ static bool grease_pencil_layer_initialize_trans_data(blender::bke::greasepencil
   trans_data.frames_transformed.clear();
 
   for (const int frame_number : frames_affected) {
-    const bool was_duplicated = trans_data.duplicated_frames_buffer.contains(frame_number);
+    const bool was_duplicated = use_duplicates &&
+                                trans_data.duplicated_frames_buffer.contains(frame_number);
 
     /* Get the frame that is going to be affected by the transformation :
      * if the frame was duplicated, then its the duplicated frame which is being transformed,
@@ -120,8 +122,7 @@ static bool grease_pencil_layer_reset_trans_data(blender::bke::greasepencil::Lay
 
 static bool grease_pencil_layer_update_trans_data(blender::bke::greasepencil::Layer &layer,
                                                   const int src_frame_number,
-                                                  const int dst_frame_number,
-                                                  const bool duplicated)
+                                                  const int dst_frame_number)
 {
   using namespace blender::bke::greasepencil;
   LayerTransformData &trans_data = layer.runtime->trans_data_;
@@ -548,7 +549,7 @@ static int GreasePencilLayerToTransData(TransData *td,
   /* If it was not previously done, initialize the transform data in the layer, and if some frames
    * are actually concerned by the transform. */
   if (any_frame_affected) {
-    grease_pencil_layer_initialize_trans_data(*layer, frames_affected.as_span());
+    grease_pencil_layer_initialize_trans_data(*layer, frames_affected.as_span(), duplicate);
   }
 
   return total_trans_frames;
@@ -966,12 +967,10 @@ static void recalcData_actedit(TransInfo *t)
     transform_convert_flush_handle2D(td, td2d, 0.0f);
 
     if ((t->state == TRANS_RUNNING) && ((td->flag & TD_GREASE_PENCIL_FRAME) != 0)) {
-      const bool use_duplicated = (t->flag & T_DUPLICATED_KEYFRAMES) != 0;
       grease_pencil_layer_update_trans_data(
           *static_cast<blender::bke::greasepencil::Layer *>(td->extra),
           round_fl_to_int(td->ival),
-          round_fl_to_int(td2d->loc[0]),
-          use_duplicated);
+          round_fl_to_int(td2d->loc[0]));
     }
     else if (is_td2d_int(td2d)) {
       /* (Grease Pencil Legacy)
