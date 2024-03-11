@@ -106,11 +106,6 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
   strength = math::clamp(strength, 0.0f, 1.0f);
   fill_strength = math::clamp(fill_strength, 0.0f, 1.0f);
 
-  int2 mouse_position_pixels = int2(round_fl_to_int(mouse_position[0]),
-                                    round_fl_to_int(mouse_position[1]));
-  const int64_t radius_pixels = round_fl_to_int(radius);
-  const int64_t eraser_squared_radius_pixels = radius_pixels * radius_pixels;
-
   /* Get the grease pencil drawing. */
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
@@ -142,23 +137,39 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
     bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
         stroke_attributes.lookup_for_write_span<ColorGeometry4f>("fill_color");
 
+    bool changed = false;
     if (TINT_VERTEX_COLOR_STROKE(brush)) {
+      changed = true;
       threading::parallel_for(strokes.points_range(), 4096, [&](const IndexRange range) {
         for (const int point : range) {
           const float distance = math::distance(screen_space_positions[point], mouse_position);
           const float influence = strength * BKE_brush_curve_strength(brush, distance, radius);
+          if (influence <= 0.0f) {
+            continue;
+          }
+          vertex_colors[point].premultiply_alpha();
           vertex_colors[point] = math::interpolate(vertex_colors[point], self.color, influence);
+          vertex_colors[point][3] = vertex_colors[point][3] * (1.0f - influence) * influence;
+          vertex_colors[point].unpremultiply_alpha();
         }
       });
     }
-    if (TINT_VERTEX_COLOR_FILL(brush)) {
-      threading::parallel_for(strokes.curves_range(), 4096, [&](const IndexRange range) {
-        for (const int curve : range) {
-          fill_colors.span[curve] = math::interpolate(
-              fill_colors.span[curve], self.color, fill_strength);
-        }
-      });
-      fill_colors.finish();
+    // if (!fill_colors.span.is_empty() && TINT_VERTEX_COLOR_FILL(brush)) {
+    //   changed = true;
+    //   threading::parallel_for(strokes.curves_range(), 4096, [&](const IndexRange range) {
+    //     for (const int curve : range) {
+    //       fill_colors.span[curve].premultiply_alpha();
+    //       fill_colors.span[curve] = math::interpolate(
+    //           fill_colors.span[curve], self.color, fill_strength);
+    //       fill_colors.span[curve].unpremultiply_alpha();
+    //     }
+    //   });
+    //   fill_colors.finish();
+    // }
+
+    if (changed) {
+      DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+      WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
     }
   };
 
@@ -183,7 +194,10 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
   }
 }
 
-void TintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample) {}
+void TintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
+{
+  tint_perform_dab(*this, C, extension_sample);
+}
 
 void TintOperation::on_stroke_done(const bContext & /*C*/) {}
 
