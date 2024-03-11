@@ -387,6 +387,9 @@ short ANIM_animchannel_keyframes_loop(KeyframeEditData *ked,
       return agrp_keyframes_loop(ked, (bActionGroup *)ale->data, key_ok, key_cb, fcu_cb);
     case ALE_ACT: /* action */
       return act_keyframes_loop(ked, (bAction *)ale->key_data, key_ok, key_cb, fcu_cb);
+    case ALE_ANIM: /* Animation data-block. */
+      printf("ANIM_animchannel_keyframes_loop: not yet implemented for Animation data-blocks\n");
+      return 0;
 
     case ALE_OB: /* object */
       return ob_keyframes_loop(ked, ads, (Object *)ale->key_data, key_ok, key_cb, fcu_cb);
@@ -425,6 +428,10 @@ short ANIM_animchanneldata_keyframes_loop(KeyframeEditData *ked,
       return agrp_keyframes_loop(ked, (bActionGroup *)data, key_ok, key_cb, fcu_cb);
     case ALE_ACT: /* action */
       return act_keyframes_loop(ked, (bAction *)data, key_ok, key_cb, fcu_cb);
+    case ALE_ANIM: /* Animation data-block. */
+      printf(
+          "ANIM_animchanneldata_keyframes_loop: not yet implemented for Animation data-blocks\n");
+      return 0;
 
     case ALE_OB: /* object */
       return ob_keyframes_loop(ked, ads, (Object *)data, key_ok, key_cb, fcu_cb);

@@ -829,4 +829,38 @@ const FCurve *ChannelBag::fcurve_find(const StringRefNull rna_path, const int ar
   return nullptr;
 }
 
+Span<FCurve *> fcurves_for_animation(Animation &anim, const binding_handle_t binding_handle)
+{
+  const Span<const FCurve *> fcurves = fcurves_for_animation(const_cast<const Animation &>(anim),
+                                                             binding_handle);
+  FCurve **first = const_cast<FCurve **>(fcurves.data());
+  return Span<FCurve *>(first, fcurves.size());
+}
+
+Span<const FCurve *> fcurves_for_animation(const Animation &anim,
+                                           const binding_handle_t binding_handle)
+{
+  if (binding_handle == 0) {
+    return {};
+  }
+
+  for (const animrig::Layer *layer : anim.layers()) {
+    for (const animrig::Strip *strip : layer->strips()) {
+      switch (strip->type()) {
+        case animrig::Strip::Type::Keyframe: {
+          const animrig::KeyframeStrip &key_strip = strip->as<animrig::KeyframeStrip>();
+          const animrig::ChannelBag *bag = key_strip.channelbag_for_binding(binding_handle);
+          if (!bag) {
+            continue;
+          }
+
+          return bag->fcurves();
+        }
+      }
+    }
+  }
+
+  return {};
+}
+
 }  // namespace blender::animrig

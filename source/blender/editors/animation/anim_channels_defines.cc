@@ -9,6 +9,7 @@
 #include <cstdio>
 
 #include "ANIM_action.hh"
+#include "ANIM_animation.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_keyframing.hh"
 
@@ -75,6 +76,8 @@
 
 #include "WM_api.hh"
 #include "WM_types.hh"
+
+using namespace blender;
 
 /* *********************************************** */
 /* XXX constant defines to be moved elsewhere? */
@@ -1244,6 +1247,92 @@ static bAnimChannelType ACF_NLACURVE = {
     /*has_setting*/ acf_fcurve_setting_valid,
     /*setting_flag*/ acf_fcurve_setting_flag,
     /*setting_ptr*/ acf_fcurve_setting_ptr,
+};
+
+/* Object Animation Expander  ------------------------------------------- */
+
+/* TODO: just get this from RNA? */
+static int acf_fillanim_icon(bAnimListElem * /*ale*/)
+{
+  return ICON_ACTION; /* TODO: give Animation its own icon? */
+}
+
+/* check if some setting exists for this channel */
+static bool acf_fillanim_setting_valid(bAnimContext * /*ac*/,
+                                       bAnimListElem * /*ale*/,
+                                       eAnimChannel_Settings setting)
+{
+  switch (setting) {
+    case ACHANNEL_SETTING_SELECT:
+    case ACHANNEL_SETTING_EXPAND:
+      return true;
+
+    default:
+      return false;
+  }
+}
+
+/* Get the appropriate flag(s) for the setting when it is valid. */
+static int acf_fillanim_setting_flag(bAnimContext * /*ac*/,
+                                     eAnimChannel_Settings setting,
+                                     bool *r_neg)
+{
+  *r_neg = false;
+
+  switch (setting) {
+    case ACHANNEL_SETTING_SELECT:
+      return ADT_UI_SELECTED;
+
+    case ACHANNEL_SETTING_EXPAND:
+      return int(animrig::Animation::Flag::Expanded);
+
+    default:
+      return 0;
+  }
+}
+
+/* get pointer to the setting */
+static void *acf_fillanim_setting_ptr(bAnimListElem *ale,
+                                      eAnimChannel_Settings setting,
+                                      short *r_type)
+{
+  Animation *anim = (Animation *)ale->data;
+  AnimData *adt = ale->adt;
+  BLI_assert(anim);
+  BLI_assert(adt);
+
+  *r_type = 0;
+
+  switch (setting) {
+    case ACHANNEL_SETTING_SELECT:
+      return GET_ACF_FLAG_PTR(adt->flag, r_type);
+
+    case ACHANNEL_SETTING_EXPAND:
+      return GET_ACF_FLAG_PTR(anim->flag, r_type);
+
+    default:
+      return nullptr;
+  }
+}
+
+/** Object Animation expander type define. */
+static bAnimChannelType ACF_FILLANIM = {
+    /*channel_type_name*/ "Ob-Animation Filler",
+    /*channel_role*/ ACHANNEL_ROLE_EXPANDER,
+
+    /*get_backdrop_color*/ acf_generic_dataexpand_color,
+    /*get_channel_color*/ nullptr,
+    /*draw_backdrop*/ acf_generic_dataexpand_backdrop,
+    /*get_indent_level*/ acf_generic_indentation_1,
+    /*get_offset*/ acf_generic_basic_offset,
+
+    /*name*/ acf_generic_idblock_name,
+    /*name_prop*/ acf_generic_idfill_name_prop,
+    /*icon*/ acf_fillanim_icon,
+
+    /*has_setting*/ acf_fillanim_setting_valid,
+    /*setting_flag*/ acf_fillanim_setting_flag,
+    /*setting_ptr*/ acf_fillanim_setting_ptr,
 };
 
 /* Object Action Expander  ------------------------------------------- */
@@ -4280,6 +4369,7 @@ static void ANIM_init_channel_typeinfo_data()
     animchannelTypeInfo[type++] = &ACF_NLACONTROLS; /* NLA Control FCurve Expander */
     animchannelTypeInfo[type++] = &ACF_NLACURVE;    /* NLA Control FCurve Channel */
 
+    animchannelTypeInfo[type++] = &ACF_FILLANIM;    /* Object Animation Expander */
     animchannelTypeInfo[type++] = &ACF_FILLACTD;    /* Object Action Expander */
     animchannelTypeInfo[type++] = &ACF_FILLDRIVERS; /* Drivers Expander */
 

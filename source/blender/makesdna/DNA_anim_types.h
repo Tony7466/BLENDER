@@ -1272,6 +1272,9 @@ typedef struct Animation {
   int binding_array_num;
   int32_t last_binding_handle;
 
+  uint8_t flag;
+  uint8_t _pad0[7];
+
 #ifdef __cplusplus
   blender::animrig::Animation &wrap();
   const blender::animrig::Animation &wrap() const;

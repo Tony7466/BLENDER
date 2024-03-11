@@ -151,6 +151,7 @@ static int mouse_nla_tracks(bContext *C, bAnimContext *ac, int track_index, shor
       break;
     }
     case ANIMTYPE_FILLACTD: /* Action Expander */
+    case ANIMTYPE_FILLANIM: /* Animation Expander */
     case ANIMTYPE_DSMAT:    /* Datablock AnimData Expanders */
     case ANIMTYPE_DSLAM:
     case ANIMTYPE_DSCAM:

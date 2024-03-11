@@ -11,6 +11,7 @@
 #include "BLI_math_vector_types.hh"
 #include "BLI_range.h"
 
+struct Animation;
 struct AnimData;
 struct CacheFile;
 struct FCurve;
@@ -159,6 +160,9 @@ void action_group_to_keylist(AnimData *adt,
                              AnimKeylist *keylist,
                              int saction_flag,
                              blender::float2 range);
+/* Animation */
+void animation_to_keylist(
+    AnimData *adt, Animation *anim, AnimKeylist *keylist, int saction_flag, blender::float2 range);
 /* Action */
 void action_to_keylist(
     AnimData *adt, bAction *act, AnimKeylist *keylist, int saction_flag, blender::float2 range);

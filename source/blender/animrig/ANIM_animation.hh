@@ -135,6 +135,13 @@ class Animation : public ::Animation {
   /** Free all data in the `Animation`. Doesn't delete the `Animation` itself. */
   void free_data();
 
+  /* Flags access. */
+  enum class Flag : uint8_t { Expanded = (1 << 0) };
+  bool is_expanded()
+  {
+    return this->flag & uint8_t(Flag::Expanded);
+  }
+
  protected:
   /** Return the layer's index, or -1 if not found in this animation. */
   int64_t find_layer_index(const Layer &layer) const;
@@ -432,6 +439,19 @@ void unassign_animation(ID &animated_id);
  * Return the Animation of this ID, or nullptr if it has none.
  */
 Animation *get_animation(ID &animated_id);
+
+/**
+ * Return the F-Curves for this specific binding handle.
+ *
+ * This is just a utility function, that's intended to become obsolete when multi-layer animation
+ * is introduced. However, since Blender currently only supports a single layer with a single
+ * strip, of a single type, this function can be used.
+ *
+ * The use of this function is also an indicator for code that will have to be altered when
+ * multi-layered animation is getting implemented.
+ */
+Span<FCurve *> fcurves_for_animation(Animation &anim, binding_handle_t binding_handle);
+Span<const FCurve *> fcurves_for_animation(const Animation &anim, binding_handle_t binding_handle);
 
 }  // namespace blender::animrig
 
