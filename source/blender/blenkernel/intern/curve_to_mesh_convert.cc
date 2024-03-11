@@ -383,7 +383,6 @@ static GSpan evaluate_attribute(const GVArray &src,
 
     buffer.reinitialize(curves.evaluated_points_num() * src.type().size());
     GMutableSpan eval{src.type(), buffer.data(), curves.evaluated_points_num()};
-    curves.ensure_can_interpolate_to_evaluated();
     curves.interpolate_to_evaluated(src.get_internal_span(), eval);
     return eval;
   }
@@ -392,7 +391,6 @@ static GSpan evaluate_attribute(const GVArray &src,
   src.materialize_to_uninitialized(src_buffer.data());
   buffer.reinitialize(curves.evaluated_points_num() * src.type().size());
   GMutableSpan eval{src.type(), buffer.data(), curves.evaluated_points_num()};
-  curves.ensure_can_interpolate_to_evaluated();
   curves.interpolate_to_evaluated(src_buffer, eval);
   return eval;
 }
@@ -855,6 +853,9 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
 
   Vector<std::byte> eval_buffer;
 
+  /* Make sure curve attributes can be interpolated. */
+  main.ensure_can_interpolate_to_evaluated();
+
   build_mesh_positions(curves_info, offsets, eval_buffer, *mesh);
 
   mesh->tag_overlapping_none();
@@ -920,6 +921,9 @@ Mesh *curve_to_mesh_sweep(const CurvesGeometry &main,
 
     return true;
   });
+
+  /* Make sure profile attributes can be interpolated. */
+  profile.ensure_can_interpolate_to_evaluated();
 
   const AttributeAccessor profile_attributes = profile.attributes();
   profile_attributes.for_all([&](const AttributeIDRef &id, const AttributeMetaData meta_data) {
