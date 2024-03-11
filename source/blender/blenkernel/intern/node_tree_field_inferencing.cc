@@ -5,6 +5,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
+#include "DNA_node_tree_interface_types.h"
 #include "NOD_geometry.hh"
 #include "NOD_node_declaration.hh"
 #include "NOD_socket.hh"
@@ -1002,11 +1003,16 @@ static void add_node_type_constraints(const bNodeTree &tree,
 static void test_ac3_field_inferencing(
     const bNodeTree &tree,
     const Span<const FieldInferencingInterface *> interface_by_node,
-    FieldInferencingInterface &new_inferencing_interface)
+    FieldInferencingInterface &inferencing_interface)
 {
   using Interrupter = ac3::PrintInterupter;
 
-  const int num_vars = tree.all_sockets().size();
+  /* Index ranges of variables. */
+  const IndexRange socket_vars = tree.all_sockets().index_range();
+  const IndexRange tree_input_vars = socket_vars.after(tree.interface_inputs().size());
+  const IndexRange tree_output_vars = tree_input_vars.after(tree.interface_outputs().size());
+  const int num_vars = tree_output_vars.one_after_last();
+
   /* Domain has two values: Single and Field.
    * The result can be a combination of both. */
   const int domain_size = 2;
@@ -1017,7 +1023,7 @@ static void test_ac3_field_inferencing(
   for (const bNode *node : nodes) {
     const FieldInferencingInterface &inferencing_interface = *interface_by_node[node->index()];
     for (const bNodeSocket *output_socket : node->output_sockets()) {
-      const int var_index = output_socket->index_in_tree();
+      const int var_index = socket_vars[output_socket->index_in_tree()];
       const bNodeSocketType *typeinfo = output_socket->typeinfo;
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
@@ -1079,7 +1085,7 @@ static void test_ac3_field_inferencing(
 
     /* Some inputs do not require fields independent of what the outputs are connected to. */
     for (const bNodeSocket *input_socket : node->input_sockets()) {
-      const int var_index = input_socket->index_in_tree();
+      const int var_index = socket_vars[input_socket->index_in_tree()];
       const bNodeSocketType *typeinfo = input_socket->typeinfo;
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
@@ -1099,14 +1105,19 @@ static void test_ac3_field_inferencing(
     add_node_type_constraints(tree, *node, constraints);
   }
 
+  /* Connnect socket and interface variables. */
+  for (const int i : tree.interface_inputs().index_range()) {
+    const int var_index =
+  }
+
   ac3::solve_constraints<Interrupter>(constraints, num_vars, domain_size);
 
-  /* Build new inferencing interface for the tree. */
+  /* Setup inferencing interface for the tree. */
   for (const int index : tree.interface_inputs().index_range()) {
     const bNodeTreeInterfaceSocket *group_input = tree.interface_inputs()[index];
     const bNodeSocketType *typeinfo = group_input->socket_typeinfo();
     const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
-    new_inferencing_interface.inputs[index] = InputSocketFieldType::None;
+    inferencing_interface.inputs[index] = InputSocketFieldType::None;
   }
 }
 
@@ -1234,7 +1245,7 @@ bool update_field_inferencing(const bNodeTree &tree)
       tree, *new_inferencing_interface, interface_by_node, field_state_by_socket_id);
   update_socket_shapes(tree, field_state_by_socket_id);
 #else
-  test_ac3_field_inferencing(tree, interface_by_node);
+  test_ac3_field_inferencing(tree, interface_by_node, *new_inferencing_interface);
 #endif
 
   /* Update the previous group interface. */
