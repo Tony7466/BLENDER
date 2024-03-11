@@ -673,7 +673,8 @@ ccl_device_forceinline bool integrate_volume_equiangular_sample_light(
     ccl_private const Ray *ccl_restrict ray,
     ccl_private const ShaderData *ccl_restrict sd,
     ccl_private const RNGState *ccl_restrict rng_state,
-    ccl_private float3 *ccl_restrict P)
+    ccl_private float3 *ccl_restrict P,
+    ccl_private LightSample *ccl_restrict ls)
 {
   /* Test if there is a light or BSDF that needs direct light. */
   if (!kernel_data.integrator.use_direct_light) {
@@ -685,7 +686,6 @@ ccl_device_forceinline bool integrate_volume_equiangular_sample_light(
   const uint bounce = INTEGRATOR_STATE(state, path, bounce);
   const float3 rand_light = path_state_rng_3D(kg, rng_state, PRNG_LIGHT);
 
-  LightSample ls ccl_optional_struct_init;
   if (!light_sample_from_volume_segment(kg,
                                         rand_light,
                                         sd->time,
@@ -695,20 +695,20 @@ ccl_device_forceinline bool integrate_volume_equiangular_sample_light(
                                         light_link_receiver_nee(kg, sd),
                                         bounce,
                                         path_flag,
-                                        &ls))
+                                        ls))
   {
     return false;
   }
 
-  if (ls.shader & SHADER_EXCLUDE_SCATTER) {
+  if (ls->shader & SHADER_EXCLUDE_SCATTER) {
     return false;
   }
 
-  if (ls.t == FLT_MAX) {
+  if (ls->t == FLT_MAX) {
     return false;
   }
 
-  *P = ls.P;
+  *P = ls->P;
 
   return true;
 }
@@ -725,7 +725,8 @@ ccl_device_forceinline void integrate_volume_direct_light(
 #  ifdef __PATH_GUIDING__
     ccl_private const Spectrum unlit_throughput,
 #  endif
-    ccl_private const Spectrum throughput)
+    ccl_private const Spectrum throughput,
+    ccl_private LightSample *ccl_restrict ls)
 {
   PROFILING_INIT(kg, PROFILING_SHADE_VOLUME_DIRECT_LIGHT);
 
@@ -743,7 +744,6 @@ ccl_device_forceinline void integrate_volume_direct_light(
    * Additionally we could end up behind the light or outside a spot light cone, which might
    * waste a sample. Though on the other hand it would be possible to prevent that with
    * equiangular sampling restricted to a smaller sub-segment where the light has influence. */
-  LightSample ls ccl_optional_struct_init;
   {
     const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
     const uint bounce = INTEGRATOR_STATE(state, path, bounce);
@@ -759,13 +759,13 @@ ccl_device_forceinline void integrate_volume_direct_light(
                                     SD_BSDF_HAS_TRANSMISSION,
                                     bounce,
                                     path_flag,
-                                    &ls))
+                                    ls))
     {
       return;
     }
   }
 
-  if (ls.shader & SHADER_EXCLUDE_SCATTER) {
+  if (ls->shader & SHADER_EXCLUDE_SCATTER) {
     return;
   }
 
@@ -777,31 +777,31 @@ ccl_device_forceinline void integrate_volume_direct_light(
    * non-constant light sources. */
   ShaderDataTinyStorage emission_sd_storage;
   ccl_private ShaderData *emission_sd = AS_SHADER_DATA(&emission_sd_storage);
-  const Spectrum light_eval = light_sample_shader_eval(kg, state, emission_sd, &ls, sd->time);
+  const Spectrum light_eval = light_sample_shader_eval(kg, state, emission_sd, ls, sd->time);
   if (is_zero(light_eval)) {
     return;
   }
 
   /* Evaluate BSDF. */
   BsdfEval phase_eval ccl_optional_struct_init;
-  float phase_pdf = volume_shader_phase_eval(kg, state, sd, phases, ls.D, &phase_eval);
+  float phase_pdf = volume_shader_phase_eval(kg, state, sd, phases, ls->D, &phase_eval);
 
-  if (ls.shader & SHADER_USE_MIS) {
-    float mis_weight = light_sample_mis_weight_nee(kg, ls.pdf, phase_pdf);
+  if (ls->shader & SHADER_USE_MIS) {
+    float mis_weight = light_sample_mis_weight_nee(kg, ls->pdf, phase_pdf);
     bsdf_eval_mul(&phase_eval, mis_weight);
   }
 
-  bsdf_eval_mul(&phase_eval, light_eval / ls.pdf);
+  bsdf_eval_mul(&phase_eval, light_eval / ls->pdf);
 
   /* Path termination. */
   const float terminate = path_state_rng_light_termination(kg, rng_state);
-  if (light_sample_terminate(kg, &ls, &phase_eval, terminate)) {
+  if (light_sample_terminate(kg, ls, &phase_eval, terminate)) {
     return;
   }
 
   /* Create shadow ray. */
   Ray ray ccl_optional_struct_init;
-  light_sample_to_volume_shadow_ray(kg, sd, &ls, P, &ray);
+  light_sample_to_volume_shadow_ray(kg, sd, ls, P, &ray);
 
   /* Branch off shadow kernel. */
   IntegratorShadowState shadow_state = integrator_shadow_path_init(
@@ -858,8 +858,8 @@ ccl_device_forceinline void integrate_volume_direct_light(
 
   /* Write Light-group, +1 as light-group is int but we need to encode into a uint8_t. */
   INTEGRATOR_STATE_WRITE(
-      shadow_state, shadow_path, lightgroup) = (ls.type != LIGHT_BACKGROUND) ?
-                                                   ls.group + 1 :
+      shadow_state, shadow_path, lightgroup) = (ls->type != LIGHT_BACKGROUND) ?
+                                                   ls->group + 1 :
                                                    kernel_data.background.lightgroup + 1;
 
 #  ifdef __PATH_GUIDING__
@@ -989,11 +989,12 @@ ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
 
   /* Sample light ahead of volume stepping, for equiangular sampling. */
   /* TODO: distant lights are ignored now, but could instead use even distribution. */
+  LightSample ls ccl_optional_struct_init;
   const bool need_light_sample = !(INTEGRATOR_STATE(state, path, flag) & PATH_RAY_TERMINATE);
   float3 equiangular_P = zero_float3();
   const bool have_equiangular_sample = need_light_sample &&
                                        integrate_volume_equiangular_sample_light(
-                                           kg, state, ray, &sd, &rng_state, &equiangular_P);
+                                           kg, state, ray, &sd, &rng_state, &equiangular_P, &ls);
 
   VolumeSampleMethod direct_sample_method = (have_equiangular_sample) ?
                                                 volume_stack_sample_method(kg, state) :
@@ -1091,7 +1092,8 @@ ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
 #  ifdef __PATH_GUIDING__
                                   unlit_throughput,
 #  endif
-                                  result.direct_throughput);
+                                  result.direct_throughput,
+                                  &ls);
   }
 
   /* Indirect light.
