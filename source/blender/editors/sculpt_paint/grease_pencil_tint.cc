@@ -99,9 +99,9 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
   }
   if (BKE_brush_use_alpha_pressure(brush)) {
     strength *= extension_sample.pressure;
-    strength /= 100.0f; /* Attenuate factor to get a smoother tinting. */
   }
-  float fill_strength = strength / 10.0f;
+  //strength /= 100.0f; /* Attenuate factor to get a smoother tinting. */
+  float fill_strength = strength;// / 10.0f;
 
   strength = math::clamp(strength, 0.0f, 1.0f);
   fill_strength = math::clamp(fill_strength, 0.0f, 1.0f);
@@ -162,7 +162,6 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
             stroke_changed = true;
           }
           if (!fill_colors.span.is_empty() && stroke_changed && TINT_VERTEX_COLOR_FILL(brush)) {
-            changed = true;
             fill_colors.span[curve].premultiply_alpha();
             float4 rgba = float4(math::interpolate(float3(fill_colors.span[curve]),
                                                    float3(self.color),
