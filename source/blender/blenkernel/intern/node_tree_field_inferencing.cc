@@ -18,7 +18,6 @@
 #include "BLI_stack.hh"
 
 #include <iostream>
-#include <sstream>
 
 namespace blender::bke::node_field_inferencing {
 
@@ -878,7 +877,7 @@ static void solve_binary_constraints(const ConstraintSet &constraints,
       }
       print_variable_state<Interrupter>(variable_domains, "----");
 
-      /* Add arcs from a to all dependencies except a. */
+      /* Add arcs to A from all dependant variables (except B). */
       for (const ConstraintSet::Source &source : constraints.get_source_constraints(key[0])) {
         if (source.variable == key[1]) {
           continue;
@@ -907,40 +906,133 @@ static void solve_constraints(const ConstraintSet &constraints,
 
 }  // namespace ac3
 
-static void test_ac3_field_inferencing(const bNodeTree &tree) {
+enum DomainValue {
+  Single = 0,
+  Field = 1,
+};
+
+static void add_node_type_constraints(const bNodeTree &tree,
+                                      const bNode &node,
+                                      ac3::ConstraintSet &constraints)
+{
+  tree.ensure_topology_cache();
+
+  /* Constraint is satisfied if both inputs or outputs of a zone node pair are the same type. */
+  auto shared_field_type_constraint = [](const int value_a, const int value_b) {
+    return value_a == value_b;
+  };
+
+  auto add_zone_constraints = [&](const Span<const bNodeSocket *> input_inputs,
+                                  const Span<const bNodeSocket *> input_outputs,
+                                  const Span<const bNodeSocket *> output_inputs,
+                                  const Span<const bNodeSocket *> output_outputs) {
+    BLI_assert(input_inputs.size() == output_inputs.size());
+    BLI_assert(input_outputs.size() == output_outputs.size());
+    for (const int i : input_inputs.index_range()) {
+      const int var_a = input_inputs[i]->index_in_tree();
+      const int var_b = output_inputs[i]->index_in_tree();
+      constraints.add(var_a, var_b, shared_field_type_constraint);
+      constraints.add(var_b, var_a, shared_field_type_constraint);
+    }
+    for (const int i : input_outputs.index_range()) {
+      const int var_a = input_outputs[i]->index_in_tree();
+      const int var_b = output_outputs[i]->index_in_tree();
+      constraints.add(var_a, var_b, shared_field_type_constraint);
+      constraints.add(var_b, var_a, shared_field_type_constraint);
+    }
+  };
+
+  /* Sync field state between zone nodes and schedule another pass if necessary. */
+  switch (node.type) {
+    case GEO_NODE_SIMULATION_INPUT: {
+      const NodeGeometrySimulationInput &data = *static_cast<const NodeGeometrySimulationInput *>(
+          node.storage);
+      if (const bNode *output_node = tree.node_by_id(data.output_node_id)) {
+        /* First input node output is Delta Time which does not appear in the output node. */
+        add_zone_constraints(node.input_sockets(),
+                             node.output_sockets().drop_front(1),
+                             output_node->input_sockets(),
+                             output_node->output_sockets());
+      }
+      break;
+    }
+    case GEO_NODE_SIMULATION_OUTPUT: {
+      /* Already handled in the input node case. */
+      // for (const bNode *input_node : tree.nodes_by_type("GeometryNodeSimulationInput")) {
+      //   const NodeGeometrySimulationInput &data =
+      //       *static_cast<const NodeGeometrySimulationInput *>(input_node->storage);
+      //   if (node.identifier == data.output_node_id) {
+      //     /* First input node output is Delta Time which does not appear in the output node. */
+      //     add_zone_constraints(input_node->input_sockets(),
+      //                          input_node->output_sockets().drop_front(1),
+      //                          node.input_sockets(),
+      //                          node.output_sockets());
+      //   }
+      // }
+      break;
+    }
+    case GEO_NODE_REPEAT_INPUT: {
+      const NodeGeometryRepeatInput &data = *static_cast<const NodeGeometryRepeatInput *>(
+          node.storage);
+      if (const bNode *output_node = tree.node_by_id(data.output_node_id)) {
+        add_zone_constraints(node.input_sockets(),
+                             node.output_sockets(),
+                             output_node->input_sockets(),
+                             output_node->output_sockets());
+      }
+      break;
+    }
+    case GEO_NODE_REPEAT_OUTPUT: {
+      /* Already handled in the input node case. */
+      // for (const bNode *input_node : tree.nodes_by_type("GeometryNodeRepeatInput")) {
+      //   const NodeGeometryRepeatInput &data = *static_cast<const NodeGeometryRepeatInput *>(
+      //       input_node->storage);
+      //   if (node.identifier == data.output_node_id) {
+      //     add_zone_constraints(input_node->input_sockets(),
+      //                          input_node->output_sockets(),
+      //                          node.input_sockets(),
+      //                          node.output_sockets());
+      //   }
+      // }
+      break;
+    }
+  }
+}
+
+static void test_ac3_field_inferencing(
+    const bNodeTree &tree,
+    const Span<const FieldInferencingInterface *> interface_by_node,
+    FieldInferencingInterface &new_inferencing_interface)
+{
   using Interrupter = ac3::PrintInterupter;
 
   const int num_vars = tree.all_sockets().size();
   /* Domain has two values: Single and Field.
    * The result can be a combination of both. */
   const int domain_size = 2;
-  enum DomainValue {
-    Single = 0,
-    Field = 1,
-  };
 
   const Span<const bNode *> nodes = tree.toposort_right_to_left();
-  ResourceScope scope;
-  Array<const FieldInferencingInterface *> interface_by_node(nodes.size());
-  prepare_inferencing_interfaces(nodes, interface_by_node, scope);
 
   ac3::ConstraintSet constraints;
   for (const bNode *node : nodes) {
     const FieldInferencingInterface &inferencing_interface = *interface_by_node[node->index()];
     for (const bNodeSocket *output_socket : node->output_sockets()) {
       const int var_index = output_socket->index_in_tree();
-      //SocketFieldState &state = field_state_by_socket_id[output_socket->index_in_tree()];
+      const bNodeSocketType *typeinfo = output_socket->typeinfo;
+      const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
+                                                  SOCK_CUSTOM;
+
+      if (!nodes::socket_type_supports_fields(type)) {
+        constraints.add(var_index, [](const int value) { return value == DomainValue::Single; });
+      }
 
       const OutputFieldDependency &field_dependency =
           inferencing_interface.outputs[output_socket->index()];
-
       if (field_dependency.field_type() == OutputSocketFieldType::FieldSource) {
         constraints.add(var_index, [](const int value) { return value == DomainValue::Field; });
-        continue;
       }
       if (field_dependency.field_type() == OutputSocketFieldType::None) {
         constraints.add(var_index, [](const int value) { return value == DomainValue::Single; });
-        continue;
       }
 
       /* The output is required to be a single value when it is connected to any input that does
@@ -953,53 +1045,69 @@ static void test_ac3_field_inferencing(const bNodeTree &tree) {
         }
       }
 
-      //if (state.requires_single) {
-      //  bool any_input_is_field_implicitly = false;
-      //  const Vector<const bNodeSocket *> connected_inputs = gather_input_socket_dependencies(
-      //      field_dependency, *node);
-      //  for (const bNodeSocket *input_socket : connected_inputs) {
-      //    if (!input_socket->is_available()) {
-      //      continue;
-      //    }
-      //    if (inferencing_interface.inputs[input_socket->index()] ==
-      //        InputSocketFieldType::Implicit)
-      //    {
-      //      if (!input_socket->is_logically_linked()) {
-      //        any_input_is_field_implicitly = true;
-      //        break;
-      //      }
-      //    }
-      //  }
-      //  if (any_input_is_field_implicitly) {
-      //    /* This output isn't a single value actually. */
-      //    state.requires_single = false;
-      //  }
-      //  else {
-      //    /* If the output is required to be a single value, the connected inputs in the same
-      //     * node must not be fields as well. */
-      //    for (const bNodeSocket *input_socket : connected_inputs) {
-      //      field_state_by_socket_id[input_socket->index_in_tree()].requires_single = true;
-      //    }
-      //  }
-      //}
+      /* TODO not sure if this is already covered by other constraints? */
+      // if (state.requires_single) {
+      //   bool any_input_is_field_implicitly = false;
+      //   const Vector<const bNodeSocket *> connected_inputs = gather_input_socket_dependencies(
+      //       field_dependency, *node);
+      //   for (const bNodeSocket *input_socket : connected_inputs) {
+      //     if (!input_socket->is_available()) {
+      //       continue;
+      //     }
+      //     if (inferencing_interface.inputs[input_socket->index()] ==
+      //         InputSocketFieldType::Implicit)
+      //     {
+      //       if (!input_socket->is_logically_linked()) {
+      //         any_input_is_field_implicitly = true;
+      //         break;
+      //       }
+      //     }
+      //   }
+      //   if (any_input_is_field_implicitly) {
+      //     /* This output isn't a single value actually. */
+      //     state.requires_single = false;
+      //   }
+      //   else {
+      //     /* If the output is required to be a single value, the connected inputs in the same
+      //      * node must not be fields as well. */
+      //     for (const bNodeSocket *input_socket : connected_inputs) {
+      //       field_state_by_socket_id[input_socket->index_in_tree()].requires_single = true;
+      //     }
+      //   }
+      // }
     }
 
     /* Some inputs do not require fields independent of what the outputs are connected to. */
     for (const bNodeSocket *input_socket : node->input_sockets()) {
-      SocketFieldState &state = field_state_by_socket_id[input_socket->index_in_tree()];
-      if (inferencing_interface.inputs[input_socket->index()] == InputSocketFieldType::None) {
-        state.requires_single = true;
-        state.is_always_single = true;
+      const int var_index = input_socket->index_in_tree();
+      const bNodeSocketType *typeinfo = input_socket->typeinfo;
+      const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
+                                                  SOCK_CUSTOM;
+
+      if (!nodes::socket_type_supports_fields(type)) {
+        constraints.add(var_index, [](const int value) { return value == DomainValue::Single; });
+      }
+
+      const InputSocketFieldType field_type = inferencing_interface.inputs[input_socket->index()];
+      if (field_type == InputSocketFieldType::None) {
+        const int var_index = input_socket->index_in_tree();
+        constraints.add(var_index, [](int value) { return value == DomainValue::Single; });
       }
     }
 
-    /* Find reverse dependencies and resolve conflicts, which may require another pass. */
-    if (propagate_special_data_requirements(tree, *node, field_state_by_socket_id)) {
-      need_update = true;
-    }
+    /* Constraints for consistent field type across zones. */
+    add_node_type_constraints(tree, *node, constraints);
   }
 
   ac3::solve_constraints<Interrupter>(constraints, num_vars, domain_size);
+
+  /* Build new inferencing interface for the tree. */
+  for (const int index : tree.interface_inputs().index_range()) {
+    const bNodeTreeInterfaceSocket *group_input = tree.interface_inputs()[index];
+    const bNodeSocketType *typeinfo = group_input->socket_typeinfo();
+    const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
+    new_inferencing_interface.inputs[index] = InputSocketFieldType::None;
+  }
 }
 
 static void test_ac3_example()
@@ -1045,10 +1153,10 @@ static void test_ac3_example()
   const int var_D = 3;
   const int var_E = 4;
 
-  const int value_1 = 0;
-  const int value_2 = 1;
-  const int value_3 = 2;
-  const int value_4 = 3;
+  [[maybe_unused]] const int value_1 = 0;
+  [[maybe_unused]] const int value_2 = 1;
+  [[maybe_unused]] const int value_3 = 2;
+  [[maybe_unused]] const int value_4 = 3;
 
   /* C = {1, 2, 4} */
   constraints.add(var_B, [](const int value) { return value != value_3; });
@@ -1114,6 +1222,7 @@ bool update_field_inferencing(const bNodeTree &tree)
   new_inferencing_interface->outputs.resize(tree.interface_outputs().size(),
                                             OutputFieldDependency::ForDataSource());
 
+#if 0
   /* Keep track of the state of all sockets. The index into this array is #SocketRef::id(). */
   Array<SocketFieldState> field_state_by_socket_id(tree.all_sockets().size());
 
@@ -1124,14 +1233,15 @@ bool update_field_inferencing(const bNodeTree &tree)
   determine_group_output_states(
       tree, *new_inferencing_interface, interface_by_node, field_state_by_socket_id);
   update_socket_shapes(tree, field_state_by_socket_id);
+#else
+  test_ac3_field_inferencing(tree, interface_by_node);
+#endif
 
   /* Update the previous group interface. */
   const bool group_interface_changed = !tree.runtime->field_inferencing_interface ||
                                        *tree.runtime->field_inferencing_interface !=
                                            *new_inferencing_interface;
   tree.runtime->field_inferencing_interface = std::move(new_inferencing_interface);
-
-  test_ac3_field_inferencing(tree);
 
   return group_interface_changed;
 }
