@@ -376,19 +376,24 @@ static GSpan evaluate_attribute(const GVArray &src,
                                 const CurvesGeometry &curves,
                                 Vector<std::byte> &buffer)
 {
-  if (src.is_span()) {
-    if (curves.is_single_type(CURVE_TYPE_POLY)) {
+  /* Poly curves evaluated points match the curve points, no need to interpolate. */
+  if (curves.is_single_type(CURVE_TYPE_POLY)) {
+    if (src.is_span()) {
       return src.get_internal_span();
     }
+    buffer.reinitialize(curves.points_num() * src.type().size());
+    src.materialize(buffer.data());
+    GMutableSpan eval{src.type(), buffer.data(), curves.points_num()};
+    return eval;
+  }
 
+  if (src.is_span()) {
     buffer.reinitialize(curves.evaluated_points_num() * src.type().size());
     GMutableSpan eval{src.type(), buffer.data(), curves.evaluated_points_num()};
     curves.interpolate_to_evaluated(src.get_internal_span(), eval);
     return eval;
   }
-
-  GArray src_buffer(src.type(), src.size());
-  src.materialize_to_uninitialized(src_buffer.data());
+  GVArraySpan src_buffer(src);
   buffer.reinitialize(curves.evaluated_points_num() * src.type().size());
   GMutableSpan eval{src.type(), buffer.data(), curves.evaluated_points_num()};
   curves.interpolate_to_evaluated(src_buffer, eval);
