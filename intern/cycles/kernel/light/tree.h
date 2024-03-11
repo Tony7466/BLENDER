@@ -768,6 +768,8 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
 
   pdf_selection *= pdf_leaf;
 
+  ls->emitter_id = selected_emitter;
+
   return light_sample<in_volume_segment>(kg,
                                          float3_to_float2(rand),
                                          time,
@@ -777,7 +779,6 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
                                          shader_flags,
                                          bounce,
                                          path_flag,
-                                         selected_emitter,
                                          object_emitter,
                                          pdf_selection,
                                          ls);

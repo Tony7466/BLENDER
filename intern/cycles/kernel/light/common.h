@@ -25,6 +25,7 @@ typedef struct LightSample {
   int lamp;            /* lamp id */
   int group;           /* lightgroup */
   LightType type;      /* type of light */
+  int emitter_id;      /* index in the emitter array */
 } LightSample;
 
 /* Utilities */

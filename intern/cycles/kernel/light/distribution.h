@@ -55,7 +55,7 @@ ccl_device_noinline bool light_distribution_sample(KernelGlobals kg,
 {
   /* Sample light index from distribution. */
   /* The first two dimensions of the Sobol sequence have better stratification. */
-  const int index = light_distribution_sample(kg, rand.z);
+  ls->emitter_id = light_distribution_sample(kg, rand.z);
   const float pdf_selection = kernel_data.integrator.distribution_pdf_lights;
   const float2 rand_uv = float3_to_float2(rand);
   return light_sample<in_volume_segment>(kg,
@@ -67,7 +67,6 @@ ccl_device_noinline bool light_distribution_sample(KernelGlobals kg,
                                          shader_flags,
                                          bounce,
                                          path_flag,
-                                         index,
                                          0,
                                          pdf_selection,
                                          ls);
