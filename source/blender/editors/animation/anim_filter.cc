@@ -1295,14 +1295,13 @@ static size_t animfilter_fcurves(ListBase *anim_data,
 }
 
 static size_t animfilter_fcurves_span(ListBase * /*bAnimListElem*/ anim_data,
-                                      bDopeSheet *ads,
+                                      bDopeSheet * /*ads*/,
                                       Span<FCurve *> fcurves,
                                       const int filter_mode,
                                       ID *owner_id,
                                       ID *fcurve_owner_id)
 {
   size_t num_items = 0;
-  BLI_assert(ads);
   BLI_assert(owner_id);
 
   for (FCurve *fcu : fcurves) {
@@ -1482,29 +1481,9 @@ static size_t animfilter_animation_fcurves(
     return 0;
   }
 
-  size_t num_items = 0;
-
   /* For now we don't show layers anywhere, just the contained F-Curves. */
-  for (animrig::Layer *layer : anim.layers()) {
-    for (animrig::Strip *strip : layer->strips()) {
-      switch (strip->type()) {
-        case animrig::Strip::Type::Keyframe: {
-          animrig::KeyframeStrip &key_strip = strip->as<animrig::KeyframeStrip>();
-          animrig::ChannelBag *bag = key_strip.channelbag_for_binding(adt->binding_handle);
-          if (!bag) {
-            continue;
-          }
-
-          num_items += animfilter_fcurves_span(
-              anim_data, ads, bag->fcurves(), filter_mode, owner_id, &anim.id);
-
-          break;
-        }
-      }
-    }
-  }
-
-  return num_items;
+  Span<FCurve *> fcurves = animrig::fcurves_for_animation(anim, adt->binding_handle);
+  return animfilter_fcurves_span(anim_data, ads, fcurves, filter_mode, owner_id, &anim.id);
 }
 
 /* Include NLA-Data for NLA-Editor:
