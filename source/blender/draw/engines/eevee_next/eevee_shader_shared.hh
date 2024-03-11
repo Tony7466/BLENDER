@@ -319,6 +319,8 @@ struct FilmData {
   float mist_scale, mist_bias, mist_exponent;
   /** Scene exposure used for better noise reduction. */
   float exposure_scale;
+  /** Scaling factor for scaled resolution rendering. */
+  int scaling_factor;
   /** Film pixel filter radius. */
   float filter_radius;
   /** Precomputed samples. First in the table is the closest one. The rest is unordered. */
@@ -326,7 +328,6 @@ struct FilmData {
   /** Sum of the weights of all samples in the sample table. */
   float samples_weight_total;
   int _pad1;
-  int _pad2;
   FilmSample samples[FILM_PRECOMP_SAMPLE_MAX];
 };
 BLI_STATIC_ASSERT_ALIGN(FilmData, 16)
@@ -1508,6 +1509,7 @@ BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
 
 #  if defined(GPU_FRAGMENT_SHADER)
 #    define UTIL_TEXEL vec2(gl_FragCoord.xy)
+#    define filmScalingFactor float(uniform_buf.film.scaling_factor)
 #  elif defined(GPU_COMPUTE_SHADER)
 #    define UTIL_TEXEL vec2(gl_GlobalInvocationID.xy)
 #  else

@@ -231,6 +231,7 @@ BLI_STATIC_ASSERT_ALIGN(SSSProfileBlock, 16)
 #    define alphaHashScale common_block._alphaHashScale
 #    define cameraUvScaleBias common_block._cameraUvScaleBias
 #    define planarClipPlane common_block._planarClipPlane
+#    define filmScalingFactor 1.0
 
 /* ProbeBlock */
 #    define probes_data probe_block._probes_data
