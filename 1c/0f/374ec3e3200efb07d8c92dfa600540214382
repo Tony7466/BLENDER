@@ -4,3 +4,4 @@ Referenced by pull request #118549, Fix #118524: Loopcut crashes when not near a
 Referenced by commit 11db0b9dadf0a5a3d78569f5b01b37fa591b8d7e, Fix #118524: Loopcut crashes when not near an edge
 Referenced by issue #118694, Incorrect asset scaling values loaded from Asset Brower
 Referenced by issue #119250, Regression: Python: World matrix for newly created objects is not identity
+Referenced by issue #119304, Assertion triggered when exporting an STL file
