@@ -1,1 +1,2 @@
 Referenced by commit 1697f176179fd13e446080f22356590b38cc1a8b, Fix: 'ED_view3d_has_depth_buffer_being_used' not declared
+Referenced by issue #119244, Navigation in viewport (using depth option) doesn't work correctly in Blender 4.2
