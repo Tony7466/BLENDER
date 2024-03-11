@@ -61,11 +61,11 @@ void node_tex_image_linear(vec3 co, sampler2D ima, out vec4 color, out float alp
   vec2 dy = dFdy(co.xy) / vec2(filmScalingFactor);
 
   color = safe_color(textureGrad(ima, co.xy, dx, dy));
-  alpha = color.a;
 #else
   color = safe_color(texture(ima, co.xy));
-  alpha = color.a;
 #endif
+
+  alpha = color.a;
 }
 
 void node_tex_image_cubic(vec3 co, sampler2D ima, out vec4 color, out float alpha)

@@ -244,7 +244,12 @@ void Film::init(const int2 &extent, const rcti *output_rect)
   {
     data_.scaling_factor = 1;
     if (inst_.is_viewport()) {
-      data_.scaling_factor = BKE_render_preview_pixel_size(&inst_.scene->r);
+      if (!bool(enabled_passes_ &
+                (EEVEE_RENDER_PASS_CRYPTOMATTE_ASSET | EEVEE_RENDER_PASS_CRYPTOMATTE_MATERIAL |
+                 EEVEE_RENDER_PASS_CRYPTOMATTE_OBJECT | EEVEE_RENDER_PASS_NORMAL)))
+      {
+        data_.scaling_factor = BKE_render_preview_pixel_size(&inst_.scene->r);
+      }
     }
   }
   {
