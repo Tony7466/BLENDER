@@ -38,9 +38,48 @@ float bilateral_normal_weight(vec3 center_N, vec3 sample_N)
   return weight;
 }
 
-vec3 load_normal(ivec2 texel)
+vec3 sample_normal_get(ivec2 texel, out bool is_processed)
 {
-  return gbuffer_read(gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel).surface_N;
+  vec4 normal = texelFetch(screen_normal_tx, texel, 0);
+  is_processed = (normal.w != 0.0);
+  return normal.xyz * 2.0 - 1.0;
+}
+
+float sample_weight_get(
+    vec3 center_N, vec3 center_P, ivec2 sample_texel, vec2 sample_uv, ivec2 sample_offset)
+{
+  ivec2 sample_texel_fullres = sample_texel * uniform_buf.raytrace.resolution_scale +
+                               uniform_buf.raytrace.resolution_bias;
+  float sample_depth = texelFetch(depth_tx, sample_texel_fullres, 0).r;
+
+  bool is_valid;
+  vec3 sample_N = sample_normal_get(sample_texel, is_valid);
+  vec3 sample_P = drw_point_screen_to_world(vec3(sample_uv, sample_depth));
+
+  if (!is_valid) {
+    return 0.0;
+  }
+
+  float depth_weight = bilateral_depth_weight(center_N, center_P, sample_P);
+  float spatial_weight = bilateral_spatial_weight(1.5, vec2(sample_offset));
+  float normal_weight = bilateral_normal_weight(center_N, sample_N);
+
+  return depth_weight * spatial_weight * normal_weight;
+}
+
+vec4 texture_bilinear(sampler2D t, vec2 uv)
+{
+  vec2 tex_size = vec2(textureSize(horizon_radiance_0_tx, 0));
+  vec2 texel_size = 1.0 / tex_size;
+  vec2 f = fract(uv * tex_size);
+  uv += (.5 - f) * texel_size;  // move uv to texel centre
+  vec4 tl = texture(t, uv);
+  vec4 tr = texture(t, uv + vec2(texel_size.x, 0.0));
+  vec4 bl = texture(t, uv + vec2(0.0, texel_size.y));
+  vec4 br = texture(t, uv + vec2(texel_size.x, texel_size.y));
+  vec4 tA = mix(tl, tr, f.x);
+  vec4 tB = mix(bl, br, f.x);
+  return mix(tA, tB, f.y);
 }
 
 void main()
@@ -71,12 +110,32 @@ void main()
 
   vec3 center_N = gbuf.surface_N;
 
-  /* TODO(fclem): Bilateral weighting. */
   SphericalHarmonicL1 accum_sh;
-  accum_sh.L0.M0 = texture(horizon_radiance_0_tx, center_uv);
-  accum_sh.L1.Mn1 = texture(horizon_radiance_1_tx, center_uv);
-  accum_sh.L1.M0 = texture(horizon_radiance_2_tx, center_uv);
-  accum_sh.L1.Mp1 = texture(horizon_radiance_3_tx, center_uv);
+  if (uniform_buf.raytrace.resolution_scale == 1) {
+    accum_sh.L0.M0 = texelFetch(horizon_radiance_0_tx, texel, 0);
+    accum_sh.L1.Mn1 = texelFetch(horizon_radiance_1_tx, texel, 0);
+    accum_sh.L1.M0 = texelFetch(horizon_radiance_2_tx, texel, 0);
+    accum_sh.L1.Mp1 = texelFetch(horizon_radiance_3_tx, texel, 0);
+  }
+  else {
+    vec2 sample_uv = (vec2(texel_fullres - uniform_buf.raytrace.resolution_bias) + 0.5) *
+                     uniform_buf.raytrace.full_resolution_inv;
+
+    // vec2 sample_offset_00 = ivec2(0, 0);
+    // vec2 sample_texel_00 = texel + sample_offset_00;
+    // vec2 sample_uv_00 = sample_texel_00 / ;
+    // sample_weight_get(center_N, center_P, texel + ivec2(0, 0), vec2 sample_uv, ivec2(0, 0));
+
+    // accum_sh.L0.M0 = texture_bilinear(horizon_radiance_0_tx, sample_uv);
+    // accum_sh.L1.Mn1 = texture_bilinear(horizon_radiance_1_tx, sample_uv);
+    // accum_sh.L1.M0 = texture_bilinear(horizon_radiance_2_tx, sample_uv);
+    // accum_sh.L1.Mp1 = texture_bilinear(horizon_radiance_3_tx, sample_uv);
+
+    accum_sh.L0.M0 = texture(horizon_radiance_0_tx, sample_uv);
+    accum_sh.L1.Mn1 = texture(horizon_radiance_1_tx, sample_uv);
+    accum_sh.L1.M0 = texture(horizon_radiance_2_tx, sample_uv);
+    accum_sh.L1.Mp1 = texture(horizon_radiance_3_tx, sample_uv);
+  }
 
   vec3 P = center_P;
   vec3 Ng = center_N;

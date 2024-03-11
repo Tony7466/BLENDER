@@ -288,6 +288,7 @@ void RayTraceModule::sync()
     pass.bind_texture("horizon_radiance_1_tx", &horizon_radiance_denoised_tx_[1]);
     pass.bind_texture("horizon_radiance_2_tx", &horizon_radiance_denoised_tx_[2]);
     pass.bind_texture("horizon_radiance_3_tx", &horizon_radiance_denoised_tx_[3]);
+    pass.bind_texture("screen_normal_tx", &downsampled_in_normal_tx_);
     pass.bind_image("closure0_img", &horizon_scan_output_tx_[0]);
     pass.bind_image("closure1_img", &horizon_scan_output_tx_[1]);
     pass.bind_image("closure2_img", &horizon_scan_output_tx_[2]);
