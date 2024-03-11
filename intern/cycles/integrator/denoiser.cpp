@@ -27,7 +27,7 @@ unique_ptr<Denoiser> Denoiser::create(Device *path_trace_device, const DenoisePa
   /* If available and allowed, then we will use OpenImageDenoise on GPU. */
   if (params.type == DENOISER_OPENIMAGEDENOISE && params.use_gpu &&
       path_trace_device->info.type != DEVICE_CPU &&
-      (path_trace_device->info.denoisers & DENOISER_OPENIMAGEDENOISE))
+      OIDNDenoiserGPU::is_device_supported(path_trace_device->info))
   {
     return make_unique<OIDNDenoiserGPU>(path_trace_device, params);
   }
@@ -49,16 +49,14 @@ unique_ptr<Denoiser> Denoiser::create(Device *path_trace_device, const DenoisePa
 DenoiserType Denoiser::automatic_viewport_denoiser_type(const DeviceInfo &path_trace_device_info)
 {
   if (path_trace_device_info.type != DEVICE_CPU &&
-      (path_trace_device_info.denoisers & DENOISER_OPENIMAGEDENOISE))
+      OIDNDenoiserGPU::is_device_supported(path_trace_device_info))
   {
     return DENOISER_OPENIMAGEDENOISE;
   }
   else if (!Device::available_devices(DEVICE_MASK_OPTIX).empty()) {
     return DENOISER_OPTIX;
   }
-  else if (path_trace_device_info.type == DEVICE_CPU &&
-           (path_trace_device_info.denoisers & DENOISER_OPENIMAGEDENOISE))
-  {
+  else if (openimagedenoise_supported()) {
     return DENOISER_OPENIMAGEDENOISE;
   }
   else {
