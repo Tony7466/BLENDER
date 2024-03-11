@@ -2499,7 +2499,6 @@ bool nodeIsDanglingReroute(const bNodeTree *ntree, const bNode *node)
       /* Treat cycle of reroute as dangling reroute branch. */
       return true;
     }
-    visited_nodes.add(iter_node);
     const Span<const bNodeLink *> links = iter_node->input_socket(0).directly_linked_links();
     BLI_assert(links.size() <= 1);
     if (links.is_empty()) {
