@@ -1,5 +1,5 @@
 Referenced by issue #112617, Intel GPUs: Crash on initializing Eevee rendered view
 Referenced by issue #115938, UI: the “j” in the Front of Text Input Field is Hidden when Using “Segoe UI” Font
 Referenced by issue #115162, Cycles: Blurry Volumetric & Very Long Render Time in 4.0
-Referenced by issue #116413, EEVEE-Next: Crashes when enabling HDRI Preview spheres
+Referenced by issue #116413, EEVEE-Next: Crashes/freezes when enabling HDRI Preview spheres
 Referenced by issue #119202, Regression: Python API: 'bpy.ops.screen.area_close' crashes in Blender 4.1
