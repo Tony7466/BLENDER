@@ -242,8 +242,6 @@ void Film::init(const int2 &extent, const rcti *output_rect)
     }
   }
   {
-    /* TODO(fclem): For better result we need to figure out LOD bias to preserve texture
-     * crispiness. */
     data_.scaling_factor = 1;
     if (inst_.is_viewport()) {
       data_.scaling_factor = BKE_render_preview_pixel_size(&inst_.scene->r);
