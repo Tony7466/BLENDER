@@ -40,9 +40,9 @@
 #include "BKE_context.hh"
 #include "BKE_idprop.h"
 #include "BKE_main.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_object.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -95,7 +95,7 @@ inline bAction *bc_getSceneCameraAction(Object *ob)
     return NULL;
   }
 
-  Camera *camera = (Camera *)ob->data;
+  const Camera *camera = (const Camera *)ob->data;
   return (camera->adt && camera->adt->action) ? camera->adt->action : NULL;
 }
 

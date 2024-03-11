@@ -537,7 +537,10 @@ static void clear_face_sets(Object &object, const Span<PBVHNode *> nodes)
   threading::parallel_for(nodes.index_range(), 1, [&](const IndexRange range) {
     Vector<int> &face_indices = all_face_indices.local();
     for (PBVHNode *node : nodes.slice(range)) {
-      const Span<int> faces = bke::pbvh::node_face_indices_calc_mesh(pbvh, *node, face_indices);
+      const Span<int> faces =
+          (BKE_pbvh_type(&pbvh) == PBVH_FACES) ?
+              bke::pbvh::node_face_indices_calc_mesh(pbvh, *node, face_indices) :
+              bke::pbvh::node_face_indices_calc_grids(pbvh, *node, face_indices);
       if (std::any_of(faces.begin(), faces.end(), [&](const int face) {
             return face_sets[face] != default_face_set;
           }))
@@ -1115,7 +1118,7 @@ static int sculpt_face_set_change_visibility_exec(bContext *C, wmOperator *op)
     UnifiedPaintSettings *ups = &CTX_data_tool_settings(C)->unified_paint_settings;
     float location[3];
     copy_v3_v3(location, SCULPT_active_vertex_co_get(ss));
-    mul_m4_v3(object.object_to_world, location);
+    mul_m4_v3(object.object_to_world().ptr(), location);
     copy_v3_v3(ups->average_stroke_accum, location);
     ups->average_stroke_counter = 1;
     ups->last_stroke_valid = true;

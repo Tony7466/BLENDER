@@ -21,10 +21,9 @@
 #include "RNA_define.hh"
 
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_nla.h"
 
-#include "UI_interface.hh"
 #include "UI_view2d.hh"
 
 #include "ED_anim_api.hh"

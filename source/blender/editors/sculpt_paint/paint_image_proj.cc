@@ -35,7 +35,7 @@
 
 #include "atomic_ops.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "IMB_imbuf.hh"
 #include "IMB_interp.hh"
@@ -57,7 +57,7 @@
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
 #include "BKE_layer.hh"
@@ -71,8 +71,8 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -3690,7 +3690,7 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
   ps->viewDir[1] = 0.0f;
   ps->viewDir[2] = 1.0f;
 
-  copy_m4_m4(ps->obmat, ps->ob->object_to_world);
+  copy_m4_m4(ps->obmat, ps->ob->object_to_world().ptr());
 
   if (symmetry_flag) {
     int i;
@@ -3712,7 +3712,9 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
     copy_m4_m4(viewmat, ps->rv3d->viewmat);
     copy_m4_m4(viewinv, ps->rv3d->viewinv);
 
-    ED_view3d_ob_project_mat_get_from_obmat(ps->rv3d, ps->obmat, ps->projectMat);
+    blender::float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(
+        ps->rv3d, blender::float4x4(ps->obmat));
+    copy_m4_m4(ps->projectMat, projection.ptr());
 
     ps->is_ortho = ED_view3d_clip_range_get(
         ps->depsgraph, ps->v3d, ps->rv3d, &ps->clip_start, &ps->clip_end, true);
@@ -3748,7 +3750,7 @@ static void proj_paint_state_viewport_init(ProjPaintState *ps, const char symmet
       CameraParams params;
 
       /* viewmat & viewinv */
-      copy_m4_m4(viewinv, cam_ob_eval->object_to_world);
+      copy_m4_m4(viewinv, cam_ob_eval->object_to_world().ptr());
       normalize_m4(viewinv);
       invert_m4_m4(viewmat, viewinv);
 
@@ -4493,7 +4495,7 @@ static void project_paint_begin(const bContext *C,
 
   if (ps->source == PROJ_SRC_VIEW) {
     /* faster clipping lookups */
-    ED_view3d_clipping_local(ps->rv3d, ps->ob->object_to_world);
+    ED_view3d_clipping_local(ps->rv3d, ps->ob->object_to_world().ptr());
   }
 
   ps->do_face_sel = ((((Mesh *)ps->ob->data)->editflag & ME_EDIT_PAINT_FACE_SEL) != 0);
@@ -5798,11 +5800,14 @@ void paint_proj_stroke(const bContext *C,
 
     view3d_operator_needs_opengl(C);
 
-    if (!ED_view3d_autodist(depsgraph, region, v3d, mval_i, cursor, false, nullptr)) {
+    /* Ensure the depth buffer is updated for #ED_view3d_autodist. */
+    ED_view3d_depth_override(depsgraph, region, v3d, nullptr, V3D_DEPTH_NO_GPENCIL, nullptr);
+
+    if (!ED_view3d_autodist(region, v3d, mval_i, cursor, nullptr)) {
       return;
     }
 
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
     ED_region_tag_redraw(region);
 
     return;
@@ -6833,7 +6838,7 @@ static int texture_paint_add_texture_paint_slot_invoke(bContext *C,
   default_paint_slot_color_get(type, ma, color);
   RNA_float_set_array(op->ptr, "color", color);
 
-  return WM_operator_props_dialog_popup(C, op, 300);
+  return WM_operator_props_dialog_popup(C, op, 300, IFACE_("Add Paint Slot"), IFACE_("Add"));
 }
 
 static void texture_paint_add_texture_paint_slot_ui(bContext *C, wmOperator *op)
