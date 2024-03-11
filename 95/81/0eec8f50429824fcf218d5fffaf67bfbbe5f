@@ -1,1 +1,2 @@
 Referenced by pull request #119335, Fix: Handle cyclic links for multi-input sockets
+Referenced by commit bca31c38467c56b88d0e390bca21b13bab9cb425, Fix: handle cyclic links when detecting dangling reroutes
