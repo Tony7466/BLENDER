@@ -28,7 +28,7 @@ namespace greasepencil {
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_draw_operation(
-    BrushStrokeMode &brush_mode);
+    const BrushStrokeMode &brush_mode);
 std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_blur_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_average_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_smear_operation();

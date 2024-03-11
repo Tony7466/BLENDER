@@ -8,7 +8,7 @@ namespace blender::ed::sculpt_paint::greasepencil {
 
 class DrawWeightPaintOperation : public WeightPaintOperation {
  public:
-  DrawWeightPaintOperation(BrushStrokeMode &brush_mode)
+  DrawWeightPaintOperation(const BrushStrokeMode &brush_mode)
   {
     this->brush_mode = brush_mode;
   }
@@ -98,7 +98,7 @@ class DrawWeightPaintOperation : public WeightPaintOperation {
 };
 
 std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_draw_operation(
-    BrushStrokeMode &brush_mode)
+    const BrushStrokeMode &brush_mode)
 {
   return std::make_unique<DrawWeightPaintOperation>(brush_mode);
 }

@@ -176,7 +176,7 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
     const ARegion *region = CTX_wm_region(&C);
     const float4x4 projection = ED_view3d_ob_project_mat_get(rv3d, this->object);
 
-    this->drawing_weight_data[frame_group] = Array<DrawingWeightData>(drawings.size());
+    this->drawing_weight_data[frame_group].reinitialize(drawings.size());
 
     threading::parallel_for(drawings.index_range(), 1, [&](const IndexRange range) {
       for (const int drawing_index : range) {
@@ -209,7 +209,7 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
         bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *this->object, drawing_info.layer_index, drawing_info.frame_number);
-        drawing_weight_data.point_positions = Array<float2>(deformation.positions.size());
+        drawing_weight_data.point_positions.reinitialize(deformation.positions.size());
         threading::parallel_for(curves.points_range(), 1024, [&](const IndexRange point_range) {
           for (const int point : point_range) {
             drawing_weight_data.point_positions[point] = ED_view3d_project_float_v2_m4(
@@ -280,8 +280,7 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
   }
 
   /* Create KDTree for all stroke points touched by the brush during a weight paint operation. */
-  PointsTouchedByBrush create_kdtree_of_points_touched_by_the_brush(
-      const Span<DrawingWeightData> drawing_weights)
+  PointsTouchedByBrush create_affected_points_kdtree(const Span<DrawingWeightData> drawing_weights)
   {
     /* Get number of stroke points touched by the brush. */
     int point_num = 0;

@@ -301,7 +301,6 @@ static void GREASE_PENCIL_OT_draw_mode_toggle(wmOperatorType *ot)
 
 static bool weight_stroke_test_start(bContext *C, wmOperator *op, const float mouse[2])
 {
-
   InputSample start_sample;
   start_sample.mouse_position = float2(mouse);
   start_sample.pressure = 0.0f;
@@ -309,9 +308,9 @@ static bool weight_stroke_test_start(bContext *C, wmOperator *op, const float mo
   GreasePencilStrokeOperation *operation = nullptr;
   Paint *paint = BKE_paint_get_active_from_context(C);
   Brush *brush = BKE_paint_brush(paint);
-  BrushStrokeMode brush_mode = static_cast<BrushStrokeMode>(RNA_enum_get(op->ptr, "mode"));
+  const BrushStrokeMode brush_mode = BrushStrokeMode(RNA_enum_get(op->ptr, "mode"));
 
-  switch (brush->weightpaint_tool) {
+  switch (eBrushWeightPaintTool(brush->weightpaint_tool)) {
     case WPAINT_TOOL_DRAW:
       operation = greasepencil::new_weight_paint_draw_operation(brush_mode).release();
       break;
@@ -324,17 +323,16 @@ static bool weight_stroke_test_start(bContext *C, wmOperator *op, const float mo
     case WPAINT_TOOL_SMEAR:
       operation = greasepencil::new_weight_paint_smear_operation().release();
       break;
-    default:
-      break;
   }
 
-  if (operation) {
-    PaintStroke *paint_stroke = static_cast<PaintStroke *>(op->customdata);
-    paint_stroke_set_mode_data(paint_stroke, operation);
-    operation->on_stroke_begin(*C, start_sample);
-    return true;
+  if (operation == nullptr) {
+    return false;
   }
-  return false;
+
+  PaintStroke *paint_stroke = static_cast<PaintStroke *>(op->customdata);
+  paint_stroke_set_mode_data(paint_stroke, operation);
+  operation->on_stroke_begin(*C, start_sample);
+  return true;
 }
 
 static int grease_pencil_weight_brush_stroke_invoke(bContext *C,

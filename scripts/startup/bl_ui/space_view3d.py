@@ -152,7 +152,7 @@ class VIEW3D_HT_tool_header(Header):
         elif mode_string == 'POSE':
             _row, sub = row_for_mirror()
             sub.prop(context.object.pose, "use_mirror_x", text="X", toggle=True)
-        elif ((not is_greasepencil) and 
+        elif ((not is_greasepencil) and
               (mode_string in {'EDIT_MESH', 'PAINT_WEIGHT', 'SCULPT', 'PAINT_VERTEX', 'PAINT_TEXTURE'})):
             # Mesh Modes, Use Mesh Symmetry
             row, sub = row_for_mirror()
@@ -333,7 +333,7 @@ class _draw_tool_settings_context_mode:
             return False
 
         capabilities = brush.weight_paint_capabilities
-        
+
         if context.object.type != 'GREASEPENCIL':
             if capabilities.has_weight:
                 UnifiedPaintPanel.prop_unified(

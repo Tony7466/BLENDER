@@ -7,7 +7,6 @@
 namespace blender::ed::sculpt_paint::greasepencil {
 
 class AverageWeightPaintOperation : public WeightPaintOperation {
- private:
   /* Get the average weight of all points in the brush buffer. */
   float get_average_weight_in_brush_buffer(const Span<DrawingWeightData> drawing_weights)
   {

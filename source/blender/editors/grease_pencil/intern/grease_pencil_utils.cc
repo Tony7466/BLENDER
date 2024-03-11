@@ -649,7 +649,7 @@ IndexMask retrieve_visible_points(Object &object,
   }
 
   const bke::CurvesGeometry &curves = drawing.strokes();
-  const IndexRange points_range = drawing.strokes().points_range();
+  const IndexRange points_range = curves.points_range();
   const bke::AttributeAccessor attributes = curves.attributes();
 
   /* Propagate the material index to the points. */

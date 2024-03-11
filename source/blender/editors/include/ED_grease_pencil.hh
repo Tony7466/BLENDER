@@ -253,7 +253,7 @@ IndexMask polyline_detect_corners(Span<float2> points,
                                   IndexMaskMemory &memory);
 
 /** Returns a set of vertex group names that are deformed by a bone in an armature. */
-Set<std::string> get_bone_deformed_vertex_group_names(Object &object);
+Set<std::string> get_bone_deformed_vertex_group_names(const Object &object);
 
 /** For a point in a stroke, normalize the weights of vertex groups deformed by bones so that the
  * sum is 1.0f. */

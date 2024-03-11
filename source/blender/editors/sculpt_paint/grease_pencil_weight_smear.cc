@@ -7,7 +7,6 @@
 namespace blender::ed::sculpt_paint::greasepencil {
 
 class SmearWeightPaintOperation : public WeightPaintOperation {
- private:
   /* Brush direction (angle) during a stroke movement. */
   float2 brush_direction;
   bool brush_direction_is_set;
@@ -155,7 +154,7 @@ class SmearWeightPaintOperation : public WeightPaintOperation {
 
           /* Create a KDTree with all stroke points touched by the brush during the weight paint
            * operation. */
-          PointsTouchedByBrush touched_points = this->create_kdtree_of_points_touched_by_the_brush(
+          PointsTouchedByBrush touched_points = this->create_affected_points_kdtree(
               drawing_weights);
 
           /* Apply the Smear tool to all points in the brush buffer. */

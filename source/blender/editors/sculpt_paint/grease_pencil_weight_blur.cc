@@ -7,7 +7,6 @@
 namespace blender::ed::sculpt_paint::greasepencil {
 
 class BlurWeightPaintOperation : public WeightPaintOperation {
- private:
   /* Apply the Blur tool to a point under the brush. */
   void apply_blur_tool(const BrushPoint &point,
                        DrawingWeightData &drawing_weight,
@@ -97,7 +96,7 @@ class BlurWeightPaintOperation : public WeightPaintOperation {
 
           /* Create a KDTree with all stroke points touched by the brush during the weight paint
            * operation. */
-          PointsTouchedByBrush touched_points = this->create_kdtree_of_points_touched_by_the_brush(
+          PointsTouchedByBrush touched_points = this->create_affected_points_kdtree(
               drawing_weights);
 
           /* Apply the Blur tool to all points in the brush buffer. */

@@ -25,7 +25,7 @@
 
 namespace blender::ed::greasepencil {
 
-Set<std::string> get_bone_deformed_vertex_group_names(Object &object)
+Set<std::string> get_bone_deformed_vertex_group_names(const Object &object)
 {
   /* Get all vertex group names in the object. */
   const ListBase *defbase = BKE_object_defgroup_list(&object);
