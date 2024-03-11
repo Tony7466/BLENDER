@@ -39,8 +39,13 @@ PropertyRNA *RNA_def_node_enum(StructRNA *srna,
     RNA_def_property_enum_default(prop, *default_value);
   }
   RNA_def_property_ui_text(prop, ui_name, ui_description);
-  RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
-  RNA_def_property_update_runtime(prop, rna_Node_socket_update);
+  if (allow_animation) {
+    RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
+    RNA_def_property_update_runtime(prop, rna_Node_socket_update);
+  }
+  else {
+    RNA_def_property_update_runtime(prop, rna_Node_update);
+  }
   RNA_def_property_update_notifier(prop, NC_NODE | NA_EDITED);
   return prop;
 }
