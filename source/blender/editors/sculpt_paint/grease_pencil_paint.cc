@@ -613,6 +613,11 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
       continue;
     }
 
+    /* Skip not visible modifiers. */
+    if (!(md->mode & eModifierMode_Realtime)) {
+      continue;
+    }
+
     GreasePencilArmatureModifierData *amd = (GreasePencilArmatureModifierData *)md;
     if (amd == NULL) {
       continue;
@@ -645,6 +650,7 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
 
   const float4x4 matrix = postmat * math::invert(float4x4(channel->chan_mat)) * premat;
 
+  /* Update the position of the stroke to undo the movement caused by the modifier.*/
   MutableSpan<float3> positions = curves.positions_for_write().slice(points);
   threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
     for (float3 &position : positions.slice(range)) {
