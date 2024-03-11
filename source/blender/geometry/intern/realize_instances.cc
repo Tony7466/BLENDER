@@ -639,9 +639,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
     const bke::GeometryComponent::Type type = component->type();
     switch (type) {
       case bke::GeometryComponent::Type::Mesh: {
-        const bke::MeshComponent &mesh_component = *static_cast<const bke::MeshComponent *>(
-            component);
-        const Mesh *mesh = mesh_component.get();
+        const Mesh *mesh = (*static_cast<const bke::MeshComponent *>(component)).get();
         if (mesh != nullptr && mesh->verts_num > 0) {
           const int mesh_index = gather_info.meshes.order.index_of(mesh);
           const MeshRealizeInfo &mesh_info = gather_info.meshes.realize_info[mesh_index];
@@ -697,9 +695,8 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
           gather_info.instances.instances_components_transforms.append(base_transform);
         }
         else {
-          const auto &instances_component = *static_cast<const bke::InstancesComponent *>(
-              component);
-          const Instances *instances = instances_component.get();
+          const Instances *instances =
+              (*static_cast<const bke::InstancesComponent *>(component)).get();
           if (instances != nullptr && instances->instances_num() > 0) {
             gather_realize_tasks_for_instances(gather_info,
                                                current_depth,
@@ -712,8 +709,9 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         break;
       }
       case bke::GeometryComponent::Type::Volume: {
-        const auto *volume_component = static_cast<const bke::VolumeComponent *>(component);
         if (!gather_info.r_tasks.first_volume) {
+          const bke::VolumeComponent *volume_component = static_cast<const bke::VolumeComponent *>(
+              component);
           volume_component->add_user();
           gather_info.r_tasks.first_volume = ImplicitSharingPtr<const bke::VolumeComponent>(
               volume_component);
@@ -721,9 +719,9 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         break;
       }
       case bke::GeometryComponent::Type::Edit: {
-        const auto *edit_component = static_cast<const bke::GeometryComponentEditData *>(
-            component);
         if (!gather_info.r_tasks.first_edit_data) {
+          const bke::GeometryComponentEditData *edit_component =
+              static_cast<const bke::GeometryComponentEditData *>(component);
           edit_component->add_user();
           gather_info.r_tasks.first_edit_data =
               ImplicitSharingPtr<const bke::GeometryComponentEditData>(edit_component);
@@ -1957,9 +1955,9 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
     return geometry_set;
   }
 
-  bke::GeometrySet temp_geometry_set;
-  propagate_instances_to_keep(
-      geometry_set, options.selection, temp_geometry_set, options.propagation_info);
+  Vector<const bke::GeometryComponent *> instances_components_to_merge;
+  instances_components_to_merge.append(
+      &geometry_set.get_component_for_write<bke::InstancesComponent>());
 
   if (options.keep_original_ids) {
     remove_id_attribute_from_instances(geometry_set);
@@ -1990,12 +1988,9 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
 
-  if (temp_geometry_set.has_instances()) {
-    gather_info.instances.instances_components_to_merge.append(
-        &temp_geometry_set.get_component_for_write<bke::InstancesComponent>());
-    gather_info.instances.instances_components_transforms.append(float4x4::identity());
-    gather_info.instances.attribute_fallback.append((gather_info.instances_attriubutes.size()));
-  }
+  gather_info.instances.instances_components_to_merge = std::move(instances_components_to_merge);
+  gather_info.instances.instances_components_transforms.append(float4x4::identity());
+  gather_info.instances.attribute_fallback.append((gather_info.instances_attriubutes.size()));
 
   gather_realize_tasks_recursive(gather_info, 0, -1, geometry_set, transform, attribute_fallbacks);
 
