@@ -1117,7 +1117,7 @@ class VIEW3D_MT_editor_menus(Menu):
                     layout.menu("VIEW3D_MT_select_paint_mask")
                 elif mesh.use_paint_mask_vertex and mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX'}:
                     layout.menu("VIEW3D_MT_select_paint_mask_vertex")
-        elif mode_string not in {'SCULPT', 'SCULPT_CURVES', 'PAINT_GREASE_PENCIL'}:
+        elif mode_string not in {'SCULPT', 'SCULPT_CURVES', 'PAINT_GREASE_PENCIL', 'SCULPT_GREASE_PENCIL'}:
             layout.menu("VIEW3D_MT_select_%s" % mode_string.lower())
 
         if gp_edit:
@@ -1166,7 +1166,7 @@ class VIEW3D_MT_editor_menus(Menu):
                 layout.menu("VIEW3D_MT_edit_greasepencil_point")
 
         elif obj:
-            if mode_string not in {'PAINT_TEXTURE', 'SCULPT_CURVES'}:
+            if mode_string not in {'PAINT_TEXTURE', 'SCULPT_CURVES', 'SCULPT_GREASE_PENCIL'}:
                 layout.menu("VIEW3D_MT_%s" % mode_string.lower())
             if mode_string == 'SCULPT':
                 layout.menu("VIEW3D_MT_mask")

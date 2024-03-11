@@ -625,6 +625,7 @@ PaintMode BKE_paintmode_get_from_tool(const bToolRef *tref)
   if (tref->space_type == SPACE_VIEW3D) {
     switch (tref->mode) {
       case CTX_MODE_SCULPT:
+      case CTX_MODE_SCULPT_GREASE_PENCIL:
         return PaintMode::Sculpt;
       case CTX_MODE_PAINT_VERTEX:
         return PaintMode::Vertex;

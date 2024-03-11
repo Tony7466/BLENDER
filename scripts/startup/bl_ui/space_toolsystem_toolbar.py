@@ -3102,6 +3102,10 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
             None,
             *_tools_annotate,
         ],
+        'SCULPT_GREASE_PENCIL': [
+            None,
+            *_tools_annotate,
+        ],
         'PAINT_TEXTURE': [
             _defs_texture_paint.generate_from_brushes,
             None,
