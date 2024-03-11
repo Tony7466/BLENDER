@@ -1894,7 +1894,12 @@ bool BKE_object_has_mode_data(const Object *ob, eObjectMode object_mode)
     }
   }
   else if (object_mode & OB_MODE_SCULPT) {
-    if (ob->sculpt && (ob->sculpt->mode_type == OB_MODE_SCULPT)) {
+    if (ob->type == OB_MESH) {
+      if (ob->sculpt && (ob->sculpt->mode_type == OB_MODE_SCULPT)) {
+        return true;
+      }
+    }
+    if (ob->type == OB_GREASE_PENCIL) {
       return true;
     }
   }
@@ -2373,7 +2378,8 @@ static void copy_object_pose(Object *obn, const Object *ob, const int flag)
 
     /* XXX Remapping object pointing onto itself should be handled by generic
      *     BKE_library_remap stuff, but...
-     *     the flush_constraint_targets callback am not sure about, so will delay that for now. */
+     *     the flush_constraint_targets callback am not sure about, so will delay that for now.
+     */
     LISTBASE_FOREACH (bConstraint *, con, &chan->constraints) {
       ListBase targets = {nullptr, nullptr};
 
@@ -2565,8 +2571,8 @@ Object *BKE_object_duplicate(Main *bmain,
     copy_flags |= LIB_ID_COPY_RIGID_BODY_NO_COLLECTION_HANDLING;
   }
   if (is_root_id) {
-    /* In case root duplicated ID is linked, assume we want to get a local copy of it and duplicate
-     * all expected linked data. */
+    /* In case root duplicated ID is linked, assume we want to get a local copy of it and
+     * duplicate all expected linked data. */
     if (ID_IS_LINKED(ob)) {
       dupflag |= USER_DUP_LINKED_ID;
     }
@@ -2693,7 +2699,8 @@ Object *BKE_object_duplicate(Main *bmain,
     BKE_libblock_relink_to_newid(bmain, &obn->id, 0);
 
 #ifndef NDEBUG
-    /* Call to `BKE_libblock_relink_to_newid` above is supposed to have cleared all those flags. */
+    /* Call to `BKE_libblock_relink_to_newid` above is supposed to have cleared all those flags.
+     */
     ID *id_iter;
     FOREACH_MAIN_ID_BEGIN (bmain, id_iter) {
       BLI_assert((id_iter->tag & LIB_TAG_NEW) == 0);
@@ -2792,7 +2799,8 @@ void BKE_object_rot_to_mat3(const Object *ob, float mat[3][3], bool use_drot)
    * with the rotation matrix to yield the appropriate rotation
    */
 
-  /* Rotations may either be quaternions, eulers (with various rotation orders), or axis-angle. */
+  /* Rotations may either be quaternions, eulers (with various rotation orders), or axis-angle.
+   */
   if (ob->rotmode > 0) {
     /* Euler rotations
      * (will cause gimbal lock, but this can be alleviated a bit with rotation orders). */
@@ -3175,7 +3183,8 @@ static void give_parvert(Object *par, int nr, float vec[3])
     ListBase *nurb;
 
     /* It is possible that a cycle in the dependency graph was resolved in a way that caused this
-     * object to be evaluated before its dependencies. In this case the curve cache may be null. */
+     * object to be evaluated before its dependencies. In this case the curve cache may be null.
+     */
     if (par->runtime->curve_cache && par->runtime->curve_cache->deformed_nurbs.first != nullptr) {
       nurb = &par->runtime->curve_cache->deformed_nurbs;
     }
@@ -3418,10 +3427,10 @@ blender::float4x4 BKE_object_calc_parent(Depsgraph *depsgraph, Scene *scene, Obj
   workob.par3 = ob->par3;
 
   /* The effects of constraints should NOT be included in the parent-inverse matrix. Constraints
-   * are supposed to be applied after the object's local loc/rot/scale. If the (inverted) effect of
-   * constraints would be included in the parent inverse matrix, these would be applied before the
-   * object's local loc/rot/scale instead of after. For example, a "Copy Rotation" constraint would
-   * rotate the object's local translation as well. See #82156. */
+   * are supposed to be applied after the object's local loc/rot/scale. If the (inverted) effect
+   * of constraints would be included in the parent inverse matrix, these would be applied before
+   * the object's local loc/rot/scale instead of after. For example, a "Copy Rotation" constraint
+   * would rotate the object's local translation as well. See #82156. */
 
   STRNCPY(workob.parsubstr, ob->parsubstr);
 
@@ -4289,10 +4298,10 @@ static int pc_cmp(const void *a, const void *b)
   return 0;
 }
 
-/* TODO: Review the usages of this function, currently with copy-on-eval it will be called for orig
- * object and then again for evaluated copies of it, think this is bad since there is no guarantee
- * that we get the same stack index in both cases? Order is important since this index is used for
- * filenames on disk. */
+/* TODO: Review the usages of this function, currently with copy-on-eval it will be called for
+ * orig object and then again for evaluated copies of it, think this is bad since there is no
+ * guarantee that we get the same stack index in both cases? Order is important since this index
+ * is used for filenames on disk. */
 int BKE_object_insert_ptcache(Object *ob)
 {
   LinkData *link = nullptr;

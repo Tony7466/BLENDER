@@ -232,7 +232,7 @@ ModifierData *ED_object_modifier_add(
       /* set totlvl from existing MDISPS layer if object already had it */
       multiresModifier_set_levels_from_disps((MultiresModifierData *)new_md, ob);
 
-      if (ob->mode & OB_MODE_SCULPT) {
+      if ((ob->type == OB_MESH) && (ob->mode & OB_MODE_SCULPT)) {
         /* ensure that grid paint mask layer is created */
         BKE_sculpt_mask_layers_ensure(nullptr, nullptr, ob, (MultiresModifierData *)new_md);
       }
@@ -1150,8 +1150,8 @@ bool ED_object_modifier_apply(Main *bmain,
     BKE_report(reports, RPT_ERROR, "Modifiers cannot be applied to multi-user data");
     return false;
   }
-  if ((ob->mode & OB_MODE_SCULPT) && find_multires_modifier_before(scene, md) &&
-      (BKE_modifier_is_same_topology(md) == false))
+  if ((ob->type == OB_MESH) && (ob->mode & OB_MODE_SCULPT) &&
+      find_multires_modifier_before(scene, md) && (BKE_modifier_is_same_topology(md) == false))
   {
     BKE_report(reports,
                RPT_ERROR,
@@ -1722,8 +1722,8 @@ static bool modifier_apply_poll(bContext *C)
     return false;
   }
   if (md != nullptr) {
-    if ((ob->mode & OB_MODE_SCULPT) && find_multires_modifier_before(scene, md) &&
-        (BKE_modifier_is_same_topology(md) == false))
+    if ((ob->type == OB_MESH) && (ob->mode & OB_MODE_SCULPT) &&
+        find_multires_modifier_before(scene, md) && (BKE_modifier_is_same_topology(md) == false))
     {
       CTX_wm_operator_poll_msg_set(
           C, "Constructive modifier cannot be applied to multi-res data in sculpt mode");
@@ -2306,7 +2306,7 @@ static int multires_subdivide_exec(bContext *C, wmOperator *op)
   DEG_id_tag_update(&object->id, ID_RECALC_GEOMETRY);
   WM_event_add_notifier(C, NC_OBJECT | ND_MODIFIER, object);
 
-  if (object->mode & OB_MODE_SCULPT) {
+  if (object->type == OB_MESH && object->mode & OB_MODE_SCULPT) {
     /* ensure that grid paint mask layer is created */
     BKE_sculpt_mask_layers_ensure(
         CTX_data_ensure_evaluated_depsgraph(C), CTX_data_main(C), object, mmd);

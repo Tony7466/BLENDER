@@ -3956,7 +3956,7 @@ static void do_symmetrical_brush_actions(Sculpt *sd,
 bool SCULPT_mode_poll(bContext *C)
 {
   Object *ob = CTX_data_active_object(C);
-  return ob && ob->mode & OB_MODE_SCULPT;
+  return ob && ob->type == OB_MESH && ob->mode & OB_MODE_SCULPT;
 }
 
 bool SCULPT_mode_poll_view3d(bContext *C)
