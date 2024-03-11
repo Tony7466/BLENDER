@@ -185,8 +185,6 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
                                       const int shader_flags,
                                       const int bounce,
                                       const uint32_t path_flag,
-                                      const int object_id,
-                                      const float pdf_selection,
                                       ccl_private LightSample *ls)
 {
   int prim;
@@ -197,7 +195,7 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
                                                                            ls->emitter_id);
     prim = kemitter->light.id;
     mesh_light.shader_flag = kemitter->mesh_light.shader_flag;
-    mesh_light.object_id = object_id;
+    mesh_light.object_id = ls->object;
   }
   else
 #endif
@@ -207,9 +205,6 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
     prim = kdistribution->prim;
     mesh_light = kdistribution->mesh_light;
   }
-
-  /* A different value would be assigned in `triangle_light_sample()` if `!use_light_tree`. */
-  ls->pdf_selection = pdf_selection;
 
   if (prim >= 0) {
     /* Mesh light. */

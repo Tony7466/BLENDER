@@ -699,15 +699,12 @@ ccl_device int light_tree_root_node_index(KernelGlobals kg, const int object_rec
 
 template<bool in_volume_segment>
 ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
-                                           const float3 rand,
-                                           const float time,
+                                           const float rand,
                                            const float3 P,
                                            float3 N_or_D,
                                            float t,
                                            const int object_receiver,
                                            const int shader_flags,
-                                           const int bounce,
-                                           const uint32_t path_flag,
                                            ccl_private LightSample *ls)
 {
   if (!kernel_data.integrator.use_direct_light) {
@@ -718,10 +715,8 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
   float pdf_leaf = 1.0f;
   float pdf_selection = 1.0f;
   int selected_emitter = -1;
-  int object_emitter = 0;
   int node_index = light_tree_root_node_index(kg, object_receiver);
-  /* The first two dimensions of the Sobol sequence have better stratification. */
-  float rand_selection = rand.z;
+  float rand_selection = rand;
 
   float3 local_P = P;
 
@@ -743,7 +738,7 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
       }
 
       /* Continue with the picked mesh light. */
-      object_emitter = kernel_data_fetch(light_tree_emitters, selected_emitter).mesh.object_id;
+      ls->object = kernel_data_fetch(light_tree_emitters, selected_emitter).mesh.object_id;
       continue;
     }
 
@@ -766,22 +761,10 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
     pdf_leaf *= (node_index == left_index) ? left_prob : (1.0f - left_prob);
   }
 
-  pdf_selection *= pdf_leaf;
-
   ls->emitter_id = selected_emitter;
+  ls->pdf_selection = pdf_selection * pdf_leaf;
 
-  return light_sample<in_volume_segment>(kg,
-                                         float3_to_float2(rand),
-                                         time,
-                                         P,
-                                         N_or_D,
-                                         object_receiver,
-                                         shader_flags,
-                                         bounce,
-                                         path_flag,
-                                         object_emitter,
-                                         pdf_selection,
-                                         ls);
+  return true;
 }
 
 /* We need to be able to find the probability of selecting a given light for MIS. */
