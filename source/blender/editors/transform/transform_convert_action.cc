@@ -50,7 +50,7 @@ static bool is_td2d_int(TransData2D *td2d)
  * \{ */
 
 static bool grease_pencil_layer_initialize_trans_data(blender::bke::greasepencil::Layer &layer,
-                                                      const blender::Vector<int> &frames_affected)
+                                                      const blender::Span<int> frames_affected)
 {
   using namespace blender::bke::greasepencil;
   LayerTransformData &trans_data = layer.runtime->trans_data_;
@@ -548,7 +548,7 @@ static int GreasePencilLayerToTransData(TransData *td,
   /* If it was not previously done, initialize the transform data in the layer, and if some frames
    * are actually concerned by the transform. */
   if (any_frame_affected) {
-    grease_pencil_layer_initialize_trans_data(*layer, frames_affected);
+    grease_pencil_layer_initialize_trans_data(*layer, frames_affected.as_span());
   }
 
   return total_trans_frames;
