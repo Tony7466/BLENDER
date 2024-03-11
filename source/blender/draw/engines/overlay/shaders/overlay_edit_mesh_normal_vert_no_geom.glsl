@@ -102,36 +102,12 @@ vec4 vertex_main(uint src_index, vec3 in_pos, vec4 in_lnor, vec4 in_vnor, vec4 i
 #  define INT16_MAX 32767
 #endif
 
-ivec4 Inor_1010102_to_ivec4(int data)
-{
-  ivec4 out_vec;
-
-  /* 0b11,1111,1111 in hex */
-  int mask = 0x3FF;
-  out_vec.x = data & mask;
-  if (out_vec.x & 0x200 /* 0b10,0000,0000 */) {
-    out_vec.x |= ~mask;
-  }
-
-  int shifted = data >> 10;
-  out_vec.y = shifted & mask;
-  if (out_vec.y & 0x200) {
-    out_vec.y |= ~mask;
-  }
-
-  shifted = data >> 20;
-  out_vec.z = shifted & mask;
-  if (out_vec.z & 0x200) {
-    out_vec.z |= ~mask;
-  }
-
-  out_vec.w = (data >> 30) & 0b11;
-  if (out_vec.w & 0b10) {
-    out_vec.w |= ~0b11;
-  }
-
-  return out_vec;
-}
+typedef struct GPUPackedNormal {
+  int x : 10;
+  int y : 10;
+  int z : 10;
+  int w : 2;
+} GPUPackedNormal;
 
 #define nor_to_vec4(index, in_data, out_vec) \
   { \
@@ -139,12 +115,12 @@ ivec4 Inor_1010102_to_ivec4(int data)
       out_vec = (vec4)vertex_fetch_attribute(index, in_data, short4) / vec4(INT16_MAX); \
     } \
     else if (vertex_fetch_get_attr_type(in_data) == GPU_SHADER_ATTR_TYPE_INT1010102_NORM) { \
-      ivec4 tt = Inor_1010102_to_ivec4( \
-          vertex_fetch_attribute(index, in_data, vec3_1010102_Inorm)); \
-      out_vec.x = float(tt.x) / 255.0; \
-      out_vec.y = float(tt.y) / 255.0; \
-      out_vec.z = float(tt.z) / 255.0; \
-      out_vec.w = float(tt.w); \
+      GPUPackedNormal data = *(constant GPUPackedNormal *)(&vertex_fetch_attribute( \
+          index, in_data, vec3_1010102_Inorm)); \
+      out_vec.x = float(data.x) / 511.0; \
+      out_vec.y = float(data.y) / 511.0; \
+      out_vec.z = float(data.z) / 511.0; \
+      out_vec.w = float(data.w); \
     } \
     else { \
       out_vec = vertex_fetch_attribute(index, in_data, vec4); \
