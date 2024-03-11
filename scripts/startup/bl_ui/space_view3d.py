@@ -802,7 +802,10 @@ class VIEW3D_HT_header(Header):
 
             if object_mode == 'PAINT_GREASE_PENCIL':
                 row = layout.row(align=True)
-                row.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
+                sub = row.row(align=True)
+                sub.prop(tool_settings, "use_gpencil_weight_data_add", text="", icon='WPAINT_HLT')
+                sub.separator(factor=0.4)
+                sub.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
 
             if object_mode in {'PAINT_GREASE_PENCIL', 'EDIT', 'WEIGHT_PAINT'}:
                 row = layout.row(align=True)

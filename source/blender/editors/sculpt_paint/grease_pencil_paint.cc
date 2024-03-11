@@ -2,12 +2,15 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_action.h"
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
 #include "BKE_curves.hh"
+#include "BKE_deform.hh"
 #include "BKE_grease_pencil.hh"
+#include "BKE_grease_pencil_vertex_groups.hh"
 #include "BKE_material.h"
 
 #include "BLI_length_parameterize.hh"
@@ -15,6 +18,8 @@
 #include "BLI_math_geom.h"
 
 #include "DEG_depsgraph_query.hh"
+
+#include "DNA_modifier_types.h"
 
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
@@ -130,6 +135,7 @@ class PaintOperation : public GreasePencilStrokeOperation {
  private:
   void simplify_stroke(bke::greasepencil::Drawing &drawing, float epsilon_px);
   void process_stroke_end(bke::greasepencil::Drawing &drawing);
+  void process_stroke_weights(const bContext &C, bke::greasepencil::Drawing &drawing);
 };
 
 /**
@@ -576,6 +582,77 @@ void PaintOperation::process_stroke_end(bke::greasepencil::Drawing &drawing)
   }
 }
 
+void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil::Drawing &drawing)
+{
+  Scene &scene = *CTX_data_scene(&C);
+  Object *object = CTX_data_active_object(&C);
+
+  if (!(scene.toolsettings->gpencil_flags & GP_TOOL_FLAG_CREATE_WEIGHTS)) {
+    return;
+  }
+
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  const int stroke_index = curves.curves_range().last();
+  const IndexRange points = curves.points_by_curve()[stroke_index];
+
+  const int def_nr = BKE_object_defgroup_active_index_get(object) - 1;
+
+  const bDeformGroup *defgroup = static_cast<const bDeformGroup *>(
+      BLI_findlink(BKE_object_defgroup_list(object), def_nr));
+
+  const StringRef vertex_group_name = defgroup->name;
+
+  blender::bke::greasepencil::assign_to_vertex_group_from_selection(
+      curves, IndexMask(points), vertex_group_name, 1.0f);
+
+  /* Loop through all modifiers trying to find the pose channel for the vertex group name. */
+  bPoseChannel *channel = NULL;
+  Object *ob_arm = NULL;
+  LISTBASE_FOREACH (ModifierData *, md, &(object)->modifiers) {
+    if (md->type != eModifierType_GreasePencilArmature) {
+      continue;
+    }
+
+    GreasePencilArmatureModifierData *amd = (GreasePencilArmatureModifierData *)md;
+    if (amd == NULL) {
+      continue;
+    }
+
+    ob_arm = amd->object;
+    /* Not an armature. */
+    if (ob_arm->type != OB_ARMATURE || ob_arm->pose == NULL) {
+      continue;
+    }
+
+    channel = BKE_pose_channel_find_name(ob_arm->pose, vertex_group_name.data());
+    if (channel == NULL) {
+      continue;
+    }
+
+    /* Found the channel. */
+    break;
+  }
+
+  /* nothing valid was found. */
+  if (channel == NULL) {
+    return;
+  }
+
+  const float4x4 obinv = math::invert(object->object_to_world());
+
+  const float4x4 postmat = obinv * ob_arm->object_to_world();
+  const float4x4 premat = math::invert(postmat);
+
+  const float4x4 matrix = postmat * math::invert(float4x4(channel->chan_mat)) * premat;
+
+  MutableSpan<float3> positions = curves.positions_for_write().slice(points);
+  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
+    for (float3 &position : positions.slice(range)) {
+      position = math::transform_point(matrix, position);
+    }
+  });
+}
+
 void PaintOperation::on_stroke_done(const bContext &C)
 {
   using namespace blender::bke;
@@ -596,6 +673,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
   const float simplifiy_threshold_px = 0.5f;
   this->simplify_stroke(drawing, simplifiy_threshold_px);
   this->process_stroke_end(drawing);
+  this->process_stroke_weights(C, drawing);
   drawing.tag_topology_changed();
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
