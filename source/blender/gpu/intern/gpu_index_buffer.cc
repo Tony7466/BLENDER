@@ -287,6 +287,7 @@ GPUIndexBuf *GPU_indexbuf_build_curves_on_device(GPUPrimType prim_type,
     resolution = 1;
   }
   GPU_shader_uniform_1i(shader, "elements_per_curve", dispatch_x_dim / resolution);
+  GPU_shader_uniform_1i(shader, "total_length", multiple_of_4);
   GPU_shader_uniform_1i(shader, "ncurves", curves_num);
   GPU_indexbuf_bind_as_ssbo(ibo, GPU_shader_get_ssbo_binding(shader, "out_indices"));
   GPU_compute_dispatch(shader, grid_x, grid_y, grid_z);
