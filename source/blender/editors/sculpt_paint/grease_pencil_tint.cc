@@ -109,71 +109,79 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
   /* Get the grease pencil drawing. */
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
-  const auto execute_tint_on_drawing =
-      [&](const int layer_index, const int frame_number, Drawing &drawing) {
-        const Layer &layer = *grease_pencil.layers()[layer_index];
-        bke::CurvesGeometry strokes = drawing.strokes_for_write();
+  const auto execute_tint_on_drawing = [&](const int layer_index,
+                                           const int frame_number,
+                                           Drawing &drawing) {
+    const Layer &layer = *grease_pencil.layers()[layer_index];
+    bke::CurvesGeometry strokes = drawing.strokes_for_write();
 
-        /* Evaluated geometry. */
-        bke::crazyspace::GeometryDeformation deformation =
-            bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-                ob_eval, *obact, layer_index, frame_number);
+    /* Evaluated geometry. */
+    bke::crazyspace::GeometryDeformation deformation =
+        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+            ob_eval, *obact, layer_index, frame_number);
 
-        /* Compute screen space positions. */
-        Array<float2> screen_space_positions(strokes.points_num());
-        threading::parallel_for(strokes.points_range(), 4096, [&](const IndexRange range) {
-          for (const int point : range) {
-            ED_view3d_project_float_global(region,
-                                           math::transform_point(layer.to_world_space(*ob_eval),
-                                                                 deformation.positions[point]),
-                                           screen_space_positions[point],
-                                           V3D_PROJ_TEST_NOP);
-          }
-        });
+    /* Compute screen space positions. */
+    Array<float2> screen_space_positions(strokes.points_num());
+    threading::parallel_for(strokes.points_range(), 4096, [&](const IndexRange range) {
+      for (const int point : range) {
+        ED_view3d_project_float_global(
+            region,
+            math::transform_point(layer.to_world_space(*ob_eval), deformation.positions[point]),
+            screen_space_positions[point],
+            V3D_PROJ_TEST_NOP);
+      }
+    });
 
-        MutableSpan<ColorGeometry4f> vertex_colors = drawing.vertex_colors_for_write();
-        bke::MutableAttributeAccessor stroke_attributes = strokes.attributes_for_write();
-        bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
-            stroke_attributes.lookup_for_write_span<ColorGeometry4f>("fill_color");
+    MutableSpan<ColorGeometry4f> vertex_colors = drawing.vertex_colors_for_write();
+    bke::MutableAttributeAccessor stroke_attributes = strokes.attributes_for_write();
+    bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
+        stroke_attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
+                                                                        bke::AttrDomain::Curve);
+    OffsetIndices<int> points_by_curve = strokes.points_by_curve();
 
-        bool changed = false;
-        if (TINT_VERTEX_COLOR_STROKE(brush)) {
-          changed = true;
-          threading::parallel_for(strokes.points_range(), 4096, [&](const IndexRange range) {
-            for (const int point : range) {
-              const float distance = math::distance(screen_space_positions[point], mouse_position);
-              const float influence = strength * BKE_brush_curve_strength(brush, distance, radius);
-              if (influence <= 0.0f) {
-                continue;
-              }
-              vertex_colors[point].premultiply_alpha();
-              float4 rgba = float4(
-                  math::interpolate(float3(vertex_colors[point]), float3(self.color), influence),
-                  vertex_colors[point][3]);
-              rgba[3] = rgba[3] * (1.0f - influence) + influence;
-              vertex_colors[point] = ColorGeometry4f(rgba);
-              vertex_colors[point].unpremultiply_alpha();
+    bool changed = false;
+    if (TINT_VERTEX_COLOR_STROKE(brush)) {
+      changed = true;
+      threading::parallel_for(strokes.curves_range(), 128, [&](const IndexRange range) {
+        for (const int curve : range) {
+          bool stroke_changed = false;
+          for (const int curve_point : points_by_curve[curve].index_range()) {
+            const int point = curve_point + points_by_curve[curve].first();
+            const float distance = math::distance(screen_space_positions[point], mouse_position);
+            const float influence = strength * BKE_brush_curve_strength(brush, distance, radius);
+            if (influence <= 0.0f) {
+              continue;
             }
-          });
+            vertex_colors[point].premultiply_alpha();
+            float4 rgba = float4(
+                math::interpolate(float3(vertex_colors[point]), float3(self.color), influence),
+                vertex_colors[point][3]);
+            rgba[3] = rgba[3] * (1.0f - influence) + influence;
+            vertex_colors[point] = ColorGeometry4f(rgba);
+            vertex_colors[point].unpremultiply_alpha();
+            stroke_changed = true;
+          }
+          if (!fill_colors.span.is_empty() && stroke_changed && TINT_VERTEX_COLOR_FILL(brush)) {
+            changed = true;
+            fill_colors.span[curve].premultiply_alpha();
+            float4 rgba = float4(math::interpolate(float3(fill_colors.span[curve]),
+                                                   float3(self.color),
+                                                   fill_strength),
+                                 fill_colors.span[curve][3]);
+            rgba[3] = rgba[3] * (1.0f - fill_strength) + fill_strength;
+            fill_colors.span[curve] = ColorGeometry4f(rgba);
+            fill_colors.span[curve].unpremultiply_alpha();
+          }
         }
-        // if (!fill_colors.span.is_empty() && TINT_VERTEX_COLOR_FILL(brush)) {
-        //   changed = true;
-        //   threading::parallel_for(strokes.curves_range(), 4096, [&](const IndexRange range) {
-        //     for (const int curve : range) {
-        //       fill_colors.span[curve].premultiply_alpha();
-        //       fill_colors.span[curve] = math::interpolate(
-        //           fill_colors.span[curve], self.color, fill_strength);
-        //       fill_colors.span[curve].unpremultiply_alpha();
-        //     }
-        //   });
-        //   fill_colors.finish();
-        // }
+      });
+      fill_colors.finish();
+    }
 
-        if (changed) {
-          DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-          WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
-        }
-      };
+    if (changed) {
+      DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+      WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+    }
+  };
 
   if (self.active_layer_only) {
     /* Tint only on the drawing at the current frame of the active layer. */
