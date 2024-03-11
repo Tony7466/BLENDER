@@ -183,21 +183,6 @@ static void console_scrollback_limit(SpaceConsole *sc)
   }
 }
 
-static ConsoleLine *console_history_find(SpaceConsole *sc, const char *str, ConsoleLine *cl_ignore)
-{
-  LISTBASE_FOREACH_BACKWARD (ConsoleLine *, cl, &sc->history) {
-    if (cl == cl_ignore) {
-      continue;
-    }
-
-    if (STREQ(str, cl->line)) {
-      return cl;
-    }
-  }
-
-  return nullptr;
-}
-
 /* return 0 if no change made, clamps the range */
 static bool console_line_cursor_set(ConsoleLine *cl, int cursor)
 {
@@ -934,37 +919,41 @@ static int console_history_cycle_exec(bContext *C, wmOperator *op)
   const bool reverse = RNA_boolean_get(op->ptr, "reverse"); /* assumes down, reverse is up */
   int prev_len = ci->len;
 
-  /* keep a copy of the line above so when history is cycled
-   * this is the only function that needs to know about the double-up */
-  if (ci->prev) {
-    ConsoleLine *ci_prev = (ConsoleLine *)ci->prev;
-
-    if (STREQ(ci->line, ci_prev->line)) {
-      console_history_free(sc, ci_prev);
+  int old_index = sc->history_index;
+  int new_index;
+  if (reverse) {
+    if (old_index <= 0) {
+      new_index = 1;
     }
-  }
-
-  if (reverse) { /* last item in history */
-    ci = static_cast<ConsoleLine *>(sc->history.last);
-    BLI_remlink(&sc->history, ci);
-    BLI_addhead(&sc->history, ci);
+    else {
+      new_index = old_index+1;
+    }
   }
   else {
-    ci = static_cast<ConsoleLine *>(sc->history.first);
-    BLI_remlink(&sc->history, ci);
-    BLI_addtail(&sc->history, ci);
-  }
-
-  { /* add a duplicate of the new arg and remove all other instances */
-    ConsoleLine *cl;
-    while ((cl = console_history_find(sc, ci->line, ci))) {
-      console_history_free(sc, cl);
+    if (old_index <= 0) { /* down-arrow after exec */
+      new_index = -old_index;
     }
-
-    console_history_add(sc, (ConsoleLine *)sc->history.last);
+    else {
+      new_index = old_index - 1;
+    }
   }
 
-  ci = static_cast<ConsoleLine *>(sc->history.last);
+  /* Find the history item */
+  ConsoleLine *ci_prev = ci;
+  for (int n = 0; n < new_index; n++) {
+    if (!ci_prev->prev) {
+      new_index = n;
+      break;
+    }
+    ci_prev = (ConsoleLine *)(ci_prev->prev);
+  }
+
+  sc->history_index = new_index;
+
+  /* duplicate it to the end */
+  console_history_free(sc, ci);
+  ci = console_history_add(sc, ci != ci_prev ? ci_prev : nullptr);
+
   console_select_offset(sc, ci->len - prev_len);
 
   /* could be wrapped so update scroll rect */
@@ -1006,12 +995,12 @@ static int console_history_append_exec(bContext *C, wmOperator *op)
   int prev_len = ci->len;
 
   if (rem_dupes) {
-    ConsoleLine *cl;
-
-    while ((cl = console_history_find(sc, ci->line, ci))) {
+    /* remove a repeated command */
+    ConsoleLine *cl = (ConsoleLine *)(ci->prev);
+    if (cl && STREQ(cl->line, ci->line)) {
       console_history_free(sc, cl);
     }
-
+    /* remove blank command */
     if (STREQ(str, ci->line)) {
       MEM_freeN(str);
       return OPERATOR_FINISHED;
@@ -1021,6 +1010,11 @@ static int console_history_append_exec(bContext *C, wmOperator *op)
   ci = console_history_add_str(sc, str, true); /* own the string */
   console_select_offset(sc, ci->len - prev_len);
   console_line_cursor_set(ci, cursor);
+
+  /* make up arrow go to 1 in history, but down-arrow still goes to same item */
+  if (sc->history_index > 0) {
+    sc->history_index = -sc->history_index;
+  }
 
   ED_area_tag_redraw(area);
   console_scroll_bottom(region);

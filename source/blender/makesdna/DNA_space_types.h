@@ -1707,6 +1707,8 @@ typedef struct SpaceConsole {
   ListBase scrollback;
   /** ConsoleLine; command history, current edited line is the first. */
   ListBase history;
+  /** Index into history of most recent up/down arrow keys */
+  int history_index;
   char prompt[256];
   /** Multiple consoles are possible, not just python. */
   char language[32];
@@ -1714,6 +1716,7 @@ typedef struct SpaceConsole {
   /** Selection offset in bytes. */
   int sel_start;
   int sel_end;
+  int _pad2;
 } SpaceConsole;
 
 /** \} */
