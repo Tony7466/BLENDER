@@ -52,7 +52,7 @@ static bool lineart_mod_is_disabled(GpencilModifierData *md)
   return disabled;
 }
 
-static void clear_strokes(Object *ob, GpencilModifierData *md, int frame)
+static void clear_strokes_on_frame(Object *ob, GpencilModifierData *md, int frame)
 {
   if (md->type != eGpencilModifierType_Lineart) {
     return;
@@ -72,6 +72,25 @@ static void clear_strokes(Object *ob, GpencilModifierData *md, int frame)
   }
 
   BKE_gpencil_layer_frame_delete(gpl, gpf);
+}
+
+static void clear_all_strokes(Object *ob, GpencilModifierData *md)
+{
+  if (md->type != eGpencilModifierType_Lineart) {
+    return;
+  }
+  LineartGpencilModifierData *lmd = (LineartGpencilModifierData *)md;
+  bGPdata *gpd = static_cast<bGPdata *>(ob->data);
+
+  bGPDlayer *gpl = BKE_gpencil_layer_get_by_name(gpd, lmd->target_layer, 1);
+  if (!gpl) {
+    return;
+  }
+
+  bGPDframe *gpf;
+  while (gpf = static_cast<bGPDframe *>(gpl->frames.first)) {
+    BKE_gpencil_layer_frame_delete(gpl, gpf);
+  }
 }
 
 static bool bake_strokes(Object *ob,
@@ -178,14 +197,6 @@ static bool lineart_gpencil_bake_single_target(LineartBakeJob *bj, Object *ob, i
   bool touched = false;
   if (ob->type != OB_GPENCIL_LEGACY || G.is_break) {
     return false;
-  }
-
-  if (bj->overwrite_frames) {
-    LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
-      if (md->type == eGpencilModifierType_Lineart) {
-        clear_strokes(ob, md, frame);
-      }
-    }
   }
 
   GpencilLineartLimitInfo info = BKE_gpencil_get_lineart_modifier_limits(ob);
@@ -299,6 +310,7 @@ static int lineart_gpencil_bake_common(bContext *C,
         LISTBASE_FOREACH (GpencilModifierData *, md, &ob->greasepencil_modifiers) {
           if (md->type == eGpencilModifierType_Lineart) {
             BLI_linklist_prepend(&bj->objects, ob);
+            clear_all_strokes(ob, md);
             break;
           }
         }
@@ -418,7 +430,7 @@ static int lineart_gpencil_clear_strokes_exec(bContext *C, wmOperator * /*op*/)
 
   return OPERATOR_FINISHED;
 }
-static int lineart_gpencil_clear_strokes_all_exec(bContext *C, wmOperator *op)
+static int lineart_gpencil_clear_strokes_on_frame_all_exec(bContext *C, wmOperator *op)
 {
   CTX_DATA_BEGIN (C, Object *, ob, visible_objects) {
     lineart_gpencil_clear_strokes_exec_common(ob);
@@ -468,7 +480,7 @@ void OBJECT_OT_lineart_clear_all(wmOperatorType *ot)
   ot->description = "Clear all strokes in all Grease Pencil objects that have a line art modifier";
   ot->idname = "OBJECT_OT_lineart_clear_all";
 
-  ot->exec = lineart_gpencil_clear_strokes_all_exec;
+  ot->exec = lineart_gpencil_clear_strokes_on_frame_all_exec;
 }
 
 void WM_operatortypes_lineart()
