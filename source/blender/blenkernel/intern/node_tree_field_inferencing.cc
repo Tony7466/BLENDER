@@ -5,6 +5,7 @@
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
+#include "BLI_bit_span.hh"
 #include "DNA_node_tree_interface_types.h"
 #include "NOD_geometry.hh"
 #include "NOD_node_declaration.hh"
@@ -892,9 +893,9 @@ static void solve_binary_constraints(const ConstraintSet &constraints,
 }
 
 template<typename Interrupter = NullInterupter>
-static void solve_constraints(const ConstraintSet &constraints,
-                              const int num_vars,
-                              const int domain_size)
+static BitGroupVector<> solve_constraints(const ConstraintSet &constraints,
+                                          const int num_vars,
+                                          const int domain_size)
 {
   BitGroupVector variable_domains(num_vars, domain_size, true);
 
@@ -903,13 +904,18 @@ static void solve_constraints(const ConstraintSet &constraints,
 
   Interrupter::notify("Constraint Solve:");
   print_variable_state<Interrupter>(variable_domains, "----");
+
+  return variable_domains;
 }
 
 }  // namespace ac3
 
 enum DomainValue {
-  Single = 0,
-  Field = 1,
+  Single,
+  Field,
+  /* Distinct from Field to indicate group inputs that become fields if unconnected. */
+  ImplicitField,
+  NumDomainValues
 };
 
 static void add_node_type_constraints(const bNodeTree &tree,
@@ -943,7 +949,6 @@ static void add_node_type_constraints(const bNodeTree &tree,
     }
   };
 
-  /* Sync field state between zone nodes and schedule another pass if necessary. */
   switch (node.type) {
     case GEO_NODE_SIMULATION_INPUT: {
       const NodeGeometrySimulationInput &data = *static_cast<const NodeGeometrySimulationInput *>(
@@ -1007,23 +1012,25 @@ static void test_ac3_field_inferencing(
 {
   using Interrupter = ac3::PrintInterupter;
 
-  /* Index ranges of variables. */
+  /* Index ranges of variables for node sockets and interface sockets.
+   * Group input/output nodes use the tree interface variables directly,
+   * their socket variables are unused. */
   const IndexRange socket_vars = tree.all_sockets().index_range();
   const IndexRange tree_input_vars = socket_vars.after(tree.interface_inputs().size());
   const IndexRange tree_output_vars = tree_input_vars.after(tree.interface_outputs().size());
   const int num_vars = tree_output_vars.one_after_last();
 
-  /* Domain has two values: Single and Field.
-   * The result can be a combination of both. */
-  const int domain_size = 2;
-
   const Span<const bNode *> nodes = tree.toposort_right_to_left();
 
   ac3::ConstraintSet constraints;
   for (const bNode *node : nodes) {
+    /* Special case: Group inputs and outputs use the interface variables directly. */
+    const bool use_interface_vars = node->is_group_input() || node->is_group_output();
+
     const FieldInferencingInterface &inferencing_interface = *interface_by_node[node->index()];
     for (const bNodeSocket *output_socket : node->output_sockets()) {
-      const int var_index = socket_vars[output_socket->index_in_tree()];
+      const int var_index = use_interface_vars ? tree_output_vars[output_socket->index()] :
+                                                 socket_vars[output_socket->index_in_tree()];
       const bNodeSocketType *typeinfo = output_socket->typeinfo;
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
@@ -1046,7 +1053,8 @@ static void test_ac3_field_inferencing(
       for (const bNodeSocket *target_socket : output_socket->directly_linked_sockets()) {
         if (target_socket->is_available()) {
           constraints.add(var_index, target_socket->index_in_tree(), [](int value_a, int value_b) {
-            return value_a == DomainValue::Single || value_b == DomainValue::Field;
+            return value_a == DomainValue::Single ||
+                   ELEM(value_b, DomainValue::Field, DomainValue::ImplicitField);
           });
         }
       }
@@ -1085,7 +1093,8 @@ static void test_ac3_field_inferencing(
 
     /* Some inputs do not require fields independent of what the outputs are connected to. */
     for (const bNodeSocket *input_socket : node->input_sockets()) {
-      const int var_index = socket_vars[input_socket->index_in_tree()];
+      const int var_index = use_interface_vars ? tree_input_vars[input_socket->index()] :
+                                                 socket_vars[input_socket->index_in_tree()];
       const bNodeSocketType *typeinfo = input_socket->typeinfo;
       const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) :
                                                   SOCK_CUSTOM;
@@ -1105,19 +1114,21 @@ static void test_ac3_field_inferencing(
     add_node_type_constraints(tree, *node, constraints);
   }
 
-  /* Connnect socket and interface variables. */
-  for (const int i : tree.interface_inputs().index_range()) {
-    const int var_index =
-  }
-
-  ac3::solve_constraints<Interrupter>(constraints, num_vars, domain_size);
+  BitGroupVector<> result = ac3::solve_constraints<Interrupter>(
+      constraints, num_vars, NumDomainValues);
 
   /* Setup inferencing interface for the tree. */
-  for (const int index : tree.interface_inputs().index_range()) {
-    const bNodeTreeInterfaceSocket *group_input = tree.interface_inputs()[index];
+  for (const int i : tree.interface_inputs().index_range()) {
+    const bNodeTreeInterfaceSocket *group_input = tree.interface_inputs()[i];
     const bNodeSocketType *typeinfo = group_input->socket_typeinfo();
     const eNodeSocketDatatype type = typeinfo ? eNodeSocketDatatype(typeinfo->type) : SOCK_CUSTOM;
-    inferencing_interface.inputs[index] = InputSocketFieldType::None;
+
+    const int var_index = tree_input_vars[i];
+    const BitSpan state = result[var_index];
+    if (state[DomainValue::ImplicitField]) {
+    }
+
+    inferencing_interface.inputs[i] = InputSocketFieldType::None;
   }
 }
 
