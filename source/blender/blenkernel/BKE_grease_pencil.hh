@@ -81,6 +81,11 @@ class Drawing : public ::GreasePencilDrawing {
    * texture-space.
    */
   Span<float4x2> texture_matrices() const;
+  /*
+   * Sets the matrices the that transforms from a 3D point in layer-space to a 2D point in
+   * texture-space
+   */
+  void set_texture_matrices(const VArray<float4x2> &matrices, const IndexMask &selection);
 
   /**
    * Radii of the points. Values are expected to be in blender units.
@@ -873,14 +878,6 @@ GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object);
 void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil_src,
                                                GreasePencil *grease_pencil_dst);
-
-/*
- * Sets the matrix the that transforms from a 3D point in layer-space to a 2D point in
- * texture-space for the stroke `curve_i`
- */
-void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
-                        int curve_i,
-                        blender::float4x2);
 
 int BKE_grease_pencil_object_material_index_get_by_name(Object *ob, const char *name);
 Material *BKE_grease_pencil_object_material_new(Main *bmain,

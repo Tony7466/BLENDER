@@ -469,7 +469,8 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     const float4x2 legacy_texture_matrix = get_legacy_texture_matrix(gps);
     /* Ensure that everything is up to date. */
     drawing.tag_positions_changed();
-    set_texture_matrix(drawing, stroke_i, legacy_texture_matrix);
+    drawing.set_texture_matrices(VArray<float4x2>::ForSingle(legacy_texture_matrix, 1),
+                                 IndexMask(IndexRange(stroke_i, 1)));
   }
 
   delta_times.finish();

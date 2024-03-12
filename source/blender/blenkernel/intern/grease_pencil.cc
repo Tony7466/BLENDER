@@ -536,6 +536,100 @@ Span<float4x2> Drawing::texture_matrices() const
   return this->runtime->curve_texture_matrices.data().as_span();
 }
 
+static void set_stroke_to_texture_matrix(CurvesGeometry &curves, int curve_i, float3x2 texmat)
+{
+  using namespace blender::math;
+
+  /* Solve for translation, the translation is simply the origin. */
+  const float2 uv_translation = texmat[2];
+
+  /* Solve rotation, the angle of the `u` basis is the rotation. */
+  const float uv_rotation = atan2(texmat[0][1], texmat[0][0]);
+
+  /* Calculate the determinant to check if the `v` scale is negative. */
+  const float det = determinant(float2x2(texmat));
+
+  /* Solve scale, scaling is the only transformation that changes the length, so scale factor is
+   * simply the length. And flip the sign of `v` if the determinant is negative. */
+  const float2 uv_scale = safe_rcp(float2(length(texmat[0]), sign(det) * length(texmat[1])));
+
+  MutableAttributeAccessor attributes = curves.attributes_for_write();
+  SpanAttributeWriter<float> uv_rotations = attributes.lookup_or_add_for_write_span<float>(
+      "uv_rotation",
+      AttrDomain::Curve,
+      AttributeInitVArray(VArray<float>::ForSingle(0.0f, curves.curves_num())));
+  SpanAttributeWriter<float2> uv_translations = attributes.lookup_or_add_for_write_span<float2>(
+      "uv_translation",
+      AttrDomain::Curve,
+      AttributeInitVArray(VArray<float2>::ForSingle(float2(0.0f, 0.0f), curves.curves_num())));
+  SpanAttributeWriter<float2> uv_scales = attributes.lookup_or_add_for_write_span<float2>(
+      "uv_scale",
+      AttrDomain::Curve,
+      AttributeInitVArray(VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
+
+  uv_rotations.span[curve_i] = uv_rotation;
+  uv_translations.span[curve_i] = uv_translation;
+  uv_scales.span[curve_i] = uv_scale;
+
+  uv_rotations.finish();
+  uv_translations.finish();
+  uv_scales.finish();
+}
+
+void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const IndexMask &selection)
+{
+  using namespace blender::math;
+  CurvesGeometry &curves = this->strokes_for_write();
+  selection.foreach_index([&](const int64_t curve_i, const int64_t pos) {
+    const float4x2 strokemat = get_local_to_stroke_matrix(*this, curve_i);
+    const float4x2 texspace = matrices[pos];
+
+    /*
+     * WORKAROUND: This algorithm could work with floats but is prone to numerical error.
+     * So instead we cast to doubles, do the algorithm and then go back to floats.
+     */
+    double4x3 strokemat4x3 = double4x3(strokemat);
+
+    /*
+     * We need the diagonal of ones to start from the bottom right instead top left to properly
+     * apply the two matrices.
+     *
+     * i.e.
+     *          # # # #              # # # #
+     * We need  # # # #  Instead of  # # # #
+     *          0 0 0 1              0 0 1 0
+     *
+     */
+    strokemat4x3[2][2] = 0.0;
+    strokemat4x3[3][2] = 1.0;
+
+    /*
+     * We want to solve for `texmat` in the equation: `texspace = texmat * strokemat4x3`
+     * Because these matrices are not square we can not use a standard inverse.
+     *
+     * Our problem has the form of: `X = A * Y`
+     * We can solve for `A` using: `A = X * B`
+     *
+     * Where `B` is the Right-sided inverse or Moore-Penrose pseudo inverse.
+     * Calculated as:
+     *
+     *  |--------------------------|
+     *  | B = T(Y) * (Y * T(Y))^-1 |
+     *  |--------------------------|
+     *
+     * And `T()` is transpose and `()^-1` is the inverse.
+     */
+
+    const double3x4 transpose_strokemat = transpose(strokemat4x3);
+    const double3x4 right_inverse = transpose_strokemat *
+                                    invert(strokemat4x3 * transpose_strokemat);
+
+    const float3x2 texmat = float3x2(double4x2(texspace) * right_inverse);
+
+    set_stroke_to_texture_matrix(curves, curve_i, texmat);
+  });
+}
+
 const bke::CurvesGeometry &Drawing::strokes() const
 {
   return this->geometry.wrap();
@@ -1584,109 +1678,6 @@ void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil
       grease_pencil_src->drawing_array_num, __func__);
   bke::greasepencil::copy_drawing_array(grease_pencil_src->drawings(),
                                         grease_pencil_dst->drawings());
-}
-
-/** \} */
-
-/* ------------------------------------------------------------------- */
-/** \name Grease Pencil texture coordinate functions
- * \{ */
-
-void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
-                                  int curve_i,
-                                  blender::float3x2 texmat)
-{
-  using namespace blender;
-  using namespace blender::bke;
-  using namespace blender::math;
-
-  /* Solve for translation, the translation is simply the origin. */
-  const float2 uv_translation = texmat[2];
-
-  /* Solve rotation, the angle of the `u` basis is the rotation. */
-  const float uv_rotation = atan2(texmat[0][1], texmat[0][0]);
-
-  /* Calculate the determinant to check if the `v` scale is negative. */
-  const float det = determinant(float2x2(texmat));
-
-  /* Solve scale, scaling is the only transformation that changes the length, so scale factor is
-   * simply the length. And flip the sign of `v` if the determinant is negative. */
-  const float2 uv_scale = safe_rcp(float2(length(texmat[0]), sign(det) * length(texmat[1])));
-
-  MutableAttributeAccessor attributes = curves.attributes_for_write();
-  SpanAttributeWriter<float> uv_rotations = attributes.lookup_or_add_for_write_span<float>(
-      "uv_rotation",
-      AttrDomain::Curve,
-      AttributeInitVArray(VArray<float>::ForSingle(0.0f, curves.curves_num())));
-  SpanAttributeWriter<float2> uv_translations = attributes.lookup_or_add_for_write_span<float2>(
-      "uv_translation",
-      AttrDomain::Curve,
-      AttributeInitVArray(VArray<float2>::ForSingle(float2(0.0f, 0.0f), curves.curves_num())));
-  SpanAttributeWriter<float2> uv_scales = attributes.lookup_or_add_for_write_span<float2>(
-      "uv_scale",
-      AttrDomain::Curve,
-      AttributeInitVArray(VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
-
-  uv_rotations.span[curve_i] = uv_rotation;
-  uv_translations.span[curve_i] = uv_translation;
-  uv_scales.span[curve_i] = uv_scale;
-
-  uv_rotations.finish();
-  uv_translations.finish();
-  uv_scales.finish();
-}
-
-void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
-                        int curve_i,
-                        blender::float4x2 texspace)
-{
-  using namespace blender;
-  using namespace blender::math;
-
-  const float4x2 strokemat = get_local_to_stroke_matrix(drawing, curve_i);
-
-  /*
-   * WORKAROUND: This algorithm could work with floats but is prone to numerical error.
-   * So instead we cast to doubles, do the algorithm and then go back to floats.
-   */
-  double4x3 strokemat4x3 = double4x3(strokemat);
-
-  /*
-   * We need the diagonal of ones to start from the bottom right instead top left to properly apply
-   * the two matrices.
-   *
-   * i.e.
-   *          # # # #              # # # #
-   * We need  # # # #  Instead of  # # # #
-   *          0 0 0 1              0 0 1 0
-   *
-   */
-  strokemat4x3[2][2] = 0.0;
-  strokemat4x3[3][2] = 1.0;
-
-  /*
-   * We want to solve for `texmat` in the equation: `texspace = texmat * strokemat4x3`
-   * Because these matrices are not square we can not use a standard inverse.
-   *
-   * Our problem has the form of: `X = A * Y`
-   * We can solve for `A` using: `A = X * B`
-   *
-   * Where `B` is the Right-sided inverse or Moore-Penrose pseudo inverse.
-   * Calculated as:
-   *
-   *  |--------------------------|
-   *  | B = T(Y) * (Y * T(Y))^-1 |
-   *  |--------------------------|
-   *
-   * And `T()` is transpose and `()^-1` is the inverse.
-   */
-
-  const double3x4 transpose_strokemat = transpose(strokemat4x3);
-  const double3x4 right_inverse = transpose_strokemat * invert(strokemat4x3 * transpose_strokemat);
-
-  const float3x2 texmat = float3x2(double4x2(texspace) * right_inverse);
-
-  set_stroke_to_texture_matrix(drawing.strokes_for_write(), curve_i, texmat);
 }
 
 /** \} */

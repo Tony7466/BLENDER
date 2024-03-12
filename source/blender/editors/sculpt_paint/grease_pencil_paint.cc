@@ -440,7 +440,8 @@ struct PaintOperationExecutor {
                                       {"position", "radius", "opacity", "vertex_color"},
                                       curves.points_range().take_back(1));
 
-    set_texture_matrix(*drawing_, curves.curves_range().last(), self.texture_space_);
+    drawing_->set_texture_matrices(VArray<float4x2>::ForSingle(self.texture_space_, 1),
+                                   IndexMask(IndexRange(curves.curves_range().last(), 1)));
   }
 
   void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
@@ -633,8 +634,9 @@ void PaintOperation::process_stroke_end(const bContext &C, bke::greasepencil::Dr
   else if (selection_domain == bke::AttrDomain::Point) {
     ed::curves::fill_selection_false(selection.span.slice(points));
   }
-  
-  set_texture_matrix(drawing, curves.curves_range().last(), this->texture_space_);
+
+  drawing.set_texture_matrices(VArray<float4x2>::ForSingle(this->texture_space_, 1),
+                               IndexMask(IndexRange(curves.curves_range().last(), 1)));
 }
 
 void PaintOperation::on_stroke_done(const bContext &C)
