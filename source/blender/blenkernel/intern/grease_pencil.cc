@@ -1473,7 +1473,7 @@ blender::float4x2 get_local_to_stroke_matrix(const blender::bke::greasepencil::D
   using namespace blender::math;
 
   const bke::CurvesGeometry &curves = drawing.strokes();
-  const offset_indices::OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const Span<float3> positions = curves.positions();
   const Span<float3> normals = drawing.curve_plane_normals();
   const IndexRange points = points_by_curve[curve_i];
