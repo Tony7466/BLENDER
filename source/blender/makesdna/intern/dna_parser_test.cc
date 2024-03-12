@@ -5,7 +5,6 @@
 #include "testing/testing.h"
 
 #include "dna_parser.hh"
-#include <fstream>
 
 namespace blender::dna::parser::tests {
 

@@ -8,6 +8,7 @@
 #include "dna_lexer.hh"
 
 #include <optional>
+#include <string>
 #include <string_view>
 #include <variant>
 
