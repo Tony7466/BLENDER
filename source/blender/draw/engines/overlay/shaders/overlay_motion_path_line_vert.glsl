@@ -37,7 +37,7 @@ void main()
                         colorCurrentFrame.rgb :
                         colorBackground.rgb; /* "bleed" CFRAME color to ease color blending */
   bool use_custom_color = customColorPre.x >= 0.0;
-  
+
   if (frame < frameCurrent) {
     if (use_custom_color) {
       /* Custom color: previous frames color is darker than current frame */
