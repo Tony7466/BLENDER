@@ -635,6 +635,8 @@ void PaintOperation::process_stroke_end(const bContext &C, bke::greasepencil::Dr
     ed::curves::fill_selection_false(selection.span.slice(points));
   }
 
+  selection.finish();
+
   drawing.set_texture_matrices(VArray<float4x2>::ForSingle(this->texture_space_, 1),
                                IndexMask(IndexRange(curves.curves_range().last(), 1)));
 }
