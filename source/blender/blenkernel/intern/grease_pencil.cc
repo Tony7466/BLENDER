@@ -1662,7 +1662,8 @@ void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
    * Our problem has the form of: `X = A * Y`
    * We can solve for `A` using: `A = X * B`
    *
-   * Where `B` is the Right-sided inverse, calculated as:
+   * Where `B` is the Right-sided inverse or Moore-Penrose pseudo inverse.
+   * Calculated as:
    *
    *  |--------------------------|
    *  | B = T(Y) * (Y * T(Y))^-1 |
