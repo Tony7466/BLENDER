@@ -628,6 +628,7 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
 
     set_stroke_to_texture_matrix(curves, curve_i, texmat);
   });
+  this->tag_texture_matrices_changed();
 }
 
 const bke::CurvesGeometry &Drawing::strokes() const
