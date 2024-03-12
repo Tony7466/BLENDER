@@ -705,6 +705,7 @@ Array<TransDataVertSlideVert> transform_mesh_uv_vert_slide_data_create(
 /** \name API for Edge Slide
  * \{ */
 
+/* Check if the UV group is a vertex between 2 faces. */
 static bool mesh_uv_group_is_inner(const TransDataContainer *tc,
                                    const BMUVOffsets &offsets,
                                    Span<int> group)
@@ -933,14 +934,23 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
      *  |         |         |
      * prev ---- curr ---- next
      */
-    struct {
+    struct SlideTempDataUV {
       int i; /* The group index. */
       struct {
-        BMLoop *l;
+        BMFace *f;
         float2 dst;
       } fdata[2];
-      bool vert_is_inner;
-      int find_best_dir(const BMLoop *l_src,
+      bool vert_is_inner; /* In the middle of two faces. */
+      /**
+       * Find the best direction to slide among the ones already computed.
+       *
+       * \param curr_prev: prev state of the #SlideTempDataUV where the faces are linked to the
+                           previous edge.
+       * \param l_src: the source corner in the edge to slide.
+       * \param l_dst: the current destination corner.
+       */
+      int find_best_dir(const SlideTempDataUV *curr_side_other,
+                        const BMLoop *l_src,
                         const BMLoop *l_dst,
                         const float2 &src,
                         const float2 &dst,
@@ -948,32 +958,31 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
       {
         *r_do_isect_curr_dirs = false;
         const BMFace *f_curr = l_src->f;
-        if (compare_v2v2(dst, this->fdata[0].dst, FLT_EPSILON) ||
-            (this->fdata[0].l && this->fdata[0].l->f == f_curr))
+        if (curr_side_other->fdata[0].f &&
+            (curr_side_other->fdata[0].f == f_curr ||
+             compare_v2v2(dst, curr_side_other->fdata[0].dst, FLT_EPSILON)))
         {
           return 0;
         }
 
-        if (compare_v2v2(dst, this->fdata[1].dst, FLT_EPSILON) ||
-            (this->fdata[1].l && this->fdata[1].l->f == f_curr))
+        if (curr_side_other->fdata[1].f &&
+            (curr_side_other->fdata[1].f == f_curr ||
+             compare_v2v2(dst, curr_side_other->fdata[1].dst, FLT_EPSILON)))
         {
           return 1;
         }
 
-        if (this->fdata[0].l || this->fdata[1].l) {
+        if (curr_side_other->fdata[0].f || curr_side_other->fdata[1].f) {
           /* Find the best direction checking the edges that share faces between them. */
           int best_dir = -1;
-          const BMLoop *l_edge = l_src->next == l_dst ? l_src : l_src->prev;
-          const BMLoop *l_other = l_edge->radial_next;
-          while (l_other != l_edge) {
-            if (ELEM(l_other, this->fdata[0].l, this->fdata[1].l)) {
-              break;
-            }
-            if (this->fdata[0].l && this->fdata[0].l->f == l_other->f) {
+          const BMLoop *l_edge_dst = l_src->prev == l_dst ? l_src->prev : l_src;
+          const BMLoop *l_other = l_edge_dst->radial_next;
+          while (l_other != l_edge_dst) {
+            if (l_other->f == curr_side_other->fdata[0].f) {
               best_dir = 0;
               break;
             }
-            if (this->fdata[1].l && this->fdata[1].l->f == l_other->f) {
+            if (l_other->f == curr_side_other->fdata[1].f) {
               best_dir = 1;
               break;
             }
@@ -986,8 +995,8 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
           }
         }
 
-        if (ELEM(nullptr, this->fdata[0].l, this->fdata[1].l)) {
-          return int(this->fdata[0].l != nullptr);
+        if (ELEM(nullptr, this->fdata[0].f, this->fdata[1].f)) {
+          return int(this->fdata[0].f != nullptr);
         }
 
         /* Find the closest direction. */
@@ -1000,7 +1009,7 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
         float dot1 = math::dot(dir_curr, dir1);
         return int(dot0 < dot1);
       }
-    } prev = {}, curr = {}, next = {};
+    } prev = {}, curr = {}, next = {}, tmp = {};
 
     curr.i = i_curr;
     curr.vert_is_inner = mesh_uv_group_is_inner(tc, offsets, uv_groups->td_indices_get(curr.i));
@@ -1009,20 +1018,21 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
     prev.i = -1;
 
     while (curr.i != -1) {
-      int tmp = prev.i == -1 ? i_prev : prev.i;
-      next.i = groups_linked[curr.i][0] != tmp ? groups_linked[curr.i][0] :
-                                                 groups_linked[curr.i][1];
+      int tmp_i = prev.i == -1 ? i_prev : prev.i;
+      next.i = groups_linked[curr.i][0] != tmp_i ? groups_linked[curr.i][0] :
+                                                   groups_linked[curr.i][1];
       if (next.i != -1) {
         next.vert_is_inner = mesh_uv_group_is_inner(
             tc, offsets, uv_groups->td_indices_get(next.i));
 
-        Span<int> td_group = uv_groups->td_indices_get(next.i);
+        tmp = curr;
+        Span<int> td_indices_next = uv_groups->td_indices_get(next.i);
 
         for (int td_index_curr : uv_groups->td_indices_get(curr.i)) {
           BMLoop *l_curr = static_cast<BMLoop *>(tc->data[td_index_curr].extra);
           const float2 &src = BM_ELEM_CD_GET_FLOAT_P(l_curr, offsets.uv);
 
-          for (int td_index_next : td_group) {
+          for (int td_index_next : td_indices_next) {
             BMLoop *l_next = static_cast<BMLoop *>(tc->data[td_index_next].extra);
             if (l_curr->f != l_next->f) {
               continue;
@@ -1048,10 +1058,10 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
 
             /* Identify the slot to slide according to the directions already computed in `curr`.
              */
-            int best_dir = curr.find_best_dir(l_curr, l1_dst, src, dst, &isect_curr_dirs);
+            int best_dir = curr.find_best_dir(&tmp, l_curr, l1_dst, src, dst, &isect_curr_dirs);
 
-            if (curr.fdata[best_dir].l == nullptr) {
-              curr.fdata[best_dir].l = l_curr;
+            if (curr.fdata[best_dir].f == nullptr) {
+              curr.fdata[best_dir].f = l_curr->f;
               if (curr.vert_is_inner) {
                 curr.fdata[best_dir].dst = isect_face_dst(l_curr, src, t->aspect, offsets);
               }
@@ -1061,7 +1071,7 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
             }
 
             /* Compute `next`. */
-            next.fdata[best_dir].l = l_curr;
+            next.fdata[best_dir].f = l_curr->f;
             if (BM_elem_index_get(l2_dst) != -1 || next.vert_is_inner) {
               /* Case where the vertex slides over the face. */
               const float2 &src_next = BM_ELEM_CD_GET_FLOAT_P(l_next, offsets.uv);
@@ -1103,11 +1113,11 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
           sv_first = &sv;
           float2 iloc = sv.td->iloc;
           const float2 &aspect = t->aspect;
-          if (curr.fdata[0].l) {
+          if (curr.fdata[0].f) {
             float2 dst = curr.fdata[0].dst * aspect;
             sv.dir_side[0] = float3(dst - iloc, 0.0f);
           }
-          if (curr.fdata[1].l) {
+          if (curr.fdata[1].f) {
             float2 dst = curr.fdata[1].dst * aspect;
             sv.dir_side[1] = float3(dst - iloc, 0.0f);
           }
@@ -1126,7 +1136,7 @@ Array<TransDataEdgeSlideVert> transform_mesh_uv_edge_slide_data_create(const Tra
       /* Move forward. */
       prev = curr;
       curr = next;
-      next.fdata[0].l = next.fdata[1].l = nullptr;
+      next.fdata[0].f = next.fdata[1].f = nullptr;
     }
     loop_nr++;
   }
