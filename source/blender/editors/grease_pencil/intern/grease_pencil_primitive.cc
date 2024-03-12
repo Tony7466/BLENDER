@@ -82,11 +82,6 @@ enum class ControlPointType : int8_t {
   HANDLE_POINT = 1,
 };
 
-enum class InterpolationMode : int8_t {
-  Mode2D = 0,
-  Mode3D = 1,
-};
-
 enum class ModelKeyMode : int8_t {
   CANCEL = 1,
   CONFIRM,
@@ -119,7 +114,6 @@ struct PrimitiveTool_OpData {
 
   PrimitiveType type;
   int subdivision;
-  InterpolationMode interpolate_mode;
   float4x4 projection;
   /* Helper class to project screen space coordinates to 3D. */
   ed::greasepencil::DrawingPlacement placement;
@@ -365,12 +359,6 @@ static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
   }
 }
 
-static void primitive_calulate_curve_positions_3d(PrimitiveTool_OpData &ptd,
-                                                  MutableSpan<float3> new_positions)
-{
-  primitive_calulate_curve_positions_exec<float3>(ptd, ptd.control_points, new_positions);
-}
-
 static void primitive_calulate_curve_positions_2d(PrimitiveTool_OpData &ptd,
                                                   MutableSpan<float2> new_positions)
 {
@@ -423,19 +411,8 @@ static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
   MutableSpan<float3> positions_3d = curves.positions_for_write().slice(curve_points);
   Array<float2> positions_2d(new_points_num);
 
-  if (ptd.interpolate_mode == InterpolationMode::Mode3D) {
-    primitive_calulate_curve_positions_3d(ptd, positions_3d);
-
-    for (const int point : positions_3d.index_range()) {
-      positions_2d[point] = ED_view3d_project_float_v2_m4(
-          ptd.vc.region, positions_3d[point], ptd.projection);
-    }
-    ptd.placement.project(positions_2d, positions_3d);
-  }
-  else { /* 2D */
-    primitive_calulate_curve_positions_2d(ptd, positions_2d);
-    ptd.placement.project(positions_2d, positions_3d);
-  }
+  primitive_calulate_curve_positions_2d(ptd, positions_2d);
+  ptd.placement.project(positions_2d, positions_3d);
 
   MutableSpan<float> new_radii = ptd.drawing->radii_for_write().slice(curve_points);
   MutableSpan<float> new_opacities = ptd.drawing->opacities_for_write().slice(curve_points);
@@ -660,7 +637,6 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   ptd.subdivision = RNA_int_get(op->ptr, "subdivision");
   ptd.type = PrimitiveType(RNA_enum_get(op->ptr, "type"));
-  ptd.interpolate_mode = InterpolationMode(RNA_enum_get(op->ptr, "interpolate_mode"));
   ptd.control_points = Vector<float3>();
   ptd.temp_control_points = Vector<float3>();
 
@@ -1273,12 +1249,6 @@ static void grease_pencil_primitive_common_props(wmOperatorType *ot,
       {0, nullptr, 0, nullptr, nullptr},
   };
 
-  static const EnumPropertyItem grease_pencil_interpolation_mode[] = {
-      {int(InterpolationMode::Mode2D), "MODE2D", ICON_VIEW_ORTHO, "2D", ""},
-      {int(InterpolationMode::Mode3D), "MODE3D", ICON_VIEW_PERSPECTIVE, "3D", ""},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
   PropertyRNA *prop;
 
   prop = RNA_def_int(ot->srna,
@@ -1294,13 +1264,6 @@ static void grease_pencil_primitive_common_props(wmOperatorType *ot,
 
   RNA_def_enum(
       ot->srna, "type", grease_pencil_primitive_type, int(default_type), "Type", "Type of shape");
-
-  prop = RNA_def_enum(ot->srna,
-                      "interpolate_mode",
-                      grease_pencil_interpolation_mode,
-                      int(InterpolationMode::Mode2D),
-                      "Interpolation Mode",
-                      "Whether the interpolation happens in 2D view space or in 3D world space");
 }
 
 static void GREASE_PENCIL_OT_primitive_line(wmOperatorType *ot)
