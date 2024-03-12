@@ -940,6 +940,15 @@ static int console_history_cycle_exec(bContext *C, wmOperator *op)
 
   /* Find the history item */
   ConsoleLine *ci_prev = ci;
+  if (old_index > 0) {
+    /* skip a previous copy of history item */
+    if (ci_prev->prev) {
+      ci_prev = (ConsoleLine *)(ci_prev->prev);
+    }
+    else { /* just in case the duplicate item got deleted */
+      old_index = 0;
+    }
+  }
   for (int n = 0; n < new_index; n++) {
     if (!ci_prev->prev) {
       new_index = n;
@@ -950,9 +959,13 @@ static int console_history_cycle_exec(bContext *C, wmOperator *op)
 
   sc->history_index = new_index;
 
-  /* duplicate it to the end */
-  console_history_free(sc, ci);
-  ci = console_history_add(sc, ci != ci_prev ? ci_prev : nullptr);
+  if (old_index > 0) { /* remove old copy */
+    console_history_free(sc, ci);
+    ci = ci_prev;
+  }
+  if (new_index > 0) { /* copy history item to the end */
+    ci = console_history_add(sc, ci_prev);
+  }
 
   console_select_offset(sc, ci->len - prev_len);
 
@@ -994,6 +1007,15 @@ static int console_history_append_exec(bContext *C, wmOperator *op)
   const bool rem_dupes = RNA_boolean_get(op->ptr, "remove_duplicates");
   int prev_len = ci->len;
 
+  if (sc->history_index > 0) {
+    /* keep the copy of history item, remove the saved "history 0" */
+    ConsoleLine *cl = (ConsoleLine *)(ci->prev);
+    if (cl)
+      console_history_free(sc, cl);
+    /* negative number makes down-arrow go to same item as before */
+    sc->history_index = -sc->history_index;
+  }
+
   if (rem_dupes) {
     /* remove a repeated command */
     ConsoleLine *cl = (ConsoleLine *)(ci->prev);
@@ -1010,11 +1032,6 @@ static int console_history_append_exec(bContext *C, wmOperator *op)
   ci = console_history_add_str(sc, str, true); /* own the string */
   console_select_offset(sc, ci->len - prev_len);
   console_line_cursor_set(ci, cursor);
-
-  /* make up arrow go to 1 in history, but down-arrow still goes to same item */
-  if (sc->history_index > 0) {
-    sc->history_index = -sc->history_index;
-  }
 
   ED_area_tag_redraw(area);
   console_scroll_bottom(region);
