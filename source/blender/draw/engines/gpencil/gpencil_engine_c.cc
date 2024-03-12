@@ -715,11 +715,19 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
                                     OB_MODE_VERTEX_PAINT) &&
                               info.frame_number != pd->cfra && pd->use_multiedit_lines_only;
       /* bool is_onion = gpl && gpf && gpf->runtime.onion_id != 0; */
-      bool is_onion = false;
-      bool hide_onion = is_onion && ((gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN) != 0);
+      const bool is_onion = false;
+      const bool hide_onion = is_onion && ((gp_style->flag & GP_MATERIAL_HIDE_ONIONSKIN) != 0);
+
+      const int num_stroke_triangles = (points.size() >= 3) ? (points.size() - 2) : 0;
+      const int num_stroke_vertices = (points.size() +
+                                       int(cyclic[stroke_i] && (points.size() >= 3)));
+
+
       if ((hide_material) || (!show_stroke && !show_fill) || (only_lines && !is_onion) ||
           (hide_onion))
       {
+        t_offset += num_stroke_triangles;
+        t_offset += num_stroke_vertices * 2;
         return;
       }
 
@@ -760,10 +768,6 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
         DRW_shgroup_buffer_texture(grp, "gp_pos_tx", position_tx);
         DRW_shgroup_buffer_texture(grp, "gp_col_tx", color_tx);
       }
-
-      const bool is_cyclic = cyclic[stroke_i] && (points.size() > 2);
-      const int num_stroke_triangles = points.size() - 2;
-      const int num_stroke_vertices = (points.size() + int(is_cyclic));
 
       if (show_fill) {
         int v_first = t_offset * 3;
