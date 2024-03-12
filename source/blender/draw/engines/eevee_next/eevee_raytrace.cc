@@ -63,16 +63,10 @@ void RayTraceModule::sync()
     pass.shader_set(sh);
     pass.bind_image("tile_raytrace_denoise_img", &tile_raytrace_denoise_tx_);
     pass.bind_image("tile_raytrace_tracing_img", &tile_raytrace_tracing_tx_);
-    pass.bind_image("tile_horizon_denoise_img", &tile_horizon_denoise_tx_);
-    pass.bind_image("tile_horizon_tracing_img", &tile_horizon_tracing_tx_);
     pass.bind_ssbo("raytrace_tracing_dispatch_buf", &raytrace_tracing_dispatch_buf_);
     pass.bind_ssbo("raytrace_denoise_dispatch_buf", &raytrace_denoise_dispatch_buf_);
-    pass.bind_ssbo("horizon_tracing_dispatch_buf", &horizon_tracing_dispatch_buf_);
-    pass.bind_ssbo("horizon_denoise_dispatch_buf", &horizon_denoise_dispatch_buf_);
     pass.bind_ssbo("raytrace_tracing_tiles_buf", &raytrace_tracing_tiles_buf_);
     pass.bind_ssbo("raytrace_denoise_tiles_buf", &raytrace_denoise_tiles_buf_);
-    pass.bind_ssbo("horizon_tracing_tiles_buf", &horizon_tracing_tiles_buf_);
-    pass.bind_ssbo("horizon_denoise_tiles_buf", &horizon_denoise_tiles_buf_);
     pass.bind_resources(inst_.uniform_data);
     pass.dispatch(&tile_compact_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE);
