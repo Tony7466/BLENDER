@@ -1789,17 +1789,13 @@ class _defs_paint_grease_pencil:
 
     @ToolDef.from_fn
     def tint():
-        #def draw_settings(context, layout, _tool):
-        #    # TODO: Move this setting to tool_settings
-        #    prefs = context.preferences
-        #    layout.prop(prefs.edit, "grease_pencil_eraser_radius", text="Radius")
-        #    layout.prop(prefs.edit, "grease_pencil_eraser_strength", text="Strength")
         return dict(
             idname="builtin_brush.Tint",
             label="Tint",
             icon="brush.gpencil_draw.tint",
             data_block='TINT',
         )
+
 
 class _defs_image_generic:
 

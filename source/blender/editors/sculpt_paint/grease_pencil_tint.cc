@@ -77,7 +77,9 @@ void TintOperation::on_stroke_begin(const bContext &C, const InputSample &start_
   (((brush)->gpencil_settings->vertex_mode == GPPAINT_MODE_FILL) || \
    ((brush)->gpencil_settings->vertex_mode == GPPAINT_MODE_BOTH))
 
-void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample &extension_sample)
+static void tint_perform_dab(TintOperation &self,
+                             const bContext &C,
+                             const InputSample &extension_sample)
 {
   using namespace blender::bke::greasepencil;
   Scene *scene = CTX_data_scene(&C);

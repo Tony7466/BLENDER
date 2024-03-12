@@ -1446,6 +1446,8 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
         if gp_settings.eraser_mode == "HARD":
             layout.prop(gp_settings, "use_keep_caps_eraser")
         layout.prop(gp_settings, "use_active_layer_only")
+    elif grease_pencil_tool == 'TINT':
+        layout.prop(gp_settings, "vertex_mode", text="Mode")
 
 
 def brush_basic_gpencil_sculpt_settings(layout, _context, brush, *, compact=False):
