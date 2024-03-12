@@ -417,13 +417,11 @@ Span<float3> Drawing::curve_plane_normals() const
  * Returns the matrix that transforms from a 3D point in layer-space to a 2D point in
  * stroke-space for the stroke `curve_i`
  */
-static blender::float4x2 get_local_to_stroke_matrix(
-    const blender::bke::greasepencil::Drawing &drawing, int curve_i)
+static float4x2 get_local_to_stroke_matrix(const Drawing &drawing, int curve_i)
 {
-  using namespace blender;
   using namespace blender::math;
 
-  const bke::CurvesGeometry &curves = drawing.strokes();
+  const CurvesGeometry &curves = drawing.strokes();
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const Span<float3> positions = curves.positions();
   const Span<float3> normals = drawing.curve_plane_normals();
@@ -457,11 +455,8 @@ static blender::float4x2 get_local_to_stroke_matrix(
  * Returns the matrix that transforms from a 2D point in stroke-space to a 2D point in
  * texture-space for a stroke `curve_i`
  */
-static blender::float3x2 get_stroke_to_texture_matrix(const blender::bke::CurvesGeometry &curves,
-                                                      const int curve_i)
+static float3x2 get_stroke_to_texture_matrix(const CurvesGeometry &curves, const int curve_i)
 {
-  using namespace blender;
-  using namespace blender::bke;
   using namespace blender::math;
   const AttributeAccessor attributes = curves.attributes();
 
@@ -506,10 +501,8 @@ static blender::float3x2 get_stroke_to_texture_matrix(const blender::bke::Curves
   return texmat;
 }
 
-Span<blender::float4x2> Drawing::texture_matrices() const
+Span<float4x2> Drawing::texture_matrices() const
 {
-  using namespace blender;
-
   this->runtime->curve_texture_matrices.ensure([&](Vector<float4x2> &r_data) {
     const CurvesGeometry &curves = this->strokes();
 

@@ -46,7 +46,7 @@ class DrawingRuntime {
    */
   mutable SharedCache<Vector<float3>> curve_plane_normals_cache;
 
-  mutable SharedCache<Vector<blender::float4x2>> curve_texture_matrices;
+  mutable SharedCache<Vector<float4x2>> curve_texture_matrices;
 
   /**
    * Number of users for this drawing. The users are the frames in the Grease Pencil layers.
@@ -79,7 +79,7 @@ class Drawing : public ::GreasePencilDrawing {
    * Returns the matrices that transforms from a 3D point in layer-space to a 2D point in
    * texture-space.
    */
-  Span<blender::float4x2> texture_matrices() const;
+  Span<float4x2> texture_matrices() const;
 
   /**
    * Radii of the points. Values are expected to be in blender units.
