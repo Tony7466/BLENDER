@@ -1783,9 +1783,6 @@ void apply(bContext &C, GestureData &gesture_data, wmOperator &op);
 
 namespace blender::ed::sculpt_paint::mask {
 
-void SCULPT_OT_face_set_lasso_gesture(wmOperatorType *ot);
-void SCULPT_OT_face_set_box_gesture(wmOperatorType *ot);
-
 void SCULPT_OT_trim_lasso_gesture(wmOperatorType *ot);
 void SCULPT_OT_trim_box_gesture(wmOperatorType *ot);
 
@@ -1807,6 +1804,8 @@ void SCULPT_OT_face_sets_init(wmOperatorType *ot);
 void SCULPT_OT_face_sets_create(wmOperatorType *ot);
 void SCULPT_OT_face_sets_edit(wmOperatorType *ot);
 
+void SCULPT_OT_face_set_lasso_gesture(wmOperatorType *ot);
+void SCULPT_OT_face_set_box_gesture(wmOperatorType *ot);
 }
 /** \} */
 
