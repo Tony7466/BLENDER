@@ -100,14 +100,17 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
     strength *= BKE_curvemapping_evaluateF(
         brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
   }
-  // strength /= 100.0f; /* Attenuate factor to get a smoother tinting. */
-  float fill_strength = strength;  // / 10.0f;
+  /* Attenuate factor to get a smoother tinting. */
+  strength /= 5.0f;
+  float fill_strength = strength / 10.0f;
 
   strength = math::clamp(strength, 0.0f, 1.0f);
   fill_strength = math::clamp(fill_strength, 0.0f, 1.0f);
 
   /* Get the grease pencil drawing. */
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
+
+  std::atomic<bool> changed = false;
 
   const auto execute_tint_on_drawing =
       [&](const int layer_index, const int frame_number, Drawing &drawing) {
@@ -138,8 +141,6 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
                 "fill_color", bke::AttrDomain::Curve);
         OffsetIndices<int> points_by_curve = strokes.points_by_curve();
 
-        bool changed = false;
-        changed = true;
         threading::parallel_for(strokes.curves_range(), 128, [&](const IndexRange range) {
           for (const int curve : range) {
             bool stroke_changed = false;
@@ -171,14 +172,12 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
               fill_colors.span[curve] = ColorGeometry4f(rgba);
               fill_colors.span[curve].unpremultiply_alpha();
             }
+            if (stroke_changed) {
+              changed.store(true, std::memory_order_relaxed);
+            }
           }
         });
         fill_colors.finish();
-
-        if (changed) {
-          DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
-          WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
-        }
       };
 
   if (self.active_layer_only) {
@@ -199,6 +198,11 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
     threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
       execute_tint_on_drawing(info.layer_index, info.frame_number, info.drawing);
     });
+  }
+
+  if (changed.load()) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
   }
 }
 
