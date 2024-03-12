@@ -598,16 +598,19 @@ class _draw_tool_settings_context_mode:
 
         grease_pencil_tool = brush.gpencil_tool
 
-        from bl_ui.properties_paint_common import (
-            brush_basic__draw_color_selector,
-            brush_basic_grease_pencil_paint_settings,
-        )
-
         if grease_pencil_tool == 'DRAW':
+            from bl_ui.properties_paint_common import (
+                brush_basic__draw_color_selector,
+            )
             brush_basic__draw_color_selector(context, layout, brush, brush.gpencil_settings, None)
 
         if grease_pencil_tool == 'TINT':
             UnifiedPaintPanel.prop_unified_color(row, context, brush, "color", text="")
+
+        from bl_ui.properties_paint_common import (
+            brush_basic__draw_color_selector,
+            brush_basic_grease_pencil_paint_settings,
+        )
 
         brush_basic_grease_pencil_paint_settings(layout, context, brush, compact=True)
 
