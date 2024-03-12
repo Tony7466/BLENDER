@@ -30,8 +30,9 @@ void main()
   if ((data & BEZIER_HANDLE) != 0u) {
     leftColor = get_bezier_handle_color((data >> (COLOR_SHIFT + 2)) & 3, selection);
     finalColor = get_bezier_handle_color((data >> COLOR_SHIFT) & 3, selection);
-  }
-  else {
+  } else if ((data & NURBS_CONTROL_POINT) != 0u) {
+    finalColor = mix(globalsBlock.color_nurb_uline, globalsBlock.color_nurb_sel_uline, selection);
+  } else {
     finalColor = mix(colorWire, colorVertexSelect, selection);
   }
 

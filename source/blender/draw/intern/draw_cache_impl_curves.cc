@@ -48,6 +48,7 @@
 
 namespace blender::draw {
 
+#define NURBS_CONTROL_POINT (1u << 1)
 #define BEZIER_HANDLE (1u << 3)
 #define COLOR_SHIFT 5
 
@@ -268,21 +269,20 @@ static void curves_batch_cache_ensure_procedural_pos(const bke::CurvesGeometry &
   }
 }
 
-static uint32_t data_value(int8_t left_handle_type, int8_t right_handle_type)
+static uint32_t bezier_data_value(int8_t left_handle_type, int8_t right_handle_type)
 {
   return ((left_handle_type << 2) | right_handle_type) << COLOR_SHIFT | BEZIER_HANDLE;
 }
 
-static uint32_t data_value(int8_t handle_type)
+static uint32_t bezier_data_value(int8_t handle_type)
 {
-  return data_value(handle_type, handle_type);
+  return bezier_data_value(handle_type, handle_type);
 }
 
 static void curves_batch_cache_ensure_edit_points_pos(
     const bke::CurvesGeometry &curves,
     const IndexMask bezier_curves,
     const OffsetIndices<int> bezier_dst_offsets,
-    const IndexMask other_curves,
     bke::crazyspace::GeometryDeformation deformation,
     CurvesBatchCache &cache)
 {
@@ -308,15 +308,6 @@ static void curves_batch_cache_ensure_edit_points_pos(
   pos_span.copy_from(deformed_positions);
 
   MutableSpan<uint32_t> data_span(data_buffer_data, size);
-  if (!bezier_point_count) {
-    data_span.fill(0);
-    return;
-  }
-
-  MutableSpan<float3> left_handles(pos_buffer_data + deformed_positions.size(),
-                                   bezier_point_count);
-  MutableSpan<float3> right_handles(
-      pos_buffer_data + deformed_positions.size() + bezier_point_count, bezier_point_count);
 
   MutableSpan<uint32_t> handle_data_left(data_buffer_data + deformed_positions.size(),
                                          bezier_point_count);
@@ -329,25 +320,49 @@ static void curves_batch_cache_ensure_edit_points_pos(
   const VArray<int8_t> right_handle_types = curves.handle_types_right();
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
-  other_curves.foreach_index(
-      GrainSize(512), [&](const int64_t i) { data_span.slice(points_by_curve[i]).fill(0); });
+  auto handle_other_curves = [&](const uint32_t fill_value) {
+    return [=](const IndexMask &selection) {
+      selection.foreach_index(GrainSize(256), [&](const int curve_i) {
+        const IndexRange points = points_by_curve[curve_i];
+        data_span.slice(points).fill(fill_value);
+      });
+    };
+  };
+
+  bke::curves::foreach_curve_by_type(
+      curves.curve_types(),
+      curves.curve_type_counts(),
+      curves.curves_range(),
+      handle_other_curves(0),
+      handle_other_curves(0),
+      [&](const IndexMask &selection) {
+        selection.foreach_index(GrainSize(256), [&](const int src_i, const int64_t dst_i) {
+          for (const int point : points_by_curve[src_i]) {
+            const int point_in_curve = point - points_by_curve[src_i].start();
+            const int dst_index = bezier_dst_offsets[dst_i].start() + point_in_curve;
+
+            data_span[point] = bezier_data_value(left_handle_types[point],
+                                                 right_handle_types[point]);
+            handle_data_left[dst_index] = bezier_data_value(left_handle_types[point]);
+            handle_data_right[dst_index] = bezier_data_value(right_handle_types[point]);
+          }
+        });
+      },
+      handle_other_curves(NURBS_CONTROL_POINT));
+
+  if (!bezier_point_count) {
+    return;
+  }
+
+  MutableSpan<float3> left_handles(pos_buffer_data + deformed_positions.size(),
+                                   bezier_point_count);
+  MutableSpan<float3> right_handles(
+      pos_buffer_data + deformed_positions.size() + bezier_point_count, bezier_point_count);
 
   array_utils::gather_group_to_group(
       points_by_curve, bezier_dst_offsets, bezier_curves, left_handle_positions, left_handles);
-
   array_utils::gather_group_to_group(
       points_by_curve, bezier_dst_offsets, bezier_curves, right_handle_positions, right_handles);
-
-  bezier_curves.foreach_index(GrainSize(512), [&](const int64_t src_i, const int64_t dst_i) {
-    for (const int point : points_by_curve[src_i]) {
-      const int point_in_curve = point - points_by_curve[src_i].start();
-      const int dst_index = bezier_dst_offsets[dst_i].start() + point_in_curve;
-
-      data_span[point] = data_value(left_handle_types[point], right_handle_types[point]);
-      handle_data_left[dst_index] = data_value(left_handle_types[point]);
-      handle_data_right[dst_index] = data_value(right_handle_types[point]);
-    }
-  });
 }
 
 static void curves_batch_cache_ensure_edit_points_selection(
@@ -915,7 +930,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     const bke::crazyspace::GeometryDeformation deformation =
         bke::crazyspace::get_evaluated_curves_deformation(ob, *ob_orig);
     curves_batch_cache_ensure_edit_points_pos(
-        curves_orig, bezier_curves, bezier_offsets, other_curves, deformation, cache);
+        curves_orig, bezier_curves, bezier_offsets, deformation, cache);
   }
   if (DRW_vbo_requested(cache.edit_points_selection)) {
     curves_batch_cache_ensure_edit_points_selection(

@@ -63,6 +63,7 @@ BLI_STATIC_ASSERT_ALIGN(OVERLAY_GridData, 16)
 
 #ifdef GPU_SHADER
 /* Keep the same values as in `draw_cache_imp_curve.c` */
+#  define NURBS_CONTROL_POINT (1u << 1)
 #  define ACTIVE_NURB (1u << 2)
 #  define BEZIER_HANDLE (1u << 3)
 #  define EVEN_U_BIT (1u << 4)
