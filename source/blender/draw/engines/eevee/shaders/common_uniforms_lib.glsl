@@ -85,3 +85,6 @@ layout(std140) uniform common_block
 #define ssrPixelSize ssrParameters.zw
 
 #define ssrUvScale hizUvScale.zw
+
+/* Film parameters */
+#define filmScalingFactor 1.0

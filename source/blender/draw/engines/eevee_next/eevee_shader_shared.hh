@@ -1509,7 +1509,6 @@ BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
 
 #  if defined(GPU_FRAGMENT_SHADER)
 #    define UTIL_TEXEL vec2(gl_FragCoord.xy)
-#    define filmScalingFactor float(uniform_buf.film.scaling_factor)
 #  elif defined(GPU_COMPUTE_SHADER)
 #    define UTIL_TEXEL vec2(gl_GlobalInvocationID.xy)
 #  else
