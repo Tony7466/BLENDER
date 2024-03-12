@@ -100,9 +100,9 @@ void printf_struct(ast::Struct &val, size_t padding)
   }
   printf("}");
 };
-#endif
 
 }  // namespace blender::dna::parser
+#endif
 
 namespace blender::dna::parser::ast {
 
@@ -819,12 +819,6 @@ bool parse_include(std::string_view filepath,
     if (std::holds_alternative<Struct>(val.value())) {
       dest.append(std::move(std::get<Struct>(val.value())));
     }
-    // else if (std::holds_alternative<Sequence<Optional<TypedefKeyword>,
-    // FunctionPtr>>(val.value()))
-    //{
-    //   dest.append(std::move(std::get<1>(
-    //       std::get<Sequence<Optional<TypedefKeyword>, FunctionPtr>>(val.value()))));
-    // }
     else if (std::holds_alternative<DefineInt>(val.value())) {
       dest.append(std::move(std::get<DefineInt>(val.value())));
     }

@@ -4,8 +4,6 @@
 
 #pragma once
 
-#define DEBUG_PRINT_DNA_PARSER true
-
 #include "BLI_vector.hh"
 #include "dna_lexer.hh"
 

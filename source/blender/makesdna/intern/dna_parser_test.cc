@@ -11,51 +11,7 @@ namespace blender::dna::parser::tests {
 
 TEST(parser, parse_file)
 {
-#if 0
-  const char *filepath = R"x(D:\blender-git\blender\source\blender\makesdna\DNA_vec_types.h)x";
-  std::ifstream file;
-  file.open(filepath);
-  std::string text;
-  if (file.is_open()) {
-    std::string line;
-    while (std::getline(file, line)) {
-      text += "\n" + line;
-    }
-  }
-
-  using namespace ast;
-  Vector<CppType> parsed;
-  bool parse_result = parse_include(text, filepath, parsed);
-  Vector<CppType> expected{
-      {Struct{"vec2s", {{Variable{false, "short", {{{}, "x", {}}, {{}, "y", {}}}}}}}},
-      {Struct{"vec2f", {{Variable{false, "float", {{{}, "x", {}}, {{}, "y", {}}}}}}}},
-      {Struct{"vec2i", {{Variable{false, "int", {{{}, "x", {}}, {{}, "y", {}}}}}}}},
-      {Struct{"vec3i", {{Variable{false, "int", {{{}, "x", {}}, {{}, "y", {}}, {{}, "z", {}}}}}}}},
-      {Struct{"vec3f",
-              {{Variable{false, "float", {{{}, "x", {}}, {{}, "y", {}}, {{}, "z", {}}}}}}}},
-      {Struct{
-          "vec4f",
-          {{Variable{
-              false, "float", {{{}, "x", {}}, {{}, "y", {}}, {{}, "z", {}}, {{}, "w", {}}}}}}}},
-      {Struct{"mat4x4f", {{Variable{false, "float", {{{}, "value", {{4, 4}}}}}}}}},
-      {Struct{"rcti",
-              {{Variable{false, "int", {{{}, "xmin", {}}, {{}, "xmax", {}}}}},
-               {Variable{false, "int", {{{}, "ymin", {}}, {{}, "ymax", {}}}}}}}},
-      {Struct{"rctf",
-              {{Variable{false, "float", {{{}, "xmin", {}}, {{}, "xmax", {}}}}},
-               {Variable{false, "float", {{{}, "ymin", {}}, {{}, "ymax", {}}}}}}}},
-      {Struct{"DualQuat",
-              {
-                  {Variable{false, "float", {{{}, "quat", {{4}}}}}},
-                  {Variable{false, "float", {{{}, "trans", {{4}}}}}},
-                  {Variable{false, "float", {{{}, "scale", {{4, 4}}}}}},
-                  {Variable{false, "float", {{{}, "scale_weight", {}}}}},
-              }}},
-  };
-  ASSERT_TRUE(parse_result);
-  ASSERT_EQ(expected, parsed);
-#endif
-  std::string_view text = R"xxx(
+  std::string_view text = R"x(
 /*----------------------------------------------------------------*/
 /** #pragma once and includes */
 
@@ -117,14 +73,14 @@ typedef enum class eMotionPathVert_Flag : uint8_t {
   VERT_KEY = (1 << 1),
 } eMotionPathVert_Flag;
 ENUM_OPERATORS(eMotionPathVert_Flag, VERT_KEY);
-)xxx";
-  using namespace ast;
+)x";
 
-  blender::dna::lex::TokenIterator iterator;
+  using namespace ast;
+  lex::TokenIterator iterator;
   iterator.process_text("", text);
 
-  blender::Vector<blender::dna::parser::ast::CppType> cpp_defines;
-  const bool parse_result = blender::dna::parser::parse_include("", text, iterator, cpp_defines);
+  blender::Vector<CppType> cpp_defines;
+  const bool parse_result = parse_include("", text, iterator, cpp_defines);
   Vector<CppType> expected{
       {DefineInt{"FILE_MAX", 1024}},
       {
