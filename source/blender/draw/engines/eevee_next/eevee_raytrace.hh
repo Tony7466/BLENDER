@@ -120,6 +120,7 @@ class RayTraceModule {
   draw::PassSimple denoise_spatial_ps_ = {"DenoiseSpatial"};
   draw::PassSimple denoise_temporal_ps_ = {"DenoiseTemporal"};
   draw::PassSimple denoise_bilateral_ps_ = {"DenoiseBilateral"};
+  draw::PassSimple horizon_schedule_ps_ = {"HorizonScan.Schedule"};
   draw::PassSimple horizon_setup_ps_ = {"HorizonScan.Setup"};
   draw::PassSimple horizon_scan_ps_ = {"HorizonScan.Trace"};
   draw::PassSimple horizon_denoise_ps_ = {"HorizonScan.Denoise"};

@@ -215,6 +215,23 @@ void RayTraceModule::sync()
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
   {
+    PassSimple &pass = horizon_schedule_ps_;
+    /* Reuse tile compaction shader but feed it with horizon scan specific buffers. */
+    GPUShader *sh = inst_.shaders.static_shader_get(RAY_TILE_COMPACT);
+    pass.init();
+    pass.specialize_constant(sh, "closure_index", 0);
+    pass.shader_set(sh);
+    pass.bind_image("tile_raytrace_denoise_img", &tile_horizon_denoise_tx_);
+    pass.bind_image("tile_raytrace_tracing_img", &tile_horizon_tracing_tx_);
+    pass.bind_ssbo("raytrace_tracing_dispatch_buf", &horizon_tracing_dispatch_buf_);
+    pass.bind_ssbo("raytrace_denoise_dispatch_buf", &horizon_denoise_dispatch_buf_);
+    pass.bind_ssbo("raytrace_tracing_tiles_buf", &horizon_tracing_tiles_buf_);
+    pass.bind_ssbo("raytrace_denoise_tiles_buf", &horizon_denoise_tiles_buf_);
+    pass.bind_resources(inst_.uniform_data);
+    pass.dispatch(&tile_compact_dispatch_size_);
+    pass.barrier(GPU_BARRIER_SHADER_STORAGE);
+  }
+  {
     PassSimple &pass = horizon_setup_ps_;
     pass.init();
     pass.shader_set(inst_.shaders.static_shader_get(HORIZON_SETUP));
@@ -339,8 +356,9 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   eGPUTextureUsage usage_rw = GPU_TEXTURE_USAGE_SHADER_READ | GPU_TEXTURE_USAGE_SHADER_WRITE;
   tile_raytrace_denoise_tx_.ensure_2d_array(format, denoise_tiles, closure_count, usage_rw);
   tile_raytrace_tracing_tx_.ensure_2d_array(format, raytrace_tiles, closure_count, usage_rw);
-  tile_horizon_denoise_tx_.ensure_2d_array(format, denoise_tiles, closure_count, usage_rw);
-  tile_horizon_tracing_tx_.ensure_2d_array(format, raytrace_tiles, closure_count, usage_rw);
+  /* Kept as 2D array for compatibility with the tile compaction shader. */
+  tile_horizon_denoise_tx_.ensure_2d_array(format, denoise_tiles, 1, usage_rw);
+  tile_horizon_tracing_tx_.ensure_2d_array(format, raytrace_tiles, 1, usage_rw);
 
   tile_raytrace_denoise_tx_.clear(uint4(0u));
   tile_raytrace_tracing_tx_.clear(uint4(0u));
@@ -408,6 +426,10 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
       for (int i : IndexRange(3)) {
         horizon_scan_output_tx_[i] = result.closures[i].get();
       }
+
+      horizon_tracing_dispatch_buf_.clear_to_zero();
+      horizon_denoise_dispatch_buf_.clear_to_zero();
+      inst_.manager->submit(horizon_schedule_ps_);
 
       inst_.manager->submit(horizon_setup_ps_, render_view);
       inst_.manager->submit(horizon_scan_ps_, render_view);
@@ -492,8 +514,6 @@ RayTraceResultTexture RayTraceModule::trace(
   /* Ray setup. */
   raytrace_tracing_dispatch_buf_.clear_to_zero();
   raytrace_denoise_dispatch_buf_.clear_to_zero();
-  horizon_tracing_dispatch_buf_.clear_to_zero();
-  horizon_denoise_dispatch_buf_.clear_to_zero();
   inst_.manager->submit(tile_compact_ps_);
 
   {
