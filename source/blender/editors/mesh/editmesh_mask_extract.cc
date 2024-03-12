@@ -498,8 +498,6 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
   BM_mesh_free(bm);
 
   if (create_new_object) {
-    sculpt_paint::undo::geometry_end(ob);
-
     ushort local_view_bits = 0;
     if (v3d && v3d->localvd) {
       local_view_bits = v3d->local_view_uid;
