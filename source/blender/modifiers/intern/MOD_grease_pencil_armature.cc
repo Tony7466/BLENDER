@@ -110,8 +110,8 @@ static void modify_curves(ModifierData &md, const ModifierEvalContext &ctx, Draw
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   /* The influence flag is where the "invert" flag is stored,
-   * but armature functions expect "deformflags" to have the flag set as well.
-   * Copy to deformflag here to keep old functions happy. */
+   * but armature functions expect `deformflag` to have the flag set as well.
+   * Copy to `deformflag` here to keep old functions happy. */
   const int deformflag = amd.deformflag |
                          (amd.influence.flag & GREASE_PENCIL_INFLUENCE_INVERT_VERTEX_GROUP ?
                               ARM_DEF_INVERT_VGROUP :
@@ -124,6 +124,10 @@ static void modify_curves(ModifierData &md, const ModifierEvalContext &ctx, Draw
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const MutableSpan<float3> positions = curves.positions_for_write();
   const Span<MDeformVert> dverts = curves.deform_verts();
+
+  if (dverts.is_empty()) {
+    return;
+  }
 
   curves_mask.foreach_index(blender::GrainSize(128), [&](const int curve_i) {
     const IndexRange points = points_by_curve[curve_i];

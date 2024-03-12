@@ -76,8 +76,8 @@ const EnumPropertyItem rna_enum_nla_mode_extend_items[] = {
 #  include <stdio.h>
 
 /* needed for some of the validation stuff... */
-#  include "BKE_anim_data.h"
-#  include "BKE_fcurve.h"
+#  include "BKE_anim_data.hh"
+#  include "BKE_fcurve.hh"
 #  include "BKE_nla.h"
 
 #  include "DNA_object_types.h"

@@ -91,9 +91,9 @@ const EnumPropertyItem rna_enum_keying_flag_api_items[] = {
 
 #  include "BLI_math_base.h"
 
-#  include "BKE_anim_data.h"
+#  include "BKE_anim_data.hh"
 #  include "BKE_animsys.h"
-#  include "BKE_fcurve.h"
+#  include "BKE_fcurve.hh"
 #  include "BKE_nla.h"
 
 #  include "DEG_depsgraph.hh"
