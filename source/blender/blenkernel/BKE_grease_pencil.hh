@@ -880,16 +880,6 @@ void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
                         int curve_i,
                         const blender::float4x2);
 
-/*
- * Copy the texture matrices from `src` to `dst` for the strokes in `dst_to_src_curve`
- */
-void transfer_texture_matrices(const blender::bke::greasepencil::Drawing &src,
-                               blender::bke::greasepencil::Drawing &dst,
-                               const blender::Span<int> dst_to_src_curve);
-void transfer_texture_matrices(const blender::bke::greasepencil::Drawing &src,
-                               blender::bke::greasepencil::Drawing &dst,
-                               const blender::IndexMask &dst_to_src_curve);
-
 int BKE_grease_pencil_object_material_index_get_by_name(Object *ob, const char *name);
 Material *BKE_grease_pencil_object_material_new(Main *bmain,
                                                 Object *ob,

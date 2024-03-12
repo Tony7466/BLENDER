@@ -1680,26 +1680,6 @@ void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
   set_stroke_to_texture_matrix(drawing.strokes_for_write(), curve_i, texmat);
 }
 
-void transfer_texture_matrices(const blender::bke::greasepencil::Drawing &src,
-                               blender::bke::greasepencil::Drawing &dst,
-                               const Span<int> dst_to_src_curve)
-{
-  for (const int dst_curve_i : dst_to_src_curve.index_range()) {
-    const blender::float4x2 texspace = get_texture_matrix(src, dst_to_src_curve[dst_curve_i]);
-    set_texture_matrix(dst, dst_curve_i, texspace);
-  }
-}
-
-void transfer_texture_matrices(const blender::bke::greasepencil::Drawing &src,
-                               blender::bke::greasepencil::Drawing &dst,
-                               const blender::IndexMask &dst_to_src_curve)
-{
-  dst_to_src_curve.foreach_index([&](const int64_t index, const int64_t pos) {
-    const blender::float4x2 texspace = get_texture_matrix(src, index);
-    set_texture_matrix(dst, pos, texspace);
-  });
-}
-
 /** \} */
 
 /* ------------------------------------------------------------------- */
