@@ -1483,11 +1483,11 @@ blender::float4x2 get_local_to_stroke_matrix(const blender::bke::greasepencil::D
     return float4x2::identity();
   }
 
-  const float3 pt0 = positions[points.first()];
-  const float3 pt1 = positions[points.first() + 1];
+  const float3 point_0 = positions[points.first()];
+  const float3 point_1 = positions[points.first() + 1];
 
   /* Local X axis (p0 -> p1) */
-  const float3 locx = normalize(pt1 - pt0);
+  const float3 locx = normalize(point_1 - point_0);
   /* Local Y axis (cross to normal/x axis). */
   const float3 locy = normalize(cross(normal, locx));
 
@@ -1497,7 +1497,7 @@ blender::float4x2 get_local_to_stroke_matrix(const blender::bke::greasepencil::D
 
   /* Get local space using first point as origin. */
   const float4x2 mat = transpose(
-      float2x4(float4(locx, -dot(pt0, locx)), float4(locy, -dot(pt0, locy))));
+      float2x4(float4(locx, -dot(point_0, locx)), float4(locy, -dot(point_0, locy))));
 
   return mat;
 }
