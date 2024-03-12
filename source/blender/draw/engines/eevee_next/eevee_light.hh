@@ -45,6 +45,9 @@ struct Light : public LightData, NonCopyable {
   bool initialized = false;
   bool used = false;
 
+  /* Stored in ShadowTileMapData. */
+  float lod_bias_ = 1.0f;
+
   /** Pointers to source Shadow. Type depends on `LightData::type`. */
   ShadowDirectional *directional = nullptr;
   ShadowPunctual *punctual = nullptr;

@@ -932,7 +932,7 @@ void ShadowModule::end_sync()
       light.shadow_discard_safe(*this);
     }
     else if (light.directional != nullptr) {
-      light.directional->release_excess_tilemaps(inst_.camera, lod_bias_);
+      light.directional->release_excess_tilemaps(inst_.camera, lod_bias_ + light.lod_bias_);
     }
     else if (light.punctual != nullptr) {
       light.punctual->release_excess_tilemaps();
@@ -946,10 +946,10 @@ void ShadowModule::end_sync()
       light.tilemap_index = LIGHT_NO_SHADOW;
     }
     else if (light.directional != nullptr) {
-      light.directional->end_sync(light, inst_.camera, lod_bias_);
+      light.directional->end_sync(light, inst_.camera, lod_bias_ + light.lod_bias_);
     }
     else if (light.punctual != nullptr) {
-      light.punctual->end_sync(light, lod_bias_);
+      light.punctual->end_sync(light, lod_bias_ + light.lod_bias_);
     }
     else {
       light.tilemap_index = LIGHT_NO_SHADOW;
