@@ -37,6 +37,20 @@ def values_clamp(val, minv, maxv):
         return max(minv, min(maxv, val))
 
 
+def node_input_value_set(node, input, value):
+    if node is None or input not in node.inputs:
+        return
+
+    node.inputs[input].default_value = value
+
+
+def node_input_value_get(node, input, default_value=None):
+    if node is None or input not in node.inputs:
+        return default_value
+
+    return node.inputs[input].default_value
+
+
 class ShaderWrapper():
     """
     Base class with minimal common ground for all types of shader interfaces we may want/need to implement.
@@ -798,15 +812,11 @@ class ShaderImageTextureWrapper():
     node_mapping = property(node_mapping_get)
 
     def translation_get(self):
-        if self.node_mapping is None or "Location" not in self.node_mapping.inputs:
-            return Vector((0.0, 0.0, 0.0))
-        return self.node_mapping.inputs["Location"].default_value
+        return node_input_value_get(self.node_mapping, "Location", Vector((0.0, 0.0, 0.0)))
 
     @_set_check
     def translation_set(self, translation):
-        if self.node_mapping is None or "Location" not in self.node_mapping.inputs:
-            return
-        self.node_mapping.inputs["Location"].default_value = translation
+        node_input_value_set(self.node_mapping, "Location", translation)
 
     translation = property(translation_get, translation_set)
 
