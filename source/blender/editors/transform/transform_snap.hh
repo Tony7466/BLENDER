@@ -87,3 +87,11 @@ void transform_snap_anim_flush_data(TransInfo *t,
                                     eSnapMode autosnap,
                                     float *r_val_final);
 bool transform_snap_nla_calc(TransInfo *t, float *vec);
+
+/**
+ * Sets #BA_SNAP_FIX_DEPS_FIASCO flag in order to skip objects with dependencies from snapping.
+ * Returns the number of bases that meet the imposed condition.
+ */
+void transform_snap_base_flags_set(TransInfo *t,
+                                   bool tag_depended_only,
+                                   blender::FunctionRef<bool(const Base *)> user_fn);

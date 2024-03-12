@@ -6,12 +6,8 @@
  * \ingroup edtransform
  */
 
-#include "MEM_guardedalloc.h"
-
-#include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
-#include "BLI_math_vector.h"
 
 #include "BKE_context.hh"
 #include "BKE_layer.hh"
@@ -23,6 +19,7 @@
 
 #include "ANIM_keyframing.hh"
 #include "ANIM_rna.hh"
+
 #include "ED_object.hh"
 
 #include "DEG_depsgraph_query.hh"
@@ -292,62 +289,14 @@ static void ObjectToTransData(TransInfo *t, TransData *td, Object *ob)
   }
 }
 
-static void trans_object_base_deps_flag_prepare(const Scene *scene, ViewLayer *view_layer)
-{
-  BKE_view_layer_synced_ensure(scene, view_layer);
-  LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
-    base->object->id.tag &= ~LIB_TAG_DOIT;
-  }
-}
-
-static void set_trans_object_base_deps_flag_cb(ID *id, eDepsObjectComponentType component)
-{
-  /* Here we only handle object IDs. */
-  if (GS(id->name) != ID_OB) {
-    return;
-  }
-  if (!ELEM(component, DEG_OB_COMP_TRANSFORM, DEG_OB_COMP_GEOMETRY)) {
-    return;
-  }
-  id->tag |= LIB_TAG_DOIT;
-}
-
-static void flush_trans_object_base_deps_flag(Depsgraph *depsgraph, Object *object)
-{
-  object->id.tag |= LIB_TAG_DOIT;
-  DEG_foreach_dependent_ID_component(depsgraph,
-                                     &object->id,
-                                     DEG_OB_COMP_TRANSFORM,
-                                     DEG_FOREACH_COMPONENT_IGNORE_TRANSFORM_SOLVERS,
-                                     set_trans_object_base_deps_flag_cb);
-}
-
-static void trans_object_base_deps_flag_finish(const TransInfo *t,
-                                               const Scene *scene,
-                                               ViewLayer *view_layer)
-{
-
-  if ((t->options & CTX_OBMODE_XFORM_OBDATA) == 0) {
-    BKE_view_layer_synced_ensure(scene, view_layer);
-    LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
-      if (base->object->id.tag & LIB_TAG_DOIT) {
-        base->flag_legacy |= BA_SNAP_FIX_DEPS_FIASCO;
-      }
-    }
-  }
-}
-
 /**
  * Sets flags in Bases to define whether they take part in transform.
  * It deselects Bases, so we have to call the clear function always after.
  */
 static void set_trans_object_base_flags(TransInfo *t)
 {
-  Main *bmain = CTX_data_main(t->context);
   ViewLayer *view_layer = t->view_layer;
   View3D *v3d = static_cast<View3D *>(t->view);
-  Scene *scene = t->scene;
-  Depsgraph *depsgraph = BKE_scene_ensure_depsgraph(bmain, scene, view_layer);
   /* NOTE: if Base selected and has parent selected:
    *   base->flag_legacy = BA_WAS_SEL
    */
@@ -357,12 +306,8 @@ static void set_trans_object_base_flags(TransInfo *t)
   }
   /* Makes sure base flags and object flags are identical. */
   BKE_scene_base_flag_to_objects(t->scene, t->view_layer);
-  /* Make sure depsgraph is here. */
-  DEG_graph_relations_update(depsgraph);
-  /* Clear all flags we need. It will be used to detect dependencies. */
-  trans_object_base_deps_flag_prepare(scene, view_layer);
   /* Traverse all bases and set all possible flags. */
-  BKE_view_layer_synced_ensure(scene, view_layer);
+  BKE_view_layer_synced_ensure(t->scene, view_layer);
   LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
     base->flag_legacy &= ~(BA_WAS_SEL | BA_TRANSFORM_LOCKED_IN_PLACE);
     if (BASE_SELECTED_EDITABLE(v3d, base)) {
@@ -391,13 +336,13 @@ static void set_trans_object_base_flags(TransInfo *t)
           base->flag_legacy |= BA_WAS_SEL;
         }
       }
-      flush_trans_object_base_deps_flag(depsgraph, ob);
     }
   }
-  /* Store temporary bits in base indicating that base is being modified
-   * (directly or indirectly) by transforming objects.
-   */
-  trans_object_base_deps_flag_finish(t, scene, view_layer);
+
+  if ((t->options & CTX_OBMODE_XFORM_OBDATA) == 0) {
+    transform_snap_base_flags_set(
+        t, false, [&](const Base *base) { return BASE_SELECTED_EDITABLE(v3d, base); });
+  }
 }
 
 static bool mark_children(Object *ob)
@@ -418,14 +363,15 @@ static bool mark_children(Object *ob)
 
 static int count_proportional_objects(TransInfo *t)
 {
-  int total = 0;
   ViewLayer *view_layer = t->view_layer;
   View3D *v3d = static_cast<View3D *>(t->view);
-  Main *bmain = CTX_data_main(t->context);
-  Scene *scene = t->scene;
-  Depsgraph *depsgraph = BKE_scene_ensure_depsgraph(bmain, scene, view_layer);
-  /* Clear all flags we need. It will be used to detect dependencies. */
-  trans_object_base_deps_flag_prepare(scene, view_layer);
+
+  const auto is_base_proportional_influenced_fn = [&](const Base *base) {
+    return ((base->object->flag & (BA_TRANSFORM_CHILD | BA_TRANSFORM_PARENT)) == 0 &&
+            (base->flag & BASE_SELECTED) == 0 &&
+            (BASE_EDITABLE(v3d, base) && BASE_SELECTABLE(v3d, base)));
+  };
+
   /* Rotations around local centers are allowed to propagate, so we take all objects. */
   if (!((t->around == V3D_AROUND_LOCAL_ORIGINS) && ELEM(t->mode, TFM_ROTATION, TFM_TRACKBALL))) {
     /* Mark all parents. */
@@ -442,32 +388,24 @@ static int count_proportional_objects(TransInfo *t)
     /* Mark all children. */
     LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
       /* All base not already selected or marked that is editable. */
-      if ((base->object->flag & (BA_TRANSFORM_CHILD | BA_TRANSFORM_PARENT)) == 0 &&
-          (base->flag & BASE_SELECTED) == 0 &&
-          (BASE_EDITABLE(v3d, base) && BASE_SELECTABLE(v3d, base)))
-      {
+      if (is_base_proportional_influenced_fn(base)) {
         mark_children(base->object);
       }
     }
   }
-  /* Flush changed flags to all dependencies. */
+
+  if ((t->options & CTX_OBMODE_XFORM_OBDATA) == 0) {
+    /* Flush changed flags to all dependencies. */
+    transform_snap_base_flags_set(t, false, is_base_proportional_influenced_fn);
+  }
+
+  /* Count. */
+  int total = 0;
   LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
-    Object *ob = base->object;
-    /* If base is not selected, not a parent of selection or not a child of
-     * selection and it is editable and selectable.
-     */
-    if ((ob->flag & (BA_TRANSFORM_CHILD | BA_TRANSFORM_PARENT)) == 0 &&
-        (base->flag & BASE_SELECTED) == 0 &&
-        (BASE_EDITABLE(v3d, base) && BASE_SELECTABLE(v3d, base)))
-    {
-      flush_trans_object_base_deps_flag(depsgraph, ob);
-      total += 1;
+    if (is_base_proportional_influenced_fn(base)) {
+      total++;
     }
   }
-  /* Store temporary bits in base indicating that base is being modified
-   * (directly or indirectly) by transforming objects.
-   */
-  trans_object_base_deps_flag_finish(t, scene, view_layer);
   return total;
 }
 

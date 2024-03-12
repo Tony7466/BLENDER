@@ -6,19 +6,14 @@
  * \ingroup edtransform
  */
 
-#include <cfloat>
-
-#include "DNA_windowmanager_types.h"
-
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
 #include "BLI_time.h"
-#include "BLI_utildefines.h"
 
 #include "GPU_immediate.h"
 #include "GPU_matrix.h"
-#include "GPU_state.h"
 
+#include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_layer.hh"
 #include "BKE_node_runtime.hh"
@@ -28,19 +23,17 @@
 #include "RNA_access.hh"
 
 #include "WM_api.hh"
-#include "WM_types.hh"
 
 #include "ED_node.hh"
 #include "ED_transform_snap_object_context.hh"
 #include "ED_uvedit.hh"
-#include "ED_view3d.hh"
 
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
 #include "SEQ_sequencer.hh"
 
-#include "MEM_guardedalloc.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "transform.hh"
 #include "transform_convert.hh"
@@ -1803,6 +1796,72 @@ float transform_snap_distance_len_squared_fn(TransInfo * /*t*/,
                                              const float p2[3])
 {
   return len_squared_v3v3(p1, p2);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name #transform_snap_base_flags_set
+ * \{ */
+
+static void set_trans_object_base_deps_flag_cb(ID *id, eDepsObjectComponentType component)
+{
+  /* Here we only handle object IDs. */
+  if (GS(id->name) != ID_OB) {
+    return;
+  }
+  if (!ELEM(component, DEG_OB_COMP_TRANSFORM, DEG_OB_COMP_GEOMETRY)) {
+    return;
+  }
+  id->tag |= LIB_TAG_DOIT;
+}
+
+void transform_snap_base_flags_set(TransInfo *t,
+                                   bool tag_depended_only,
+                                   FunctionRef<bool(const Base *)> user_fn)
+{
+  /* Don't do it if we're not actually going to recalculate anything. */
+  if (t->mode == TFM_DUMMY) {
+    return;
+  }
+
+  Main *bmain = CTX_data_main(t->context);
+  ViewLayer *view_layer = t->view_layer;
+  Scene *scene = t->scene;
+  Depsgraph *depsgraph = BKE_scene_ensure_depsgraph(bmain, scene, view_layer);
+
+  /* Make sure depsgraph is here. */
+  DEG_graph_relations_update(depsgraph);
+
+  /* Clear all flags we need. It will be used to detect dependencies. */
+  BKE_view_layer_synced_ensure(scene, view_layer);
+  LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
+    base->object->id.tag &= ~LIB_TAG_DOIT;
+  }
+
+  /* Traverse all bases and set all possible flags. */
+  LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
+    base->flag_legacy &= ~BA_SNAP_FIX_DEPS_FIASCO;
+    if (user_fn(base)) {
+      if (!tag_depended_only) {
+        base->object->id.tag |= LIB_TAG_DOIT;
+      }
+      DEG_foreach_dependent_ID_component(depsgraph,
+                                         &base->object->id,
+                                         DEG_OB_COMP_TRANSFORM,
+                                         DEG_FOREACH_COMPONENT_IGNORE_TRANSFORM_SOLVERS,
+                                         set_trans_object_base_deps_flag_cb);
+    }
+  }
+
+  /* Store temporary bits in base indicating that base is being modified
+   * (directly or indirectly) by transforming objects. */
+  BKE_view_layer_synced_ensure(scene, view_layer);
+  LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(view_layer)) {
+    if (base->object->id.tag & LIB_TAG_DOIT) {
+      base->flag_legacy |= BA_SNAP_FIX_DEPS_FIASCO;
+    }
+  }
 }
 
 /** \} */

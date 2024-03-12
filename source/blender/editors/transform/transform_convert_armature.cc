@@ -6,28 +6,21 @@
  * \ingroup edtransform
  */
 
-#include "DNA_armature_types.h"
 #include "DNA_constraint_types.h"
 
-#include "MEM_guardedalloc.h"
-
-#include "BLI_ghash.h"
-#include "BLI_listbase.h"
 #include "BLI_math_matrix.h"
 #include "BLI_math_rotation.h"
-#include "BLI_math_vector.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.hh"
 #include "BKE_constraint.h"
 #include "BKE_context.hh"
+#include "BKE_layer.hh"
 #include "BKE_report.hh"
 
 #include "BIK_api.h"
 
 #include "ED_armature.hh"
 
-#include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
 #include "ANIM_bone_collections.hh"
@@ -727,6 +720,18 @@ static void createTransPose(bContext * /*C*/, TransInfo *t)
     else {
       t->mode = TFM_RESIZE;
     }
+  }
+
+  if (ELEM(t->mode, TFM_TRANSLATION, TFM_ROTATION, TFM_RESIZE)) {
+    /* Tag objects with dependency relation to be ignored in snapping. */
+    transform_snap_base_flags_set(t, true, [&](const Base *base) {
+      FOREACH_TRANS_DATA_CONTAINER (t, tc) {
+        if (base->object == tc->poseobj) {
+          return true;
+        }
+      }
+      return false;
+    });
   }
 }
 
@@ -1684,6 +1689,14 @@ static void special_aftertrans_update__pose(bContext *C, TransInfo *t)
       ED_pose_recalculate_paths(C, t->scene, ob, range);
     }
     BLI_gset_free(motionpath_updates, nullptr);
+  }
+
+  if (ELEM(t->mode, TFM_TRANSLATION, TFM_ROTATION, TFM_RESIZE)) {
+    /* Clear snap base flags, so they will not affect other transformations. */
+    // BKE_view_layer_synced_ensure(t->scene, t->view_layer);
+    LISTBASE_FOREACH (Base *, base, BKE_view_layer_object_bases_get(t->view_layer)) {
+      base->flag_legacy &= ~BA_SNAP_FIX_DEPS_FIASCO;
+    }
   }
 }
 
