@@ -79,7 +79,10 @@ vec4 texelFetch_bilateral(sampler2D t, ivec2 texel, vec4 bilateral_weights)
 
 void main()
 {
-  ivec2 texel_fullres = ivec2(gl_GlobalInvocationID.xy);
+  const uint tile_size = RAYTRACE_GROUP_SIZE;
+  uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
+  ivec2 texel_fullres = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
+
   ivec2 texel = max(ivec2(0), texel_fullres - uniform_buf.raytrace.resolution_bias) /
                 uniform_buf.raytrace.resolution_scale;
 

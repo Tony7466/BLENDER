@@ -10,7 +10,10 @@
 
 void main()
 {
-  ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
+  const uint tile_size = RAYTRACE_GROUP_SIZE;
+  uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
+  ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
+
   ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
                         uniform_buf.raytrace.resolution_bias;
 

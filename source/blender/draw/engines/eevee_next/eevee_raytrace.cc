@@ -251,20 +251,19 @@ void RayTraceModule::sync()
     pass.init();
     GPUShader *sh = inst_.shaders.static_shader_get(HORIZON_SCAN);
     pass.shader_set(sh);
-    pass.bind_ssbo("tiles_coord_buf", &horizon_tracing_tiles_buf_);
     pass.bind_texture("screen_radiance_tx", &downsampled_in_radiance_tx_);
     pass.bind_texture("screen_normal_tx", &downsampled_in_normal_tx_);
     pass.bind_image("horizon_radiance_0_img", &horizon_radiance_tx_[0]);
     pass.bind_image("horizon_radiance_1_img", &horizon_radiance_tx_[1]);
     pass.bind_image("horizon_radiance_2_img", &horizon_radiance_tx_[2]);
     pass.bind_image("horizon_radiance_3_img", &horizon_radiance_tx_[3]);
+    pass.bind_ssbo("tiles_coord_buf", &horizon_tracing_tiles_buf_);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.hiz_buffer.front);
     pass.bind_resources(inst_.sampling);
     pass.bind_resources(inst_.gbuffer);
-    /* TODO(fclem): Tile based. */
-    pass.dispatch(&tracing_dispatch_size_);
+    pass.dispatch(horizon_tracing_dispatch_buf_);
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
   {
@@ -281,12 +280,11 @@ void RayTraceModule::sync()
     pass.bind_image("out_sh_1_img", &horizon_radiance_denoised_tx_[1]);
     pass.bind_image("out_sh_2_img", &horizon_radiance_denoised_tx_[2]);
     pass.bind_image("out_sh_3_img", &horizon_radiance_denoised_tx_[3]);
-    pass.bind_ssbo("tiles_coord_buf", &horizon_denoise_tiles_buf_);
+    pass.bind_ssbo("tiles_coord_buf", &horizon_tracing_tiles_buf_);
     pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.sampling);
     pass.bind_resources(inst_.hiz_buffer.front);
-    /* TODO(fclem): Tile based. */
-    pass.dispatch(&tracing_dispatch_size_);
+    pass.dispatch(horizon_tracing_dispatch_buf_);
     pass.barrier(GPU_BARRIER_TEXTURE_FETCH);
   }
   {
@@ -309,8 +307,7 @@ void RayTraceModule::sync()
     pass.bind_resources(inst_.gbuffer);
     pass.bind_resources(inst_.volume_probes);
     pass.bind_resources(inst_.sphere_probes);
-    /* TODO(fclem): Tile based. */
-    pass.dispatch(&tile_classify_dispatch_size_);
+    pass.dispatch(horizon_denoise_dispatch_buf_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
 }
@@ -414,6 +411,8 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
   if (has_active_closure) {
     if (use_horizon_scan) {
+      DRW_stats_group_start("Horizon Scan");
+
       screen_radiance_front_tx_ = screen_radiance_front_tx;
 
       downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
@@ -442,6 +441,8 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
       }
       downsampled_in_radiance_tx_.release();
       downsampled_in_normal_tx_.release();
+
+      DRW_stats_group_end();
     }
   }
 
