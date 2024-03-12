@@ -62,7 +62,8 @@ float sample_weight_get(
   float spatial_weight = bilateral_spatial_weight(1.5, vec2(sample_offset));
   float normal_weight = bilateral_normal_weight(center_N, sample_N);
 
-  return depth_weight * spatial_weight * normal_weight;
+  /* Following Lumen presentation, filtering using normal weight doesn't improve quality much. */
+  return depth_weight * spatial_weight /* * normal_weight */;
 }
 
 void main()
