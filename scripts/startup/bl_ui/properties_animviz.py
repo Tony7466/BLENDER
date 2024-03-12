@@ -113,6 +113,7 @@ class MotionPathButtonsPanel_display:
             sub = split.column()
             sub.enabled = mpath.use_custom_color
             sub.prop(mpath, "color", text="")
+            sub.prop(mpath, "color_post", text="")
 
 
 classes = (

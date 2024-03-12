@@ -16,8 +16,8 @@ void main()
   gl_PointSize = float(pointSize + 2);
 
   int frame = gl_VertexID + cacheStart;
-  bool use_custom_color = customColor.x >= 0.0;
-  finalColor = (use_custom_color) ? vec4(customColor, 1.0) : vec4(1.0);
+  bool use_custom_color = customColorPre.x >= 0.0;
+  finalColor = vec4(1.0);
 
   /* Bias to reduce z fighting with the path */
   gl_Position.z -= 1e-4;
@@ -41,6 +41,14 @@ void main()
       finalColor = colorCurrentFrame;
       /* Bias more to get these on top of keyframes */
       gl_Position.z -= 1e-4;
+    }
+    if (use_custom_color){
+      if(frame < frameCurrent){
+        finalColor = vec4(customColorPre, 1.0);
+      }
+      else if (frame > frameCurrent){
+        finalColor = vec4(customColorPost, 1.0);
+      }
     }
   }
 

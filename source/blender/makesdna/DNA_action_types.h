@@ -64,16 +64,17 @@ typedef struct bMotionPath {
 
   /** Optional custom color. */
   float color[3];
+  float color_post[3];
   /** Line thickness. */
   int line_thickness;
   /** Baking settings - eMotionPath_Flag. */
   int flag;
 
+  char _pad[4];
   /* Used for drawing. */
   struct GPUVertBuf *points_vbo;
   struct GPUBatch *batch_line;
   struct GPUBatch *batch_points;
-  void *_pad;
 } bMotionPath;
 
 /* bMotionPath->flag */
