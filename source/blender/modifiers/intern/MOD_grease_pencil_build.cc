@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2005 Blender Authors
+/* SPDX-FileCopyrightText: 2024 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -115,7 +115,7 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
   curves.ensure_evaluated_lengths();
   float max_length = 0;
   for (const int stroke : curves.curves_range()) {
-    const float len = curves.evaluated_lengths_for_curve(stroke, false).last();
+    const float len = curves.evaluated_length_total_for_curve(stroke, false);
     max_length = math::max(max_length, len);
   }
 
@@ -347,7 +347,7 @@ static bke::CurvesGeometry build_sequential(bke::greasepencil::Drawing &drawing,
   const bool is_vanishing = transition == MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
 
   bke::CurvesGeometry dst_curves(dst_points_num, dst_curves_num);
-  Array<int> dst_offsets(dst_curves_num + 1);
+  MutableSpan<int> dst_offsets = dst_curves.offsets_for_write();
   Array<int> dst_to_src_point(dst_points_num);
   Array<int> dst_to_src_curve(dst_curves_num);
 
@@ -541,7 +541,7 @@ static void build_drawing(const ModifierData &md,
   IndexMask selection = modifier::greasepencil::get_filtered_stroke_mask(
       &ob, curves, mmd.influence, memory);
 
-  /* Remove a count of #prev_strokes  */
+  /* Remove a count of #prev_strokes.  */
   if (mmd.mode == MOD_GREASE_PENCIL_BUILD_MODE_ADDITIVE && previous_drawing != nullptr) {
     const bke::CurvesGeometry &prev_curves = drawing.strokes_for_write();
     const int prev_strokes = prev_curves.curves_num();
@@ -611,10 +611,6 @@ static void build_drawing(const ModifierData &md,
                                 mmd.target_vgname);
       break;
     case MOD_GREASE_PENCIL_BUILD_MODE_ADDITIVE:
-      // Todo: I'm not sure what this mode means, looks like the same to me.
-      // The original code path seems to indicate it will only build "extra stroke"
-      // compared to the previous grease pencil frame, but it's by counting strokes
-      // only, so it doesn't guarantee matching strokes...?
       curves = build_sequential(drawing,
                                 curves,
                                 selection,
@@ -634,7 +630,7 @@ static void modify_geometry_set(ModifierData *md,
                                 const ModifierEvalContext *ctx,
                                 blender::bke::GeometrySet *geometry_set)
 {
-  auto *mmd = reinterpret_cast<GreasePencilBuildModifierData *>(md);
+  const auto *mmd = reinterpret_cast<GreasePencilBuildModifierData *>(md);
 
   if (!geometry_set->has_grease_pencil()) {
     return;
