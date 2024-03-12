@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -31,10 +31,11 @@
  * No globals - keep threadsafe.
  */
 
-#include "BLI_math.h"
 #include "BLI_utildefines.h"
 
 #include "BLI_alloca.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 
 #include "BLI_polyfill_2d.h" /* own include */
@@ -57,7 +58,7 @@
 
 // #define DEBUG_TIME
 #ifdef DEBUG_TIME
-#  include "PIL_time_utildefines.h"
+#  include "BLI_time_utildefines.h"
 #endif
 
 typedef int8_t eSign;
@@ -144,7 +145,7 @@ typedef struct PolyIndex {
 
 /* based on libgdx 2013-11-28, apache 2.0 licensed */
 
-static void pf_coord_sign_calc(PolyFill *pf, PolyIndex *pi);
+static void pf_coord_sign_calc(const PolyFill *pf, PolyIndex *pi);
 
 static PolyIndex *pf_ear_tip_find(PolyFill *pf
 #ifdef USE_CLIP_EVEN
@@ -454,7 +455,7 @@ static void pf_coord_remove(PolyFill *pf, PolyIndex *pi)
   if (pf->kdtree.node_num) {
     kdtree2d_node_remove(&pf->kdtree, pi->index);
   }
-#endif
+#endif /* USE_KDTREE */
 
   pi->next->prev = pi->prev;
   pi->prev->next = pi->next;
@@ -462,10 +463,10 @@ static void pf_coord_remove(PolyFill *pf, PolyIndex *pi)
   if (UNLIKELY(pf->indices == pi)) {
     pf->indices = pi->next;
   }
-#ifdef DEBUG
+#ifndef NDEBUG
   pi->index = (uint32_t)-1;
   pi->next = pi->prev = NULL;
-#endif
+#endif /* !NDEBUG */
 
   pf->coords_num -= 1;
 }
@@ -576,7 +577,7 @@ static void pf_triangulate(PolyFill *pf)
 /**
  * \return CONCAVE, TANGENTIAL or CONVEX
  */
-static void pf_coord_sign_calc(PolyFill *pf, PolyIndex *pi)
+static void pf_coord_sign_calc(const PolyFill *pf, PolyIndex *pi)
 {
   /* localize */
   const float(*coords)[2] = pf->coords;
@@ -798,17 +799,17 @@ static void polyfill_prepare(PolyFill *pf,
   pf->tris_num = 0;
 
   if (coords_sign == 0) {
-    coords_sign = (cross_poly_v2(coords, coords_num) >= 0.0f) ? 1 : -1;
+    coords_sign = (cross_poly_v2(coords, coords_num) <= 0.0f) ? 1 : -1;
   }
   else {
     /* check we're passing in correct args */
 #ifdef USE_STRICT_ASSERT
 #  ifndef NDEBUG
     if (coords_sign == 1) {
-      BLI_assert(cross_poly_v2(coords, coords_num) >= 0.0f);
+      BLI_assert(cross_poly_v2(coords, coords_num) <= 0.0f);
     }
     else {
-      BLI_assert(cross_poly_v2(coords, coords_num) <= 0.0f);
+      BLI_assert(cross_poly_v2(coords, coords_num) >= 0.0f);
     }
 #  endif
 #endif

@@ -6,16 +6,28 @@
  * \ingroup bli
  */
 
-#include "BLI_math.h"
+#include "BLI_math_rotation.h"
 
+#include "BLI_math_base_safe.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_strict_flags.h"
 
 /******************************** Quaternions ********************************/
 
 /* used to test is a quat is not normalized (only used for debug prints) */
-#ifdef DEBUG
+#ifndef NDEBUG
 #  define QUAT_EPSILON 0.0001
 #endif
+
+/**
+ * The threshold for using a zeroed 3rd (typically Z) value when calculating the euler.
+ * NOTE(@ideasman42): A reasonable range for this value is (0.0002 .. 0.00002).
+ * This was previously `16 * FLT_EPSILON` however it caused imprecision at times,
+ * see examples from: #116880.
+ */
+#define EULER_HYPOT_EPSILON 0.0000375
 
 void unit_axis_angle(float axis[3], float *angle)
 {
@@ -148,8 +160,8 @@ void sub_qt_qtqt(float q[4], const float a[4], const float b[4])
 void pow_qt_fl_normalized(float q[4], const float fac)
 {
   BLI_ASSERT_UNIT_QUAT(q);
-  const float angle = fac * saacos(q[0]); /* quat[0] = cos(0.5 * angle),
-                                           * but now the 0.5 and 2.0 rule out */
+  const float angle = fac * safe_acosf(q[0]); /* quat[0] = cos(0.5 * angle),
+                                               * but now the 0.5 and 2.0 rule out */
   const float co = cosf(angle);
   const float si = sinf(angle);
   q[0] = co;
@@ -212,7 +224,7 @@ static void quat_to_mat3_no_error(float m[3][3], const float q[4])
 
 void quat_to_mat3(float m[3][3], const float q[4])
 {
-#ifdef DEBUG
+#ifndef NDEBUG
   float f;
   if (!((f = dot_qtqt(q, q)) == 0.0f || (fabsf(f - 1.0f) < (float)QUAT_EPSILON))) {
     fprintf(stderr,
@@ -228,7 +240,7 @@ void quat_to_mat4(float m[4][4], const float q[4])
 {
   double q0, q1, q2, q3, qda, qdb, qdc, qaa, qab, qac, qbb, qbc, qcc;
 
-#ifdef DEBUG
+#ifndef NDEBUG
   if (!((q0 = dot_qtqt(q, q)) == 0.0 || (fabs(q0 - 1.0) < QUAT_EPSILON))) {
     fprintf(stderr,
             "Warning! quat_to_mat4() called with non-normalized: size %.8f *** report a bug ***\n",
@@ -425,7 +437,7 @@ void mat3_to_quat_legacy(float q[4], const float wmat[3][3])
   normalize_v3(nor);
 
   co = mat[2][2];
-  angle = 0.5f * saacos(co);
+  angle = 0.5f * safe_acosf(co);
 
   co = cosf(angle);
   si = sinf(angle);
@@ -607,7 +619,7 @@ float quat_split_swing_and_twist(const float q_in[4],
 float angle_normalized_qt(const float q[4])
 {
   BLI_ASSERT_UNIT_QUAT(q);
-  return 2.0f * saacos(q[0]);
+  return 2.0f * safe_acosf(q[0]);
 }
 
 float angle_qt(const float q[4])
@@ -657,10 +669,10 @@ float angle_signed_normalized_qt(const float q[4])
 {
   BLI_ASSERT_UNIT_QUAT(q);
   if (q[0] >= 0.0f) {
-    return 2.0f * saacos(q[0]);
+    return 2.0f * safe_acosf(q[0]);
   }
 
-  return -2.0f * saacos(-q[0]);
+  return -2.0f * safe_acosf(-q[0]);
 }
 
 float angle_signed_normalized_qtqt(const float q1[4], const float q2[4])
@@ -764,7 +776,7 @@ void vec_to_quat(float q[4], const float vec[3], short axis, const short upflag)
 
   normalize_v3(nor);
 
-  axis_angle_normalized_to_quat(q, nor, saacos(co));
+  axis_angle_normalized_to_quat(q, nor, safe_acosf(co));
 
   if (axis != upflag) {
     float mat[3][3];
@@ -931,7 +943,7 @@ void tri_to_quat_ex(
     n[0] = 1.0f;
   }
 
-  angle = -0.5f * saacos(vec[2]);
+  angle = -0.5f * safe_acosf(vec[2]);
   co = cosf(angle);
   si = sinf(angle);
   q1[0] = co;
@@ -1061,7 +1073,7 @@ void quat_to_axis_angle(float axis[3], float *angle, const float q[4])
 {
   float ha, si;
 
-#ifdef DEBUG
+#ifndef NDEBUG
   if (!((ha = dot_qtqt(q, q)) == 0.0f || (fabsf(ha - 1.0f) < (float)QUAT_EPSILON))) {
     fprintf(stderr,
             "Warning! quat_to_axis_angle() called with non-normalized: size %.8f *** report a bug "
@@ -1388,8 +1400,7 @@ static void mat3_normalized_to_eul2(const float mat[3][3], float eul1[3], float 
 
   BLI_ASSERT_UNIT_M3(mat);
 
-  if (cy > 16.0f * FLT_EPSILON) {
-
+  if (cy > (float)EULER_HYPOT_EPSILON) {
     eul1[0] = atan2f(mat[1][2], mat[2][2]);
     eul1[1] = atan2f(-mat[0][2], cy);
     eul1[2] = atan2f(mat[0][1], mat[0][0]);
@@ -1723,7 +1734,7 @@ static void mat3_normalized_to_eulo2(const float mat[3][3],
 
   cy = hypotf(mat[i][i], mat[i][j]);
 
-  if (cy > 16.0f * FLT_EPSILON) {
+  if (cy > (float)EULER_HYPOT_EPSILON) {
     eul1[i] = atan2f(mat[j][k], mat[k][k]);
     eul1[j] = atan2f(-mat[i][k], cy);
     eul1[k] = atan2f(mat[i][j], mat[i][i]);
@@ -2085,6 +2096,53 @@ void add_weighted_dq_dq(DualQuat *dq_sum, const DualQuat *dq, float weight)
   }
 }
 
+/**
+ * Add the transformation defined by the given dual quaternion to the accumulator,
+ * using the specified pivot point for combining scale transformations.
+ *
+ * If the resulting dual quaternion would only be used to transform the pivot point itself,
+ * this function can avoid fully computing the combined scale matrix to get a performance
+ * boost without affecting the result.
+ */
+void add_weighted_dq_dq_pivot(DualQuat *dq_sum,
+                              const DualQuat *dq,
+                              const float pivot[3],
+                              const float weight,
+                              const bool compute_scale_matrix)
+{
+  /* FIX #32022, #43188, #100373 - bad deformation when combining scaling and rotation. */
+  if (dq->scale_weight) {
+    DualQuat mdq = *dq;
+
+    /* Compute the translation induced by scale at the pivot point. */
+    float dst[3];
+    mul_v3_m4v3(dst, mdq.scale, pivot);
+    sub_v3_v3(dst, pivot);
+
+    /* Apply the scale translation to the translation part of the DualQuat. */
+    mdq.trans[0] -= .5f * (mdq.quat[1] * dst[0] + mdq.quat[2] * dst[1] + mdq.quat[3] * dst[2]);
+    mdq.trans[1] += .5f * (mdq.quat[0] * dst[0] + mdq.quat[2] * dst[2] - mdq.quat[3] * dst[1]);
+    mdq.trans[2] += .5f * (mdq.quat[0] * dst[1] + mdq.quat[3] * dst[0] - mdq.quat[1] * dst[2]);
+    mdq.trans[3] += .5f * (mdq.quat[0] * dst[2] + mdq.quat[1] * dst[1] - mdq.quat[2] * dst[0]);
+
+    /* Neutralize the scale matrix at the pivot point. */
+    if (compute_scale_matrix) {
+      /* This translates the matrix to transform the pivot point to itself. */
+      sub_v3_v3(mdq.scale[3], dst);
+    }
+    else {
+      /* This completely discards the scale matrix - if the resulting DualQuat
+       * is converted to a matrix, it would have no scale or shear. */
+      mdq.scale_weight = 0.0f;
+    }
+
+    add_weighted_dq_dq(dq_sum, &mdq, weight);
+  }
+  else {
+    add_weighted_dq_dq(dq_sum, dq, weight);
+  }
+}
+
 void normalize_dq(DualQuat *dq, float totweight)
 {
   const float scale = 1.0f / totweight;
@@ -2216,34 +2274,34 @@ void vec_apply_track(float vec[3], short axis)
 
   switch (axis) {
     case 0: /* pos-x */
-      /* vec[0] =  0.0; */
+      // vec[0] =  0.0;
       vec[1] = tvec[2];
       vec[2] = -tvec[1];
       break;
     case 1: /* pos-y */
-      /* vec[0] = tvec[0]; */
-      /* vec[1] =  0.0; */
-      /* vec[2] = tvec[2]; */
+      // vec[0] = tvec[0];
+      // vec[1] =  0.0;
+      // vec[2] = tvec[2];
       break;
     case 2: /* pos-z */
-      /* vec[0] = tvec[0]; */
-      /* vec[1] = tvec[1]; */
-      /* vec[2] =  0.0; */
+      // vec[0] = tvec[0];
+      // vec[1] = tvec[1];
+      // vec[2] =  0.0;
       break;
     case 3: /* neg-x */
-      /* vec[0] =  0.0; */
+      // vec[0] =  0.0;
       vec[1] = tvec[2];
       vec[2] = -tvec[1];
       break;
     case 4: /* neg-y */
       vec[0] = -tvec[2];
-      /* vec[1] =  0.0; */
+      // vec[1] =  0.0;
       vec[2] = tvec[0];
       break;
     case 5: /* neg-z */
       vec[0] = -tvec[0];
       vec[1] = -tvec[1];
-      /* vec[2] =  0.0; */
+      // vec[2] =  0.0;
       break;
   }
 }

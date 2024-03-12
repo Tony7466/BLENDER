@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -43,7 +43,7 @@ class TextureOperation : public NodeOperation {
   {
     Result &color_result = get_result("Color");
     Result &value_result = get_result("Value");
-    if (!get_texture()) {
+    if (!get_texture() || !context().is_valid_compositing_region()) {
       if (color_result.should_compute()) {
         color_result.allocate_invalid();
       }
@@ -57,19 +57,17 @@ class TextureOperation : public NodeOperation {
     CachedTexture &cached_texture = context().cache_manager().cached_textures.get(
         context(),
         get_texture(),
-        context().use_texture_color_management(),
+        true,
         domain.size,
-        get_input("Offset").get_vector_value_default(float4(0.0f)).xy(),
-        get_input("Scale").get_vector_value_default(float4(0.0f)).xy());
+        get_input("Offset").get_vector_value_default(float4(0.0f)).xyz(),
+        get_input("Scale").get_vector_value_default(float4(1.0f)).xyz());
 
     if (color_result.should_compute()) {
-      color_result.allocate_texture(domain);
-      GPU_texture_copy(color_result.texture(), cached_texture.color_texture());
+      color_result.wrap_external(cached_texture.color_texture());
     }
 
     if (value_result.should_compute()) {
-      value_result.allocate_texture(domain);
-      GPU_texture_copy(value_result.texture(), cached_texture.value_texture());
+      value_result.wrap_external(cached_texture.value_texture());
     }
   }
 

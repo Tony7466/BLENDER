@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2006 Blender Foundation
+# SPDX-FileCopyrightText: 2006 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -6,17 +6,12 @@ set(INC
   .
   ../common
   ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
   ../../bmesh
-  ../../depsgraph
   ../../editors/include
-  ../../makesdna
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/clog
-  ../../../../intern/guardedalloc
   ../../../../intern/utfconv
 )
 
@@ -49,7 +44,6 @@ set(SRC
   exporter/abc_custom_props.cc
   exporter/abc_export_capi.cc
   exporter/abc_hierarchy_iterator.cc
-  exporter/abc_subdiv_disabler.cc
   exporter/abc_writer_abstract.cc
   exporter/abc_writer_camera.cc
   exporter/abc_writer_curves.cc
@@ -77,7 +71,6 @@ set(SRC
   exporter/abc_archive.h
   exporter/abc_custom_props.h
   exporter/abc_hierarchy_iterator.h
-  exporter/abc_subdiv_disabler.h
   exporter/abc_writer_abstract.h
   exporter/abc_writer_camera.h
   exporter/abc_writer_curves.h
@@ -92,7 +85,11 @@ set(SRC
 
 set(LIB
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
+  PRIVATE bf::intern::clog
+  PRIVATE bf::intern::guardedalloc
   bf_io_common
 
   ${ALEMBIC_LIBRARIES}
@@ -105,7 +102,7 @@ if(WITH_BOOST)
   )
 endif()
 
-blender_add_lib(bf_alembic "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
+blender_add_lib(bf_io_alembic "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
 if(WITH_GTESTS)
   set(TEST_SRC
@@ -115,8 +112,7 @@ if(WITH_GTESTS)
   set(TEST_INC
   )
   set(TEST_LIB
-    bf_alembic
+    bf_io_alembic
   )
-  include(GTestTesting)
-  blender_add_test_lib(bf_io_alembic_tests "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
+  blender_add_test_suite_lib(io_alembic "${TEST_SRC}" "${INC};${TEST_INC}" "${INC_SYS}" "${LIB};${TEST_LIB}")
 endif()

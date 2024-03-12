@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  * SPDX-FileCopyrightText: 2001 softSurfer (http://www.softsurfer.com)
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
@@ -13,7 +13,7 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_convexhull_2d.h"
-#include "BLI_math.h"
+#include "BLI_math_vector.h"
 #include "BLI_strict_flags.h"
 #include "BLI_utildefines.h"
 
@@ -69,7 +69,6 @@ static int BLI_convexhull_2d_sorted(const float (*points)[2], const int n, int r
       /* a nontrivial segment */
       r_points[++top] = minmax;
     }
-    r_points[++top] = minmin; /* add polygon endpoint */
     BLI_assert(top + 1 <= n);
     return top + 1;
   }

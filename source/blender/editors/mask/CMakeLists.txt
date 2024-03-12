@@ -1,17 +1,13 @@
-# SPDX-FileCopyrightText: 2012 Blender Foundation
+# SPDX-FileCopyrightText: 2012 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   ../include
   ../../blenkernel
-  ../../blenlib
-  ../../depsgraph
   ../../gpu
-  ../../makesdna
   ../../makesrna
   ../../windowmanager
-  ../../../../intern/guardedalloc
 )
 
 set(INC_SYS
@@ -32,6 +28,11 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::animrig
 )
 
 

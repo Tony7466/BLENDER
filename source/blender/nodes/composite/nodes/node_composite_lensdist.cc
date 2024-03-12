@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -9,10 +9,10 @@
 #include "BLI_math_base.h"
 #include "BLI_math_vector_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "GPU_shader.h"
 #include "GPU_texture.h"
@@ -40,7 +40,7 @@ static void cmp_node_lensdist_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Color>("Image")
       .default_value({1.0f, 1.0f, 1.0f, 1.0f})
       .compositor_domain_priority(0);
-  b.add_input<decl::Float>("Distort")
+  b.add_input<decl::Float>("Distortion")
       .default_value(0.0f)
       .min(MINIMUM_DISTORTION)
       .max(1.0f)
@@ -96,14 +96,13 @@ class LensDistortionOperation : public NodeOperation {
 
   void execute_projector_distortion()
   {
-    GPUShader *shader = shader_manager().get("compositor_projector_lens_distortion");
+    GPUShader *shader = context().get_shader("compositor_projector_lens_distortion");
     GPU_shader_bind(shader);
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
-
     GPU_texture_filter_mode(input_image.texture(), true);
     GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    input_image.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
 
@@ -123,14 +122,13 @@ class LensDistortionOperation : public NodeOperation {
 
   void execute_screen_distortion()
   {
-    GPUShader *shader = shader_manager().get(get_screen_distortion_shader());
+    GPUShader *shader = context().get_shader(get_screen_distortion_shader());
     GPU_shader_bind(shader);
 
     const Result &input_image = get_input("Image");
-    input_image.bind_as_texture(shader, "input_tx");
-
     GPU_texture_filter_mode(input_image.texture(), true);
     GPU_texture_extend_mode(input_image.texture(), GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER);
+    input_image.bind_as_texture(shader, "input_tx");
 
     const Domain domain = compute_domain();
 
@@ -160,7 +158,7 @@ class LensDistortionOperation : public NodeOperation {
 
   float get_distortion()
   {
-    const Result &input = get_input("Distort");
+    const Result &input = get_input("Distortion");
     return clamp_f(input.get_float_value_default(0.0f), MINIMUM_DISTORTION, 1.0f);
   }
 

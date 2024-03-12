@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 #include "testing/testing.h"
@@ -11,12 +11,11 @@
 #include "BLI_path_util.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_appdir.h"
+#include "BKE_appdir.hh"
 
 namespace blender::io::usd {
 
-class USDStageCreationTest : public testing::Test {
-};
+class USDStageCreationTest : public testing::Test {};
 
 TEST_F(USDStageCreationTest, JSONFileLoadingTest)
 {

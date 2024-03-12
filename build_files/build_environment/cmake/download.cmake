@@ -1,9 +1,9 @@
-# SPDX-FileCopyrightText: 2021-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2021-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 ## Update and uncomment this in the release branch
-# set(BLENDER_VERSION 3.1)
+set(BLENDER_VERSION 4.1)
 
 function(download_source dep)
   set(TARGET_FILE ${${dep}_FILE})
@@ -84,7 +84,6 @@ download_source(PTHREADS)
 download_source(OPENEXR)
 download_source(FREETYPE)
 download_source(EPOXY)
-download_source(FREEGLUT)
 download_source(ALEMBIC)
 download_source(OPENSUBDIV)
 download_source(SDL)
@@ -137,6 +136,7 @@ download_source(XR_OPENXR_SDK)
 download_source(WL_PROTOCOLS)
 download_source(WAYLAND)
 download_source(WAYLAND_LIBDECOR)
+download_source(WAYLAND_WESTON)
 download_source(ISPC)
 download_source(GMP)
 download_source(POTRACE)
@@ -177,3 +177,4 @@ download_source(SHADERC_GLSLANG)
 download_source(VULKAN_HEADERS)
 download_source(VULKAN_LOADER)
 download_source(PYBIND11)
+download_source(DEFLATE)

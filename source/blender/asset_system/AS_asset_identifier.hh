@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -7,7 +7,7 @@
  *
  * \brief Information to uniquely identify and locate an asset.
  *
- * https://wiki.blender.org/wiki/Source/Architecture/Asset_System/Back_End#Asset_Identifier
+ * https://developer.blender.org/docs/features/asset_system/backend/#asset-identifier
  */
 
 #pragma once

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,6 +6,7 @@
  * \ingroup bke
  */
 
+#include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
@@ -21,10 +22,15 @@
 #include "BLI_ghash.h"
 #include "BLI_hash.h"
 #include "BLI_heap.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_polyfill_2d.h"
 #include "BLI_span.hh"
+#include "BLI_string_utils.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 #include "DNA_gpencil_modifier_types.h"
@@ -37,17 +43,18 @@
 #include "BLT_translation.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_context.h"
-#include "BKE_deform.h"
+#include "BKE_context.hh"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_curve_legacy.h"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 using blender::float3;
 using blender::Span;
@@ -84,97 +91,41 @@ bool BKE_gpencil_stroke_minmax(const bGPDstroke *gps,
   return changed;
 }
 
-bool BKE_gpencil_data_minmax(const bGPdata *gpd, float r_min[3], float r_max[3])
+std::optional<blender::Bounds<blender::float3>> BKE_gpencil_data_minmax(const bGPdata *gpd)
 {
   bool changed = false;
 
-  INIT_MINMAX(r_min, r_max);
-
-  if (gpd == nullptr) {
-    return changed;
-  }
-
+  float3 min;
+  float3 max;
+  INIT_MINMAX(min, max);
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd->layers) {
     bGPDframe *gpf = gpl->actframe;
 
     if (gpf != nullptr) {
       LISTBASE_FOREACH (bGPDstroke *, gps, &gpf->strokes) {
-        changed |= BKE_gpencil_stroke_minmax(gps, false, r_min, r_max);
+        changed |= BKE_gpencil_stroke_minmax(gps, false, min, max);
       }
     }
   }
 
-  return changed;
+  if (!changed) {
+    return std::nullopt;
+  }
+
+  return blender::Bounds<blender::float3>{min, max};
 }
 
 void BKE_gpencil_centroid_3d(bGPdata *gpd, float r_centroid[3])
 {
-  float3 min;
-  float3 max;
-  BKE_gpencil_data_minmax(gpd, min, max);
-
-  const float3 tot = min + max;
-  mul_v3_v3fl(r_centroid, tot, 0.5f);
+  using namespace blender;
+  const Bounds<float3> bounds = BKE_gpencil_data_minmax(gpd).value_or(Bounds(float3(0)));
+  copy_v3_v3(r_centroid, math::midpoint(bounds.min, bounds.max));
 }
 
 void BKE_gpencil_stroke_boundingbox_calc(bGPDstroke *gps)
 {
   INIT_MINMAX(gps->boundbox_min, gps->boundbox_max);
   BKE_gpencil_stroke_minmax(gps, false, gps->boundbox_min, gps->boundbox_max);
-}
-
-/**
- * Create bounding box values.
- * \param ob: Grease pencil object
- */
-static void boundbox_gpencil(Object *ob)
-{
-  if (ob->runtime.bb == nullptr) {
-    ob->runtime.bb = MEM_cnew<BoundBox>("GPencil boundbox");
-  }
-
-  BoundBox *bb = ob->runtime.bb;
-  bGPdata *gpd = (bGPdata *)ob->data;
-
-  float3 min;
-  float3 max;
-  if (!BKE_gpencil_data_minmax(gpd, min, max)) {
-    min = float3(-1);
-    max = float3(1);
-  }
-
-  BKE_boundbox_init_from_minmax(bb, min, max);
-
-  bb->flag &= ~BOUNDBOX_DIRTY;
-}
-
-BoundBox *BKE_gpencil_boundbox_get(Object *ob)
-{
-  if (ELEM(nullptr, ob, ob->data)) {
-    return nullptr;
-  }
-
-  bGPdata *gpd = (bGPdata *)ob->data;
-  if ((ob->runtime.bb) && ((gpd->flag & GP_DATA_CACHE_IS_DIRTY) == 0)) {
-    return ob->runtime.bb;
-  }
-
-  boundbox_gpencil(ob);
-
-  Object *ob_orig = (Object *)DEG_get_original_id(&ob->id);
-  /* Update orig object's boundbox with re-computed evaluated values. This function can be
-   * called with the evaluated object and need update the original object bound box data
-   * to keep both values synchronized. */
-  if (!ELEM(ob_orig, nullptr, ob)) {
-    if (ob_orig->runtime.bb == nullptr) {
-      ob_orig->runtime.bb = MEM_cnew<BoundBox>("GPencil boundbox");
-    }
-    for (int i = 0; i < 8; i++) {
-      copy_v3_v3(ob_orig->runtime.bb->vec[i], ob->runtime.bb->vec[i]);
-    }
-  }
-
-  return ob->runtime.bb;
 }
 
 /** \} */
@@ -396,7 +347,7 @@ static void stroke_defvert_create_nr_list(MDeformVert *dv_list,
     for (j = 0; j < dv->totweight; j++) {
       bool found = false;
       dw = &dv->dw[j];
-      for (ld = (LinkData *)result->first; ld; ld = ld->next) {
+      LISTBASE_FOREACH (LinkData *, ld, result) {
         if (ld->data == POINTER_FROM_INT(dw->def_nr)) {
           found = true;
           break;
@@ -417,7 +368,6 @@ static void stroke_defvert_create_nr_list(MDeformVert *dv_list,
 static MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase *def_nr_list)
 {
   int i, j;
-  LinkData *ld;
   MDeformVert *dst = (MDeformVert *)MEM_mallocN(count * sizeof(MDeformVert), "new_deformVert");
 
   for (i = 0; i < count; i++) {
@@ -426,7 +376,7 @@ static MDeformVert *stroke_defvert_new_count(int count, int totweight, ListBase 
     dst[i].totweight = totweight;
     j = 0;
     /* re-assign deform groups */
-    for (ld = (LinkData *)def_nr_list->first; ld; ld = ld->next) {
+    LISTBASE_FOREACH (LinkData *, ld, def_nr_list) {
       dst[i].dw[j].def_nr = POINTER_AS_INT(ld->data);
       j++;
     }
@@ -457,7 +407,6 @@ bool BKE_gpencil_stroke_sample(bGPdata *gpd,
   bGPDspoint *pt = gps->points;
   bGPDspoint *pt1 = nullptr;
   bGPDspoint *pt2 = nullptr;
-  LinkData *ld;
   ListBase def_nr_list = {nullptr};
 
   if (gps->totpoints < 2 || dist < FLT_EPSILON) {
@@ -562,7 +511,7 @@ bool BKE_gpencil_stroke_sample(bGPdata *gpd,
     /* Free original weight data. */
     BKE_gpencil_free_stroke_weights(gps);
     MEM_freeN(gps->dvert);
-    while ((ld = (LinkData *)BLI_pophead(&def_nr_list))) {
+    while (LinkData *ld = (LinkData *)BLI_pophead(&def_nr_list)) {
       MEM_freeN(ld);
     }
 
@@ -612,7 +561,7 @@ static bool BKE_gpencil_stroke_extra_points(bGPDstroke *gps,
     MDeformVert *new_dv = (MDeformVert *)MEM_mallocN(sizeof(MDeformVert) * new_count, __func__);
 
     for (int i = 0; i < new_count; i++) {
-      MDeformVert *dv = &gps->dvert[CLAMPIS(i - count_before, 0, gps->totpoints - 1)];
+      MDeformVert *dv = &gps->dvert[std::clamp(i - count_before, 0, gps->totpoints - 1)];
       int inew = i;
       new_dv[inew].flag = dv->flag;
       new_dv[inew].totweight = dv->totweight;
@@ -653,7 +602,7 @@ bool BKE_gpencil_stroke_stretch(bGPDstroke *gps,
   if (!isfinite(used_percent_length)) {
     /* #used_percent_length must always be finite, otherwise a segfault occurs.
      * Since this function should never segfault, set #used_percent_length to a safe fallback. */
-    /* NOTE: This fallback is used if gps->totpoints == 2, see MOD_gpencil_legacy_length.c */
+    /* NOTE: This fallback is used if `gps->totpoints == 2`, see `MOD_gpencil_legacy_length.cc`. */
     used_percent_length = 0.1f;
   }
 
@@ -1048,14 +997,14 @@ bool BKE_gpencil_stroke_smooth_point(bGPDstroke *gps,
 
   /* This function uses a binomial kernel, which is the discrete version of gaussian blur.
    * The weight for a vertex at the relative index point_index is
-   * w = nCr(n, j + n/2) / 2^n = (n/1 * (n-1)/2 * ... * (n-j-n/2)/(j+n/2)) / 2^n
+   * `w = nCr(n, j + n/2) / 2^n = (n/1 * (n-1)/2 * ... * (n-j-n/2)/(j+n/2)) / 2^n`
    * All weights together sum up to 1
    * This is equivalent to doing multiple iterations of averaging neighbors,
    * where n = iterations * 2 and -n/2 <= j <= n/2
    *
-   * Now the problem is that nCr(n, j + n/2) is very hard to compute for n > 500, since even
+   * Now the problem is that `nCr(n, j + n/2)` is very hard to compute for `n > 500`, since even
    * double precision isn't sufficient. A very good robust approximation for n > 20 is
-   * nCr(n, j + n/2) / 2^n = sqrt(2/(pi*n)) * exp(-2*j*j/n)
+   * `nCr(n, j + n/2) / 2^n = sqrt(2/(pi*n)) * exp(-2*j*j/n)`
    *
    * There is one more problem left: The old smooth algorithm was doing a more aggressive
    * smooth. To solve that problem, choose a different n/2, which does not match the range and
@@ -1063,8 +1012,8 @@ bool BKE_gpencil_stroke_smooth_point(bGPDstroke *gps,
    *
    * keep_shape is a new option to stop the stroke from severely deforming.
    * It uses different partially negative weights.
-   * w = 2 * (nCr(n, j + n/2) / 2^n) - (nCr(3*n, j + n) / 2^(3*n))
-   *   ~ 2 * sqrt(2/(pi*n)) * exp(-2*j*j/n) - sqrt(2/(pi*3*n)) * exp(-2*j*j/(3*n))
+   * w = `2 * (nCr(n, j + n/2) / 2^n) - (nCr(3*n, j + n) / 2^(3*n))`
+   *   ~ `2 * sqrt(2/(pi*n)) * exp(-2*j*j/n) - sqrt(2/(pi*3*n)) * exp(-2*j*j/(3*n))`
    * All weights still sum up to 1.
    * Note these weights only work because the averaging is done in relative coordinates.
    */
@@ -1116,7 +1065,7 @@ bool BKE_gpencil_stroke_smooth_point(bGPDstroke *gps,
   }
   total_w += w - w2;
   /* The accumulated weight total_w should be
-   * ~sqrt(M_PI * n_half) * exp((iterations * iterations) / n_half) < 100
+   * `~sqrt(M_PI * n_half) * exp((iterations * iterations) / n_half) < 100`
    * here, but sometimes not quite. */
   mul_v3_fl(sco, float(1.0 / total_w));
   /* Shift back to global coordinates. */
@@ -1714,8 +1663,8 @@ float BKE_gpencil_stroke_segment_length(const bGPDstroke *gps,
     return 0.0f;
   }
 
-  int index = MAX2(start_index, 0) + 1;
-  int last_index = MIN2(end_index, gps->totpoints - 1) + 1;
+  int index = std::max(start_index, 0) + 1;
+  int last_index = std::min(end_index, gps->totpoints - 1) + 1;
 
   float *last_pt = &gps->points[index - 1].x;
   float total_length = 0.0f;
@@ -1856,7 +1805,7 @@ bool BKE_gpencil_stroke_close(bGPDstroke *gps)
   }
 
   /* Calc number of points required using the average distance. */
-  int tot_newpoints = MAX2(dist_close / dist_avg, 1);
+  int tot_newpoints = std::max<int>(dist_close / dist_avg, 1);
 
   /* Resize stroke array. */
   int old_tot = gps->totpoints;
@@ -2500,28 +2449,29 @@ static void gpencil_generate_edgeloops(Object *ob,
                                        const bool use_vgroups)
 {
   using namespace blender;
-  Mesh *me = (Mesh *)ob->data;
-  if (me->totedge == 0) {
+  using namespace blender::bke;
+  Mesh *mesh = (Mesh *)ob->data;
+  if (mesh->edges_num == 0) {
     return;
   }
-  const Span<float3> vert_positions = me->vert_positions();
-  const Span<int2> edges = me->edges();
-  const Span<MDeformVert> dverts = me->deform_verts();
-  const blender::Span<blender::float3> vert_normals = me->vert_normals();
-  const bke::AttributeAccessor attributes = me->attributes();
+  const Span<float3> vert_positions = mesh->vert_positions();
+  const Span<int2> edges = mesh->edges();
+  const Span<MDeformVert> dverts = mesh->deform_verts();
+  const blender::Span<blender::float3> vert_normals = mesh->vert_normals();
+  const bke::AttributeAccessor attributes = mesh->attributes();
   const VArray<bool> uv_seams = *attributes.lookup_or_default<bool>(
-      ".uv_seam", ATTR_DOMAIN_EDGE, false);
+      ".uv_seam", AttrDomain::Edge, false);
 
   /* Arrays for all edge vertices (forward and backward) that form a edge loop.
    * This is reused for each edge-loop to create gpencil stroke. */
-  uint *stroke = (uint *)MEM_mallocN(sizeof(uint) * me->totedge * 2, __func__);
-  uint *stroke_fw = (uint *)MEM_mallocN(sizeof(uint) * me->totedge, __func__);
-  uint *stroke_bw = (uint *)MEM_mallocN(sizeof(uint) * me->totedge, __func__);
+  uint *stroke = (uint *)MEM_mallocN(sizeof(uint) * mesh->edges_num * 2, __func__);
+  uint *stroke_fw = (uint *)MEM_mallocN(sizeof(uint) * mesh->edges_num, __func__);
+  uint *stroke_bw = (uint *)MEM_mallocN(sizeof(uint) * mesh->edges_num, __func__);
 
   /* Create array with all edges. */
-  GpEdge *gp_edges = (GpEdge *)MEM_callocN(sizeof(GpEdge) * me->totedge, __func__);
+  GpEdge *gp_edges = (GpEdge *)MEM_callocN(sizeof(GpEdge) * mesh->edges_num, __func__);
   GpEdge *gped = nullptr;
-  for (int i = 0; i < me->totedge; i++) {
+  for (int i = 0; i < mesh->edges_num; i++) {
     const blender::int2 &edge = edges[i];
     gped = &gp_edges[i];
     copy_v3_v3(gped->n1, vert_normals[edge[0]]);
@@ -2549,7 +2499,7 @@ static void gpencil_generate_edgeloops(Object *ob,
     /* Look first unused edge. */
     if (gped->flag != 0) {
       e++;
-      if (e == me->totedge) {
+      if (e == mesh->edges_num) {
         pending = false;
       }
       continue;
@@ -2562,9 +2512,10 @@ static void gpencil_generate_edgeloops(Object *ob,
     /* Hash used to avoid loop over same vertices. */
     GHash *v_table = BLI_ghash_int_new(__func__);
     /* Look forward edges. */
-    int totedges = gpencil_walk_edge(v_table, gp_edges, me->totedge, stroke_fw, e, angle, false);
+    int totedges = gpencil_walk_edge(
+        v_table, gp_edges, mesh->edges_num, stroke_fw, e, angle, false);
     /* Look backward edges. */
-    int totbw = gpencil_walk_edge(v_table, gp_edges, me->totedge, stroke_bw, e, angle, true);
+    int totbw = gpencil_walk_edge(v_table, gp_edges, mesh->edges_num, stroke_bw, e, angle, true);
 
     BLI_ghash_free(v_table, nullptr, nullptr);
 
@@ -2581,7 +2532,7 @@ static void gpencil_generate_edgeloops(Object *ob,
 
     /* Create Stroke. */
     bGPDstroke *gps_stroke = BKE_gpencil_stroke_add(
-        gpf_stroke, MAX2(stroke_mat_index, 0), array_len + 1, thickness * thickness, false);
+        gpf_stroke, std::max(stroke_mat_index, 0), array_len + 1, thickness * thickness, false);
 
     /* Create dvert data. */
     if (use_vgroups && !dverts.is_empty()) {
@@ -2686,7 +2637,7 @@ static void make_element_name(const char *obname, const char *name, const int ma
   SNPRINTF(str, "%s_%s", obname, name);
 
   /* Replace any point by underscore. */
-  BLI_str_replace_char(str, '.', '_');
+  BLI_string_replace_char(str, '.', '_');
 
   BLI_strncpy_utf8(r_name, str, maxlen);
 }
@@ -2719,13 +2670,13 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
   Object *ob_eval = (Object *)DEG_get_evaluated_object(depsgraph, ob_mesh);
   const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
   const Span<float3> positions = me_eval->vert_positions();
-  const OffsetIndices polys = me_eval->polys();
+  const OffsetIndices faces = me_eval->faces();
   const Span<int> corner_verts = me_eval->corner_verts();
-  int polys_len = me_eval->totpoly;
+  int faces_len = me_eval->faces_num;
   char element_name[200];
 
   /* Need at least an edge. */
-  if (me_eval->totedge < 1) {
+  if (me_eval->edges_num < 1) {
     return false;
   }
 
@@ -2745,7 +2696,7 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
   }
 
   /* Export faces as filled strokes. */
-  if (use_faces && polys_len > 0) {
+  if (use_faces && faces_len > 0) {
     /* Read all polygons and create fill for each. */
     make_element_name(ob_mesh->id.name + 2, "Fills", 128, element_name);
     /* Create Layer and Frame. */
@@ -2758,9 +2709,9 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
     int i;
 
     const VArray<int> mesh_material_indices = *me_eval->attributes().lookup_or_default<int>(
-        "material_index", ATTR_DOMAIN_FACE, 0);
-    for (i = 0; i < polys_len; i++) {
-      const IndexRange poly = polys[i];
+        "material_index", AttrDomain::Face, 0);
+    for (i = 0; i < faces_len; i++) {
+      const IndexRange face = faces[i];
 
       /* Find material. */
       int mat_idx = 0;
@@ -2780,19 +2731,19 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
         gpencil_add_material(bmain, ob_gp, element_name, color, false, true, &mat_idx);
       }
 
-      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(gpf_fill, mat_idx, poly.size(), 10, false);
+      bGPDstroke *gps_fill = BKE_gpencil_stroke_add(gpf_fill, mat_idx, face.size(), 10, false);
       gps_fill->flag |= GP_STROKE_CYCLIC;
 
       /* Create dvert data. */
       const Span<MDeformVert> dverts = me_eval->deform_verts();
       if (use_vgroups && !dverts.is_empty()) {
-        gps_fill->dvert = (MDeformVert *)MEM_callocN(sizeof(MDeformVert) * poly.size(),
+        gps_fill->dvert = (MDeformVert *)MEM_callocN(sizeof(MDeformVert) * face.size(),
                                                      "gp_fill_dverts");
       }
 
       /* Add points to strokes. */
-      for (int j = 0; j < poly.size(); j++) {
-        const int vert = corner_verts[poly[j]];
+      for (int j = 0; j < face.size(); j++) {
+        const int vert = corner_verts[face[j]];
 
         bGPDspoint *pt = &gps_fill->points[j];
         copy_v3_v3(&pt->x, positions[vert]);
@@ -2814,7 +2765,7 @@ bool BKE_gpencil_convert_mesh(Main *bmain,
         }
       }
       /* If has only 3 points subdivide. */
-      if (poly.size() == 3) {
+      if (face.size() == 3) {
         BKE_gpencil_stroke_subdivide(gpd, gps_fill, 1, GP_SUBDIV_SIMPLE);
       }
 
@@ -3558,8 +3509,8 @@ void BKE_gpencil_stroke_join(bGPDstroke *gps_a,
   if (smooth) {
     const int sample_points = 8;
     /* Get the segment to smooth using n points on each side of the join. */
-    int start = MAX2(0, totpoints_a - sample_points);
-    int end = MIN2(gps_a->totpoints - 1, start + (sample_points * 2));
+    int start = std::max(0, totpoints_a - sample_points);
+    int end = std::min(gps_a->totpoints - 1, start + (sample_points * 2));
     const int len = (end - start);
     float step = 1.0f / ((len / 2) + 1);
 
@@ -3760,7 +3711,7 @@ void BKE_gpencil_stroke_uniform_subdivide(bGPdata *gpd,
                    (float *)&sp_next->vertex_color,
                    0.5f);
     if (sp->dw && sp_next->dw) {
-      new_sp->totweight = MIN2(sp->totweight, sp_next->totweight);
+      new_sp->totweight = std::min(sp->totweight, sp_next->totweight);
       new_sp->dw = (MDeformWeight *)MEM_callocN(sizeof(MDeformWeight) * new_sp->totweight,
                                                 __func__);
       for (uint32_t i = 0; i < new_sp->totweight; ++i) {

@@ -120,8 +120,7 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
         if (geom->is_mesh()) {
           Mesh *mesh = static_cast<Mesh *>(geom);
           if (mesh->get_subdivision_type() != Mesh::SUBDIVISION_NONE) {
-            PointerRNA id_ptr;
-            RNA_id_pointer_create((::ID *)iter.first.id, &id_ptr);
+            PointerRNA id_ptr = RNA_id_pointer_create((::ID *)iter.first.id);
             geometry_map.set_recalc(BL::ID(id_ptr));
           }
         }
@@ -188,7 +187,8 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
           if (updated_geometry) {
             BL::Object::particle_systems_iterator b_psys;
             for (b_ob.particle_systems.begin(b_psys); b_psys != b_ob.particle_systems.end();
-                 ++b_psys) {
+                 ++b_psys)
+            {
               particle_system_map.set_recalc(b_ob);
             }
           }
@@ -356,8 +356,14 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
     scene->light_manager->tag_update(scene, LightManager::UPDATE_ALL);
   }
 
-  SamplingPattern sampling_pattern = (SamplingPattern)get_enum(
-      cscene, "sampling_pattern", SAMPLING_NUM_PATTERNS, SAMPLING_PATTERN_TABULATED_SOBOL);
+  SamplingPattern sampling_pattern;
+  if (use_developer_ui) {
+    sampling_pattern = (SamplingPattern)get_enum(
+        cscene, "sampling_pattern", SAMPLING_NUM_PATTERNS, SAMPLING_PATTERN_TABULATED_SOBOL);
+  }
+  else {
+    sampling_pattern = SAMPLING_PATTERN_TABULATED_SOBOL;
+  }
   integrator->set_sampling_pattern(sampling_pattern);
 
   int samples = 1;
@@ -400,7 +406,8 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
   /* Only use scrambling distance in the viewport if user wants to. */
   bool preview_scrambling_distance = get_boolean(cscene, "preview_scrambling_distance");
   if ((preview && !preview_scrambling_distance) ||
-      sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY) {
+      sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY)
+  {
     scrambling_distance = 1.0f;
   }
 
@@ -467,10 +474,12 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
    * is that the interface and the integrator are technically out of sync. */
   if (denoise_params.use) {
     integrator->set_denoiser_type(denoise_params.type);
+    integrator->set_denoise_use_gpu(denoise_params.use_gpu);
     integrator->set_denoise_start_sample(denoise_params.start_sample);
     integrator->set_use_denoise_pass_albedo(denoise_params.use_pass_albedo);
     integrator->set_use_denoise_pass_normal(denoise_params.use_pass_normal);
     integrator->set_denoiser_prefilter(denoise_params.prefilter);
+    integrator->set_denoiser_quality(denoise_params.quality);
   }
 
   /* UPDATE_NONE as we don't want to tag the integrator as modified (this was done by the
@@ -794,15 +803,19 @@ SceneParams BlenderSync::get_scene_params(BL::Scene &b_scene,
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
   const bool shadingsystem = RNA_boolean_get(&cscene, "shading_system");
 
-  if (shadingsystem == 0)
+  if (shadingsystem == 0) {
     params.shadingsystem = SHADINGSYSTEM_SVM;
-  else if (shadingsystem == 1)
+  }
+  else if (shadingsystem == 1) {
     params.shadingsystem = SHADINGSYSTEM_OSL;
+  }
 
-  if (background || (use_developer_ui && get_enum(cscene, "debug_bvh_type")))
+  if (background || (use_developer_ui && get_enum(cscene, "debug_bvh_type"))) {
     params.bvh_type = BVH_TYPE_STATIC;
-  else
+  }
+  else {
     params.bvh_type = BVH_TYPE_DYNAMIC;
+  }
 
   params.use_bvh_spatial_split = RNA_boolean_get(&cscene, "debug_use_spatial_splits");
   params.use_bvh_compact_structure = RNA_boolean_get(&cscene, "debug_use_compact_bvh");
@@ -904,10 +917,12 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine &b_engine,
   /* shading system - scene level needs full refresh */
   const bool shadingsystem = RNA_boolean_get(&cscene, "shading_system");
 
-  if (shadingsystem == 0)
+  if (shadingsystem == 0) {
     params.shadingsystem = SHADINGSYSTEM_SVM;
-  else if (shadingsystem == 1)
+  }
+  else if (shadingsystem == 1) {
     params.shadingsystem = SHADINGSYSTEM_OSL;
+  }
 
   /* Time limit. */
   if (background) {
@@ -957,8 +972,12 @@ DenoiseParams BlenderSync::get_denoise_params(BL::Scene &b_scene,
     /* Final Render Denoising */
     denoising.use = get_boolean(cscene, "use_denoising");
     denoising.type = (DenoiserType)get_enum(cscene, "denoiser", DENOISER_NUM, DENOISER_NONE);
+    denoising.use_gpu = get_boolean(cscene, "denoising_use_gpu");
     denoising.prefilter = (DenoiserPrefilter)get_enum(
         cscene, "denoising_prefilter", DENOISER_PREFILTER_NUM, DENOISER_PREFILTER_NONE);
+    /* This currently only affects NVIDIA and the difference in quality is too small to justify
+     * exposing a setting to the user. */
+    denoising.quality = DENOISER_QUALITY_HIGH;
 
     input_passes = (DenoiserInput)get_enum(
         cscene, "denoising_input_passes", DENOISER_INPUT_NUM, DENOISER_INPUT_RGB_ALBEDO_NORMAL);
@@ -975,8 +994,12 @@ DenoiseParams BlenderSync::get_denoise_params(BL::Scene &b_scene,
     denoising.use = get_boolean(cscene, "use_preview_denoising");
     denoising.type = (DenoiserType)get_enum(
         cscene, "preview_denoiser", DENOISER_NUM, DENOISER_NONE);
+    denoising.use_gpu = get_boolean(cscene, "preview_denoising_use_gpu");
     denoising.prefilter = (DenoiserPrefilter)get_enum(
         cscene, "preview_denoising_prefilter", DENOISER_PREFILTER_NUM, DENOISER_PREFILTER_FAST);
+    /* This currently only affects NVIDIA and the difference in quality is too small to justify
+     * exposing a setting to the user. */
+    denoising.quality = DENOISER_QUALITY_BALANCED;
     denoising.start_sample = get_int(cscene, "preview_denoising_start_sample");
 
     input_passes = (DenoiserInput)get_enum(

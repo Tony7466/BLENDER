@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2021 Blender Foundation
+# SPDX-FileCopyrightText: 2021 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -8,23 +8,17 @@ set(INC
   ../intern
   ../../editors/include
   ../../blenkernel
-  ../../blenlib
   ../../blentranslation
-  ../../depsgraph
   ../../functions
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../render
   ../../windowmanager
   ../../compositor/realtime_compositor
   ../../compositor/realtime_compositor/algorithms
   ../../compositor/realtime_compositor/cached_resources
-  ../../../../intern/guardedalloc
 
-  # dna_type_offsets.h
-  ${CMAKE_CURRENT_BINARY_DIR}/../../makesdna/intern
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
 )
@@ -65,6 +59,7 @@ set(SRC
   nodes/node_composite_double_edge_mask.cc
   nodes/node_composite_ellipsemask.cc
   nodes/node_composite_exposure.cc
+  nodes/node_composite_file_output.cc
   nodes/node_composite_filter.cc
   nodes/node_composite_flip.cc
   nodes/node_composite_gamma.cc
@@ -91,7 +86,6 @@ set(SRC
   nodes/node_composite_moviedistortion.cc
   nodes/node_composite_normal.cc
   nodes/node_composite_normalize.cc
-  nodes/node_composite_output_file.cc
   nodes/node_composite_pixelate.cc
   nodes/node_composite_planetrackdeform.cc
   nodes/node_composite_posterize.cc
@@ -107,7 +101,7 @@ set(SRC
   nodes/node_composite_sepcomb_ycca.cc
   nodes/node_composite_sepcomb_yuva.cc
   nodes/node_composite_setalpha.cc
-  nodes/node_composite_split_viewer.cc
+  nodes/node_composite_split.cc
   nodes/node_composite_stabilize2d.cc
   nodes/node_composite_sunbeams.cc
   nodes/node_composite_switch.cc
@@ -132,6 +126,10 @@ set(SRC
 )
 
 set(LIB
+  PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
+  PRIVATE bf::intern::guardedalloc
   bf_realtime_compositor
 )
 
@@ -161,12 +159,7 @@ endif()
 
 blender_add_lib(bf_nodes_composite "${SRC}" "${INC}" "${INC_SYS}" "${LIB}")
 
-if(WITH_UNITY_BUILD)
-  set_target_properties(bf_nodes_composite PROPERTIES UNITY_BUILD ON)
-  set_target_properties(bf_nodes_composite PROPERTIES UNITY_BUILD_BATCH_SIZE 10)
-endif()
+blender_set_target_unity_build(bf_nodes_composite 10)
 
-# Needed so we can use dna_type_offsets.h for defaults initialization.
-add_dependencies(bf_nodes_composite bf_dna)
 # RNA_prototypes.h
 add_dependencies(bf_nodes_composite bf_rna)

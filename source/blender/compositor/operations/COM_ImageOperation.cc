@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,9 +6,8 @@
 
 #include "BKE_scene.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_interp.hh"
 
 namespace blender::compositor {
 
@@ -22,8 +21,6 @@ BaseImageOperation::BaseImageOperation()
   imagewidth_ = 0;
   imageheight_ = 0;
   framenumber_ = 0;
-  image_depth_buffer_ = nullptr;
-  depth_buffer_ = nullptr;
   number_of_channels_ = 0;
   rd_ = nullptr;
   view_name_ = nullptr;
@@ -33,10 +30,6 @@ ImageOperation::ImageOperation() : BaseImageOperation()
   this->add_output_socket(DataType::Color);
 }
 ImageAlphaOperation::ImageAlphaOperation() : BaseImageOperation()
-{
-  this->add_output_socket(DataType::Value);
-}
-ImageDepthOperation::ImageDepthOperation() : BaseImageOperation()
 {
   this->add_output_socket(DataType::Value);
 }
@@ -71,10 +64,6 @@ void BaseImageOperation::init_execution()
   if (stackbuf) {
     image_float_buffer_ = stackbuf->float_buffer.data;
     image_byte_buffer_ = stackbuf->byte_buffer.data;
-    image_depth_buffer_ = stackbuf->float_z_buffer.data;
-    if (stackbuf->float_z_buffer.data) {
-      depth_buffer_ = new MemoryBuffer(stackbuf->float_z_buffer.data, 1, stackbuf->x, stackbuf->y);
-    }
     imagewidth_ = stackbuf->x;
     imageheight_ = stackbuf->y;
     number_of_channels_ = stackbuf->channels;
@@ -86,10 +75,6 @@ void BaseImageOperation::deinit_execution()
   image_float_buffer_ = nullptr;
   image_byte_buffer_ = nullptr;
   BKE_image_release_ibuf(image_, buffer_, nullptr);
-  if (depth_buffer_) {
-    delete depth_buffer_;
-    depth_buffer_ = nullptr;
-  }
 }
 
 void BaseImageOperation::determine_canvas(const rcti & /*preferred_area*/, rcti &r_area)
@@ -105,38 +90,47 @@ void BaseImageOperation::determine_canvas(const rcti & /*preferred_area*/, rcti 
   BKE_image_release_ibuf(image_, stackbuf, nullptr);
 }
 
-static void sample_image_at_location(
-    ImBuf *ibuf, float x, float y, PixelSampler sampler, bool make_linear_rgb, float color[4])
+static void sample_image_at_location(ImBuf *ibuf,
+                                     float x,
+                                     float y,
+                                     PixelSampler sampler,
+                                     bool make_linear_rgb,
+                                     bool ensure_premultiplied,
+                                     float color[4])
 {
   if (ibuf->float_buffer.data) {
     switch (sampler) {
       case PixelSampler::Nearest:
-        nearest_interpolation_color(ibuf, nullptr, color, x, y);
+        imbuf::interpolate_nearest_fl(ibuf, color, x, y);
         break;
       case PixelSampler::Bilinear:
-        bilinear_interpolation_color(ibuf, nullptr, color, x, y);
+        imbuf::interpolate_bilinear_border_fl(ibuf, color, x, y);
         break;
       case PixelSampler::Bicubic:
-        bicubic_interpolation_color(ibuf, nullptr, color, x, y);
+        imbuf::interpolate_cubic_bspline_fl(ibuf, color, x, y);
         break;
     }
   }
   else {
-    uchar byte_color[4];
+    uchar4 byte_color;
     switch (sampler) {
       case PixelSampler::Nearest:
-        nearest_interpolation_color(ibuf, byte_color, nullptr, x, y);
+        byte_color = imbuf::interpolate_nearest_byte(ibuf, x, y);
         break;
       case PixelSampler::Bilinear:
-        bilinear_interpolation_color(ibuf, byte_color, nullptr, x, y);
+        byte_color = imbuf::interpolate_bilinear_border_byte(ibuf, x, y);
         break;
       case PixelSampler::Bicubic:
-        bicubic_interpolation_color(ibuf, byte_color, nullptr, x, y);
+        byte_color = imbuf::interpolate_cubic_bspline_byte(ibuf, x, y);
         break;
     }
     rgba_uchar_to_float(color, byte_color);
     if (make_linear_rgb) {
-      IMB_colormanagement_colorspace_to_scene_linear_v4(color, false, ibuf->rect_colorspace);
+      IMB_colormanagement_colorspace_to_scene_linear_v4(
+          color, false, ibuf->byte_buffer.colorspace);
+    }
+    if (ensure_premultiplied) {
+      straight_to_premul_v4(color);
     }
   }
 }
@@ -151,7 +145,9 @@ void ImageOperation::execute_pixel_sampled(float output[4], float x, float y, Pi
     zero_v4(output);
   }
   else {
-    sample_image_at_location(buffer_, x, y, sampler, true, output);
+    const bool ensure_premultiplied = !ELEM(
+        image_->alpha_mode, IMA_ALPHA_CHANNEL_PACKED, IMA_ALPHA_IGNORE);
+    sample_image_at_location(buffer_, x, y, sampler, true, ensure_premultiplied, output);
   }
 }
 
@@ -159,7 +155,9 @@ void ImageOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                   const rcti &area,
                                                   Span<MemoryBuffer *> /*inputs*/)
 {
-  output->copy_from(buffer_, area, true);
+  const bool ensure_premultiplied = !ELEM(
+      image_->alpha_mode, IMA_ALPHA_CHANNEL_PACKED, IMA_ALPHA_IGNORE);
+  output->copy_from(buffer_, area, ensure_premultiplied, true);
 }
 
 void ImageAlphaOperation::execute_pixel_sampled(float output[4],
@@ -174,7 +172,7 @@ void ImageAlphaOperation::execute_pixel_sampled(float output[4],
   }
   else {
     tempcolor[3] = 1.0f;
-    sample_image_at_location(buffer_, x, y, sampler, false, tempcolor);
+    sample_image_at_location(buffer_, x, y, sampler, false, false, tempcolor);
     output[0] = tempcolor[3];
   }
 }
@@ -184,37 +182,6 @@ void ImageAlphaOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                        Span<MemoryBuffer *> /*inputs*/)
 {
   output->copy_from(buffer_, area, 3, COM_DATA_TYPE_VALUE_CHANNELS, 0);
-}
-
-void ImageDepthOperation::execute_pixel_sampled(float output[4],
-                                                float x,
-                                                float y,
-                                                PixelSampler /*sampler*/)
-{
-  if (image_depth_buffer_ == nullptr) {
-    output[0] = 0.0f;
-  }
-  else {
-    if (x < 0 || y < 0 || x >= this->get_width() || y >= this->get_height()) {
-      output[0] = 0.0f;
-    }
-    else {
-      int offset = y * get_width() + x;
-      output[0] = image_depth_buffer_[offset];
-    }
-  }
-}
-
-void ImageDepthOperation::update_memory_buffer_partial(MemoryBuffer *output,
-                                                       const rcti &area,
-                                                       Span<MemoryBuffer *> /*inputs*/)
-{
-  if (depth_buffer_) {
-    output->copy_from(depth_buffer_, area);
-  }
-  else {
-    output->fill(area, COM_VALUE_ZERO);
-  }
 }
 
 }  // namespace blender::compositor

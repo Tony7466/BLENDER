@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -85,7 +85,9 @@ int UnaryFunction0DFloat_Init(PyObject *module)
 
 //------------------------INSTANCE METHODS ----------------------------------
 
-static char UnaryFunction0DFloat___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    UnaryFunction0DFloat___doc__,
     "Class hierarchy: :class:`UnaryFunction0D` > :class:`UnaryFunction0DFloat`\n"
     "\n"
     "Base class for unary functions (functors) that work on\n"
@@ -93,7 +95,7 @@ static char UnaryFunction0DFloat___doc__[] =
     "\n"
     ".. method:: __init__()\n"
     "\n"
-    "   Default constructor.\n";
+    "   Default constructor.\n");
 
 static int UnaryFunction0DFloat___init__(BPy_UnaryFunction0DFloat *self,
                                          PyObject *args,
@@ -150,7 +152,7 @@ static PyObject *UnaryFunction0DFloat___call__(BPy_UnaryFunction0DFloat *self,
 /*-----------------------BPy_UnaryFunction0DFloat type definition ------------------------------*/
 
 PyTypeObject UnaryFunction0DFloat_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "UnaryFunction0DFloat",
     /*tp_basicsize*/ sizeof(BPy_UnaryFunction0DFloat),
     /*tp_itemsize*/ 0,

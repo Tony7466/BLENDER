@@ -1,11 +1,11 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
 from bpy.types import Operator
 from bpy.props import StringProperty
-from bpy.app.translations import pgettext_tip as tip_
+from bpy.app.translations import pgettext_rpt as rpt_
 
 
 class EditExternally(Operator):
@@ -55,7 +55,7 @@ class EditExternally(Operator):
 
         if not os.path.exists(filepath) or not os.path.isfile(filepath):
             self.report({'ERROR'},
-                        tip_("Image path %r not found, image may be packed or "
+                        rpt_("Image path %r not found, image may be packed or "
                              "unsaved") % filepath)
             return {'CANCELLED'}
 
@@ -63,7 +63,7 @@ class EditExternally(Operator):
 
         try:
             subprocess.Popen(cmd)
-        except:
+        except BaseException:
             import traceback
             traceback.print_exc()
             self.report({'ERROR'},
@@ -119,8 +119,8 @@ class ProjectEdit(Operator):
         # opengl buffer may fail, we can't help this, but best report it.
         try:
             bpy.ops.paint.image_from_view()
-        except RuntimeError as err:
-            self.report({'ERROR'}, str(err))
+        except RuntimeError as ex:
+            self.report({'ERROR'}, str(ex))
             return {'CANCELLED'}
 
         image_new = None
@@ -166,8 +166,8 @@ class ProjectEdit(Operator):
 
         try:
             bpy.ops.image.external_edit(filepath=filepath_final)
-        except RuntimeError as re:
-            self.report({'ERROR'}, str(re))
+        except RuntimeError as ex:
+            self.report({'ERROR'}, str(ex))
 
         return {'FINISHED'}
 
@@ -182,7 +182,7 @@ class ProjectApply(Operator):
         image_name = ProjectEdit._proj_hack[0]  # TODO, deal with this nicer
         image = bpy.data.images.get((image_name, None))
         if image is None:
-            self.report({'ERROR'}, tip_("Could not find image '%s'") % image_name)
+            self.report({'ERROR'}, rpt_("Could not find image '%s'") % image_name)
             return {'CANCELLED'}
 
         image.reload()

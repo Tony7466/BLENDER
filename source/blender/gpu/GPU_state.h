@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -96,7 +96,7 @@ typedef enum eGPUBlend {
   /** Order independent transparency.
    * NOTE: Cannot be used as is. Needs special setup (frame-buffer, shader ...). */
   GPU_BLEND_OIT,
-  /** Special blend to add color under and multiply dst color by src alpha. */
+  /** Special blend to add color under and multiply DST color by SRC alpha. */
   GPU_BLEND_BACKGROUND,
   /** Custom blend parameters using dual source blending : SRC0 + SRC1 * DST
    * NOTE: Can only be used with _ONE_ Draw Buffer and shader needs to be specialized. */
@@ -156,7 +156,7 @@ void GPU_line_smooth(bool enable);
 /**
  * \note By convention, this is set as needed and not reset back to 1.0.
  * This means code that draws lines must always set the line width beforehand,
- * but is not expected to restore it's previous value.
+ * but is not expected to restore its previous value.
  */
 void GPU_line_width(float width);
 void GPU_logic_op_xor_set(bool enable);

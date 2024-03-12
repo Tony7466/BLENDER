@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,34 +11,30 @@
 #include "DNA_meshdata_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 
-#include "DRW_engine.h"
-#include "DRW_render.h"
+#include "DRW_engine.hh"
+#include "DRW_render.hh"
 
-#include "ED_gpencil_legacy.h"
+#include "ED_gpencil_legacy.hh"
 #include "GPU_batch.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "BLI_hash.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_polyfill_2d.h"
 
-#include "draw_cache.h"
-#include "draw_cache_impl.h"
+#include "draw_cache.hh"
+#include "draw_cache_impl.hh"
 
 #include "../engines/gpencil/gpencil_defines.h"
 #include "../engines/gpencil/gpencil_shader_shared.h"
 
 #define BEZIER_HANDLE (1 << 3)
 #define COLOR_SHIFT 5
-
-/* -------------------------------------------------------------------- */
-/** \name Internal Types
- * \{ */
 
 struct GpencilBatchCache {
   /** Instancing Data */
@@ -67,6 +63,12 @@ struct GpencilBatchCache {
   /** Last cache frame */
   int cache_frame;
 };
+
+namespace blender::draw {
+
+/* -------------------------------------------------------------------- */
+/** \name Internal Types
+ * \{ */
 
 /** \} */
 
@@ -283,7 +285,7 @@ BLI_INLINE int32_t pack_rotation_aspect_hardness(float rot, float asp, float har
     packed |= 1 << 8;
   }
   /* Rotation uses 9 bits */
-  /* Rotation are in [-90°..90°] range, so we can encode the sign of the angle + the cosine
+  /* Rotation are in [-90..90 degree] range, so we can encode the sign of the angle + the cosine
    * because the cosine will always be positive. */
   packed |= int32_t(unit_float_to_uchar_clamp(cosf(rot))) << 9;
   /* Store sine sign in 9th bit. */
@@ -329,7 +331,7 @@ static void gpencil_buffer_add_point(GPUIndexBufBuilder *ibo,
   float aspect_ratio = gps->aspect_ratio[0] / max_ff(gps->aspect_ratio[1], 1e-8);
 
   vert->packed_asp_hard_rot = pack_rotation_aspect_hardness(
-      pt->uv_rot, aspect_ratio, gps->hardeness);
+      pt->uv_rot, aspect_ratio, gps->hardness);
 
   if (!is_endpoint) {
     /* Issue a Quad per point. */
@@ -567,7 +569,7 @@ bGPDstroke *DRW_cache_gpencil_sbuffer_stroke_data_get(Object *ob)
     gps->mat_nr = max_ii(0, gpd->runtime.matid - 1);
     gps->flag = gpd->runtime.sbuffer_sflag;
     gps->thickness = brush->size;
-    gps->hardeness = brush->gpencil_settings->hardeness;
+    gps->hardness = brush->gpencil_settings->hardness;
     copy_v2_v2(gps->aspect_ratio, brush->gpencil_settings->aspect_ratio);
 
     /* Reduce slightly the opacity of fill to make easy fill areas while drawing. */
@@ -990,9 +992,11 @@ GPUBatch *DRW_cache_gpencil_edit_curve_points_get(Object *ob, int cfra)
   return cache->edit_curve_points_batch;
 }
 
-int DRW_gpencil_material_count_get(bGPdata *gpd)
+int DRW_gpencil_material_count_get(const bGPdata *gpd)
 {
   return max_ii(1, gpd->totcol);
 }
 
 /** \} */
+
+}  // namespace blender::draw

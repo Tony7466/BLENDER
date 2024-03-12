@@ -9,7 +9,7 @@
  * \ingroup GHOST
  */
 
-#include <stdio.h>
+#include <cstdio>
 
 #ifdef WITH_X11_XF86VMODE
 #  include <X11/Xlib.h>
@@ -67,7 +67,7 @@ GHOST_TSuccess GHOST_DisplayManagerX11::getNumDisplaySettings(uint8_t display,
 
 /* from SDL2 */
 #ifdef WITH_X11_XF86VMODE
-static int calculate_rate(XF86VidModeModeInfo *info)
+static int calculate_rate(const XF86VidModeModeInfo *info)
 {
   return (info->htotal && info->vtotal) ? (1000 * info->dotclock / (info->htotal * info->vtotal)) :
                                           0;
@@ -159,7 +159,7 @@ GHOST_TSuccess GHOST_DisplayManagerX11::setCurrentDisplaySetting(
     fprintf(stderr, "Error: XF86VidMode extension missing!\n");
     return GHOST_kFailure;
   }
-#  ifdef DEBUG
+#  ifndef NDEBUG
   printf("Using XFree86-VidModeExtension Version %d.%d\n", majorVersion, minorVersion);
 #  endif
 
@@ -199,7 +199,7 @@ GHOST_TSuccess GHOST_DisplayManagerX11::setCurrentDisplaySetting(
     }
 
     if (best_fit != -1) {
-#  ifdef DEBUG
+#  ifndef NDEBUG
       printf("Switching to video mode %dx%d %dx%d %d\n",
              vidmodes[best_fit]->hdisplay,
              vidmodes[best_fit]->vdisplay,

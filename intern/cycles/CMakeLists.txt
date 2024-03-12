@@ -37,7 +37,10 @@ if(WITH_CYCLES_NATIVE_ONLY)
   )
 
   if(NOT MSVC)
-    add_check_cxx_compiler_flag(CMAKE_CXX_FLAGS _has_march_native "-march=native")
+    add_check_cxx_compiler_flags(
+      CMAKE_CXX_FLAGS
+      _has_march_native "-march=native"
+    )
     if(_has_march_native)
       set(CYCLES_KERNEL_FLAGS "-march=native")
     else()
@@ -82,6 +85,13 @@ elseif(WIN32 AND MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # Unlike GCC/clang we still use fast math, because there is no fine
   # grained control and the speedup we get here is too big to ignore.
   set(CYCLES_KERNEL_FLAGS "/fp:fast -D_CRT_SECURE_NO_WARNINGS /GS-")
+
+  # "jumptablerdata" improves performance when there is contention in large switch statements such as in svm.h
+  # This flag is supported starting with MSVC 17.7 preview 3:
+  # https://learn.microsoft.com/en-us/cpp/build/reference/jump-table-rdata
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.37.32820)
+    string(APPEND CYCLES_KERNEL_FLAGS " /jumptablerdata")
+  endif()
 
   # there is no /arch:SSE3, but intrinsics are available anyway
   if(CMAKE_CL_64)
@@ -181,18 +191,10 @@ if(CXX_HAS_AVX2)
   add_definitions(-DWITH_KERNEL_AVX2)
 endif()
 
-# LLVM and OSL need to build without RTTI
-if(WIN32 AND MSVC)
-  set(RTTI_DISABLE_FLAGS "/GR- -DBOOST_NO_RTTI -DBOOST_NO_TYPEID")
-elseif(CMAKE_COMPILER_IS_GNUCC OR (CMAKE_C_COMPILER_ID MATCHES "Clang"))
-  set(RTTI_DISABLE_FLAGS "-fno-rtti -DBOOST_NO_RTTI -DBOOST_NO_TYPEID")
-endif()
-
 # Definitions and Includes
 
 add_definitions(
   ${BOOST_DEFINITIONS}
-  ${OPENIMAGEIO_DEFINITIONS}
 )
 
 add_definitions(
@@ -204,6 +206,7 @@ include_directories(
   SYSTEM
   ${BOOST_INCLUDE_DIR}
   ${OPENIMAGEIO_INCLUDE_DIRS}
+  ${IMATH_INCLUDE_DIRS}
   ${OPENEXR_INCLUDE_DIRS}
   ${PUGIXML_INCLUDE_DIR}
 )
@@ -401,7 +404,10 @@ endif()
 
 # Warnings
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_C_COMPILER_ID MATCHES "Clang")
-  add_check_cxx_compiler_flag(CMAKE_CXX_FLAGS _has_no_error_unused_macros "-Wno-error=unused-macros")
+  add_check_cxx_compiler_flags(
+    CMAKE_CXX_FLAGS
+    _has_no_error_unused_macros "-Wno-error=unused-macros"
+  )
   unset(_has_no_error_unused_macros)
 endif()
 

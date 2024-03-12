@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2017 Blender Foundation
+/* SPDX-FileCopyrightText: 2017 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -25,17 +25,18 @@
 #include "BLI_threads.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_curve.h"
+#include "BKE_curve.hh"
 #include "BKE_global.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_update_cache_legacy.h"
 #include "BKE_idprop.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_object_types.hh"
 #include "BKE_scene.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -50,10 +51,9 @@
 #include "DNA_rigidbody_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sequence_types.h"
-#include "DNA_simulation_types.h"
 #include "DNA_sound_types.h"
 
-#include "DRW_engine.h"
+#include "DRW_engine.hh"
 
 #ifdef NESTED_ID_NASTY_WORKAROUND
 #  include "DNA_curve_types.h"
@@ -71,22 +71,22 @@
 #include "BKE_action.h"
 #include "BKE_anim_data.h"
 #include "BKE_animsys.h"
-#include "BKE_armature.h"
-#include "BKE_editmesh.h"
-#include "BKE_lib_query.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_armature.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
 #include "BKE_pointcache.h"
 #include "BKE_sound.h"
 
-#include "SEQ_relations.h"
+#include "SEQ_relations.hh"
 
 #include "intern/builder/deg_builder.h"
 #include "intern/builder/deg_builder_nodes.h"
-#include "intern/depsgraph.h"
+#include "intern/depsgraph.hh"
 #include "intern/eval/deg_eval_runtime_backup.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_id.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_id.hh"
 
 namespace blender::deg {
 
@@ -107,7 +107,6 @@ union NestedIDHackTempStorage {
   Scene scene;
   Tex tex;
   World world;
-  Simulation simulation;
 };
 
 /* Set nested owned ID pointers to nullptr. */
@@ -125,7 +124,6 @@ void nested_id_hack_discard_pointers(ID *id_cow)
     SPECIAL_CASE(ID_MA, Material, nodetree)
     SPECIAL_CASE(ID_TE, Tex, nodetree)
     SPECIAL_CASE(ID_WO, World, nodetree)
-    SPECIAL_CASE(ID_SIM, Simulation, nodetree)
 
     SPECIAL_CASE(ID_CU_LEGACY, Curve, key)
     SPECIAL_CASE(ID_LT, Lattice, key)
@@ -174,7 +172,6 @@ const ID *nested_id_hack_get_discarded_pointers(NestedIDHackTempStorage *storage
     SPECIAL_CASE(ID_MA, Material, nodetree, material)
     SPECIAL_CASE(ID_TE, Tex, nodetree, tex)
     SPECIAL_CASE(ID_WO, World, nodetree, world)
-    SPECIAL_CASE(ID_SIM, Simulation, nodetree, simulation)
 
     SPECIAL_CASE(ID_CU_LEGACY, Curve, key, curve)
     SPECIAL_CASE(ID_LT, Lattice, key, lattice)
@@ -214,7 +211,6 @@ void nested_id_hack_restore_pointers(const ID *old_id, ID *new_id)
     SPECIAL_CASE(ID_SCE, Scene, nodetree)
     SPECIAL_CASE(ID_TE, Tex, nodetree)
     SPECIAL_CASE(ID_WO, World, nodetree)
-    SPECIAL_CASE(ID_SIM, Simulation, nodetree)
 
     SPECIAL_CASE(ID_CU_LEGACY, Curve, key)
     SPECIAL_CASE(ID_LT, Lattice, key)
@@ -252,7 +248,6 @@ void ntree_hack_remap_pointers(const Depsgraph *depsgraph, ID *id_cow)
     SPECIAL_CASE(ID_SCE, Scene, nodetree, bNodeTree)
     SPECIAL_CASE(ID_TE, Tex, nodetree, bNodeTree)
     SPECIAL_CASE(ID_WO, World, nodetree, bNodeTree)
-    SPECIAL_CASE(ID_SIM, Simulation, nodetree, bNodeTree)
 
     SPECIAL_CASE(ID_CU_LEGACY, Curve, key, Key)
     SPECIAL_CASE(ID_LT, Lattice, key, Key)
@@ -275,11 +270,11 @@ bool id_copy_inplace_no_main(const ID *id, ID *newid)
 {
   const ID *id_for_copy = id;
 
-  if (G.debug & G_DEBUG_DEPSGRAPH_UUID) {
+  if (G.debug & G_DEBUG_DEPSGRAPH_UID) {
     const ID_Type id_type = GS(id_for_copy->name);
     if (id_type == ID_OB) {
       const Object *object = reinterpret_cast<const Object *>(id_for_copy);
-      BKE_object_check_uuids_unique_and_report(object);
+      BKE_object_check_uids_unique_and_report(object);
     }
   }
 
@@ -308,8 +303,8 @@ bool id_copy_inplace_no_main(const ID *id, ID *newid)
 bool scene_copy_inplace_no_main(const Scene *scene, Scene *new_scene)
 {
 
-  if (G.debug & G_DEBUG_DEPSGRAPH_UUID) {
-    SEQ_relations_check_uuids_unique_and_report(scene);
+  if (G.debug & G_DEBUG_DEPSGRAPH_UID) {
+    SEQ_relations_check_uids_unique_and_report(scene);
   }
 
 #ifdef NESTED_ID_NASTY_WORKAROUND
@@ -712,7 +707,7 @@ void update_id_after_copy(const Depsgraph *depsgraph,
       const Object *object_orig = (const Object *)id_orig;
       object_cow->mode = object_orig->mode;
       object_cow->sculpt = object_orig->sculpt;
-      object_cow->runtime.data_orig = (ID *)object_cow->data;
+      object_cow->runtime->data_orig = (ID *)object_cow->data;
       if (object_cow->type == OB_ARMATURE) {
         const bArmature *armature_orig = (bArmature *)object_orig->data;
         bArmature *armature_cow = (bArmature *)object_cow->data;

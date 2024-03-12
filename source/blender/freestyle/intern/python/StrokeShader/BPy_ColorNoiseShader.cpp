@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,7 +20,9 @@ using namespace Freestyle;
 
 //------------------------INSTANCE METHODS ----------------------------------
 
-static char ColorNoiseShader___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ColorNoiseShader___doc__,
     "Class hierarchy: :class:`freestyle.types.StrokeShader` > :class:`ColorNoiseShader`\n"
     "\n"
     "[Color shader]\n"
@@ -39,7 +41,7 @@ static char ColorNoiseShader___doc__[] =
     "   Shader to add noise to the stroke colors.\n"
     "\n"
     "   :arg stroke: A Stroke object.\n"
-    "   :type stroke: :class:`freestyle.types.Stroke`\n";
+    "   :type stroke: :class:`freestyle.types.Stroke`\n");
 
 static int ColorNoiseShader___init__(BPy_ColorNoiseShader *self, PyObject *args, PyObject *kwds)
 {
@@ -56,7 +58,7 @@ static int ColorNoiseShader___init__(BPy_ColorNoiseShader *self, PyObject *args,
 /*-----------------------BPy_ColorNoiseShader type definition ------------------------------*/
 
 PyTypeObject ColorNoiseShader_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "ColorNoiseShader",
     /*tp_basicsize*/ sizeof(BPy_ColorNoiseShader),
     /*tp_itemsize*/ 0,

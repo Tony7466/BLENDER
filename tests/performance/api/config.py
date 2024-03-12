@@ -1,11 +1,10 @@
-# SPDX-FileCopyrightText: 2021-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2021-2023 Blender Authors
 #
 # SPDX-License-Identifier: Apache-2.0
 
 import fnmatch
 import json
 import pathlib
-import sys
 
 from dataclasses import dataclass, field
 from typing import Dict, List
@@ -15,7 +14,6 @@ from .test import TestCollection
 
 def get_build_hash(args: None) -> str:
     import bpy
-    import sys
     build_hash = bpy.app.build_hash.decode('utf-8')
     return '' if build_hash == 'Unknown' else build_hash
 
@@ -55,7 +53,6 @@ class TestQueue:
 
     def __init__(self, filepath: pathlib.Path):
         self.filepath = filepath
-        self.has_multiple_revisions_to_build = False
         self.has_multiple_categories = False
         self.entries = []
 
@@ -119,6 +116,7 @@ class TestConfig:
         self.name = name
         self.base_dir = env.base_dir / name
         self.logs_dir = self.base_dir / 'logs'
+        self.builds_dir = self.base_dir / 'builds'
 
         config = TestConfig._read_config_module(self.base_dir)
         self.tests = TestCollection(env,
@@ -208,18 +206,12 @@ class TestConfig:
             date = env.git_hash_date(git_hash)
             entries += self._get_entries(revision_name, git_hash, '', environment, date)
 
-        # Optimization to avoid rebuilds.
-        revisions_to_build = set()
-        for entry in entries:
-            if entry.status in {'queued', 'outdated'}:
-                revisions_to_build.add(entry.git_hash)
-        self.queue.has_multiple_revisions_to_build = len(revisions_to_build) > 1
-
         # Get entries for revisions based on existing builds.
         for revision_name, executable in self.builds.items():
             executable, environment = self._split_environment_variables(executable)
             executable_path = env._blender_executable_from_path(pathlib.Path(executable))
             if not executable_path:
+                import sys
                 sys.stderr.write(f'Error: build {executable} not found\n')
                 sys.exit(1)
 

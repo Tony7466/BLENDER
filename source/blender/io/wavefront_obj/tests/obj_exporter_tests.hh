@@ -1,10 +1,10 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
 #pragma once
 
-#include "IO_wavefront_obj.h"
+#include "IO_wavefront_obj.hh"
 
 namespace blender::io::obj {
 
@@ -40,6 +40,8 @@ struct OBJExportParamsDefault {
     params.export_vertex_groups = false;
     params.export_smooth_groups = true;
     params.smooth_groups_bitflags = false;
+
+    params.reports = nullptr;
   }
 };
 

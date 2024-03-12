@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
 
 #include "COM_ExecutionSystem.h"
 #include "COM_WorkScheduler.h"
-#include "COM_compositor.h"
+#include "COM_compositor.hh"
 
 #include "RE_compositor.hh"
 
@@ -54,7 +54,8 @@ void COM_execute(Render *render,
                  Scene *scene,
                  bNodeTree *node_tree,
                  bool rendering,
-                 const char *view_name)
+                 const char *view_name,
+                 blender::realtime_compositor::RenderContext *render_context)
 {
   /* Initialize mutex, TODO: this mutex init is actually not thread safe and
    * should be done somewhere as part of blender startup, all the other
@@ -80,11 +81,8 @@ void COM_execute(Render *render,
       node_tree->execution_mode == NTREE_EXECUTION_MODE_REALTIME)
   {
     /* Realtime GPU compositor. */
-
-    /* TODO: add persistence and depsgraph updates for better performance. */
-    blender::render::RealtimeCompositor compositor(
-        *render, *scene, *render_data, *node_tree, rendering, view_name);
-    compositor.execute();
+    RE_compositor_execute(
+        *render, *scene, *render_data, *node_tree, rendering, view_name, render_context);
   }
   else {
     /* Tiled and Full Frame compositors. */
@@ -98,7 +96,7 @@ void COM_execute(Render *render,
     const bool twopass = (node_tree->flag & NTREE_TWO_PASS) && !rendering;
     if (twopass) {
       blender::compositor::ExecutionSystem fast_pass(
-          render_data, scene, node_tree, rendering, true, view_name);
+          render_data, scene, node_tree, rendering, true, view_name, render_context);
       fast_pass.execute();
 
       if (node_tree->runtime->test_break(node_tree->runtime->tbh)) {
@@ -108,7 +106,7 @@ void COM_execute(Render *render,
     }
 
     blender::compositor::ExecutionSystem system(
-        render_data, scene, node_tree, rendering, false, view_name);
+        render_data, scene, node_tree, rendering, false, view_name, render_context);
     system.execute();
   }
 

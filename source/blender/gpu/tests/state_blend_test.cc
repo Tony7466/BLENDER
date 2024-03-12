@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: Apache-2.0 */
 
@@ -13,7 +13,7 @@
 
 #include "BLI_math_vector.hh"
 
-#include "intern/draw_cache.h"
+#include "intern/draw_cache.hh"
 
 namespace blender::gpu::tests {
 

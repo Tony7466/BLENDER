@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2010-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2010-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,19 +17,19 @@
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 
 #include "DNA_armature_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_scene_types.h"
 
 #include "BKE_action.h"
-#include "BKE_deform.h"
-#include "BKE_object.h"
+#include "BKE_deform.hh"
+#include "BKE_object.hh"
 #include "BKE_object_deform.h"
 
-#include "ED_mesh.h"
-#include "ED_object.h"
+#include "ED_mesh.hh"
+#include "ED_object.hh"
 
 #include "SkinInfo.h"
 #include "collada_utils.h"

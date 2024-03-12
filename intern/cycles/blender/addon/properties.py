@@ -14,7 +14,10 @@ from bpy.props import (
     PointerProperty,
     StringProperty,
 )
-from bpy.app.translations import pgettext_iface as iface_
+from bpy.app.translations import (
+    contexts as i18n_contexts,
+    pgettext_rpt as rpt_
+)
 
 from math import pi
 
@@ -40,12 +43,6 @@ enum_feature_set = (
      1),
 )
 
-enum_displacement_methods = (
-    ('BUMP', "Bump Only", "Bump mapping to simulate the appearance of displacement"),
-    ('DISPLACEMENT', "Displacement Only", "Use true displacement of surface only, requires fine subdivision"),
-    ('BOTH', "Displacement and Bump", "Combination of true displacement and bump mapping for finer detail"),
-)
-
 enum_bvh_layouts = (
     ('BVH2', "BVH2", "", 1),
     ('EMBREE', "Embree", "", 4),
@@ -60,17 +57,6 @@ enum_filter_types = (
     ('BOX', "Box", "Box filter"),
     ('GAUSSIAN', "Gaussian", "Gaussian filter"),
     ('BLACKMAN_HARRIS', "Blackman-Harris", "Blackman-Harris filter"),
-)
-
-enum_panorama_types = (
-    ('EQUIRECTANGULAR', "Equirectangular", "Spherical camera for environment maps, also known as Lat Long panorama", 0),
-    ('EQUIANGULAR_CUBEMAP_FACE', "Equiangular Cubemap Face", "Single face of an equiangular cubemap", 5),
-    ('MIRRORBALL', "Mirror Ball", "Mirror ball mapping for environment maps", 3),
-    ('FISHEYE_EQUIDISTANT', "Fisheye Equidistant", "Ideal for fulldomes, ignore the sensor dimensions", 1),
-    ('FISHEYE_EQUISOLID', "Fisheye Equisolid",
-                          "Similar to most fisheye modern lens, takes sensor dimensions into consideration", 2),
-    ('FISHEYE_LENS_POLYNOMIAL', "Fisheye Lens Polynomial",
-     "Defines the lens projection as polynomial to allow real world camera lenses to be mimicked", 4),
 )
 
 enum_curve_shape = (
@@ -230,7 +216,8 @@ enum_guiding_directional_sampling_types = (
 def enum_openimagedenoise_denoiser(self, context):
     import _cycles
     if _cycles.with_openimagedenoise:
-        return [('OPENIMAGEDENOISE', "OpenImageDenoise", "Use Intel OpenImageDenoise AI denoiser running on the CPU", 4)]
+        return [('OPENIMAGEDENOISE', "OpenImageDenoise",
+                 "Use Intel OpenImageDenoise AI denoiser", 4)]
     return []
 
 
@@ -365,6 +352,11 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         items=enum_denoising_input_passes,
         default='RGB_ALBEDO_NORMAL',
     )
+    denoising_use_gpu: BoolProperty(
+        name="Denoise on GPU",
+        description="Perform denoising on GPU devices, if available. This is significantly faster than on CPU, but requires additional GPU memory. When large scenes need more GPU memory, this option can be disabled",
+        default=False,
+    )
 
     use_preview_denoising: BoolProperty(
         name="Use Viewport Denoising",
@@ -394,6 +386,11 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         description="Sample to start denoising the preview at",
         min=0, max=(1 << 24),
         default=1,
+    )
+    preview_denoising_use_gpu: BoolProperty(
+        name="Denoise Preview on GPU",
+        description="Perform denoising on GPU devices, if available. This is significantly faster than on CPU, but requires additional GPU memory. When large scenes need more GPU memory, this option can be disabled",
+        default=True,
     )
 
     samples: IntProperty(
@@ -1011,108 +1008,19 @@ class CyclesRenderSettings(bpy.types.PropertyGroup):
         del bpy.types.Scene.cycles
 
 
-class CyclesCameraSettings(bpy.types.PropertyGroup):
-
-    panorama_type: EnumProperty(
-        name="Panorama Type",
-        description="Distortion to use for the calculation",
-        items=enum_panorama_types,
-        default='FISHEYE_EQUISOLID',
-    )
-    fisheye_fov: FloatProperty(
-        name="Field of View",
-        description="Field of view for the fisheye lens",
-        min=0.1745, soft_max=2.0 * pi, max=10.0 * pi,
-        subtype='ANGLE',
-        default=pi,
-    )
-    fisheye_lens: FloatProperty(
-        name="Fisheye Lens",
-        description="Lens focal length (mm)",
-        min=0.01, soft_max=15.0, max=100.0,
-        default=10.5,
-    )
-    latitude_min: FloatProperty(
-        name="Min Latitude",
-        description="Minimum latitude (vertical angle) for the equirectangular lens",
-        min=-0.5 * pi, max=0.5 * pi,
-        subtype='ANGLE',
-        default=-0.5 * pi,
-    )
-    latitude_max: FloatProperty(
-        name="Max Latitude",
-        description="Maximum latitude (vertical angle) for the equirectangular lens",
-        min=-0.5 * pi, max=0.5 * pi,
-        subtype='ANGLE',
-        default=0.5 * pi,
-    )
-    longitude_min: FloatProperty(
-        name="Min Longitude",
-        description="Minimum longitude (horizontal angle) for the equirectangular lens",
-        min=-pi, max=pi,
-        subtype='ANGLE',
-        default=-pi,
-    )
-    longitude_max: FloatProperty(
-        name="Max Longitude",
-        description="Maximum longitude (horizontal angle) for the equirectangular lens",
-        min=-pi, max=pi,
-        subtype='ANGLE',
-        default=pi,
-    )
-
-    fisheye_polynomial_k0: FloatProperty(
-        name="Fisheye Polynomial K0",
-        description="Coefficient K0 of the lens polynomial",
-        default=camera.default_fisheye_polynomial[0], precision=6, step=0.1, subtype='ANGLE',
-    )
-    fisheye_polynomial_k1: FloatProperty(
-        name="Fisheye Polynomial K1",
-        description="Coefficient K1 of the lens polynomial",
-        default=camera.default_fisheye_polynomial[1], precision=6, step=0.1, subtype='ANGLE',
-    )
-    fisheye_polynomial_k2: FloatProperty(
-        name="Fisheye Polynomial K2",
-        description="Coefficient K2 of the lens polynomial",
-        default=camera.default_fisheye_polynomial[2], precision=6, step=0.1, subtype='ANGLE',
-    )
-    fisheye_polynomial_k3: FloatProperty(
-        name="Fisheye Polynomial K3",
-        description="Coefficient K3 of the lens polynomial",
-        default=camera.default_fisheye_polynomial[3], precision=6, step=0.1, subtype='ANGLE',
-    )
-    fisheye_polynomial_k4: FloatProperty(
-        name="Fisheye Polynomial K4",
-        description="Coefficient K4 of the lens polynomial",
-        default=camera.default_fisheye_polynomial[4], precision=6, step=0.1, subtype='ANGLE',
-    )
-
-    @classmethod
-    def register(cls):
-        bpy.types.Camera.cycles = PointerProperty(
-            name="Cycles Camera Settings",
-            description="Cycles camera settings",
-            type=cls,
-        )
-
-    @classmethod
-    def unregister(cls):
-        del bpy.types.Camera.cycles
-
-
 class CyclesMaterialSettings(bpy.types.PropertyGroup):
 
     emission_sampling: EnumProperty(
         name="Emission Sampling",
         description="Sampling strategy for emissive surfaces",
+        translation_context=i18n_contexts.id_light,
         items=enum_emission_sampling,
         default="AUTO",
     )
 
-    use_transparent_shadow: BoolProperty(
-        name="Transparent Shadows",
-        description="Use transparent shadows for this material if it contains a Transparent BSDF, "
-        "disabling will render faster but not give accurate shadows",
+    use_bump_map_correction: BoolProperty(
+        name="Bump Map Correction",
+        description="Apply corrections to solve shadow terminator artifacts caused by bump mapping",
         default=True,
     )
     homogeneous_volume: BoolProperty(
@@ -1141,13 +1049,6 @@ class CyclesMaterialSettings(bpy.types.PropertyGroup):
                     "(lower values give more accurate and detailed results, but also increased render time)",
         default=1.0,
         min=0.001, max=1000.0, soft_min=0.1, soft_max=10.0, precision=4
-    )
-
-    displacement_method: EnumProperty(
-        name="Displacement Method",
-        description="Method to use for the displacement",
-        items=enum_displacement_methods,
-        default='BUMP',
     )
 
     @classmethod
@@ -1568,11 +1469,16 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         default=False,
     )
 
-    use_metalrt: BoolProperty(
-        name="MetalRT (Experimental)",
+    metalrt: EnumProperty(
+        name="MetalRT",
         description="MetalRT for ray tracing uses less memory for scenes which use curves extensively, and can give better "
-                    "performance in specific cases. However this support is experimental and some scenes may render incorrectly",
-        default=False,
+                    "performance in specific cases",
+        default='AUTO',
+        items=(
+            ('OFF', "Off", "Disable MetalRT (uses BVH2 layout for intersection queries)"),
+            ('ON', "On", "Enable MetalRT for intersection queries"),
+            ('AUTO', "Auto", "Automatically pick the fastest intersection method"),
+        ),
     )
 
     use_hiprt: BoolProperty(
@@ -1695,6 +1601,22 @@ class CyclesPreferences(bpy.types.AddonPreferences):
     def has_active_device(self):
         return self.get_num_gpu_devices() > 0
 
+    def has_oidn_gpu_devices(self):
+        import _cycles
+        compute_device_type = self.get_compute_device_type()
+
+        # We need non-CPU devices, used for rendering and supporting OIDN GPU denoising
+        for device in _cycles.available_devices(compute_device_type):
+            device_type = device[1]
+            if device_type == 'CPU':
+                continue
+
+            has_device_oidn_support = device[5]
+            if has_device_oidn_support and self.find_existing_device_entry(device).use:
+                return True
+
+        return False
+
     def _draw_devices(self, layout, device_type, devices):
         box = layout.box()
 
@@ -1706,50 +1628,62 @@ class CyclesPreferences(bpy.types.AddonPreferences):
 
         if not found_device:
             col = box.column(align=True)
-            col.label(text="No compatible GPUs found for Cycles", icon='INFO')
+            col.label(text=rpt_("No compatible GPUs found for Cycles"), icon='INFO', translate=False)
 
             if device_type == 'CUDA':
                 compute_capability = "3.0"
-                col.label(text=iface_("Requires NVIDIA GPU with compute capability %s") % compute_capability,
+                col.label(text=rpt_("Requires NVIDIA GPU with compute capability %s") % compute_capability,
                           icon='BLANK1', translate=False)
             elif device_type == 'OPTIX':
                 compute_capability = "5.0"
                 driver_version = "470"
-                col.label(text=iface_("Requires NVIDIA GPU with compute capability %s") % compute_capability,
+                col.label(text=rpt_("Requires NVIDIA GPU with compute capability %s") % compute_capability,
                           icon='BLANK1', translate=False)
-                col.label(text=iface_("and NVIDIA driver version %s or newer") % driver_version,
+                col.label(text=rpt_("and NVIDIA driver version %s or newer") % driver_version,
                           icon='BLANK1', translate=False)
             elif device_type == 'HIP':
                 import sys
                 if sys.platform[:3] == "win":
                     driver_version = "21.Q4"
-                    col.label(text="Requires AMD GPU with Vega or RDNA architecture", icon='BLANK1')
-                    col.label(text=iface_("and AMD Radeon Pro %s driver or newer") % driver_version,
+                    col.label(
+                        text=rpt_("Requires AMD GPU with Vega or RDNA architecture"),
+                        icon='BLANK1',
+                        translate=False)
+                    col.label(text=rpt_("and AMD Radeon Pro %s driver or newer") % driver_version,
                               icon='BLANK1', translate=False)
                 elif sys.platform.startswith("linux"):
                     driver_version = "22.10"
-                    col.label(text="Requires AMD GPU with Vega or RDNA architecture", icon='BLANK1')
-                    col.label(text=iface_("and AMD driver version %s or newer") % driver_version, icon='BLANK1',
+                    col.label(
+                        text=rpt_("Requires AMD GPU with Vega or RDNA architecture"),
+                        icon='BLANK1',
+                        translate=False)
+                    col.label(text=rpt_("and AMD driver version %s or newer") % driver_version, icon='BLANK1',
                               translate=False)
             elif device_type == 'ONEAPI':
                 import sys
                 if sys.platform.startswith("win"):
-                    driver_version = "101.4032"
-                    col.label(text="Requires Intel GPU with Xe-HPG architecture", icon='BLANK1')
-                    col.label(text=iface_("and Windows driver version %s or newer") % driver_version,
+                    driver_version = "XX.X.101.5186"
+                    col.label(text=rpt_("Requires Intel GPU with Xe-HPG architecture"), icon='BLANK1', translate=False)
+                    col.label(text=rpt_("and Windows driver version %s or newer") % driver_version,
                               icon='BLANK1', translate=False)
                 elif sys.platform.startswith("linux"):
-                    driver_version = "1.3.24931"
-                    col.label(text="Requires Intel GPU with Xe-HPG architecture and", icon='BLANK1')
-                    col.label(text=iface_("  - intel-level-zero-gpu version %s or newer") % driver_version,
-                              icon='BLANK1', translate=False)
-                    col.label(text="  - oneAPI Level-Zero Loader", icon='BLANK1')
+                    driver_version = "XX.XX.27642.38"
+                    col.label(
+                        text=rpt_("Requires Intel GPU with Xe-HPG architecture and"),
+                        icon='BLANK1',
+                        translate=False)
+                    col.label(
+                        text=rpt_("  - intel-level-zero-gpu or intel-compute-runtime version"),
+                        icon='BLANK1',
+                        translate=False)
+                    col.label(text=rpt_("    %s or newer") % driver_version, icon='BLANK1', translate=False)
+                    col.label(text=rpt_("  - oneAPI Level-Zero Loader"), icon='BLANK1', translate=False)
             elif device_type == 'METAL':
                 silicon_mac_version = "12.2"
                 amd_mac_version = "12.3"
-                col.label(text=iface_("Requires Apple Silicon with macOS %s or newer") % silicon_mac_version,
+                col.label(text=rpt_("Requires Apple Silicon with macOS %s or newer") % silicon_mac_version,
                           icon='BLANK1', translate=False)
-                col.label(text=iface_("or AMD with macOS %s or newer") % amd_mac_version, icon='BLANK1',
+                col.label(text=rpt_("or AMD with macOS %s or newer") % amd_mac_version, icon='BLANK1',
                           translate=False)
             return
 
@@ -1777,9 +1711,14 @@ class CyclesPreferences(bpy.types.AddonPreferences):
 
         import _cycles
         has_peer_memory = 0
+        has_rt_api_support = {'METAL': False, 'HIP': False, 'ONEAPI': False}
         for device in _cycles.available_devices(compute_device_type):
             if device[3] and self.find_existing_device_entry(device).use:
                 has_peer_memory += 1
+            if device[4] and self.find_existing_device_entry(device).use:
+                device_type = device[1]
+                has_rt_api_support[device_type] = True
+
         if has_peer_memory > 1:
             row = layout.row()
             row.use_property_split = True
@@ -1796,22 +1735,25 @@ class CyclesPreferences(bpy.types.AddonPreferences):
 
             # MetalRT only works on Apple Silicon and Navi2.
             is_arm64 = platform.machine() == 'arm64'
-            if is_arm64 or is_navi_2:
+            if is_arm64 or (is_navi_2 and has_rt_api_support['METAL']):
                 col = layout.column()
                 col.use_property_split = True
                 # Kernel specialization is only supported on Apple Silicon
                 if is_arm64:
                     col.prop(self, "kernel_optimization_level")
-                col.prop(self, "use_metalrt")
+                if has_rt_api_support['METAL']:
+                    col.prop(self, "metalrt")
 
         if compute_device_type == 'HIP':
-            has_cuda, has_optix, has_hip, has_metal, has_oneapi, has_hiprt = _cycles.get_device_types()
-            row = layout.row()
-            row.enabled = has_hiprt
-            row.prop(self, "use_hiprt")
+            import platform
+            if platform.system() == "Windows":  # HIP-RT is currently only supported on Windows
+                row = layout.row()
+                row.active = has_rt_api_support['HIP']
+                row.prop(self, "use_hiprt")
 
         elif compute_device_type == 'ONEAPI' and _cycles.with_embree_gpu:
             row = layout.row()
+            row.active = has_rt_api_support['ONEAPI']
             row.prop(self, "use_oneapirt")
 
     def draw(self, context):
@@ -1833,7 +1775,6 @@ class CyclesView3DShadingSettings(bpy.types.PropertyGroup):
 
 def register():
     bpy.utils.register_class(CyclesRenderSettings)
-    bpy.utils.register_class(CyclesCameraSettings)
     bpy.utils.register_class(CyclesMaterialSettings)
     bpy.utils.register_class(CyclesLightSettings)
     bpy.utils.register_class(CyclesWorldSettings)
@@ -1854,7 +1795,6 @@ def register():
 
 def unregister():
     bpy.utils.unregister_class(CyclesRenderSettings)
-    bpy.utils.unregister_class(CyclesCameraSettings)
     bpy.utils.unregister_class(CyclesMaterialSettings)
     bpy.utils.unregister_class(CyclesLightSettings)
     bpy.utils.unregister_class(CyclesWorldSettings)

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,7 +6,7 @@
  * \ingroup depsgraph
  */
 
-#include "intern/node/deg_node_id.h"
+#include "intern/node/deg_node_id.hh"
 
 #include <cstdio>
 #include <cstring> /* required for STREQ later on. */
@@ -17,14 +17,14 @@
 #include "DNA_ID.h"
 #include "DNA_anim_types.h"
 
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
 #include "intern/eval/deg_eval_copy_on_write.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_factory.h"
-#include "intern/node/deg_node_time.h"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_factory.hh"
+#include "intern/node/deg_node_time.hh"
 
 namespace blender::deg {
 
@@ -62,7 +62,7 @@ void IDNode::init(const ID *id, const char * /*subdata*/)
   /* Store ID-pointer. */
   id_type = GS(id->name);
   id_orig = (ID *)id;
-  id_orig_session_uuid = id->session_uuid;
+  id_orig_session_uid = id->session_uid;
   eval_flags = 0;
   previous_eval_flags = 0;
   customdata_masks = DEGCustomDataMeshMasks();

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2014 Blender Foundation
+/* SPDX-FileCopyrightText: 2014 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,16 +15,18 @@
 
 #include "DNA_listBase.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_debug.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_debug.hh"
 
-#include "intern/depsgraph.h"
-#include "intern/depsgraph_relation.h"
+#include "intern/depsgraph.hh"
+#include "intern/depsgraph_relation.hh"
 
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
-#include "intern/node/deg_node_time.h"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
+#include "intern/node/deg_node_time.hh"
+
+#include <sstream>
 
 namespace deg = blender::deg;
 namespace dot = blender::dot;
@@ -284,11 +286,13 @@ static void deg_debug_graphviz_relation_arrowhead(const Relation *rel, dot::Dire
   const char *shape_no_cow = "box";
   const char *shape = shape_default;
   if (rel->from->get_class() == NodeClass::OPERATION &&
-      rel->to->get_class() == NodeClass::OPERATION) {
+      rel->to->get_class() == NodeClass::OPERATION)
+  {
     OperationNode *op_from = (OperationNode *)rel->from;
     OperationNode *op_to = (OperationNode *)rel->to;
     if (op_from->owner->type == NodeType::COPY_ON_WRITE &&
-        !op_to->owner->need_tag_cow_before_update()) {
+        !op_to->owner->need_tag_cow_before_update())
+    {
       shape = shape_no_cow;
     }
   }
@@ -403,15 +407,15 @@ static void deg_debug_graphviz_node(DotExportContext &ctx,
     case NodeType::OBJECT_FROM_LAYER:
     case NodeType::HIERARCHY:
     case NodeType::BATCH_CACHE:
-    case NodeType::DUPLI:
+    case NodeType::INSTANCING:
     case NodeType::SYNCHRONIZATION:
     case NodeType::AUDIO:
     case NodeType::ARMATURE:
     case NodeType::GENERIC_DATABLOCK:
+    case NodeType::SCENE:
     case NodeType::VISIBILITY:
     case NodeType::NTREE_OUTPUT:
-    case NodeType::NTREE_GEOMETRY_PREPROCESS:
-    case NodeType::SIMULATION: {
+    case NodeType::NTREE_GEOMETRY_PREPROCESS: {
       ComponentNode *comp_node = (ComponentNode *)node;
       if (comp_node->operations.is_empty()) {
         deg_debug_graphviz_node_single(ctx, node, parent_cluster);

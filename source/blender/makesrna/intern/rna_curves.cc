@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,26 +6,26 @@
  * \ingroup RNA
  */
 
-#include <stdlib.h>
+#include <cstdlib>
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
 #include "DNA_curves_types.h"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
-const EnumPropertyItem rna_enum_curves_types[] = {
+const EnumPropertyItem rna_enum_curves_type_items[] = {
     {CURVE_TYPE_CATMULL_ROM, "CATMULL_ROM", 0, "Catmull Rom", ""},
     {CURVE_TYPE_POLY, "POLY", 0, "Poly", ""},
-    {CURVE_TYPE_BEZIER, "BEZIER", 0, "Bezier", ""},
+    {CURVE_TYPE_BEZIER, "BEZIER", 0, "Bézier", ""},
     {CURVE_TYPE_NURBS, "NURBS", 0, "NURBS", ""},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
-const EnumPropertyItem rna_enum_curve_normal_modes[] = {
+const EnumPropertyItem rna_enum_curve_normal_mode_items[] = {
     {NORMAL_MODE_MINIMUM_TWIST,
      "MINIMUM_TWIST",
      ICON_NONE,
@@ -37,22 +37,31 @@ const EnumPropertyItem rna_enum_curve_normal_modes[] = {
      "Z Up",
      "Calculate normals perpendicular to the Z axis and the curve tangent. If a series of points "
      "is vertical, the X axis is used"},
+    {NORMAL_MODE_FREE,
+     "FREE",
+     ICON_NONE,
+     "Free",
+     "Use the stored custom normal attribute as the final normals"},
     {0, nullptr, 0, nullptr, nullptr},
 };
 
 #ifdef RNA_RUNTIME
 
+#  include <fmt/format.h>
+
 #  include "BLI_math_vector.h"
+#  include "BLI_offset_indices.hh"
 
-#  include "BKE_attribute.h"
-#  include "BKE_curves.h"
+#  include "BKE_attribute.hh"
+#  include "BKE_curves.hh"
+#  include "BKE_report.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
-#  include "ED_curves.h"
+#  include "ED_curves.hh"
 
-#  include "WM_api.h"
-#  include "WM_types.h"
+#  include "WM_api.hh"
+#  include "WM_types.hh"
 
 static Curves *rna_curves(const PointerRNA *ptr)
 {
@@ -69,7 +78,7 @@ static void rna_Curves_curve_offset_data_begin(CollectionPropertyIterator *iter,
 {
   Curves *curves = rna_curves(ptr);
   rna_iterator_array_begin(iter,
-                           ED_curves_offsets_for_write(curves),
+                           curves->geometry.wrap().offsets_for_write().data(),
                            sizeof(int),
                            curves->geometry.curve_num + 1,
                            false,
@@ -84,27 +93,25 @@ static int rna_Curves_curve_offset_data_lookup_int(PointerRNA *ptr, int index, P
   }
   r_ptr->owner_id = &curves->id;
   r_ptr->type = &RNA_IntAttributeValue;
-  r_ptr->data = &ED_curves_offsets_for_write(curves)[index];
+  r_ptr->data = &curves->geometry.wrap().offsets_for_write()[index];
   return true;
 }
 
-static float (*get_curves_positions(Curves *curves))[3]
+static float (*get_curves_positions_for_write(Curves &curves))[3]
 {
-  return (float(*)[3])CustomData_get_layer_named_for_write(
-      &curves->geometry.point_data, CD_PROP_FLOAT3, "position", curves->geometry.point_num);
+  return reinterpret_cast<float(*)[3]>(curves.geometry.wrap().positions_for_write().data());
 }
 
-static const float (*get_curves_positions_const(const Curves *curves))[3]
+static const float (*get_curves_positions(const Curves &curves))[3]
 {
-  return (const float(*)[3])CustomData_get_layer_named(
-      &curves->geometry.point_data, CD_PROP_FLOAT3, "position");
+  return reinterpret_cast<const float(*)[3]>(curves.geometry.wrap().positions().data());
 }
 
 static int rna_CurvePoint_index_get_const(const PointerRNA *ptr)
 {
   const Curves *curves = rna_curves(ptr);
   const float(*co)[3] = static_cast<float(*)[3]>(ptr->data);
-  const float(*positions)[3] = get_curves_positions_const(curves);
+  const float(*positions)[3] = get_curves_positions(*curves);
   return int(co - positions);
 }
 
@@ -112,7 +119,7 @@ static void rna_Curves_curves_begin(CollectionPropertyIterator *iter, PointerRNA
 {
   Curves *curves = rna_curves(ptr);
   rna_iterator_array_begin(iter,
-                           ED_curves_offsets_for_write(curves),
+                           curves->geometry.wrap().offsets_for_write().data(),
                            sizeof(int),
                            curves->geometry.curve_num,
                            false,
@@ -133,7 +140,7 @@ static int rna_Curves_curves_lookup_int(PointerRNA *ptr, int index, PointerRNA *
   }
   r_ptr->owner_id = &curves->id;
   r_ptr->type = &RNA_CurveSlice;
-  r_ptr->data = &ED_curves_offsets_for_write(curves)[index];
+  r_ptr->data = &curves->geometry.wrap().offsets_for_write()[index];
   return true;
 }
 
@@ -151,7 +158,7 @@ int rna_Curves_position_data_lookup_int(PointerRNA *ptr, int index, PointerRNA *
   }
   r_ptr->owner_id = &curves->id;
   r_ptr->type = &RNA_FloatVectorAttributeValue;
-  r_ptr->data = &get_curves_positions(curves)[index];
+  r_ptr->data = &get_curves_positions_for_write(*curves)[index];
   return true;
 }
 
@@ -159,7 +166,7 @@ static void rna_Curves_position_data_begin(CollectionPropertyIterator *iter, Poi
 {
   Curves *curves = rna_curves(ptr);
   rna_iterator_array_begin(iter,
-                           get_curves_positions(curves),
+                           get_curves_positions_for_write(*curves),
                            sizeof(float[3]),
                            curves->geometry.point_num,
                            false,
@@ -183,29 +190,30 @@ static void rna_CurvePoint_location_set(PointerRNA *ptr, const float value[3])
 
 static float rna_CurvePoint_radius_get(PointerRNA *ptr)
 {
+  using namespace blender;
   const Curves *curves = rna_curves(ptr);
-  const float *radii = static_cast<const float *>(
-      CustomData_get_layer_named(&curves->geometry.point_data, CD_PROP_FLOAT, "radius"));
-  if (radii == nullptr) {
-    return 0.0f;
-  }
+  const bke::AttributeAccessor attributes = curves->geometry.wrap().attributes();
+  const VArray radii = *attributes.lookup_or_default<float>(
+      "radius", bke::AttrDomain::Point, 0.0f);
   return radii[rna_CurvePoint_index_get_const(ptr)];
 }
 
 static void rna_CurvePoint_radius_set(PointerRNA *ptr, float value)
 {
+  using namespace blender;
   Curves *curves = rna_curves(ptr);
-  float *radii = static_cast<float *>(CustomData_get_layer_named_for_write(
-      &curves->geometry.point_data, CD_PROP_FLOAT, "radius", curves->geometry.point_num));
-  if (radii == nullptr) {
+  bke::MutableAttributeAccessor attributes = curves->geometry.wrap().attributes_for_write();
+  bke::AttributeWriter radii = attributes.lookup_or_add_for_write<float>("radius",
+                                                                         bke::AttrDomain::Point);
+  if (!radii) {
     return;
   }
-  radii[rna_CurvePoint_index_get_const(ptr)] = value;
+  radii.varray.set(rna_CurvePoint_index_get_const(ptr), value);
 }
 
-static char *rna_CurvePoint_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_CurvePoint_path(const PointerRNA *ptr)
 {
-  return BLI_sprintfN("points[%d]", rna_CurvePoint_index_get_const(ptr));
+  return fmt::format("points[{}]", rna_CurvePoint_index_get_const(ptr));
 }
 
 int rna_Curves_points_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
@@ -216,7 +224,7 @@ int rna_Curves_points_lookup_int(PointerRNA *ptr, int index, PointerRNA *r_ptr)
   }
   r_ptr->owner_id = &curves->id;
   r_ptr->type = &RNA_CurvePoint;
-  r_ptr->data = &get_curves_positions(curves)[index];
+  r_ptr->data = &get_curves_positions_for_write(*curves)[index];
   return true;
 }
 
@@ -231,9 +239,9 @@ static int rna_CurveSlice_index_get(PointerRNA *ptr)
   return rna_CurveSlice_index_get_const(ptr);
 }
 
-static char *rna_CurveSlice_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_CurveSlice_path(const PointerRNA *ptr)
 {
-  return BLI_sprintfN("curves[%d]", rna_CurveSlice_index_get_const(ptr));
+  return fmt::format("curves[{}]", rna_CurveSlice_index_get_const(ptr));
 }
 
 static int rna_CurveSlice_first_point_index_get(PointerRNA *ptr)
@@ -254,7 +262,7 @@ static void rna_CurveSlice_points_begin(CollectionPropertyIterator *iter, Pointe
   Curves *curves = rna_curves(ptr);
   const int offset = rna_CurveSlice_first_point_index_get(ptr);
   const int size = rna_CurveSlice_points_length_get(ptr);
-  float(*positions)[3] = get_curves_positions(curves);
+  float(*positions)[3] = get_curves_positions_for_write(*curves);
   float(*co)[3] = positions + offset;
   rna_iterator_array_begin(iter, co, sizeof(float[3]), size, 0, nullptr);
 }
@@ -267,9 +275,47 @@ static void rna_Curves_normals_begin(CollectionPropertyIterator *iter, PointerRN
   rna_iterator_array_begin(iter, positions, sizeof(float[3]), size, true, nullptr);
 }
 
-static void rna_Curves_update_data(struct Main * /*bmain*/,
-                                   struct Scene * /*scene*/,
-                                   PointerRNA *ptr)
+static void rna_Curves_add_curves(Curves *curves_id,
+                                  ReportList *reports,
+                                  const int *sizes,
+                                  const int sizes_num)
+{
+  using namespace blender;
+  if (std::any_of(sizes, sizes + sizes_num, [](const int size) { return size < 1; })) {
+    BKE_report(reports, RPT_ERROR, "Curve sizes must be greater than zero");
+    return;
+  }
+
+  bke::CurvesGeometry &curves = curves_id->geometry.wrap();
+
+  const int orig_points_num = curves.points_num();
+  const int orig_curves_num = curves.curves_num();
+  curves.resize(orig_points_num, orig_curves_num + sizes_num);
+
+  /* Find the final number of points by accumulating the new */
+  MutableSpan<int> new_offsets = curves.offsets_for_write().drop_front(orig_curves_num);
+  new_offsets.drop_back(1).copy_from({sizes, sizes_num});
+  offset_indices::accumulate_counts_to_offsets(new_offsets, orig_points_num);
+
+  curves.resize(curves.offsets().last(), curves.curves_num());
+
+  /* Initialize new attribute values, since #CurvesGeometry::resize() doesn't do that. */
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+  bke::fill_attribute_range_default(
+      attributes, bke::AttrDomain::Point, {}, curves.points_range().drop_front(orig_points_num));
+  bke::fill_attribute_range_default(
+      attributes, bke::AttrDomain::Curve, {}, curves.curves_range().drop_front(orig_curves_num));
+
+  curves.update_curve_types();
+
+  /* Avoid updates for importers creating curves. */
+  if (curves_id->id.us > 0) {
+    DEG_id_tag_update(&curves_id->id, ID_RECALC_GEOMETRY);
+    WM_main_add_notifier(NC_GEOM | ND_DATA, curves_id);
+  }
+}
+
+static void rna_Curves_update_data(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   ID *id = ptr->owner_id;
   /* Avoid updates for importers creating curves. */
@@ -372,6 +418,33 @@ static void rna_def_curves_curve(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Index", "Index of this curve");
 }
 
+static void rna_def_curves_api(StructRNA *srna)
+{
+  FunctionRNA *func;
+  PropertyRNA *parm;
+
+  func = RNA_def_function(srna, "add_curves", "rna_Curves_add_curves");
+  RNA_def_function_flag(func, FUNC_USE_REPORTS);
+  parm = RNA_def_int_array(func,
+                           "sizes",
+                           1,
+                           nullptr,
+                           0,
+                           INT_MAX,
+                           "Sizes",
+                           "The number of points in each curve",
+                           1,
+                           10000);
+  RNA_def_property_array(parm, RNA_MAX_ARRAY_LENGTH);
+  RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
+
+  // parm = RNA_def_int(
+  //     func, "sizes", 1, 1, INT_MAX, "Sizes", "The number of points in each curve", 1, 10000);
+  // RNA_def_property_array(parm, 0); /* Dynamic length, see next line. */
+  // RNA_def_property_flag(parm, PROP_DYNAMIC);
+  // RNA_def_parameter_flags(parm, PROP_DYNAMIC, PARM_REQUIRED);
+}
+
 static void rna_def_curves(BlenderRNA *brna)
 {
   StructRNA *srna;
@@ -465,7 +538,7 @@ static void rna_def_curves(BlenderRNA *brna)
   RNA_def_property_collection_sdna(prop, nullptr, "mat", "totcol");
   RNA_def_property_struct_type(prop, "Material");
   RNA_def_property_ui_text(prop, "Materials", "");
-  RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.c */
+  RNA_def_property_srna(prop, "IDMaterials"); /* see rna_ID.cc */
   RNA_def_property_collection_funcs(prop,
                                     nullptr,
                                     nullptr,
@@ -525,6 +598,8 @@ static void rna_def_curves(BlenderRNA *brna)
 
   /* common */
   rna_def_animdata_common(srna);
+
+  rna_def_curves_api(srna);
 }
 
 void RNA_def_curves(BlenderRNA *brna)

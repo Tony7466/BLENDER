@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,18 +6,20 @@
  * \ingroup edcurves
  */
 
+#include "BLI_math_base_safe.h"
 #include "BLI_rand.hh"
 
-#include "BKE_context.h"
+#include "BKE_attribute.hh"
+#include "BKE_context.hh"
 #include "BKE_curves.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
 #include "BLT_translation.h"
 
-#include "ED_curves.h"
-#include "ED_node.h"
-#include "ED_object.h"
+#include "ED_curves.hh"
+#include "ED_node.hh"
+#include "ED_object.hh"
 
 #include "DNA_modifier_types.h"
 #include "DNA_node_types.h"
@@ -72,8 +74,11 @@ void ensure_surface_deformation_node_exists(bContext &C, Object &curves_ob)
   nmd.node_group = ntreeAddTree(bmain, DATA_("Surface Deform"), "GeometryNodeTree");
 
   bNodeTree *ntree = nmd.node_group;
-  ntreeAddSocketInterface(ntree, SOCK_IN, "NodeSocketGeometry", "Geometry");
-  ntreeAddSocketInterface(ntree, SOCK_OUT, "NodeSocketGeometry", "Geometry");
+  ntree->tree_interface.add_socket("Geometry",
+                                   "",
+                                   "NodeSocketGeometry",
+                                   NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
+                                   nullptr);
   bNode *group_input = nodeAddStaticNode(&C, ntree, NODE_GROUP_INPUT);
   bNode *group_output = nodeAddStaticNode(&C, ntree, NODE_GROUP_OUTPUT);
   bNode *deform_node = nodeAddStaticNode(&C, ntree, GEO_NODE_DEFORM_CURVES_ON_SURFACE);
@@ -106,7 +111,7 @@ bke::CurvesGeometry primitive_random_sphere(const int curves_size, const int poi
   MutableSpan<float3> positions = curves.positions_for_write();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   bke::SpanAttributeWriter<float> radius = attributes.lookup_or_add_for_write_only_span<float>(
-      "radius", ATTR_DOMAIN_POINT);
+      "radius", bke::AttrDomain::Point);
 
   for (const int i : offsets.index_range()) {
     offsets[i] = points_per_curve * i;
@@ -121,7 +126,7 @@ bke::CurvesGeometry primitive_random_sphere(const int curves_size, const int poi
     MutableSpan<float> curve_radii = radius.span.slice(points);
 
     const float theta = 2.0f * M_PI * rng.get_float();
-    const float phi = saacosf(2.0f * rng.get_float() - 1.0f);
+    const float phi = safe_acosf(2.0f * rng.get_float() - 1.0f);
 
     float3 no = {std::sin(theta) * std::sin(phi), std::cos(theta) * std::sin(phi), std::cos(phi)};
     no = math::normalize(no);

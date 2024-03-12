@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+# SPDX-FileCopyrightText: 2021-2022 Blender Authors
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -52,6 +52,8 @@ class TestGraph:
                         outputs.add(output)
 
                 chart_type = 'line' if entries[0].benchmark_type == 'time_series' else 'comparison'
+                if chart_type == 'comparison':
+                    entries = sorted(entries, key=lambda entry: (entry.revision, entry.test))
 
                 for output in outputs:
                     chart_name = f"{category} ({output})"

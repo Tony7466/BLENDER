@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,21 +6,25 @@
  * \ingroup ply
  */
 
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_context.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 #include "BKE_report.h"
 
 #include "DNA_collection_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
+#include "BLI_math_matrix.h"
+#include "BLI_math_rotation.h"
 #include "BLI_math_vector.h"
 #include "BLI_memory_utils.hh"
+#include "BLI_string.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "ply_data.hh"
 #include "ply_import.hh"
@@ -57,8 +61,9 @@ static Span<char> parse_word(Span<char> &str)
 
 static void skip_space(Span<char> &str)
 {
-  while (!str.is_empty() && str[0] <= ' ')
+  while (!str.is_empty() && str[0] <= ' ') {
     str = str.drop_front(1);
+  }
 }
 
 static PlyDataTypes type_from_string(Span<char> word)
@@ -143,7 +148,8 @@ const char *read_header(PlyReadBuffer &file, PlyHeader &r_header)
       break;
     }
     else if (line.is_empty() || (line.first() >= '0' && line.first() <= '9') ||
-             line.first() == '-') {
+             line.first() == '-')
+    {
       /* A value was found before we broke out of the loop. No end_header. */
       return "No end_header.";
     }
@@ -156,19 +162,18 @@ const char *read_header(PlyReadBuffer &file, PlyHeader &r_header)
   return nullptr;
 }
 
-void importer_main(bContext *C, const PLYImportParams &import_params, wmOperator *op)
+void importer_main(bContext *C, const PLYImportParams &import_params)
 {
   Main *bmain = CTX_data_main(C);
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  importer_main(bmain, scene, view_layer, import_params, op);
+  importer_main(bmain, scene, view_layer, import_params);
 }
 
 void importer_main(Main *bmain,
                    Scene *scene,
                    ViewLayer *view_layer,
-                   const PLYImportParams &import_params,
-                   wmOperator *op)
+                   const PLYImportParams &import_params)
 {
   /* File base name used for both mesh and object. */
   char ob_name[FILE_MAX];
@@ -182,7 +187,7 @@ void importer_main(Main *bmain,
   const char *err = read_header(file, header);
   if (err != nullptr) {
     fprintf(stderr, "PLY Importer: %s: %s\n", ob_name, err);
-    BKE_reportf(op->reports, RPT_ERROR, "PLY Importer: %s: %s", ob_name, err);
+    BKE_reportf(import_params.reports, RPT_ERROR, "PLY Importer: %s: %s", ob_name, err);
     return;
   }
 
@@ -190,17 +195,17 @@ void importer_main(Main *bmain,
   std::unique_ptr<PlyData> data = import_ply_data(file, header);
   if (data == nullptr) {
     fprintf(stderr, "PLY Importer: failed importing %s, unknown error\n", ob_name);
-    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, unknown error");
+    BKE_report(import_params.reports, RPT_ERROR, "PLY Importer: failed importing, unknown error");
     return;
   }
   if (!data->error.empty()) {
     fprintf(stderr, "PLY Importer: failed importing %s: %s\n", ob_name, data->error.c_str());
-    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, unknown error");
+    BKE_report(import_params.reports, RPT_ERROR, "PLY Importer: failed importing, unknown error");
     return;
   }
   if (data->vertices.is_empty()) {
     fprintf(stderr, "PLY Importer: file %s contains no vertices\n", ob_name);
-    BKE_report(op->reports, RPT_ERROR, "PLY Importer: failed importing, no vertices");
+    BKE_report(import_params.reports, RPT_ERROR, "PLY Importer: failed importing, no vertices");
     return;
   }
 

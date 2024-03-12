@@ -1,6 +1,6 @@
 /* SPDX-FileCopyrightText: 2009-2010 Sony Pictures Imageworks Inc., et al.
  *                         All Rights Reserved. (BSD-3-Clause).
- * SPDX-FileCopyrightText: 2011 Blender Foundation (GPL-2.0-or-later).
+ * SPDX-FileCopyrightText: 2011 Blender Authors (GPL-2.0-or-later).
  *
  * SPDX-License-Identifier: GPL-2.0-or-later AND BSD-3-Clause */
 
@@ -381,8 +381,9 @@ BLI_INLINE float noise_grad(uint32_t hash, float x, float y, float z, float w)
 
 BLI_INLINE float floor_fraction(float x, int &i)
 {
-  i = int(x) - ((x < 0) ? 1 : 0);
-  return x - i;
+  float x_floor = math::floor(x);
+  i = int(x_floor);
+  return x - x_floor;
 }
 
 BLI_INLINE float perlin_noise(float position)
@@ -529,53 +530,190 @@ float perlin(float4 position)
   return perlin_signed(position) / 2.0f + 0.5f;
 }
 
-/* Positive fractal perlin noise. */
+/* Fractal perlin noise. */
 
-template<typename T> float perlin_fractal_template(T position, float octaves, float roughness)
+/* fBM = Fractal Brownian Motion */
+template<typename T>
+float perlin_fbm(
+    T p, const float detail, const float roughness, const float lacunarity, const bool normalize)
 {
   float fscale = 1.0f;
   float amp = 1.0f;
   float maxamp = 0.0f;
   float sum = 0.0f;
-  octaves = CLAMPIS(octaves, 0.0f, 15.0f);
-  int n = int(octaves);
-  for (int i = 0; i <= n; i++) {
-    float t = perlin(fscale * position);
+
+  for (int i = 0; i <= int(detail); i++) {
+    float t = perlin_signed(fscale * p);
     sum += t * amp;
     maxamp += amp;
-    amp *= CLAMPIS(roughness, 0.0f, 1.0f);
-    fscale *= 2.0f;
+    amp *= roughness;
+    fscale *= lacunarity;
   }
-  float rmd = octaves - std::floor(octaves);
-  if (rmd == 0.0f) {
-    return sum / maxamp;
+  float rmd = detail - std::floor(detail);
+  if (rmd != 0.0f) {
+    float t = perlin_signed(fscale * p);
+    float sum2 = sum + t * amp;
+    return normalize ? mix(0.5f * sum / maxamp + 0.5f, 0.5f * sum2 / (maxamp + amp) + 0.5f, rmd) :
+                       mix(sum, sum2, rmd);
+  }
+  return normalize ? 0.5f * sum / maxamp + 0.5f : sum;
+}
+
+/* Explicit instantiation for Wave Texture. */
+template float perlin_fbm<float3>(float3 p,
+                                  const float detail,
+                                  const float roughness,
+                                  const float lacunarity,
+                                  const bool normalize);
+
+template<typename T>
+float perlin_multi_fractal(T p, const float detail, const float roughness, const float lacunarity)
+{
+  float value = 1.0f;
+  float pwr = 1.0f;
+
+  for (int i = 0; i <= int(detail); i++) {
+    value *= (pwr * perlin_signed(p) + 1.0f);
+    pwr *= roughness;
+    p *= lacunarity;
   }
 
-  float t = perlin(fscale * position);
-  float sum2 = sum + t * amp;
-  sum /= maxamp;
-  sum2 /= maxamp + amp;
-  return (1.0f - rmd) * sum + rmd * sum2;
+  const float rmd = detail - floorf(detail);
+  if (rmd != 0.0f) {
+    value *= (rmd * pwr * perlin_signed(p) + 1.0f); /* correct? */
+  }
+
+  return value;
 }
 
-float perlin_fractal(float position, float octaves, float roughness)
+template<typename T>
+float perlin_hetero_terrain(
+    T p, const float detail, const float roughness, const float lacunarity, const float offset)
 {
-  return perlin_fractal_template(position, octaves, roughness);
+  float pwr = roughness;
+
+  /* First unscaled octave of function; later octaves are scaled. */
+  float value = offset + perlin_signed(p);
+  p *= lacunarity;
+
+  for (int i = 1; i <= int(detail); i++) {
+    float increment = (perlin_signed(p) + offset) * pwr * value;
+    value += increment;
+    pwr *= roughness;
+    p *= lacunarity;
+  }
+
+  const float rmd = detail - floorf(detail);
+  if (rmd != 0.0f) {
+    float increment = (perlin_signed(p) + offset) * pwr * value;
+    value += rmd * increment;
+  }
+
+  return value;
 }
 
-float perlin_fractal(float2 position, float octaves, float roughness)
+template<typename T>
+float perlin_hybrid_multi_fractal(T p,
+                                  const float detail,
+                                  const float roughness,
+                                  const float lacunarity,
+                                  const float offset,
+                                  const float gain)
 {
-  return perlin_fractal_template(position, octaves, roughness);
+  float pwr = 1.0f;
+  float value = 0.0f;
+  float weight = 1.0f;
+
+  for (int i = 0; (weight > 0.001f) && (i <= int(detail)); i++) {
+    if (weight > 1.0f) {
+      weight = 1.0f;
+    }
+
+    float signal = (perlin_signed(p) + offset) * pwr;
+    pwr *= roughness;
+    value += weight * signal;
+    weight *= gain * signal;
+    p *= lacunarity;
+  }
+
+  const float rmd = detail - floorf(detail);
+  if ((rmd != 0.0f) && (weight > 0.001f)) {
+    if (weight > 1.0f) {
+      weight = 1.0f;
+    }
+    float signal = (perlin_signed(p) + offset) * pwr;
+    value += rmd * weight * signal;
+  }
+
+  return value;
 }
 
-float perlin_fractal(float3 position, float octaves, float roughness)
+template<typename T>
+float perlin_ridged_multi_fractal(T p,
+                                  const float detail,
+                                  const float roughness,
+                                  const float lacunarity,
+                                  const float offset,
+                                  const float gain)
 {
-  return perlin_fractal_template(position, octaves, roughness);
+  float pwr = roughness;
+
+  float signal = offset - std::abs(perlin_signed(p));
+  signal *= signal;
+  float value = signal;
+  float weight = 1.0f;
+
+  for (int i = 1; i <= int(detail); i++) {
+    p *= lacunarity;
+    weight = std::clamp(signal * gain, 0.0f, 1.0f);
+    signal = offset - std::abs(perlin_signed(p));
+    signal *= signal;
+    signal *= weight;
+    value += signal * pwr;
+    pwr *= roughness;
+  }
+
+  return value;
 }
 
-float perlin_fractal(float4 position, float octaves, float roughness)
+enum {
+  NOISE_SHD_PERLIN_MULTIFRACTAL = 0,
+  NOISE_SHD_PERLIN_FBM = 1,
+  NOISE_SHD_PERLIN_HYBRID_MULTIFRACTAL = 2,
+  NOISE_SHD_PERLIN_RIDGED_MULTIFRACTAL = 3,
+  NOISE_SHD_PERLIN_HETERO_TERRAIN = 4,
+};
+
+template<typename T>
+float perlin_select(T p,
+                    float detail,
+                    float roughness,
+                    float lacunarity,
+                    float offset,
+                    float gain,
+                    int type,
+                    bool normalize)
 {
-  return perlin_fractal_template(position, octaves, roughness);
+  switch (type) {
+    case NOISE_SHD_PERLIN_MULTIFRACTAL: {
+      return perlin_multi_fractal<T>(p, detail, roughness, lacunarity);
+    }
+    case NOISE_SHD_PERLIN_FBM: {
+      return perlin_fbm<T>(p, detail, roughness, lacunarity, normalize);
+    }
+    case NOISE_SHD_PERLIN_HYBRID_MULTIFRACTAL: {
+      return perlin_hybrid_multi_fractal<T>(p, detail, roughness, lacunarity, offset, gain);
+    }
+    case NOISE_SHD_PERLIN_RIDGED_MULTIFRACTAL: {
+      return perlin_ridged_multi_fractal<T>(p, detail, roughness, lacunarity, offset, gain);
+    }
+    case NOISE_SHD_PERLIN_HETERO_TERRAIN: {
+      return perlin_hetero_terrain<T>(p, detail, roughness, lacunarity, offset);
+    }
+    default: {
+      return 0.0;
+    }
+  }
 }
 
 /* The following offset functions generate random offsets to be added to
@@ -639,706 +777,185 @@ BLI_INLINE float4 perlin_distortion(float4 position, float strength)
                 perlin_signed(position + random_float4_offset(3.0f)) * strength);
 }
 
-/* Positive distorted fractal perlin noise. */
+/* Distorted fractal perlin noise. */
 
-float perlin_fractal_distorted(float position, float octaves, float roughness, float distortion)
+template<typename T>
+float perlin_fractal_distorted(T position,
+                               float detail,
+                               float roughness,
+                               float lacunarity,
+                               float offset,
+                               float gain,
+                               float distortion,
+                               int type,
+                               bool normalize)
 {
   position += perlin_distortion(position, distortion);
-  return perlin_fractal(position, octaves, roughness);
+  return perlin_select<T>(position, detail, roughness, lacunarity, offset, gain, type, normalize);
 }
 
-float perlin_fractal_distorted(float2 position, float octaves, float roughness, float distortion)
-{
-  position += perlin_distortion(position, distortion);
-  return perlin_fractal(position, octaves, roughness);
-}
+template float perlin_fractal_distorted<float>(float position,
+                                               float detail,
+                                               float roughness,
+                                               float lacunarity,
+                                               float offset,
+                                               float gain,
+                                               float distortion,
+                                               int type,
+                                               bool normalize);
+template float perlin_fractal_distorted<float2>(float2 position,
+                                                float detail,
+                                                float roughness,
+                                                float lacunarity,
+                                                float offset,
+                                                float gain,
+                                                float distortion,
+                                                int type,
+                                                bool normalize);
+template float perlin_fractal_distorted<float3>(float3 position,
+                                                float detail,
+                                                float roughness,
+                                                float lacunarity,
+                                                float offset,
+                                                float gain,
+                                                float distortion,
+                                                int type,
+                                                bool normalize);
+template float perlin_fractal_distorted<float4>(float4 position,
+                                                float detail,
+                                                float roughness,
+                                                float lacunarity,
+                                                float offset,
+                                                float gain,
+                                                float distortion,
+                                                int type,
+                                                bool normalize);
 
-float perlin_fractal_distorted(float3 position, float octaves, float roughness, float distortion)
-{
-  position += perlin_distortion(position, distortion);
-  return perlin_fractal(position, octaves, roughness);
-}
-
-float perlin_fractal_distorted(float4 position, float octaves, float roughness, float distortion)
-{
-  position += perlin_distortion(position, distortion);
-  return perlin_fractal(position, octaves, roughness);
-}
-
-/* Positive distorted fractal perlin noise that outputs a float3. The arbitrary seeds are for
+/* Distorted fractal perlin noise that outputs a float3. The arbitrary seeds are for
  * compatibility with shading functions. */
 
 float3 perlin_float3_fractal_distorted(float position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
-                                       float distortion)
+                                       float lacunarity,
+                                       float offset,
+                                       float gain,
+                                       float distortion,
+                                       int type,
+                                       bool normalize)
 {
   position += perlin_distortion(position, distortion);
-  return float3(perlin_fractal(position, octaves, roughness),
-                perlin_fractal(position + random_float_offset(1.0f), octaves, roughness),
-                perlin_fractal(position + random_float_offset(2.0f), octaves, roughness));
+  return float3(
+      perlin_select<float>(position, detail, roughness, lacunarity, offset, gain, type, normalize),
+      perlin_select<float>(position + random_float_offset(1.0f),
+                           detail,
+                           roughness,
+                           lacunarity,
+                           offset,
+                           gain,
+                           type,
+                           normalize),
+      perlin_select<float>(position + random_float_offset(2.0f),
+                           detail,
+                           roughness,
+                           lacunarity,
+                           offset,
+                           gain,
+                           type,
+                           normalize));
 }
 
 float3 perlin_float3_fractal_distorted(float2 position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
-                                       float distortion)
+                                       float lacunarity,
+                                       float offset,
+                                       float gain,
+                                       float distortion,
+                                       int type,
+                                       bool normalize)
 {
   position += perlin_distortion(position, distortion);
-  return float3(perlin_fractal(position, octaves, roughness),
-                perlin_fractal(position + random_float2_offset(2.0f), octaves, roughness),
-                perlin_fractal(position + random_float2_offset(3.0f), octaves, roughness));
+  return float3(perlin_select<float2>(
+                    position, detail, roughness, lacunarity, offset, gain, type, normalize),
+                perlin_select<float2>(position + random_float2_offset(2.0f),
+                                      detail,
+                                      roughness,
+                                      lacunarity,
+                                      offset,
+                                      gain,
+                                      type,
+                                      normalize),
+                perlin_select<float2>(position + random_float2_offset(3.0f),
+                                      detail,
+                                      roughness,
+                                      lacunarity,
+                                      offset,
+                                      gain,
+                                      type,
+                                      normalize));
 }
 
 float3 perlin_float3_fractal_distorted(float3 position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
-                                       float distortion)
+                                       float lacunarity,
+                                       float offset,
+                                       float gain,
+                                       float distortion,
+                                       int type,
+                                       bool normalize)
 {
   position += perlin_distortion(position, distortion);
-  return float3(perlin_fractal(position, octaves, roughness),
-                perlin_fractal(position + random_float3_offset(3.0f), octaves, roughness),
-                perlin_fractal(position + random_float3_offset(4.0f), octaves, roughness));
+  return float3(perlin_select<float3>(
+                    position, detail, roughness, lacunarity, offset, gain, type, normalize),
+                perlin_select<float3>(position + random_float3_offset(3.0f),
+                                      detail,
+                                      roughness,
+                                      lacunarity,
+                                      offset,
+                                      gain,
+                                      type,
+                                      normalize),
+                perlin_select<float3>(position + random_float3_offset(4.0f),
+                                      detail,
+                                      roughness,
+                                      lacunarity,
+                                      offset,
+                                      gain,
+                                      type,
+                                      normalize));
 }
 
 float3 perlin_float3_fractal_distorted(float4 position,
-                                       float octaves,
+                                       float detail,
                                        float roughness,
-                                       float distortion)
+                                       float lacunarity,
+                                       float offset,
+                                       float gain,
+                                       float distortion,
+                                       int type,
+                                       bool normalize)
 {
   position += perlin_distortion(position, distortion);
-  return float3(perlin_fractal(position, octaves, roughness),
-                perlin_fractal(position + random_float4_offset(4.0f), octaves, roughness),
-                perlin_fractal(position + random_float4_offset(5.0f), octaves, roughness));
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
-/** \name Musgrave Noise
- * \{ */
-
-float musgrave_fBm(const float co,
-                   const float H,
-                   const float lacunarity,
-                   const float octaves_unclamped)
-{
-  /* From "Texturing and Modelling: A procedural approach". */
-
-  float p = co;
-  float value = 0.0f;
-  float pwr = 1.0f;
-  const float pwHL = std::pow(lacunarity, -H);
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; i < int(octaves); i++) {
-    value += perlin_signed(p) * pwr;
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    value += rmd * perlin_signed(p) * pwr;
-  }
-
-  return value;
-}
-
-float musgrave_multi_fractal(const float co,
-                             const float H,
-                             const float lacunarity,
-                             const float octaves_unclamped)
-{
-  float p = co;
-  float value = 1.0f;
-  float pwr = 1.0f;
-  const float pwHL = std::pow(lacunarity, -H);
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; i < int(octaves); i++) {
-    value *= (pwr * perlin_signed(p) + 1.0f);
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    value *= (rmd * pwr * perlin_signed(p) + 1.0f); /* correct? */
-  }
-
-  return value;
-}
-
-float musgrave_hetero_terrain(const float co,
-                              const float H,
-                              const float lacunarity,
-                              const float octaves_unclamped,
-                              const float offset)
-{
-  float p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-  float pwr = pwHL;
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  /* First unscaled octave of function; later octaves are scaled. */
-  float value = offset + perlin_signed(p);
-  p *= lacunarity;
-
-  for (int i = 1; i < int(octaves); i++) {
-    float increment = (perlin_signed(p) + offset) * pwr * value;
-    value += increment;
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    float increment = (perlin_signed(p) + offset) * pwr * value;
-    value += rmd * increment;
-  }
-
-  return value;
-}
-
-float musgrave_hybrid_multi_fractal(const float co,
-                                    const float H,
-                                    const float lacunarity,
-                                    const float octaves_unclamped,
-                                    const float offset,
-                                    const float gain)
-{
-  float p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-
-  float pwr = 1.0f;
-  float value = 0.0f;
-  float weight = 1.0f;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; (weight > 0.001f) && (i < int(octaves)); i++) {
-    if (weight > 1.0f) {
-      weight = 1.0f;
-    }
-
-    float signal = (perlin_signed(p) + offset) * pwr;
-    pwr *= pwHL;
-    value += weight * signal;
-    weight *= gain * signal;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if ((rmd != 0.0f) && (weight > 0.001f)) {
-    if (weight > 1.0f) {
-      weight = 1.0f;
-    }
-    float signal = (perlin_signed(p) + offset) * pwr;
-    value += rmd * weight * signal;
-  }
-
-  return value;
-}
-
-float musgrave_ridged_multi_fractal(const float co,
-                                    const float H,
-                                    const float lacunarity,
-                                    const float octaves_unclamped,
-                                    const float offset,
-                                    const float gain)
-{
-  float p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-  float pwr = pwHL;
-
-  float signal = offset - std::abs(perlin_signed(p));
-  signal *= signal;
-  float value = signal;
-  float weight = 1.0f;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 1; i < int(octaves); i++) {
-    p *= lacunarity;
-    weight = CLAMPIS(signal * gain, 0.0f, 1.0f);
-    signal = offset - std::abs(perlin_signed(p));
-    signal *= signal;
-    signal *= weight;
-    value += signal * pwr;
-    pwr *= pwHL;
-  }
-
-  return value;
-}
-
-float musgrave_fBm(const float2 co,
-                   const float H,
-                   const float lacunarity,
-                   const float octaves_unclamped)
-{
-  /* From "Texturing and Modelling: A procedural approach". */
-
-  float2 p = co;
-  float value = 0.0f;
-  float pwr = 1.0f;
-  const float pwHL = std::pow(lacunarity, -H);
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; i < int(octaves); i++) {
-    value += perlin_signed(p) * pwr;
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    value += rmd * perlin_signed(p) * pwr;
-  }
-
-  return value;
-}
-
-float musgrave_multi_fractal(const float2 co,
-                             const float H,
-                             const float lacunarity,
-                             const float octaves_unclamped)
-{
-  float2 p = co;
-  float value = 1.0f;
-  float pwr = 1.0f;
-  const float pwHL = std::pow(lacunarity, -H);
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; i < int(octaves); i++) {
-    value *= (pwr * perlin_signed(p) + 1.0f);
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    value *= (rmd * pwr * perlin_signed(p) + 1.0f); /* correct? */
-  }
-
-  return value;
-}
-
-float musgrave_hetero_terrain(const float2 co,
-                              const float H,
-                              const float lacunarity,
-                              const float octaves_unclamped,
-                              const float offset)
-{
-  float2 p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-  float pwr = pwHL;
-
-  /* First unscaled octave of function; later octaves are scaled. */
-  float value = offset + perlin_signed(p);
-  p *= lacunarity;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 1; i < int(octaves); i++) {
-    float increment = (perlin_signed(p) + offset) * pwr * value;
-    value += increment;
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    float increment = (perlin_signed(p) + offset) * pwr * value;
-    value += rmd * increment;
-  }
-
-  return value;
-}
-
-float musgrave_hybrid_multi_fractal(const float2 co,
-                                    const float H,
-                                    const float lacunarity,
-                                    const float octaves_unclamped,
-                                    const float offset,
-                                    const float gain)
-{
-  float2 p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-
-  float pwr = 1.0f;
-  float value = 0.0f;
-  float weight = 1.0f;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; (weight > 0.001f) && (i < int(octaves)); i++) {
-    if (weight > 1.0f) {
-      weight = 1.0f;
-    }
-
-    float signal = (perlin_signed(p) + offset) * pwr;
-    pwr *= pwHL;
-    value += weight * signal;
-    weight *= gain * signal;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if ((rmd != 0.0f) && (weight > 0.001f)) {
-    if (weight > 1.0f) {
-      weight = 1.0f;
-    }
-    float signal = (perlin_signed(p) + offset) * pwr;
-    value += rmd * weight * signal;
-  }
-
-  return value;
-}
-
-float musgrave_ridged_multi_fractal(const float2 co,
-                                    const float H,
-                                    const float lacunarity,
-                                    const float octaves_unclamped,
-                                    const float offset,
-                                    const float gain)
-{
-  float2 p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-  float pwr = pwHL;
-
-  float signal = offset - std::abs(perlin_signed(p));
-  signal *= signal;
-  float value = signal;
-  float weight = 1.0f;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 1; i < int(octaves); i++) {
-    p *= lacunarity;
-    weight = CLAMPIS(signal * gain, 0.0f, 1.0f);
-    signal = offset - std::abs(perlin_signed(p));
-    signal *= signal;
-    signal *= weight;
-    value += signal * pwr;
-    pwr *= pwHL;
-  }
-
-  return value;
-}
-
-float musgrave_fBm(const float3 co,
-                   const float H,
-                   const float lacunarity,
-                   const float octaves_unclamped)
-{
-  /* From "Texturing and Modelling: A procedural approach". */
-
-  float3 p = co;
-  float value = 0.0f;
-  float pwr = 1.0f;
-  const float pwHL = std::pow(lacunarity, -H);
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; i < int(octaves); i++) {
-    value += perlin_signed(p) * pwr;
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    value += rmd * perlin_signed(p) * pwr;
-  }
-
-  return value;
-}
-
-float musgrave_multi_fractal(const float3 co,
-                             const float H,
-                             const float lacunarity,
-                             const float octaves_unclamped)
-{
-  float3 p = co;
-  float value = 1.0f;
-  float pwr = 1.0f;
-  const float pwHL = std::pow(lacunarity, -H);
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; i < int(octaves); i++) {
-    value *= (pwr * perlin_signed(p) + 1.0f);
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    value *= (rmd * pwr * perlin_signed(p) + 1.0f); /* correct? */
-  }
-
-  return value;
-}
-
-float musgrave_hetero_terrain(const float3 co,
-                              const float H,
-                              const float lacunarity,
-                              const float octaves_unclamped,
-                              const float offset)
-{
-  float3 p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-  float pwr = pwHL;
-
-  /* first unscaled octave of function; later octaves are scaled */
-  float value = offset + perlin_signed(p);
-  p *= lacunarity;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 1; i < int(octaves); i++) {
-    float increment = (perlin_signed(p) + offset) * pwr * value;
-    value += increment;
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    float increment = (perlin_signed(p) + offset) * pwr * value;
-    value += rmd * increment;
-  }
-
-  return value;
-}
-
-float musgrave_hybrid_multi_fractal(const float3 co,
-                                    const float H,
-                                    const float lacunarity,
-                                    const float octaves_unclamped,
-                                    const float offset,
-                                    const float gain)
-{
-  float3 p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-
-  float pwr = 1.0f;
-  float value = 0.0f;
-  float weight = 1.0f;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; (weight > 0.001f) && (i < int(octaves)); i++) {
-    if (weight > 1.0f) {
-      weight = 1.0f;
-    }
-
-    float signal = (perlin_signed(p) + offset) * pwr;
-    pwr *= pwHL;
-    value += weight * signal;
-    weight *= gain * signal;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if ((rmd != 0.0f) && (weight > 0.001f)) {
-    if (weight > 1.0f) {
-      weight = 1.0f;
-    }
-    float signal = (perlin_signed(p) + offset) * pwr;
-    value += rmd * weight * signal;
-  }
-
-  return value;
-}
-
-float musgrave_ridged_multi_fractal(const float3 co,
-                                    const float H,
-                                    const float lacunarity,
-                                    const float octaves_unclamped,
-                                    const float offset,
-                                    const float gain)
-{
-  float3 p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-  float pwr = pwHL;
-
-  float signal = offset - std::abs(perlin_signed(p));
-  signal *= signal;
-  float value = signal;
-  float weight = 1.0f;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 1; i < int(octaves); i++) {
-    p *= lacunarity;
-    weight = CLAMPIS(signal * gain, 0.0f, 1.0f);
-    signal = offset - std::abs(perlin_signed(p));
-    signal *= signal;
-    signal *= weight;
-    value += signal * pwr;
-    pwr *= pwHL;
-  }
-
-  return value;
-}
-
-float musgrave_fBm(const float4 co,
-                   const float H,
-                   const float lacunarity,
-                   const float octaves_unclamped)
-{
-  /* From "Texturing and Modelling: A procedural approach". */
-
-  float4 p = co;
-  float value = 0.0f;
-  float pwr = 1.0f;
-  const float pwHL = std::pow(lacunarity, -H);
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; i < int(octaves); i++) {
-    value += perlin_signed(p) * pwr;
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    value += rmd * perlin_signed(p) * pwr;
-  }
-
-  return value;
-}
-
-float musgrave_multi_fractal(const float4 co,
-                             const float H,
-                             const float lacunarity,
-                             const float octaves_unclamped)
-{
-  float4 p = co;
-  float value = 1.0f;
-  float pwr = 1.0f;
-  const float pwHL = std::pow(lacunarity, -H);
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; i < int(octaves); i++) {
-    value *= (pwr * perlin_signed(p) + 1.0f);
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    value *= (rmd * pwr * perlin_signed(p) + 1.0f); /* correct? */
-  }
-
-  return value;
-}
-
-float musgrave_hetero_terrain(const float4 co,
-                              const float H,
-                              const float lacunarity,
-                              const float octaves_unclamped,
-                              const float offset)
-{
-  float4 p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-  float pwr = pwHL;
-
-  /* first unscaled octave of function; later octaves are scaled */
-  float value = offset + perlin_signed(p);
-  p *= lacunarity;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 1; i < int(octaves); i++) {
-    float increment = (perlin_signed(p) + offset) * pwr * value;
-    value += increment;
-    pwr *= pwHL;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if (rmd != 0.0f) {
-    float increment = (perlin_signed(p) + offset) * pwr * value;
-    value += rmd * increment;
-  }
-
-  return value;
-}
-
-float musgrave_hybrid_multi_fractal(const float4 co,
-                                    const float H,
-                                    const float lacunarity,
-                                    const float octaves_unclamped,
-                                    const float offset,
-                                    const float gain)
-{
-  float4 p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-
-  float pwr = 1.0f;
-  float value = 0.0f;
-  float weight = 1.0f;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 0; (weight > 0.001f) && (i < int(octaves)); i++) {
-    if (weight > 1.0f) {
-      weight = 1.0f;
-    }
-
-    float signal = (perlin_signed(p) + offset) * pwr;
-    pwr *= pwHL;
-    value += weight * signal;
-    weight *= gain * signal;
-    p *= lacunarity;
-  }
-
-  const float rmd = octaves - floorf(octaves);
-  if ((rmd != 0.0f) && (weight > 0.001f)) {
-    if (weight > 1.0f) {
-      weight = 1.0f;
-    }
-    float signal = (perlin_signed(p) + offset) * pwr;
-    value += rmd * weight * signal;
-  }
-
-  return value;
-}
-
-float musgrave_ridged_multi_fractal(const float4 co,
-                                    const float H,
-                                    const float lacunarity,
-                                    const float octaves_unclamped,
-                                    const float offset,
-                                    const float gain)
-{
-  float4 p = co;
-  const float pwHL = std::pow(lacunarity, -H);
-  float pwr = pwHL;
-
-  float signal = offset - std::abs(perlin_signed(p));
-  signal *= signal;
-  float value = signal;
-  float weight = 1.0f;
-
-  const float octaves = CLAMPIS(octaves_unclamped, 0.0f, 15.0f);
-
-  for (int i = 1; i < int(octaves); i++) {
-    p *= lacunarity;
-    weight = CLAMPIS(signal * gain, 0.0f, 1.0f);
-    signal = offset - std::abs(perlin_signed(p));
-    signal *= signal;
-    signal *= weight;
-    value += signal * pwr;
-    pwr *= pwHL;
-  }
-
-  return value;
+  return float3(perlin_select<float4>(
+                    position, detail, roughness, lacunarity, offset, gain, type, normalize),
+                perlin_select<float4>(position + random_float4_offset(4.0f),
+                                      detail,
+                                      roughness,
+                                      lacunarity,
+                                      offset,
+                                      gain,
+                                      type,
+                                      normalize),
+                perlin_select<float4>(position + random_float4_offset(5.0f),
+                                      detail,
+                                      roughness,
+                                      lacunarity,
+                                      offset,
+                                      gain,
+                                      type,
+                                      normalize));
 }
 
 /** \} */
@@ -1464,7 +1081,7 @@ VoronoiOutput voronoi_f1(const VoronoiParams &params, const float coord)
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
 
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   float targetOffset = 0.0f;
   float targetPosition = 0.0f;
   for (int i = -1; i <= 1; i++) {
@@ -1493,16 +1110,19 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
 
-  float smoothDistance = 8.0f;
+  float smoothDistance = 0.0f;
   float smoothPosition = 0.0f;
   float3 smoothColor = {0.0f, 0.0f, 0.0f};
+  float h = -1.0f;
   for (int i = -2; i <= 2; i++) {
     float cellOffset = i;
     float pointPosition = cellOffset +
                           hash_float_to_float(cellPosition + cellOffset) * params.randomness;
     float distanceToPoint = voronoi_distance(pointPosition, localPosition);
-    float h = smoothstep(
-        0.0f, 1.0f, 0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
+    h = h == -1.0f ?
+            1.0f :
+            smoothstep(
+                0.0f, 1.0f, 0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
     float correctionFactor = params.smoothness * h * (1.0f - h);
     smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
     correctionFactor /= 1.0f + 3.0f * params.smoothness;
@@ -1526,8 +1146,8 @@ VoronoiOutput voronoi_f2(const VoronoiParams &params, const float coord)
   float cellPosition = floorf(coord);
   float localPosition = coord - cellPosition;
 
-  float distanceF1 = 8.0f;
-  float distanceF2 = 8.0f;
+  float distanceF1 = FLT_MAX;
+  float distanceF2 = FLT_MAX;
   float offsetF1 = 0.0f;
   float positionF1 = 0.0f;
   float offsetF2 = 0.0f;
@@ -1580,7 +1200,7 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float coord)
 
   float closestPoint = 0.0f;
   float closestPointOffset = 0.0f;
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   for (int i = -1; i <= 1; i++) {
     float cellOffset = i;
     float pointPosition = cellOffset +
@@ -1593,7 +1213,7 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float coord)
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = FLT_MAX;
   float closestPointToClosestPoint = 0.0f;
   for (int i = -1; i <= 1; i++) {
     if (i == 0) {
@@ -1624,7 +1244,7 @@ VoronoiOutput voronoi_f1(const VoronoiParams &params, const float2 coord)
   float2 cellPosition = math::floor(coord);
   float2 localPosition = coord - cellPosition;
 
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   float2 targetOffset = {0.0f, 0.0f};
   float2 targetPosition = {0.0f, 0.0f};
   for (int j = -1; j <= 1; j++) {
@@ -1655,17 +1275,21 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
   float2 cellPosition = math::floor(coord);
   float2 localPosition = coord - cellPosition;
 
-  float smoothDistance = 8.0f;
+  float smoothDistance = 0.0f;
   float3 smoothColor = {0.0f, 0.0f, 0.0f};
   float2 smoothPosition = {0.0f, 0.0f};
+  float h = -1.0f;
   for (int j = -2; j <= 2; j++) {
     for (int i = -2; i <= 2; i++) {
       float2 cellOffset(i, j);
       float2 pointPosition = cellOffset +
                              hash_float_to_float2(cellPosition + cellOffset) * params.randomness;
       float distanceToPoint = voronoi_distance(pointPosition, localPosition, params);
-      float h = smoothstep(
-          0.0f, 1.0f, 0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
+      h = h == -1.0f ?
+              1.0f :
+              smoothstep(0.0f,
+                         1.0f,
+                         0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
       float correctionFactor = params.smoothness * h * (1.0f - h);
       smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
       correctionFactor /= 1.0f + 3.0f * params.smoothness;
@@ -1690,8 +1314,8 @@ VoronoiOutput voronoi_f2(const VoronoiParams &params, const float2 coord)
   float2 cellPosition = math::floor(coord);
   float2 localPosition = coord - cellPosition;
 
-  float distanceF1 = 8.0f;
-  float distanceF2 = 8.0f;
+  float distanceF1 = FLT_MAX;
+  float distanceF2 = FLT_MAX;
   float2 offsetF1 = {0.0f, 0.0f};
   float2 positionF1 = {0.0f, 0.0f};
   float2 offsetF2 = {0.0f, 0.0f};
@@ -1731,7 +1355,7 @@ float voronoi_distance_to_edge(const VoronoiParams &params, const float2 coord)
   float2 localPosition = coord - cellPosition;
 
   float2 vectorToClosest = {0.0f, 0.0f};
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       float2 cellOffset(i, j);
@@ -1746,7 +1370,7 @@ float voronoi_distance_to_edge(const VoronoiParams &params, const float2 coord)
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = FLT_MAX;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       float2 cellOffset(i, j);
@@ -1772,7 +1396,7 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float2 coord)
 
   float2 closestPoint = {0.0f, 0.0f};
   float2 closestPointOffset = {0.0f, 0.0f};
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
       float2 cellOffset(i, j);
@@ -1787,7 +1411,7 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float2 coord)
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = FLT_MAX;
   float2 closestPointToClosestPoint = {0.0f, 0.0f};
   for (int j = -1; j <= 1; j++) {
     for (int i = -1; i <= 1; i++) {
@@ -1820,7 +1444,7 @@ VoronoiOutput voronoi_f1(const VoronoiParams &params, const float3 coord)
   float3 cellPosition = math::floor(coord);
   float3 localPosition = coord - cellPosition;
 
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   float3 targetOffset = {0.0f, 0.0f, 0.0f};
   float3 targetPosition = {0.0f, 0.0f, 0.0f};
   for (int k = -1; k <= 1; k++) {
@@ -1853,9 +1477,10 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
   float3 cellPosition = math::floor(coord);
   float3 localPosition = coord - cellPosition;
 
-  float smoothDistance = 8.0f;
+  float smoothDistance = 0.0f;
   float3 smoothColor = {0.0f, 0.0f, 0.0f};
   float3 smoothPosition = {0.0f, 0.0f, 0.0f};
+  float h = -1.0f;
   for (int k = -2; k <= 2; k++) {
     for (int j = -2; j <= 2; j++) {
       for (int i = -2; i <= 2; i++) {
@@ -1863,8 +1488,11 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
         float3 pointPosition = cellOffset +
                                hash_float_to_float3(cellPosition + cellOffset) * params.randomness;
         float distanceToPoint = voronoi_distance(pointPosition, localPosition, params);
-        float h = smoothstep(
-            0.0f, 1.0f, 0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
+        h = h == -1.0f ?
+                1.0f :
+                smoothstep(0.0f,
+                           1.0f,
+                           0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
         float correctionFactor = params.smoothness * h * (1.0f - h);
         smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
         correctionFactor /= 1.0f + 3.0f * params.smoothness;
@@ -1890,8 +1518,8 @@ VoronoiOutput voronoi_f2(const VoronoiParams &params, const float3 coord)
   float3 cellPosition = math::floor(coord);
   float3 localPosition = coord - cellPosition;
 
-  float distanceF1 = 8.0f;
-  float distanceF2 = 8.0f;
+  float distanceF1 = FLT_MAX;
+  float distanceF2 = FLT_MAX;
   float3 offsetF1 = {0.0f, 0.0f, 0.0f};
   float3 positionF1 = {0.0f, 0.0f, 0.0f};
   float3 offsetF2 = {0.0f, 0.0f, 0.0f};
@@ -1933,7 +1561,7 @@ float voronoi_distance_to_edge(const VoronoiParams &params, const float3 coord)
   float3 localPosition = coord - cellPosition;
 
   float3 vectorToClosest = {0.0f, 0.0f, 0.0f};
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -1951,7 +1579,7 @@ float voronoi_distance_to_edge(const VoronoiParams &params, const float3 coord)
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = FLT_MAX;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -1980,7 +1608,7 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float3 coord)
 
   float3 closestPoint = {0.0f, 0.0f, 0.0f};
   float3 closestPointOffset = {0.0f, 0.0f, 0.0f};
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
       for (int i = -1; i <= 1; i++) {
@@ -1997,7 +1625,7 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float3 coord)
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = FLT_MAX;
   float3 closestPointToClosestPoint = {0.0f, 0.0f, 0.0f};
   for (int k = -1; k <= 1; k++) {
     for (int j = -1; j <= 1; j++) {
@@ -2032,7 +1660,7 @@ VoronoiOutput voronoi_f1(const VoronoiParams &params, const float4 coord)
   float4 cellPosition = math::floor(coord);
   float4 localPosition = coord - cellPosition;
 
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   float4 targetOffset = {0.0f, 0.0f, 0.0f, 0.0f};
   float4 targetPosition = {0.0f, 0.0f, 0.0f, 0.0f};
   for (int u = -1; u <= 1; u++) {
@@ -2067,9 +1695,10 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
   float4 cellPosition = math::floor(coord);
   float4 localPosition = coord - cellPosition;
 
-  float smoothDistance = 8.0f;
+  float smoothDistance = 0.0f;
   float3 smoothColor = {0.0f, 0.0f, 0.0f};
   float4 smoothPosition = {0.0f, 0.0f, 0.0f, 0.0f};
+  float h = -1.0f;
   for (int u = -2; u <= 2; u++) {
     for (int k = -2; k <= 2; k++) {
       for (int j = -2; j <= 2; j++) {
@@ -2078,8 +1707,11 @@ VoronoiOutput voronoi_smooth_f1(const VoronoiParams &params,
           float4 pointPosition = cellOffset + hash_float_to_float4(cellPosition + cellOffset) *
                                                   params.randomness;
           float distanceToPoint = voronoi_distance(pointPosition, localPosition, params);
-          float h = smoothstep(
-              0.0f, 1.0f, 0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
+          h = h == -1.0f ?
+                  1.0f :
+                  smoothstep(0.0f,
+                             1.0f,
+                             0.5f + 0.5f * (smoothDistance - distanceToPoint) / params.smoothness);
           float correctionFactor = params.smoothness * h * (1.0f - h);
           smoothDistance = mix(smoothDistance, distanceToPoint, h) - correctionFactor;
           correctionFactor /= 1.0f + 3.0f * params.smoothness;
@@ -2106,8 +1738,8 @@ VoronoiOutput voronoi_f2(const VoronoiParams &params, const float4 coord)
   float4 cellPosition = math::floor(coord);
   float4 localPosition = coord - cellPosition;
 
-  float distanceF1 = 8.0f;
-  float distanceF2 = 8.0f;
+  float distanceF1 = FLT_MAX;
+  float distanceF2 = FLT_MAX;
   float4 offsetF1 = {0.0f, 0.0f, 0.0f, 0.0f};
   float4 positionF1 = {0.0f, 0.0f, 0.0f, 0.0f};
   float4 offsetF2 = {0.0f, 0.0f, 0.0f, 0.0f};
@@ -2151,7 +1783,7 @@ float voronoi_distance_to_edge(const VoronoiParams &params, const float4 coord)
   float4 localPosition = coord - cellPosition;
 
   float4 vectorToClosest = {0.0f, 0.0f, 0.0f, 0.0f};
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       for (int j = -1; j <= 1; j++) {
@@ -2171,7 +1803,7 @@ float voronoi_distance_to_edge(const VoronoiParams &params, const float4 coord)
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = FLT_MAX;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       for (int j = -1; j <= 1; j++) {
@@ -2202,7 +1834,7 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float4 coord)
 
   float4 closestPoint = {0.0f, 0.0f, 0.0f, 0.0f};
   float4 closestPointOffset = {0.0f, 0.0f, 0.0f, 0.0f};
-  float minDistance = 8.0f;
+  float minDistance = FLT_MAX;
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
       for (int j = -1; j <= 1; j++) {
@@ -2221,7 +1853,7 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float4 coord)
     }
   }
 
-  minDistance = 8.0f;
+  minDistance = FLT_MAX;
   float4 closestPointToClosestPoint = {0.0f, 0.0f, 0.0f, 0.0f};
   for (int u = -1; u <= 1; u++) {
     for (int k = -1; k <= 1; k++) {
@@ -2248,6 +1880,8 @@ float voronoi_n_sphere_radius(const VoronoiParams &params, const float4 coord)
 
 /* **** Fractal Voronoi **** */
 
+/* The fractalization logic is the same as for fBM Noise, except that some additions are replaced
+ * by lerps. */
 template<typename T>
 VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params,
                                    const T coord,
@@ -2258,22 +1892,22 @@ VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params,
   float scale = 1.0f;
 
   VoronoiOutput output;
-  const bool zero_input = params.detail == 0.0f || params.roughness == 0.0f ||
-                          params.lacunarity == 0.0f;
+  const bool zero_input = params.detail == 0.0f || params.roughness == 0.0f;
 
   for (int i = 0; i <= ceilf(params.detail); ++i) {
-    VoronoiOutput octave = (params.feature == NOISE_SHD_VORONOI_F1) ?
-                               voronoi_f1(params, coord * scale) :
-                           (params.feature == NOISE_SHD_VORONOI_SMOOTH_F1) ?
+    VoronoiOutput octave = (params.feature == NOISE_SHD_VORONOI_F2) ?
+                               voronoi_f2(params, coord * scale) :
+                           (params.feature == NOISE_SHD_VORONOI_SMOOTH_F1 &&
+                            params.smoothness != 0.0f) ?
                                voronoi_smooth_f1(params, coord * scale, calc_color) :
-                               voronoi_f2(params, coord * scale);
+                               voronoi_f1(params, coord * scale);
 
     if (zero_input) {
       max_amplitude = 1.0f;
       output = octave;
       break;
     }
-    else if (i <= params.detail) {
+    if (i <= params.detail) {
       max_amplitude += amplitude;
       output.distance += octave.distance * amplitude;
       output.color += octave.color * amplitude;
@@ -2305,16 +1939,17 @@ VoronoiOutput fractal_voronoi_x_fx(const VoronoiParams &params,
   return output;
 }
 
+/* The fractalization logic is the same as for fBM Noise, except that some additions are replaced
+ * by lerps. */
 template<typename T>
 float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coord)
 {
   float amplitude = 1.0f;
-  float max_amplitude = 0.5f + 0.5f * params.randomness;
+  float max_amplitude = params.max_distance;
   float scale = 1.0f;
   float distance = 8.0f;
 
-  const bool zero_input = params.detail == 0.0f || params.roughness == 0.0f ||
-                          params.lacunarity == 0.0f;
+  const bool zero_input = params.detail == 0.0f || params.roughness == 0.0f;
 
   for (int i = 0; i <= ceilf(params.detail); ++i) {
     const float octave_distance = voronoi_distance_to_edge(params, coord * scale);
@@ -2323,8 +1958,8 @@ float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coor
       distance = octave_distance;
       break;
     }
-    else if (i <= params.detail) {
-      max_amplitude = mix(max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
+    if (i <= params.detail) {
+      max_amplitude = mix(max_amplitude, params.max_distance / scale, amplitude);
       distance = mix(distance, math::min(distance, octave_distance / scale), amplitude);
       scale *= params.lacunarity;
       amplitude *= params.roughness;
@@ -2332,8 +1967,7 @@ float fractal_voronoi_distance_to_edge(const VoronoiParams &params, const T coor
     else {
       float remainder = params.detail - floorf(params.detail);
       if (remainder != 0.0f) {
-        float lerp_amplitude = mix(
-            max_amplitude, (0.5f + 0.5f * params.randomness) / scale, amplitude);
+        float lerp_amplitude = mix(max_amplitude, params.max_distance / scale, amplitude);
         max_amplitude = mix(max_amplitude, lerp_amplitude, remainder);
         float lerp_distance = mix(
             distance, math::min(distance, octave_distance / scale), amplitude);

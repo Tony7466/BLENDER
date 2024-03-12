@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,14 +6,17 @@
  * \ingroup ply
  */
 
-#include "BKE_layer.h"
+#include <cstdio>
+
+#include "BKE_layer.hh"
+#include "BKE_report.h"
 
 #include "DNA_collection_types.h"
 #include "DNA_scene_types.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BLI_memory_utils.hh"
-#include "IO_ply.h"
+#include "IO_ply.hh"
 
 #include "ply_data.hh"
 #include "ply_export.hh"
@@ -32,11 +35,21 @@ void exporter_main(bContext *C, const PLYExportParams &export_params)
 
   std::unique_ptr<FileBuffer> buffer;
 
-  if (export_params.ascii_format) {
-    buffer = std::make_unique<FileBufferAscii>(export_params.filepath);
+  try {
+    if (export_params.ascii_format) {
+      buffer = std::make_unique<FileBufferAscii>(export_params.filepath);
+    }
+    else {
+      buffer = std::make_unique<FileBufferBinary>(export_params.filepath);
+    }
   }
-  else {
-    buffer = std::make_unique<FileBufferBinary>(export_params.filepath);
+  catch (const std::system_error &ex) {
+    fprintf(stderr, "%s\n", ex.what());
+    BKE_reportf(export_params.reports,
+                RPT_ERROR,
+                "PLY Export: Cannot open file '%s'",
+                export_params.filepath);
+    return;
   }
 
   write_header(*buffer.get(), *plyData.get(), export_params);

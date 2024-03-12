@@ -45,7 +45,7 @@ ccl_device_inline float4 madd4(const float4 a, const float4 b, const float4 c)
 /*
  * FAST & APPROXIMATE MATH
  *
- * The functions named "fast_*" provide a set of replacements to libm that
+ * The functions named "fast_*" provide a set of replacements to `libm` that
  * are much faster at the expense of some accuracy and robust handling of
  * extreme values. One design goal for these approximation was to avoid
  * branches as much as possible and operate on single precision values only
@@ -334,6 +334,12 @@ ccl_device float fast_atan2f(float y, float x)
     r = M_PI_F - r;
   }
   return copysignf(r, y);
+}
+
+/* Same as precise_angle, but using fast_atan2f. Still much better that acos(dot(a, b)). */
+ccl_device_inline float vector_angle(float3 a, float3 b)
+{
+  return 2.0f * fast_atan2f(len(a - b), len(a + b));
 }
 
 /* Based on:

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -21,20 +21,20 @@
 
 #include "BLT_translation.h"
 
-#include "BKE_context.h"
-#include "BKE_main.h"
-#include "BKE_paint.h"
+#include "BKE_context.hh"
+#include "BKE_main.hh"
+#include "BKE_paint.hh"
 
-#include "ED_paint.h"
-#include "ED_view3d.h"
+#include "ED_paint.hh"
+#include "ED_view3d.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "paint_intern.hh"
 
@@ -666,25 +666,28 @@ void PAINTCURVE_OT_slide(wmOperatorType *ot)
 
 static int paintcurve_draw_exec(bContext *C, wmOperator * /*op*/)
 {
-  ePaintMode mode = BKE_paintmode_get_active_from_context(C);
+  PaintMode mode = BKE_paintmode_get_active_from_context(C);
   const char *name;
 
   switch (mode) {
-    case PAINT_MODE_TEXTURE_2D:
-    case PAINT_MODE_TEXTURE_3D:
+    case PaintMode::Texture2D:
+    case PaintMode::Texture3D:
       name = "PAINT_OT_image_paint";
       break;
-    case PAINT_MODE_WEIGHT:
+    case PaintMode::Weight:
       name = "PAINT_OT_weight_paint";
       break;
-    case PAINT_MODE_VERTEX:
+    case PaintMode::Vertex:
       name = "PAINT_OT_vertex_paint";
       break;
-    case PAINT_MODE_SCULPT:
+    case PaintMode::Sculpt:
       name = "SCULPT_OT_brush_stroke";
       break;
-    case PAINT_MODE_SCULPT_CURVES:
+    case PaintMode::SculptCurves:
       name = "SCULPT_CURVES_OT_brush_stroke";
+      break;
+    case PaintMode::GPencil:
+      name = "GREASE_PENCIL_OT_brush_stroke";
       break;
     default:
       return OPERATOR_PASS_THROUGH;
@@ -710,10 +713,10 @@ void PAINTCURVE_OT_draw(wmOperatorType *ot)
 
 static int paintcurve_cursor_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
-  ePaintMode mode = BKE_paintmode_get_active_from_context(C);
+  PaintMode mode = BKE_paintmode_get_active_from_context(C);
 
   switch (mode) {
-    case PAINT_MODE_TEXTURE_2D: {
+    case PaintMode::Texture2D: {
       ARegion *region = CTX_wm_region(C);
       SpaceImage *sima = CTX_wm_space_image(C);
       float location[2];

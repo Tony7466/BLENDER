@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -15,30 +15,29 @@
 
 #include "BLI_array_store.h"
 #include "BLI_array_utils.h"
+#include "BLI_time.h"
 
 #include "BLT_translation.h"
 
-#include "PIL_time.h"
-
-#include "BKE_context.h"
-#include "BKE_main.h"
+#include "BKE_context.hh"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 #include "BKE_text.h"
-#include "BKE_undo_system.h"
+#include "BKE_undo_system.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_curve.h"
-#include "ED_screen.h"
-#include "ED_text.h"
-#include "ED_undo.h"
+#include "ED_curve.hh"
+#include "ED_screen.hh"
+#include "ED_text.hh"
+#include "ED_undo.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
 #include "text_format.hh"
 #include "text_intern.hh"
@@ -207,8 +206,8 @@ static void text_undosys_step_decode(
     /* Not essential, always show text being undo where possible. */
     st->text = text;
   }
-  text_update_cursor_moved(C);
-  text_drawcache_tag_update(st, true);
+  space_text_update_cursor_moved(C);
+  space_text_drawcache_tag_update(st, true);
   WM_event_add_notifier(C, NC_TEXT | NA_EDITED, text);
 }
 

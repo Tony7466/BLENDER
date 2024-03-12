@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2002-2022 Blender Foundation
+# SPDX-FileCopyrightText: 2002-2022 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -13,6 +13,8 @@ set(TIFF_EXTRA_ARGS
   -Djbig=OFF
   -Dzstd=OFF
   -Dwebp=OFF
+  -Dtiff-tests=OFF
+  -Dsphinx=OFF
 )
 
 ExternalProject_Add(external_tiff

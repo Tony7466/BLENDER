@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -9,7 +12,7 @@
 
 void main()
 {
-  gl_Position = drw_view.winmat * (drw_view.viewmat * vec4(pos, 1.0));
+  gl_Position = drw_view.winmat * (drw_view.viewmat * (camera_space_matrix * vec4(pos, 1.0)));
   gl_PointSize = float(pointSize + 2);
 
   int frame = gl_VertexID + cacheStart;

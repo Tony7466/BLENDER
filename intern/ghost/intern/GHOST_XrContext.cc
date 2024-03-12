@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -169,10 +169,10 @@ void GHOST_XrContext::printInstanceInfo()
 void GHOST_XrContext::printAvailableAPILayersAndExtensionsInfo()
 {
   puts("Available OpenXR API-layers/extensions:");
-  for (XrApiLayerProperties &layer_info : m_oxr->layers) {
+  for (const XrApiLayerProperties &layer_info : m_oxr->layers) {
     printf("Layer: %s\n", layer_info.layerName);
   }
-  for (XrExtensionProperties &ext_info : m_oxr->extensions) {
+  for (const XrExtensionProperties &ext_info : m_oxr->extensions) {
     printf("Extension: %s\n", ext_info.extensionName);
   }
 }
@@ -276,7 +276,7 @@ void GHOST_XrContext::setErrorHandler(GHOST_XrErrorHandlerFn handler_fn, void *c
  * \{ */
 
 /**
- * \param layer_name: May be NULL for extensions not belonging to a specific layer.
+ * \param layer_name: May be nullptr for extensions not belonging to a specific layer.
  */
 void GHOST_XrContext::initExtensionsEx(std::vector<XrExtensionProperties> &extensions,
                                        const char *layer_name)
@@ -329,7 +329,7 @@ void GHOST_XrContext::initApiLayers()
   /* Actually get the layers. */
   CHECK_XR(xrEnumerateApiLayerProperties(layer_count, &layer_count, m_oxr->layers.data()),
            "Failed to query OpenXR runtime information. Do you have an active runtime set up?");
-  for (XrApiLayerProperties &layer : m_oxr->layers) {
+  for (const XrApiLayerProperties &layer : m_oxr->layers) {
     /* Each layer may have own extensions. */
     initExtensionsEx(m_oxr->extensions, layer.layerName);
   }
@@ -462,7 +462,7 @@ std::vector<GHOST_TXrGraphicsBinding> GHOST_XrContext::determineGraphicsBindingT
     const GHOST_XrContextCreateInfo *create_info)
 {
   std::vector<GHOST_TXrGraphicsBinding> result;
-  assert(create_info->gpu_binding_candidates != NULL);
+  assert(create_info->gpu_binding_candidates != nullptr);
   assert(create_info->gpu_binding_candidates_count > 0);
 
   for (uint32_t i = 0; i < create_info->gpu_binding_candidates_count; i++) {
@@ -554,7 +554,8 @@ void GHOST_XrContext::drawSessionViews(void *draw_customdata)
 void GHOST_XrContext::handleSessionStateChange(const XrEventDataSessionStateChanged &lifecycle)
 {
   if (m_session &&
-      m_session->handleStateChangeEvent(lifecycle) == GHOST_XrSession::SESSION_DESTROY) {
+      m_session->handleStateChangeEvent(lifecycle) == GHOST_XrSession::SESSION_DESTROY)
+  {
     m_session = nullptr;
   }
 }

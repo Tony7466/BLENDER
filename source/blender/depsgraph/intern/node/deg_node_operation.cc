@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,16 +6,16 @@
  * \ingroup depsgraph
  */
 
-#include "intern/node/deg_node_operation.h"
+#include "intern/node/deg_node_operation.hh"
 
 #include "MEM_guardedalloc.h"
 
 #include "BLI_utildefines.h"
 
-#include "intern/depsgraph.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_factory.h"
-#include "intern/node/deg_node_id.h"
+#include "intern/depsgraph.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_factory.hh"
+#include "intern/node/deg_node_id.hh"
 
 namespace blender::deg {
 
@@ -168,6 +168,8 @@ const char *operationCodeAsString(OperationCode opcode)
     /* Shading. */
     case OperationCode::SHADING:
       return "SHADING";
+    case OperationCode::SHADING_DONE:
+      return "SHADING_DONE";
     case OperationCode::MATERIAL_UPDATE:
       return "MATERIAL_UPDATE";
     case OperationCode::LIGHT_UPDATE:
@@ -197,11 +199,11 @@ const char *operationCodeAsString(OperationCode opcode)
     /* Sequencer. */
     case OperationCode::SEQUENCES_EVAL:
       return "SEQUENCES_EVAL";
-    /* instancing/duplication. */
-    case OperationCode::DUPLI:
-      return "DUPLI";
-    case OperationCode::SIMULATION_EVAL:
-      return "SIMULATION_EVAL";
+    /* instancing. */
+    case OperationCode::INSTANCER:
+      return "INSTANCER";
+    case OperationCode::INSTANCE:
+      return "INSTANCE";
   }
   BLI_assert_msg(0, "Unhandled operation code, should never happen.");
   return "UNKNOWN";
@@ -248,6 +250,7 @@ void OperationNode::tag_update(Depsgraph *graph, eUpdateSource source)
     case DEG_UPDATE_SOURCE_TIME:
     case DEG_UPDATE_SOURCE_RELATIONS:
     case DEG_UPDATE_SOURCE_VISIBILITY:
+    case DEG_UPDATE_SOURCE_SIDE_EFFECT_REQUEST:
       /* Currently nothing. */
       break;
     case DEG_UPDATE_SOURCE_USER_EDIT:

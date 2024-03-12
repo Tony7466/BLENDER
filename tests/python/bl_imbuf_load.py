@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2023 Blender Foundation
+# SPDX-FileCopyrightText: 2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -196,7 +196,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-test_dir', required=True, type=pathlib.Path)
     parser.add_argument('-output_dir', required=True, type=pathlib.Path)
-    parser.add_argument('-idiff', required=True, type=pathlib.Path)
+    parser.add_argument('-oiiotool', required=True, type=pathlib.Path)
     parser.add_argument('-optional_formats', required=True)
     args, remaining = parser.parse_known_args(argv)
 

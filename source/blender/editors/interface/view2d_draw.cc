@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,6 +6,7 @@
  * \ingroup edinterface
  */
 
+#include <algorithm>
 #include <cfloat>
 #include <climits>
 #include <cmath>
@@ -16,7 +17,6 @@
 #include "DNA_scene_types.h"
 #include "DNA_userdef_types.h"
 
-#include "BLI_math.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_timecode.h"
@@ -27,12 +27,12 @@
 #include "GPU_matrix.h"
 #include "GPU_state.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
 #include "interface_intern.hh"
 
@@ -149,7 +149,7 @@ static void get_parallel_lines_draw_steps(const ParallelLinesSet *lines,
              lines->offset;
 
   if (region_start <= *r_first && region_end >= *r_first) {
-    *r_steps = MAX2(0, floorf((region_end - *r_first) / lines->distance)) + 1;
+    *r_steps = std::max(0.0f, floorf((region_end - *r_first) / lines->distance)) + 1;
   }
   else {
     *r_steps = 0;
@@ -197,7 +197,7 @@ static void draw_parallel_lines(const ParallelLinesSet *lines,
 
     immBindBuiltinProgram(GPU_SHADER_3D_POLYLINE_UNIFORM_COLOR);
     immUniform2fv("viewportSize", &viewport[2]);
-    /* -1.0f offset here  is because the line is too fat due to the builtin anti-aliasing.
+    /* -1.0f offset here is because the line is too fat due to the builtin anti-aliasing.
      * TODO: make a variant or a uniform to toggle it off. */
     immUniform1f("lineWidth", U.pixelsize - 1.0f);
   }

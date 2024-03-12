@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -20,30 +20,31 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_lib_remap.h"
+#include "BKE_context.hh"
+#include "BKE_lib_query.hh"
+#include "BKE_lib_remap.hh"
 #include "BKE_nla.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "ED_anim_api.h"
-#include "ED_markers.h"
-#include "ED_screen.h"
-#include "ED_space_api.h"
-#include "ED_time_scrub_ui.h"
+#include "ED_anim_api.hh"
+#include "ED_markers.hh"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
+#include "ED_time_scrub_ui.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "GPU_matrix.h"
 
@@ -61,7 +62,6 @@ static SpaceLink *action_create(const ScrArea *area, const Scene *scene)
   saction = MEM_cnew<SpaceAction>("initaction");
   saction->spacetype = SPACE_ACTION;
 
-  saction->autosnap = SACTSNAP_FRAME;
   saction->mode = SACTCONT_DOPESHEET;
   saction->mode_prev = SACTCONT_DOPESHEET;
   saction->flag = SACTION_SHOW_INTERPOLATION | SACTION_SHOW_MARKERS;
@@ -159,9 +159,9 @@ static void action_main_region_init(wmWindowManager *wm, ARegion *region)
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_CUSTOM, region->winx, region->winy);
 
   /* own keymap */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet", SPACE_ACTION, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet", SPACE_ACTION, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
-  keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet Generic", SPACE_ACTION, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet Generic", SPACE_ACTION, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -203,7 +203,7 @@ static void action_main_region_draw(const bContext *C, ARegion *region)
   }
 
   /* markers */
-  UI_view2d_view_orthoSpecial(region, v2d, 1);
+  UI_view2d_view_orthoSpecial(region, v2d, true);
 
   marker_flag = ((ac.markers && (ac.markers != &ac.scene->markers)) ? DRAW_MARKERS_LOCAL : 0) |
                 DRAW_MARKERS_MARGIN;
@@ -241,7 +241,7 @@ static void action_main_region_draw_overlay(const bContext *C, ARegion *region)
   /* caches */
   if (saction->mode == SACTCONT_TIMELINE) {
     GPU_matrix_push_projection();
-    UI_view2d_view_orthoSpecial(region, v2d, 1);
+    UI_view2d_view_orthoSpecial(region, v2d, true);
     timeline_draw_cache(saction, obact, scene);
     GPU_matrix_pop_projection();
   }
@@ -264,28 +264,46 @@ static void action_channel_region_init(wmWindowManager *wm, ARegion *region)
   UI_view2d_region_reinit(&region->v2d, V2D_COMMONVIEW_LIST, region->winx, region->winy);
 
   /* own keymap */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Animation Channels", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Animation Channels", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet Generic", SPACE_ACTION, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet Generic", SPACE_ACTION, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
+}
+
+static void set_v2d_height(View2D *v2d, const size_t item_count, const bool add_marker_padding)
+{
+  const int height = ANIM_UI_get_channels_total_height(v2d, item_count);
+  const float pad_bottom = add_marker_padding ? UI_MARKER_MARGIN_Y : 0;
+  v2d->tot.ymin = -(height + pad_bottom);
+  UI_view2d_curRect_clamp_y(v2d);
 }
 
 static void action_channel_region_draw(const bContext *C, ARegion *region)
 {
   /* draw entirely, view changes should be handled here */
   bAnimContext ac;
+  if (!ANIM_animdata_get_context(C, &ac)) {
+    return;
+  }
+
   View2D *v2d = &region->v2d;
 
   /* clear and setup matrix */
   UI_ThemeClearColor(TH_BACK);
 
-  UI_view2d_view_ortho(v2d);
+  ListBase anim_data = {nullptr, nullptr};
+  /* Build list of channels to draw. */
+  const eAnimFilter_Flags filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_LIST_VISIBLE |
+                                    ANIMFILTER_LIST_CHANNELS);
+  const size_t item_count = ANIM_animdata_filter(
+      &ac, &anim_data, filter, ac.data, eAnimCont_Types(ac.datatype));
+  /* The View2D's height needs to be set before calling UI_view2d_view_ortho because the latter
+   * uses the View2D's `cur` rect which might be modified when setting the height. */
+  set_v2d_height(v2d, item_count, !BLI_listbase_is_empty(ac.markers));
 
-  /* data */
-  if (ANIM_animdata_get_context(C, &ac)) {
-    draw_channel_names((bContext *)C, &ac, region);
-  }
+  UI_view2d_view_ortho(v2d);
+  draw_channel_names((bContext *)C, &ac, region, anim_data);
 
   /* channel filter next to scrubbing area */
   ED_time_scrub_channel_search_draw(C, region, ac.ads);
@@ -294,6 +312,7 @@ static void action_channel_region_draw(const bContext *C, ARegion *region)
   UI_view2d_view_restore(C);
 
   /* no scrollers here */
+  ANIM_animdata_freelist(&anim_data);
 }
 
 /* add handlers, stuff you only do once or on area/region changes */
@@ -365,12 +384,7 @@ static void action_channel_region_listener(const wmRegionListenerParams *params)
 static void saction_channel_region_message_subscribe(const wmRegionMessageSubscribeParams *params)
 {
   wmMsgBus *mbus = params->message_bus;
-  bScreen *screen = params->screen;
-  ScrArea *area = params->area;
   ARegion *region = params->region;
-
-  PointerRNA ptr;
-  RNA_pointer_create(&screen->id, &RNA_SpaceDopeSheetEditor, area->spacedata.first, &ptr);
 
   wmMsgSubscribeValue msg_sub_value_region_tag_redraw{};
   msg_sub_value_region_tag_redraw.owner = region;
@@ -382,7 +396,7 @@ static void saction_channel_region_message_subscribe(const wmRegionMessageSubscr
    * so just whitelist the entire structs for updates
    */
   {
-    wmMsgParams_RNA msg_key_params = {{0}};
+    wmMsgParams_RNA msg_key_params = {{nullptr}};
     StructRNA *type_array[] = {
         &RNA_DopeSheet, /* dopesheet filters */
 
@@ -402,21 +416,6 @@ static void saction_channel_region_message_subscribe(const wmRegionMessageSubscr
       WM_msg_subscribe_rna_params(
           mbus, &msg_key_params, &msg_sub_value_region_tag_redraw, __func__);
     }
-  }
-}
-
-static void action_clamp_scroll(ARegion *region)
-{
-  View2D *v2d = &region->v2d;
-  const float cur_height_y = BLI_rctf_size_y(&v2d->cur);
-
-  if (BLI_rctf_size_y(&v2d->cur) > BLI_rctf_size_y(&v2d->tot)) {
-    v2d->cur.ymin = -cur_height_y;
-    v2d->cur.ymax = 0;
-  }
-  else if (v2d->cur.ymin < v2d->tot.ymin) {
-    v2d->cur.ymin = v2d->tot.ymin;
-    v2d->cur.ymax = v2d->cur.ymin + cur_height_y;
   }
 }
 
@@ -448,6 +447,7 @@ static void action_main_region_listener(const wmRegionListenerParams *params)
           break;
         case ND_BONE_ACTIVE:
         case ND_BONE_SELECT:
+        case ND_BONE_COLLECTION:
         case ND_KEYS:
           ED_region_tag_redraw(region);
           break;
@@ -482,12 +482,7 @@ static void saction_main_region_message_subscribe(const wmRegionMessageSubscribe
 {
   wmMsgBus *mbus = params->message_bus;
   Scene *scene = params->scene;
-  bScreen *screen = params->screen;
-  ScrArea *area = params->area;
   ARegion *region = params->region;
-
-  PointerRNA ptr;
-  RNA_pointer_create(&screen->id, &RNA_SpaceDopeSheetEditor, area->spacedata.first, &ptr);
 
   wmMsgSubscribeValue msg_sub_value_region_tag_redraw{};
   msg_sub_value_region_tag_redraw.owner = region;
@@ -504,8 +499,7 @@ static void saction_main_region_message_subscribe(const wmRegionMessageSubscribe
         &rna_Scene_frame_current,
     };
 
-    PointerRNA idptr;
-    RNA_id_pointer_create(&scene->id, &idptr);
+    PointerRNA idptr = RNA_id_pointer_create(&scene->id);
 
     for (int i = 0; i < ARRAY_SIZE(props); i++) {
       WM_msg_subscribe_rna(mbus, &idptr, props[i], &msg_sub_value_region_tag_redraw, __func__);
@@ -738,7 +732,7 @@ static void action_buttons_area_init(wmWindowManager *wm, ARegion *region)
 
   ED_region_panels_init(wm, region);
 
-  keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet Generic", SPACE_ACTION, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Dopesheet Generic", SPACE_ACTION, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 }
 
@@ -791,11 +785,9 @@ static void action_refresh(const bContext *C, ScrArea *area)
    * NOTE: the temp flag is used to indicate when this needs to be done,
    * and will be cleared once handled. */
   if (saction->runtime.flag & SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC) {
-    ARegion *region;
-
     /* Perform syncing of channel state incl. selection
      * Active action setting also occurs here
-     * (as part of anim channel filtering in anim_filter.c). */
+     * (as part of anim channel filtering in `anim_filter.cc`). */
     ANIM_sync_animchannels_to_data(C);
     saction->runtime.flag &= ~SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
 
@@ -804,7 +796,7 @@ static void action_refresh(const bContext *C, ScrArea *area)
      *   or else they don't update #28962.
      */
     ED_area_tag_redraw(area);
-    for (region = static_cast<ARegion *>(area->regionbase.first); region; region = region->next) {
+    LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       ED_region_tag_redraw(region);
     }
   }
@@ -820,6 +812,25 @@ static void action_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapp
   BKE_id_remapper_apply(mappings, (ID **)&sact->action, ID_REMAP_APPLY_DEFAULT);
   BKE_id_remapper_apply(mappings, (ID **)&sact->ads.filter_grp, ID_REMAP_APPLY_DEFAULT);
   BKE_id_remapper_apply(mappings, &sact->ads.source, ID_REMAP_APPLY_DEFAULT);
+}
+
+static void action_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)
+{
+  SpaceAction *sact = reinterpret_cast<SpaceAction *>(space_link);
+  const int data_flags = BKE_lib_query_foreachid_process_flags_get(data);
+  const bool is_readonly = (data_flags & IDWALK_READONLY) != 0;
+
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sact->action, IDWALK_CB_NOP);
+
+  /* NOTE: Could be deduplicated with the #bDopeSheet handling of #SpaceNla and #SpaceGraph. */
+  BKE_LIB_FOREACHID_PROCESS_ID(data, sact->ads.source, IDWALK_CB_NOP);
+  BKE_LIB_FOREACHID_PROCESS_IDSUPER(data, sact->ads.filter_grp, IDWALK_CB_NOP);
+
+  if (!is_readonly) {
+    /* Force recalc of list of channels, potentially updating the active action while we're
+     * at it (as it can only be updated that way) #28962. */
+    sact->runtime.flag |= SACTION_RUNTIME_FLAG_NEED_CHAN_SYNC;
+  }
 }
 
 /**
@@ -860,34 +871,14 @@ static void action_space_blend_read_data(BlendDataReader * /*reader*/, SpaceLink
   memset(&saction->runtime, 0x0, sizeof(saction->runtime));
 }
 
-static void action_space_blend_read_lib(BlendLibReader *reader, ID *parent_id, SpaceLink *sl)
-{
-  SpaceAction *saction = (SpaceAction *)sl;
-  bDopeSheet *ads = &saction->ads;
-
-  if (ads) {
-    BLO_read_id_address(reader, parent_id, &ads->source);
-    BLO_read_id_address(reader, parent_id, &ads->filter_grp);
-  }
-
-  BLO_read_id_address(reader, parent_id, &saction->action);
-}
-
 static void action_space_blend_write(BlendWriter *writer, SpaceLink *sl)
 {
   BLO_write_struct(writer, SpaceAction, sl);
 }
 
-static void action_main_region_view2d_changed(const bContext * /*C*/, ARegion *region)
+void ED_spacetype_action()
 {
-  /* V2D_KEEPTOT_STRICT cannot be used to clamp scrolling
-   * because it also clamps the x-axis to 0. */
-  action_clamp_scroll(region);
-}
-
-void ED_spacetype_action(void)
-{
-  SpaceType *st = MEM_cnew<SpaceType>("spacetype action");
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_ACTION;
@@ -902,11 +893,12 @@ void ED_spacetype_action(void)
   st->listener = action_listener;
   st->refresh = action_refresh;
   st->id_remap = action_id_remap;
+  st->foreach_id = action_foreach_id;
   st->space_subtype_item_extend = action_space_subtype_item_extend;
   st->space_subtype_get = action_space_subtype_get;
   st->space_subtype_set = action_space_subtype_set;
   st->blend_read_data = action_space_blend_read_data;
-  st->blend_read_lib = action_space_blend_read_lib;
+  st->blend_read_after_liblink = nullptr;
   st->blend_write = action_space_blend_write;
 
   /* regions: main window */
@@ -917,7 +909,6 @@ void ED_spacetype_action(void)
   art->draw_overlay = action_main_region_draw_overlay;
   art->listener = action_main_region_listener;
   art->message_subscribe = saction_main_region_message_subscribe;
-  art->on_view2d_changed = action_main_region_view2d_changed;
   art->keymapflag = ED_KEYMAP_GIZMO | ED_KEYMAP_VIEW2D | ED_KEYMAP_ANIMATION | ED_KEYMAP_FRAMES;
 
   BLI_addhead(&st->regiontypes, art);
@@ -963,7 +954,7 @@ void ED_spacetype_action(void)
   art = ED_area_type_hud(st->spaceid);
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }
 
 /** \} */

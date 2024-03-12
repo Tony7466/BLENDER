@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -110,12 +110,14 @@ int UnaryPredicate1D_Init(PyObject *module)
 
 //------------------------INSTANCE METHODS ----------------------------------
 
-static char UnaryPredicate1D___doc__[] =
-    "Base class for unary predicates that work on :class:`Interface1D`.  A\n"
+PyDoc_STRVAR(
+    /* Wrap. */
+    UnaryPredicate1D___doc__,
+    "Base class for unary predicates that work on :class:`Interface1D`. A\n"
     "UnaryPredicate1D is a functor that evaluates a condition on a\n"
     "Interface1D and returns true or false depending on whether this\n"
-    "condition is satisfied or not.  The UnaryPredicate1D is used by\n"
-    "invoking its __call__() method.  Any inherited class must overload the\n"
+    "condition is satisfied or not. The UnaryPredicate1D is used by\n"
+    "invoking its __call__() method. Any inherited class must overload the\n"
     "__call__() method.\n"
     "\n"
     ".. method:: __init__()\n"
@@ -129,7 +131,7 @@ static char UnaryPredicate1D___doc__[] =
     "   :arg inter: The Interface1D on which we wish to evaluate the predicate.\n"
     "   :type inter: :class:`Interface1D`\n"
     "   :return: True if the condition is satisfied, false otherwise.\n"
-    "   :rtype: bool\n";
+    "   :rtype: bool\n");
 
 static int UnaryPredicate1D___init__(BPy_UnaryPredicate1D *self, PyObject *args, PyObject *kwds)
 {
@@ -189,10 +191,12 @@ static PyObject *UnaryPredicate1D___call__(BPy_UnaryPredicate1D *self,
 
 /*----------------------UnaryPredicate1D get/setters ----------------------------*/
 
-PyDoc_STRVAR(UnaryPredicate1D_name_doc,
-             "The name of the unary 1D predicate.\n"
-             "\n"
-             ":type: str");
+PyDoc_STRVAR(
+    /* Wrap. */
+    UnaryPredicate1D_name_doc,
+    "The name of the unary 1D predicate.\n"
+    "\n"
+    ":type: str");
 
 static PyObject *UnaryPredicate1D_name_get(BPy_UnaryPredicate1D *self, void * /*closure*/)
 {
@@ -211,7 +215,7 @@ static PyGetSetDef BPy_UnaryPredicate1D_getseters[] = {
 /*-----------------------BPy_UnaryPredicate1D type definition ------------------------------*/
 
 PyTypeObject UnaryPredicate1D_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "UnaryPredicate1D",
     /*tp_basicsize*/ sizeof(BPy_UnaryPredicate1D),
     /*tp_itemsize*/ 0,

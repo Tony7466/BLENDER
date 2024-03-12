@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,18 +11,18 @@
 
 #include "DNA_space_types.h"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_sequencer.h"
+#include "ED_sequencer.hh"
 
-#include "sequencer_intern.h"
+#include "sequencer_intern.hh"
 
 /* ************************** registration **********************************/
 
-void sequencer_operatortypes(void)
+void sequencer_operatortypes()
 {
-  /* sequencer_edit.c */
+  /* `sequencer_edit.cc` */
   WM_operatortype_append(SEQUENCER_OT_split);
   WM_operatortype_append(SEQUENCER_OT_slip);
   WM_operatortype_append(SEQUENCER_OT_mute);
@@ -69,14 +69,15 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_cursor_set);
   WM_operatortype_append(SEQUENCER_OT_scene_frame_range_update);
 
-  /* sequencer_retiming.c */
+  /* `sequencer_retiming.cc` */
   WM_operatortype_append(SEQUENCER_OT_retiming_reset);
-  WM_operatortype_append(SEQUENCER_OT_retiming_handle_move);
-  WM_operatortype_append(SEQUENCER_OT_retiming_handle_add);
-  WM_operatortype_append(SEQUENCER_OT_retiming_handle_remove);
+  WM_operatortype_append(SEQUENCER_OT_retiming_show);
+  WM_operatortype_append(SEQUENCER_OT_retiming_key_add);
+  WM_operatortype_append(SEQUENCER_OT_retiming_freeze_frame_add);
+  WM_operatortype_append(SEQUENCER_OT_retiming_transition_add);
   WM_operatortype_append(SEQUENCER_OT_retiming_segment_speed_set);
 
-  /* sequencer_select.c */
+  /* `sequencer_select.cc` */
   WM_operatortype_append(SEQUENCER_OT_select_all);
   WM_operatortype_append(SEQUENCER_OT_select);
   WM_operatortype_append(SEQUENCER_OT_select_more);
@@ -89,7 +90,7 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_select_box);
   WM_operatortype_append(SEQUENCER_OT_select_grouped);
 
-  /* sequencer_add.c */
+  /* `sequencer_add.cc` */
   WM_operatortype_append(SEQUENCER_OT_scene_strip_add);
   WM_operatortype_append(SEQUENCER_OT_scene_strip_add_new);
   WM_operatortype_append(SEQUENCER_OT_movieclip_strip_add);
@@ -104,6 +105,7 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_strip_modifier_remove);
   WM_operatortype_append(SEQUENCER_OT_strip_modifier_move);
   WM_operatortype_append(SEQUENCER_OT_strip_modifier_copy);
+  WM_operatortype_append(SEQUENCER_OT_strip_modifier_equalizer_redefine);
 
   /* sequencer_view.h */
   WM_operatortype_append(SEQUENCER_OT_sample);
@@ -114,26 +116,26 @@ void sequencer_operatortypes(void)
   WM_operatortype_append(SEQUENCER_OT_view_selected);
   WM_operatortype_append(SEQUENCER_OT_view_ghost_border);
 
-  /* sequencer_channels_edit.c */
+  /* `sequencer_channels_edit.cc` */
   WM_operatortype_append(SEQUENCER_OT_rename_channel);
 }
 
 void sequencer_keymap(wmKeyConfig *keyconf)
 {
   /* Common items ------------------------------------------------------------------ */
-  WM_keymap_ensure(keyconf, "SequencerCommon", SPACE_SEQ, 0);
+  WM_keymap_ensure(keyconf, "SequencerCommon", SPACE_SEQ, RGN_TYPE_WINDOW);
 
   /* Strips Region --------------------------------------------------------------- */
-  WM_keymap_ensure(keyconf, "Sequencer", SPACE_SEQ, 0);
+  WM_keymap_ensure(keyconf, "Sequencer", SPACE_SEQ, RGN_TYPE_WINDOW);
 
   /* Preview Region ----------------------------------------------------------- */
-  WM_keymap_ensure(keyconf, "SequencerPreview", SPACE_SEQ, 0);
+  WM_keymap_ensure(keyconf, "SequencerPreview", SPACE_SEQ, RGN_TYPE_WINDOW);
 
   /* Channels Region ----------------------------------------------------------- */
-  WM_keymap_ensure(keyconf, "Sequencer Channels", SPACE_SEQ, 0);
+  WM_keymap_ensure(keyconf, "Sequencer Channels", SPACE_SEQ, RGN_TYPE_WINDOW);
 }
 
-void ED_operatormacros_sequencer(void)
+void ED_operatormacros_sequencer()
 {
   wmOperatorType *ot;
 
@@ -143,5 +145,20 @@ void ED_operatormacros_sequencer(void)
                                     OPTYPE_UNDO | OPTYPE_REGISTER);
 
   WM_operatortype_macro_define(ot, "SEQUENCER_OT_duplicate");
+  WM_operatortype_macro_define(ot, "TRANSFORM_OT_seq_slide");
+
+  ot = WM_operatortype_append_macro("SEQUENCER_OT_retiming_add_freeze_frame_slide",
+                                    "Add Freeze Frame And Slide",
+                                    "Add freeze frame and move it",
+                                    OPTYPE_UNDO | OPTYPE_REGISTER);
+  WM_operatortype_macro_define(ot, "SEQUENCER_OT_retiming_freeze_frame_add");
+  WM_operatortype_macro_define(ot, "TRANSFORM_OT_seq_slide");
+
+  ot = WM_operatortype_append_macro(
+      "SEQUENCER_OT_retiming_add_transition_slide",
+      "Add Speed Transition And Slide",
+      "Add smooth transition between 2 retimed segments and change its duration",
+      OPTYPE_UNDO | OPTYPE_REGISTER);
+  WM_operatortype_macro_define(ot, "SEQUENCER_OT_retiming_transition_add");
   WM_operatortype_macro_define(ot, "TRANSFORM_OT_seq_slide");
 }

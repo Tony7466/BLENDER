@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -191,8 +191,8 @@ execute_materialized_impl(TypeSequence<ParamTags...> /*param_tags*/,
  * chunks, which reduces virtual function call overhead.
  */
 template<typename... ParamTags, size_t... I, typename ElementFn, typename... LoadedParams>
-inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
-                                 std::index_sequence<I...> /* indices */,
+inline void execute_materialized(TypeSequence<ParamTags...> /*param_tags*/,
+                                 std::index_sequence<I...> /*indices*/,
                                  const ElementFn element_fn,
                                  const IndexMaskSegment mask,
                                  const std::tuple<LoadedParams...> &loaded_params)
@@ -334,7 +334,8 @@ inline void execute_materialized(TypeSequence<ParamTags...> /* param_tags */,
             typedef typename ParamTag::base_type T;
             if constexpr (ELEM(ParamTag::category,
                                ParamCategory::SingleOutput,
-                               ParamCategory::SingleMutable)) {
+                               ParamCategory::SingleMutable))
+            {
               T *tmp_buffer = std::get<I>(temporary_buffers).ptr();
               T *param_buffer = std::get<I>(loaded_params);
               for (int64_t i = 0; i < chunk_size; i++) {

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,51 +16,52 @@
 #include "DNA_scene_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_screen.hh"
 
 #include "GPU_state.h"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "ED_anim_api.h"
-#include "ED_armature.h"
-#include "ED_asset.h"
-#include "ED_clip.h"
-#include "ED_curve.h"
-#include "ED_curves.h"
-#include "ED_curves_sculpt.h"
-#include "ED_fileselect.h"
-#include "ED_geometry.h"
-#include "ED_gizmo_library.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_grease_pencil.h"
-#include "ED_lattice.h"
-#include "ED_markers.h"
-#include "ED_mask.h"
-#include "ED_mball.h"
-#include "ED_mesh.h"
-#include "ED_node.h"
-#include "ED_object.h"
-#include "ED_paint.h"
-#include "ED_physics.h"
-#include "ED_render.h"
-#include "ED_scene.h"
-#include "ED_screen.h"
-#include "ED_sculpt.h"
-#include "ED_sequencer.h"
-#include "ED_sound.h"
-#include "ED_space_api.h"
-#include "ED_transform.h"
-#include "ED_userpref.h"
-#include "ED_util.h"
-#include "ED_uvedit.h"
+#include "ED_anim_api.hh"
+#include "ED_armature.hh"
+#include "ED_asset.hh"
+#include "ED_clip.hh"
+#include "ED_curve.hh"
+#include "ED_curves.hh"
+#include "ED_curves_sculpt.hh"
+#include "ED_fileselect.hh"
+#include "ED_geometry.hh"
+#include "ED_gizmo_library.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_grease_pencil.hh"
+#include "ED_lattice.hh"
+#include "ED_markers.hh"
+#include "ED_mask.hh"
+#include "ED_mball.hh"
+#include "ED_mesh.hh"
+#include "ED_node.hh"
+#include "ED_object.hh"
+#include "ED_paint.hh"
+#include "ED_physics.hh"
+#include "ED_render.hh"
+#include "ED_scene.hh"
+#include "ED_screen.hh"
+#include "ED_sculpt.hh"
+#include "ED_sequencer.hh"
+#include "ED_sound.hh"
+#include "ED_space_api.hh"
+#include "ED_transform.hh"
+#include "ED_userpref.hh"
+#include "ED_util.hh"
+#include "ED_uvedit.hh"
 
 #include "io_ops.hh"
 
 void ED_spacetypes_init()
 {
+  using namespace blender::ed;
   /* UI unit is a variable, may be used in some space type initialization. */
   U.widget_unit = 20;
 
@@ -83,7 +84,7 @@ void ED_spacetypes_init()
   ED_spacetype_clip();
   ED_spacetype_statusbar();
   ED_spacetype_topbar();
-  ED_spacetype_spreadsheet();
+  spreadsheet::register_spacetype();
 
   /* Register operator types for screen and all spaces. */
   ED_operatortypes_userpref();
@@ -92,7 +93,7 @@ void ED_spacetypes_init()
   ED_operatortypes_screen();
   ED_operatortypes_anim();
   ED_operatortypes_animchannels();
-  ED_operatortypes_asset();
+  asset::operatortypes_asset();
   ED_operatortypes_gpencil_legacy();
   ED_operatortypes_grease_pencil();
   ED_operatortypes_object();
@@ -135,8 +136,7 @@ void ED_spacetypes_init()
   ED_gizmotypes_snap_3d();
 
   /* Register types for operators and gizmos. */
-  const ListBase *spacetypes = BKE_spacetypes_list();
-  LISTBASE_FOREACH (const SpaceType *, type, spacetypes) {
+  for (const std::unique_ptr<SpaceType> &type : BKE_spacetypes_list()) {
     /* Initialize gizmo types first, operator types need them. */
     if (type->gizmos) {
       type->gizmos();
@@ -162,16 +162,17 @@ void ED_spacemacros_init()
   ED_operatormacros_action();
   ED_operatormacros_clip();
   ED_operatormacros_curve();
+  ED_operatormacros_curves();
   ED_operatormacros_mask();
   ED_operatormacros_sequencer();
   ED_operatormacros_paint();
   ED_operatormacros_gpencil();
+  ED_operatormacros_grease_pencil();
   ED_operatormacros_nla();
 
   /* Register dropboxes (can use macros). */
   ED_dropboxes_ui();
-  const ListBase *spacetypes = BKE_spacetypes_list();
-  LISTBASE_FOREACH (const SpaceType *, type, spacetypes) {
+  for (const std::unique_ptr<SpaceType> &type : BKE_spacetypes_list()) {
     if (type->dropboxes) {
       type->dropboxes();
     }
@@ -204,8 +205,7 @@ void ED_spacetypes_keymap(wmKeyConfig *keyconf)
 
   ED_keymap_transform(keyconf);
 
-  const ListBase *spacetypes = BKE_spacetypes_list();
-  LISTBASE_FOREACH (const SpaceType *, type, spacetypes) {
+  for (const std::unique_ptr<SpaceType> &type : BKE_spacetypes_list()) {
     if (type->keymap) {
       type->keymap(keyconf);
     }
@@ -220,7 +220,7 @@ void ED_spacetypes_keymap(wmKeyConfig *keyconf)
 /* ********************** Custom Draw Call API ***************** */
 
 struct RegionDrawCB {
-  struct RegionDrawCB *next, *prev;
+  RegionDrawCB *next, *prev;
 
   void (*draw)(const bContext *, ARegion *, void *);
   void *customdata;
@@ -289,61 +289,3 @@ void ED_region_draw_cb_remove_by_type(ARegionType *art, void *draw_fn, void (*fr
     }
   }
 }
-
-/* ********************* space template *********************** */
-/* forward declare */
-void ED_spacetype_xxx();
-
-/* allocate and init some vars */
-static SpaceLink *xxx_create(const ScrArea * /*area*/, const Scene * /*scene*/)
-{
-  return nullptr;
-}
-
-/* Doesn't free the space-link itself. */
-static void xxx_free(SpaceLink * /*sl*/) {}
-
-/* spacetype; init callback for usage, should be re-doable. */
-static void xxx_init(wmWindowManager * /*wm*/, ScrArea * /*area*/)
-{
-
-  /* link area to SpaceXXX struct */
-
-  /* define how many regions, the order and types */
-
-  /* add types to regions */
-}
-
-static SpaceLink *xxx_duplicate(SpaceLink * /*sl*/)
-{
-  return nullptr;
-}
-
-static void xxx_operatortypes()
-{
-  /* register operator types for this space */
-}
-
-static void xxx_keymap(wmKeyConfig * /*keyconf*/)
-{
-  /* add default items to keymap */
-}
-
-/* only called once, from screen/spacetypes.cc */
-void ED_spacetype_xxx()
-{
-  static SpaceType st;
-
-  st.spaceid = SPACE_VIEW3D;
-
-  st.create = xxx_create;
-  st.free = xxx_free;
-  st.init = xxx_init;
-  st.duplicate = xxx_duplicate;
-  st.operatortypes = xxx_operatortypes;
-  st.keymap = xxx_keymap;
-
-  BKE_spacetype_register(&st);
-}
-
-/* ****************************** end template *********************** */

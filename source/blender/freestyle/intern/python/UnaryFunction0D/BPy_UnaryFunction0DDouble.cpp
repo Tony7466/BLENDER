@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2008-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -109,7 +109,9 @@ int UnaryFunction0DDouble_Init(PyObject *module)
 
 //------------------------INSTANCE METHODS ----------------------------------
 
-static char UnaryFunction0DDouble___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    UnaryFunction0DDouble___doc__,
     "Class hierarchy: :class:`UnaryFunction0D` > :class:`UnaryFunction0DDouble`\n"
     "\n"
     "Base class for unary functions (functors) that work on\n"
@@ -117,7 +119,7 @@ static char UnaryFunction0DDouble___doc__[] =
     "\n"
     ".. method:: __init__()\n"
     "\n"
-    "   Default constructor.\n";
+    "   Default constructor.\n");
 
 static int UnaryFunction0DDouble___init__(BPy_UnaryFunction0DDouble *self,
                                           PyObject *args,
@@ -174,7 +176,7 @@ static PyObject *UnaryFunction0DDouble___call__(BPy_UnaryFunction0DDouble *self,
 /*-----------------------BPy_UnaryFunction0DDouble type definition ------------------------------*/
 
 PyTypeObject UnaryFunction0DDouble_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "UnaryFunction0DDouble",
     /*tp_basicsize*/ sizeof(BPy_UnaryFunction0DDouble),
     /*tp_itemsize*/ 0,

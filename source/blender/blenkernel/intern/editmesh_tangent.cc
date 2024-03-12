@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,18 +6,19 @@
  * \ingroup bke
  */
 
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 #include "BLI_task.h"
 
 #include "DNA_customdata_types.h"
 #include "DNA_defs.h"
 #include "DNA_meshdata_types.h"
 
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
-#include "BKE_editmesh_tangent.h"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_editmesh_tangent.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_tangent.h" /* for utility functions */
+#include "BKE_mesh_tangent.hh" /* for utility functions */
 
 #include "MEM_guardedalloc.h"
 
@@ -28,7 +29,7 @@
 /** \name Tangent Space Calculation
  * \{ */
 
-/* Necessary complexity to handle looptri's as quads for correct tangents */
+/* Necessary complexity to handle looptris as quads for correct tangents. */
 #define USE_LOOPTRI_DETECT_QUADS
 
 struct SGLSLEditMeshToTangent {
@@ -136,7 +137,7 @@ struct SGLSLEditMeshToTangent {
   int numTessFaces;
 
 #ifdef USE_LOOPTRI_DETECT_QUADS
-  /* map from 'fake' face index to looptri,
+  /* map from 'fake' face index to looptris,
    * quads will point to the first looptri of the quad */
   const int *face_as_quad_map;
   int num_face_as_quad_map;
@@ -155,8 +156,8 @@ void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
                                     bool calc_active_tangent,
                                     const char (*tangent_names)[MAX_CUSTOMDATA_LAYER_NAME],
                                     int tangent_names_len,
-                                    const float (*poly_normals)[3],
-                                    const float (*loop_normals)[3],
+                                    const float (*face_normals)[3],
+                                    const float (*corner_normals)[3],
                                     const float (*vert_orco)[3],
                                     /* result */
                                     CustomData *loopdata_out,
@@ -223,7 +224,7 @@ void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
         face_as_quad_map[i] = j;
         /* step over all quads */
         if (em->looptris[j][0]->f->len == 4) {
-          j++; /* skips the nest looptri */
+          j++; /* Skips the next looptri. */
         }
       }
       num_face_as_quad_map = i;
@@ -253,10 +254,10 @@ void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
         mesh2tangent->face_as_quad_map = face_as_quad_map;
         mesh2tangent->num_face_as_quad_map = num_face_as_quad_map;
 #endif
-        mesh2tangent->precomputedFaceNormals = poly_normals;
+        mesh2tangent->precomputedFaceNormals = face_normals;
         /* NOTE: we assume we do have tessellated loop normals at this point
          * (in case it is object-enabled), have to check this is valid. */
-        mesh2tangent->precomputedLoopNormals = loop_normals;
+        mesh2tangent->precomputedLoopNormals = corner_normals;
         mesh2tangent->cd_loop_uv_offset = CustomData_get_n_offset(&bm->ldata, CD_PROP_FLOAT2, n);
 
         /* needed for indexing loop-tangents */
@@ -285,7 +286,7 @@ void BKE_editmesh_loop_tangent_calc(BMEditMesh *em,
         }
         BM_mesh_elem_index_ensure(bm, htype_index);
 
-        mesh2tangent->looptris = (const BMLoop *(*)[3])em->looptris;
+        mesh2tangent->looptris = const_cast<const BMLoop *(*)[3]>(em->looptris);
         mesh2tangent->tangent = static_cast<float(*)[4]>(loopdata_out->layers[index].data);
 
         BLI_task_pool_push(

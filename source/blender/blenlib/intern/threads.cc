@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2006 Blender Foundation
+/* SPDX-FileCopyrightText: 2006 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -17,8 +17,7 @@
 #include "BLI_system.h"
 #include "BLI_task.h"
 #include "BLI_threads.h"
-
-#include "PIL_time.h"
+#include "BLI_time.h"
 
 /* for checking system threads - BLI_system_thread_count */
 #ifdef WIN32
@@ -64,7 +63,7 @@
  *       // tag job 'processed
  *       BLI_threadpool_insert(&lb, job);
  *     }
- *     else PIL_sleep_ms(50);
+ *     else BLI_sleep_ms(50);
  *
  *     // Find if a job is ready, this the do_something_func() should write in job somewhere.
  *     cont = 0;
@@ -446,6 +445,7 @@ void BLI_spin_end(SpinLock *spin)
   BLI_mutex_end(spin);
 #elif defined(_MSC_VER)
   /* Nothing to do, spin is a simple integer type. */
+  UNUSED_VARS(spin);
 #else
   pthread_spin_destroy(spin);
 #endif
@@ -687,7 +687,7 @@ void *BLI_thread_queue_pop_timeout(ThreadQueue *queue, int ms)
   void *work = nullptr;
   timespec timeout;
 
-  t = PIL_check_seconds_timer();
+  t = BLI_check_seconds_timer();
   wait_timeout(&timeout, ms);
 
   /* wait until there is work */
@@ -696,7 +696,7 @@ void *BLI_thread_queue_pop_timeout(ThreadQueue *queue, int ms)
     if (pthread_cond_timedwait(&queue->push_cond, &queue->mutex, &timeout) == ETIMEDOUT) {
       break;
     }
-    if (PIL_check_seconds_timer() - t >= ms * 0.001) {
+    if (BLI_check_seconds_timer() - t >= ms * 0.001) {
       break;
     }
   }

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2017-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2017-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -47,6 +47,7 @@ set(OPENIMAGEIO_EXTRA_ARGS
   -DBUILD_SHARED_LIBS=ON
   ${OPENIMAGEIO_LINKSTATIC}
   ${DEFAULT_BOOST_FLAGS}
+  -DREQUIRED_DEPS=WebP$<SEMICOLON>JPEGTurbo$<SEMICOLON>TIFF$<SEMICOLON>OpenEXR$<SEMICOLON>PNG$<SEMICOLON>OpenJPEG$<SEMICOLON>fmt$<SEMICOLON>Robinmap$<SEMICOLON>ZLIB$<SEMICOLON>pugixml$<SEMICOLON>Python
   -DUSE_LIBSQUISH=OFF
   -DUSE_QT5=OFF
   -DUSE_NUKE=OFF
@@ -108,9 +109,9 @@ ExternalProject_Add(external_openimageio
   CMAKE_GENERATOR ${PLATFORM_ALT_GENERATOR}
   PREFIX ${BUILD_DIR}/openimageio
   PATCH_COMMAND ${PATCH_CMD} -p 1 -N -d ${BUILD_DIR}/openimageio/src/external_openimageio/ < ${PATCH_DIR}/openimageio.diff &&
-                ${PATCH_CMD} -p 1 -N -d ${BUILD_DIR}/openimageio/src/external_openimageio/ < ${PATCH_DIR}/oiio_3832.diff &&
-                ${PATCH_CMD} -p 1 -N -d ${BUILD_DIR}/openimageio/src/external_openimageio/ < ${PATCH_DIR}/oiio_deadlock.diff &&
-                ${PATCH_CMD} -p 1 -N -d ${BUILD_DIR}/openimageio/src/external_openimageio/ < ${PATCH_DIR}/oiio_psd_8da473e254.diff
+                ${PATCH_CMD} -p 1 -N -d ${BUILD_DIR}/openimageio/src/external_openimageio/ < ${PATCH_DIR}/oiio_webp.diff &&
+                ${PATCH_CMD} -p 1 -N -d ${BUILD_DIR}/openimageio/src/external_openimageio/ < ${PATCH_DIR}/oiio_4044.diff &&
+                ${PATCH_CMD} -p 1 -N -d ${BUILD_DIR}/openimageio/src/external_openimageio/ < ${PATCH_DIR}/oiio_4062.diff
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/openimageio ${DEFAULT_CMAKE_FLAGS} ${OPENIMAGEIO_EXTRA_ARGS}
   INSTALL_DIR ${LIBDIR}/openimageio
 )
@@ -139,7 +140,12 @@ if(WIN32)
     ExternalProject_Add_Step(external_openimageio after_install
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/OpenImageIO/include ${HARVEST_TARGET}/OpenImageIO/include
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${LIBDIR}/OpenImageIO/lib ${HARVEST_TARGET}/OpenImageIO/lib
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/OpenImageIO/bin/iconvert.exe ${HARVEST_TARGET}/OpenImageIO/bin/iconvert.exe
       COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/OpenImageIO/bin/idiff.exe ${HARVEST_TARGET}/OpenImageIO/bin/idiff.exe
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/OpenImageIO/bin/igrep.exe ${HARVEST_TARGET}/OpenImageIO/bin/igrep.exe
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/OpenImageIO/bin/iinfo.exe ${HARVEST_TARGET}/OpenImageIO/bin/iinfo.exe
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/OpenImageIO/bin/maketx.exe ${HARVEST_TARGET}/OpenImageIO/bin/maketx.exe
+      COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/OpenImageIO/bin/oiiotool.exe ${HARVEST_TARGET}/OpenImageIO/bin/oiiotool.exe
       COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/OpenImageIO/bin/OpenImageIO.dll ${HARVEST_TARGET}/OpenImageIO/bin/OpenImageIO.dll
       COMMAND ${CMAKE_COMMAND} -E copy ${LIBDIR}/OpenImageIO/bin/OpenImageIO_Util.dll ${HARVEST_TARGET}/OpenImageIO/bin/OpenImageIO_Util.dll
       DEPENDEES install

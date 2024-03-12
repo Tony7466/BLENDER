@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2007 Blender Foundation
+/* SPDX-FileCopyrightText: 2007 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,17 +14,19 @@
 
 #include "BLI_alloca.h"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
 #include "BLI_memarena.h"
 #include "BLI_string.h"
 #include "BLI_task.h"
 
-#include "BKE_attribute.h"
-#include "BKE_customdata.h"
-#include "BKE_multires.h"
+#include "BKE_attribute.hh"
+#include "BKE_customdata.hh"
+#include "BKE_multires.hh"
 
-#include "bmesh.h"
-#include "intern/bmesh_private.h"
+#include "bmesh.hh"
+#include "intern/bmesh_private.hh"
 
 /* edge and vertex share, currently there's no need to have different logic */
 static void bm_data_interp_from_elem(CustomData *data_layer,
@@ -40,9 +42,7 @@ static void bm_data_interp_from_elem(CustomData *data_layer,
         /* do nothing */
       }
       else {
-        CustomData_bmesh_free_block_data(data_layer, ele_dst->head.data);
-        CustomData_bmesh_copy_data(
-            data_layer, data_layer, ele_src_1->head.data, &ele_dst->head.data);
+        CustomData_bmesh_copy_block(*data_layer, ele_src_1->head.data, &ele_dst->head.data);
       }
     }
     else if (fac >= 1.0f) {
@@ -50,9 +50,7 @@ static void bm_data_interp_from_elem(CustomData *data_layer,
         /* do nothing */
       }
       else {
-        CustomData_bmesh_free_block_data(data_layer, ele_dst->head.data);
-        CustomData_bmesh_copy_data(
-            data_layer, data_layer, ele_src_2->head.data, &ele_dst->head.data);
+        CustomData_bmesh_copy_block(*data_layer, ele_src_2->head.data, &ele_dst->head.data);
       }
     }
     else {
@@ -152,7 +150,7 @@ void BM_face_interp_from_face_ex(BMesh *bm,
   float co[2];
 
   if (f_src != f_dst) {
-    BM_elem_attrs_copy(bm, bm, f_src, f_dst);
+    BM_elem_attrs_copy(bm, f_src, f_dst);
   }
 
   /* interpolate */
@@ -345,14 +343,14 @@ static bool mdisp_in_mdispquad(BMLoop *l_src,
   add_v3_v3(v4, c);
 
   if (!quad_co(v1, v2, v3, v4, p, l_src->v->no, r_uv)) {
-    return 0;
+    return false;
   }
 
   mul_v2_fl(r_uv, float(res - 1));
 
   mdisp_axis_from_quad(v1, v2, v3, v4, r_axis_x, r_axis_y);
 
-  return 1;
+  return true;
 }
 
 static float bm_loop_flip_equotion(float mat[2][2],
@@ -405,7 +403,7 @@ static void bm_loop_flip_disp(const float source_axis_x[3],
   disp[1] = (mat[0][0] * b[1] - b[0] * mat[1][0]) / d;
 }
 
-typedef struct BMLoopInterpMultiresData {
+struct BMLoopInterpMultiresData {
   BMLoop *l_dst;
   BMLoop *l_src_first;
   int cd_loop_mdisp_offset;
@@ -419,7 +417,7 @@ typedef struct BMLoopInterpMultiresData {
 
   int res;
   float d;
-} BMLoopInterpMultiresData;
+};
 
 static void loop_interp_multires_cb(void *__restrict userdata,
                                     const int ix,
@@ -770,6 +768,8 @@ void BM_vert_interp_from_face(BMesh *bm, BMVert *v_dst, const BMFace *f_src)
 
 static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
 {
+  const BMCustomDataCopyMap cd_map = CustomData_bmesh_copy_map_calc(*olddata, *data);
+
   BMIter iter;
   BLI_mempool *oldpool = olddata->pool;
   void *block;
@@ -781,8 +781,7 @@ static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
 
     BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
       block = nullptr;
-      CustomData_bmesh_set_default(data, &block);
-      CustomData_bmesh_copy_data(olddata, data, eve->head.data, &block);
+      CustomData_bmesh_copy_block(*data, cd_map, eve->head.data, &block);
       CustomData_bmesh_free_block(olddata, &eve->head.data);
       eve->head.data = block;
     }
@@ -794,8 +793,7 @@ static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
 
     BM_ITER_MESH (eed, &iter, bm, BM_EDGES_OF_MESH) {
       block = nullptr;
-      CustomData_bmesh_set_default(data, &block);
-      CustomData_bmesh_copy_data(olddata, data, eed->head.data, &block);
+      CustomData_bmesh_copy_block(*data, cd_map, eed->head.data, &block);
       CustomData_bmesh_free_block(olddata, &eed->head.data);
       eed->head.data = block;
     }
@@ -809,8 +807,7 @@ static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
     BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
       BM_ITER_ELEM (l, &liter, efa, BM_LOOPS_OF_FACE) {
         block = nullptr;
-        CustomData_bmesh_set_default(data, &block);
-        CustomData_bmesh_copy_data(olddata, data, l->head.data, &block);
+        CustomData_bmesh_copy_block(*data, cd_map, l->head.data, &block);
         CustomData_bmesh_free_block(olddata, &l->head.data);
         l->head.data = block;
       }
@@ -823,8 +820,7 @@ static void update_data_blocks(BMesh *bm, CustomData *olddata, CustomData *data)
 
     BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
       block = nullptr;
-      CustomData_bmesh_set_default(data, &block);
-      CustomData_bmesh_copy_data(olddata, data, efa->head.data, &block);
+      CustomData_bmesh_copy_block(*data, cd_map, efa->head.data, &block);
       CustomData_bmesh_free_block(olddata, &efa->head.data);
       efa->head.data = block;
     }

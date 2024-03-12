@@ -30,10 +30,16 @@ typedef struct Global {
    */
   struct Main *main;
 
+  /**
+   * Preview main is stored to avoid loading the preview file in multiple scenarios.
+   * It is actually shared between shader node previews and asset previews.
+   */
+  struct Main *pr_main;
+
   /** Last saved location for images. */
-  char ima[1024]; /* 1024 = FILE_MAX */
+  char filepath_last_image[/*FILE_MAX*/ 1024];
   /** Last used location for library link/append. */
-  char lib[1024];
+  char filepath_last_library[/*FILE_MAX*/ 1024];
 
   /**
    * Strings of recently opened files to show in the file menu.
@@ -124,6 +130,15 @@ typedef struct Global {
   int debug;
 
   /**
+   * When true, various geometry processing algorithms randomize the order of elements (e.g.
+   * vertices or edges) in the output. In many cases, we don't make guarantees about the exact
+   * order of elements. So if users depend on the indices with e.g. geometry nodes, their file can
+   * break in a different Blender version. Explicitly turning on randomization can help protect
+   * oneself against such breakages.
+   */
+  bool randomize_geometry_element_order;
+
+  /**
    * Control behavior of file reading/writing.
    *
    * This variable is written to / read from #FileGlobal.fileflags.
@@ -160,7 +175,7 @@ enum {
   G_FLAG_USERPREF_NO_SAVE_ON_EXIT = (1 << 4),
 
   G_FLAG_SCRIPT_AUTOEXEC = (1 << 13),
-  /** When this flag is set ignore the prefs #USER_SCRIPT_AUTOEXEC_DISABLE. */
+  /** When this flag is set ignore the preferences #USER_SCRIPT_AUTOEXEC_DISABLE. */
   G_FLAG_SCRIPT_OVERRIDE_PREF = (1 << 14),
   G_FLAG_SCRIPT_AUTOEXEC_FAIL = (1 << 15),
   G_FLAG_SCRIPT_AUTOEXEC_FAIL_QUIET = (1 << 16),
@@ -193,18 +208,18 @@ enum {
   G_DEBUG_DEPSGRAPH_TIME = (1 << 11),       /* depsgraph timing statistics and messages */
   G_DEBUG_DEPSGRAPH_NO_THREADS = (1 << 12), /* single threaded depsgraph */
   G_DEBUG_DEPSGRAPH_PRETTY = (1 << 13),     /* use pretty colors in depsgraph messages */
-  G_DEBUG_DEPSGRAPH_UUID = (1 << 14),       /* Verify validness of session-wide identifiers
+  G_DEBUG_DEPSGRAPH_UID = (1 << 14),        /* Verify validness of session-wide identifiers
                                              * assigned to ID datablocks */
   G_DEBUG_DEPSGRAPH = (G_DEBUG_DEPSGRAPH_BUILD | G_DEBUG_DEPSGRAPH_EVAL | G_DEBUG_DEPSGRAPH_TAG |
-                       G_DEBUG_DEPSGRAPH_TIME | G_DEBUG_DEPSGRAPH_UUID),
-  G_DEBUG_SIMDATA = (1 << 15),                /* sim debug data display */
-  G_DEBUG_GPU = (1 << 16),                    /* gpu debug */
-  G_DEBUG_IO = (1 << 17),                     /* IO Debugging (for Collada, ...). */
-  G_DEBUG_GPU_FORCE_WORKAROUNDS = (1 << 18),  /* force gpu workarounds bypassing detections. */
-  G_DEBUG_GPU_FORCE_DISABLE_SSBO = (1 << 19), /* force disabling usage of SSBO's */
-  G_DEBUG_GPU_RENDERDOC = (1 << 20),          /* Enable RenderDoc integration. */
-  G_DEBUG_XR = (1 << 21),                     /* XR/OpenXR messages */
-  G_DEBUG_XR_TIME = (1 << 22),                /* XR/OpenXR timing messages */
+                       G_DEBUG_DEPSGRAPH_TIME | G_DEBUG_DEPSGRAPH_UID),
+  G_DEBUG_SIMDATA = (1 << 15),               /* sim debug data display */
+  G_DEBUG_GPU = (1 << 16),                   /* gpu debug */
+  G_DEBUG_IO = (1 << 17),                    /* IO Debugging (for Collada, ...). */
+  G_DEBUG_GPU_FORCE_WORKAROUNDS = (1 << 18), /* force gpu workarounds bypassing detections. */
+  G_DEBUG_GPU_COMPILE_SHADERS = (1 << 19),   /* Compile all statically defined shaders. . */
+  G_DEBUG_GPU_RENDERDOC = (1 << 20),         /* Enable RenderDoc integration. */
+  G_DEBUG_XR = (1 << 21),                    /* XR/OpenXR messages */
+  G_DEBUG_XR_TIME = (1 << 22),               /* XR/OpenXR timing messages */
 
   G_DEBUG_GHOST = (1 << 23),  /* Debug GHOST module. */
   G_DEBUG_WINTAB = (1 << 24), /* Debug Wintab. */
@@ -267,7 +282,7 @@ enum {
   G_TRANSFORM_CURSOR = (1 << 5),
 };
 
-/** Defined in blender.c */
+/** Defined in `blender.cc` */
 extern Global G;
 
 /**

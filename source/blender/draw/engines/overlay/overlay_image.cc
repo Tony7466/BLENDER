@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,23 +6,24 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BKE_camera.h"
 #include "BKE_image.h"
 #include "BKE_movieclip.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
 
 #include "BLI_listbase.h"
+#include "BLI_math_rotation.h"
 
 #include "DNA_camera_types.h"
 #include "DNA_screen_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "overlay_private.hh"
 
@@ -128,7 +129,6 @@ static GPUTexture *image_camera_background_texture_get(CameraBGImage *bgpic,
                                                        bool *r_use_alpha_premult,
                                                        bool *r_use_view_transform)
 {
-  void *lock;
   Image *image = bgpic->ima;
   ImageUser *iuser = &bgpic->iuser;
   MovieClip *clip = nullptr;
@@ -157,21 +157,15 @@ static GPUTexture *image_camera_background_texture_get(CameraBGImage *bgpic,
       camera_background_images_stereo_setup(scene, draw_ctx->v3d, image, iuser);
 
       iuser->scene = draw_ctx->scene;
-      ImBuf *ibuf = BKE_image_acquire_ibuf(image, iuser, &lock);
-      if (ibuf == nullptr) {
-        BKE_image_release_ibuf(image, ibuf, lock);
-        iuser->scene = nullptr;
-        return nullptr;
-      }
-      width = ibuf->x;
-      height = ibuf->y;
-      tex = BKE_image_get_gpu_texture(image, iuser, ibuf);
-      BKE_image_release_ibuf(image, ibuf, lock);
+      tex = BKE_image_get_gpu_viewer_texture(image, iuser);
       iuser->scene = nullptr;
 
       if (tex == nullptr) {
         return nullptr;
       }
+
+      width = GPU_texture_original_width(tex);
+      height = GPU_texture_original_height(tex);
 
       aspect_x = bgpic->ima->aspx;
       aspect_y = bgpic->ima->aspy;
@@ -221,8 +215,7 @@ static GPUTexture *image_camera_background_texture_get(CameraBGImage *bgpic,
 static void OVERLAY_image_free_movieclips_textures(OVERLAY_Data *data)
 {
   /* Free Movie clip textures after rendering */
-  LinkData *link;
-  while ((link = static_cast<LinkData *>(BLI_pophead(&data->stl->pd->bg_movie_clips)))) {
+  while (LinkData *link = static_cast<LinkData *>(BLI_pophead(&data->stl->pd->bg_movie_clips))) {
     MovieClip *clip = (MovieClip *)link->data;
     BKE_movieclip_free_gputexture(clip);
     MEM_freeN(link);
@@ -381,7 +374,7 @@ void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
     if (ima != nullptr) {
       ImageUser iuser = *ob->iuser;
       camera_background_images_stereo_setup(draw_ctx->scene, draw_ctx->v3d, ima, &iuser);
-      tex = BKE_image_get_gpu_texture(ima, &iuser, nullptr);
+      tex = BKE_image_get_gpu_texture(ima, &iuser);
       if (tex) {
         size[0] = GPU_texture_original_width(tex);
         size[1] = GPU_texture_original_height(tex);
@@ -401,7 +394,8 @@ void OVERLAY_image_empty_cache_populate(OVERLAY_Data *vedata, Object *ob)
   }
 
   /* Use the actual depth if we are doing depth tests to determine the distance to the object */
-  char depth_mode = DRW_state_is_depth() ? OB_EMPTY_IMAGE_DEPTH_DEFAULT : ob->empty_image_depth;
+  char depth_mode = DRW_state_is_depth() ? char(OB_EMPTY_IMAGE_DEPTH_DEFAULT) :
+                                           ob->empty_image_depth;
   DRWPass *pass = nullptr;
   if ((ob->dtx & OB_DRAW_IN_FRONT) != 0) {
     /* Object In Front overrides image empty depth mode. */

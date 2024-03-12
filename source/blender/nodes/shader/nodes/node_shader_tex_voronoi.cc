@@ -1,13 +1,20 @@
-/* SPDX-FileCopyrightText: 2005 Blender Foundation
+/* SPDX-FileCopyrightText: 2005 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "node_shader_util.hh"
+#include "node_util.hh"
+
+#include "BKE_texture.h"
 
 #include "BLI_noise.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "NOD_multi_function.hh"
+
+#include "RNA_access.hh"
+
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 namespace blender::nodes::node_shader_tex_voronoi_cc {
 
@@ -229,7 +236,7 @@ class VoronoiMetricFunction : public mf::MultiFunction {
   {
     BLI_assert(dimensions >= 1 && dimensions <= 4);
     BLI_assert(feature >= 0 && feature <= 4);
-    if ELEM (metric_, SHD_VORONOI_MINKOWSKI) {
+    if (ELEM(metric_, SHD_VORONOI_MINKOWSKI)) {
       static std::array<mf::Signature, 12> signatures{
           create_signature(1, SHD_VORONOI_F1, SHD_VORONOI_MINKOWSKI),
           create_signature(2, SHD_VORONOI_F1, SHD_VORONOI_MINKOWSKI),
@@ -612,6 +619,7 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
           params.roughness = roughness[i];
           params.lacunarity = lacunarity[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          params.max_distance = 0.5f + 0.5f * params.randomness;
 
           r_distance[i] = noise::fractal_voronoi_distance_to_edge<float>(params,
                                                                          w[i] * params.scale);
@@ -625,6 +633,7 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
           params.roughness = roughness[i];
           params.lacunarity = lacunarity[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          params.max_distance = 0.5f + 0.5f * params.randomness;
 
           r_distance[i] = noise::fractal_voronoi_distance_to_edge<float2>(
               params, float2{vector[i].x, vector[i].y} * params.scale);
@@ -638,6 +647,7 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
           params.roughness = roughness[i];
           params.lacunarity = lacunarity[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          params.max_distance = 0.5f + 0.5f * params.randomness;
 
           r_distance[i] = noise::fractal_voronoi_distance_to_edge<float3>(
               params, vector[i] * params.scale);
@@ -651,6 +661,7 @@ class VoronoiDistToEdgeFunction : public mf::MultiFunction {
           params.roughness = roughness[i];
           params.lacunarity = lacunarity[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
+          params.max_distance = 0.5f + 0.5f * params.randomness;
 
           r_distance[i] = noise::fractal_voronoi_distance_to_edge<float4>(
               params, float4{vector[i].x, vector[i].y, vector[i].z, w[i]} * params.scale);
@@ -735,6 +746,7 @@ class VoronoiNSphereFunction : public mf::MultiFunction {
         mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
+
           r_radius[i] = noise::voronoi_n_sphere_radius(params, w[i] * params.scale);
         });
         break;
@@ -743,6 +755,7 @@ class VoronoiNSphereFunction : public mf::MultiFunction {
         mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
+
           r_radius[i] = noise::voronoi_n_sphere_radius(
               params, float2{vector[i].x, vector[i].y} * params.scale);
         });
@@ -752,6 +765,7 @@ class VoronoiNSphereFunction : public mf::MultiFunction {
         mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
+
           r_radius[i] = noise::voronoi_n_sphere_radius(params, vector[i] * params.scale);
         });
         break;
@@ -760,6 +774,7 @@ class VoronoiNSphereFunction : public mf::MultiFunction {
         mask.foreach_index([&](const int64_t i) {
           params.scale = scale[i];
           params.randomness = std::min(std::max(randomness[i], 0.0f), 1.0f);
+
           r_radius[i] = noise::voronoi_n_sphere_radius(
               params, float4{vector[i].x, vector[i].y, vector[i].z, w[i]} * params.scale);
         });

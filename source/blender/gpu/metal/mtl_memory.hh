@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -110,7 +110,7 @@ class MTLUniformBuf;
 class MTLBuffer {
 
  public:
-  /* NOTE: ListBase API is not used due to cutsom destructor operation required to release
+  /* NOTE: ListBase API is not used due to custom destructor operation required to release
    * Metal objective C buffer resource. */
   gpu::MTLBuffer *next, *prev;
 
@@ -417,6 +417,9 @@ class MTLBufferPool {
    * system/worker threads. */
   std::atomic<MTLSafeFreeList *> current_free_list_;
   std::atomic<int64_t> allocations_in_pool_;
+
+  /* Previous list, to be released after one full frame. */
+  MTLSafeFreeList *prev_free_buffer_list_ = nullptr;
 
  public:
   void init(id<MTLDevice> device);

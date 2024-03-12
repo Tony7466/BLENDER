@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,9 @@
 
 namespace blender::gpu {
 
-const char *VKLogParser::parse_line(const char *log_line, GPULogItem &log_item)
+const char *VKLogParser::parse_line(const char * /*source_combined*/,
+                                    const char *log_line,
+                                    GPULogItem &log_item)
 {
   log_line = skip_name(log_line);
   log_line = skip_separators(log_line, ":");

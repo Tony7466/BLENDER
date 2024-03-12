@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: 2018-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2018-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 """
 Call as follows:
-python collada_mesh_simple.py --blender PATH_TO_BLENDER_EXE --testdir PATH_TO_SVN/lib/tests/collada/mesh
+python collada_mesh_simple.py --blender PATH_TO_BLENDER_EXE --testdir tests/data/collada/mesh
 """
 
 import sys

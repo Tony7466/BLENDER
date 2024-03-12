@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -231,7 +231,7 @@ class IMAGE_MT_image(Menu):
 
             layout.menu("IMAGE_MT_image_invert")
             layout.operator("image.resize", text="Resize")
-            layout.menu("IMAGE_MT_image_flip")
+            layout.menu("IMAGE_MT_image_transform")
 
         if ima and not show_render:
             if ima.packed_file:
@@ -248,13 +248,17 @@ class IMAGE_MT_image(Menu):
             layout.operator("gpencil.image_to_grease_pencil", text="Generate Grease Pencil")
 
 
-class IMAGE_MT_image_flip(Menu):
-    bl_label = "Flip"
+class IMAGE_MT_image_transform(Menu):
+    bl_label = "Transform"
 
     def draw(self, _context):
         layout = self.layout
-        layout.operator("image.flip", text="Horizontally").use_flip_x = True
-        layout.operator("image.flip", text="Vertically").use_flip_y = True
+        layout.operator("image.flip", text="Flip Horizontally").use_flip_x = True
+        layout.operator("image.flip", text="Flip Vertically").use_flip_y = True
+        layout.separator()
+        layout.operator("image.rotate_orthogonal", text="Rotate 90\u00B0 Clockwise").degrees = '90'
+        layout.operator("image.rotate_orthogonal", text="Rotate 90\u00B0 Counter-Clockwise").degrees = '270'
+        layout.operator("image.rotate_orthogonal", text="Rotate 180\u00B0").degrees = '180'
 
 
 class IMAGE_MT_image_invert(Menu):
@@ -428,6 +432,7 @@ class IMAGE_MT_uvs(Menu):
 
         layout.operator("uv.pin").clear = False
         layout.operator("uv.pin", text="Unpin").clear = True
+        layout.operator("uv.pin", text="Invert Pins").invert = True
 
         layout.separator()
 
@@ -508,7 +513,7 @@ class IMAGE_MT_uvs_select_mode(Menu):
 
 
 class IMAGE_MT_uvs_context_menu(Menu):
-    bl_label = "UV Context Menu"
+    bl_label = "UV"
 
     def draw(self, context):
         layout = self.layout
@@ -753,7 +758,10 @@ class IMAGE_HT_header(Header):
 
             # Snap.
             snap_uv_element = tool_settings.snap_uv_element
-            act_snap_uv_element = tool_settings.bl_rna.properties["snap_uv_element"].enum_items[snap_uv_element]
+            try:
+                act_snap_icon = tool_settings.bl_rna.properties["snap_uv_element"].enum_items[snap_uv_element].icon
+            except KeyError:
+                act_snap_icon = 'NONE'
 
             row = layout.row(align=True)
             row.prop(tool_settings, "use_snap_uv", text="")
@@ -761,7 +769,7 @@ class IMAGE_HT_header(Header):
             sub = row.row(align=True)
             sub.popover(
                 panel="IMAGE_PT_snapping",
-                icon=act_snap_uv_element.icon,
+                icon=act_snap_icon,
                 text="",
             )
 
@@ -904,7 +912,7 @@ class IMAGE_MT_editor_menus(Menu):
 
 
 class IMAGE_MT_mask_context_menu(Menu):
-    bl_label = "Mask Context Menu"
+    bl_label = "Mask"
 
     @classmethod
     def poll(cls, context):
@@ -1334,7 +1342,7 @@ class IMAGE_PT_uv_sculpt_brush_settings(Panel, ImagePaintPanel, UVSculptPanel):
 
 
 class IMAGE_PT_uv_sculpt_curve(Panel, FalloffPanel, ImagePaintPanel, UVSculptPanel):
-    bl_context = ".uv_sculpt"  # dot on purpose (access from topbar)
+    bl_context = ".uv_sculpt"  # Dot on purpose (access from top-bar).
     bl_parent_id = "IMAGE_PT_uv_sculpt_brush_settings"
     bl_category = "Tool"
     bl_label = "Falloff"
@@ -1342,7 +1350,7 @@ class IMAGE_PT_uv_sculpt_curve(Panel, FalloffPanel, ImagePaintPanel, UVSculptPan
 
 
 class IMAGE_PT_uv_sculpt_options(Panel, ImagePaintPanel, UVSculptPanel):
-    bl_context = ".uv_sculpt"  # dot on purpose (access from topbar)
+    bl_context = ".uv_sculpt"  # Dot on purpose (access from top-bar).
     bl_category = "Tool"
     bl_label = "Options"
 
@@ -1423,8 +1431,11 @@ class IMAGE_PT_view_vectorscope(ImageScopesPanel, Panel):
         layout = self.layout
 
         sima = context.space_data
+
         layout.template_vectorscope(sima, "scopes")
-        layout.prop(sima.scopes, "vectorscope_alpha")
+        row = layout.split(factor=0.75)
+        row.prop(sima.scopes, "vectorscope_alpha")
+        row.prop(sima.scopes, "vectorscope_mode", text="")
 
 
 class IMAGE_PT_sample_line(ImageScopesPanel, Panel):
@@ -1527,7 +1538,7 @@ class IMAGE_PT_overlay_guides(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Guides"
-    bl_parent_id = 'IMAGE_PT_overlay'
+    bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
     def poll(cls, context):
@@ -1568,7 +1579,7 @@ class IMAGE_PT_overlay_uv_edit(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "UV Editing"
-    bl_parent_id = 'IMAGE_PT_overlay'
+    bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
     def poll(cls, context):
@@ -1596,7 +1607,7 @@ class IMAGE_PT_overlay_uv_edit_geometry(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Geometry"
-    bl_parent_id = 'IMAGE_PT_overlay'
+    bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
     def poll(cls, context):
@@ -1628,7 +1639,7 @@ class IMAGE_PT_overlay_texture_paint(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Geometry"
-    bl_parent_id = 'IMAGE_PT_overlay'
+    bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
     def poll(cls, context):
@@ -1650,7 +1661,7 @@ class IMAGE_PT_overlay_image(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
     bl_label = "Image"
-    bl_parent_id = 'IMAGE_PT_overlay'
+    bl_parent_id = "IMAGE_PT_overlay"
 
     def draw(self, context):
         layout = self.layout
@@ -1680,7 +1691,7 @@ classes = (
     IMAGE_MT_select,
     IMAGE_MT_select_linked,
     IMAGE_MT_image,
-    IMAGE_MT_image_flip,
+    IMAGE_MT_image_transform,
     IMAGE_MT_image_invert,
     IMAGE_MT_uvs,
     IMAGE_MT_uvs_showhide,

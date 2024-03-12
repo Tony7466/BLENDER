@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -169,7 +169,7 @@ void VectorBlurOperation::generate_vector_blur(float *data,
 /* -------------------------------------------------------------------- */
 /** \name Spans
  *
- * Duplicated logic from `zbuf.c`.
+ * Duplicated logic from `zbuf.cc`.
  * \{ */
 
 /** Span fill in method, is also used to localize data for Z-buffering. */
@@ -336,7 +336,7 @@ struct DrawBufPixel {
 };
 
 /**
- * \note Near duplicate of `zspan_scanconvert` in `zbuf.c` with some minor adjustments.
+ * \note Near duplicate of `zspan_scanconvert` in `zbuf.cc` with some minor adjustments.
  */
 static void zbuf_fill_in_rgba(
     ZSpan *zspan, DrawBufPixel *col, float *v1, float *v2, float *v3, float *v4)
@@ -895,7 +895,8 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
       rw = rectweight;
       rm = rectmax;
       for (dr = rectdraw, dz2 = newrect, x = xsize * ysize - 1; x >= 0;
-           x--, dr++, dz2 += 4, rw++, rm++) {
+           x--, dr++, dz2 += 4, rw++, rm++)
+      {
         if (dr->colpoin) {
           float bfac = dr->alpha * blendfac;
 
@@ -905,7 +906,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
           dz2[3] += bfac * dr->colpoin[3];
 
           *rw += bfac;
-          *rm = MAX2(*rm, bfac);
+          *rm = std::max(*rm, bfac);
         }
       }
     }

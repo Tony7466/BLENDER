@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,8 +12,11 @@ static void node_declare(NodeDeclarationBuilder &b)
 {
   b.add_input<decl::Geometry>("Points").supported_type(GeometryComponent::Type::PointCloud);
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Float>("Radius").default_value(0.05f).min(0.0f).field_on_all().subtype(
-      PROP_DISTANCE);
+  b.add_input<decl::Float>("Radius")
+      .default_value(0.05f)
+      .min(0.0f)
+      .subtype(PROP_DISTANCE)
+      .field_on_all();
   b.add_output<decl::Geometry>("Points").propagate_all();
 }
 
@@ -26,7 +29,7 @@ static void set_radius_in_component(PointCloud &pointcloud,
   }
   MutableAttributeAccessor attributes = pointcloud.attributes_for_write();
   AttributeWriter<float> radii = attributes.lookup_or_add_for_write<float>("radius",
-                                                                           ATTR_DOMAIN_POINT);
+                                                                           AttrDomain::Point);
 
   const bke::PointCloudFieldContext field_context{pointcloud};
   fn::FieldEvaluator evaluator{field_context, pointcloud.totpoint};
@@ -52,16 +55,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Points", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_set_point_radius_cc
-
-void register_node_type_geo_set_point_radius()
+static void node_register()
 {
-  namespace file_ns = blender::nodes::node_geo_set_point_radius_cc;
-
   static bNodeType ntype;
 
   geo_node_type_base(&ntype, GEO_NODE_SET_POINT_RADIUS, "Set Point Radius", NODE_CLASS_GEOMETRY);
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.declare = file_ns::node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.declare = node_declare;
   nodeRegisterType(&ntype);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_set_point_radius_cc

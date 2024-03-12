@@ -1,5 +1,5 @@
 /* SPDX-FileCopyrightText: 2019 Stefano Quer
-   SPDX-FileCopyrightText: 2022 Blender Foundation
+ * SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
@@ -14,7 +14,7 @@
 #include "MEM_guardedalloc.h"
 
 #include <algorithm>
-#include <limits.h>
+#include <climits>
 
 #define L 0
 #define R 1
@@ -346,7 +346,8 @@ static void maximum_common_subgraph_internal(int incumbent[][2],
     }
     bd = &domains[bd_pos - 1][L];
     if (calc_bound(domains, bd_pos, bd[P]) + bd[P] <= *inc_pos ||
-        (bd[LL] == 0 && bd[RL] == bd[IRL])) {
+        (bd[LL] == 0 && bd[RL] == bd[IRL]))
+    {
       bd_pos--;
     }
     else {

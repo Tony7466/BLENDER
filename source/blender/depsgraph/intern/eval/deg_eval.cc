@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -10,12 +10,11 @@
 
 #include "intern/eval/deg_eval.h"
 
-#include "PIL_time.h"
-
 #include "BLI_compiler_attrs.h"
 #include "BLI_function_ref.hh"
 #include "BLI_gsqueue.h"
 #include "BLI_task.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
 #include "BKE_global.h"
@@ -24,8 +23,8 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern.h"
@@ -33,18 +32,18 @@
 
 #include "atomic_ops.h"
 
-#include "intern/depsgraph.h"
-#include "intern/depsgraph_relation.h"
-#include "intern/depsgraph_tag.h"
+#include "intern/depsgraph.hh"
+#include "intern/depsgraph_relation.hh"
+#include "intern/depsgraph_tag.hh"
 #include "intern/eval/deg_eval_copy_on_write.h"
 #include "intern/eval/deg_eval_flush.h"
 #include "intern/eval/deg_eval_stats.h"
 #include "intern/eval/deg_eval_visibility.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_id.h"
-#include "intern/node/deg_node_operation.h"
-#include "intern/node/deg_node_time.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_id.hh"
+#include "intern/node/deg_node_operation.hh"
+#include "intern/node/deg_node_time.hh"
 
 namespace blender::deg {
 
@@ -94,9 +93,9 @@ void evaluate_node(const DepsgraphEvalState *state, OperationNode *operation_nod
   BLI_assert_msg(!operation_node->is_noop(), "NOOP nodes should not actually be scheduled");
   /* Perform operation. */
   if (state->do_stats) {
-    const double start_time = PIL_check_seconds_timer();
+    const double start_time = BLI_check_seconds_timer();
     operation_node->evaluate(depsgraph);
-    operation_node->stats.current_time += PIL_check_seconds_timer() - start_time;
+    operation_node->stats.current_time += BLI_check_seconds_timer() - start_time;
   }
   else {
     operation_node->evaluate(depsgraph);
@@ -386,6 +385,8 @@ void deg_evaluate_on_refresh(Depsgraph *graph)
   if (graph->entry_tags.is_empty()) {
     return;
   }
+
+  graph->update_count++;
 
   graph->debug.begin_graph_evaluation();
 

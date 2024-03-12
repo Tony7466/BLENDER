@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2004-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2004-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -22,7 +22,9 @@ using namespace Freestyle;
 
 //------------------------INSTANCE METHODS ----------------------------------
 
-static char GetCompleteViewMapDensityF1D___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    GetCompleteViewMapDensityF1D___doc__,
     "Class hierarchy: :class:`freestyle.types.UnaryFunction1D` > "
     ":class:`freestyle.types.UnaryFunction1DDouble` > :class:`GetCompleteViewMapDensityF1D`\n"
     "\n"
@@ -45,7 +47,7 @@ static char GetCompleteViewMapDensityF1D___doc__[] =
     ".. method:: __call__(inter)\n"
     "\n"
     "   Returns the density evaluated for an Interface1D in the complete\n"
-    "   viewmap image.  The density is evaluated for a set of points along the\n"
+    "   viewmap image. The density is evaluated for a set of points along the\n"
     "   Interface1D (using the\n"
     "   :class:`freestyle.functions.ReadCompleteViewMapPixelF0D` functor) and\n"
     "   then integrated into a single value using a user-defined integration\n"
@@ -55,7 +57,7 @@ static char GetCompleteViewMapDensityF1D___doc__[] =
     "   :type inter: :class:`freestyle.types.Interface1D`\n"
     "   :return: The density evaluated for the Interface1D in the complete\n"
     "      viewmap image.\n"
-    "   :rtype: float\n";
+    "   :rtype: float\n");
 
 static int GetCompleteViewMapDensityF1D___init__(BPy_GetCompleteViewMapDensityF1D *self,
                                                  PyObject *args,
@@ -79,7 +81,7 @@ static int GetCompleteViewMapDensityF1D___init__(BPy_GetCompleteViewMapDensityF1
 /*-----------------------BPy_GetCompleteViewMapDensityF1D type definition -----------------------*/
 
 PyTypeObject GetCompleteViewMapDensityF1D_Type = {
-    PyVarObject_HEAD_INIT(nullptr, 0)
+    /*ob_base*/ PyVarObject_HEAD_INIT(nullptr, 0)
     /*tp_name*/ "GetCompleteViewMapDensityF1D",
     /*tp_basicsize*/ sizeof(BPy_GetCompleteViewMapDensityF1D),
     /*tp_itemsize*/ 0,

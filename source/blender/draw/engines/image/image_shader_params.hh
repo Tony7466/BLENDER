@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2021 Blender Foundation
+/* SPDX-FileCopyrightText: 2021 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,11 +12,9 @@
 #include "DNA_image_types.h"
 #include "DNA_scene_types.h"
 
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf_types.hh"
 
 #include "BKE_image.h"
-
-#include "BLI_math.h"
 
 #include "image_enums.hh"
 #include "image_space.hh"

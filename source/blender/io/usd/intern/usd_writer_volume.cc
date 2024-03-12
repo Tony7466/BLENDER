@@ -1,8 +1,8 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "usd_writer_volume.h"
+#include "usd_writer_volume.hh"
 
 #include <pxr/base/tf/pathUtils.h>
 #include <pxr/usd/usdVol/openVDBAsset.h>
@@ -11,7 +11,8 @@
 #include "DNA_volume_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_volume.h"
+#include "BKE_report.h"
+#include "BKE_volume.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_index_range.hh"
@@ -19,9 +20,9 @@
 #include "BLI_path_util.h"
 #include "BLI_string.h"
 
-#include "WM_api.h"
+#include "WM_api.hh"
 
-#include "usd_hierarchy_iterator.h"
+#include "usd_hierarchy_iterator.hh"
 
 namespace blender::io::usd {
 
@@ -47,9 +48,10 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
 
   auto vdb_file_path = resolve_vdb_file(volume);
   if (!vdb_file_path.has_value()) {
-    WM_reportf(RPT_WARNING,
-               "USD Export: failed to resolve .vdb file for object: %s",
-               volume->id.name + 2);
+    BKE_reportf(reports(),
+                RPT_WARNING,
+                "USD Export: failed to resolve .vdb file for object: %s",
+                volume->id.name + 2);
     return;
   }
 
@@ -58,9 +60,10 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
       vdb_file_path = relative_vdb_file_path;
     }
     else {
-      WM_reportf(RPT_WARNING,
-                 "USD Export: couldn't construct relative file path for .vdb file, absolute path "
-                 "will be used instead");
+      BKE_reportf(reports(),
+                  RPT_WARNING,
+                  "USD Export: couldn't construct relative file path for .vdb file, absolute path "
+                  "will be used instead");
     }
   }
 
@@ -70,8 +73,8 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
   pxr::UsdVolVolume usd_volume = pxr::UsdVolVolume::Define(stage, volume_path);
 
   for (const int i : IndexRange(num_grids)) {
-    const VolumeGrid *grid = BKE_volume_grid_get_for_read(volume, i);
-    const std::string grid_name = BKE_volume_grid_name(grid);
+    const bke::VolumeGridData *grid = BKE_volume_grid_get(volume, i);
+    const std::string grid_name = bke::volume_grid::get_name(*grid);
     const std::string grid_id = pxr::TfMakeValidIdentifier(grid_name);
     const pxr::SdfPath grid_path = volume_path.AppendPath(pxr::SdfPath(grid_id));
     pxr::UsdVolOpenVDBAsset usd_grid = pxr::UsdVolOpenVDBAsset::Define(stage, grid_path);
@@ -80,11 +83,9 @@ void USDVolumeWriter::do_write(HierarchyContext &context)
     usd_volume.CreateFieldRelationship(pxr::TfToken(grid_id), grid_path);
   }
 
-  float3 volume_bound_min(std::numeric_limits<float>::max());
-  float3 volume_bound_max(std::numeric_limits<float>::min());
-  if (BKE_volume_min_max(volume, volume_bound_min, volume_bound_max)) {
-    const pxr::VtArray<pxr::GfVec3f> volume_extent = {pxr::GfVec3f(&volume_bound_min[0]),
-                                                      pxr::GfVec3f(&volume_bound_max[0])};
+  if (const std::optional<Bounds<float3>> bounds = BKE_volume_min_max(volume)) {
+    const pxr::VtArray<pxr::GfVec3f> volume_extent = {pxr::GfVec3f(&bounds->min.x),
+                                                      pxr::GfVec3f(&bounds->max.x)};
     usd_volume.GetExtentAttr().Set(volume_extent, timecode);
   }
 
@@ -139,12 +140,12 @@ std::optional<std::string> USDVolumeWriter::construct_vdb_file_path(const Volume
   const char *vdb_directory_name = "volumes";
 
   char vdb_directory_path[FILE_MAX];
-  BLI_strncpy(vdb_directory_path, usd_directory_path, FILE_MAX);
+  STRNCPY(vdb_directory_path, usd_directory_path);
   BLI_strncat(vdb_directory_path, vdb_directory_name, sizeof(vdb_directory_path));
   BLI_dir_create_recursive(vdb_directory_path);
 
   char vdb_file_name[FILE_MAXFILE];
-  BLI_strncpy(vdb_file_name, volume->id.name + 2, FILE_MAXFILE);
+  STRNCPY(vdb_file_name, volume->id.name + 2);
   const pxr::UsdTimeCode timecode = get_export_time_code();
   if (!timecode.IsDefault()) {
     const int frame = int(timecode.GetValue());
@@ -168,7 +169,7 @@ std::optional<std::string> USDVolumeWriter::construct_vdb_relative_file_path(
   }
 
   char relative_path[FILE_MAX];
-  BLI_strncpy(relative_path, vdb_file_path.c_str(), FILE_MAX);
+  STRNCPY(relative_path, vdb_file_path.c_str());
   BLI_path_rel(relative_path, usd_file_path.c_str());
   if (!BLI_path_is_rel(relative_path)) {
     return std::nullopt;

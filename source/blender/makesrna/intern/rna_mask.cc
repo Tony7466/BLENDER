@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,8 +6,8 @@
  * \ingroup RNA
  */
 
-#include <limits.h>
-#include <stdlib.h>
+#include <climits>
+#include <cstdlib>
 
 #include "MEM_guardedalloc.h"
 
@@ -16,34 +16,37 @@
 #include "DNA_object_types.h" /* SELECT */
 #include "DNA_scene_types.h"
 
+#include "BLI_math_vector.h"
+
 #include "BLT_translation.h"
 
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
-#include "rna_internal.h"
+#include "rna_internal.hh"
 
-#include "WM_types.h"
+#include "WM_types.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_math.h"
+#  include <algorithm>
+#  include <fmt/format.h>
 
 #  include "DNA_movieclip_types.h"
 
 #  include "BKE_mask.h"
 
-#  include "DEG_depsgraph.h"
+#  include "DEG_depsgraph.hh"
 
-#  include "RNA_access.h"
+#  include "RNA_access.hh"
 
-#  include "WM_api.h"
+#  include "WM_api.hh"
 
 static void rna_Mask_update_data(Main * /*bmain*/, Scene * /*scene*/, PointerRNA *ptr)
 {
@@ -106,9 +109,7 @@ static void rna_Mask_update_parent(Main *bmain, Scene *scene, PointerRNA *ptr)
 }
 
 /* NOTE: this function exists only to avoid id reference-counting. */
-static void rna_MaskParent_id_set(PointerRNA *ptr,
-                                  PointerRNA value,
-                                  struct ReportList * /*reports*/)
+static void rna_MaskParent_id_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   MaskParent *mpar = (MaskParent *)ptr->data;
 
@@ -168,12 +169,12 @@ static void rna_Mask_layer_active_index_range(
   *softmax = *max;
 }
 
-static char *rna_MaskLayer_path(const PointerRNA *ptr)
+static std::optional<std::string> rna_MaskLayer_path(const PointerRNA *ptr)
 {
   const MaskLayer *masklay = (MaskLayer *)ptr->data;
   char name_esc[sizeof(masklay->name) * 2];
   BLI_str_escape(name_esc, masklay->name, sizeof(name_esc));
-  return BLI_sprintfN("layers[\"%s\"]", name_esc);
+  return fmt::format("layers[\"{}\"]", name_esc);
 }
 
 static PointerRNA rna_Mask_layer_active_get(PointerRNA *ptr)
@@ -184,9 +185,7 @@ static PointerRNA rna_Mask_layer_active_get(PointerRNA *ptr)
   return rna_pointer_inherit_refine(ptr, &RNA_MaskLayer, masklay);
 }
 
-static void rna_Mask_layer_active_set(PointerRNA *ptr,
-                                      PointerRNA value,
-                                      struct ReportList * /*reports*/)
+static void rna_Mask_layer_active_set(PointerRNA *ptr, PointerRNA value, ReportList * /*reports*/)
 {
   Mask *mask = (Mask *)ptr->owner_id;
   MaskLayer *masklay = (MaskLayer *)value.data;
@@ -223,7 +222,7 @@ static PointerRNA rna_MaskLayer_active_spline_get(PointerRNA *ptr)
 
 static void rna_MaskLayer_active_spline_set(PointerRNA *ptr,
                                             PointerRNA value,
-                                            struct ReportList * /*reports*/)
+                                            ReportList * /*reports*/)
 {
   MaskLayer *masklay = (MaskLayer *)ptr->data;
   MaskSpline *spline = (MaskSpline *)value.data;
@@ -246,7 +245,7 @@ static PointerRNA rna_MaskLayer_active_spline_point_get(PointerRNA *ptr)
 
 static void rna_MaskLayer_active_spline_point_set(PointerRNA *ptr,
                                                   PointerRNA value,
-                                                  struct ReportList * /*reports*/)
+                                                  ReportList * /*reports*/)
 {
   MaskLayer *masklay = (MaskLayer *)ptr->data;
   MaskSpline *spline;
@@ -321,7 +320,8 @@ static MaskSpline *mask_spline_from_point(Mask *mask, MaskSplinePoint *point)
   {
     MaskSpline *spline;
     for (spline = static_cast<MaskSpline *>(mask_layer->splines.first); spline;
-         spline = spline->next) {
+         spline = spline->next)
+    {
       if (point >= spline->points && point < spline->points + spline->tot_point) {
         return spline;
       }
@@ -464,7 +464,7 @@ static void rna_Mask_start_frame_set(PointerRNA *ptr, int value)
   data->sfra = value;
 
   if (data->sfra >= data->efra) {
-    data->efra = MIN2(data->sfra, MAXFRAME);
+    data->efra = std::min(data->sfra, MAXFRAME);
   }
 }
 
@@ -475,7 +475,7 @@ static void rna_Mask_end_frame_set(PointerRNA *ptr, int value)
   data->efra = value;
 
   if (data->sfra >= data->efra) {
-    data->sfra = MAX2(data->efra, MINFRAME);
+    data->sfra = std::max(data->efra, MINFRAME);
   }
 }
 
@@ -897,6 +897,7 @@ static void rna_def_maskSpline(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, spline_offset_mode_items);
   RNA_def_property_ui_text(
       prop, "Feather Offset", "The method used for calculating the feather offset");
+  RNA_def_property_translation_context(prop, BLT_I18NCONTEXT_ID_MASK);
   RNA_def_property_update(prop, 0, "rna_Mask_update_data");
 
   /* weight interpolation */

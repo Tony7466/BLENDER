@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -32,7 +32,6 @@
  */
 
 #include <cstring>
-#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -450,7 +449,10 @@ inline StringRefNull::StringRefNull(const char *str) : StringRefBase(str, int64_
  * Reference a std::string. Remember that when the std::string is destructed, the StringRefNull
  * will point to uninitialized memory.
  */
-inline StringRefNull::StringRefNull(const std::string &str) : StringRefNull(str.c_str()) {}
+inline StringRefNull::StringRefNull(const std::string &str)
+    : StringRefNull(str.c_str(), int64_t(str.size()))
+{
+}
 
 /**
  * Get the char at the given index.
@@ -571,17 +573,8 @@ constexpr StringRef::StringRef(std::string_view view)
 /** \name Operator Overloads
  * \{ */
 
-inline std::ostream &operator<<(std::ostream &stream, StringRef ref)
-{
-  stream << std::string(ref);
-  return stream;
-}
-
-inline std::ostream &operator<<(std::ostream &stream, StringRefNull ref)
-{
-  stream << std::string(ref.data(), size_t(ref.size()));
-  return stream;
-}
+std::ostream &operator<<(std::ostream &stream, StringRef ref);
+std::ostream &operator<<(std::ostream &stream, StringRefNull ref);
 
 /**
  * Adding two #StringRefs will allocate an std::string.
@@ -624,6 +617,20 @@ constexpr bool operator<=(StringRef a, StringRef b)
 constexpr bool operator>=(StringRef a, StringRef b)
 {
   return std::string_view(a) >= std::string_view(b);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Formatting
+ * \{ */
+
+/**
+ * Support using the `fmt` library with #StringRef and implicitly also #StringRefNull.
+ */
+inline std::string_view format_as(StringRef str)
+{
+  return str;
 }
 
 /** \} */

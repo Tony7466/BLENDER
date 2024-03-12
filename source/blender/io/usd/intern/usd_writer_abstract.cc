@@ -1,19 +1,22 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
-#include "usd_writer_abstract.h"
-#include "usd_hierarchy_iterator.h"
-#include "usd_writer_material.h"
+#include "usd_writer_abstract.hh"
+#include "usd_writer_material.hh"
 
 #include <pxr/base/tf/stringUtils.h>
 #include <pxr/usd/usdGeom/bboxCache.h>
+#include <pxr/usd/usdGeom/scope.h>
 
-#include "BKE_customdata.h"
+#include "BKE_customdata.hh"
+#include "BKE_report.h"
+
 #include "BLI_assert.h"
 
 #include "DNA_mesh_types.h"
 
-#include "WM_api.h"
+#include "CLG_log.h"
+static CLG_LogRef LOG = {"io.usd"};
 
 /* TfToken objects are not cheap to construct, so we do it once. */
 namespace usdtokens {
@@ -32,9 +35,9 @@ static std::string get_mesh_active_uvlayer_name(const Object *ob)
     return "";
   }
 
-  const Mesh *me = static_cast<Mesh *>(ob->data);
+  const Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-  const char *name = CustomData_get_active_layer_name(&me->ldata, CD_PROP_FLOAT2);
+  const char *name = CustomData_get_active_layer_name(&mesh->corner_data, CD_PROP_FLOAT2);
 
   return name ? name : "";
 }
@@ -53,16 +56,17 @@ bool USDAbstractWriter::is_supported(const HierarchyContext * /*context*/) const
 
 std::string USDAbstractWriter::get_export_file_path() const
 {
-  return usd_export_context_.hierarchy_iterator->get_export_file_path();
+  return usd_export_context_.export_file_path;
 }
 
 pxr::UsdTimeCode USDAbstractWriter::get_export_time_code() const
 {
   if (is_animated_) {
-    return usd_export_context_.hierarchy_iterator->get_export_time_code();
+    BLI_assert(usd_export_context_.get_time_code);
+    return usd_export_context_.get_time_code();
   }
-  /* By using the default timecode USD won't even write a single `timeSample` for non-animated
-   * data. Instead, it writes it as non-timesampled. */
+  /* By using the default time-code USD won't even write a single `timeSample` for non-animated
+   * data. Instead, it writes it as non-time-sampled. */
   static pxr::UsdTimeCode default_timecode = pxr::UsdTimeCode::Default();
   return default_timecode;
 }
@@ -107,24 +111,17 @@ pxr::UsdShadeMaterial USDAbstractWriter::ensure_usd_material(const HierarchyCont
   pxr::UsdStageRefPtr stage = usd_export_context_.stage;
 
   /* Construct the material. */
-  pxr::TfToken material_name(usd_export_context_.hierarchy_iterator->get_id_name(&material->id));
-  pxr::SdfPath usd_path = get_material_library_path().AppendChild(material_name);
+  pxr::TfToken material_name(pxr::TfMakeValidIdentifier(material->id.name + 2));
+  pxr::SdfPath usd_path = pxr::UsdGeomScope::Define(stage, get_material_library_path())
+                              .GetPath()
+                              .AppendChild(material_name);
   pxr::UsdShadeMaterial usd_material = pxr::UsdShadeMaterial::Get(stage, usd_path);
   if (usd_material) {
     return usd_material;
   }
-  usd_material = pxr::UsdShadeMaterial::Define(stage, usd_path);
 
-  if (material->use_nodes && this->usd_export_context_.export_params.generate_preview_surface) {
-    std::string active_uv = get_mesh_active_uvlayer_name(context.object);
-    create_usd_preview_surface_material(
-        this->usd_export_context_, material, usd_material, active_uv);
-  }
-  else {
-    create_usd_viewport_material(this->usd_export_context_, material, usd_material);
-  }
-
-  return usd_material;
+  std::string active_uv = get_mesh_active_uvlayer_name(context.object);
+  return create_usd_material(usd_export_context_, usd_path, material, active_uv, reports());
 }
 
 void USDAbstractWriter::write_visibility(const HierarchyContext &context,
@@ -146,7 +143,9 @@ bool USDAbstractWriter::mark_as_instance(const HierarchyContext &context, const 
   BLI_assert(context.is_instance());
 
   if (context.export_path == context.original_export_path) {
-    printf("USD ref error: export path is reference path: %s\n", context.export_path.c_str());
+    CLOG_ERROR(&LOG,
+               "Reference error: export path matches reference path: %s",
+               context.export_path.c_str());
     BLI_assert_msg(0, "USD reference error");
     return false;
   }
@@ -156,9 +155,10 @@ bool USDAbstractWriter::mark_as_instance(const HierarchyContext &context, const 
     /* See this URL for a description for why referencing may fail"
      * https://graphics.pixar.com/usd/docs/api/class_usd_references.html#Usd_Failing_References
      */
-    printf("USD Export warning: unable to add reference from %s to %s, not instancing object\n",
-           context.export_path.c_str(),
-           context.original_export_path.c_str());
+    CLOG_WARN(&LOG,
+              "Unable to add reference from %s to %s, not instancing object for export",
+              context.export_path.c_str(),
+              context.original_export_path.c_str());
     return false;
   }
 
@@ -175,9 +175,10 @@ void USDAbstractWriter::author_extent(const pxr::UsdTimeCode timecode, pxr::UsdG
   pxr::GfBBox3d bounds = bboxCache.ComputeLocalBound(prim.GetPrim());
   if (pxr::GfBBox3d() == bounds) {
     /* This will occur, for example, if a mesh does not have any vertices. */
-    WM_reportf(RPT_WARNING,
-               "USD Export: no bounds could be computed for %s",
-               prim.GetPrim().GetName().GetText());
+    BKE_reportf(reports(),
+                RPT_WARNING,
+                "USD Export: no bounds could be computed for %s",
+                prim.GetPrim().GetName().GetText());
     return;
   }
 

@@ -1,12 +1,16 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <iomanip>
 #include <sstream>
 
+#include <fmt/format.h>
+
+#include "BLI_math_color.hh"
 #include "BLI_math_quaternion_types.hh"
 #include "BLI_math_vector_types.hh"
+#include "BLI_string.h"
 
 #include "BKE_geometry_set.hh"
 #include "BKE_instances.hh"
@@ -18,10 +22,10 @@
 #include "DNA_object_types.h"
 #include "DNA_userdef_types.h"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
-#include "BLF_api.h"
+#include "BLF_api.hh"
 
 #include "BLT_translation.h"
 
@@ -387,11 +391,11 @@ class SpreadsheetLayoutDrawer : public SpreadsheetDrawer {
           [](bContext * /*C*/, void *argN, const char * /*tip*/) {
             const uint32_t uint_color = POINTER_AS_UINT(argN);
             ColorGeometry4b color = *(ColorGeometry4b *)&uint_color;
-            return BLI_sprintfN(TIP_("Byte Color (sRGB encoded):\n%3d  %3d  %3d  %3d"),
-                                color.r,
-                                color.g,
-                                color.b,
-                                color.a);
+            return fmt::format(TIP_("Byte Color (sRGB encoded):\n{}  {}  {}  {}"),
+                               color.r,
+                               color.g,
+                               color.b,
+                               color.a);
           },
           POINTER_FROM_UINT(*(uint32_t *)&color),
           nullptr);

@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -8,13 +8,19 @@
 #include "DNA_modifier_types.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
-#include "BKE_subdiv.h"
+#include "BKE_subdiv.hh"
 #include "BKE_subdiv_mesh.hh"
 
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
+#include "RNA_enum_types.hh"
+
+#include "NOD_rna_define.hh"
+
+#include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
 
@@ -30,21 +36,21 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
-      .field_on_all()
-      .subtype(PROP_FACTOR);
+      .subtype(PROP_FACTOR)
+      .field_on_all();
   b.add_input<decl::Float>("Vertex Crease")
       .default_value(0.0f)
       .min(0.0f)
       .max(1.0f)
-      .field_on_all()
-      .subtype(PROP_FACTOR);
+      .subtype(PROP_FACTOR)
+      .field_on_all();
   b.add_output<decl::Geometry>("Mesh").propagate_all();
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
-  uiItemR(layout, ptr, "uv_smooth", 0, "", ICON_NONE);
-  uiItemR(layout, ptr, "boundary_smooth", 0, "", ICON_NONE);
+  uiItemR(layout, ptr, "uv_smooth", UI_ITEM_NONE, "", ICON_NONE);
+  uiItemR(layout, ptr, "boundary_smooth", UI_ITEM_NONE, "", ICON_NONE);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -61,14 +67,14 @@ static void write_vert_creases(Mesh &mesh, const VArray<float> &creases)
 {
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   attributes.remove("crease_vert");
-  attributes.add<float>("crease_vert", ATTR_DOMAIN_POINT, bke::AttributeInitVArray(creases));
+  attributes.add<float>("crease_vert", AttrDomain::Point, bke::AttributeInitVArray(creases));
 }
 
 static void write_edge_creases(Mesh &mesh, const VArray<float> &creases)
 {
   bke::MutableAttributeAccessor attributes = mesh.attributes_for_write();
   attributes.remove("crease_edge");
-  attributes.add<float>("crease_edge", ATTR_DOMAIN_EDGE, bke::AttributeInitVArray(creases));
+  attributes.add<float>("crease_edge", AttrDomain::Edge, bke::AttributeInitVArray(creases));
 }
 
 static bool varray_is_single_zero(const VArray<float> &varray)
@@ -95,13 +101,13 @@ static Mesh *mesh_subsurf_calc(const Mesh *mesh,
                                const int boundary_smooth,
                                const int uv_smooth)
 {
-  const bke::MeshFieldContext point_context{*mesh, ATTR_DOMAIN_POINT};
-  FieldEvaluator point_evaluator(point_context, mesh->totvert);
+  const bke::MeshFieldContext point_context{*mesh, AttrDomain::Point};
+  FieldEvaluator point_evaluator(point_context, mesh->verts_num);
   point_evaluator.add(clamp_crease(vert_crease_field));
   point_evaluator.evaluate();
 
-  const bke::MeshFieldContext edge_context{*mesh, ATTR_DOMAIN_EDGE};
-  FieldEvaluator edge_evaluator(edge_context, mesh->totedge);
+  const bke::MeshFieldContext edge_context{*mesh, AttrDomain::Edge};
+  FieldEvaluator edge_evaluator(edge_context, mesh->edges_num);
   edge_evaluator.add(clamp_crease(edge_crease_field));
   edge_evaluator.evaluate();
 
@@ -155,6 +161,8 @@ static Mesh *mesh_subsurf_calc(const Mesh *mesh,
     BKE_id_free(nullptr, mesh_copy);
   }
 
+  geometry::debug_randomize_mesh_order(result);
+
   return result;
 }
 
@@ -177,7 +185,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   geometry_set.modify_geometry_sets([&](GeometrySet &geometry_set) {
-    if (const Mesh *mesh = geometry_set.get_mesh_for_read()) {
+    if (const Mesh *mesh = geometry_set.get_mesh()) {
       geometry_set.replace_mesh(
           mesh_subsurf_calc(mesh, level, vert_crease, edge_crease, boundary_smooth, uv_smooth));
     }
@@ -190,24 +198,44 @@ static void node_geo_exec(GeoNodeExecParams params)
   params.set_output("Mesh", std::move(geometry_set));
 }
 
-}  // namespace blender::nodes::node_geo_subdivision_surface_cc
-
-void register_node_type_geo_subdivision_surface()
+static void node_rna(StructRNA *srna)
 {
-  namespace file_ns = blender::nodes::node_geo_subdivision_surface_cc;
+  RNA_def_node_enum(srna,
+                    "uv_smooth",
+                    "UV Smooth",
+                    "Controls how smoothing is applied to UVs",
+                    rna_enum_subdivision_uv_smooth_items,
+                    NOD_storage_enum_accessors(uv_smooth),
+                    SUBSURF_UV_SMOOTH_PRESERVE_BOUNDARIES);
 
+  RNA_def_node_enum(srna,
+                    "boundary_smooth",
+                    "Boundary Smooth",
+                    "Controls how open boundaries are smoothed",
+                    rna_enum_subdivision_boundary_smooth_items,
+                    NOD_storage_enum_accessors(boundary_smooth),
+                    SUBSURF_BOUNDARY_SMOOTH_ALL);
+}
+
+static void node_register()
+{
   static bNodeType ntype;
 
   geo_node_type_base(
       &ntype, GEO_NODE_SUBDIVISION_SURFACE, "Subdivision Surface", NODE_CLASS_GEOMETRY);
-  ntype.declare = file_ns::node_declare;
-  ntype.geometry_node_execute = file_ns::node_geo_exec;
-  ntype.draw_buttons = file_ns::node_layout;
-  ntype.initfunc = file_ns::node_init;
-  blender::bke::node_type_size_preset(&ntype, blender::bke::eNodeSizePreset::MIDDLE);
+  ntype.declare = node_declare;
+  ntype.geometry_node_execute = node_geo_exec;
+  ntype.draw_buttons = node_layout;
+  ntype.initfunc = node_init;
+  bke::node_type_size_preset(&ntype, bke::eNodeSizePreset::MIDDLE);
   node_type_storage(&ntype,
                     "NodeGeometrySubdivisionSurface",
                     node_free_standard_storage,
                     node_copy_standard_storage);
   nodeRegisterType(&ntype);
+
+  node_rna(ntype.rna_ext.srna);
 }
+NOD_REGISTER_NODE(node_register)
+
+}  // namespace blender::nodes::node_geo_subdivision_surface_cc

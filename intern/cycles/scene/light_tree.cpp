@@ -108,7 +108,9 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
 
     /* TODO: need a better way to handle this when textures are used. */
     float area = triangle_area(vertices[0], vertices[1], vertices[2]);
-    measure.energy = area * average(shader->emission_estimate);
+    /* Use absolute value of emission_estimate so lights with negative strength are properly
+     * supported in the light tree. */
+    measure.energy = area * average(fabs(shader->emission_estimate));
 
     /* NOTE: the original implementation used the bounding box centroid, but triangle centroid
      * seems to work fine */
@@ -150,8 +152,8 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
     const float size = lamp->get_size();
     float3 strength = lamp->get_strength();
 
-    centroid = scene->lights[object_id]->get_co();
-    measure.bcone.axis = normalize(lamp->get_dir());
+    centroid = lamp->get_co();
+    measure.bcone.axis = safe_normalize(lamp->get_dir());
 
     if (type == LIGHT_AREA) {
       measure.bcone.theta_o = 0;
@@ -167,7 +169,8 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
       measure.bbox.grow(centroid - half_extentu + half_extentv);
       measure.bbox.grow(centroid - half_extentu - half_extentv);
 
-      strength *= 0.25f; /* eval_fac scaling in `area.h` */
+      /* Convert irradiance to radiance. */
+      strength *= M_1_PI_F;
     }
     else if (type == LIGHT_POINT) {
       measure.bcone.theta_o = M_PI_F;
@@ -219,7 +222,7 @@ LightTreeEmitter::LightTreeEmitter(Scene *scene,
 
     /* Use absolute value of energy so lights with negative strength are properly supported in the
      * light tree. */
-    measure.energy = fabsf(average(strength));
+    measure.energy = average(fabs(strength));
 
     light_set_membership = lamp->get_light_set_membership();
   }
@@ -405,6 +408,11 @@ LightTreeNode *LightTree::build(Scene *scene, DeviceScene *dscene)
       left, root_.get(), num_emissive_triangles, num_local_lights, emitters_.data(), 0, 1);
   task_pool.wait_work();
 
+  if (progress_.get_cancel()) {
+    root_.reset();
+    return nullptr;
+  }
+
   /* All distant lights are grouped to the right child as a leaf node. */
   root_->get_inner().children[right] = create_node(LightTreeMeasure::empty, 1);
   for (int i = 0; i < num_distant_lights; i++) {
@@ -457,7 +465,7 @@ void LightTree::recursive_build(const Child child,
   if (should_split(emitters, start, middle, end, node->measure, node->light_link, split_dim)) {
 
     if (split_dim != -1) {
-      /* Partition the emitters between start and end based on the centroids.  */
+      /* Partition the emitters between start and end based on the centroids. */
       std::nth_element(emitters + start,
                        emitters + middle,
                        emitters + end,

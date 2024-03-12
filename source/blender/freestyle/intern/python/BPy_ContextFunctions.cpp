@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009-2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2009-2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -23,52 +23,60 @@ extern "C" {
 
 //------------------------ MODULE FUNCTIONS ----------------------------------
 
-static char ContextFunctions_get_time_stamp___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ContextFunctions_get_time_stamp___doc__,
     ".. function:: get_time_stamp()\n"
     "\n"
     "   Returns the system time stamp.\n"
     "\n"
     "   :return: The system time stamp.\n"
-    "   :rtype: int\n";
+    "   :rtype: int\n");
 
 static PyObject *ContextFunctions_get_time_stamp(PyObject * /*self*/)
 {
   return PyLong_FromLong(ContextFunctions::GetTimeStampCF());
 }
 
-static char ContextFunctions_get_canvas_width___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ContextFunctions_get_canvas_width___doc__,
     ".. method:: get_canvas_width()\n"
     "\n"
     "   Returns the canvas width.\n"
     "\n"
     "   :return: The canvas width.\n"
-    "   :rtype: int\n";
+    "   :rtype: int\n");
 
 static PyObject *ContextFunctions_get_canvas_width(PyObject * /*self*/)
 {
   return PyLong_FromLong(ContextFunctions::GetCanvasWidthCF());
 }
 
-static char ContextFunctions_get_canvas_height___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ContextFunctions_get_canvas_height___doc__,
     ".. method:: get_canvas_height()\n"
     "\n"
     "   Returns the canvas height.\n"
     "\n"
     "   :return: The canvas height.\n"
-    "   :rtype: int\n";
+    "   :rtype: int\n");
 
 static PyObject *ContextFunctions_get_canvas_height(PyObject * /*self*/)
 {
   return PyLong_FromLong(ContextFunctions::GetCanvasHeightCF());
 }
 
-static char ContextFunctions_get_border___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ContextFunctions_get_border___doc__,
     ".. method:: get_border()\n"
     "\n"
     "   Returns the border.\n"
     "\n"
     "   :return: A tuple of 4 numbers (xmin, ymin, xmax, ymax).\n"
-    "   :rtype: tuple\n";
+    "   :rtype: tuple\n");
 
 static PyObject *ContextFunctions_get_border(PyObject * /*self*/)
 {
@@ -82,7 +90,9 @@ static PyObject *ContextFunctions_get_border(PyObject * /*self*/)
   return v;
 }
 
-static char ContextFunctions_load_map___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ContextFunctions_load_map___doc__,
     ".. function:: load_map(file_name, map_name, num_levels=4, sigma=1.0)\n"
     "\n"
     "   Loads an image map for further reading.\n"
@@ -92,11 +102,11 @@ static char ContextFunctions_load_map___doc__[] =
     "   :arg map_name: The name that will be used to access this image.\n"
     "   :type map_name: str\n"
     "   :arg num_levels: The number of levels in the map pyramid\n"
-    "      (default = 4).  If num_levels == 0, the complete pyramid is\n"
+    "      (default = 4). If num_levels == 0, the complete pyramid is\n"
     "      built.\n"
     "   :type num_levels: int\n"
     "   :arg sigma: The sigma value of the gaussian function.\n"
-    "   :type sigma: float\n";
+    "   :type sigma: float\n");
 
 static PyObject *ContextFunctions_load_map(PyObject * /*self*/, PyObject *args, PyObject *kwds)
 {
@@ -114,7 +124,9 @@ static PyObject *ContextFunctions_load_map(PyObject * /*self*/, PyObject *args, 
   Py_RETURN_NONE;
 }
 
-static char ContextFunctions_read_map_pixel___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ContextFunctions_read_map_pixel___doc__,
     ".. function:: read_map_pixel(map_name, level, x, y)\n"
     "\n"
     "   Reads a pixel in a user-defined map.\n"
@@ -124,14 +136,14 @@ static char ContextFunctions_read_map_pixel___doc__[] =
     "   :arg level: The level of the pyramid in which we wish to read the\n"
     "      pixel.\n"
     "   :type level: int\n"
-    "   :arg x: The x coordinate of the pixel we wish to read.  The origin\n"
+    "   :arg x: The x coordinate of the pixel we wish to read. The origin\n"
     "      is in the lower-left corner.\n"
     "   :type x: int\n"
-    "   :arg y: The y coordinate of the pixel we wish to read.  The origin\n"
+    "   :arg y: The y coordinate of the pixel we wish to read. The origin\n"
     "      is in the lower-left corner.\n"
     "   :type y: int\n"
     "   :return: The floating-point value stored for that pixel.\n"
-    "   :rtype: float\n";
+    "   :rtype: float\n");
 
 static PyObject *ContextFunctions_read_map_pixel(PyObject * /*self*/,
                                                  PyObject *args,
@@ -149,7 +161,9 @@ static PyObject *ContextFunctions_read_map_pixel(PyObject * /*self*/,
   return PyFloat_FromDouble(ContextFunctions::ReadMapPixelCF(mapName, level, x, y));
 }
 
-static char ContextFunctions_read_complete_view_map_pixel___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ContextFunctions_read_complete_view_map_pixel___doc__,
     ".. function:: read_complete_view_map_pixel(level, x, y)\n"
     "\n"
     "   Reads a pixel in the complete view map.\n"
@@ -157,14 +171,14 @@ static char ContextFunctions_read_complete_view_map_pixel___doc__[] =
     "   :arg level: The level of the pyramid in which we wish to read the\n"
     "      pixel.\n"
     "   :type level: int\n"
-    "   :arg x: The x coordinate of the pixel we wish to read.  The origin\n"
+    "   :arg x: The x coordinate of the pixel we wish to read. The origin\n"
     "      is in the lower-left corner.\n"
     "   :type x: int\n"
-    "   :arg y: The y coordinate of the pixel we wish to read.  The origin\n"
+    "   :arg y: The y coordinate of the pixel we wish to read. The origin\n"
     "      is in the lower-left corner.\n"
     "   :type y: int\n"
     "   :return: The floating-point value stored for that pixel.\n"
-    "   :rtype: float\n";
+    "   :rtype: float\n");
 
 static PyObject *ContextFunctions_read_complete_view_map_pixel(PyObject * /*self*/,
                                                                PyObject *args,
@@ -180,7 +194,9 @@ static PyObject *ContextFunctions_read_complete_view_map_pixel(PyObject * /*self
   return PyFloat_FromDouble(ContextFunctions::ReadCompleteViewMapPixelCF(level, x, y));
 }
 
-static char ContextFunctions_read_directional_view_map_pixel___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ContextFunctions_read_directional_view_map_pixel___doc__,
     ".. function:: read_directional_view_map_pixel(orientation, level, x, y)\n"
     "\n"
     "   Reads a pixel in one of the oriented view map images.\n"
@@ -191,14 +207,14 @@ static char ContextFunctions_read_directional_view_map_pixel___doc__[] =
     "   :arg level: The level of the pyramid in which we wish to read the\n"
     "      pixel.\n"
     "   :type level: int\n"
-    "   :arg x: The x coordinate of the pixel we wish to read.  The origin\n"
+    "   :arg x: The x coordinate of the pixel we wish to read. The origin\n"
     "      is in the lower-left corner.\n"
     "   :type x: int\n"
-    "   :arg y: The y coordinate of the pixel we wish to read.  The origin\n"
+    "   :arg y: The y coordinate of the pixel we wish to read. The origin\n"
     "      is in the lower-left corner.\n"
     "   :type y: int\n"
     "   :return: The floating-point value stored for that pixel.\n"
-    "   :rtype: float\n";
+    "   :rtype: float\n");
 
 static PyObject *ContextFunctions_read_directional_view_map_pixel(PyObject * /*self*/,
                                                                   PyObject *args,
@@ -217,13 +233,15 @@ static PyObject *ContextFunctions_read_directional_view_map_pixel(PyObject * /*s
       ContextFunctions::ReadDirectionalViewMapPixelCF(orientation, level, x, y));
 }
 
-static char ContextFunctions_get_selected_fedge___doc__[] =
+PyDoc_STRVAR(
+    /* Wrap. */
+    ContextFunctions_get_selected_fedge___doc__,
     ".. function:: get_selected_fedge()\n"
     "\n"
     "   Returns the selected FEdge.\n"
     "\n"
     "   :return: The selected FEdge.\n"
-    "   :rtype: :class:`FEdge`\n";
+    "   :rtype: :class:`FEdge`\n");
 
 static PyObject *ContextFunctions_get_selected_fedge(PyObject * /*self*/)
 {
@@ -236,7 +254,11 @@ static PyObject *ContextFunctions_get_selected_fedge(PyObject * /*self*/)
 
 /*-----------------------ContextFunctions module docstring-------------------------------*/
 
-static char module_docstring[] = "The Blender Freestyle.ContextFunctions submodule\n\n";
+PyDoc_STRVAR(
+    /* Wrap. */
+    module_docstring,
+    "The Blender Freestyle.ContextFunctions submodule\n"
+    "\n");
 
 /*-----------------------ContextFunctions module functions definitions-------------------*/
 
@@ -283,7 +305,7 @@ static PyMethodDef module_functions[] = {
 /*-----------------------ContextFunctions module definition--------------------------------*/
 
 static PyModuleDef module_definition = {
-    PyModuleDef_HEAD_INIT,
+    /*m_base*/ PyModuleDef_HEAD_INIT,
     /*m_name*/ "Freestyle.ContextFunctions",
     /*m_doc*/ module_docstring,
     /*m_size*/ -1,

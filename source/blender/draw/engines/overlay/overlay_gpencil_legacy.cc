@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2020 Blender Foundation
+/* SPDX-FileCopyrightText: 2020 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,22 +6,22 @@
  * \ingroup draw_engine
  */
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 
 #include "BKE_gpencil_legacy.h"
 
-#include "UI_resources.h"
+#include "UI_resources.hh"
 
 #include "DNA_gpencil_legacy_types.h"
 
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
-#include "ED_view3d.h"
+#include "ED_view3d.hh"
 
 #include "overlay_private.hh"
 
 #include "draw_common.h"
-#include "draw_manager_text.h"
+#include "draw_manager_text.hh"
 
 void OVERLAY_edit_gpencil_legacy_cache_init(OVERLAY_Data *vedata)
 {
@@ -160,7 +160,7 @@ void OVERLAY_edit_gpencil_legacy_cache_init(OVERLAY_Data *vedata)
   /* control points for primitives and speed guide */
   const bool is_cppoint = (gpd->runtime.tot_cp_points > 0);
   const bool is_speed_guide = (ts->gp_sculpt.guide.use_guide &&
-                               (draw_ctx->object_mode == OB_MODE_PAINT_GPENCIL));
+                               (draw_ctx->object_mode == OB_MODE_PAINT_GPENCIL_LEGACY));
   const bool is_show_gizmo = (((v3d->gizmo_flag & V3D_GIZMO_HIDE) == 0) &&
                               ((v3d->gizmo_flag & V3D_GIZMO_HIDE_TOOL) == 0));
 
@@ -324,6 +324,7 @@ void OVERLAY_gpencil_legacy_cache_init(OVERLAY_Data *vedata)
 
 static void OVERLAY_edit_gpencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
 {
+  using namespace blender::draw;
   OVERLAY_PrivateData *pd = vedata->stl->pd;
   bGPdata *gpd = (bGPdata *)ob->data;
   const DRWContextState *draw_ctx = DRW_context_state_get();
@@ -442,7 +443,7 @@ void OVERLAY_gpencil_legacy_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   /* don't show object extras in set's */
   if ((ob->base_flag & (BASE_FROM_SET | BASE_FROM_DUPLI)) == 0) {
-    if ((v3d->gp_flag & V3D_GP_SHOW_MATERIAL_NAME) && (ob->mode == OB_MODE_EDIT_GPENCIL) &&
+    if ((v3d->gp_flag & V3D_GP_SHOW_MATERIAL_NAME) && (ob->mode == OB_MODE_EDIT_GPENCIL_LEGACY) &&
         DRW_state_show_text())
     {
       OVERLAY_gpencil_color_names(ob);

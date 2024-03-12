@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -12,7 +12,7 @@
 #include "GPU_debug.h"
 
 #include "draw_debug.hh"
-#include "draw_shader.h"
+#include "draw_shader.hh"
 #include "draw_view.hh"
 
 namespace blender::draw {
@@ -45,7 +45,7 @@ void View::frustum_boundbox_calc(int view_id)
 {
   /* Extract the 8 corners from a Projection Matrix. */
 #if 0 /* Equivalent to this but it has accuracy problems. */
-  BKE_boundbox_init_from_minmax(&bbox, float3(-1.0f),float3(1.0f));
+  BKE_boundbox_init_from_minmax(&bbox, float3(-1.0f), float3(1.0f));
   for (int i = 0; i < 8; i++) {
     mul_project_m4_v3(data_.wininv.ptr(), bbox.vec[i]);
   }
@@ -84,6 +84,10 @@ void View::frustum_boundbox_calc(int view_id)
   for (float4 &corner : corners) {
     mul_m4_v3(data_[view_id].viewinv.ptr(), corner);
     corner.w = 1.0;
+    /* Special case for planar reflection. */
+    if (is_inverted_) {
+      corner.z = -corner.z;
+    }
   }
 }
 
@@ -101,6 +105,11 @@ void View::frustum_culling_planes_calc(int view_id)
   /* Normalize. */
   for (float4 &plane : culling_[view_id].frustum_planes.planes) {
     plane.w /= normalize_v3(plane);
+
+    /* Special case for planar reflection. */
+    if (is_inverted_) {
+      plane.z = -plane.z;
+    }
   }
 }
 
@@ -263,7 +272,7 @@ void View::compute_visibility(ObjectBoundsBuf &bounds, uint resource_len, bool d
     culling_freeze_[0] = static_cast<ViewCullingData>(culling_[0]);
     culling_freeze_.push_update();
   }
-#ifdef DEBUG
+#ifdef _DEBUG
   if (debug_freeze) {
     float4x4 persmat = data_freeze_[0].winmat * data_freeze_[0].viewmat;
     drw_debug_matrix_as_bbox(math::invert(persmat), float4(0, 1, 0, 1));

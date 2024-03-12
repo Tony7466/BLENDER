@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2008 Blender Foundation
+/* SPDX-FileCopyrightText: 2008 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -13,35 +13,65 @@
 #include "BLI_string_ref.hh"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_image.h"
-#include "BKE_main.h"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "ED_image.h"
-#include "ED_node.h" /* own include */
-#include "ED_screen.h"
-#include "ED_space_api.h"
+#include "ED_image.hh"
+#include "ED_node.hh" /* own include */
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_view2d.h"
+#include "UI_view2d.hh"
 
 #include "MEM_guardedalloc.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "node_intern.hh" /* own include */
 
 namespace blender::ed::space_node {
+
+/* -------------------------------------------------------------------- */
+/** \name Local Funcitons
+ * \{ */
+
+static bool space_node_active_view_poll(bContext *C)
+{
+  if (!ED_operator_node_active(C)) {
+    return false;
+  }
+  const ARegion *region = CTX_wm_region(C);
+  if (!(region && region->regiontype == RGN_TYPE_WINDOW)) {
+    return false;
+  }
+  return true;
+}
+
+static bool space_node_composite_active_view_poll(bContext *C)
+{
+  if (!composite_node_active(C)) {
+    return false;
+  }
+  const ARegion *region = CTX_wm_region(C);
+  if (!(region && region->regiontype == RGN_TYPE_WINDOW)) {
+    return false;
+  }
+  return true;
+}
+
+/** \} */
 
 /* -------------------------------------------------------------------- */
 /** \name View All Operator
@@ -133,7 +163,7 @@ void NODE_OT_view_all(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = node_view_all_exec;
-  ot->poll = ED_operator_node_active;
+  ot->poll = space_node_active_view_poll;
 
   /* flags */
   ot->flag = 0;
@@ -166,7 +196,7 @@ void NODE_OT_view_selected(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = node_view_selected_exec;
-  ot->poll = ED_operator_node_active;
+  ot->poll = space_node_active_view_poll;
 
   /* flags */
   ot->flag = 0;
@@ -291,7 +321,7 @@ void NODE_OT_backimage_move(wmOperatorType *ot)
   /* api callbacks */
   ot->invoke = snode_bg_viewmove_invoke;
   ot->modal = snode_bg_viewmove_modal;
-  ot->poll = composite_node_active;
+  ot->poll = space_node_composite_active_view_poll;
   ot->cancel = snode_bg_viewmove_cancel;
 
   /* flags */
@@ -328,7 +358,7 @@ void NODE_OT_backimage_zoom(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = backimage_zoom_exec;
-  ot->poll = composite_node_active;
+  ot->poll = space_node_composite_active_view_poll;
 
   /* flags */
   ot->flag = OPTYPE_BLOCKING;
@@ -393,7 +423,7 @@ void NODE_OT_backimage_fit(wmOperatorType *ot)
 
   /* api callbacks */
   ot->exec = backimage_fit_exec;
-  ot->poll = composite_node_active;
+  ot->poll = space_node_composite_active_view_poll;
 
   /* flags */
   ot->flag = OPTYPE_BLOCKING;
@@ -415,12 +445,6 @@ struct ImageSampleInfo {
   float colf[4];
   float linearcol[4];
 
-  int z;
-  float zf;
-
-  int *zp;
-  float *zfp;
-
   int draw;
   int color_manage;
 };
@@ -440,9 +464,7 @@ static void sample_draw(const bContext *C, ARegion *region, void *arg_info)
                        info->y,
                        info->col,
                        info->colf,
-                       info->linearcol,
-                       info->zp,
-                       info->zfp);
+                       info->linearcol);
   }
 }
 
@@ -520,7 +542,7 @@ bool ED_space_node_color_sample(
     else if (ibuf->byte_buffer.data) {
       cp = ibuf->byte_buffer.data + 4 * (y * ibuf->x + x);
       rgb_uchar_to_float(r_col, cp);
-      IMB_colormanagement_colorspace_to_scene_linear_v3(r_col, ibuf->rect_colorspace);
+      IMB_colormanagement_colorspace_to_scene_linear_v3(r_col, ibuf->byte_buffer.colorspace);
       ret = true;
     }
   }
@@ -575,9 +597,6 @@ static void sample_apply(bContext *C, wmOperator *op, const wmEvent *event)
     info->draw = 1;
     info->channels = ibuf->channels;
 
-    info->zp = nullptr;
-    info->zfp = nullptr;
-
     if (ibuf->byte_buffer.data) {
       cp = ibuf->byte_buffer.data + 4 * (y * ibuf->x + x);
 
@@ -593,7 +612,7 @@ static void sample_apply(bContext *C, wmOperator *op, const wmEvent *event)
 
       copy_v4_v4(info->linearcol, info->colf);
       IMB_colormanagement_colorspace_to_scene_linear_v4(
-          info->linearcol, false, ibuf->rect_colorspace);
+          info->linearcol, false, ibuf->byte_buffer.colorspace);
 
       info->color_manage = true;
     }
@@ -606,15 +625,6 @@ static void sample_apply(bContext *C, wmOperator *op, const wmEvent *event)
       info->colf[3] = fp[3];
 
       info->color_manage = true;
-    }
-
-    if (ibuf->z_buffer.data) {
-      info->z = ibuf->z_buffer.data[y * ibuf->x + x];
-      info->zp = &info->z;
-    }
-    if (ibuf->float_z_buffer.data) {
-      info->zf = ibuf->float_z_buffer.data[y * ibuf->x + x];
-      info->zfp = &info->zf;
     }
 
     ED_node_sample_set(info->colf);
@@ -702,7 +712,7 @@ void NODE_OT_backimage_sample(wmOperatorType *ot)
   ot->invoke = sample_invoke;
   ot->modal = sample_modal;
   ot->cancel = sample_cancel;
-  ot->poll = ED_operator_node_active;
+  ot->poll = space_node_active_view_poll;
 
   /* flags */
   ot->flag = OPTYPE_BLOCKING;

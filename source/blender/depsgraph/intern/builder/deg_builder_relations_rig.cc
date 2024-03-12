@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2013 Blender Foundation
+/* SPDX-FileCopyrightText: 2013 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -27,24 +27,25 @@
 #include "DNA_object_types.h"
 
 #include "BKE_action.h"
-#include "BKE_armature.h"
+#include "BKE_armature.hh"
 #include "BKE_constraint.h"
+#include "BKE_lib_query.hh"
 
 #include "RNA_prototypes.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
 #include "intern/builder/deg_builder.h"
 #include "intern/builder/deg_builder_cache.h"
 #include "intern/builder/deg_builder_pchanmap.h"
 #include "intern/debug/deg_debug.h"
-#include "intern/node/deg_node.h"
-#include "intern/node/deg_node_component.h"
-#include "intern/node/deg_node_operation.h"
+#include "intern/node/deg_node.hh"
+#include "intern/node/deg_node_component.hh"
+#include "intern/node/deg_node_operation.hh"
 
-#include "intern/depsgraph_relation.h"
-#include "intern/depsgraph_type.h"
+#include "intern/depsgraph_relation.hh"
+#include "intern/depsgraph_type.hh"
 
 namespace blender::deg {
 
@@ -76,8 +77,7 @@ void DepsgraphRelationBuilder::build_ik_pose(Object *object,
    * one Init IK node per armature, this link has quite high risk of spurious dependency cycles.
    */
   const bool is_itasc = (object->pose->iksolver == IKSOLVER_ITASC);
-  PointerRNA con_ptr;
-  RNA_pointer_create(&object->id, &RNA_Constraint, con, &con_ptr);
+  PointerRNA con_ptr = RNA_pointer_create(&object->id, &RNA_Constraint, con);
   if (is_itasc || cache_->isAnyPropertyAnimated(&con_ptr)) {
     add_relation(pchan_local_key, init_ik_key, "IK Constraint -> Init IK Tree");
   }
@@ -306,6 +306,11 @@ void DepsgraphRelationBuilder::build_rig(Object *object)
   add_relation(armature_key, pose_init_key, "Data dependency");
   /* Run cleanup even when there are no bones. */
   add_relation(pose_init_key, pose_cleanup_key, "Init -> Cleanup");
+  /* Relation to the instance, so that instancer can use pose of this object. */
+  add_relation(ComponentKey(&object->id, NodeType::EVAL_POSE),
+               OperationKey{&object->id, NodeType::INSTANCING, OperationCode::INSTANCE},
+               "Transform -> Instance");
+
   /* IK Solvers.
    *
    * - These require separate processing steps are pose-level to be executed
@@ -397,7 +402,7 @@ void DepsgraphRelationBuilder::build_rig(Object *object)
       /* Build relations for indirectly linked objects. */
       BuilderWalkUserData data;
       data.builder = this;
-      BKE_constraints_id_loop(&pchan->constraints, constraint_walk, &data);
+      BKE_constraints_id_loop(&pchan->constraints, constraint_walk, IDWALK_NOP, &data);
       /* Constraints stack and constraint dependencies. */
       build_constraints(&object->id, NodeType::BONE, pchan->name, &pchan->constraints, &root_map);
       /* Pose -> constraints. */

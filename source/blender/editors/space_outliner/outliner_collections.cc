@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -16,27 +16,27 @@
 #include "DNA_object_types.h"
 
 #include "BKE_collection.h"
-#include "BKE_context.h"
-#include "BKE_idtype.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_context.hh"
+#include "BKE_idtype.hh"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_report.h"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_build.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_build.hh"
 
-#include "ED_object.h"
-#include "ED_outliner.h"
-#include "ED_screen.h"
+#include "ED_object.hh"
+#include "ED_outliner.hh"
+#include "ED_screen.hh"
 
-#include "WM_api.h"
-#include "WM_message.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_message.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
-#include "RNA_enum_types.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+#include "RNA_enum_types.hh"
 
 #include "outliner_intern.hh" /* own include */
 
@@ -497,15 +497,30 @@ static int collection_objects_select_exec(bContext *C, wmOperator *op)
 {
   Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
-  LayerCollection *layer_collection = outliner_active_layer_collection(C);
+  SpaceOutliner *space_outliner = CTX_wm_space_outliner(C);
   bool deselect = STREQ(op->idname, "OUTLINER_OT_collection_objects_deselect");
 
-  if (layer_collection == nullptr) {
+  IDsSelectedData selected_collections{};
+  outliner_tree_traverse(space_outliner,
+                         &space_outliner->tree,
+                         0,
+                         TSE_SELECTED,
+                         outliner_collect_selected_collections,
+                         &selected_collections);
+
+  if (selected_collections.selected_array.first == nullptr) {
     return OPERATOR_CANCELLED;
   }
 
-  BKE_layer_collection_objects_select(scene, view_layer, layer_collection, deselect);
+  LISTBASE_FOREACH (LinkData *, link, &selected_collections.selected_array) {
+    TreeElement *te = static_cast<TreeElement *>(link->data);
+    if (te->store_elem->type == TSE_LAYER_COLLECTION) {
+      LayerCollection *layer_collection = static_cast<LayerCollection *>(te->directdata);
+      BKE_layer_collection_objects_select(scene, view_layer, layer_collection, deselect);
+    }
+  }
 
+  BLI_freelistN(&selected_collections.selected_array);
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
   WM_main_add_notifier(NC_SCENE | ND_OB_SELECT, scene);
   ED_outliner_select_sync_from_object_tag(C);
@@ -1098,9 +1113,8 @@ static int collection_isolate_exec(bContext *C, wmOperator *op)
       BKE_layer_collection_isolate_global(scene, view_layer, layer_collection, true);
     }
     else {
-      PointerRNA ptr;
       PropertyRNA *prop = RNA_struct_type_find_property(&RNA_LayerCollection, "hide_viewport");
-      RNA_pointer_create(&scene->id, &RNA_LayerCollection, layer_collection, &ptr);
+      PointerRNA ptr = RNA_pointer_create(&scene->id, &RNA_LayerCollection, layer_collection);
 
       /* We need to flip the value because the isolate flag routine was designed to work from the
        * outliner as a callback. That means the collection visibility was set before the callback

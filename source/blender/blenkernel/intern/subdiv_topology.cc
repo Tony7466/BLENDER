@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2019 Blender Foundation
+/* SPDX-FileCopyrightText: 2019 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,11 +6,11 @@
  * \ingroup bke
  */
 
-#include "BKE_subdiv_topology.h"
+#include "BKE_subdiv_topology.hh"
 
-#include "BKE_subdiv.h"
+#include "BKE_subdiv.hh"
 
-#include "opensubdiv_topology_refiner_capi.h"
+#include "opensubdiv_topology_refiner_capi.hh"
 
 int BKE_subdiv_topology_num_fvar_layers_get(const Subdiv *subdiv)
 {

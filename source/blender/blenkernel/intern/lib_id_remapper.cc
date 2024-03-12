@@ -1,12 +1,12 @@
-/* SPDX-FileCopyrightText: 2022 Blender Foundation
+/* SPDX-FileCopyrightText: 2022 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "DNA_ID.h"
 
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_remap.h"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_remap.hh"
 
 #include "MEM_guardedalloc.h"
 
@@ -136,9 +136,7 @@ static const blender::bke::id::remapper::IDRemapper *unwrap(const IDRemapper *re
       static_cast<const void *>(remapper));
 }
 
-extern "C" {
-
-IDRemapper *BKE_id_remapper_create(void)
+IDRemapper *BKE_id_remapper_create()
 {
   blender::bke::id::remapper::IDRemapper *remapper =
       MEM_new<blender::bke::id::remapper::IDRemapper>(__func__);
@@ -250,5 +248,4 @@ static void id_remapper_print_item_cb(ID *old_id, ID *new_id, void * /*user_data
 void BKE_id_remapper_print(const IDRemapper *id_remapper)
 {
   BKE_id_remapper_iter(id_remapper, id_remapper_print_item_cb, nullptr);
-}
 }

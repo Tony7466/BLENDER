@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2009 Blender Foundation
+/* SPDX-FileCopyrightText: 2009 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -6,15 +6,16 @@
  * \ingroup RNA
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ctime>
 
 #include "BLI_kdopbvh.h"
+#include "BLI_math_geom.h"
 #include "BLI_utildefines.h"
 
-#include "RNA_define.h"
+#include "RNA_define.hh"
 
 #include "DNA_constraint_types.h"
 #include "DNA_layer_types.h"
@@ -22,13 +23,13 @@
 #include "DNA_object_types.h"
 
 #include "BKE_gpencil_curve_legacy.h"
-#include "BKE_layer.h"
+#include "BKE_layer.hh"
 
-#include "DEG_depsgraph.h"
+#include "DEG_depsgraph.hh"
 
-#include "ED_outliner.h"
+#include "ED_outliner.hh"
 
-#include "rna_internal.h" /* own include */
+#include "rna_internal.hh" /* own include */
 
 #define MESH_DM_INFO_STR_MAX 16384
 
@@ -50,34 +51,32 @@ static const EnumPropertyItem space_items[] = {
 
 #ifdef RNA_RUNTIME
 
-#  include "BLI_math.h"
-
-#  include "BKE_bvhutils.h"
+#  include "BKE_bvhutils.hh"
 #  include "BKE_constraint.h"
-#  include "BKE_context.h"
-#  include "BKE_crazyspace.h"
-#  include "BKE_customdata.h"
+#  include "BKE_context.hh"
+#  include "BKE_crazyspace.hh"
+#  include "BKE_customdata.hh"
 #  include "BKE_global.h"
-#  include "BKE_layer.h"
-#  include "BKE_main.h"
-#  include "BKE_mball.h"
-#  include "BKE_mesh.h"
-#  include "BKE_mesh_runtime.h"
-#  include "BKE_modifier.h"
-#  include "BKE_object.h"
+#  include "BKE_layer.hh"
+#  include "BKE_main.hh"
+#  include "BKE_mball.hh"
+#  include "BKE_mesh.hh"
+#  include "BKE_mesh_runtime.hh"
+#  include "BKE_modifier.hh"
+#  include "BKE_object.hh"
+#  include "BKE_object_types.hh"
 #  include "BKE_report.h"
-#  include "BKE_vfont.h"
+#  include "BKE_vfont.hh"
 
-#  include "ED_object.h"
-#  include "ED_screen.h"
+#  include "ED_object.hh"
+#  include "ED_screen.hh"
 
 #  include "DNA_curve_types.h"
 #  include "DNA_mesh_types.h"
-#  include "DNA_meshdata_types.h"
 #  include "DNA_scene_types.h"
 #  include "DNA_view3d_types.h"
 
-#  include "DEG_depsgraph_query.h"
+#  include "DEG_depsgraph_query.hh"
 
 #  include "MEM_guardedalloc.h"
 
@@ -253,7 +252,7 @@ static bool rna_Object_local_view_get(Object *ob, ReportList *reports, View3D *v
     return false;
   }
 
-  return ((ob->base_local_view_bits & v3d->local_view_uuid) != 0);
+  return ((ob->base_local_view_bits & v3d->local_view_uid) != 0);
 }
 
 static void rna_Object_local_view_set(Object *ob,
@@ -269,7 +268,7 @@ static void rna_Object_local_view_set(Object *ob,
     return; /* Error reported. */
   }
   const short local_view_bits_prev = base->local_view_bits;
-  SET_FLAG_FROM_TEST(base->local_view_bits, state, v3d->local_view_uuid);
+  SET_FLAG_FROM_TEST(base->local_view_bits, state, v3d->local_view_uid);
   if (local_view_bits_prev != base->local_view_bits) {
     DEG_id_tag_update(&scene->id, ID_RECALC_BASE_FLAGS);
     ScrArea *area = ED_screen_area_find_with_spacedata(screen, (SpaceLink *)v3d, true);
@@ -289,7 +288,7 @@ static bool rna_Object_visible_in_viewport_get(Object *ob, View3D *v3d)
 static void rna_Object_mat_convert_space(Object *ob,
                                          ReportList *reports,
                                          bPoseChannel *pchan,
-                                         float mat[16],
+                                         const float mat[16],
                                          float mat_ret[16],
                                          int from,
                                          int to)
@@ -365,11 +364,15 @@ static void rna_Object_calc_matrix_camera(Object *ob,
   copy_m4_m4((float(*)[4])mat_ret, params.winmat);
 }
 
-static void rna_Object_camera_fit_coords(
-    Object *ob, Depsgraph *depsgraph, int num_cos, float *cos, float co_ret[3], float *scale_ret)
+static void rna_Object_camera_fit_coords(Object *ob,
+                                         Depsgraph *depsgraph,
+                                         const float *cos,
+                                         int cos_num,
+                                         float co_ret[3],
+                                         float *scale_ret)
 {
   BKE_camera_view_frame_fit_to_coords(
-      depsgraph, (const float(*)[3])cos, num_cos / 3, ob, co_ret, scale_ret);
+      depsgraph, (const float(*)[3])cos, cos_num / 3, ob, co_ret, scale_ret);
 }
 
 static void rna_Object_crazyspace_eval(Object *object,
@@ -383,7 +386,7 @@ static void rna_Object_crazyspace_eval(Object *object,
 static void rna_Object_crazyspace_displacement_to_deformed(Object *object,
                                                            ReportList *reports,
                                                            const int vertex_index,
-                                                           float displacement[3],
+                                                           const float displacement[3],
                                                            float r_displacement_deformed[3])
 {
   BKE_crazyspace_api_displacement_to_deformed(
@@ -393,7 +396,7 @@ static void rna_Object_crazyspace_displacement_to_deformed(Object *object,
 static void rna_Object_crazyspace_displacement_to_original(Object *object,
                                                            ReportList *reports,
                                                            const int vertex_index,
-                                                           float displacement_deformed[3],
+                                                           const float displacement_deformed[3],
                                                            float r_displacement[3])
 {
   BKE_crazyspace_api_displacement_to_original(
@@ -463,9 +466,7 @@ static PointerRNA rna_Object_shape_key_add(
   KeyBlock *kb = nullptr;
 
   if ((kb = BKE_object_shapekey_insert(bmain, ob, name, from_mix))) {
-    PointerRNA keyptr;
-
-    RNA_pointer_create((ID *)BKE_key_from_object(ob), &RNA_ShapeKey, kb, &keyptr);
+    PointerRNA keyptr = RNA_pointer_create((ID *)BKE_key_from_object(ob), &RNA_ShapeKey, kb);
     WM_event_add_notifier(C, NC_OBJECT | ND_DRAW, ob);
 
     DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
@@ -520,7 +521,7 @@ static void rna_Mesh_assign_verts_to_group(
     return;
   }
 
-  Mesh *me = (Mesh *)ob->data;
+  Mesh *mesh = (Mesh *)ob->data;
   int group_index = BLI_findlink(&ob->defbase, group);
   if (group_index == -1) {
     BKE_report(reports, RPT_ERROR, "No vertex groups assigned to mesh");
@@ -533,13 +534,13 @@ static void rna_Mesh_assign_verts_to_group(
   }
 
   /* makes a set of dVerts corresponding to the mVerts */
-  if (!me->dvert) {
-    create_dverts(&me->id);
+  if (!mesh->dvert) {
+    create_dverts(&mesh->id);
   }
 
   /* Loop list adding verts to group. */
   for (i = 0; i < totindex; i++) {
-    if (i < 0 || i >= me->totvert) {
+    if (i < 0 || i >= mesh->verts_num) {
       BKE_report(reports, RPT_ERROR, "Bad vertex index in list");
       return;
     }
@@ -550,13 +551,13 @@ static void rna_Mesh_assign_verts_to_group(
 #  endif
 
 /* don't call inside a loop */
-static int mesh_looptri_to_poly_index(Mesh *me_eval, const int tri_index)
+static int mesh_corner_tri_to_face_index(Mesh *me_eval, const int tri_index)
 {
-  const int *looptri_polys = BKE_mesh_runtime_looptri_polys_ensure(me_eval);
-  const int poly_i = looptri_polys[tri_index];
+  const blender::Span<int> tri_faces = me_eval->corner_tri_faces();
+  const int face_i = tri_faces[tri_index];
   const int *index_mp_to_orig = static_cast<const int *>(
-      CustomData_get_layer(&me_eval->pdata, CD_ORIGINDEX));
-  return index_mp_to_orig ? index_mp_to_orig[poly_i] : poly_i;
+      CustomData_get_layer(&me_eval->face_data, CD_ORIGINDEX));
+  return index_mp_to_orig ? index_mp_to_orig[face_i] : face_i;
 }
 
 /* TODO(sergey): Make the Python API more clear that evaluation might happen, or require
@@ -566,7 +567,7 @@ static Object *eval_object_ensure(Object *ob,
                                   ReportList *reports,
                                   PointerRNA *rnaptr_depsgraph)
 {
-  if (ob->runtime.data_eval == nullptr) {
+  if (ob->runtime->data_eval == nullptr) {
     Object *ob_orig = ob;
     Depsgraph *depsgraph = rnaptr_depsgraph != nullptr ?
                                static_cast<Depsgraph *>(rnaptr_depsgraph->data) :
@@ -589,8 +590,8 @@ static Object *eval_object_ensure(Object *ob,
 static void rna_Object_ray_cast(Object *ob,
                                 bContext *C,
                                 ReportList *reports,
-                                float origin[3],
-                                float direction[3],
+                                const float origin[3],
+                                const float direction[3],
                                 float distance,
                                 PointerRNA *rnaptr_depsgraph,
                                 bool *r_success,
@@ -606,23 +607,28 @@ static void rna_Object_ray_cast(Object *ob,
     return;
   }
 
-  /* Test BoundBox first (efficiency) */
-  const BoundBox *bb = BKE_object_boundbox_get(ob);
+  Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
+
+  /* Test bounding box first (efficiency) */
+  const std::optional<blender::Bounds<blender::float3>> bounds = mesh_eval->bounds_min_max();
+  if (!bounds) {
+    return;
+  }
   float distmin;
 
   /* Needed for valid distance check from #isect_ray_aabb_v3_simple() call. */
-  normalize_v3(direction);
+  float direction_unit[3];
+  normalize_v3_v3(direction_unit, direction);
 
-  if (!bb ||
-      (isect_ray_aabb_v3_simple(origin, direction, bb->vec[0], bb->vec[6], &distmin, nullptr) &&
+  if ((isect_ray_aabb_v3_simple(
+           origin, direction_unit, bounds->min, bounds->max, &distmin, nullptr) &&
        distmin <= distance))
   {
     BVHTreeFromMesh treeData = {nullptr};
 
     /* No need to managing allocation or freeing of the BVH data.
      * This is generated and freed as needed. */
-    Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
-    BKE_bvhtree_from_mesh_get(&treeData, mesh_eval, BVHTREE_FROM_LOOPTRI, 4);
+    BKE_bvhtree_from_mesh_get(&treeData, mesh_eval, BVHTREE_FROM_CORNER_TRIS, 4);
 
     /* may fail if the mesh has no faces, in that case the ray-cast misses */
     if (treeData.tree != nullptr) {
@@ -633,7 +639,7 @@ static void rna_Object_ray_cast(Object *ob,
 
       if (BLI_bvhtree_ray_cast(treeData.tree,
                                origin,
-                               direction,
+                               direction_unit,
                                0.0f,
                                &hit,
                                treeData.raycast_callback,
@@ -644,7 +650,7 @@ static void rna_Object_ray_cast(Object *ob,
 
           copy_v3_v3(r_location, hit.co);
           copy_v3_v3(r_normal, hit.no);
-          *r_index = mesh_looptri_to_poly_index(mesh_eval, hit.index);
+          *r_index = mesh_corner_tri_to_face_index(mesh_eval, hit.index);
         }
       }
 
@@ -663,7 +669,7 @@ static void rna_Object_ray_cast(Object *ob,
 static void rna_Object_closest_point_on_mesh(Object *ob,
                                              bContext *C,
                                              ReportList *reports,
-                                             float origin[3],
+                                             const float origin[3],
                                              float distance,
                                              PointerRNA *rnaptr_depsgraph,
                                              bool *r_success,
@@ -680,7 +686,7 @@ static void rna_Object_closest_point_on_mesh(Object *ob,
   /* No need to managing allocation or freeing of the BVH data.
    * this is generated and freed as needed. */
   Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
-  BKE_bvhtree_from_mesh_get(&treeData, mesh_eval, BVHTREE_FROM_LOOPTRI, 4);
+  BKE_bvhtree_from_mesh_get(&treeData, mesh_eval, BVHTREE_FROM_CORNER_TRIS, 4);
 
   if (treeData.tree == nullptr) {
     BKE_reportf(reports,
@@ -702,7 +708,7 @@ static void rna_Object_closest_point_on_mesh(Object *ob,
 
       copy_v3_v3(r_location, nearest.co);
       copy_v3_v3(r_normal, nearest.no);
-      *r_index = mesh_looptri_to_poly_index(mesh_eval, nearest.index);
+      *r_index = mesh_corner_tri_to_face_index(mesh_eval, nearest.index);
 
       goto finally;
     }
@@ -730,10 +736,10 @@ static bool rna_Object_is_deform_modified(Object *ob, Scene *scene, int settings
 
 #  ifndef NDEBUG
 
-#    include "BKE_mesh_runtime.h"
+#    include "BKE_mesh_runtime.hh"
 
 void rna_Object_me_eval_info(
-    struct Object *ob, bContext *C, int type, PointerRNA *rnaptr_depsgraph, char *result)
+    Object *ob, bContext *C, int type, PointerRNA *rnaptr_depsgraph, char *result)
 {
   Mesh *me_eval = nullptr;
   char *ret = nullptr;
@@ -755,7 +761,7 @@ void rna_Object_me_eval_info(
       }
       break;
     case 1:
-      me_eval = ob->runtime.mesh_deform_eval;
+      me_eval = ob->runtime->mesh_deform_eval;
       break;
     case 2:
       me_eval = BKE_object_get_evaluated_mesh(ob);
@@ -771,7 +777,7 @@ void rna_Object_me_eval_info(
   }
 }
 #  else
-void rna_Object_me_eval_info(struct Object * /*ob*/,
+void rna_Object_me_eval_info(Object * /*ob*/,
                              bContext * /*C*/,
                              int /*type*/,
                              PointerRNA * /*rnaptr_depsgraph*/,
@@ -848,14 +854,14 @@ void RNA_api_object(StructRNA *srna)
   parm = RNA_def_pointer(
       func, "view_layer", "ViewLayer", "", "Use this instead of the active view layer");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR);
-  parm = RNA_def_boolean(func, "result", 0, "", "Object selected");
+  parm = RNA_def_boolean(func, "result", false, "", "Object selected");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "select_set", "rna_Object_select_set");
   RNA_def_function_ui_description(
       func, "Select or deselect the object. The selection state is per view layer");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
-  parm = RNA_def_boolean(func, "state", 0, "", "Selection state to define");
+  parm = RNA_def_boolean(func, "state", false, "", "Selection state to define");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(
       func, "view_layer", "ViewLayer", "", "Use this instead of the active view layer");
@@ -869,14 +875,14 @@ void RNA_api_object(StructRNA *srna)
   parm = RNA_def_pointer(
       func, "view_layer", "ViewLayer", "", "Use this instead of the active view layer");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR);
-  parm = RNA_def_boolean(func, "result", 0, "", "Object hidden");
+  parm = RNA_def_boolean(func, "result", false, "", "Object hidden");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "hide_set", "rna_Object_hide_set");
   RNA_def_function_ui_description(
       func, "Hide the object for viewport editing. This hiding state is per view layer");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
-  parm = RNA_def_boolean(func, "state", 0, "", "Hide state to define");
+  parm = RNA_def_boolean(func, "state", false, "", "Hide state to define");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
   parm = RNA_def_pointer(
       func, "view_layer", "ViewLayer", "", "Use this instead of the active view layer");
@@ -892,7 +898,7 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR);
   parm = RNA_def_pointer(
       func, "viewport", "SpaceView3D", "", "Use this instead of the active 3D viewport");
-  parm = RNA_def_boolean(func, "result", 0, "", "Object visible");
+  parm = RNA_def_boolean(func, "result", false, "", "Object visible");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "holdout_get", "rna_Object_holdout_get");
@@ -901,7 +907,7 @@ void RNA_api_object(StructRNA *srna)
   parm = RNA_def_pointer(
       func, "view_layer", "ViewLayer", "", "Use this instead of the active view layer");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR);
-  parm = RNA_def_boolean(func, "result", 0, "", "Object holdout");
+  parm = RNA_def_boolean(func, "result", false, "", "Object holdout");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "indirect_only_get", "rna_Object_indirect_only_get");
@@ -912,7 +918,7 @@ void RNA_api_object(StructRNA *srna)
   parm = RNA_def_pointer(
       func, "view_layer", "ViewLayer", "", "Use this instead of the active view layer");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR);
-  parm = RNA_def_boolean(func, "result", 0, "", "Object indirect only");
+  parm = RNA_def_boolean(func, "result", false, "", "Object indirect only");
   RNA_def_function_return(func, parm);
 
   /* Local View */
@@ -921,7 +927,7 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "viewport", "SpaceView3D", "", "Viewport in local view");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_boolean(func, "result", 0, "", "Object local view state");
+  parm = RNA_def_boolean(func, "result", false, "", "Object local view state");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "local_view_set", "rna_Object_local_view_set");
@@ -929,7 +935,7 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_pointer(func, "viewport", "SpaceView3D", "", "Viewport in local view");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR | PARM_REQUIRED);
-  parm = RNA_def_boolean(func, "state", 0, "", "Local view state to define");
+  parm = RNA_def_boolean(func, "state", false, "", "Local view state to define");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
 
   /* Viewport */
@@ -938,7 +944,7 @@ void RNA_api_object(StructRNA *srna)
       func, "Check for local view and local collections for this viewport and object");
   parm = RNA_def_pointer(func, "viewport", "SpaceView3D", "", "Viewport in local collections");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_boolean(func, "result", 0, "", "Object viewport visibility");
+  parm = RNA_def_boolean(func, "result", false, "", "Object viewport visibility");
   RNA_def_function_return(func, parm);
 
   /* Matrix space conversion */
@@ -1071,7 +1077,7 @@ void RNA_api_object(StructRNA *srna)
       func,
       "Create a Mesh data-block from the current state of the object. The object owns the "
       "data-block. To force free it use to_mesh_clear(). "
-      "The result is temporary and can not be used by objects from the main database");
+      "The result is temporary and cannot be used by objects from the main database");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   RNA_def_boolean(func,
                   "preserve_all_data_layers",
@@ -1098,7 +1104,7 @@ void RNA_api_object(StructRNA *srna)
       func,
       "Create a Curve data-block from the current state of the object. This only works for curve "
       "and text objects. The object owns the data-block. To force free it, use to_curve_clear(). "
-      "The result is temporary and can not be used by objects from the main database");
+      "The result is temporary and cannot be used by objects from the main database");
   RNA_def_function_flag(func, FUNC_USE_REPORTS);
   parm = RNA_def_pointer(
       func, "depsgraph", "Depsgraph", "Dependency Graph", "Evaluated dependency graph");
@@ -1128,7 +1134,7 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_function_ui_description(func, "Add shape key to this object");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT | FUNC_USE_REPORTS);
   RNA_def_string(func, "name", "Key", 0, "", "Unique name for the new keyblock"); /* optional */
-  RNA_def_boolean(func, "from_mix", 1, "", "Create new shape from existing mix of shapes");
+  RNA_def_boolean(func, "from_mix", true, "", "Create new shape from existing mix of shapes");
   parm = RNA_def_pointer(func, "key", "ShapeKey", "", "New shape keyblock");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR);
   RNA_def_function_return(func, parm);
@@ -1194,7 +1200,8 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR);
 
   /* return location and normal */
-  parm = RNA_def_boolean(func, "result", 0, "", "Whether the ray successfully hit the geometry");
+  parm = RNA_def_boolean(
+      func, "result", false, "", "Whether the ray successfully hit the geometry");
   RNA_def_function_output(func, parm);
   parm = RNA_def_float_vector(func,
                               "location",
@@ -1257,7 +1264,7 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_RNAPTR);
 
   /* return location and normal */
-  parm = RNA_def_boolean(func, "result", 0, "", "Whether closest point on geometry was found");
+  parm = RNA_def_boolean(func, "result", false, "", "Whether closest point on geometry was found");
   RNA_def_function_output(func, parm);
   parm = RNA_def_float_vector(func,
                               "location",
@@ -1298,7 +1305,7 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_enum(func, "settings", mesh_type_items, 0, "", "Modifier settings to apply");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_boolean(func, "result", 0, "", "Whether the object is modified");
+  parm = RNA_def_boolean(func, "result", false, "", "Whether the object is modified");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "is_deform_modified", "rna_Object_is_deform_modified");
@@ -1308,7 +1315,7 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);
   parm = RNA_def_enum(func, "settings", mesh_type_items, 0, "", "Modifier settings to apply");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
-  parm = RNA_def_boolean(func, "result", 0, "", "Whether the object is deform-modified");
+  parm = RNA_def_boolean(func, "result", false, "", "Whether the object is deform-modified");
   RNA_def_function_return(func, parm);
 
 #  ifndef NDEBUG
@@ -1336,12 +1343,12 @@ void RNA_api_object(StructRNA *srna)
   RNA_def_parameter_flags(
       parm, PROP_THICK_WRAP, ParameterFlag(0)); /* needed for string return value */
   RNA_def_function_output(func, parm);
-#  endif /* NDEBUG */
+#  endif /* !NDEBUG */
 
   func = RNA_def_function(srna, "update_from_editmode", "rna_Object_update_from_editmode");
   RNA_def_function_ui_description(func, "Load the objects edit-mode data into the object data");
   RNA_def_function_flag(func, FUNC_USE_MAIN);
-  parm = RNA_def_boolean(func, "result", 0, "", "Success");
+  parm = RNA_def_boolean(func, "result", false, "", "Success");
   RNA_def_function_return(func, parm);
 
   func = RNA_def_function(srna, "cache_release", "BKE_object_free_caches");
@@ -1365,7 +1372,7 @@ void RNA_api_object(StructRNA *srna)
       func, "scale_thickness", 1.0f, 0.0f, FLT_MAX, "", "Thickness scaling factor", 0.0f, 100.0f);
   parm = RNA_def_float(
       func, "sample", 0.0f, 0.0f, FLT_MAX, "", "Sample distance, zero to disable", 0.0f, 100.0f);
-  parm = RNA_def_boolean(func, "result", 0, "", "Result");
+  parm = RNA_def_boolean(func, "result", false, "", "Result");
   RNA_def_function_return(func, parm);
 }
 

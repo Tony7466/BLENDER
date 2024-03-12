@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -11,7 +11,7 @@
 #include <iomanip>
 #include <optional>
 
-#include "ED_asset_indexer.h"
+#include "ED_asset_indexer.hh"
 
 #include "DNA_asset_types.h"
 #include "DNA_userdef_types.h"
@@ -22,15 +22,19 @@
 #include "BLI_path_util.h"
 #include "BLI_serialize.hh"
 #include "BLI_set.hh"
+#include "BLI_string.h"
 #include "BLI_string_ref.hh"
+#include "BLI_string_utf8.h"
 #include "BLI_uuid.h"
 
 #include "AS_asset_catalog.hh"
-#include "BKE_appdir.h"
-#include "BKE_asset.h"
+#include "BKE_appdir.hh"
+#include "BKE_asset.hh"
 #include "BKE_idprop.hh"
 
 #include "CLG_log.h"
+
+#include <sstream>
 
 static CLG_LogRef LOG = {"ed.asset"};
 
@@ -268,7 +272,7 @@ struct AssetEntryWriter {
 
   void add_catalog_id(const CatalogID &catalog_id)
   {
-    char catalog_id_str[UUID_STRING_LEN];
+    char catalog_id_str[UUID_STRING_SIZE];
     BLI_uuid_format(catalog_id_str, catalog_id);
     attributes.append_as(std::pair(ATTRIBUTE_ENTRIES_CATALOG_ID, new StringValue(catalog_id_str)));
   }
@@ -426,7 +430,7 @@ static void init_indexer_entry_from_value(FileIndexerEntry &indexer_entry,
   }
 
   const StringRefNull catalog_name = entry.get_catalog_name();
-  STRNCPY(asset_data->catalog_simple_name, catalog_name.c_str());
+  STRNCPY_UTF8(asset_data->catalog_simple_name, catalog_name.c_str());
 
   asset_data->catalog_id = entry.get_catalog_id();
 
@@ -486,7 +490,7 @@ struct AssetLibraryIndex {
   /**
    * \brief Absolute path where the indices of `library` are stored.
    *
-   * \NOTE: includes trailing directory separator.
+   * \note includes trailing directory separator.
    */
   std::string indices_base_path;
 
@@ -645,7 +649,7 @@ struct AssetIndex {
   const int UNKNOWN_VERSION = -1;
 
   /**
-   * `blender::io::serialize::Value` representing the contents of an index file.
+   * `io::serialize::Value` representing the contents of an index file.
    *
    * Value is used over #DictionaryValue as the contents of the index could be corrupted and
    * doesn't represent an object. In case corrupted files are detected the `get_version` would
@@ -937,8 +941,6 @@ constexpr FileIndexerType asset_indexer()
   return indexer;
 }
 
-}  // namespace blender::ed::asset::index
+const FileIndexerType file_indexer_asset = asset_indexer();
 
-extern "C" {
-const FileIndexerType file_indexer_asset = blender::ed::asset::index::asset_indexer();
-}
+}  // namespace blender::ed::asset::index

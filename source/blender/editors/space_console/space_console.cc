@@ -1,4 +1,4 @@
-/* SPDX-FileCopyrightText: 2023 Blender Foundation
+/* SPDX-FileCopyrightText: 2023 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
@@ -14,23 +14,23 @@
 #include "BLI_blenlib.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_global.h"
-#include "BKE_screen.h"
+#include "BKE_screen.hh"
 
-#include "ED_screen.h"
-#include "ED_space_api.h"
+#include "ED_screen.hh"
+#include "ED_space_api.hh"
 
-#include "RNA_access.h"
-#include "RNA_path.h"
+#include "RNA_access.hh"
+#include "RNA_path.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_resources.h"
-#include "UI_view2d.h"
+#include "UI_resources.hh"
+#include "UI_view2d.hh"
 
-#include "BLO_read_write.h"
+#include "BLO_read_write.hh"
 
 #include "console_intern.hh" /* own include */
 
@@ -124,11 +124,11 @@ static void console_main_region_init(wmWindowManager *wm, ARegion *region)
   }
 
   /* own keymap */
-  keymap = WM_keymap_ensure(wm->defaultconf, "Console", SPACE_CONSOLE, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "Console", SPACE_CONSOLE, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler_v2d_mask(&region->handlers, keymap);
 
   /* Include after "Console" so cursor motion keys such as "Home" isn't overridden. */
-  keymap = WM_keymap_ensure(wm->defaultconf, "View2D Buttons List", 0, 0);
+  keymap = WM_keymap_ensure(wm->defaultconf, "View2D Buttons List", SPACE_EMPTY, RGN_TYPE_WINDOW);
   WM_event_add_keymap_handler(&region->handlers, keymap);
 
   /* add drop boxes */
@@ -161,9 +161,8 @@ static void id_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
   ID *id = WM_drag_get_local_ID(drag, 0);
 
   /* copy drag path to properties */
-  char *text = RNA_path_full_ID_py(id);
-  RNA_string_set(drop->ptr, "text", text);
-  MEM_freeN(text);
+  std::string text = RNA_path_full_ID_py(id);
+  RNA_string_set(drop->ptr, "text", text.c_str());
 }
 
 static bool path_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*event*/)
@@ -174,7 +173,7 @@ static bool path_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent * /*eve
 static void path_drop_copy(bContext * /*C*/, wmDrag *drag, wmDropBox *drop)
 {
   char pathname[FILE_MAX + 2];
-  SNPRINTF(pathname, "\"%s\"", WM_drag_get_path(drag));
+  SNPRINTF(pathname, "\"%s\"", WM_drag_get_single_path(drag));
   RNA_string_set(drop->ptr, "text", pathname);
 }
 
@@ -220,7 +219,7 @@ static void console_main_region_draw(const bContext *C, ARegion *region)
 
 static void console_operatortypes()
 {
-  /* console_ops.c */
+  /* `console_ops.cc` */
   WM_operatortype_append(CONSOLE_OT_move);
   WM_operatortype_append(CONSOLE_OT_delete);
   WM_operatortype_append(CONSOLE_OT_insert);
@@ -239,12 +238,13 @@ static void console_operatortypes()
   WM_operatortype_append(CONSOLE_OT_copy);
   WM_operatortype_append(CONSOLE_OT_paste);
   WM_operatortype_append(CONSOLE_OT_select_set);
+  WM_operatortype_append(CONSOLE_OT_select_all);
   WM_operatortype_append(CONSOLE_OT_select_word);
 }
 
 static void console_keymap(wmKeyConfig *keyconf)
 {
-  WM_keymap_ensure(keyconf, "Console", SPACE_CONSOLE, 0);
+  WM_keymap_ensure(keyconf, "Console", SPACE_CONSOLE, RGN_TYPE_WINDOW);
 }
 
 /****************** header region ******************/
@@ -322,9 +322,9 @@ static void console_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceConsole, sl);
 }
 
-void ED_spacetype_console(void)
+void ED_spacetype_console()
 {
-  SpaceType *st = static_cast<SpaceType *>(MEM_callocN(sizeof(SpaceType), "spacetype console"));
+  std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
   ARegionType *art;
 
   st->spaceid = SPACE_CONSOLE;
@@ -364,5 +364,5 @@ void ED_spacetype_console(void)
 
   BLI_addhead(&st->regiontypes, art);
 
-  BKE_spacetype_register(st);
+  BKE_spacetype_register(std::move(st));
 }

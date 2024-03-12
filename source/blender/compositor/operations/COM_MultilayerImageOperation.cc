@@ -1,10 +1,12 @@
-/* SPDX-FileCopyrightText: 2011 Blender Foundation
+/* SPDX-FileCopyrightText: 2011 Blender Authors
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_MultilayerImageOperation.h"
 
-#include "IMB_imbuf.h"
+#include "BLI_string.h"
+
+#include "IMB_interp.hh"
 
 namespace blender::compositor {
 
@@ -40,7 +42,12 @@ void MultilayerBaseOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                            const rcti &area,
                                                            Span<MemoryBuffer *> /*inputs*/)
 {
-  output->copy_from(buffer_, area);
+  if (buffer_) {
+    output->copy_from(buffer_, area);
+  }
+  else {
+    output->clear();
+  }
 }
 
 std::unique_ptr<MetaData> MultilayerColorOperation::get_meta_data()
@@ -81,13 +88,13 @@ void MultilayerColorOperation::execute_pixel_sampled(float output[4],
     if (number_of_channels_ == 4) {
       switch (sampler) {
         case PixelSampler::Nearest:
-          nearest_interpolation_color(buffer_, nullptr, output, x, y);
+          imbuf::interpolate_nearest_fl(buffer_, output, x, y);
           break;
         case PixelSampler::Bilinear:
-          bilinear_interpolation_color(buffer_, nullptr, output, x, y);
+          imbuf::interpolate_bilinear_border_fl(buffer_, output, x, y);
           break;
         case PixelSampler::Bicubic:
-          bicubic_interpolation_color(buffer_, nullptr, output, x, y);
+          imbuf::interpolate_cubic_bspline_fl(buffer_, output, x, y);
           break;
       }
     }

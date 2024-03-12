@@ -10,26 +10,29 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_math_matrix.h"
 #include "BLI_math_vector.h"
 #include "BLI_math_vector.hh"
 #include "BLI_rect.h"
 
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
-#include "BKE_node_tree_update.h"
+#include "BKE_node_tree_update.hh"
 #include "BKE_report.h"
 
 #include "ED_node.hh"
 
-#include "UI_interface.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_view2d.hh"
 
-#include "transform.h"
-#include "transform_convert.h"
-#include "transform_snap.h"
+#include "transform.hh"
+#include "transform_convert.hh"
+#include "transform_snap.hh"
 
-#include "WM_api.h"
+#include "WM_api.hh"
+
+namespace blender::ed::transform {
 
 struct TransCustomDataNode {
   View2DEdgePanData edgepan_data;
@@ -48,8 +51,8 @@ static void create_transform_data_for_node(TransData &td,
                                            const float dpi_fac)
 {
   /* account for parents (nested nodes) */
-  const blender::float2 node_offset = {node.offsetx, node.offsety};
-  blender::float2 loc = blender::bke::nodeToView(&node, blender::math::round(node_offset));
+  const float2 node_offset = {node.offsetx, node.offsety};
+  float2 loc = bke::nodeToView(&node, math::round(node_offset));
   loc *= dpi_fac;
 
   /* use top-left corner as the transform origin for nodes */
@@ -93,8 +96,6 @@ static bool is_node_parent_select(const bNode *node)
 
 static void createTransNodeData(bContext * /*C*/, TransInfo *t)
 {
-  using namespace blender;
-  using namespace blender::ed;
   SpaceNode *snode = static_cast<SpaceNode *>(t->area->spacedata.first);
   bNodeTree *node_tree = snode->edittree;
   if (!node_tree) {
@@ -151,10 +152,8 @@ static void createTransNodeData(bContext * /*C*/, TransInfo *t)
 
 static void node_snap_grid_apply(TransInfo *t)
 {
-  using namespace blender;
-
   if (!(transform_snap_is_active(t) &&
-        (t->tsnap.mode & (SCE_SNAP_MODE_INCREMENT | SCE_SNAP_MODE_GRID))))
+        (t->tsnap.mode & (SCE_SNAP_TO_INCREMENT | SCE_SNAP_TO_GRID))))
   {
     return;
   }
@@ -194,7 +193,6 @@ static void node_snap_grid_apply(TransInfo *t)
 
 static void flushTransNodes(TransInfo *t)
 {
-  using namespace blender::ed;
   const float dpi_fac = UI_SCALE_FAC;
   SpaceNode *snode = static_cast<SpaceNode *>(t->area->spacedata.first);
 
@@ -207,8 +205,8 @@ static void flushTransNodes(TransInfo *t)
     else {
       /* Edge panning functions expect window coordinates, mval is relative to region */
       const int xy[2] = {
-          t->region->winrct.xmin + t->mval[0],
-          t->region->winrct.ymin + t->mval[1],
+          t->region->winrct.xmin + int(t->mval[0]),
+          t->region->winrct.ymin + int(t->mval[1]),
       };
       UI_view2d_edge_pan_apply(t->context, &customdata->edgepan_data, xy);
     }
@@ -233,16 +231,16 @@ static void flushTransNodes(TransInfo *t)
       TransData2D *td2d = &tc->data_2d[i];
       bNode *node = static_cast<bNode *>(td->extra);
 
-      blender::float2 loc;
+      float2 loc;
       add_v2_v2v2(loc, td2d->loc, offset);
 
       /* Weirdo - but the node system is a mix of free 2d elements and DPI sensitive UI. */
       loc /= dpi_fac;
 
       /* account for parents (nested nodes) */
-      const blender::float2 node_offset = {node->offsetx, node->offsety};
-      const blender::float2 new_node_location = loc - blender::math::round(node_offset);
-      const blender::float2 location = blender::bke::nodeFromView(node->parent, new_node_location);
+      const float2 node_offset = {node->offsetx, node->offsety};
+      const float2 new_node_location = loc - math::round(node_offset);
+      const float2 location = bke::nodeFromView(node->parent, new_node_location);
       node->locx = location.x;
       node->locy = location.y;
     }
@@ -267,7 +265,6 @@ static void flushTransNodes(TransInfo *t)
 
 static void special_aftertrans_update__node(bContext *C, TransInfo *t)
 {
-  using namespace blender::ed;
   Main *bmain = CTX_data_main(C);
   SpaceNode *snode = (SpaceNode *)t->area->spacedata.first;
   bNodeTree *ntree = snode->edittree;
@@ -305,9 +302,11 @@ static void special_aftertrans_update__node(bContext *C, TransInfo *t)
 
 /** \} */
 
+}  // namespace blender::ed::transform
+
 TransConvertTypeInfo TransConvertType_Node = {
     /*flags*/ (T_POINTS | T_2D_EDIT),
-    /*createTransData*/ createTransNodeData,
-    /*recalcData*/ flushTransNodes,
-    /*special_aftertrans_update*/ special_aftertrans_update__node,
+    /*create_trans_data*/ blender::ed::transform::createTransNodeData,
+    /*recalc_data*/ blender::ed::transform::flushTransNodes,
+    /*special_aftertrans_update*/ blender::ed::transform::special_aftertrans_update__node,
 };
