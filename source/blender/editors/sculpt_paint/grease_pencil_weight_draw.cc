@@ -13,7 +13,7 @@ class DrawWeightPaintOperation : public WeightPaintOperation {
     this->brush_mode = brush_mode;
   }
 
-  void on_stroke_begin(const bContext &C, const InputSample &start_sample) final
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override
   {
     using namespace blender::ed::greasepencil;
 
@@ -43,7 +43,7 @@ class DrawWeightPaintOperation : public WeightPaintOperation {
     }
   }
 
-  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) final
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override
   {
     using namespace blender::ed::greasepencil;
 
@@ -94,7 +94,7 @@ class DrawWeightPaintOperation : public WeightPaintOperation {
     }
   }
 
-  void on_stroke_done(const bContext & /*C*/) final {}
+  void on_stroke_done(const bContext & /*C*/) override {}
 };
 
 std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_draw_operation(
