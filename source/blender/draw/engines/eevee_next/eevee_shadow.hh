@@ -359,6 +359,11 @@ class ShadowModule {
     return data_;
   }
 
+  float get_global_lod_bias()
+  {
+    return lod_bias_;
+  }
+
  private:
   void remove_unused();
   void debug_page_map_call(DRWPass *pass);

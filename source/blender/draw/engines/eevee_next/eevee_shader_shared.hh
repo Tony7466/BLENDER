@@ -817,7 +817,8 @@ struct LightData {
   float shadow_trace_distance;
   /* Radius in pixels for shadow filtering. */
   float pcf_radius;
-  int _pad0;
+  /* Shadow Map resolution bias. */
+  float lod_bias;
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 
