@@ -224,19 +224,7 @@ static void store_result_geometry(
 
         BKE_object_material_from_eval_data(&bmain, &object, &new_mesh->id);
         if (object.mode == OB_MODE_EDIT) {
-          /* Version of #EDBM_mesh_make with a mesh that is not in the object. */
-          BMeshCreateParams create_params{};
-          create_params.use_toolflags = true;
-          if (mesh.edit_mesh) {
-            EDBM_mesh_free_data(mesh.edit_mesh);
-            MEM_freeN(mesh.edit_mesh);
-          }
-          BMesh *bm = BKE_mesh_to_bmesh(new_mesh, &object, true, &create_params);
-          mesh.edit_mesh = BKE_editmesh_create(bm);
-          mesh.edit_mesh->selectmode = mesh.edit_mesh->bm->selectmode =
-              scene.toolsettings->selectmode;
-          mesh.edit_mesh->mat_nr = (object.actcol > 0) ? object.actcol - 1 : 0;
-          BKE_editmesh_looptris_and_normals_calc(mesh.edit_mesh);
+          EDBM_mesh_make_from_mesh(object, *new_mesh, scene.toolsettings->selectmode, true);
         }
         else {
           BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
