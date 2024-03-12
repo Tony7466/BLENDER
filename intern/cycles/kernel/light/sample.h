@@ -369,7 +369,13 @@ ccl_device bool light_sample_from_position(KernelGlobals kg,
   /* Pick a light, write to `ls->emitter_id` and `ls->pdf_selection`. */
 #ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
-    if (!light_tree_sample<false>(kg, rand.z, P, N, 0.0f, object_receiver, shader_flags, ls)) {
+    if (ls->emitter_id >= 0) {
+      /* Emitter already picked in volume segment. */
+      /* TODO(weizhen): verify this condition. What happens if sampling failed in volume segment?
+       * Can we also check if `N` is zero? */
+    }
+    else if (!light_tree_sample<false>(kg, rand.z, P, N, 0.0f, object_receiver, shader_flags, ls))
+    {
       return false;
     }
   }
@@ -438,13 +444,40 @@ ccl_device_inline float light_sample_mis_weight_forward_surface(KernelGlobals kg
 #ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
     float3 ray_P = INTEGRATOR_STATE(state, ray, P);
-    const float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
+    float dt = 0.0f;
+    bool in_volume_segment = false;
+    float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
+    const float N_len_sq = len_squared(N);
+    if (N_len_sq < 0.5f) {
+      in_volume_segment = true;
+      N *= inversesqrtf(N_len_sq);
+      ray_P = INTEGRATOR_STATE(state, ray, previous_P);
+      dt = INTEGRATOR_STATE(state, ray, previous_dt);
+    }
     uint lookup_offset = kernel_data_fetch(object_lookup_offset, sd->object);
     uint prim_offset = kernel_data_fetch(object_prim_offset, sd->object);
     uint triangle = kernel_data_fetch(triangle_to_tree, sd->prim - prim_offset + lookup_offset);
 
-    pdf *= light_tree_pdf(
-        kg, ray_P, N, path_flag, sd->object, triangle, light_link_receiver_forward(kg, state));
+    if (in_volume_segment) {
+      pdf *= light_tree_pdf<true>(kg,
+                                  ray_P,
+                                  N,
+                                  dt,
+                                  path_flag,
+                                  sd->object,
+                                  triangle,
+                                  light_link_receiver_forward(kg, state));
+    }
+    else {
+      pdf *= light_tree_pdf<false>(kg,
+                                   ray_P,
+                                   N,
+                                   dt,
+                                   path_flag,
+                                   sd->object,
+                                   triangle,
+                                   light_link_receiver_forward(kg, state));
+    }
   }
   else
 #endif
@@ -467,14 +500,35 @@ ccl_device_inline float light_sample_mis_weight_forward_lamp(KernelGlobals kg,
   /* Light selection pdf. */
 #ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
-    const float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
-    pdf *= light_tree_pdf(kg,
-                          P,
-                          N,
-                          path_flag,
-                          0,
-                          kernel_data_fetch(light_to_tree, ls->lamp),
-                          light_link_receiver_forward(kg, state));
+    bool in_volume_segment = false;
+    float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
+    const float N_len_sq = len_squared(N);
+    if (N_len_sq < 0.5f) {
+      in_volume_segment = true;
+      N *= inversesqrtf(N_len_sq);
+    }
+    if (in_volume_segment) {
+      const float3 previous_P = INTEGRATOR_STATE(state, ray, previous_P);
+      const float dt = INTEGRATOR_STATE(state, ray, previous_dt);
+      pdf *= light_tree_pdf<true>(kg,
+                                  previous_P,
+                                  N,
+                                  dt,
+                                  path_flag,
+                                  0,
+                                  kernel_data_fetch(light_to_tree, ls->lamp),
+                                  light_link_receiver_forward(kg, state));
+    }
+    else {
+      pdf *= light_tree_pdf<false>(kg,
+                                   P,
+                                   N,
+                                   0.0f,
+                                   path_flag,
+                                   0,
+                                   kernel_data_fetch(light_to_tree, ls->lamp),
+                                   light_link_receiver_forward(kg, state));
+    }
   }
   else
 #endif
@@ -509,8 +563,8 @@ ccl_device_inline float light_sample_mis_weight_forward_background(KernelGlobals
   if (kernel_data.integrator.use_light_tree) {
     const float3 N = INTEGRATOR_STATE(state, path, mis_origin_n);
     uint light = kernel_data_fetch(light_to_tree, kernel_data.background.light_index);
-    pdf *= light_tree_pdf(
-        kg, ray_P, N, path_flag, 0, light, light_link_receiver_forward(kg, state));
+    pdf *= light_tree_pdf<false>(
+        kg, ray_P, N, 0.0f, path_flag, 0, light, light_link_receiver_forward(kg, state));
   }
   else
 #endif

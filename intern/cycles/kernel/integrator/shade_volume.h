@@ -324,13 +324,6 @@ ccl_device_inline bool volume_equiangular_valid_ray_segment(KernelGlobals kg,
                                                             ccl_private float2 *t_range,
                                                             const ccl_private LightSample *ls)
 {
-#  ifdef __LIGHT_TREE__
-  /* Do not compute ray segment until #119389 is landed. */
-  if (kernel_data.integrator.use_light_tree) {
-    return true;
-  }
-#  endif
-
   if (ls->type == LIGHT_SPOT) {
     ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
     return spot_light_valid_ray_segment(klight, ray_P, ray_D, t_range);
@@ -770,16 +763,7 @@ ccl_device_forceinline void integrate_volume_direct_light(
     return;
   }
 
-  /* Sample position on the same light again, now from the shading point where we scattered.
-   *
-   * Note that this means we sample the light tree twice when equiangular sampling is used.
-   * We could consider sampling the light tree just once and use the same light position again.
-   *
-   * This would make the PDFs for MIS weights more complicated due to having to account for
-   * both distance/equiangular and direct/indirect light sampling, but could be more accurate.
-   * Additionally we could end up behind the light or outside a spot light cone, which might
-   * waste a sample. Though on the other hand it would be possible to prevent that with
-   * equiangular sampling restricted to a smaller sub-segment where the light has influence. */
+  /* Sample position on the same light again, now from the shading point where we scattered. */
   {
     const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
     const uint bounce = INTEGRATOR_STATE(state, path, bounce);
@@ -913,6 +897,7 @@ ccl_device_forceinline bool integrate_volume_phase_scatter(
     KernelGlobals kg,
     IntegratorState state,
     ccl_private ShaderData *sd,
+    ccl_private const Ray *ray,
     ccl_private const RNGState *rng_state,
     ccl_private const ShaderVolumePhases *phases)
 {
@@ -963,8 +948,10 @@ ccl_device_forceinline bool integrate_volume_phase_scatter(
 
   /* Setup ray. */
   INTEGRATOR_STATE_WRITE(state, ray, P) = sd->P;
+  INTEGRATOR_STATE_WRITE(state, ray, previous_P) = ray->P + ray->D * ray->tmin;
   INTEGRATOR_STATE_WRITE(state, ray, D) = normalize(phase_wo);
   INTEGRATOR_STATE_WRITE(state, ray, tmin) = 0.0f;
+  INTEGRATOR_STATE_WRITE(state, ray, previous_dt) = ray->tmax - ray->tmin;
   INTEGRATOR_STATE_WRITE(state, ray, tmax) = FLT_MAX;
 #  ifdef __RAY_DIFFERENTIALS__
   INTEGRATOR_STATE_WRITE(state, ray, dP) = differential_make_compact(sd->dP);
@@ -993,7 +980,8 @@ ccl_device_forceinline bool integrate_volume_phase_scatter(
 
   /* Update path state */
   INTEGRATOR_STATE_WRITE(state, path, mis_ray_pdf) = phase_pdf;
-  INTEGRATOR_STATE_WRITE(state, path, mis_origin_n) = zero_float3();
+  /* HACK(weizhen): use non-normalized `N` to denote volume segment. Maybe find a better way. */
+  INTEGRATOR_STATE_WRITE(state, path, mis_origin_n) = ray->D * 0.5f;
   INTEGRATOR_STATE_WRITE(state, path, min_ray_pdf) = fminf(
       unguided_phase_pdf, INTEGRATOR_STATE(state, path, min_ray_pdf));
 
@@ -1170,7 +1158,7 @@ ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
 #    endif
 #  endif
 
-    if (integrate_volume_phase_scatter(kg, state, &sd, &rng_state, &result.indirect_phases)) {
+    if (integrate_volume_phase_scatter(kg, state, &sd, ray, &rng_state, &result.indirect_phases)) {
       return VOLUME_PATH_SCATTERED;
     }
     else {

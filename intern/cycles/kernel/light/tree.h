@@ -148,10 +148,7 @@ ccl_device void light_tree_importance(const float3 N_or_D,
   float cos_min_incidence_angle = 1.0f;
   float cos_max_incidence_angle = 1.0f;
 
-  /* When sampling the light tree for the second time in `shade_volume.h` and when query the pdf in
-   * `sample.h`. */
-  const bool in_volume = is_zero(N_or_D);
-  if (!in_volume_segment && !in_volume) {
+  if (!in_volume_segment) {
     const float3 N = N_or_D;
     const float cos_theta_i = has_transmission ? fabsf(dot(point_to_centroid, N)) :
                                                  dot(point_to_centroid, N);
@@ -768,9 +765,11 @@ ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
 }
 
 /* We need to be able to find the probability of selecting a given light for MIS. */
+template<bool in_volume_segment>
 ccl_device float light_tree_pdf(KernelGlobals kg,
                                 float3 P,
                                 float3 N,
+                                const float dt,
                                 const int path_flag,
                                 const int object_emitter,
                                 const uint index_emitter,
@@ -820,8 +819,8 @@ ccl_device float light_tree_pdf(KernelGlobals kg,
       for (int i = 0; i < knode->num_emitters; i++) {
         const int emitter = knode->leaf.first_emitter + i;
         float max_importance, min_importance;
-        light_tree_emitter_importance<false>(
-            kg, P, N, 0, has_transmission, emitter, max_importance, min_importance);
+        light_tree_emitter_importance<in_volume_segment>(
+            kg, P, N, dt, has_transmission, emitter, max_importance, min_importance);
         num_has_importance += (max_importance > 0);
         if (emitter == target_emitter) {
           target_max_importance = max_importance;
@@ -843,7 +842,7 @@ ccl_device float light_tree_pdf(KernelGlobals kg,
       if (root_index) {
         /* Arrived at the mesh light. Continue with the subtree. */
         float unused;
-        light_tree_to_local_space<false>(kg, object_emitter, P, N, unused);
+        light_tree_to_local_space<in_volume_segment>(kg, object_emitter, P, N, unused);
 
         node_index = root_index;
         root_index = 0;
@@ -861,8 +860,8 @@ ccl_device float light_tree_pdf(KernelGlobals kg,
     const int right_index = knode->inner.right_child;
 
     float left_prob;
-    if (!get_left_probability<false>(
-            kg, P, N, 0, has_transmission, left_index, right_index, left_prob))
+    if (!get_left_probability<in_volume_segment>(
+            kg, P, N, dt, has_transmission, left_index, right_index, left_prob))
     {
       return 0.0f;
     }
