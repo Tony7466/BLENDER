@@ -1688,7 +1688,7 @@ static int ed_marker_delete_invoke(bContext *C, wmOperator *op, const wmEvent * 
                                   IFACE_("Delete selected markers?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return ed_marker_delete_exec(C, op);

@@ -1273,7 +1273,7 @@ static int armature_delete_selected_invoke(bContext *C, wmOperator *op, const wm
                                   IFACE_("Delete selected bones?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return armature_delete_selected_exec(C, op);

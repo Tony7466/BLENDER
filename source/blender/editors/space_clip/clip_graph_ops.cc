@@ -538,7 +538,7 @@ static int delete_curve_invoke(bContext *C, wmOperator *op, const wmEvent * /*ev
                                   IFACE_("Delete track corresponding to the selected curve?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return delete_curve_exec(C, op);

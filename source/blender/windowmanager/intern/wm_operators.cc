@@ -1186,13 +1186,13 @@ int WM_operator_confirm_message_ex(bContext *C,
 int WM_operator_confirm_message(bContext *C, wmOperator *op, const char *message)
 {
   return WM_operator_confirm_ex(
-      C, op, IFACE_(message), nullptr, IFACE_("OK"), ALERT_ICON_QUESTION, false);
+      C, op, IFACE_(message), nullptr, IFACE_("OK"), ALERT_ICON_NONE, false);
 }
 
 int WM_operator_confirm(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   return WM_operator_confirm_ex(
-      C, op, IFACE_(op->type->name), nullptr, IFACE_("OK"), ALERT_ICON_QUESTION, false);
+      C, op, IFACE_(op->type->name), nullptr, IFACE_("OK"), ALERT_ICON_NONE, false);
 }
 
 int WM_operator_confirm_or_exec(bContext *C, wmOperator *op, const wmEvent * /*event*/)
@@ -1200,7 +1200,7 @@ int WM_operator_confirm_or_exec(bContext *C, wmOperator *op, const wmEvent * /*e
   const bool confirm = RNA_boolean_get(op->ptr, "confirm");
   if (confirm) {
     return WM_operator_confirm_ex(
-        C, op, IFACE_(op->type->name), nullptr, IFACE_("OK"), ALERT_ICON_QUESTION, false);
+        C, op, IFACE_(op->type->name), nullptr, IFACE_("OK"), ALERT_ICON_NONE, false);
   }
   return op->type->exec(C, op);
 }
@@ -1471,7 +1471,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   wmOperator *op = data->op;
   const uiStyle *style = UI_style_get_dpi();
   const bool small = data->size == WM_POPUP_SIZE_SMALL;
-  const short icon_size = (small ? 40 : 64) * UI_SCALE_FAC;
+  const short icon_size = (small ? 32 : 64) * UI_SCALE_FAC;
 
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   UI_block_flag_disable(block, UI_BLOCK_LOOP);

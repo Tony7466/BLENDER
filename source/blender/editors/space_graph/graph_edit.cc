@@ -810,7 +810,7 @@ static int graphkeys_delete_invoke(bContext *C, wmOperator *op, const wmEvent * 
                                   IFACE_("Delete selected keyframes?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return graphkeys_delete_exec(C, op);
@@ -990,7 +990,7 @@ static int graphkeys_keys_to_samples_invoke(bContext *C, wmOperator *op, const w
                                   IFACE_("Convert selected keys to samples?"),
                                   nullptr,
                                   IFACE_("Convert"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return graphkeys_keys_to_samples_exec(C, op);

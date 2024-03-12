@@ -1156,7 +1156,7 @@ static int actkeys_delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*
                                   IFACE_("Delete selected keyframes?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return actkeys_delete_exec(C, op);

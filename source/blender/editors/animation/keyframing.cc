@@ -721,7 +721,7 @@ static int clear_anim_v3d_invoke(bContext *C, wmOperator *op, const wmEvent * /*
                                   IFACE_("Remove animation from selected objects?"),
                                   nullptr,
                                   IFACE_("Remove"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return clear_anim_v3d_exec(C, op);
@@ -877,7 +877,7 @@ static int delete_key_v3d_invoke(bContext *C, wmOperator *op, const wmEvent * /*
                                   IFACE_("Delete keyframes from selected objects?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return delete_key_v3d_exec(C, op);

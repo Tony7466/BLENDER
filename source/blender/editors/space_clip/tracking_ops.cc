@@ -253,7 +253,7 @@ static int delete_track_invoke(bContext *C, wmOperator *op, const wmEvent * /*ev
                                   IFACE_("Delete selected tracks?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return delete_track_exec(C, op);
@@ -333,7 +333,7 @@ static int delete_marker_invoke(bContext *C, wmOperator *op, const wmEvent * /*e
                                   IFACE_("Delete marker for current frame from selected tracks?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return delete_marker_exec(C, op);

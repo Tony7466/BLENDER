@@ -294,7 +294,7 @@ static int vertex_parent_set_invoke(bContext *C, wmOperator *op, const wmEvent *
                                   IFACE_("Parent selected objects to the selected vertices?"),
                                   nullptr,
                                   IFACE_("Parent"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return vertex_parent_set_exec(C, op);
@@ -1129,7 +1129,7 @@ static int parent_noinv_set_invoke(bContext *C, wmOperator *op, const wmEvent * 
                                   IFACE_("Make Parent without inverse correction?"),
                                   nullptr,
                                   IFACE_("Parent"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return parent_noinv_set_exec(C, op);

@@ -670,7 +670,7 @@ static int bake_simulation_invoke(bContext *C, wmOperator *op, const wmEvent * /
                                   IFACE_("Overwrite existing bake data?"),
                                   nullptr,
                                   IFACE_("Bake"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   Vector<NodeBakeRequest> requests = bake_simulation_gather_requests(C, op);

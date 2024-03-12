@@ -1510,7 +1510,7 @@ static int delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
                                   IFACE_("Delete selected control points and splines?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return delete_exec(C, op);

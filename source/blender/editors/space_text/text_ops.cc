@@ -547,7 +547,7 @@ static int text_reload_invoke(bContext *C, wmOperator *op, const wmEvent * /*eve
                                 IFACE_("Reload active text file?"),
                                 nullptr,
                                 IFACE_("Reload"),
-                                ALERT_ICON_WARNING,
+                                ALERT_ICON_NONE,
                                 false);
 }
 
@@ -609,7 +609,7 @@ static int text_unlink_invoke(bContext *C, wmOperator *op, const wmEvent * /*eve
                                 IFACE_("Delete active text file?"),
                                 nullptr,
                                 IFACE_("Delete"),
-                                ALERT_ICON_WARNING,
+                                ALERT_ICON_NONE,
                                 false);
 }
 

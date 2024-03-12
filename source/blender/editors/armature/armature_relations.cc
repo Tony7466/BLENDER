@@ -782,7 +782,7 @@ static int separate_armature_invoke(bContext *C, wmOperator *op, const wmEvent *
                                   IFACE_("Move selected bones to a separate armature?"),
                                   nullptr,
                                   IFACE_("Separate"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return separate_armature_exec(C, op);

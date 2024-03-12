@@ -2100,7 +2100,7 @@ static int nlaedit_make_single_user_invoke(bContext *C, wmOperator *op, const wm
                                   IFACE_("Make each action single-user in the selected strips?"),
                                   nullptr,
                                   IFACE_("Make Single"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return nlaedit_make_single_user_exec(C, op);

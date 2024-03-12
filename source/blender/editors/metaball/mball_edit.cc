@@ -621,7 +621,7 @@ static int delete_metaelems_invoke(bContext *C, wmOperator *op, const wmEvent * 
                                   IFACE_("Delete selected metaball elements?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return delete_metaelems_exec(C, op);

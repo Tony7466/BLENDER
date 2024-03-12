@@ -1463,7 +1463,7 @@ static int separate_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*
                                   IFACE_("Move selected points to a new object?"),
                                   nullptr,
                                   IFACE_("Separate"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return separate_exec(C, op);

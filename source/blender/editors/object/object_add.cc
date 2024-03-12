@@ -2620,7 +2620,7 @@ static int object_delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*e
                                   IFACE_("Delete selected objects?"),
                                   nullptr,
                                   IFACE_("Delete"),
-                                  ALERT_ICON_WARNING,
+                                  ALERT_ICON_NONE,
                                   false);
   }
   return object_delete_exec(C, op);

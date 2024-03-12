@@ -2701,13 +2701,8 @@ static int file_directory_new_exec(bContext *C, wmOperator *op)
 static int file_directory_new_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
   if (RNA_boolean_get(op->ptr, "confirm")) {
-    return WM_operator_confirm_ex(C,
-                                  op,
-                                  IFACE_("Create New Directory?"),
-                                  nullptr,
-                                  IFACE_("Create"),
-                                  ALERT_ICON_WARNING,
-                                  false);
+    return WM_operator_confirm_ex(
+        C, op, IFACE_("Create new directory?"), nullptr, IFACE_("Create"), ALERT_ICON_NONE, false);
   }
   return file_directory_new_exec(C, op);
 }
@@ -3202,13 +3197,8 @@ static int file_delete_exec(bContext *C, wmOperator *op)
 
 static int file_delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
 {
-  return WM_operator_confirm_ex(C,
-                                op,
-                                IFACE_("Delete selected files?"),
-                                nullptr,
-                                IFACE_("Delete"),
-                                ALERT_ICON_WARNING,
-                                false);
+  return WM_operator_confirm_ex(
+      C, op, IFACE_("Delete selected files?"), nullptr, IFACE_("Delete"), ALERT_ICON_NONE, false);
 }
 
 void FILE_OT_delete(wmOperatorType *ot)
