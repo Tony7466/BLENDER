@@ -10,19 +10,16 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
-#include "BLI_lasso_2d.hh"
+#include "BLI_bounds.hh"
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_geom.h"
-#include "BLI_utildefines.h"
 
 #include "DEG_depsgraph_query.hh"
 
 #include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
-
-#include "UI_view2d.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -140,6 +137,21 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
                                                                         bke::AttrDomain::Curve);
     OffsetIndices<int> points_by_curve = strokes.points_by_curve();
 
+    auto point_inside_stroke = [&](Span<float2> points, float2 mouse) {
+      std::optional<Bounds<float2>> bbox = bounds::min_max(points);
+      if (!bbox.has_value()) {
+        return false;
+      }
+      Bounds<float2> &box = bbox.value();
+      if (mouse[0] < box.min[0] || mouse[0] > box.max[0] || mouse[1] < box.min[1] ||
+          mouse[1] > box.max[1])
+      {
+        return false;
+      }
+      return isect_point_poly_v2(
+          mouse, reinterpret_cast<const float(*)[2]>(points.data()), points.size());
+    };
+
     threading::parallel_for(strokes.curves_range(), 128, [&](const IndexRange range) {
       for (const int curve : range) {
         bool stroke_touched = false;
@@ -160,22 +172,13 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
             }
           }
           if (!fill_colors.span.is_empty() && tint_fills) {
-            blender::Array<blender::int2> screen_space_positions_int(
-                points_by_curve[curve].size());
-            for (const int local_point : points_by_curve[curve].index_range()) {
-              screen_space_positions_int[local_point] = int2(
-                  screen_space_positions[local_point + points_by_curve[curve].first()]);
-            }
-            rcti rect;
-            BLI_lasso_boundbox(&rect, screen_space_positions_int);
             /* Will tint fill color when either the brush being inside the fill region or touching
              * the stroke. */
-            const bool fill_effective =
-                stroke_touched ||
-                (!ELEM(V2D_IS_CLIPPED, mouse_position[0], mouse_position[1]) &&
-                 BLI_rcti_isect_pt(&rect, mouse_position[0], mouse_position[1]) &&
-                 BLI_lasso_is_point_inside(
-                     screen_space_positions_int, mouse_position[0], mouse_position[1], INT_MAX));
+            const bool fill_effective = stroke_touched ||
+                                        point_inside_stroke(screen_space_positions.as_span().slice(
+                                                                points_by_curve[curve].first(),
+                                                                points_by_curve[curve].size()),
+                                                            mouse_position);
             if (fill_effective) {
               fill_colors.span[curve].premultiply_alpha();
               float4 rgba = float4(math::interpolate(float3(fill_colors.span[curve]),
