@@ -584,12 +584,17 @@ MutableSpan<ColorGeometry4f> Drawing::vertex_colors_for_write()
                                                 ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
+void Drawing::tag_texture_matrices_changed()
+{
+  this->runtime->curve_texture_matrices.tag_dirty();
+}
+
 void Drawing::tag_positions_changed()
 {
   this->strokes_for_write().tag_positions_changed();
   this->runtime->triangles_cache.tag_dirty();
   this->runtime->curve_plane_normals_cache.tag_dirty();
-  this->runtime->curve_texture_matrices.tag_dirty();
+  this->tag_texture_matrices_changed();
 }
 
 void Drawing::tag_topology_changed()
