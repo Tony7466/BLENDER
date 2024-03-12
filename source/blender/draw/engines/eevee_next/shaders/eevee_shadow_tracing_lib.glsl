@@ -467,6 +467,9 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
   pcf_offset = pcf_offset * 2.0 - 1.0;
   pcf_offset *= light.pcf_radius;
 
+  float pcf_scale = 1.0 + max(0.0, light.lod_bias);
+  pcf_offset *= pcf_scale;
+
   vec3 ws_offset = TBN * vec3(pcf_offset, 0.0);
   vec3 offset_P = P + ws_offset;
 
