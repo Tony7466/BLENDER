@@ -275,8 +275,13 @@ typedef struct uiListDyn {
   void *customdata;
 
   /* Filtering data. */
-  /** Items_len length. */
+  /** This bitfield is effectively exposed in Python, and scripts are explicitly allowed to assign
+   * any own meaning to any bit except of the #UILST_FLT_ITEM one. That means that no new flags can
+   * be added, use #items_filter_flags_internal instead.
+   * #items_len length. */
   int *items_filter_flags;
+  /** #items_len length. */
+  char *items_filter_flags_internal;
   /** Org_idx -> new_idx, items_len length. */
   int *items_filter_neworder;
 
@@ -630,8 +635,13 @@ enum {
 /* WARNING! Those values are used by integer RNA too, which does not handle well values > INT_MAX.
  *          So please do not use 32nd bit here. */
 enum {
-  UILST_FLT_ITEM_NEVER_SHOW = (1 << 0), /* Filtering returned #UI_LIST_ITEM_NEVER_SHOW. */
-  UILST_FLT_ITEM = 1 << 30,        /* This item has passed the filter process successfully. */
+  UILST_FLT_ITEM = 1 << 30, /* This item has passed the filter process successfully. */
+};
+
+/** #uiListDyn.items_filter_flags_internal. Stored in a char, so 8 max. */
+enum {
+  UILST_FLT_ITEM_INTERNAL_NEVER_SHOW = (1 << 0), /* Filtering returned #UI_LIST_ITEM_NEVER_SHOW. */
+  /* 8 items max! (Stored in a char). */
 };
 
 /** #uiList.filter_flag */
