@@ -26,7 +26,7 @@ class AverageWeightPaintOperation : public WeightPaintOperation {
   }
 
  public:
-  void on_stroke_begin(const bContext &C, const InputSample &start_sample)
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample) final
   {
     using namespace blender::ed::greasepencil;
 
@@ -51,7 +51,7 @@ class AverageWeightPaintOperation : public WeightPaintOperation {
     }
   }
 
-  void on_stroke_extended(const bContext &C, const InputSample &extension_sample)
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) final
   {
     using namespace blender::ed::greasepencil;
 
@@ -105,7 +105,7 @@ class AverageWeightPaintOperation : public WeightPaintOperation {
     }
   }
 
-  void on_stroke_done(const bContext & /*C*/) {}
+  void on_stroke_done(const bContext & /*C*/) final {}
 };
 
 std::unique_ptr<GreasePencilStrokeOperation> new_weight_paint_average_operation()
