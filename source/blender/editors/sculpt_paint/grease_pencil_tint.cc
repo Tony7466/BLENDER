@@ -190,7 +190,7 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
       return;
     }
 
-    execute_tint_on_drawing(active_layer.drawing_index_at(scene->r.cfra), scene->r.cfra, *drawing);
+    execute_tint_on_drawing(*grease_pencil.get_layer_index(active_layer), scene->r.cfra, *drawing);
   }
   else {
     /* Tint on all editable drawings. */
