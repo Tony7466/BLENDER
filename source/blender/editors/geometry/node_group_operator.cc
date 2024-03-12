@@ -224,7 +224,7 @@ static void store_result_geometry(
 
         BKE_object_material_from_eval_data(&bmain, &object, &new_mesh->id);
         if (object.mode == OB_MODE_EDIT) {
-          EDBM_mesh_make_from_mesh(object, *new_mesh, scene.toolsettings->selectmode, true);
+          EDBM_mesh_make_from_mesh(&object, new_mesh, scene.toolsettings->selectmode, true);
           BKE_editmesh_looptris_and_normals_calc(mesh.edit_mesh);
         }
         else {

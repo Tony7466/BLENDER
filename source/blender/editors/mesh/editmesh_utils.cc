@@ -267,9 +267,18 @@ bool EDBM_op_call_silentf(BMEditMesh *em, const char *fmt, ...)
 void EDBM_mesh_make(Object *ob, const int select_mode, const bool add_key_index)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
+  EDBM_mesh_make_from_mesh(ob, mesh, select_mode, add_key_index);
+}
+
+void EDBM_mesh_make_from_mesh(Object *ob,
+                              Mesh *src_mesh,
+                              const int select_mode,
+                              const bool add_key_index)
+{
+  Mesh *mesh = static_cast<Mesh *>(ob->data);
   BMeshCreateParams create_params{};
   create_params.use_toolflags = true;
-  BMesh *bm = BKE_mesh_to_bmesh(mesh, ob, add_key_index, &create_params);
+  BMesh *bm = BKE_mesh_to_bmesh(src_mesh, ob, add_key_index, &create_params);
 
   if (mesh->edit_mesh) {
     /* this happens when switching shape keys */
@@ -286,24 +295,6 @@ void EDBM_mesh_make(Object *ob, const int select_mode, const bool add_key_index)
 
   /* we need to flush selection because the mode may have changed from when last in editmode */
   EDBM_selectmode_flush(mesh->edit_mesh);
-}
-
-void EDBM_mesh_make_from_mesh(Object &object,
-                              Mesh &src_mesh,
-                              const int select_mode,
-                              const bool add_key_index)
-{
-  Mesh &mesh = *static_cast<Mesh *>(object.data);
-  BMeshCreateParams create_params{};
-  create_params.use_toolflags = true;
-  if (mesh.edit_mesh) {
-    EDBM_mesh_free_data(mesh.edit_mesh);
-    MEM_freeN(mesh.edit_mesh);
-  }
-  BMesh *bm = BKE_mesh_to_bmesh(&src_mesh, &object, add_key_index, &create_params);
-  mesh.edit_mesh = BKE_editmesh_create(bm);
-  mesh.edit_mesh->selectmode = select_mode;
-  mesh.edit_mesh->mat_nr = (object.actcol > 0) ? object.actcol - 1 : 0;
 }
 
 void EDBM_mesh_load_ex(Main *bmain, Object *ob, bool free_data)
