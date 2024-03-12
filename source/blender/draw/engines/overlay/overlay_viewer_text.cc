@@ -131,7 +131,7 @@ void OVERLAY_viewer_attribute_text(const Object &object)
     if (instances->attributes().contains(".viewer")) {
       add_instance_attributes_to_text_cache(instances->attributes(),
                                             object_to_world,
-                                            dupli_object->ob->loc,
+                                            float3(0, 0, 0),
                                             dupli_object->preview_instance_index);
 
       return;
