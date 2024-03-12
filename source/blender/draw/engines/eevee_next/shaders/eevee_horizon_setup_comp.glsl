@@ -16,8 +16,8 @@
 void main()
 {
   ivec2 texel = ivec2(gl_GlobalInvocationID.xy);
-  ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
-                        uniform_buf.raytrace.resolution_bias;
+  ivec2 texel_fullres = texel * uniform_buf.raytrace.horizon_resolution_scale +
+                        uniform_buf.raytrace.horizon_resolution_bias;
 
   /* Avoid loading texels outside texture range. */
   ivec2 extent = textureSize(gbuf_header_tx, 0).xy;

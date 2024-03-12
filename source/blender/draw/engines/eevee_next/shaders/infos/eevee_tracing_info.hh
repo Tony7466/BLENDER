@@ -37,6 +37,7 @@ GPU_SHADER_CREATE_INFO(eevee_ray_tile_compact)
     .storage_buf(4, Qualifier::WRITE, "uint", "raytrace_tracing_tiles_buf[]")
     .storage_buf(5, Qualifier::WRITE, "uint", "raytrace_denoise_tiles_buf[]")
     .specialization_constant(Type::INT, "closure_index", 0)
+    .specialization_constant(Type::INT, "resolution_scale", 2)
     .compute_source("eevee_ray_tile_compact_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_ray_generate)

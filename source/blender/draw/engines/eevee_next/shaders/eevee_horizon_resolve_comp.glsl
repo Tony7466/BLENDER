@@ -48,8 +48,8 @@ vec3 sample_normal_get(ivec2 texel, out bool is_processed)
 float sample_weight_get(vec3 center_N, vec3 center_P, ivec2 center_texel, ivec2 sample_offset)
 {
   ivec2 sample_texel = center_texel + sample_offset;
-  ivec2 sample_texel_fullres = sample_texel * uniform_buf.raytrace.resolution_scale +
-                               uniform_buf.raytrace.resolution_bias;
+  ivec2 sample_texel_fullres = sample_texel * uniform_buf.raytrace.horizon_resolution_scale +
+                               uniform_buf.raytrace.horizon_resolution_bias;
   vec2 sample_uv = (vec2(sample_texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
 
   float sample_depth = texelFetch(depth_tx, sample_texel_fullres, 0).r;
@@ -83,8 +83,8 @@ void main()
   uvec2 tile_coord = unpackUvec2x16(tiles_coord_buf[gl_WorkGroupID.x]);
   ivec2 texel_fullres = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
 
-  ivec2 texel = max(ivec2(0), texel_fullres - uniform_buf.raytrace.resolution_bias) /
-                uniform_buf.raytrace.resolution_scale;
+  ivec2 texel = max(ivec2(0), texel_fullres - uniform_buf.raytrace.horizon_resolution_bias) /
+                uniform_buf.raytrace.horizon_resolution_scale;
 
   ivec2 extent = textureSize(gbuf_header_tx, 0).xy;
   if (any(greaterThanEqual(texel_fullres, extent))) {
@@ -110,7 +110,7 @@ void main()
   vec3 center_N = gbuf.surface_N;
 
   SphericalHarmonicL1 accum_sh;
-  if (uniform_buf.raytrace.resolution_scale == 1) {
+  if (uniform_buf.raytrace.horizon_resolution_scale == 1) {
     accum_sh.L0.M0 = texelFetch(horizon_radiance_0_tx, texel, 0);
     accum_sh.L1.Mn1 = texelFetch(horizon_radiance_1_tx, texel, 0);
     accum_sh.L1.M0 = texelFetch(horizon_radiance_2_tx, texel, 0);
@@ -118,19 +118,19 @@ void main()
   }
   else {
 #ifdef BILINEAR /* Initial bilinear sample using bilinear sampler. Exhibits bleeding. */
-    vec2 sample_uv = (vec2(texel_fullres - uniform_buf.raytrace.resolution_bias) +
-                      0.5 * uniform_buf.raytrace.resolution_scale) /
+    vec2 sample_uv = (vec2(texel_fullres - uniform_buf.raytrace.horizon_resolution_bias) +
+                      0.5 * uniform_buf.raytrace.horizon_resolution_scale) /
                      vec2(textureSize(horizon_radiance_0_tx, 0) *
-                          uniform_buf.raytrace.resolution_scale);
+                          uniform_buf.raytrace.horizon_resolution_scale);
 
     accum_sh.L0.M0 = texture(horizon_radiance_0_tx, sample_uv);
     accum_sh.L1.Mn1 = texture(horizon_radiance_1_tx, sample_uv);
     accum_sh.L1.M0 = texture(horizon_radiance_2_tx, sample_uv);
     accum_sh.L1.Mp1 = texture(horizon_radiance_3_tx, sample_uv);
 #else
-    vec2 interp = vec2(texel_fullres - texel * uniform_buf.raytrace.resolution_scale -
-                       uniform_buf.raytrace.resolution_bias) /
-                  vec2(uniform_buf.raytrace.resolution_scale);
+    vec2 interp = vec2(texel_fullres - texel * uniform_buf.raytrace.horizon_resolution_scale -
+                       uniform_buf.raytrace.horizon_resolution_bias) /
+                  vec2(uniform_buf.raytrace.horizon_resolution_scale);
     vec4 interp4 = vec4(interp, 1.0 - interp);
 
     vec4 bilateral_weights;

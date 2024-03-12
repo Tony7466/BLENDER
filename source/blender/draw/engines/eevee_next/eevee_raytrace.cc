@@ -60,6 +60,7 @@ void RayTraceModule::sync()
     GPUShader *sh = inst_.shaders.static_shader_get(RAY_TILE_COMPACT);
     pass.init();
     pass.specialize_constant(sh, "closure_index", &data_.closure_index);
+    pass.specialize_constant(sh, "resolution_scale", &data_.resolution_scale);
     pass.shader_set(sh);
     pass.bind_image("tile_raytrace_denoise_img", &tile_raytrace_denoise_tx_);
     pass.bind_image("tile_raytrace_tracing_img", &tile_raytrace_tracing_tx_);
@@ -220,6 +221,7 @@ void RayTraceModule::sync()
     GPUShader *sh = inst_.shaders.static_shader_get(RAY_TILE_COMPACT);
     pass.init();
     pass.specialize_constant(sh, "closure_index", 0);
+    pass.specialize_constant(sh, "resolution_scale", &data_.horizon_resolution_scale);
     pass.shader_set(sh);
     pass.bind_image("tile_raytrace_denoise_img", &tile_horizon_denoise_tx_);
     pass.bind_image("tile_raytrace_tracing_img", &tile_horizon_tracing_tx_);
@@ -228,7 +230,7 @@ void RayTraceModule::sync()
     pass.bind_ssbo("raytrace_tracing_tiles_buf", &horizon_tracing_tiles_buf_);
     pass.bind_ssbo("raytrace_denoise_tiles_buf", &horizon_denoise_tiles_buf_);
     pass.bind_resources(inst_.uniform_data);
-    pass.dispatch(&tile_compact_dispatch_size_);
+    pass.dispatch(&horizon_schedule_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE);
   }
   {
@@ -243,7 +245,7 @@ void RayTraceModule::sync()
     pass.bind_image("out_normal_img", &downsampled_in_normal_tx_);
     pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.gbuffer);
-    pass.dispatch(&tracing_dispatch_size_);
+    pass.dispatch(&horizon_tracing_dispatch_size_);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
   }
   {
@@ -333,19 +335,26 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   bool use_horizon_scan = options.screen_trace_max_roughness < 1.0f;
 
   const int resolution_scale = max_ii(1, power_of_2_max_i(options.resolution_scale));
+  const int horizon_resolution_scale = max_ii(
+      1, power_of_2_max_i(inst_.scene->eevee.gtao_resolution));
 
   const int2 extent = inst_.film.render_extent_get();
   const int2 tracing_res = math::divide_ceil(extent, int2(resolution_scale));
+  const int2 tracing_res_horizon = math::divide_ceil(extent, int2(horizon_resolution_scale));
   const int2 dummy_extent(1, 1);
   const int2 group_size(RAYTRACE_GROUP_SIZE);
 
   const int2 denoise_tiles = divide_ceil(extent, group_size);
   const int2 raytrace_tiles = divide_ceil(tracing_res, group_size);
+  const int2 raytrace_tiles_horizon = divide_ceil(tracing_res_horizon, group_size);
   const int denoise_tile_count = denoise_tiles.x * denoise_tiles.y;
   const int raytrace_tile_count = raytrace_tiles.x * raytrace_tiles.y;
+  const int raytrace_tile_count_horizon = raytrace_tiles_horizon.x * raytrace_tiles_horizon.y;
   tile_classify_dispatch_size_ = int3(denoise_tiles, 1);
+  horizon_schedule_dispatch_size_ = int3(divide_ceil(raytrace_tiles_horizon, group_size), 1);
   tile_compact_dispatch_size_ = int3(divide_ceil(raytrace_tiles, group_size), 1);
-  tracing_dispatch_size_ = int3(divide_ceil(tracing_res, group_size), 1);
+  tracing_dispatch_size_ = int3(raytrace_tiles, 1);
+  horizon_tracing_dispatch_size_ = int3(raytrace_tiles_horizon, 1);
 
   /* TODO(fclem): Use real max closure count from shader. */
   const int closure_count = 3;
@@ -355,14 +364,14 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   tile_raytrace_tracing_tx_.ensure_2d_array(format, raytrace_tiles, closure_count, usage_rw);
   /* Kept as 2D array for compatibility with the tile compaction shader. */
   tile_horizon_denoise_tx_.ensure_2d_array(format, denoise_tiles, 1, usage_rw);
-  tile_horizon_tracing_tx_.ensure_2d_array(format, raytrace_tiles, 1, usage_rw);
+  tile_horizon_tracing_tx_.ensure_2d_array(format, raytrace_tiles_horizon, 1, usage_rw);
 
   tile_raytrace_denoise_tx_.clear(uint4(0u));
   tile_raytrace_tracing_tx_.clear(uint4(0u));
   tile_horizon_denoise_tx_.clear(uint4(0u));
   tile_horizon_tracing_tx_.clear(uint4(0u));
 
-  horizon_tracing_tiles_buf_.resize(ceil_to_multiple_u(raytrace_tile_count, 512));
+  horizon_tracing_tiles_buf_.resize(ceil_to_multiple_u(raytrace_tile_count_horizon, 512));
   horizon_denoise_tiles_buf_.resize(ceil_to_multiple_u(denoise_tile_count, 512));
   raytrace_tracing_tiles_buf_.resize(ceil_to_multiple_u(raytrace_tile_count, 512));
   raytrace_denoise_tiles_buf_.resize(ceil_to_multiple_u(denoise_tile_count, 512));
@@ -381,6 +390,9 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
   data_.full_resolution = extent;
   data_.full_resolution_inv = 1.0f / float2(extent);
 
+  data_.horizon_resolution_scale = horizon_resolution_scale;
+  data_.horizon_resolution_bias = int2(inst_.sampling.rng_2d_get(SAMPLING_RAYTRACE_V) *
+                                       horizon_resolution_scale);
   /* TODO(fclem): Eventually all uniform data is setup here. */
 
   inst_.uniform_data.push_update();
@@ -415,12 +427,12 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
 
       screen_radiance_front_tx_ = screen_radiance_front_tx;
 
-      downsampled_in_radiance_tx_.acquire(tracing_res, RAYTRACE_RADIANCE_FORMAT, usage_rw);
-      downsampled_in_normal_tx_.acquire(tracing_res, GPU_RGBA8, usage_rw);
+      downsampled_in_radiance_tx_.acquire(tracing_res_horizon, RAYTRACE_RADIANCE_FORMAT, usage_rw);
+      downsampled_in_normal_tx_.acquire(tracing_res_horizon, GPU_RGBA8, usage_rw);
 
       for (int i : IndexRange(4)) {
-        horizon_radiance_tx_[i].acquire(tracing_res, GPU_RGBA16F, usage_rw);
-        horizon_radiance_denoised_tx_[i].acquire(tracing_res, GPU_RGBA16F, usage_rw);
+        horizon_radiance_tx_[i].acquire(tracing_res_horizon, GPU_RGBA16F, usage_rw);
+        horizon_radiance_denoised_tx_[i].acquire(tracing_res_horizon, GPU_RGBA16F, usage_rw);
       }
       for (int i : IndexRange(3)) {
         horizon_scan_output_tx_[i] = result.closures[i].get();

@@ -46,8 +46,8 @@ vec3 sample_normal_get(ivec2 texel, out bool is_processed)
 float sample_weight_get(
     vec3 center_N, vec3 center_P, ivec2 sample_texel, vec2 sample_uv, ivec2 sample_offset)
 {
-  ivec2 sample_texel_fullres = sample_texel * uniform_buf.raytrace.resolution_scale +
-                               uniform_buf.raytrace.resolution_bias;
+  ivec2 sample_texel_fullres = sample_texel * uniform_buf.raytrace.horizon_resolution_scale +
+                               uniform_buf.raytrace.horizon_resolution_bias;
   float sample_depth = texelFetch(hiz_tx, sample_texel_fullres, 0).r;
 
   bool is_valid;
@@ -73,8 +73,8 @@ void main()
   ivec2 texel = ivec2(gl_LocalInvocationID.xy + tile_coord * tile_size);
 
   vec2 texel_size = 1.0 / vec2(textureSize(in_sh_0_tx, 0).xy);
-  ivec2 texel_fullres = texel * uniform_buf.raytrace.resolution_scale +
-                        uniform_buf.raytrace.resolution_bias;
+  ivec2 texel_fullres = texel * uniform_buf.raytrace.horizon_resolution_scale +
+                        uniform_buf.raytrace.horizon_resolution_bias;
 
   bool is_valid;
   float center_depth = texelFetch(hiz_tx, texel_fullres, 0).r;

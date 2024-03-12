@@ -130,8 +130,10 @@ class RayTraceModule {
   int3 tile_classify_dispatch_size_ = int3(1);
   /** Dispatch with enough tiles for the tile mask. */
   int3 tile_compact_dispatch_size_ = int3(1);
+  int3 horizon_schedule_dispatch_size_ = int3(1);
   /** Dispatch with enough tiles for the tracing resolution. */
   int3 tracing_dispatch_size_ = int3(1);
+  int3 horizon_tracing_dispatch_size_ = int3(1);
   /** 2D tile mask to check which unused adjacent tile we need to clear and which tile we need to
    * dispatch for each work type. */
   Texture tile_raytrace_denoise_tx_ = {"tile_raytrace_denoise_tx_"};

@@ -56,7 +56,6 @@ void main()
   }
 
   /* Dispatch denoise tiles. */
-  int resolution_scale = uniform_buf.raytrace.resolution_scale;
   if (is_ray_tracing) {
     for (int x_tile = 0; x_tile < resolution_scale; x_tile++) {
       for (int y_tile = 0; y_tile < resolution_scale; y_tile++) {
