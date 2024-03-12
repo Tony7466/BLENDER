@@ -231,6 +231,8 @@ void UI_list_filter_and_sort_items(uiList *ui_list,
     if (item_filter_fn) {
       dyn_data->items_filter_flags = static_cast<int *>(
           MEM_callocN(sizeof(int) * len, "items_filter_flags"));
+      dyn_data->items_filter_flags_internal = static_cast<char *>(
+          MEM_callocN(sizeof(char) * len, "items_filter_flags_internal"));
       dyn_data->items_shown = 0;
     }
 
@@ -251,7 +253,7 @@ void UI_list_filter_and_sort_items(uiList *ui_list,
         const eUIListFilterResult filter_result = item_filter_fn(itemptr, name, i);
 
         if (filter_result == UI_LIST_ITEM_NEVER_SHOW) {
-          /* Pass. */
+          dyn_data->items_filter_flags_internal[i] = UILST_FLT_ITEM_INTERNAL_NEVER_SHOW;
         }
         else if (filter_result == UI_LIST_ITEM_FILTER_MATCHES) {
           dyn_data->items_filter_flags[i] = UILST_FLT_ITEM;
@@ -340,6 +342,7 @@ static void uilist_free_dyn_data(uiList *ui_list)
   }
 
   MEM_SAFE_FREE(dyn_data->items_filter_flags);
+  MEM_SAFE_FREE(dyn_data->items_filter_flags_internal);
   MEM_SAFE_FREE(dyn_data->items_filter_neworder);
   MEM_SAFE_FREE(dyn_data->customdata);
 }
@@ -431,8 +434,13 @@ static void ui_template_list_collect_items(PointerRNA *list_ptr,
   bool activei_mapping_pending = true;
 
   RNA_PROP_BEGIN (list_ptr, itemptr, list_prop) {
-    if (!dyn_data->items_filter_flags ||
-        ((dyn_data->items_filter_flags[i] & UILST_FLT_ITEM) ^ filter_exclude))
+    if (dyn_data->items_filter_flags_internal &&
+        (dyn_data->items_filter_flags_internal[i] & UILST_FLT_ITEM_INTERNAL_NEVER_SHOW))
+    {
+      /* Pass */
+    }
+    else if (!dyn_data->items_filter_flags ||
+             ((dyn_data->items_filter_flags[i] & UILST_FLT_ITEM) ^ filter_exclude))
     {
       int new_order_idx;
       if (dyn_data->items_filter_neworder) {
@@ -704,6 +712,7 @@ static uiList *ui_list_ensure(const bContext *C,
 
   /* Reset filtering data. */
   MEM_SAFE_FREE(dyn_data->items_filter_flags);
+  MEM_SAFE_FREE(dyn_data->items_filter_flags_internal);
   MEM_SAFE_FREE(dyn_data->items_filter_neworder);
   dyn_data->items_len = dyn_data->items_shown = -1;
 

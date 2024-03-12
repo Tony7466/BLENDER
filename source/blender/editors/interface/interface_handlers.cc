@@ -9667,7 +9667,9 @@ static int ui_handle_list_event(bContext *C, const wmEvent *event, ARegion *regi
       value = value_orig;
       const int inc = ui_list_get_increment(ui_list, type, dyn_data->columns);
 
-      if (dyn_data->items_filter_neworder || dyn_data->items_filter_flags) {
+      if (dyn_data->items_filter_neworder || dyn_data->items_filter_flags ||
+          dyn_data->items_filter_flags_internal)
+      {
         /* If we have a display order different from
          * collection order, we have some work! */
         int *org_order = static_cast<int *>(
@@ -9678,8 +9680,11 @@ static int ui_handle_list_event(bContext *C, const wmEvent *event, ARegion *regi
         const int filter_exclude = ui_list->filter_flag & UILST_FLT_EXCLUDE;
 
         for (int i = 0; i < len; i++) {
-          if (!dyn_data->items_filter_flags ||
-              ((dyn_data->items_filter_flags[i] & UILST_FLT_ITEM) ^ filter_exclude))
+          if ((!dyn_data->items_filter_flags_internal ||
+               ((dyn_data->items_filter_flags_internal[i] & UILST_FLT_ITEM_INTERNAL_NEVER_SHOW) ==
+                0)) &&
+              (!dyn_data->items_filter_flags ||
+               (dyn_data->items_filter_flags[i] & UILST_FLT_ITEM) ^ filter_exclude))
           {
             org_order[new_order ? new_order[++org_idx] : ++org_idx] = i;
             if (i == value) {
