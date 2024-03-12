@@ -970,8 +970,8 @@ static int sculpt_mask_by_color_invoke(bContext *C, wmOperator *op, const wmEven
   BKE_sculpt_update_object_for_edit(depsgraph, ob, false);
   SCULPT_vertex_random_access_ensure(ss);
 
-  /* Tools that are not brushes do not have the brush gizmo to update the vertex as the mouse
-   * move, so it needs to be updated here. */
+  /* Tools that are not brushes do not have the brush gizmo to update the vertex as the mouse move,
+   * so it needs to be updated here. */
   SculptCursorGeometryInfo sgi;
   const float mval_fl[2] = {float(event->mval[0]), float(event->mval[1])};
   SCULPT_cursor_geometry_info_update(C, &sgi, mval_fl, false);
