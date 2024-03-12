@@ -878,7 +878,7 @@ blender::float4x2 get_texture_matrix(const blender::bke::greasepencil::Drawing &
  */
 void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
                         int curve_i,
-                        const blender::float4x2);
+                        blender::float4x2);
 
 int BKE_grease_pencil_object_material_index_get_by_name(Object *ob, const char *name);
 Material *BKE_grease_pencil_object_material_new(Main *bmain,

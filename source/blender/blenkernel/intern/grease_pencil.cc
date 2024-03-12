@@ -1557,7 +1557,7 @@ blender::float3x2 get_stroke_to_texture_matrix(const blender::bke::CurvesGeometr
 
 void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
                                   int curve_i,
-                                  const blender::float3x2 texmat)
+                                  blender::float3x2 texmat)
 {
   using namespace blender;
   using namespace blender::bke;
@@ -1629,7 +1629,7 @@ blender::float4x2 get_texture_matrix(const blender::bke::greasepencil::Drawing &
 
 void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
                         int curve_i,
-                        const blender::float4x2 texspace)
+                        blender::float4x2 texspace)
 {
   using namespace blender;
   using namespace blender::math;
