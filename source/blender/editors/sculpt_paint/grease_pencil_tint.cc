@@ -112,7 +112,7 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
   const auto execute_tint_on_drawing =
       [&](const int layer_index, const int frame_number, Drawing &drawing) {
         const Layer &layer = *grease_pencil.layers()[layer_index];
-        bke::CurvesGeometry strokes = drawing.strokes_for_write();
+        bke::CurvesGeometry &strokes = drawing.strokes_for_write();
 
         /* Evaluated geometry. */
         bke::crazyspace::GeometryDeformation deformation =
