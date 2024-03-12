@@ -750,6 +750,9 @@ static void draw_seq_handle(TimelineDrawContext *timeline_ctx,
   if ((seq->type & SEQ_TYPE_EFFECT) && SEQ_effect_get_num_inputs(seq->type) > 0) {
     return;
   }
+  if (!ED_sequencer_can_select_handle(timeline_ctx->scene, seq, timeline_ctx->v2d)) {
+    return;
+  }
 
   uchar col[4];
   if (strip_selected && handle_selected && seq == SEQ_select_active_get(timeline_ctx->scene)) {

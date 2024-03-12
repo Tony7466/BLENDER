@@ -248,7 +248,7 @@ void ED_sequencer_select_sequence_single(Scene *scene, Sequence *seq, bool desel
   recurs_sel_seq(seq);
 }
 
-void seq_rectf(const Scene *scene, Sequence *seq, rctf *rect)
+void seq_rectf(const Scene *scene, const Sequence *seq, rctf *rect)
 {
   rect->xmin = SEQ_time_left_handle_frame_get(scene, seq);
   rect->xmax = SEQ_time_right_handle_frame_get(scene, seq);
@@ -899,23 +899,28 @@ static float clickable_handle_size_get(const Scene *scene, const Sequence *seq, 
   return min_ff(15.0f * pixelx * U.pixelsize, strip_len / 4);
 }
 
-static bool can_select_handle(const Scene *scene, Sequence *seq, const View2D *v2d)
+bool ED_sequencer_can_select_handle(const Scene *scene, const Sequence *seq, const View2D *v2d)
 {
+  int min_len = 25 * U.pixelsize;
+  if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
+    min_len = 15 * U.pixelsize;
+  }
+
   float pixelx = 1 / UI_view2d_scale_get_x(v2d);
   const int strip_len = SEQ_time_right_handle_frame_get(scene, seq) -
                         SEQ_time_left_handle_frame_get(scene, seq);
-  if (strip_len / pixelx < 25 * U.pixelsize) {
+  if (strip_len / pixelx < min_len) {
     return false;
   }
   return true;
 }
 
-static void clickable_areas_get(const Scene *scene,
-                                Sequence *seq,
-                                const View2D *v2d,
-                                rctf *r_body,
-                                rctf *r_left_handle,
-                                rctf *r_right_handle)
+static void strip_clickable_areas_get(const Scene *scene,
+                                      const Sequence *seq,
+                                      const View2D *v2d,
+                                      rctf *r_body,
+                                      rctf *r_left_handle,
+                                      rctf *r_right_handle)
 {
   seq_rectf(scene, seq, r_body);
   memcpy(r_left_handle, r_body, sizeof(*r_left_handle));
@@ -929,34 +934,35 @@ static void clickable_areas_get(const Scene *scene,
   BLI_rctf_pad(r_body, -handsize, 0.0f);
 }
 
-static rctf clickable_area_get(const Scene *scene, const View2D *v2d, Sequence *seq)
+static rctf strip_clickable_area_get(const Scene *scene, const View2D *v2d, Sequence *seq)
 {
   rctf body, left, right;
-  clickable_areas_get(scene, seq, v2d, &body, &left, &right);
+  strip_clickable_areas_get(scene, seq, v2d, &body, &left, &right);
   BLI_rctf_union(&body, &left);
   BLI_rctf_union(&body, &right);
   return body;
 }
 
-static float distance_to_strip(const Scene *scene,
-                               const View2D *v2d,
-                               Sequence *seq,
-                               float mouse_co[2])
+static float strip_to_frame_distance(const Scene *scene,
+                                     const View2D *v2d,
+                                     const Sequence *seq,
+                                     float timeline_frame)
 {
   rctf body, left, right;
-  clickable_areas_get(scene, seq, v2d, &body, &left, &right);
-  return BLI_rctf_length_x(&body, mouse_co[0]);
+  strip_clickable_areas_get(scene, seq, v2d, &body, &left, &right);
+  return BLI_rctf_length_x(&body, timeline_frame);
 }
 
-/* Get strips that can be selected by click. First  */
-static void mouseover_strips_get(
-    const Scene *scene, const View2D *v2d, float mouse_co[2], Sequence **r_seq1, Sequence **r_seq2)
+/* Get strips that can be selected by click. */
+static blender::Vector<Sequence *> mouseover_strips_get(const Scene *scene,
+                                                        const View2D *v2d,
+                                                        float mouse_co[2])
 {
   blender::Vector<Sequence *> strips = sequencer_visible_strips_get(scene, v2d);
   Editing *ed = SEQ_editing_get(scene);
 
-  strips.remove_if([scene, ed, v2d, mouse_co](Sequence *seq) {
-    rctf body = clickable_area_get(scene, v2d, seq);
+  strips.remove_if([&](Sequence *seq) {
+    rctf body = strip_clickable_area_get(scene, v2d, seq);
     if (!BLI_rctf_isect_pt_v(&body, mouse_co)) {
       return true;
     }
@@ -966,41 +972,76 @@ static void mouseover_strips_get(
     return false;
   });
 
-  if (strips.size() == 0) {
-    return;
-  }
-
-  if (strips.size() == 1) {
-    *r_seq1 = strips[0];
-    return;
-  }
-
-  BLI_assert(strips.size() == 2);
-
-  if (distance_to_strip(scene, v2d, strips[0], mouse_co) <
-      distance_to_strip(scene, v2d, strips[1], mouse_co))
+  /* It may be better to sort strips, as there can be very small strip in set, that may not be
+   * removed by previous conditions. `std::sort` has issues with this container though. */
+  if (strips.size() > 1 && strip_to_frame_distance(scene, v2d, strips[0], mouse_co[0]) <
+                               strip_to_frame_distance(scene, v2d, strips[1], mouse_co[0]))
   {
-    *r_seq1 = strips[0];
-    *r_seq2 = strips[1];
+    SWAP(Sequence *, strips[0], strips[1]);
   }
-  else {
-    *r_seq1 = strips[1];
-    *r_seq2 = strips[0];
-  }
+
+  BLI_assert(strips.size() <= 2);
+  return strips;
 }
 
-static bool strips_are_touching(const Scene *scene, const Sequence *seq1, const Sequence *seq2)
+static bool strips_are_adjacent(const Scene *scene, const Sequence *seq1, const Sequence *seq2)
 {
   const int s1_left = SEQ_time_left_handle_frame_get(scene, seq1);
   const int s1_right = SEQ_time_right_handle_frame_get(scene, seq1);
   const int s2_left = SEQ_time_left_handle_frame_get(scene, seq2);
   const int s2_right = SEQ_time_right_handle_frame_get(scene, seq2);
 
-  if (s1_left < s2_left) {
-    return s1_right == s2_left;
+  return s1_right == s2_left || s1_left == s2_right;
+}
+
+static int handle_selection_refine(const Scene *scene,
+                                   Sequence *seq,
+                                   View2D *v2d,
+                                   float mouse_co[2])
+{
+  rctf body, left, right;
+  strip_clickable_areas_get(scene, seq, v2d, &body, &left, &right);
+
+  if (!ED_sequencer_can_select_handle(scene, seq, v2d)) {
+    return SEQ_SIDE_NONE;
   }
 
-  return s2_right == s1_left;
+  if (BLI_rctf_isect_pt_v(&left, mouse_co)) {
+    return SEQ_SIDE_LEFT;
+  }
+  if (BLI_rctf_isect_pt_v(&right, mouse_co)) {
+    return SEQ_SIDE_RIGHT;
+  }
+
+  return SEQ_SIDE_NONE;
+}
+
+static bool both_handles_are_selected(const Scene *scene,
+                                      Sequence *seq1,
+                                      Sequence *seq2,
+                                      int seq1_side,
+                                      View2D *v2d,
+                                      float mouse_co[2])
+{
+  if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
+    return false;
+  }
+  if (seq1_side == SEQ_SIDE_NONE) {
+    return false; /* No further selection refinement needed. */
+  }
+  if (!strips_are_adjacent(scene, seq1, seq2)) {
+    return false;
+  }
+  /* `ED_sequencer_can_select_handle()` for seq2 could be checked here. */
+
+  const int seq2_side = handle_selection_refine(scene, seq2, v2d, mouse_co);
+  if (seq1_side == SEQ_SIDE_RIGHT && seq2_side != SEQ_SIDE_LEFT) {
+    return false;
+  }
+  else if (seq1_side == SEQ_SIDE_LEFT && seq2_side != SEQ_SIDE_RIGHT) {
+    return false;
+  }
+  return true;
 }
 
 bool ED_sequencer_handle_selection_refine(const Scene *scene,
@@ -1011,57 +1052,20 @@ bool ED_sequencer_handle_selection_refine(const Scene *scene,
                                           int *r_side)
 {
   View2D *v2d = &region->v2d;
-  *r_side = SEQ_SIDE_NONE;
+  blender::Vector<Sequence *> strips = mouseover_strips_get(scene, v2d, mouse_co);
   *r_seq1 = *r_seq2 = nullptr;
 
-  mouseover_strips_get(scene, v2d, mouse_co, r_seq1, r_seq2);
-
-  /* Nothing can be selected. */
-  if (*r_seq1 == nullptr) {
+  if (strips.size() == 0) {
     return false;
   }
 
-  if (!can_select_handle(scene, *r_seq1, v2d)) {
-    *r_seq2 = nullptr;
-    return true;
-  }
+  *r_seq1 = strips[0];
+  *r_side = handle_selection_refine(scene, *r_seq1, v2d, mouse_co);
 
-  /* Refine what part is selected. */
-
-  rctf body, left, right;
-  clickable_areas_get(scene, *r_seq1, v2d, &body, &left, &right);
-
-  if (BLI_rctf_isect_pt_v(&left, mouse_co)) {
-    *r_side = SEQ_SIDE_LEFT;
-  }
-  else if (BLI_rctf_isect_pt_v(&right, mouse_co)) {
-    *r_side = SEQ_SIDE_RIGHT;
-  }
-  if (*r_seq1 != nullptr && *r_side == SEQ_SIDE_NONE) {
-    return true; /* No further selection refinement needed. */
-  }
-  if (*r_seq2 == nullptr) {
-    return true;
-  }
-  if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
-    *r_seq2 = nullptr;
-    return true;
-  }
-  if (!strips_are_touching(scene, *r_seq1, *r_seq2)) {
-    *r_seq2 = nullptr;
-    return true;
-  }
-
-  /* Refine what part is selected for second strip. */
-  clickable_areas_get(scene, *r_seq2, v2d, &body, &left, &right);
-
-  if (*r_side == SEQ_SIDE_RIGHT && !BLI_rctf_isect_pt_v(&left, mouse_co)) {
-    *r_seq2 = nullptr;
-    return true;
-  }
-  else if (*r_side == SEQ_SIDE_LEFT && !BLI_rctf_isect_pt_v(&right, mouse_co)) {
-    *r_seq2 = nullptr;
-    return true;
+  if (strips.size() == 2 &&
+      both_handles_are_selected(scene, *r_seq1, strips[1], *r_side, v2d, mouse_co))
+  {
+    *r_seq2 = strips[1];
   }
 
   return true;

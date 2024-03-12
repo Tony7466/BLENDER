@@ -647,17 +647,24 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
   }
 }
 
-static void sequencer_cursor(wmWindow *win, ScrArea * /* area */, ARegion *region)
+static void sequencer_cursor(wmWindow *win, ScrArea *area, ARegion *region)
 {
-  if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
+  int wmcursor = WM_CURSOR_DEFAULT;
+
+  const bToolRef *tref = area->runtime.tool;
+  if (!STREQ(tref->idname, "builtin.select")) {
+    WM_cursor_set(win, wmcursor);
     return;
   }
 
-  Scene *scene = win->scene;
-  Editing *ed = SEQ_editing_get(scene);
-  int wmcursor = WM_CURSOR_DEFAULT;
+  rcti scrub_rect = region->winrct;
+  scrub_rect.ymin = scrub_rect.ymax - UI_TIME_SCRUB_MARGIN_Y;
+  if (BLI_rcti_isect_pt_v(&scrub_rect, win->eventstate->xy)) {
+    WM_cursor_set(win, wmcursor);
+    return;
+  }
 
-  if (ed == NULL) {
+  if ((U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) == 0) {
     WM_cursor_set(win, wmcursor);
     return;
   }
@@ -668,6 +675,15 @@ static void sequencer_cursor(wmWindow *win, ScrArea * /* area */, ARegion *regio
                            win->eventstate->xy[1] - region->winrct.ymin,
                            &mouse_co[0],
                            &mouse_co[1]);
+
+  Scene *scene = win->scene;
+  Editing *ed = SEQ_editing_get(scene);
+
+  if (ed == NULL) {
+    WM_cursor_set(win, wmcursor);
+    return;
+  }
+
   Sequence *seq1, *seq2;
   int side;
 
@@ -679,12 +695,9 @@ static void sequencer_cursor(wmWindow *win, ScrArea * /* area */, ARegion *regio
   }
 
   const View2D *v2d = &region->v2d;
-  float scale_x = UI_view2d_scale_get_x(v2d);
   float scale_y = UI_view2d_scale_get_y(v2d);
-  const int strip_len = SEQ_time_right_handle_frame_get(scene, seq1) -
-                        SEQ_time_left_handle_frame_get(scene, seq1);
 
-  if (strip_len * scale_x < 25 * U.pixelsize || scale_y < 16 * U.pixelsize) {
+  if (!ED_sequencer_can_select_handle(scene, seq1, v2d) || scale_y < 16 * U.pixelsize) {
     WM_cursor_set(win, wmcursor);
     return;
   }
