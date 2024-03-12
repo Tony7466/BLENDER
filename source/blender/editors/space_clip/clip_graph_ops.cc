@@ -20,7 +20,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "UI_Interface_icons.hh"
+#include "UI_interface_icons.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
