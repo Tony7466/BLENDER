@@ -24,7 +24,7 @@ void main()
       out_indices[store_index + 1] = t + 1u;
     }
   }
-  for (int i = elements_per_curve * 2 * ncurves + gid.x; i < total_length; i+= nthreads.x) {
+  for (int i = elements_per_curve * 2 * ncurves + gid.x; i < total_length; i += nthreads.x) {
     out_indices[i] = 0xFFFFFFFFu;
   }
 }
