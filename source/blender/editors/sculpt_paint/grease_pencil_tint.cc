@@ -94,7 +94,7 @@ void tint_perform_dab(TintOperation &self, const bContext &C, const InputSample 
   float radius = self.radius;
   float strength = self.strength;
   if (BKE_brush_use_size_pressure(brush)) {
-    radius *= extension_sample.pressure
+    radius *= extension_sample.pressure;
   }
   if (BKE_brush_use_alpha_pressure(brush)) {
     strength *= BKE_curvemapping_evaluateF(
