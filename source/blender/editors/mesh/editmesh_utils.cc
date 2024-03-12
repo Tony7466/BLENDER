@@ -304,7 +304,6 @@ void EDBM_mesh_make_from_mesh(Object &object,
   mesh.edit_mesh = BKE_editmesh_create(bm);
   mesh.edit_mesh->selectmode = select_mode;
   mesh.edit_mesh->mat_nr = (object.actcol > 0) ? object.actcol - 1 : 0;
-  BKE_editmesh_looptris_and_normals_calc(mesh.edit_mesh);
 }
 
 void EDBM_mesh_load_ex(Main *bmain, Object *ob, bool free_data)
