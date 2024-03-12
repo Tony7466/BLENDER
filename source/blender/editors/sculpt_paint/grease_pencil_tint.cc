@@ -10,9 +10,11 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
 
+#include "BLI_lasso_2d.hh"
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_color.h"
 #include "BLI_math_geom.h"
+#include "BLI_utildefines.h"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -20,7 +22,7 @@
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
-#include "GEO_smooth_curves.hh"
+#include "UI_view2d.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -96,7 +98,7 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
   }
   /* Attenuate factor to get a smoother tinting. */
   strength /= 5.0f;
-  float fill_strength = strength / 10.0f;
+  float fill_strength = strength / 1000.0f;
 
   strength = math::clamp(strength, 0.0f, 1.0f);
   fill_strength = math::clamp(fill_strength, 0.0f, 1.0f);
@@ -142,32 +144,50 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
       for (const int curve : range) {
         bool stroke_touched = false;
         for (const int curve_point : points_by_curve[curve].index_range()) {
-          const int point = curve_point + points_by_curve[curve].first();
-          const float distance = math::distance(screen_space_positions[point], mouse_position);
-          const float influence = strength * BKE_brush_curve_strength(brush, distance, radius);
-          if (influence <= 0.0f) {
-            continue;
-          }
-          stroke_touched = true;
           if (tint_strokes) {
-            vertex_colors[point].premultiply_alpha();
-            float4 rgba = float4(
-                math::interpolate(float3(vertex_colors[point]), float3(this->color_), influence),
-                vertex_colors[point][3]);
-            rgba[3] = rgba[3] * (1.0f - influence) + influence;
-            vertex_colors[point] = ColorGeometry4f(rgba);
-            vertex_colors[point].unpremultiply_alpha();
+            const int point = curve_point + points_by_curve[curve].first();
+            const float distance = math::distance(screen_space_positions[point], mouse_position);
+            const float influence = strength * BKE_brush_curve_strength(brush, distance, radius);
+            if (influence > 0.0f) {
+              stroke_touched = true;
+              vertex_colors[point].premultiply_alpha();
+              float4 rgba = float4(
+                  math::interpolate(float3(vertex_colors[point]), float3(this->color_), influence),
+                  vertex_colors[point][3]);
+              rgba[3] = rgba[3] * (1.0f - influence) + influence;
+              vertex_colors[point] = ColorGeometry4f(rgba);
+              vertex_colors[point].unpremultiply_alpha();
+            }
           }
-        }
-        if (!fill_colors.span.is_empty() && stroke_touched && tint_fills) {
-          fill_colors.span[curve].premultiply_alpha();
-          float4 rgba = float4(math::interpolate(float3(fill_colors.span[curve]),
-                                                 float3(this->color_),
-                                                 fill_strength),
-                               fill_colors.span[curve][3]);
-          rgba[3] = rgba[3] * (1.0f - fill_strength) + fill_strength;
-          fill_colors.span[curve] = ColorGeometry4f(rgba);
-          fill_colors.span[curve].unpremultiply_alpha();
+          if (!fill_colors.span.is_empty() && tint_fills) {
+            blender::Array<blender::int2> screen_space_positions_int(
+                points_by_curve[curve].size());
+            for (const int local_point : points_by_curve[curve].index_range()) {
+              screen_space_positions_int[local_point] = int2(
+                  screen_space_positions[local_point + points_by_curve[curve].first()]);
+            }
+            rcti rect;
+            BLI_lasso_boundbox(&rect, screen_space_positions_int);
+            /* Will tint fill color when either the brush being inside the fill region or touching
+             * the stroke. */
+            const bool fill_effective =
+                stroke_touched ||
+                (!ELEM(V2D_IS_CLIPPED, mouse_position[0], mouse_position[1]) &&
+                 BLI_rcti_isect_pt(&rect, mouse_position[0], mouse_position[1]) &&
+                 BLI_lasso_is_point_inside(
+                     screen_space_positions_int, mouse_position[0], mouse_position[1], INT_MAX));
+            if (fill_effective) {
+              fill_colors.span[curve].premultiply_alpha();
+              float4 rgba = float4(math::interpolate(float3(fill_colors.span[curve]),
+                                                     float3(this->color_),
+                                                     fill_strength),
+                                   fill_colors.span[curve][3]);
+              rgba[3] = rgba[3] * (1.0f - fill_strength) + fill_strength;
+              fill_colors.span[curve] = ColorGeometry4f(rgba);
+              fill_colors.span[curve].unpremultiply_alpha();
+              stroke_touched = true;
+            }
+          }
         }
         if (stroke_touched) {
           changed.store(true, std::memory_order_relaxed);
