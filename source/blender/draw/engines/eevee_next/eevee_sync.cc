@@ -127,7 +127,7 @@ void SyncModule::sync_mesh(Object *ob,
     if (material.has_volume && (i == 0)) {
       /* Only support single volume material for now. */
       geometry_call(material.volume_occupancy.sub_pass, geom, res_handle);
-      inst_.pipelines.volume.material_call(material.volume_material, ob, res_handle);
+      geometry_call(material.volume_material.sub_pass, geom, res_handle);
       /* Do not render surface if we are rendering a volume object
        * and do not have a surface closure. */
       if (gpu_material && !GPU_material_has_surface_output(gpu_material)) {
@@ -206,7 +206,7 @@ bool SyncModule::sync_sculpt(Object *ob,
     if (material.has_volume && (batch.material_slot == 0)) {
       /* Only support single volume material for now. */
       geometry_call(material.volume_occupancy.sub_pass, geom, res_handle);
-      inst_.pipelines.volume.material_call(material.volume_material, ob, res_handle);
+      geometry_call(material.volume_material.sub_pass, geom, res_handle);
       /* Do not render surface if we are rendering a volume object
        * and do not have a surface closure. */
       if (material.has_surface == false) {
@@ -282,7 +282,7 @@ void SyncModule::sync_point_cloud(Object *ob,
   if (material.has_volume) {
     /* Only support single volume material for now. */
     drawcall_add(material.volume_occupancy);
-    inst_.pipelines.volume.material_call(material.volume_material, ob, res_handle);
+    drawcall_add(material.volume_material);
 
     /* Do not render surface if we are rendering a volume object
      * and do not have a surface closure. */
@@ -341,8 +341,8 @@ void SyncModule::sync_volume(Object *ob, ObjectHandle & /*ob_handle*/, ResourceH
   GPUBatch *geom = DRW_cache_cube_get();
 
   geometry_call(material.volume_occupancy.sub_pass, geom, res_handle);
-
-  inst_.pipelines.volume.material_call(material.volume_material, ob, res_handle);
+  /* TODO(fclem): Need to bind the volume grids. */
+  geometry_call(material.volume_material.sub_pass, geom, res_handle);
 }
 
 /** \} */
@@ -535,7 +535,7 @@ void SyncModule::sync_curves(Object *ob,
   if (material.has_volume) {
     /* Only support single volume material for now. */
     drawcall_add(material.volume_occupancy);
-    inst_.pipelines.volume.material_call(material.volume_material, ob, res_handle);
+    drawcall_add(material.volume_material);
     /* Do not render surface if we are rendering a volume object
      * and do not have a surface closure. */
     if (material.has_surface == false) {

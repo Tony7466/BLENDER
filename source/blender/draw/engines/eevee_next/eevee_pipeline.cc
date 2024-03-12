@@ -918,10 +918,11 @@ void VolumeLayer::sync()
 
   draw::PassMain &layer_pass = volume_layer_ps_;
   layer_pass.init();
+  layer_pass.clear_depth_stencil(1.0f, 0x0u);
   {
     PassMain::Sub &pass = layer_pass.sub("occupancy_ps");
-    /* Double sided without depth test. */
-    pass.state_set(DRW_STATE_WRITE_DEPTH);
+    /* Double sided with depth test (but ensure all fragment are invoked). */
+    pass.state_set(DRW_STATE_WRITE_DEPTH | DRW_STATE_DEPTH_LESS);
     pass.bind_resources(inst_.uniform_data);
     pass.bind_resources(inst_.volume.occupancy);
     pass.bind_resources(inst_.sampling);
@@ -929,6 +930,11 @@ void VolumeLayer::sync()
   }
   {
     PassMain::Sub &pass = layer_pass.sub("material_ps");
+    /* Double sided with depth test equal, and with stencil equal to ensure only one fragment is
+     * invoked per pixel. We might still have Z fighting if we have coplanar faces but this is not
+     * a case that has predictable outcome. */
+    pass.state_set(DRW_STATE_DEPTH_EQUAL | DRW_STATE_WRITE_STENCIL | DRW_STATE_STENCIL_NEQUAL);
+    pass.state_stencil(0x1u, 0x1u, 0x1u);
     pass.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
     pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
     pass.bind_resources(inst_.uniform_data);
@@ -1074,43 +1080,6 @@ VolumeLayer *VolumePipeline::register_and_get_layer(Object *ob)
   int64_t index = layers_.append_and_get_index(std::make_unique<VolumeLayer>(inst_));
   (*layers_[index]).add_object_bound(object_aabb);
   return layers_[index].get();
-}
-
-void VolumePipeline::material_call(MaterialPass &volume_material_pass,
-                                   Object *ob,
-                                   ResourceHandle res_handle)
-{
-  if (volume_material_pass.sub_pass == nullptr) {
-    /* Can happen if shader is not compiled, or if object has been culled. */
-    return;
-  }
-
-  /* TODO(fclem): This should be revisited, `volume_sub_pass()` should not decide on the volume
-   * visibility. Instead, we should query visibility upstream and not try to even compile the
-   * shader. */
-  PassMain::Sub *object_pass = volume_sub_pass(
-      *volume_material_pass.sub_pass, inst_.scene, ob, volume_material_pass.gpumat);
-  if (object_pass) {
-    /* Possible double work here. Should be relatively insignificant in practice. */
-    GridAABB object_aabb = grid_aabb_from_object(ob);
-    GridAABB view_aabb = grid_aabb_from_view();
-    GridAABB visible_aabb = object_aabb.intersection(view_aabb);
-    /* Invisible volumes should already have been clipped. */
-    BLI_assert(visible_aabb.is_empty() == false);
-    /* TODO(fclem): Use graphic pipeline instead of compute so we can leverage GPU culling,
-     * resource indexing and other further optimizations. */
-    object_pass->push_constant("drw_ResourceID", int(res_handle.resource_index()));
-    object_pass->push_constant("grid_coords_min", visible_aabb.min);
-    object_pass->dispatch(math::divide_ceil(visible_aabb.extent(), int3(VOLUME_GROUP_SIZE)));
-    /* Notify the volume module to enable itself. */
-    enabled_ = true;
-    if (GPU_material_flag_get(volume_material_pass.gpumat, GPU_MATFLAG_VOLUME_SCATTER)) {
-      has_scatter_ = true;
-    }
-    if (GPU_material_flag_get(volume_material_pass.gpumat, GPU_MATFLAG_VOLUME_ABSORPTION)) {
-      has_absorption_ = true;
-    }
-  }
 }
 
 bool VolumePipeline::use_hit_list() const

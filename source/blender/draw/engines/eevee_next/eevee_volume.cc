@@ -160,15 +160,10 @@ void VolumeModule::end_sync()
     }
   }
 
-  if (GPU_backend_get_type() == GPU_BACKEND_METAL) {
-    /* Metal requires a dummy attachment. */
-    occupancy_fb_.ensure(GPU_ATTACHMENT_NONE,
-                         GPU_ATTACHMENT_TEXTURE_LAYER(prop_extinction_tx_, 0));
-  }
-  else {
-    /* Empty frame-buffer. */
-    occupancy_fb_.ensure(data_.tex_size.xy());
-  }
+  eGPUTextureUsage front_depth_usage = GPU_TEXTURE_USAGE_SHADER_READ |
+                                       GPU_TEXTURE_USAGE_ATTACHMENT;
+  front_depth_tx_.ensure_2d(GPU_DEPTH24_STENCIL8, data_.tex_size.xy(), front_depth_usage);
+  occupancy_fb_.ensure(GPU_ATTACHMENT_TEXTURE(front_depth_tx_));
 
   scatter_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);
   extinction_tx_.ensure_3d(GPU_R11F_G11F_B10F, data_.tex_size, usage);

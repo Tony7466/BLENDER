@@ -68,7 +68,7 @@ class VolumeModule {
    */
   Texture hit_count_tx_ = {"hit_count_tx"};
   Texture hit_depth_tx_ = {"hit_depth_tx"};
-  /** Empty frame-buffer for occupancy pass. */
+  Texture front_depth_tx_ = {"front_depth_tx"};
   Framebuffer occupancy_fb_ = {"occupancy_fb"};
 
   /* Material Parameters */

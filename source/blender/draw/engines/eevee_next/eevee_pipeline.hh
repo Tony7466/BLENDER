@@ -441,13 +441,6 @@ class VolumePipeline {
    */
   VolumeLayer *register_and_get_layer(Object *ob);
 
-  /**
-   * Creates a volume material call.
-   * If any call to this function result in a valid draw-call, then the volume module will be
-   * enabled.
-   */
-  void material_call(MaterialPass &volume_material_pass, Object *ob, ResourceHandle res_handle);
-
   bool is_enabled() const
   {
     return enabled_;
