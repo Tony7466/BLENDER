@@ -319,17 +319,17 @@ static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
     }
     case PrimitiveType::CIRCLE: {
       const T center = control_points[1];
-      const T A = control_points.first() - center;
-      const T B = control_points.last() - center;
+      const T offset = control_points.first() - center;
       for (const int i : new_positions.index_range()) {
         const float t = i / float(new_points_num);
         const float a = t * math::numbers::pi * 2.0f;
-        new_positions[i] = A * sinf(a) + B * cosf(a) + center;
+        new_positions[i] = offset * float2(sinf(a), cosf(a)) + center;
       }
       return;
     }
     case PrimitiveType::BOX: {
       const T center = control_points[1];
+      const T offset = control_points.first() - center;
       /*
        * Calculate the 4 corners of the box.
        * Here's a diagram.
@@ -343,10 +343,10 @@ static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
        * +-----------+
        *
        */
-      const T A = control_points.first();
-      const T B = control_points.last();
-      const T C = -(A - center) + center;
-      const T D = -(B - center) + center;
+      const T A = center + offset * float2(1.0f, 1.0f);
+      const T B = center + offset * float2(-1.0f, 1.0f);
+      const T C = center + offset * float2(-1.0f, -1.0f);
+      const T D = center + offset * float2(1.0f, -1.0f);
       const T corners[4] = {A, B, C, D};
       for (const int i : new_positions.index_range()) {
         const float t = math::mod(i / float(subdivision + 1), 1.0f);
@@ -785,18 +785,11 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
   const float3 end_pos = ptd.placement.project(center + offset);
 
   switch (ptd.type) {
+    case PrimitiveType::CIRCLE:
     case PrimitiveType::BOX: {
-
-      ptd.control_points[0] = ptd.placement.project(offset * float2(-1.0f, 1.0f) + center);
+      ptd.control_points[0] = ptd.placement.project(center - offset);
       ptd.control_points[1] = ptd.placement.project(center);
-      ptd.control_points[2] = ptd.placement.project(offset * float2(1.0f, 1.0f) + center);
-      return;
-    }
-    case PrimitiveType::CIRCLE: {
-
-      ptd.control_points[0] = ptd.placement.project(offset * float2(1.0f, 0.0f) + center);
-      ptd.control_points[1] = ptd.placement.project(center);
-      ptd.control_points[2] = ptd.placement.project(offset * float2(0.0f, 1.0f) + center);
+      ptd.control_points[2] = ptd.placement.project(center + offset);
       return;
     }
     case PrimitiveType::POLYLINE:
@@ -823,27 +816,6 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
   }
 }
 
-static void grease_pencil_primitive_grab_update(PrimitiveTool_OpData &ptd, const wmEvent *event)
-{
-  BLI_assert(ptd.active_control_point_index != -1);
-  float3 pos = ptd.placement.project(float2(event->mval));
-  ptd.control_points[ptd.active_control_point_index] = pos;
-}
-
-static void grease_pencil_primitive_drag_update(PrimitiveTool_OpData &ptd, const wmEvent *event)
-{
-  BLI_assert(ptd.active_control_point_index != -1);
-  const float2 start = ptd.start_position_2d;
-  const float2 end = float2(event->mval);
-  const float2 dif = end - start;
-
-  const float2 start_pos2 = ED_view3d_project_float_v2_m4(
-      ptd.vc.region, ptd.temp_control_points[ptd.active_control_point_index], ptd.projection);
-
-  float3 pos = ptd.placement.project(start_pos2 + dif);
-  ptd.control_points[ptd.active_control_point_index] = pos;
-}
-
 static void grease_pencil_primitive_drag_all_update(PrimitiveTool_OpData &ptd,
                                                     const wmEvent *event)
 {
@@ -858,6 +830,40 @@ static void grease_pencil_primitive_drag_all_update(PrimitiveTool_OpData &ptd,
     float3 pos = ptd.placement.project(start_pos2 + dif);
     ptd.control_points[point_index] = pos;
   }
+}
+
+static void grease_pencil_primitive_grab_update(PrimitiveTool_OpData &ptd, const wmEvent *event)
+{
+  BLI_assert(ptd.active_control_point_index != -1);
+  float3 pos = ptd.placement.project(float2(event->mval));
+  ptd.control_points[ptd.active_control_point_index] = pos;
+
+  if (ELEM(ptd.type, PrimitiveType::CIRCLE, PrimitiveType::BOX)) {
+    if (ptd.active_control_point_index == 1) {
+      grease_pencil_primitive_drag_all_update(ptd, event);
+    }
+    else {
+      ptd.start_position_2d = ED_view3d_project_float_v2_m4(
+          ptd.vc.region,
+          ptd.temp_control_points[2 - ptd.active_control_point_index],
+          ptd.projection);
+      grease_pencil_primitive_extruding_update(ptd, event);
+    }
+  }
+}
+
+static void grease_pencil_primitive_drag_update(PrimitiveTool_OpData &ptd, const wmEvent *event)
+{
+  BLI_assert(ptd.active_control_point_index != -1);
+  const float2 start = ptd.start_position_2d;
+  const float2 end = float2(event->mval);
+  const float2 dif = end - start;
+
+  const float2 start_pos2 = ED_view3d_project_float_v2_m4(
+      ptd.vc.region, ptd.temp_control_points[ptd.active_control_point_index], ptd.projection);
+
+  float3 pos = ptd.placement.project(start_pos2 + dif);
+  ptd.control_points[ptd.active_control_point_index] = pos;
 }
 
 static float2 primitive_center_of_mass(const PrimitiveTool_OpData &ptd)
@@ -1118,6 +1124,9 @@ static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const 
         ptd.start_position_2d = ED_view3d_project_float_v2_m4(
             ptd.vc.region, ptd.control_points[ptd.active_control_point_index], ptd.projection);
         ptd.mode = OperatorMode::GRAB;
+
+        ptd.temp_control_points.resize(ptd.control_points.size());
+        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
       }
       else if (control_point_type == ControlPointType::HANDLE_POINT) {
         ptd.start_position_2d = float2(event->mval);
