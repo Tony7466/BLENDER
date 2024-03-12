@@ -71,15 +71,25 @@ vec4 texture_bilinear(sampler2D t, vec2 uv)
 {
   vec2 tex_size = vec2(textureSize(horizon_radiance_0_tx, 0));
   vec2 texel_size = 1.0 / tex_size;
-  vec2 f = fract(uv * tex_size);
-  uv += (.5 - f) * texel_size;  // move uv to texel centre
-  vec4 tl = texture(t, uv);
-  vec4 tr = texture(t, uv + vec2(texel_size.x, 0.0));
-  vec4 bl = texture(t, uv + vec2(0.0, texel_size.y));
-  vec4 br = texture(t, uv + vec2(texel_size.x, texel_size.y));
-  vec4 tA = mix(tl, tr, f.x);
-  vec4 tB = mix(bl, br, f.x);
-  return mix(tA, tB, f.y);
+  uv -= 0.5 * texel_size;
+  vec2 px = uv * tex_size;
+  vec2 f = fract(px);
+  vec4 tl = texelFetch(t, ivec2(px) + ivec2(0, 0), 0);
+  vec4 tr = texelFetch(t, ivec2(px) + ivec2(1, 0), 0);
+  vec4 bl = texelFetch(t, ivec2(px) + ivec2(0, 1), 0);
+  vec4 br = texelFetch(t, ivec2(px) + ivec2(1, 1), 0);
+
+  vec4 bilinear_weight;
+  bilinear_weight.x = (1.0 - f.x) * (1.0 - f.y);
+  bilinear_weight.y = f.x * (1.0 - f.y);
+  bilinear_weight.z = (1.0 - f.x) * f.y;
+  bilinear_weight.w = f.x * f.y;
+
+  tl *= bilinear_weight.x;
+  tr *= bilinear_weight.y;
+  bl *= bilinear_weight.z;
+  br *= bilinear_weight.w;
+  return tl + tr + bl + br;
 }
 
 void main()
@@ -126,15 +136,15 @@ void main()
     // vec2 sample_uv_00 = sample_texel_00 / ;
     // sample_weight_get(center_N, center_P, texel + ivec2(0, 0), vec2 sample_uv, ivec2(0, 0));
 
-    // accum_sh.L0.M0 = texture_bilinear(horizon_radiance_0_tx, sample_uv);
-    // accum_sh.L1.Mn1 = texture_bilinear(horizon_radiance_1_tx, sample_uv);
-    // accum_sh.L1.M0 = texture_bilinear(horizon_radiance_2_tx, sample_uv);
-    // accum_sh.L1.Mp1 = texture_bilinear(horizon_radiance_3_tx, sample_uv);
+    accum_sh.L0.M0 = texture_bilinear(horizon_radiance_0_tx, sample_uv);
+    accum_sh.L1.Mn1 = texture_bilinear(horizon_radiance_1_tx, sample_uv);
+    accum_sh.L1.M0 = texture_bilinear(horizon_radiance_2_tx, sample_uv);
+    accum_sh.L1.Mp1 = texture_bilinear(horizon_radiance_3_tx, sample_uv);
 
-    accum_sh.L0.M0 = texture(horizon_radiance_0_tx, sample_uv);
-    accum_sh.L1.Mn1 = texture(horizon_radiance_1_tx, sample_uv);
-    accum_sh.L1.M0 = texture(horizon_radiance_2_tx, sample_uv);
-    accum_sh.L1.Mp1 = texture(horizon_radiance_3_tx, sample_uv);
+    // accum_sh.L0.M0 = texture(horizon_radiance_0_tx, sample_uv);
+    // accum_sh.L1.Mn1 = texture(horizon_radiance_1_tx, sample_uv);
+    // accum_sh.L1.M0 = texture(horizon_radiance_2_tx, sample_uv);
+    // accum_sh.L1.Mp1 = texture(horizon_radiance_3_tx, sample_uv);
   }
 
   vec3 P = center_P;
