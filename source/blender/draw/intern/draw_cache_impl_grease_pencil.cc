@@ -539,6 +539,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
     const VArray<int> materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
     const Span<uint3> triangles = info.drawing.triangles();
+    const Span<float4x2> texture_matrices = info.drawing.texture_matrices();
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];
     const Span<int> tris_start_offsets = tris_start_offsets_per_visible_drawing[drawing_i];
     IndexMaskMemory memory;
@@ -589,8 +590,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       IndexRange verts_range = IndexRange(verts_start_offset, num_verts);
       MutableSpan<GreasePencilStrokeVert> verts_slice = verts.slice(verts_range);
       MutableSpan<GreasePencilColorVert> cols_slice = cols.slice(verts_range);
-      const float4x2 texture_matrix = get_texture_matrix(info.drawing, curve_i) *
-                                      object_space_to_layer_space;
+      const float4x2 texture_matrix = texture_matrices[curve_i] * object_space_to_layer_space;
 
       const Span<float> lengths = curves.evaluated_lengths_for_curve(curve_i, is_cyclic);
 

@@ -46,6 +46,8 @@ class DrawingRuntime {
    */
   mutable SharedCache<Vector<float3>> curve_plane_normals_cache;
 
+  mutable SharedCache<Vector<blender::float4x2>> curve_texture_matrices;
+
   /**
    * Number of users for this drawing. The users are the frames in the Grease Pencil layers.
    * Different frames can refer to the same drawing, so we need to make sure we count these users
@@ -72,6 +74,12 @@ class Drawing : public ::GreasePencilDrawing {
   Span<float3> curve_plane_normals() const;
   void tag_positions_changed();
   void tag_topology_changed();
+
+  /*
+   * Returns the matrices that transforms from a 3D point in layer-space to a 2D point in
+   * texture-space.
+   */
+  Span<blender::float4x2> texture_matrices() const;
 
   /**
    * Radii of the points. Values are expected to be in blender units.
@@ -864,13 +872,6 @@ GreasePencil *BKE_grease_pencil_copy_for_eval(const GreasePencil *grease_pencil_
 void BKE_grease_pencil_data_update(Depsgraph *depsgraph, Scene *scene, Object *object);
 void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil_src,
                                                GreasePencil *grease_pencil_dst);
-
-/*
- * Returns the matrix that transforms from a 3D point in layer-space to a 2D point in
- * texture-space for the stroke `curve_i`
- */
-blender::float4x2 get_texture_matrix(const blender::bke::greasepencil::Drawing &drawing,
-                                     int curve_i);
 
 /*
  * Sets the matrix the that transforms from a 3D point in layer-space to a 2D point in

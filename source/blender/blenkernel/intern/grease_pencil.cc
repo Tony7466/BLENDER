@@ -302,6 +302,7 @@ Drawing::Drawing(const Drawing &other)
 
   this->runtime->triangles_cache = other.runtime->triangles_cache;
   this->runtime->curve_plane_normals_cache = other.runtime->curve_plane_normals_cache;
+  this->runtime->curve_texture_matrices = other.runtime->curve_texture_matrices;
 }
 
 Drawing::~Drawing()
@@ -412,6 +413,136 @@ Span<float3> Drawing::curve_plane_normals() const
   return this->runtime->curve_plane_normals_cache.data().as_span();
 }
 
+/*
+ * Returns the matrix that transforms from a 3D point in layer-space to a 2D point in
+ * stroke-space for the stroke `curve_i`
+ */
+static blender::float4x2 get_local_to_stroke_matrix(
+    const blender::bke::greasepencil::Drawing &drawing, int curve_i)
+{
+  using namespace blender;
+  using namespace blender::math;
+
+  const bke::CurvesGeometry &curves = drawing.strokes();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const Span<float3> positions = curves.positions();
+  const Span<float3> normals = drawing.curve_plane_normals();
+  const IndexRange points = points_by_curve[curve_i];
+  const float3 normal = normals[curve_i];
+
+  if (points.size() <= 2) {
+    return float4x2::identity();
+  }
+
+  const float3 point_0 = positions[points.first()];
+  const float3 point_1 = positions[points.first() + 1];
+
+  /* Local X axis (p0 -> p1) */
+  const float3 locx = normalize(point_1 - point_0);
+  /* Local Y axis (cross to normal/x axis). */
+  const float3 locy = normalize(cross(normal, locx));
+
+  if (length_squared(locx) == 0.0f || length_squared(locy) == 0.0f) {
+    return float4x2::identity();
+  }
+
+  /* Get local space using first point as origin. */
+  const float4x2 mat = transpose(
+      float2x4(float4(locx, -dot(point_0, locx)), float4(locy, -dot(point_0, locy))));
+
+  return mat;
+}
+
+/*
+ * Returns the matrix that transforms from a 2D point in stroke-space to a 2D point in
+ * texture-space for a stroke `curve_i`
+ */
+static blender::float3x2 get_stroke_to_texture_matrix(const blender::bke::CurvesGeometry &curves,
+                                                      const int curve_i)
+{
+  using namespace blender;
+  using namespace blender::bke;
+  using namespace blender::math;
+  const AttributeAccessor attributes = curves.attributes();
+
+  const VArray<float> uv_rotations = *attributes.lookup_or_default<float>(
+      "uv_rotation", AttrDomain::Curve, 0.0f);
+  const VArray<float2> uv_translations = *attributes.lookup_or_default<float2>(
+      "uv_translation", AttrDomain::Curve, float2(0.0f, 0.0f));
+  const VArray<float2> uv_scales = *attributes.lookup_or_default<float2>(
+      "uv_scale", AttrDomain::Curve, float2(1.0f, 1.0f));
+
+  const float uv_rotation = uv_rotations[curve_i];
+  const float2 uv_translation = uv_translations[curve_i];
+  const float2 uv_scale = uv_scales[curve_i];
+
+  const float2 uv_scale_inv = safe_rcp(uv_scale);
+  const float s = sin(uv_rotation);
+  const float c = cos(uv_rotation);
+  const float2x2 rot = float2x2(float2(c, s), float2(-s, c));
+
+  float3x2 texmat = float3x2::identity();
+  /*
+   * The order in which the three transforms are applied, has been carefully chosen to be easy to
+   * invert.
+   *
+   * The translation is applied last so that the origin goes to `uv_translation`
+   * The rotation is applied after the scale so that the `u` direction's angle is `uv_rotation`
+   * Scale is the only transform that changes the length of the basis vectors and if it is applied
+   * first it's independent of the other transforms.
+   *
+   * These properties are not true with a different order.
+   */
+
+  /* Apply scale. */
+  texmat = from_scale<float2x2>(uv_scale_inv) * texmat;
+
+  /* Apply rotation. */
+  texmat = rot * texmat;
+
+  /* Apply translation. */
+  texmat[2] += uv_translation;
+
+  return texmat;
+}
+
+Span<blender::float4x2> Drawing::texture_matrices() const
+{
+  using namespace blender;
+
+  this->runtime->curve_texture_matrices.ensure([&](Vector<float4x2> &r_data) {
+    const CurvesGeometry &curves = this->strokes();
+
+    r_data.reinitialize(curves.curves_num());
+    threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
+      for (const int curve_i : range) {
+        const float4x2 strokemat = get_local_to_stroke_matrix(*this, curve_i);
+        const float3x2 texmat = get_stroke_to_texture_matrix(curves, curve_i);
+
+        float4x3 strokemat4x3 = float4x3(strokemat);
+
+        /*
+         * We need the diagonal of ones to start from the bottom right instead top left to properly
+         * apply the two matrices.
+         *
+         * i.e.
+         *          # # # #              # # # #
+         * We need  # # # #  Instead of  # # # #
+         *          0 0 0 1              0 0 1 0
+         *
+         */
+        strokemat4x3[2][2] = 0.0f;
+        strokemat4x3[3][2] = 1.0f;
+
+        const float4x2 texspace = texmat * strokemat4x3;
+
+        r_data[curve_i] = texspace;
+      }
+    });
+  });
+  return this->runtime->curve_texture_matrices.data().as_span();
+}
+
 const bke::CurvesGeometry &Drawing::strokes() const
 {
   return this->geometry.wrap();
@@ -465,6 +596,7 @@ void Drawing::tag_positions_changed()
   this->strokes_for_write().tag_positions_changed();
   this->runtime->triangles_cache.tag_dirty();
   this->runtime->curve_plane_normals_cache.tag_dirty();
+  this->runtime->curve_texture_matrices.tag_dirty();
 }
 
 void Drawing::tag_topology_changed()
@@ -1462,99 +1594,6 @@ void BKE_grease_pencil_duplicate_drawing_array(const GreasePencil *grease_pencil
 /** \name Grease Pencil texture coordinate functions
  * \{ */
 
-/*
- * Returns the matrix that transforms from a 3D point in layer-space to a 2D point in
- * stroke-space for the stroke `curve_i`
- */
-blender::float4x2 get_local_to_stroke_matrix(const blender::bke::greasepencil::Drawing &drawing,
-                                             int curve_i)
-{
-  using namespace blender;
-  using namespace blender::math;
-
-  const bke::CurvesGeometry &curves = drawing.strokes();
-  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  const Span<float3> positions = curves.positions();
-  const Span<float3> normals = drawing.curve_plane_normals();
-  const IndexRange points = points_by_curve[curve_i];
-  const float3 normal = normals[curve_i];
-
-  if (points.size() <= 2) {
-    return float4x2::identity();
-  }
-
-  const float3 point_0 = positions[points.first()];
-  const float3 point_1 = positions[points.first() + 1];
-
-  /* Local X axis (p0 -> p1) */
-  const float3 locx = normalize(point_1 - point_0);
-  /* Local Y axis (cross to normal/x axis). */
-  const float3 locy = normalize(cross(normal, locx));
-
-  if (length_squared(locx) == 0.0f || length_squared(locy) == 0.0f) {
-    return float4x2::identity();
-  }
-
-  /* Get local space using first point as origin. */
-  const float4x2 mat = transpose(
-      float2x4(float4(locx, -dot(point_0, locx)), float4(locy, -dot(point_0, locy))));
-
-  return mat;
-}
-
-/*
- * Returns the matrix that transforms from a 2D point in stroke-space to a 2D point in
- * texture-space for a stroke `curve_i`
- */
-blender::float3x2 get_stroke_to_texture_matrix(const blender::bke::CurvesGeometry &curves,
-                                               const int curve_i)
-{
-  using namespace blender;
-  using namespace blender::bke;
-  using namespace blender::math;
-  const AttributeAccessor attributes = curves.attributes();
-
-  const VArray<float> uv_rotations = *attributes.lookup_or_default<float>(
-      "uv_rotation", AttrDomain::Curve, 0.0f);
-  const VArray<float2> uv_translations = *attributes.lookup_or_default<float2>(
-      "uv_translation", AttrDomain::Curve, float2(0.0f, 0.0f));
-  const VArray<float2> uv_scales = *attributes.lookup_or_default<float2>(
-      "uv_scale", AttrDomain::Curve, float2(1.0f, 1.0f));
-
-  const float uv_rotation = uv_rotations[curve_i];
-  const float2 uv_translation = uv_translations[curve_i];
-  const float2 uv_scale = uv_scales[curve_i];
-
-  const float2 uv_scale_inv = safe_rcp(uv_scale);
-  const float s = sin(uv_rotation);
-  const float c = cos(uv_rotation);
-  const float2x2 rot = float2x2(float2(c, s), float2(-s, c));
-
-  float3x2 texmat = float3x2::identity();
-  /*
-   * The order in which the three transforms are applied, has been carefully chosen to be easy to
-   * invert.
-   *
-   * The translation is applied last so that the origin goes to `uv_translation`
-   * The rotation is applied after the scale so that the `u` direction's angle is `uv_rotation`
-   * Scale is the only transform that changes the length of the basis vectors and if it is applied
-   * first it's independent of the other transforms.
-   *
-   * These properties are not true with a different order.
-   */
-
-  /* Apply scale. */
-  texmat = from_scale<float2x2>(uv_scale_inv) * texmat;
-
-  /* Apply rotation. */
-  texmat = rot * texmat;
-
-  /* Apply translation. */
-  texmat[2] += uv_translation;
-
-  return texmat;
-}
-
 void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
                                   int curve_i,
                                   blender::float3x2 texmat)
@@ -1597,34 +1636,6 @@ void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
   uv_rotations.finish();
   uv_translations.finish();
   uv_scales.finish();
-}
-
-blender::float4x2 get_texture_matrix(const blender::bke::greasepencil::Drawing &drawing,
-                                     int curve_i)
-{
-  using namespace blender;
-
-  const float4x2 strokemat = get_local_to_stroke_matrix(drawing, curve_i);
-  const float3x2 texmat = get_stroke_to_texture_matrix(drawing.strokes(), curve_i);
-
-  float4x3 strokemat4x3 = float4x3(strokemat);
-
-  /*
-   * We need the diagonal of ones to start from the bottom right instead top left to properly apply
-   * the two matrices.
-   *
-   * i.e.
-   *          # # # #              # # # #
-   * We need  # # # #  Instead of  # # # #
-   *          0 0 0 1              0 0 1 0
-   *
-   */
-  strokemat4x3[2][2] = 0.0f;
-  strokemat4x3[3][2] = 1.0f;
-
-  const float4x2 texspace = texmat * strokemat4x3;
-
-  return texspace;
 }
 
 void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
