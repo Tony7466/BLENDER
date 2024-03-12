@@ -63,7 +63,7 @@ struct CurvesBatchCache {
   CurvesEvalCache curves_cache;
 
   GPUBatch *edit_points;
-  GPUBatch *edit_lines;
+  GPUBatch *edit_handles;
 
   /* Crazy-space point positions for original points. */
   GPUVertBuf *edit_points_pos;
@@ -75,7 +75,7 @@ struct CurvesBatchCache {
   /* Selection of original points. */
   GPUVertBuf *edit_points_selection;
 
-  GPUIndexBuf *edit_lines_ibo;
+  GPUIndexBuf *edit_handles_ibo;
 
   /* Whether the cache is invalid. */
   bool is_dirty;
@@ -142,10 +142,10 @@ static void curves_batch_cache_clear_edit_data(CurvesBatchCache *cache)
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_pos);
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_data);
   GPU_VERTBUF_DISCARD_SAFE(cache->edit_points_selection);
-  GPU_INDEXBUF_DISCARD_SAFE(cache->edit_lines_ibo);
+  GPU_INDEXBUF_DISCARD_SAFE(cache->edit_handles_ibo);
 
   GPU_BATCH_DISCARD_SAFE(cache->edit_points);
-  GPU_BATCH_DISCARD_SAFE(cache->edit_lines);
+  GPU_BATCH_DISCARD_SAFE(cache->edit_handles);
 }
 
 static void curves_batch_cache_clear_eval_data(CurvesEvalCache &curves_cache)
@@ -390,11 +390,11 @@ static void curves_batch_cache_ensure_edit_points_selection(
       points_by_curve, bezier_dst_offsets, bezier_curves, attribute_right, data.slice(dst_range));
 }
 
-static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curves,
-                                                 const IndexMask bezier_curves,
-                                                 const OffsetIndices<int> bezier_offsets,
-                                                 const IndexMask other_curves,
-                                                 CurvesBatchCache &cache)
+static void curves_batch_cache_ensure_edit_handles(const bke::CurvesGeometry &curves,
+                                                   const IndexMask bezier_curves,
+                                                   const OffsetIndices<int> bezier_offsets,
+                                                   const IndexMask other_curves,
+                                                   CurvesBatchCache &cache)
 {
   const int bezier_point_count = bezier_offsets.total_size();
   /* Left and right handle will be appended for each Bezier point. */
@@ -444,7 +444,7 @@ static void curves_batch_cache_ensure_edit_lines(const bke::CurvesGeometry &curv
     GPU_indexbuf_add_primitive_restart(&right_elb);
   });
   GPU_indexbuf_join(&elb, &right_elb);
-  GPU_indexbuf_build_in_place(&elb, cache.edit_lines_ibo);
+  GPU_indexbuf_build_in_place(&elb, cache.edit_handles_ibo);
 
   CurvesUboStorage ubo_storage{bezier_point_count};
   GPU_uniformbuf_update(cache.curves_ubo_storage, &ubo_storage);
@@ -833,10 +833,10 @@ GPUBatch *DRW_curves_batch_cache_get_edit_points(Curves *curves)
   return DRW_batch_request(&cache.edit_points);
 }
 
-GPUBatch *DRW_curves_batch_cache_get_edit_lines(Curves *curves)
+GPUBatch *DRW_curves_batch_cache_get_edit_curves_handles(Curves *curves)
 {
   CurvesBatchCache &cache = curves_batch_cache_get(*curves);
-  return DRW_batch_request(&cache.edit_lines);
+  return DRW_batch_request(&cache.edit_handles);
 }
 
 GPUVertBuf **DRW_curves_texture_for_evaluated_attribute(Curves *curves,
@@ -905,11 +905,11 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     DRW_vbo_request(cache.edit_points, &cache.edit_points_pos);
     DRW_vbo_request(cache.edit_points, &cache.edit_points_selection);
   }
-  if (DRW_batch_requested(cache.edit_lines, GPU_PRIM_LINE_STRIP)) {
-    DRW_ibo_request(cache.edit_lines, &cache.edit_lines_ibo);
-    DRW_vbo_request(cache.edit_lines, &cache.edit_points_pos);
-    DRW_vbo_request(cache.edit_lines, &cache.edit_points_data);
-    DRW_vbo_request(cache.edit_lines, &cache.edit_points_selection);
+  if (DRW_batch_requested(cache.edit_handles, GPU_PRIM_LINE_STRIP)) {
+    DRW_ibo_request(cache.edit_handles, &cache.edit_handles_ibo);
+    DRW_vbo_request(cache.edit_handles, &cache.edit_points_pos);
+    DRW_vbo_request(cache.edit_handles, &cache.edit_points_data);
+    DRW_vbo_request(cache.edit_handles, &cache.edit_points_selection);
   }
   if (DRW_vbo_requested(cache.edit_points_pos)) {
     const bke::crazyspace::GeometryDeformation deformation =
@@ -921,8 +921,8 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     curves_batch_cache_ensure_edit_points_selection(
         curves_orig, bezier_curves, bezier_offsets, cache);
   }
-  if (DRW_ibo_requested(cache.edit_lines_ibo)) {
-    curves_batch_cache_ensure_edit_lines(
+  if (DRW_ibo_requested(cache.edit_handles_ibo)) {
+    curves_batch_cache_ensure_edit_handles(
         curves_orig, bezier_curves, bezier_offsets, other_curves, cache);
   }
 }

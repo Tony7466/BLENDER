@@ -57,9 +57,9 @@ void OVERLAY_edit_curves_cache_init(OVERLAY_Data *vedata)
       DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     }
 
-    DRW_PASS_CREATE(psl->edit_curves_lines_ps[i], (state | pd->clipping_state));
+    DRW_PASS_CREATE(psl->edit_curves_handles_ps[i], (state | pd->clipping_state));
     sh = OVERLAY_shader_edit_curves_handle();
-    grp = pd->edit_curves_lines_grp[i] = DRW_shgroup_create(sh, psl->edit_curves_lines_ps[i]);
+    grp = pd->edit_curves_handles_grp[i] = DRW_shgroup_create(sh, psl->edit_curves_handles_ps[i]);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
     DRW_shgroup_uniform_bool_copy(grp, "useWeight", false);
   }
@@ -76,11 +76,11 @@ static void overlay_edit_curves_add_ob_to_pass(OVERLAY_PrivateData *pd, Object *
     DRW_shgroup_call_no_cull(point_shgrp, geom_points, ob);
   }
 
-  DRWShadingGroup *lines_shgrp = pd->edit_curves_lines_grp[in_front];
+  DRWShadingGroup *handles_shgrp = pd->edit_curves_handles_grp[in_front];
   DRW_shgroup_uniform_block(
-      lines_shgrp, "curvesInfoBlock", DRW_curves_batch_cache_ubo_storage(curves));
-  GPUBatch *geom_lines = DRW_curves_batch_cache_get_edit_lines(curves);
-  DRW_shgroup_call_no_cull(lines_shgrp, geom_lines, ob);
+      handles_shgrp, "curvesInfoBlock", DRW_curves_batch_cache_ubo_storage(curves));
+  GPUBatch *geom_handles = DRW_curves_batch_cache_get_edit_curves_handles(curves);
+  DRW_shgroup_call_no_cull(handles_shgrp, geom_handles, ob);
 }
 
 void OVERLAY_edit_curves_cache_populate(OVERLAY_Data *vedata, Object *ob)
@@ -106,5 +106,5 @@ void OVERLAY_edit_curves_draw(OVERLAY_Data *vedata)
   if (pd->edit_curves.do_points) {
     DRW_draw_pass(psl->edit_curves_points_ps[in_front]);
   }
-  DRW_draw_pass(psl->edit_curves_lines_ps[in_front]);
+  DRW_draw_pass(psl->edit_curves_handles_ps[in_front]);
 }

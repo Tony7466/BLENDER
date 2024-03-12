@@ -81,7 +81,7 @@ struct OVERLAY_PassList {
   DRWPass *edit_mesh_faces_ps[2];
   DRWPass *edit_mesh_faces_cage_ps[2];
   DRWPass *edit_curves_points_ps[2];
-  DRWPass *edit_curves_lines_ps[2];
+  DRWPass *edit_curves_handles_ps[2];
   DRWPass *edit_mesh_analysis_ps;
   DRWPass *edit_mesh_normals_ps;
   DRWPass *edit_particle_ps;
@@ -276,7 +276,7 @@ struct OVERLAY_PrivateData {
   DRWShadingGroup *edit_uv_face_dots_grp;
   DRWShadingGroup *edit_uv_stretching_grp;
   DRWShadingGroup *edit_curves_points_grp[2];
-  DRWShadingGroup *edit_curves_lines_grp[2];
+  DRWShadingGroup *edit_curves_handles_grp[2];
   DRWShadingGroup *extra_grid_grp;
   DRWShadingGroup *facing_grp[2];
   DRWShadingGroup *fade_grp[2];
