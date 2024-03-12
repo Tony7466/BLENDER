@@ -798,13 +798,13 @@ class ShaderImageTextureWrapper():
     node_mapping = property(node_mapping_get)
 
     def translation_get(self):
-        if self.node_mapping is None or self.node_mapping.vector_type not in ('POINT', 'TEXTURE'):
+        if self.node_mapping is None or "Location" not in self.node_mapping.inputs:
             return Vector((0.0, 0.0, 0.0))
         return self.node_mapping.inputs["Location"].default_value
 
     @_set_check
     def translation_set(self, translation):
-        if self.node_mapping is None or self.node_mapping.vector_type not in ('POINT', 'TEXTURE'):
+        if self.node_mapping is None or "Location" not in self.node_mapping.inputs:
             return
         self.node_mapping.inputs["Location"].default_value = translation
 
