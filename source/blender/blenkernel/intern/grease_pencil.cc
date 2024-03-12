@@ -1530,7 +1530,7 @@ blender::float3x2 get_stroke_to_texture_matrix(const blender::bke::CurvesGeometr
   const float c = cos(uv_rotation);
   const float2x2 rot = float2x2(float2(c, s), float2(-s, c));
 
-  float3x2 textmat = float3x2::identity();
+  float3x2 texmat = float3x2::identity();
   /*
    * The order in which the three transforms are applied, has been carefully chosen to be easy to
    * invert.
@@ -1544,37 +1544,37 @@ blender::float3x2 get_stroke_to_texture_matrix(const blender::bke::CurvesGeometr
    */
 
   /* Apply scale. */
-  textmat = from_scale<float2x2>(uv_scale_inv) * textmat;
+  texmat = from_scale<float2x2>(uv_scale_inv) * texmat;
 
   /* Apply rotation. */
-  textmat = rot * textmat;
+  texmat = rot * texmat;
 
   /* Apply translation. */
-  textmat[2] += uv_translation;
+  texmat[2] += uv_translation;
 
-  return textmat;
+  return texmat;
 }
 
 void set_stroke_to_texture_matrix(blender::bke::CurvesGeometry &curves,
                                   int curve_i,
-                                  const blender::float3x2 textmat)
+                                  const blender::float3x2 texmat)
 {
   using namespace blender;
   using namespace blender::bke;
   using namespace blender::math;
 
   /* Solve for translation, the translation is simply the origin. */
-  const float2 uv_translation = textmat[2];
+  const float2 uv_translation = texmat[2];
 
   /* Solve rotation, the angle of the `u` basis is the rotation. */
-  const float uv_rotation = atan2(textmat[0][1], textmat[0][0]);
+  const float uv_rotation = atan2(texmat[0][1], texmat[0][0]);
 
   /* Calculate the determinant to check if the `v` scale is negative. */
-  const float det = determinant(float2x2(textmat));
+  const float det = determinant(float2x2(texmat));
 
   /* Solve scale, scaling is the only transformation that changes the length, so scale factor is
    * simply the length. And flip the sign of `v` if the determinant is negative. */
-  const float2 uv_scale = safe_rcp(float2(length(textmat[0]), sign(det) * length(textmat[1])));
+  const float2 uv_scale = safe_rcp(float2(length(texmat[0]), sign(det) * length(texmat[1])));
 
   MutableAttributeAccessor attributes = curves.attributes_for_write();
   SpanAttributeWriter<float> uv_rotations = attributes.lookup_or_add_for_write_span<float>(
@@ -1605,7 +1605,7 @@ blender::float4x2 get_texture_matrix(const blender::bke::greasepencil::Drawing &
   using namespace blender;
 
   const float4x2 strokemat = get_local_to_stroke_matrix(drawing, curve_i);
-  const float3x2 textmat = get_stroke_to_texture_matrix(drawing.strokes(), curve_i);
+  const float3x2 texmat = get_stroke_to_texture_matrix(drawing.strokes(), curve_i);
 
   float4x3 strokemat4x3 = float4x3(strokemat);
 
@@ -1622,14 +1622,14 @@ blender::float4x2 get_texture_matrix(const blender::bke::greasepencil::Drawing &
   strokemat4x3[2][2] = 0.0f;
   strokemat4x3[3][2] = 1.0f;
 
-  const float4x2 textspace = textmat * strokemat4x3;
+  const float4x2 texspace = texmat * strokemat4x3;
 
-  return textspace;
+  return texspace;
 }
 
 void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
                         int curve_i,
-                        const blender::float4x2 textspace)
+                        const blender::float4x2 texspace)
 {
   using namespace blender;
   using namespace blender::math;
@@ -1656,7 +1656,7 @@ void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
   strokemat4x3[3][2] = 1.0;
 
   /*
-   * We want to solve for `textmat` in the equation: `textspace = textmat * strokemat4x3`
+   * We want to solve for `texmat` in the equation: `texspace = texmat * strokemat4x3`
    * Because these matrices are not square we can not use a standard inverse.
    *
    * Our problem has the form of: `X = A * Y`
@@ -1674,9 +1674,9 @@ void set_texture_matrix(blender::bke::greasepencil::Drawing &drawing,
   const double3x4 transpose_strokemat = transpose(strokemat4x3);
   const double3x4 right_inverse = transpose_strokemat * invert(strokemat4x3 * transpose_strokemat);
 
-  const float3x2 textmat = float3x2(double4x2(textspace) * right_inverse);
+  const float3x2 texmat = float3x2(double4x2(texspace) * right_inverse);
 
-  set_stroke_to_texture_matrix(drawing.strokes_for_write(), curve_i, textmat);
+  set_stroke_to_texture_matrix(drawing.strokes_for_write(), curve_i, texmat);
 }
 
 void transfer_texture_matrices(const blender::bke::greasepencil::Drawing &src,
@@ -1684,8 +1684,8 @@ void transfer_texture_matrices(const blender::bke::greasepencil::Drawing &src,
                                const Span<int> dst_to_src_curve)
 {
   for (const int dst_curve_i : dst_to_src_curve.index_range()) {
-    const blender::float4x2 textspace = get_texture_matrix(src, dst_to_src_curve[dst_curve_i]);
-    set_texture_matrix(dst, dst_curve_i, textspace);
+    const blender::float4x2 texspace = get_texture_matrix(src, dst_to_src_curve[dst_curve_i]);
+    set_texture_matrix(dst, dst_curve_i, texspace);
   }
 }
 
@@ -1694,8 +1694,8 @@ void transfer_texture_matrices(const blender::bke::greasepencil::Drawing &src,
                                const blender::IndexMask &dst_to_src_curve)
 {
   dst_to_src_curve.foreach_index([&](const int64_t index, const int64_t pos) {
-    const blender::float4x2 textspace = get_texture_matrix(src, index);
-    set_texture_matrix(dst, pos, textspace);
+    const blender::float4x2 texspace = get_texture_matrix(src, index);
+    set_texture_matrix(dst, pos, texspace);
   });
 }
 
