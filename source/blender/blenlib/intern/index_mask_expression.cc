@@ -583,7 +583,7 @@ static int64_t union_index_mask_segments(const Span<IndexMaskSegment> segments, 
   std::sort(
       sorted_segments.begin(),
       sorted_segments.end(),
-      [](const IndexMaskSegment a, const IndexMaskSegment b) { return a.size() < b.size(); });
+      [](const IndexMaskSegment &a, const IndexMaskSegment &b) { return a.size() < b.size(); });
 
   std::array<int16_t, max_segment_size> tmp_indices;
   int16_t *buffer_a = r_values;
@@ -598,7 +598,7 @@ static int64_t union_index_mask_segments(const Span<IndexMaskSegment> segments, 
     /* Initial union. */
     const IndexMaskSegment a = sorted_segments[0];
     const IndexMaskSegment b = sorted_segments[1];
-    int16_t *dst = buffer_a; /* TODO: check */
+    int16_t *dst = buffer_a;
     count = std::set_union(a.begin(), a.end(), b.begin(), b.end(), dst) - dst;
   }
 
@@ -607,6 +607,52 @@ static int64_t union_index_mask_segments(const Span<IndexMaskSegment> segments, 
     const IndexMaskSegment b = sorted_segments[segment_i];
     int16_t *dst = buffer_b;
     count = std::set_union(a, a + count, b.begin(), b.end(), dst) - dst;
+    std::swap(buffer_a, buffer_b);
+  }
+  return count;
+}
+
+static int64_t intersect_index_mask_segments(const Span<IndexMaskSegment> segments,
+                                             int16_t *r_values)
+{
+  if (segments.is_empty()) {
+    return 0;
+  }
+  if (segments.size() == 1) {
+    const IndexMaskSegment segment = segments[0];
+    std::copy(segment.begin(), segment.end(), r_values);
+    return segment.size();
+  }
+  if (segments.size() == 2) {
+    const IndexMaskSegment a = segments[0];
+    const IndexMaskSegment b = segments[1];
+    return std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), r_values) - r_values;
+  }
+
+  Vector<IndexMaskSegment> sorted_segments(segments);
+  std::sort(
+      sorted_segments.begin(),
+      sorted_segments.end(),
+      [](const IndexMaskSegment &a, const IndexMaskSegment &b) { return a.size() < b.size(); });
+
+  std::array<int16_t, max_segment_size> tmp_indices;
+  int16_t *buffer_a = r_values;
+  int16_t *buffer_b = tmp_indices.data();
+
+  int64_t count = 0;
+  {
+    /* Initial intersection. */
+    const IndexMaskSegment a = sorted_segments[0];
+    const IndexMaskSegment b = sorted_segments[1];
+    int16_t *dst = buffer_a;
+    count = std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), dst) - dst;
+  }
+
+  for (const int64_t segment_i : sorted_segments.index_range().drop_front(2)) {
+    const int16_t *a = buffer_a;
+    const IndexMaskSegment b = sorted_segments[segment_i];
+    int16_t *dst = buffer_b;
+    count = std::set_intersection(a, a + count, b.begin(), b.end(), dst) - dst;
     std::swap(buffer_a, buffer_b);
   }
   return count;
@@ -636,7 +682,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
       }
       case Expr::Type::Union: {
         const auto &expr = expression->as_union();
-        Array<IndexMaskSegment> segments_to_union(expr.terms.size());
+        Array<IndexMaskSegment> term_segments(expr.terms.size());
         int64_t result_size_upper_bound = 0;
         bool used_short_circuit = false;
         for (const int64_t term_i : expr.terms.index_range()) {
@@ -648,19 +694,41 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
             break;
           }
           result_size_upper_bound += term_segment.size();
-          segments_to_union[term_i] = IndexMaskSegment(term_segment.offset() - bound_min,
-                                                       term_segment.base_span());
+          term_segments[term_i] = IndexMaskSegment(term_segment.offset() - bound_min,
+                                                   term_segment.base_span());
         }
         if (used_short_circuit) {
           break;
         }
         result_size_upper_bound = std::min(result_size_upper_bound, bounds.size());
         int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
-        const int64_t union_size = union_index_mask_segments(segments_to_union, dst);
-        results[expression->index] = IndexMaskSegment(bound_min, {dst, union_size});
+        const int64_t result_size = union_index_mask_segments(term_segments, dst);
+        results[expression->index] = IndexMaskSegment(bound_min, {dst, result_size});
         break;
       }
       case Expr::Type::Intersection: {
+        const auto &expr = expression->as_intersection();
+        Array<IndexMaskSegment> term_segments(expr.terms.size());
+        int64_t result_size_upper_bound = bounds.size();
+        bool used_short_circuit = false;
+        for (const int64_t term_i : expr.terms.index_range()) {
+          const Expr &term = *expr.terms[term_i];
+          const IndexMaskSegment term_segment = results[term.index];
+          if (term_segment.is_empty()) {
+            results[expression->index] = {};
+            used_short_circuit = true;
+            break;
+          }
+          result_size_upper_bound = std::min(result_size_upper_bound, term_segment.size());
+          term_segments[term_i] = IndexMaskSegment(term_segment.offset() - bound_min,
+                                                   term_segment.base_span());
+        }
+        if (used_short_circuit) {
+          break;
+        }
+        int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
+        const int64_t result_size = intersect_index_mask_segments(term_segments, dst);
+        results[expression->index] = IndexMaskSegment(bound_min, {dst, result_size});
         break;
       }
       case Expr::Type::Difference: {

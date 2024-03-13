@@ -43,6 +43,21 @@ TEST(index_mask_expression, UnionMulti)
   EXPECT_EQ(union_mask, IndexMask::from_initializers({0, 3, 4, 5, 6, 7, 8, 9, 10, 12}, memory));
 }
 
+TEST(index_mask_expression, IntersectMulti)
+{
+  IndexMaskMemory memory;
+  const IndexMask mask_a = IndexMask::from_initializers({3, 5, 6, 8, 9}, memory);
+  const IndexMask mask_b = IndexMask::from_initializers({2, 5, 6, 10}, memory);
+  const IndexMask mask_c = IndexMask::from_initializers({4, 5, 6}, memory);
+  const IndexMask mask_d = IndexMask::from_initializers({1, 5, 10}, memory);
+
+  ExprBuilder builder;
+  const Expr &expr = builder.intersect({&mask_a, &mask_b, &mask_c, &mask_d});
+  const IndexMask intersect_mask = evaluate_expression(expr, memory);
+
+  EXPECT_EQ(intersect_mask, IndexMask::from_initializers({5}, memory));
+}
+
 TEST(index_mask_expression, Intersection)
 {
   IndexMaskMemory memory;

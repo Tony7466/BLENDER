@@ -86,12 +86,19 @@ class ExprBuilder {
 
   const IntersectionExpr &intersect(const Term &a, const Term &b)
   {
-    const Expr &expr_a = this->term_to_expr(a);
-    const Expr &expr_b = this->term_to_expr(b);
+    return this->intersect({a, b});
+  }
+
+  const IntersectionExpr &intersect(const Span<Term> terms)
+  {
+    Vector<const Expr *> term_expressions;
+    for (const Term &term : terms) {
+      term_expressions.append(&this->term_to_expr(term));
+    }
     IntersectionExpr &expr = scope_.construct<IntersectionExpr>();
     expr.type = Expr::Type::Intersection;
-    expr.index = expr_count_++;
-    expr.terms.extend({&expr_a, &expr_b});
+    expr.index += expr_count_++;
+    expr.terms = std::move(term_expressions);
     return expr;
   }
 
