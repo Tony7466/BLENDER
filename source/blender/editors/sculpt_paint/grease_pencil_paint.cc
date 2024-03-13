@@ -614,6 +614,10 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
 
   const int def_nr = BKE_object_defgroup_active_index_get(object) - 1;
 
+  if (def_nr == -1) {
+    return;
+  }
+
   const bDeformGroup *defgroup = static_cast<const bDeformGroup *>(
       BLI_findlink(BKE_object_defgroup_list(object), def_nr));
 
