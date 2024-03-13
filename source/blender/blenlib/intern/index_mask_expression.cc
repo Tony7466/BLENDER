@@ -47,17 +47,17 @@ struct CoarseResult {
   Vector<CoarseSegment> segments;
 };
 
-struct Boundary {
+struct CourseBoundary {
   int64_t index;
   bool is_begin;
   const CoarseSegment *segment;
 };
 
-static void sort_boundaries(MutableSpan<Boundary> boundaries)
+static void sort_boundaries(MutableSpan<CourseBoundary> boundaries)
 {
-  std::sort(boundaries.begin(), boundaries.end(), [](const Boundary &a, const Boundary &b) {
-    return a.index < b.index;
-  });
+  std::sort(boundaries.begin(),
+            boundaries.end(),
+            [](const CourseBoundary &a, const CourseBoundary &b) { return a.index < b.index; });
 }
 
 static CoarseSegment &evaluate_coarse_make_full_segment(CoarseSegment *prev_segment,
@@ -119,7 +119,7 @@ static CoarseSegment &evaluate_coarse_make_copy_segment(CoarseSegment *prev_segm
   return result.segments.last();
 }
 
-BLI_NOINLINE static void evaluate_coarse_union(const Span<Boundary> boundaries,
+BLI_NOINLINE static void evaluate_coarse_union(const Span<CourseBoundary> boundaries,
                                                CoarseResult &r_result)
 {
   if (boundaries.is_empty()) {
@@ -131,7 +131,7 @@ BLI_NOINLINE static void evaluate_coarse_union(const Span<Boundary> boundaries,
   Vector<const CoarseSegment *, 16> active_segments;
   int64_t prev_boundary_index = boundaries[0].index;
 
-  for (const Boundary &boundary : boundaries) {
+  for (const CourseBoundary &boundary : boundaries) {
     if (prev_boundary_index < boundary.index) {
       bool has_full = false;
       bool has_unknown = false;
@@ -181,7 +181,7 @@ BLI_NOINLINE static void evaluate_coarse_union(const Span<Boundary> boundaries,
   }
 }
 
-BLI_NOINLINE static void evaluate_coarse_intersection(const Span<Boundary> boundaries,
+BLI_NOINLINE static void evaluate_coarse_intersection(const Span<CourseBoundary> boundaries,
                                                       const int64_t terms_num,
                                                       CoarseResult &r_result)
 {
@@ -194,7 +194,7 @@ BLI_NOINLINE static void evaluate_coarse_intersection(const Span<Boundary> bound
   Vector<const CoarseSegment *, 16> active_segments;
   int64_t prev_boundary_index = boundaries[0].index;
 
-  for (const Boundary &boundary : boundaries) {
+  for (const CourseBoundary &boundary : boundaries) {
     if (prev_boundary_index < boundary.index) {
       /* Only if one segment of each term is active, it's possible that the output contains
        * anything. */
@@ -253,7 +253,7 @@ BLI_NOINLINE static void evaluate_coarse_intersection(const Span<Boundary> bound
 
 /* TODO: Use struct instead of pair. */
 BLI_NOINLINE static void evaluate_coarse_difference(
-    const Span<std::pair<Boundary, bool>> boundaries, CoarseResult &r_result)
+    const Span<std::pair<CourseBoundary, bool>> boundaries, CoarseResult &r_result)
 {
   if (boundaries.is_empty()) {
     return;
@@ -265,7 +265,7 @@ BLI_NOINLINE static void evaluate_coarse_difference(
   Vector<const CoarseSegment *, 16> active_subtract_segments;
   int64_t prev_boundary_index = boundaries[0].first.index;
 
-  for (const std::pair<Boundary, bool> &boundary : boundaries) {
+  for (const std::pair<CourseBoundary, bool> &boundary : boundaries) {
     if (prev_boundary_index < boundary.first.index) {
       BLI_assert(active_main_segments.size() <= 1);
       if (active_main_segments.size() == 1) {
@@ -395,7 +395,7 @@ BLI_NOINLINE static CoarseResult evaluate_coarse(
       }
       case Expr::Type::Union: {
         const UnionExpr &expr = expression->as_union();
-        Vector<Boundary, 16> boundaries;
+        Vector<CourseBoundary, 16> boundaries;
         for (const Expr *term : expr.terms) {
           const CoarseResult &term_result = *expression_results[term->index];
           for (const CoarseSegment &segment : term_result.segments) {
@@ -409,7 +409,7 @@ BLI_NOINLINE static CoarseResult evaluate_coarse(
       }
       case Expr::Type::Intersection: {
         const IntersectionExpr &expr = expression->as_intersection();
-        Vector<Boundary, 16> boundaries;
+        Vector<CourseBoundary, 16> boundaries;
         for (const Expr *term : expr.terms) {
           const CoarseResult &term_result = *expression_results[term->index];
           for (const CoarseSegment &segment : term_result.segments) {
@@ -423,7 +423,7 @@ BLI_NOINLINE static CoarseResult evaluate_coarse(
       }
       case Expr::Type::Difference: {
         const DifferenceExpr &expr = expression->as_difference();
-        Vector<std::pair<Boundary, bool>, 16> boundaries;
+        Vector<std::pair<CourseBoundary, bool>, 16> boundaries;
         const CoarseResult &main_term_result = *expression_results[expr.terms[0]->index];
         for (const CoarseSegment &segment : main_term_result.segments) {
           boundaries.append({{segment.bounds.first(), true, &segment}, true});
@@ -438,7 +438,8 @@ BLI_NOINLINE static CoarseResult evaluate_coarse(
         }
         std::sort(boundaries.begin(),
                   boundaries.end(),
-                  [](const std::pair<Boundary, bool> &a, const std::pair<Boundary, bool> &b) {
+                  [](const std::pair<CourseBoundary, bool> &a,
+                     const std::pair<CourseBoundary, bool> &b) {
                     return a.first.index < b.first.index;
                   });
         evaluate_coarse_difference(boundaries, expr_result);
