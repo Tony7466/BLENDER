@@ -44,7 +44,7 @@ class DATA_PT_empty(DataButtonsPanel, Panel):
             col = layout.column(heading="Show In", align=True)
             col.prop(ob, "show_empty_image_orthographic", text="Orthographic")
             col.prop(ob, "show_empty_image_perspective", text="Perspective")
-            col.prop(ob, "show_empty_image_only_axis_aligned", text="Only Axis Aligned")
+            col.prop(ob, "show_empty_image_only_axis_aligned", text="only axis aligned")
 
             col = layout.column(align=False, heading="Opacity")
             col.use_property_decorate = False
