@@ -39,6 +39,7 @@ class GREASE_PENCIL_UL_masks(UIList):
             layout.alignment = 'CENTER'
             layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
 
+
 class DATA_PT_context_grease_pencil(DataButtonsPanel, Panel):
     bl_label = ""
     bl_options = {'HIDE_HEADER'}
@@ -134,7 +135,7 @@ class DATA_PT_grease_pencil_layer_masks(LayerDataButtonsPanel, Panel):
 
         if not layer:
             return
-        
+
         rows = 4
         row = layout.row()
         col = row.column()
