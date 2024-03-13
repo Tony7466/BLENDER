@@ -1,2 +1,3 @@
 Referenced by issue blender/blender-addons#105213, Blender does not export to fbx file
 Referenced by issue blender/blender-addons#105224, Cannot export by FBX
+Referenced by pull request #119416, Fix #119384: Outliner crash extend mode toggle on objects sharing data
