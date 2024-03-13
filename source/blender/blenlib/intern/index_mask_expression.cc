@@ -2,6 +2,15 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+/**
+ * Expression evaluation has multiple phases:
+ * 1. A coarse evaluation that tries to find segments which can be trivially evaluated. For
+ *    example, taking the union of two overlapping ranges can be done in O(1) time.
+ * 2. For all segments which can't be fully evaluated using coarse evaluation, an exact evaluation
+ *    is done. This uses either an index-based or bit-based approach depending on a heuristic.
+ * 3. Construct the final index mask based on the resulting intermediate segments.
+ */
+
 #include <fmt/format.h>
 #include <iostream>
 #include <mutex>
