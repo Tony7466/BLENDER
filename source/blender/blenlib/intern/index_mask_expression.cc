@@ -71,17 +71,17 @@ enum class ExactEvalMode {
   Bits,
 };
 
-static void sort_boundaries(MutableSpan<CourseBoundary> boundaries)
+static void sort_course_boundaries(MutableSpan<CourseBoundary> boundaries)
 {
   std::sort(boundaries.begin(),
             boundaries.end(),
             [](const CourseBoundary &a, const CourseBoundary &b) { return a.index < b.index; });
 }
 
-static CoarseSegment &evaluate_coarse_make_full_segment(CoarseSegment *prev_segment,
-                                                        const int64_t prev_boundary_index,
-                                                        const int64_t current_boundary_index,
-                                                        CoarseResult &result)
+static CoarseSegment &make_coarse_segment__full(CoarseSegment *prev_segment,
+                                                const int64_t prev_boundary_index,
+                                                const int64_t current_boundary_index,
+                                                CoarseResult &result)
 {
   if (prev_segment && prev_segment->type == CoarseSegment::Type::Full &&
       prev_segment->bounds.one_after_last() == prev_boundary_index)
@@ -97,10 +97,10 @@ static CoarseSegment &evaluate_coarse_make_full_segment(CoarseSegment *prev_segm
   return result.segments.last();
 }
 
-static CoarseSegment &evaluate_coarse_make_unknown_segment(CoarseSegment *prev_segment,
-                                                           const int64_t prev_boundary_index,
-                                                           const int64_t current_boundary_index,
-                                                           CoarseResult &result)
+static CoarseSegment &make_coarse_segment__unknown(CoarseSegment *prev_segment,
+                                                   const int64_t prev_boundary_index,
+                                                   const int64_t current_boundary_index,
+                                                   CoarseResult &result)
 {
   if (prev_segment && prev_segment->type == CoarseSegment::Type::Unknown &&
       prev_segment->bounds.one_after_last() == prev_boundary_index)
@@ -116,11 +116,11 @@ static CoarseSegment &evaluate_coarse_make_unknown_segment(CoarseSegment *prev_s
   return result.segments.last();
 }
 
-static CoarseSegment &evaluate_coarse_make_copy_segment(CoarseSegment *prev_segment,
-                                                        const int64_t prev_boundary_index,
-                                                        const int64_t current_boundary_index,
-                                                        const IndexMask &copy_from_mask,
-                                                        CoarseResult &result)
+static CoarseSegment &make_coarse_segment__copy(CoarseSegment *prev_segment,
+                                                const int64_t prev_boundary_index,
+                                                const int64_t current_boundary_index,
+                                                const IndexMask &copy_from_mask,
+                                                CoarseResult &result)
 {
   if (prev_segment && prev_segment->type == CoarseSegment::Type::Copy &&
       prev_segment->bounds.one_after_last() == prev_boundary_index &&
@@ -175,15 +175,15 @@ BLI_NOINLINE static void evaluate_coarse_union(const Span<CourseBoundary> bounda
         }
       }
       if (has_full) {
-        prev_segment = &evaluate_coarse_make_full_segment(
+        prev_segment = &make_coarse_segment__full(
             prev_segment, prev_boundary_index, boundary.index, result);
       }
       else if (has_unknown || !copy_from_mask_unique) {
-        prev_segment = &evaluate_coarse_make_unknown_segment(
+        prev_segment = &make_coarse_segment__unknown(
             prev_segment, prev_boundary_index, boundary.index, result);
       }
       else if (copy_from_mask != nullptr && copy_from_mask_unique) {
-        prev_segment = &evaluate_coarse_make_copy_segment(
+        prev_segment = &make_coarse_segment__copy(
             prev_segment, prev_boundary_index, boundary.index, *copy_from_mask, result);
       }
 
@@ -244,15 +244,15 @@ BLI_NOINLINE static void evaluate_coarse_intersection(const Span<CourseBoundary>
         }
         BLI_assert(full_count + unknown_count + copy_count == terms_num);
         if (full_count == terms_num) {
-          prev_segment = &evaluate_coarse_make_full_segment(
+          prev_segment = &make_coarse_segment__full(
               prev_segment, prev_boundary_index, boundary.index, result);
         }
         else if (unknown_count > 0 || copy_count < terms_num || !copy_from_mask_unique) {
-          prev_segment = &evaluate_coarse_make_unknown_segment(
+          prev_segment = &make_coarse_segment__unknown(
               prev_segment, prev_boundary_index, boundary.index, result);
         }
         else if (copy_count == terms_num && copy_from_mask_unique) {
-          prev_segment = &evaluate_coarse_make_copy_segment(
+          prev_segment = &make_coarse_segment__copy(
               prev_segment, prev_boundary_index, boundary.index, *copy_from_mask, result);
         }
       }
@@ -318,28 +318,28 @@ BLI_NOINLINE static void evaluate_coarse_difference(
         else {
           switch (active_main_segment.type) {
             case CoarseSegment::Type::Unknown: {
-              prev_segment = &evaluate_coarse_make_unknown_segment(
+              prev_segment = &make_coarse_segment__unknown(
                   prev_segment, prev_boundary_index, boundary.first.index, result);
               break;
             }
             case CoarseSegment::Type::Full: {
               if (active_subtract_segments.is_empty()) {
-                prev_segment = &evaluate_coarse_make_full_segment(
+                prev_segment = &make_coarse_segment__full(
                     prev_segment, prev_boundary_index, boundary.first.index, result);
               }
               else {
-                prev_segment = &evaluate_coarse_make_unknown_segment(
+                prev_segment = &make_coarse_segment__unknown(
                     prev_segment, prev_boundary_index, boundary.first.index, result);
               }
               break;
             }
             case CoarseSegment::Type::Copy: {
               if (active_subtract_segments.is_empty()) {
-                prev_segment = &evaluate_coarse_make_copy_segment(prev_segment,
-                                                                  prev_boundary_index,
-                                                                  boundary.first.index,
-                                                                  *active_main_segment.mask,
-                                                                  result);
+                prev_segment = &make_coarse_segment__copy(prev_segment,
+                                                          prev_boundary_index,
+                                                          boundary.first.index,
+                                                          *active_main_segment.mask,
+                                                          result);
               }
               else if (subtract_copy_from_mask == active_main_segment.mask &&
                        subtract_copy_from_mask_unique)
@@ -347,7 +347,7 @@ BLI_NOINLINE static void evaluate_coarse_difference(
                 /* Do nothing. */
               }
               else {
-                prev_segment = &evaluate_coarse_make_unknown_segment(
+                prev_segment = &make_coarse_segment__unknown(
                     prev_segment, prev_boundary_index, boundary.first.index, result);
               }
               break;
@@ -421,7 +421,7 @@ BLI_NOINLINE static CoarseResult evaluate_coarse(
             boundaries.append({segment.bounds.one_after_last(), false, &segment});
           }
         }
-        sort_boundaries(boundaries);
+        sort_course_boundaries(boundaries);
         evaluate_coarse_union(boundaries, expr_result);
         break;
       }
@@ -435,7 +435,7 @@ BLI_NOINLINE static CoarseResult evaluate_coarse(
             boundaries.append({segment.bounds.one_after_last(), false, &segment});
           }
         }
-        sort_boundaries(boundaries);
+        sort_course_boundaries(boundaries);
         evaluate_coarse_intersection(boundaries, expr.terms.size(), expr_result);
         break;
       }
