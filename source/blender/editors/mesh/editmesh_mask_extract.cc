@@ -471,8 +471,8 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   Mesh *new_mesh = (Mesh *)BKE_id_copy(bmain, &mesh->id);
 
-  /* Fix for https://projects.blender.org/blender/blender/issues/87243   */
-  /*   Undo crashes when new object is created in the middle of a sculpt */
+  /* Fix for #87243 */
+  /* Undo crashes when new object is created in the middle of a sculpt */
   if (ob->mode == OB_MODE_SCULPT && !create_new_object) {
     sculpt_paint::undo::geometry_begin(ob, op);
   }
