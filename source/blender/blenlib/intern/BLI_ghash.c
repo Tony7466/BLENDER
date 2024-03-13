@@ -24,8 +24,7 @@
 #define GHASH_INTERNAL_API
 #include "BLI_ghash.h" /* own include */
 
-/* keep last */
-#include "BLI_strict_flags.h"
+#include "BLI_strict_flags.h" /* Keep last. */
 
 /* -------------------------------------------------------------------- */
 /** \name Structs & Constants
@@ -58,8 +57,8 @@ BLI_STATIC_ASSERT(ARRAY_SIZE(hashsizes) == GHASH_MAX_SIZE, "Invalid 'hashsizes' 
  * about 25% - 30% quicker 'dynamic-topology' stroke drawing e.g.).
  * Min load #GHASH_LIMIT_SHRINK is a quarter of max load, to avoid resizing to quickly.
  */
-#define GHASH_LIMIT_GROW(_nbkt) (((_nbkt)*3) / 4)
-#define GHASH_LIMIT_SHRINK(_nbkt) (((_nbkt)*3) / 16)
+#define GHASH_LIMIT_GROW(_nbkt) (((_nbkt) * 3) / 4)
+#define GHASH_LIMIT_SHRINK(_nbkt) (((_nbkt) * 3) / 16)
 
 /* WARNING! Keep in sync with ugly _gh_Entry in header!!! */
 typedef struct Entry {

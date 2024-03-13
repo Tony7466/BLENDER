@@ -8,7 +8,7 @@
  * \ingroup bke
  */
 
-#include "BLI_bitmap.h"
+#include "BLI_bit_vector.hh"
 #include "BLI_span.hh"
 #include "BLI_sys_types.h" /* for bool */
 
@@ -18,7 +18,6 @@ extern "C" {
 
 struct AnimData;
 struct BlendDataReader;
-struct BlendLibReader;
 struct BlendWriter;
 struct Depsgraph;
 struct FCurve;
@@ -48,9 +47,9 @@ typedef struct AnimationEvalContext {
 } AnimationEvalContext;
 
 AnimationEvalContext BKE_animsys_eval_context_construct(struct Depsgraph *depsgraph,
-                                                        float eval_time);
+                                                        float eval_time) ATTR_WARN_UNUSED_RESULT;
 AnimationEvalContext BKE_animsys_eval_context_construct_at(
-    const AnimationEvalContext *anim_eval_context, float eval_time);
+    const AnimationEvalContext *anim_eval_context, float eval_time) ATTR_WARN_UNUSED_RESULT;
 
 /* ************************************* */
 /* KeyingSets API */
@@ -88,7 +87,7 @@ struct KS_Path *BKE_keyingset_find_path(struct KeyingSet *ks,
 /* Copy all KeyingSets in the given list */
 void BKE_keyingsets_copy(struct ListBase *newlist, const struct ListBase *list);
 
-/** Process the ID pointers inside a scene's keyingsets, in see `BKE_lib_query.h` for details. */
+/** Process the ID pointers inside a scene's keyingsets, in see `BKE_lib_query.hh` for details. */
 void BKE_keyingsets_foreach_id(struct LibraryForeachIDData *data,
                                const struct ListBase *keyingsets);
 
@@ -265,7 +264,7 @@ void BKE_animsys_nla_remap_keyframe_values(struct NlaKeyframingContext *context,
                                            int index,
                                            const struct AnimationEvalContext *anim_eval_context,
                                            bool *r_force_all,
-                                           BLI_bitmap *r_successful_remaps);
+                                           blender::BitVector<> &r_successful_remaps);
 
 /**
  * Free all cached contexts from the list.

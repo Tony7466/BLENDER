@@ -28,9 +28,9 @@
 #include "BKE_brush.hh"
 #include "BKE_context.hh"
 #include "BKE_idprop.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
-#include "BKE_main.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_main.hh"
 #include "BKE_paint.hh"
 #include "BKE_workspace.h"
 
@@ -39,7 +39,7 @@
 
 #include "WM_api.hh"
 #include "WM_message.hh"
-#include "WM_toolsystem.h" /* own include */
+#include "WM_toolsystem.hh" /* Own include. */
 #include "WM_types.hh"
 
 static void toolsystem_reinit_with_toolref(bContext *C, WorkSpace * /*workspace*/, bToolRef *tref);
@@ -145,7 +145,7 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
       if ((gzgt->flag & WM_GIZMOGROUPTYPE_TOOL_INIT) == 0) {
         if (!WM_gizmo_group_type_ensure_ptr(gzgt)) {
           /* Even if the group-type was has been linked, it's possible the space types
-           * were not previously using it. (happens with multiple windows.) */
+           * were not previously using it. (happens with multiple windows). */
           wmGizmoMapType *gzmap_type = WM_gizmomaptype_ensure(&gzgt->gzmap_params);
           WM_gizmoconfig_update_tag_group_type_init(gzmap_type, gzgt);
         }
@@ -175,8 +175,8 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
       }
     }
     else {
-      const ePaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
-      BLI_assert(paint_mode != PAINT_MODE_INVALID);
+      const PaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
+      BLI_assert(paint_mode != PaintMode::Invalid);
       const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
       BLI_assert(items != nullptr);
 
@@ -194,18 +194,17 @@ static void toolsystem_ref_link(bContext *C, WorkSpace *workspace, bToolRef *tre
               /* Could make into a function. */
               brush = (Brush *)BKE_libblock_find_name(bmain, ID_BR, items[i].name);
               if (brush && slot_index == BKE_brush_tool_get(brush, paint)) {
-                /* pass */
+                /* Pass. */
               }
               else {
                 brush = BKE_brush_add(bmain, items[i].name, eObjectMode(paint->runtime.ob_mode));
 
                 BKE_brush_tool_set(brush, paint, slot_index);
 
-                if (paint_mode == PAINT_MODE_SCULPT) {
+                if (paint_mode == PaintMode::Sculpt) {
                   BKE_brush_sculpt_reset(brush);
                 }
               }
-              BKE_paint_brush_set(paint, brush);
             }
             BKE_paint_brush_set(paint, brush);
           }
@@ -220,7 +219,7 @@ static void toolsystem_refresh_ref(bContext *C, WorkSpace *workspace, bToolRef *
   if (tref->runtime == nullptr) {
     return;
   }
-  /* currently same operation. */
+  /* Currently same operation. */
   toolsystem_ref_link(C, workspace, tref);
 }
 void WM_toolsystem_refresh(bContext *C, WorkSpace *workspace, const bToolKey *tkey)
@@ -371,7 +370,7 @@ void WM_toolsystem_ref_sync_from_context(Main *bmain, WorkSpace *workspace, bToo
     BKE_view_layer_synced_ensure(scene, view_layer);
     const Object *ob = BKE_view_layer_active_object_get(view_layer);
     if (ob == nullptr) {
-      /* pass */
+      /* Pass. */
     }
     if ((tref->space_type == SPACE_VIEW3D) && (tref->mode == CTX_MODE_PARTICLE)) {
       if (ob->mode & OB_MODE_PARTICLE_EDIT) {
@@ -385,7 +384,7 @@ void WM_toolsystem_ref_sync_from_context(Main *bmain, WorkSpace *workspace, bToo
       }
     }
     else {
-      const ePaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
+      const PaintMode paint_mode = BKE_paintmode_get_from_tool(tref);
       Paint *paint = BKE_paint_get_active_from_paintmode(scene, paint_mode);
       const EnumPropertyItem *items = BKE_paint_get_tool_enum_from_paintmode(paint_mode);
       if (paint && paint->brush && items) {
@@ -608,7 +607,7 @@ void WM_toolsystem_refresh_screen_window(wmWindow *win)
 
 void WM_toolsystem_refresh_screen_all(Main *bmain)
 {
-  /* Update all ScrArea's tools */
+  /* Update all ScrArea's tools. */
   for (wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first); wm;
        wm = static_cast<wmWindowManager *>(wm->id.next))
   {
@@ -622,7 +621,7 @@ static void toolsystem_refresh_screen_from_active_tool(Main *bmain,
                                                        WorkSpace *workspace,
                                                        bToolRef *tref)
 {
-  /* Update all ScrArea's tools */
+  /* Update all ScrArea's tools. */
   for (wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first); wm;
        wm = static_cast<wmWindowManager *>(wm->id.next))
   {
@@ -728,7 +727,7 @@ static const char *toolsystem_default_tool(const bToolKey *tkey)
           return "builtin_brush.Draw";
         case CTX_MODE_SCULPT_CURVES:
           return "builtin_brush.Density";
-          /* end temporary hack. */
+          /* End temporary hack. */
 
         case CTX_MODE_PARTICLE:
           return "builtin_brush.Comb";

@@ -28,7 +28,6 @@ struct Speaker;
 struct bAction;
 
 struct BlendDataReader;
-struct BlendLibReader;
 struct BlendWriter;
 struct PointerRNA;
 struct PropertyRNA;
@@ -63,7 +62,7 @@ void BKE_nla_tracks_free(ListBase *tracks, bool do_id_user);
  *
  * \param use_same_action: When true, the existing action is used (instead of being duplicated)
  * \param flag: Control ID pointers management, see LIB_ID_CREATE_.../LIB_ID_COPY_...
- * flags in BKE_lib_id.h
+ * flags in BKE_lib_id.hh
  */
 struct NlaStrip *BKE_nlastrip_copy(struct Main *bmain,
                                    struct NlaStrip *strip,
@@ -72,7 +71,7 @@ struct NlaStrip *BKE_nlastrip_copy(struct Main *bmain,
 /**
  * Copy a single NLA Track.
  * \param flag: Control ID pointers management, see LIB_ID_CREATE_.../LIB_ID_COPY_...
- * flags in BKE_lib_id.h
+ * flags in BKE_lib_id.hh
  */
 struct NlaTrack *BKE_nlatrack_copy(struct Main *bmain,
                                    struct NlaTrack *nlt,
@@ -81,7 +80,7 @@ struct NlaTrack *BKE_nlatrack_copy(struct Main *bmain,
 /**
  * Copy all NLA data.
  * \param flag: Control ID pointers management, see LIB_ID_CREATE_.../LIB_ID_COPY_...
- * flags in BKE_lib_id.h
+ * flags in BKE_lib_id.hh
  */
 void BKE_nla_tracks_copy(struct Main *bmain, ListBase *dst, const ListBase *src, int flag);
 
@@ -432,11 +431,11 @@ void BKE_nlastrip_validate_name(struct AnimData *adt, struct NlaStrip *strip);
 /* ............ */
 
 /**
- * Check if the given NLA-Track has any strips with own F-Curves.
+ * Check if the given NLA-Track has any strips with their own F-Curves.
  */
 bool BKE_nlatrack_has_animated_strips(struct NlaTrack *nlt);
 /**
- * Check if given NLA-Tracks have any strips with own F-Curves.
+ * Check if given NLA-Tracks have any strips with their own F-Curves.
  */
 bool BKE_nlatracks_have_animated_strips(ListBase *tracks);
 /**

@@ -40,6 +40,7 @@ set(SRC
 	src/devices/DefaultSynchronizer.cpp
 	src/devices/DeviceManager.cpp
 	src/devices/NULLDevice.cpp
+	src/devices/OpenCloseDevice.cpp
 	src/devices/ReadDevice.cpp
 	src/devices/SoftwareDevice.cpp
 	src/devices/ThreadedDevice.cpp
@@ -108,7 +109,9 @@ set(SRC
 	src/respec/ConverterFunctions.cpp
 	src/respec/ConverterReader.cpp
 	src/respec/JOSResample.cpp
-	src/respec/JOSResampleReaderCoeff.cpp
+	src/respec/JOSResampleReaderCoeffHigh.cpp
+	src/respec/JOSResampleReaderCoeffLow.cpp
+	src/respec/JOSResampleReaderCoeffMedium.cpp
 	src/respec/JOSResampleReader.cpp
 	src/respec/LinearResample.cpp
 	src/respec/LinearResampleReader.cpp
@@ -148,6 +151,7 @@ set(PUBLIC_HDR
 	include/devices/IHandle.h
 	include/devices/ISynchronizer.h
 	include/devices/NULLDevice.h
+	include/devices/OpenCloseDevice.h
 	include/devices/ReadDevice.h
 	include/devices/SoftwareDevice.h
 	include/devices/ThreadedDevice.h

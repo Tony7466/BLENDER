@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 4.1.0 Alpha (b'd293f72ab6e7')\n"
+"Project-Id-Version: Blender 4.1.0 Beta (b'4b7cc5b6608a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-11-27 10:28:34\n"
+"POT-Creation-Date: 2020-01-01 00:00+0000\n"
 "PO-Revision-Date: 2008-03-23 12:20+0200\n"
 "Last-Translator: Kostas Karvouniaris <neogen556@yahoo.gr>\n"
 "Language-Team: \n"
@@ -233,10 +233,6 @@ msgid "Camera"
 msgstr "Κάμερα"
 
 
-msgid "Track"
-msgstr "Ανίχνευση"
-
-
 msgid "Bone"
 msgstr "Οστό"
 
@@ -255,10 +251,6 @@ msgstr "Μπροστά"
 
 msgid "Back"
 msgstr "Πίσω"
-
-
-msgid "Bezier"
-msgstr "Bezier"
 
 
 msgid "Surface"
@@ -581,6 +573,10 @@ msgid "Keyboard"
 msgstr "Πληκτρολόγιο"
 
 
+msgid "Track"
+msgstr "Ανίχνευση"
+
+
 msgid "Snap"
 msgstr "Προσκόλληση"
 
@@ -679,6 +675,10 @@ msgstr "Rotate"
 
 msgid "Nor"
 msgstr "Nor"
+
+
+msgid "Bake"
+msgstr "Φτιάξε"
 
 
 msgid "Linked"
@@ -884,10 +884,6 @@ msgid "Keep Original"
 msgstr "Διατήρηση Αρχικού"
 
 
-msgid "Bake"
-msgstr "Φτιάξε"
-
-
 msgctxt "Operator"
 msgid "Render"
 msgstr "Render"
@@ -991,10 +987,6 @@ msgid "The default directory to search for sounds"
 msgstr "Ο προκαθορισμένος φάκελος για αναζήτηση ήχων"
 
 
-msgid "The directory for storing temporary save files"
-msgstr "Ο προκαθορισμένος φάκελος για αποθήκευση προσωρινών αρχείων"
-
-
 msgid "The default directory to search for textures"
 msgstr "Ο προκαθορισμένος φάκελος για αναζήτηση υφών"
 
@@ -1021,10 +1013,6 @@ msgstr "Μετάβαση Γάμμα"
 
 msgid "Lens"
 msgstr "Φακός"
-
-
-msgid "Bezier U"
-msgstr "Bezier U"
 
 
 msgid "Stencil"

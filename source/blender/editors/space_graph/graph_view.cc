@@ -21,10 +21,9 @@
 #include "RNA_define.hh"
 
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_nla.h"
 
-#include "UI_interface.hh"
 #include "UI_view2d.hh"
 
 #include "ED_anim_api.hh"
@@ -131,7 +130,7 @@ void get_graph_keyframe_extents(bAnimContext *ac,
         *xmax += 0.0005f;
       }
       if ((ymin && ymax) && (fabsf(*ymax - *ymin) < 0.001f)) {
-        *ymax -= 0.0005f;
+        *ymin -= 0.0005f;
         *ymax += 0.0005f;
       }
     }

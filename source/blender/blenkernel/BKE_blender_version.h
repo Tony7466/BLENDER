@@ -21,7 +21,7 @@ extern "C" {
  */
 
 /** Blender major and minor version. */
-#define BLENDER_VERSION 401
+#define BLENDER_VERSION 402
 /** Blender patch version for bug-fix releases. */
 #define BLENDER_VERSION_PATCH 0
 /** Blender release cycle stage: alpha/beta/rc/release. */
@@ -35,7 +35,9 @@ extern "C" {
  * version. Older Blender versions will test this and cancel loading the file, showing a warning to
  * the user.
  *
- * See https://wiki.blender.org/wiki/Process/Compatibility_Handling for details. */
+ * See
+ * https://developer.blender.org/docs/handbook/guidelines/compatibility_handling_for_blend_files/
+ * for details. */
 #define BLENDER_FILE_MIN_VERSION 306
 #define BLENDER_FILE_MIN_SUBVERSION 13
 

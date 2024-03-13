@@ -4,7 +4,6 @@
 
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_instances.hh"
-#include "BKE_mesh_boolean_convert.hh"
 
 #include "DNA_mesh_types.h"
 #include "DNA_object_types.h"
@@ -14,6 +13,7 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
+#include "GEO_mesh_boolean.hh"
 #include "GEO_randomize.hh"
 
 #include "node_geometry_util.hh"
@@ -181,7 +181,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (attribute_outputs.intersecting_edges_id) {
     MutableAttributeAccessor attributes = result->attributes_for_write();
     SpanAttributeWriter<bool> selection = attributes.lookup_or_add_for_write_only_span<bool>(
-        attribute_outputs.intersecting_edges_id.get(), ATTR_DOMAIN_EDGE);
+        attribute_outputs.intersecting_edges_id.get(), AttrDomain::Edge);
 
     selection.span.fill(false);
     for (const int i : intersecting_edges) {

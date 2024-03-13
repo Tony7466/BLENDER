@@ -17,7 +17,6 @@
 #include "UI_resources.hh"
 
 #include "GPU_shader.h"
-#include "GPU_state.h"
 #include "GPU_texture.h"
 
 #include "COM_algorithm_symmetric_separable_blur.hh"
@@ -251,9 +250,8 @@ class BlurOperation : public NodeOperation {
       return true;
     }
 
-    /* Both Box and Gaussian filters are separable. The rest is not. */
+    /* Only Gaussian filters are separable. The rest is not. */
     switch (node_storage(bnode()).filtertype) {
-      case R_FILTER_BOX:
       case R_FILTER_GAUSS:
       case R_FILTER_FAST_GAUSS:
         return true;

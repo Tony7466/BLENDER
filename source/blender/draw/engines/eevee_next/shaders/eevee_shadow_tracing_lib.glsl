@@ -12,6 +12,8 @@
 #pragma BLENDER_REQUIRE(eevee_shadow_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_bxdf_sampling_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_view_lib.glsl)
+#pragma BLENDER_REQUIRE(draw_math_geom_lib.glsl)
 
 float shadow_read_depth_at_tilemap_uv(int tilemap_index, vec2 tilemap_uv)
 {
@@ -109,7 +111,7 @@ struct ShadowTracingSample {
 void shadow_map_trace_hit_check(inout ShadowMapTracingState state, ShadowTracingSample samp)
 {
   /* Skip empty tiles since they do not contain actual depth information.
-   * Not doing so would change the z gradient history.  */
+   * Not doing so would change the z gradient history. */
   if (samp.skip_sample) {
     return;
   }
@@ -310,12 +312,10 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
     direction = point_on_light_shape - lP;
     r_is_above_surface = dot(direction, lNg) > 0.0;
 
-#ifdef SSS_TRANSMITTANCE
+#ifdef SHADOW_SUBSURFACE
     if (!r_is_above_surface) {
-      float dir_len;
-      vec3 L = normalize_and_get_length(direction, dir_len);
       /* Skip the object volume. Do not push behind the light. */
-      float offset_len = saturate(thickness / dir_len);
+      float offset_len = saturate(thickness / length(direction));
       lP += direction * offset_len;
       direction *= 1.0 - offset_len;
     }
@@ -333,7 +333,13 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
     /* Disk rotated towards light vector. */
     vec3 right, up;
     make_orthonormal_basis(L, right, up);
-    random_2d *= light_sphere_disk_radius(light._radius, dist);
+    if (is_sphere_light(light.type)) {
+      /* FIXME(weizhen): this is not well-defined when `dist < light._radius`. */
+      random_2d *= light_sphere_disk_radius(light._radius, dist);
+    }
+    else {
+      random_2d *= light._radius;
+    }
 
     random_2d *= light.shadow_shape_scale_or_angle;
     vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
@@ -341,12 +347,10 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
     direction = point_on_light_shape - lP;
     r_is_above_surface = dot(direction, lNg) > 0.0;
 
-#ifdef SSS_TRANSMITTANCE
+#ifdef SHADOW_SUBSURFACE
     if (!r_is_above_surface) {
-      float dir_len;
-      vec3 L = normalize_and_get_length(direction, dir_len);
       /* Skip the object volume. Do not push behind the light. */
-      float offset_len = saturate(thickness / dir_len);
+      float offset_len = saturate(thickness / length(direction));
       lP += direction * offset_len;
       direction *= 1.0 - offset_len;
     }
@@ -404,6 +408,94 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 /** \name Shadow Evaluation
  * \{ */
 
+/* Compute the world space offset of the shading position required for
+ * stochastic percentage closer filtering of shadow-maps. */
+vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng)
+{
+  if (light.pcf_radius <= 0.001) {
+    /* Early return. */
+    return vec3(0.0);
+  }
+
+  vec3 L = light_vector_get(light, is_directional, P).L;
+  if (dot(L, Ng) < 0.001) {
+    /* Don't apply PCF to almost perpendicular,
+     * since we can't project the offset to the surface. */
+    return vec3(0.0);
+  }
+
+  ShadowSampleParams params;
+  if (is_directional) {
+    params = shadow_directional_sample_params_get(shadow_tilemaps_tx, light, P);
+  }
+  else {
+    params = shadow_punctual_sample_params_get(light, P);
+  }
+  ShadowTileData tile = shadow_tile_data_get(shadow_tilemaps_tx, params);
+  if (!tile.is_allocated) {
+    return vec3(0.0);
+  }
+
+  /* Compute the shadow-map tangent-bitangent matrix. */
+
+  float uv_offset = 1.0 / float(SHADOW_MAP_MAX_RES);
+  vec3 TP, BP;
+  if (is_directional) {
+    TP = shadow_directional_reconstruct_position(
+        params, light, params.uv + vec3(uv_offset, 0.0, 0.0));
+    BP = shadow_directional_reconstruct_position(
+        params, light, params.uv + vec3(0.0, uv_offset, 0.0));
+  }
+  else {
+    mat4 wininv = shadow_punctual_projection_perspective_inverse(light);
+    TP = shadow_punctual_reconstruct_position(
+        params, wininv, light, params.uv + vec3(uv_offset, 0.0, 0.0));
+    BP = shadow_punctual_reconstruct_position(
+        params, wininv, light, params.uv + vec3(0.0, uv_offset, 0.0));
+  }
+
+  /* TODO: Use a mat2x3 (Currently not supported by the Metal backend). */
+  mat3 TBN = mat3(TP - P, BP - P, Ng);
+
+  /* Compute the actual offset. */
+
+  vec2 rand = vec2(0.0);
+#ifdef EEVEE_SAMPLING_DATA
+  rand = sampling_rng_2D_get(SAMPLING_SHADOW_V);
+#endif
+  vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(0.0), rand);
+  pcf_offset = pcf_offset * 2.0 - 1.0;
+  pcf_offset *= light.pcf_radius;
+
+  vec3 ws_offset = TBN * vec3(pcf_offset, 0.0);
+  vec3 offset_P = P + ws_offset;
+
+  /* Project the offset position into the surface */
+
+#ifdef GPU_NVIDIA
+  /* Workaround for a bug in the Nvidia shader compiler.
+   * If we don't compute L here again, it breaks shadows on reflection probes. */
+  L = light_vector_get(light, is_directional, P).L;
+#endif
+
+  if (abs(dot(Ng, L)) > 0.999) {
+    return ws_offset;
+  }
+
+  offset_P = line_plane_intersect(offset_P, L, P, Ng);
+  ws_offset = offset_P - P;
+
+  if (dot(ws_offset, L) < 0.0) {
+    /* Project the offset position into the perpendicular plane, since it's closer to the light
+     * (avoids overshadowing at geometry angles). */
+    vec3 perpendicular_plane_normal = cross(Ng, normalize(cross(Ng, L)));
+    offset_P = line_plane_intersect(offset_P, L, P, perpendicular_plane_normal);
+    ws_offset = offset_P - P;
+  }
+
+  return ws_offset;
+}
+
 /**
  * Evaluate shadowing by casting rays toward the light direction.
  */
@@ -430,6 +522,8 @@ ShadowEvalResult shadow_eval(LightData light,
   /* TODO(fclem): Parameter on irradiance volumes? */
   float normal_offset = 0.02;
 #endif
+
+  P += shadow_pcf_offset(light, is_directional, P, Ng);
 
   /* Avoid self intersection. */
   P = offset_ray(P, Ng);
@@ -477,7 +571,7 @@ ShadowEvalResult shadow_eval(LightData light,
   ShadowEvalResult result;
   result.light_visibilty = saturate(1.0 - surface_hit * safe_rcp(surface_ray_count));
   result.light_visibilty = min(result.light_visibilty,
-                               saturate(1.0 - subsurface_hit * safe_rcp(surface_ray_count)));
+                               saturate(1.0 - subsurface_hit * safe_rcp(subsurface_ray_count)));
   result.occluder_distance = 0.0; /* Unused. Could reintroduced if needed. */
   return result;
 }

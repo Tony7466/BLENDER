@@ -9,8 +9,9 @@
 
 /* Shrinkwrap stuff */
 #include "BKE_bvhutils.hh"
-#include "BLI_bitmap.h"
 
+#include "BLI_array.hh"
+#include "BLI_bit_vector.hh"
 #include "BLI_math_vector_types.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_span.hh"
@@ -27,7 +28,6 @@
  * (So that you don't have to pass an enormous amount of arguments to functions)
  */
 
-struct bContext;
 struct BVHTree;
 struct MDeformVert;
 struct Mesh;
@@ -48,23 +48,21 @@ struct ShrinkwrapBoundaryVertData {
 
 struct ShrinkwrapBoundaryData {
   /* True if the edge belongs to exactly one face. */
-  const BLI_bitmap *edge_is_boundary;
-  /* True if the looptri has any boundary edges. */
-  const BLI_bitmap *looptri_has_boundary;
+  blender::BitVector<> edge_is_boundary;
+  /* True if the triangle has any boundary edges. */
+  blender::BitVector<> tri_has_boundary;
 
   /* Mapping from vertex index to boundary vertex index, or -1.
    * Used for compact storage of data about boundary vertices. */
-  const int *vert_boundary_id;
-  unsigned int num_boundary_verts;
+  blender::Array<int> vert_boundary_id;
 
   /* Direction data about boundary vertices. */
-  const ShrinkwrapBoundaryVertData *boundary_verts;
+  blender::Array<ShrinkwrapBoundaryVertData> boundary_verts;
 };
 
 /**
  * Free boundary data for target project.
  */
-void BKE_shrinkwrap_boundary_data_free(ShrinkwrapBoundaryData *data);
 void BKE_shrinkwrap_compute_boundary_data(Mesh *mesh);
 
 /* Information about a mesh and BVH tree. */
@@ -120,10 +118,46 @@ void shrinkwrapGpencilModifier_deform(ShrinkwrapGpencilModifierData *mmd,
                                       float (*vertexCos)[3],
                                       int numVerts);
 
+struct ShrinkwrapParams {
+  /** Shrink target. */
+  Object *target = nullptr;
+  /** Additional shrink target. */
+  Object *aux_target = nullptr;
+  /* Use inverse vertex group weights. */
+  bool invert_vertex_weights = false;
+  /** Distance offset to keep from mesh/projection point. */
+  float keep_distance = 0.05f;
+  /** Shrink type projection. */
+  short shrink_type = 0 /*MOD_SHRINKWRAP_NEAREST_SURFACE*/;
+  /** Shrink options. */
+  char shrink_options = 0 /*MOD_SHRINKWRAP_PROJECT_ALLOW_POS_DIR*/;
+  /** Shrink to surface mode. */
+  char shrink_mode = 0 /*MOD_SHRINKWRAP_ON_SURFACE*/;
+  /** Limit the projection ray cast. */
+  float projection_limit = 0.0f;
+  /** Axis to project over. */
+  char projection_axis = 0 /*MOD_SHRINKWRAP_PROJECT_OVER_NORMAL*/;
+  /**
+   * If using projection over vertex normal this controls the level of subsurface that must be
+   * done before getting the vertex coordinates and normal.
+   */
+  char subsurf_levels = 0;
+};
+
+void shrinkwrapParams_deform(const ShrinkwrapParams &params,
+                             Object &object,
+                             ShrinkwrapTreeData &tree,
+                             blender::Span<MDeformVert> dvert,
+                             int defgrp_index,
+                             blender::MutableSpan<blender::float3> positions);
+
 /**
  * Used in `editmesh_mask_extract.cc` to shrink-wrap the extracted mesh to the sculpt.
  */
-void BKE_shrinkwrap_mesh_nearest_surface_deform(bContext *C, Object *ob_source, Object *ob_target);
+void BKE_shrinkwrap_mesh_nearest_surface_deform(Depsgraph *depsgraph,
+                                                Scene *scene,
+                                                Object *ob_source,
+                                                Object *ob_target);
 
 /**
  * Used in `object_remesh.cc` to preserve the details and volume in the voxel remesher.
@@ -172,7 +206,7 @@ void BKE_shrinkwrap_find_nearest_surface(ShrinkwrapTreeData *tree,
  */
 void BKE_shrinkwrap_compute_smooth_normal(const ShrinkwrapTreeData *tree,
                                           const SpaceTransform *transform,
-                                          int looptri_idx,
+                                          int tri_idx,
                                           const float hit_co[3],
                                           const float hit_no[3],
                                           float r_no[3]);
