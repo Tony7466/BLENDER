@@ -398,7 +398,7 @@ void uiTemplateGreasePencilLayerTree(uiLayout *layout, bContext *C)
 {
   using namespace blender;
 
-  Object *object = CTX_data_active_object(C);
+  Object *object = ED_object_active_context(C);
   if (!object || object->type != OB_GREASE_PENCIL) {
     return;
   }
