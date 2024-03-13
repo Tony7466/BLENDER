@@ -467,6 +467,7 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
   pcf_offset = pcf_offset * 2.0 - 1.0;
   pcf_offset *= light.pcf_radius;
 
+  /* Scale the offset based on shadow LOD. */
   if (is_directional) {
     vec3 lP = light_world_to_local(light, P);
     float level = shadow_directional_level_fractional(light, lP - light._position);
