@@ -15,7 +15,7 @@
 #include "DNA_scene_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_main.hh"
 #include "BKE_node.hh"
@@ -26,9 +26,7 @@
 #include "UI_resources.hh"
 
 #include "node_common.h"
-#include "node_util.hh"
 
-#include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
 #include "NOD_composite.hh"
@@ -212,7 +210,7 @@ void ntreeCompositTagRender(Scene *scene)
   /* XXX Think using G_MAIN here is valid, since you want to update current file's scene nodes,
    * not the ones in temp main generated for rendering?
    * This is still rather weak though,
-   * ideally render struct would store own main AND original G_MAIN. */
+   * ideally render struct would store its own main AND original G_MAIN. */
 
   for (Scene *sce_iter = (Scene *)G_MAIN->scenes.first; sce_iter;
        sce_iter = (Scene *)sce_iter->id.next)

@@ -20,14 +20,14 @@
 #include "DNA_armature_types.h"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_armature.hh"
 #include "BKE_context.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_object.hh"
 #include "BKE_pose_backup.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 

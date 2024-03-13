@@ -19,7 +19,7 @@
 #include "BKE_layer.hh"
 #include "BKE_material.h"
 #include "BKE_pbvh.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "BLT_translation.hh"
 
@@ -35,7 +35,7 @@
 #include "GPU_shader.h"
 #include "GPU_storage_buffer.h"
 #include "GPU_texture.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_uniform_buffer.hh"
 
 #include "draw_cache.hh"
 #include "draw_common.h"

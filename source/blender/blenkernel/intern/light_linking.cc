@@ -19,7 +19,7 @@
 #include "BKE_collection.hh"
 #include "BKE_layer.hh"
 #include "BKE_lib_id.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "BLT_translation.hh"
 
@@ -129,7 +129,7 @@ void BKE_light_linking_collection_assign(Main *bmain,
 {
   BKE_light_linking_collection_assign_only(object, new_collection, link_type);
 
-  DEG_id_tag_update(&object->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_SHADING);
+  DEG_id_tag_update(&object->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SHADING);
   DEG_relations_tag_update(bmain);
 }
 

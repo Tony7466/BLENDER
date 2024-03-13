@@ -47,7 +47,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set_instances.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
@@ -336,8 +336,7 @@ static void update_id_properties_from_node_group(NodesModifierData *nmd)
   }
   IDProperty *new_properties = nmd->settings.properties;
 
-  nodes::update_input_properties_from_node_tree(
-      *nmd->node_group, old_properties, false, *new_properties);
+  nodes::update_input_properties_from_node_tree(*nmd->node_group, old_properties, *new_properties);
   nodes::update_output_properties_from_node_tree(
       *nmd->node_group, old_properties, *new_properties);
 
@@ -558,7 +557,18 @@ static void try_add_side_effect_node(const ComputeContext &final_compute_context
       if (lf_zone_node == nullptr) {
         return;
       }
+      const lf::FunctionNode *lf_simulation_output_node =
+          lf_graph_info->mapping.possible_side_effect_node_map.lookup_default(
+              simulation_zone->output_node, nullptr);
+      if (lf_simulation_output_node == nullptr) {
+        return;
+      }
       local_side_effect_nodes.nodes_by_context.add(parent_compute_context_hash, lf_zone_node);
+      /* By making the simulation output node a side-effect-node, we can ensure that the simulation
+       * runs when it contains an active viewer. */
+      local_side_effect_nodes.nodes_by_context.add(compute_context_generic->hash(),
+                                                   lf_simulation_output_node);
+
       current_zone = simulation_zone;
     }
     else if (const auto *compute_context = dynamic_cast<const bke::RepeatZoneComputeContext *>(
@@ -824,7 +834,7 @@ static void check_property_socket_sync(const Object *ob, ModifierData *md)
 
     IDProperty *property = IDP_GetPropertyFromGroup(nmd->settings.properties, socket->identifier);
     if (property == nullptr) {
-      if (type == SOCK_GEOMETRY) {
+      if (ELEM(type, SOCK_GEOMETRY, SOCK_MATRIX)) {
         geometry_socket_count++;
       }
       else {
@@ -910,7 +920,7 @@ struct BakeFrameIndices {
 };
 
 static BakeFrameIndices get_bake_frame_indices(
-    const Span<std::unique_ptr<bake::FrameCache>> &frame_caches, const SubFrame frame)
+    const Span<std::unique_ptr<bake::FrameCache>> frame_caches, const SubFrame frame)
 {
   BakeFrameIndices frame_indices;
   if (!frame_caches.is_empty()) {
@@ -2225,7 +2235,7 @@ static void draw_named_attributes_panel(uiLayout *layout, NodesModifierData &nmd
   std::sort(sorted_used_attribute.begin(),
             sorted_used_attribute.end(),
             [](const NameWithUsage &a, const NameWithUsage &b) {
-              return BLI_strcasecmp_natural(a.name.c_str(), b.name.c_str()) <= 0;
+              return BLI_strcasecmp_natural(a.name.c_str(), b.name.c_str()) < 0;
             });
 
   for (const NameWithUsage &attribute : sorted_used_attribute) {
@@ -2293,16 +2303,9 @@ static void panel_draw(const bContext *C, Panel *panel)
   uiLayoutSetPropDecorate(layout, false);
 
   if (!(nmd->flag & NODES_MODIFIER_HIDE_DATABLOCK_SELECTOR)) {
-    uiTemplateID(layout,
-                 C,
-                 ptr,
-                 "node_group",
-                 "node.new_geometry_node_group_assign",
-                 nullptr,
-                 nullptr,
-                 0,
-                 false,
-                 nullptr);
+    const char *newop = (nmd->node_group == nullptr) ? "node.new_geometry_node_group_assign" :
+                                                       "object.geometry_node_tree_copy_assign";
+    uiTemplateID(layout, C, ptr, "node_group", newop, nullptr, nullptr, 0, false, nullptr);
   }
 
   if (nmd->node_group != nullptr && nmd->settings.properties != nullptr) {

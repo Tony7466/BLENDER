@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "usd_asset_utils.hh"
+#include "usd.hh"
 
 #include <pxr/usd/ar/asset.h>
 #include <pxr/usd/ar/packageUtils.h>
@@ -10,7 +11,7 @@
 #include <pxr/usd/ar/writableAsset.h>
 
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"

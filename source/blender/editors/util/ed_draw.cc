@@ -13,7 +13,6 @@
 #include "MEM_guardedalloc.h"
 
 #include "BLI_listbase.h"
-#include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -39,7 +38,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "RNA_access.hh"
 #include "WM_api.hh"
 #include "WM_types.hh"
 
@@ -377,6 +375,10 @@ static void slider_update_factor(tSlider *slider, const wmEvent *event)
   slider->factor = slider->raw_factor;
   copy_v2fl_v2i(slider->last_cursor, event->xy);
 
+  if (slider->increments) {
+    slider->factor = round(slider->factor * 10) / 10;
+  }
+
   if (!slider->overshoot) {
     slider->factor = clamp_f(slider->factor, slider->factor_bounds[0], slider->factor_bounds[1]);
   }
@@ -387,10 +389,6 @@ static void slider_update_factor(tSlider *slider, const wmEvent *event)
     if (!slider->allow_overshoot_upper) {
       slider->factor = min_ff(slider->factor, slider->factor_bounds[1]);
     }
-  }
-
-  if (slider->increments) {
-    slider->factor = round(slider->factor * 10) / 10;
   }
 }
 

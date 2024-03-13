@@ -211,7 +211,16 @@ class IMAGE_MT_image(Menu):
 
         layout.separator()
 
+        has_image_clipboard = False
         if sys.platform[:3] == "win":
+            has_image_clipboard = True
+        else:
+            from _bpy import _ghost_backend
+            if _ghost_backend() == 'WAYLAND':
+                has_image_clipboard = True
+            del _ghost_backend
+
+        if has_image_clipboard:
             layout.operator("image.clipboard_copy", text="Copy")
             layout.operator("image.clipboard_paste", text="Paste")
             layout.separator()
@@ -522,6 +531,16 @@ class IMAGE_MT_uvs_context_menu(Menu):
 
         # UV Edit Mode
         if sima.show_uvedit:
+            ts = context.tool_settings
+            if ts.use_uv_select_sync:
+                is_vert_mode, is_edge_mode, _ = ts.mesh_select_mode
+            else:
+                uv_select_mode = ts.uv_select_mode
+                is_vert_mode = uv_select_mode == 'VERTEX'
+                is_edge_mode = uv_select_mode == 'EDGE'
+                # is_face_mode = uv_select_mode == 'FACE'
+                # is_island_mode = uv_select_mode == 'ISLAND'
+
             # Add
             layout.operator("uv.unwrap")
             layout.operator("uv.follow_active_quads")
@@ -542,6 +561,16 @@ class IMAGE_MT_uvs_context_menu(Menu):
             layout.separator()
 
             layout.operator_enum("uv.align", "axis")  # W, 2/3/4.
+
+            layout.operator_context = 'INVOKE_DEFAULT'
+
+            if is_vert_mode:
+                layout.operator("transform.vert_slide")
+
+            if is_edge_mode:
+                layout.operator("transform.edge_slide")
+
+            layout.operator_context = 'EXEC_REGION_WIN'
 
             layout.separator()
 
@@ -996,6 +1025,10 @@ class IMAGE_PT_snapping(Panel):
         row.prop(tool_settings, "use_snap_translate", text="Move", toggle=True)
         row.prop(tool_settings, "use_snap_rotate", text="Rotate", toggle=True)
         row.prop(tool_settings, "use_snap_scale", text="Scale", toggle=True)
+        col.label(text="Rotation Increment")
+        row = col.row(align=True)
+        row.prop(tool_settings, "snap_angle_increment_2d", text="")
+        row.prop(tool_settings, "snap_angle_increment_2d_precision", text="")
 
 
 class IMAGE_PT_proportional_edit(Panel):
@@ -1575,10 +1608,10 @@ class IMAGE_PT_overlay_guides(Panel):
             layout.prop(uvedit, "tile_grid_shape", text="Tiles")
 
 
-class IMAGE_PT_overlay_uv_edit(Panel):
+class IMAGE_PT_overlay_uv_stretch(Panel):
     bl_space_type = 'IMAGE_EDITOR'
     bl_region_type = 'HEADER'
-    bl_label = "UV Editing"
+    bl_label = "UV Stretch"
     bl_parent_id = "IMAGE_PT_overlay"
 
     @classmethod
@@ -1595,12 +1628,12 @@ class IMAGE_PT_overlay_uv_edit(Panel):
 
         layout.active = overlay.show_overlays
 
-        # UV Stretching
-        row = layout.row()
-        row.prop(uvedit, "show_stretch")
-        subrow = row.row(align=True)
+        row = layout.row(align=True)
+        row.row().prop(uvedit, "show_stretch", text="")
+        subrow = row.row()
         subrow.active = uvedit.show_stretch
         subrow.prop(uvedit, "display_stretch_type", text="")
+        subrow.prop(uvedit, "stretch_opacity", text="Opacity")
 
 
 class IMAGE_PT_overlay_uv_edit_geometry(Panel):
@@ -1752,7 +1785,7 @@ classes = (
     IMAGE_PT_gizmo_display,
     IMAGE_PT_overlay,
     IMAGE_PT_overlay_guides,
-    IMAGE_PT_overlay_uv_edit,
+    IMAGE_PT_overlay_uv_stretch,
     IMAGE_PT_overlay_uv_edit_geometry,
     IMAGE_PT_overlay_texture_paint,
     IMAGE_PT_overlay_image,

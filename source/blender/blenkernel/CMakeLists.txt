@@ -55,6 +55,7 @@ set(SRC
   intern/anim_path.cc
   intern/anim_sys.cc
   intern/anim_visualization.cc
+  intern/animation.cc
   intern/anonymous_attribute_id.cc
   intern/appdir.cc
   intern/armature.cc
@@ -68,13 +69,14 @@ set(SRC
   intern/attribute_access.cc
   intern/attribute_math.cc
   intern/autoexec.cc
-  intern/bake_geometry_nodes_modifier.cc
   intern/bake_data_block_map.cc
+  intern/bake_geometry_nodes_modifier.cc
   intern/bake_items.cc
   intern/bake_items_paths.cc
   intern/bake_items_serialize.cc
   intern/bake_items_socket.cc
   intern/blender.cc
+  intern/blender_cli_command.cc
   intern/blender_copybuffer.cc
   intern/blender_undo.cc
   intern/blender_user_menu.cc
@@ -196,7 +198,6 @@ set(SRC
   intern/mball.cc
   intern/mball_tessellate.cc
   intern/mesh.cc
-  intern/mesh_boolean_convert.cc
   intern/mesh_calc_edges.cc
   intern/mesh_compare.cc
   intern/mesh_convert.cc
@@ -315,17 +316,19 @@ set(SRC
   intern/volume_grid_file_cache.cc
   intern/volume_render.cc
   intern/volume_to_mesh.cc
+  intern/wm_runtime.cc
   intern/workspace.cc
   intern/world.cc
-  intern/writeavi.cc
+  intern/writemovie.cc
 
   BKE_DerivedMesh.hh
   BKE_action.h
   BKE_action.hh
   BKE_addon.h
-  BKE_anim_data.h
+  BKE_anim_data.hh
   BKE_anim_path.h
   BKE_anim_visualization.h
+  BKE_animation.hh
   BKE_animsys.h
   BKE_anonymous_attribute_id.hh
   BKE_appdir.hh
@@ -335,13 +338,14 @@ set(SRC
   BKE_attribute.hh
   BKE_attribute_math.hh
   BKE_autoexec.hh
-  BKE_bake_geometry_nodes_modifier.hh
   BKE_bake_data_block_map.hh
+  BKE_bake_geometry_nodes_modifier.hh
   BKE_bake_items.hh
   BKE_bake_items_paths.hh
   BKE_bake_items_serialize.hh
   BKE_bake_items_socket.hh
   BKE_blender.hh
+  BKE_blender_cli_command.hh
   BKE_blender_copybuffer.hh
   BKE_blender_undo.hh
   BKE_blender_user_menu.hh
@@ -381,7 +385,7 @@ set(SRC
   BKE_data_transfer.h
   BKE_deform.hh
   BKE_displist.h
-  BKE_duplilist.h
+  BKE_duplilist.hh
   BKE_dynamicpaint.h
   BKE_editlattice.h
   BKE_editmesh.hh
@@ -389,7 +393,7 @@ set(SRC
   BKE_editmesh_cache.hh
   BKE_editmesh_tangent.hh
   BKE_effect.h
-  BKE_fcurve.h
+  BKE_fcurve.hh
   BKE_fcurve_driver.h
   BKE_file_handler.hh
   BKE_fluid.h
@@ -397,7 +401,7 @@ set(SRC
   BKE_geometry_fields.hh
   BKE_geometry_set.hh
   BKE_geometry_set_instances.hh
-  BKE_global.h
+  BKE_global.hh
   BKE_gpencil_curve_legacy.h
   BKE_gpencil_geom_legacy.h
   BKE_gpencil_legacy.h
@@ -405,6 +409,7 @@ set(SRC
   BKE_gpencil_update_cache_legacy.h
   BKE_grease_pencil.h
   BKE_grease_pencil.hh
+  BKE_grease_pencil_legacy_convert.hh
   BKE_grease_pencil_vertex_groups.hh
   BKE_icons.h
   BKE_idprop.h
@@ -440,7 +445,6 @@ set(SRC
   BKE_mball_tessellate.hh
   BKE_mesh.h
   BKE_mesh.hh
-  BKE_mesh_boolean_convert.hh
   BKE_mesh_compare.hh
   BKE_mesh_fair.hh
   BKE_mesh_iterators.hh
@@ -458,7 +462,6 @@ set(SRC
   BKE_movieclip.h
   BKE_multires.hh
   BKE_nla.h
-  BKE_node.h
   BKE_node.hh
   BKE_node_enum.hh
   BKE_node_runtime.hh
@@ -484,9 +487,9 @@ set(SRC
   BKE_pose_backup.h
   BKE_preferences.h
   BKE_preview_image.hh
-  BKE_report.h
+  BKE_report.hh
   BKE_rigidbody.h
-  BKE_scene.h
+  BKE_scene.hh
   BKE_scene_runtime.hh
   BKE_screen.hh
   BKE_sequencer_offscreen.h
@@ -522,9 +525,10 @@ set(SRC
   BKE_volume_openvdb.hh
   BKE_volume_render.hh
   BKE_volume_to_mesh.hh
+  BKE_wm_runtime.hh
   BKE_workspace.h
   BKE_world.h
-  BKE_writeavi.h
+  BKE_writemovie.hh
 
   nla_private.h
   particle_private.h
@@ -640,13 +644,6 @@ endif()
 
 if(WITH_IMAGE_WEBP)
   add_definitions(-DWITH_WEBP)
-endif()
-
-if(WITH_CODEC_AVI)
-  list(APPEND INC
-    ../io/avi
-  )
-  add_definitions(-DWITH_AVI)
 endif()
 
 if(WITH_CODEC_FFMPEG)
@@ -820,14 +817,6 @@ if(WITH_TBB)
 
   list(APPEND LIB
     ${TBB_LIBRARIES}
-  )
-endif()
-
-if(WITH_GMP)
-  add_definitions(-DWITH_GMP)
-
-  list(APPEND INC_SYS
-    ${GMP_INCLUDE_DIRS}
   )
 endif()
 
