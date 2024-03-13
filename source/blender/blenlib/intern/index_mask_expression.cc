@@ -563,6 +563,55 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_bits(
   return IndexMaskSegment(segment_offset, indices);
 }
 
+static int64_t union_index_mask_segments(const Span<IndexMaskSegment> segments, int16_t *r_values)
+{
+  if (segments.is_empty()) {
+    return 0;
+  }
+  if (segments.size() == 1) {
+    const IndexMaskSegment segment = segments[0];
+    std::copy(segment.begin(), segment.end(), r_values);
+    return segment.size();
+  }
+  if (segments.size() == 2) {
+    const IndexMaskSegment a = segments[0];
+    const IndexMaskSegment b = segments[1];
+    return std::set_union(a.begin(), a.end(), b.begin(), b.end(), r_values) - r_values;
+  }
+
+  Vector<IndexMaskSegment> sorted_segments(segments);
+  std::sort(
+      sorted_segments.begin(),
+      sorted_segments.end(),
+      [](const IndexMaskSegment a, const IndexMaskSegment b) { return a.size() < b.size(); });
+
+  std::array<int16_t, max_segment_size> tmp_indices;
+  int16_t *buffer_a = r_values;
+  int16_t *buffer_b = tmp_indices.data();
+
+  if (sorted_segments.size() % 2 == 0) {
+    std::swap(buffer_a, buffer_b);
+  }
+
+  int64_t count = 0;
+  {
+    /* Initial union. */
+    const IndexMaskSegment a = sorted_segments[0];
+    const IndexMaskSegment b = sorted_segments[1];
+    int16_t *dst = buffer_a; /* TODO: check */
+    count = std::set_union(a.begin(), a.end(), b.begin(), b.end(), dst) - dst;
+  }
+
+  for (const int64_t segment_i : sorted_segments.index_range().drop_front(2)) {
+    const int16_t *a = buffer_a;
+    const IndexMaskSegment b = sorted_segments[segment_i];
+    int16_t *dst = buffer_b;
+    count = std::set_union(a, a + count, b.begin(), b.end(), dst) - dst;
+    std::swap(buffer_a, buffer_b);
+  }
+  return count;
+}
+
 BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
                                                                  LinearAllocator<> &allocator,
                                                                  const IndexRange bounds)
