@@ -79,6 +79,15 @@ static inline void geometry_call(PassMain::Sub *sub_pass,
   }
 }
 
+static inline void volume_call(
+    MaterialPass &matpass, Scene *scene, Object *ob, GPUBatch *geom, ResourceHandle res_handle)
+{
+  if (matpass.sub_pass != nullptr) {
+    PassMain::Sub *object_pass = volume_sub_pass(*matpass.sub_pass, scene, ob, matpass.gpumat);
+    object_pass->draw(geom, res_handle);
+  }
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -124,13 +133,12 @@ void SyncModule::sync_mesh(Object *ob,
     Material &material = material_array.materials[i];
     GPUMaterial *gpu_material = material_array.gpu_materials[i];
 
-    if (material.has_volume && (i == 0)) {
-      /* Only support single volume material for now. */
-      geometry_call(material.volume_occupancy.sub_pass, geom, res_handle);
-      geometry_call(material.volume_material.sub_pass, geom, res_handle);
+    if (material.has_volume) {
+      volume_call(material.volume_occupancy, inst_.scene, ob, geom, res_handle);
+      volume_call(material.volume_material, inst_.scene, ob, geom, res_handle);
       /* Do not render surface if we are rendering a volume object
        * and do not have a surface closure. */
-      if (gpu_material && !GPU_material_has_surface_output(gpu_material)) {
+      if (!material.has_surface) {
         continue;
       }
     }
@@ -203,10 +211,9 @@ bool SyncModule::sync_sculpt(Object *ob,
 
     Material &material = material_array.materials[batch.material_slot];
 
-    if (material.has_volume && (batch.material_slot == 0)) {
-      /* Only support single volume material for now. */
-      geometry_call(material.volume_occupancy.sub_pass, geom, res_handle);
-      geometry_call(material.volume_material.sub_pass, geom, res_handle);
+    if (material.has_volume) {
+      volume_call(material.volume_occupancy, inst_.scene, ob, geom, res_handle);
+      volume_call(material.volume_material, inst_.scene, ob, geom, res_handle);
       /* Do not render surface if we are rendering a volume object
        * and do not have a surface closure. */
       if (material.has_surface == false) {

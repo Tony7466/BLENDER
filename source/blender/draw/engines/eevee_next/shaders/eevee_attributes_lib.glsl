@@ -13,7 +13,80 @@
 
 #define EEVEE_ATTRIBUTE_LIB
 
-#if defined(MAT_GEOM_MESH)
+#if defined(MAT_VOLUME) && !defined(MAT_GEOM_WORLD)
+
+/* -------------------------------------------------------------------- */
+/** \name Volume
+ *
+ * Volume objects loads attributes from "grids" in the form of 3D textures.
+ * Per grid transform order is following loading order.
+ * \{ */
+
+vec3 g_lP = vec3(0.0);
+/* All attributes are loaded in order. This allow us to use a global counter to retrieve the
+ * correct grid xform. */
+int g_attr_id = 0;
+
+vec3 grid_coordinates()
+{
+#  ifdef OBINFO_LIB
+  vec3 co = OrcoTexCoFactors[0].xyz + g_lP * OrcoTexCoFactors[1].xyz;
+  /* Optional per-grid transform. */
+  if (drw_volume.grids_xform[g_attr_id][3][3] != 0.0) {
+    co = (drw_volume.grids_xform[g_attr_id] * vec4(g_lP, 1.0)).xyz;
+  }
+#  else
+  /* Only for test shaders. All the runtime shaders require `draw_object_infos` and
+   * `draw_volume_infos`. */
+  vec3 co = vec3(0.0);
+#  endif
+  g_attr_id += 1;
+  return co;
+}
+
+vec3 attr_load_orco(sampler3D tex)
+{
+  g_attr_id += 1;
+#  ifdef OBINFO_LIB
+  return OrcoTexCoFactors[0].xyz + g_lP * OrcoTexCoFactors[1].xyz;
+#  else
+  return vec3(0.0);
+#  endif
+}
+vec4 attr_load_tangent(sampler3D tex)
+{
+  g_attr_id += 1;
+  return vec4(0);
+}
+vec4 attr_load_vec4(sampler3D tex)
+{
+  return texture(tex, grid_coordinates());
+}
+vec3 attr_load_vec3(sampler3D tex)
+{
+  return texture(tex, grid_coordinates()).rgb;
+}
+vec2 attr_load_vec2(sampler3D tex)
+{
+  return texture(tex, grid_coordinates()).rg;
+}
+float attr_load_float(sampler3D tex)
+{
+  return texture(tex, grid_coordinates()).r;
+}
+vec4 attr_load_color(sampler3D tex)
+{
+  return texture(tex, grid_coordinates());
+}
+vec3 attr_load_uv(sampler3D attr)
+{
+  g_attr_id += 1;
+  return vec3(0);
+}
+
+/** \} */
+
+#elif defined(MAT_GEOM_MESH)
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh
@@ -233,68 +306,6 @@ float attr_load_float(samplerBuffer cd_buf)
 
 /** \} */
 
-#elif defined(MAT_GEOM_VOLUME)
-
-/* -------------------------------------------------------------------- */
-/** \name Volume
- *
- * Volume objects loads attributes from "grids" in the form of 3D textures.
- * Per grid transform order is following loading order.
- * \{ */
-
-vec3 g_lP = vec3(0.0);
-vec3 g_orco = vec3(0.0);
-int g_attr_id = 0;
-
-vec3 grid_coordinates()
-{
-  vec3 co = g_orco;
-  /* Optional per-grid transform. */
-  if (drw_volume.grids_xform[g_attr_id][3][3] != 0.0) {
-    co = (drw_volume.grids_xform[g_attr_id] * vec4(g_lP, 1.0)).xyz;
-  }
-  g_attr_id += 1;
-  return co;
-}
-
-vec3 attr_load_orco(sampler3D tex)
-{
-  g_attr_id += 1;
-  return g_orco;
-}
-vec4 attr_load_tangent(sampler3D tex)
-{
-  g_attr_id += 1;
-  return vec4(0);
-}
-vec4 attr_load_vec4(sampler3D tex)
-{
-  return texture(tex, grid_coordinates());
-}
-vec3 attr_load_vec3(sampler3D tex)
-{
-  return texture(tex, grid_coordinates()).rgb;
-}
-vec2 attr_load_vec2(sampler3D tex)
-{
-  return texture(tex, grid_coordinates()).rg;
-}
-float attr_load_float(sampler3D tex)
-{
-  return texture(tex, grid_coordinates()).r;
-}
-vec4 attr_load_color(sampler3D tex)
-{
-  return texture(tex, grid_coordinates());
-}
-vec3 attr_load_uv(sampler3D attr)
-{
-  g_attr_id += 1;
-  return vec3(0);
-}
-
-/** \} */
-
 #elif defined(MAT_GEOM_WORLD)
 
 /* -------------------------------------------------------------------- */
@@ -304,13 +315,13 @@ vec3 attr_load_uv(sampler3D attr)
  * \{ */
 
 #  if defined(MAT_VOLUME)
-vec3 g_orco = vec3(0.0);
+vec3 g_wP = vec3(0.0);
 #  endif
 
 vec3 attr_load_orco(vec4 orco)
 {
 #  if defined(MAT_VOLUME)
-  return g_orco;
+  return g_wP;
 #  else
   return -g_data.N;
 #  endif

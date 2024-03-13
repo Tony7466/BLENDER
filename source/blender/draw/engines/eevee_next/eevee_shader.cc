@@ -502,7 +502,22 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   std::stringstream global_vars;
   switch (geometry_type) {
     case MAT_GEOM_MESH:
-      /** Noop. */
+      if (pipeline_type == MAT_PIPE_VOLUME_MATERIAL) {
+        /* If mesh has a volume output, it can receive volume grid attributes from smoke
+         * simulation modifier. But the vertex shader might still need access to the vertex
+         * attribute for displacement. */
+        /* TODO(fclem): Eventually, we could add support for loading both. For now, remove the
+         * vertex inputs after conversion (avoid name collision). */
+        for (auto &input : info.vertex_inputs_) {
+          info.sampler(sampler_slot--, ImageType::FLOAT_3D, input.name, Frequency::BATCH);
+        }
+        info.vertex_inputs_.clear();
+        /* Volume materials require these for loading the grid attributes. */
+        info.additional_info("draw_volume_infos");
+        if (ob_info_index == -1) {
+          info.additional_info("draw_object_infos_new");
+        }
+      }
       break;
     case MAT_GEOM_POINT_CLOUD:
     case MAT_GEOM_CURVES:
@@ -544,7 +559,8 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       break;
   }
 
-  const bool do_vertex_attrib_load = !ELEM(geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME);
+  const bool do_vertex_attrib_load = !ELEM(geometry_type, MAT_GEOM_WORLD, MAT_GEOM_VOLUME) &&
+                                     (pipeline_type != MAT_PIPE_VOLUME_MATERIAL);
 
   if (!do_vertex_attrib_load && !info.vertex_out_interfaces_.is_empty()) {
     /* Codegen outputs only one interface. */
@@ -570,8 +586,10 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
 
   if (do_vertex_attrib_load) {
     vert_gen << global_vars.str() << attr_load.str();
+    frag_gen << "void attrib_load() {}\n"; /* Placeholder. */
   }
   else {
+    vert_gen << "void attrib_load() {}\n"; /* Placeholder. */
     frag_gen << global_vars.str() << attr_load.str();
   }
 
@@ -646,7 +664,14 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
   /* Pipeline Info. */
   switch (geometry_type) {
     case MAT_GEOM_WORLD:
-      info.additional_info("eevee_surf_world");
+      switch (pipeline_type) {
+        case MAT_PIPE_VOLUME_MATERIAL:
+          info.additional_info("eevee_surf_volume");
+          break;
+        default:
+          info.additional_info("eevee_surf_world");
+          break;
+      }
       break;
     default:
       switch (pipeline_type) {

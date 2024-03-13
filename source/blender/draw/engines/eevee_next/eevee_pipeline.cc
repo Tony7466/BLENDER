@@ -111,7 +111,8 @@ void WorldPipeline::render(View &view)
 
 void WorldVolumePipeline::sync(GPUMaterial *gpumat)
 {
-  is_valid_ = (gpumat != nullptr) && (GPU_material_status(gpumat) == GPU_MAT_SUCCESS);
+  is_valid_ = (gpumat != nullptr) && (GPU_material_status(gpumat) == GPU_MAT_SUCCESS) &&
+              GPU_material_has_volume_output(gpumat);
   if (!is_valid_) {
     /* Skip if the material has not compiled yet. */
     return;
@@ -127,7 +128,7 @@ void WorldVolumePipeline::sync(GPUMaterial *gpumat)
   world_ps_.material_set(*inst_.manager, gpumat);
   volume_sub_pass(world_ps_, nullptr, nullptr, gpumat);
 
-  world_ps_.dispatch(math::divide_ceil(inst_.volume.grid_size(), int3(VOLUME_GROUP_SIZE)));
+  world_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   /* Sync with object property pass. */
   world_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
 }
