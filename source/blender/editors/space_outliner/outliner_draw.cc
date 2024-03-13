@@ -2142,24 +2142,31 @@ static void outliner_buttons(const bContext *C,
   }
 }
 
-static bool outliner_mode_toggle_object_data_shared(TreeViewContext *tvc,
-                                                    Object *ob,
-                                                    Object *ob_active)
+static bool outliner_is_object_data_shared_in_mode(TreeViewContext *tvc,
+                                                   const Object *ob,
+                                                   const Object *ob_active)
 {
-  bool object_data_shared = (ob->data == ob_active->data);
+  if (ob->data == ob_active->data) {
+    return true;
+  }
+
+  if (static_cast<const ID *>(ob->data)->us <= 1) {
+    return false;
+  }
+
   /* If the ID has multiple users, also check if any object using it is in the same mode as the
    * active object. */
-  if (static_cast<const ID *>(ob->data)->us > 1) {
-    ObjectsInModeParams params = {0};
-    params.object_mode = ob_active->mode;
-    Vector<Object *> objects_in_mode = BKE_view_layer_array_from_objects_in_mode_params(
-        tvc->scene, tvc->view_layer, nullptr, &params);
-    for (Object *object : objects_in_mode) {
-      object_data_shared |= object->data == ob->data;
+  ObjectsInModeParams params = {0};
+  params.object_mode = ob_active->mode;
+  Vector<Object *> objects_in_mode = BKE_view_layer_array_from_objects_in_mode_params(
+      tvc->scene, tvc->view_layer, nullptr, &params);
+  for (Object *object_iter : objects_in_mode) {
+    if (object_iter->data == ob->data) {
+      return true;
     }
   }
 
-  return object_data_shared;
+  return false;
 }
 
 static void outliner_mode_toggle_fn(bContext *C, void *tselem_poin, void * /*arg2*/)
@@ -2177,7 +2184,7 @@ static void outliner_mode_toggle_fn(bContext *C, void *tselem_poin, void * /*arg
   /* Check that the item is actually an object. */
   BLI_assert(tselem->id != nullptr && GS(tselem->id->name) == ID_OB);
 
-  const bool object_data_shared = outliner_mode_toggle_object_data_shared(
+  const bool object_data_shared = outliner_is_object_data_shared_in_mode(
       &tvc, (Object *)tselem->id, tvc.obact);
 
   wmWindow *win = CTX_wm_window(C);
@@ -2219,7 +2226,7 @@ static void outliner_draw_mode_column_toggle(uiBlock *block,
     draw_active_icon = false;
   }
 
-  const bool object_data_shared = outliner_mode_toggle_object_data_shared(tvc, ob, ob_active);
+  const bool object_data_shared = outliner_is_object_data_shared_in_mode(tvc, ob, ob_active);
   draw_active_icon = draw_active_icon || object_data_shared;
 
   int icon;
