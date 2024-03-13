@@ -627,8 +627,8 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
       curves, IndexMask(points), vertex_group_name, 1.0f);
 
   /* Loop through all modifiers trying to find the pose channel for the vertex group name. */
-  bPoseChannel *channel = NULL;
-  Object *ob_arm = NULL;
+  bPoseChannel *channel = nullptr;
+  Object *ob_arm = nullptr;
   LISTBASE_FOREACH (ModifierData *, md, &(object)->modifiers) {
     if (md->type != eModifierType_GreasePencilArmature) {
       continue;
@@ -640,18 +640,18 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
     }
 
     GreasePencilArmatureModifierData *amd = (GreasePencilArmatureModifierData *)md;
-    if (amd == NULL) {
+    if (amd == nullptr) {
       continue;
     }
 
     ob_arm = amd->object;
     /* Not an armature. */
-    if (ob_arm->type != OB_ARMATURE || ob_arm->pose == NULL) {
+    if (ob_arm->type != OB_ARMATURE || ob_arm->pose == nullptr) {
       continue;
     }
 
     channel = BKE_pose_channel_find_name(ob_arm->pose, vertex_group_name.data());
-    if (channel == NULL) {
+    if (channel == nullptr) {
       continue;
     }
 
@@ -660,7 +660,7 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
   }
 
   /* nothing valid was found. */
-  if (channel == NULL) {
+  if (channel == nullptr) {
     return;
   }
 
