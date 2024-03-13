@@ -46,7 +46,7 @@ class TintOperation : public GreasePencilStrokeOperation {
   void execute_tint(const bContext &C, const InputSample &extension_sample);
 };
 
-void TintOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
+void TintOperation::on_stroke_begin(const bContext &C, const InputSample & /*start_sample*/)
 {
   Scene *scene = CTX_data_scene(&C);
   Paint *paint = BKE_paint_get_active_from_context(&C);
