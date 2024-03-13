@@ -66,6 +66,11 @@ struct EvaluatedSegment {
   IndexMaskSegment indices;
 };
 
+enum class ExactEvalMode {
+  Indices,
+  Bits,
+};
+
 static void sort_boundaries(MutableSpan<CourseBoundary> boundaries)
 {
   std::sort(boundaries.begin(),
@@ -505,7 +510,7 @@ BLI_NOINLINE static Span<int16_t> bits_to_indices(const BoundedBitSpan bits,
   return allocator.construct_array_copy<int16_t>(indices_vec);
 }
 
-BLI_NOINLINE static IndexMaskSegment evaluate_segment_with_bits(
+BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_bits(
     const Expr &root_expression,
     LinearAllocator<> &allocator,
     const IndexRange bounds,
@@ -558,102 +563,9 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment_with_bits(
   return IndexMaskSegment(segment_offset, indices);
 }
 
-// BLI_NOINLINE static Vector<IndexMaskSegment> union_segments(const Span<IndexMaskSegment>
-// segments,
-//                                                             const int64_t segment_offset,
-//                                                             LinearAllocator<> &allocator)
-// {
-//   Vector<IndexMaskSegment> result;
-
-//   if (segments.is_empty()) {
-//     return result;
-//   }
-
-//   struct SegmentBound {
-//     int64_t index;
-//     bool is_begin;
-//     const IndexMaskSegment *segment;
-//   };
-
-//   Vector<SegmentBound> boundaries;
-//   for (const IndexMaskSegment &segment : segments) {
-//     if (!segment.is_empty()) {
-//       boundaries.append({segment[0], true, &segment});
-//       boundaries.append({segment.last() + 1, false, &segment});
-//     }
-//   }
-
-//   if (boundaries.is_empty()) {
-//     return result;
-//   }
-
-//   std::sort(boundaries.begin(),
-//             boundaries.end(),
-//             [](const SegmentBound &a, const SegmentBound &b) { return a.index < b.index; });
-
-//   Vector<const IndexMaskSegment *> active_segments;
-//   int64_t prev_boundary_index = boundaries[0].index;
-//   for (const SegmentBound &boundary : boundaries) {
-//     if (prev_boundary_index < boundary.index) {
-//       Vector<IndexMaskSegment> sliced_segments;
-//       for (const IndexMaskSegment *segment : active_segments) {
-//         if (segment->last() < boundary.index) {
-//           sliced_segments.append(*segment);
-//         }
-//         else {
-//           const int64_t start_index = binary_search::find_predicate_begin(
-//               *segment, [&](const int64_t i) { return i >= prev_boundary_index; });
-//           const int64_t end_index = binary_search::find_predicate_begin(
-//               *segment, [&](const int64_t i) { return i >= boundary.index; });
-//           const IndexMaskSegment sliced_segment = segment->slice(
-//               IndexRange::from_begin_end(start_index, end_index));
-//           if (!sliced_segment.is_empty()) {
-//             sliced_segments.append(sliced_segment);
-//           }
-//         }
-//       }
-
-//       if (!sliced_segments.is_empty()) {
-//         Vector<int64_t, max_segment_size> vec_1(max_segment_size);
-//         Vector<int64_t, max_segment_size> vec_2(max_segment_size);
-//         MutableSpan<int64_t> a = vec_1;
-//         MutableSpan<int64_t> b = vec_2;
-
-//         int64_t result_size = sliced_segments.size();
-//         std::copy(sliced_segments[0].begin(), sliced_segments[0].end(), a.begin());
-//         for (const IndexMaskSegment &segment : sliced_segments) {
-//           result_size = std::set_union(a.begin(),
-//                                        a.begin() + result_size,
-//                                        segment.begin(),
-//                                        segment.end(),
-//                                        b.begin()) -
-//                         b.begin();
-//           std::swap(a, b);
-//         }
-
-//         MutableSpan<int16_t> indices = allocator.allocate_array<int16_t>(result_size);
-//         for (const int64_t i : IndexRange(result_size)) {
-//           indices[i] = int16_t(a[i] - segment_offset);
-//         }
-//       }
-
-//       prev_boundary_index = boundary.index;
-//     }
-
-//     if (boundary.is_begin) {
-//       active_segments.append(boundary.segment);
-//     }
-//     else {
-//       active_segments.remove_first_occurrence_and_reorder(boundary.segment);
-//     }
-//   }
-
-//   return result;
-// }
-
-BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expression,
-                                                      LinearAllocator<> &allocator,
-                                                      const IndexRange bounds)
+BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
+                                                                 LinearAllocator<> &allocator,
+                                                                 const IndexRange bounds)
 {
   BLI_assert(bounds.size() <= max_segment_size);
   const int64_t segment_offset = bounds.start();
@@ -896,12 +808,44 @@ BLI_NOINLINE static Vector<const Expr *, inline_expr_array_size> compute_eager_e
   return eval_order;
 }
 
+static ExactEvalMode determine_exact_eval_mode(const Expr &root_expression)
+{
+  for (const Expr *term : root_expression.terms) {
+    if (!term->terms.is_empty()) {
+      /* Use bits when there are nested expressions as this is often faster. */
+      return ExactEvalMode::Bits;
+    }
+  }
+  return ExactEvalMode::Indices;
+}
+
+static IndexMaskSegment evaluate_exact_segment(const Expr &root_expression,
+                                               LinearAllocator<> &allocator,
+                                               const ExactEvalMode eval_mode,
+                                               const IndexRange bounds,
+                                               const Span<const Expr *> eager_eval_order)
+{
+  switch (eval_mode) {
+    case ExactEvalMode::Bits:
+      return evaluate_exact_with_bits(root_expression, allocator, bounds, eager_eval_order);
+    case ExactEvalMode::Indices:
+      return evaluate_exact_with_indices(root_expression, allocator, bounds);
+  }
+  BLI_assert_unreachable();
+  return {};
+}
+
 BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expression,
                                                        IndexMaskMemory &memory)
 {
   Vector<EvaluatedSegment, 16> evaluated_segments;
   Stack<IndexRange, 16> long_unknown_segments;
   Vector<IndexRange, 16> short_unknown_segments;
+
+  const ExactEvalMode exact_eval_mode = determine_exact_eval_mode(root_expression);
+  const int64_t long_segment_size_threshold = (exact_eval_mode == ExactEvalMode::Indices) ?
+                                                  max_segment_size :
+                                                  1024;
 
   const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
       root_expression);
@@ -910,7 +854,7 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
     for (const CoarseSegment &segment : coarse_result.segments) {
       switch (segment.type) {
         case CoarseSegment::Type::Unknown: {
-          if (segment.bounds.size() > max_segment_size) {
+          if (segment.bounds.size() > long_segment_size_threshold) {
             long_unknown_segments.push(segment.bounds);
           }
           else {
@@ -948,9 +892,8 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
   auto evaluate_unknown_segment = [&](const IndexRange bounds,
                                       LinearAllocator<> &allocator,
                                       Vector<EvaluatedSegment, 16> &r_evaluated_segments) {
-    // const IndexMaskSegment indices = evaluate_segment_with_bits(
-    //     root_expression, allocator, bounds, eager_eval_order);
-    const IndexMaskSegment indices = evaluate_segment(root_expression, allocator, bounds);
+    const IndexMaskSegment indices = evaluate_exact_segment(
+        root_expression, allocator, exact_eval_mode, bounds, eager_eval_order);
     if (!indices.is_empty()) {
       r_evaluated_segments.append({EvaluatedSegment::Type::Indices, bounds, nullptr, indices});
     }
