@@ -53,6 +53,11 @@ struct CourseBoundary {
   const CoarseSegment *segment;
 };
 
+/** For the difference operation, we need to know if a boundary belongs to the main term or not. */
+struct DifferenceCourseBoundary : public CourseBoundary {
+  bool is_main;
+};
+
 struct EvaluatedSegment {
   enum class Type {
     Full,
@@ -269,9 +274,8 @@ BLI_NOINLINE static void evaluate_coarse_intersection(const Span<CourseBoundary>
   }
 }
 
-/* TODO: Use struct instead of pair. */
 BLI_NOINLINE static void evaluate_coarse_difference(
-    const Span<std::pair<CourseBoundary, bool>> boundaries, CoarseResult &r_result)
+    const Span<DifferenceCourseBoundary> boundaries, CoarseResult &r_result)
 {
   if (boundaries.is_empty()) {
     return;
@@ -281,10 +285,10 @@ BLI_NOINLINE static void evaluate_coarse_difference(
   CoarseSegment *prev_segment = nullptr;
   Vector<const CoarseSegment *> active_main_segments;
   Vector<const CoarseSegment *, 16> active_subtract_segments;
-  int64_t prev_boundary_index = boundaries[0].first.index;
+  int64_t prev_boundary_index = boundaries[0].index;
 
-  for (const std::pair<CourseBoundary, bool> &boundary : boundaries) {
-    if (prev_boundary_index < boundary.first.index) {
+  for (const DifferenceCourseBoundary &boundary : boundaries) {
+    if (prev_boundary_index < boundary.index) {
       BLI_assert(active_main_segments.size() <= 1);
       if (active_main_segments.size() == 1) {
         const CoarseSegment &active_main_segment = *active_main_segments[0];
@@ -319,17 +323,17 @@ BLI_NOINLINE static void evaluate_coarse_difference(
           switch (active_main_segment.type) {
             case CoarseSegment::Type::Unknown: {
               prev_segment = &make_coarse_segment__unknown(
-                  prev_segment, prev_boundary_index, boundary.first.index, result);
+                  prev_segment, prev_boundary_index, boundary.index, result);
               break;
             }
             case CoarseSegment::Type::Full: {
               if (active_subtract_segments.is_empty()) {
                 prev_segment = &make_coarse_segment__full(
-                    prev_segment, prev_boundary_index, boundary.first.index, result);
+                    prev_segment, prev_boundary_index, boundary.index, result);
               }
               else {
                 prev_segment = &make_coarse_segment__unknown(
-                    prev_segment, prev_boundary_index, boundary.first.index, result);
+                    prev_segment, prev_boundary_index, boundary.index, result);
               }
               break;
             }
@@ -337,7 +341,7 @@ BLI_NOINLINE static void evaluate_coarse_difference(
               if (active_subtract_segments.is_empty()) {
                 prev_segment = &make_coarse_segment__copy(prev_segment,
                                                           prev_boundary_index,
-                                                          boundary.first.index,
+                                                          boundary.index,
                                                           *active_main_segment.mask,
                                                           result);
               }
@@ -348,7 +352,7 @@ BLI_NOINLINE static void evaluate_coarse_difference(
               }
               else {
                 prev_segment = &make_coarse_segment__unknown(
-                    prev_segment, prev_boundary_index, boundary.first.index, result);
+                    prev_segment, prev_boundary_index, boundary.index, result);
               }
               break;
             }
@@ -356,23 +360,23 @@ BLI_NOINLINE static void evaluate_coarse_difference(
         }
       }
 
-      prev_boundary_index = boundary.first.index;
+      prev_boundary_index = boundary.index;
     }
 
-    if (boundary.second) {
-      if (boundary.first.is_begin) {
-        active_main_segments.append(boundary.first.segment);
+    if (boundary.is_main) {
+      if (boundary.is_begin) {
+        active_main_segments.append(boundary.segment);
       }
       else {
-        active_main_segments.remove_first_occurrence_and_reorder(boundary.first.segment);
+        active_main_segments.remove_first_occurrence_and_reorder(boundary.segment);
       }
     }
     else {
-      if (boundary.first.is_begin) {
-        active_subtract_segments.append(boundary.first.segment);
+      if (boundary.is_begin) {
+        active_subtract_segments.append(boundary.segment);
       }
       else {
-        active_subtract_segments.remove_first_occurrence_and_reorder(boundary.first.segment);
+        active_subtract_segments.remove_first_occurrence_and_reorder(boundary.segment);
       }
     }
   }
@@ -441,7 +445,7 @@ BLI_NOINLINE static CoarseResult evaluate_coarse(
       }
       case Expr::Type::Difference: {
         const DifferenceExpr &expr = expression->as_difference();
-        Vector<std::pair<CourseBoundary, bool>, 16> boundaries;
+        Vector<DifferenceCourseBoundary, 16> boundaries;
         const CoarseResult &main_term_result = *expression_results[expr.terms[0]->index];
         for (const CoarseSegment &segment : main_term_result.segments) {
           boundaries.append({{segment.bounds.first(), true, &segment}, true});
@@ -456,9 +460,8 @@ BLI_NOINLINE static CoarseResult evaluate_coarse(
         }
         std::sort(boundaries.begin(),
                   boundaries.end(),
-                  [](const std::pair<CourseBoundary, bool> &a,
-                     const std::pair<CourseBoundary, bool> &b) {
-                    return a.first.index < b.first.index;
+                  [](const DifferenceCourseBoundary &a, const DifferenceCourseBoundary &b) {
+                    return a.index < b.index;
                   });
         evaluate_coarse_difference(boundaries, expr_result);
         break;
