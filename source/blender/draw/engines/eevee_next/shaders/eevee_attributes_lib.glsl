@@ -13,7 +13,7 @@
 
 #define EEVEE_ATTRIBUTE_LIB
 
-#if defined(MAT_VOLUME) && !defined(MAT_GEOM_WORLD)
+#if defined(MAT_VOLUME)
 
 /* -------------------------------------------------------------------- */
 /** \name Volume
@@ -22,7 +22,11 @@
  * Per grid transform order is following loading order.
  * \{ */
 
+#  if defined(MAT_GEOM_WORLD)
+vec3 g_wP = vec3(0.0);
+#  else
 vec3 g_lP = vec3(0.0);
+#  endif
 /* All attributes are loaded in order. This allow us to use a global counter to retrieve the
  * correct grid xform. */
 int g_attr_id = 0;
@@ -49,6 +53,8 @@ vec3 attr_load_orco(sampler3D tex)
   g_attr_id += 1;
 #  ifdef OBINFO_LIB
   return OrcoTexCoFactors[0].xyz + g_lP * OrcoTexCoFactors[1].xyz;
+#  elif defined(MAT_GEOM_WORLD)
+  return g_wP;
 #  else
   return vec3(0.0);
 #  endif
@@ -314,17 +320,9 @@ float attr_load_float(samplerBuffer cd_buf)
  * World has no attributes other than orco.
  * \{ */
 
-#  if defined(MAT_VOLUME)
-vec3 g_wP = vec3(0.0);
-#  endif
-
 vec3 attr_load_orco(vec4 orco)
 {
-#  if defined(MAT_VOLUME)
-  return g_wP;
-#  else
   return -g_data.N;
-#  endif
 }
 vec4 attr_load_tangent(vec4 tangent)
 {

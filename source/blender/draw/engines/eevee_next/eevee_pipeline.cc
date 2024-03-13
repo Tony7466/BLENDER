@@ -126,6 +126,7 @@ void WorldVolumePipeline::sync(GPUMaterial *gpumat)
   world_ps_.bind_resources(inst_.sampling);
 
   world_ps_.material_set(*inst_.manager, gpumat);
+  /* Bind correct dummy texture for attributes defaults. */
   volume_sub_pass(world_ps_, nullptr, nullptr, gpumat);
 
   world_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);

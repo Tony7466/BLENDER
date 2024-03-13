@@ -534,6 +534,14 @@ void ShaderModule::material_create_info_ammend(GPUMaterial *gpumat, GPUCodegenOu
       info.vertex_inputs_.clear();
       break;
     case MAT_GEOM_WORLD:
+      if (pipeline_type == MAT_PIPE_VOLUME_MATERIAL) {
+        /* Even if world do not have grid attributes, we use dummy texture binds to pass correct
+         * defaults. So we have to replace all attributes as samplers. */
+        for (auto &input : info.vertex_inputs_) {
+          info.sampler(sampler_slot--, ImageType::FLOAT_3D, input.name, Frequency::BATCH);
+        }
+        info.vertex_inputs_.clear();
+      }
       /**
        * Only orco layer is supported by world and it is procedurally generated. These are here to
        * make the attribs_load function calls valid.
