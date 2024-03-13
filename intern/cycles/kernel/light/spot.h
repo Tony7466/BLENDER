@@ -58,72 +58,44 @@ ccl_device_inline void spot_light_valid_ray_segment(const ccl_global KernelSpotL
   const float c0 = sqr(AP) - cos_angle_sq * dot(P, P);
 
   float tmin = *ray_tmin, tmax = *ray_tmax;
+  bool valid = false;
 
-  if (c2 == 0.0f) {
-    if (c1 != 0.0f) {
-      tmin = -c0 / (2.0f * c1);
-      const float3 P_boundary = P + tmin * D;
-      if (dot(axis, P_boundary) > 0.0f) {
+  if (c2 != 0.0f) {
+    const float sigma = sqr(c1) - c2 * c0;
+    if (sigma > 0) {
+      const float c1_c2 = c1 / c2;
+
+      tmin = -sqrtf(sigma) / fabsf(c2) - c1_c2;
+      tmax = -tmin - 2.0f * c1_c2;
+
+      const bool tmin_valid = dot(axis, P + tmin * D) > 0.0f;
+      const bool tmax_valid = dot(axis, P + tmax * D) > 0.0f;
+
+      valid = tmin_valid || tmax_valid;
+
+      if (!tmax_valid) {
+        tmax = tmin;
+        tmin = *ray_tmin;
+      }
+      else if (!tmin_valid) {
+        tmin = tmax;
         tmax = *ray_tmax;
       }
-      else {
-        /* Invalid */
-      }
     }
-    else {
-      /* Cone surface contains the ray, invalid. */
+    else if (c2 > 0 && sigma == 0.0f) {
+      tmin = -c1 / c2;
+      valid = true;
     }
   }
-  else {
-    const float sigma = sqr(c1) - c2 * c0;
-    if (sigma < 0) {
-      /* Invalid */
-    }
-    else if (sigma > 0) {
-      const float sigma_sqrt = sqrtf(sigma);
-      if (c2 > 0.0f) {
-        tmin = (-c1 - sigma_sqrt) / c2;
-        tmax = (-c1 + sigma_sqrt) / c2;
-      }
-      else {
-        tmin = (-c1 + sigma_sqrt) / c2;
-        tmax = (-c1 - sigma_sqrt) / c2;
-      }
-      const float3 P_boundary = P + tmin * D;
-      if (dot(axis, P_boundary) > 0.0f) {
-        const float3 P_boundary = P + tmax * D;
-        if (dot(axis, P_boundary) < 0.0f) {
-          tmax = tmin;
-          tmin = *ray_tmin;
-        }
-        else {
-          /* No change */
-        }
-      }
-      else {
-        const float3 P_boundary = P + tmax * D;
-        if (dot(axis, P_boundary) > 0.0f) {
-          tmin = tmax;
-          tmax = *ray_tmax;
-        }
-        else {
-          /* Invalid */
-        }
-      }
-    }
-    else { /* sigma == 0 */
-      if (c2 < 0) {
-        /* Invalid */
-      }
-      else if (c2 > 0) {
-        tmin = -c1 / c2;
-      }
-      else {
-        tmin = -c1 / c2;
-        tmax = tmin;
-      }
-    }
+  else if (c1 != 0.0f) {
+    tmin = -c0 / (2.0f * c1);
+    valid = (dot(axis, P + tmin * D) > 0.0f);
   }
+
+  if (!valid) {
+    tmax = tmin;
+  }
+
   *ray_tmin = fmaxf(tmin, *ray_tmin);
   *ray_tmax = fminf(tmax, *ray_tmax);
 }
