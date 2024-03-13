@@ -408,6 +408,26 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 /** \name Shadow Evaluation
  * \{ */
 
+float shadow_footprint_ratio(LightData light, vec3 P, bool is_directional)
+{
+  if (!is_directional) {
+    float dist_to_light = distance(P, light._position);
+    float footprint_ratio = dist_to_light;
+    /* Project the radius to the screen. 1 unit away from the camera the same way
+     * pixel_world_radius_inv was computed. Not needed in orthographic mode. */
+    if (drw_view_is_perspective()) {
+      float dist_to_cam = distance(P, drw_view_position());
+      footprint_ratio /= dist_to_cam;
+    }
+    /* Apply resolution ratio. */
+    footprint_ratio *= uniform_buf.shadow.tilemap_projection_ratio;
+    /* Take the frustum padding into account. */
+    footprint_ratio *= light.clip_side / orderedIntBitsToFloat(light.clip_near);
+    return footprint_ratio;
+  }
+  return 1.0;
+}
+
 /* Compute the world space offset of the shading position required for
  * stochastic percentage closer filtering of shadow-maps. */
 vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng)
@@ -463,11 +483,14 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
 #ifdef EEVEE_SAMPLING_DATA
   rand = sampling_rng_2D_get(SAMPLING_SHADOW_V);
 #endif
-  vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(0.0), rand);
+  vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(5, 7), rand);
   pcf_offset = pcf_offset * 2.0 - 1.0;
   pcf_offset *= light.pcf_radius;
 
-  float pcf_scale = 1.0 + max(0.0, light.lod_bias);
+  float footprint_ratio = shadow_footprint_ratio(light, P, is_directional);
+  float lod = -log2(footprint_ratio) + light.lod_bias;
+  lod = clamp(lod, 0.0, float(SHADOW_TILEMAP_LOD));
+  float pcf_scale = pow(2.0, lod);
   pcf_offset *= pcf_scale;
 
   vec3 ws_offset = TBN * vec3(pcf_offset, 0.0);
