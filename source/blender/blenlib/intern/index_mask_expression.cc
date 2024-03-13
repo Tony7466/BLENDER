@@ -612,6 +612,64 @@ static int64_t union_index_mask_segments(const Span<IndexMaskSegment> segments, 
   return count;
 }
 
+BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices_new(
+    const Expr &root_expression,
+    LinearAllocator<> &allocator,
+    const IndexRange bounds,
+    const Span<const Expr *> eager_eval_order)
+{
+  BLI_assert(bounds.size() <= max_segment_size);
+  const int64_t bound_min = bounds.start();
+  const int expr_array_size = root_expression.expression_array_size();
+  Array<IndexMaskSegment, inline_expr_array_size> results(expr_array_size);
+  for (const Expr *expression : eager_eval_order) {
+    switch (expression->type) {
+      case Expr::Type::Atomic: {
+        const auto &expr = expression->as_atomic();
+        const IndexMask mask = expr.mask->slice_content(bounds);
+        /* The caller should make sure that the bounds are aligned to segment bounds. */
+        BLI_assert(mask.segments_num() <= 1);
+        if (mask.segments_num() == 1) {
+          results[expression->index] = mask.segment(0);
+        }
+        break;
+      }
+      case Expr::Type::Union: {
+        const auto &expr = expression->as_union();
+        Array<IndexMaskSegment> segments_to_union;
+        int64_t result_size_upper_bound = 0;
+        bool used_short_circuit = false;
+        for (const int64_t term_i : expr.terms.index_range()) {
+          const Expr &term = *expr.terms[term_i];
+          const IndexMaskSegment term_segment = results[term.index];
+          if (term_segment.size() == bounds.size()) {
+            results[expression->index] = term_segment;
+            used_short_circuit = true;
+            break;
+          }
+          result_size_upper_bound += term_segment.size();
+          segments_to_union[term_i] = IndexMaskSegment(term_segment.offset() - bound_min,
+                                                       term_segment.base_span());
+        }
+        if (used_short_circuit) {
+          break;
+        }
+        result_size_upper_bound = std::min(result_size_upper_bound, max_segment_size);
+        int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
+        const int64_t union_size = union_index_mask_segments(segments_to_union, dst);
+        results[expression->index] = IndexMaskSegment(bound_min, {dst, union_size});
+        break;
+      }
+      case Expr::Type::Intersection: {
+        break;
+      }
+      case Expr::Type::Difference: {
+        break;
+      }
+    }
+  }
+}
+
 BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
                                                                  LinearAllocator<> &allocator,
                                                                  const IndexRange bounds)
