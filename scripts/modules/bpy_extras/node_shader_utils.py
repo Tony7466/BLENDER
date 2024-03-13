@@ -36,7 +36,9 @@ def values_clamp(val, minv, maxv):
     else:
         return max(minv, min(maxv, val))
 
-
+# TODO: Consider moving node_input_value_set/node_input_value_get into a common utility module if
+# more usage merits doing so. If that is done, abstract out the validity check and make it usable
+# for node outputs as well. See PR #119354 for details.
 def node_input_value_set(node, input, value):
     if node is None or input not in node.inputs:
         return
