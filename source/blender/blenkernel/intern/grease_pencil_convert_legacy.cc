@@ -172,29 +172,30 @@ static float3x2 get_legacy_stroke_to_texture_matrix(const float2 uv_translation,
   const float2 center = float2(0.5f, 0.5f);
 
   const float2 uv_scale_inv = math::safe_rcp(uv_scale);
-  const float2 d = maxv - minv;
-  const float s = sin(uv_rotation);
-  const float c = cos(uv_rotation);
-  const float2x2 rot = float2x2(float2(c, s), float2(-s, c));
+  const float2 diagonal = maxv - minv;
+  const float sin_rotation = sin(uv_rotation);
+  const float cos_rotation = cos(uv_rotation);
+  const float2x2 rotation = float2x2(float2(cos_rotation, sin_rotation),
+                                     float2(-sin_rotation, cos_rotation));
 
-  float3x2 texmat = float3x2::identity();
+  float3x2 texture_matrix = float3x2::identity();
 
   /* Apply bounding box rescaling. */
-  texmat[2] -= minv;
-  texmat = math::from_scale<float2x2>(1.0f / d) * texmat;
+  texture_matrix[2] -= minv;
+  texture_matrix = math::from_scale<float2x2>(1.0f / diagonal) * texture_matrix;
 
   /* Apply translation. */
-  texmat[2] += uv_translation;
+  texture_matrix[2] += uv_translation;
 
   /* Apply rotation. */
-  texmat[2] -= center;
-  texmat = rot * texmat;
-  texmat[2] += center;
+  texture_matrix[2] -= center;
+  texture_matrix = rotation * texture_matrix;
+  texture_matrix[2] += center;
 
   /* Apply scale. */
-  texmat = math::from_scale<float2x2>(uv_scale_inv) * texmat;
+  texture_matrix = math::from_scale<float2x2>(uv_scale_inv) * texture_matrix;
 
-  return texmat;
+  return texture_matrix;
 }
 
 /*
@@ -242,7 +243,7 @@ static blender::float4x2 get_legacy_layer_to_stroke_matrix(bGPDstroke *gps)
 
 static blender::float4x2 get_legacy_texture_matrix(bGPDstroke *gps)
 {
-  const float3x2 texmat = get_legacy_stroke_to_texture_matrix(
+  const float3x2 texture_matrix = get_legacy_stroke_to_texture_matrix(
       float2(gps->uv_translation), gps->uv_rotation, float2(gps->uv_scale));
 
   const float4x2 strokemat = get_legacy_layer_to_stroke_matrix(gps);
@@ -260,7 +261,7 @@ static blender::float4x2 get_legacy_texture_matrix(bGPDstroke *gps)
   strokemat4x3[2][2] = 0.0f;
   strokemat4x3[3][2] = 1.0f;
 
-  return texmat * strokemat4x3;
+  return texture_matrix * strokemat4x3;
 }
 
 void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
