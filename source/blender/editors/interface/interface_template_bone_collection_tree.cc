@@ -19,6 +19,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
+#include "ED_object.hh"
 #include "ED_undo.hh"
 
 #include "WM_api.hh"
@@ -460,7 +461,7 @@ void uiTemplateBoneCollectionTree(uiLayout *layout, bContext *C)
 {
   using namespace blender;
 
-  Object *object = CTX_data_active_object(C);
+  Object *object = ED_object_active_context(C);
   if (!object || object->type != OB_ARMATURE) {
     return;
   }
