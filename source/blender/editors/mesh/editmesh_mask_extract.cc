@@ -461,9 +461,7 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
   Main *bmain = CTX_data_main(C);
   View3D *v3d = CTX_wm_view3d(C);
   Object *ob = CTX_data_active_object(C);
-  if (!ob) {
-    return OPERATOR_CANCELLED;
-  }
+
   bool create_new_object = RNA_boolean_get(op->ptr, "new_object");
   bool fill_holes = RNA_boolean_get(op->ptr, "fill_holes");
   float mask_threshold = RNA_float_get(op->ptr, "mask_threshold");
@@ -472,10 +470,7 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
   /* Clone the original mesh */
   Mesh *mesh = static_cast<Mesh *>(ob->data);
   Mesh *new_mesh = (Mesh *)BKE_id_copy(bmain, &mesh->id);
-  if (!new_mesh) {
-    return OPERATOR_CANCELLED;
-  }
-  /* Workaround for https://projects.blender.org/blender/blender/issues/87243
+  /* Fix for https://projects.blender.org/blender/blender/issues/87243
    Undo crashes when new object is created in the middle of a sculpt */
   if (ob->mode == OB_MODE_SCULPT && !create_new_object) {
     sculpt_paint::undo::geometry_begin(ob, op);
@@ -504,13 +499,7 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
     }
     Object *new_ob = ED_object_add_type(
         C, OB_MESH, nullptr, ob->loc, ob->rot, false, local_view_bits);
-    if (!new_ob) {
-      return OPERATOR_CANCELLED;
-    }
     Mesh *new_ob_mesh = (Mesh *)BKE_id_copy(bmain, &mesh->id);
-    if (!new_ob_mesh) {
-      return OPERATOR_CANCELLED;
-    }
 
     const BMAllocTemplate allocsize_new_ob = BMALLOC_TEMPLATE_FROM_ME(new_ob_mesh);
     bm = BM_mesh_create(&allocsize_new_ob, &bm_create_params);
