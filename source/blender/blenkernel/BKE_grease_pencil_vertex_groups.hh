@@ -19,10 +19,10 @@ void validate_drawing_vertex_groups(GreasePencil &grease_pencil);
 /** Assign selected vertices to the vertex group. */
 void assign_to_vertex_group(GreasePencil &grease_pencil, StringRef name, float weight);
 
-void assign_to_vertex_group_from_selection(CurvesGeometry &curves,
-                                           const IndexMask &selection,
-                                           StringRef name,
-                                           float weight);
+void assign_to_vertex_group_from_mask(CurvesGeometry &curves,
+                                      const IndexMask &mask,
+                                      StringRef name,
+                                      float weight);
 
 /**
  * Remove selected vertices from the vertex group.

@@ -52,12 +52,12 @@ void validate_drawing_vertex_groups(GreasePencil &grease_pencil)
   }
 }
 
-void assign_to_vertex_group_from_selection(bke::CurvesGeometry &curves,
-                                           const IndexMask &selection,
-                                           const StringRef name,
-                                           const float weight)
+void assign_to_vertex_group_from_mask(bke::CurvesGeometry &curves,
+                                      const IndexMask &mask,
+                                      const StringRef name,
+                                      const float weight)
 {
-  if (selection.is_empty()) {
+  if (mask.is_empty()) {
     return;
   }
 
@@ -75,7 +75,7 @@ void assign_to_vertex_group_from_selection(bke::CurvesGeometry &curves,
   }
 
   const MutableSpan<MDeformVert> dverts = curves.deform_verts_for_write();
-  selection.foreach_index([&](const int point_i) {
+  mask.foreach_index([&](const int point_i) {
     MDeformWeight *dw = BKE_defvert_ensure_index(&dverts[point_i], def_nr);
     if (dw) {
       dw->weight = weight;

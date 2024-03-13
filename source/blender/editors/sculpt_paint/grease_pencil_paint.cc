@@ -623,7 +623,7 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
 
   const StringRef vertex_group_name = defgroup->name;
 
-  blender::bke::greasepencil::assign_to_vertex_group_from_selection(
+  blender::bke::greasepencil::assign_to_vertex_group_from_mask(
       curves, IndexMask(points), vertex_group_name, 1.0f);
 
   /* Loop through all modifiers trying to find the pose channel for the vertex group name. */
@@ -639,7 +639,8 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
       continue;
     }
 
-    GreasePencilArmatureModifierData *amd = reinterpret_cast<GreasePencilArmatureModifierData *>(md);
+    GreasePencilArmatureModifierData *amd = reinterpret_cast<GreasePencilArmatureModifierData *>(
+        md);
     if (amd == nullptr) {
       continue;
     }
