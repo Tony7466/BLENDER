@@ -2,3 +2,4 @@ Referenced by issue #114389, Node input and output "bpy_prop_collection[key]" ke
 Referenced by issue #114493, NodeSocketFloatFactor (and many others) socket type rejected by NodeTreeInterface.new_socket()
 Referenced by pull request #113353, Fix #113340: Socket naming consistency
 Referenced by pull request #119354, Fix #119030: Only access Location node input when available
+Referenced by commit 0b19f1f4a0b1722c212a098715c35cad6b015215, Fix #119030: Only access Location node input when available
