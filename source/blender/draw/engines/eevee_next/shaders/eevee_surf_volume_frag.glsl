@@ -43,7 +43,7 @@ struct VolumeProperties {
 VolumeProperties eval_froxel(ivec3 froxel)
 {
   /* TODO(fclem): Make sure this volume to screen is well aligned with the view. */
-  vec3 ndc_cell = volume_to_screen(froxel * uniform_buf.volumes.inv_tex_size);
+  vec3 ndc_cell = volume_to_screen((vec3(froxel) + 0.5) * uniform_buf.volumes.inv_tex_size);
 
   vec3 vP = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
   vec3 wP = point_view_to_world(vP);
@@ -99,7 +99,7 @@ void write_froxel(ivec3 froxel, VolumeProperties prop)
 
 void main()
 {
-  ivec3 froxel = ivec3(gl_FragCoord.xy, 0);
+  ivec3 froxel = ivec3(ivec2(gl_FragCoord.xy), 0);
 
 #ifdef VOLUME_HOMOGENOUS
   /* Homogenous volumes only evaluate properties at volume entrance and write the same values for
