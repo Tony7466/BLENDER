@@ -953,9 +953,7 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
   Vector<IndexRange, 16> short_unknown_segments;
 
   const ExactEvalMode exact_eval_mode = determine_exact_eval_mode(root_expression);
-  const int64_t long_segment_size_threshold = (exact_eval_mode == ExactEvalMode::Indices) ?
-                                                  max_segment_size :
-                                                  1024;
+  const int64_t coarse_segment_size_threshold = max_segment_size;
 
   const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
       root_expression);
@@ -964,7 +962,7 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
     for (const CoarseSegment &segment : coarse_result.segments) {
       switch (segment.type) {
         case CoarseSegment::Type::Unknown: {
-          if (segment.bounds.size() > long_segment_size_threshold) {
+          if (segment.bounds.size() > coarse_segment_size_threshold) {
             long_unknown_segments.push(segment.bounds);
           }
           else {
