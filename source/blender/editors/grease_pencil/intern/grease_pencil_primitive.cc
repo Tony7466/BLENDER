@@ -101,6 +101,9 @@ static constexpr float UI_TERTIARY_POINT_DRAW_SIZE_PX = 3.0f;
 static constexpr float UI_POINT_HIT_SIZE_PX = 20.0f;
 static constexpr float UI_POINT_MAX_HIT_SIZE_PX = 600.0f;
 
+/* The center point for `Box` and `Circle` type. */
+static constexpr int CONTROL_POINT_CENTER = 1;
+
 struct PrimitiveTool_OpData {
   ARegion *region;
   /* For drawing preview loop. */
@@ -189,8 +192,8 @@ static void control_point_colors_and_sizes(const PrimitiveTool_OpData &ptd,
     sizes.fill(size_primary);
 
     /* Set the center point's color. */
-    colors[1] = color_gizmo_b;
-    sizes[1] = size_secondary;
+    colors[CONTROL_POINT_CENTER] = color_gizmo_b;
+    sizes[CONTROL_POINT_CENTER] = size_secondary;
   }
   else {
     colors.fill(color_gizmo_secondary);
@@ -328,7 +331,7 @@ static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
       return;
     }
     case PrimitiveType::BOX: {
-      const T center = control_points[1];
+      const T center = control_points[CONTROL_POINT_CENTER];
       const T offset = control_points.first() - center;
       /*
        * Calculate the 4 corners of the box.
@@ -818,7 +821,7 @@ static void grease_pencil_primitive_grab_update(PrimitiveTool_OpData &ptd, const
   }
 
   /* If the center point is been grabbed, move all points. */
-  if (ptd.active_control_point_index == 1) {
+  if (ptd.active_control_point_index == CONTROL_POINT_CENTER) {
     grease_pencil_primitive_drag_all_update(ptd, event);
     return;
   }
@@ -830,7 +833,8 @@ static void grease_pencil_primitive_grab_update(PrimitiveTool_OpData &ptd, const
       ptd.vc.region, ptd.temp_control_points[other_point_id], ptd.projection);
 
   /* Set the center point to between the first and last point. */
-  ptd.control_points[1] = ptd.placement.project((other_point_2d + float2(event->mval)) / 2.0f);
+  ptd.control_points[CONTROL_POINT_CENTER] = ptd.placement.project(
+      (other_point_2d + float2(event->mval)) / 2.0f);
 }
 
 static void grease_pencil_primitive_drag_update(PrimitiveTool_OpData &ptd, const wmEvent *event)
