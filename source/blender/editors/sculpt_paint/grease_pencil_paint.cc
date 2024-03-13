@@ -639,7 +639,7 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
       continue;
     }
 
-    GreasePencilArmatureModifierData *amd = (GreasePencilArmatureModifierData *)md;
+    GreasePencilArmatureModifierData *amd = reinterpret_cast<GreasePencilArmatureModifierData *>(md);
     if (amd == nullptr) {
       continue;
     }
