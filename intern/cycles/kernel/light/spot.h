@@ -37,6 +37,90 @@ ccl_device void spot_light_uv(const float3 ray,
   *v = -(ray.x + ray.y) * factor;
 }
 
+ccl_device_inline void spot_light_valid_ray_segment(const ccl_global KernelSpotLight *spot,
+                                                    const float3 P,
+                                                    const float3 D,
+                                                    ccl_private float *ray_tmin,
+                                                    ccl_private float *ray_tmax)
+{
+  /* TODO(weizhen): consider light radius. The behaviour would be different with or without soft
+   * falloff. */
+  const float3 axis = spot->dir;
+  const float cos_half_spread = spot->cos_half_spot_angle;
+
+  const float3 v0 = normalize(P + *ray_tmin * D);
+  /* Clamp `tmax` in case the value is FLT_MAX. */
+  const float3 v1 = normalize(P + fminf(*ray_tmax, 1e12f) * D);
+
+  const float dot_v0_a = dot(v0, axis);
+  const float dot_v1_a = dot(v1, axis);
+
+  if (dot_v0_a >= cos_half_spread && dot_v1_a >= cos_half_spread) {
+    /* Emitter is visible to the complete section of the ray. */
+    return;
+  }
+
+  const float3 o0 = v0;
+  float3 o1, o2;
+  make_orthonormals_tangent(o0, v1, &o1, &o2);
+
+  /* Project the light axis onto the plane formed by v0 and v1. */
+  const float3 v = normalize(cross(o2, cross(axis, o2)));
+  const bool v_on_D = dot(o2, cross(v, D)) > 0;
+
+  /* The vector with endpoint on the line that forms the minimal angle with the light axis. */
+  const float3 v_min = v_on_D ? v : (dot_v0_a < dot_v1_a ? v0 : v1);
+  /* Cosine of the minimal angle. */
+  const float cos_theta_min = dot(v_min, axis);
+
+  if (cos_theta_min <= cos_half_spread) {
+    /* Emitter is invisible to the ray. */
+    /* TODO(weizhen): how to mark as invisible? */
+    *ray_tmax = *ray_tmin;
+    return;
+  }
+
+  const float cos_v = dot(v, o0);
+  const float sin_v = dot(v, o1);
+  /* Angle between v and vectors on the plane that form an angle half_spread with the axis. */
+  // TODO: check if dot(v, axis) == 0
+  const float cos_v_b = cos_half_spread / dot(v, axis);
+  const float sin_v_b = sin_from_cos(cos_v_b);
+  /* The left boundary vector formed by x = cos(v - v_b), y = sin(v - vb) */
+  const float sin_b1 = sin_v * cos_v_b - cos_v * sin_v_b;
+  const float cos_b1 = cos_v * cos_v_b + sin_v * sin_v_b;
+  /* FIXME(weizhen): deal with the case when there is only one intersection with the cone. */
+  /* The right boundary vector formed by x = cos(v + v_b), y = sin(v + vb) */
+  const float sin_b2 = sin_v * cos_v_b + cos_v * sin_v_b;
+  const float cos_b2 = cos_v * cos_v_b - sin_v * sin_v_b;
+
+  const float dot_p_o0 = dot(P, o0);
+  const float dot_p_o1 = dot(P, o1);
+  const float dot_d_o0 = dot(D, o0);
+  const float dot_d_o1 = dot(D, o1);
+
+  /* In coordinate (o0, o1, o2), solve x = dot(P + D * t, o0), y = dot(P + D * t, o1). */
+  const float t1 = (cos_b1 * dot_p_o1 - sin_b1 * dot_p_o0) /
+                   (sin_b1 * dot_d_o0 - cos_b1 * dot_d_o1);
+
+  const float t2 = (cos_b2 * dot_p_o1 - sin_b2 * dot_p_o0) /
+                   (sin_b2 * dot_d_o0 - cos_b2 * dot_d_o1);
+
+  // TODO: check INF
+  const bool t1_is_valid = (dot_p_o0 + t1 * dot_d_o0) * cos_b1 > 0;
+  const bool t2_is_valid = (dot_p_o0 + t2 * dot_d_o0) * cos_b2 > 0;
+
+  const float tmin = t1_is_valid ? fmaxf(*ray_tmin, t1) : *ray_tmin;
+  const float tmax = t2_is_valid ? fminf(*ray_tmax, t2) : *ray_tmax;
+
+  if (tmin < tmax) {
+    *ray_tmin = tmin;
+    *ray_tmax = tmax;
+  }
+  else { /* TODO */
+  }
+}
+
 template<bool in_volume_segment>
 ccl_device_inline bool spot_light_sample(const ccl_global KernelLight *klight,
                                          const float2 rand,
