@@ -635,9 +635,10 @@ static int64_t intersect_index_mask_segments(const Span<IndexMaskSegment> segmen
       sorted_segments.end(),
       [](const IndexMaskSegment &a, const IndexMaskSegment &b) { return a.size() < b.size(); });
 
-  std::array<int16_t, max_segment_size> tmp_indices;
-  int16_t *buffer_a = r_values;
-  int16_t *buffer_b = tmp_indices.data();
+  std::array<int16_t, max_segment_size> tmp_indices_1;
+  std::array<int16_t, max_segment_size> tmp_indices_2;
+  int16_t *buffer_a = tmp_indices_1.data();
+  int16_t *buffer_b = tmp_indices_2.data();
 
   int64_t count = 0;
   {
@@ -651,7 +652,7 @@ static int64_t intersect_index_mask_segments(const Span<IndexMaskSegment> segmen
   for (const int64_t segment_i : sorted_segments.index_range().drop_front(2)) {
     const int16_t *a = buffer_a;
     const IndexMaskSegment b = sorted_segments[segment_i];
-    int16_t *dst = buffer_b;
+    int16_t *dst = (segment_i == sorted_segments.size() - 1) ? r_values : buffer_b;
     count = std::set_intersection(a, a + count, b.begin(), b.end(), dst) - dst;
     std::swap(buffer_a, buffer_b);
   }
