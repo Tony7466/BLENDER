@@ -313,32 +313,6 @@ ccl_device float volume_equiangular_pdf(ccl_private const Ray *ccl_restrict ray,
   return pdf;
 }
 
-ccl_device float volume_equiangular_cdf(ccl_private const Ray *ccl_restrict ray,
-                                        const float3 light_P,
-                                        const float sample_t)
-{
-  float delta = dot((light_P - ray->P), ray->D);
-  float D = safe_sqrtf(len_squared(light_P - ray->P) - delta * delta);
-  if (UNLIKELY(D == 0.0f)) {
-    return 0.0f;
-  }
-
-  const float tmin = ray->tmin;
-  const float tmax = ray->tmax;
-  const float t_ = sample_t - delta;
-
-  const float theta_a = atan2f(tmin - delta, D);
-  const float theta_b = atan2f(tmax - delta, D);
-  if (UNLIKELY(theta_b == theta_a)) {
-    return 0.0f;
-  }
-
-  const float theta_sample = atan2f(t_, D);
-  const float cdf = (theta_sample - theta_a) / (theta_b - theta_a);
-
-  return cdf;
-}
-
 ccl_device_inline void volume_equiangular_valid_ray_segment(KernelGlobals kg,
                                                             const float3 ray_P,
                                                             const float3 ray_D,
