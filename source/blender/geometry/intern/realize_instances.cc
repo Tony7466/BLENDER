@@ -231,7 +231,7 @@ struct AllInstancesInfo {
   /** store an array of void pointer to attributes for each component. */
   Vector<AttributeFallbacksArray> attribute_fallback;
   /** Instance components to merge for output geometry. */
-  Vector<const bke::GeometryComponent *> instances_components_to_merge;
+  Vector<bke::GeometryComponentPtr> instances_components_to_merge;
   /** Base transform for each instance component. */
   Vector<float4x4> instances_components_transforms;
 };
@@ -697,7 +697,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
       case bke::GeometryComponent::Type::Instance: {
         if (current_depth == target_depth) {
           gather_info.instances.attribute_fallback.append(base_instance_context.instances);
-          gather_info.instances.instances_components_to_merge.append(component);
+          gather_info.instances.instances_components_to_merge.append(component->copy());
           gather_info.instances.instances_components_transforms.append(base_transform);
         }
         else {
@@ -1045,7 +1045,7 @@ static void execute_realize_pointcloud_task(
       dst_attribute_writers);
 }
 static void execute_instances_tasks(
-    const Span<const bke::GeometryComponent *> src_components,
+    const Span<bke::GeometryComponentPtr> src_components,
     Span<blender::float4x4> src_base_transforms,
     OrderedAttributes all_instances_attributes,
     Span<blender::geometry::AttributeFallbacksArray> attribute_fallback,
@@ -1060,7 +1060,7 @@ static void execute_instances_tasks(
   VArray<blender::float4x4>::ForSpan(src_base_transforms);
   Array<int> offsets_data(src_components.size() + 1);
   for (const int component_index : src_components.index_range()) {
-    const auto &src_component = static_cast<const bke::InstancesComponent &>(
+    const bke::InstancesComponent &src_component = static_cast<const bke::InstancesComponent &>(
         *src_components[component_index]);
     offsets_data[component_index] = src_component.get()->instances_num();
   }
@@ -1127,8 +1127,14 @@ static void execute_instances_tasks(
   }
   result.replace_instances(dst_instances.release());
   auto &dst_component = result.get_component_for_write<bke::InstancesComponent>();
+  Vector<const bke::GeometryComponent *> for_join_attributes;
+  for (bke::GeometryComponentPtr compent : src_components)
+  {
+    for_join_attributes.append(compent.get());
+  }
+  
   join_attributes(
-      src_components, dst_component, {"position", ".reference_index", "instance_transform"});
+      for_join_attributes, dst_component, {"position", ".reference_index", "instance_transform"});
 }
 
 static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &options,
@@ -1997,7 +2003,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
 
   if (not_to_realize_set.has_instances()) {
     gather_info.instances.instances_components_to_merge.append(
-        &not_to_realize_set.get_component_for_write<bke::InstancesComponent>());
+        (not_to_realize_set.get_component_for_write<bke::InstancesComponent>()).copy());
     gather_info.instances.instances_components_transforms.append(float4x4::identity());
     gather_info.instances.attribute_fallback.append((gather_info.instances_attriubutes.size()));
   }
