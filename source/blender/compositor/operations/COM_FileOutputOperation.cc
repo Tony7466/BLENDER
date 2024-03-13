@@ -4,6 +4,7 @@
 
 #include <memory>
 
+#include "BLI_assert.h"
 #include "BLI_fileops.h"
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -254,6 +255,10 @@ void FileOutputOperation::add_pass_for_input(realtime_compositor::FileOutput &fi
     case DataType::Value:
       file_output.add_pass(pass_name, view_name, "V", input.output_buffer);
       break;
+    default:
+      /* Other types are internal and needn't be handled by operations. */
+      BLI_assert_unreachable();
+      break;
   }
 }
 
@@ -271,6 +276,10 @@ void FileOutputOperation::add_view_for_input(realtime_compositor::FileOutput &fi
       break;
     case DataType::Value:
       file_output.add_view(view_name, 1, input.output_buffer);
+      break;
+    default:
+      /* Other types are internal and needn't be handled by operations. */
+      BLI_assert_unreachable();
       break;
   }
 }

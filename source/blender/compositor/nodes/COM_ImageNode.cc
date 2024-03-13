@@ -255,6 +255,10 @@ void ImageNode::convert_to_operations(NodeConverter &converter,
             operation = coloroperation;
             break;
           }
+          default:
+            /* Other types are internal and needn't be handled by operations. */
+            BLI_assert_unreachable();
+            break;
         }
 
         if (operation) {

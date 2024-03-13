@@ -4,6 +4,7 @@
 
 #include <set>
 
+#include "BLI_assert.h"
 #include "BLI_multi_value_map.hh"
 
 #include "BKE_node_runtime.hh"
@@ -363,6 +364,10 @@ void NodeOperationBuilder::add_input_constant_value(NodeOperationInput *input,
       add_link(op->get_output_socket(), input);
       break;
     }
+    default:
+      /* Other types are internal and needn't be handled by operations. */
+      BLI_assert_unreachable();
+      break;
   }
 }
 

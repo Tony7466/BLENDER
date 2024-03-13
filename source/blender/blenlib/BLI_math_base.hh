@@ -65,6 +65,11 @@ template<typename T> inline T clamp(const T &a, const T &min, const T &max)
   return std::clamp(a, min, max);
 }
 
+template<typename T> inline T step(const T &delta, const T &value)
+{
+  return value < delta ? 0 : 1;
+}
+
 template<typename T> inline T mod(const T &a, const T &b)
 {
   return std::fmod(a, b);
