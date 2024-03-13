@@ -85,7 +85,6 @@ enum class ControlPointType : int8_t {
 enum class ModelKeyMode : int8_t {
   CANCEL = 1,
   CONFIRM,
-  LEFTCLICK,
   EXTRUDE,
   PANNING,
   GRAB,
@@ -1376,7 +1375,6 @@ wmKeyMap *ED_primitivetool_modal_keymap(wmKeyConfig *keyconf)
       {int(ModelKeyMode::CANCEL), "CANCEL", 0, "Cancel", ""},
       {int(ModelKeyMode::CONFIRM), "CONFIRM", 0, "Confirm", ""},
       {int(ModelKeyMode::PANNING), "PANNING", 0, "Panning", ""},
-      {int(ModelKeyMode::LEFTCLICK), "LEFTCLICK", 0, "Left Click", ""},
       {int(ModelKeyMode::EXTRUDE), "EXTRUDE", 0, "Extrude", ""},
       {int(ModelKeyMode::GRAB), "GRAB", 0, "Grab", ""},
       {int(ModelKeyMode::ROTATE), "ROTATE", 0, "Rotate", ""},
