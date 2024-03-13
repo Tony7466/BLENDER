@@ -107,14 +107,12 @@ void main()
   VolumeProperties prop = eval_froxel(froxel);
 #endif
 
+#ifndef MAT_GEOM_WORLD
   OccupancyBits occupancy;
   for (int j = 0; j < 8; j++) {
-#ifdef MAT_GEOM_WORLD
-    occupancy.bits[j] = 0xFFFFFFFFu;
-#else
     occupancy.bits[j] = imageLoad(occupancy_img, ivec3(froxel.xy, j)).r;
-#endif
   }
+#endif
 
   /* Check all occupancy bits. */
   for (int j = 0; j < 8; j++) {
@@ -122,18 +120,21 @@ void main()
       froxel.z = j * 32 + i;
 
       /* TODO(fclem): Limit processing range to bounding box to avoid processing other objects. */
-
       if (froxel.z >= imageSize(out_scattering_img).z) {
         break;
       }
 
-      if (((occupancy.bits[j] >> i) & 1u) != 0) {
-#ifndef VOLUME_HOMOGENOUS
-        /* Heterogenous volumes evaluate properties at every froxel position. */
-        VolumeProperties prop = eval_froxel(froxel);
-#endif
-        write_froxel(froxel, prop);
+#ifndef MAT_GEOM_WORLD
+      if (((occupancy.bits[j] >> i) & 1u) == 0) {
+        continue;
       }
+#endif
+
+#ifndef VOLUME_HOMOGENOUS
+      /* Heterogenous volumes evaluate properties at every froxel position. */
+      VolumeProperties prop = eval_froxel(froxel);
+#endif
+      write_froxel(froxel, prop);
     }
   }
 }
