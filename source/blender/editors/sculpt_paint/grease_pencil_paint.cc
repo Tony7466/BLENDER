@@ -659,7 +659,7 @@ void PaintOperation::process_stroke_weights(const bContext &C, bke::greasepencil
     break;
   }
 
-  /* nothing valid was found. */
+  /* Nothing valid was found. */
   if (channel == nullptr) {
     return;
   }
