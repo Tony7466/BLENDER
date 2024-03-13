@@ -2160,7 +2160,7 @@ static bool outliner_is_object_data_shared_in_mode(TreeViewContext *tvc,
   params.object_mode = ob_active->mode;
   Vector<Object *> objects_in_mode = BKE_view_layer_array_from_objects_in_mode_params(
       tvc->scene, tvc->view_layer, nullptr, &params);
-  for (Object *object_iter : objects_in_mode) {
+  for (const Object *object_iter : objects_in_mode) {
     if (object_iter->data == ob->data) {
       return true;
     }
