@@ -277,6 +277,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_shadow_tbdr)
 
 GPU_SHADER_CREATE_INFO(eevee_surf_volume)
     .define("MAT_VOLUME")
+    /* Only the front fragments have to be invoked. */
+    .early_fragment_test(true)
     .image(VOLUME_PROP_SCATTERING_IMG_SLOT,
            GPU_R11F_G11F_B10F,
            Qualifier::READ_WRITE,
@@ -312,6 +314,8 @@ GPU_SHADER_CREATE_INFO(eevee_surf_volume)
 
 GPU_SHADER_CREATE_INFO(eevee_surf_occupancy)
     .define("MAT_OCCUPANCY")
+    /* All fragments need to be invoked even if we write to the depth buffer. */
+    .early_fragment_test(false)
     .builtins(BuiltinBits::TEXTURE_ATOMIC)
     .push_constant(Type::BOOL, "use_fast_method")
     .image(VOLUME_HIT_DEPTH_SLOT, GPU_R32F, Qualifier::WRITE, ImageType::FLOAT_3D, "hit_depth_img")

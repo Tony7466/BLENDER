@@ -124,6 +124,8 @@ void main()
     for (int i = 0; i < 32; i++) {
       froxel.z = j * 32 + i;
 
+      /* TODO(fclem): Limit processing range to bounding box to avoid processing other objects. */
+
       if (froxel.z >= imageSize(out_scattering_img).z) {
         break;
       }
