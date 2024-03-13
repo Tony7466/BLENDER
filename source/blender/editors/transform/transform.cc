@@ -1312,8 +1312,12 @@ int transformEvent(TransInfo *t, const wmEvent *event)
         else if (event->prev_val == KM_PRESS) {
           t->modifiers |= MOD_PRECISION;
           /* If we are already in a snapping mode, we don't want to add mouse precision,
-           * it makes things like rotate snap really tedious. */
-          if (t->modifiers & (MOD_SNAP | MOD_SNAP_INVERT)) {
+           * it makes things like rotate snap really tedious.
+           * It should only apply in 3D views or image views,
+           * not graphs or anywhere similar where snapping is the default*/
+          if (t->modifiers & (MOD_SNAP | MOD_SNAP_INVERT) &&
+              (t->spacetype == SPACE_VIEW3D || t->spacetype == SPACE_IMAGE))
+          {
             t->mouse.precision = false;
           }
           else {
