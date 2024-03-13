@@ -44,13 +44,11 @@ static int unique_num(const GroupedSpan<int> values, const Span<int> indices)
     }
     return unique_values.size();
   }
-  else {
-    Vector<int, 16> unique_values;
-    for (const int i : indices) {
-      unique_values.extend_non_duplicates(values[i]);
-    }
-    return unique_values.size();
+  Vector<int, 16> unique_values;
+  for (const int i : indices) {
+    unique_values.extend_non_duplicates(values[i]);
   }
+  return unique_values.size();
 }
 
 static VArray<int> construct_neighbor_count_varray(const Mesh &mesh, const AttrDomain domain)
