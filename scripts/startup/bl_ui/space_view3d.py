@@ -975,7 +975,11 @@ class VIEW3D_HT_header(Header):
 
             row = layout.row()
             row.popover(panel="VIEW3D_PT_slots_projectpaint", icon=icon)
-            row.popover(panel="VIEW3D_PT_mask", icon='MOD_MASK', text="")
+            row.popover(
+                panel="VIEW3D_PT_mask",
+                icon=VIEW3D_HT_header._texture_mask_icon(
+                    tool_settings.image_paint),
+                text="")
         else:
             # Transform settings depending on tool header visibility
             VIEW3D_HT_header.draw_xform_template(layout, context)
@@ -1082,6 +1086,11 @@ class VIEW3D_HT_header(Header):
                             gpencil_sculpt.use_automasking_layer_active)
 
         return "CLIPUV_DEHLT" if automask_enabled else "CLIPUV_HLT"
+
+    @staticmethod
+    def _texture_mask_icon(ipaint):
+        mask_enabled = ipaint.use_stencil_layer or ipaint.use_cavity
+        return "CLIPUV_DEHLT" if mask_enabled else "CLIPUV_HLT"
 
 
 class VIEW3D_MT_editor_menus(Menu):
@@ -3574,6 +3583,12 @@ class VIEW3D_MT_sculpt(Menu):
         props.action = 'HIDE'
 
         props = layout.operator("paint.hide_show", text="Box Show")
+        props.action = 'SHOW'
+
+        props = layout.operator("paint.hide_show_lasso_gesture", text="Lasso Hide")
+        props.action = 'HIDE'
+
+        props = layout.operator("paint.hide_show_lasso_gesture", text="Lasso Show")
         props.action = 'SHOW'
 
         layout.separator()
