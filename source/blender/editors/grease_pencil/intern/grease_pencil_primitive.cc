@@ -784,35 +784,10 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
   const float3 start_pos = ptd.placement.project(center - offset);
   const float3 end_pos = ptd.placement.project(center + offset);
 
-  switch (ptd.type) {
-    case PrimitiveType::CIRCLE:
-    case PrimitiveType::BOX: {
-      ptd.control_points[0] = ptd.placement.project(center - offset);
-      ptd.control_points[1] = ptd.placement.project(center);
-      ptd.control_points[2] = ptd.placement.project(center + offset);
-      return;
-    }
-    case PrimitiveType::POLYLINE:
-    case PrimitiveType::LINE: {
-      ptd.control_points.last(1) = start_pos;
-      ptd.control_points.last(0) = end_pos;
-      return;
-    }
-    case PrimitiveType::ARC: {
-      /* Linear interpolation. */
-      ptd.control_points.last(2) = start_pos;
-      ptd.control_points.last(1) = interpolate(start_pos, end_pos, 1.0f / 2.0f);
-      ptd.control_points.last(0) = end_pos;
-      return;
-    }
-    case PrimitiveType::CURVE: {
-      /* Linear interpolation. */
-      ptd.control_points.last(3) = start_pos;
-      ptd.control_points.last(2) = interpolate(start_pos, end_pos, 1.0f / 3.0f);
-      ptd.control_points.last(1) = interpolate(start_pos, end_pos, 2.0f / 3.0f);
-      ptd.control_points.last(0) = end_pos;
-      return;
-    }
+  const int number_control_points = control_points_per_segment(ptd);
+  for (const int i : IndexRange(number_control_points + 1)) {
+    ptd.control_points.last(i) = interpolate(
+        end_pos, start_pos, (i / float(number_control_points)));
   }
 }
 
@@ -838,18 +813,24 @@ static void grease_pencil_primitive_grab_update(PrimitiveTool_OpData &ptd, const
   float3 pos = ptd.placement.project(float2(event->mval));
   ptd.control_points[ptd.active_control_point_index] = pos;
 
-  if (ELEM(ptd.type, PrimitiveType::CIRCLE, PrimitiveType::BOX)) {
-    if (ptd.active_control_point_index == 1) {
-      grease_pencil_primitive_drag_all_update(ptd, event);
-    }
-    else {
-      ptd.start_position_2d = ED_view3d_project_float_v2_m4(
-          ptd.vc.region,
-          ptd.temp_control_points[2 - ptd.active_control_point_index],
-          ptd.projection);
-      grease_pencil_primitive_extruding_update(ptd, event);
-    }
+  if (!ELEM(ptd.type, PrimitiveType::CIRCLE, PrimitiveType::BOX)) {
+    return;
   }
+
+  /* If the center point is been grabbed, move all points. */
+  if (ptd.active_control_point_index == 1) {
+    grease_pencil_primitive_drag_all_update(ptd, event);
+    return;
+  }
+
+  const int other_point_id = 2 - ptd.active_control_point_index;
+
+  /* Get the location of the other control point.*/
+  const float2 other_point_2d = ED_view3d_project_float_v2_m4(
+      ptd.vc.region, ptd.temp_control_points[other_point_id], ptd.projection);
+
+  /* Set the center point to between the first and last point. */
+  ptd.control_points[1] = ptd.placement.project((other_point_2d + float2(event->mval)) / 2.0f);
 }
 
 static void grease_pencil_primitive_drag_update(PrimitiveTool_OpData &ptd, const wmEvent *event)
