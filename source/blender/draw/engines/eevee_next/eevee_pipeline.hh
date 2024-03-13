@@ -373,6 +373,8 @@ class VolumeLayer {
   bool use_hit_list = false;
   bool is_empty = true;
   bool finalized = false;
+  bool has_scatter = false;
+  bool has_absorption = false;
 
  private:
   Instance &inst_;
@@ -447,11 +449,21 @@ class VolumePipeline {
   }
   bool has_scatter() const
   {
-    return has_scatter_;
+    for (auto &layer : layers_) {
+      if (layer->has_scatter) {
+        return true;
+      }
+    }
+    return false;
   }
   bool has_absorption() const
   {
-    return has_absorption_;
+    for (auto &layer : layers_) {
+      if (layer->has_absorption) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /* Returns true if any volume layer uses the hist list. */

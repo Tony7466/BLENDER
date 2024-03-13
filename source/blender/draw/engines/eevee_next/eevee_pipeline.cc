@@ -915,6 +915,8 @@ void VolumeLayer::sync()
   use_hit_list = false;
   is_empty = true;
   finalized = false;
+  has_scatter = false;
+  has_absorption = false;
 
   draw::PassMain &layer_pass = volume_layer_ps_;
   layer_pass.init();
@@ -969,6 +971,12 @@ PassMain::Sub *VolumeLayer::material_add(const Object * /*ob*/,
                  "Only volume material should be added here");
   PassMain::Sub *pass = &material_ps_->sub(GPU_material_get_name(gpumat));
   pass->material_set(*inst_.manager, gpumat);
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_VOLUME_SCATTER)) {
+    has_scatter = true;
+  }
+  if (GPU_material_flag_get(gpumat, GPU_MATFLAG_VOLUME_ABSORPTION)) {
+    has_absorption = true;
+  }
   return pass;
 }
 
