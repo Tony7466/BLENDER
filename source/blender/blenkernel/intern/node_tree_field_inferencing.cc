@@ -751,37 +751,57 @@ static bool reduce_binary(const BinaryConstraintFn &constraint,
   return changed;
 }
 
-struct NullInterupter {
-  static bool notify(StringRef /*message*/)
-  {
-    return true;
-  }
+struct NullLogger {
+  static void notify(StringRef /*message*/) {}
+  static void on_worklist_extended(const int /*var_src*/, const int /*var_dst*/) {}
+
+  static void on_binary_constraint_applied(const int /*src*/, const int /*dst*/) {}
+  static void on_domain_reduced(const int /*var*/, const BitSpan /*domain*/) {}
+  static void on_domain_empty(const int /*var*/) {}
+  static void on_variable_state_changed(BitGroupVector<> & /*variable_domains*/) {}
 };
 
-struct PrintInterupter {
-  static bool notify(StringRef message)
+struct PrintLogger {
+  static void notify(StringRef message)
   {
     std::cout << message << std::endl;
-    return true;
+  }
+
+  static void on_worklist_extended(const int src, const int dst)
+  {
+    std::cout << "  Worklist extended: " + src << ", " << dst << std::endl;
+  }
+
+  static void on_binary_constraint_applied(const int src, const int dst)
+  {
+    std::cout << "  Applying " << src << ", " << dst << std::endl;
+  }
+
+  static void on_domain_reduced(const int var, const BitSpan domain)
+  {
+    std::cout << "    Reduced domain!" << std::endl;
+  }
+
+  static void on_domain_empty(const int var)
+  {
+    std::cout << "      FAILED! No possible values for " << var << std::endl;
+  }
+
+  static void on_variable_state_changed(BitGroupVector<> &variable_domains) {
+    for (const int i : variable_domains.index_range()) {
+      std::string s = std::to_string(i) + ": ";
+      for (const int d : IndexRange(variable_domains.group_size())) {
+        if (variable_domains[i][d]) {
+          s += std::to_string(d) + ", ";
+        }
+        else {
+          s += "   ";
+        }
+      }
+      std::cout << s << std::endl;
+    }
   }
 };
-
-template<typename Interrupter>
-static void print_variable_state(BitGroupVector<> &variable_domains, StringRef prefix = "")
-{
-  for (const int i : variable_domains.index_range()) {
-    std::string s = std::to_string(i) + ": ";
-    for (const int d : IndexRange(variable_domains.group_size())) {
-      if (variable_domains[i][d]) {
-        s += std::to_string(d) + ", ";
-      }
-      else {
-        s += "   ";
-      }
-    }
-    Interrupter::notify(prefix + s);
-  }
-}
 
 class ConstraintSet {
  public:
@@ -834,7 +854,7 @@ class ConstraintSet {
 };
 
 /* Apply all unitary constraints. */
-template<typename Interrupter = NullInterupter>
+template<typename Logger = NullLogger>
 static void solve_unary_constraints(const ConstraintSet &constraints,
                                     BitGroupVector<> &variable_domains)
 {
@@ -845,7 +865,7 @@ static void solve_unary_constraints(const ConstraintSet &constraints,
   }
 }
 
-template<typename Interrupter = NullInterupter>
+template<typename Logger = NullLogger>
 static void solve_binary_constraints(const ConstraintSet &constraints,
                                      BitGroupVector<> &variable_domains)
 {
@@ -854,56 +874,54 @@ static void solve_binary_constraints(const ConstraintSet &constraints,
    * Using the topological sorting of sockets should make a decent "preconditioner".
    * This is similar to what the current R-L/L-R solver does. */
   Stack<int2> worklist;
-  Interrupter::notify("== Binary Constraint Solve ==");
+  Logger::notify("Binary Constraint Solve");
   for (const int i : variable_domains.index_range()) {
     for (const ConstraintSet::Target &target : constraints.get_target_constraints(i)) {
-      Interrupter::notify("  Initial constraint " + std::to_string(i) + ", " +
-                          std::to_string(target.variable));
       worklist.push({i, target.variable});
+      Logger::on_worklist_extended(i, target.variable);
     }
   }
-  print_variable_state<Interrupter>(variable_domains, "----");
+  Logger::on_variable_state_changed(variable_domains);
 
   while (!worklist.is_empty()) {
     const int2 key = worklist.pop();
-    Interrupter::notify("  Applying " + std::to_string(key[0]) + ", " + std::to_string(key[1]));
+    Logger::on_binary_constraint_applied(key[0], key[1]);
     const BinaryConstraintFn &constraint = constraints.get_binary_constraint(key[0], key[1]);
     const MutableBitSpan domain_a = variable_domains[key[0]];
     const BitSpan domain_b = variable_domains[key[1]];
     if (reduce_binary(constraint, domain_a, domain_b)) {
-      Interrupter::notify("    Reduced domain!");
+      Logger::on_domain_reduced(key[0], domain_a);
       if (!bits::any_bit_set(domain_a)) {
         /* TODO FAILURE CASE! */
-        Interrupter::notify("      FAILED! No possible values for " + std::to_string(key[0]));
+        Logger::on_domain_empty(key[0]);
         break;
       }
-      print_variable_state<Interrupter>(variable_domains, "----");
+      Logger::on_variable_state_changed(variable_domains);
 
       /* Add arcs to A from all dependant variables (except B). */
       for (const ConstraintSet::Source &source : constraints.get_source_constraints(key[0])) {
         if (source.variable == key[1]) {
           continue;
         }
-        Interrupter::notify("      Adding " + std::to_string(source.variable) + ", " +
-                            std::to_string(key[0]));
+        Logger::on_worklist_extended(source.variable, key[0]);
         worklist.push({source.variable, key[0]});
       }
     }
   }
 }
 
-template<typename Interrupter = NullInterupter>
+template<typename Logger = NullLogger>
 static BitGroupVector<> solve_constraints(const ConstraintSet &constraints,
                                           const int num_vars,
                                           const int domain_size)
 {
   BitGroupVector variable_domains(num_vars, domain_size, true);
 
-  solve_unary_constraints<Interrupter>(constraints, variable_domains);
-  solve_binary_constraints<Interrupter>(constraints, variable_domains);
+  solve_unary_constraints<Logger>(constraints, variable_domains);
+  solve_binary_constraints<Logger>(constraints, variable_domains);
 
-  Interrupter::notify("Constraint Solve:");
-  print_variable_state<Interrupter>(variable_domains, "----");
+  Logger::notify("Constraint Solve:");
+  Logger::on_variable_state_changed(variable_domains);
 
   return variable_domains;
 }
@@ -1088,7 +1106,7 @@ static void test_ac3_field_inferencing(
     const Span<const FieldInferencingInterface *> interface_by_node,
     FieldInferencingInterface &inferencing_interface)
 {
-  using Interrupter = ac3::PrintInterupter;
+  using Logger = ac3::PrintLogger;
 
   const bNode *group_output_node = tree.group_output_node();
   if (!group_output_node) {
@@ -1203,7 +1221,7 @@ static void test_ac3_field_inferencing(
     add_node_type_constraints(tree, *node, constraints);
   }
 
-  BitGroupVector<> result = ac3::solve_constraints<Interrupter>(
+  BitGroupVector<> result = ac3::solve_constraints<Logger>(
       constraints, num_vars, NumDomainValues);
 
   /* Setup inferencing interface for the tree. */
@@ -1238,7 +1256,7 @@ static void test_ac3_field_inferencing(
 
 static void test_ac3_example()
 {
-  using Interrupter = ac3::PrintInterupter;
+  using Logger = ac3::PrintLogger;
 
   /* Example taken from
    * https://www.boristhebrave.com/2021/08/30/arc-consistency-explained/
@@ -1326,7 +1344,7 @@ static void test_ac3_example()
     return value_a > value_b;
   });
 
-  ac3::solve_constraints<Interrupter>(constraints, num_vars, domain_size);
+  ac3::solve_constraints<Logger>(constraints, num_vars, domain_size);
 }
 
 bool update_field_inferencing(const bNodeTree &tree)
