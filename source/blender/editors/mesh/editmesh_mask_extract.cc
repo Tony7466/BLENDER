@@ -459,8 +459,8 @@ static int paint_mask_slice_exec(bContext *C, wmOperator *op)
   using namespace blender;
   using namespace blender::ed;
   Main *bmain = CTX_data_main(C);
-  View3D *v3d = CTX_wm_view3d(C);
   Object *ob = CTX_data_active_object(C);
+  View3D *v3d = CTX_wm_view3d(C);
 
   bool create_new_object = RNA_boolean_get(op->ptr, "new_object");
   bool fill_holes = RNA_boolean_get(op->ptr, "fill_holes");
