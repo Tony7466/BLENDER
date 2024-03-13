@@ -1219,8 +1219,7 @@ static const char *view3d_get_name(View3D *v3d, RegionView3D *rv3d)
     default:
       if (rv3d->persp == RV3D_CAMOB) {
         if ((v3d->camera) && (v3d->camera->type == OB_CAMERA)) {
-          Camera *cam;
-          cam = static_cast<Camera *>(v3d->camera->data);
+          const Camera *cam = static_cast<const Camera *>(v3d->camera->data);
           if (cam->type == CAM_PERSP) {
             name = IFACE_("Camera Perspective");
           }
@@ -2440,8 +2439,15 @@ void ED_view3d_depths_free(ViewDepths *depths)
   MEM_freeN(depths);
 }
 
-bool ED_view3d_has_depth_buffer_being_used(const Depsgraph *depsgraph, const View3D *v3d)
+bool ED_view3d_has_depth_buffer_updated(const Depsgraph *depsgraph, const View3D *v3d)
 {
+#ifdef REUSE_DEPTH_BUFFER
+  /* Check if the depth buffer was drawn by any engine and thus can be reused.
+   *
+   * The idea is good, but it is too error prone.
+   * Even when updated by an engine, the depth buffer can still be cleared by drawing callbacks and
+   * by the GPU_select API used by gizmos.
+   * Check #GPU_clear_depth to track when the depth buffer is cleared. */
   const char *engine_name = DEG_get_evaluated_scene(depsgraph)->r.engine;
   RenderEngineType *engine_type = RE_engines_find(engine_name);
 
@@ -2460,6 +2466,10 @@ bool ED_view3d_has_depth_buffer_being_used(const Depsgraph *depsgraph, const Vie
   return is_viewport_preview_solid || is_viewport_preview_material || is_viewport_wire_no_xray ||
          is_viewport_render_eevee || is_viewport_render_workbench ||
          is_viewport_render_external_with_overlay;
+#else
+  UNUSED_VARS(depsgraph, v3d);
+  return false;
+#endif
 }
 
 /** \} */
