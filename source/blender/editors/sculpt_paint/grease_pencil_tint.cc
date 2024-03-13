@@ -57,7 +57,7 @@ void TintOperation::on_stroke_begin(const bContext &C, const InputSample & /*sta
   }
   BLI_assert(brush->gpencil_settings != nullptr);
 
-  BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
+  BKE_curvemapping_init(brush->curve);
 
   radius_ = BKE_brush_size_get(scene, brush);
   strength_ = BKE_brush_alpha_get(scene, brush);
@@ -87,7 +87,8 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
   float radius = radius_;
   float strength = strength_;
   if (BKE_brush_use_size_pressure(brush)) {
-    radius *= extension_sample.pressure;
+    radius *= BKE_curvemapping_evaluateF(
+        brush->gpencil_settings->curve_sensitivity, 0, extension_sample.pressure);
   }
   if (BKE_brush_use_alpha_pressure(brush)) {
     strength *= BKE_curvemapping_evaluateF(
