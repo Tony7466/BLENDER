@@ -692,6 +692,20 @@ vec3 coordinate_incoming(vec3 P)
 /** \} */
 
 /* -------------------------------------------------------------------- */
+/** \name Mixed render resolution
+ *
+ * Callbacks image texture sampling.
+ *
+ * \{ */
+
+float film_scaling_factor_get()
+{
+  return float(uniform_buf.film.scaling_factor);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
 /** \name Volume Attribute post
  *
  * TODO(@fclem): These implementation details should concern the DRWManager and not be a fix on
