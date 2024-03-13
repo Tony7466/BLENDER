@@ -463,12 +463,29 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
 #ifdef EEVEE_SAMPLING_DATA
   rand = sampling_rng_2D_get(SAMPLING_SHADOW_V);
 #endif
-  vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(0.0), rand);
+  vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(5, 7), rand);
   pcf_offset = pcf_offset * 2.0 - 1.0;
   pcf_offset *= light.pcf_radius;
 
-  float pcf_scale = 1.0 + max(0.0, light.lod_bias);
-  pcf_offset *= pcf_scale;
+  if (is_directional) {
+    vec3 lP = light_world_to_local(light, P);
+    float level = shadow_directional_level_fractional(light, lP - light._position);
+    float pcf_scale = mix(0.5, 1.0, fract(level));
+    pcf_offset *= pcf_scale;
+  }
+  else {
+    float dist_to_cam = distance(P, drw_view_position());
+    float perspective_division = 1.0;
+    if (drw_view_is_perspective()) {
+      perspective_division = distance(P, drw_view_position());
+    }
+    float footprint_ratio = shadow_punctual_footprint_ratio(
+        light, P, perspective_division, uniform_buf.shadow.tilemap_projection_ratio);
+    float lod = -log2(footprint_ratio) + light.lod_bias;
+    lod = clamp(lod, 0.0, float(SHADOW_TILEMAP_LOD));
+    float pcf_scale = pow(2.0, lod);
+    pcf_offset *= pcf_scale;
+  }
 
   vec3 ws_offset = TBN * vec3(pcf_offset, 0.0);
   vec3 offset_P = P + ws_offset;

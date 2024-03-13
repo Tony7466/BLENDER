@@ -1025,7 +1025,8 @@ struct ShadowSceneData {
   int step_count;
   /* Bias the shading point by using the normal to avoid self intersection. */
   float normal_bias;
-  int _pad0;
+
+  float tilemap_projection_ratio;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowSceneData, 16)
 
