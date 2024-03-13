@@ -340,9 +340,17 @@ void SyncModule::sync_volume(Object *ob, ObjectHandle & /*ob_handle*/, ResourceH
   /* Use bounding box tag empty spaces. */
   GPUBatch *geom = DRW_cache_cube_get();
 
-  geometry_call(material.volume_occupancy.sub_pass, geom, res_handle);
-  /* TODO(fclem): Need to bind the volume grids. */
-  geometry_call(material.volume_material.sub_pass, geom, res_handle);
+  auto drawcall_add = [&](MaterialPass &matpass, GPUBatch *geom, ResourceHandle res_handle) {
+    if (matpass.sub_pass == nullptr) {
+      return;
+    }
+    PassMain::Sub *object_pass = volume_sub_pass(
+        *matpass.sub_pass, inst_.scene, ob, matpass.gpumat);
+    object_pass->draw(geom, res_handle);
+  };
+
+  drawcall_add(material.volume_occupancy, geom, res_handle);
+  drawcall_add(material.volume_material, geom, res_handle);
 }
 
 /** \} */
