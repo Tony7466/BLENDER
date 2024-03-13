@@ -612,7 +612,7 @@ static int64_t union_index_mask_segments(const Span<IndexMaskSegment> segments, 
   return count;
 }
 
-BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices_new(
+BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
     const Expr &root_expression,
     LinearAllocator<> &allocator,
     const IndexRange bounds,
@@ -770,7 +770,7 @@ static IndexMaskSegment evaluate_exact_segment(const Expr &root_expression,
     case ExactEvalMode::Bits:
       return evaluate_exact_with_bits(root_expression, allocator, bounds, eager_eval_order);
     case ExactEvalMode::Indices:
-      return evaluate_exact_with_indices_new(root_expression, allocator, bounds, eager_eval_order);
+      return evaluate_exact_with_indices(root_expression, allocator, bounds, eager_eval_order);
   }
   BLI_assert_unreachable();
   return {};
