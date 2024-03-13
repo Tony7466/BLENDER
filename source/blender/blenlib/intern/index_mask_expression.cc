@@ -680,6 +680,23 @@ static int64_t difference_index_mask_segments(const IndexMaskSegment main_segmen
            r_values;
   }
 
+  int64_t subtract_count = 0;
+  for (const IndexMaskSegment &segment : subtract_segments) {
+    subtract_count += segment.size();
+  }
+  if (subtract_count < main_segment.size() / 2) {
+    /* Can be more efficient to union all the subtract indices first before computing the
+     * difference. This avoids potentially multiple larger intermediate arrays. */
+    std::array<int16_t, max_segment_size> union_indices;
+    const int64_t union_size = union_index_mask_segments(subtract_segments, union_indices.data());
+    return std::set_difference(main_segment.begin(),
+                               main_segment.end(),
+                               union_indices.data(),
+                               union_indices.data() + union_size,
+                               r_values) -
+           r_values;
+  }
+
   /* Sort larger segments to the front. */
   Vector<IndexMaskSegment> sorted_subtract_segments(subtract_segments);
   std::sort(
