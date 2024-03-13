@@ -44,7 +44,7 @@ class DATA_PT_empty(DataButtonsPanel, Panel):
             col = layout.column(heading="Show In", align=True)
             col.prop(ob, "show_empty_image_orthographic", text="Orthographic")
             col.prop(ob, "show_empty_image_perspective", text="Perspective")
-            col.prop(ob, "show_empty_image_only_axis_aligned", text="only axis aligned")
+            col.prop(ob, "show_empty_image_only_axis_aligned", text="Only Axis Aligned")
 
             col = layout.column(align=False, heading="Opacity")
             col.use_property_decorate = False
@@ -53,8 +53,8 @@ class DATA_PT_empty(DataButtonsPanel, Panel):
             sub.prop(ob, "use_empty_image_alpha", text="")
             sub = sub.row(align=True)
             sub.active = ob.use_empty_image_alpha
-            sub.prop(ob, "color", text="", index=3, slider=True)
-            row.prop_decorator(ob, "color", index=3)
+            sub.prop(ob, "empty_image_alpha", text="", index=3, slider=True)
+            row.prop_decorator(ob, "empty_image_alpha", index=3)
 
 
 class DATA_PT_empty_image(DataButtonsPanel, Panel):
