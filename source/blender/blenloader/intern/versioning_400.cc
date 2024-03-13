@@ -3005,7 +3005,7 @@ void blo_do_versions_400(FileData *fd, Library * /*lib*/, Main *bmain)
     }
   }
 
-  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 14)) {
+  if (!MAIN_VERSION_FILE_ATLEAST(bmain, 402, 10)) {
     LISTBASE_FOREACH (Light *, light, &bmain->lights) {
       light->shadow_resolution_scale = 1.0f;
     }
