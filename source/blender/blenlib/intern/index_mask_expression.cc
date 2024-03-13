@@ -659,6 +659,66 @@ static int64_t intersect_index_mask_segments(const Span<IndexMaskSegment> segmen
   return count;
 }
 
+static int64_t difference_index_mask_segments(const IndexMaskSegment main_segment,
+                                              const Span<IndexMaskSegment> subtract_segments,
+                                              int16_t *r_values)
+{
+  if (main_segment.is_empty()) {
+    return 0;
+  }
+  if (subtract_segments.is_empty()) {
+    std::copy(main_segment.begin(), main_segment.end(), r_values);
+    return main_segment.size();
+  }
+  if (subtract_segments.size() == 1) {
+    const IndexMaskSegment subtract_segment = subtract_segments[0];
+    return std::set_difference(main_segment.begin(),
+                               main_segment.end(),
+                               subtract_segment.begin(),
+                               subtract_segment.end(),
+                               r_values) -
+           r_values;
+  }
+
+  /* Sort larger segments to the front. */
+  Vector<IndexMaskSegment> sorted_subtract_segments(subtract_segments);
+  std::sort(
+      sorted_subtract_segments.begin(),
+      sorted_subtract_segments.end(),
+      [](const IndexMaskSegment &a, const IndexMaskSegment &b) { return a.size() > b.size(); });
+
+  std::array<int16_t, max_segment_size> tmp_indices_1;
+  std::array<int16_t, max_segment_size> tmp_indices_2;
+  int16_t *buffer_a = tmp_indices_1.data();
+  int16_t *buffer_b = tmp_indices_2.data();
+
+  int64_t count = 0;
+  {
+    /* Initial difference. */
+    const IndexMaskSegment subtract_segment = sorted_subtract_segments[0];
+    int16_t *dst = buffer_a;
+    count = std::set_difference(main_segment.begin(),
+                                main_segment.end(),
+                                subtract_segment.begin(),
+                                subtract_segment.end(),
+                                dst) -
+            dst;
+  }
+
+  for (const int64_t segment_i : sorted_subtract_segments.index_range().drop_front(1)) {
+    const IndexMaskSegment &subtract_segment = sorted_subtract_segments[segment_i];
+    int16_t *dst = (segment_i == sorted_subtract_segments.size() - 1) ? r_values : buffer_b;
+    count = std::set_difference(buffer_a,
+                                buffer_a + count,
+                                subtract_segment.begin(),
+                                subtract_segment.end(),
+                                dst) -
+            dst;
+    std::swap(buffer_a, buffer_b);
+  }
+  return count;
+}
+
 BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
     const Expr &root_expression,
     LinearAllocator<> &allocator,
@@ -733,6 +793,36 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
         break;
       }
       case Expr::Type::Difference: {
+        const auto &expr = expression->as_difference();
+        const Expr &main_term = *expr.terms[0];
+        const IndexMaskSegment main_segment = results[main_term.index];
+        if (main_segment.is_empty()) {
+          results[expression->index] = {};
+          break;
+        }
+        const IndexMaskSegment shifted_main_segment = main_segment.shift(-bound_min);
+        int64_t result_size_upper_bound = main_segment.size();
+        bool used_short_circuit = false;
+        Array<IndexMaskSegment> subtract_segments(expr.terms.size() - 1);
+        for (const int64_t term_i : expr.terms.index_range().drop_front(1)) {
+          const Expr &subtract_term = *expr.terms[term_i];
+          const IndexMaskSegment term_segment = results[subtract_term.index];
+          if (term_segment.size() == bounds.size()) {
+            results[expression->index] = {};
+            used_short_circuit = true;
+            break;
+          }
+          result_size_upper_bound = std::min(result_size_upper_bound,
+                                             bounds.size() - term_segment.size());
+          subtract_segments[term_i - 1] = term_segment.shift(-bound_min);
+        }
+        if (used_short_circuit) {
+          break;
+        }
+        int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
+        const int64_t result_size = difference_index_mask_segments(
+            shifted_main_segment, subtract_segments, dst);
+        results[expression->index] = IndexMaskSegment(bound_min, {dst, result_size});
         break;
       }
     }

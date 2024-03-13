@@ -75,12 +75,20 @@ class ExprBuilder {
 
   const DifferenceExpr &subtract(const Term &a, const Term &b)
   {
-    const Expr &expr_a = this->term_to_expr(a);
-    const Expr &expr_b = this->term_to_expr(b);
+    return this->subtract(a, {b});
+  }
+
+  const DifferenceExpr &subtract(const Term &main_term, const Span<Term> subtract_terms)
+  {
+    Vector<const Expr *> term_expressions;
+    term_expressions.append(&this->term_to_expr(main_term));
+    for (const Term &subtract_term : subtract_terms) {
+      term_expressions.append(&this->term_to_expr(subtract_term));
+    }
     DifferenceExpr &expr = scope_.construct<DifferenceExpr>();
     expr.type = Expr::Type::Difference;
     expr.index = expr_count_++;
-    expr.terms.extend({&expr_a, &expr_b});
+    expr.terms = std::move(term_expressions);
     return expr;
   }
 

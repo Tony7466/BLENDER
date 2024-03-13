@@ -58,6 +58,21 @@ TEST(index_mask_expression, IntersectMulti)
   EXPECT_EQ(intersect_mask, IndexMask::from_initializers({5}, memory));
 }
 
+TEST(index_mask_expression, DifferenceMulti)
+{
+  IndexMaskMemory memory;
+  const IndexMask mask_a = IndexMask::from_initializers({1, 2, 3, 5, 6, 7, 9, 10}, memory);
+  const IndexMask mask_b = IndexMask::from_initializers({2, 5, 6, 10}, memory);
+  const IndexMask mask_c = IndexMask::from_initializers({4, 5, 6}, memory);
+  const IndexMask mask_d = IndexMask::from_initializers({1, 5, 10}, memory);
+
+  ExprBuilder builder;
+  const Expr &expr = builder.subtract(&mask_a, {&mask_b, &mask_c, &mask_d});
+  const IndexMask difference_mask = evaluate_expression(expr, memory);
+
+  EXPECT_EQ(difference_mask, IndexMask::from_initializers({3, 7, 9}, memory));
+}
+
 TEST(index_mask_expression, Intersection)
 {
   IndexMaskMemory memory;

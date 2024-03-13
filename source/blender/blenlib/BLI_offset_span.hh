@@ -36,6 +36,11 @@ template<typename T, typename BaseT> class OffsetSpan {
     return offset_;
   }
 
+  OffsetSpan shift(const T shift) const
+  {
+    return OffsetSpan(offset_ + shift, data_);
+  }
+
   bool is_empty() const
   {
     return data_.is_empty();

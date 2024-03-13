@@ -128,6 +128,8 @@ class IndexMaskSegment : public OffsetSpan<int64_t, int16_t> {
 
   IndexMaskSegment slice(const IndexRange &range) const;
   IndexMaskSegment slice(const int64_t start, const int64_t size) const;
+
+  IndexMaskSegment shift(const int64_t shift) const;
 };
 
 /**
@@ -566,6 +568,11 @@ inline IndexMaskSegment IndexMaskSegment::slice(const int64_t start, const int64
 {
   return IndexMaskSegment(
       static_cast<const OffsetSpan<int64_t, int16_t> *>(this)->slice(start, size));
+}
+
+inline IndexMaskSegment IndexMaskSegment::shift(const int64_t shift) const
+{
+  return IndexMaskSegment(this->offset() + shift, this->base_span());
 }
 
 /* -------------------------------------------------------------------- */
