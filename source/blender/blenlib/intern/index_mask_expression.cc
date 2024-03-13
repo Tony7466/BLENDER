@@ -936,22 +936,6 @@ static ExactEvalMode determine_exact_eval_mode(const Expr &root_expression)
   return ExactEvalMode::Indices;
 }
 
-static IndexMaskSegment evaluate_exact_segment(const Expr &root_expression,
-                                               LinearAllocator<> &allocator,
-                                               const ExactEvalMode eval_mode,
-                                               const IndexRange bounds,
-                                               const Span<const Expr *> eager_eval_order)
-{
-  switch (eval_mode) {
-    case ExactEvalMode::Bits:
-      return evaluate_exact_with_bits(root_expression, allocator, bounds, eager_eval_order);
-    case ExactEvalMode::Indices:
-      return evaluate_exact_with_indices(root_expression, allocator, bounds, eager_eval_order);
-  }
-  BLI_assert_unreachable();
-  return {};
-}
-
 BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expression,
                                                        IndexMaskMemory &memory)
 {
@@ -1009,10 +993,42 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
   auto evaluate_unknown_segment = [&](const IndexRange bounds,
                                       LinearAllocator<> &allocator,
                                       Vector<EvaluatedSegment, 16> &r_evaluated_segments) {
-    const IndexMaskSegment indices = evaluate_exact_segment(
-        root_expression, allocator, exact_eval_mode, bounds, eager_eval_order);
-    if (!indices.is_empty()) {
-      r_evaluated_segments.append({EvaluatedSegment::Type::Indices, bounds, nullptr, indices});
+    switch (exact_eval_mode) {
+      case ExactEvalMode::Bits: {
+        const IndexMaskSegment indices = evaluate_exact_with_bits(
+            root_expression, allocator, bounds, eager_eval_order);
+        if (!indices.is_empty()) {
+          r_evaluated_segments.append({EvaluatedSegment::Type::Indices, bounds, nullptr, indices});
+        }
+        break;
+      }
+      case ExactEvalMode::Indices: {
+        Vector<int64_t> segment_boundaries;
+        for (const int64_t eval_order_i : eager_eval_order.index_range()) {
+          const Expr &expr = *eager_eval_order[eval_order_i];
+          if (expr.type != Expr::Type::Atomic) {
+            continue;
+          }
+          const AtomicExpr &atomic_expr = expr.as_atomic();
+          const IndexMask mask = atomic_expr.mask->slice_content(bounds);
+          mask.foreach_segment([&](const IndexMaskSegment &segment) {
+            segment_boundaries.append_non_duplicates(segment[0]);
+            segment_boundaries.append_non_duplicates(segment.last() + 1);
+          });
+        }
+        std::sort(segment_boundaries.begin(), segment_boundaries.end());
+        for (const int64_t boundary_i : segment_boundaries.index_range().drop_back(1)) {
+          const IndexRange sub_bounds = IndexRange::from_begin_end(
+              segment_boundaries[boundary_i], segment_boundaries[boundary_i + 1]);
+          const IndexMaskSegment indices = evaluate_exact_with_indices(
+              root_expression, allocator, sub_bounds, eager_eval_order);
+          if (!indices.is_empty()) {
+            r_evaluated_segments.append(
+                {EvaluatedSegment::Type::Indices, sub_bounds, nullptr, indices});
+          }
+        }
+        break;
+      }
     }
   };
 

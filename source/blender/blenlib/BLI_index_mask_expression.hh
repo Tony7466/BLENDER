@@ -75,7 +75,7 @@ class ExprBuilder {
 
   const DifferenceExpr &subtract(const Term &a, const Term &b)
   {
-    return this->subtract(a, {b});
+    return this->subtract(a, Span<Term>{b});
   }
 
   const DifferenceExpr &subtract(const Term &main_term, const Span<Term> subtract_terms)
