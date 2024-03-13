@@ -57,19 +57,26 @@ class ExprBuilder {
 
   const UnionExpr &merge(const Term &a, const Term &b)
   {
-    const auto &expr_a = this->term_to_expr(a);
-    const auto &expr_b = this->term_to_expr(b);
+    return this->merge({a, b});
+  }
+
+  const UnionExpr &merge(const Span<Term> terms)
+  {
+    Vector<const Expr *> term_expressions;
+    for (const Term &term : terms) {
+      term_expressions.append(&this->term_to_expr(term));
+    }
     UnionExpr &expr = scope_.construct<UnionExpr>();
     expr.type = Expr::Type::Union;
     expr.index = expr_count_++;
-    expr.terms.extend({&expr_a, &expr_b});
+    expr.terms = std::move(term_expressions);
     return expr;
   }
 
   const DifferenceExpr &subtract(const Term &a, const Term &b)
   {
-    const auto &expr_a = this->term_to_expr(a);
-    const auto &expr_b = this->term_to_expr(b);
+    const Expr &expr_a = this->term_to_expr(a);
+    const Expr &expr_b = this->term_to_expr(b);
     DifferenceExpr &expr = scope_.construct<DifferenceExpr>();
     expr.type = Expr::Type::Difference;
     expr.index = expr_count_++;
@@ -79,8 +86,8 @@ class ExprBuilder {
 
   const IntersectionExpr &intersect(const Term &a, const Term &b)
   {
-    const auto &expr_a = this->term_to_expr(a);
-    const auto &expr_b = this->term_to_expr(b);
+    const Expr &expr_a = this->term_to_expr(a);
+    const Expr &expr_b = this->term_to_expr(b);
     IntersectionExpr &expr = scope_.construct<IntersectionExpr>();
     expr.type = Expr::Type::Intersection;
     expr.index = expr_count_++;

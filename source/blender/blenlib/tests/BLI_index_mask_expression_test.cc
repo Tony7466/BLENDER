@@ -28,6 +28,21 @@ TEST(index_mask_expression, Union)
                 {5, IndexRange(10, 10), IndexRange(50, 100), 200, 100'000}, memory));
 }
 
+TEST(index_mask_expression, UnionMulti)
+{
+  IndexMaskMemory memory;
+  const IndexMask mask_a = IndexMask::from_initializers({3, 5, 6, 8, 9}, memory);
+  const IndexMask mask_b = IndexMask::from_initializers({4, 6, 7, 12}, memory);
+  const IndexMask mask_c = IndexMask::from_initializers({0, 5}, memory);
+  const IndexMask mask_d = IndexMask::from_initializers({6, 7, 10}, memory);
+
+  ExprBuilder builder;
+  const Expr &expr = builder.merge({&mask_a, &mask_b, &mask_c, &mask_d});
+  const IndexMask union_mask = evaluate_expression(expr, memory);
+
+  EXPECT_EQ(union_mask, IndexMask::from_initializers({0, 3, 4, 5, 6, 7, 8, 9, 10, 12}, memory));
+}
+
 TEST(index_mask_expression, Intersection)
 {
   IndexMaskMemory memory;

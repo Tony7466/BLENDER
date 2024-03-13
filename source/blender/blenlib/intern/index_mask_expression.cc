@@ -589,7 +589,7 @@ static int64_t union_index_mask_segments(const Span<IndexMaskSegment> segments, 
   int16_t *buffer_a = r_values;
   int16_t *buffer_b = tmp_indices.data();
 
-  if (sorted_segments.size() % 2 == 0) {
+  if (sorted_segments.size() % 2 == 1) {
     std::swap(buffer_a, buffer_b);
   }
 
@@ -636,7 +636,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices_new(
       }
       case Expr::Type::Union: {
         const auto &expr = expression->as_union();
-        Array<IndexMaskSegment> segments_to_union;
+        Array<IndexMaskSegment> segments_to_union(expr.terms.size());
         int64_t result_size_upper_bound = 0;
         bool used_short_circuit = false;
         for (const int64_t term_i : expr.terms.index_range()) {
@@ -654,7 +654,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices_new(
         if (used_short_circuit) {
           break;
         }
-        result_size_upper_bound = std::min(result_size_upper_bound, max_segment_size);
+        result_size_upper_bound = std::min(result_size_upper_bound, bounds.size());
         int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
         const int64_t union_size = union_index_mask_segments(segments_to_union, dst);
         results[expression->index] = IndexMaskSegment(bound_min, {dst, union_size});
@@ -668,6 +668,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices_new(
       }
     }
   }
+  return results[root_expression.index];
 }
 
 BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
@@ -936,7 +937,7 @@ static IndexMaskSegment evaluate_exact_segment(const Expr &root_expression,
     case ExactEvalMode::Bits:
       return evaluate_exact_with_bits(root_expression, allocator, bounds, eager_eval_order);
     case ExactEvalMode::Indices:
-      return evaluate_exact_with_indices(root_expression, allocator, bounds);
+      return evaluate_exact_with_indices_new(root_expression, allocator, bounds, eager_eval_order);
   }
   BLI_assert_unreachable();
   return {};
