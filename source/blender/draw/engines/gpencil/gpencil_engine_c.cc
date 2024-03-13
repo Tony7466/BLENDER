@@ -722,10 +722,10 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
       const int num_stroke_vertices = (points.size() +
                                        int(cyclic[stroke_i] && (points.size() >= 3)));
 
+      const bool skip_stroke = hide_material || (!show_stroke && !show_fill) ||
+                               (only_lines && !is_onion) || hide_onion;
 
-      if ((hide_material) || (!show_stroke && !show_fill) || (only_lines && !is_onion) ||
-          (hide_onion))
-      {
+      if (skip_stroke) {
         t_offset += num_stroke_triangles;
         t_offset += num_stroke_vertices * 2;
         return;
