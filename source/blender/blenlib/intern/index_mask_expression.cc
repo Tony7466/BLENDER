@@ -32,7 +32,7 @@ namespace blender::index_mask {
 
 constexpr int64_t inline_expr_array_size = 16;
 
-struct FastResultSegment {
+struct CoarseSegment {
   enum class Type {
     Unknown,
     Full,
@@ -43,14 +43,14 @@ struct FastResultSegment {
   const IndexMask *mask = nullptr;
 };
 
-struct FastResult {
-  Vector<FastResultSegment> segments;
+struct CoarseResult {
+  Vector<CoarseSegment> segments;
 };
 
 struct Boundary {
   int64_t index;
   bool is_begin;
-  const FastResultSegment *segment;
+  const CoarseSegment *segment;
 };
 
 static void sort_boundaries(MutableSpan<Boundary> boundaries)
@@ -60,12 +60,12 @@ static void sort_boundaries(MutableSpan<Boundary> boundaries)
   });
 }
 
-static FastResultSegment &evaluate_fast_make_full_segment(FastResultSegment *prev_segment,
-                                                          const int64_t prev_boundary_index,
-                                                          const int64_t current_boundary_index,
-                                                          FastResult &result)
+static CoarseSegment &evaluate_coarse_make_full_segment(CoarseSegment *prev_segment,
+                                                        const int64_t prev_boundary_index,
+                                                        const int64_t current_boundary_index,
+                                                        CoarseResult &result)
 {
-  if (prev_segment && prev_segment->type == FastResultSegment::Type::Full &&
+  if (prev_segment && prev_segment->type == CoarseSegment::Type::Full &&
       prev_segment->bounds.one_after_last() == prev_boundary_index)
   {
     /* Extend previous segment. */
@@ -74,17 +74,17 @@ static FastResultSegment &evaluate_fast_make_full_segment(FastResultSegment *pre
     return *prev_segment;
   }
   result.segments.append(
-      {FastResultSegment::Type::Full,
+      {CoarseSegment::Type::Full,
        IndexRange::from_begin_end(prev_boundary_index, current_boundary_index)});
   return result.segments.last();
 }
 
-static FastResultSegment &evaluate_fast_make_unknown_segment(FastResultSegment *prev_segment,
-                                                             const int64_t prev_boundary_index,
-                                                             const int64_t current_boundary_index,
-                                                             FastResult &result)
+static CoarseSegment &evaluate_coarse_make_unknown_segment(CoarseSegment *prev_segment,
+                                                           const int64_t prev_boundary_index,
+                                                           const int64_t current_boundary_index,
+                                                           CoarseResult &result)
 {
-  if (prev_segment && prev_segment->type == FastResultSegment::Type::Unknown &&
+  if (prev_segment && prev_segment->type == CoarseSegment::Type::Unknown &&
       prev_segment->bounds.one_after_last() == prev_boundary_index)
   {
     /* Extend previous segment. */
@@ -93,18 +93,18 @@ static FastResultSegment &evaluate_fast_make_unknown_segment(FastResultSegment *
     return *prev_segment;
   }
   result.segments.append(
-      {FastResultSegment::Type::Unknown,
+      {CoarseSegment::Type::Unknown,
        IndexRange::from_begin_end(prev_boundary_index, current_boundary_index)});
   return result.segments.last();
 }
 
-static FastResultSegment &evaluate_fast_make_copy_segment(FastResultSegment *prev_segment,
-                                                          const int64_t prev_boundary_index,
-                                                          const int64_t current_boundary_index,
-                                                          const IndexMask &copy_from_mask,
-                                                          FastResult &result)
+static CoarseSegment &evaluate_coarse_make_copy_segment(CoarseSegment *prev_segment,
+                                                        const int64_t prev_boundary_index,
+                                                        const int64_t current_boundary_index,
+                                                        const IndexMask &copy_from_mask,
+                                                        CoarseResult &result)
 {
-  if (prev_segment && prev_segment->type == FastResultSegment::Type::Copy &&
+  if (prev_segment && prev_segment->type == CoarseSegment::Type::Copy &&
       prev_segment->bounds.one_after_last() == prev_boundary_index &&
       prev_segment->mask == &copy_from_mask)
   {
@@ -113,21 +113,22 @@ static FastResultSegment &evaluate_fast_make_copy_segment(FastResultSegment *pre
                                                       current_boundary_index);
     return *prev_segment;
   }
-  result.segments.append({FastResultSegment::Type::Copy,
+  result.segments.append({CoarseSegment::Type::Copy,
                           IndexRange::from_begin_end(prev_boundary_index, current_boundary_index),
                           &copy_from_mask});
   return result.segments.last();
 }
 
-BLI_NOINLINE static void evaluate_fast_union(const Span<Boundary> boundaries, FastResult &r_result)
+BLI_NOINLINE static void evaluate_coarse_union(const Span<Boundary> boundaries,
+                                               CoarseResult &r_result)
 {
   if (boundaries.is_empty()) {
     return;
   }
 
-  FastResult &result = r_result;
-  FastResultSegment *prev_segment = nullptr;
-  Vector<const FastResultSegment *, 16> active_segments;
+  CoarseResult &result = r_result;
+  CoarseSegment *prev_segment = nullptr;
+  Vector<const CoarseSegment *, 16> active_segments;
   int64_t prev_boundary_index = boundaries[0].index;
 
   for (const Boundary &boundary : boundaries) {
@@ -136,17 +137,17 @@ BLI_NOINLINE static void evaluate_fast_union(const Span<Boundary> boundaries, Fa
       bool has_unknown = false;
       bool copy_from_mask_unique = true;
       const IndexMask *copy_from_mask = nullptr;
-      for (const FastResultSegment *active_segment : active_segments) {
+      for (const CoarseSegment *active_segment : active_segments) {
         switch (active_segment->type) {
-          case FastResultSegment::Type::Unknown: {
+          case CoarseSegment::Type::Unknown: {
             has_unknown = true;
             break;
           }
-          case FastResultSegment::Type::Full: {
+          case CoarseSegment::Type::Full: {
             has_full = true;
             break;
           }
-          case FastResultSegment::Type::Copy: {
+          case CoarseSegment::Type::Copy: {
             if (copy_from_mask != nullptr && copy_from_mask != active_segment->mask) {
               copy_from_mask_unique = false;
             }
@@ -156,15 +157,15 @@ BLI_NOINLINE static void evaluate_fast_union(const Span<Boundary> boundaries, Fa
         }
       }
       if (has_full) {
-        prev_segment = &evaluate_fast_make_full_segment(
+        prev_segment = &evaluate_coarse_make_full_segment(
             prev_segment, prev_boundary_index, boundary.index, result);
       }
       else if (has_unknown || !copy_from_mask_unique) {
-        prev_segment = &evaluate_fast_make_unknown_segment(
+        prev_segment = &evaluate_coarse_make_unknown_segment(
             prev_segment, prev_boundary_index, boundary.index, result);
       }
       else if (copy_from_mask != nullptr && copy_from_mask_unique) {
-        prev_segment = &evaluate_fast_make_copy_segment(
+        prev_segment = &evaluate_coarse_make_copy_segment(
             prev_segment, prev_boundary_index, boundary.index, *copy_from_mask, result);
       }
 
@@ -180,17 +181,17 @@ BLI_NOINLINE static void evaluate_fast_union(const Span<Boundary> boundaries, Fa
   }
 }
 
-BLI_NOINLINE static void evaluate_fast_intersection(const Span<Boundary> boundaries,
-                                                    const int64_t terms_num,
-                                                    FastResult &r_result)
+BLI_NOINLINE static void evaluate_coarse_intersection(const Span<Boundary> boundaries,
+                                                      const int64_t terms_num,
+                                                      CoarseResult &r_result)
 {
   if (boundaries.is_empty()) {
     return;
   }
 
-  FastResult &result = r_result;
-  FastResultSegment *prev_segment = nullptr;
-  Vector<const FastResultSegment *, 16> active_segments;
+  CoarseResult &result = r_result;
+  CoarseSegment *prev_segment = nullptr;
+  Vector<const CoarseSegment *, 16> active_segments;
   int64_t prev_boundary_index = boundaries[0].index;
 
   for (const Boundary &boundary : boundaries) {
@@ -203,17 +204,17 @@ BLI_NOINLINE static void evaluate_fast_intersection(const Span<Boundary> boundar
         int copy_count = 0;
         bool copy_from_mask_unique = true;
         const IndexMask *copy_from_mask = nullptr;
-        for (const FastResultSegment *active_segment : active_segments) {
+        for (const CoarseSegment *active_segment : active_segments) {
           switch (active_segment->type) {
-            case FastResultSegment::Type::Unknown: {
+            case CoarseSegment::Type::Unknown: {
               unknown_count++;
               break;
             }
-            case FastResultSegment::Type::Full: {
+            case CoarseSegment::Type::Full: {
               full_count++;
               break;
             }
-            case FastResultSegment::Type::Copy: {
+            case CoarseSegment::Type::Copy: {
               copy_count++;
               if (copy_from_mask != nullptr && copy_from_mask != active_segment->mask) {
                 copy_from_mask_unique = false;
@@ -225,15 +226,15 @@ BLI_NOINLINE static void evaluate_fast_intersection(const Span<Boundary> boundar
         }
         BLI_assert(full_count + unknown_count + copy_count == terms_num);
         if (full_count == terms_num) {
-          prev_segment = &evaluate_fast_make_full_segment(
+          prev_segment = &evaluate_coarse_make_full_segment(
               prev_segment, prev_boundary_index, boundary.index, result);
         }
         else if (unknown_count > 0 || copy_count < terms_num || !copy_from_mask_unique) {
-          prev_segment = &evaluate_fast_make_unknown_segment(
+          prev_segment = &evaluate_coarse_make_unknown_segment(
               prev_segment, prev_boundary_index, boundary.index, result);
         }
         else if (copy_count == terms_num && copy_from_mask_unique) {
-          prev_segment = &evaluate_fast_make_copy_segment(
+          prev_segment = &evaluate_coarse_make_copy_segment(
               prev_segment, prev_boundary_index, boundary.index, *copy_from_mask, result);
         }
       }
@@ -251,37 +252,37 @@ BLI_NOINLINE static void evaluate_fast_intersection(const Span<Boundary> boundar
 }
 
 /* TODO: Use struct instead of pair. */
-BLI_NOINLINE static void evaluate_fast_difference(const Span<std::pair<Boundary, bool>> boundaries,
-                                                  FastResult &r_result)
+BLI_NOINLINE static void evaluate_coarse_difference(
+    const Span<std::pair<Boundary, bool>> boundaries, CoarseResult &r_result)
 {
   if (boundaries.is_empty()) {
     return;
   }
 
-  FastResult &result = r_result;
-  FastResultSegment *prev_segment = nullptr;
-  Vector<const FastResultSegment *> active_main_segments;
-  Vector<const FastResultSegment *, 16> active_subtract_segments;
+  CoarseResult &result = r_result;
+  CoarseSegment *prev_segment = nullptr;
+  Vector<const CoarseSegment *> active_main_segments;
+  Vector<const CoarseSegment *, 16> active_subtract_segments;
   int64_t prev_boundary_index = boundaries[0].first.index;
 
   for (const std::pair<Boundary, bool> &boundary : boundaries) {
     if (prev_boundary_index < boundary.first.index) {
       BLI_assert(active_main_segments.size() <= 1);
       if (active_main_segments.size() == 1) {
-        const FastResultSegment &active_main_segment = *active_main_segments[0];
+        const CoarseSegment &active_main_segment = *active_main_segments[0];
         bool has_subtract_full = false;
         bool subtract_copy_from_mask_unique = true;
         const IndexMask *subtract_copy_from_mask = nullptr;
-        for (const FastResultSegment *active_subtract_segment : active_subtract_segments) {
+        for (const CoarseSegment *active_subtract_segment : active_subtract_segments) {
           switch (active_subtract_segment->type) {
-            case FastResultSegment::Type::Unknown: {
+            case CoarseSegment::Type::Unknown: {
               break;
             }
-            case FastResultSegment::Type::Full: {
+            case CoarseSegment::Type::Full: {
               has_subtract_full = true;
               break;
             }
-            case FastResultSegment::Type::Copy: {
+            case CoarseSegment::Type::Copy: {
               if (subtract_copy_from_mask != nullptr &&
                   subtract_copy_from_mask != active_subtract_segment->mask)
               {
@@ -298,29 +299,29 @@ BLI_NOINLINE static void evaluate_fast_difference(const Span<std::pair<Boundary,
         }
         else {
           switch (active_main_segment.type) {
-            case FastResultSegment::Type::Unknown: {
-              prev_segment = &evaluate_fast_make_unknown_segment(
+            case CoarseSegment::Type::Unknown: {
+              prev_segment = &evaluate_coarse_make_unknown_segment(
                   prev_segment, prev_boundary_index, boundary.first.index, result);
               break;
             }
-            case FastResultSegment::Type::Full: {
+            case CoarseSegment::Type::Full: {
               if (active_subtract_segments.is_empty()) {
-                prev_segment = &evaluate_fast_make_full_segment(
+                prev_segment = &evaluate_coarse_make_full_segment(
                     prev_segment, prev_boundary_index, boundary.first.index, result);
               }
               else {
-                prev_segment = &evaluate_fast_make_unknown_segment(
+                prev_segment = &evaluate_coarse_make_unknown_segment(
                     prev_segment, prev_boundary_index, boundary.first.index, result);
               }
               break;
             }
-            case FastResultSegment::Type::Copy: {
+            case CoarseSegment::Type::Copy: {
               if (active_subtract_segments.is_empty()) {
-                prev_segment = &evaluate_fast_make_copy_segment(prev_segment,
-                                                                prev_boundary_index,
-                                                                boundary.first.index,
-                                                                *active_main_segment.mask,
-                                                                result);
+                prev_segment = &evaluate_coarse_make_copy_segment(prev_segment,
+                                                                  prev_boundary_index,
+                                                                  boundary.first.index,
+                                                                  *active_main_segment.mask,
+                                                                  result);
               }
               else if (subtract_copy_from_mask == active_main_segment.mask &&
                        subtract_copy_from_mask_unique)
@@ -328,7 +329,7 @@ BLI_NOINLINE static void evaluate_fast_difference(const Span<std::pair<Boundary,
                 /* Do nothing. */
               }
               else {
-                prev_segment = &evaluate_fast_make_unknown_segment(
+                prev_segment = &evaluate_coarse_make_unknown_segment(
                     prev_segment, prev_boundary_index, boundary.first.index, result);
               }
               break;
@@ -359,16 +360,16 @@ BLI_NOINLINE static void evaluate_fast_difference(const Span<std::pair<Boundary,
   }
 }
 
-BLI_NOINLINE static FastResult evaluate_fast(
+BLI_NOINLINE static CoarseResult evaluate_coarse(
     const Expr &root_expression,
     const Span<const Expr *> eager_eval_order,
     const std::optional<IndexRange> eval_bounds = std::nullopt)
 {
-  Array<std::optional<FastResult>, inline_expr_array_size> expression_results(
+  Array<std::optional<CoarseResult>, inline_expr_array_size> expression_results(
       root_expression.expression_array_size());
 
   for (const Expr *expression : eager_eval_order) {
-    FastResult &expr_result = expression_results[expression->index].emplace();
+    CoarseResult &expr_result = expression_results[expression->index].emplace();
     switch (expression->type) {
       case Expr::Type::Atomic: {
         const AtomicExpr &expr = expression->as_atomic();
@@ -384,10 +385,10 @@ BLI_NOINLINE static FastResult evaluate_fast(
         if (!mask.is_empty()) {
           const IndexRange bounds = mask.bounds();
           if (const std::optional<IndexRange> range = mask.to_range()) {
-            expr_result.segments.append({FastResultSegment::Type::Full, bounds});
+            expr_result.segments.append({CoarseSegment::Type::Full, bounds});
           }
           else {
-            expr_result.segments.append({FastResultSegment::Type::Copy, bounds, expr.mask});
+            expr_result.segments.append({CoarseSegment::Type::Copy, bounds, expr.mask});
           }
         }
         break;
@@ -396,41 +397,41 @@ BLI_NOINLINE static FastResult evaluate_fast(
         const UnionExpr &expr = expression->as_union();
         Vector<Boundary, 16> boundaries;
         for (const Expr *term : expr.terms) {
-          const FastResult &term_result = *expression_results[term->index];
-          for (const FastResultSegment &segment : term_result.segments) {
+          const CoarseResult &term_result = *expression_results[term->index];
+          for (const CoarseSegment &segment : term_result.segments) {
             boundaries.append({segment.bounds.first(), true, &segment});
             boundaries.append({segment.bounds.one_after_last(), false, &segment});
           }
         }
         sort_boundaries(boundaries);
-        evaluate_fast_union(boundaries, expr_result);
+        evaluate_coarse_union(boundaries, expr_result);
         break;
       }
       case Expr::Type::Intersection: {
         const IntersectionExpr &expr = expression->as_intersection();
         Vector<Boundary, 16> boundaries;
         for (const Expr *term : expr.terms) {
-          const FastResult &term_result = *expression_results[term->index];
-          for (const FastResultSegment &segment : term_result.segments) {
+          const CoarseResult &term_result = *expression_results[term->index];
+          for (const CoarseSegment &segment : term_result.segments) {
             boundaries.append({segment.bounds.first(), true, &segment});
             boundaries.append({segment.bounds.one_after_last(), false, &segment});
           }
         }
         sort_boundaries(boundaries);
-        evaluate_fast_intersection(boundaries, expr.terms.size(), expr_result);
+        evaluate_coarse_intersection(boundaries, expr.terms.size(), expr_result);
         break;
       }
       case Expr::Type::Difference: {
         const DifferenceExpr &expr = expression->as_difference();
         Vector<std::pair<Boundary, bool>, 16> boundaries;
-        const FastResult &main_term_result = *expression_results[expr.terms[0]->index];
-        for (const FastResultSegment &segment : main_term_result.segments) {
+        const CoarseResult &main_term_result = *expression_results[expr.terms[0]->index];
+        for (const CoarseSegment &segment : main_term_result.segments) {
           boundaries.append({{segment.bounds.first(), true, &segment}, true});
           boundaries.append({{segment.bounds.one_after_last(), false, &segment}, true});
         }
         for (const Expr *term : expr.terms.as_span().drop_front(1)) {
-          const FastResult &term_result = *expression_results[term->index];
-          for (const FastResultSegment &segment : term_result.segments) {
+          const CoarseResult &term_result = *expression_results[term->index];
+          for (const CoarseSegment &segment : term_result.segments) {
             boundaries.append({{segment.bounds.first(), true, &segment}, false});
             boundaries.append({{segment.bounds.one_after_last(), false, &segment}, false});
           }
@@ -440,13 +441,13 @@ BLI_NOINLINE static FastResult evaluate_fast(
                   [](const std::pair<Boundary, bool> &a, const std::pair<Boundary, bool> &b) {
                     return a.first.index < b.first.index;
                   });
-        evaluate_fast_difference(boundaries, expr_result);
+        evaluate_coarse_difference(boundaries, expr_result);
         break;
       }
     }
   }
 
-  const FastResult &final_result = *expression_results[root_expression.index];
+  const CoarseResult &final_result = *expression_results[root_expression.index];
   return final_result;
 }
 
@@ -903,10 +904,10 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
   const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
       root_expression);
 
-  auto handle_fast_result = [&](const FastResult &fast_result) {
-    for (const FastResultSegment &segment : fast_result.segments) {
+  auto handle_coarse_result = [&](const CoarseResult &coarse_result) {
+    for (const CoarseSegment &segment : coarse_result.segments) {
       switch (segment.type) {
-        case FastResultSegment::Type::Unknown: {
+        case CoarseSegment::Type::Unknown: {
           if (segment.bounds.size() > max_segment_size) {
             long_unknown_segments.push(segment.bounds);
           }
@@ -915,30 +916,31 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
           }
           break;
         }
-        case FastResultSegment::Type::Copy: {
+        case CoarseSegment::Type::Copy: {
           BLI_assert(segment.mask);
           final_segments.append({FinalResultSegment::Type::Copy, segment.bounds, segment.mask});
           break;
         }
-        case FastResultSegment::Type::Full: {
+        case CoarseSegment::Type::Full: {
           final_segments.append({FinalResultSegment::Type::Full, segment.bounds});
           break;
         }
       }
     }
   };
-  const FastResult initial_fast_result = evaluate_fast(root_expression, eager_eval_order);
-  handle_fast_result(initial_fast_result);
+  const CoarseResult initial_coarse_result = evaluate_coarse(root_expression, eager_eval_order);
+  handle_coarse_result(initial_coarse_result);
 
   while (!long_unknown_segments.is_empty()) {
     const IndexRange unknown_bounds = long_unknown_segments.pop();
     const int64_t split_pos = unknown_bounds.size() / 2;
     const IndexRange left_half = unknown_bounds.take_front(split_pos);
     const IndexRange right_half = unknown_bounds.drop_front(split_pos);
-    const FastResult left_result = evaluate_fast(root_expression, eager_eval_order, left_half);
-    const FastResult right_result = evaluate_fast(root_expression, eager_eval_order, right_half);
-    handle_fast_result(left_result);
-    handle_fast_result(right_result);
+    const CoarseResult left_result = evaluate_coarse(root_expression, eager_eval_order, left_half);
+    const CoarseResult right_result = evaluate_coarse(
+        root_expression, eager_eval_order, right_half);
+    handle_coarse_result(left_result);
+    handle_coarse_result(right_result);
   }
 
   auto evaluate_unknown_segment = [&](const IndexRange bounds,
