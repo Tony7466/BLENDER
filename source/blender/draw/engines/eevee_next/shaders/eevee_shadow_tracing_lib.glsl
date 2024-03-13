@@ -408,48 +408,6 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 /** \name Shadow Evaluation
  * \{ */
 
-float float_shadow_directional_level(LightData light, vec3 lP)
-{
-  float lod;
-  if (light.type == LIGHT_SUN) {
-    /* We need to hide one tile worth of data to hide the moving transition. */
-    const float narrowing = float(SHADOW_TILEMAP_RES) / (float(SHADOW_TILEMAP_RES) - 1.0001);
-    /* Since the distance is centered around the camera (and thus by extension the tile-map),
-     * we need to multiply by 2 to get the lod level which covers the following range:
-     * [-coverage_get(lod)/2..coverage_get(lod)/2] */
-    lod = log2(length(lP) * narrowing * 2.0);
-  }
-  else {
-    /* The narrowing need to be stronger since the tile-map position is not rounded but floored. */
-    const float narrowing = float(SHADOW_TILEMAP_RES) / (float(SHADOW_TILEMAP_RES) - 2.5001);
-    /* Since we want half of the size, bias the level by -1. */
-    float lod_min_half_size = exp2(float(light.clipmap_lod_min - 1));
-    lod = length(lP.xy) * narrowing / lod_min_half_size;
-  }
-  float clipmap_lod = lod + light._clipmap_lod_bias;
-  return clamp(clipmap_lod, light.clipmap_lod_min, light.clipmap_lod_max);
-}
-
-float shadow_footprint_ratio(LightData light, vec3 P, bool is_directional)
-{
-  if (!is_directional) {
-    float dist_to_light = distance(P, light._position);
-    float footprint_ratio = dist_to_light;
-    /* Project the radius to the screen. 1 unit away from the camera the same way
-     * pixel_world_radius_inv was computed. Not needed in orthographic mode. */
-    if (drw_view_is_perspective()) {
-      float dist_to_cam = distance(P, drw_view_position());
-      footprint_ratio /= dist_to_cam;
-    }
-    /* Apply resolution ratio. */
-    footprint_ratio *= uniform_buf.shadow.tilemap_projection_ratio;
-    /* Take the frustum padding into account. */
-    footprint_ratio *= light.clip_side / orderedIntBitsToFloat(light.clip_near);
-    return footprint_ratio;
-  }
-  return 1.0;
-}
-
 /* Compute the world space offset of the shading position required for
  * stochastic percentage closer filtering of shadow-maps. */
 vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng)
@@ -509,17 +467,23 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
   pcf_offset = pcf_offset * 2.0 - 1.0;
   pcf_offset *= light.pcf_radius;
 
-  if (!is_directional) {
-    float footprint_ratio = shadow_footprint_ratio(light, P, is_directional);
-    float lod = -log2(footprint_ratio) + light.lod_bias;
-    lod = clamp(lod, 0.0, float(SHADOW_TILEMAP_LOD));
-    float pcf_scale = pow(2.0, lod);
+  if (is_directional) {
+    vec3 lP = light_world_to_local(light, P);
+    float level = shadow_directional_level_fractional(light, lP - light._position);
+    float pcf_scale = mix(0.5, 1.0, fract(level));
     pcf_offset *= pcf_scale;
   }
   else {
-    vec3 lP = light_world_to_local(light, P);
-    float level = float_shadow_directional_level(light, lP - light._position);
-    float pcf_scale = mix(0.5, 1.0, fract(level));
+    float dist_to_cam = distance(P, drw_view_position());
+    float perspective_division = 1.0;
+    if (drw_view_is_perspective()) {
+      perspective_division = distance(P, drw_view_position());
+    }
+    float footprint_ratio = shadow_punctual_footprint_ratio(
+        light, P, perspective_division, uniform_buf.shadow.tilemap_projection_ratio);
+    float lod = -log2(footprint_ratio) + light.lod_bias;
+    lod = clamp(lod, 0.0, float(SHADOW_TILEMAP_LOD));
+    float pcf_scale = pow(2.0, lod);
     pcf_offset *= pcf_scale;
   }
 
