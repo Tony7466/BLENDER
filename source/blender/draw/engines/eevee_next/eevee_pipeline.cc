@@ -1069,6 +1069,7 @@ VolumeLayer *VolumePipeline::register_and_get_layer(Object *ob)
     /* Skip invisible object with respect to raster grid and bounds density. */
     return nullptr;
   }
+  enabled_ = true;
   /* Do linear search in all layers in order. This can be optimized. */
   for (auto &layer : layers_) {
     if (!layer->bounds_overlaps(object_aabb)) {

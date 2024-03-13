@@ -386,7 +386,7 @@ float ambient_occlusion_eval(vec3 normal,
 #ifndef GPU_METAL
 void attrib_load();
 Closure nodetree_surface(float closure_rand);
-/* Closure nodetree_volume(); */
+Closure nodetree_volume();
 vec3 nodetree_displacement();
 float nodetree_thickness();
 vec4 closure_to_rgba(Closure cl);

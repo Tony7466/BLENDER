@@ -233,7 +233,7 @@ float attr_load_float(samplerBuffer cd_buf)
 
 /** \} */
 
-#elif defined(MAT_GEOM_VOLUME) || defined(MAT_GEOM_VOLUME_OBJECT) || defined(MAT_GEOM_VOLUME_WORLD)
+#elif defined(MAT_GEOM_VOLUME)
 
 /* -------------------------------------------------------------------- */
 /** \name Volume
@@ -249,12 +249,10 @@ int g_attr_id = 0;
 vec3 grid_coordinates()
 {
   vec3 co = g_orco;
-#  ifdef MAT_GEOM_VOLUME_OBJECT
   /* Optional per-grid transform. */
   if (drw_volume.grids_xform[g_attr_id][3][3] != 0.0) {
     co = (drw_volume.grids_xform[g_attr_id] * vec4(g_lP, 1.0)).xyz;
   }
-#  endif
   g_attr_id += 1;
   return co;
 }
@@ -305,9 +303,17 @@ vec3 attr_load_uv(sampler3D attr)
  * World has no attributes other than orco.
  * \{ */
 
+#  if defined(MAT_VOLUME)
+vec3 g_orco = vec3(0.0);
+#  endif
+
 vec3 attr_load_orco(vec4 orco)
 {
+#  if defined(MAT_VOLUME)
+  return g_orco;
+#  else
   return -g_data.N;
+#  endif
 }
 vec4 attr_load_tangent(vec4 tangent)
 {

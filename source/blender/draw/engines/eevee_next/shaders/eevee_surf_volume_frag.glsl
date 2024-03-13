@@ -10,7 +10,6 @@
 #pragma BLENDER_REQUIRE(eevee_volume_lib.glsl)
 
 /* Needed includes for shader nodes. */
-#pragma BLENDER_REQUIRE(common_attribute_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_attributes_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
@@ -41,25 +40,27 @@ struct VolumeProperties {
   float anisotropy;
 };
 
-VolumeProperties eval_froxel(ivec3 froxel);
+VolumeProperties eval_froxel(ivec3 froxel)
 {
   /* TODO(fclem): Make sure this volume to screen is well aligned with the view. */
   vec3 ndc_cell = volume_to_screen(froxel * uniform_buf.volumes.inv_tex_size);
 
   vec3 vP = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
   vec3 wP = point_view_to_world(vP);
-#ifdef MAT_GEOM_VOLUME_OBJECT
+#if defined(MAT_GEOM_VOLUME)
   g_lP = point_world_to_object(wP);
   g_orco = OrcoTexCoFactors[0].xyz + g_lP * OrcoTexCoFactors[1].xyz;
-#else /* WORLD_SHADER */
+#elif defined(MAT_GEOM_WORLD)
   g_orco = wP;
 #endif
 
   g_data = init_globals(wP);
+#if defined(MAT_GEOM_VOLUME) || defined(MAT_GEOM_WORLD)
   attrib_load();
+#endif
   nodetree_volume();
 
-#ifdef MAT_GEOM_VOLUME_OBJECT
+#if defined(MAT_GEOM_VOLUME)
   g_volume_scattering *= drw_volume.density_scale;
   g_volume_absorption *= drw_volume.density_scale;
   g_emission *= drw_volume.density_scale;
@@ -82,9 +83,9 @@ void write_froxel(ivec3 froxel, VolumeProperties prop)
     phase = vec2(0.0);
   }
 
-  vec3 extinction = scattering + absorption;
+  vec3 extinction = prop.scattering + prop.absorption;
 
-#ifdef MAT_GEOM_VOLUME_OBJECT
+#ifndef MAT_GEOM_WORLD
   /* Additive Blending. No race condition since we have a barrier between each conflicting
    * invocations. */
   prop.scattering += imageLoad(out_scattering_img, froxel).rgb;
@@ -109,25 +110,25 @@ void main()
   VolumeProperties prop = eval_froxel(froxel);
 #endif
 
-#ifdef MAT_GEOM_VOLUME_OBJECT
-  /* Check all occupancy bits. */
-  for (int word_idx = 0; word_idx < MAX_OCCUPANCY_WORD; word_idx++) {
-    if (word_idx >= occupancy_word_len) {
-      break;
-    }
-    uint occupancy_word = imageLoad(occupancy_img, ivec3(froxel.xy, word_idx)).r;
-    while ((bit_idx = findLSB(occupancy_word)) != -1) {
-      occupancy_word &= ~1u << uint(bit_idx);
-      froxel.z = word_idx * 32u + bit_idx;
+  OccupancyBits occupancy;
+  for (int j = 0; j < 8; j++) {
+#ifdef MAT_GEOM_WORLD
+    occupancy.bits[j] = 0xFFFFFFFFu;
 #else
-  /* World iterate over all froxel. */
-  int froxel_len = imageSize(out_scattering_img).z;
-  for (int i = 0; (i < froxel_len) && (i < MAX_OCCUPANCY_WORD * 32); i++) {
-    {
-      froxel.z = i;
+    occupancy.bits[j] = imageLoad(occupancy_img, ivec3(froxel.xy, j)).r;
 #endif
+  }
 
-      if (froxel_occupied(froxel)) {
+  /* Check all occupancy bits. */
+  for (int j = 0; j < 8; j++) {
+    for (int i = 0; i < 32; i++) {
+      froxel.z = j * 32 + i;
+
+      if (froxel.z >= imageSize(out_scattering_img).z) {
+        break;
+      }
+
+      if (((occupancy.bits[j] >> i) & 1u) != 0) {
 #ifndef VOLUME_HOMOGENOUS
         /* Heterogenous volumes evaluate properties at every froxel position. */
         VolumeProperties prop = eval_froxel(froxel);
