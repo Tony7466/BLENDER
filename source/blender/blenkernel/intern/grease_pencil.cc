@@ -439,17 +439,17 @@ static float4x2 get_local_to_stroke_matrix(const Drawing &drawing, int curve_i)
   const float3 point_1 = positions[points.first() + 1];
 
   /* Local X axis (p0 -> p1) */
-  const float3 locx = normalize(point_1 - point_0);
+  const float3 local_x = normalize(point_1 - point_0);
   /* Local Y axis (cross to normal/x axis). */
-  const float3 locy = normalize(cross(normal, locx));
+  const float3 local_y = normalize(cross(normal, local_x));
 
-  if (length_squared(locx) == 0.0f || length_squared(locy) == 0.0f) {
+  if (length_squared(local_x) == 0.0f || length_squared(local_y) == 0.0f) {
     return float4x2::identity();
   }
 
   /* Get local space using first point as origin. */
   const float4x2 mat = transpose(
-      float2x4(float4(locx, -dot(point_0, locx)), float4(locy, -dot(point_0, locy))));
+      float2x4(float4(local_x, -dot(point_0, local_x)), float4(local_y, -dot(point_0, local_y))));
 
   return mat;
 }
