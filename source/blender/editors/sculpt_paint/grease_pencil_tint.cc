@@ -59,15 +59,15 @@ void TintOperation::on_stroke_begin(const bContext &C, const InputSample &start_
 
   BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
 
-  this->radius_ = BKE_brush_size_get(scene, brush);
-  this->strength_ = BKE_brush_alpha_get(scene, brush);
-  this->active_layer_only_ = ((brush->gpencil_settings->flag & GP_BRUSH_ACTIVE_LAYER_ONLY) != 0);
+  radius_ = BKE_brush_size_get(scene, brush);
+  strength_ = BKE_brush_alpha_get(scene, brush);
+  active_layer_only_ = ((brush->gpencil_settings->flag & GP_BRUSH_ACTIVE_LAYER_ONLY) != 0);
 
   float4 color_linear;
   color_linear[3] = 1.0f;
   srgb_to_linearrgb_v3_v3(color_linear, brush->rgb);
 
-  this->color_ = ColorGeometry4f(color_linear);
+  color_ = ColorGeometry4f(color_linear);
 }
 
 void TintOperation::execute_tint(const bContext &C, const InputSample &extension_sample)
@@ -84,8 +84,8 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
 
   /* Get the tool's data. */
   const float2 mouse_position = extension_sample.mouse_position;
-  float radius = this->radius_;
-  float strength = this->strength_;
+  float radius = radius_;
+  float strength = strength_;
   if (BKE_brush_use_size_pressure(brush)) {
     radius *= extension_sample.pressure;
   }
@@ -137,14 +137,13 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
                                                                         bke::AttrDomain::Curve);
     OffsetIndices<int> points_by_curve = strokes.points_by_curve();
 
-    auto point_inside_stroke = [&](Span<float2> points, float2 mouse) {
+    auto point_inside_stroke = [&](const Span<float2> points, const float2 mouse) {
       std::optional<Bounds<float2>> bbox = bounds::min_max(points);
       if (!bbox.has_value()) {
         return false;
       }
       Bounds<float2> &box = bbox.value();
-      if (mouse[0] < box.min[0] || mouse[0] > box.max[0] || mouse[1] < box.min[1] ||
-          mouse[1] > box.max[1])
+      if (mouse.x < box.min.x || mouse.x > box.max.x || mouse.y < box.min.y || mouse.y > box.max.y)
       {
         return false;
       }
@@ -162,13 +161,13 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
             const float influence = strength * BKE_brush_curve_strength(brush, distance, radius);
             if (influence > 0.0f) {
               stroke_touched = true;
-              vertex_colors[point].premultiply_alpha();
+              ColorGeometry4f premultiplied = vertex_colors[point].premultiply_alpha();
               float4 rgba = float4(
-                  math::interpolate(float3(vertex_colors[point]), float3(this->color_), influence),
+                  math::interpolate(float3(premultiplied), float3(color_), influence),
                   vertex_colors[point][3]);
               rgba[3] = rgba[3] * (1.0f - influence) + influence;
-              vertex_colors[point] = ColorGeometry4f(rgba);
-              vertex_colors[point].unpremultiply_alpha();
+              premultiplied = ColorGeometry4f(rgba);
+              vertex_colors[point] = ColorGeometry4f(premultiplied.unpremultiply_alpha());
             }
           }
           if (!fill_colors.span.is_empty() && tint_fills) {
@@ -180,14 +179,13 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
                                                                 points_by_curve[curve].size()),
                                                             mouse_position);
             if (fill_effective) {
-              fill_colors.span[curve].premultiply_alpha();
-              float4 rgba = float4(math::interpolate(float3(fill_colors.span[curve]),
-                                                     float3(this->color_),
-                                                     fill_strength),
-                                   fill_colors.span[curve][3]);
+              ColorGeometry4f premultiplied = fill_colors.span[curve].premultiply_alpha();
+              float4 rgba = float4(
+                  math::interpolate(float3(premultiplied), float3(color_), fill_strength),
+                  fill_colors.span[curve][3]);
               rgba[3] = rgba[3] * (1.0f - fill_strength) + fill_strength;
-              fill_colors.span[curve] = ColorGeometry4f(rgba);
-              fill_colors.span[curve].unpremultiply_alpha();
+              premultiplied = ColorGeometry4f(rgba);
+              fill_colors.span[curve] = ColorGeometry4f(premultiplied.unpremultiply_alpha());
               stroke_touched = true;
             }
           }
@@ -201,8 +199,8 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
   };
 
   Vector<ed::greasepencil::MutableDrawingInfo> drawings;
-  if (this->active_layer_only_) {
-    /* Tint only on the drawing at  of the active layer. */
+  if (active_layer_only_) {
+    /* Tint only on the drawings of the active layer. */
     const Layer *active_layer = grease_pencil.get_active_layer();
     if (!active_layer) {
       return;
@@ -226,7 +224,7 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
 
 void TintOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
 {
-  this->execute_tint(C, extension_sample);
+  execute_tint(C, extension_sample);
 }
 
 void TintOperation::on_stroke_done(const bContext & /*C*/) {}

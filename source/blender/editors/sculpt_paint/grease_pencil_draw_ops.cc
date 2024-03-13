@@ -54,6 +54,7 @@ static bool start_brush_operation(bContext &C,
       break;
     case GPAINT_TOOL_TINT:
       operation = greasepencil::new_tint_operation().release();
+      break;
   }
 
   if (operation) {
