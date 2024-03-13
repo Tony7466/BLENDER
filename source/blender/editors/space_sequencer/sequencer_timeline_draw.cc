@@ -601,7 +601,8 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
   int chan_min = MAXSEQ;
   int chan_max = 0;
   int chan_range = 0;
-  float draw_range = strip_ctx->strip_content_top - strip_ctx->bottom;
+  float border_size = timeline_ctx->pixely * BORDER_SIZE;
+  float draw_range = strip_ctx->strip_content_top - strip_ctx->bottom - border_size;
   float draw_height;
 
   Editing *ed = SEQ_editing_get(scene);
@@ -639,7 +640,7 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
     const int enddisp = SEQ_time_right_handle_frame_get(scene, seq) + offset;
 
     if ((startdisp > strip_ctx->right_handle || enddisp < strip_ctx->left_handle) == 0) {
-      float y_chan = (seq->machine - chan_min) / float(chan_range) * draw_range;
+      float y_chan = (seq->machine - chan_min) / float(chan_range) * draw_range + border_size;
       float x1_chan = startdisp;
       float x2_chan = enddisp;
       float y1_chan, y2_chan;
