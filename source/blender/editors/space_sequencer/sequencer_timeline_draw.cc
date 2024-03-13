@@ -70,6 +70,7 @@
 #define MUTE_ALPHA 120
 
 constexpr float MISSING_ICON_SIZE = 16.0f;
+constexpr float BORDER_SIZE = 4.0f;
 
 struct StripDrawContext {
   Sequence *seq;
@@ -774,7 +775,7 @@ static void draw_seq_handle(TimelineDrawContext *timeline_ctx,
   }
 }
 
-/* Strip border: slightly darker than regular strip background. */
+/* Strip border: darker / less saturated than regular strip background. */
 static void draw_seq_border(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx)
 {
   const Scene *scene = timeline_ctx->scene;
@@ -782,14 +783,27 @@ static void draw_seq_border(TimelineDrawContext *timeline_ctx, const StripDrawCo
 
   uchar col[4];
   color3ubv_from_seq(scene, seq, strip_ctx->show_strip_color_tag, col);
-  UI_GetColorPtrShade3ubv(col, col, -40);
+  col[0] /= 2;
+  col[1] /= 2;
+  col[2] /= 2;
   col[3] = 255;
 
-  timeline_ctx->quads->add_wire_quad(
-      strip_ctx->left_handle, strip_ctx->bottom, strip_ctx->right_handle, strip_ctx->top, col);
+  /* Wide outline: draw as four quads. */
+  const float dx = timeline_ctx->pixelx * BORDER_SIZE;
+  const float dy = timeline_ctx->pixely * BORDER_SIZE;
+  const float x0 = strip_ctx->left_handle;
+  const float x1 = strip_ctx->right_handle;
+  const float y0 = strip_ctx->bottom;
+  const float y1 = strip_ctx->top;
+
+  /* Left, right, bottom, top. */
+  timeline_ctx->quads->add_quad(x0, y0, x0 + dx, y1, col);
+  timeline_ctx->quads->add_quad(x1 - dx, y0, x1, y1, col);
+  timeline_ctx->quads->add_quad(x0, y0, x1, y0 + dy, col);
+  timeline_ctx->quads->add_quad(x0, y1 - dy, x1, y1, col);
 }
 
-/* Selected/active strip outline: draw slightly outside the strip bounds. */
+/* Selected/active strip outline. */
 static void draw_seq_outline(TimelineDrawContext *timeline_ctx, const StripDrawContext *strip_ctx)
 {
   const Sequence *seq = strip_ctx->seq;
@@ -804,8 +818,7 @@ static void draw_seq_outline(TimelineDrawContext *timeline_ctx, const StripDrawC
 
   /* Outline while translating strips:
    *  - Slightly lighter.
-   *  - Red when overlapping with other strips.
-   */
+   *  - Red when overlapping with other strips. */
   const eSeqOverlapMode overlap_mode = SEQ_tool_settings_overlap_mode_get(timeline_ctx->scene);
   if ((G.moving & G_TRANSFORM_SEQ) && overlap_mode != SEQ_OVERLAP_OVERWRITE) {
     if (seq->flag & SEQ_OVERLAP) {
@@ -826,10 +839,10 @@ static void draw_seq_outline(TimelineDrawContext *timeline_ctx, const StripDrawC
   const float y1 = strip_ctx->top;
 
   /* Left, right, bottom, top. */
-  timeline_ctx->quads->add_quad(x0 - dx * 3, y0 - dy * 2, x0 - dx * 1, y1 + dy * 2, col);
-  timeline_ctx->quads->add_quad(x1 + dx * 1, y0 - dy * 2, x1 + dx * 3, y1 + dy * 2, col);
-  timeline_ctx->quads->add_quad(x0 - dx * 2, y0 - dy * 3, x1 + dx * 2, y0 - dy * 1, col);
-  timeline_ctx->quads->add_quad(x0 - dx * 2, y1 + dy * 1, x1 + dx * 2, y1 + dy * 3, col);
+  timeline_ctx->quads->add_quad(x0 + dx * 1, y0 + dy, x0 + dx * 3, y1 - dy, col);
+  timeline_ctx->quads->add_quad(x1 - dx * 3, y0 + dy, x1 - dx * 1, y1 - dy, col);
+  timeline_ctx->quads->add_quad(x0 + dx, y0 + dy * 1, x1 - dx, y0 + dy * 3, col);
+  timeline_ctx->quads->add_quad(x0 + dx, y1 - dy * 3, x1 - dx, y1 - dy * 1, col);
 }
 
 static const char *draw_seq_text_get_name(const Sequence *seq)
@@ -974,8 +987,8 @@ static void draw_icon_centered(TimelineDrawContext &ctx,
                          color);
 }
 
-static void draw_missing_icons(TimelineDrawContext *timeline_ctx,
-                               const blender::Vector<StripDrawContext> &strips)
+static void draw_strip_icons(TimelineDrawContext *timeline_ctx,
+                             const blender::Vector<StripDrawContext> &strips)
 {
   timeline_ctx->quads->draw();
   GPU_blend(GPU_BLEND_ALPHA);
@@ -1578,8 +1591,8 @@ static void draw_seq_strips(TimelineDrawContext *timeline_ctx,
     draw_seq_text_overlay(timeline_ctx, &strip_ctx);
   }
 
-  /* Draw icons for missing media strips. */
-  draw_missing_icons(timeline_ctx, strips);
+  /* Draw icons separately (different shader). */
+  draw_strip_icons(timeline_ctx, strips);
 
   /* Draw selected outline separately, since they go outside the strip
    * boundaries a bit; we want all outlines to be "on top" of any neighboring

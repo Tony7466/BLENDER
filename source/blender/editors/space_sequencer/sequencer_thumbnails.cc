@@ -483,7 +483,6 @@ void draw_seq_strip_thumbnail(View2D *v2d,
   }
 
   float timeline_frame = SEQ_render_thumbnail_first_frame_get(scene, seq, thumb_width, &v2d->cur);
-  float thumb_x_end;
 
   GSet *last_displayed_thumbnails = last_displayed_thumbnails_list_ensure(C, seq);
   /* Cleanup thumbnail list outside of rendered range, which is cleaned up one by one to prevent
@@ -494,7 +493,7 @@ void draw_seq_strip_thumbnail(View2D *v2d,
 
   /* Start drawing. */
   while (timeline_frame < upper_thumb_bound) {
-    thumb_x_end = timeline_frame + thumb_width;
+    float thumb_x_end = timeline_frame + thumb_width;
     clipped = false;
 
     /* Checks to make sure that thumbs are loaded only when in view and within the confines of the
@@ -514,20 +513,17 @@ void draw_seq_strip_thumbnail(View2D *v2d,
     if (thumb_x_end > (upper_thumb_bound)) {
       thumb_x_end = upper_thumb_bound;
       clipped = true;
-      if (thumb_x_end - timeline_frame < 1) {
-        break;
-      }
     }
 
     float zoom_x = thumb_width / image_width;
     float zoom_y = thumb_height / image_height;
 
-    float cropx_min = (cut_off / pixelx) / (zoom_y / pixely);
-    float cropx_max = ((thumb_x_end - timeline_frame) / pixelx) / (zoom_y / pixely);
-    if (cropx_max == (thumb_x_end - timeline_frame)) {
-      cropx_max = cropx_max + 1;
+    int cropx_min = int((cut_off / pixelx) / (zoom_y / pixely));
+    int cropx_max = int(((thumb_x_end - timeline_frame) / pixelx) / (zoom_y / pixely));
+    if (cropx_max < 1) {
+      break;
     }
-    BLI_rcti_init(&crop, int(cropx_min), int(cropx_max), 0, int(image_height) - 1);
+    BLI_rcti_init(&crop, cropx_min, cropx_max - 1, 0, int(image_height) - 1);
 
     /* Get the image. */
     ImBuf *ibuf = SEQ_get_thumbnail(&context, seq, timeline_frame, &crop, clipped);
