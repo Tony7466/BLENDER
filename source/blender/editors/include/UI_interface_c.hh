@@ -1722,6 +1722,21 @@ enum uiTooltipColorID {
   UI_TIP_LC_MAX
 };
 
+enum uiTooltipFlag {
+  UI_TIP_FLAG_NONE = 0,
+  /* Regular checkerboard pattern, with themed colors. */
+  UI_TIP_FLAG_IMAGE_CHECKER = 1 << 0,
+  /* Checkerboard pattern with fixed colors used for themes. */
+  UI_TIP_FLAG_IMAGE_CHECKER_FIXED = 1 << 1,
+  /* Border around the image. */
+  UI_TIP_FLAG_IMAGE_BORDER = 1 << 2,
+  /* Blend as premultiplied alpha. */
+  UI_TIP_FLAG_IMAGE_PREMULTIPLIED = 1 << 3,
+  /* Recolor the image with text color. */
+  UI_TIP_FLAG_IMAGE_TEXTCOLOR = 1 << 4,
+};
+ENUM_OPERATORS(uiTooltipFlag, UI_TIP_FLAG_IMAGE_TEXTCOLOR)
+
 void UI_but_func_tooltip_custom_set(uiBut *but,
                                     uiButToolTipCustomFunc func,
                                     void *arg,
@@ -1742,8 +1757,10 @@ void UI_tooltip_text_field_add(uiTooltipData *data,
  * \param image: Image buffer (duplicated, ownership is *not* transferred to `data`).
  * \param image_size: Display size for the image (pixels without UI scale applied).
  */
-void UI_tooltip_image_field_add(uiTooltipData *data, const ImBuf *image, const short image_size[2])
-    ATTR_NONNULL(1, 2, 3);
+void UI_tooltip_image_field_add(uiTooltipData *data,
+                                const ImBuf *image,
+                                const short image_size[2],
+                                uiTooltipFlag flag = UI_TIP_FLAG_NONE) ATTR_NONNULL(1, 2, 3);
 
 /**
  * Recreate tool-tip (use to update dynamic tips)

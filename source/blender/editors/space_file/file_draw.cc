@@ -313,7 +313,11 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, uiTooltipData *tip, 
     short size[2] = {short(float(thumb->x) * scale), short(float(thumb->y) * scale)};
     UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
     UI_tooltip_text_field_add(tip, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL);
-    UI_tooltip_image_field_add(tip, thumb, size);
+    UI_tooltip_image_field_add(tip,
+                               thumb,
+                               size,
+                               UI_TIP_FLAG_IMAGE_CHECKER | UI_TIP_FLAG_IMAGE_PREMULTIPLIED |
+                                   UI_TIP_FLAG_IMAGE_BORDER);
   }
 
   if (thumb && free_imbuf) {
