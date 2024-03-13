@@ -53,6 +53,19 @@ struct CourseBoundary {
   const CoarseSegment *segment;
 };
 
+struct EvaluatedSegment {
+  enum class Type {
+    Full,
+    Copy,
+    Indices,
+  };
+
+  Type type = Type::Indices;
+  IndexRange bounds;
+  const IndexMask *copy_mask = nullptr;
+  IndexMaskSegment indices;
+};
+
 static void sort_boundaries(MutableSpan<CourseBoundary> boundaries)
 {
   std::sort(boundaries.begin(),
@@ -452,19 +465,6 @@ BLI_NOINLINE static CoarseResult evaluate_coarse(
   return final_result;
 }
 
-struct FinalResultSegment {
-  enum class Type {
-    Full,
-    Copy,
-    Indices,
-  };
-
-  Type type = Type::Indices;
-  IndexRange bounds;
-  const IndexMask *copy_mask = nullptr;
-  IndexMaskSegment indices;
-};
-
 BLI_NOINLINE static void indices_to_bits(const int16_t *indices,
                                          const int64_t indices_num,
                                          uint64_t *r_bits,
@@ -818,36 +818,37 @@ BLI_NOINLINE static IndexMaskSegment evaluate_segment(const Expr &root_expressio
   return *results[root_expression.index];
 }
 
-BLI_NOINLINE static Vector<IndexMaskSegment> build_result_segments(
-    const Span<FinalResultSegment> final_segments)
+BLI_NOINLINE static Vector<IndexMaskSegment> build_result_mask_segments(
+    const Span<EvaluatedSegment> evaluated_segments)
 {
   const std::array<int16_t, max_segment_size> &static_indices_array = get_static_indices_array();
 
-  Vector<IndexMaskSegment> result_segments;
-  for (const FinalResultSegment &final_segment : final_segments) {
-    switch (final_segment.type) {
-      case FinalResultSegment::Type::Full: {
-        const int64_t full_size = final_segment.bounds.size();
+  Vector<IndexMaskSegment> result_mask_segments;
+  for (const EvaluatedSegment &evaluated_segment : evaluated_segments) {
+    switch (evaluated_segment.type) {
+      case EvaluatedSegment::Type::Full: {
+        const int64_t full_size = evaluated_segment.bounds.size();
         for (int64_t i = 0; i < full_size; i += max_segment_size) {
           const int64_t size = std::min(i + max_segment_size, full_size) - i;
-          result_segments.append(IndexMaskSegment(final_segment.bounds.first() + i,
-                                                  Span(static_indices_array).take_front(size)));
+          result_mask_segments.append(IndexMaskSegment(
+              evaluated_segment.bounds.first() + i, Span(static_indices_array).take_front(size)));
         }
         break;
       }
-      case FinalResultSegment::Type::Copy: {
-        const IndexMask sliced_mask = final_segment.copy_mask->slice_content(final_segment.bounds);
+      case EvaluatedSegment::Type::Copy: {
+        const IndexMask sliced_mask = evaluated_segment.copy_mask->slice_content(
+            evaluated_segment.bounds);
         sliced_mask.foreach_segment(
-            [&](const IndexMaskSegment &segment) { result_segments.append(segment); });
+            [&](const IndexMaskSegment &segment) { result_mask_segments.append(segment); });
         break;
       }
-      case FinalResultSegment::Type::Indices: {
-        result_segments.append(final_segment.indices);
+      case EvaluatedSegment::Type::Indices: {
+        result_mask_segments.append(evaluated_segment.indices);
         break;
       }
     }
   }
-  return result_segments;
+  return result_mask_segments;
 }
 
 BLI_NOINLINE static Vector<const Expr *, inline_expr_array_size> compute_eager_eval_order(
@@ -898,7 +899,7 @@ BLI_NOINLINE static Vector<const Expr *, inline_expr_array_size> compute_eager_e
 BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expression,
                                                        IndexMaskMemory &memory)
 {
-  Vector<FinalResultSegment, 16> final_segments;
+  Vector<EvaluatedSegment, 16> evaluated_segments;
   Stack<IndexRange, 16> long_unknown_segments;
   Vector<IndexRange, 16> short_unknown_segments;
 
@@ -919,11 +920,11 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
         }
         case CoarseSegment::Type::Copy: {
           BLI_assert(segment.mask);
-          final_segments.append({FinalResultSegment::Type::Copy, segment.bounds, segment.mask});
+          evaluated_segments.append({EvaluatedSegment::Type::Copy, segment.bounds, segment.mask});
           break;
         }
         case CoarseSegment::Type::Full: {
-          final_segments.append({FinalResultSegment::Type::Full, segment.bounds});
+          evaluated_segments.append({EvaluatedSegment::Type::Full, segment.bounds});
           break;
         }
       }
@@ -946,69 +947,69 @@ BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expressi
 
   auto evaluate_unknown_segment = [&](const IndexRange bounds,
                                       LinearAllocator<> &allocator,
-                                      Vector<FinalResultSegment, 16> &segments) {
+                                      Vector<EvaluatedSegment, 16> &r_evaluated_segments) {
     // const IndexMaskSegment indices = evaluate_segment_with_bits(
     //     root_expression, allocator, bounds, eager_eval_order);
     const IndexMaskSegment indices = evaluate_segment(root_expression, allocator, bounds);
     if (!indices.is_empty()) {
-      segments.append({FinalResultSegment::Type::Indices, bounds, nullptr, indices});
+      r_evaluated_segments.append({EvaluatedSegment::Type::Indices, bounds, nullptr, indices});
     }
   };
 
   const int64_t unknown_segment_eval_grain_size = 8;
   if (short_unknown_segments.size() < unknown_segment_eval_grain_size) {
     for (const IndexRange &bounds : short_unknown_segments) {
-      evaluate_unknown_segment(bounds, memory, final_segments);
+      evaluate_unknown_segment(bounds, memory, evaluated_segments);
     }
   }
   else {
     struct LocalData {
       LinearAllocator<> allocator;
-      Vector<FinalResultSegment, 16> segments;
+      Vector<EvaluatedSegment, 16> evaluated_segments;
     };
     threading::EnumerableThreadSpecific<LocalData> data_by_thread;
-    threading::parallel_for(short_unknown_segments.index_range(),
-                            unknown_segment_eval_grain_size,
-                            [&](const IndexRange range) {
-                              LocalData &data = data_by_thread.local();
-                              for (const IndexRange &bounds :
-                                   short_unknown_segments.as_span().slice(range)) {
-                                evaluate_unknown_segment(bounds, data.allocator, data.segments);
-                              }
-                            });
+    threading::parallel_for(
+        short_unknown_segments.index_range(),
+        unknown_segment_eval_grain_size,
+        [&](const IndexRange range) {
+          LocalData &data = data_by_thread.local();
+          for (const IndexRange &bounds : short_unknown_segments.as_span().slice(range)) {
+            evaluate_unknown_segment(bounds, data.allocator, data.evaluated_segments);
+          }
+        });
     for (LocalData &data : data_by_thread) {
-      if (!data.segments.is_empty()) {
-        final_segments.extend(data.segments);
+      if (!data.evaluated_segments.is_empty()) {
+        evaluated_segments.extend(data.evaluated_segments);
         memory.transfer_ownership_from(data.allocator);
       }
     }
   }
 
-  if (final_segments.is_empty()) {
+  if (evaluated_segments.is_empty()) {
     return {};
   }
-  if (final_segments.size() == 1) {
-    const FinalResultSegment &final_segment = final_segments[0];
-    switch (final_segment.type) {
-      case FinalResultSegment::Type::Full: {
-        return IndexMask(IndexRange(final_segment.bounds));
+  if (evaluated_segments.size() == 1) {
+    const EvaluatedSegment &evaluated_segment = evaluated_segments[0];
+    switch (evaluated_segment.type) {
+      case EvaluatedSegment::Type::Full: {
+        return IndexMask(IndexRange(evaluated_segment.bounds));
       }
-      case FinalResultSegment::Type::Copy: {
-        return final_segment.copy_mask->slice_content(final_segment.bounds);
+      case EvaluatedSegment::Type::Copy: {
+        return evaluated_segment.copy_mask->slice_content(evaluated_segment.bounds);
       }
-      case FinalResultSegment::Type::Indices: {
-        return IndexMask::from_segments({final_segment.indices}, memory);
+      case EvaluatedSegment::Type::Indices: {
+        return IndexMask::from_segments({evaluated_segment.indices}, memory);
       }
     }
   }
 
-  std::sort(final_segments.begin(),
-            final_segments.end(),
-            [](const FinalResultSegment &a, const FinalResultSegment &b) {
+  std::sort(evaluated_segments.begin(),
+            evaluated_segments.end(),
+            [](const EvaluatedSegment &a, const EvaluatedSegment &b) {
               return a.bounds.start() < b.bounds.start();
             });
 
-  Vector<IndexMaskSegment> result_segments = build_result_segments(final_segments);
+  Vector<IndexMaskSegment> result_segments = build_result_mask_segments(evaluated_segments);
   return IndexMask::from_segments(result_segments, memory);
 }
 
