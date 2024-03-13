@@ -543,7 +543,7 @@ static void build_drawing(const ModifierData &md,
 
   /* Remove a count of #prev_strokes.  */
   if (mmd.mode == MOD_GREASE_PENCIL_BUILD_MODE_ADDITIVE && previous_drawing != nullptr) {
-    const bke::CurvesGeometry &prev_curves = drawing.strokes_for_write();
+    const bke::CurvesGeometry &prev_curves = previous_drawing->strokes();
     const int prev_strokes = prev_curves.curves_num();
     const int added_strokes = curves.curves_num() - prev_strokes;
     if (added_strokes > 0) {
