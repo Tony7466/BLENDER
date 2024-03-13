@@ -587,10 +587,7 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
     const float4x2 strokemat = get_local_to_stroke_matrix(*this, curve_i);
     const float4x2 texspace = matrices[pos];
 
-    /*
-     * WORKAROUND: This algorithm could work with floats but is prone to numerical error.
-     * So instead we cast to doubles, do the algorithm and then go back to floats.
-     */
+    /* We do the computation using doubles to avoid numerical precision errors. */
     double4x3 strokemat4x3 = double4x3(strokemat);
 
     /*
