@@ -90,9 +90,7 @@ struct uiTooltipField {
     uint lines;
   } geom;
   uiTooltipFormat format;
-  ImBuf *image;
-  short image_size[2];
-  uiTooltipFlag flag = UI_TIP_FLAG_NONE;
+  uiTooltipImage *image = nullptr;
 };
 
 struct uiTooltipData {
@@ -125,17 +123,19 @@ void UI_tooltip_text_field_add(uiTooltipData *data,
   data->fields.append(std::move(field));
 }
 
-void UI_tooltip_image_field_add(uiTooltipData *data,
-                                const ImBuf *image,
-                                const short image_size[2],
-                                uiTooltipFlag flag)
+void UI_tooltip_image_field_add(uiTooltipData *data, uiTooltipImage image_data)
 {
   uiTooltipField field{};
   field.format.style = UI_TIP_STYLE_IMAGE;
-  field.image = IMB_dupImBuf(image);
-  field.image_size[0] = std::min(image_size[0], short(UI_TIP_MAXIMAGEWIDTH * UI_SCALE_FAC));
-  field.image_size[1] = std::min(image_size[1], short(UI_TIP_MAXIMAGEHEIGHT * UI_SCALE_FAC));
-  field.flag = flag;
+
+  field.image = new uiTooltipImage();
+  field.image->ibuf = IMB_dupImBuf(image_data.ibuf);
+  field.image->width = std::min(image_data.width, short(UI_TIP_MAXIMAGEWIDTH * UI_SCALE_FAC));
+  field.image->height = std::min(image_data.height, short(UI_TIP_MAXIMAGEHEIGHT * UI_SCALE_FAC));
+  field.image->background = image_data.background;
+  field.image->border = image_data.border;
+  field.image->premultiplied = image_data.premultiplied;
+  field.image->text_color = image_data.text_color;
   data->fields.append(std::move(field));
 }
 
@@ -260,50 +260,48 @@ static void ui_tooltip_region_draw_cb(const bContext * /*C*/, ARegion *region)
       UI_fontstyle_draw(
           &fstyle_mono, &bbox, field->text.c_str(), field->text.size(), drawcol, &fs_params);
     }
-    else if (field->format.style == UI_TIP_STYLE_IMAGE) {
+    else if (field->format.style == UI_TIP_STYLE_IMAGE && field->image) {
 
-      bbox.ymax -= field->image_size[1];
+      bbox.ymax -= field->image->height;
 
-      if (field->flag & UI_TIP_FLAG_IMAGE_CHECKER) {
+      if (field->image->background == UI_TIP_IMAGE_BG_CHECKERBOARD_THEMED) {
         imm_draw_box_checker_2d(float(bbox.xmin),
                                 float(bbox.ymax),
-                                float(bbox.xmin + field->image_size[0]),
-                                float(bbox.ymax + field->image_size[1]));
+                                float(bbox.xmin + field->image->width),
+                                float(bbox.ymax + field->image->height));
       }
-      else if (field->flag & UI_TIP_FLAG_IMAGE_CHECKER_FIXED) {
+      else if (field->image->background == UI_TIP_IMAGE_BG_CHECKERBOARD_FIXED) {
         const float checker_dark = UI_ALPHA_CHECKER_DARK / 255.0f;
         const float checker_light = UI_ALPHA_CHECKER_LIGHT / 255.0f;
         const float color1[4] = {checker_dark, checker_dark, checker_dark, 1.0f};
         const float color2[4] = {checker_light, checker_light, checker_light, 1.0f};
         imm_draw_box_checker_2d_ex(float(bbox.xmin + U.pixelsize),
                                    float(bbox.ymax + U.pixelsize),
-                                   float(bbox.xmin + field->image_size[0]),
-                                   float(bbox.ymax + field->image_size[1]),
+                                   float(bbox.xmin + field->image->width),
+                                   float(bbox.ymax + field->image->height),
                                    color1,
                                    color2,
                                    8);
       }
 
-      GPU_blend((field->flag & UI_TIP_FLAG_IMAGE_PREMULTIPLIED) ? GPU_BLEND_ALPHA_PREMULT :
-                                                                  GPU_BLEND_ALPHA);
+      GPU_blend((field->image->premultiplied) ? GPU_BLEND_ALPHA_PREMULT : GPU_BLEND_ALPHA);
 
       IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
       immDrawPixelsTexScaledFullSize(&state,
                                      bbox.xmin,
                                      bbox.ymax,
-                                     field->image->x,
-                                     field->image->y,
+                                     field->image->ibuf->x,
+                                     field->image->ibuf->y,
                                      GPU_RGBA8,
                                      true,
-                                     field->image->byte_buffer.data,
+                                     field->image->ibuf->byte_buffer.data,
                                      1.0f,
                                      1.0f,
-                                     float(field->image_size[0]) / float(field->image->x),
-                                     float(field->image_size[1]) / float(field->image->y),
-                                     (field->flag & UI_TIP_FLAG_IMAGE_TEXTCOLOR) ? main_color :
-                                                                                   nullptr);
+                                     float(field->image->width) / float(field->image->ibuf->x),
+                                     float(field->image->height) / float(field->image->ibuf->y),
+                                     (field->image->text_color) ? main_color : nullptr);
 
-      if (field->flag & UI_TIP_FLAG_IMAGE_BORDER) {
+      if (field->image->border) {
         GPU_blend(GPU_BLEND_ALPHA);
         GPUVertFormat *format = immVertexFormat();
         uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
@@ -320,8 +318,8 @@ static void ui_tooltip_region_draw_cb(const bContext * /*C*/, ARegion *region)
         imm_draw_box_wire_2d(pos,
                              float(bbox.xmin),
                              float(bbox.ymax),
-                             float(bbox.xmin + field->image_size[0]),
-                             float(bbox.ymax + field->image_size[1]));
+                             float(bbox.xmin + field->image->width),
+                             float(bbox.ymax + field->image->height));
         immUnbindProgram();
         GPU_blend(GPU_BLEND_NONE);
       }
@@ -353,8 +351,8 @@ static void ui_tooltip_region_free_cb(ARegion *region)
 {
   uiTooltipData *data = static_cast<uiTooltipData *>(region->regiondata);
   for (uiTooltipField &field : data->fields) {
-    if (field.image) {
-      IMB_freeImBuf(field.image);
+    if (field.image && field.image->ibuf) {
+      IMB_freeImBuf(field.image->ibuf);
     }
   }
   MEM_delete(data);
@@ -1233,9 +1231,9 @@ static ARegion *ui_tooltip_create_with_data(bContext *C,
       fonth += h * UI_TIP_SPACER;
     }
 
-    if (field->format.style == UI_TIP_STYLE_IMAGE) {
-      fonth += field->image_size[1];
-      w = max_ii(w, field->image_size[0]);
+    if (field->format.style == UI_TIP_STYLE_IMAGE && field->image) {
+      fonth += field->image->height;
+      w = max_ii(w, field->image->width);
     }
 
     fontw = max_ii(fontw, w);
