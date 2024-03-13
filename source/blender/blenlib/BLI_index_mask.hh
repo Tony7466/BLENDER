@@ -572,6 +572,7 @@ inline IndexMaskSegment IndexMaskSegment::slice(const int64_t start, const int64
 
 inline IndexMaskSegment IndexMaskSegment::shift(const int64_t shift) const
 {
+  BLI_assert(this->is_empty() || (*this)[0] + shift >= 0);
   return IndexMaskSegment(this->offset() + shift, this->base_span());
 }
 

@@ -566,20 +566,22 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_bits(
   return IndexMaskSegment(segment_offset, indices);
 }
 
-static int64_t union_index_mask_segments(const Span<IndexMaskSegment> segments, int16_t *r_values)
+static IndexMaskSegment union_index_mask_segments(const Span<IndexMaskSegment> segments,
+                                                  const int64_t bounds_min,
+                                                  int16_t *r_values)
 {
   if (segments.is_empty()) {
-    return 0;
+    return {};
   }
   if (segments.size() == 1) {
-    const IndexMaskSegment segment = segments[0];
-    std::copy(segment.begin(), segment.end(), r_values);
-    return segment.size();
+    return segments[0];
   }
   if (segments.size() == 2) {
-    const IndexMaskSegment a = segments[0];
-    const IndexMaskSegment b = segments[1];
-    return std::set_union(a.begin(), a.end(), b.begin(), b.end(), r_values) - r_values;
+    const IndexMaskSegment a = segments[0].shift(-bounds_min);
+    const IndexMaskSegment b = segments[1].shift(-bounds_min);
+    const int64_t size = std::set_union(a.begin(), a.end(), b.begin(), b.end(), r_values) -
+                         r_values;
+    return {bounds_min, {r_values, size}};
   }
 
   Vector<IndexMaskSegment> sorted_segments(segments);
@@ -599,37 +601,38 @@ static int64_t union_index_mask_segments(const Span<IndexMaskSegment> segments, 
   int64_t count = 0;
   {
     /* Initial union. */
-    const IndexMaskSegment a = sorted_segments[0];
-    const IndexMaskSegment b = sorted_segments[1];
+    const IndexMaskSegment a = sorted_segments[0].shift(-bounds_min);
+    const IndexMaskSegment b = sorted_segments[1].shift(-bounds_min);
     int16_t *dst = buffer_a;
     count = std::set_union(a.begin(), a.end(), b.begin(), b.end(), dst) - dst;
   }
 
   for (const int64_t segment_i : sorted_segments.index_range().drop_front(2)) {
     const int16_t *a = buffer_a;
-    const IndexMaskSegment b = sorted_segments[segment_i];
+    const IndexMaskSegment b = sorted_segments[segment_i].shift(-bounds_min);
     int16_t *dst = buffer_b;
     count = std::set_union(a, a + count, b.begin(), b.end(), dst) - dst;
     std::swap(buffer_a, buffer_b);
   }
-  return count;
+  return {bounds_min, {r_values, count}};
 }
 
-static int64_t intersect_index_mask_segments(const Span<IndexMaskSegment> segments,
-                                             int16_t *r_values)
+static IndexMaskSegment intersect_index_mask_segments(const Span<IndexMaskSegment> segments,
+                                                      const int64_t bounds_min,
+                                                      int16_t *r_values)
 {
   if (segments.is_empty()) {
-    return 0;
+    return {};
   }
   if (segments.size() == 1) {
-    const IndexMaskSegment segment = segments[0];
-    std::copy(segment.begin(), segment.end(), r_values);
-    return segment.size();
+    return segments[0];
   }
   if (segments.size() == 2) {
-    const IndexMaskSegment a = segments[0];
-    const IndexMaskSegment b = segments[1];
-    return std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), r_values) - r_values;
+    const IndexMaskSegment a = segments[0].shift(-bounds_min);
+    const IndexMaskSegment b = segments[1].shift(-bounds_min);
+    const int64_t size = std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), r_values) -
+                         r_values;
+    return {bounds_min, {r_values, size}};
   }
 
   Vector<IndexMaskSegment> sorted_segments(segments);
@@ -646,41 +649,44 @@ static int64_t intersect_index_mask_segments(const Span<IndexMaskSegment> segmen
   int64_t count = 0;
   {
     /* Initial intersection. */
-    const IndexMaskSegment a = sorted_segments[0];
-    const IndexMaskSegment b = sorted_segments[1];
+    const IndexMaskSegment a = sorted_segments[0].shift(-bounds_min);
+    const IndexMaskSegment b = sorted_segments[1].shift(-bounds_min);
     int16_t *dst = buffer_a;
     count = std::set_intersection(a.begin(), a.end(), b.begin(), b.end(), dst) - dst;
   }
 
   for (const int64_t segment_i : sorted_segments.index_range().drop_front(2)) {
     const int16_t *a = buffer_a;
-    const IndexMaskSegment b = sorted_segments[segment_i];
+    const IndexMaskSegment b = sorted_segments[segment_i].shift(-bounds_min);
     int16_t *dst = (segment_i == sorted_segments.size() - 1) ? r_values : buffer_b;
     count = std::set_intersection(a, a + count, b.begin(), b.end(), dst) - dst;
     std::swap(buffer_a, buffer_b);
   }
-  return count;
+  return {bounds_min, {r_values, count}};
 }
 
-static int64_t difference_index_mask_segments(const IndexMaskSegment main_segment,
-                                              const Span<IndexMaskSegment> subtract_segments,
-                                              int16_t *r_values)
+static IndexMaskSegment difference_index_mask_segments(
+    const IndexMaskSegment main_segment,
+    const Span<IndexMaskSegment> subtract_segments,
+    const int64_t bounds_min,
+    int16_t *r_values)
 {
   if (main_segment.is_empty()) {
-    return 0;
+    return {};
   }
   if (subtract_segments.is_empty()) {
-    std::copy(main_segment.begin(), main_segment.end(), r_values);
-    return main_segment.size();
+    return main_segment;
   }
   if (subtract_segments.size() == 1) {
-    const IndexMaskSegment subtract_segment = subtract_segments[0];
-    return std::set_difference(main_segment.begin(),
-                               main_segment.end(),
-                               subtract_segment.begin(),
-                               subtract_segment.end(),
-                               r_values) -
-           r_values;
+    const IndexMaskSegment shifted_main_segment = main_segment.shift(-bounds_min);
+    const IndexMaskSegment subtract_segment = subtract_segments[0].shift(-bounds_min);
+    const int64_t size = std::set_difference(shifted_main_segment.begin(),
+                                             shifted_main_segment.end(),
+                                             subtract_segment.begin(),
+                                             subtract_segment.end(),
+                                             r_values) -
+                         r_values;
+    return {bounds_min, {r_values, size}};
   }
 
   int64_t subtract_count = 0;
@@ -691,13 +697,17 @@ static int64_t difference_index_mask_segments(const IndexMaskSegment main_segmen
     /* Can be more efficient to union all the subtract indices first before computing the
      * difference. This avoids potentially multiple larger intermediate arrays. */
     std::array<int16_t, max_segment_size> union_indices;
-    const int64_t union_size = union_index_mask_segments(subtract_segments, union_indices.data());
-    return std::set_difference(main_segment.begin(),
-                               main_segment.end(),
-                               union_indices.data(),
-                               union_indices.data() + union_size,
-                               r_values) -
-           r_values;
+    const IndexMaskSegment shifted_main_segment = main_segment.shift(-bounds_min);
+    const IndexMaskSegment unioned_subtract_segment =
+        union_index_mask_segments(subtract_segments, bounds_min, union_indices.data())
+            .shift(-bounds_min);
+    const int64_t size = std::set_difference(shifted_main_segment.begin(),
+                                             shifted_main_segment.end(),
+                                             unioned_subtract_segment.begin(),
+                                             unioned_subtract_segment.end(),
+                                             r_values) -
+                         r_values;
+    return {bounds_min, {r_values, size}};
   }
 
   /* Sort larger segments to the front. */
@@ -715,10 +725,11 @@ static int64_t difference_index_mask_segments(const IndexMaskSegment main_segmen
   int64_t count = 0;
   {
     /* Initial difference. */
-    const IndexMaskSegment subtract_segment = sorted_subtract_segments[0];
+    const IndexMaskSegment shifted_main_segment = main_segment.shift(-bounds_min);
+    const IndexMaskSegment subtract_segment = sorted_subtract_segments[0].shift(-bounds_min);
     int16_t *dst = buffer_a;
-    count = std::set_difference(main_segment.begin(),
-                                main_segment.end(),
+    count = std::set_difference(shifted_main_segment.begin(),
+                                shifted_main_segment.end(),
                                 subtract_segment.begin(),
                                 subtract_segment.end(),
                                 dst) -
@@ -726,7 +737,8 @@ static int64_t difference_index_mask_segments(const IndexMaskSegment main_segmen
   }
 
   for (const int64_t segment_i : sorted_subtract_segments.index_range().drop_front(1)) {
-    const IndexMaskSegment &subtract_segment = sorted_subtract_segments[segment_i];
+    const IndexMaskSegment &subtract_segment = sorted_subtract_segments[segment_i].shift(
+        -bounds_min);
     int16_t *dst = (segment_i == sorted_subtract_segments.size() - 1) ? r_values : buffer_b;
     count = std::set_difference(buffer_a,
                                 buffer_a + count,
@@ -736,7 +748,7 @@ static int64_t difference_index_mask_segments(const IndexMaskSegment main_segmen
             dst;
     std::swap(buffer_a, buffer_b);
   }
-  return count;
+  return {bounds_min, {r_values, count}};
 }
 
 BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
@@ -746,7 +758,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
     const Span<const Expr *> eager_eval_order)
 {
   BLI_assert(bounds.size() <= max_segment_size);
-  const int64_t bound_min = bounds.start();
+  const int64_t bounds_min = bounds.start();
   const int expr_array_size = root_expression.expression_array_size();
   Array<IndexMaskSegment, inline_expr_array_size> results(expr_array_size);
   for (const Expr *expression : eager_eval_order) {
@@ -774,17 +786,15 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
             used_short_circuit = true;
             break;
           }
+          term_segments[term_i] = term_segment;
           result_size_upper_bound += term_segment.size();
-          term_segments[term_i] = IndexMaskSegment(term_segment.offset() - bound_min,
-                                                   term_segment.base_span());
         }
         if (used_short_circuit) {
           break;
         }
         result_size_upper_bound = std::min(result_size_upper_bound, bounds.size());
         int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
-        const int64_t result_size = union_index_mask_segments(term_segments, dst);
-        results[expression->index] = IndexMaskSegment(bound_min, {dst, result_size});
+        results[expression->index] = union_index_mask_segments(term_segments, bounds_min, dst);
         break;
       }
       case Expr::Type::Intersection: {
@@ -801,15 +811,13 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
             break;
           }
           result_size_upper_bound = std::min(result_size_upper_bound, term_segment.size());
-          term_segments[term_i] = IndexMaskSegment(term_segment.offset() - bound_min,
-                                                   term_segment.base_span());
+          term_segments[term_i] = term_segment;
         }
         if (used_short_circuit) {
           break;
         }
         int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
-        const int64_t result_size = intersect_index_mask_segments(term_segments, dst);
-        results[expression->index] = IndexMaskSegment(bound_min, {dst, result_size});
+        results[expression->index] = intersect_index_mask_segments(term_segments, bounds_min, dst);
         break;
       }
       case Expr::Type::Difference: {
@@ -820,7 +828,6 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
           results[expression->index] = {};
           break;
         }
-        const IndexMaskSegment shifted_main_segment = main_segment.shift(-bound_min);
         int64_t result_size_upper_bound = main_segment.size();
         bool used_short_circuit = false;
         Array<IndexMaskSegment> subtract_segments(expr.terms.size() - 1);
@@ -834,15 +841,14 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
           }
           result_size_upper_bound = std::min(result_size_upper_bound,
                                              bounds.size() - term_segment.size());
-          subtract_segments[term_i - 1] = term_segment.shift(-bound_min);
+          subtract_segments[term_i - 1] = term_segment;
         }
         if (used_short_circuit) {
           break;
         }
         int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
-        const int64_t result_size = difference_index_mask_segments(
-            shifted_main_segment, subtract_segments, dst);
-        results[expression->index] = IndexMaskSegment(bound_min, {dst, result_size});
+        results[expression->index] = difference_index_mask_segments(
+            main_segment, subtract_segments, bounds_min, dst);
         break;
       }
     }
