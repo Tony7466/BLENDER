@@ -757,7 +757,7 @@ void ShadowModule::init()
     simplify_shadows = inst_.is_viewport() ? scene.r.simplify_shadows :
                                              scene.r.simplify_shadows_render;
   }
-  lod_bias_ = math::interpolate(float(SHADOW_TILEMAP_LOD), 0.0f, simplify_shadows);
+  lod_bias_ = -log2(simplify_shadows);
 
   const int2 atlas_extent = shadow_page_size_ * int2(SHADOW_PAGE_PER_ROW);
   const int atlas_layers = divide_ceil_u(shadow_page_len_, SHADOW_PAGE_PER_LAYER);
