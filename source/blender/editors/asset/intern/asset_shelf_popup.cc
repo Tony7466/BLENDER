@@ -58,7 +58,7 @@ static AssetShelf *get_shelf_for_popup(const bContext *C,
 uiBlock *asset_shelf_popup_block(const bContext *C, ARegion *region, AssetShelfType *shelf_type)
 {
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
-  UI_block_flag_enable(block, UI_BLOCK_LOOP);
+  UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_KEEP_OPEN);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
   AssetShelf *shelf = get_shelf_for_popup(C, CTX_wm_area(C), *shelf_type);
