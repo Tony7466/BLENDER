@@ -700,12 +700,7 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
       MaterialGPencilStyle *gp_style = BKE_object_material_get(ob, material_index + 1)->gp_style;
 
       const bool hide_material = (gp_style->flag & GP_MATERIAL_HIDE) != 0;
-      /* bool show_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0) ||
-       *                 (!is_render && ((gps->flag & GP_STROKE_NOFILL) != 0)); */
       const bool show_stroke = ((gp_style->flag & GP_MATERIAL_STROKE_SHOW) != 0);
-      /* bool show_fill = (gps->tot_triangles > 0) &&
-       *               ((gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0) && (!pd->simplify_fill) &&
-       *               ((gps->flag & GP_STROKE_NOFILL) == 0); */
       const bool show_fill = (points.size() >= 3) &&
                              ((gp_style->flag & GP_MATERIAL_FILL_SHOW) != 0) &&
                              (!pd->simplify_fill);
@@ -784,9 +779,6 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
       }
 
       t_offset += num_stroke_vertices * 2;
-
-      /* Only needed by sbuffer. */
-      /* stroke_index_last = gps->runtime.vertex_start + gps->totpoints + 1;*/
     });
   }
 
