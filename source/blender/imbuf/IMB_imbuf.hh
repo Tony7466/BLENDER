@@ -117,11 +117,6 @@ ImBuf *IMB_allocFromBuffer(const uint8_t *byte_buffer,
  */
 void IMB_assign_byte_buffer(ImBuf *ibuf, uint8_t *buffer_data, ImBufOwnership ownership);
 void IMB_assign_float_buffer(ImBuf *ibuf, float *buffer_data, ImBufOwnership ownership);
-void IMB_assign_encoded_buffer(ImBuf *ibuf,
-                               uint8_t *buffer_data,
-                               unsigned int buffer_size,
-                               unsigned int size,
-                               ImBufOwnership ownership);
 
 /**
  * Make corresponding buffers available for modification.
@@ -148,9 +143,8 @@ uint8_t *IMB_steal_encoded_buffer(ImBuf *ibuf);
 void IMB_refImBuf(ImBuf *ibuf);
 ImBuf *IMB_makeSingleUser(ImBuf *ibuf);
 
-/* Creates a copy of the given buffer. If the shallow arguement is false, the internals buffers
- * will be copied as well, if true, the buffers will be shared using IB_DO_NOT_TAKE_OWNERSHIP. */
-ImBuf *IMB_dupImBuf(const ImBuf *ibuf1, bool shallow = false);
+ImBuf *IMB_dupImBuf(const ImBuf *ibuf1);
+ImBuf *IMB_copy_sharing(const ImBuf *source);
 
 /**
  * Approximate size of ImBuf in memory

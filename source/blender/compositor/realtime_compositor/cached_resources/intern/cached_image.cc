@@ -170,7 +170,7 @@ CachedImage::CachedImage(Context &context,
    * before linear space conversion, which would produce yet another difference. So we just do
    * everything on the CPU, since this is already a cached resource. To avoid conflicts with other
    * threads, create a shallow duplicate buffer and eventually free it. */
-  ImBuf *linear_image_buffer = IMB_dupImBuf(image_buffer, true);
+  ImBuf *linear_image_buffer = IMB_copy_sharing(image_buffer);
   if (!linear_image_buffer->float_buffer.data) {
     IMB_float_from_rect(linear_image_buffer);
   }

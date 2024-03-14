@@ -472,7 +472,7 @@ void IMB_assign_float_buffer(ImBuf *ibuf, float *buffer_data, const ImBufOwnersh
   }
 }
 
-void IMB_assign_encoded_buffer(ImBuf *ibuf,
+void imb_assign_encoded_buffer(ImBuf *ibuf,
                                uint8_t *buffer_data,
                                unsigned int buffer_size,
                                unsigned int size,
@@ -597,7 +597,7 @@ bool IMB_initImBuf(ImBuf *ibuf, uint x, uint y, uchar planes, uint flags)
   return true;
 }
 
-ImBuf *IMB_dupImBuf(const ImBuf *ibuf1, bool shallow)
+ImBuf *IMB_dupImBuf(const ImBuf *ibuf1)
 {
   ImBuf *ibuf2, tbuf;
   int flags = IB_uninitialized_pixels;
@@ -607,13 +607,11 @@ ImBuf *IMB_dupImBuf(const ImBuf *ibuf1, bool shallow)
     return nullptr;
   }
 
-  if (!shallow) {
-    if (ibuf1->byte_buffer.data) {
-      flags |= IB_rect;
-    }
-    if (ibuf1->float_buffer.data) {
-      flags |= IB_rectfloat;
-    }
+  if (ibuf1->byte_buffer.data) {
+    flags |= IB_rect;
+  }
+  if (ibuf1->float_buffer.data) {
+    flags |= IB_rectfloat;
   }
 
   x = ibuf1->x;
@@ -624,46 +622,24 @@ ImBuf *IMB_dupImBuf(const ImBuf *ibuf1, bool shallow)
     return nullptr;
   }
 
-  uint8_t *source_byte_data = ibuf1->byte_buffer.data;
-  if (source_byte_data) {
-    if (shallow) {
-      IMB_assign_byte_buffer(ibuf2, source_byte_data, IB_DO_NOT_TAKE_OWNERSHIP);
-    }
-    else {
-      memcpy(ibuf2->byte_buffer.data, source_byte_data, size_t(x) * y * 4 * sizeof(uint8_t));
-    }
+  if (flags & IB_rect) {
+    memcpy(ibuf2->byte_buffer.data, ibuf1->byte_buffer.data, size_t(x) * y * 4 * sizeof(uint8_t));
   }
 
-  float *source_float_data = ibuf1->float_buffer.data;
-  if (source_float_data) {
-    if (shallow) {
-      IMB_assign_float_buffer(ibuf2, source_float_data, IB_DO_NOT_TAKE_OWNERSHIP);
-    }
-    else {
-      memcpy(ibuf2->float_buffer.data,
-             source_float_data,
-             size_t(ibuf1->channels) * x * y * sizeof(float));
-    }
+  if (flags & IB_rectfloat) {
+    memcpy(ibuf2->float_buffer.data,
+           ibuf1->float_buffer.data,
+           size_t(ibuf1->channels) * x * y * sizeof(float));
   }
 
-  uint8_t *source_encoded_data = ibuf1->encoded_buffer.data;
-  if (source_encoded_data) {
-    if (shallow) {
-      IMB_assign_encoded_buffer(ibuf2,
-                                source_encoded_data,
-                                ibuf1->encoded_buffer_size,
-                                ibuf1->encoded_size,
-                                IB_DO_NOT_TAKE_OWNERSHIP);
+  if (ibuf1->encoded_buffer.data) {
+    ibuf2->encoded_buffer_size = ibuf1->encoded_buffer_size;
+    if (imb_addencodedbufferImBuf(ibuf2) == false) {
+      IMB_freeImBuf(ibuf2);
+      return nullptr;
     }
-    else {
-      ibuf2->encoded_buffer_size = ibuf1->encoded_buffer_size;
-      if (imb_addencodedbufferImBuf(ibuf2) == false) {
-        IMB_freeImBuf(ibuf2);
-        return nullptr;
-      }
 
-      memcpy(ibuf2->encoded_buffer.data, ibuf1->encoded_buffer.data, ibuf1->encoded_size);
-    }
+    memcpy(ibuf2->encoded_buffer.data, ibuf1->encoded_buffer.data, ibuf1->encoded_size);
   }
 
   ibuf2->byte_buffer.colorspace = ibuf1->byte_buffer.colorspace;
@@ -693,6 +669,56 @@ ImBuf *IMB_dupImBuf(const ImBuf *ibuf1, bool shallow)
   *ibuf2 = tbuf;
 
   return ibuf2;
+}
+
+ImBuf *IMB_copy_sharing(const ImBuf *source)
+{
+  if (source == nullptr) {
+    return nullptr;
+  }
+
+  ImBuf *target = IMB_allocImBuf(source->x, source->y, source->planes, 0);
+  if (target == nullptr) {
+    return nullptr;
+  }
+
+  /* Assign buffers with shared ownership. */
+  IMB_assign_byte_buffer(target, source->byte_buffer.data, IB_DO_NOT_TAKE_OWNERSHIP);
+  IMB_assign_float_buffer(target, source->float_buffer.data, IB_DO_NOT_TAKE_OWNERSHIP);
+  imb_assign_encoded_buffer(target,
+                            source->encoded_buffer.data,
+                            source->encoded_buffer_size,
+                            source->encoded_size,
+                            IB_DO_NOT_TAKE_OWNERSHIP);
+
+  /* Above assignment does not assign color spaces, so assign them here. */
+  target->byte_buffer.colorspace = source->byte_buffer.colorspace;
+  target->float_buffer.colorspace = source->float_buffer.colorspace;
+
+  /* Silly trick to copy the entire contents of source over to target. */
+  ImBuf temporary_buffer = *source;
+
+  /* Fix pointers. */
+  temporary_buffer.byte_buffer = target->byte_buffer;
+  temporary_buffer.float_buffer = target->float_buffer;
+  temporary_buffer.encoded_buffer = target->encoded_buffer;
+  for (int a = 0; a < IMB_MIPMAP_LEVELS; a++) {
+    temporary_buffer.mipmap[a] = nullptr;
+  }
+  temporary_buffer.dds_data.data = nullptr;
+
+  /* Set malloc flag. */
+  temporary_buffer.refcounter = 0;
+
+  /* For now don't duplicate metadata. */
+  temporary_buffer.metadata = nullptr;
+
+  temporary_buffer.display_buffer_flags = nullptr;
+  temporary_buffer.colormanage_cache = nullptr;
+
+  *target = temporary_buffer;
+
+  return target;
 }
 
 size_t IMB_get_rect_len(const ImBuf *ibuf)

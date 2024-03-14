@@ -8,6 +8,7 @@
 #pragma once
 
 struct ImBuf;
+enum ImBufOwnership : uint8_t;
 
 void imb_refcounter_lock_init();
 void imb_refcounter_lock_exit();
@@ -26,3 +27,8 @@ void imb_mmap_unlock();
 
 bool imb_addencodedbufferImBuf(ImBuf *ibuf);
 bool imb_enlargeencodedbufferImBuf(ImBuf *ibuf);
+void imb_assign_encoded_buffer(ImBuf *ibuf,
+                               uint8_t *buffer_data,
+                               unsigned int buffer_size,
+                               unsigned int size,
+                               ImBufOwnership ownership);
