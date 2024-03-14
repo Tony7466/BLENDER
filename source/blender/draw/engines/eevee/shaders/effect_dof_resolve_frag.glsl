@@ -13,6 +13,9 @@
 #pragma BLENDER_REQUIRE(common_utiltex_lib.glsl)
 #pragma BLENDER_REQUIRE(effect_dof_lib.glsl)
 
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+__attribute__((noinline))
+#endif
 void dof_slight_focus_gather(float radius, out vec4 out_color, out float out_weight)
 {
   /* offset coord to avoid correlation with sampling pattern. */

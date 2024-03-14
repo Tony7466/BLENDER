@@ -35,6 +35,9 @@ void lmh(vec4 s1, vec4 s2, vec4 s3, out vec4 l, out vec4 m, out vec4 h)
   h = h3;
 }
 
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+__attribute__((noinline))
+#endif
 vec4 median_filter(sampler2D tex, vec2 uv)
 {
   vec2 texel_size = 1.0 / vec2(textureSize(tex, 0).xy);

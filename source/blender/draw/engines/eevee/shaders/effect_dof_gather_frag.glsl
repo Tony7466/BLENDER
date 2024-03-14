@@ -48,6 +48,9 @@ bool dof_do_density_change(float base_radius, float min_intersectable_radius)
   return need_new_density && larger_than_min_density;
 }
 
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+__attribute__((noinline))
+#endif
 void dof_gather_init(float base_radius,
                      vec4 noise,
                      out vec2 center_co,
@@ -73,6 +76,9 @@ void dof_gather_init(float base_radius,
   intersection_multiplier = pow(0.5, lod);
 }
 
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+__attribute__((noinline))
+#endif
 void dof_gather_accumulator(float base_radius,
                             float min_intersectable_radius,
                             const bool do_fast_gather,

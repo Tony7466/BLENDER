@@ -357,6 +357,9 @@ void dof_gather_ammend_weight(inout DofGatherData sample_data, float weight)
   sample_data.weight *= weight;
 }
 
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+__attribute__((noinline))
+#endif
 void dof_gather_accumulate_sample(DofGatherData sample_data,
                                   float weight,
                                   inout DofGatherData accum_data)
@@ -367,6 +370,9 @@ void dof_gather_accumulate_sample(DofGatherData sample_data,
   accum_data.weight += weight;
 }
 
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+__attribute__((noinline))
+#endif
 void dof_gather_accumulate_sample_pair(DofGatherData pair_data[2],
                                        float bordering_radius,
                                        float intersection_multiplier,
@@ -427,6 +433,9 @@ void dof_gather_accumulate_sample_pair(DofGatherData pair_data[2],
   }
 }
 
+#if (defined(GPU_METAL) && defined(GPU_ATI))
+__attribute__((noinline))
+#endif
 void dof_gather_accumulate_sample_ring(DofGatherData ring_data,
                                        int sample_count,
                                        bool first_ring,
