@@ -911,7 +911,7 @@ void WM_OT_polyline_gesture(wmOperatorType *ot)
 
   ot->name = "Polyline Gesture";
   ot->idname = "WM_OT_polyline_gesture";
-  ot->description = "Outline a selection area with each mouse click.";
+  ot->description = "Outline a selection area with each mouse click";
 
   ot->invoke = WM_gesture_polyline_invoke;
   ot->modal = WM_gesture_polyline_modal;
