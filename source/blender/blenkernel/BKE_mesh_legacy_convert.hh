@@ -115,6 +115,7 @@ void BKE_mesh_calc_edges_legacy(Mesh *mesh);
 void BKE_mesh_do_versions_cd_flag_init(Mesh *mesh);
 
 void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain);
+void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain, blender::Span<Object *> objects);
 
 /**
  * Calculate/create edges from tessface data

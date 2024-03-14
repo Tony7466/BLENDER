@@ -2263,7 +2263,7 @@ static ModifierData *create_auto_smooth_modifier(Object &object,
 
 }  // namespace blender::bke
 
-void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
+void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain, const blender::Span<Object *> objects)
 {
   using namespace blender::bke;
 
@@ -2275,10 +2275,8 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     return node_group;
   };
 
-  LISTBASE_FOREACH (Object *, object, &bmain.objects) {
-    if (object->type != OB_MESH) {
-      continue;
-    }
+  for (Object *object : objects) {
+    BLI_assert(object->type == OB_MESH);
     Mesh *mesh = static_cast<Mesh *>(object->data);
     const float angle = mesh->smoothresh_legacy;
     if (!(mesh->flag & ME_AUTOSMOOTH_LEGACY)) {
@@ -2327,6 +2325,17 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
       BLI_addtail(&object->modifiers, new_md);
     }
   }
+}
+
+void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
+{
+  blender::Vector<Object *> objects;
+  LISTBASE_FOREACH (Object *, object, &bmain.objects) {
+    if (object->type == OB_MESH) {
+      objects.append(object);
+    }
+  }
+  BKE_main_mesh_legacy_convert_auto_smooth(bmain, objects);
 }
 
 namespace blender::bke {
