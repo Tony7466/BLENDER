@@ -137,6 +137,9 @@ static void sort_course_boundaries(MutableSpan<DifferenceCourseBoundary> boundar
             });
 }
 
+/** Smaller segments should generally be merged together. */
+static constexpr int64_t segment_size_threshold = 8;
+
 /** Extends a previous full segment or appends a new one. */
 static CoarseSegment &make_coarse_segment__full(CoarseSegment *prev_segment,
                                                 const int64_t prev_boundary_index,
@@ -161,11 +164,13 @@ static CoarseSegment &make_coarse_segment__unknown(CoarseSegment *prev_segment,
                                                    const int64_t current_boundary_index,
                                                    CoarseResult &result)
 {
-  if (prev_segment && prev_segment->type == CoarseSegment::Type::Unknown &&
-      prev_segment->bounds.one_after_last() == prev_boundary_index)
-  {
-    prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
-    return *prev_segment;
+  if (prev_segment) {
+    if (prev_segment->bounds.start() + segment_size_threshold >= prev_boundary_index) {
+      /* The previous segment is very short, so extend it. */
+      prev_segment->type = CoarseSegment::Type::Unknown;
+      prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
+      return *prev_segment;
+    }
   }
   result.segments.append(
       {CoarseSegment::Type::Unknown,
@@ -180,12 +185,21 @@ static CoarseSegment &make_coarse_segment__copy(CoarseSegment *prev_segment,
                                                 const IndexMask &copy_from_mask,
                                                 CoarseResult &result)
 {
-  if (prev_segment && prev_segment->type == CoarseSegment::Type::Copy &&
-      prev_segment->bounds.one_after_last() == prev_boundary_index &&
-      prev_segment->mask == &copy_from_mask)
-  {
-    prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
-    return *prev_segment;
+  if (prev_segment) {
+    if (prev_segment->type == CoarseSegment::Type::Copy &&
+        prev_segment->bounds.one_after_last() == prev_boundary_index &&
+        prev_segment->mask == &copy_from_mask)
+    {
+      /* Can extend the previous copy segment. */
+      prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
+      return *prev_segment;
+    }
+    if (prev_segment->bounds.start() + segment_size_threshold >= current_boundary_index) {
+      /* The previous and this segment together are very short, so better merge them together. */
+      prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
+      prev_segment->type = CoarseSegment::Type::Unknown;
+      return *prev_segment;
+    }
   }
   result.segments.append({CoarseSegment::Type::Copy,
                           IndexRange::from_begin_end(prev_boundary_index, current_boundary_index),
