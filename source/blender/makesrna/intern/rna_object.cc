@@ -3523,10 +3523,7 @@ static void rna_def_object(BlenderRNA *brna)
 
   prop = RNA_def_property(srna, "use_empty_image_alpha", PROP_BOOLEAN, PROP_NONE);
   RNA_def_property_boolean_sdna(prop, nullptr, "empty_image_flag", OB_EMPTY_IMAGE_USE_ALPHA_BLEND);
-  RNA_def_property_ui_text(
-      prop,
-      "Use Opacity",
-      "Use the opacity property to add transparency");
+  RNA_def_property_ui_text(prop, "Use Opacity", "Use the opacity property to add transparency");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, nullptr);
 
   static EnumPropertyItem prop_empty_image_side_items[] = {
@@ -3558,11 +3555,9 @@ static void rna_def_object(BlenderRNA *brna)
       prop, "Pass Index", "Index number for the \"Object Index\" render pass");
   RNA_def_property_update(prop, NC_OBJECT, "rna_Object_internal_update_draw");
 
-  
   prop = RNA_def_property(srna, "empty_image_alpha", PROP_FLOAT, PROP_COLOR);
   RNA_def_property_float_sdna(prop, nullptr, "color");
-  RNA_def_property_ui_text(
-      prop, "Image Opacity", "Degree of transparency applied to the image");
+  RNA_def_property_ui_text(prop, "Image Opacity", "Degree of transparency applied to the image");
   RNA_def_property_update(prop, NC_OBJECT | ND_DRAW, "rna_Object_internal_update_draw");
 
   prop = RNA_def_property(srna, "color", PROP_FLOAT, PROP_COLOR);
