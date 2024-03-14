@@ -7,7 +7,7 @@
  */
 
 #include "BLI_array.hh"
-#include "BLI_lasso_2d.h"
+#include "BLI_lasso_2d.hh"
 #include "BLI_math_geom.h"
 #include "BLI_rect.h"
 #include "BLI_task.hh"
@@ -393,8 +393,7 @@ static void expand_cutter_segment(CutterSegment *segment,
  */
 static std::optional<bke::CurvesGeometry> stroke_cutter_find_and_remove_segments(
     const bke::CurvesGeometry &src,
-    const int mcoords[][2],
-    const int mcoords_len,
+    const Span<int2> mcoords,
     const Span<float2> screen_space_positions,
     const Span<rcti> screen_space_bbox,
     const bool keep_caps)
@@ -407,7 +406,7 @@ static std::optional<bke::CurvesGeometry> stroke_cutter_find_and_remove_segments
   cutter_segments.curve_in_lasso_area = Array<bool>(src_curves_num, false);
 
   rcti bbox_lasso;
-  BLI_lasso_boundbox(&bbox_lasso, mcoords, mcoords_len);
+  BLI_lasso_boundbox(&bbox_lasso, mcoords);
 
   /* Look for curves that intersect the lasso area. */
   for (const int src_curve : src.curves_range()) {
@@ -428,7 +427,6 @@ static std::optional<bke::CurvesGeometry> stroke_cutter_find_and_remove_segments
       /* Check if point is inside the lasso area. */
       if (BLI_rcti_isect_pt_v(&bbox_lasso, int2(screen_space_positions[src_point])) &&
           BLI_lasso_is_point_inside(mcoords,
-                                    mcoords_len,
                                     int(screen_space_positions[src_point].x),
                                     int(screen_space_positions[src_point].y),
                                     IS_CLIPPED))
@@ -535,8 +533,7 @@ static bool execute_cutter_on_drawing(const int layer_index,
                                       const Object &obact,
                                       const ARegion &region,
                                       const float4x4 &projection,
-                                      const int mcoords[][2],
-                                      const int mcoords_len,
+                                      const Span<int2> mcoords,
                                       const bool keep_caps,
                                       bke::greasepencil::Drawing &drawing)
 {
@@ -577,7 +574,7 @@ static bool execute_cutter_on_drawing(const int layer_index,
 
   /* Apply cutter. */
   std::optional<bke::CurvesGeometry> cutted_strokes = stroke_cutter_find_and_remove_segments(
-      src, mcoords, mcoords_len, screen_space_positions, screen_space_bbox, keep_caps);
+      src, mcoords, screen_space_positions, screen_space_bbox, keep_caps);
 
   if (cutted_strokes.has_value()) {
     /* Set the new geometry. */
@@ -591,10 +588,7 @@ static bool execute_cutter_on_drawing(const int layer_index,
 /**
  * Apply the stroke cutter to all layers.
  */
-static int stroke_cutter_execute(wmOperator *op,
-                                 const bContext *C,
-                                 const int mcoords[][2],
-                                 const int mcoords_len)
+static int stroke_cutter_execute(wmOperator *op, const bContext *C, const Span<int2> mcoords)
 {
   Scene *scene = CTX_data_scene(C);
   ARegion *region = CTX_wm_region(C);
@@ -626,7 +620,6 @@ static int stroke_cutter_execute(wmOperator *op,
                                     *region,
                                     projection,
                                     mcoords,
-                                    mcoords_len,
                                     keep_caps,
                                     info.drawing))
       {
@@ -646,7 +639,6 @@ static int stroke_cutter_execute(wmOperator *op,
                                     *region,
                                     projection,
                                     mcoords,
-                                    mcoords_len,
                                     keep_caps,
                                     info.drawing))
       {
@@ -665,16 +657,13 @@ static int stroke_cutter_execute(wmOperator *op,
 
 static int grease_pencil_stroke_cutter(bContext *C, wmOperator *op)
 {
-  int mcoords_len;
-  const int(*mcoords)[2] = WM_gesture_lasso_path_to_array(C, op, &mcoords_len);
+  const Array<int2> mcoords = WM_gesture_lasso_path_to_array(C, op);
 
-  if (mcoords == nullptr) {
+  if (mcoords.is_empty()) {
     return OPERATOR_PASS_THROUGH;
   }
 
-  const int result = stroke_cutter_execute(op, C, mcoords, mcoords_len);
-
-  MEM_freeN((void *)mcoords);
+  const int result = stroke_cutter_execute(op, C, mcoords);
 
   return result;
 }
