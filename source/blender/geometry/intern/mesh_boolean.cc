@@ -946,7 +946,7 @@ static BMesh *mesh_bm_concat(Span<const Mesh *> meshes,
     else {
       to_target[i] = inv_target_mat;
       is_negative_transform[i] = false;
-      is_flip[i] = 0;
+      is_flip[i] = false;
     }
   }
 
