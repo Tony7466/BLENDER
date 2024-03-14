@@ -70,10 +70,16 @@ float sample_weight_get(vec3 center_N, vec3 center_P, ivec2 center_texel, ivec2 
 
 vec4 texelFetch_bilateral(sampler2D t, ivec2 texel, vec4 bilateral_weights)
 {
-  vec4 tl = texelFetch(t, texel + ivec2(0, 0), 0) * bilateral_weights.x;
-  vec4 tr = texelFetch(t, texel + ivec2(1, 0), 0) * bilateral_weights.y;
-  vec4 bl = texelFetch(t, texel + ivec2(0, 1), 0) * bilateral_weights.z;
-  vec4 br = texelFetch(t, texel + ivec2(1, 1), 0) * bilateral_weights.w;
+  /* We need to avoid sampling if there no weight as the texture values could be undefined
+   * (is_valid is false). */
+  vec4 tl = (bilateral_weights.x > 0.0) ? texelFetch(t, texel + ivec2(0, 0), 0) : vec4(0.0);
+  vec4 tr = (bilateral_weights.y > 0.0) ? texelFetch(t, texel + ivec2(1, 0), 0) : vec4(0.0);
+  vec4 bl = (bilateral_weights.z > 0.0) ? texelFetch(t, texel + ivec2(0, 1), 0) : vec4(0.0);
+  vec4 br = (bilateral_weights.w > 0.0) ? texelFetch(t, texel + ivec2(1, 1), 0) : vec4(0.0);
+  tl *= bilateral_weights.x;
+  tr *= bilateral_weights.y;
+  bl *= bilateral_weights.z;
+  br *= bilateral_weights.w;
   return (tl + tr + bl + br) * safe_rcp(reduce_add(bilateral_weights));
 }
 

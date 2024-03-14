@@ -82,11 +82,12 @@ void main()
   vec3 center_N = sample_normal_get(texel, is_valid);
 
   if (!is_valid) {
-    /* TODO(fclem): Bypass. */
+#if 0 /* This is not needed as the next stage doesn't do bilinear filtering. */
     imageStore(out_sh_0_img, texel, vec4(0.0));
     imageStore(out_sh_1_img, texel, vec4(0.0));
     imageStore(out_sh_2_img, texel, vec4(0.0));
     imageStore(out_sh_3_img, texel, vec4(0.0));
+#endif
     return;
   }
 
