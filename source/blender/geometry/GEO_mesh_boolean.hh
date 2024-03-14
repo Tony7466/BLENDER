@@ -16,13 +16,13 @@ namespace blender::geometry::boolean {
 
 /** Specifies which solver to use. */
 enum class Solver {
-  /** The original BMesh floating point solver. */
-  Float = 0,
   /**
    * The exact solver based on the Mesh Arrangments for Solid Geometry paper,
    * by Zhou, Grinspun, Zorin, and Jacobson.
    */
-  MeshArr = 1,
+  MeshArr = 0,
+  /** The original BMesh floating point solver. */
+  Float = 1,
 };
 
 /**
