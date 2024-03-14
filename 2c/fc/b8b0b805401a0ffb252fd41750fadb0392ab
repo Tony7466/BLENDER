@@ -4,3 +4,4 @@ Referenced by commit cd6a4282592e9fdba336988a791e2ee4510b6144, Cleanup: Use newe
 Referenced by pull request #110098, Fix #110037: Uninitialized result arrays and typos
 Referenced by commit c38a52885bfdb6c20bbf3203a1bfe7b9c63f9099, Fix #110037: uninitialized result array and typos
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
+Referenced by pull request #117805, WIP: BLI: support set operations on index masks
