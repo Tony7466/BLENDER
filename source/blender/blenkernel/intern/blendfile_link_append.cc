@@ -1135,6 +1135,9 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
   }
 
   Main *bmain = lapp_context->params->bmain;
+  const BlendfileLinkAppendContextItem *item = static_cast<BlendfileLinkAppendContextItem *>(
+      lapp_context->items.list->link);
+  const int lib_versionfile = item->source_library->versionfile;
 
   BLI_assert((lapp_context->params->flag & FILE_LINK) == 0);
 
@@ -1378,7 +1381,9 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
   BKE_main_id_newptr_and_tag_clear(bmain);
 
   blendfile_link_append_proxies_convert(bmain, reports);
-  BKE_main_mesh_legacy_convert_auto_smooth(*bmain);
+  if (lib_versionfile <= 400) {
+    BKE_main_mesh_legacy_convert_auto_smooth(*bmain);
+  }
 }
 
 void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *reports)
