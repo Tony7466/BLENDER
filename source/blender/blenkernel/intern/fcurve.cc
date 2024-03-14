@@ -1330,20 +1330,17 @@ void sort_time_fcurve(FCurve *fcu)
     return;
   }
 
-  std::sort(fcu->bezt, fcu->bezt + fcu->totvert, [](const BezTriple &a, const BezTriple &b) {
-    return a.vec[1][0] < b.vec[1][0];
-  });
+  struct {
+    bool operator()(const BezTriple &a, const BezTriple &b) const
+    {
+      return a.vec[1][0] < b.vec[1][0];
+    }
+  } custom_sort;
+
+  std::sort(fcu->bezt, fcu->bezt + fcu->totvert, custom_sort);
 
   BezTriple *bezt;
   uint a;
-
-  /* Loop over ALL points to adjust position in array and recalculate handles. */
-  for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
-    /* Check if there's a next beztriple which we could try to swap with current. */
-    if (a < (fcu->totvert - 1)) {
-      BLI_assert(bezt->vec[1][0] <= (bezt + 1)->vec[1][0]);
-    }
-  }
 
   for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
     /* If either one of both of the points exceeds crosses over the keyframe time... */

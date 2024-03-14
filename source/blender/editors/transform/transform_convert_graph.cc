@@ -775,9 +775,14 @@ static void sort_time_beztmaps(BeztMap *bezms, int totvert)
     }
   }
 
-  std::sort(bezms, bezms + totvert, [](const BeztMap &a, const BeztMap &b) {
-    return a.bezt->vec[1][0] < b.bezt->vec[1][0];
-  });
+  struct {
+    bool operator()(const BeztMap &a, const BeztMap &b) const
+    {
+      return a.bezt->vec[1][0] < b.bezt->vec[1][0];
+    }
+  } custom_sort;
+
+  std::sort(bezms, bezms + totvert, custom_sort);
 }
 
 /* This function firstly adjusts the pointers that the transdata has to each BezTriple. */
@@ -870,6 +875,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
  */
 static void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
 {
+  SCOPED_TIMER_AVERAGED("foo");
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
