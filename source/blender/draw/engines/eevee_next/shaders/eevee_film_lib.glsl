@@ -522,7 +522,6 @@ void film_store_color(FilmSample dst, int pass_id, vec4 color, inout vec4 displa
     display = color;
   }
   imageStore(color_accum_img, ivec3(dst.texel, pass_id), color);
-  imageFence(color_accum_img);
 }
 
 void film_store_value(FilmSample dst, int pass_id, float value, inout vec4 display)
@@ -544,7 +543,6 @@ void film_store_value(FilmSample dst, int pass_id, float value, inout vec4 displ
     display = vec4(value, value, value, 1.0);
   }
   imageStore(value_accum_img, ivec3(dst.texel, pass_id), vec4(value));
-  imageFence(value_accum_img);
 }
 
 /* Nearest sample variant. Always stores the data. */
@@ -558,7 +556,6 @@ void film_store_data(ivec2 texel_film, int pass_id, vec4 data_sample, inout vec4
     display = data_sample;
   }
   imageStore(color_accum_img, ivec3(texel_film, pass_id), data_sample);
-  imageFence(color_accum_img);
 }
 
 void film_store_depth(ivec2 texel_film, float value, out float out_depth)
@@ -570,7 +567,6 @@ void film_store_depth(ivec2 texel_film, float value, out float out_depth)
   out_depth = film_depth_convert_to_scene(value);
 
   imageStore(depth_img, texel_film, vec4(out_depth));
-  imageFence(depth_img);
 }
 
 void film_store_distance(ivec2 texel, float value)
