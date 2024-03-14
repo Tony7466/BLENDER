@@ -7,6 +7,14 @@
  *
  * SPDX-License-Identifier: MIT AND GPL-2.0-or-later */
 
+#include "BLI_math_vector.h"
+#include "BLI_smaa_textures.h"
+
+#include "IMB_colormanagement.hh"
+
+#include "COM_MemoryBuffer.h"
+#include "COM_SMAAOperation.h"
+
 /**
  *                  _______  ___  ___       ___           ___
  *                 /       ||   \/   |     /   \         /   \
@@ -279,7 +287,7 @@
 #define SMAA_CUSTOM_SL
 #define SMAA_AREATEX_SELECT(sample) sample.xy()
 #define SMAA_SEARCHTEX_SELECT(sample) sample.x
-#define SMAATexture2D(tex) MemoryBuffer *tex
+#define SMAATexture2D(tex) const MemoryBuffer *tex
 #define SMAATexturePass2D(tex) tex
 #define SMAASampleLevelZero(tex, coord) tex->texture_bilinear_extend(coord)
 #define SMAASampleLevelZeroPoint(tex, coord) tex->texture_bilinear_extend(coord)
@@ -631,31 +639,10 @@ float mad(float a, float b, float c)
 #endif
 /* clang-format on */
 
-#include "BLI_math_vector.h"
-#include "BLI_smaa_textures.h"
-
-#include "COM_MemoryBuffer.h"
-#include "COM_SMAAOperation.h"
-
 namespace blender::compositor {
 
 /* ----------------------------------------------------------------------------
  * Misc functions */
-
-/**
- * Gathers current pixel, and the top-left neighbors.
- */
-static float3 SMAAGatherNeighbors(float2 texcoord, float4 offset[3], SMAATexture2D(tex))
-{
-#ifdef SMAAGather
-  return SMAAGather(tex, texcoord + SMAA_RT_METRICS.xy * float2(-0.5f, -0.5f)).grb;
-#else
-  float P = SMAASamplePoint(tex, texcoord).x;
-  float Pleft = SMAASamplePoint(tex, offset[0].xy()).x;
-  float Ptop = SMAASamplePoint(tex, offset[0].zw()).x;
-  return float3(P, Pleft, Ptop);
-#endif
-}
 
 /**
  * Conditional move:
@@ -733,7 +720,7 @@ static float2 SMAALumaEdgeDetectionPS(float2 texcoord,
                                       SMAATexture2D(predicationTex),
 #endif
                                       float edge_threshold,
-                                      float4 luminance_coefficients,
+                                      float3 luminance_coefficients,
                                       float local_contrast_adaptation_factor)
 {
 #if SMAA_PREDICATION
@@ -746,7 +733,7 @@ static float2 SMAALumaEdgeDetectionPS(float2 texcoord,
 
   // Calculate lumas:
   // float4 weights = float4(0.2126, 0.7152, 0.0722, 0.0);
-  float4 weights = luminance_coefficients;
+  float4 weights = float4(luminance_coefficients, 0.0f);
   float L = math::dot(SMAASamplePoint(colorTex, texcoord), weights);
 
   float Lleft = math::dot(SMAASamplePoint(colorTex, offset[0].xy()), weights);
@@ -1427,14 +1414,66 @@ void SMAAOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                  const rcti &area,
                                                  Span<MemoryBuffer *> inputs)
 {
+  const MemoryBuffer *image = inputs[0];
+  const int2 size = int2(image->get_width(), image->get_height());
+  MemoryBuffer edges(DataType::Float2, size.x, size.y);
+
+  float3 luminance_coefficients;
+  IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
+
+  for (BuffersIterator<float> it = edges.iterate_with({}, area); !it.is_end(); ++it) {
+    int2 texel = int2(it.x, it.y);
+    float2 coordinates = (float2(texel) + float2(0.5f)) / float2(size);
+
+    float4 offset[3];
+    SMAAEdgeDetectionVS(coordinates, size, offset);
+
+    float2 edge = SMAALumaEdgeDetectionPS(coordinates,
+                                          offset,
+                                          image,
+                                          threshold_,
+                                          luminance_coefficients,
+                                          local_contrast_adaptation_factor_);
+    copy_v2_v2(edges.get_elem(texel.x, texel.y), edge);
+  }
+
+  MemoryBuffer blending_weights(DataType::Color, size.x, size.y);
+
   MemoryBuffer area_texture(DataType::Float2, AREATEX_WIDTH, AREATEX_HEIGHT);
   area_texture.copy_from(areaTexBytes, area_texture.get_rect());
 
   MemoryBuffer search_texture(DataType::Value, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT);
   search_texture.copy_from(searchTexBytes, search_texture.get_rect());
 
-  // const MemoryBuffer *image = inputs[0];
-  for (BuffersIterator<float> it = output->iterate_with({}, area); !it.is_end(); ++it) {
+  for (BuffersIterator<float> it = blending_weights.iterate_with({}, area); !it.is_end(); ++it) {
+    int2 texel = int2(it.x, it.y);
+    float2 coordinates = (float2(texel) + float2(0.5f)) / float2(size);
+
+    float4 offset[3];
+    float2 pixel_coordinates;
+    SMAABlendingWeightCalculationVS(coordinates, size, pixel_coordinates, offset);
+
+    float4 weights = SMAABlendingWeightCalculationPS(coordinates,
+                                                     pixel_coordinates,
+                                                     offset,
+                                                     &edges,
+                                                     &area_texture,
+                                                     &search_texture,
+                                                     float4(0.0f),
+                                                     size);
+    copy_v4_v4(blending_weights.get_elem(texel.x, texel.y), weights);
+  }
+
+  for (BuffersIterator<float> it = blending_weights.iterate_with({}, area); !it.is_end(); ++it) {
+    int2 texel = int2(it.x, it.y);
+    float2 coordinates = (float2(texel) + float2(0.5f)) / float2(size);
+
+    float4 offset;
+    SMAANeighborhoodBlendingVS(coordinates, size, offset);
+
+    float4 result = SMAANeighborhoodBlendingPS(
+        coordinates, offset, image, &blending_weights, size);
+    copy_v4_v4(output->get_elem(texel.x, texel.y), result);
   }
 }
 
