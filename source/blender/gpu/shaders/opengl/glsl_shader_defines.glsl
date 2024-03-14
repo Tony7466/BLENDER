@@ -84,7 +84,7 @@
 #define isampler3DAtomic isampler3D
 
 /* Pass through functions. */
-#define imageFence
+#define imageFence(image)
 
 /* Backend Functions. */
 #define select(A, B, mask) mix(A, B, mask)
