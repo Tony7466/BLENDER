@@ -146,15 +146,25 @@ static CoarseSegment &add_coarse_segment__full(CoarseSegment *prev_segment,
                                                const int64_t current_boundary_index,
                                                CoarseResult &result)
 {
-  if (prev_segment && prev_segment->type == CoarseSegment::Type::Full &&
-      prev_segment->bounds.one_after_last() == prev_boundary_index)
-  {
-    prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
-    return *prev_segment;
+  const int64_t size = current_boundary_index - prev_boundary_index;
+  if (prev_segment) {
+    if (prev_segment->type == CoarseSegment::Type::Full &&
+        prev_segment->bounds.one_after_last() == prev_boundary_index)
+    {
+      prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
+      return *prev_segment;
+    }
+    if (current_boundary_index - prev_segment->bounds.start() < max_segment_size) {
+      if (prev_segment->bounds.size() + size < segment_size_threshold) {
+        /* Extend the previous segment because it's so small and change it into an unknown one. */
+        prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
+        prev_segment->type = CoarseSegment::Type::Unknown;
+        return *prev_segment;
+      }
+    }
   }
   result.segments.append(
-      {CoarseSegment::Type::Full,
-       IndexRange::from_begin_end(prev_boundary_index, current_boundary_index)});
+      {CoarseSegment::Type::Full, IndexRange::from_begin_size(prev_boundary_index, size)});
   return result.segments.last();
 }
 
