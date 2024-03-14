@@ -1661,9 +1661,12 @@ void modal_keymap(wmKeyConfig *keyconf);
 namespace blender::ed::sculpt_paint::gesture {
 enum ShapeType {
   Box = 0,
+
+  /* In the context of a sculpt gesture, both lasso and polyline modal
+   * operators are handled as the same general shape.
+   * TODO: Rename to polygon? */
   Lasso = 1,
   Line = 2,
-  Polyline = 3,
 };
 
 enum class SelectionType {
