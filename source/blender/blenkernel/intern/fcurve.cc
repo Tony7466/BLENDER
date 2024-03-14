@@ -1330,25 +1330,18 @@ void sort_time_fcurve(FCurve *fcu)
     return;
   }
 
-  /* Keep adjusting order of beztriples until nothing moves (bubble-sort). */
+  std::sort(fcu->bezt, fcu->bezt + fcu->totvert, [](const BezTriple &a, const BezTriple &b) {
+    return a.vec[1][0] < b.vec[1][0];
+  });
+
   BezTriple *bezt;
   uint a;
 
-  bool ok = true;
-  while (ok) {
-    ok = false;
-    /* Currently, will only be needed when there are beztriples. */
-
-    /* Loop over ALL points to adjust position in array and recalculate handles. */
-    for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
-      /* Check if there's a next beztriple which we could try to swap with current. */
-      if (a < (fcu->totvert - 1)) {
-        /* Swap if one is after the other (and indicate that order has changed). */
-        if (bezt->vec[1][0] > (bezt + 1)->vec[1][0]) {
-          std::swap(*bezt, *(bezt + 1));
-          ok = true;
-        }
-      }
+  /* Loop over ALL points to adjust position in array and recalculate handles. */
+  for (a = 0, bezt = fcu->bezt; a < fcu->totvert; a++, bezt++) {
+    /* Check if there's a next beztriple which we could try to swap with current. */
+    if (a < (fcu->totvert - 1)) {
+      BLI_assert(bezt->vec[1][0] <= (bezt + 1)->vec[1][0]);
     }
   }
 

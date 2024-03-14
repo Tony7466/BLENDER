@@ -724,10 +724,6 @@ static void flushTransGraphData(TransInfo *t)
 /** Struct for use in re-sorting BezTriples during Graph Editor transform. */
 struct BeztMap {
   BezTriple *bezt;
-  /** Index of `bezt` in `fcu->bezt` array before sorting. */
-  uint oldIndex;
-  /** Index of `bezt` in `fcu->bezt` array after sorting. */
-  uint newIndex;
   /** Swap order of handles (-1=clear; 0=not checked, 1=swap). */
   short swapHs;
   /** Interpolation of current and next segments. */
@@ -755,9 +751,6 @@ static BeztMap *bezt_to_beztmaps(BezTriple *bezts, int totvert)
   for (i = 0; i < totvert; i++, bezm++, prevbezt = bezt, bezt++) {
     bezm->bezt = bezt;
 
-    bezm->oldIndex = i;
-    bezm->newIndex = i;
-
     bezm->pipo = (prevbezt) ? prevbezt->ipo : bezt->ipo;
     bezm->cipo = bezt->ipo;
   }
@@ -768,46 +761,23 @@ static BeztMap *bezt_to_beztmaps(BezTriple *bezts, int totvert)
 /* This function copies the code of sort_time_ipocurve, but acts on BeztMap structs instead. */
 static void sort_time_beztmaps(BeztMap *bezms, int totvert)
 {
-  BeztMap *bezm;
-  int i, ok = 1;
-
-  /* Keep repeating the process until nothing is out of place anymore. */
-  while (ok) {
-    ok = 0;
-
-    bezm = bezms;
-    i = totvert;
-    while (i--) {
-      /* Is current bezm out of order (i.e. occurs later than next)? */
-      if (i > 0) {
-        if (bezm->bezt->vec[1][0] > (bezm + 1)->bezt->vec[1][0]) {
-          bezm->newIndex++;
-          (bezm + 1)->newIndex--;
-
-          std::swap(*bezm, *(bezm + 1));
-
-          ok = 1;
-        }
-      }
-
-      /* Do we need to check if the handles need to be swapped?
-       * Optimization: this only needs to be performed in the first loop. */
-      if (bezm->swapHs == 0) {
-        if ((bezm->bezt->vec[0][0] > bezm->bezt->vec[1][0]) &&
-            (bezm->bezt->vec[2][0] < bezm->bezt->vec[1][0]))
-        {
-          /* Handles need to be swapped. */
-          bezm->swapHs = 1;
-        }
-        else {
-          /* Handles need to be cleared. */
-          bezm->swapHs = -1;
-        }
-      }
-
-      bezm++;
+  for (int i = 0; i < totvert; i++) {
+    BeztMap *bezm = &bezms[i];
+    if ((bezm->bezt->vec[0][0] > bezm->bezt->vec[1][0]) &&
+        (bezm->bezt->vec[2][0] < bezm->bezt->vec[1][0]))
+    {
+      /* Handles need to be swapped. */
+      bezm->swapHs = 1;
+    }
+    else {
+      /* Handles need to be cleared. */
+      bezm->swapHs = -1;
     }
   }
+
+  std::sort(bezms, bezms + totvert, [](const BeztMap &a, const BeztMap &b) {
+    return a.bezt->vec[1][0] < b.bezt->vec[1][0];
+  });
 }
 
 /* This function firstly adjusts the pointers that the transdata has to each BezTriple. */
@@ -843,31 +813,31 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
        * since only points that are really needed were created as transdata. */
       if (td2d->loc2d == bezm->bezt->vec[0]) {
         if (bezm->swapHs == 1) {
-          td2d->loc2d = (bezts + bezm->newIndex)->vec[2];
+          td2d->loc2d = (bezts + i)->vec[2];
         }
         else {
-          td2d->loc2d = (bezts + bezm->newIndex)->vec[0];
+          td2d->loc2d = (bezts + i)->vec[0];
         }
         adjusted[j] = 1;
       }
       else if (td2d->loc2d == bezm->bezt->vec[2]) {
         if (bezm->swapHs == 1) {
-          td2d->loc2d = (bezts + bezm->newIndex)->vec[0];
+          td2d->loc2d = (bezts + i)->vec[0];
         }
         else {
-          td2d->loc2d = (bezts + bezm->newIndex)->vec[2];
+          td2d->loc2d = (bezts + i)->vec[2];
         }
         adjusted[j] = 1;
       }
       else if (td2d->loc2d == bezm->bezt->vec[1]) {
-        td2d->loc2d = (bezts + bezm->newIndex)->vec[1];
+        td2d->loc2d = (bezts + i)->vec[1];
 
         /* If only control point is selected, the handle pointers need to be updated as well. */
         if (td2d->h1) {
-          td2d->h1 = (bezts + bezm->newIndex)->vec[0];
+          td2d->h1 = (bezts + i)->vec[0];
         }
         if (td2d->h2) {
-          td2d->h2 = (bezts + bezm->newIndex)->vec[2];
+          td2d->h2 = (bezts + i)->vec[2];
         }
 
         adjusted[j] = 1;
@@ -876,12 +846,12 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
       /* The handle type pointer has to be updated too. */
       if (adjusted[j] && td->flag & TD_BEZTRIPLE && td->hdata) {
         if (bezm->swapHs == 1) {
-          td->hdata->h1 = &(bezts + bezm->newIndex)->h2;
-          td->hdata->h2 = &(bezts + bezm->newIndex)->h1;
+          td->hdata->h1 = &(bezts + i)->h2;
+          td->hdata->h2 = &(bezts + i)->h1;
         }
         else {
-          td->hdata->h1 = &(bezts + bezm->newIndex)->h1;
-          td->hdata->h2 = &(bezts + bezm->newIndex)->h2;
+          td->hdata->h1 = &(bezts + i)->h1;
+          td->hdata->h2 = &(bezts + i)->h2;
         }
       }
     }
@@ -900,6 +870,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
  */
 static void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
 {
+  SCOPED_TIMER_AVERAGED("remake graph data");
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
