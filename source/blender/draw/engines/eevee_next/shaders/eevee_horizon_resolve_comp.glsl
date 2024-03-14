@@ -169,15 +169,31 @@ void main()
     }
 
     vec3 N = cl.N;
-    vec3 vN = drw_normal_world_to_view(cl.N);
+
+    vec3 L;
+    switch (cl.type) {
+      case CLOSURE_BSDF_MICROFACET_GGX_REFLECTION_ID:
+        L = lightprobe_reflection_dominant_dir(cl.N, V, roughness);
+        break;
+      case CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID:
+        L = lightprobe_refraction_dominant_dir(cl.N, V, to_closure_refraction(cl).ior, roughness);
+        break;
+      case CLOSURE_BSDF_TRANSLUCENT_ID:
+        L = -N;
+        break;
+      default:
+        L = N;
+        break;
+    }
+    vec3 vL = drw_normal_world_to_view(L);
 
     /* Evaluate lighting from horizon scan. */
     /* TODO(fclem): Evaluate depending on BSDF. */
-    vec3 radiance = spherical_harmonics_evaluate_lambert(vN, accum_sh);
+    vec3 radiance = spherical_harmonics_evaluate_lambert(vL, accum_sh);
 
     /* Evaluate visibility from horizon scan. */
     SphericalHarmonicL1 sh_visibility = spherical_harmonics_swizzle_wwww(accum_sh);
-    float occlusion = spherical_harmonics_evaluate_lambert(vN, sh_visibility).x;
+    float occlusion = spherical_harmonics_evaluate_lambert(vL, sh_visibility).x;
     /* FIXME(fclem): Tried to match the old occlusion look. I don't know why it's needed. */
     occlusion *= 0.5;
     /* TODO(fclem): Ideally, we should just combine both local and distant irradiance and evaluate
@@ -186,7 +202,7 @@ void main()
     float visibility = saturate(1.0 - occlusion);
 
     /* Apply missing distant lighting. */
-    vec3 radiance_probe = spherical_harmonics_evaluate_lambert(N, samp.volume_irradiance);
+    vec3 radiance_probe = spherical_harmonics_evaluate_lambert(L, samp.volume_irradiance);
     radiance += visibility * radiance_probe;
 
     int layer_index = gbuffer_closure_get_bin_index(gbuf, i);
