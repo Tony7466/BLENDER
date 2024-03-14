@@ -1217,7 +1217,7 @@ static void evaluate_short_unknown_segments_exactly(
   }
 }
 
-static IndexMask evaluated_segments_to_index_mask(const Span<EvaluatedSegment> evaluated_segments,
+static IndexMask evaluated_segments_to_index_mask(MutableSpan<EvaluatedSegment> evaluated_segments,
                                                   IndexMaskMemory &memory)
 {
   if (evaluated_segments.is_empty()) {
