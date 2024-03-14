@@ -68,19 +68,19 @@ float sample_weight_get(vec3 center_N, vec3 center_P, ivec2 center_texel, ivec2 
   return depth_weight * normal_weight;
 }
 
-vec4 texelFetch_bilateral(sampler2D t, ivec2 texel, vec4 bilateral_weights)
+SphericalHarmonicL1 load_spherical_harmonic(ivec2 texel, bool valid)
 {
-  /* We need to avoid sampling if there no weight as the texture values could be undefined
-   * (is_valid is false). */
-  vec4 tl = (bilateral_weights.x > 0.0) ? texelFetch(t, texel + ivec2(0, 0), 0) : vec4(0.0);
-  vec4 tr = (bilateral_weights.y > 0.0) ? texelFetch(t, texel + ivec2(1, 0), 0) : vec4(0.0);
-  vec4 bl = (bilateral_weights.z > 0.0) ? texelFetch(t, texel + ivec2(0, 1), 0) : vec4(0.0);
-  vec4 br = (bilateral_weights.w > 0.0) ? texelFetch(t, texel + ivec2(1, 1), 0) : vec4(0.0);
-  tl *= bilateral_weights.x;
-  tr *= bilateral_weights.y;
-  bl *= bilateral_weights.z;
-  br *= bilateral_weights.w;
-  return (tl + tr + bl + br) * safe_rcp(reduce_add(bilateral_weights));
+  if (!valid) {
+    /* We need to avoid sampling if there no weight as the texture values could be undefined
+     * (is_valid is false). */
+    return spherical_harmonics_L1_new();
+  }
+  SphericalHarmonicL1 sh;
+  sh.L0.M0 = texelFetch(horizon_radiance_0_tx, texel, 0);
+  sh.L1.Mn1 = texelFetch(horizon_radiance_1_tx, texel, 0);
+  sh.L1.M0 = texelFetch(horizon_radiance_2_tx, texel, 0);
+  sh.L1.Mp1 = texelFetch(horizon_radiance_3_tx, texel, 0);
+  return sh;
 }
 
 void main()
@@ -117,27 +117,14 @@ void main()
 
   SphericalHarmonicL1 accum_sh;
   if (uniform_buf.raytrace.horizon_resolution_scale == 1) {
-    accum_sh.L0.M0 = texelFetch(horizon_radiance_0_tx, texel, 0);
-    accum_sh.L1.Mn1 = texelFetch(horizon_radiance_1_tx, texel, 0);
-    accum_sh.L1.M0 = texelFetch(horizon_radiance_2_tx, texel, 0);
-    accum_sh.L1.Mp1 = texelFetch(horizon_radiance_3_tx, texel, 0);
+    accum_sh = load_spherical_harmonic(texel, true);
   }
   else {
-#ifdef BILINEAR /* Initial bilinear sample using bilinear sampler. Exhibits bleeding. */
-    vec2 sample_uv = (vec2(texel_fullres - uniform_buf.raytrace.horizon_resolution_bias) +
-                      0.5 * uniform_buf.raytrace.horizon_resolution_scale) /
-                     vec2(textureSize(horizon_radiance_0_tx, 0) *
-                          uniform_buf.raytrace.horizon_resolution_scale);
-
-    accum_sh.L0.M0 = texture(horizon_radiance_0_tx, sample_uv);
-    accum_sh.L1.Mn1 = texture(horizon_radiance_1_tx, sample_uv);
-    accum_sh.L1.M0 = texture(horizon_radiance_2_tx, sample_uv);
-    accum_sh.L1.Mp1 = texture(horizon_radiance_3_tx, sample_uv);
-#else
     vec2 interp = vec2(texel_fullres - texel * uniform_buf.raytrace.horizon_resolution_scale -
                        uniform_buf.raytrace.horizon_resolution_bias) /
                   vec2(uniform_buf.raytrace.horizon_resolution_scale);
     vec4 interp4 = vec4(interp, 1.0 - interp);
+    vec4 bilinear_weight = interp4.zxzx * interp4.wwyy;
 
     vec4 bilateral_weights;
     bilateral_weights.x = sample_weight_get(center_N, center_P, texel, ivec2(0, 0));
@@ -145,14 +132,20 @@ void main()
     bilateral_weights.z = sample_weight_get(center_N, center_P, texel, ivec2(0, 1));
     bilateral_weights.w = sample_weight_get(center_N, center_P, texel, ivec2(1, 1));
 
-    vec4 bilinear_weight = interp4.zxzx * interp4.wwyy;
-    bilateral_weights *= bilinear_weight;
+    vec4 weights = bilateral_weights * bilinear_weight;
 
-    accum_sh.L0.M0 = texelFetch_bilateral(horizon_radiance_0_tx, texel, bilateral_weights);
-    accum_sh.L1.Mn1 = texelFetch_bilateral(horizon_radiance_1_tx, texel, bilateral_weights);
-    accum_sh.L1.M0 = texelFetch_bilateral(horizon_radiance_2_tx, texel, bilateral_weights);
-    accum_sh.L1.Mp1 = texelFetch_bilateral(horizon_radiance_3_tx, texel, bilateral_weights);
-#endif
+    SphericalHarmonicL1 sh_00 = load_spherical_harmonic(texel + ivec2(0, 0), weights.x > 0.0);
+    SphericalHarmonicL1 sh_10 = load_spherical_harmonic(texel + ivec2(1, 0), weights.y > 0.0);
+    SphericalHarmonicL1 sh_01 = load_spherical_harmonic(texel + ivec2(0, 1), weights.z > 0.0);
+    SphericalHarmonicL1 sh_11 = load_spherical_harmonic(texel + ivec2(1, 1), weights.w > 0.0);
+
+    /* Avoid another division at the end. Normalize the weights upfront. */
+    weights *= safe_rcp(reduce_add(weights));
+
+    accum_sh = spherical_harmonics_mul(sh_00, weights.x);
+    accum_sh = spherical_harmonics_madd(sh_10, weights.y, accum_sh);
+    accum_sh = spherical_harmonics_madd(sh_01, weights.z, accum_sh);
+    accum_sh = spherical_harmonics_madd(sh_11, weights.w, accum_sh);
   }
 
   vec3 P = center_P;
