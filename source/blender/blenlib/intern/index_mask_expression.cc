@@ -141,10 +141,10 @@ static void sort_course_boundaries(MutableSpan<DifferenceCourseBoundary> boundar
 static constexpr int64_t segment_size_threshold = 8;
 
 /** Extends a previous full segment or appends a new one. */
-static CoarseSegment &make_coarse_segment__full(CoarseSegment *prev_segment,
-                                                const int64_t prev_boundary_index,
-                                                const int64_t current_boundary_index,
-                                                CoarseResult &result)
+static CoarseSegment &add_coarse_segment__full(CoarseSegment *prev_segment,
+                                               const int64_t prev_boundary_index,
+                                               const int64_t current_boundary_index,
+                                               CoarseResult &result)
 {
   if (prev_segment && prev_segment->type == CoarseSegment::Type::Full &&
       prev_segment->bounds.one_after_last() == prev_boundary_index)
@@ -159,10 +159,10 @@ static CoarseSegment &make_coarse_segment__full(CoarseSegment *prev_segment,
 }
 
 /** Extends a previous unknown segment or appends a new one. */
-static CoarseSegment &make_coarse_segment__unknown(CoarseSegment *prev_segment,
-                                                   const int64_t prev_boundary_index,
-                                                   const int64_t current_boundary_index,
-                                                   CoarseResult &result)
+static CoarseSegment &add_coarse_segment__unknown(CoarseSegment *prev_segment,
+                                                  const int64_t prev_boundary_index,
+                                                  const int64_t current_boundary_index,
+                                                  CoarseResult &result)
 {
   if (prev_segment) {
     if (prev_segment->bounds.start() + segment_size_threshold >= prev_boundary_index) {
@@ -179,11 +179,11 @@ static CoarseSegment &make_coarse_segment__unknown(CoarseSegment *prev_segment,
 }
 
 /** Extends a previous copy segment or appends a new one. */
-static CoarseSegment &make_coarse_segment__copy(CoarseSegment *prev_segment,
-                                                const int64_t prev_boundary_index,
-                                                const int64_t current_boundary_index,
-                                                const IndexMask &copy_from_mask,
-                                                CoarseResult &result)
+static CoarseSegment &add_coarse_segment__copy(CoarseSegment *prev_segment,
+                                               const int64_t prev_boundary_index,
+                                               const int64_t current_boundary_index,
+                                               const IndexMask &copy_from_mask,
+                                               CoarseResult &result)
 {
   if (prev_segment) {
     if (prev_segment->type == CoarseSegment::Type::Copy &&
@@ -247,15 +247,15 @@ static void evaluate_coarse_union(const Span<CourseBoundary> boundaries, CoarseR
       }
       /* Determine the resulting coarse segment type based on the properties computed above. */
       if (has_full) {
-        prev_segment = &make_coarse_segment__full(
+        prev_segment = &add_coarse_segment__full(
             prev_segment, prev_boundary_index, boundary.index, result);
       }
       else if (has_unknown || !copy_from_mask_unique) {
-        prev_segment = &make_coarse_segment__unknown(
+        prev_segment = &add_coarse_segment__unknown(
             prev_segment, prev_boundary_index, boundary.index, result);
       }
       else if (copy_from_mask != nullptr && copy_from_mask_unique) {
-        prev_segment = &make_coarse_segment__copy(
+        prev_segment = &add_coarse_segment__copy(
             prev_segment, prev_boundary_index, boundary.index, *copy_from_mask, result);
       }
 
@@ -320,15 +320,15 @@ static void evaluate_coarse_intersection(const Span<CourseBoundary> boundaries,
         /* Determine the resulting coarse segment type based on the properties computed above. */
         BLI_assert(full_count + unknown_count + copy_count == terms_num);
         if (full_count == terms_num) {
-          prev_segment = &make_coarse_segment__full(
+          prev_segment = &add_coarse_segment__full(
               prev_segment, prev_boundary_index, boundary.index, result);
         }
         else if (unknown_count > 0 || copy_count < terms_num || !copy_from_mask_unique) {
-          prev_segment = &make_coarse_segment__unknown(
+          prev_segment = &add_coarse_segment__unknown(
               prev_segment, prev_boundary_index, boundary.index, result);
         }
         else if (copy_count == terms_num && copy_from_mask_unique) {
-          prev_segment = &make_coarse_segment__copy(
+          prev_segment = &add_coarse_segment__copy(
               prev_segment, prev_boundary_index, boundary.index, *copy_from_mask, result);
         }
       }
@@ -395,34 +395,34 @@ static void evaluate_coarse_difference(const Span<DifferenceCourseBoundary> boun
         else {
           switch (active_main_segment.type) {
             case CoarseSegment::Type::Unknown: {
-              prev_segment = &make_coarse_segment__unknown(
+              prev_segment = &add_coarse_segment__unknown(
                   prev_segment, prev_boundary_index, boundary.index, result);
               break;
             }
             case CoarseSegment::Type::Full: {
               if (active_subtract_segments.is_empty()) {
-                prev_segment = &make_coarse_segment__full(
+                prev_segment = &add_coarse_segment__full(
                     prev_segment, prev_boundary_index, boundary.index, result);
               }
               else {
-                prev_segment = &make_coarse_segment__unknown(
+                prev_segment = &add_coarse_segment__unknown(
                     prev_segment, prev_boundary_index, boundary.index, result);
               }
               break;
             }
             case CoarseSegment::Type::Copy: {
               if (active_subtract_segments.is_empty()) {
-                prev_segment = &make_coarse_segment__copy(prev_segment,
-                                                          prev_boundary_index,
-                                                          boundary.index,
-                                                          *active_main_segment.mask,
-                                                          result);
+                prev_segment = &add_coarse_segment__copy(prev_segment,
+                                                         prev_boundary_index,
+                                                         boundary.index,
+                                                         *active_main_segment.mask,
+                                                         result);
               }
               else if (has_subtract_same_mask) {
                 /* Do nothing, subtracting a mask from itself results in an empty mask. */
               }
               else {
-                prev_segment = &make_coarse_segment__unknown(
+                prev_segment = &add_coarse_segment__unknown(
                     prev_segment, prev_boundary_index, boundary.index, result);
               }
               break;
