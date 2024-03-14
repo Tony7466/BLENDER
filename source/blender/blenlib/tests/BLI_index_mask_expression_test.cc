@@ -239,13 +239,15 @@ TEST(index_mask_expression, SubtractSelf)
   EXPECT_TRUE(result.is_empty());
 }
 
+/* Disable benchmark by default. */
+#if 0
 TEST(index_mask_expression, Benchmark)
 {
-#ifdef NDEBUG
+#  ifdef NDEBUG
   const int64_t iterations = 100;
-#else
+#  else
   const int64_t iterations = 1;
-#endif
+#  endif
 
   for ([[maybe_unused]] const int64_t _1 : IndexRange(5)) {
     IndexMaskMemory m;
@@ -264,5 +266,6 @@ TEST(index_mask_expression, Benchmark)
     }
   }
 }
+#endif
 
 }  // namespace blender::index_mask::tests
