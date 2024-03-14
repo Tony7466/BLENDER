@@ -158,7 +158,7 @@ TEST(index_mask_expression, Benchmark)
 #ifdef NDEBUG
   const int64_t iterations = 100;
 #else
-  const int64_t iterations = 10;
+  const int64_t iterations = 1;
 #endif
 
   for ([[maybe_unused]] const int64_t _1 : IndexRange(5)) {

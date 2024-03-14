@@ -1227,4 +1227,56 @@ IndexMask evaluate_expression(const Expr &expression, IndexMaskMemory &memory)
   return mask;
 }
 
+const UnionExpr &ExprBuilder::merge(const Span<Term> terms)
+{
+  Vector<const Expr *> term_expressions;
+  for (const Term &term : terms) {
+    term_expressions.append(&this->term_to_expr(term));
+  }
+  UnionExpr &expr = scope_.construct<UnionExpr>();
+  expr.type = Expr::Type::Union;
+  expr.index = expr_count_++;
+  expr.terms = std::move(term_expressions);
+  return expr;
+}
+
+const DifferenceExpr &ExprBuilder::subtract(const Term &main_term, const Span<Term> subtract_terms)
+{
+  Vector<const Expr *> term_expressions;
+  term_expressions.append(&this->term_to_expr(main_term));
+  for (const Term &subtract_term : subtract_terms) {
+    term_expressions.append(&this->term_to_expr(subtract_term));
+  }
+  DifferenceExpr &expr = scope_.construct<DifferenceExpr>();
+  expr.type = Expr::Type::Difference;
+  expr.index = expr_count_++;
+  expr.terms = std::move(term_expressions);
+  return expr;
+}
+
+const IntersectionExpr &ExprBuilder::intersect(const Span<Term> terms)
+{
+  Vector<const Expr *> term_expressions;
+  for (const Term &term : terms) {
+    term_expressions.append(&this->term_to_expr(term));
+  }
+  IntersectionExpr &expr = scope_.construct<IntersectionExpr>();
+  expr.type = Expr::Type::Intersection;
+  expr.index += expr_count_++;
+  expr.terms = std::move(term_expressions);
+  return expr;
+}
+
+const Expr &ExprBuilder::term_to_expr(const Term &term)
+{
+  if (const Expr *const *expr = std::get_if<const Expr *>(&term)) {
+    return **expr;
+  }
+  AtomicExpr &expr = scope_.construct<AtomicExpr>();
+  expr.type = Expr::Type::Atomic;
+  expr.index = expr_count_++;
+  expr.mask = std::get<const IndexMask *>(term);
+  return expr;
+}
+
 }  // namespace blender::index_mask
