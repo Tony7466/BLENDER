@@ -437,14 +437,6 @@ class _draw_tool_settings_context_mode:
 
         ups = tool_settings.unified_paint_settings
 
-        # if capabilities.has_color:
-        #     row = layout.row(align=True)
-        #     row.ui_units_x = 4
-        #     UnifiedPaintPanel.prop_unified_color(row, context, brush, "color", text="")
-        #     UnifiedPaintPanel.prop_unified_color(row, context, brush, "secondary_color", text="")
-        #     row.separator()
-        #     layout.prop(brush, "blend", text="", expand=False)
-
         size = "size"
         size_owner = ups if ups.use_unified_size else brush
         if size_owner.use_locked_size == 'SCENE':
