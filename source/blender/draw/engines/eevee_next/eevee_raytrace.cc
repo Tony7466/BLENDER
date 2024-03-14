@@ -428,7 +428,7 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
       screen_radiance_front_tx_ = screen_radiance_front_tx;
 
       downsampled_in_radiance_tx_.acquire(tracing_res_horizon, RAYTRACE_RADIANCE_FORMAT, usage_rw);
-      downsampled_in_normal_tx_.acquire(tracing_res_horizon, GPU_RGBA8, usage_rw);
+      downsampled_in_normal_tx_.acquire(tracing_res_horizon, GPU_RGB10_A2, usage_rw);
 
       for (int i : IndexRange(4)) {
         horizon_radiance_tx_[i].acquire(tracing_res_horizon, GPU_RGBA16F, usage_rw);

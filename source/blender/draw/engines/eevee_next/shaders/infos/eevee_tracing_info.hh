@@ -183,7 +183,7 @@ GPU_SHADER_CREATE_INFO(eevee_horizon_setup)
     .sampler(0, ImageType::DEPTH_2D, "depth_tx")
     .sampler(1, ImageType::FLOAT_2D, "in_radiance_tx")
     .image(2, RAYTRACE_RADIANCE_FORMAT, Qualifier::WRITE, ImageType::FLOAT_2D, "out_radiance_img")
-    .image(3, GPU_RGBA8, Qualifier::WRITE, ImageType::FLOAT_2D, "out_normal_img")
+    .image(3, GPU_RGB10_A2, Qualifier::WRITE, ImageType::FLOAT_2D, "out_normal_img")
     .compute_source("eevee_horizon_setup_comp.glsl");
 
 GPU_SHADER_CREATE_INFO(eevee_horizon_scan)
