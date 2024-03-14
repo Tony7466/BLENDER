@@ -134,13 +134,15 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
       }
       return factor * max_factor;
     }
-    /* Else: (#MOD_GREASE_PENCIL_BUILD_TIMEALIGN_END). */
-    const float min_factor = max_factor - 1.0f;
-    const float use_factor = factor * max_factor;
-    if (clamp_points) {
-      return std::clamp(use_factor - min_factor, 0.0f, 1.0f);
+    if (time_alignment == MOD_GREASE_PENCIL_BUILD_TIMEALIGN_END) {
+      const float min_factor = max_factor - 1.0f;
+      const float use_factor = factor * max_factor;
+      if (clamp_points) {
+        return std::clamp(use_factor - min_factor, 0.0f, 1.0f);
+      }
+      return use_factor - min_factor;
     }
-    return use_factor - min_factor;
+    return 0.0f;
   };
 
   Array<bool> select(stroke_count);
@@ -148,11 +150,11 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
   Array<int> result(stroke_count);
   for (const int i : IndexRange(stroke_count)) {
     const float local_factor = select[i] ? get_stroke_factor(factor_to_keep, i) : 1.0f;
-    const int points = points_by_curve[i].size() * local_factor;
-    result[i] = points;
+    const int num_points = points_by_curve[i].size() * local_factor;
+    result[i] = num_points;
     if (clamp_points) {
-      r_points_num += points;
-      if (points) {
+      r_points_num += num_points;
+      if (num_points > 0) {
         r_curves_num++;
       }
     }
