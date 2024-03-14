@@ -4479,6 +4479,8 @@ static ImBuf *image_get_render_result(Image *ima, ImageUser *iuser, void **r_loc
     pass_ibuf->y = rres.recty;
   }
 
+  BKE_imbuf_stamp_info(&rres, pass_ibuf);
+
   return pass_ibuf;
 }
 
