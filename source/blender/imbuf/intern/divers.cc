@@ -356,12 +356,12 @@ void IMB_buffer_float_from_byte(float *rect_to,
                                 int stride_from)
 {
   for (int y = 0; y < height; y++) {
-    const uchar *from = rect_from + size_t(stride_from) * y * channels;
-    float *to = rect_to + size_t(stride_to) * y * channels;
-
     for (int x = 0; x < width; x++) {
-      for (int i = 0; i < channels; i++, from++, to++) {
-        *to = float(*from) / 255.0f;
+      for (int i = 0; i < channels; i++) {
+        /* Bytes buffers are always 4 channel in image buffers. */
+        const size_t from_index = (y * stride_from + x) * 4 + i;
+        const size_t to_index = (y * stride_to + x) * channels + i;
+        rect_to[to_index] = float(rect_from[from_index]) / 255.0f;
       }
     }
   }
