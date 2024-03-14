@@ -517,6 +517,16 @@ static void rna_def_grease_pencil_layer_group(BlenderRNA *brna)
   RNA_def_property_ui_text(
       prop, "Locked", "Protect group from further editing and/or frame changes");
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
+
+  /* Use Masks. */
+  prop = RNA_def_property(srna, "use_masks", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(
+      prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_USE_MASKS);
+  RNA_def_property_ui_text(prop,
+                           "Use Masks",
+                           "The visibility of drawings in the layers in this group is affected by "
+                           "the layers in the masks lists");
+  RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 }
 
 static void rna_def_grease_pencil_data(BlenderRNA *brna)
