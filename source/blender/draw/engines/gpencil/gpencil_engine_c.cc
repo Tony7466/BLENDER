@@ -686,7 +686,7 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
 
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-    bke::AttributeAccessor attributes = curves.attributes();
+    const bke::AttributeAccessor attributes = curves.attributes();
     const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
     const VArray<bool> cyclic = *attributes.lookup_or_default<bool>(

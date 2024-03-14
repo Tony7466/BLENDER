@@ -317,7 +317,7 @@ static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, Scene *scene,
 
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-    bke::AttributeAccessor attributes = curves.attributes();
+    const bke::AttributeAccessor attributes = curves.attributes();
     const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
     const VArray<bool> cyclic = *attributes.lookup_or_default<bool>(
