@@ -1038,15 +1038,25 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
                                           IndexMaskMemory &memory,
                                           const ExactEvalMode exact_eval_mode)
 {
+  /* Non-overlapping evaluated segments which become the resulting index mask in the end. Note that
+   * these segments are only sorted in the end. */
   Vector<EvaluatedSegment, 16> evaluated_segments;
+  /* Coarse evaluation splits the full range into segments. Long segments are split up and get
+   * another coarse evaluation. Short segments will be evaluated exactly. */
   Stack<IndexRange, 16> long_unknown_segments;
   Vector<IndexRange, 16> short_unknown_segments;
 
+  /* The point at which a range starts being "short". */
   const int64_t coarse_segment_size_threshold = max_segment_size;
 
+  /* Precompute the evaluation order here, because it's used potentially many times throughout the
+   * algorithm. */
   const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
       root_expression);
 
+  /* Checks the coarse results and inserts its segments into either `long_unknown_segments` for
+   * further coarse evaluation, `short_unknown_segments` for exact evaluation or
+   * `evaluated_segments` if no further evaluation is necessary. */
   auto handle_coarse_result = [&](const CoarseResult &coarse_result) {
     for (const CoarseSegment &segment : coarse_result.segments) {
       switch (segment.type) {
@@ -1071,9 +1081,13 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
       }
     }
   };
+
+  /* Initiall coarse evaluation without any explicit bounds. The bounds are implied by the index
+   * masks used in the expression. */
   const CoarseResult initial_coarse_result = evaluate_coarse(root_expression, eager_eval_order);
   handle_coarse_result(initial_coarse_result);
 
+  /* Do coarse evaluation until all unknown segments are short enough to do exact evaluation. */
   while (!long_unknown_segments.is_empty()) {
     const IndexRange unknown_bounds = long_unknown_segments.pop();
     const int64_t split_pos = unknown_bounds.size() / 2;
@@ -1086,9 +1100,11 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
     handle_coarse_result(right_result);
   }
 
+  /* Evaluate a segment exactly. */
   auto evaluate_unknown_segment = [&](const IndexRange bounds,
                                       LinearAllocator<> &allocator,
                                       Vector<EvaluatedSegment, 16> &r_evaluated_segments) {
+    /* Use the predetermined evaluation mode. */
     switch (exact_eval_mode) {
       case ExactEvalMode::Bits: {
         const IndexMaskSegment indices = evaluate_exact_with_bits(
@@ -1099,6 +1115,8 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
         break;
       }
       case ExactEvalMode::Indices: {
+        /* #evaluate_exact_with_indices requires that all index masks have a single segment in the
+         * provided bounds. So split up the range into subranges first if necessary. */
         Vector<int64_t> segment_boundaries;
         for (const int64_t eval_order_i : eager_eval_order.index_range()) {
           const Expr &expr = *eager_eval_order[eval_order_i];
@@ -1108,14 +1126,17 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
           const AtomicExpr &atomic_expr = expr.as_atomic();
           const IndexMask mask = atomic_expr.mask->slice_content(bounds);
           mask.foreach_segment([&](const IndexMaskSegment &segment) {
-            segment_boundaries.append_non_duplicates(segment[0]);
-            segment_boundaries.append_non_duplicates(segment.last() + 1);
+            segment_boundaries.append(segment[0]);
+            segment_boundaries.append(segment.last() + 1);
           });
         }
         std::sort(segment_boundaries.begin(), segment_boundaries.end());
         for (const int64_t boundary_i : segment_boundaries.index_range().drop_back(1)) {
           const IndexRange sub_bounds = IndexRange::from_begin_end(
               segment_boundaries[boundary_i], segment_boundaries[boundary_i + 1]);
+          if (sub_bounds.is_empty()) {
+            continue;
+          }
           const IndexMaskSegment indices = evaluate_exact_with_indices(
               root_expression, allocator, sub_bounds, eager_eval_order);
           if (!indices.is_empty()) {
@@ -1128,6 +1149,8 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
     }
   };
 
+  /* Decide whether multi-threading should be used or not. There is some extra overhead even when
+   * just attempting to use multi-threading. */
   const int64_t unknown_segment_eval_grain_size = 8;
   if (short_unknown_segments.size() < unknown_segment_eval_grain_size) {
     for (const IndexRange &bounds : short_unknown_segments) {
@@ -1135,6 +1158,8 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
     }
   }
   else {
+    /* Do exact evaluation in multiple threads. The allocators and evaluated segments created by
+     * each thread are merged in the end.  */
     struct LocalData {
       LinearAllocator<> allocator;
       Vector<EvaluatedSegment, 16> evaluated_segments;
