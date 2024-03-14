@@ -45,12 +45,13 @@ class AssetView : public ui::AbstractGridView {
    * end of the string, for `fnmatch()` to work. */
   char search_string[sizeof(AssetShelfSettings::search_string) + 2] = "";
   std::optional<asset_system::AssetCatalogFilter> catalog_filter_ = std::nullopt;
+  bool is_popup_ = false;
 
   friend class AssetViewItem;
   friend class AssetDragController;
 
  public:
-  AssetView(const AssetLibraryReference &library_ref, const AssetShelf &shelf);
+  AssetView(const AssetLibraryReference &library_ref, const AssetShelf &shelf, bool is_popup);
   ~AssetView();
 
   void build_items() override;
@@ -88,8 +89,10 @@ class AssetDragController : public ui::AbstractViewItemDragController {
   void *create_drag_data() const override;
 };
 
-AssetView::AssetView(const AssetLibraryReference &library_ref, const AssetShelf &shelf)
-    : library_ref_(library_ref), shelf_(shelf)
+AssetView::AssetView(const AssetLibraryReference &library_ref,
+                     const AssetShelf &shelf,
+                     const bool is_popup)
+    : library_ref_(library_ref), shelf_(shelf), is_popup_(is_popup)
 {
   if (shelf.settings.search_string[0]) {
     BLI_strncpy_ensure_pad(
@@ -219,8 +222,11 @@ void AssetViewItem::build_grid_tile(uiLayout &layout) const
 
   uiBlock *block = uiLayoutGetBlock(&layout);
   uiBut *but = ui::PreviewGridItem::build_grid_tile_button(layout, ot, &op_props);
-  UI_but_func_set(but,
-                  [block](bContext &) { UI_popup_menu_retval_set(block, UI_RETURN_OK, true); });
+  /* Close popup when selecting an asset. */
+  if (asset_view.is_popup_) {
+    UI_but_func_set(but,
+                    [block](bContext &) { UI_popup_menu_retval_set(block, UI_RETURN_OK, true); });
+  }
 }
 
 void AssetViewItem::build_context_menu(bContext &C, uiLayout &column) const
@@ -287,7 +293,8 @@ void build_asset_view(uiLayout &layout,
   BLI_assert(tile_width != 0);
   BLI_assert(tile_height != 0);
 
-  std::unique_ptr asset_view = std::make_unique<AssetView>(library_ref, shelf);
+  const bool is_popup = region.regiontype == RGN_TYPE_TEMPORARY;
+  std::unique_ptr asset_view = std::make_unique<AssetView>(library_ref, shelf, is_popup);
   asset_view->set_catalog_filter(catalog_filter_from_shelf_settings(shelf.settings, *library));
   asset_view->set_tile_size(tile_width, tile_height);
 
