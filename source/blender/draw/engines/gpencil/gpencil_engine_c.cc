@@ -612,8 +612,10 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
   const bool is_vertex_mode = (ob->mode & OB_MODE_VERTEX_PAINT) != 0;
   const std::optional<blender::Bounds<float3>> bounds = grease_pencil.bounds_min_max_eval();
 
+  const bool use_stroke_order_3d = (grease_pencil.flag & GREASE_PENCIL_STROKE_ORDER_3D) != 0;
+  GPENCIL_tObject *tgp_ob = gpencil_object_cache_add(pd, ob, use_stroke_order_3d, bounds);
+  
   int mat_ofs = 0;
-  GPENCIL_tObject *tgp_ob = gpencil_object_cache_add(pd, ob, false, bounds);
   GPENCIL_MaterialPool *matpool = gpencil_material_pool_create(pd, ob, &mat_ofs, is_vertex_mode);
 
   GPUTexture *tex_fill = txl->dummy_texture;
