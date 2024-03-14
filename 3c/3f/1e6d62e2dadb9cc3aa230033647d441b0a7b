@@ -1,2 +1,3 @@
 Referenced by issue #119447, Auto Smooth versioning modifiers appearing on Append
 Referenced by issue #119455, Regression: dropping ANY asset into this file crashes Blender 4.1 release candidate
+Referenced by pull request #119467, Fix #119455, #119447: Incorrect auto smooth versioning on append
