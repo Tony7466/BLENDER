@@ -24,82 +24,6 @@ def extract_type_names(commands, r_types):
                 r_types.append(param_type)
 
 
-def generate_render_graph_commands_function_declaration(command, namespace=""):
-    result = ""
-    command_name = command.findtext("proto/name")
-    method_name = to_lower_snake_case(command_name[5:])
-    if namespace:
-        namespace += "::"
-    result += f"void {namespace}{method_name}("
-    first_param = True
-    for param in command.findall("param"):
-        param_type = param.findtext("type")
-        param_name = to_lower_snake_case(param.findtext("name"))
-        is_const = param.text == "const "
-        is_ref = param.find("type").tail == "* "
-        param_const = "const " if is_const else ""
-        param_ref = "*" if is_ref else ""
-        if param_type == "VkCommandBuffer":
-            continue
-        if not first_param:
-            result += ",\n    "
-        result += f"{param_const}{param_type} {param_ref}{param_name}"
-        first_param = False
-    result += ")"
-    return result
-
-
-def generate_render_graph_commands_declaration(commands):
-    result = ""
-    result += "class VKRenderGraphCommandBuffer {\n"
-    result += " public:\n"
-    result += "  virtual void begin_recording() = 0;\n"
-    result += "  virtual void end_recording() = 0;\n"
-    for command in commands:
-        command_name = command.findtext("proto/name")
-        method_name = to_lower_snake_case(command_name[5:])
-        result += "  virtual "
-        result += generate_render_graph_commands_function_declaration(command)
-        result += " = 0;\n"
-    result += "};\n"
-    return result
-
-
-def generate_command_buffer_wrapper_declaration(commands):
-    result = ""
-    result += "class VKCommandBufferWrapper: public VKRenderGraphCommandBuffer {\n"
-    result += " public:\n"
-    result += "  void begin_recording() override;\n"
-    result += "  void end_recording() override;\n"
-    for command in commands:
-        result += "  "
-        result += generate_render_graph_commands_function_declaration(command)
-        result += " override;\n"
-    result += "};\n"
-    return result
-
-
-def generate_command_buffer_wrapper_implementation(commands):
-    result = ""
-    for command in commands:
-        command_name = command.findtext("proto/name")
-        method_name = to_lower_snake_case(command_name[5:])
-        result += generate_render_graph_commands_function_declaration(command, namespace="VKCommandBufferWrapper")
-        result += "\n"
-        result += "{\n"
-        result += f"  {command_name}(command_buffer_"
-        for param in command.findall("param"):
-            param_type = param.findtext("type")
-            if param_type == "VkCommandBuffer":
-                continue
-            param_name = to_lower_snake_case(param.findtext("name"))
-            result += f", {param_name}"
-        result += ");\n"
-        result += "}\n"
-        result += "\n"
-    return result
-
-
 ### Enumerations ###
 def generate_enum_to_string_hpp(enum):
     vk_name = enum.get("name")
@@ -368,14 +292,6 @@ ENUMS_TO_GENERATE.sort()
 FLAGS_TO_GENERATE.sort()
 STRUCTS_TO_GENERATE.sort()
 
-vk_render_graph_commands_hpp = ""
-vk_render_graph_commands_cpp = ""
-
-vk_render_graph_commands_hpp += generate_render_graph_commands_declaration(commands)
-vk_render_graph_commands_hpp += "\n"
-vk_render_graph_commands_hpp += generate_command_buffer_wrapper_declaration(commands)
-vk_render_graph_commands_cpp += generate_command_buffer_wrapper_implementation(commands)
-
 
 vk_to_string_hpp = ""
 vk_to_string_cpp = ""
@@ -413,11 +329,6 @@ for struct_to_generate in STRUCTS_TO_GENERATE:
     vk_to_string_cpp += generate_struct_to_string_cpp(struct)
     vk_to_string_cpp += "\n"
 
-# print(vk_render_graph_commands_hpp)
-# print(vk_render_graph_commands_cpp)
-
 # print(vk_to_string_hpp)
 print(vk_to_string_cpp)
 
-# struct = root.find(f"types/type[@category='struct'][@name='VkImageMemoryBarrier']")
-# print(generate_struct_to_string_cpp(struct))
