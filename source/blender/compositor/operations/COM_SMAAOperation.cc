@@ -658,19 +658,6 @@ static float3 SMAAGatherNeighbors(float2 texcoord, float4 offset[3], SMAATexture
 }
 
 /**
- * Adjusts the threshold by means of predication.
- */
-static float2 SMAACalculatePredicatedThreshold(float2 texcoord,
-                                               float4 offset[3],
-                                               SMAATexture2D(predicationTex))
-{
-  float3 neighbors = SMAAGatherNeighbors(texcoord, offset, SMAATexturePass2D(predicationTex));
-  float2 delta = math::abs(float2(neighbors.x) - float2(neighbors.y, neighbors.z));
-  float2 edges = math::step(SMAA_PREDICATION_THRESHOLD, delta);
-  return SMAA_PREDICATION_SCALE * SMAA_THRESHOLD * (1.0f - SMAA_PREDICATION_STRENGTH * edges);
-}
-
-/**
  * Conditional move:
  */
 static void SMAAMovc(float2 cond, float2 &variable, float2 value)
@@ -685,6 +672,10 @@ static void SMAAMovc(float4 cond, float4 &variable, float4 value)
   variable = math::interpolate(variable, value, cond);
 }
 
+#if SMAA_INCLUDE_VS
+/* ----------------------------------------------------------------------------
+ * Vertex Shaders */
+
 /**
  * Edge Detection Vertex Shader
  */
@@ -697,6 +688,37 @@ static void SMAAEdgeDetectionVS(float2 texcoord, int2 size, float4 offset[3])
   offset[2] = float4(texcoord.xy(), texcoord.xy()) +
               float4(-2.0f, 0.0f, 0.0f, -2.0f) / float4(size, size);
 }
+
+/**
+ * Blend Weight Calculation Vertex Shader
+ */
+static void SMAABlendingWeightCalculationVS(float2 texcoord,
+                                            int2 size,
+                                            float2 &pixcoord,
+                                            float4 offset[3])
+{
+  pixcoord = texcoord * float2(size);
+
+  // We will use these offsets for the searches later on (see @PSEUDO_GATHER4):
+  offset[0] = float4(texcoord.xy(), texcoord.xy()) +
+              float4(-0.25f, -0.125f, 1.25f, -0.125f) / float4(size, size);
+  offset[1] = float4(texcoord.xy(), texcoord.xy()) +
+              float4(-0.125f, -0.25f, -0.125f, 1.25f) / float4(size, size);
+
+  // And these for the searches, they indicate the ends of the loops:
+  offset[2] = float4(offset[0].x, offset[0].z, offset[1].y, offset[1].w) +
+              (float4(-2.0f, 2.0f, -2.0f, 2.0f) * float(SMAA_MAX_SEARCH_STEPS)) /
+                  float4(float2(size.x), float2(size.y));
+}
+
+/**
+ * Neighborhood Blending Vertex Shader
+ */
+static void SMAANeighborhoodBlendingVS(float2 texcoord, int2 size, float4 &offset)
+{
+  offset = float4(texcoord, texcoord) + float4(1.0f, 0.0f, 0.0f, 1.0f) / float4(size, size);
+}
+#endif  // SMAA_INCLUDE_VS
 
 /**
  * Luma Edge Detection
@@ -767,28 +789,6 @@ static float2 SMAALumaEdgeDetectionPS(float2 texcoord,
   edges.xy() *= math::step(finalDelta, local_contrast_adaptation_factor * delta.xy());
 
   return edges;
-}
-
-/**
- * Blend Weight Calculation Vertex Shader
- */
-static void SMAABlendingWeightCalculationVS(float2 texcoord,
-                                            int2 size,
-                                            float2 &pixcoord,
-                                            float4 offset[3])
-{
-  pixcoord = texcoord * float2(size);
-
-  // We will use these offsets for the searches later on (see @PSEUDO_GATHER4):
-  offset[0] = float4(texcoord.xy(), texcoord.xy()) +
-              float4(-0.25f, -0.125f, 1.25f, -0.125f) / float4(size, size);
-  offset[1] = float4(texcoord.xy(), texcoord.xy()) +
-              float4(-0.125f, -0.25f, -0.125f, 1.25f) / float4(size, size);
-
-  // And these for the searches, they indicate the ends of the loops:
-  offset[2] = float4(offset[0].x, offset[0].z, offset[1].y, offset[1].w) +
-              (float4(-2.0f, 2.0f, -2.0f, 2.0f) * float(SMAA_MAX_SEARCH_STEPS)) /
-                  float4(float2(size.x), float2(size.y));
 }
 
 /* ----------------------------------------------------------------------------
@@ -1334,6 +1334,72 @@ static float4 SMAABlendingWeightCalculationPS(float2 texcoord,
   }
 
   return weights;
+}
+
+/* ----------------------------------------------------------------------------
+ * Neighborhood Blending Pixel Shader (Third Pass) */
+
+static float4 SMAANeighborhoodBlendingPS(float2 texcoord,
+                                         float4 offset,
+                                         SMAATexture2D(colorTex),
+                                         SMAATexture2D(blendTex),
+#if SMAA_REPROJECTION
+                                         SMAATexture2D(velocityTex),
+#endif
+                                         int2 size)
+{
+  // Fetch the blending weights for current pixel:
+  float4 a;
+  a.x = SMAASample(blendTex, offset.xy()).w;  // Right
+  a.y = SMAASample(blendTex, offset.zw()).y;  // Top
+  a.z = SMAASample(blendTex, texcoord).z;     // Left
+  a.w = SMAASample(blendTex, texcoord).x;     // Bottom
+
+  // Is there any blending weight with a value greater than 0.0?
+  SMAA_BRANCH
+  if (math::dot(a, float4(1.0f, 1.0f, 1.0f, 1.0f)) < 1e-5f) {
+    float4 color = SMAASampleLevelZero(colorTex, texcoord);
+
+#if SMAA_REPROJECTION
+    float2 velocity = SMAA_DECODE_VELOCITY(SMAASampleLevelZero(velocityTex, texcoord));
+
+    // Pack velocity into the alpha channel:
+    color.a = math::sqrt(5.0f * math::length(velocity));
+#endif
+
+    return color;
+  }
+  else {
+    bool h = math::max(a.x, a.z) > math::max(a.y, a.w);  // max(horizontal) > max(vertical)
+
+    // Calculate the blending offsets:
+    float4 blendingOffset = float4(0.0f, a.y, 0.0f, a.w);
+    float2 blendingWeight = float2(a.y, a.w);
+    SMAAMovc(float4(h), blendingOffset, float4(a.x, 0.0f, a.z, 0.0f));
+    SMAAMovc(float2(h), blendingWeight, float2(a.x, a.z));
+    blendingWeight /= math::dot(blendingWeight, float2(1.0f, 1.0f));
+
+    // Calculate the texture coordinates:
+    float4 blendingCoord = float4(texcoord, texcoord) + blendingOffset / float4(size, -size);
+
+    // We exploit bilinear filtering to mix current pixel with the chosen
+    // neighbor:
+    float4 color = blendingWeight.x * SMAASampleLevelZero(colorTex, blendingCoord.xy());
+    color += blendingWeight.y * SMAASampleLevelZero(colorTex, blendingCoord.zw());
+
+#if SMAA_REPROJECTION
+    // Antialias velocity for proper reprojection in a later stage:
+    float2 velocity = blendingWeight.x *
+                      SMAA_DECODE_VELOCITY(SMAASampleLevelZero(velocityTex, blendingCoord.xy()));
+    velocity += blendingWeight.y *
+                SMAA_DECODE_VELOCITY(SMAASampleLevelZero(velocityTex, blendingCoord.zw()));
+
+    // Pack velocity into the alpha channel:
+    color.a = math::sqrt(5.0f * math::length(velocity));
+#endif
+
+    return color;
+  }
 }
 
 SMAAOperation::SMAAOperation()
