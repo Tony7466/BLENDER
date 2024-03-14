@@ -231,7 +231,7 @@ struct AllInstancesInfo {
   /** store an array of void pointer to attributes for each component. */
   Vector<AttributeFallbacksArray> attribute_fallback;
   /** Instance components to merge for output geometry. */
-  Vector<const bke::GeometryComponent *> instances_components_to_merge;
+  Vector<bke::GeometryComponentPtr> instances_components_to_merge;
   /** Base transform for each instance component. */
   Vector<float4x4> instances_components_transforms;
 };
@@ -501,31 +501,36 @@ static Vector<std::pair<int, GSpan>> prepare_attribute_fallbacks(
  * Calls #fn for every geometry in the given #InstanceReference. Also passes on the transformation
  * that is applied to every instance.
  */
-static bke::GeometrySet geometry_set_from_reference(const InstanceReference &reference)
+static bke::GeometrySet &geometry_set_from_reference(const InstanceReference &reference,
+                                                     bke::GeometrySet &r_geometry_set)
 {
   switch (reference.type()) {
     case InstanceReference::Type::Object: {
       const Object &object = reference.object();
-      return bke::object_get_evaluated_geometry_set(object);
+      r_geometry_set = bke::object_get_evaluated_geometry_set(object);
+      break;
     }
     case InstanceReference::Type::Collection: {
       Collection *collection_ptr = &reference.collection();
       std::unique_ptr<bke::Instances> instances = std::make_unique<bke::Instances>();
       realize_collections(collection_ptr, instances.get());
-      bke::GeometrySet collection_geometry = bke::GeometrySet::from_instances(instances.release());
-      collection_geometry.get_component(bke::GeometryComponent::Type::Instance)->add_user();
-      return collection_geometry;
+      r_geometry_set = bke::GeometrySet::from_instances(instances.release());
+      break;
     }
     case InstanceReference::Type::GeometrySet: {
-      return reference.geometry_set();
+      r_geometry_set = reference.geometry_set();
+      break;
     }
     case InstanceReference::Type::None: {
-      return bke::GeometrySet();  // Return an empty GeometrySet for None type
+      r_geometry_set = bke::GeometrySet();  // Return an empty GeometrySet for None type
+      break;
     }
     default: {
-      return bke::GeometrySet();
+      r_geometry_set = bke::GeometrySet();
+      break;
     }
   }
+  return r_geometry_set;
 }
 
 static void foreach_geometry_in_reference(
@@ -535,7 +540,8 @@ static void foreach_geometry_in_reference(
     FunctionRef<void(const bke::GeometrySet &geometry_set, const float4x4 &transform, uint32_t id)>
         fn)
 {
-  const bke::GeometrySet geometry_set = geometry_set_from_reference(reference);
+  bke::GeometrySet geometry_set;
+  geometry_set_from_reference(reference, geometry_set);
   fn(geometry_set, base_transform, id);
 }
 
@@ -639,9 +645,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
     const bke::GeometryComponent::Type type = component->type();
     switch (type) {
       case bke::GeometryComponent::Type::Mesh: {
-        const bke::MeshComponent &mesh_component = *static_cast<const bke::MeshComponent *>(
-            component);
-        const Mesh *mesh = mesh_component.get();
+        const Mesh *mesh = (*static_cast<const bke::MeshComponent *>(component)).get();
         if (mesh != nullptr && mesh->verts_num > 0) {
           const int mesh_index = gather_info.meshes.order.index_of(mesh);
           const MeshRealizeInfo &mesh_info = gather_info.meshes.realize_info[mesh_index];
@@ -693,13 +697,12 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
       case bke::GeometryComponent::Type::Instance: {
         if (current_depth == target_depth) {
           gather_info.instances.attribute_fallback.append(base_instance_context.instances);
-          gather_info.instances.instances_components_to_merge.append(component);
+          gather_info.instances.instances_components_to_merge.append(component->copy());
           gather_info.instances.instances_components_transforms.append(base_transform);
         }
         else {
-          const auto &instances_component = *static_cast<const bke::InstancesComponent *>(
-              component);
-          const Instances *instances = instances_component.get();
+          const Instances *instances =
+              (*static_cast<const bke::InstancesComponent *>(component)).get();
           if (instances != nullptr && instances->instances_num() > 0) {
             gather_realize_tasks_for_instances(gather_info,
                                                current_depth,
@@ -712,8 +715,9 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         break;
       }
       case bke::GeometryComponent::Type::Volume: {
-        const auto *volume_component = static_cast<const bke::VolumeComponent *>(component);
         if (!gather_info.r_tasks.first_volume) {
+          const bke::VolumeComponent *volume_component = static_cast<const bke::VolumeComponent *>(
+              component);
           volume_component->add_user();
           gather_info.r_tasks.first_volume = ImplicitSharingPtr<const bke::VolumeComponent>(
               volume_component);
@@ -721,9 +725,9 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
         break;
       }
       case bke::GeometryComponent::Type::Edit: {
-        const auto *edit_component = static_cast<const bke::GeometryComponentEditData *>(
-            component);
         if (!gather_info.r_tasks.first_edit_data) {
+          const bke::GeometryComponentEditData *edit_component =
+              static_cast<const bke::GeometryComponentEditData *>(component);
           edit_component->add_user();
           gather_info.r_tasks.first_edit_data =
               ImplicitSharingPtr<const bke::GeometryComponentEditData>(edit_component);
@@ -771,8 +775,9 @@ bool static attribute_foreach(const bke::GeometrySet &geometry_set,
     for (const int index : indices.index_range()) {
       const int i = indices[index];
       const int depth_target_tmp = (current_depth == 0) ? instance_depth[i] : depth_target;
-      bke::GeometrySet instance_geometry_set = geometry_set_from_reference(
-          instances.references()[instances.reference_handles()[i]]);
+      bke::GeometrySet instance_geometry_set;
+      geometry_set_from_reference(instances.references()[instances.reference_handles()[i]],
+                                  instance_geometry_set);
       /*Process child instances with a recursive call.*/
       if (current_depth != depth_target_tmp) {
         is_child_has_component = attribute_foreach(instance_geometry_set,
@@ -1040,7 +1045,7 @@ static void execute_realize_pointcloud_task(
       dst_attribute_writers);
 }
 static void execute_instances_tasks(
-    const Span<const bke::GeometryComponent *> src_components,
+    const Span<bke::GeometryComponentPtr> src_components,
     Span<blender::float4x4> src_base_transforms,
     OrderedAttributes all_instances_attributes,
     Span<blender::geometry::AttributeFallbacksArray> attribute_fallback,
@@ -1055,7 +1060,7 @@ static void execute_instances_tasks(
   VArray<blender::float4x4>::ForSpan(src_base_transforms);
   Array<int> offsets_data(src_components.size() + 1);
   for (const int component_index : src_components.index_range()) {
-    const auto &src_component = static_cast<const bke::InstancesComponent &>(
+    const bke::InstancesComponent &src_component = static_cast<const bke::InstancesComponent &>(
         *src_components[component_index]);
     offsets_data[component_index] = src_component.get()->instances_num();
   }
@@ -1122,8 +1127,14 @@ static void execute_instances_tasks(
   }
   result.replace_instances(dst_instances.release());
   auto &dst_component = result.get_component_for_write<bke::InstancesComponent>();
+  Vector<const bke::GeometryComponent *> for_join_attributes;
+  for (bke::GeometryComponentPtr compent : src_components)
+  {
+    for_join_attributes.append(compent.get());
+  }
+  
   join_attributes(
-      src_components, dst_component, {"position", ".reference_index", "instance_transform"});
+      for_join_attributes, dst_component, {"position", ".reference_index", "instance_transform"});
 }
 
 static void execute_realize_pointcloud_tasks(const RealizeInstancesOptions &options,
@@ -1957,9 +1968,9 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
     return geometry_set;
   }
 
-  bke::GeometrySet temp_geometry_set;
+  bke::GeometrySet not_to_realize_set;
   propagate_instances_to_keep(
-      geometry_set, options.selection, temp_geometry_set, options.propagation_info);
+      geometry_set, options.selection, not_to_realize_set, options.propagation_info);
 
   if (options.keep_original_ids) {
     remove_id_attribute_from_instances(geometry_set);
@@ -1990,9 +2001,9 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   const float4x4 transform = float4x4::identity();
   InstanceContext attribute_fallbacks(gather_info);
 
-  if (temp_geometry_set.has_instances()) {
+  if (not_to_realize_set.has_instances()) {
     gather_info.instances.instances_components_to_merge.append(
-        &temp_geometry_set.get_component_for_write<bke::InstancesComponent>());
+        (not_to_realize_set.get_component_for_write<bke::InstancesComponent>()).copy());
     gather_info.instances.instances_components_transforms.append(float4x4::identity());
     gather_info.instances.attribute_fallback.append((gather_info.instances_attriubutes.size()));
   }
