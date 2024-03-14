@@ -477,6 +477,7 @@ GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
                                               GPENCIL_tObject *tgp_ob)
 
 {
+  using namespace blender::bke::greasepencil;
   const GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob->data);
 
   const bool is_in_front = (ob->dtx & OB_DRAW_IN_FRONT);
@@ -485,15 +486,12 @@ GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
   const bool override_vertcol = (pd->v3d_color_type != -1);
   const bool is_vert_col_mode = (pd->v3d_color_type == V3D_SHADING_VERTEX_COLOR) ||
                                 (ob->mode == OB_MODE_VERTEX_PAINT) || pd->is_render;
-  /* const bool is_viewlayer_render = pd->is_render && (gpl->viewlayername[0] != '\0') &&
-   *                                STREQ(pd->view_layer->name, gpl->viewlayername); */
-  // const bool is_viewlayer_render = false;
-  // const bool disable_masks_render = is_viewlayer_render &&
-  //                                   (layer.base.flag & GP_LAYER_DISABLE_MASKS_IN_VIEWLAYER);
-  /* bool is_masked = disable_masks_render ? false :
-        (gpl->flag & GP_LAYER_USE_MASK) &&
-            !BLI_listbase_is_empty(&gpl->mask_layers); */
-  bool is_masked = false;
+  const bool is_viewlayer_render = pd->is_render && !layer.view_layer_name().is_empty() &&
+                                   STREQ(pd->view_layer->name, layer.view_layer_name().c_str());
+  const bool disable_masks_render = is_viewlayer_render &&
+                                    (layer.base.flag & GP_LAYER_DISABLE_MASKS_IN_VIEWLAYER) != 0;
+  bool is_masked = !disable_masks_render && layer.use_masks() &&
+                   !BLI_listbase_is_empty(&layer.masks);
 
   float vert_col_opacity = (override_vertcol) ?
                                (is_vert_col_mode ? pd->vertex_paint_opacity : 0.0f) :
@@ -502,6 +500,7 @@ GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
    * Convert to world units (by default, 1 meter = 1000 pixels). */
   float thickness_scale = (is_screenspace) ? -1.0f : 1.0f / 1000.0f;
   float layer_opacity = grease_pencil_layer_final_opacity_get(pd, ob, grease_pencil, layer);
+
   float4 layer_tint(0.0f);
   float layer_alpha = pd->xray_alpha;
   /* TODO: Onion skinning! */
@@ -516,38 +515,44 @@ GPENCIL_tLayer *grease_pencil_layer_cache_add(GPENCIL_PrivateData *pd,
   tgp_layer->blend_ps = nullptr;
 
   /* Masking: Go through mask list and extract valid masks in a bitmap. */
-  // if (is_masked) {
-  //   bool valid_mask = false;
-  //   /* WARNING: only #GP_MAX_MASKBITS amount of bits.
-  //    * TODO(fclem): Find a better system without any limitation. */
-  //   tgp_layer->mask_bits = static_cast<BLI_bitmap *>(BLI_memblock_alloc(pd->gp_maskbit_pool));
-  //   tgp_layer->mask_invert_bits = static_cast<BLI_bitmap *>(
-  //       BLI_memblock_alloc(pd->gp_maskbit_pool));
-  //   BLI_bitmap_set_all(tgp_layer->mask_bits, false, GP_MAX_MASKBITS);
+  if (is_masked) {
+    bool valid_mask = false;
+    /* WARNING: only #GP_MAX_MASKBITS amount of bits.
+     * TODO(fclem): Find a better system without any limitation. */
+    tgp_layer->mask_bits = static_cast<BLI_bitmap *>(BLI_memblock_alloc(pd->gp_maskbit_pool));
+    tgp_layer->mask_invert_bits = static_cast<BLI_bitmap *>(
+        BLI_memblock_alloc(pd->gp_maskbit_pool));
+    BLI_bitmap_set_all(tgp_layer->mask_bits, false, GP_MAX_MASKBITS);
 
-  //   LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
-  //     bGPDlayer *gpl_mask = BKE_gpencil_layer_named_get(gpd, mask->name);
-  //     if (gpl_mask && (gpl_mask != gpl) && ((gpl_mask->flag & GP_LAYER_HIDE) == 0) &&
-  //         ((mask->flag & GP_MASK_HIDE) == 0))
-  //     {
-  //       int index = BLI_findindex(&gpd->layers, gpl_mask);
-  //       if (index < GP_MAX_MASKBITS) {
-  //         const bool invert = (mask->flag & GP_MASK_INVERT) != 0;
-  //         BLI_BITMAP_SET(tgp_layer->mask_bits, index, true);
-  //         BLI_BITMAP_SET(tgp_layer->mask_invert_bits, index, invert);
-  //         valid_mask = true;
-  //       }
-  //     }
-  //   }
+    LISTBASE_FOREACH (GreasePencilLayerMask *, mask, &layer.masks) {
+      if (mask->flag & GP_LAYER_MASK_HIDE) {
+        continue;
+      }
+      const TreeNode *node = grease_pencil.find_node_by_name(mask->layer_name);
+      if (node == nullptr) {
+        continue;
+      }
+      const Layer &mask_layer = node->as_layer();
+      if ((&mask_layer == &layer) || !mask_layer.is_visible()) {
+        continue;
+      }
+      const int index = *grease_pencil.get_layer_index(mask_layer);
+      if (index < GP_MAX_MASKBITS) {
+        const bool invert = (mask->flag & GP_LAYER_MASK_INVERT) != 0;
+        BLI_BITMAP_SET(tgp_layer->mask_bits, index, true);
+        BLI_BITMAP_SET(tgp_layer->mask_invert_bits, index, invert);
+        valid_mask = true;
+      }
+    }
 
-  //   if (valid_mask) {
-  //     pd->use_mask_fb = true;
-  //   }
-  //   else {
-  //     tgp_layer->mask_bits = nullptr;
-  //   }
-  //   is_masked = valid_mask;
-  // }
+    if (valid_mask) {
+      pd->use_mask_fb = true;
+    }
+    else {
+      tgp_layer->mask_bits = nullptr;
+    }
+    is_masked = valid_mask;
+  }
 
   /* Blending: Force blending for masked layer. */
   if (is_masked || (layer.blend_mode != GP_LAYER_BLEND_NONE) || (layer_opacity < 1.0f)) {
