@@ -1119,34 +1119,26 @@ static void evaluate_coarse_and_split_until_segments_are_short(
   }
 }
 
-static IndexMask evaluate_expression_impl(const Expr &root_expression,
-                                          IndexMaskMemory &memory,
-                                          const ExactEvalMode exact_eval_mode)
+static void evaluate_short_unknown_segments_exactly(
+    const Expr &root_expression,
+    const ExactEvalMode exact_eval_mode,
+    const Span<const Expr *> eager_eval_order,
+    const Span<IndexRange> short_unknown_segments,
+    IndexMaskMemory &memory,
+    Vector<EvaluatedSegment, 16> &r_evaluated_segments)
 {
-  /* Precompute the evaluation order here, because it's used potentially many times throughout the
-   * algorithm. */
-  const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
-      root_expression);
-
-  /* Non-overlapping evaluated segments which become the resulting index mask in the end. Note that
-   * these segments are only sorted in the end. */
-  Vector<EvaluatedSegment, 16> evaluated_segments;
-  Vector<IndexRange, 16> short_unknown_segments;
-
-  evaluate_coarse_and_split_until_segments_are_short(
-      root_expression, eager_eval_order, evaluated_segments, short_unknown_segments);
-
   /* Evaluate a segment exactly. */
   auto evaluate_unknown_segment = [&](const IndexRange bounds,
                                       LinearAllocator<> &allocator,
-                                      Vector<EvaluatedSegment, 16> &r_evaluated_segments) {
+                                      Vector<EvaluatedSegment, 16> &r_local_evaluated_segments) {
     /* Use the predetermined evaluation mode. */
     switch (exact_eval_mode) {
       case ExactEvalMode::Bits: {
         const IndexMaskSegment indices = evaluate_exact_with_bits(
             root_expression, allocator, bounds, eager_eval_order);
         if (!indices.is_empty()) {
-          r_evaluated_segments.append({EvaluatedSegment::Type::Indices, bounds, nullptr, indices});
+          r_local_evaluated_segments.append(
+              {EvaluatedSegment::Type::Indices, bounds, nullptr, indices});
         }
         break;
       }
@@ -1181,7 +1173,7 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
           const IndexMaskSegment indices = evaluate_exact_with_indices(
               root_expression, allocator, sub_bounds, eager_eval_order);
           if (!indices.is_empty()) {
-            r_evaluated_segments.append(
+            r_local_evaluated_segments.append(
                 {EvaluatedSegment::Type::Indices, sub_bounds, nullptr, indices});
           }
         }
@@ -1195,7 +1187,7 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
   const int64_t unknown_segment_eval_grain_size = 8;
   if (short_unknown_segments.size() < unknown_segment_eval_grain_size) {
     for (const IndexRange &bounds : short_unknown_segments) {
-      evaluate_unknown_segment(bounds, memory, evaluated_segments);
+      evaluate_unknown_segment(bounds, memory, r_evaluated_segments);
     }
   }
   else {
@@ -1206,22 +1198,47 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
       Vector<EvaluatedSegment, 16> evaluated_segments;
     };
     threading::EnumerableThreadSpecific<LocalData> data_by_thread;
-    threading::parallel_for(
-        short_unknown_segments.index_range(),
-        unknown_segment_eval_grain_size,
-        [&](const IndexRange range) {
-          LocalData &data = data_by_thread.local();
-          for (const IndexRange &bounds : short_unknown_segments.as_span().slice(range)) {
-            evaluate_unknown_segment(bounds, data.allocator, data.evaluated_segments);
-          }
-        });
+    threading::parallel_for(short_unknown_segments.index_range(),
+                            unknown_segment_eval_grain_size,
+                            [&](const IndexRange range) {
+                              LocalData &data = data_by_thread.local();
+                              for (const IndexRange &bounds : short_unknown_segments.slice(range))
+                              {
+                                evaluate_unknown_segment(
+                                    bounds, data.allocator, data.evaluated_segments);
+                              }
+                            });
     for (LocalData &data : data_by_thread) {
       if (!data.evaluated_segments.is_empty()) {
-        evaluated_segments.extend(data.evaluated_segments);
+        r_evaluated_segments.extend(data.evaluated_segments);
         memory.transfer_ownership_from(data.allocator);
       }
     }
   }
+}
+
+static IndexMask evaluate_expression_impl(const Expr &root_expression,
+                                          IndexMaskMemory &memory,
+                                          const ExactEvalMode exact_eval_mode)
+{
+  /* Precompute the evaluation order here, because it's used potentially many times throughout the
+   * algorithm. */
+  const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
+      root_expression);
+
+  /* Non-overlapping evaluated segments which become the resulting index mask in the end. Note that
+   * these segments are only sorted in the end. */
+  Vector<EvaluatedSegment, 16> evaluated_segments;
+  Vector<IndexRange, 16> short_unknown_segments;
+
+  evaluate_coarse_and_split_until_segments_are_short(
+      root_expression, eager_eval_order, evaluated_segments, short_unknown_segments);
+  evaluate_short_unknown_segments_exactly(root_expression,
+                                          exact_eval_mode,
+                                          eager_eval_order,
+                                          short_unknown_segments,
+                                          memory,
+                                          evaluated_segments);
 
   if (evaluated_segments.is_empty()) {
     return {};
