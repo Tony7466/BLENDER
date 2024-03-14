@@ -1220,7 +1220,6 @@ static BezTriple *cycle_offset_triple(
 
 void BKE_fcurve_handles_recalc_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
 {
-  SCOPED_TIMER_AVERAGED("recalc handles");
   /* Error checking:
    * - Need at least two points.
    * - Need bezier keys.
