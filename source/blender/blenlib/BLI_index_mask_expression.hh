@@ -55,11 +55,6 @@ class ExprBuilder {
  public:
   using Term = std::variant<const Expr *, const IndexMask *>;
 
-  const UnionExpr &merge(const Term &a, const Term &b)
-  {
-    return this->merge({a, b});
-  }
-
   const UnionExpr &merge(const Span<Term> terms)
   {
     Vector<const Expr *> term_expressions;
@@ -71,11 +66,6 @@ class ExprBuilder {
     expr.index = expr_count_++;
     expr.terms = std::move(term_expressions);
     return expr;
-  }
-
-  const DifferenceExpr &subtract(const Term &a, const Term &b)
-  {
-    return this->subtract(a, Span<Term>{b});
   }
 
   const DifferenceExpr &subtract(const Term &main_term, const Span<Term> subtract_terms)
@@ -90,11 +80,6 @@ class ExprBuilder {
     expr.index = expr_count_++;
     expr.terms = std::move(term_expressions);
     return expr;
-  }
-
-  const IntersectionExpr &intersect(const Term &a, const Term &b)
-  {
-    return this->intersect({a, b});
   }
 
   const IntersectionExpr &intersect(const Span<Term> terms)

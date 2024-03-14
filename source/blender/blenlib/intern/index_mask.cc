@@ -394,7 +394,7 @@ IndexMask IndexMask::complement(const IndexRange universe, IndexMaskMemory &memo
 {
   ExprBuilder builder;
   const IndexMask universe_mask{universe};
-  const Expr &expr = builder.subtract(&universe_mask, this);
+  const Expr &expr = builder.subtract(&universe_mask, {this});
   return evaluate_expression(expr, memory);
 }
 
@@ -488,7 +488,7 @@ IndexMask IndexMask::from_union(const IndexMask &mask_a,
                                 IndexMaskMemory &memory)
 {
   ExprBuilder builder;
-  const Expr &expr = builder.merge(&mask_a, &mask_b);
+  const Expr &expr = builder.merge({&mask_a, &mask_b});
   return evaluate_expression(expr, memory);
 }
 

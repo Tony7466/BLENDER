@@ -20,7 +20,7 @@ TEST(index_mask_expression, Union)
   const IndexMask mask_b = IndexMask::from_initializers({IndexRange(10, 10), 60, 200}, memory);
 
   ExprBuilder builder;
-  const Expr &expr = builder.merge(&mask_a, &mask_b);
+  const Expr &expr = builder.merge({&mask_a, &mask_b});
   const IndexMask union_mask = evaluate_expression(expr, memory);
 
   EXPECT_EQ(union_mask,
@@ -81,7 +81,7 @@ TEST(index_mask_expression, Intersection)
       {5, 6, IndexRange(100, 100), 80000, 100'000}, memory);
 
   ExprBuilder builder;
-  const Expr &expr = builder.intersect(&mask_a, &mask_b);
+  const Expr &expr = builder.intersect({&mask_a, &mask_b});
   const IndexMask intersection_mask = evaluate_expression(expr, memory);
 
   EXPECT_EQ(intersection_mask,
@@ -95,7 +95,7 @@ TEST(index_mask_expression, Difference)
   const IndexMask mask_b = IndexMask::from_initializers({5, 60, IndexRange(100, 20)}, memory);
 
   ExprBuilder builder;
-  const Expr &expr = builder.subtract(&mask_a, &mask_b);
+  const Expr &expr = builder.subtract(&mask_a, {&mask_b});
   const IndexMask difference_mask = evaluate_expression(expr, memory);
 
   EXPECT_EQ(difference_mask,
@@ -111,7 +111,7 @@ TEST(index_mask_expression, FizzBuzz)
 
   {
     ExprBuilder builder;
-    const Expr &expr = builder.merge(&mask_3, &mask_5);
+    const Expr &expr = builder.merge({&mask_3, &mask_5});
     const IndexMask result = evaluate_expression(expr, memory);
     EXPECT_EQ(
         result,
@@ -120,20 +120,20 @@ TEST(index_mask_expression, FizzBuzz)
   }
   {
     ExprBuilder builder;
-    const Expr &expr = builder.intersect(&mask_3, &mask_5);
+    const Expr &expr = builder.intersect({&mask_3, &mask_5});
     const IndexMask result = evaluate_expression(expr, memory);
     EXPECT_EQ(result, IndexMask::from_initializers({0, 15, 30}, memory));
   }
   {
     ExprBuilder builder;
-    const Expr &expr = builder.subtract(&mask_3, &mask_5);
+    const Expr &expr = builder.subtract(&mask_3, {&mask_5});
     const IndexMask result = evaluate_expression(expr, memory);
     EXPECT_EQ(result, IndexMask::from_initializers({3, 6, 9, 12, 18, 21, 24, 27}, memory));
   }
   {
     ExprBuilder builder;
-    const Expr &expr = builder.merge(&builder.intersect(&mask_3, &mask_5),
-                                     &builder.subtract(&mask_3, &mask_5));
+    const Expr &expr = builder.merge(
+        {&builder.intersect({&mask_3, &mask_5}), &builder.subtract(&mask_3, {&mask_5})});
     const IndexMask &result = evaluate_expression(expr, memory);
     EXPECT_EQ(result,
               IndexMask::from_initializers({0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30}, memory));
@@ -147,7 +147,7 @@ TEST(index_mask_expression, UnionLargeRanges)
   const IndexMask mask_b(IndexRange(900'000, 1'100'000));
 
   ExprBuilder builder;
-  const Expr &expr = builder.merge(&mask_a, &mask_b);
+  const Expr &expr = builder.merge({&mask_a, &mask_b});
   const IndexMask result_mask = evaluate_expression(expr, memory);
 
   EXPECT_EQ(result_mask, IndexMask(IndexRange(0, 2'000'000)));
@@ -166,9 +166,9 @@ TEST(index_mask_expression, Benchmark)
     const IndexMask a = IndexMask::from_every_nth(3, 1'000'000, 0, m);
     const IndexMask b = IndexMask::from_every_nth(100, 5'000, 0, m);
     ExprBuilder builder;
-    const Expr &expr = builder.merge(&a, &b);
-    const Expr &expr_2 = builder.intersect(&expr, &expr);
-    const Expr &expr_3 = builder.merge(&expr, &expr_2);
+    const Expr &expr = builder.merge({&a, &b});
+    const Expr &expr_2 = builder.intersect({&expr, &expr});
+    const Expr &expr_3 = builder.merge({&expr, &expr_2});
 
     SCOPED_TIMER("benchmark");
     for ([[maybe_unused]] const int64_t _2 : IndexRange(iterations)) {
