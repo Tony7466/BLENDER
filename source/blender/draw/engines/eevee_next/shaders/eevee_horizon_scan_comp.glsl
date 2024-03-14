@@ -29,12 +29,12 @@ void main()
 
   /* Do not trace where nothing was rendered. */
   if (texelFetch(gbuf_header_tx, texel_fullres, 0).r == 0u) {
-    /* Unfortunately, since we are denoising using 3x3 neighboorhood, we have to clear the
-     * un-scanned pixels to avoid interpolation with bad neighbor. */
+#if 0 /* This is not needed as the next stage doesn't do bilinear filtering. */
     imageStore(horizon_radiance_0_img, texel, vec4(0.0));
     imageStore(horizon_radiance_1_img, texel, vec4(0.0));
     imageStore(horizon_radiance_2_img, texel, vec4(0.0));
     imageStore(horizon_radiance_3_img, texel, vec4(0.0));
+#endif
     return;
   }
 

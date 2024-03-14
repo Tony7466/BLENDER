@@ -65,6 +65,16 @@ float sample_weight_get(
   return depth_weight * spatial_weight * normal_weight;
 }
 
+SphericalHarmonicL1 load_spherical_harmonic(ivec2 texel)
+{
+  SphericalHarmonicL1 sh;
+  sh.L0.M0 = texelFetch(in_sh_0_tx, texel, 0);
+  sh.L1.Mn1 = texelFetch(in_sh_1_tx, texel, 0);
+  sh.L1.M0 = texelFetch(in_sh_2_tx, texel, 0);
+  sh.L1.Mp1 = texelFetch(in_sh_3_tx, texel, 0);
+  return sh;
+}
+
 void main()
 {
   const uint tile_size = RAYTRACE_GROUP_SIZE;
@@ -91,44 +101,24 @@ void main()
     return;
   }
 
-  SphericalHarmonicL1 accum_sh;
-  /* Center texel. */
-  accum_sh.L0.M0 = texelFetch(in_sh_0_tx, texel, 0);
-  accum_sh.L1.Mn1 = texelFetch(in_sh_1_tx, texel, 0);
-  accum_sh.L1.M0 = texelFetch(in_sh_2_tx, texel, 0);
-  accum_sh.L1.Mp1 = texelFetch(in_sh_3_tx, texel, 0);
-  float accum_weight = 1.0;
-
-  /* Sample around the center texel, sampling in pairs of adjacent texels. */
-  ivec2 sample_offset = ivec2(1, 0);
-  for (int i = 0; i < 4; i++) {
-    sample_offset = orthogonal(sample_offset);
-    ivec2 sample_offset_0 = sample_offset;
-    ivec2 sample_offset_1 = sample_offset + orthogonal(sample_offset);
-    ivec2 sample_texel_0 = texel + sample_offset_0;
-    ivec2 sample_texel_1 = texel + sample_offset_1;
-    vec2 sample_uv_0 = (vec2(sample_texel_0) + 0.5) * texel_size;
-    vec2 sample_uv_1 = (vec2(sample_texel_1) + 0.5) * texel_size;
-
-    /* Compute weight for this sample pair. */
-    float sample_weight_0 = sample_weight_get(
-        center_N, center_P, sample_texel_0, sample_uv_0, sample_offset_0);
-    float sample_weight_1 = sample_weight_get(
-        center_N, center_P, sample_texel_1, sample_uv_1, sample_offset_1);
-    float sample_weight_combined = sample_weight_0 + sample_weight_1;
-    float sample_mix = sample_weight_1 * safe_rcp(sample_weight_combined);
-
-    /* Custom "linear" fetch to reduce texture fetches by two. */
-    vec2 sample_uv = mix(sample_uv_0, sample_uv_1, sample_mix);
-
-    SphericalHarmonicL1 sample_sh;
-    sample_sh.L0.M0 = texture(in_sh_0_tx, sample_uv);
-    sample_sh.L1.Mn1 = texture(in_sh_1_tx, sample_uv);
-    sample_sh.L1.M0 = texture(in_sh_2_tx, sample_uv);
-    sample_sh.L1.Mp1 = texture(in_sh_3_tx, sample_uv);
-
-    accum_sh = spherical_harmonics_madd(sample_sh, sample_weight_combined, accum_sh);
-    accum_weight += sample_weight_combined;
+  SphericalHarmonicL1 accum_sh = spherical_harmonics_L1_new();
+  float accum_weight = 0.0;
+  /* 3x3 filter. */
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      ivec2 sample_offset = ivec2(x, y);
+      ivec2 sample_texel = texel + sample_offset;
+      vec2 sample_uv = (vec2(sample_texel) + 0.5) * texel_size;
+      float sample_weight = sample_weight_get(
+          center_N, center_P, sample_texel, sample_uv, sample_offset);
+      /* We need to avoid sampling if there no weight as the texture values could be undefined
+       * (is_valid is false). */
+      if (sample_weight > 0.0) {
+        SphericalHarmonicL1 sample_sh = load_spherical_harmonic(sample_texel);
+        accum_sh = spherical_harmonics_madd(sample_sh, sample_weight, accum_sh);
+        accum_weight += sample_weight;
+      }
+    }
   }
   accum_sh = spherical_harmonics_mul(accum_sh, safe_rcp(accum_weight));
 
