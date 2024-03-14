@@ -442,17 +442,38 @@ ccl_device_forceinline float area_light_max_extent(const ccl_global KernelAreaLi
 /* Compute the range of the ray lit by the spot light. Conservative estimation with the smallest
  * possible cone covering the whole spread. */
 ccl_device_inline bool area_light_valid_ray_segment(const ccl_global KernelAreaLight *light,
-                                                    float3 P,
+                                                    const float3 P,
                                                     const float3 D,
                                                     ccl_private float2 *t_range)
 {
-  /* Slide the apex along the axis. */
-  /* TODO(weizhen): intersect with bounding box when the spread is (close to) zero. */
-  P += area_light_max_extent(light) / light->tan_half_spread * light->dir;
+  /* Map to local coordinate of the light. Do not use `itfm` in `KernelLight` as there might be
+   * non-uniform scaling. */
+  const Transform tfm = make_transform(light->axis_u, light->axis_v, light->dir);
+  const float3 local_P = transform_point(&tfm, P);
+  const float3 local_D = transform_direction(&tfm, D);
+
+  /* The apex is found by sliding the center along the axis. */
+  /* TODO(weizhen): intersect with bounding box/cylinder when the spread is (close to) zero. */
+  const float3 axis = make_float3(0.0f, 0.0f, 1.0f);
+  const float3 apex = local_P + area_light_max_extent(light) / light->tan_half_spread * axis;
   const float cos_angle_sq = 1.0f / (1.0f + sqr(light->tan_half_spread));
 
-  /* TODO(weizhen): limit the range to the side of the area light. */
-  return ray_cone_intersect(light->dir, P, D, cos_angle_sq, t_range);
+  if (!ray_cone_intersect(axis, apex, local_D, cos_angle_sq, t_range)) {
+    return false;
+  }
+
+  /* Distance from P to area light plane */
+  const float t = -local_P.z / local_D.z;
+
+  /* Limit the range to the positive side of the area light. */
+  if (local_D.z > 0.0f) {
+    t_range->x = fmaxf(t_range->x, t);
+  }
+  else {
+    t_range->y = fminf(t_range->y, t);
+  }
+
+  return t_range->x < t_range->y;
 }
 
 template<bool in_volume_segment>
