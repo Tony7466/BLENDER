@@ -1058,29 +1058,22 @@ static ExactEvalMode determine_exact_eval_mode(const Expr &root_expression)
   return ExactEvalMode::Indices;
 }
 
-static IndexMask evaluate_expression_impl(const Expr &root_expression,
-                                          IndexMaskMemory &memory,
-                                          const ExactEvalMode exact_eval_mode)
+static void evaluate_coarse_and_split_until_segments_are_short(
+    const Expr &root_expression,
+    const Span<const Expr *> eager_eval_order,
+    Vector<EvaluatedSegment, 16> &r_evaluated_segments,
+    Vector<IndexRange, 16> &r_short_unknown_segments)
 {
-  /* Non-overlapping evaluated segments which become the resulting index mask in the end. Note that
-   * these segments are only sorted in the end. */
-  Vector<EvaluatedSegment, 16> evaluated_segments;
   /* Coarse evaluation splits the full range into segments. Long segments are split up and get
    * another coarse evaluation. Short segments will be evaluated exactly. */
   Stack<IndexRange, 16> long_unknown_segments;
-  Vector<IndexRange, 16> short_unknown_segments;
 
   /* The point at which a range starts being "short". */
   const int64_t coarse_segment_size_threshold = max_segment_size;
 
-  /* Precompute the evaluation order here, because it's used potentially many times throughout the
-   * algorithm. */
-  const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
-      root_expression);
-
   /* Checks the coarse results and inserts its segments into either `long_unknown_segments` for
-   * further coarse evaluation, `short_unknown_segments` for exact evaluation or
-   * `evaluated_segments` if no further evaluation is necessary. */
+   * further coarse evaluation, `r_short_unknown_segments` for exact evaluation or
+   * `r_evaluated_segments` if no further evaluation is necessary. */
   auto handle_coarse_result = [&](const CoarseResult &coarse_result) {
     for (const CoarseSegment &segment : coarse_result.segments) {
       switch (segment.type) {
@@ -1089,17 +1082,18 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
             long_unknown_segments.push(segment.bounds);
           }
           else {
-            short_unknown_segments.append(segment.bounds);
+            r_short_unknown_segments.append(segment.bounds);
           }
           break;
         }
         case CoarseSegment::Type::Copy: {
           BLI_assert(segment.mask);
-          evaluated_segments.append({EvaluatedSegment::Type::Copy, segment.bounds, segment.mask});
+          r_evaluated_segments.append(
+              {EvaluatedSegment::Type::Copy, segment.bounds, segment.mask});
           break;
         }
         case CoarseSegment::Type::Full: {
-          evaluated_segments.append({EvaluatedSegment::Type::Full, segment.bounds});
+          r_evaluated_segments.append({EvaluatedSegment::Type::Full, segment.bounds});
           break;
         }
       }
@@ -1123,6 +1117,24 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
     handle_coarse_result(left_result);
     handle_coarse_result(right_result);
   }
+}
+
+static IndexMask evaluate_expression_impl(const Expr &root_expression,
+                                          IndexMaskMemory &memory,
+                                          const ExactEvalMode exact_eval_mode)
+{
+  /* Precompute the evaluation order here, because it's used potentially many times throughout the
+   * algorithm. */
+  const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
+      root_expression);
+
+  /* Non-overlapping evaluated segments which become the resulting index mask in the end. Note that
+   * these segments are only sorted in the end. */
+  Vector<EvaluatedSegment, 16> evaluated_segments;
+  Vector<IndexRange, 16> short_unknown_segments;
+
+  evaluate_coarse_and_split_until_segments_are_short(
+      root_expression, eager_eval_order, evaluated_segments, short_unknown_segments);
 
   /* Evaluate a segment exactly. */
   auto evaluate_unknown_segment = [&](const IndexRange bounds,
