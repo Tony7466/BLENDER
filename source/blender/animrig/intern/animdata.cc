@@ -77,6 +77,37 @@ bAction *id_action_ensure(Main *bmain, ID *id)
   return adt->action;
 }
 
+Animation *id_animation_ensure(Main *bmain, ID *id)
+{
+  BLI_assert(id != nullptr);
+
+  AnimData *adt = BKE_animdata_from_id(id);
+  if (adt == nullptr) {
+    adt = BKE_animdata_ensure_id(id);
+  }
+
+  if (adt == nullptr) {
+    /* If still none (as not allowed to add, or ID doesn't have animdata for some reason) */
+    printf("ERROR: Couldn't add AnimData (ID = %s)\n", (id) ? (id->name) : "<None>");
+    return nullptr;
+  }
+
+  if (adt->animation != nullptr) {
+    return &adt->animation->wrap();
+  }
+
+  Animation *anim = static_cast<Animation *>(BKE_id_new(bmain, ID_AN, "Animation"));
+  Binding *binding = anim->find_suitable_binding_for(*id);
+  const bool assign_result = anim->assign_id(binding, *id);
+  if (!assign_result) {
+    return nullptr;
+  }
+
+  DEG_relations_tag_update(bmain);
+  DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
+  return anim;
+}
+
 void animdata_fcurve_delete(bAnimContext *ac, AnimData *adt, FCurve *fcu)
 {
   /* - If no AnimData, we've got nowhere to remove the F-Curve from

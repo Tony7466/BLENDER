@@ -13,6 +13,7 @@
 #include <fmt/format.h>
 
 #include "ANIM_action.hh"
+#include "ANIM_animation.hh"
 #include "ANIM_animdata.hh"
 #include "ANIM_fcurve.hh"
 #include "ANIM_keyframing.hh"
@@ -994,6 +995,11 @@ static blender::Vector<float> get_keyframe_values(PointerRNA *ptr,
   return values;
 }
 
+static void insert_key_anim(PointerRNA *rna_pointer, Main *bmain)
+{
+  Animation *anim = id_animation_ensure(bmain, rna_pointer->owner_id);
+}
+
 void insert_key_rna(PointerRNA *rna_pointer,
                     const blender::Span<std::string> rna_paths,
                     const float scene_frame,
@@ -1004,6 +1010,22 @@ void insert_key_rna(PointerRNA *rna_pointer,
                     const AnimationEvalContext &anim_eval_context)
 {
   ID *id = rna_pointer->owner_id;
+  AnimData *adt;
+
+  /* init animdata if none available yet */
+  adt = BKE_animdata_from_id(id);
+  if (adt == nullptr) {
+    adt = BKE_animdata_ensure_id(id);
+  }
+  if (adt == nullptr) {
+    return;
+  }
+
+  if (!adt->action) {
+    insert_key_anim(rna_pointer, bmain);
+    return;
+  }
+
   bAction *action = id_action_ensure(bmain, id);
   if (action == nullptr) {
     BKE_reportf(reports,
@@ -1014,7 +1036,7 @@ void insert_key_rna(PointerRNA *rna_pointer,
     return;
   }
 
-  AnimData *adt = BKE_animdata_from_id(id);
+  // AnimData *adt = BKE_animdata_from_id(id);
 
   /* Keyframing functions can deal with the nla_context being a nullptr. */
   ListBase nla_cache = {nullptr, nullptr};
