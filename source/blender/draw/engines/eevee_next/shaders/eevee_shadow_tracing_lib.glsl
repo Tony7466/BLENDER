@@ -475,13 +475,10 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
     pcf_offset *= pcf_scale;
   }
   else {
+    bool is_perspective = drw_view_is_perspective();
     float dist_to_cam = distance(P, drw_view_position());
-    float perspective_division = 1.0;
-    if (drw_view_is_perspective()) {
-      perspective_division = distance(P, drw_view_position());
-    }
     float footprint_ratio = shadow_punctual_footprint_ratio(
-        light, P, perspective_division, uniform_buf.shadow.tilemap_projection_ratio);
+        light, P, is_perspective, dist_to_cam, uniform_buf.shadow.tilemap_projection_ratio);
     float lod = -log2(footprint_ratio) + light.lod_bias;
     lod = clamp(lod, 0.0, float(SHADOW_TILEMAP_LOD));
     float pcf_scale = pow(2.0, lod);

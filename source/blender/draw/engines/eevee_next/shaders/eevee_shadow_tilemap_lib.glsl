@@ -132,19 +132,14 @@ float shadow_directional_level_fractional(LightData light, vec3 lP)
 
 int shadow_directional_level(LightData light, vec3 lP)
 {
-  int clipmap_lod = int(ceil(shadow_directional_level_fractional(light, lP)));
-  return clamp(clipmap_lod, light.clipmap_lod_min, light.clipmap_lod_max);
+  return int(ceil(shadow_directional_level_fractional(light, lP)));
 }
 
-/**
- * How much a tilemap pixel covers a final image pixel.
- *
- * \a perspective_division The distance from P to camera in perspective views, 1.0 for
- * orthographic.
- */
+/* How much a tilemap pixel covers a final image pixel. */
 float shadow_punctual_footprint_ratio(LightData light,
                                       vec3 P,
-                                      float perspective_division,
+                                      bool is_perspective,
+                                      float dist_to_cam,
                                       float tilemap_projection_ratio)
 {
   /* We project a shadow map pixel (as a sphere for simplicity) to the receiver plane.
@@ -156,7 +151,9 @@ float shadow_punctual_footprint_ratio(LightData light,
   float footprint_ratio = dist_to_light;
   /* Project the radius to the screen. 1 unit away from the camera the same way
    * pixel_world_radius_inv was computed. Not needed in orthographic mode. */
-  footprint_ratio /= perspective_division;
+  if (is_perspective) {
+    footprint_ratio /= dist_to_cam;
+  }
   /* Apply resolution ratio. */
   footprint_ratio *= tilemap_projection_ratio;
   /* Take the frustum padding into account. */

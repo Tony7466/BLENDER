@@ -110,12 +110,8 @@ void shadow_tag_usage_tilemap_punctual(
   /* TODO(fclem): 3D shift for jittered soft shadows. */
   lP += vec3(0.0, 0.0, -light.shadow_projection_shift);
 
-  float perspective_division = 1.0;
-  if (drw_view_is_perspective()) {
-    perspective_division = dist_to_cam;
-  }
   float footprint_ratio = shadow_punctual_footprint_ratio(
-      light, P, perspective_division, tilemap_projection_ratio);
+      light, P, drw_view_is_perspective(), dist_to_cam, tilemap_projection_ratio);
 
   if (radius == 0) {
     int face_id = shadow_punctual_face_index_get(lP);
