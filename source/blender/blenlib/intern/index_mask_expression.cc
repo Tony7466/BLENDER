@@ -1132,6 +1132,7 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
         /* #evaluate_exact_with_indices requires that all index masks have a single segment in the
          * provided bounds. So split up the range into subranges first if necessary. */
         Vector<int64_t> segment_boundaries;
+        segment_boundaries.extend({bounds.first(), bounds.one_after_last()});
         for (const int64_t eval_order_i : eager_eval_order.index_range()) {
           const Expr &expr = *eager_eval_order[eval_order_i];
           if (expr.type != Expr::Type::Atomic) {
@@ -1139,10 +1140,14 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
           }
           const AtomicExpr &atomic_expr = expr.as_atomic();
           const IndexMask mask = atomic_expr.mask->slice_content(bounds);
-          mask.foreach_segment([&](const IndexMaskSegment &segment) {
+          const int64_t segments_num = mask.segments_num();
+          if (segments_num <= 1) {
+            continue;
+          }
+          for (const int64_t segment_i : IndexRange(segments_num).drop_front(1)) {
+            const IndexMaskSegment segment = mask.segment(segment_i);
             segment_boundaries.append(segment[0]);
-            segment_boundaries.append(segment.last() + 1);
-          });
+          }
         }
         std::sort(segment_boundaries.begin(), segment_boundaries.end());
         for (const int64_t boundary_i : segment_boundaries.index_range().drop_back(1)) {

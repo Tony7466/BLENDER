@@ -140,6 +140,20 @@ TEST(index_mask_expression, FizzBuzz)
   }
 }
 
+TEST(index_mask_expression, UnionToFullRange)
+{
+  IndexMaskMemory memory;
+  const IndexMask mask_1 = IndexMask::from_initializers({2, 4, 5, 7}, memory);
+  const IndexMask mask_2 = IndexMask::from_initializers({6, 8}, memory);
+  const IndexMask mask_3 = IndexMask::from_initializers({1, 3}, memory);
+
+  ExprBuilder builder;
+  const Expr &expr = builder.merge({&mask_1, &mask_2, &mask_3});
+  const IndexMask result = evaluate_expression(expr, memory);
+  EXPECT_TRUE(result.to_range().has_value());
+  EXPECT_EQ(*result.to_range(), IndexRange::from_begin_end_inclusive(1, 8));
+}
+
 TEST(index_mask_expression, UnionLargeRanges)
 {
   IndexMaskMemory memory;
