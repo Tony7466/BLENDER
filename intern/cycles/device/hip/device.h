@@ -14,6 +14,8 @@ class DeviceInfo;
 class Profiler;
 class Stats;
 
+bool device_hip_oidn_init();
+
 bool device_hip_init();
 
 Device *device_hip_create(const DeviceInfo &info, Stats &stats, Profiler &profiler);

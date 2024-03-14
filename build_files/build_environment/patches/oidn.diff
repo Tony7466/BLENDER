@@ -73,3 +73,52 @@ index ae14ced..a49e131 100644
      else
        return HIPArch::Unknown;
    }
+diff --git a/core/context.h b/core/context.h
+index 2245fa4..f808878 100644
+--- a/core/context.h
++++ b/core/context.h
+@@ -63,10 +63,6 @@ OIDN_NAMESPACE_BEGIN
+         if (getEnvVarOrDefault("OIDN_DEVICE_CUDA", 1))
+           OIDN_INIT_MODULE(device_cuda);
+       #endif
+-      #if defined(OIDN_DEVICE_HIP)
+-        if (getEnvVarOrDefault("OIDN_DEVICE_HIP", 1))
+-          OIDN_INIT_MODULE(device_hip);
+-      #endif
+       #if defined(OIDN_DEVICE_METAL)
+         if (getEnvVarOrDefault("OIDN_DEVICE_METAL", 1))
+           OIDN_INIT_STATIC_MODULE(device_metal);
+@@ -77,6 +73,20 @@ OIDN_NAMESPACE_BEGIN
+                   [](const Ref<PhysicalDevice>& a, const Ref<PhysicalDevice>& b)
+                   { return a->score > b->score; });
+       });
++
++      #if defined(OIDN_DEVICE_HIP)
++      if (getEnvVarOrDefault("OIDN_DEVICE_HIP", 1)) {
++        std::call_once(hipInitFlag, [this]()
++        {
++          OIDN_INIT_MODULE(device_hip);
++
++          // Sort the physical devices by score
++          std::sort(physicalDevices.begin(), physicalDevices.end(),
++                    [](const Ref<PhysicalDevice>& a, const Ref<PhysicalDevice>& b)
++                    { return a->score > b->score; });
++        });
++      }
++      #endif
+     }
+ 
+     bool isDeviceSupported(DeviceType type) const;
+@@ -92,9 +102,10 @@ OIDN_NAMESPACE_BEGIN
+     Context& operator =(const Context&) = delete;
+ 
+     std::once_flag initFlag;
++    std::once_flag hipInitFlag;
+     ModuleLoader modules;
+     std::map<DeviceType, std::unique_ptr<DeviceFactory>> deviceFactories;
+     std::vector<Ref<PhysicalDevice>> physicalDevices;
+   };
+ 
+-OIDN_NAMESPACE_END
+\ No newline at end of file
++OIDN_NAMESPACE_END

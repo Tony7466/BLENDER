@@ -22,6 +22,45 @@
 
 CCL_NAMESPACE_BEGIN
 
+bool device_hip_oidn_init()
+{
+  /* Disable OIDN when any HIP device is present that is not supported by OIDN.
+   * In older drivers, this may crash with message:
+   * "hipErrorNoBinaryForGpu: Unable to find code object for all current devices". */
+  static bool initialized = false;
+
+  if (!initialized) {
+#ifdef _WIN32
+    _putenv_s("OIDN_DEVICE_HIP", "0");
+#else
+    setenv("OIDN_DEVICE_HIP", "0", true);
+#endif
+    initialized = true;
+  }
+}
+
+#ifdef WITH_HIP
+static void device_hip_oidn_enable_safe(const int device_count)
+{
+#  if defined(WITH_OPENIMAGEDENOISE)
+  bool can_use_oidn = true;
+  for (int num = 0; num < device_count; num++) {
+    if (!hipSupportsDeviceOIDN(num)) {
+      can_use_oidn = false;
+    }
+  }
+
+  if (can_use_oidn) {
+#    ifdef _WIN32
+    _putenv_s("OIDN_DEVICE_HIP", "1");
+#    else
+    setenv("OIDN_DEVICE_HIP", "1", true);
+#    endif
+  }
+#  endif
+}
+#endif /* WITH_HIP */
+
 bool device_hip_init()
 {
 #if !defined(WITH_HIP)
@@ -110,29 +149,6 @@ static hipError_t device_hip_safe_init()
   return hipInit(0);
 #  endif
 }
-
-static void device_hip_disable_oidn_for_buggy_driver(const int device_count)
-{
-#  if defined(WITH_OPENIMAGEDENOISE)
-  /* Disable OIDN when any HIP device is present that is not supported by OIDN.
-   * In older drivers, this may crash with message:
-   * "hipErrorNoBinaryForGpu: Unable to find code object for all current devices". */
-  bool can_use_oidn = true;
-  for (int num = 0; num < device_count; num++) {
-    if (!hipSupportsDeviceOIDN(num)) {
-      can_use_oidn = false;
-    }
-  }
-
-  if (!can_use_oidn) {
-#    ifdef _WIN32
-    _putenv_s("OIDN_DEVICE_HIP", "0");
-#    else
-    setenv("OIDN_DEVICE_HIP", "0", true);
-#    endif
-  }
-#  endif
-}
 #endif /* WITH_HIP */
 
 void device_hip_info(vector<DeviceInfo> &devices)
@@ -152,7 +168,7 @@ void device_hip_info(vector<DeviceInfo> &devices)
     return;
   }
 
-  device_hip_disable_oidn_for_buggy_driver(count);
+  device_hip_oidn_enable_safe(count);
 
 #  ifdef WITH_HIPRT
   const bool has_hardware_raytracing = hiprtewInit();
