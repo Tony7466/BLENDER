@@ -1,2 +1,3 @@
 Referenced by issue #119387, Graph Editor - precision mode doesn't activate
 Referenced by issue #119395, Rotation Precision Increment (Shift+Ctrl) doesn't work properly if you press Shift first and then Ctrl
+Referenced by commit 09666e149871769b5b77ac8c2a404e3a4ea35f30, Fix #119387: Precision transform fails to activate
