@@ -30,26 +30,48 @@
 
 namespace blender::index_mask {
 
+/**
+ * Number of expression terms which don't require extra allocations in some places.
+ */
 constexpr int64_t inline_expr_array_size = 16;
 
+/**
+ * The result of the coarse evaluation for a specific index range.
+ */
 struct CoarseSegment {
   enum class Type {
+    /**
+     * Coarse evaluation couldn't fully resolve this segment. The segment requires another
+     * evaluation that is more detailed.
+     */
     Unknown,
+    /** All indices in the segment are part of the result. */
     Full,
+    /** The evaluated result of this segment is just the copy of an input index mask. */
     Copy,
   };
   Type type = Type::Unknown;
   IndexRange bounds;
+  /** Mask used when the type is #Copy. */
   const IndexMask *mask = nullptr;
 };
 
+/** Contains the result of a coarse evaluation split into potentially many segments. */
 struct CoarseResult {
   Vector<CoarseSegment> segments;
 };
 
+/** Used during coarse evaluation to split the full range into multiple segments. */
 struct CourseBoundary {
+  /**
+   * The position of the boundary. The boundary is right before this index. So if this boundary is
+   * a beginning of a segment, the index marks the first element. If it is the end, the index marks
+   * the one-after-last position.
+   */
   int64_t index;
+  /** Whether this boundary is the beginning or end of the segment below. */
   bool is_begin;
+  /** The segment this boundary comes from. */
   const CoarseSegment *segment;
 };
 
@@ -58,21 +80,44 @@ struct DifferenceCourseBoundary : public CourseBoundary {
   bool is_main;
 };
 
+/**
+ * Result of the expression evaluation within a specific index range. Sometimes this can be derived
+ * directly from the coarse evaluation, but sometimes an additional exact evaluation is necessary.
+ */
 struct EvaluatedSegment {
   enum class Type {
+    /** All indices in this segment are part of the evaluated index mask. */
     Full,
+    /** The result in this segment is the same as what is contained in the #copy_mask below. */
     Copy,
+    /** The result comes from exact evaluation and is a new set of indices. */
     Indices,
   };
 
   Type type = Type::Indices;
   IndexRange bounds;
+  /** Only used when the type is #Type::Copy. */
   const IndexMask *copy_mask = nullptr;
+  /** Only used when the type is #Type::Indices. */
   IndexMaskSegment indices;
 };
 
+/**
+ * There are different ways to do the exact evaluation. Depending on the expression or data, one
+ * or the other is more efficient.
+ */
 enum class ExactEvalMode {
+  /**
+   * Does the evaluation by working directly with arrays of sorted indices. This is usually best
+   * when the expression does not have intermediate results, i.e. it is very simple.
+   */
   Indices,
+  /**
+   * The evaluation works with bits. There is extra overhead to convert the input masks to bit
+   * arrays and to convert the final result back into indices. In exchange, the actual expression
+   * evaluation is significantly cheaper because it's just a bunch of bit operations. For larger
+   * expressions, this is typically much more efficient.
+   */
   Bits,
 };
 
@@ -83,6 +128,16 @@ static void sort_course_boundaries(MutableSpan<CourseBoundary> boundaries)
             [](const CourseBoundary &a, const CourseBoundary &b) { return a.index < b.index; });
 }
 
+static void sort_course_boundaries(MutableSpan<DifferenceCourseBoundary> boundaries)
+{
+  std::sort(boundaries.begin(),
+            boundaries.end(),
+            [](const DifferenceCourseBoundary &a, const DifferenceCourseBoundary &b) {
+              return a.index < b.index;
+            });
+}
+
+/** Extends a previous full segment or appends a new one. */
 static CoarseSegment &make_coarse_segment__full(CoarseSegment *prev_segment,
                                                 const int64_t prev_boundary_index,
                                                 const int64_t current_boundary_index,
@@ -91,9 +146,7 @@ static CoarseSegment &make_coarse_segment__full(CoarseSegment *prev_segment,
   if (prev_segment && prev_segment->type == CoarseSegment::Type::Full &&
       prev_segment->bounds.one_after_last() == prev_boundary_index)
   {
-    /* Extend previous segment. */
-    prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
-                                                      current_boundary_index);
+    prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
     return *prev_segment;
   }
   result.segments.append(
@@ -102,6 +155,7 @@ static CoarseSegment &make_coarse_segment__full(CoarseSegment *prev_segment,
   return result.segments.last();
 }
 
+/** Extends a previous unknown segment or appends a new one. */
 static CoarseSegment &make_coarse_segment__unknown(CoarseSegment *prev_segment,
                                                    const int64_t prev_boundary_index,
                                                    const int64_t current_boundary_index,
@@ -110,9 +164,7 @@ static CoarseSegment &make_coarse_segment__unknown(CoarseSegment *prev_segment,
   if (prev_segment && prev_segment->type == CoarseSegment::Type::Unknown &&
       prev_segment->bounds.one_after_last() == prev_boundary_index)
   {
-    /* Extend previous segment. */
-    prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
-                                                      current_boundary_index);
+    prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
     return *prev_segment;
   }
   result.segments.append(
@@ -121,6 +173,7 @@ static CoarseSegment &make_coarse_segment__unknown(CoarseSegment *prev_segment,
   return result.segments.last();
 }
 
+/** Extends a previous copy segment or appends a new one. */
 static CoarseSegment &make_coarse_segment__copy(CoarseSegment *prev_segment,
                                                 const int64_t prev_boundary_index,
                                                 const int64_t current_boundary_index,
@@ -131,9 +184,7 @@ static CoarseSegment &make_coarse_segment__copy(CoarseSegment *prev_segment,
       prev_segment->bounds.one_after_last() == prev_boundary_index &&
       prev_segment->mask == &copy_from_mask)
   {
-    /* Extend previous segment. */
-    prev_segment->bounds = IndexRange::from_begin_end(prev_segment->bounds.first(),
-                                                      current_boundary_index);
+    prev_segment->bounds = prev_segment->bounds.with_new_end(current_boundary_index);
     return *prev_segment;
   }
   result.segments.append({CoarseSegment::Type::Copy,
@@ -142,8 +193,7 @@ static CoarseSegment &make_coarse_segment__copy(CoarseSegment *prev_segment,
   return result.segments.last();
 }
 
-BLI_NOINLINE static void evaluate_coarse_union(const Span<CourseBoundary> boundaries,
-                                               CoarseResult &r_result)
+static void evaluate_coarse_union(const Span<CourseBoundary> boundaries, CoarseResult &r_result)
 {
   if (boundaries.is_empty()) {
     return;
@@ -156,6 +206,8 @@ BLI_NOINLINE static void evaluate_coarse_union(const Span<CourseBoundary> bounda
 
   for (const CourseBoundary &boundary : boundaries) {
     if (prev_boundary_index < boundary.index) {
+      /* Compute some properties of the input segments that were active between the current and the
+       * previous boundary. */
       bool has_full = false;
       bool has_unknown = false;
       bool copy_from_mask_unique = true;
@@ -179,6 +231,7 @@ BLI_NOINLINE static void evaluate_coarse_union(const Span<CourseBoundary> bounda
           }
         }
       }
+      /* Determine the resulting coarse segment type based on the properties computed above. */
       if (has_full) {
         prev_segment = &make_coarse_segment__full(
             prev_segment, prev_boundary_index, boundary.index, result);
@@ -195,6 +248,7 @@ BLI_NOINLINE static void evaluate_coarse_union(const Span<CourseBoundary> bounda
       prev_boundary_index = boundary.index;
     }
 
+    /* Update active segments. */
     if (boundary.is_begin) {
       active_segments.append(boundary.segment);
     }
@@ -204,9 +258,9 @@ BLI_NOINLINE static void evaluate_coarse_union(const Span<CourseBoundary> bounda
   }
 }
 
-BLI_NOINLINE static void evaluate_coarse_intersection(const Span<CourseBoundary> boundaries,
-                                                      const int64_t terms_num,
-                                                      CoarseResult &r_result)
+static void evaluate_coarse_intersection(const Span<CourseBoundary> boundaries,
+                                         const int64_t terms_num,
+                                         CoarseResult &r_result)
 {
   if (boundaries.is_empty()) {
     return;
@@ -222,6 +276,8 @@ BLI_NOINLINE static void evaluate_coarse_intersection(const Span<CourseBoundary>
       /* Only if one segment of each term is active, it's possible that the output contains
        * anything. */
       if (active_segments.size() == terms_num) {
+        /* Compute some properties of the input segments that were active between the current and
+         * previous boundary. */
         int full_count = 0;
         int unknown_count = 0;
         int copy_count = 0;
@@ -247,6 +303,7 @@ BLI_NOINLINE static void evaluate_coarse_intersection(const Span<CourseBoundary>
             }
           }
         }
+        /* Determine the resulting coarse segment type based on the properties computed above. */
         BLI_assert(full_count + unknown_count + copy_count == terms_num);
         if (full_count == terms_num) {
           prev_segment = &make_coarse_segment__full(
@@ -265,6 +322,7 @@ BLI_NOINLINE static void evaluate_coarse_intersection(const Span<CourseBoundary>
       prev_boundary_index = boundary.index;
     }
 
+    /* Update active segments. */
     if (boundary.is_begin) {
       active_segments.append(boundary.segment);
     }
@@ -274,8 +332,8 @@ BLI_NOINLINE static void evaluate_coarse_intersection(const Span<CourseBoundary>
   }
 }
 
-BLI_NOINLINE static void evaluate_coarse_difference(
-    const Span<DifferenceCourseBoundary> boundaries, CoarseResult &r_result)
+static void evaluate_coarse_difference(const Span<DifferenceCourseBoundary> boundaries,
+                                       CoarseResult &r_result)
 {
   if (boundaries.is_empty()) {
     return;
@@ -289,12 +347,14 @@ BLI_NOINLINE static void evaluate_coarse_difference(
 
   for (const DifferenceCourseBoundary &boundary : boundaries) {
     if (prev_boundary_index < boundary.index) {
+      /* There is only one main term, so at most one main segment can be active at once. */
       BLI_assert(active_main_segments.size() <= 1);
       if (active_main_segments.size() == 1) {
         const CoarseSegment &active_main_segment = *active_main_segments[0];
+        /* Compute some properties of the input segments that were active between the current and
+         * the previous boundary. */
         bool has_subtract_full = false;
-        bool subtract_copy_from_mask_unique = true;
-        const IndexMask *subtract_copy_from_mask = nullptr;
+        bool has_subtract_same_mask = false;
         for (const CoarseSegment *active_subtract_segment : active_subtract_segments) {
           switch (active_subtract_segment->type) {
             case CoarseSegment::Type::Unknown: {
@@ -305,19 +365,18 @@ BLI_NOINLINE static void evaluate_coarse_difference(
               break;
             }
             case CoarseSegment::Type::Copy: {
-              if (subtract_copy_from_mask != nullptr &&
-                  subtract_copy_from_mask != active_subtract_segment->mask)
-              {
-                subtract_copy_from_mask_unique = false;
+              if (active_main_segment.type == CoarseSegment::Type::Copy) {
+                if (active_main_segment.mask == active_subtract_segment->mask) {
+                  has_subtract_same_mask = true;
+                }
               }
-              subtract_copy_from_mask = active_subtract_segment->mask;
               break;
             }
           }
         }
-
+        /* Determine the resulting coarse segment type based on the properties computed above. */
         if (has_subtract_full) {
-          /* Do nothing. */
+          /* Do nothing, the resulting segment is empty for the current range. */
         }
         else {
           switch (active_main_segment.type) {
@@ -345,10 +404,8 @@ BLI_NOINLINE static void evaluate_coarse_difference(
                                                           *active_main_segment.mask,
                                                           result);
               }
-              else if (subtract_copy_from_mask == active_main_segment.mask &&
-                       subtract_copy_from_mask_unique)
-              {
-                /* Do nothing. */
+              else if (has_subtract_same_mask) {
+                /* Do nothing, subtracting a mask from itself results in an empty mask. */
               }
               else {
                 prev_segment = &make_coarse_segment__unknown(
@@ -363,6 +420,7 @@ BLI_NOINLINE static void evaluate_coarse_difference(
       prev_boundary_index = boundary.index;
     }
 
+    /* Update active segments. */
     if (boundary.is_main) {
       if (boundary.is_begin) {
         active_main_segments.append(boundary.segment);
@@ -382,14 +440,30 @@ BLI_NOINLINE static void evaluate_coarse_difference(
   }
 }
 
-BLI_NOINLINE static CoarseResult evaluate_coarse(
-    const Expr &root_expression,
-    const Span<const Expr *> eager_eval_order,
-    const std::optional<IndexRange> eval_bounds = std::nullopt)
+/**
+ * The coarse evaluation only looks at the index masks as a whole within the given bounds. This
+ * limitation allows it to do many operations in constant time independent of the number of indices
+ * within each mask. For example, it can detect that two full index masks that overlap result in a
+ * new full index mask when the union of intersection is computed.
+ *
+ * For more complex index-masks, coarse evaluation outputs segments with type
+ * #CoarseSegment::Type::Unknown. Those segments can be evaluated in more detail afterwards.
+ *
+ * \param root_expression: Expression to be evaluated.
+ * \param eager_eval_order: Pre-computed evaluation order. All children of a term must come before
+ *   the term itself.
+ * \param eval_bounds: If given, the evaluation is restriced to those bounds. Otherwise, the full
+ *   referenced masks are used.
+ */
+static CoarseResult evaluate_coarse(const Expr &root_expression,
+                                    const Span<const Expr *> eager_eval_order,
+                                    const std::optional<IndexRange> eval_bounds = std::nullopt)
 {
+  /* An expression result for each intermediate expression. */
   Array<std::optional<CoarseResult>, inline_expr_array_size> expression_results(
       root_expression.expression_array_size());
 
+  /* Process expressions in a pre-determined order. */
   for (const Expr *expression : eager_eval_order) {
     CoarseResult &expr_result = expression_results[expression->index].emplace();
     switch (expression->type) {
@@ -458,53 +532,20 @@ BLI_NOINLINE static CoarseResult evaluate_coarse(
             boundaries.append({{segment.bounds.one_after_last(), false, &segment}, false});
           }
         }
-        std::sort(boundaries.begin(),
-                  boundaries.end(),
-                  [](const DifferenceCourseBoundary &a, const DifferenceCourseBoundary &b) {
-                    return a.index < b.index;
-                  });
+        sort_course_boundaries(boundaries);
         evaluate_coarse_difference(boundaries, expr_result);
         break;
       }
     }
   }
 
-  const CoarseResult &final_result = *expression_results[root_expression.index];
-  return final_result;
+  CoarseResult &final_result = *expression_results[root_expression.index];
+  return std::move(final_result);
 }
 
-BLI_NOINLINE static void indices_to_bits(const int16_t *indices,
-                                         const int64_t indices_num,
-                                         uint64_t *r_bits,
-                                         const int64_t offset)
+static Span<int16_t> bits_to_indices(const BoundedBitSpan bits, LinearAllocator<> &allocator)
 {
-  for (int64_t i = 0; i < indices_num; i++) {
-    const uint64_t index = uint64_t(indices[i] + offset);
-    r_bits[index >> bits::BitToIntIndexShift] |= bits::mask_single_bit(index & bits::BitIndexMask);
-  }
-}
-
-BLI_NOINLINE static void mask_to_bits(const IndexMask &mask,
-                                      MutableBitSpan r_bits,
-                                      const int64_t offset)
-{
-  mask.foreach_segment_optimized([&](const auto segment) {
-    if constexpr (std::is_same_v<std::decay_t<decltype(segment)>, IndexRange>) {
-      const IndexRange range = segment;
-      const IndexRange shifted_range = range.shift(offset);
-      r_bits.slice(shifted_range).set_all();
-    }
-    else {
-      const IndexMaskSegment indices = segment;
-      indices_to_bits(
-          indices.base_span().data(), indices.size(), r_bits.data(), indices.offset() + offset);
-    }
-  });
-}
-
-BLI_NOINLINE static Span<int16_t> bits_to_indices(const BoundedBitSpan bits,
-                                                  LinearAllocator<> &allocator)
-{
+  /* TODO: Could first count the number of set bits. */
   Vector<int16_t, max_segment_size> indices_vec;
   bits::foreach_1_index(bits, [&](const int64_t i) {
     BLI_assert(i < max_segment_size);
@@ -513,18 +554,28 @@ BLI_NOINLINE static Span<int16_t> bits_to_indices(const BoundedBitSpan bits,
   return allocator.construct_array_copy<int16_t>(indices_vec);
 }
 
-BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_bits(
-    const Expr &root_expression,
-    LinearAllocator<> &allocator,
-    const IndexRange bounds,
-    const Span<const Expr *> eager_eval_order)
+/**
+ * Does an exact evaluation of the expression within the given bounds. The evaluation generally
+ * works in three steps:
+ * 1. Convert input indices into bit spans.
+ * 2. Use bit operations to evaluate the expression.
+ * 3. Convert resulting bit span back to indices.
+ *
+ * The trade-off here is that the actual expression evaluation is much faster but the conversions
+ * take some extra time. Therefore, this approach is best when the evaluation would otherwise take
+ * longer than the conversions which is usually the case for non-trivial expressions.
+ */
+static IndexMaskSegment evaluate_exact_with_bits(const Expr &root_expression,
+                                                 LinearAllocator<> &allocator,
+                                                 const IndexRange bounds,
+                                                 const Span<const Expr *> eager_eval_order)
 {
   BLI_assert(bounds.size() <= max_segment_size);
-  const int64_t segment_offset = bounds.start();
+  const int64_t bounds_min = bounds.start();
   const int expr_array_size = root_expression.expression_array_size();
   const int64_t ints_in_bounds = ceil_division(bounds.size(), bits::BitsPerInt);
 
-  BitGroupVector<1024 * 16> expression_results(
+  BitGroupVector<16 * 1024> expression_results(
       expr_array_size, ints_in_bounds * bits::BitsPerInt, false);
 
   for (const Expr *expression : eager_eval_order) {
@@ -533,7 +584,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_bits(
       case Expr::Type::Atomic: {
         const auto &expr = expression->as_atomic();
         const IndexMask mask = expr.mask->slice_content(bounds);
-        mask_to_bits(mask, expr_result, -segment_offset);
+        mask.to_bits(expr_result, -bounds_min);
         break;
       }
       case Expr::Type::Union: {
@@ -563,9 +614,10 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_bits(
   }
   const BoundedBitSpan final_bits = expression_results[root_expression.index];
   const Span<int16_t> indices = bits_to_indices(final_bits, allocator);
-  return IndexMaskSegment(segment_offset, indices);
+  return IndexMaskSegment(bounds_min, indices);
 }
 
+/** Compute a new set of indices that is the union of the given segments. */
 static IndexMaskSegment union_index_mask_segments(const Span<IndexMaskSegment> segments,
                                                   const int64_t bounds_min,
                                                   int16_t *r_values)
@@ -584,6 +636,8 @@ static IndexMaskSegment union_index_mask_segments(const Span<IndexMaskSegment> s
     return {bounds_min, {r_values, size}};
   }
 
+  /* Sort input segments by their size, so that smaller segments are unioned first. This results in
+   * smaller intermediate arrays and thus less work overall. */
   Vector<IndexMaskSegment> sorted_segments(segments);
   std::sort(
       sorted_segments.begin(),
@@ -591,10 +645,13 @@ static IndexMaskSegment union_index_mask_segments(const Span<IndexMaskSegment> s
       [](const IndexMaskSegment &a, const IndexMaskSegment &b) { return a.size() < b.size(); });
 
   std::array<int16_t, max_segment_size> tmp_indices;
+  /* Can use r_values for temporary values because if it's large enough for the final result, it's
+   * also large enough for intermediate results. */
   int16_t *buffer_a = r_values;
   int16_t *buffer_b = tmp_indices.data();
 
   if (sorted_segments.size() % 2 == 1) {
+    /* Swap buffers so that the result is in #r_values in the end. */
     std::swap(buffer_a, buffer_b);
   }
 
@@ -607,6 +664,9 @@ static IndexMaskSegment union_index_mask_segments(const Span<IndexMaskSegment> s
     count = std::set_union(a.begin(), a.end(), b.begin(), b.end(), dst) - dst;
   }
 
+  /* Union one input into the result at a time. In theory, one could write an algorithm that unions
+   * multiple sorted arrays at ones, but that's more complex and it's not obvious that it would be
+   * faster in the end. */
   for (const int64_t segment_i : sorted_segments.index_range().drop_front(2)) {
     const int16_t *a = buffer_a;
     const IndexMaskSegment b = sorted_segments[segment_i].shift(-bounds_min);
@@ -617,6 +677,7 @@ static IndexMaskSegment union_index_mask_segments(const Span<IndexMaskSegment> s
   return {bounds_min, {r_values, count}};
 }
 
+/** Compute a new set of indices that is the intersection of the given segments. */
 static IndexMaskSegment intersect_index_mask_segments(const Span<IndexMaskSegment> segments,
                                                       const int64_t bounds_min,
                                                       int16_t *r_values)
@@ -635,6 +696,8 @@ static IndexMaskSegment intersect_index_mask_segments(const Span<IndexMaskSegmen
     return {bounds_min, {r_values, size}};
   }
 
+  /* Intersect smaller segments first, because then the intermediate results will generally be
+   * smaller. */
   Vector<IndexMaskSegment> sorted_segments(segments);
   std::sort(
       sorted_segments.begin(),
@@ -658,6 +721,8 @@ static IndexMaskSegment intersect_index_mask_segments(const Span<IndexMaskSegmen
   for (const int64_t segment_i : sorted_segments.index_range().drop_front(2)) {
     const int16_t *a = buffer_a;
     const IndexMaskSegment b = sorted_segments[segment_i].shift(-bounds_min);
+    /* The result of the final intersection should be written directly to #r_values to avoid an
+     * additional copy in the end. */
     int16_t *dst = (segment_i == sorted_segments.size() - 1) ? r_values : buffer_b;
     count = std::set_intersection(a, a + count, b.begin(), b.end(), dst) - dst;
     std::swap(buffer_a, buffer_b);
@@ -665,6 +730,10 @@ static IndexMaskSegment intersect_index_mask_segments(const Span<IndexMaskSegmen
   return {bounds_min, {r_values, count}};
 }
 
+/**
+ * Compute a new set of indices that is the difference between the main-segment and all the
+ * subtract-segments.
+ */
 static IndexMaskSegment difference_index_mask_segments(
     const IndexMaskSegment main_segment,
     const Span<IndexMaskSegment> subtract_segments,
@@ -710,7 +779,7 @@ static IndexMaskSegment difference_index_mask_segments(
     return {bounds_min, {r_values, size}};
   }
 
-  /* Sort larger segments to the front. */
+  /* Sort larger segments to the front. This way the intermediate arrays are likely smaller. */
   Vector<IndexMaskSegment> sorted_subtract_segments(subtract_segments);
   std::sort(
       sorted_subtract_segments.begin(),
@@ -739,6 +808,7 @@ static IndexMaskSegment difference_index_mask_segments(
   for (const int64_t segment_i : sorted_subtract_segments.index_range().drop_front(1)) {
     const IndexMaskSegment &subtract_segment = sorted_subtract_segments[segment_i].shift(
         -bounds_min);
+    /* The final result should be written directly to #r_values to avoid an additional copy. */
     int16_t *dst = (segment_i == sorted_subtract_segments.size() - 1) ? r_values : buffer_b;
     count = std::set_difference(buffer_a,
                                 buffer_a + count,
@@ -751,11 +821,15 @@ static IndexMaskSegment difference_index_mask_segments(
   return {bounds_min, {r_values, count}};
 }
 
-BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
-    const Expr &root_expression,
-    LinearAllocator<> &allocator,
-    const IndexRange bounds,
-    const Span<const Expr *> eager_eval_order)
+/**
+ * Does an exact evaluation of the expression with in the given bounds. The evaluation builds on
+ * top of algorithms like `std::set_union`. This approach is especially useful if the expression is
+ * simple and doesn't have many intermediate values.
+ */
+static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
+                                                    LinearAllocator<> &allocator,
+                                                    const IndexRange bounds,
+                                                    const Span<const Expr *> eager_eval_order)
 {
   BLI_assert(bounds.size() <= max_segment_size);
   const int64_t bounds_min = bounds.start();
@@ -782,6 +856,8 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
           const Expr &term = *expr.terms[term_i];
           const IndexMaskSegment term_segment = results[term.index];
           if (term_segment.size() == bounds.size()) {
+            /* Can skip computing the union if we know that one of the inputs contains all possible
+             * indices already.  */
             results[expression->index] = term_segment;
             used_short_circuit = true;
             break;
@@ -806,6 +882,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
           const Expr &term = *expr.terms[term_i];
           const IndexMaskSegment term_segment = results[term.index];
           if (term_segment.is_empty()) {
+            /* Can skip computing the intersection if we know that one of the inputs is empty. */
             results[expression->index] = {};
             used_short_circuit = true;
             break;
@@ -825,6 +902,7 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
         const Expr &main_term = *expr.terms[0];
         const IndexMaskSegment main_segment = results[main_term.index];
         if (main_segment.is_empty()) {
+          /* Can skip the computation of the main segment is empty. */
           results[expression->index] = {};
           break;
         }
@@ -835,6 +913,8 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
           const Expr &subtract_term = *expr.terms[term_i];
           const IndexMaskSegment term_segment = results[subtract_term.index];
           if (term_segment.size() == bounds.size()) {
+            /* Can skip computing the difference if we know that one of the subtract-terms is
+             * full. */
             results[expression->index] = {};
             used_short_circuit = true;
             break;
@@ -856,7 +936,11 @@ BLI_NOINLINE static IndexMaskSegment evaluate_exact_with_indices(
   return results[root_expression.index];
 }
 
-BLI_NOINLINE static Vector<IndexMaskSegment> build_result_mask_segments(
+/**
+ * Turn the evaluated segments into index mask segments that are then used to initialize the
+ * resulting index mask.
+ */
+static Vector<IndexMaskSegment> build_result_mask_segments(
     const Span<EvaluatedSegment> evaluated_segments)
 {
   const std::array<int16_t, max_segment_size> &static_indices_array = get_static_indices_array();
@@ -889,7 +973,11 @@ BLI_NOINLINE static Vector<IndexMaskSegment> build_result_mask_segments(
   return result_mask_segments;
 }
 
-BLI_NOINLINE static Vector<const Expr *, inline_expr_array_size> compute_eager_eval_order(
+/**
+ * Computes an evaluation order of the expression. The important aspect is that all child terms
+ * come before the term that uses them.
+ */
+static Vector<const Expr *, inline_expr_array_size> compute_eager_eval_order(
     const Expr &root_expression)
 {
   Vector<const Expr *, inline_expr_array_size> eval_order;
@@ -934,6 +1022,7 @@ BLI_NOINLINE static Vector<const Expr *, inline_expr_array_size> compute_eager_e
   return eval_order;
 }
 
+/** Uses a heuristic to decide which exact evaluation mode probably works best. */
 static ExactEvalMode determine_exact_eval_mode(const Expr &root_expression)
 {
   for (const Expr *term : root_expression.terms) {
@@ -945,8 +1034,7 @@ static ExactEvalMode determine_exact_eval_mode(const Expr &root_expression)
   return ExactEvalMode::Indices;
 }
 
-BLI_NOINLINE static IndexMask evaluate_expression_impl(const Expr &root_expression,
-                                                       IndexMaskMemory &memory)
+static IndexMask evaluate_expression_impl(const Expr &root_expression, IndexMaskMemory &memory)
 {
   Vector<EvaluatedSegment, 16> evaluated_segments;
   Stack<IndexRange, 16> long_unknown_segments;
