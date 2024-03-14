@@ -232,8 +232,7 @@ static bool grease_pencil_sculpt_paint_poll(bContext *C)
   return true;
 }
 
-static GreasePencilStrokeOperation *grease_pencil_sculpt_paint_operation(
-    bContext &C, const BrushStrokeMode stroke_mode, const float strength)
+static GreasePencilStrokeOperation *grease_pencil_sculpt_paint_operation(bContext &C)
 {
   const Scene &scene = *CTX_data_scene(&C);
   const GpSculptPaint &gp_sculptpaint = *scene.toolsettings->gp_sculptpaint;
@@ -265,10 +264,7 @@ static bool grease_pencil_sculpt_paint_test_start(bContext *C,
                                                   wmOperator *op,
                                                   const float mouse[2])
 {
-  const BrushStrokeMode stroke_mode = BrushStrokeMode(RNA_enum_get(op->ptr, "mode"));
-  const float strength = 1.0f;
-  GreasePencilStrokeOperation *operation = grease_pencil_sculpt_paint_operation(
-      *C, stroke_mode, strength);
+  GreasePencilStrokeOperation *operation = grease_pencil_sculpt_paint_operation(*C);
   if (operation) {
     stroke_start(*C, *op, float2(mouse), *operation);
     return true;
