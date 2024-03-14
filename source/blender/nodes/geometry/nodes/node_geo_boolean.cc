@@ -30,7 +30,9 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("Self Intersection");
   b.add_input<decl::Bool>("Hole Tolerant");
   b.add_output<decl::Geometry>("Mesh").propagate_all();
-  b.add_output<decl::Bool>("Intersecting Edges").field_on_all();
+  b.add_output<decl::Bool>("Intersecting Edges").field_on_all().make_available([](bNode &node) {
+    node.custom2 = int16_t(geometry::boolean::Solver::MeshArr);
+  });
 }
 
 static void node_layout(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -46,9 +48,12 @@ struct AttributeOutputs {
 static void node_update(bNodeTree *ntree, bNode *node)
 {
   GeometryNodeBooleanOperation operation = (GeometryNodeBooleanOperation)node->custom1;
+  geometry::boolean::Solver solver = geometry::boolean::Solver(node->custom2);
 
   bNodeSocket *geometry_1_socket = static_cast<bNodeSocket *>(node->inputs.first);
   bNodeSocket *geometry_2_socket = geometry_1_socket->next;
+
+  bNodeSocket *intersecting_edges_socket = static_cast<bNodeSocket *>(node->outputs.last);
 
   switch (operation) {
     case GEO_NODE_BOOLEAN_INTERSECT:
@@ -61,6 +66,9 @@ static void node_update(bNodeTree *ntree, bNode *node)
       node_sock_label(geometry_2_socket, "Mesh 2");
       break;
   }
+
+  bke::nodeSetSocketAvailability(
+      ntree, intersecting_edges_socket, solver == geometry::boolean::Solver::MeshArr);
 }
 
 static void node_init(bNodeTree * /*tree*/, bNode *node)
@@ -156,8 +164,10 @@ static void node_geo_exec(GeoNodeExecParams params)
   }
 
   AttributeOutputs attribute_outputs;
-  attribute_outputs.intersecting_edges_id = params.get_output_anonymous_attribute_id_if_needed(
-      "Intersecting Edges");
+  if (solver == geometry::boolean::Solver::MeshArr) {
+    attribute_outputs.intersecting_edges_id = params.get_output_anonymous_attribute_id_if_needed(
+        "Intersecting Edges");
+  }
 
   Vector<int> intersecting_edges;
   geometry::boolean::BooleanOpParameters op_params;
