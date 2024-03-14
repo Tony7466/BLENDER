@@ -138,7 +138,7 @@ static void sort_course_boundaries(MutableSpan<DifferenceCourseBoundary> boundar
 }
 
 /** Smaller segments should generally be merged together. */
-static constexpr int64_t segment_size_threshold = 8;
+static constexpr int64_t segment_size_threshold = 32;
 
 /** Extends a previous full segment or appends a new one. */
 static CoarseSegment &add_coarse_segment__full(CoarseSegment *prev_segment,

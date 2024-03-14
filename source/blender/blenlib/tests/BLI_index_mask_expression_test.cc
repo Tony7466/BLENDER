@@ -182,6 +182,21 @@ TEST(index_mask_expression, UnionLargeRanges)
   EXPECT_EQ(result_mask, IndexMask(IndexRange(0, 2'000'000)));
 }
 
+TEST(index_mask_expression, SubtractSmall)
+{
+  IndexMaskMemory memory;
+  const IndexMask mask_a = IndexMask::from_initializers({3, 4, 5, 6, 7, 8, 9}, memory);
+  const IndexMask mask_b = IndexMask::from_initializers({5, 7}, memory);
+  const IndexMask mask_c = IndexMask::from_initializers({8}, memory);
+
+  ExprBuilder builder;
+  const Expr &expr = builder.subtract(&mask_a, {&mask_b, &mask_c});
+  const IndexMask result = evaluate_expression(expr, memory);
+
+  EXPECT_EQ(result, IndexMask::from_initializers({3, 4, 6, 9}, memory));
+  EXPECT_EQ(result.segments_num(), 1);
+}
+
 TEST(index_mask_expression, RangeTerms)
 {
   IndexMaskMemory memory;
