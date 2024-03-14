@@ -47,10 +47,12 @@ VolumeProperties eval_froxel(ivec3 froxel)
 
   vec3 vP = get_view_space_from_depth(ndc_cell.xy, ndc_cell.z);
   vec3 wP = point_view_to_world(vP);
-#if defined(MAT_GEOM_WORLD)
+#ifdef GRID_ATTRIBUTES
+#  if defined(MAT_GEOM_WORLD)
   g_wP = wP;
-#else
+#  else
   g_lP = point_world_to_object(wP);
+#  endif
 #endif
 
   g_data = init_globals(wP);

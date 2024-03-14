@@ -13,7 +13,10 @@
 
 #define EEVEE_ATTRIBUTE_LIB
 
-#if defined(MAT_VOLUME)
+/* Point clouds and curves are not compatible with volume grids.
+ * They will fallback to their own attributes loading. */
+#if defined(MAT_VOLUME) && !defined(MAT_GEOM_CURVES) && !defined(MAT_GEOM_POINT_CLOUD)
+#  define GRID_ATTRIBUTES
 
 /* -------------------------------------------------------------------- */
 /** \name Volume
