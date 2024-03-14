@@ -1010,8 +1010,7 @@ static BMesh *mesh_bm_concat(Span<const Mesh *> meshes,
   int i = 0;
   int mesh_index = 0;
   BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
-    *reinterpret_cast<float3 *>(&eve->co) = math::transform_point(to_target[mesh_index],
-                                                                  float3(eve->co));
+    copy_v3_v3(eve->co, math::transform_point(to_target[mesh_index], float3(eve->co)));
     ++i;
     if (i == verts_end[mesh_index]) {
       mesh_index++;
@@ -1024,8 +1023,7 @@ static BMesh *mesh_bm_concat(Span<const Mesh *> meshes,
   i = 0;
   mesh_index = 0;
   BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
-    *reinterpret_cast<float3 *>(&efa->no) = math::transform_direction(to_target[mesh_index],
-                                                                      float3(efa->no));
+    copy_v3_v3(efa->no, math::transform_direction(to_target[mesh_index], float3(efa->no)));
     if (is_negative_transform[mesh_index]) {
       negate_v3(efa->no);
     }
