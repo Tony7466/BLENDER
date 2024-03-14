@@ -28,6 +28,8 @@ void MotionBlurModule::init()
   const Scene *scene = inst_.scene;
   const ViewLayer *view_layer = inst_.view_layer;
 
+  /* Disable on viewport outside of animation playback,
+   * since it can get distracting while editing the scene. */
   enabled_ = (scene->r.mode & R_MBLUR) != 0 &&
              (DRW_state_is_image_render() || DRW_state_is_playback());
   if (enabled_) {
