@@ -2,16 +2,19 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_attribute.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
 #include "BKE_report.hh"
 
+#include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
 
 #include "usd_reader_shape.hh"
+#include "usd_mesh_utils.hh"
 
 #include <pxr/usd/usdGeom/capsule.h>
 #include <pxr/usd/usdGeom/cone.h>
@@ -23,6 +26,11 @@
 #include <pxr/usdImaging/usdImaging/cubeAdapter.h>
 #include <pxr/usdImaging/usdImaging/cylinderAdapter.h>
 #include <pxr/usdImaging/usdImaging/sphereAdapter.h>
+
+namespace usdtokens {
+/* Materials */
+static const pxr::TfToken displayColor("displayColor", pxr::TfToken::Immortal);
+}  // namespace usdtokens
 
 namespace blender::io::usd {
 
@@ -140,6 +148,8 @@ Mesh *USDShapeReader::read_mesh(Mesh *existing_mesh,
     return existing_mesh;
   }
 
+  apply_primvars_to_mesh(active_mesh, params.motion_sample_time);
+
   MutableSpan<int> face_offsets = active_mesh->face_offsets_for_write();
   for (const int i : IndexRange(active_mesh->faces_num)) {
     face_offsets[i] = face_counts[i];
@@ -167,6 +177,55 @@ void USDShapeReader::read_geometry(bke::GeometrySet &geometry_set,
 
   if (new_mesh != existing_mesh) {
     geometry_set.replace_mesh(new_mesh);
+  }
+}
+
+void USDShapeReader::apply_primvars_to_mesh(Mesh *mesh, const double motionSampleTime)
+{
+  /* TODO: also handle the displayOpacity primvar. */
+  if (!mesh || !prim_ || !(import_params_.mesh_read_flag & MOD_MESHSEQ_READ_COLOR)) {
+    return;
+  }
+
+  pxr::UsdGeomPrimvarsAPI pv_api = pxr::UsdGeomPrimvarsAPI(prim_);
+  std::vector<pxr::UsdGeomPrimvar> primvars = pv_api.GetPrimvarsWithValues();
+
+  pxr::TfToken active_color_name;
+
+  for (pxr::UsdGeomPrimvar &pv : primvars) {
+    if (!pv.HasValue()) {
+      BKE_reportf(reports(),
+                  RPT_WARNING,
+                  "Skipping primvar %s, mesh %s -- no value",
+                  pv.GetName().GetText(),
+                  &mesh->id.name[2]);
+      continue;
+    }
+
+    if (!pv.GetAttr().GetTypeName().IsArray()) {
+      /* Non-array attributes are technically improper USD. */
+      continue;
+    }
+
+    const pxr::TfToken name = pv.StripPrimvarsName(pv.GetPrimvarName());
+    const pxr::SdfValueTypeName sdf_type = pv.GetTypeName();
+
+    const std::optional<eCustomDataType> type = convert_usd_type_to_blender(sdf_type, reports());
+    if (type == CD_PROP_COLOR) {
+      /* Set the active color name to 'displayColor', if a color primvar
+       * with this name exists.  Otherwise, use the name of the first
+       * color primvar we find for the active color. */
+      if (active_color_name.IsEmpty() || name == usdtokens::displayColor) {
+        active_color_name = name;
+      }
+
+      read_color_data_primvar(mesh, pv, motionSampleTime, reports(), false);
+    }
+  }
+
+  if (!active_color_name.IsEmpty()) {
+    BKE_id_attributes_default_color_set(&mesh->id, active_color_name.GetText());
+    BKE_id_attributes_active_color_set(&mesh->id, active_color_name.GetText());
   }
 }
 

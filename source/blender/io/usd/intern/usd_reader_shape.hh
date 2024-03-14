@@ -32,6 +32,8 @@ class USDShapeReader : public USDGeomReader {
                         pxr::VtIntArray &face_indices,
                         pxr::VtIntArray &face_counts) const;
 
+  void apply_primvars_to_mesh(Mesh *mesh, const double motionSampleTime);
+
   /* Read the pxr:UsdGeomMesh values and convert them to a Blender Mesh,
    * also returning face_indices and counts for further loop processing. */
   Mesh *mesh_from_prim(Mesh *existing_mesh,
