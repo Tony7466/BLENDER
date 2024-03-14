@@ -32,7 +32,9 @@
 
 namespace blender::geometry::boolean {
 
-/* MESH ARRANGEMENTS (OLD EXACT) BOOLEAN SECTION. */
+/* -------------------------------------------------------------------- */
+/** \name Mesh Arrangements (Old Exact Boolean)
+ * \{ */
 
 #ifdef WITH_GMP
 
@@ -882,7 +884,11 @@ static Mesh *mesh_boolean_mesh_arr(Span<const Mesh *> meshes,
 #endif  // WITH_GMP
 }
 
-/* FLOAT BOOLEAN SECTION */
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name Float Boolean
+ * \{ */
 
 /* has no meaning for faces, do this so we can tell which face is which */
 #define BM_FACE_TAG BM_ELEM_DRAW
@@ -1053,7 +1059,7 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
                                 const float4x4 &target_transform,
                                 Span<Array<short>> material_remaps,
                                 int boolean_mode,
-                                Vector<int> * /* r_intersecting_edges */)
+                                Vector<int> * /*r_intersecting_edges*/)
 {
   BLI_assert(meshes.size() == transforms.size() || transforms.size() == 0);
 
@@ -1134,6 +1140,8 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
   /* Here: meshes.size() == 0. */
   return nullptr;
 }
+
+/** \} */
 
 Mesh *mesh_boolean(Span<const Mesh *> meshes,
                    Span<float4x4> transforms,
