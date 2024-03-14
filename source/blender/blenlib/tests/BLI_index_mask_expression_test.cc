@@ -215,6 +215,30 @@ TEST(index_mask_expression, RangeTerms)
                                          memory));
 }
 
+TEST(index_mask_expression, SingleMask)
+{
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask::from_initializers({5, 6, 8, 9}, memory);
+
+  ExprBuilder builder;
+  const Expr &expr = builder.merge({&mask});
+  const IndexMask result = evaluate_expression(expr, memory);
+
+  EXPECT_EQ(result, mask);
+}
+
+TEST(index_mask_expression, SubtractSelf)
+{
+  IndexMaskMemory memory;
+  const IndexMask mask = IndexMask ::from_initializers({6, 8, 10, 100}, memory);
+
+  ExprBuilder builder;
+  const Expr &expr = builder.subtract(&mask, {&mask});
+  const IndexMask result = evaluate_expression(expr, memory);
+
+  EXPECT_TRUE(result.is_empty());
+}
+
 TEST(index_mask_expression, Benchmark)
 {
 #ifdef NDEBUG
