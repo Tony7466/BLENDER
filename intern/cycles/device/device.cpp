@@ -216,6 +216,22 @@ vector<DeviceInfo> Device::available_devices(uint mask)
   thread_scoped_lock lock(device_mutex);
   vector<DeviceInfo> devices;
 
+#ifdef WITH_HIP
+  /* First because we need to disable OIDN HIP support for buggy drivers
+   * globally, before any device causes OIDN to be initialized. */
+  if (mask & DEVICE_MASK_HIP) {
+    if (!(devices_initialized_mask & DEVICE_MASK_HIP)) {
+      if (device_hip_init()) {
+        device_hip_info(hip_devices);
+      }
+      devices_initialized_mask |= DEVICE_MASK_HIP;
+    }
+    foreach (DeviceInfo &info, hip_devices) {
+      devices.push_back(info);
+    }
+  }
+#endif
+
 #if defined(WITH_CUDA) || defined(WITH_OPTIX)
   if (mask & (DEVICE_MASK_CUDA | DEVICE_MASK_OPTIX)) {
     if (!(devices_initialized_mask & DEVICE_MASK_CUDA)) {
@@ -241,20 +257,6 @@ vector<DeviceInfo> Device::available_devices(uint mask)
       devices_initialized_mask |= DEVICE_MASK_OPTIX;
     }
     foreach (DeviceInfo &info, optix_devices) {
-      devices.push_back(info);
-    }
-  }
-#endif
-
-#ifdef WITH_HIP
-  if (mask & DEVICE_MASK_HIP) {
-    if (!(devices_initialized_mask & DEVICE_MASK_HIP)) {
-      if (device_hip_init()) {
-        device_hip_info(hip_devices);
-      }
-      devices_initialized_mask |= DEVICE_MASK_HIP;
-    }
-    foreach (DeviceInfo &info, hip_devices) {
       devices.push_back(info);
     }
   }
