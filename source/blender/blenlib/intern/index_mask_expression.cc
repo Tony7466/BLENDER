@@ -549,7 +549,7 @@ static Span<int16_t> bits_to_indices(const BoundedBitSpan bits, LinearAllocator<
   Vector<int16_t, max_segment_size> indices_vec;
   bits::foreach_1_index(bits, [&](const int64_t i) {
     BLI_assert(i < max_segment_size);
-    indices_vec.append(int16_t(i));
+    indices_vec.append_unchecked(int16_t(i));
   });
   return allocator.construct_array_copy<int16_t>(indices_vec);
 }
@@ -1034,13 +1034,14 @@ static ExactEvalMode determine_exact_eval_mode(const Expr &root_expression)
   return ExactEvalMode::Indices;
 }
 
-static IndexMask evaluate_expression_impl(const Expr &root_expression, IndexMaskMemory &memory)
+static IndexMask evaluate_expression_impl(const Expr &root_expression,
+                                          IndexMaskMemory &memory,
+                                          const ExactEvalMode exact_eval_mode)
 {
   Vector<EvaluatedSegment, 16> evaluated_segments;
   Stack<IndexRange, 16> long_unknown_segments;
   Vector<IndexRange, 16> short_unknown_segments;
 
-  const ExactEvalMode exact_eval_mode = determine_exact_eval_mode(root_expression);
   const int64_t coarse_segment_size_threshold = max_segment_size;
 
   const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
@@ -1186,7 +1187,19 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression, IndexMask
 
 IndexMask evaluate_expression(const Expr &expression, IndexMaskMemory &memory)
 {
-  return evaluate_expression_impl(expression, memory);
+  const ExactEvalMode exact_eval_mode = determine_exact_eval_mode(expression);
+  IndexMask mask = evaluate_expression_impl(expression, memory, exact_eval_mode);
+#ifndef NDEBUG
+  {
+    /* Check that both exact eval modes have the same result. */
+    const ExactEvalMode other_exact_eval_mode = (exact_eval_mode == ExactEvalMode::Bits) ?
+                                                    ExactEvalMode::Indices :
+                                                    ExactEvalMode::Bits;
+    IndexMask other_mask = evaluate_expression_impl(expression, memory, other_exact_eval_mode);
+    BLI_assert(mask == other_mask);
+  }
+#endif
+  return mask;
 }
 
 }  // namespace blender::index_mask
