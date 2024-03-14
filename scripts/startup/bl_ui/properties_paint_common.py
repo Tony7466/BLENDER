@@ -84,6 +84,8 @@ class UnifiedPaintPanel:
             return tool_settings.curves_sculpt
         elif mode == 'PAINT_GREASE_PENCIL':
             return tool_settings.gpencil_paint
+        elif mode == 'SCULPT_GREASE_PENCIL':
+            return tool_settings.gpencil_sculpt_paint
         return None
 
     @staticmethod
@@ -883,6 +885,11 @@ def brush_shared_settings(layout, context, brush, popover=False):
 
     # Grease Pencil #
     if mode == 'PAINT_GREASE_PENCIL':
+        size = True
+        strength = True
+
+    # Grease Pencil #
+    if mode == 'SCULPT_GREASE_PENCIL':
         size = True
         strength = True
 

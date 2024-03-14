@@ -368,10 +368,25 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
     BKE_report(reports, RPT_WARNING, "Object has negative scale, sculpting may be unpredictable");
   }
 
-  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::Sculpt);
-  BKE_paint_init(bmain, scene, PaintMode::Sculpt, PAINT_CURSOR_SCULPT);
-
-  ED_paint_cursor_start(paint, SCULPT_mode_poll_view3d);
+  Paint *paint = nullptr;
+  if (ob->type == OB_MESH) {
+    paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::Sculpt);
+    BKE_paint_init(bmain, scene, PaintMode::Sculpt, PAINT_CURSOR_SCULPT);
+    ED_paint_cursor_start(paint, SCULPT_mode_poll_view3d);
+  }
+  else if (ob->type == OB_GREASE_PENCIL) {
+    paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::SculptGreasePencil);
+    BKE_paint_init(bmain, scene, PaintMode::SculptGreasePencil, PAINT_CURSOR_SCULPT_GREASE_PENCIL);
+    /* Custom poll function because SCULPT_mode_poll_view3d only works for mesh objects. */
+    ED_paint_cursor_start(paint, [](bContext *C) {
+      Object *ob = CTX_data_active_object(C);
+      return ob && ob->type == OB_GREASE_PENCIL && ob->mode & OB_MODE_SCULPT &&
+             CTX_wm_region_view3d(C);
+    });
+  }
+  else {
+    BLI_assert_unreachable();
+  }
 
   if (ob->type == OB_MESH) {
     Mesh *mesh = BKE_mesh_from_object(ob);

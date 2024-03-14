@@ -1899,9 +1899,6 @@ bool BKE_object_has_mode_data(const Object *ob, eObjectMode object_mode)
         return true;
       }
     }
-    if (ob->type == OB_GREASE_PENCIL) {
-      return true;
-    }
   }
   else if (object_mode & OB_MODE_POSE) {
     if (ob->pose != nullptr) {

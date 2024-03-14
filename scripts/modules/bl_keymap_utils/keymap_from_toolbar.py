@@ -172,7 +172,8 @@ def generate(context, space_type, *, use_fallback_keys=True, use_reset=True):
             if kmi_found is None:
                 if item.data_block:
                     # PAINT_OT_brush_select
-                    mode = context.active_object.mode
+                    ob = context.active_object
+                    mode = ob.mode
                     # See: BKE_paint_get_tool_prop_id_from_paintmode
                     if space_type == 'IMAGE_EDITOR':
                         if context.space_data.mode == 'PAINT':
@@ -181,7 +182,7 @@ def generate(context, space_type, *, use_fallback_keys=True, use_reset=True):
                             attr = None
                     elif space_type == 'VIEW_3D':
                         attr = {
-                            'SCULPT': "sculpt_tool",
+                            'SCULPT': "sculpt_tool" if ob.type == 'MESH' else "gpencil_sculpt_tool",
                             'VERTEX_PAINT': "vertex_tool",
                             'WEIGHT_PAINT': "weight_tool",
                             'TEXTURE_PAINT': "image_tool",
