@@ -34,6 +34,12 @@ VKDevice::VKDevice()
 {
 }
 
+void VKDevice::reinit()
+{
+  samplers_.free();
+  samplers_.init();
+}
+
 void VKDevice::deinit()
 {
   VK_ALLOCATION_CALLBACKS

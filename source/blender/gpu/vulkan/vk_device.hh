@@ -200,6 +200,7 @@ class VKDevice : public NonCopyable {
    */
   void init_dummy_buffer();
   void init_dummy_color_attachment();
+  void reinit();
   void deinit();
 
   eGPUDeviceType device_type() const;
