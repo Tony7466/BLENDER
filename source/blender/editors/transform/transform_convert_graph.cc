@@ -870,7 +870,6 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
  */
 static void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
 {
-  SCOPED_TIMER_AVERAGED("remake graph data");
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
