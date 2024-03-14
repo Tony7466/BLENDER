@@ -24,8 +24,6 @@
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
-#include "RNA_access.hh"
-
 #include "WM_api.hh"
 #include "WM_types.hh"
 
@@ -568,6 +566,9 @@ struct EraseOperationExecutor {
 
     if (self.active_layer_only) {
       /* Erase only on the drawing at the current frame of the active layer. */
+      if (!grease_pencil.has_active_layer()) {
+        return;
+      }
       const Layer &active_layer = *grease_pencil.get_active_layer();
       Drawing *drawing = grease_pencil.get_editable_drawing_at(active_layer, scene->r.cfra);
 
@@ -576,7 +577,7 @@ struct EraseOperationExecutor {
       }
 
       execute_eraser_on_drawing(
-          active_layer.drawing_index_at(scene->r.cfra), scene->r.cfra, *drawing);
+          *grease_pencil.get_layer_index(active_layer), scene->r.cfra, *drawing);
     }
     else {
       /* Erase on all editable drawings. */
