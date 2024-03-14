@@ -66,6 +66,12 @@ class VKRenderGraph : public NonCopyable {
    */
   void add_image(VkImage vk_image, VkImageLayout vk_image_layout, ResourceOwner owner);
 
+  /**
+   * Remove an image resource from the render graph.
+   */
+  // TODO: add test case to check if resources are reset when deleted.
+  void remove_image(VkImage vk_image);
+
   void add_clear_image_node(VkImage vk_image,
                             VkClearColorValue &vk_clear_color_value,
                             VkImageSubresourceRange &vk_image_subresource_range);

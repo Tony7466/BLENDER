@@ -285,6 +285,8 @@ void VKContext::swap_buffers_post_callback()
 
 void VKContext::swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &swap_chain_data)
 {
+  // TODO: Swap the VkImage resource if different than the previous one. We don't want to keep swap
+  // chain images around that have been destroyed by the swap chain.
   /*
    * Ensure no graphics/compute commands are scheduled. They could use the back buffer, which
    * layout is altered here.

@@ -60,6 +60,12 @@ void VKRenderGraphResources::remove_buffer(VkBuffer vk_buffer)
   resources_.free(handle);
 }
 
+void VKRenderGraphResources::remove_image(VkImage vk_image)
+{
+  ResourceHandle handle = image_resources_.pop(vk_image);
+  resources_.free(handle);
+}
+
 /** \} */
 
 ResourceHandle VKRenderGraphResources::get_image_handle(VkImage vk_image) const

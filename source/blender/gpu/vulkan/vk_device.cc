@@ -376,6 +376,7 @@ void VKDevice::destroy_discarded_resources()
 
   while (!discarded_images_.is_empty()) {
     std::pair<VkImage, VmaAllocation> image_allocation = discarded_images_.pop_last();
+    render_graph_.remove_image(image_allocation.first);
     vmaDestroyImage(mem_allocator_get(), image_allocation.first, image_allocation.second);
   }
 

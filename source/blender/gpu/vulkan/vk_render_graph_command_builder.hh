@@ -56,6 +56,16 @@ class VKRenderGraphCommandBuilder {
   void update_state_after_submission(VKRenderGraph &render_graph);
 
   /**
+   * Remove a buffer or image resource from the command builder internals.
+   *
+   * Internally the command buffer keeps track of resource states. When a resource is deleted it
+   * needs to be removed from the tracked state. New resources can reuse the same resource handle.
+   * This cannot be detected at the moment the internals are reset, so this needs to be done when
+   * the old resource is removed.
+   */
+  void remove_resource(ResourceHandle handle);
+
+  /**
    * Ensure that the vk_image_layout is the given layout. If not it adds a transition to ensure the
    * given layout.
    */

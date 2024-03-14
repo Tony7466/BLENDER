@@ -35,14 +35,23 @@ void VKRenderGraph::add_image(VkImage vk_image, VkImageLayout vk_image_layout, R
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Adding resources
+/** \name Removing resources
  * \{ */
 
 void VKRenderGraph::remove_buffer(VkBuffer vk_buffer)
 {
   std::scoped_lock lock(mutex_);
+  ResourceHandle handle = resources_.get_buffer_handle(vk_buffer);
+  command_builder_.remove_resource(handle);
   resources_.remove_buffer(vk_buffer);
-  // TODO: also remove resource from command_builder_ internals.
+}
+
+void VKRenderGraph::remove_image(VkImage vk_image)
+{
+  std::scoped_lock lock(mutex_);
+  ResourceHandle handle = resources_.get_image_handle(vk_image);
+  command_builder_.remove_resource(handle);
+  resources_.remove_image(vk_image);
 }
 
 /** \} */

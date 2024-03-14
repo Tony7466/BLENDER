@@ -37,15 +37,40 @@ void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
   }
   image_layouts_.fill(VK_IMAGE_LAYOUT_UNDEFINED);
 
+  /* Swap chain images layouts needs to be reset, otherwise the last one will be used and that
+   * might not be the correct one. For application owned resources should be undefined by default
+   * and are tracked here.
+   */
   for (ResourceHandle image_handle : render_graph.resources_.image_resources_.values()) {
     VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
         image_handle);
-    image_layouts_[image_handle] = resource.vk_image_layout;
+    if (resource.owner == ResourceOwner::SWAP_CHAIN) {
+      image_layouts_[image_handle] = resource.vk_image_layout;
+    }
   }
 
   // Reset pipelines
   active_compute_pipeline_ = VK_NULL_HANDLE;
   active_compute_descriptor_set_ = VK_NULL_HANDLE;
+}
+
+void VKRenderGraphCommandBuilder::remove_resource(ResourceHandle handle)
+{
+  if (read_access_.size() >= handle) {
+    read_access_[handle] = VK_ACCESS_NONE;
+  }
+  if (write_access_.size() >= handle) {
+    write_access_[handle] = VK_ACCESS_NONE;
+  }
+  if (read_stages_.size() >= handle) {
+    read_stages_[handle] = VK_PIPELINE_STAGE_NONE;
+  }
+  if (write_stages_.size() >= handle) {
+    write_stages_[handle] = VK_PIPELINE_STAGE_NONE;
+  }
+  if (image_layouts_.size() >= handle) {
+    image_layouts_[handle] = VK_IMAGE_LAYOUT_UNDEFINED;
+  }
 }
 
 void VKRenderGraphCommandBuilder::build_image(VKRenderGraph &render_graph, VkImage vk_image)
