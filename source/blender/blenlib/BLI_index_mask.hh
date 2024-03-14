@@ -129,6 +129,10 @@ class IndexMaskSegment : public OffsetSpan<int64_t, int16_t> {
   IndexMaskSegment slice(const IndexRange &range) const;
   IndexMaskSegment slice(const int64_t start, const int64_t size) const;
 
+  /**
+   * Get a new segment where each index is modified by the given amount. This works in constant
+   * time, because only the offset value is changed.
+   */
   IndexMaskSegment shift(const int64_t shift) const;
 };
 
