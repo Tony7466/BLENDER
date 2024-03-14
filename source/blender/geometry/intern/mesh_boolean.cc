@@ -1062,12 +1062,20 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
                                 Vector<int> * /*r_intersecting_edges*/)
 {
   BLI_assert(meshes.size() == transforms.size() || transforms.size() == 0);
-
   BLI_assert(material_remaps.size() == 0 || material_remaps.size() == meshes.size());
-  const int nmesh = meshes.size();
+  if (meshes.is_empty()) {
+    return nullptr;
+  }
+
+  if (meshes.size() == 1) {
+    /* The float solver doesn't do self union. Just return nullptr, which will
+     * cause geometry nodes to leave the input as is. */
+    return BKE_mesh_copy_for_eval(meshes[0]);
+  }
+
   BMLoop *(*looptris)[3];
   int looptris_tot;
-  if (nmesh == 2) {
+  if (meshes.size() == 2) {
     BMesh *bm = mesh_bm_concat(
         meshes, transforms, target_transform, material_remaps, &looptris, &looptris_tot);
     BM_mesh_intersect(bm,
@@ -1088,56 +1096,51 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
     BM_mesh_free(bm);
     return result;
   }
-  else if (nmesh > 2) {
-    /* Iteratively operate with each operand. */
-    Array<const Mesh *> two_meshes = {meshes[0], meshes[1]};
-    Array<float4x4> two_transforms = {transforms[0], transforms[1]};
-    Array<Array<short>> two_remaps = {material_remaps[0], material_remaps[1]};
-    Mesh *prev_result_mesh = nullptr;
-    for (int i = 0; i < nmesh - 1; i++) {
-      BMesh *bm = mesh_bm_concat(
-          two_meshes, two_transforms, float4x4::identity(), two_remaps, &looptris, &looptris_tot);
-      BM_mesh_intersect(bm,
-                        looptris,
-                        looptris_tot,
-                        face_boolean_operand,
-                        nullptr,
-                        false,
-                        false,
-                        true,
-                        true,
-                        false,
-                        false,
-                        boolean_mode,
-                        1e-6f);
-      MEM_freeN(looptris);
-      Mesh *result_i_mesh = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, meshes[0]);
-      BM_mesh_free(bm);
-      if (prev_result_mesh != nullptr) {
-        /* Except in the first iteration, two_meshes[0] holds the intermediate
-         * mesh result from the previous iteraiton. */
-        BKE_mesh_eval_delete(prev_result_mesh);
-      }
-      if (i < nmesh - 2) {
-        two_meshes[0] = result_i_mesh;
-        two_meshes[1] = meshes[i + 2];
-        two_transforms[0] = float4x4::identity();
-        two_transforms[1] = transforms[i + 2];
-        two_remaps[0] = {};
-        two_remaps[1] = material_remaps[i + 2];
-        prev_result_mesh = result_i_mesh;
-      }
-      else {
-        return result_i_mesh;
-      }
+
+  /* Iteratively operate with each operand. */
+  Array<const Mesh *> two_meshes = {meshes[0], meshes[1]};
+  Array<float4x4> two_transforms = {transforms[0], transforms[1]};
+  Array<Array<short>> two_remaps = {material_remaps[0], material_remaps[1]};
+  Mesh *prev_result_mesh = nullptr;
+  for (const int i : meshes.index_range().drop_back(1)) {
+    BMesh *bm = mesh_bm_concat(
+        two_meshes, two_transforms, float4x4::identity(), two_remaps, &looptris, &looptris_tot);
+    BM_mesh_intersect(bm,
+                      looptris,
+                      looptris_tot,
+                      face_boolean_operand,
+                      nullptr,
+                      false,
+                      false,
+                      true,
+                      true,
+                      false,
+                      false,
+                      boolean_mode,
+                      1e-6f);
+    MEM_freeN(looptris);
+    Mesh *result_i_mesh = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, meshes[0]);
+    BM_mesh_free(bm);
+    if (prev_result_mesh != nullptr) {
+      /* Except in the first iteration, two_meshes[0] holds the intermediate
+       * mesh result from the previous iteraiton. */
+      BKE_mesh_eval_delete(prev_result_mesh);
+    }
+    if (i < meshes.size() - 2) {
+      two_meshes[0] = result_i_mesh;
+      two_meshes[1] = meshes[i + 2];
+      two_transforms[0] = float4x4::identity();
+      two_transforms[1] = transforms[i + 2];
+      two_remaps[0] = {};
+      two_remaps[1] = material_remaps[i + 2];
+      prev_result_mesh = result_i_mesh;
+    }
+    else {
+      return result_i_mesh;
     }
   }
-  else if (meshes.size() == 1) {
-    /* The float solver doesn't do self union. Just return nullptr, which will
-     * cause geometry nodes to leave the input as is. */
-    return BKE_mesh_copy_for_eval(meshes[0]);
-  }
-  /* Here: meshes.size() == 0. */
+
+  BLI_assert_unreachable();
   return nullptr;
 }
 
