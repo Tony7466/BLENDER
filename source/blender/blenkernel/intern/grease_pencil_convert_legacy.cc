@@ -222,21 +222,21 @@ static blender::float4x2 get_legacy_layer_to_stroke_matrix(bGPDstroke *gps)
   const float3 pt3 = float3(point3->x, point3->y, point3->z);
 
   /* Local X axis (p0 -> p1) */
-  const float3 locx = normalize(pt1 - pt0);
+  const float3 local_x = normalize(pt1 - pt0);
 
   /* Point vector at 3/4 */
   const float3 v3 = totpoints == 2 ? pt3 * 0.001f : pt3;
   const float3 loc3 = v3 - pt0;
 
   /* Vector orthogonal to polygon plane. */
-  const float3 normal = cross(locx, loc3);
+  const float3 normal = cross(local_x, loc3);
 
   /* Local Y axis (cross to normal/x axis). */
-  const float3 locy = normalize(cross(normal, locx));
+  const float3 local_y = normalize(cross(normal, local_x));
 
   /* Get local space using first point as origin. */
   const float4x2 mat = transpose(
-      float2x4(float4(locx, -dot(pt0, locx)), float4(locy, -dot(pt0, locy))));
+      float2x4(float4(local_x, -dot(pt0, local_x)), float4(local_y, -dot(pt0, local_y))));
 
   return mat;
 }
