@@ -225,11 +225,10 @@ static blender::float4x2 get_legacy_layer_to_stroke_matrix(bGPDstroke *gps)
   const float3 local_x = normalize(pt1 - pt0);
 
   /* Point vector at 3/4 */
-  const float3 v3 = totpoints == 2 ? pt3 * 0.001f : pt3;
-  const float3 loc3 = v3 - pt0;
+  const float3 local_3 = (totpoints == 2) ? (pt3 * 0.001f) - pt0 : pt3 - pt0;
 
   /* Vector orthogonal to polygon plane. */
-  const float3 normal = cross(local_x, loc3);
+  const float3 normal = cross(local_x, local_3);
 
   /* Local Y axis (cross to normal/x axis). */
   const float3 local_y = normalize(cross(normal, local_x));
