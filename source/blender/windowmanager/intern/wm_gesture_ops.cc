@@ -475,10 +475,10 @@ void WM_OT_circle_gesture(wmOperatorType *ot)
 /* -------------------------------------------------------------------- */
 /** \name Lasso Gesture
  * There are two types of lasso gesture:
- * -# #WM_GESTURE_LASSO: A lasso that follows the mouse cursor with the enclosed area shaded.
- * -# #WM_GESTURE_LINES: A lasso that follows the mouse cursor without the enclosed area shaded.
+ * 1. #WM_GESTURE_LASSO: A lasso that follows the mouse cursor with the enclosed area shaded.
+ * 2. #WM_GESTURE_LINES: A lasso that follows the mouse cursor without the enclosed area shaded.
  *
- * The operator stores data in the "path" variable as a series of screen space positions.
+ * The operator stores data in the "path" property as a series of screen space positions.
  * \{ */
 
 int WM_gesture_lasso_invoke(bContext *C, wmOperator *op, const wmEvent *event)
