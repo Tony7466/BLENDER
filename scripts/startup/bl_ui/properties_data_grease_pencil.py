@@ -52,7 +52,7 @@ class GREASE_PENCIL_MT_layer_mask_add(Menu):
         for layer in grease_pencil.layers:
             if layer == active_layer or layer.name in active_layer.mask_layers:
                 continue
-                
+
             found = True
             layout.operator("grease_pencil.layer_mask_add", text=layer.name).name = layer.name
 
