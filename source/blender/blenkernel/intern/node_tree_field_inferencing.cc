@@ -752,6 +752,8 @@ static bool reduce_binary(const BinaryConstraintFn &constraint,
 }
 
 struct NullLogger {
+  static void set_variable_names(FunctionRef<std::string(int)> /*names_fn*/) {}
+
   static void notify(StringRef /*message*/) {}
   static void on_worklist_extended(const int /*var_src*/, const int /*var_dst*/) {}
 
@@ -762,6 +764,8 @@ struct NullLogger {
 };
 
 struct PrintLogger {
+  static void set_variable_names(FunctionRef<std::string(int)> names_fn) {}
+
   static void notify(StringRef message)
   {
     std::cout << message << std::endl;
@@ -777,7 +781,7 @@ struct PrintLogger {
     std::cout << "  Applying " << src << ", " << dst << std::endl;
   }
 
-  static void on_domain_reduced(const int var, const BitSpan domain)
+  static void on_domain_reduced(const int /*var*/, const BitSpan /*domain*/)
   {
     std::cout << "    Reduced domain!" << std::endl;
   }
