@@ -39,11 +39,10 @@ ccl_device void spot_light_uv(const float3 ray,
 
 /* Compute the intersection of a ray with a cone.
  * From https://www.geometrictools.com/Documentation/IntersectionLineCone.pdf */
-ccl_device_inline void spot_light_valid_ray_segment(const ccl_global KernelSpotLight *spot,
+ccl_device_inline bool spot_light_valid_ray_segment(const ccl_global KernelSpotLight *spot,
                                                     const float3 P,
                                                     const float3 D,
-                                                    ccl_private float *ray_tmin,
-                                                    ccl_private float *ray_tmax)
+                                                    ccl_private float2 *t_range)
 {
   /* TODO(weizhen): consider light radius. The behaviour would be different with or without soft
    * falloff. */
@@ -57,7 +56,7 @@ ccl_device_inline void spot_light_valid_ray_segment(const ccl_global KernelSpotL
   const float c1 = AD * AP - cos_angle_sq * dot(D, P);
   const float c0 = sqr(AP) - cos_angle_sq * dot(P, P);
 
-  float tmin = *ray_tmin, tmax = *ray_tmax;
+  float tmin = 0.0f, tmax = FLT_MAX;
   bool valid = false;
 
   if (c2 != 0.0f) {
@@ -75,11 +74,11 @@ ccl_device_inline void spot_light_valid_ray_segment(const ccl_global KernelSpotL
 
       if (!tmax_valid) {
         tmax = tmin;
-        tmin = *ray_tmin;
+        tmin = 0.0f;
       }
       else if (!tmin_valid) {
         tmin = tmax;
-        tmax = *ray_tmax;
+        tmax = FLT_MAX;
       }
     }
     else if (c2 > 0 && sigma == 0.0f) {
@@ -92,12 +91,11 @@ ccl_device_inline void spot_light_valid_ray_segment(const ccl_global KernelSpotL
     valid = (dot(axis, P + tmin * D) > 0.0f);
   }
 
-  if (!valid) {
-    tmax = tmin;
-  }
+  valid &= (tmin < tmax);
 
-  *ray_tmin = fmaxf(tmin, *ray_tmin);
-  *ray_tmax = fminf(tmax, *ray_tmax);
+  *t_range = clamp(*t_range, make_float2(tmin, tmin), make_float2(tmax, tmax));
+
+  return valid;
 }
 
 template<bool in_volume_segment>
