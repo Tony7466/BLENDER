@@ -15,6 +15,7 @@
 #include "vk_common.hh"
 #include "vk_debug.hh"
 #include "vk_descriptor_pools.hh"
+#include "vk_descriptor_set_layouts.hh"
 #include "vk_pipelines.hh"
 #include "vk_render_graph.hh"
 #include "vk_samplers.hh"
@@ -64,6 +65,7 @@ class VKDevice : public NonCopyable {
 
   VKSamplers samplers_;
   VKPipelines pipelines_;
+  VKDescriptorSetLayouts descriptor_set_layouts_;
   VKRenderGraph render_graph_;
 
   /* Semaphore for CPU GPU synchronization when submitting commands to the queue. */
@@ -167,9 +169,15 @@ class VKDevice : public NonCopyable {
   {
     return vk_pipeline_cache_;
   }
+
   VKPipelines &pipelines_get()
   {
     return pipelines_;
+  }
+  
+  VKDescriptorSetLayouts &descriptor_set_layouts_get()
+  {
+    return descriptor_set_layouts_;
   }
 
   debug::VKDebuggingTools &debugging_tools_get()

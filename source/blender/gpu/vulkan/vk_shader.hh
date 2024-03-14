@@ -77,6 +77,7 @@ class VKShader : public Shader {
   /* DEPRECATED: Kept only because of BGL API. */
   int program_handle_get() const override;
 
+  // TODO: move to .cc
   VkPipeline ensure_and_get_compute_pipeline()
   {
     BLI_assert(compute_module_ != VK_NULL_HANDLE);
@@ -145,9 +146,8 @@ class VKShader : public Shader {
   void build_shader_module(MutableSpan<const char *> sources,
                            shaderc_shader_kind stage,
                            VkShaderModule *r_shader_module);
-  bool finalize_descriptor_set_layouts(VkDevice vk_device,
-                                       const VKShaderInterface &shader_interface,
-                                       const shader::ShaderCreateInfo &info);
+  bool finalize_descriptor_set_layouts(VKDevice &vk_device,
+                                       const VKShaderInterface &shader_interface);
   bool finalize_pipeline_layout(VkDevice vk_device, const VKShaderInterface &shader_interface);
 
   /**

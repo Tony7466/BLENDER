@@ -17,6 +17,7 @@
 
 #include "BLI_array.hh"
 
+#include "vk_descriptor_set_layouts.hh"
 #include "vk_push_constants.hh"
 
 namespace blender::gpu {
@@ -33,6 +34,7 @@ class VKShaderInterface : public ShaderInterface, NonCopyable {
   Array<VKDescriptorSet::Location> descriptor_set_locations_;
   Array<shader::ShaderCreateInfo::Resource::BindType> descriptor_set_bind_types_;
   Array<VkAccessFlags> access_masks_;
+  VKDescriptorSetLayoutInfo descriptor_set_layout_info_;
 
   VKPushConstants::Layout push_constants_layout_;
 
@@ -57,6 +59,11 @@ class VKShaderInterface : public ShaderInterface, NonCopyable {
     return push_constants_layout_;
   }
 
+  const VKDescriptorSetLayoutInfo &descriptor_set_layout_info_get() const
+  {
+    return descriptor_set_layout_info_;
+  }
+
   shader::Type get_attribute_type(int location) const
   {
     return static_cast<shader::Type>(attr_types_[location]);
@@ -68,6 +75,10 @@ class VKShaderInterface : public ShaderInterface, NonCopyable {
   }
 
  private:
+  void init_descriptor_types(const shader::ShaderCreateInfo &info,
+                             int64_t resources_len,
+                             Span<shader::ShaderCreateInfo::Resource> resources,
+                             VKPushConstants::StorageType push_constants_storage);
   /**
    * Retrieve the shader input for the given resource.
    *
