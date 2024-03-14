@@ -189,13 +189,25 @@ void main()
     vec3 radiance_probe = spherical_harmonics_evaluate_lambert(N, samp.volume_irradiance);
     radiance += visibility * radiance_probe;
 
-    vec4 radiance_horizon = vec4(radiance, 0.0);
-    vec4 radiance_raytrace = use_raytrace ? imageLoad(closure0_img, texel_fullres) : vec4(0.0);
+    int layer_index = gbuffer_closure_get_bin_index(gbuf, i);
 
+    vec4 radiance_horizon = vec4(radiance, 0.0);
+    vec4 radiance_raytrace = vec4(0.0);
+    if (use_raytrace) {
+      /* TODO(fclem): Layered texture. */
+      if (layer_index == 0) {
+        radiance_raytrace = imageLoad(closure0_img, texel_fullres);
+      }
+      else if (layer_index == 1) {
+        radiance_raytrace = imageLoad(closure1_img, texel_fullres);
+      }
+      else if (layer_index == 2) {
+        radiance_raytrace = imageLoad(closure2_img, texel_fullres);
+      }
+    }
     vec4 radiance_mixed = mix(radiance_raytrace, radiance_horizon, mix_fac);
 
     /* TODO(fclem): Layered texture. */
-    int layer_index = gbuffer_closure_get_bin_index(gbuf, i);
     if (layer_index == 0) {
       imageStore(closure0_img, texel_fullres, radiance_mixed);
     }
