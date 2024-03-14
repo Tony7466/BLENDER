@@ -327,7 +327,7 @@ struct GpencilBatchCache *gpencil_batch_cache_get(struct Object *ob, int cfra);
 
 GPENCIL_tObject *gpencil_object_cache_add(GPENCIL_PrivateData *pd,
                                           Object *ob,
-                                          bool is_drawmode,
+                                          bool is_stroke_order_3d,
                                           std::optional<blender::Bounds<float3>> bounds);
 void gpencil_object_cache_sort(GPENCIL_PrivateData *pd);
 
@@ -367,7 +367,10 @@ GPENCIL_LightPool *gpencil_light_pool_add(GPENCIL_PrivateData *pd);
 GPENCIL_LightPool *gpencil_light_pool_create(GPENCIL_PrivateData *pd, Object *ob);
 
 /* effects */
-void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob, bool is_edit_mode);
+void gpencil_vfx_cache_populate(GPENCIL_Data *vedata,
+                                Object *ob,
+                                GPENCIL_tObject *tgp_ob,
+                                bool is_edit_mode);
 
 /* Shaders */
 struct GPUShader *GPENCIL_shader_antialiasing(int stage);
