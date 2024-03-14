@@ -1217,29 +1217,9 @@ static void evaluate_short_unknown_segments_exactly(
   }
 }
 
-static IndexMask evaluate_expression_impl(const Expr &root_expression,
-                                          IndexMaskMemory &memory,
-                                          const ExactEvalMode exact_eval_mode)
+static IndexMask evaluated_segments_to_index_mask(const Span<EvaluatedSegment> evaluated_segments,
+                                                  IndexMaskMemory &memory)
 {
-  /* Precompute the evaluation order here, because it's used potentially many times throughout the
-   * algorithm. */
-  const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
-      root_expression);
-
-  /* Non-overlapping evaluated segments which become the resulting index mask in the end. Note that
-   * these segments are only sorted in the end. */
-  Vector<EvaluatedSegment, 16> evaluated_segments;
-  Vector<IndexRange, 16> short_unknown_segments;
-
-  evaluate_coarse_and_split_until_segments_are_short(
-      root_expression, eager_eval_order, evaluated_segments, short_unknown_segments);
-  evaluate_short_unknown_segments_exactly(root_expression,
-                                          exact_eval_mode,
-                                          eager_eval_order,
-                                          short_unknown_segments,
-                                          memory,
-                                          evaluated_segments);
-
   if (evaluated_segments.is_empty()) {
     return {};
   }
@@ -1266,6 +1246,31 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
 
   Vector<IndexMaskSegment> result_segments = build_result_mask_segments(evaluated_segments);
   return IndexMask::from_segments(result_segments, memory);
+}
+
+static IndexMask evaluate_expression_impl(const Expr &root_expression,
+                                          IndexMaskMemory &memory,
+                                          const ExactEvalMode exact_eval_mode)
+{
+  /* Precompute the evaluation order here, because it's used potentially many times throughout the
+   * algorithm. */
+  const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
+      root_expression);
+
+  /* Non-overlapping evaluated segments which become the resulting index mask in the end. Note that
+   * these segments are only sorted in the end. */
+  Vector<EvaluatedSegment, 16> evaluated_segments;
+  Vector<IndexRange, 16> short_unknown_segments;
+
+  evaluate_coarse_and_split_until_segments_are_short(
+      root_expression, eager_eval_order, evaluated_segments, short_unknown_segments);
+  evaluate_short_unknown_segments_exactly(root_expression,
+                                          exact_eval_mode,
+                                          eager_eval_order,
+                                          short_unknown_segments,
+                                          memory,
+                                          evaluated_segments);
+  return evaluated_segments_to_index_mask(evaluated_segments, memory);
 }
 
 IndexMask evaluate_expression(const Expr &expression, IndexMaskMemory &memory)
