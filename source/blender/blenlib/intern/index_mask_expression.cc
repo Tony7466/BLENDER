@@ -1082,7 +1082,7 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
     }
   };
 
-  /* Initiall coarse evaluation without any explicit bounds. The bounds are implied by the index
+  /* Initial coarse evaluation without any explicit bounds. The bounds are implied by the index
    * masks used in the expression. */
   const CoarseResult initial_coarse_result = evaluate_coarse(root_expression, eager_eval_order);
   handle_coarse_result(initial_coarse_result);
