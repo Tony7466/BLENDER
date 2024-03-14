@@ -479,7 +479,7 @@ static float3x2 get_stroke_to_texture_matrix(const CurvesGeometry &curves, const
   const float c = cos(uv_rotation);
   const float2x2 rot = float2x2(float2(c, s), float2(-s, c));
 
-  float3x2 texmat = float3x2::identity();
+  float3x2 texture_matrix = float3x2::identity();
   /*
    * The order in which the three transforms are applied, has been carefully chosen to be easy to
    * invert.
@@ -493,15 +493,15 @@ static float3x2 get_stroke_to_texture_matrix(const CurvesGeometry &curves, const
    */
 
   /* Apply scale. */
-  texmat = from_scale<float2x2>(uv_scale_inv) * texmat;
+  texture_matrix = from_scale<float2x2>(uv_scale_inv) * texture_matrix;
 
   /* Apply rotation. */
-  texmat = rot * texmat;
+  texture_matrix = rot * texture_matrix;
 
   /* Apply translation. */
-  texmat[2] += uv_translation;
+  texture_matrix[2] += uv_translation;
 
-  return texmat;
+  return texture_matrix;
 }
 
 Span<float4x2> Drawing::texture_matrices() const
@@ -513,7 +513,7 @@ Span<float4x2> Drawing::texture_matrices() const
     threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
       for (const int curve_i : range) {
         const float4x2 strokemat = get_local_to_stroke_matrix(*this, curve_i);
-        const float3x2 texmat = get_stroke_to_texture_matrix(curves, curve_i);
+        const float3x2 texture_matrix = get_stroke_to_texture_matrix(curves, curve_i);
 
         float4x3 strokemat4x3 = float4x3(strokemat);
 
@@ -530,7 +530,7 @@ Span<float4x2> Drawing::texture_matrices() const
         strokemat4x3[2][2] = 0.0f;
         strokemat4x3[3][2] = 1.0f;
 
-        const float4x2 texspace = texmat * strokemat4x3;
+        const float4x2 texspace = texture_matrix * strokemat4x3;
 
         r_data[curve_i] = texspace;
       }
@@ -557,19 +557,20 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
       AttrDomain::Curve,
       AttributeInitVArray(VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
 
-  auto set_stroke_to_texture_matrix = [&](int curve_i, float3x2 texmat) {
+  auto set_stroke_to_texture_matrix = [&](int curve_i, float3x2 texture_matrix) {
     /* Solve for translation, the translation is simply the origin. */
-    const float2 uv_translation = texmat[2];
+    const float2 uv_translation = texture_matrix[2];
 
     /* Solve rotation, the angle of the `u` basis is the rotation. */
-    const float uv_rotation = atan2(texmat[0][1], texmat[0][0]);
+    const float uv_rotation = atan2(texture_matrix[0][1], texture_matrix[0][0]);
 
     /* Calculate the determinant to check if the `v` scale is negative. */
-    const float det = determinant(float2x2(texmat));
+    const float det = determinant(float2x2(texture_matrix));
 
     /* Solve scale, scaling is the only transformation that changes the length, so scale factor
      * is simply the length. And flip the sign of `v` if the determinant is negative. */
-    const float2 uv_scale = safe_rcp(float2(length(texmat[0]), sign(det) * length(texmat[1])));
+    const float2 uv_scale = safe_rcp(
+        float2(length(texture_matrix[0]), sign(det) * length(texture_matrix[1])));
 
     uv_rotations.span[curve_i] = uv_rotation;
     uv_translations.span[curve_i] = uv_translation;
@@ -597,8 +598,8 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
     strokemat4x3[3][2] = 1.0;
 
     /*
-     * We want to solve for `texmat` in the equation: `texspace = texmat * strokemat4x3`
-     * Because these matrices are not square we can not use a standard inverse.
+     * We want to solve for `texture_matrix` in the equation: `texspace = texture_matrix *
+     * strokemat4x3` Because these matrices are not square we can not use a standard inverse.
      *
      * Our problem has the form of: `X = A * Y`
      * We can solve for `A` using: `A = X * B`
@@ -617,9 +618,9 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
     const double3x4 right_inverse = transpose_strokemat *
                                     invert(strokemat4x3 * transpose_strokemat);
 
-    const float3x2 texmat = float3x2(double4x2(texspace) * right_inverse);
+    const float3x2 texture_matrix = float3x2(double4x2(texspace) * right_inverse);
 
-    set_stroke_to_texture_matrix(curve_i, texmat);
+    set_stroke_to_texture_matrix(curve_i, texture_matrix);
   });
   uv_rotations.finish();
   uv_translations.finish();
