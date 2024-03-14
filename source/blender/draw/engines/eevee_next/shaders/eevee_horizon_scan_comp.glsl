@@ -56,6 +56,8 @@ void main()
                                              8,
                                              false);
 
+  scan.result = spherical_harmonics_compress(scan.result);
+
   imageStore(horizon_radiance_0_img, texel, scan.result.L0.M0);
   imageStore(horizon_radiance_1_img, texel, scan.result.L1.Mn1);
   imageStore(horizon_radiance_2_img, texel, scan.result.L1.M0);

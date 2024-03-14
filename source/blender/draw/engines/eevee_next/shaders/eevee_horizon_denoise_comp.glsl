@@ -72,6 +72,7 @@ SphericalHarmonicL1 load_spherical_harmonic(ivec2 texel)
   sh.L1.Mn1 = texelFetch(in_sh_1_tx, texel, 0);
   sh.L1.M0 = texelFetch(in_sh_2_tx, texel, 0);
   sh.L1.Mp1 = texelFetch(in_sh_3_tx, texel, 0);
+  sh = spherical_harmonics_decompress(sh);
   return sh;
 }
 
@@ -121,6 +122,8 @@ void main()
     }
   }
   accum_sh = spherical_harmonics_mul(accum_sh, safe_rcp(accum_weight));
+
+  accum_sh = spherical_harmonics_compress(accum_sh);
 
   imageStore(out_sh_0_img, texel, accum_sh.L0.M0);
   imageStore(out_sh_1_img, texel, accum_sh.L1.Mn1);

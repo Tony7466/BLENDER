@@ -80,7 +80,7 @@ SphericalHarmonicL1 load_spherical_harmonic(ivec2 texel, bool valid)
   sh.L1.Mn1 = texelFetch(horizon_radiance_1_tx, texel, 0);
   sh.L1.M0 = texelFetch(horizon_radiance_2_tx, texel, 0);
   sh.L1.Mp1 = texelFetch(horizon_radiance_3_tx, texel, 0);
-  return sh;
+  return spherical_harmonics_decompress(sh);
 }
 
 void main()

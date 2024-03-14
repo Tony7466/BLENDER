@@ -430,9 +430,11 @@ RayTraceResult RayTraceModule::render(RayTraceBuffer &rt_buffer,
       downsampled_in_radiance_tx_.acquire(tracing_res_horizon, RAYTRACE_RADIANCE_FORMAT, usage_rw);
       downsampled_in_normal_tx_.acquire(tracing_res_horizon, GPU_RGB10_A2, usage_rw);
 
-      for (int i : IndexRange(4)) {
-        horizon_radiance_tx_[i].acquire(tracing_res_horizon, GPU_RGBA16F, usage_rw);
-        horizon_radiance_denoised_tx_[i].acquire(tracing_res_horizon, GPU_RGBA16F, usage_rw);
+      horizon_radiance_tx_[0].acquire(tracing_res_horizon, GPU_RGBA16F, usage_rw);
+      horizon_radiance_denoised_tx_[0].acquire(tracing_res_horizon, GPU_RGBA16F, usage_rw);
+      for (int i : IndexRange(1, 3)) {
+        horizon_radiance_tx_[i].acquire(tracing_res_horizon, GPU_RGBA8, usage_rw);
+        horizon_radiance_denoised_tx_[i].acquire(tracing_res_horizon, GPU_RGBA8, usage_rw);
       }
       for (int i : IndexRange(3)) {
         horizon_scan_output_tx_[i] = result.closures[i].get();
