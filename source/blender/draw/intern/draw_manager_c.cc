@@ -3050,7 +3050,6 @@ void DRW_engines_register()
   RE_engines_register(&DRW_engine_viewport_workbench_type);
 
   DRW_engine_register(&draw_engine_gpencil_type);
-  // DRW_engine_register(&draw_engine_gpencil_next_type);
 
   DRW_engine_register(&draw_engine_overlay_type);
   DRW_engine_register(&draw_engine_overlay_next_type);
