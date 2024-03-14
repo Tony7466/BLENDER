@@ -171,7 +171,7 @@ struct InputAngle_Data {
 };
 
 /** Callback for #INPUT_ANGLE. */
-static void InputAngle(TransInfo * /*t*/, MouseInput *mi, const double mval[2], float output[3])
+static void InputAngle(TransInfo *t /*t*/, MouseInput *mi, const double mval[2], float output[3])
 {
   InputAngle_Data *data = static_cast<InputAngle_Data *>(mi->data);
   float dir_prev[2], dir_curr[2], mi_center[2];
@@ -188,7 +188,21 @@ static void InputAngle(TransInfo * /*t*/, MouseInput *mi, const double mval[2], 
       dphi = -dphi;
     }
 
-    data->angle += double(dphi) * (mi->precision ? double(mi->precision_factor) : 1.0);
+    /*When rotating objects, we want to avoid the precision input
+    dramatically slowing down the rotation when snap increments are turned on.*/
+
+    bool applyPrecision = mi->precision;
+    if (t->modifiers & MOD_SNAP) {
+      // If snap modifiers are present but not inverted
+      if (!(t->modifiers & MOD_SNAP_INVERT)) {
+        applyPrecision = false;
+      }
+    }
+    else if (t->modifiers & MOD_SNAP_INVERT) {
+      applyPrecision = false;
+    }
+
+    data->angle += double(dphi) * (applyPrecision ? double(mi->precision_factor) : 1.0);
 
     data->mval_prev[0] = mval[0];
     data->mval_prev[1] = mval[1];
