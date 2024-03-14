@@ -95,15 +95,18 @@ static void lasso_px_cb(int x, int x_end, int y, void *user_data)
   } while (++index != index_end);
 }
 
-std::unique_ptr<GestureData> init_from_lasso(bContext *C, wmOperator *op)
+static std::unique_ptr<GestureData> init_from_lasso(bContext *C,
+                                                    wmOperator *op,
+                                                    ShapeType shapeType)
 {
+  BLI_assert(ELEM(shapeType, ShapeType::Lasso, ShapeType::Polyline));
   const Array<int2> mcoords = WM_gesture_lasso_path_to_array(C, op);
   if (mcoords.size() <= 1) {
     return nullptr;
   }
 
   std::unique_ptr<GestureData> gesture_data = std::make_unique<GestureData>();
-  gesture_data->shape_type = ShapeType::Lasso;
+  gesture_data->shape_type = shapeType;
 
   init_common(C, op, *gesture_data);
 
@@ -139,6 +142,16 @@ std::unique_ptr<GestureData> init_from_lasso(bContext *C, wmOperator *op)
   }
 
   return gesture_data;
+}
+
+std::unique_ptr<GestureData> init_from_lasso(bContext *C, wmOperator *op)
+{
+  return init_from_lasso(C, op, ShapeType::Lasso);
+}
+
+std::unique_ptr<GestureData> init_from_polyline(bContext *C, wmOperator *op)
+{
+  return init_from_lasso(C, op, ShapeType::Polyline);
 }
 
 std::unique_ptr<GestureData> init_from_box(bContext *C, wmOperator *op)
@@ -341,7 +354,9 @@ static void update_affected_nodes_by_clip_planes(GestureData &gesture_data)
         /* Certain degenerate cases of a lasso shape can cause the resulting
          * frustum planes to enclose a node's AABB, therefore we must submit it
          * to be more throughly evaluated. */
-        if (gesture_data.shape_type == ShapeType::Lasso) {
+        if (gesture_data.shape_type == ShapeType::Lasso ||
+            gesture_data.shape_type == ShapeType::Polyline)
+        {
           return true;
         }
         return BKE_pbvh_node_frustum_exclude_AABB(&node, &frustum);
@@ -357,6 +372,7 @@ static void update_affected_nodes(GestureData &gesture_data)
   switch (gesture_data.shape_type) {
     case ShapeType::Box:
     case ShapeType::Lasso:
+    case ShapeType::Polyline:
       update_affected_nodes_by_clip_planes(gesture_data);
       break;
     case ShapeType::Line:
@@ -415,6 +431,7 @@ bool is_affected(GestureData &gesture_data, const float3 &co, const float3 &vert
               (!is_contained && gesture_data.selection_type == SelectionType::Outside));
     }
     case ShapeType::Lasso:
+    case ShapeType::Polyline:
       return is_affected_lasso(gesture_data, co);
     case ShapeType::Line:
       if (gesture_data.line.use_side_planes) {

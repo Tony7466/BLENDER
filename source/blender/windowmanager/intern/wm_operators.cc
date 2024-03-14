@@ -4242,6 +4242,7 @@ static void gesture_polyline_modal_keymap(wmKeyConfig *keyconf)
   keymap = WM_modalkeymap_ensure(keyconf, "Gesture Polyline", modal_items);
 
   /* assign map to operators */
+  WM_modalkeymap_assign(keymap, "PAINT_OT_hide_show_polyline_gesture");
 }
 
 /* Zoom to border modal operators. */

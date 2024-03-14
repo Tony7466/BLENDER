@@ -79,6 +79,8 @@ static void sculpt_gesture_project_apply_for_symmetry_pass(bContext & /*C*/,
       break;
     case gesture::ShapeType::Lasso:
     case gesture::ShapeType::Box:
+    case gesture::ShapeType::Polyline:
+    default:
       /* Gesture shape projection not implemented yet. */
       BLI_assert(false);
       break;
