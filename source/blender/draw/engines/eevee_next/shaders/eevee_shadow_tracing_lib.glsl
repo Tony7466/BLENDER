@@ -410,7 +410,7 @@ SHADOW_MAP_TRACE_FN(ShadowRayPunctual)
 
 /* Compute the world space offset of the shading position required for
  * stochastic percentage closer filtering of shadow-maps. */
-vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng)
+vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 Ng, vec2 random)
 {
   if (light.pcf_radius <= 0.001) {
     /* Early return. */
@@ -459,12 +459,7 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
 
   /* Compute the actual offset. */
 
-  vec2 rand = vec2(0.0);
-#ifdef EEVEE_SAMPLING_DATA
-  rand = sampling_rng_2D_get(SAMPLING_SHADOW_V);
-#endif
-  vec2 pcf_offset = interlieved_gradient_noise(UTIL_TEXEL, vec2(5, 7), rand);
-  pcf_offset = pcf_offset * 2.0 - 1.0;
+  vec2 pcf_offset = random * 2.0 - 1.0;
   pcf_offset *= light.pcf_radius;
 
   /* Scale the offset based on shadow LOD. */
@@ -531,17 +526,19 @@ ShadowEvalResult shadow_eval(LightData light,
 #  elif defined(GPU_COMPUTE_SHADER)
   vec2 pixel = vec2(gl_GlobalInvocationID.xy);
 #  endif
-  vec3 random_shadow_3d = utility_tx_fetch(utility_tx, pixel, UTIL_BLUE_NOISE_LAYER).rgb;
-  random_shadow_3d += sampling_rng_3D_get(SAMPLING_SHADOW_U);
+  vec3 blur_noise_3d = utility_tx_fetch(utility_tx, pixel, UTIL_BLUE_NOISE_LAYER).rgb;
+  vec3 random_shadow_3d = blur_noise_3d + sampling_rng_3D_get(SAMPLING_SHADOW_U);
+  vec2 random_pcf_2d = fract(blur_noise_3d.xy + sampling_rng_2D_get(SAMPLING_SHADOW_X));
   float normal_offset = uniform_buf.shadow.normal_bias;
 #else
   /* Case of surfel light eval. */
   vec3 random_shadow_3d = vec3(0.5);
+  vec2 random_pcf_2d = vec2(0.0);
   /* TODO(fclem): Parameter on irradiance volumes? */
   float normal_offset = 0.02;
 #endif
 
-  P += shadow_pcf_offset(light, is_directional, P, Ng);
+  P += shadow_pcf_offset(light, is_directional, P, Ng, random_pcf_2d);
 
   /* Avoid self intersection. */
   P = offset_ray(P, Ng);
