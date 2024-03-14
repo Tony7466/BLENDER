@@ -10,8 +10,13 @@
 
 #include "BKE_screen.hh"
 
-#include "UI_interface_c.hh"
+#include "BLT_translation.hh"
 
+#include "UI_interface_c.hh"
+#include "UI_tree_view.hh"
+
+#include "ED_asset_filter.hh"
+#include "ED_asset_list.hh"
 #include "ED_asset_shelf.hh"
 
 #include "RNA_access.hh"
@@ -55,10 +60,92 @@ static AssetShelf *get_shelf_for_popup(const bContext *C,
   return nullptr;
 }
 
+class AssetCatalogTreeView : public ui::AbstractTreeView {
+  AssetShelf &shelf_;
+  asset_system::AssetCatalogTree catalog_tree_;
+
+ public:
+  AssetCatalogTreeView(const asset_system::AssetLibrary &library, AssetShelf &shelf)
+      : shelf_(shelf)
+  {
+    catalog_tree_ = build_filtered_catalog_tree(
+        library,
+        shelf_.settings.asset_library_reference,
+        [this](const asset_system::AssetRepresentation &asset) {
+          return (!shelf_.type->asset_poll || shelf_.type->asset_poll(shelf_.type, &asset));
+        });
+  }
+
+  void build_tree() override
+  {
+    if (catalog_tree_.is_empty()) {
+      auto &item = add_tree_item<ui::BasicTreeViewItem>(RPT_("No applicable assets found"),
+                                                        ICON_INFO);
+      item.disable_interaction();
+      return;
+    }
+
+    auto &all_item = add_tree_item<ui::BasicTreeViewItem>(IFACE_("All"));
+    all_item.set_on_activate_fn([this](bContext &C, ui::BasicTreeViewItem &) {
+      settings_set_all_catalog_active(shelf_.settings);
+      send_redraw_notifier(C);
+    });
+    all_item.set_is_active_fn(
+        [this]() { return settings_is_all_catalog_active(shelf_.settings); });
+
+    catalog_tree_.foreach_root_item(
+        [&, this](const asset_system::AssetCatalogTreeItem &catalog_item) {
+          ui::BasicTreeViewItem &item = build_catalog_items_recursive(all_item, catalog_item);
+          /* Uncollapse root items by default (user edits will override this just fine). */
+          item.set_collapsed(false);
+        });
+  }
+
+  ui::BasicTreeViewItem &build_catalog_items_recursive(
+      ui::TreeViewOrItem &parent_view_item,
+      const asset_system::AssetCatalogTreeItem &catalog_item) const
+  {
+    ui::BasicTreeViewItem &view_item = parent_view_item.add_tree_item<ui::BasicTreeViewItem>(
+        catalog_item.get_name());
+
+    view_item.set_on_activate_fn([this, catalog_item](bContext &C, ui::BasicTreeViewItem &) {
+      settings_set_active_catalog(shelf_.settings, catalog_item.catalog_path());
+      send_redraw_notifier(C);
+    });
+    view_item.set_is_active_fn([this, catalog_item]() {
+      return settings_is_active_catalog(shelf_.settings, catalog_item.catalog_path());
+    });
+
+    catalog_item.foreach_child(
+        [&view_item, this](const asset_system::AssetCatalogTreeItem &child) {
+          build_catalog_items_recursive(view_item, child);
+        });
+
+    return view_item;
+  }
+};
+
+static void catalog_tree_draw(uiLayout &layout, AssetShelf &shelf)
+{
+  const asset_system::AssetLibrary *library = list::library_get_once_available(
+      shelf.settings.asset_library_reference);
+  if (!library) {
+    return;
+  }
+
+  uiBlock *block = uiLayoutGetBlock(&layout);
+  ui::AbstractTreeView *tree_view = UI_block_add_view(
+      *block,
+      "asset shelf catalog tree view",
+      std::make_unique<AssetCatalogTreeView>(*library, shelf));
+
+  ui::TreeViewBuilder::build_tree_view(*tree_view, layout);
+}
+
 uiBlock *asset_shelf_popup_block(const bContext *C, ARegion *region, AssetShelfType *shelf_type)
 {
   uiBlock *block = UI_block_begin(C, region, "_popup", UI_EMBOSS);
-  UI_block_flag_enable(block, UI_BLOCK_LOOP | UI_BLOCK_KEEP_OPEN);
+  UI_block_flag_enable(block, UI_BLOCK_KEEP_OPEN | UI_BLOCK_POPOVER);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
 
   AssetShelf *shelf = get_shelf_for_popup(C, CTX_wm_area(C), *shelf_type);
@@ -83,7 +170,7 @@ uiBlock *asset_shelf_popup_block(const bContext *C, ARegion *region, AssetShelfT
   uiLayoutSetFixedSize(sub, true);
   uiLayout *catalogs_col = uiLayoutColumn(sub, false);
   library_selector_draw(C, catalogs_col, *shelf);
-  catalog_selector_tree_draw(catalogs_col, *shelf);
+  catalog_tree_draw(*catalogs_col, *shelf);
 
   uiLayout *asset_view_col = uiLayoutColumn(row, false);
   build_asset_view(*asset_view_col, shelf->settings.asset_library_reference, *shelf, *C, *region);
