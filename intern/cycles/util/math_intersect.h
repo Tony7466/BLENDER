@@ -302,6 +302,101 @@ ccl_device bool ray_quad_intersect(float3 ray_P,
   return true;
 }
 
+/* TODO(weizhen): check if it's well-defined when one of the ray component is zero. */
+ccl_device bool ray_aabb_intersect(const float3 bbox_min,
+                                   const float3 bbox_max,
+                                   const float3 ray_P,
+                                   const float3 ray_D,
+                                   ccl_private float2 *t_range)
+{
+  const float3 inv_ray_D = rcp(ray_D);
+
+  /* Absolute distances to lower and upper box coordinates; */
+  const float3 t_lower = (bbox_min - ray_P) * inv_ray_D;
+  const float3 t_upper = (bbox_max - ray_P) * inv_ray_D;
+
+  /* The four t-intervals (for x-/y-/z-slabs, and ray p(t)). */
+  const float4 tmins = float3_to_float4(min(t_lower, t_upper), 0.0f);
+  const float4 tmaxes = float3_to_float4(max(t_lower, t_upper), FLT_MAX);
+
+  /* Max of mins and min of maxes. */
+  const float tmin = reduce_max(tmins);
+  const float tmax = reduce_min(tmaxes);
+
+  *t_range = make_float2(tmin, tmax);
+
+  return tmin < tmax;
+}
+
+/* *
+ * Compute the intersection of a ray with a single-sided cone.
+ *
+ * \param axis: a unit-length direction around which the cone has a circular symmetry
+ * \param P: the vector pointing from the cone apex to the ray origin
+ * \param D: the direction of the ray
+ * \param cos_angle_sq: `sqr(cos(half_aperture_of_the_cone))`
+ * \param t_range: the lower and upper bounds between which the ray lies inside the cone
+ * \return whether the intersection exists and is in the range of [0, FLT_MAX]
+ *
+ * From https://www.geometrictools.com/Documentation/IntersectionLineCone.pdf
+ */
+ccl_device_inline bool ray_cone_intersect(const float3 axis,
+                                          const float3 P,
+                                          const float3 D,
+                                          const float cos_angle_sq,
+                                          ccl_private float2 *t_range)
+{
+  const float AD = dot(axis, D);
+  const float AP = dot(axis, P);
+
+  const float c2 = sqr(AD) - cos_angle_sq;
+  const float c1 = AD * AP - cos_angle_sq * dot(D, P);
+  const float c0 = sqr(AP) - cos_angle_sq * dot(P, P);
+
+  float tmin = 0.0f, tmax = FLT_MAX;
+  bool valid = false;
+
+  /* Solve t for equation c2 * t^2 + 2c1 * t + c0 = 0
+   * and check whether the solutions lie inside the cone. */
+  if (c2 != 0.0f) {
+    const float sigma = sqr(c1) - c2 * c0;
+    if (sigma > 0) {
+      const float c1_c2 = c1 / c2;
+
+      tmin = -sqrtf(sigma) / fabsf(c2) - c1_c2;
+      tmax = -tmin - 2.0f * c1_c2;
+
+      const bool tmin_valid = dot(axis, P + tmin * D) > 0.0f;
+      const bool tmax_valid = dot(axis, P + tmax * D) > 0.0f;
+
+      valid = tmin_valid || tmax_valid;
+
+      if (!tmax_valid) {
+        tmax = tmin;
+        tmin = 0.0f;
+      }
+      else if (!tmin_valid) {
+        tmin = tmax;
+        tmax = FLT_MAX;
+      }
+    }
+    else if (c2 > 0 && sigma == 0.0f) {
+      tmin = -c1 / c2;
+      valid = true;
+    }
+  }
+  else if (c1 != 0.0f) {
+    tmin = -c0 / (2.0f * c1);
+    valid = (dot(axis, P + tmin * D) > 0.0f);
+  }
+
+  valid &= (tmin < tmax);
+
+  *t_range = clamp(*t_range, tmin, tmax);
+
+  return valid;
+}
+
 CCL_NAMESPACE_END
 
 #endif /* __UTIL_MATH_INTERSECT_H__ */

@@ -428,6 +428,33 @@ ccl_device_inline bool area_light_sample_from_intersection(
   return area_light_eval<false>(klight, ray_P, &light_P, ls, zero_float2(), false);
 }
 
+/* Returns the maximal distance between the light center and the boundary. */
+ccl_device_forceinline float area_light_max_extent(const ccl_global KernelAreaLight *light)
+{
+  if (light->invarea < 0.0f) {
+    /* Ellipse */
+    return fmaxf(light->len_u, light->len_v);
+  }
+  /* Rectangle */
+  return len(make_float2(light->len_u, light->len_v));
+}
+
+/* Compute the range of the ray lit by the spot light. Conservative estimation with the smallest
+ * possible cone covering the whole spread. */
+ccl_device_inline bool area_light_valid_ray_segment(const ccl_global KernelAreaLight *light,
+                                                    float3 P,
+                                                    const float3 D,
+                                                    ccl_private float2 *t_range)
+{
+  /* Slide the apex along the axis. */
+  /* TODO(weizhen): intersect with bounding box when the spread is (close to) zero. */
+  P += area_light_max_extent(light) / light->tan_half_spread * light->dir;
+  const float cos_angle_sq = 1.0f / (1.0f + sqr(light->tan_half_spread));
+
+  /* TODO(weizhen): limit the range to the side of the area light. */
+  return ray_cone_intersect(light->dir, P, D, cos_angle_sq, t_range);
+}
+
 template<bool in_volume_segment>
 ccl_device_forceinline bool area_light_tree_parameters(const ccl_global KernelLight *klight,
                                                        const float3 centroid,

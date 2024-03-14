@@ -325,10 +325,13 @@ ccl_device_inline bool volume_equiangular_valid_ray_segment(KernelGlobals kg,
     ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
     return spot_light_valid_ray_segment(&klight->spot, ray_P - ls->P, ray_D, t_range);
   }
-  else {
-    /* TODO(weizhen): other light types. */
-    return true;
+  if (ls->type == LIGHT_AREA) {
+    ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
+    return area_light_valid_ray_segment(&klight->area, ray_P - klight->co, ray_D, t_range);
   }
+
+  /* TODO(weizhen): other light types. */
+  return true;
 }
 
 /* Distance sampling */

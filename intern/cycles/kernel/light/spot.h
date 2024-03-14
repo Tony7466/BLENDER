@@ -37,65 +37,15 @@ ccl_device void spot_light_uv(const float3 ray,
   *v = -(ray.x + ray.y) * factor;
 }
 
-/* Compute the intersection of a ray with a cone.
- * From https://www.geometrictools.com/Documentation/IntersectionLineCone.pdf */
-ccl_device_inline bool spot_light_valid_ray_segment(const ccl_global KernelSpotLight *spot,
+/* Compute the range of the ray lit by the spot light. */
+ccl_device_inline bool spot_light_valid_ray_segment(const ccl_global KernelSpotLight *light,
                                                     const float3 P,
                                                     const float3 D,
                                                     ccl_private float2 *t_range)
 {
   /* TODO(weizhen): consider light radius. The behaviour would be different with or without soft
    * falloff. */
-  const float3 axis = spot->dir;
-  const float cos_angle_sq = sqr(spot->cos_half_spot_angle);
-
-  const float AD = dot(axis, D);
-  const float AP = dot(axis, P);
-
-  const float c2 = sqr(AD) - cos_angle_sq;
-  const float c1 = AD * AP - cos_angle_sq * dot(D, P);
-  const float c0 = sqr(AP) - cos_angle_sq * dot(P, P);
-
-  float tmin = 0.0f, tmax = FLT_MAX;
-  bool valid = false;
-
-  if (c2 != 0.0f) {
-    const float sigma = sqr(c1) - c2 * c0;
-    if (sigma > 0) {
-      const float c1_c2 = c1 / c2;
-
-      tmin = -sqrtf(sigma) / fabsf(c2) - c1_c2;
-      tmax = -tmin - 2.0f * c1_c2;
-
-      const bool tmin_valid = dot(axis, P + tmin * D) > 0.0f;
-      const bool tmax_valid = dot(axis, P + tmax * D) > 0.0f;
-
-      valid = tmin_valid || tmax_valid;
-
-      if (!tmax_valid) {
-        tmax = tmin;
-        tmin = 0.0f;
-      }
-      else if (!tmin_valid) {
-        tmin = tmax;
-        tmax = FLT_MAX;
-      }
-    }
-    else if (c2 > 0 && sigma == 0.0f) {
-      tmin = -c1 / c2;
-      valid = true;
-    }
-  }
-  else if (c1 != 0.0f) {
-    tmin = -c0 / (2.0f * c1);
-    valid = (dot(axis, P + tmin * D) > 0.0f);
-  }
-
-  valid &= (tmin < tmax);
-
-  *t_range = clamp(*t_range, make_float2(tmin, tmin), make_float2(tmax, tmax));
-
-  return valid;
+  return ray_cone_intersect(light->dir, P, D, sqr(light->cos_half_spot_angle), t_range);
 }
 
 template<bool in_volume_segment>
