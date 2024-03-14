@@ -158,6 +158,10 @@ static ImBuf *wm_block_splash_image(int width, int *r_height)
   }
 
   if (ibuf) {
+    if (ibuf->channels == 4 && ibuf->planes < 32) {
+      /* In case the image source does not have alpha. */
+      ibuf->planes = 32;
+    }
     height = (width * ibuf->y) / ibuf->x;
     if (width != ibuf->x || height != ibuf->y) {
       IMB_scaleImBuf(ibuf, width, height);
