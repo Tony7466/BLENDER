@@ -540,6 +540,16 @@ inline void masked_fill(MutableSpan<T> data, const T &value, const IndexMask &ma
  */
 template<typename T> void build_reverse_map(const IndexMask &mask, MutableSpan<T> r_map);
 
+/**
+ * Joins segments together based on heuristics. Generally, one wants as few segments as possible,
+ * but one also wants full-range-segments if possible and we don't want to copy too many indices
+ * around to reduce the number of segments.
+ *
+ * \return Number of consolidated segments. Those are ordered to the beginning of the span.
+ */
+int64_t consolidate_index_mask_segments(MutableSpan<IndexMaskSegment> segments,
+                                        IndexMaskMemory &memory);
+
 /* -------------------------------------------------------------------- */
 /** \name #RawMaskIterator Inline Methods
  * \{ */

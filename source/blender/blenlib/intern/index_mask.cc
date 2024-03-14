@@ -212,15 +212,11 @@ IndexMask IndexMask::shift(const int64_t offset, IndexMaskMemory &memory) const
   return shifted_mask;
 }
 
-/**
- * Merges consecutive segments in some cases. Having fewer but larger segments generally allows for
- * better performance when using the mask later on.
- */
-static void consolidate_segments(Vector<IndexMaskSegment, 16> &segments,
-                                 IndexMaskMemory & /*memory*/)
+int64_t consolidate_index_mask_segments(MutableSpan<IndexMaskSegment> segments,
+                                        IndexMaskMemory & /*memory*/)
 {
   if (segments.is_empty()) {
-    return;
+    return 0;
   }
 
   const Span<int16_t> static_indices = get_static_indices_array();
@@ -269,7 +265,13 @@ static void consolidate_segments(Vector<IndexMaskSegment, 16> &segments,
   finish_group(segments.size() - 1);
 
   /* Remove all segments that have been merged into previous segments. */
-  segments.remove_if([](const IndexMaskSegment segment) { return segment.is_empty(); });
+  const int64_t new_segments_num = std::remove_if(segments.begin(),
+                                                  segments.end(),
+                                                  [](const IndexMaskSegment segment) {
+                                                    return segment.is_empty();
+                                                  }) -
+                                   segments.begin();
+  return new_segments_num;
 }
 
 IndexMask IndexMask::from_segments(const Span<IndexMaskSegment> segments, IndexMaskMemory &memory)
@@ -431,7 +433,8 @@ IndexMask IndexMask::from_indices(const Span<T> indices, IndexMaskMemory &memory
     });
     segments_collector.reduce(memory, segments);
   }
-  consolidate_segments(segments, memory);
+  const int64_t consolidated_segments_num = consolidate_index_mask_segments(segments, memory);
+  segments.resize(consolidated_segments_num);
   return IndexMask::from_segments(segments, memory);
 }
 
@@ -635,7 +638,8 @@ IndexMask from_predicate_impl(
     segments_collector.reduce(memory, segments);
   }
 
-  consolidate_segments(segments, memory);
+  const int64_t consolidated_segments_num = consolidate_index_mask_segments(segments, memory);
+  segments.resize(consolidated_segments_num);
   return IndexMask::from_segments(segments, memory);
 }
 }  // namespace detail
