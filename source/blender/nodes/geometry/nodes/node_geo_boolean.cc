@@ -66,7 +66,7 @@ static void node_update(bNodeTree *ntree, bNode *node)
 static void node_init(bNodeTree * /*tree*/, bNode *node)
 {
   node->custom1 = GEO_NODE_BOOLEAN_DIFFERENCE;
-  node->custom2 = GEO_NODE_BOOLEAN_FLOAT;
+  node->custom2 = int16_t(geometry::boolean::Solver::Float);
 }
 
 #ifdef WITH_GMP
@@ -85,7 +85,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 {
 #ifdef WITH_GMP
   GeometryNodeBooleanOperation operation = (GeometryNodeBooleanOperation)params.node().custom1;
-  GeometryNodeBooleanSolver solver = (GeometryNodeBooleanSolver)params.node().custom2;
+  geometry::boolean::Solver solver = geometry::boolean::Solver(params.node().custom2);
   const bool use_self = params.get_input<bool>("Self Intersection");
   const bool hole_tolerant = params.get_input<bool>("Hole Tolerant");
 
@@ -165,7 +165,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   op_params.no_self_intersections = !use_self;
   op_params.watertight = !hole_tolerant;
   op_params.no_nested_components = true; /* TODO: make this configurable. */
-  Mesh *result = geometry::boolean::GEO_mesh_boolean(
+  Mesh *result = geometry::boolean::mesh_boolean(
       meshes,
       transforms,
       float4x4::identity(),
@@ -224,16 +224,16 @@ static void node_rna(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
   static const EnumPropertyItem rna_geometry_boolean_solver_items[] = {
-      {GEO_NODE_BOOLEAN_MESH_ARR,
-        "EXACT",
-        0,
-        "Exact",
-        "Exact solver for the best results"},
-      {GEO_NODE_BOOLEAN_FLOAT,
-        "FLOAT",
-        0,
-        "Float",
-        "Simple solver for the best performance, without support for overlapping geometry"},
+      {int(geometry::boolean::Solver::MeshArr),
+       "EXACT",
+       0,
+       "Exact",
+       "Exact solver for the best results"},
+      {int(geometry::boolean::Solver::Float),
+       "FLOAT",
+       0,
+       "Float",
+       "Simple solver for the best performance, without support for overlapping geometry"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 
@@ -251,7 +251,7 @@ static void node_rna(StructRNA *srna)
                     "",
                     rna_geometry_boolean_solver_items,
                     NOD_inline_enum_accessors(custom2),
-                    GEO_NODE_BOOLEAN_FLOAT);
+                    int(geometry::boolean::Solver::Float));
 }
 
 static void node_register()

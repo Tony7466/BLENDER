@@ -14,6 +14,15 @@ struct Mesh;
 
 namespace blender::geometry::boolean {
 
+/** Specifies which solver to use. */
+enum class Solver {
+  /** The original BMesh floating point solver. */
+  Float = 0,
+  /** The exact solver based on the Mesh Arrangments for Solid Geometry paper,
+   * by Zhou, Grinspun, Zorin, and Jacobson.. */
+  MeshArr = 1,
+};
+
 /** BooleanOpParameters bundles together the global parameters for the boolean operation.
  * As well as saying which particular operation (intersect, difference, union) is desired,
  * it also states some assumptions that the algorithm is allowed to make about the input
@@ -56,12 +65,12 @@ struct BooleanOpParameters {
  * 'new' edges are the result of the intersections.
  */
 
-Mesh *GEO_mesh_boolean(Span<const Mesh *> meshes,
-                       Span<float4x4> transforms,
-                       const float4x4 &target_transform,
-                       Span<Array<short>> material_remaps,
-                       BooleanOpParameters op_params,
-                       GeometryNodeBooleanSolver solver,
-                       Vector<int> *r_intersecting_edges);
+Mesh *mesh_boolean(Span<const Mesh *> meshes,
+                   Span<float4x4> transforms,
+                   const float4x4 &target_transform,
+                   Span<Array<short>> material_remaps,
+                   BooleanOpParameters op_params,
+                   Solver solver,
+                   Vector<int> *r_intersecting_edges);
 
 }  // namespace blender::geometry::boolean

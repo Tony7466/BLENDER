@@ -3296,7 +3296,11 @@ static void rna_def_modifier_boolean(BlenderRNA *brna)
        0,
        "Fast",
        "Simple solver for the best performance, without support for overlapping geometry"},
-      {eBooleanModifierSolver_Mesh_Arr, "EXACT", 0, "Exact", "Advanced solver for the best result"},
+      {eBooleanModifierSolver_Mesh_Arr,
+       "EXACT",
+       0,
+       "Exact",
+       "Advanced solver for the best result"},
       {0, nullptr, 0, nullptr, nullptr},
   };
 

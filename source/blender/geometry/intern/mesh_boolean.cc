@@ -906,32 +906,32 @@ static int face_boolean_operand(BMFace *f, void * /*user_data*/)
  * rest.
  * The caller is responsible for using `BM_mesh_free` on the returned
  * BMesh, and calling `MEM_freeN` on the returned looptris.
- * 
+ *
  * TODO: maybe figure out how to use the join_geometries() function
  * to join all the meshes into one mesh first, and then convert
  * that single mesh to BMesh. Issues with that include needing
  * to apply the transforms and material remaps.
  */
-static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
+static BMesh *mesh_bm_concat(Span<const Mesh *> meshes,
                              Span<float4x4> transforms,
                              const float4x4 &target_transform,
                              Span<Array<short>> material_remaps,
                              BMLoop *(**r_looptris)[3],
                              int *r_looptris_tot)
 {
-  const int n = meshes.size();
-  BLI_assert(n >= 1);
+  const int meshes_num = meshes.size();
+  BLI_assert(meshes_num >= 1);
   bool ok;
   float4x4 inv_target_mat = math::invert(target_transform, ok);
   if (!ok) {
     BLI_assert(false);
     inv_target_mat = float4x4::identity();
   }
-  Array<float4x4> to_target(n);
-  Array<bool> is_negative_transform(n);
-  Array<bool> is_flip(n);
+  Array<float4x4> to_target(meshes_num);
+  Array<bool> is_negative_transform(meshes_num);
+  Array<bool> is_flip(meshes_num);
   const int tsize = transforms.size();
-  for (const int i : IndexRange(n)) {
+  for (const int i : IndexRange(meshes_num)) {
     if (tsize > i) {
       to_target[i] = inv_target_mat * transforms[i];
       is_negative_transform[i] = math::is_negative(transforms[i]);
@@ -950,7 +950,7 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
   allocsize.totedge = 0;
   allocsize.totloop = 0;
   allocsize.totface = 0;
-  for (const int i : IndexRange(n)) {
+  for (const int i : meshes.index_range()) {
     allocsize.totvert += meshes[i]->verts_num;
     allocsize.totedge += meshes[i]->edges_num;
     allocsize.totloop += meshes[i]->corners_num;
@@ -960,17 +960,18 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
   BMeshCreateParams bmesh_create_params{};
   BMesh *bm = BM_mesh_create(&allocsize, &bmesh_create_params);
 
-  BM_mesh_copy_init_customdata_from_mesh_array(bm, const_cast<const Mesh **>(meshes.begin()), n, &allocsize);
+  BM_mesh_copy_init_customdata_from_mesh_array(
+      bm, const_cast<const Mesh **>(meshes.begin()), meshes_num, &allocsize);
 
   BMeshFromMeshParams bmesh_from_mesh_params{};
   bmesh_from_mesh_params.calc_face_normal = true;
   bmesh_from_mesh_params.calc_vert_normal = true;
 
-  Array<int> verts_end(n);
-  Array<int> faces_end(n);
+  Array<int> verts_end(meshes_num);
+  Array<int> faces_end(meshes_num);
   verts_end[0] = meshes[0]->verts_num;
   faces_end[0] = meshes[0]->faces_num;
-  for (const int i : IndexRange(n)) {
+  for (const int i : meshes.index_range()) {
     /* Append meshes[i] elements and data to bm. */
     BM_mesh_bm_from_me(bm, meshes[i], &bmesh_from_mesh_params);
     if (i > 0) {
@@ -1003,7 +1004,8 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
   int i = 0;
   int mesh_index = 0;
   BM_ITER_MESH (eve, &iter, bm, BM_VERTS_OF_MESH) {
-    *reinterpret_cast<float3 *>(&eve->co) = math::transform_point(to_target[mesh_index], float3(eve->co));
+    *reinterpret_cast<float3 *>(&eve->co) = math::transform_point(to_target[mesh_index],
+                                                                  float3(eve->co));
     ++i;
     if (i == verts_end[mesh_index]) {
       mesh_index++;
@@ -1016,7 +1018,8 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
   i = 0;
   mesh_index = 0;
   BM_ITER_MESH (efa, &iter, bm, BM_FACES_OF_MESH) {
-    *reinterpret_cast<float3 *>(&efa->no) = math::transform_direction(to_target[mesh_index], float3(efa->no));
+    *reinterpret_cast<float3 *>(&efa->no) = math::transform_direction(to_target[mesh_index],
+                                                                      float3(efa->no));
     if (is_negative_transform[mesh_index]) {
       negate_v3(efa->no);
     }
@@ -1035,7 +1038,7 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
         efa->mat_nr = material_remaps[mesh_index][cur_mat];
       }
     }
-  
+
     ++i;
     if (i == faces_end[mesh_index]) {
       mesh_index++;
@@ -1044,7 +1047,6 @@ static BMesh *mesh_bm_concat(Span<const Mesh *>meshes,
 
   return bm;
 }
-
 
 static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
                                 Span<float4x4> transforms,
@@ -1060,12 +1062,8 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
   BMLoop *(*looptris)[3];
   int looptris_tot;
   if (nmesh == 2) {
-    BMesh *bm = mesh_bm_concat(meshes,
-                               transforms,
-                               target_transform,
-                               material_remaps,
-                               &looptris,
-                               &looptris_tot);
+    BMesh *bm = mesh_bm_concat(
+        meshes, transforms, target_transform, material_remaps, &looptris, &looptris_tot);
     BM_mesh_intersect(bm,
                       looptris,
                       looptris_tot,
@@ -1089,13 +1087,10 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
     Array<const Mesh *> two_meshes = {meshes[0], meshes[1]};
     Array<float4x4> two_transforms = {transforms[0], transforms[1]};
     Array<Array<short>> two_remaps = {material_remaps[0], material_remaps[1]};
+    Mesh *prev_result_mesh = nullptr;
     for (int i = 0; i < nmesh - 1; i++) {
-      BMesh *bm = mesh_bm_concat(two_meshes.as_span(),
-                                 two_transforms.as_span(),
-                                 float4x4::identity(),
-                                 two_remaps.as_span(),
-                                 &looptris,
-                                 &looptris_tot);
+      BMesh *bm = mesh_bm_concat(
+          two_meshes, two_transforms, float4x4::identity(), two_remaps, &looptris, &looptris_tot);
       BM_mesh_intersect(bm,
                         looptris,
                         looptris_tot,
@@ -1112,11 +1107,10 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
       MEM_freeN(looptris);
       Mesh *result_i_mesh = BKE_mesh_from_bmesh_for_eval_nomain(bm, nullptr, meshes[0]);
       BM_mesh_free(bm);
-      if (i > 0) {
+      if (prev_result_mesh != nullptr) {
         /* Except in the first iteration, two_meshes[0] holds the intermediate
          * mesh result from the previous iteraiton. */
-        Mesh *me = const_cast<Mesh*>(two_meshes[0]);
-        BKE_mesh_eval_delete(me);
+        BKE_mesh_eval_delete(prev_result_mesh);
       }
       if (i < nmesh - 2) {
         two_meshes[0] = result_i_mesh;
@@ -1125,6 +1119,7 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
         two_transforms[1] = transforms[i + 2];
         two_remaps[0] = {};
         two_remaps[1] = material_remaps[i + 2];
+        prev_result_mesh = result_i_mesh;
       }
       else {
         return result_i_mesh;
@@ -1140,25 +1135,24 @@ static Mesh *mesh_boolean_float(Span<const Mesh *> meshes,
   return nullptr;
 }
 
-Mesh *GEO_mesh_boolean(Span<const Mesh *> meshes,
-                       Span<float4x4> transforms,
-                       const float4x4 &target_transform,
-                       Span<Array<short>> material_remaps,
-                       BooleanOpParameters op_params,
-                       GeometryNodeBooleanSolver solver,
-                       Vector<int> *r_intersecting_edges)
+Mesh *mesh_boolean(Span<const Mesh *> meshes,
+                   Span<float4x4> transforms,
+                   const float4x4 &target_transform,
+                   Span<Array<short>> material_remaps,
+                   BooleanOpParameters op_params,
+                   Solver solver,
+                   Vector<int> *r_intersecting_edges)
 {
 
   switch (solver) {
-    case GEO_NODE_BOOLEAN_FLOAT:
+    case Solver::Float:
       return mesh_boolean_float(meshes,
                                 transforms,
                                 target_transform,
                                 material_remaps,
                                 op_params.boolean_mode,
                                 r_intersecting_edges);
-      break;
-    case GEO_NODE_BOOLEAN_MESH_ARR:
+    case Solver::MeshArr:
       return mesh_boolean_mesh_arr(meshes,
                                    transforms,
                                    target_transform,
@@ -1167,11 +1161,10 @@ Mesh *GEO_mesh_boolean(Span<const Mesh *> meshes,
                                    !op_params.watertight,
                                    op_params.boolean_mode,
                                    r_intersecting_edges);
-      break;
     default:
-      BLI_assert(false);
+      BLI_assert_unreachable();
   }
-  return BKE_mesh_new_nomain(0, 0, 0, 0);
+  return nullptr;
 }
 
 }  // namespace blender::geometry::boolean

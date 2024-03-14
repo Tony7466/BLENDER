@@ -2661,11 +2661,6 @@ typedef enum GeometryNodeBooleanOperation {
   GEO_NODE_BOOLEAN_DIFFERENCE = 2,
 } GeometryNodeBooleanOperation;
 
-typedef enum GeometryNodeBooleanSolver {
-  GEO_NODE_BOOLEAN_FLOAT = 0,
-  GEO_NODE_BOOLEAN_MESH_ARR = 1,
-} GeometryNodeBooleanSolver;
-
 typedef enum GeometryNodeCurvePrimitiveCircleMode {
   GEO_NODE_CURVE_PRIMITIVE_CIRCLE_TYPE_POINTS = 0,
   GEO_NODE_CURVE_PRIMITIVE_CIRCLE_TYPE_RADIUS = 1
