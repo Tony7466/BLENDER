@@ -4,3 +4,4 @@ Referenced by commit fff74145f175174d1fc5c1c925647781d1e5d29b, Fix #113186: The 
 Referenced by issue #113280, Incorrect display of Cycles border render while rendering
 Referenced by pull request #113282, Fix #113280: Incorrect display of Cycles border render while rendering
 Referenced by commit ba767610cffc361c349329dc399f830e1dce3eb7, Fix #113280: Incorrect display of Cycles border render while rendering
+Referenced by issue #119427, UI: The Metadata is gone for the rendered image
