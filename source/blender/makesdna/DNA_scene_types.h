@@ -1923,6 +1923,7 @@ typedef struct SceneEEVEE {
   int shadow_ray_count;
   int shadow_step_count;
   float shadow_normal_bias;
+
   float _pad0;
 
   int ray_tracing_method;
@@ -2887,6 +2888,7 @@ enum {
   SCE_EEVEE_DOF_JITTER = (1 << 23),
   SCE_EEVEE_SHADOW_ENABLED = (1 << 24),
   SCE_EEVEE_RAYTRACE_OPTIONS_SPLIT = (1 << 25),
+  SCE_EEVEE_SHADOW_JITTERED_TRANSPARENCY = (1 << 26),
 };
 
 typedef enum RaytraceEEVEE_Flag {

@@ -213,6 +213,8 @@ class ShadowModule {
   /** Map of shadow casters to track deletion & update of intersected shadows. */
   Map<ObjectKey, ShadowObject> objects_;
 
+  bool jittered_transparency_;
+
   /* -------------------------------------------------------------------- */
   /** \name Tile-map Management
    * \{ */
@@ -334,7 +336,8 @@ class ShadowModule {
   void sync_object(const Object *ob,
                    const ObjectHandle &handle,
                    const ResourceHandle &resource_handle,
-                   bool is_alpha_blend);
+                   bool is_alpha_blend,
+                   bool has_transparent_shadows);
   void end_sync();
 
   void set_lights_data();

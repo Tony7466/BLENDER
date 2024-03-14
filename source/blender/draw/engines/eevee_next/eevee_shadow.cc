@@ -742,6 +742,9 @@ void ShadowModule::init()
     }
   }
 
+  jittered_transparency_ = !inst_.is_viewport() ||
+                           scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_TRANSPARENCY;
+
   data_.ray_count = clamp_i(inst_.scene->eevee.shadow_ray_count, 1, SHADOW_MAX_RAY);
   data_.step_count = clamp_i(inst_.scene->eevee.shadow_step_count, 1, SHADOW_MAX_STEP);
   data_.normal_bias = max_ff(inst_.scene->eevee.shadow_normal_bias, 0.0f);
@@ -897,7 +900,8 @@ void ShadowModule::begin_sync()
 void ShadowModule::sync_object(const Object *ob,
                                const ObjectHandle &handle,
                                const ResourceHandle &resource_handle,
-                               bool is_alpha_blend)
+                               bool is_alpha_blend,
+                               bool has_transparent_shadows)
 {
   bool is_shadow_caster = !(ob->visibility_flag & OB_HIDE_SHADOW);
   if (!is_shadow_caster && !is_alpha_blend) {
@@ -907,7 +911,9 @@ void ShadowModule::sync_object(const Object *ob,
   ShadowObject &shadow_ob = objects_.lookup_or_add_default(handle.object_key);
   shadow_ob.used = true;
   const bool is_initialized = shadow_ob.resource_handle.raw != 0;
-  if ((handle.recalc != 0 || !is_initialized) && is_shadow_caster) {
+  if (is_shadow_caster &&
+      (handle.recalc || !is_initialized || (has_transparent_shadows && jittered_transparency_)))
+  {
     if (shadow_ob.resource_handle.raw != 0) {
       past_casters_updated_.append(shadow_ob.resource_handle.raw);
     }
