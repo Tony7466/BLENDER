@@ -930,7 +930,7 @@ static BMesh *mesh_bm_concat(Span<const Mesh *> meshes,
   bool ok;
   float4x4 inv_target_mat = math::invert(target_transform, ok);
   if (!ok) {
-    BLI_assert(false);
+    BLI_assert_unreachable();
     inv_target_mat = float4x4::identity();
   }
   Array<float4x4> to_target(meshes_num);
