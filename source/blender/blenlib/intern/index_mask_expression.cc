@@ -474,13 +474,13 @@ static void evaluate_coarse_difference(const Span<DifferenceCourseBoundary> boun
  * #CoarseSegment::Type::Unknown. Those segments can be evaluated in more detail afterwards.
  *
  * \param root_expression: Expression to be evaluated.
- * \param eager_eval_order: Pre-computed evaluation order. All children of a term must come before
+ * \param eval_order: Pre-computed evaluation order. All children of a term must come before
  *   the term itself.
  * \param eval_bounds: If given, the evaluation is restriced to those bounds. Otherwise, the full
  *   referenced masks are used.
  */
 static CoarseResult evaluate_coarse(const Expr &root_expression,
-                                    const Span<const Expr *> eager_eval_order,
+                                    const Span<const Expr *> eval_order,
                                     const std::optional<IndexRange> eval_bounds = std::nullopt)
 {
   /* An expression result for each intermediate expression. */
@@ -488,7 +488,7 @@ static CoarseResult evaluate_coarse(const Expr &root_expression,
       root_expression.expression_array_size());
 
   /* Process expressions in a pre-determined order. */
-  for (const Expr *expression : eager_eval_order) {
+  for (const Expr *expression : eval_order) {
     CoarseResult &expr_result = expression_results[expression->index].emplace();
     switch (expression->type) {
       case Expr::Type::Atomic: {
@@ -592,7 +592,7 @@ static Span<int16_t> bits_to_indices(const BoundedBitSpan bits, LinearAllocator<
 static IndexMaskSegment evaluate_exact_with_bits(const Expr &root_expression,
                                                  LinearAllocator<> &allocator,
                                                  const IndexRange bounds,
-                                                 const Span<const Expr *> eager_eval_order)
+                                                 const Span<const Expr *> eval_order)
 {
   BLI_assert(bounds.size() <= max_segment_size);
   const int64_t bounds_min = bounds.start();
@@ -602,7 +602,7 @@ static IndexMaskSegment evaluate_exact_with_bits(const Expr &root_expression,
   BitGroupVector<16 * 1024> expression_results(
       expr_array_size, ints_in_bounds * bits::BitsPerInt, false);
 
-  for (const Expr *expression : eager_eval_order) {
+  for (const Expr *expression : eval_order) {
     MutableBoundedBitSpan expr_result = expression_results[expression->index];
     switch (expression->type) {
       case Expr::Type::Atomic: {
@@ -853,13 +853,13 @@ static IndexMaskSegment difference_index_mask_segments(
 static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
                                                     LinearAllocator<> &allocator,
                                                     const IndexRange bounds,
-                                                    const Span<const Expr *> eager_eval_order)
+                                                    const Span<const Expr *> eval_order)
 {
   BLI_assert(bounds.size() <= max_segment_size);
   const int64_t bounds_min = bounds.start();
   const int expr_array_size = root_expression.expression_array_size();
   Array<IndexMaskSegment, inline_expr_array_size> results(expr_array_size);
-  for (const Expr *expression : eager_eval_order) {
+  for (const Expr *expression : eval_order) {
     switch (expression->type) {
       case Expr::Type::Atomic: {
         const auto &expr = expression->as_atomic();
@@ -1001,8 +1001,7 @@ static Vector<IndexMaskSegment> build_result_mask_segments(
  * Computes an evaluation order of the expression. The important aspect is that all child terms
  * come before the term that uses them.
  */
-static Vector<const Expr *, inline_expr_array_size> compute_eager_eval_order(
-    const Expr &root_expression)
+static Vector<const Expr *, inline_expr_array_size> compute_eval_order(const Expr &root_expression)
 {
   Vector<const Expr *, inline_expr_array_size> eval_order;
   if (root_expression.type == Expr::Type::Atomic) {
@@ -1060,7 +1059,7 @@ static ExactEvalMode determine_exact_eval_mode(const Expr &root_expression)
 
 static void evaluate_coarse_and_split_until_segments_are_short(
     const Expr &root_expression,
-    const Span<const Expr *> eager_eval_order,
+    const Span<const Expr *> eval_order,
     Vector<EvaluatedSegment, 16> &r_evaluated_segments,
     Vector<IndexRange, 16> &r_short_unknown_segments)
 {
@@ -1102,7 +1101,7 @@ static void evaluate_coarse_and_split_until_segments_are_short(
 
   /* Initial coarse evaluation without any explicit bounds. The bounds are implied by the index
    * masks used in the expression. */
-  const CoarseResult initial_coarse_result = evaluate_coarse(root_expression, eager_eval_order);
+  const CoarseResult initial_coarse_result = evaluate_coarse(root_expression, eval_order);
   handle_coarse_result(initial_coarse_result);
 
   /* Do coarse evaluation until all unknown segments are short enough to do exact evaluation. */
@@ -1111,9 +1110,8 @@ static void evaluate_coarse_and_split_until_segments_are_short(
     const int64_t split_pos = unknown_bounds.size() / 2;
     const IndexRange left_half = unknown_bounds.take_front(split_pos);
     const IndexRange right_half = unknown_bounds.drop_front(split_pos);
-    const CoarseResult left_result = evaluate_coarse(root_expression, eager_eval_order, left_half);
-    const CoarseResult right_result = evaluate_coarse(
-        root_expression, eager_eval_order, right_half);
+    const CoarseResult left_result = evaluate_coarse(root_expression, eval_order, left_half);
+    const CoarseResult right_result = evaluate_coarse(root_expression, eval_order, right_half);
     handle_coarse_result(left_result);
     handle_coarse_result(right_result);
   }
@@ -1122,7 +1120,7 @@ static void evaluate_coarse_and_split_until_segments_are_short(
 static void evaluate_short_unknown_segments_exactly(
     const Expr &root_expression,
     const ExactEvalMode exact_eval_mode,
-    const Span<const Expr *> eager_eval_order,
+    const Span<const Expr *> eval_order,
     const Span<IndexRange> short_unknown_segments,
     IndexMaskMemory &memory,
     Vector<EvaluatedSegment, 16> &r_evaluated_segments)
@@ -1135,7 +1133,7 @@ static void evaluate_short_unknown_segments_exactly(
     switch (exact_eval_mode) {
       case ExactEvalMode::Bits: {
         const IndexMaskSegment indices = evaluate_exact_with_bits(
-            root_expression, allocator, bounds, eager_eval_order);
+            root_expression, allocator, bounds, eval_order);
         if (!indices.is_empty()) {
           r_local_evaluated_segments.append(
               {EvaluatedSegment::Type::Indices, bounds, nullptr, indices});
@@ -1147,8 +1145,8 @@ static void evaluate_short_unknown_segments_exactly(
          * provided bounds. So split up the range into subranges first if necessary. */
         Vector<int64_t> segment_boundaries;
         segment_boundaries.extend({bounds.first(), bounds.one_after_last()});
-        for (const int64_t eval_order_i : eager_eval_order.index_range()) {
-          const Expr &expr = *eager_eval_order[eval_order_i];
+        for (const int64_t eval_order_i : eval_order.index_range()) {
+          const Expr &expr = *eval_order[eval_order_i];
           if (expr.type != Expr::Type::Atomic) {
             continue;
           }
@@ -1171,7 +1169,7 @@ static void evaluate_short_unknown_segments_exactly(
             continue;
           }
           const IndexMaskSegment indices = evaluate_exact_with_indices(
-              root_expression, allocator, sub_bounds, eager_eval_order);
+              root_expression, allocator, sub_bounds, eval_order);
           if (!indices.is_empty()) {
             r_local_evaluated_segments.append(
                 {EvaluatedSegment::Type::Indices, sub_bounds, nullptr, indices});
@@ -1254,7 +1252,7 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
 {
   /* Precompute the evaluation order here, because it's used potentially many times throughout the
    * algorithm. */
-  const Vector<const Expr *, inline_expr_array_size> eager_eval_order = compute_eager_eval_order(
+  const Vector<const Expr *, inline_expr_array_size> eval_order = compute_eval_order(
       root_expression);
 
   /* Non-overlapping evaluated segments which become the resulting index mask in the end. Note that
@@ -1263,10 +1261,10 @@ static IndexMask evaluate_expression_impl(const Expr &root_expression,
   Vector<IndexRange, 16> short_unknown_segments;
 
   evaluate_coarse_and_split_until_segments_are_short(
-      root_expression, eager_eval_order, evaluated_segments, short_unknown_segments);
+      root_expression, eval_order, evaluated_segments, short_unknown_segments);
   evaluate_short_unknown_segments_exactly(root_expression,
                                           exact_eval_mode,
-                                          eager_eval_order,
+                                          eval_order,
                                           short_unknown_segments,
                                           memory,
                                           evaluated_segments);
