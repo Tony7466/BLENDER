@@ -900,33 +900,40 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
  */
 static void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
 {
+  SCOPED_TIMER_AVERAGED("remake");
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
+  blender::Vector<bAnimListElem *> ales;
   /* Sort and reassign verts. */
   LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
-    FCurve *fcu = (FCurve *)ale->key_data;
-
-    if (fcu->bezt) {
-      BeztMap *bezm;
-
-      /* Adjust transform-data pointers. */
-      /* NOTE: none of these functions use 'use_handle', it could be removed. */
-      bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
-      sort_time_beztmaps(bezm, fcu->totvert);
-      beztmap_to_data(t, fcu, bezm, fcu->totvert);
-
-      /* Free mapping stuff. */
-      MEM_freeN(bezm);
-
-      /* Re-sort actual beztriples
-       * (perhaps this could be done using the beztmaps to save time?). */
-      sort_time_fcurve(fcu);
-
-      /* Make sure handles are all set correctly. */
-      testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
-    }
+    ales.append(ale);
   }
+  blender::threading::parallel_for(ales.index_range(), 16, [&](const blender::IndexRange range) {
+    for (const int i : range) {
+      FCurve *fcu = (FCurve *)ales[i]->key_data;
+
+      if (fcu->bezt) {
+        BeztMap *bezm;
+
+        /* Adjust transform-data pointers. */
+        /* NOTE: none of these functions use 'use_handle', it could be removed. */
+        bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
+        sort_time_beztmaps(bezm, fcu->totvert);
+        beztmap_to_data(t, fcu, bezm, fcu->totvert);
+
+        /* Free mapping stuff. */
+        MEM_freeN(bezm);
+
+        /* Re-sort actual beztriples
+         * (perhaps this could be done using the beztmaps to save time?). */
+        sort_time_fcurve(fcu);
+
+        /* Make sure handles are all set correctly. */
+        testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
+      }
+    }
+  });
 }
 
 static void recalcData_graphedit(TransInfo *t)
