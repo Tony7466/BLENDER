@@ -1,3 +1,4 @@
 Referenced by issue #115298, Sculpt mask gets removed with undo involving mode change
 Referenced by issue #119426, Regression: Activating DynTopo creates a hidden sculpt mask attribute that gets duplicated with every activation
 Referenced by pull request #119441, Fix #119426: Enabling dyntopo creates duplicate mask attribute
+Referenced by commit 961d8ef6d5c43b0f5bb84ab6543d63c6569705a8, Fix #119426: Enabling dyntopo creates duplicate mask attribute
