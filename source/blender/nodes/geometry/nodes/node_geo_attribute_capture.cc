@@ -7,8 +7,6 @@
 #include "UI_interface.hh"
 #include "UI_resources.hh"
 
-#include "BKE_attribute_math.hh"
-
 #include "NOD_socket_search_link.hh"
 
 #include "RNA_enum_types.hh"
@@ -116,7 +114,7 @@ static void node_geo_exec(GeoNodeExecParams params)
   if (!params.output_is_required("Geometry")) {
     params.error_message_add(
         NodeWarningType::Info,
-        TIP_("The attribute output can not be used without the geometry output"));
+        TIP_("The attribute output cannot be used without the geometry output"));
     params.set_default_remaining_outputs();
     return;
   }
@@ -184,7 +182,8 @@ static void node_rna(StructRNA *srna)
                     rna_enum_attribute_domain_items,
                     NOD_storage_enum_accessors(domain),
                     int8_t(AttrDomain::Point),
-                    enums::domain_experimental_grease_pencil_version3_fn);
+                    enums::domain_experimental_grease_pencil_version3_fn,
+                    true);
 }
 
 static void node_register()

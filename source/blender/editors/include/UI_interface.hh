@@ -32,10 +32,12 @@ struct uiBut;
 struct uiLayout;
 struct uiList;
 struct uiSearchItems;
-struct uiViewHandle;
-struct uiViewItemHandle;
 struct wmDrag;
 struct wmEvent;
+namespace blender::ui {
+class AbstractView;
+class AbstractViewItem;
+}  // namespace blender::ui
 
 void UI_but_func_set(uiBut *but, std::function<void(bContext &)> func);
 void UI_but_func_pushed_state_set(uiBut *but, std::function<bool(const uiBut &)> func);
@@ -179,13 +181,11 @@ bool drop_target_apply_drop(bContext &C,
  * Call #DropTargetInterface::drop_tooltip() and return the result as newly allocated C string
  * (unless the result is empty, returns null then). Needs freeing with MEM_freeN().
  */
-char *drop_target_tooltip(const ARegion &region,
-                          const DropTargetInterface &drop_target,
-                          const wmDrag &drag,
-                          const wmEvent &event);
+std::string drop_target_tooltip(const ARegion &region,
+                                const DropTargetInterface &drop_target,
+                                const wmDrag &drag,
+                                const wmEvent &event);
 
-std::unique_ptr<DropTargetInterface> view_drop_target(uiViewHandle *view_handle);
-std::unique_ptr<DropTargetInterface> view_item_drop_target(uiViewItemHandle *item_handle);
 /**
  * Try to find a view item with a drop target under the mouse cursor, or if not found, a view
  * with a drop target.

@@ -24,6 +24,8 @@
 #include "BKE_attribute_math.hh"
 #include "BKE_curves.h"
 
+struct BlendDataReader;
+struct BlendWriter;
 struct MDeformVert;
 namespace blender::bke {
 class AnonymousAttributePropagationInfo;
@@ -31,6 +33,9 @@ class AttributeAccessor;
 class MutableAttributeAccessor;
 enum class AttrDomain : int8_t;
 }  // namespace blender::bke
+namespace blender::bke::bake {
+struct BakeMaterialsList;
+}
 
 namespace blender::bke {
 
@@ -109,6 +114,9 @@ class CurvesGeometryRuntime {
 
   /** Normal direction vectors for each evaluated point. */
   mutable SharedCache<Vector<float3>> evaluated_normal_cache;
+
+  /** Stores weak references to material data blocks. */
+  std::unique_ptr<bake::BakeMaterialsList> bake_materials;
 };
 
 /**
@@ -164,7 +172,7 @@ class CurvesGeometry : public ::CurvesGeometry {
   /**
    * Mutable access to curve types. Call #tag_topology_changed and #update_curve_types after
    * changing any type. Consider using the other methods to change types below.
-   * */
+   */
   MutableSpan<int8_t> curve_types_for_write();
   /** Set all curve types to the value and call #update_curve_types. */
   void fill_curve_types(CurveType type);
@@ -719,7 +727,7 @@ void interpolate_to_evaluated(const GSpan src,
                               const OffsetIndices<int> evaluated_offsets,
                               GMutableSpan dst);
 
-void calculate_basis(const float parameter, float4 &r_weights);
+float4 calculate_basis(const float parameter);
 
 /**
  * Interpolate the control point values for the given parameter on the piecewise segment.
@@ -731,14 +739,13 @@ template<typename T>
 T interpolate(const T &a, const T &b, const T &c, const T &d, const float parameter)
 {
   BLI_assert(0.0f <= parameter && parameter <= 1.0f);
-  float4 n;
-  calculate_basis(parameter, n);
+  const float4 weights = calculate_basis(parameter);
   if constexpr (is_same_any_v<T, float, float2, float3>) {
     /* Save multiplications by adjusting weights after mix. */
-    return 0.5f * attribute_math::mix4<T>(n, a, b, c, d);
+    return 0.5f * attribute_math::mix4<T>(weights, a, b, c, d);
   }
   else {
-    return attribute_math::mix4<T>(n * 0.5f, a, b, c, d);
+    return attribute_math::mix4<T>(weights * 0.5f, a, b, c, d);
   }
 }
 

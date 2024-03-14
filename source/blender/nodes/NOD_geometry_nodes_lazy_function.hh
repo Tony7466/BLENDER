@@ -49,8 +49,7 @@ namespace sim_input {
  * The data is just passed through the node. Data that is incompatible with simulations (like
  * anonymous attributes), is removed though.
  */
-struct PassThrough {
-};
+struct PassThrough {};
 
 /**
  * The input is not evaluated, instead the values provided here are output by the node.
@@ -80,8 +79,7 @@ namespace sim_output {
  * Output the data that comes from the corresponding simulation input node, ignoring the nodes in
  * the zone.
  */
-struct PassThrough {
-};
+struct PassThrough {};
 
 /**
  * Computes the simulation step and calls the given function to cache the new simulation state.
@@ -123,6 +121,7 @@ using Behavior = std::variant<PassThrough, StoreNewState, ReadSingle, ReadInterp
 struct SimulationZoneBehavior {
   sim_input::Behavior input;
   sim_output::Behavior output;
+  bke::bake::BakeDataBlockMap *data_block_map = nullptr;
 };
 
 class GeoNodesSimulationParams {
@@ -135,8 +134,11 @@ class GeoNodesSimulationParams {
   virtual SimulationZoneBehavior *get(const int zone_id) const = 0;
 };
 
-/** The set of possible behaviors are the same for both of these nodes currently. */
-using BakeNodeBehavior = sim_output::Behavior;
+struct BakeNodeBehavior {
+  /** The set of possible behaviors are the same for both of these nodes currently. */
+  sim_output::Behavior behavior;
+  bke::bake::BakeDataBlockMap *data_block_map = nullptr;
+};
 
 class GeoNodesBakeParams {
  public:
@@ -396,9 +398,13 @@ std::unique_ptr<LazyFunction> get_simulation_input_lazy_function(
     const bNode &node,
     GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
 std::unique_ptr<LazyFunction> get_switch_node_lazy_function(const bNode &node);
-std::unique_ptr<LazyFunction> get_index_switch_node_lazy_function(const bNode &node);
+std::unique_ptr<LazyFunction> get_index_switch_node_lazy_function(
+    const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info);
 std::unique_ptr<LazyFunction> get_bake_lazy_function(
     const bNode &node, GeometryNodesLazyFunctionGraphInfo &own_lf_graph_info);
+std::unique_ptr<LazyFunction> get_menu_switch_node_lazy_function(
+    const bNode &node, GeometryNodesLazyFunctionGraphInfo &lf_graph_info);
+std::unique_ptr<LazyFunction> get_menu_switch_node_socket_usage_lazy_function(const bNode &node);
 
 /**
  * Outputs the default value of each output socket that has not been output yet. This needs the

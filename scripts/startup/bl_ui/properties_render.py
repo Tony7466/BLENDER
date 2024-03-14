@@ -10,6 +10,7 @@ from bl_ui.space_view3d import (
     VIEW3D_PT_shading_options,
 )
 from bl_ui.utils import PresetPanel
+from bpy.app.translations import pgettext_rpt as rpt_
 
 
 class RenderButtonsPanel:
@@ -209,23 +210,24 @@ class RENDER_PT_eevee_motion_blur(RenderButtonsPanel, Panel):
 
     def draw_header(self, context):
         scene = context.scene
-        props = scene.eevee
+        props = scene.render
         self.layout.prop(props, "use_motion_blur", text="")
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         scene = context.scene
-        props = scene.eevee
+        props = scene.render
+        eevee_props = scene.eevee
 
         layout.active = props.use_motion_blur
         col = layout.column()
         col.prop(props, "motion_blur_position", text="Position")
         col.prop(props, "motion_blur_shutter")
         col.separator()
-        col.prop(props, "motion_blur_depth_scale")
-        col.prop(props, "motion_blur_max")
-        col.prop(props, "motion_blur_steps", text="Steps")
+        col.prop(eevee_props, "motion_blur_depth_scale")
+        col.prop(eevee_props, "motion_blur_max")
+        col.prop(eevee_props, "motion_blur_steps", text="Steps")
 
 
 class RENDER_PT_eevee_next_motion_blur(RenderButtonsPanel, Panel):
@@ -239,22 +241,24 @@ class RENDER_PT_eevee_next_motion_blur(RenderButtonsPanel, Panel):
 
     def draw_header(self, context):
         scene = context.scene
-        props = scene.eevee
+        props = scene.render
         self.layout.prop(props, "use_motion_blur", text="")
 
     def draw(self, context):
         layout = self.layout
         layout.use_property_split = True
         scene = context.scene
-        props = scene.eevee
+        props = scene.render
+        eevee_props = scene.eevee
 
         layout.active = props.use_motion_blur
         col = layout.column()
         col.prop(props, "motion_blur_position", text="Position")
         col.prop(props, "motion_blur_shutter")
         col.separator()
-        col.prop(props, "motion_blur_depth_scale")
-        col.prop(props, "motion_blur_steps", text="Steps")
+        col.prop(eevee_props, "motion_blur_depth_scale")
+        col.prop(eevee_props, "motion_blur_max")
+        col.prop(eevee_props, "motion_blur_steps", text="Steps")
 
 
 class RENDER_PT_eevee_next_motion_blur_curve(RenderButtonsPanel, Panel):
@@ -571,6 +575,10 @@ class RENDER_PT_eevee_next_raytracing(RenderButtonsPanel, Panel):
     def poll(cls, context):
         return (context.engine in cls.COMPAT_ENGINES)
 
+    def draw_header(self, context):
+        props = context.scene.eevee
+        self.layout.prop(props, "use_raytracing", text="")
+
     def draw_header_preset(self, _context):
         RENDER_PT_eevee_next_raytracing_presets.draw_panel_header(self.layout)
 
@@ -825,7 +833,7 @@ class RENDER_PT_eevee_indirect_lighting(RenderButtonsPanel, Panel):
 
         cache_info = scene.eevee.gi_cache_info
         if cache_info:
-            col.label(text=cache_info)
+            col.label(text=rpt_(cache_info), translate=False)
 
         col.prop(props, "gi_auto_bake")
 
@@ -1025,6 +1033,28 @@ class RENDER_PT_eevee_performance(RenderButtonsPanel, Panel):
         layout.use_property_decorate = False  # No animation.
 
         layout.prop(rd, "use_high_quality_normals")
+
+
+class RENDER_PT_eevee_performance_viewport(RenderButtonsPanel, Panel):
+    bl_label = "Viewport"
+    bl_parent_id = "RENDER_PT_eevee_performance"
+    bl_options = {'DEFAULT_CLOSED'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE_NEXT'}
+
+    @classmethod
+    def poll(cls, context):
+        return (context.engine in cls.COMPAT_ENGINES)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.use_property_split = True
+        layout.use_property_decorate = False
+
+        scene = context.scene
+        rd = scene.render
+
+        col = layout.column()
+        col.prop(rd, "preview_pixel_size", text="Pixel Size")
 
 
 class RENDER_PT_gpencil(RenderButtonsPanel, Panel):
@@ -1265,6 +1295,7 @@ classes = (
     RENDER_PT_eevee_next_volumes_lighting,
     RENDER_PT_eevee_next_volumes_shadows,
     RENDER_PT_eevee_performance,
+    RENDER_PT_eevee_performance_viewport,
     RENDER_PT_eevee_hair,
     RENDER_PT_eevee_shadows,
     RENDER_PT_eevee_next_lights,

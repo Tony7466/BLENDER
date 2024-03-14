@@ -108,7 +108,7 @@ class DefocusOperation : public NodeOperation {
   {
     Result &input = get_input("Image");
     Result &output = get_result("Image");
-    if (input.is_single_value()) {
+    if (input.is_single_value() || node_storage(bnode()).maxblur < 1.0f) {
       input.pass_through(output);
       return;
     }
@@ -137,8 +137,8 @@ class DefocusOperation : public NodeOperation {
 
     radius.bind_as_texture(shader, "radius_tx");
 
-    bokeh_kernel.bind_as_texture(shader, "weights_tx");
     GPU_texture_filter_mode(bokeh_kernel.texture(), true);
+    bokeh_kernel.bind_as_texture(shader, "weights_tx");
 
     const Domain domain = compute_domain();
     output.allocate_texture(domain);
@@ -256,7 +256,7 @@ class DefocusOperation : public NodeOperation {
   }
 
   /* Computes the distance in meters to the image of the focus point across a lens of the specified
-   * focal length. This computes Vp in equation (7) of the paper:
+   * focal length. This computes `Vp` in equation (7) of the paper:
    *
    *   Potmesil, Michael, and Indranil Chakravarty. "A lens and aperture camera model for synthetic
    *   image generation." ACM SIGGRAPH Computer Graphics 15.3 (1981): 297-305. */
@@ -275,10 +275,15 @@ class DefocusOperation : public NodeOperation {
     return camera ? math::max(1e-6f, camera->lens / 1000.0f) : 50.0f / 1000.0f;
   }
 
-  /* Computes the distance to the point that is completely in focus. */
+  /* Computes the distance to the point that is completely in focus. Default to 10 meters for null
+   * camera. */
   float compute_focus_distance()
   {
-    return BKE_camera_object_dof_distance(get_camera_object());
+    const Object *camera_object = get_camera_object();
+    if (!camera_object) {
+      return 10.0f;
+    }
+    return BKE_camera_object_dof_distance(camera_object);
   }
 
   /* Computes the number of pixels per meter of the sensor size. This is essentially the resolution

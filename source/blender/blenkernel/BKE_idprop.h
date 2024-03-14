@@ -16,13 +16,11 @@ extern "C" {
 #endif
 
 struct BlendDataReader;
-struct BlendLibReader;
 struct BlendWriter;
 struct ID;
 struct IDProperty;
 struct IDPropertyUIData;
 struct IDPropertyUIDataEnumItem;
-struct Library;
 
 typedef union IDPropertyTemplate {
   int i;
@@ -265,15 +263,25 @@ void IDP_Reset(struct IDProperty *prop, const struct IDProperty *reference);
 /* C11 const correctness for casts */
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
 #  define IDP_Float(prop) \
-    _Generic((prop), struct IDProperty * : (*(float *)&(prop)->data.val), const struct IDProperty * : (*(const float *)&(prop)->data.val))
+    _Generic((prop), \
+        struct IDProperty *: (*(float *)&(prop)->data.val), \
+        const struct IDProperty *: (*(const float *)&(prop)->data.val))
 #  define IDP_Double(prop) \
-    _Generic((prop), struct IDProperty * : (*(double *)&(prop)->data.val), const struct IDProperty * : (*(const double *)&(prop)->data.val))
+    _Generic((prop), \
+        struct IDProperty *: (*(double *)&(prop)->data.val), \
+        const struct IDProperty *: (*(const double *)&(prop)->data.val))
 #  define IDP_String(prop) \
-    _Generic((prop), struct IDProperty * : ((char *)(prop)->data.pointer), const struct IDProperty * : ((const char *)(prop)->data.pointer))
+    _Generic((prop), \
+        struct IDProperty *: ((char *)(prop)->data.pointer), \
+        const struct IDProperty *: ((const char *)(prop)->data.pointer))
 #  define IDP_IDPArray(prop) \
-    _Generic((prop), struct IDProperty * : ((struct IDProperty *)(prop)->data.pointer), const struct IDProperty * : ((const struct IDProperty *)(prop)->data.pointer))
+    _Generic((prop), \
+        struct IDProperty *: ((struct IDProperty *)(prop)->data.pointer), \
+        const struct IDProperty *: ((const struct IDProperty *)(prop)->data.pointer))
 #  define IDP_Id(prop) \
-    _Generic((prop), struct IDProperty * : ((ID *)(prop)->data.pointer), const struct IDProperty * : ((const ID *)(prop)->data.pointer))
+    _Generic((prop), \
+        struct IDProperty *: ((ID *)(prop)->data.pointer), \
+        const struct IDProperty *: ((const ID *)(prop)->data.pointer))
 #else
 #  define IDP_Float(prop) (*(float *)&(prop)->data.val)
 #  define IDP_Double(prop) (*(double *)&(prop)->data.val)
@@ -357,6 +365,13 @@ void IDP_ui_data_free_unique_contents(struct IDPropertyUIData *ui_data,
                                       const struct IDPropertyUIData *other);
 struct IDPropertyUIData *IDP_ui_data_ensure(struct IDProperty *prop);
 struct IDPropertyUIData *IDP_ui_data_copy(const struct IDProperty *prop);
+/**
+ * Convert UI data like default arrays from the old type to the new type as possible.
+ * Takes ownership of the input data; it can return it directly if the types match.
+ */
+struct IDPropertyUIData *IDP_TryConvertUIData(struct IDPropertyUIData *src,
+                                              eIDPropertyUIDataType src_type,
+                                              eIDPropertyUIDataType dst_type);
 
 #ifdef __cplusplus
 }

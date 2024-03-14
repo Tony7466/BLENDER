@@ -9,6 +9,7 @@
  * \brief Volume data-block.
  */
 
+#include <memory>
 #include <optional>
 
 #include "BLI_bounds_types.hh"
@@ -23,6 +24,10 @@ struct ReportList;
 struct Scene;
 struct Volume;
 struct VolumeGridVector;
+
+namespace blender::bke::bake {
+struct BakeMaterialsList;
+}
 
 /* Module */
 
@@ -119,3 +124,22 @@ bool BKE_volume_save(const Volume *volume,
                      const char *filepath);
 
 std::optional<blender::Bounds<blender::float3>> BKE_volume_min_max(const Volume *volume);
+
+namespace blender::bke {
+
+struct VolumeRuntime {
+  /** OpenVDB Grids. */
+  VolumeGridVector *grids = nullptr;
+
+  /** Current frame in sequence for evaluated volume. */
+  int frame = 0;
+
+  /* Names for scalar grids which would need to be merged to recompose the velocity grid. */
+  char velocity_x_grid[64] = "";
+  char velocity_y_grid[64] = "";
+  char velocity_z_grid[64] = "";
+
+  std::unique_ptr<bake::BakeMaterialsList> bake_materials;
+};
+
+}  // namespace blender::bke

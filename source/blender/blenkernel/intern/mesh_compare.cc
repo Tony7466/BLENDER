@@ -132,6 +132,9 @@ static void sort_indices(MutableSpan<int> indices, const Span<T> values, const i
       const float4 value2_quat = float4(value2);
       return value1_quat[component_i] < value2_quat[component_i];
     }
+    if constexpr (std::is_same_v<T, float4x4>) {
+      return value1.base_ptr()[component_i] < value2.base_ptr()[component_i];
+    }
     if constexpr (std::is_same_v<T, int2>) {
       for (int i = 0; i < 2; i++) {
         if (value1[i] != value2[i]) {
@@ -247,6 +250,10 @@ static bool values_different(const T value1,
     const float4 value1_f = float4(value1);
     const float4 value2_f = float4(value2);
     return compare_threshold_relative(value1_f[component_i], value2_f[component_i], threshold);
+  }
+  if constexpr (std::is_same_v<T, float4x4>) {
+    return compare_threshold_relative(
+        value1.base_ptr()[component_i], value2.base_ptr()[component_i], threshold);
   }
   BLI_assert_unreachable();
 }
@@ -575,6 +582,9 @@ static std::optional<MeshMismatch> sort_domain_using_attributes(
       else if constexpr (is_same_any_v<T, math::Quaternion, ColorGeometry4f>) {
         num_loops = 4;
       }
+      else if constexpr (is_same_any_v<T, float4x4>) {
+        num_loops = 16;
+      }
       for (const int component_i : IndexRange(num_loops)) {
         sort_per_set_based_on_attributes(
             maps.set_sizes, maps.from_sorted1, maps.from_sorted2, values1, values2, component_i);
@@ -629,7 +639,8 @@ static void make_set_sizes_one(IndexMapping &indices)
     }
     int match = sorted_i;
     for (const int other_index :
-         IndexRange(indices.set_ids[sorted_i], indices.set_sizes[sorted_i])) {
+         IndexRange(indices.set_ids[sorted_i], indices.set_sizes[sorted_i]))
+    {
       if (indices.from_sorted1[sorted_i] == indices.from_sorted2[other_index]) {
         match = other_index;
         break;
@@ -637,7 +648,8 @@ static void make_set_sizes_one(IndexMapping &indices)
     }
     std::swap(indices.from_sorted2[sorted_i], indices.from_sorted2[match]);
     for (const int other_set_i :
-         IndexRange(indices.set_ids[sorted_i], indices.set_sizes[sorted_i])) {
+         IndexRange(indices.set_ids[sorted_i], indices.set_sizes[sorted_i]))
+    {
       /* New first element, since this one is now in a new set. */
       indices.set_ids[other_set_i] = sorted_i + 1;
       indices.set_sizes[other_set_i] -= 1;
@@ -680,7 +692,7 @@ static std::optional<MeshMismatch> construct_vertex_mapping(const Mesh &mesh1,
   }
 
   /* Since we are not yet able to distinguish all vertices based on their attributes alone, we
-  need to use the edge topology. */
+   * need to use the edge topology. */
   Array<int> vert_to_edge_offsets1;
   Array<int> vert_to_edge_indices1;
   const GroupedSpan<int> vert_to_edge_map1 = mesh::build_vert_to_edge_map(

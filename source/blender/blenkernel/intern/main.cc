@@ -24,19 +24,21 @@
 
 #include "DNA_ID.h"
 
-#include "BKE_bpath.h"
-#include "BKE_global.h"
-#include "BKE_idtype.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_bpath.hh"
+#include "BKE_global.hh"
+#include "BKE_idtype.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_main.hh"
 #include "BKE_main_idmap.hh"
 #include "BKE_main_namemap.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+
+using namespace blender::bke;
 
 static CLG_LogRef LOG = {"bke.main"};
 
@@ -258,7 +260,7 @@ static bool are_ids_from_different_mains_matching(Main *bmain_1, ID *id_1, Main 
 static void main_merge_add_id_to_move(Main *bmain_dst,
                                       blender::Map<std::string, blender::Vector<ID *>> &id_map_dst,
                                       ID *id_src,
-                                      IDRemapper *id_remapper,
+                                      id::IDRemapper &id_remapper,
                                       blender::Vector<ID *> &ids_to_move,
                                       const bool is_library,
                                       MainMergeReport &reports)
@@ -287,7 +289,7 @@ static void main_merge_add_id_to_move(Main *bmain_dst,
               "found in given destination Main",
               id_src->name,
               bmain_dst->filepath);
-    BKE_id_remapper_add(id_remapper, id_src, nullptr);
+    id_remapper.add(id_src, nullptr);
     reports.num_unknown_ids++;
   }
   else {
@@ -321,8 +323,8 @@ void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &report
   /* A dedicated remapper for libraries is needed because these need to be remapped _before_ IDs
    * are moved from `bmain_src` to `bmain_dst`, to avoid having to fix naming and ordering of IDs
    * afterwards (especially in case some source linked IDs become local in `bmain_dst`). */
-  IDRemapper *id_remapper = BKE_id_remapper_create();
-  IDRemapper *id_remapper_libraries = BKE_id_remapper_create();
+  id::IDRemapper id_remapper;
+  id::IDRemapper id_remapper_libraries;
   blender::Vector<ID *> ids_to_move;
 
   FOREACH_MAIN_ID_BEGIN (bmain_src, id_iter_src) {
@@ -347,11 +349,11 @@ void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &report
         BLI_assert(!src_has_match_in_dst);
         if (!src_has_match_in_dst) {
           if (is_library) {
-            BKE_id_remapper_add(id_remapper_libraries, id_iter_src, id_iter_dst);
+            id_remapper_libraries.add(id_iter_src, id_iter_dst);
             reports.num_remapped_libraries++;
           }
           else {
-            BKE_id_remapper_add(id_remapper, id_iter_src, id_iter_dst);
+            id_remapper.add(id_iter_src, id_iter_dst);
             reports.num_remapped_ids++;
           }
           src_has_match_in_dst = true;
@@ -371,7 +373,7 @@ void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &report
   reports.num_merged_ids = int(ids_to_move.size());
 
   /* Rebase relative filepaths in `bmain_src` using `bmain_dst` path as new reference, or make them
-   * absolute if destination bmain has no filepath.  */
+   * absolute if destination bmain has no filepath. */
   if (bmain_src->filepath[0] != '\0') {
     char dir_src[FILE_MAXDIR];
     BLI_path_split_dir_part(bmain_src->filepath, dir_src, sizeof(dir_src));
@@ -404,7 +406,7 @@ void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &report
 
   /* The other data has to be remapped once all IDs are in `bmain_dst`, to ensure that additional
    * update process (e.g. collection hierarchy handling) happens as expected with the correct set
-   * of data.  */
+   * of data. */
   BKE_libblock_relink_multiple(bmain_dst, ids_to_move, ID_REMAP_TYPE_REMAP, id_remapper, 0);
 
   BKE_reportf(
@@ -426,8 +428,6 @@ void BKE_main_merge(Main *bmain_dst, Main **r_bmain_src, MainMergeReport &report
 
   BLI_assert(BKE_main_namemap_validate(bmain_dst));
 
-  BKE_id_remapper_free(id_remapper);
-  BKE_id_remapper_free(id_remapper_libraries);
   BKE_main_free(bmain_src);
   *r_bmain_src = nullptr;
 }
@@ -467,19 +467,20 @@ static int main_relations_create_idlink_cb(LibraryIDLinkCallbackData *cb_data)
     /* Add `id_pointer` as child of `self_id`. */
     {
       if (!BLI_ghash_ensure_p(
-              bmain_relations->relations_from_pointers, self_id, (void ***)&entry_p)) {
+              bmain_relations->relations_from_pointers, self_id, (void ***)&entry_p))
+      {
         *entry_p = static_cast<MainIDRelationsEntry *>(MEM_callocN(sizeof(**entry_p), __func__));
-        (*entry_p)->session_uuid = self_id->session_uuid;
+        (*entry_p)->session_uid = self_id->session_uid;
       }
       else {
-        BLI_assert((*entry_p)->session_uuid == self_id->session_uuid);
+        BLI_assert((*entry_p)->session_uid == self_id->session_uid);
       }
       MainIDRelationsEntryItem *to_id_entry = static_cast<MainIDRelationsEntryItem *>(
           BLI_mempool_alloc(bmain_relations->entry_items_pool));
       to_id_entry->next = (*entry_p)->to_ids;
       to_id_entry->id_pointer.to = id_pointer;
-      to_id_entry->session_uuid = (*id_pointer != nullptr) ? (*id_pointer)->session_uuid :
-                                                             MAIN_ID_SESSION_UUID_UNSET;
+      to_id_entry->session_uid = (*id_pointer != nullptr) ? (*id_pointer)->session_uid :
+                                                            MAIN_ID_SESSION_UID_UNSET;
       to_id_entry->usage_flag = cb_flag;
       (*entry_p)->to_ids = to_id_entry;
     }
@@ -487,18 +488,19 @@ static int main_relations_create_idlink_cb(LibraryIDLinkCallbackData *cb_data)
     /* Add `self_id` as parent of `id_pointer`. */
     if (*id_pointer != nullptr) {
       if (!BLI_ghash_ensure_p(
-              bmain_relations->relations_from_pointers, *id_pointer, (void ***)&entry_p)) {
+              bmain_relations->relations_from_pointers, *id_pointer, (void ***)&entry_p))
+      {
         *entry_p = static_cast<MainIDRelationsEntry *>(MEM_callocN(sizeof(**entry_p), __func__));
-        (*entry_p)->session_uuid = (*id_pointer)->session_uuid;
+        (*entry_p)->session_uid = (*id_pointer)->session_uid;
       }
       else {
-        BLI_assert((*entry_p)->session_uuid == (*id_pointer)->session_uuid);
+        BLI_assert((*entry_p)->session_uid == (*id_pointer)->session_uid);
       }
       MainIDRelationsEntryItem *from_id_entry = static_cast<MainIDRelationsEntryItem *>(
           BLI_mempool_alloc(bmain_relations->entry_items_pool));
       from_id_entry->next = (*entry_p)->from_ids;
       from_id_entry->id_pointer.from = self_id;
-      from_id_entry->session_uuid = self_id->session_uuid;
+      from_id_entry->session_uid = self_id->session_uid;
       from_id_entry->usage_flag = cb_flag;
       (*entry_p)->from_ids = from_id_entry;
     }
@@ -531,10 +533,10 @@ void BKE_main_relations_create(Main *bmain, const short flag)
     MainIDRelationsEntry **entry_p;
     if (!BLI_ghash_ensure_p(bmain->relations->relations_from_pointers, id, (void ***)&entry_p)) {
       *entry_p = static_cast<MainIDRelationsEntry *>(MEM_callocN(sizeof(**entry_p), __func__));
-      (*entry_p)->session_uuid = id->session_uuid;
+      (*entry_p)->session_uid = id->session_uid;
     }
     else {
-      BLI_assert((*entry_p)->session_uuid == id->session_uuid);
+      BLI_assert((*entry_p)->session_uid == id->session_uid);
     }
 
     BKE_library_foreach_ID_link(
@@ -847,6 +849,8 @@ ListBase *which_libbase(Main *bmain, short type)
       return &(bmain->armatures);
     case ID_AC:
       return &(bmain->actions);
+    case ID_AN:
+      return &(bmain->animations);
     case ID_NT:
       return &(bmain->nodetrees);
     case ID_BR:
@@ -892,6 +896,7 @@ int set_listbasepointers(Main *bmain, ListBase *lb[/*INDEX_ID_MAX*/])
 
   /* Moved here to avoid problems when freeing with animato (aligorith). */
   lb[INDEX_ID_AC] = &(bmain->actions);
+  lb[INDEX_ID_AN] = &(bmain->animations);
 
   lb[INDEX_ID_KE] = &(bmain->shapekeys);
 

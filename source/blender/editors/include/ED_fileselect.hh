@@ -11,7 +11,6 @@
 #include "DNA_uuid_types.h"
 
 struct ARegion;
-struct AssetLibrary;
 struct FileAssetSelectParams;
 struct FileDirEntry;
 struct FileSelectParams;
@@ -28,6 +27,9 @@ struct wmWindow;
 struct wmWindowManager;
 struct View2D;
 struct rcti;
+namespace blender::asset_system {
+class AssetLibrary;
+}
 
 #define FILE_LAYOUT_HOR 1
 #define FILE_LAYOUT_VER 2
@@ -54,7 +56,7 @@ struct FileAttributeColumn {
 };
 
 struct FileLayout {
-  /* view settings - XXX: move into own struct. */
+  /* view settings - XXX: move into its own struct. */
   int offset_top;
   /* Height of the header for the different FileAttributeColumn's. */
   int attribute_column_header_h;
@@ -140,7 +142,8 @@ void ED_fileselect_exit(wmWindowManager *wm, SpaceFile *sfile);
 
 bool ED_fileselect_is_file_browser(const SpaceFile *sfile);
 bool ED_fileselect_is_asset_browser(const SpaceFile *sfile);
-AssetLibrary *ED_fileselect_active_asset_library_get(const SpaceFile *sfile);
+blender::asset_system::AssetLibrary *ED_fileselect_active_asset_library_get(
+    const SpaceFile *sfile);
 ID *ED_fileselect_active_asset_get(const SpaceFile *sfile);
 
 void ED_fileselect_activate_asset_catalog(const SpaceFile *sfile, bUUID catalog_id);

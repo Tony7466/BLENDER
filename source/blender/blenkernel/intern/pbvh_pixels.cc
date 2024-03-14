@@ -5,21 +5,17 @@
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
 #include "BKE_pbvh_api.hh"
 #include "BKE_pbvh_pixels.hh"
 
 #include "DNA_image_types.h"
-#include "DNA_object_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
 #include "BLI_task.h"
 
-#include "PIL_time.h"
-
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image_wrappers.hh"
 
 #include "pbvh_intern.hh"
@@ -213,7 +209,7 @@ static void split_pixel_node(
         if (mid < co1[axis]) {
           t = 1.0f - (mid - co2[axis]) / (co1[axis] - co2[axis]);
 
-          SWAP(UDIMTilePixels *, tile1, tile2);
+          std::swap(tile1, tile2);
         }
         else {
           t = (mid - co1[axis]) / (co2[axis] - co1[axis]);
@@ -443,7 +439,8 @@ struct UVPrimitiveLookup {
     uint64_t uv_island_index = 0;
     for (uv_islands::UVIsland &uv_island : uv_islands.islands) {
       for (VectorList<uv_islands::UVPrimitive>::UsedVector &uv_primitives :
-           uv_island.uv_primitives) {
+           uv_island.uv_primitives)
+      {
         for (uv_islands::UVPrimitive &uv_primitive : uv_primitives) {
           lookup[uv_primitive.primitive_i].append_as(Entry(&uv_primitive, uv_island_index));
         }
@@ -487,7 +484,8 @@ static void do_encode_pixels(EncodePixelsUserData *data, const int n)
 
     for (const int geom_prim_index : node->prim_indices) {
       for (const UVPrimitiveLookup::Entry &entry :
-           data->uv_primitive_lookup->lookup[geom_prim_index]) {
+           data->uv_primitive_lookup->lookup[geom_prim_index])
+      {
         uv_islands::UVBorder uv_border = entry.uv_primitive->extract_border();
         float2 uvs[3] = {
             entry.uv_primitive->get_uv_vertex(mesh_data, 0)->uv - tile_offset,
@@ -735,7 +733,7 @@ static bool update_pixels(PBVH *pbvh, Mesh *mesh, Image *image, ImageUser *image
     }
   }
 
-//#define DO_PRINT_STATISTICS
+// #define DO_PRINT_STATISTICS
 #ifdef DO_PRINT_STATISTICS
   /* Print some statistics about compression ratio. */
   {

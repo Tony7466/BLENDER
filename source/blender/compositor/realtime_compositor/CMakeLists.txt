@@ -129,8 +129,8 @@ set(LIB
 set(GLSL_SRC
   shaders/compositor_alpha_crop.glsl
   shaders/compositor_bilateral_blur.glsl
-  shaders/compositor_blur.glsl
-  shaders/compositor_blur_variable_size.glsl
+  shaders/compositor_bokeh_blur.glsl
+  shaders/compositor_bokeh_blur_variable_size.glsl
   shaders/compositor_bokeh_image.glsl
   shaders/compositor_box_mask.glsl
   shaders/compositor_compute_preview.glsl
@@ -150,8 +150,8 @@ set(GLSL_SRC
   shaders/compositor_ellipse_mask.glsl
   shaders/compositor_filter.glsl
   shaders/compositor_flip.glsl
-  shaders/compositor_glare_fog_glow_downsample.glsl
-  shaders/compositor_glare_fog_glow_upsample.glsl
+  shaders/compositor_glare_bloom_downsample.glsl
+  shaders/compositor_glare_bloom_upsample.glsl
   shaders/compositor_glare_ghost_accumulate.glsl
   shaders/compositor_glare_ghost_base.glsl
   shaders/compositor_glare_highlights.glsl
@@ -177,17 +177,23 @@ set(GLSL_SRC
   shaders/compositor_kuwahara_anisotropic.glsl
   shaders/compositor_kuwahara_anisotropic_compute_structure_tensor.glsl
   shaders/compositor_kuwahara_classic.glsl
-  shaders/compositor_map_uv.glsl
+  shaders/compositor_map_uv_anisotropic.glsl
+  shaders/compositor_map_uv_nearest_neighbour.glsl
   shaders/compositor_morphological_blur.glsl
   shaders/compositor_morphological_distance.glsl
   shaders/compositor_morphological_distance_feather.glsl
   shaders/compositor_morphological_distance_threshold.glsl
   shaders/compositor_morphological_step.glsl
+  shaders/compositor_motion_blur.glsl
+  shaders/compositor_motion_blur_max_velocity_dilate.glsl
   shaders/compositor_movie_distortion.glsl
   shaders/compositor_normalize.glsl
   shaders/compositor_parallel_reduction.glsl
+  shaders/compositor_pixelate.glsl
   shaders/compositor_plane_deform.glsl
+  shaders/compositor_plane_deform_mask.glsl
   shaders/compositor_plane_deform_motion_blur.glsl
+  shaders/compositor_plane_deform_motion_blur_mask.glsl
   shaders/compositor_premultiply_alpha.glsl
   shaders/compositor_projector_lens_distortion.glsl
   shaders/compositor_read_input.glsl
@@ -235,6 +241,7 @@ set(GLSL_SRC
   shaders/library/gpu_shader_compositor_luminance_matte.glsl
   shaders/library/gpu_shader_compositor_main.glsl
   shaders/library/gpu_shader_compositor_map_value.glsl
+  shaders/library/gpu_shader_compositor_motion_blur_lib.glsl
   shaders/library/gpu_shader_compositor_normal.glsl
   shaders/library/gpu_shader_compositor_ocio_processor.glsl
   shaders/library/gpu_shader_compositor_posterize.glsl
@@ -274,8 +281,8 @@ target_include_directories(bf_compositor_shaders PUBLIC ${CMAKE_CURRENT_BINARY_D
 set(SRC_SHADER_CREATE_INFOS
   shaders/infos/compositor_alpha_crop_info.hh
   shaders/infos/compositor_bilateral_blur_info.hh
-  shaders/infos/compositor_blur_info.hh
-  shaders/infos/compositor_blur_variable_size_info.hh
+  shaders/infos/compositor_bokeh_blur_info.hh
+  shaders/infos/compositor_bokeh_blur_variable_size_info.hh
   shaders/infos/compositor_bokeh_image_info.hh
   shaders/infos/compositor_box_mask_info.hh
   shaders/infos/compositor_compute_preview_info.hh
@@ -304,11 +311,12 @@ set(SRC_SHADER_CREATE_INFOS
   shaders/infos/compositor_morphological_distance_info.hh
   shaders/infos/compositor_morphological_distance_threshold_info.hh
   shaders/infos/compositor_morphological_step_info.hh
+  shaders/infos/compositor_motion_blur_info.hh
   shaders/infos/compositor_movie_distortion_info.hh
   shaders/infos/compositor_normalize_info.hh
   shaders/infos/compositor_parallel_reduction_info.hh
+  shaders/infos/compositor_pixelate_info.hh
   shaders/infos/compositor_plane_deform_info.hh
-  shaders/infos/compositor_plane_deform_motion_blur_info.hh
   shaders/infos/compositor_premultiply_alpha_info.hh
   shaders/infos/compositor_projector_lens_distortion_info.hh
   shaders/infos/compositor_read_input_info.hh

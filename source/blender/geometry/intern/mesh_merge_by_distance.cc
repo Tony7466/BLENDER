@@ -10,7 +10,6 @@
 #include "BLI_index_mask.hh"
 #include "BLI_kdtree.h"
 #include "BLI_math_vector.h"
-#include "BLI_math_vector.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_vector.hh"
 
@@ -260,7 +259,8 @@ static void weld_assert_poly_no_vert_repetition(const WeldPoly *wp,
   Array<int, 64> verts(wp->loop_len);
   WeldLoopOfPolyIter iter;
   if (!weld_iter_loop_of_poly_begin(
-          iter, *wp, wloop, corner_verts, corner_edges, loop_map, nullptr)) {
+          iter, *wp, wloop, corner_verts, corner_edges, loop_map, nullptr))
+  {
     return;
   }
   else {
@@ -1169,7 +1169,8 @@ static void weld_poly_find_doubles(const Span<int> corner_verts,
 
     WeldLoopOfPolyIter iter;
     if (!weld_iter_loop_of_poly_begin(
-            iter, wp, wloop, corner_verts, corner_edges, loop_map, nullptr)) {
+            iter, wp, wloop, corner_verts, corner_edges, loop_map, nullptr))
+    {
       continue;
     }
 

@@ -5,13 +5,13 @@
 #include "BLI_array.hh"
 #include "BLI_math_matrix.hh"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 
 #include "DNA_pointcloud_types.h"
 
+#include "BKE_customdata.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 
 #include "GEO_resample_curves.hh"
 
@@ -95,6 +95,9 @@ static void copy_curve_domain_attributes(const AttributeAccessor curve_attribute
           return true;
         }
         if (meta_data.domain != AttrDomain::Curve) {
+          return true;
+        }
+        if (meta_data.data_type == CD_PROP_STRING) {
           return true;
         }
         point_attributes.add(
@@ -343,7 +346,7 @@ static void node_rna(StructRNA *srna)
        0,
        "Evaluated",
        "Create points from the curve's evaluated points, based on the resolution attribute for "
-       "NURBS and Bezier splines"},
+       "NURBS and Bézier splines"},
       {GEO_NODE_CURVE_RESAMPLE_COUNT,
        "COUNT",
        0,

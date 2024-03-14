@@ -7,7 +7,7 @@
  */
 
 #include "BLI_array_utils.hh"
-#include "BLI_lasso_2d.h"
+#include "BLI_lasso_2d.hh"
 #include "BLI_math_geom.h"
 #include "BLI_rand.hh"
 #include "BLI_rect.h"
@@ -128,6 +128,16 @@ void fill_selection_true(GMutableSpan selection)
   }
 }
 
+void fill_selection(GMutableSpan selection, bool value)
+{
+  if (selection.type().is<bool>()) {
+    selection.typed<bool>().fill(value);
+  }
+  else if (selection.type().is<float>()) {
+    selection.typed<float>().fill(value ? 1.0f : 0.0f);
+  }
+}
+
 void fill_selection_false(GMutableSpan selection, const IndexMask &mask)
 {
   if (selection.type().is<bool>()) {
@@ -173,7 +183,7 @@ static bool contains(const VArray<bool> &varray,
           for (const int64_t segment_i : IndexRange(sliced_mask.segments_num())) {
             const IndexMaskSegment segment = sliced_mask.segment(segment_i);
             for (const int i : segment) {
-              if (span[i]) {
+              if (span[i] == value) {
                 return true;
               }
             }
@@ -191,13 +201,15 @@ static bool contains(const VArray<bool> &varray,
           return init;
         }
         constexpr int64_t MaxChunkSize = 512;
-        for (int64_t start = range.start(); start < range.last(); start += MaxChunkSize) {
-          const int64_t end = std::min<int64_t>(start + MaxChunkSize, range.last());
+        const int64_t slice_end = range.one_after_last();
+        for (int64_t start = range.start(); start < slice_end; start += MaxChunkSize) {
+          const int64_t end = std::min<int64_t>(start + MaxChunkSize, slice_end);
           const int64_t size = end - start;
           const IndexMask sliced_mask = indices_to_check.slice(start, size);
           std::array<bool, MaxChunkSize> values;
+          auto values_end = values.begin() + size;
           varray.materialize_compressed(sliced_mask, values);
-          if (std::find(values.begin(), values.end(), true) != values.end()) {
+          if (std::find(values.begin(), values_end, value) != values_end) {
             return true;
           }
         }
@@ -292,7 +304,8 @@ void select_all(bke::CurvesGeometry &curves,
   if (action == SEL_SELECT) {
     std::optional<IndexRange> range = mask.to_range();
     if (range.has_value() &&
-        (*range == IndexRange(curves.attributes().domain_size(selection_domain)))) {
+        (*range == IndexRange(curves.attributes().domain_size(selection_domain))))
+    {
       /* As an optimization, just remove the selection attributes when everything is selected. */
       attributes.remove(".selection");
       return;
@@ -359,25 +372,24 @@ void select_alternate(bke::CurvesGeometry &curves,
       return;
     }
 
-    for (const int index : points.index_range()) {
-      selection_typed[points[index]] = deselect_ends ? index % 2 : !(index % 2);
+    const int half_of_size = points.size() / 2;
+    const IndexRange selected = points.shift(deselect_ends ? 1 : 0);
+    const IndexRange deselected = points.shift(deselect_ends ? 0 : 1);
+    for (const int i : IndexRange(half_of_size)) {
+      const int index = i * 2;
+      selection_typed[selected[index]] = true;
+      selection_typed[deselected[index]] = false;
     }
 
-    if (cyclic[curve_i]) {
-      if (deselect_ends) {
-        selection_typed[points.last()] = false;
-      }
-      else {
-        selection_typed[points.last()] = true;
-        if (points.size() > 2) {
-          selection_typed[points.last() - 1] = false;
-        }
-      }
-    }
-    else {
-      if (deselect_ends) {
-        selection_typed[points.last()] = false;
-      }
+    selection_typed[points.first()] = !deselect_ends;
+    const bool end_parity_to_selected = bool(points.size() % 2);
+    const bool selected_end = cyclic[curve_i] || end_parity_to_selected;
+    selection_typed[points.last()] = !deselect_ends && selected_end;
+
+    /* Selected last one require to deselect pre-last one point which is not first. */
+    const IndexRange curve_body = points.drop_front(1).drop_back(1);
+    if (!deselect_ends && cyclic[curve_i] && !curve_body.is_empty()) {
+      selection_typed[curve_body.last()] = false;
     }
   });
 
@@ -513,16 +525,13 @@ void apply_selection_operation_at_index(GMutableSpan selection,
 
 static std::optional<FindClosestData> find_closest_point_to_screen_co(
     const ARegion *region,
-    const RegionView3D *rv3d,
-    const Object &object,
     const Span<float3> positions,
+    const float4x4 &projection,
     const IndexMask &points_mask,
     const float2 mouse_pos,
     float radius,
     const FindClosestData &initial_closest)
 {
-  const float4x4 projection = ED_view3d_ob_project_mat_get(rv3d, &object);
-
   const float radius_sq = pow2f(radius);
   const FindClosestData new_closest_data = threading::parallel_reduce(
       points_mask.index_range(),
@@ -539,7 +548,8 @@ static std::optional<FindClosestData> find_closest_point_to_screen_co(
 
           const float distance_proj_sq = math::distance_squared(pos_proj, mouse_pos);
           if (distance_proj_sq > radius_sq ||
-              distance_proj_sq > best_match.distance * best_match.distance) {
+              distance_proj_sq > best_match.distance * best_match.distance)
+          {
             /* Ignore the point because it's too far away or there is already a better point. */
             continue;
           }
@@ -568,17 +578,14 @@ static std::optional<FindClosestData> find_closest_point_to_screen_co(
 
 static std::optional<FindClosestData> find_closest_curve_to_screen_co(
     const ARegion *region,
-    const RegionView3D *rv3d,
-    const Object &object,
     const OffsetIndices<int> points_by_curve,
     const Span<float3> positions,
+    const float4x4 &projection,
     const IndexMask &curves_mask,
     const float2 mouse_pos,
     float radius,
     const FindClosestData &initial_closest)
 {
-  const float4x4 projection = ED_view3d_ob_project_mat_get(rv3d, &object);
-
   const float radius_sq = pow2f(radius);
 
   const FindClosestData new_closest_data = threading::parallel_reduce(
@@ -598,7 +605,8 @@ static std::optional<FindClosestData> find_closest_curve_to_screen_co(
 
             const float distance_proj_sq = math::distance_squared(pos_proj, mouse_pos);
             if (distance_proj_sq > radius_sq ||
-                distance_proj_sq > best_match.distance * best_match.distance) {
+                distance_proj_sq > best_match.distance * best_match.distance)
+            {
               /* Ignore the point because it's too far away or there is already a better point.
                */
               continue;
@@ -621,7 +629,8 @@ static std::optional<FindClosestData> find_closest_curve_to_screen_co(
             const float distance_proj_sq = dist_squared_to_line_segment_v2(
                 mouse_pos, pos1_proj, pos2_proj);
             if (distance_proj_sq > radius_sq ||
-                distance_proj_sq > best_match.distance * best_match.distance) {
+                distance_proj_sq > best_match.distance * best_match.distance)
+            {
               /* Ignore the segment because it's too far away or there is already a better point.
                */
               continue;
@@ -652,9 +661,9 @@ static std::optional<FindClosestData> find_closest_curve_to_screen_co(
 
 std::optional<FindClosestData> closest_elem_find_screen_space(
     const ViewContext &vc,
-    const Object &object,
     const OffsetIndices<int> points_by_curve,
     const Span<float3> positions,
+    const float4x4 &projection,
     const IndexMask &mask,
     const bke::AttrDomain domain,
     const int2 coord,
@@ -663,19 +672,17 @@ std::optional<FindClosestData> closest_elem_find_screen_space(
   switch (domain) {
     case bke::AttrDomain::Point:
       return find_closest_point_to_screen_co(vc.region,
-                                             vc.rv3d,
-                                             object,
                                              positions,
+                                             projection,
                                              mask,
                                              float2(coord),
                                              ED_view3d_select_dist_px(),
                                              initial_closest);
     case bke::AttrDomain::Curve:
       return find_closest_curve_to_screen_co(vc.region,
-                                             vc.rv3d,
-                                             object,
                                              points_by_curve,
                                              positions,
+                                             projection,
                                              mask,
                                              float2(coord),
                                              ED_view3d_select_dist_px(),
@@ -689,6 +696,7 @@ std::optional<FindClosestData> closest_elem_find_screen_space(
 bool select_box(const ViewContext &vc,
                 bke::CurvesGeometry &curves,
                 const Span<float3> positions,
+                const float4x4 &projection,
                 const IndexMask &mask,
                 const bke::AttrDomain selection_domain,
                 const rcti &rect,
@@ -702,8 +710,6 @@ bool select_box(const ViewContext &vc,
     fill_selection_false(selection.span, mask);
     changed = true;
   }
-
-  const float4x4 projection = ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact);
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
   if (selection_domain == bke::AttrDomain::Point) {
@@ -751,14 +757,14 @@ bool select_box(const ViewContext &vc,
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
                   const Span<float3> positions,
+                  const float4x4 &projection_matrix,
                   const IndexMask &mask,
                   const bke::AttrDomain selection_domain,
-                  const Span<int2> coords,
+                  const Span<int2> lasso_coords,
                   const eSelectOp sel_op)
 {
   rcti bbox;
-  const int(*coord_array)[2] = reinterpret_cast<const int(*)[2]>(coords.data());
-  BLI_lasso_boundbox(&bbox, coord_array, coords.size());
+  BLI_lasso_boundbox(&bbox, lasso_coords);
 
   bke::GSpanAttributeWriter selection = ensure_selection_attribute(
       curves, selection_domain, CD_PROP_BOOL);
@@ -769,17 +775,14 @@ bool select_lasso(const ViewContext &vc,
     changed = true;
   }
 
-  const float4x4 projection = ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact);
-
   const OffsetIndices points_by_curve = curves.points_by_curve();
   if (selection_domain == bke::AttrDomain::Point) {
     mask.foreach_index(GrainSize(1024), [&](const int point_i) {
       const float2 pos_proj = ED_view3d_project_float_v2_m4(
-          vc.region, positions[point_i], projection);
+          vc.region, positions[point_i], projection_matrix);
       /* Check the lasso bounding box first as an optimization. */
       if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
-          BLI_lasso_is_point_inside(
-              coord_array, coords.size(), int(pos_proj.x), int(pos_proj.y), IS_CLIPPED))
+          BLI_lasso_is_point_inside(lasso_coords, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED))
       {
         apply_selection_operation_at_index(selection.span, point_i, sel_op);
         changed = true;
@@ -791,11 +794,10 @@ bool select_lasso(const ViewContext &vc,
       const IndexRange points = points_by_curve[curve_i];
       if (points.size() == 1) {
         const float2 pos_proj = ED_view3d_project_float_v2_m4(
-            vc.region, positions[points.first()], projection);
+            vc.region, positions[points.first()], projection_matrix);
         /* Check the lasso bounding box first as an optimization. */
         if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
-            BLI_lasso_is_point_inside(
-                coord_array, coords.size(), int(pos_proj.x), int(pos_proj.y), IS_CLIPPED))
+            BLI_lasso_is_point_inside(lasso_coords, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED))
         {
           apply_selection_operation_at_index(selection.span, curve_i, sel_op);
           changed = true;
@@ -806,13 +808,12 @@ bool select_lasso(const ViewContext &vc,
         const float3 pos1 = positions[segment_i];
         const float3 pos2 = positions[segment_i + 1];
 
-        const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection);
-        const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection);
+        const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection_matrix);
+        const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection_matrix);
 
         /* Check the lasso bounding box first as an optimization. */
         if (BLI_rcti_isect_segment(&bbox, int2(pos1_proj), int2(pos2_proj)) &&
-            BLI_lasso_is_edge_inside(coord_array,
-                                     coords.size(),
+            BLI_lasso_is_edge_inside(lasso_coords,
                                      int(pos1_proj.x),
                                      int(pos1_proj.y),
                                      int(pos2_proj.x),
@@ -834,6 +835,7 @@ bool select_lasso(const ViewContext &vc,
 bool select_circle(const ViewContext &vc,
                    bke::CurvesGeometry &curves,
                    const Span<float3> positions,
+                   const float4x4 &projection,
                    const IndexMask &mask,
                    const bke::AttrDomain selection_domain,
                    const int2 coord,
@@ -849,8 +851,6 @@ bool select_circle(const ViewContext &vc,
     fill_selection_false(selection.span, mask);
     changed = true;
   }
-
-  const float4x4 projection = ED_view3d_ob_project_mat_get(vc.rv3d, vc.obact);
 
   const OffsetIndices points_by_curve = curves.points_by_curve();
   if (selection_domain == bke::AttrDomain::Point) {

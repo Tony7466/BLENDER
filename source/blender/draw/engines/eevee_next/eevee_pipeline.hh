@@ -14,7 +14,7 @@
 
 #include "BLI_math_bits.h"
 
-#include "DRW_render.h"
+#include "DRW_render.hh"
 #include "draw_shader_shared.h"
 
 #include "eevee_lut.hh"
@@ -145,6 +145,9 @@ class ForwardPipeline {
   PassSortable transparent_ps_ = {"Forward.Transparent"};
   float3 camera_forward_;
 
+  bool has_opaque_ = false;
+  bool has_transparent_ = false;
+
  public:
   ForwardPipeline(Instance &inst) : inst_(inst){};
 
@@ -186,6 +189,8 @@ struct DeferredLayerBase {
 
   /* Closures bits from the materials in this pass. */
   eClosureBits closure_bits_ = CLOSURE_NONE;
+  /* Maximum closure count considering all material in this pass. */
+  int closure_count_ = 0;
 
   /* Return the amount of gbuffer layer needed. */
   int closure_layer_count() const
@@ -195,7 +200,8 @@ struct DeferredLayerBase {
     /* SSS require an additional layer compared to diffuse. */
     count += count_bits_i(closure_bits_ & CLOSURE_SSS);
     /* Reflection and refraction can have at most two layers. */
-    count += 2 * count_bits_i(closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION));
+    count += 2 * count_bits_i(closure_bits_ &
+                              (CLOSURE_REFRACTION | CLOSURE_REFLECTION | CLOSURE_CLEARCOAT));
     return count;
   }
 
@@ -205,8 +211,9 @@ struct DeferredLayerBase {
     /* TODO(fclem): We could count the number of different tangent frame in the shader and use
      * min(tangent_frame_count, closure_count) once we have the normal reuse optimization.
      * For now, allocate a split normal layer for each Closure. */
-    int count = count_bits_i(closure_bits_ & (CLOSURE_REFRACTION | CLOSURE_REFLECTION |
-                                              CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
+    int count = count_bits_i(closure_bits_ &
+                             (CLOSURE_REFRACTION | CLOSURE_REFLECTION | CLOSURE_CLEARCOAT |
+                              CLOSURE_DIFFUSE | CLOSURE_TRANSLUCENT));
     /* Count the additional infos layer needed by some closures. */
     count += count_bits_i(closure_bits_ & (CLOSURE_SSS | CLOSURE_TRANSLUCENT));
     return count;
@@ -241,18 +248,10 @@ class DeferredLayer : DeferredLayerBase {
    */
   TextureFromPool direct_radiance_txs_[3] = {
       {"direct_radiance_1"}, {"direct_radiance_2"}, {"direct_radiance_3"}};
-  /* Reference to ray-tracing result. */
-  GPUTexture *indirect_diffuse_tx_ = nullptr;
-  GPUTexture *indirect_reflect_tx_ = nullptr;
-  GPUTexture *indirect_refract_tx_ = nullptr;
+  Texture dummy_black_tx = {"dummy_black_tx"};
+  /* Reference to ray-tracing results. */
+  GPUTexture *indirect_radiance_txs_[3] = {nullptr};
 
-  /* Parameters for the light evaluation pass. */
-  int closure_tile_size_shift_ = 0;
-  /* Tile buffers for different lighting complexity levels. */
-  struct {
-    DrawIndirectBuf draw_buf_ = {"DrawIndirectBuf"};
-    ClosureTileBuf tile_buf_ = {"ClosureTileBuf"};
-  } closure_bufs_[3];
   /**
    * Tile texture containing several bool per tile indicating presence of feature.
    * It is used to select specialized shader for each tile.
@@ -264,6 +263,8 @@ class DeferredLayer : DeferredLayerBase {
   /* TODO(fclem): This shouldn't be part of the pipeline but of the view. */
   Texture radiance_feedback_tx_ = {"radiance_feedback_tx"};
   float4x4 radiance_feedback_persmat_;
+
+  bool use_combined_lightprobe_eval = true;
 
  public:
   DeferredLayer(Instance &inst) : inst_(inst){};
@@ -293,6 +294,8 @@ class DeferredPipeline {
   DeferredLayer volumetric_layer_;
 
   PassSimple debug_draw_ps_ = {"debug_gbuffer"};
+
+  bool use_combined_lightprobe_eval;
 
  public:
   DeferredPipeline(Instance &inst)
@@ -484,38 +487,16 @@ class VolumePipeline {
 /** \name Deferred Probe Capture.
  * \{ */
 
-class DeferredProbePipeline;
-
-class DeferredProbeLayer : DeferredLayerBase {
-  friend DeferredProbePipeline;
-
+class DeferredProbePipeline {
  private:
   Instance &inst_;
+
+  DeferredLayerBase opaque_layer_;
 
   PassSimple eval_light_ps_ = {"EvalLights"};
 
  public:
-  DeferredProbeLayer(Instance &inst) : inst_(inst){};
-
-  void begin_sync();
-  void end_sync();
-
-  PassMain::Sub *prepass_add(::Material *blender_mat, GPUMaterial *gpumat);
-  PassMain::Sub *material_add(::Material *blender_mat, GPUMaterial *gpumat);
-
-  void render(View &view,
-              Framebuffer &prepass_fb,
-              Framebuffer &combined_fb,
-              Framebuffer &gbuffer_fb,
-              int2 extent);
-};
-
-class DeferredProbePipeline {
- private:
-  DeferredProbeLayer opaque_layer_;
-
- public:
-  DeferredProbePipeline(Instance &inst) : opaque_layer_(inst){};
+  DeferredProbePipeline(Instance &inst) : inst_(inst){};
 
   void begin_sync();
   void end_sync();

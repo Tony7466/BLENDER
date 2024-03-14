@@ -6,21 +6,17 @@
  * \ingroup bke
  */
 
-#include "atomic_ops.h"
-
 #include "MEM_guardedalloc.h"
-
-#include "DNA_object_types.h"
 
 #include "BLI_array_utils.hh"
 #include "BLI_math_geom.h"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 
+#include "BKE_bake_data_block_id.hh"
 #include "BKE_bvhutils.hh"
 #include "BKE_customdata.hh"
 #include "BKE_editmesh_cache.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_runtime.hh"
@@ -62,7 +58,7 @@ static void free_batch_cache(MeshRuntime &mesh_runtime)
   }
 }
 
-MeshRuntime::MeshRuntime() {}
+MeshRuntime::MeshRuntime() = default;
 
 MeshRuntime::~MeshRuntime()
 {
@@ -74,9 +70,9 @@ MeshRuntime::~MeshRuntime()
 static int reset_bits_and_count(MutableBitSpan bits, const Span<int> indices_to_reset)
 {
   int count = bits.size();
-  for (const int vert : indices_to_reset) {
-    if (bits[vert]) {
-      bits[vert].reset();
+  for (const int i : indices_to_reset) {
+    if (bits[i]) {
+      bits[i].reset();
       count--;
     }
   }
@@ -120,7 +116,7 @@ blender::Span<int> Mesh::corner_to_face_map() const
   using namespace blender;
   this->runtime->corner_to_face_map_cache.ensure([&](Array<int> &r_data) {
     const OffsetIndices faces = this->faces();
-    r_data = bke::mesh::build_loop_to_face_map(faces);
+    r_data = bke::mesh::build_corner_to_face_map(faces);
   });
   return this->runtime->corner_to_face_map_cache.data();
 }
@@ -297,6 +293,7 @@ void BKE_mesh_runtime_clear_geometry(Mesh *mesh)
   mesh->runtime->corner_to_face_map_cache.tag_dirty();
   mesh->runtime->vert_normals_cache.tag_dirty();
   mesh->runtime->face_normals_cache.tag_dirty();
+  mesh->runtime->corner_normals_cache.tag_dirty();
   mesh->runtime->loose_edges_cache.tag_dirty();
   mesh->runtime->loose_verts_cache.tag_dirty();
   mesh->runtime->verts_no_face_cache.tag_dirty();
@@ -338,6 +335,11 @@ void Mesh::tag_edges_split()
 }
 
 void Mesh::tag_sharpness_changed()
+{
+  this->runtime->corner_normals_cache.tag_dirty();
+}
+
+void Mesh::tag_custom_normals_changed()
 {
   this->runtime->corner_normals_cache.tag_dirty();
 }
@@ -407,7 +409,7 @@ void BKE_mesh_batch_cache_free(void *batch_cache)
 
 #ifndef NDEBUG
 
-bool BKE_mesh_runtime_is_valid(Mesh *me_eval)
+bool BKE_mesh_runtime_is_valid(Mesh *mesh_eval)
 {
   const bool do_verbose = true;
   const bool do_fixes = false;
@@ -416,44 +418,44 @@ bool BKE_mesh_runtime_is_valid(Mesh *me_eval)
   bool changed = true;
 
   if (do_verbose) {
-    printf("MESH: %s\n", me_eval->id.name + 2);
+    printf("MESH: %s\n", mesh_eval->id.name + 2);
   }
 
-  MutableSpan<float3> positions = me_eval->vert_positions_for_write();
-  MutableSpan<blender::int2> edges = me_eval->edges_for_write();
-  MutableSpan<int> face_offsets = me_eval->face_offsets_for_write();
-  MutableSpan<int> corner_verts = me_eval->corner_verts_for_write();
-  MutableSpan<int> corner_edges = me_eval->corner_edges_for_write();
+  MutableSpan<float3> positions = mesh_eval->vert_positions_for_write();
+  MutableSpan<blender::int2> edges = mesh_eval->edges_for_write();
+  MutableSpan<int> face_offsets = mesh_eval->face_offsets_for_write();
+  MutableSpan<int> corner_verts = mesh_eval->corner_verts_for_write();
+  MutableSpan<int> corner_edges = mesh_eval->corner_edges_for_write();
 
   is_valid &= BKE_mesh_validate_all_customdata(
-      &me_eval->vert_data,
-      me_eval->verts_num,
-      &me_eval->edge_data,
-      me_eval->edges_num,
-      &me_eval->corner_data,
-      me_eval->corners_num,
-      &me_eval->face_data,
-      me_eval->faces_num,
+      &mesh_eval->vert_data,
+      mesh_eval->verts_num,
+      &mesh_eval->edge_data,
+      mesh_eval->edges_num,
+      &mesh_eval->corner_data,
+      mesh_eval->corners_num,
+      &mesh_eval->face_data,
+      mesh_eval->faces_num,
       false, /* setting mask here isn't useful, gives false positives */
       do_verbose,
       do_fixes,
       &changed);
 
   is_valid &= BKE_mesh_validate_arrays(
-      me_eval,
+      mesh_eval,
       reinterpret_cast<float(*)[3]>(positions.data()),
       positions.size(),
       edges.data(),
       edges.size(),
       static_cast<MFace *>(CustomData_get_layer_for_write(
-          &me_eval->fdata_legacy, CD_MFACE, me_eval->totface_legacy)),
-      me_eval->totface_legacy,
+          &mesh_eval->fdata_legacy, CD_MFACE, mesh_eval->totface_legacy)),
+      mesh_eval->totface_legacy,
       corner_verts.data(),
       corner_edges.data(),
       corner_verts.size(),
       face_offsets.data(),
-      me_eval->faces_num,
-      me_eval->deform_verts_for_write().data(),
+      mesh_eval->faces_num,
+      mesh_eval->deform_verts_for_write().data(),
       do_verbose,
       do_fixes,
       &changed);

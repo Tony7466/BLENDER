@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <functional>
 #include <optional>
 
 #include "BLI_function_ref.hh"
@@ -28,7 +29,7 @@ class GField;
 namespace blender::bke {
 
 enum class AttrDomain : int8_t {
-  /* Use for to choose automatically based on other data. */
+  /* Used to choose automatically based on other data. */
   Auto = -1,
   /* Mesh, Curve or Point Cloud Point. */
   Point = 0,
@@ -75,6 +76,9 @@ class AttributeIDRef {
 
   friend std::ostream &operator<<(std::ostream &stream, const AttributeIDRef &attribute_id);
 };
+
+const CPPType *custom_data_type_to_cpp_type(eCustomDataType type);
+eCustomDataType cpp_type_to_custom_data_type(const CPPType &type);
 
 /**
  * Contains information about an attribute in a geometry component.

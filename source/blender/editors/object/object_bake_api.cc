@@ -24,23 +24,22 @@
 #include "BLI_string.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_callbacks.h"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
 #include "BKE_image_format.h"
-#include "BKE_layer.h"
-#include "BKE_lib_id.h"
+#include "BKE_layer.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.hh"
 #include "BKE_modifier.hh"
 #include "BKE_node.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_screen.hh"
 
 #include "DEG_depsgraph.hh"
@@ -50,9 +49,9 @@
 #include "RE_engine.h"
 #include "RE_pipeline.h"
 
-#include "IMB_colormanagement.h"
-#include "IMB_imbuf.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -687,7 +686,8 @@ static bool bake_objects_check(Main *bmain,
 
     LISTBASE_FOREACH (CollectionPointerLink *, link, selected_objects) {
       if (!bake_object_check(
-              scene, view_layer, static_cast<Object *>(link->ptr.data), target, reports)) {
+              scene, view_layer, static_cast<Object *>(link->ptr.data), target, reports))
+      {
         return false;
       }
     }
@@ -1053,7 +1053,7 @@ static int find_original_loop(const blender::OffsetIndices<int> orig_faces,
 
 static void bake_targets_populate_pixels_color_attributes(BakeTargets *targets,
                                                           Object *ob,
-                                                          Mesh *me_eval,
+                                                          Mesh *mesh_eval,
                                                           BakePixel *pixel_array)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
@@ -1075,20 +1075,22 @@ static void bake_targets_populate_pixels_color_attributes(BakeTargets *targets,
   }
 
   /* Populate through adjacent triangles, first triangle wins. */
-  const int corner_tris_num = poly_to_tri_count(me_eval->faces_num, me_eval->corners_num);
+  const int corner_tris_num = poly_to_tri_count(mesh_eval->faces_num, mesh_eval->corners_num);
   blender::int3 *corner_tris = static_cast<blender::int3 *>(
       MEM_mallocN(sizeof(*corner_tris) * corner_tris_num, __func__));
 
-  const blender::Span<int> corner_verts = me_eval->corner_verts();
-  blender::bke::mesh::corner_tris_calc(
-      me_eval->vert_positions(), me_eval->faces(), corner_verts, {corner_tris, corner_tris_num});
-  const blender::Span<int> tri_faces = me_eval->corner_tri_faces();
+  const blender::Span<int> corner_verts = mesh_eval->corner_verts();
+  blender::bke::mesh::corner_tris_calc(mesh_eval->vert_positions(),
+                                       mesh_eval->faces(),
+                                       corner_verts,
+                                       {corner_tris, corner_tris_num});
+  const blender::Span<int> tri_faces = mesh_eval->corner_tri_faces();
 
   /* For mapping back to original mesh in case there are modifiers. */
   const int *vert_origindex = static_cast<const int *>(
-      CustomData_get_layer(&me_eval->vert_data, CD_ORIGINDEX));
+      CustomData_get_layer(&mesh_eval->vert_data, CD_ORIGINDEX));
   const int *poly_origindex = static_cast<const int *>(
-      CustomData_get_layer(&me_eval->face_data, CD_ORIGINDEX));
+      CustomData_get_layer(&mesh_eval->face_data, CD_ORIGINDEX));
   const blender::OffsetIndices orig_faces = mesh->faces();
   const blender::Span<int> orig_corner_verts = mesh->corner_verts();
 
@@ -1344,14 +1346,14 @@ static bool bake_targets_init(const BakeAPIRender *bkr,
 static void bake_targets_populate_pixels(const BakeAPIRender *bkr,
                                          BakeTargets *targets,
                                          Object *ob,
-                                         Mesh *me_eval,
+                                         Mesh *mesh_eval,
                                          BakePixel *pixel_array)
 {
   if (bkr->target == R_BAKE_TARGET_VERTEX_COLORS) {
-    bake_targets_populate_pixels_color_attributes(targets, ob, me_eval, pixel_array);
+    bake_targets_populate_pixels_color_attributes(targets, ob, mesh_eval, pixel_array);
   }
   else {
-    RE_bake_pixels_populate(me_eval, pixel_array, targets->pixels_num, targets, bkr->uv_layer);
+    RE_bake_pixels_populate(mesh_eval, pixel_array, targets->pixels_num, targets, bkr->uv_layer);
   }
 }
 
@@ -1359,17 +1361,17 @@ static bool bake_targets_output(const BakeAPIRender *bkr,
                                 BakeTargets *targets,
                                 Object *ob,
                                 Object *ob_eval,
-                                Mesh *me_eval,
+                                Mesh *mesh_eval,
                                 BakePixel *pixel_array,
                                 ReportList *reports)
 {
   if (bkr->target == R_BAKE_TARGET_IMAGE_TEXTURES) {
     if (bkr->save_mode == R_BAKE_SAVE_INTERNAL) {
-      return bake_targets_output_internal(bkr, targets, ob, pixel_array, reports, me_eval);
+      return bake_targets_output_internal(bkr, targets, ob, pixel_array, reports, mesh_eval);
     }
     if (bkr->save_mode == R_BAKE_SAVE_EXTERNAL) {
       return bake_targets_output_external(
-          bkr, targets, ob, ob_eval, me_eval, pixel_array, reports);
+          bkr, targets, ob, ob_eval, mesh_eval, pixel_array, reports);
     }
   }
   else if (bkr->target == R_BAKE_TARGET_VERTEX_COLORS) {
@@ -1578,10 +1580,10 @@ static int bake(const BakeAPIRender *bkr,
       highpoly[i].mesh = BKE_mesh_new_from_object(nullptr, highpoly[i].ob_eval, false, false);
 
       /* Low-poly to high-poly transformation matrix. */
-      copy_m4_m4(highpoly[i].obmat, highpoly[i].ob->object_to_world);
+      copy_m4_m4(highpoly[i].obmat, highpoly[i].ob->object_to_world().ptr());
       invert_m4_m4(highpoly[i].imat, highpoly[i].obmat);
 
-      highpoly[i].is_flip_object = is_negative_m4(highpoly[i].ob->object_to_world);
+      highpoly[i].is_flip_object = is_negative_m4(highpoly[i].ob->object_to_world().ptr());
 
       i++;
     }
@@ -1610,8 +1612,8 @@ static int bake(const BakeAPIRender *bkr,
             ob_cage != nullptr,
             bkr->cage_extrusion,
             bkr->max_ray_distance,
-            ob_low_eval->object_to_world,
-            (ob_cage ? ob_cage->object_to_world : ob_low_eval->object_to_world),
+            ob_low_eval->object_to_world().ptr(),
+            (ob_cage ? ob_cage->object_to_world().ptr() : ob_low_eval->object_to_world().ptr()),
             me_cage_eval))
     {
       BKE_report(reports, RPT_ERROR, "Error handling selected objects");
@@ -1692,7 +1694,7 @@ static int bake(const BakeAPIRender *bkr,
                                           targets.result,
                                           me_low_eval,
                                           bkr->normal_swizzle,
-                                          ob_low_eval->object_to_world);
+                                          ob_low_eval->object_to_world().ptr());
         }
         else {
           /* From multi-resolution. */
@@ -1718,7 +1720,7 @@ static int bake(const BakeAPIRender *bkr,
                                           targets.result,
                                           (me_nores) ? me_nores : me_low_eval,
                                           bkr->normal_swizzle,
-                                          ob_low_eval->object_to_world);
+                                          ob_low_eval->object_to_world().ptr());
 
           if (md) {
             BKE_id_free(nullptr, &me_nores->id);
@@ -1739,7 +1741,8 @@ static int bake(const BakeAPIRender *bkr,
   else {
     /* save the results */
     if (bake_targets_output(
-            bkr, &targets, ob_low, ob_low_eval, me_low_eval, pixel_array_low, reports)) {
+            bkr, &targets, ob_low, ob_low_eval, me_low_eval, pixel_array_low, reports))
+    {
       op_result = OPERATOR_FINISHED;
     }
     else {

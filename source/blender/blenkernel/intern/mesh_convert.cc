@@ -24,21 +24,21 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_DerivedMesh.hh"
 #include "BKE_curves.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_displist.h"
 #include "BKE_editmesh.hh"
 #include "BKE_geometry_set.hh"
 #include "BKE_geometry_set_instances.hh"
-#include "BKE_key.h"
-#include "BKE_lib_id.h"
-#include "BKE_lib_query.h"
+#include "BKE_key.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_query.hh"
 #include "BKE_main.hh"
 #include "BKE_material.h"
-#include "BKE_mball.h"
+#include "BKE_mball.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
@@ -49,7 +49,7 @@
 /* -- */
 #include "BKE_object.hh"
 /* -- */
-#include "BKE_pointcloud.h"
+#include "BKE_pointcloud.hh"
 
 #include "BKE_curve_to_mesh.hh"
 
@@ -510,15 +510,15 @@ void BKE_mesh_to_curve(Main *bmain, Depsgraph *depsgraph, Scene * /*scene*/, Obj
   if (!ob_eval) {
     return;
   }
-  const Mesh *me_eval = BKE_object_get_evaluated_mesh_no_subsurf(ob_eval);
-  if (!me_eval) {
+  const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(ob_eval);
+  if (!mesh_eval) {
     return;
   }
 
   ListBase nurblist = {nullptr, nullptr};
 
-  BKE_mesh_to_curve_nurblist(me_eval, &nurblist, 0);
-  BKE_mesh_to_curve_nurblist(me_eval, &nurblist, 1);
+  BKE_mesh_to_curve_nurblist(mesh_eval, &nurblist, 0);
+  BKE_mesh_to_curve_nurblist(mesh_eval, &nurblist, 1);
 
   if (nurblist.first) {
     Curve *cu = BKE_curve_add(bmain, ob->id.name + 2, OB_CURVES_LEGACY);

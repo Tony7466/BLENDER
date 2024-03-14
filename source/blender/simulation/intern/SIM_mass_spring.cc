@@ -6,6 +6,8 @@
  * \ingroup sim
  */
 
+#include <algorithm>
+
 #include "MEM_guardedalloc.h"
 
 #include "DNA_cloth_types.h"
@@ -17,6 +19,7 @@
 #include "BLI_linklist.h"
 #include "BLI_math_geom.h"
 #include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_cloth.hh"
@@ -547,7 +550,9 @@ BLI_INLINE void cloth_calc_spring_force(ClothModifierData *clmd, ClothSpring *s)
   }
 }
 
-static void hair_get_boundbox(ClothModifierData *clmd, float gmin[3], float gmax[3])
+static void hair_get_boundbox(ClothModifierData *clmd,
+                              blender::float3 &gmin,
+                              blender::float3 &gmax)
 {
   Cloth *cloth = clmd->clothObject;
   Implicit_Data *data = cloth->implicit;
@@ -556,9 +561,9 @@ static void hair_get_boundbox(ClothModifierData *clmd, float gmin[3], float gmax
 
   INIT_MINMAX(gmin, gmax);
   for (i = 0; i < mvert_num; i++) {
-    float x[3];
+    blender::float3 x;
     SIM_mass_spring_get_motion_state(data, i, x, nullptr);
-    DO_MINMAX(x, gmin, gmax);
+    blender::math::min_max(x, gmin, gmax);
   }
 }
 
@@ -957,7 +962,7 @@ static void cloth_continuum_step(ClothModifierData *clmd, float dt)
    */
   float density_target = parms->density_target;
   float density_strength = parms->density_strength;
-  float gmin[3], gmax[3];
+  blender::float3 gmin, gmax;
   int i;
 
   /* clear grid info */
@@ -1054,7 +1059,7 @@ static void cloth_continuum_step(ClothModifierData *clmd, float dt)
               interp_v3_v3v3(col,
                              col0,
                              col1,
-                             CLAMPIS(gdensity * clmd->sim_parms->density_strength, 0.0, 1.0));
+                             std::clamp(gdensity * clmd->sim_parms->density_strength, 0.0, 1.0));
 #    if 0
               BKE_sim_debug_data_add_circle(clmd->debug_data,
                                             x,
@@ -1178,7 +1183,8 @@ static void cloth_solve_collisions(
   int i;
 
   if (!(clmd->coll_parms->flags &
-        (CLOTH_COLLSETTINGS_FLAG_ENABLED | CLOTH_COLLSETTINGS_FLAG_SELF))) {
+        (CLOTH_COLLSETTINGS_FLAG_ENABLED | CLOTH_COLLSETTINGS_FLAG_SELF)))
+  {
     return;
   }
 

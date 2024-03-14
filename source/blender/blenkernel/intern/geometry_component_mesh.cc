@@ -9,10 +9,10 @@
 #include "DNA_object_types.h"
 
 #include "BKE_attribute_math.hh"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
 
@@ -27,6 +27,11 @@ namespace blender::bke {
  * \{ */
 
 MeshComponent::MeshComponent() : GeometryComponent(Type::Mesh) {}
+
+MeshComponent::MeshComponent(Mesh *mesh, GeometryOwnershipType ownership)
+    : GeometryComponent(Type::Mesh), mesh_(mesh), ownership_(ownership)
+{
+}
 
 MeshComponent::~MeshComponent()
 {
@@ -892,7 +897,7 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
       static const float default_value = 0.0f;
       return {VArray<float>::ForSingle(default_value, mesh->verts_num), AttrDomain::Point};
     }
-    return {bke::varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
+    return {varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
   GAttributeWriter try_get_for_write(void *owner, const AttributeIDRef &attribute_id) const final
@@ -912,7 +917,7 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
       return {};
     }
     MutableSpan<MDeformVert> dverts = mesh->deform_verts_for_write();
-    return {bke::varray_for_mutable_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
+    return {varray_for_mutable_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
   bool try_delete(void *owner, const AttributeIDRef &attribute_id) const final
@@ -939,7 +944,7 @@ class MeshVertexGroupsAttributeProvider final : public DynamicAttributesProvider
     }
 
     MutableSpan<MDeformVert> dverts = mesh->deform_verts_for_write();
-    bke::remove_defgroup_index(dverts, index);
+    remove_defgroup_index(dverts, index);
     return true;
   }
 
