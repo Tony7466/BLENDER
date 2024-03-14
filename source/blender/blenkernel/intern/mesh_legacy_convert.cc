@@ -2265,6 +2265,7 @@ static ModifierData *create_auto_smooth_modifier(Object &object,
 
 void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
 {
+  using namespace blender;
   using namespace blender::bke;
 
   /* Add the node group lazily and share it among all objects in the main database. */
@@ -2275,6 +2276,8 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     return node_group;
   };
 
+  Set<Mesh *> handled_meshes;
+
   LISTBASE_FOREACH (Object *, object, &bmain.objects) {
     if (object->type != OB_MESH) {
       continue;
@@ -2284,7 +2287,7 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     if (!(mesh->flag & ME_AUTOSMOOTH_LEGACY)) {
       continue;
     }
-    mesh->flag &= ~ME_AUTOSMOOTH_LEGACY;
+    handled_meshes.add(mesh);
 
     /* Auto-smooth disabled sharp edge tagging when the evaluated mesh had custom normals.
      * When the original mesh has custom normals, that's a good sign the evaluated mesh will
@@ -2326,6 +2329,10 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     else {
       BLI_addtail(&object->modifiers, new_md);
     }
+  }
+
+  for (Mesh *mesh : handled_meshes) {
+    mesh->flag &= ~ME_AUTOSMOOTH_LEGACY;
   }
 }
 
