@@ -614,7 +614,7 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
 
   const bool use_stroke_order_3d = (grease_pencil.flag & GREASE_PENCIL_STROKE_ORDER_3D) != 0;
   GPENCIL_tObject *tgp_ob = gpencil_object_cache_add(pd, ob, use_stroke_order_3d, bounds);
-  
+
   int mat_ofs = 0;
   GPENCIL_MaterialPool *matpool = gpencil_material_pool_create(pd, ob, &mat_ofs, is_vertex_mode);
 
@@ -687,9 +687,9 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
     const bke::CurvesGeometry &curves = info.drawing.strokes();
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     bke::AttributeAccessor attributes = curves.attributes();
-    VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
+    const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
-    VArray<bool> cyclic = *attributes.lookup_or_default<bool>(
+    const VArray<bool> cyclic = *attributes.lookup_or_default<bool>(
         "cyclic", bke::AttrDomain::Curve, false);
 
     IndexMaskMemory memory;
