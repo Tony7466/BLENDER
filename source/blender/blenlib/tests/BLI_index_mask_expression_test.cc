@@ -153,6 +153,24 @@ TEST(index_mask_expression, UnionLargeRanges)
   EXPECT_EQ(result_mask, IndexMask(IndexRange(0, 2'000'000)));
 }
 
+TEST(index_mask_expression, RangeTerms)
+{
+  IndexMaskMemory memory;
+  ExprBuilder builder;
+
+  const IndexRange range_a = IndexRange::from_begin_end(30'000, 50'000);
+  const IndexRange range_b = IndexRange::from_begin_end(40'000, 100'000);
+  const IndexRange range_c = IndexRange::from_begin_end(45'000, 48'000);
+
+  const Expr &expr = builder.subtract(&builder.merge({range_a, range_b}), {range_c});
+  const IndexMask result_mask = evaluate_expression(expr, memory);
+
+  EXPECT_EQ(result_mask,
+            IndexMask::from_initializers({IndexRange::from_begin_end(30'000, 45'000),
+                                          IndexRange::from_begin_end(48'000, 100'000)},
+                                         memory));
+}
+
 TEST(index_mask_expression, Benchmark)
 {
 #ifdef NDEBUG

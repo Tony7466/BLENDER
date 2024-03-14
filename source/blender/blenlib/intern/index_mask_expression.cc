@@ -1275,7 +1275,12 @@ const Expr &ExprBuilder::term_to_expr(const Term &term)
   AtomicExpr &expr = scope_.construct<AtomicExpr>();
   expr.type = Expr::Type::Atomic;
   expr.index = expr_count_++;
-  expr.mask = std::get<const IndexMask *>(term);
+  if (const IndexRange *range = std::get_if<IndexRange>(&term)) {
+    expr.mask = &scope_.construct<IndexMask>(*range);
+  }
+  else {
+    expr.mask = std::get<const IndexMask *>(term);
+  }
   return expr;
 }
 

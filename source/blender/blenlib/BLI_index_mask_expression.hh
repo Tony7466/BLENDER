@@ -50,7 +50,7 @@ class ExprBuilder {
   int expr_count_ = 0;
 
  public:
-  using Term = std::variant<const Expr *, const IndexMask *>;
+  using Term = std::variant<const Expr *, const IndexMask *, IndexRange>;
 
   const UnionExpr &merge(const Span<Term> terms);
   const DifferenceExpr &subtract(const Term &main_term, const Span<Term> subtract_terms);
