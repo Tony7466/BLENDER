@@ -40,6 +40,26 @@ class GREASE_PENCIL_UL_masks(UIList):
             layout.prop(mask, "name", text="", emboss=False, icon_value=icon)
 
 
+class GREASE_PENCIL_MT_layer_mask_add(Menu):
+    bl_label = "Add Mask"
+
+    def draw(self, context):
+        layout = self.layout
+
+        grease_pencil = context.grease_pencil
+        active_layer = grease_pencil.layers.active
+        found = False
+        for layer in grease_pencil.layers:
+            if layer == active_layer or layer.name in active_layer.mask_layers:
+                continue
+                
+            found = True
+            layout.operator("grease_pencil.layer_mask_add", text=layer.name).name = layer.name
+
+        if not found:
+            layout.label(text="No layers to add")
+
+
 class DATA_PT_context_grease_pencil(DataButtonsPanel, Panel):
     bl_label = ""
     bl_options = {'HIDE_HEADER'}
@@ -142,16 +162,15 @@ class DATA_PT_grease_pencil_layer_masks(LayerDataButtonsPanel, Panel):
         col.template_list("GREASE_PENCIL_UL_masks", "", layer, "mask_layers", layer.mask_layers,
                           "active_mask_index", rows=rows, sort_lock=True)
 
-        # TODO:
-        # col2 = row.column(align=True)
-        # col2.menu("GPENCIL_MT_layer_mask_menu", icon='ADD', text="")
-        # col2.operator("gpencil.layer_mask_remove", icon='REMOVE', text="")
+        col = row.column(align=True)
+        col.menu("GREASE_PENCIL_MT_layer_mask_add", icon='ADD', text="")
+        col.operator("grease_pencil.layer_mask_remove", icon='REMOVE', text="")
 
-        # col2.separator()
+        col.separator()
 
-        # sub = col2.column(align=True)
-        # sub.operator("gpencil.layer_mask_move", icon='TRIA_UP', text="").type = 'UP'
-        # sub.operator("gpencil.layer_mask_move", icon='TRIA_DOWN', text="").type = 'DOWN'
+        sub = col.column(align=True)
+        sub.operator("grease_pencil.layer_mask_reorder", icon='TRIA_UP', text="").direction = 'UP'
+        sub.operator("grease_pencil.layer_mask_reorder", icon='TRIA_DOWN', text="").direction = 'DOWN'
 
 
 class DATA_PT_grease_pencil_layer_transform(LayerDataButtonsPanel, Panel):
@@ -210,6 +229,7 @@ class DATA_PT_grease_pencil_custom_props(DataButtonsPanel, PropertyPanel, Panel)
 
 classes = (
     GREASE_PENCIL_UL_masks,
+    GREASE_PENCIL_MT_layer_mask_add,
     DATA_PT_context_grease_pencil,
     DATA_PT_grease_pencil_layers,
     DATA_PT_grease_pencil_layer_masks,
