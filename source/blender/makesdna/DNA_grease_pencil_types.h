@@ -306,6 +306,8 @@ typedef struct GreasePencilLayer {
    */
   float translation[3], rotation[3], scale[3];
   char _pad3[4];
+  /** Name of the view layer used to filter render output. */
+  char *viewlayername;
   /**
    * Runtime struct pointer.
    */
