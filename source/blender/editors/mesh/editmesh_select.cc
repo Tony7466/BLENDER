@@ -1082,9 +1082,9 @@ bool EDBM_unified_findnearest_from_raycast(ViewContext *vc,
       const float(*coords)[3] = nullptr;
       {
         Object *obedit_eval = DEG_get_evaluated_object(vc->depsgraph, obedit);
-        Mesh *me_eval = BKE_object_get_editmesh_eval_cage(obedit_eval);
-        if (BKE_mesh_wrapper_vert_len(me_eval) == bm->totvert) {
-          coords = BKE_mesh_wrapper_vert_coords(me_eval);
+        Mesh *mesh_eval = BKE_object_get_editmesh_eval_cage(obedit_eval);
+        if (BKE_mesh_wrapper_vert_len(mesh_eval) == bm->totvert) {
+          coords = BKE_mesh_wrapper_vert_coords(mesh_eval);
         }
       }
 
@@ -2539,11 +2539,11 @@ bool EDBM_selectmode_toggle_multi(bContext *C,
       em_iter->selectmode = ts->selectmode;
       EDBM_selectmode_set(em_iter);
       DEG_id_tag_update(static_cast<ID *>(ob_iter->data),
-                        ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);
+                        ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob_iter->data);
     }
     WM_main_add_notifier(NC_SCENE | ND_TOOLSETTINGS, nullptr);
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 
   return ret;
@@ -2583,7 +2583,7 @@ bool EDBM_selectmode_set_multi(bContext *C, const short selectmode)
       em_iter->selectmode = ts->selectmode;
       EDBM_selectmode_set(em_iter);
       DEG_id_tag_update(static_cast<ID *>(ob_iter->data),
-                        ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);
+                        ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
       WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob_iter->data);
       changed = true;
     }
@@ -2591,7 +2591,7 @@ bool EDBM_selectmode_set_multi(bContext *C, const short selectmode)
 
   if (changed) {
     WM_main_add_notifier(NC_SCENE | ND_TOOLSETTINGS, nullptr);
-    DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
   return changed;
 }

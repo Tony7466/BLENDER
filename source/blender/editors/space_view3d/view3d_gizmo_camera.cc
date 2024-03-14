@@ -63,7 +63,7 @@ static bool WIDGETGROUP_camera_poll(const bContext *C, wmGizmoGroupType * /*gzgt
   if (base && BASE_SELECTABLE(v3d, base)) {
     Object *ob = base->object;
     if (ob->type == OB_CAMERA) {
-      Camera *camera = static_cast<Camera *>(ob->data);
+      const Camera *camera = static_cast<Camera *>(ob->data);
       /* TODO: support overrides. */
       if (BKE_id_is_editable(CTX_data_main(C), &camera->id)) {
         return true;
@@ -362,7 +362,7 @@ static void gizmo_render_border_prop_matrix_set(const wmGizmo * /*gz*/,
   BLI_rctf_isect(&rect, border, border);
 
   if (viewgroup->is_camera) {
-    DEG_id_tag_update(&viewgroup->scene->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&viewgroup->scene->id, ID_RECALC_SYNC_TO_EVAL);
   }
 }
 

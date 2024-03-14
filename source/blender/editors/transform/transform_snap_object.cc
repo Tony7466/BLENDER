@@ -279,7 +279,7 @@ eSnapMode SnapData::snap_edge_points_impl(SnapObjectContext *sctx,
       if (lambda < (range) || (1.0f - range) < lambda) {
         int v_id = lambda < 0.5f ? 0 : 1;
 
-        if (this->snap_point(v_pair[v_id], v_id)) {
+        if (this->snap_point(v_pair[v_id], vindex[v_id])) {
           elem = SCE_SNAP_TO_EDGE_ENDPOINT;
           this->copy_vert_no(vindex[v_id], this->nearest_point.no);
         }
@@ -368,7 +368,7 @@ static ID *data_for_snap(Object *ob_eval, eSnapEditType edit_mode_type, bool *r_
 
   switch (ob_eval->type) {
     case OB_MESH: {
-      Mesh *me_eval = BKE_object_get_evaluated_mesh(ob_eval);
+      Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob_eval);
       if (BKE_object_is_in_editmode(ob_eval)) {
         if (edit_mode_type == SNAP_GEOM_EDIT) {
           return nullptr;
@@ -384,14 +384,14 @@ static ID *data_for_snap(Object *ob_eval, eSnapEditType edit_mode_type, bool *r_
           if (editmesh_eval->runtime->wrapper_type == ME_WRAPPER_TYPE_BMESH) {
             return nullptr;
           }
-          me_eval = editmesh_eval;
+          mesh_eval = editmesh_eval;
           use_hide = true;
         }
       }
       if (r_use_hide) {
         *r_use_hide = use_hide;
       }
-      return (ID *)me_eval;
+      return (ID *)mesh_eval;
     }
     default:
       break;
@@ -585,7 +585,7 @@ bool raycast_tri_backface_culling_test(
 }
 
 /**
- * \note Duplicate args here are documented at #snapObjectsRay
+ * \note Duplicate args here are documented at #snapObjectsRay.
  */
 static eSnapMode raycast_obj_fn(SnapObjectContext *sctx,
                                 Object *ob_eval,
@@ -875,7 +875,7 @@ eSnapMode snap_object_center(SnapObjectContext *sctx,
 }
 
 /**
- * \note Duplicate args here are documented at #snapObjectsRay
+ * \note Duplicate args here are documented at #snapObjectsRay.
  */
 static eSnapMode snap_obj_fn(SnapObjectContext *sctx,
                              Object *ob_eval,
@@ -894,7 +894,7 @@ static eSnapMode snap_obj_fn(SnapObjectContext *sctx,
   }
 
   if (ob_eval->dt == OB_BOUNDBOX) {
-    /* Do not snap to objects that are in bounding box display mode */
+    /* Do not snap to objects that are in bounding box display mode. */
     return SCE_SNAP_TO_NONE;
   }
 
@@ -1185,7 +1185,7 @@ bool ED_transform_snap_object_project_ray_all(SnapObjectContext *sctx,
     if (sort) {
       BLI_listbase_sort(r_hit_list, hit_depth_cmp);
     }
-    /* meant to be readonly for 'all' hits, ensure it is */
+    /* Meant to be read-only for 'all' hits, ensure it is. */
 #ifndef NDEBUG
     BLI_assert(ray_depth_prev == sctx->ret.ray_depth_max);
 #endif
@@ -1244,9 +1244,13 @@ eSnapMode ED_transform_snap_object_project_view3d_ex(SnapObjectContext *sctx,
 {
   eSnapMode retval = SCE_SNAP_TO_NONE;
   float ray_depth_max = BVH_RAYCAST_DIST_MAX;
+  bool use_occlusion_plane = false;
 
-  const bool is_allways_occluded = !params->use_occlusion_test;
-  bool use_occlusion_plane = is_allways_occluded || !XRAY_ENABLED(v3d);
+  /* It is required `mval` to calculate the occlusion plane. */
+  if (mval) {
+    const bool is_allways_occluded = !params->use_occlusion_test;
+    use_occlusion_plane = is_allways_occluded || !XRAY_ENABLED(v3d);
+  }
 
   if (use_occlusion_plane || (snap_to_flag & SCE_SNAP_TO_FACE)) {
     const RegionView3D *rv3d = static_cast<const RegionView3D *>(region->regiondata);

@@ -1754,7 +1754,7 @@ static void draw_bone_degrees_of_freedom(const ArmatureDrawContext *ctx, const b
     zero_v3(tmp[3]);
     mul_m4_m4m4(posetrans, posetrans, tmp);
   }
-  /* ... but own rest-space. */
+  /* ... but its own rest-space. */
   mul_m4_m4m3(posetrans, posetrans, pchan->bone->bone_mat);
 
   float scale = pchan->bone->length * pchan->size[1];
@@ -2547,7 +2547,7 @@ static void draw_armature_edit(ArmatureDrawContext *ctx)
   const bool show_text = DRW_state_show_text();
 
   const Object *ob_orig = DEG_get_original_object(ob);
-  /* FIXME(@ideasman42): We should be able to use the CoW object,
+  /* FIXME(@ideasman42): We should be able to use the evaluated object,
    * however the active bone isn't updated. Long term solution is an 'EditArmature' struct.
    * for now we can draw from the original armature. See: #66773. */
   // bArmature *arm = ob->data;
