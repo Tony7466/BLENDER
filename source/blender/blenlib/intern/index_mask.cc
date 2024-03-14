@@ -543,8 +543,7 @@ void IndexMask::to_bits(MutableBitSpan r_bits, const int64_t offset) const
     }
     else {
       const IndexMaskSegment indices = segment;
-      const IndexMaskSegment shifted_indices = IndexMaskSegment(indices.offset() + offset,
-                                                                indices.base_span());
+      const IndexMaskSegment shifted_indices = indices.shift(offset);
       for (const int64_t i : shifted_indices) {
         r_bits[i].set();
       }
