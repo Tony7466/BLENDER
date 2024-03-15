@@ -888,8 +888,12 @@ static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
           break;
         }
         result_size_upper_bound = std::min(result_size_upper_bound, bounds.size());
-        int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
-        results[expression->index] = union_index_mask_segments(term_segments, bounds_min, dst);
+        MutableSpan<int16_t> dst = allocator.allocate_array<int16_t>(result_size_upper_bound);
+        const IndexMaskSegment result_segment = union_index_mask_segments(
+            term_segments, bounds_min, dst.data());
+        allocator.free_end_of_previous_allocation(dst.size_in_bytes(),
+                                                  result_segment.base_span().end());
+        results[expression->index] = result_segment;
         break;
       }
       case Expr::Type::Intersection: {
@@ -912,8 +916,12 @@ static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
         if (used_short_circuit) {
           break;
         }
-        int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
-        results[expression->index] = intersect_index_mask_segments(term_segments, bounds_min, dst);
+        MutableSpan<int16_t> dst = allocator.allocate_array<int16_t>(result_size_upper_bound);
+        const IndexMaskSegment result_segment = intersect_index_mask_segments(
+            term_segments, bounds_min, dst.data());
+        allocator.free_end_of_previous_allocation(dst.size_in_bytes(),
+                                                  result_segment.base_span().end());
+        results[expression->index] = result_segment;
         break;
       }
       case Expr::Type::Difference: {
@@ -945,9 +953,12 @@ static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
         if (used_short_circuit) {
           break;
         }
-        int16_t *dst = allocator.allocate_array<int16_t>(result_size_upper_bound).data();
-        results[expression->index] = difference_index_mask_segments(
-            main_segment, subtract_segments, bounds_min, dst);
+        MutableSpan<int16_t> dst = allocator.allocate_array<int16_t>(result_size_upper_bound);
+        const IndexMaskSegment result_segment = difference_index_mask_segments(
+            main_segment, subtract_segments, bounds_min, dst.data());
+        allocator.free_end_of_previous_allocation(dst.size_in_bytes(),
+                                                  result_segment.base_span().end());
+        results[expression->index] = result_segment;
         break;
       }
     }
