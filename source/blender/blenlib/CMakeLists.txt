@@ -71,7 +71,6 @@ set(SRC
   intern/filereader_gzip.c
   intern/filereader_memory.c
   intern/filereader_zstd.c
-  intern/fixed_width_int.cc
   intern/fnmatch.c
   intern/generic_vector_array.cc
   intern/generic_virtual_array.cc
@@ -229,6 +228,7 @@ set(SRC
   BLI_fileops.hh
   BLI_fileops_types.h
   BLI_filereader.h
+  BLI_fixed_width_int.hh
   BLI_fnmatch.h
   BLI_function_ref.hh
   BLI_generic_array.hh

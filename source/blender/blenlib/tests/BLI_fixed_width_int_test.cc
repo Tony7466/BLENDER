@@ -76,9 +76,4 @@ TEST(fixed_width_int, Fuzzy)
   }
 }
 
-TEST(fixed_width_int, Performance)
-{
-  test_performance();
-}
-
 }  // namespace blender::fixed_width_int::tests

@@ -523,6 +523,4 @@ inline bool operator>=(const UIntF<T, Size> &a, const UIntF<T, Size> &b)
   return compare_reversed_order(a.v, b.v) >= 0;
 }
 
-void test_performance();
-
 }  // namespace blender::fixed_width_int
