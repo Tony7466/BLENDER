@@ -499,7 +499,7 @@ static float get_factor_from_draw_speed(const bke::CurvesGeometry &curves,
   return 1.0f;
 }
 
-static float get_build_factor(const int time_mode,
+static float get_build_factor(const GreasePencilBuildTimeMode time_mode,
                               const int current_frame,
                               const int start_frame,
                               const int length,
@@ -510,7 +510,6 @@ static float get_build_factor(const int time_mode,
                               const float max_gap,
                               const float fade)
 {
-
   switch (time_mode) {
     case MOD_GREASE_PENCIL_BUILD_TIMEMODE_FRAMES:
       return math::clamp(float(current_frame - start_frame) / length, 0.0f, 1.0f) * (1.0f + fade);
@@ -520,9 +519,9 @@ static float get_build_factor(const int time_mode,
       return get_factor_from_draw_speed(
                  curves, float(current_frame) / scene_fps, speed_fac, max_gap) *
              (1.0f + fade);
-    default:
-      return 0;
   }
+  BLI_assert_unreachable();
+  return 0.0f;
 }
 
 static void build_drawing(const ModifierData &md,
@@ -567,7 +566,7 @@ static void build_drawing(const ModifierData &md,
 
   const float fade_factor = ((mmd.flag & MOD_GREASE_PENCIL_BUILD_USE_FADING) != 0) ? mmd.fade_fac :
                                                                                      0.0f;
-  float factor = get_build_factor(mmd.time_mode,
+  float factor = get_build_factor(GreasePencilBuildTimeMode(mmd.time_mode),
                                   current_time,
                                   mmd.start_delay,
                                   mmd.length,
