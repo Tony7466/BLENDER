@@ -373,6 +373,7 @@ set(SRC
   BLI_timeit.hh
   BLI_timer.h
   BLI_unique_sorted_indices.hh
+  BLI_unroll.hh
   BLI_utildefines.h
   BLI_utildefines_iter.h
   BLI_utildefines_stack.h

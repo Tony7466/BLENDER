@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "BLI_math_vector_types.hh"
 #include "BLI_string_ref.hh"
+#include "BLI_unroll.hh"
 
 namespace blender::fixed_width_int {
 
