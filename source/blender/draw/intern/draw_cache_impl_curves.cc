@@ -416,7 +416,8 @@ static void curves_batch_cache_ensure_edit_points_selection(
 static void curves_batch_cache_ensure_edit_handles(const bke::CurvesGeometry &curves,
                                                    const IndexMask bezier_curves,
                                                    const OffsetIndices<int> bezier_offsets,
-                                                   const IndexMask other_curves,
+                                                   const IndexMask nurbs_curves,
+                                                   const OffsetIndices<int> nurbs_offsets,
                                                    CurvesBatchCache &cache)
 {
   const int bezier_point_count = bezier_offsets.total_size();
@@ -425,13 +426,13 @@ static void curves_batch_cache_ensure_edit_handles(const bke::CurvesGeometry &cu
   /* For each point has 2 lines from 2 point and one restart entry. */
   const int index_len_for_bezier_handles = 6 * bezier_point_count;
   const VArray<bool> cyclic = curves.cyclic();
-  /* All points excluding Beziez plus restart for every non-Bezier curve.
+  /* All NURBS control points plus restart for every curve.
    * Add space for possible cyclic curves.
    * If one point curves or two point cyclic curves are present, not all builder's buffer space
    * will be used. */
-  const int index_len_for_other = curves.points_num() - bezier_point_count + other_curves.size() +
-                                  array_utils::count_booleans(cyclic, other_curves);
-  const int index_len = index_len_for_bezier_handles + index_len_for_other;
+  const int index_len_for_nurbs = nurbs_offsets.total_size() + nurbs_curves.size() +
+                                  array_utils::count_booleans(cyclic, nurbs_curves);
+  const int index_len = index_len_for_bezier_handles + index_len_for_nurbs;
   GPUIndexBufBuilder elb, right_elb;
   GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINE_STRIP, index_len, vert_len);
   memcpy(&right_elb, &elb, sizeof(elb));
@@ -453,7 +454,7 @@ static void curves_batch_cache_ensure_edit_handles(const bke::CurvesGeometry &cu
       GPU_indexbuf_add_primitive_restart(&right_elb);
     }
   });
-  other_curves.foreach_index([&](const int64_t src_i) {
+  nurbs_curves.foreach_index([&](const int64_t src_i) {
     IndexRange curve_points = points_by_curve[src_i];
     if (curve_points.size() <= 1) {
       return;
@@ -978,10 +979,6 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
   const OffsetIndices<int> bezier_offsets = offset_indices::gather_selected_offsets(
       curves_orig.points_by_curve(), bezier_curves, bezier_point_offset_data);
 
-  IndexMaskMemory other_memory;
-  const IndexMask other_curves = bezier_curves.complement(curves_orig.curves_range(),
-                                                          other_memory);
-
   const bke::crazyspace::GeometryDeformation deformation =
       bke::crazyspace::get_evaluated_curves_deformation(ob, *ob_orig);
 
@@ -1008,8 +1005,18 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
         curves_orig, bezier_curves, bezier_offsets, cache);
   }
   if (DRW_ibo_requested(cache.edit_handles_ibo)) {
+    IndexMaskMemory nurbs_memory;
+    const IndexMask nurbs_curves = bke::curves::indices_for_type(curves_orig.curve_types(),
+                                                                 curves_orig.curve_type_counts(),
+                                                                 CURVE_TYPE_NURBS,
+                                                                 curves_orig.curves_range(),
+                                                                 nurbs_memory);
+    Array<int> nurbs_point_offset_data(nurbs_curves.size() + 1);
+    const OffsetIndices<int> nurbs_offsets = offset_indices::gather_selected_offsets(
+        curves_orig.points_by_curve(), nurbs_curves, nurbs_point_offset_data);
+
     curves_batch_cache_ensure_edit_handles(
-        curves_orig, bezier_curves, bezier_offsets, other_curves, cache);
+        curves_orig, bezier_curves, bezier_offsets, nurbs_curves, nurbs_offsets, cache);
   }
 
   if (DRW_vbo_requested(cache.edit_curves_lines_pos)) {
