@@ -25,6 +25,10 @@ GPU_SHADER_CREATE_INFO(eevee_reflection_probe_remap)
     .push_constant(Type::FLOAT, "probe_brightness_clamp")
     .sampler(0, ImageType::FLOAT_CUBE, "cubemap_tx")
     .sampler(1, ImageType::FLOAT_2D_ARRAY, "atlas_tx")
+    .storage_buf(0,
+                 Qualifier::WRITE,
+                 "SphereProbeHarmonic",
+                 "spherical_harmonics[SPHERE_PROBE_MAX_HARMONIC]")
     .image(0, GPU_RGBA16F, Qualifier::WRITE, ImageType::FLOAT_2D_ARRAY, "atlas_img")
     .compute_source("eevee_reflection_probe_remap_comp.glsl")
     .additional_info("eevee_shared")

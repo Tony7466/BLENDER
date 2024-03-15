@@ -78,6 +78,9 @@ class SphereProbeModule {
   /** Number of the probe to process in the select phase. */
   int reflection_probe_count_ = 0;
 
+  /** Intermediate buffer to store spherical harmonics. */
+  SphereProbeHarmonicBuf spherical_harmonics_ = {"spherical_harmonics_"};
+
   /**
    * True if the next redraw will trigger a light-probe sphere update.
    * As syncing the draw passes for rendering has a significant overhead,

@@ -1101,6 +1101,16 @@ struct SphereProbeDisplayData {
 };
 BLI_STATIC_ASSERT_ALIGN(SphereProbeDisplayData, 16)
 
+/* Used for sphere probe spherical harmonics extraction. Output one for each threadgroup
+ * and do a sum afterward. Reduces bandwidth usage. */
+struct SphereProbeHarmonic {
+  float4 L0;
+  float4 L1_Mn1;
+  float4 L1_M0;
+  float4 L1_Mp1;
+};
+BLI_STATIC_ASSERT_ALIGN(SphereProbeHarmonic, 16)
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1609,6 +1619,7 @@ using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
 using ClipPlaneBuf = draw::UniformBuffer<ClipPlaneData>;
-
+using SphereProbeHarmonicBuf =
+    draw::StorageArrayBuffer<SphereProbeHarmonic, SPHERE_PROBE_MAX_HARMONIC, true>;
 }  // namespace blender::eevee
 #endif

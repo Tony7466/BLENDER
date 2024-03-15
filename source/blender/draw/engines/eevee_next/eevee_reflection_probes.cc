@@ -43,6 +43,7 @@ void SphereProbeModule::begin_sync()
     pass.bind_texture("cubemap_tx", &cubemap_tx_);
     pass.bind_texture("atlas_tx", &probes_tx_);
     pass.bind_image("atlas_img", &probes_tx_);
+    pass.bind_ssbo("spherical_harmonics", &spherical_harmonics_);
     pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&probe_sampling_coord_));
     pass.push_constant("write_coord_packed", reinterpret_cast<int4 *>(&probe_write_coord_));
     pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_data.atlas_coord));
