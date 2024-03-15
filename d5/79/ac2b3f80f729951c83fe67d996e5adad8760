@@ -6,3 +6,4 @@ Referenced by pull request #113282, Fix #113280: Incorrect display of Cycles bor
 Referenced by commit ba767610cffc361c349329dc399f830e1dce3eb7, Fix #113280: Incorrect display of Cycles border render while rendering
 Referenced by issue #119427, UI: The Metadata is gone for the rendered image
 Referenced by pull request #119495, Fix #119427: UI: The Metadata is gone for the rendered image
+Referenced by pull request #119503, Fix #119427: UI: The Metadata is gone for the rendered image
