@@ -984,8 +984,8 @@ typedef enum {
 
 /** #BooleanModifierData.solver */
 typedef enum {
-  eBooleanModifierSolver_Fast = 0,
-  eBooleanModifierSolver_Exact = 1,
+  eBooleanModifierSolver_Float = 0,
+  eBooleanModifierSolver_Mesh_Arr = 1,
 } BooleanModifierSolver;
 
 /** #BooleanModifierData.flag */
