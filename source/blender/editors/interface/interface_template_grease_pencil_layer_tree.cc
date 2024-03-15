@@ -19,6 +19,7 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
+#include "ED_object.hh"
 #include "ED_undo.hh"
 
 #include "WM_api.hh"
