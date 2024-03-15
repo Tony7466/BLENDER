@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 
 #include "BLI_fixed_width_int.hh"
+#include "BLI_fixed_width_int_str.hh"
 #include "BLI_rand.hh"
 #include "BLI_timeit.hh"
 #include "BLI_vector.hh"

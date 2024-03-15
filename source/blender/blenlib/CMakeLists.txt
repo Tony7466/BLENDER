@@ -229,6 +229,7 @@ set(SRC
   BLI_fileops_types.h
   BLI_filereader.h
   BLI_fixed_width_int.hh
+  BLI_fixed_width_int_str.hh
   BLI_fnmatch.h
   BLI_function_ref.hh
   BLI_generic_array.hh

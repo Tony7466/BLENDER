@@ -1,15 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
-#include <immintrin.h>
-#include <iostream>
-
-#include <gmpxx.h>
-
 #include "BLI_math_vector_types.hh"
 #include "BLI_string_ref.hh"
-#include "BLI_utildefines.h"
 
 namespace blender::fixed_width_int {
 
@@ -36,72 +32,19 @@ template<typename T, int S> struct UIntF {
   UIntF() = default;
 
   /** Construct from a specific integer. */
-  explicit UIntF(const uint64_t value)
-  {
-    constexpr int Count = std::min(S, int(sizeof(decltype(value)) / sizeof(T)));
-    constexpr int BitsPerT = 8 * sizeof(T);
-
-    for (int i = 0; i < Count; i++) {
-      this->v[i] = T(value >> (BitsPerT * i));
-    }
-    for (int i = Count; i < S; i++) {
-      this->v[i] = 0;
-    }
-  }
+  explicit UIntF(uint64_t value);
 
   /** Construct from a string. */
-  explicit UIntF(const StringRefNull str, const int base = 10)
-  {
-    this->set_from_str(str, base);
-  }
+  explicit UIntF(StringRefNull str, int base = 10);
 
   /** Convert to a normal integer. Note that this may loose digits. */
-  explicit operator uint64_t() const
-  {
-    constexpr int Count = std::min(S, int(sizeof(uint64_t) / sizeof(T)));
-    constexpr int BitsPerT = 8 * sizeof(T);
-
-    uint64_t result = 0;
-    for (int i = 0; i < Count; i++) {
-      result |= uint64_t(this->v[i]) << (BitsPerT * i);
-    }
-    return result;
-  }
+  explicit operator uint64_t() const;
 
   /** Update value based on the integer encoded in the string. */
-  void set_from_str(const StringRefNull str, const int base = 10)
-  {
-    mpz_t x;
-    mpz_init(x);
-    mpz_set_str(x, str.c_str(), base);
-    for (int i = 0; i < S; i++) {
-      static_assert(sizeof(T) <= sizeof(decltype(mpz_get_ui(x))));
-      this->v[i] = T(mpz_get_ui(x));
-      mpz_div_2exp(x, x, 8 * sizeof(T));
-    }
-    mpz_clear(x);
-  }
+  void set_from_str(StringRefNull str, int base = 10);
 
-  void print(const int base = 10, const char *end = "\n") const
-  {
-    mpz_t x;
-    mpz_init(x);
-    for (int i = S - 1; i >= 0; i--) {
-      static_assert(sizeof(T) <= sizeof(decltype(mpz_get_ui(x))));
-      mpz_mul_2exp(x, x, 8 * sizeof(T));
-      mpz_add_ui(x, x, this->v[i]);
-    }
-    mpz_out_str(stdout, base, x);
-    mpz_clear(x);
-    std::cout << end;
-  }
-
-  friend std::ostream &operator<<(std::ostream &stream, const UIntF &a)
-  {
-    /* Might not actually print to the stream currently. */
-    a.print(10, "");
-    return stream;
-  }
+  /** Convert to a string. */
+  std::string to_string(int base = 10) const;
 };
 
 /**
@@ -115,69 +58,19 @@ template<typename T, int S> struct IntF {
 
   IntF() = default;
 
-  explicit IntF(const int64_t value)
-  {
-    constexpr int Count = std::min(S, int(sizeof(decltype(value)) / sizeof(T)));
-    constexpr int BitsPerT = 8 * sizeof(T);
+  explicit IntF(int64_t value);
 
-    for (int i = 0; i < Count; i++) {
-      this->v[i] = T(value >> (BitsPerT * i));
-    }
-    const T sign_extend_fill = value < 0 ? T(-1) : T(0);
-    for (int i = Count; i < S; i++) {
-      this->v[i] = sign_extend_fill;
-    }
-  }
+  explicit IntF(const UIntF<T, S> &value);
+  explicit IntF(StringRefNull str, int base = 10);
 
-  explicit IntF(const UIntF<T, S> &value) : v(value.v) {}
+  explicit operator int64_t() const;
 
-  explicit IntF(const StringRefNull str, const int base = 10)
-  {
-    this->set_from_str(str, base);
-  }
+  void set_from_str(const StringRefNull str, const int base = 10);
 
-  explicit operator int64_t() const
-  {
-    return int64_t(uint64_t(UIntF<T, S>(*this)));
-  }
+  explicit operator UIntF<T, S>() const;
 
-  void set_from_str(const StringRefNull str, const int base = 10)
-  {
-    if (str[0] == '-') {
-      const UIntF<T, S> unsigned_value(str.c_str() + 1, base);
-      this->v = unsigned_value.v;
-      *this = -*this;
-    }
-    else {
-      const UIntF<T, S> unsigned_value(str.c_str(), base);
-      this->v = unsigned_value.v;
-    }
-  }
-
-  explicit operator UIntF<T, S>() const
-  {
-    UIntF<T, S> result;
-    result.v = this->v;
-    return result;
-  }
-
-  void print(const int base = 10, const char *end = "\n") const
-  {
-    if (is_negative(*this)) {
-      std::cout << "-";
-      (-*this).print(base, end);
-    }
-    else {
-      UIntF<T, S>(*this).print(base, end);
-    }
-  }
-
-  friend std::ostream &operator<<(std::ostream &stream, const IntF &a)
-  {
-    /* Might not actually print to the stream currently. */
-    a.print(10, "");
-    return stream;
-  }
+  /** Convert to a string. */
+  std::string to_string(int base = 10) const;
 };
 
 template<typename T>
@@ -224,6 +117,69 @@ using UInt256 = UInt256_64;
 
 using Int128 = Int128_64;
 using Int256 = Int256_64;
+
+template<typename T, int S> inline UIntF<T, S>::UIntF(const uint64_t value)
+{
+  constexpr int Count = std::min(S, int(sizeof(decltype(value)) / sizeof(T)));
+  constexpr int BitsPerT = 8 * sizeof(T);
+
+  for (int i = 0; i < Count; i++) {
+    this->v[i] = T(value >> (BitsPerT * i));
+  }
+  for (int i = Count; i < S; i++) {
+    this->v[i] = 0;
+  }
+}
+
+template<typename T, int S> inline IntF<T, S>::IntF(const int64_t value)
+{
+  constexpr int Count = std::min(S, int(sizeof(decltype(value)) / sizeof(T)));
+  constexpr int BitsPerT = 8 * sizeof(T);
+
+  for (int i = 0; i < Count; i++) {
+    this->v[i] = T(value >> (BitsPerT * i));
+  }
+  const T sign_extend_fill = value < 0 ? T(-1) : T(0);
+  for (int i = Count; i < S; i++) {
+    this->v[i] = sign_extend_fill;
+  }
+}
+
+template<typename T, int S> inline IntF<T, S>::IntF(const UIntF<T, S> &value) : v(value.v) {}
+
+template<typename T, int S> UIntF<T, S>::UIntF(const StringRefNull str, const int base)
+{
+  this->set_from_str(str, base);
+}
+
+template<typename T, int S> IntF<T, S>::IntF(const StringRefNull str, const int base)
+{
+  this->set_from_str(str, base);
+}
+
+template<typename T, int S> inline UIntF<T, S>::operator uint64_t() const
+{
+  constexpr int Count = std::min(S, int(sizeof(uint64_t) / sizeof(T)));
+  constexpr int BitsPerT = 8 * sizeof(T);
+
+  uint64_t result = 0;
+  for (int i = 0; i < Count; i++) {
+    result |= uint64_t(this->v[i]) << (BitsPerT * i);
+  }
+  return result;
+}
+
+template<typename T, int S> inline IntF<T, S>::operator int64_t() const
+{
+  return int64_t(uint64_t(UIntF<T, S>(*this)));
+}
+
+template<typename T, int S> inline IntF<T, S>::operator UIntF<T, S>() const
+{
+  UIntF<T, S> result;
+  result.v = this->v;
+  return result;
+}
 
 template<typename T, typename T2, int S>
 inline void generic_add(T *__restrict dst, const T *a, const T *b)
