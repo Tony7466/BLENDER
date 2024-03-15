@@ -649,23 +649,25 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
                                                                 ptr->data;
       Seq_colorspace_cb_data cb_data = {colorspace_settings, nullptr};
 
-      if (&scene->sequencer_colorspace_settings != colorspace_settings) {
-        SEQ_for_each_callback(&scene->ed->seqbase, seq_find_colorspace_settings_cb, &cb_data);
-      }
-      Sequence *seq = cb_data.r_seq;
-
-      if (seq) { /* Strip colorspace was changed. */
-        SEQ_relations_sequence_free_anim(seq);
-
-        if (seq->strip->proxy && seq->strip->proxy->anim) {
-          IMB_free_anim(seq->strip->proxy->anim);
-          seq->strip->proxy->anim = nullptr;
-        }
-
-        SEQ_relations_invalidate_cache_raw(scene, seq);
-      }
-      else { /* Scene colorspace was changed. */
+      if (&scene->sequencer_colorspace_settings == colorspace_settings) {
+        /* Scene colorspace was changed. */
         SEQ_cache_cleanup(scene);
+      }
+      else {
+        /* Strip colorspace was likely changed. */
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_find_colorspace_settings_cb, &cb_data);
+        Sequence *seq = cb_data.r_seq;
+
+        if (seq) {
+          SEQ_relations_sequence_free_anim(seq);
+
+          if (seq->strip->proxy && seq->strip->proxy->anim) {
+            IMB_free_anim(seq->strip->proxy->anim);
+            seq->strip->proxy->anim = nullptr;
+          }
+
+          SEQ_relations_invalidate_cache_raw(scene, seq);
+        }
       }
 
       WM_main_add_notifier(NC_SCENE | ND_SEQUENCER, nullptr);
