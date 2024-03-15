@@ -215,29 +215,31 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
 
   int next_curve = 0;
   int next_point = 0;
-  for (const int i : IndexRange(curves.curves_num())) {
-    if (!points_per_curve[i]) {
+  for (const int curve : curves.curves_range()) {
+    if (!points_per_curve[curve]) {
       continue;
     }
-    dst_offsets[next_curve] = points_per_curve[i];
-    const int curve_size = points_by_curve[i].size();
+    dst_offsets[next_curve] = points_per_curve[curve];
+    const int curve_size = points_by_curve[curve].size();
 
     auto get_fade_weight = [&](const int local_index) {
-      const float fade_range = std::abs(ends_per_curve[i] - starts_per_curve[i]);
+      const float fade_range = std::abs(ends_per_curve[curve] - starts_per_curve[curve]);
       if (is_vanishing) {
-        const float factor_from_start = local_index - curve_size + ends_per_curve[i];
+        const float factor_from_start = local_index - curve_size + ends_per_curve[curve];
         return 1.0f - std::clamp(factor_from_start / fade_range, 0.0f, 1.0f);
       }
-      const float factor_from_start = local_index - starts_per_curve[i];
+      const float factor_from_start = local_index - starts_per_curve[curve];
       return std::clamp(factor_from_start / fade_range, 0.0f, 1.0f);
     };
 
-    const int extra_offset = is_vanishing ? points_by_curve[i].size() - points_per_curve[i] : 0;
-    for (const int stroke_point : IndexRange(points_per_curve[i])) {
-      if (stroke_point >= points_per_curve[i]) {
+    const int extra_offset = is_vanishing ?
+                                 points_by_curve[curve].size() - points_per_curve[curve] :
+                                 0;
+    for (const int stroke_point : IndexRange(points_per_curve[curve])) {
+      if (stroke_point >= points_per_curve[curve]) {
         break;
       }
-      const int src_point_index = points_by_curve[i].first() + extra_offset + stroke_point;
+      const int src_point_index = points_by_curve[curve].first() + extra_offset + stroke_point;
       if (has_fade) {
         const float fade_weight = get_fade_weight(extra_offset + stroke_point);
         opacities[src_point_index] = opacities[src_point_index] *
@@ -250,13 +252,12 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
       dst_to_src_point[next_point] = src_point_index;
       next_point++;
     }
-    dst_to_src_curve[next_curve] = i;
+    dst_to_src_curve[next_curve] = curve;
     next_curve++;
   }
   weights.finish();
 
   offset_indices::accumulate_counts_to_offsets(dst_offsets);
-  array_utils::copy(dst_offsets.as_span(), dst_curves.offsets_for_write());
 
   const bke::AttributeAccessor src_attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
@@ -305,7 +306,7 @@ static void points_info_sequential(const bke::CurvesGeometry &curves,
   selection.to_bools(select.as_mutable_span());
 
   int counted_points_num = 0;
-  for (const int i : IndexRange(stroke_count)) {
+  for (const int i : curves.curves_range()) {
     const int stroke = is_vanishing ? stroke_count - i - 1 : i;
     if (select[stroke] && counted_points_num >= effective_points_num) {
       continue;
@@ -413,8 +414,6 @@ static bke::CurvesGeometry build_sequential(bke::greasepencil::Drawing &drawing,
   BLI_assert(next_curve == (dst_curves_num + 1));
   BLI_assert(next_point == dst_points_num);
 
-  array_utils::copy(dst_offsets.as_span(), dst_curves.offsets_for_write());
-
   const bke::AttributeAccessor src_attributes = curves.attributes();
   bke::MutableAttributeAccessor dst_attributes = dst_curves.attributes_for_write();
 
@@ -470,30 +469,31 @@ static float get_factor_from_draw_speed(const bke::CurvesGeometry &curves,
                                         const float max_gap)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  Array<float> times(curves.points_num());
-  bke::AttributeAccessor time_attributes = curves.attributes();
-  bke::AttributeReader<float> init_times = time_attributes.lookup_or_default<float>(
-      "init_time", bke::AttrDomain::Curve, 0.0f);
-  bke::AttributeReader<float> delta_times = time_attributes.lookup_or_default<float>(
-      "delta_time", bke::AttrDomain::Point, 0.0f);
+  const bke::AttributeAccessor time_attributes = curves.attributes();
+  const VArray<float> init_times =
+      time_attributes.lookup_or_default<float>("init_time", bke::AttrDomain::Curve, 0.0f).varray;
+  const VArray<float> delta_times =
+      time_attributes.lookup_or_default<float>("delta_time", bke::AttrDomain::Point, 0.0f).varray;
 
+  Array<float> times(curves.points_num());
   float current_time = 0;
-  float previous_init_time = init_times.varray[0];
-  for (const int i : IndexRange(curves.curves_num())) {
-    if (i > 0) {
-      current_time += math::max(init_times.varray[i] - previous_init_time, max_gap);
-      previous_init_time = init_times.varray[i];
+  float previous_init_time = init_times[0];
+  for (const int curve : curves.curves_range()) {
+    if (curve > 0) {
+      current_time += math::max(init_times[curve] - previous_init_time, max_gap);
+      previous_init_time = init_times[curve];
     }
-    for (const int p : points_by_curve[i].index_range()) {
-      const int index = p + points_by_curve[i].first();
-      current_time += delta_times.varray[index];
+    const IndexRange points = points_by_curve[curve].index_range();
+    for (const int point : points) {
+      const int index = point + points_by_curve[curve].first();
+      current_time += delta_times[index];
       times[index] = current_time;
     }
   }
-  for (const int p : curves.points_range()) {
+  for (const int point : curves.points_range()) {
     const float limit = time_elapsed * speed_fac;
-    if (times[p] >= limit) {
-      return math::clamp(float(p) / float(curves.points_num()), 0.0f, 1.0f);
+    if (times[point] >= limit) {
+      return math::clamp(float(point) / float(curves.points_num()), 0.0f, 1.0f);
     }
   }
   return 1.0f;
@@ -551,10 +551,8 @@ static void build_drawing(const ModifierData &md,
     if (added_strokes > 0) {
       Array<bool> work_on_select(curves.curves_num());
       selection.to_bools(work_on_select.as_mutable_span());
-      for (const int i : IndexRange(prev_strokes)) {
-        work_on_select[i] = false;
-      }
-      selection.from_bools(work_on_select, memory);
+      work_on_select.as_mutable_span().take_front(prev_strokes).fill(false);
+      selection = IndexMask::from_bools(work_on_select, memory);
     }
   }
 
