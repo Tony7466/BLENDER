@@ -14,8 +14,8 @@
 #define colorInner parameters[widgetID * MAX_PARAM + 1]
 #define colorOutline parameters[widgetID * MAX_PARAM + 2]
 #define outlineThickness parameters[widgetID * MAX_PARAM + 3].x
-#define dotRadius parameters[widgetID * MAX_PARAM + 3].y
-#define borderOffset parameters[widgetID * MAX_PARAM + 3].z
+#define outlineOffset parameters[widgetID * MAX_PARAM + 3].y
+#define dotRadius parameters[widgetID * MAX_PARAM + 3].z
 
 #define AA_SIZE 0.75
 #define IS_CIRCLE \
@@ -29,7 +29,7 @@
    shape_flags == SOCK_DISPLAY_SHAPE_DIAMOND_DOT || shape_flags == SOCK_DISPLAY_SHAPE_SQUARE_DOT)
 
 /* Offsetting by a pixel further to avoid losing pixels. */
-vec2 ofs = vec2(borderOffset + 1.0, -borderOffset - 1.0);
+vec2 ofs = vec2(outlineOffset + 1.0, -outlineOffset - 1.0);
 
 /* Calculate size of the original rectangle before expanding it based on the offset for the outline
  */
@@ -45,8 +45,8 @@ vec3 shapeRadii = vec3(CIRCLE_RADIUS, SQUARE_RADIUS, DIAMOND_RADIUS);
 vec3 cornerRoundness = vec3(1.0, 0.4, 0.4);
 
 int shapeIndex = shape_flags % 3;
-float shapeRadiusUV = shapeRadii[shapeIndex];
-float cornerRoundingUV = shapeRadiusUV * cornerRoundness[shapeIndex];
+float shapeRadius = shapeRadii[shapeIndex];
+float cornerRadius = shapeRadius * cornerRoundness[shapeIndex];
 
 float pow2(float x)
 {
@@ -81,8 +81,8 @@ void main()
   vec2 centeredCoordinates = pos - ((rect.xz + rect.yw) / 2.0);
   uv = centeredCoordinates / minSize;
 
-  /* Calculate the necessary "extrusion" to extend the of the middle part to draw multi sockets
-   * or wide reroute nodes. */
+  /* Calculate the necessary "extrusion" of the coordinates to draw the middle part of
+   * multi sockets. */
   float aspect = rectSize.x / rectSize.y;
   extrusion = (aspect > 1.0) ? vec2((aspect - 1.0) / 2.0, 0.0) :
                                vec2(0.0, ((1.0 / aspect) - 1.0) / 2.0);
@@ -90,13 +90,13 @@ void main()
   /* Thresholds for the masks in UV Space. Use squared values, so we can use the squared length in
    * the fragment shader. */
   float InnerOutlineUVSquared1 = pow2(
-      ((borderOffset - 0.5 * outlineThickness - AA_SIZE) / minSize) + cornerRoundingUV);
-  float InnerOutlineUVSquared2 = pow2(((borderOffset - 0.5 * outlineThickness) / minSize) +
-                                      cornerRoundingUV);
+      ((outlineOffset - 0.5 * outlineThickness - AA_SIZE) / minSize) + cornerRadius);
+  float InnerOutlineUVSquared2 = pow2(((outlineOffset - 0.5 * outlineThickness) / minSize) +
+                                      cornerRadius);
   float OuterOutlineUVSquared1 = pow2(
-      ((borderOffset + 0.5 * outlineThickness - AA_SIZE) / minSize) + cornerRoundingUV);
-  float OuterOutlineUVSquared2 = pow2(((borderOffset + 0.5 * outlineThickness) / minSize) +
-                                      cornerRoundingUV);
+      ((outlineOffset + 0.5 * outlineThickness - AA_SIZE) / minSize) + cornerRadius);
+  float OuterOutlineUVSquared2 = pow2(((outlineOffset + 0.5 * outlineThickness) / minSize) +
+                                      cornerRadius);
 
   thresholds = vec4(InnerOutlineUVSquared1,
                     InnerOutlineUVSquared2,
@@ -111,7 +111,7 @@ void main()
   dotThresholds = vec2(dotRadiusSquared1, dotRadiusSquared2);
 
   /* Shape parameters. */
-  sdf_shape_radius = shapeRadiusUV - cornerRoundingUV;
+  sdf_shape_radius = shapeRadius - cornerRadius;
   is_diamond = IS_DIAMOND ? 1 : 0;
 
   /* Pass through parameters. */

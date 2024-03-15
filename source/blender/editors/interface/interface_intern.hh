@@ -1189,8 +1189,8 @@ struct uiNodeSocketParameters {
   float color_inner[4];
   float color_outline[4];
   float outline_thickness;
-  float dot_thickness;
-  float border_offset;
+  float outline_offset;
+  float dot_radius;
   float _pad[1];
 };
 

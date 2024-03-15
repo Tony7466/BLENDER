@@ -491,12 +491,18 @@ void UI_draw_roundbox_4fv_ex(const rctf *rect,
                              const float outline[4],
                              float outline_width,
                              float rad);
+/**
+ * Draw a node socket shape.
+ *
+ * \param outline_offset: Factor to move the outline from being drawn inside the shape (`0.0f`) to
+ * outside of the shape (`1.0f`). `0.5f` Makes the centers the outline on the shape.
+ */
 void UI_draw_node_socket(const rctf *rect,
                          const float color_inner[4],
                          const float color_outline[4],
                          float outline_thickness,
+                         float outline_offset,
                          float dot_thickness,
-                         float border_offset,
                          int flags);
 
 #if 0 /* unused */

@@ -232,8 +232,8 @@ void UI_draw_node_socket(const rctf *rect,
                          const float color_inner[4],
                          const float color_outline[4],
                          const float outline_thickness,
-                         const float dot_thickness,
-                         const float border_offset,
+                         const float outline_offset,
+                         const float dot_radius,
                          const int flags)
 {
   /* WATCH: This is assuming the ModelViewProjectionMatrix is area pixel space.
@@ -251,8 +251,8 @@ void UI_draw_node_socket(const rctf *rect,
   socket_params.color_outline[2] = color_outline[2];
   socket_params.color_outline[3] = color_outline[3];
   socket_params.outline_thickness = outline_thickness;
-  socket_params.dot_thickness = dot_thickness;
-  socket_params.border_offset = border_offset;
+  socket_params.dot_radius = dot_radius;
+  socket_params.outline_offset = outline_offset;
 
   GPUBatch *batch = ui_batch_node_socket_get();
   GPU_batch_program_set_builtin(batch, GPU_SHADER_2D_NODE_SOCKET);

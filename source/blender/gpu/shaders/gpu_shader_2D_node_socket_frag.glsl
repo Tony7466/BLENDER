@@ -5,8 +5,6 @@
 #define COS45 (0.70710678118)
 #define SIN45 (0.70710678118)
 
-#define AA_WIDTH 1.0f
-
 float square_sdf(vec2 absCo, float half_width)
 {
   vec2 extruded = vec2(max(0.0, absCo.x - half_width), max(0.0, absCo.y - half_width));
@@ -32,12 +30,11 @@ void main()
   /* Black mask with a white dot */
   float mask_dot = smoothstep(dotThresholds[1], dotThresholds[0], dot(biCenteredUV, biCenteredUV));
 
-  bool noOutline = thresholds[2] - thresholds[0] < 0.0001;
-
   /* Alpha for the socket: White where the socket is, black outside of it. */
   float mask_all = smoothstep(thresholds[3], thresholds[2], distSquared);
 
   /* Mask for the outline. The inner part of the socket is masked with black. */
+  bool noOutline = thresholds[2] - thresholds[0] < 0.0001;
   float mask_outline = noOutline ? 0.0 : smoothstep(thresholds[0], thresholds[1], distSquared);
   mask_outline += mask_dot;
 

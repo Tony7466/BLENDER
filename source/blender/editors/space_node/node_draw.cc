@@ -1643,8 +1643,8 @@ void node_socket_draw(bNodeSocket *sock, const rcti *rect, const float color[4],
                       color,
                       outline_color,
                       NODE_SOCKET_OUTLINE * scale,
-                      NODE_SOCKET_DOT * scale,
                       0.0f,
+                      NODE_SOCKET_DOT * scale,
                       sock->display_shape);
 }
 
@@ -1759,7 +1759,7 @@ static void node_draw_socket_ex(const bContext &C,
                                 PointerRNA &node_ptr,
                                 const bNodeSocket &sock,
                                 const float outline_thickness,
-                                const float border_offset,
+                                const float outline_offset,
                                 const float dot_radius,
                                 const bool selected)
 {
@@ -1786,13 +1786,13 @@ static void node_draw_socket_ex(const bContext &C,
                       socket_color,
                       outline_color,
                       outline_thickness,
+                      outline_offset,
                       dot_radius,
-                      border_offset,
                       sock.display_shape);
 }
 
 /* Some elements of the node tree like labels or node sockets are hardly visible when zoomed
- * out and can slow down the drawing quite a bit, when there are a lot of elements.
+ * out and can slow down the drawing quite a bit.
  * This function can be used to check if it's worth to draw those details and return
  * early. */
 static bool draw_node_details(const View2D &v2d)
@@ -1802,45 +1802,41 @@ static bool draw_node_details(const View2D &v2d)
   return scale > 0.2f * UI_INV_SCALE_FAC;
 }
 
-static void node_draw_sockets_ex(const bContext &C,
-                                 bNodeTree &ntree,
-                                 const bNode &node,
-                                 const float outline_thickness,
-                                 const float border_offset,
-                                 const float dot_radius,
-                                 const bool select_all)
+void node_draw_sockets(const View2D &v2d, const bContext &C, bNodeTree &ntree, const bNode &node)
 {
+  if (!draw_node_details(v2d)) {
+    return;
+  }
+
   if (node.input_sockets().is_empty() && node.output_sockets().is_empty()) {
     return;
   }
 
   PointerRNA nodeptr = RNA_pointer_create(
       const_cast<ID *>(&ntree.id), &RNA_Node, const_cast<bNode *>(&node));
-  /* Socket inputs. */
+
+  const float outline_thickness = NODE_SOCKET_OUTLINE;
+  const float border_offset = 0.0f;
+  const float dot_radius = NODE_SOCKET_DOT;
+
+  /* Input sockets. */
   for (const bNodeSocket *sock : node.input_sockets()) {
     if (!node.is_socket_icon_drawn(*sock)) {
       continue;
     }
-    const bool selected = (sock->flag & SELECT) || select_all;
+    const bool selected = (sock->flag & SELECT);
     node_draw_socket_ex(
         C, ntree, node, nodeptr, *sock, outline_thickness, border_offset, dot_radius, selected);
   }
 
-  /* Socket outputs. */
+  /* Output sockets. */
   for (const bNodeSocket *sock : node.output_sockets()) {
     if (!node.is_socket_icon_drawn(*sock)) {
       continue;
     }
-    const bool selected = (sock->flag & SELECT) || select_all;
+    const bool selected = (sock->flag & SELECT);
     node_draw_socket_ex(
         C, ntree, node, nodeptr, *sock, outline_thickness, border_offset, dot_radius, selected);
-  }
-}
-
-void node_draw_sockets(const View2D &v2d, const bContext &C, bNodeTree &ntree, const bNode &node)
-{
-  if (draw_node_details(v2d)) {
-    node_draw_sockets_ex(C, ntree, node, NODE_SOCKET_OUTLINE, 0.0f, NODE_SOCKET_DOT, false);
   }
 }
 
@@ -3568,8 +3564,8 @@ void reroute_node_draw_body(const bContext &C,
                       socket_color,
                       outline_color,
                       NODE_SOCKET_OUTLINE,
-                      NODE_SOCKET_DOT,
                       0.0f,
+                      NODE_SOCKET_DOT,
                       sock.display_shape);
 }
 
