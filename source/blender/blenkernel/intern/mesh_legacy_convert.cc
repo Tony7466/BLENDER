@@ -2303,8 +2303,8 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
         if ((nmd->flag & MOD_WEIGHTEDNORMAL_KEEP_SHARP) != 0) {
           ModifierData *new_md = create_auto_smooth_modifier(*object, add_node_group, angle);
           BLI_insertlinkbefore(&object->modifiers, object->modifiers.last, new_md);
-          has_custom_normals = true;
         }
+        has_custom_normals = true;
       }
     }
 
