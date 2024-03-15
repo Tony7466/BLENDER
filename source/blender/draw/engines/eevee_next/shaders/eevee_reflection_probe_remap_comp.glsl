@@ -124,9 +124,11 @@ void main()
     sh.L1.Mn1 = vec4(0.0);
     sh.L1.M0 = vec4(0.0);
     sh.L1.Mp1 = vec4(0.0);
+
+    vec3 L = normalize(direction);
     /* TODO(fclem): Cleanup: Should spherical_harmonics_encode_signal_sample return a new sh
      * instead of adding to it? */
-    spherical_harmonics_encode_signal_sample(direction, vec4(radiance, 1.0) * sample_weight, sh);
+    spherical_harmonics_encode_signal_sample(L, vec4(radiance, 1.0) * sample_weight, sh);
 
     spherical_harmonic_lds_store(gl_LocalInvocationIndex, sh);
 
