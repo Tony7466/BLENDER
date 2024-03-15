@@ -360,7 +360,17 @@ ccl_device_inline bool ray_cone_intersect(const float3 axis,
    * and check whether the solutions lie inside the cone. */
   if (c2 != 0.0f) {
     const float sigma = sqr(c1) - c2 * c0;
-    if (sigma > 0) {
+    const bool sigma_is_zero = (fabsf(sigma) < 1e-4f) || (cos_angle_sq < 1e-4f);
+    if (c2 > 0.0f && sigma_is_zero) {
+      if (AD > 0.0f) {
+        tmin = -c1 / c2;
+      }
+      else {
+        tmax = -c1 / c2;
+      }
+      valid = true;
+    }
+    else if (sigma > 0.0f) {
       const float c1_c2 = c1 / c2;
 
       tmin = -sqrtf(sigma) / fabsf(c2) - c1_c2;
@@ -379,10 +389,6 @@ ccl_device_inline bool ray_cone_intersect(const float3 axis,
         tmin = tmax;
         tmax = FLT_MAX;
       }
-    }
-    else if (c2 > 0 && sigma == 0.0f) {
-      tmin = -c1 / c2;
-      valid = true;
     }
   }
   else if (c1 != 0.0f) {
