@@ -17,7 +17,6 @@
 #pragma BLENDER_REQUIRE(eevee_transparency_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_sampling_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
-#pragma BLENDER_REQUIRE(gpu_shader_common_hash.glsl)
 
 vec4 closure_to_rgba(Closure cl)
 {
@@ -32,13 +31,8 @@ void main()
   nodetree_surface(0.0);
 
   float noise_offset = sampling_rng_1D_get(SAMPLING_TRANSPARENCY);
-#  if 0
   float random_threshold = transparency_hashed_alpha_threshold(
       uniform_buf.pipeline.alpha_hash_scale, noise_offset, g_data.P);
-#  else
-  /* A fully random threshold yields cleaner results than the hashed alpha. */
-  float random_threshold = hash_vec3_to_float(g_data.P * (1.0 + noise_offset));
-#  endif
 
   float transparency = average(g_transmittance);
   if (transparency > random_threshold) {
