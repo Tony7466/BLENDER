@@ -684,7 +684,7 @@ static IndexMaskSegment union_index_mask_segments(const Span<IndexMaskSegment> s
   }
 
   /* Union one input into the result at a time. In theory, one could write an algorithm that unions
-   * multiple sorted arrays at ones, but that's more complex and it's not obvious that it would be
+   * multiple sorted arrays at once, but that's more complex and it's not obvious that it would be
    * faster in the end. */
   for (const int64_t segment_i : sorted_segments.index_range().drop_front(2)) {
     const int16_t *a = buffer_a;
