@@ -552,26 +552,6 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
       AttrDomain::Curve,
       AttributeInitVArray(VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
 
-  auto set_stroke_to_texture_matrix = [&](int curve_i, float3x2 texture_matrix) {
-    /* Solve for translation, the translation is simply the origin. */
-    const float2 uv_translation = texture_matrix[2];
-
-    /* Solve rotation, the angle of the `u` basis is the rotation. */
-    const float uv_rotation = atan2(texture_matrix[0][1], texture_matrix[0][0]);
-
-    /* Calculate the determinant to check if the `v` scale is negative. */
-    const float det = determinant(float2x2(texture_matrix));
-
-    /* Solve scale, scaling is the only transformation that changes the length, so scale factor
-     * is simply the length. And flip the sign of `v` if the determinant is negative. */
-    const float2 uv_scale = safe_rcp(
-        float2(length(texture_matrix[0]), sign(det) * length(texture_matrix[1])));
-
-    uv_rotations.span[curve_i] = uv_rotation;
-    uv_translations.span[curve_i] = uv_translation;
-    uv_scales.span[curve_i] = uv_scale;
-  };
-
   selection.foreach_index([&](const int64_t curve_i, const int64_t pos) {
     const float4x2 strokemat = get_local_to_stroke_matrix(*this, curve_i);
     const float4x2 texspace = matrices[pos];
@@ -615,7 +595,23 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
 
     const float3x2 texture_matrix = float3x2(double4x2(texspace) * right_inverse);
 
-    set_stroke_to_texture_matrix(curve_i, texture_matrix);
+    /* Solve for translation, the translation is simply the origin. */
+    const float2 uv_translation = texture_matrix[2];
+
+    /* Solve rotation, the angle of the `u` basis is the rotation. */
+    const float uv_rotation = atan2(texture_matrix[0][1], texture_matrix[0][0]);
+
+    /* Calculate the determinant to check if the `v` scale is negative. */
+    const float det = determinant(float2x2(texture_matrix));
+
+    /* Solve scale, scaling is the only transformation that changes the length, so scale factor
+     * is simply the length. And flip the sign of `v` if the determinant is negative. */
+    const float2 uv_scale = safe_rcp(
+        float2(length(texture_matrix[0]), sign(det) * length(texture_matrix[1])));
+
+    uv_rotations.span[curve_i] = uv_rotation;
+    uv_translations.span[curve_i] = uv_translation;
+    uv_scales.span[curve_i] = uv_scale;
   });
   uv_rotations.finish();
   uv_translations.finish();
