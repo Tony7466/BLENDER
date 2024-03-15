@@ -49,8 +49,6 @@
 
 #include "MOD_nodes.hh"
 
-#include "NOD_rna_define.hh"
-
 const EnumPropertyItem rna_enum_object_modifier_type_items[] = {
     RNA_ENUM_ITEM_HEADING(N_("Modify"), nullptr),
     {eModifierType_GreasePencilWeightProximity,
@@ -2123,16 +2121,28 @@ const EnumPropertyItem *grease_pencil_build_time_mode_filter(bContext * /*C*/,
                                                              PropertyRNA * /*prop*/,
                                                              bool *r_free)
 {
+
   auto *md = static_cast<ModifierData *>(ptr->data);
   auto *mmd = reinterpret_cast<BuildGpencilModifierData *>(md);
   const bool is_concurrent = (mmd->mode == MOD_GREASE_PENCIL_BUILD_MODE_CONCURRENT);
 
+  EnumPropertyItem *item_list = nullptr;
+  int totitem = 0;
+
+  for (const EnumPropertyItem *item = grease_pencil_build_time_mode_items;
+       item->identifier != nullptr;
+       item++)
+  {
+    if (is_concurrent && (item->value == MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED)) {
+      continue;
+    }
+    RNA_enum_item_add(&item_list, &totitem, item);
+  }
+
+  RNA_enum_item_end(&item_list, &totitem);
   *r_free = true;
 
-  return blender::nodes::enum_items_filter(
-      grease_pencil_build_time_mode_items, [&](const EnumPropertyItem &item) {
-        return (!(is_concurrent && (item.value == MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED)));
-      });
+  return item_list;
 }
 
 static const GreasePencilTimeModifierData *find_grease_pencil_time_modifier_of_segment(
