@@ -649,7 +649,9 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
                                                                 ptr->data;
       Seq_colorspace_cb_data cb_data = {colorspace_settings, nullptr};
 
-      SEQ_for_each_callback(&scene->ed->seqbase, seq_find_colorspace_settings_cb, &cb_data);
+      if (&scene->sequencer_colorspace_settings != colorspace_settings) {
+        SEQ_for_each_callback(&scene->ed->seqbase, seq_find_colorspace_settings_cb, &cb_data);
+      }
       Sequence *seq = cb_data.r_seq;
 
       if (seq) { /* Strip colorspace was changed. */
