@@ -13,14 +13,29 @@
 
 namespace blender::fixed_width_int {
 
+/**
+ * An unsigned fixed width integer.
+ *
+ * For some algorithms, the largest cross platform integer type (`uint64_t`) is not large enough.
+ * Then one has the choice to use some big-integer implementation like the one from GMP or one can
+ * use fixed-width-integers as implemented here.
+ *
+ * Internally, this type combines multiple smaller integers into a bigger integer.
+ */
 template<typename T, int S> struct UIntF {
   static_assert(std::is_unsigned_v<T>);
   static_assert(S >= 1);
 
+  /**
+   * Array of smaller integers that make up the bigger integer. The first element is the least
+   * significant digit.
+   */
   std::array<T, S> v;
 
+  /** Allow default construction. Note that the value is not initialized in this case. */
   UIntF() = default;
 
+  /** Construct from a specific integer. */
   explicit UIntF(const uint64_t value)
   {
     constexpr int Count = std::min(S, int(sizeof(decltype(value)) / sizeof(T)));
@@ -34,11 +49,13 @@ template<typename T, int S> struct UIntF {
     }
   }
 
+  /** Construct from a string. */
   explicit UIntF(const StringRefNull str, const int base = 10)
   {
     this->set_from_str(str, base);
   }
 
+  /** Convert to a normal integer. Note that this may loose digits. */
   explicit operator uint64_t() const
   {
     constexpr int Count = std::min(S, int(sizeof(uint64_t) / sizeof(T)));
@@ -51,6 +68,7 @@ template<typename T, int S> struct UIntF {
     return result;
   }
 
+  /** Update value based on the integer encoded in the string. */
   void set_from_str(const StringRefNull str, const int base = 10)
   {
     mpz_t x;
@@ -86,6 +104,9 @@ template<typename T, int S> struct UIntF {
   }
 };
 
+/**
+ * A signed fixed width integer. It's mostly the same as #UIntF, but signed.
+ */
 template<typename T, int S> struct IntF {
   static_assert(std::is_unsigned_v<T>);
   static_assert(S >= 1);
