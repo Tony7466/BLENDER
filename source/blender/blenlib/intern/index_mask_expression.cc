@@ -11,22 +11,15 @@
  * 3. Construct the final index mask based on the resulting intermediate segments.
  */
 
-#include <fmt/format.h>
-#include <iostream>
-#include <mutex>
-
 #include "BLI_array.hh"
 #include "BLI_bit_group_vector.hh"
 #include "BLI_bit_span_ops.hh"
 #include "BLI_enumerable_thread_specific.hh"
 #include "BLI_index_mask_expression.hh"
-#include "BLI_multi_value_map.hh"
-#include "BLI_set.hh"
 #include "BLI_stack.hh"
 #include "BLI_strict_flags.h"
 #include "BLI_task.hh"
 #include "BLI_timeit.hh"
-#include "BLI_vector_set.hh"
 
 namespace blender::index_mask {
 

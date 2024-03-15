@@ -240,7 +240,7 @@ TEST(index_mask_expression, SubtractSelf)
 }
 
 /* Disable benchmark by default. */
-#if 1
+#if 0
 TEST(index_mask_expression, Benchmark)
 {
 #  ifdef NDEBUG
