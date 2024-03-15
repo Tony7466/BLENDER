@@ -322,9 +322,27 @@ inline UIntF<T, Size> operator*(const UIntF<T, Size> &a, const UIntF<T, Size> &b
   return result;
 }
 
+/**
+ * Using this function is faster than using the comparison operator. Only a single bit has to be
+ * checked to determine if the value is negative.
+ */
 template<typename T, int Size> bool is_negative(const IntF<T, Size> &a)
 {
   return (a.v[Size - 1] & (T(1) << (sizeof(T) * 8 - 1))) != 0;
+}
+
+template<typename T, int Size> inline bool is_zero(const UIntF<T, Size> &a)
+{
+  bool result = true;
+  unroll<Size>([&](auto i) { result &= (a.v[i] == 0); });
+  return result;
+}
+
+template<typename T, int Size> inline bool is_zero(const IntF<T, Size> &a)
+{
+  bool result = true;
+  unroll<Size>([&](auto i) { result &= (a.v[i] == 0); });
+  return result;
 }
 
 template<typename T, int Size, BLI_ENABLE_IF((!std::is_void_v<double_uint_type<T>>))>
