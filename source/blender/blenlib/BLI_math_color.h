@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -176,7 +177,7 @@ MINLINE void float_to_byte_dither_v3(
     unsigned char b[3], const float f[3], float dither, float s, float t);
 
 #define rgba_char_args_set_fl(col, r, g, b, a) \
-  rgba_char_args_set(col, (r)*255, (g)*255, (b)*255, (a)*255)
+  rgba_char_args_set(col, (r) * 255, (g) * 255, (b) * 255, (a) * 255)
 
 #define rgba_float_args_set_ch(col, r, g, b, a) \
   rgba_float_args_set(col, (r) / 255.0f, (g) / 255.0f, (b) / 255.0f, (a) / 255.0f)
@@ -201,12 +202,12 @@ void lift_gamma_gain_to_asc_cdl(const float *lift,
                                 float *slope,
                                 float *power);
 
-#if BLI_MATH_DO_INLINE
-#  include "intern/math_color_inline.c"
-#endif
-
 /** \} */
 
 #ifdef __cplusplus
 }
+#endif
+
+#if BLI_MATH_DO_INLINE
+#  include "intern/math_color_inline.c"
 #endif

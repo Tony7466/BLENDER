@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 Kévin Dietrich. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 Kévin Dietrich. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup balembic
@@ -10,12 +11,12 @@
 #include "DNA_object_types.h"
 #include "DNA_particle_types.h"
 
-#include "BKE_lattice.h"
+#include "BLI_math_matrix.h"
+#include "BLI_math_vector.h"
+
 #include "BKE_particle.h"
 
-#include "BLI_math.h"
-
-#include "DEG_depsgraph_query.h"
+#include "DEG_depsgraph_query.hh"
 
 #include "CLG_log.h"
 static CLG_LogRef LOG = {"io.alembic"};
@@ -99,7 +100,7 @@ void ABCPointsWriter::do_write(HierarchyContext &context)
     }
 
     /* location */
-    mul_v3_m4v3(pos, context.object->world_to_object, state.co);
+    mul_v3_m4v3(pos, context.object->world_to_object().ptr(), state.co);
 
     /* velocity */
     sub_v3_v3v3(vel, state.co, psys->particles[p].prev_state.co);

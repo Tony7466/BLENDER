@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -33,6 +34,7 @@ class Renderdoc {
                            RENDERDOC_WindowHandle window_handle);
   void end_frame_capture(RENDERDOC_DevicePointer device_handle,
                          RENDERDOC_WindowHandle window_handle);
+  void set_frame_capture_title(const char *capture_title);
 
  private:
   /**

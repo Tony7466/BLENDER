@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -16,8 +17,11 @@
 
 #include "gpu_index_buffer_private.hh"
 
+#include "GPU_capabilities.h"
+#include "GPU_compute.h"
 #include "GPU_platform.h"
 
+#include <algorithm> /* For `min/max`. */
 #include <cstring>
 
 #define KEEP_SINGLE_COPY 1
@@ -108,8 +112,8 @@ void GPU_indexbuf_add_generic_vert(GPUIndexBufBuilder *builder, uint v)
   assert(v <= builder->max_allowed_index);
 #endif
   builder->data[builder->index_len++] = v;
-  builder->index_min = MIN2(builder->index_min, v);
-  builder->index_max = MAX2(builder->index_max, v);
+  builder->index_min = std::min(builder->index_min, v);
+  builder->index_max = std::max(builder->index_max, v);
 }
 
 void GPU_indexbuf_add_primitive_restart(GPUIndexBufBuilder *builder)
@@ -169,9 +173,9 @@ void GPU_indexbuf_set_point_vert(GPUIndexBufBuilder *builder, uint elem, uint v1
   BLI_assert(builder->prim_type == GPU_PRIM_POINTS);
   BLI_assert(elem < builder->max_index_len);
   builder->data[elem++] = v1;
-  builder->index_min = MIN2(builder->index_min, v1);
-  builder->index_max = MAX2(builder->index_max, v1);
-  builder->index_len = MAX2(builder->index_len, elem);
+  builder->index_min = std::min(builder->index_min, v1);
+  builder->index_max = std::max(builder->index_max, v1);
+  builder->index_len = std::max(builder->index_len, elem);
 }
 
 void GPU_indexbuf_set_line_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2)
@@ -184,9 +188,9 @@ void GPU_indexbuf_set_line_verts(GPUIndexBufBuilder *builder, uint elem, uint v1
   uint idx = elem * 2;
   builder->data[idx++] = v1;
   builder->data[idx++] = v2;
-  builder->index_min = MIN3(builder->index_min, v1, v2);
-  builder->index_max = MAX3(builder->index_max, v1, v2);
-  builder->index_len = MAX2(builder->index_len, idx);
+  builder->index_min = std::min({builder->index_min, v1, v2});
+  builder->index_max = std::max({builder->index_max, v1, v2});
+  builder->index_len = std::max(builder->index_len, idx);
 }
 
 void GPU_indexbuf_set_tri_verts(GPUIndexBufBuilder *builder, uint elem, uint v1, uint v2, uint v3)
@@ -202,9 +206,9 @@ void GPU_indexbuf_set_tri_verts(GPUIndexBufBuilder *builder, uint elem, uint v1,
   builder->data[idx++] = v2;
   builder->data[idx++] = v3;
 
-  builder->index_min = MIN4(builder->index_min, v1, v2, v3);
-  builder->index_max = MAX4(builder->index_max, v1, v2, v3);
-  builder->index_len = MAX2(builder->index_len, idx);
+  builder->index_min = std::min({builder->index_min, v1, v2, v3});
+  builder->index_max = std::max({builder->index_max, v1, v2, v3});
+  builder->index_len = std::max(builder->index_len, idx);
 }
 
 void GPU_indexbuf_set_point_restart(GPUIndexBufBuilder *builder, uint elem)
@@ -212,7 +216,7 @@ void GPU_indexbuf_set_point_restart(GPUIndexBufBuilder *builder, uint elem)
   BLI_assert(builder->prim_type == GPU_PRIM_POINTS);
   BLI_assert(elem < builder->max_index_len);
   builder->data[elem++] = builder->restart_index_value;
-  builder->index_len = MAX2(builder->index_len, elem);
+  builder->index_len = std::max(builder->index_len, elem);
   builder->uses_restart_indices = true;
 }
 
@@ -223,7 +227,7 @@ void GPU_indexbuf_set_line_restart(GPUIndexBufBuilder *builder, uint elem)
   uint idx = elem * 2;
   builder->data[idx++] = builder->restart_index_value;
   builder->data[idx++] = builder->restart_index_value;
-  builder->index_len = MAX2(builder->index_len, idx);
+  builder->index_len = std::max(builder->index_len, idx);
   builder->uses_restart_indices = true;
 }
 
@@ -235,8 +239,56 @@ void GPU_indexbuf_set_tri_restart(GPUIndexBufBuilder *builder, uint elem)
   builder->data[idx++] = builder->restart_index_value;
   builder->data[idx++] = builder->restart_index_value;
   builder->data[idx++] = builder->restart_index_value;
-  builder->index_len = MAX2(builder->index_len, idx);
+  builder->index_len = std::max(builder->index_len, idx);
   builder->uses_restart_indices = true;
+}
+
+GPUIndexBuf *GPU_indexbuf_build_curves_on_device(GPUPrimType prim_type,
+                                                 uint curves_num,
+                                                 uint verts_per_curve)
+{
+  uint64_t dispatch_x_dim = verts_per_curve;
+  if (ELEM(prim_type, GPU_PRIM_LINE_STRIP, GPU_PRIM_TRI_STRIP)) {
+    dispatch_x_dim += 1;
+  }
+  uint64_t grid_x, grid_y, grid_z;
+  uint64_t max_grid_x = GPU_max_work_group_count(0), max_grid_y = GPU_max_work_group_count(1),
+           max_grid_z = GPU_max_work_group_count(2);
+  grid_x = min_uu(max_grid_x, (dispatch_x_dim + 15) / 16);
+  grid_y = (curves_num + 15) / 16;
+  if (grid_y <= max_grid_y) {
+    grid_z = 1;
+  }
+  else {
+    grid_y = grid_z = uint64_t(ceil(sqrt(double(grid_y))));
+    grid_y = min_uu(grid_y, max_grid_y);
+    grid_z = min_uu(grid_z, max_grid_z);
+  }
+  bool tris = (prim_type == GPU_PRIM_TRIS);
+  bool lines = (prim_type == GPU_PRIM_LINES);
+  GPUShader *shader = GPU_shader_get_builtin_shader(
+      tris ? GPU_SHADER_INDEXBUF_TRIS :
+             (lines ? GPU_SHADER_INDEXBUF_LINES : GPU_SHADER_INDEXBUF_POINTS));
+  GPU_shader_bind(shader);
+  GPUIndexBuf *ibo = GPU_indexbuf_build_on_device(curves_num * dispatch_x_dim);
+  int resolution;
+  if (tris) {
+    resolution = 6;
+  }
+  else if (lines) {
+    resolution = 2;
+  }
+  else {
+    resolution = 1;
+  }
+  GPU_shader_uniform_1i(shader, "elements_per_curve", dispatch_x_dim / resolution);
+  GPU_shader_uniform_1i(shader, "ncurves", curves_num);
+  GPU_indexbuf_bind_as_ssbo(ibo, GPU_shader_get_ssbo_binding(shader, "out_indices"));
+  GPU_compute_dispatch(shader, grid_x, grid_y, grid_z);
+
+  GPU_memory_barrier(GPU_BARRIER_ELEMENT_ARRAY);
+  GPU_shader_unbind();
+  return ibo;
 }
 
 /** \} */
@@ -318,7 +370,7 @@ void IndexBuf::init_build_on_device(uint index_len)
 
 void IndexBuf::init_subrange(IndexBuf *elem_src, uint start, uint length)
 {
-  /* We don't support nested subranges. */
+  /* We don't support nested sub-ranges. */
   BLI_assert(elem_src && elem_src->is_subrange_ == false);
   BLI_assert((length == 0) || (start + length <= elem_src->index_len_));
 
@@ -388,7 +440,7 @@ void IndexBuf::squeeze_indices_short(uint min_idx,
                                  0xFFFFu :
                                  (max_idx - min_idx);
     for (uint i = 0; i < index_len_; i++) {
-      ushort_idx[i] = uint16_t(MIN2(clamp_max_idx, uint_idx[i] - min_idx));
+      ushort_idx[i] = std::min<uint16_t>(clamp_max_idx, uint_idx[i] - min_idx);
     }
   }
   else {

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_jitter_2d.h"
 
@@ -34,73 +35,19 @@ VectorBlurOperation::VectorBlurOperation()
   this->add_output_socket(DataType::Color);
   settings_ = nullptr;
   cached_instance_ = nullptr;
-  input_image_program_ = nullptr;
-  input_speed_program_ = nullptr;
-  input_zprogram_ = nullptr;
-  flags_.complex = true;
-  flags_.is_fullframe_operation = true;
 }
 void VectorBlurOperation::init_execution()
 {
-  init_mutex();
-  input_image_program_ = get_input_socket_reader(0);
-  input_zprogram_ = get_input_socket_reader(1);
-  input_speed_program_ = get_input_socket_reader(2);
   cached_instance_ = nullptr;
   QualityStepHelper::init_execution(COM_QH_INCREASE);
 }
 
-void VectorBlurOperation::execute_pixel(float output[4], int x, int y, void *data)
-{
-  float *buffer = (float *)data;
-  int index = (y * this->get_width() + x) * COM_DATA_TYPE_COLOR_CHANNELS;
-  copy_v4_v4(output, &buffer[index]);
-}
-
 void VectorBlurOperation::deinit_execution()
 {
-  deinit_mutex();
-  input_image_program_ = nullptr;
-  input_speed_program_ = nullptr;
-  input_zprogram_ = nullptr;
   if (cached_instance_) {
     MEM_freeN(cached_instance_);
     cached_instance_ = nullptr;
   }
-}
-void *VectorBlurOperation::initialize_tile_data(rcti *rect)
-{
-  if (cached_instance_) {
-    return cached_instance_;
-  }
-
-  lock_mutex();
-  if (cached_instance_ == nullptr) {
-    MemoryBuffer *tile = (MemoryBuffer *)input_image_program_->initialize_tile_data(rect);
-    MemoryBuffer *speed = (MemoryBuffer *)input_speed_program_->initialize_tile_data(rect);
-    MemoryBuffer *z = (MemoryBuffer *)input_zprogram_->initialize_tile_data(rect);
-    float *data = (float *)MEM_dupallocN(tile->get_buffer());
-    this->generate_vector_blur(data, tile, speed, z);
-    cached_instance_ = data;
-  }
-  unlock_mutex();
-  return cached_instance_;
-}
-
-bool VectorBlurOperation::determine_depending_area_of_interest(rcti * /*input*/,
-                                                               ReadBufferOperation *read_operation,
-                                                               rcti *output)
-{
-  if (cached_instance_ == nullptr) {
-    rcti new_input;
-    new_input.xmax = this->get_width();
-    new_input.xmin = 0;
-    new_input.ymax = this->get_height();
-    new_input.ymin = 0;
-    return NodeOperation::determine_depending_area_of_interest(&new_input, read_operation, output);
-  }
-
-  return false;
 }
 
 void VectorBlurOperation::get_area_of_interest(const int /*input_idx*/,
@@ -168,7 +115,7 @@ void VectorBlurOperation::generate_vector_blur(float *data,
 /* -------------------------------------------------------------------- */
 /** \name Spans
  *
- * Duplicated logic from `zbuf.c`.
+ * Duplicated logic from `zbuf.cc`.
  * \{ */
 
 /** Span fill in method, is also used to localize data for Z-buffering. */
@@ -335,7 +282,7 @@ struct DrawBufPixel {
 };
 
 /**
- * \note Near duplicate of `zspan_scanconvert` in `zbuf.c` with some minor adjustments.
+ * \note Near duplicate of `zspan_scanconvert` in `zbuf.cc` with some minor adjustments.
  */
 static void zbuf_fill_in_rgba(
     ZSpan *zspan, DrawBufPixel *col, float *v1, float *v2, float *v3, float *v4)
@@ -825,7 +772,8 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
 
       for (fy = -0.5f + jit[step & 255][0], y = 0; y < ysize; y++, fy += 1.0f) {
         for (fx = -0.5f + jit[step & 255][1], x = 0; x < xsize;
-             x++, fx += 1.0f, dimg += 4, dz1 += 4, dz2 += 4, dm++, dz++) {
+             x++, fx += 1.0f, dimg += 4, dz1 += 4, dz2 += 4, dm++, dz++)
+        {
           if (*dm > 1) {
             float jfx = fx + 0.5f;
             float jfy = fy + 0.5f;
@@ -893,7 +841,8 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
       rw = rectweight;
       rm = rectmax;
       for (dr = rectdraw, dz2 = newrect, x = xsize * ysize - 1; x >= 0;
-           x--, dr++, dz2 += 4, rw++, rm++) {
+           x--, dr++, dz2 += 4, rw++, rm++)
+      {
         if (dr->colpoin) {
           float bfac = dr->alpha * blendfac;
 
@@ -903,7 +852,7 @@ void zbuf_accumulate_vecblur(NodeBlurData *nbd,
           dz2[3] += bfac * dr->colpoin[3];
 
           *rw += bfac;
-          *rm = MAX2(*rm, bfac);
+          *rm = std::max(*rm, bfac);
         }
       }
     }

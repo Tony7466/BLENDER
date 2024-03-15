@@ -1,17 +1,21 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
 from bpy.types import (
     Menu,
     Operator,
+    OperatorFileListElement,
     WindowManager,
 )
 from bpy.props import (
     BoolProperty,
+    CollectionProperty,
     StringProperty,
 )
 from bpy.app.translations import (
-    pgettext_tip as tip_,
+    pgettext_rpt as rpt_,
     pgettext_data as data_,
 )
 
@@ -116,9 +120,7 @@ class AddPresetBase:
 
                 if is_xml:
                     import rna_xml
-                    rna_xml.xml_file_write(context,
-                                           filepath,
-                                           preset_menu_class.preset_xml_map)
+                    rna_xml.xml_file_write(context, filepath, preset_menu_class.preset_xml_map)
                 else:
 
                     def rna_recursive_attr_expand(value, rna_path_step, level):
@@ -138,7 +140,7 @@ class AddPresetBase:
                             # to simple lists to repr()
                             try:
                                 value = value[:]
-                            except:
+                            except BaseException:
                                 pass
 
                             file_preset.write("%s = %r\n" % (rna_path_step, value))
@@ -165,15 +167,10 @@ class AddPresetBase:
                 name = preset_menu_class.bl_label
 
             # fairly sloppy but convenient.
-            filepath = bpy.utils.preset_find(name,
-                                             self.preset_subdir,
-                                             ext=ext)
+            filepath = bpy.utils.preset_find(name, self.preset_subdir, ext=ext)
 
             if not filepath:
-                filepath = bpy.utils.preset_find(name,
-                                                 self.preset_subdir,
-                                                 display_name=True,
-                                                 ext=ext)
+                filepath = bpy.utils.preset_find(name, self.preset_subdir, display_name=True, ext=ext)
 
             if not filepath:
                 return {'CANCELLED'}
@@ -188,8 +185,8 @@ class AddPresetBase:
                     self.remove(context, filepath)
                 else:
                     os.remove(filepath)
-            except Exception as e:
-                self.report({'ERROR'}, tip_("Unable to remove preset: %r") % e)
+            except BaseException as ex:
+                self.report({'ERROR'}, rpt_("Unable to remove preset: %r") % ex)
                 import traceback
                 traceback.print_exc()
                 return {'CANCELLED'}
@@ -239,7 +236,7 @@ class ExecutePreset(Operator):
         ext = splitext(filepath)[1].lower()
 
         if ext not in {".py", ".xml"}:
-            self.report({'ERROR'}, tip_("Unknown file type: %r") % ext)
+            self.report({'ERROR'}, rpt_("Unknown file type: %r") % ext)
             return {'CANCELLED'}
 
         if hasattr(preset_class, "reset_cb"):
@@ -248,14 +245,12 @@ class ExecutePreset(Operator):
         if ext == ".py":
             try:
                 bpy.utils.execfile(filepath)
-            except Exception as ex:
+            except BaseException as ex:
                 self.report({'ERROR'}, "Failed to execute the preset: " + repr(ex))
 
         elif ext == ".xml":
             import rna_xml
-            rna_xml.xml_file_run(context,
-                                 filepath,
-                                 preset_class.preset_xml_map)
+            rna_xml.xml_file_run(context, filepath, preset_class.preset_xml_map)
 
         if hasattr(preset_class, "post_cb"):
             preset_class.post_cb(context)
@@ -413,6 +408,24 @@ class AddPresetHairDynamics(AddPresetBase, Operator):
     ]
 
 
+class AddPresetTextEditor(AddPresetBase, Operator):
+    """Add or remove a Text Editor Preset"""
+    bl_idname = "text_editor.preset_add"
+    bl_label = "Add Text Editor Preset"
+    preset_menu = "USERPREF_PT_text_editor_presets"
+
+    preset_defines = [
+        "filepaths = bpy.context.preferences.filepaths"
+    ]
+
+    preset_values = [
+        "filepaths.text_editor",
+        "filepaths.text_editor_args"
+    ]
+
+    preset_subdir = "text_editor"
+
+
 class AddPresetTrackingCamera(AddPresetBase, Operator):
     """Add or remove a Tracking Camera Intrinsics Preset"""
     bl_idname = "clip.camera_preset_add"
@@ -495,6 +508,33 @@ class AddPresetTrackingSettings(AddPresetBase, Operator):
     preset_subdir = "tracking_settings"
 
 
+class AddPresetEEVEERaytracing(AddPresetBase, Operator):
+    """Add or remove an EEVEE ray-tracing preset"""
+    bl_idname = "render.eevee_raytracing_preset_add"
+    bl_label = "Add Raytracing Preset"
+    preset_menu = "RENDER_PT_eevee_next_raytracing_presets"
+
+    preset_defines = [
+        "eevee = bpy.context.scene.eevee",
+        "options = eevee.ray_tracing_options"
+    ]
+
+    preset_values = [
+        "eevee.ray_tracing_method",
+        "options.resolution_scale",
+        "options.sample_clamp",
+        "options.screen_trace_max_roughness",
+        "options.screen_trace_quality",
+        "options.screen_trace_thickness",
+        "options.use_denoise",
+        "options.denoise_spatial",
+        "options.denoise_temporal",
+        "options.denoise_bilateral",
+    ]
+
+    preset_subdir = "eevee/raytracing"
+
+
 class AddPresetNodeColor(AddPresetBase, Operator):
     """Add or remove a Node Color Preset"""
     bl_idname = "node.node_color_preset_add"
@@ -514,17 +554,44 @@ class AddPresetNodeColor(AddPresetBase, Operator):
 
 
 class AddPresetInterfaceTheme(AddPresetBase, Operator):
-    """Add or remove a theme preset"""
+    """Add a custom theme to the preset list"""
     bl_idname = "wm.interface_theme_preset_add"
-    bl_label = "Add Theme Preset"
+    bl_label = "Add Theme"
     preset_menu = "USERPREF_MT_interface_theme_presets"
     preset_subdir = "interface_theme"
 
 
+class RemovePresetInterfaceTheme(AddPresetBase, Operator):
+    """Remove a custom theme from the preset list"""
+    bl_idname = "wm.interface_theme_preset_remove"
+    bl_label = "Remove Theme"
+    preset_menu = "USERPREF_MT_interface_theme_presets"
+    preset_subdir = "interface_theme"
+
+    remove_active: BoolProperty(
+        default=True,
+        options={'HIDDEN', 'SKIP_SAVE'},
+    )
+
+    @classmethod
+    def poll(cls, context):
+        from bpy.utils import is_path_builtin
+        preset_menu_class = getattr(bpy.types, cls.preset_menu)
+        name = preset_menu_class.bl_label
+        filepath = bpy.utils.preset_find(name, cls.preset_subdir, ext=".xml")
+        if not bool(filepath) or is_path_builtin(filepath):
+            cls.poll_message_set("Built-in themes cannot be removed")
+            return False
+        return True
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event, title="Remove Custom Theme", confirm_text="Delete")
+
+
 class AddPresetKeyconfig(AddPresetBase, Operator):
-    """Add or remove a Key-config Preset"""
+    """Add a custom keymap configuration to the preset list"""
     bl_idname = "wm.keyconfig_preset_add"
-    bl_label = "Add Keyconfig Preset"
+    bl_label = "Add Custom Keymap Configuration"
     preset_menu = "USERPREF_MT_keyconfigs"
     preset_subdir = "keyconfig"
 
@@ -532,16 +599,43 @@ class AddPresetKeyconfig(AddPresetBase, Operator):
         bpy.ops.preferences.keyconfig_export(filepath=filepath)
         bpy.utils.keyconfig_set(filepath)
 
+
+class RemovePresetKeyconfig(AddPresetBase, Operator):
+    """Remove a custom keymap configuration from the preset list"""
+    bl_idname = "wm.keyconfig_preset_remove"
+    bl_label = "Remove Keymap Configuration"
+    preset_menu = "USERPREF_MT_keyconfigs"
+    preset_subdir = "keyconfig"
+
+    remove_active: BoolProperty(
+        default=True,
+        options={'HIDDEN', 'SKIP_SAVE'},
+    )
+
+    @classmethod
+    def poll(cls, context):
+        from bpy.utils import is_path_builtin
+        keyconfigs = bpy.context.window_manager.keyconfigs
+        preset_menu_class = getattr(bpy.types, cls.preset_menu)
+        name = keyconfigs.active.name
+        filepath = bpy.utils.preset_find(name, cls.preset_subdir, ext=".py")
+        if not bool(filepath) or is_path_builtin(filepath):
+            cls.poll_message_set("Built-in keymap configurations cannot be removed")
+            return False
+        return True
+
     def pre_cb(self, context):
         keyconfigs = bpy.context.window_manager.keyconfigs
-        if self.remove_active:
-            preset_menu_class = getattr(bpy.types, self.preset_menu)
-            preset_menu_class.bl_label = keyconfigs.active.name
+        preset_menu_class = getattr(bpy.types, self.preset_menu)
+        preset_menu_class.bl_label = keyconfigs.active.name
 
     def post_cb(self, context):
         keyconfigs = bpy.context.window_manager.keyconfigs
-        if self.remove_active:
-            keyconfigs.remove(keyconfigs.active)
+        keyconfigs.remove(keyconfigs.active)
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(
+            self, event, title="Remove Keymap Configuration", confirm_text="Delete")
 
 
 class AddPresetOperator(AddPresetBase, Operator):
@@ -575,7 +669,7 @@ class AddPresetOperator(AddPresetBase, Operator):
 
         ret = []
         for prop_id, prop in operator_rna.properties.items():
-            if not (prop.is_hidden or prop.is_skip_save):
+            if not prop.is_skip_preset:
                 if prop_id not in properties_blacklist:
                     ret.append("op.%s" % prop_id)
 
@@ -606,6 +700,81 @@ class WM_MT_operator_presets(Menu):
         return AddPresetOperator.operator_path(self.operator)
 
     preset_operator = "script.execute_preset"
+
+
+class WM_OT_operator_presets_cleanup(Operator):
+    """Remove outdated operator properties from presets that may cause problems"""
+
+    bl_idname = "wm.operator_presets_cleanup"
+    bl_label = "Clean Up Operator Presets"
+
+    operator: StringProperty(name="operator")
+    properties: CollectionProperty(name="properties", type=OperatorFileListElement)
+
+    def _cleanup_preset(self, filepath, properties_exclude):
+        import os
+        import re
+        if not (os.path.isfile(filepath) and os.path.splitext(filepath)[1].lower() == ".py"):
+            return
+        with open(filepath, "r", encoding="utf-8") as fh:
+            lines = fh.read().splitlines(True)
+        if not lines:
+            return
+        regex_exclude = re.compile("(" + "|".join([re.escape("op." + prop) for prop in properties_exclude]) + ")\\b")
+        lines = [line for line in lines if not regex_exclude.match(line)]
+        with open(filepath, "w", encoding="utf-8") as fh:
+            fh.write("".join(lines))
+
+    def _cleanup_operators_presets(self, operators, properties_exclude):
+        import os
+        base_preset_directory = bpy.utils.user_resource('SCRIPTS', path="presets", create=False)
+        if not base_preset_directory:
+            return
+        for operator in operators:
+            operator_path = AddPresetOperator.operator_path(operator)
+            directory = os.path.join(base_preset_directory, operator_path)
+
+            if not os.path.isdir(directory):
+                continue
+            for filename in os.listdir(directory):
+                self._cleanup_preset(os.path.join(directory, filename), properties_exclude)
+
+    def execute(self, context):
+        properties_exclude = []
+        operators = []
+        if self.operator:
+            operators.append(self.operator)
+            for prop in self.properties:
+                properties_exclude.append(prop.name)
+        else:
+            # Cleanup by default I/O Operators Presets
+            operators = [
+                "WM_OT_alembic_export",
+                "WM_OT_alembic_import",
+                "WM_OT_collada_export",
+                "WM_OT_collada_import",
+                "WM_OT_gpencil_export_svg",
+                "WM_OT_gpencil_export_pdf",
+                "WM_OT_gpencil_export_svg",
+                "WM_OT_gpencil_import_svg",
+                "WM_OT_obj_export",
+                "WM_OT_obj_import",
+                "WM_OT_ply_export",
+                "WM_OT_ply_import",
+                "WM_OT_stl_export",
+                "WM_OT_stl_import",
+                "WM_OT_usd_export",
+                "WM_OT_usd_import",
+            ]
+            properties_exclude = [
+                "filepath",
+                "directory",
+                "files",
+                "filename"
+            ]
+
+        self._cleanup_operators_presets(operators, properties_exclude)
+        return {'FINISHED'}
 
 
 class AddPresetGpencilBrush(AddPresetBase, Operator):
@@ -687,16 +856,21 @@ classes = (
     AddPresetFluid,
     AddPresetHairDynamics,
     AddPresetInterfaceTheme,
+    RemovePresetInterfaceTheme,
     AddPresetKeyconfig,
+    RemovePresetKeyconfig,
     AddPresetNodeColor,
     AddPresetOperator,
     AddPresetRender,
     AddPresetCameraSafeAreas,
+    AddPresetTextEditor,
     AddPresetTrackingCamera,
     AddPresetTrackingSettings,
     AddPresetTrackingTrackColor,
     AddPresetGpencilBrush,
     AddPresetGpencilMaterial,
+    AddPresetEEVEERaytracing,
     ExecutePreset,
     WM_MT_operator_presets,
+    WM_OT_operator_presets_cleanup,
 )

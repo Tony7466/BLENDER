@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edobj
@@ -7,49 +9,41 @@
  * actual mode switching logic is per-object type.
  */
 
-#include "DNA_gpencil_legacy_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_workspace_types.h"
 
-#include "BLI_kdopbvh.h"
-#include "BLI_math.h"
+#include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "PIL_time.h"
-
-#include "BLT_translation.h"
-
-#include "BKE_context.h"
+#include "BKE_context.hh"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_layer.h"
-#include "BKE_main.h"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
-#include "BKE_paint.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
-#include "BKE_screen.h"
+#include "BKE_layer.hh"
+#include "BKE_modifier.hh"
+#include "BKE_object.hh"
+#include "BKE_object_types.hh"
+#include "BKE_paint.hh"
+#include "BKE_report.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "BLI_math_vector.h"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
 
-#include "ED_armature.h"
-#include "ED_gpencil_legacy.h"
-#include "ED_screen.h"
-#include "ED_transform_snap_object_context.h"
-#include "ED_undo.h"
-#include "ED_view3d.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "WM_toolsystem.h"
+#include "ED_armature.hh"
+#include "ED_gpencil_legacy.hh"
+#include "ED_outliner.hh"
+#include "ED_undo.hh"
+#include "ED_view3d.hh"
 
-#include "ED_object.h" /* own include */
+#include "WM_toolsystem.hh"
+
+#include "ED_object.hh" /* own include */
 #include "object_intern.h"
 
 /* -------------------------------------------------------------------- */
@@ -79,19 +73,22 @@ static const char *object_mode_op_string(eObjectMode mode)
   if (mode == OB_MODE_POSE) {
     return "OBJECT_OT_posemode_toggle";
   }
-  if (mode == OB_MODE_EDIT_GPENCIL) {
+  if (mode == OB_MODE_EDIT_GPENCIL_LEGACY) {
     return "GPENCIL_OT_editmode_toggle";
   }
-  if (mode == OB_MODE_PAINT_GPENCIL) {
+  if (mode == OB_MODE_PAINT_GREASE_PENCIL) {
+    return "GREASE_PENCIL_OT_draw_mode_toggle";
+  }
+  if (mode == OB_MODE_PAINT_GPENCIL_LEGACY) {
     return "GPENCIL_OT_paintmode_toggle";
   }
-  if (mode == OB_MODE_SCULPT_GPENCIL) {
+  if (mode == OB_MODE_SCULPT_GPENCIL_LEGACY) {
     return "GPENCIL_OT_sculptmode_toggle";
   }
-  if (mode == OB_MODE_WEIGHT_GPENCIL) {
+  if (mode == OB_MODE_WEIGHT_GPENCIL_LEGACY) {
     return "GPENCIL_OT_weightmode_toggle";
   }
-  if (mode == OB_MODE_VERTEX_GPENCIL) {
+  if (mode == OB_MODE_VERTEX_GPENCIL_LEGACY) {
     return "GPENCIL_OT_vertexmode_toggle";
   }
   if (mode == OB_MODE_SCULPT_CURVES) {
@@ -109,7 +106,8 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
   switch (ob->type) {
     case OB_MESH:
       if (mode & (OB_MODE_EDIT | OB_MODE_SCULPT | OB_MODE_VERTEX_PAINT | OB_MODE_WEIGHT_PAINT |
-                  OB_MODE_TEXTURE_PAINT)) {
+                  OB_MODE_TEXTURE_PAINT))
+      {
         return true;
       }
       if (mode & OB_MODE_PARTICLE_EDIT) {
@@ -122,12 +120,9 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
     case OB_SURF:
     case OB_FONT:
     case OB_MBALL:
-      if (mode & OB_MODE_EDIT) {
-        return true;
-      }
-      break;
+    case OB_POINTCLOUD:
     case OB_LATTICE:
-      if (mode & (OB_MODE_EDIT | OB_MODE_WEIGHT_PAINT)) {
+      if (mode & OB_MODE_EDIT) {
         return true;
       }
       break;
@@ -137,12 +132,17 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
       }
       break;
     case OB_GPENCIL_LEGACY:
-      if (mode & (OB_MODE_EDIT_GPENCIL | OB_MODE_ALL_PAINT_GPENCIL)) {
+      if (mode & (OB_MODE_EDIT_GPENCIL_LEGACY | OB_MODE_ALL_PAINT_GPENCIL)) {
         return true;
       }
       break;
     case OB_CURVES:
       if (mode & (OB_MODE_EDIT | OB_MODE_SCULPT_CURVES)) {
+        return true;
+      }
+      break;
+    case OB_GREASE_PENCIL:
+      if (mode & (OB_MODE_EDIT | OB_MODE_PAINT_GREASE_PENCIL | OB_MODE_WEIGHT_PAINT)) {
         return true;
       }
       break;
@@ -194,7 +194,7 @@ bool ED_object_mode_set_ex(bContext *C, eObjectMode mode, bool use_undo, ReportL
   }
 
   if ((ob->type == OB_GPENCIL_LEGACY) && (mode == OB_MODE_EDIT)) {
-    mode = OB_MODE_EDIT_GPENCIL;
+    mode = OB_MODE_EDIT_GPENCIL_LEGACY;
   }
 
   if (ob->mode == mode) {
@@ -299,6 +299,11 @@ static bool ed_object_mode_generic_exit_ex(
     }
     ED_object_gpencil_exit(bmain, ob);
   }
+  else if (ob->mode & OB_MODE_PAINT_GREASE_PENCIL) {
+    ob->mode &= ~OB_MODE_PAINT_GREASE_PENCIL;
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
+    WM_main_add_notifier(NC_SCENE | ND_MODE | NS_MODE_OBJECT, nullptr);
+  }
   else {
     if (only_test) {
       return false;
@@ -356,9 +361,9 @@ void ED_object_posemode_set_for_weight_paint(bContext *C,
                                              const bool is_mode_set)
 {
   if (ob->type == OB_GPENCIL_LEGACY) {
-    GpencilVirtualModifierData virtualModifierData;
-    GpencilModifierData *md = BKE_gpencil_modifiers_get_virtual_modifierlist(ob,
-                                                                             &virtualModifierData);
+    GpencilVirtualModifierData virtual_modifier_data;
+    GpencilModifierData *md = BKE_gpencil_modifiers_get_virtual_modifierlist(
+        ob, &virtual_modifier_data);
     for (; md; md = md->next) {
       if (md->type == eGpencilModifierType_Armature) {
         ArmatureGpencilModifierData *amd = (ArmatureGpencilModifierData *)md;
@@ -368,8 +373,8 @@ void ED_object_posemode_set_for_weight_paint(bContext *C,
     }
   }
   else {
-    VirtualModifierData virtualModifierData;
-    ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtualModifierData);
+    VirtualModifierData virtual_modifier_data;
+    ModifierData *md = BKE_modifiers_get_virtual_modifierlist(ob, &virtual_modifier_data);
     for (; md; md = md->next) {
       if (md->type == eModifierType_Armature) {
         ArmatureModifierData *amd = (ArmatureModifierData *)md;
@@ -428,7 +433,7 @@ static void object_overlay_mode_transfer_animation_start(bContext *C, Object *ob
 {
   Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *ob_dst_eval = DEG_get_evaluated_object(depsgraph, ob_dst);
-  ob_dst_eval->runtime.overlay_mode_transfer_start_time = PIL_check_seconds_timer();
+  ob_dst_eval->runtime->overlay_mode_transfer_start_time = BLI_time_now_seconds();
 }
 
 static bool object_transfer_mode_to_base(bContext *C, wmOperator *op, Base *base_dst)
@@ -474,6 +479,8 @@ static bool object_transfer_mode_to_base(bContext *C, wmOperator *op, Base *base
     }
 
     WM_event_add_notifier(C, NC_SCENE | ND_OB_SELECT, scene);
+    ED_outliner_select_sync_from_object_tag(C);
+
     WM_toolsystem_update_from_context_view3d(C);
     mode_transferred = true;
   }
@@ -488,6 +495,16 @@ static int object_transfer_mode_invoke(bContext *C, wmOperator *op, const wmEven
   const eObjectMode src_mode = (eObjectMode)ob_src->mode;
 
   Base *base_dst = ED_view3d_give_base_under_cursor(C, event->mval);
+
+  if ((base_dst != nullptr) &&
+      (ID_IS_LINKED(base_dst->object) || ID_IS_OVERRIDE_LIBRARY(base_dst->object)))
+  {
+    BKE_reportf(op->reports,
+                RPT_ERROR,
+                "Unable to execute, %s object is linked",
+                base_dst->object->id.name + 2);
+    return OPERATOR_CANCELLED;
+  }
   const bool mode_transferred = object_transfer_mode_to_base(C, op, base_dst);
   if (!mode_transferred) {
     return OPERATOR_CANCELLED;

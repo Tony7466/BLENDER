@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2017 Blender Foundation */
+/* SPDX-FileCopyrightText: 2017 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -7,11 +8,7 @@
 
 #pragma once
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#define MAX_LAYER_NAME_CT 4 /* u0123456789, u, au, a0123456789 */
+#define MAX_LAYER_NAME_CT 4 /* `u0123456789, u, au, a0123456789`. */
 #define MAX_LAYER_NAME_LEN (GPU_MAX_SAFE_ATTR_NAME + 2)
 #define MAX_THICKRES 2    /* see eHairType */
 #define MAX_HAIR_SUBDIV 4 /* see hair_subdiv rna */
@@ -70,6 +67,8 @@ typedef struct ParticleHairCache {
   int point_len;
 } ParticleHairCache;
 
+namespace blender::draw {
+
 /**
  * Ensure all textures and buffers needed for GPU accelerated drawing.
  */
@@ -81,6 +80,4 @@ bool particles_ensure_procedural_data(struct Object *object,
                                       int subdiv,
                                       int thickness_res);
 
-#ifdef __cplusplus
-}
-#endif
+}  // namespace blender::draw

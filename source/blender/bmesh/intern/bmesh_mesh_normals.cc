@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bmesh
@@ -14,17 +16,18 @@
 
 #include "BLI_bitmap.h"
 #include "BLI_linklist_stack.h"
-#include "BLI_math.h"
+#include "BLI_math_base.hh"
+#include "BLI_math_vector.h"
 #include "BLI_task.h"
 #include "BLI_utildefines.h"
 #include "BLI_vector.hh"
 
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
-#include "BKE_global.h"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_global.hh"
 #include "BKE_mesh.hh"
 
-#include "intern/bmesh_private.h"
+#include "intern/bmesh_private.hh"
 
 /* Smooth angle to use when tagging edges is disabled entirely. */
 #define EDGE_TAG_FROM_SPLIT_ANGLE_BYPASS -FLT_MAX
@@ -48,14 +51,14 @@ static void bm_edge_tag_from_smooth(const float (*fnos)[3],
  * assuming no other tool using it would run concurrently to clnors editing. */
 #define BM_LNORSPACE_UPDATE _FLAG_MF
 
-typedef struct BMVertsCalcNormalsWithCoordsData {
+struct BMVertsCalcNormalsWithCoordsData {
   /* Read-only data. */
   const float (*fnos)[3];
   const float (*vcos)[3];
 
   /* Write data. */
   float (*vnos)[3];
-} BMVertsCalcNormalsWithCoordsData;
+};
 
 BLI_INLINE void bm_vert_calc_normals_accum_loop(const BMLoop *l_iter,
                                                 const float e1diff[3],
@@ -70,7 +73,7 @@ BLI_INLINE void bm_vert_calc_normals_accum_loop(const BMLoop *l_iter,
   if ((l_iter->prev->e->v1 == l_iter->prev->v) ^ (l_iter->e->v1 == l_iter->v)) {
     dotprod = -dotprod;
   }
-  const float fac = saacos(-dotprod);
+  const float fac = blender::math::safe_acos_approx(-dotprod);
   /* Shouldn't happen as normalizing edge-vectors cause degenerate values to be zeroed out. */
   BLI_assert(!isnan(fac));
   madd_v3_v3fl(v_no, f_no, fac);
@@ -78,7 +81,7 @@ BLI_INLINE void bm_vert_calc_normals_accum_loop(const BMLoop *l_iter,
 
 static void bm_vert_calc_normals_impl(BMVert *v)
 {
-  /* Note on redundant unit-length edge-vector calculation:
+  /* NOTE(@ideasman42): Regarding redundant unit-length edge-vector calculation:
    *
    * This functions calculates unit-length edge-vector for every loop edge
    * in practice this means 2x `sqrt` calls per face-corner connected to each vertex.
@@ -93,7 +96,7 @@ static void bm_vert_calc_normals_impl(BMVert *v)
    * so face loops that share an edge would not calculate it multiple times.
    * From my tests the performance improvements are so small they're difficult to measure,
    * the time saved removing `sqrtf` calls is lost on storing and looking up the information,
-   * even in the case of `BLI_smallhash.h` & small inline lookup tables.
+   * even in the case of small inline lookup tables.
    *
    * Further, local data structures would need to support cases where
    * stack memory isn't sufficient - adding additional complexity for corner-cases
@@ -103,7 +106,7 @@ static void bm_vert_calc_normals_impl(BMVert *v)
    *
    * In conclusion, the cost of caching & looking up edge-vectors both globally or per-vertex
    * doesn't save enough time to make it worthwhile.
-   * - Campbell. */
+   */
 
   float *v_no = v->no;
   zero_v3(v_no);
@@ -209,7 +212,7 @@ static void bm_mesh_verts_calc_normals(BMesh *bm,
 
   TaskParallelSettings settings;
   BLI_parallel_mempool_settings_defaults(&settings);
-  settings.use_threading = bm->totvert >= BM_OMP_LIMIT;
+  settings.use_threading = bm->totvert >= BM_THREAD_LIMIT;
 
   if (vcos == nullptr) {
     BM_iter_parallel(bm, BM_VERTS_OF_MESH, bm_vert_calc_normals_cb, nullptr, &settings);
@@ -233,13 +236,13 @@ static void bm_face_calc_normals_cb(void * /*userdata*/,
   BM_face_calc_normal(f, f->no);
 }
 
-void BM_mesh_normals_update_ex(BMesh *bm, const struct BMeshNormalsUpdate_Params *params)
+void BM_mesh_normals_update_ex(BMesh *bm, const BMeshNormalsUpdate_Params *params)
 {
   if (params->face_normals) {
     /* Calculate all face normals. */
     TaskParallelSettings settings;
     BLI_parallel_mempool_settings_defaults(&settings);
-    settings.use_threading = bm->totedge >= BM_OMP_LIMIT;
+    settings.use_threading = bm->totedge >= BM_THREAD_LIMIT;
 
     BM_iter_parallel(bm, BM_FACES_OF_MESH, bm_face_calc_normals_cb, nullptr, &settings);
   }
@@ -277,7 +280,7 @@ static void bm_partial_verts_parallel_range_calc_normal_cb(
 
 void BM_mesh_normals_update_with_partial_ex(BMesh * /*bm*/,
                                             const BMPartialUpdate *bmpinfo,
-                                            const struct BMeshNormalsUpdate_Params *params)
+                                            const BMeshNormalsUpdate_Params *params)
 {
   BLI_assert(bmpinfo->params.do_normals);
   /* While harmless, exit early if there is nothing to do. */
@@ -501,12 +504,14 @@ static int bm_mesh_loops_calc_normals_for_loop(BMesh *bm,
    * BM_vert_step_fan_loop() is quite cheap in term of CPU cycles,
    * so really think it's not worth it. */
   if (BM_elem_flag_test(l_curr->e, BM_ELEM_TAG) &&
-      (BM_elem_flag_test(l_curr, BM_ELEM_TAG) || !BM_loop_check_cyclic_smooth_fan(l_curr))) {
+      (BM_elem_flag_test(l_curr, BM_ELEM_TAG) || !BM_loop_check_cyclic_smooth_fan(l_curr)))
+  {
   }
   else if (!BM_elem_flag_test(l_curr->e, BM_ELEM_TAG) &&
-           !BM_elem_flag_test(l_curr->prev->e, BM_ELEM_TAG)) {
-    /* Simple case (both edges around that vertex are sharp in related polygon),
-     * this vertex just takes its poly normal.
+           !BM_elem_flag_test(l_curr->prev->e, BM_ELEM_TAG))
+  {
+    /* Simple case (both edges around that vertex are sharp in related face),
+     * this vertex just takes its face normal.
      */
     const int l_curr_index = BM_elem_index_get(l_curr);
     const float *no = fnos ? fnos[BM_elem_index_get(l_curr->f)] : l_curr->f->no;
@@ -636,9 +641,9 @@ static int bm_mesh_loops_calc_normals_for_loop(BMesh *bm,
 
       {
         /* Code similar to accumulate_vertex_normals_poly_v3. */
-        /* Calculate angle between the two poly edges incident on this vertex. */
+        /* Calculate angle between the two face edges incident on this vertex. */
         const BMFace *f = lfan_pivot->f;
-        const float fac = saacos(dot_v3v3(vec_next, vec_curr));
+        const float fac = blender::math::safe_acos_approx(dot_v3v3(vec_next, vec_curr));
         const float *no = fnos ? fnos[BM_elem_index_get(f)] : f->no;
         /* Accumulate */
         madd_v3_v3fl(lnor, no, fac);
@@ -701,6 +706,7 @@ static int bm_mesh_loops_calc_normals_for_loop(BMesh *bm,
         }
 
         BKE_lnor_space_define(lnor_space, lnor, vec_org, vec_next, *edge_vectors);
+        edge_vectors->clear();
 
         if (has_clnors) {
           if (clnors_invalid) {
@@ -845,7 +851,7 @@ static void bm_edge_tag_from_smooth_and_set_sharp(const float (*fnos)[3],
       }
       else {
         /* Note that we do not care about the other sharp-edge cases
-         * (sharp poly, non-manifold edge, etc.),
+         * (sharp face, non-manifold edge, etc.),
          * only tag edge as sharp when it is due to angle threshold. */
         BM_elem_flag_disable(e, BM_ELEM_SMOOTH);
       }
@@ -913,7 +919,8 @@ static void bm_mesh_loops_calc_normals_for_vert_with_clnors(
           continue;
         }
         if (do_rebuild && !BM_ELEM_API_FLAG_TEST(l_curr, BM_LNORSPACE_UPDATE) &&
-            !(bm->spacearr_dirty & BM_SPACEARR_DIRTY_ALL)) {
+            !(bm->spacearr_dirty & BM_SPACEARR_DIRTY_ALL))
+        {
           continue;
         }
         BM_elem_flag_disable(l_curr, BM_ELEM_TAG);
@@ -1036,7 +1043,8 @@ static void bm_mesh_loops_calc_normals_for_vert_without_clnors(
         continue;
       }
       if (do_rebuild && !BM_ELEM_API_FLAG_TEST(l_curr, BM_LNORSPACE_UPDATE) &&
-          !(bm->spacearr_dirty & BM_SPACEARR_DIRTY_ALL)) {
+          !(bm->spacearr_dirty & BM_SPACEARR_DIRTY_ALL))
+      {
         continue;
       }
       bm_mesh_loops_calc_normals_for_loop(bm,
@@ -1054,7 +1062,7 @@ static void bm_mesh_loops_calc_normals_for_vert_without_clnors(
 }
 
 /**
- * BMesh version of bke::mesh::normals_calc_loop() in `mesh_evaluate.cc`
+ * BMesh version of bke::mesh::normals_calc_corners() in `mesh_evaluate.cc`
  * Will use first clnors_data array, and fallback to cd_loop_clnors_offset
  * (use nullptr and -1 to not use clnors).
  *
@@ -1130,7 +1138,8 @@ static void bm_mesh_loops_calc_normals__single_threaded(BMesh *bm,
     l_curr = l_first = BM_FACE_FIRST_LOOP(f_curr);
     do {
       if (do_rebuild && !BM_ELEM_API_FLAG_TEST(l_curr, BM_LNORSPACE_UPDATE) &&
-          !(bm->spacearr_dirty & BM_SPACEARR_DIRTY_ALL)) {
+          !(bm->spacearr_dirty & BM_SPACEARR_DIRTY_ALL))
+      {
         continue;
       }
       bm_mesh_loops_calc_normals_for_loop(bm,
@@ -1153,7 +1162,7 @@ static void bm_mesh_loops_calc_normals__single_threaded(BMesh *bm,
   }
 }
 
-typedef struct BMLoopsCalcNormalsWithCoordsData {
+struct BMLoopsCalcNormalsWithCoordsData {
   /* Read-only data. */
   const float (*fnos)[3];
   const float (*vcos)[3];
@@ -1166,15 +1175,15 @@ typedef struct BMLoopsCalcNormalsWithCoordsData {
   /* Output. */
   float (*r_lnos)[3];
   MLoopNorSpaceArray *r_lnors_spacearr;
-} BMLoopsCalcNormalsWithCoordsData;
+};
 
-typedef struct BMLoopsCalcNormalsWithCoords_TLS {
+struct BMLoopsCalcNormalsWithCoords_TLS {
   blender::Vector<blender::float3, 16> *edge_vectors;
 
   /** Copied from #BMLoopsCalcNormalsWithCoordsData.r_lnors_spacearr when it's not nullptr. */
   MLoopNorSpaceArray *lnors_spacearr;
   MLoopNorSpaceArray lnors_spacearr_buf;
-} BMLoopsCalcNormalsWithCoords_TLS;
+};
 
 static void bm_mesh_loops_calc_normals_for_vert_init_fn(const void *__restrict userdata,
                                                         void *__restrict chunk)
@@ -1347,7 +1356,7 @@ static void bm_mesh_loops_calc_normals(BMesh *bm,
                                        const bool do_rebuild,
                                        const float split_angle_cos)
 {
-  if (bm->totloop < BM_OMP_LIMIT) {
+  if (bm->totloop < BM_THREAD_LIMIT) {
     bm_mesh_loops_calc_normals__single_threaded(bm,
                                                 vcos,
                                                 fnos,
@@ -1404,7 +1413,7 @@ static bool bm_mesh_loops_split_lnor_fans(BMesh *bm,
       /* Notes:
        * * In case of mono-loop smooth fan, we have nothing to do.
        * * Loops in this linklist are ordered (in reversed order compared to how they were
-       *   discovered by bke::mesh::normals_calc_loop(), but this is not a problem).
+       *   discovered by bke::mesh::normals_calc_corners(), but this is not a problem).
        *   Which means if we find a mismatching clnor,
        *   we know all remaining loops will have to be in a new, different smooth fan/lnor space.
        * * In smooth fan case, we compare each clnor against a ref one,
@@ -1689,14 +1698,12 @@ void BM_loops_calc_normal_vcos(BMesh *bm,
                                const float (*vnos)[3],
                                const float (*fnos)[3],
                                const bool use_split_normals,
-                               const float split_angle,
                                float (*r_lnos)[3],
                                MLoopNorSpaceArray *r_lnors_spacearr,
                                short (*clnors_data)[2],
                                const int cd_loop_clnors_offset,
                                const bool do_rebuild)
 {
-  const bool has_clnors = clnors_data || (cd_loop_clnors_offset != -1);
 
   if (use_split_normals) {
     bm_mesh_loops_calc_normals(bm,
@@ -1707,7 +1714,7 @@ void BM_loops_calc_normal_vcos(BMesh *bm,
                                clnors_data,
                                cd_loop_clnors_offset,
                                do_rebuild,
-                               has_clnors ? -1.0f : cosf(split_angle));
+                               -1.0f);
   }
   else {
     BLI_assert(!r_lnors_spacearr);
@@ -1736,7 +1743,6 @@ void BM_lnorspacearr_store(BMesh *bm, float (*r_lnors)[3])
                             nullptr,
                             nullptr,
                             true,
-                            M_PI,
                             r_lnors,
                             bm->lnor_spacearr,
                             nullptr,
@@ -1785,7 +1791,8 @@ void BM_lnorspace_invalidate(BMesh *bm, const bool do_invalidate_all)
         /* Note that we only handle unselected neighbor vertices here, main loop will take care of
          * selected ones. */
         if (!BM_elem_flag_test(l->prev->v, BM_ELEM_SELECT) &&
-            !BLI_BITMAP_TEST(done_verts, BM_elem_index_get(l->prev->v))) {
+            !BLI_BITMAP_TEST(done_verts, BM_elem_index_get(l->prev->v)))
+        {
 
           BMLoop *l_prev;
           BMIter liter_prev;
@@ -1796,7 +1803,8 @@ void BM_lnorspace_invalidate(BMesh *bm, const bool do_invalidate_all)
         }
 
         if (!BM_elem_flag_test(l->next->v, BM_ELEM_SELECT) &&
-            !BLI_BITMAP_TEST(done_verts, BM_elem_index_get(l->next->v))) {
+            !BLI_BITMAP_TEST(done_verts, BM_elem_index_get(l->next->v)))
+        {
 
           BMLoop *l_next;
           BMIter liter_next;
@@ -1841,7 +1849,8 @@ void BM_lnorspace_rebuild(BMesh *bm, bool preserve_clnor)
     BM_ITER_MESH (f, &fiter, bm, BM_FACES_OF_MESH) {
       BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
         if (BM_ELEM_API_FLAG_TEST(l, BM_LNORSPACE_UPDATE) ||
-            bm->spacearr_dirty & BM_SPACEARR_DIRTY_ALL) {
+            bm->spacearr_dirty & BM_SPACEARR_DIRTY_ALL)
+        {
           short(*clnor)[2] = static_cast<short(*)[2]>(
               BM_ELEM_CD_GET_VOID_P(l, cd_loop_clnors_offset));
           int l_index = BM_elem_index_get(l);
@@ -1861,7 +1870,6 @@ void BM_lnorspace_rebuild(BMesh *bm, bool preserve_clnor)
                             nullptr,
                             nullptr,
                             true,
-                            M_PI,
                             r_lnors,
                             bm->lnor_spacearr,
                             nullptr,
@@ -1872,7 +1880,8 @@ void BM_lnorspace_rebuild(BMesh *bm, bool preserve_clnor)
   BM_ITER_MESH (f, &fiter, bm, BM_FACES_OF_MESH) {
     BM_ITER_ELEM (l, &liter, f, BM_LOOPS_OF_FACE) {
       if (BM_ELEM_API_FLAG_TEST(l, BM_LNORSPACE_UPDATE) ||
-          bm->spacearr_dirty & BM_SPACEARR_DIRTY_ALL) {
+          bm->spacearr_dirty & BM_SPACEARR_DIRTY_ALL)
+      {
         if (preserve_clnor) {
           short(*clnor)[2] = static_cast<short(*)[2]>(
               BM_ELEM_CD_GET_VOID_P(l, cd_loop_clnors_offset));
@@ -1937,17 +1946,8 @@ void BM_lnorspace_err(BMesh *bm)
 
   int cd_loop_clnors_offset = CustomData_get_offset(&bm->ldata, CD_CUSTOMLOOPNORMAL);
   float(*lnors)[3] = static_cast<float(*)[3]>(MEM_callocN(sizeof(*lnors) * bm->totloop, __func__));
-  BM_loops_calc_normal_vcos(bm,
-                            nullptr,
-                            nullptr,
-                            nullptr,
-                            true,
-                            M_PI,
-                            lnors,
-                            temp,
-                            nullptr,
-                            cd_loop_clnors_offset,
-                            true);
+  BM_loops_calc_normal_vcos(
+      bm, nullptr, nullptr, nullptr, true, lnors, temp, nullptr, cd_loop_clnors_offset, true);
 
   for (int i = 0; i < bm->totloop; i++) {
     int j = 0;
@@ -2023,7 +2023,6 @@ static void bm_loop_normal_mark_indiv_do_loop(BMLoop *l,
 /* Mark the individual clnors to be edited, if multiple selection methods are used. */
 static int bm_loop_normal_mark_indiv(BMesh *bm, BLI_bitmap *loops, const bool do_all_loops_of_vert)
 {
-  BMEditSelection *ese, *ese_prev;
   int totloopsel = 0;
 
   const bool sel_verts = (bm->selectmode & SCE_SELECT_VERTEX) != 0;
@@ -2042,11 +2041,11 @@ static int bm_loop_normal_mark_indiv(BMesh *bm, BLI_bitmap *loops, const bool do
      * but it is not designed to be used with huge selection sets,
      * rather with only a few items selected at most. */
     /* Goes from last selected to the first selected element. */
-    for (ese = static_cast<BMEditSelection *>(bm->selected.last); ese; ese = ese->prev) {
+    LISTBASE_FOREACH_BACKWARD (BMEditSelection *, ese, &bm->selected) {
       if (ese->htype == BM_FACE) {
         /* If current face is selected,
          * then any verts to be edited must have been selected before it. */
-        for (ese_prev = ese->prev; ese_prev; ese_prev = ese_prev->prev) {
+        for (BMEditSelection *ese_prev = ese->prev; ese_prev; ese_prev = ese_prev->prev) {
           if (ese_prev->htype == BM_VERT) {
             bm_loop_normal_mark_indiv_do_loop(
                 BM_face_vert_share_loop((BMFace *)ese->ele, (BMVert *)ese_prev->ele),
@@ -2256,7 +2255,8 @@ bool BM_custom_loop_normals_to_vector_layer(BMesh *bm)
 void BM_custom_loop_normals_from_vector_layer(BMesh *bm, bool add_sharp_edges)
 {
   if (!CustomData_has_layer(&bm->ldata, CD_CUSTOMLOOPNORMAL) ||
-      !CustomData_has_layer(&bm->ldata, CD_NORMAL)) {
+      !CustomData_has_layer(&bm->ldata, CD_NORMAL))
+  {
     return;
   }
 

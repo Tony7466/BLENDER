@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -20,10 +22,6 @@ class AssetIdentifier;
 
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * \brief User defined tag.
  * Currently only used by assets, could be used more often at some point.
@@ -34,15 +32,6 @@ typedef struct AssetTag {
   char name[64]; /* MAX_NAME */
 } AssetTag;
 
-#
-#
-typedef struct AssetFilterSettings {
-  /** Tags to match against. These are newly allocated, and compared against the
-   * #AssetMetaData.tags. */
-  ListBase tags;     /* AssetTag */
-  uint64_t id_types; /* rna_enum_id_type_filter_items */
-} AssetFilterSettings;
-
 /**
  * \brief The meta-data of an asset.
  * By creating and giving this for a data-block (#ID.asset_data), the data-block becomes an asset.
@@ -52,11 +41,6 @@ typedef struct AssetFilterSettings {
  *       more than that from the file. So pointers to other IDs or ID data are strictly forbidden.
  */
 typedef struct AssetMetaData {
-#ifdef __cplusplus
-  /** Enables use with `std::unique_ptr<AssetMetaData>`. */
-  ~AssetMetaData();
-#endif
-
   /** Runtime type, to reference event callbacks. Only valid for local assets. */
   struct AssetTypeInfo *local_type_info;
 
@@ -98,6 +82,11 @@ typedef struct AssetMetaData {
   short tot_tags;
 
   char _pad[4];
+
+#ifdef __cplusplus
+  /** Enables use with `std::unique_ptr<AssetMetaData>`. */
+  ~AssetMetaData();
+#endif
 } AssetMetaData;
 
 typedef enum eAssetLibraryType {
@@ -179,12 +168,16 @@ typedef struct AssetWeakReference {
 
 #ifdef __cplusplus
   AssetWeakReference();
+  AssetWeakReference(const AssetWeakReference &);
   AssetWeakReference(AssetWeakReference &&);
-  AssetWeakReference(const AssetWeakReference &) = delete;
-  /** Enables use with `std::unique_ptr<AssetWeakReference>`. */
+  AssetWeakReference &operator=(const AssetWeakReference &);
+  AssetWeakReference &operator=(AssetWeakReference &&);
   ~AssetWeakReference();
 
-  static std::unique_ptr<AssetWeakReference> make_reference(
+  /**
+   * See AssetRepresentation::make_weak_reference().
+   */
+  static AssetWeakReference make_reference(
       const blender::asset_system::AssetLibrary &library,
       const blender::asset_system::AssetIdentifier &asset_identifier);
 #endif
@@ -197,16 +190,12 @@ typedef struct AssetWeakReference {
  * into a type with PropertyGroup as base, so we can have an RNA collection of #AssetHandle's to
  * pass to the UI.
  *
- * \warning Never store this! When using #ED_assetlist_iterate(), only access it within the
- *          iterator function. The contained file data can be freed since the file cache has a
- *          maximum number of items.
+ * \warning Never store this! When using #blender::ed::asset::list::iterate(), only access it
+ * within the iterator function. The contained file data can be freed since the file cache has a
+ * maximum number of items.
  */
 #
 #
 typedef struct AssetHandle {
   const struct FileDirEntry *file_data;
 } AssetHandle;
-
-#ifdef __cplusplus
-}
-#endif

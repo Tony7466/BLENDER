@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2019 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2019 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup draw
@@ -7,26 +8,21 @@
 
 #pragma once
 
-#include <algorithm>
-
+#include "BLI_math_matrix_types.hh"
 #include "BLI_utildefines.h"
 
-#include "DNA_customdata_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_view3d_enums.h"
-
-#include "BKE_attribute.h"
-#include "BKE_object.h"
-
-#include "GPU_batch.h"
-#include "GPU_index_buffer.h"
-#include "GPU_vertex_buffer.h"
+#include "GPU_shader.h"
 
 #include "draw_attributes.hh"
 
-struct DRWSubdivCache;
-struct MeshRenderData;
+struct GPUBatch;
+struct GPUIndexBuf;
 struct TaskGraph;
+
+namespace blender::draw {
+
+struct MeshRenderData;
+struct DRWSubdivCache;
 
 /* Vertex Group Selection and display options */
 struct DRW_MeshWeightState {
@@ -53,7 +49,7 @@ enum {
 };
 
 enum eMRIterType {
-  MR_ITER_LOOPTRI = 1 << 0,
+  MR_ITER_CORNER_TRI = 1 << 0,
   MR_ITER_POLY = 1 << 1,
   MR_ITER_LOOSE_EDGE = 1 << 2,
   MR_ITER_LOOSE_VERT = 1 << 3,
@@ -64,7 +60,7 @@ enum eMRDataType {
   MR_DATA_NONE = 0,
   MR_DATA_POLY_NOR = 1 << 1,
   MR_DATA_LOOP_NOR = 1 << 2,
-  MR_DATA_LOOPTRI = 1 << 3,
+  MR_DATA_CORNER_TRI = 1 << 3,
   MR_DATA_LOOSE_GEOM = 1 << 4,
   /** Force loop normals calculation. */
   MR_DATA_TAN_LOOP_NOR = 1 << 5,
@@ -72,24 +68,15 @@ enum eMRDataType {
 };
 ENUM_OPERATORS(eMRDataType, MR_DATA_POLYS_SORTED)
 
-BLI_INLINE int mesh_render_mat_len_get(const Object *object, const Mesh *me)
-{
-  if (me->edit_mesh != NULL) {
-    const Mesh *editmesh_eval_final = BKE_object_get_editmesh_eval_final(object);
-    if (editmesh_eval_final != NULL) {
-      return std::max<int>(1, editmesh_eval_final->totcol);
-    }
-  }
-  return std::max<int>(1, me->totcol);
-}
+int mesh_render_mat_len_get(const Object *object, const Mesh *mesh);
 
 struct MeshBufferList {
   /* Every VBO below contains at least enough data for every loop in the mesh
    * (except fdots and skin roots). For some VBOs, it extends to (in this exact order) :
    * loops + loose_edges * 2 + loose_verts */
   struct {
-    GPUVertBuf *pos_nor;  /* extend */
-    GPUVertBuf *lnor;     /* extend */
+    GPUVertBuf *pos;      /* extend */
+    GPUVertBuf *nor;      /* extend */
     GPUVertBuf *edge_fac; /* extend */
     GPUVertBuf *weights;  /* extend */
     GPUVertBuf *uv;
@@ -111,10 +98,11 @@ struct MeshBufferList {
     /* Selection */
     GPUVertBuf *vert_idx; /* extend */
     GPUVertBuf *edge_idx; /* extend */
-    GPUVertBuf *poly_idx;
+    GPUVertBuf *face_idx;
     GPUVertBuf *fdot_idx;
     GPUVertBuf *attr[GPU_MAX_ATTR];
     GPUVertBuf *attr_viewer;
+    GPUVertBuf *vnor;
   } vbo;
   /* Index Buffers:
    * Only need to be updated when topology changes. */
@@ -131,7 +119,7 @@ struct MeshBufferList {
     /* no loose edges. */
     GPUIndexBuf *lines_paint_mask;
     GPUIndexBuf *lines_adjacency;
-    /* Uv overlays. (visibility can differ from 3D view) */
+    /** UV overlays. (visibility can differ from 3D view). */
     GPUIndexBuf *edituv_tris;
     GPUIndexBuf *edituv_lines;
     GPUIndexBuf *edituv_points;
@@ -223,16 +211,16 @@ BLI_STATIC_ASSERT(MBC_BATCH_LEN < 32, "Number of batches exceeded the limit of b
 
 struct MeshExtractLooseGeom {
   /** Indices of all vertices not used by edges in the #Mesh or #BMesh. */
-  blender::Array<int> verts;
+  Array<int> verts;
   /** Indices of all edges not used by faces in the #Mesh or #BMesh. */
-  blender::Array<int> edges;
+  Array<int> edges;
 };
 
-struct SortedPolyData {
+struct SortedFaceData {
   /** The first triangle index for each polygon, sorted into slices by material. */
-  blender::Array<int> tri_first_index;
+  Array<int> tri_first_index;
   /** The number of visible triangles assigned to each material. */
-  blender::Array<int> mat_tri_len;
+  Array<int> mat_tri_len;
   /* The total number of visible triangles (a sum of the values in #mat_tri_len). */
   int visible_tri_len;
 };
@@ -247,22 +235,22 @@ struct MeshBufferCache {
 
   MeshExtractLooseGeom loose_geom;
 
-  SortedPolyData poly_sorted;
+  SortedFaceData face_sorted;
 };
 
 #define FOREACH_MESH_BUFFER_CACHE(batch_cache, mbc) \
-  for (MeshBufferCache *mbc = &batch_cache->final; \
-       mbc == &batch_cache->final || mbc == &batch_cache->cage || mbc == &batch_cache->uv_cage; \
-       mbc = (mbc == &batch_cache->final) ? \
-                 &batch_cache->cage : \
-                 ((mbc == &batch_cache->cage) ? &batch_cache->uv_cage : NULL))
+  for (MeshBufferCache *mbc = &batch_cache.final; \
+       mbc == &batch_cache.final || mbc == &batch_cache.cage || mbc == &batch_cache.uv_cage; \
+       mbc = (mbc == &batch_cache.final) ? \
+                 &batch_cache.cage : \
+                 ((mbc == &batch_cache.cage) ? &batch_cache.uv_cage : nullptr))
 
 struct MeshBatchCache {
   MeshBufferCache final, cage, uv_cage;
 
   MeshBatchList batch;
 
-  /* Index buffer per material. These are subranges of `ibo.tris` */
+  /* Index buffer per material. These are sub-ranges of `ibo.tris`. */
   GPUIndexBuf **tris_per_mat;
 
   GPUBatch **surface_per_mat;
@@ -275,7 +263,7 @@ struct MeshBatchCache {
   /* Settings to determine if cache is invalid. */
   int edge_len;
   int tri_len;
-  int poly_len;
+  int face_len;
   int vert_len;
   int mat_len;
   /* Instantly invalidates cache, skipping mesh check */
@@ -310,26 +298,24 @@ struct MeshBatchCache {
   (MBC_EDITUV_FACES_STRETCH_AREA | MBC_EDITUV_FACES_STRETCH_ANGLE | MBC_EDITUV_FACES | \
    MBC_EDITUV_EDGES | MBC_EDITUV_VERTS | MBC_EDITUV_FACEDOTS | MBC_WIRE_LOOPS_UVS)
 
-namespace blender::draw {
-
 void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
-                                        MeshBatchCache *cache,
-                                        MeshBufferCache *mbc,
+                                        MeshBatchCache &cache,
+                                        MeshBufferCache &mbc,
                                         Object *object,
-                                        Mesh *me,
+                                        Mesh *mesh,
                                         bool is_editmode,
                                         bool is_paint_mode,
                                         bool is_mode_active,
-                                        const float obmat[4][4],
+                                        const float4x4 &object_to_world,
                                         bool do_final,
                                         bool do_uvedit,
                                         const Scene *scene,
                                         const ToolSettings *ts,
                                         bool use_hide);
 
-void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache *cache,
-                                               MeshBufferCache *mbc,
-                                               DRWSubdivCache *subdiv_cache,
-                                               MeshRenderData *mr);
+void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
+                                               MeshBufferCache &mbc,
+                                               DRWSubdivCache &subdiv_cache,
+                                               MeshRenderData &mr);
 
 }  // namespace blender::draw

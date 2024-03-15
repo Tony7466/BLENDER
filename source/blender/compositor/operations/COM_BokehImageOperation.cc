@@ -1,7 +1,10 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "COM_BokehImageOperation.h"
+
+#include "BLI_math_geom.h"
 
 namespace blender::compositor {
 
@@ -56,12 +59,14 @@ float BokehImageOperation::is_inside_bokeh(float distance, float x, float y)
 
   const float catadioptric_distance_to_center = distance_rounding_to_center * data_->catadioptric;
   if (distance_rounding_to_center >= distance_to_center &&
-      catadioptric_distance_to_center <= distance_to_center) {
+      catadioptric_distance_to_center <= distance_to_center)
+  {
     if (distance_rounding_to_center - distance_to_center < 1.0f) {
       inside_bokeh = (distance_rounding_to_center - distance_to_center);
     }
     else if (data_->catadioptric != 0.0f &&
-             distance_to_center - catadioptric_distance_to_center < 1.0f) {
+             distance_to_center - catadioptric_distance_to_center < 1.0f)
+    {
       inside_bokeh = (distance_to_center - catadioptric_distance_to_center);
     }
     else {
@@ -70,30 +75,6 @@ float BokehImageOperation::is_inside_bokeh(float distance, float x, float y)
   }
   return inside_bokeh;
 }
-void BokehImageOperation::execute_pixel_sampled(float output[4],
-                                                float x,
-                                                float y,
-                                                PixelSampler /*sampler*/)
-{
-  float shift = data_->lensshift;
-  float shift2 = shift / 2.0f;
-  float distance = circular_distance_;
-  float inside_bokeh_max = is_inside_bokeh(distance, x, y);
-  float inside_bokeh_med = is_inside_bokeh(distance - fabsf(shift2 * distance), x, y);
-  float inside_bokeh_min = is_inside_bokeh(distance - fabsf(shift * distance), x, y);
-  if (shift < 0) {
-    output[0] = inside_bokeh_max;
-    output[1] = inside_bokeh_med;
-    output[2] = inside_bokeh_min;
-  }
-  else {
-    output[0] = inside_bokeh_min;
-    output[1] = inside_bokeh_med;
-    output[2] = inside_bokeh_max;
-  }
-  output[3] = (inside_bokeh_max + inside_bokeh_med + inside_bokeh_min) / 3.0f;
-}
-
 void BokehImageOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                        const rcti &area,
                                                        Span<MemoryBuffer *> /*inputs*/)

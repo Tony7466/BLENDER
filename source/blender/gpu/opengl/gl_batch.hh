@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -62,7 +63,6 @@ class GLVaoCache {
   ~GLVaoCache();
 
   GLuint vao_get(GPUBatch *batch);
-  GLuint base_instance_vao_get(GPUBatch *batch, int i_first);
 
   /**
    * Return 0 on cache miss (invalid VAO).
@@ -96,7 +96,7 @@ class GLBatch : public Batch {
                            int count,
                            intptr_t offset,
                            intptr_t stride) override;
-  void bind(int i_first);
+  void bind();
 
   /* Convenience getters. */
 

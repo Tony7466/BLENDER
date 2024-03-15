@@ -1,30 +1,32 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
-
-#include "DNA_volume_types.h"
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_geometry_set.hh"
-#include "BKE_lib_id.h"
-#include "BKE_volume.h"
+#include "BKE_lib_id.hh"
+#include "BKE_volume.hh"
+
+namespace blender::bke {
 
 /* -------------------------------------------------------------------- */
 /** \name Geometry Component Implementation
  * \{ */
 
-VolumeComponent::VolumeComponent() : GeometryComponent(GEO_COMPONENT_TYPE_VOLUME) {}
+VolumeComponent::VolumeComponent() : GeometryComponent(GeometryComponent::Type::Volume) {}
 
 VolumeComponent::~VolumeComponent()
 {
   this->clear();
 }
 
-GeometryComponent *VolumeComponent::copy() const
+GeometryComponentPtr VolumeComponent::copy() const
 {
   VolumeComponent *new_component = new VolumeComponent();
   if (volume_ != nullptr) {
     new_component->volume_ = BKE_volume_copy_for_eval(volume_);
     new_component->ownership_ = GeometryOwnershipType::Owned;
   }
-  return new_component;
+  return GeometryComponentPtr(new_component);
 }
 
 void VolumeComponent::clear()
@@ -59,7 +61,7 @@ Volume *VolumeComponent::release()
   return volume;
 }
 
-const Volume *VolumeComponent::get_for_read() const
+const Volume *VolumeComponent::get() const
 {
   return volume_;
 }
@@ -83,9 +85,13 @@ void VolumeComponent::ensure_owns_direct_data()
 {
   BLI_assert(this->is_mutable());
   if (ownership_ != GeometryOwnershipType::Owned) {
-    volume_ = BKE_volume_copy_for_eval(volume_);
+    if (volume_) {
+      volume_ = BKE_volume_copy_for_eval(volume_);
+    }
     ownership_ = GeometryOwnershipType::Owned;
   }
 }
 
 /** \} */
+
+}  // namespace blender::bke

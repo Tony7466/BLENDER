@@ -1,10 +1,12 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2021-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2021-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifdef WITH_METAL
 
 #  include "device/metal/device.h"
 #  include "device/metal/device_impl.h"
+#  include "integrator/denoiser_oidn_gpu.h"
 
 #endif
 
@@ -54,15 +56,41 @@ void device_metal_info(vector<DeviceInfo> &devices)
     info.display_device = true;
     info.denoisers = DENOISER_NONE;
     info.id = id;
+#  if defined(WITH_OPENIMAGEDENOISE)
+    if (OIDNDenoiserGPU::is_device_supported(info)) {
+      info.denoisers |= DENOISER_OPENIMAGEDENOISE;
+    }
+#  endif
 
     MetalGPUVendor vendor = MetalInfo::get_device_vendor(device);
 
     info.has_nanovdb = vendor == METAL_GPU_APPLE;
     info.has_light_tree = vendor != METAL_GPU_AMD;
-    info.use_hardware_raytracing = vendor != METAL_GPU_INTEL;
+    info.has_mnee = vendor != METAL_GPU_AMD;
+
+    info.use_hardware_raytracing = false;
+
+    /* MetalRT now uses features exposed in Xcode versions corresponding to macOS 14+, so don't
+     * expose it in builds from older Xcode versions. */
+#  if defined(MAC_OS_VERSION_14_0)
+    if (vendor != METAL_GPU_INTEL) {
+      if (@available(macos 14.0, *)) {
+        info.use_hardware_raytracing = device.supportsRaytracing;
+
+        /* Use hardware raytracing for faster rendering on architectures that support it. */
+        info.use_metalrt_by_default = (MetalInfo::get_apple_gpu_architecture(device) >= APPLE_M3);
+      }
+    }
+#  endif
 
     devices.push_back(info);
     device_index++;
+
+    VLOG_INFO << "Added device \"" << info.description << "\" with id \"" << info.id << "\".";
+
+    if (info.denoisers & DENOISER_OPENIMAGEDENOISE)
+      VLOG_INFO << "Device with id \"" << info.id << "\" supports "
+                << denoiserTypeToHumanReadable(DENOISER_OPENIMAGEDENOISE) << ".";
   }
 }
 

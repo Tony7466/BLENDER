@@ -1,10 +1,13 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Adapted from the Blender Alembic importer implementation.
- * Modifications Copyright 2021 Tangent Animation. All rights reserved. */
+/* SPDX-FileCopyrightText: 2021 Tangent Animation. All rights reserved.
+ * SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Adapted from the Blender Alembic importer implementation. */
 
-#include "usd_reader_prim.h"
+#include "usd_reader_prim.hh"
 
-#include "BLI_utildefines.h"
+#include "BLI_assert.h"
 
 namespace blender::io::usd {
 
@@ -18,7 +21,8 @@ USDPrimReader::USDPrimReader(const pxr::UsdPrim &prim,
       import_params_(import_params),
       parent_reader_(nullptr),
       settings_(&settings),
-      refcount_(0)
+      refcount_(0),
+      is_in_instancer_proto_(false)
 {
 }
 
@@ -58,6 +62,11 @@ void USDPrimReader::decref()
 {
   refcount_--;
   BLI_assert(refcount_ >= 0);
+}
+
+bool USDPrimReader::is_in_proto() const
+{
+  return prim_ && (prim_.IsInPrototype() || is_in_instancer_proto_);
 }
 
 }  // namespace blender::io::usd

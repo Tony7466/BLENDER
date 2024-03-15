@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup obj
@@ -17,7 +19,6 @@
 
 /* SEP macro from BLI path utils clashes with SEP symbol in fmt headers. */
 #undef SEP
-#define FMT_HEADER_ONLY
 #include <fmt/format.h>
 
 namespace blender::io::obj {
@@ -41,16 +42,18 @@ class FormatHandler : NonCopyable, NonMovable {
   /* Write contents to the buffer(s) into a file, and clear the buffers. */
   void write_to_file(FILE *f)
   {
-    for (const auto &b : blocks_)
+    for (const auto &b : blocks_) {
       fwrite(b.data(), 1, b.size(), f);
+    }
     blocks_.clear();
   }
 
   std::string get_as_string() const
   {
     std::string s;
-    for (const auto &b : blocks_)
+    for (const auto &b : blocks_) {
       s.append(b.data(), b.size());
+    }
     return s;
   }
   size_t get_block_count() const
@@ -82,27 +85,27 @@ class FormatHandler : NonCopyable, NonMovable {
   {
     write_impl("vn {:.4f} {:.4f} {:.4f}\n", x, y, z);
   }
-  void write_obj_poly_begin()
+  void write_obj_face_begin()
   {
     write_impl("f");
   }
-  void write_obj_poly_end()
+  void write_obj_face_end()
   {
     write_obj_newline();
   }
-  void write_obj_poly_v_uv_normal(int v, int uv, int n)
+  void write_obj_face_v_uv_normal(int v, int uv, int n)
   {
     write_impl(" {}/{}/{}", v, uv, n);
   }
-  void write_obj_poly_v_normal(int v, int n)
+  void write_obj_face_v_normal(int v, int n)
   {
     write_impl(" {}//{}", v, n);
   }
-  void write_obj_poly_v_uv(int v, int uv)
+  void write_obj_face_v_uv(int v, int uv)
   {
     write_impl(" {}/{}", v, uv);
   }
-  void write_obj_poly_v(int v)
+  void write_obj_face_v(int v)
   {
     write_impl(" {}", v);
   }

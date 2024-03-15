@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -7,12 +8,7 @@
 
 #pragma once
 
-#include "DNA_customdata_types.h"
-#include "DNA_listBase.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "BLI_sys_types.h"
 
 /* -------------------------------------------------------------------- */
 /** \name Ordered Selection Storage
@@ -45,105 +41,55 @@ enum {
  * \{ */
 
 /**
- * #MLoopTri's are lightweight triangulation data,
- * for functionality that doesn't support ngons.
- * This is cache data created from (polygons, corner vert, and position arrays).
- * There is no attempt to maintain this data's validity over time,
- * any changes to the underlying mesh invalidate the #MLoopTri array,
- * which will need to be re-calculated.
- *
- * Users normally access this via #BKE_mesh_runtime_looptri_ensure.
- * In rare cases its calculated directly, with #BKE_mesh_recalc_looptri.
+ * #Mesh::corner_tris() gives access to runtime triangulation data for #Mesh, for functionality
+ * that doesn't support ngons.
  *
  * Typical usage includes:
- * - OpenGL drawing.
+ * - Viewport drawing.
  * - #BVHTree creation.
  * - Physics/collision detection.
  *
- * Storing loop indices (instead of vertex indices) allows us to
- * directly access UVs, vertex-colors as well as vertices.
- * The index of the source polygon is stored as well,
- * giving access to materials and polygon normals.
+ * A mesh's triangulation data, which uses a cache that is lazily calculated from faces, corner
+ * vert, and position arrays. In rare cases it is calculated directly too, with
+ * #bke::mesh::corner_tris_calc. When the underlying mesh data changes, the array is recalculated
+ * from scratch; there is no extra attempt to maintain the validity over time.
  *
- * \note This data is runtime only, never written to disk.
+ * Triangles are stored in an array, where triangles from each face are stored sequentially. The
+ * triangles order is guaranteed to match the face order where the first triangle will always be
+ * from the first face, and the last triangle from the last face. The number of triangles for each
+ * polygon is guaranteed to be the corner count - 2, even for degenerate geometry (see
+ * #bke::mesh::face_triangles_num).
  *
- * Usage examples:
- * \code{.c}
- * // access polygon attribute value.
- * T value = polygon_attribute[lt->poly];
+ * Storing corner indices (instead of vertex indices) gives more flexibility for accessing mesh
+ * data stored per-corner, though it does often add an extra level of indirection. The index of the
+ * corresponding face for each triangle is stored in a separate array, accessed with
+ * #Mesh::corner_tri_faces().
  *
- * // access vertex locations.
- * float *vtri_co[3] = {
- *     positions[corner_verts[lt->tri[0]]],
- *     positions[corner_verts[lt->tri[1]]],
- *     positions[corner_verts[lt->tri[2]]],
+ * Examples:
+ * \code{.cc}
+ * // Access vertex locations.
+ * std::array<float3, 3> tri_positions{
+ *   positions[corner_verts[tri[0]]],
+ *   positions[corner_verts[tri[1]]],
+ *   positions[corner_verts[tri[2]]],
  * };
  *
- * // access UV coordinates (works for all loop data, vertex colors... etc).
- * float *uvtri_co[3] = {
- *     mloopuv[lt->tri[0]],
- *     mloopuv[lt->tri[1]],
- *     mloopuv[lt->tri[2]],
+ * // Access UV coordinates (works for all face corner data, vertex colors... etc).
+ * std::array<float2, 3> tri_uvs{
+ *   uv_map[tri[0]],
+ *   uv_map[tri[1]],
+ *   uv_map[tri[2]],
  * };
+ *
+ * // Access all triangles in a given face.
+ * const Span<int3> corner_tris = corner_tris.slice(face_triangles_range(faces, i));
  * \endcode
  *
- * #MLoopTri's are allocated in an array, where each polygon's #MLoopTri's are stored contiguously,
- * the number of triangles for each polygon is guaranteed to be the corner count - 2,
- * even for degenerate geometry. See #ME_POLY_TRI_TOT macro.
- *
- * It's also possible to perform a reverse lookup (find all #MLoopTri's for any given poly).
- *
- * \code{.c}
- * // loop over all looptri's for a given polygon: i
- * const IndexRange poly = polys[i];
- * MLoopTri *lt = &looptri[poly_to_tri_count(i, poly.start())];
- * int j, lt_tot = ME_POLY_TRI_TOT(poly.size());
- *
- * for (j = 0; j < lt_tot; j++, lt++) {
- *     int vtri[3] = {
- *         corner_verts[lt->tri[0]],
- *         corner_verts[lt->tri[1]],
- *         corner_verts[lt->tri[2]],
- *     };
- *     printf("tri %u %u %u\n", vtri[0], vtri[1], vtri[2]);
- * };
- * \endcode
- *
- * It may also be useful to check whether or not two vertices of a triangle
- * form an edge in the underlying mesh.
- *
- * This can be done by checking the edge of the referenced corner,
- * the winding of the #MLoopTri and the corners's will always match,
- * however the order of vertices in the edge is undefined.
- *
- * \code{.c}
- * // print real edges from an MLoopTri: lt
- * int j, j_next;
- * for (j = 2, j_next = 0; j_next < 3; j = j_next++) {
- *     const int2 &edge = &medge[corner_edges[lt->tri[j]]];
- *     unsigned int tri_edge[2]  = {corner_verts[lt->tri[j]], corner_verts[lt->tri[j_next]]};
- *
- *     if (((edge[0] == tri_edge[0]) && (edge[1] == tri_edge[1])) ||
- *         ((edge[0] == tri_edge[1]) && (edge[1] == tri_edge[0])))
- *     {
- *         printf("real edge found %u %u\n", tri_edge[0], tri_edge[1]);
- *     }
- * }
- * \endcode
- *
- * See #BKE_mesh_looptri_get_real_edges for a utility that does this.
- *
- * \note A #MLoopTri may be in the middle of an ngon and not reference **any** edges.
+ * It may also be useful to check whether or not two vertices of a triangle form an edge in the
+ * underlying mesh. See #bke::mesh::corner_tri for a utility that does this. Note
+ * that a triangle may be in the middle of an ngon and not reference **any**
+ * real edges.
  */
-typedef struct MLoopTri {
-  unsigned int tri[3];
-  unsigned int poly;
-} MLoopTri;
-#
-#
-typedef struct MVertTri {
-  unsigned int tri[3];
-} MVertTri;
 
 /** \} */
 
@@ -217,12 +163,14 @@ typedef struct MVertSkin {
 } MVertSkin;
 
 typedef enum eMVertSkinFlag {
-  /** Marks a vertex as the edge-graph root, used for calculating rotations for all connected
+  /**
+   * Marks a vertex as the edge-graph root, used for calculating rotations for all connected
    * edges (recursively). Also used to choose a root when generating an armature.
    */
   MVERT_SKIN_ROOT = 1,
 
-  /** Marks a branch vertex (vertex with more than two connected edges), so that its neighbors
+  /**
+   * Marks a branch vertex (vertex with more than two connected edges), so that its neighbors
    * are directly hulled together, rather than the default of generating intermediate frames.
    */
   MVERT_SKIN_LOOSE = 2,
@@ -328,25 +276,6 @@ enum {
 /** \} */
 
 /* -------------------------------------------------------------------- */
-/** \name Utility Macros
- * \{ */
-
-/** Number of tri's that make up this polygon once tessellated. */
-#define ME_POLY_TRI_TOT(size) (size - 2)
-
-/**
- * Check out-of-bounds material, note that this is nearly always prevented,
- * yet its still possible in rare cases.
- * So usage such as array lookup needs to check.
- */
-#define ME_MAT_NR_TEST(mat_nr, totmat) \
-  (CHECK_TYPE_ANY(mat_nr, short, const short), \
-   CHECK_TYPE_ANY(totmat, short, const short), \
-   (LIKELY(mat_nr < totmat) ? mat_nr : 0))
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Deprecated Structs
  * \{ */
 
@@ -360,7 +289,7 @@ enum {
 typedef struct MEdge {
   /** Un-ordered vertex indices (cannot match). */
   unsigned int v1, v2;
-  /** Deprecated edge crease, now located in #CD_CREASE, except for file read and write. */
+  /** Deprecated edge crease, now located in `edge_crease`, except for file read and write. */
   char crease_legacy;
   /**
    * Deprecated bevel weight storage, now located in #CD_BWEIGHT, except for file read and write.
@@ -387,7 +316,7 @@ enum {
  * This only stores the polygon size & flags, the vertex & edge indices are stored in the "corner
  * edges" array.
  *
- * Typically accessed with #Mesh.polys().
+ * Typically accessed with #Mesh.faces().
  */
 typedef struct MPoly {
   /** Offset into loop array and number of loops in the face. */
@@ -465,7 +394,7 @@ typedef struct MLoop {
 #endif
 
 /**
- * Used in Blender pre 2.63, See #Mesh::corner_verts(), #Mesh::polys() for face data stored in the
+ * Used in Blender pre 2.63, See #Mesh::corner_verts(), #Mesh::faces() for face data stored in the
  * blend file. Use for reading old files and in a handful of cases which should be removed
  * eventually.
  */
@@ -499,35 +428,13 @@ typedef struct MCol {
   unsigned char a, r, g, b;
 } MCol;
 
-#define MESH_MLOOPCOL_FROM_MCOL(_mloopcol, _mcol) \
-  { \
-    MLoopCol *mloopcol__tmp = _mloopcol; \
-    const MCol *mcol__tmp = _mcol; \
-    mloopcol__tmp->r = mcol__tmp->b; \
-    mloopcol__tmp->g = mcol__tmp->g; \
-    mloopcol__tmp->b = mcol__tmp->r; \
-    mloopcol__tmp->a = mcol__tmp->a; \
-  } \
-  (void)0
-
-#define MESH_MLOOPCOL_TO_MCOL(_mloopcol, _mcol) \
-  { \
-    const MLoopCol *mloopcol__tmp = _mloopcol; \
-    MCol *mcol__tmp = _mcol; \
-    mcol__tmp->b = mloopcol__tmp->r; \
-    mcol__tmp->g = mloopcol__tmp->g; \
-    mcol__tmp->r = mloopcol__tmp->b; \
-    mcol__tmp->a = mloopcol__tmp->a; \
-  } \
-  (void)0
+#ifdef DNA_DEPRECATED_ALLOW
 
 /** Old game engine recast navigation data, while unused 2.7x files may contain this. */
 typedef struct MRecast {
   int i;
 } MRecast;
 
-/** \} */
-
-#ifdef __cplusplus
-}
 #endif
+
+/** \} */

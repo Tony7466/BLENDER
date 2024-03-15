@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup eduv
@@ -17,25 +18,24 @@
  *   * An iso_edge is undirected.
  */
 
-#include "BLI_math.h"
+#include "BKE_context.hh"
+#include "BKE_customdata.hh"
+#include "BKE_editmesh.hh"
+#include "BKE_layer.hh"
+#include "BKE_mesh_mapping.hh" /* UvElementMap */
+#include "BKE_report.hh"
 
-#include "BKE_context.h"
-#include "BKE_customdata.h"
-#include "BKE_editmesh.h"
-#include "BKE_layer.h"
-#include "BKE_mesh_mapping.h" /* UvElementMap */
-#include "BKE_report.h"
+#include "DEG_depsgraph.hh"
 
-#include "DEG_depsgraph.h"
+#include "ED_mesh.hh"
+#include "ED_screen.hh"
 
-#include "ED_mesh.h"
-#include "ED_screen.h"
-#include "ED_uvedit.h" /* Own include. */
-
-#include "WM_api.h"
+#include "WM_api.hh"
 
 #include "uvedit_clipboard_graph_iso.hh"
-#include "uvedit_intern.h" /* linker, extern "C" */
+#include "uvedit_intern.hh" /* Own include. */
+
+using blender::Vector;
 
 void UV_clipboard_free();
 
@@ -86,7 +86,7 @@ static int iso_index_for_loop(const BMLoop *loop,
                               UvElementMap *element_map,
                               const int island_index)
 {
-  UvElement *element = BM_uv_element_get(element_map, loop->f, loop);
+  UvElement *element = BM_uv_element_get(element_map, loop);
   if (!element) {
     return -1; /* Either unselected, or a different island. */
   }
@@ -254,7 +254,8 @@ bool UV_ClipboardBuffer::find_isomorphism(UvElementMap *dest_element_map,
                            graph[source_island_index],
                            cd_loop_uv_offset,
                            r_label,
-                           r_search_abandoned)) {
+                           r_search_abandoned))
+    {
       const int island_total_unique_uvs =
           dest_element_map->island_total_unique_uvs[dest_island_index];
       const int island_offset = offset[source_island_index];
@@ -279,12 +280,10 @@ static int uv_copy_exec(bContext *C, wmOperator * /*op*/)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Scene *scene = CTX_data_scene(C);
 
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
-      scene, view_layer, ((View3D *)nullptr), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      scene, view_layer, nullptr);
 
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
 
     const bool use_seams = false;
@@ -296,8 +295,6 @@ static int uv_copy_exec(bContext *C, wmOperator * /*op*/)
     }
     BM_uv_element_map_free(element_map);
   }
-
-  MEM_freeN(objects);
 
   /* TODO: Serialize `UvClipboard` to system clipboard. */
 
@@ -313,15 +310,13 @@ static int uv_paste_exec(bContext *C, wmOperator *op)
   ViewLayer *view_layer = CTX_data_view_layer(C);
   Scene *scene = CTX_data_scene(C);
 
-  uint objects_len = 0;
-  Object **objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
-      scene, view_layer, ((View3D *)nullptr), &objects_len);
+  Vector<Object *> objects = BKE_view_layer_array_from_objects_in_edit_mode_unique_data_with_uvs(
+      scene, view_layer, nullptr);
 
   bool changed_multi = false;
   int complicated_search = 0;
   int total_search = 0;
-  for (uint ob_index = 0; ob_index < objects_len; ob_index++) {
-    Object *ob = objects[ob_index];
+  for (Object *ob : objects) {
     BMEditMesh *em = BKE_editmesh_from_object(ob);
 
     const bool use_seams = false;
@@ -370,8 +365,6 @@ static int uv_paste_exec(bContext *C, wmOperator *op)
                 complicated_search,
                 total_search);
   }
-
-  MEM_freeN(objects);
 
   return changed_multi ? OPERATOR_FINISHED : OPERATOR_CANCELLED;
 }

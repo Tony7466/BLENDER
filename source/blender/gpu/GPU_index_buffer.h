@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -70,6 +71,10 @@ GPUIndexBuf *GPU_indexbuf_build(GPUIndexBufBuilder *);
 void GPU_indexbuf_build_in_place(GPUIndexBufBuilder *, GPUIndexBuf *);
 
 void GPU_indexbuf_bind_as_ssbo(GPUIndexBuf *elem, int binding);
+
+GPUIndexBuf *GPU_indexbuf_build_curves_on_device(GPUPrimType prim_type,
+                                                 uint curves_num,
+                                                 uint verts_per_curve);
 
 /* Upload data to the GPU (if not built on the device) and bind the buffer to its default target.
  */

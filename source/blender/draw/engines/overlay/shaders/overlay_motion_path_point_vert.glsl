@@ -1,3 +1,6 @@
+/* SPDX-FileCopyrightText: 2018-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_view_clipping_lib.glsl)
 #pragma BLENDER_REQUIRE(common_view_lib.glsl)
@@ -9,12 +12,12 @@
 
 void main()
 {
-  gl_Position = drw_view.winmat * (drw_view.viewmat * vec4(pos, 1.0));
+  gl_Position = drw_view.winmat * (drw_view.viewmat * (camera_space_matrix * vec4(pos, 1.0)));
   gl_PointSize = float(pointSize + 2);
 
   int frame = gl_VertexID + cacheStart;
   bool use_custom_color = customColor.x >= 0.0;
-  finalColor = (use_custom_color) ? vec4(customColor, 1.0) : vec4(1.0);
+  finalColor = (use_custom_color) ? vec4(customColor, 1.0) : colorVertex;
 
   /* Bias to reduce z fighting with the path */
   gl_Position.z -= 1e-4;

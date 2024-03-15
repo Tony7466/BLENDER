@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -9,7 +10,7 @@
 #pragma once
 
 #ifdef _MSC_VER
-#  ifdef DEBUG
+#  ifdef _DEBUG
 /* Suppress STL-MSVC debug info warning. */
 #    pragma warning(disable : 4786)
 #  endif

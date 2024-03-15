@@ -1,27 +1,24 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
   .
   ../include
   ../../asset_system
-  ../../blenfont
   ../../blenkernel
-  ../../blenlib
   ../../blenloader
   ../../blentranslation
-  ../../depsgraph
   ../../draw
   ../../functions
   ../../gpu
   ../../imbuf
-  ../../makesdna
   ../../makesrna
   ../../nodes
   ../../python
   ../../render
   ../../windowmanager
   ../../../../intern/ghost
-  ../../../../intern/guardedalloc
   ../../bmesh
   # RNA_prototypes.h
   ${CMAKE_BINARY_DIR}/source/blender/makesrna
@@ -42,6 +39,7 @@ set(SRC
   interface_align.cc
   interface_anim.cc
   interface_button_group.cc
+  interface_button_sections.cc
   interface_context_menu.cc
   interface_context_path.cc
   interface_drag.cc
@@ -64,10 +62,15 @@ set(SRC
   interface_region_search.cc
   interface_region_tooltip.cc
   interface_regions.cc
+  interface_string_search.cc
   interface_style.cc
   interface_template_asset_view.cc
   interface_template_attribute_search.cc
+  interface_template_bone_collection_tree.cc
+  interface_template_light_linking.cc
   interface_template_list.cc
+  interface_template_node_inputs.cc
+  interface_template_node_tree_interface.cc
   interface_template_search_menu.cc
   interface_template_search_operator.cc
   interface_templates.cc
@@ -89,12 +92,19 @@ set(SRC
   eyedroppers/eyedropper_intern.hh
   interface_intern.hh
   interface_regions_intern.hh
+  view2d_intern.hh
 )
 
 set(LIB
+  PRIVATE bf::blenfont
   bf_blenkernel
-  bf_blenlib
+  PRIVATE bf::blenlib
+  PRIVATE bf::depsgraph
+  PRIVATE bf::dna
   bf_editor_datafiles
+  PRIVATE bf::extern::fmtlib
+  PRIVATE bf::intern::guardedalloc
+  PRIVATE bf::animrig
 )
 
 if(WITH_INTERNATIONAL)
@@ -109,10 +119,15 @@ if(WITH_PYTHON)
   add_definitions(-DWITH_PYTHON)
 endif()
 
-if(WIN32 OR APPLE)
-  if(WITH_INPUT_IME)
-    add_definitions(-DWITH_INPUT_IME)
-  endif()
+if(WITH_INPUT_IME)
+  add_definitions(-DWITH_INPUT_IME)
+endif()
+
+if(WITH_EXPERIMENTAL_FEATURES)
+  add_definitions(-DWITH_GREASE_PENCIL_V3)
+  list(APPEND SRC
+    interface_template_grease_pencil_layer_tree.cc
+  )
 endif()
 
 

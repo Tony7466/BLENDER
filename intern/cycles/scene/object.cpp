@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/object.h"
 #include "device/device.h"
@@ -100,6 +101,10 @@ NODE_DEFINE(Object)
   SOCKET_FLOAT(ao_distance, "AO Distance", 0.0f);
 
   SOCKET_STRING(lightgroup, "Light Group", ustring());
+  SOCKET_UINT(receiver_light_set, "Light Set Index", 0);
+  SOCKET_UINT64(light_set_membership, "Light Set Membership", LIGHT_LINK_MASK_ALL);
+  SOCKET_UINT(blocker_shadow_set, "Shadow Set Index", 0);
+  SOCKET_UINT64(shadow_set_membership, "Shadow Set Membership", LIGHT_LINK_MASK_ALL);
 
   return type;
 }
@@ -183,15 +188,17 @@ void Object::compute_bounds(bool motion_blur)
 
 void Object::apply_transform(bool apply_to_motion)
 {
-  if (!geometry || tfm == transform_identity())
+  if (!geometry || tfm == transform_identity()) {
     return;
+  }
 
   geometry->apply_transform(tfm, apply_to_motion);
 
   /* we keep normals pointing in same direction on negative scale, notify
    * geometry about this in it (re)calculates normals */
-  if (transform_negative_scale(tfm))
+  if (transform_negative_scale(tfm)) {
     geometry->transform_negative_scaled = true;
+  }
 
   if (bounds.valid()) {
     geometry->compute_bounds();
@@ -230,8 +237,9 @@ void Object::tag_update(Scene *scene)
 
     foreach (Node *node, geometry->get_used_shaders()) {
       Shader *shader = static_cast<Shader *>(node);
-      if (shader->emission_sampling != EMISSION_SAMPLING_NONE)
+      if (shader->emission_sampling != EMISSION_SAMPLING_NONE) {
         scene->light_manager->tag_update(scene, LightManager::EMISSIVE_MESH_MODIFIED);
+      }
     }
   }
 
@@ -296,7 +304,8 @@ float Object::compute_volume_step_size() const
     Shader *shader = static_cast<Shader *>(node);
     if (shader->has_volume) {
       if ((shader->get_heterogeneous_volume() && shader->has_volume_spatial_varying) ||
-          (shader->has_volume_attribute_dependency)) {
+          (shader->has_volume_attribute_dependency))
+      {
         step_rate = fminf(shader->get_volume_step_rate(), step_rate);
       }
     }
@@ -381,7 +390,9 @@ bool Object::usable_as_light() const
     return false;
   }
   /* Skip if we are not visible for BSDFs. */
-  if (!(get_visibility() & (PATH_RAY_DIFFUSE | PATH_RAY_GLOSSY | PATH_RAY_TRANSMIT))) {
+  if (!(get_visibility() &
+        (PATH_RAY_DIFFUSE | PATH_RAY_GLOSSY | PATH_RAY_TRANSMIT | PATH_RAY_VOLUME_SCATTER)))
+  {
     return false;
   }
   /* Skip if we have no emission shaders. */
@@ -395,6 +406,32 @@ bool Object::usable_as_light() const
       return true;
     }
   }
+  return false;
+}
+
+bool Object::has_light_linking() const
+{
+  if (get_receiver_light_set()) {
+    return true;
+  }
+
+  if (get_light_set_membership() != LIGHT_LINK_MASK_ALL) {
+    return true;
+  }
+
+  return false;
+}
+
+bool Object::has_shadow_linking() const
+{
+  if (get_blocker_shadow_set()) {
+    return true;
+  }
+
+  if (get_shadow_set_membership() != LIGHT_LINK_MASK_ALL) {
+    return true;
+  }
+
   return false;
 }
 
@@ -455,6 +492,14 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.particle_index = particle_index;
   kobject.motion_offset = 0;
   kobject.ao_distance = ob->ao_distance;
+  kobject.receiver_light_set = ob->receiver_light_set >= LIGHT_LINK_SET_MAX ?
+                                   0 :
+                                   ob->receiver_light_set;
+  kobject.light_set_membership = ob->light_set_membership;
+  kobject.blocker_shadow_set = ob->blocker_shadow_set >= LIGHT_LINK_SET_MAX ?
+                                   0 :
+                                   ob->blocker_shadow_set;
+  kobject.shadow_set_membership = ob->shadow_set_membership;
 
   if (geom->get_use_motion_blur()) {
     state->have_motion = true;
@@ -473,8 +518,8 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   }
   else if (geom->is_volume()) {
     Volume *volume = static_cast<Volume *>(geom);
-    if (volume->attributes.find(ATTR_STD_VOLUME_VELOCITY) &&
-        volume->get_velocity_scale() != 0.0f) {
+    if (volume->attributes.find(ATTR_STD_VOLUME_VELOCITY) && volume->get_velocity_scale() != 0.0f)
+    {
       flag |= SD_OBJECT_HAS_VOLUME_MOTION;
       kobject.velocity_scale = volume->get_velocity_scale();
     }
@@ -526,11 +571,6 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.dupli_generated[0] = ob->dupli_generated[0];
   kobject.dupli_generated[1] = ob->dupli_generated[1];
   kobject.dupli_generated[2] = ob->dupli_generated[2];
-  kobject.numkeys = (geom->geometry_type == Geometry::HAIR) ?
-                        static_cast<Hair *>(geom)->get_curve_keys().size() :
-                    (geom->geometry_type == Geometry::POINTCLOUD) ?
-                        static_cast<PointCloud *>(geom)->num_points() :
-                        0;
   kobject.dupli_uv[0] = ob->dupli_uv[0];
   kobject.dupli_uv[1] = ob->dupli_uv[1];
   int totalsteps = geom->get_motion_steps();
@@ -538,6 +578,10 @@ void ObjectManager::device_update_object_transform(UpdateObjectTransformState *s
   kobject.numverts = (geom->geometry_type == Geometry::MESH ||
                       geom->geometry_type == Geometry::VOLUME) ?
                          static_cast<Mesh *>(geom)->get_verts().size() :
+                     (geom->geometry_type == Geometry::HAIR) ?
+                         static_cast<Hair *>(geom)->get_curve_keys().size() :
+                     (geom->geometry_type == Geometry::POINTCLOUD) ?
+                         static_cast<PointCloud *>(geom)->num_points() :
                          0;
   kobject.patch_map_offset = 0;
   kobject.attribute_map_offset = 0;
@@ -598,7 +642,8 @@ void ObjectManager::device_update_prim_offsets(Device *device, DeviceScene *dsce
     BVHLayoutMask layout_mask = device->get_bvh_layout_mask(dscene->data.kernel_features);
     if (layout_mask != BVH_LAYOUT_METAL && layout_mask != BVH_LAYOUT_MULTI_METAL &&
         layout_mask != BVH_LAYOUT_MULTI_METAL_EMBREE && layout_mask != BVH_LAYOUT_HIPRT &&
-        layout_mask != BVH_LAYOUT_MULTI_HIPRT && layout_mask != BVH_LAYOUT_MULTI_HIPRT_EMBREE) {
+        layout_mask != BVH_LAYOUT_MULTI_HIPRT && layout_mask != BVH_LAYOUT_MULTI_HIPRT_EMBREE)
+    {
       return;
     }
   }
@@ -712,8 +757,9 @@ void ObjectManager::device_update(Device *device,
                                   Scene *scene,
                                   Progress &progress)
 {
-  if (!need_update())
+  if (!need_update()) {
     return;
+  }
 
   if (update_flags & (OBJECT_ADDED | OBJECT_REMOVED)) {
     dscene->objects.tag_realloc();
@@ -735,8 +781,9 @@ void ObjectManager::device_update(Device *device,
 
   device_free(device, dscene, false);
 
-  if (scene->objects.size() == 0)
+  if (scene->objects.size() == 0) {
     return;
+  }
 
   {
     /* Assign object IDs. */
@@ -775,8 +822,9 @@ void ObjectManager::device_update(Device *device,
     device_update_transforms(dscene, scene, progress);
   }
 
-  if (progress.get_cancel())
+  if (progress.get_cancel()) {
     return;
+  }
 
   /* prepare for static BVH building */
   /* todo: do before to support getting object level coords? */
@@ -800,8 +848,9 @@ void ObjectManager::device_update(Device *device,
 void ObjectManager::device_update_flags(
     Device *, DeviceScene *dscene, Scene *scene, Progress & /*progress*/, bool bounds_valid)
 {
-  if (!need_update() && !need_flags_update)
+  if (!need_update() && !need_flags_update) {
     return;
+  }
 
   scoped_callback_timer timer([scene](double time) {
     if (scene->update_stats) {
@@ -812,8 +861,9 @@ void ObjectManager::device_update_flags(
   update_flags = UPDATE_NONE;
   need_flags_update = false;
 
-  if (scene->objects.size() == 0)
+  if (scene->objects.size() == 0) {
     return;
+  }
 
   /* Object info flag. */
   uint *object_flag = dscene->object_flag.data();
@@ -956,14 +1006,17 @@ void ObjectManager::apply_static_transforms(DeviceScene *dscene, Scene *scene, P
   foreach (Object *object, scene->objects) {
     map<Geometry *, int>::iterator it = geometry_users.find(object->geometry);
 
-    if (it == geometry_users.end())
+    if (it == geometry_users.end()) {
       geometry_users[object->geometry] = 1;
-    else
+    }
+    else {
       it->second++;
+    }
   }
 
-  if (progress.get_cancel())
+  if (progress.get_cancel()) {
     return;
+  }
 
   uint *object_flag = dscene->object_flag.data();
 
@@ -995,8 +1048,9 @@ void ObjectManager::apply_static_transforms(DeviceScene *dscene, Scene *scene, P
           object->apply_transform(apply_to_motion);
           geom->transform_applied = true;
 
-          if (progress.get_cancel())
+          if (progress.get_cancel()) {
             return;
+          }
         }
 
         object_flag[i] |= SD_OBJECT_TRANSFORM_APPLIED;

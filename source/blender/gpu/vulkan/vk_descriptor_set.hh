@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -25,6 +26,7 @@ class VKTexture;
 class VKUniformBuffer;
 class VKVertexBuffer;
 class VKDescriptorSetTracker;
+class VKSampler;
 
 /**
  * In vulkan shader resources (images and buffers) are grouped in descriptor sets.
@@ -82,15 +84,18 @@ class VKDescriptorSet : NonCopyable {
   VKDescriptorSet(VkDescriptorPool vk_descriptor_pool, VkDescriptorSet vk_descriptor_set)
       : vk_descriptor_pool_(vk_descriptor_pool), vk_descriptor_set_(vk_descriptor_set)
   {
+    BLI_assert(vk_descriptor_set_ != VK_NULL_HANDLE);
   }
   VKDescriptorSet(VKDescriptorSet &&other);
   virtual ~VKDescriptorSet();
 
   VKDescriptorSet &operator=(VKDescriptorSet &&other)
   {
+    BLI_assert(other.vk_descriptor_set_ != VK_NULL_HANDLE);
     vk_descriptor_set_ = other.vk_descriptor_set_;
     vk_descriptor_pool_ = other.vk_descriptor_pool_;
-    other.mark_freed();
+    other.vk_descriptor_set_ = VK_NULL_HANDLE;
+    other.vk_descriptor_pool_ = VK_NULL_HANDLE;
     return *this;
   }
 
@@ -103,7 +108,6 @@ class VKDescriptorSet : NonCopyable {
   {
     return vk_descriptor_pool_;
   }
-  void mark_freed();
 };
 
 class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
@@ -117,7 +121,10 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
     VkBuffer vk_buffer = VK_NULL_HANDLE;
     VkDeviceSize buffer_size = 0;
 
-    VkImageView vk_image_view = VK_NULL_HANDLE;
+    VkBufferView vk_buffer_view = VK_NULL_HANDLE;
+
+    VKTexture *texture = nullptr;
+    VkSampler vk_sampler = VK_NULL_HANDLE;
 
     Binding()
     {
@@ -129,43 +136,64 @@ class VKDescriptorSetTracker : protected VKResourceTracker<VKDescriptorSet> {
       return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     }
 
+    bool is_texel_buffer() const
+    {
+      return ELEM(type, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+    }
+
     bool is_image() const
     {
-      return ELEM(type, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+      return ELEM(type,
+                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
+             texture != nullptr;
     }
+
+    void debug_print() const;
   };
 
  private:
   /** A list of bindings that needs to be updated. */
   Vector<Binding> bindings_;
-  VkDescriptorSetLayout layout_;
+
+  VkDescriptorSetLayout active_vk_descriptor_set_layout = VK_NULL_HANDLE;
 
  public:
   VKDescriptorSetTracker() {}
 
-  VKDescriptorSetTracker(VkDescriptorSetLayout layout) : layout_(layout) {}
-
   void bind_as_ssbo(VKVertexBuffer &buffer, VKDescriptorSet::Location location);
   void bind_as_ssbo(VKIndexBuffer &buffer, VKDescriptorSet::Location location);
+  void bind_as_ssbo(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKStorageBuffer &buffer, VKDescriptorSet::Location location);
   void bind(VKUniformBuffer &buffer, VKDescriptorSet::Location location);
+  /* TODO: bind as image */
   void image_bind(VKTexture &texture, VKDescriptorSet::Location location);
-
-  /**
-   * Update the descriptor set on the device.
-   */
-  void update(VKContext &context);
+  void bind(VKTexture &texture, VKDescriptorSet::Location location, const VKSampler &sampler);
+  /* Bind as uniform texel buffer. */
+  void bind(VKVertexBuffer &vertex_buffer, VKDescriptorSet::Location location);
 
   std::unique_ptr<VKDescriptorSet> &active_descriptor_set()
   {
     return active_resource();
   }
 
+  /* Update and bind active descriptor set to pipeline. */
+  void bind(VKContext &context,
+            VkPipelineLayout vk_pipeline_layout,
+            VkPipelineBindPoint vk_pipeline_bind_point);
+
+  void debug_print() const;
+
  protected:
   std::unique_ptr<VKDescriptorSet> create_resource(VKContext &context) override;
 
  private:
   Binding &ensure_location(VKDescriptorSet::Location location);
+
+  /**
+   * Update the descriptor set on the device.
+   */
+  void update(VKContext &context);
 };
 
 }  // namespace blender::gpu

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -48,12 +50,9 @@
  *   memory usage of the map.
  * - The method names don't follow the std::unordered_map names in many cases. Searching for such
  *   names in this file will usually let you discover the new name.
- * - There is a StdUnorderedMapWrapper class, that wraps std::unordered_map and gives it the same
- *   interface as blender::Map. This is useful for benchmarking.
  */
 
 #include <optional>
-#include <unordered_map>
 
 #include "BLI_array.hh"
 #include "BLI_hash.hh"
@@ -916,7 +915,7 @@ class Map {
   /**
    * Print common statistics like size and collision count. This is useful for debugging purposes.
    */
-  void print_stats(StringRef name = "") const
+  void print_stats(const char *name) const
   {
     HashTableStats stats(*this, this->keys());
     stats.print(name);
@@ -1016,6 +1015,33 @@ class Map {
     return this->count_collisions__impl(key, hash_(key));
   }
 
+  /**
+   * True if both maps have the same key-value-pairs.
+   */
+  friend bool operator==(const Map &a, const Map &b)
+  {
+    if (a.size() != b.size()) {
+      return false;
+    }
+    for (const Item item : a.items()) {
+      const Key &key = item.key;
+      const Value &value_a = item.value;
+      const Value *value_b = b.lookup_ptr(key);
+      if (value_b == nullptr) {
+        return false;
+      }
+      if (value_a != *value_b) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  friend bool operator!=(const Map &a, const Map &b)
+  {
+    return !(a == b);
+  }
+
  private:
   BLI_NOINLINE void realloc_and_reinsert(int64_t min_usable_slots)
   {
@@ -1095,6 +1121,7 @@ class Map {
     MAP_SLOT_PROBING_BEGIN (hash, slot) {
       if (slot.is_empty()) {
         slot.occupy(std::forward<ForwardKey>(key), hash, std::forward<ForwardValue>(value)...);
+        BLI_assert(hash_(*slot.key()) == hash);
         occupied_and_removed_slots_++;
         return;
       }
@@ -1110,6 +1137,7 @@ class Map {
     MAP_SLOT_PROBING_BEGIN (hash, slot) {
       if (slot.is_empty()) {
         slot.occupy(std::forward<ForwardKey>(key), hash, std::forward<ForwardValue>(value)...);
+        BLI_assert(hash_(*slot.key()) == hash);
         occupied_and_removed_slots_++;
         return true;
       }
@@ -1165,6 +1193,7 @@ class Map {
     MAP_SLOT_PROBING_BEGIN (hash, slot) {
       if (slot.is_empty()) {
         slot.occupy(std::forward<ForwardKey>(key), hash, create_value());
+        BLI_assert(hash_(*slot.key()) == hash);
         occupied_and_removed_slots_++;
         return *slot.value();
       }
@@ -1183,6 +1212,7 @@ class Map {
     MAP_SLOT_PROBING_BEGIN (hash, slot) {
       if (slot.is_empty()) {
         slot.occupy(std::forward<ForwardKey>(key), hash, std::forward<ForwardValue>(value)...);
+        BLI_assert(hash_(*slot.key()) == hash);
         occupied_and_removed_slots_++;
         return *slot.value();
       }
@@ -1284,72 +1314,5 @@ template<typename Key,
          typename Slot = typename DefaultMapSlot<Key, Value>::type>
 using RawMap =
     Map<Key, Value, InlineBufferCapacity, ProbingStrategy, Hash, IsEqual, Slot, RawAllocator>;
-
-/**
- * A wrapper for std::unordered_map with the API of blender::Map. This can be used for
- * benchmarking.
- */
-template<typename Key, typename Value> class StdUnorderedMapWrapper {
- private:
-  using MapType = std::unordered_map<Key, Value, blender::DefaultHash<Key>>;
-  MapType map_;
-
- public:
-  int64_t size() const
-  {
-    return int64_t(map_.size());
-  }
-
-  bool is_empty() const
-  {
-    return map_.empty();
-  }
-
-  void reserve(int64_t n)
-  {
-    map_.reserve(n);
-  }
-
-  template<typename ForwardKey, typename... ForwardValue>
-  void add_new(ForwardKey &&key, ForwardValue &&...value)
-  {
-    map_.insert({std::forward<ForwardKey>(key), Value(std::forward<ForwardValue>(value)...)});
-  }
-
-  template<typename ForwardKey, typename... ForwardValue>
-  bool add(ForwardKey &&key, ForwardValue &&...value)
-  {
-    return map_
-        .insert({std::forward<ForwardKey>(key), Value(std::forward<ForwardValue>(value)...)})
-        .second;
-  }
-
-  bool contains(const Key &key) const
-  {
-    return map_.find(key) != map_.end();
-  }
-
-  bool remove(const Key &key)
-  {
-    return bool(map_.erase(key));
-  }
-
-  Value &lookup(const Key &key)
-  {
-    return map_.find(key)->second;
-  }
-
-  const Value &lookup(const Key &key) const
-  {
-    return map_.find(key)->second;
-  }
-
-  void clear()
-  {
-    map_.clear();
-  }
-
-  void print_stats(StringRef /*name*/ = "") const {}
-};
 
 }  // namespace blender

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 set(INC
@@ -16,7 +18,7 @@ set(SRC
 set(LIB
 )
 
-# Order matches `UI_icons.h`, final name will be formatted: `icons{size}_{name}.dat`.
+# Order matches `UI_icons.hh`, final name will be formatted: `icons{size}_{name}.dat`.
 set(ICON_NAMES
   question
   error
@@ -108,6 +110,8 @@ set(ICON_NAMES
   speaker
   tool_settings
   shaderfx
+  record_off
+  record_on
   fake_user_off
   fake_user_on
   view3d
@@ -317,9 +321,6 @@ set(ICON_NAMES
   curve_ncurve
   curve_ncircle
   curve_path
-  lightprobe_cubemap
-  lightprobe_planar
-  lightprobe_grid
   mod_dash
   color_red
   color_green
@@ -343,6 +344,10 @@ set(ICON_NAMES
   force_fluidflow
   rigid_body
   rigid_body_constraint
+  area_join
+  area_swap
+  split_horizontal
+  split_vertical
   image_plane
   image_background
   image_reference
@@ -508,6 +513,8 @@ set(ICON_NAMES
   ipo_ease_out
   ipo_ease_in_out
   normalize_fcurves
+  orientation_parent
+  face_corner
   vertexsel
   edgesel
   facesel
@@ -605,6 +612,8 @@ set(ICON_NAMES
   outliner_ob_volume
   outliner_data_volume
   volume_data
+  pointcloud_point
+  internet
   current_file
   home
   documents
@@ -688,6 +697,9 @@ set(ICON_NAMES
   handle_aligned
   handle_vector
   handle_free
+  view_camera_unselected
+  view_unlocked
+  view_locked
   view_perspective
   view_ortho
   view_camera
@@ -844,7 +856,6 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.mesh.rip
   ops.mesh.rip_edge
   ops.mesh.spin
-  ops.mesh.spin.duplicate
   ops.mesh.vertices_smooth
   ops.node.links_cut
   ops.paint.eyedropper_add
@@ -864,6 +875,7 @@ set_property(GLOBAL PROPERTY ICON_GEOM_NAMES
   ops.sculpt.color_filter
   ops.sculpt.face_set_edit
   ops.sculpt.lasso_face_set
+  ops.sculpt.lasso_hide
   ops.sculpt.lasso_mask
   ops.sculpt.lasso_trim
   ops.sculpt.line_mask
@@ -902,6 +914,7 @@ if(WITH_BLENDER)
     # Blend files.
     data_to_c_simple(../../../../release/datafiles/preview.blend SRC)
     data_to_c_simple(../../../../release/datafiles/preview_grease_pencil.blend SRC)
+    data_to_c_simple(../../../../release/datafiles/preview_grease_pencil_legacy.blend SRC)
 
     # Images.
     data_to_c_simple(../../../../release/datafiles/splash.png SRC)

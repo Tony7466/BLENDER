@@ -1,9 +1,18 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
+#include "COM_bokeh_kernel.hh"
+#include "COM_cached_image.hh"
+#include "COM_cached_mask.hh"
+#include "COM_cached_shader.hh"
 #include "COM_cached_texture.hh"
+#include "COM_distortion_grid.hh"
+#include "COM_keying_screen.hh"
 #include "COM_morphological_distance_feather_weights.hh"
+#include "COM_ocio_color_space_conversion_shader.hh"
 #include "COM_smaa_precomputed_textures.hh"
 #include "COM_symmetric_blur_weights.hh"
 #include "COM_symmetric_separable_blur_weights.hh"
@@ -37,8 +46,15 @@ class StaticCacheManager {
   SymmetricBlurWeightsContainer symmetric_blur_weights;
   SymmetricSeparableBlurWeightsContainer symmetric_separable_blur_weights;
   MorphologicalDistanceFeatherWeightsContainer morphological_distance_feather_weights;
-  SMAAPrecomputedTexturesContainer smaa_precomputed_textures;
   CachedTextureContainer cached_textures;
+  CachedMaskContainer cached_masks;
+  SMAAPrecomputedTexturesContainer smaa_precomputed_textures;
+  OCIOColorSpaceConversionShaderContainer ocio_color_space_conversion_shaders;
+  DistortionGridContainer distortion_grids;
+  KeyingScreenContainer keying_screens;
+  CachedShaderContainer cached_shaders;
+  BokehKernelContainer bokeh_kernels;
+  CachedImageContainer cached_images;
 
   /* Reset the cache manager by deleting the cached resources that are no longer needed because
    * they weren't used in the last evaluation and prepare the remaining cached resources to track

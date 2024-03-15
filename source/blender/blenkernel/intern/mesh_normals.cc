@@ -1,40 +1,37 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
  *
  * Mesh normal calculation functions.
  *
- * \see bmesh_mesh_normals.c for the equivalent #BMesh functionality.
+ * \see `bmesh_mesh_normals.cc` for the equivalent #BMesh functionality.
  */
 
 #include <climits>
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
+#include "BLI_math_geom.h"
+#include "BLI_math_vector.h"
 
 #include "BLI_array_utils.hh"
 #include "BLI_bit_vector.hh"
 #include "BLI_linklist.h"
-#include "BLI_math.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_vector.hh"
 #include "BLI_memarena.h"
 #include "BLI_span.hh"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_attribute.hh"
-#include "BKE_customdata.h"
-#include "BKE_editmesh_cache.h"
-#include "BKE_global.h"
+#include "BKE_customdata.hh"
+#include "BKE_global.hh"
 #include "BKE_mesh.hh"
-#include "BKE_mesh_mapping.h"
-
-#include "atomic_ops.h"
+#include "BKE_mesh_mapping.hh"
 
 // #define DEBUG_TIME
 
@@ -43,147 +40,100 @@
 #endif
 
 /* -------------------------------------------------------------------- */
-/** \name Private Utility Functions
- * \{ */
-
-/**
- * A thread-safe version of #add_v3_v3 that uses a spin-lock.
- *
- * \note Avoid using this when the chance of contention is high.
- */
-static void add_v3_v3_atomic(float r[3], const float a[3])
-{
-#define FLT_EQ_NONAN(_fa, _fb) (*((const uint32_t *)&_fa) == *((const uint32_t *)&_fb))
-
-  float virtual_lock = r[0];
-  while (true) {
-    /* This loops until following conditions are met:
-     * - `r[0]` has same value as virtual_lock (i.e. it did not change since last try).
-     * - `r[0]` was not `FLT_MAX`, i.e. it was not locked by another thread. */
-    const float test_lock = atomic_cas_float(&r[0], virtual_lock, FLT_MAX);
-    if (_ATOMIC_LIKELY(FLT_EQ_NONAN(test_lock, virtual_lock) && (test_lock != FLT_MAX))) {
-      break;
-    }
-    virtual_lock = test_lock;
-  }
-  virtual_lock += a[0];
-  r[1] += a[1];
-  r[2] += a[2];
-
-  /* Second atomic operation to 'release'
-   * our lock on that vector and set its first scalar value. */
-  /* Note that we do not need to loop here, since we 'locked' `r[0]`,
-   * nobody should have changed it in the mean time. */
-  virtual_lock = atomic_cas_float(&r[0], FLT_MAX, virtual_lock);
-  BLI_assert(virtual_lock == FLT_MAX);
-
-#undef FLT_EQ_NONAN
-}
-
-/** \} */
-
-/* -------------------------------------------------------------------- */
 /** \name Public Utility Functions
  *
  * Related to managing normals but not directly related to calculating normals.
  * \{ */
 
-float (*BKE_mesh_vert_normals_for_write(Mesh *mesh))[3]
+namespace blender::bke {
+
+void mesh_vert_normals_assign(Mesh &mesh, Span<float3> vert_normals)
 {
-  mesh->runtime->vert_normals.reinitialize(mesh->totvert);
-  return reinterpret_cast<float(*)[3]>(mesh->runtime->vert_normals.data());
+  mesh.runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) { r_data = vert_normals; });
 }
 
-void BKE_mesh_vert_normals_clear_dirty(Mesh *mesh)
+void mesh_vert_normals_assign(Mesh &mesh, Vector<float3> vert_normals)
 {
-  mesh->runtime->vert_normals_dirty = false;
-  BLI_assert(mesh->runtime->vert_normals.size() == mesh->totvert);
+  mesh.runtime->vert_normals_cache.ensure(
+      [&](Vector<float3> &r_data) { r_data = std::move(vert_normals); });
 }
+
+}  // namespace blender::bke
 
 bool BKE_mesh_vert_normals_are_dirty(const Mesh *mesh)
 {
-  return mesh->runtime->vert_normals_dirty;
+  return mesh->runtime->vert_normals_cache.is_dirty();
 }
 
-bool BKE_mesh_poly_normals_are_dirty(const Mesh *mesh)
+bool BKE_mesh_face_normals_are_dirty(const Mesh *mesh)
 {
-  return mesh->runtime->poly_normals_dirty;
+  return mesh->runtime->face_normals_cache.is_dirty();
 }
 
 /** \} */
+
+namespace blender::bke::mesh {
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh Normal Calculation (Polygons)
  * \{ */
 
-namespace blender::bke::mesh {
-
 /*
  * COMPUTE POLY NORMAL
  *
  * Computes the normal of a planar
- * polygon See Graphics Gems for
+ * face See Graphics Gems for
  * computing newell normal.
  */
-static float3 normal_calc_ngon(const Span<float3> vert_positions, const Span<int> poly_verts)
+static float3 normal_calc_ngon(const Span<float3> vert_positions, const Span<int> face_verts)
 {
   float3 normal(0);
 
   /* Newell's Method */
-  const float *v_prev = vert_positions[poly_verts.last()];
-  for (const int i : poly_verts.index_range()) {
-    const float *v_curr = vert_positions[poly_verts[i]];
+  const float *v_prev = vert_positions[face_verts.last()];
+  for (const int i : face_verts.index_range()) {
+    const float *v_curr = vert_positions[face_verts[i]];
     add_newell_cross_v3_v3v3(normal, v_prev, v_curr);
     v_prev = v_curr;
   }
 
   if (UNLIKELY(normalize_v3(normal) == 0.0f)) {
-    normal[2] = 1.0f; /* other axis set to 0.0 */
+    /* Other axis are already set to zero. */
+    normal[2] = 1.0f;
   }
 
   return normal;
 }
 
-float3 poly_normal_calc(const Span<float3> vert_positions, const Span<int> poly_verts)
+float3 face_normal_calc(const Span<float3> vert_positions, const Span<int> face_verts)
 {
-  if (poly_verts.size() > 4) {
-    return normal_calc_ngon(vert_positions, poly_verts);
-  }
-  if (poly_verts.size() == 3) {
-    return math::normal_tri(vert_positions[poly_verts[0]],
-                            vert_positions[poly_verts[1]],
-                            vert_positions[poly_verts[2]]);
-  }
-  if (poly_verts.size() == 4) {
-    float3 normal;
+  float3 normal;
+  if (face_verts.size() == 4) {
     normal_quad_v3(normal,
-                   vert_positions[poly_verts[0]],
-                   vert_positions[poly_verts[1]],
-                   vert_positions[poly_verts[2]],
-                   vert_positions[poly_verts[3]]);
-    return normal;
+                   vert_positions[face_verts[0]],
+                   vert_positions[face_verts[1]],
+                   vert_positions[face_verts[2]],
+                   vert_positions[face_verts[3]]);
   }
-  /* horrible, two sided face! */
-  return float3(0);
-}
+  else if (face_verts.size() == 3) {
+    normal = math::normal_tri(vert_positions[face_verts[0]],
+                              vert_positions[face_verts[1]],
+                              vert_positions[face_verts[2]]);
+  }
+  else {
+    BLI_assert(face_verts.size() > 4);
+    normal = normal_calc_ngon(vert_positions, face_verts);
+  }
 
-}  // namespace blender::bke::mesh
+  if (UNLIKELY(math::is_zero(normal))) {
+    normal.z = 1.0f;
+  }
 
-void BKE_mesh_calc_poly_normal(const int *poly_verts,
-                               const int poly_size,
-                               const float (*vert_positions)[3],
-                               const int verts_num,
-                               float r_no[3])
-{
-  copy_v3_v3(r_no,
-             blender::bke::mesh::poly_normal_calc(
-                 {reinterpret_cast<const blender::float3 *>(vert_positions), verts_num},
-                 {poly_verts, poly_size}));
+  BLI_ASSERT_UNIT_V3(normal);
+  return normal;
 }
 
 /** \} */
-
-namespace blender::bke::mesh {
 
 /* -------------------------------------------------------------------- */
 /** \name Mesh Normal Calculation (Polygons & Vertices)
@@ -192,105 +142,48 @@ namespace blender::bke::mesh {
  * meshes can slow down high-poly meshes. For details on performance, see D11993.
  * \{ */
 
-void normals_calc_polys(const Span<float3> positions,
-                        const OffsetIndices<int> polys,
+void normals_calc_faces(const Span<float3> positions,
+                        const OffsetIndices<int> faces,
                         const Span<int> corner_verts,
-                        MutableSpan<float3> poly_normals)
+                        MutableSpan<float3> face_normals)
 {
-  BLI_assert(polys.size() == poly_normals.size());
-  threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
+  BLI_assert(faces.size() == face_normals.size());
+  threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
-      poly_normals[i] = poly_normal_calc(positions, corner_verts.slice(polys[i]));
+      face_normals[i] = normal_calc_ngon(positions, corner_verts.slice(faces[i]));
     }
   });
 }
 
-void normals_calc_poly_vert(const Span<float3> positions,
-                            const OffsetIndices<int> polys,
-                            const Span<int> corner_verts,
-                            MutableSpan<float3> poly_normals,
-                            MutableSpan<float3> vert_normals)
+void normals_calc_verts(const Span<float3> vert_positions,
+                        const OffsetIndices<int> faces,
+                        const Span<int> corner_verts,
+                        const GroupedSpan<int> vert_to_face_map,
+                        const Span<float3> face_normals,
+                        MutableSpan<float3> vert_normals)
 {
-
-  /* Zero the vertex normal array for accumulation. */
-  {
-    memset(vert_normals.data(), 0, vert_normals.as_span().size_in_bytes());
-  }
-
-  /* Compute poly normals, accumulating them into vertex normals. */
-  {
-    threading::parallel_for(polys.index_range(), 1024, [&](const IndexRange range) {
-      for (const int poly_i : range) {
-        const Span<int> poly_verts = corner_verts.slice(polys[poly_i]);
-
-        float3 &pnor = poly_normals[poly_i];
-
-        const int i_end = poly_verts.size() - 1;
-
-        /* Polygon Normal and edge-vector. */
-        /* Inline version of #poly_normal_calc, also does edge-vectors. */
-        {
-          zero_v3(pnor);
-          /* Newell's Method */
-          const float *v_curr = positions[poly_verts[i_end]];
-          for (int i_next = 0; i_next <= i_end; i_next++) {
-            const float *v_next = positions[poly_verts[i_next]];
-            add_newell_cross_v3_v3v3(pnor, v_curr, v_next);
-            v_curr = v_next;
-          }
-          if (UNLIKELY(normalize_v3(pnor) == 0.0f)) {
-            pnor[2] = 1.0f; /* Other axes set to zero. */
-          }
-        }
-
-        /* Accumulate angle weighted face normal into the vertex normal. */
-        /* Inline version of #accumulate_vertex_normals_poly_v3. */
-        {
-          float edvec_prev[3], edvec_next[3], edvec_end[3];
-          const float *v_curr = positions[poly_verts[i_end]];
-          sub_v3_v3v3(edvec_prev, positions[poly_verts[i_end - 1]], v_curr);
-          normalize_v3(edvec_prev);
-          copy_v3_v3(edvec_end, edvec_prev);
-
-          for (int i_next = 0, i_curr = i_end; i_next <= i_end; i_curr = i_next++) {
-            const float *v_next = positions[poly_verts[i_next]];
-
-            /* Skip an extra normalization by reusing the first calculated edge. */
-            if (i_next != i_end) {
-              sub_v3_v3v3(edvec_next, v_curr, v_next);
-              normalize_v3(edvec_next);
-            }
-            else {
-              copy_v3_v3(edvec_next, edvec_end);
-            }
-
-            /* Calculate angle between the two poly edges incident on this vertex. */
-            const float fac = saacos(-dot_v3v3(edvec_prev, edvec_next));
-            const float vnor_add[3] = {pnor[0] * fac, pnor[1] * fac, pnor[2] * fac};
-
-            float *vnor = vert_normals[poly_verts[i_curr]];
-            add_v3_v3_atomic(vnor, vnor_add);
-            v_curr = v_next;
-            copy_v3_v3(edvec_prev, edvec_next);
-          }
-        }
+  const Span<float3> positions = vert_positions;
+  threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
+    for (const int vert : range) {
+      const Span<int> vert_faces = vert_to_face_map[vert];
+      if (vert_faces.is_empty()) {
+        vert_normals[vert] = math::normalize(positions[vert]);
+        continue;
       }
-    });
-  }
 
-  /* Normalize and validate computed vertex normals. */
-  {
-    threading::parallel_for(positions.index_range(), 1024, [&](const IndexRange range) {
-      for (const int vert_i : range) {
-        float *no = vert_normals[vert_i];
+      float3 vert_normal(0);
+      for (const int face : vert_faces) {
+        const int2 adjacent_verts = face_find_adjacent_verts(faces[face], corner_verts, vert);
+        const float3 dir_prev = math::normalize(positions[adjacent_verts[0]] - positions[vert]);
+        const float3 dir_next = math::normalize(positions[adjacent_verts[1]] - positions[vert]);
+        const float factor = math::safe_acos_approx(math::dot(dir_prev, dir_next));
 
-        if (UNLIKELY(normalize_v3(no) == 0.0f)) {
-          /* Following Mesh convention; we use vertex coordinate itself for normal in this case. */
-          normalize_v3_v3(no, positions[vert_i]);
-        }
+        vert_normal += face_normals[face] * factor;
       }
-    });
-  }
+
+      vert_normals[vert] = math::normalize(vert_normal);
+    }
+  });
 }
 
 /** \} */
@@ -301,95 +194,120 @@ void normals_calc_poly_vert(const Span<float3> positions,
 /** \name Mesh Normal Calculation
  * \{ */
 
+blender::bke::MeshNormalDomain Mesh::normals_domain(const bool support_sharp_face) const
+{
+  using namespace blender;
+  using namespace blender::bke;
+  if (this->faces_num == 0) {
+    return MeshNormalDomain::Point;
+  }
+
+  if (CustomData_has_layer(&this->corner_data, CD_CUSTOMLOOPNORMAL)) {
+    return MeshNormalDomain::Corner;
+  }
+
+  const AttributeAccessor attributes = this->attributes();
+  const VArray<bool> sharp_faces = *attributes.lookup_or_default<bool>(
+      "sharp_face", AttrDomain::Face, false);
+
+  const array_utils::BooleanMix face_mix = array_utils::booleans_mix_calc(sharp_faces);
+  if (face_mix == array_utils::BooleanMix::AllTrue) {
+    return MeshNormalDomain::Face;
+  }
+
+  const VArray<bool> sharp_edges = *attributes.lookup_or_default<bool>(
+      "sharp_edge", AttrDomain::Edge, false);
+  const array_utils::BooleanMix edge_mix = array_utils::booleans_mix_calc(sharp_edges);
+  if (edge_mix == array_utils::BooleanMix::AllTrue) {
+    return MeshNormalDomain::Face;
+  }
+
+  if (edge_mix == array_utils::BooleanMix::AllFalse &&
+      (face_mix == array_utils::BooleanMix::AllFalse || support_sharp_face))
+  {
+    return MeshNormalDomain::Point;
+  }
+
+  return MeshNormalDomain::Corner;
+}
+
 blender::Span<blender::float3> Mesh::vert_normals() const
 {
   using namespace blender;
-  if (!this->runtime->vert_normals_dirty) {
-    BLI_assert(this->runtime->vert_normals.size() == this->totvert);
-    return this->runtime->vert_normals;
+  using namespace blender::bke;
+  if (this->runtime->vert_normals_cache.is_cached()) {
+    return this->runtime->vert_normals_cache.data();
   }
-
-  std::lock_guard lock{this->runtime->normals_mutex};
-  if (!this->runtime->vert_normals_dirty) {
-    BLI_assert(this->runtime->vert_normals.size() == this->totvert);
-    return this->runtime->vert_normals;
-  }
-
-  /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
-  threading::isolate_task([&]() {
-    const Span<float3> positions = this->vert_positions();
-    const OffsetIndices polys = this->polys();
-    const Span<int> corner_verts = this->corner_verts();
-
-    this->runtime->vert_normals.reinitialize(positions.size());
-    this->runtime->poly_normals.reinitialize(polys.size());
-    bke::mesh::normals_calc_poly_vert(
-        positions, polys, corner_verts, this->runtime->poly_normals, this->runtime->vert_normals);
-
-    this->runtime->vert_normals_dirty = false;
-    this->runtime->poly_normals_dirty = false;
+  const Span<float3> positions = this->vert_positions();
+  const OffsetIndices faces = this->faces();
+  const Span<int> corner_verts = this->corner_verts();
+  const Span<float3> face_normals = this->face_normals();
+  const GroupedSpan<int> vert_to_face = this->vert_to_face_map();
+  this->runtime->vert_normals_cache.ensure([&](Vector<float3> &r_data) {
+    r_data.reinitialize(positions.size());
+    mesh::normals_calc_verts(positions, faces, corner_verts, vert_to_face, face_normals, r_data);
   });
-
-  return this->runtime->vert_normals;
+  return this->runtime->vert_normals_cache.data();
 }
 
-blender::Span<blender::float3> Mesh::poly_normals() const
+blender::Span<blender::float3> Mesh::face_normals() const
 {
   using namespace blender;
-  if (!this->runtime->poly_normals_dirty) {
-    BLI_assert(this->runtime->poly_normals.size() == this->totpoly);
-    return this->runtime->poly_normals;
-  }
-
-  std::lock_guard lock{this->runtime->normals_mutex};
-  if (!this->runtime->poly_normals_dirty) {
-    BLI_assert(this->runtime->poly_normals.size() == this->totpoly);
-    return this->runtime->poly_normals;
-  }
-
-  /* Isolate task because a mutex is locked and computing normals is multi-threaded. */
-  threading::isolate_task([&]() {
+  this->runtime->face_normals_cache.ensure([&](Vector<float3> &r_data) {
     const Span<float3> positions = this->vert_positions();
-    const OffsetIndices polys = this->polys();
+    const OffsetIndices faces = this->faces();
     const Span<int> corner_verts = this->corner_verts();
-
-    this->runtime->poly_normals.reinitialize(polys.size());
-    bke::mesh::normals_calc_polys(positions, polys, corner_verts, this->runtime->poly_normals);
-
-    this->runtime->poly_normals_dirty = false;
+    r_data.reinitialize(faces.size());
+    bke::mesh::normals_calc_faces(positions, faces, corner_verts, r_data);
   });
-
-  return this->runtime->poly_normals;
+  return this->runtime->face_normals_cache.data();
 }
 
-const float (*BKE_mesh_vert_normals_ensure(const Mesh *mesh))[3]
+blender::Span<blender::float3> Mesh::corner_normals() const
 {
-  return reinterpret_cast<const float(*)[3]>(mesh->vert_normals().data());
-}
-
-const float (*BKE_mesh_poly_normals_ensure(const Mesh *mesh))[3]
-{
-  return reinterpret_cast<const float(*)[3]>(mesh->vert_normals().data());
-}
-
-void BKE_mesh_ensure_normals_for_display(Mesh *mesh)
-{
-  switch (mesh->runtime->wrapper_type) {
-    case ME_WRAPPER_TYPE_SUBD:
-    case ME_WRAPPER_TYPE_MDATA:
-      mesh->vert_normals();
-      mesh->poly_normals();
-      break;
-    case ME_WRAPPER_TYPE_BMESH: {
-      BMEditMesh *em = mesh->edit_mesh;
-      EditMeshData *emd = mesh->runtime->edit_data;
-      if (emd->vertexCos) {
-        BKE_editmesh_cache_ensure_vert_normals(em, emd);
-        BKE_editmesh_cache_ensure_poly_normals(em, emd);
+  using namespace blender;
+  using namespace blender::bke;
+  this->runtime->corner_normals_cache.ensure([&](Vector<float3> &r_data) {
+    r_data.reinitialize(this->corners_num);
+    const OffsetIndices<int> faces = this->faces();
+    switch (this->normals_domain()) {
+      case MeshNormalDomain::Point: {
+        array_utils::gather(this->vert_normals(), this->corner_verts(), r_data.as_mutable_span());
+        break;
       }
-      return;
+      case MeshNormalDomain::Face: {
+        const Span<float3> face_normals = this->face_normals();
+        threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+          for (const int i : range) {
+            r_data.as_mutable_span().slice(faces[i]).fill(face_normals[i]);
+          }
+        });
+        break;
+      }
+      case MeshNormalDomain::Corner: {
+        const AttributeAccessor attributes = this->attributes();
+        const VArraySpan sharp_edges = *attributes.lookup<bool>("sharp_edge", AttrDomain::Edge);
+        const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
+        const short2 *custom_normals = static_cast<const short2 *>(
+            CustomData_get_layer(&this->corner_data, CD_CUSTOMLOOPNORMAL));
+        mesh::normals_calc_corners(this->vert_positions(),
+                                   this->edges(),
+                                   this->faces(),
+                                   this->corner_verts(),
+                                   this->corner_edges(),
+                                   this->corner_to_face_map(),
+                                   this->vert_normals(),
+                                   this->face_normals(),
+                                   sharp_edges,
+                                   sharp_faces,
+                                   custom_normals,
+                                   nullptr,
+                                   r_data);
+        break;
+      }
     }
-  }
+  });
+  return this->runtime->corner_normals_cache.data();
 }
 
 void BKE_lnor_spacearr_init(MLoopNorSpaceArray *lnors_spacearr,
@@ -467,32 +385,34 @@ MLoopNorSpace *BKE_lnor_space_create(MLoopNorSpaceArray *lnors_spacearr)
 /* This threshold is a bit touchy (usual float precision issue), this value seems OK. */
 #define LNOR_SPACE_TRIGO_THRESHOLD (1.0f - 1e-4f)
 
-void BKE_lnor_space_define(MLoopNorSpace *lnor_space,
-                           const float lnor[3],
-                           float vec_ref[3],
-                           float vec_other[3],
-                           const blender::Span<blender::float3> edge_vectors)
+namespace blender::bke::mesh {
+
+static CornerNormalSpace corner_fan_space_define(const float3 &lnor,
+                                                 const float3 &vec_ref,
+                                                 const float3 &vec_other,
+                                                 const Span<float3> edge_vectors)
 {
+  CornerNormalSpace lnor_space{};
   const float pi2 = float(M_PI) * 2.0f;
-  float tvec[3], dtp;
-  const float dtp_ref = dot_v3v3(vec_ref, lnor);
-  const float dtp_other = dot_v3v3(vec_other, lnor);
+  const float dtp_ref = math::dot(vec_ref, lnor);
+  const float dtp_other = math::dot(vec_other, lnor);
 
   if (UNLIKELY(fabsf(dtp_ref) >= LNOR_SPACE_TRIGO_THRESHOLD ||
-               fabsf(dtp_other) >= LNOR_SPACE_TRIGO_THRESHOLD)) {
+               fabsf(dtp_other) >= LNOR_SPACE_TRIGO_THRESHOLD))
+  {
     /* If vec_ref or vec_other are too much aligned with lnor, we can't build lnor space,
      * tag it as invalid and abort. */
-    lnor_space->ref_alpha = lnor_space->ref_beta = 0.0f;
-    return;
+    lnor_space.ref_alpha = lnor_space.ref_beta = 0.0f;
+    return lnor_space;
   }
 
-  copy_v3_v3(lnor_space->vec_lnor, lnor);
+  lnor_space.vec_lnor = lnor;
 
   /* Compute ref alpha, average angle of all available edge vectors to lnor. */
   if (!edge_vectors.is_empty()) {
     float alpha = 0.0f;
-    for (const blender::float3 &vec : edge_vectors) {
-      alpha += saacosf(dot_v3v3(vec, lnor));
+    for (const float3 &vec : edge_vectors) {
+      alpha += math::safe_acos_approx(math::dot(vec, lnor));
     }
     /* This piece of code shall only be called for more than one loop. */
     /* NOTE: In theory, this could be `count > 2`,
@@ -500,50 +420,64 @@ void BKE_lnor_space_define(MLoopNorSpace *lnor_space,
      * a smooth vertex with only two edges and two faces (our Monkey's nose has that, e.g.).
      */
     BLI_assert(edge_vectors.size() >= 2);
-    lnor_space->ref_alpha = alpha / float(edge_vectors.size());
+    lnor_space.ref_alpha = alpha / float(edge_vectors.size());
   }
   else {
-    lnor_space->ref_alpha = (saacosf(dot_v3v3(vec_ref, lnor)) +
-                             saacosf(dot_v3v3(vec_other, lnor))) /
-                            2.0f;
+    lnor_space.ref_alpha = (math::safe_acos_approx(math::dot(vec_ref, lnor)) +
+                            math::safe_acos_approx(math::dot(vec_other, lnor))) /
+                           2.0f;
   }
 
   /* Project vec_ref on lnor's ortho plane. */
-  mul_v3_v3fl(tvec, lnor, dtp_ref);
-  sub_v3_v3(vec_ref, tvec);
-  normalize_v3_v3(lnor_space->vec_ref, vec_ref);
-
-  cross_v3_v3v3(tvec, lnor, lnor_space->vec_ref);
-  normalize_v3_v3(lnor_space->vec_ortho, tvec);
+  lnor_space.vec_ref = math::normalize(vec_ref - lnor * dtp_ref);
+  lnor_space.vec_ortho = math::normalize(math::cross(lnor, lnor_space.vec_ref));
 
   /* Project vec_other on lnor's ortho plane. */
-  mul_v3_v3fl(tvec, lnor, dtp_other);
-  sub_v3_v3(vec_other, tvec);
-  normalize_v3(vec_other);
+  const float3 vec_other_proj = math::normalize(vec_other - lnor * dtp_other);
 
   /* Beta is angle between ref_vec and other_vec, around lnor. */
-  dtp = dot_v3v3(lnor_space->vec_ref, vec_other);
+  const float dtp = math::dot(lnor_space.vec_ref, vec_other_proj);
   if (LIKELY(dtp < LNOR_SPACE_TRIGO_THRESHOLD)) {
-    const float beta = saacos(dtp);
-    lnor_space->ref_beta = (dot_v3v3(lnor_space->vec_ortho, vec_other) < 0.0f) ? pi2 - beta : beta;
+    const float beta = math::safe_acos_approx(dtp);
+    lnor_space.ref_beta = (math::dot(lnor_space.vec_ortho, vec_other_proj) < 0.0f) ? pi2 - beta :
+                                                                                     beta;
   }
   else {
-    lnor_space->ref_beta = pi2;
+    lnor_space.ref_beta = pi2;
   }
+
+  return lnor_space;
+}
+
+}  // namespace blender::bke::mesh
+
+void BKE_lnor_space_define(MLoopNorSpace *lnor_space,
+                           const float lnor[3],
+                           const float vec_ref[3],
+                           const float vec_other[3],
+                           const blender::Span<blender::float3> edge_vectors)
+{
+  using namespace blender::bke::mesh;
+  const CornerNormalSpace space = corner_fan_space_define(lnor, vec_ref, vec_other, edge_vectors);
+  copy_v3_v3(lnor_space->vec_lnor, space.vec_lnor);
+  copy_v3_v3(lnor_space->vec_ref, space.vec_ref);
+  copy_v3_v3(lnor_space->vec_ortho, space.vec_ortho);
+  lnor_space->ref_alpha = space.ref_alpha;
+  lnor_space->ref_beta = space.ref_beta;
 }
 
 void BKE_lnor_space_add_loop(MLoopNorSpaceArray *lnors_spacearr,
                              MLoopNorSpace *lnor_space,
-                             const int ml_index,
+                             const int corner,
                              void *bm_loop,
                              const bool is_single)
 {
   BLI_assert((lnors_spacearr->data_type == MLNOR_SPACEARR_LOOP_INDEX && bm_loop == nullptr) ||
              (lnors_spacearr->data_type == MLNOR_SPACEARR_BMLOOP_PTR && bm_loop != nullptr));
 
-  lnors_spacearr->lspacearr[ml_index] = lnor_space;
+  lnors_spacearr->lspacearr[corner] = lnor_space;
   if (bm_loop == nullptr) {
-    bm_loop = POINTER_FROM_INT(ml_index);
+    bm_loop = POINTER_FROM_INT(corner);
   }
   if (is_single) {
     BLI_assert(lnor_space->loops == nullptr);
@@ -552,7 +486,7 @@ void BKE_lnor_space_add_loop(MLoopNorSpaceArray *lnors_spacearr,
   }
   else {
     BLI_assert((lnor_space->flags & MLNOR_SPACE_IS_SINGLE) == 0);
-    BLI_linklist_prepend_nlink(&lnor_space->loops, bm_loop, &lnors_spacearr->loops_pool[ml_index]);
+    BLI_linklist_prepend_nlink(&lnor_space->loops, bm_loop, &lnors_spacearr->loops_pool[corner]);
   }
 }
 
@@ -567,196 +501,277 @@ MINLINE short unit_float_to_short(const float val)
   return short(floorf(val * float(SHRT_MAX) + 0.5f));
 }
 
+namespace blender::bke::mesh {
+
+static float3 corner_space_custom_data_to_normal(const CornerNormalSpace &lnor_space,
+                                                 const short2 clnor_data)
+{
+  /* NOP custom normal data or invalid lnor space, return. */
+  if (clnor_data[0] == 0 || lnor_space.ref_alpha == 0.0f || lnor_space.ref_beta == 0.0f) {
+    return lnor_space.vec_lnor;
+  }
+
+  float3 r_custom_lnor;
+
+  /* TODO: Check whether using #sincosf() gives any noticeable benefit
+   * (could not even get it working under linux though)! */
+  const float pi2 = float(M_PI * 2.0);
+  const float alphafac = unit_short_to_float(clnor_data[0]);
+  const float alpha = (alphafac > 0.0f ? lnor_space.ref_alpha : pi2 - lnor_space.ref_alpha) *
+                      alphafac;
+  const float betafac = unit_short_to_float(clnor_data[1]);
+
+  mul_v3_v3fl(r_custom_lnor, lnor_space.vec_lnor, cosf(alpha));
+
+  if (betafac == 0.0f) {
+    madd_v3_v3fl(r_custom_lnor, lnor_space.vec_ref, sinf(alpha));
+  }
+  else {
+    const float sinalpha = sinf(alpha);
+    const float beta = (betafac > 0.0f ? lnor_space.ref_beta : pi2 - lnor_space.ref_beta) *
+                       betafac;
+    madd_v3_v3fl(r_custom_lnor, lnor_space.vec_ref, sinalpha * cosf(beta));
+    madd_v3_v3fl(r_custom_lnor, lnor_space.vec_ortho, sinalpha * sinf(beta));
+  }
+
+  return r_custom_lnor;
+}
+
+}  // namespace blender::bke::mesh
+
 void BKE_lnor_space_custom_data_to_normal(const MLoopNorSpace *lnor_space,
                                           const short clnor_data[2],
                                           float r_custom_lnor[3])
 {
-  /* NOP custom normal data or invalid lnor space, return. */
-  if (clnor_data[0] == 0 || lnor_space->ref_alpha == 0.0f || lnor_space->ref_beta == 0.0f) {
-    copy_v3_v3(r_custom_lnor, lnor_space->vec_lnor);
-    return;
+  using namespace blender::bke::mesh;
+  CornerNormalSpace space;
+  space.vec_lnor = lnor_space->vec_lnor;
+  space.vec_ref = lnor_space->vec_ref;
+  space.vec_ortho = lnor_space->vec_ortho;
+  space.ref_alpha = lnor_space->ref_alpha;
+  space.ref_beta = lnor_space->ref_beta;
+  copy_v3_v3(r_custom_lnor, corner_space_custom_data_to_normal(space, clnor_data));
+}
+
+namespace blender::bke::mesh {
+
+short2 corner_space_custom_normal_to_data(const CornerNormalSpace &lnor_space,
+                                          const float3 &custom_lnor)
+{
+  /* We use zero vector as NOP custom normal (can be simpler than giving auto-computed `lnor`). */
+  if (is_zero_v3(custom_lnor) || compare_v3v3(lnor_space.vec_lnor, custom_lnor, 1e-4f)) {
+    return short2(0);
   }
 
-  {
-    /* TODO: Check whether using #sincosf() gives any noticeable benefit
-     * (could not even get it working under linux though)! */
-    const float pi2 = float(M_PI * 2.0);
-    const float alphafac = unit_short_to_float(clnor_data[0]);
-    const float alpha = (alphafac > 0.0f ? lnor_space->ref_alpha : pi2 - lnor_space->ref_alpha) *
-                        alphafac;
-    const float betafac = unit_short_to_float(clnor_data[1]);
+  short2 r_clnor_data;
 
-    mul_v3_v3fl(r_custom_lnor, lnor_space->vec_lnor, cosf(alpha));
+  const float pi2 = float(M_PI * 2.0);
+  const float cos_alpha = math::dot(lnor_space.vec_lnor, custom_lnor);
 
-    if (betafac == 0.0f) {
-      madd_v3_v3fl(r_custom_lnor, lnor_space->vec_ref, sinf(alpha));
+  const float alpha = math::safe_acos_approx(cos_alpha);
+  if (alpha > lnor_space.ref_alpha) {
+    /* Note we could stick to [0, pi] range here,
+     * but makes decoding more complex, not worth it. */
+    r_clnor_data[0] = unit_float_to_short(-(pi2 - alpha) / (pi2 - lnor_space.ref_alpha));
+  }
+  else {
+    r_clnor_data[0] = unit_float_to_short(alpha / lnor_space.ref_alpha);
+  }
+
+  /* Project custom lnor on (vec_ref, vec_ortho) plane. */
+  const float3 vec = math::normalize(lnor_space.vec_lnor * -cos_alpha + custom_lnor);
+
+  const float cos_beta = math::dot(lnor_space.vec_ref, vec);
+
+  if (cos_beta < LNOR_SPACE_TRIGO_THRESHOLD) {
+    float beta = math::safe_acos_approx(cos_beta);
+    if (math::dot(lnor_space.vec_ortho, vec) < 0.0f) {
+      beta = pi2 - beta;
+    }
+
+    if (beta > lnor_space.ref_beta) {
+      r_clnor_data[1] = unit_float_to_short(-(pi2 - beta) / (pi2 - lnor_space.ref_beta));
     }
     else {
-      const float sinalpha = sinf(alpha);
-      const float beta = (betafac > 0.0f ? lnor_space->ref_beta : pi2 - lnor_space->ref_beta) *
-                         betafac;
-      madd_v3_v3fl(r_custom_lnor, lnor_space->vec_ref, sinalpha * cosf(beta));
-      madd_v3_v3fl(r_custom_lnor, lnor_space->vec_ortho, sinalpha * sinf(beta));
+      r_clnor_data[1] = unit_float_to_short(beta / lnor_space.ref_beta);
     }
   }
+  else {
+    r_clnor_data[1] = 0;
+  }
+
+  return r_clnor_data;
 }
+
+}  // namespace blender::bke::mesh
 
 void BKE_lnor_space_custom_normal_to_data(const MLoopNorSpace *lnor_space,
                                           const float custom_lnor[3],
                                           short r_clnor_data[2])
 {
-  /* We use nullptr vector as NOP custom normal (can be simpler than giving auto-computed `lnor`).
-   */
-  if (is_zero_v3(custom_lnor) || compare_v3v3(lnor_space->vec_lnor, custom_lnor, 1e-4f)) {
-    r_clnor_data[0] = r_clnor_data[1] = 0;
-    return;
-  }
-
-  {
-    const float pi2 = float(M_PI * 2.0);
-    const float cos_alpha = dot_v3v3(lnor_space->vec_lnor, custom_lnor);
-    float vec[3], cos_beta;
-    float alpha;
-
-    alpha = saacosf(cos_alpha);
-    if (alpha > lnor_space->ref_alpha) {
-      /* Note we could stick to [0, pi] range here,
-       * but makes decoding more complex, not worth it. */
-      r_clnor_data[0] = unit_float_to_short(-(pi2 - alpha) / (pi2 - lnor_space->ref_alpha));
-    }
-    else {
-      r_clnor_data[0] = unit_float_to_short(alpha / lnor_space->ref_alpha);
-    }
-
-    /* Project custom lnor on (vec_ref, vec_ortho) plane. */
-    mul_v3_v3fl(vec, lnor_space->vec_lnor, -cos_alpha);
-    add_v3_v3(vec, custom_lnor);
-    normalize_v3(vec);
-
-    cos_beta = dot_v3v3(lnor_space->vec_ref, vec);
-
-    if (cos_beta < LNOR_SPACE_TRIGO_THRESHOLD) {
-      float beta = saacosf(cos_beta);
-      if (dot_v3v3(lnor_space->vec_ortho, vec) < 0.0f) {
-        beta = pi2 - beta;
-      }
-
-      if (beta > lnor_space->ref_beta) {
-        r_clnor_data[1] = unit_float_to_short(-(pi2 - beta) / (pi2 - lnor_space->ref_beta));
-      }
-      else {
-        r_clnor_data[1] = unit_float_to_short(beta / lnor_space->ref_beta);
-      }
-    }
-    else {
-      r_clnor_data[1] = 0;
-    }
-  }
+  using namespace blender::bke::mesh;
+  CornerNormalSpace space;
+  space.vec_lnor = lnor_space->vec_lnor;
+  space.vec_ref = lnor_space->vec_ref;
+  space.vec_ortho = lnor_space->vec_ortho;
+  space.ref_alpha = lnor_space->ref_alpha;
+  space.ref_beta = lnor_space->ref_beta;
+  copy_v2_v2_short(r_clnor_data, corner_space_custom_normal_to_data(space, custom_lnor));
 }
 
 namespace blender::bke::mesh {
 
-struct LoopSplitTaskDataCommon {
+struct CornerSplitTaskDataCommon {
   /* Read/write.
    * Note we do not need to protect it, though, since two different tasks will *always* affect
    * different elements in the arrays. */
-  MLoopNorSpaceArray *lnors_spacearr;
-  MutableSpan<float3> loop_normals;
-  MutableSpan<short2> clnors_data;
+  CornerNormalSpaceArray *lnors_spacearr;
+  MutableSpan<float3> corner_normals;
 
   /* Read-only. */
   Span<float3> positions;
   Span<int2> edges;
   Span<int> corner_verts;
   Span<int> corner_edges;
-  OffsetIndices<int> polys;
-  Span<int2> edge_to_loops;
-  Span<int> loop_to_poly;
-  Span<float3> poly_normals;
+  OffsetIndices<int> faces;
+  Span<int2> edge_to_corners;
+  Span<int> corner_to_face;
+  Span<float3> face_normals;
   Span<float3> vert_normals;
+  Span<short2> clnors_data;
 };
 
 #define INDEX_UNSET INT_MIN
 #define INDEX_INVALID -1
-/* See comment about edge_to_loops below. */
+/* See comment about edge_to_corners below. */
 #define IS_EDGE_SHARP(_e2l) ELEM((_e2l)[1], INDEX_UNSET, INDEX_INVALID)
 
-static void mesh_edges_sharp_tag(const OffsetIndices<int> polys,
+static void mesh_edges_sharp_tag(const OffsetIndices<int> faces,
                                  const Span<int> corner_verts,
                                  const Span<int> corner_edges,
-                                 const Span<int> loop_to_poly_map,
-                                 const Span<float3> poly_normals,
+                                 const Span<int> corner_to_face_map,
+                                 const Span<float3> face_normals,
                                  const Span<bool> sharp_faces,
                                  const Span<bool> sharp_edges,
-                                 const bool check_angle,
                                  const float split_angle,
-                                 MutableSpan<int2> edge_to_loops,
+                                 MutableSpan<int2> edge_to_corners,
                                  MutableSpan<bool> r_sharp_edges)
 {
-  const float split_angle_cos = check_angle ? cosf(split_angle) : -1.0f;
-  auto poly_is_smooth = [&](const int poly_i) {
-    return sharp_faces.is_empty() || !sharp_faces[poly_i];
+  const float split_angle_cos = cosf(split_angle);
+  auto face_is_smooth = [&](const int face_i) {
+    return sharp_faces.is_empty() || !sharp_faces[face_i];
   };
 
-  for (const int poly_i : polys.index_range()) {
-    for (const int loop_index : polys[poly_i]) {
-      const int vert_i = corner_verts[loop_index];
-      const int edge_i = corner_edges[loop_index];
+  for (const int face_i : faces.index_range()) {
+    for (const int corner : faces[face_i]) {
+      const int vert = corner_verts[corner];
+      const int edge = corner_edges[corner];
 
-      int2 &e2l = edge_to_loops[edge_i];
+      int2 &e2l = edge_to_corners[edge];
 
       /* Check whether current edge might be smooth or sharp */
       if ((e2l[0] | e2l[1]) == 0) {
         /* 'Empty' edge until now, set e2l[0] (and e2l[1] to INDEX_UNSET to tag it as unset). */
-        e2l[0] = loop_index;
+        e2l[0] = corner;
         /* We have to check this here too, else we might miss some flat faces!!! */
-        e2l[1] = (poly_is_smooth(poly_i)) ? INDEX_UNSET : INDEX_INVALID;
+        e2l[1] = face_is_smooth(face_i) ? INDEX_UNSET : INDEX_INVALID;
       }
       else if (e2l[1] == INDEX_UNSET) {
-        const bool is_angle_sharp = (check_angle &&
-                                     dot_v3v3(poly_normals[loop_to_poly_map[e2l[0]]],
-                                              poly_normals[poly_i]) < split_angle_cos);
+        const bool is_angle_sharp = math::dot(face_normals[corner_to_face_map[e2l[0]]],
+                                              face_normals[face_i]) < split_angle_cos;
 
-        /* Second loop using this edge, time to test its sharpness.
+        /* Second corner using this edge, time to test its sharpness.
          * An edge is sharp if it is tagged as such, or its face is not smooth,
-         * or both poly have opposed (flipped) normals, i.e. both loops on the same edge share the
-         * same vertex, or angle between both its polys' normals is above split_angle value.
-         */
-        if (!poly_is_smooth(poly_i) || (!sharp_edges.is_empty() && sharp_edges[edge_i]) ||
-            vert_i == corner_verts[e2l[0]] || is_angle_sharp) {
-          /* NOTE: we are sure that loop != 0 here ;). */
+         * or both faces have opposed (flipped) normals, i.e. both corners on the same edge share
+         * the same vertex, or angle between both its faces' normals is above split_angle value. */
+        if (!face_is_smooth(face_i) || (!sharp_edges.is_empty() && sharp_edges[edge]) ||
+            vert == corner_verts[e2l[0]] || is_angle_sharp)
+        {
+          /* NOTE: we are sure that corner != 0 here ;). */
           e2l[1] = INDEX_INVALID;
 
           /* We want to avoid tagging edges as sharp when it is already defined as such by
            * other causes than angle threshold. */
-          if (!r_sharp_edges.is_empty() && is_angle_sharp) {
-            r_sharp_edges[edge_i] = true;
+          if (is_angle_sharp) {
+            r_sharp_edges[edge] = true;
           }
         }
         else {
-          e2l[1] = loop_index;
+          e2l[1] = corner;
         }
       }
       else if (!IS_EDGE_SHARP(e2l)) {
-        /* More than two loops using this edge, tag as sharp if not yet done. */
+        /* More than two corners using this edge, tag as sharp if not yet done. */
         e2l[1] = INDEX_INVALID;
 
         /* We want to avoid tagging edges as sharp when it is already defined as such by
          * other causes than angle threshold. */
-        if (!r_sharp_edges.is_empty()) {
-          r_sharp_edges[edge_i] = false;
-        }
+        r_sharp_edges[edge] = false;
       }
       /* Else, edge is already 'disqualified' (i.e. sharp)! */
     }
   }
 }
 
-void edges_sharp_from_angle_set(const OffsetIndices<int> polys,
+/**
+ * Builds a simplified map from edges to face corners, marking special values when
+ * it encounters sharp edges or borders between faces with flipped winding orders.
+ */
+static void build_edge_to_corner_map_with_flip_and_sharp(const OffsetIndices<int> faces,
+                                                         const Span<int> corner_verts,
+                                                         const Span<int> corner_edges,
+                                                         const Span<bool> sharp_faces,
+                                                         const Span<bool> sharp_edges,
+                                                         MutableSpan<int2> edge_to_corners)
+{
+  auto face_is_smooth = [&](const int face_i) {
+    return sharp_faces.is_empty() || !sharp_faces[face_i];
+  };
+
+  for (const int face_i : faces.index_range()) {
+    for (const int corner : faces[face_i]) {
+      const int vert = corner_verts[corner];
+      const int edge = corner_edges[corner];
+
+      int2 &e2l = edge_to_corners[edge];
+
+      /* Check whether current edge might be smooth or sharp */
+      if ((e2l[0] | e2l[1]) == 0) {
+        /* 'Empty' edge until now, set e2l[0] (and e2l[1] to INDEX_UNSET to tag it as unset). */
+        e2l[0] = corner;
+        /* We have to check this here too, else we might miss some flat faces!!! */
+        e2l[1] = !face_is_smooth(face_i) ? INDEX_INVALID : INDEX_UNSET;
+      }
+      else if (e2l[1] == INDEX_UNSET) {
+        /* Second corner using this edge, time to test its sharpness.
+         * An edge is sharp if it is tagged as such, or its face is not smooth,
+         * or both face have opposed (flipped) normals, i.e. both corners on the same edge share
+         * the same vertex. */
+        if (!face_is_smooth(face_i) || (!sharp_edges.is_empty() && sharp_edges[edge]) ||
+            vert == corner_verts[e2l[0]])
+        {
+          /* NOTE: we are sure that corner != 0 here ;). */
+          e2l[1] = INDEX_INVALID;
+        }
+        else {
+          e2l[1] = corner;
+        }
+      }
+      else if (!IS_EDGE_SHARP(e2l)) {
+        /* More than two corners using this edge, tag as sharp if not yet done. */
+        e2l[1] = INDEX_INVALID;
+      }
+      /* Else, edge is already 'disqualified' (i.e. sharp)! */
+    }
+  }
+}
+
+void edges_sharp_from_angle_set(const OffsetIndices<int> faces,
                                 const Span<int> corner_verts,
                                 const Span<int> corner_edges,
-                                const Span<float3> poly_normals,
-                                const bool *sharp_faces,
+                                const Span<float3> face_normals,
+                                const Span<int> corner_to_face,
+                                const Span<bool> sharp_faces,
                                 const float split_angle,
                                 MutableSpan<bool> sharp_edges)
 {
@@ -765,132 +780,122 @@ void edges_sharp_from_angle_set(const OffsetIndices<int> polys,
     return;
   }
 
-  /* Mapping edge -> loops. See #bke::mesh::normals_calc_loop for details. */
-  Array<int2> edge_to_loops(sharp_edges.size(), int2(0));
+  /* Mapping edge -> corners. See #bke::mesh::normals_calc_corners for details. */
+  Array<int2> edge_to_corners(sharp_edges.size(), int2(0));
 
-  /* Simple mapping from a loop to its polygon index. */
-  const Array<int> loop_to_poly = mesh_topology::build_loop_to_poly_map(polys);
-
-  mesh_edges_sharp_tag(polys,
+  mesh_edges_sharp_tag(faces,
                        corner_verts,
                        corner_edges,
-                       loop_to_poly,
-                       poly_normals,
-                       Span<bool>(sharp_faces, sharp_faces ? polys.size() : 0),
+                       corner_to_face,
+                       face_normals,
+                       sharp_faces,
                        sharp_edges,
-                       true,
                        split_angle,
-                       edge_to_loops,
+                       edge_to_corners,
                        sharp_edges);
 }
 
-static void loop_manifold_fan_around_vert_next(const Span<int> corner_verts,
-                                               const OffsetIndices<int> polys,
-                                               const Span<int> loop_to_poly,
-                                               const int *e2lfan_curr,
-                                               const int vert_pivot,
-                                               int *r_mlfan_curr_index,
-                                               int *r_mlfan_vert_index,
-                                               int *r_mpfan_curr_index)
+static void corner_manifold_fan_around_vert_next(const Span<int> corner_verts,
+                                                 const OffsetIndices<int> faces,
+                                                 const Span<int> corner_to_face,
+                                                 const int2 e2lfan_curr,
+                                                 const int vert_pivot,
+                                                 int *r_fan_corner,
+                                                 int *r_vert_corner)
 {
-  const int mlfan_curr_orig = *r_mlfan_curr_index;
-  const int vert_fan_orig = corner_verts[mlfan_curr_orig];
+  const int fan_corner_orig = *r_fan_corner;
+  const int vert_fan_orig = corner_verts[fan_corner_orig];
 
   /* WARNING: This is rather complex!
    * We have to find our next edge around the vertex (fan mode).
-   * First we find the next loop, which is either previous or next to mlfan_curr_index, depending
-   * whether both loops using current edge are in the same direction or not, and whether
-   * mlfan_curr_index actually uses the vertex we are fanning around!
-   * mlfan_curr_index is the index of mlfan_next here, and mlfan_next is not the real next one
-   * (i.e. not the future `mlfan_curr`). */
-  *r_mlfan_curr_index = (e2lfan_curr[0] == *r_mlfan_curr_index) ? e2lfan_curr[1] : e2lfan_curr[0];
-  *r_mpfan_curr_index = loop_to_poly[*r_mlfan_curr_index];
+   * First we find the next corner, which is either previous or next to fan_corner, depending
+   * whether both corners using current edge are in the same direction or not, and whether
+   * fan_corner actually uses the vertex we are fanning around!
+   * fan_corner is the index of the next corner here, and the next corner is not the real next one
+   * (i.e. not the future `fan_corner`). */
+  *r_fan_corner = (e2lfan_curr[0] == *r_fan_corner) ? e2lfan_curr[1] : e2lfan_curr[0];
 
-  BLI_assert(*r_mlfan_curr_index >= 0);
-  BLI_assert(*r_mpfan_curr_index >= 0);
+  BLI_assert(*r_fan_corner >= 0);
 
-  const int vert_fan_next = corner_verts[*r_mlfan_curr_index];
-  const IndexRange poly_fan_next = polys[*r_mpfan_curr_index];
+  const int vert_fan_next = corner_verts[*r_fan_corner];
+  const IndexRange face_fan_next = faces[corner_to_face[*r_fan_corner]];
   if ((vert_fan_orig == vert_fan_next && vert_fan_orig == vert_pivot) ||
-      !ELEM(vert_fan_orig, vert_fan_next, vert_pivot)) {
-    /* We need the previous loop, but current one is our vertex's loop. */
-    *r_mlfan_vert_index = *r_mlfan_curr_index;
-    if (--(*r_mlfan_curr_index) < poly_fan_next.start()) {
-      *r_mlfan_curr_index = poly_fan_next.start() + poly_fan_next.size() - 1;
-    }
+      !ELEM(vert_fan_orig, vert_fan_next, vert_pivot))
+  {
+    /* We need the previous corner, but current one is our vertex's corner. */
+    *r_vert_corner = *r_fan_corner;
+    *r_fan_corner = face_corner_prev(face_fan_next, *r_fan_corner);
   }
   else {
-    /* We need the next loop, which is also our vertex's loop. */
-    if (++(*r_mlfan_curr_index) >= poly_fan_next.start() + poly_fan_next.size()) {
-      *r_mlfan_curr_index = poly_fan_next.start();
-    }
-    *r_mlfan_vert_index = *r_mlfan_curr_index;
+    /* We need the next corner, which is also our vertex's corner. */
+    *r_fan_corner = face_corner_next(face_fan_next, *r_fan_corner);
+    *r_vert_corner = *r_fan_corner;
   }
 }
 
-static void lnor_space_for_single_fan(LoopSplitTaskDataCommon *common_data,
-                                      const int ml_curr_index,
-                                      MLoopNorSpace *lnor_space)
+static void lnor_space_for_single_fan(CornerSplitTaskDataCommon *common_data,
+                                      const int corner,
+                                      const int space_index)
 {
-  const Span<int> loop_to_poly = common_data->loop_to_poly;
-  const Span<float3> poly_normals = common_data->poly_normals;
-  MutableSpan<float3> loop_normals = common_data->loop_normals;
+  const Span<int> corner_to_face = common_data->corner_to_face;
+  const Span<float3> face_normals = common_data->face_normals;
+  MutableSpan<float3> corner_normals = common_data->corner_normals;
 
-  loop_normals[ml_curr_index] = poly_normals[loop_to_poly[ml_curr_index]];
+  corner_normals[corner] = face_normals[corner_to_face[corner]];
 
-  if (MLoopNorSpaceArray *lnors_spacearr = common_data->lnors_spacearr) {
+  if (CornerNormalSpaceArray *lnors_spacearr = common_data->lnors_spacearr) {
     const Span<float3> positions = common_data->positions;
     const Span<int2> edges = common_data->edges;
-    const OffsetIndices polys = common_data->polys;
+    const OffsetIndices faces = common_data->faces;
     const Span<int> corner_verts = common_data->corner_verts;
     const Span<int> corner_edges = common_data->corner_edges;
     const Span<short2> clnors_data = common_data->clnors_data;
 
-    float vec_curr[3], vec_prev[3];
-    const int poly_index = loop_to_poly[ml_curr_index];
-    const int ml_prev_index = mesh::poly_corner_prev(polys[poly_index], ml_curr_index);
+    const int face_index = corner_to_face[corner];
+    const int corner_prev = mesh::face_corner_prev(faces[face_index], corner);
 
     /* The vertex we are "fanning" around. */
-    const int vert_pivot = corner_verts[ml_curr_index];
-    const int vert_2 = edge_other_vert(edges[corner_edges[ml_curr_index]], vert_pivot);
-    const int vert_3 = edge_other_vert(edges[corner_edges[ml_prev_index]], vert_pivot);
+    const int vert_pivot = corner_verts[corner];
+    const int vert_2 = edge_other_vert(edges[corner_edges[corner]], vert_pivot);
+    const int vert_3 = edge_other_vert(edges[corner_edges[corner_prev]], vert_pivot);
 
-    sub_v3_v3v3(vec_curr, positions[vert_2], positions[vert_pivot]);
-    normalize_v3(vec_curr);
-    sub_v3_v3v3(vec_prev, positions[vert_3], positions[vert_pivot]);
-    normalize_v3(vec_prev);
+    const float3 vec_curr = math::normalize(positions[vert_2] - positions[vert_pivot]);
+    const float3 vec_prev = math::normalize(positions[vert_3] - positions[vert_pivot]);
 
-    BKE_lnor_space_define(lnor_space, loop_normals[ml_curr_index], vec_curr, vec_prev, {});
-    /* We know there is only one loop in this space, no need to create a link-list in this case. */
-    BKE_lnor_space_add_loop(lnors_spacearr, lnor_space, ml_curr_index, nullptr, true);
+    CornerNormalSpace &space = lnors_spacearr->spaces[space_index];
+    space = corner_fan_space_define(corner_normals[corner], vec_curr, vec_prev, {});
+    lnors_spacearr->corner_space_indices[corner] = space_index;
 
     if (!clnors_data.is_empty()) {
-      BKE_lnor_space_custom_data_to_normal(
-          lnor_space, clnors_data[ml_curr_index], loop_normals[ml_curr_index]);
+      corner_normals[corner] = corner_space_custom_data_to_normal(space, clnors_data[corner]);
+    }
+
+    if (!lnors_spacearr->corners_by_space.is_empty()) {
+      lnors_spacearr->corners_by_space[space_index] = {corner};
     }
   }
 }
 
-static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
-                                  const int ml_curr_index,
-                                  MLoopNorSpace *lnor_space,
-                                  Vector<float3> *edge_vectors)
+static void split_corner_normal_fan_do(CornerSplitTaskDataCommon *common_data,
+                                       const int corner,
+                                       const int space_index,
+                                       Vector<float3, 16> *edge_vectors)
 {
-  MLoopNorSpaceArray *lnors_spacearr = common_data->lnors_spacearr;
-  MutableSpan<float3> loop_normals = common_data->loop_normals;
-  MutableSpan<short2> clnors_data = common_data->clnors_data;
+  CornerNormalSpaceArray *lnors_spacearr = common_data->lnors_spacearr;
+  MutableSpan<float3> corner_normals = common_data->corner_normals;
 
   const Span<float3> positions = common_data->positions;
   const Span<int2> edges = common_data->edges;
-  const OffsetIndices polys = common_data->polys;
+  const OffsetIndices faces = common_data->faces;
   const Span<int> corner_verts = common_data->corner_verts;
   const Span<int> corner_edges = common_data->corner_edges;
-  const Span<int2> edge_to_loops = common_data->edge_to_loops;
-  const Span<int> loop_to_poly = common_data->loop_to_poly;
-  const Span<float3> poly_normals = common_data->poly_normals;
+  const Span<int2> edge_to_corners = common_data->edge_to_corners;
+  const Span<int> corner_to_face = common_data->corner_to_face;
+  const Span<float3> face_normals = common_data->face_normals;
+  const Span<short2> clnors_data = common_data->clnors_data;
 
-  const int poly_index = loop_to_poly[ml_curr_index];
-  const int ml_prev_index = poly_corner_prev(polys[poly_index], ml_curr_index);
+  const int face_index = corner_to_face[corner];
+  const int corner_prev = face_corner_prev(faces[face_index], corner);
 
   /* Sigh! we have to fan around current vertex, until we find the other non-smooth edge,
    * and accumulate face normals into the vertex!
@@ -898,48 +903,42 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
    * same as the vertex normal, but I do not see any easy way to detect that (would need to count
    * number of sharp edges per vertex, I doubt the additional memory usage would be worth it,
    * especially as it should not be a common case in real-life meshes anyway). */
-  const int vert_pivot = corner_verts[ml_curr_index]; /* The vertex we are "fanning" around! */
+  const int vert_pivot = corner_verts[corner]; /* The vertex we are "fanning" around! */
 
-  /* `ml_curr_index` would be mlfan_prev if we needed that one. */
-  const int2 &edge_orig = edges[corner_edges[ml_curr_index]];
+  /* `corner` would be `corner_prev` if we needed that one. */
+  const int2 &edge_orig = edges[corner_edges[corner]];
 
-  float vec_curr[3], vec_prev[3], vec_org[3];
+  float3 vec_curr;
+  float3 vec_prev;
+  float3 vec_org;
   float3 lnor(0.0f);
 
-  /* We validate clnors data on the fly - cheapest way to do! */
-  int clnors_avg[2] = {0, 0};
-  short2 *clnor_ref = nullptr;
-  int clnors_count = 0;
-  bool clnors_invalid = false;
+  int2 clnors_avg(0);
 
-  Vector<int, 8> processed_corners;
+  Vector<int, 32> processed_corners;
 
-  /* `mlfan_vert_index` the loop of our current edge might not be the loop of our current vertex!
+  /* `vert_corner` the corner of our current edge might not be the corner of our current
+   * vertex!
    */
-  int mlfan_curr_index = ml_prev_index;
-  int mlfan_vert_index = ml_curr_index;
-  int mpfan_curr_index = poly_index;
+  int fan_corner = corner_prev;
+  int vert_corner = corner;
 
-  BLI_assert(mlfan_curr_index >= 0);
-  BLI_assert(mlfan_vert_index >= 0);
-  BLI_assert(mpfan_curr_index >= 0);
+  BLI_assert(fan_corner >= 0);
+  BLI_assert(vert_corner >= 0);
 
   /* Only need to compute previous edge's vector once, then we can just reuse old current one! */
   {
     const int vert_2 = edge_other_vert(edge_orig, vert_pivot);
-    sub_v3_v3v3(vec_org, positions[vert_2], positions[vert_pivot]);
-    normalize_v3(vec_org);
-    copy_v3_v3(vec_prev, vec_org);
+    vec_org = math::normalize(positions[vert_2] - positions[vert_pivot]);
+    vec_prev = vec_org;
 
     if (lnors_spacearr) {
       edge_vectors->append(vec_org);
     }
   }
 
-  // printf("FAN: vert %d, start edge %d\n", vert_pivot, ml_curr->e);
-
   while (true) {
-    const int2 &edge = edges[corner_edges[mlfan_curr_index]];
+    const int2 &edge = edges[corner_edges[fan_corner]];
     /* Compute edge vectors.
      * NOTE: We could pre-compute those into an array, in the first iteration, instead of computing
      *       them twice (or more) here. However, time gained is not worth memory and time lost,
@@ -947,167 +946,130 @@ static void split_loop_nor_fan_do(LoopSplitTaskDataCommon *common_data,
      */
     {
       const int vert_2 = edge_other_vert(edge, vert_pivot);
-      sub_v3_v3v3(vec_curr, positions[vert_2], positions[vert_pivot]);
-      normalize_v3(vec_curr);
+      vec_curr = math::normalize(positions[vert_2] - positions[vert_pivot]);
     }
 
-    // printf("\thandling edge %d / loop %d\n", corner_edges[mlfan_curr_index], mlfan_curr_index);
+    /* Code similar to accumulate_vertex_normals_poly_v3. */
+    /* Calculate angle between the two face edges incident on this vertex. */
+    lnor += face_normals[corner_to_face[fan_corner]] *
+            math::safe_acos_approx(math::dot(vec_curr, vec_prev));
 
-    {
-      /* Code similar to accumulate_vertex_normals_poly_v3. */
-      /* Calculate angle between the two poly edges incident on this vertex. */
-      const float fac = saacos(dot_v3v3(vec_curr, vec_prev));
-      /* Accumulate */
-      madd_v3_v3fl(lnor, poly_normals[mpfan_curr_index], fac);
-
-      if (!clnors_data.is_empty()) {
-        /* Accumulate all clnors, if they are not all equal we have to fix that! */
-        short2 *clnor = &clnors_data[mlfan_vert_index];
-        if (clnors_count) {
-          clnors_invalid |= ((*clnor_ref)[0] != (*clnor)[0] || (*clnor_ref)[1] != (*clnor)[1]);
-        }
-        else {
-          clnor_ref = clnor;
-        }
-        clnors_avg[0] += (*clnor)[0];
-        clnors_avg[1] += (*clnor)[1];
-        clnors_count++;
-      }
-    }
-
-    processed_corners.append(mlfan_vert_index);
+    processed_corners.append(vert_corner);
 
     if (lnors_spacearr) {
-      /* Assign current lnor space to current 'vertex' loop. */
-      BKE_lnor_space_add_loop(lnors_spacearr, lnor_space, mlfan_vert_index, nullptr, false);
       if (edge != edge_orig) {
         /* We store here all edges-normalized vectors processed. */
         edge_vectors->append(vec_curr);
       }
+      if (!lnors_spacearr->corners_by_space.is_empty()) {
+        lnors_spacearr->corners_by_space[space_index] = processed_corners.as_span();
+      }
+      if (!clnors_data.is_empty()) {
+        clnors_avg += int2(clnors_data[vert_corner]);
+      }
     }
 
-    if (IS_EDGE_SHARP(edge_to_loops[corner_edges[mlfan_curr_index]]) || (edge == edge_orig)) {
+    if (IS_EDGE_SHARP(edge_to_corners[corner_edges[fan_corner]]) || (edge == edge_orig)) {
       /* Current edge is sharp and we have finished with this fan of faces around this vert,
        * or this vert is smooth, and we have completed a full turn around it. */
-      // printf("FAN: Finished!\n");
       break;
     }
 
-    copy_v3_v3(vec_prev, vec_curr);
+    vec_prev = vec_curr;
 
-    /* Find next loop of the smooth fan. */
-    loop_manifold_fan_around_vert_next(corner_verts,
-                                       polys,
-                                       loop_to_poly,
-                                       edge_to_loops[corner_edges[mlfan_curr_index]],
-                                       vert_pivot,
-                                       &mlfan_curr_index,
-                                       &mlfan_vert_index,
-                                       &mpfan_curr_index);
+    /* Find next corner of the smooth fan. */
+    corner_manifold_fan_around_vert_next(corner_verts,
+                                         faces,
+                                         corner_to_face,
+                                         edge_to_corners[corner_edges[fan_corner]],
+                                         vert_pivot,
+                                         &fan_corner,
+                                         &vert_corner);
   }
 
-  {
-    float lnor_len = normalize_v3(lnor);
+  float length;
+  lnor = math::normalize_and_get_length(lnor, length);
 
-    /* If we are generating lnor spacearr, we can now define the one for this fan,
-     * and optionally compute final lnor from custom data too!
-     */
-    if (lnors_spacearr) {
-      if (UNLIKELY(lnor_len == 0.0f)) {
-        /* Use vertex normal as fallback! */
-        copy_v3_v3(lnor, loop_normals[mlfan_vert_index]);
-        lnor_len = 1.0f;
-      }
-
-      BKE_lnor_space_define(lnor_space, lnor, vec_org, vec_curr, *edge_vectors);
-      edge_vectors->clear();
-
-      if (!clnors_data.is_empty()) {
-        if (clnors_invalid) {
-          clnors_avg[0] /= clnors_count;
-          clnors_avg[1] /= clnors_count;
-          /* Fix/update all clnors of this fan with computed average value. */
-          if (G.debug & G_DEBUG) {
-            printf("Invalid clnors in this fan!\n");
-          }
-          clnors_data.fill_indices(processed_corners.as_span(),
-                                   short2(clnors_avg[0], clnors_avg[1]));
-          // print_v2("new clnors", clnors_avg);
-        }
-        /* Extra bonus: since small-stack is local to this function,
-         * no more need to empty it at all cost! */
-
-        BKE_lnor_space_custom_data_to_normal(lnor_space, *clnor_ref, lnor);
-      }
+  /* If we are generating lnor spacearr, we can now define the one for this fan,
+   * and optionally compute final lnor from custom data too!
+   */
+  if (lnors_spacearr) {
+    if (UNLIKELY(length == 0.0f)) {
+      /* Use vertex normal as fallback! */
+      lnor = corner_normals[vert_corner];
+      length = 1.0f;
     }
 
-    /* In case we get a zero normal here, just use vertex normal already set! */
-    if (LIKELY(lnor_len != 0.0f)) {
-      /* Copy back the final computed normal into all related loop-normals. */
-      loop_normals.fill_indices(processed_corners.as_span(), lnor);
+    CornerNormalSpace &lnor_space = lnors_spacearr->spaces[space_index];
+    lnor_space = corner_fan_space_define(lnor, vec_org, vec_curr, *edge_vectors);
+    lnors_spacearr->corner_space_indices.as_mutable_span().fill_indices(
+        processed_corners.as_span(), space_index);
+    edge_vectors->clear();
+
+    if (!clnors_data.is_empty()) {
+      clnors_avg /= processed_corners.size();
+      lnor = corner_space_custom_data_to_normal(lnor_space, short2(clnors_avg));
     }
+  }
+
+  /* In case we get a zero normal here, just use vertex normal already set! */
+  if (LIKELY(length != 0.0f)) {
+    /* Copy back the final computed normal into all related corner-normals. */
+    corner_normals.fill_indices(processed_corners.as_span(), lnor);
   }
 }
 
 /**
- * Check whether given loop is part of an unknown-so-far cyclic smooth fan, or not.
+ * Check whether given corner is part of an unknown-so-far cyclic smooth fan, or not.
  * Needed because cyclic smooth fans have no obvious 'entry point',
  * and yet we need to walk them once, and only once.
  */
-static bool loop_split_generator_check_cyclic_smooth_fan(const Span<int> corner_verts,
-                                                         const Span<int> corner_edges,
-                                                         const OffsetIndices<int> polys,
-                                                         const Span<int2> edge_to_loops,
-                                                         const Span<int> loop_to_poly,
-                                                         const int *e2l_prev,
-                                                         MutableBitSpan skip_loops,
-                                                         const int ml_curr_index,
-                                                         const int ml_prev_index,
-                                                         const int mp_curr_index)
+static bool corner_split_generator_check_cyclic_smooth_fan(const Span<int> corner_verts,
+                                                           const Span<int> corner_edges,
+                                                           const OffsetIndices<int> faces,
+                                                           const Span<int2> edge_to_corners,
+                                                           const Span<int> corner_to_face,
+                                                           const int2 e2l_prev,
+                                                           MutableBitSpan skip_corners,
+                                                           const int corner,
+                                                           const int corner_prev)
 {
   /* The vertex we are "fanning" around. */
-  const int vert_pivot = corner_verts[ml_curr_index];
+  const int vert_pivot = corner_verts[corner];
 
-  const int *e2lfan_curr = e2l_prev;
+  int2 e2lfan_curr = e2l_prev;
   if (IS_EDGE_SHARP(e2lfan_curr)) {
-    /* Sharp loop, so not a cyclic smooth fan. */
+    /* Sharp corner, so not a cyclic smooth fan. */
     return false;
   }
 
-  /* `mlfan_vert_index` the loop of our current edge might not be the loop of our current vertex!
+  /* `vert_corner` the corner of our current edge might not be the corner of our current
+   * vertex!
    */
-  int mlfan_curr_index = ml_prev_index;
-  int mlfan_vert_index = ml_curr_index;
-  int mpfan_curr_index = mp_curr_index;
+  int fan_corner = corner_prev;
+  int vert_corner = corner;
 
-  BLI_assert(mlfan_curr_index >= 0);
-  BLI_assert(mlfan_vert_index >= 0);
-  BLI_assert(mpfan_curr_index >= 0);
+  BLI_assert(fan_corner >= 0);
+  BLI_assert(vert_corner >= 0);
 
-  BLI_assert(!skip_loops[mlfan_vert_index]);
-  skip_loops[mlfan_vert_index].set();
+  BLI_assert(!skip_corners[vert_corner]);
+  skip_corners[vert_corner].set();
 
   while (true) {
-    /* Find next loop of the smooth fan. */
-    loop_manifold_fan_around_vert_next(corner_verts,
-                                       polys,
-                                       loop_to_poly,
-                                       e2lfan_curr,
-                                       vert_pivot,
-                                       &mlfan_curr_index,
-                                       &mlfan_vert_index,
-                                       &mpfan_curr_index);
+    /* Find next corner of the smooth fan. */
+    corner_manifold_fan_around_vert_next(
+        corner_verts, faces, corner_to_face, e2lfan_curr, vert_pivot, &fan_corner, &vert_corner);
 
-    e2lfan_curr = edge_to_loops[corner_edges[mlfan_curr_index]];
+    e2lfan_curr = edge_to_corners[corner_edges[fan_corner]];
 
     if (IS_EDGE_SHARP(e2lfan_curr)) {
-      /* Sharp loop/edge, so not a cyclic smooth fan. */
+      /* Sharp corner/edge, so not a cyclic smooth fan. */
       return false;
     }
-    /* Smooth loop/edge. */
-    if (skip_loops[mlfan_vert_index]) {
-      if (mlfan_vert_index == ml_curr_index) {
-        /* We walked around a whole cyclic smooth fan without finding any already-processed loop,
+    /* Smooth corner/edge. */
+    if (skip_corners[vert_corner]) {
+      if (vert_corner == corner) {
+        /* We walked around a whole cyclic smooth fan without finding any already-processed corner,
          * means we can use initial current / previous edge as start for this smooth fan. */
         return true;
       }
@@ -1116,162 +1078,122 @@ static bool loop_split_generator_check_cyclic_smooth_fan(const Span<int> corner_
     }
 
     /* We can skip it in future, and keep checking the smooth fan. */
-    skip_loops[mlfan_vert_index].set();
+    skip_corners[vert_corner].set();
   }
 }
 
-static void loop_split_generator(LoopSplitTaskDataCommon *common_data,
-                                 Vector<int> &r_single_corners,
-                                 Vector<int> &r_fan_corners)
+static void corner_split_generator(CornerSplitTaskDataCommon *common_data,
+                                   Vector<int, 32> &r_single_corners,
+                                   Vector<int, 32> &r_fan_corners)
 {
   const Span<int> corner_verts = common_data->corner_verts;
   const Span<int> corner_edges = common_data->corner_edges;
-  const OffsetIndices polys = common_data->polys;
-  const Span<int> loop_to_poly = common_data->loop_to_poly;
-  const Span<int2> edge_to_loops = common_data->edge_to_loops;
+  const OffsetIndices faces = common_data->faces;
+  const Span<int> corner_to_face = common_data->corner_to_face;
+  const Span<int2> edge_to_corners = common_data->edge_to_corners;
 
-  BitVector<> skip_loops(corner_verts.size(), false);
+  BitVector<> skip_corners(corner_verts.size(), false);
 
 #ifdef DEBUG_TIME
   SCOPED_TIMER_AVERAGED(__func__);
 #endif
 
-  /* We now know edges that can be smoothed (with their vector, and their two loops),
+  /* We now know edges that can be smoothed (with their vector, and their two corners),
    * and edges that will be hard! Now, time to generate the normals.
    */
-  for (const int poly_index : polys.index_range()) {
-    const IndexRange poly = polys[poly_index];
+  for (const int face_index : faces.index_range()) {
+    const IndexRange face = faces[face_index];
 
-    for (const int ml_curr_index : poly) {
-      const int ml_prev_index = mesh::poly_corner_prev(poly, ml_curr_index);
+    for (const int corner : face) {
+      const int corner_prev = mesh::face_corner_prev(face, corner);
 
 #if 0
-      printf("Checking loop %d / edge %u / vert %u (sharp edge: %d, skiploop: %d)",
-                   ml_curr_index,
-                   corner_edges[ml_curr_index],
-                   corner_verts[ml_curr_index],
-                   IS_EDGE_SHARP(edge_to_loops[corner_edges[ml_curr_index]]),
-                   skip_loops[ml_curr_index]);
+      printf("Checking corner %d / edge %u / vert %u (sharp edge: %d, skiploop: %d)",
+             corner,
+             corner_edges[corner],
+             corner_verts[corner],
+             IS_EDGE_SHARP(edge_to_corners[corner_edges[corner]]),
+             skip_corners[corner]);
 #endif
 
       /* A smooth edge, we have to check for cyclic smooth fan case.
-       * If we find a new, never-processed cyclic smooth fan, we can do it now using that loop/edge
-       * as 'entry point', otherwise we can skip it. */
+       * If we find a new, never-processed cyclic smooth fan, we can do it now using that
+       * corner/edge as 'entry point', otherwise we can skip it. */
 
-      /* NOTE: In theory, we could make #loop_split_generator_check_cyclic_smooth_fan() store
-       * mlfan_vert_index'es and edge indexes in two stacks, to avoid having to fan again around
+      /* NOTE: In theory, we could make #corner_split_generator_check_cyclic_smooth_fan() store
+       * vert_corner'es and edge indexes in two stacks, to avoid having to fan again around
        * the vert during actual computation of `clnor` & `clnorspace`.
        * However, this would complicate the code, add more memory usage, and despite its logical
-       * complexity, #loop_manifold_fan_around_vert_next() is quite cheap in term of CPU cycles,
+       * complexity, #corner_manifold_fan_around_vert_next() is quite cheap in term of CPU cycles,
        * so really think it's not worth it. */
-      if (!IS_EDGE_SHARP(edge_to_loops[corner_edges[ml_curr_index]]) &&
-          (skip_loops[ml_curr_index] || !loop_split_generator_check_cyclic_smooth_fan(
-                                            corner_verts,
-                                            corner_edges,
-                                            polys,
-                                            edge_to_loops,
-                                            loop_to_poly,
-                                            edge_to_loops[corner_edges[ml_prev_index]],
-                                            skip_loops,
-                                            ml_curr_index,
-                                            ml_prev_index,
-                                            poly_index))) {
+      if (!IS_EDGE_SHARP(edge_to_corners[corner_edges[corner]]) &&
+          (skip_corners[corner] || !corner_split_generator_check_cyclic_smooth_fan(
+                                       corner_verts,
+                                       corner_edges,
+                                       faces,
+                                       edge_to_corners,
+                                       corner_to_face,
+                                       edge_to_corners[corner_edges[corner_prev]],
+                                       skip_corners,
+                                       corner,
+                                       corner_prev)))
+      {
         // printf("SKIPPING!\n");
       }
       else {
-        if (IS_EDGE_SHARP(edge_to_loops[corner_edges[ml_curr_index]]) &&
-            IS_EDGE_SHARP(edge_to_loops[corner_edges[ml_prev_index]])) {
-          /* Simple case (both edges around that vertex are sharp in current polygon),
-           * this corner just takes its poly normal. */
-          r_single_corners.append(ml_curr_index);
+        if (IS_EDGE_SHARP(edge_to_corners[corner_edges[corner]]) &&
+            IS_EDGE_SHARP(edge_to_corners[corner_edges[corner_prev]]))
+        {
+          /* Simple case (both edges around that vertex are sharp in current face),
+           * this corner just takes its face normal. */
+          r_single_corners.append(corner);
         }
         else {
-          /* We do not need to check/tag loops as already computed. Due to the fact that a loop
+          /* We do not need to check/tag corners as already computed. Due to the fact that a corner
            * only points to one of its two edges, the same fan will never be walked more than once.
-           * Since we consider edges that have neighbor polys with inverted (flipped) normals as
+           * Since we consider edges that have neighbor faces with inverted (flipped) normals as
            * sharp, we are sure that no fan will be skipped, even only considering the case (sharp
            * current edge, smooth previous edge), and not the alternative (smooth current edge,
-           * sharp previous edge). All this due/thanks to the link between normals and loop
+           * sharp previous edge). All this due/thanks to the link between normals and corner
            * ordering (i.e. winding). */
-          r_fan_corners.append(ml_curr_index);
+          r_fan_corners.append(corner);
         }
       }
     }
   }
 }
 
-void normals_calc_loop(const Span<float3> vert_positions,
-                       const Span<int2> edges,
-                       const OffsetIndices<int> polys,
-                       const Span<int> corner_verts,
-                       const Span<int> corner_edges,
-                       const Span<int> loop_to_poly_map,
-                       const Span<float3> vert_normals,
-                       const Span<float3> poly_normals,
-                       const bool *sharp_edges,
-                       const bool *sharp_faces,
-                       bool use_split_normals,
-                       float split_angle,
-                       short (*clnors_data)[2],
-                       MLoopNorSpaceArray *r_lnors_spacearr,
-                       MutableSpan<float3> r_loop_normals)
+void normals_calc_corners(const Span<float3> vert_positions,
+                          const Span<int2> edges,
+                          const OffsetIndices<int> faces,
+                          const Span<int> corner_verts,
+                          const Span<int> corner_edges,
+                          const Span<int> corner_to_face_map,
+                          const Span<float3> vert_normals,
+                          const Span<float3> face_normals,
+                          const Span<bool> sharp_edges,
+                          const Span<bool> sharp_faces,
+                          const short2 *clnors_data,
+                          CornerNormalSpaceArray *r_lnors_spacearr,
+                          MutableSpan<float3> r_corner_normals)
 {
-  /* For now this is not supported.
-   * If we do not use split normals, we do not generate anything fancy! */
-  BLI_assert(use_split_normals || !(r_lnors_spacearr));
-
-  if (!use_split_normals) {
-    /* In this case, simply fill `r_loop_normals` with `vert_normals`
-     * (or `poly_normals` for flat faces), quite simple!
-     * Note this is done here to keep some logic and consistency in this quite complex code,
-     * since we may want to use loop_normals even when mesh's 'autosmooth' is disabled
-     * (see e.g. mesh mapping code). As usual, we could handle that on case-by-case basis,
-     * but simpler to keep it well confined here. */
-    for (const int poly_index : polys.index_range()) {
-      const bool is_poly_flat = sharp_faces && sharp_faces[poly_index];
-      for (const int corner : polys[poly_index]) {
-        if (is_poly_flat) {
-          copy_v3_v3(r_loop_normals[corner], poly_normals[poly_index]);
-        }
-        else {
-          copy_v3_v3(r_loop_normals[corner], vert_normals[corner_verts[corner]]);
-        }
-      }
-    }
-    return;
-  }
-
   /**
-   * Mapping edge -> loops.
-   * If that edge is used by more than two loops (polys),
+   * Mapping edge -> corners.
+   * If that edge is used by more than two corners (faces),
    * it is always sharp (and tagged as such, see below).
-   * We also use the second loop index as a kind of flag:
+   * We also use the second corner index as a kind of flag:
    *
    * - smooth edge: > 0.
    * - sharp edge: < 0 (INDEX_INVALID || INDEX_UNSET).
    * - unset: INDEX_UNSET.
    *
-   * Note that currently we only have two values for second loop of sharp edges.
-   * However, if needed, we can store the negated value of loop index instead of INDEX_INVALID
+   * Note that currently we only have two values for second corner of sharp edges.
+   * However, if needed, we can store the negated value of corner index instead of INDEX_INVALID
    * to retrieve the real value later in code).
    * Note also that loose edges always have both values set to 0! */
-  Array<int2> edge_to_loops(edges.size(), int2(0));
+  Array<int2> edge_to_corners(edges.size(), int2(0));
 
-  /* Simple mapping from a loop to its polygon index. */
-  Span<int> loop_to_poly;
-  Array<int> local_loop_to_poly_map;
-  if (loop_to_poly_map.is_empty()) {
-    local_loop_to_poly_map = mesh_topology::build_loop_to_poly_map(polys);
-    loop_to_poly = local_loop_to_poly_map;
-  }
-  else {
-    loop_to_poly = loop_to_poly_map;
-  }
-
-  /* When using custom loop normals, disable the angle feature! */
-  const bool check_angle = (split_angle < float(M_PI)) && (clnors_data == nullptr);
-
-  MLoopNorSpaceArray _lnors_spacearr = {nullptr};
+  CornerNormalSpaceArray _lnors_spacearr;
 
 #ifdef DEBUG_TIME
   SCOPED_TIMER_AVERAGED(__func__);
@@ -1281,77 +1203,57 @@ void normals_calc_loop(const Span<float3> vert_positions,
     /* We need to compute lnor spacearr if some custom lnor data are given to us! */
     r_lnors_spacearr = &_lnors_spacearr;
   }
-  if (r_lnors_spacearr) {
-    BKE_lnor_spacearr_init(r_lnors_spacearr, corner_verts.size(), MLNOR_SPACEARR_LOOP_INDEX);
-  }
 
   /* Init data common to all tasks. */
-  LoopSplitTaskDataCommon common_data;
+  CornerSplitTaskDataCommon common_data;
   common_data.lnors_spacearr = r_lnors_spacearr;
-  common_data.loop_normals = r_loop_normals;
-  common_data.clnors_data = {reinterpret_cast<short2 *>(clnors_data),
-                             clnors_data ? corner_verts.size() : 0};
+  common_data.corner_normals = r_corner_normals;
+  common_data.clnors_data = {clnors_data, clnors_data ? corner_verts.size() : 0};
   common_data.positions = vert_positions;
   common_data.edges = edges;
-  common_data.polys = polys;
+  common_data.faces = faces;
   common_data.corner_verts = corner_verts;
   common_data.corner_edges = corner_edges;
-  common_data.edge_to_loops = edge_to_loops;
-  common_data.loop_to_poly = loop_to_poly;
-  common_data.poly_normals = poly_normals;
+  common_data.edge_to_corners = edge_to_corners;
+  common_data.corner_to_face = corner_to_face_map;
+  common_data.face_normals = face_normals;
   common_data.vert_normals = vert_normals;
 
-  /* Pre-populate all loop normals as if their verts were all smooth.
+  /* Pre-populate all corner normals as if their verts were all smooth.
    * This way we don't have to compute those later! */
-  array_utils::gather(vert_normals, corner_verts, r_loop_normals, 1024);
+  array_utils::gather(vert_normals, corner_verts, r_corner_normals, 1024);
 
-  /* This first loop check which edges are actually smooth, and compute edge vectors. */
-  mesh_edges_sharp_tag(polys,
-                       corner_verts,
-                       corner_edges,
-                       loop_to_poly,
-                       poly_normals,
-                       Span<bool>(sharp_faces, sharp_faces ? polys.size() : 0),
-                       Span<bool>(sharp_edges, sharp_edges ? edges.size() : 0),
-                       check_angle,
-                       split_angle,
-                       edge_to_loops,
-                       {});
+  /* This first corner check which edges are actually smooth, and compute edge vectors. */
+  build_edge_to_corner_map_with_flip_and_sharp(
+      faces, corner_verts, corner_edges, sharp_faces, sharp_edges, edge_to_corners);
 
-  Vector<int> single_corners;
-  Vector<int> fan_corners;
-  loop_split_generator(&common_data, single_corners, fan_corners);
+  Vector<int, 32> single_corners;
+  Vector<int, 32> fan_corners;
+  corner_split_generator(&common_data, single_corners, fan_corners);
 
-  MLoopNorSpace *lnor_spaces = nullptr;
   if (r_lnors_spacearr) {
-    r_lnors_spacearr->spaces_num = single_corners.size() + fan_corners.size();
-    lnor_spaces = static_cast<MLoopNorSpace *>(BLI_memarena_calloc(
-        r_lnors_spacearr->mem, sizeof(MLoopNorSpace) * r_lnors_spacearr->spaces_num));
+    r_lnors_spacearr->spaces.reinitialize(single_corners.size() + fan_corners.size());
+    r_lnors_spacearr->corner_space_indices = Array<int>(corner_verts.size(), -1);
+    if (r_lnors_spacearr->create_corners_by_space) {
+      r_lnors_spacearr->corners_by_space.reinitialize(r_lnors_spacearr->spaces.size());
+    }
   }
 
   threading::parallel_for(single_corners.index_range(), 1024, [&](const IndexRange range) {
     for (const int i : range) {
       const int corner = single_corners[i];
-      lnor_space_for_single_fan(&common_data, corner, lnor_spaces ? &lnor_spaces[i] : nullptr);
+      lnor_space_for_single_fan(&common_data, corner, i);
     }
   });
 
   threading::parallel_for(fan_corners.index_range(), 1024, [&](const IndexRange range) {
-    Vector<float3> edge_vectors;
+    Vector<float3, 16> edge_vectors;
     for (const int i : range) {
       const int corner = fan_corners[i];
-      split_loop_nor_fan_do(&common_data,
-                            corner,
-                            lnor_spaces ? &lnor_spaces[single_corners.size() + i] : nullptr,
-                            &edge_vectors);
+      const int space_index = single_corners.size() + i;
+      split_corner_normal_fan_do(&common_data, corner, space_index, &edge_vectors);
     }
   });
-
-  if (r_lnors_spacearr) {
-    if (r_lnors_spacearr == &_lnors_spacearr) {
-      BKE_lnor_spacearr_free(r_lnors_spacearr);
-    }
-  }
 }
 
 #undef INDEX_UNSET
@@ -1361,339 +1263,308 @@ void normals_calc_loop(const Span<float3> vert_positions,
 /**
  * Compute internal representation of given custom normals (as an array of float[2]).
  * It also makes sure the mesh matches those custom normals, by setting sharp edges flag as needed
- * to get a same custom lnor for all loops sharing a same smooth fan.
- * If use_vertices if true, r_custom_loop_normals is assumed to be per-vertex, not per-loop
+ * to get a same custom lnor for all corners sharing the same smooth fan.
+ * If use_vertices if true, r_custom_corner_normals is assumed to be per-vertex, not per-corner
  * (this allows to set whole vert's normals at once, useful in some cases).
- * r_custom_loop_normals is expected to have normalized normals, or zero ones,
- * in which case they will be replaced by default loop/vertex normal.
+ * r_custom_corner_normals is expected to have normalized normals, or zero ones,
+ * in which case they will be replaced by default corner/vertex normal.
  */
 
-static void mesh_normals_loop_custom_set(Span<float3> positions,
-                                         Span<int2> edges,
-                                         const OffsetIndices<int> polys,
-                                         Span<int> corner_verts,
-                                         Span<int> corner_edges,
-                                         Span<float3> vert_normals,
-                                         Span<float3> poly_normals,
-                                         const bool *sharp_faces,
-                                         const bool use_vertices,
-                                         MutableSpan<float3> r_custom_loop_normals,
-                                         MutableSpan<bool> sharp_edges,
-                                         short (*r_clnors_data)[2])
+static void mesh_normals_corner_custom_set(const Span<float3> positions,
+                                           const Span<int2> edges,
+                                           const OffsetIndices<int> faces,
+                                           const Span<int> corner_verts,
+                                           const Span<int> corner_edges,
+                                           const Span<float3> vert_normals,
+                                           const Span<float3> face_normals,
+                                           const Span<bool> sharp_faces,
+                                           const bool use_vertices,
+                                           MutableSpan<float3> r_custom_corner_normals,
+                                           MutableSpan<bool> sharp_edges,
+                                           MutableSpan<short2> r_clnors_data)
 {
-  /* We *may* make that poor #bke::mesh::normals_calc_loop() even more complex by making it
+  /* We *may* make that poor #bke::mesh::normals_calc_corners() even more complex by making it
    * handling that feature too, would probably be more efficient in absolute. However, this
-   * function *is not* performance-critical, since it is mostly expected to be called by io add-ons
+   * function *is not* performance-critical, since it is mostly expected to be called by IO add-ons
    * when importing custom normals, and modifier (and perhaps from some editing tools later?). So
-   * better to keep some simplicity here, and just call #bke::mesh::normals_calc_loop() twice! */
-  MLoopNorSpaceArray lnors_spacearr = {nullptr};
-  BitVector<> done_loops(corner_verts.size(), false);
-  Array<float3> loop_normals(corner_verts.size());
-  const Array<int> loop_to_poly = mesh_topology::build_loop_to_poly_map(polys);
-  /* In this case we always consider split nors as ON,
-   * and do not want to use angle to define smooth fans! */
-  const bool use_split_normals = true;
-  const float split_angle = float(M_PI);
-
-  Vector<short *> clnors_data;
+   * better to keep some simplicity here, and just call #bke::mesh::normals_calc_corners() twice!
+   */
+  CornerNormalSpaceArray lnors_spacearr;
+  lnors_spacearr.create_corners_by_space = true;
+  BitVector<> done_corners(corner_verts.size(), false);
+  Array<float3> corner_normals(corner_verts.size());
+  const Array<int> corner_to_face = build_corner_to_face_map(faces);
 
   /* Compute current lnor spacearr. */
-  normals_calc_loop(positions,
-                    edges,
-                    polys,
-                    corner_verts,
-                    corner_edges,
-                    loop_to_poly,
-                    vert_normals,
-                    poly_normals,
-                    sharp_edges.data(),
-                    sharp_faces,
-                    use_split_normals,
-                    split_angle,
-                    r_clnors_data,
-                    &lnors_spacearr,
-                    loop_normals);
+  normals_calc_corners(positions,
+                       edges,
+                       faces,
+                       corner_verts,
+                       corner_edges,
+                       corner_to_face,
+                       vert_normals,
+                       face_normals,
+                       sharp_edges,
+                       sharp_faces,
+                       r_clnors_data.data(),
+                       &lnors_spacearr,
+                       corner_normals);
 
   /* Set all given zero vectors to their default value. */
   if (use_vertices) {
     for (const int i : positions.index_range()) {
-      if (is_zero_v3(r_custom_loop_normals[i])) {
-        copy_v3_v3(r_custom_loop_normals[i], vert_normals[i]);
+      if (is_zero_v3(r_custom_corner_normals[i])) {
+        copy_v3_v3(r_custom_corner_normals[i], vert_normals[i]);
       }
     }
   }
   else {
     for (const int i : corner_verts.index_range()) {
-      if (is_zero_v3(r_custom_loop_normals[i])) {
-        copy_v3_v3(r_custom_loop_normals[i], loop_normals[i]);
+      if (is_zero_v3(r_custom_corner_normals[i])) {
+        copy_v3_v3(r_custom_corner_normals[i], corner_normals[i]);
       }
     }
   }
-
-  BLI_assert(lnors_spacearr.data_type == MLNOR_SPACEARR_LOOP_INDEX);
 
   /* Now, check each current smooth fan (one lnor space per smooth fan!),
-   * and if all its matching custom loop_normals are not (enough) equal, add sharp edges as needed.
-   * This way, next time we run bke::mesh::normals_calc_loop(), we'll get lnor spacearr/smooth fans
-   * matching given custom loop_normals.
-   * Note this code *will never* unsharp edges! And quite obviously,
-   * when we set custom normals per vertices, running this is absolutely useless. */
+   * and if all its matching custom corner_normals are not (enough) equal, add sharp edges as
+   * needed. This way, next time we run bke::mesh::normals_calc_corners(), we'll get lnor
+   * spacearr/smooth fans matching given custom corner_normals. Note this code *will never* unsharp
+   * edges! And quite obviously, when we set custom normals per vertices, running this is
+   * absolutely useless. */
   if (use_vertices) {
-    done_loops.fill(true);
+    done_corners.fill(true);
   }
   else {
     for (const int i : corner_verts.index_range()) {
-      if (!lnors_spacearr.lspacearr[i]) {
+      if (lnors_spacearr.corner_space_indices[i] == -1) {
         /* This should not happen in theory, but in some rare case (probably ugly geometry)
-         * we can get some nullptr loopspacearr at this point. :/
-         * Maybe we should set those loops' edges as sharp? */
-        done_loops[i].set();
+         * we can get some missing loopspacearr at this point. :/
+         * Maybe we should set those corners' edges as sharp? */
+        done_corners[i].set();
         if (G.debug & G_DEBUG) {
-          printf("WARNING! Getting invalid nullptr loop space for loop %d!\n", i);
+          printf("WARNING! Getting invalid nullptr corner space for corner %d!\n", i);
         }
         continue;
       }
-      if (done_loops[i]) {
+      if (done_corners[i]) {
         continue;
       }
 
+      const int space_index = lnors_spacearr.corner_space_indices[i];
+      const Span<int> fan_corners = lnors_spacearr.corners_by_space[space_index];
+
       /* Notes:
-       * - In case of mono-loop smooth fan, we have nothing to do.
+       * - In case of mono-corner smooth fan, we have nothing to do.
        * - Loops in this linklist are ordered (in reversed order compared to how they were
-       *   discovered by bke::mesh::normals_calc_loop(), but this is not a problem).
+       *   discovered by bke::mesh::normals_calc_corners(), but this is not a problem).
        *   Which means if we find a mismatching clnor,
-       *   we know all remaining loops will have to be in a new, different smooth fan/lnor space.
+       *   we know all remaining corners will have to be in a new, different smooth fan/lnor space.
        * - In smooth fan case, we compare each clnor against a ref one,
        *   to avoid small differences adding up into a real big one in the end!
        */
-      if (lnors_spacearr.lspacearr[i]->flags & MLNOR_SPACE_IS_SINGLE) {
-        done_loops[i].set();
+      if (fan_corners.is_empty()) {
+        done_corners[i].set();
         continue;
       }
 
-      LinkNode *loop_link = lnors_spacearr.lspacearr[i]->loops;
       int prev_corner = -1;
       const float *org_nor = nullptr;
 
-      while (loop_link) {
-        const int lidx = POINTER_AS_INT(loop_link->link);
-        float *nor = r_custom_loop_normals[lidx];
+      for (int i = fan_corners.index_range().last(); i >= 0; i--) {
+        const int lidx = fan_corners[i];
+        float *nor = r_custom_corner_normals[lidx];
 
         if (!org_nor) {
           org_nor = nor;
         }
         else if (dot_v3v3(org_nor, nor) < LNOR_SPACE_TRIGO_THRESHOLD) {
           /* Current normal differs too much from org one, we have to tag the edge between
-           * previous loop's face and current's one as sharp.
-           * We know those two loops do not point to the same edge,
+           * previous corner's face and current's one as sharp.
+           * We know those two corners do not point to the same edge,
            * since we do not allow reversed winding in a same smooth fan. */
-          const IndexRange poly = polys[loop_to_poly[lidx]];
-          const int mlp = (lidx == poly.start()) ? poly.start() + poly.size() - 1 : lidx - 1;
+          const IndexRange face = faces[corner_to_face[lidx]];
+          const int corner_prev = face_corner_prev(face, lidx);
           const int edge = corner_edges[lidx];
-          const int edge_p = corner_edges[mlp];
+          const int edge_prev = corner_edges[corner_prev];
           const int prev_edge = corner_edges[prev_corner];
-          sharp_edges[prev_edge == edge_p ? prev_edge : edge] = true;
+          sharp_edges[prev_edge == edge_prev ? prev_edge : edge] = true;
 
           org_nor = nor;
         }
 
         prev_corner = lidx;
-        loop_link = loop_link->next;
-        done_loops[lidx].set();
+        done_corners[lidx].set();
       }
 
-      /* We also have to check between last and first loops,
+      /* We also have to check between last and first corners,
        * otherwise we may miss some sharp edges here!
        * This is just a simplified version of above while loop.
        * See #45984. */
-      loop_link = lnors_spacearr.lspacearr[i]->loops;
-      if (loop_link && org_nor) {
-        const int lidx = POINTER_AS_INT(loop_link->link);
-        float *nor = r_custom_loop_normals[lidx];
+      if (fan_corners.size() > 1 && org_nor) {
+        const int lidx = fan_corners.last();
+        float *nor = r_custom_corner_normals[lidx];
 
         if (dot_v3v3(org_nor, nor) < LNOR_SPACE_TRIGO_THRESHOLD) {
-          const IndexRange poly = polys[loop_to_poly[lidx]];
-          const int mlp = (lidx == poly.start()) ? poly.start() + poly.size() - 1 : lidx - 1;
+          const IndexRange face = faces[corner_to_face[lidx]];
+          const int corner_prev = face_corner_prev(face, lidx);
           const int edge = corner_edges[lidx];
-          const int edge_p = corner_edges[mlp];
+          const int edge_prev = corner_edges[corner_prev];
           const int prev_edge = corner_edges[prev_corner];
-          sharp_edges[prev_edge == edge_p ? prev_edge : edge] = true;
+          sharp_edges[prev_edge == edge_prev ? prev_edge : edge] = true;
         }
       }
     }
 
-    /* And now, recompute our new auto `loop_normals` and lnor spacearr! */
-    BKE_lnor_spacearr_clear(&lnors_spacearr);
-    normals_calc_loop(positions,
-                      edges,
-                      polys,
-                      corner_verts,
-                      corner_edges,
-                      loop_to_poly,
-                      vert_normals,
-                      poly_normals,
-                      sharp_edges.data(),
-                      sharp_faces,
-                      use_split_normals,
-                      split_angle,
-                      r_clnors_data,
-                      &lnors_spacearr,
-                      loop_normals);
+    /* And now, recompute our new auto `corner_normals` and lnor spacearr! */
+    normals_calc_corners(positions,
+                         edges,
+                         faces,
+                         corner_verts,
+                         corner_edges,
+                         corner_to_face,
+                         vert_normals,
+                         face_normals,
+                         sharp_edges,
+                         sharp_faces,
+                         r_clnors_data.data(),
+                         &lnors_spacearr,
+                         corner_normals);
   }
 
   /* And we just have to convert plain object-space custom normals to our
    * lnor space-encoded ones. */
   for (const int i : corner_verts.index_range()) {
-    if (!lnors_spacearr.lspacearr[i]) {
-      done_loops[i].reset();
+    if (lnors_spacearr.corner_space_indices[i] == -1) {
+      done_corners[i].reset();
       if (G.debug & G_DEBUG) {
-        printf("WARNING! Still getting invalid nullptr loop space in second loop for loop %d!\n",
-               i);
+        printf("WARNING! Still getting invalid nullptr corner space in second for loop %d!\n", i);
       }
       continue;
     }
+    if (!done_corners[i]) {
+      continue;
+    }
 
-    if (done_loops[i]) {
-      /* Note we accumulate and average all custom normals in current smooth fan,
-       * to avoid getting different clnors data (tiny differences in plain custom normals can
-       * give rather huge differences in computed 2D factors). */
-      LinkNode *loop_link = lnors_spacearr.lspacearr[i]->loops;
-      if (lnors_spacearr.lspacearr[i]->flags & MLNOR_SPACE_IS_SINGLE) {
-        BLI_assert(POINTER_AS_INT(loop_link) == i);
-        const int nidx = use_vertices ? corner_verts[i] : i;
-        float *nor = r_custom_loop_normals[nidx];
+    const int space_index = lnors_spacearr.corner_space_indices[i];
+    const Span<int> fan_corners = lnors_spacearr.corners_by_space[space_index];
 
-        BKE_lnor_space_custom_normal_to_data(lnors_spacearr.lspacearr[i], nor, r_clnors_data[i]);
-        done_loops[i].reset();
+    /* Note we accumulate and average all custom normals in current smooth fan,
+     * to avoid getting different clnors data (tiny differences in plain custom normals can
+     * give rather huge differences in computed 2D factors). */
+    if (fan_corners.size() < 2) {
+      const int nidx = use_vertices ? corner_verts[i] : i;
+      r_clnors_data[i] = corner_space_custom_normal_to_data(lnors_spacearr.spaces[space_index],
+                                                            r_custom_corner_normals[nidx]);
+      done_corners[i].reset();
+    }
+    else {
+      float3 avg_nor(0.0f);
+      for (const int lidx : fan_corners) {
+        const int nidx = use_vertices ? corner_verts[lidx] : lidx;
+        avg_nor += r_custom_corner_normals[nidx];
+        done_corners[lidx].reset();
       }
-      else {
-        int avg_nor_count = 0;
-        float avg_nor[3];
-        short clnor_data_tmp[2];
 
-        zero_v3(avg_nor);
-        while (loop_link) {
-          const int lidx = POINTER_AS_INT(loop_link->link);
-          const int nidx = use_vertices ? corner_verts[lidx] : lidx;
-          float *nor = r_custom_loop_normals[nidx];
+      mul_v3_fl(avg_nor, 1.0f / float(fan_corners.size()));
+      short2 clnor_data_tmp = corner_space_custom_normal_to_data(
+          lnors_spacearr.spaces[space_index], avg_nor);
 
-          avg_nor_count++;
-          add_v3_v3(avg_nor, nor);
-          clnors_data.append(r_clnors_data[lidx]);
-
-          loop_link = loop_link->next;
-          done_loops[lidx].reset();
-        }
-
-        mul_v3_fl(avg_nor, 1.0f / float(avg_nor_count));
-        BKE_lnor_space_custom_normal_to_data(lnors_spacearr.lspacearr[i], avg_nor, clnor_data_tmp);
-
-        while (!clnors_data.is_empty()) {
-          short *clnor_data = clnors_data.pop_last();
-          clnor_data[0] = clnor_data_tmp[0];
-          clnor_data[1] = clnor_data_tmp[1];
-        }
-      }
+      r_clnors_data.fill_indices(fan_corners, clnor_data_tmp);
     }
   }
-
-  BKE_lnor_spacearr_free(&lnors_spacearr);
 }
 
-void normals_loop_custom_set(const Span<float3> vert_positions,
-                             const Span<int2> edges,
-                             const OffsetIndices<int> polys,
-                             const Span<int> corner_verts,
-                             const Span<int> corner_edges,
-                             const Span<float3> vert_normals,
-                             const Span<float3> poly_normals,
-                             const bool *sharp_faces,
-                             MutableSpan<bool> sharp_edges,
-                             MutableSpan<float3> r_custom_loop_normals,
-                             short (*r_clnors_data)[2])
+void normals_corner_custom_set(const Span<float3> vert_positions,
+                               const Span<int2> edges,
+                               const OffsetIndices<int> faces,
+                               const Span<int> corner_verts,
+                               const Span<int> corner_edges,
+                               const Span<float3> vert_normals,
+                               const Span<float3> face_normals,
+                               const Span<bool> sharp_faces,
+                               MutableSpan<bool> sharp_edges,
+                               MutableSpan<float3> r_custom_corner_normals,
+                               MutableSpan<short2> r_clnors_data)
 {
-  mesh_normals_loop_custom_set(vert_positions,
-                               edges,
-                               polys,
-                               corner_verts,
-                               corner_edges,
-                               vert_normals,
-                               poly_normals,
-                               sharp_faces,
-                               false,
-                               r_custom_loop_normals,
-                               sharp_edges,
-                               r_clnors_data);
+  mesh_normals_corner_custom_set(vert_positions,
+                                 edges,
+                                 faces,
+                                 corner_verts,
+                                 corner_edges,
+                                 vert_normals,
+                                 face_normals,
+                                 sharp_faces,
+                                 false,
+                                 r_custom_corner_normals,
+                                 sharp_edges,
+                                 r_clnors_data);
 }
 
-void normals_loop_custom_set_from_verts(const Span<float3> vert_positions,
-                                        const Span<int2> edges,
-                                        const OffsetIndices<int> polys,
-                                        const Span<int> corner_verts,
-                                        const Span<int> corner_edges,
-                                        const Span<float3> vert_normals,
-                                        const Span<float3> poly_normals,
-                                        const bool *sharp_faces,
-                                        MutableSpan<bool> sharp_edges,
-                                        MutableSpan<float3> r_custom_vert_normals,
-                                        short (*r_clnors_data)[2])
+void normals_corner_custom_set_from_verts(const Span<float3> vert_positions,
+                                          const Span<int2> edges,
+                                          const OffsetIndices<int> faces,
+                                          const Span<int> corner_verts,
+                                          const Span<int> corner_edges,
+                                          const Span<float3> vert_normals,
+                                          const Span<float3> face_normals,
+                                          const Span<bool> sharp_faces,
+                                          MutableSpan<bool> sharp_edges,
+                                          MutableSpan<float3> r_custom_vert_normals,
+                                          MutableSpan<short2> r_clnors_data)
 {
-  mesh_normals_loop_custom_set(vert_positions,
-                               edges,
-                               polys,
-                               corner_verts,
-                               corner_edges,
-                               vert_normals,
-                               poly_normals,
-                               sharp_faces,
-                               true,
-                               r_custom_vert_normals,
-                               sharp_edges,
-                               r_clnors_data);
+  mesh_normals_corner_custom_set(vert_positions,
+                                 edges,
+                                 faces,
+                                 corner_verts,
+                                 corner_edges,
+                                 vert_normals,
+                                 face_normals,
+                                 sharp_faces,
+                                 true,
+                                 r_custom_vert_normals,
+                                 sharp_edges,
+                                 r_clnors_data);
 }
 
 static void mesh_set_custom_normals(Mesh *mesh, float (*r_custom_nors)[3], const bool use_vertices)
 {
-  short(*clnors)[2];
-  const int numloops = mesh->totloop;
-
-  clnors = (short(*)[2])CustomData_get_layer_for_write(
-      &mesh->ldata, CD_CUSTOMLOOPNORMAL, mesh->totloop);
+  short2 *clnors = static_cast<short2 *>(
+      CustomData_get_layer_for_write(&mesh->corner_data, CD_CUSTOMLOOPNORMAL, mesh->corners_num));
   if (clnors != nullptr) {
-    memset(clnors, 0, sizeof(*clnors) * size_t(numloops));
+    memset(clnors, 0, sizeof(*clnors) * mesh->corners_num);
   }
   else {
-    clnors = (short(*)[2])CustomData_add_layer(
-        &mesh->ldata, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, numloops);
+    clnors = static_cast<short2 *>(CustomData_add_layer(
+        &mesh->corner_data, CD_CUSTOMLOOPNORMAL, CD_SET_DEFAULT, mesh->corners_num));
   }
   MutableAttributeAccessor attributes = mesh->attributes_for_write();
   SpanAttributeWriter<bool> sharp_edges = attributes.lookup_or_add_for_write_span<bool>(
-      "sharp_edge", ATTR_DOMAIN_EDGE);
-  const bool *sharp_faces = static_cast<const bool *>(
-      CustomData_get_layer_named(&mesh->pdata, CD_PROP_BOOL, "sharp_face"));
+      "sharp_edge", AttrDomain::Edge);
+  const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", AttrDomain::Face);
 
-  mesh_normals_loop_custom_set(
-      mesh->vert_positions(),
-      mesh->edges(),
-      mesh->polys(),
-      mesh->corner_verts(),
-      mesh->corner_edges(),
-      mesh->vert_normals(),
-      mesh->poly_normals(),
-      sharp_faces,
-      use_vertices,
-      {reinterpret_cast<float3 *>(r_custom_nors), use_vertices ? mesh->totvert : mesh->totloop},
-      sharp_edges.span,
-      clnors);
+  mesh_normals_corner_custom_set(mesh->vert_positions(),
+                                 mesh->edges(),
+                                 mesh->faces(),
+                                 mesh->corner_verts(),
+                                 mesh->corner_edges(),
+                                 mesh->vert_normals(),
+                                 mesh->face_normals(),
+                                 sharp_faces,
+                                 use_vertices,
+                                 {reinterpret_cast<float3 *>(r_custom_nors),
+                                  use_vertices ? mesh->verts_num : mesh->corners_num},
+                                 sharp_edges.span,
+                                 {clnors, mesh->corners_num});
 
   sharp_edges.finish();
 }
 
 }  // namespace blender::bke::mesh
 
-void BKE_mesh_set_custom_normals(Mesh *mesh, float (*r_custom_loop_normals)[3])
+void BKE_mesh_set_custom_normals(Mesh *mesh, float (*r_custom_corner_normals)[3])
 {
-  blender::bke::mesh::mesh_set_custom_normals(mesh, r_custom_loop_normals, false);
+  blender::bke::mesh::mesh_set_custom_normals(mesh, r_custom_corner_normals, false);
 }
 
 void BKE_mesh_set_custom_normals_from_verts(Mesh *mesh, float (*r_custom_vert_normals)[3])

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -8,9 +10,9 @@
  */
 
 #include <cstring>
+#include <fmt/format.h>
 
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
 #include "BLI_array.hh"
@@ -19,15 +21,14 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_context.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 #include "interface_intern.hh"
 
 /* -------------------------------------------------------------------- */
@@ -58,8 +59,8 @@ static void operator_search_update_fn(const bContext *C,
   const int words_len = BLI_string_find_split_words(
       str, str_len, ' ', (int(*)[2])words.data(), words_max);
 
-  for (WM_operatortype_iter(&iter); !BLI_ghashIterator_done(&iter);
-       BLI_ghashIterator_step(&iter)) {
+  for (WM_operatortype_iter(&iter); !BLI_ghashIterator_done(&iter); BLI_ghashIterator_step(&iter))
+  {
     wmOperatorType *ot = static_cast<wmOperatorType *>(BLI_ghashIterator_getValue(&iter));
     const char *ot_ui_name = CTX_IFACE_(ot->translation_context, ot->name);
 
@@ -69,26 +70,15 @@ static void operator_search_update_fn(const bContext *C,
 
     if (BLI_string_all_words_matched(ot_ui_name, str, (int(*)[2])words.data(), words_len)) {
       if (WM_operator_poll((bContext *)C, ot)) {
-        char name[256];
-        const int len = strlen(ot_ui_name);
-
-        /* display name for menu, can hold hotkey */
-        BLI_strncpy(name, ot_ui_name, sizeof(name));
-
-        /* check for hotkey */
-        if (len < sizeof(name) - 6) {
-          if (WM_key_event_operator_string(C,
-                                           ot->idname,
-                                           WM_OP_EXEC_DEFAULT,
-                                           nullptr,
-                                           true,
-                                           &name[len + 1],
-                                           sizeof(name) - len - 1)) {
-            name[len] = UI_SEP_CHAR;
-          }
+        std::string name = ot_ui_name;
+        if (const std::optional<std::string> kmi_str = WM_key_event_operator_string(
+                C, ot->idname, WM_OP_EXEC_DEFAULT, nullptr, true))
+        {
+          name += UI_SEP_CHAR;
+          name += *kmi_str;
         }
 
-        if (!UI_search_item_add(items, name, ot, ICON_NONE, 0, 0)) {
+        if (!UI_search_item_add(items, name.c_str(), ot, ICON_NONE, 0, 0)) {
           break;
         }
       }
@@ -124,7 +114,7 @@ void uiTemplateOperatorSearch(uiLayout *layout)
   UI_block_layout_set_current(block, layout);
 
   but = uiDefSearchBut(
-      block, search, 0, ICON_VIEWZOOM, sizeof(search), 0, 0, UI_UNIT_X * 6, UI_UNIT_Y, 0, 0, "");
+      block, search, 0, ICON_VIEWZOOM, sizeof(search), 0, 0, UI_UNIT_X * 6, UI_UNIT_Y, "");
   UI_but_func_operator_search(but);
 }
 

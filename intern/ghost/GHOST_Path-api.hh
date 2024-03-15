@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2010 Blender Foundation */
+/* SPDX-FileCopyrightText: 2010 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -19,13 +20,13 @@ GHOST_DECLARE_HANDLE(GHOST_SystemPathsHandle);
  * Creates the one and only instance of the system path access.
  * \return An indication of success.
  */
-extern GHOST_TSuccess GHOST_CreateSystemPaths(void);
+extern GHOST_TSuccess GHOST_CreateSystemPaths();
 
 /**
  * Disposes the one and only system.
  * \return An indication of success.
  */
-extern GHOST_TSuccess GHOST_DisposeSystemPaths(void);
+extern GHOST_TSuccess GHOST_DisposeSystemPaths();
 
 /**
  * Determine the base dir in which shared resources are located. It will first try to use
@@ -56,7 +57,7 @@ extern const char *GHOST_getUserSpecialDir(GHOST_TUserSpecialDirTypes type);
  * Determine the dir in which the binary file is found.
  * \return Unsigned char string pointing to binary dir (eg ~/usr/local/bin/).
  */
-extern const char *GHOST_getBinaryDir(void);
+extern const char *GHOST_getBinaryDir();
 
 /**
  * Add the file to the operating system most recently used files

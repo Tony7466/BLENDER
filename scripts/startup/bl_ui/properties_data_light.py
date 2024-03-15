@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2018-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.app.translations import contexts as i18n_contexts
 from bpy.types import Panel
@@ -24,7 +27,7 @@ class DATA_PT_context_light(DataButtonsPanel, Panel):
         'BLENDER_EEVEE_NEXT',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     def draw(self, context):
         layout = self.layout
@@ -50,7 +53,7 @@ class DATA_PT_preview(DataButtonsPanel, Panel):
 
 class DATA_PT_light(DataButtonsPanel, Panel):
     bl_label = "Light"
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_WORKBENCH', 'BLENDER_WORKBENCH_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_WORKBENCH'}
 
     def draw(self, context):
         layout = self.layout
@@ -95,6 +98,7 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
         col.separator()
 
         if light.type in {'POINT', 'SPOT'}:
+            col.prop(light, "use_soft_falloff")
             col.prop(light, "shadow_soft_size", text="Radius")
         elif light.type == 'SUN':
             col.prop(light, "angle")
@@ -108,6 +112,16 @@ class DATA_PT_EEVEE_light(DataButtonsPanel, Panel):
             elif light.shape in {'RECTANGLE', 'ELLIPSE'}:
                 sub.prop(light, "size", text="Size X")
                 sub.prop(light, "size_y", text="Y")
+
+        if context.engine == 'BLENDER_EEVEE_NEXT':
+            col.separator()
+
+            col.prop(light, "use_shadow", text="Cast Shadow")
+            col.prop(light, "shadow_softness_factor", text="Shadow Softness")
+            col.prop(light, "shadow_filter_radius", text="Filtering Radius")
+
+            if light.type == 'SUN':
+                col.prop(light, "shadow_trace_distance", text="Trace Distance")
 
 
 class DATA_PT_EEVEE_light_distance(DataButtonsPanel, Panel):
@@ -141,7 +155,7 @@ class DATA_PT_EEVEE_light_distance(DataButtonsPanel, Panel):
 class DATA_PT_EEVEE_shadow(DataButtonsPanel, Panel):
     bl_label = "Shadow"
     bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_EEVEE', 'BLENDER_EEVEE_NEXT'}
+    COMPAT_ENGINES = {'BLENDER_EEVEE'}
 
     @classmethod
     def poll(cls, context):
@@ -169,8 +183,7 @@ class DATA_PT_EEVEE_shadow(DataButtonsPanel, Panel):
         if light.type != 'SUN':
             sub.prop(light, "shadow_buffer_clip_start", text="Clip Start")
 
-        if context.engine != 'BLENDER_EEVEE_NEXT':
-            col.prop(light, "shadow_buffer_bias", text="Bias")
+        col.prop(light, "shadow_buffer_bias", text="Bias")
 
 
 class DATA_PT_EEVEE_shadow_cascaded_shadow_map(DataButtonsPanel, Panel):
@@ -242,7 +255,7 @@ class DATA_PT_spot(DataButtonsPanel, Panel):
         'BLENDER_EEVEE_NEXT',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
 
     @classmethod
     def poll(cls, context):
@@ -264,35 +277,13 @@ class DATA_PT_spot(DataButtonsPanel, Panel):
         col.prop(light, "show_cone")
 
 
-class DATA_PT_falloff_curve(DataButtonsPanel, Panel):
-    bl_label = "Falloff Curve"
-    bl_options = {'DEFAULT_CLOSED'}
-    COMPAT_ENGINES = {'BLENDER_RENDER', 'BLENDER_EEVEE'}
-
-    @classmethod
-    def poll(cls, context):
-        light = context.light
-        engine = context.engine
-
-        return (
-            (light and light.type in {'POINT', 'SPOT'} and light.falloff_type == 'CUSTOM_CURVE') and
-            (engine in cls.COMPAT_ENGINES)
-        )
-
-    def draw(self, context):
-        light = context.light
-
-        self.layout.template_curve_mapping(
-            light, "falloff_curve", use_negative_slope=True)
-
-
 class DATA_PT_custom_props_light(DataButtonsPanel, PropertyPanel, Panel):
     COMPAT_ENGINES = {
         'BLENDER_RENDER',
         'BLENDER_EEVEE_NEXT',
         'BLENDER_EEVEE',
         'BLENDER_WORKBENCH',
-        'BLENDER_WORKBENCH_NEXT'}
+    }
     _context_path = "object.data"
     _property_type = bpy.types.Light
 
@@ -307,7 +298,6 @@ classes = (
     DATA_PT_EEVEE_shadow_cascaded_shadow_map,
     DATA_PT_EEVEE_shadow_contact,
     DATA_PT_spot,
-    DATA_PT_falloff_curve,
     DATA_PT_custom_props_light,
 )
 

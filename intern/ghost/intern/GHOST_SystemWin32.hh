@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -11,6 +12,10 @@
 #ifndef WIN32
 #  error WIN32 only!
 #endif /* WIN32 */
+
+#ifndef NOMINMAX
+#  define NOMINMAX
+#endif
 
 #define WIN32_LEAN_AND_MEAN
 #include <ole2.h> /* For drag-n-drop. */
@@ -50,21 +55,14 @@ class GHOST_SystemWin32 : public GHOST_System {
 
   /**
    * This method converts performance counter measurements into milliseconds since the start of the
-   * system process.
-   * \return The number of milliseconds since the start of the system process.
+   * Blender process.
+   * \return The number of milliseconds since the start of the Blender process.
    */
   uint64_t performanceCounterToMillis(__int64 perf_ticks) const;
 
   /**
-   * This method converts system ticks into milliseconds since the start of the
-   * system process.
-   * \return The number of milliseconds since the start of the system process.
-   */
-  uint64_t tickCountToMillis(__int64 ticks) const;
-
-  /**
    * Returns the system time.
-   * Returns the number of milliseconds since the start of the system process.
+   * Returns the number of milliseconds since the start of the Blender process.
    * This overloaded method uses the high frequency timer if available.
    * \return The number of milliseconds.
    */
@@ -103,7 +101,7 @@ class GHOST_SystemWin32 : public GHOST_System {
    * \param width: The width the window.
    * \param height: The height the window.
    * \param state: The state of the window when opened.
-   * \param glSettings: Misc OpenGL settings.
+   * \param gpuSettings: Misc GPU settings.
    * \param exclusive: Use to show the window on top and ignore others (used full-screen).
    * \param parentWindow: Parent window.
    * \return The new window (or 0 if creation failed).
@@ -114,7 +112,7 @@ class GHOST_SystemWin32 : public GHOST_System {
                               uint32_t width,
                               uint32_t height,
                               GHOST_TWindowState state,
-                              GHOST_GLSettings glSettings,
+                              GHOST_GPUSettings gpuSettings,
                               const bool exclusive = false,
                               const bool is_dialog = false,
                               const GHOST_IWindow *parentWindow = 0);
@@ -124,7 +122,7 @@ class GHOST_SystemWin32 : public GHOST_System {
    * Never explicitly delete the window, use #disposeContext() instead.
    * \return The new context (or 0 if creation failed).
    */
-  GHOST_IContext *createOffscreenContext(GHOST_GLSettings glSettings);
+  GHOST_IContext *createOffscreenContext(GHOST_GPUSettings gpuSettings);
 
   /**
    * Dispose of a context.
@@ -149,6 +147,12 @@ class GHOST_SystemWin32 : public GHOST_System {
    * \return Indication of success.
    */
   static GHOST_TSuccess disposeContextD3D(GHOST_ContextD3D *context);
+
+  /**
+   * Get the Window under the mouse cursor. Location obtained from the OS.
+   * \return The window under the cursor or nullptr if none.
+   */
+  GHOST_IWindow *getWindowUnderCursor(int32_t /*x*/, int32_t /*y*/);
 
   /***************************************************************************************
    ** Event management functionality
@@ -180,6 +184,13 @@ class GHOST_SystemWin32 : public GHOST_System {
    * \return Indication of success.
    */
   GHOST_TSuccess setCursorPosition(int32_t x, int32_t y);
+
+  /**
+   * Get the color of the pixel at the current mouse cursor location
+   * \param r_color: returned sRGB float colors
+   * \return Success value (true == successful and supported by platform)
+   */
+  GHOST_TSuccess getPixelAtCursor(float r_color[3]) const;
 
   /***************************************************************************************
    ** Access to mouse button and keyboard states.
@@ -218,7 +229,7 @@ class GHOST_SystemWin32 : public GHOST_System {
   /**
    * Returns GHOST_kSuccess if the clipboard contains an image.
    */
-  GHOST_TSuccess hasClipboardImage(void) const;
+  GHOST_TSuccess hasClipboardImage() const;
 
   /**
    * Get image data from the Clipboard
@@ -440,7 +451,7 @@ class GHOST_SystemWin32 : public GHOST_System {
   /**
    * Check current key layout for AltGr
    */
-  inline void handleKeyboardChange(void);
+  inline void handleKeyboardChange();
 
   /**
    * Windows call back routine for our window class.
@@ -454,16 +465,10 @@ class GHOST_SystemWin32 : public GHOST_System {
    */
   bool setConsoleWindowState(GHOST_TConsoleWindowState action);
 
-  /** The virtual-key code (VKey) of the last press event. Used to detect repeat events. */
-  unsigned short m_keycode_last_repeat_key;
   /** State variable set at initialization. */
   bool m_hasPerformanceCounter;
   /** High frequency timer variable. */
   __int64 m_freq;
-  /** High frequency timer variable. */
-  __int64 m_start;
-  /** Low frequency timer variable. */
-  __int64 m_lfstart;
   /** AltGr on current keyboard layout. */
   bool m_hasAltGr;
   /** Language identifier. */
@@ -478,7 +483,7 @@ class GHOST_SystemWin32 : public GHOST_System {
   int m_wheelDeltaAccum;
 };
 
-inline void GHOST_SystemWin32::handleKeyboardChange(void)
+inline void GHOST_SystemWin32::handleKeyboardChange()
 {
   m_keylayout = GetKeyboardLayout(0); /* Get keylayout for current thread. */
   int i;

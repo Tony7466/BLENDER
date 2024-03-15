@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -6,7 +8,6 @@
 
 #include "BLI_bit_ref.hh"
 #include "BLI_index_range.hh"
-#include "BLI_math_bits.h"
 #include "BLI_memory_utils.hh"
 
 namespace blender::bits {
@@ -98,14 +99,14 @@ class BitSpan {
     return IndexRange(bit_range_.size());
   }
 
-  BitRef operator[](const int64_t index) const
+  [[nodiscard]] BitRef operator[](const int64_t index) const
   {
     BLI_assert(index >= 0);
     BLI_assert(index < bit_range_.size());
     return {data_, bit_range_.start() + index};
   }
 
-  BitSpan slice(const IndexRange range) const
+  [[nodiscard]] BitSpan slice(const IndexRange range) const
   {
     return {data_, bit_range_.slice(range)};
   }
@@ -142,7 +143,7 @@ class BitSpan {
 };
 
 /**
- * Checks if the span fullfills the requirements for a bounded span. Bounded spans can often be
+ * Checks if the span fulfills the requirements for a bounded span. Bounded spans can often be
  * processed more efficiently, because fewer cases have to be considered when aligning multiple
  * such spans.
  *
@@ -170,7 +171,7 @@ inline bool is_bounded_span(const BitSpan span)
 }
 
 /**
- * Same as #BitSpan but fullfills the requirements mentioned on #is_bounded_span.
+ * Same as #BitSpan but fulfills the requirements mentioned on #is_bounded_span.
  */
 class BoundedBitSpan : public BitSpan {
  public:
@@ -315,7 +316,7 @@ class MutableBitSpan {
 };
 
 /**
- * Same as #MutableBitSpan but fullfills the requirements mentioned on #is_bounded_span.
+ * Same as #MutableBitSpan but fulfills the requirements mentioned on #is_bounded_span.
  */
 class MutableBoundedBitSpan : public MutableBitSpan {
  public:
@@ -359,6 +360,11 @@ class MutableBoundedBitSpan : public MutableBitSpan {
   MutableBoundedBitSpan take_front(const int64_t n) const
   {
     return {data_, bit_range_.take_front(n)};
+  }
+
+  BoundedBitSpan as_span() const
+  {
+    return BoundedBitSpan(data_, bit_range_);
   }
 
   void copy_from(const BitSpan other);

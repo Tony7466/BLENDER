@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -7,7 +9,7 @@
 #include "collada_utils.h"
 
 #include "BKE_action.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 
 #include "BLI_math_rotation.h"
 

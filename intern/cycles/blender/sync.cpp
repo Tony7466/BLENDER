@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/background.h"
 #include "scene/camera.h"
@@ -21,6 +22,8 @@
 #include "blender/session.h"
 #include "blender/sync.h"
 #include "blender/util.h"
+
+#include "integrator/denoiser.h"
 
 #include "util/debug.h"
 #include "util/foreach.h"
@@ -119,8 +122,7 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
         if (geom->is_mesh()) {
           Mesh *mesh = static_cast<Mesh *>(geom);
           if (mesh->get_subdivision_type() != Mesh::SUBDIVISION_NONE) {
-            PointerRNA id_ptr;
-            RNA_id_pointer_create((::ID *)iter.first.id, &id_ptr);
+            PointerRNA id_ptr = RNA_id_pointer_create((::ID *)iter.first.id);
             geometry_map.set_recalc(BL::ID(id_ptr));
           }
         }
@@ -169,7 +171,8 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
           }
 
           if (updated_geometry ||
-              (object_subdivision_type(b_ob, preview, experimental) != Mesh::SUBDIVISION_NONE)) {
+              (object_subdivision_type(b_ob, preview, experimental) != Mesh::SUBDIVISION_NONE))
+          {
             BL::ID key = BKE_object_is_modified(b_ob) ? b_ob : b_ob.data();
             geometry_map.set_recalc(key);
 
@@ -186,7 +189,8 @@ void BlenderSync::sync_recalc(BL::Depsgraph &b_depsgraph, BL::SpaceView3D &b_v3d
           if (updated_geometry) {
             BL::Object::particle_systems_iterator b_psys;
             for (b_ob.particle_systems.begin(b_psys); b_psys != b_ob.particle_systems.end();
-                 ++b_psys) {
+                 ++b_psys)
+            {
               particle_system_map.set_recalc(b_ob);
             }
           }
@@ -249,7 +253,8 @@ void BlenderSync::sync_data(BL::RenderSettings &b_render,
                             BL::Object &b_override,
                             int width,
                             int height,
-                            void **python_thread_state)
+                            void **python_thread_state,
+                            const DeviceInfo &device_info)
 {
   /* For auto refresh images. */
   ImageManager *image_manager = scene->image_manager;
@@ -269,7 +274,7 @@ void BlenderSync::sync_data(BL::RenderSettings &b_render,
   const bool background = !b_v3d;
 
   sync_view_layer(b_view_layer);
-  sync_integrator(b_view_layer, background);
+  sync_integrator(b_view_layer, background, device_info);
   sync_film(b_view_layer, b_v3d);
   sync_shaders(b_depsgraph, b_v3d, auto_refresh_update);
   sync_images();
@@ -277,7 +282,8 @@ void BlenderSync::sync_data(BL::RenderSettings &b_render,
   geometry_synced.clear(); /* use for objects and motion sync */
 
   if (scene->need_motion() == Scene::MOTION_PASS || scene->need_motion() == Scene::MOTION_NONE ||
-      scene->camera->get_motion_position() == MOTION_POSITION_CENTER) {
+      scene->camera->get_motion_position() == MOTION_POSITION_CENTER)
+  {
     sync_objects(b_depsgraph, b_v3d);
   }
   sync_motion(b_render, b_depsgraph, b_v3d, b_override, width, height, python_thread_state);
@@ -297,7 +303,9 @@ void BlenderSync::sync_data(BL::RenderSettings &b_render,
 
 /* Integrator */
 
-void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
+void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer,
+                                  bool background,
+                                  const DeviceInfo &device_info)
 {
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
 
@@ -353,8 +361,14 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
     scene->light_manager->tag_update(scene, LightManager::UPDATE_ALL);
   }
 
-  SamplingPattern sampling_pattern = (SamplingPattern)get_enum(
-      cscene, "sampling_pattern", SAMPLING_NUM_PATTERNS, SAMPLING_PATTERN_TABULATED_SOBOL);
+  SamplingPattern sampling_pattern;
+  if (use_developer_ui) {
+    sampling_pattern = (SamplingPattern)get_enum(
+        cscene, "sampling_pattern", SAMPLING_NUM_PATTERNS, SAMPLING_PATTERN_TABULATED_SOBOL);
+  }
+  else {
+    sampling_pattern = SAMPLING_PATTERN_TABULATED_SOBOL;
+  }
   integrator->set_sampling_pattern(sampling_pattern);
 
   int samples = 1;
@@ -397,7 +411,8 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
   /* Only use scrambling distance in the viewport if user wants to. */
   bool preview_scrambling_distance = get_boolean(cscene, "preview_scrambling_distance");
   if ((preview && !preview_scrambling_distance) ||
-      sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY) {
+      sampling_pattern == SAMPLING_PATTERN_SOBOL_BURLEY)
+  {
     scrambling_distance = 1.0f;
   }
 
@@ -438,14 +453,23 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
     GuidingDistributionType guiding_distribution_type = (GuidingDistributionType)get_enum(
         cscene, "guiding_distribution_type", GUIDING_NUM_TYPES, GUIDING_TYPE_PARALLAX_AWARE_VMM);
     integrator->set_guiding_distribution_type(guiding_distribution_type);
+    GuidingDirectionalSamplingType guiding_directional_sampling_type =
+        (GuidingDirectionalSamplingType)get_enum(cscene,
+                                                 "guiding_directional_sampling_type",
+                                                 GUIDING_DIRECTIONAL_SAMPLING_NUM_TYPES,
+                                                 GUIDING_DIRECTIONAL_SAMPLING_TYPE_RIS);
+    integrator->set_guiding_directional_sampling_type(guiding_directional_sampling_type);
+    integrator->set_guiding_roughness_threshold(get_float(cscene, "guiding_roughness_threshold"));
   }
 
-  DenoiseParams denoise_params = get_denoise_params(b_scene, b_view_layer, background);
+  DenoiseParams denoise_params = get_denoise_params(
+      b_scene, b_view_layer, background, device_info);
 
   /* No denoising support for vertex color baking, vertices packed into image
    * buffer have no relation to neighbors. */
   if (scene->bake_manager->get_baking() &&
-      b_scene.render().bake().target() != BL::BakeSettings::target_IMAGE_TEXTURES) {
+      b_scene.render().bake().target() != BL::BakeSettings::target_IMAGE_TEXTURES)
+  {
     denoise_params.use = false;
   }
 
@@ -456,10 +480,12 @@ void BlenderSync::sync_integrator(BL::ViewLayer &b_view_layer, bool background)
    * is that the interface and the integrator are technically out of sync. */
   if (denoise_params.use) {
     integrator->set_denoiser_type(denoise_params.type);
+    integrator->set_denoise_use_gpu(denoise_params.use_gpu);
     integrator->set_denoise_start_sample(denoise_params.start_sample);
     integrator->set_use_denoise_pass_albedo(denoise_params.use_pass_albedo);
     integrator->set_use_denoise_pass_normal(denoise_params.use_pass_normal);
     integrator->set_denoiser_prefilter(denoise_params.prefilter);
+    integrator->set_denoiser_quality(denoise_params.quality);
   }
 
   /* UPDATE_NONE as we don't want to tag the integrator as modified (this was done by the
@@ -535,6 +561,8 @@ void BlenderSync::sync_view_layer(BL::ViewLayer &b_view_layer)
 
   /* Material override. */
   view_layer.material_override = b_view_layer.material_override();
+  /* World override. */
+  view_layer.world_override = b_view_layer.world_override();
 
   /* Sample override. */
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
@@ -709,7 +737,8 @@ void BlenderSync::sync_render_passes(BL::RenderLayer &b_rlay, BL::ViewLayer &b_v
   BL::ViewLayer::lightgroups_iterator b_lightgroup_iter;
   for (b_view_layer.lightgroups.begin(b_lightgroup_iter);
        b_lightgroup_iter != b_view_layer.lightgroups.end();
-       ++b_lightgroup_iter) {
+       ++b_lightgroup_iter)
+  {
     BL::Lightgroup b_lightgroup(*b_lightgroup_iter);
 
     string name = string_printf("Combined_%s", b_lightgroup.name().c_str());
@@ -732,7 +761,8 @@ void BlenderSync::sync_render_passes(BL::RenderLayer &b_rlay, BL::ViewLayer &b_v
     }
 
     if (pass_type == PASS_MOTION &&
-        (b_view_layer.use_motion_blur() && b_scene.render().use_motion_blur())) {
+        (b_view_layer.use_motion_blur() && b_scene.render().use_motion_blur()))
+    {
       continue;
     }
 
@@ -781,15 +811,19 @@ SceneParams BlenderSync::get_scene_params(BL::Scene &b_scene,
   PointerRNA cscene = RNA_pointer_get(&b_scene.ptr, "cycles");
   const bool shadingsystem = RNA_boolean_get(&cscene, "shading_system");
 
-  if (shadingsystem == 0)
+  if (shadingsystem == 0) {
     params.shadingsystem = SHADINGSYSTEM_SVM;
-  else if (shadingsystem == 1)
+  }
+  else if (shadingsystem == 1) {
     params.shadingsystem = SHADINGSYSTEM_OSL;
+  }
 
-  if (background || (use_developer_ui && get_enum(cscene, "debug_bvh_type")))
+  if (background || (use_developer_ui && get_enum(cscene, "debug_bvh_type"))) {
     params.bvh_type = BVH_TYPE_STATIC;
-  else
+  }
+  else {
     params.bvh_type = BVH_TYPE_DYNAMIC;
+  }
 
   params.use_bvh_spatial_split = RNA_boolean_get(&cscene, "debug_use_spatial_splits");
   params.use_bvh_compact_structure = RNA_boolean_get(&cscene, "debug_use_compact_bvh");
@@ -891,10 +925,12 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine &b_engine,
   /* shading system - scene level needs full refresh */
   const bool shadingsystem = RNA_boolean_get(&cscene, "shading_system");
 
-  if (shadingsystem == 0)
+  if (shadingsystem == 0) {
     params.shadingsystem = SHADINGSYSTEM_SVM;
-  else if (shadingsystem == 1)
+  }
+  else if (shadingsystem == 1) {
     params.shadingsystem = SHADINGSYSTEM_OSL;
+  }
 
   /* Time limit. */
   if (background) {
@@ -925,7 +961,8 @@ SessionParams BlenderSync::get_session_params(BL::RenderEngine &b_engine,
 
 DenoiseParams BlenderSync::get_denoise_params(BL::Scene &b_scene,
                                               BL::ViewLayer &b_view_layer,
-                                              bool background)
+                                              bool background,
+                                              const DeviceInfo &device_info)
 {
   enum DenoiserInput {
     DENOISER_INPUT_RGB = 1,
@@ -944,8 +981,12 @@ DenoiseParams BlenderSync::get_denoise_params(BL::Scene &b_scene,
     /* Final Render Denoising */
     denoising.use = get_boolean(cscene, "use_denoising");
     denoising.type = (DenoiserType)get_enum(cscene, "denoiser", DENOISER_NUM, DENOISER_NONE);
+    denoising.use_gpu = get_boolean(cscene, "denoising_use_gpu");
     denoising.prefilter = (DenoiserPrefilter)get_enum(
         cscene, "denoising_prefilter", DENOISER_PREFILTER_NUM, DENOISER_PREFILTER_NONE);
+    /* This currently only affects NVIDIA and the difference in quality is too small to justify
+     * exposing a setting to the user. */
+    denoising.quality = DENOISER_QUALITY_HIGH;
 
     input_passes = (DenoiserInput)get_enum(
         cscene, "denoising_input_passes", DENOISER_INPUT_NUM, DENOISER_INPUT_RGB_ALBEDO_NORMAL);
@@ -962,8 +1003,12 @@ DenoiseParams BlenderSync::get_denoise_params(BL::Scene &b_scene,
     denoising.use = get_boolean(cscene, "use_preview_denoising");
     denoising.type = (DenoiserType)get_enum(
         cscene, "preview_denoiser", DENOISER_NUM, DENOISER_NONE);
+    denoising.use_gpu = get_boolean(cscene, "preview_denoising_use_gpu");
     denoising.prefilter = (DenoiserPrefilter)get_enum(
         cscene, "preview_denoising_prefilter", DENOISER_PREFILTER_NUM, DENOISER_PREFILTER_FAST);
+    /* This currently only affects NVIDIA and the difference in quality is too small to justify
+     * exposing a setting to the user. */
+    denoising.quality = DENOISER_QUALITY_BALANCED;
     denoising.start_sample = get_int(cscene, "preview_denoising_start_sample");
 
     input_passes = (DenoiserInput)get_enum(
@@ -971,13 +1016,8 @@ DenoiseParams BlenderSync::get_denoise_params(BL::Scene &b_scene,
 
     /* Auto select fastest denoiser. */
     if (denoising.type == DENOISER_NONE) {
-      if (!Device::available_devices(DEVICE_MASK_OPTIX).empty()) {
-        denoising.type = DENOISER_OPTIX;
-      }
-      else if (openimagedenoise_supported()) {
-        denoising.type = DENOISER_OPENIMAGEDENOISE;
-      }
-      else {
+      denoising.type = Denoiser::automatic_viewport_denoiser_type(device_info);
+      if (denoising.type == DENOISER_NONE) {
         denoising.use = false;
       }
     }

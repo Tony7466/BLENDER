@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -22,8 +23,8 @@ class GHOST_DropTargetWin32 : public IDropTarget {
    * methods in IUnknown are the first entries in the VTable for every interface.
    */
   HRESULT __stdcall QueryInterface(REFIID riid, void **ppv_obj);
-  ULONG __stdcall AddRef(void);
-  ULONG __stdcall Release(void);
+  ULONG __stdcall AddRef();
+  ULONG __stdcall Release();
 
   /* IDropTarget implementation
    * + The IDropTarget interface is one of the interfaces you implement to
@@ -49,7 +50,7 @@ class GHOST_DropTargetWin32 : public IDropTarget {
                               POINTL pt,
                               DWORD *pdw_effect);
   HRESULT __stdcall DragOver(DWORD grf_key_state, POINTL pt, DWORD *pdw_effect);
-  HRESULT __stdcall DragLeave(void);
+  HRESULT __stdcall DragLeave();
   HRESULT __stdcall Drop(IDataObject *p_data_object,
                          DWORD grf_key_state,
                          POINTL pt,
@@ -115,7 +116,7 @@ class GHOST_DropTargetWin32 : public IDropTarget {
    * The ANSI codepage is the system default codepage,
    * and can change from system to system.
    * \param in: LPCWSTR.
-   * \param out: char *. Is set to NULL on failure.
+   * \param out: char *. Is set to nullptr on failure.
    * \return 0 on failure. Else the size of the string including '\0'.
    */
   int WideCharToANSI(LPCWSTR in, char *&out);

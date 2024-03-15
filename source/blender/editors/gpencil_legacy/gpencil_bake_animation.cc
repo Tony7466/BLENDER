@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2021 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2021 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edgpencil
@@ -9,38 +10,35 @@
 
 #include "BLI_blenlib.h"
 #include "BLI_ghash.h"
-#include "BLI_math.h"
+#include "BLI_math_matrix.h"
 
 #include "DNA_anim_types.h"
 #include "DNA_gpencil_legacy_types.h"
-#include "DNA_material_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
 
-#include "BKE_anim_data.h"
-#include "BKE_context.h"
-#include "BKE_duplilist.h"
+#include "BKE_anim_data.hh"
+#include "BKE_context.hh"
+#include "BKE_duplilist.hh"
 #include "BKE_gpencil_geom_legacy.h"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_layer.h"
-#include "BKE_main.h"
 #include "BKE_material.h"
-#include "BKE_object.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
-#include "DEG_depsgraph.h"
-#include "DEG_depsgraph_query.h"
+#include "BLT_translation.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "DEG_depsgraph.hh"
+#include "DEG_depsgraph_query.hh"
 
-#include "RNA_access.h"
-#include "RNA_define.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "ED_gpencil_legacy.h"
-#include "ED_transform_snap_object_context.h"
+#include "RNA_access.hh"
+#include "RNA_define.hh"
+
+#include "ED_gpencil_legacy.hh"
+#include "ED_transform_snap_object_context.hh"
 
 #include "gpencil_intern.h"
 
@@ -65,9 +63,7 @@ const EnumPropertyItem rna_gpencil_reproject_type_items[] = {
 };
 
 /* Check frame_end is always > start frame! */
-static void gpencil_bake_set_frame_end(struct Main * /*main*/,
-                                       struct Scene * /*scene*/,
-                                       struct PointerRNA *ptr)
+static void gpencil_bake_set_frame_end(Main * /*main*/, Scene * /*scene*/, PointerRNA *ptr)
 {
   int frame_start = RNA_int_get(ptr, "frame_start");
   int frame_end = RNA_int_get(ptr, "frame_end");
@@ -96,7 +92,7 @@ static bool gpencil_bake_grease_pencil_animation_poll(bContext *C)
 }
 
 struct GpBakeOb {
-  struct GpBakeOb *next, *prev;
+  GpBakeOb *next, *prev;
   Object *ob;
 };
 
@@ -219,10 +215,10 @@ static int gpencil_bake_grease_pencil_animation_exec(bContext *C, wmOperator *op
 
   /* Create a new grease pencil object. */
   Object *ob_gpencil = nullptr;
-  ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uuid : 0;
+  ushort local_view_bits = (v3d && v3d->localvd) ? v3d->local_view_uid : 0;
   ob_gpencil = ED_gpencil_add_object(C, scene->cursor.location, local_view_bits);
   float invmat[4][4];
-  invert_m4_m4(invmat, ob_gpencil->object_to_world);
+  invert_m4_m4(invmat, ob_gpencil->object_to_world().ptr());
 
   bGPdata *gpd_dst = (bGPdata *)ob_gpencil->data;
   gpd_dst->draw_mode = GP_DRAWMODE_2D;
@@ -323,7 +319,7 @@ static int gpencil_bake_grease_pencil_animation_exec(bContext *C, wmOperator *op
             bGPDspoint *pt = &gps->points[j];
             pt->runtime.idx_orig = 0;
             pt->runtime.pt_orig = nullptr;
-            mul_m4_v3(ob_eval->object_to_world, &pt->x);
+            mul_m4_v3(ob_eval->object_to_world().ptr(), &pt->x);
             mul_m4_v3(invmat, &pt->x);
           }
 
@@ -356,7 +352,7 @@ static int gpencil_bake_grease_pencil_animation_exec(bContext *C, wmOperator *op
   /* Notifiers. */
   DEG_relations_tag_update(bmain);
   DEG_id_tag_update(&scene->id, ID_RECALC_SELECT);
-  DEG_id_tag_update(&gpd_dst->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&gpd_dst->id, ID_RECALC_SYNC_TO_EVAL);
   WM_event_add_notifier(C, NC_OBJECT | NA_ADDED, nullptr);
   WM_event_add_notifier(C, NC_SCENE | ND_OB_ACTIVE, scene);
 
@@ -391,7 +387,8 @@ static int gpencil_bake_grease_pencil_animation_invoke(bContext *C,
   }
 
   /* Show popup dialog to allow editing. */
-  return WM_operator_props_dialog_popup(C, op, 250);
+  return WM_operator_props_dialog_popup(
+      C, op, 250, IFACE_("Bake Object Transform to Grease Pencil"), IFACE_("Bake"));
 }
 
 void GPENCIL_OT_bake_grease_pencil_animation(wmOperatorType *ot)
@@ -417,7 +414,7 @@ void GPENCIL_OT_bake_grease_pencil_animation(wmOperatorType *ot)
 
   prop = RNA_def_int(
       ot->srna, "frame_end", 250, 1, 100000, "End Frame", "The end frame of animation", 1, 100000);
-  RNA_def_property_update_runtime(prop, (void *)gpencil_bake_set_frame_end);
+  RNA_def_property_update_runtime(prop, gpencil_bake_set_frame_end);
 
   prop = RNA_def_int(ot->srna, "step", 1, 1, 100, "Step", "Step between generated frames", 1, 100);
 

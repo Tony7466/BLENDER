@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "openimageio_support.hh"
 #include <OpenImageIO/imagebuf.h>
@@ -9,9 +11,9 @@
 #include "BKE_idprop.h"
 #include "DNA_ID.h" /* ID property definitions. */
 
-#include "IMB_allocimbuf.h"
-#include "IMB_colormanagement.h"
-#include "IMB_metadata.h"
+#include "IMB_allocimbuf.hh"
+#include "IMB_colormanagement.hh"
+#include "IMB_metadata.hh"
 
 OIIO_NAMESPACE_USING
 
@@ -41,17 +43,17 @@ class ImBufMemWriter : public Filesystem::IOProxy {
   {
     /* If buffer is too small increase it. */
     size_t end = offset + size;
-    while (end > ibuf_->encodedbuffersize) {
+    while (end > ibuf_->encoded_buffer_size) {
       if (!imb_enlargeencodedbufferImBuf(ibuf_)) {
         /* Out of memory. */
         return 0;
       }
     }
 
-    memcpy(ibuf_->encodedbuffer + offset, buf, size);
+    memcpy(ibuf_->encoded_buffer.data + offset, buf, size);
 
-    if (end > ibuf_->encodedsize) {
-      ibuf_->encodedsize = end;
+    if (end > ibuf_->encoded_size) {
+      ibuf_->encoded_size = end;
     }
 
     return size;
@@ -59,7 +61,7 @@ class ImBufMemWriter : public Filesystem::IOProxy {
 
   size_t size() const override
   {
-    return ibuf_->encodedsize;
+    return ibuf_->encoded_size;
   }
 
  private:
@@ -98,7 +100,7 @@ static ImBuf *load_pixels(
 {
   /* Allocate the ImBuf for the image. */
   constexpr bool is_float = sizeof(T) > 1;
-  const uint format_flag = is_float ? IB_rectfloat : IB_rect;
+  const uint format_flag = (is_float ? IB_rectfloat : IB_rect) | IB_uninitialized_pixels;
   const uint ibuf_flags = (flags & IB_test) ? 0 : format_flag;
   const int planes = use_all_planes ? 32 : 8 * channels;
   ImBuf *ibuf = IMB_allocImBuf(width, height, planes, ibuf_flags);
@@ -116,8 +118,8 @@ static ImBuf *load_pixels(
   const stride_t ibuf_xstride = sizeof(T) * 4;
   const stride_t ibuf_ystride = ibuf_xstride * width;
   const TypeDesc format = is_float ? TypeDesc::FLOAT : TypeDesc::UINT8;
-  uchar *rect = is_float ? reinterpret_cast<uchar *>(ibuf->rect_float) :
-                           reinterpret_cast<uchar *>(ibuf->rect);
+  uchar *rect = is_float ? reinterpret_cast<uchar *>(ibuf->float_buffer.data) :
+                           reinterpret_cast<uchar *>(ibuf->byte_buffer.data);
   void *ibuf_data = rect + ((stride_t(height) - 1) * ibuf_ystride);
 
   bool ok = in->read_image(
@@ -161,7 +163,7 @@ static void set_colorspace_name(char colorspace[IM_MAX_SPACE],
   if (ctx.use_embedded_colorspace) {
     string ics = spec.get_string_attribute("oiio:ColorSpace");
     char file_colorspace[IM_MAX_SPACE];
-    BLI_strncpy(file_colorspace, ics.c_str(), IM_MAX_SPACE);
+    STRNCPY(file_colorspace, ics.c_str());
 
     /* Only use color-spaces that exist. */
     if (colormanage_colorspace_get_named(file_colorspace)) {
@@ -178,11 +180,12 @@ static ImBuf *get_oiio_ibuf(ImageInput *in, const ReadContext &ctx, char colorsp
   const ImageSpec &spec = in->spec();
   const int width = spec.width;
   const int height = spec.height;
-  const int channels = spec.nchannels;
   const bool has_alpha = spec.alpha_channel != -1;
   const bool is_float = spec.format.basesize() > 1;
 
-  if (channels < 1 || channels > 4) {
+  /* Only a maximum of 4 channels are supported by ImBuf. */
+  const int channels = spec.nchannels <= 4 ? spec.nchannels : 4;
+  if (channels < 1) {
     return nullptr;
   }
 
@@ -191,7 +194,6 @@ static ImBuf *get_oiio_ibuf(ImageInput *in, const ReadContext &ctx, char colorsp
   ImBuf *ibuf = nullptr;
   if (is_float) {
     ibuf = load_pixels<float>(in, width, height, channels, ctx.flags, use_all_planes);
-    ibuf->channels = 4;
   }
   else {
     ibuf = load_pixels<uchar>(in, width, height, channels, ctx.flags, use_all_planes);
@@ -222,9 +224,12 @@ static ImBuf *get_oiio_ibuf(ImageInput *in, const ReadContext &ctx, char colorsp
     /* Transfer metadata to the ibuf if necessary. */
     if (ctx.flags & IB_metadata) {
       IMB_metadata_ensure(&ibuf->metadata);
-      ibuf->flags |= (spec.extra_attribs.empty()) ? 0 : IB_metadata;
+      ibuf->flags |= spec.extra_attribs.empty() ? 0 : IB_metadata;
 
       for (const auto &attrib : spec.extra_attribs) {
+        if (attrib.name().find("ICCProfile") != string::npos) {
+          continue;
+        }
         IMB_metadata_set_field(ibuf->metadata, attrib.name().c_str(), attrib.get_string().c_str());
       }
     }
@@ -245,7 +250,7 @@ static unique_ptr<ImageInput> get_oiio_reader(const char *format,
 {
   /* Attempt to create a reader based on the passed in format. */
   unique_ptr<ImageInput> in = ImageInput::create(format);
-  if (!in) {
+  if (!(in && in->valid_file(&mem_reader))) {
     return nullptr;
   }
 
@@ -253,7 +258,7 @@ static unique_ptr<ImageInput> get_oiio_reader(const char *format,
   in->set_ioproxy(&mem_reader);
   bool ok = in->open("", r_newspec, config);
   if (!ok) {
-    in.reset();
+    return nullptr;
   }
 
   return in;
@@ -265,8 +270,8 @@ bool imb_oiio_check(const uchar *mem, size_t mem_size, const char *file_format)
 
   /* This memory proxy must remain alive for the full duration of the read. */
   Filesystem::IOMemReader mem_reader(cspan<uchar>(mem, mem_size));
-  unique_ptr<ImageInput> in = get_oiio_reader(file_format, config, mem_reader, spec);
-  return in ? true : false;
+  unique_ptr<ImageInput> in = ImageInput::create(file_format);
+  return in && in->valid_file(&mem_reader);
 }
 
 ImBuf *imb_oiio_read(const ReadContext &ctx,
@@ -296,34 +301,51 @@ bool imb_oiio_write(const WriteContext &ctx, const char *filepath, const ImageSp
 
   /* Grayscale images need to be based on luminance weights rather than only
    * using a single channel from the source. */
-  if (file_spec.nchannels == 1) {
-    float weights[4]{};
+  if (ctx.ibuf->channels > 1 && file_spec.nchannels == 1) {
+    float weights[4] = {};
     IMB_colormanagement_get_luminance_coefficients(weights);
     ImageBufAlgo::channel_sum(final_buf, orig_buf, {weights, orig_buf.nchannels()});
   }
   else {
-    final_buf = std::move(orig_buf);
+    /* If we are moving from an 1-channel format to n-channel we need to
+     * ensure the original data is copied into the higher channels. */
+    if (ctx.ibuf->channels == 1 && file_spec.nchannels > 1) {
+      final_buf = ImageBuf(file_spec, InitializePixels::No);
+      ImageBufAlgo::paste(final_buf, 0, 0, 0, 0, orig_buf);
+      ImageBufAlgo::paste(final_buf, 0, 0, 0, 1, orig_buf);
+      ImageBufAlgo::paste(final_buf, 0, 0, 0, 2, orig_buf);
+      if (file_spec.alpha_channel == 3) {
+        ROI alpha_roi = file_spec.roi();
+        alpha_roi.chbegin = file_spec.alpha_channel;
+        ImageBufAlgo::fill(final_buf, {0, 0, 0, 1.0f}, alpha_roi);
+      }
+    }
+    else {
+      final_buf = std::move(orig_buf);
+    }
   }
 
-  bool ok = false;
+  bool write_ok = false;
+  bool close_ok = false;
   if (ctx.flags & IB_mem) {
-    /* This memory proxy must remain alive for the full duration of the write. */
+    /* This memory proxy must remain alive until the ImageOutput is finally closed. */
     ImBufMemWriter writer(ctx.ibuf);
 
     imb_addencodedbufferImBuf(ctx.ibuf);
     out->set_ioproxy(&writer);
     if (out->open("", file_spec)) {
-      ok = final_buf.write(out.get());
+      write_ok = final_buf.write(out.get());
+      close_ok = out->close();
     }
   }
   else {
     if (out->open(filepath, file_spec)) {
-      ok = final_buf.write(out.get());
+      write_ok = final_buf.write(out.get());
+      close_ok = out->close();
     }
   }
 
-  out->close();
-  return ok;
+  return write_ok && close_ok;
 }
 
 WriteContext imb_create_write_context(const char *file_format,
@@ -338,19 +360,19 @@ WriteContext imb_create_write_context(const char *file_format,
 
   const int width = ibuf->x;
   const int height = ibuf->y;
-  const bool use_float = prefer_float && (ibuf->rect_float != nullptr);
+  const bool use_float = prefer_float && (ibuf->float_buffer.data != nullptr);
   if (use_float) {
     const int mem_channels = ibuf->channels ? ibuf->channels : 4;
     ctx.mem_xstride = sizeof(float) * mem_channels;
     ctx.mem_ystride = width * ctx.mem_xstride;
-    ctx.mem_start = reinterpret_cast<uchar *>(ibuf->rect_float);
+    ctx.mem_start = reinterpret_cast<uchar *>(ibuf->float_buffer.data);
     ctx.mem_spec = ImageSpec(width, height, mem_channels, TypeDesc::FLOAT);
   }
   else {
     const int mem_channels = 4;
     ctx.mem_xstride = sizeof(uchar) * mem_channels;
     ctx.mem_ystride = width * ctx.mem_xstride;
-    ctx.mem_start = reinterpret_cast<uchar *>(ibuf->rect);
+    ctx.mem_start = ibuf->byte_buffer.data;
     ctx.mem_spec = ImageSpec(width, height, mem_channels, TypeDesc::UINT8);
   }
 
@@ -376,8 +398,7 @@ ImageSpec imb_create_write_spec(const WriteContext &ctx, int file_channels, Type
    */
 
   if (ctx.ibuf->metadata) {
-    for (IDProperty *prop = static_cast<IDProperty *>(ctx.ibuf->metadata->data.group.first); prop;
-         prop = prop->next) {
+    LISTBASE_FOREACH (IDProperty *, prop, &ctx.ibuf->metadata->data.group) {
       if (prop->type == IDP_STRING) {
         /* If this property has a prefixed name (oiio:, tiff:, etc.) and it belongs to
          * oiio or a different format, then skip. */
@@ -385,7 +406,8 @@ ImageSpec imb_create_write_spec(const WriteContext &ctx, int file_channels, Type
           std::string prefix(prop->name, colon);
           Strutil::to_lower(prefix);
           if (prefix == "oiio" ||
-              (!STREQ(prefix.c_str(), ctx.file_format) && OIIO::is_imageio_format_name(prefix))) {
+              (!STREQ(prefix.c_str(), ctx.file_format) && OIIO::is_imageio_format_name(prefix)))
+          {
             /* Skip this attribute. */
             continue;
           }

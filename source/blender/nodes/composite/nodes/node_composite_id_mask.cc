@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2006 Blender Foundation */
+/* SPDX-FileCopyrightText: 2006 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup cmpnodes
@@ -7,10 +8,8 @@
 
 #include <cmath>
 
-#include "BLT_translation.h"
-
-#include "UI_interface.h"
-#include "UI_resources.h"
+#include "UI_interface.hh"
+#include "UI_resources.hh"
 
 #include "GPU_shader.h"
 
@@ -26,12 +25,12 @@ namespace blender::nodes::node_composite_id_mask_cc {
 
 static void cmp_node_idmask_declare(NodeDeclarationBuilder &b)
 {
-  b.add_input<decl::Float>(N_("ID value"))
+  b.add_input<decl::Float>("ID value")
       .default_value(1.0f)
       .min(0.0f)
       .max(1.0f)
       .compositor_domain_priority(0);
-  b.add_output<decl::Float>(N_("Alpha"));
+  b.add_output<decl::Float>("Alpha");
 }
 
 static void node_composit_buts_id_mask(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
@@ -54,7 +53,7 @@ class IDMaskOperation : public NodeOperation {
       return;
     }
 
-    GPUShader *shader = shader_manager().get("compositor_id_mask");
+    GPUShader *shader = context().get_shader("compositor_id_mask");
     GPU_shader_bind(shader);
 
     GPU_shader_uniform_1i(shader, "index", get_index());
@@ -63,7 +62,7 @@ class IDMaskOperation : public NodeOperation {
 
     /* If anti-aliasing is disabled, write to the output directly, otherwise, write to a temporary
      * result to later perform anti-aliasing. */
-    Result non_anti_aliased_mask = Result::Temporary(ResultType::Float, texture_pool());
+    Result non_anti_aliased_mask = context().create_temporary_result(ResultType::Float);
     Result &output_mask = use_anti_aliasing() ? non_anti_aliased_mask : get_result("Alpha");
 
     const Domain domain = compute_domain();

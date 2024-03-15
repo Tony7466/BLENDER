@@ -1,9 +1,9 @@
 
 msgid ""
 msgstr ""
-"Project-Id-Version: Blender 3.6.0 Alpha (b'd1219b727c7c')\n"
+"Project-Id-Version: Blender 4.1.0 Beta (b'4b7cc5b6608a')\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-28 17:39:28\n"
+"POT-Creation-Date: 2020-01-01 00:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Ainhize & Miriam <agoenaga006@ikasle.ehu.eus>\n"
 "Language-Team: Euskara <agoenaga006@ikasle.ehu.eus>\n"
@@ -241,6 +241,10 @@ msgid "Point"
 msgstr "Puntu"
 
 
+msgid "Layer"
+msgstr "Geruza"
+
+
 msgid "+X"
 msgstr "+X"
 
@@ -417,10 +421,6 @@ msgid "Onion Skinning"
 msgstr "Tipula-azapa"
 
 
-msgid "Layer"
-msgstr "Geruza"
-
-
 msgid "Grid"
 msgstr "Sarea"
 
@@ -447,12 +447,24 @@ msgid "Sphere"
 msgstr "Esfera"
 
 
+msgid "Sound"
+msgstr "Soinua"
+
+
+msgid "Speaker"
+msgstr "Bozgorailua"
+
+
+msgid "Text"
+msgstr "Testua"
+
+
+msgid "World"
+msgstr "Mundua"
+
+
 msgid "Groups"
 msgstr "Taldeak"
-
-
-msgid "Visible Layers"
-msgstr "Ikusgai Dauden Geruzak"
 
 
 msgid "Local"
@@ -479,6 +491,10 @@ msgid "Cube"
 msgstr "Kuboa"
 
 
+msgid "Edit"
+msgstr "Editatu"
+
+
 msgid "Cylinder"
 msgstr "Zilindroa"
 
@@ -489,10 +505,6 @@ msgstr "Zirkulua"
 
 msgid "Angular Velocity"
 msgstr "Abiadura-angeluarra"
-
-
-msgid "Sound"
-msgstr "Soinua"
 
 
 msgid "Image Texture"
@@ -572,12 +584,8 @@ msgid "Show/Hide Faces"
 msgstr "Aurpegiak erakutsi/ezkutatu"
 
 
-msgid "Edit"
-msgstr "Editatu"
-
-
-msgid "Text"
-msgstr "Testua"
+msgid "Physics"
+msgstr "Fisikak"
 
 
 msgid "File"
@@ -608,10 +616,6 @@ msgid "New"
 msgstr "Berria"
 
 
-msgid "World"
-msgstr "Mundua"
-
-
 msgctxt "Curve"
 msgid "Random"
 msgstr "Ausaz"
@@ -639,6 +643,10 @@ msgstr "Y Ardatza"
 
 msgid "Original"
 msgstr "Jatorrizkoa"
+
+
+msgid "Selection"
+msgstr "Hautaketa"
 
 
 msgid "Reflection"
@@ -787,10 +795,6 @@ msgid "Console Language"
 msgstr "Kontsolaren Hizkuntza"
 
 
-msgid "Language"
-msgstr "Hizkuntza"
-
-
 msgctxt "Operator"
 msgid "Move Cursor"
 msgstr "Kurtsorea Mugitu"
@@ -819,10 +823,6 @@ msgstr "Arbeletik itsatsi"
 
 msgid "Paste text from clipboard"
 msgstr "Arbeletik testua itsatsi"
-
-
-msgid "Selection"
-msgstr "Hautaketa"
 
 
 msgid "Console output type"
@@ -947,15 +947,6 @@ msgid "Use Metadata"
 msgstr "Metadata erabili"
 
 
-msgctxt "Operator"
-msgid "Export OBJ"
-msgstr "Esportatu OBJ"
-
-
-msgid "Include UVs"
-msgstr "Gehitu UVs"
-
-
 msgid "Hierarchy"
 msgstr "Hierarkia"
 
@@ -1050,11 +1041,6 @@ msgstr "Hurrengo karpeta"
 
 msgid "Move to next folder"
 msgstr "Hurrengo karpetara mugitu"
-
-
-msgctxt "Operator"
-msgid "Parent File"
-msgstr "Erro Fitxategia"
 
 
 msgid "Move to parent directory"
@@ -1618,6 +1604,36 @@ msgid "Save Screenshot"
 msgstr "Pantaila-irudia Gorde"
 
 
+msgctxt "Sequence"
+msgid "Type"
+msgstr "Mota"
+
+
+msgctxt "Sequence"
+msgid "Add"
+msgstr "Gehitu"
+
+
+msgctxt "Sequence"
+msgid "Subtract"
+msgstr "Kendu"
+
+
+msgctxt "Sequence"
+msgid "Color"
+msgstr "Kolorea"
+
+
+msgctxt "Sequence"
+msgid "Speed"
+msgstr "Abiadura"
+
+
+msgctxt "Sequence"
+msgid "Text"
+msgstr "Testua"
+
+
 msgid "Property"
 msgstr "Ezaugarria"
 
@@ -1695,10 +1711,6 @@ msgid "Scale"
 msgstr "Eskalatu"
 
 
-msgid "Physics"
-msgstr "Fisikak"
-
-
 msgid "Dynamics"
 msgstr "Dinamikak"
 
@@ -1724,9 +1736,12 @@ msgid "Continue"
 msgstr "Jarraitu"
 
 
-msgctxt "Sequence"
-msgid "Type"
-msgstr "Mota"
+msgid "Language"
+msgstr "Hizkuntza"
+
+
+msgid "Temperature"
+msgstr "Tenperatura"
 
 
 msgctxt "Sequence"
@@ -1759,31 +1774,6 @@ msgid "Cross"
 msgstr "Gurutzatu"
 
 
-msgctxt "Sequence"
-msgid "Add"
-msgstr "Gehitu"
-
-
-msgctxt "Sequence"
-msgid "Subtract"
-msgstr "Kendu"
-
-
-msgctxt "Sequence"
-msgid "Color"
-msgstr "Kolorea"
-
-
-msgctxt "Sequence"
-msgid "Speed"
-msgstr "Abiadura"
-
-
-msgctxt "Sequence"
-msgid "Text"
-msgstr "Testua"
-
-
 msgid "Gray Scale"
 msgstr "Gris-eskala"
 
@@ -1798,10 +1788,6 @@ msgstr "Blender Fitxategia"
 
 msgid "Sort Alphabetically"
 msgstr "Alfabetikoki Ordenatu"
-
-
-msgid "Speaker"
-msgstr "Bozgorailua"
 
 
 msgid "3D"
@@ -1922,10 +1908,6 @@ msgid "Refraction"
 msgstr "Errefrakzioa"
 
 
-msgid "Temperature"
-msgstr "Tenperatura"
-
-
 msgctxt "Image"
 msgid "New"
 msgstr "Berria"
@@ -1995,13 +1977,13 @@ msgstr "Irudia Renderizatu"
 
 
 msgctxt "Operator"
-msgid "Developer Community"
-msgstr "Garatzaileen Komunitatea"
+msgid "Report a Bug"
+msgstr "Akats baten berri eman"
 
 
 msgctxt "Operator"
-msgid "Report a Bug"
-msgstr "Akats baten berri eman"
+msgid "Developer Community"
+msgstr "Garatzaileen Komunitatea"
 
 
 msgctxt "Operator"
@@ -2157,6 +2139,10 @@ msgid "New"
 msgstr "Berria"
 
 
+msgid "Rigging"
+msgstr "Rigging"
+
+
 msgctxt "Mesh"
 msgid "Plane"
 msgstr "Planoa"
@@ -2196,11 +2182,6 @@ msgid "normal"
 msgstr "Normala"
 
 
-msgctxt "Armature"
-msgid "Group"
-msgstr "Taldea"
-
-
 msgid "Sound not packed"
 msgstr "Soinua paketatu gabe"
 
@@ -2221,12 +2202,12 @@ msgid "AO"
 msgstr "Inguruneko Oklusioa"
 
 
-msgid "Anisotropy"
-msgstr "Anisotropia"
-
-
 msgid "BSDF"
 msgstr "BSDF"
+
+
+msgid "Anisotropy"
+msgstr "Anisotropia"
 
 
 msgid "View Vector"
@@ -2393,20 +2374,12 @@ msgid "Import-Export"
 msgstr "Inportatu-Esportatu"
 
 
-msgid "Rigging"
-msgstr "Rigging"
-
-
 msgid "English (English)"
 msgstr "Ingelesa (English)"
 
 
 msgid "Japanese (日本語)"
 msgstr "Japoniera (日本語)"
-
-
-msgid "Dutch (Nederlandse taal)"
-msgstr "Nederlandera (Nederlandse taal)"
 
 
 msgid "Italian (Italiano)"
@@ -2435,10 +2408,6 @@ msgstr "Gaztelania (Español)"
 
 msgid "Catalan (Català)"
 msgstr "Katalana (Català)"
-
-
-msgid "Czech (Český)"
-msgstr "Txekiarra (Český)"
 
 
 msgid "Portuguese (Português)"
@@ -2517,16 +2486,8 @@ msgid "Hebrew (תירִבְעִ)"
 msgstr "Hebreera (תירִבְעִ)"
 
 
-msgid "Estonian (Eestlane)"
-msgstr "Estoniera (Eestlane)"
-
-
 msgid "Esperanto (Esperanto)"
 msgstr "Esperantoa (Esperanto)"
-
-
-msgid "Spanish from Spain (Español de España)"
-msgstr "Espainiako gaztelera (Español de España)"
 
 
 msgid "Amharic (አማርኛ)"
@@ -2539,14 +2500,6 @@ msgstr "Uzbekera (Oʻzbek)"
 
 msgid "Uzbek Cyrillic (Ўзбек)"
 msgstr "Uzbekera Zirilikoa (Ўзбек)"
-
-
-msgid "Hindi (मानक हिन्दी)"
-msgstr "Hindi (मानक हिन्दी)"
-
-
-msgid "Vietnamese (tiếng Việt)"
-msgstr "Vietnamera (tiếng Việt)"
 
 
 msgid "Complete"

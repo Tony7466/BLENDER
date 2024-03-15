@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -16,23 +17,18 @@
 #include "DNA_userdef_types.h"
 
 #include "BLI_listbase.h"
-#include "BLI_math.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
+#include "WM_types.hh"
 
-#include "WM_types.h"
+#include "RNA_access.hh"
 
-#include "RNA_access.h"
+#include "UI_interface.hh"
 
-#include "UI_interface.h"
+#include "BLT_translation.hh"
 
-#include "BLT_translation.h"
-
-#include "ED_screen.h"
-
-#include "IMB_colormanagement.h"
+#include "IMB_colormanagement.hh"
 
 #include "interface_intern.hh"
 
@@ -199,7 +195,7 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
        * push, so disable it on RNA buttons in the color picker block */
       UI_but_flag_disable(bt, UI_BUT_UNDO);
     }
-    else if (STREQ(bt->str, "Hex:")) {
+    else if (bt->str == "Hex:") {
       float rgb_hex[3];
       uchar rgb_hex_uchar[3];
       char col[16];
@@ -213,11 +209,10 @@ static void ui_update_color_picker_buts_rgb(uiBut *from_but,
       }
 
       rgb_float_to_uchar(rgb_hex_uchar, rgb_hex);
-      BLI_snprintf(col, sizeof(col), "%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
-
-      strcpy(bt->poin, col);
+      const int col_len = SNPRINTF_RLEN(col, "%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
+      memcpy(bt->poin, col, col_len + 1);
     }
-    else if (bt->str[1] == ' ') {
+    else if (bt->str.find(' ', 1) == 1) {
       if (bt->str[0] == 'R') {
         ui_but_value_set(bt, rgb_scene_linear[0]);
       }
@@ -321,7 +316,8 @@ static void ui_colorpicker_hide_reveal(uiBlock *block, ePickerType colormode)
   /* tag buttons */
   LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
     if ((bt->func == ui_colorpicker_rgba_update_cb) && (bt->type == UI_BTYPE_NUM_SLIDER) &&
-        (bt->rnaindex != 3)) {
+        (bt->rnaindex != 3))
+    {
       /* RGB sliders (color circle and alpha are always shown) */
       SET_FLAG_FROM_TEST(bt->flag, (colormode != PICKER_TYPE_RGB), UI_HIDDEN);
     }
@@ -343,12 +339,11 @@ static void ui_colorpicker_create_mode_cb(bContext * /*C*/, void *bt1, void * /*
   ui_colorpicker_hide_reveal(bt->block, (ePickerType)colormode);
 }
 
-#define PICKER_H (7.5f * U.widget_unit)
-#define PICKER_W (7.5f * U.widget_unit)
-#define PICKER_SPACE (0.3f * U.widget_unit)
-#define PICKER_BAR (0.7f * U.widget_unit)
-
-#define PICKER_TOTAL_W (PICKER_W + PICKER_SPACE + PICKER_BAR)
+#define PICKER_TOTAL_W (200.0f * UI_SCALE_FAC)
+#define PICKER_BAR ((10.0f * UI_SCALE_FAC) + (6 * U.pixelsize))
+#define PICKER_SPACE (8.0f * UI_SCALE_FAC)
+#define PICKER_W (PICKER_TOTAL_W - PICKER_BAR - PICKER_SPACE)
+#define PICKER_H PICKER_W
 
 static void ui_colorpicker_circle(uiBlock *block,
                                   PointerRNA *ptr,
@@ -372,8 +367,6 @@ static void ui_colorpicker_circle(uiBlock *block,
                       -1,
                       0.0,
                       0.0,
-                      0.0,
-                      0,
                       TIP_("Color"));
   UI_but_func_set(bt, ui_colorpicker_rgba_update_cb, bt, nullptr);
   bt->custom_data = cpicker;
@@ -393,8 +386,6 @@ static void ui_colorpicker_circle(uiBlock *block,
                                              -1,
                                              0.0,
                                              0.0,
-                                             0,
-                                             0,
                                              "Lightness");
     hsv_but->gradient_type = UI_GRAD_L_ALT;
     UI_but_func_set(hsv_but, ui_colorpicker_rgba_update_cb, hsv_but, nullptr);
@@ -413,8 +404,6 @@ static void ui_colorpicker_circle(uiBlock *block,
                                              -1,
                                              0.0,
                                              0.0,
-                                             0,
-                                             0,
                                              CTX_TIP_(BLT_I18NCONTEXT_COLOR, "Value"));
     hsv_but->gradient_type = UI_GRAD_V_ALT;
     UI_but_func_set(hsv_but, ui_colorpicker_rgba_update_cb, hsv_but, nullptr);
@@ -446,8 +435,6 @@ static void ui_colorpicker_square(uiBlock *block,
                                            -1,
                                            0.0,
                                            0.0,
-                                           0,
-                                           0,
                                            TIP_("Color"));
   hsv_but->gradient_type = type;
   UI_but_func_set(hsv_but, ui_colorpicker_rgba_update_cb, hsv_but, nullptr);
@@ -467,8 +454,6 @@ static void ui_colorpicker_square(uiBlock *block,
                                            -1,
                                            0.0,
                                            0.0,
-                                           0,
-                                           0,
                                            CTX_TIP_(BLT_I18NCONTEXT_COLOR, "Value"));
   hsv_but->gradient_type = (eButGradientType)(type + 3);
   UI_but_func_set(hsv_but, ui_colorpicker_rgba_update_cb, hsv_but, nullptr);
@@ -543,9 +528,7 @@ static void ui_block_colorpicker(uiBlock *block,
                  &colormode,
                  0.0,
                  float(PICKER_TYPE_RGB),
-                 0,
-                 0,
-                 "");
+                 TIP_("Red, Green, Blue"));
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_drawflag_disable(bt, UI_BUT_TEXT_LEFT);
   UI_but_func_set(bt, ui_colorpicker_create_mode_cb, bt, nullptr);
@@ -561,9 +544,8 @@ static void ui_block_colorpicker(uiBlock *block,
                  &colormode,
                  0.0,
                  PICKER_TYPE_HSV,
-                 0,
-                 0,
-                 "");
+                 (U.color_picker_type == USER_CP_CIRCLE_HSL) ? TIP_("Hue, Saturation, Lightness") :
+                                                               TIP_("Hue, Saturation, Value"));
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_drawflag_disable(bt, UI_BUT_TEXT_LEFT);
   UI_but_func_set(bt, ui_colorpicker_create_mode_cb, bt, nullptr);
@@ -579,9 +561,7 @@ static void ui_block_colorpicker(uiBlock *block,
                  &colormode,
                  0.0,
                  PICKER_TYPE_HEX,
-                 0,
-                 0,
-                 "");
+                 TIP_("Color as hexadecimal values"));
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_drawflag_disable(bt, UI_BUT_TEXT_LEFT);
   UI_but_func_set(bt, ui_colorpicker_create_mode_cb, bt, nullptr);
@@ -623,9 +603,9 @@ static void ui_block_colorpicker(uiBlock *block,
                       0,
                       0.0,
                       0.0,
-                      10,
-                      3,
                       TIP_("Red"));
+  UI_but_number_slider_step_size_set(bt, 10);
+  UI_but_number_slider_precision_set(bt, 3);
   UI_but_func_set(bt, ui_colorpicker_rgba_update_cb, bt, nullptr);
   bt->custom_data = cpicker;
   bt = uiDefButR_prop(block,
@@ -641,9 +621,9 @@ static void ui_block_colorpicker(uiBlock *block,
                       1,
                       0.0,
                       0.0,
-                      10,
-                      3,
                       TIP_("Green"));
+  UI_but_number_slider_step_size_set(bt, 10);
+  UI_but_number_slider_precision_set(bt, 3);
   UI_but_func_set(bt, ui_colorpicker_rgba_update_cb, bt, nullptr);
   bt->custom_data = cpicker;
   bt = uiDefButR_prop(block,
@@ -659,9 +639,9 @@ static void ui_block_colorpicker(uiBlock *block,
                       2,
                       0.0,
                       0.0,
-                      10,
-                      3,
                       TIP_("Blue"));
+  UI_but_number_slider_step_size_set(bt, 10);
+  UI_but_number_slider_precision_set(bt, 3);
   UI_but_func_set(bt, ui_colorpicker_rgba_update_cb, bt, nullptr);
   bt->custom_data = cpicker;
 
@@ -683,9 +663,9 @@ static void ui_block_colorpicker(uiBlock *block,
                  cpicker->hsv_scene_linear,
                  0.0,
                  1.0,
-                 10,
-                 3,
                  TIP_("Hue"));
+  UI_but_number_slider_step_size_set(bt, 10);
+  UI_but_number_slider_precision_set(bt, 3);
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_func_set(bt, ui_colorpicker_hsv_update_cb, bt, nullptr);
   bt->custom_data = cpicker;
@@ -700,9 +680,9 @@ static void ui_block_colorpicker(uiBlock *block,
                  cpicker->hsv_scene_linear + 1,
                  0.0,
                  1.0,
-                 10,
-                 3,
                  TIP_("Saturation"));
+  UI_but_number_slider_step_size_set(bt, 10);
+  UI_but_number_slider_precision_set(bt, 3);
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_func_set(bt, ui_colorpicker_hsv_update_cb, bt, nullptr);
   bt->custom_data = cpicker;
@@ -718,9 +698,9 @@ static void ui_block_colorpicker(uiBlock *block,
                    cpicker->hsv_scene_linear + 2,
                    0.0,
                    1.0,
-                   10,
-                   3,
                    TIP_("Lightness"));
+    UI_but_number_slider_step_size_set(bt, 10);
+    UI_but_number_slider_precision_set(bt, 3);
   }
   else {
     bt = uiDefButF(block,
@@ -734,13 +714,13 @@ static void ui_block_colorpicker(uiBlock *block,
                    cpicker->hsv_scene_linear + 2,
                    0.0,
                    softmax,
-                   10,
-                   3,
                    CTX_TIP_(BLT_I18NCONTEXT_COLOR, "Value"));
   }
+  UI_but_number_slider_step_size_set(bt, 10);
+  UI_but_number_slider_precision_set(bt, 3);
   UI_but_flag_disable(bt, UI_BUT_UNDO);
 
-  bt->hardmax = hardmax; /* not common but rgb  may be over 1.0 */
+  bt->hardmax = hardmax; /* Not common but RGB may be over 1.0. */
   UI_but_func_set(bt, ui_colorpicker_hsv_update_cb, bt, nullptr);
   bt->custom_data = cpicker;
 
@@ -760,9 +740,9 @@ static void ui_block_colorpicker(uiBlock *block,
                         3,
                         0.0,
                         0.0,
-                        10,
-                        3,
                         TIP_("Alpha"));
+    UI_but_number_slider_step_size_set(bt, 10);
+    UI_but_number_slider_precision_set(bt, 3);
     UI_but_func_set(bt, ui_colorpicker_rgba_update_cb, bt, nullptr);
     bt->custom_data = cpicker;
   }
@@ -782,7 +762,7 @@ static void ui_block_colorpicker(uiBlock *block,
   }
 
   rgb_float_to_uchar(rgb_hex_uchar, rgb_hex);
-  BLI_snprintf(hexcol, sizeof(hexcol), "%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
+  SNPRINTF(hexcol, "%02X%02X%02X", UNPACK3_EX((uint), rgb_hex_uchar, ));
 
   yco = -3.0f * UI_UNIT_Y;
   bt = uiDefBut(block,
@@ -796,8 +776,6 @@ static void ui_block_colorpicker(uiBlock *block,
                 hexcol,
                 0,
                 8,
-                0,
-                0,
                 TIP_("Hex triplet for color (#RRGGBB)"));
   UI_but_flag_disable(bt, UI_BUT_UNDO);
   UI_but_func_set(bt, ui_colorpicker_hex_rna_cb, bt, hexcol);
@@ -805,7 +783,7 @@ static void ui_block_colorpicker(uiBlock *block,
   uiDefBut(block,
            UI_BTYPE_LABEL,
            0,
-           IFACE_("(Gamma Corrected)"),
+           IFACE_("(Gamma corrected)"),
            0,
            yco - UI_UNIT_Y,
            butwidth,
@@ -813,8 +791,6 @@ static void ui_block_colorpicker(uiBlock *block,
            nullptr,
            0.0,
            0.0,
-           0,
-           0,
            "");
 
   ui_colorpicker_hide_reveal(block, (ePickerType)colormode);
@@ -891,7 +867,7 @@ uiBlock *ui_block_func_COLOR(bContext *C, uiPopupBlockHandle *handle, void *arg_
   return block;
 }
 
-ColorPicker *ui_block_colorpicker_create(struct uiBlock *block)
+ColorPicker *ui_block_colorpicker_create(uiBlock *block)
 {
   ColorPicker *cpicker = MEM_cnew<ColorPicker>(__func__);
   BLI_addhead(&block->color_pickers.list, cpicker);

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2020 Blender Foundation */
+/* SPDX-FileCopyrightText: 2020 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -15,7 +16,7 @@
  * #include "GPU_debug.h"
  * static void do_render_engine(Render *re)
  * {
- *   GPU_debug_capture_begin();
+ *   GPU_debug_capture_begin(__func__);
  *   RE_engine_render(re, false);
  *   GPU_debug_capture_end();
  * }
@@ -67,8 +68,10 @@ bool GPU_debug_group_match(const char *ref);
  * GPU Frame capture support.
  *
  * Allows instantaneous frame capture of GPU calls between begin/end.
+ *
+ * \param title: Optional title to set for the frame capture.
  */
-void GPU_debug_capture_begin(void);
+void GPU_debug_capture_begin(const char *title);
 void GPU_debug_capture_end(void);
 
 /**
@@ -87,7 +90,7 @@ void *GPU_debug_capture_scope_create(const char *name);
 /**
  * Used to declare the region within which GPU calls are captured when the scope is triggered.
  *
- * \param scope Pointer to capture scope object created with GPU_debug_capture_scope_create.
+ * \param scope: Pointer to capture scope object created with GPU_debug_capture_scope_create.
  * \return True if the capture tool is actively capturing this scope when function is executed.
  * Otherwise, False.
  */

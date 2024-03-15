@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup bke
@@ -69,14 +70,14 @@ struct BMVert *BKE_bmbvh_find_vert_closest(BMBVHTree *tree, const float co[3], f
 struct BMFace *BKE_bmbvh_find_face_closest(BMBVHTree *tree, const float co[3], float dist_max);
 
 /**
- * Overlap indices reference the looptri's.
+ * Overlap indices reference the looptris.
  */
 struct BVHTreeOverlap *BKE_bmbvh_overlap(const BMBVHTree *bmtree_a,
                                          const BMBVHTree *bmtree_b,
                                          unsigned int *r_overlap_tot);
 
 /**
- * Overlap indices reference the looptri's.
+ * Overlap indices reference the looptris.
  */
 struct BVHTreeOverlap *BKE_bmbvh_overlap_self(const BMBVHTree *bmtree,
                                               unsigned int *r_overlap_tot);

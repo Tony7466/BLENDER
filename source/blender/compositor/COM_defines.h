@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -10,16 +11,6 @@
 namespace blender::compositor {
 
 using Size2f = float2;
-
-enum class eExecutionModel {
-  /**
-   * Operations are executed from outputs to inputs grouped in execution groups and rendered
-   * in tiles.
-   */
-  Tiled,
-  /** Operations are fully rendered in order from inputs to outputs. */
-  FullFrame
-};
 
 enum class eDimension { X, Y };
 
@@ -82,28 +73,6 @@ constexpr DataType COM_num_channels_data_type(const int num_channels)
       return DataType::Color;
   }
 }
-
-/* Configurable items.
- *
- * Chunk size determination.
- *
- * Chunk order. */
-/**
- * \brief The order of chunks to be scheduled
- * \ingroup Execution
- */
-enum class ChunkOrdering {
-  /** \brief order from a distance to centerX/centerY */
-  CenterOut = 0,
-  /** \brief order randomly */
-  Random = 1,
-  /** \brief no ordering */
-  TopDown = 2,
-  /** \brief experimental ordering with 9 hot-spots. */
-  RuleOfThirds = 3,
-
-  Default = ChunkOrdering::CenterOut,
-};
 
 constexpr float COM_PREVIEW_SIZE = 140.f;
 constexpr float COM_RULE_OF_THIRDS_DIVIDER = 100.0f;

@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "device/hip/device.h"
 
@@ -8,6 +9,8 @@
 #ifdef WITH_HIP
 #  include "device/device.h"
 #  include "device/hip/device_impl.h"
+
+#  include "integrator/denoiser_oidn_gpu.h"
 
 #  include "util/string.h"
 #  include "util/windows.h"
@@ -91,10 +94,12 @@ Device *device_hip_create(const DeviceInfo &info, Stats &stats, Profiler &profil
 static hipError_t device_hip_safe_init()
 {
 #  ifdef _WIN32
-  __try {
+  __try
+  {
     return hipInit(0);
   }
-  __except (EXCEPTION_EXECUTE_HANDLER) {
+  __except (EXCEPTION_EXECUTE_HANDLER)
+  {
     /* Ignore crashes inside the HIP driver and hope we can
      * survive even with corrupted HIP installs. */
     fprintf(stderr, "Cycles HIP: driver crashed, continuing without HIP.\n");
@@ -153,7 +158,7 @@ void device_hip_info(vector<DeviceInfo> &devices)
 
     info.has_nanovdb = true;
     info.has_light_tree = true;
-    info.denoisers = 0;
+    info.has_mnee = true;
 
     info.has_gpu_queue = true;
     /* Check if the device has P2P access to any other device in the system. */
@@ -177,6 +182,15 @@ void device_hip_info(vector<DeviceInfo> &devices)
                             (unsigned int)pci_location[1],
                             (unsigned int)pci_location[2]);
 
+    info.denoisers = 0;
+#  if defined(WITH_OPENIMAGEDENOISE)
+    /* Check first if OIDN supports it, not doing so can crash the HIP driver with
+     * "hipErrorNoBinaryForGpu: Unable to find code object for all current devices". */
+    if (hipSupportsDeviceOIDN(num) && OIDNDenoiserGPU::is_device_supported(info)) {
+      info.denoisers |= DENOISER_OPENIMAGEDENOISE;
+    }
+#  endif
+
     /* If device has a kernel timeout and no compute preemption, we assume
      * it is connected to a display and will freeze the display while doing
      * computations. */
@@ -194,7 +208,11 @@ void device_hip_info(vector<DeviceInfo> &devices)
       devices.push_back(info);
     }
 
-    VLOG_INFO << "Added device \"" << name << "\" with id \"" << info.id << "\".";
+    VLOG_INFO << "Added device \"" << info.description << "\" with id \"" << info.id << "\".";
+
+    if (info.denoisers & DENOISER_OPENIMAGEDENOISE)
+      VLOG_INFO << "Device with id \"" << info.id << "\" supports "
+                << denoiserTypeToHumanReadable(DENOISER_OPENIMAGEDENOISE) << ".";
   }
 
   if (!display_devices.empty())

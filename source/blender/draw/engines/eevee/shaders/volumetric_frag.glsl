@@ -1,8 +1,11 @@
-
-#pragma BLENDER_REQUIRE(volumetric_lib.glsl)
+/* SPDX-FileCopyrightText: 2017-2022 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /* Based on Frosbite Unified Volumetric.
  * https://www.ea.com/frostbite/news/physically-based-unified-volumetric-rendering-in-frostbite */
+
+#pragma BLENDER_REQUIRE(volumetric_lib.glsl)
 
 /* Store volumetric properties into the froxel textures. */
 
@@ -58,6 +61,11 @@ vec3 coordinate_reflect(vec3 P, vec3 N)
 vec3 coordinate_incoming(vec3 P)
 {
   return cameraVec(P);
+}
+
+float film_scaling_factor_get()
+{
+  return 1.0;
 }
 #endif
 

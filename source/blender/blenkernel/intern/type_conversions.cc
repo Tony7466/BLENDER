@@ -1,12 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BKE_type_conversions.hh"
-
-#include "DNA_meshdata_types.h"
 
 #include "FN_multi_function_builder.hh"
 
 #include "BLI_color.hh"
+#include "BLI_math_euler.hh"
+#include "BLI_math_quaternion.hh"
 #include "BLI_math_vector.hh"
 
 namespace blender::bke {
@@ -71,6 +73,10 @@ static ColorGeometry4f float_to_color(const float &a)
 static ColorGeometry4b float_to_byte_color(const float &a)
 {
   return float_to_color(a).encode();
+}
+static math::Quaternion float_to_quaternion(const float &a)
+{
+  return math::to_quaternion(math::EulerXYZ(float3(a)));
 }
 
 static float3 float2_to_float3(const float2 &a)
@@ -230,6 +236,11 @@ static float3 int8_to_float3(const int8_t &a)
 {
   return float3(float(a));
 }
+static math::Quaternion float3_to_quaternion(const float3 &a)
+{
+  return math::to_quaternion(math::EulerXYZ(a));
+}
+
 static ColorGeometry4f int8_to_color(const int8_t &a)
 {
   return ColorGeometry4f(float(a), float(a), float(a), 1.0f);
@@ -338,6 +349,21 @@ static ColorGeometry4f byte_color_to_color(const ColorGeometry4b &a)
   return a.decode();
 }
 
+static math::Quaternion float4x4_to_quaternion(const float4x4 &a)
+{
+  return math::to_quaternion(a);
+}
+
+static float3 quaternion_to_float3(const math::Quaternion &a)
+{
+  return float3(math::to_euler(a).xyz());
+}
+
+static float4x4 quaternion_to_float4x4(const math::Quaternion &a)
+{
+  return math::from_rotation<float4x4>(a);
+}
+
 static DataTypeConversions create_implicit_conversions()
 {
   DataTypeConversions conversions;
@@ -350,6 +376,7 @@ static DataTypeConversions create_implicit_conversions()
   add_implicit_conversion<float, int8_t, float_to_int8>(conversions);
   add_implicit_conversion<float, ColorGeometry4f, float_to_color>(conversions);
   add_implicit_conversion<float, ColorGeometry4b, float_to_byte_color>(conversions);
+  add_implicit_conversion<float, math::Quaternion, float_to_quaternion>(conversions);
 
   add_implicit_conversion<float2, float3, float2_to_float3>(conversions);
   add_implicit_conversion<float2, float, float2_to_float>(conversions);
@@ -368,6 +395,7 @@ static DataTypeConversions create_implicit_conversions()
   add_implicit_conversion<float3, float2, float3_to_float2>(conversions);
   add_implicit_conversion<float3, ColorGeometry4f, float3_to_color>(conversions);
   add_implicit_conversion<float3, ColorGeometry4b, float3_to_byte_color>(conversions);
+  add_implicit_conversion<float3, math::Quaternion, float3_to_quaternion>(conversions);
 
   add_implicit_conversion<int32_t, bool, int_to_bool>(conversions);
   add_implicit_conversion<int32_t, int8_t, int_to_int8>(conversions);
@@ -423,6 +451,11 @@ static DataTypeConversions create_implicit_conversions()
   add_implicit_conversion<ColorGeometry4b, float3, byte_color_to_float3>(conversions);
   add_implicit_conversion<ColorGeometry4b, ColorGeometry4f, byte_color_to_color>(conversions);
 
+  add_implicit_conversion<float4x4, math::Quaternion, float4x4_to_quaternion>(conversions);
+
+  add_implicit_conversion<math::Quaternion, float3, quaternion_to_float3>(conversions);
+  add_implicit_conversion<math::Quaternion, float4x4, quaternion_to_float4x4>(conversions);
+
   return conversions;
 }
 
@@ -451,10 +484,10 @@ void DataTypeConversions::convert_to_uninitialized(const CPPType &from_type,
 
 static void call_convert_to_uninitialized_fn(const GVArray &from,
                                              const mf::MultiFunction &fn,
-                                             const IndexMask mask,
+                                             const IndexMask &mask,
                                              GMutableSpan to)
 {
-  mf::ParamsBuilder params{fn, mask.min_array_size()};
+  mf::ParamsBuilder params{fn, &mask};
   params.add_readonly_single_input(from);
   params.add_uninitialized_single_output(to);
   mf::ContextBuilder context;
@@ -515,13 +548,13 @@ class GVArray_For_ConvertedGVArray : public GVArrayImpl {
     from_type_.destruct(buffer);
   }
 
-  void materialize(const IndexMask mask, void *dst) const override
+  void materialize(const IndexMask &mask, void *dst) const override
   {
     type_->destruct_n(dst, mask.min_array_size());
     this->materialize_to_uninitialized(mask, dst);
   }
 
-  void materialize_to_uninitialized(const IndexMask mask, void *dst) const override
+  void materialize_to_uninitialized(const IndexMask &mask, void *dst) const override
   {
     call_convert_to_uninitialized_fn(varray_,
                                      *old_to_new_conversions_.multi_function,
@@ -573,13 +606,13 @@ class GVMutableArray_For_ConvertedGVMutableArray : public GVMutableArrayImpl {
     varray_.set_by_relocate(index, buffer);
   }
 
-  void materialize(const IndexMask mask, void *dst) const override
+  void materialize(const IndexMask &mask, void *dst) const override
   {
     type_->destruct_n(dst, mask.min_array_size());
     this->materialize_to_uninitialized(mask, dst);
   }
 
-  void materialize_to_uninitialized(const IndexMask mask, void *dst) const override
+  void materialize_to_uninitialized(const IndexMask &mask, void *dst) const override
   {
     call_convert_to_uninitialized_fn(varray_,
                                      *old_to_new_conversions_.multi_function,

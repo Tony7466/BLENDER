@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -547,7 +548,7 @@ double BLI_gset_calc_quality(GSet *gs);
 /* -------------------------------------------------------------------- */
 /** \name GHash/GSet Utils
  *
- * Defined in `BLI_ghash_utils.c`
+ * Defined in `BLI_ghash_utils.cc`
  * \{ */
 
 /**

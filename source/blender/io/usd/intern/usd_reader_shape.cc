@@ -1,20 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Nvidia. All rights reserved. */
+/* SPDX-FileCopyrightText: 2023 Nvidia. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_lib_id.h"
+#include "BKE_geometry_set.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
-#include "BKE_modifier.h"
-#include "BKE_object.h"
+#include "BKE_object.hh"
+#include "BKE_report.hh"
 
-#include "DNA_cachefile_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "WM_api.h"
-
-#include "usd_reader_shape.h"
+#include "usd_reader_shape.hh"
 
 #include <pxr/usd/usdGeom/capsule.h>
 #include <pxr/usd/usdGeom/cone.h>
@@ -117,14 +114,15 @@ bool USDShapeReader::read_mesh_values(double motionSampleTime,
     return true;
   }
 
-  WM_reportf(RPT_ERROR,
-             "Unhandled Gprim type: %s (%s)",
-             prim_.GetTypeName().GetText(),
-             prim_.GetPath().GetText());
+  BKE_reportf(reports(),
+              RPT_ERROR,
+              "Unhandled Gprim type: %s (%s)",
+              prim_.GetTypeName().GetText(),
+              prim_.GetPath().GetText());
   return false;
 }
 
-Mesh *USDShapeReader::read_mesh(struct Mesh *existing_mesh,
+Mesh *USDShapeReader::read_mesh(Mesh *existing_mesh,
                                 const USDMeshReadParams params,
                                 const char ** /*err_str*/)
 {
@@ -142,22 +140,34 @@ Mesh *USDShapeReader::read_mesh(struct Mesh *existing_mesh,
     return existing_mesh;
   }
 
-  MutableSpan<int> poly_offsets = active_mesh->poly_offsets_for_write();
-  for (const int i : IndexRange(active_mesh->totpoly)) {
-    poly_offsets[i] = face_counts[i];
+  MutableSpan<int> face_offsets = active_mesh->face_offsets_for_write();
+  for (const int i : IndexRange(active_mesh->faces_num)) {
+    face_offsets[i] = face_counts[i];
   }
-  offset_indices::accumulate_counts_to_offsets(poly_offsets);
+  offset_indices::accumulate_counts_to_offsets(face_offsets);
 
   /* Don't smooth-shade cubes; we're not worrying about sharpness for Gprims. */
-  BKE_mesh_smooth_flag_set(active_mesh, !prim_.IsA<pxr::UsdGeomCube>());
+  bke::mesh_smooth_set(*active_mesh, !prim_.IsA<pxr::UsdGeomCube>());
 
   MutableSpan<int> corner_verts = active_mesh->corner_verts_for_write();
   for (const int i : corner_verts.index_range()) {
     corner_verts[i] = face_indices[i];
   }
 
-  BKE_mesh_calc_edges(active_mesh, false, false);
+  bke::mesh_calc_edges(*active_mesh, false, false);
   return active_mesh;
+}
+
+void USDShapeReader::read_geometry(bke::GeometrySet &geometry_set,
+                                   USDMeshReadParams params,
+                                   const char **err_str)
+{
+  Mesh *existing_mesh = geometry_set.get_mesh_for_write();
+  Mesh *new_mesh = read_mesh(existing_mesh, params, err_str);
+
+  if (new_mesh != existing_mesh) {
+    geometry_set.replace_mesh(new_mesh);
+  }
 }
 
 Mesh *USDShapeReader::mesh_from_prim(Mesh *existing_mesh,
@@ -171,9 +181,9 @@ Mesh *USDShapeReader::mesh_from_prim(Mesh *existing_mesh,
     return existing_mesh;
   }
 
-  const bool poly_counts_match = existing_mesh ? face_counts.size() == existing_mesh->totpoly :
+  const bool poly_counts_match = existing_mesh ? face_counts.size() == existing_mesh->faces_num :
                                                  false;
-  const bool position_counts_match = existing_mesh ? positions.size() == existing_mesh->totvert :
+  const bool position_counts_match = existing_mesh ? positions.size() == existing_mesh->verts_num :
                                                      false;
 
   Mesh *active_mesh = nullptr;
@@ -229,10 +239,11 @@ bool USDShapeReader::is_time_varying()
     return geom.GetRadiusAttr().ValueMightBeTimeVarying();
   }
 
-  WM_reportf(RPT_ERROR,
-             "Unhandled Gprim type: %s (%s)",
-             prim_.GetTypeName().GetText(),
-             prim_.GetPath().GetText());
+  BKE_reportf(reports(),
+              RPT_ERROR,
+              "Unhandled Gprim type: %s (%s)",
+              prim_.GetTypeName().GetText(),
+              prim_.GetPath().GetText());
   return false;
 }
 

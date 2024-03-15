@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2011-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -19,6 +21,11 @@ class VIEW3D_OT_edit_mesh_extrude_individual_move(Operator):
         return (obj is not None and obj.mode == 'EDIT')
 
     def execute(self, context):
+        from bpy_extras.object_utils import object_report_if_active_shape_key_is_locked
+
+        if object_report_if_active_shape_key_is_locked(context.object, self):
+            return {'CANCELLED'}
+
         mesh = context.object.data
         select_mode = context.tool_settings.mesh_select_mode
 
@@ -32,14 +39,29 @@ class VIEW3D_OT_edit_mesh_extrude_individual_move(Operator):
                 TRANSFORM_OT_translate={
                     "orient_type": 'NORMAL',
                     "constraint_axis": (False, False, True),
+                    "release_confirm": False,
                 },
             )
         elif select_mode[2] and totface > 1:
-            bpy.ops.mesh.extrude_faces_move('INVOKE_REGION_WIN')
+            bpy.ops.mesh.extrude_faces_move(
+                'INVOKE_REGION_WIN',
+                TRANSFORM_OT_shrink_fatten={
+                    "release_confirm": False,
+                })
         elif select_mode[1] and totedge >= 1:
-            bpy.ops.mesh.extrude_edges_move('INVOKE_REGION_WIN')
+            bpy.ops.mesh.extrude_edges_move(
+                'INVOKE_REGION_WIN',
+                TRANSFORM_OT_translate={
+                    "release_confirm": False,
+                },
+            )
         else:
-            bpy.ops.mesh.extrude_vertices_move('INVOKE_REGION_WIN')
+            bpy.ops.mesh.extrude_vertices_move(
+                'INVOKE_REGION_WIN',
+                TRANSFORM_OT_translate={
+                    "release_confirm": False,
+                },
+            )
 
         # ignore return from operators above because they are 'RUNNING_MODAL',
         # and cause this one not to be freed. #24671.
@@ -66,7 +88,12 @@ class VIEW3D_OT_edit_mesh_extrude_move(Operator):
         return (obj is not None and obj.mode == 'EDIT')
 
     @staticmethod
-    def extrude_region(context, use_vert_normals, dissolve_and_intersect):
+    def extrude_region(operator, context, use_vert_normals, dissolve_and_intersect):
+        from bpy_extras.object_utils import object_report_if_active_shape_key_is_locked
+
+        if object_report_if_active_shape_key_is_locked(context.object, operator):
+            return {'CANCELLED'}
+
         mesh = context.object.data
 
         totface = mesh.total_face_sel
@@ -77,7 +104,9 @@ class VIEW3D_OT_edit_mesh_extrude_move(Operator):
             if use_vert_normals:
                 bpy.ops.mesh.extrude_region_shrink_fatten(
                     'INVOKE_REGION_WIN',
-                    TRANSFORM_OT_shrink_fatten={},
+                    TRANSFORM_OT_shrink_fatten={
+                        "release_confirm": False,
+                    },
                 )
             elif dissolve_and_intersect:
                 bpy.ops.mesh.extrude_manifold(
@@ -88,6 +117,7 @@ class VIEW3D_OT_edit_mesh_extrude_move(Operator):
                     TRANSFORM_OT_translate={
                         "orient_type": 'NORMAL',
                         "constraint_axis": (False, False, True),
+                        "release_confirm": False,
                     },
                 )
             else:
@@ -96,6 +126,7 @@ class VIEW3D_OT_edit_mesh_extrude_move(Operator):
                     TRANSFORM_OT_translate={
                         "orient_type": 'NORMAL',
                         "constraint_axis": (False, False, True),
+                        "release_confirm": False,
                     },
                 )
 
@@ -107,18 +138,24 @@ class VIEW3D_OT_edit_mesh_extrude_move(Operator):
                     # to use the user setting, see: #61637
                     # "orient_type": 'NORMAL',
                     # Not a popular choice, too restrictive for retopo.
-                    # "constraint_axis": (True, True, False)})
+                    # "constraint_axis": (True, True, False),
                     "constraint_axis": (False, False, False),
+                    "release_confirm": False,
                 })
         else:
-            bpy.ops.mesh.extrude_region_move('INVOKE_REGION_WIN')
+            bpy.ops.mesh.extrude_region_move(
+                'INVOKE_REGION_WIN',
+                TRANSFORM_OT_translate={
+                    "release_confirm": False,
+                },
+            )
 
         # ignore return from operators above because they are 'RUNNING_MODAL',
         # and cause this one not to be freed. #24671.
         return {'FINISHED'}
 
     def execute(self, context):
-        return VIEW3D_OT_edit_mesh_extrude_move.extrude_region(context, False, self.dissolve_and_intersect)
+        return VIEW3D_OT_edit_mesh_extrude_move.extrude_region(self, context, False, self.dissolve_and_intersect)
 
     def invoke(self, context, _event):
         return self.execute(context)
@@ -135,7 +172,7 @@ class VIEW3D_OT_edit_mesh_extrude_shrink_fatten(Operator):
         return (obj is not None and obj.mode == 'EDIT')
 
     def execute(self, context):
-        return VIEW3D_OT_edit_mesh_extrude_move.extrude_region(context, True, False)
+        return VIEW3D_OT_edit_mesh_extrude_move.extrude_region(self, context, True, False)
 
     def invoke(self, context, _event):
         return self.execute(context)
@@ -151,7 +188,11 @@ class VIEW3D_OT_edit_mesh_extrude_manifold_normal(Operator):
         obj = context.active_object
         return (obj is not None and obj.mode == 'EDIT')
 
-    def execute(self, _context):
+    def execute(self, context):
+        from bpy_extras.object_utils import object_report_if_active_shape_key_is_locked
+
+        if object_report_if_active_shape_key_is_locked(context.object, self):
+            return {'CANCELLED'}
         bpy.ops.mesh.extrude_manifold(
             'INVOKE_REGION_WIN',
             MESH_OT_extrude_region={
@@ -160,6 +201,7 @@ class VIEW3D_OT_edit_mesh_extrude_manifold_normal(Operator):
             TRANSFORM_OT_translate={
                 "orient_type": 'NORMAL',
                 "constraint_axis": (False, False, True),
+                "release_confirm": False,
             },
         )
         return {'FINISHED'}

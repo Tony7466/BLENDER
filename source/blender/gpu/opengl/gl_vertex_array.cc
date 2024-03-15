@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -124,7 +125,7 @@ void GLVertArray::update_bindings(const GLuint vao,
     int component_len = 1;
     if (input == nullptr) {
       /* Uses Custom IDs */
-      input = interface->attr_get("vertex_in_drw_ResourceID_");
+      input = interface->attr_get("vertex_in_drw_ResourceID");
       component_len = 2;
     }
     if (input) {
@@ -137,7 +138,7 @@ void GLVertArray::update_bindings(const GLuint vao,
     }
   }
 
-  if (attr_mask != 0 && GLContext::vertex_attrib_binding_support) {
+  if (attr_mask != 0) {
     for (uint16_t mask = 1, a = 0; a < 16; a++, mask <<= 1) {
       if (attr_mask & mask) {
         GLContext *ctx = GLContext::get();

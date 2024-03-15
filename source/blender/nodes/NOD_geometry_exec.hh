@@ -1,13 +1,21 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
+
+#include "BLI_color.hh"
+#include "BLI_math_quaternion_types.hh"
 
 #include "FN_field.hh"
 #include "FN_lazy_function.hh"
 #include "FN_multi_function_builder.hh"
 
+#include "BKE_attribute_math.hh"
 #include "BKE_geometry_fields.hh"
 #include "BKE_geometry_set.hh"
+#include "BKE_node_socket_value.hh"
+#include "BKE_volume_grid_fwd.hh"
 
 #include "DNA_node_types.h"
 
@@ -20,6 +28,7 @@ using bke::AnonymousAttributeFieldInput;
 using bke::AnonymousAttributeID;
 using bke::AnonymousAttributeIDPtr;
 using bke::AnonymousAttributePropagationInfo;
+using bke::AttrDomain;
 using bke::AttributeAccessor;
 using bke::AttributeFieldInput;
 using bke::AttributeIDRef;
@@ -27,18 +36,27 @@ using bke::AttributeKind;
 using bke::AttributeMetaData;
 using bke::AttributeReader;
 using bke::AttributeWriter;
+using bke::CurveComponent;
 using bke::GAttributeReader;
 using bke::GAttributeWriter;
+using bke::GeometryComponent;
+using bke::GeometryComponentEditData;
+using bke::GeometrySet;
+using bke::GreasePencilComponent;
 using bke::GSpanAttributeWriter;
+using bke::InstancesComponent;
+using bke::MeshComponent;
 using bke::MutableAttributeAccessor;
+using bke::PointCloudComponent;
+using bke::SocketValueVariant;
 using bke::SpanAttributeWriter;
+using bke::VolumeComponent;
 using fn::Field;
 using fn::FieldContext;
 using fn::FieldEvaluator;
 using fn::FieldInput;
 using fn::FieldOperation;
 using fn::GField;
-using fn::ValueOrField;
 using geo_eval_log::NamedAttributeUsage;
 using geo_eval_log::NodeWarningType;
 
@@ -69,8 +87,20 @@ class GeoNodeExecParams {
   }
 
   template<typename T>
-  static inline constexpr bool is_field_base_type_v =
-      is_same_any_v<T, float, int, bool, ColorGeometry4f, float3, std::string>;
+  static inline constexpr bool is_field_base_type_v = is_same_any_v<T,
+                                                                    float,
+                                                                    int,
+                                                                    bool,
+                                                                    ColorGeometry4f,
+                                                                    float3,
+                                                                    std::string,
+                                                                    math::Quaternion,
+                                                                    float4x4>;
+
+  template<typename T>
+  static inline constexpr bool stored_as_SocketValueVariant_v =
+      is_field_base_type_v<T> || fn::is_field_v<T> || bke::is_VolumeGrid_v<T> ||
+      is_same_any_v<T, GField, bke::GVolumeGrid>;
 
   /**
    * Get the input value for the input socket with the given identifier.
@@ -79,24 +109,22 @@ class GeoNodeExecParams {
    */
   template<typename T> T extract_input(StringRef identifier)
   {
-    if constexpr (is_field_base_type_v<T>) {
-      ValueOrField<T> value_or_field = this->extract_input<ValueOrField<T>>(identifier);
-      return value_or_field.as_value();
-    }
-    else if constexpr (fn::is_field_v<T>) {
-      using BaseType = typename T::base_type;
-      ValueOrField<BaseType> value_or_field = this->extract_input<ValueOrField<BaseType>>(
-          identifier);
-      return value_or_field.as_field();
+    if constexpr (stored_as_SocketValueVariant_v<T>) {
+      SocketValueVariant value_variant = this->extract_input<SocketValueVariant>(identifier);
+      return value_variant.extract<T>();
     }
     else {
-#ifdef DEBUG
+#ifndef NDEBUG
       this->check_input_access(identifier, &CPPType::get<T>());
 #endif
       const int index = this->get_input_index(identifier);
       T value = params_.extract_input<T>(index);
       if constexpr (std::is_same_v<T, GeometrySet>) {
         this->check_input_geometry_set(identifier, value);
+      }
+      if constexpr (std::is_same_v<T, SocketValueVariant>) {
+        BLI_assert(value.valid_for_socket(
+            eNodeSocketDatatype(node_.input_by_identifier(identifier).type)));
       }
       return value;
     }
@@ -110,23 +138,22 @@ class GeoNodeExecParams {
    */
   template<typename T> T get_input(StringRef identifier) const
   {
-    if constexpr (is_field_base_type_v<T>) {
-      ValueOrField<T> value_or_field = this->get_input<ValueOrField<T>>(identifier);
-      return value_or_field.as_value();
-    }
-    else if constexpr (fn::is_field_v<T>) {
-      using BaseType = typename T::base_type;
-      ValueOrField<BaseType> value_or_field = this->get_input<ValueOrField<BaseType>>(identifier);
-      return value_or_field.as_field();
+    if constexpr (stored_as_SocketValueVariant_v<T>) {
+      auto value_variant = this->get_input<SocketValueVariant>(identifier);
+      return value_variant.extract<T>();
     }
     else {
-#ifdef DEBUG
+#ifndef NDEBUG
       this->check_input_access(identifier, &CPPType::get<T>());
 #endif
       const int index = this->get_input_index(identifier);
       const T &value = params_.get_input<T>(index);
       if constexpr (std::is_same_v<T, GeometrySet>) {
         this->check_input_geometry_set(identifier, value);
+      }
+      if constexpr (std::is_same_v<T, SocketValueVariant>) {
+        BLI_assert(value.valid_for_socket(
+            eNodeSocketDatatype(node_.input_by_identifier(identifier).type)));
       }
       return value;
     }
@@ -138,17 +165,18 @@ class GeoNodeExecParams {
   template<typename T> void set_output(StringRef identifier, T &&value)
   {
     using StoredT = std::decay_t<T>;
-    if constexpr (is_field_base_type_v<StoredT>) {
-      this->set_output(identifier, ValueOrField<StoredT>(std::forward<T>(value)));
-    }
-    else if constexpr (fn::is_field_v<StoredT>) {
-      using BaseType = typename StoredT::base_type;
-      this->set_output(identifier, ValueOrField<BaseType>(std::forward<T>(value)));
+    if constexpr (stored_as_SocketValueVariant_v<StoredT>) {
+      SocketValueVariant value_variant(std::forward<T>(value));
+      this->set_output(identifier, std::move(value_variant));
     }
     else {
-#ifdef DEBUG
+#ifndef NDEBUG
       const CPPType &type = CPPType::get<StoredT>();
       this->check_output_access(identifier, type);
+      if constexpr (std::is_same_v<StoredT, SocketValueVariant>) {
+        BLI_assert(value.valid_for_socket(
+            eNodeSocketDatatype(node_.output_by_identifier(identifier).type)));
+      }
 #endif
       if constexpr (std::is_same_v<StoredT, GeometrySet>) {
         this->check_output_geometry_set(value);
@@ -160,14 +188,7 @@ class GeoNodeExecParams {
 
   geo_eval_log::GeoTreeLogger *get_local_tree_logger() const
   {
-    GeoNodesLFUserData *user_data = this->user_data();
-    BLI_assert(user_data != nullptr);
-    const ComputeContext *compute_context = user_data->compute_context;
-    BLI_assert(compute_context != nullptr);
-    if (user_data->modifier_data->eval_log == nullptr) {
-      return nullptr;
-    }
-    return &user_data->modifier_data->eval_log->get_local_tree_logger(*compute_context);
+    return this->local_user_data()->try_get_tree_logger(*this->user_data());
   }
 
   /**
@@ -199,9 +220,7 @@ class GeoNodeExecParams {
   const Object *self_object() const
   {
     if (const auto *data = this->user_data()) {
-      if (data->modifier_data) {
-        return data->modifier_data->self_object;
-      }
+      return data->call_data->self_object();
     }
     return nullptr;
   }
@@ -209,8 +228,11 @@ class GeoNodeExecParams {
   Depsgraph *depsgraph() const
   {
     if (const auto *data = this->user_data()) {
-      if (data->modifier_data) {
-        return data->modifier_data->depsgraph;
+      if (data->call_data->modifier_data) {
+        return data->call_data->modifier_data->depsgraph;
+      }
+      if (data->call_data->operator_data) {
+        return data->call_data->operator_data->depsgraph;
       }
     }
     return nullptr;
@@ -218,7 +240,12 @@ class GeoNodeExecParams {
 
   GeoNodesLFUserData *user_data() const
   {
-    return dynamic_cast<GeoNodesLFUserData *>(lf_context_.user_data);
+    return static_cast<GeoNodesLFUserData *>(lf_context_.user_data);
+  }
+
+  GeoNodesLFLocalUserData *local_user_data() const
+  {
+    return static_cast<GeoNodesLFLocalUserData *>(lf_context_.local_user_data);
   }
 
   /**

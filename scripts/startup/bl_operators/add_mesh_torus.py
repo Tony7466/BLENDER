@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 from __future__ import annotations
 
 import bpy
@@ -144,8 +147,7 @@ class AddTorus(Operator, object_utils.AddObjectHelper):
     )
     major_radius: FloatProperty(
         name="Major Radius",
-        description=("Radius from the origin to the "
-                     "center of the cross sections"),
+        description="Radius from the origin to the center of the cross sections",
         soft_min=0.0, soft_max=100.0,
         min=0.0, max=10_000.0,
         default=1.0,
@@ -243,6 +245,7 @@ class AddTorus(Operator, object_utils.AddObjectHelper):
         mesh.vertices.foreach_set("co", verts_loc)
         mesh.polygons.foreach_set("loop_start", range(0, nbr_loops, 4))
         mesh.loops.foreach_set("vertex_index", faces)
+        mesh.shade_flat()
 
         if self.generate_uvs:
             add_uvs(mesh, self.minor_segments, self.major_segments)

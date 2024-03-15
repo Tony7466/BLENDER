@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2023 Blender Foundation */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -77,6 +78,11 @@ typedef enum eGPUBuiltinShader {
   GPU_SHADER_3D_CLIPPED_UNIFORM_COLOR,
   /** Draw wide lines with uniform color. Has an additional clip plane parameter. */
   GPU_SHADER_3D_POLYLINE_CLIPPED_UNIFORM_COLOR,
+
+  /** Compute shaders to generate 2d index buffers (mainly for curve drawing). */
+  GPU_SHADER_INDEXBUF_POINTS,
+  GPU_SHADER_INDEXBUF_LINES,
+  GPU_SHADER_INDEXBUF_TRIS,
 
   /**
    * ----------------------- Shaders exposed through pyGPU module -----------------------

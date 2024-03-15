@@ -1,7 +1,9 @@
+# SPDX-FileCopyrightText: 2012-2022 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # This is a quite stupid script which extracts bmesh api docs from
-# 'bmesh_opdefines.c' in order to avoid having to add a lot of introspection
+# 'bmesh_opdefines.cc' in order to avoid having to add a lot of introspection
 # data access into the api.
 #
 # The script is stupid because it makes assumptions about formatting...
@@ -17,7 +19,7 @@ import re
 
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 SOURCE_DIR = os.path.normpath(os.path.abspath(os.path.normpath(os.path.join(CURRENT_DIR, "..", ".."))))
-FILE_OP_DEFINES_C = os.path.join(SOURCE_DIR, "source", "blender", "bmesh", "intern", "bmesh_opdefines.c")
+FILE_OP_DEFINES_CC = os.path.join(SOURCE_DIR, "source", "blender", "bmesh", "intern", "bmesh_opdefines.cc")
 OUT_RST = os.path.join(CURRENT_DIR, "rst", "bmesh.ops.rst")
 
 HEADER = r"""
@@ -41,7 +43,7 @@ This script shows how operators can be used to model a link of a chain.
 
 
 def main():
-    fsrc = open(FILE_OP_DEFINES_C, 'r', encoding="utf-8")
+    fsrc = open(FILE_OP_DEFINES_CC, 'r', encoding="utf-8")
 
     blocks = []
 
@@ -155,6 +157,8 @@ def main():
             l = l.strip()
             # casts
             l = l.replace("(int)", "")
+            l = re.sub(r'to_subtype_union\((.*?)\)', '{\\1}', l)
+            l = re.sub(r'eBMOpSlotSubType_Elem\((.*?)\)', '\\1', l)
 
             l = l.replace("{", "(")
             l = l.replace("}", ")")
@@ -248,8 +252,7 @@ def main():
                     name, tp = arg
                     tp_sub = None
                 else:
-                    print(arg)
-                    assert 0
+                    assert False, "unreachable, unsupported 'arg' length found %d" % len(arg)
 
                 tp_str = ""
 
@@ -318,8 +321,7 @@ def main():
                         #     but think the idea is that that pointer is for any type?
                         tp_str = ":class:`bpy.types.bpy_struct`"
                     else:
-                        print("Can't find", vars_dict_reverse[tp_sub])
-                        assert 0
+                        assert False, "unreachable, unknown type %r" % vars_dict_reverse[tp_sub]
 
                 elif tp == BMO_OP_SLOT_ELEMENT_BUF:
                     assert tp_sub is not None
@@ -358,11 +360,9 @@ def main():
                         elif tp_sub == BMO_OP_SLOT_SUBTYPE_MAP_INTERNAL:
                             tp_str += "unknown internal data, not compatible with python"
                         else:
-                            print("Can't find", vars_dict_reverse[tp_sub])
-                            assert 0
+                            assert False, "unreachable, unknown type %r" % vars_dict_reverse[tp_sub]
                 else:
-                    print("Can't find", vars_dict_reverse[tp])
-                    assert 0
+                    assert False, "unreachable, unknown type %r" % vars_dict_reverse[tp]
 
                 args_wash.append((name, default_value, tp_str, comment))
             return args_wash

@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2020-2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -225,7 +227,8 @@ void GHOST_XrSession::start(const GHOST_XrSessionBeginInfo *begin_info)
   m_gpu_binding = GHOST_XrGraphicsBindingCreateFromType(m_context->getGraphicsBindingType(),
                                                         *m_gpu_ctx);
   if (!m_gpu_binding->checkVersionRequirements(
-          *m_gpu_ctx, m_context->getInstance(), m_oxr->system_id, &requirement_str)) {
+          *m_gpu_ctx, m_context->getInstance(), m_oxr->system_id, &requirement_str))
+  {
     std::ostringstream strstream;
     strstream << "Available graphics context version does not meet the following requirements: "
               << requirement_str;
@@ -274,7 +277,8 @@ GHOST_XrSession::LifeExpectancy GHOST_XrSession::handleStateChangeEvent(
 {
   m_oxr->session_state = lifecycle.state;
 
-  /* Runtime may send events for apparently destroyed session. Our handle should be NULL then. */
+  /* Runtime may send events for apparently destroyed session. Our handle should be nullptr then.
+   */
   assert(m_oxr->session == XR_NULL_HANDLE || m_oxr->session == lifecycle.session);
 
   switch (lifecycle.state) {
@@ -470,8 +474,8 @@ static void ghost_xr_draw_view_info_from_view(const XrView &view, GHOST_XrDrawVi
 
 void GHOST_XrSession::drawView(GHOST_XrSwapchain &swapchain,
                                XrCompositionLayerProjectionView &r_proj_layer_view,
-                               XrSpaceLocation &view_location,
-                               XrView &view,
+                               const XrSpaceLocation &view_location,
+                               const XrView &view,
                                uint32_t view_idx,
                                void *draw_customdata)
 {
@@ -642,9 +646,8 @@ bool GHOST_XrSession::createActionSet(const GHOST_XrActionSetInfo &info)
 void GHOST_XrSession::destroyActionSet(const char *action_set_name)
 {
   std::map<std::string, GHOST_XrActionSet> &action_sets = m_oxr->action_sets;
-  if (action_sets.find(action_set_name) != action_sets.end()) {
-    action_sets.erase(action_set_name);
-  }
+  /* It's possible nothing is removed. */
+  action_sets.erase(action_set_name);
 }
 
 bool GHOST_XrSession::createActions(const char *action_set_name,
@@ -890,7 +893,7 @@ void *GHOST_XrSession::getActionCustomdata(const char *action_set_name, const ch
 
 uint32_t GHOST_XrSession::getActionCount(const char *action_set_name)
 {
-  GHOST_XrActionSet *action_set = find_action_set(m_oxr.get(), action_set_name);
+  const GHOST_XrActionSet *action_set = find_action_set(m_oxr.get(), action_set_name);
   if (action_set == nullptr) {
     return 0;
   }
@@ -944,9 +947,8 @@ bool GHOST_XrSession::loadControllerModel(const char *subaction_path)
 void GHOST_XrSession::unloadControllerModel(const char *subaction_path)
 {
   std::map<std::string, GHOST_XrControllerModel> &controller_models = m_oxr->controller_models;
-  if (controller_models.find(subaction_path) != controller_models.end()) {
-    controller_models.erase(subaction_path);
-  }
+  /* It's possible nothing is removed. */
+  controller_models.erase(subaction_path);
 }
 
 bool GHOST_XrSession::updateControllerModelComponents(const char *subaction_path)

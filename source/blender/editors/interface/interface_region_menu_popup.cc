@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -7,6 +8,7 @@
  * PopUp Menu Region
  */
 
+#include <algorithm>
 #include <cstdarg>
 #include <cstdlib>
 #include <cstring>
@@ -16,31 +18,32 @@
 
 #include "DNA_userdef_types.h"
 
+#include "BLI_hash.hh"
 #include "BLI_listbase.h"
-#include "BLI_math.h"
-
-#include "BLI_ghash.h"
+#include "BLI_math_vector.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_report.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_report.hh"
+#include "BKE_screen.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
+#include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "interface_intern.hh"
 #include "interface_regions_intern.hh"
+
+using blender::StringRef;
 
 /* -------------------------------------------------------------------- */
 /** \name Utility Functions
@@ -71,7 +74,7 @@ int ui_but_menu_step(uiBut *but, int direction)
                                   direction);
   }
 
-  printf("%s: cannot cycle button '%s'\n", __func__, but->str);
+  printf("%s: cannot cycle button '%s'\n", __func__, but->str.c_str());
   return 0;
 }
 
@@ -86,25 +89,19 @@ int ui_but_menu_step(uiBut *but, int direction)
  * \note This is stored for each unique menu title.
  * \{ */
 
-static uint ui_popup_string_hash(const char *str, const bool use_sep)
+static uint ui_popup_string_hash(const StringRef str, const bool use_sep)
 {
   /* sometimes button contains hotkey, sometimes not, strip for proper compare */
-  int hash;
-  const char *delimit = use_sep ? strrchr(str, UI_SEP_CHAR) : nullptr;
+  const size_t sep_index = use_sep ? str.find_first_of(UI_SEP_CHAR) : StringRef::not_found;
+  const StringRef before_hotkey = sep_index == StringRef::not_found ? str :
+                                                                      str.substr(0, sep_index);
 
-  if (delimit) {
-    hash = BLI_ghashutil_strhash_n(str, delimit - str);
-  }
-  else {
-    hash = BLI_ghashutil_strhash(str);
-  }
-
-  return hash;
+  return blender::get_default_hash(before_hotkey);
 }
 
-uint ui_popup_menu_hash(const char *str)
+uint ui_popup_menu_hash(const StringRef str)
 {
-  return BLI_ghashutil_strhash(str);
+  return blender::get_default_hash(str);
 }
 
 /* but == nullptr read, otherwise set */
@@ -136,8 +133,8 @@ static uiBut *ui_popup_menu_memory__internal(uiBlock *block, uiBut *but)
     if (ELEM(but_iter->type, UI_BTYPE_LABEL, UI_BTYPE_SEPR, UI_BTYPE_SEPR_LINE)) {
       continue;
     }
-    if (mem[hash_mod] ==
-        ui_popup_string_hash(but_iter->str, but_iter->flag & UI_BUT_HAS_SEP_CHAR)) {
+    if (mem[hash_mod] == ui_popup_string_hash(but_iter->str, but_iter->flag & UI_BUT_HAS_SEP_CHAR))
+    {
       return but_iter;
     }
   }
@@ -168,7 +165,7 @@ struct uiPopupMenu {
   ARegion *butregion;
 
   /* Menu hash is created from this, to keep a memory of recently opened menus. */
-  const char *title;
+  StringRef title;
 
   int mx, my;
   bool popup, slideout;
@@ -182,17 +179,22 @@ struct uiPopupMenu {
  */
 static void ui_popup_menu_create_block(bContext *C,
                                        uiPopupMenu *pup,
-                                       const char *title,
-                                       const char *block_name)
+                                       const StringRef title,
+                                       const StringRef block_name)
 {
   const uiStyle *style = UI_style_get_dpi();
 
   pup->block = UI_block_begin(C, nullptr, block_name, UI_EMBOSS_PULLDOWN);
-  if (!pup->but) {
-    pup->block->flag |= UI_BLOCK_NO_FLIP;
-  }
-  if (title && title[0]) {
-    pup->block->flag |= UI_BLOCK_POPUP_MEMORY;
+
+  /* A title is only provided when a Menu has a label, this is not always the case, see e.g.
+   * `VIEW3D_MT_edit_mesh_context_menu` -- this specifies its own label inside the draw function
+   * depending on vertex/edge/face mode. We still want to flag the uiBlock (but only insert into
+   * the `puphash` if we have a title provided). Choosing an entry in a menu will still handle
+   * `puphash` later (see `button_activate_exit`) though multiple menus without a label might fight
+   * for the same storage of the menu memory. Using idname instead (or in combination with the
+   * label) for the hash could be looked at to solve this. */
+  pup->block->flag |= UI_BLOCK_POPUP_MEMORY;
+  if (!title.is_empty()) {
     pup->block->puphash = ui_popup_menu_hash(title);
   }
   pup->layout = UI_block_layout(
@@ -244,7 +246,7 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
   }
   else if (pup->but) {
     /* Minimum width to enforce. */
-    if (pup->but->drawstr[0]) {
+    if (!pup->but->drawstr.empty()) {
       minwidth = BLI_rctf_size_x(&pup->but->rect);
     }
     else {
@@ -339,6 +341,13 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
      * to be within the window bounds may move it away from the mouse,
      * This ensures we set an item to be active. */
     if (but_activate) {
+      ARegion *region = CTX_wm_region(C);
+      if (region && region->regiontype == RGN_TYPE_TOOLS && but_activate->block &&
+          (but_activate->block->flag & UI_BLOCK_POPUP_HOLD))
+      {
+        /* In Toolbars, highlight the button with select color. */
+        but_activate->flag |= UI_SELECT_DRAW;
+      }
       ui_but_activate_over(C, handle->region, but_activate);
     }
 
@@ -353,7 +362,6 @@ static uiBlock *ui_block_func_POPUP(bContext *C, uiPopupBlockHandle *handle, voi
         if (RGN_TYPE_IS_HEADER_ANY(region->regiontype)) {
           if (RGN_ALIGN_ENUM_FROM_MASK(region->alignment) == RGN_ALIGN_BOTTOM) {
             UI_block_direction_set(block, UI_DIR_UP);
-            UI_block_order_flip(block);
           }
         }
       }
@@ -393,6 +401,10 @@ static uiPopupBlockHandle *ui_popup_menu_create(
   if (but) {
     pup->slideout = ui_block_is_menu(but->block);
     pup->but = but;
+
+    if (but->type == UI_BTYPE_PULLDOWN) {
+      ED_workspace_status_text(C, IFACE_("Press spacebar to search..."));
+    }
   }
 
   if (!but) {
@@ -401,20 +413,6 @@ static uiPopupBlockHandle *ui_popup_menu_create(
     pup->my = window->eventstate->xy[1];
     pup->popup = true;
   }
-  /* some enums reversing is strange, currently we have no good way to
-   * reverse some enum's but not others, so reverse all so the first menu
-   * items are always close to the mouse cursor */
-  else {
-#if 0
-    /* if this is an rna button then we can assume its an enum
-     * flipping enums is generally not good since the order can be
-     * important #28786. */
-    if (but->rnaprop && RNA_property_type(but->rnaprop) == PROP_ENUM) {
-      pup->block->flag |= UI_BLOCK_NO_FLIP;
-    }
-#endif
-  }
-
   uiPopupBlockHandle *handle = ui_popup_block_create(
       C, butregion, but, nullptr, ui_block_func_POPUP, pup, ui_block_free_func_POPUP);
 
@@ -449,26 +447,13 @@ static void create_title_button(uiLayout *layout, const char *title, int icon)
   char titlestr[256];
 
   if (icon) {
-    BLI_snprintf(titlestr, sizeof(titlestr), " %s", title);
-    uiDefIconTextBut(block,
-                     UI_BTYPE_LABEL,
-                     0,
-                     icon,
-                     titlestr,
-                     0,
-                     0,
-                     200,
-                     UI_UNIT_Y,
-                     nullptr,
-                     0.0,
-                     0.0,
-                     0,
-                     0,
-                     "");
+    SNPRINTF(titlestr, " %s", title);
+    uiDefIconTextBut(
+        block, UI_BTYPE_LABEL, 0, icon, titlestr, 0, 0, 200, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
   }
   else {
     uiBut *but = uiDefBut(
-        block, UI_BTYPE_LABEL, 0, title, 0, 0, 200, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, "");
+        block, UI_BTYPE_LABEL, 0, title, 0, 0, 200, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
     but->drawflag = UI_BUT_TEXT_LEFT;
   }
 
@@ -485,8 +470,6 @@ uiPopupMenu *UI_popup_menu_begin_ex(bContext *C,
   pup->title = title;
 
   ui_popup_menu_create_block(C, pup, title, block_name);
-  /* Further buttons will be laid out top to bottom by default. */
-  pup->block->flag |= UI_BLOCK_IS_FLIP;
 
   /* create in advance so we can let buttons point to retval already */
   pup->block->handle = MEM_cnew<uiPopupBlockHandle>(__func__);
@@ -503,7 +486,7 @@ uiPopupMenu *UI_popup_menu_begin(bContext *C, const char *title, int icon)
   return UI_popup_menu_begin_ex(C, title, __func__, icon);
 }
 
-void UI_popup_menu_but_set(uiPopupMenu *pup, struct ARegion *butregion, uiBut *but)
+void UI_popup_menu_but_set(uiPopupMenu *pup, ARegion *butregion, uiBut *but)
 {
   pup->but = but;
   pup->butregion = butregion;
@@ -567,6 +550,8 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports)
     return;
   }
 
+  BKE_reports_lock(reports);
+
   LISTBASE_FOREACH (Report *, report, &reports->list) {
     int icon;
     const char *msg, *msg_next;
@@ -577,7 +562,7 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports)
 
     if (pup == nullptr) {
       char title[UI_MAX_DRAW_STR];
-      BLI_snprintf(title, sizeof(title), "%s: %s", IFACE_("Report"), report->typestr);
+      SNPRINTF(title, "%s: %s", RPT_("Report"), report->typestr);
       /* popup_menu stuff does just what we need (but pass meaningful block name) */
       pup = UI_popup_menu_begin_ex(C, title, __func__, ICON_NONE);
       layout = UI_popup_menu_layout(pup);
@@ -594,13 +579,15 @@ void UI_popup_menu_reports(bContext *C, ReportList *reports)
       msg_next = strchr(msg, '\n');
       if (msg_next) {
         msg_next++;
-        BLI_strncpy(buf, msg, MIN2(sizeof(buf), msg_next - msg));
+        BLI_strncpy(buf, msg, std::min(sizeof(buf), size_t(msg_next - msg)));
         msg = buf;
       }
       uiItemL(layout, msg, icon);
       icon = ICON_NONE;
     } while ((msg = msg_next) && *msg);
   }
+
+  BKE_reports_unlock(reports);
 
   if (pup) {
     UI_popup_menu_end(C, pup);
@@ -620,7 +607,15 @@ static void ui_popup_menu_create_from_menutype(bContext *C,
         ui_item_menutype_func(C, layout, mt);
       });
 
+  STRNCPY(handle->menu_idname, mt->idname);
   handle->can_refresh = true;
+
+  if (bool(mt->flag & MenuTypeFlag::SearchOnKeyPress)) {
+    ED_workspace_status_text(C, IFACE_("Type to search..."));
+  }
+  else if (mt->idname[0]) {
+    ED_workspace_status_text(C, IFACE_("Press spacebar to search..."));
+  }
 }
 
 int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports)
@@ -713,7 +708,10 @@ void UI_popup_block_ex(bContext *C,
 }
 
 #if 0 /* UNUSED */
-void uiPupBlockOperator(bContext *C, uiBlockCreateFunc func, wmOperator *op, wmOperatorCallContext opcontext)
+void uiPupBlockOperator(bContext *C,
+                        uiBlockCreateFunc func,
+                        wmOperator *op,
+                        wmOperatorCallContext opcontext)
 {
   wmWindow *window = CTX_wm_window(C);
   uiPopupBlockHandle *handle;
@@ -752,11 +750,11 @@ void UI_popup_block_close(bContext *C, wmWindow *win, uiBlock *block)
   }
 }
 
-bool UI_popup_block_name_exists(const bScreen *screen, const char *name)
+bool UI_popup_block_name_exists(const bScreen *screen, const blender::StringRef name)
 {
   LISTBASE_FOREACH (const ARegion *, region, &screen->regionbase) {
     LISTBASE_FOREACH (const uiBlock *, block, &region->uiblocks) {
-      if (STREQ(block->name, name)) {
+      if (block->name == name) {
         return true;
       }
     }

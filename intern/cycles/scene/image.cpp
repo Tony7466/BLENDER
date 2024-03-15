@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "scene/image.h"
 #include "device/device.h"
@@ -329,8 +330,9 @@ ImageManager::ImageManager(const DeviceInfo &info)
 
 ImageManager::~ImageManager()
 {
-  for (size_t slot = 0; slot < images.size(); slot++)
+  for (size_t slot = 0; slot < images.size(); slot++) {
     assert(!images[slot]);
+  }
 }
 
 void ImageManager::set_osl_texture_system(void *texture_system)
@@ -345,8 +347,9 @@ bool ImageManager::set_animation_frame_update(int frame)
     animation_frame = frame;
 
     for (size_t slot = 0; slot < images.size(); slot++) {
-      if (images[slot] && images[slot]->params.animated)
+      if (images[slot] && images[slot]->params.animated) {
         return true;
+      }
     }
   }
 
@@ -467,8 +470,9 @@ size_t ImageManager::add_image_slot(ImageLoader *loader,
 
   /* Find free slot. */
   for (slot = 0; slot < images.size(); slot++) {
-    if (!images[slot])
+    if (!images[slot]) {
       break;
+    }
   }
 
   if (slot == images.size()) {
@@ -513,8 +517,9 @@ void ImageManager::remove_image_user(size_t slot)
   /* don't remove immediately, rather do it all together later on. one of
    * the reasons for this is that on shader changes we add and remove nodes
    * that use them, but we do not want to reload the image all the time. */
-  if (image->users == 0)
+  if (image->users == 0) {
     need_update_ = true;
+  }
 }
 
 static bool image_associate_alpha(ImageManager::Image *img)
@@ -615,7 +620,8 @@ bool ImageManager::file_load_image(Image *img, int texture_limit)
   }
 
   if (img->metadata.colorspace != u_colorspace_raw &&
-      img->metadata.colorspace != u_colorspace_srgb) {
+      img->metadata.colorspace != u_colorspace_srgb)
+  {
     /* Convert to scene linear. */
     ColorSpaceManager::to_scene_linear(
         img->metadata.colorspace, pixels, num_pixels, is_rgba, img->metadata.compress_as_srgb);
@@ -630,7 +636,8 @@ bool ImageManager::file_load_image(Image *img, int texture_limit)
       for (size_t i = 0; i < num_pixels; i += 4) {
         StorageType *pixel = &pixels[i * 4];
         if (!isfinite(pixel[0]) || !isfinite(pixel[1]) || !isfinite(pixel[2]) ||
-            !isfinite(pixel[3])) {
+            !isfinite(pixel[3]))
+        {
           pixel[0] = 0;
           pixel[1] = 0;
           pixel[2] = 0;
@@ -799,7 +806,8 @@ void ImageManager::device_load_image(Device *device, Scene *scene, size_t slot, 
   }
 #ifdef WITH_NANOVDB
   else if (type == IMAGE_DATA_TYPE_NANOVDB_FLOAT || type == IMAGE_DATA_TYPE_NANOVDB_FLOAT3 ||
-           type == IMAGE_DATA_TYPE_NANOVDB_FPN || type == IMAGE_DATA_TYPE_NANOVDB_FP16) {
+           type == IMAGE_DATA_TYPE_NANOVDB_FPN || type == IMAGE_DATA_TYPE_NANOVDB_FP16)
+  {
     thread_scoped_lock device_lock(device_mutex);
     void *pixels = img->mem->alloc(img->metadata.byte_size, 0);
 

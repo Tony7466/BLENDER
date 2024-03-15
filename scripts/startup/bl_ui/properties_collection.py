@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2017-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from bpy.types import (
@@ -22,10 +24,8 @@ class CollectionButtonsPanel:
 def lineart_make_line_type_entry(col, line_type, text_disp, expand, search_from):
     col.prop(line_type, "use", text=text_disp)
     if line_type.use and expand:
-        col.prop_search(line_type, "layer", search_from,
-                        "layers", icon='GREASEPENCIL')
-        col.prop_search(line_type, "material", search_from,
-                        "materials", icon='SHADING_TEXTURE')
+        col.prop_search(line_type, "layer", search_from, "layers", icon='GREASEPENCIL')
+        col.prop_search(line_type, "material", search_from, "materials", icon='SHADING_TEXTURE')
 
 
 class COLLECTION_PT_collection_flags(CollectionButtonsPanel, Panel):

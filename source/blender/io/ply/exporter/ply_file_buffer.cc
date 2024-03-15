@@ -1,10 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup ply
  */
 
 #include "ply_file_buffer.hh"
+
+#include "BLI_fileops.hh"
+
+#include <iostream>
+#include <system_error>
 
 namespace blender::io::ply {
 

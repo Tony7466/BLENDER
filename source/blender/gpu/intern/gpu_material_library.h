@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2005 Blender Foundation */
+/* SPDX-FileCopyrightText: 2005 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -8,7 +9,7 @@
 
 #pragma once
 
-#include "GPU_material.h"
+#include "GPU_material.hh"
 
 #ifdef __cplusplus
 extern "C" {

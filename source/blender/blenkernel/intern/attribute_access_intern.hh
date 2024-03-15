@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_map.hh"
 #include "BLI_span.hh"
@@ -44,7 +46,7 @@ class BuiltinAttributeProvider {
 
  protected:
   const std::string name_;
-  const eAttrDomain domain_;
+  const AttrDomain domain_;
   const eCustomDataType data_type_;
   const CreatableEnum createable_;
   const DeletableEnum deletable_;
@@ -52,7 +54,7 @@ class BuiltinAttributeProvider {
 
  public:
   BuiltinAttributeProvider(std::string name,
-                           const eAttrDomain domain,
+                           const AttrDomain domain,
                            const eCustomDataType data_type,
                            const CreatableEnum createable,
                            const DeletableEnum deletable,
@@ -77,7 +79,7 @@ class BuiltinAttributeProvider {
     return name_;
   }
 
-  eAttrDomain domain() const
+  AttrDomain domain() const
   {
     return domain_;
   }
@@ -106,7 +108,7 @@ class DynamicAttributesProvider {
   virtual bool try_delete(void *owner, const AttributeIDRef &attribute_id) const = 0;
   virtual bool try_create(void *owner,
                           const AttributeIDRef &attribute_id,
-                          const eAttrDomain domain,
+                          const AttrDomain domain,
                           const eCustomDataType data_type,
                           const AttributeInit &initializer) const
   {
@@ -117,7 +119,7 @@ class DynamicAttributesProvider {
 
   virtual bool foreach_attribute(const void *owner,
                                  const AttributeForeachCallback callback) const = 0;
-  virtual void foreach_domain(const FunctionRef<void(eAttrDomain)> callback) const = 0;
+  virtual void foreach_domain(const FunctionRef<void(AttrDomain)> callback) const = 0;
 };
 
 /**
@@ -126,11 +128,11 @@ class DynamicAttributesProvider {
 class CustomDataAttributeProvider final : public DynamicAttributesProvider {
  private:
   static constexpr uint64_t supported_types_mask = CD_MASK_PROP_ALL;
-  const eAttrDomain domain_;
-  const CustomDataAccessInfo custom_data_access_;
+  AttrDomain domain_;
+  CustomDataAccessInfo custom_data_access_;
 
  public:
-  CustomDataAttributeProvider(const eAttrDomain domain,
+  CustomDataAttributeProvider(const AttrDomain domain,
                               const CustomDataAccessInfo custom_data_access)
       : domain_(domain), custom_data_access_(custom_data_access)
   {
@@ -145,13 +147,13 @@ class CustomDataAttributeProvider final : public DynamicAttributesProvider {
 
   bool try_create(void *owner,
                   const AttributeIDRef &attribute_id,
-                  eAttrDomain domain,
+                  AttrDomain domain,
                   const eCustomDataType data_type,
                   const AttributeInit &initializer) const final;
 
   bool foreach_attribute(const void *owner, const AttributeForeachCallback callback) const final;
 
-  void foreach_domain(const FunctionRef<void(eAttrDomain)> callback) const final
+  void foreach_domain(const FunctionRef<void(AttrDomain)> callback) const final
   {
     callback(domain_);
   }
@@ -179,7 +181,7 @@ class BuiltinCustomDataLayerProvider final : public BuiltinAttributeProvider {
 
  public:
   BuiltinCustomDataLayerProvider(std::string attribute_name,
-                                 const eAttrDomain domain,
+                                 const AttrDomain domain,
                                  const eCustomDataType attribute_type,
                                  const eCustomDataType stored_type,
                                  const CreatableEnum creatable,
@@ -227,7 +229,7 @@ class ComponentAttributeProviders {
   /**
    * All the domains that are supported by at least one of the providers above.
    */
-  VectorSet<eAttrDomain> supported_domains_;
+  VectorSet<AttrDomain> supported_domains_;
 
  public:
   ComponentAttributeProviders(Span<const BuiltinAttributeProvider *> builtin_attribute_providers,
@@ -240,7 +242,7 @@ class ComponentAttributeProviders {
       supported_domains_.add(provider->domain());
     }
     for (const DynamicAttributesProvider *provider : dynamic_attribute_providers) {
-      provider->foreach_domain([&](eAttrDomain domain) { supported_domains_.add(domain); });
+      provider->foreach_domain([&](AttrDomain domain) { supported_domains_.add(domain); });
     }
   }
 
@@ -254,7 +256,7 @@ class ComponentAttributeProviders {
     return dynamic_attribute_providers_;
   }
 
-  Span<eAttrDomain> supported_domains() const
+  Span<AttrDomain> supported_domains() const
   {
     return supported_domains_;
   }
@@ -278,7 +280,8 @@ inline GAttributeReader lookup(const void *owner, const AttributeIDRef &attribut
   if (!attribute_id.is_anonymous()) {
     const StringRef name = attribute_id.name();
     if (const BuiltinAttributeProvider *provider =
-            providers.builtin_attribute_providers().lookup_default_as(name, nullptr)) {
+            providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
+    {
       return provider->try_get_for_read(owner);
     }
   }
@@ -295,9 +298,9 @@ template<const ComponentAttributeProviders &providers>
 inline bool for_all(const void *owner,
                     FunctionRef<bool(const AttributeIDRef &, const AttributeMetaData &)> fn)
 {
-  Set<AttributeIDRef> handled_attribute_ids;
-  for (const BuiltinAttributeProvider *provider :
-       providers.builtin_attribute_providers().values()) {
+  Set<AttributeIDRef, 16> handled_attribute_ids;
+  for (const BuiltinAttributeProvider *provider : providers.builtin_attribute_providers().values())
+  {
     if (provider->exists(owner)) {
       AttributeMetaData meta_data{provider->domain(), provider->data_type()};
       if (!fn(provider->name(), meta_data)) {
@@ -342,7 +345,7 @@ inline bool contains(const void *owner, const blender::bke::AttributeIDRef &attr
   bool found = false;
   for_all<providers>(
       owner,
-      [&](const AttributeIDRef &other_attribute_id, const AttributeMetaData & /* meta_data */) {
+      [&](const AttributeIDRef &other_attribute_id, const AttributeMetaData & /*meta_data*/) {
         if (attribute_id == other_attribute_id) {
           found = true;
           return false;
@@ -375,7 +378,8 @@ inline GAttributeWriter lookup_for_write(void *owner, const AttributeIDRef &attr
   if (!attribute_id.is_anonymous()) {
     const StringRef name = attribute_id.name();
     if (const BuiltinAttributeProvider *provider =
-            providers.builtin_attribute_providers().lookup_default_as(name, nullptr)) {
+            providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
+    {
       return provider->try_get_for_write(owner);
     }
   }
@@ -394,7 +398,8 @@ inline bool remove(void *owner, const AttributeIDRef &attribute_id)
   if (!attribute_id.is_anonymous()) {
     const StringRef name = attribute_id.name();
     if (const BuiltinAttributeProvider *provider =
-            providers.builtin_attribute_providers().lookup_default_as(name, nullptr)) {
+            providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
+    {
       return provider->try_delete(owner);
     }
   }
@@ -409,7 +414,7 @@ inline bool remove(void *owner, const AttributeIDRef &attribute_id)
 template<const ComponentAttributeProviders &providers>
 inline bool add(void *owner,
                 const AttributeIDRef &attribute_id,
-                eAttrDomain domain,
+                AttrDomain domain,
                 eCustomDataType data_type,
                 const AttributeInit &initializer)
 {
@@ -419,7 +424,8 @@ inline bool add(void *owner,
   if (!attribute_id.is_anonymous()) {
     const StringRef name = attribute_id.name();
     if (const BuiltinAttributeProvider *provider =
-            providers.builtin_attribute_providers().lookup_default_as(name, nullptr)) {
+            providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
+    {
       if (provider->domain() != domain) {
         return false;
       }

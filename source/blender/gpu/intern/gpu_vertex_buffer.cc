@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -272,7 +273,7 @@ void GPU_vertbuf_attr_get_raw_data(GPUVertBuf *verts_, uint a_idx, GPUVertBufRaw
   access->stride = format->stride;
   access->data = (uchar *)verts->data + a->offset;
   access->data_init = access->data;
-#ifdef DEBUG
+#ifndef NDEBUG
   access->_data_end = access->data_init + size_t(verts->vertex_alloc * format->stride);
 #endif
 }
@@ -335,12 +336,12 @@ void GPU_vertbuf_wrap_handle(GPUVertBuf *verts, uint64_t handle)
   unwrap(verts)->wrap_handle(handle);
 }
 
-void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding)
+void GPU_vertbuf_bind_as_ssbo(GPUVertBuf *verts, int binding)
 {
   unwrap(verts)->bind_as_ssbo(binding);
 }
 
-void GPU_vertbuf_bind_as_texture(struct GPUVertBuf *verts, int binding)
+void GPU_vertbuf_bind_as_texture(GPUVertBuf *verts, int binding)
 {
   unwrap(verts)->bind_as_texture(binding);
 }

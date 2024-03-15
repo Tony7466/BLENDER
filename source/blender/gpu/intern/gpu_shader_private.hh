@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -14,12 +16,25 @@
 #include "gpu_shader_interface.hh"
 #include "gpu_vertex_buffer_private.hh"
 
+#include "BLI_map.hh"
+
 #include <string>
 
 namespace blender {
 namespace gpu {
 
 class GPULogParser;
+
+/* Set to 1 to log the full source of shaders that fail to compile. */
+#define DEBUG_LOG_SHADER_SRC_ON_ERROR 0
+
+/**
+ * Compilation is done on a list of GLSL sources. This list contains placeholders that should be
+ * provided by the backend shader. These defines contains the locations where the backend can patch
+ * the sources.
+ */
+#define SOURCES_INDEX_VERSION 0
+#define SOURCES_INDEX_SPECIALIZATION_CONSTANTS 1
 
 /**
  * Implementation of shader compilation and uniforms handling.
@@ -29,6 +44,25 @@ class Shader {
  public:
   /** Uniform & attribute locations for shader. */
   ShaderInterface *interface = nullptr;
+
+  /**
+   * Specialization constants as a Struct-of-Arrays. Allow simpler comparison and reset.
+   * The backend is free to implement their support as they see fit.
+   */
+  struct Constants {
+    using Value = shader::ShaderCreateInfo::SpecializationConstant::Value;
+    Vector<gpu::shader::Type> types;
+    /* Current values set by `GPU_shader_constant_*()` call. The backend can choose to interpret
+     * that however it wants (i.e: bind another shader instead). */
+    Vector<Value> values;
+
+    /**
+     * OpenGL needs to know if a different program needs to be attached when constants are
+     * changed. Vulkan and Metal uses pipelines and don't have this issue. Attribute can be
+     * removed after the OpenGL backend has been phased out.
+     */
+    bool is_dirty;
+  } constants;
 
  protected:
   /** For debugging purpose. */
@@ -43,6 +77,8 @@ class Shader {
  public:
   Shader(const char *name);
   virtual ~Shader();
+
+  virtual void init(const shader::ShaderCreateInfo &info) = 0;
 
   virtual void vertex_shader_from_glsl(MutableSpan<const char *> sources) = 0;
   virtual void geometry_shader_from_glsl(MutableSpan<const char *> sources) = 0;
@@ -66,6 +102,9 @@ class Shader {
   virtual void uniform_float(int location, int comp_len, int array_size, const float *data) = 0;
   virtual void uniform_int(int location, int comp_len, int array_size, const int *data) = 0;
 
+  /* Add specialization constant declarations to shader instance. */
+  void specialization_constants_init(const shader::ShaderCreateInfo &info);
+
   std::string defines_declare(const shader::ShaderCreateInfo &info) const;
   virtual std::string resources_declare(const shader::ShaderCreateInfo &info) const = 0;
   virtual std::string vertex_interface_declare(const shader::ShaderCreateInfo &info) const = 0;
@@ -76,6 +115,10 @@ class Shader {
 
   /* DEPRECATED: Kept only because of BGL API. */
   virtual int program_handle_get() const = 0;
+
+  /* Only used by SSBO Vertex fetch. */
+  virtual bool get_uses_ssbo_vertex_fetch() const = 0;
+  virtual int get_ssbo_vertex_fetch_output_num_verts() const = 0;
 
   inline const char *const name_get() const
   {
@@ -97,8 +140,11 @@ class Shader {
   static void set_framebuffer_srgb_target(int use_srgb_to_linear);
 
  protected:
-  void print_log(
-      Span<const char *> sources, char *log, const char *stage, bool error, GPULogParser *parser);
+  void print_log(Span<const char *> sources,
+                 const char *log,
+                 const char *stage,
+                 bool error,
+                 GPULogParser *parser);
 };
 
 /* Syntactic sugar. */
@@ -119,12 +165,14 @@ enum class Severity {
   Unknown,
   Warning,
   Error,
+  Note,
 };
 
 struct LogCursor {
   int source = -1;
   int row = -1;
   int column = -1;
+  StringRef file_name_and_error_line = {};
 };
 
 struct GPULogItem {
@@ -135,18 +183,21 @@ struct GPULogItem {
 
 class GPULogParser {
  public:
-  virtual char *parse_line(char *log_line, GPULogItem &log_item) = 0;
+  virtual const char *parse_line(const char *source_combined,
+                                 const char *log_line,
+                                 GPULogItem &log_item) = 0;
 
  protected:
-  char *skip_severity(char *log_line,
-                      GPULogItem &log_item,
-                      const char *error_msg,
-                      const char *warning_msg) const;
-  char *skip_separators(char *log_line, const StringRef separators) const;
-  char *skip_until(char *log_line, char stop_char) const;
+  const char *skip_severity(const char *log_line,
+                            GPULogItem &log_item,
+                            const char *error_msg,
+                            const char *warning_msg,
+                            const char *note_msg) const;
+  const char *skip_separators(const char *log_line, const StringRef separators) const;
+  const char *skip_until(const char *log_line, char stop_char) const;
   bool at_number(const char *log_line) const;
   bool at_any(const char *log_line, const StringRef chars) const;
-  int parse_number(const char *log_line, char **r_new_position) const;
+  int parse_number(const char *log_line, const char **r_new_position) const;
 
   MEM_CXX_CLASS_ALLOC_FUNCS("GPULogParser");
 };

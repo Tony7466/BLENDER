@@ -1,4 +1,7 @@
+# SPDX-FileCopyrightText: 2017-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
+
 import bpy
 from bpy.types import (
     Menu,
@@ -25,7 +28,7 @@ if "_icon_cache" in locals():
     del release
 
 
-# (filename -> icon_value) map
+# (icon_name -> icon_value) map
 _icon_cache = {}
 
 
@@ -223,8 +226,7 @@ class ToolSelectPanelHelper:
     @staticmethod
     def _tool_class_from_space_type(space_type):
         return next(
-            (cls for cls in ToolSelectPanelHelper.__subclasses__()
-             if cls.bl_space_type == space_type),
+            (cls for cls in ToolSelectPanelHelper.__subclasses__() if cls.bl_space_type == space_type),
             None,
         )
 
@@ -236,14 +238,14 @@ class ToolSelectPanelHelper:
             icon_value = _icon_cache.get(icon_name)
             if icon_value is None:
                 dirname = bpy.utils.system_resource('DATAFILES', path="icons")
-                filename = os.path.join(dirname, icon_name + ".dat")
+                filepath = os.path.join(dirname, icon_name + ".dat")
                 try:
-                    icon_value = bpy.app.icons.new_triangles_from_file(filename)
-                except Exception as ex:
-                    if not os.path.exists(filename):
-                        print("Missing icons:", filename, ex)
+                    icon_value = bpy.app.icons.new_triangles_from_file(filepath)
+                except BaseException as ex:
+                    if not os.path.exists(filepath):
+                        print("Missing icons:", filepath, ex)
                     else:
-                        print("Corrupt icon:", filename, ex)
+                        print("Corrupt icon:", filepath, ex)
                     # Use none as a fallback (avoids layout issues).
                     if icon_name != "none":
                         icon_value = ToolSelectPanelHelper._icon_value_from_icon_handle("none")
@@ -263,7 +265,7 @@ class ToolSelectPanelHelper:
     # so if item is still a function (e.g._defs_XXX.generate_from_brushes)
     # seems like we cannot expand here (have no context yet)
     # if we yield None here, this will risk running into duplicate tool bl_idname [in register_tool()]
-    # but still better than erroring out
+    # but still better than raising an error to the user.
     @staticmethod
     def _tools_flatten(tools):
         for item_parent in tools:
@@ -497,6 +499,15 @@ class ToolSelectPanelHelper:
             kc_default.keymaps.new(km_idname, **km_kwargs)
 
     @classmethod
+    def register_ensure(cls):
+        """
+        Ensure register has created key-map data, needed when key-map data is needed in background mode.
+        """
+        if cls._has_keymap_data:
+            return
+        cls.register()
+
+    @classmethod
     def register(cls):
         wm = bpy.context.window_manager
         # Write into defaults, users may modify in preferences.
@@ -510,6 +521,7 @@ class ToolSelectPanelHelper:
 
         # ignore in background mode
         if kc_default is None:
+            cls._has_keymap_data = False
             return
 
         for context_mode, tools in cls.tools_all():
@@ -527,11 +539,13 @@ class ToolSelectPanelHelper:
                 if callable(keymap_data[0]):
                     cls._km_action_simple(kc_default, kc_default, context_descr, item.label, keymap_data)
 
+        cls._has_keymap_data = True
+
     @classmethod
     def keymap_ui_hierarchy(cls, context_mode):
         # See: bpy_extras.keyconfig_utils
 
-        # Keymaps may be shared, don't show them twice.
+        # Key-maps may be shared, don't show them twice.
         visited = set()
 
         for context_mode_test, tools in cls.tools_all():
@@ -798,11 +812,9 @@ class ToolSelectPanelHelper:
             layout.label(text="    " + iface_(item.label, "Operator"), icon_value=icon_value)
             layout.separator()
         else:
-            if context.space_data.show_region_toolbar:
-                layout.template_icon(icon_value=0, scale=0.5)
-            else:
+            if not context.space_data.show_region_toolbar:
                 layout.template_icon(icon_value=icon_value, scale=0.5)
-            layout.separator()
+                layout.separator()
 
         draw_settings = item.draw_settings
         if draw_settings is not None:

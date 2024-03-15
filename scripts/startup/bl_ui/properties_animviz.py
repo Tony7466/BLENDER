@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2010-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # Generic Panels (Independent of DataType)
@@ -39,6 +41,9 @@ class MotionPathButtonsPanel:
             start_end_group.prop(mps, "frame_start", text="Frame Range Start")
             start_end_group.prop(mps, "frame_end", text="End")
             col.prop(mps, "frame_step", text="Step")
+
+        row = col.row()
+        row.prop(mps, "use_camera_space_bake", text="Bake to Active Camera")
 
         if bones:
             op_category = "pose"

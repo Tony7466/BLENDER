@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #ifndef __UTIL_MATH_INTERSECT_H__
 #define __UTIL_MATH_INTERSECT_H__
@@ -17,29 +18,32 @@ ccl_device bool ray_sphere_intersect(float3 ray_P,
                                      ccl_private float3 *isect_P,
                                      ccl_private float *isect_t)
 {
-  const float3 d = sphere_P - ray_P;
-  const float radiussq = sphere_radius * sphere_radius;
-  const float tsq = dot(d, d);
+  const float3 d_vec = sphere_P - ray_P;
+  const float r_sq = sphere_radius * sphere_radius;
+  const float d_sq = dot(d_vec, d_vec);
+  const float d_cos_theta = dot(d_vec, ray_D);
 
-  if (tsq > radiussq) {
-    /* Ray origin outside sphere. */
-    const float tp = dot(d, ray_D);
-    if (tp < 0.0f) {
-      /* Ray  points away from sphere. */
-      return false;
-    }
-    const float dsq = tsq - tp * tp; /* Pythagoras. */
-    if (dsq > radiussq) {
-      /* Closest point on ray outside sphere. */
-      return false;
-    }
-    const float t = tp - sqrtf(radiussq - dsq); /* pythagoras */
-    if (t > ray_tmin && t < ray_tmax) {
-      *isect_t = t;
-      *isect_P = ray_P + ray_D * t;
-      return true;
-    }
+  if (d_sq > r_sq && d_cos_theta < 0.0f) {
+    /* Ray origin outside sphere and points away from sphere. */
+    return false;
   }
+
+  const float d_sin_theta_sq = len_squared(d_vec - d_cos_theta * ray_D);
+
+  if (d_sin_theta_sq > r_sq) {
+    /* Closest point on ray outside sphere. */
+    return false;
+  }
+
+  /* Law of cosines. */
+  const float t = d_cos_theta - copysignf(sqrtf(r_sq - d_sin_theta_sq), d_sq - r_sq);
+
+  if (t > ray_tmin && t < ray_tmax) {
+    *isect_t = t;
+    *isect_P = ray_P + ray_D * t;
+    return true;
+  }
+
   return false;
 }
 
@@ -110,12 +114,12 @@ ccl_device_forceinline float ray_triangle_rcp(const float x)
 {
 #ifdef __KERNEL_NEON__
   /* Move scalar to vector register and do rcp. */
-  __m128 a;
-  a[0] = x;
+  __m128 a = {0};
+  a = vsetq_lane_f32(x, a, 0);
   float32x4_t reciprocal = vrecpeq_f32(a);
   reciprocal = vmulq_f32(vrecpsq_f32(a, reciprocal), reciprocal);
   reciprocal = vmulq_f32(vrecpsq_f32(a, reciprocal), reciprocal);
-  return reciprocal[0];
+  return vgetq_lane_f32(reciprocal, 0);
 #elif defined(__KERNEL_SSE__)
   const __m128 a = _mm_set_ss(x);
   const __m128 r = _mm_rcp_ss(a);
@@ -132,7 +136,7 @@ ccl_device_forceinline float ray_triangle_rcp(const float x)
 
 ccl_device_inline float ray_triangle_dot(const float3 a, const float3 b)
 {
-#if defined(__KERNEL_SSE41__) && defined(__KERNEL_SSE__)
+#if defined(__KERNEL_SSE42__) && defined(__KERNEL_SSE__)
   return madd(make_float4(a.x),
               make_float4(b.x),
               madd(make_float4(a.y), make_float4(b.y), make_float4(a.z) * make_float4(b.z)))[0];
@@ -143,7 +147,7 @@ ccl_device_inline float ray_triangle_dot(const float3 a, const float3 b)
 
 ccl_device_inline float3 ray_triangle_cross(const float3 a, const float3 b)
 {
-#if defined(__KERNEL_SSE41__) && defined(__KERNEL_SSE__)
+#if defined(__KERNEL_SSE42__) && defined(__KERNEL_SSE__)
   return make_float3(
       msub(make_float4(a.y), make_float4(b.z), make_float4(a.z) * make_float4(b.y))[0],
       msub(make_float4(a.z), make_float4(b.x), make_float4(a.x) * make_float4(b.z))[0],
@@ -216,17 +220,15 @@ ccl_device_forceinline bool ray_triangle_intersect(const float3 ray_P,
 
 ccl_device_forceinline bool ray_triangle_intersect_self(const float3 ray_P,
                                                         const float3 ray_D,
-                                                        const float3 tri_a,
-                                                        const float3 tri_b,
-                                                        const float3 tri_c)
+                                                        const float3 verts[3])
 {
   /* Matches logic in ray_triangle_intersect, self intersection test to validate
    * if a ray is going to hit self or might incorrectly hit a neighboring triangle. */
 
   /* Calculate vertices relative to ray origin. */
-  const float3 v0 = tri_a - ray_P;
-  const float3 v1 = tri_b - ray_P;
-  const float3 v2 = tri_c - ray_P;
+  const float3 v0 = verts[0] - ray_P;
+  const float3 v1 = verts[1] - ray_P;
+  const float3 v2 = verts[2] - ray_P;
 
   /* Calculate triangle edges. */
   const float3 e0 = v2 - v0;

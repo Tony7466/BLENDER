@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup blenloader
@@ -13,25 +15,28 @@
 
 #include "BLI_utildefines.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_linklist.h"
 
 #include "MEM_guardedalloc.h"
 
+#include "DNA_collection_types.h"
 #include "DNA_key_types.h"
+#include "DNA_node_types.h"
 #include "DNA_sdna_types.h"
 #include "DNA_windowmanager_types.h"
 
-#include "BKE_key.h"
-#include "BKE_lib_id.h"
-#include "BKE_library.h"
-#include "BKE_main.h"
-#include "BKE_report.h"
+#include "BKE_key.hh"
+#include "BKE_lib_id.hh"
+#include "BKE_lib_remap.hh"
+#include "BKE_library.hh"
+#include "BKE_main.hh"
+#include "BKE_node.hh"
+#include "BKE_report.hh"
 
-#include "BLO_blend_validate.h"
-#include "BLO_readfile.h"
+#include "BLO_blend_validate.hh"
+#include "BLO_readfile.hh"
 
-#include "readfile.h"
+#include "readfile.hh"
 
 bool BLO_main_validate_libraries(Main *bmain, ReportList *reports)
 {
@@ -46,7 +51,8 @@ bool BLO_main_validate_libraries(Main *bmain, ReportList *reports)
   int i = set_listbasepointers(bmain, lbarray);
   while (i--) {
     for (ID *id = static_cast<ID *>(lbarray[i]->first); id != nullptr;
-         id = static_cast<ID *>(id->next)) {
+         id = static_cast<ID *>(id->next))
+    {
       if (ID_IS_LINKED(id)) {
         is_valid = false;
         BKE_reportf(reports,
@@ -195,8 +201,36 @@ bool BLO_main_validate_shapekeys(Main *bmain, ReportList *reports)
                 "Shapekey %s has an invalid 'from' pointer (%p), it will be deleted",
                 shapekey->id.name,
                 shapekey->from);
-    BKE_id_delete(bmain, shapekey);
+    /* NOTE: also need to remap UI data ID pointers here, since `bmain` is not the current
+     * `G_MAIN`, default UI-handling remapping callback (defined by call to
+     * `BKE_library_callback_remap_editor_id_reference_set`) won't work on expected data here. */
+    BKE_id_delete_ex(bmain, shapekey, ID_REMAP_FORCE_UI_POINTERS);
   }
 
   return is_valid;
+}
+
+void BLO_main_validate_embedded_liboverrides(Main *bmain, ReportList * /*reports*/)
+{
+  ID *id_iter;
+  FOREACH_MAIN_ID_BEGIN (bmain, id_iter) {
+    bNodeTree *node_tree = ntreeFromID(id_iter);
+    if (node_tree) {
+      if (node_tree->id.flag & LIB_EMBEDDED_DATA_LIB_OVERRIDE) {
+        if (!ID_IS_OVERRIDE_LIBRARY(id_iter)) {
+          node_tree->id.flag &= ~LIB_EMBEDDED_DATA_LIB_OVERRIDE;
+        }
+      }
+    }
+
+    if (GS(id_iter->name) == ID_SCE) {
+      Scene *scene = reinterpret_cast<Scene *>(id_iter);
+      if (scene->master_collection &&
+          (scene->master_collection->id.flag & LIB_EMBEDDED_DATA_LIB_OVERRIDE))
+      {
+        scene->master_collection->id.flag &= ~LIB_EMBEDDED_DATA_LIB_OVERRIDE;
+      }
+    }
+  }
+  FOREACH_MAIN_ID_END;
 }

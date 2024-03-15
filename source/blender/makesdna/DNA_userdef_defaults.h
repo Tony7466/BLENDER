@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup DNA
@@ -8,7 +10,6 @@
 
 #include "DNA_asset_types.h"
 
-/* Struct members on own line. */
 /* clang-format off */
 
 /* -------------------------------------------------------------------- */
@@ -23,6 +24,19 @@
 
 /** \} */
 
-/* clang-format off */
+/* -------------------------------------------------------------------- */
+/** \name bUserExtensionRepo Struct
+ * \{ */
+
+#define _DNA_DEFAULT_bUserExtensionRepo \
+  { \
+    .name = {'\0'}, \
+    .module = {'\0'}, \
+    .custom_dirpath = {'\0'}, \
+    .remote_path = {'\0'}, \
+    .flag = 0, \
+  }
 
 /** \} */
+
+/* clang-format on */

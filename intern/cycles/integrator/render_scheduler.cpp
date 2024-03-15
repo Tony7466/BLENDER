@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Copyright 2011-2022 Blender Foundation */
+/* SPDX-FileCopyrightText: 2011-2022 Blender Foundation
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
 
 #include "integrator/render_scheduler.h"
 
@@ -43,6 +44,11 @@ bool RenderScheduler::is_background() const
 void RenderScheduler::set_denoiser_params(const DenoiseParams &params)
 {
   denoiser_params_ = params;
+}
+
+bool RenderScheduler::is_denoiser_gpu_used() const
+{
+  return denoiser_params_.use_gpu;
 }
 
 void RenderScheduler::set_limit_samples_per_update(const int limit_samples)
@@ -465,7 +471,8 @@ void RenderScheduler::report_work_begin(const RenderWork &render_work)
    * because it might be wrongly 0. Check for whether path tracing is actually happening as it is
    * expected to happen in the first work. */
   if (render_work.resolution_divider == pixel_size_ && render_work.path_trace.num_samples != 0 &&
-      render_work.path_trace.start_sample == get_start_sample()) {
+      render_work.path_trace.start_sample == get_start_sample())
+  {
     state_.start_render_time = time_dt();
   }
 }
@@ -969,7 +976,8 @@ bool RenderScheduler::work_need_denoise(bool &delayed, bool &ready_to_display)
 
   /* Immediately denoise when we reach the start sample or last sample. */
   if (num_samples_finished == denoiser_params_.start_sample ||
-      num_samples_finished == num_samples_) {
+      num_samples_finished == num_samples_)
+  {
     return true;
   }
 

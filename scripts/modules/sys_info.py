@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2010-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # classes for extracting info from blenders internal classes
@@ -78,8 +80,8 @@ def write_sysinfo(filepath):
                     sys.executable,
                     "--version",
                 ]).strip())
-            except Exception as e:
-                py_ver = str(e)
+            except BaseException as ex:
+                py_ver = str(ex)
             output.write("version: %s\n" % py_ver)
             del py_ver
 
@@ -206,12 +208,11 @@ def write_sysinfo(filepath):
                 output.write("Maximum Vertex Image Units:\t%d\n" % gpu.capabilities.max_textures_vert_get())
                 output.write("Maximum Fragment Image Units:\t%d\n" % gpu.capabilities.max_textures_frag_get())
                 output.write("Maximum Pipeline Image Units:\t%d\n" % gpu.capabilities.max_textures_get())
+                output.write("Maximum Image Units:\t%d\n" % gpu.capabilities.max_images_get())
 
                 output.write("\nFeatures:\n")
                 output.write("Compute Shader Support:               \t%d\n" %
                              gpu.capabilities.compute_shader_support_get())
-                output.write("Shader Storage Buffer Objects Support:\t%d\n" %
-                             gpu.capabilities.shader_storage_buffer_objects_support_get())
                 output.write("Image Load/Store Support:             \t%d\n" %
                              gpu.capabilities.shader_image_load_store_support_get())
 
@@ -230,5 +231,5 @@ def write_sysinfo(filepath):
                 else:
                     output.write("%s (version: %s, path: %s)\n" %
                                  (addon, addon_mod.bl_info.get('version', "UNKNOWN"), addon_mod.__file__))
-        except Exception as e:
-            output.write("ERROR: %s\n" % e)
+        except BaseException as ex:
+            output.write("ERROR: %s\n" % ex)

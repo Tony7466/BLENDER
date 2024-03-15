@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2022-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 # LLVM does not switch over to cpp17 until llvm 16 and building ealier versions with
@@ -87,14 +89,23 @@ ExternalProject_Add(external_dpcpp
   CMAKE_GENERATOR ${LLVM_GENERATOR}
   SOURCE_SUBDIR llvm
   LIST_SEPARATOR ^^
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${LIBDIR}/dpcpp ${DPCPP_CMAKE_FLAGS} ${DPCPP_EXTRA_ARGS}
+
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${LIBDIR}/dpcpp
+    ${DPCPP_CMAKE_FLAGS}
+    ${DPCPP_EXTRA_ARGS}
+
   # CONFIGURE_COMMAND
   #   ${PYTHON_BINARY}
   #   ${BUILD_DIR}/dpcpp/src/external_dpcpp/buildbot/configure.py ${DPCPP_CONFIGURE_ARGS}
   # BUILD_COMMAND
   #   echo "." # ${PYTHON_BINARY} ${BUILD_DIR}/dpcpp/src/external_dpcpp/buildbot/compile.py
   INSTALL_COMMAND ${CMAKE_COMMAND} --build . -- deploy-sycl-toolchain
-  PATCH_COMMAND ${PATCH_CMD} -p 1 -d ${BUILD_DIR}/dpcpp/src/external_dpcpp < ${PATCH_DIR}/dpcpp.diff
+
+  PATCH_COMMAND ${PATCH_CMD} -p 1 -d
+    ${BUILD_DIR}/dpcpp/src/external_dpcpp <
+    ${PATCH_DIR}/dpcpp.diff
+
   INSTALL_DIR ${LIBDIR}/dpcpp
 )
 
@@ -122,5 +133,6 @@ if(BUILD_MODE STREQUAL Release AND WIN32)
       COMMAND ${CMAKE_COMMAND} -E rm -f ${HARVEST_TARGET}/dpcpp/bin/lld.exe
       COMMAND ${CMAKE_COMMAND} -E rm -f ${HARVEST_TARGET}/dpcpp/bin/lld-link.exe
       COMMAND ${CMAKE_COMMAND} -E rm -f ${HARVEST_TARGET}/dpcpp/bin/wasm-ld.exe
+      DEPENDEES install
   )
 endif()

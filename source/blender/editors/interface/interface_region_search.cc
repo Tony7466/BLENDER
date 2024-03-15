@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2008 Blender Foundation */
+/* SPDX-FileCopyrightText: 2008 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup edinterface
@@ -17,28 +18,26 @@
 
 #include "DNA_userdef_types.h"
 
-#include "BLI_math.h"
-
 #include "BLI_listbase.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_context.h"
-#include "BKE_screen.h"
+#include "BKE_context.hh"
+#include "BKE_screen.hh"
 
-#include "WM_api.h"
-#include "WM_types.h"
+#include "WM_api.hh"
+#include "WM_types.hh"
 
-#include "RNA_access.h"
+#include "RNA_access.hh"
 
-#include "UI_interface.h"
-#include "UI_interface_icons.h"
-#include "UI_view2d.h"
+#include "UI_interface.hh"
+#include "UI_interface_icons.hh"
+#include "UI_view2d.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "ED_screen.h"
+#include "ED_screen.hh"
 
 #include "GPU_state.h"
 #include "interface_intern.hh"
@@ -302,17 +301,16 @@ bool ui_searchbox_apply(uiBut *but, ARegion *region)
     }
 
     search_but->item_active = data->items.pointers[data->active];
+    MEM_SAFE_FREE(search_but->item_active_str);
+    search_but->item_active_str = BLI_strdup(data->items.names[data->active]);
 
     return true;
   }
   return false;
 }
 
-static struct ARegion *wm_searchbox_tooltip_init(struct bContext *C,
-                                                 struct ARegion *region,
-                                                 int * /*r_pass*/,
-                                                 double * /*pass_delay*/,
-                                                 bool *r_exit_on_event)
+static ARegion *wm_searchbox_tooltip_init(
+    bContext *C, ARegion *region, int * /*r_pass*/, double * /*pass_delay*/, bool *r_exit_on_event)
 {
   *r_exit_on_event = true;
 
@@ -376,9 +374,9 @@ bool ui_searchbox_event(
              * (a little confusing if this isn't the case, although it does work). */
             rcti rect;
             ui_searchbox_butrect(&rect, data, data->active);
-            if (BLI_rcti_isect_pt(&rect,
-                                  event->xy[0] - region->winrct.xmin,
-                                  event->xy[1] - region->winrct.ymin)) {
+            if (BLI_rcti_isect_pt(
+                    &rect, event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin))
+            {
 
               void *active = data->items.pointers[data->active];
               if (search_but->item_context_menu_fn(C, search_but->arg, active, event)) {
@@ -399,7 +397,8 @@ bool ui_searchbox_event(
         for (a = 0; a < data->items.totitem; a++) {
           ui_searchbox_butrect(&rect, data, a);
           if (BLI_rcti_isect_pt(
-                  &rect, event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin)) {
+                  &rect, event->xy[0] - region->winrct.xmin, event->xy[1] - region->winrct.ymin))
+          {
             is_inside = true;
             if (data->active != a) {
               data->active = a;
@@ -536,7 +535,7 @@ int ui_searchbox_autocomplete(bContext *C, ARegion *region, uiBut *but, char *st
   BLI_assert(but->type == UI_BTYPE_SEARCH_MENU);
 
   if (str[0]) {
-    data->items.autocpl = UI_autocomplete_begin(str, ui_but_string_get_max_length(but));
+    data->items.autocpl = UI_autocomplete_begin(str, ui_but_string_get_maxncpy(but));
 
     ui_searchbox_update_fn(C, search_but, but->editstr, &data->items);
 
@@ -565,7 +564,7 @@ static void ui_searchbox_region_draw_fn(const bContext *C, ARegion *region)
     if (data->preview) {
       /* draw items */
       for (int a = 0; a < data->items.totitem; a++) {
-        const int but_flag = ((a == data->active) ? UI_ACTIVE : 0) | data->items.but_flags[a];
+        const int but_flag = ((a == data->active) ? UI_HOVER : 0) | data->items.but_flags[a];
 
         /* ensure icon is up-to-date */
         ui_icon_ensure_deferred(C, data->items.icons[a], data->preview);
@@ -599,7 +598,7 @@ static void ui_searchbox_region_draw_fn(const bContext *C, ARegion *region)
       const int search_sep_len = data->sep_string ? strlen(data->sep_string) : 0;
       /* draw items */
       for (int a = 0; a < data->items.totitem; a++) {
-        const int but_flag = ((a == data->active) ? UI_ACTIVE : 0) | data->items.but_flags[a];
+        const int but_flag = ((a == data->active) ? UI_HOVER : 0) | data->items.but_flags[a];
         char *name = data->items.names[a];
         int icon = data->items.icons[a];
         char *name_sep_test = nullptr;
@@ -617,7 +616,8 @@ static void ui_searchbox_region_draw_fn(const bContext *C, ARegion *region)
 
         /* widget itself */
         if ((search_sep_len == 0) ||
-            !(name_sep_test = strstr(data->items.names[a], data->sep_string))) {
+            !(name_sep_test = strstr(data->items.names[a], data->sep_string)))
+        {
           if (!icon && data->items.has_icon) {
             /* If there is any icon item, make sure all items line up. */
             icon = ICON_BLANK1;
@@ -674,6 +674,17 @@ static void ui_searchbox_region_draw_fn(const bContext *C, ARegion *region)
       }
     }
   }
+  else {
+    rcti rect;
+    ui_searchbox_butrect(&rect, data, 0);
+    ui_draw_menu_item(&data->fstyle,
+                      &rect,
+                      IFACE_("No results found"),
+                      0,
+                      0,
+                      UI_MENU_ITEM_SEPARATOR_NONE,
+                      nullptr);
+  }
 }
 
 static void ui_searchbox_region_free_fn(ARegion *region)
@@ -721,7 +732,7 @@ static uiMenuItemSeparatorType ui_searchbox_item_separator(uiSearchboxData *data
   return separator_type;
 }
 
-static void ui_searchbox_region_layout_fn(const struct bContext *C, struct ARegion *region)
+static void ui_searchbox_region_layout_fn(const bContext *C, ARegion *region)
 {
   uiSearchboxData *data = (uiSearchboxData *)region->regiondata;
 
@@ -880,10 +891,10 @@ static ARegion *ui_searchbox_create_generic_ex(bContext *C,
     data->noback = true;
   }
 
-  if (but->a1 > 0 && but->a2 > 0) {
+  if (but->preview_rows > 0 && but->preview_cols > 0) {
     data->preview = true;
-    data->prv_rows = but->a1;
-    data->prv_cols = but->a2;
+    data->prv_rows = but->preview_rows;
+    data->prv_cols = but->preview_cols;
   }
 
   if (but->optype != nullptr || use_shortcut_sep) {
@@ -891,7 +902,7 @@ static ARegion *ui_searchbox_create_generic_ex(bContext *C,
   }
   data->sep_string = but->item_sep_string;
 
-  /* adds subwindow */
+  /* Adds sub-window. */
   ED_region_floating_init(region);
 
   /* notify change and redraw */
@@ -976,7 +987,7 @@ static void ui_searchbox_region_draw_cb__operator(const bContext * /*C*/, ARegio
       /* widget itself */
       /* NOTE: i18n messages extracting tool does the same, please keep it in sync. */
       {
-        const int but_flag = ((a == data->active) ? UI_ACTIVE : 0) | data->items.but_flags[a];
+        const int but_flag = ((a == data->active) ? UI_HOVER : 0) | data->items.but_flags[a];
 
         wmOperatorType *ot = static_cast<wmOperatorType *>(data->items.pointers[a]);
         char text_pre[128];
@@ -1025,6 +1036,17 @@ static void ui_searchbox_region_draw_cb__operator(const bContext * /*C*/, ARegio
       UI_icon_draw(BLI_rcti_size_x(&rect) / 2, rect.ymax - 7, ICON_TRIA_UP);
       GPU_blend(GPU_BLEND_NONE);
     }
+  }
+  else {
+    rcti rect;
+    ui_searchbox_butrect(&rect, data, 0);
+    ui_draw_menu_item(&data->fstyle,
+                      &rect,
+                      IFACE_("No results found"),
+                      0,
+                      0,
+                      UI_MENU_ITEM_SEPARATOR_NONE,
+                      nullptr);
   }
 }
 
@@ -1076,7 +1098,7 @@ void ui_but_search_refresh(uiButSearch *but)
     items->names[i] = (char *)MEM_callocN(but->hardmax + 1, __func__);
   }
 
-  ui_searchbox_update_fn((bContext *)but->block->evil_C, but, but->drawstr, items);
+  ui_searchbox_update_fn((bContext *)but->block->evil_C, but, but->drawstr.c_str(), items);
 
   if (!but->results_are_suggestions) {
     /* Only red-alert when we are sure of it, this can miss cases when >10 matches. */
@@ -1084,7 +1106,7 @@ void ui_but_search_refresh(uiButSearch *but)
       UI_but_flag_enable(but, UI_BUT_REDALERT);
     }
     else if (items->more == 0) {
-      if (UI_search_items_find_index(items, but->drawstr) == -1) {
+      if (UI_search_items_find_index(items, but->drawstr.c_str()) == -1) {
         UI_but_flag_enable(but, UI_BUT_REDALERT);
       }
     }

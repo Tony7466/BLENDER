@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2001-2002 NaN Holding BV. All rights reserved. */
+/* SPDX-FileCopyrightText: 2001-2002 NaN Holding BV. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup GHOST
@@ -54,14 +55,6 @@ class GHOST_System : public GHOST_ISystem {
    ***************************************************************************************/
 
   /**
-   * Returns the system time.
-   * Returns the number of milliseconds since the start of the system process.
-   * Based on ANSI clock() routine.
-   * \return The number of milliseconds.
-   */
-  virtual uint64_t getMilliSeconds() const;
-
-  /**
    * Installs a timer.
    *
    * \note On most operating systems, messages need to be processed in order
@@ -101,7 +94,7 @@ class GHOST_System : public GHOST_ISystem {
    * Never explicitly delete the context, use #disposeContext() instead.
    * \return The new context (or 0 if creation failed).
    */
-  virtual GHOST_IContext *createOffscreenContext(GHOST_GLSettings glSettings) = 0;
+  virtual GHOST_IContext *createOffscreenContext(GHOST_GPUSettings gpuSettings) = 0;
 
   /**
    * Returns whether a window is valid.
@@ -253,7 +246,14 @@ class GHOST_System : public GHOST_ISystem {
    * \param api: Enum indicating which API to use.
    */
   virtual void setTabletAPI(GHOST_TTabletAPI api);
-  GHOST_TTabletAPI getTabletAPI(void);
+  GHOST_TTabletAPI getTabletAPI();
+
+  /**
+   * Get the color of the pixel at the current mouse cursor location
+   * \param r_color: returned sRGB float colors
+   * \return Success value (true == successful and supported by platform)
+   */
+  GHOST_TSuccess getPixelAtCursor(float r_color[3]) const;
 
 #ifdef WITH_INPUT_NDOF
   /***************************************************************************************
@@ -277,7 +277,7 @@ class GHOST_System : public GHOST_ISystem {
    * Do not delete the event!
    * \param event: The event to push on the stack.
    */
-  GHOST_TSuccess pushEvent(GHOST_IEvent *event);
+  GHOST_TSuccess pushEvent(const GHOST_IEvent *event);
 
   /**
    * \return The timer manager.
@@ -319,7 +319,6 @@ class GHOST_System : public GHOST_ISystem {
    * Returns the selection buffer
    * \param selection: Only used on X11.
    * \return Returns the clipboard data
-   *
    */
   virtual char *getClipboard(bool selection) const = 0;
 
@@ -333,7 +332,7 @@ class GHOST_System : public GHOST_ISystem {
   /**
    * Returns GHOST_kSuccess if the clipboard contains an image.
    */
-  GHOST_TSuccess hasClipboardImage(void) const;
+  GHOST_TSuccess hasClipboardImage() const;
 
   /**
    * Get image data from the Clipboard

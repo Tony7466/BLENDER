@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -22,7 +23,7 @@
 #include "GPU_index_buffer.h"
 #include "GPU_shader.h"
 #include "GPU_storage_buffer.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_uniform_buffer.hh"
 #include "GPU_vertex_buffer.h"
 
 #define GPU_BATCH_VBO_MAX_LEN 16
@@ -325,7 +326,8 @@ void GPU_batch_draw_advanced(
  * The argument are expected to be valid for the type of geometry contained by this #GPUBatch
  * (index or non-indexed).
  *
- * A `GPU_BARRIER_COMMAND` memory barrier is automatically added before the call.
+ * The indirect buffer needs to be synced after filling its contents and before calling this
+ * function using `GPU_storagebuf_sync_as_indirect_buffer`.
  *
  * For more info see the GL documentation:
  * https://registry.khronos.org/OpenGL-Refpages/gl4/html/glDrawArraysIndirect.xhtml
@@ -338,7 +340,8 @@ void GPU_batch_draw_indirect(GPUBatch *batch, GPUStorageBuf *indirect_buf, intpt
  * The argument are expected to be valid for the type of geometry contained by this #GPUBatch
  * (index or non-indexed).
  *
- * A `GPU_BARRIER_COMMAND` memory barrier is automatically added before the call.
+ * The indirect buffer needs to be synced after filling its contents and before calling this
+ * function using `GPU_storagebuf_sync_as_indirect_buffer`.
  *
  * For more info see the GL documentation:
  * https://registry.khronos.org/OpenGL-Refpages/gl4/html/glMultiDrawArraysIndirect.xhtml

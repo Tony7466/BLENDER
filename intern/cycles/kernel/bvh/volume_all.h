@@ -1,8 +1,10 @@
-/* SPDX-License-Identifier: Apache-2.0
- * Adapted from code Copyright 2009-2010 NVIDIA Corporation,
- * and code copyright 2009-2012 Intel Corporation
+/* SPDX-FileCopyrightText: 2009-2010 NVIDIA Corporation
+ * SPDX-FileCopyrightText: 2009-2012 Intel Corporation
+ * SPDX-FileCopyrightText: 2011-2022 Blender Foundation
  *
- * Modifications Copyright 2011-2022 Blender Foundation. */
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Adapted code from NVIDIA Corporation. */
 
 #if BVH_FEATURE(BVH_HAIR)
 #  define NODE_INTERSECT bvh_node_intersect
@@ -22,11 +24,12 @@ ccl_device
 #else
 ccl_device_inline
 #endif
-    uint BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
-                                     ccl_private const Ray *ray,
-                                     Intersection *isect_array,
-                                     const uint max_hits,
-                                     const uint visibility)
+    uint
+    BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
+                                ccl_private const Ray *ray,
+                                Intersection *isect_array,
+                                const uint max_hits,
+                                const uint visibility)
 {
   /* todo:
    * - test if pushing distance on the stack helps (for non shadow rays)

@@ -1,15 +1,19 @@
-/* SPDX-License-Identifier: Apache-2.0 */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: Apache-2.0 */
+
+#include "testing/testing.h"
 
 #include "BLI_linear_allocator.hh"
 #include "BLI_rand.hh"
-#include "BLI_strict_flags.h"
-#include "testing/testing.h"
+
+#include "BLI_strict_flags.h" /* Keep last. */
 
 namespace blender::tests {
 
 static bool is_aligned(void *ptr, uint alignment)
 {
-  BLI_assert(is_power_of_2_i(int(alignment)));
+  BLI_assert(is_power_of_2(int(alignment)));
   return (POINTER_AS_UINT(ptr) & (alignment - 1)) == 0;
 }
 
@@ -147,6 +151,25 @@ TEST(linear_allocator, ConstructArray)
   for (std::string &string : strings) {
     string.~basic_string();
   }
+}
+
+TEST(linear_allocator, TransferOwnership)
+{
+  LinearAllocator<> main_allocator;
+  MutableSpan<int> values;
+
+  /* Allocate a large buffer that is likely to be given back to the system when freed. This test
+   * essentially only fails by crashing with a segfault. */
+  const int size = 1'000'000;
+  const int value = 42;
+  const int index = 500'000;
+  {
+    LinearAllocator<> nested_allocator;
+    values = nested_allocator.allocate_array<int>(size);
+    values[index] = value;
+    main_allocator.transfer_ownership_from(nested_allocator);
+  }
+  EXPECT_EQ(values[index], value);
 }
 
 }  // namespace blender::tests

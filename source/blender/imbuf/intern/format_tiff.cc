@@ -1,10 +1,16 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+/** \file
+ * \ingroup imbuf
+ */
 
 #include "oiio/openimageio_support.hh"
 
-#include "IMB_colormanagement.h"
-#include "IMB_filetype.h"
-#include "IMB_imbuf_types.h"
+#include "IMB_colormanagement.hh"
+#include "IMB_filetype.hh"
+#include "IMB_imbuf_types.hh"
 
 OIIO_NAMESPACE_USING
 using namespace blender::imbuf;
@@ -38,9 +44,9 @@ ImBuf *imb_load_tiff(const uchar *mem, size_t size, int flags, char colorspace[I
   return ibuf;
 }
 
-bool imb_save_tiff(struct ImBuf *ibuf, const char *filepath, int flags)
+bool imb_save_tiff(ImBuf *ibuf, const char *filepath, int flags)
 {
-  const bool is_16bit = ((ibuf->foptions.flag & TIF_16BIT) && ibuf->rect_float);
+  const bool is_16bit = ((ibuf->foptions.flag & TIF_16BIT) && ibuf->float_buffer.data);
   const int file_channels = ibuf->planes >> 3;
   const TypeDesc data_format = is_16bit ? TypeDesc::UINT16 : TypeDesc::UINT8;
 
@@ -62,6 +68,9 @@ bool imb_save_tiff(struct ImBuf *ibuf, const char *filepath, int flags)
   }
   else if (ibuf->foptions.flag & TIF_COMPRESS_PACKBITS) {
     file_spec.attribute("compression", "packbits");
+  }
+  else if (ibuf->foptions.flag & TIF_COMPRESS_NONE) {
+    file_spec.attribute("compression", "none");
   }
 
   return imb_oiio_write(ctx, filepath, file_spec);

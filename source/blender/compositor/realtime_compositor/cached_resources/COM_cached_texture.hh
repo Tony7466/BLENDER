@@ -1,4 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
+/* SPDX-FileCopyrightText: 2023 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -11,7 +13,6 @@
 
 #include "GPU_texture.h"
 
-#include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
 #include "COM_cached_resource.hh"
@@ -26,10 +27,10 @@ class Context;
 class CachedTextureKey {
  public:
   int2 size;
-  float2 offset;
-  float2 scale;
+  float3 offset;
+  float3 scale;
 
-  CachedTextureKey(int2 size, float2 offset, float2 scale);
+  CachedTextureKey(int2 size, float3 offset, float3 scale);
 
   uint64_t hash() const;
 };
@@ -39,16 +40,20 @@ bool operator==(const CachedTextureKey &a, const CachedTextureKey &b);
 /* -------------------------------------------------------------------------------------------------
  * Cached Texture.
  *
- * A cached resource that computes and caches a GPU texture containing the the result of evaluating
- * the given texture ID on a space that spans the given size, modified by the given offset and
- * scale. */
+ * A cached resource that computes and caches a GPU texture containing the result of evaluating the
+ * given texture ID on a space that spans the given size, parameterized by the given parameters. */
 class CachedTexture : public CachedResource {
  private:
   GPUTexture *color_texture_ = nullptr;
   GPUTexture *value_texture_ = nullptr;
 
  public:
-  CachedTexture(Tex *texture, const Scene *scene, int2 size, float2 offset, float2 scale);
+  CachedTexture(Context &context,
+                Tex *texture,
+                bool use_color_management,
+                int2 size,
+                float3 offset,
+                float3 scale);
 
   ~CachedTexture();
 
@@ -73,8 +78,12 @@ class CachedTextureContainer : CachedResourceContainer {
    * CachedTexture cached resource with the given parameters in the container, if one exists,
    * return it, otherwise, return a newly created one and add it to the container. In both cases,
    * tag the cached resource as needed to keep it cached for the next evaluation. */
-  CachedTexture &get(
-      Context &context, Tex *texture, const Scene *scene, int2 size, float2 offset, float2 scale);
+  CachedTexture &get(Context &context,
+                     Tex *texture,
+                     bool use_color_management,
+                     int2 size,
+                     float3 offset,
+                     float3 scale);
 };
 
 }  // namespace blender::realtime_compositor

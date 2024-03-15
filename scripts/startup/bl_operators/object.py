@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2009-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -8,7 +10,7 @@ from bpy.props import (
     IntProperty,
     StringProperty,
 )
-from bpy.app.translations import pgettext_tip as tip_
+from bpy.app.translations import pgettext_rpt as rpt_
 
 
 class SelectPattern(Operator):
@@ -16,6 +18,7 @@ class SelectPattern(Operator):
     bl_idname = "object.select_pattern"
     bl_label = "Select Pattern"
     bl_options = {'REGISTER', 'UNDO'}
+    bl_property = "pattern"
 
     pattern: StringProperty(
         name="Pattern",
@@ -220,8 +223,7 @@ class SubdivisionSet(Operator):
     )
     relative: BoolProperty(
         name="Relative",
-        description=("Apply the subdivision surface level as an offset "
-                     "relative to the current level"),
+        description="Apply the subdivision surface level as an offset relative to the current level",
         default=False,
     )
 
@@ -284,9 +286,8 @@ class SubdivisionSet(Operator):
                 else:
                     mod = obj.modifiers.new("Subdivision", 'SUBSURF')
                     mod.levels = level
-            except:
-                self.report({'WARNING'},
-                            "Modifiers cannot be added to object: " + obj.name)
+            except BaseException:
+                self.report({'WARNING'}, "Modifiers cannot be added to object: " + obj.name)
 
         for obj in context.selected_editable_objects:
             set_object_subd(obj)
@@ -322,8 +323,7 @@ class ShapeTransfer(Operator):
     )
     use_clamp: BoolProperty(
         name="Clamp Offset",
-        description=("Clamp the transformation to the distance each "
-                     "vertex moves in the original shape"),
+        description="Clamp the transformation to the distance each vertex moves in the original shape",
         default=False,
     )
 
@@ -364,12 +364,12 @@ class ShapeTransfer(Operator):
         for ob_other in objects:
             if ob_other.type != 'MESH':
                 self.report({'WARNING'},
-                            tip_("Skipping '%s', not a mesh") % ob_other.name)
+                            rpt_("Skipping '%s', not a mesh") % ob_other.name)
                 continue
             me_other = ob_other.data
             if len(me_other.vertices) != len(me.vertices):
                 self.report({'WARNING'},
-                            tip_("Skipping '%s', vertex count differs") % ob_other.name)
+                            rpt_("Skipping '%s', vertex count differs") % ob_other.name)
                 continue
 
             target_normals = me_nos(me_other.vertices)
@@ -381,8 +381,7 @@ class ShapeTransfer(Operator):
             ob_add_shape(ob_other, orig_key_name)
 
             # editing the final coords, only list that stores wrapped coords
-            target_shape_coords = [v.co for v in
-                                   ob_other.active_shape_key.data]
+            target_shape_coords = [v.co for v in ob_other.active_shape_key.data]
 
             median_coords = [[] for i in range(len(me.vertices))]
 
@@ -445,8 +444,7 @@ class ShapeTransfer(Operator):
                     if use_clamp:
                         # clamp to the same movement as the original
                         # breaks copy between different scaled meshes.
-                        len_from = (orig_shape_coords[i] -
-                                    orig_coords[i]).length
+                        len_from = (orig_shape_coords[i] - orig_coords[i]).length
                         ofs = co - target_coords[i]
                         ofs.length = len_from
                         co = target_coords[i] + ofs
@@ -462,8 +460,10 @@ class ShapeTransfer(Operator):
 
     def execute(self, context):
         ob_act = context.active_object
-        objects = [ob for ob in context.selected_editable_objects
-                   if ob != ob_act]
+        objects = [
+            ob for ob in context.selected_editable_objects
+            if ob != ob_act
+        ]
 
         if 1:  # swap from/to, means we can't copy to many at once.
             if len(objects) != 1:
@@ -507,7 +507,7 @@ class JoinUVs(Operator):
 
         if not mesh.uv_layers:
             self.report({'WARNING'},
-                        tip_("Object: %s, Mesh: '%s' has no UVs")
+                        rpt_("Object: %s, Mesh: '%s' has no UVs")
                         % (obj.name, mesh.name))
         else:
             nbr_loops = len(mesh.loops)
@@ -531,7 +531,7 @@ class JoinUVs(Operator):
 
                             if len(mesh_other.loops) != nbr_loops:
                                 self.report({'WARNING'},
-                                            tip_("Object: %s, Mesh: "
+                                            rpt_("Object: %s, Mesh: "
                                                  "'%s' has %d loops (for %d faces),"
                                                  " expected %d\n")
                                             % (obj_other.name,
@@ -548,7 +548,7 @@ class JoinUVs(Operator):
                                     uv_other = mesh_other.uv_layers.active
                                     if not uv_other:
                                         self.report({'ERROR'},
-                                                    tip_("Could not add "
+                                                    rpt_("Could not add "
                                                          "a new UV map to object "
                                                          "'%s' (Mesh '%s')\n")
                                                     % (obj_other.name,
@@ -601,9 +601,11 @@ class MakeDupliFace(Operator):
                 linked[obj.instance_collection].append(obj)
 
         for data, objects in linked.items():
-            face_verts = [axis for obj in objects
-                          for v in matrix_to_quad(obj.matrix_world)
-                          for axis in v]
+            face_verts = [
+                axis for obj in objects
+                for v in matrix_to_quad(obj.matrix_world)
+                for axis in v
+            ]
             nbr_verts = len(face_verts) // 3
             nbr_faces = nbr_verts // 4
 
@@ -654,6 +656,11 @@ class IsolateTypeRender(Operator):
     bl_idname = "object.isolate_type_render"
     bl_label = "Restrict Render Unselected"
     bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        ob = context.object
+        return (ob is not None)
 
     def execute(self, context):
         act_type = context.object.type
@@ -784,7 +791,7 @@ class TransformsToDeltasAnim(Operator):
             adt = obj.animation_data
             if (adt is None) or (adt.action is None):
                 self.report({'WARNING'},
-                            tip_("No animation data to convert on object: %r")
+                            rpt_("No animation data to convert on object: %r")
                             % obj.name)
                 continue
 
@@ -811,7 +818,7 @@ class TransformsToDeltasAnim(Operator):
                     if fcu.array_index in existingFCurves[dpath]:
                         # conflict
                         self.report({'ERROR'},
-                                    tip_("Object '%r' already has '%r' F-Curve(s). "
+                                    rpt_("Object '%r' already has '%r' F-Curve(s). "
                                          "Remove these before trying again") %
                                     (obj.name, dpath))
                         return {'CANCELLED'}
@@ -893,80 +900,6 @@ class DupliOffsetFromObject(Operator):
         return {'FINISHED'}
 
 
-class LoadImageAsEmpty:
-    bl_options = {'REGISTER', 'UNDO'}
-
-    filepath: StringProperty(
-        subtype='FILE_PATH'
-    )
-
-    filter_image: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
-    filter_folder: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
-
-    view_align: BoolProperty(
-        name="Align to View",
-        default=True,
-    )
-
-    @classmethod
-    def poll(cls, context):
-        return context.mode == 'OBJECT'
-
-    def invoke(self, context, _event):
-        context.window_manager.fileselect_add(self)
-        return {'RUNNING_MODAL'}
-
-    def execute(self, context):
-        scene = context.scene
-        cursor = scene.cursor.location
-
-        try:
-            image = bpy.data.images.load(self.filepath, check_existing=True)
-        except RuntimeError as ex:
-            self.report({'ERROR'}, str(ex))
-            return {'CANCELLED'}
-
-        bpy.ops.object.empty_add(
-            'INVOKE_REGION_WIN',
-            type='IMAGE',
-            location=cursor,
-            align=('VIEW' if self.view_align else 'WORLD'),
-        )
-
-        view_layer = context.view_layer
-        obj = view_layer.objects.active
-        obj.data = image
-        obj.empty_display_size = 5.0
-        self.set_settings(context, obj)
-        return {'FINISHED'}
-
-    def set_settings(self, context, obj):
-        pass
-
-
-class LoadBackgroundImage(LoadImageAsEmpty, Operator):
-    """Add a reference image into the background behind objects"""
-    bl_idname = "object.load_background_image"
-    bl_label = "Load Background Image"
-
-    def set_settings(self, context, obj):
-        obj.empty_image_depth = 'BACK'
-        obj.empty_image_side = 'FRONT'
-
-        if context.space_data.type == 'VIEW_3D':
-            if not context.space_data.region_3d.is_perspective:
-                obj.show_empty_image_perspective = False
-
-
-class LoadReferenceImage(LoadImageAsEmpty, Operator):
-    """Add a reference image into the scene between objects"""
-    bl_idname = "object.load_reference_image"
-    bl_label = "Load Reference Image"
-
-    def set_settings(self, context, obj):
-        pass
-
-
 class OBJECT_OT_assign_property_defaults(Operator):
     """Assign the current values of custom properties as their defaults, """ \
         """for use as part of the rest pose state in NLA track mixing"""
@@ -1018,8 +951,6 @@ classes = (
     DupliOffsetFromObject,
     IsolateTypeRender,
     JoinUVs,
-    LoadBackgroundImage,
-    LoadReferenceImage,
     MakeDupliFace,
     SelectCamera,
     SelectHierarchy,

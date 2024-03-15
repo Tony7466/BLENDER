@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2016 by Mike Erwin. All rights reserved. */
+/* SPDX-FileCopyrightText: 2016 by Mike Erwin. All rights reserved.
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /** \file
  * \ingroup gpu
@@ -181,7 +182,7 @@ void GLDrawList::submit()
     data_ = nullptr; /* Unmapped */
     data_offset_ += command_offset_;
 
-    batch_->bind(0);
+    batch_->bind();
 
     if (MDI_INDEXED) {
       GLenum gl_type = to_gl(batch_->elem_()->index_type_);

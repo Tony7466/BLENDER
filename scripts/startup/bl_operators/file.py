@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2015-2023 Blender Authors
+#
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 import bpy
@@ -10,7 +12,7 @@ from bpy.props import (
     CollectionProperty,
     StringProperty,
 )
-from bpy.app.translations import pgettext_tip as tip_
+from bpy.app.translations import pgettext_rpt as rpt_
 
 # ########## Datablock previews... ##########
 
@@ -78,7 +80,7 @@ class WM_OT_previews_batch_generate(Operator):
     use_trusted: BoolProperty(
         default=False,
         name="Trusted Blend Files",
-        description="Enable python evaluation for selected files",
+        description="Enable Python evaluation for selected files",
     )
     use_backups: BoolProperty(
         default=True,
@@ -103,7 +105,6 @@ class WM_OT_previews_batch_generate(Operator):
                 bpy.app.binary_path,
                 "--background",
                 "--factory-startup",
-                "-noaudio",
             ]
             if self.use_trusted:
                 cmd.append("--enable-autoexec")
@@ -114,17 +115,17 @@ class WM_OT_previews_batch_generate(Operator):
                 "--",
             ])
             if not self.use_scenes:
-                cmd.append('--no_scenes')
+                cmd.append("--no_scenes")
             if not self.use_collections:
-                cmd.append('--no_collections')
+                cmd.append("--no_collections")
             if not self.use_objects:
-                cmd.append('--no_objects')
+                cmd.append("--no_objects")
             if not self.use_intern_data:
-                cmd.append('--no_data_intern')
+                cmd.append("--no_data_intern")
             if not self.use_backups:
                 cmd.append("--no_backups")
             if subprocess.call(cmd):
-                self.report({'ERROR'}, tip_("Previews generation process failed for file '%s'!") % blen_path)
+                self.report({'ERROR'}, rpt_("Previews generation process failed for file '%s'!") % blen_path)
                 context.window_manager.progress_end()
                 return {'CANCELLED'}
             context.window_manager.progress_update(i + 1)
@@ -188,7 +189,7 @@ class WM_OT_previews_batch_clear(Operator):
     use_trusted: BoolProperty(
         default=False,
         name="Trusted Blend Files",
-        description="Enable python evaluation for selected files",
+        description="Enable Python evaluation for selected files",
     )
     use_backups: BoolProperty(
         default=True,
@@ -213,7 +214,6 @@ class WM_OT_previews_batch_clear(Operator):
                 bpy.app.binary_path,
                 "--background",
                 "--factory-startup",
-                "-noaudio",
             ]
             if self.use_trusted:
                 cmd.append("--enable-autoexec")
@@ -225,17 +225,17 @@ class WM_OT_previews_batch_clear(Operator):
                 "--clear",
             ])
             if not self.use_scenes:
-                cmd.append('--no_scenes')
+                cmd.append("--no_scenes")
             if not self.use_collections:
-                cmd.append('--no_collections')
+                cmd.append("--no_collections")
             if not self.use_objects:
-                cmd.append('--no_objects')
+                cmd.append("--no_objects")
             if not self.use_intern_data:
-                cmd.append('--no_data_intern')
+                cmd.append("--no_data_intern")
             if not self.use_backups:
                 cmd.append("--no_backups")
             if subprocess.call(cmd):
-                self.report({'ERROR'}, tip_("Previews clear process failed for file '%s'!") % blen_path)
+                self.report({'ERROR'}, rpt_("Previews clear process failed for file '%s'!") % blen_path)
                 context.window_manager.progress_end()
                 return {'CANCELLED'}
             context.window_manager.progress_update(i + 1)

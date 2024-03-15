@@ -1,5 +1,6 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later
- * Copyright 2011 Blender Foundation. */
+/* SPDX-FileCopyrightText: 2011 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma once
 
@@ -16,13 +17,6 @@ class VectorBlurOperation : public NodeOperation, public QualityStepHelper {
   static constexpr int SPEED_INPUT_INDEX = 2;
 
   /**
-   * \brief Cached reference to the input_program
-   */
-  SocketReader *input_image_program_;
-  SocketReader *input_speed_program_;
-  SocketReader *input_zprogram_;
-
-  /**
    * \brief settings of the glare node.
    */
   const NodeBlurData *settings_;
@@ -32,30 +26,13 @@ class VectorBlurOperation : public NodeOperation, public QualityStepHelper {
  public:
   VectorBlurOperation();
 
-  /**
-   * The inner loop of this operation.
-   */
-  void execute_pixel(float output[4], int x, int y, void *data) override;
-
-  /**
-   * Initialize the execution
-   */
   void init_execution() override;
-
-  /**
-   * Deinitialize the execution
-   */
   void deinit_execution() override;
-
-  void *initialize_tile_data(rcti *rect) override;
 
   void set_vector_blur_settings(const NodeBlurData *settings)
   {
     settings_ = settings;
   }
-  bool determine_depending_area_of_interest(rcti *input,
-                                            ReadBufferOperation *read_operation,
-                                            rcti *output) override;
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
   void update_memory_buffer(MemoryBuffer *output,
