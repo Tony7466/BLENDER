@@ -544,13 +544,9 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
   CurvesGeometry &curves = this->strokes_for_write();
   MutableAttributeAccessor attributes = curves.attributes_for_write();
   SpanAttributeWriter<float> uv_rotations = attributes.lookup_or_add_for_write_span<float>(
-      "uv_rotation",
-      AttrDomain::Curve,
-      AttributeInitVArray(VArray<float>::ForSingle(0.0f, curves.curves_num())));
+      "uv_rotation", AttrDomain::Curve);
   SpanAttributeWriter<float2> uv_translations = attributes.lookup_or_add_for_write_span<float2>(
-      "uv_translation",
-      AttrDomain::Curve,
-      AttributeInitVArray(VArray<float2>::ForSingle(float2(0.0f, 0.0f), curves.curves_num())));
+      "uv_translation", AttrDomain::Curve);
   SpanAttributeWriter<float2> uv_scales = attributes.lookup_or_add_for_write_span<float2>(
       "uv_scale",
       AttrDomain::Curve,
