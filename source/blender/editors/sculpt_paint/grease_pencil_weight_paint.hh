@@ -174,7 +174,6 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
     const Object *ob_eval = DEG_get_evaluated_object(depsgraph, this->object);
     const RegionView3D *rv3d = CTX_wm_region_view3d(&C);
     const ARegion *region = CTX_wm_region(&C);
-    const float4x4 projection = ED_view3d_ob_project_mat_get(rv3d, this->object);
 
     this->drawing_weight_data[frame_group].reinitialize(drawings.size());
 
@@ -206,6 +205,11 @@ class WeightPaintOperation : public GreasePencilStrokeOperation {
         }
 
         /* Convert stroke points to screen space positions. */
+        const bke::greasepencil::Layer &layer =
+            *this->grease_pencil->layers()[drawing_info.layer_index];
+        const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
+        const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(rv3d, layer_to_world);
+
         bke::crazyspace::GeometryDeformation deformation =
             bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
                 ob_eval, *this->object, drawing_info.layer_index, drawing_info.frame_number);
