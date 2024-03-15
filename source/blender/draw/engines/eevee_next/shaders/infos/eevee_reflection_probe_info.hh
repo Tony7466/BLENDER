@@ -34,6 +34,7 @@ GPU_SHADER_CREATE_INFO(eevee_reflection_probe_remap)
 
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_irradiance)
     .local_group_size(SPHERE_PROBE_SH_GROUP_SIZE)
+    .push_constant(Type::IVEC3, "probe_remap_dispatch_size")
     .storage_buf(0, Qualifier::READ, "SphereProbeHarmonic", "in_sh[SPHERE_PROBE_MAX_HARMONIC]")
     .storage_buf(1, Qualifier::WRITE, "SphereProbeHarmonic", "out_sh")
     .additional_info("eevee_shared")

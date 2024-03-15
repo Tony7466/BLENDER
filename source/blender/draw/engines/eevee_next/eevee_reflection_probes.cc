@@ -71,6 +71,7 @@ void SphereProbeModule::begin_sync()
     PassSimple &pass = sum_sh_ps_;
     pass.init();
     pass.shader_set(instance_.shaders.static_shader_get(SPHERE_PROBE_IRRADIANCE));
+    pass.push_constant("probe_remap_dispatch_size", &dispatch_probe_pack_);
     pass.bind_ssbo("in_sh", &tmp_spherical_harmonics_);
     pass.bind_ssbo("out_sh", &spherical_harmonics_);
     pass.barrier(GPU_BARRIER_SHADER_STORAGE);
@@ -210,13 +211,6 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
   int resolution = probe_write_coord_.extent;
   dispatch_probe_pack_ = int3(int2(ceil_division(resolution, SPHERE_PROBE_GROUP_SIZE)), 1);
   extract_sh_ = extract_spherical_harmonics;
-
-  if (extract_spherical_harmonics) {
-    extract_sh_ = extract_spherical_harmonics;
-    /* Clear to zero so that unprocessed entries doesn't affect the sum. */
-    tmp_spherical_harmonics_.clear_to_zero();
-  }
-
   instance_.manager->submit(remap_ps_);
 
   /* Populate the mip levels */
