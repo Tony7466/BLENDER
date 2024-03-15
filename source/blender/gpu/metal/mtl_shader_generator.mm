@@ -303,7 +303,7 @@ static void replace_outvars(std::string &str)
             /* Generate out-variable pattern for arrays, of form
              * `OUT(vec2,samples,CRYPTOMATTE_LEVELS_MAX)`
              * replacing original `out vec2 samples[SAMPLE_LEN]`
-             * using 'OUT' macro declared in mtl_shader_defines.msl*/
+             * using 'OUT' macro declared in `mtl_shader_defines.msl`. */
             char *array_end = strchr(word_base2 + len2, ']');
             if (array_end != nullptr) {
               *start = 'O';
@@ -1355,7 +1355,7 @@ bool MTLShader::generate_msl_from_glsl(const shader::ShaderCreateInfo *info)
       ss_fragment << "float2 gl_PointCoord;" << std::endl;
     }
     if (msl_iface.uses_gl_FrontFacing) {
-      ss_fragment << "MTLBOOL gl_FrontFacing;" << std::endl;
+      ss_fragment << "bool gl_FrontFacing;" << std::endl;
     }
     if (msl_iface.uses_gl_PrimitiveID) {
       ss_fragment << "uint gl_PrimitiveID;" << std::endl;
@@ -1535,6 +1535,7 @@ bool MTLShader::generate_msl_from_glsl_compute(const shader::ShaderCreateInfo *i
 
   /** Generate Compute shader stage. **/
   std::stringstream ss_compute;
+  ss_compute << "#line 1 \"msl_wrapper_code\"\n";
 
   ss_compute << "#define GPU_ARB_shader_draw_parameters 1\n";
   if (bool(info->builtins_ & BuiltinBits::TEXTURE_ATOMIC) &&
@@ -2615,7 +2616,7 @@ std::string MSLGeneratorInterface::generate_msl_fragment_inputs_string()
   }
   if (this->uses_gl_FrontFacing) {
     out << parameter_delimiter(is_first_parameter)
-        << "\n\tconst MTLBOOL gl_FrontFacing [[front_facing]]";
+        << "\n\tconst bool gl_FrontFacing [[front_facing]]";
   }
   if (this->uses_gl_PrimitiveID) {
     out << parameter_delimiter(is_first_parameter)
@@ -2793,9 +2794,7 @@ std::string MSLGeneratorInterface::generate_msl_vertex_out_struct(ShaderStage sh
      * by ensuring that vertex position is consistently calculated between subsequent passes
      * with maximum precision. */
     out << "\tfloat4 _default_position_ [[position]]";
-    if (@available(macos 11.0, *)) {
-      out << " [[invariant]]";
-    }
+    out << " [[invariant]]";
     out << ";" << std::endl;
   }
   else {
@@ -2806,9 +2805,7 @@ std::string MSLGeneratorInterface::generate_msl_vertex_out_struct(ShaderStage sh
 
       /* Use invariance if available. See above for detail. */
       out << "\tfloat4 " << this->vertex_output_varyings[0].name << " [[position]];";
-      if (@available(macos 11.0, *)) {
-        out << " [[invariant]]";
-      }
+      out << " [[invariant]]";
       out << ";" << std::endl;
       first_attr_is_position = true;
     }

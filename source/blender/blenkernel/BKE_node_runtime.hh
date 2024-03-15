@@ -30,7 +30,6 @@ struct FieldInferencingInterface;
 class NodeDeclaration;
 struct GeometryNodesLazyFunctionGraphInfo;
 namespace anonymous_attribute_lifetime {
-struct RelationsInNode;
 }
 namespace aal = anonymous_attribute_lifetime;
 }  // namespace blender::nodes
@@ -479,6 +478,11 @@ inline const bNode *bNodeTree::group_output_node() const
 {
   BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
   return this->runtime->group_output_node;
+}
+
+inline blender::Span<bNode *> bNodeTree::group_input_nodes()
+{
+  return this->nodes_by_type("NodeGroupInput");
 }
 
 inline blender::Span<const bNode *> bNodeTree::group_input_nodes() const

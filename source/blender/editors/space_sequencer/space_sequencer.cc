@@ -673,14 +673,18 @@ static void sequencer_tools_region_init(wmWindowManager *wm, ARegion *region)
 
 static void sequencer_tools_region_draw(const bContext *C, ARegion *region)
 {
+  ScrArea *area = CTX_wm_area(C);
   wmOperatorCallContext op_context = WM_OP_INVOKE_REGION_WIN;
-  switch (region->regiontype) {
-    case RGN_TYPE_CHANNELS:
-      op_context = WM_OP_INVOKE_REGION_CHANNELS;
-      break;
-    case RGN_TYPE_PREVIEW:
+
+  LISTBASE_FOREACH (ARegion *, ar, &area->regionbase) {
+    if (ar->regiontype == RGN_TYPE_PREVIEW && region->regiontype == RGN_TYPE_TOOLS) {
       op_context = WM_OP_INVOKE_REGION_PREVIEW;
       break;
+    }
+  }
+
+  if (region->regiontype == RGN_TYPE_CHANNELS) {
+    op_context = WM_OP_INVOKE_REGION_CHANNELS;
   }
 
   ED_region_panels_ex(C, region, op_context, nullptr);
@@ -911,7 +915,7 @@ static void sequencer_id_remap(ScrArea * /*area*/,
                                const blender::bke::id::IDRemapper &mappings)
 {
   SpaceSeq *sseq = (SpaceSeq *)slink;
-  mappings.apply((ID **)&sseq->gpd, ID_REMAP_APPLY_DEFAULT);
+  mappings.apply(reinterpret_cast<ID **>(&sseq->gpd), ID_REMAP_APPLY_DEFAULT);
 }
 
 static void sequencer_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)

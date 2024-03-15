@@ -30,7 +30,7 @@
 #include "BKE_blender_copybuffer.hh"
 #include "BKE_blendfile.hh"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
@@ -150,7 +150,7 @@ static bool sequencer_write_copy_paste_file(Main *bmain_src,
   scene_dst->ed = MEM_cnew<Editing>(__func__);
   scene_dst->ed->seqbasep = &scene_dst->ed->seqbase;
   SEQ_sequence_base_dupli_recursive(
-      scene_src, scene_dst, &scene_dst->ed->seqbase, &scene_src->ed->seqbase, 0, 0);
+      scene_src, scene_dst, &scene_dst->ed->seqbase, scene_src->ed->seqbasep, 0, 0);
 
   BLI_duplicatelist(&scene_dst->ed->channels, &scene_src->ed->channels);
   scene_dst->ed->displayed_channels = &scene_dst->ed->channels;

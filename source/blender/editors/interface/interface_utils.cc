@@ -245,8 +245,7 @@ uiBut *uiDefAutoButR(uiBlock *block,
     case PROP_COLLECTION: {
       char text[256];
       SNPRINTF(text, IFACE_("%d items"), RNA_property_collection_length(ptr, prop));
-      but = uiDefBut(
-          block, UI_BTYPE_LABEL, 0, text, x, y, width, height, nullptr, 0, 0, 0, 0, nullptr);
+      but = uiDefBut(block, UI_BTYPE_LABEL, 0, text, x, y, width, height, nullptr, 0, 0, nullptr);
       UI_but_flag_enable(but, UI_BUT_DISABLED);
       break;
     }
@@ -381,7 +380,7 @@ static bool add_collection_search_item(CollItemSearch &cis,
                                        uiSearchItems *items)
 {
 
-  /* If no item has an own icon to display, libraries can use the library icons rather than the
+  /* If no item has its own icon to display, libraries can use the library icons rather than the
    * name prefix for showing the library status. */
   int name_prefix_offset = cis.name_prefix_offset;
   if (!has_id_icon && cis.is_id && !requires_exact_data_name) {
@@ -517,7 +516,7 @@ void ui_rna_collection_search_update_fn(
           items_list.begin(),
           items_list.end(),
           [](const std::unique_ptr<CollItemSearch> &a, const std::unique_ptr<CollItemSearch> &b) {
-            return BLI_strcasecmp_natural(a->name.c_str(), b->name.c_str()) <= 0;
+            return BLI_strcasecmp_natural(a->name.c_str(), b->name.c_str()) < 0;
           });
       for (const int i : items_list.index_range()) {
         items_list[i]->index = i;
@@ -693,35 +692,27 @@ int UI_calc_float_precision(int prec, double value)
   return prec;
 }
 
-bool UI_but_online_manual_id(const uiBut *but, char *r_str, size_t str_maxncpy)
+std::optional<std::string> UI_but_online_manual_id(const uiBut *but)
 {
-  if (but->rnapoin.owner_id && but->rnapoin.data && but->rnaprop) {
-    BLI_snprintf(r_str,
-                 str_maxncpy,
-                 "%s.%s",
-                 RNA_struct_identifier(but->rnapoin.type),
-                 RNA_property_identifier(but->rnaprop));
-    return true;
+  if (but->rnapoin.data && but->rnaprop) {
+    return fmt::format(
+        "{}.{}", RNA_struct_identifier(but->rnapoin.type), RNA_property_identifier(but->rnaprop));
   }
   if (but->optype) {
-    WM_operator_py_idname(r_str, but->optype->idname);
-    return true;
+    char idname[OP_MAX_TYPENAME];
+    const size_t idname_len = WM_operator_py_idname(idname, but->optype->idname);
+    return std::string(idname, idname_len);
   }
 
-  *r_str = '\0';
-  return false;
+  return std::nullopt;
 }
 
-bool UI_but_online_manual_id_from_active(const bContext *C, char *r_str, size_t str_maxncpy)
+std::optional<std::string> UI_but_online_manual_id_from_active(const bContext *C)
 {
-  uiBut *but = UI_context_active_but_get(C);
-
-  if (but) {
-    return UI_but_online_manual_id(but, r_str, str_maxncpy);
+  if (uiBut *but = UI_context_active_but_get(C)) {
+    return UI_but_online_manual_id(but);
   }
-
-  *r_str = '\0';
-  return false;
+  return std::nullopt;
 }
 
 /* -------------------------------------------------------------------- */

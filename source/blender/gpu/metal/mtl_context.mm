@@ -25,7 +25,7 @@
 #include "GPU_shader.h"
 #include "GPU_storage_buffer.h"
 #include "GPU_texture.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_uniform_buffer.hh"
 #include "GPU_vertex_buffer.h"
 #include "intern/gpu_matrix_private.h"
 
@@ -1882,6 +1882,12 @@ void MTLContext::ensure_texture_bindings(
             /* Bind texture and sampler if the bound texture matches the type expected by the
              * shader. */
             id<MTLTexture> tex = bound_texture->get_metal_handle();
+
+            /* If texture resource is an image binding and has a non-default swizzle mask, we need
+             * to bind the source texture resource to retain image write access. */
+            if (!is_resource_sampler && bound_texture->has_custom_swizzle()) {
+              tex = bound_texture->get_metal_handle_base();
+            }
 
             if (bool(shader_texture_info.stage_mask & ShaderStage::COMPUTE)) {
               cs.bind_compute_texture(tex, slot);
