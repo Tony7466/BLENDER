@@ -531,7 +531,7 @@ void ShadowDirectional::cascade_tilemaps_distribution(Light &light, const Camera
   /* The bias is applied in cascade_level_range().
    * Using clipmap_lod_min here simplify code in shadow_directional_level().
    * Minus 1 because of the ceil(). */
-  light._clipmap_lod_bias = light.clipmap_lod_min - 1;
+  light.lod_bias = light.clipmap_lod_min - 1;
 }
 
 /************************************************************************
@@ -621,7 +621,7 @@ void ShadowDirectional::clipmap_tilemaps_distribution(Light &light,
   light.clipmap_lod_min = levels_range.first();
   light.clipmap_lod_max = levels_range.last();
 
-  light._clipmap_lod_bias = lod_bias;
+  light.lod_bias = lod_bias;
 }
 
 void ShadowDirectional::sync(const float4x4 &object_mat,

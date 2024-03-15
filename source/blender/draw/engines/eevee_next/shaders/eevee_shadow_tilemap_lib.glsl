@@ -126,7 +126,7 @@ float shadow_directional_level_fractional(LightData light, vec3 lP)
     float lod_min_half_size = exp2(float(light.clipmap_lod_min - 1));
     lod = length(lP.xy) * narrowing / lod_min_half_size;
   }
-  float clipmap_lod = lod + light._clipmap_lod_bias;
+  float clipmap_lod = lod + light.lod_bias;
   return clamp(clipmap_lod, light.clipmap_lod_min, light.clipmap_lod_max);
 }
 

@@ -793,8 +793,6 @@ struct LightData {
   float radius_squared;
   /** Spot angle tangent. */
   float spot_tan;
-  /** Reuse for directional LOD bias. */
-#define _clipmap_lod_bias spot_tan
 
   /** --- Shadow Data --- */
   /** Near clip distances. Float stored as int for atomic operations. */
