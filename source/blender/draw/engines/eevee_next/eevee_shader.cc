@@ -219,8 +219,8 @@ const char *ShaderModule::static_shader_create_info_name_get(eShaderType shader_
       return "eevee_reflection_probe_convolve";
     case SPHERE_PROBE_REMAP:
       return "eevee_reflection_probe_remap";
-    case SPHERE_PROBE_UPDATE_IRRADIANCE:
-      return "eevee_reflection_probe_update_irradiance";
+    case SPHERE_PROBE_IRRADIANCE:
+      return "eevee_reflection_probe_irradiance";
     case SPHERE_PROBE_SELECT:
       return "eevee_reflection_probe_select";
     case SHADOW_CLIPMAP_CLEAR:

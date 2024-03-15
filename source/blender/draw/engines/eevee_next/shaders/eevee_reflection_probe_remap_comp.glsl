@@ -6,25 +6,26 @@
 
 #pragma BLENDER_REQUIRE(eevee_reflection_probe_mapping_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
 /* Should be 16K. But could be lowered by doing reducion in more than one step. */
-shared vec4 local_sh_cooefs[gl_WorkGroupSize.x * gl_WorkGroupSize.y][4];
+shared vec4 local_sh_coefs[gl_WorkGroupSize.x * gl_WorkGroupSize.y][4];
 
-void spherical_harmonic_lds_store(int index, SphericalHarmonicL1 sh)
+void spherical_harmonic_lds_store(uint index, SphericalHarmonicL1 sh)
 {
-  local_sh_cooefs[index][0] = sh.L0.M0;
-  local_sh_cooefs[index][1] = sh.L1.Mn1;
-  local_sh_cooefs[index][2] = sh.L1.M0;
-  local_sh_cooefs[index][3] = sh.L1.Mp1;
+  local_sh_coefs[index][0] = sh.L0.M0;
+  local_sh_coefs[index][1] = sh.L1.Mn1;
+  local_sh_coefs[index][2] = sh.L1.M0;
+  local_sh_coefs[index][3] = sh.L1.Mp1;
 }
 
-SphericalHarmonicL1 spherical_harmonic_lds_load(int index)
+SphericalHarmonicL1 spherical_harmonic_lds_load(uint index)
 {
   SphericalHarmonicL1 sh;
-  sh.L0.M0 = local_sh_cooefs[index][0];
-  sh.L1.Mn1 = local_sh_cooefs[index][1];
-  sh.L1.M0 = local_sh_cooefs[index][2];
-  sh.L1.Mp1 = local_sh_cooefs[index][3];
+  sh.L0.M0 = local_sh_coefs[index][0];
+  sh.L1.Mn1 = local_sh_coefs[index][1];
+  sh.L1.M0 = local_sh_coefs[index][2];
+  sh.L1.Mp1 = local_sh_coefs[index][3];
   return sh;
 }
 
@@ -63,6 +64,10 @@ void main()
   ivec3 texel = ivec3(local_texel + write_coord.offset, write_coord.layer);
   imageStore(atlas_img, texel, vec4(radiance, 1.0));
 
+  if (!extract_sh) {
+    return;
+  }
+
   /* TODO(fclem): Do not include the 1px border in the SH processing. */
 
   /* Convert radiance to spherical harmonics. */
@@ -75,7 +80,7 @@ void main()
   float sample_weight = 1.0;
   /* TODO(fclem): Cleanup: Should spherical_harmonics_encode_signal_sample return a new sh instead
    * of adding to it? */
-  spherical_harmonics_encode_signal_sample(direction, radiance * sample_weight, sh);
+  spherical_harmonics_encode_signal_sample(direction, vec4(radiance, 1.0) * sample_weight, sh);
 
   spherical_harmonic_lds_store(gl_LocalInvocationIndex, sh);
 
@@ -83,8 +88,7 @@ void main()
   if (gl_LocalInvocationIndex == 0u) {
     /* Join results. */
     for (uint i = 1; i < gl_WorkGroupSize.x * gl_WorkGroupSize.y; i++) {
-      SphericalHarmonicL1 sh_other = spherical_harmonic_lds_load(i);
-      sh = spherical_harmonics_add(sh_other, sh);
+      sh = spherical_harmonics_add(sh, spherical_harmonic_lds_load(i));
     }
     SphereProbeHarmonic sphere_probe_sh;
     sphere_probe_sh.L0_M0 = sh.L0.M0;
@@ -93,6 +97,6 @@ void main()
     sphere_probe_sh.L1_Mp1 = sh.L1.Mp1;
 
     uint work_group_index = gl_NumWorkGroups.x * gl_WorkGroupID.y + gl_WorkGroupID.x;
-    spherical_harmonics[work_group_index] = sphere_probe_sh;
+    out_sh[work_group_index] = sphere_probe_sh;
   }
 }

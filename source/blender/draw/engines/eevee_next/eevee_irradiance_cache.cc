@@ -70,8 +70,6 @@ void VolumeProbeModule::init()
       /* Clear the pool to avoid any interpolation to undefined values. */
       irradiance_atlas_tx_.clear(float4(0.0f));
     }
-
-    inst_.sphere_probes.tag_world_irradiance_for_update();
   }
 
   if (irradiance_atlas_tx_.is_valid() == false) {
