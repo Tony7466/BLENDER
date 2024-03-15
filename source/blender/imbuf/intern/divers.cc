@@ -716,8 +716,7 @@ void IMB_float_from_rect_ex(ImBuf *dst, const ImBuf *src, const rcti *region_to_
                  "Source buffer should have a byte buffer assigned.");
   BLI_assert_msg(dst->x == src->x, "Source and destination buffer should have the same dimension");
   BLI_assert_msg(dst->y == src->y, "Source and destination buffer should have the same dimension");
-  BLI_assert_msg(dst->channels == src->channels,
-                 "Spurce and destination buffers should have the same number of channels.");
+  BLI_assert_msg(dst->channels > 0, "Destination buffer should have at least one channel.");
   BLI_assert_msg(region_to_update->xmin >= 0,
                  "Region to update should be clipped to the given buffers.");
   BLI_assert_msg(region_to_update->ymin >= 0,
@@ -775,6 +774,9 @@ void IMB_float_from_rect(ImBuf *ibuf)
           IMB_colormanagement_space_is_scene_linear(ibuf->byte_buffer.colorspace)))
     {
       ibuf->channels = 4;
+    }
+    else {
+      ibuf->channels = ibuf->planes / 8;
     }
 
     const size_t size = IMB_get_rect_len(ibuf) * ibuf->channels * sizeof(float);
