@@ -51,14 +51,14 @@
 #include "MEM_guardedalloc.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h" /* evil G.* */
+#include "BKE_global.hh" /* evil G.* */
 #include "BKE_idprop.h"
 #include "BKE_idtype.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 /* Only for types. */
-#include "BKE_node.h"
+#include "BKE_node.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -102,17 +102,30 @@ static PyObject *pyrna_unregister_class(PyObject *self, PyObject *py_class);
   "      Only the :class:`bpy.types.ID`, :class:`bpy.types.Bone` and\n" \
   "      :class:`bpy.types.PoseBone` classes support custom properties.\n"
 
-int pyrna_struct_validity_check(BPy_StructRNA *pysrna)
+int pyrna_struct_validity_check_only(const BPy_StructRNA *pysrna)
 {
   if (pysrna->ptr.type) {
     return 0;
   }
-  PyErr_Format(
-      PyExc_ReferenceError, "StructRNA of type %.200s has been removed", Py_TYPE(pysrna)->tp_name);
   return -1;
 }
 
-int pyrna_prop_validity_check(BPy_PropertyRNA *self)
+void pyrna_struct_validity_exception_only(const BPy_StructRNA *pysrna)
+{
+  PyErr_Format(
+      PyExc_ReferenceError, "StructRNA of type %.200s has been removed", Py_TYPE(pysrna)->tp_name);
+}
+
+int pyrna_struct_validity_check(const BPy_StructRNA *pysrna)
+{
+  if (pysrna->ptr.type) {
+    return 0;
+  }
+  pyrna_struct_validity_exception_only(pysrna);
+  return -1;
+}
+
+int pyrna_prop_validity_check(const BPy_PropertyRNA *self)
 {
   if (self->ptr.type) {
     return 0;
@@ -924,10 +937,10 @@ static PyObject *pyrna_struct_repr(BPy_StructRNA *self)
         "bpy.data.%s[%R]", BKE_idtype_idcode_to_name_plural(GS(id->name)), tmp_str);
   }
   else {
-    const char *path;
     ID *real_id = nullptr;
-    path = RNA_path_from_real_ID_to_struct(G_MAIN, &self->ptr, &real_id);
-    if (path != nullptr) {
+    const std::optional<std::string> path = RNA_path_from_real_ID_to_struct(
+        G_MAIN, &self->ptr, &real_id);
+    if (path) {
       /* 'real_id' may be nullptr in some cases, although the only valid one is evaluated data,
        * which should have already been caught above.
        * So assert, but handle it without crashing for release builds. */
@@ -939,7 +952,7 @@ static PyObject *pyrna_struct_repr(BPy_StructRNA *self)
         ret = PyUnicode_FromFormat("bpy.data.%s[%R].%s",
                                    BKE_idtype_idcode_to_name_plural(GS(real_id->name)),
                                    tmp_str,
-                                   path);
+                                   path->c_str());
       }
       else {
         /* Can't find the path, print something useful as a fallback. */
@@ -948,7 +961,6 @@ static PyObject *pyrna_struct_repr(BPy_StructRNA *self)
                                    tmp_str,
                                    RNA_struct_identifier(self->ptr.type));
       }
-      MEM_freeN((void *)path);
     }
     else {
       /* Can't find the path, print something useful as a fallback. */
@@ -1038,7 +1050,6 @@ static PyObject *pyrna_prop_repr_ex(BPy_PropertyRNA *self, const int index_dim, 
   ID *id = self->ptr.owner_id;
   PyObject *tmp_str;
   PyObject *ret;
-  const char *path;
 
   PYRNA_PROP_CHECK_OBJ(self);
 
@@ -1052,7 +1063,7 @@ static PyObject *pyrna_prop_repr_ex(BPy_PropertyRNA *self, const int index_dim, 
   /* Note that using G_MAIN is absolutely not ideal, but we have no access to actual Main DB from
    * here. */
   ID *real_id = nullptr;
-  path = RNA_path_from_real_ID_to_property_index(
+  const std::optional<std::string> path = RNA_path_from_real_ID_to_property_index(
       G_MAIN, &self->ptr, self->prop, index_dim, index, &real_id);
 
   if (path) {
@@ -1060,14 +1071,12 @@ static PyObject *pyrna_prop_repr_ex(BPy_PropertyRNA *self, const int index_dim, 
       Py_DECREF(tmp_str);
       tmp_str = PyUnicode_FromString(real_id->name + 2);
     }
-    const char *data_delim = (path[0] == '[') ? "" : ".";
+    const char *data_delim = ((*path)[0] == '[') ? "" : ".";
     ret = PyUnicode_FromFormat("bpy.data.%s[%R]%s%s",
                                BKE_idtype_idcode_to_name_plural(GS(real_id->name)),
                                tmp_str,
                                data_delim,
-                               path);
-
-    MEM_freeN((void *)path);
+                               path->c_str());
   }
   else {
     /* Can't find the path, print something useful as a fallback. */
@@ -1163,6 +1172,14 @@ static void pyrna_struct_dealloc(BPy_StructRNA *self)
   if (self->reference) {
     PyObject_GC_UnTrack(self);
     pyrna_struct_clear(self);
+  }
+  else {
+    PyTypeObject *base = Py_TYPE(self)->tp_base;
+    /* Python temporarily tracks these types when freeing, see Python bug 26617. */
+    if (base && PyType_IS_GC(base)) {
+      PyObject_GC_UnTrack(self);
+    }
+    BLI_assert(!PyObject_GC_IsTracked((PyObject *)self));
   }
 #endif /* !USE_PYRNA_STRUCT_REFERENCE */
 
@@ -3892,7 +3909,6 @@ PyDoc_STRVAR(
 static PyObject *pyrna_struct_path_from_id(BPy_StructRNA *self, PyObject *args)
 {
   const char *name = nullptr;
-  const char *path;
   PropertyRNA *prop;
   PyObject *ret;
 
@@ -3902,6 +3918,7 @@ static PyObject *pyrna_struct_path_from_id(BPy_StructRNA *self, PyObject *args)
     return nullptr;
   }
 
+  std::optional<std::string> path;
   if (name) {
     prop = RNA_struct_find_property(&self->ptr, name);
     if (prop == nullptr) {
@@ -3918,7 +3935,7 @@ static PyObject *pyrna_struct_path_from_id(BPy_StructRNA *self, PyObject *args)
     path = RNA_path_from_ID_to_struct(&self->ptr);
   }
 
-  if (path == nullptr) {
+  if (!path) {
     if (name) {
       PyErr_Format(PyExc_ValueError,
                    "%.200s.path_from_id(\"%s\") found, but does not support path creation",
@@ -3933,8 +3950,7 @@ static PyObject *pyrna_struct_path_from_id(BPy_StructRNA *self, PyObject *args)
     return nullptr;
   }
 
-  ret = PyUnicode_FromString(path);
-  MEM_freeN((void *)path);
+  ret = PyUnicode_FromString(path->c_str());
 
   return ret;
 }
@@ -3950,13 +3966,12 @@ PyDoc_STRVAR(
     "   :rtype: str\n");
 static PyObject *pyrna_prop_path_from_id(BPy_PropertyRNA *self)
 {
-  const char *path;
   PropertyRNA *prop = self->prop;
   PyObject *ret;
 
-  path = RNA_path_from_ID_to_property(&self->ptr, self->prop);
+  const std::optional<std::string> path = RNA_path_from_ID_to_property(&self->ptr, self->prop);
 
-  if (path == nullptr) {
+  if (!path) {
     PyErr_Format(PyExc_ValueError,
                  "%.200s.%.200s.path_from_id() does not support path creation for this type",
                  RNA_struct_identifier(self->ptr.type),
@@ -3964,8 +3979,7 @@ static PyObject *pyrna_prop_path_from_id(BPy_PropertyRNA *self)
     return nullptr;
   }
 
-  ret = PyUnicode_FromString(path);
-  MEM_freeN((void *)path);
+  ret = PyUnicode_FromString(path->c_str());
 
   return ret;
 }
@@ -4389,7 +4403,8 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
   PropertyRNA *prop;
   FunctionRNA *func;
 
-  PYRNA_STRUCT_CHECK_OBJ(self);
+  /* Allow `__class__` so `isinstance(ob, cls)` can be used without raising an exception. */
+  PYRNA_STRUCT_CHECK_OBJ_UNLESS(self, name && STREQ(name, "__class__"));
 
   if (name == nullptr) {
     PyErr_SetString(PyExc_AttributeError, "bpy_struct: __getattr__ must be a string");
@@ -4469,7 +4484,7 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
               PointerRNA idptr;
 
               PointerRNA *base_ptr;
-              char *path_str;
+              std::optional<std::string> path_str;
 
               if (newptr.owner_id) {
                 idptr = RNA_id_pointer_create(newptr.owner_id);
@@ -4485,10 +4500,8 @@ static PyObject *pyrna_struct_getattro(BPy_StructRNA *self, PyObject *pyname)
                 ret = PyTuple_New(3);
                 PyTuple_SET_ITEMS(ret,
                                   pyrna_struct_CreatePyObject(base_ptr),
-                                  PyUnicode_FromString(path_str),
+                                  PyUnicode_FromString(path_str->c_str()),
                                   PyLong_FromLong(newindex));
-
-                MEM_freeN(path_str);
               }
               else {
                 ret = Py_None;
@@ -6783,17 +6796,14 @@ static PyObject *pyrna_func_call(BPy_FunctionRNA *self, PyObject *args, PyObject
 static PyObject *pyrna_func_doc_get(BPy_FunctionRNA *self, void * /*closure*/)
 {
   PyObject *ret;
-  char *args;
 
-  args = RNA_function_as_string_keywords(nullptr, self->func, true, true, INT_MAX);
+  std::string args = RNA_function_as_string_keywords(nullptr, self->func, true, true, INT_MAX);
 
   ret = PyUnicode_FromFormat("%.200s.%.200s(%.200s)\n%s",
                              RNA_struct_identifier(self->ptr.type),
                              RNA_function_identifier(self->func),
-                             args,
+                             args.c_str(),
                              RNA_function_ui_description(self->func));
-
-  MEM_freeN(args);
 
   return ret;
 }
@@ -7650,6 +7660,12 @@ PyObject *pyrna_struct_CreatePyObject(PointerRNA *ptr)
       pyrna = (BPy_StructRNA *)PyObject_GC_New(BPy_StructRNA, &pyrna_struct_Type);
 #else
       pyrna = (BPy_StructRNA *)PyObject_New(BPy_StructRNA, &pyrna_struct_Type);
+#endif
+
+#ifdef USE_PYRNA_STRUCT_REFERENCE
+      /* #PyType_GenericAlloc will have set tracking.
+       * We only want tracking when `StructRNA.reference` has been set. */
+      PyObject_GC_UnTrack(pyrna);
 #endif
 
 #ifdef USE_WEAKREFS
@@ -8747,7 +8763,9 @@ static int bpy_class_call(bContext *C, PointerRNA *ptr, FunctionRNA *func, Param
   if (err != -1 && (is_staticmethod || is_classmethod || py_class_instance)) {
     PyObject *item = PyObject_GetAttrString((PyObject *)py_class, RNA_function_identifier(func));
 
-    if (item) {
+    const bool item_type_valid = (item != nullptr) &&
+                                 (is_staticmethod ? PyMethod_Check(item) : PyFunction_Check(item));
+    if (item_type_valid) {
       funcptr = RNA_pointer_create(nullptr, &RNA_Function, func);
 
       if (is_staticmethod) {

@@ -7,10 +7,12 @@
  */
 
 #include <cstdio>
-#include <exception>
 #include <memory>
+#include <system_error>
 
-#include "BKE_scene.h"
+#include "BKE_context.hh"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 
 #include "BLI_path_util.h"
 #include "BLI_string.h"
@@ -185,7 +187,7 @@ static void write_mesh_objects(const Span<std::unique_ptr<OBJMesh>> exportable_a
     index_offsets.append(offsets);
     offsets.vertex_offset += obj.tot_vertices();
     offsets.uv_vertex_offset += obj.tot_uv_vertices();
-    offsets.normal_offset += obj.tot_normal_indices();
+    offsets.normal_offset += obj.get_normal_coords().size();
   }
 
   /* Parallel over meshes: main result writing. */
@@ -202,10 +204,10 @@ static void write_mesh_objects(const Span<std::unique_ptr<OBJMesh>> exportable_a
           obj.calc_smooth_groups(export_params.smooth_groups_bitflags);
         }
         if (export_params.export_materials) {
-          obj.calc_poly_order();
+          obj.calc_face_order();
         }
         if (export_params.export_normals) {
-          obj_writer.write_poly_normals(fh, obj);
+          obj_writer.write_normals(fh, obj);
         }
         if (export_params.export_uv) {
           obj_writer.write_uv_coords(fh, obj);
@@ -219,7 +221,7 @@ static void write_mesh_objects(const Span<std::unique_ptr<OBJMesh>> exportable_a
           }
           return mtl_writer->mtlmaterial_name((*obj_mtlindices)[s]);
         };
-        obj_writer.write_poly_elements(fh, index_offsets[i], obj, matname_fn);
+        obj_writer.write_face_elements(fh, index_offsets[i], obj, matname_fn);
       }
       obj_writer.write_edges_indices(fh, index_offsets[i], obj);
 
@@ -259,6 +261,7 @@ void export_frame(Depsgraph *depsgraph, const OBJExportParams &export_params, co
   }
   catch (const std::system_error &ex) {
     print_exception_error(ex);
+    BKE_reportf(export_params.reports, RPT_ERROR, "OBJ Export: Cannot open file '%s'", filepath);
     return;
   }
   if (!frame_writer) {
@@ -272,6 +275,10 @@ void export_frame(Depsgraph *depsgraph, const OBJExportParams &export_params, co
     }
     catch (const std::system_error &ex) {
       print_exception_error(ex);
+      BKE_reportf(export_params.reports,
+                  RPT_WARNING,
+                  "OBJ Export: Cannot create mtl file for '%s'",
+                  filepath);
     }
   }
 
@@ -283,9 +290,9 @@ void export_frame(Depsgraph *depsgraph, const OBJExportParams &export_params, co
   write_mesh_objects(exportable_as_mesh, *frame_writer, mtl_writer.get(), export_params);
   if (mtl_writer) {
     mtl_writer->write_header(export_params.blen_filepath);
-    char dest_dir[PATH_MAX];
+    char dest_dir[FILE_MAX];
     if (export_params.file_base_for_tests[0] == '\0') {
-      BLI_path_split_dir_part(export_params.filepath, dest_dir, PATH_MAX);
+      BLI_path_split_dir_part(export_params.filepath, dest_dir, sizeof(dest_dir));
     }
     else {
       STRNCPY(dest_dir, export_params.file_base_for_tests);

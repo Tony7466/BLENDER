@@ -20,7 +20,7 @@
 #include "DNA_space_types.h"
 #include "DNA_windowmanager_types.h" /* for eReportType */
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
 struct BlendFileData;
 struct BlendFileReadParams;
@@ -67,7 +67,7 @@ struct FileData {
 
   /** Used for relative paths handling.
    *
-   * Typically the actual filepath of the read blendfile, except when recovering
+   * Typically the actual filepath of the read blend-file, except when recovering
    * save-on-exit/autosave files. In the latter case, it will be the path of the file that
    * generated the auto-saved one being recovered.
    *

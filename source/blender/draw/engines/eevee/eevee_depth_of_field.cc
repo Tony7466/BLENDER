@@ -188,7 +188,7 @@ int EEVEE_depth_of_field_init(EEVEE_ViewLayerData * /*sldata*/, EEVEE_Data *veda
   const DRWContextState *draw_ctx = DRW_context_state_get();
   const Scene *scene_eval = DEG_get_evaluated_scene(draw_ctx->depsgraph);
 
-  Camera *cam = static_cast<Camera *>(
+  const Camera *cam = static_cast<const Camera *>(
       (camera != nullptr && camera->type == OB_CAMERA) ? camera->data : nullptr);
 
   if (cam && (cam->dof.flag & CAM_DOF_ENABLED)) {
@@ -527,15 +527,15 @@ static void dof_dilate_tiles_pass_draw(EEVEE_FramebufferList *fbl,
       GPU_framebuffer_bind(fbl->dof_dilate_tiles_fb);
       DRW_draw_pass(drw_pass);
 
-      SWAP(GPUFrameBuffer *, fbl->dof_dilate_tiles_fb, fbl->dof_flatten_tiles_fb);
-      SWAP(GPUTexture *, fx->dof_coc_dilated_tiles_bg_tx, fx->dof_coc_tiles_bg_tx);
-      SWAP(GPUTexture *, fx->dof_coc_dilated_tiles_fg_tx, fx->dof_coc_tiles_fg_tx);
+      std::swap(fbl->dof_dilate_tiles_fb, fbl->dof_flatten_tiles_fb);
+      std::swap(fx->dof_coc_dilated_tiles_bg_tx, fx->dof_coc_tiles_bg_tx);
+      std::swap(fx->dof_coc_dilated_tiles_fg_tx, fx->dof_coc_tiles_fg_tx);
     }
   }
   /* Swap again so that final textures are dof_coc_dilated_tiles_*_tx. */
-  SWAP(GPUFrameBuffer *, fbl->dof_dilate_tiles_fb, fbl->dof_flatten_tiles_fb);
-  SWAP(GPUTexture *, fx->dof_coc_dilated_tiles_bg_tx, fx->dof_coc_tiles_bg_tx);
-  SWAP(GPUTexture *, fx->dof_coc_dilated_tiles_fg_tx, fx->dof_coc_tiles_fg_tx);
+  std::swap(fbl->dof_dilate_tiles_fb, fbl->dof_flatten_tiles_fb);
+  std::swap(fx->dof_coc_dilated_tiles_bg_tx, fx->dof_coc_tiles_bg_tx);
+  std::swap(fx->dof_coc_dilated_tiles_fg_tx, fx->dof_coc_tiles_fg_tx);
 }
 
 /**

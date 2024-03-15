@@ -70,7 +70,7 @@ static inline BL::Mesh object_to_mesh(BL::BlendData & /*data*/,
                                       bool /*calc_undeformed*/,
                                       Mesh::SubdivisionType subdivision_type)
 {
-  /* TODO: make this work with copy-on-write, modifiers are already evaluated. */
+  /* TODO: make this work with copy-on-evaluation, modifiers are already evaluated. */
 #if 0
   bool subsurf_mod_show_render = false;
   bool subsurf_mod_show_viewport = false;
@@ -593,9 +593,8 @@ static inline bool object_use_deform_motion(BL::Object &b_parent, BL::Object &b_
   /* If motion blur is enabled for the object we also check
    * whether it's enabled for the parent object as well.
    *
-   * This way we can control motion blur from the dupligroup
-   * duplicator much easier.
-   */
+   * This way we can control motion blur from the dupli-group
+   * duplicator much easier. */
   if (use_deform_motion && b_parent.ptr.data != b_ob.ptr.data) {
     PointerRNA parent_cobject = RNA_pointer_get(&b_parent.ptr, "cycles");
     use_deform_motion &= get_boolean(parent_cobject, "use_deform_motion");

@@ -15,7 +15,6 @@
 
 #include "fast_float.h"
 
-#include <algorithm>
 #include <charconv>
 
 static bool is_whitespace(char c)
@@ -553,7 +552,7 @@ static const char *load_tristrips_element(PlyReadBuffer &file,
       int a = strip[i - 2], b = strip[i - 1], c = strip[i];
       /* Flip odd triangles. */
       if ((i - start) & 1) {
-        SWAP(int, a, b);
+        std::swap(a, b);
       }
       /* Add triangle if it's not degenerate. */
       if (a != b && a != c && b != c) {

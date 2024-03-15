@@ -87,20 +87,13 @@ class DATA_UL_bone_collections(UIList):
         active_bone = armature.edit_bones.active or armature.bones.active
         has_active_bone = active_bone and bcoll.name in active_bone.collections
 
-        layout.prop(bcoll, "name", text="", emboss=False,
-                    icon='DOT' if has_active_bone else 'BLANK1')
+        layout.prop(bcoll, "name", text="", emboss=False, icon='DOT' if has_active_bone else 'BLANK1')
 
         if armature.override_library:
             icon = 'LIBRARY_DATA_OVERRIDE' if bcoll.is_local_override else 'BLANK1'
-            layout.prop(
-                bcoll,
-                "is_local_override",
-                text="",
-                emboss=False,
-                icon=icon)
+            layout.prop(bcoll, "is_local_override", text="", emboss=False, icon=icon)
 
-        layout.prop(bcoll, "is_visible", text="", emboss=False,
-                    icon='HIDE_OFF' if bcoll.is_visible else 'HIDE_ON')
+        layout.prop(bcoll, "is_visible", text="", emboss=False, icon='HIDE_OFF' if bcoll.is_visible else 'HIDE_ON')
 
 
 class DATA_PT_bone_collections(ArmatureButtonsPanel, Panel):
@@ -118,13 +111,15 @@ class DATA_PT_bone_collections(ArmatureButtonsPanel, Panel):
         col = row.column(align=True)
         col.operator("armature.collection_add", icon='ADD', text="")
         col.operator("armature.collection_remove", icon='REMOVE', text="")
+
+        col.separator()
+
+        col.menu("ARMATURE_MT_collection_context_menu", icon='DOWNARROW_HLT', text="")
+
         if active_bcoll:
             col.separator()
             col.operator("armature.collection_move", icon='TRIA_UP', text="").direction = 'UP'
             col.operator("armature.collection_move", icon='TRIA_DOWN', text="").direction = 'DOWN'
-            col.separator()
-
-        col.menu("ARMATURE_MT_collection_context_menu", icon='DOWNARROW_HLT', text="")
 
         row = layout.row()
 

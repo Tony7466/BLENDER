@@ -11,13 +11,12 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_modifier_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
-#include "BKE_main.hh"
+#include "BKE_global.hh"
 #include "BKE_mesh.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
@@ -25,7 +24,7 @@
 #include "BKE_particle.h"
 #include "BKE_pbvh_api.hh"
 #include "BKE_pointcache.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "BLI_index_range.hh"
 
@@ -100,7 +99,7 @@ void enable_ex(Main *bmain, Depsgraph *depsgraph, Object *ob)
   BM_mesh_bm_from_me(ss->bm, mesh, &convert_params);
   triangulate(ss->bm);
 
-  BM_data_layer_add_named(ss->bm, &ss->bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
+  BM_data_layer_ensure_named(ss->bm, &ss->bm->vdata, CD_PROP_FLOAT, ".sculpt_mask");
 
   /* Make sure the data for existing faces are initialized. */
   if (mesh->faces_num != ss->bm->totface) {

@@ -19,9 +19,9 @@
 #include "BKE_layer.hh"
 #include "BKE_material.h"
 #include "BKE_pbvh.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_light_types.h"
 #include "DNA_material_types.h"
@@ -30,12 +30,12 @@
 #include "DNA_world_types.h"
 
 #include "GPU_framebuffer.h"
-#include "GPU_material.h"
+#include "GPU_material.hh"
 #include "GPU_primitive.h"
 #include "GPU_shader.h"
 #include "GPU_storage_buffer.h"
 #include "GPU_texture.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_uniform_buffer.hh"
 
 #include "draw_cache.hh"
 #include "draw_common.h"
@@ -597,9 +597,6 @@ void DRW_shgroup_uniform_ivec4(DRWShadingGroup *shgroup,
                                int arraysize);
 void DRW_shgroup_uniform_mat3(DRWShadingGroup *shgroup, const char *name, const float (*value)[3]);
 void DRW_shgroup_uniform_mat4(DRWShadingGroup *shgroup, const char *name, const float (*value)[4]);
-/**
- * Only to be used when image load store is supported (#GPU_shader_image_load_store_support()).
- */
 void DRW_shgroup_uniform_image(DRWShadingGroup *shgroup, const char *name, const GPUTexture *tex);
 void DRW_shgroup_uniform_image_ref(DRWShadingGroup *shgroup, const char *name, GPUTexture **tex);
 

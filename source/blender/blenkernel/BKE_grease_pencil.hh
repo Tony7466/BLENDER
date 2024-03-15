@@ -34,14 +34,6 @@ namespace blender::bke {
 
 namespace greasepencil {
 
-struct DrawingTransforms {
-  float4x4 world_space_to_layer_space;
-  float4x4 layer_space_to_world_space;
-
-  DrawingTransforms() = default;
-  DrawingTransforms(const Object &grease_pencil_ob);
-};
-
 class DrawingRuntime {
  public:
   /**
@@ -156,6 +148,7 @@ class Layer;
   bool is_selected() const; \
   void set_selected(bool selected); \
   bool use_onion_skinning() const; \
+  bool use_masks() const; \
   bool is_child_of(const LayerGroup &group) const;
 
 /* Implements the forwarding of the methods defined by #TREENODE_COMMON_METHODS. */
@@ -199,6 +192,10 @@ class Layer;
   inline bool class_name::use_onion_skinning() const \
   { \
     return this->as_node().use_onion_skinning(); \
+  } \
+  inline bool class_name::use_masks() const \
+  { \
+    return this->as_node().use_masks(); \
   } \
   inline bool class_name::is_child_of(const LayerGroup &group) const \
   { \
@@ -413,7 +410,7 @@ class Layer : public ::GreasePencilLayer {
   bool has_drawing_at(const int frame_number) const;
 
   /**
-   * \returns the key of the active frame at \a frame_number or std::nullopt if there is no frame.
+   * \returns the key of the active frame at \a frame_number or #std::nullopt if there is no frame.
    */
   std::optional<FramesMapKey> frame_key_at(int frame_number) const;
 
@@ -438,14 +435,38 @@ class Layer : public ::GreasePencilLayer {
   void tag_frames_map_keys_changed();
 
   /**
-   * Prepare the DNA #GreasePencilLayer data before blendfile writing.
+   * Prepare the DNA #GreasePencilLayer data before blend-file writing.
    */
   void prepare_for_dna_write();
 
   /**
-   * Update from DNA #GreasePencilLayer data after blendfile reading.
+   * Update from DNA #GreasePencilLayer data after blend-file reading.
    */
   void update_from_dna_read();
+
+  /**
+   * Returns the transformation from layer space to object space.
+   */
+  float4x4 to_object_space(const Object &object) const;
+
+  /**
+   * Returns the transformation from layer space to world space.
+   */
+  float4x4 to_world_space(const Object &object) const;
+
+  /**
+   * Returns the name of the parent bone. Should only be used in case the parent object is an
+   * armature.
+   */
+  StringRefNull parent_bone_name() const;
+  void set_parent_bone_name(const char *new_name);
+
+  /**
+   * Returns the view layer name that this layer should be rendered in or an empty
+   * `StringRefNull` if no such name is set.
+   */
+  StringRefNull view_layer_name() const;
+  void set_view_layer_name(const char *new_name);
 
  private:
   using SortedKeysIterator = const int *;
@@ -460,6 +481,16 @@ class Layer : public ::GreasePencilLayer {
    */
   SortedKeysIterator remove_leading_null_frames_in_range(SortedKeysIterator begin,
                                                          SortedKeysIterator end);
+
+  /**
+   * The local transform of the layer (in layer space, not object space).
+   */
+  float4x4 local_transform() const;
+
+  /**
+   * Get the parent to world matrix for this layer.
+   */
+  float4x4 parent_to_world(const Object &parent) const;
 };
 
 class LayerGroupRuntime {
@@ -493,6 +524,8 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   explicit LayerGroup(StringRefNull name);
   LayerGroup(const LayerGroup &other);
   ~LayerGroup();
+
+  LayerGroup &operator=(const LayerGroup &other);
 
  public:
   /* Define the common functions for #TreeNode. */
@@ -543,12 +576,12 @@ class LayerGroup : public ::GreasePencilLayerTreeGroup {
   void print_nodes(StringRefNull header) const;
 
   /**
-   * Prepare the DNA #GreasePencilLayerTreeGroup data before blendfile writing.
+   * Prepare the DNA #GreasePencilLayerTreeGroup data before blend-file writing.
    */
   void prepare_for_dna_write();
 
   /**
-   * Update from DNA #GreasePencilLayerTreeGroup data after blendfile reading.
+   * Update from DNA #GreasePencilLayerTreeGroup data after blend-file reading.
    */
   void update_from_dna_read();
 
@@ -657,6 +690,11 @@ inline bool TreeNode::use_onion_skinning() const
 {
   return ((this->flag & GP_LAYER_TREE_NODE_USE_ONION_SKINNING) != 0);
 }
+inline bool TreeNode::use_masks() const
+{
+  return ((this->flag & GP_LAYER_TREE_NODE_HIDE_MASKS) == 0) &&
+         (!this->parent_group() || this->parent_group()->as_node().use_masks());
+}
 inline bool TreeNode::is_child_of(const LayerGroup &group) const
 {
   if (const LayerGroup *parent = this->parent_group()) {
@@ -703,13 +741,6 @@ inline LayerGroup &Layer::parent_group() const
 
 TREENODE_COMMON_METHODS_FORWARD_IMPL(LayerGroup);
 
-namespace convert {
-
-void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
-                                                   GreasePencilDrawing &r_drawing);
-void legacy_gpencil_to_grease_pencil(Main &main, GreasePencil &grease_pencil, bGPdata &gpd);
-
-}  // namespace convert
 }  // namespace greasepencil
 
 class GreasePencilRuntime {

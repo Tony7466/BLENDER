@@ -21,6 +21,8 @@ __all__ = (
     "refresh_script_paths",
     "app_template_paths",
     "register_class",
+    "register_cli_command",
+    "unregister_cli_command",
     "register_manual_map",
     "unregister_manual_map",
     "register_classes_factory",
@@ -49,9 +51,11 @@ from _bpy import (
     flip_name,
     unescape_identifier,
     register_class,
+    register_cli_command,
     resource_path,
     script_paths as _bpy_script_paths,
     unregister_class,
+    unregister_cli_command,
     user_resource as _user_resource,
     system_resource,
 )
@@ -219,8 +223,8 @@ def load_scripts(*, reload_scripts=False, refresh_scripts=False, extensions=True
         # to reload. note that they will only actually reload of the
         # modification time changes. This `won't` work for packages so...
         # its not perfect.
-        for module_name in [ext.module for ext in _preferences.addons]:
-            _addon_utils.disable(module_name)
+        for addon_module_name in [ext.module for ext in _preferences.addons]:
+            _addon_utils.disable(addon_module_name)
 
     def register_module_call(mod):
         register = getattr(mod, "register", None)

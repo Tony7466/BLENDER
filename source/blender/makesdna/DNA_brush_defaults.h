@@ -10,7 +10,6 @@
 
 #include "DNA_texture_defaults.h"
 
-/* Struct members on own line. */
 /* clang-format off */
 
 /* -------------------------------------------------------------------- */
@@ -66,6 +65,7 @@
  \
     .jitter = 0.0f, \
  \
+    .input_samples = 1, \
     /* Dash */ \
     .dash_ratio = 1.0f, \
     .dash_samples = 20, \

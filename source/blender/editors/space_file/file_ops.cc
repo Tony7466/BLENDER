@@ -14,18 +14,16 @@
 #include "BKE_appdir.hh"
 #include "BKE_blendfile.hh"
 #include "BKE_context.hh"
-#include "BKE_global.h"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #ifdef WIN32
 #  include "BLI_winstuff.h"
 #endif
 
-#include "ED_asset.hh"
 #include "ED_fileselect.hh"
 #include "ED_screen.hh"
 #include "ED_select_utils.hh"
@@ -2700,6 +2698,15 @@ static int file_directory_new_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int file_directory_new_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(
+        C, op, IFACE_("Create new directory?"), nullptr, IFACE_("Create"), ALERT_ICON_NONE, false);
+  }
+  return file_directory_new_exec(C, op);
+}
+
 void FILE_OT_directory_new(wmOperatorType *ot)
 {
   PropertyRNA *prop;
@@ -2710,7 +2717,7 @@ void FILE_OT_directory_new(wmOperatorType *ot)
   ot->idname = "FILE_OT_directory_new";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = file_directory_new_invoke;
   ot->exec = file_directory_new_exec;
   /* File browsing only operator (not asset browsing). */
   ot->poll = ED_operator_file_browsing_active; /* <- important, handler is on window level */
@@ -3188,6 +3195,12 @@ static int file_delete_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
+static int file_delete_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(
+      C, op, IFACE_("Delete selected files?"), nullptr, IFACE_("Delete"), ALERT_ICON_NONE, false);
+}
+
 void FILE_OT_delete(wmOperatorType *ot)
 {
   /* identifiers */
@@ -3196,7 +3209,7 @@ void FILE_OT_delete(wmOperatorType *ot)
   ot->idname = "FILE_OT_delete";
 
   /* api callbacks */
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = file_delete_invoke;
   ot->exec = file_delete_exec;
   ot->poll = file_delete_poll; /* <- important, handler is on window level */
 }

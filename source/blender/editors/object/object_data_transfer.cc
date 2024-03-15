@@ -9,9 +9,7 @@
 #include "DNA_mesh_types.h"
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
-#include "DNA_scene_types.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_math_matrix.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -19,17 +17,16 @@
 #include "BKE_context.hh"
 #include "BKE_customdata.hh"
 #include "BKE_data_transfer.h"
-#include "BKE_deform.h"
+#include "BKE_deform.hh"
 #include "BKE_mesh_mapping.hh"
 #include "BKE_mesh_remap.hh"
-#include "BKE_mesh_runtime.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_query.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -183,28 +180,28 @@ static const EnumPropertyItem *dt_layers_select_src_itemf(bContext *C,
   else if (data_type == DT_TYPE_UV) {
     const Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     const Object *ob_src_eval = DEG_get_evaluated_object(depsgraph, ob_src);
-    const Mesh *me_eval = BKE_object_get_evaluated_mesh_no_subsurf(ob_src_eval);
-    if (!me_eval) {
+    const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(ob_src_eval);
+    if (!mesh_eval) {
       RNA_enum_item_end(&item, &totitem);
       *r_free = true;
       return item;
     }
-    int num_data = CustomData_number_of_layers(&me_eval->corner_data, CD_PROP_FLOAT2);
+    int num_data = CustomData_number_of_layers(&mesh_eval->corner_data, CD_PROP_FLOAT2);
 
     RNA_enum_item_add_separator(&item, &totitem);
 
     for (int i = 0; i < num_data; i++) {
       tmp_item.value = i;
       tmp_item.identifier = tmp_item.name = CustomData_get_layer_name(
-          &me_eval->corner_data, CD_PROP_FLOAT2, i);
+          &mesh_eval->corner_data, CD_PROP_FLOAT2, i);
       RNA_enum_item_add(&item, &totitem, &tmp_item);
     }
   }
   else if (data_type & DT_TYPE_VCOL_ALL) {
     const Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
     const Object *ob_src_eval = DEG_get_evaluated_object(depsgraph, ob_src);
-    const Mesh *me_eval = BKE_object_get_evaluated_mesh_no_subsurf(ob_src_eval);
-    if (!me_eval) {
+    const Mesh *mesh_eval = BKE_object_get_evaluated_mesh_no_subsurf(ob_src_eval);
+    if (!mesh_eval) {
       RNA_enum_item_end(&item, &totitem);
       *r_free = true;
       return item;
@@ -226,10 +223,10 @@ static const EnumPropertyItem *dt_layers_select_src_itemf(bContext *C,
     }
 
     if (data_type & (DT_TYPE_MLOOPCOL_VERT | DT_TYPE_MPROPCOL_VERT)) {
-      dt_add_vcol_layers(&me_eval->vert_data, cddata_masks.vmask, &item, &totitem);
+      dt_add_vcol_layers(&mesh_eval->vert_data, cddata_masks.vmask, &item, &totitem);
     }
     if (data_type & (DT_TYPE_MLOOPCOL_LOOP | DT_TYPE_MPROPCOL_LOOP)) {
-      dt_add_vcol_layers(&me_eval->corner_data, cddata_masks.lmask, &item, &totitem);
+      dt_add_vcol_layers(&mesh_eval->corner_data, cddata_masks.lmask, &item, &totitem);
     }
   }
 
@@ -476,7 +473,7 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
   }
 
   if (reverse_transfer) {
-    SWAP(int, layers_src, layers_dst);
+    std::swap(layers_src, layers_dst);
   }
 
   if (fromto_idx != DT_MULTILAYER_INDEX_INVALID) {
@@ -490,7 +487,7 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
     Object *ob_dst = static_cast<Object *>(ctx_ob_dst->ptr.data);
 
     if (reverse_transfer) {
-      SWAP(Object *, ob_src, ob_dst);
+      std::swap(ob_src, ob_dst);
     }
 
     if (data_transfer_exec_is_object_valid(op, ob_src, ob_dst, reverse_transfer)) {
@@ -529,7 +526,7 @@ static int data_transfer_exec(bContext *C, wmOperator *op)
     }
 
     if (reverse_transfer) {
-      SWAP(Object *, ob_src, ob_dst);
+      std::swap(ob_src, ob_dst);
     }
   }
 

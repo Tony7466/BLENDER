@@ -38,7 +38,6 @@ if inside_blender:
 def get_arguments(filepath, output_filepath):
     return [
         "--background",
-        "-noaudio",
         "--factory-startup",
         "--enable-autoexec",
         "--debug-memory",
@@ -59,6 +58,7 @@ def create_argparse():
     parser.add_argument("-oiiotool", nargs=1)
     parser.add_argument("-export_method", nargs=1)
     parser.add_argument('--batch', default=False, action='store_true')
+    parser.add_argument('--fail-silently', default=False, action='store_true')
     return parser
 
 
@@ -89,7 +89,7 @@ def main():
 
     os.environ['BLENDER_HYDRA_EXPORT_METHOD'] = export_method
 
-    ok = report.run(test_dir, blender, get_arguments, batch=args.batch)
+    ok = report.run(test_dir, blender, get_arguments, batch=args.batch, fail_silently=args.fail_silently)
 
     sys.exit(not ok)
 

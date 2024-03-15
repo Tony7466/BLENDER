@@ -34,7 +34,7 @@
 #include "BKE_node_runtime.hh"
 #include "BKE_object.hh"
 #include "BKE_pointcloud.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 
 #include "DNA_object_types.h"
@@ -56,7 +56,7 @@
 #include "ED_mesh.hh"
 #include "ED_sculpt.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "FN_lazy_function_execute.hh"
 
@@ -208,6 +208,8 @@ static void store_result_geometry(
     case OB_MESH: {
       Mesh &mesh = *static_cast<Mesh *>(object.data);
 
+      const bool has_shape_keys = mesh.key != nullptr;
+
       if (object.mode == OB_MODE_SCULPT) {
         sculpt_paint::undo::geometry_begin(&object, &op);
       }
@@ -221,14 +223,21 @@ static void store_result_geometry(
         new_mesh->attributes_for_write().remove_anonymous();
 
         BKE_object_material_from_eval_data(&bmain, &object, &new_mesh->id);
-        BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
+        if (object.mode == OB_MODE_EDIT) {
+          EDBM_mesh_make_from_mesh(&object, new_mesh, scene.toolsettings->selectmode, true);
+          BKE_editmesh_looptris_and_normals_calc(mesh.edit_mesh);
+          BKE_id_free(nullptr, new_mesh);
+        }
+        else {
+          BKE_mesh_nomain_to_mesh(new_mesh, &mesh, &object);
+        }
       }
 
-      if (object.mode == OB_MODE_EDIT) {
-        EDBM_mesh_make(&object, scene.toolsettings->selectmode, true);
-        BKE_editmesh_looptris_and_normals_calc(mesh.edit_mesh);
+      if (has_shape_keys && !mesh.key) {
+        BKE_report(op.reports, RPT_WARNING, "Mesh shape key data removed");
       }
-      else if (object.mode == OB_MODE_SCULPT) {
+
+      if (object.mode == OB_MODE_SCULPT) {
         sculpt_paint::undo::geometry_end(&object);
       }
       break;
@@ -310,19 +319,38 @@ static Vector<Object *> gather_supported_objects(const bContext &C,
 {
   Vector<Object *> objects;
   Set<const ID *> unique_object_data;
-  CTX_DATA_BEGIN (&C, Object *, object, selected_objects) {
+
+  auto handle_object = [&](Object *object) {
     if (object->mode != mode) {
-      continue;
+      return;
     }
     if (!unique_object_data.add(static_cast<const ID *>(object->data))) {
-      continue;
+      return;
     }
     if (!object_has_editable_data(bmain, *object)) {
-      continue;
+      return;
     }
     objects.append(object);
+  };
+
+  if (mode == OB_MODE_OBJECT) {
+    CTX_DATA_BEGIN (&C, Object *, object, selected_objects) {
+      handle_object(object);
+    }
+    CTX_DATA_END;
   }
-  CTX_DATA_END;
+  else {
+    Scene *scene = CTX_data_scene(&C);
+    ViewLayer *view_layer = CTX_data_view_layer(&C);
+    View3D *v3d = CTX_wm_view3d(&C);
+    Object *active_object = CTX_data_active_object(&C);
+    if (v3d && active_object) {
+      FOREACH_OBJECT_IN_MODE_BEGIN (scene, view_layer, v3d, active_object->type, mode, ob) {
+        handle_object(ob);
+      }
+      FOREACH_OBJECT_IN_MODE_END;
+    }
+  }
   return objects;
 }
 
@@ -425,7 +453,7 @@ static int run_node_group_invoke(bContext *C, wmOperator *op, const wmEvent * /*
     return OPERATOR_CANCELLED;
   }
 
-  nodes::update_input_properties_from_node_tree(*node_tree, op->properties, true, *op->properties);
+  nodes::update_input_properties_from_node_tree(*node_tree, op->properties, *op->properties);
   nodes::update_output_properties_from_node_tree(*node_tree, op->properties, *op->properties);
 
   return run_node_group_exec(C, op);
@@ -769,7 +797,7 @@ void clear_operator_asset_trees()
 
 static asset::AssetItemTree build_catalog_tree(const bContext &C, const Object &active_object)
 {
-  AssetFilterSettings type_filter{};
+  asset::AssetFilterSettings type_filter{};
   type_filter.id_types = FILTER_ID_NT;
   const GeometryNodeAssetTraitFlag flag = asset_flag_for_context(active_object);
   auto meta_data_filter = [&](const AssetMetaData &meta_data) {
@@ -785,6 +813,7 @@ static asset::AssetItemTree build_catalog_tree(const bContext &C, const Object &
     return true;
   };
   const AssetLibraryReference library = asset_system::all_library_reference();
+  asset_system::all_library_reload_catalogs_if_dirty();
   return asset::build_filtered_all_catalog_tree(library, C, type_filter, meta_data_filter);
 }
 
@@ -877,7 +906,7 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
   }
   const auto &menu_path = *static_cast<const asset_system::AssetCatalogPath *>(menu_path_ptr.data);
   const Span<asset_system::AssetRepresentation *> assets = tree->assets_per_path.lookup(menu_path);
-  asset_system::AssetCatalogTreeItem *catalog_item = tree->catalogs.find_item(menu_path);
+  const asset_system::AssetCatalogTreeItem *catalog_item = tree->catalogs.find_item(menu_path);
   BLI_assert(catalog_item != nullptr);
 
   uiLayout *layout = menu->layout;
@@ -904,13 +933,13 @@ static void catalog_assets_draw(const bContext *C, Menu *menu)
   const Set<std::string> builtin_menus = get_builtin_menus(ObjectType(active_object->type),
                                                            eObjectMode(active_object->mode));
 
-  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+  asset_system::AssetLibrary *all_library = asset::list::library_get_once_available(
       asset_system::all_library_reference());
   if (!all_library) {
     return;
   }
 
-  catalog_item->foreach_child([&](asset_system::AssetCatalogTreeItem &item) {
+  catalog_item->foreach_child([&](const asset_system::AssetCatalogTreeItem &item) {
     if (builtin_menus.contains_as(item.catalog_path().str())) {
       return;
     }
@@ -929,7 +958,7 @@ MenuType node_group_operator_assets_menu()
   STRNCPY(type.idname, "GEO_MT_node_operator_catalog_assets");
   type.poll = asset_menu_poll;
   type.draw = catalog_assets_draw;
-  type.listener = asset::asset_reading_region_listen_fn;
+  type.listener = asset::list::asset_reading_region_listen_fn;
   type.flag = MenuTypeFlag::ContextDependent;
   return type;
 }
@@ -1028,7 +1057,7 @@ MenuType node_group_operator_assets_menu_unassigned()
   STRNCPY(type.idname, "GEO_MT_node_operator_unassigned");
   type.poll = asset_menu_poll;
   type.draw = catalog_assets_draw_unassigned;
-  type.listener = asset::asset_reading_region_listen_fn;
+  type.listener = asset::list::asset_reading_region_listen_fn;
   type.flag = MenuTypeFlag::ContextDependent;
   type.description = N_(
       "Tool node group assets not assigned to a catalog.\n"
@@ -1053,7 +1082,7 @@ void ui_template_node_operator_asset_menu_items(uiLayout &layout,
   if (!item) {
     return;
   }
-  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+  asset_system::AssetLibrary *all_library = asset::list::library_get_once_available(
       asset_system::all_library_reference());
   if (!all_library) {
     return;
@@ -1082,7 +1111,7 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, const bContext
     *tree = build_catalog_tree(C, *active_object);
   }
 
-  asset_system::AssetLibrary *all_library = ED_assetlist_library_get_once_available(
+  asset_system::AssetLibrary *all_library = asset::list::library_get_once_available(
       asset_system::all_library_reference());
   if (!all_library) {
     return;
@@ -1091,7 +1120,7 @@ void ui_template_node_operator_asset_root_items(uiLayout &layout, const bContext
   const Set<std::string> builtin_menus = get_builtin_menus(ObjectType(active_object->type),
                                                            eObjectMode(active_object->mode));
 
-  tree->catalogs.foreach_root_item([&](asset_system::AssetCatalogTreeItem &item) {
+  tree->catalogs.foreach_root_item([&](const asset_system::AssetCatalogTreeItem &item) {
     if (!builtin_menus.contains_as(item.catalog_path().str())) {
       asset::draw_menu_for_catalog(
           screen, *all_library, item, "GEO_MT_node_operator_catalog_assets", layout);
