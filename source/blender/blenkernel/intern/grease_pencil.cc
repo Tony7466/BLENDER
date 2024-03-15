@@ -494,6 +494,26 @@ static float3x2 get_stroke_to_texture_matrix(const float uv_rotation,
   return texture_matrix;
 }
 
+static float4x3 expand_4x2_mat(float4x2 strokemat)
+{
+  float4x3 strokemat4x3 = float4x3(strokemat);
+
+  /*
+   * We need the diagonal of ones to start from the bottom right instead top left to properly
+   * apply the two matrices.
+   *
+   * i.e.
+   *          # # # #              # # # #
+   * We need  # # # #  Instead of  # # # #
+   *          0 0 0 1              0 0 1 0
+   *
+   */
+  strokemat4x3[2][2] = 0.0f;
+  strokemat4x3[3][2] = 1.0f;
+
+  return strokemat4x3;
+}
+
 Span<float4x2> Drawing::texture_matrices() const
 {
   this->runtime->curve_texture_matrices.ensure([&](Vector<float4x2> &r_data) {
@@ -514,22 +534,7 @@ Span<float4x2> Drawing::texture_matrices() const
         const float3x2 texture_matrix = get_stroke_to_texture_matrix(
             uv_rotations[curve_i], uv_translations[curve_i], uv_scales[curve_i]);
 
-        float4x3 strokemat4x3 = float4x3(strokemat);
-
-        /*
-         * We need the diagonal of ones to start from the bottom right instead top left to properly
-         * apply the two matrices.
-         *
-         * i.e.
-         *          # # # #              # # # #
-         * We need  # # # #  Instead of  # # # #
-         *          0 0 0 1              0 0 1 0
-         *
-         */
-        strokemat4x3[2][2] = 0.0f;
-        strokemat4x3[3][2] = 1.0f;
-
-        const float4x2 texspace = texture_matrix * strokemat4x3;
+        const float4x2 texspace = texture_matrix * expand_4x2_mat(strokemat);
 
         r_data[curve_i] = texspace;
       }
@@ -557,20 +562,7 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
     const float4x2 texspace = matrices[pos];
 
     /* We do the computation using doubles to avoid numerical precision errors. */
-    double4x3 strokemat4x3 = double4x3(strokemat);
-
-    /*
-     * We need the diagonal of ones to start from the bottom right instead top left to properly
-     * apply the two matrices.
-     *
-     * i.e.
-     *          # # # #              # # # #
-     * We need  # # # #  Instead of  # # # #
-     *          0 0 0 1              0 0 1 0
-     *
-     */
-    strokemat4x3[2][2] = 0.0;
-    strokemat4x3[3][2] = 1.0;
+    double4x3 strokemat4x3 = double4x3(expand_4x2_mat(strokemat));
 
     /*
      * We want to solve for `texture_matrix` in the equation: `texspace = texture_matrix *
