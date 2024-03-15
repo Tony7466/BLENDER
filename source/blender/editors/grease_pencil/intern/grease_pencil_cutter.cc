@@ -590,13 +590,12 @@ static bool execute_cutter_on_drawing(const int layer_index,
  */
 static int stroke_cutter_execute(wmOperator *op, const bContext *C, const Span<int2> mcoords)
 {
-  Scene *scene = CTX_data_scene(C);
-  ARegion *region = CTX_wm_region(C);
-  RegionView3D *rv3d = CTX_wm_region_view3d(C);
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
+  const Scene *scene = CTX_data_scene(C);
+  const ARegion *region = CTX_wm_region(C);
+  const RegionView3D *rv3d = CTX_wm_region_view3d(C);
+  const Depsgraph *depsgraph = CTX_data_depsgraph_pointer(C);
   Object *obact = CTX_data_active_object(C);
   Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
-  const float4x4 projection = ED_view3d_ob_project_mat_get(rv3d, obact);
 
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
@@ -610,6 +609,8 @@ static int stroke_cutter_execute(wmOperator *op, const bContext *C, const Span<i
       return OPERATOR_CANCELLED;
     }
     const bke::greasepencil::Layer &layer = *grease_pencil.get_active_layer();
+    const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
+    const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(rv3d, layer_to_world);
     const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
         ed::greasepencil::retrieve_editable_drawings_from_layer(*scene, grease_pencil, layer);
     threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
@@ -632,6 +633,9 @@ static int stroke_cutter_execute(wmOperator *op, const bContext *C, const Span<i
     const Vector<ed::greasepencil::MutableDrawingInfo> drawings =
         ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
     threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
+      const bke::greasepencil::Layer &layer = *grease_pencil.layers()[info.layer_index];
+      const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
+      const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(rv3d, layer_to_world);
       if (execute_cutter_on_drawing(info.layer_index,
                                     info.frame_number,
                                     *ob_eval,
