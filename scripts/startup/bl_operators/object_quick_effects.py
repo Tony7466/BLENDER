@@ -190,10 +190,6 @@ class QuickFur(ObjectModeOperator, Operator):
 
             curves_object.modifiers.move(0, len(curves_object.modifiers) - 1)
 
-            # Workaround for #105965: Rebuild UI data of modifier input properties.
-            for modifier in curves_object.modifiers:
-                modifier.node_group = modifier.node_group
-
         if mesh_with_zero_area:
             self.report({'WARNING'}, "Mesh has no face area")
         if mesh_missing_uv_map:
@@ -305,7 +301,7 @@ class QuickExplode(ObjectModeOperator, Operator):
             settings.normal_factor = self.velocity
             settings.render_type = 'NONE'
 
-            explode = obj.modifiers.new(name='Explode', type='EXPLODE')
+            explode = obj.modifiers.new(name="Explode", type='EXPLODE')
             explode.use_edge_cut = True
 
             if self.fade:
