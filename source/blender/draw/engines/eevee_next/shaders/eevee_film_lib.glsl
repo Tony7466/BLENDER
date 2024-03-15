@@ -55,7 +55,8 @@ FilmSample film_sample_get(int sample_n, ivec2 texel_film)
 #else
 
   FilmSample film_sample = uniform_buf.film.samples[sample_n];
-  film_sample.texel += (texel_film / scaling_factor) + uniform_buf.film.render_offset;
+  film_sample.texel += ((texel_film - uniform_buf.film.offset) / scaling_factor) +
+                       uniform_buf.film.render_offset;
   /* Use extend on borders. */
   film_sample.texel = clamp(film_sample.texel, ivec2(0, 0), uniform_buf.film.render_extent - 1);
 
