@@ -3211,6 +3211,17 @@ static int wm_revert_mainfile_exec(bContext *C, wmOperator *op)
   return OPERATOR_CANCELLED;
 }
 
+static int wm_revert_mainfile_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  return WM_operator_confirm_ex(C,
+                                op,
+                                IFACE_("Revert This File"),
+                                IFACE_("Reload the current saved file, abandoning any changes."),
+                                IFACE_("Revert"),
+                                ALERT_ICON_WARNING,
+                                false);
+}
+
 static bool wm_revert_mainfile_poll(bContext * /*C*/)
 {
   const char *blendfile_path = BKE_main_blendfile_path_from_global();
@@ -3223,7 +3234,7 @@ void WM_OT_revert_mainfile(wmOperatorType *ot)
   ot->idname = "WM_OT_revert_mainfile";
   ot->description = "Reload the saved file";
 
-  ot->invoke = WM_operator_confirm;
+  ot->invoke = wm_revert_mainfile_invoke;
   ot->exec = wm_revert_mainfile_exec;
   ot->poll = wm_revert_mainfile_poll;
 
