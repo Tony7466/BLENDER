@@ -601,7 +601,7 @@ static IndexMaskSegment evaluate_exact_with_bits(const Expr &root_expression,
     MutableBoundedBitSpan expr_result = expression_results[expression->index];
     switch (expression->type) {
       case Expr::Type::Atomic: {
-        const auto &expr = expression->as_atomic();
+        const AtomicExpr &expr = expression->as_atomic();
         const IndexMask mask = expr.mask->slice_content(bounds);
         mask.to_bits(expr_result, -bounds_min);
         break;
@@ -857,7 +857,7 @@ static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
   for (const Expr *expression : eval_order) {
     switch (expression->type) {
       case Expr::Type::Atomic: {
-        const auto &expr = expression->as_atomic();
+        const AtomicExpr &expr = expression->as_atomic();
         const IndexMask mask = expr.mask->slice_content(bounds);
         /* The caller should make sure that the bounds are aligned to segment bounds. */
         BLI_assert(mask.segments_num() <= 1);
@@ -867,7 +867,7 @@ static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
         break;
       }
       case Expr::Type::Union: {
-        const auto &expr = expression->as_union();
+        const UnionExpr &expr = expression->as_union();
         Array<IndexMaskSegment> term_segments(expr.terms.size());
         int64_t result_size_upper_bound = 0;
         bool used_short_circuit = false;
@@ -893,7 +893,7 @@ static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
         break;
       }
       case Expr::Type::Intersection: {
-        const auto &expr = expression->as_intersection();
+        const IntersectionExpr &expr = expression->as_intersection();
         Array<IndexMaskSegment> term_segments(expr.terms.size());
         int64_t result_size_upper_bound = bounds.size();
         bool used_short_circuit = false;
@@ -917,7 +917,7 @@ static IndexMaskSegment evaluate_exact_with_indices(const Expr &root_expression,
         break;
       }
       case Expr::Type::Difference: {
-        const auto &expr = expression->as_difference();
+        const DifferenceExpr &expr = expression->as_difference();
         const Expr &main_term = *expr.terms[0];
         const IndexMaskSegment main_segment = results[main_term.index];
         if (main_segment.is_empty()) {
