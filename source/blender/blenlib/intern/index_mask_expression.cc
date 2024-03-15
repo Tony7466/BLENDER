@@ -227,7 +227,7 @@ static void evaluate_coarse_union(const Span<CourseBoundary> boundaries, CoarseR
        * previous boundary. */
       bool has_full = false;
       bool has_unknown = false;
-      bool copy_from_mask_unique = true;
+      bool copy_from_single_mask = true;
       const IndexMask *copy_from_mask = nullptr;
       for (const CoarseSegment *active_segment : active_segments) {
         switch (active_segment->type) {
@@ -241,7 +241,7 @@ static void evaluate_coarse_union(const Span<CourseBoundary> boundaries, CoarseR
           }
           case CoarseSegment::Type::Copy: {
             if (copy_from_mask != nullptr && copy_from_mask != active_segment->mask) {
-              copy_from_mask_unique = false;
+              copy_from_single_mask = false;
             }
             copy_from_mask = active_segment->mask;
             break;
@@ -253,11 +253,11 @@ static void evaluate_coarse_union(const Span<CourseBoundary> boundaries, CoarseR
         prev_segment = &add_coarse_segment__full(
             prev_segment, prev_boundary_index, boundary.index, result);
       }
-      else if (has_unknown || !copy_from_mask_unique) {
+      else if (has_unknown || !copy_from_single_mask) {
         prev_segment = &add_coarse_segment__unknown(
             prev_segment, prev_boundary_index, boundary.index, result);
       }
-      else if (copy_from_mask != nullptr && copy_from_mask_unique) {
+      else if (copy_from_mask != nullptr && copy_from_single_mask) {
         prev_segment = &add_coarse_segment__copy(
             prev_segment, prev_boundary_index, boundary.index, *copy_from_mask, result);
       }
@@ -298,7 +298,7 @@ static void evaluate_coarse_intersection(const Span<CourseBoundary> boundaries,
         int full_count = 0;
         int unknown_count = 0;
         int copy_count = 0;
-        bool copy_from_mask_unique = true;
+        bool copy_from_single_mask = true;
         const IndexMask *copy_from_mask = nullptr;
         for (const CoarseSegment *active_segment : active_segments) {
           switch (active_segment->type) {
@@ -313,7 +313,7 @@ static void evaluate_coarse_intersection(const Span<CourseBoundary> boundaries,
             case CoarseSegment::Type::Copy: {
               copy_count++;
               if (copy_from_mask != nullptr && copy_from_mask != active_segment->mask) {
-                copy_from_mask_unique = false;
+                copy_from_single_mask = false;
               }
               copy_from_mask = active_segment->mask;
               break;
@@ -326,11 +326,11 @@ static void evaluate_coarse_intersection(const Span<CourseBoundary> boundaries,
           prev_segment = &add_coarse_segment__full(
               prev_segment, prev_boundary_index, boundary.index, result);
         }
-        else if (unknown_count > 0 || copy_count < terms_num || !copy_from_mask_unique) {
+        else if (unknown_count > 0 || copy_count < terms_num || !copy_from_single_mask) {
           prev_segment = &add_coarse_segment__unknown(
               prev_segment, prev_boundary_index, boundary.index, result);
         }
-        else if (copy_count == terms_num && copy_from_mask_unique) {
+        else if (copy_count == terms_num && copy_from_single_mask) {
           prev_segment = &add_coarse_segment__copy(
               prev_segment, prev_boundary_index, boundary.index, *copy_from_mask, result);
         }
