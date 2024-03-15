@@ -35,6 +35,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_global.h"
 #include "BKE_idprop.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
@@ -2119,6 +2120,139 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
 
 namespace blender::bke {
 
+namespace node_equality {
+
+/** *Minimal* implementation of node equality to test for duplicate auto smooth node groups. */
+static bool nodes_equal(const bNode &node_a, const bNode &node_b)
+{
+  if (node_a.type != node_b.type) {
+    return false;
+  }
+  if (node_a.custom1 != node_b.custom1) {
+    return false;
+  }
+  if (node_a.custom2 != node_b.custom2) {
+    return false;
+  }
+  switch (node_a.type) {
+    case FN_NODE_COMPARE: {
+      const auto *a = static_cast<NodeFunctionCompare *>(node_a.storage);
+      const auto *b = static_cast<NodeFunctionCompare *>(node_a.storage);
+      if (memcmp(a, b, sizeof(NodeFunctionCompare)) != 0) {
+        return false;
+      }
+    }
+  }
+  const int inputs_num_a = BLI_listbase_count(&node_a.inputs);
+  const int inputs_num_b = BLI_listbase_count(&node_b.inputs);
+  if (inputs_num_a != inputs_num_b) {
+    return false;
+  }
+  const bNodeSocket *socket_a = static_cast<const bNodeSocket *>(node_a.inputs.first);
+  const bNodeSocket *socket_b = static_cast<const bNodeSocket *>(node_b.inputs.first);
+  for ([[maybe_unused]] const int i : IndexRange(inputs_num_a)) {
+    if (socket_a->type != socket_b->type) {
+      return false;
+    }
+    switch (socket_a->type) {
+      case SOCK_BOOLEAN: {
+        if (socket_a->default_value_typed<bNodeSocketValueBoolean>()->value !=
+            socket_b->default_value_typed<bNodeSocketValueBoolean>()->value)
+        {
+          return false;
+        }
+      }
+    }
+    socket_a = socket_a->next;
+    socket_b = socket_b->next;
+  }
+  return true;
+}
+
+static VectorSet<const bNodeSocket *> build_all_socket_set(const Span<const bNode *> nodes)
+{
+  VectorSet<const bNodeSocket *> result;
+  for (const bNode *node : nodes) {
+    LISTBASE_FOREACH (const bNodeSocket *, socket, &node->inputs) {
+      result.add_new(socket);
+    }
+    LISTBASE_FOREACH (const bNodeSocket *, socket, &node->outputs) {
+      result.add_new(socket);
+    }
+  }
+  return result;
+}
+
+static bool links_equal(const bNodeTree &tree_a, const bNodeTree &tree_b)
+{
+  const int links_num_a = BLI_listbase_count(&tree_a.links);
+  const int links_num_b = BLI_listbase_count(&tree_b.links);
+  if (links_num_a != links_num_b) {
+    return false;
+  }
+
+  const VectorSet<const bNodeSocket *> sockets_a = build_all_socket_set(tree_a.all_nodes());
+  const VectorSet<const bNodeSocket *> sockets_b = build_all_socket_set(tree_b.all_nodes());
+
+  const bNodeLink *link_a = static_cast<const bNodeLink *>(tree_a.links.first);
+  const bNodeLink *link_b = static_cast<const bNodeLink *>(tree_b.links.first);
+  for ([[maybe_unused]] const int i : IndexRange(links_num_a)) {
+    if ((link_a->flag & NODE_LINK_MUTED) != (link_b->flag & NODE_LINK_MUTED)) {
+      return false;
+    }
+    if (link_a->multi_input_socket_index != link_b->multi_input_socket_index) {
+      return false;
+    }
+    if (sockets_a.index_of(link_a->tosock) != sockets_b.index_of(link_b->tosock)) {
+      return false;
+    }
+    if (sockets_a.index_of(link_a->fromsock) != sockets_b.index_of(link_b->fromsock)) {
+      return false;
+    }
+    link_a = link_a->next;
+    link_b = link_b->next;
+  }
+
+  return true;
+}
+
+/**
+ * *Minimal* implementation of node tree equality comparison required to test for duplicate auto
+ * smooth node groups.
+ */
+static bool node_trees_equal(const bNodeTree &tree_a, const bNodeTree &tree_b)
+{
+  if (tree_a.type != tree_b.type) {
+    return false;
+  }
+  const Span<const bNode *> nodes_a = tree_a.all_nodes();
+  const Span<const bNode *> nodes_b = tree_b.all_nodes();
+  if (nodes_a.size() != nodes_b.size()) {
+    return false;
+  }
+  if ((tree_a.geometry_node_asset_traits != nullptr) !=
+      (tree_b.geometry_node_asset_traits != nullptr))
+  {
+    return false;
+  }
+  if (tree_a.geometry_node_asset_traits) {
+    if (tree_a.geometry_node_asset_traits->flag != tree_b.geometry_node_asset_traits->flag) {
+      return false;
+    }
+  }
+  for (const int i : nodes_a.index_range()) {
+    if (!nodes_equal(*nodes_a[i], *nodes_b[i])) {
+      return false;
+    }
+  }
+  if (!links_equal(tree_a, tree_b)) {
+    return false;
+  }
+  return true;
+}
+
+}  // namespace node_equality
+
 static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
 {
   bNodeTree *group = ntreeAddTree(&bmain, DATA_("Auto Smooth"), "GeometryNodeTree");
@@ -2235,17 +2369,21 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
     nodeSetSelected(node, false);
   }
 
+  BKE_ntree_update_main_tree(&bmain, group, nullptr);
+
   return group;
 }
 
-static ModifierData *create_auto_smooth_modifier(Object &object,
-                                                 const FunctionRef<bNodeTree *()> get_node_group,
-                                                 const float angle)
+static ModifierData *create_auto_smooth_modifier(
+    Object &object,
+    const FunctionRef<bNodeTree *(Library *library)> get_node_group,
+    const float angle)
 {
   auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
   STRNCPY(md->modifier.name, DATA_("Auto Smooth"));
   BKE_modifier_unique_name(&object.modifiers, &md->modifier);
-  md->node_group = get_node_group();
+  md->node_group = get_node_group(object.id.lib);
+  md->node_group->id.us++;
 
   md->settings.properties = idprop::create_group("Nodes Modifier Settings").release();
   IDProperty *angle_prop = idprop::create("Socket_1", angle).release();
@@ -2265,14 +2403,33 @@ static ModifierData *create_auto_smooth_modifier(Object &object,
 
 void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
 {
+  using namespace blender;
   using namespace blender::bke;
 
   /* Add the node group lazily and share it among all objects in the main database. */
-  bNodeTree *node_group = nullptr;
-  const auto add_node_group = [&]() {
-    node_group = add_auto_smooth_node_tree(bmain);
-    BKE_ntree_update_main_tree(&bmain, node_group, nullptr);
-    return node_group;
+  Map<Library *, bNodeTree *> group_by_library;
+  const auto add_node_group = [&](Library *library) {
+    if (bNodeTree **group = group_by_library.lookup_ptr(library)) {
+      /* Node tree has already been found/created for this versioning call. */
+      return *group;
+    }
+    /* Find a matching node group by creating the node group and testing equality with all existing
+     * node groups. Ideally we wouldn't add the new group to `bmain` first, but adding a local node
+     * tree to #Main isn't trivial currently. */
+    bNodeTree *new_group = add_auto_smooth_node_tree(bmain);
+    LISTBASE_FOREACH (bNodeTree *, existing_group, &bmain.nodetrees) {
+      if (existing_group == new_group) {
+        continue;
+      }
+      if (node_equality::node_trees_equal(*existing_group, *new_group)) {
+        new_group->id.us--;
+        BKE_id_delete(&bmain, new_group);
+        group_by_library.add_new(library, existing_group);
+        return existing_group;
+      }
+    }
+    group_by_library.add_new(library, new_group);
+    return new_group;
   };
 
   LISTBASE_FOREACH (Object *, object, &bmain.objects) {
@@ -2284,7 +2441,6 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     if (!(mesh->flag & ME_AUTOSMOOTH_LEGACY)) {
       continue;
     }
-    mesh->flag &= ~ME_AUTOSMOOTH_LEGACY;
 
     /* Auto-smooth disabled sharp edge tagging when the evaluated mesh had custom normals.
      * When the original mesh has custom normals, that's a good sign the evaluated mesh will
@@ -2332,6 +2488,10 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     else {
       BLI_addtail(&object->modifiers, new_md);
     }
+  }
+
+  LISTBASE_FOREACH (Mesh *, mesh, &bmain.meshes) {
+    mesh->flag &= ~ME_AUTOSMOOTH_LEGACY;
   }
 }
 
