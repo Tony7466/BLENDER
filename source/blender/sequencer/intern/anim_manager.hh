@@ -19,7 +19,7 @@ class ShareableAnim {
   blender::Vector<Sequence *> users;
   bool multiview_loaded = false;
   ThreadMutex *mutex;
-  std::string filepath;
+  char filepath[1024];  // XXX
 
   void release_from_strip(Sequence *seq);
   void release_from_all_strips(void);

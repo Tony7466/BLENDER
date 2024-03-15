@@ -2131,7 +2131,7 @@ ImBuf *SEQ_render_give_ibuf(const SeqRenderData *context, float timeline_frame, 
   }
 
   seq_prefetch_start(context, timeline_frame);
-  lookup->manage_anims(scene);
+  // lookup->manage_anims(scene);
 
   return out;
 }

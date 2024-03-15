@@ -179,7 +179,7 @@ void ShareableAnim::assign_to_strip(const Scene *scene, Sequence *seq)
     sanim->anim = anim;
     BLI_addtail(&seq->anims, sanim);
     index_dir_set(ed, seq, sanim);
-    if (is_multiview(scene, seq, filepath.c_str())) {
+    if (is_multiview(scene, seq, filepath)) {
       const char *suffix = BKE_scene_multiview_view_id_suffix_get(&scene->r, i);
       IMB_suffix_anim(sanim->anim, suffix);
     }
@@ -188,15 +188,20 @@ void ShareableAnim::assign_to_strip(const Scene *scene, Sequence *seq)
   users.append(seq);
 };
 
+// check if needed.
+ThreadMutex acq_anim_mutex = BLI_MUTEX_INITIALIZER;
+
 void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq, bool openfile)
 {
-  if (is_multiview(scene, seq, filepath.c_str())) {
-    anims = multiview_anims_get(scene, seq, filepath.c_str());
+  if (is_multiview(scene, seq, filepath)) {
+    anims = multiview_anims_get(scene, seq, filepath);
     multiview_loaded = true;
     return;
   }
 
-  ImBufAnim *anim = anim_get(seq, filepath.c_str(), openfile);
+  BLI_mutex_lock(&acq_anim_mutex);
+  ImBufAnim *anim = anim_get(seq, filepath, openfile);
+  BLI_mutex_unlock(&acq_anim_mutex);
   if (anim != nullptr) {
     anims.append(anim);
   }
@@ -204,7 +209,7 @@ void ShareableAnim::acquire_anims(const Scene *scene, Sequence *seq, bool openfi
 
 bool ShareableAnim::has_anim(const Scene *scene, Sequence *seq)
 {
-  if (is_multiview(scene, seq, filepath.c_str()) && !multiview_loaded) {
+  if (is_multiview(scene, seq, filepath) && !multiview_loaded) {
     return false;
   }
 
@@ -220,8 +225,9 @@ static ShareableAnim &anim_lookup_by_filepath(Editing *ed, const char *filepath)
 {
   blender::Map<std::string, ShareableAnim> &anims = ed->runtime.anim_lookup->anims;
   BLI_mutex_lock(ed->runtime.anim_lookup->mutex);
+  // XXX How does this free sh_anim.anims???
   ShareableAnim &sh_anim = anims.lookup_or_add_default(std::string(filepath));
-  sh_anim.filepath = filepath;
+  memcpy(sh_anim.filepath, filepath, sizeof(sh_anim.filepath));
   BLI_mutex_unlock(ed->runtime.anim_lookup->mutex);
   return sh_anim;
 }
@@ -366,8 +372,25 @@ void AnimManager::manage_anims(Scene *scene)
   BLI_threadpool_insert(&threads, static_cast<void *>(scene));
 }
 
+struct ThreadData {
+  const Scene *scene;
+  Sequence *seq;
+};
+
+static void *xxx_open_anim(void *data)
+{
+  ThreadData *tdata = static_cast<ThreadData *>(data);
+  seq_open_anim_file(tdata->scene, tdata->seq, true);
+  MEM_freeN(tdata);
+  return 0;
+}
+
 void AnimManager::load_set(const Scene *scene, blender::Vector<Sequence *> &strips)
 {
+
+  blender::Map<std::string, ShareableAnim> &anims = scene->ed->runtime.anim_lookup->anims;
+  anims.reserve(strips.size() * 50);
+
   // TODO why is this not working?
   /*using namespace blender;
   threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
@@ -377,7 +400,14 @@ void AnimManager::load_set(const Scene *scene, blender::Vector<Sequence *> &stri
     }
   });*/
 
+  ListBase threads{nullptr, nullptr};
+  BLI_threadpool_init(&threads, xxx_open_anim, strips.size());
   for (Sequence *seq : strips) {
-    seq_open_anim_file(scene, seq, true);
+    ThreadData *data = MEM_cnew<ThreadData>(__func__);
+    data->scene = scene;
+    data->seq = seq;
+    BLI_threadpool_insert(&threads, static_cast<void *>(data));
   }
+
+  BLI_threadpool_clear(&threads);
 }

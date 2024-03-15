@@ -1344,6 +1344,7 @@ static void scene_blend_read_data(BlendDataReader *reader, ID *id)
     ed->cache = nullptr;
     ed->prefetch_job = nullptr;
     ed->runtime.sequence_lookup = nullptr;
+    ed->runtime.anim_lookup = nullptr;
 
     /* recursive link sequences, lb will be correctly initialized */
     link_recurs_seq(reader, &ed->seqbase);
