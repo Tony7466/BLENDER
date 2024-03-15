@@ -17,8 +17,10 @@ void atlas_store(vec4 sh_coefficient, ivec2 atlas_coord, int layer)
 
 void main()
 {
+  int brick_index = grids_infos_buf[grid_index].brick_offset;
+
   /* Brick coordinate in the destination atlas. */
-  IrradianceBrick brick = irradiance_brick_unpack(bricks_infos_buf[0]);
+  IrradianceBrick brick = irradiance_brick_unpack(bricks_infos_buf[brick_index]);
   ivec2 output_coord = ivec2(brick.atlas_coord);
 
   atlas_store(harmonic_buf.L0_M0, output_coord, 0);
