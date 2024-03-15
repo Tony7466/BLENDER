@@ -26,7 +26,6 @@
 #include "BLI_sort_utils.h"
 #include "BLI_string_utils.hh"
 #include "BLI_task.hh"
-#include "BLI_timeit.hh"
 
 #include "BLT_translation.hh"
 
