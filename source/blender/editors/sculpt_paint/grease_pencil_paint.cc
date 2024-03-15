@@ -491,13 +491,15 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
 
   float3 u_dir;
   float3 v_dir;
-  float3 origin = float3(0.0f);
+  /* Set the texture space origin to be the first point. */
+  float3 origin = placement_.project(start_sample.mouse_position);
   /* Align texture with the drawing plane. */
   switch (scene->toolsettings->gp_sculpt.lock_axis) {
     case GP_LOCKAXIS_VIEW:
-      origin = placement_.project(float2(0.0f, 0.0f));
-      u_dir = math::normalize(placement_.project(float2(region->winx, 0.0f)) - origin);
-      v_dir = math::normalize(placement_.project(float2(0.0f, region->winy)) - origin);
+      u_dir = math::normalize(
+          placement_.project(float2(region->winx, 0.0f) + start_sample.mouse_position) - origin);
+      v_dir = math::normalize(
+          placement_.project(float2(0.0f, region->winy) + start_sample.mouse_position) - origin);
       break;
     case GP_LOCKAXIS_Y:
       u_dir = float3(1.0f, 0.0f, 0.0f);
