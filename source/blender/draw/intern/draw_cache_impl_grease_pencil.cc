@@ -555,7 +555,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
                               int point_i,
                               int idx,
                               float length,
-                              float4x2 texture_matrix,
+                              const float4x2 &texture_matrix,
                               GreasePencilStrokeVert &s_vert,
                               GreasePencilColorVert &c_vert) {
       const float3 pos = math::transform_point(layer_space_to_object_space, positions[point_i]);
