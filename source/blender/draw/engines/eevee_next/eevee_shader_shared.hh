@@ -1619,7 +1619,5 @@ using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
 using ClipPlaneBuf = draw::UniformBuffer<ClipPlaneData>;
-using SphereProbeHarmonicBuf =
-    draw::StorageArrayBuffer<SphereProbeHarmonic, SPHERE_PROBE_MAX_HARMONIC, true>;
 }  // namespace blender::eevee
 #endif

@@ -81,9 +81,10 @@ class SphereProbeModule {
   int reflection_probe_count_ = 0;
 
   /** Intermediate buffer to store spherical harmonics. */
-  SphereProbeHarmonicBuf tmp_spherical_harmonics_ = {"tmp_spherical_harmonics_"};
+  StorageArrayBuffer<SphereProbeHarmonic, SPHERE_PROBE_MAX_HARMONIC, true>
+      tmp_spherical_harmonics_ = {"tmp_spherical_harmonics_"};
   /** Final buffer containing the spherical harmonics for the world. */
-  SphereProbeHarmonicBuf spherical_harmonics_ = {"spherical_harmonics_"};
+  StorageBuffer<SphereProbeHarmonic, true> spherical_harmonics_ = {"spherical_harmonics_"};
 
   /**
    * True if the next redraw will trigger a light-probe sphere update.
