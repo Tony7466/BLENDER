@@ -52,7 +52,7 @@ void main()
   float opacity = 1.0 - radiance_and_transmittance.a;
 
   /* Composite world into reflection probes. */
-  bool is_world = all(equal(write_coord_packed, world_coord_packed));
+  bool is_world = all(equal(probe_coord_packed, world_coord_packed));
   if (!is_world && opacity != 1.0) {
     vec2 world_uv = wrapped_uv * world_coord.scale + world_coord.offset;
     vec4 world_radiance = textureLod(atlas_tx, vec3(world_uv, world_coord.layer), 0.0);
