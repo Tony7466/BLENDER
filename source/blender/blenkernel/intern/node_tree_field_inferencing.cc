@@ -19,7 +19,9 @@
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
 
+#include <fstream>
 #include <iostream>
+#include <ostream>
 
 namespace blender::bke::node_field_inferencing {
 
@@ -752,33 +754,60 @@ static bool reduce_binary(const BinaryConstraintFn &constraint,
 }
 
 struct NullLogger {
-  static void set_variable_names(FunctionRef<std::string(int)> /*names_fn*/) {}
+  void on_start(StringRef /*message*/) {}
+  void on_end() {}
+
+  static void set_variable_names(const int /*num_vars*/,
+                                 FunctionRef<std::string(int)> /*names_fn*/)
+  {
+  }
 
   static void notify(StringRef /*message*/) {}
-  static void on_worklist_extended(const int /*var_src*/, const int /*var_dst*/) {}
 
+  static void on_solve_start() {}
+  static void on_worklist_extended(const int /*var_src*/, const int /*var_dst*/) {}
   static void on_binary_constraint_applied(const int /*src*/, const int /*dst*/) {}
+
+  static void on_domain_init(const int /*var*/, const BitSpan /*domain*/) {}
   static void on_domain_reduced(const int /*var*/, const BitSpan /*domain*/) {}
   static void on_domain_empty(const int /*var*/) {}
+
   static void on_variable_state_changed(BitGroupVector<> & /*variable_domains*/) {}
+  static void on_solve_end() {}
 };
 
 struct PrintLogger {
-  static void set_variable_names(FunctionRef<std::string(int)> names_fn) {}
+  void on_start(StringRef message)
+  {
+    std::cout << message << std::endl;
+  }
+  void on_end() {}
+
+  static void set_variable_names(const int /*num_vars*/,
+                                 FunctionRef<std::string(int)> /*names_fn*/)
+  {
+  }
 
   static void notify(StringRef message)
   {
     std::cout << message << std::endl;
   }
 
+  static void on_solve_start() {}
+
   static void on_worklist_extended(const int src, const int dst)
   {
-    std::cout << "  Worklist extended: " + src << ", " << dst << std::endl;
+    std::cout << "  Worklist extended: " << src << ", " << dst << std::endl;
   }
 
   static void on_binary_constraint_applied(const int src, const int dst)
   {
     std::cout << "  Applying " << src << ", " << dst << std::endl;
+  }
+
+  static void on_domain_init(const int /*var*/, const BitSpan /*domain*/)
+  {
+    std::cout << "    Initialized domain" << std::endl;
   }
 
   static void on_domain_reduced(const int /*var*/, const BitSpan /*domain*/)
@@ -791,7 +820,8 @@ struct PrintLogger {
     std::cout << "      FAILED! No possible values for " << var << std::endl;
   }
 
-  static void on_variable_state_changed(BitGroupVector<> &variable_domains) {
+  static void on_variable_state_changed(BitGroupVector<> &variable_domains)
+  {
     for (const int i : variable_domains.index_range()) {
       std::string s = std::to_string(i) + ": ";
       for (const int d : IndexRange(variable_domains.group_size())) {
@@ -804,6 +834,101 @@ struct PrintLogger {
       }
       std::cout << s << std::endl;
     }
+  }
+
+  static void on_solve_end() {}
+};
+
+struct JSONLogger {
+  std::ostream &stream;
+  Array<std::string> variable_names;
+  bool has_events = false;
+
+  JSONLogger(std::ostream &stream) : stream(stream)
+  {
+    this->stream << "{" << std::endl;
+  }
+  ~JSONLogger()
+  {
+    this->stream << "}" << std::endl;
+  }
+
+  void set_variable_names(const int num_vars, FunctionRef<std::string(int)> names_fn)
+  {
+    variable_names.reinitialize(num_vars);
+    this->stream << "\"variables\": [";
+    for (const int i : IndexRange(num_vars)) {
+      variable_names[i] = names_fn(i);
+      if (i > 0) {
+        this->stream << ", ";
+      }
+      this->stream << "{\"name\": \"" << variable_names[i] << "\"}" << std::endl;
+    }
+    this->stream << "]" << std::endl;
+  }
+
+  void notify(StringRef /*message*/) {}
+
+  void on_solve_start()
+  {
+    this->stream << ", \"events\": [";
+  }
+
+  void on_worklist_extended(const int src, const int dst)
+  {
+    std::cout << "  Worklist extended: " << src << ", " << dst << std::endl;
+  }
+
+  void on_binary_constraint_applied(const int src, const int dst)
+  {
+    std::cout << "  Applying " << src << ", " << dst << std::endl;
+  }
+
+  void on_domain_init(const int var, const BitSpan domain)
+  {
+    if (has_events) {
+      this->stream << ", ";
+    }
+    int d = 0;
+    for (const int k : domain.index_range()) {
+      if (domain[k]) {
+        d |= (1 << k);
+      }
+    }
+    this->stream << "{\"type\": \"domain init\", \"variable\": \"" << variable_names[var]
+                 << "\", \"domain\": " << d << "}" << std::endl;
+    has_events = true;
+  }
+
+  void on_domain_reduced(const int /*var*/, const BitSpan /*domain*/)
+  {
+    std::cout << "    Reduced domain!" << std::endl;
+  }
+
+  void on_domain_empty(const int var)
+  {
+    std::cout << "      FAILED! No possible values for " << var << std::endl;
+  }
+
+  void on_variable_state_changed(BitGroupVector<> &variable_domains)
+  {
+    for (const int i : variable_domains.index_range()) {
+      std::string s = std::to_string(i) + ": ";
+      for (const int d : IndexRange(variable_domains.group_size())) {
+        if (variable_domains[i][d]) {
+          s += std::to_string(d) + ", ";
+        }
+        else {
+          s += "   ";
+        }
+      }
+      std::cout << s << std::endl;
+    }
+  }
+
+  void on_solve_end()
+  {
+    this->stream << "]" << std::endl;
   }
 };
 
@@ -860,7 +985,8 @@ class ConstraintSet {
 /* Apply all unitary constraints. */
 template<typename Logger = NullLogger>
 static void solve_unary_constraints(const ConstraintSet &constraints,
-                                    BitGroupVector<> &variable_domains)
+                                    BitGroupVector<> &variable_domains,
+                                    Logger & /*logger*/)
 {
   for (const int i : variable_domains.index_range()) {
     for (const UnaryConstraintFn &constraint : constraints.get_unary_constraints(i)) {
@@ -871,43 +997,44 @@ static void solve_unary_constraints(const ConstraintSet &constraints,
 
 template<typename Logger = NullLogger>
 static void solve_binary_constraints(const ConstraintSet &constraints,
-                                     BitGroupVector<> &variable_domains)
+                                     BitGroupVector<> &variable_domains,
+                                     Logger &logger)
 {
   /* TODO sorting the worklist could have significant impact on performance
    * by reducing unnecessary repetition of constraints.
    * Using the topological sorting of sockets should make a decent "preconditioner".
    * This is similar to what the current R-L/L-R solver does. */
   Stack<int2> worklist;
-  Logger::notify("Binary Constraint Solve");
+  logger.notify("Binary Constraint Solve");
   for (const int i : variable_domains.index_range()) {
     for (const ConstraintSet::Target &target : constraints.get_target_constraints(i)) {
       worklist.push({i, target.variable});
-      Logger::on_worklist_extended(i, target.variable);
+      logger.on_worklist_extended(i, target.variable);
     }
   }
-  Logger::on_variable_state_changed(variable_domains);
+  logger.on_variable_state_changed(variable_domains);
 
   while (!worklist.is_empty()) {
     const int2 key = worklist.pop();
-    Logger::on_binary_constraint_applied(key[0], key[1]);
+    logger.on_binary_constraint_applied(key[0], key[1]);
     const BinaryConstraintFn &constraint = constraints.get_binary_constraint(key[0], key[1]);
     const MutableBitSpan domain_a = variable_domains[key[0]];
     const BitSpan domain_b = variable_domains[key[1]];
     if (reduce_binary(constraint, domain_a, domain_b)) {
-      Logger::on_domain_reduced(key[0], domain_a);
+      logger.on_domain_reduced(key[0], domain_a);
       if (!bits::any_bit_set(domain_a)) {
         /* TODO FAILURE CASE! */
-        Logger::on_domain_empty(key[0]);
+        logger.on_domain_empty(key[0]);
         break;
       }
-      Logger::on_variable_state_changed(variable_domains);
+      logger.on_variable_state_changed(variable_domains);
 
       /* Add arcs to A from all dependant variables (except B). */
       for (const ConstraintSet::Source &source : constraints.get_source_constraints(key[0])) {
         if (source.variable == key[1]) {
           continue;
         }
-        Logger::on_worklist_extended(source.variable, key[0]);
+        logger.on_worklist_extended(source.variable, key[0]);
         worklist.push({source.variable, key[0]});
       }
     }
@@ -917,26 +1044,28 @@ static void solve_binary_constraints(const ConstraintSet &constraints,
 template<typename Logger = NullLogger>
 static BitGroupVector<> solve_constraints(const ConstraintSet &constraints,
                                           const int num_vars,
-                                          const int domain_size)
+                                          const int domain_size,
+                                          Logger &logger)
 {
   BitGroupVector variable_domains(num_vars, domain_size, true);
 
-  solve_unary_constraints<Logger>(constraints, variable_domains);
-  solve_binary_constraints<Logger>(constraints, variable_domains);
+  logger.on_solve_start();
+  for (const int i : variable_domains.index_range()) {
+    logger.on_domain_init(i, variable_domains[i]);
+  }
 
-  Logger::notify("Constraint Solve:");
-  Logger::on_variable_state_changed(variable_domains);
+  solve_unary_constraints<Logger>(constraints, variable_domains, logger);
+  solve_binary_constraints<Logger>(constraints, variable_domains, logger);
+  logger.on_solve_end();
+
+  logger.on_variable_state_changed(variable_domains);
 
   return variable_domains;
 }
 
 }  // namespace ac3
 
-enum DomainValue {
-  Single,
-  Field,
-  NumDomainValues
-};
+enum DomainValue { Single, Field, NumDomainValues };
 
 static void add_node_type_constraints(const bNodeTree &tree,
                                       const bNode &node,
@@ -1110,7 +1239,11 @@ static void test_ac3_field_inferencing(
     const Span<const FieldInferencingInterface *> interface_by_node,
     FieldInferencingInterface &inferencing_interface)
 {
-  using Logger = ac3::PrintLogger;
+  // ac3::NullLogger logger;
+  // ac3::PrintLogger logger;
+  std::fstream fs;
+  fs.open("/home/lukas/tests/field_inferencing/test.json", std::fstream::out);
+  ac3::JSONLogger logger(fs);
 
   const bNode *group_output_node = tree.group_output_node();
   if (!group_output_node) {
@@ -1124,6 +1257,26 @@ static void test_ac3_field_inferencing(
   const IndexRange tree_input_vars = socket_vars.after(tree.interface_inputs().size());
   const IndexRange tree_output_vars = tree_input_vars.after(tree.interface_outputs().size());
   const int num_vars = tree_output_vars.one_after_last();
+  tree.ensure_topology_cache();
+  logger.set_variable_names(num_vars, [&](const int var) -> std::string {
+    if (socket_vars.contains(var)) {
+      const bNodeSocket &socket = *tree.all_sockets()[var];
+      const bNode &node = socket.owner_node();
+      return socket.is_output() ? std::string(node.name) + ":O:" + socket.identifier :
+                                  std::string(node.name) + ":I:" + socket.identifier;
+    }
+    if (tree_input_vars.contains(var)) {
+      const bNodeTreeInterfaceSocket &iosocket =
+          *tree.interface_inputs()[var - tree_input_vars.start()];
+      return std::string("I:") + iosocket.identifier;
+    }
+    if (tree_output_vars.contains(var)) {
+      const bNodeTreeInterfaceSocket &iosocket =
+          *tree.interface_outputs()[var - tree_output_vars.start()];
+      return std::string("O:") + iosocket.identifier;
+    }
+    return "";
+  });
 
   const Span<const bNode *> nodes = tree.toposort_right_to_left();
 
@@ -1225,8 +1378,7 @@ static void test_ac3_field_inferencing(
     add_node_type_constraints(tree, *node, constraints);
   }
 
-  BitGroupVector<> result = ac3::solve_constraints<Logger>(
-      constraints, num_vars, NumDomainValues);
+  BitGroupVector<> result = ac3::solve_constraints(constraints, num_vars, NumDomainValues, logger);
 
   /* Setup inferencing interface for the tree. */
   for (const int i : tree.interface_inputs().index_range()) {
@@ -1260,7 +1412,7 @@ static void test_ac3_field_inferencing(
 
 static void test_ac3_example()
 {
-  using Logger = ac3::PrintLogger;
+  ac3::PrintLogger logger;
 
   /* Example taken from
    * https://www.boristhebrave.com/2021/08/30/arc-consistency-explained/
@@ -1348,7 +1500,7 @@ static void test_ac3_example()
     return value_a > value_b;
   });
 
-  ac3::solve_constraints<Logger>(constraints, num_vars, domain_size);
+  ac3::solve_constraints(constraints, num_vars, domain_size, logger);
 }
 
 bool update_field_inferencing(const bNodeTree &tree)
