@@ -84,6 +84,27 @@ template<class BufferType> static void imb_free_buffer(BufferType &buffer)
   buffer.ownership = IB_DO_NOT_TAKE_OWNERSHIP;
 }
 
+/* Free the specified DDS buffer storage, freeing memory when needed and restoring the state of the
+ * buffer to its defaults. */
+static void imb_free_dds_buffer(DDSData &dds_data)
+{
+  if (dds_data.data) {
+    switch (dds_data.ownership) {
+      case IB_DO_NOT_TAKE_OWNERSHIP:
+        break;
+
+      case IB_TAKE_OWNERSHIP:
+        /* dds_data.data is allocated by DirectDrawSurface::readData(), so don't use MEM_freeN! */
+        free(dds_data.data);
+        break;
+    }
+  }
+
+  /* Reset buffer to defaults. */
+  dds_data.data = nullptr;
+  dds_data.ownership = IB_DO_NOT_TAKE_OWNERSHIP;
+}
+
 /* Allocate pixel storage of the given buffer. The buffer owns the allocated memory.
  * Returns true of allocation succeeded, false otherwise. */
 template<class BufferType>
@@ -249,11 +270,7 @@ void IMB_freeImBuf(ImBuf *ibuf)
     IMB_free_gpu_textures(ibuf);
     IMB_metadata_free(ibuf->metadata);
     colormanage_cache_free(ibuf);
-
-    if (ibuf->dds_data.data != nullptr) {
-      /* dds_data.data is allocated by DirectDrawSurface::readData(), so don't use MEM_freeN! */
-      free(ibuf->dds_data.data);
-    }
+    imb_free_dds_buffer(ibuf->dds_data);
     MEM_freeN(ibuf);
   }
 }
@@ -472,22 +489,30 @@ void IMB_assign_float_buffer(ImBuf *ibuf, float *buffer_data, const ImBufOwnersh
   }
 }
 
-void imb_assign_encoded_buffer(ImBuf *ibuf,
-                               uint8_t *buffer_data,
-                               unsigned int buffer_size,
-                               unsigned int size,
-                               const ImBufOwnership ownership)
+void IMB_assign_byte_buffer(ImBuf *ibuf,
+                            const ImBufByteBuffer &buffer,
+                            const ImBufOwnership ownership)
 {
-  freeencodedbufferImBuf(ibuf);
+  IMB_assign_byte_buffer(ibuf, buffer.data, ownership);
+  ibuf->byte_buffer.colorspace = buffer.colorspace;
+}
 
-  if (buffer_data) {
-    ibuf->encoded_buffer_size = buffer_size;
-    ibuf->encoded_size = size;
-    ibuf->encoded_buffer.data = buffer_data;
-    ibuf->encoded_buffer.ownership = ownership;
+void IMB_assign_float_buffer(ImBuf *ibuf,
+                             const ImBufFloatBuffer &buffer,
+                             const ImBufOwnership ownership)
+{
+  IMB_assign_float_buffer(ibuf, buffer.data, ownership);
+  ibuf->float_buffer.colorspace = buffer.colorspace;
+}
 
-    ibuf->flags |= IB_mem;
-  }
+void IMB_assign_dds_data(ImBuf *ibuf, const DDSData &data, const ImBufOwnership ownership)
+{
+  BLI_assert(ibuf->ftype == IMB_FTYPE_DDS);
+
+  imb_free_dds_buffer(ibuf->dds_data);
+
+  ibuf->dds_data = data;
+  ibuf->dds_data.ownership = ownership;
 }
 
 ImBuf *IMB_allocFromBufferOwn(
@@ -669,56 +694,6 @@ ImBuf *IMB_dupImBuf(const ImBuf *ibuf1)
   *ibuf2 = tbuf;
 
   return ibuf2;
-}
-
-ImBuf *IMB_copy_sharing(const ImBuf *source)
-{
-  if (source == nullptr) {
-    return nullptr;
-  }
-
-  ImBuf *target = IMB_allocImBuf(source->x, source->y, source->planes, 0);
-  if (target == nullptr) {
-    return nullptr;
-  }
-
-  /* Assign buffers with shared ownership. */
-  IMB_assign_byte_buffer(target, source->byte_buffer.data, IB_DO_NOT_TAKE_OWNERSHIP);
-  IMB_assign_float_buffer(target, source->float_buffer.data, IB_DO_NOT_TAKE_OWNERSHIP);
-  imb_assign_encoded_buffer(target,
-                            source->encoded_buffer.data,
-                            source->encoded_buffer_size,
-                            source->encoded_size,
-                            IB_DO_NOT_TAKE_OWNERSHIP);
-
-  /* Above assignment does not assign color spaces, so assign them here. */
-  target->byte_buffer.colorspace = source->byte_buffer.colorspace;
-  target->float_buffer.colorspace = source->float_buffer.colorspace;
-
-  /* Silly trick to copy the entire contents of source over to target. */
-  ImBuf temporary_buffer = *source;
-
-  /* Fix pointers. */
-  temporary_buffer.byte_buffer = target->byte_buffer;
-  temporary_buffer.float_buffer = target->float_buffer;
-  temporary_buffer.encoded_buffer = target->encoded_buffer;
-  for (int a = 0; a < IMB_MIPMAP_LEVELS; a++) {
-    temporary_buffer.mipmap[a] = nullptr;
-  }
-  temporary_buffer.dds_data.data = nullptr;
-
-  /* Set malloc flag. */
-  temporary_buffer.refcounter = 0;
-
-  /* For now don't duplicate metadata. */
-  temporary_buffer.metadata = nullptr;
-
-  temporary_buffer.display_buffer_flags = nullptr;
-  temporary_buffer.colormanage_cache = nullptr;
-
-  *target = temporary_buffer;
-
-  return target;
 }
 
 size_t IMB_get_rect_len(const ImBuf *ibuf)

@@ -34,17 +34,6 @@ struct IDProperty;
 #define IMB_MIPMAP_LEVELS 20
 #define IMB_FILEPATH_SIZE 1024
 
-struct DDSData {
-  /** DDS fourcc info */
-  unsigned int fourcc;
-  /** The number of mipmaps in the dds file */
-  unsigned int nummipmaps;
-  /** The compressed image data */
-  unsigned char *data;
-  /** The size of the compressed data */
-  unsigned int size;
-};
-
 /**
  * \ingroup imbuf
  * This is the abstraction of an image. ImBuf is the basic type used for all imbuf operations.
@@ -133,7 +122,7 @@ enum eImBufFlags {
 
 /* Specialization of an ownership whenever a bare pointer is provided to the ImBuf buffers
  * assignment API. */
-enum ImBufOwnership : uint8_t {
+enum ImBufOwnership {
   /* The ImBuf simply shares pointer with data owned by someone else, and will not perform any
    * memory management when the ImBuf frees the buffer. */
   IB_DO_NOT_TAKE_OWNERSHIP = 0,
@@ -141,6 +130,19 @@ enum ImBufOwnership : uint8_t {
   /* The ImBuf takes ownership of the buffer data, and will use MEM_freeN() to free this memory
    * when the ImBuf needs to free the data. */
   IB_TAKE_OWNERSHIP = 1,
+};
+
+struct DDSData {
+  /** DDS fourcc info */
+  unsigned int fourcc;
+  /** The number of mipmaps in the dds file */
+  unsigned int nummipmaps;
+  /** The compressed image data */
+  unsigned char *data;
+  /** The size of the compressed data */
+  unsigned int size;
+  /** Who owns the data buffer. */
+  ImBufOwnership ownership;
 };
 
 /* Different storage specialization.

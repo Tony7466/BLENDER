@@ -137,6 +137,50 @@ static ImageUser compute_image_user_for_pass(Context &context,
   return image_user_for_pass;
 }
 
+/* The image buffer might be stored as an sRGB 8-bit image, while the compositor expects linear
+ * float images, so compute a linear float buffer for the image buffer. This will also do linear
+ * space conversion and alpha pre-multiplication as needed. We could store those images in sRGB GPU
+ * textures and let the GPU do the linear space conversion, but the issues is that we don't control
+ * how the GPU does the conversion and so we get tiny differences across CPU and GPU compositing,
+ * and potentially even across GPUs/Drivers. Further, if alpha pre-multiplication is needed, we
+ * would need to do it ourself, which means alpha pre-multiplication will happen before linear
+ * space conversion, which would produce yet another difference. So we just do everything on the
+ * CPU, since this is already a cached resource.
+ *
+ * To avoid conflicts with other threads, create a new image buffer and assign all the necessary
+ * information to it, with IB_DO_NOT_TAKE_OWNERSHIP for buffers since a deep copy is not needed.
+ *
+ * The caller should free the returned image buffer. */
+static ImBuf *compute_linear_buffer(ImBuf *image_buffer)
+{
+  /* Do not pass the flags to the allocation function to avoid buffer allocation, but assign them
+   * after to retain important information like precision and alpha mode. */
+  ImBuf *linear_image_buffer = IMB_allocImBuf(
+      image_buffer->x, image_buffer->y, image_buffer->planes, 0);
+  linear_image_buffer->flags = image_buffer->flags;
+
+  /* Assign the float buffer if it exists, as well as its number of channels. */
+  IMB_assign_float_buffer(
+      linear_image_buffer, image_buffer->float_buffer, IB_DO_NOT_TAKE_OWNERSHIP);
+  linear_image_buffer->channels = image_buffer->channels;
+
+  /* If no float buffer exists, assign it then compute a float buffer from it. This is the main
+   * call of this function. */
+  if (!linear_image_buffer->float_buffer.data) {
+    IMB_assign_byte_buffer(
+        linear_image_buffer, image_buffer->byte_buffer, IB_DO_NOT_TAKE_OWNERSHIP);
+    IMB_float_from_rect(linear_image_buffer);
+  }
+
+  /* If the image buffer contained compressed data, assign them as well. */
+  if (image_buffer->ftype == IMB_FTYPE_DDS) {
+    linear_image_buffer->ftype = IMB_FTYPE_DDS;
+    IMB_assign_dds_data(linear_image_buffer, image_buffer->dds_data, IB_DO_NOT_TAKE_OWNERSHIP);
+  }
+
+  return linear_image_buffer;
+}
+
 CachedImage::CachedImage(Context &context,
                          Image *image,
                          ImageUser *image_user,
@@ -159,21 +203,7 @@ CachedImage::CachedImage(Context &context,
       context, image, image_user, pass_name);
 
   ImBuf *image_buffer = BKE_image_acquire_ibuf(image, &image_user_for_pass, nullptr);
-
-  /* The image buffer might be stored as an sRGB 8-bit image, while the compositor expects linear
-   * float images, so compute a linear float buffer for the image buffer. This will also do linear
-   * space conversion and alpha pre-multiplication as needed. We could store those images in sRGB
-   * GPU textures and let the GPU do the linear space conversion, but the issues is that we don't
-   * control how the GPU does the conversion and so we get tiny differences across CPU and GPU
-   * compositing, and potentially even across GPUs/Drivers. Further, if alpha pre-multiplication is
-   * needed, we would need to do it ourself, which means alpha pre-multiplication will happen
-   * before linear space conversion, which would produce yet another difference. So we just do
-   * everything on the CPU, since this is already a cached resource. To avoid conflicts with other
-   * threads, create a shallow duplicate buffer and eventually free it. */
-  ImBuf *linear_image_buffer = IMB_copy_sharing(image_buffer);
-  if (!linear_image_buffer->float_buffer.data) {
-    IMB_float_from_rect(linear_image_buffer);
-  }
+  ImBuf *linear_image_buffer = compute_linear_buffer(image_buffer);
 
   texture_ = IMB_create_gpu_texture("Image Texture", linear_image_buffer, true, true);
   GPU_texture_update_mipmap_chain(texture_);
