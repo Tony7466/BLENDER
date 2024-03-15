@@ -1422,6 +1422,8 @@ struct wmOpPopUp {
   bool cancel_default;
   bool mouse_move_quit;
   bool include_properties;
+  /** Dummy, only to allow layout panels in popups. */;
+  Panel *panel{nullptr};
 };
 
 /* Only invoked by OK button in popups created with #wm_block_dialog_create(). */
@@ -1433,6 +1435,10 @@ static void dialog_exec_cb(bContext *C, void *arg1, void *arg2)
      * In this case, wm_operator_ui_popup_cancel won't run. */
     wmOpPopUp *data = static_cast<wmOpPopUp *>(arg1);
     op = data->op;
+    if (data->panel) {
+      MEM_delete(data->panel->type);
+      BKE_panel_free(data->panel);
+    }
     MEM_delete(data);
   }
 
@@ -1538,6 +1544,12 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
 
   if (data->include_properties) {
     uiItemS_ex(layout, 0.5f);
+    /** Set dummy panel. */
+    if (data->panel) {
+      data->panel->runtime->layout_panels.clear();
+      uiblockSetRootPanel(block, data->panel);
+      data->panel->runtime->block = block;
+    }
     uiTemplateOperatorPropertyButs(C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, 0);
   }
 
@@ -1656,7 +1668,10 @@ static void wm_operator_ui_popup_cancel(bContext *C, void *user_data)
       WM_operator_free(op);
     }
   }
-
+  if (data->panel) {
+    MEM_delete(data->panel->type);
+    BKE_panel_free(data->panel);
+  }
   MEM_delete(data);
 }
 
@@ -1668,7 +1683,10 @@ static void wm_operator_ui_popup_ok(bContext *C, void *arg, int retval)
   if (op && retval > 0) {
     WM_operator_call_ex(C, op, true);
   }
-
+  if (data->panel) {
+    MEM_delete(data->panel->type);
+    BKE_panel_free(data->panel);
+  }
   MEM_delete(data);
 }
 
@@ -1773,7 +1791,8 @@ int WM_operator_props_dialog_popup(bContext *C,
                                    wmOperator *op,
                                    int width,
                                    std::optional<std::string> title,
-                                   std::optional<std::string> confirm_text)
+                                   std::optional<std::string> confirm_text,
+                                   bool use_layout_panels)
 {
   wmOpPopUp *data = MEM_new<wmOpPopUp>(__func__);
   data->op = op;
@@ -1788,7 +1807,11 @@ int WM_operator_props_dialog_popup(bContext *C,
   data->cancel_default = false;
   data->mouse_move_quit = false;
   data->include_properties = true;
-
+  if (use_layout_panels) {
+    data->panel = BKE_panel_new(nullptr);
+    data->panel->type = MEM_new<PanelType>(__func__);
+    data->panel->type->flag = PANEL_TYPE_NO_HEADER;
+  }
   /* The operator is not executed until popup OK button is clicked. */
   UI_popup_block_ex(
       C, wm_block_dialog_create, wm_operator_ui_popup_ok, wm_operator_ui_popup_cancel, data, op);

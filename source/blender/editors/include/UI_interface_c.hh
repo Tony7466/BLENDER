@@ -712,6 +712,9 @@ int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports) A
  * E.g. WM might need to do this for exiting files correctly.
  */
 void UI_popup_menu_retval_set(const uiBlock *block, int retval, bool enable);
+bool UI_layout_panel_toggle_open(const bContext *C, struct LayoutPanelHeader *header);
+void ui_panel_drag_collapse_handler_add(const bContext *C, const bool was_open);
+LayoutPanelHeader *get_layout_panel_header_under_mouse(const Panel &panel, const int my);
 /**
  * Setting the button makes the popup open from the button instead of the cursor.
  */
@@ -2193,6 +2196,7 @@ eUIEmbossType uiLayoutGetEmboss(uiLayout *layout);
 bool uiLayoutGetPropSep(uiLayout *layout);
 bool uiLayoutGetPropDecorate(uiLayout *layout);
 Panel *uiLayoutGetRootPanel(uiLayout *layout);
+void uiblockSetRootPanel(uiBlock *, Panel *);
 
 /* Layout create functions. */
 

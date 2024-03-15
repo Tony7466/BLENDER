@@ -55,6 +55,8 @@
 #include "ED_undo.hh"
 
 #include "UI_interface.hh"
+#include "UI_interface_c.hh"
+
 #include "UI_string_search.hh"
 
 #include "BLF_api.hh"
@@ -11693,7 +11695,24 @@ static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
 
   ARegion *menu_region = CTX_wm_menu(C);
   CTX_wm_menu_set(C, menu->region);
+  if (event->val == KM_PRESS && event->type == LEFTMOUSE) {
+    LISTBASE_FOREACH (uiBlock *, block, &menu->region->uiblocks) {
+      if (block->panel) {
+        int mx = event->xy[0];
+        int my = event->xy[1];
+        ui_window_to_block(menu->region, block, &mx, &my);
 
+        LayoutPanelHeader *header = get_layout_panel_header_under_mouse(*block->panel, my);
+        if (header) {
+          ED_region_tag_redraw(menu->region);
+          ED_region_tag_refresh_ui(menu->region);
+          ui_panel_drag_collapse_handler_add(C, !UI_layout_panel_toggle_open(C, header));
+          CTX_wm_region_set(C, menu_region);
+          return WM_UI_HANDLER_BREAK;
+        }
+      }
+    }
+  }
   if (event->type == EVT_DROP || event->val == KM_DBL_CLICK) {
     /* EVT_DROP:
      *   If we're handling drop event we'll want it to be handled by popup callee as well,

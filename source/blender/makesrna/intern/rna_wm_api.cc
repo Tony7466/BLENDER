@@ -237,7 +237,8 @@ static int rna_Operator_props_dialog_popup(bContext *C,
                                            const char *title,
                                            const char *confirm_text,
                                            const char *text_ctxt,
-                                           const bool translate)
+                                           const bool translate,
+                                           const bool use_layout_panels)
 {
   title = RNA_translate_ui_text(title, text_ctxt, nullptr, nullptr, translate);
   confirm_text = RNA_translate_ui_text(confirm_text, text_ctxt, nullptr, nullptr, translate);
@@ -246,7 +247,8 @@ static int rna_Operator_props_dialog_popup(bContext *C,
       op,
       width,
       title ? std::make_optional<std::string>(title) : std::nullopt,
-      confirm_text ? std::make_optional<std::string>(confirm_text) : std::nullopt);
+      confirm_text ? std::make_optional<std::string>(confirm_text) : std::nullopt,
+      use_layout_panels);
 }
 
 static int keymap_item_modifier_flag_from_args(bool any, int shift, int ctrl, int alt, int oskey)
@@ -914,6 +916,9 @@ void RNA_api_wm(StructRNA *srna)
       "Confirm Text",
       "Optional text to show instead to the default \"OK\" confirmation button text");
   api_ui_item_common_translation(func);
+  parm = RNA_def_property(func, "use_layout_panels", PROP_STRING, PROP_NONE);
+  RNA_def_property_ui_text(
+      parm, "Use Layout Panels", "Sets aditional set-up to support layout panels in the dialog");
 
   /* invoke enum */
   func = RNA_def_function(srna, "invoke_search_popup", "rna_Operator_enum_search_invoke");

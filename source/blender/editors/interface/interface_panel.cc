@@ -38,6 +38,8 @@
 #include "ED_screen.hh"
 
 #include "UI_interface.hh"
+#include "UI_interface_c.hh"
+
 #include "UI_interface_icons.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
@@ -1931,7 +1933,7 @@ static void ui_do_drag(const bContext *C, const wmEvent *event, Panel *panel)
 /** \name Region Level Panel Interaction
  * \{ */
 
-static LayoutPanelHeader *get_layout_panel_header_under_mouse(const Panel &panel, const int my)
+LayoutPanelHeader *get_layout_panel_header_under_mouse(const Panel &panel, const int my)
 {
   for (LayoutPanelHeader &header : panel.runtime->layout_panels.headers) {
     if (IN_RANGE(float(my - panel.runtime->block->rect.ymax + layout_panel_y_offset()),
@@ -2080,7 +2082,7 @@ static int ui_panel_drag_collapse_handler(bContext *C, const wmEvent *event, voi
   return retval;
 }
 
-static void ui_panel_drag_collapse_handler_add(const bContext *C, const bool was_open)
+void ui_panel_drag_collapse_handler_add(const bContext *C, const bool was_open)
 {
   wmWindow *win = CTX_wm_window(C);
   const wmEvent *event = win->eventstate;
@@ -2097,6 +2099,17 @@ static void ui_panel_drag_collapse_handler_add(const bContext *C, const bool was
                           eWM_EventHandlerFlag(0));
 }
 
+bool UI_layout_panel_toggle_open(const bContext *C, LayoutPanelHeader *header)
+{
+  const bool is_open = RNA_boolean_get(&header->open_owner_ptr, header->open_prop_name.c_str());
+  RNA_boolean_set(&header->open_owner_ptr, header->open_prop_name.c_str(), !is_open);
+  RNA_property_update(
+      const_cast<bContext *>(C),
+      &header->open_owner_ptr,
+      RNA_struct_find_property(&header->open_owner_ptr, header->open_prop_name.c_str()));
+  return !is_open;
+}
+
 static void ui_handle_layout_panel_header(
     const bContext *C, const uiBlock *block, const int /*mx*/, const int my, const int event_type)
 {
@@ -2104,25 +2117,14 @@ static void ui_handle_layout_panel_header(
   BLI_assert(panel->type != nullptr);
 
   LayoutPanelHeader *header = get_layout_panel_header_under_mouse(*panel, my);
-  if (header == nullptr) {
+  if (!header) {
     return;
   }
-
-  const bool is_open = RNA_boolean_get(&header->open_owner_ptr, header->open_prop_name.c_str());
-  if (is_open) {
-    RNA_boolean_set(&header->open_owner_ptr, header->open_prop_name.c_str(), false);
-  }
-  else {
-    RNA_boolean_set(&header->open_owner_ptr, header->open_prop_name.c_str(), true);
-  }
-  RNA_property_update(
-      const_cast<bContext *>(C),
-      &header->open_owner_ptr,
-      RNA_struct_find_property(&header->open_owner_ptr, header->open_prop_name.c_str()));
+  const bool new_state = UI_layout_panel_toggle_open(C, header);
   ED_region_tag_redraw(CTX_wm_region(C));
 
   if (event_type == LEFTMOUSE) {
-    ui_panel_drag_collapse_handler_add(C, is_open);
+    ui_panel_drag_collapse_handler_add(C, !new_state);
   }
 }
 
