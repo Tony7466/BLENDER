@@ -73,16 +73,25 @@ template<typename T, int S> struct IntF {
   std::string to_string(int base = 10) const;
 };
 
-template<typename T>
-using double_uint_type = std::conditional_t<
-    std::is_same_v<T, uint8_t>,
-    uint16_t,
-    std::conditional_t<
-        std::is_same_v<T, uint16_t>,
-        uint32_t,
-        std::conditional_t<std::is_same_v<T, uint32_t>,
-                           uint64_t,
-                           std::conditional_t<std::is_same_v<T, uint64_t>, __uint128_t, void>>>>;
+template<typename T> struct DoubleUIntType {
+  using type = void;
+};
+template<> struct DoubleUIntType<uint8_t> {
+  using type = uint16_t;
+};
+template<> struct DoubleUIntType<uint16_t> {
+  using type = uint32_t;
+};
+template<> struct DoubleUIntType<uint32_t> {
+  using type = uint64_t;
+};
+#ifndef _MSC_VER
+template<> struct DoubleUIntType<uint64_t> {
+  using type = __uint128_t;
+};
+#endif
+
+template<typename T> using double_uint_type = typename DoubleUIntType<T>::type;
 
 using UInt64_8 = UIntF<uint8_t, 8>;
 using UInt64_16 = UIntF<uint16_t, 4>;
@@ -112,11 +121,17 @@ using Int256_16 = IntF<uint16_t, 16>;
 using Int256_32 = IntF<uint32_t, 8>;
 using Int256_64 = IntF<uint64_t, 4>;
 
+#ifdef _MSC_VER
+using UInt128 = UInt128_32;
+using UInt256 = UInt256_32;
+using Int128 = Int128_32;
+using Int256 = Int256_32;
+#else
 using UInt128 = UInt128_64;
 using UInt256 = UInt256_64;
-
 using Int128 = Int128_64;
 using Int256 = Int256_64;
+#endif
 
 template<typename T, int S> inline UIntF<T, S>::UIntF(const uint64_t value)
 {

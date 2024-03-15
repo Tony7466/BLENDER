@@ -8,6 +8,9 @@
 
 #include "testing/testing.h"
 
+/* See `BLI_fixed_width_int_str.hh` for why this is necessary.  */
+#ifdef WITH_GMP
+
 namespace blender::fixed_width_int::tests {
 
 TEST(fixed_width_int, Add256)
@@ -78,3 +81,5 @@ TEST(fixed_width_int, Fuzzy)
 }
 
 }  // namespace blender::fixed_width_int::tests
+
+#endif /* WITH_GMP */
