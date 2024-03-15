@@ -590,8 +590,10 @@ static IndexMaskSegment evaluate_exact_with_bits(const Expr &root_expression,
   BLI_assert(bounds.size() <= max_segment_size);
   const int64_t bounds_min = bounds.start();
   const int expr_array_size = root_expression.expression_array_size();
-  const int64_t ints_in_bounds = ceil_division(bounds.size(), bits::BitsPerInt);
 
+  /* Make bit span sizes a multiple of `BitsPerInt`. This allows the bit-wise operations to run a
+   * bit more efficiently, because only full integers are processed. */
+  const int64_t ints_in_bounds = ceil_division(bounds.size(), bits::BitsPerInt);
   BitGroupVector<16 * 1024> expression_results(
       expr_array_size, ints_in_bounds * bits::BitsPerInt, false);
 
