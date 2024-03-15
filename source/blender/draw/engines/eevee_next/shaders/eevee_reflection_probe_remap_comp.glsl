@@ -38,11 +38,6 @@ void main()
   /* Texel in probe. */
   ivec2 local_texel = ivec2(gl_GlobalInvocationID.xy);
 
-  /* Exit when pixel being written doesn't fit in the area reserved for the probe. */
-  if (any(greaterThanEqual(local_texel, ivec2(write_coord.extent)))) {
-    return;
-  }
-
   vec2 wrapped_uv;
   vec3 direction = sphere_probe_texel_to_direction(
       local_texel, write_coord, sample_coord, wrapped_uv);
@@ -61,8 +56,10 @@ void main()
 
   radiance = colorspace_brightness_clamp_max(radiance, probe_brightness_clamp);
 
-  ivec3 texel = ivec3(local_texel + write_coord.offset, write_coord.layer);
-  imageStore(atlas_img, texel, vec4(radiance, 1.0));
+  if (!any(greaterThanEqual(local_texel, ivec2(write_coord.extent)))) {
+    ivec3 texel = ivec3(local_texel + write_coord.offset, write_coord.layer);
+    imageStore(atlas_img, texel, vec4(radiance, 1.0));
+  }
 
   if (extract_sh) {
     /* TODO(fclem): Do not include the 1px border in the SH processing. */
