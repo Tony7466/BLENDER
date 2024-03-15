@@ -141,8 +141,9 @@ void VolumeProbeModule::set_view(View & /*view*/)
       continue;
     }
 
+    int3 grid_size_with_padding = grid_size + 2;
     if (grid.bricks.is_empty()) {
-      int3 grid_size_in_bricks = math::divide_ceil(grid_size,
+      int3 grid_size_in_bricks = math::divide_ceil(grid_size_with_padding,
                                                    int3(IRRADIANCE_GRID_BRICK_SIZE - 1));
       int brick_len = grid_size_in_bricks.x * grid_size_in_bricks.y * grid_size_in_bricks.z;
       grid.bricks = bricks_alloc(brick_len);
@@ -164,17 +165,13 @@ void VolumeProbeModule::set_view(View & /*view*/)
     grid.brick_offset = bricks_infos_buf_.size();
     bricks_infos_buf_.extend(grid.bricks);
 
-    if (grid_size.x <= 0 || grid_size.y <= 0 || grid_size.z <= 0) {
-      inst_.info += "Error: Malformed irradiance grid data\n";
-      continue;
-    }
-
     float4x4 grid_to_world = grid.object_to_world * math::from_location<float4x4>(float3(-1.0f)) *
-                             math::from_scale<float4x4>(float3(2.0f / float3(grid_size))) *
+                             math::from_scale<float4x4>(
+                                 float3(2.0f / float3(grid_size_with_padding))) *
                              math::from_location<float4x4>(float3(0.0f));
 
     grid.world_to_grid_transposed = float3x4(math::transpose(math::invert(grid_to_world)));
-    grid.grid_size = grid_size;
+    grid.grid_size = grid_size_with_padding;
     grid_loaded.append(&grid);
   }
 

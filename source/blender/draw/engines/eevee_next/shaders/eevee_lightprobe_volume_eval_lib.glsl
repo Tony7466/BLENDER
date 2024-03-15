@@ -157,7 +157,7 @@ SphericalHarmonicL1 lightprobe_irradiance_sample(
       index = i;
 #ifdef IRRADIANCE_GRID_SAMPLING
       float distance_to_border = reduce_min(min(lP, vec3(grids_infos_buf[i].grid_size) - lP));
-      if (distance_to_border < random * 0.5 /* Half cell blending. */) {
+      if (distance_to_border < 0.0 /* Half cell blending. */) {
         /* Try to sample another grid to get smooth transitions at borders. */
         continue;
       }

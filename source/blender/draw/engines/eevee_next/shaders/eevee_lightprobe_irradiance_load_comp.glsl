@@ -50,7 +50,12 @@ void main()
   ivec3 brick_coord = ivec3(gl_WorkGroupID);
   /* Add padding border to allow bilinear filtering. */
   ivec3 texel_coord = brick_coord * (IRRADIANCE_GRID_BRICK_SIZE - 1) + ivec3(gl_LocalInvocationID);
-  ivec3 input_coord = min(texel_coord, textureSize(irradiance_a_tx, 0) - 1);
+  /* Add padding to the grid to allow interpolation to outside grid. */
+  texel_coord -= 1;
+
+  ivec3 input_coord = clamp(texel_coord, 0, textureSize(irradiance_a_tx, 0) - 1);
+
+  bool is_padding_voxel = !all(equal(texel_coord, input_coord));
 
   /* Brick coordinate in the destination atlas. */
   IrradianceBrick brick = irradiance_brick_unpack(bricks_infos_buf[brick_index]);
@@ -118,6 +123,11 @@ void main()
   /* Add local lighting to distant lighting. */
   sh_local = spherical_harmonics_add(sh_local, sh_distant);
 
+  if (is_padding_voxel) {
+    /* Padding voxels just contain the distant lighting. */
+    sh_local = sh_distant;
+  }
+
   atlas_store(sh_local.L0.M0, output_coord, 0);
   atlas_store(sh_local.L1.Mn1, output_coord, 1);
   atlas_store(sh_local.L1.M0, output_coord, 2);
@@ -132,7 +142,7 @@ void main()
         ivec3 offset = lightprobe_irradiance_grid_cell_corner(i);
         ivec3 coord = input_coord + offset + ivec3(0, 0, cell);
         float validity = texelFetch(validity_tx, coord, 0).r;
-        if (validity > validity_threshold) {
+        if (validity > validity_threshold || is_padding_voxel) {
           cell_validity_bits[cell] |= (1 << i);
         }
       }
