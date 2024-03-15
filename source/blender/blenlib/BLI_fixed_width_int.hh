@@ -40,11 +40,14 @@ template<typename T, int S> struct UIntF {
   /** Convert to a normal integer. Note that this may loose digits. */
   explicit operator uint64_t() const;
 
+/* See `BLI_fixed_width_int_str.hh`. */
+#ifdef WITH_GMP
   /** Update value based on the integer encoded in the string. */
   void set_from_str(StringRefNull str, int base = 10);
 
   /** Convert to a string. */
   std::string to_string(int base = 10) const;
+#endif
 };
 
 /**
@@ -54,23 +57,38 @@ template<typename T, int S> struct IntF {
   static_assert(std::is_unsigned_v<T>);
   static_assert(S >= 1);
 
+  /**
+   * Array of smaller integers that make up the bigger integer. The first element is the least
+   * significant digit.
+   */
   std::array<T, S> v;
 
+  /** Allow default construction. Note that the value is not initialized in this case. */
   IntF() = default;
 
+  /** Construct from a specific integer. */
   explicit IntF(int64_t value);
 
+  /** Support casting unsigned to signed fixed-width-int. */
   explicit IntF(const UIntF<T, S> &value);
+
+  /** Construct from a string. */
   explicit IntF(StringRefNull str, int base = 10);
 
+  /** Convert to a normal integer. Note that this may loose digits. */
   explicit operator int64_t() const;
 
-  void set_from_str(const StringRefNull str, const int base = 10);
-
+  /** Support casting from signed to unsigned fixed-width-int. */
   explicit operator UIntF<T, S>() const;
+
+/* See `BLI_fixed_width_int_str.hh`. */
+#ifdef WITH_GMP
+  /** Update value based on the integer encoded in the string. */
+  void set_from_str(const StringRefNull str, const int base = 10);
 
   /** Convert to a string. */
   std::string to_string(int base = 10) const;
+#endif
 };
 
 template<typename T> struct DoubleUIntType {
@@ -91,6 +109,7 @@ template<> struct DoubleUIntType<uint64_t> {
 };
 #endif
 
+/** Maps unsigned integer types to a type that's twice the size. E.g. uint16_t to uint32_t. */
 template<typename T> using double_uint_type = typename DoubleUIntType<T>::type;
 
 using UInt64_8 = UIntF<uint8_t, 8>;
@@ -196,6 +215,17 @@ template<typename T, int S> inline IntF<T, S>::operator UIntF<T, S>() const
   return result;
 }
 
+/**
+ * Adds two fixed-width-integer together using the standard addition with carry algorithm tought
+ * in schools. The main difference is that the digits here are not 0 to 9, but 0 to max(T).
+ *
+ * Due to the design of two's-complement numbers, this works for signed and unsigned
+ * fixed-width-integer. The overflow behavior is wrap-around.
+ *
+ * \param T: Type for individual digits.
+ * \param T2: Integer type that is twice as large as T.
+ * \param S: Number of digits of type T in each fixed-width-integer.
+ */
 template<typename T, typename T2, int S>
 inline void generic_add(T *__restrict dst, const T *a, const T *b)
 {
@@ -210,6 +240,9 @@ inline void generic_add(T *__restrict dst, const T *a, const T *b)
   });
 }
 
+/**
+ * Similar to #generic_add, but for subtraction.
+ */
 template<typename T, typename T2, int S>
 inline void generic_sub(T *__restrict dst, const T *a, const T *b)
 {
@@ -223,6 +256,7 @@ inline void generic_sub(T *__restrict dst, const T *a, const T *b)
   });
 }
 
+/** Similar to #generic_add, but for unsigned multiplication. */
 template<typename T, typename T2, int S>
 inline void generic_unsigned_mul(T *__restrict dst, const T *a, const T *b)
 {
@@ -255,63 +289,6 @@ inline UIntF<T, Size> operator+(const UIntF<T, Size> &a, const UIntF<T, Size> &b
   generic_add<T, double_uint_type<T>, Size>(result.v.data(), a.v.data(), b.v.data());
   return result;
 }
-
-// inline void operator+=(UInt256_64 &a, const UInt256_64 &b)
-// {
-//   asm("mov (%1), %%rax\n\t"
-//       "add %%rax, (%0)\n\t"
-//       "mov 8(%1), %%rax\n\t"
-//       "adc %%rax, 8(%0)\n\t"
-//       "mov 16(%1), %%rax\n\t"
-//       "adc %%rax, 16(%0)\n\t"
-//       "mov 24(%1), %%rax\n\t"
-//       "adc %%rax, 24(%0)\n\t" ::"r"(&a),
-//       "r"(&b)
-//       : "%rax");
-// }
-
-// inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
-// {
-//   UInt256_64 r = a;
-//   r += b;
-//   return r;
-// }
-
-// inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
-// {
-//   UInt256_64 r;
-//   asm("mov (%1), %%rax\n\t"
-//       "add (%2), %%rax\n\t"
-//       "mov %%rax, (%0)\n\t"
-//       "mov 8(%1), %%rax\n\t"
-//       "adc 8(%2), %%rax\n\t"
-//       "mov %%rax, 8(%0)\n\t"
-//       "mov 16(%1), %%rax\n\t"
-//       "adc 16(%2), %%rax\n\t"
-//       "mov %%rax, 16(%0)\n\t"
-//       "mov 24(%1), %%rax\n\t"
-//       "adc 24(%2), %%rax\n\t"
-//       "mov %%rax, 24(%0)\n\t" ::"r"(&r),
-//       "r"(&a),
-//       "r"(&b)
-//       : "rax");
-//   return r;
-// }
-
-// inline UInt256_64 operator+(const UInt256_64 &a, const UInt256_64 &b)
-// {
-//   UInt256_64 r;
-
-//   const auto *a_ptr = reinterpret_cast<const unsigned long long *>(a.v.data());
-//   const auto *b_ptr = reinterpret_cast<const unsigned long long *>(b.v.data());
-//   auto *r_ptr = reinterpret_cast<unsigned long long *>(r.v.data());
-
-//   const uint8_t carry0 = _addcarry_u64(0, a_ptr[0], b_ptr[0], r_ptr + 0);
-//   const uint8_t carry1 = _addcarry_u64(carry0, a_ptr[1], b_ptr[1], r_ptr + 1);
-//   const uint8_t carry2 = _addcarry_u64(carry1, a_ptr[2], b_ptr[2], r_ptr + 2);
-//   r.v[3] = a_ptr[3] + b_ptr[3] + carry2;
-//   return r;
-// }
 
 template<typename T, int Size, BLI_ENABLE_IF((!std::is_void_v<double_uint_type<T>>))>
 inline IntF<T, Size> operator+(const IntF<T, Size> &a, const IntF<T, Size> &b)
@@ -356,6 +333,7 @@ inline IntF<T, Size> operator*(const IntF<T, Size> &a, const IntF<T, Size> &b)
   using UIntF = UIntF<T, Size>;
   using IntF = IntF<T, Size>;
 
+  /* Signed multiplication is implemented in terms of unsigned multiplication. */
   const bool is_negative_a = is_negative(a);
   const bool is_negative_b = is_negative(b);
   if (is_negative_a && is_negative_b) {
