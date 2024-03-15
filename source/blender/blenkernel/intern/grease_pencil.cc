@@ -471,7 +471,7 @@ static float3x2 get_stroke_to_texture_matrix(const float uv_rotation,
 
   float3x2 texture_matrix = float3x2::identity();
   /*
-   * The order in which the three transforms are applied, has been carefully chosen to be easy to
+   * The order in which the three transforms are applied has been carefully chosen to be easy to
    * invert.
    *
    * The translation is applied last so that the origin goes to `uv_translation`
