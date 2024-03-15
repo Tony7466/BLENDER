@@ -29,6 +29,60 @@ SphericalHarmonicL1 spherical_harmonic_lds_load(uint index)
   return sh;
 }
 
+float triangle_solid_angle(vec3 A, vec3 B, vec3 C)
+{
+  return 2.0 * atan(abs(dot(A, cross(B, C))), (1.0 + dot(B, C) + dot(A, C) + dot(A, B)));
+}
+
+float quad_solid_angle(vec3 A, vec3 B, vec3 C, vec3 D)
+{
+  return triangle_solid_angle(A, B, C) + triangle_solid_angle(C, B, D);
+}
+
+float octahedral_texel_solid_angle(ivec2 local_texel,
+                                   SphereProbePixelArea write_co,
+                                   SphereProbeUvArea sample_co)
+{
+  if (any(equal(local_texel, ivec2(write_co.extent - 1)))) {
+    /* Do not weight these border pixels that are redundant. */
+    return 0.0;
+  }
+  /* Since we are puting texel centers on the edges of the octahedron, the shape of a texel can be
+   * anything from a simple quad (at the Z=0 poles), to a 4 pointed start (at the Z=+-1 poles)
+   * passing by arrow tail shapes (at the X=0 and Y=0 edges). So while it would be more correct to
+   * account for all these shapes (using 8 triangles), it proves to be quite involved with all the
+   * corner cases. Instead, we compute the area as if the texels were not aligned with the edges.
+   * This simplify things at the cost of making the weighting a tiny bit off for every pixels.
+   * The sum of all texels is still giving 4 PI. */
+  vec3 v00 = sphere_probe_texel_to_direction(local_texel + ivec2(-1, -1), write_co, sample_co);
+  vec3 v10 = sphere_probe_texel_to_direction(local_texel + ivec2(+0, -1), write_co, sample_co);
+  vec3 v20 = sphere_probe_texel_to_direction(local_texel + ivec2(-1, -1), write_co, sample_co);
+  vec3 v01 = sphere_probe_texel_to_direction(local_texel + ivec2(-1, +0), write_co, sample_co);
+  vec3 v11 = sphere_probe_texel_to_direction(local_texel + ivec2(+0, +0), write_co, sample_co);
+  vec3 v21 = sphere_probe_texel_to_direction(local_texel + ivec2(+1, +0), write_co, sample_co);
+  vec3 v02 = sphere_probe_texel_to_direction(local_texel + ivec2(-1, +1), write_co, sample_co);
+  vec3 v12 = sphere_probe_texel_to_direction(local_texel + ivec2(+0, +1), write_co, sample_co);
+  vec3 v22 = sphere_probe_texel_to_direction(local_texel + ivec2(+1, +1), write_co, sample_co);
+  /* The solid angle functions expect normalized vectors. */
+  v00 = normalize(v00);
+  v10 = normalize(v10);
+  v20 = normalize(v20);
+  v01 = normalize(v01);
+  v11 = normalize(v11);
+  v21 = normalize(v21);
+  v02 = normalize(v02);
+  v12 = normalize(v12);
+  v22 = normalize(v22);
+#if 0 /* Has artifacts, is marginaly more correct. */
+  /* For some reason quad_solid_angle(v10, v20, v11, v21) gives some strange artifacts at Z=0. */
+  return 0.25 * (quad_solid_angle(v00, v10, v01, v11) + quad_solid_angle(v10, v20, v11, v21) +
+                 quad_solid_angle(v01, v11, v02, v12) + quad_solid_angle(v11, v21, v12, v22));
+#else
+  /* Choosing the positive quad (0,0) > (+1,+1) for stability. */
+  return quad_solid_angle(v11, v21, v12, v22);
+#endif
+}
+
 void main()
 {
   SphereProbeUvArea world_coord = reinterpret_as_atlas_coord(world_coord_packed);
@@ -62,7 +116,7 @@ void main()
   }
 
   if (extract_sh) {
-    /* TODO(fclem): Do not include the 1px border in the SH processing. */
+    float sample_weight = octahedral_texel_solid_angle(local_texel, write_coord, sample_coord);
 
     /* Convert radiance to spherical harmonics. */
     SphericalHarmonicL1 sh;
@@ -70,8 +124,6 @@ void main()
     sh.L1.Mn1 = vec4(0.0);
     sh.L1.M0 = vec4(0.0);
     sh.L1.Mp1 = vec4(0.0);
-    /* TODO(fclem): Texel solid angle. */
-    float sample_weight = 1.0;
     /* TODO(fclem): Cleanup: Should spherical_harmonics_encode_signal_sample return a new sh
      * instead of adding to it? */
     spherical_harmonics_encode_signal_sample(direction, vec4(radiance, 1.0) * sample_weight, sh);
