@@ -68,7 +68,6 @@ void OVERLAY_edit_curves_cache_init(OVERLAY_Data *vedata)
     sh = OVERLAY_shader_edit_curves_handle();
     grp = pd->edit_curves_handles_grp = DRW_shgroup_create(sh, psl->edit_curves_handles_ps);
     DRW_shgroup_uniform_block(grp, "globalsBlock", G_draw.block_ubo);
-    DRW_shgroup_uniform_bool_copy(grp, "useWeight", false);
   }
 }
 

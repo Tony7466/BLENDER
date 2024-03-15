@@ -48,9 +48,9 @@
 
 namespace blender::draw {
 
-#define NURBS_CONTROL_POINT (1u << 1)
-#define BEZIER_HANDLE (1u << 3)
-#define COLOR_SHIFT 5
+#define EDIT_CURVES_NURBS_CONTROL_POINT (1u)
+#define EDIT_CURVES_BEZIER_HANDLE (1u << 1)
+#define EDIT_CURVES_HANDLE_TYPES_SHIFT (4u)
 
 /* ---------------------------------------------------------------------- */
 struct CurvesUboStorage {
@@ -69,8 +69,21 @@ struct CurvesBatchCache {
   /* Crazy-space point positions for original points. */
   GPUVertBuf *edit_points_pos;
 
+  /* Additional data needed for shader to choose color for each point in edit_points_pos.
+   * If first bit is set, then point is NURBS control point. EDIT_CURVES_NURBS_CONTROL_POINT is
+   * used to set and test. If second, then point is Bezier handle point. Set and tested with
+   * EDIT_CURVES_BEZIER_HANDLE.
+   * In Bezier case two handle types of HandleType are also encoded.
+   * Byte structure for Bezier knot point (handle middle point):
+   * | left handle type | right handle type |      | BEZIER|  NURBS|
+   * | 7              6 | 5               4 | 3  2 |     1 |     0 |
+   *
+   * If it is left or right handle point, then same handle type is repeated in both slots.
+   */
   GPUVertBuf *edit_points_data;
 
+  /* Buffer used to store CurvesUboStorage value.  push_constant() could not be used for this
+   * value, as it is not know in overlay_edit_curves.cc as other constants. */
   GPUUniformBuf *curves_ubo_storage;
 
   /* Selection of original points. */
@@ -279,7 +292,8 @@ static void curves_batch_cache_ensure_procedural_pos(const bke::CurvesGeometry &
 
 static uint32_t bezier_data_value(int8_t left_handle_type, int8_t right_handle_type)
 {
-  return ((left_handle_type << 2) | right_handle_type) << COLOR_SHIFT | BEZIER_HANDLE;
+  return ((left_handle_type << 2) | right_handle_type) << EDIT_CURVES_HANDLE_TYPES_SHIFT |
+         EDIT_CURVES_BEZIER_HANDLE;
 }
 
 static uint32_t bezier_data_value(int8_t handle_type)
@@ -287,17 +301,17 @@ static uint32_t bezier_data_value(int8_t handle_type)
   return bezier_data_value(handle_type, handle_type);
 }
 
-static void curves_batch_cache_ensure_edit_points_pos(
+static void curves_batch_cache_ensure_edit_points_pos_and_data(
     const bke::CurvesGeometry &curves,
     const IndexMask bezier_curves,
     const OffsetIndices<int> bezier_dst_offsets,
-    bke::crazyspace::GeometryDeformation deformation,
+    const bke::crazyspace::GeometryDeformation deformation,
     CurvesBatchCache &cache)
 {
   static GPUVertFormat format_pos = single_attr_vertbuffer_format(
       "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   static GPUVertFormat format_data = single_attr_vertbuffer_format(
-      "data", GPU_COMP_U32, 1, GPU_FETCH_INT);
+      "data", GPU_COMP_U8, 1, GPU_FETCH_INT);
 
   Span<float3> deformed_positions = deformation.positions;
   const int bezier_point_count = bezier_dst_offsets.total_size();
@@ -312,10 +326,10 @@ static void curves_batch_cache_ensure_edit_points_pos(
   uint32_t *data_buffer_data = static_cast<uint32_t *>(
       GPU_vertbuf_get_data(cache.edit_points_data));
 
-  MutableSpan<float3> pos_span(pos_buffer_data, deformed_positions.size());
-  pos_span.copy_from(deformed_positions);
+  MutableSpan<float3> pos_dst(pos_buffer_data, deformed_positions.size());
+  pos_dst.copy_from(deformed_positions);
 
-  MutableSpan<uint32_t> data_span(data_buffer_data, size);
+  MutableSpan<uint32_t> data_dst(data_buffer_data, size);
 
   MutableSpan<uint32_t> handle_data_left(data_buffer_data + deformed_positions.size(),
                                          bezier_point_count);
@@ -329,10 +343,10 @@ static void curves_batch_cache_ensure_edit_points_pos(
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
   auto handle_other_curves = [&](const uint32_t fill_value) {
-    return [=](const IndexMask &selection) {
+    return [&, fill_value](const IndexMask &selection) {
       selection.foreach_index(GrainSize(256), [&](const int curve_i) {
         const IndexRange points = points_by_curve[curve_i];
-        data_span.slice(points).fill(fill_value);
+        data_dst.slice(points).fill(fill_value);
       });
     };
   };
@@ -349,14 +363,14 @@ static void curves_batch_cache_ensure_edit_points_pos(
             const int point_in_curve = point - points_by_curve[src_i].start();
             const int dst_index = bezier_dst_offsets[dst_i].start() + point_in_curve;
 
-            data_span[point] = bezier_data_value(left_handle_types[point],
-                                                 right_handle_types[point]);
+            data_dst[point] = bezier_data_value(left_handle_types[point],
+                                                right_handle_types[point]);
             handle_data_left[dst_index] = bezier_data_value(left_handle_types[point]);
             handle_data_right[dst_index] = bezier_data_value(right_handle_types[point]);
           }
         });
       },
-      handle_other_curves(NURBS_CONTROL_POINT));
+      handle_other_curves(EDIT_CURVES_NURBS_CONTROL_POINT));
 
   if (!bezier_point_count) {
     return;
@@ -367,6 +381,7 @@ static void curves_batch_cache_ensure_edit_points_pos(
   MutableSpan<float3> right_handles(
       pos_buffer_data + deformed_positions.size() + bezier_point_count, bezier_point_count);
 
+  /* TODO: Use deformed left_handle_positions and left_handle_positions. */
   array_utils::gather_group_to_group(
       points_by_curve, bezier_dst_offsets, bezier_curves, left_handle_positions, left_handles);
   array_utils::gather_group_to_group(
@@ -997,7 +1012,7 @@ void DRW_curves_batch_cache_create_requested(Object *ob)
     DRW_ibo_request(cache.edit_curves_lines, &cache.edit_curves_lines_ibo);
   }
   if (DRW_vbo_requested(cache.edit_points_pos)) {
-    curves_batch_cache_ensure_edit_points_pos(
+    curves_batch_cache_ensure_edit_points_pos_and_data(
         curves_orig, bezier_curves, bezier_offsets, deformation, cache);
   }
   if (DRW_vbo_requested(cache.edit_points_selection)) {
