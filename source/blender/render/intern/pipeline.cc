@@ -1332,6 +1332,8 @@ static void renderresult_set_passes_metadata(Render *re)
 {
   RenderResult *render_result = re->result;
 
+  BLI_rw_mutex_lock(&re->resultmutex, THREAD_LOCK_READ);
+
   LISTBASE_FOREACH (RenderLayer *, render_layer, &render_result->layers) {
     LISTBASE_FOREACH_BACKWARD (RenderPass *, render_pass, &render_layer->passes) {
       if (render_pass->ibuf) {
@@ -1339,6 +1341,8 @@ static void renderresult_set_passes_metadata(Render *re)
       }
     }
   }
+
+  BLI_rw_mutex_unlock(&re->resultmutex);
 }
 
 static void renderresult_stampinfo(Render *re)
