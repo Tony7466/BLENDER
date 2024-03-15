@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <cmath>
+
 #include "BLI_string_ref.hh"
 #include "BLI_unroll.hh"
 
@@ -39,6 +41,10 @@ template<typename T, int S> struct UIntF {
 
   /** Convert to a normal integer. Note that this may loose digits. */
   explicit operator uint64_t() const;
+
+  /** Convert to floating point. This may loose precision. */
+  explicit operator double() const;
+  explicit operator float() const;
 
 /* See `BLI_fixed_width_int_str.hh`. */
 #ifdef WITH_GMP
@@ -77,6 +83,10 @@ template<typename T, int S> struct IntF {
 
   /** Convert to a normal integer. Note that this may loose digits. */
   explicit operator int64_t() const;
+
+  /** Convert to floating point. This may loose precision. */
+  explicit operator double() const;
+  explicit operator float() const;
 
   /** Support casting from signed to unsigned fixed-width-int. */
   explicit operator UIntF<T, S>() const;
@@ -203,9 +213,48 @@ template<typename T, int S> inline UIntF<T, S>::operator uint64_t() const
   return result;
 }
 
+template<typename T, int S> inline UIntF<T, S>::operator double() const
+{
+  double result = double(this->v[0]);
+  for (int i = 1; i < S; i++) {
+    const T a = this->v[i];
+    if (a == 0) {
+      continue;
+    }
+    result += ldexp(a, 8 * sizeof(T) * i);
+  }
+  return result;
+}
+
+template<typename T, int S> inline UIntF<T, S>::operator float() const
+{
+  return float(double(*this));
+}
+
 template<typename T, int S> inline IntF<T, S>::operator int64_t() const
 {
   return int64_t(uint64_t(UIntF<T, S>(*this)));
+}
+
+template<typename T, int S> inline IntF<T, S>::operator double() const
+{
+  if (is_negative(*this)) {
+    return -double(-*this);
+  }
+  double result = double(this->v[0]);
+  for (int i = 1; i < S; i++) {
+    const T a = this->v[i];
+    if (a == 0) {
+      continue;
+    }
+    result += ldexp(a, 8 * sizeof(T) * i);
+  }
+  return result;
+}
+
+template<typename T, int S> inline IntF<T, S>::operator float() const
+{
+  return float(double(*this));
 }
 
 template<typename T, int S> inline IntF<T, S>::operator UIntF<T, S>() const

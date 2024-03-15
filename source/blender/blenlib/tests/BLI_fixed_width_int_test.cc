@@ -77,6 +77,8 @@ TEST(fixed_width_int, Fuzzy)
       EXPECT_EQ(a >= b, UInt64_8(a) >= UInt64_8(b));
       EXPECT_EQ(a == b, UInt64_8(a) == UInt64_8(b));
       EXPECT_EQ(a != b, UInt64_8(a) != UInt64_8(b));
+      EXPECT_FLOAT_EQ(double(a), double(UInt64_8(a)));
+      EXPECT_FLOAT_EQ(float(a), float(UInt64_8(a)));
     }
     {
       const int64_t a = int64_t(rng.get_uint64()) * (rng.get_float() < 0.5f ? -1 : 1);
@@ -94,6 +96,8 @@ TEST(fixed_width_int, Fuzzy)
       EXPECT_EQ(b == 0, is_zero(Int64_8(b)));
       EXPECT_EQ(a < 0, is_negative(Int64_8(a)));
       EXPECT_EQ(b < 0, is_negative(Int64_8(b)));
+      EXPECT_FLOAT_EQ(double(a), double(Int64_8(a)));
+      EXPECT_FLOAT_EQ(float(a), float(Int64_8(a)));
     }
   }
 }
