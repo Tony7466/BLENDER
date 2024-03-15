@@ -8,26 +8,7 @@
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
-/* Should be 16K. But could be lowered by doing reducion in more than one step. */
 shared vec4 local_sh_coefs[gl_WorkGroupSize.x * gl_WorkGroupSize.y][4];
-
-void spherical_harmonic_lds_store(uint index, SphericalHarmonicL1 sh)
-{
-  local_sh_coefs[index][0] = sh.L0.M0;
-  local_sh_coefs[index][1] = sh.L1.Mn1;
-  local_sh_coefs[index][2] = sh.L1.M0;
-  local_sh_coefs[index][3] = sh.L1.Mp1;
-}
-
-SphericalHarmonicL1 spherical_harmonic_lds_load(uint index)
-{
-  SphericalHarmonicL1 sh;
-  sh.L0.M0 = local_sh_coefs[index][0];
-  sh.L1.Mn1 = local_sh_coefs[index][1];
-  sh.L1.M0 = local_sh_coefs[index][2];
-  sh.L1.Mp1 = local_sh_coefs[index][3];
-  return sh;
-}
 
 float triangle_solid_angle(vec3 A, vec3 B, vec3 C)
 {
@@ -130,19 +111,30 @@ void main()
      * instead of adding to it? */
     spherical_harmonics_encode_signal_sample(L, vec4(radiance, 1.0) * sample_weight, sh);
 
-    spherical_harmonic_lds_store(gl_LocalInvocationIndex, sh);
+    const uint local_index = gl_LocalInvocationIndex;
+    local_sh_coefs[local_index][0] = sh.L0.M0;
+    local_sh_coefs[local_index][1] = sh.L1.Mn1;
+    local_sh_coefs[local_index][2] = sh.L1.M0;
+    local_sh_coefs[local_index][3] = sh.L1.Mp1;
+
+    /* Parallel sum. */
+    const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+    for (uint stride = group_size / 2; stride > 0; stride /= 2) {
+      barrier();
+      if (local_index < stride) {
+        for (int i = 0; i < 4; i++) {
+          local_sh_coefs[local_index][i] += local_sh_coefs[local_index + stride][i];
+        }
+      }
+    }
 
     barrier();
     if (gl_LocalInvocationIndex == 0u) {
-      /* Join results. */
-      for (uint i = 1; i < gl_WorkGroupSize.x * gl_WorkGroupSize.y; i++) {
-        sh = spherical_harmonics_add(sh, spherical_harmonic_lds_load(i));
-      }
       SphereProbeHarmonic sphere_probe_sh;
-      sphere_probe_sh.L0_M0 = sh.L0.M0;
-      sphere_probe_sh.L1_Mn1 = sh.L1.Mn1;
-      sphere_probe_sh.L1_M0 = sh.L1.M0;
-      sphere_probe_sh.L1_Mp1 = sh.L1.Mp1;
+      sphere_probe_sh.L0_M0 = local_sh_coefs[local_index][0];
+      sphere_probe_sh.L1_Mn1 = local_sh_coefs[local_index][1];
+      sphere_probe_sh.L1_M0 = local_sh_coefs[local_index][2];
+      sphere_probe_sh.L1_Mp1 = local_sh_coefs[local_index][3];
 
       uint work_group_index = gl_NumWorkGroups.x * gl_WorkGroupID.y + gl_WorkGroupID.x;
       out_sh[work_group_index] = sphere_probe_sh;
