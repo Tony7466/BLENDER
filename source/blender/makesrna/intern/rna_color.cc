@@ -653,6 +653,11 @@ static void rna_ColorManagedColorspaceSettings_reload_update(Main *bmain,
       Sequence *seq = cb_data.r_seq;
 
       if (seq) { /* Strip colorspace was changed. */
+        SEQ_relations_sequence_free_anim(seq);
+        if (seq->strip->proxy && seq->strip->proxy->anim) {
+          IMB_free_anim(seq->strip->proxy->anim);
+          seq->strip->proxy->anim = nullptr;
+        }
         SEQ_relations_invalidate_cache_raw(scene, seq);
       }
       else { /* Scene colorspace was changed. */
