@@ -56,7 +56,7 @@ class SphereProbeModule {
   GPUTexture *convolve_output_ = nullptr;
   int convolve_lod_ = 0;
   /* True if we extract spherical harmonic during `remap_ps_`. */
-  bool32_t extract_sh_ = false;
+  bool extract_sh_ = false;
 
   int3 dispatch_probe_pack_ = int3(1);
   int3 dispatch_probe_convolve_ = int3(1);

@@ -37,18 +37,20 @@ void SphereProbeModule::begin_sync()
     const RaytraceEEVEE &options = instance_.scene->eevee.ray_tracing_options;
     float probe_brightness_clamp = (options.sample_clamp > 0.0) ? options.sample_clamp : 1e20;
 
+    GPUShader *shader = instance_.shaders.static_shader_get(SPHERE_PROBE_REMAP);
+
     PassSimple &pass = remap_ps_;
     pass.init();
-    pass.shader_set(instance_.shaders.static_shader_get(SPHERE_PROBE_REMAP));
+    pass.specialize_constant(shader, "extract_sh", &extract_sh_);
+    pass.shader_set(shader);
     pass.bind_texture("cubemap_tx", &cubemap_tx_);
     pass.bind_texture("atlas_tx", &probes_tx_);
     pass.bind_image("atlas_img", &probes_tx_);
-    pass.bind_ssbo("spherical_harmonics", &tmp_spherical_harmonics_);
+    pass.bind_ssbo("out_sh", &tmp_spherical_harmonics_);
     pass.push_constant("probe_coord_packed", reinterpret_cast<int4 *>(&probe_sampling_coord_));
     pass.push_constant("write_coord_packed", reinterpret_cast<int4 *>(&probe_write_coord_));
     pass.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_data.atlas_coord));
     pass.push_constant("probe_brightness_clamp", probe_brightness_clamp);
-    pass.push_constant("extract_sh", &extract_sh_);
     pass.dispatch(&dispatch_probe_pack_);
   }
   {
@@ -207,6 +209,7 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
   probe_write_coord_ = atlas_coord.as_write_coord(0);
   int resolution = probe_write_coord_.extent;
   dispatch_probe_pack_ = int3(int2(ceil_division(resolution, SPHERE_PROBE_GROUP_SIZE)), 1);
+  extract_sh_ = extract_spherical_harmonics;
 
   if (extract_spherical_harmonics) {
     extract_sh_ = extract_spherical_harmonics;
