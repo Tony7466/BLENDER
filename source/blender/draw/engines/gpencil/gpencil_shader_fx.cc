@@ -585,7 +585,10 @@ static void gpencil_vfx_swirl(SwirlShaderFxData *fx, Object * /*ob*/, gpIterVfxD
   DRW_shgroup_call_procedural_triangles(grp, nullptr, 1);
 }
 
-void gpencil_vfx_cache_populate(GPENCIL_Data *vedata, Object *ob, GPENCIL_tObject *tgp_ob, const bool is_edit_mode)
+void gpencil_vfx_cache_populate(GPENCIL_Data *vedata,
+                                Object *ob,
+                                GPENCIL_tObject *tgp_ob,
+                                const bool is_edit_mode)
 {
   GPENCIL_FramebufferList *fbl = vedata->fbl;
   GPENCIL_PrivateData *pd = vedata->stl->pd;
