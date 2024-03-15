@@ -333,7 +333,7 @@ ccl_device bool ray_aabb_intersect(const float3 bbox_min,
  *
  * \param axis: a unit-length direction around which the cone has a circular symmetry
  * \param P: the vector pointing from the cone apex to the ray origin
- * \param D: the direction of the ray
+ * \param D: the direction of the ray, does not need to be normalized
  * \param cos_angle_sq: `sqr(cos(half_aperture_of_the_cone))`
  * \param t_range: the lower and upper bounds between which the ray lies inside the cone
  * \return whether the intersection exists and is in the range of [0, FLT_MAX]
@@ -342,10 +342,13 @@ ccl_device bool ray_aabb_intersect(const float3 bbox_min,
  */
 ccl_device_inline bool ray_cone_intersect(const float3 axis,
                                           const float3 P,
-                                          const float3 D,
+                                          float3 D,
                                           const float cos_angle_sq,
                                           ccl_private float2 *t_range)
 {
+  const float inv_len = inversesqrtf(len_squared(D));
+  D *= inv_len;
+
   const float AD = dot(axis, D);
   const float AP = dot(axis, P);
 
@@ -398,7 +401,7 @@ ccl_device_inline bool ray_cone_intersect(const float3 axis,
 
   valid &= (tmin < tmax);
 
-  *t_range = clamp(*t_range, tmin, tmax);
+  *t_range = clamp(*t_range, tmin * inv_len, tmax * inv_len);
 
   return valid;
 }

@@ -323,7 +323,7 @@ ccl_device_inline bool volume_equiangular_valid_ray_segment(KernelGlobals kg,
 {
   if (ls->type == LIGHT_SPOT) {
     ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
-    return spot_light_valid_ray_segment(&klight->spot, ray_P - ls->P, ray_D, t_range);
+    return spot_light_valid_ray_segment(klight, ray_P, ray_D, t_range);
   }
   if (ls->type == LIGHT_AREA) {
     ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);

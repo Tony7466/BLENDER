@@ -38,14 +38,19 @@ ccl_device void spot_light_uv(const float3 ray,
 }
 
 /* Compute the range of the ray lit by the spot light. */
-ccl_device_inline bool spot_light_valid_ray_segment(const ccl_global KernelSpotLight *light,
+ccl_device_inline bool spot_light_valid_ray_segment(const ccl_global KernelLight *klight,
                                                     const float3 P,
                                                     const float3 D,
                                                     ccl_private float2 *t_range)
 {
   /* TODO(weizhen): consider light radius. The behaviour would be different with or without soft
    * falloff. */
-  return ray_cone_intersect(light->dir, P, D, sqr(light->cos_half_spot_angle), t_range);
+  const Transform itfm = klight->itfm;
+  const float3 local_P = transform_point(&itfm, P);
+  const float3 local_D = transform_direction(&itfm, D);
+  const float3 axis = make_float3(0.0f, 0.0f, -1.0f);
+  return ray_cone_intersect(
+      axis, local_P, local_D, sqr(klight->spot.cos_half_spot_angle), t_range);
 }
 
 template<bool in_volume_segment>
