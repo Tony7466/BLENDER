@@ -458,21 +458,11 @@ static float4x2 get_local_to_stroke_matrix(const Drawing &drawing, int curve_i)
  * Returns the matrix that transforms from a 2D point in stroke-space to a 2D point in
  * texture-space for a stroke `curve_i`
  */
-static float3x2 get_stroke_to_texture_matrix(const CurvesGeometry &curves, const int curve_i)
+static float3x2 get_stroke_to_texture_matrix(const float uv_rotation,
+                                             const float2 uv_translation,
+                                             const float2 uv_scale)
 {
   using namespace blender::math;
-  const AttributeAccessor attributes = curves.attributes();
-
-  const VArray<float> uv_rotations = *attributes.lookup_or_default<float>(
-      "uv_rotation", AttrDomain::Curve, 0.0f);
-  const VArray<float2> uv_translations = *attributes.lookup_or_default<float2>(
-      "uv_translation", AttrDomain::Curve, float2(0.0f, 0.0f));
-  const VArray<float2> uv_scales = *attributes.lookup_or_default<float2>(
-      "uv_scale", AttrDomain::Curve, float2(1.0f, 1.0f));
-
-  const float uv_rotation = uv_rotations[curve_i];
-  const float2 uv_translation = uv_translations[curve_i];
-  const float2 uv_scale = uv_scales[curve_i];
 
   const float2 uv_scale_inv = safe_rcp(uv_scale);
   const float s = sin(uv_rotation);
@@ -508,12 +498,21 @@ Span<float4x2> Drawing::texture_matrices() const
 {
   this->runtime->curve_texture_matrices.ensure([&](Vector<float4x2> &r_data) {
     const CurvesGeometry &curves = this->strokes();
+    const AttributeAccessor attributes = curves.attributes();
+
+    const VArray<float> uv_rotations = *attributes.lookup_or_default<float>(
+        "uv_rotation", AttrDomain::Curve, 0.0f);
+    const VArray<float2> uv_translations = *attributes.lookup_or_default<float2>(
+        "uv_translation", AttrDomain::Curve, float2(0.0f, 0.0f));
+    const VArray<float2> uv_scales = *attributes.lookup_or_default<float2>(
+        "uv_scale", AttrDomain::Curve, float2(1.0f, 1.0f));
 
     r_data.reinitialize(curves.curves_num());
     threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
       for (const int curve_i : range) {
         const float4x2 strokemat = get_local_to_stroke_matrix(*this, curve_i);
-        const float3x2 texture_matrix = get_stroke_to_texture_matrix(curves, curve_i);
+        const float3x2 texture_matrix = get_stroke_to_texture_matrix(
+            uv_rotations[curve_i], uv_translations[curve_i], uv_scales[curve_i]);
 
         float4x3 strokemat4x3 = float4x3(strokemat);
 
