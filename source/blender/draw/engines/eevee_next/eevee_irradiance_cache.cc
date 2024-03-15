@@ -243,6 +243,23 @@ void VolumeProbeModule::set_view(View & /*view*/)
     grids_infos_buf_.push_update();
   }
 
+  /* Upload data for world. */
+  {
+    grid_upload_ps_.init();
+    grid_upload_ps_.shader_set(inst_.shaders.static_shader_get(LIGHTPROBE_IRRADIANCE_WORLD));
+    grid_upload_ps_.bind_ssbo("harmonic_buf", &inst_.sphere_probes.spherical_harmonics_buf());
+    grid_upload_ps_.bind_ssbo("bricks_infos_buf", &bricks_infos_buf_);
+    grid_upload_ps_.bind_image("irradiance_atlas_img", &irradiance_atlas_tx_);
+    /* Sync with extraction. */
+    grid_upload_ps_.barrier(GPU_BARRIER_SHADER_STORAGE);
+    /* Only upload one brick. */
+    grid_upload_ps_.dispatch(int3(1));
+    /* Sync with next load. */
+    grid_upload_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
+
+    inst_.manager->submit(grid_upload_ps_);
+  }
+
   /* Upload data for each grid that need to be inserted in the atlas.
    * Upload by order of dependency. */
   /* Start at world index to not load any other grid (+1 because we decrement at loop start). */

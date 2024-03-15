@@ -538,6 +538,7 @@ set(GLSL_SRC
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_ray_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_offset_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_irradiance_load_comp.glsl
+  engines/eevee_next/shaders/eevee_lightprobe_irradiance_world_comp.glsl
   engines/eevee_next/shaders/eevee_lightprobe_lib.glsl
   engines/eevee_next/shaders/eevee_lightprobe_volume_eval_lib.glsl
   engines/eevee_next/shaders/eevee_lookdev_display_frag.glsl

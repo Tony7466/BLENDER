@@ -128,6 +128,11 @@ class SphereProbeModule {
    */
   int probe_render_extent() const;
 
+  StorageBuffer<SphereProbeHarmonic, true> &spherical_harmonics_buf()
+  {
+    return spherical_harmonics_;
+  }
+
  private:
   /* Return the subdivision level for the requested probe resolution.
    * Result is safely clamped to max resolution. */
