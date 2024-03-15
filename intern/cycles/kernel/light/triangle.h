@@ -312,4 +312,46 @@ ccl_device_forceinline bool triangle_light_tree_parameters(
   return (front_facing && shape_above_surface) || in_volume;
 }
 
+/* Compute the range of the ray lit by the triangle light. */
+ccl_device_inline bool triangle_light_valid_ray_segment(KernelGlobals kg,
+                                                        const float time,
+                                                        const float3 P,
+                                                        const float3 D,
+                                                        ccl_private float2 *t_range,
+                                                        const ccl_private LightSample *ls)
+{
+  const int shader_flag = kernel_data_fetch(shaders, ls->shader & SHADER_MASK).flags;
+  const int SD_MIS_BOTH = SD_MIS_BACK | SD_MIS_FRONT;
+  if ((shader_flag & SD_MIS_BOTH) == SD_MIS_BOTH) {
+    /* Both sides are sampled. */
+    return true;
+  }
+
+  /* Only one side is sampled. */
+
+  /* TODO(weizhen): can we just compute the quantity in `triangle_light_sample()`? */
+  float3 V[3];
+  triangle_world_space_vertices(kg, ls->object, ls->prim, time, V);
+
+  float3 N = cross(V[1] - V[0], V[2] - V[0]);
+  /* Flip light direction if object has negative scale xor emission sampling is set to back. */
+  const int object_flag = kernel_data_fetch(object_flag, ls->object);
+  if (!(object_flag & SD_OBJECT_NEGATIVE_SCALE) != !(shader_flag & SD_MIS_BACK)) {
+    N = -N;
+  }
+
+  /* Intersection of ray and the triangle light plane. */
+  const float DN = dot(D, N);
+  const float t = -dot(P, N) / DN;
+
+  if (DN > 0.0f) {
+    t_range->x = fmaxf(t, t_range->x);
+  }
+  else {
+    t_range->y = fminf(t, t_range->y);
+  }
+
+  return t_range->x < t_range->y;
+}
+
 CCL_NAMESPACE_END

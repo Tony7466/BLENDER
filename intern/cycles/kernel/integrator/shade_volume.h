@@ -316,6 +316,7 @@ ccl_device float volume_equiangular_pdf(ccl_private const Ray *ccl_restrict ray,
 }
 
 ccl_device_inline bool volume_equiangular_valid_ray_segment(KernelGlobals kg,
+                                                            const float time,
                                                             const float3 ray_P,
                                                             const float3 ray_D,
                                                             ccl_private float2 *t_range,
@@ -328,6 +329,9 @@ ccl_device_inline bool volume_equiangular_valid_ray_segment(KernelGlobals kg,
   if (ls->type == LIGHT_AREA) {
     ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
     return area_light_valid_ray_segment(&klight->area, ray_P - klight->co, ray_D, t_range);
+  }
+  if (ls->type == LIGHT_TRIANGLE) {
+    return triangle_light_valid_ray_segment(kg, time, ray_P - ls->P, ray_D, t_range, ls);
   }
 
   /* TODO(weizhen): other light types. */
@@ -735,7 +739,7 @@ ccl_device_forceinline bool integrate_volume_equiangular_sample_light(
 
   *P = ls.P;
 
-  return volume_equiangular_valid_ray_segment(kg, ray->P, ray->D, t_range, &ls);
+  return volume_equiangular_valid_ray_segment(kg, sd->time, ray->P, ray->D, t_range, &ls);
 }
 
 /* Path tracing: sample point on light and evaluate light shader, then
