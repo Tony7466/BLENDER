@@ -1149,8 +1149,9 @@ static void evaluate_short_unknown_segments_exactly(
       case ExactEvalMode::Indices: {
         /* #evaluate_exact_with_indices requires that all index masks have a single segment in the
          * provided bounds. So split up the range into subranges first if necessary. */
-        Vector<int64_t> segment_boundaries;
-        segment_boundaries.extend({bounds.first(), bounds.one_after_last()});
+        Vector<int64_t, 16> split_indices;
+        /* Always adding the beginning and end of the bounds simplifies the code below. */
+        split_indices.extend({bounds.first(), bounds.one_after_last()});
         for (const int64_t eval_order_i : eval_order.index_range()) {
           const Expr &expr = *eval_order[eval_order_i];
           if (expr.type != Expr::Type::Atomic) {
@@ -1160,17 +1161,22 @@ static void evaluate_short_unknown_segments_exactly(
           const IndexMask mask = atomic_expr.mask->slice_content(bounds);
           const int64_t segments_num = mask.segments_num();
           if (segments_num <= 1) {
+            /* This mask only has a single segment in the bounds anyway, so no extra split-position
+             * is necessary. */
             continue;
           }
+          /* Split at the beginning of each segment. Skipping the first, because that does not need
+           * an extra split position. Alternatively, one could also split at the end of each
+           * segment except the last one. It doesn't matter much. */
           for (const int64_t segment_i : IndexRange(segments_num).drop_front(1)) {
             const IndexMaskSegment segment = mask.segment(segment_i);
-            segment_boundaries.append(segment[0]);
+            split_indices.append(segment[0]);
           }
         }
-        std::sort(segment_boundaries.begin(), segment_boundaries.end());
-        for (const int64_t boundary_i : segment_boundaries.index_range().drop_back(1)) {
-          const IndexRange sub_bounds = IndexRange::from_begin_end(
-              segment_boundaries[boundary_i], segment_boundaries[boundary_i + 1]);
+        std::sort(split_indices.begin(), split_indices.end());
+        for (const int64_t boundary_i : split_indices.index_range().drop_back(1)) {
+          const IndexRange sub_bounds = IndexRange::from_begin_end(split_indices[boundary_i],
+                                                                   split_indices[boundary_i + 1]);
           if (sub_bounds.is_empty()) {
             continue;
           }
