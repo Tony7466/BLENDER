@@ -1219,6 +1219,7 @@ static BezTriple *cycle_offset_triple(
 
 void BKE_fcurve_handles_recalc_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
 {
+  using namespace blender;
   /* Error checking:
    * - Need at least two points.
    * - Need bezier keys.
@@ -1231,13 +1232,13 @@ void BKE_fcurve_handles_recalc_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
   }
 
   /* If the first modifier is Cycles, smooth the curve through the cycle. */
-  BezTriple *first = &fcu->bezt[0], *last = &fcu->bezt[fcu->totvert - 1];
-  BezTriple tmp;
-
+  BezTriple *first = &fcu->bezt[0];
+  BezTriple *last = &fcu->bezt[fcu->totvert - 1];
   const bool cycle = BKE_fcurve_is_cyclic(fcu) && BEZT_IS_AUTOH(first) && BEZT_IS_AUTOH(last);
 
-  blender::IndexRange bezt_range(0, fcu->totvert);
-  blender::threading::parallel_for(bezt_range, 512, [&](const blender::IndexRange range) {
+  IndexRange bezt_range(0, fcu->totvert);
+  threading::parallel_for(bezt_range, 512, [&](const IndexRange range) {
+    BezTriple tmp;
     for (const int i : range) {
       BezTriple *bezt = &fcu->bezt[i];
       BezTriple *prev = nullptr;
@@ -1250,6 +1251,9 @@ void BKE_fcurve_handles_recalc_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
       }
       if (i < fcu->totvert - 1) {
         next = (bezt + 1);
+      }
+      else {
+        next = cycle_offset_triple(cycle, &tmp, &fcu->bezt[1], first, last);
       }
 
       /* Clamp timing of handles to be on either side of beztriple. */
@@ -1266,7 +1270,7 @@ void BKE_fcurve_handles_recalc_ex(FCurve *fcu, eBezTriple_Flag handle_sel_flag)
       /* For automatic ease in and out. */
       if (BEZT_IS_AUTOH(bezt) && !cycle) {
         /* Only do this on first or last beztriple. */
-        if (ELEM(fcu->totvert, 0, fcu->totvert - 1)) {
+        if (ELEM(i, 0, fcu->totvert - 1)) {
           /* Set both handles to have same horizontal value as keyframe. */
           if (fcu->extend == FCURVE_EXTRAPOLATE_CONSTANT) {
             bezt->vec[0][1] = bezt->vec[2][1] = bezt->vec[1][1];
