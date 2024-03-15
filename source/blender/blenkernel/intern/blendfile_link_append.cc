@@ -1375,16 +1375,7 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
   instantiate_context.active_collection = nullptr;
   loose_data_instantiate(&instantiate_context);
 
-  {
-    blender::Vector<Object *> new_objects;
-    LISTBASE_FOREACH (Object *, object, &bmain->objects) {
-      if (object->type == OB_MESH && object->id.tag & LIB_TAG_NEW) {
-        new_objects.append(object);
-      }
-    }
-    BKE_main_mesh_legacy_convert_auto_smooth(*bmain, new_objects);
-  }
-
+  BKE_main_mesh_legacy_convert_auto_smooth(*bmain, true);
   BKE_main_id_newptr_and_tag_clear(bmain);
 
   blendfile_link_append_proxies_convert(bmain, reports);
