@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(draw_math_geom_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_math_base_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_ltc_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_light_iter_lib.glsl)
 
@@ -173,9 +174,20 @@ float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
     return light_spread_angle_rect_1D(abs(lL.x), r, light._area_size_x) *
            light_spread_angle_rect_1D(abs(lL.y), r, light._area_size_y);
   }
+  /* Ellipse approximation. Stretch the configuration and resize the projected disk. This has the
+   * benefit to be very simple (simplify a few instructions since the light radius is 1 afterwards)
+   * and give the proper result for disk lights. */
+  lL.x /= light._area_size_x;
+  lL.y /= light._area_size_y;
+  /* This is the root of the approximation. After stretching, the projected disk should become an
+   * ellipse. But that would just shift the problem. So we approximate the new ellipse by a disk of
+   * same radius. This as the effect of making the fade thinner on the thinner axis and larger on
+   * the larger axis compared to what they should. */
+  r /= length(vec2(light._area_size_x, light._area_size_y)) * M_SQRT1_2;
 
   float d = length(lL.xy);
-  float R = light._area_size_x;
+  /* Should be light radius, but we normalized the configuration, so simplifies to 1. */
+  const float R = 1.0;
   /* Special cases where the bottom would fails. */
   if (d >= r + R) {
     /* No intersection. */
