@@ -302,7 +302,7 @@ ccl_device bool ray_quad_intersect(float3 ray_P,
   return true;
 }
 
-/* TODO(weizhen): check if it's well-defined when one of the ray component is zero. */
+/* Find the ray segment inside an axis-aligned bounding box. */
 ccl_device bool ray_aabb_intersect(const float3 bbox_min,
                                    const float3 bbox_max,
                                    const float3 ray_P,
@@ -316,8 +316,8 @@ ccl_device bool ray_aabb_intersect(const float3 bbox_min,
   const float3 t_upper = (bbox_max - ray_P) * inv_ray_D;
 
   /* The four t-intervals (for x-/y-/z-slabs, and ray p(t)). */
-  const float4 tmins = float3_to_float4(min(t_lower, t_upper), 0.0f);
-  const float4 tmaxes = float3_to_float4(max(t_lower, t_upper), FLT_MAX);
+  const float4 tmins = float3_to_float4(min(t_lower, t_upper), t_range->x);
+  const float4 tmaxes = float3_to_float4(max(t_lower, t_upper), t_range->y);
 
   /* Max of mins and min of maxes. */
   const float tmin = reduce_max(tmins);
@@ -334,8 +334,7 @@ ccl_device_inline bool ray_infinite_cylinder_intersect(const float3 P,
                                                        const float3 D,
                                                        const float len_u,
                                                        const float len_v,
-                                                       ccl_private float &tmin,
-                                                       ccl_private float &tmax)
+                                                       ccl_private float2 *t_range)
 {
   const float u_sq = sqr(len_u);
   const float v_sq = sqr(len_v);
@@ -343,7 +342,10 @@ ccl_device_inline bool ray_infinite_cylinder_intersect(const float3 P,
   const float b = 2.0f * (v_sq * P.x * D.x + u_sq * P.y * D.y);
   const float c = v_sq * sqr(P.x) + u_sq * sqr(P.y) - v_sq * u_sq;
 
-  return solve_quadratic(a, b, c, tmin, tmax);
+  float tmin, tmax;
+  const bool valid = solve_quadratic(a, b, c, tmin, tmax);
+
+  return valid && intervals_intersect(t_range, make_float2(tmin, tmax));
 }
 
 /* *
@@ -354,7 +356,7 @@ ccl_device_inline bool ray_infinite_cylinder_intersect(const float3 P,
  * \param D: the direction of the ray, does not need to be normalized
  * \param cos_angle_sq: `sqr(cos(half_aperture_of_the_cone))`
  * \param t_range: the lower and upper bounds between which the ray lies inside the cone
- * \return whether the intersection exists and is in the range of [0, FLT_MAX]
+ * \return whether the intersection exists and is in the provided range
  *
  * From https://www.geometrictools.com/Documentation/IntersectionLineCone.pdf
  */
@@ -409,9 +411,7 @@ ccl_device_inline bool ray_cone_intersect(const float3 axis,
 
   valid &= (tmin < tmax);
 
-  *t_range = clamp(*t_range, tmin * inv_len, tmax * inv_len);
-
-  return valid;
+  return valid && intervals_intersect(t_range, make_float2(tmin, tmax) * inv_len);
 }
 
 CCL_NAMESPACE_END

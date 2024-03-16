@@ -440,56 +440,56 @@ ccl_device_forceinline float area_light_max_extent(const ccl_global KernelAreaLi
                                                 len(make_float2(light->len_u, light->len_v)));
 }
 
-/* Compute the range of the ray lit by the spot light. Conservative estimation with the smallest
- * possible cone covering the whole spread. */
+/* Compute the range of the ray lit by the area light. */
 ccl_device_inline bool area_light_valid_ray_segment(const ccl_global KernelAreaLight *light,
                                                     float3 P,
                                                     float3 D,
                                                     ccl_private float2 *t_range)
 {
-  /* Map to local coordinate of the light. Do not use `itfm` in `KernelLight` as there might be
-   * non-uniform scaling. */
-  const Transform tfm = make_transform(light->axis_u, light->axis_v, light->dir);
-  P = transform_point(&tfm, P);
-  D = transform_direction(&tfm, D);
+  bool valid;
+  const float tan_half_spread = light->tan_half_spread;
+  float3 axis = light->dir;
 
-  const bool angle_almost_zero = (light->tan_half_spread < 1e-5f);
-  /* TODO(weizhen): intersect with bounding box when the spread is (close to) zero. */
-  if (angle_almost_zero && area_light_is_ellipse(light)) {
+  const bool angle_almost_zero = (tan_half_spread < 1e-5f);
+  if (angle_almost_zero) {
+    /* Map to local coordinate of the light. Do not use `itfm` in `KernelLight` as there might be
+     * additional scaling in the light size. */
+    const Transform tfm = make_transform(light->axis_u, light->axis_v, axis);
+    P = transform_point(&tfm, P);
+    D = transform_direction(&tfm, D);
+    axis = make_float3(0.0f, 0.0f, 1.0f);
 
-    float tmin, tmax;
-    if (!ray_infinite_cylinder_intersect(
-            P, D, 0.5f * light->len_u, 0.5f * light->len_v, tmin, tmax))
-    {
-      return false;
+    const float half_len_u = 0.5f * light->len_u;
+    const float half_len_v = 0.5f * light->len_v;
+    if (area_light_is_ellipse(light)) {
+      valid = ray_infinite_cylinder_intersect(P, D, half_len_u, half_len_v, t_range);
     }
-
-    t_range->x = fmaxf(t_range->x, tmin);
-    t_range->y = fminf(t_range->y, tmax);
+    else {
+      const float3 bbox_min = make_float3(-half_len_u, -half_len_v, 0.0f);
+      const float3 bbox_max = make_float3(half_len_u, half_len_v, FLT_MAX);
+      valid = ray_aabb_intersect(bbox_min, bbox_max, P, D, t_range);
+    }
   }
   else {
-    /* The apex is found by sliding the center along the axis. */
-    const float3 axis = make_float3(0.0f, 0.0f, 1.0f);
-    const float3 apex = P + area_light_max_extent(light) / light->tan_half_spread * axis;
-    const float cos_angle_sq = 1.0f / (1.0f + sqr(light->tan_half_spread));
+    /* Conservative estimation with the smallest possible cone covering the whole spread. */
+    const float3 apex_to_point = P + area_light_max_extent(light) / tan_half_spread * axis;
+    const float cos_angle_sq = 1.0f / (1.0f + sqr(tan_half_spread));
 
-    if (!ray_cone_intersect(axis, apex, D, cos_angle_sq, t_range)) {
-      return false;
-    }
+    valid = ray_cone_intersect(axis, apex_to_point, D, cos_angle_sq, t_range);
   }
 
   /* Distance from P to area light plane */
-  const float t = -P.z / D.z;
+  const float t = -dot(P, axis) / dot(D, axis);
 
   /* Limit the range to the positive side of the area light. */
-  if (D.z > 0.0f) {
+  if (dot(D, axis) > 0.0f) {
     t_range->x = fmaxf(t_range->x, t);
   }
   else {
     t_range->y = fminf(t_range->y, t);
   }
 
-  return t_range->x < t_range->y;
+  return valid && (t_range->x < t_range->y);
 }
 
 template<bool in_volume_segment>

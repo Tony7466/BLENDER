@@ -1030,6 +1030,16 @@ ccl_device_inline uint32_t reverse_integer_bits(uint32_t x)
 #endif
 }
 
+/* Check if intervals (first->x, first->y) and (second.x, second.y) intersect, and replace the
+ * first interval with their intersection. */
+ccl_device_inline bool intervals_intersect(ccl_private float2 *first, const float2 second)
+{
+  first->x = fmaxf(first->x, second.x);
+  first->y = fminf(first->y, second.y);
+
+  return first->x < first->y;
+}
+
 /* Solve quadratic equation a*x^2 + b*x + c = 0, adapted from Mitsuba 3
  * The solution is ordered so that x1 <= x2.
  * Returns true if at least one solution is found.  */
