@@ -148,10 +148,10 @@ static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
   Array<bool> select(stroke_count);
   selection.to_bools(select.as_mutable_span());
   Array<int> result(stroke_count);
-  for (const int i : IndexRange(stroke_count)) {
-    const float local_factor = select[i] ? get_stroke_factor(factor_to_keep, i) : 1.0f;
-    const int num_points = points_by_curve[i].size() * local_factor;
-    result[i] = num_points;
+  for (const int curve : curves.curves_range()) {
+    const float local_factor = select[curve] ? get_stroke_factor(factor_to_keep, curve) : 1.0f;
+    const int num_points = points_by_curve[curve].size() * local_factor;
+    result[curve] = num_points;
     if (clamp_points) {
       r_points_num += num_points;
       if (num_points > 0) {
@@ -236,9 +236,6 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
                                  points_by_curve[curve].size() - points_per_curve[curve] :
                                  0;
     for (const int stroke_point : IndexRange(points_per_curve[curve])) {
-      if (stroke_point >= points_per_curve[curve]) {
-        break;
-      }
       const int src_point_index = points_by_curve[curve].first() + extra_offset + stroke_point;
       if (has_fade) {
         const float fade_weight = get_fade_weight(extra_offset + stroke_point);
@@ -469,11 +466,11 @@ static float get_factor_from_draw_speed(const bke::CurvesGeometry &curves,
                                         const float max_gap)
 {
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  const bke::AttributeAccessor time_attributes = curves.attributes();
+  const bke::AttributeAccessor attributes = curves.attributes();
   const VArray<float> init_times =
-      time_attributes.lookup_or_default<float>("init_time", bke::AttrDomain::Curve, 0.0f).varray;
+      attributes.lookup_or_default<float>("init_time", bke::AttrDomain::Curve, 0.0f).varray;
   const VArray<float> delta_times =
-      time_attributes.lookup_or_default<float>("delta_time", bke::AttrDomain::Point, 0.0f).varray;
+      attributes.lookup_or_default<float>("delta_time", bke::AttrDomain::Point, 0.0f).varray;
 
   Array<float> times(curves.points_num());
   float current_time = 0;
@@ -483,11 +480,9 @@ static float get_factor_from_draw_speed(const bke::CurvesGeometry &curves,
       current_time += math::max(init_times[curve] - previous_init_time, max_gap);
       previous_init_time = init_times[curve];
     }
-    const IndexRange points = points_by_curve[curve].index_range();
-    for (const int point : points) {
-      const int index = point + points_by_curve[curve].first();
-      current_time += delta_times[index];
-      times[index] = current_time;
+    for (const int point : points_by_curve[curve]) {
+      current_time += delta_times[point];
+      times[point] = current_time;
     }
   }
   for (const int point : curves.points_range()) {
