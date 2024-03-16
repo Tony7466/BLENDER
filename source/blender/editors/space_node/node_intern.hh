@@ -394,6 +394,8 @@ void NODE_OT_clear_viewer_border(wmOperatorType *ot);
 void NODE_OT_cryptomatte_layer_add(wmOperatorType *ot);
 void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot);
 
+void NODE_OT_dump_inferencing_debug_data(wmOperatorType *ot);
+
 /* `node_gizmo.cc` */
 
 void NODE_GGT_backdrop_transform(wmGizmoGroupType *gzgt);

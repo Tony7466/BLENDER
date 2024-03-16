@@ -376,7 +376,8 @@ inline bool topology_cache_is_available(const bNodeSocket &socket)
 
 namespace node_field_inferencing {
 bool update_field_inferencing(const bNodeTree &tree);
-}
+bool dump_field_inferencing_debug_data(const bNodeTree &tree, StringRef filepath);
+}  // namespace node_field_inferencing
 }  // namespace blender::bke
 
 /* -------------------------------------------------------------------- */

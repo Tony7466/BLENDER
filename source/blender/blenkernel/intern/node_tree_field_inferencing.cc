@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_global.hh"
+#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 
@@ -14,10 +16,13 @@
 #include "BLI_bit_group_vector.hh"
 #include "BLI_bit_span_ops.hh"
 #include "BLI_multi_value_map.hh"
+#include "BLI_path_util.h"
 #include "BLI_offset_indices.hh"
 #include "BLI_resource_scope.hh"
 #include "BLI_set.hh"
 #include "BLI_stack.hh"
+#include "BLI_string.h"
+#include "BLI_tempfile.h"
 
 #include <fstream>
 #include <iostream>
@@ -821,7 +826,7 @@ struct NullLogger {
   void on_end() {}
 
   void declare_variables(const int /*num_vars*/, FunctionRef<std::string(int)> /*names_fn*/) {}
-  void declare_constraints(const int /*num_cons*/, FunctionRef<int2(int)> /*nodes_fn*/) {}
+  void declare_constraints(const ConstraintSet &/*constraints*/) {}
 
   void notify(StringRef /*message*/) {}
 
@@ -844,7 +849,7 @@ struct PrintLogger {
   void on_end() {}
 
   void declare_variables(const int /*num_vars*/, FunctionRef<std::string(int)> /*names_fn*/) {}
-  void declare_constraints(const int /*num_cons*/, FunctionRef<int2(int)> /*nodes_fn*/) {}
+  void declare_constraints(const ConstraintSet & /*constraints*/) {}
 
   void notify(StringRef message)
   {
@@ -1257,17 +1262,13 @@ static OutputFieldDependency find_group_output_dependencies(
   return OutputFieldDependency::ForPartiallyDependentField(std::move(linked_input_indices));
 }
 
+template <typename Logger>
 static void test_ac3_field_inferencing(
     const bNodeTree &tree,
     const Span<const FieldInferencingInterface *> interface_by_node,
-    FieldInferencingInterface &inferencing_interface)
+    FieldInferencingInterface &inferencing_interface,
+    Logger &logger)
 {
-  // ac3::NullLogger logger;
-  // ac3::PrintLogger logger;
-  std::fstream fs;
-  fs.open("/home/lukas/tests/field_inferencing/test.json", std::fstream::out);
-  ac3::JSONLogger logger(fs);
-
   const bNode *group_output_node = tree.group_output_node();
   if (!group_output_node) {
     return;
@@ -1437,10 +1438,9 @@ static void test_ac3_field_inferencing(
   }
 }
 
-static void test_ac3_example()
+template <typename Logger>
+static void test_ac3_example(Logger &logger)
 {
-  ac3::PrintLogger logger;
-
   /* Example taken from
    * https://www.boristhebrave.com/2021/08/30/arc-consistency-explained/
    */
@@ -1530,7 +1530,8 @@ static void test_ac3_example()
   ac3::solve_constraints(constraints, num_vars, domain_size, logger);
 }
 
-bool update_field_inferencing(const bNodeTree &tree)
+template <typename Logger>
+static bool update_field_inferencing_ex(const bNodeTree &tree, Logger &logger)
 {
   BLI_assert(tree.type == NTREE_GEOMETRY);
   tree.ensure_topology_cache();
@@ -1561,7 +1562,7 @@ bool update_field_inferencing(const bNodeTree &tree)
       tree, *new_inferencing_interface, interface_by_node, field_state_by_socket_id);
   update_socket_shapes(tree, field_state_by_socket_id);
 #else
-  test_ac3_field_inferencing(tree, interface_by_node, *new_inferencing_interface);
+  test_ac3_field_inferencing(tree, interface_by_node, *new_inferencing_interface, logger);
 #endif
 
   /* Update the previous group interface. */
@@ -1571,6 +1572,18 @@ bool update_field_inferencing(const bNodeTree &tree)
   tree.runtime->field_inferencing_interface = std::move(new_inferencing_interface);
 
   return group_interface_changed;
+}
+
+bool update_field_inferencing(const bNodeTree &tree) {
+  ac3::NullLogger logger;
+  return update_field_inferencing_ex(tree, logger);
+}
+
+bool dump_field_inferencing_debug_data(const bNodeTree &tree, StringRef filepath) {
+  std::ofstream fs;
+  fs.open(filepath, std::fstream::out);
+  ac3::JSONLogger logger(fs);
+  return update_field_inferencing_ex(tree, logger);
 }
 
 }  // namespace blender::bke::node_field_inferencing

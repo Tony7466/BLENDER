@@ -2632,4 +2632,44 @@ void NODE_OT_cryptomatte_layer_remove(wmOperatorType *ot)
 
 /** \} */
 
+/* -------------------------------------------------------------------- */
+/** \name Node Inferencing Debug Dump
+ * \{ */
+
+static int dump_inferencing_debug_data_exec(bContext *C, wmOperator *op)
+{
+  SpaceNode *snode = CTX_wm_space_node(C);
+  bNodeTree *ntree = snode->edittree;
+  if (ntree == nullptr) {
+    return OPERATOR_CANCELLED;
+  }
+  char filepath[FILE_MAX];
+  RNA_string_get(op->ptr, "filepath", filepath);
+  blender::bke::node_field_inferencing::dump_field_inferencing_debug_data(*ntree, filepath);
+  return OPERATOR_FINISHED;
+}
+
+void NODE_OT_dump_inferencing_debug_data(wmOperatorType *ot)
+{
+  PropertyRNA *prop;
+
+  /* identifiers */
+  ot->name = "Dump Node Inferencing Debug Data";
+  ot->description = "Dump type inferencing debug data into a file";
+  ot->idname = "NODE_OT_dump_inferencing_debug_data";
+
+  /* callbacks */
+  ot->exec = dump_inferencing_debug_data_exec;
+  ot->poll = ED_operator_node_editable;
+
+  /* flags */
+  ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
+
+  prop = RNA_def_string_file_path(
+      ot->srna, "filepath", nullptr, FILE_MAX, "File Path", "File path to store debug data");
+  RNA_def_property_flag(prop, PROP_HIDDEN | PROP_SKIP_SAVE);
+}
+
+/** \} */
+
 }  // namespace blender::ed::space_node
