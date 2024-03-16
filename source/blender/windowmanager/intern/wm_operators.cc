@@ -1625,8 +1625,8 @@ static uiBlock *wm_block_dialog_create_with_panel(bContext *C,
   const int padding = (small ? 7 : 14) * UI_SCALE_FAC;
 
   if (data->position == WM_POPUP_POSITION_MOUSE) {
-    const float button_center_x = windows_layout ? -0.33f : -0.66f;
-    const float button_center_y = small ? 1.9f : 3.1f;
+    const float button_center_x = windows_layout ? -0.4f : -0.90f;
+    const float button_center_y = small ? 2.0f : 3.1f;
     const int bounds_offset[2] = {int(button_center_x * uiLayoutGetWidth(layout)),
                                   int(button_center_y * UI_UNIT_X)};
     UI_block_bounds_set_popup(block, padding, bounds_offset);
