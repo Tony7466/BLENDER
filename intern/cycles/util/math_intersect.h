@@ -370,51 +370,41 @@ ccl_device_inline bool ray_cone_intersect(const float3 axis,
   const float AD = dot(axis, D);
   const float AP = dot(axis, P);
 
-  const float c2 = sqr(AD) - cos_angle_sq;
-  const float c1 = AD * AP - cos_angle_sq * dot(D, P);
-  const float c0 = sqr(AP) - cos_angle_sq * dot(P, P);
-
   float tmin = 0.0f, tmax = FLT_MAX;
-  bool valid = false;
-
-  /* Solve t for equation c2 * t^2 + 2c1 * t + c0 = 0
-   * and check whether the solutions lie inside the cone. */
-  if (c2 != 0.0f) {
-    const float sigma = sqr(c1) - c2 * c0;
-    const bool sigma_is_zero = (fabsf(sigma) < 1e-4f) || (cos_angle_sq < 1e-4f);
-    if (c2 > 0.0f && sigma_is_zero) {
-      if (AD > 0.0f) {
-        tmin = -c1 / c2;
-      }
-      else {
-        tmax = -c1 / c2;
-      }
-      valid = true;
+  bool valid = true;
+  /* TODO(weizhen): we have three pieces of code for ray plane interection now, maybe make a
+   * function. */
+  if (cos_angle_sq < 1e-4f) {
+    /* The cone is nearly a plane. */
+    tmin = tmax = -AP / AD;
+    if (AD > 0.0f) {
+      tmax = FLT_MAX;
     }
-    else if (sigma > 0.0f) {
-      const float c1_c2 = c1 / c2;
-
-      tmin = -sqrtf(sigma) / fabsf(c2) - c1_c2;
-      tmax = -tmin - 2.0f * c1_c2;
-
-      const bool tmin_valid = dot(axis, P + tmin * D) > 0.0f;
-      const bool tmax_valid = dot(axis, P + tmax * D) > 0.0f;
-
-      valid = tmin_valid || tmax_valid;
-
-      if (!tmax_valid) {
-        tmax = tmin;
-        tmin = 0.0f;
-      }
-      else if (!tmin_valid) {
-        tmin = tmax;
-        tmax = FLT_MAX;
-      }
+    else {
+      tmin = 0.0f;
     }
   }
-  else if (c1 != 0.0f) {
-    tmin = -c0 / (2.0f * c1);
-    valid = (dot(axis, P + tmin * D) > 0.0f);
+  else {
+    const float a = sqr(AD) - cos_angle_sq;
+    const float b = 2.0f * (AD * AP - cos_angle_sq * dot(D, P));
+    const float c = sqr(AP) - cos_angle_sq * dot(P, P);
+
+    valid &= solve_quadratic(a, b, c, tmin, tmax);
+
+    /* Check if the intersection is in the same hemisphere as the cone. */
+    const bool tmin_valid = AP + tmin * AD > 0.0f;
+    const bool tmax_valid = AP + tmax * AD > 0.0f;
+
+    valid &= (tmin_valid || tmax_valid);
+
+    if (!tmax_valid) {
+      tmax = tmin;
+      tmin = 0.0f;
+    }
+    else if (!tmin_valid) {
+      tmin = tmax;
+      tmax = FLT_MAX;
+    }
   }
 
   valid &= (tmin < tmax);

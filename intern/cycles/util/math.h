@@ -1037,18 +1037,19 @@ ccl_device_inline bool solve_quadratic(
     const float a, const float b, const float c, ccl_private float &x1, ccl_private float &x2)
 {
   /* If the equation is linear, the result is -c/b, but b has to be non-zero. */
-  const bool valid_linear = (b != 0.0f);
+  const bool valid_linear = (a == 0.0f) && (b != 0.0f);
   x1 = x2 = -c / b;
 
   const float discriminant = sqr(b) - 4.0f * a * c;
-  const bool valid_quadratic = (a != 0.0f) && (discriminant >= 0.0f);
+  /* Allow slightly negative discriminant in cose of numerical precision issues. */
+  const bool valid_quadratic = (a != 0.0f) && (discriminant > -1e-5f);
 
   if (valid_quadratic) {
     /* Numerically stable version of (-b ± sqrt(discriminant)) / (2 * a), avoiding catastrophic
      * cancellation when `b` is very close to `sqrt(discriminant)`, by finding the solution of
      * greater magnitude which does not suffer from loss of precision, then using the identity
      * x1 * x2 = c / a. */
-    const float temp = -0.5f * (b + copysignf(sqrtf(discriminant), b));
+    const float temp = -0.5f * (b + copysignf(safe_sqrtf(discriminant), b));
     const float r1 = temp / a;
     const float r2 = c / temp;
 
