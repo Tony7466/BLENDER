@@ -352,12 +352,19 @@ class Context : public realtime_compositor::Context {
      * incomplete support, and leave more specific message to individual nodes? */
   }
 
-  IDRecalcFlag query_id_recalc_flag(ID *id) const override
+  IDRecalcFlag query_id_recalc_draw_flag(ID *id) const override
   {
     DrawEngineType *owner = (DrawEngineType *)this;
     DrawData *draw_data = DRW_drawdata_ensure(id, owner, sizeof(DrawData), nullptr, nullptr);
     IDRecalcFlag recalc_flag = IDRecalcFlag(draw_data->recalc);
     draw_data->recalc = IDRecalcFlag(0);
+    return recalc_flag;
+  }
+
+  IDRecalcFlag query_id_recalc_flag(ID *id) const override
+  {
+    IDRecalcFlag recalc_flag = IDRecalcFlag(id->recalc);
+    id->recalc = IDRecalcFlag(0);
     return recalc_flag;
   }
 

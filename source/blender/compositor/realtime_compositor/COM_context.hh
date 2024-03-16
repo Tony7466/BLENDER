@@ -105,6 +105,9 @@ class Context {
    * The ID recalculate flag is a mechanism through which one can identify if an ID has changed
    * since the last time the flag was reset, hence why the method reset the flag after querying it,
    * that is, to ready it to track the next change. */
+  virtual IDRecalcFlag query_id_recalc_draw_flag(ID *id) const = 0;
+  
+  /* Similar to query_id_recalc_draw_flag() but ID is not assumed to have DrawDataList. */
   virtual IDRecalcFlag query_id_recalc_flag(ID *id) const = 0;
 
   /* Get a pointer to the render context of this context. A render context stores information about

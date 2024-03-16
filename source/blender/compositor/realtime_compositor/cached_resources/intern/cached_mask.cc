@@ -192,7 +192,8 @@ CachedMask &CachedMaskContainer::get(Context &context,
   auto &cached_masks_for_id = map_.lookup_or_add_default(mask->id.name);
 
   /* Invalidate the cache for that mask ID if it was changed and reset the recalculate flag. */
-  if (context.query_id_recalc_flag(reinterpret_cast<ID *>(mask)) & ID_RECALC_ALL) {
+  if (context.query_id_recalc_draw_flag(reinterpret_cast<ID *>(mask)) & ID_RECALC_ALL ||
+      context.query_id_recalc_flag(reinterpret_cast<ID *>(mask)) & ID_RECALC_ALL) {
     cached_masks_for_id.clear();
   }
 
