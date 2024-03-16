@@ -260,6 +260,20 @@ static void grease_pencil_primitive_draw(const bContext * /*C*/, ARegion * /*reg
   draw_control_points(ptd);
 }
 
+static void grease_pencil_primitive_save(PrimitiveTool_OpData &ptd)
+{
+  ptd.temp_segments = ptd.segments;
+  ptd.temp_control_points.resize(ptd.control_points.size());
+  array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+}
+
+static void grease_pencil_primitive_load(PrimitiveTool_OpData &ptd)
+{
+  ptd.segments = ptd.temp_segments;
+  ptd.control_points.resize(ptd.temp_control_points.size());
+  array_utils::copy(ptd.temp_control_points.as_span(), ptd.control_points.as_mutable_span());
+}
+
 template<typename T>
 static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
                                                     Span<T> control_points,
@@ -998,9 +1012,7 @@ static int grease_pencil_primtive_event_model_map(bContext *C,
           ELEM(ptd.type, PrimitiveType::LINE, PrimitiveType::ARC, PrimitiveType::CURVE))
       {
         ptd.mode = OperatorMode::EXTRUDING;
-        ptd.temp_segments = ptd.segments;
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+        grease_pencil_primitive_save(ptd);
 
         ptd.start_position_2d = ED_view3d_project_float_v2_m4(
             ptd.vc.region, ptd.control_points.last(), ptd.projection);
@@ -1018,9 +1030,7 @@ static int grease_pencil_primtive_event_model_map(bContext *C,
           ELEM(ptd.mode, OperatorMode::IDLE, OperatorMode::EXTRUDING))
       {
         ptd.mode = OperatorMode::EXTRUDING;
-        ptd.temp_segments = ptd.segments;
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+        grease_pencil_primitive_save(ptd);
 
         ptd.start_position_2d = ED_view3d_project_float_v2_m4(
             ptd.vc.region, ptd.control_points.last(), ptd.projection);
@@ -1038,8 +1048,7 @@ static int grease_pencil_primtive_event_model_map(bContext *C,
         ptd.start_position_2d = float2(event->mval);
         ptd.mode = OperatorMode::DRAG_ALL;
 
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+        grease_pencil_primitive_save(ptd);
       }
       return OPERATOR_RUNNING_MODAL;
     }
@@ -1048,8 +1057,7 @@ static int grease_pencil_primtive_event_model_map(bContext *C,
         ptd.start_position_2d = float2(event->mval);
         ptd.mode = OperatorMode::ROTATE_ALL;
 
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+        grease_pencil_primitive_save(ptd);
       }
       return OPERATOR_RUNNING_MODAL;
     }
@@ -1058,8 +1066,7 @@ static int grease_pencil_primtive_event_model_map(bContext *C,
         ptd.start_position_2d = float2(event->mval);
         ptd.mode = OperatorMode::SCALE_ALL;
 
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+        grease_pencil_primitive_save(ptd);
       }
       return OPERATOR_RUNNING_MODAL;
     }
@@ -1105,8 +1112,7 @@ static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const 
         ptd.start_position_2d = float2(event->mval);
         ptd.mode = OperatorMode::DRAG_ALL;
 
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+        grease_pencil_primitive_save(ptd);
 
         return OPERATOR_RUNNING_MODAL;
       }
@@ -1119,15 +1125,13 @@ static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const 
             ptd.vc.region, ptd.control_points[ptd.active_control_point_index], ptd.projection);
         ptd.mode = OperatorMode::GRAB;
 
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+        grease_pencil_primitive_save(ptd);
       }
       else if (control_point_type == ControlPointType::HANDLE_POINT) {
         ptd.start_position_2d = float2(event->mval);
         ptd.mode = OperatorMode::DRAG;
 
-        ptd.temp_control_points.resize(ptd.control_points.size());
-        array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+        grease_pencil_primitive_save(ptd);
       }
 
       return OPERATOR_RUNNING_MODAL;
@@ -1138,9 +1142,7 @@ static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const 
       event->val == KM_PRESS)
   {
     ptd.mode = OperatorMode::EXTRUDING;
-    ptd.temp_segments = ptd.segments;
-    ptd.temp_control_points.resize(ptd.control_points.size());
-    array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
+    grease_pencil_primitive_save(ptd);
 
     ptd.start_position_2d = ED_view3d_project_float_v2_m4(
         ptd.vc.region, ptd.control_points.last(), ptd.projection);
@@ -1224,6 +1226,7 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
       if (event->val != KM_PRESS) {
         break;
       }
+
       if (ptd.mode == OperatorMode::IDLE) {
         grease_pencil_primitive_undo_curves(ptd);
         grease_pencil_primitive_exit(C, op);
@@ -1233,9 +1236,7 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
       else {
         ptd.mode = OperatorMode::IDLE;
 
-        ptd.segments = ptd.temp_segments;
-        ptd.control_points.resize(ptd.temp_control_points.size());
-        array_utils::copy(ptd.temp_control_points.as_span(), ptd.control_points.as_mutable_span());
+        grease_pencil_primitive_load(ptd);
         break;
       }
     }
