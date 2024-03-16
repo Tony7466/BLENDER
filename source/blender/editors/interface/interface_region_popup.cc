@@ -800,7 +800,7 @@ uiPopupBlockHandle *ui_popup_block_create(
     bContext *C,
     ARegion *butregion,
     uiBut *but,
-    std::optional<std::variant<uiBlockCreateFunc, uiBlockCreateWithPanelFunc>> create_func,
+    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> create_func,
     uiBlockHandleCreateFunc handle_create_func,
     void *arg,
     uiFreeArgFunc arg_free)
@@ -823,22 +823,24 @@ uiPopupBlockHandle *ui_popup_block_create(
   handle->ctx_region = CTX_wm_region(C);
 
   /* store vars to refresh popup (RGN_REFRESH_UI) */
-  if (create_func.has_value()) {
-    if (std::holds_alternative<uiBlockCreateFunc>(create_func.value())) {
-      handle->popup_create_vars.create_func = std::get<uiBlockCreateFunc>(create_func.value());
-      handle->popup_create_vars.create_with_panel_func = nullptr;
-      handle->popup_create_vars.panel = nullptr;
-    }
-    else {
-      handle->popup_create_vars.create_func = nullptr;
-      Panel *panel = BKE_panel_new(nullptr);
-      panel->type = MEM_new<PanelType>(__func__);
-      panel->type->flag = PANEL_TYPE_NO_HEADER;
-      handle->popup_create_vars.panel = panel;
-      handle->popup_create_vars.create_with_panel_func = std::get<uiBlockCreateWithPanelFunc>(
-          create_func.value());
-    }
+  handle->popup_create_vars.create_func = nullptr;
+  handle->popup_create_vars.create_with_panel_func = nullptr;
+  handle->popup_create_vars.panel = nullptr;
+
+  if (std::holds_alternative<uiBlockCreateWithPanelFunc>(create_func) &&
+      std::get<uiBlockCreateWithPanelFunc>(create_func))
+  {
+    Panel *panel = BKE_panel_new(nullptr);
+    panel->type = MEM_new<PanelType>(__func__);
+    panel->type->flag = PANEL_TYPE_NO_HEADER;
+    handle->popup_create_vars.panel = panel;
+    handle->popup_create_vars.create_with_panel_func = std::get<uiBlockCreateWithPanelFunc>(
+        create_func);
   }
+  else if (std::holds_alternative<uiBlockCreateFunc>(create_func)) {
+    handle->popup_create_vars.create_func = std::get<uiBlockCreateFunc>(create_func);
+  }
+
   handle->popup_create_vars.handle_create_func = handle_create_func;
   handle->popup_create_vars.arg = arg;
   handle->popup_create_vars.arg_free = arg_free;

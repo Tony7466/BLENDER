@@ -1637,6 +1637,7 @@ static uiBlock *wm_block_dialog_create_with_panel(bContext *C,
 
   return block;
 }
+
 static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_data)
 {
   return wm_block_dialog_create_with_panel(C, region, nullptr, user_data);
@@ -1767,7 +1768,7 @@ static int wm_operator_props_popup_ex(bContext *C,
     return WM_operator_props_dialog_popup(C, op, 300);
   }
 
-  UI_popup_block_with_panel_ex(C, wm_block_create_redo, nullptr, wm_block_redo_cancel_cb, op, op);
+  UI_popup_block_ex(C, wm_block_create_redo, nullptr, wm_block_redo_cancel_cb, op, op);
 
   if (do_call) {
     wm_block_redo_cb(C, op, 0);
@@ -1810,13 +1811,14 @@ int WM_operator_props_dialog_popup(bContext *C,
   data->cancel_default = false;
   data->mouse_move_quit = false;
   data->include_properties = true;
+
   /* The operator is not executed until popup OK button is clicked. */
-  UI_popup_block_with_panel_ex(C,
-                               wm_block_dialog_create_with_panel,
-                               wm_operator_ui_popup_ok,
-                               wm_operator_ui_popup_cancel,
-                               data,
-                               op);
+  UI_popup_block_ex(C,
+                    wm_block_dialog_create_with_panel,
+                    wm_operator_ui_popup_ok,
+                    wm_operator_ui_popup_cancel,
+                    data,
+                    op);
 
   return OPERATOR_RUNNING_MODAL;
 }
@@ -1837,7 +1839,7 @@ int WM_operator_redo_popup(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  UI_popup_block_invoke_with_panel(C, wm_block_create_redo, op, nullptr);
+  UI_popup_block_invoke(C, wm_block_create_redo, op, nullptr);
 
   return OPERATOR_CANCELLED;
 }

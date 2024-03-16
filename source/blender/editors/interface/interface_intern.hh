@@ -978,7 +978,7 @@ uiPopupBlockHandle *ui_popup_block_create(
     bContext *C,
     ARegion *butregion,
     uiBut *but,
-    std::optional<std::variant<uiBlockCreateFunc, uiBlockCreateWithPanelFunc>> create_func,
+    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> create_func,
     uiBlockHandleCreateFunc handle_create_func,
     void *arg,
     uiFreeArgFunc arg_free);

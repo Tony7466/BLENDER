@@ -414,7 +414,7 @@ static uiPopupBlockHandle *ui_popup_menu_create(
     pup->popup = true;
   }
   uiPopupBlockHandle *handle = ui_popup_block_create(
-      C, butregion, but, std::nullopt, ui_block_func_POPUP, pup, ui_block_free_func_POPUP);
+      C, butregion, but, nullptr, ui_block_func_POPUP, pup, ui_block_free_func_POPUP);
 
   if (!but) {
     handle->popup = true;
@@ -508,7 +508,7 @@ void UI_popup_menu_end(bContext *C, uiPopupMenu *pup)
   }
 
   uiPopupBlockHandle *menu = ui_popup_block_create(
-      C, butregion, but, std::nullopt, ui_block_func_POPUP, pup, nullptr);
+      C, butregion, but, nullptr, ui_block_func_POPUP, pup, nullptr);
   menu->popup = true;
 
   UI_popup_handlers_add(C, &window->modalhandlers, menu, 0);
@@ -657,7 +657,11 @@ int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports)
  * \{ */
 
 void UI_popup_block_invoke_ex(
-    bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free, bool can_refresh)
+    bContext *C,
+    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> func,
+    void *arg,
+    uiFreeArgFunc arg_free,
+    bool can_refresh)
 {
   wmWindow *window = CTX_wm_window(C);
 
@@ -675,47 +679,21 @@ void UI_popup_block_invoke_ex(
   WM_event_add_mousemove(window);
 }
 
-void UI_popup_block_invoke(bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free)
+void UI_popup_block_invoke(
+    bContext *C,
+    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> func,
+    void *arg,
+    uiFreeArgFunc arg_free)
 {
   UI_popup_block_invoke_ex(C, func, arg, arg_free, true);
 }
-
-void UI_popup_block_invoke_with_panel_ex(bContext *C,
-                                         uiBlockCreateWithPanelFunc func,
-                                         void *arg,
-                                         uiFreeArgFunc arg_free,
-                                         bool can_refresh)
-{
-  wmWindow *window = CTX_wm_window(C);
-
-  uiPopupBlockHandle *handle = ui_popup_block_create(
-      C, nullptr, nullptr, func, nullptr, arg, arg_free);
-  handle->popup = true;
-
-  /* It can be useful to disable refresh (even though it will work)
-   * as this exists text fields which can be disruptive if refresh isn't needed. */
-  handle->can_refresh = can_refresh;
-
-  UI_popup_handlers_add(C, &window->modalhandlers, handle, 0);
-  UI_block_active_only_flagged_buttons(
-      C, handle->region, static_cast<uiBlock *>(handle->region->uiblocks.first));
-  WM_event_add_mousemove(window);
-}
-
-void UI_popup_block_invoke_with_panel(bContext *C,
-                                      uiBlockCreateWithPanelFunc func,
-                                      void *arg,
-                                      uiFreeArgFunc arg_free)
-{
-  UI_popup_block_invoke_with_panel_ex(C, func, arg, arg_free, true);
-}
-
-void UI_popup_block_ex(bContext *C,
-                       uiBlockCreateFunc func,
-                       uiBlockHandleFunc popup_func,
-                       uiBlockCancelFunc cancel_func,
-                       void *arg,
-                       wmOperator *op)
+void UI_popup_block_ex(
+    bContext *C,
+    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> func,
+    uiBlockHandleFunc popup_func,
+    uiBlockCancelFunc cancel_func,
+    void *arg,
+    wmOperator *op)
 {
   wmWindow *window = CTX_wm_window(C);
 
@@ -737,32 +715,6 @@ void UI_popup_block_ex(bContext *C,
   WM_event_add_mousemove(window);
 }
 
-void UI_popup_block_with_panel_ex(bContext *C,
-                                  uiBlockCreateWithPanelFunc func,
-                                  uiBlockHandleFunc popup_func,
-                                  uiBlockCancelFunc cancel_func,
-                                  void *arg,
-                                  wmOperator *op)
-{
-  wmWindow *window = CTX_wm_window(C);
-
-  uiPopupBlockHandle *handle = ui_popup_block_create(
-      C, nullptr, nullptr, func, nullptr, arg, nullptr);
-  handle->popup = true;
-  handle->retvalue = 1;
-  handle->can_refresh = true;
-
-  handle->popup_op = op;
-  handle->popup_arg = arg;
-  handle->popup_func = popup_func;
-  handle->cancel_func = cancel_func;
-  // handle->opcontext = opcontext;
-
-  UI_popup_handlers_add(C, &window->modalhandlers, handle, 0);
-  UI_block_active_only_flagged_buttons(
-      C, handle->region, static_cast<uiBlock *>(handle->region->uiblocks.first));
-  WM_event_add_mousemove(window);
-}
 #if 0 /* UNUSED */
 void uiPupBlockOperator(bContext *C,
                         uiBlockCreateFunc func,
