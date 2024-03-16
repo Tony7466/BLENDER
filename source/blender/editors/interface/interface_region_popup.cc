@@ -796,14 +796,13 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   return block;
 }
 
-uiPopupBlockHandle *ui_popup_block_create(
-    bContext *C,
-    ARegion *butregion,
-    uiBut *but,
-    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> create_func,
-    uiBlockHandleCreateFunc handle_create_func,
-    void *arg,
-    uiFreeArgFunc arg_free)
+uiPopupBlockHandle *ui_popup_block_create(bContext *C,
+                                          ARegion *butregion,
+                                          uiBut *but,
+                                          uiBlockCreateFuncT create_func,
+                                          uiBlockHandleCreateFunc handle_create_func,
+                                          void *arg,
+                                          uiFreeArgFunc arg_free)
 {
   wmWindow *window = CTX_wm_window(C);
   uiBut *activebut = UI_context_active_but_get(C);

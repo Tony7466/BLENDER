@@ -717,8 +717,8 @@ int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports) A
  */
 void UI_popup_menu_retval_set(const uiBlock *block, int retval, bool enable);
 bool UI_layout_panel_toggle_open(const bContext *C, struct LayoutPanelHeader *header);
-void ui_panel_drag_collapse_handler_add(const bContext *C, const bool was_open);
-LayoutPanelHeader *get_layout_panel_header_under_mouse(const Panel &panel, const int my);
+void UI_panel_drag_collapse_handler_add(const bContext *C, const bool was_open);
+LayoutPanelHeader *UI_layout_panel_header_under_mouse(const Panel &panel, const int my);
 /**
  * Setting the button makes the popup open from the button instead of the cursor.
  */
@@ -772,31 +772,30 @@ uiLayout *UI_pie_menu_layout(uiPieMenu *pie);
  * Functions used to create popup blocks. These are like popup menus
  * but allow using all button types and creating their own layout. */
 using uiBlockCreateFunc = uiBlock *(*)(bContext *C, ARegion *region, void *arg1);
+/** Function used to create popup blocks, with a given dummy `panel` so popups can support creating
+ * layout panels.
+ */
 using uiBlockCreateWithPanelFunc = uiBlock *(*)(bContext *C,
                                                 ARegion *region,
                                                 Panel *panel,
                                                 void *arg1);
+using uiBlockCreateFuncT =
+    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc>;
 using uiBlockCancelFunc = void (*)(bContext *C, void *arg1);
 
-void UI_popup_block_invoke(
-    bContext *C,
-    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> create_func,
-    void *arg,
-    uiFreeArgFunc arg_free);
+void UI_popup_block_invoke(bContext *C,
+                           uiBlockCreateFuncT func,
+                           void *arg,
+                           uiFreeArgFunc arg_free);
 void UI_popup_block_invoke_ex(
-    bContext *C,
-    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> func,
-    void *arg,
-    uiFreeArgFunc arg_free,
-    bool can_refresh);
+    bContext *C, uiBlockCreateFuncT func, void *arg, uiFreeArgFunc arg_free, bool can_refresh);
 
-void UI_popup_block_ex(
-    bContext *C,
-    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> create_func,
-    uiBlockHandleFunc popup_func,
-    uiBlockCancelFunc cancel_func,
-    void *arg,
-    wmOperator *op);
+void UI_popup_block_ex(bContext *C,
+                       uiBlockCreateFuncT func,
+                       uiBlockHandleFunc popup_func,
+                       uiBlockCancelFunc cancel_func,
+                       void *arg,
+                       wmOperator *op);
 
 #if 0 /* UNUSED */
 void uiPupBlockOperator(bContext *C,
@@ -833,6 +832,8 @@ void UI_blocklist_update_window_matrix(const bContext *C, const ListBase *lb);
 void UI_blocklist_update_view_for_buttons(const bContext *C, const ListBase *lb);
 void UI_blocklist_draw(const bContext *C, const ListBase *lb);
 void UI_block_update_from_old(const bContext *C, uiBlock *block);
+
+void UI_block_set_root_panel(uiBlock *block, Panel *panel);
 
 enum {
   UI_BLOCK_THEME_STYLE_REGULAR = 0,
@@ -2215,7 +2216,6 @@ eUIEmbossType uiLayoutGetEmboss(uiLayout *layout);
 bool uiLayoutGetPropSep(uiLayout *layout);
 bool uiLayoutGetPropDecorate(uiLayout *layout);
 Panel *uiLayoutGetRootPanel(uiLayout *layout);
-void uiblockSetRootPanel(uiBlock *, Panel *);
 
 /* Layout create functions. */
 

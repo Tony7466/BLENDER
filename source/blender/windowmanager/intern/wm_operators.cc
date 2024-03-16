@@ -1373,6 +1373,16 @@ static void wm_block_redo_cancel_cb(bContext *C, void *arg_op)
   }
 }
 
+static void uiblock_dummy_panel_set(uiBlock *block, Panel *panel, wmOperator *op)
+{
+  if (op->type->flag & OPTYPE_PANEL) {
+    UI_block_flag_enable(block, UI_BLOCK_POPUP_PANEL);
+  }
+  panel->runtime->layout_panels.clear();
+  UI_block_set_root_panel(block, panel);
+  panel->runtime->block = block;
+}
+
 static uiBlock *wm_block_create_redo(bContext *C, ARegion *region, Panel *panel, void *arg_op)
 {
   wmOperator *op = static_cast<wmOperator *>(arg_op);
@@ -1391,14 +1401,7 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *region, Panel *panel,
   BLI_assert(op->type->flag & OPTYPE_REGISTER);
 
   UI_block_func_handle_set(block, wm_block_redo_cb, arg_op);
-  if (panel) {
-    if (op->type->flag & OPTYPE_PANEL) {
-      UI_block_flag_enable(block, UI_BLOCK_POPUP_PANEL);
-    }
-    panel->runtime->layout_panels.clear();
-    uiblockSetRootPanel(block, panel);
-    panel->runtime->block = block;
-  }
+  uiblock_dummy_panel_set(block, panel, op);
   uiLayout *layout = UI_block_layout(
       block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, width, UI_UNIT_Y, 0, style);
 
@@ -1473,10 +1476,7 @@ static void dialog_cancel_cb(bContext *C, void *arg1, void *arg2)
 /**
  * Dialogs are popups that require user verification (click OK) before exec.
  */
-static uiBlock *wm_block_dialog_create_with_panel(bContext *C,
-                                                  ARegion *region,
-                                                  Panel *panel,
-                                                  void *user_data)
+static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, Panel *panel, void *user_data)
 {
   wmOpPopUp *data = static_cast<wmOpPopUp *>(user_data);
   wmOperator *op = data->op;
@@ -1549,15 +1549,7 @@ static uiBlock *wm_block_dialog_create_with_panel(bContext *C,
 
   if (data->include_properties) {
     uiItemS_ex(layout, 0.5f);
-    /** Set dummy panel. */
-    if (panel) {
-      if (op->type->flag & OPTYPE_PANEL) {
-        UI_block_flag_enable(block, UI_BLOCK_POPUP_PANEL);
-      }
-      panel->runtime->layout_panels.clear();
-      uiblockSetRootPanel(block, panel);
-      panel->runtime->block = block;
-    }
+    uiblock_dummy_panel_set(block, panel, op);
     uiTemplateOperatorPropertyButs(C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, 0);
   }
 
@@ -1638,11 +1630,6 @@ static uiBlock *wm_block_dialog_create_with_panel(bContext *C,
   return block;
 }
 
-static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_data)
-{
-  return wm_block_dialog_create_with_panel(C, region, nullptr, user_data);
-}
-
 static uiBlock *wm_operator_ui_create(bContext *C, ARegion *region, void *user_data)
 {
   wmOpPopUp *data = static_cast<wmOpPopUp *>(user_data);
@@ -1681,6 +1668,7 @@ static void wm_operator_ui_popup_cancel(bContext *C, void *user_data)
       WM_operator_free(op);
     }
   }
+
   MEM_delete(data);
 }
 
@@ -1692,6 +1680,7 @@ static void wm_operator_ui_popup_ok(bContext *C, void *arg, int retval)
   if (op && retval > 0) {
     WM_operator_call_ex(C, op, true);
   }
+
   MEM_delete(data);
 }
 
@@ -1813,12 +1802,8 @@ int WM_operator_props_dialog_popup(bContext *C,
   data->include_properties = true;
 
   /* The operator is not executed until popup OK button is clicked. */
-  UI_popup_block_ex(C,
-                    wm_block_dialog_create_with_panel,
-                    wm_operator_ui_popup_ok,
-                    wm_operator_ui_popup_cancel,
-                    data,
-                    op);
+  UI_popup_block_ex(
+      C, wm_block_dialog_create, wm_operator_ui_popup_ok, wm_operator_ui_popup_cancel, data, op);
 
   return OPERATOR_RUNNING_MODAL;
 }

@@ -4340,13 +4340,7 @@ static void ui_block_open_begin(bContext *C, uiBut *but, uiHandleButtonData *dat
   }
 
   if (func || handlefunc) {
-    if (func) {
-      data->menu = ui_popup_block_create(C, data->region, but, func, handlefunc, arg, nullptr);
-    }
-    else {
-      data->menu = ui_popup_block_create(
-          C, data->region, but, nullptr, handlefunc, arg, nullptr);
-    }
+    data->menu = ui_popup_block_create(C, data->region, but, func, handlefunc, arg, nullptr);
     if (but->block->handle) {
       data->menu->popup = but->block->handle->popup;
     }
@@ -11436,6 +11430,25 @@ static int ui_handle_menus_recursive(bContext *C,
           C, event, submenu, level + 1, is_parent_inside || inside, is_menu, false);
     }
   }
+  else if (event->val == KM_PRESS && event->type == LEFTMOUSE) {
+    LISTBASE_FOREACH (uiBlock *, block, &menu->region->uiblocks) {
+      if (block->panel) {
+        int mx = event->xy[0];
+        int my = event->xy[1];
+        ui_window_to_block(menu->region, block, &mx, &my);
+        if (!IN_RANGE(float(mx), block->rect.xmin, block->rect.xmax)) {
+          break;
+        }
+        LayoutPanelHeader *header = UI_layout_panel_header_under_mouse(*block->panel, my);
+        if (header) {
+          ED_region_tag_redraw(menu->region);
+          ED_region_tag_refresh_ui(menu->region);
+          UI_panel_drag_collapse_handler_add(C, !UI_layout_panel_toggle_open(C, header));
+          retval = WM_UI_HANDLER_BREAK;
+        }
+      }
+    }
+  }
 
   /* now handle events for our own menu */
   if (retval == WM_UI_HANDLER_CONTINUE || event->type == TIMER) {
@@ -11701,24 +11714,6 @@ static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
 
   ARegion *menu_region = CTX_wm_menu(C);
   CTX_wm_menu_set(C, menu->region);
-  if (event->val == KM_PRESS && event->type == LEFTMOUSE) {
-    LISTBASE_FOREACH (uiBlock *, block, &menu->region->uiblocks) {
-      if (block->panel) {
-        int mx = event->xy[0];
-        int my = event->xy[1];
-        ui_window_to_block(menu->region, block, &mx, &my);
-
-        LayoutPanelHeader *header = get_layout_panel_header_under_mouse(*block->panel, my);
-        if (header) {
-          ED_region_tag_redraw(menu->region);
-          ED_region_tag_refresh_ui(menu->region);
-          ui_panel_drag_collapse_handler_add(C, !UI_layout_panel_toggle_open(C, header));
-          CTX_wm_region_set(C, menu_region);
-          return WM_UI_HANDLER_BREAK;
-        }
-      }
-    }
-  }
   if (event->type == EVT_DROP || event->val == KM_DBL_CLICK) {
     /* EVT_DROP:
      *   If we're handling drop event we'll want it to be handled by popup callee as well,

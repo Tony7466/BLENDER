@@ -657,11 +657,7 @@ int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports)
  * \{ */
 
 void UI_popup_block_invoke_ex(
-    bContext *C,
-    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> func,
-    void *arg,
-    uiFreeArgFunc arg_free,
-    bool can_refresh)
+    bContext *C, uiBlockCreateFuncT func, void *arg, uiFreeArgFunc arg_free, bool can_refresh)
 {
   wmWindow *window = CTX_wm_window(C);
 
@@ -679,21 +675,16 @@ void UI_popup_block_invoke_ex(
   WM_event_add_mousemove(window);
 }
 
-void UI_popup_block_invoke(
-    bContext *C,
-    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> func,
-    void *arg,
-    uiFreeArgFunc arg_free)
+void UI_popup_block_invoke(bContext *C, uiBlockCreateFuncT func, void *arg, uiFreeArgFunc arg_free)
 {
   UI_popup_block_invoke_ex(C, func, arg, arg_free, true);
 }
-void UI_popup_block_ex(
-    bContext *C,
-    std::variant<std::nullptr_t, uiBlockCreateFunc, uiBlockCreateWithPanelFunc> func,
-    uiBlockHandleFunc popup_func,
-    uiBlockCancelFunc cancel_func,
-    void *arg,
-    wmOperator *op)
+void UI_popup_block_ex(bContext *C,
+                       uiBlockCreateFuncT func,
+                       uiBlockHandleFunc popup_func,
+                       uiBlockCancelFunc cancel_func,
+                       void *arg,
+                       wmOperator *op)
 {
   wmWindow *window = CTX_wm_window(C);
 

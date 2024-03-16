@@ -5282,7 +5282,7 @@ Panel *uiLayoutGetRootPanel(uiLayout *layout)
   return layout->root->block->panel;
 }
 
-void uiblockSetRootPanel(uiBlock *block, Panel *panel)
+void UI_block_set_root_panel(uiBlock *block, Panel *panel)
 {
   block->panel = panel;
 }
