@@ -1,1 +1,1 @@
-Referenced by issue #119551, Crash using GPU OIDN on Mac M3
+Referenced by issue #119551, Crash with MetalRT when canceling a tiled render with OIDN GPU denoising
