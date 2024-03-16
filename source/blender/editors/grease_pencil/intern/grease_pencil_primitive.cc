@@ -990,10 +990,10 @@ static void grease_pencil_primitive_cursor_update(bContext *C,
   return;
 }
 
-static int grease_pencil_primtive_event_model_map(bContext *C,
-                                                  wmOperator *op,
-                                                  PrimitiveTool_OpData &ptd,
-                                                  const wmEvent *event)
+static int grease_pencil_primitive_event_model_map(bContext *C,
+                                                   wmOperator *op,
+                                                   PrimitiveTool_OpData &ptd,
+                                                   const wmEvent *event)
 {
   switch (event->val) {
     case int(ModelKeyMode::CANCEL): {
@@ -1207,7 +1207,7 @@ static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEv
   grease_pencil_primitive_cursor_update(C, ptd, event);
 
   if (event->type == EVT_MODAL_MAP) {
-    const int return_val = grease_pencil_primtive_event_model_map(C, op, ptd, event);
+    const int return_val = grease_pencil_primitive_event_model_map(C, op, ptd, event);
     if (return_val != OPERATOR_RUNNING_MODAL) {
       return return_val;
     }
