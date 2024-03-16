@@ -1051,7 +1051,7 @@ ccl_device_inline bool solve_quadratic(
   x1 = x2 = -c / b;
 
   const float discriminant = sqr(b) - 4.0f * a * c;
-  /* Allow slightly negative discriminant in cose of numerical precision issues. */
+  /* Allow slightly negative discriminant in case of numerical precision issues. */
   const bool valid_quadratic = (a != 0.0f) && (discriminant > -1e-5f);
 
   if (valid_quadratic) {
