@@ -56,7 +56,6 @@
 
 #include "UI_interface.hh"
 #include "UI_interface_c.hh"
-
 #include "UI_string_search.hh"
 
 #include "BLF_api.hh"
@@ -11714,6 +11713,7 @@ static int ui_popup_handler(bContext *C, const wmEvent *event, void *userdata)
 
   ARegion *menu_region = CTX_wm_menu(C);
   CTX_wm_menu_set(C, menu->region);
+
   if (event->type == EVT_DROP || event->val == KM_DBL_CLICK) {
     /* EVT_DROP:
      *   If we're handling drop event we'll want it to be handled by popup callee as well,

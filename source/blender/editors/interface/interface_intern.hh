@@ -981,7 +981,6 @@ uiPopupBlockHandle *ui_popup_block_create(bContext *C,
                                           uiBlockHandleCreateFunc handle_create_func,
                                           void *arg,
                                           uiFreeArgFunc arg_free);
-
 uiPopupBlockHandle *ui_popup_menu_create(
     bContext *C, ARegion *butregion, uiBut *but, uiMenuCreateFunc menu_func, void *arg);
 
