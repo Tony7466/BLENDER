@@ -187,6 +187,12 @@ static void control_point_colors_and_sizes(const PrimitiveTool_OpData &ptd,
   const float size_secondary = UI_SECONDARY_POINT_DRAW_SIZE_PX;
   const float size_tertiary = UI_TERTIARY_POINT_DRAW_SIZE_PX;
 
+  if (ptd.segments == 0) {
+    colors.fill(color_gizmo_primary);
+    sizes.fill(size_primary);
+    return;
+  }
+
   if (ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE)) {
     colors.fill(color_gizmo_primary);
     sizes.fill(size_primary);
