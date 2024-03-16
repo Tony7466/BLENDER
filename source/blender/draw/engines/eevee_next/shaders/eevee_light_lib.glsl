@@ -110,7 +110,9 @@ float light_circular_segment_area(float segment_height, float disk_radius)
 #if 0
   return (R * R) * acos(r / R) - r * sqrt(R * R - r * r);
 #else
-  return smoothstep(0.0, 1.0, (R - r) * 0.5 / R) * (M_PI * R * R);
+  /* Approximation. This gives smoother result but a bit darker on the edges and a bit brighter on
+   * the inner parts. */
+  return smoothstep(-R, R, -r) * (M_PI * R * R);
 #endif
 }
 
