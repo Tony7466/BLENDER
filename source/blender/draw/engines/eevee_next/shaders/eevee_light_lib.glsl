@@ -102,6 +102,63 @@ float light_spot_attenuation(LightData light, vec3 L)
   return spotmask * step(0.0, -dot(L, -light._back));
 }
 
+float light_circular_segment_area(float segment_height, float disk_radius)
+{
+  /* Using notation from https://mathworld.wolfram.com/CircularSegment.html . */
+  float R = disk_radius;
+  float r = segment_height;
+#if 0
+  return (R * R) * acos(r / R) - r * sqrt(R * R - r * r);
+#else
+  return smoothstep(0.0, 1.0, (R - r) * 0.5 / R) * (M_PI * R * R);
+#endif
+}
+
+/* Optimized version already divided by the disk area. */
+float light_circular_segment_area_opti(float segment_height, float disk_radius)
+{
+  /* Using notation from https://mathworld.wolfram.com/CircularSegment.html . */
+  float R = disk_radius;
+  float r = segment_height;
+  return smoothstep(-R, R, -r);
+}
+
+float light_disk_area(float disk_radius)
+{
+  return square(disk_radius) * M_PI;
+}
+
+float light_spread_angle_rect_1D(float disk_center_distance, float disk_radius, float rect_extent)
+{
+  if (disk_center_distance >= disk_radius + rect_extent) {
+    /* No intersection. */
+    return 0.0;
+  }
+  if ((disk_center_distance + disk_radius) <= rect_extent) {
+    /* Total intersection. */
+    return 1.0;
+  }
+
+  float area_section;
+  if (disk_center_distance + rect_extent < disk_radius) {
+    /* Two circular segment. */
+    area_section = light_circular_segment_area_opti(disk_center_distance - rect_extent,
+                                                    disk_radius) -
+                   light_circular_segment_area_opti(disk_center_distance + rect_extent,
+                                                    disk_radius);
+  }
+  else {
+    /* Only one circular segment. */
+    area_section = light_circular_segment_area_opti(disk_center_distance - rect_extent,
+                                                    disk_radius);
+  }
+#if 0 /* If using non optimized version. */
+  return area_section / light_disk_area(disk_radius);
+#else
+  return area_section;
+#endif
+}
+
 float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
 {
   vec3 lL = light_world_to_local(light, L * dist);
@@ -109,12 +166,17 @@ float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
   const float spread_half_angle_tan = tan(spread_half_angle);
   float distance_to_plane = lL.z;
   /* Using notation from https://mathworld.wolfram.com/Circle-CircleIntersection.html . */
-  float d = length(lL.xy);
   float r = abs(distance_to_plane) * spread_half_angle_tan;
+  if (light.type == LIGHT_RECT) {
+    return light_spread_angle_rect_1D(abs(lL.x), r, light._area_size_x) *
+           light_spread_angle_rect_1D(abs(lL.y), r, light._area_size_y);
+  }
+
+  float d = length(lL.xy);
   float R = light._area_size_x;
   /* Special cases where the bottom would fails. */
   if (d >= r + R) {
-    /* Not intersection. */
+    /* No intersection. */
     return 0.0;
   }
   if (d + r <= R) {
