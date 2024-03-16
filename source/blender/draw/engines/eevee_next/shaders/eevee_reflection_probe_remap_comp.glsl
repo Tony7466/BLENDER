@@ -8,7 +8,7 @@
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
-shared vec4 local_sh_coefs[gl_WorkGroupSize.x * gl_WorkGroupSize.y][4];
+shared vec4 local_sh_coefs[(gl_WorkGroupSize.x * gl_WorkGroupSize.y) / 2][4];
 
 float triangle_solid_angle(vec3 A, vec3 B, vec3 C)
 {
@@ -112,14 +112,25 @@ void main()
     spherical_harmonics_encode_signal_sample(L, vec4(radiance, 1.0) * sample_weight, sh);
 
     const uint local_index = gl_LocalInvocationIndex;
-    local_sh_coefs[local_index][0] = sh.L0.M0;
-    local_sh_coefs[local_index][1] = sh.L1.Mn1;
-    local_sh_coefs[local_index][2] = sh.L1.M0;
-    local_sh_coefs[local_index][3] = sh.L1.Mp1;
+    const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+
+    /* Sum half of the data into LDS first to reduce LDS size. */
+    if (local_index >= group_size / 2) {
+      local_sh_coefs[local_index - (group_size / 2)][0] = sh.L0.M0;
+      local_sh_coefs[local_index - (group_size / 2)][1] = sh.L1.Mn1;
+      local_sh_coefs[local_index - (group_size / 2)][2] = sh.L1.M0;
+      local_sh_coefs[local_index - (group_size / 2)][3] = sh.L1.Mp1;
+    }
+    barrier();
+    if (local_index < group_size / 2) {
+      local_sh_coefs[local_index][0] += sh.L0.M0;
+      local_sh_coefs[local_index][1] += sh.L1.Mn1;
+      local_sh_coefs[local_index][2] += sh.L1.M0;
+      local_sh_coefs[local_index][3] += sh.L1.Mp1;
+    }
 
     /* Parallel sum. */
-    const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
-    for (uint stride = group_size / 2; stride > 0; stride /= 2) {
+    for (uint stride = group_size / 4; stride > 0; stride /= 2) {
       barrier();
       if (local_index < stride) {
         for (int i = 0; i < 4; i++) {
