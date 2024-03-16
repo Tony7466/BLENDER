@@ -1450,13 +1450,6 @@ def brush_basic_grease_pencil_paint_settings(layout, context, brush, *, compact=
         else:
             row.prop(gp_settings, "caps_type", text="Caps Type")
 
-        if props is not None:
-            row = layout.row(align=True)
-            if context.region.type == 'TOOL_HEADER':
-                row.prop(props, "interpolate_mode", text="", expand=True)
-            else:
-                row.prop(props, "interpolate_mode")
-
         settings = context.tool_settings.gpencil_sculpt
         if compact:
             row = layout.row(align=True)
