@@ -676,6 +676,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   ptd.segments++;
   ptd.control_points.append_n_times(pos, control_points_per_segment(ptd));
   ptd.active_control_point_index = -1;
+  ptd.projection = ED_view3d_ob_project_mat_get(ptd.vc.rv3d, ptd.vc.obact);
 
   Paint *paint = &vc.scene->toolsettings->gp_paint->paint;
   ptd.brush = BKE_paint_brush(paint);
