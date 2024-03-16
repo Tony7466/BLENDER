@@ -190,10 +190,15 @@ float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
   /* Eq. 14. */
   float d1 = (d * d - r * r + R * R) / (2.0 * d);
   float d2 = (d * d + r * r - R * R) / (2.0 * d);
+#if 0 /* Reference method. */
   float area_section = (r * r) * acos(d2 / r) + (R * R) * acos(d1 / R) -
                        0.5 * sqrt((-d + r + R) * (d + r - R) * (d - r + R) * (d + r + R));
   float area_projection = square(r) * M_PI;
   return area_section / area_projection;
+#else
+  return light_circular_segment_area_opti(d1, R) * square(R / r) +
+         light_circular_segment_area_opti(d2, r);
+#endif
 }
 
 float light_attenuation_common(LightData light, const bool is_directional, vec3 L, float dist)
