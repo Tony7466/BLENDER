@@ -586,6 +586,8 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   ARegion *region = handle->region;
 
   const uiBlockCreateFunc create_func = handle->popup_create_vars.create_func;
+  const uiBlockCreateWithPanelFunc create_with_panel_func =
+      handle->popup_create_vars.create_with_panel_func;
   const uiBlockHandleCreateFunc handle_create_func = handle->popup_create_vars.handle_create_func;
   void *arg = handle->popup_create_vars.arg;
 
@@ -604,6 +606,9 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   uiBlock *block;
   if (create_func) {
     block = create_func(C, region, arg);
+  }
+  else if (create_with_panel_func) {
+    block = create_with_panel_func(C, region, handle->popup_create_vars.panel, arg);
   }
   else {
     block = handle_create_func(C, handle, arg);
@@ -791,13 +796,14 @@ uiBlock *ui_popup_block_refresh(bContext *C,
   return block;
 }
 
-uiPopupBlockHandle *ui_popup_block_create(bContext *C,
-                                          ARegion *butregion,
-                                          uiBut *but,
-                                          uiBlockCreateFunc create_func,
-                                          uiBlockHandleCreateFunc handle_create_func,
-                                          void *arg,
-                                          uiFreeArgFunc arg_free)
+uiPopupBlockHandle *ui_popup_block_create(
+    bContext *C,
+    ARegion *butregion,
+    uiBut *but,
+    std::optional<std::variant<uiBlockCreateFunc, uiBlockCreateWithPanelFunc>> create_func,
+    uiBlockHandleCreateFunc handle_create_func,
+    void *arg,
+    uiFreeArgFunc arg_free)
 {
   wmWindow *window = CTX_wm_window(C);
   uiBut *activebut = UI_context_active_but_get(C);
@@ -817,7 +823,22 @@ uiPopupBlockHandle *ui_popup_block_create(bContext *C,
   handle->ctx_region = CTX_wm_region(C);
 
   /* store vars to refresh popup (RGN_REFRESH_UI) */
-  handle->popup_create_vars.create_func = create_func;
+  if (create_func.has_value()) {
+    if (std::holds_alternative<uiBlockCreateFunc>(create_func.value())) {
+      handle->popup_create_vars.create_func = std::get<uiBlockCreateFunc>(create_func.value());
+      handle->popup_create_vars.create_with_panel_func = nullptr;
+      handle->popup_create_vars.panel = nullptr;
+    }
+    else {
+      handle->popup_create_vars.create_func = nullptr;
+      Panel *panel = BKE_panel_new(nullptr);
+      panel->type = MEM_new<PanelType>(__func__);
+      panel->type->flag = PANEL_TYPE_NO_HEADER;
+      handle->popup_create_vars.panel = panel;
+      handle->popup_create_vars.create_with_panel_func = std::get<uiBlockCreateWithPanelFunc>(
+          create_func.value());
+    }
+  }
   handle->popup_create_vars.handle_create_func = handle_create_func;
   handle->popup_create_vars.arg = arg;
   handle->popup_create_vars.arg_free = arg_free;
@@ -876,7 +897,10 @@ void ui_popup_block_free(bContext *C, uiPopupBlockHandle *handle)
   }
 
   ui_popup_block_remove(C, handle);
-
+  if (handle->popup_create_vars.panel) {
+    MEM_delete(handle->popup_create_vars.panel->type);
+    BKE_panel_free(handle->popup_create_vars.panel);
+  }
   MEM_freeN(handle);
 }
 

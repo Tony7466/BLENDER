@@ -185,6 +185,9 @@ enum {
   UI_BLOCK_QUICK_SETUP = 1 << 26,
   /** Don't accelerator keys for the items in the block. */
   UI_BLOCK_NO_ACCELERATOR_KEYS = 1 << 27,
+  /** Force panel style drawing in popups dialogs. */
+  UI_BLOCK_POPUP_PANEL = 1 << 28,
+
 };
 
 /** #uiPopupBlockHandle.menuretval */
@@ -768,17 +771,31 @@ uiLayout *UI_pie_menu_layout(uiPieMenu *pie);
  * Functions used to create popup blocks. These are like popup menus
  * but allow using all button types and creating their own layout. */
 using uiBlockCreateFunc = uiBlock *(*)(bContext *C, ARegion *region, void *arg1);
+using uiBlockCreateWithPanelFunc = uiBlock *(*)(bContext *C,
+                                                ARegion *region,
+                                                Panel *panel,
+                                                void *arg1);
 using uiBlockCancelFunc = void (*)(bContext *C, void *arg1);
 
 void UI_popup_block_invoke(bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free);
 void UI_popup_block_invoke_ex(
     bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free, bool can_refresh);
+void UI_popup_block_invoke_with_panel(bContext *C,
+                                      uiBlockCreateWithPanelFunc func,
+                                      void *arg,
+                                      uiFreeArgFunc arg_free);
 void UI_popup_block_ex(bContext *C,
                        uiBlockCreateFunc func,
                        uiBlockHandleFunc popup_func,
                        uiBlockCancelFunc cancel_func,
                        void *arg,
                        wmOperator *op);
+void UI_popup_block_with_panel_ex(bContext *C,
+                                  uiBlockCreateWithPanelFunc func,
+                                  uiBlockHandleFunc popup_func,
+                                  uiBlockCancelFunc cancel_func,
+                                  void *arg,
+                                  wmOperator *op);
 #if 0 /* UNUSED */
 void uiPupBlockOperator(bContext *C,
                         uiBlockCreateFunc func,

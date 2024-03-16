@@ -4340,7 +4340,13 @@ static void ui_block_open_begin(bContext *C, uiBut *but, uiHandleButtonData *dat
   }
 
   if (func || handlefunc) {
-    data->menu = ui_popup_block_create(C, data->region, but, func, handlefunc, arg, nullptr);
+    if (func) {
+      data->menu = ui_popup_block_create(C, data->region, but, func, handlefunc, arg, nullptr);
+    }
+    else {
+      data->menu = ui_popup_block_create(
+          C, data->region, but, std::nullopt, handlefunc, arg, nullptr);
+    }
     if (but->block->handle) {
       data->menu->popup = but->block->handle->popup;
     }

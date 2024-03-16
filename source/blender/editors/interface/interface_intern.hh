@@ -9,6 +9,7 @@
 #pragma once
 
 #include <functional>
+#include <variant>
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_math_vector_types.hh"
@@ -833,6 +834,7 @@ using uiBlockHandleCreateFunc = uiBlock *(*)(bContext *C, uiPopupBlockHandle *ha
 
 struct uiPopupBlockCreate {
   uiBlockCreateFunc create_func;
+  uiBlockCreateWithPanelFunc create_with_panel_func;
   uiBlockHandleCreateFunc handle_create_func;
   void *arg;
   uiFreeArgFunc arg_free;
@@ -842,6 +844,7 @@ struct uiPopupBlockCreate {
   /** Set when popup is initialized from a button. */
   ARegion *butregion;
   uiBut *but;
+  Panel *panel;
 };
 
 struct uiPopupBlockHandle {
@@ -971,13 +974,15 @@ uiBlock *ui_popup_block_refresh(bContext *C,
                                 ARegion *butregion,
                                 uiBut *but);
 
-uiPopupBlockHandle *ui_popup_block_create(bContext *C,
-                                          ARegion *butregion,
-                                          uiBut *but,
-                                          uiBlockCreateFunc create_func,
-                                          uiBlockHandleCreateFunc handle_create_func,
-                                          void *arg,
-                                          uiFreeArgFunc arg_free);
+uiPopupBlockHandle *ui_popup_block_create(
+    bContext *C,
+    ARegion *butregion,
+    uiBut *but,
+    std::optional<std::variant<uiBlockCreateFunc, uiBlockCreateWithPanelFunc>> create_func,
+    uiBlockHandleCreateFunc handle_create_func,
+    void *arg,
+    uiFreeArgFunc arg_free);
+
 uiPopupBlockHandle *ui_popup_menu_create(
     bContext *C, ARegion *butregion, uiBut *but, uiMenuCreateFunc menu_func, void *arg);
 

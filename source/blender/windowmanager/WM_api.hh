@@ -742,8 +742,7 @@ int WM_operator_props_dialog_popup(bContext *C,
                                    wmOperator *op,
                                    int width,
                                    std::optional<std::string> title = std::nullopt,
-                                   std::optional<std::string> confirm_text = std::nullopt,
-                                   bool use_layout_panels = false);
+                                   std::optional<std::string> confirm_text = std::nullopt);
 
 int WM_operator_redo_popup(bContext *C, wmOperator *op);
 int WM_operator_ui_popup(bContext *C, wmOperator *op, int width);

@@ -2084,14 +2084,11 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   else if (block->flag & UI_BLOCK_POPOVER) {
     ui_draw_popover_back(region, &style, block, &rect);
   }
+  else if (block->flag & UI_BLOCK_POPUP_PANEL) {
+    ui_draw_aligned_panel(region, &style, block, &rect, false, true, false);
+  }
   else if (block->flag & UI_BLOCK_LOOP) {
-    if (block->panel) {
-      ui_draw_aligned_panel(region, &style, block, &rect, false, true, false);
-    }
-    else {
-
-      ui_draw_menu_back(&style, block, &rect);
-    }
+    ui_draw_menu_back(&style, block, &rect);
   }
   else if (block->panel) {
     ui_draw_aligned_panel(region,

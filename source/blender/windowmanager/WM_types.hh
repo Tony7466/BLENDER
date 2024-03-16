@@ -196,6 +196,9 @@ enum {
    * Even so, accessing from the menu should behave usefully.
    */
   OPTYPE_DEPENDS_ON_CURSOR = (1 << 11),
+
+  /** Dialog popups of this operator uses panel style drawing. */
+  OPTYPE_PANEL = (1 << 12),
 };
 
 /** For #WM_cursor_grab_enable wrap axis. */

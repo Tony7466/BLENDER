@@ -273,7 +273,7 @@ uiPopupBlockHandle *ui_popover_panel_create(bContext *C,
   /* Create popup block. */
   uiPopupBlockHandle *handle;
   handle = ui_popup_block_create(
-      C, butregion, but, nullptr, ui_block_func_POPOVER, pup, ui_block_free_func_POPOVER);
+      C, butregion, but, std::nullopt, ui_block_func_POPOVER, pup, ui_block_free_func_POPOVER);
   handle->can_refresh = true;
 
   /* Add handlers. If attached to a button, the button will already
@@ -390,7 +390,7 @@ void UI_popover_end(bContext *C, uiPopover *pup, wmKeyMap *keymap)
   handle = ui_popup_block_create(C,
                                  pup->butregion,
                                  pup->but,
-                                 nullptr,
+                                 std::nullopt,
                                  ui_block_func_POPOVER,
                                  pup,
                                  ui_block_free_func_POPOVER);

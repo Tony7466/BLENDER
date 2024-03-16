@@ -603,8 +603,7 @@ static void wm_usd_import_draw(bContext *C, wmOperator *op)
 
   uiLayoutSetPropSep(layout, true);
   uiLayoutSetPropDecorate(layout, false);
-  if (uiLayout *panel = uiLayoutPanelProp(C, layout, ptr, "panel_data_type", "Data Types"); panel)
-  {
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "panel_data_type", false, "Data Types"); panel) {
     uiLayout *col = uiLayoutColumn(panel, true);
     uiItemR(col, ptr, "import_cameras", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "import_curves", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -618,13 +617,13 @@ static void wm_usd_import_draw(bContext *C, wmOperator *op)
     uiItemR(panel, ptr, "prim_path_mask", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(panel, ptr, "scale", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
-  if (uiLayout *panel = uiLayoutPanelProp(C, layout, ptr, "panel_mesh_data", "Mesh Data"); panel) {
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "panel_mesh_data", false, "Mesh Data"); panel) {
     uiLayout *col = uiLayoutColumn(panel, true);
     uiItemR(col, ptr, "read_mesh_uvs", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "read_mesh_colors", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "read_mesh_attributes", UI_ITEM_NONE, nullptr, ICON_NONE);
 
-    if (uiLayout *sub_panel = uiLayoutPanelProp(C, panel, ptr, "panel_include", "Include");
+    if (uiLayout *sub_panel = uiLayoutPanel(C, panel, "panel_include", false, "Include");
         sub_panel)
     {
       uiLayout *col = uiLayoutColumn(sub_panel, true);
@@ -640,7 +639,7 @@ static void wm_usd_import_draw(bContext *C, wmOperator *op)
     uiItemR(col, ptr, "create_collection", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(panel, ptr, "light_intensity_scale", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
-  if (uiLayout *panel = uiLayoutPanelProp(C, layout, ptr, "panel_materials", "Materials"); panel) {
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "panel_materials", false, "Materials"); panel) {
     uiLayout *col = uiLayoutColumn(panel, true);
     uiItemR(col, ptr, "import_all_materials", UI_ITEM_NONE, nullptr, ICON_NONE);
     uiItemR(col, ptr, "import_usd_preview", UI_ITEM_NONE, nullptr, ICON_NONE);
@@ -650,7 +649,7 @@ static void wm_usd_import_draw(bContext *C, wmOperator *op)
     uiLayoutSetEnabled(row, RNA_boolean_get(ptr, "import_usd_preview"));
     uiItemR(col, ptr, "mtl_name_collision_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
   }
-  if (uiLayout *panel = uiLayoutPanelProp(C, layout, ptr, "panel_textures", "Textures"); panel) {
+  if (uiLayout *panel = uiLayoutPanel(C, layout, "panel_textures", false, "Textures"); panel) {
     uiLayout *col = uiLayoutColumn(panel, true);
     uiItemR(col, ptr, "import_textures_mode", UI_ITEM_NONE, nullptr, ICON_NONE);
     bool copy_textures = RNA_enum_get(op->ptr, "import_textures_mode") == USD_TEX_IMPORT_COPY;
@@ -676,7 +675,7 @@ void WM_OT_usd_import(wmOperatorType *ot)
   ot->poll = WM_operator_winactive;
   ot->ui = wm_usd_import_draw;
 
-  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET;
+  ot->flag = OPTYPE_UNDO | OPTYPE_PRESET | OPTYPE_PANEL | OPTYPE_REGISTER;
 
   WM_operator_properties_filesel(ot,
                                  FILE_TYPE_FOLDER | FILE_TYPE_USD,
@@ -829,16 +828,6 @@ void WM_OT_usd_import(wmOperatorType *ot)
       USD_TEX_NAME_COLLISION_USE_EXISTING,
       "File Name Collision",
       "Behavior when the name of an imported texture file conflicts with an existing file");
-  prop = RNA_def_boolean(ot->srna, "panel_data_type", true, "", "");
-  RNA_def_property_flag(prop, PROP_SKIP_PRESET);
-  prop = RNA_def_boolean(ot->srna, "panel_mesh_data", true, "", "");
-  RNA_def_property_flag(prop, PROP_SKIP_PRESET);
-  prop = RNA_def_boolean(ot->srna, "panel_include", true, "", "");
-  RNA_def_property_flag(prop, PROP_SKIP_PRESET);
-  prop = RNA_def_boolean(ot->srna, "panel_materials", true, "", "");
-  RNA_def_property_flag(prop, PROP_SKIP_PRESET);
-  prop = RNA_def_boolean(ot->srna, "panel_textures", true, "", "");
-  RNA_def_property_flag(prop, PROP_SKIP_PRESET);
 }
 
 namespace blender::ed::io {
