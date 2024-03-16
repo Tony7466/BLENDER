@@ -2,23 +2,14 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "BKE_geometry_set.hh"
 #include "GEO_join_geometries.hh"
 #include "GEO_realize_instances.hh"
 
 #include "DNA_collection_types.h"
-#include "DNA_layer_types.h"
-#include "DNA_object_types.h"
-#include "DNA_pointcloud_types.h"
 
 #include "BLI_array_utils.hh"
-#include "BLI_listbase.h"
-#include "BLI_math_matrix.hh"
-#include "BLI_math_rotation.hh"
 #include "BLI_noise.hh"
-#include "BLI_task.hh"
 
-#include "BKE_collection.hh"
 #include "BKE_curves.hh"
 #include "BKE_customdata.hh"
 #include "BKE_geometry_set_instances.hh"
