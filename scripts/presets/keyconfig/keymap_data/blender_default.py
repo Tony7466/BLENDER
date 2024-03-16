@@ -8134,7 +8134,7 @@ def km_3d_view_tool_paint_gpencil_polyline(params):
             "3D View Tool: Paint Grease Pencil, Polyline",
             {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
             {"items": [
-                ("grease_pencil.primitive_polyline", params.tool_maybe_tweak_event,
+                ("grease_pencil.primitive_polyline", {"type": 'LEFTMOUSE', "value": 'PRESS'},
                  {"properties": []}),
                 ("grease_pencil.primitive_polyline", {"type": 'LEFTMOUSE', "value": 'PRESS', "shift": True},
                  {"properties": []}),
