@@ -102,7 +102,39 @@ float light_spot_attenuation(LightData light, vec3 L)
   return spotmask * step(0.0, -dot(L, -light._back));
 }
 
-float light_attenuation_common(LightData light, const bool is_directional, vec3 L)
+float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
+{
+  vec3 lL = light_world_to_local(light, L * dist);
+  const float spread_half_angle = M_PI / 8.0;
+  const float spread_half_angle_tan = tan(spread_half_angle);
+  float distance_to_plane = lL.z;
+  /* Using notation from https://mathworld.wolfram.com/Circle-CircleIntersection.html . */
+  float d = length(lL.xy);
+  float r = abs(distance_to_plane) * spread_half_angle_tan;
+  float R = light._area_size_x;
+  /* Special cases where the bottom would fails. */
+  if (d >= r + R) {
+    /* Not intersection. */
+    return 0.0;
+  }
+  if (d + r <= R) {
+    /* Total intersection. */
+    return 1.0;
+  }
+  if (d + R <= r) {
+    /* Light area is completly inside the cone footprint. Compute ratio. */
+    return square(R / r);
+  }
+  /* Eq. 14. */
+  float d1 = (d * d - r * r + R * R) / (2.0 * d);
+  float d2 = (d * d + r * r - R * R) / (2.0 * d);
+  float area_section = (r * r) * acos(d2 / r) + (R * R) * acos(d1 / R) -
+                       0.5 * sqrt((-d + r + R) * (d + r - R) * (d - r + R) * (d + r + R));
+  float area_projection = square(r) * M_PI;
+  return area_section / area_projection;
+}
+
+float light_attenuation_common(LightData light, const bool is_directional, vec3 L, float dist)
 {
   if (is_directional) {
     return 1.0;
@@ -111,7 +143,7 @@ float light_attenuation_common(LightData light, const bool is_directional, vec3 
     return light_spot_attenuation(light, L);
   }
   if (is_area_light(light.type)) {
-    return step(0.0, -dot(L, -light._back));
+    return step(0.0, -dot(L, -light._back)) * light_spread_angle_attenuation(light, L, dist);
   }
   return 1.0;
 }
@@ -144,14 +176,14 @@ vec2 light_attenuation_facing(LightData light, vec3 L, float distance_to_light, 
 
 vec2 light_attenuation_surface(LightData light, const bool is_directional, vec3 Ng, LightVector lv)
 {
-  return light_attenuation_common(light, is_directional, lv.L) *
+  return light_attenuation_common(light, is_directional, lv.L, lv.dist) *
          light_attenuation_facing(light, lv.L, lv.dist, Ng) *
          light_influence_attenuation(lv.dist, light.influence_radius_invsqr_surface);
 }
 
 float light_attenuation_volume(LightData light, const bool is_directional, LightVector lv)
 {
-  return light_attenuation_common(light, is_directional, lv.L) *
+  return light_attenuation_common(light, is_directional, lv.L, lv.dist) *
          light_influence_attenuation(lv.dist, light.influence_radius_invsqr_volume);
 }
 
