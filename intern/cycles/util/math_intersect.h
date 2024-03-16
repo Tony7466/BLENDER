@@ -328,6 +328,24 @@ ccl_device bool ray_aabb_intersect(const float3 bbox_min,
   return tmin < tmax;
 }
 
+/* Intersect a ray defined by P + D * t with a cylinder defined by
+ * (x / len_u)^2 + (y / len_v)^2 = 1. */
+ccl_device_inline bool ray_infinite_cylinder_intersect(const float3 P,
+                                                       const float3 D,
+                                                       const float len_u,
+                                                       const float len_v,
+                                                       ccl_private float &tmin,
+                                                       ccl_private float &tmax)
+{
+  const float u_sq = sqr(len_u);
+  const float v_sq = sqr(len_v);
+  const float a = v_sq * sqr(D.x) + u_sq * sqr(D.y);
+  const float b = 2.0f * (v_sq * P.x * D.x + u_sq * P.y * D.y);
+  const float c = v_sq * sqr(P.x) + u_sq * sqr(P.y) - v_sq * u_sq;
+
+  return solve_quadratic(a, b, c, tmin, tmax);
+}
+
 /* *
  * Compute the intersection of a ray with a single-sided cone.
  *

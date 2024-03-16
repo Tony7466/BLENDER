@@ -233,6 +233,11 @@ ccl_device bool area_light_spread_clamp_light(const float3 P,
   return true;
 }
 
+ccl_device_forceinline bool area_light_is_ellipse(const ccl_global KernelAreaLight *light)
+{
+  return light->invarea < 0.0f;
+}
+
 /* Common API. */
 /* Compute `eval_fac` and `pdf`. Also sample a new position on the light if `sample_coord`. */
 template<bool in_volume_segment>
@@ -338,7 +343,7 @@ ccl_device_inline bool area_light_sample(const ccl_global KernelLight *klight,
   const float light_v = dot(inplane, klight->area.axis_v) / klight->area.len_v;
 
   if (!in_volume_segment) {
-    const bool is_ellipse = (klight->area.invarea < 0.0f);
+    const bool is_ellipse = area_light_is_ellipse(&klight->area);
 
     /* Sampled point lies outside of the area light. */
     if (is_ellipse && (sqr(light_u) + sqr(light_v) > 0.25f)) {
@@ -380,7 +385,7 @@ ccl_device_inline bool area_light_intersect(const ccl_global KernelLight *klight
 {
   /* Area light. */
   const float invarea = fabsf(klight->area.invarea);
-  const bool is_ellipse = (klight->area.invarea < 0.0f);
+  const bool is_ellipse = area_light_is_ellipse(&klight->area);
   if (invarea == 0.0f) {
     return false;
   }
@@ -431,42 +436,53 @@ ccl_device_inline bool area_light_sample_from_intersection(
 /* Returns the maximal distance between the light center and the boundary. */
 ccl_device_forceinline float area_light_max_extent(const ccl_global KernelAreaLight *light)
 {
-  if (light->invarea < 0.0f) {
-    /* Ellipse */
-    return fmaxf(light->len_u, light->len_v);
-  }
-  /* Rectangle */
-  return len(make_float2(light->len_u, light->len_v));
+  return 0.5f * (area_light_is_ellipse(light) ? fmaxf(light->len_u, light->len_v) :
+                                                len(make_float2(light->len_u, light->len_v)));
 }
 
 /* Compute the range of the ray lit by the spot light. Conservative estimation with the smallest
  * possible cone covering the whole spread. */
 ccl_device_inline bool area_light_valid_ray_segment(const ccl_global KernelAreaLight *light,
-                                                    const float3 P,
-                                                    const float3 D,
+                                                    float3 P,
+                                                    float3 D,
                                                     ccl_private float2 *t_range)
 {
   /* Map to local coordinate of the light. Do not use `itfm` in `KernelLight` as there might be
    * non-uniform scaling. */
   const Transform tfm = make_transform(light->axis_u, light->axis_v, light->dir);
-  const float3 local_P = transform_point(&tfm, P);
-  const float3 local_D = transform_direction(&tfm, D);
+  P = transform_point(&tfm, P);
+  D = transform_direction(&tfm, D);
 
-  /* The apex is found by sliding the center along the axis. */
-  /* TODO(weizhen): intersect with bounding box/cylinder when the spread is (close to) zero. */
-  const float3 axis = make_float3(0.0f, 0.0f, 1.0f);
-  const float3 apex = local_P + area_light_max_extent(light) / light->tan_half_spread * axis;
-  const float cos_angle_sq = 1.0f / (1.0f + sqr(light->tan_half_spread));
+  const bool angle_almost_zero = (light->tan_half_spread < 1e-5f);
+  /* TODO(weizhen): intersect with bounding box when the spread is (close to) zero. */
+  if (angle_almost_zero && area_light_is_ellipse(light)) {
 
-  if (!ray_cone_intersect(axis, apex, local_D, cos_angle_sq, t_range)) {
-    return false;
+    float tmin, tmax;
+    if (!ray_infinite_cylinder_intersect(
+            P, D, 0.5f * light->len_u, 0.5f * light->len_v, tmin, tmax))
+    {
+      return false;
+    }
+
+    t_range->x = fmaxf(t_range->x, tmin);
+    t_range->y = fminf(t_range->y, tmax);
+  }
+  else {
+    /* The apex is found by sliding the center along the axis. */
+    const float3 axis = make_float3(0.0f, 0.0f, 1.0f);
+    const float3 apex = P + area_light_max_extent(light) / light->tan_half_spread * axis;
+    const float cos_angle_sq = 1.0f / (1.0f + sqr(light->tan_half_spread));
+
+    if (!ray_cone_intersect(axis, apex, D, cos_angle_sq, t_range)) {
+      return false;
+    }
   }
 
   /* Distance from P to area light plane */
-  const float t = -local_P.z / local_D.z;
+  const float t = -P.z / D.z;
 
   /* Limit the range to the positive side of the area light. */
-  if (local_D.z > 0.0f) {
+  if (D.z > 0.0f) {
     t_range->x = fmaxf(t_range->x, t);
   }
   else {
