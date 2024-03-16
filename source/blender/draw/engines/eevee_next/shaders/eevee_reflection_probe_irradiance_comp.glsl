@@ -55,17 +55,28 @@ void main()
   }
 
   /* Then sum across invocations. */
-  spherical_harmonic_lds_store(gl_LocalInvocationIndex, sh);
+  const uint local_index = gl_LocalInvocationIndex;
+  local_sh_coefs[local_index][0] = sh.L0.M0;
+  local_sh_coefs[local_index][1] = sh.L1.Mn1;
+  local_sh_coefs[local_index][2] = sh.L1.M0;
+  local_sh_coefs[local_index][3] = sh.L1.Mp1;
+
+  /* Parallel sum. */
+  const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+  for (uint stride = group_size / 2; stride > 0; stride /= 2) {
+    barrier();
+    if (local_index < stride) {
+      for (int i = 0; i < 4; i++) {
+        local_sh_coefs[local_index][i] += local_sh_coefs[local_index + stride][i];
+      }
+    }
+  }
 
   barrier();
   if (gl_LocalInvocationIndex == 0u) {
-    /* Join results. */
-    for (uint i = 1; i < gl_WorkGroupSize.x; i++) {
-      sh = spherical_harmonics_add(sh, spherical_harmonic_lds_load(i));
-    }
-    out_sh.L0_M0 = sh.L0.M0;
-    out_sh.L1_Mn1 = sh.L1.Mn1;
-    out_sh.L1_M0 = sh.L1.M0;
-    out_sh.L1_Mp1 = sh.L1.Mp1;
+    out_sh.L0_M0 = local_sh_coefs[0][0];
+    out_sh.L1_Mn1 = local_sh_coefs[0][1];
+    out_sh.L1_M0 = local_sh_coefs[0][2];
+    out_sh.L1_Mp1 = local_sh_coefs[0][3];
   }
 }

@@ -131,10 +131,10 @@ void main()
     barrier();
     if (gl_LocalInvocationIndex == 0u) {
       SphereProbeHarmonic sphere_probe_sh;
-      sphere_probe_sh.L0_M0 = local_sh_coefs[local_index][0];
-      sphere_probe_sh.L1_Mn1 = local_sh_coefs[local_index][1];
-      sphere_probe_sh.L1_M0 = local_sh_coefs[local_index][2];
-      sphere_probe_sh.L1_Mp1 = local_sh_coefs[local_index][3];
+      sphere_probe_sh.L0_M0 = local_sh_coefs[0][0];
+      sphere_probe_sh.L1_Mn1 = local_sh_coefs[0][1];
+      sphere_probe_sh.L1_M0 = local_sh_coefs[0][2];
+      sphere_probe_sh.L1_Mp1 = local_sh_coefs[0][3];
 
       uint work_group_index = gl_NumWorkGroups.x * gl_WorkGroupID.y + gl_WorkGroupID.x;
       out_sh[work_group_index] = sphere_probe_sh;
