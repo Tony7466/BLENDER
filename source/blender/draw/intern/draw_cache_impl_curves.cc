@@ -50,7 +50,8 @@ namespace blender::draw {
 
 #define EDIT_CURVES_NURBS_CONTROL_POINT (1u)
 #define EDIT_CURVES_BEZIER_HANDLE (1u << 1)
-#define EDIT_CURVES_HANDLE_TYPES_SHIFT (4u)
+#define EDIT_CURVES_LEFT_HANDLE_TYPES_SHIFT (6u)
+#define EDIT_CURVES_RIGHT_HANDLE_TYPES_SHIFT (4u)
 
 /* ---------------------------------------------------------------------- */
 struct CurvesUboStorage {
@@ -106,13 +107,16 @@ struct CurvesBatchCache {
   std::mutex render_mutex;
 };
 
+static uint DUMMY_ID;
+
 static GPUVertFormat single_attr_vertbuffer_format(const char *name,
                                                    GPUVertCompType comp_type,
                                                    uint comp_len,
-                                                   GPUVertFetchMode fetch_mode)
+                                                   GPUVertFetchMode fetch_mode,
+                                                   uint &attr_id = DUMMY_ID)
 {
   GPUVertFormat format{};
-  GPU_vertformat_attr_add(&format, name, comp_type, comp_len, fetch_mode);
+  attr_id = GPU_vertformat_attr_add(&format, name, comp_type, comp_len, fetch_mode);
   return format;
 }
 
@@ -292,8 +296,8 @@ static void curves_batch_cache_ensure_procedural_pos(const bke::CurvesGeometry &
 
 static uint32_t bezier_data_value(int8_t left_handle_type, int8_t right_handle_type)
 {
-  return ((left_handle_type << 2) | right_handle_type) << EDIT_CURVES_HANDLE_TYPES_SHIFT |
-         EDIT_CURVES_BEZIER_HANDLE;
+  return (left_handle_type << EDIT_CURVES_LEFT_HANDLE_TYPES_SHIFT) |
+         (right_handle_type << EDIT_CURVES_RIGHT_HANDLE_TYPES_SHIFT) | EDIT_CURVES_BEZIER_HANDLE;
 }
 
 static uint32_t bezier_data_value(int8_t handle_type)
@@ -311,7 +315,7 @@ static void curves_batch_cache_ensure_edit_points_pos_and_data(
   static GPUVertFormat format_pos = single_attr_vertbuffer_format(
       "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   static GPUVertFormat format_data = single_attr_vertbuffer_format(
-      "data", GPU_COMP_U8, 1, GPU_FETCH_INT);
+      "data", GPU_COMP_U32, 1, GPU_FETCH_INT);
 
   Span<float3> deformed_positions = deformation.positions;
   const int bezier_point_count = bezier_dst_offsets.total_size();
@@ -955,21 +959,16 @@ static void curves_batch_cache_ensure_edit_curves_lines_pos(
     const bke::crazyspace::GeometryDeformation & /*deformation*/,
     CurvesBatchCache &cache)
 {
-  static struct {
-    uint pos;
-  } attr_id;
-  static GPUVertFormat format = [&]() {
-    GPUVertFormat format{};
-    attr_id.pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
-    return format;
-  }();
+  static uint attr_id;
+  static GPUVertFormat format = single_attr_vertbuffer_format(
+      "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT, attr_id);
 
   /* TODO: Deform curves using deformations. */
   const Span<float3> positions = curves.evaluated_positions();
 
   GPU_vertbuf_init_with_format(cache.edit_curves_lines_pos, &format);
   GPU_vertbuf_data_alloc(cache.edit_curves_lines_pos, positions.size());
-  GPU_vertbuf_attr_fill(cache.edit_curves_lines_pos, attr_id.pos, positions.data());
+  GPU_vertbuf_attr_fill(cache.edit_curves_lines_pos, attr_id, positions.data());
 }
 
 void DRW_curves_batch_cache_create_requested(Object *ob)
