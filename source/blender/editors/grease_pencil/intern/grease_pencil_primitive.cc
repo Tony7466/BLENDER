@@ -282,6 +282,11 @@ static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
   const int subdivision = ptd.subdivision;
   const int new_points_num = new_positions.size();
 
+  if (ptd.segments == 0) {
+    new_positions.fill(control_points.last());
+    return;
+  }
+
   switch (ptd.type) {
     case PrimitiveType::LINE:
     case PrimitiveType::POLYLINE: {
@@ -652,18 +657,18 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 
   ptd.vod = ED_view3d_navigation_init(C, nullptr);
 
+  ptd.start_position_2d = start_coords;
   ptd.subdivision = RNA_int_get(op->ptr, "subdivision");
   ptd.type = PrimitiveType(RNA_enum_get(op->ptr, "type"));
-  ptd.control_points = Vector<float3>();
-  ptd.temp_control_points = Vector<float3>();
+  const float3 pos = ptd.placement.project(ptd.start_position_2d);
+  ptd.segments = 0;
+  ptd.control_points = Vector<float3>({pos});
+
+  grease_pencil_primitive_save(ptd);
 
   ptd.mode = OperatorMode::EXTRUDING;
-  ptd.start_position_2d = start_coords;
-  const float3 pos = ptd.placement.project(ptd.start_position_2d);
-  ptd.segments = 1;
-  ptd.temp_segments = 1;
-  /* Add the points for the segment and one point for the beginning. */
-  ptd.control_points.append_n_times(pos, control_points_per_segment(ptd) + 1);
+  ptd.segments++;
+  ptd.control_points.append_n_times(pos, control_points_per_segment(ptd));
   ptd.active_control_point_index = -1;
 
   Paint *paint = &vc.scene->toolsettings->gp_paint->paint;
