@@ -318,7 +318,7 @@ static void file_draw_tooltip_custom_func(bContext * /*C*/, uiTooltipData *tip, 
     image_data.width = short(float(thumb->x) * scale);
     image_data.height = short(float(thumb->y) * scale);
     image_data.border = true;
-    image_data.background = UI_TIP_IMAGE_BG_CHECKERBOARD_THEMED;
+    image_data.background = uiTooltipImageBackground::Checkerboard_Themed;
     image_data.premultiplied = true;
     UI_tooltip_image_field_add(tip, image_data);
   }

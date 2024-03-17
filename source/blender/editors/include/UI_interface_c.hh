@@ -1722,10 +1722,10 @@ enum uiTooltipColorID {
   UI_TIP_LC_MAX
 };
 
-enum uiTooltipImageBackground {
-  UI_TIP_IMAGE_BG_NONE = 0,
-  UI_TIP_IMAGE_BG_CHECKERBOARD_THEMED,
-  UI_TIP_IMAGE_BG_CHECKERBOARD_FIXED,
+enum class uiTooltipImageBackground {
+  None = 0,
+  Checkerboard_Themed,
+  Checkerboard_Fixed,
 };
 
 struct uiTooltipImage {
@@ -1735,7 +1735,7 @@ struct uiTooltipImage {
   bool premultiplied = false;
   bool border = false;
   bool text_color = false;
-  uiTooltipImageBackground background = UI_TIP_IMAGE_BG_NONE;
+  uiTooltipImageBackground background = uiTooltipImageBackground::None;
 };
 
 void UI_but_func_tooltip_custom_set(uiBut *but,
@@ -1758,7 +1758,7 @@ void UI_tooltip_text_field_add(uiTooltipData *data,
  * \param image: Image buffer (duplicated, ownership is *not* transferred to `data`).
  * \param image_size: Display size for the image (pixels without UI scale applied).
  */
-void UI_tooltip_image_field_add(uiTooltipData *data, uiTooltipImage image_data);
+void UI_tooltip_image_field_add(uiTooltipData *data, const uiTooltipImage &image_data);
 
 /**
  * Recreate tool-tip (use to update dynamic tips)

@@ -90,7 +90,7 @@ struct uiTooltipField {
     uint lines;
   } geom;
   uiTooltipFormat format;
-  uiTooltipImage *image = nullptr;
+  std::optional<uiTooltipImage> image;
 };
 
 struct uiTooltipData {
@@ -123,19 +123,12 @@ void UI_tooltip_text_field_add(uiTooltipData *data,
   data->fields.append(std::move(field));
 }
 
-void UI_tooltip_image_field_add(uiTooltipData *data, uiTooltipImage image_data)
+void UI_tooltip_image_field_add(uiTooltipData *data, const uiTooltipImage &image_data)
 {
   uiTooltipField field{};
   field.format.style = UI_TIP_STYLE_IMAGE;
-
-  field.image = new uiTooltipImage();
+  field.image = image_data;
   field.image->ibuf = IMB_dupImBuf(image_data.ibuf);
-  field.image->width = std::min(image_data.width, short(UI_TIP_MAXIMAGEWIDTH * UI_SCALE_FAC));
-  field.image->height = std::min(image_data.height, short(UI_TIP_MAXIMAGEHEIGHT * UI_SCALE_FAC));
-  field.image->background = image_data.background;
-  field.image->border = image_data.border;
-  field.image->premultiplied = image_data.premultiplied;
-  field.image->text_color = image_data.text_color;
   data->fields.append(std::move(field));
 }
 
@@ -260,17 +253,17 @@ static void ui_tooltip_region_draw_cb(const bContext * /*C*/, ARegion *region)
       UI_fontstyle_draw(
           &fstyle_mono, &bbox, field->text.c_str(), field->text.size(), drawcol, &fs_params);
     }
-    else if (field->format.style == UI_TIP_STYLE_IMAGE && field->image) {
+    else if (field->format.style == UI_TIP_STYLE_IMAGE && field->image.has_value()) {
 
       bbox.ymax -= field->image->height;
 
-      if (field->image->background == UI_TIP_IMAGE_BG_CHECKERBOARD_THEMED) {
+      if (field->image->background == uiTooltipImageBackground::Checkerboard_Themed) {
         imm_draw_box_checker_2d(float(bbox.xmin),
                                 float(bbox.ymax),
                                 float(bbox.xmin + field->image->width),
                                 float(bbox.ymax + field->image->height));
       }
-      else if (field->image->background == UI_TIP_IMAGE_BG_CHECKERBOARD_FIXED) {
+      else if (field->image->background == uiTooltipImageBackground::Checkerboard_Fixed) {
         const float checker_dark = UI_ALPHA_CHECKER_DARK / 255.0f;
         const float checker_light = UI_ALPHA_CHECKER_LIGHT / 255.0f;
         const float color1[4] = {checker_dark, checker_dark, checker_dark, 1.0f};
