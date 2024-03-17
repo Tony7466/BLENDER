@@ -834,6 +834,9 @@ using uiBlockHandleCreateFunc = uiBlock *(*)(bContext *C, uiPopupBlockHandle *ha
 struct uiPopupBlockCreate {
   uiBlockCreateFunc create_func;
   uiBlockCreateWithPanelFunc create_with_panel_func;
+  /** Dummy panel used in popups created with #create_with_panel_func so they can support layout
+   * panels. The #uiBlock created in #create_with_panel_func sould point to this panel. */
+  Panel *panel;
   uiBlockHandleCreateFunc handle_create_func;
   void *arg;
   uiFreeArgFunc arg_free;
@@ -843,7 +846,6 @@ struct uiPopupBlockCreate {
   /** Set when popup is initialized from a button. */
   ARegion *butregion;
   uiBut *but;
-  Panel *panel;
 };
 
 struct uiPopupBlockHandle {

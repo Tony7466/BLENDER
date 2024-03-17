@@ -716,6 +716,10 @@ void UI_popup_menu_retval_set(const uiBlock *block, int retval, bool enable);
 bool UI_layout_panel_toggle_open(const bContext *C, struct LayoutPanelHeader *header);
 void UI_panel_drag_collapse_handler_add(const bContext *C, const bool was_open);
 LayoutPanelHeader *UI_layout_panel_header_under_mouse(const Panel &panel, const int my);
+void UI_draw_layout_panels_backdrop(const ARegion *region,
+                                    const Panel *panel,
+                                    const float radius,
+                                    float subpanel_backcolor[4]);
 /**
  * Setting the button makes the popup open from the button instead of the cursor.
  */
@@ -828,7 +832,6 @@ void UI_blocklist_update_window_matrix(const bContext *C, const ListBase *lb);
 void UI_blocklist_update_view_for_buttons(const bContext *C, const ListBase *lb);
 void UI_blocklist_draw(const bContext *C, const ListBase *lb);
 void UI_block_update_from_old(const bContext *C, uiBlock *block);
-
 void UI_block_set_root_panel(uiBlock *block, Panel *panel);
 
 enum {
@@ -3360,8 +3363,3 @@ blender::ui::AbstractViewItem *UI_region_views_find_item_at(const ARegion &regio
                                                             const int xy[2]);
 blender::ui::AbstractViewItem *UI_region_views_find_active_item(const ARegion *region);
 uiBut *UI_region_views_find_active_item_but(const ARegion *region);
-
-void UI_draw_layout_panels_backdrop(const ARegion *region,
-                                       const Panel *panel,
-                                       const float radius,
-                                       float subpanel_backcolor[4]);
