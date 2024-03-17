@@ -9,7 +9,6 @@
 #pragma once
 
 #include <functional>
-#include <variant>
 
 #include "BLI_compiler_attrs.h"
 #include "BLI_math_vector_types.hh"

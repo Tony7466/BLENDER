@@ -5284,7 +5284,9 @@ Panel *uiLayoutGetRootPanel(uiLayout *layout)
 
 void UI_block_set_root_panel(uiBlock *block, Panel *panel)
 {
+  panel->runtime->layout_panels.clear();
   block->panel = panel;
+  panel->runtime->block = block;
 }
 
 bool uiLayoutGetActive(uiLayout *layout)

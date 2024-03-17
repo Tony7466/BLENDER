@@ -2927,9 +2927,6 @@ void uiTemplateOperatorRedoProperties(uiLayout *layout, const bContext *C)
   if (op == nullptr) {
     return;
   }
-  if (op->type->flag & OPTYPE_PANEL) {
-    UI_block_flag_enable(block, UI_BLOCK_POPUP_PANEL);
-  }
 
   /* Disable for now, doesn't fit well in popover. */
 #if 0

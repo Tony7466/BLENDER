@@ -1373,16 +1373,6 @@ static void wm_block_redo_cancel_cb(bContext *C, void *arg_op)
   }
 }
 
-static void uiblock_dummy_panel_set(uiBlock *block, Panel *panel, wmOperator *op)
-{
-  if (op->type->flag & OPTYPE_PANEL) {
-    UI_block_flag_enable(block, UI_BLOCK_POPUP_PANEL);
-  }
-  panel->runtime->layout_panels.clear();
-  UI_block_set_root_panel(block, panel);
-  panel->runtime->block = block;
-}
-
 static uiBlock *wm_block_create_redo(bContext *C, ARegion *region, Panel *panel, void *arg_op)
 {
   wmOperator *op = static_cast<wmOperator *>(arg_op);
@@ -1401,7 +1391,7 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *region, Panel *panel,
   BLI_assert(op->type->flag & OPTYPE_REGISTER);
 
   UI_block_func_handle_set(block, wm_block_redo_cb, arg_op);
-  uiblock_dummy_panel_set(block, panel, op);
+  UI_block_set_root_panel(block, panel);
   uiLayout *layout = UI_block_layout(
       block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, width, UI_UNIT_Y, 0, style);
 
@@ -1549,7 +1539,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, Panel *pane
 
   if (data->include_properties) {
     uiItemS_ex(layout, 0.5f);
-    uiblock_dummy_panel_set(block, panel, op);
+    UI_block_set_root_panel(block, panel);
     uiTemplateOperatorPropertyButs(C, layout, op, UI_BUT_LABEL_ALIGN_SPLIT_COLUMN, 0);
   }
 

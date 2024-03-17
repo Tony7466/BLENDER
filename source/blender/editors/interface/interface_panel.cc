@@ -1162,7 +1162,35 @@ static int layout_panel_y_offset()
 {
   return UI_style_get_dpi()->panelspace;
 }
+void UI_draw_layout_panels_backdrop(const ARegion *region,
+                                       const Panel *panel,
+                                       const float radius,
+                                       float subpanel_backcolor[4])
+{
+  /* Draw backdrops for layout panels. */
+  for (const LayoutPanelBody &body : panel->runtime->layout_panels.bodies) {
 
+    rctf panel_blockspace = panel->runtime->block->rect;
+    panel_blockspace.ymax = panel->runtime->block->rect.ymax + body.end_y;
+    panel_blockspace.ymin = panel->runtime->block->rect.ymax + body.start_y;
+    BLI_rctf_translate(&panel_blockspace, 0, -layout_panel_y_offset());
+
+    /* If the layout panel is at the end of the root panel, it's bottom corners are rounded. */
+    const bool is_main_panel_end = panel_blockspace.ymin - panel->runtime->block->rect.ymin < 10;
+    if (is_main_panel_end) {
+      panel_blockspace.ymin = panel->runtime->block->rect.ymin;
+      UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
+    }
+    else {
+      UI_draw_roundbox_corner_set(UI_CNR_NONE);
+    }
+
+    rcti panel_pixelspace = ui_to_pixelrect(region, panel->runtime->block, &panel_blockspace);
+    rctf panel_pixelspacef;
+    BLI_rctf_rcti_copy(&panel_pixelspacef, &panel_pixelspace);
+    UI_draw_roundbox_4fv(&panel_pixelspacef, true, radius, subpanel_backcolor);
+  }
+}
 static void panel_draw_aligned_backdrop(const ARegion *region,
                                         const Panel *panel,
                                         const rcti *rect,
@@ -1182,7 +1210,11 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
 
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
   GPU_blend(GPU_BLEND_ALPHA);
-
+  {
+    float subpanel_backcolor[4];
+    UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, subpanel_backcolor);
+    UI_draw_layout_panels_backdrop(region, panel, radius,subpanel_backcolor);
+  }
   /* Panel backdrop. */
   if (is_open || !has_header) {
     float panel_backcolor[4];
@@ -1200,34 +1232,7 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
     box_rect.ymin = rect->ymin;
     box_rect.ymax = rect->ymax;
     UI_draw_roundbox_4fv(&box_rect, true, radius, panel_backcolor);
-
-    /* Draw backdrops for layout panels. */
-    for (const LayoutPanelBody &body : panel->runtime->layout_panels.bodies) {
-      float subpanel_backcolor[4];
-      UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, subpanel_backcolor);
-
-      rctf panel_blockspace = panel->runtime->block->rect;
-      panel_blockspace.ymax = panel->runtime->block->rect.ymax + body.end_y;
-      panel_blockspace.ymin = panel->runtime->block->rect.ymax + body.start_y;
-      BLI_rctf_translate(&panel_blockspace, 0, -layout_panel_y_offset());
-
-      /* If the layout panel is at the end of the root panel, it's bottom corners are rounded. */
-      const bool is_main_panel_end = panel_blockspace.ymin - panel->runtime->block->rect.ymin < 10;
-      if (is_main_panel_end) {
-        panel_blockspace.ymin = panel->runtime->block->rect.ymin;
-        UI_draw_roundbox_corner_set(UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT);
-      }
-      else {
-        UI_draw_roundbox_corner_set(UI_CNR_NONE);
-      }
-
-      rcti panel_pixelspace = ui_to_pixelrect(region, panel->runtime->block, &panel_blockspace);
-      rctf panel_pixelspacef;
-      BLI_rctf_rcti_copy(&panel_pixelspacef, &panel_pixelspace);
-      UI_draw_roundbox_4fv(&panel_pixelspacef, true, radius, subpanel_backcolor);
-    }
   }
-
   /* Panel header backdrops for non sub-panels. */
   if (!is_subpanel && has_header) {
     float panel_headercolor[4];

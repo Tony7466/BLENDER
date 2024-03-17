@@ -186,9 +186,6 @@ enum {
   UI_BLOCK_QUICK_SETUP = 1 << 26,
   /** Don't accelerator keys for the items in the block. */
   UI_BLOCK_NO_ACCELERATOR_KEYS = 1 << 27,
-  /** Force panel style drawing in popups dialogs. */
-  UI_BLOCK_POPUP_PANEL = 1 << 28,
-
 };
 
 /** #uiPopupBlockHandle.menuretval */
@@ -3363,3 +3360,8 @@ blender::ui::AbstractViewItem *UI_region_views_find_item_at(const ARegion &regio
                                                             const int xy[2]);
 blender::ui::AbstractViewItem *UI_region_views_find_active_item(const ARegion *region);
 uiBut *UI_region_views_find_active_item_but(const ARegion *region);
+
+void UI_draw_layout_panels_backdrop(const ARegion *region,
+                                       const Panel *panel,
+                                       const float radius,
+                                       float subpanel_backcolor[4]);

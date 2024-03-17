@@ -2084,9 +2084,6 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   else if (block->flag & UI_BLOCK_POPOVER) {
     ui_draw_popover_back(region, &style, block, &rect);
   }
-  else if (block->flag & UI_BLOCK_POPUP_PANEL) {
-    ui_draw_aligned_panel(region, &style, block, &rect, false, true, false);
-  }
   else if (block->flag & UI_BLOCK_LOOP) {
     ui_draw_menu_back(&style, block, &rect);
   }
@@ -2098,6 +2095,11 @@ void UI_block_draw(const bContext *C, uiBlock *block)
                           UI_panel_category_is_visible(region),
                           UI_panel_should_show_background(region, block->panel->type),
                           region->flag & RGN_FLAG_SEARCH_FILTER_ACTIVE);
+  }
+  /** Shared layout panel backdrop style between redo panel and popups. */
+  if (block->panel && ELEM(region->regiontype, RGN_TYPE_HUD, RGN_TYPE_TEMPORARY)) {
+    float subpanel_backcolor[4]{.2, .3, .33, .05};
+    UI_draw_layout_panels_backdrop(region, block->panel, 0, subpanel_backcolor);
   }
 
   BLF_batch_draw_begin();
