@@ -119,6 +119,9 @@ BVHMetal::BVHMetal(const BVHParams &params_,
 
 BVHMetal::~BVHMetal()
 {
+  /* Clear point used by enqueuing. */
+  device->release_bvh(this);
+
   if (@available(macos 12.0, *)) {
     if (accel_struct) {
       device->stats.mem_free(accel_struct.allocatedSize);

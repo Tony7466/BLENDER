@@ -219,7 +219,7 @@ class Device {
 
   /* Acceleration structure building. */
   virtual void build_bvh(BVH *bvh, Progress &progress, bool refit);
-  /* Used by OptiX. */
+  /* Used by Metal and OptiX. */
   virtual void release_bvh(BVH * /*bvh*/) {}
 
   /* multi device */
