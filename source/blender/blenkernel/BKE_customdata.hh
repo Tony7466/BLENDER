@@ -464,24 +464,45 @@ void CustomData_bmesh_interp(CustomData *data,
  */
 void CustomData_swap_corners(CustomData *data, int index, const int *corner_indices);
 
+class CustomDataUnsharePolicy {
+ public:
+  virtual void unshare_data(CustomDataLayer &layer, int totelem) const;
+};
+
 /**
  * Custom data layers can be shared through implicit sharing (`BLI_implicit_sharing.h`). This
  * function makes sure that the layer is unshared if it was shared, which makes it mutable.
  */
-void CustomData_ensure_data_is_mutable(CustomDataLayer *layer, int totelem);
-void CustomData_ensure_layers_are_mutable(CustomData *data, int totelem);
+void CustomData_ensure_data_is_mutable(
+    CustomDataLayer *layer,
+    int totelem,
+    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
+void CustomData_ensure_layers_are_mutable(
+    CustomData *data,
+    int totelem,
+    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
 
 /**
  * Retrieve a pointer to an element of the active layer of the given \a type, chosen by the
  * \a index, if it exists.
  */
-void *CustomData_get_for_write(CustomData *data, int index, eCustomDataType type, int totelem);
+void *CustomData_get_for_write(
+    CustomData *data,
+    int index,
+    eCustomDataType type,
+    int totelem,
+    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
 /**
  * Retrieve a pointer to an element of the \a nth layer of the given \a type, chosen by the
  * \a index, if it exists.
  */
 void *CustomData_get_n_for_write(
-    CustomData *data, eCustomDataType type, int index, int n, int totelem);
+    CustomData *data,
+    eCustomDataType type,
+    int index,
+    int n,
+    int totelem,
+    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
 
 /* BMesh Custom Data Functions.
  * Should replace edit-mesh ones with these as well, due to more efficient memory alloc. */
@@ -506,14 +527,23 @@ const char *CustomData_get_layer_name(const CustomData *data, eCustomDataType ty
  * otherwise.
  */
 const void *CustomData_get_layer(const CustomData *data, eCustomDataType type);
-void *CustomData_get_layer_for_write(CustomData *data, eCustomDataType type, int totelem);
+void *CustomData_get_layer_for_write(
+    CustomData *data,
+    eCustomDataType type,
+    int totelem,
+    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
 
 /**
  * Retrieve the data array of the \a nth layer of the given \a type, if it exists. Return null
  * otherwise.
  */
 const void *CustomData_get_layer_n(const CustomData *data, eCustomDataType type, int n);
-void *CustomData_get_layer_n_for_write(CustomData *data, eCustomDataType type, int n, int totelem);
+void *CustomData_get_layer_n_for_write(
+    CustomData *data,
+    eCustomDataType type,
+    int n,
+    int totelem,
+    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
 
 /**
  * Retrieve the data array of the layer with the given \a name and \a type, if it exists. Return
@@ -522,10 +552,12 @@ void *CustomData_get_layer_n_for_write(CustomData *data, eCustomDataType type, i
 const void *CustomData_get_layer_named(const CustomData *data,
                                        eCustomDataType type,
                                        blender::StringRef name);
-void *CustomData_get_layer_named_for_write(CustomData *data,
-                                           eCustomDataType type,
-                                           blender::StringRef name,
-                                           int totelem);
+void *CustomData_get_layer_named_for_write(
+    CustomData *data,
+    eCustomDataType type,
+    blender::StringRef name,
+    int totelem,
+    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
 
 int CustomData_get_offset(const CustomData *data, eCustomDataType type);
 int CustomData_get_offset_named(const CustomData *data,

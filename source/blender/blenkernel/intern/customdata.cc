@@ -2377,6 +2377,11 @@ static void free_layer_data(const eCustomDataType type, const void *data, const 
   MEM_freeN(const_cast<void *>(data));
 }
 
+void CustomDataUnsharePolicy::unshare_data(CustomDataLayer &layer, const int totelem) const
+{
+  layer.data = copy_layer_data(eCustomDataType(layer.type), layer.data, totelem);
+}
+
 static bool customdata_merge_internal(const CustomData *source,
                                       CustomData *dest,
                                       const eCustomDataMask mask,
@@ -2560,7 +2565,9 @@ static const ImplicitSharingInfo *make_implicit_sharing_info_for_layer(const eCu
 /**
  * If the layer data is currently shared (hence it is immutable), create a copy that can be edited.
  */
-static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totelem)
+static void ensure_layer_data_is_mutable(CustomDataLayer &layer,
+                                         const int totelem,
+                                         const CustomDataUnsharePolicy &unshare_policy)
 {
   if (layer.data == nullptr) {
     return;
@@ -2574,10 +2581,9 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
   }
   else {
     const eCustomDataType type = eCustomDataType(layer.type);
-    const void *old_data = layer.data;
-    /* Copy the layer before removing the user because otherwise the data might be freed while
-     * we're still copying from it here. */
-    layer.data = copy_layer_data(type, old_data, totelem);
+    /* Unshare the layer data before removing the user because otherwise the data might be freed
+     * while we're still copying from it here. */
+    unshare_policy.unshare_data(layer, totelem);
     layer.sharing_info->remove_user_and_delete_if_last();
     layer.sharing_info = make_implicit_sharing_info_for_layer(type, layer.data, totelem);
   }
@@ -2591,15 +2597,19 @@ static void ensure_layer_data_is_mutable(CustomDataLayer &layer, const int totel
   return layer.sharing_info->is_mutable();
 }
 
-void CustomData_ensure_data_is_mutable(CustomDataLayer *layer, const int totelem)
+void CustomData_ensure_data_is_mutable(CustomDataLayer *layer,
+                                       const int totelem,
+                                       const CustomDataUnsharePolicy &unshare_policy)
 {
-  ensure_layer_data_is_mutable(*layer, totelem);
+  ensure_layer_data_is_mutable(*layer, totelem, unshare_policy);
 }
 
-void CustomData_ensure_layers_are_mutable(CustomData *data, int totelem)
+void CustomData_ensure_layers_are_mutable(CustomData *data,
+                                          int totelem,
+                                          const CustomDataUnsharePolicy &unshare_policy)
 {
   for (const int i : IndexRange(data->totlayer)) {
-    ensure_layer_data_is_mutable(data->layers[i], totelem);
+    ensure_layer_data_is_mutable(data->layers[i], totelem, unshare_policy);
   }
 }
 
@@ -3691,21 +3701,26 @@ void CustomData_swap_corners(CustomData *data, const int index, const int *corne
 void *CustomData_get_for_write(CustomData *data,
                                const int index,
                                const eCustomDataType type,
-                               int totelem)
+                               int totelem,
+                               const CustomDataUnsharePolicy &unshare_policy)
 {
   BLI_assert(index >= 0);
-  void *layer_data = CustomData_get_layer_for_write(data, type, totelem);
+  void *layer_data = CustomData_get_layer_for_write(data, type, totelem, unshare_policy);
   if (!layer_data) {
     return nullptr;
   }
   return POINTER_OFFSET(layer_data, size_t(index) * layerType_getInfo(type)->size);
 }
 
-void *CustomData_get_n_for_write(
-    CustomData *data, const eCustomDataType type, const int index, const int n, int totelem)
+void *CustomData_get_n_for_write(CustomData *data,
+                                 const eCustomDataType type,
+                                 const int index,
+                                 const int n,
+                                 int totelem,
+                                 const CustomDataUnsharePolicy &unshare_policy)
 {
   BLI_assert(index >= 0);
-  void *layer_data = CustomData_get_layer_n_for_write(data, type, n, totelem);
+  void *layer_data = CustomData_get_layer_n_for_write(data, type, n, totelem, unshare_policy);
   if (!layer_data) {
     return nullptr;
   }
@@ -3725,14 +3740,15 @@ const void *CustomData_get_layer(const CustomData *data, const eCustomDataType t
 
 void *CustomData_get_layer_for_write(CustomData *data,
                                      const eCustomDataType type,
-                                     const int totelem)
+                                     const int totelem,
+                                     const CustomDataUnsharePolicy &unshare_policy)
 {
   const int layer_index = CustomData_get_active_layer_index(data, type);
   if (layer_index == -1) {
     return nullptr;
   }
   CustomDataLayer &layer = data->layers[layer_index];
-  ensure_layer_data_is_mutable(layer, totelem);
+  ensure_layer_data_is_mutable(layer, totelem, unshare_policy);
   return layer.data;
 }
 
@@ -3748,14 +3764,15 @@ const void *CustomData_get_layer_n(const CustomData *data, const eCustomDataType
 void *CustomData_get_layer_n_for_write(CustomData *data,
                                        const eCustomDataType type,
                                        const int n,
-                                       const int totelem)
+                                       const int totelem,
+                                       const CustomDataUnsharePolicy &unshare_policy)
 {
   const int layer_index = CustomData_get_layer_index_n(data, type, n);
   if (layer_index == -1) {
     return nullptr;
   }
   CustomDataLayer &layer = data->layers[layer_index];
-  ensure_layer_data_is_mutable(layer, totelem);
+  ensure_layer_data_is_mutable(layer, totelem, unshare_policy);
   return layer.data;
 }
 
@@ -3773,14 +3790,15 @@ const void *CustomData_get_layer_named(const CustomData *data,
 void *CustomData_get_layer_named_for_write(CustomData *data,
                                            const eCustomDataType type,
                                            const StringRef name,
-                                           const int totelem)
+                                           const int totelem,
+                                           const CustomDataUnsharePolicy &unshare_policy)
 {
   const int layer_index = CustomData_get_named_layer_index(data, type, name);
   if (layer_index == -1) {
     return nullptr;
   }
   CustomDataLayer &layer = data->layers[layer_index];
-  ensure_layer_data_is_mutable(layer, totelem);
+  ensure_layer_data_is_mutable(layer, totelem, unshare_policy);
   return layer.data;
 }
 
