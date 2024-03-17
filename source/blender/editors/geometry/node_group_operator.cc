@@ -406,7 +406,7 @@ static int run_node_group_exec(bContext *C, wmOperator *op)
   if (node_tree->interface_outputs().is_empty() ||
       !STREQ(node_tree->interface_outputs()[0]->socket_type, "NodeSocketGeometry"))
   {
-    BKE_report(op->reports, RPT_ERROR, "First output must be a geometry");
+    BKE_report(op->reports, RPT_ERROR, "Node group's first output must be a geometry");
     return OPERATOR_CANCELLED;
   }
 
