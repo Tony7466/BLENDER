@@ -560,8 +560,6 @@ class NodeDeclarationBuilder {
   }
 
  private:
-  /* Note: in_out can be a combination of SOCK_IN and SOCK_OUT.
-   * The generated socket declarations only have a single flag set. */
   template<typename DeclType>
   typename DeclType::Builder &add_socket(StringRef name,
                                          StringRef identifier_in,
