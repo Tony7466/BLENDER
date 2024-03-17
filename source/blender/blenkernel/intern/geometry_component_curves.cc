@@ -372,7 +372,9 @@ class CurvesVertexGroupsAttributeProvider final : public DynamicAttributesProvid
     return {varray_for_deform_verts(dverts, vertex_group_index), AttrDomain::Point};
   }
 
-  GAttributeWriter try_get_for_write(void *owner, const AttributeIDRef &attribute_id) const final
+  GAttributeWriter try_get_for_write(void *owner,
+                                     const AttributeIDRef &attribute_id,
+                                     const ArrayUnsharePolicy & /*unshare_policy*/) const final
   {
     if (attribute_id.is_anonymous()) {
       return {};

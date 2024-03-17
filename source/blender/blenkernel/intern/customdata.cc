@@ -2396,6 +2396,7 @@ void CustomDataUnsharePolicy_ArrayUnsharePolicy::unshare_data_impl(CustomDataLay
       type->size() * int64_t(totelem), type->alignment(), __func__);
   array_unshare_policy_.unshare_array(blender::GVArray::ForSpan({type, layer.data, totelem}),
                                       blender::GMutableSpan{type, new_data, totelem});
+  layer.data = new_data;
 }
 
 static bool customdata_merge_internal(const CustomData *source,

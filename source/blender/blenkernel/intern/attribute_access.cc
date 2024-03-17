@@ -430,7 +430,8 @@ GAttributeReader BuiltinCustomDataLayerProvider::try_get_for_read(const void *ow
   return {GVArray::ForSpan({type, layer.data, element_num}), domain_, layer.sharing_info};
 }
 
-GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(void *owner) const
+GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(
+    void *owner, const ArrayUnsharePolicy &unshare_policy) const
 {
   CustomData *custom_data = custom_data_access_.get_custom_data(owner);
   if (custom_data == nullptr) {
@@ -454,10 +455,19 @@ GAttributeWriter BuiltinCustomDataLayerProvider::try_get_for_write(void *owner) 
 
   void *data = nullptr;
   if (stored_as_named_attribute_) {
-    data = CustomData_get_layer_named_for_write(custom_data, stored_type_, name_, element_num);
+    data = CustomData_get_layer_named_for_write(
+        custom_data,
+        stored_type_,
+        name_,
+        element_num,
+        CustomDataUnsharePolicy_ArrayUnsharePolicy(unshare_policy));
   }
   else {
-    data = CustomData_get_layer_for_write(custom_data, stored_type_, element_num);
+    data = CustomData_get_layer_for_write(
+        custom_data,
+        stored_type_,
+        element_num,
+        CustomDataUnsharePolicy_ArrayUnsharePolicy(unshare_policy));
   }
   if (data == nullptr) {
     return {};
@@ -563,7 +573,9 @@ GAttributeReader CustomDataAttributeProvider::try_get_for_read(
 }
 
 GAttributeWriter CustomDataAttributeProvider::try_get_for_write(
-    void *owner, const AttributeIDRef &attribute_id) const
+    void *owner,
+    const AttributeIDRef &attribute_id,
+    const ArrayUnsharePolicy &unshare_policy) const
 {
   CustomData *custom_data = custom_data_access_.get_custom_data(owner);
   if (custom_data == nullptr) {
@@ -575,7 +587,11 @@ GAttributeWriter CustomDataAttributeProvider::try_get_for_write(
       continue;
     }
     CustomData_get_layer_named_for_write(
-        custom_data, eCustomDataType(layer.type), layer.name, element_num);
+        custom_data,
+        eCustomDataType(layer.type),
+        layer.name,
+        element_num,
+        CustomDataUnsharePolicy_ArrayUnsharePolicy(unshare_policy));
 
     const CPPType *type = custom_data_type_to_cpp_type(eCustomDataType(layer.type));
     if (type == nullptr) {
@@ -753,9 +769,10 @@ struct FinishCallChecker {
 };
 #endif
 
-GAttributeWriter MutableAttributeAccessor::lookup_for_write(const AttributeIDRef &attribute_id)
+GAttributeWriter MutableAttributeAccessor::lookup_for_write(
+    const AttributeIDRef &attribute_id, const ArrayUnsharePolicy &unshare_policy)
 {
-  GAttributeWriter attribute = fn_->lookup_for_write(owner_, attribute_id);
+  GAttributeWriter attribute = fn_->lookup_for_write(owner_, attribute_id, unshare_policy);
   /* Check that the #finish method is called in debug builds. */
 #ifndef NDEBUG
   if (attribute) {
@@ -774,9 +791,9 @@ GAttributeWriter MutableAttributeAccessor::lookup_for_write(const AttributeIDRef
 }
 
 GSpanAttributeWriter MutableAttributeAccessor::lookup_for_write_span(
-    const AttributeIDRef &attribute_id)
+    const AttributeIDRef &attribute_id, const ArrayUnsharePolicy &unshare_policy)
 {
-  GAttributeWriter attribute = this->lookup_for_write(attribute_id);
+  GAttributeWriter attribute = this->lookup_for_write(attribute_id, unshare_policy);
   if (attribute) {
     return GSpanAttributeWriter{std::move(attribute), true};
   }
@@ -787,17 +804,18 @@ GAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write(
     const AttributeIDRef &attribute_id,
     const AttrDomain domain,
     const eCustomDataType data_type,
-    const AttributeInit &initializer)
+    const AttributeInit &initializer,
+    const ArrayUnsharePolicy &unshare_policy)
 {
   std::optional<AttributeMetaData> meta_data = this->lookup_meta_data(attribute_id);
   if (meta_data.has_value()) {
     if (meta_data->domain == domain && meta_data->data_type == data_type) {
-      return this->lookup_for_write(attribute_id);
+      return this->lookup_for_write(attribute_id, unshare_policy);
     }
     return {};
   }
   if (this->add(attribute_id, domain, data_type, initializer)) {
-    return this->lookup_for_write(attribute_id);
+    return this->lookup_for_write(attribute_id, unshare_policy);
   }
   return {};
 }
@@ -806,10 +824,11 @@ GSpanAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write_span(
     const AttributeIDRef &attribute_id,
     const AttrDomain domain,
     const eCustomDataType data_type,
-    const AttributeInit &initializer)
+    const AttributeInit &initializer,
+    const ArrayUnsharePolicy &unshare_policy)
 {
   GAttributeWriter attribute = this->lookup_or_add_for_write(
-      attribute_id, domain, data_type, initializer);
+      attribute_id, domain, data_type, initializer, unshare_policy);
   if (attribute) {
     return GSpanAttributeWriter{std::move(attribute), true};
   }
@@ -817,10 +836,13 @@ GSpanAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write_span(
 }
 
 GSpanAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write_only_span(
-    const AttributeIDRef &attribute_id, const AttrDomain domain, const eCustomDataType data_type)
+    const AttributeIDRef &attribute_id,
+    const AttrDomain domain,
+    const eCustomDataType data_type,
+    const ArrayUnsharePolicy &unshare_policy)
 {
   GAttributeWriter attribute = this->lookup_or_add_for_write(
-      attribute_id, domain, data_type, AttributeInitConstruct());
+      attribute_id, domain, data_type, AttributeInitConstruct(), unshare_policy);
   if (attribute) {
     return GSpanAttributeWriter{std::move(attribute), false};
   }

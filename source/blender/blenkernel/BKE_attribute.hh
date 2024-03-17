@@ -10,6 +10,7 @@
 #include "BLI_function_ref.hh"
 #include "BLI_generic_span.hh"
 #include "BLI_generic_virtual_array.hh"
+#include "BLI_implicit_sharing_unshare.hh"
 #include "BLI_offset_indices.hh"
 #include "BLI_set.hh"
 #include "BLI_struct_equality_utils.hh"
@@ -426,7 +427,9 @@ struct AttributeAccessorFunctions {
   bool (*for_all)(const void *owner,
                   FunctionRef<bool(const AttributeIDRef &, const AttributeMetaData &)> fn);
   AttributeValidator (*lookup_validator)(const void *owner, const AttributeIDRef &attribute_id);
-  GAttributeWriter (*lookup_for_write)(void *owner, const AttributeIDRef &attribute_id);
+  GAttributeWriter (*lookup_for_write)(void *owner,
+                                       const AttributeIDRef &attribute_id,
+                                       const ArrayUnsharePolicy &unshare_policy);
   bool (*remove)(void *owner, const AttributeIDRef &attribute_id);
   bool (*add)(void *owner,
               const AttributeIDRef &attribute_id,
@@ -642,20 +645,27 @@ class MutableAttributeAccessor : public AttributeAccessor {
    * Get a writable attribute or none if it does not exist.
    * Make sure to call #finish after changes are done.
    */
-  GAttributeWriter lookup_for_write(const AttributeIDRef &attribute_id);
+  GAttributeWriter lookup_for_write(
+      const AttributeIDRef &attribute_id,
+      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy());
 
   /**
    * Same as above, but returns a type that makes it easier to work with the attribute as a span.
    */
-  GSpanAttributeWriter lookup_for_write_span(const AttributeIDRef &attribute_id);
+  GSpanAttributeWriter lookup_for_write_span(
+      const AttributeIDRef &attribute_id,
+      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy());
 
   /**
    * Get a writable attribute or non if it does not exist.
    * Make sure to call #finish after changes are done.
    */
-  template<typename T> AttributeWriter<T> lookup_for_write(const AttributeIDRef &attribute_id)
+  template<typename T>
+  AttributeWriter<T> lookup_for_write(
+      const AttributeIDRef &attribute_id,
+      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy())
   {
-    GAttributeWriter attribute = this->lookup_for_write(attribute_id);
+    GAttributeWriter attribute = this->lookup_for_write(attribute_id, unshare_policy);
     if (!attribute) {
       return {};
     }
@@ -669,9 +679,11 @@ class MutableAttributeAccessor : public AttributeAccessor {
    * Same as above, but returns a type that makes it easier to work with the attribute as a span.
    */
   template<typename T>
-  SpanAttributeWriter<T> lookup_for_write_span(const AttributeIDRef &attribute_id)
+  SpanAttributeWriter<T> lookup_for_write_span(
+      const AttributeIDRef &attribute_id,
+      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy())
   {
-    AttributeWriter<T> attribute = this->lookup_for_write<T>(attribute_id);
+    AttributeWriter<T> attribute = this->lookup_for_write<T>(attribute_id, unshare_policy);
     if (attribute) {
       return SpanAttributeWriter<T>{std::move(attribute), true};
     }
@@ -714,7 +726,8 @@ class MutableAttributeAccessor : public AttributeAccessor {
       const AttributeIDRef &attribute_id,
       const AttrDomain domain,
       const eCustomDataType data_type,
-      const AttributeInit &initializer = AttributeInitDefaultValue());
+      const AttributeInit &initializer = AttributeInitDefaultValue(),
+      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy());
 
   /**
    * Same as above, but returns a type that makes it easier to work with the attribute as a span.
@@ -725,7 +738,8 @@ class MutableAttributeAccessor : public AttributeAccessor {
       const AttributeIDRef &attribute_id,
       const AttrDomain domain,
       const eCustomDataType data_type,
-      const AttributeInit &initializer = AttributeInitDefaultValue());
+      const AttributeInit &initializer = AttributeInitDefaultValue(),
+      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy());
 
   /**
    * Same as above, but should be used when the type is known at compile time.
@@ -734,11 +748,14 @@ class MutableAttributeAccessor : public AttributeAccessor {
   AttributeWriter<T> lookup_or_add_for_write(
       const AttributeIDRef &attribute_id,
       const AttrDomain domain,
-      const AttributeInit &initializer = AttributeInitDefaultValue())
+      const AttributeInit &initializer = AttributeInitDefaultValue(),
+      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy())
   {
     const CPPType &cpp_type = CPPType::get<T>();
     const eCustomDataType data_type = cpp_type_to_custom_data_type(cpp_type);
-    return this->lookup_or_add_for_write(attribute_id, domain, data_type, initializer).typed<T>();
+    return this
+        ->lookup_or_add_for_write(attribute_id, domain, data_type, initializer, unshare_policy)
+        .typed<T>();
   }
 
   /**
@@ -748,10 +765,11 @@ class MutableAttributeAccessor : public AttributeAccessor {
   SpanAttributeWriter<T> lookup_or_add_for_write_span(
       const AttributeIDRef &attribute_id,
       const AttrDomain domain,
-      const AttributeInit &initializer = AttributeInitDefaultValue())
+      const AttributeInit &initializer = AttributeInitDefaultValue(),
+      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy())
   {
     AttributeWriter<T> attribute = this->lookup_or_add_for_write<T>(
-        attribute_id, domain, initializer);
+        attribute_id, domain, initializer, unshare_policy);
     if (attribute) {
       return SpanAttributeWriter<T>{std::move(attribute), true};
     }
@@ -768,19 +786,23 @@ class MutableAttributeAccessor : public AttributeAccessor {
    *
    * For trivial types, the values in a newly created attribute will not be initialized.
    */
-  GSpanAttributeWriter lookup_or_add_for_write_only_span(const AttributeIDRef &attribute_id,
-                                                         const AttrDomain domain,
-                                                         const eCustomDataType data_type);
+  GSpanAttributeWriter lookup_or_add_for_write_only_span(
+      const AttributeIDRef &attribute_id,
+      const AttrDomain domain,
+      const eCustomDataType data_type,
+      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy());
 
   /**
    * Same as above, but should be used when the type is known at compile time.
    */
   template<typename T>
-  SpanAttributeWriter<T> lookup_or_add_for_write_only_span(const AttributeIDRef &attribute_id,
-                                                           const AttrDomain domain)
+  SpanAttributeWriter<T> lookup_or_add_for_write_only_span(
+      const AttributeIDRef &attribute_id,
+      const AttrDomain domain,
+      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy())
   {
     AttributeWriter<T> attribute = this->lookup_or_add_for_write<T>(
-        attribute_id, domain, AttributeInitConstruct());
+        attribute_id, domain, AttributeInitConstruct(), unshare_policy);
 
     if (attribute) {
       return SpanAttributeWriter<T>{std::move(attribute), false};

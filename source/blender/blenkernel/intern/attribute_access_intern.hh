@@ -69,7 +69,8 @@ class BuiltinAttributeProvider {
   }
 
   virtual GAttributeReader try_get_for_read(const void *owner) const = 0;
-  virtual GAttributeWriter try_get_for_write(void *owner) const = 0;
+  virtual GAttributeWriter try_get_for_write(void *owner,
+                                             const ArrayUnsharePolicy &unshare_policy) const = 0;
   virtual bool try_delete(void *owner) const = 0;
   virtual bool try_create(void *onwer, const AttributeInit &initializer) const = 0;
   virtual bool exists(const void *owner) const = 0;
@@ -104,7 +105,8 @@ class DynamicAttributesProvider {
   virtual GAttributeReader try_get_for_read(const void *owner,
                                             const AttributeIDRef &attribute_id) const = 0;
   virtual GAttributeWriter try_get_for_write(void *owner,
-                                             const AttributeIDRef &attribute_id) const = 0;
+                                             const AttributeIDRef &attribute_id,
+                                             const ArrayUnsharePolicy &unshare_policy) const = 0;
   virtual bool try_delete(void *owner, const AttributeIDRef &attribute_id) const = 0;
   virtual bool try_create(void *owner,
                           const AttributeIDRef &attribute_id,
@@ -141,7 +143,9 @@ class CustomDataAttributeProvider final : public DynamicAttributesProvider {
   GAttributeReader try_get_for_read(const void *owner,
                                     const AttributeIDRef &attribute_id) const final;
 
-  GAttributeWriter try_get_for_write(void *owner, const AttributeIDRef &attribute_id) const final;
+  GAttributeWriter try_get_for_write(void *owner,
+                                     const AttributeIDRef &attribute_id,
+                                     const ArrayUnsharePolicy &unshare_policy) const final;
 
   bool try_delete(void *owner, const AttributeIDRef &attribute_id) const final;
 
@@ -199,7 +203,8 @@ class BuiltinCustomDataLayerProvider final : public BuiltinAttributeProvider {
   }
 
   GAttributeReader try_get_for_read(const void *owner) const final;
-  GAttributeWriter try_get_for_write(void *owner) const final;
+  GAttributeWriter try_get_for_write(void *owner,
+                                     const ArrayUnsharePolicy &unshare_policy) const final;
   bool try_delete(void *owner) const final;
   bool try_create(void *owner, const AttributeInit &initializer) const final;
   bool exists(const void *owner) const final;
@@ -373,18 +378,20 @@ inline std::optional<AttributeMetaData> lookup_meta_data(const void *owner,
 }
 
 template<const ComponentAttributeProviders &providers>
-inline GAttributeWriter lookup_for_write(void *owner, const AttributeIDRef &attribute_id)
+inline GAttributeWriter lookup_for_write(void *owner,
+                                         const AttributeIDRef &attribute_id,
+                                         const ArrayUnsharePolicy &unshare_policy)
 {
   if (!attribute_id.is_anonymous()) {
     const StringRef name = attribute_id.name();
     if (const BuiltinAttributeProvider *provider =
             providers.builtin_attribute_providers().lookup_default_as(name, nullptr))
     {
-      return provider->try_get_for_write(owner);
+      return provider->try_get_for_write(owner, unshare_policy);
     }
   }
   for (const DynamicAttributesProvider *provider : providers.dynamic_attribute_providers()) {
-    GAttributeWriter attribute = provider->try_get_for_write(owner, attribute_id);
+    GAttributeWriter attribute = provider->try_get_for_write(owner, attribute_id, unshare_policy);
     if (attribute) {
       return attribute;
     }
