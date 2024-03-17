@@ -1113,12 +1113,18 @@ static void add_node_type_constraints(const bNodeTree &tree,
     BLI_assert(input_inputs.size() == output_inputs.size());
     BLI_assert(input_outputs.size() == output_outputs.size());
     for (const int i : input_inputs.index_range()) {
+      if (!input_inputs[i]->is_available() || !output_inputs[i]->is_available()) {
+        continue;
+      }
       const int var_a = input_inputs[i]->index_in_tree();
       const int var_b = output_inputs[i]->index_in_tree();
       constraints.add(var_a, var_b, shared_field_type_constraint);
       constraints.add(var_b, var_a, shared_field_type_constraint);
     }
     for (const int i : input_outputs.index_range()) {
+      if (!input_outputs[i]->is_available() || !output_outputs[i]->is_available()) {
+        continue;
+      }
       const int var_a = input_outputs[i]->index_in_tree();
       const int var_b = output_outputs[i]->index_in_tree();
       constraints.add(var_a, var_b, shared_field_type_constraint);
@@ -1319,6 +1325,9 @@ static void test_ac3_field_inferencing(
 
     const FieldInferencingInterface &inferencing_interface = *interface_by_node[node->index()];
     for (const bNodeSocket *output_socket : node->output_sockets()) {
+      if (!output_socket->is_available()) {
+        continue;
+      }
       const int var_index = interface_inputs.contains(output_socket->index()) ?
                                 tree_input_vars[output_socket->index()] :
                                 socket_vars[output_socket->index_in_tree()];
@@ -1383,6 +1392,9 @@ static void test_ac3_field_inferencing(
 
     /* Some inputs do not require fields independent of what the outputs are connected to. */
     for (const bNodeSocket *input_socket : node->input_sockets()) {
+      if (!input_socket->is_available()) {
+        continue;
+      }
       const int var_index = interface_outputs.contains(input_socket->index()) ?
                                 tree_output_vars[input_socket->index()] :
                                 socket_vars[input_socket->index_in_tree()];
