@@ -2098,6 +2098,7 @@ void UI_block_draw(const bContext *C, uiBlock *block)
   }
   /** Shared layout panel backdrop style between redo panel and popups. */
   if (block->panel && ELEM(region->regiontype, RGN_TYPE_HUD, RGN_TYPE_TEMPORARY)) {
+    /** TODO: Add a ass theme color. */
     float subpanel_backcolor[4]{.2, .3, .33, .05};
     UI_draw_layout_panels_backdrop(region, block->panel, 0, subpanel_backcolor);
   }
