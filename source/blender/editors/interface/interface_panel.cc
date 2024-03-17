@@ -1230,12 +1230,12 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
     box_rect.ymin = rect->ymin;
     box_rect.ymax = rect->ymax;
     UI_draw_roundbox_4fv(&box_rect, true, radius, panel_backcolor);
-  }
-  {
+
     float subpanel_backcolor[4];
     UI_GetThemeColor4fv(TH_PANEL_SUB_BACK, subpanel_backcolor);
     UI_draw_layout_panels_backdrop(region, panel, radius, subpanel_backcolor);
   }
+
   /* Panel header backdrops for non sub-panels. */
   if (!is_subpanel && has_header) {
     float panel_headercolor[4];
