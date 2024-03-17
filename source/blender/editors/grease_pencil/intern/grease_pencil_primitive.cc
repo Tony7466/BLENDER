@@ -1046,9 +1046,19 @@ static int grease_pencil_primitive_event_model_map(bContext *C,
 
         ptd.start_position_2d = ED_view3d_project_float_v2_m4(
             ptd.vc.region, ptd.control_points.last(), ptd.projection);
-        ptd.control_points.append(ptd.placement.project(float2(event->mval)));
         ptd.active_control_point_index = -1;
-        ptd.segments++;
+        const float3 pos = ptd.placement.project(float2(event->mval));
+
+        /* If we have only two points and they're the same then don't extrude new a point. */
+        if (ptd.segments == 1 &&
+            math::distance_squared(ptd.control_points.first(), ptd.control_points.last()) == 0.0f)
+        {
+          ptd.control_points.last() = pos;
+        }
+        else {
+          ptd.control_points.append(pos);
+          ptd.segments++;
+        }
 
         return OPERATOR_RUNNING_MODAL;
       }
@@ -1158,8 +1168,18 @@ static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const 
 
     ptd.start_position_2d = ED_view3d_project_float_v2_m4(
         ptd.vc.region, ptd.control_points.last(), ptd.projection);
-    ptd.control_points.append(ptd.placement.project(float2(event->mval)));
-    ptd.segments++;
+    const float3 pos = ptd.placement.project(float2(event->mval));
+
+    /* If we have only two points and they're the same then don't extrude new a point. */
+    if (ptd.segments == 1 &&
+        math::distance_squared(ptd.control_points.first(), ptd.control_points.last()) == 0.0f)
+    {
+      ptd.control_points.last() = pos;
+    }
+    else {
+      ptd.control_points.append(pos);
+      ptd.segments++;
+    }
   }
 
   return OPERATOR_RUNNING_MODAL;
