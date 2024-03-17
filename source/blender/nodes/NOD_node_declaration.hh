@@ -361,20 +361,11 @@ class BaseSocketDeclarationBuilder {
    */
   BaseSocketDeclarationBuilder &align_with_previous(bool value = true);
 
-  int index() const
-  {
-    return index_;
-  }
+  /** Index in the list of inputs or outputs. */
+  int index() const;
 
-  bool is_input() const
-  {
-    return decl_base_->in_out == SOCK_IN;
-  }
-
-  bool is_output() const
-  {
-    return decl_base_->in_out == SOCK_OUT;
-  }
+  bool is_input() const;
+  bool is_output() const;
 };
 
 /**
@@ -625,6 +616,27 @@ typename DeclType::Builder &PanelDeclarationBuilder::add_output(StringRef name,
   }
   ++this->decl_->num_child_decls;
   return node_decl_builder_->add_socket<DeclType>(name, "", identifier, SOCK_OUT);
+}
+
+/** \} */
+
+/* -------------------------------------------------------------------- */
+/** \name #BaseSocketDeclarationBuilder Inline Methods
+ * \{ */
+
+inline int BaseSocketDeclarationBuilder::index() const
+{
+  return index_;
+}
+
+inline bool BaseSocketDeclarationBuilder::is_input() const
+{
+  return decl_base_->in_out == SOCK_IN;
+}
+
+inline bool BaseSocketDeclarationBuilder::is_output() const
+{
+  return decl_base_->in_out == SOCK_OUT;
 }
 
 /** \} */
