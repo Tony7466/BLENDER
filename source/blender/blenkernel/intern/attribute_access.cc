@@ -836,13 +836,14 @@ GSpanAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write_span(
 }
 
 GSpanAttributeWriter MutableAttributeAccessor::lookup_or_add_for_write_only_span(
-    const AttributeIDRef &attribute_id,
-    const AttrDomain domain,
-    const eCustomDataType data_type,
-    const ArrayUnsharePolicy &unshare_policy)
+    const AttributeIDRef &attribute_id, const AttrDomain domain, const eCustomDataType data_type)
 {
   GAttributeWriter attribute = this->lookup_or_add_for_write(
-      attribute_id, domain, data_type, AttributeInitConstruct(), unshare_policy);
+      attribute_id,
+      domain,
+      data_type,
+      AttributeInitConstruct(),
+      implicit_sharing::unshare::IgnoreOldValues());
   if (attribute) {
     return GSpanAttributeWriter{std::move(attribute), false};
   }

@@ -786,23 +786,22 @@ class MutableAttributeAccessor : public AttributeAccessor {
    *
    * For trivial types, the values in a newly created attribute will not be initialized.
    */
-  GSpanAttributeWriter lookup_or_add_for_write_only_span(
-      const AttributeIDRef &attribute_id,
-      const AttrDomain domain,
-      const eCustomDataType data_type,
-      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy());
+  GSpanAttributeWriter lookup_or_add_for_write_only_span(const AttributeIDRef &attribute_id,
+                                                         const AttrDomain domain,
+                                                         const eCustomDataType data_type);
 
   /**
    * Same as above, but should be used when the type is known at compile time.
    */
   template<typename T>
-  SpanAttributeWriter<T> lookup_or_add_for_write_only_span(
-      const AttributeIDRef &attribute_id,
-      const AttrDomain domain,
-      const ArrayUnsharePolicy &unshare_policy = DefaultArrayUnsharePolicy())
+  SpanAttributeWriter<T> lookup_or_add_for_write_only_span(const AttributeIDRef &attribute_id,
+                                                           const AttrDomain domain)
   {
     AttributeWriter<T> attribute = this->lookup_or_add_for_write<T>(
-        attribute_id, domain, AttributeInitConstruct(), unshare_policy);
+        attribute_id,
+        domain,
+        AttributeInitConstruct(),
+        implicit_sharing::unshare::IgnoreOldValues());
 
     if (attribute) {
       return SpanAttributeWriter<T>{std::move(attribute), false};
