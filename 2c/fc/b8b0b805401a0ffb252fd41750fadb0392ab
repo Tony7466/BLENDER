@@ -5,3 +5,4 @@ Referenced by pull request #110098, Fix #110037: Uninitialized result arrays and
 Referenced by commit c38a52885bfdb6c20bbf3203a1bfe7b9c63f9099, Fix #110037: uninitialized result array and typos
 Referenced by issue #109399, Blender LTS: Maintenance Task 3.6
 Referenced by pull request #117805, BLI: support set operations on index masks
+Referenced by commit ee1fa8e1ca62506a6dd6fd5d053648569c672faf, BLI: support set operations on index masks
