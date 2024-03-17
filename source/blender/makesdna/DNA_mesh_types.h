@@ -18,6 +18,7 @@
 
 #  include <optional>
 
+#  include "BLI_implicit_sharing_unshare.hh"
 #  include "BLI_math_vector_types.hh"
 
 namespace blender {
@@ -236,7 +237,8 @@ typedef struct Mesh {
    */
   blender::Span<blender::float3> vert_positions() const;
   /** Write access to vertex data. */
-  blender::MutableSpan<blender::float3> vert_positions_for_write();
+  blender::MutableSpan<blender::float3> vert_positions_for_write(
+      const blender::ArrayUnsharePolicy &unshare_policy = blender::DefaultArrayUnsharePolicy());
   /**
    * Array of edges, containing vertex indices, stored in the ".edge_verts" attribute. For simple
    * triangle or quad meshes, edges could be calculated from the face and #corner_edge arrays.

@@ -209,10 +209,15 @@ Span<float3> PointCloud::positions() const
           this->totpoint};
 }
 
-MutableSpan<float3> PointCloud::positions_for_write()
+MutableSpan<float3> PointCloud::positions_for_write(
+    const blender::ArrayUnsharePolicy &unshare_policy)
 {
   return {static_cast<float3 *>(CustomData_get_layer_named_for_write(
-              &this->pdata, CD_PROP_FLOAT3, "position", this->totpoint)),
+              &this->pdata,
+              CD_PROP_FLOAT3,
+              "position",
+              this->totpoint,
+              CustomDataUnsharePolicy_ArrayUnsharePolicy(unshare_policy))),
           this->totpoint};
 }
 

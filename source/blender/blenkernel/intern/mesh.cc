@@ -609,10 +609,15 @@ Span<float3> Mesh::vert_positions() const
               CustomData_get_layer_named(&this->vert_data, CD_PROP_FLOAT3, "position")),
           this->verts_num};
 }
-MutableSpan<float3> Mesh::vert_positions_for_write()
+MutableSpan<float3> Mesh::vert_positions_for_write(
+    const blender::ArrayUnsharePolicy &unshare_policy)
 {
   return {static_cast<float3 *>(CustomData_get_layer_named_for_write(
-              &this->vert_data, CD_PROP_FLOAT3, "position", this->verts_num)),
+              &this->vert_data,
+              CD_PROP_FLOAT3,
+              "position",
+              this->verts_num,
+              CustomDataUnsharePolicy_ArrayUnsharePolicy(unshare_policy))),
           this->verts_num};
 }
 

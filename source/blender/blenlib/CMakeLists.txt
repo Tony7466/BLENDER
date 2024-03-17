@@ -251,6 +251,7 @@ set(SRC
   BLI_implicit_sharing.h
   BLI_implicit_sharing.hh
   BLI_implicit_sharing_ptr.hh
+  BLI_implicit_sharing_unshare.hh
   BLI_index_mask.hh
   BLI_index_mask_fwd.hh
   BLI_index_mask_expression.hh

@@ -11,6 +11,7 @@
 
 #include "BLI_cpp_type.hh"
 #include "BLI_implicit_sharing.h"
+#include "BLI_implicit_sharing_unshare.hh"
 #include "BLI_set.hh"
 #include "BLI_span.hh"
 #include "BLI_string_ref.hh"
@@ -466,8 +467,38 @@ void CustomData_swap_corners(CustomData *data, int index, const int *corner_indi
 
 class CustomDataUnsharePolicy {
  public:
-  virtual void unshare_data(CustomDataLayer &layer, int totelem) const;
+  void unshare_data(CustomDataLayer &layer, int totelem) const
+  {
+    void *old_data = layer.data;
+    this->unshare_data_impl(layer, totelem);
+    BLI_assert(totelem == 0 || old_data != layer.data);
+    UNUSED_VARS_NDEBUG(old_data);
+  }
+
+ private:
+  virtual void unshare_data_impl(CustomDataLayer &layer, int totelem) const = 0;
 };
+
+class CustomDataUnsharePolicy_CopyAll : public CustomDataUnsharePolicy {
+  void unshare_data_impl(CustomDataLayer &layer, int totelem) const override;
+};
+
+class CustomDataUnsharePolicy_ArrayUnsharePolicy : public CustomDataUnsharePolicy {
+ private:
+  const blender::ArrayUnsharePolicy &array_unshare_policy_;
+
+ public:
+  CustomDataUnsharePolicy_ArrayUnsharePolicy(
+      const blender::ArrayUnsharePolicy &array_unshare_policy)
+      : array_unshare_policy_(array_unshare_policy)
+  {
+  }
+
+ private:
+  void unshare_data_impl(CustomDataLayer &layer, int totelem) const override;
+};
+
+using DefaultCustomDataUnsharePolicy = CustomDataUnsharePolicy_CopyAll;
 
 /**
  * Custom data layers can be shared through implicit sharing (`BLI_implicit_sharing.h`). This
@@ -476,11 +507,11 @@ class CustomDataUnsharePolicy {
 void CustomData_ensure_data_is_mutable(
     CustomDataLayer *layer,
     int totelem,
-    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
+    const CustomDataUnsharePolicy &unshare_policy = DefaultCustomDataUnsharePolicy());
 void CustomData_ensure_layers_are_mutable(
     CustomData *data,
     int totelem,
-    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
+    const CustomDataUnsharePolicy &unshare_policy = DefaultCustomDataUnsharePolicy());
 
 /**
  * Retrieve a pointer to an element of the active layer of the given \a type, chosen by the
@@ -491,7 +522,7 @@ void *CustomData_get_for_write(
     int index,
     eCustomDataType type,
     int totelem,
-    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
+    const CustomDataUnsharePolicy &unshare_policy = DefaultCustomDataUnsharePolicy());
 /**
  * Retrieve a pointer to an element of the \a nth layer of the given \a type, chosen by the
  * \a index, if it exists.
@@ -502,7 +533,7 @@ void *CustomData_get_n_for_write(
     int index,
     int n,
     int totelem,
-    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
+    const CustomDataUnsharePolicy &unshare_policy = DefaultCustomDataUnsharePolicy());
 
 /* BMesh Custom Data Functions.
  * Should replace edit-mesh ones with these as well, due to more efficient memory alloc. */
@@ -531,7 +562,7 @@ void *CustomData_get_layer_for_write(
     CustomData *data,
     eCustomDataType type,
     int totelem,
-    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
+    const CustomDataUnsharePolicy &unshare_policy = DefaultCustomDataUnsharePolicy());
 
 /**
  * Retrieve the data array of the \a nth layer of the given \a type, if it exists. Return null
@@ -543,7 +574,7 @@ void *CustomData_get_layer_n_for_write(
     eCustomDataType type,
     int n,
     int totelem,
-    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
+    const CustomDataUnsharePolicy &unshare_policy = DefaultCustomDataUnsharePolicy());
 
 /**
  * Retrieve the data array of the layer with the given \a name and \a type, if it exists. Return
@@ -557,7 +588,7 @@ void *CustomData_get_layer_named_for_write(
     eCustomDataType type,
     blender::StringRef name,
     int totelem,
-    const CustomDataUnsharePolicy &unshare_policy = CustomDataUnsharePolicy());
+    const CustomDataUnsharePolicy &unshare_policy = DefaultCustomDataUnsharePolicy());
 
 int CustomData_get_offset(const CustomData *data, eCustomDataType type);
 int CustomData_get_offset_named(const CustomData *data,

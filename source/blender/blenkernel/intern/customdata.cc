@@ -44,6 +44,7 @@
 #include "BLT_translation.hh"
 
 #include "BKE_anonymous_attribute_id.hh"
+#include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
 #include "BKE_customdata_file.h"
 #include "BKE_deform.hh"
@@ -2377,9 +2378,24 @@ static void free_layer_data(const eCustomDataType type, const void *data, const 
   MEM_freeN(const_cast<void *>(data));
 }
 
-void CustomDataUnsharePolicy::unshare_data(CustomDataLayer &layer, const int totelem) const
+void CustomDataUnsharePolicy_CopyAll::unshare_data_impl(CustomDataLayer &layer,
+                                                        const int totelem) const
 {
   layer.data = copy_layer_data(eCustomDataType(layer.type), layer.data, totelem);
+}
+
+void CustomDataUnsharePolicy_ArrayUnsharePolicy::unshare_data_impl(CustomDataLayer &layer,
+                                                                   const int totelem) const
+{
+  const eCustomDataType data_type = eCustomDataType(layer.type);
+  const blender::CPPType *type = blender::bke::custom_data_type_to_cpp_type(data_type);
+  /* This unshare policy can't be used if there is no #CPPType for the layer type. */
+  BLI_assert(type != nullptr);
+
+  void *new_data = MEM_mallocN_aligned(
+      type->size() * int64_t(totelem), type->alignment(), __func__);
+  array_unshare_policy_.unshare_array(blender::GVArray::ForSpan({type, layer.data, totelem}),
+                                      blender::GMutableSpan{type, new_data, totelem});
 }
 
 static bool customdata_merge_internal(const CustomData *source,

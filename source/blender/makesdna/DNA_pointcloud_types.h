@@ -15,6 +15,7 @@
 #  include <optional>
 
 #  include "BLI_bounds_types.hh"
+#  include "BLI_implicit_sharing_unshare.hh"
 #  include "BLI_math_vector_types.hh"
 #  include "BLI_span.hh"
 #endif
@@ -54,7 +55,8 @@ typedef struct PointCloud {
 
 #ifdef __cplusplus
   blender::Span<blender::float3> positions() const;
-  blender::MutableSpan<blender::float3> positions_for_write();
+  blender::MutableSpan<blender::float3> positions_for_write(
+      const blender::ArrayUnsharePolicy &unshare_policy = blender::DefaultArrayUnsharePolicy());
 
   blender::bke::AttributeAccessor attributes() const;
   blender::bke::MutableAttributeAccessor attributes_for_write();
