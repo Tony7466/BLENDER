@@ -1162,6 +1162,7 @@ static int layout_panel_y_offset()
 {
   return UI_style_get_dpi()->panelspace;
 }
+
 void UI_draw_layout_panels_backdrop(const ARegion *region,
                                     const Panel *panel,
                                     const float radius,
@@ -1191,6 +1192,7 @@ void UI_draw_layout_panels_backdrop(const ARegion *region,
     UI_draw_roundbox_4fv(&panel_pixelspacef, true, radius, subpanel_backcolor);
   }
 }
+
 static void panel_draw_aligned_backdrop(const ARegion *region,
                                         const Panel *panel,
                                         const rcti *rect,
