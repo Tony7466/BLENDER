@@ -2384,6 +2384,9 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
        * changing the name maps to be consistent with the new state. */
       new_group->id.lib = library;
       BKE_id_new_name_validate(&bmain, &bmain.nodetrees, &new_group->id, nullptr, false);
+      if (library) {
+        new_group->id.tag |= LIB_TAG_INDIRECT;
+      }
     }
 
     group_by_library.add_new(library, new_group);
