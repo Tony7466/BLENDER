@@ -165,8 +165,7 @@ float light_spread_angle_rect_1D(float disk_center_distance, float disk_radius, 
 float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
 {
   vec3 lL = light_world_to_local(light, L * dist);
-  const float spread_half_angle = M_PI / 8.0;
-  const float spread_half_angle_tan = tan(spread_half_angle);
+  float spread_half_angle_tan = tan(light.spread_half_angle);
   float distance_to_plane = lL.z;
   /* Using notation from https://mathworld.wolfram.com/Circle-CircleIntersection.html . */
   float r = abs(distance_to_plane) * spread_half_angle_tan;
@@ -318,7 +317,7 @@ float light_ltc(
     corners[2] = -corners[0];
     corners[3] = -corners[1];
 
-    vec3 L = lv.L * lv.dist;
+    vec3 L = mix(light._back, lv.L * lv.dist, light.spread_mix_fac);
     corners[0] += L;
     corners[1] += L;
     corners[2] += L;
@@ -355,7 +354,7 @@ float light_ltc(
     points[1] = Px * size.x + Py * -size.y;
     points[2] = -points[0];
 
-    vec3 L = lv.L * lv.dist;
+    vec3 L = mix(light._back, lv.L * lv.dist, light.spread_mix_fac);
     points[0] += L;
     points[1] += L;
     points[2] += L;

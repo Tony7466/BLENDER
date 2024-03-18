@@ -170,6 +170,8 @@ void Light::shape_parameters_set(const ::Light *la, const float scale[3])
     /* For volume point lighting. */
     radius_squared = max_ff(0.001f, hypotf(_area_size_x, _area_size_y) * 0.5f);
     radius_squared = square_f(radius_squared);
+    spread_half_angle = la->area_spread / 2.0f;
+    spread_mix_fac = la->area_spread / M_PI;
   }
   else {
     if (la->type == LA_SPOT) {
