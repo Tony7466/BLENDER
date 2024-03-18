@@ -209,7 +209,8 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
   probe_sampling_coord_ = atlas_coord.as_sampling_coord();
   probe_write_coord_ = atlas_coord.as_write_coord(0);
   int resolution = probe_write_coord_.extent;
-  dispatch_probe_pack_ = int3(int2(ceil_division(resolution, SPHERE_PROBE_GROUP_SIZE)), 1);
+  dispatch_probe_pack_ = int3(
+      int2(math::divide_ceil(int2(resolution), int2(SPHERE_PROBE_REMAP_GROUP_SIZE))), 1);
   extract_sh_ = extract_spherical_harmonics;
   instance_.manager->submit(remap_ps_);
 
@@ -221,7 +222,8 @@ void SphereProbeModule::remap_to_octahedral_projection(const SphereProbeAtlasCoo
     probe_read_coord_ = atlas_coord.as_write_coord(i);
     probe_write_coord_ = atlas_coord.as_write_coord(i + 1);
     int out_mip_res = probe_write_coord_.extent;
-    dispatch_probe_convolve_ = int3(int2(ceil_division(out_mip_res, SPHERE_PROBE_GROUP_SIZE)), 1);
+    dispatch_probe_convolve_ = int3(
+        math::divide_ceil(int2(out_mip_res), int2(SPHERE_PROBE_GROUP_SIZE)), 1);
     instance_.manager->submit(convolve_ps_);
   }
 

@@ -18,7 +18,7 @@ GPU_SHADER_CREATE_INFO(eevee_reflection_probe_data)
 
 /* Sample cubemap and remap into an octahedral texture. */
 GPU_SHADER_CREATE_INFO(eevee_reflection_probe_remap)
-    .local_group_size(SPHERE_PROBE_GROUP_SIZE, SPHERE_PROBE_GROUP_SIZE)
+    .local_group_size(SPHERE_PROBE_REMAP_GROUP_SIZE, SPHERE_PROBE_REMAP_GROUP_SIZE)
     .specialization_constant(Type::BOOL, "extract_sh", true)
     .push_constant(Type::IVEC4, "probe_coord_packed")
     .push_constant(Type::IVEC4, "write_coord_packed")
