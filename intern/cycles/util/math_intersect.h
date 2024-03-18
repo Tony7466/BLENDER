@@ -302,6 +302,29 @@ ccl_device bool ray_quad_intersect(float3 ray_P,
   return true;
 }
 
+/* Find the ray segment that lies in the same side as the normal `N` of the plane.
+ * `P` is the vector pointing from any point on the plane to the ray origin. */
+ccl_device bool ray_plane_intersect(const float3 N,
+                                    const float3 P,
+                                    const float3 ray_D,
+                                    ccl_private float2 *t_range)
+{
+  const float DN = dot(ray_D, N);
+
+  /* Distance from P to the plane. */
+  const float t = -dot(P, N) / DN;
+
+  /* Limit the range to the positive side. */
+  if (DN > 0.0f) {
+    t_range->x = fmaxf(t_range->x, t);
+  }
+  else {
+    t_range->y = fminf(t_range->y, t);
+  }
+
+  return t_range->x < t_range->y;
+}
+
 /* Find the ray segment inside an axis-aligned bounding box. */
 ccl_device bool ray_aabb_intersect(const float3 bbox_min,
                                    const float3 bbox_max,
@@ -366,47 +389,37 @@ ccl_device_inline bool ray_cone_intersect(const float3 axis,
                                           const float cos_angle_sq,
                                           ccl_private float2 *t_range)
 {
+  if (cos_angle_sq < 1e-4f) {
+    /* The cone is nearly a plane. */
+    return ray_plane_intersect(axis, P, D, t_range);
+  }
+
   const float inv_len = inversesqrtf(len_squared(D));
   D *= inv_len;
 
   const float AD = dot(axis, D);
   const float AP = dot(axis, P);
 
+  const float a = sqr(AD) - cos_angle_sq;
+  const float b = 2.0f * (AD * AP - cos_angle_sq * dot(D, P));
+  const float c = sqr(AP) - cos_angle_sq * dot(P, P);
+
   float tmin = 0.0f, tmax = FLT_MAX;
-  bool valid = true;
-  /* TODO(weizhen): we have three pieces of code for ray plane interection now, maybe make a
-   * function. */
-  if (cos_angle_sq < 1e-4f) {
-    /* The cone is nearly a plane. */
-    tmin = tmax = -AP / AD;
-    if (AD > 0.0f) {
-      tmax = FLT_MAX;
-    }
-    else {
-      tmin = 0.0f;
-    }
+  bool valid = solve_quadratic(a, b, c, tmin, tmax);
+
+  /* Check if the intersection is in the same hemisphere as the cone. */
+  const bool tmin_valid = AP + tmin * AD > 0.0f;
+  const bool tmax_valid = AP + tmax * AD > 0.0f;
+
+  valid &= (tmin_valid || tmax_valid);
+
+  if (!tmax_valid) {
+    tmax = tmin;
+    tmin = 0.0f;
   }
-  else {
-    const float a = sqr(AD) - cos_angle_sq;
-    const float b = 2.0f * (AD * AP - cos_angle_sq * dot(D, P));
-    const float c = sqr(AP) - cos_angle_sq * dot(P, P);
-
-    valid &= solve_quadratic(a, b, c, tmin, tmax);
-
-    /* Check if the intersection is in the same hemisphere as the cone. */
-    const bool tmin_valid = AP + tmin * AD > 0.0f;
-    const bool tmax_valid = AP + tmax * AD > 0.0f;
-
-    valid &= (tmin_valid || tmax_valid);
-
-    if (!tmax_valid) {
-      tmax = tmin;
-      tmin = 0.0f;
-    }
-    else if (!tmin_valid) {
-      tmin = tmax;
-      tmax = FLT_MAX;
-    }
+  else if (!tmin_valid) {
+    tmin = tmax;
+    tmax = FLT_MAX;
   }
 
   valid &= (tmin < tmax);

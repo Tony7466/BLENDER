@@ -478,18 +478,8 @@ ccl_device_inline bool area_light_valid_ray_segment(const ccl_global KernelAreaL
     valid = ray_cone_intersect(axis, apex_to_point, D, cos_angle_sq, t_range);
   }
 
-  /* Distance from P to area light plane */
-  const float t = -dot(P, axis) / dot(D, axis);
-
   /* Limit the range to the positive side of the area light. */
-  if (dot(D, axis) > 0.0f) {
-    t_range->x = fmaxf(t_range->x, t);
-  }
-  else {
-    t_range->y = fminf(t_range->y, t);
-  }
-
-  return valid && (t_range->x < t_range->y);
+  return valid && ray_plane_intersect(axis, P, D, t_range);
 }
 
 template<bool in_volume_segment>

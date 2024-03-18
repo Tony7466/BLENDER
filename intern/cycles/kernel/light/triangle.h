@@ -341,17 +341,7 @@ ccl_device_inline bool triangle_light_valid_ray_segment(KernelGlobals kg,
   }
 
   /* Intersection of ray and the triangle light plane. */
-  const float DN = dot(D, N);
-  const float t = -dot(P, N) / DN;
-
-  if (DN > 0.0f) {
-    t_range->x = fmaxf(t, t_range->x);
-  }
-  else {
-    t_range->y = fminf(t, t_range->y);
-  }
-
-  return t_range->x < t_range->y;
+  return ray_plane_intersect(N, P, D, t_range);
 }
 
 CCL_NAMESPACE_END
