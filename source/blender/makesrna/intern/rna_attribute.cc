@@ -21,6 +21,7 @@
 #include "DNA_pointcloud_types.h"
 
 #include "BLI_math_color.h"
+#include "BLI_math_quaternion.hh"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
@@ -304,6 +305,23 @@ static int rna_Attribute_domain_get(PointerRNA *ptr)
 {
   return int(
       BKE_id_attribute_domain(ptr->owner_id, static_cast<const CustomDataLayer *>(ptr->data)));
+}
+
+static void rna_Attribute_quaternion_value_set(PointerRNA *ptr, const float *values)
+{
+  using blender::VecBase;
+  using blender::math::Quaternion;
+
+  float *fs = static_cast<float *>(ptr->data);
+  auto q = Quaternion(VecBase<float, 4>(values));
+  if (!is_unit_scale(q)) {
+    q = normalize(q);
+  }
+
+  fs[0] = q.w;
+  fs[1] = q.x;
+  fs[2] = q.y;
+  fs[3] = q.z;
 }
 
 static bool rna_Attribute_is_internal_get(PointerRNA *ptr)
@@ -1101,6 +1119,7 @@ static void rna_def_attribute_quaternion(BlenderRNA *brna)
   RNA_def_property_ui_text(prop, "Value", "Quaternion");
   RNA_def_property_float_sdna(prop, nullptr, "x");
   RNA_def_property_array(prop, 4);
+  RNA_def_property_float_funcs(prop, nullptr, "rna_Attribute_quaternion_value_set", nullptr);
   RNA_def_property_update(prop, 0, "rna_Attribute_update_data");
 }
 
