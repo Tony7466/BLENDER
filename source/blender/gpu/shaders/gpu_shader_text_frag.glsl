@@ -10,11 +10,11 @@
 
 float texel_fetch(int index)
 {
-  int size_x = textureSize(glyph, 0).r;
-  if (index >= size_x) {
-    return texelFetch(glyph, ivec2(index % size_x, index / size_x), 0).r;
-  }
-  return texelFetch(glyph, ivec2(index, 0), 0).r;
+  // glyph_tex_size: upper 8 bits is log2 of texture width, lower 24 bits is width-1
+  int col_mask = glyph_tex_size & 0xFFFFFF;
+  int row_shift = glyph_tex_size >> 24;
+  ivec2 uv = ivec2(index & col_mask, index >> row_shift);
+  return texelFetch(glyph, uv, 0).r;
 }
 
 bool is_inside_box(ivec2 v)
