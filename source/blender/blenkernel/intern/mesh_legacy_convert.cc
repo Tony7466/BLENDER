@@ -2358,7 +2358,7 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
   using namespace blender;
   using namespace blender::bke;
 
-  /* Add the node group lazily and share it among all objects in the main database. */
+  /* Add the node group lazily and share it among all objects in the same library. */
   Map<Library *, bNodeTree *> group_by_library;
   const auto add_node_group = [&](Library *library) {
     if (bNodeTree **group = group_by_library.lookup_ptr(library)) {
