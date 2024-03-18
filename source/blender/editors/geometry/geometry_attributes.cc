@@ -429,6 +429,14 @@ static int geometry_attribute_convert_exec(bContext *C, wmOperator *op)
       {
         return OPERATOR_CANCELLED;
       }
+      if (!BKE_id_attribute_search(
+              &mesh->id, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR))
+      {
+        const CustomDataLayer *layer = BKE_id_attribute_from_index(
+            &mesh->id, 0, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
+        const char *name = layer ? layer->name : nullptr;
+        BKE_id_attributes_active_color_set(&mesh->id, name);
+      }
       break;
     }
     case ConvertAttributeMode::VertexGroup: {
