@@ -114,8 +114,9 @@ void main()
     barrier();
     if (gl_LocalInvocationIndex == 0u) {
       /* Find the middle point of the whole thread-group. Use it as light vector.
-       * Note that this is an approximation since the texel are not necessarily convex polygons.
-       * But the actual error is not perceivable. */
+       * Note that this is an approximation since the footprint of a thread-group is not
+       * necessarily a convex polygons (with center of gravity at midpoint).
+       * But the actual error introduce by this approximation is not perceivable. */
       ivec2 max_group_texel = local_texel + ivec2(gl_WorkGroupSize.xy);
       /* Min direction is the local direction since this is only ran by thread 0. */
       vec3 min_direction = normalize(direction);
