@@ -4,8 +4,6 @@
 
 #pragma BLENDER_REQUIRE(gpu_shader_colorspace_lib.glsl)
 
-// #define GPU_NEAREST
-
 float texel_fetch(int index)
 {
   // glyph_tex_size: upper 8 bits is log2 of texture width, lower 24 bits is width-1
@@ -25,37 +23,21 @@ float texture_1D_custom_bilinear_filter(vec2 f, vec2 uv)
   ivec2 texel_2d_near = ivec2(uv) - 1;
   int frag_offset = glyph_offset + texel_2d_near.y * glyph_dim.x + texel_2d_near.x;
 
-  float tl = 0.0;
-
-  if (is_inside_box(texel_2d_near)) {
-    tl = texel_fetch(frag_offset);
-  }
-
-#ifdef GPU_NEAREST
-  return tl;
-#else  // GPU_LINEAR
   int offset_x = 1;
   int offset_y = glyph_dim.x;
-
-  float tr = 0.0;
-  float bl = 0.0;
-  float br = 0.0;
-
-  if (is_inside_box(texel_2d_near + ivec2(1, 0))) {
-    tr = texel_fetch(frag_offset + offset_x);
-  }
-  if (is_inside_box(texel_2d_near + ivec2(0, 1))) {
-    bl = texel_fetch(frag_offset + offset_y);
-  }
-  if (is_inside_box(texel_2d_near + ivec2(1, 1))) {
-    br = texel_fetch(frag_offset + offset_x + offset_y);
-  }
+  float tl = texel_fetch(frag_offset);
+  float tr = texel_fetch(frag_offset + offset_x);
+  float bl = texel_fetch(frag_offset + offset_y);
+  float br = texel_fetch(frag_offset + offset_x + offset_y);
+  if (!is_inside_box(texel_2d_near)) tl = 0.0;
+  if (!is_inside_box(texel_2d_near + ivec2(1, 0))) tr = 0.0;
+  if (!is_inside_box(texel_2d_near + ivec2(0, 1))) bl = 0.0;
+  if (!is_inside_box(texel_2d_near + ivec2(1, 1))) br = 0.0;
 
   float tA = mix(tl, tr, f.x);
   float tB = mix(bl, br, f.x);
 
   return mix(tA, tB, f.y);
-#endif
 }
 
 vec4 texture_1D_custom_bilinear_filter_color(vec2 uv)
