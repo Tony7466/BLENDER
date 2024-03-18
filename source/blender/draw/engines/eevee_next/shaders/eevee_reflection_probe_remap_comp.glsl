@@ -9,7 +9,6 @@
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
 shared vec4 local_radiance[gl_WorkGroupSize.x * gl_WorkGroupSize.y];
-shared vec4 local_direction[gl_WorkGroupSize.x * gl_WorkGroupSize.y];
 
 float triangle_solid_angle(vec3 A, vec3 B, vec3 C)
 {
@@ -105,8 +104,7 @@ void main()
 
     /* Parallel sum. Result is stored inside local_radiance[0]. */
     local_radiance[local_index] = radiance.xyzz * sample_weight;
-    local_direction[local_index] = normalize(direction.xyzz) * sample_weight;
-    for (uint stride = group_size / 4; stride > 0; stride /= 2) {
+    for (uint stride = group_size / 2; stride > 0; stride /= 2) {
       barrier();
       if (local_index < stride) {
         local_radiance[local_index] += local_radiance[local_index + stride];
@@ -115,15 +113,15 @@ void main()
 
     barrier();
     if (gl_LocalInvocationIndex == 0u) {
-#if 0
-      /* Find the middle point of the whole thread-group. Use it as light vector. */
+      /* Find the middle point of the whole thread-group. Use it as light vector.
+       * Note that this is an approximation since the texel are not necessarily convex polygons.
+       * But the actual error is not perceivable. */
       ivec2 max_group_texel = local_texel + ivec2(gl_WorkGroupSize.xy);
       /* Min direction is the local direction since this is only ran by thread 0. */
       vec3 min_direction = normalize(direction);
       vec3 max_direction = normalize(
           sphere_probe_texel_to_direction(max_group_texel, write_coord, sample_coord));
       vec3 L = normalize(min_direction + max_direction);
-#endif
       /* Convert radiance to spherical harmonics. */
       SphericalHarmonicL1 sh;
       sh.L0.M0 = vec4(0.0);
@@ -132,7 +130,6 @@ void main()
       sh.L1.Mp1 = vec4(0.0);
       /* TODO(fclem): Cleanup: Should spherical_harmonics_encode_signal_sample return a new sh
        * instead of adding to it? */
-      vec3 L = normalize(local_direction[0].xyz);
       spherical_harmonics_encode_signal_sample(L, local_radiance[0], sh);
       /* Outputs one SH for each threadgroup. */
       uint work_group_index = gl_NumWorkGroups.x * gl_WorkGroupID.y + gl_WorkGroupID.x;
