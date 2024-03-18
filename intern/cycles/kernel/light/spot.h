@@ -43,12 +43,14 @@ ccl_device_inline bool spot_light_valid_ray_segment(const ccl_global KernelLight
                                                     const float3 D,
                                                     ccl_private float2 *t_range)
 {
-  /* TODO(weizhen): consider light radius. The behaviour would be different with or without soft
-   * falloff. */
+  /* Convert to local space of the spot light. */
   const Transform itfm = klight->itfm;
-  const float3 local_P = transform_point(&itfm, P);
+  float3 local_P = P + klight->spot.dir * klight->spot.ray_segment_dp;
+  local_P = transform_point(&itfm, local_P);
   const float3 local_D = transform_direction(&itfm, D);
   const float3 axis = make_float3(0.0f, 0.0f, -1.0f);
+
+  /* Intersect the ray with the smallest enclosing cone of the light spread. */
   return ray_cone_intersect(
       axis, local_P, local_D, sqr(klight->spot.cos_half_spot_angle), t_range);
 }
