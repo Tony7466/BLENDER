@@ -2121,20 +2121,6 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
 
 namespace blender::bke {
 
-static VectorSet<const bNodeSocket *> build_socket_indices(const Span<const bNode *> nodes)
-{
-  VectorSet<const bNodeSocket *> result;
-  for (const bNode *node : nodes) {
-    LISTBASE_FOREACH (const bNodeSocket *, socket, &node->inputs) {
-      result.add_new(socket);
-    }
-    LISTBASE_FOREACH (const bNodeSocket *, socket, &node->outputs) {
-      result.add_new(socket);
-    }
-  }
-  return result;
-}
-
 static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
 {
   bNodeTree *group = ntreeAddTree(&bmain, DATA_("Auto Smooth"), "GeometryNodeTree");
@@ -2254,6 +2240,20 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
   BKE_ntree_update_main_tree(&bmain, group, nullptr);
 
   return group;
+}
+
+static VectorSet<const bNodeSocket *> build_socket_indices(const Span<const bNode *> nodes)
+{
+  VectorSet<const bNodeSocket *> result;
+  for (const bNode *node : nodes) {
+    LISTBASE_FOREACH (const bNodeSocket *, socket, &node->inputs) {
+      result.add_new(socket);
+    }
+    LISTBASE_FOREACH (const bNodeSocket *, socket, &node->outputs) {
+      result.add_new(socket);
+    }
+  }
+  return result;
 }
 
 static bool is_auto_smooth_node_tree(const bNodeTree &group)
