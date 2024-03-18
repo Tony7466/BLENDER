@@ -27,6 +27,7 @@
 #include "BKE_object_types.hh"
 
 #include "BLI_bounds.hh"
+#include "BLI_enumerable_thread_specific.hh"
 #include "BLI_map.hh"
 #include "BLI_math_euler_types.hh"
 #include "BLI_math_geom.h"
@@ -333,10 +334,26 @@ Span<uint3> Drawing::triangles() const
       }
     }
 
+    struct LocalMemArena {
+      MemArena *pf_arena = nullptr;
+      LocalMemArena()
+      {
+        pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
+      }
+
+      ~LocalMemArena()
+      {
+        if (pf_arena) {
+          BLI_memarena_free(pf_arena);
+        }
+      }
+    };
+    threading::EnumerableThreadSpecific<LocalMemArena> all_local_mem_arenas;
+
     r_data.resize(total_triangles);
     MutableSpan<uint3> triangles = r_data.as_mutable_span();
     threading::parallel_for(curves.curves_range(), 32, [&](const IndexRange range) {
-      MemArena *pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, func);
+      MemArena *pf_arena = all_local_mem_arenas.local().pf_arena;
       for (const int curve_i : range) {
         const IndexRange points = points_by_curve[curve_i];
 
@@ -364,7 +381,6 @@ Span<uint3> Drawing::triangles() const
                                 pf_arena);
         BLI_memarena_clear(pf_arena);
       }
-      BLI_memarena_free(pf_arena);
     });
   });
 
