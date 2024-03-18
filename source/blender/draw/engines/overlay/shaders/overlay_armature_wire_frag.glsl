@@ -7,7 +7,7 @@
 
 void main()
 {
-  lineOutput = pack_line_data(gl_FragCoord.xy, edgeStart, edgePos);
+  lineOutput = vec4(0.0);
   fragColor = vec4(finalColor.rgb, finalColor.a * alpha);
   select_id_output(select_id);
 }
