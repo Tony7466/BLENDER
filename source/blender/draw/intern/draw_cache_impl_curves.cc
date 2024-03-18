@@ -83,7 +83,7 @@ struct CurvesBatchCache {
    */
   GPUVertBuf *edit_points_data;
 
-  /* Buffer used to store CurvesUboStorage value.  push_constant() could not be used for this
+  /* Buffer used to store CurvesUboStorage value. push_constant() could not be used for this
    * value, as it is not know in overlay_edit_curves.cc as other constants. */
   GPUUniformBuf *curves_ubo_storage;
 
@@ -452,6 +452,7 @@ static void curves_batch_cache_ensure_edit_handles(const bke::CurvesGeometry &cu
   const int index_len_for_nurbs = nurbs_offsets.total_size() + nurbs_curves.size() +
                                   array_utils::count_booleans(cyclic, nurbs_curves);
   const int index_len = index_len_for_bezier_handles + index_len_for_nurbs;
+  /* Use two index buffer builders for the same underlying memory. */
   GPUIndexBufBuilder elb, right_elb;
   GPU_indexbuf_init_ex(&elb, GPU_PRIM_LINE_STRIP, index_len, vert_len);
   memcpy(&right_elb, &elb, sizeof(elb));
