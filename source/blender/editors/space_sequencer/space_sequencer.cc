@@ -647,7 +647,7 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
   }
 }
 
-static void sequencer_cursor(wmWindow *win, ScrArea *area, ARegion *region)
+static void sequencer_main_cursor(wmWindow *win, ScrArea *area, ARegion *region)
 {
   int wmcursor = WM_CURSOR_DEFAULT;
 
@@ -676,18 +676,17 @@ static void sequencer_cursor(wmWindow *win, ScrArea *area, ARegion *region)
                            &mouse_co[0],
                            &mouse_co[1]);
 
-  Scene *scene = win->scene;
-  Editing *ed = SEQ_editing_get(scene);
+  const Scene *scene = win->scene;
+  const Editing *ed = SEQ_editing_get(scene);
 
   if (ed == NULL) {
     WM_cursor_set(win, wmcursor);
     return;
   }
 
-  Sequence *seq1, *seq2;
   int side;
-
-  ED_sequencer_handle_selection_refine(scene, region, mouse_co, &seq1, &seq2, &side);
+  Sequence *seq1, *seq2;
+  ED_sequencer_handle_selection_refine(scene, &region->v2d, mouse_co, &seq1, &seq2, &side);
 
   if (seq1 == nullptr) {
     WM_cursor_set(win, wmcursor);
@@ -695,7 +694,7 @@ static void sequencer_cursor(wmWindow *win, ScrArea *area, ARegion *region)
   }
 
   const View2D *v2d = &region->v2d;
-  float scale_y = UI_view2d_scale_get_y(v2d);
+  const float scale_y = UI_view2d_scale_get_y(v2d);
 
   if (!ED_sequencer_can_select_handle(scene, seq1, v2d) || scale_y < 16 * U.pixelsize) {
     WM_cursor_set(win, wmcursor);
@@ -1084,7 +1083,7 @@ void ED_spacetype_sequencer()
   art->message_subscribe = sequencer_main_region_message_subscribe;
   art->keymapflag = ED_KEYMAP_TOOL | ED_KEYMAP_GIZMO | ED_KEYMAP_VIEW2D | ED_KEYMAP_FRAMES |
                     ED_KEYMAP_ANIMATION;
-  art->cursor = sequencer_cursor;
+  art->cursor = sequencer_main_cursor;
   art->event_cursor = true;
   art->clip_gizmo_events_by_ui = true;
   BLI_addhead(&st->regiontypes, art);

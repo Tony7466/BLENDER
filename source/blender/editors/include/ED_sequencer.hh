@@ -57,7 +57,7 @@ bool sequencer_retiming_mode_is_active(const bContext *C);
  * r_side which handle is selected. This further clarifies result if seq2 is nullptr.
  */
 bool ED_sequencer_handle_selection_refine(const struct Scene *scene,
-                                          struct ARegion *region,
+                                          const View2D *v2d,
                                           float mouse_co[2],
                                           struct Sequence **r_seq1,
                                           struct Sequence **r_seq2,

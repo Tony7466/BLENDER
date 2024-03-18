@@ -679,7 +679,7 @@ static void drawmeta_contents(TimelineDrawContext *timeline_ctx, const StripDraw
   }
 }
 
-static void draw_handle_transform_text(TimelineDrawContext *timeline_ctx,
+static void draw_handle_transform_text(const TimelineDrawContext *timeline_ctx,
                                        const StripDrawContext *strip_ctx,
                                        const short direction)
 {
@@ -698,16 +698,16 @@ static void draw_handle_transform_text(TimelineDrawContext *timeline_ctx,
   /* Calculate if strip is wide enough for showing the labels. */
   size_t numstr_len = SNPRINTF_RLEN(
       numstr, "%d%d", int(strip_ctx->left_handle), int(strip_ctx->right_handle));
-  float tot_width = BLF_width(BLF_default(), numstr, numstr_len);
+  const float tot_width = BLF_width(BLF_default(), numstr, numstr_len);
 
   if (strip_ctx->strip_length / timeline_ctx->pixelx < 20 + tot_width) {
     return;
   }
 
-  uchar col[4] = {255, 255, 255, 255};
-  float text_margin = 1.2f * strip_ctx->handle_width;
-  float text_x = strip_ctx->left_handle;
+  const uchar col[4] = {255, 255, 255, 255};
+  const float text_margin = 1.2f * strip_ctx->handle_width;
   const float text_y = strip_ctx->bottom + 0.09f;
+  float text_x = strip_ctx->left_handle;
 
   if (direction == SEQ_LEFTSEL) {
     numstr_len = SNPRINTF_RLEN(numstr, "%d", int(strip_ctx->left_handle));
@@ -732,14 +732,15 @@ float sequence_handle_size_get_clamped(const Scene *scene, Sequence *seq, const 
                  4.0f));
 }
 
-static void draw_seq_handle(TimelineDrawContext *timeline_ctx,
+static void draw_seq_handle(const TimelineDrawContext *timeline_ctx,
                             const StripDrawContext *strip_ctx,
                             const short direction)
 {
   Sequence *seq = strip_ctx->seq;
-  bool show_handles = (timeline_ctx->sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_HANDLES) != 0;
-  bool strip_selected = (seq->flag & SELECT) != 0;
-  bool handle_selected = (seq->flag & direction) != 0;
+  const bool show_handles = (timeline_ctx->sseq->timeline_overlay.flag &
+                             SEQ_TIMELINE_SHOW_HANDLES) != 0;
+  const bool strip_selected = (seq->flag & SELECT) != 0;
+  const bool handle_selected = (seq->flag & direction) != 0;
 
   if ((!strip_selected || !handle_selected) && !show_handles) {
     return;

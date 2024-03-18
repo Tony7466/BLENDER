@@ -295,7 +295,7 @@ static void calcSpringFactor(MouseInput *mi)
   }
 }
 
-static int transform_seq_slide_strip_cursor_get(Sequence *seq)
+static int transform_seq_slide_strip_cursor_get(const Sequence *seq)
 {
   if ((seq->flag & SEQ_LEFTSEL) != 0) {
     return WM_CURSOR_LEFT_HANDLE;
@@ -339,8 +339,8 @@ static int transform_seq_slide_cursor_get(TransInfo *t)
       return WM_CURSOR_NSEW_SCROLL;
     }
 
-    int cursor1 = transform_seq_slide_strip_cursor_get(seq1);
-    int cursor2 = transform_seq_slide_strip_cursor_get(seq2);
+    const int cursor1 = transform_seq_slide_strip_cursor_get(seq1);
+    const int cursor2 = transform_seq_slide_strip_cursor_get(seq2);
 
     if (cursor1 == WM_CURSOR_RIGHT_HANDLE && cursor2 == WM_CURSOR_LEFT_HANDLE) {
       t->flag |= T_HANDLE_TWEAK;
@@ -446,6 +446,7 @@ void initMouseInputMode(TransInfo *t, MouseInput *mi, MouseInputMode mode)
         t->flag |= T_MODAL_CURSOR_SET;
         WM_cursor_modal_set(win, WM_CURSOR_NSEW_SCROLL);
       }
+      /* On ly use special cursor, when tweaking strips with mouse. */
       if (t->mode == TFM_SEQ_SLIDE && (t->launch_event == 1 || t->launch_event == 3)) {
         WM_cursor_modal_set(win, transform_seq_slide_cursor_get(t));
       }
