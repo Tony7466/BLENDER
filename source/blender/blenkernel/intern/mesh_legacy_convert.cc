@@ -2428,6 +2428,9 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
         return existing_group;
       }
     }
+    bNodeTree *new_group = add_auto_smooth_node_tree(bmain);
+    /* Remove the default user, the count is tracked manually when assigning to modifiers. */
+    new_group->id.us--;
     group_by_library.add_new(library, new_group);
     return new_group;
   };
