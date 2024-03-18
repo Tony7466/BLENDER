@@ -913,14 +913,13 @@ void ShadowModule::sync_object(const Object *ob,
   ShadowObject &shadow_ob = objects_.lookup_or_add_default(handle.object_key);
   shadow_ob.used = true;
   const bool is_initialized = shadow_ob.resource_handle.raw != 0;
-  if (is_shadow_caster &&
-      (handle.recalc || !is_initialized || (has_transparent_shadows && jittered_transparency_)))
-  {
-    if (shadow_ob.resource_handle.raw != 0) {
+  const bool has_jittered_transparency = has_transparent_shadows && jittered_transparency_;
+  if (is_shadow_caster && (handle.recalc || !is_initialized || has_jittered_transparency)) {
+    if (handle.recalc && is_initialized) {
       past_casters_updated_.append(shadow_ob.resource_handle.raw);
     }
 
-    if (has_transparent_shadows && jittered_transparency_) {
+    if (has_jittered_transparency) {
       jittered_transparent_casters_.append(resource_handle.raw);
     }
     else {
