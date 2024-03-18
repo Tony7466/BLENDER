@@ -235,7 +235,7 @@ void memory_bandwidth_bound_task_impl(const FunctionRef<void()> function)
   const int num_threads = 8;
   static tbb::task_arena arena{num_threads};
 
-  /* Make sure the lazy threading hints are send now, because they shouldn't be sind out of an
+  /* Make sure the lazy threading hints are send now, because they shouldn't be send out of an
    * isolated region. */
   lazy_threading::send_hint();
   lazy_threading::ReceiverIsolation isolation;
