@@ -37,6 +37,7 @@
 #include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
+#include "BKE_main_namemap.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_legacy_convert.hh"
 #include "BKE_modifier.hh"
@@ -2367,6 +2368,9 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
      * node groups. Ideally we wouldn't add the new group to `bmain` first, but adding a local node
      * tree to #Main isn't trivial currently. */
     LISTBASE_FOREACH (bNodeTree *, existing_group, &bmain.nodetrees) {
+      if (existing_group->id.lib != library) {
+        continue;
+      }
       if (is_auto_smooth_node_tree(*existing_group)) {
         group_by_library.add_new(library, existing_group);
         return existing_group;
@@ -2375,6 +2379,16 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     bNodeTree *new_group = add_auto_smooth_node_tree(bmain);
     /* Remove the default user, the count is tracked manually when assigning to modifiers. */
     new_group->id.us--;
+
+    if (new_group->id.lib != library) {
+      /* Move the node group to the requested library so that library data-blocks don't point to
+       * local data-blocks. This requires making sure the name is unique in that library and
+       * changing the name maps to be consistent with the new state. */
+      BKE_main_namemap_remove_name(&bmain, &new_group->id, new_group->id.name + 2);
+      new_group->id.lib = library;
+      BKE_id_new_name_validate(&bmain, &bmain.nodetrees, &new_group->id, nullptr, false);
+    }
+
     group_by_library.add_new(library, new_group);
     return new_group;
   };
