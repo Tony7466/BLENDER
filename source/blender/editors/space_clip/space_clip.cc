@@ -22,7 +22,6 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
 #include "BKE_movieclip.h"
@@ -658,7 +657,7 @@ static void clip_main_region_init(wmWindowManager *wm, ARegion *region)
   wmKeyMap *keymap;
 
   /* NOTE: don't use `UI_view2d_region_reinit(&region->v2d, ...)`
-   * since the space clip manages own v2d in #movieclip_main_area_set_view2d */
+   * since the space clip manages its own v2d in #movieclip_main_area_set_view2d */
 
   /* mask polls mode */
   keymap = WM_keymap_ensure(wm->defaultconf, "Mask Editing", SPACE_EMPTY, RGN_TYPE_WINDOW);
@@ -1152,16 +1151,18 @@ static void clip_properties_region_listener(const wmRegionListenerParams *params
 /** \name IO Callbacks
  * \{ */
 
-static void clip_id_remap(ScrArea * /*area*/, SpaceLink *slink, const IDRemapper *mappings)
+static void clip_id_remap(ScrArea * /*area*/,
+                          SpaceLink *slink,
+                          const blender::bke::id::IDRemapper &mappings)
 {
   SpaceClip *sclip = (SpaceClip *)slink;
 
-  if (!BKE_id_remapper_has_mapping_for(mappings, FILTER_ID_MC | FILTER_ID_MSK)) {
+  if (!mappings.contains_mappings_for_any(FILTER_ID_MC | FILTER_ID_MSK)) {
     return;
   }
 
-  BKE_id_remapper_apply(mappings, (ID **)&sclip->clip, ID_REMAP_APPLY_ENSURE_REAL);
-  BKE_id_remapper_apply(mappings, (ID **)&sclip->mask_info.mask, ID_REMAP_APPLY_ENSURE_REAL);
+  mappings.apply(reinterpret_cast<ID **>(&sclip->clip), ID_REMAP_APPLY_ENSURE_REAL);
+  mappings.apply(reinterpret_cast<ID **>(&sclip->mask_info.mask), ID_REMAP_APPLY_ENSURE_REAL);
 }
 
 static void clip_foreach_id(SpaceLink *space_link, LibraryForeachIDData *data)

@@ -18,14 +18,14 @@
 
 #include "BLF_api.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "BKE_context.hh"
 #include "BKE_curve.hh"
 #include "BKE_curves.h"
-#include "BKE_duplilist.h"
+#include "BKE_duplilist.hh"
 #include "BKE_editmesh.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.h"
 #include "BKE_lattice.hh"
@@ -62,7 +62,7 @@
 #include "GPU_platform.h"
 #include "GPU_shader_shared.h"
 #include "GPU_state.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_uniform_buffer.hh"
 #include "GPU_viewport.h"
 
 #include "RE_engine.h"
@@ -979,7 +979,7 @@ void DRW_cache_free_old_batches(Main *bmain)
   using namespace blender::draw;
   Scene *scene;
   static int lasttime = 0;
-  int ctime = int(BLI_check_seconds_timer());
+  int ctime = int(BLI_time_now_seconds());
 
   if (U.vbotimeout == 0 || (ctime - lasttime) < U.vbocollectrate || ctime == lasttime) {
     return;
@@ -1067,7 +1067,7 @@ static void drw_engines_cache_populate(Object *ob)
 {
   DST.ob_handle = 0;
 
-  /* HACK: DrawData is copied by COW from the duplicated object.
+  /* HACK: DrawData is copied by copy-on-eval from the duplicated object.
    * This is valid for IDs that cannot be instantiated but this
    * is not what we want in this case so we clear the pointer
    * ourselves here. */
@@ -1472,7 +1472,7 @@ void DRW_draw_callbacks_post_scene()
     /* XXX: Or should we use a proper draw/overlay engine for this case? */
     if (do_annotations) {
       GPU_depth_test(GPU_DEPTH_NONE);
-      /* XXX: as `scene->gpd` is not copied for COW yet. */
+      /* XXX: as `scene->gpd` is not copied for copy-on-eval yet. */
       ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, region, true);
       GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
     }
@@ -1525,7 +1525,7 @@ void DRW_draw_callbacks_post_scene()
     /* XXX: Or should we use a proper draw/overlay engine for this case? */
     if (((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) && (do_annotations)) {
       GPU_depth_test(GPU_DEPTH_NONE);
-      /* XXX: as `scene->gpd` is not copied for COW yet */
+      /* XXX: as `scene->gpd` is not copied for copy-on-eval yet */
       ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, region, false);
     }
 
@@ -1548,7 +1548,7 @@ void DRW_draw_callbacks_post_scene()
   else {
     if (v3d && ((v3d->flag2 & V3D_SHOW_ANNOTATION) != 0)) {
       GPU_depth_test(GPU_DEPTH_NONE);
-      /* XXX: as `scene->gpd` is not copied for COW yet */
+      /* XXX: as `scene->gpd` is not copied for copy-on-eval yet */
       ED_annotation_draw_view3d(DEG_get_input_scene(depsgraph), depsgraph, v3d, region, true);
       GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
     }
@@ -2861,7 +2861,7 @@ void DRW_draw_depth_object(
 
   GPU_matrix_projection_set(rv3d->winmat);
   GPU_matrix_set(rv3d->viewmat);
-  GPU_matrix_mul(object->object_to_world);
+  GPU_matrix_mul(object->object_to_world().ptr());
 
   /* Setup frame-buffer. */
   GPUTexture *depth_tx = GPU_viewport_depth_texture(viewport);
@@ -2881,11 +2881,11 @@ void DRW_draw_depth_object(
   const bool use_clipping_planes = RV3D_CLIPPING_ENABLED(v3d, rv3d);
   if (use_clipping_planes) {
     GPU_clip_distances(6);
-    ED_view3d_clipping_local(rv3d, object->object_to_world);
+    ED_view3d_clipping_local(rv3d, object->object_to_world().ptr());
     for (int i = 0; i < 6; i++) {
       copy_v4_v4(planes.world[i], rv3d->clip_local[i]);
     }
-    copy_m4_m4(planes.ClipModelMatrix.ptr(), object->object_to_world);
+    copy_m4_m4(planes.ClipModelMatrix.ptr(), object->object_to_world().ptr());
   }
 
   drw_batch_cache_validate(object);
@@ -3057,7 +3057,7 @@ void DRW_engines_register()
   RE_engines_register(&DRW_engine_viewport_eevee_type);
   /* Always register EEVEE Next so it can be used in background mode with `--factory-startup`.
    * (Needed for tests). */
-  // RE_engines_register(&DRW_engine_viewport_eevee_next_type);
+  RE_engines_register(&DRW_engine_viewport_eevee_next_type);
 
   RE_engines_register(&DRW_engine_viewport_workbench_type);
 
