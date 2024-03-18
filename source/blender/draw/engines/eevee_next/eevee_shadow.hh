@@ -234,9 +234,11 @@ class ShadowModule {
   Framebuffer usage_tag_fb;
 
   PassSimple caster_update_ps_ = {"CasterUpdate"};
+  PassSimple jittered_transparent_caster_update_ps_ = {"TransparentCasterUpdate"};
   /** List of Resource IDs (to get bounds) for tagging passes. */
   StorageVectorBuffer<uint, 128> past_casters_updated_ = {"PastCastersUpdated"};
   StorageVectorBuffer<uint, 128> curr_casters_updated_ = {"CurrCastersUpdated"};
+  StorageVectorBuffer<uint, 128> jittered_transparent_casters_ = {"JitteredTransparentCasters"};
   /** List of Resource IDs (to get bounds) for getting minimum clip-maps bounds. */
   StorageVectorBuffer<uint, 128> curr_casters_ = {"CurrCasters"};
 
