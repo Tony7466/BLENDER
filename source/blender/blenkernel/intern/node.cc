@@ -724,7 +724,7 @@ static void remove_unsupported_sockets(ListBase *sockets, ListBase *links)
     }
 
     BLI_remlink(sockets, sock);
-    MEM_freeN(sock->runtime);
+    MEM_delete(sock->runtime);
     MEM_freeN(sock);
   }
 }
