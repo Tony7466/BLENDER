@@ -216,7 +216,7 @@ class ShadowModule {
   /* Used to call caster_update_ps_ only once per sync (Initialized on begin_sync). */
   bool update_casters_ = false;
 
-  bool jittered_transparency_;
+  bool jittered_transparency_ = false;
 
   /* -------------------------------------------------------------------- */
   /** \name Tile-map Management
