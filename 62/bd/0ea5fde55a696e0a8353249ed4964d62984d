@@ -1,1 +1,2 @@
 Referenced by issue #119617, Geometry Nodes: Crash when opening file
+Referenced by pull request #119620, Fix #119617: crash because node sockets depend on experimental feature flag
