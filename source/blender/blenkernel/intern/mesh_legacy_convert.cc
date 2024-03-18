@@ -2120,56 +2120,7 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
 
 namespace blender::bke {
 
-namespace node_equality {
-
-/** *Minimal* implementation of node equality to test for duplicate auto smooth node groups. */
-static bool nodes_equal(const bNode &node_a, const bNode &node_b)
-{
-  if (node_a.type != node_b.type) {
-    return false;
-  }
-  if (node_a.custom1 != node_b.custom1) {
-    return false;
-  }
-  if (node_a.custom2 != node_b.custom2) {
-    return false;
-  }
-  switch (node_a.type) {
-    case FN_NODE_COMPARE: {
-      const auto *a = static_cast<NodeFunctionCompare *>(node_a.storage);
-      const auto *b = static_cast<NodeFunctionCompare *>(node_a.storage);
-      if (memcmp(a, b, sizeof(NodeFunctionCompare)) != 0) {
-        return false;
-      }
-    }
-  }
-  const int inputs_num_a = BLI_listbase_count(&node_a.inputs);
-  const int inputs_num_b = BLI_listbase_count(&node_b.inputs);
-  if (inputs_num_a != inputs_num_b) {
-    return false;
-  }
-  const bNodeSocket *socket_a = static_cast<const bNodeSocket *>(node_a.inputs.first);
-  const bNodeSocket *socket_b = static_cast<const bNodeSocket *>(node_b.inputs.first);
-  for ([[maybe_unused]] const int i : IndexRange(inputs_num_a)) {
-    if (socket_a->type != socket_b->type) {
-      return false;
-    }
-    switch (socket_a->type) {
-      case SOCK_BOOLEAN: {
-        if (socket_a->default_value_typed<bNodeSocketValueBoolean>()->value !=
-            socket_b->default_value_typed<bNodeSocketValueBoolean>()->value)
-        {
-          return false;
-        }
-      }
-    }
-    socket_a = socket_a->next;
-    socket_b = socket_b->next;
-  }
-  return true;
-}
-
-static VectorSet<const bNodeSocket *> build_all_socket_set(const Span<const bNode *> nodes)
+static VectorSet<const bNodeSocket *> build_socket_indices(const Span<const bNode *> nodes)
 {
   VectorSet<const bNodeSocket *> result;
   for (const bNode *node : nodes) {
@@ -2182,76 +2133,6 @@ static VectorSet<const bNodeSocket *> build_all_socket_set(const Span<const bNod
   }
   return result;
 }
-
-static bool links_equal(const bNodeTree &tree_a, const bNodeTree &tree_b)
-{
-  const int links_num_a = BLI_listbase_count(&tree_a.links);
-  const int links_num_b = BLI_listbase_count(&tree_b.links);
-  if (links_num_a != links_num_b) {
-    return false;
-  }
-
-  const VectorSet<const bNodeSocket *> sockets_a = build_all_socket_set(tree_a.all_nodes());
-  const VectorSet<const bNodeSocket *> sockets_b = build_all_socket_set(tree_b.all_nodes());
-
-  const bNodeLink *link_a = static_cast<const bNodeLink *>(tree_a.links.first);
-  const bNodeLink *link_b = static_cast<const bNodeLink *>(tree_b.links.first);
-  for ([[maybe_unused]] const int i : IndexRange(links_num_a)) {
-    if ((link_a->flag & NODE_LINK_MUTED) != (link_b->flag & NODE_LINK_MUTED)) {
-      return false;
-    }
-    if (link_a->multi_input_socket_index != link_b->multi_input_socket_index) {
-      return false;
-    }
-    if (sockets_a.index_of(link_a->tosock) != sockets_b.index_of(link_b->tosock)) {
-      return false;
-    }
-    if (sockets_a.index_of(link_a->fromsock) != sockets_b.index_of(link_b->fromsock)) {
-      return false;
-    }
-    link_a = link_a->next;
-    link_b = link_b->next;
-  }
-
-  return true;
-}
-
-/**
- * *Minimal* implementation of node tree equality comparison required to test for duplicate auto
- * smooth node groups.
- */
-static bool node_trees_equal(const bNodeTree &tree_a, const bNodeTree &tree_b)
-{
-  if (tree_a.type != tree_b.type) {
-    return false;
-  }
-  const Span<const bNode *> nodes_a = tree_a.all_nodes();
-  const Span<const bNode *> nodes_b = tree_b.all_nodes();
-  if (nodes_a.size() != nodes_b.size()) {
-    return false;
-  }
-  if ((tree_a.geometry_node_asset_traits != nullptr) !=
-      (tree_b.geometry_node_asset_traits != nullptr))
-  {
-    return false;
-  }
-  if (tree_a.geometry_node_asset_traits) {
-    if (tree_a.geometry_node_asset_traits->flag != tree_b.geometry_node_asset_traits->flag) {
-      return false;
-    }
-  }
-  for (const int i : nodes_a.index_range()) {
-    if (!nodes_equal(*nodes_a[i], *nodes_b[i])) {
-      return false;
-    }
-  }
-  if (!links_equal(tree_a, tree_b)) {
-    return false;
-  }
-  return true;
-}
-
-}  // namespace node_equality
 
 static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
 {
@@ -2374,6 +2255,75 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
   return group;
 }
 
+static bool is_auto_smooth_node_tree(const bNodeTree &group)
+{
+  if (group.type != NTREE_GEOMETRY) {
+    return false;
+  }
+  const Span<const bNode *> nodes = group.all_nodes();
+  if (nodes.size() != 10) {
+    return false;
+  }
+  if (!group.geometry_node_asset_traits) {
+    return false;
+  }
+  if (group.geometry_node_asset_traits->flag != GEO_NODE_ASSET_MODIFIER) {
+    return false;
+  }
+  const std::array<StringRef, 10> idnames({"NodeGroupOutput",
+                                           "NodeGroupInput",
+                                           "NodeGroupInput",
+                                           "GeometryNodeSetShadeSmooth",
+                                           "GeometryNodeSetShadeSmooth",
+                                           "GeometryNodeInputMeshEdgeAngle",
+                                           "GeometryNodeInputEdgeSmooth",
+                                           "GeometryNodeInputShadeSmooth",
+                                           "FunctionNodeBooleanMath",
+                                           "FunctionNodeCompare"});
+  for (const int i : nodes.index_range()) {
+    if (nodes[i]->idname != idnames[i]) {
+      return false;
+    }
+  }
+  if (nodes[3]->custom1 != int16_t(bke::AttrDomain::Edge)) {
+    return false;
+  }
+  if (static_cast<bNodeSocket *>(nodes[4]->inputs.last)
+          ->default_value_typed<bNodeSocketValueBoolean>()
+          ->value != true)
+  {
+    return false;
+  }
+  if (nodes[4]->custom1 != int16_t(bke::AttrDomain::Face)) {
+    return false;
+  }
+  if (nodes[8]->custom1 != NODE_BOOLEAN_MATH_AND) {
+    return false;
+  }
+  if (static_cast<NodeFunctionCompare *>(nodes[9]->storage)->operation != NODE_COMPARE_LESS_EQUAL)
+  {
+    return false;
+  }
+  if (BLI_listbase_count(&group.links) != 9) {
+    return false;
+  }
+
+  const std::array<int, 9> link_from_socket_indices({16, 15, 3, 36, 19, 5, 18, 11, 22});
+  const std::array<int, 9> link_to_socket_indices({23, 0, 24, 20, 21, 8, 9, 12, 10});
+  const VectorSet<const bNodeSocket *> socket_indices = build_socket_indices(nodes);
+  int i;
+  LISTBASE_FOREACH_INDEX (const bNodeLink *, link, &group.links, i) {
+    if (socket_indices.index_of(link->fromsock) != link_from_socket_indices[i]) {
+      return false;
+    }
+    if (socket_indices.index_of(link->tosock) != link_to_socket_indices[i]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 static ModifierData *create_auto_smooth_modifier(
     Object &object,
     const FunctionRef<bNodeTree *(Library *library)> get_node_group,
@@ -2416,14 +2366,8 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     /* Find a matching node group by creating the node group and testing equality with all existing
      * node groups. Ideally we wouldn't add the new group to `bmain` first, but adding a local node
      * tree to #Main isn't trivial currently. */
-    bNodeTree *new_group = add_auto_smooth_node_tree(bmain);
     LISTBASE_FOREACH (bNodeTree *, existing_group, &bmain.nodetrees) {
-      if (existing_group == new_group) {
-        continue;
-      }
-      if (node_equality::node_trees_equal(*existing_group, *new_group)) {
-        new_group->id.us--;
-        BKE_id_delete(&bmain, new_group);
+      if (is_auto_smooth_node_tree(*existing_group)) {
         group_by_library.add_new(library, existing_group);
         return existing_group;
       }
