@@ -1369,6 +1369,7 @@ void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
   }
 
   inst_.hiz_buffer.update();
+  bool first_loop = true;
 
   do {
     DRW_stats_group_start("Shadow");
@@ -1382,7 +1383,9 @@ void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
          * test casters only against the static tilemaps instead of all of them. */
         inst_.manager->submit(caster_update_ps_, view);
       }
-      inst_.manager->submit(jittered_transparent_caster_update_ps_, view);
+      if (assign_if_different(first_loop, false)) {
+        inst_.manager->submit(jittered_transparent_caster_update_ps_, view);
+      }
       inst_.manager->submit(tilemap_usage_ps_, view);
       inst_.manager->submit(tilemap_update_ps_, view);
 
