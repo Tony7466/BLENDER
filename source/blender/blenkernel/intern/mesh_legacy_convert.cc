@@ -2335,7 +2335,7 @@ static ModifierData *create_auto_smooth_modifier(
   STRNCPY(md->modifier.name, DATA_("Auto Smooth"));
   BKE_modifier_unique_name(&object.modifiers, &md->modifier);
   md->node_group = get_node_group(object.id.lib);
-  md->node_group->id.us++;
+  id_us_plus(&md->node_group->id);
 
   md->settings.properties = idprop::create_group("Nodes Modifier Settings").release();
   IDProperty *angle_prop = idprop::create("Socket_1", angle).release();
@@ -2377,7 +2377,7 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
     }
     bNodeTree *new_group = add_auto_smooth_node_tree(bmain);
     /* Remove the default user. The count is tracked manually when assigning to modifiers. */
-    new_group->id.us--;
+    id_us_min(&new_group->id);
 
     if (new_group->id.lib != library) {
       /* Move the node group to the requested library so that library data-blocks don't point to
