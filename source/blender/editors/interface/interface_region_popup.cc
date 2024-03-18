@@ -576,6 +576,21 @@ static void ui_popup_block_remove(bContext *C, uiPopupBlockHandle *handle)
   }
 }
 
+void UI_layout_panel_popup_scroll_apply(Panel *panel, const float dy)
+{
+  if (!panel || dy == 0.0f) {
+    return;
+  }
+  for (LayoutPanelBody &body : panel->runtime->layout_panels.bodies) {
+    body.start_y += dy;
+    body.end_y += dy;
+  }
+  for (LayoutPanelHeader &headcer : panel->runtime->layout_panels.headers) {
+    headcer.start_y += dy;
+    headcer.end_y += dy;
+  }
+}
+
 uiBlock *ui_popup_block_refresh(bContext *C,
                                 uiPopupBlockHandle *handle,
                                 ARegion *butregion,
@@ -758,7 +773,14 @@ uiBlock *ui_popup_block_refresh(bContext *C,
     region->winrct.ymax = block->rect.ymax + UI_POPUP_MENU_TOP;
 
     UI_block_translate(block, -region->winrct.xmin, -region->winrct.ymin);
+    /** Popups can change size, fix scroll ofsset if a panel was closed. */
+    float ymin = FLT_MAX;
+    LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
+      ymin = min_ff(ymin, bt->rect.ymin);
+    }
 
+    handle->scrolloffset = std::clamp<float>(
+        handle->scrolloffset, 0.0f, std::max<float>(block->rect.ymin - ymin, 0.0f));
     /* apply scroll offset */
     if (handle->scrolloffset != 0.0f) {
       LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
@@ -767,6 +789,8 @@ uiBlock *ui_popup_block_refresh(bContext *C,
       }
     }
   }
+  /** Apply popup scroll offset to layout panels. */
+  UI_layout_panel_popup_scroll_apply(block->panel, handle->scrolloffset);
 
   if (block_old) {
     block->oldblock = block_old;
