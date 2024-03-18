@@ -264,8 +264,8 @@ struct FilmData {
   int2 offset;
   /** Size of the render buffers when rendering the main views, in pixels. */
   int2 render_extent;
-  /** Offset to convert from Film space to Render space, in pixels. */
-  int2 render_offset;
+  /** Extent of overscan inside the render_extent near each corner. */
+  int2 overscan_extent;
   /**
    * Sub-pixel offset applied to the window matrix.
    * NOTE: In final film pixel unit.
