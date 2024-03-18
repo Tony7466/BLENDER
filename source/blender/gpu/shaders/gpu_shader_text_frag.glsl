@@ -5,8 +5,6 @@
 #pragma BLENDER_REQUIRE(gpu_shader_colorspace_lib.glsl)
 
 // #define GPU_NEAREST
-#define sample_glyph_offset(texel, ofs) \
-  texture_1D_custom_bilinear_filter(texCoord_interp + ofs * texel)
 
 float texel_fetch(int index)
 {
@@ -22,10 +20,9 @@ bool is_inside_box(ivec2 v)
   return all(greaterThanEqual(v, ivec2(0))) && all(lessThan(v, glyph_dim));
 }
 
-float texture_1D_custom_bilinear_filter(vec2 uv)
+float texture_1D_custom_bilinear_filter(vec2 f, vec2 uv)
 {
-  vec2 texel_2d = uv * vec2(glyph_dim) + vec2(0.5);
-  ivec2 texel_2d_near = ivec2(texel_2d) - 1;
+  ivec2 texel_2d_near = ivec2(uv) - 1;
   int frag_offset = glyph_offset + texel_2d_near.y * glyph_dim.x + texel_2d_near.x;
 
   float tl = 0.0;
@@ -54,7 +51,6 @@ float texture_1D_custom_bilinear_filter(vec2 uv)
     br = texel_fetch(frag_offset + offset_x + offset_y);
   }
 
-  vec2 f = fract(texel_2d);
   float tA = mix(tl, tr, f.x);
   float tB = mix(bl, br, f.x);
 
@@ -64,7 +60,7 @@ float texture_1D_custom_bilinear_filter(vec2 uv)
 
 vec4 texture_1D_custom_bilinear_filter_color(vec2 uv)
 {
-  vec2 texel_2d = uv * vec2(glyph_dim) + 0.5;
+  vec2 texel_2d = uv + 0.5;
   ivec2 texel_2d_near = ivec2(texel_2d) - 1;
 
   int frag_offset = glyph_offset + ((texel_2d_near.y * glyph_dim.x * glyph_comp_len) +
@@ -86,8 +82,10 @@ vec4 texture_1D_custom_bilinear_filter_color(vec2 uv)
 
 void main()
 {
+  vec2 uv_base = texCoord_interp;
+
   if (glyph_comp_len == 4) {
-    fragColor.rgba = texture_1D_custom_bilinear_filter_color(texCoord_interp).rgba;
+    fragColor.rgba = texture_1D_custom_bilinear_filter_color(uv_base).rgba;
     return;
   }
 
@@ -96,67 +94,67 @@ void main()
 
   // modulate input alpha & texture alpha
   if (interp_size == 0) {
-    fragColor.a = texture_1D_custom_bilinear_filter(texCoord_interp);
+    uv_base += vec2(0.5);
+    vec2 bilin_f = fract(uv_base);
+    fragColor.a = texture_1D_custom_bilinear_filter(bilin_f, uv_base);
   }
   else {
-    vec2 texel = 1.0 / vec2(glyph_dim);
     fragColor.a = 0.0;
 
+    vec2 bilin_f = fract(uv_base);
     if (interp_size == 1) {
       /* NOTE(Metal): Declaring constant array in function scope to avoid increasing local shader
        * memory pressure. */
       const vec2 offsets4[4] = vec2[4](
-          vec2(-0.5, 0.5), vec2(0.5, 0.5), vec2(-0.5, -0.5), vec2(-0.5, -0.5));
+          vec2(0.0, 1.0), vec2(1.0, 1.0), vec2(0.0, 0.0), vec2(0.0, 0.0)); //@TODO: one of offsets is wrong, (1.0, 0.0) is missing
 
       /* 3x3 blur */
       /* Manual unroll for performance (stupid GLSL compiler). */
-      fragColor.a += sample_glyph_offset(texel, offsets4[0]);
-      fragColor.a += sample_glyph_offset(texel, offsets4[1]);
-      fragColor.a += sample_glyph_offset(texel, offsets4[2]);
-      fragColor.a += sample_glyph_offset(texel, offsets4[3]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets4[0]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets4[1]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets4[2]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets4[3]);
       fragColor.a *= (1.0 / 4.0);
     }
     else {
       /* NOTE(Metal): Declaring constant array in function scope to avoid increasing local shader
        * memory pressure. */
-      const vec2 offsets16[16] = vec2[16](vec2(-1.5, 1.5),
-                                          vec2(-0.5, 1.5),
-                                          vec2(0.5, 1.5),
-                                          vec2(1.5, 1.5),
-                                          vec2(-1.5, 0.5),
-                                          vec2(-0.5, 0.5),
-                                          vec2(0.5, 0.5),
-                                          vec2(1.5, 0.5),
-                                          vec2(-1.5, -0.5),
-                                          vec2(-0.5, -0.5),
-                                          vec2(0.5, -0.5),
-                                          vec2(1.5, -0.5),
-                                          vec2(-1.5, -1.5),
-                                          vec2(-0.5, -1.5),
-                                          vec2(0.5, -1.5),
-                                          vec2(1.5, -1.5));
+      const vec2 offsets16[16] = vec2[16](vec2(-1.0, 2.0),
+                                          vec2( 0.0, 2.0),
+                                          vec2( 1.0, 2.0),
+                                          vec2( 2.0, 2.0),
+                                          vec2(-1.0, 1.0),
+                                          vec2( 0.0, 1.0),
+                                          vec2( 1.0, 1.0),
+                                          vec2( 2.0, 1.0),
+                                          vec2(-1.0, 0.0),
+                                          vec2( 0.0, 0.0),
+                                          vec2( 1.0, 0.0),
+                                          vec2( 2.0, 0.0),
+                                          vec2(-1.0, -1.0),
+                                          vec2( 0.0, -1.0),
+                                          vec2( 1.0, -1.0),
+                                          vec2( 2.0, -1.0));
 
       /* 5x5 blur */
       /* Manual unroll for performance (stupid GLSL compiler). */
-      fragColor.a += sample_glyph_offset(texel, offsets16[0]);
-      fragColor.a += sample_glyph_offset(texel, offsets16[1]);
-      fragColor.a += sample_glyph_offset(texel, offsets16[2]);
-      fragColor.a += sample_glyph_offset(texel, offsets16[3]);
-
-      fragColor.a += sample_glyph_offset(texel, offsets16[4]);
-      fragColor.a += sample_glyph_offset(texel, offsets16[5]) * 2.0;
-      fragColor.a += sample_glyph_offset(texel, offsets16[6]) * 2.0;
-      fragColor.a += sample_glyph_offset(texel, offsets16[7]);
-
-      fragColor.a += sample_glyph_offset(texel, offsets16[8]);
-      fragColor.a += sample_glyph_offset(texel, offsets16[9]) * 2.0;
-      fragColor.a += sample_glyph_offset(texel, offsets16[10]) * 2.0;
-      fragColor.a += sample_glyph_offset(texel, offsets16[11]);
-
-      fragColor.a += sample_glyph_offset(texel, offsets16[12]);
-      fragColor.a += sample_glyph_offset(texel, offsets16[13]);
-      fragColor.a += sample_glyph_offset(texel, offsets16[14]);
-      fragColor.a += sample_glyph_offset(texel, offsets16[15]);
+      vec2 f = fract(uv_base);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[0]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[1]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[2]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[3]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[4]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[5]) * 2.0;
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[6]) * 2.0;
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[7]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[8]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[9]) * 2.0;
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[10]) * 2.0;
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[11]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[12]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[13]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[14]);
+      fragColor.a += texture_1D_custom_bilinear_filter(bilin_f, uv_base + offsets16[15]);
       fragColor.a *= (1.0 / 20.0);
     }
   }
