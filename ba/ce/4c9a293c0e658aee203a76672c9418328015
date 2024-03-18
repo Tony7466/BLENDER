@@ -1,3 +1,4 @@
 Referenced by commit 5463dd1f69dda3f4db362b3aeea01ee1199a8f46, Cleanup: Rename mesh extraction file
 Referenced by issue #118798, Regression: Weight Paint overlay not working
 Referenced by commit c3f1bacc80672892d17b41a10ed88ddec774146e, Fix #118798: Weight paint overlay broken
+Referenced by issue #119571, Weight Painting: vertex selection mode has no visual difference
