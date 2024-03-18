@@ -26,6 +26,8 @@ vec4 closure_to_rgba(Closure cl)
 
 void main()
 {
+  float f_depth = gl_FragCoord.z + fwidth(gl_FragCoord.z);
+
 #ifdef MAT_TRANSPARENT
   init_globals();
 
@@ -40,8 +42,6 @@ void main()
     return;
   }
 #endif
-
-  float f_depth = gl_FragCoord.z + fwidth(gl_FragCoord.z);
 
 #ifdef SHADOW_UPDATE_ATOMIC_RASTER
   ivec2 texel_co = ivec2(gl_FragCoord.xy);
