@@ -484,31 +484,29 @@ void BM_mesh_select_flush(BMesh *bm)
   bool ok;
 
   BM_ITER_MESH (e, &eiter, bm, BM_EDGES_OF_MESH) {
-    if (BM_elem_flag_test(e->v1, BM_ELEM_SELECT) && BM_elem_flag_test(e->v2, BM_ELEM_SELECT) &&
-        !BM_elem_flag_test(e, BM_ELEM_HIDDEN))
-    {
-      BM_elem_flag_enable(e, BM_ELEM_SELECT);
+    if (BM_elem_flag_test(e, BM_ELEM_SELECT) && !BM_elem_flag_test(e, BM_ELEM_HIDDEN)) {
+        BM_elem_flag_enable(e, BM_ELEM_SELECT);
     }
-  }
-  BM_ITER_MESH (f, &fiter, bm, BM_FACES_OF_MESH) {
+}
+BM_ITER_MESH (f, &fiter, bm, BM_FACES_OF_MESH) {
     ok = true;
     if (!BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
-      l_iter = l_first = BM_FACE_FIRST_LOOP(f);
-      do {
-        if (!BM_elem_flag_test(l_iter->v, BM_ELEM_SELECT)) {
-          ok = false;
-          break;
-        }
-      } while ((l_iter = l_iter->next) != l_first);
+        l_iter = l_first = BM_FACE_FIRST_LOOP(f);
+        do {
+            if (!BM_elem_flag_test(l_iter->e, BM_ELEM_SELECT)) {
+                ok = false;
+                break;
+            }
+        } while ((l_iter = l_iter->next) != l_first);
     }
     else {
-      ok = false;
+        ok = false;
     }
 
     if (ok) {
-      BM_elem_flag_enable(f, BM_ELEM_SELECT);
+        BM_elem_flag_enable(f, BM_ELEM_SELECT);
     }
-  }
+}
 
   recount_totsels(bm);
 }
