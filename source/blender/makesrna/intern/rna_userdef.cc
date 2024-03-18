@@ -532,9 +532,11 @@ static bUserExtensionRepo *rna_userdef_extension_repo_new(const char *name,
 
   if (remote_path) {
     STRNCPY(repo->remote_path, remote_path);
-    repo->flag |= USER_EXTENSION_REPO_FLAG_USE_REMOTE_PATH;
   }
 
+  if (repo->remote_path[0]) {
+    repo->flag |= USER_EXTENSION_REPO_FLAG_USE_REMOTE_PATH;
+  }
   if (repo->custom_dirpath[0]) {
     repo->flag |= USER_EXTENSION_REPO_FLAG_USE_CUSTOM_DIRECTORY;
   }
@@ -7187,6 +7189,11 @@ static void rna_def_userdef_experimental(BlenderRNA *brna)
                            "section of the preferences");
   RNA_def_property_boolean_funcs(
       prop, nullptr, "rna_PreferencesExperimental_use_extension_repos_set");
+
+  prop = RNA_def_property(srna, "use_extension_utils", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_ui_text(
+      prop, "Extensions Development Utilities", "Developer support utilities for extensions");
+  RNA_def_property_update(prop, 0, "rna_userdef_update");
 }
 
 static void rna_def_userdef_addon_collection(BlenderRNA *brna, PropertyRNA *cprop)
