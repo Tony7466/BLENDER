@@ -314,6 +314,8 @@ static void curves_batch_cache_ensure_edit_points_pos_and_data(
 {
   static GPUVertFormat format_pos = single_attr_vertbuffer_format(
       "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
+  /* GPU_COMP_U32 is used instead of GPU_COMP_U8 because depending on running hardware stride might
+   * still be 4. Thus adding complexity to the code and still sparing no memory. */
   static GPUVertFormat format_data = single_attr_vertbuffer_format(
       "data", GPU_COMP_U32, 1, GPU_FETCH_INT);
 
