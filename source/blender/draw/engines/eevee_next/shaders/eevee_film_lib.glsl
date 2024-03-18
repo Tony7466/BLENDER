@@ -56,7 +56,7 @@ FilmSample film_sample_get(int sample_n, ivec2 texel_film)
 
   FilmSample film_sample = uniform_buf.film.samples[sample_n];
   film_sample.texel += (texel_film + uniform_buf.film.offset) / scaling_factor +
-                       uniform_buf.film.overscan_extent;
+                       uniform_buf.film.overscan;
   /* Use extend on borders. */
   film_sample.texel = clamp(film_sample.texel, ivec2(0, 0), uniform_buf.film.render_extent - 1);
 
@@ -65,7 +65,7 @@ FilmSample film_sample_get(int sample_n, ivec2 texel_film)
   if (scaling_factor > 1) {
     /* We need to compute the real distance and weight since a sample
      * can be used by many final pixel. */
-    vec2 offset = (vec2(film_sample.texel - uniform_buf.film.overscan_extent) + 0.5 -
+    vec2 offset = (vec2(film_sample.texel - uniform_buf.film.overscan) + 0.5 -
                    uniform_buf.film.subpixel_offset) *
                       scaling_factor -
                   (vec2(texel_film + uniform_buf.film.offset) + 0.5);
