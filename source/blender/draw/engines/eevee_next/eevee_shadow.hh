@@ -213,6 +213,9 @@ class ShadowModule {
   /** Map of shadow casters to track deletion & update of intersected shadows. */
   Map<ObjectKey, ShadowObject> objects_;
 
+  /* Used to call caster_update_ps_ only once per sync (Initialized on begin_sync). */
+  bool update_casters_ = false;
+
   bool jittered_transparency_;
 
   /* -------------------------------------------------------------------- */
