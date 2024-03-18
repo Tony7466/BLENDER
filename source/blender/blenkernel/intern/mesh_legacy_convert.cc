@@ -2364,9 +2364,7 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
       /* Node tree has already been found/created for this versioning call. */
       return *group;
     }
-    /* Find a matching node group by creating the node group and testing equality with all existing
-     * node groups. Ideally we wouldn't add the new group to `bmain` first, but adding a local node
-     * tree to #Main isn't trivial currently. */
+    /* Try to find an existing group added by previous versioning to avoid adding duplicates. */
     LISTBASE_FOREACH (bNodeTree *, existing_group, &bmain.nodetrees) {
       if (existing_group->id.lib != library) {
         continue;
@@ -2377,7 +2375,7 @@ void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
       }
     }
     bNodeTree *new_group = add_auto_smooth_node_tree(bmain);
-    /* Remove the default user, the count is tracked manually when assigning to modifiers. */
+    /* Remove the default user. The count is tracked manually when assigning to modifiers. */
     new_group->id.us--;
 
     if (new_group->id.lib != library) {
