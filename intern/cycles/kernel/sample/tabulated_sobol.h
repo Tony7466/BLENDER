@@ -8,18 +8,27 @@
 
 CCL_NAMESPACE_BEGIN
 
-// Function to compute the shuffled sample index for Sobol sequence
-ccl_device_inline uint tabulated_sobol_shuffled_sample_index(KernelGlobals kg,
-                                                             uint sample,
-                                                             uint dimension,
-                                                             uint seed)
-{
-    const uint sample_count = kernel_data.integrator.tabulated_sobol_sequence_size;
-    const uint pattern_i = hash_shuffle_uint(dimension, NUM_TAB_SOBOL_PATTERNS, seed);
-    const uint sample_mask = sample_count - 1;
-    const uint sample_shuffled = nested_uniform_scramble(sample,
-                                                         hash_wang_seeded_uint(dimension, seed));
-    return ((pattern_i * sample_count) + sample_shuffled) & sample_mask;
+// Precomputed Sobol sequence table
+const int MAX_SAMPLES = 1000000;
+float precomputed_samples[MAX_SAMPLES][NUM_TAB_SOBOL_DIMENSIONS];
+
+// Function to precompute Sobol samples
+void precompute_sobol_samples() {
+    // Implement Sobol sequence generation and store in precomputed_samples array
+    // This can be done offline or during initialization
+}
+
+// Function to generate 1D sample using precomputed table
+ccl_device_inline float tabulated_sobol_sample_1D(uint sample_index) {
+    return precomputed_samples[sample_index % MAX_SAMPLES][0];
+}
+
+// Function to generate 2D sample using precomputed table
+ccl_device_inline float2 tabulated_sobol_sample_2D(uint sample_index) {
+    float2 sample;
+    sample.x = precomputed_samples[sample_index % MAX_SAMPLES][0];
+    sample.y = precomputed_samples[sample_index % MAX_SAMPLES][1];
+    return sample;
 }
 
 // Function to generate a 1D sample using tabulated Sobol sequence
@@ -68,6 +77,28 @@ ccl_device_inline float2 tabulated_sobol_sample_2D(KernelGlobals kg,
     }
 
     return make_float2(x, y);
+}
+
+// Parallelized function to generate samples
+void generate_samples_parallel(uint start_index, uint end_index, float* samples) {
+    #pragma omp parallel for
+    for (uint i = start_index; i < end_index; ++i) {
+        samples[i] = tabulated_sobol_sample_1D(i);
+    }
+}
+
+// Function to compute the shuffled sample index for Sobol sequence
+ccl_device_inline uint tabulated_sobol_shuffled_sample_index(KernelGlobals kg,
+                                                             uint sample,
+                                                             uint dimension,
+                                                             uint seed)
+{
+    const uint sample_count = kernel_data.integrator.tabulated_sobol_sequence_size;
+    const uint pattern_i = hash_shuffle_uint(dimension, NUM_TAB_SOBOL_PATTERNS, seed);
+    const uint sample_mask = sample_count - 1;
+    const uint sample_shuffled = nested_uniform_scramble(sample,
+                                                         hash_wang_seeded_uint(dimension, seed));
+    return ((pattern_i * sample_count) + sample_shuffled) & sample_mask;
 }
 
 // Function to generate a 3D sample using tabulated Sobol sequence
