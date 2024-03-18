@@ -12,8 +12,6 @@
 #include "BLI_sort.hh"
 #include "BLI_task.hh"
 
-#include "DNA_mesh_types.h"
-
 #include "GEO_reorder.hh"
 
 #include "NOD_rna_define.hh"

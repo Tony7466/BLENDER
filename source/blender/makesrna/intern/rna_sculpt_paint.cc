@@ -109,7 +109,7 @@ const EnumPropertyItem rna_enum_symmetrize_direction_items[] = {
 #ifdef RNA_RUNTIME
 #  include "MEM_guardedalloc.h"
 
-#  include "BKE_collection.h"
+#  include "BKE_collection.hh"
 #  include "BKE_context.hh"
 #  include "BKE_gpencil_legacy.h"
 #  include "BKE_object.hh"
@@ -180,7 +180,7 @@ static void rna_ParticleEdit_redo(bContext *C, PointerRNA * /*ptr*/)
 
   BKE_particle_batch_cache_dirty_tag(edit->psys, BKE_PARTICLE_BATCH_DIRTY_ALL);
   psys_free_path_cache(edit->psys, edit);
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 static void rna_ParticleEdit_update(bContext *C, PointerRNA * /*ptr*/)
@@ -195,7 +195,7 @@ static void rna_ParticleEdit_update(bContext *C, PointerRNA * /*ptr*/)
   }
 
   /* Sync tool setting changes from original to evaluated scenes. */
-  DEG_id_tag_update(&scene->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&scene->id, ID_RECALC_SYNC_TO_EVAL);
 }
 
 static void rna_ParticleEdit_tool_set(PointerRNA *ptr, int value)
@@ -1562,14 +1562,6 @@ static void rna_def_gpencil_guides(BlenderRNA *brna)
 
 static void rna_def_gpencil_sculpt(BlenderRNA *brna)
 {
-  static const EnumPropertyItem prop_direction_items[] = {
-      {0, "ADD", ICON_ADD, "Add", "Add effect of brush"},
-      {GP_SCULPT_FLAG_INVERT, "SUBTRACT", ICON_REMOVE, "Subtract", "Subtract effect of brush"},
-      {0, nullptr, 0, nullptr, nullptr},
-  };
-
-  UNUSED_VARS(prop_direction_items);
-
   StructRNA *srna;
   PropertyRNA *prop;
 

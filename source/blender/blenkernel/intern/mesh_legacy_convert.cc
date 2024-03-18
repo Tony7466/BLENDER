@@ -26,14 +26,13 @@
 #include "BLI_memarena.h"
 #include "BLI_multi_value_map.hh"
 #include "BLI_polyfill_2d.h"
-#include "BLI_resource_scope.hh"
 #include "BLI_string.h"
 #include "BLI_task.hh"
 #include "BLI_utildefines.h"
 
 #include "BKE_attribute.hh"
 #include "BKE_customdata.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_idprop.hh"
 #include "BKE_main.hh"
 #include "BKE_mesh.hh"
@@ -41,10 +40,9 @@
 #include "BKE_modifier.hh"
 #include "BKE_multires.hh"
 #include "BKE_node.hh"
-#include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 using blender::MutableSpan;
 using blender::Span;
@@ -1712,7 +1710,7 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
 
   for (const int i : uv_names.index_range()) {
     const MLoopUV *mloopuv = static_cast<const MLoopUV *>(
-        CustomData_get_layer_named(&mesh->corner_data, CD_MLOOPUV, uv_names[i].c_str()));
+        CustomData_get_layer_named(&mesh->corner_data, CD_MLOOPUV, uv_names[i]));
     const uint32_t needed_boolean_attributes = threading::parallel_reduce(
         IndexRange(mesh->corners_num),
         4096,
@@ -1763,13 +1761,13 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
       }
     });
 
-    CustomData_free_layer_named(&mesh->corner_data, uv_names[i].c_str(), mesh->corners_num);
+    CustomData_free_layer_named(&mesh->corner_data, uv_names[i], mesh->corners_num);
 
     const std::string new_name = BKE_id_attribute_calc_unique_name(mesh->id, uv_names[i].c_str());
     uv_names[i] = new_name;
 
     CustomData_add_layer_named_with_data(
-        &mesh->corner_data, CD_PROP_FLOAT2, coords, mesh->corners_num, new_name.c_str(), nullptr);
+        &mesh->corner_data, CD_PROP_FLOAT2, coords, mesh->corners_num, new_name, nullptr);
     char buffer[MAX_CUSTOMDATA_LAYER_NAME];
     if (vert_selection) {
       CustomData_add_layer_named_with_data(
@@ -1800,18 +1798,18 @@ void BKE_mesh_legacy_convert_uvs_to_generic(Mesh *mesh)
   }
 
   if (active_name_i != -1) {
-    CustomData_set_layer_active_index(
-        &mesh->corner_data,
-        CD_PROP_FLOAT2,
-        CustomData_get_named_layer_index(
-            &mesh->corner_data, CD_PROP_FLOAT2, uv_names[active_name_i].c_str()));
+    CustomData_set_layer_active_index(&mesh->corner_data,
+                                      CD_PROP_FLOAT2,
+                                      CustomData_get_named_layer_index(&mesh->corner_data,
+                                                                       CD_PROP_FLOAT2,
+                                                                       uv_names[active_name_i]));
   }
   if (default_name_i != -1) {
-    CustomData_set_layer_render_index(
-        &mesh->corner_data,
-        CD_PROP_FLOAT2,
-        CustomData_get_named_layer_index(
-            &mesh->corner_data, CD_PROP_FLOAT2, uv_names[default_name_i].c_str()));
+    CustomData_set_layer_render_index(&mesh->corner_data,
+                                      CD_PROP_FLOAT2,
+                                      CustomData_get_named_layer_index(&mesh->corner_data,
+                                                                       CD_PROP_FLOAT2,
+                                                                       uv_names[default_name_i]));
   }
 }
 
@@ -2117,9 +2115,10 @@ void BKE_mesh_legacy_convert_polys_to_offsets(Mesh *mesh)
 /** \name Auto Smooth Conversion
  * \{ */
 
+namespace blender::bke {
+
 static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
 {
-  using namespace blender;
   bNodeTree *group = ntreeAddTree(&bmain, DATA_("Auto Smooth"), "GeometryNodeTree");
   if (!group->geometry_node_asset_traits) {
     group->geometry_node_asset_traits = MEM_new<GeometryNodeAssetTraits>(__func__);
@@ -2237,56 +2236,100 @@ static bNodeTree *add_auto_smooth_node_tree(Main &bmain)
   return group;
 }
 
+static ModifierData *create_auto_smooth_modifier(Object &object,
+                                                 const FunctionRef<bNodeTree *()> get_node_group,
+                                                 const float angle)
+{
+  auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
+  STRNCPY(md->modifier.name, DATA_("Auto Smooth"));
+  BKE_modifier_unique_name(&object.modifiers, &md->modifier);
+  md->node_group = get_node_group();
+
+  md->settings.properties = idprop::create_group("Nodes Modifier Settings").release();
+  IDProperty *angle_prop = idprop::create("Socket_1", angle).release();
+  auto *ui_data = reinterpret_cast<IDPropertyUIDataFloat *>(IDP_ui_data_ensure(angle_prop));
+  ui_data->base.rna_subtype = PROP_ANGLE;
+  ui_data->soft_min = 0.0f;
+  ui_data->soft_max = DEG2RADF(180.0f);
+  IDP_AddToGroup(md->settings.properties, angle_prop);
+  IDP_AddToGroup(md->settings.properties, idprop::create("Socket_1_use_attribute", 0).release());
+  IDP_AddToGroup(md->settings.properties, idprop::create("Socket_1_attribute_name", "").release());
+
+  BKE_modifiers_persistent_uid_init(object, md->modifier);
+  return &md->modifier;
+}
+
+}  // namespace blender::bke
+
 void BKE_main_mesh_legacy_convert_auto_smooth(Main &bmain)
 {
-  using namespace blender;
-  bNodeTree *auto_smooth_node_tree = nullptr;
+  using namespace blender::bke;
+
+  /* Add the node group lazily and share it among all objects in the main database. */
+  bNodeTree *node_group = nullptr;
+  const auto add_node_group = [&]() {
+    node_group = add_auto_smooth_node_tree(bmain);
+    BKE_ntree_update_main_tree(&bmain, node_group, nullptr);
+    return node_group;
+  };
+
   LISTBASE_FOREACH (Object *, object, &bmain.objects) {
     if (object->type != OB_MESH) {
       continue;
     }
     Mesh *mesh = static_cast<Mesh *>(object->data);
+    const float angle = mesh->smoothresh_legacy;
     if (!(mesh->flag & ME_AUTOSMOOTH_LEGACY)) {
       continue;
     }
-    if (CustomData_has_layer(&mesh->corner_data, CD_CUSTOMLOOPNORMAL)) {
-      continue;
-    }
-    if (!auto_smooth_node_tree) {
-      auto_smooth_node_tree = add_auto_smooth_node_tree(bmain);
-      BKE_ntree_update_main_tree(&bmain, auto_smooth_node_tree, nullptr);
-    }
-    auto *md = reinterpret_cast<NodesModifierData *>(BKE_modifier_new(eModifierType_Nodes));
-    STRNCPY(md->modifier.name, DATA_("Auto Smooth"));
-    BKE_modifier_unique_name(&object->modifiers, &md->modifier);
-    md->node_group = auto_smooth_node_tree;
     mesh->flag &= ~ME_AUTOSMOOTH_LEGACY;
 
-    if (!BLI_listbase_is_empty(&object->modifiers) &&
-        static_cast<ModifierData *>(object->modifiers.last)->type == eModifierType_Subsurf)
+    /* Auto-smooth disabled sharp edge tagging when the evaluated mesh had custom normals.
+     * When the original mesh has custom normals, that's a good sign the evaluated mesh will
+     * have custom normals as well. */
+    bool has_custom_normals = CustomData_has_layer(&mesh->corner_data, CD_CUSTOMLOOPNORMAL);
+    if (has_custom_normals) {
+      continue;
+    }
+
+    /* The "Weighted Normal" modifier has a "Keep Sharp" option that used to recalculate the sharp
+     * edge tags based on the mesh's smoothing angle. To keep the same behavior, a new modifier has
+     * to be added before that modifier when the option is on. */
+    LISTBASE_FOREACH (ModifierData *, md, &object->modifiers) {
+      if (ELEM(md->type, eModifierType_WeightedNormal, eModifierType_NormalEdit)) {
+        has_custom_normals = true;
+      }
+      if (md->type == eModifierType_WeightedNormal) {
+        WeightedNormalModifierData *nmd = reinterpret_cast<WeightedNormalModifierData *>(md);
+        if ((nmd->flag & MOD_WEIGHTEDNORMAL_KEEP_SHARP) != 0) {
+          ModifierData *new_md = create_auto_smooth_modifier(*object, add_node_group, angle);
+          BLI_insertlinkbefore(&object->modifiers, object->modifiers.last, new_md);
+        }
+      }
+    }
+
+    /* Some modifiers always generate custom normals which disabled sharp edge tagging, making
+     * adding a modifier at the end unnecessary. Conceptually this is similar to checking if the
+     * evaluated mesh had custom normals. */
+    ModifierData *last_md = static_cast<ModifierData *>(object->modifiers.last);
+    if (last_md) {
+      if (ELEM(last_md->type, eModifierType_WeightedNormal, eModifierType_NormalEdit)) {
+        continue;
+      }
+    }
+
+    ModifierData *new_md = create_auto_smooth_modifier(*object, add_node_group, angle);
+    if (last_md && last_md->type == eModifierType_Subsurf && has_custom_normals &&
+        (reinterpret_cast<SubsurfModifierData *>(last_md)->flags &
+         eSubsurfModifierFlag_UseCustomNormals) != 0)
     {
       /* Add the auto smooth node group before the last subdivision surface modifier if possible.
-       * Subdivision surface modifiers have special handling for interpolating face corner normals,
-       * and recalculating them afterwards isn't usually helpful and can be much slower. */
-      BLI_insertlinkbefore(&object->modifiers, object->modifiers.last, md);
+       * Subdivision surface modifiers have special handling for interpolating custom normals. */
+      BLI_insertlinkbefore(&object->modifiers, object->modifiers.last, new_md);
     }
     else {
-      BLI_addtail(&object->modifiers, md);
+      BLI_addtail(&object->modifiers, new_md);
     }
-    BKE_modifiers_persistent_uid_init(*object, md->modifier);
-
-    md->settings.properties = bke::idprop::create_group("Nodes Modifier Settings").release();
-    IDProperty *angle_prop =
-        bke::idprop::create(DATA_("Socket_1"), mesh->smoothresh_legacy).release();
-    auto *ui_data = reinterpret_cast<IDPropertyUIDataFloat *>(IDP_ui_data_ensure(angle_prop));
-    ui_data->base.rna_subtype = PROP_ANGLE;
-    ui_data->soft_min = 0.0f;
-    ui_data->soft_max = DEG2RADF(180.0f);
-    IDP_AddToGroup(md->settings.properties, angle_prop);
-    IDP_AddToGroup(md->settings.properties,
-                   bke::idprop::create(DATA_("Input_1_use_attribute"), 0).release());
-    IDP_AddToGroup(md->settings.properties,
-                   bke::idprop::create(DATA_("Input_1_attribute_name"), "").release());
   }
 }
 

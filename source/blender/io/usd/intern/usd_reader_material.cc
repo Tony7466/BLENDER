@@ -13,7 +13,7 @@
 #include "BKE_material.h"
 #include "BKE_node.hh"
 #include "BKE_node_tree_update.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "BLI_fileops.h"
 #include "BLI_map.hh"
@@ -23,8 +23,6 @@
 #include "BLI_vector.hh"
 
 #include "DNA_material_types.h"
-
-#include "WM_api.hh"
 
 #include <pxr/base/gf/vec3f.h>
 #include <pxr/usd/ar/packageUtils.h>
@@ -74,6 +72,7 @@ static const pxr::TfToken RAW("RAW", pxr::TfToken::Immortal);
 static const pxr::TfToken black("black", pxr::TfToken::Immortal);
 static const pxr::TfToken clamp("clamp", pxr::TfToken::Immortal);
 static const pxr::TfToken repeat("repeat", pxr::TfToken::Immortal);
+static const pxr::TfToken mirror("mirror", pxr::TfToken::Immortal);
 static const pxr::TfToken wrapS("wrapS", pxr::TfToken::Immortal);
 static const pxr::TfToken wrapT("wrapT", pxr::TfToken::Immortal);
 
@@ -330,6 +329,10 @@ static int get_image_extension(const pxr::UsdShadeShader &usd_shader, const int 
 
   if (wrap_val == usdtokens::black) {
     return SHD_IMAGE_EXTENSION_CLIP;
+  }
+
+  if (wrap_val == usdtokens::mirror) {
+    return SHD_IMAGE_EXTENSION_MIRROR;
   }
 
   return default_value;

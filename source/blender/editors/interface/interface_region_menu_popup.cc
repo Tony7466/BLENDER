@@ -18,7 +18,6 @@
 
 #include "DNA_userdef_types.h"
 
-#include "BLI_ghash.h"
 #include "BLI_hash.hh"
 #include "BLI_listbase.h"
 #include "BLI_math_vector.h"
@@ -27,7 +26,7 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_screen.hh"
 
 #include "WM_api.hh"
@@ -37,7 +36,7 @@
 
 #include "UI_interface.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "ED_screen.hh"
 
@@ -449,25 +448,12 @@ static void create_title_button(uiLayout *layout, const char *title, int icon)
 
   if (icon) {
     SNPRINTF(titlestr, " %s", title);
-    uiDefIconTextBut(block,
-                     UI_BTYPE_LABEL,
-                     0,
-                     icon,
-                     titlestr,
-                     0,
-                     0,
-                     200,
-                     UI_UNIT_Y,
-                     nullptr,
-                     0.0,
-                     0.0,
-                     0,
-                     0,
-                     "");
+    uiDefIconTextBut(
+        block, UI_BTYPE_LABEL, 0, icon, titlestr, 0, 0, 200, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
   }
   else {
     uiBut *but = uiDefBut(
-        block, UI_BTYPE_LABEL, 0, title, 0, 0, 200, UI_UNIT_Y, nullptr, 0.0, 0.0, 0, 0, "");
+        block, UI_BTYPE_LABEL, 0, title, 0, 0, 200, UI_UNIT_Y, nullptr, 0.0, 0.0, "");
     but->drawflag = UI_BUT_TEXT_LEFT;
   }
 
