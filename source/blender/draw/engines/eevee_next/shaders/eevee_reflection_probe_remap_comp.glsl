@@ -8,7 +8,8 @@
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_spherical_harmonics_lib.glsl)
 
-shared vec4 local_sh_coefs[(gl_WorkGroupSize.x * gl_WorkGroupSize.y) / 2][4];
+shared vec4 local_radiance[gl_WorkGroupSize.x * gl_WorkGroupSize.y];
+shared vec4 local_direction[gl_WorkGroupSize.x * gl_WorkGroupSize.y];
 
 float triangle_solid_angle(vec3 A, vec3 B, vec3 C)
 {
@@ -99,56 +100,46 @@ void main()
   if (extract_sh) {
     float sample_weight = octahedral_texel_solid_angle(local_texel, write_coord, sample_coord);
 
-    /* Convert radiance to spherical harmonics. */
-    SphericalHarmonicL1 sh;
-    sh.L0.M0 = vec4(0.0);
-    sh.L1.Mn1 = vec4(0.0);
-    sh.L1.M0 = vec4(0.0);
-    sh.L1.Mp1 = vec4(0.0);
-
-    vec3 L = normalize(direction);
-    /* TODO(fclem): Cleanup: Should spherical_harmonics_encode_signal_sample return a new sh
-     * instead of adding to it? */
-    spherical_harmonics_encode_signal_sample(L, vec4(radiance, 1.0) * sample_weight, sh);
-
     const uint local_index = gl_LocalInvocationIndex;
     const uint group_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
 
-    /* Sum half of the data into LDS first to reduce LDS size. */
-    if (local_index >= group_size / 2) {
-      local_sh_coefs[local_index - (group_size / 2)][0] = sh.L0.M0;
-      local_sh_coefs[local_index - (group_size / 2)][1] = sh.L1.Mn1;
-      local_sh_coefs[local_index - (group_size / 2)][2] = sh.L1.M0;
-      local_sh_coefs[local_index - (group_size / 2)][3] = sh.L1.Mp1;
-    }
-    barrier();
-    if (local_index < group_size / 2) {
-      local_sh_coefs[local_index][0] += sh.L0.M0;
-      local_sh_coefs[local_index][1] += sh.L1.Mn1;
-      local_sh_coefs[local_index][2] += sh.L1.M0;
-      local_sh_coefs[local_index][3] += sh.L1.Mp1;
-    }
-
-    /* Parallel sum. */
+    /* Parallel sum. Result is stored inside local_radiance[0]. */
+    local_radiance[local_index] = radiance.xyzz * sample_weight;
+    local_direction[local_index] = normalize(direction.xyzz) * sample_weight;
     for (uint stride = group_size / 4; stride > 0; stride /= 2) {
       barrier();
       if (local_index < stride) {
-        for (int i = 0; i < 4; i++) {
-          local_sh_coefs[local_index][i] += local_sh_coefs[local_index + stride][i];
-        }
+        local_radiance[local_index] += local_radiance[local_index + stride];
       }
     }
 
     barrier();
     if (gl_LocalInvocationIndex == 0u) {
-      SphereProbeHarmonic sphere_probe_sh;
-      sphere_probe_sh.L0_M0 = local_sh_coefs[0][0];
-      sphere_probe_sh.L1_Mn1 = local_sh_coefs[0][1];
-      sphere_probe_sh.L1_M0 = local_sh_coefs[0][2];
-      sphere_probe_sh.L1_Mp1 = local_sh_coefs[0][3];
-
+#if 0
+      /* Find the middle point of the whole thread-group. Use it as light vector. */
+      ivec2 max_group_texel = local_texel + ivec2(gl_WorkGroupSize.xy);
+      /* Min direction is the local direction since this is only ran by thread 0. */
+      vec3 min_direction = normalize(direction);
+      vec3 max_direction = normalize(
+          sphere_probe_texel_to_direction(max_group_texel, write_coord, sample_coord));
+      vec3 L = normalize(min_direction + max_direction);
+#endif
+      /* Convert radiance to spherical harmonics. */
+      SphericalHarmonicL1 sh;
+      sh.L0.M0 = vec4(0.0);
+      sh.L1.Mn1 = vec4(0.0);
+      sh.L1.M0 = vec4(0.0);
+      sh.L1.Mp1 = vec4(0.0);
+      /* TODO(fclem): Cleanup: Should spherical_harmonics_encode_signal_sample return a new sh
+       * instead of adding to it? */
+      vec3 L = normalize(local_direction[0].xyz);
+      spherical_harmonics_encode_signal_sample(L, local_radiance[0], sh);
+      /* Outputs one SH for each threadgroup. */
       uint work_group_index = gl_NumWorkGroups.x * gl_WorkGroupID.y + gl_WorkGroupID.x;
-      out_sh[work_group_index] = sphere_probe_sh;
+      out_sh[work_group_index].L0_M0 = sh.L0.M0;
+      out_sh[work_group_index].L1_Mn1 = sh.L1.Mn1;
+      out_sh[work_group_index].L1_M0 = sh.L1.M0;
+      out_sh[work_group_index].L1_Mp1 = sh.L1.Mp1;
     }
   }
 }
