@@ -39,6 +39,8 @@
 
 struct GBufferData {
   ClosureUndetermined closure[GBUFFER_LAYER_MAX];
+  /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
+  packed_float3 surface_N;
   /* Additional object information if any closure needs it. */
   float thickness;
   uint object_id;

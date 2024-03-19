@@ -106,6 +106,7 @@ struct ClosureLight {
   bool subsurface;
 };
 
+ClosureLight closure_light_new(ClosureUndetermined cl, vec3 V)
 {
   ClosureLight cl_light;
   cl_light.N = cl.N;
