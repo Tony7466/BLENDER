@@ -60,8 +60,8 @@ NodeHandle VKRenderGraphNodes::add_copy_buffer_node(VkBuffer src_buffer,
 }
 
 NodeHandle VKRenderGraphNodes::add_copy_image_node(VkImage src_image,
-                                                    VkImage dst_image,
-                                                    const VkImageCopy &region)
+                                                   VkImage dst_image,
+                                                   const VkImageCopy &region)
 {
   NodeHandle handle = allocate();
   Node &node = nodes_.get(handle);
@@ -89,21 +89,25 @@ NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_
 
 void VKRenderGraphNodes::add_read_resource(NodeHandle handle,
                                            VersionedResource resource_handle,
-                                           VkAccessFlags vk_access_flags)
+                                           VkAccessFlags vk_access_flags,
+                                           VkImageLayout vk_image_layout)
 {
   ResourceUsage usage = {};
   usage.resource = resource_handle;
   usage.vk_access_flags = vk_access_flags;
+  usage.vk_image_layout = vk_image_layout;
   read_resources_per_node_[handle].resources.append(usage);
 }
 
 void VKRenderGraphNodes::add_write_resource(NodeHandle handle,
                                             VersionedResource resource_handle,
-                                            VkAccessFlags vk_access_flags)
+                                            VkAccessFlags vk_access_flags,
+                                            VkImageLayout vk_image_layout)
 {
   ResourceUsage usage = {};
   usage.resource = resource_handle;
   usage.vk_access_flags = vk_access_flags;
+  usage.vk_image_layout = vk_image_layout;
   write_resources_per_node_[handle].resources.append(usage);
 }
 

@@ -185,7 +185,6 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                    uint32_t region_count,
                    const VkBufferCopy *p_regions) override
   {
-    UNUSED_VARS(src_buffer, dst_buffer, region_count, p_regions);
     BLI_assert_msg(is_recording_,
                    "Command is added to command buffer, which isn't in recording state.");
     std::stringstream ss;
@@ -207,10 +206,20 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                   uint32_t region_count,
                   const VkImageCopy *p_regions) override
   {
-    UNUSED_VARS(src_image, src_image_layout, dst_image, dst_image_layout, region_count, p_regions);
     BLI_assert_msg(is_recording_,
                    "Command is added to command buffer, which isn't in recording state.");
-    BLI_assert_unreachable();
+    std::stringstream ss;
+    ss << "copy_image(";
+    ss << "src_image=" << src_image;
+    ss << ", src_image_layout=" << to_string(src_image_layout);
+    ss << ", dst_image=" << dst_image;
+    ss << ", dst_image_layout=" << to_string(dst_image_layout);
+    ss << "\n";
+    for (const VkImageCopy &region : Span<const VkImageCopy>(p_regions, region_count)) {
+      ss << " - region(" << to_string(region, 1) << ")\n";
+    }
+    ss << ")";
+    log_.append(ss.str());
   }
 
   void blit_image(VkImage src_image,

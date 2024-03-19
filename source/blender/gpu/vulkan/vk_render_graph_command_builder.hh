@@ -17,16 +17,15 @@ class VKRenderGraph;
 class VKRenderGraphCommandBuilder {
  private:
   Vector<NodeHandle> selected_nodes_;
-  Vector<VkImageLayout> image_layouts_;
-
-  // TODO: make a struct containing accesses / stages as they are often used at the same time.
-  Vector<VkAccessFlags> write_access_;
-  Vector<VkAccessFlags> read_access_;
-  Vector<VkPipelineStageFlags> write_stages_;
-  Vector<VkPipelineStageFlags> read_stages_;
+  /**
+   * Current state of each resource during command building. It will also keep track of
+   * states/image layouts between submissions.
+   */
+  Vector<VKResourceBarrierState> resource_states_;
 
   /* Pool of VKBufferMemoryBarriers that can be reused when building barriers */
   Vector<VkBufferMemoryBarrier> vk_buffer_memory_barriers_;
+  Vector<VkImageMemoryBarrier> vk_image_memory_barriers_;
 
   VkPipeline active_compute_pipeline_ = VK_NULL_HANDLE;
   VkDescriptorSet active_compute_descriptor_set_ = VK_NULL_HANDLE;
@@ -62,15 +61,17 @@ class VKRenderGraphCommandBuilder {
    * Remove a buffer or image resource from the command builder internals.
    *
    * Internally the command buffer keeps track of resource states. When a resource is deleted it
-   * needs to be removed from the tracked state. New resources can reuse the same resource handle.
-   * This cannot be detected at the moment the internals are reset, so this needs to be done when
-   * the old resource is removed.
+   * needs to be removed from the tracked state. New resources can reuse the same resource
+   * handle. This cannot be detected at the moment the internals are reset, so this needs to be
+   * done when the old resource is removed.
    */
   void remove_resource(ResourceHandle handle);
 
   /**
-   * Ensure that the vk_image_layout is the given layout. If not it adds a transition to ensure the
-   * given layout.
+   * Ensure that the vk_image_layout is the given layout. If not it adds a transition to ensure
+   * the given layout.
+   *
+   * NOTE: Should only be needed to ensure the swap chain images can be presented.
    */
   void ensure_image_layout(VKRenderGraph &render_graph,
                            VkImage vk_image,
@@ -98,6 +99,7 @@ class VKRenderGraphCommandBuilder {
 
   void reset_barriers();
   void send_pipeline_barriers(VKRenderGraph &render_graph);
+
   void add_buffer_barriers(VKRenderGraph &render_graph,
                            NodeHandle node_handle,
                            VkPipelineStageFlags node_stages);
@@ -110,6 +112,21 @@ class VKRenderGraphCommandBuilder {
   void add_buffer_write_barriers(VKRenderGraph &render_graph,
                                  NodeHandle node_handle,
                                  VkPipelineStageFlags node_stages);
+
+  void add_image_barriers(VKRenderGraph &render_graph,
+                          NodeHandle node_handle,
+                          VkPipelineStageFlags node_stages);
+  void add_image_barrier(VkImage vk_image,
+                         VkAccessFlags src_access_mask,
+                         VkAccessFlags dst_access_mask,
+                         VkImageLayout old_image_layout,
+                         VkImageLayout new_image_layout);
+  void add_image_read_barriers(VKRenderGraph &render_graph,
+                               NodeHandle node_handle,
+                               VkPipelineStageFlags node_stages);
+  void add_image_write_barriers(VKRenderGraph &render_graph,
+                                NodeHandle node_handle,
+                                VkPipelineStageFlags node_stages);
 };
 
 }  // namespace blender::gpu

@@ -12,6 +12,25 @@
 
 namespace blender::gpu {
 
+/**
+ * State of a resource for pipeline barrier building.
+ *
+ * NOTE: write_access_ and read_access_ are mutual exclusive. Only one can be filled at a time.
+ * NOTE: write_stages_ and read_stages_ are mutual exclusive. Only one can be filled at a time.
+ */
+struct VKResourceBarrierState {
+  /* How was the resource accessed when last written to. */
+  VkAccessFlags write_access = VK_ACCESS_NONE;
+  /* How is the resource currently been read from. */
+  VkAccessFlags read_access = VK_ACCESS_NONE;
+  /* Pipeline stage that created wrote last to the resource. */
+  VkPipelineStageFlags write_stages = VK_PIPELINE_STAGE_NONE;
+  /* Pipeline stage that is currently reading from the resource. */
+  VkPipelineStageFlags read_stages = VK_PIPELINE_STAGE_NONE;
+  /* Current image layout of the image resource. */
+  VkImageLayout image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+};
+
 struct VKDescriptorSetData {
   VkPipelineLayout vk_pipeline_layout;
   VkDescriptorSet vk_descriptor_set;

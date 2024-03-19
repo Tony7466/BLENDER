@@ -74,6 +74,11 @@ class VKRenderGraphNodes {
      * How is the resource being accessed.
      */
     VkAccessFlags vk_access_flags;
+
+    /**
+     * When resource is an image, which layout should the image be using.
+     */
+    VkImageLayout vk_image_layout;
   };
 
   struct NodeResources {
@@ -98,10 +103,12 @@ class VKRenderGraphNodes {
 
   void add_read_resource(NodeHandle handle,
                          VersionedResource resource_handle,
-                         VkAccessFlags vk_access_flags);
+                         VkAccessFlags vk_access_flags,
+                         VkImageLayout vk_image_layout);
   void add_write_resource(NodeHandle handle,
                           VersionedResource resource_handle,
-                          VkAccessFlags vk_access_flags);
+                          VkAccessFlags vk_access_flags,
+                          VkImageLayout vk_image_layout);
 
   void remove_nodes(Span<NodeHandle> node_handles);
 

@@ -18,24 +18,9 @@ void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
   // Reset access_masks, keep last known access masks around.
   // NOTE: Access masks should be resetted when resources are removed. Handles can be reused and
   // that isn't take into account.
-  if (read_access_.size() < resource_len) {
-    read_access_.resize(resource_len, VK_ACCESS_NONE);
+  if (resource_states_.size() < resource_len) {
+    resource_states_.resize(resource_len);
   }
-  if (write_access_.size() < resource_len) {
-    write_access_.resize(resource_len, VK_ACCESS_NONE);
-  }
-  if (read_stages_.size() < resource_len) {
-    read_stages_.resize(resource_len, VK_PIPELINE_STAGE_NONE);
-  }
-  if (write_stages_.size() < resource_len) {
-    write_stages_.resize(resource_len, VK_PIPELINE_STAGE_NONE);
-  }
-
-  // Reset image_layouts
-  if (image_layouts_.size() < resource_len) {
-    image_layouts_.resize(resource_len);
-  }
-  image_layouts_.fill(VK_IMAGE_LAYOUT_UNDEFINED);
 
   /* Swap chain images layouts needs to be reset, otherwise the last one will be used and that
    * might not be the correct one. For application owned resources should be undefined by default
@@ -45,7 +30,7 @@ void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
     VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
         image_handle);
     if (resource.owner == ResourceOwner::SWAP_CHAIN) {
-      image_layouts_[image_handle] = resource.vk_image_layout;
+      resource_states_[image_handle].image_layout = resource.vk_image_layout;
     }
   }
 
@@ -56,20 +41,8 @@ void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
 
 void VKRenderGraphCommandBuilder::remove_resource(ResourceHandle handle)
 {
-  if (read_access_.size() >= handle) {
-    read_access_[handle] = VK_ACCESS_NONE;
-  }
-  if (write_access_.size() >= handle) {
-    write_access_[handle] = VK_ACCESS_NONE;
-  }
-  if (read_stages_.size() >= handle) {
-    read_stages_[handle] = VK_PIPELINE_STAGE_NONE;
-  }
-  if (write_stages_.size() >= handle) {
-    write_stages_[handle] = VK_PIPELINE_STAGE_NONE;
-  }
-  if (image_layouts_.size() >= handle) {
-    image_layouts_[handle] = VK_IMAGE_LAYOUT_UNDEFINED;
+  if (resource_states_.size() >= handle) {
+    resource_states_[handle] = {};
   }
 }
 
@@ -185,13 +158,13 @@ void VKRenderGraphCommandBuilder::build_node_copy_buffer(VKRenderGraph &render_g
 }
 
 void VKRenderGraphCommandBuilder::build_node_copy_image(VKRenderGraph &render_graph,
-                                                        NodeHandle /*node_handle*/,
+                                                        NodeHandle node_handle,
                                                         const VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::COPY_IMAGE);
-  // Still need to add image layout transitions and barriers.
+
   reset_barriers();
-  BLI_assert_unreachable();
+  add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
   send_pipeline_barriers(render_graph);
 
   render_graph.command_buffer_->copy_image(node.copy_image.src_image,
@@ -240,15 +213,15 @@ void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_grap
                                                       VkImageLayout vk_image_layout)
 {
   ResourceHandle image_handle = render_graph.resources_.get_image_handle(vk_image);
-  VkImageLayout current_layout = image_layouts_[image_handle];
-  if (current_layout == vk_image_layout) {
+  VKResourceBarrierState &resource_state = resource_states_[image_handle];
+  if (resource_state.image_layout == vk_image_layout) {
     return;
   }
 
   // Create and record barrier. (note is incomplete)
   VkImageMemoryBarrier image_memory_barrier = {};
   image_memory_barrier.image = vk_image;
-  image_memory_barrier.oldLayout = current_layout;
+  image_memory_barrier.oldLayout = resource_state.image_layout;
   image_memory_barrier.newLayout = vk_image_layout;
   // TODO: should get the src stage flags from usage
   render_graph.command_buffer_->pipeline_barrier(VK_PIPELINE_STAGE_NONE_KHR,
@@ -261,7 +234,7 @@ void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_grap
                                                  1,
                                                  &image_memory_barrier);
 
-  image_layouts_[image_handle] = vk_image_layout;
+  resource_state.image_layout = vk_image_layout;
 }
 
 /* -------------------------------------------------------------------- */
@@ -271,14 +244,15 @@ void VKRenderGraphCommandBuilder::ensure_image_layout(VKRenderGraph &render_grap
 void VKRenderGraphCommandBuilder::reset_barriers()
 {
   vk_buffer_memory_barriers_.clear();
+  vk_image_memory_barriers_.clear();
   src_stage_mask_ = VK_PIPELINE_STAGE_NONE;
   dst_stage_mask_ = VK_PIPELINE_STAGE_NONE;
 }
 
 void VKRenderGraphCommandBuilder::send_pipeline_barriers(VKRenderGraph &render_graph)
 {
-  if (vk_buffer_memory_barriers_.is_empty() || src_stage_mask_ == VK_PIPELINE_STAGE_NONE ||
-      dst_stage_mask_ == VK_PIPELINE_STAGE_NONE)
+  if ((vk_image_memory_barriers_.is_empty() && vk_buffer_memory_barriers_.is_empty()) ||
+      src_stage_mask_ == VK_PIPELINE_STAGE_NONE || dst_stage_mask_ == VK_PIPELINE_STAGE_NONE)
   {
     reset_barriers();
     return;
@@ -291,8 +265,8 @@ void VKRenderGraphCommandBuilder::send_pipeline_barriers(VKRenderGraph &render_g
                                                  nullptr,
                                                  vk_buffer_memory_barriers_.size(),
                                                  vk_buffer_memory_barriers_.data(),
-                                                 0,
-                                                 nullptr);
+                                                 vk_image_memory_barriers_.size(),
+                                                 vk_image_memory_barriers_.data());
   reset_barriers();
 }
 
@@ -314,9 +288,15 @@ void VKRenderGraphCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render
     const VersionedResource &versioned_resource = usage.resource;
     const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
         versioned_resource.handle);
+    if (resource.vk_buffer == VK_NULL_HANDLE) {
+      /* Ignore image resources. */
+      continue;
+    }
+    VKResourceBarrierState &resource_state = resource_states_[versioned_resource.handle];
     // If resource version has not be read, no barrier needs to be added.
-    VkAccessFlags read_access = read_access_[versioned_resource.handle];
-    VkAccessFlags write_access = write_access_[versioned_resource.handle];
+
+    VkAccessFlags read_access = resource_state.read_access;
+    VkAccessFlags write_access = resource_state.write_access;
     VkAccessFlags wait_access = VK_ACCESS_NONE;
 
     if (read_access == (read_access | usage.vk_access_flags)) {
@@ -327,13 +307,13 @@ void VKRenderGraphCommandBuilder::add_buffer_read_barriers(VKRenderGraph &render
 
     read_access |= usage.vk_access_flags;
     wait_access |= write_access;
-    src_stage_mask_ |= write_stages_[versioned_resource.handle];
+    src_stage_mask_ |= resource_state.write_stages;
     dst_stage_mask_ |= node_stages;
 
-    read_access_[versioned_resource.handle] = read_access;
-    write_access_[versioned_resource.handle] = VK_ACCESS_NONE;
-    read_stages_[versioned_resource.handle] |= node_stages;
-    write_stages_[versioned_resource.handle] = VK_PIPELINE_STAGE_NONE;
+    resource_state.read_access = read_access;
+    resource_state.write_access = VK_ACCESS_NONE;
+    resource_state.read_stages |= node_stages;
+    resource_state.write_stages = VK_PIPELINE_STAGE_NONE;
 
     add_buffer_barrier(resource.vk_buffer, wait_access, read_access);
   }
@@ -353,9 +333,10 @@ void VKRenderGraphCommandBuilder::add_buffer_write_barriers(VKRenderGraph &rende
       /* Ignore image resources. */
       continue;
     }
+    VKResourceBarrierState &resource_state = resource_states_[versioned_resource.handle];
     // If resource version has not be read, no barrier needs to be added.
-    VkAccessFlags read_access = read_access_[versioned_resource.handle];
-    VkAccessFlags write_access = write_access_[versioned_resource.handle];
+    VkAccessFlags read_access = resource_state.read_access;
+    VkAccessFlags write_access = resource_state.write_access;
     VkAccessFlags wait_access = VK_ACCESS_NONE;
 
     if (read_access != VK_ACCESS_NONE) {
@@ -366,14 +347,13 @@ void VKRenderGraphCommandBuilder::add_buffer_write_barriers(VKRenderGraph &rende
       wait_access |= write_access;
     }
 
-    src_stage_mask_ |= read_stages_[versioned_resource.handle] |
-                       write_stages_[versioned_resource.handle];
+    src_stage_mask_ |= resource_state.read_stages | resource_state.write_stages;
     dst_stage_mask_ |= node_stages;
 
-    read_access_[versioned_resource.handle] = VK_ACCESS_NONE;
-    write_access_[versioned_resource.handle] = usage.vk_access_flags;
-    read_stages_[versioned_resource.handle] = VK_PIPELINE_STAGE_NONE;
-    write_stages_[versioned_resource.handle] = node_stages;
+    resource_state.read_access = VK_ACCESS_NONE;
+    resource_state.write_access = usage.vk_access_flags;
+    resource_state.read_stages = VK_PIPELINE_STAGE_NONE;
+    resource_state.write_stages = node_stages;
 
     if (wait_access != VK_ACCESS_NONE) {
       add_buffer_barrier(resource.vk_buffer, wait_access, usage.vk_access_flags);
@@ -397,6 +377,129 @@ void VKRenderGraphCommandBuilder::add_buffer_barrier(VkBuffer vk_buffer,
   vk_buffer_memory_barrier.size = VK_WHOLE_SIZE;
 
   vk_buffer_memory_barriers_.append(vk_buffer_memory_barrier);
+}
+
+void VKRenderGraphCommandBuilder::add_image_barriers(VKRenderGraph &render_graph,
+                                                     NodeHandle node_handle,
+                                                     VkPipelineStageFlags node_stages)
+{
+  add_image_read_barriers(render_graph, node_handle, node_stages);
+  add_image_write_barriers(render_graph, node_handle, node_stages);
+}
+
+void VKRenderGraphCommandBuilder::add_image_read_barriers(VKRenderGraph &render_graph,
+                                                          NodeHandle node_handle,
+                                                          VkPipelineStageFlags node_stages)
+{
+  for (const VKRenderGraphNodes::ResourceUsage &usage :
+       render_graph.nodes_.get_read_resources(node_handle))
+  {
+    const VersionedResource &versioned_resource = usage.resource;
+    const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
+        versioned_resource.handle);
+    if (resource.vk_image == VK_NULL_HANDLE) {
+      /* Ignore buffer resources. */
+      continue;
+    }
+    VKResourceBarrierState &resource_state = resource_states_[versioned_resource.handle];
+    // If resource version has not be read, no barrier needs to be added.
+
+    VkAccessFlags read_access = resource_state.read_access;
+    VkAccessFlags write_access = resource_state.write_access;
+    VkAccessFlags wait_access = VK_ACCESS_NONE;
+
+    if (read_access == (read_access | usage.vk_access_flags) &&
+        resource_state.image_layout == usage.vk_image_layout)
+    {
+      // has already been covered in a previous call no need to add this one.
+      // TODO: we should merge all read accesses with the first available read barrier.
+      continue;
+    }
+
+    read_access |= usage.vk_access_flags;
+    wait_access |= write_access;
+    src_stage_mask_ |= resource_state.write_stages;
+    dst_stage_mask_ |= node_stages;
+
+    resource_state.read_access = read_access;
+    resource_state.write_access = VK_ACCESS_NONE;
+    resource_state.read_stages |= node_stages;
+    resource_state.write_stages = VK_PIPELINE_STAGE_NONE;
+
+    add_image_barrier(resource.vk_image,
+                      wait_access,
+                      read_access,
+                      resource_state.image_layout,
+                      usage.vk_image_layout);
+    resource_state.image_layout = usage.vk_image_layout;
+  }
+}
+
+void VKRenderGraphCommandBuilder::add_image_write_barriers(VKRenderGraph &render_graph,
+                                                           NodeHandle node_handle,
+                                                           VkPipelineStageFlags node_stages)
+{
+  for (const VKRenderGraphNodes::ResourceUsage usage :
+       render_graph.nodes_.get_write_resources(node_handle))
+  {
+    const VersionedResource &versioned_resource = usage.resource;
+    const VKRenderGraphResources::Resource &resource = render_graph.resources_.resources_.get(
+        versioned_resource.handle);
+    if (resource.vk_image == VK_NULL_HANDLE) {
+      /* Ignore image resources. */
+      continue;
+    }
+    VKResourceBarrierState &resource_state = resource_states_[versioned_resource.handle];
+    // If resource version has not be read, no barrier needs to be added.
+    VkAccessFlags read_access = resource_state.read_access;
+    VkAccessFlags write_access = resource_state.write_access;
+    VkAccessFlags wait_access = VK_ACCESS_NONE;
+
+    if (read_access != VK_ACCESS_NONE) {
+      wait_access |= read_access;
+    }
+    if (read_access == VK_ACCESS_NONE && write_access != VK_ACCESS_NONE) {
+      // Add write_write_buffer_barrier
+      wait_access |= write_access;
+    }
+
+    src_stage_mask_ |= resource_state.read_stages | resource_state.write_stages;
+    dst_stage_mask_ |= node_stages;
+
+    resource_state.read_access = VK_ACCESS_NONE;
+    resource_state.write_access = usage.vk_access_flags;
+    resource_state.read_stages = VK_PIPELINE_STAGE_NONE;
+    resource_state.write_stages = node_stages;
+
+    if (wait_access != VK_ACCESS_NONE || usage.vk_image_layout != resource_state.image_layout) {
+      add_image_barrier(resource.vk_image,
+                        wait_access,
+                        usage.vk_access_flags,
+                        resource_state.image_layout,
+                        usage.vk_image_layout);
+      resource_state.image_layout = usage.vk_image_layout;
+    }
+  }
+}
+
+void VKRenderGraphCommandBuilder::add_image_barrier(VkImage vk_image,
+                                                    VkAccessFlags src_access_mask,
+                                                    VkAccessFlags dst_access_mask,
+                                                    VkImageLayout old_layout,
+                                                    VkImageLayout new_layout)
+{
+  VkImageMemoryBarrier vk_image_memory_barrier = {};
+  vk_image_memory_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  vk_image_memory_barrier.pNext = nullptr;
+  vk_image_memory_barrier.srcAccessMask = src_access_mask;
+  vk_image_memory_barrier.dstAccessMask = dst_access_mask;
+  vk_image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  vk_image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  vk_image_memory_barrier.image = vk_image;
+  vk_image_memory_barrier.oldLayout = old_layout;
+  vk_image_memory_barrier.newLayout = new_layout;
+  // TODO: add subresource.
+  vk_image_memory_barriers_.append(vk_image_memory_barrier);
 }
 
 /** \} */
