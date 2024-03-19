@@ -97,18 +97,9 @@ Animation *id_animation_ensure(Main *bmain, ID *id)
   }
 
   Animation *anim = static_cast<Animation *>(BKE_id_new(bmain, ID_AN, "Animation"));
-  Binding *binding = anim->find_suitable_binding_for(*id);
-  if (binding == nullptr) {
-    binding = &anim->binding_add();
-    binding->connect_id(*id);
-  }
-  const bool assign_result = anim->assign_id(binding, *id);
-  if (!assign_result) {
-    return nullptr;
-  }
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update(&adt->action->id, ID_RECALC_ANIMATION_NO_FLUSH);
+  DEG_id_tag_update(&adt->animation->id, ID_RECALC_ANIMATION_NO_FLUSH);
   return anim;
 }
 

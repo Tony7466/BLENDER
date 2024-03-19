@@ -995,50 +995,79 @@ static blender::Vector<float> get_keyframe_values(PointerRNA *ptr,
   return values;
 }
 
-static void insert_key_anim(PointerRNA *rna_pointer,
-                            const blender::Span<std::string> rna_paths,
-                            Main *bmain,
-                            const float scene_frame,
-                            const eInsertKeyFlags insert_key_flags,
-                            const KeyframeSettings &key_settings)
+static void insert_key_layer(Layer &layer,
+                             Binding &binding,
+                             PointerRNA *rna_pointer,
+                             const blender::Span<std::string> rna_paths,
+                             const float scene_frame,
+                             const eInsertKeyFlags insert_key_flags,
+                             const KeyframeSettings &key_settings)
 {
-  ID *id = rna_pointer->owner_id;
-  Animation *anim = id_animation_ensure(bmain, id);
-  Binding *binding = anim->binding_for_id(*id);
-  if (binding == nullptr) {
+  if (layer.strips().size() == 0) {
+    layer.strip_add(Strip::Type::Keyframe);
+  }
+  Strip *strip = layer.strip(0);
+  if (strip == nullptr) {
+    /* TODO: report error. */
     return;
   }
 
-  if (anim->layers().size() == 0) {
-    anim->layer_add("Layer 0");
-  }
-  Layer *layer = anim->layer(0);
-
-  if (layer->strips().size() == 0) {
-    layer->strip_add(Strip::Type::Keyframe);
-  }
   const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
-  Strip *strip = layer->strip(0);
   for (const std::string &rna_path : rna_paths) {
-    PointerRNA ptr;
+    PointerRNA *ptr = nullptr;
     PropertyRNA *prop = nullptr;
     const bool path_resolved = RNA_path_resolve_property(
-        rna_pointer, rna_path.c_str(), &ptr, &prop);
+        rna_pointer, rna_path.c_str(), ptr, &prop);
     if (!path_resolved) {
       continue;
     }
-    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
-                                                                                        prop);
-    Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
+    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(ptr, prop);
+    Vector<float> rna_values = get_keyframe_values(ptr, prop, visual_keyframing);
     int property_array_index = 0;
     for (float value : rna_values) {
       /* TODO: convert scene frame to strip time. */
       const float2 time_value = {scene_frame, value};
       strip->as<KeyframeStrip>().keyframe_insert(
-          *binding, rna_path, property_array_index, time_value, key_settings);
+          binding, rna_path, property_array_index, time_value, key_settings);
       property_array_index++;
     }
   }
+}
+
+static void insert_key_anim(Animation &anim,
+                            PointerRNA *rna_pointer,
+                            const blender::Span<std::string> rna_paths,
+                            const float scene_frame,
+                            const eInsertKeyFlags insert_key_flags,
+                            const KeyframeSettings &key_settings)
+{
+  ID *id = rna_pointer->owner_id;
+
+  Binding *binding = anim.binding_for_id(*id);
+  if (binding == nullptr) {
+    binding = &anim.binding_add();
+    const bool success = anim.assign_id(binding, *id);
+    if (!success) {
+      /* TODO: Report error. */
+      return;
+    }
+  }
+
+  Layer *layer;
+  if (anim.layers().size() == 0) {
+    layer = &anim.layer_add("Layer 0");
+  }
+  else {
+    layer = anim.layer(0);
+  }
+
+  if (layer == nullptr) {
+    /* TODO: Report error. */
+    return;
+  }
+
+  insert_key_layer(
+      *layer, *binding, rna_pointer, rna_paths, scene_frame, insert_key_flags, key_settings);
 }
 
 void insert_key_rna(PointerRNA *rna_pointer,
@@ -1054,20 +1083,28 @@ void insert_key_rna(PointerRNA *rna_pointer,
   AnimData *adt;
 
   /* init animdata if none available yet */
-  adt = BKE_animdata_from_id(id);
-  if (adt == nullptr) {
-    adt = BKE_animdata_ensure_id(id);
-  }
+  adt = BKE_animdata_ensure_id(id);
   if (adt == nullptr) {
     return;
   }
 
-  if (!adt->action) {
+  if (adt->animation || !adt->action) {
+    /* TODO: This should only execute with an experimental flag enabled. */
+    /* TODO: Don't hardcode key settings. */
+    Animation *anim = id_animation_ensure(bmain, id);
+    if (anim == nullptr) {
+      BKE_reportf(reports,
+                  RPT_ERROR,
+                  "Could not insert keyframe, as this type does not support animation data (ID = "
+                  "%s)",
+                  id->name);
+      return;
+    }
     KeyframeSettings key_settings;
     key_settings.keyframe_type = key_type;
     key_settings.handle = HD_AUTO_ANIM;
     key_settings.interpolation = BEZT_IPO_BEZ;
-    insert_key_anim(rna_pointer, rna_paths, bmain, scene_frame, insert_key_flags, key_settings);
+    insert_key_anim(*anim, rna_pointer, rna_paths, scene_frame, insert_key_flags, key_settings);
     return;
   }
 
@@ -1080,8 +1117,6 @@ void insert_key_rna(PointerRNA *rna_pointer,
                 id->name);
     return;
   }
-
-  // AnimData *adt = BKE_animdata_from_id(id);
 
   /* Keyframing functions can deal with the nla_context being a nullptr. */
   ListBase nla_cache = {nullptr, nullptr};

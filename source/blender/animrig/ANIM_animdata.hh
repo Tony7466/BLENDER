@@ -30,6 +30,9 @@ class Animation;
  */
 bAction *id_action_ensure(Main *bmain, ID *id);
 
+/**
+ * Get or create the animation datablock for the given ID. Doesn NOT create a binding.
+ */
 Animation *id_animation_ensure(Main *bmain, ID *id);
 
 /**
