@@ -597,7 +597,7 @@ void smooth_brush_toggle_on(const bContext *C, Paint *paint, StrokeCache *cache)
 /** \} */
 }  // namespace blender::ed::sculpt_paint::vwpaint
 
-static bool attribute_supported(const std::optional<bke::AttributeMetaData> meta_data)
+static bool color_attribute_supported(const std::optional<bke::AttributeMetaData> meta_data)
 {
   if (!meta_data) {
     return false;
@@ -610,9 +610,9 @@ static bool attribute_supported(const std::optional<bke::AttributeMetaData> meta
   return true;
 }
 
-static bool attribute_supported(const Mesh &mesh, const StringRef name)
+static bool color_attribute_supported(const Mesh &mesh, const StringRef name)
 {
-  return attribute_supported(mesh.attributes().lookup_meta_data(name));
+  return color_attribute_supported(mesh.attributes().lookup_meta_data(name));
 }
 
 bool vertex_paint_mode_poll(bContext *C)
@@ -627,7 +627,7 @@ bool vertex_paint_mode_poll(bContext *C)
     return false;
   }
 
-  if (!attribute_supported(*mesh, mesh->active_color_attribute)) {
+  if (!color_attribute_supported(*mesh, mesh->active_color_attribute)) {
     return false;
   }
 
@@ -1009,7 +1009,7 @@ static bool vpaint_stroke_test_start(bContext *C, wmOperator *op, const float mo
 
   const std::optional<bke::AttributeMetaData> meta_data = *mesh->attributes().lookup_meta_data(
       mesh->active_color_attribute);
-  if (!attribute_supported(meta_data)) {
+  if (!color_attribute_supported(meta_data)) {
     return false;
   }
 
