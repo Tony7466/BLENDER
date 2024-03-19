@@ -594,7 +594,7 @@ class ARMATURE_OT_collection_remove_unused(Operator):
         return len(armature.collections) > 0
 
     def execute(self, context):
-        if context.mode == 'EDIT':
+        if context.mode == 'EDIT_ARMATURE':
             return self.execute_edit_mode(context)
 
         armature = _armature_from_context(context)
