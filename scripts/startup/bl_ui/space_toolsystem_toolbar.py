@@ -1418,7 +1418,7 @@ class _defs_sculpt:
         return dict(
             idname="builtin.polyline_hide",
             label="Polyline Hide",
-            icon="ops.sculpt.lasso_hide",
+            icon="none",
             widget=None,
             keymap=(),
             draw_settings=draw_settings,

@@ -7925,17 +7925,19 @@ def km_3d_view_tool_sculpt_lasso_hide(params):
         ]},
     )
 
+
 def km_3d_view_tool_sculpt_polyline_hide(params):
     return (
-        "3D View Tool: Sculpt, Polyline Hide",
-        {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
-        {"items": [
-            ("paint.hide_show_polyline_gesture", {"type": params.select_mouse, "value": params.select_mouse_value},
-             {"properties": [("action", 'HIDE')]}),
-            ("paint.hide_show_polyline_gesture", {"type": params.select_mouse, "value": params.select_mouse_value, "ctrl": True},
-             {"properties": [("action", 'SHOW')]}),
-        ]},
-    )
+        "3D View Tool: Sculpt, Polyline Hide", {
+            "space_type": 'VIEW_3D', "region_type": 'WINDOW'}, {
+            "items": [
+                ("paint.hide_show_polyline_gesture", {
+                    "type": params.select_mouse, "value": params.select_mouse_value}, {
+                        "properties": [
+                            ("action", 'HIDE')]}), ("paint.hide_show_polyline_gesture", {
+                                "type": params.select_mouse, "value": params.select_mouse_value, "ctrl": True}, {
+                                    "properties": [
+                                        ("action", 'SHOW')]}), ]}, )
 
 
 def km_3d_view_tool_sculpt_box_mask(params):
