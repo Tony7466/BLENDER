@@ -1129,12 +1129,16 @@ static float2 SMAAArea(SMAATexture2D(areaTex), float2 dist, float e1, float e2, 
 /* ----------------------------------------------------------------------------
  * Corner Detection Functions */
 
-static void SMAADetectHorizontalCornerPattern(
-    SMAATexture2D(edgesTex), float2 &weights, float4 texcoord, float2 d, int2 size)
+static void SMAADetectHorizontalCornerPattern(SMAATexture2D(edgesTex),
+                                              float2 &weights,
+                                              float4 texcoord,
+                                              float2 d,
+                                              int2 size,
+                                              int corner_rounding)
 {
 #if !defined(SMAA_DISABLE_CORNER_DETECTION)
   float2 leftRight = math::step(d, float2(d.y, d.x));
-  float2 rounding = (1.0f - SMAA_CORNER_ROUNDING_NORM) * leftRight;
+  float2 rounding = (1.0f - corner_rounding / 100.0f) * leftRight;
 
   rounding /= leftRight.x + leftRight.y;  // Reduce blending for pixels in the center of a line.
 
@@ -1148,12 +1152,16 @@ static void SMAADetectHorizontalCornerPattern(
 #endif
 }
 
-static void SMAADetectVerticalCornerPattern(
-    SMAATexture2D(edgesTex), float2 &weights, float4 texcoord, float2 d, int2 size)
+static void SMAADetectVerticalCornerPattern(SMAATexture2D(edgesTex),
+                                            float2 &weights,
+                                            float4 texcoord,
+                                            float2 d,
+                                            int2 size,
+                                            int corner_rounding)
 {
 #if !defined(SMAA_DISABLE_CORNER_DETECTION)
   float2 leftRight = math::step(d, float2(d.y, d.x));
-  float2 rounding = (1.0f - SMAA_CORNER_ROUNDING_NORM) * leftRight;
+  float2 rounding = (1.0f - corner_rounding / 100.0f) * leftRight;
 
   rounding /= leftRight.x + leftRight.y;
 
@@ -1177,7 +1185,8 @@ static float4 SMAABlendingWeightCalculationPS(float2 texcoord,
                                               MemoryBuffer *areaTex,
                                               MemoryBuffer *searchTex,
                                               float4 subsampleIndices,
-                                              int2 size)
+                                              int2 size,
+                                              int corner_rounding)
 {  // Just pass zero for SMAA 1x, see @SUBSAMPLE_INDICES.
   float4 weights = float4(0.0f, 0.0f, 0.0f, 0.0f);
 
@@ -1256,7 +1265,8 @@ static float4 SMAABlendingWeightCalculationPS(float2 texcoord,
                                         corner_weight,
                                         float4(coords.xy(), coords.z, coords.y),
                                         d,
-                                        size);
+                                        size,
+                                        corner_rounding);
       weights.x = corner_weight.x;
       weights.y = corner_weight.y;
 
@@ -1315,7 +1325,8 @@ static float4 SMAABlendingWeightCalculationPS(float2 texcoord,
                                     corner_weight,
                                     float4(coords.xy(), coords.x, coords.z),
                                     d,
-                                    size);
+                                    size,
+                                    corner_rounding);
     weights.z = corner_weight.x;
     weights.w = corner_weight.y;
   }
@@ -1460,7 +1471,8 @@ void SMAAOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                      &area_texture,
                                                      &search_texture,
                                                      float4(0.0f),
-                                                     size);
+                                                     size,
+                                                     corner_rounding_);
     copy_v4_v4(blending_weights.get_elem(texel.x, texel.y), weights);
   }
 
