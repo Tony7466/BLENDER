@@ -1,1 +1,2 @@
 Referenced by commit 6a016ce2559951c3506161db6cbf74e3d8a5c450, Cleanup: Remove unnecessary check
+Referenced by commit 0177c55880a29ec1422387e385a5c0d1dd6d67dc, Fix: Curves: Missing check in `get_mutable_attribute`
