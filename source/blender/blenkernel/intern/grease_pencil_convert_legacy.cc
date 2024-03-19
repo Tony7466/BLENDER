@@ -400,6 +400,15 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     grease_pencil.id.properties = IDP_CopyProperty(gpd.id.properties);
   }
 
+  /** Convert Grease Pencil data flag. */
+  SET_FLAG_FROM_TEST(
+      grease_pencil.flag, (gpd.flag & GP_DATA_EXPAND) != 0, GREASE_PENCIL_ANIM_CHANNEL_EXPANDED);
+  SET_FLAG_FROM_TEST(grease_pencil.flag,
+                     (gpd.flag & GP_DATA_AUTOLOCK_LAYERS) != 0,
+                     GREASE_PENCIL_AUTOLOCK_LAYERS);
+  SET_FLAG_FROM_TEST(
+      grease_pencil.flag, (gpd.draw_mode == GP_DRAWMODE_3D), GREASE_PENCIL_STROKE_ORDER_3D);
+
   int num_drawings = 0;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd.layers) {
     num_drawings += BLI_listbase_count(&gpl->frames);
@@ -426,6 +435,8 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     SET_FLAG_FROM_TEST(new_layer.base.flag,
                        (gpl->onion_flag & GP_LAYER_ONIONSKIN),
                        GP_LAYER_TREE_NODE_USE_ONION_SKINNING);
+    SET_FLAG_FROM_TEST(
+        new_layer.base.flag, (gpl->flag & GP_LAYER_USE_MASK) == 0, GP_LAYER_TREE_NODE_HIDE_MASKS);
 
     new_layer.blend_mode = int8_t(gpl->blend_mode);
 
@@ -436,9 +447,11 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     copy_v3_v3(new_layer.rotation, gpl->rotation);
     copy_v3_v3(new_layer.scale, gpl->scale);
 
+    new_layer.set_view_layer_name(gpl->viewlayername);
+
     /* Convert the layer masks. */
     LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
-      LayerMask *new_mask = MEM_new<LayerMask>(mask->name);
+      LayerMask *new_mask = MEM_new<LayerMask>(__func__, mask->name);
       new_mask->flag = mask->flag;
       BLI_addtail(&new_layer.masks, new_mask);
     }
@@ -717,6 +730,13 @@ static ModifierData &legacy_object_modifier_common(Object &object,
   /* Convert animation data if needed. */
   AnimData *anim_data = BKE_animdata_from_id(&object.id);
   if (anim_data) {
+    char legacy_name_esc[MAX_NAME * 2];
+    BLI_str_escape(legacy_name_esc, legacy_md.name, sizeof(legacy_name_esc));
+    const std::string legacy_root_path = fmt::format("grease_pencil_modifiers[\"{}\"]",
+                                                     legacy_name_esc);
+    char new_name_esc[MAX_NAME * 2];
+    BLI_str_escape(new_name_esc, new_md.name, sizeof(new_name_esc));
+
     auto modifier_path_update = [&](FCurve *fcurve) -> bool {
       /* NOTE: This logic will likely need to be re-used in other similar conditions for other
        * areas, should be put into its own util then. */
@@ -724,15 +744,9 @@ static ModifierData &legacy_object_modifier_common(Object &object,
         return false;
       }
       StringRefNull rna_path = fcurve->rna_path;
-      char legacy_name_esc[MAX_NAME * 2];
-      BLI_str_escape(legacy_name_esc, legacy_md.name, sizeof(legacy_name_esc));
-      const std::string legacy_root_path = fmt::format("grease_pencil_modifiers[\"{}\"]",
-                                                       legacy_name_esc);
       if (!rna_path.startswith(legacy_root_path)) {
         return false;
       }
-      char new_name_esc[MAX_NAME * 2];
-      BLI_str_escape(new_name_esc, new_md.name, sizeof(new_name_esc));
       const std::string new_rna_path = fmt::format(
           "modifiers[\"{}\"]{}", new_name_esc, rna_path.substr(int64_t(legacy_root_path.size())));
       MEM_freeN(fcurve->rna_path);

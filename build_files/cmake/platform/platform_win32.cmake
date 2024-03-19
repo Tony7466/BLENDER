@@ -170,10 +170,10 @@ remove_cc_flag(
 
 if(MSVC_CLANG) # Clangs version of cl doesn't support all flags
   string(APPEND CMAKE_CXX_FLAGS " ${CXX_WARN_FLAGS} /nologo /J /Gd /EHsc -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference ")
-  set(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /nologo /J /Gd -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference")
+  string(APPEND CMAKE_C_FLAGS   " /nologo /J /Gd -Wno-unused-command-line-argument -Wno-microsoft-enum-forward-reference")
 else()
-  string(APPEND CMAKE_CXX_FLAGS " /nologo /J /Gd /MP /EHsc /bigobj /Zc:inline")
-  set(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} /nologo /J /Gd /MP /bigobj /Zc:inline")
+  string(APPEND CMAKE_CXX_FLAGS " /nologo /J /Gd /MP /EHsc /bigobj")
+  string(APPEND CMAKE_C_FLAGS   " /nologo /J /Gd /MP /bigobj")
 endif()
 
 # X64 ASAN is available and usable on MSVC 16.9 preview 4 and up)
@@ -191,9 +191,25 @@ if(WITH_COMPILER_ASAN AND MSVC AND NOT MSVC_CLANG)
 endif()
 
 
-# C++ standards conformace (/permissive-) is available on msvc 15.5 (1912) and up
+# C++ standards conformace
+# /permissive-    : Available from MSVC 15.5 (1912) and up. Enables standards-confirming compiler
+#                   behavior. Required until the project is marked as c++20.
+# /Zc:__cplusplus : Available from MSVC 15.7 (1914) and up. Ensures correct value of the __cplusplus
+#                   preprocessor macro.
+# /Zc:inline      : Enforces C++11 requirement that all functions declared 'inline' must have a
+#                   definition available in the same translation unit if they're used.
+# /Zc:preprocessor: Available from MSVC 16.5 (1925) and up. Enables standards-conforming
+#                   preprocessor.
 if(NOT MSVC_CLANG)
-  string(APPEND CMAKE_CXX_FLAGS " /permissive-")
+  string(APPEND CMAKE_CXX_FLAGS " /permissive- /Zc:__cplusplus /Zc:inline")
+  string(APPEND CMAKE_C_FLAGS   " /Zc:inline")
+
+  # For ARM64 devices, we need to tell MSVC to use the new preprocessor
+  # This is because sse2neon requires it.
+  if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+    string(APPEND CMAKE_CXX_FLAGS " /Zc:preprocessor")
+    string(APPEND CMAKE_C_FLAGS " /Zc:preprocessor")
+  endif()
 endif()
 
 if(WITH_WINDOWS_SCCACHE AND CMAKE_VS_MSBUILD_COMMAND)
@@ -265,7 +281,7 @@ set(PLATFORM_LINKFLAGS_RELEASE "${PLATFORM_LINKFLAGS} ${PDB_INFO_OVERRIDE_LINKER
 string(APPEND CMAKE_STATIC_LINKER_FLAGS " /ignore:4221")
 
 if(CMAKE_CL_64)
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES ARM64)
+  if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
     string(PREPEND PLATFORM_LINKFLAGS "/MACHINE:ARM64 ")
   else()
     string(PREPEND PLATFORM_LINKFLAGS "/MACHINE:X64 ")
@@ -278,7 +294,7 @@ if(NOT DEFINED LIBDIR)
   # Setup 64bit and 64bit windows systems
   if(CMAKE_CL_64)
     message(STATUS "64 bit compiler detected.")
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES ARM64)
+    if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
       set(LIBDIR_BASE "windows_arm64")
     else()
       set(LIBDIR_BASE "windows_x64")
@@ -636,7 +652,7 @@ if(NOT WITH_WINDOWS_FIND_MODULES)
   if(NOT BOOST_VERSION)
     message(FATAL_ERROR "Unable to determine Boost version")
   endif()
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES ARM64)
+  if(CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
     set(BOOST_POSTFIX "vc143-mt-a64-${BOOST_VERSION}")
     set(BOOST_DEBUG_POSTFIX "vc143-mt-gyd-a64-${BOOST_VERSION}")
     set(BOOST_PREFIX "")

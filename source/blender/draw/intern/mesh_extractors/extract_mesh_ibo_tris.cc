@@ -62,9 +62,9 @@ static void extract_tris_mesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
     GPU_indexbuf_build_in_place_from_memory(&ibo,
                                             GPU_PRIM_TRIS,
                                             corner_tris.cast<uint32_t>().data(),
-                                            mr.face_sorted->visible_tri_len,
+                                            mr.face_sorted->visible_tris_num,
                                             0,
-                                            mr.loop_len,
+                                            mr.corners_num,
                                             false);
     return;
   }
@@ -72,7 +72,7 @@ static void extract_tris_mesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
   const Span<bool> hide_poly = mr.hide_poly;
 
   GPUIndexBufBuilder builder;
-  GPU_indexbuf_init(&builder, GPU_PRIM_TRIS, mr.face_sorted->visible_tri_len, mr.loop_len);
+  GPU_indexbuf_init(&builder, GPU_PRIM_TRIS, mr.face_sorted->visible_tris_num, mr.corners_num);
   MutableSpan<uint3> data = GPU_indexbuf_get_data(&builder).cast<uint3>();
   const uint32_t restart_value = GPU_indexbuf_get_restart_value(&builder);
 
@@ -101,13 +101,13 @@ static void extract_tris_mesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
   });
 
   // TODO: Track if restart indices used.
-  GPU_indexbuf_build_in_place_ex(&builder, 0, mr.loop_len, true, &ibo);
+  GPU_indexbuf_build_in_place_ex(&builder, 0, mr.corners_num, true, &ibo);
 }
 
 static void extract_tris_bmesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
 {
   GPUIndexBufBuilder builder;
-  GPU_indexbuf_init(&builder, GPU_PRIM_TRIS, mr.face_sorted->visible_tri_len, mr.loop_len);
+  GPU_indexbuf_init(&builder, GPU_PRIM_TRIS, mr.face_sorted->visible_tris_num, mr.corners_num);
   MutableSpan<uint3> data = GPU_indexbuf_get_data(&builder).cast<uint3>();
   const uint32_t restart_value = GPU_indexbuf_get_restart_value(&builder);
 
@@ -141,7 +141,7 @@ static void extract_tris_bmesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
   });
 
   // TODO: Track if restart indices used.
-  GPU_indexbuf_build_in_place_ex(&builder, 0, mr.loop_len, true, &ibo);
+  GPU_indexbuf_build_in_place_ex(&builder, 0, mr.corners_num, true, &ibo);
 }
 
 static void extract_tris_finish(const MeshRenderData &mr, MeshBatchCache &cache, GPUIndexBuf &ibo)
@@ -150,13 +150,13 @@ static void extract_tris_finish(const MeshRenderData &mr, MeshBatchCache &cache,
    * is created before the surfaces-per-material. */
   if (mr.use_final_mesh && cache.tris_per_mat) {
     int mat_start = 0;
-    for (int i = 0; i < mr.mat_len; i++) {
+    for (int i = 0; i < mr.materials_num; i++) {
       /* These IBOs have not been queried yet but we create them just in case they are needed
        * later since they are not tracked by mesh_buffer_cache_create_requested(). */
       if (cache.tris_per_mat[i] == nullptr) {
         cache.tris_per_mat[i] = GPU_indexbuf_calloc();
       }
-      const int mat_tri_len = mr.face_sorted->mat_tri_counts[i];
+      const int mat_tri_len = mr.face_sorted->tris_num_by_material[i];
       /* Multiply by 3 because these are triangle indices. */
       const int start = mat_start * 3;
       const int len = mat_tri_len * 3;

@@ -217,12 +217,12 @@ struct MeshExtractLooseGeom {
 };
 
 struct SortedFaceData {
-  /** The number of visible triangles assigned to each material. */
-  Array<int> mat_tri_counts;
   /* The total number of visible triangles (a sum of the values in #mat_tri_counts). */
-  int visible_tri_len;
+  int visible_tris_num;
+  /** The number of visible triangles assigned to each material. */
+  Array<int> tris_num_by_material;
   /**
-   * The first triangle index for each polygon, sorted into slices by material.
+   * The first triangle index for each face, sorted into slices by material.
    * May be empty if the mesh only has a single material.
    */
   std::optional<Array<int>> face_tri_offsets;

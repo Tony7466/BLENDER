@@ -129,7 +129,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
 The minimum supported version of CLANG is 8.0, found ${CMAKE_C_COMPILER_VERSION}"
     )
   endif()
-elseif(CMAKE_CXX_COMPILER_ID MATCHES MSVC)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   if(MSVC_VERSION VERSION_LESS "1928")
     # MSVC_VERSION is an internal version number, it doesn't map to something
     # the end user would recognize as a version. Because of this, for MSVC we do
@@ -645,7 +645,7 @@ mark_as_advanced(WITH_CYCLES_PRECOMPUTE)
 mark_as_advanced(CYCLES_TEST_DEVICES)
 
 # NVIDIA CUDA & OptiX
-if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES ARM64))
+if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
   option(WITH_CYCLES_DEVICE_CUDA "Enable Cycles NVIDIA CUDA compute support" ON)
   option(WITH_CYCLES_DEVICE_OPTIX "Enable Cycles NVIDIA OptiX support" ON)
   mark_as_advanced(WITH_CYCLES_DEVICE_CUDA)
@@ -680,7 +680,7 @@ When set, this path will be used at runtime to compile OptiX kernels."
 endif()
 
 # AMD HIP
-if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES ARM64))
+if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
   option(WITH_CYCLES_DEVICE_HIP "Enable Cycles AMD HIP support" ON)
   option(WITH_CYCLES_HIP_BINARIES "Build Cycles AMD HIP binaries" OFF)
   # Radeon VII (gfx906) not currently working with HIP SDK, so left out of the list.
@@ -707,7 +707,7 @@ if(APPLE)
 endif()
 
 # oneAPI
-if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR MATCHES ARM64))
+if(NOT APPLE AND NOT (WIN32 AND CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
   option(WITH_CYCLES_DEVICE_ONEAPI "Enable Cycles oneAPI compute support" OFF)
   option(WITH_CYCLES_ONEAPI_BINARIES "\
 Enable Ahead-Of-Time compilation for Cycles oneAPI device"
@@ -1942,6 +1942,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
   endif()
 
 elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
+  # Matches both "Clang" & "AppleClang" on macOS.
 
   add_check_c_compiler_flags(
     C_WARNINGS
@@ -2049,7 +2050,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Clang")
     CXX_WARN_NO_UNDEF_PREFIX -Wno-undef-prefix
   )
 
-elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
+elseif(CMAKE_C_COMPILER_ID STREQUAL "Intel")
 
   add_check_c_compiler_flags(
     C_WARNINGS
@@ -2070,7 +2071,7 @@ elseif(CMAKE_C_COMPILER_ID MATCHES "Intel")
   # Disable numbered, false positives.
   string(APPEND C_WARNINGS " -wd188,186,144,913,556,858,597,177,1292,167,279,592,94,2722,3199")
   string(APPEND CXX_WARNINGS " -wd188,186,144,913,556,858,597,177,1292,167,279,592,94,2722,3199")
-elseif(CMAKE_C_COMPILER_ID MATCHES "MSVC")
+elseif(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
   # most msvc warnings are C & C++
   set(_WARNINGS
     # warning level:
@@ -2157,25 +2158,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Do not enable compiler specific language extensions.
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Make MSVC properly report the value of the __cplusplus preprocessor macro
-# Available MSVC 15.7 (1914) and up, without this it reports 199711L regardless
-# of the C++ standard chosen above.
-# In addition, for ARM64 devices, we need to tell MSVC to use the new preprocessor
-# This is because sse2neon requires it.
-if(MSVC)
-  string(APPEND CMAKE_CXX_FLAGS " /Zc:__cplusplus")
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES ARM64)
-    string(APPEND CMAKE_CXX_FLAGS " /Zc:preprocessor")
-    string(APPEND CMAKE_C_FLAGS " /Zc:preprocessor")
-  endif()
-endif()
-
 # Visual Studio has all standards it supports available by default
 # Clang on windows copies this behavior and does not support these switches
 if(
   CMAKE_COMPILER_IS_GNUCC OR
   (CMAKE_C_COMPILER_ID MATCHES "Clang" AND (NOT MSVC)) OR
-  (CMAKE_C_COMPILER_ID MATCHES "Intel")
+  (CMAKE_C_COMPILER_ID STREQUAL "Intel")
 )
   # Use C11 + GNU extensions, works with GCC, Clang, ICC
   string(APPEND CMAKE_C_FLAGS " -std=gnu11")
