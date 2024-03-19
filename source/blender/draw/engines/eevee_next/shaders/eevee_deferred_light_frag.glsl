@@ -82,7 +82,9 @@ void main()
 
     for (int i = 0; i < LIGHT_CLOSURE_EVAL_COUNT && i < gbuf.closure_count; i++) {
       ClosureUndetermined cl = gbuffer_closure_get(gbuf, i);
-      lightprobe_eval(samp, cl, g_data.P, V, stack.cl[i].light_shadowed);
+      vec3 ls = stack.cl[i].light_shadowed;
+      lightprobe_eval(samp, cl, g_data.P, V, ls);
+      stack.cl[i].light_shadowed = ls;
     }
   }
 
