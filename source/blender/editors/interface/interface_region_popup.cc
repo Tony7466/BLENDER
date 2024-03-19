@@ -784,7 +784,7 @@ uiBlock *ui_popup_block_refresh(bContext *C,
       }
     }
   }
-  /** Apply popup scroll offset to layout panels. */
+  /* Apply popup scroll offset to layout panels. */
   UI_layout_panel_popup_scroll_apply(block->panel, handle->scrolloffset);
 
   if (block_old) {
@@ -900,6 +900,7 @@ void ui_popup_block_free(bContext *C, uiPopupBlockHandle *handle)
   }
 
   ui_popup_block_remove(C, handle);
+
   MEM_freeN(handle);
 }
 

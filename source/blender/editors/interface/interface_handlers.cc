@@ -10125,7 +10125,7 @@ static void ui_menu_scroll_apply_offset_y(ARegion *region, uiBlock *block, float
 
   /* remember scroll offset for refreshes */
   block->handle->scrolloffset += dy;
-  /** Apply popup scroll delta to layout panels too. */
+  /* Apply popup scroll delta to layout panels too. */
   UI_layout_panel_popup_scroll_apply(block->panel, dy);
 
   /* apply scroll offset */

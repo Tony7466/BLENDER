@@ -780,7 +780,6 @@ using uiBlockCancelFunc = void (*)(bContext *C, void *arg1);
 void UI_popup_block_invoke(bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free);
 void UI_popup_block_invoke_ex(
     bContext *C, uiBlockCreateFunc func, void *arg, uiFreeArgFunc arg_free, bool can_refresh);
-
 void UI_popup_block_ex(bContext *C,
                        uiBlockCreateFunc func,
                        uiBlockHandleFunc popup_func,

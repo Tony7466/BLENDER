@@ -679,6 +679,7 @@ void UI_popup_block_invoke(bContext *C, uiBlockCreateFunc func, void *arg, uiFre
 {
   UI_popup_block_invoke_ex(C, func, arg, arg_free, true);
 }
+
 void UI_popup_block_ex(bContext *C,
                        uiBlockCreateFunc func,
                        uiBlockHandleFunc popup_func,
