@@ -23,8 +23,7 @@ class VKIndexBuffer : public IndexBuf, public VKBindableResource {
 
   void bind_as_ssbo(uint binding) override;
   void bind(VKContext &context);
-  void try_add_to_descriptor_set(
-    AddToDescriptorSetData&data,
+  void try_add_to_descriptor_set(AddToDescriptorSetData &data,
                                  int binding,
                                  shader::ShaderCreateInfo::Resource::BindType bind_type,
                                  const GPUSamplerState sampler_state) override;

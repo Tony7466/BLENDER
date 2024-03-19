@@ -331,4 +331,3 @@ for struct_to_generate in STRUCTS_TO_GENERATE:
 
 # print(vk_to_string_hpp)
 print(vk_to_string_cpp)
-

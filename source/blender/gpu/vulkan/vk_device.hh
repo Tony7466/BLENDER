@@ -174,7 +174,7 @@ class VKDevice : public NonCopyable {
   {
     return pipelines_;
   }
-  
+
   VKDescriptorSetLayouts &descriptor_set_layouts_get()
   {
     return descriptor_set_layouts_;

@@ -28,8 +28,7 @@ class VKStorageBuffer : public StorageBuf, public VKBindableResource {
 
   void update(const void *data) override;
   void bind(int slot) override;
-  void try_add_to_descriptor_set(
-    AddToDescriptorSetData&data,
+  void try_add_to_descriptor_set(AddToDescriptorSetData &data,
                                  int binding,
                                  shader::ShaderCreateInfo::Resource::BindType bind_type,
                                  const GPUSamplerState sampler_state) override;
