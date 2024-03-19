@@ -1009,6 +1009,7 @@ static void insert_key_layer(Layer &layer,
   Strip *strip = layer.strip(0);
   if (strip == nullptr) {
     /* TODO: report error. */
+    printf("ERROR: Strip is a null pointer");
     return;
   }
 
@@ -1049,6 +1050,7 @@ static void insert_key_anim(Animation &anim,
     binding = &anim.binding_add();
     const bool success = anim.assign_id(binding, *id);
     if (!success) {
+      printf("ERROR: Failed to assign the ID to the binding");
       /* TODO: Report error. */
       return;
     }
@@ -1063,6 +1065,7 @@ static void insert_key_anim(Animation &anim,
   }
 
   if (layer == nullptr) {
+    printf("ERROR: Cannot get or create a layer");
     /* TODO: Report error. */
     return;
   }
@@ -1089,7 +1092,7 @@ void insert_key_rna(PointerRNA *rna_pointer,
     return;
   }
 
-  if (adt->animation || !adt->action) {
+  if (adt->animation != nullptr || adt->action == nullptr) {
     /* TODO: This should only execute with an experimental flag enabled. */
     /* TODO: Don't hardcode key settings. */
     Animation *anim = id_animation_ensure(bmain, id);

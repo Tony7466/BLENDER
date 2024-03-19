@@ -11,6 +11,7 @@
 
 #include "BKE_action.h"
 #include "BKE_anim_data.hh"
+#include "BKE_animation.hh"
 #include "BKE_fcurve.hh"
 #include "BKE_lib_id.hh"
 
@@ -96,11 +97,11 @@ Animation *id_animation_ensure(Main *bmain, ID *id)
     return &adt->animation->wrap();
   }
 
-  Animation *anim = static_cast<Animation *>(BKE_id_new(bmain, ID_AN, "Animation"));
+  ::Animation *anim = BKE_animation_add(bmain, "Animation");
 
   DEG_relations_tag_update(bmain);
-  DEG_id_tag_update(&adt->animation->id, ID_RECALC_ANIMATION_NO_FLUSH);
-  return anim;
+  DEG_id_tag_update(&anim->id, ID_RECALC_ANIMATION_NO_FLUSH);
+  return &anim->wrap();
 }
 
 void animdata_fcurve_delete(bAnimContext *ac, AnimData *adt, FCurve *fcu)
