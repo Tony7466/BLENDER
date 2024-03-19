@@ -6,8 +6,6 @@
 
 #include "paint_intern.hh"
 
-#include "BLI_math_vector.hh"
-
 namespace blender::ed::sculpt_paint {
 
 struct InputSample {
@@ -25,8 +23,15 @@ class GreasePencilStrokeOperation {
 
 namespace greasepencil {
 
+float sculpt_brush_influence(const Scene &scene,
+                             const Brush &brush,
+                             const int2 &co,
+                             const InputSample &sample,
+                             float multi_frame_falloff = 1.0f);
+
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_smooth_operation();
 
 }  // namespace greasepencil
 

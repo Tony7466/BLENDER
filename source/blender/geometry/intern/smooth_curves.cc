@@ -18,7 +18,7 @@ namespace blender::geometry {
 template<typename T>
 static void gaussian_blur_1D(const Span<T> src,
                              const int iterations,
-                             const float influence,
+                             const VArray<float> &influence_by_point,
                              const bool smooth_ends,
                              const bool keep_shape,
                              const bool is_cyclic,
@@ -133,19 +133,41 @@ static void gaussian_blur_1D(const Span<T> src,
   }
 
   /* Normalize the weights. */
-  threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
-    for (const int64_t index : range) {
-      if (!is_end_and_fixed(index)) {
-        total_weight[index] += w - w2;
-        dst[index] = src[index] + influence * dst[index] / total_weight[index];
-      }
+  auto mix_smoothed = [&](const int index, const float influence) {
+    if (!is_end_and_fixed(index)) {
+      total_weight[index] += w - w2;
+      dst[index] = src[index] + influence * dst[index] / total_weight[index];
     }
-  });
+  };
+
+  if (influence_by_point.is_single()) {
+    const float influence = influence_by_point.get_internal_single();
+    threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
+      for (const int64_t index : range) {
+        mix_smoothed(index, influence);
+      }
+    });
+  }
+  else if (influence_by_point.is_span()) {
+    const Span<float> influence_span = influence_by_point.get_internal_span();
+    threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
+      for (const int64_t index : range) {
+        mix_smoothed(index, influence_span[index]);
+      }
+    });
+  }
+  else if (influence_by_point) {
+    threading::parallel_for(dst.index_range(), 1024, [&](const IndexRange range) {
+      for (const int64_t index : range) {
+        mix_smoothed(index, influence_by_point[index]);
+      }
+    });
+  }
 }
 
 void gaussian_blur_1D(const GSpan src,
                       const int iterations,
-                      const float influence,
+                      const VArray<float> &influence_by_point,
                       const bool smooth_ends,
                       const bool keep_shape,
                       const bool is_cyclic,
@@ -160,7 +182,7 @@ void gaussian_blur_1D(const GSpan src,
     {
       gaussian_blur_1D(src.typed<T>(),
                        iterations,
-                       influence,
+                       influence_by_point,
                        smooth_ends,
                        keep_shape,
                        is_cyclic,
@@ -174,7 +196,7 @@ void smooth_curve_attribute(const IndexMask &curves_to_smooth,
                             const VArray<bool> &point_selection,
                             const VArray<bool> &cyclic,
                             const int iterations,
-                            const float influence,
+                            const VArray<float> &influence_by_point,
                             const bool smooth_ends,
                             const bool keep_shape,
                             GMutableSpan attribute_data)
@@ -196,10 +218,36 @@ void smooth_curve_attribute(const IndexMask &curves_to_smooth,
       dst_data.type().copy_assign_n(dst_data.data(), orig_data.data(), range.size());
       const GSpan src_data(dst_data.type(), orig_data.data(), range.size());
 
-      gaussian_blur_1D(
-          src_data, iterations, influence, smooth_ends, keep_shape, cyclic[curve_i], dst_data);
+      gaussian_blur_1D(src_data,
+                       iterations,
+                       influence_by_point,
+                       smooth_ends,
+                       keep_shape,
+                       cyclic[curve_i],
+                       dst_data);
     });
   });
+}
+
+void smooth_curve_attribute(const IndexMask &curves_to_smooth,
+                            const OffsetIndices<int> points_by_curve,
+                            const VArray<bool> &point_selection,
+                            const VArray<bool> &cyclic,
+                            const int iterations,
+                            const float influence,
+                            const bool smooth_ends,
+                            const bool keep_shape,
+                            GMutableSpan attribute_data)
+{
+  smooth_curve_attribute(curves_to_smooth,
+                         points_by_curve,
+                         point_selection,
+                         cyclic,
+                         iterations,
+                         VArray<float>::ForSingle(influence, points_by_curve.total_size()),
+                         smooth_ends,
+                         keep_shape,
+                         attribute_data);
 }
 
 }  // namespace blender::geometry

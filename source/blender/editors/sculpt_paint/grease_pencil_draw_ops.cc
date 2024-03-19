@@ -25,6 +25,7 @@
 #include "WM_message.hh"
 #include "WM_toolsystem.hh"
 
+#include "curves_sculpt_intern.hh"
 #include "grease_pencil_intern.hh"
 #include "paint_intern.hh"
 
@@ -239,7 +240,7 @@ static GreasePencilStrokeOperation *grease_pencil_sculpt_paint_operation(bContex
   const Brush &brush = *BKE_paint_brush_for_read(&gp_sculptpaint.paint);
   switch (eBrushGPSculptTool(brush.gpencil_sculpt_tool)) {
     case GPSCULPT_TOOL_SMOOTH:
-      return nullptr;
+      return greasepencil::new_smooth_operation().release();
     case GPSCULPT_TOOL_THICKNESS:
       return nullptr;
     case GPSCULPT_TOOL_STRENGTH:

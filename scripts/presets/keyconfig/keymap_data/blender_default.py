@@ -4694,7 +4694,57 @@ def km_grease_pencil_sculpt_mode(params):
          {"properties": [("scalar", 0.9)]}),
         ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
          {"properties": [("scalar", 1.0 / 0.9)]}),
+        # Invoke sculpt operator
+        ("grease_pencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS'}, None),
+        ("grease_pencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS',
+         "ctrl": True}, {"properties": [("mode", 'INVERT')]}),        # # Selection
+        ("grease_pencil.sculpt_paint", {"type": 'LEFTMOUSE', "value": 'PRESS',
+         "shift": True}, {"properties": [("wait_for_input", False)]}),
+        # *_grease_pencil_selection(params, alt_select=True),
+        # *_template_items_select_lasso(params, "gpencil.select_lasso"),
+        # # Selection mode
+        # ("wm.context_toggle",  {"type": 'ONE', "value": 'PRESS'},
+        #  {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_point')]}),
+        # ("wm.context_toggle", {"type": 'TWO', "value": 'PRESS'},
+        #  {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_stroke')]}),
+        # ("wm.context_toggle", {"type": 'THREE', "value": 'PRESS'},
+        #  {"properties": [("data_path", 'scene.tool_settings.use_gpencil_select_mask_segment')]}),
+        # # Brush strength
+        # ("wm.radial_control", {"type": 'F', "value": 'PRESS', "shift": True},
+        #  {"properties": [("data_path_primary", 'tool_settings.gpencil_sculpt_paint.brush.strength')]}),
+        # # Brush size
+        # ("wm.radial_control", {"type": 'F', "value": 'PRESS'},
+        #  {"properties": [("data_path_primary", 'tool_settings.gpencil_sculpt_paint.brush.size')]}),
+        # # Increase/Decrease brush size
+        # ("brush.scale_size", {"type": 'LEFT_BRACKET', "value": 'PRESS', "repeat": True},
+        #  {"properties": [("scalar", 0.9)]}),
+        # ("brush.scale_size", {"type": 'RIGHT_BRACKET', "value": 'PRESS', "repeat": True},
+        #  {"properties": [("scalar", 1.0 / 0.9)]}),
         *_template_paint_radial_control("gpencil_sculpt_paint"),
+        # # Copy
+        # ("gpencil.copy", {"type": 'C', "value": 'PRESS', "ctrl": True}, None),
+        # # Display
+        # *_grease_pencil_display(),
+        # # Active layer
+        # op_menu("GPENCIL_MT_layer_active", {"type": 'Y', "value": 'PRESS'}),
+        # # Active material
+        # op_menu("GPENCIL_MT_material_active", {"type": 'U', "value": 'PRESS'}),
+        # # Merge Layer
+        # ("gpencil.layer_merge", {"type": 'M', "value": 'PRESS', "shift": True, "ctrl": True}, None),
+        # # Animation menu
+        # op_menu("VIEW3D_MT_gpencil_animation", {"type": 'I', "value": 'PRESS'}),
+        # # Insert blank keyframe
+        # ("gpencil.blank_frame_add", {"type": 'I', "value": 'PRESS', "shift": True}, None),
+        # # Delete Animation menu
+        # op_menu("GPENCIL_MT_gpencil_draw_delete", {"type": 'I', "value": 'PRESS', "alt": True}),
+        # ("gpencil.active_frames_delete_all", {"type": 'DEL', "value": 'PRESS', "shift": True}, None),
+        # # Context menu
+        # *_template_items_context_panel("VIEW3D_PT_gpencil_sculpt_context_menu", params.context_menu_event),
+        # # Auto-masking Pie menu.
+        # op_menu_pie(
+        #     "VIEW3D_MT_sculpt_gpencil_automasking_pie",
+        #     {"type": 'A', "shift": True, "alt": True, "value": 'PRESS'},
+        # ),
     ])
 
     return keymap
