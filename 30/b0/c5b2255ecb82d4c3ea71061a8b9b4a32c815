@@ -1,2 +1,3 @@
 Referenced by issue #119623, Anim: unintended API change in keyframe_insert() function
 Referenced by pull request #119625, Fix #119623: Anim: unintended API change in keyframe_insert() function
+Referenced by commit 30711d13981e445f76f7eb6ac1d3b41c0838b497, Fix #119623: Anim: unintended API change in keyframe_insert() function
