@@ -201,6 +201,8 @@ void smooth_curve_attribute(const IndexMask &curves_to_smooth,
                             const bool keep_shape,
                             GMutableSpan attribute_data)
 {
+  VArraySpan<float> influences(influence_by_point);
+
   curves_to_smooth.foreach_index(GrainSize(512), [&](const int curve_i) {
     Vector<std::byte> orig_data;
     const IndexRange points = points_by_curve[curve_i];
@@ -220,7 +222,7 @@ void smooth_curve_attribute(const IndexMask &curves_to_smooth,
 
       gaussian_blur_1D(src_data,
                        iterations,
-                       influence_by_point,
+                       VArray<float>::ForSpan(influences.slice(range)),
                        smooth_ends,
                        keep_shape,
                        cyclic[curve_i],
