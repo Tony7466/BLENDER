@@ -85,7 +85,7 @@ class Drawing : public ::GreasePencilDrawing {
    * Sets the matrices the that transform from a 3D point in layer-space to a 2D point in
    * texture-space
    */
-  void set_texture_matrices(const VArray<float4x2> &matrices, const IndexMask &selection);
+  void set_texture_matrices(Span<float4x2> matrices, const IndexMask &selection);
 
   /**
    * Radii of the points. Values are expected to be in blender units.

@@ -553,7 +553,7 @@ Span<float4x2> Drawing::texture_matrices() const
   return this->runtime->curve_texture_matrices.data().as_span();
 }
 
-void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const IndexMask &selection)
+void Drawing::set_texture_matrices(Span<float4x2> matrices, const IndexMask &selection)
 {
   using namespace blender::math;
   CurvesGeometry &curves = this->strokes_for_write();
