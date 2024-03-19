@@ -336,14 +336,11 @@ Span<uint3> Drawing::triangles() const
 
     struct LocalMemArena {
       MemArena *pf_arena = nullptr;
-      LocalMemArena()
-      {
-        pf_arena = BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, __func__);
-      }
+      LocalMemArena() : pf_arena(BLI_memarena_new(BLI_MEMARENA_STD_BUFSIZE, func)) {}
 
       ~LocalMemArena()
       {
-        if (pf_arena) {
+        if (pf_arena != nullptr) {
           BLI_memarena_free(pf_arena);
         }
       }
@@ -356,7 +353,6 @@ Span<uint3> Drawing::triangles() const
       MemArena *pf_arena = all_local_mem_arenas.local().pf_arena;
       for (const int curve_i : range) {
         const IndexRange points = points_by_curve[curve_i];
-
         if (points.size() < 3) {
           continue;
         }
