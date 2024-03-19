@@ -1441,7 +1441,7 @@ void ED_operatortypes_grease_pencil_primitives()
   WM_operatortype_append(GREASE_PENCIL_OT_primitive_circle);
 }
 
-wmKeyMap *ED_primitivetool_modal_keymap(wmKeyConfig *keyconf)
+void ED_primitivetool_modal_keymap(wmKeyConfig *keyconf)
 {
   using namespace blender::ed::greasepencil;
   static const EnumPropertyItem modal_items[] = {
@@ -1469,7 +1469,7 @@ wmKeyMap *ED_primitivetool_modal_keymap(wmKeyConfig *keyconf)
 
   /* This function is called for each space-type, only needs to add map once. */
   if (keymap && keymap->modal_items) {
-    return nullptr;
+    return;
   }
 
   keymap = WM_modalkeymap_ensure(keyconf, "Primitive Tool Modal Map", modal_items);
@@ -1481,5 +1481,5 @@ wmKeyMap *ED_primitivetool_modal_keymap(wmKeyConfig *keyconf)
   WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_box");
   WM_modalkeymap_assign(keymap, "GREASE_PENCIL_OT_primitive_circle");
 
-  return keymap;
+  return;
 }
