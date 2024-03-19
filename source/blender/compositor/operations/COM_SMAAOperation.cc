@@ -9,6 +9,8 @@
 
 #include "BLI_math_vector.h"
 #include "BLI_smaa_textures.h"
+#include "BLI_span.hh"
+#include "BLI_task.hh"
 
 #include "IMB_colormanagement.hh"
 
@@ -1421,9 +1423,9 @@ void SMAAOperation::get_area_of_interest(const int /*input_idx*/,
                                                    SMAA_MAX_SEARCH_STEPS_DIAG);
 }
 
-void SMAAOperation::update_memory_buffer_partial(MemoryBuffer *output,
-                                                 const rcti &area,
-                                                 Span<MemoryBuffer *> inputs)
+void SMAAOperation::update_memory_buffer(MemoryBuffer *output,
+                                         const rcti & /*area*/,
+                                         Span<MemoryBuffer *> inputs)
 {
   const MemoryBuffer *image = inputs[0];
   const int2 size = int2(image->get_width(), image->get_height());
@@ -1432,21 +1434,25 @@ void SMAAOperation::update_memory_buffer_partial(MemoryBuffer *output,
   float3 luminance_coefficients;
   IMB_colormanagement_get_luminance_coefficients(luminance_coefficients);
 
-  for (BuffersIterator<float> it = edges.iterate_with({}, area); !it.is_end(); ++it) {
-    int2 texel = int2(it.x, it.y);
-    float2 coordinates = (float2(texel) + float2(0.5f)) / float2(size);
+  threading::parallel_for(IndexRange(size.y), 1, [&](const IndexRange sub_y_range) {
+    for (const int64_t y : sub_y_range) {
+      for (const int64_t x : IndexRange(size.x)) {
+        int2 texel = int2(x, y);
+        float2 coordinates = (float2(texel) + float2(0.5f)) / float2(size);
 
-    float4 offset[3];
-    SMAAEdgeDetectionVS(coordinates, size, offset);
+        float4 offset[3];
+        SMAAEdgeDetectionVS(coordinates, size, offset);
 
-    float2 edge = SMAALumaEdgeDetectionPS(coordinates,
-                                          offset,
-                                          image,
-                                          threshold_,
-                                          luminance_coefficients,
-                                          local_contrast_adaptation_factor_);
-    copy_v2_v2(edges.get_elem(texel.x, texel.y), edge);
-  }
+        float2 edge = SMAALumaEdgeDetectionPS(coordinates,
+                                              offset,
+                                              image,
+                                              threshold_,
+                                              luminance_coefficients,
+                                              local_contrast_adaptation_factor_);
+        copy_v2_v2(edges.get_elem(texel.x, texel.y), edge);
+      }
+    }
+  });
 
   MemoryBuffer blending_weights(DataType::Color, size.x, size.y);
 
@@ -1456,37 +1462,45 @@ void SMAAOperation::update_memory_buffer_partial(MemoryBuffer *output,
   MemoryBuffer search_texture(DataType::Value, SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT);
   search_texture.copy_from(searchTexBytes, search_texture.get_rect());
 
-  for (BuffersIterator<float> it = blending_weights.iterate_with({}, area); !it.is_end(); ++it) {
-    int2 texel = int2(it.x, it.y);
-    float2 coordinates = (float2(texel) + float2(0.5f)) / float2(size);
+  threading::parallel_for(IndexRange(size.y), 1, [&](const IndexRange sub_y_range) {
+    for (const int64_t y : sub_y_range) {
+      for (const int64_t x : IndexRange(size.x)) {
+        int2 texel = int2(x, y);
+        float2 coordinates = (float2(texel) + float2(0.5f)) / float2(size);
 
-    float4 offset[3];
-    float2 pixel_coordinates;
-    SMAABlendingWeightCalculationVS(coordinates, size, pixel_coordinates, offset);
+        float4 offset[3];
+        float2 pixel_coordinates;
+        SMAABlendingWeightCalculationVS(coordinates, size, pixel_coordinates, offset);
 
-    float4 weights = SMAABlendingWeightCalculationPS(coordinates,
-                                                     pixel_coordinates,
-                                                     offset,
-                                                     &edges,
-                                                     &area_texture,
-                                                     &search_texture,
-                                                     float4(0.0f),
-                                                     size,
-                                                     corner_rounding_);
-    copy_v4_v4(blending_weights.get_elem(texel.x, texel.y), weights);
-  }
+        float4 weights = SMAABlendingWeightCalculationPS(coordinates,
+                                                         pixel_coordinates,
+                                                         offset,
+                                                         &edges,
+                                                         &area_texture,
+                                                         &search_texture,
+                                                         float4(0.0f),
+                                                         size,
+                                                         corner_rounding_);
+        copy_v4_v4(blending_weights.get_elem(texel.x, texel.y), weights);
+      }
+    }
+  });
 
-  for (BuffersIterator<float> it = blending_weights.iterate_with({}, area); !it.is_end(); ++it) {
-    int2 texel = int2(it.x, it.y);
-    float2 coordinates = (float2(texel) + float2(0.5f)) / float2(size);
+  threading::parallel_for(IndexRange(size.y), 1, [&](const IndexRange sub_y_range) {
+    for (const int64_t y : sub_y_range) {
+      for (const int64_t x : IndexRange(size.x)) {
+        int2 texel = int2(x, y);
+        float2 coordinates = (float2(texel) + float2(0.5f)) / float2(size);
 
-    float4 offset;
-    SMAANeighborhoodBlendingVS(coordinates, size, offset);
+        float4 offset;
+        SMAANeighborhoodBlendingVS(coordinates, size, offset);
 
-    float4 result = SMAANeighborhoodBlendingPS(
-        coordinates, offset, image, &blending_weights, size);
-    copy_v4_v4(output->get_elem(texel.x, texel.y), result);
-  }
+        float4 result = SMAANeighborhoodBlendingPS(
+            coordinates, offset, image, &blending_weights, size);
+        copy_v4_v4(output->get_elem(texel.x, texel.y), result);
+      }
+    }
+  });
 }
 
 }  // namespace blender::compositor

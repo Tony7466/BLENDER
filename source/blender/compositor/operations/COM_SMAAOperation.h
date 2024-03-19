@@ -4,11 +4,11 @@
 
 #pragma once
 
-#include "COM_MultiThreadedOperation.h"
+#include "COM_NodeOperation.h"
 
 namespace blender::compositor {
 
-class SMAAOperation : public MultiThreadedOperation {
+class SMAAOperation : public NodeOperation {
  protected:
   float threshold_ = 0.1f;
   float local_contrast_adaptation_factor_ = 2.0f;
@@ -33,9 +33,9 @@ class SMAAOperation : public MultiThreadedOperation {
   }
 
   void get_area_of_interest(int input_idx, const rcti &output_area, rcti &r_input_area) override;
-  void update_memory_buffer_partial(MemoryBuffer *output,
-                                    const rcti &area,
-                                    Span<MemoryBuffer *> inputs) override;
+  void update_memory_buffer(MemoryBuffer *output,
+                            const rcti &area,
+                            Span<MemoryBuffer *> inputs) override;
 };
 
 }  // namespace blender::compositor
