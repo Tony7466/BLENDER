@@ -294,7 +294,6 @@ static void grease_pencil_weight_batch_ensure(Object &object,
     });
 
     /* Get vertex weights of the active vertex group in this drawing. */
-    const Span<MDeformVert> dverts = curves.deform_verts();
     const VArray<float> weights = *curves.attributes().lookup_or_default<float>(
         active_defgroup_name, bke::AttrDomain::Point, no_active_weight);
     MutableSpan<float> weights_slice = points_weight.slice(points);
