@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "vk_common.hh"
 #include "vk_render_graph_list.hh"
 
@@ -29,20 +31,6 @@ struct VKComputeInfo {
 };
 
 }  // namespace gpu
-
-/* TODO: this is duplicated from gl_shader.hh, perhaps move it to create info. ß*/
-template<>
-struct DefaultHash<Vector<gpu::shader::ShaderCreateInfo::SpecializationConstant::Value>> {
-  uint64_t operator()(
-      const Vector<gpu::shader::ShaderCreateInfo::SpecializationConstant::Value> &key) const
-  {
-    uint64_t hash = 0;
-    for (const gpu::shader::ShaderCreateInfo::SpecializationConstant::Value &value : key) {
-      hash = hash * 33 + value.u;
-    }
-    return hash;
-  }
-};
 
 template<> struct DefaultHash<gpu::VKComputeInfo> {
   uint64_t operator()(const gpu::VKComputeInfo &key) const
