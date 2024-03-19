@@ -311,17 +311,15 @@ static void rna_Attribute_quaternion_value_set(PointerRNA *ptr, const float *val
 {
   using blender::VecBase;
   using blender::math::Quaternion;
+  using blender::math::normalize;
 
-  float *fs = static_cast<float *>(ptr->data);
-  auto q = Quaternion(VecBase<float, 4>(values));
-  if (!is_unit_scale(q)) {
-    q = normalize(q);
-  }
+  float *data = static_cast<float *>(ptr->data);
+  const Quaternion src = normalize(Quaternion(VecBase<float, 4>(values)));
 
-  fs[0] = q.w;
-  fs[1] = q.x;
-  fs[2] = q.y;
-  fs[3] = q.z;
+  data[0] = src.w;
+  data[1] = src.x;
+  data[2] = src.y;
+  data[3] = src.z;
 }
 
 static bool rna_Attribute_is_internal_get(PointerRNA *ptr)
