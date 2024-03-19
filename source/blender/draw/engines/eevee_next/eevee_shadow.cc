@@ -743,7 +743,7 @@ void ShadowModule::init()
   }
 
   jittered_transparency_ = !inst_.is_viewport() ||
-                           scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_TRANSPARENCY;
+                           scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_TRANSPARENCY_VIEWPORT;
 
   data_.ray_count = clamp_i(inst_.scene->eevee.shadow_ray_count, 1, SHADOW_MAX_RAY);
   data_.step_count = clamp_i(inst_.scene->eevee.shadow_step_count, 1, SHADOW_MAX_STEP);
