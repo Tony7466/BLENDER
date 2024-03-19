@@ -15,11 +15,8 @@
 
 float texel_fetch(int index)
 {
-  /* glyph_tex_size: upper 8 bits is log2 of texture width, lower 24 bits is width-1 */
-  int col_mask = glyph_tex_size & 0xFFFFFF;
-  int row_shift = glyph_tex_size >> 24;
-  ivec2 uv = ivec2(index & col_mask, index >> row_shift);
-  return texelFetch(glyph, uv, 0).r;
+  ivec2 texel = ivec2(index & glyph_tex_width_mask, index >> glyph_tex_width_shift);
+  return texelFetch(glyph, texel, 0).r;
 }
 
 bool is_inside_box(ivec2 v)
@@ -29,8 +26,8 @@ bool is_inside_box(ivec2 v)
 
 float sample_glyph_bilinear(vec2 bilin_f, vec2 uv)
 {
-  ivec2 iuv = ivec2(floor(uv)) - 1;
-  int index = glyph_offset + iuv.y * glyph_dim.x + iuv.x;
+  ivec2 texel = ivec2(floor(uv)) - 1;
+  int index = glyph_offset + texel.y * glyph_dim.x + texel.x;
 
   /* Fetch 2x2 texels for filtering. */
   int offset_x = 1;
@@ -41,14 +38,18 @@ float sample_glyph_bilinear(vec2 bilin_f, vec2 uv)
   float br = texel_fetch(index + offset_x + offset_y);
 
   /* Texels outside of glyph box: zero. */
-  if (!is_inside_box(iuv))
+  if (!is_inside_box(texel)) {
     tl = 0.0;
-  if (!is_inside_box(iuv + ivec2(1, 0)))
+  }
+  if (!is_inside_box(texel + ivec2(1, 0))) {
     tr = 0.0;
-  if (!is_inside_box(iuv + ivec2(0, 1)))
+  }
+  if (!is_inside_box(texel + ivec2(0, 1))) {
     bl = 0.0;
-  if (!is_inside_box(iuv + ivec2(1, 1)))
+  }
+  if (!is_inside_box(texel + ivec2(1, 1))) {
     br = 0.0;
+  }
 
   /* Bilinear filter. */
   float tA = mix(tl, tr, bilin_f.x);
@@ -58,11 +59,11 @@ float sample_glyph_bilinear(vec2 bilin_f, vec2 uv)
 
 vec4 sample_glyph_rgba(vec2 uv)
 {
-  ivec2 iuv = ivec2(floor(uv)) - 1;
+  ivec2 texel = ivec2(floor(uv)) - 1;
 
   vec4 col = vec4(0.0);
-  if (is_inside_box(iuv)) {
-    int index = glyph_offset + (iuv.y * glyph_dim.x + iuv.x) * glyph_comp_len;
+  if (is_inside_box(texel)) {
+    int index = glyph_offset + (texel.y * glyph_dim.x + texel.x) * glyph_comp_len;
     col.r = texel_fetch(index);
     col.g = texel_fetch(index + 1);
     col.b = texel_fetch(index + 2);
@@ -95,8 +96,8 @@ void main()
      * filter kernel weights by bilinear fraction. */
     fragColor.a = 0.0;
 
-    ivec2 iuv = ivec2(floor(uv_base)) - 1;
-    int frag_offset = glyph_offset + iuv.y * glyph_dim.x + iuv.x;
+    ivec2 texel = ivec2(floor(uv_base)) - 1;
+    int frag_offset = glyph_offset + texel.y * glyph_dim.x + texel.x;
 
     if (interp_size == 1) {
       /* 3x3 blur */
@@ -117,8 +118,9 @@ void main()
         for (int ix = 0; ix < 4; ++ix) {
           int ofsx = ix - 1;
           float v = texel_fetch(frag_offset + ofsy * glyph_dim.x + ofsx);
-          if (!is_inside_box(iuv + ivec2(ofsx, ofsy)))
+          if (!is_inside_box(texel + ivec2(ofsx, ofsy))) {
             v = 0.0;
+          }
 
           /* Bilinearly compute filter weight for this sample. */
           float w00 = weights3x3[idx];
@@ -154,8 +156,9 @@ void main()
         for (int ix = 0; ix < 6; ++ix) {
           int ofsx = ix - 2;
           float v = texel_fetch(frag_offset + ofsy * glyph_dim.x + ofsx);
-          if (!is_inside_box(iuv + ivec2(ofsx, ofsy)))
+          if (!is_inside_box(texel + ivec2(ofsx, ofsy))) {
             v = 0.0;
+          }
 
           /* Bilinearly compute filter weight for this sample. */
           float w00 = weights5x5[idx];
