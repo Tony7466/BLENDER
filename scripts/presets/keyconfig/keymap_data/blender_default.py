@@ -7925,7 +7925,7 @@ def km_3d_view_tool_sculpt_lasso_hide(params):
         ]},
     )
 
-def km_3d_view_tool_sculpt_lasso_hide(params):
+def km_3d_view_tool_sculpt_polyline_hide(params):
     return (
         "3D View Tool: Sculpt, Polyline Hide",
         {"space_type": 'VIEW_3D', "region_type": 'WINDOW'},
@@ -8785,6 +8785,7 @@ def generate_keymaps(params=None):
         km_3d_view_tool_edit_curves_draw(params),
         km_3d_view_tool_sculpt_box_hide(params),
         km_3d_view_tool_sculpt_lasso_hide(params),
+        km_3d_view_tool_sculpt_polyline_hide(params),
         km_3d_view_tool_sculpt_box_mask(params),
         km_3d_view_tool_sculpt_lasso_mask(params),
         km_3d_view_tool_sculpt_box_face_set(params),
