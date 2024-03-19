@@ -10,11 +10,9 @@
 
 #pragma once
 
-#include "GPU_primitive.h"
+#include "BLI_span.hh"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "GPU_primitive.h"
 
 /** Opaque type hiding blender::gpu::IndexBuf. */
 typedef struct GPUIndexBuf GPUIndexBuf;
@@ -43,7 +41,7 @@ GPUIndexBuf *GPU_indexbuf_build_on_device(uint index_len);
 
 void GPU_indexbuf_init_build_on_device(GPUIndexBuf *elem, uint index_len);
 
-uint32_t *GPU_indexbuf_get_data(GPUIndexBufBuilder *);
+blender::MutableSpan<uint32_t> GPU_indexbuf_get_data(GPUIndexBufBuilder *);
 uint32_t GPU_indexbuf_get_restart_value(GPUIndexBufBuilder *);
 
 /*
@@ -77,6 +75,14 @@ void GPU_indexbuf_build_in_place_ex(GPUIndexBufBuilder *builder,
                                     uint index_max,
                                     bool uses_restart_indices,
                                     GPUIndexBuf *elem);
+
+void GPU_indexbuf_build_in_place_from_memory(GPUIndexBuf *ibo,
+                                             GPUPrimType prim_type,
+                                             const uint32_t *data,
+                                             int32_t data_len,
+                                             int32_t index_min,
+                                             int32_t index_max,
+                                             bool uses_restart_indices);
 
 void GPU_indexbuf_bind_as_ssbo(GPUIndexBuf *elem, int binding);
 
@@ -123,7 +129,3 @@ int GPU_indexbuf_primitive_len(GPUPrimType prim_type);
       elem = NULL; \
     } \
   } while (0)
-
-#ifdef __cplusplus
-}
-#endif

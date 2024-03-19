@@ -25,74 +25,92 @@ namespace blender::draw {
 static inline void copy_tris_to_vbo(const Span<int3> corner_tris,
                                     const bool hidden,
                                     const IndexRange mesh_tris,
-                                    const IndexRange vbo_tris,
+                                    const IndexRange ibo_tris,
                                     const uint32_t restart_value,
-                                    MutableSpan<uint3> vbo_data)
+                                    MutableSpan<uint3> data)
 {
   if (hidden) {
-    vbo_data.slice(vbo_tris).cast<uint32_t>().fill(restart_value);
+    data.slice(ibo_tris).cast<uint32_t>().fill(restart_value);
   }
   else {
-    vbo_data.slice(vbo_tris).copy_from(corner_tris.slice(mesh_tris).cast<uint3>());
+    data.slice(ibo_tris).copy_from(corner_tris.slice(mesh_tris).cast<uint3>());
   }
 }
 
-static void extract_tris_mesh(const MeshRenderData &mr,
-                              const uint32_t restart_value,
-                              MutableSpan<uint3> vbo_data)
+static bool use_corner_tris_directly(const MeshRenderData &mr)
+{
+  if (mr.face_sorted->face_tri_offsets.has_value()) {
+    /* Faces are uploaded sorted into contiguous chunks of matching
+     * materials which may not match the original face order. */
+    return false;
+  }
+  if (!mr.hide_poly.is_empty()) {
+    /* Values for hidden faces must be changed. */
+    return false;
+  }
+  return true;
+}
+
+static void extract_tris_mesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
 {
   const OffsetIndices faces = mr.faces;
   const Span<int3> corner_tris = mr.corner_tris;
+
+  if (use_corner_tris_directly(mr)) {
+    /* There are no hidden faces and no reordering is necessary to group faces with the same
+     * material. The corner indices from #Mesh::corner_tris() can be copied directly to the GPU. */
+    GPU_indexbuf_build_in_place_from_memory(&ibo,
+                                            GPU_PRIM_TRIS,
+                                            corner_tris.cast<uint32_t>().data(),
+                                            mr.face_sorted->visible_tri_len,
+                                            0,
+                                            mr.loop_len,
+                                            false);
+    return;
+  }
+
   const Span<bool> hide_poly = mr.hide_poly;
+
+  GPUIndexBufBuilder builder;
+  GPU_indexbuf_init(&builder, GPU_PRIM_TRIS, mr.face_sorted->visible_tri_len, mr.loop_len);
+  MutableSpan<uint3> data = GPU_indexbuf_get_data(&builder).cast<uint3>();
+  const uint32_t restart_value = GPU_indexbuf_get_restart_value(&builder);
+
   if (!mr.face_sorted->face_tri_offsets.has_value()) {
-    if (hide_poly.is_empty()) {
-      array_utils::copy(corner_tris.cast<uint3>(), vbo_data);
-    }
-    else {
-      threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
-        for (const int face : range) {
-          const IndexRange tris = bke::mesh::face_triangles_range(faces, face);
-          copy_tris_to_vbo(corner_tris, hide_poly[face], tris, tris, restart_value, vbo_data);
-        }
-      });
-    }
+    /* No reordering for grouping faces with the same material, but there are hidden faces. */
+    threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
+      for (const int face : range) {
+        const IndexRange tris = bke::mesh::face_triangles_range(faces, face);
+        copy_tris_to_vbo(corner_tris, hide_poly[face], tris, tris, restart_value, data);
+      }
+    });
+    return;
   }
-  else {
-    if (hide_poly.is_empty()) {
-      const Span<int> face_tri_offsets = mr.face_sorted->face_tri_offsets->as_span();
-      threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
-        for (const int face : range) {
-          const IndexRange mesh_tris = bke::mesh::face_triangles_range(faces, face);
-          copy_tris_to_vbo(corner_tris,
-                           false,
-                           mesh_tris,
-                           IndexRange(face_tri_offsets[face], mesh_tris.size()),
-                           restart_value,
-                           vbo_data);
-        }
-      });
+
+  const Span<int> face_tri_offsets = mr.face_sorted->face_tri_offsets->as_span();
+  threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
+    for (const int face : range) {
+      const IndexRange mesh_tris = bke::mesh::face_triangles_range(faces, face);
+      copy_tris_to_vbo(corner_tris,
+                       hide_poly.is_empty() ? false : hide_poly[face],
+                       mesh_tris,
+                       IndexRange(face_tri_offsets[face], mesh_tris.size()),
+                       restart_value,
+                       data);
     }
-    else {
-      const Span<int> face_tri_offsets = mr.face_sorted->face_tri_offsets->as_span();
-      threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
-        for (const int face : range) {
-          const IndexRange mesh_tris = bke::mesh::face_triangles_range(faces, face);
-          copy_tris_to_vbo(corner_tris,
-                           hide_poly[face],
-                           mesh_tris,
-                           IndexRange(face_tri_offsets[face], mesh_tris.size()),
-                           restart_value,
-                           vbo_data);
-        }
-      });
-    }
-  }
+  });
+
+  // TODO: Track if restart indices used.
+  GPU_indexbuf_build_in_place_ex(&builder, 0, mr.loop_len, true, &ibo);
 }
 
-static void extract_tris_bmesh(const MeshRenderData &mr,
-                               const uint32_t restart_value,
-                               MutableSpan<uint3> vbo_data)
+static void extract_tris_bmesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
 {
+  GPUIndexBufBuilder builder;
+  GPU_indexbuf_init(&builder, GPU_PRIM_TRIS, mr.face_sorted->visible_tri_len, mr.loop_len);
+  MutableSpan<uint3> data = GPU_indexbuf_get_data(&builder).cast<uint3>();
+  const uint32_t restart_value = GPU_indexbuf_get_restart_value(&builder);
+
   BMesh &bm = *mr.bm;
   BMLoop *(*looptris)[3] = mr.edit_bmesh->looptris;
   const Span<int> face_tri_offsets = mr.face_sorted->face_tri_offsets ?
@@ -102,34 +120,32 @@ static void extract_tris_bmesh(const MeshRenderData &mr,
     for (const int face_index : range) {
       const BMFace &face = *BM_face_at_index(&bm, face_index);
       const int loop_index = BM_elem_index_get(BM_FACE_FIRST_LOOP(&face));
-      const IndexRange tris(poly_to_tri_count(face_index, loop_index),
-                            bke::mesh::face_triangles_num(face.len));
+      const IndexRange bm_tris(poly_to_tri_count(face_index, loop_index),
+                               bke::mesh::face_triangles_num(face.len));
 
-      const IndexRange vbo_tris(
-          face_tri_offsets.is_empty() ? tris.start() : face_tri_offsets[face_index], tris.size());
+      const IndexRange ibo_tris(face_tri_offsets.is_empty() ? bm_tris.start() :
+                                                              face_tri_offsets[face_index],
+                                bm_tris.size());
 
       if (BM_elem_flag_test(&face, BM_ELEM_HIDDEN)) {
-        vbo_data.slice(vbo_tris).fill(uint3(restart_value));
+        data.slice(ibo_tris).fill(uint3(restart_value));
       }
       else {
-        for (const int i : tris.index_range()) {
-          vbo_data[vbo_tris[i]] = uint3(BM_elem_index_get(looptris[tris[i]][0]),
-                                        BM_elem_index_get(looptris[tris[i]][1]),
-                                        BM_elem_index_get(looptris[tris[i]][2]));
+        for (const int i : bm_tris.index_range()) {
+          data[ibo_tris[i]] = uint3(BM_elem_index_get(looptris[bm_tris[i]][0]),
+                                    BM_elem_index_get(looptris[bm_tris[i]][1]),
+                                    BM_elem_index_get(looptris[bm_tris[i]][2]));
         }
       }
     }
   });
-}
 
-static void extract_tris_finish(const MeshRenderData &mr,
-                                GPUIndexBufBuilder &builder,
-                                MeshBatchCache &cache,
-                                GPUIndexBuf &ibo)
-{
   // TODO: Track if restart indices used.
   GPU_indexbuf_build_in_place_ex(&builder, 0, mr.loop_len, true, &ibo);
+}
 
+static void extract_tris_finish(const MeshRenderData &mr, MeshBatchCache &cache, GPUIndexBuf &ibo)
+{
   /* Create ibo sub-ranges. Always do this to avoid error when the standard surface batch
    * is created before the surfaces-per-material. */
   if (mr.use_final_mesh && cache.tris_per_mat) {
@@ -157,21 +173,14 @@ static void extract_tris_init(const MeshRenderData &mr,
 {
   GPUIndexBuf &ibo = *static_cast<GPUIndexBuf *>(ibo_v);
 
-  GPUIndexBufBuilder builder;
-  GPU_indexbuf_init(&builder, GPU_PRIM_TRIS, mr.face_sorted->visible_tri_len, mr.loop_len);
-
-  MutableSpan<uint32_t> index_data(GPU_indexbuf_get_data(&builder),
-                                   mr.face_sorted->visible_tri_len * 3);
-  const uint32_t restart_value = GPU_indexbuf_get_restart_value(&builder);
-
   if (mr.extract_type == MR_EXTRACT_MESH) {
-    extract_tris_mesh(mr, restart_value, index_data.cast<uint3>());
+    extract_tris_mesh(mr, ibo);
   }
   else {
-    extract_tris_bmesh(mr, restart_value, index_data.cast<uint3>());
+    extract_tris_bmesh(mr, ibo);
   }
 
-  extract_tris_finish(mr, builder, cache, ibo);
+  extract_tris_finish(mr, cache, ibo);
 }
 
 static void extract_tris_init_subdiv(const DRWSubdivCache &subdiv_cache,

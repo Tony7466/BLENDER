@@ -96,9 +96,9 @@ void GPU_indexbuf_init_build_on_device(GPUIndexBuf *elem, uint index_len)
   elem_->init_build_on_device(index_len);
 }
 
-uint32_t *GPU_indexbuf_get_data(GPUIndexBufBuilder *builder)
+blender::MutableSpan<uint32_t> GPU_indexbuf_get_data(GPUIndexBufBuilder *builder)
 {
-  return builder->data;
+  return {builder->data, builder->max_index_len};
 }
 
 uint32_t GPU_indexbuf_get_restart_value(GPUIndexBufBuilder *builder)
@@ -523,6 +523,20 @@ void GPU_indexbuf_build_in_place_ex(GPUIndexBufBuilder *builder,
                      builder->prim_type,
                      uses_restart_indices);
   builder->data = nullptr;
+}
+
+void GPU_indexbuf_build_in_place_from_memory(GPUIndexBuf *ibo,
+                                             const GPUPrimType prim_type,
+                                             const uint32_t *data,
+                                             const int32_t data_len,
+                                             const int32_t index_min,
+                                             const int32_t index_max,
+                                             const bool uses_restart_indices)
+{
+  uint32_t *copy = static_cast<uint32_t *>(
+      MEM_malloc_arrayN(data_len, sizeof(uint32_t), __func__));
+  memcpy(copy, data, sizeof(uint32_t) * data_len);
+  unwrap(ibo)->init(data_len, copy, index_min, index_max, prim_type, uses_restart_indices);
 }
 
 void GPU_indexbuf_create_subrange_in_place(GPUIndexBuf *elem,
