@@ -27,11 +27,11 @@
 #include "MEM_guardedalloc.h"
 
 #include "DNA_userdef_types.h"
-#include "DNA_vfont_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_color.h"
 #include "BLI_math_vector.h"
+#include "BLI_path_util.h"
 #include "BLI_rect.h"
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
@@ -1511,6 +1511,11 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
   uiTooltipData *data = MEM_new<uiTooltipData>(__func__);
 
   const ID_Type type_id = GS(item_tooltip_data->id->name);
+
+  UI_tooltip_text_field_add(
+      data, item_tooltip_data->id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
+  UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+
   if (type_id == ID_IM) {
     Image *ima = reinterpret_cast<Image *>(item_tooltip_data->id);
     ImageUser *iuser = static_cast<ImageUser *>(
@@ -1518,18 +1523,45 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
     if (ima != nullptr) {
       void *lock;
       ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
+
+      if (ima->filepath[0]) {
+        char root[FILE_MAX];
+        BLI_path_split_dir_part(ima->filepath, root, FILE_MAX);
+        UI_tooltip_text_field_add(data, root, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+        UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+      }
+
       if (ibuf) {
         UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
         float scale = (200.0f * UI_SCALE_FAC) / float(std::max(ibuf->x, ibuf->y));
-        short size[2] = {short(float(ibuf->x) * scale), short(float(ibuf->y) * scale)};
-        UI_tooltip_image_field_add(data, ibuf, size);
+
+        uiTooltipImage image_data;
+        image_data.width = int(float(ibuf->x) * scale);
+        image_data.height = int(float(ibuf->y) * scale);
+        image_data.ibuf = ibuf;
+        image_data.border = true;
+        image_data.background = uiTooltipImageBackground::Checkerboard_Themed;
+        image_data.premultiplied = true;
+        UI_tooltip_image_field_add(data, image_data);
+
+        UI_tooltip_text_field_add(data,
+                                  fmt::format("{} \u00D7 {}", ibuf->x, ibuf->y),
+                                  {},
+                                  UI_TIP_STYLE_NORMAL,
+                                  UI_TIP_LC_NORMAL);
+
         BKE_image_release_ibuf(ima, ibuf, lock);
       }
     }
   }
   else if (type_id == ID_VF) {
-    VFont *font = reinterpret_cast<VFont *>(item_tooltip_data->id);
-    printf("Could make font thumbnail here");
+    // VFont *font = reinterpret_cast<VFont *>(item_tooltip_data->id);
+  }
+  else if (type_id == ID_SCE) {
+    // Scene *sc = reinterpret_cast<Scene *>(item_tooltip_data->id);
+  }
+  else if (type_id == ID_MC) {
+    // MovieClip *mc = reinterpret_cast<MovieClip *>(item_tooltip_data->id);
   }
   else {
 
