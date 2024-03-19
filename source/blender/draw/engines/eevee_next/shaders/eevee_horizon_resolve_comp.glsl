@@ -97,15 +97,6 @@ void main()
     return;
   }
 
-  vec2 center_uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
-  float center_depth = texelFetch(depth_tx, texel_fullres, 0).r;
-  vec3 center_P = drw_point_screen_to_world(vec3(center_uv, center_depth));
-
-  if (center_depth == 1.0) {
-    /* Do not trace for background */
-    return;
-  }
-
   GBufferReader gbuf = gbuffer_read(
       gbuf_header_tx, gbuf_closure_tx, gbuf_normal_tx, texel_fullres);
 
@@ -113,6 +104,9 @@ void main()
     return;
   }
 
+  vec2 center_uv = (vec2(texel_fullres) + 0.5) * uniform_buf.raytrace.full_resolution_inv;
+  float center_depth = texelFetch(depth_tx, texel_fullres, 0).r;
+  vec3 center_P = drw_point_screen_to_world(vec3(center_uv, center_depth));
   vec3 center_N = gbuf.surface_N;
 
   SphericalHarmonicL1 accum_sh;
