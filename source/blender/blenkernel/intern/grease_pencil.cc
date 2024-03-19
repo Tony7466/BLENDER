@@ -431,23 +431,16 @@ Span<float3> Drawing::curve_plane_normals() const
  * Returns the matrix that transforms from a 3D point in layer-space to a 2D point in
  * stroke-space for the stroke `curve_i`
  */
-static float4x2 get_local_to_stroke_matrix(const Drawing &drawing, int curve_i)
+static float4x2 get_local_to_stroke_matrix(const Span<float3> positions, const float3 normal)
 {
   using namespace blender::math;
 
-  const CurvesGeometry &curves = drawing.strokes();
-  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  const Span<float3> positions = curves.positions();
-  const Span<float3> normals = drawing.curve_plane_normals();
-  const IndexRange points = points_by_curve[curve_i];
-  const float3 normal = normals[curve_i];
-
-  if (points.size() <= 2) {
+  if (positions.size() <= 2) {
     return float4x2::identity();
   }
 
-  const float3 point_0 = positions[points.first()];
-  const float3 point_1 = positions[points.first() + 1];
+  const float3 point_0 = positions[0];
+  const float3 point_1 = positions[1];
 
   /* Local X axis (p0 -> p1) */
   const float3 local_x = normalize(point_1 - point_0);
@@ -538,10 +531,16 @@ Span<float4x2> Drawing::texture_matrices() const
     const VArray<float2> uv_scales = *attributes.lookup_or_default<float2>(
         "uv_scale", AttrDomain::Curve, float2(1.0f, 1.0f));
 
+    const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+    const Span<float3> positions = curves.positions();
+    const Span<float3> normals = this->curve_plane_normals();
+
     r_data.reinitialize(curves.curves_num());
     threading::parallel_for(curves.curves_range(), 512, [&](const IndexRange range) {
       for (const int curve_i : range) {
-        const float4x2 strokemat = get_local_to_stroke_matrix(*this, curve_i);
+        const IndexRange points = points_by_curve[curve_i];
+        const float3 normal = normals[curve_i];
+        const float4x2 strokemat = get_local_to_stroke_matrix(positions.slice(points), normal);
         const float3x2 texture_matrix = get_stroke_to_texture_matrix(
             uv_rotations[curve_i], uv_translations[curve_i], uv_scales[curve_i]);
 
@@ -568,8 +567,14 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
       AttrDomain::Curve,
       AttributeInitVArray(VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
 
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+  const Span<float3> positions = curves.positions();
+  const Span<float3> normals = this->curve_plane_normals();
+
   selection.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
-    const float4x2 strokemat = get_local_to_stroke_matrix(*this, curve_i);
+    const IndexRange points = points_by_curve[curve_i];
+    const float3 normal = normals[curve_i];
+    const float4x2 strokemat = get_local_to_stroke_matrix(positions.slice(points), normal);
     const float4x2 texspace = matrices[pos];
 
     /* We do the computation using doubles to avoid numerical precision errors. */
