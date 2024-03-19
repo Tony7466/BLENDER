@@ -1373,22 +1373,6 @@ static void wm_block_redo_cancel_cb(bContext *C, void *arg_op)
   }
 }
 
-static void wm_block_popup_panel_create(ARegion *region, uiBlock *block)
-{
-  Panel *&panel = region->runtime.popup_block_panel;
-  /* Dummy popup panel type. */
-  static PanelType panel_type = []() {
-    PanelType type{};
-    STRNCPY(type.idname, "WM_PT_popup");
-    STRNCPY(type.label, "Popup panel");
-    type.flag = PANEL_TYPE_NO_HEADER;
-    return type;
-  }();
-  bool open;
-  panel = UI_panel_begin(region, &region->panels, block, &panel_type, panel, &open);
-  panel->runtime->layout_panels.clear();
-}
-
 static uiBlock *wm_block_create_redo(bContext *C, ARegion *region, void *arg_op)
 {
   wmOperator *op = static_cast<wmOperator *>(arg_op);
@@ -1407,7 +1391,7 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *region, void *arg_op)
   BLI_assert(op->type->flag & OPTYPE_REGISTER);
 
   UI_block_func_handle_set(block, wm_block_redo_cb, arg_op);
-  wm_block_popup_panel_create(region, block);
+  UI_popup_dummy_panel_set(region, block);
   uiLayout *layout = UI_block_layout(
       block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, width, UI_UNIT_Y, 0, style);
 
@@ -1493,7 +1477,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   UI_block_flag_disable(block, UI_BLOCK_LOOP);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
-  wm_block_popup_panel_create(region, block);
+  UI_popup_dummy_panel_set(region, block);
 
   if (data->mouse_move_quit) {
     UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);

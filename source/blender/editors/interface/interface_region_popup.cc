@@ -591,6 +591,23 @@ void UI_layout_panel_popup_scroll_apply(Panel *panel, const float dy)
   }
 }
 
+void UI_popup_dummy_panel_set(ARegion *region, uiBlock *block)
+{
+  Panel *&panel = region->runtime.popup_block_panel;
+  if (!panel) {
+    /* Dummy popup panel type. */
+    static PanelType panel_type = []() {
+      PanelType type{};
+      type.flag = PANEL_TYPE_NO_HEADER;
+      return type;
+    }();
+    panel = BKE_panel_new(&panel_type);
+  }
+  panel->runtime->layout_panels.clear();
+  block->panel = panel;
+  panel->runtime->block=block;
+}
+
 uiBlock *ui_popup_block_refresh(bContext *C,
                                 uiPopupBlockHandle *handle,
                                 ARegion *butregion,
@@ -900,6 +917,10 @@ void ui_popup_block_free(bContext *C, uiPopupBlockHandle *handle)
   }
 
   ui_popup_block_remove(C, handle);
+
+  if (handle->region->runtime.popup_block_panel) {
+    BKE_panel_free(handle->region->runtime.popup_block_panel);
+  }
 
   MEM_freeN(handle);
 }

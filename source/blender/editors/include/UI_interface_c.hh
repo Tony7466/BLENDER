@@ -712,6 +712,7 @@ int UI_popup_menu_invoke(bContext *C, const char *idname, ReportList *reports) A
  * E.g. WM might need to do this for exiting files correctly.
  */
 void UI_popup_menu_retval_set(const uiBlock *block, int retval, bool enable);
+void UI_popup_dummy_panel_set(ARegion *region, uiBlock *block);
 /** Toggles layout panel open state and returns the new state. */
 bool UI_layout_panel_toggle_open(const bContext *C, struct LayoutPanelHeader *header);
 void UI_panel_drag_collapse_handler_add(const bContext *C, const bool was_open);
