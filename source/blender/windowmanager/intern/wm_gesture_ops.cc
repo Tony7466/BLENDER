@@ -59,7 +59,6 @@ static void gesture_modal_end(bContext *C, wmOperator *op)
   op->customdata = nullptr;
 
   ED_area_tag_redraw(CTX_wm_area(C));
-  ED_workspace_status_text(C, nullptr);
 
   if (RNA_struct_find_property(op->ptr, "cursor")) {
     WM_cursor_modal_restore(win);
@@ -699,24 +698,6 @@ void WM_OT_lasso_gesture(wmOperatorType *ot)
  * Like the Lasso Gesture, the data passed onto other operators via the 'path' property is a
  * sequential array of mouse positions.
  * \{ */
-
-/* Provides a basic status text update for relevant operator controls. */
-static void polyline_update_header(bContext *C, wmOperator *op)
-{
-  auto get_modal_key_str = [&](int id) {
-    return WM_modalkeymap_operator_items_to_string(op->type, id, true).value_or("");
-  };
-
-  const std::string header = fmt::format(
-      IFACE_("{}: Confirm, {}: Cancel, {}: Add Point, {}: Move"),
-      get_modal_key_str(GESTURE_MODAL_CONFIRM),
-      get_modal_key_str(GESTURE_MODAL_CANCEL),
-      get_modal_key_str(GESTURE_MODAL_SELECT),
-      get_modal_key_str(GESTURE_MODAL_MOVE));
-
-  ED_workspace_status_text(C, header.c_str());
-}
-
 int WM_gesture_polyline_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
@@ -732,8 +713,6 @@ int WM_gesture_polyline_invoke(bContext *C, wmOperator *op, const wmEvent *event
   if ((prop = RNA_struct_find_property(op->ptr, "cursor"))) {
     WM_cursor_modal_set(win, RNA_property_int_get(op->ptr, prop));
   }
-
-  polyline_update_header(C, op);
 
   return OPERATOR_RUNNING_MODAL;
 }
