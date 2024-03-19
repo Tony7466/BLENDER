@@ -109,10 +109,10 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
   /**
    * Clear color image resource.
    */
-  void clear(VkImage vk_image,
-             VkImageLayout vk_image_layout,
-             const VkClearColorValue &vk_clear_color,
-             Span<VkImageSubresourceRange> ranges);
+  [[deprecated]] void clear(VkImage vk_image,
+                            VkImageLayout vk_image_layout,
+                            const VkClearColorValue &vk_clear_color,
+                            Span<VkImageSubresourceRange> ranges);
 
   /**
    * Clear depth/stencil aspect of an image resource.

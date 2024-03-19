@@ -59,6 +59,22 @@ NodeHandle VKRenderGraphNodes::add_copy_buffer_node(VkBuffer src_buffer,
   return handle;
 }
 
+NodeHandle VKRenderGraphNodes::add_copy_image_node(VkImage src_image,
+                                                    VkImage dst_image,
+                                                    const VkImageCopy &region)
+{
+  NodeHandle handle = allocate();
+  Node &node = nodes_.get(handle);
+  BLI_assert(node.type == Node::Type::UNUSED);
+
+  node.type = Node::Type::COPY_IMAGE;
+  node.copy_image.src_image = src_image;
+  node.copy_image.dst_image = dst_image;
+  node.copy_image.region = region;
+
+  return handle;
+}
+
 NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_info)
 {
   NodeHandle handle = allocate();

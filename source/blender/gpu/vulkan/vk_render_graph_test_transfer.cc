@@ -97,4 +97,44 @@ TEST(vk_render_graph, fill_fill_read_back)
   EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=42)", log[2]);
 }
 
+/**
+ * Fill a single buffer, copy it to a staging buffer and read the staging buffer back.
+ */
+TEST(vk_render_graph, clear_clear_copy_and_read_back)
+{
+  VkHandle<VkImage> src_image(1u);
+  VkHandle<VkImage> dst_image(2u);
+
+  Vector<std::string> log;
+  VKCommandBufferWrapper wrapper;
+  VKRenderGraph render_graph(std::make_unique<CommandBufferLog>(log),
+                             std::make_unique<Sequential>());
+  render_graph.add_image(src_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
+  render_graph.add_image(dst_image, VK_IMAGE_LAYOUT_UNDEFINED, ResourceOwner::APPLICATION);
+  VkClearColorValue color1 = {};
+  color1.float32[0] = 1.0f;
+  color1.float32[1] = 1.0f;
+  color1.float32[2] = 1.0f;
+  color1.float32[3] = 1.0f;
+  VkImageSubresourceRange range = {};
+
+  render_graph.add_clear_image_node(src_image, color1, range);
+  render_graph.submit_buffer_for_read_back(dst_image);
+
+  EXPECT_EQ(3, log.size());
+  EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=42)", log[0]);
+  EXPECT_EQ(
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT\n"
+      " - buffer_barrier(src_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
+      "dst_access_mask=VK_ACCESS_TRANSFER_READ_BIT, buffer=0x1, offset=0, "
+      "size=18446744073709551615)\n"
+      ")",
+      log[1]);
+  EXPECT_EQ(
+      "copy_buffer(src_buffer=0x1, dst_buffer=0x2\n"
+      " - region(src_offset=0, dst_offset=0, size=1024)\n"
+      ")",
+      log[2]);
+}
 }  // namespace blender::gpu

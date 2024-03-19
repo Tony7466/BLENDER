@@ -77,6 +77,7 @@ class VKRenderGraph : public NonCopyable {
                             VkImageSubresourceRange &vk_image_subresource_range);
   void add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data_);
   void add_copy_buffer_node(VkBuffer src_buffer, VkBuffer dst_buffer, const VkBufferCopy &region);
+  void add_copy_image_node(VkImage src_image, VkImage dst_image, const VkImageCopy &region);
   void add_dispatch_node(const VKDispatchInfo &dispatch_info);
 
   /**

@@ -137,10 +137,6 @@ void VKTexture::generate_mipmap()
 
 void VKTexture::copy_to(VKTexture &dst_texture, VkImageAspectFlags vk_image_aspect)
 {
-  VKContext &context = *VKContext::get();
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  dst_texture.layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
   VkImageCopy region = {};
   region.srcSubresource.aspectMask = vk_image_aspect;
   region.srcSubresource.mipLevel = 0;
@@ -150,9 +146,8 @@ void VKTexture::copy_to(VKTexture &dst_texture, VkImageAspectFlags vk_image_aspe
   region.dstSubresource.layerCount = vk_layer_count(1);
   region.extent = vk_extent_3d(0);
 
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  command_buffers.copy(dst_texture, *this, Span<VkImageCopy>(&region, 1));
-  context.flush();
+  VKDevice &device = VKBackend::get().device_get();
+  device.render_graph_get().add_copy_image_node(vk_image_, dst_texture.vk_image_, region);
 }
 
 void VKTexture::copy_to(Texture *tex)
@@ -172,17 +167,14 @@ void VKTexture::clear(eGPUDataFormat format, const void *data)
 {
   BLI_assert(!is_texture_view());
 
-  VKContext &context = *VKContext::get();
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
   VkClearColorValue clear_color = to_vk_clear_color_value(format, data);
   VkImageSubresourceRange range = {0};
   range.aspectMask = to_vk_image_aspect_flag_bits(device_format_);
   range.levelCount = VK_REMAINING_MIP_LEVELS;
   range.layerCount = VK_REMAINING_ARRAY_LAYERS;
-  layout_ensure(context, VK_IMAGE_LAYOUT_GENERAL);
 
-  command_buffers.clear(
-      vk_image_, current_layout_get(), clear_color, Span<VkImageSubresourceRange>(&range, 1));
+  VKDevice &device = VKBackend::get().device_get();
+  device.render_graph_get().add_clear_image_node(vk_image_, clear_color, range);
 }
 
 void VKTexture::clear_depth_stencil(const eGPUFrameBufferBits buffers,
