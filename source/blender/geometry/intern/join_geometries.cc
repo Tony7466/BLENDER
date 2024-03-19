@@ -185,10 +185,7 @@ static void join_component_type(const bke::GeometryComponent::Type component_typ
   options.keep_original_ids = true;
   options.realize_instance_attributes = false;
   options.propagation_info = propagation_info;
-  options.depths = VArray<int>::ForSingle(-1, instances.get()->instances_num());
-  IndexMaskMemory memory;
-  options.selection = IndexMask::from_bools(
-      VArray<bool>::ForSingle(true, instances.get()->instances_num()), memory);
+
   GeometrySet joined_components = realize_instances(
       GeometrySet::from_instances(instances.release()), options);
   r_result.add(joined_components.get_component_for_write(component_type));
