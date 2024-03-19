@@ -565,7 +565,7 @@ class ARMATURE_OT_collection_unsolo_all(Operator):
     def poll(cls, context):
         armature = _armature_from_context(context)
         if not armature:
-            return
+            return False
         if not armature.collections.is_solo_active:
             cls.poll_message_set("None of the bone collections is marked 'solo'")
             return False
@@ -590,7 +590,7 @@ class ARMATURE_OT_collection_remove_unused(Operator):
     def poll(cls, context):
         armature = _armature_from_context(context)
         if not armature:
-            return
+            return False
         return len(armature.collections) > 0
 
     def execute(self, context):
