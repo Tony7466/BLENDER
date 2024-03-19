@@ -43,12 +43,15 @@
 
 #include "BIF_glutil.hh"
 
+#include "DNA_vfont_types.h"
+
 #include "GPU_immediate.h"
 #include "GPU_immediate_util.h"
 #include "GPU_state.h"
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
+#include "IMB_thumbs.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -1555,7 +1558,20 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
     }
   }
   else if (type_id == ID_VF) {
-    // VFont *font = reinterpret_cast<VFont *>(item_tooltip_data->id);
+    VFont *font = reinterpret_cast<VFont *>(item_tooltip_data->id);
+    if (font->filepath[0] && font->filepath[0] != '<') {
+      const int size = int(196.0f * UI_SCALE_FAC);
+      ImBuf *ibuf = IMB_thumb_load_font(font->filepath, size, size);
+      uiTooltipImage image_data;
+      image_data.width = size;
+      image_data.height = size;
+      image_data.ibuf = ibuf;
+      image_data.border = false;
+      image_data.background = uiTooltipImageBackground::None;
+      image_data.premultiplied = false;
+      image_data.text_color = true;
+      UI_tooltip_image_field_add(data, image_data);
+    }
   }
   else if (type_id == ID_SCE) {
     // Scene *sc = reinterpret_cast<Scene *>(item_tooltip_data->id);
