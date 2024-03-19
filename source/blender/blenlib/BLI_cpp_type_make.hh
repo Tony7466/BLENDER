@@ -257,8 +257,8 @@ CPPType::CPPType(TypeTag<T> /*type*/,
   }
   if constexpr (std::is_move_assignable_v<T>) {
     if constexpr (std::is_trivially_move_assignable_v<T>) {
-      /* This casts away the const from the src pointer. This should be fine for trivial types as
-       * moving them does not change the original value. */
+      /* This casts away the const from the src pointer. This is fine for trivial types as moving
+       * them does not change the original value. */
       move_assign_ = reinterpret_cast<decltype(move_assign_)>(copy_assign_);
       move_assign_indices_ = reinterpret_cast<decltype(move_assign_indices_)>(
           copy_assign_indices_);
