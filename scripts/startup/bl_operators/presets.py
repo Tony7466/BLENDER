@@ -120,9 +120,7 @@ class AddPresetBase:
 
                 if is_xml:
                     import rna_xml
-                    rna_xml.xml_file_write(context,
-                                           filepath,
-                                           preset_menu_class.preset_xml_map)
+                    rna_xml.xml_file_write(context, filepath, preset_menu_class.preset_xml_map)
                 else:
 
                     def rna_recursive_attr_expand(value, rna_path_step, level):
@@ -169,15 +167,10 @@ class AddPresetBase:
                 name = preset_menu_class.bl_label
 
             # fairly sloppy but convenient.
-            filepath = bpy.utils.preset_find(name,
-                                             self.preset_subdir,
-                                             ext=ext)
+            filepath = bpy.utils.preset_find(name, self.preset_subdir, ext=ext)
 
             if not filepath:
-                filepath = bpy.utils.preset_find(name,
-                                                 self.preset_subdir,
-                                                 display_name=True,
-                                                 ext=ext)
+                filepath = bpy.utils.preset_find(name, self.preset_subdir, display_name=True, ext=ext)
 
             if not filepath:
                 return {'CANCELLED'}
@@ -257,9 +250,7 @@ class ExecutePreset(Operator):
 
         elif ext == ".xml":
             import rna_xml
-            rna_xml.xml_file_run(context,
-                                 filepath,
-                                 preset_class.preset_xml_map)
+            rna_xml.xml_file_run(context, filepath, preset_class.preset_xml_map)
 
         if hasattr(preset_class, "post_cb"):
             preset_class.post_cb(context)
@@ -627,7 +618,7 @@ class RemovePresetKeyconfig(AddPresetBase, Operator):
         keyconfigs = bpy.context.window_manager.keyconfigs
         preset_menu_class = getattr(bpy.types, cls.preset_menu)
         name = keyconfigs.active.name
-        filepath = bpy.utils.preset_find(name, cls.preset_subdir, ext = ".py")
+        filepath = bpy.utils.preset_find(name, cls.preset_subdir, ext=".py")
         if not bool(filepath) or is_path_builtin(filepath):
             cls.poll_message_set("Built-in keymap configurations cannot be removed")
             return False
@@ -643,7 +634,8 @@ class RemovePresetKeyconfig(AddPresetBase, Operator):
         keyconfigs.remove(keyconfigs.active)
 
     def invoke(self, context, event):
-        return context.window_manager.invoke_confirm(self, event, title="Remove Keymap Configuration", confirm_text="Delete")
+        return context.window_manager.invoke_confirm(
+            self, event, title="Remove Keymap Configuration", confirm_text="Delete")
 
 
 class AddPresetOperator(AddPresetBase, Operator):
