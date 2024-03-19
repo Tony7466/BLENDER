@@ -119,7 +119,7 @@ TEST(vk_render_graph, clear_clear_copy_and_read_back)
   VkImageSubresourceRange range = {};
 
   render_graph.add_clear_image_node(src_image, color1, range);
-  render_graph.submit_buffer_for_read_back(dst_image);
+  render_graph.submit_image_for_read_back(dst_image);
 
   EXPECT_EQ(3, log.size());
   EXPECT_EQ("fill_buffer(dst_buffer=0x1, dst_offset=0, size=1024, data=42)", log[0]);

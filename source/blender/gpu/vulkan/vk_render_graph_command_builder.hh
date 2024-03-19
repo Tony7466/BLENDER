@@ -31,6 +31,9 @@ class VKRenderGraphCommandBuilder {
   VkPipeline active_compute_pipeline_ = VK_NULL_HANDLE;
   VkDescriptorSet active_compute_descriptor_set_ = VK_NULL_HANDLE;
 
+  VkPipelineStageFlags src_stage_mask_ = VK_PIPELINE_STAGE_NONE;
+  VkPipelineStageFlags dst_stage_mask_ = VK_PIPELINE_STAGE_NONE;
+
  public:
   /**
    * Reset the command builder.
@@ -86,10 +89,15 @@ class VKRenderGraphCommandBuilder {
   void build_node_copy_buffer(VKRenderGraph &render_graph,
                               NodeHandle node_handle,
                               const VKRenderGraphNodes::Node &node);
+  void build_node_copy_image(VKRenderGraph &render_graph,
+                             NodeHandle node_handle,
+                             const VKRenderGraphNodes::Node &node);
   void build_node_dispatch(VKRenderGraph &render_graph,
                            NodeHandle node_handle,
                            const VKRenderGraphNodes::Node &node);
 
+  void reset_barriers();
+  void send_pipeline_barriers(VKRenderGraph &render_graph);
   void add_buffer_barriers(VKRenderGraph &render_graph,
                            NodeHandle node_handle,
                            VkPipelineStageFlags node_stages);
@@ -98,14 +106,10 @@ class VKRenderGraphCommandBuilder {
                           VkAccessFlags dst_access_mask);
   void add_buffer_read_barriers(VKRenderGraph &render_graph,
                                 NodeHandle node_handle,
-                                VkPipelineStageFlags node_stages,
-                                VkPipelineStageFlags &r_src_stage_mask,
-                                VkPipelineStageFlags &r_dst_stage_mask);
+                                VkPipelineStageFlags node_stages);
   void add_buffer_write_barriers(VKRenderGraph &render_graph,
                                  NodeHandle node_handle,
-                                 VkPipelineStageFlags node_stages,
-                                 VkPipelineStageFlags &r_src_stage_mask,
-                                 VkPipelineStageFlags &r_dst_stage_mask);
+                                 VkPipelineStageFlags node_stages);
 };
 
 }  // namespace blender::gpu

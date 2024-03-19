@@ -180,6 +180,19 @@ void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
   command_buffer_->wait_for_cpu_synchronization();
 }
 
+void VKRenderGraph::submit_image_for_read_back(VkImage vk_image)
+{
+  std::scoped_lock lock(mutex_);
+  command_builder_.reset(*this);
+  command_buffer_->begin_recording();
+  command_builder_.build_image(*this, vk_image);
+  // TODO: add sync?
+  command_buffer_->end_recording();
+  command_buffer_->submit_with_cpu_synchronization();
+  command_builder_.update_state_after_submission(*this);
+  command_buffer_->wait_for_cpu_synchronization();
+}
+
 /** \} */
 
 }  // namespace blender::gpu
