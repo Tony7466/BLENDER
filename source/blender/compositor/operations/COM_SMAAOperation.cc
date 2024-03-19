@@ -821,7 +821,7 @@ static float2 SMAASearchDiag1(
     SMAATexture2D(edgesTex), float2 texcoord, float2 dir, int2 size, float2 &e)
 {
   float4 coord = float4(texcoord, -1.0f, 1.0f);
-  float3 t = float3(1.0f / size, 1.0f);
+  float3 t = float3(1.0f / float2(size), 1.0f);
   while (coord.z < float(SMAA_MAX_SEARCH_STEPS_DIAG - 1) && coord.w > 0.9f) {
     float3 increment = mad(t, float3(dir, 1.0f), coord.xyz());
     coord.x = increment.x;
@@ -838,7 +838,7 @@ static float2 SMAASearchDiag2(
 {
   float4 coord = float4(texcoord, -1.0f, 1.0f);
   coord.x += 0.25f / size.x;  // See @SearchDiag2Optimization
-  float3 t = float3(1.0f / size, 1.0f);
+  float3 t = float3(1.0f / float2(size), 1.0f);
   while (coord.z < float(SMAA_MAX_SEARCH_STEPS_DIAG - 1) && coord.w > 0.9f) {
     float3 increment = mad(t, float3(dir, 1.0f), coord.xyz());
     coord.x = increment.x;
