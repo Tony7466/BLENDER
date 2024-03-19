@@ -10,13 +10,13 @@
 
 #define filmScalingFactor float(uniform_buf.film.scaling_factor)
 
-packed_vec3 g_emission;
-packed_vec3 g_transmittance;
+packed_float3 g_emission;
+packed_float3 g_transmittance;
 float g_holdout;
 
-packed_vec3 g_volume_scattering;
+packed_float3 g_volume_scattering;
 float g_volume_anisotropy;
-packed_vec3 g_volume_absorption;
+packed_float3 g_volume_absorption;
 
 /* The Closure type is never used. Use float as dummy type. */
 #define Closure float

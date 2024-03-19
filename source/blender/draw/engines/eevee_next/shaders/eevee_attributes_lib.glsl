@@ -125,8 +125,8 @@ float attr_load_float(samplerBuffer cd_buf)
  * \{ */
 
 /* Globals to feed the load functions. */
-packed_vec2 g_uvs;
-packed_vec4 g_color;
+packed_float2 g_uvs;
+packed_float4 g_color;
 
 #  ifdef OBINFO_LIB
 vec3 attr_load_orco(vec4 orco)
@@ -242,8 +242,8 @@ float attr_load_float(samplerBuffer cd_buf)
  * Per grid transform order is following loading order.
  * \{ */
 
-packed_vec3 g_lP = vec3(0.0);
-packed_vec3 g_orco = vec3(0.0);
+packed_float3 g_lP = vec3(0.0);
+packed_float3 g_orco = vec3(0.0);
 int g_attr_id = 0;
 
 vec3 grid_coordinates()

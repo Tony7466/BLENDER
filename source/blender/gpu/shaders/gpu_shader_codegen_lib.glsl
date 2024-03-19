@@ -155,12 +155,12 @@ using ClosureType = uint8_t;
 #define CLOSURE_BSSRDF_BURLEY_ID 14u
 
 struct ClosureUndetermined {
-  packed_vec3 color;
+  packed_float3 color;
   float weight;
-  packed_vec3 N;
+  packed_float3 N;
   ClosureType type;
   /* Additional data different for each closure type. */
-  packed_vec4 data;
+  packed_float4 data;
 };
 
 ClosureUndetermined closure_new(ClosureType type)
@@ -171,70 +171,70 @@ ClosureUndetermined closure_new(ClosureType type)
 }
 
 struct ClosureOcclusion {
-  packed_vec3 N;
+  packed_float3 N;
 };
 
 struct ClosureDiffuse {
   float weight;
-  packed_vec3 color;
-  packed_vec3 N;
+  packed_float3 color;
+  packed_float3 N;
 };
 
 struct ClosureSubsurface {
   float weight;
-  packed_vec3 color;
-  packed_vec3 N;
-  packed_vec3 sss_radius;
+  packed_float3 color;
+  packed_float3 N;
+  packed_float3 sss_radius;
 };
 
 struct ClosureTranslucent {
-  packed_vec3 color;
-  packed_vec3 N;
+  packed_float3 color;
+  packed_float3 N;
   float weight;
 };
 
 struct ClosureReflection {
-  packed_vec3 color;
+  packed_float3 color;
   float weight;
-  packed_vec3 N;
+  packed_float3 N;
   float roughness;
 };
 
 struct ClosureRefraction {
-  packed_vec3 color;
+  packed_float3 color;
   float roughness;
-  packed_vec3 N;
+  packed_float3 N;
   float ior;
   float weight;
 };
 
 struct ClosureHair {
 
-  packed_vec3 color;
+  packed_float3 color;
   float offset;
-  packed_vec3 T;
+  packed_float3 T;
   float weight;
-  packed_vec2 roughness;
+  packed_float2 roughness;
 };
 
 struct ClosureVolumeScatter {
-  packed_vec3 scattering;
+  packed_float3 scattering;
   float weight;
   float anisotropy;
 };
 
 struct ClosureVolumeAbsorption {
   float weight;
-  packed_vec3 absorption;
+  packed_float3 absorption;
 };
 
 struct ClosureEmission {
-  packed_vec3 emission;
+  packed_float3 emission;
   float weight;
 };
 
 struct ClosureTransparency {
-  packed_vec3 transmittance;
+  packed_float3 transmittance;
   float holdout;
   float weight;
 };
@@ -285,18 +285,18 @@ ClosureRefraction to_closure_refraction(ClosureUndetermined cl)
 
 struct GlobalData {
   /** World position. */
-  packed_vec3 P;
+  packed_float3 P;
   /** Surface Normal. Normalized, overridden by bump displacement. */
-  packed_vec3 N;
+  packed_float3 N;
   /** Raw interpolated normal (non-normalized) data. */
-  packed_vec3 Ni;
+  packed_float3 Ni;
   /** Geometric Normal. */
-  packed_vec3 Ng;
+  packed_float3 Ng;
   /** Curve Tangent Space. */
-  packed_vec3 curve_T, curve_B, curve_N;
+  packed_float3 curve_T, curve_B, curve_N;
   /** Barycentric coordinates. */
-  packed_vec2 barycentric_coords;
-  packed_vec3 barycentric_dists;
+  packed_float2 barycentric_coords;
+  packed_float3 barycentric_dists;
   /** Ray properties (approximation). */
   float ray_depth;
   float ray_length;

@@ -47,9 +47,9 @@ struct GBufferData {
 /* Result of Packing the GBuffer. */
 struct GBufferWriter {
   /* Packed GBuffer data in layer indexing. */
-  packed_vec4 data[GBUFFER_DATA_MAX];
+  packed_float4 data[GBUFFER_DATA_MAX];
   /* Packed normal data. Redundant normals are omitted. */
-  packed_vec2 N[GBUFFER_NORMAL_MAX];
+  packed_float2 N[GBUFFER_NORMAL_MAX];
   /* Header containing which closures are encoded and which normals are used. */
   uint header;
   /** Only used for book-keeping. Not actually written. Can be derived from header. */
@@ -67,7 +67,7 @@ struct GBufferReader {
   /* Texel of the gbuffer being read. */
   ivec2 texel;
   /* First world normal stored in the gbuffer. Only valid if `has_any_surface` is true. */
-  packed_vec3 surface_N;
+  packed_float3 surface_N;
   /* Additional object information if any closure needs it. */
   float thickness;
   uint object_id;

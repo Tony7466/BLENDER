@@ -96,10 +96,10 @@ struct ClosureLight {
   /* LTC matrix. */
   vec4 ltc_mat;
   /* Output both shadowed and unshadowed for shadow denoising. */
-  packed_vec3 light_shadowed;
-  packed_vec3 light_unshadowed;
+  packed_float3 light_shadowed;
+  packed_float3 light_unshadowed;
   /* Shading normal. */
-  packed_vec3 N;
+  packed_float3 N;
   /* Enum (used as index) telling how to treat the lighting. */
   LightingType type;
   /* True if closure is receiving light from below the surface. */

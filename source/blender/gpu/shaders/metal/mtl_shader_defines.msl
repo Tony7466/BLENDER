@@ -55,12 +55,6 @@ using bvec2 = bool2;
 using bvec3 = bool3;
 using bvec4 = bool4;
 
-/* Packed types.
- * Allows explicit selection of packed data types in supporting languages. */
-using packed_vec2 = packed_float2;
-using packed_vec3 = packed_float3;
-using packed_vec4 = packed_float4;
-
 /* Compute decorators. */
 #define TG threadgroup
 #define barrier() \
