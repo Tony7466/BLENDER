@@ -371,6 +371,8 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
   SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", AttrDomain::Curve);
 
+  Array<float4x2> legacy_texture_matrices(num_strokes);
+
   int stroke_i = 0;
   LISTBASE_FOREACH_INDEX (bGPDstroke *, gps, &gpf.strokes, stroke_i) {
     stroke_cyclic.span[stroke_i] = (gps->flag & GP_STROKE_CYCLIC) != 0;
@@ -467,11 +469,12 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     }
 
     const float4x2 legacy_texture_matrix = get_legacy_texture_matrix(gps);
-    /* Ensure that the normals are up to date. */
-    curves.tag_normals_changed();
-    drawing.set_texture_matrices(Span<float4x2>(&legacy_texture_matrix, 1),
-                                 IndexMask(IndexRange(stroke_i, 1)));
+    legacy_texture_matrices[stroke_i] = legacy_texture_matrix;
   }
+
+  /* Ensure that the normals are up to date. */
+  curves.tag_normals_changed();
+  drawing.set_texture_matrices(legacy_texture_matrices.as_span(), curves.curves_range());
 
   delta_times.finish();
   rotations.finish();
