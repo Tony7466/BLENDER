@@ -1428,6 +1428,11 @@ void SMAAOperation::update_memory_buffer(MemoryBuffer *output,
                                          Span<MemoryBuffer *> inputs)
 {
   const MemoryBuffer *image = inputs[0];
+  if (image->is_a_single_elem()) {
+    copy_v4_v4(output->get_elem(0, 0), image->get_elem(0, 0));
+    return;
+  }
+
   const int2 size = int2(image->get_width(), image->get_height());
   MemoryBuffer edges(DataType::Float2, size.x, size.y);
 
