@@ -361,14 +361,28 @@ ccl_device_inline bool ray_infinite_cylinder_intersect(const float3 P,
 {
   const float u_sq = sqr(len_u);
   const float v_sq = sqr(len_v);
-  const float a = v_sq * sqr(D.x) + u_sq * sqr(D.y);
-  const float b = 2.0f * (v_sq * P.x * D.x + u_sq * P.y * D.y);
-  const float c = v_sq * sqr(P.x) + u_sq * sqr(P.y) - v_sq * u_sq;
+
+  /* Convert to 2D problem. */
+  float2 P_proj = float3_to_float2(P);
+  const float2 D_proj = float3_to_float2(D);
+
+  /* Solve quadratic equation a * t^2 + b * t + c = 0. */
+  const float a = v_sq * sqr(D_proj.x) + u_sq * sqr(D_proj.y);
+  float b = 2.0f * (v_sq * P_proj.x * D_proj.x + u_sq * P_proj.y * D_proj.y);
+
+  /* Move ray origin closer to the cylinder to prevent precision problems where the ray is far away
+   * from the cylinder. */
+  const float t_mid = -0.5f * b / a;
+  P_proj += D_proj * t_mid;
+
+  /* Recompute b from the shifted origin. */
+  b = 2.0f * (v_sq * P_proj.x * D_proj.x + u_sq * P_proj.y * D_proj.y);
+  const float c = v_sq * sqr(P_proj.x) + u_sq * sqr(P_proj.y) - v_sq * u_sq;
 
   float tmin, tmax;
   const bool valid = solve_quadratic(a, b, c, tmin, tmax);
 
-  return valid && intervals_intersect(t_range, make_float2(tmin, tmax));
+  return valid && intervals_intersect(t_range, make_float2(tmin, tmax) + t_mid);
 }
 
 /* *
