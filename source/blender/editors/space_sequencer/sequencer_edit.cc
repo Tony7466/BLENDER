@@ -1712,7 +1712,7 @@ static int sequencer_delete_invoke(bContext *C, wmOperator *op, const wmEvent *e
     }
   }
 
-  if (sequencer_retiming_mode_is_active(C)) {
+  if (sequencer_retiming_mode_is_active(scene)) {
     RNA_boolean_set(op->ptr, "use_retiming_mode", true);
   }
 

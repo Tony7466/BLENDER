@@ -39,9 +39,8 @@
 
 using blender::MutableSpan;
 
-bool sequencer_retiming_mode_is_active(const bContext *C)
+bool sequencer_retiming_mode_is_active(const Scene *scene)
 {
-  const Scene *scene = CTX_data_scene(C);
   Editing *ed = SEQ_editing_get(scene);
   if (ed == nullptr) {
     return false;
@@ -90,7 +89,7 @@ static int sequencer_retiming_data_show_exec(bContext *C, wmOperator * /* op */)
     return OPERATOR_CANCELLED;
   }
 
-  if (sequencer_retiming_mode_is_active(C)) {
+  if (sequencer_retiming_mode_is_active(scene)) {
     sequencer_retiming_data_hide_all(ed->seqbasep);
   }
   else if (SEQ_retiming_data_is_editable(seq_act)) {
@@ -382,7 +381,7 @@ static int sequencer_retiming_freeze_frame_add_exec(bContext *C, wmOperator *op)
     duration = RNA_int_get(op->ptr, "duration");
   }
 
-  if (sequencer_retiming_mode_is_active(C)) {
+  if (sequencer_retiming_mode_is_active(scene)) {
     success = freeze_frame_add_from_retiming_selection(C, op, duration);
   }
   else {
@@ -485,7 +484,7 @@ static int sequencer_retiming_transition_add_exec(bContext *C, wmOperator *op)
     duration = RNA_int_get(op->ptr, "duration");
   }
 
-  if (sequencer_retiming_mode_is_active(C)) {
+  if (sequencer_retiming_mode_is_active(scene)) {
     success = transition_add_from_retiming_selection(C, op, duration);
   }
   else {
@@ -541,8 +540,10 @@ static SeqRetimingKey *ensure_left_and_right_keys(const bContext *C, Sequence *s
 /* Return speed of existing segment or strip. Assume 1 element is selected. */
 static float strip_speed_get(bContext *C, const wmOperator * /* op */)
 {
+  Scene *scene = CTX_data_scene(C);
+
   /* Strip mode. */
-  if (!sequencer_retiming_mode_is_active(C)) {
+  if (!sequencer_retiming_mode_is_active(scene)) {
     blender::VectorSet<Sequence *> strips = ED_sequencer_selected_strips_from_context(C);
     if (strips.size() == 1) {
       Sequence *seq = strips[0];
@@ -551,7 +552,6 @@ static float strip_speed_get(bContext *C, const wmOperator * /* op */)
     }
   }
 
-  Scene *scene = CTX_data_scene(C);
   blender::Map selection = SEQ_retiming_selection_get(SEQ_editing_get(scene));
   /* Retiming mode. */
   if (selection.size() == 1) {
@@ -613,7 +613,7 @@ static int sequencer_retiming_segment_speed_set_exec(bContext *C, wmOperator *op
   const Scene *scene = CTX_data_scene(C);
 
   /* Strip mode. */
-  if (!sequencer_retiming_mode_is_active(C)) {
+  if (!sequencer_retiming_mode_is_active(scene)) {
     return strip_speed_set_exec(C, op);
   }
 

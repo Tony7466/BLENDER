@@ -329,7 +329,8 @@ SeqRetimingKey *try_to_realize_virtual_key(const bContext *C, Sequence *seq, con
 SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], Sequence **r_seq);
 int left_fake_key_frame_get(const bContext *C, const Sequence *seq);
 int right_fake_key_frame_get(const bContext *C, const Sequence *seq);
-bool retiming_keys_are_visible(const bContext *C);
+bool retiming_keys_are_visible(const SpaceSeq *sseq);
+rctf retiming_keys_box_get(const Scene *scene, const View2D *v2d, const Sequence *seq);
 
 /* `sequencer_timeline_draw.cc` */
 blender::Vector<Sequence *> sequencer_visible_strips_get(const bContext *C);

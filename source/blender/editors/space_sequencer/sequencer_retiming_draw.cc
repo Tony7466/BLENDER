@@ -42,9 +42,8 @@
 #define KEY_SIZE (10 * U.pixelsize)
 #define KEY_CENTER (UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0.0f)) + 4 + KEY_SIZE / 2)
 
-bool retiming_keys_are_visible(const bContext *C)
+bool retiming_keys_are_visible(const SpaceSeq *sseq)
 {
-  const SpaceSeq *sseq = CTX_wm_space_seq(C);
   return (sseq->timeline_overlay.flag & SEQ_TIMELINE_SHOW_STRIP_RETIMING) != 0;
 }
 
@@ -76,26 +75,23 @@ static float pixels_to_view_height(const bContext *C, const float height)
   return height / scale_y;
 }
 
-static float strip_start_screenspace_get(const bContext *C, const Sequence *seq)
+static float strip_start_screenspace_get(const Scene *scene,
+                                         const View2D *v2d,
+                                         const Sequence *seq)
 {
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  const Scene *scene = CTX_data_scene(C);
   return UI_view2d_view_to_region_x(v2d, SEQ_time_left_handle_frame_get(scene, seq));
 }
 
-static float strip_end_screenspace_get(const bContext *C, const Sequence *seq)
+static float strip_end_screenspace_get(const Scene *scene, const View2D *v2d, const Sequence *seq)
 {
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  const Scene *scene = CTX_data_scene(C);
   return UI_view2d_view_to_region_x(v2d, SEQ_time_right_handle_frame_get(scene, seq));
 }
 
-static rctf strip_box_get(const bContext *C, const Sequence *seq)
+static rctf strip_box_get(const Scene *scene, const View2D *v2d, const Sequence *seq)
 {
-  const View2D *v2d = UI_view2d_fromcontext(C);
   rctf rect;
-  rect.xmin = strip_start_screenspace_get(C, seq);
-  rect.xmax = strip_end_screenspace_get(C, seq);
+  rect.xmin = strip_start_screenspace_get(scene, v2d, seq);
+  rect.xmax = strip_end_screenspace_get(scene, v2d, seq);
   rect.ymin = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 0));
   rect.ymax = UI_view2d_view_to_region_y(v2d, strip_y_rescale(seq, 1));
   return rect;
@@ -104,10 +100,9 @@ static rctf strip_box_get(const bContext *C, const Sequence *seq)
 /** Size in pixels. */
 #define RETIME_KEY_MOUSEOVER_THRESHOLD (16.0f * UI_SCALE_FAC)
 
-static rctf keys_box_get(const bContext *C, const Sequence *seq)
+rctf retiming_keys_box_get(const Scene *scene, const View2D *v2d, const Sequence *seq)
 {
-  const View2D *v2d = UI_view2d_fromcontext(C);
-  rctf rect = strip_box_get(C, seq);
+  rctf rect = strip_box_get(scene, v2d, seq);
   rect.ymax = KEY_CENTER + KEY_SIZE / 2;
   rect.ymin = KEY_CENTER - KEY_SIZE / 2;
   return rect;
@@ -134,7 +129,7 @@ static bool retiming_fake_key_is_clicked(const bContext *C,
 {
   const View2D *v2d = UI_view2d_fromcontext(C);
 
-  rctf box = keys_box_get(C, seq);
+  rctf box = retiming_keys_box_get(CTX_data_scene(C), v2d, seq);
   if (!BLI_rctf_isect_pt(&box, mval[0], mval[1])) {
     return false;
   }
@@ -202,8 +197,10 @@ static SeqRetimingKey *mouse_over_key_get_from_strip(const bContext *C,
 
 SeqRetimingKey *retiming_mousover_key_get(const bContext *C, const int mval[2], Sequence **r_seq)
 {
+  const Scene *scene = CTX_data_scene(C);
+  const View2D *v2d = UI_view2d_fromcontext(C);
   for (Sequence *seq : sequencer_visible_strips_get(C)) {
-    rctf box = keys_box_get(C, seq);
+    rctf box = retiming_keys_box_get(scene, v2d, seq);
     if (!BLI_rctf_isect_pt(&box, mval[0], mval[1])) {
       continue;
     }
@@ -238,7 +235,7 @@ static void retime_key_draw(const bContext *C,
   const float key_x = key_x_get(scene, seq, key);
 
   const View2D *v2d = UI_view2d_fromcontext(C);
-  const rctf strip_box = strip_box_get(C, seq);
+  const rctf strip_box = strip_box_get(scene, v2d, seq);
   if (!BLI_rctf_isect_x(&strip_box, UI_view2d_view_to_region_x(v2d, key_x))) {
     return; /* Key out of the strip bounds. */
   }
@@ -376,7 +373,7 @@ static void retime_keys_draw(const bContext *C, SeqQuadsBatch *quads)
     return;
   }
 
-  if (!retiming_keys_are_visible(C)) {
+  if (!retiming_keys_are_visible(CTX_wm_space_seq(C))) {
     return;
   }
 
@@ -544,7 +541,7 @@ static void retime_speed_draw(const bContext *C)
     return;
   }
 
-  if (!retiming_keys_are_visible(C)) {
+  if (!retiming_keys_are_visible(CTX_wm_space_seq(C))) {
     return;
   }
 

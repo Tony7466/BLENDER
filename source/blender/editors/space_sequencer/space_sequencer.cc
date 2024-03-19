@@ -40,6 +40,7 @@
 #include "WM_api.hh"
 #include "WM_message.hh"
 
+#include "SEQ_retiming.hh"
 #include "SEQ_sequencer.hh"
 #include "SEQ_time.hh"
 #include "SEQ_transform.hh"
@@ -647,6 +648,22 @@ static void sequencer_main_region_message_subscribe(const wmRegionMessageSubscri
   }
 }
 
+static bool mouseover_retiming_key(const Scene *scene,
+                                   const Sequence *seq,
+                                   const View2D *v2d,
+                                   const ScrArea *area,
+                                   float mouse_co_region[2])
+{
+  const SpaceSeq *sseq = static_cast<SpaceSeq *>(area->spacedata.first);
+
+  if (!SEQ_retiming_data_is_editable(seq) || !retiming_keys_are_visible(sseq)) {
+    return false;
+  }
+
+  rctf retiming_keys_box = retiming_keys_box_get(scene, v2d, seq);
+  return BLI_rctf_isect_pt_v(&retiming_keys_box, mouse_co_region);
+}
+
 static void sequencer_main_cursor(wmWindow *win, ScrArea *area, ARegion *region)
 {
   int wmcursor = WM_CURSOR_DEFAULT;
@@ -669,12 +686,11 @@ static void sequencer_main_cursor(wmWindow *win, ScrArea *area, ARegion *region)
     return;
   }
 
-  float mouse_co[2];
-  UI_view2d_region_to_view(&region->v2d,
-                           win->eventstate->xy[0] - region->winrct.xmin,
-                           win->eventstate->xy[1] - region->winrct.ymin,
-                           &mouse_co[0],
-                           &mouse_co[1]);
+  float mouse_co_region[2] = {float(win->eventstate->xy[0] - region->winrct.xmin),
+                              float(win->eventstate->xy[1] - region->winrct.ymin)};
+  float mouse_co_view[2];
+  UI_view2d_region_to_view(
+      &region->v2d, mouse_co_region[0], mouse_co_region[1], &mouse_co_view[0], &mouse_co_view[1]);
 
   const Scene *scene = win->scene;
   const Editing *ed = SEQ_editing_get(scene);
@@ -686,9 +702,14 @@ static void sequencer_main_cursor(wmWindow *win, ScrArea *area, ARegion *region)
 
   int side;
   Sequence *seq1, *seq2;
-  ED_sequencer_handle_selection_refine(scene, &region->v2d, mouse_co, &seq1, &seq2, &side);
+  ED_sequencer_handle_selection_refine(scene, &region->v2d, mouse_co_view, &seq1, &seq2, &side);
 
   if (seq1 == nullptr) {
+    WM_cursor_set(win, wmcursor);
+    return;
+  }
+
+  if (mouseover_retiming_key(scene, seq1, &region->v2d, area, mouse_co_region)) {
     WM_cursor_set(win, wmcursor);
     return;
   }
