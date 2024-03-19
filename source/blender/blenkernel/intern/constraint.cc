@@ -518,7 +518,7 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
   /* when not in EditMode, use the 'final' evaluated mesh, depsgraph
    * ensures we build with CD_MDEFORMVERT layer
    */
-  const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob);
+  const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
   BMEditMesh *em = BKE_editmesh_from_object(ob);
   float plane[3];
   float imat[3][3], tmat[3][3];
@@ -553,11 +553,11 @@ static void contarget_get_mesh_mat(Object *ob, const char *substring, float mat[
       }
     }
   }
-  else if (me_eval) {
-    const blender::Span<blender::float3> positions = me_eval->vert_positions();
-    const blender::Span<blender::float3> vert_normals = me_eval->vert_normals();
+  else if (mesh_eval) {
+    const blender::Span<blender::float3> positions = mesh_eval->vert_positions();
+    const blender::Span<blender::float3> vert_normals = mesh_eval->vert_normals();
     const MDeformVert *dvert = static_cast<const MDeformVert *>(
-        CustomData_get_layer(&me_eval->vert_data, CD_MDEFORMVERT));
+        CustomData_get_layer(&mesh_eval->vert_data, CD_MDEFORMVERT));
 
     /* check that dvert is a valid pointers (just in case) */
     if (dvert) {
@@ -1086,7 +1086,7 @@ static void childof_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *tar
 
     data->flag &= ~CHILDOF_SET_INVERSE;
 
-    /* Write the computed matrix back to the master copy if in COW evaluation. */
+    /* Write the computed matrix back to the master copy if in copy-on-eval evaluation. */
     bConstraint *orig_con = constraint_find_original_for_update(cob, con);
 
     if (orig_con != nullptr) {
@@ -3359,7 +3359,7 @@ static void distlimit_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *t
     if (data->dist == 0) {
       data->dist = dist;
 
-      /* Write the computed distance back to the master copy if in COW evaluation. */
+      /* Write the computed distance back to the master copy if in copy-on-eval evaluation. */
       bConstraint *orig_con = constraint_find_original_for_update(cob, con);
 
       if (orig_con != nullptr) {
@@ -3526,7 +3526,7 @@ static void stretchto_evaluate(bConstraint *con, bConstraintOb *cob, ListBase *t
     if (data->orglength == 0) {
       data->orglength = dist;
 
-      /* Write the computed length back to the master copy if in COW evaluation. */
+      /* Write the computed length back to the master copy if in copy-on-eval evaluation. */
       bConstraint *orig_con = constraint_find_original_for_update(cob, con);
 
       if (orig_con != nullptr) {
@@ -5327,7 +5327,7 @@ static void objectsolver_evaluate(bConstraint *con, bConstraintOb *cob, ListBase
 
     data->flag &= ~OBJECTSOLVER_SET_INVERSE;
 
-    /* Write the computed matrix back to the master copy if in COW evaluation. */
+    /* Write the computed matrix back to the master copy if in copy-on-eval evaluation. */
     bConstraint *orig_con = constraint_find_original_for_update(cob, con);
 
     if (orig_con != nullptr) {
@@ -6106,7 +6106,7 @@ bConstraint *BKE_constraint_find_from_target(Object *ob,
   return nullptr;
 }
 
-/* Finds the original copy of the constraint based on a COW copy. */
+/* Finds the original copy of the constraint based on an evaluated copy. */
 static bConstraint *constraint_find_original(Object *ob,
                                              bPoseChannel *pchan,
                                              bConstraint *con,
@@ -6157,7 +6157,7 @@ static bConstraint *constraint_find_original(Object *ob,
 
 static bConstraint *constraint_find_original_for_update(bConstraintOb *cob, bConstraint *con)
 {
-  /* Write the computed distance back to the master copy if in COW evaluation. */
+  /* Write the computed distance back to the master copy if in copy-on-eval evaluation. */
   if (!DEG_is_active(cob->depsgraph)) {
     return nullptr;
   }
@@ -6166,7 +6166,7 @@ static bConstraint *constraint_find_original_for_update(bConstraintOb *cob, bCon
   bConstraint *orig_con = constraint_find_original(cob->ob, cob->pchan, con, &orig_ob);
 
   if (orig_con != nullptr) {
-    DEG_id_tag_update(&orig_ob->id, ID_RECALC_COPY_ON_WRITE | ID_RECALC_TRANSFORM);
+    DEG_id_tag_update(&orig_ob->id, ID_RECALC_SYNC_TO_EVAL | ID_RECALC_TRANSFORM);
   }
 
   return orig_con;

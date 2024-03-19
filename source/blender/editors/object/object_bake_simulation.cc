@@ -12,9 +12,12 @@
 #include "BLI_string.h"
 #include "BLI_vector.hh"
 
+#include "BLT_translation.hh"
+
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "ED_object.hh"
 #include "ED_screen.hh"
 
 #include "DNA_array_utils.hh"
@@ -199,6 +202,12 @@ static bool bake_simulation_poll(bContext *C)
     CTX_wm_operator_poll_msg_set(C, "File must be saved before baking");
     return false;
   }
+  Object *ob = ED_object_active_context(C);
+  const bool use_frame_cache = ob->flag & OB_FLAG_USE_SIMULATION_CACHE;
+  if (!use_frame_cache) {
+    CTX_wm_operator_poll_msg_set(C, "Cache has to be enabled");
+    return false;
+  }
   return true;
 }
 
@@ -347,6 +356,7 @@ static void bake_geometry_nodes_endjob(void *customdata)
   G.is_rendering = false;
   WM_main_add_notifier(NC_OBJECT | ND_MODIFIER, nullptr);
   WM_main_add_notifier(NC_NODE | ND_DISPLAY, nullptr);
+  WM_main_add_notifier(NC_SPACE | ND_SPACE_VIEW3D | NS_VIEW3D_SHADING, nullptr);
 }
 
 static void reset_old_bake(NodeBakeRequest &request)
@@ -655,7 +665,13 @@ static int bake_simulation_invoke(bContext *C, wmOperator *op, const wmEvent * /
     return OPERATOR_CANCELLED;
   }
   if (has_existing_bake_data) {
-    return WM_operator_confirm_message(C, op, "Overwrite existing bake data");
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Overwrite existing bake data?"),
+                                  nullptr,
+                                  IFACE_("Bake"),
+                                  ALERT_ICON_NONE,
+                                  false);
   }
   Vector<NodeBakeRequest> requests = bake_simulation_gather_requests(C, op);
   return start_bake_job(C, std::move(requests), op, BakeRequestsMode::Async);
