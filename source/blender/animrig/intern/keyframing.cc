@@ -1014,15 +1014,16 @@ static void insert_key_layer(Layer &layer,
 
   const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
   for (const std::string &rna_path : rna_paths) {
-    PointerRNA *ptr = nullptr;
+    PointerRNA ptr;
     PropertyRNA *prop = nullptr;
     const bool path_resolved = RNA_path_resolve_property(
-        rna_pointer, rna_path.c_str(), ptr, &prop);
+        rna_pointer, rna_path.c_str(), &ptr, &prop);
     if (!path_resolved) {
       continue;
     }
-    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(ptr, prop);
-    Vector<float> rna_values = get_keyframe_values(ptr, prop, visual_keyframing);
+    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
+                                                                                        prop);
+    Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
     int property_array_index = 0;
     for (float value : rna_values) {
       /* TODO: convert scene frame to strip time. */
