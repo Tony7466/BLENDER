@@ -100,8 +100,10 @@ static constexpr float UI_TERTIARY_POINT_DRAW_SIZE_PX = 3.0f;
 static constexpr float UI_POINT_HIT_SIZE_PX = 20.0f;
 static constexpr float UI_POINT_MAX_HIT_SIZE_PX = 600.0f;
 
-/* The center point for `Box` and `Circle` type. */
+/* These three points are only used for `Box` and `Circle` type. */
+static constexpr int CONTROL_POINT_FIRST = 0;
 static constexpr int CONTROL_POINT_CENTER = 1;
+static constexpr int CONTROL_POINT_LAST = 2;
 
 struct PrimitiveTool_OpData {
   ARegion *region;
@@ -346,8 +348,8 @@ static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
       return;
     }
     case PrimitiveType::CIRCLE: {
-      const T center = control_points[1];
-      const T offset = control_points.first() - center;
+      const T center = control_points[CONTROL_POINT_CENTER];
+      const T offset = control_points[CONTROL_POINT_FIRST] - center;
       for (const int i : new_positions.index_range()) {
         const float t = i / float(new_points_num);
         const float a = t * math::numbers::pi * 2.0f;
@@ -357,7 +359,7 @@ static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
     }
     case PrimitiveType::BOX: {
       const T center = control_points[CONTROL_POINT_CENTER];
-      const T offset = control_points.first() - center;
+      const T offset = control_points[CONTROL_POINT_FIRST] - center;
       /*
        * Calculate the 4 corners of the box.
        * Here's a diagram.
@@ -853,7 +855,9 @@ static void grease_pencil_primitive_grab_update(PrimitiveTool_OpData &ptd, const
     return;
   }
 
-  const int other_point_id = 2 - ptd.active_control_point_index;
+  const int other_point_id = ptd.active_control_point_index == CONTROL_POINT_FIRST ?
+                                 CONTROL_POINT_LAST :
+                                 CONTROL_POINT_FIRST;
 
   /* Get the location of the other control point.*/
   const float2 other_point_2d = ED_view3d_project_float_v2_m4(
@@ -882,7 +886,7 @@ static float2 primitive_center_of_mass(const PrimitiveTool_OpData &ptd)
 {
   if (ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE)) {
     return ED_view3d_project_float_v2_m4(
-        ptd.vc.region, ptd.temp_control_points[1], ptd.projection);
+        ptd.vc.region, ptd.temp_control_points[CONTROL_POINT_CENTER], ptd.projection);
   }
   float2 center_of_mass = float2(0.0f, 0.0f);
 
