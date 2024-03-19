@@ -8027,15 +8027,12 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
       prop, "Tracing Method", "Select the tracing method used to find scene-ray intersections");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
-  prop = RNA_def_property(
-      srna, "use_shadow_jittered_transparency_viewport", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(
-      prop, nullptr, "flag", SCE_EEVEE_SHADOW_JITTERED_TRANSPARENCY_VIEWPORT);
+  prop = RNA_def_property(srna, "use_shadow_jittered_viewport", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_SHADOW_JITTERED_VIEWPORT);
   RNA_def_property_ui_text(prop,
-                           "Jittered Shadow Transparency (Viewport)",
-                           "Enable jittered transparent shadows on the viewport. (Expensive, "
-                           "re-renders transparent shadows every sample) (Jittered transparent "
-                           "shadows are always enabled for final renders)");
+                           "Jittered Shadows (Viewport)",
+                           "Enable jittered shadows on the viewport. (Jittered shadows are always "
+                           "enabled for final renders)");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Volumetrics */
