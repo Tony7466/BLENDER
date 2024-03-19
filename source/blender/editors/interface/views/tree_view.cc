@@ -115,9 +115,9 @@ AbstractTreeViewItem *AbstractTreeView::find_hovered(const ARegion &region, cons
   return hovered_item;
 }
 
-void AbstractTreeView::set_min_rows(int min_rows)
+void AbstractTreeView::set_default_rows(int default_rows)
 {
-  min_rows_ = min_rows;
+  custom_height_ = std::make_unique<int>(default_rows * padded_item_height());
 }
 
 AbstractTreeViewItem *AbstractTreeView::find_last_visible_descendant(
@@ -205,6 +205,7 @@ void AbstractTreeView::update_children_from_old(const AbstractView &old_view)
 {
   const AbstractTreeView &old_tree_view = dynamic_cast<const AbstractTreeView &>(old_view);
 
+  custom_height_ = old_tree_view.custom_height_;
   this->update_children_from_old_recursive(*this, old_tree_view);
 }
 
@@ -235,6 +236,17 @@ AbstractTreeViewItem *AbstractTreeView::find_matching_child(
   }
 
   return nullptr;
+}
+
+std::optional<int> AbstractTreeView::tot_visible_row_count()
+{
+  if (!custom_height_) {
+    return {};
+  }
+  if (*custom_height_ < UI_UNIT_Y) {
+    return 1;
+  }
+  return round_fl_to_int(float(*custom_height_) / padded_item_height());
 }
 
 /* ---------------------------------------------------------------------- */
@@ -609,7 +621,7 @@ class TreeViewLayoutBuilder {
   friend TreeViewBuilder;
 
  public:
-  void build_from_tree(const AbstractTreeView &tree_view);
+  void build_from_tree(AbstractTreeView &tree_view);
   void build_row(AbstractTreeViewItem &item) const;
 
   uiBlock &block() const;
@@ -624,16 +636,43 @@ TreeViewLayoutBuilder::TreeViewLayoutBuilder(uiLayout &layout) : block_(*uiLayou
 {
 }
 
-void TreeViewLayoutBuilder::build_from_tree(const AbstractTreeView &tree_view)
+void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
 {
   uiLayout &parent_layout = this->current_layout();
 
   uiLayout *box = uiLayoutBox(&parent_layout);
   uiLayoutColumn(box, true);
 
-  tree_view.foreach_item([this](AbstractTreeViewItem &item) { build_row(item); },
-                         AbstractTreeView::IterOptions::SkipCollapsed |
-                             AbstractTreeView::IterOptions::SkipFiltered);
+  const std::optional<int> max_rows = tree_view.tot_visible_row_count();
+
+  int i = 0;
+  tree_view.foreach_item(
+      [&, this](AbstractTreeViewItem &item) {
+        if (max_rows && i >= *max_rows) {
+          return;
+        }
+
+        this->build_row(item);
+        i++;
+      },
+      AbstractTreeView::IterOptions::SkipCollapsed | AbstractTreeView::IterOptions::SkipFiltered);
+
+  if (tree_view.custom_height_) {
+    *tree_view.custom_height_ = tree_view.tot_visible_row_count().value_or(1) *
+                                padded_item_height();
+    uiDefIconButI(uiLayoutGetBlock(box),
+                  UI_BTYPE_GRIP,
+                  0,
+                  ICON_GRIP,
+                  0,
+                  0,
+                  UI_UNIT_X * 10,
+                  short(UI_UNIT_Y * 0.8f),
+                  tree_view.custom_height_.get(),
+                  UI_UNIT_Y,
+                  UI_UNIT_Y * 20.0f,
+                  "");
+  }
 
   UI_block_layout_set_current(&block(), &parent_layout);
 }
@@ -691,16 +730,21 @@ uiLayout &TreeViewLayoutBuilder::current_layout() const
 
 void TreeViewBuilder::ensure_min_rows_items(AbstractTreeView &tree_view)
 {
+  const std::optional<int> visible_rows = tree_view.tot_visible_row_count();
+  if (!visible_rows) {
+    return;
+  }
+
   int tot_visible_items = 0;
   tree_view.foreach_item(
       [&tot_visible_items](AbstractTreeViewItem & /*item*/) { tot_visible_items++; },
       AbstractTreeView::IterOptions::SkipCollapsed | AbstractTreeView::IterOptions::SkipFiltered);
 
-  if (tot_visible_items >= tree_view.min_rows_) {
+  if (tot_visible_items >= *visible_rows) {
     return;
   }
 
-  for (int i = 0; i < (tree_view.min_rows_ - tot_visible_items); i++) {
+  for (int i = 0; i < (*visible_rows - tot_visible_items); i++) {
     BasicTreeViewItem &new_item = tree_view.add_tree_item<BasicTreeViewItem>("");
     new_item.disable_interaction();
   }

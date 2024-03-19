@@ -112,10 +112,14 @@ using TreeViewOrItem = TreeViewItemContainer;
  * \{ */
 
 class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
-  int min_rows_ = 0;
+  /* Shared pointer so the pointer can be kept persistent over redraws. The grip button gets a
+   * pointer to modify the value on resizing, and it uses it to identify the button over redraws.*/
+  /* TODO support region zoom. */
+  std::shared_ptr<int> custom_height_ = nullptr;
 
   friend class AbstractTreeViewItem;
   friend class TreeViewBuilder;
+  friend class TreeViewLayoutBuilder;
   friend class TreeViewItemDropTarget;
 
  public:
@@ -130,11 +134,11 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
    */
   AbstractTreeViewItem *find_hovered(const ARegion &region, const int2 &xy);
 
-  /** Visual feature: Define a number of item rows the view will always show at minimum. If there
+  /** Visual feature: Define a number of item rows the view will show by default. If there
    * are fewer items, empty dummy items will be added. These contribute to the view bounds, so the
    * drop target of the view includes them, but they are not interactive (e.g. no mouse-hover
    * highlight). */
-  void set_min_rows(int min_rows);
+  void set_default_rows(int min_rows);
 
  protected:
   virtual void build_tree() = 0;
@@ -146,6 +150,7 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
                                                  const TreeViewOrItem &old_items);
   static AbstractTreeViewItem *find_matching_child(const AbstractTreeViewItem &lookup_item,
                                                    const TreeViewOrItem &items);
+  std::optional<int> tot_visible_row_count();
 
   void draw_hierarchy_lines(const ARegion &region) const;
   void draw_hierarchy_lines_recursive(const ARegion &region,
