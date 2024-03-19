@@ -116,6 +116,7 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
    * pointer to modify the value on resizing, and it uses it to identify the button over redraws.*/
   /* TODO support region zoom. */
   std::shared_ptr<int> custom_height_ = nullptr;
+  std::shared_ptr<int> scroll_value_ = nullptr;
 
   friend class AbstractTreeViewItem;
   friend class TreeViewBuilder;

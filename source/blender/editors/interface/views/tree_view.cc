@@ -18,6 +18,7 @@
 #include "interface_intern.hh"
 
 #include "UI_interface.hh"
+#include "UI_view2d.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -206,6 +207,7 @@ void AbstractTreeView::update_children_from_old(const AbstractView &old_view)
   const AbstractTreeView &old_tree_view = dynamic_cast<const AbstractTreeView &>(old_view);
 
   custom_height_ = old_tree_view.custom_height_;
+  scroll_value_ = old_tree_view.scroll_value_;
   this->update_children_from_old_recursive(*this, old_tree_view);
 }
 
@@ -639,28 +641,57 @@ TreeViewLayoutBuilder::TreeViewLayoutBuilder(uiLayout &layout) : block_(*uiLayou
 void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
 {
   uiLayout &parent_layout = this->current_layout();
+  uiBlock *block = uiLayoutGetBlock(&parent_layout);
 
   uiLayout *box = uiLayoutBox(&parent_layout);
-  uiLayoutColumn(box, true);
+  /* Row for the tree-view and the scroll bar. */
+  uiLayout *row = uiLayoutRow(box, false);
 
   const std::optional<int> max_rows = tree_view.tot_visible_row_count();
 
-  int i = 0;
+  /* Column for the tree view. */
+  uiLayoutColumn(row, true);
+
+  const int first_visible_index = tree_view.scroll_value_ ? *tree_view.scroll_value_ : 0;
+  const int max_visible_index = first_visible_index +
+                                max_rows.value_or(std::numeric_limits<int>::max());
+  int item_count = 0;
   tree_view.foreach_item(
       [&, this](AbstractTreeViewItem &item) {
-        if (max_rows && i >= *max_rows) {
-          return;
+        if (item_count >= first_visible_index && (item_count <= max_visible_index)) {
+          this->build_row(item);
         }
-
-        this->build_row(item);
-        i++;
+        item_count++;
       },
       AbstractTreeView::IterOptions::SkipCollapsed | AbstractTreeView::IterOptions::SkipFiltered);
 
   if (tree_view.custom_height_) {
     *tree_view.custom_height_ = tree_view.tot_visible_row_count().value_or(1) *
                                 padded_item_height();
-    uiDefIconButI(uiLayoutGetBlock(box),
+    if (!tree_view.scroll_value_) {
+      tree_view.scroll_value_ = std::make_unique<int>(0);
+    }
+
+    if (max_rows && (item_count > *max_rows)) {
+      uiLayoutColumn(row, false);
+      uiBut *but = uiDefButI(block,
+                             UI_BTYPE_SCROLL,
+                             0,
+                             "",
+                             0,
+                             0,
+                             V2D_SCROLL_WIDTH,
+                             *tree_view.custom_height_,
+                             tree_view.scroll_value_.get(),
+                             0,
+                             item_count - *max_rows,
+                             "");
+      uiButScrollBar *but_scroll = reinterpret_cast<uiButScrollBar *>(but);
+      but_scroll->visual_height = *max_rows;
+    }
+
+    UI_block_layout_set_current(block, box);
+    uiDefIconButI(block,
                   UI_BTYPE_GRIP,
                   0,
                   ICON_GRIP,
@@ -674,7 +705,7 @@ void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
                   "");
   }
 
-  UI_block_layout_set_current(&block(), &parent_layout);
+  UI_block_layout_set_current(block, &parent_layout);
 }
 
 void TreeViewLayoutBuilder::build_row(AbstractTreeViewItem &item) const
