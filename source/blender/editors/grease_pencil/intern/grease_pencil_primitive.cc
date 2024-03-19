@@ -105,7 +105,7 @@ static constexpr int CONTROL_POINT_FIRST = 0;
 static constexpr int CONTROL_POINT_CENTER = 1;
 static constexpr int CONTROL_POINT_LAST = 2;
 
-struct PrimitiveTool_OpData {
+struct PrimitiveToolOperation {
   ARegion *region;
   /* For drawing preview loop. */
   void *draw_handle;
@@ -137,7 +137,7 @@ struct PrimitiveTool_OpData {
   ViewOpsData *vod;
 };
 
-static int control_points_per_segment(const PrimitiveTool_OpData &ptd)
+static int control_points_per_segment(const PrimitiveToolOperation &ptd)
 {
   switch (ptd.type) {
     case PrimitiveType::POLYLINE:
@@ -158,7 +158,8 @@ static int control_points_per_segment(const PrimitiveTool_OpData &ptd)
   return 0;
 }
 
-static ControlPointType get_control_point_type(const PrimitiveTool_OpData &ptd, const int point_id)
+static ControlPointType get_control_point_type(const PrimitiveToolOperation &ptd,
+                                               const int point_id)
 {
   BLI_assert(point_id != -1);
   if (ELEM(ptd.type, PrimitiveType::CIRCLE, PrimitiveType::BOX)) {
@@ -172,7 +173,7 @@ static ControlPointType get_control_point_type(const PrimitiveTool_OpData &ptd, 
   return ControlPointType::HANDLE_POINT;
 }
 
-static void control_point_colors_and_sizes(const PrimitiveTool_OpData &ptd,
+static void control_point_colors_and_sizes(const PrimitiveToolOperation &ptd,
                                            MutableSpan<ColorGeometry4f> colors,
                                            MutableSpan<float> sizes)
 {
@@ -232,7 +233,7 @@ static void control_point_colors_and_sizes(const PrimitiveTool_OpData &ptd,
   }
 }
 
-static void draw_control_points(PrimitiveTool_OpData &ptd)
+static void draw_control_points(PrimitiveToolOperation &ptd)
 {
   GPUVertFormat *format3d = immVertexFormat();
   const uint pos3d = GPU_vertformat_attr_add(format3d, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
@@ -264,18 +265,18 @@ static void draw_control_points(PrimitiveTool_OpData &ptd)
 
 static void grease_pencil_primitive_draw(const bContext * /*C*/, ARegion * /*region*/, void *arg)
 {
-  PrimitiveTool_OpData &ptd = *((PrimitiveTool_OpData *)arg);
+  PrimitiveToolOperation &ptd = *((PrimitiveToolOperation *)arg);
   draw_control_points(ptd);
 }
 
-static void grease_pencil_primitive_save(PrimitiveTool_OpData &ptd)
+static void grease_pencil_primitive_save(PrimitiveToolOperation &ptd)
 {
   ptd.temp_segments = ptd.segments;
   ptd.temp_control_points.resize(ptd.control_points.size());
   array_utils::copy(ptd.control_points.as_span(), ptd.temp_control_points.as_mutable_span());
 }
 
-static void grease_pencil_primitive_load(PrimitiveTool_OpData &ptd)
+static void grease_pencil_primitive_load(PrimitiveToolOperation &ptd)
 {
   ptd.segments = ptd.temp_segments;
   ptd.control_points.resize(ptd.temp_control_points.size());
@@ -283,7 +284,7 @@ static void grease_pencil_primitive_load(PrimitiveTool_OpData &ptd)
 }
 
 template<typename T>
-static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
+static void primitive_calulate_curve_positions_exec(PrimitiveToolOperation &ptd,
                                                     Span<T> control_points,
                                                     MutableSpan<T> new_positions)
 {
@@ -389,7 +390,7 @@ static void primitive_calulate_curve_positions_exec(PrimitiveTool_OpData &ptd,
   }
 }
 
-static void primitive_calulate_curve_positions_2d(PrimitiveTool_OpData &ptd,
+static void primitive_calulate_curve_positions_2d(PrimitiveToolOperation &ptd,
                                                   MutableSpan<float2> new_positions)
 {
   Array<float2> control_points_2d(ptd.control_points.size());
@@ -401,7 +402,7 @@ static void primitive_calulate_curve_positions_2d(PrimitiveTool_OpData &ptd,
   primitive_calulate_curve_positions_exec<float2>(ptd, control_points_2d, new_positions);
 }
 
-static int grease_pencil_primitive_curve_points_number(PrimitiveTool_OpData &ptd)
+static int grease_pencil_primitive_curve_points_number(PrimitiveToolOperation &ptd)
 {
   const int subdivision = ptd.subdivision;
 
@@ -425,7 +426,7 @@ static int grease_pencil_primitive_curve_points_number(PrimitiveTool_OpData &ptd
   return 0;
 }
 
-static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
+static void grease_pencil_primitive_update_curves(PrimitiveToolOperation &ptd)
 {
   bke::CurvesGeometry &curves = ptd.drawing->strokes_for_write();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -474,7 +475,7 @@ static void grease_pencil_primitive_update_curves(PrimitiveTool_OpData &ptd)
   ptd.drawing->tag_topology_changed();
 }
 
-static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
+static void grease_pencil_primitive_init_curves(PrimitiveToolOperation &ptd)
 {
   /* Resize the curves geometry so there is one more curve with a single point. */
   bke::CurvesGeometry &curves = ptd.drawing->strokes_for_write();
@@ -532,7 +533,7 @@ static void grease_pencil_primitive_init_curves(PrimitiveTool_OpData &ptd)
   grease_pencil_primitive_update_curves(ptd);
 }
 
-static void grease_pencil_primitive_undo_curves(PrimitiveTool_OpData &ptd)
+static void grease_pencil_primitive_undo_curves(PrimitiveToolOperation &ptd)
 {
   bke::CurvesGeometry &curves = ptd.drawing->strokes_for_write();
   curves.remove_curves(IndexMask({curves.curves_range().last(), 1}), {});
@@ -542,7 +543,7 @@ static void grease_pencil_primitive_undo_curves(PrimitiveTool_OpData &ptd)
 /* Helper: Draw status message while the user is running the operator. */
 static void grease_pencil_primitive_status_indicators(bContext *C,
                                                       wmOperator *op,
-                                                      PrimitiveTool_OpData &ptd)
+                                                      PrimitiveToolOperation &ptd)
 {
   std::string header;
 
@@ -608,7 +609,7 @@ static void grease_pencil_primitive_status_indicators(bContext *C,
   ED_workspace_status_text(C, header.c_str());
 }
 
-static void grease_pencil_primitive_update_view(bContext *C, PrimitiveTool_OpData &ptd)
+static void grease_pencil_primitive_update_view(bContext *C, PrimitiveToolOperation &ptd)
 {
   GreasePencil *grease_pencil = static_cast<GreasePencil *>(ptd.vc.obact->data);
 
@@ -638,10 +639,10 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
   ViewContext vc = ED_view3d_viewcontext_init(C, CTX_data_depsgraph_pointer(C));
 
   /* Allocate new data. */
-  PrimitiveTool_OpData *ptd_pointer = MEM_new<PrimitiveTool_OpData>(__func__);
+  PrimitiveToolOperation *ptd_pointer = MEM_new<PrimitiveToolOperation>(__func__);
   op->customdata = ptd_pointer;
 
-  PrimitiveTool_OpData &ptd = *ptd_pointer;
+  PrimitiveToolOperation &ptd = *ptd_pointer;
 
   ptd.vc = vc;
   ptd.region = vc.region;
@@ -742,7 +743,7 @@ static int grease_pencil_primitive_invoke(bContext *C, wmOperator *op, const wmE
 /* Exit and free memory. */
 static void grease_pencil_primitive_exit(bContext *C, wmOperator *op)
 {
-  PrimitiveTool_OpData *ptd = static_cast<PrimitiveTool_OpData *>(op->customdata);
+  PrimitiveToolOperation *ptd = static_cast<PrimitiveToolOperation *>(op->customdata);
 
   /* Clear status message area. */
   ED_workspace_status_text(C, nullptr);
@@ -756,7 +757,7 @@ static void grease_pencil_primitive_exit(bContext *C, wmOperator *op)
 
   grease_pencil_primitive_update_view(C, *ptd);
 
-  MEM_delete<PrimitiveTool_OpData>(ptd);
+  MEM_delete<PrimitiveToolOperation>(ptd);
   /* Clear pointer. */
   op->customdata = nullptr;
 }
@@ -783,7 +784,7 @@ static float2 snap_8_angles(float2 p)
   return sign(p) * length(p) * normalize(sign(normalize(abs(p)) - sin225) + 1.0f);
 }
 
-static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
+static void grease_pencil_primitive_extruding_update(PrimitiveToolOperation &ptd,
                                                      const wmEvent *event)
 {
   using namespace math;
@@ -823,7 +824,7 @@ static void grease_pencil_primitive_extruding_update(PrimitiveTool_OpData &ptd,
   }
 }
 
-static void grease_pencil_primitive_drag_all_update(PrimitiveTool_OpData &ptd,
+static void grease_pencil_primitive_drag_all_update(PrimitiveToolOperation &ptd,
                                                     const wmEvent *event)
 {
   const float2 start = ptd.start_position_2d;
@@ -839,7 +840,7 @@ static void grease_pencil_primitive_drag_all_update(PrimitiveTool_OpData &ptd,
   }
 }
 
-static void grease_pencil_primitive_grab_update(PrimitiveTool_OpData &ptd, const wmEvent *event)
+static void grease_pencil_primitive_grab_update(PrimitiveToolOperation &ptd, const wmEvent *event)
 {
   BLI_assert(ptd.active_control_point_index != -1);
   float3 pos = ptd.placement.project(float2(event->mval));
@@ -868,7 +869,7 @@ static void grease_pencil_primitive_grab_update(PrimitiveTool_OpData &ptd, const
       (other_point_2d + float2(event->mval)) / 2.0f);
 }
 
-static void grease_pencil_primitive_drag_update(PrimitiveTool_OpData &ptd, const wmEvent *event)
+static void grease_pencil_primitive_drag_update(PrimitiveToolOperation &ptd, const wmEvent *event)
 {
   BLI_assert(ptd.active_control_point_index != -1);
   const float2 start = ptd.start_position_2d;
@@ -882,7 +883,7 @@ static void grease_pencil_primitive_drag_update(PrimitiveTool_OpData &ptd, const
   ptd.control_points[ptd.active_control_point_index] = pos;
 }
 
-static float2 primitive_center_of_mass(const PrimitiveTool_OpData &ptd)
+static float2 primitive_center_of_mass(const PrimitiveToolOperation &ptd)
 {
   if (ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE)) {
     return ED_view3d_project_float_v2_m4(
@@ -898,7 +899,7 @@ static float2 primitive_center_of_mass(const PrimitiveTool_OpData &ptd)
   return center_of_mass;
 }
 
-static void grease_pencil_primitive_rotate_all_update(PrimitiveTool_OpData &ptd,
+static void grease_pencil_primitive_rotate_all_update(PrimitiveToolOperation &ptd,
                                                       const wmEvent *event)
 {
   const float2 start = ptd.start_position_2d;
@@ -924,7 +925,7 @@ static void grease_pencil_primitive_rotate_all_update(PrimitiveTool_OpData &ptd,
   }
 }
 
-static void grease_pencil_primitive_scale_all_update(PrimitiveTool_OpData &ptd,
+static void grease_pencil_primitive_scale_all_update(PrimitiveToolOperation &ptd,
                                                      const wmEvent *event)
 {
   const float2 start = ptd.start_position_2d;
@@ -944,7 +945,7 @@ static void grease_pencil_primitive_scale_all_update(PrimitiveTool_OpData &ptd,
   }
 }
 
-static int primitive_check_ui_hover(const PrimitiveTool_OpData &ptd, const wmEvent *event)
+static int primitive_check_ui_hover(const PrimitiveToolOperation &ptd, const wmEvent *event)
 {
   float closest_distance_squared = std::numeric_limits<float>::max();
   int closest_point = -1;
@@ -980,7 +981,7 @@ static int primitive_check_ui_hover(const PrimitiveTool_OpData &ptd, const wmEve
 }
 
 static void grease_pencil_primitive_cursor_update(bContext *C,
-                                                  PrimitiveTool_OpData &ptd,
+                                                  PrimitiveToolOperation &ptd,
                                                   const wmEvent *event)
 {
   wmWindow *win = CTX_wm_window(C);
@@ -1008,7 +1009,7 @@ static void grease_pencil_primitive_cursor_update(bContext *C,
 
 static int grease_pencil_primitive_event_model_map(bContext *C,
                                                    wmOperator *op,
-                                                   PrimitiveTool_OpData &ptd,
+                                                   PrimitiveToolOperation &ptd,
                                                    const wmEvent *event)
 {
   switch (event->val) {
@@ -1116,7 +1117,7 @@ static int grease_pencil_primitive_event_model_map(bContext *C,
   return OPERATOR_RUNNING_MODAL;
 }
 
-static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const wmEvent *event)
+static int grease_pencil_primitive_mouse_event(PrimitiveToolOperation &ptd, const wmEvent *event)
 {
   if (event->val == KM_RELEASE && ELEM(ptd.mode,
                                        OperatorMode::GRAB,
@@ -1189,7 +1190,7 @@ static int grease_pencil_primitive_mouse_event(PrimitiveTool_OpData &ptd, const 
   return OPERATOR_RUNNING_MODAL;
 }
 
-static void grease_pencil_primitive_operator_update(PrimitiveTool_OpData &ptd,
+static void grease_pencil_primitive_operator_update(PrimitiveToolOperation &ptd,
                                                     const wmEvent *event)
 {
   switch (ptd.mode) {
@@ -1225,7 +1226,7 @@ static void grease_pencil_primitive_operator_update(PrimitiveTool_OpData &ptd,
 /* Modal handler: Events handling during interactive part. */
 static int grease_pencil_primitive_modal(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  PrimitiveTool_OpData &ptd = *((PrimitiveTool_OpData *)op->customdata);
+  PrimitiveToolOperation &ptd = *((PrimitiveToolOperation *)op->customdata);
 
   const float3 pos = ptd.control_points.first();
   if (ED_view3d_navigation_do(C, ptd.vod, event, pos)) {
