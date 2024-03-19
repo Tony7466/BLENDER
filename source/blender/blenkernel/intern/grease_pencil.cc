@@ -568,7 +568,7 @@ void Drawing::set_texture_matrices(const VArray<float4x2> &matrices, const Index
       AttrDomain::Curve,
       AttributeInitVArray(VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
 
-  selection.foreach_index([&](const int64_t curve_i, const int64_t pos) {
+  selection.foreach_index(GrainSize(256), [&](const int64_t curve_i, const int64_t pos) {
     const float4x2 strokemat = get_local_to_stroke_matrix(*this, curve_i);
     const float4x2 texspace = matrices[pos];
 
