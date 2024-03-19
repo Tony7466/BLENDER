@@ -38,7 +38,7 @@ static void extract_mesh_analysis_init(const MeshRenderData &mr,
   }
 
   GPU_vertbuf_init_with_format(vbo, &format);
-  GPU_vertbuf_data_alloc(vbo, mr.loop_len);
+  GPU_vertbuf_data_alloc(vbo, mr.corners_num);
 }
 
 static void axis_from_enum_v3(float v[3], const char axis)
@@ -86,7 +86,7 @@ static void statvis_calc_overhang(const MeshRenderData &mr, float *r_overhang)
   axis_from_enum_v3(dir, axis);
 
   /* now convert into global space */
-  mul_transposed_mat3_m4_v3(mr.obmat, dir);
+  mul_transposed_mat3_m4_v3(mr.object_to_world.ptr(), dir);
   normalize_v3(dir);
 
   if (mr.extract_type == MR_EXTRACT_BMESH) {
@@ -143,9 +143,9 @@ static void statvis_calc_thickness(const MeshRenderData &mr, float *r_thickness)
 {
   const float eps_offset = 0.00002f; /* values <= 0.00001 give errors */
   /* cheating to avoid another allocation */
-  float *face_dists = r_thickness + (mr.loop_len - mr.face_len);
+  float *face_dists = r_thickness + (mr.corners_num - mr.faces_num);
   BMEditMesh *em = mr.edit_bmesh;
-  const float scale = 1.0f / mat4_to_scale(mr.obmat);
+  const float scale = 1.0f / mat4_to_scale(mr.object_to_world.ptr());
   const MeshStatVis *statvis = &mr.toolsettings->statvis;
   const float min = statvis->thickness_min * scale;
   const float max = statvis->thickness_max * scale;
@@ -155,7 +155,7 @@ static void statvis_calc_thickness(const MeshRenderData &mr, float *r_thickness)
   BLI_assert(samples <= 32);
   BLI_assert(min <= max);
 
-  copy_vn_fl(face_dists, mr.face_len, max);
+  copy_vn_fl(face_dists, mr.faces_num, max);
 
   BLI_jitter_init(jit_ofs, samples);
   for (int j = 0; j < samples; j++) {
@@ -168,7 +168,7 @@ static void statvis_calc_thickness(const MeshRenderData &mr, float *r_thickness)
 
     BMBVHTree *bmtree = BKE_bmbvh_new_from_editmesh(em, 0, nullptr, false);
     BMLoop *(*looptris)[3] = em->looptris;
-    for (int i = 0; i < mr.tri_len; i++) {
+    for (int i = 0; i < mr.corner_tris_num; i++) {
       BMLoop **ltri = looptris[i];
       const int index = BM_elem_index_get(ltri[0]->f);
       const float *cos[3] = {
@@ -307,7 +307,7 @@ static void statvis_calc_intersect(const MeshRenderData &mr, float *r_intersect)
 {
   BMEditMesh *em = mr.edit_bmesh;
 
-  for (int l_index = 0; l_index < mr.loop_len; l_index++) {
+  for (int l_index = 0; l_index < mr.corners_num; l_index++) {
     r_intersect[l_index] = -1.0f;
   }
 
@@ -456,14 +456,13 @@ static void statvis_calc_distort(const MeshRenderData &mr, float *r_distort)
         const float *f_no = mr.face_normals[face_index];
         fac = 0.0f;
 
-        for (int i = 1; i <= face.size(); i++) {
-          const int corner_prev = face.start() + (i - 1) % face.size();
-          const int corner_curr = face.start() + (i + 0) % face.size();
-          const int corner_next = face.start() + (i + 1) % face.size();
+        for (const int corner : face.drop_front(1)) {
+          const int corner_prev = bke::mesh::face_corner_prev(face, corner);
+          const int corner_next = bke::mesh::face_corner_next(face, corner);
           float no_corner[3];
           normal_tri_v3(no_corner,
                         mr.vert_positions[mr.corner_verts[corner_prev]],
-                        mr.vert_positions[mr.corner_verts[corner_curr]],
+                        mr.vert_positions[mr.corner_verts[corner]],
                         mr.vert_positions[mr.corner_verts[corner_next]]);
           /* simple way to detect (what is most likely) concave */
           if (dot_v3v3(f_no, no_corner) < 0.0f) {
@@ -505,8 +504,8 @@ static void statvis_calc_sharp(const MeshRenderData &mr, float *r_sharp)
   const float minmax_irange = 1.0f / (max - min);
 
   /* Can we avoid this extra allocation? */
-  float *vert_angles = (float *)MEM_mallocN(sizeof(float) * mr.vert_len, __func__);
-  copy_vn_fl(vert_angles, mr.vert_len, -M_PI);
+  float *vert_angles = (float *)MEM_mallocN(sizeof(float) * mr.verts_num, __func__);
+  copy_vn_fl(vert_angles, mr.verts_num, -M_PI);
 
   if (mr.extract_type == MR_EXTRACT_BMESH) {
     BMIter iter;
@@ -536,13 +535,13 @@ static void statvis_calc_sharp(const MeshRenderData &mr, float *r_sharp)
     /* first assign float values to verts */
 
     Map<OrderedEdge, int> eh;
-    eh.reserve(mr.edge_len);
+    eh.reserve(mr.edges_num);
 
-    for (int face_index = 0; face_index < mr.face_len; face_index++) {
+    for (int face_index = 0; face_index < mr.faces_num; face_index++) {
       const IndexRange face = mr.faces[face_index];
-      for (int i = 0; i < face.size(); i++) {
-        const int vert_curr = mr.corner_verts[face.start() + (i + 0) % face.size()];
-        const int vert_next = mr.corner_verts[face.start() + (i + 1) % face.size()];
+      for (const int corner : face) {
+        const int vert_curr = mr.corner_verts[corner];
+        const int vert_next = mr.corner_verts[bke::mesh::face_corner_next(face, corner)];
         float angle;
         eh.add_or_modify(
             {vert_curr, vert_next},
@@ -581,7 +580,7 @@ static void statvis_calc_sharp(const MeshRenderData &mr, float *r_sharp)
       *col2 = max_ff(*col2, angle);
     }
 
-    for (int l_index = 0; l_index < mr.loop_len; l_index++) {
+    for (int l_index = 0; l_index < mr.corners_num; l_index++) {
       const int vert = mr.corner_verts[l_index];
       r_sharp[l_index] = sharp_remap(vert_angles[vert], min, max, minmax_irange);
     }

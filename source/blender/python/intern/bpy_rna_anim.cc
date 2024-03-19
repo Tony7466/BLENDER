@@ -20,15 +20,14 @@
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 
-#include "ED_keyframes_edit.hh"
 #include "ED_keyframing.hh"
 
 #include "ANIM_keyframing.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_global.hh"
 #include "BKE_idtype.hh"
 #include "BKE_lib_id.hh"
@@ -297,8 +296,9 @@ char pyrna_struct_keyframe_insert_doc[] =
     "      - ``INSERTKEY_NEEDED`` Only insert keyframes where they're needed in the relevant "
     "F-Curves.\n"
     "      - ``INSERTKEY_VISUAL`` Insert keyframes based on 'visual transforms'.\n"
-    "      - ``INSERTKEY_XYZ_TO_RGB`` Color for newly added transformation F-Curves (Location, "
-    "Rotation, Scale) is based on the transform axis.\n"
+    "      - ``INSERTKEY_XYZ_TO_RGB`` This flag is no longer in use, and is here so that code "
+    "that uses it doesn't break. The XYZ=RGB coloring is determined by the animation "
+    "preferences.\n"
     "      - ``INSERTKEY_REPLACE`` Only replace already existing keyframes.\n"
     "      - ``INSERTKEY_AVAILABLE`` Only insert into already existing F-Curves.\n"
     "      - ``INSERTKEY_CYCLE_AWARE`` Take cyclic extrapolation into account "
@@ -595,7 +595,7 @@ PyObject *pyrna_struct_driver_add(BPy_StructRNA *self, PyObject *args)
 
     bContext *context = BPY_context_get();
     WM_event_add_notifier(BPY_context_get(), NC_ANIMATION | ND_FCURVES_ORDER, nullptr);
-    DEG_id_tag_update(id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(id, ID_RECALC_SYNC_TO_EVAL);
     DEG_relations_tag_update(CTX_data_main(context));
   }
   else {

@@ -803,12 +803,12 @@ void PAINT_OT_sample_color(wmOperatorType *ot)
 static blender::float3 paint_init_pivot_mesh(Object *ob)
 {
   using namespace blender;
-  const Mesh *me_eval = BKE_object_get_evaluated_mesh(ob);
-  if (!me_eval) {
-    me_eval = (const Mesh *)ob->data;
+  const Mesh *mesh_eval = BKE_object_get_evaluated_mesh(ob);
+  if (!mesh_eval) {
+    mesh_eval = (const Mesh *)ob->data;
   }
 
-  const std::optional<Bounds<float3>> bounds = me_eval->bounds_min_max();
+  const std::optional<Bounds<float3>> bounds = mesh_eval->bounds_min_max();
   if (!bounds) {
     return float3(0.0f);
   }
@@ -859,7 +859,7 @@ void paint_init_pivot(Object *ob, Scene *scene)
       return;
   }
 
-  mul_m4_v3(ob->object_to_world, location);
+  mul_m4_v3(ob->object_to_world().ptr(), location);
 
   ups->last_stroke_valid = true;
   ups->average_stroke_counter = 1;
@@ -912,7 +912,7 @@ void ED_object_texture_paint_mode_enter_ex(Main *bmain,
 
   Mesh *mesh = BKE_mesh_from_object(ob);
   BLI_assert(mesh != nullptr);
-  DEG_id_tag_update(&mesh->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&mesh->id, ID_RECALC_SYNC_TO_EVAL);
 
   /* Ensure we have evaluated data for bounding box. */
   BKE_scene_graph_evaluated_ensure(depsgraph, bmain);
@@ -946,7 +946,7 @@ void ED_object_texture_paint_mode_exit_ex(Main *bmain, Scene *scene, Object *ob)
 
   Mesh *mesh = BKE_mesh_from_object(ob);
   BLI_assert(mesh != nullptr);
-  DEG_id_tag_update(&mesh->id, ID_RECALC_COPY_ON_WRITE);
+  DEG_id_tag_update(&mesh->id, ID_RECALC_SYNC_TO_EVAL);
   WM_main_add_notifier(NC_SCENE | ND_MODE, scene);
 }
 

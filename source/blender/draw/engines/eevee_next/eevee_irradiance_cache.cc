@@ -70,12 +70,10 @@ void VolumeProbeModule::init()
       /* Clear the pool to avoid any interpolation to undefined values. */
       irradiance_atlas_tx_.clear(float4(0.0f));
     }
-
-    inst_.sphere_probes.tag_world_irradiance_for_update();
   }
 
   if (irradiance_atlas_tx_.is_valid() == false) {
-    inst_.info = "Irradiance Atlas texture could not be created";
+    inst_.info += "Irradiance Atlas texture could not be created\n";
   }
 }
 
@@ -127,7 +125,7 @@ void VolumeProbeModule::set_view(View & /*view*/)
 
     int3 grid_size = int3(cache->size);
     if (grid_size.x <= 0 || grid_size.y <= 0 || grid_size.z <= 0) {
-      inst_.info = "Error: Malformed irradiance grid data";
+      inst_.info += "Error: Malformed irradiance grid data\n";
       continue;
     }
 
@@ -135,9 +133,9 @@ void VolumeProbeModule::set_view(View & /*view*/)
 
     /* Note that we reserve 1 slot for the world irradiance. */
     if (grid_loaded.size() >= IRRADIANCE_GRID_MAX - 1) {
-      inst_.info = "Error: Too many irradiance grids in the scene";
+      inst_.info += "Error: Too many irradiance grids in the scene\n";
       /* TODO frustum cull and only load visible grids. */
-      // inst_.info = "Error: Too many grid visible";
+      // inst_.info += "Error: Too many grid visible\n";
       continue;
     }
 
@@ -148,7 +146,7 @@ void VolumeProbeModule::set_view(View & /*view*/)
       grid.bricks = bricks_alloc(brick_len);
 
       if (grid.bricks.is_empty()) {
-        inst_.info = "Error: Irradiance grid allocation failed";
+        inst_.info += "Error: Irradiance grid allocation failed\n";
         continue;
       }
       grid.do_update = true;
@@ -165,7 +163,7 @@ void VolumeProbeModule::set_view(View & /*view*/)
     bricks_infos_buf_.extend(grid.bricks);
 
     if (grid_size.x <= 0 || grid_size.y <= 0 || grid_size.z <= 0) {
-      inst_.info = "Error: Malformed irradiance grid data";
+      inst_.info += "Error: Malformed irradiance grid data\n";
       continue;
     }
 
@@ -188,6 +186,7 @@ void VolumeProbeModule::set_view(View & /*view*/)
   }
 
   /* Then create brick & grid infos UBOs content. */
+  int world_grid_index = 0;
   {
     /* Stable sorting of grids. */
     std::sort(
@@ -226,6 +225,8 @@ void VolumeProbeModule::set_view(View & /*view*/)
     }
 
     /* Insert world grid last. */
+    world_grid_index = grids_len++;
+
     VolumeProbeData grid;
     grid.world_to_grid_transposed = float3x4::identity();
     grid.grid_size = int3(1);
@@ -233,7 +234,8 @@ void VolumeProbeModule::set_view(View & /*view*/)
     grid.normal_bias = 0.0f;
     grid.view_bias = 0.0f;
     grid.facing_bias = 0.0f;
-    grids_infos_buf_[grids_len++] = grid;
+    grids_infos_buf_[world_grid_index] = grid;
+
     bricks_infos_buf_.append(world_brick_index_);
 
     if (grids_len < IRRADIANCE_GRID_MAX) {
@@ -243,6 +245,25 @@ void VolumeProbeModule::set_view(View & /*view*/)
 
     bricks_infos_buf_.push_update();
     grids_infos_buf_.push_update();
+  }
+
+  /* Upload data for world. */
+  if (do_update_world_) {
+    grid_upload_ps_.init();
+    grid_upload_ps_.shader_set(inst_.shaders.static_shader_get(LIGHTPROBE_IRRADIANCE_WORLD));
+    grid_upload_ps_.bind_ssbo("harmonic_buf", &inst_.sphere_probes.spherical_harmonics_buf());
+    grid_upload_ps_.bind_ubo("grids_infos_buf", &grids_infos_buf_);
+    grid_upload_ps_.bind_ssbo("bricks_infos_buf", &bricks_infos_buf_);
+    grid_upload_ps_.push_constant("grid_index", world_grid_index);
+    grid_upload_ps_.bind_image("irradiance_atlas_img", &irradiance_atlas_tx_);
+    /* Sync with extraction. */
+    grid_upload_ps_.barrier(GPU_BARRIER_SHADER_STORAGE);
+    /* Only upload one brick. */
+    grid_upload_ps_.dispatch(int3(1));
+    /* Sync with next load. */
+    grid_upload_ps_.barrier(GPU_BARRIER_TEXTURE_FETCH);
+
+    inst_.manager->submit(grid_upload_ps_);
   }
 
   /* Upload data for each grid that need to be inserted in the atlas.
@@ -307,7 +328,7 @@ void VolumeProbeModule::set_view(View & /*view*/)
     }
 
     if (irradiance_a_tx.is_valid() == false) {
-      inst_.info = "Error: Could not allocate irradiance staging texture";
+      inst_.info += "Error: Could not allocate irradiance staging texture\n";
       /* Avoid undefined behavior with uninitialized values. Still load a clear texture. */
       float4 zero(0.0f);
       irradiance_a_tx.ensure_3d(GPU_RGB16F, int3(1), usage, zero);
@@ -402,22 +423,22 @@ void VolumeProbeModule::debug_pass_draw(View &view, GPUFrameBuffer *view_fb)
 {
   switch (inst_.debug_mode) {
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_NORMAL:
-      inst_.info = "Debug Mode: Surfels Normal";
+      inst_.info += "Debug Mode: Surfels Normal\n";
       break;
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_CLUSTER:
-      inst_.info = "Debug Mode: Surfels Cluster";
+      inst_.info += "Debug Mode: Surfels Cluster\n";
       break;
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_IRRADIANCE:
-      inst_.info = "Debug Mode: Surfels Irradiance";
+      inst_.info += "Debug Mode: Surfels Irradiance\n";
       break;
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_SURFELS_VISIBILITY:
-      inst_.info = "Debug Mode: Surfels Visibility";
+      inst_.info += "Debug Mode: Surfels Visibility\n";
       break;
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_VALIDITY:
-      inst_.info = "Debug Mode: Irradiance Validity";
+      inst_.info += "Debug Mode: Irradiance Validity\n";
       break;
     case eDebugMode::DEBUG_IRRADIANCE_CACHE_VIRTUAL_OFFSET:
-      inst_.info = "Debug Mode: Virtual Offset";
+      inst_.info += "Debug Mode: Virtual Offset\n";
       break;
     default:
       /* Nothing to display. */
@@ -740,9 +761,9 @@ void IrradianceBake::sync()
   }
 }
 
-void IrradianceBake::surfel_raster_views_sync(float3 scene_min,
-                                              float3 scene_max,
-                                              float4x4 probe_to_world)
+void IrradianceBake::surfel_raster_views_sync(const float3 &scene_min,
+                                              const float3 &scene_max,
+                                              const float4x4 &probe_to_world)
 {
   using namespace blender::math;
 
@@ -814,7 +835,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   const ::LightProbe *lightprobe = static_cast<::LightProbe *>(probe_object.data);
 
   int3 grid_resolution = int3(&lightprobe->grid_resolution_x);
-  float4x4 grid_local_to_world = invert(float4x4(probe_object.world_to_object));
+  float4x4 grid_local_to_world = invert(probe_object.world_to_object());
 
   /* TODO(fclem): Options. */
   capture_info_buf_.capture_world_direct = capture_world_;
@@ -831,7 +852,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   dispatch_per_grid_sample_ = math::divide_ceil(grid_resolution, int3(IRRADIANCE_GRID_GROUP_SIZE));
   capture_info_buf_.irradiance_grid_size = grid_resolution;
   capture_info_buf_.irradiance_grid_local_to_world = grid_local_to_world;
-  capture_info_buf_.irradiance_grid_world_to_local = float4x4(probe_object.world_to_object);
+  capture_info_buf_.irradiance_grid_world_to_local = probe_object.world_to_object();
   capture_info_buf_.irradiance_grid_world_to_local_rotation = float4x4(
       invert(normalize(float3x3(grid_local_to_world))));
 
@@ -866,7 +887,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
       !irradiance_L1_b_tx_.is_valid() || !irradiance_L1_c_tx_.is_valid() ||
       !validity_tx_.is_valid() || !virtual_offset_tx_.is_valid())
   {
-    inst_.info = "Error: Not enough memory to bake " + std::string(probe_object.id.name) + ".";
+    inst_.info += "Error: Not enough memory to bake " + std::string(probe_object.id.name) + ".\n";
     do_break_ = true;
     return;
   }
@@ -927,7 +948,7 @@ void IrradianceBake::surfels_create(const Object &probe_object)
   float epsilon = 1.0f / surfel_density_;
   scene_min -= epsilon;
   scene_max += epsilon;
-  surfel_raster_views_sync(scene_min, scene_max, float4x4(probe_object.object_to_world));
+  surfel_raster_views_sync(scene_min, scene_max, probe_object.object_to_world());
 
   DRW_stats_group_end();
 
@@ -972,7 +993,8 @@ void IrradianceBake::surfels_create(const Object &probe_object)
     if (required_mem > max_size) {
       capture_info_buf_.surfel_len = 0u;
       capture_info_buf_.push_update();
-      inst_.info = "Error: Not enough memory to bake " + std::string(probe_object.id.name) + ".";
+      inst_.info += "Error: Not enough memory to bake " + std::string(probe_object.id.name) +
+                    ".\n";
       do_break_ = true;
       return;
     }

@@ -11,7 +11,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_string.h"
 
-#include "BKE_context.hh"
 #include "BKE_unit.hh"
 
 #include "ED_screen.hh"
@@ -44,7 +43,7 @@ static void applyBoneEnvelope(TransInfo *t)
 
   t->values_final[0] = ratio;
 
-  /* header print for NumInput */
+  /* Header print for NumInput. */
   if (hasNumInput(&t->num)) {
     char c[NUM_STR_REP_LEN];
 
@@ -63,7 +62,7 @@ static void applyBoneEnvelope(TransInfo *t)
       }
 
       if (td->val) {
-        /* if the old/original value was 0.0f, then just use ratio */
+        /* If the old/original value was 0.0f, then just use ratio. */
         if (td->ival) {
           *td->val = td->ival * ratio;
         }

@@ -17,6 +17,7 @@
 #include "BLI_task.hh"
 #include "BLI_unique_sorted_indices.hh"
 #include "BLI_vector.hh"
+#include "BLI_vector_set.hh"
 #include "BLI_virtual_array_fwd.hh"
 
 namespace blender::index_mask {
@@ -115,7 +116,25 @@ class IndexMaskMemory : public LinearAllocator<> {
   }
 };
 
-using IndexMaskSegment = OffsetSpan<int64_t, int16_t>;
+/**
+ * A sequence of unique and ordered indices in one segment of an IndexMask. The segment as a whole
+ * has an `int64_t` index offset that is added to each referenced `int16_t` index.
+ */
+class IndexMaskSegment : public OffsetSpan<int64_t, int16_t> {
+ public:
+  using OffsetSpan<int64_t, int16_t>::OffsetSpan;
+
+  explicit IndexMaskSegment(const OffsetSpan<int64_t, int16_t> span);
+
+  IndexMaskSegment slice(const IndexRange &range) const;
+  IndexMaskSegment slice(const int64_t start, const int64_t size) const;
+
+  /**
+   * Get a new segment where each index is modified by the given amount. This works in constant
+   * time, because only the offset value is changed.
+   */
+  IndexMaskSegment shift(const int64_t shift) const;
+};
 
 /**
  * An #IndexMask is a sequence of unique and sorted indices (`BLI_unique_sorted_indices.hh`).
@@ -187,7 +206,7 @@ class IndexMask : private IndexMaskData {
                               const VArray<bool> &bools,
                               IndexMaskMemory &memory);
   /**
-   * Constructs a mask by repeating the indices inthe given mask with a stride.
+   * Constructs a mask by repeating the indices in the given mask with a stride.
    * For example, with an input mask containing `{3, 5}` and a stride of 10 the resulting mask
    * would contain `{3, 5, 13, 15, 23, 25, ...}`.
    */
@@ -231,6 +250,15 @@ class IndexMask : private IndexMaskData {
                           IndexMaskMemory &memory,
                           Fn &&get_group_index,
                           MutableSpan<IndexMask> r_masks);
+
+  /** Creates an index mask for every unique group id. */
+  static Vector<IndexMask, 4> from_group_ids(const VArray<int> &group_ids,
+                                             IndexMaskMemory &memory,
+                                             VectorSet<int> &r_index_by_group_id);
+  static Vector<IndexMask, 4> from_group_ids(const IndexMask &universe,
+                                             const VArray<int> &group_ids,
+                                             IndexMaskMemory &memory,
+                                             VectorSet<int> &r_index_by_group_id);
 
   int64_t size() const;
   bool is_empty() const;
@@ -290,14 +318,19 @@ class IndexMask : private IndexMaskData {
   IndexMask slice_content(IndexRange range) const;
   IndexMask slice_content(int64_t start, int64_t size) const;
   /**
-   * Same as above but can also add an offset to every index in the mask.
+   * Same #slice but can also add an offset to every index in the mask.
    * Takes O(log n + range.size()) time but with a very small constant factor.
    */
-  IndexMask slice_and_offset(IndexRange range, int64_t offset, IndexMaskMemory &memory) const;
-  IndexMask slice_and_offset(int64_t start,
-                             int64_t size,
-                             int64_t offset,
-                             IndexMaskMemory &memory) const;
+  IndexMask slice_and_shift(IndexRange range, int64_t offset, IndexMaskMemory &memory) const;
+  IndexMask slice_and_shift(int64_t start,
+                            int64_t size,
+                            int64_t offset,
+                            IndexMaskMemory &memory) const;
+
+  /**
+   * Adds an offset to every index in the mask.
+   */
+  IndexMask shift(const int64_t offset, IndexMaskMemory &memory) const;
 
   /**
    * \return A new index mask that contains all the indices from the universe that are not in the
@@ -396,7 +429,7 @@ class IndexMask : private IndexMaskData {
   /**
    * Set the bits at indices in the mask to 1 and all other bits to 0.
    */
-  void to_bits(MutableBitSpan r_bits) const;
+  void to_bits(MutableBitSpan r_bits, int64_t offset = 0) const;
   /**
    * Set the bools at indices in the mask to true and all others to false.
    */
@@ -507,6 +540,16 @@ inline void masked_fill(MutableSpan<T> data, const T &value, const IndexMask &ma
  */
 template<typename T> void build_reverse_map(const IndexMask &mask, MutableSpan<T> r_map);
 
+/**
+ * Joins segments together based on heuristics. Generally, one wants as few segments as possible,
+ * but one also wants full-range-segments if possible and we don't want to copy too many indices
+ * around to reduce the number of segments.
+ *
+ * \return Number of consolidated segments. Those are ordered to the beginning of the span.
+ */
+int64_t consolidate_index_mask_segments(MutableSpan<IndexMaskSegment> segments,
+                                        IndexMaskMemory &memory);
+
 /* -------------------------------------------------------------------- */
 /** \name #RawMaskIterator Inline Methods
  * \{ */
@@ -519,6 +562,32 @@ inline bool operator!=(const RawMaskIterator &a, const RawMaskIterator &b)
 inline bool operator==(const RawMaskIterator &a, const RawMaskIterator &b)
 {
   return !(a != b);
+}
+
+/* -------------------------------------------------------------------- */
+/** \name #IndexMaskSegment Inline Methods
+ * \{ */
+
+inline IndexMaskSegment::IndexMaskSegment(const OffsetSpan<int64_t, int16_t> span)
+    : OffsetSpan<int64_t, int16_t>(span)
+{
+}
+
+inline IndexMaskSegment IndexMaskSegment::slice(const IndexRange &range) const
+{
+  return IndexMaskSegment(static_cast<const OffsetSpan<int64_t, int16_t> *>(this)->slice(range));
+}
+
+inline IndexMaskSegment IndexMaskSegment::slice(const int64_t start, const int64_t size) const
+{
+  return IndexMaskSegment(
+      static_cast<const OffsetSpan<int64_t, int16_t> *>(this)->slice(start, size));
+}
+
+inline IndexMaskSegment IndexMaskSegment::shift(const int64_t shift) const
+{
+  BLI_assert(this->is_empty() || (*this)[0] + shift >= 0);
+  return IndexMaskSegment(this->offset() + shift, this->base_span());
 }
 
 /* -------------------------------------------------------------------- */
@@ -597,8 +666,7 @@ inline IndexRange IndexMask::bounds() const
   }
   const int64_t first = this->first();
   const int64_t last = this->last();
-  const int64_t range = last - first + 1;
-  return IndexRange(first, range);
+  return IndexRange::from_begin_end_inclusive(first, last);
 }
 
 inline int64_t IndexMask::first() const

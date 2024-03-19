@@ -228,7 +228,7 @@ static void grease_pencil_edit_batch_ensure(Object &object,
   BLI_assert(cache->edit_points == nullptr && cache->edit_lines == nullptr);
 
   /* Get the visible drawings. */
-  const Array<ed::greasepencil::DrawingInfo> drawings =
+  const Vector<ed::greasepencil::DrawingInfo> drawings =
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil);
 
   const Span<const Layer *> layers = grease_pencil.layers();
@@ -422,7 +422,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
   BLI_assert(cache->geom_batch == nullptr);
 
   /* Get the visible drawings. */
-  const Array<ed::greasepencil::DrawingInfo> drawings =
+  const Vector<ed::greasepencil::DrawingInfo> drawings =
       ed::greasepencil::retrieve_visible_drawings(scene, grease_pencil);
 
   /* First, count how many vertices and triangles are needed for the whole object. Also record the
@@ -558,6 +558,9 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       copy_v3_v3(s_vert.pos,
                  math::transform_point(layer_space_to_object_space, positions[point_i]));
       s_vert.radius = radii[point_i] * ((end_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);
+      /* Convert to legacy "pixel" space. The shader expects the values to be in this space.
+       * Otherwise the values will get clamped. */
+      s_vert.radius *= 1000.0f;
       s_vert.opacity = opacities[point_i] *
                        ((start_cap == GP_STROKE_CAP_TYPE_ROUND) ? 1.0f : -1.0f);
       s_vert.point_id = verts_range[idx];
@@ -620,7 +623,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
                        cols_slice[idx]);
       }
 
-      if (is_cyclic) {
+      if (is_cyclic && points.size() >= 3) {
         const int idx = points.size() + 1;
         const float length = points.size() > 1 ? lengths[points.size() - 1] : 0.0f;
         populate_point(verts_range,

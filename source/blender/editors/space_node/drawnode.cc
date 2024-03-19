@@ -42,7 +42,7 @@
 #include "GPU_platform.h"
 #include "GPU_shader_shared.h"
 #include "GPU_state.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_uniform_buffer.hh"
 
 #include "DRW_engine.hh"
 
@@ -1201,6 +1201,7 @@ static const float std_node_socket_colors[][4] = {
     {0.92, 0.46, 0.51, 1.0}, /* SOCK_MATERIAL */
     {0.65, 0.39, 0.78, 1.0}, /* SOCK_ROTATION */
     {0.40, 0.40, 0.40, 1.0}, /* SOCK_MENU */
+    {0.72, 0.20, 0.52, 1.0}, /* SOCK_MATRIX */
 };
 
 /* Callback for colors that does not depend on the socket pointer argument to get the type. */
@@ -1236,6 +1237,7 @@ static const SocketColorFn std_node_socket_color_funcs[] = {
     std_node_socket_color_fn<SOCK_MATERIAL>,
     std_node_socket_color_fn<SOCK_ROTATION>,
     std_node_socket_color_fn<SOCK_MENU>,
+    std_node_socket_color_fn<SOCK_MATRIX>,
 };
 
 /* draw function for file output node sockets,
@@ -1348,6 +1350,10 @@ static void std_node_socket_draw(
     case SOCK_ROTATION: {
       uiLayout *column = uiLayoutColumn(layout, true);
       uiItemR(column, ptr, "default_value", DEFAULT_FLAGS, text, ICON_NONE);
+      break;
+    }
+    case SOCK_MATRIX: {
+      uiItemL(layout, text, ICON_NONE);
       break;
     }
     case SOCK_RGBA: {
@@ -1528,6 +1534,7 @@ static void std_node_socket_interface_draw(ID *id,
     }
     case SOCK_SHADER:
     case SOCK_GEOMETRY:
+    case SOCK_MATRIX:
       break;
 
     case SOCK_CUSTOM:
@@ -1719,7 +1726,7 @@ static float2 socket_link_connection_location(const bNode &node,
   const float2 socket_location = socket.runtime->location;
   if (socket.is_multi_input() && socket.is_input() && !(node.flag & NODE_HIDDEN)) {
     return node_link_calculate_multi_input_position(
-        socket_location, link.multi_input_socket_index, socket.runtime->total_inputs);
+        socket_location, link.multi_input_sort_id, socket.runtime->total_inputs);
   }
   return socket_location;
 }

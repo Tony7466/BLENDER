@@ -1167,8 +1167,9 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
                                         const rcti *rect,
                                         const rcti *header_rect)
 {
-  const bool is_subpanel = panel->type->parent != nullptr;
   const bool is_open = !UI_panel_is_closed(panel);
+  const bool is_subpanel = panel->type->parent != nullptr;
+  const bool has_header = (panel->type->flag & PANEL_TYPE_NO_HEADER) == 0;
 
   if (is_subpanel && !is_open) {
     return;
@@ -1182,10 +1183,15 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
   GPU_blend(GPU_BLEND_ALPHA);
 
   /* Panel backdrop. */
-  if (is_open || panel->type->flag & PANEL_TYPE_NO_HEADER) {
+  if (is_open || !has_header) {
     float panel_backcolor[4];
     UI_draw_roundbox_corner_set(is_open ? UI_CNR_BOTTOM_RIGHT | UI_CNR_BOTTOM_LEFT : UI_CNR_ALL);
-    UI_GetThemeColor4fv((is_subpanel ? TH_PANEL_SUB_BACK : TH_PANEL_BACK), panel_backcolor);
+    if (!has_header) {
+      UI_GetThemeColor4fv(TH_BACK, panel_backcolor);
+    }
+    else {
+      UI_GetThemeColor4fv((is_subpanel ? TH_PANEL_SUB_BACK : TH_PANEL_BACK), panel_backcolor);
+    }
 
     rctf box_rect;
     box_rect.xmin = rect->xmin;
@@ -1222,7 +1228,7 @@ static void panel_draw_aligned_backdrop(const ARegion *region,
   }
 
   /* Panel header backdrops for non sub-panels. */
-  if (!is_subpanel) {
+  if (!is_subpanel && has_header) {
     float panel_headercolor[4];
     UI_GetThemeColor4fv(UI_panel_matches_search_filter(panel) ? TH_MATCH : TH_PANEL_HEADER,
                         panel_headercolor);
@@ -1259,7 +1265,7 @@ void ui_draw_aligned_panel(const ARegion *region,
       rect->ymax + int(floor(PNL_HEADER / block->aspect + 0.001f)),
   };
 
-  if (show_background) {
+  if (show_background || (panel->type->flag & PANEL_TYPE_NO_HEADER)) {
     panel_draw_aligned_backdrop(region, panel, rect, &header_rect);
   }
 
@@ -1336,8 +1342,6 @@ void UI_panel_category_draw_all(ARegion *region, const char *category_id_active)
   /* Intentionally don't scale by 'px'. */
   const int rct_xmin = is_left ? v2d->mask.xmin + 3 : (v2d->mask.xmax - category_tabs_width);
   const int rct_xmax = is_left ? v2d->mask.xmin + category_tabs_width : (v2d->mask.xmax - 3);
-  const int text_v_ofs = (rct_xmax - rct_xmin) * 0.3f;
-
   int y_ofs = tab_v_pad;
 
   /* Primary theme colors. */
@@ -1498,8 +1502,14 @@ void UI_panel_category_draw_all(ARegion *region, const char *category_id_active)
 
     /* Tab titles. */
 
+    /* Offset toward the middle of the rect. */
+    const int text_v_ofs = (rct_xmax - rct_xmin) * 0.5f;
+    /* Offset down as the font size increases. */
+    const int text_size_offset = int(fstyle_points * UI_SCALE_FAC * 0.35f);
+
     BLF_position(fontid,
-                 is_left ? rct->xmax - text_v_ofs : rct->xmin + text_v_ofs,
+                 is_left ? rct->xmax - text_v_ofs + text_size_offset :
+                           rct->xmin + text_v_ofs - text_size_offset,
                  is_left ? rct->ymin + tab_v_pad_text : rct->ymax - tab_v_pad_text,
                  0.0f);
     BLF_color3ubv(fontid, is_active ? theme_col_text_hi : theme_col_text);
@@ -1791,7 +1801,7 @@ static void ui_do_animate(bContext *C, Panel *panel)
   uiHandlePanelData *data = static_cast<uiHandlePanelData *>(panel->activedata);
   ARegion *region = CTX_wm_region(C);
 
-  float fac = (BLI_check_seconds_timer() - data->starttime) / ANIMATION_TIME;
+  float fac = (BLI_time_now_seconds() - data->starttime) / ANIMATION_TIME;
   fac = min_ff(sqrtf(fac), 1.0f);
 
   if (uiAlignPanelStep(region, fac, false)) {
@@ -2649,7 +2659,7 @@ static void panel_handle_data_ensure(const bContext *C,
   data->startofsy = panel->ofsy;
   data->start_cur_xmin = region->v2d.cur.xmin;
   data->start_cur_ymin = region->v2d.cur.ymin;
-  data->starttime = BLI_check_seconds_timer();
+  data->starttime = BLI_time_now_seconds();
 }
 
 /**

@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "BLI_math_matrix_types.hh"
 #include "BLI_utildefines.h"
 
 #include "GPU_shader.h"
@@ -74,8 +75,8 @@ struct MeshBufferList {
    * (except fdots and skin roots). For some VBOs, it extends to (in this exact order) :
    * loops + loose_edges * 2 + loose_verts */
   struct {
-    GPUVertBuf *pos_nor;  /* extend */
-    GPUVertBuf *lnor;     /* extend */
+    GPUVertBuf *pos;      /* extend */
+    GPUVertBuf *nor;      /* extend */
     GPUVertBuf *edge_fac; /* extend */
     GPUVertBuf *weights;  /* extend */
     GPUVertBuf *uv;
@@ -101,6 +102,7 @@ struct MeshBufferList {
     GPUVertBuf *fdot_idx;
     GPUVertBuf *attr[GPU_MAX_ATTR];
     GPUVertBuf *attr_viewer;
+    GPUVertBuf *vnor;
   } vbo;
   /* Index Buffers:
    * Only need to be updated when topology changes. */
@@ -215,12 +217,14 @@ struct MeshExtractLooseGeom {
 };
 
 struct SortedFaceData {
-  /** The first triangle index for each polygon, sorted into slices by material. */
-  Array<int> tri_first_index;
+  /* The total number of visible triangles (a sum of the values in #mat_tri_counts). */
+  int visible_tris_num;
   /** The number of visible triangles assigned to each material. */
-  Array<int> mat_tri_len;
-  /* The total number of visible triangles (a sum of the values in #mat_tri_len). */
-  int visible_tri_len;
+  Array<int> tris_num_by_material;
+  /**
+   * The first triangle index for each face, sorted into slices by material.
+   */
+  Array<int> face_tri_offsets;
 };
 
 /**
@@ -304,7 +308,7 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
                                         bool is_editmode,
                                         bool is_paint_mode,
                                         bool is_mode_active,
-                                        const float obmat[4][4],
+                                        const float4x4 &object_to_world,
                                         bool do_final,
                                         bool do_uvedit,
                                         const Scene *scene,

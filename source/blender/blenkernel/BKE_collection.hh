@@ -20,12 +20,9 @@
 struct BLI_Iterator;
 struct Base;
 struct BlendDataReader;
-struct BlendLibReader;
 struct BlendWriter;
 struct Collection;
-struct Depsgraph;
 struct ID;
-struct Library;
 struct Main;
 struct Object;
 struct Scene;
@@ -277,6 +274,11 @@ bool BKE_collection_cycles_fix(Main *bmain, Collection *collection);
 bool BKE_collection_has_collection(const Collection *parent, const Collection *collection);
 
 /**
+ * Return parent collection which is not linked.
+ */
+Collection *BKE_collection_parent_editable_find_recursive(const ViewLayer *view_layer,
+                                                          Collection *collection);
+/**
  * Rebuild parent relationships from child ones, for all children of given \a collection.
  *
  * \note Given collection is assumed to already have valid parents.
@@ -305,8 +307,8 @@ void BKE_collection_blend_read_data(BlendDataReader *reader, Collection *collect
 
 /* Iteration callbacks. */
 
-typedef void (*BKE_scene_objects_Cb)(Object *ob, void *data);
-typedef void (*BKE_scene_collections_Cb)(Collection *ob, void *data);
+using BKE_scene_objects_Cb = void (*)(Object *ob, void *data);
+using BKE_scene_collections_Cb = void (*)(Collection *ob, void *data);
 
 /* Iteration over objects in collection. */
 

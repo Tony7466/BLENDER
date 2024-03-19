@@ -9,6 +9,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
+
 #include <fmt/format.h>
 
 #include "MEM_guardedalloc.h"
@@ -25,7 +27,6 @@
 
 #include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
 #include "BKE_colorband.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
@@ -34,7 +35,6 @@
 #include "BKE_lib_id.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_linestyle.h"
-#include "BKE_main.hh"
 #include "BKE_node.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_texture.h"
@@ -52,7 +52,11 @@ static void linestyle_init_data(ID *id)
   BKE_linestyle_geometry_modifier_add(linestyle, nullptr, LS_MODIFIER_SAMPLING);
 }
 
-static void linestyle_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const int flag)
+static void linestyle_copy_data(Main *bmain,
+                                std::optional<Library *> owner_library,
+                                ID *id_dst,
+                                const ID *id_src,
+                                const int flag)
 {
   FreestyleLineStyle *linestyle_dst = (FreestyleLineStyle *)id_dst;
   const FreestyleLineStyle *linestyle_src = (const FreestyleLineStyle *)id_src;
@@ -70,10 +74,11 @@ static void linestyle_copy_data(Main *bmain, ID *id_dst, const ID *id_src, const
   }
 
   if (linestyle_src->nodetree) {
-    BKE_id_copy_ex(bmain,
-                   (ID *)linestyle_src->nodetree,
-                   (ID **)&linestyle_dst->nodetree,
-                   flag_private_id_data);
+    BKE_id_copy_in_lib(bmain,
+                       owner_library,
+                       (ID *)linestyle_src->nodetree,
+                       (ID **)&linestyle_dst->nodetree,
+                       flag_private_id_data);
     linestyle_dst->nodetree->owner_id = &linestyle_dst->id;
   }
 
@@ -645,6 +650,7 @@ static void linestyle_blend_read_data(BlendDataReader *reader, ID *id)
 IDTypeInfo IDType_ID_LS = {
     /*id_code*/ ID_LS,
     /*id_filter*/ FILTER_ID_LS,
+    /*dependencies_id_types*/ FILTER_ID_TE | FILTER_ID_OB,
     /*main_listbase_index*/ INDEX_ID_LS,
     /*struct_size*/ sizeof(FreestyleLineStyle),
     /*name*/ "FreestyleLineStyle",

@@ -40,7 +40,6 @@
 #include "BLI_string_utils.hh"
 #include "BLI_task.h"
 #include "BLI_threads.h"
-#include "BLI_time.h"
 #include "BLI_utildefines.h"
 #include "BLI_uuid.h"
 
@@ -54,9 +53,7 @@
 #include "BKE_global.hh"
 #include "BKE_icons.h"
 #include "BKE_idtype.hh"
-#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_main_idmap.hh"
 #include "BKE_preferences.h"
 #include "BKE_preview_image.hh"
 
@@ -65,7 +62,6 @@
 
 #include "ED_datafiles.h"
 #include "ED_fileselect.hh"
-#include "ED_screen.hh"
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
@@ -197,7 +193,7 @@ struct FileListFilter {
   char filter_search[66]; /* + 2 for heading/trailing implicit '*' wildcards. */
   short flags;
 
-  FileAssetCatalogFilterSettingsHandle *asset_catalog_filter;
+  blender::ed::asset_browser::AssetCatalogFilterSettings *asset_catalog_filter;
 };
 
 /** #FileListFilter.flags */
@@ -1038,7 +1034,8 @@ void filelist_set_asset_catalog_filter_options(
 {
   if (!filelist->filter_data.asset_catalog_filter) {
     /* There's no filter data yet. */
-    filelist->filter_data.asset_catalog_filter = file_create_asset_catalog_filter_settings();
+    filelist->filter_data.asset_catalog_filter =
+        blender::ed::asset_browser::file_create_asset_catalog_filter_settings();
   }
 
   const bool needs_update = file_set_asset_catalog_filter_settings(
