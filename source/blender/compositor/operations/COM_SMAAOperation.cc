@@ -775,7 +775,7 @@ static float2 SMAALumaEdgeDetectionPS(float2 texcoord,
   float finalDelta = math::max(maxDelta.x, maxDelta.y);
 
   // Local contrast adaptation:
-  edges.xy() *= math::step(finalDelta, local_contrast_adaptation_factor * delta.xy());
+  edges *= math::step(finalDelta, local_contrast_adaptation_factor * delta.xy());
 
   return edges;
 }
