@@ -245,7 +245,7 @@ static GreasePencilStrokeOperation *grease_pencil_sculpt_paint_operation(
     case GPSCULPT_TOOL_THICKNESS:
       return greasepencil::new_thickness_operation(stroke_mode).release();
     case GPSCULPT_TOOL_STRENGTH:
-      return nullptr;
+      return greasepencil::new_strength_operation(stroke_mode).release();
     case GPSCULPT_TOOL_GRAB:
       return nullptr;
     case GPSCULPT_TOOL_PUSH:

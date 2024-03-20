@@ -3,23 +3,13 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include <algorithm>
-#include <atomic>
 
-#include "BLI_array.hh"
 #include "BLI_task.hh"
-#include "BLI_utildefines.h"
 
-#include "BKE_brush.hh"
-#include "BKE_colortools.hh"
 #include "BKE_context.hh"
-#include "BKE_crazyspace.hh"
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_paint.hh"
-
-#include "DNA_brush_enums.h"
-
-#include "DEG_depsgraph_query.hh"
 
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"

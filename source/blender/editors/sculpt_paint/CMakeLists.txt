@@ -44,8 +44,9 @@ set(SRC
   grease_pencil_erase.cc
   grease_pencil_paint.cc
   grease_pencil_sculpt_common.cc
-  grease_pencil_smooth.cc
-  grease_pencil_thickness.cc
+  grease_pencil_sculpt_smooth.cc
+  grease_pencil_sculpt_strength.cc
+  grease_pencil_sculpt_thickness.cc
   paint_canvas.cc
   paint_cursor.cc
   paint_curve.cc
