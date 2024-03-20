@@ -161,13 +161,16 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
             const float influence = strength * BKE_brush_curve_strength(brush, distance, radius);
             if (influence > 0.0f) {
               stroke_touched = true;
-              ColorGeometry4f premultiplied = vertex_colors[point].premultiply_alpha();
+              /* Manually do an alpha-over mix, not using `ColorGeometry4f::premultiply_alpha`
+               * since the vertex color in GPv3 is stored as straight alpha (which is technically
+               * `ColorPaint4f`). */
+              float4 premultiplied;
+              straight_to_premul_v4_v4(premultiplied, vertex_colors[point]);
               float4 rgba = float4(
                   math::interpolate(float3(premultiplied), float3(color_), influence),
                   vertex_colors[point][3]);
               rgba[3] = rgba[3] * (1.0f - influence) + influence;
-              premultiplied = ColorGeometry4f(rgba);
-              vertex_colors[point] = ColorGeometry4f(premultiplied.unpremultiply_alpha());
+              premul_to_straight_v4_v4(vertex_colors[point], rgba);
             }
           }
           if (!fill_colors.span.is_empty() && tint_fills) {
@@ -179,13 +182,13 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
                                                                 points_by_curve[curve].size()),
                                                             mouse_position);
             if (fill_effective) {
-              ColorGeometry4f premultiplied = fill_colors.span[curve].premultiply_alpha();
+              float4 premultiplied;
+              straight_to_premul_v4_v4(premultiplied, fill_colors.span[curve]);
               float4 rgba = float4(
                   math::interpolate(float3(premultiplied), float3(color_), fill_strength),
                   fill_colors.span[curve][3]);
               rgba[3] = rgba[3] * (1.0f - fill_strength) + fill_strength;
-              premultiplied = ColorGeometry4f(rgba);
-              fill_colors.span[curve] = ColorGeometry4f(premultiplied.unpremultiply_alpha());
+              premul_to_straight_v4_v4(fill_colors.span[curve], rgba);
               stroke_touched = true;
             }
           }
