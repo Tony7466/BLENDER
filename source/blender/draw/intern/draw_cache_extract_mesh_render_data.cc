@@ -307,7 +307,7 @@ static SortedFaceData mesh_render_data_faces_sorted_build(const MeshRenderData &
   Array<int, 32> material_tri_starts(mr.materials_num + 1);
   material_tri_starts.as_mutable_span().drop_back(1).copy_from(tris_num_by_material);
   offset_indices::accumulate_counts_to_offsets(material_tri_starts);
-  cache.visible_tri_len = material_tri_starts.last();
+  cache.visible_tris_num = material_tri_starts.last();
 
   /* Sort per material. */
   const int mat_last = mr.materials_num - 1;
@@ -333,12 +333,12 @@ static SortedFaceData mesh_render_data_faces_sorted_build(const MeshRenderData &
   else {
     if (single_material(tris_num_by_material)) {
       if (mr.hide_poly.is_empty()) {
-        cache.visible_tri_len = mr.corner_tris_num;
+        cache.visible_tris_num = mr.corner_tris_num;
       }
       else {
-        cache.visible_tri_len = *std::find_if(tris_num_by_material.begin(),
-                                              tris_num_by_material.end(),
-                                              [](const int tri_count) { return tri_count != 0; });
+        cache.visible_tris_num = *std::find_if(tris_num_by_material.begin(),
+                                               tris_num_by_material.end(),
+                                               [](const int tri_count) { return tri_count != 0; });
       }
     }
     else {
@@ -350,7 +350,7 @@ static SortedFaceData mesh_render_data_faces_sorted_build(const MeshRenderData &
 
 static void mesh_render_data_faces_sorted_ensure(MeshRenderData &mr, MeshBufferCache &cache)
 {
-  if (cache.face_sorted.visible_tri_len > 0) {
+  if (cache.face_sorted.visible_tris_num > 0) {
     return;
   }
   cache.face_sorted = mesh_render_data_faces_sorted_build(mr);

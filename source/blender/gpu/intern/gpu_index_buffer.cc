@@ -530,6 +530,8 @@ void GPU_indexbuf_build_in_place_from_memory(GPUIndexBuf *ibo,
 {
   uint32_t *copy = static_cast<uint32_t *>(
       MEM_malloc_arrayN(data_len, sizeof(uint32_t), __func__));
+  /* TODO: This copy is meant to be temporary. The data should be uploaded directly to the GPU here
+   * rather than copied to an array owned by the IBO first. */
   memcpy(copy, data, sizeof(uint32_t) * data_len);
   unwrap(ibo)->init(data_len, copy, index_min, index_max, prim_type, uses_restart_indices);
 }
