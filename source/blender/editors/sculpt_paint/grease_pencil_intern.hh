@@ -47,10 +47,10 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
   void on_stroke_done(const bContext &C) override;
 
   /* Extend the stroke in a drawing using projected 2D coordinates. */
-  virtual bool on_stroke_extended_drawing_view(const bContext &C,
-                                               bke::greasepencil::Drawing &drawing,
-                                               Span<float2> view_positions,
-                                               const InputSample &extension_sample) = 0;
+  virtual bool on_stroke_extended_drawing(const bContext &C,
+                                          bke::greasepencil::Drawing &drawing,
+                                          Span<float2> view_positions,
+                                          const InputSample &extension_sample) = 0;
 };
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();

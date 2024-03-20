@@ -107,7 +107,7 @@ static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
     }
   });
 
-  return op.on_stroke_extended_drawing_view(C, drawing, screen_space_positions, extension_sample);
+  return op.on_stroke_extended_drawing(C, drawing, screen_space_positions, extension_sample);
 }
 
 void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,

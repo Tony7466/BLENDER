@@ -52,16 +52,16 @@ class ThicknessOperation : public GreasePencilStrokeOperationCommon {
 
   ThicknessOperation(const BrushStrokeMode stroke_mode) : stroke_mode(stroke_mode) {}
 
-  bool on_stroke_extended_drawing_view(const bContext &C,
-                                       bke::greasepencil::Drawing &drawing,
-                                       Span<float2> view_positions,
-                                       const InputSample &extension_sample) override;
+  bool on_stroke_extended_drawing(const bContext &C,
+                                  bke::greasepencil::Drawing &drawing,
+                                  Span<float2> view_positions,
+                                  const InputSample &extension_sample) override;
 };
 
-bool ThicknessOperation::on_stroke_extended_drawing_view(const bContext &C,
-                                                         bke::greasepencil::Drawing &drawing,
-                                                         const Span<float2> view_positions,
-                                                         const InputSample &extension_sample)
+bool ThicknessOperation::on_stroke_extended_drawing(const bContext &C,
+                                                    bke::greasepencil::Drawing &drawing,
+                                                    const Span<float2> view_positions,
+                                                    const InputSample &extension_sample)
 {
   Paint &paint = *BKE_paint_get_active_from_context(&C);
   const Brush &brush = *BKE_paint_brush(&paint);
