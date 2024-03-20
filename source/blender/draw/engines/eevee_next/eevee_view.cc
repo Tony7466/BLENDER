@@ -216,7 +216,7 @@ void ShadingView::update_view()
    */
   int2 scaling_factor = int2(inst_.film.scaling_factor_get());
   int2 display_extent = inst_.film.display_extent_get();
-  int2 overscan = inst_.film.get_data().render_offset - inst_.film.get_data().offset;
+  int overscan = inst_.film.get_data().overscan;
   int2 rescaled_render_extent = (extent_ - 2 * overscan) * scaling_factor;
 
   if (rescaled_render_extent != display_extent) {
@@ -226,12 +226,18 @@ void ShadingView::update_view()
     float top;
     float near;
     float far;
+    const bool is_perspective = main_view_.is_persp();
     projmat_dimensions(winmat.ptr(), &left, &right, &bottom, &top, &near, &far);
     float2 scale = (float2(rescaled_render_extent) / float2(display_extent));
     right = left + ((right - left) * scale.x);
     top = bottom + ((top - bottom) * scale.y);
 
-    winmat = math::projection::perspective(left, right, bottom, top, near, far);
+    if (is_perspective) {
+      winmat = math::projection::perspective(left, right, bottom, top, near, far);
+    }
+    else {
+      winmat = math::projection::orthographic(left, right, bottom, top, near, far);
+    }
   }
 
   /* Anti-Aliasing / Super-Sampling jitter. */
@@ -281,11 +287,7 @@ void CaptureView::render_world()
       inst_.pipelines.world.render(view);
     }
 
-    inst_.sphere_probes.remap_to_octahedral_projection(update_info->atlas_coord);
-  }
-
-  if (update_info->do_world_irradiance_update) {
-    inst_.sphere_probes.update_world_irradiance();
+    inst_.sphere_probes.remap_to_octahedral_projection(update_info->atlas_coord, true);
   }
 
   GPU_debug_group_end();
@@ -343,7 +345,7 @@ void CaptureView::render_probes()
     inst_.render_buffers.release();
     inst_.gbuffer.release();
     GPU_debug_group_end();
-    inst_.sphere_probes.remap_to_octahedral_projection(update_info->atlas_coord);
+    inst_.sphere_probes.remap_to_octahedral_projection(update_info->atlas_coord, false);
   }
 
   if (inst_.pipelines.data.is_probe_reflection) {
