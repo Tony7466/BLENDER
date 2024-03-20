@@ -2,3 +2,4 @@ Referenced by issue #117632, Regression: Crash when Using IME in the Fields Exis
 Referenced by issue #117760, Regression: Ctrl+Z causes Losing Audio Sound
 Referenced by pull request #117834, Fix #117760: Regression: Ctrl+Z causes Losing Audio Sound
 Referenced by commit 7abc1bc7d43d9bb2631b2853e9dbb43b026236b9, Fix #117760: Regression: Ctrl+Z causes Losing Audio Sound
+Referenced by pull request #119698, Fix #119697: Incorrect update after disabling light linking
