@@ -296,7 +296,7 @@
 #define SMAASampleLevelZeroOffset(tex, coord, offset, size) \
   tex->texture_bilinear_extend(coord + float2(offset) / float2(size))
 #define SMAASample(tex, coord) tex->texture_bilinear_extend(coord)
-#define SMAASamplePoint(tex, coord) tex->texture_bilinear_extend(coord)
+#define SMAASamplePoint(tex, coord) tex->texture_nearest_extend(coord)
 #define SMAASampleOffset(tex, coord, offset, size) \
   tex->texture_bilinear_extend(coord + float2(offset) / float2(size))
 #define SMAA_FLATTEN
