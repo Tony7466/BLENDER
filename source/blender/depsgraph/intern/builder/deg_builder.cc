@@ -224,9 +224,6 @@ void deg_graph_build_finalize(Main *bmain, Depsgraph *graph)
         flag |= ID_RECALC_AUDIO | ID_RECALC_SEQUENCER_STRIPS;
       }
     }
-    if (id_type == ID_SCE) {
-      flag |= ID_RECALC_HIERARCHY;
-    }
     /* Restore recalc flags from original ID, which could possibly contain recalc flags set by
      * an operator and then were carried on by the undo system.
      *
