@@ -811,8 +811,6 @@ struct LightData {
   int2 clipmap_base_offset;
   /** Punctual: Other parts of the perspective matrix. */
   float clip_side;
-  /** Punctual: Shift to apply to the light origin to get the shadow projection origin. */
-  float shadow_projection_shift;
   /** Scaling factor to the light shape for shadow ray casting. */
   float shadow_shape_scale_or_angle;
   /** Trace distance for directional lights. */
@@ -821,6 +819,10 @@ struct LightData {
   float pcf_radius;
   /* Shadow Map resolution bias. */
   float lod_bias;
+  /** Punctual: Shift to apply to the light origin to get the shadow projection origin. */
+  float _pad0;
+  packed_float3 shadow_projection_shift;
+  float _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 

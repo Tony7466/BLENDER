@@ -17,6 +17,7 @@
 
 #include "eevee_camera.hh"
 #include "eevee_material.hh"
+#include "eevee_sampling.hh"
 #include "eevee_shader.hh"
 #include "eevee_shader_shared.hh"
 #include "eevee_sync.hh"
@@ -107,7 +108,7 @@ struct ShadowTileMap : public ShadowTileMapData {
                      float near,
                      float far,
                      float side,
-                     float shift,
+                     float3 shift,
                      eCubeFace face,
                      float lod_bias_);
 
@@ -216,7 +217,7 @@ class ShadowModule {
   /* Used to call caster_update_ps_ only once per sync (Initialized on begin_sync). */
   bool update_casters_ = false;
 
-  bool jittered_transparency_ = false;
+  bool do_jittering_ = false;
 
   /* -------------------------------------------------------------------- */
   /** \name Tile-map Management
@@ -370,6 +371,11 @@ class ShadowModule {
     return lod_bias_;
   }
 
+  bool do_jittering()
+  {
+    return do_jittering_;
+  }
+
  private:
   void remove_unused();
   void debug_page_map_call(DRWPass *pass);
@@ -441,7 +447,7 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   /**
    * Allocate shadow tile-maps and setup views for rendering.
    */
-  void end_sync(Light &light, float lod_bias);
+  void end_sync(Light &light, float lod_bias, Sampling &sampling);
 
  private:
   /**

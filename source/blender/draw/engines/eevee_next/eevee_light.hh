@@ -44,6 +44,7 @@ struct Light : public LightData, NonCopyable {
  public:
   bool initialized = false;
   bool used = false;
+  float jittering = 0.0f;
 
   /** Pointers to source Shadow. Type depends on `LightData::type`. */
   ShadowDirectional *directional = nullptr;

@@ -317,10 +317,15 @@ void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
 
   Light &light = light_map_.lookup_or_add_default(handle.object_key);
   light.used = true;
-  if (handle.recalc != 0 || !light.initialized) {
+
+  ::Light *bl_light = static_cast<::Light *>(ob->data);
+  light.jittering = inst_.shadows.do_jittering() ? bl_light->shadow_jittering : 0.0f;
+
+  if (handle.recalc != 0 || !light.initialized || light.jittering > 0.0f) {
     light.initialized = true;
     light.sync(inst_.shadows, ob, light_threshold_);
   }
+
   sun_lights_len_ += int(is_sun_light(light.type));
   local_lights_len_ += int(!is_sun_light(light.type));
 }

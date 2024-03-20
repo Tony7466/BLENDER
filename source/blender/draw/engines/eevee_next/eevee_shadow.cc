@@ -73,7 +73,7 @@ void ShadowTileMap::sync_cubeface(const float4x4 &object_mat_,
                                   float near_,
                                   float far_,
                                   float side_,
-                                  float shift,
+                                  float3 shift,
                                   eCubeFace face,
                                   float lod_bias_)
 {
@@ -101,8 +101,8 @@ void ShadowTileMap::sync_cubeface(const float4x4 &object_mat_,
 
   winmat = math::projection::perspective(
       -half_size, half_size, -half_size, half_size, clip_near, clip_far);
-  viewmat = float4x4(shadow_face_mat[cubeface]) *
-            math::from_location<float4x4>(float3(0.0f, 0.0f, -shift)) * math::invert(object_mat);
+  viewmat = float4x4(shadow_face_mat[cubeface]) * math::from_location<float4x4>(-shift) *
+            math::invert(object_mat);
 
   /* Update corners. */
   float4x4 viewinv = object_mat;
@@ -338,15 +338,29 @@ void ShadowPunctual::compute_projection_boundaries(float light_radius,
   }
 }
 
-void ShadowPunctual::end_sync(Light &light, float lod_bias)
+void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
 {
   ShadowTileMapPool &tilemap_pool = shadows_.tilemap_pool;
 
   float side, near, far;
   compute_projection_boundaries(light_radius_, shadow_radius_, max_distance_, near, far, side);
 
-  /* Shift shadow map origin for area light to avoid clipping nearby geometry. */
-  float shift = is_area_light(light.type) ? near : 0.0f;
+  float3 shift = float3(0.0f);
+
+  if (light.jittering > 0.0f) {
+    float3 random = sampling.rng_3d_get(SAMPLING_SHADOW_U);
+    // if (is_sphere_light(light.type) || is_spot_light(light.type)) {
+    if (ELEM(light.type, LIGHT_OMNI_SPHERE, LIGHT_OMNI_DISK, LIGHT_SPOT_SPHERE, LIGHT_SPOT_DISK)) {
+      shift = sampling.sample_ball(random);
+      // shift *= shadow_radius_ * light.jittering;
+      shift *= sqrtf(light.radius_squared) * light.jittering;
+    }
+  }
+
+  if (is_area_light(light.type)) {
+    /* Shift shadow map origin for area light to avoid clipping nearby geometry. */
+    shift.z += near;
+  }
 
   float4x4 obmat_tmp = light.object_mat;
 
@@ -742,8 +756,7 @@ void ShadowModule::init()
     }
   }
 
-  jittered_transparency_ = !inst_.is_viewport() ||
-                           scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_VIEWPORT;
+  do_jittering_ = !inst_.is_viewport() || scene.eevee.flag & SCE_EEVEE_SHADOW_JITTERED_VIEWPORT;
 
   data_.ray_count = clamp_i(inst_.scene->eevee.shadow_ray_count, 1, SHADOW_MAX_RAY);
   data_.step_count = clamp_i(inst_.scene->eevee.shadow_step_count, 1, SHADOW_MAX_STEP);
@@ -913,7 +926,7 @@ void ShadowModule::sync_object(const Object *ob,
   ShadowObject &shadow_ob = objects_.lookup_or_add_default(handle.object_key);
   shadow_ob.used = true;
   const bool is_initialized = shadow_ob.resource_handle.raw != 0;
-  const bool has_jittered_transparency = has_transparent_shadows && jittered_transparency_;
+  const bool has_jittered_transparency = has_transparent_shadows && do_jittering_;
   if (is_shadow_caster && (handle.recalc || !is_initialized || has_jittered_transparency)) {
     if (handle.recalc && is_initialized) {
       past_casters_updated_.append(shadow_ob.resource_handle.raw);
@@ -962,7 +975,7 @@ void ShadowModule::end_sync()
       light.directional->end_sync(light, inst_.camera, light.lod_bias);
     }
     else if (light.punctual != nullptr) {
-      light.punctual->end_sync(light, light.lod_bias);
+      light.punctual->end_sync(light, light.lod_bias, inst_.sampling);
     }
     else {
       light.tilemap_index = LIGHT_NO_SHADOW;

@@ -79,8 +79,7 @@ typedef struct Light {
   float shadow_trace_distance;
   float shadow_filter_radius;
   float shadow_resolution_scale;
-
-  float _pad0;
+  float shadow_jittering;
 
   /* Preview */
   struct PreviewImage *preview;
