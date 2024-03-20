@@ -100,17 +100,17 @@ static void blend_read(BlendDataReader *reader, ModifierData *md)
   modifier::greasepencil::read_influence_data(reader, &mmd->influence);
 }
 
-static Array<int> points_per_curve_concurrent(const bke::CurvesGeometry &curves,
-                                              const IndexMask &selection,
-                                              const int time_alignment,
-                                              const int transition,
-                                              const float factor,
-                                              const bool clamp_points,
-                                              int &r_curves_num,
-                                              int &r_points_num)
+static Array<int> point_counts_to_keep_concurrent(const bke::CurvesGeometry &curves,
+                                                  const IndexMask &selection,
+                                                  const int time_alignment,
+                                                  const int transition,
+                                                  const float factor,
+                                                  const bool clamp_points,
+                                                  int &r_curves_num,
+                                                  int &r_points_num)
 {
   const int stroke_count = curves.curves_num();
-  const OffsetIndices<int> &points_by_curve = curves.points_by_curve();
+  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 
   curves.ensure_evaluated_lengths();
   float max_length = 0;
@@ -175,28 +175,28 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
 {
   int dst_curves_num, dst_points_num;
   const bool has_fade = factor_start != factor;
-  const Array<int> points_per_curve = points_per_curve_concurrent(
+  const Array<int> point_counts_to_keep = point_counts_to_keep_concurrent(
       curves, selection, time_alignment, transition, factor, true, dst_curves_num, dst_points_num);
   if (dst_curves_num == 0) {
     return {};
   }
-  const Array<int> starts_per_curve = has_fade ? points_per_curve_concurrent(curves,
-                                                                             selection,
-                                                                             time_alignment,
-                                                                             transition,
-                                                                             factor_start,
-                                                                             false,
-                                                                             dst_curves_num,
-                                                                             dst_points_num) :
+  const Array<int> starts_per_curve = has_fade ? point_counts_to_keep_concurrent(curves,
+                                                                                 selection,
+                                                                                 time_alignment,
+                                                                                 transition,
+                                                                                 factor_start,
+                                                                                 false,
+                                                                                 dst_curves_num,
+                                                                                 dst_points_num) :
                                                  Array<int>(0);
-  const Array<int> ends_per_curve = has_fade ? points_per_curve_concurrent(curves,
-                                                                           selection,
-                                                                           time_alignment,
-                                                                           transition,
-                                                                           factor,
-                                                                           false,
-                                                                           dst_curves_num,
-                                                                           dst_points_num) :
+  const Array<int> ends_per_curve = has_fade ? point_counts_to_keep_concurrent(curves,
+                                                                               selection,
+                                                                               time_alignment,
+                                                                               transition,
+                                                                               factor,
+                                                                               false,
+                                                                               dst_curves_num,
+                                                                               dst_points_num) :
                                                Array<int>(0);
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -216,11 +216,12 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
   int next_curve = 0;
   int next_point = 0;
   for (const int curve : curves.curves_range()) {
-    if (!points_per_curve[curve]) {
+    if (!point_counts_to_keep[curve]) {
       continue;
     }
-    dst_offsets[next_curve] = points_per_curve[curve];
-    const int curve_size = points_by_curve[curve].size();
+    const IndexRange points = points_by_curve[curve];
+    dst_offsets[next_curve] = point_counts_to_keep[curve];
+    const int curve_size = points.size();
 
     auto get_fade_weight = [&](const int local_index) {
       const float fade_range = std::abs(ends_per_curve[curve] - starts_per_curve[curve]);
@@ -232,11 +233,9 @@ static bke::CurvesGeometry build_concurrent(bke::greasepencil::Drawing &drawing,
       return std::clamp(factor_from_start / fade_range, 0.0f, 1.0f);
     };
 
-    const int extra_offset = is_vanishing ?
-                                 points_by_curve[curve].size() - points_per_curve[curve] :
-                                 0;
-    for (const int stroke_point : IndexRange(points_per_curve[curve])) {
-      const int src_point_index = points_by_curve[curve].first() + extra_offset + stroke_point;
+    const int extra_offset = is_vanishing ? points.size() - point_counts_to_keep[curve] : 0;
+    for (const int stroke_point : IndexRange(point_counts_to_keep[curve])) {
+      const int src_point_index = points.first() + extra_offset + stroke_point;
       if (has_fade) {
         const float fade_weight = get_fade_weight(extra_offset + stroke_point);
         opacities[src_point_index] = opacities[src_point_index] *
@@ -380,10 +379,10 @@ static bke::CurvesGeometry build_sequential(bke::greasepencil::Drawing &drawing,
                         1.0f);
     };
 
-    for (const int point : points_by_curve[stroke]) {
-      const int local_index = point - points_by_curve[stroke].first();
-      const int src_point_index = is_vanishing ? points_by_curve[stroke].last() - local_index :
-                                                 point;
+    const IndexRange points = points_by_curve[stroke];
+    for (const int point : points) {
+      const int local_index = point - points.first();
+      const int src_point_index = is_vanishing ? points.last() - local_index : point;
       dst_to_src_point[next_point] = src_point_index;
 
       if (has_fade) {
@@ -441,8 +440,9 @@ static bke::CurvesGeometry reorder_strokes(const bke::CurvesGeometry &curves,
 
   Array<Pair> distances(curves.curves_num());
   for (const int stroke : curves.curves_range()) {
-    const float3 p1 = positions[points_by_curve[stroke].first()];
-    const float3 p2 = positions[points_by_curve[stroke].last()];
+    const IndexRange points = points_by_curve[stroke];
+    const float3 p1 = positions[points.first()];
+    const float3 p2 = positions[points.last()];
     distances[stroke].value = math::max(math::distance(p1, center), math::distance(p2, center));
     distances[stroke].index = stroke;
     distances[stroke].selected = select[stroke];
