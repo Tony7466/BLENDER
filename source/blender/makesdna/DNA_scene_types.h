@@ -1749,6 +1749,12 @@ typedef struct ToolSettings {
   char use_plane_axis_auto;
   char _pad7[2];
 
+  /** Rotation Angle snapping amount */
+  float snap_angle_increment_2d;
+  float snap_angle_increment_2d_precision;
+  float snap_angle_increment_3d;
+  float snap_angle_increment_3d_precision;
+
 } ToolSettings;
 
 /** \} */
@@ -1889,6 +1895,7 @@ typedef struct SceneEEVEE {
   float gtao_quality;
   float gtao_thickness;
   float gtao_focus;
+  int gtao_resolution;
 
   float bokeh_overblur;
   float bokeh_max_size;
@@ -1917,7 +1924,6 @@ typedef struct SceneEEVEE {
   int shadow_ray_count;
   int shadow_step_count;
   float shadow_normal_bias;
-  float _pad0;
 
   int ray_tracing_method;
 
