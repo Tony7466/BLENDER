@@ -850,12 +850,10 @@ struct LightSunData {
 
   float _pad3;
   float _pad4;
-
-  /** --- Shadow Data --- */
-  /** Bias used during tile tagging phase to request higher or lower LODs than default. */
-  float clipmap_lod_bias;
+  float _pad5;
   float _pad6;
 
+  /** --- Shadow Data --- */
   /** Offset of the LOD min in LOD min tile units. */
   int2 clipmap_base_offset;
   /** Angle covered by the light shape for shadow ray casting. */
@@ -904,6 +902,12 @@ struct LightData {
   /* Radius in pixels for shadow filtering. */
   float pcf_radius;
 
+  /* Shadow Map resolution bias. */
+  float lod_bias;
+  float _pad0;
+  float _pad1;
+  float _pad2;
+
 #if defined(GPU_SHADER) && !defined(GPU_BACKEND_METAL)
   /* Spot is used by default. Avoid casting for all sphere and spot lights.
    * Use light_area_data_get and light_sun_data_get to access the others. */
@@ -948,7 +952,6 @@ static inline LightSunData light_sun_data_get(LightData light)
 {
   LightSunData data;
   SAFE_ASSIGN(LightSunData, radius, radius_squared)
-  SAFE_ASSIGN(LightSunData, clipmap_lod_bias, shadow_projection_shift)
   SAFE_ASSIGN_INT2_REINTERPRET(LightSunData, clipmap_base_offset, _pad0_reserved, _pad1_reserved)
   SAFE_ASSIGN(LightSunData, shadow_angle, radius)
   SAFE_ASSIGN(LightSunData, shadow_trace_distance, spot_mul)
@@ -1176,7 +1179,8 @@ struct ShadowSceneData {
   int step_count;
   /* Bias the shading point by using the normal to avoid self intersection. */
   float normal_bias;
-  int _pad0;
+  /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */
+  float tilemap_projection_ratio;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowSceneData, 16)
 
