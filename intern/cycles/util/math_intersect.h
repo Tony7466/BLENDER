@@ -351,7 +351,7 @@ ccl_device bool ray_aabb_intersect(const float3 bbox_min,
   return tmin < tmax;
 }
 
-/* Intersect a ray defined by P + D * t with a cylinder defined by
+/* Find the segment of a ray defined by P + D * t that lies inside a cylinder defined by
  * (x / len_u)^2 + (y / len_v)^2 = 1. */
 ccl_device_inline bool ray_infinite_cylinder_intersect(const float3 P,
                                                        const float3 D,
@@ -359,43 +359,40 @@ ccl_device_inline bool ray_infinite_cylinder_intersect(const float3 P,
                                                        const float len_v,
                                                        ccl_private float2 *t_range)
 {
-  const float u_sq = sqr(len_u);
-  const float v_sq = sqr(len_v);
+  /* Convert to a 2D problem. */
+  const float2 inv_len = 1.0f / make_float2(len_u, len_v);
+  float2 P_proj = float3_to_float2(P) * inv_len;
+  const float2 D_proj = float3_to_float2(D) * inv_len;
 
-  /* Convert to 2D problem. */
-  float2 P_proj = float3_to_float2(P);
-  const float2 D_proj = float3_to_float2(D);
+  /* Solve quadratic equation a*t^2 + 2b*t + c = 0. */
+  const float a = dot(D_proj, D_proj);
+  float b = dot(P_proj, D_proj);
 
-  /* Solve quadratic equation a * t^2 + b * t + c = 0. */
-  const float a = v_sq * sqr(D_proj.x) + u_sq * sqr(D_proj.y);
-  float b = 2.0f * (v_sq * P_proj.x * D_proj.x + u_sq * P_proj.y * D_proj.y);
-
-  /* Move ray origin closer to the cylinder to prevent precision problems where the ray is far away
-   * from the cylinder. */
-  const float t_mid = -0.5f * b / a;
+  /* Move ray origin closer to the cylinder to prevent precision issue when the ray is far away. */
+  const float t_mid = -b / a;
   P_proj += D_proj * t_mid;
 
   /* Recompute b from the shifted origin. */
-  b = 2.0f * (v_sq * P_proj.x * D_proj.x + u_sq * P_proj.y * D_proj.y);
-  const float c = v_sq * sqr(P_proj.x) + u_sq * sqr(P_proj.y) - v_sq * u_sq;
+  b = dot(P_proj, D_proj);
+  const float c = dot(P_proj, P_proj) - 1.0f;
 
   float tmin, tmax;
-  const bool valid = solve_quadratic(a, b, c, tmin, tmax);
+  const bool valid = solve_quadratic(a, 2.0f * b, c, tmin, tmax);
 
   return valid && intervals_intersect(t_range, make_float2(tmin, tmax) + t_mid);
 }
 
 /* *
- * Compute the intersection of a ray with a single-sided cone.
+ * Find the ray segment inside a single-sided cone.
  *
  * \param axis: a unit-length direction around which the cone has a circular symmetry
  * \param P: the vector pointing from the cone apex to the ray origin
- * \param D: the direction of the ray, does not need to be normalized
+ * \param D: the direction of the ray, does not need to have unit-length
  * \param cos_angle_sq: `sqr(cos(half_aperture_of_the_cone))`
  * \param t_range: the lower and upper bounds between which the ray lies inside the cone
  * \return whether the intersection exists and is in the provided range
  *
- * From https://www.geometrictools.com/Documentation/IntersectionLineCone.pdf
+ * See https://www.geometrictools.com/Documentation/IntersectionLineCone.pdf for illustration
  */
 ccl_device_inline bool ray_cone_intersect(const float3 axis,
                                           const float3 P,
@@ -421,7 +418,7 @@ ccl_device_inline bool ray_cone_intersect(const float3 axis,
   float tmin = 0.0f, tmax = FLT_MAX;
   bool valid = solve_quadratic(a, b, c, tmin, tmax);
 
-  /* Check if the intersection is in the same hemisphere as the cone. */
+  /* Check if the intersections are in the same hemisphere as the cone. */
   const bool tmin_valid = AP + tmin * AD > 0.0f;
   const bool tmax_valid = AP + tmax * AD > 0.0f;
 
@@ -435,8 +432,6 @@ ccl_device_inline bool ray_cone_intersect(const float3 axis,
     tmin = tmax;
     tmax = FLT_MAX;
   }
-
-  valid &= (tmin < tmax);
 
   return valid && intervals_intersect(t_range, make_float2(tmin, tmax) * inv_len);
 }

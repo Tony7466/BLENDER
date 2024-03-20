@@ -269,9 +269,8 @@ ccl_device_forceinline bool triangle_light_sample(KernelGlobals kg,
   return (ls->pdf > 0.0f);
 }
 
-/* Compute the range of the ray lit by the triangle light. */
+/* Find the ray segment lit by the triangle light. */
 ccl_device_inline bool triangle_light_valid_ray_segment(KernelGlobals kg,
-                                                        const float time,
                                                         const float3 P,
                                                         const float3 D,
                                                         ccl_private float2 *t_range,

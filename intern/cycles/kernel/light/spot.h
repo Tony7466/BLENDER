@@ -265,7 +265,7 @@ ccl_device_inline bool spot_light_sample_from_intersection(
   return true;
 }
 
-/* Compute the range of the ray lit by the spot light. */
+/* Find the ray segment lit by the spot light. */
 ccl_device_inline bool spot_light_valid_ray_segment(const ccl_global KernelLight *klight,
                                                     const float3 P,
                                                     const float3 D,

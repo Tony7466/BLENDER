@@ -440,7 +440,7 @@ ccl_device_forceinline float area_light_max_extent(const ccl_global KernelAreaLi
                                                 len(make_float2(light->len_u, light->len_v)));
 }
 
-/* Compute the range of the ray lit by the area light. */
+/* Find the ray segment lit by the area light. */
 ccl_device_inline bool area_light_valid_ray_segment(const ccl_global KernelAreaLight *light,
                                                     float3 P,
                                                     float3 D,
