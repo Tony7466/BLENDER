@@ -20,7 +20,7 @@ void main()
   LightData light = in_light_buf[l_idx];
 
   /* Do not select 0 power lights. */
-  if (light.influence_radius_max < 1e-8) {
+  if (light.spot.influence_radius_max < 1e-8) {
     return;
   }
 
@@ -36,12 +36,14 @@ void main()
     case LIGHT_SPOT_SPHERE:
     case LIGHT_SPOT_DISK:
       /* Only for < ~170 degree Cone due to plane extraction precision. */
-      if (light.spot_tan < 10.0) {
+      if (light.spot.spot_tan < 10.0) {
         Pyramid pyramid = shape_pyramid_non_oblique(
             light._position,
-            light._position - light._back * light.influence_radius_max,
-            light._right * light.influence_radius_max * light.spot_tan / light.spot_size_inv.x,
-            light._up * light.influence_radius_max * light.spot_tan / light.spot_size_inv.y);
+            light._position - light._back * light.spot.influence_radius_max,
+            light._right * light.spot.influence_radius_max * light.spot.spot_tan /
+                light.spot.spot_size_inv.x,
+            light._up * light.spot.influence_radius_max * light.spot.spot_tan /
+                light.spot.spot_size_inv.y);
         if (!intersect_view(pyramid)) {
           return;
         }
@@ -51,7 +53,7 @@ void main()
     case LIGHT_OMNI_SPHERE:
     case LIGHT_OMNI_DISK:
       sphere.center = light._position;
-      sphere.radius = light.influence_radius_max;
+      sphere.radius = light.spot.influence_radius_max;
       break;
     default:
       break;

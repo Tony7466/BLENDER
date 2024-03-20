@@ -751,6 +751,11 @@ static inline bool is_sphere_light(eLightType type)
   return type == LIGHT_SPOT_SPHERE || type == LIGHT_OMNI_SPHERE;
 }
 
+static inline bool is_oriented_disk_light(eLightType type)
+{
+  return type == LIGHT_OMNI_DISK || type == LIGHT_SPOT_DISK;
+}
+
 static inline bool is_sun_light(eLightType type)
 {
   return type < LIGHT_OMNI_SPHERE;
@@ -801,7 +806,7 @@ static inline bool is_sun_light(eLightType type)
   /** Other parts of the perspective matrix. Assumes symmetric frustum. */ \
   float clip_side; \
   /** Scaling factor to the light shape for shadow ray casting. */ \
-  float shadow_scale; /* float shadow_shape_scale_or_angle; */ \
+  float shadow_scale; \
   /** Shift to apply to the light origin to get the shadow projection origin. */ \
   float shadow_projection_shift; \
   /** Number of allocated tilemap for this local light. */ \
@@ -857,7 +862,7 @@ struct LightSunData {
   /** Offset of the LOD min in LOD min tile units. */
   int2 clipmap_base_offset;
   /** Angle covered by the light shape for shadow ray casting. */
-  float shadow_angle;  // float shadow_shape_scale_or_angle;
+  float shadow_angle;
   /** Trace distance around the shading point. */
   float shadow_trace_distance;
 
@@ -894,7 +899,7 @@ struct LightData {
   eLightType type;
 
   /** --- Shadow Data --- */
-  /** Near clip distances. Float stored as int for atomic operations. */
+  /** Near clip distances. Float stored as orderedIntBitsToFloat for atomic operations. */
   int clip_near;
   int clip_far;
   /** Index of the first tile-map. Set to LIGHT_NO_SHADOW if light is not casting shadow. */
@@ -910,6 +915,7 @@ struct LightData {
 
 #if defined(GPU_SHADER) && !defined(GPU_BACKEND_METAL)
   /* Spot is used by default. Avoid casting for all sphere and spot lights.
+   * Also used for accessing LOCAL_LIGHT_COMMON members.
    * Use light_area_data_get and light_sun_data_get to access the others. */
   LightSpotData spot;
 #else
@@ -922,11 +928,7 @@ struct LightData {
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 
-#if defined(GPU_BACKEND_METAL)
-/* Metal supports unions. Avoid making codegen more difficult for the compiler. */
-#  define light_area_data_get(light) light.area
-#  define light_sun_data_get(light) light.sun
-#else
+#if !defined(GPU_BACKEND_METAL)
 
 /* These functions are not meant to be used in C++ code. They are only defined on the C++ side for
  * static assertions. Hide them. */
@@ -973,11 +975,18 @@ static inline LightSunData light_sun_data_get(LightData light)
 #undef SAFE_ASSIGN_INT_REINTERPRET
 #undef SAFE_ASSIGN_INT2_REINTERPRET
 
+#if defined(GPU_BACKEND_METAL) || defined(__cplusplus)
+/* Metal supports unions. Avoid making codegen more difficult for the compiler. */
+#  define light_area_data_get(light) light.area
+#  define light_sun_data_get(light) light.sun
+#endif
+
 static inline int light_tilemap_max_get(LightData light)
 {
   /* This is not something we need in performance critical code. */
   if (is_sun_light(light.type)) {
-    return light.tilemap_index + (light.sun.clipmap_lod_max - light.sun.clipmap_lod_min);
+    return light.tilemap_index +
+           (light_sun_data_get(light).clipmap_lod_max - light_sun_data_get(light).clipmap_lod_min);
   }
   return light.tilemap_index + light.spot.tilemaps_count - 1;
 }
