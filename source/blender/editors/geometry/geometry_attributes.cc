@@ -436,6 +436,7 @@ static int geometry_attribute_convert_exec(bContext *C, wmOperator *op)
             &mesh->id, 0, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
         const char *name = layer ? layer->name : nullptr;
         BKE_id_attributes_active_color_set(&mesh->id, name);
+        BKE_id_attributes_default_color_set(&mesh->id, name);
       }
       break;
     }
