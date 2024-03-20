@@ -222,16 +222,15 @@ class MemoryBuffer {
   }
 
   /* Equivalent to the GLSL texture() function with nearest interpolation and extended boundary
-   * conditions. The coordinates are thus expected to have half-pixels offsets. For float buffers,
-   * the green and blue channels will be zero and the alpha will be one. */
+   * conditions. For float buffers, the green and blue channels will be zero and the alpha will be
+   * one. */
   float4 texture_nearest_extend(float2 coordinates) const
   {
     const int2 size = int2(get_width(), get_height());
-    const float2 clamped_coordinates = math::clamp(coordinates, float2(0.0), float2(1.0));
-    const float2 texel_coordinates = (clamped_coordinates * float2(size)) - 0.5f;
+    const float2 texel_coordinates = coordinates * float2(size);
 
     float4 result = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    math::interpolate_nearest_fl(
+    math::interpolate_nearest_extend_fl(
         buffer_, result, size.x, size.y, num_channels_, texel_coordinates.x, texel_coordinates.y);
     return result;
   }

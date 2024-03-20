@@ -19,6 +19,7 @@
  */
 
 #include "BLI_math_base.h"
+#include "BLI_math_base.hh"
 #include "BLI_math_vector_types.hh"
 
 namespace blender::math {
@@ -73,6 +74,22 @@ inline void interpolate_nearest_fl(
     }
     return;
   }
+
+  const float *data = buffer + (int64_t(width) * y + x) * components;
+  for (int i = 0; i < components; i++) {
+    output[i] = data[i];
+  }
+}
+
+inline void interpolate_nearest_extend_fl(
+    const float *buffer, float *output, int width, int height, int components, float u, float v)
+{
+  BLI_assert(buffer);
+  int x = int(u);
+  int y = int(v);
+
+  x = math::clamp(x, 0, width - 1);
+  y = math::clamp(y, 0, height - 1);
 
   const float *data = buffer + (int64_t(width) * y + x) * components;
   for (int i = 0; i < components; i++) {
