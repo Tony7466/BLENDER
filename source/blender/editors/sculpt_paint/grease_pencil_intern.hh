@@ -4,7 +4,17 @@
 
 #pragma once
 
+#include "BLI_function_ref.hh"
+
 #include "paint_intern.hh"
+
+namespace blender::bke::greasepencil {
+class Drawing;
+class Layer;
+}  // namespace blender::bke::greasepencil
+namespace blender::bke::crazyspace {
+struct GeometryDeformation;
+}
 
 namespace blender::ed::sculpt_paint {
 
@@ -23,13 +33,25 @@ class GreasePencilStrokeOperation {
 
 namespace greasepencil {
 
-void init_brush(Brush &brush);
-
 float brush_influence(const Scene &scene,
                       const Brush &brush,
                       const int2 &co,
                       const InputSample &sample,
                       float multi_frame_falloff = 1.0f);
+
+/* Stroke operation base class that performs various common initializations. */
+class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
+ public:
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
+  void on_stroke_done(const bContext &C) override;
+
+  /* Extend the stroke in a drawing using projected 2D coordinates. */
+  virtual bool on_stroke_extended_drawing_view(const bContext &C,
+                                               bke::greasepencil::Drawing &drawing,
+                                               Span<float2> view_positions,
+                                               const InputSample &extension_sample) = 0;
+};
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
