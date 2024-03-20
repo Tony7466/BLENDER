@@ -110,6 +110,18 @@ inline ColorGeometry4b mix2(const float factor, const ColorGeometry4b &a, const 
   return math::interpolate(a, b, factor);
 }
 
+template<>
+inline ColorPaint4f mix2(const float factor, const ColorPaint4f &a, const ColorPaint4f &b)
+{
+  return math::interpolate(a, b, factor);
+}
+
+template<>
+inline ColorPaint4b mix2(const float factor, const ColorPaint4b &a, const ColorPaint4b &b)
+{
+  return math::interpolate(a, b, factor);
+}
+
 /** \} */
 
 /* -------------------------------------------------------------------- */

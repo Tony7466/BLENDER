@@ -90,8 +90,8 @@ class Drawing : public ::GreasePencilDrawing {
   /**
    * Vertex colors of the points. Default is black.
    */
-  VArray<ColorGeometry4f> vertex_colors() const;
-  MutableSpan<ColorGeometry4f> vertex_colors_for_write();
+  VArray<ColorPaint4f> vertex_colors() const;
+  MutableSpan<ColorPaint4f> vertex_colors_for_write();
 
   /**
    * Add a user for this drawing. When a drawing has multiple users, both users are allowed to

@@ -79,8 +79,8 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&cmd->influence, ob, walk, user_data);
 }
 
-static void apply_color_factor(ColorGeometry4f &color,
-                               const ColorGeometry4f &material_color,
+static void apply_color_factor(ColorPaint4f &color,
+                               const ColorPaint4f &material_color,
                                const float3 factor)
 {
   float3 hsv;
@@ -102,7 +102,7 @@ static void modify_stroke_color(Object &ob,
                                 const GreasePencilColorModifierData &cmd,
                                 bke::CurvesGeometry &curves,
                                 const IndexMask &curves_mask,
-                                const MutableSpan<ColorGeometry4f> vertex_colors)
+                                const MutableSpan<ColorPaint4f> vertex_colors)
 {
   const bool use_curve = (cmd.influence.flag & GREASE_PENCIL_INFLUENCE_USE_CUSTOM_CURVE);
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
@@ -114,8 +114,8 @@ static void modify_stroke_color(Object &ob,
   curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const Material *ma = BKE_object_material_get(&ob, stroke_materials[curve_i]);
     const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
-    const ColorGeometry4f material_color = (gp_style ? ColorGeometry4f(gp_style->fill_rgba) :
-                                                       ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+    const ColorPaint4f material_color = (gp_style ? ColorPaint4f(gp_style->fill_rgba) :
+                                                    ColorPaint4f(0.0f, 0.0f, 0.0f, 0.0f));
 
     const IndexRange points = points_by_curve[curve_i];
     for (const int64_t i : points.index_range()) {
@@ -141,17 +141,16 @@ static void modify_fill_color(Object &ob,
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   /* Fill color per stroke. */
-  bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
-      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
-                                                               bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<ColorPaint4f> fill_colors =
+      attributes.lookup_or_add_for_write_span<ColorPaint4f>("fill_color", bke::AttrDomain::Curve);
   const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
       "material_index", bke::AttrDomain::Curve, 0);
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
     const Material *ma = BKE_object_material_get(&ob, stroke_materials[curve_i]);
     const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
-    const ColorGeometry4f material_color = (gp_style ? ColorGeometry4f(gp_style->fill_rgba) :
-                                                       ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+    const ColorPaint4f material_color = (gp_style ? ColorPaint4f(gp_style->fill_rgba) :
+                                                    ColorPaint4f(0.0f, 0.0f, 0.0f, 0.0f));
 
     apply_color_factor(fill_colors.span[curve_i], material_color, cmd.hsv);
   });

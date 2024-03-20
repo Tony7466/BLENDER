@@ -460,18 +460,18 @@ MutableSpan<float> Drawing::opacities_for_write()
       this->strokes_for_write(), AttrDomain::Point, ATTR_OPACITY, 1.0f);
 }
 
-VArray<ColorGeometry4f> Drawing::vertex_colors() const
+VArray<ColorPaint4f> Drawing::vertex_colors() const
 {
-  return *this->strokes().attributes().lookup_or_default<ColorGeometry4f>(
-      ATTR_VERTEX_COLOR, AttrDomain::Point, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+  return *this->strokes().attributes().lookup_or_default<ColorPaint4f>(
+      ATTR_VERTEX_COLOR, AttrDomain::Point, ColorPaint4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
-MutableSpan<ColorGeometry4f> Drawing::vertex_colors_for_write()
+MutableSpan<ColorPaint4f> Drawing::vertex_colors_for_write()
 {
-  return get_mutable_attribute<ColorGeometry4f>(this->strokes_for_write(),
-                                                AttrDomain::Point,
-                                                ATTR_VERTEX_COLOR,
-                                                ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+  return get_mutable_attribute<ColorPaint4f>(this->strokes_for_write(),
+                                             AttrDomain::Point,
+                                             ATTR_VERTEX_COLOR,
+                                             ColorPaint4f(0.0f, 0.0f, 0.0f, 0.0f));
 }
 
 void Drawing::tag_positions_changed()

@@ -65,6 +65,8 @@ BLI_CPP_TYPE_MAKE(uint64_t, CPPTypeFlags::BasicType)
 
 BLI_CPP_TYPE_MAKE(blender::ColorGeometry4f, CPPTypeFlags::BasicType)
 BLI_CPP_TYPE_MAKE(blender::ColorGeometry4b, CPPTypeFlags::BasicType)
+BLI_CPP_TYPE_MAKE(blender::ColorPaint4f, CPPTypeFlags::BasicType)
+BLI_CPP_TYPE_MAKE(blender::ColorPaint4b, CPPTypeFlags::BasicType)
 
 BLI_CPP_TYPE_MAKE(blender::math::Quaternion, CPPTypeFlags::BasicType)
 

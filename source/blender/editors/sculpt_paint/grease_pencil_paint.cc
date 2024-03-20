@@ -213,7 +213,7 @@ struct PaintOperationExecutor {
     const float2 start_coords = start_sample.mouse_position;
     const float start_radius = this->radius_from_input_sample(self, C, start_sample);
     const float start_opacity = this->opacity_from_input_sample(start_sample);
-    const ColorGeometry4f start_vertex_color = ColorGeometry4f(vertex_color_);
+    const ColorPaint4f start_vertex_color = ColorPaint4f(vertex_color_);
 
     self.screen_space_coords_orig_.append(start_coords);
     self.screen_space_curve_fitted_coords_.append(Vector<float2>({start_coords}));
@@ -368,7 +368,7 @@ struct PaintOperationExecutor {
     const float2 coords = extension_sample.mouse_position;
     const float radius = this->radius_from_input_sample(self, C, extension_sample);
     const float opacity = this->opacity_from_input_sample(extension_sample);
-    const ColorGeometry4f vertex_color = ColorGeometry4f(vertex_color_);
+    const ColorPaint4f vertex_color = ColorPaint4f(vertex_color_);
 
     bke::CurvesGeometry &curves = drawing_->strokes_for_write();
     bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
@@ -376,7 +376,7 @@ struct PaintOperationExecutor {
     const float2 prev_coords = self.screen_space_coords_orig_.last();
     const float prev_radius = drawing_->radii().last();
     const float prev_opacity = drawing_->opacities().last();
-    const ColorGeometry4f prev_vertex_color = drawing_->vertex_colors().last();
+    const ColorPaint4f prev_vertex_color = drawing_->vertex_colors().last();
 
     /* Overwrite last point if it's very close. */
     if (math::distance(coords, prev_coords) < POINT_OVERRIDE_THRESHOLD_PX) {
@@ -406,12 +406,12 @@ struct PaintOperationExecutor {
     MutableSpan<float3> new_positions = positions.slice(new_points);
     MutableSpan<float> new_radii = drawing_->radii_for_write().slice(new_points);
     MutableSpan<float> new_opacities = drawing_->opacities_for_write().slice(new_points);
-    MutableSpan<ColorGeometry4f> new_vertex_colors = drawing_->vertex_colors_for_write().slice(
+    MutableSpan<ColorPaint4f> new_vertex_colors = drawing_->vertex_colors_for_write().slice(
         new_points);
     linear_interpolation<float2>(prev_coords, coords, new_screen_space_coords);
     linear_interpolation<float>(prev_radius, radius, new_radii);
     linear_interpolation<float>(prev_opacity, opacity, new_opacities);
-    linear_interpolation<ColorGeometry4f>(prev_vertex_color, vertex_color, new_vertex_colors);
+    linear_interpolation<ColorPaint4f>(prev_vertex_color, vertex_color, new_vertex_colors);
 
     /* Update screen space buffers with new points. */
     self.screen_space_coords_orig_.extend(new_screen_space_coords);

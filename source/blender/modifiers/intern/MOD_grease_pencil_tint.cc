@@ -122,28 +122,28 @@ static void update_depsgraph(ModifierData *md, const ModifierUpdateDepsgraphCont
       ctx->node, ctx->object, DEG_OB_COMP_TRANSFORM, "Grease Pencil Tint Modifier");
 }
 
-static ColorGeometry4f get_base_color(const ColorGeometry4f &input_color,
-                                      const ColorGeometry4f &material_color)
+static ColorPaint4f get_base_color(const ColorPaint4f &input_color,
+                                   const ColorPaint4f &material_color)
 {
   /* When input alpha is zero, replace with material color. */
   return (input_color.a == 0.0f && material_color.a > 0.0f) ? material_color : input_color;
 }
 
-static ColorGeometry4f apply_uniform_tint(const GreasePencilTintModifierData &tmd,
-                                          const ColorGeometry4f &input_color,
-                                          const float factor)
+static ColorPaint4f apply_uniform_tint(const GreasePencilTintModifierData &tmd,
+                                       const ColorPaint4f &input_color,
+                                       const float factor)
 {
   const float3 rgb = math::interpolate(
       float3(input_color.r, input_color.g, input_color.b), float3(tmd.color), factor);
   /* Alpha is unchanged. */
-  return ColorGeometry4f(rgb[0], rgb[1], rgb[2], input_color.a);
+  return ColorPaint4f(rgb[0], rgb[1], rgb[2], input_color.a);
 }
 
-static ColorGeometry4f apply_gradient_tint(const GreasePencilTintModifierData &tmd,
-                                           const float4x4 &matrix,
-                                           const float3 &position,
-                                           const ColorGeometry4f &input_color,
-                                           const float factor)
+static ColorPaint4f apply_gradient_tint(const GreasePencilTintModifierData &tmd,
+                                        const float4x4 &matrix,
+                                        const float3 &position,
+                                        const ColorPaint4f &input_color,
+                                        const float factor)
 {
   const float3 gradient_pos = math::transform_point(matrix, position);
   const float gradient_factor = std::clamp(
@@ -157,14 +157,14 @@ static ColorGeometry4f apply_gradient_tint(const GreasePencilTintModifierData &t
    * RGB mixing. */
   const float3 rgb = math::interpolate(input_rgb, gradient_color.xyz(), tmd.factor);
   /* GP2 compatibility: use vertex group factor for alpha. */
-  return ColorGeometry4f(rgb[0], rgb[1], rgb[2], factor);
+  return ColorPaint4f(rgb[0], rgb[1], rgb[2], factor);
 }
 
 static void modify_stroke_color(Object &ob,
                                 const GreasePencilTintModifierData &tmd,
                                 bke::CurvesGeometry &curves,
                                 const IndexMask &curves_mask,
-                                const MutableSpan<ColorGeometry4f> vertex_colors)
+                                const MutableSpan<ColorPaint4f> vertex_colors)
 {
   const bool use_weight_as_factor = (tmd.flag & MOD_GREASE_PENCIL_TINT_USE_WEIGHT_AS_FACTOR);
   const bool invert_vertex_group = (tmd.influence.flag &
@@ -181,8 +181,7 @@ static void modify_stroke_color(Object &ob,
   auto get_material_color = [&](const int64_t curve_i) {
     const Material *ma = BKE_object_material_get(&ob, stroke_materials[curve_i]);
     const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
-    return (gp_style ? ColorGeometry4f(gp_style->stroke_rgba) :
-                       ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+    return (gp_style ? ColorPaint4f(gp_style->stroke_rgba) : ColorPaint4f(0.0f, 0.0f, 0.0f, 0.0f));
   };
 
   auto get_point_factor = [&](const int64_t point_i) {
@@ -197,7 +196,7 @@ static void modify_stroke_color(Object &ob,
   switch (tint_mode) {
     case MOD_GREASE_PENCIL_TINT_UNIFORM: {
       curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
-        const ColorGeometry4f material_color = get_material_color(curve_i);
+        const ColorPaint4f material_color = get_material_color(curve_i);
 
         const IndexRange points = points_by_curve[curve_i];
         for (const int64_t point_i : points) {
@@ -220,7 +219,7 @@ static void modify_stroke_color(Object &ob,
       const float4x4 matrix = tmd.object->world_to_object() * ob.object_to_world();
 
       curves_mask.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
-        const ColorGeometry4f material_color = get_material_color(curve_i);
+        const ColorPaint4f material_color = get_material_color(curve_i);
 
         const IndexRange points = points_by_curve[curve_i];
         for (const int64_t point_i : points) {
@@ -255,9 +254,8 @@ static void modify_fill_color(Object &ob,
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   /* Fill color per stroke. */
-  bke::SpanAttributeWriter<ColorGeometry4f> fill_colors =
-      attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
-                                                               bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<ColorPaint4f> fill_colors =
+      attributes.lookup_or_add_for_write_span<ColorPaint4f>("fill_color", bke::AttrDomain::Curve);
   const VArray<int> stroke_materials = *attributes.lookup_or_default<int>(
       "material_index", bke::AttrDomain::Curve, 0);
   const VArray<float> vgroup_weights = modifier::greasepencil::get_influence_vertex_weights(
@@ -267,8 +265,7 @@ static void modify_fill_color(Object &ob,
   auto get_material_color = [&](const int64_t curve_i) {
     const Material *ma = BKE_object_material_get(&ob, stroke_materials[curve_i]);
     const MaterialGPencilStyle *gp_style = ma ? ma->gp_style : nullptr;
-    return (gp_style ? ColorGeometry4f(gp_style->fill_rgba) :
-                       ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
+    return (gp_style ? ColorPaint4f(gp_style->fill_rgba) : ColorPaint4f(0.0f, 0.0f, 0.0f, 0.0f));
   };
 
   auto get_curve_factor = [&](const int64_t curve_i) {
@@ -284,7 +281,7 @@ static void modify_fill_color(Object &ob,
   switch (tint_mode) {
     case MOD_GREASE_PENCIL_TINT_UNIFORM: {
       curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
-        const ColorGeometry4f material_color = get_material_color(curve_i);
+        const ColorPaint4f material_color = get_material_color(curve_i);
         fill_colors.span[curve_i] = apply_uniform_tint(
             tmd,
             get_base_color(fill_colors.span[curve_i], material_color),
@@ -299,7 +296,7 @@ static void modify_fill_color(Object &ob,
       const float4x4 matrix = tmd.object->world_to_object() * ob.object_to_world();
 
       curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
-        const ColorGeometry4f material_color = get_material_color(curve_i);
+        const ColorPaint4f material_color = get_material_color(curve_i);
         /* Use the first stroke point for gradient position. */
         const IndexRange points = points_by_curve[curve_i];
         const float3 pos = points.is_empty() ? float3(0.0f, 0.0f, 0.0f) :
