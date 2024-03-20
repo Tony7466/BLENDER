@@ -32,20 +32,6 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-static bool get_brush_invert(const Brush &brush, const bool user_invert)
-{
-  /* The basic setting is the brush's setting. */
-  bool invert = ((brush.gpencil_settings->sculpt_flag & GP_SCULPT_FLAG_INVERT) != 0) ||
-                (brush.gpencil_settings->sculpt_flag & BRUSH_DIR_IN);
-  /* During runtime, the user can hold down the Ctrl key to invert the basic behavior. */
-  if (user_invert) {
-    invert ^= true;
-  }
-  /* Set temporary status */
-  SET_FLAG_FROM_TEST(brush.gpencil_settings->sculpt_flag, invert, GP_SCULPT_FLAG_TMP_INVERT);
-  return invert;
-}
-
 class ThicknessOperation : public GreasePencilStrokeOperationCommon {
  public:
   BrushStrokeMode stroke_mode = BRUSH_STROKE_NORMAL;
@@ -65,8 +51,7 @@ bool ThicknessOperation::on_stroke_extended_drawing(const bContext &C,
 {
   Paint &paint = *BKE_paint_get_active_from_context(&C);
   const Brush &brush = *BKE_paint_brush(&paint);
-  const bool user_invert = (this->stroke_mode == BrushStrokeMode::BRUSH_STROKE_INVERT);
-  const bool invert = get_brush_invert(brush, user_invert);
+  const bool invert = brush_inverted(brush, this->stroke_mode);
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   BLI_assert(view_positions.size() == curves.points_num());

@@ -55,6 +55,20 @@ float brush_influence(const Scene &scene,
   return influence_base * brush_falloff;
 }
 
+bool brush_inverted(const Brush &brush, const BrushStrokeMode stroke_mode)
+{
+  /* The basic setting is the brush's setting. */
+  bool invert = ((brush.gpencil_settings->sculpt_flag & GP_SCULPT_FLAG_INVERT) != 0) ||
+                (brush.gpencil_settings->sculpt_flag & BRUSH_DIR_IN);
+  /* During runtime, the user can hold down the Ctrl key to invert the basic behavior. */
+  if (stroke_mode == BrushStrokeMode::BRUSH_STROKE_INVERT) {
+    invert ^= true;
+  }
+  /* Set temporary status */
+  SET_FLAG_FROM_TEST(brush.gpencil_settings->sculpt_flag, invert, GP_SCULPT_FLAG_TMP_INVERT);
+  return invert;
+}
+
 void GreasePencilStrokeOperationCommon::on_stroke_begin(const bContext &C,
                                                         const InputSample & /*start_sample*/)
 {

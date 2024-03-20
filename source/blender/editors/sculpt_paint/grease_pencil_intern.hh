@@ -39,6 +39,8 @@ float brush_influence(const Scene &scene,
                       const InputSample &sample,
                       float multi_frame_falloff = 1.0f);
 
+bool brush_inverted(const Brush &brush, BrushStrokeMode stroke_mode);
+
 /* Stroke operation base class that performs various common initializations. */
 class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
  public:
