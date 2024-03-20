@@ -32,6 +32,8 @@ float sculpt_brush_influence(const Scene &scene,
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_smooth_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_thickness_operation(BrushStrokeMode stroke_mode,
+                                                                     float strength);
 
 }  // namespace greasepencil
 
