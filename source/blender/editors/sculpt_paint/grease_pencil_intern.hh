@@ -23,17 +23,18 @@ class GreasePencilStrokeOperation {
 
 namespace greasepencil {
 
-float sculpt_brush_influence(const Scene &scene,
-                             const Brush &brush,
-                             const int2 &co,
-                             const InputSample &sample,
-                             float multi_frame_falloff = 1.0f);
+void init_brush(Brush &brush);
+
+float brush_influence(const Scene &scene,
+                      const Brush &brush,
+                      const int2 &co,
+                      const InputSample &sample,
+                      float multi_frame_falloff = 1.0f);
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_smooth_operation();
-std::unique_ptr<GreasePencilStrokeOperation> new_thickness_operation(BrushStrokeMode stroke_mode,
-                                                                     float strength);
+std::unique_ptr<GreasePencilStrokeOperation> new_thickness_operation(BrushStrokeMode stroke_mode);
 
 }  // namespace greasepencil
 

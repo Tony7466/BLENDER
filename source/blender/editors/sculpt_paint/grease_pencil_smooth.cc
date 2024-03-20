@@ -176,10 +176,10 @@ bool SmoothOperation::apply_with_2d_positions(const Params &params,
 
   const VArray<float> influences = VArray<float>::ForFunc(
       screen_space_positions.size(), [&](const int64_t index) {
-        return greasepencil::sculpt_brush_influence(*CTX_data_scene(params.context),
-                                                    *params.brush,
-                                                    int2(screen_space_positions[index]),
-                                                    sample);
+        return greasepencil::brush_influence(*CTX_data_scene(params.context),
+                                             *params.brush,
+                                             int2(screen_space_positions[index]),
+                                             sample);
       });
 
   bool changed = false;
@@ -247,20 +247,7 @@ void SmoothOperation::on_stroke_begin(const bContext &C, const InputSample & /*s
 {
   Paint *paint = BKE_paint_get_active_from_context(&C);
   Brush *brush = BKE_paint_brush(paint);
-
-  if (brush->gpencil_settings == nullptr) {
-    BKE_brush_init_gpencil_settings(brush);
-  }
-  BLI_assert(brush->gpencil_settings != nullptr);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_sensitivity);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_jitter);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_pressure);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_strength);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_uv);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_hue);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_saturation);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
+  init_brush(*brush);
 
   this->active_layer_only = ((brush->gpencil_settings->flag & GP_BRUSH_ACTIVE_LAYER_ONLY) != 0);
 }

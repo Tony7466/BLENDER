@@ -12,6 +12,23 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
+void init_brush(Brush &brush)
+{
+  if (brush.gpencil_settings == nullptr) {
+    BKE_brush_init_gpencil_settings(&brush);
+  }
+  BLI_assert(brush.gpencil_settings != nullptr);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_strength);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_sensitivity);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_jitter);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_pressure);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_strength);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_uv);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_hue);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_saturation);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_value);
+}
+
 static float radius_from_input_sample(const Scene &scene,
                                       const Brush &brush,
                                       const InputSample &sample)
@@ -24,11 +41,11 @@ static float radius_from_input_sample(const Scene &scene,
   return radius;
 }
 
-float sculpt_brush_influence(const Scene &scene,
-                             const Brush &brush,
-                             const int2 &co,
-                             const InputSample &sample,
-                             const float multi_frame_falloff)
+float brush_influence(const Scene &scene,
+                      const Brush &brush,
+                      const int2 &co,
+                      const InputSample &sample,
+                      const float multi_frame_falloff)
 {
   const float radius = radius_from_input_sample(scene, brush, sample);
   /* Basic strength factor from brush settings. */
