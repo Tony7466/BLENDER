@@ -28,7 +28,6 @@
 #define packed_int3 int3
 #define packed_uint3 uint3
 
-
 #define float2x2 mat2x2
 #define float3x2 mat3x2
 #define float4x2 mat4x2
