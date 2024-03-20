@@ -323,25 +323,13 @@ ccl_device_inline bool triangle_light_valid_ray_segment(KernelGlobals kg,
   const int shader_flag = kernel_data_fetch(shaders, ls->shader & SHADER_MASK).flags;
   const int SD_MIS_BOTH = SD_MIS_BACK | SD_MIS_FRONT;
   if ((shader_flag & SD_MIS_BOTH) == SD_MIS_BOTH) {
-    /* Both sides are sampled. */
+    /* Both sides are sampled, the complete ray segment is visible. */
     return true;
   }
 
-  /* Only one side is sampled. */
-
-  /* TODO(weizhen): can we just compute the quantity in `triangle_light_sample()`? */
-  float3 V[3];
-  triangle_world_space_vertices(kg, ls->object, ls->prim, time, V);
-
-  float3 N = cross(V[1] - V[0], V[2] - V[0]);
-  /* Flip light direction if object has negative scale xor emission sampling is set to back. */
-  const int object_flag = kernel_data_fetch(object_flag, ls->object);
-  if (!(object_flag & SD_OBJECT_NEGATIVE_SCALE) != !(shader_flag & SD_MIS_BACK)) {
-    N = -N;
-  }
-
-  /* Intersection of ray and the triangle light plane. */
-  return ray_plane_intersect(N, P, D, t_range);
+  /* Only one side is sampled, intersect the ray and the triangle light plane to find the visible
+   * ray segment. Flip normal if Emission Sampling is set to back. */
+  return ray_plane_intersect((shader_flag & SD_MIS_BACK) ? -ls->Ng : ls->Ng, P, D, t_range);
 }
 
 CCL_NAMESPACE_END
