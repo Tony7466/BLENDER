@@ -95,7 +95,6 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
         brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
   }
   /* Attenuate factor to get a smoother tinting. */
-  strength /= 5.0f;
   float fill_strength = strength / 1000.0f;
 
   strength = math::clamp(strength, 0.0f, 1.0f);
