@@ -42,6 +42,9 @@ struct SpecificInstancesChoice {
    */
   VArray<int> depths;
 
+  /**
+   * Use this value to realize the instance completely
+   */
   static const int MAX_DEPTH = -1;
 };
 
