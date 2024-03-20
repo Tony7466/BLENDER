@@ -127,7 +127,7 @@ static Array<int> point_counts_to_keep_concurrent(const bke::CurvesGeometry &cur
   }
 
   auto get_stroke_factor = [&](const float factor, const int index) {
-    const float max_factor = max_length / curves.evaluated_lengths_for_curve(index, false).last();
+    const float max_factor = max_length / curves.evaluated_length_total_for_curve(index, false);
     if (time_alignment == MOD_GREASE_PENCIL_BUILD_TIMEALIGN_START) {
       if (clamp_points) {
         return std::clamp(factor * max_factor, 0.0f, 1.0f);
@@ -519,14 +519,13 @@ static float get_build_factor(const GreasePencilBuildTimeMode time_mode,
   return 0.0f;
 }
 
-static void build_drawing(const ModifierData &md,
+static void build_drawing(const GreasePencilBuildModifierData &mmd,
                           const Object &ob,
                           bke::greasepencil::Drawing &drawing,
                           const bke::greasepencil::Drawing *previous_drawing,
                           const int current_time,
                           const float scene_fps)
 {
-  const auto &mmd = reinterpret_cast<const GreasePencilBuildModifierData &>(md);
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   if (curves.points_num() == 0) {
@@ -654,7 +653,7 @@ static void modify_geometry_set(ModifierData *md,
         const bke::greasepencil::Drawing *prev_drawing = grease_pencil.get_drawing_at(
             *layers[drawing_info.layer_index], eval_frame - 1);
         build_drawing(
-            *md, *ctx->object, *drawing_info.drawing, prev_drawing, eval_frame, scene_fps);
+            *mmd, *ctx->object, *drawing_info.drawing, prev_drawing, eval_frame, scene_fps);
       });
 }
 
