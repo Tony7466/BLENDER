@@ -297,6 +297,8 @@
   tex->texture_bilinear_extend(coord + float2(offset) / float2(size))
 #define SMAASample(tex, coord) tex->texture_bilinear_extend(coord)
 #define SMAASamplePoint(tex, coord) tex->texture_nearest_extend(coord)
+#define SMAASamplePointOffset(tex, coord, offset, size) \
+  tex->texture_nearest_extend(coord + float2(offset) / float2(size))
 #define SMAASampleOffset(tex, coord, offset, size) \
   tex->texture_bilinear_extend(coord + float2(offset) / float2(size))
 #define SMAA_FLATTEN
@@ -827,7 +829,7 @@ static float2 SMAASearchDiag1(
     coord.x = increment.x;
     coord.y = increment.y;
     coord.z = increment.z;
-    e = SMAASampleLevelZero(edgesTex, coord.xy()).xy();
+    e = SMAASamplePoint(edgesTex, coord.xy()).xy();
     coord.w = math::dot(e, float2(0.5f, 0.5f));
   }
   return coord.zw();
@@ -953,7 +955,7 @@ static float2 SMAACalculateDiagWeights(SMAATexture2D(edgesTex),
       SMAATexturePass2D(edgesTex), texcoord, float2(-1.0f, -1.0f), size, end);
   d.x = negative_diagonal.x;
   d.z = negative_diagonal.y;
-  if (SMAASampleLevelZeroOffset(edgesTex, texcoord, int2(1, 0), size).x > 0.0f) {
+  if (SMAASamplePointOffset(edgesTex, texcoord, int2(1, 0), size).x > 0.0f) {
     float2 positive_diagonal = SMAASearchDiag2(
         SMAATexturePass2D(edgesTex), texcoord, float2(1.0f, 1.0f), size, end);
     d.y = positive_diagonal.x;
@@ -1192,7 +1194,7 @@ static float4 SMAABlendingWeightCalculationPS(float2 texcoord,
 {  // Just pass zero for SMAA 1x, see @SUBSAMPLE_INDICES.
   float4 weights = float4(0.0f, 0.0f, 0.0f, 0.0f);
 
-  float2 e = SMAASample(edgesTex, texcoord).xy();
+  float2 e = SMAASamplePoint(edgesTex, texcoord).xy();
 
   SMAA_BRANCH
   if (e.y > 0.0f) {  // Edge at north
