@@ -1,0 +1,1 @@
+Referenced by issue #112618, bpy.ops.outliner.select_walk + INVOKE_DEFAULT + temp_override crashes Blender
