@@ -605,7 +605,7 @@ void UI_popup_dummy_panel_set(ARegion *region, uiBlock *block)
   }
   panel->runtime->layout_panels.clear();
   block->panel = panel;
-  panel->runtime->block=block;
+  panel->runtime->block = block;
 }
 
 uiBlock *ui_popup_block_refresh(bContext *C,
@@ -916,11 +916,11 @@ void ui_popup_block_free(bContext *C, uiPopupBlockHandle *handle)
     handle->popup_create_vars.arg_free(handle->popup_create_vars.arg);
   }
 
-  ui_popup_block_remove(C, handle);
-
   if (handle->region->runtime.popup_block_panel) {
     BKE_panel_free(handle->region->runtime.popup_block_panel);
   }
+
+  ui_popup_block_remove(C, handle);
 
   MEM_freeN(handle);
 }

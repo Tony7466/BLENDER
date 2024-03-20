@@ -1993,7 +1993,6 @@ static void ui_panel_drag_collapse(const bContext *C,
                                    const uiPanelDragCollapseHandle *dragcol_data,
                                    const int xy_dst[2])
 {
-
   ARegion *region = CTX_wm_menu(C);
   if (!region) {
     region = CTX_wm_region(C);
