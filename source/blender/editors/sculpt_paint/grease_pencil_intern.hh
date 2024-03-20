@@ -4,8 +4,7 @@
 
 #pragma once
 
-#include "BLI_function_ref.hh"
-
+#include "DNA_node_tree_interface_types.h"
 #include "paint_intern.hh"
 
 namespace blender::bke::greasepencil {
@@ -14,6 +13,9 @@ class Layer;
 }  // namespace blender::bke::greasepencil
 namespace blender::bke::crazyspace {
 struct GeometryDeformation;
+}
+namespace blender::ed::greasepencil {
+class DrawingPlacement;
 }
 
 namespace blender::ed::sculpt_paint {
@@ -33,12 +35,14 @@ class GreasePencilStrokeOperation {
 
 namespace greasepencil {
 
+/* Influence value at point co for the brush. */
 float brush_influence(const Scene &scene,
                       const Brush &brush,
-                      const int2 &co,
+                      const float2 &co,
                       const InputSample &sample,
                       float multi_frame_falloff = 1.0f);
 
+/* True if influence of the brush should be inverted. */
 bool brush_inverted(const Brush &brush, BrushStrokeMode stroke_mode);
 
 /* Stroke operation base class that performs various common initializations. */
@@ -51,6 +55,8 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
   /* Extend the stroke in a drawing using projected 2D coordinates. */
   virtual bool on_stroke_extended_drawing(const bContext &C,
                                           bke::greasepencil::Drawing &drawing,
+                                          int frame_number,
+                                          const ed::greasepencil::DrawingPlacement &placement,
                                           Span<float2> view_positions,
                                           const InputSample &extension_sample) = 0;
 };
@@ -58,8 +64,9 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_smooth_operation();
-std::unique_ptr<GreasePencilStrokeOperation> new_strength_operation(BrushStrokeMode stroke_mode);
 std::unique_ptr<GreasePencilStrokeOperation> new_thickness_operation(BrushStrokeMode stroke_mode);
+std::unique_ptr<GreasePencilStrokeOperation> new_strength_operation(BrushStrokeMode stroke_mode);
+std::unique_ptr<GreasePencilStrokeOperation> new_randomize_operation();
 
 }  // namespace greasepencil
 

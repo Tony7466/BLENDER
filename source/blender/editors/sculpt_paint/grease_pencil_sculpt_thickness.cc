@@ -30,14 +30,19 @@ class ThicknessOperation : public GreasePencilStrokeOperationCommon {
 
   bool on_stroke_extended_drawing(const bContext &C,
                                   bke::greasepencil::Drawing &drawing,
+                                  int frame_number,
+                                  const ed::greasepencil::DrawingPlacement &placement,
                                   Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
-bool ThicknessOperation::on_stroke_extended_drawing(const bContext &C,
-                                                    bke::greasepencil::Drawing &drawing,
-                                                    const Span<float2> view_positions,
-                                                    const InputSample &extension_sample)
+bool ThicknessOperation::on_stroke_extended_drawing(
+    const bContext &C,
+    bke::greasepencil::Drawing &drawing,
+    int /*frame_number*/,
+    const ed::greasepencil::DrawingPlacement & /*placement*/,
+    const Span<float2> view_positions,
+    const InputSample &extension_sample)
 {
   Paint &paint = *BKE_paint_get_active_from_context(&C);
   const Brush &brush = *BKE_paint_brush(&paint);
@@ -49,9 +54,9 @@ bool ThicknessOperation::on_stroke_extended_drawing(const bContext &C,
 
   threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
     for (const int point_i : range) {
-      const int2 &co = int2(view_positions[point_i]);
       float &radius = radii[point_i];
-      const float influence = brush_influence(*CTX_data_scene(&C), brush, co, extension_sample);
+      const float influence = brush_influence(
+          *CTX_data_scene(&C), brush, view_positions[point_i], extension_sample);
       /* Factor 1/1000 is used to map arbitrary influence value to a sensible radius. */
       const float delta_radius = (invert ? -influence : influence) * 0.001f;
       radius = std::max(radius + delta_radius, 0.0f);

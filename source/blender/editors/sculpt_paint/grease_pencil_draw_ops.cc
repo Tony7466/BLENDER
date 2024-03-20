@@ -255,7 +255,7 @@ static GreasePencilStrokeOperation *grease_pencil_sculpt_paint_operation(
     case GPSCULPT_TOOL_PINCH:
       return nullptr;
     case GPSCULPT_TOOL_RANDOMIZE:
-      return nullptr;
+      return greasepencil::new_randomize_operation().release();
     case GPSCULPT_TOOL_CLONE:
       return nullptr;
   }

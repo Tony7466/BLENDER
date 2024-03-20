@@ -1,0 +1,167 @@
+/* SPDX-FileCopyrightText: 2024 Blender Authors
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later */
+
+#include "BLI_hash.h"
+#include "BLI_math_vector.hh"
+#include "BLI_rand.hh"
+#include "BLI_task.hh"
+
+#include "BKE_context.hh"
+#include "BKE_curves.hh"
+#include "BKE_grease_pencil.hh"
+#include "BKE_paint.hh"
+
+#include "ED_grease_pencil.hh"
+#include "ED_view3d.hh"
+
+#include "WM_api.hh"
+#include "WM_types.hh"
+
+#include "grease_pencil_intern.hh"
+#include "paint_intern.hh"
+
+namespace blender::ed::sculpt_paint::greasepencil {
+
+/* Use a hash to generate random numbers. */
+static float hash_rng(unsigned int seed1, unsigned int seed2, int index)
+{
+  return BLI_hash_int_01(BLI_hash_int_3d(seed1, seed2, (unsigned int)index));
+}
+
+class RandomizeOperation : public GreasePencilStrokeOperationCommon {
+ public:
+  /* Previous mouse position for computing the direction. */
+  float2 prev_mouse_position;
+
+  /* Get a different seed value for each stroke. */
+  unsigned int unique_seed() const;
+
+  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
+  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
+  bool on_stroke_extended_drawing(const bContext &C,
+                                  bke::greasepencil::Drawing &drawing,
+                                  int frame_number,
+                                  const ed::greasepencil::DrawingPlacement &placement,
+                                  Span<float2> view_positions,
+                                  const InputSample &extension_sample) override;
+};
+
+unsigned int RandomizeOperation::unique_seed() const
+{
+  /* Note: GPv2 method, this does not return a different value for every invocation: the time-based
+   * part remains the same for one second and the pointer isn't guaranteed to be different. */
+  //   unsigned int seed = (unsigned int)(BLI_time_now_seconds_i() & UINT_MAX);
+  //   seed ^= POINTER_AS_UINT(this);
+
+  return RandomNumberGenerator::from_random_seed().get_uint32();
+}
+
+void RandomizeOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
+{
+  GreasePencilStrokeOperationCommon::on_stroke_begin(C, start_sample);
+  this->prev_mouse_position = start_sample.mouse_position;
+}
+
+void RandomizeOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
+{
+  GreasePencilStrokeOperationCommon::on_stroke_extended(C, extension_sample);
+  /* Updating mouse position has to happen here after all layers are updated.
+   * Doing this in the per-drawing function would clear the mouse delta
+   * after the first layer, disabling the tool for subsequent layers. */
+  this->prev_mouse_position = extension_sample.mouse_position;
+}
+
+bool RandomizeOperation::on_stroke_extended_drawing(
+    const bContext &C,
+    bke::greasepencil::Drawing &drawing,
+    int /*frame_number*/,
+    const ed::greasepencil::DrawingPlacement &placement,
+    const Span<float2> view_positions,
+    const InputSample &extension_sample)
+{
+  const Scene &scene = *CTX_data_scene(&C);
+  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  const Brush &brush = *BKE_paint_brush(&paint);
+  const int sculpt_mode_flag = brush.gpencil_settings->sculpt_mode_flag;
+  const unsigned int seed = this->unique_seed();
+
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
+
+  bool changed = false;
+  if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_POSITION) {
+    MutableSpan<float3> positions = curves.positions_for_write();
+
+    /* Jitter is applied perpendicular to the mouse movement vector. */
+    const float2 forward = math::normalize(
+        float2(extension_sample.mouse_position - prev_mouse_position));
+    const float2 sideways = float2(-forward.y, forward.x);
+
+    threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
+      for (const int point_i : range) {
+        const float2 &co = view_positions[point_i];
+        const float influence = brush_influence(scene, brush, co, extension_sample);
+        if (influence < 0.001f) {
+          continue;
+        }
+        const float noise = 2.0f * hash_rng(seed, 5678, point_i) - 1.0f;
+        positions[point_i] = placement.project(co + sideways * influence * noise);
+      }
+    });
+
+    drawing.tag_positions_changed();
+    changed = true;
+  }
+  if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_STRENGTH) {
+    // MutableSpan<float> opacities = drawing.opacities_for_write();
+    // geometry::smooth_curve_attribute(curves.curves_range(),
+    //                                  points_by_curve,
+    //                                  point_selection,
+    //                                  cyclic,
+    //                                  iterations,
+    //                                  influences,
+    //                                  true,
+    //                                  false,
+    //                                  opacities);
+    changed = true;
+  }
+  if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_THICKNESS) {
+    // const MutableSpan<float> radii = drawing.radii_for_write();
+    // geometry::smooth_curve_attribute(curves.curves_range(),
+    //                                  points_by_curve,
+    //                                  point_selection,
+    //                                  cyclic,
+    //                                  iterations,
+    //                                  influences,
+    //                                  true,
+    //                                  false,
+    //                                  radii);
+    // curves.tag_radii_changed();
+    changed = true;
+  }
+  if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_UV) {
+    /* TODO stroke_u attribute not used yet. */
+    // bke::SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
+    //     "rotation", bke::AttrDomain::Point);
+    // geometry::smooth_curve_attribute(curves.curves_range(),
+    //                                  points_by_curve,
+    //                                  point_selection,
+    //                                  cyclic,
+    //                                  iterations,
+    //                                  influences,
+    //                                  true,
+    //                                  false,
+    //                                  rotations.span);
+    // rotations.finish();
+    changed = true;
+  }
+  return changed;
+}
+
+std::unique_ptr<GreasePencilStrokeOperation> new_randomize_operation()
+{
+  return std::make_unique<RandomizeOperation>();
+}
+
+}  // namespace blender::ed::sculpt_paint::greasepencil

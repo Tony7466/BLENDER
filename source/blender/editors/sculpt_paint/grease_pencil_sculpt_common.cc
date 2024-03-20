@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BLI_hash.h"
+
 #include "BKE_brush.hh"
 #include "BKE_colortools.hh"
 #include "BKE_context.hh"
@@ -35,7 +37,7 @@ static float radius_from_input_sample(const Scene &scene,
 
 float brush_influence(const Scene &scene,
                       const Brush &brush,
-                      const int2 &co,
+                      const float2 &co,
                       const InputSample &sample,
                       const float multi_frame_falloff)
 {
@@ -48,7 +50,7 @@ float brush_influence(const Scene &scene,
   /* Distance falloff. */
   int2 mval_i;
   round_v2i_v2fl(mval_i, sample.mouse_position);
-  const float distance = float(len_v2v2_int(mval_i, co));
+  const float distance = float(len_v2v2_int(mval_i, int2(co)));
   /* Apply Brush curve. */
   const float brush_falloff = BKE_brush_curve_strength(&brush, distance, radius);
 
@@ -101,6 +103,10 @@ static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
                              bke::greasepencil::Drawing &drawing,
                              const InputSample &extension_sample)
 {
+  const Scene &scene = *CTX_data_scene(&C);
+  const View3D &view3d = *CTX_wm_view3d(&C);
+  const ed::greasepencil::DrawingPlacement placement(scene, region, view3d, ob_eval, layer);
+
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
 
   /* Evaluated geometry. */
@@ -121,7 +127,8 @@ static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
     }
   });
 
-  return op.on_stroke_extended_drawing(C, drawing, screen_space_positions, extension_sample);
+  return op.on_stroke_extended_drawing(
+      C, drawing, frame_number, placement, screen_space_positions, extension_sample);
 }
 
 void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,

@@ -28,14 +28,19 @@ class SmoothOperation : public GreasePencilStrokeOperationCommon {
  public:
   bool on_stroke_extended_drawing(const bContext &C,
                                   bke::greasepencil::Drawing &drawing,
+                                  int frame_number,
+                                  const ed::greasepencil::DrawingPlacement &placement,
                                   Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
 
-bool SmoothOperation::on_stroke_extended_drawing(const bContext &C,
-                                                 bke::greasepencil::Drawing &drawing,
-                                                 Span<float2> view_positions,
-                                                 const InputSample &extension_sample)
+bool SmoothOperation::on_stroke_extended_drawing(
+    const bContext &C,
+    bke::greasepencil::Drawing &drawing,
+    int /*frame_number*/,
+    const ed::greasepencil::DrawingPlacement & /*placement*/,
+    Span<float2> view_positions,
+    const InputSample &extension_sample)
 {
   Paint &paint = *BKE_paint_get_active_from_context(&C);
   const Brush &brush = *BKE_paint_brush(&paint);
@@ -50,8 +55,8 @@ bool SmoothOperation::on_stroke_extended_drawing(const bContext &C,
 
   const VArray<float> influences = VArray<float>::ForFunc(
       view_positions.size(), [&](const int64_t index) {
-        return greasepencil::brush_influence(
-            *CTX_data_scene(&C), brush, int2(view_positions[index]), extension_sample);
+        return brush_influence(
+            *CTX_data_scene(&C), brush, view_positions[index], extension_sample);
       });
 
   bool changed = false;
