@@ -127,7 +127,7 @@ float shadow_directional_level_fractional(LightData light, vec3 lP)
     lod = length(lP.xy) * narrowing / lod_min_half_size;
   }
   float clipmap_lod = lod + light.lod_bias;
-  return clamp(clipmap_lod, light.clipmap_lod_min, light.clipmap_lod_max);
+  return clamp(clipmap_lod, float(light.clipmap_lod_min), float(light.clipmap_lod_max));
 }
 
 int shadow_directional_level(LightData light, vec3 lP)
@@ -140,7 +140,7 @@ float shadow_punctual_footprint_ratio(LightData light,
                                       vec3 P,
                                       bool is_perspective,
                                       float dist_to_cam,
-                                      float tilemap_projection_ratio)
+                                      float tilemap_proj_ratio)
 {
   /* We project a shadow map pixel (as a sphere for simplicity) to the receiver plane.
    * We then reproject this sphere onto the camera screen and compare it to the film pixel size.
@@ -155,7 +155,7 @@ float shadow_punctual_footprint_ratio(LightData light,
     footprint_ratio /= dist_to_cam;
   }
   /* Apply resolution ratio. */
-  footprint_ratio *= tilemap_projection_ratio;
+  footprint_ratio *= tilemap_proj_ratio;
   /* Take the frustum padding into account. */
   footprint_ratio *= light.clip_side / orderedIntBitsToFloat(light.clip_near);
   return footprint_ratio;

@@ -475,7 +475,7 @@ vec3 shadow_pcf_offset(LightData light, const bool is_directional, vec3 P, vec3 
     bool is_perspective = drw_view_is_perspective();
     float dist_to_cam = distance(P, drw_view_position());
     float footprint_ratio = shadow_punctual_footprint_ratio(
-        light, P, is_perspective, dist_to_cam, uniform_buf.shadow.tilemap_projection_ratio);
+        light, P, is_perspective, dist_to_cam, uniform_buf.shadow.tilemap_projection_ratio_buf);
     float lod = -log2(footprint_ratio) + light.lod_bias;
     lod = clamp(lod, 0.0, float(SHADOW_TILEMAP_LOD));
     float pcf_scale = exp2(lod);
