@@ -823,17 +823,26 @@ static Sequence *seq_select_seq_from_preview(
   return seq_select;
 }
 
-static bool element_already_selected(const Sequence *seq1, const Sequence *seq2)
+static bool element_already_selected(const Sequence *seq1,
+                                     const Sequence *seq2,
+                                     int handle_clicked)
 {
   if (seq1 == nullptr) {
     return false;
   }
-  bool seq1_already_selected = ((seq1->flag & SELECT) != 0);
+  const bool seq1_already_selected = ((seq1->flag & SELECT) != 0);
   if (seq2 == nullptr) {
-    return seq1_already_selected;
+    const bool handle_already_selected = (seq1->flag & handle_clicked) != 0 ||
+                                         handle_clicked == SEQ_SIDE_NONE;
+    return seq1_already_selected && handle_already_selected;
   }
-  bool seq2_already_selected = ((seq2->flag & SELECT) != 0);
-  return seq1_already_selected && seq2_already_selected;
+  const bool seq2_already_selected = ((seq2->flag & SELECT) != 0);
+  const int seq1_handle = seq1->flag & (SEQ_RIGHTSEL | SEQ_LEFTSEL);
+  const int seq2_handle = seq2->flag & (SEQ_RIGHTSEL | SEQ_LEFTSEL);
+  /* Handles must be selected in XOR fashion, with `seq1` matching `handle_clicked`. */
+  const bool both_handles_selected = seq1_handle == handle_clicked && seq2_handle != 0 &&
+                                     seq1_handle != seq2_handle;
+  return seq1_already_selected && seq2_already_selected && both_handles_selected;
 }
 
 static void sequencer_select_strip_impl(const Editing *ed,
@@ -1175,8 +1184,8 @@ int sequencer_select_exec(bContext *C, wmOperator *op)
 
   /* Clicking on already selected element falls on modal operation.
    * All strips are deselected on mouse button release unless extend mode is used. */
-  if (handle_clicked == SEQ_SIDE_NONE && seq && element_already_selected(seq, seq2) &&
-      wait_to_deselect_others && !toggle && !RNA_boolean_get(op->ptr, "handles_only"))
+  if (element_already_selected(seq, seq2, handle_clicked) && wait_to_deselect_others && !toggle &&
+      !RNA_boolean_get(op->ptr, "handles_only"))
   {
     return OPERATOR_RUNNING_MODAL;
   }
