@@ -419,9 +419,9 @@ static void curves_batch_cache_ensure_edit_points_selection(
   }
 
   const VArray<float> attribute_left = *curves.attributes().lookup_or_default<float>(
-      ".selection_handle_left", bke::AttrDomain::Point, 0.0f);
+      ".selection_handle_left", bke::AttrDomain::Point, 1.0f);
   const VArray<float> attribute_right = *curves.attributes().lookup_or_default<float>(
-      ".selection_handle_right", bke::AttrDomain::Point, 0.0f);
+      ".selection_handle_right", bke::AttrDomain::Point, 1.0f);
 
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
 

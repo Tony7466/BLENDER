@@ -809,19 +809,22 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
     if (const CustomDataLayer *layer = BKE_id_attributes_active_get(&curves_id->id)) {
       active_attribute = layer->name;
     }
+    static const blender::bke::AttributeIDRef selection_attribute_ids[]{
+        ".selection", ".selection_handle_left", ".selection_handle_right"};
+    for (const blender::bke::AttributeIDRef &selection_attribute_id : selection_attribute_ids) {
+      if (const GVArray src = *attributes.lookup(selection_attribute_id, domain)) {
+        const CPPType &type = src.type();
+        void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
+        src.materialize(dst);
 
-    if (const GVArray src = *attributes.lookup(".selection", domain)) {
-      const CPPType &type = src.type();
-      void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
-      src.materialize(dst);
-
-      attributes.remove(".selection");
-      if (!attributes.add(".selection",
-                          domain,
-                          bke::cpp_type_to_custom_data_type(type),
-                          bke::AttributeInitMoveArray(dst)))
-      {
-        MEM_freeN(dst);
+        attributes.remove(selection_attribute_id);
+        if (!attributes.add(selection_attribute_id,
+                            domain,
+                            bke::cpp_type_to_custom_data_type(type),
+                            bke::AttributeInitMoveArray(dst)))
+        {
+          MEM_freeN(dst);
+        }
       }
     }
 

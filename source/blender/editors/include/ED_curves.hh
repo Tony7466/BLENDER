@@ -152,6 +152,8 @@ void fill_selection_true(GMutableSpan selection, const IndexMask &mask);
  * Return true if any element is selected, on either domain with either type.
  */
 bool has_anything_selected(const bke::CurvesGeometry &curves);
+bool has_anything_selected(const bke::CurvesGeometry &curves,
+                           const bke::AttrDomain selection_domain);
 bool has_anything_selected(const bke::CurvesGeometry &curves, const IndexMask &mask);
 
 /**
@@ -172,15 +174,165 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, IndexMaskMemory &mem
  * Find points that are selected (a selection factor greater than zero),
  * or points in curves with a selection factor greater than zero).
  */
-IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, IndexMaskMemory &memory);
+IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves,
+                                   IndexMaskMemory &memory,
+                                   const bke::AttributeIDRef &attribute_id = ".selection");
 IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &memory);
 
 /**
- * If the ".selection" attribute doesn't exist, create it with the requested type (bool or float).
+ * If the selection_id attribute doesn't exist, create it with the requested type (bool or float).
  */
-bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves,
-                                                     bke::AttrDomain selection_domain,
-                                                     eCustomDataType create_type);
+bke::GSpanAttributeWriter ensure_selection_attribute(
+    bke::CurvesGeometry &curves,
+    const bke::AttrDomain selection_domain,
+    const eCustomDataType create_type,
+    const bke::AttributeIDRef &attribute_id = ".selection");
+
+class SelectionAttributeWriterList {
+  const bke::AttributeIDRef attribute_ids[3];
+  bke::GSpanAttributeWriter selections[3];
+  const int size_;
+
+  SelectionAttributeWriterList(bke::CurvesGeometry &curves,
+                               const bke::AttrDomain selection_domain,
+                               const bke::AttributeAccessor &attributes)
+      : attribute_ids{".selection", ".selection_handle_left", ".selection_handle_right"},
+        size_(
+            (attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
+                sizeof(attribute_ids) / sizeof(bke::AttributeIDRef) :
+                1)
+  {
+    for (const int i : IndexRange(size_)) {
+      selections[i] = ensure_selection_attribute(
+          curves, selection_domain, CD_PROP_BOOL, attribute_ids[i]);
+    };
+  }
+
+ public:
+  SelectionAttributeWriterList(bke::CurvesGeometry &curves, const bke::AttrDomain selection_domain)
+      : SelectionAttributeWriterList(curves, selection_domain, curves.attributes())
+  {
+  }
+
+  bke::GSpanAttributeWriter &operator[](const int index)
+  {
+    BLI_assert(index >= 0);
+    BLI_assert(index < size_);
+    return selections[index];
+  }
+
+  bke::GSpanAttributeWriter &operator[](const bke::AttributeIDRef &attribute_id)
+  {
+    const int index = attribute_id.name().endswith("_left")    ? 1 :
+                      (attribute_id.name().endswith("_right")) ? 2 :
+                                                                 0;
+    return selections[index];
+  }
+
+  int size() const
+  {
+    return size_;
+  }
+
+  ~SelectionAttributeWriterList()
+  {
+    for (auto &selection : selections) {
+      selection.finish();
+    }
+  }
+
+  bke::GSpanAttributeWriter *begin()
+  {
+    return &(selections[0]);
+  }
+
+  bke::GSpanAttributeWriter *end()
+  {
+    return &(selections[0]) + size_;
+  }
+};
+
+template<typename Fn>
+inline void foreach_selection_attribute_writer(bke::CurvesGeometry &curves,
+                                               const bke::AttrDomain selection_domain,
+                                               Fn &&fn)
+{
+  SelectionAttributeWriterList selections(curves, selection_domain);
+  /* TODO: maybe add threading */
+  for (bke::GSpanAttributeWriter &selection : selections) {
+    fn(selection);
+  }
+}
+
+typedef std::function<const Span<float3>(const bke::crazyspace::GeometryDeformation &,
+                                         const bke::CurvesGeometry &)>
+    PositionsSource;
+
+typedef std::function<const IndexMask(
+    const IndexMask &mask, const bke::CurvesGeometry &curves, IndexMaskMemory &memory)>
+    MaskSource;
+
+template<typename Value, typename Function, typename Reduction>
+inline Value selection_attr_with_deformed_pos_reduce(const bke::AttrDomain selection_domain,
+                                                     const Value &identity,
+                                                     const Function &function,
+                                                     const Reduction &reduction)
+{
+  static const bke::AttributeIDRef selection_attribute_ids[]{
+      ".selection", ".selection_handle_left", ".selection_handle_right"};
+
+  const PositionsSource position_sources[]{
+      [](const bke::crazyspace::GeometryDeformation &deformation, const bke::CurvesGeometry &) {
+        return deformation.positions;
+      },
+      [](const bke::crazyspace::GeometryDeformation &, const bke::CurvesGeometry &curves) {
+        return curves.handle_positions_left();
+      },
+      [](const bke::crazyspace::GeometryDeformation &, const bke::CurvesGeometry &curves) {
+        return curves.handle_positions_right();
+      }};
+
+  MaskSource bezier_curves =
+      [](const IndexMask &mask, const bke::CurvesGeometry &curves, IndexMaskMemory &memory) {
+        return curves.indices_for_curve_type(CURVE_TYPE_BEZIER, mask, memory);
+      };
+
+  MaskSource bezier_points = [](const IndexMask &mask,
+                                const bke::CurvesGeometry &curves,
+                                IndexMaskMemory &points_memory) {
+    const Array<int> map = curves.point_to_curve_map();
+    return IndexMask::from_predicate(
+        IndexRange(curves.points_num()),
+        GrainSize(4096),
+        points_memory,
+        [&](const int64_t point_i) {
+          return mask.contains(point_i) && curves.curve_types()[map[point_i]] == CURVE_TYPE_BEZIER;
+        });
+  };
+
+  MaskSource &left_right_source = selection_domain == bke::AttrDomain::Point ? bezier_points :
+                                                                               bezier_curves;
+
+  MaskSource mask_sources[]{
+      [](const IndexMask &mask, const bke::CurvesGeometry &, IndexMaskMemory &) { return mask; },
+      left_right_source,
+      left_right_source};
+
+  return threading::parallel_reduce(
+      IndexRange(3),
+      1L,
+      identity,
+      [&](const IndexRange range, const Value &init) {
+        Value ret = init;
+        for (const int64_t i : range) {
+          ret = reduction(
+              ret,
+              function(selection_attribute_ids[i], position_sources[i], mask_sources[i], init));
+        }
+        return ret;
+      },
+      reduction);
+}
 
 /** Apply a change to a single curve or point. Avoid using this when affecting many elements. */
 void apply_selection_operation_at_index(GMutableSpan selection, int index, eSelectOp sel_op);
@@ -252,7 +404,7 @@ std::optional<FindClosestData> closest_elem_find_screen_space(const ViewContext 
  */
 bool select_box(const ViewContext &vc,
                 bke::CurvesGeometry &curves,
-                Span<float3> deformed_positions,
+                const bke::crazyspace::GeometryDeformation &deformation,
                 const float4x4 &projection,
                 const IndexMask &mask,
                 bke::AttrDomain selection_domain,
@@ -264,7 +416,7 @@ bool select_box(const ViewContext &vc,
  */
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
-                  Span<float3> deformed_positions,
+                  const bke::crazyspace::GeometryDeformation &deformation,
                   const float4x4 &projection_matrix,
                   const IndexMask &mask,
                   bke::AttrDomain selection_domain,
@@ -276,7 +428,7 @@ bool select_lasso(const ViewContext &vc,
  */
 bool select_circle(const ViewContext &vc,
                    bke::CurvesGeometry &curves,
-                   Span<float3> deformed_positions,
+                   const bke::crazyspace::GeometryDeformation &deformation,
                    const float4x4 &projection,
                    const IndexMask &mask,
                    bke::AttrDomain selection_domain,

@@ -61,10 +61,12 @@ IndexMask retrieve_selected_curves(const Curves &curves_id, IndexMaskMemory &mem
   return retrieve_selected_curves(curves, memory);
 }
 
-IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves, IndexMaskMemory &memory)
+IndexMask retrieve_selected_points(const bke::CurvesGeometry &curves,
+                                   IndexMaskMemory &memory,
+                                   const bke::AttributeIDRef &attribute_id)
 {
   return IndexMask::from_bools(
-      *curves.attributes().lookup_or_default<bool>(".selection", bke::AttrDomain::Point, true),
+      *curves.attributes().lookup_or_default<bool>(attribute_id, bke::AttrDomain::Point, true),
       memory);
 }
 
@@ -76,28 +78,29 @@ IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &mem
 
 bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves,
                                                      const bke::AttrDomain selection_domain,
-                                                     const eCustomDataType create_type)
+                                                     const eCustomDataType create_type,
+                                                     const bke::AttributeIDRef &attribute_id)
 {
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  if (attributes.contains(".selection")) {
-    bke::GSpanAttributeWriter selection_attr = attributes.lookup_for_write_span(".selection");
+  if (attributes.contains(attribute_id)) {
+    bke::GSpanAttributeWriter selection_attr = attributes.lookup_for_write_span(attribute_id);
     /* Check domain type. */
     if (selection_attr.domain == selection_domain) {
       return selection_attr;
     }
     selection_attr.finish();
-    attributes.remove(".selection");
+    attributes.remove(attribute_id);
   }
   const int domain_size = attributes.domain_size(selection_domain);
   switch (create_type) {
     case CD_PROP_BOOL:
-      attributes.add(".selection",
+      attributes.add(attribute_id,
                      selection_domain,
                      CD_PROP_BOOL,
                      bke::AttributeInitVArray(VArray<bool>::ForSingle(true, domain_size)));
       break;
     case CD_PROP_FLOAT:
-      attributes.add(".selection",
+      attributes.add(attribute_id,
                      selection_domain,
                      CD_PROP_FLOAT,
                      bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, domain_size)));
@@ -105,7 +108,7 @@ bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves
     default:
       BLI_assert_unreachable();
   }
-  return attributes.lookup_for_write_span(".selection");
+  return attributes.lookup_for_write_span(attribute_id);
 }
 
 void fill_selection_false(GMutableSpan selection)
@@ -239,6 +242,20 @@ bool has_anything_selected(const bke::CurvesGeometry &curves)
   return !selection || contains(selection, selection.index_range(), true);
 }
 
+bool has_anything_selected(const bke::CurvesGeometry &curves,
+                           const bke::AttrDomain selection_domain)
+{
+  const bke::AttributeIDRef attribute_ids[] = {
+      ".selection", ".selection_handle_left", ".selection_handle_right"};
+  for (const bke::AttributeIDRef &attribute_id : attribute_ids) {
+    const VArray<bool> selection = *curves.attributes().lookup<bool>(attribute_id,
+                                                                     selection_domain);
+    if (!selection || contains(selection, selection.index_range(), true))
+      return true;
+  }
+  return false;
+}
+
 bool has_anything_selected(const bke::CurvesGeometry &curves, const IndexMask &mask)
 {
   const VArray<bool> selection = *curves.attributes().lookup<bool>(".selection");
@@ -300,29 +317,32 @@ void select_all(bke::CurvesGeometry &curves,
                 const bke::AttrDomain selection_domain,
                 int action)
 {
-  bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   if (action == SEL_SELECT) {
     std::optional<IndexRange> range = mask.to_range();
     if (range.has_value() &&
         (*range == IndexRange(curves.attributes().domain_size(selection_domain))))
     {
+      bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
       /* As an optimization, just remove the selection attributes when everything is selected. */
       attributes.remove(".selection");
+      attributes.remove(".selection_handle_left");
+      attributes.remove(".selection_handle_right");
       return;
     }
   }
-  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-      curves, selection_domain, CD_PROP_BOOL);
-  if (action == SEL_SELECT) {
-    fill_selection_true(selection.span, mask);
-  }
-  else if (action == SEL_DESELECT) {
-    fill_selection_false(selection.span, mask);
-  }
-  else if (action == SEL_INVERT) {
-    invert_selection(selection.span, mask);
-  }
-  selection.finish();
+  for (bke::GSpanAttributeWriter &selection :
+       SelectionAttributeWriterList(curves, selection_domain))
+  {
+    if (action == SEL_SELECT) {
+      fill_selection_true(selection.span, mask);
+    }
+    else if (action == SEL_DESELECT) {
+      fill_selection_false(selection.span, mask);
+    }
+    else if (action == SEL_INVERT) {
+      invert_selection(selection.span, mask);
+    }
+  };
 }
 
 void select_all(bke::CurvesGeometry &curves, const bke::AttrDomain selection_domain, int action)
@@ -334,17 +354,29 @@ void select_all(bke::CurvesGeometry &curves, const bke::AttrDomain selection_dom
 void select_linked(bke::CurvesGeometry &curves, const IndexMask &curves_mask)
 {
   const OffsetIndices points_by_curve = curves.points_by_curve();
-  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-      curves, bke::AttrDomain::Point, CD_PROP_BOOL);
+  const VArray<int8_t> curve_types = curves.curve_types();
+
+  SelectionAttributeWriterList selections(curves, bke::AttrDomain::Point);
 
   curves_mask.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
-    GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i]);
-    if (has_anything_selected(selection_curve)) {
-      fill_selection_true(selection_curve);
+    for (int i = 0; i < selections.size(); i++) {
+      bke::GSpanAttributeWriter &selection = selections[i];
+      GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i]);
+      if (has_anything_selected(selection_curve)) {
+        fill_selection_true(selection_curve);
+        for (int j = 0; j < selections.size(); j++) {
+          if (j == i) {
+            continue;
+          }
+          fill_selection_true(selections[j].span.slice(points_by_curve[curve_i]));
+        }
+        return;
+      }
+      if (curve_types[curve_i] != CURVE_TYPE_BEZIER) {
+        return;
+      }
     }
   });
-
-  selection.finish();
 }
 
 void select_linked(bke::CurvesGeometry &curves)
@@ -695,68 +727,99 @@ std::optional<FindClosestData> closest_elem_find_screen_space(
 
 bool select_box(const ViewContext &vc,
                 bke::CurvesGeometry &curves,
-                const Span<float3> positions,
+                const bke::crazyspace::GeometryDeformation &deformation,
                 const float4x4 &projection,
                 const IndexMask &mask,
                 const bke::AttrDomain selection_domain,
                 const rcti &rect,
                 const eSelectOp sel_op)
 {
-  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-      curves, selection_domain, CD_PROP_BOOL);
-
+  ed::curves::SelectionAttributeWriterList selections(curves, selection_domain);
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
-    fill_selection_false(selection.span, mask);
+    for (bke::GSpanAttributeWriter &selection : selections) {
+      fill_selection_false(selection.span, mask);
+    };
     changed = true;
   }
 
-  const OffsetIndices points_by_curve = curves.points_by_curve();
   if (selection_domain == bke::AttrDomain::Point) {
-    mask.foreach_index(GrainSize(1024), [&](const int point_i) {
-      const float2 pos_proj = ED_view3d_project_float_v2_m4(
-          vc.region, positions[point_i], projection);
-      if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
-        apply_selection_operation_at_index(selection.span, point_i, sel_op);
-        changed = true;
-      }
-    });
+    return ed::curves::selection_attr_with_deformed_pos_reduce(
+        selection_domain,
+        changed,
+        [&](const bke::AttributeIDRef &selection_attribute_id,
+            const PositionsSource &positions_source,
+            const MaskSource &mask_source,
+            const bool) {
+          bke::GSpanAttributeWriter &selection = selections[selection_attribute_id];
+
+          const Span<float3> positions = positions_source(deformation, curves);
+          IndexMaskMemory memory;
+          const IndexMask affective_mask = mask_source(mask, curves, memory);
+          affective_mask.foreach_index(GrainSize(1024), [&](const int point_i) {
+            const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                vc.region, positions[point_i], projection);
+            if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
+              apply_selection_operation_at_index(selection.span, point_i, sel_op);
+              changed = true;
+            }
+          });
+          return changed;
+        },
+        std::logical_or());
   }
   else if (selection_domain == bke::AttrDomain::Curve) {
-    mask.foreach_index(GrainSize(512), [&](const int curve_i) {
-      const IndexRange points = points_by_curve[curve_i];
-      if (points.size() == 1) {
-        const float2 pos_proj = ED_view3d_project_float_v2_m4(
-            vc.region, positions[points.first()], projection);
-        if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
-          apply_selection_operation_at_index(selection.span, curve_i, sel_op);
-          changed = true;
-        }
-        return;
-      }
-      for (const int segment_i : points.drop_back(1)) {
-        const float3 pos1 = positions[segment_i];
-        const float3 pos2 = positions[segment_i + 1];
+    const OffsetIndices points_by_curve = curves.points_by_curve();
 
-        const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection);
-        const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection);
+    return ed::curves::selection_attr_with_deformed_pos_reduce(
+        selection_domain,
+        changed,
+        [&](const bke::AttributeIDRef &,
+            const PositionsSource &positions_source,
+            const MaskSource &mask_source,
+            const bool) {
+          const Span<float3> positions = positions_source(deformation, curves);
+          IndexMaskMemory memory;
+          const IndexMask affective_mask = mask_source(mask, curves, memory);
+          affective_mask.foreach_index(GrainSize(512), [&](const int curve_i) {
+            const IndexRange points = points_by_curve[curve_i];
+            if (points.size() == 1) {
+              const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                  vc.region, positions[points.first()], projection);
+              if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
+                for (bke::GSpanAttributeWriter &selection : selections) {
+                  apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+                };
+                changed = true;
+              }
+              return;
+            }
+            for (const int segment_i : points.drop_back(1)) {
+              const float3 pos1 = positions[segment_i];
+              const float3 pos2 = positions[segment_i + 1];
 
-        if (BLI_rcti_isect_segment(&rect, int2(pos1_proj), int2(pos2_proj))) {
-          apply_selection_operation_at_index(selection.span, curve_i, sel_op);
-          changed = true;
-          break;
-        }
-      }
-    });
+              const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection);
+              const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection);
+
+              if (BLI_rcti_isect_segment(&rect, int2(pos1_proj), int2(pos2_proj))) {
+                for (bke::GSpanAttributeWriter &selection : selections) {
+                  apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+                };
+                changed = true;
+                break;
+              }
+            }
+          });
+          return changed;
+        },
+        std::logical_or());
   }
-  selection.finish();
-
   return changed;
 }
 
 bool select_lasso(const ViewContext &vc,
                   bke::CurvesGeometry &curves,
-                  const Span<float3> positions,
+                  const bke::crazyspace::GeometryDeformation &deformation,
                   const float4x4 &projection_matrix,
                   const IndexMask &mask,
                   const bke::AttrDomain selection_domain,
@@ -765,76 +828,110 @@ bool select_lasso(const ViewContext &vc,
 {
   rcti bbox;
   BLI_lasso_boundbox(&bbox, lasso_coords);
-
-  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-      curves, selection_domain, CD_PROP_BOOL);
-
+  ed::curves::SelectionAttributeWriterList selections(curves, selection_domain);
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
-    fill_selection_false(selection.span, mask);
+    for (bke::GSpanAttributeWriter &selection : selections) {
+      fill_selection_false(selection.span, mask);
+    };
     changed = true;
   }
 
-  const OffsetIndices points_by_curve = curves.points_by_curve();
   if (selection_domain == bke::AttrDomain::Point) {
-    mask.foreach_index(GrainSize(1024), [&](const int point_i) {
-      const float2 pos_proj = ED_view3d_project_float_v2_m4(
-          vc.region, positions[point_i], projection_matrix);
-      /* Check the lasso bounding box first as an optimization. */
-      if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
-          BLI_lasso_is_point_inside(lasso_coords, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED))
-      {
-        apply_selection_operation_at_index(selection.span, point_i, sel_op);
-        changed = true;
-      }
-    });
+    return ed::curves::selection_attr_with_deformed_pos_reduce(
+        selection_domain,
+        changed,
+        [&](const bke::AttributeIDRef &selection_attribute_id,
+            const PositionsSource &positions_source,
+            const MaskSource &mask_source,
+            const bool) {
+          bke::GSpanAttributeWriter &selection = selections[selection_attribute_id];
+
+          const Span<float3> positions = positions_source(deformation, curves);
+          IndexMaskMemory memory;
+          const IndexMask affective_mask = mask_source(mask, curves, memory);
+          affective_mask.foreach_index(GrainSize(1024), [&](const int point_i) {
+            const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                vc.region, positions[point_i], projection_matrix);
+            /* Check the lasso bounding box first as an optimization. */
+            if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
+                BLI_lasso_is_point_inside(
+                    lasso_coords, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED))
+            {
+              apply_selection_operation_at_index(selection.span, point_i, sel_op);
+              changed = true;
+            }
+          });
+          return changed;
+        },
+        std::logical_or());
   }
   else if (selection_domain == bke::AttrDomain::Curve) {
-    mask.foreach_index(GrainSize(512), [&](const int curve_i) {
-      const IndexRange points = points_by_curve[curve_i];
-      if (points.size() == 1) {
-        const float2 pos_proj = ED_view3d_project_float_v2_m4(
-            vc.region, positions[points.first()], projection_matrix);
-        /* Check the lasso bounding box first as an optimization. */
-        if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
-            BLI_lasso_is_point_inside(lasso_coords, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED))
-        {
-          apply_selection_operation_at_index(selection.span, curve_i, sel_op);
-          changed = true;
-        }
-        return;
-      }
-      for (const int segment_i : points.drop_back(1)) {
-        const float3 pos1 = positions[segment_i];
-        const float3 pos2 = positions[segment_i + 1];
+    const OffsetIndices points_by_curve = curves.points_by_curve();
 
-        const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection_matrix);
-        const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection_matrix);
+    return ed::curves::selection_attr_with_deformed_pos_reduce(
+        selection_domain,
+        changed,
+        [&](const bke::AttributeIDRef &,
+            const PositionsSource &positions_source,
+            const MaskSource &mask_source,
+            const bool) {
+          const Span<float3> positions = positions_source(deformation, curves);
+          IndexMaskMemory memory;
+          const IndexMask affective_mask = mask_source(mask, curves, memory);
+          affective_mask.foreach_index(GrainSize(512), [&](const int curve_i) {
+            const IndexRange points = points_by_curve[curve_i];
+            if (points.size() == 1) {
+              const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                  vc.region, positions[points.first()], projection_matrix);
+              /* Check the lasso bounding box first as an optimization. */
+              if (BLI_rcti_isect_pt_v(&bbox, int2(pos_proj)) &&
+                  BLI_lasso_is_point_inside(
+                      lasso_coords, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED))
+              {
+                for (bke::GSpanAttributeWriter &selection : selections) {
+                  apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+                }
+                changed = true;
+              }
+              return;
+            }
+            for (const int segment_i : points.drop_back(1)) {
+              const float3 pos1 = positions[segment_i];
+              const float3 pos2 = positions[segment_i + 1];
 
-        /* Check the lasso bounding box first as an optimization. */
-        if (BLI_rcti_isect_segment(&bbox, int2(pos1_proj), int2(pos2_proj)) &&
-            BLI_lasso_is_edge_inside(lasso_coords,
-                                     int(pos1_proj.x),
-                                     int(pos1_proj.y),
-                                     int(pos2_proj.x),
-                                     int(pos2_proj.y),
-                                     IS_CLIPPED))
-        {
-          apply_selection_operation_at_index(selection.span, curve_i, sel_op);
-          changed = true;
-          break;
-        }
-      }
-    });
+              const float2 pos1_proj = ED_view3d_project_float_v2_m4(
+                  vc.region, pos1, projection_matrix);
+              const float2 pos2_proj = ED_view3d_project_float_v2_m4(
+                  vc.region, pos2, projection_matrix);
+
+              /* Check the lasso bounding box first as an optimization. */
+              if (BLI_rcti_isect_segment(&bbox, int2(pos1_proj), int2(pos2_proj)) &&
+                  BLI_lasso_is_edge_inside(lasso_coords,
+                                           int(pos1_proj.x),
+                                           int(pos1_proj.y),
+                                           int(pos2_proj.x),
+                                           int(pos2_proj.y),
+                                           IS_CLIPPED))
+              {
+                for (bke::GSpanAttributeWriter &selection : selections) {
+                  apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+                }
+                changed = true;
+                break;
+              }
+            }
+          });
+          return changed;
+        },
+        std::logical_or());
   }
-  selection.finish();
-
   return changed;
 }
 
 bool select_circle(const ViewContext &vc,
                    bke::CurvesGeometry &curves,
-                   const Span<float3> positions,
+                   const bke::crazyspace::GeometryDeformation &deformation,
                    const float4x4 &projection,
                    const IndexMask &mask,
                    const bke::AttrDomain selection_domain,
@@ -843,57 +940,88 @@ bool select_circle(const ViewContext &vc,
                    const eSelectOp sel_op)
 {
   const float radius_sq = pow2f(radius);
-  bke::GSpanAttributeWriter selection = ensure_selection_attribute(
-      curves, selection_domain, CD_PROP_BOOL);
-
+  ed::curves::SelectionAttributeWriterList selections(curves, selection_domain);
   bool changed = false;
   if (sel_op == SEL_OP_SET) {
-    fill_selection_false(selection.span, mask);
+    for (bke::GSpanAttributeWriter &selection : selections) {
+      fill_selection_false(selection.span, mask);
+    };
     changed = true;
   }
 
-  const OffsetIndices points_by_curve = curves.points_by_curve();
   if (selection_domain == bke::AttrDomain::Point) {
-    mask.foreach_index(GrainSize(1024), [&](const int point_i) {
-      const float2 pos_proj = ED_view3d_project_float_v2_m4(
-          vc.region, positions[point_i], projection);
-      if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
-        apply_selection_operation_at_index(selection.span, point_i, sel_op);
-        changed = true;
-      }
-    });
+    return ed::curves::selection_attr_with_deformed_pos_reduce(
+        selection_domain,
+        changed,
+        [&](const bke::AttributeIDRef &selection_attribute_id,
+            const PositionsSource &positions_source,
+            const MaskSource &mask_source,
+            const bool) {
+          bke::GSpanAttributeWriter &selection = selections[selection_attribute_id];
+
+          const Span<float3> positions = positions_source(deformation, curves);
+          IndexMaskMemory memory;
+          const IndexMask affective_mask = mask_source(mask, curves, memory);
+          affective_mask.foreach_index(GrainSize(1024), [&](const int point_i) {
+            const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                vc.region, positions[point_i], projection);
+            if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
+              apply_selection_operation_at_index(selection.span, point_i, sel_op);
+              changed = true;
+            }
+          });
+          return changed;
+        },
+        std::logical_or());
   }
   else if (selection_domain == bke::AttrDomain::Curve) {
-    mask.foreach_index(GrainSize(512), [&](const int curve_i) {
-      const IndexRange points = points_by_curve[curve_i];
-      if (points.size() == 1) {
-        const float2 pos_proj = ED_view3d_project_float_v2_m4(
-            vc.region, positions[points.first()], projection);
-        if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
-          apply_selection_operation_at_index(selection.span, curve_i, sel_op);
-          changed = true;
-        }
-        return;
-      }
-      for (const int segment_i : points.drop_back(1)) {
-        const float3 pos1 = positions[segment_i];
-        const float3 pos2 = positions[segment_i + 1];
+    const OffsetIndices points_by_curve = curves.points_by_curve();
 
-        const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection);
-        const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection);
+    return ed::curves::selection_attr_with_deformed_pos_reduce(
+        selection_domain,
+        changed,
+        [&](const bke::AttributeIDRef &,
+            const PositionsSource &positions_source,
+            const MaskSource &mask_source,
+            const bool) {
+          const Span<float3> positions = positions_source(deformation, curves);
+          IndexMaskMemory memory;
+          const IndexMask affective_mask = mask_source(mask, curves, memory);
+          affective_mask.foreach_index(GrainSize(512), [&](const int curve_i) {
+            const IndexRange points = points_by_curve[curve_i];
+            if (points.size() == 1) {
+              const float2 pos_proj = ED_view3d_project_float_v2_m4(
+                  vc.region, positions[points.first()], projection);
+              if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
+                for (bke::GSpanAttributeWriter &selection : selections) {
+                  apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+                }
+                changed = true;
+              }
+              return;
+            }
+            for (const int segment_i : points.drop_back(1)) {
+              const float3 pos1 = positions[segment_i];
+              const float3 pos2 = positions[segment_i + 1];
 
-        const float distance_proj_sq = dist_squared_to_line_segment_v2(
-            float2(coord), pos1_proj, pos2_proj);
-        if (distance_proj_sq <= radius_sq) {
-          apply_selection_operation_at_index(selection.span, curve_i, sel_op);
-          changed = true;
-          break;
-        }
-      }
-    });
+              const float2 pos1_proj = ED_view3d_project_float_v2_m4(vc.region, pos1, projection);
+              const float2 pos2_proj = ED_view3d_project_float_v2_m4(vc.region, pos2, projection);
+
+              const float distance_proj_sq = dist_squared_to_line_segment_v2(
+                  float2(coord), pos1_proj, pos2_proj);
+              if (distance_proj_sq <= radius_sq) {
+                for (bke::GSpanAttributeWriter &selection : selections) {
+                  apply_selection_operation_at_index(selection.span, curve_i, sel_op);
+                }
+                changed = true;
+                break;
+              }
+            }
+          });
+          return changed;
+        },
+        std::logical_or());
   }
-  selection.finish();
-
   return changed;
 }
 
