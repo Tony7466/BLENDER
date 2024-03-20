@@ -1871,7 +1871,6 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
         break;
       case eGpencilModifierType_Build:
       case eGpencilModifierType_Simplify:
-      case eGpencilModifierType_Texture:
         break;
     }
 
