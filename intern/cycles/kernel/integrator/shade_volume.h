@@ -334,7 +334,6 @@ ccl_device_inline bool volume_equiangular_valid_ray_segment(KernelGlobals kg,
     return triangle_light_valid_ray_segment(kg, time, ray_P - ls->P, ray_D, t_range, ls);
   }
 
-  /* TODO(weizhen): do we need to consider distant light? */
   /* Point light, the whole range of the ray is visible. */
   kernel_assert(ls->type == LIGHT_POINT);
   return true;
