@@ -107,7 +107,6 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
                              view_positions);
 
     /* Cache points under brush influence. */
-    IndexMaskMemory memory;
     Vector<float> weights;
     IndexMask point_mask = brush_influence_mask(scene,
                                                 brush,
@@ -117,7 +116,7 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
                                                 selection,
                                                 view_positions,
                                                 weights,
-                                                memory);
+                                                data.memory);
     /* TODO */
     Vector<float> rotations(point_mask.size(), 0.0f);
 
@@ -159,6 +158,11 @@ void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &ext
 
   threading::parallel_for_each(this->drawing_data.index_range(), [&](const int i) {
     const PointWeights &data = this->drawing_data[i];
+    std::cout << "Apply " << i << ": " << std::endl;
+    for (const int k : data.point_mask.index_range()) {
+      std::cout << " " << k << " " << data.point_mask[k] << std::endl;
+    }
+    std::flush(std::cout);
     if (data.point_mask.is_empty()) {
       return;
     }
