@@ -372,42 +372,17 @@ void AnimManager::manage_anims(Scene *scene)
   BLI_threadpool_insert(&threads, static_cast<void *>(scene));
 }
 
-struct ThreadData {
-  const Scene *scene;
-  Sequence *seq;
-};
-
-static void *xxx_open_anim(void *data)
-{
-  ThreadData *tdata = static_cast<ThreadData *>(data);
-  seq_open_anim_file(tdata->scene, tdata->seq, true);
-  MEM_freeN(tdata);
-  return 0;
-}
-
 void AnimManager::load_set(const Scene *scene, blender::Vector<Sequence *> &strips)
 {
 
   blender::Map<std::string, ShareableAnim> &anims = scene->ed->runtime.anim_lookup->anims;
   anims.reserve(strips.size() * 50);
 
-  // TODO why is this not working?
-  /*using namespace blender;
+  using namespace blender;
   threading::parallel_for(strips.index_range(), 1, [&](const IndexRange range) {
     for (int i : range) {
       Sequence *seq = strips[i];
       seq_open_anim_file(scene, seq, true);
     }
-  });*/
-
-  ListBase threads{nullptr, nullptr};
-  BLI_threadpool_init(&threads, xxx_open_anim, strips.size());
-  for (Sequence *seq : strips) {
-    ThreadData *data = MEM_cnew<ThreadData>(__func__);
-    data->scene = scene;
-    data->seq = seq;
-    BLI_threadpool_insert(&threads, static_cast<void *>(data));
-  }
-
-  BLI_threadpool_clear(&threads);
+  });
 }
