@@ -1104,7 +1104,7 @@ void insert_key_rna(PointerRNA *rna_pointer,
     return;
   }
 
-  if (adt->animation != nullptr || adt->action == nullptr) {
+  if (adt->animation || !adt->action) {
     /* TODO: This should only execute with an experimental flag enabled. */
     /* TODO: Don't hardcode key settings. */
     Animation *anim = id_animation_ensure(bmain, id);
