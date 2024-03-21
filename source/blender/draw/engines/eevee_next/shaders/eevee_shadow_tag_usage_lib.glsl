@@ -89,6 +89,8 @@ void shadow_tag_usage_tilemap_punctual(
   }
 
   vec3 lP = light_world_to_local(light, P - light._position);
+  lP -= light.shadow_origin_shift;
+
   float dist_to_light = max(length(lP) - radius, 1e-5);
   if (dist_to_light > light.influence_radius_max) {
     return;
@@ -107,7 +109,6 @@ void shadow_tag_usage_tilemap_punctual(
     }
   }
 
-  lP -= light.shadow_origin_shift;
   lP.z -= light.shadow_projection_shift;
 
   float footprint_ratio = shadow_punctual_footprint_ratio(

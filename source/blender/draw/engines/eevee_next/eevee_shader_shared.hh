@@ -822,7 +822,7 @@ struct LightData {
   /** Punctual: Shift to apply to the light origin to get the shadow projection origin. */
   float shadow_projection_shift;
   packed_float3 shadow_origin_shift;
-  float jittering;
+  float _pad0;
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 

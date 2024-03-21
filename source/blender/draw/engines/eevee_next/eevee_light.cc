@@ -116,12 +116,16 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
          * So we use the original light radius instead. */
         shadow_radius = la->shadow_softness_factor * la->radius;
       }
+      float softness = la->shadow_softness_factor;
+      if (this->do_jittering) {
+        softness *= la->shadow_jitter_overblur;
+      }
       this->punctual->sync(this->type,
                            this->object_mat,
                            la->spotsize,
                            radius,
                            this->influence_radius_max,
-                           la->shadow_softness_factor,
+                           softness,
                            shadow_radius);
     }
   }
@@ -319,9 +323,9 @@ void LightModule::sync_light(const Object *ob, ObjectHandle &handle)
   light.used = true;
 
   ::Light *bl_light = static_cast<::Light *>(ob->data);
-  light.jittering = inst_.shadows.do_jittering() ? bl_light->shadow_jittering : 0.0f;
+  light.do_jittering = inst_.shadows.do_jittering() && bl_light->mode & LA_SHADOW_JITTER;
 
-  if (handle.recalc != 0 || !light.initialized || light.jittering > 0.0f) {
+  if (handle.recalc != 0 || !light.initialized || light.do_jittering) {
     light.initialized = true;
     light.sync(inst_.shadows, ob, light_threshold_);
   }

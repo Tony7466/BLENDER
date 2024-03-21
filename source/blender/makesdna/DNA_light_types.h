@@ -79,7 +79,7 @@ typedef struct Light {
   float shadow_trace_distance;
   float shadow_filter_radius;
   float shadow_resolution_scale;
-  float shadow_jittering;
+  float shadow_jitter_overblur;
 
   /* Preview */
   struct PreviewImage *preview;
@@ -142,6 +142,7 @@ enum {
   LA_SHAD_CONTACT = 1 << 19,
   LA_CUSTOM_ATTENUATION = 1 << 20,
   LA_USE_SOFT_FALLOFF = 1 << 21,
+  LA_SHADOW_JITTER = 1 << 22
 };
 
 /** #Light::falloff_type */
