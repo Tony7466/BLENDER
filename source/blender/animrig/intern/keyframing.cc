@@ -1000,13 +1000,13 @@ struct KeyInsertData {
   int array_index;
 };
 
+/* `key_data` is expected to be in Strip space. */
 static void insert_key_strip(KeyframeStrip &strip,
                              Binding &binding,
                              const std::string &rna_path,
                              const KeyInsertData &key_data,
                              const KeyframeSettings &key_settings)
 {
-  /* TODO: convert scene frame to strip time. */
   strip.keyframe_insert(binding, rna_path, key_data.array_index, key_data.position, key_settings);
 }
 
@@ -1026,7 +1026,7 @@ static void insert_key_layer(Layer &layer,
     return;
   }
 
-  /* TODO morph key data based on Layer position in stack. */
+  /* TODO morph key data based on Layer position in stack and Strip offset. */
   insert_key_strip(strip->as<KeyframeStrip>(), binding, rna_path, key_data, key_settings);
 }
 
@@ -1081,7 +1081,7 @@ static void insert_key_anim(Animation &anim,
       KeyInsertData key_data;
       key_data.array_index = property_index;
       key_data.position = {scene_frame, rna_values[property_index]};
-      insert_key_layer(*layer, *binding, rna_path, key_data, key_settings);
+      insert_key_layer(*layer, *binding, rna_path_id_to_prop.value(), key_data, key_settings);
     }
   }
 }
