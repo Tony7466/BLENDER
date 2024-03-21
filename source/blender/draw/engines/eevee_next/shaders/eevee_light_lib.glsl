@@ -149,15 +149,21 @@ vec2 light_attenuation_facing(LightData light, vec3 L, float distance_to_light, 
 
 vec2 light_attenuation_surface(LightData light, const bool is_directional, vec3 Ng, LightVector lv)
 {
-  return light_attenuation_common(light, is_directional, lv.L) *
-         light_attenuation_facing(light, lv.L, lv.dist, Ng) *
-         light_influence_attenuation(lv.dist, light.local.influence_radius_invsqr_surface);
+  float result = light_attenuation_common(light, is_directional, lv.L);
+  result *= light_attenuation_facing(light, lv.L, lv.dist, Ng);
+  if (!is_directional) {
+    result *= light_influence_attenuation(lv.dist, light.local.influence_radius_invsqr_surface);
+  }
+  return result;
 }
 
 float light_attenuation_volume(LightData light, const bool is_directional, LightVector lv)
 {
-  return light_attenuation_common(light, is_directional, lv.L) *
-         light_influence_attenuation(lv.dist, light.local.influence_radius_invsqr_volume);
+  float result = light_attenuation_common(light, is_directional, lv.L);
+  if (!is_directional) {
+    result *= light_influence_attenuation(lv.dist, light.local.influence_radius_invsqr_volume);
+  }
+  return result;
 }
 
 /* Cheaper alternative than evaluating the LTC.
