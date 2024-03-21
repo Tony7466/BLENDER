@@ -658,9 +658,7 @@ void film_process_data(ivec2 texel_film, out vec4 out_color, out float out_depth
     }
     else {
       out_depth = imageLoad(depth_img, texel_film).r;
-      if (display_id != -1 &&
-          display_id == normal_id)
-      {
+      if (display_id != -1 && display_id == normal_id) {
         out_color = imageLoad(color_accum_img, ivec3(texel_film, display_id));
       }
     }
