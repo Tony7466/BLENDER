@@ -19,15 +19,15 @@ void main()
 
   LightData light = in_light_buf[l_idx];
 
-  /* Do not select 0 power lights. */
-  if (light.local.influence_radius_max < 1e-8) {
-    return;
-  }
-
   /* Sun lights are packed at the end of the array. Perform early copy. */
   if (is_sun_light(light.type)) {
     /* NOTE: We know the index because sun lights are packed at the start of the input buffer. */
     out_light_buf[light_cull_buf.local_lights_len + l_idx] = light;
+    return;
+  }
+
+  /* Do not select 0 power lights. */
+  if (light.local.influence_radius_max < 1e-8) {
     return;
   }
 
