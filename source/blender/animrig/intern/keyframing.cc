@@ -995,43 +995,25 @@ static blender::Vector<float> get_keyframe_values(PointerRNA *ptr,
   return values;
 }
 
-static void insert_key_strip(Strip &strip,
+struct KeyInsertData {
+  float2 position;
+  int array_index;
+};
+
+static void insert_key_strip(KeyframeStrip &strip,
                              Binding &binding,
-                             PointerRNA *rna_pointer,
-                             const blender::Span<std::string> rna_paths,
-                             const float scene_frame,
-                             const eInsertKeyFlags insert_key_flags,
+                             const std::string &rna_path,
+                             const KeyInsertData &key_data,
                              const KeyframeSettings &key_settings)
 {
-  const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
-  for (const std::string &rna_path : rna_paths) {
-    PointerRNA ptr;
-    PropertyRNA *prop = nullptr;
-    const bool path_resolved = RNA_path_resolve_property(
-        rna_pointer, rna_path.c_str(), &ptr, &prop);
-    if (!path_resolved) {
-      continue;
-    }
-    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
-                                                                                        prop);
-    Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
-    int property_array_index = 0;
-    for (float value : rna_values) {
-      /* TODO: convert scene frame to strip time. */
-      const float2 time_value = {scene_frame, value};
-      strip.as<KeyframeStrip>().keyframe_insert(
-          binding, rna_path_id_to_prop.value(), property_array_index, time_value, key_settings);
-      property_array_index++;
-    }
-  }
+  /* TODO: convert scene frame to strip time. */
+  strip.keyframe_insert(binding, rna_path, key_data.array_index, key_data.position, key_settings);
 }
 
 static void insert_key_layer(Layer &layer,
                              Binding &binding,
-                             PointerRNA *rna_pointer,
-                             const blender::Span<std::string> rna_paths,
-                             const float scene_frame,
-                             const eInsertKeyFlags insert_key_flags,
+                             const std::string &rna_path,
+                             const KeyInsertData &key_data,
                              const KeyframeSettings &key_settings)
 {
   if (layer.strips().size() == 0) {
@@ -1044,8 +1026,8 @@ static void insert_key_layer(Layer &layer,
     return;
   }
 
-  insert_key_strip(
-      *strip, binding, rna_pointer, rna_paths, scene_frame, insert_key_flags, key_settings);
+  /* TODO morph key data based on Layer position in stack. */
+  insert_key_strip(strip->as<KeyframeStrip>(), binding, rna_path, key_data, key_settings);
 }
 
 static void insert_key_anim(Animation &anim,
@@ -1082,8 +1064,26 @@ static void insert_key_anim(Animation &anim,
     return;
   }
 
-  insert_key_layer(
-      *layer, *binding, rna_pointer, rna_paths, scene_frame, insert_key_flags, key_settings);
+  for (const std::string &rna_path : rna_paths) {
+    const bool visual_keyframing = insert_key_flags & INSERTKEY_MATRIX;
+    PointerRNA ptr;
+    PropertyRNA *prop = nullptr;
+    const bool path_resolved = RNA_path_resolve_property(
+        rna_pointer, rna_path.c_str(), &ptr, &prop);
+    if (!path_resolved) {
+      return;
+    }
+    const std::optional<std::string> rna_path_id_to_prop = RNA_path_from_ID_to_property(&ptr,
+                                                                                        prop);
+    Vector<float> rna_values = get_keyframe_values(&ptr, prop, visual_keyframing);
+
+    for (int property_index : rna_values.index_range()) {
+      KeyInsertData key_data;
+      key_data.array_index = property_index;
+      key_data.position = {scene_frame, rna_values[property_index]};
+      insert_key_layer(*layer, *binding, rna_path, key_data, key_settings);
+    }
+  }
 }
 
 void insert_key_rna(PointerRNA *rna_pointer,
