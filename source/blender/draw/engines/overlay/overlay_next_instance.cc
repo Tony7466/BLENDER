@@ -40,7 +40,7 @@ void Instance::init()
                          BKE_scene_uses_blender_workbench(state.scene);
     state.is_wireframe_mode = (state.v3d->shading.type == OB_WIRE);
     state.hide_overlays = (state.v3d->flag2 & V3D_HIDE_OVERLAYS) != 0;
-    state.xray_enabled = XRAY_ACTIVE(state.v3d);
+    state.xray_enabled = XRAY_ACTIVE(state.v3d, state.scene);
     state.xray_enabled_and_not_wire = state.xray_enabled && (state.v3d->shading.type > OB_WIRE);
     state.xray_opacity = XRAY_ALPHA(state.v3d);
     state.cfra = DEG_get_ctime(state.depsgraph);

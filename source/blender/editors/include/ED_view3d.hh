@@ -1247,14 +1247,15 @@ void ED_view3d_shade_update(Main *bmain, View3D *v3d, ScrArea *area);
 #define SHADING_XRAY_FLAG_ENABLED(shading) (((shading).flag & SHADING_XRAY_FLAG(shading)) != 0)
 #define SHADING_XRAY_ENABLED(shading) \
   (SHADING_XRAY_FLAG_ENABLED(shading) && (SHADING_XRAY_ALPHA(shading) < 1.0f))
-#define SHADING_XRAY_ACTIVE(shading) \
-  (SHADING_XRAY_ENABLED(shading) && ((shading).type < OB_MATERIAL))
+#define SHADING_XRAY_ACTIVE(shading, scene) \
+  (SHADING_XRAY_ENABLED(shading) && \
+  ((shading).type < OB_MATERIAL || STREQ(scene->r.engine, RE_engine_id_BLENDER_WORKBENCH)))
 
 #define XRAY_ALPHA(v3d) SHADING_XRAY_ALPHA((v3d)->shading)
 #define XRAY_FLAG(v3d) SHADING_XRAY_FLAG((v3d)->shading)
 #define XRAY_FLAG_ENABLED(v3d) SHADING_XRAY_FLAG_ENABLED((v3d)->shading)
 #define XRAY_ENABLED(v3d) SHADING_XRAY_ENABLED((v3d)->shading)
-#define XRAY_ACTIVE(v3d) SHADING_XRAY_ACTIVE((v3d)->shading)
+#define XRAY_ACTIVE(v3d, scene) SHADING_XRAY_ACTIVE((v3d)->shading, scene)
 
 #define OVERLAY_RETOPOLOGY_ENABLED(overlay) \
   (((overlay).edit_flag & V3D_OVERLAY_EDIT_RETOPOLOGY) != 0)

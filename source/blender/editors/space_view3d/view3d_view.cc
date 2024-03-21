@@ -676,12 +676,12 @@ int view3d_opengl_select_ex(const ViewContext *vc,
   ED_view3d_draw_setup_view(
       wm, vc->win, depsgraph, scene, region, v3d, vc->rv3d->viewmat, nullptr, &rect);
 
-  if (!XRAY_ACTIVE(v3d)) {
+  if (!XRAY_ACTIVE(v3d, scene)) {
     GPU_depth_test(GPU_DEPTH_LESS_EQUAL);
   }
 
   /* If in X-ray mode, we select the wires in priority. */
-  if (XRAY_ACTIVE(v3d) && use_nearest) {
+  if (XRAY_ACTIVE(v3d, scene) && use_nearest) {
     /* We need to call "GPU_select_*" API's inside DRW_draw_select_loop
      * because the OpenGL context created & destroyed inside this function. */
     DrawSelectLoopUserData drw_select_loop_user_data = {};
@@ -741,7 +741,7 @@ int view3d_opengl_select_ex(const ViewContext *vc,
   ED_view3d_draw_setup_view(
       wm, vc->win, depsgraph, scene, region, v3d, vc->rv3d->viewmat, nullptr, nullptr);
 
-  if (!XRAY_ACTIVE(v3d)) {
+  if (!XRAY_ACTIVE(v3d, scene)) {
     GPU_depth_test(GPU_DEPTH_NONE);
   }
 

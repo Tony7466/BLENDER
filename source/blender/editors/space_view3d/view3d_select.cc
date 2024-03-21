@@ -2190,12 +2190,12 @@ static int mixed_bones_object_selectbuffer_extended(const ViewContext *vc,
   if (use_cycle) {
     /* Update the coordinates (even if the return value isn't used). */
     const bool has_motion = WM_cursor_test_motion_and_update(mval);
-    if (!XRAY_ACTIVE(v3d)) {
+    if (!XRAY_ACTIVE(v3d, vc->scene)) {
       do_nearest = has_motion;
     }
   }
   else {
-    if (!XRAY_ACTIVE(v3d)) {
+    if (!XRAY_ACTIVE(v3d, vc->scene)) {
       do_nearest = true;
     }
   }
@@ -2432,7 +2432,7 @@ static Base *ed_view3d_give_base_under_cursor_ex(bContext *C,
 
   const ViewContext vc = ED_view3d_viewcontext_init(C, depsgraph);
 
-  const bool do_nearest = !XRAY_ACTIVE(vc.v3d);
+  const bool do_nearest = !XRAY_ACTIVE(vc.v3d, vc.scene);
   const bool do_material_slot_selection = r_material_slot != nullptr;
   const int hits = mixed_bones_object_selectbuffer(
       &vc, &buffer, mval, VIEW3D_SELECT_FILTER_NOP, do_nearest, false, do_material_slot_selection);

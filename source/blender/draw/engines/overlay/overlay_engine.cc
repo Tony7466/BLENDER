@@ -114,7 +114,7 @@ static void OVERLAY_engine_init(void *vedata)
   pd->wireframe_mode = (v3d->shading.type == OB_WIRE);
   pd->clipping_state = RV3D_CLIPPING_ENABLED(v3d, rv3d) ? DRW_STATE_CLIP_PLANES : DRWState(0);
   pd->xray_opacity = XRAY_ALPHA(v3d);
-  pd->xray_enabled = XRAY_ACTIVE(v3d);
+  pd->xray_enabled = XRAY_ACTIVE(v3d, scene);
   pd->xray_enabled_and_not_wire = pd->xray_enabled && v3d->shading.type > OB_WIRE;
   pd->clear_in_front = (v3d->shading.type != OB_SOLID);
   pd->cfra = DEG_get_ctime(draw_ctx->depsgraph);

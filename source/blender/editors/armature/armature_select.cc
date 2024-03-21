@@ -662,7 +662,7 @@ static EditBone *get_nearest_editbonepoint(
     use_cycle = !WM_cursor_test_motion_and_update(vc->mval);
   }
 
-  const bool do_nearest = !(XRAY_ACTIVE(vc->v3d) || use_cycle);
+  const bool do_nearest = !(XRAY_ACTIVE(vc->v3d, vc->scene) || use_cycle);
 
   /* matching logic from 'mixed_bones_object_selectbuffer' */
   int hits = 0;
