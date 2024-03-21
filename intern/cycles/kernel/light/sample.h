@@ -345,13 +345,9 @@ ccl_device_inline bool light_sample_from_volume_segment(KernelGlobals kg,
     }
   }
 
-  /* The first two dimensions of the Sobol sequence have better stratification, use them to sample
-   * position on the light. */
-  const float2 rand_uv = float3_to_float2(rand);
-
   /* Sample position on the selected light. */
   return light_sample<true>(
-      kg, rand_uv, time, P, D, object_receiver, shader_flags, bounce, path_flag, ls);
+      kg, rand, time, P, D, object_receiver, shader_flags, bounce, path_flag, ls);
 }
 
 ccl_device bool light_sample_from_position(KernelGlobals kg,
@@ -369,13 +365,7 @@ ccl_device bool light_sample_from_position(KernelGlobals kg,
   /* Pick a light, write to `ls->emitter_id` and `ls->pdf_selection`. */
 #ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
-    if (ls->emitter_id >= 0) {
-      /* Emitter already picked in volume segment. */
-      /* TODO(weizhen): verify this condition. What happens if sampling failed in volume segment?
-       * Can we also check if `N` is zero? */
-    }
-    else if (!light_tree_sample<false>(kg, rand.z, P, N, 0.0f, object_receiver, shader_flags, ls))
-    {
+    if (!light_tree_sample<false>(kg, rand.z, P, N, 0.0f, object_receiver, shader_flags, ls)) {
       return false;
     }
   }
@@ -387,13 +377,9 @@ ccl_device bool light_sample_from_position(KernelGlobals kg,
     }
   }
 
-  /* The first two dimensions of the Sobol sequence have better stratification, use them to sample
-   * position on the light. */
-  const float2 rand_uv = float3_to_float2(rand);
-
   /* Sample position on the selected light. */
   return light_sample<false>(
-      kg, rand_uv, time, P, N, object_receiver, shader_flags, bounce, path_flag, ls);
+      kg, rand, time, P, N, object_receiver, shader_flags, bounce, path_flag, ls);
 }
 
 /* Update light sample with new shading point position for MNEE. The position on the light is fixed

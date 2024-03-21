@@ -177,7 +177,7 @@ ccl_device_inline bool light_sample(KernelGlobals kg,
 
 template<bool in_volume_segment>
 ccl_device_noinline bool light_sample(KernelGlobals kg,
-                                      const float2 rand,
+                                      const float3 rand_light,
                                       const float time,
                                       const float3 P,
                                       const float3 N,
@@ -187,6 +187,10 @@ ccl_device_noinline bool light_sample(KernelGlobals kg,
                                       const uint32_t path_flag,
                                       ccl_private LightSample *ls)
 {
+  /* The first two dimensions of the Sobol sequence have better stratification, use them to sample
+   * position on the light. */
+  const float2 rand = float3_to_float2(rand_light);
+
   int prim;
   MeshLight mesh_light;
 #ifdef __LIGHT_TREE__

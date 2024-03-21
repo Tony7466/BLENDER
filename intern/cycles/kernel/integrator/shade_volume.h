@@ -759,7 +759,7 @@ ccl_device_forceinline void integrate_volume_direct_light(
 {
   PROFILING_INIT(kg, PROFILING_SHADE_VOLUME_DIRECT_LIGHT);
 
-  if (!kernel_data.integrator.use_direct_light) {
+  if (!kernel_data.integrator.use_direct_light || ls->emitter_id == -1) {
     return;
   }
 
@@ -768,18 +768,12 @@ ccl_device_forceinline void integrate_volume_direct_light(
     const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
     const uint bounce = INTEGRATOR_STATE(state, path, bounce);
     const float3 rand_light = path_state_rng_3D(kg, rng_state, PRNG_LIGHT);
+    const float3 N = zero_float3();
+    const int object_receiver = light_link_receiver_nee(kg, sd);
+    const int shader_flags = SD_BSDF_HAS_TRANSMISSION;
 
-    if (!light_sample_from_position(kg,
-                                    rng_state,
-                                    rand_light,
-                                    sd->time,
-                                    P,
-                                    zero_float3(),
-                                    light_link_receiver_nee(kg, sd),
-                                    SD_BSDF_HAS_TRANSMISSION,
-                                    bounce,
-                                    path_flag,
-                                    ls))
+    if (!light_sample<false>(
+            kg, rand_light, sd->time, P, N, object_receiver, shader_flags, bounce, path_flag, ls))
     {
       return;
     }
