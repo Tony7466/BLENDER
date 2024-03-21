@@ -363,6 +363,7 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
   float projection_shift = is_area_light(light.type) ? near : 0.0f;
 
   float4x4 obmat_tmp = light.object_mat;
+  obmat_tmp = obmat_tmp * math::from_location<float4x4>(origin_shift);
 
   /* Clear embedded custom data. */
   obmat_tmp[0][3] = obmat_tmp[1][3] = obmat_tmp[2][3] = 0.0f;

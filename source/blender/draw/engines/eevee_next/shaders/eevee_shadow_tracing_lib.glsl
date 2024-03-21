@@ -548,8 +548,9 @@ ShadowEvalResult shadow_eval(LightData light,
   /* TODO(fclem): Scale based on depth. */
   P += Ng * normal_offset;
 
-  vec3 lP = is_directional ? light_world_to_local(light, P) :
-                             light_world_to_local(light, P - light._position);
+  vec3 lP = is_directional ?
+                light_world_to_local(light, P) :
+                light_world_to_local(light, P - light._position) - light.shadow_origin_shift;
   vec3 lNg = light_world_to_local(light, Ng);
 
   float surface_hit = 0.0;
