@@ -797,6 +797,7 @@ ccl_device float light_tree_pdf(KernelGlobals kg,
   ccl_global const KernelLightTreeEmitter *kemitter = &kernel_data_fetch(light_tree_emitters,
                                                                          index_emitter);
   int root_index;
+  bool this_is_triangle = false;
   uint bit_trail, target_emitter;
 
   if (is_triangle(kemitter)) {
@@ -812,6 +813,7 @@ ccl_device float light_tree_pdf(KernelGlobals kg,
     if (kroot->type == LIGHT_TREE_INSTANCE) {
       root_index = kroot->instance.reference;
     }
+    this_is_triangle = true;
   }
   else {
     root_index = 0;
@@ -856,7 +858,7 @@ ccl_device float light_tree_pdf(KernelGlobals kg,
         return 0.0f;
       }
 
-      if (root_index) {
+      if (this_is_triangle) {
         /* Arrived at the mesh light. Continue with the subtree. */
         float unused;
         light_tree_to_local_space<false>(kg, object_emitter, P, N, unused);
@@ -865,6 +867,7 @@ ccl_device float light_tree_pdf(KernelGlobals kg,
         root_index = 0;
         target_emitter = index_emitter;
         bit_trail = kemitter->bit_trail;
+        this_is_triangle = false;
         continue;
       }
       else {
