@@ -298,7 +298,7 @@ struct InstanceContext {
         curves(gather_info.curves.attributes.size()),
         instances(gather_info.instances_attriubutes.size())
   {
-    // empty
+    //empty
   }
 };
 
@@ -735,7 +735,7 @@ static void gather_realize_tasks_recursive(GatherTasksInfo &gather_info,
  * is an instance, the condition is true only when the depth is exactly 0. Additionally, the
  * function extends its operation to instances if any of their nested children meet the first
  * condition.
- *
+ * 
  * Based on bke::GeometrySet::attribute_foreach
  */
 static bool attribute_foreach(const bke::GeometrySet &geometry_set,
@@ -805,11 +805,12 @@ static bool attribute_foreach(const bke::GeometrySet &geometry_set,
   return is_relevant;
 }
 
+
 /**
  * Based on bke::GeometrySet::gather_attributes_for_propagation.
  * Specialized for Specialized attribute_foreach to get:
  * current_depth, depth_target, instance_depth and selection.
- */
+*/
 void static gather_attributes_for_propagation(
     bke::GeometrySet re_geometry_set,
     const Span<bke::GeometryComponent::Type> component_types,
@@ -850,8 +851,7 @@ void static gather_attributes_for_propagation(
 
                       AttrDomain domain = meta_data.domain;
                       if (dst_component_type != bke::GeometryComponent::Type::Instance &&
-                          domain == AttrDomain::Instance)
-                      {
+                          domain == AttrDomain::Instance) {
                         domain = AttrDomain::Point;
                       }
 
@@ -965,7 +965,7 @@ static void execute_instances_tasks(
         continue;
       }
 
-      const void *attribute_ptr;
+      const void *attribute_ptr;  
       if (attribute_fallback_array[attribute_index] != nullptr) {
         attribute_ptr = attribute_fallback_array[attribute_index];
       }
