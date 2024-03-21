@@ -90,28 +90,26 @@ static void do_outliner_item_editmode_toggle(bContext *C, Scene *scene, Base *ba
 
   bool changed = false;
   if (BKE_object_is_in_editmode(ob)) {
-    changed = ED_object_editmode_exit_ex(bmain, scene, ob, EM_FREEDATA);
+    /* Exit edit mode for all objects sharing the same data. */
+    LISTBASE_FOREACH (Object *, ob_iter, &bmain->objects) {
+      if (ob_iter->data == ob->data) {
+        changed |= ED_object_editmode_exit_ex(bmain, scene, ob_iter, EM_FREEDATA);
+      }
+    }
     if (changed) {
       ED_object_base_select(base, BA_DESELECT);
-      /* All objects sharing this same data have to come out of edit mode. */
-      LISTBASE_FOREACH (Object *, obtest, &bmain->objects) {
-        if (obtest->data == ob->data) {
-          obtest->mode &= ~OB_MODE_EDIT;
-        }
-      }
       WM_event_add_notifier(C, NC_SCENE | ND_MODE | NS_MODE_OBJECT, nullptr);
     }
   }
   else {
-    changed = ED_object_editmode_enter_ex(CTX_data_main(C), scene, ob, EM_NO_CONTEXT);
+    /* Enter edit mode for all objects sharing the same data. */
+    LISTBASE_FOREACH (Object *, ob_iter, &bmain->objects) {
+      if (ob_iter->data == ob->data) {
+        changed |= ED_object_editmode_enter_ex(CTX_data_main(C), scene, ob_iter, EM_NO_CONTEXT);
+      }
+    }
     if (changed) {
       ED_object_base_select(base, BA_SELECT);
-      /* All objects sharing this same data have to enter edit mode. */
-      LISTBASE_FOREACH (Object *, obtest, &bmain->objects) {
-        if (obtest->data == ob->data) {
-          obtest->mode |= OB_MODE_EDIT;
-        }
-      }
       WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
     }
   }
