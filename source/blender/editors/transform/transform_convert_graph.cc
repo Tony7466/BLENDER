@@ -887,41 +887,40 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
  * anim_data is the list of channels (F-Curves) retrieved already containing the
  * channels to work on. It should not be freed here as it may still need to be used.
  */
-static void remake_graph_transdata(TransInfo *t, ListBase *anim_data)
+static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> fcurves)
 {
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
-  blender::Vector<bAnimListElem *> ales;
-  /* Sort and reassign verts. */
-  LISTBASE_FOREACH (bAnimListElem *, ale, anim_data) {
-    ales.append(ale);
+  blender::threading::parallel_for(
+      fcurves.index_range(), 16, [&](const blender::IndexRange range) {
+        for (const int i : range) {
+          FCurve *fcu = fcurves[i];
+
+          if (fcu->bezt) {
+            BeztMap *bezm;
+
+            /* Adjust transform-data pointers. */
+            /* NOTE: none of these functions use 'use_handle', it could be removed. */
+            bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
+            sort_time_beztmaps(bezm, fcu->totvert);
+            beztmap_to_data(t, fcu, bezm, fcu->totvert);
+
+            /* Free mapping stuff. */
+            MEM_freeN(bezm);
+
+            /* Re-sort actual beztriples
+             * (perhaps this could be done using the beztmaps to save time?). */
+            sort_time_fcurve(fcu);
+          }
+        }
+      });
+
+  /* Run the handle recalculation outside the parallel_for
+   * because it might use threading itself. */
+  for (FCurve *fcu : fcurves) {
+    testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
   }
-  blender::threading::parallel_for(ales.index_range(), 16, [&](const blender::IndexRange range) {
-    for (const int i : range) {
-      FCurve *fcu = (FCurve *)ales[i]->key_data;
-
-      if (fcu->bezt) {
-        BeztMap *bezm;
-
-        /* Adjust transform-data pointers. */
-        /* NOTE: none of these functions use 'use_handle', it could be removed. */
-        bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
-        sort_time_beztmaps(bezm, fcu->totvert);
-        beztmap_to_data(t, fcu, bezm, fcu->totvert);
-
-        /* Free mapping stuff. */
-        MEM_freeN(bezm);
-
-        /* Re-sort actual beztriples
-         * (perhaps this could be done using the beztmaps to save time?). */
-        sort_time_fcurve(fcu);
-
-        /* Make sure handles are all set correctly. */
-        testhandles_fcurve(fcu, BEZT_FLAG_TEMP_TAG, use_handle);
-      }
-    }
-  });
 }
 
 static void recalcData_graphedit(TransInfo *t)
@@ -960,6 +959,7 @@ static void recalcData_graphedit(TransInfo *t)
   ANIM_animdata_filter(
       &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
+  blender::Vector<FCurve *> unsorted_fcurves;
   /* Now test if there is a need to re-sort. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     FCurve *fcu = (FCurve *)ale->key_data;
@@ -971,7 +971,7 @@ static void recalcData_graphedit(TransInfo *t)
 
     /* Watch it: if the time is wrong: do not correct handles yet. */
     if (test_time_fcurve(fcu)) {
-      dosort++;
+      unsorted_fcurves.append(fcu);
     }
     else {
       BKE_fcurve_handles_recalc_ex(fcu, BEZT_FLAG_TEMP_TAG);
@@ -985,8 +985,8 @@ static void recalcData_graphedit(TransInfo *t)
   }
 
   /* Do resort and other updates? */
-  if (dosort) {
-    remake_graph_transdata(t, &anim_data);
+  if (unsorted_fcurves.size() != 0) {
+    remake_graph_transdata(t, unsorted_fcurves);
   }
 
   /* Now free temp channels. */
