@@ -914,7 +914,7 @@ void ED_view3d_grid_steps(const Scene *scene,
   view3d_grid_steps_ex(scene, v3d, rv3d, r_grid_steps, nullptr, nullptr);
 }
 
-float ED_view3d_grid_view_scale(Scene *scene,
+float ED_view3d_grid_view_scale(const Scene *scene,
                                 const View3D *v3d,
                                 const ARegion *region,
                                 const char **r_grid_unit)
