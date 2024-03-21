@@ -93,6 +93,12 @@ static void do_outliner_item_editmode_toggle(bContext *C, Scene *scene, Base *ba
     changed = ED_object_editmode_exit_ex(bmain, scene, ob, EM_FREEDATA);
     if (changed) {
       ED_object_base_select(base, BA_DESELECT);
+      /* All objects sharing this same data have to come out of edit mode. */
+      LISTBASE_FOREACH (Object *, obtest, &bmain->objects) {
+        if (obtest->data == ob->data) {
+          obtest->mode &= ~OB_MODE_EDIT;
+        }
+      }
       WM_event_add_notifier(C, NC_SCENE | ND_MODE | NS_MODE_OBJECT, nullptr);
     }
   }
@@ -100,6 +106,12 @@ static void do_outliner_item_editmode_toggle(bContext *C, Scene *scene, Base *ba
     changed = ED_object_editmode_enter_ex(CTX_data_main(C), scene, ob, EM_NO_CONTEXT);
     if (changed) {
       ED_object_base_select(base, BA_SELECT);
+      /* All objects sharing this same data have to enter edit mode. */
+      LISTBASE_FOREACH (Object *, obtest, &bmain->objects) {
+        if (obtest->data == ob->data) {
+          obtest->mode |= OB_MODE_EDIT;
+        }
+      }
       WM_event_add_notifier(C, NC_SCENE | ND_MODE, nullptr);
     }
   }

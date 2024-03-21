@@ -2178,6 +2178,11 @@ static void outliner_draw_mode_column_toggle(uiBlock *block,
   const bool object_data_shared = (ob->data == ob_active->data);
   draw_active_icon = draw_active_icon || object_data_shared;
 
+  if (!draw_active_icon && BKE_object_is_in_editmode(ob)) {
+    /* Object not in edit mode, but its (shared) data is in edit mode. */
+    draw_active_icon = true;
+  }
+
   int icon;
   const char *tip;
   if (draw_active_icon) {
