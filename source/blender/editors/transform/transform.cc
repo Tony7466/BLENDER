@@ -1311,15 +1311,7 @@ int transformEvent(TransInfo *t, const wmEvent *event)
         }
         else if (event->prev_val == KM_PRESS) {
           t->modifiers |= MOD_PRECISION;
-          /* If we are already in a snapping mode, we don't want to add mouse precision,
-           * it makes things like rotate snap really tedious. */
-          if (t->modifiers & (MOD_SNAP | MOD_SNAP_INVERT)) {
-            t->mouse.precision = false;
-          }
-          else {
-            /* Shift is modifier for higher precision transform. */
-            t->mouse.precision = true;
-          }
+          t->mouse.precision = true;
 
           t->redraw |= TREDRAW_HARD;
         }
@@ -1486,7 +1478,7 @@ bool calculateTransformCenter(bContext *C, int centerMode, float cent3d[3], floa
     }
   }
 
-  /* Aftertrans does insert keyframes, and clears base flags; doesn't read transdata. */
+  /* Does insert keyframes, and clears base flags; doesn't read `transdata`. */
   special_aftertrans_update(C, t);
 
   postTrans(C, t);
@@ -2229,7 +2221,7 @@ int transformEnd(bContext *C, TransInfo *t)
       exit_code = OPERATOR_FINISHED;
     }
 
-    /* Aftertrans does insert keyframes, and clears base flags; doesn't read transdata. */
+    /* Does insert keyframes, and clears base flags; doesn't read `transdata`. */
     special_aftertrans_update(C, t);
 
     /* Free data, also handles overlap [in freeTransCustomData()]. */
