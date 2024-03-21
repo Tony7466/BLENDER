@@ -336,6 +336,9 @@ ccl_device void light_tree_node_importance(KernelGlobals kg,
       /* Minimal distance of the ray to the cluster. */
       distance = len(centroid - closest_point);
       point_to_centroid = -compute_v(centroid, P, D, bcone.axis, t);
+      /* FIXME(weizhen): it is not clear from which point the `cos_theta_u` should be computed in
+       * volume segment. We could use `closest_point` as a conservative measure, but then
+       * `point_to_centroid` should also use `closest_point`. */
       cos_theta_u = light_tree_cos_bounding_box_angle(bbox, closest_point, point_to_centroid);
     }
     else {
