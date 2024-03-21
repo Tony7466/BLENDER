@@ -19,11 +19,11 @@ namespace blender::ed::greasepencil::fill {
 
 /* Margin for angles to be considered equal. */
 static constexpr float ANGLE_EPSILON = 0.005f;
-/* Maximum execution time of vector fill operator (in milliseconds). */
+/* Maximum execution time of geometry fill operator (in milliseconds). */
 static constexpr unsigned int MAX_EXECUTION_TIME = 500;
 
 /* Fill segment and segment end flags. */
-enum class vfFlag : uint16_t {
+enum class gfFlag : uint16_t {
   None = 0,
   /* Segment is inspected on intersections and gap closures. */
   IsInspected = 1 << 0,
@@ -48,25 +48,25 @@ enum class vfFlag : uint16_t {
   /* Segment is part of the unused head of a closed fill edge. */
   IsUnused = 1 << 10,
 };
-ENUM_OPERATORS(vfFlag, vfFlag::IsUnused);
-static inline constexpr bool operator==(vfFlag a, bool b)
+ENUM_OPERATORS(gfFlag, gfFlag::IsUnused);
+static inline constexpr bool operator==(gfFlag a, bool b)
 {
   return (uint64_t(a) != 0) == b;
 }
 
 /* Directions of casted ray to find first edge point of fill. */
-enum class vfRayDirection : uint8_t {
+enum class gfRayDirection : uint8_t {
   Up = 0,
   Right = 1,
   Down = 2,
   Left = 3,
 };
 
-constexpr std::initializer_list<vfRayDirection> ray_directions = {
-    vfRayDirection::Up, vfRayDirection::Right, vfRayDirection::Down, vfRayDirection::Left};
+constexpr std::initializer_list<gfRayDirection> ray_directions = {
+    gfRayDirection::Up, gfRayDirection::Right, gfRayDirection::Down, gfRayDirection::Left};
 
 /* Possible turns at a curve intersection. */
-enum class vfSegmentTurn : uint8_t {
+enum class gfSegmentTurn : uint8_t {
   None = 0,
   FirstAngle = 1,
   StraightAhead = 2,
@@ -116,7 +116,7 @@ struct SegmentEnd {
   /* Flag if the incoming and outgoing angle is set. */
   bool angle_is_set[2];
   /* Segment flags. */
-  vfFlag flag = vfFlag::None;
+  gfFlag flag = gfFlag::None;
   /* Turn to take at intersections. */
   short turn{};
 
@@ -151,7 +151,7 @@ struct EdgeSegment {
   /* Curve point index range. */
   int2 point_range{};
   /* Segment flags. */
-  vfFlag flag = vfFlag::None;
+  gfFlag flag = gfFlag::None;
 
   /* Segment endings: intersection data or gap closure data. */
   Vector<SegmentEnd> segment_ends{};
@@ -201,22 +201,6 @@ struct OverlappingSegment {
   int overlapping_curve_index{};
   int2 overlapping_point_range{};
   bool overlapping_backwards = false;
-};
-
-/* Runtime vector fill data. */
-struct VectorFillData {
-  /* Starting time of the vector fill operator. */
-  std::chrono::high_resolution_clock::time_point operator_time_start;
-
-  /* The initial curve segments from which we try to find a closed fill edge. */
-  Vector<IntersectingCurve> starting_segments;
-  /* The curve segments that will form a closed fill edge. */
-  Vector<EdgeSegment> segments;
-  /* Overlapping curve segments of the last created edge segment. */
-  Vector<OverlappingSegment> overlapping_segments;
-
-  /* The intersection distance of the start segment (found by the casted ray). */
-  float start_distance{};
 };
 
 }  // namespace blender::ed::greasepencil::fill

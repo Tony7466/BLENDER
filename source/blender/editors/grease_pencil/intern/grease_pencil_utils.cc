@@ -608,16 +608,15 @@ IndexMask retrieve_editable_and_selected_elements(Object &object,
   return {};
 }
 
-Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
-                                     Object *ob,
-                                     Vector<const bke::greasepencil::Drawing *> &drawings,
-                                     Vector<int> &layer_index,
+Curves2DSpace curves_in_2d_space_get(Object &object,
+                                     const ViewContext &vc,
+                                     const GreasePencil &grease_pencil,
+                                     const Span<const bke::greasepencil::Drawing *> &drawings,
+                                     const Span<int> &layer_index,
                                      const int frame_number,
                                      const bool get_stroke_flag)
 {
-  /* Get viewport projection matrix and evaluated GP object. */
-  float4x4 projection = ED_view3d_ob_project_mat_get(vc->rv3d, ob);
-  const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, ob);
+  const Object *ob_eval = DEG_get_evaluated_object(vc.depsgraph, &object);
 
   /* Count total number of editable curves and points in given Grease Pencil drawings. */
   Curves2DSpace cv2d;
@@ -651,9 +650,12 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
       const bke::CurvesGeometry &curves = cv2d.drawings[drawing_i]->strokes();
       const OffsetIndices points_by_curve = curves.points_by_curve();
       const VArray<bool> cyclic = curves.cyclic();
+      const bke::greasepencil::Layer &layer = *grease_pencil.layers()[layer_index[drawing_i]];
+      const float4x4 layer_to_world = layer.to_world_space(*ob_eval);
+      const float4x4 projection = ED_view3d_ob_project_mat_get_from_obmat(vc.rv3d, layer_to_world);
       const bke::crazyspace::GeometryDeformation deformation =
           bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-              ob_eval, *ob, layer_index[drawing_i], frame_number);
+              ob_eval, object, layer_index[drawing_i], frame_number);
 
       /* Get the curve materials. */
       VArray<int> materials;
@@ -680,7 +682,7 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
 
         /* Set stroke flag: true when the stroke property is active in the curve material. */
         if (get_stroke_flag) {
-          Material *material = BKE_object_material_get(ob, materials[curve_i] + 1);
+          Material *material = BKE_object_material_get(&object, materials[curve_i] + 1);
           cv2d.has_stroke[curve_contiguous] = (material && (material->gp_style->flag &
                                                             GP_MATERIAL_STROKE_SHOW) != 0);
         }
@@ -689,7 +691,7 @@ Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
         for (const int point_i : points) {
           /* Convert point to 2D. */
           const float2 pos = ED_view3d_project_float_v2_m4(
-              vc->region, deformation.positions[point_i], projection);
+              vc.region, deformation.positions[point_i], projection);
 
           /* Store 2D point in contiguous array. */
           cv2d.points_2d[point_contiguous] = pos;

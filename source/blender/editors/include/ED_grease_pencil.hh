@@ -287,10 +287,11 @@ struct Curves2DSpace {
  *
  * \return A struct with the 2D representation of all editable strokes.
  */
-Curves2DSpace curves_in_2d_space_get(ViewContext *vc,
-                                     Object *ob,
-                                     Vector<const bke::greasepencil::Drawing *> &drawings,
-                                     Vector<int> &layer_index,
+Curves2DSpace curves_in_2d_space_get(Object &object,
+                                     const ViewContext &vc,
+                                     const GreasePencil &grease_pencil,
+                                     const Span<const bke::greasepencil::Drawing *> &drawings,
+                                     const Span<int> &layer_index,
                                      const int frame_number,
                                      const bool get_stroke_flag = false);
 

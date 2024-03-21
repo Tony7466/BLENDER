@@ -10,7 +10,4 @@
 
 namespace blender::ed::greasepencil::fill {
 
-struct FloodFillData {
-};
-
 }  // namespace blender::ed::greasepencil::fill
