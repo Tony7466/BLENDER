@@ -222,10 +222,18 @@ class _draw_tool_settings_context_mode:
             return False
 
         paint = context.tool_settings.sculpt
-
-        layout.template_asset_shelf_popover(BrushAssetShelf.get_shelf_name_from_mode(context.object.mode), icon='BRUSH_DATA')
-
         brush = paint.brush
+
+        brush_name = brush.name if brush else None
+        preview_icon_id = brush.preview.icon_id if brush and brush.preview else 0
+        fallback_icon = 'BRUSH_DATA' if not preview_icon_id else 'NONE'
+        layout.template_asset_shelf_popover(
+            BrushAssetShelf.get_shelf_name_from_mode(context.object.mode),
+            name=brush_name,
+            icon=fallback_icon,
+            icon_value=preview_icon_id,
+        )
+
         if brush is None:
             return False
 

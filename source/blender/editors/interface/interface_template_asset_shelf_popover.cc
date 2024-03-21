@@ -28,6 +28,7 @@ static uiBlock *asset_shelf_block_fn(bContext *C, ARegion *region, void *arg_she
 void uiTemplateAssetShelfPopover(uiLayout *layout,
                                  bContext *C,
                                  const char *asset_shelf_id,
+                                 const char *name,
                                  const BIFIconID icon)
 {
   const ScrArea *area = CTX_wm_area(C);
@@ -40,12 +41,17 @@ void uiTemplateAssetShelfPopover(uiLayout *layout,
 
   const ARegion *region = CTX_wm_region(C);
   const bool use_big_size = !RGN_TYPE_IS_HEADER_ANY(region->regiontype);
-  const short width = UI_UNIT_X * (use_big_size ? 6 : 1.6f);
+  const short width = [&]() -> short {
+    if (use_big_size) {
+      return UI_UNIT_X * 6;
+    }
+    return UI_UNIT_X * (name ? 7 : 1.6f);
+  }();
   const short height = UI_UNIT_Y * (use_big_size ? 6 : 1);
 
   uiBlock *block = uiLayoutGetBlock(layout);
   uiBut *but = uiDefBlockBut(
-      block, asset_shelf_block_fn, shelf_type, "", 0, 0, width, height, "Select an asset");
+      block, asset_shelf_block_fn, shelf_type, name, 0, 0, width, height, "Select an asset");
   ui_def_but_icon(but, icon, UI_HAS_ICON);
   UI_but_drawflag_enable(but, UI_BUT_ICON_LEFT);
 

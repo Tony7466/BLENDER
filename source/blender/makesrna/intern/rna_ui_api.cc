@@ -957,6 +957,20 @@ static int rna_ui_get_enum_icon(bContext *C,
   return icon;
 }
 
+void rna_uiTemplateAssetShelfPopover(uiLayout *layout,
+                                     bContext *C,
+                                     const char *asset_shelf_id,
+                                     const char *name,
+                                     BIFIconID icon,
+                                     int icon_value)
+{
+  if (icon_value && !icon) {
+    icon = icon_value;
+  }
+
+  uiTemplateAssetShelfPopover(layout, C, asset_shelf_id, name, icon);
+}
+
 #else
 
 static void api_ui_item_common_heading(FunctionRNA *func)
@@ -2267,7 +2281,7 @@ void RNA_api_ui_layout(StructRNA *srna)
   parm = RNA_def_pointer(func, "node", "Node", "Node", "Display inputs of this node");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED | PARM_RNAPTR);
 
-  func = RNA_def_function(srna, "template_asset_shelf_popover", "uiTemplateAssetShelfPopover");
+  func = RNA_def_function(srna, "template_asset_shelf_popover", "rna_uiTemplateAssetShelfPopover");
   RNA_def_function_ui_description(func, "Create a button to open an asset shelf in a popover");
   RNA_def_function_flag(func, FUNC_USE_CONTEXT);
   parm = RNA_def_string(func,
@@ -2277,9 +2291,12 @@ void RNA_api_ui_layout(StructRNA *srna)
                         "",
                         "Identifier of the asset shelf to display (`bl_idname`)");
   RNA_def_parameter_flags(parm, PropertyFlag(0), PARM_REQUIRED);
+  RNA_def_string(func, "name", nullptr, 0, "", "Optional name to indicate the active asset");
   parm = RNA_def_property(func, "icon", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_items(parm, rna_enum_icon_items);
-  RNA_def_property_ui_text(parm, "Icon", "Determine icon for the popover button");
+  RNA_def_property_ui_text(parm, "Icon", "Override automatic icon of the item");
+  parm = RNA_def_property(func, "icon_value", PROP_INT, PROP_UNSIGNED);
+  RNA_def_property_ui_text(parm, "Icon Value", "Override automatic icon of the item");
 }
 
 #endif

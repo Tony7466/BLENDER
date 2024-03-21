@@ -2672,10 +2672,8 @@ void uiTemplateAssetView(uiLayout *layout,
                          const char *drag_opname,
                          PointerRNA *r_drag_op_properties);
 
-void uiTemplateAssetShelfPopover(uiLayout *layout,
-                                 bContext *C,
-                                 const char *asset_shelf_id,
-                                 const int icon);
+void uiTemplateAssetShelfPopover(
+    uiLayout *layout, bContext *C, const char *asset_shelf_id, const char *name, const int icon);
 
 void uiTemplateLightLinkingCollection(uiLayout *layout,
                                       uiLayout *context_layout,
