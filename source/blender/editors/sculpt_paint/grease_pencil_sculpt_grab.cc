@@ -134,7 +134,7 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
     data.point_mask = std::move(point_mask);
     std::cout << "Drawing " << drawing_index << ": " << std::endl;
     for (const int i : data.point_mask.index_range()) {
-      std::cout << " " << i << " " << data.point_mask[i] << std::endl;
+      std::cout << " " << i << " " << data.point_mask[i] << " w=" << weights[i] << std::endl;
     }
     std::flush(std::cout);
     data.weights = std::move(weights);
@@ -155,14 +155,12 @@ void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &ext
 
   /* Mouse translation in view space. */
   const float2 mouse_delta = extension_sample.mouse_position - this->initial_mouse_position;
+  std::cout << "mouse delta = " << mouse_delta << std::endl;
+
+  bool changed = false;
 
   threading::parallel_for_each(this->drawing_data.index_range(), [&](const int i) {
     const PointWeights &data = this->drawing_data[i];
-    std::cout << "Apply " << i << ": " << std::endl;
-    for (const int k : data.point_mask.index_range()) {
-      std::cout << " " << k << " " << data.point_mask[k] << std::endl;
-    }
-    std::flush(std::cout);
     if (data.point_mask.is_empty()) {
       return;
     }
@@ -185,6 +183,7 @@ void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &ext
         ED_view3d_ob_project_mat_get(&rv3d, &ob_eval) * layer.to_object_space(ob_eval));
 
     MutableSpan<float3> positions = curves.positions_for_write();
+    std::cout << "Apply " << i << ": " << std::endl;
     data.point_mask.foreach_index(GrainSize(1024), [&](const int point_i, const int index) {
       /* Translate the point in view space with the influence factor. */
       const float3 pos_view_orig = math::transform_point(data.layer_to_view, positions[point_i]);
@@ -192,10 +191,18 @@ void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &ext
       /* Project on drawing plane. */
       positions[point_i] = placement.project(
           math::transform_point(view_to_layer_current, pos_view).xy());
+      std::cout << " " << point_i << " " << pos_view_orig << " -> " << pos_view << std::endl;
     });
+    std::flush(std::cout);
 
     drawing.tag_positions_changed();
+    changed = true;
   });
+
+  if (changed) {
+    DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
+    WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
+  }
 }
 
 void GrabOperation::on_stroke_done(const bContext & /*C*/) {}
