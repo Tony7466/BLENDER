@@ -218,9 +218,9 @@ ccl_device void light_tree_importance(const float3 N_or_D,
   max_importance = fabsf(f_a * cos_min_incidence_angle * energy * cos_min_outgoing_angle /
                          (in_volume_segment ? min_distance : sqr(min_distance)));
 
-  /* TODO: also min importance for volume? */
+  /* TODO: compute proper min importance for volume. */
   if (in_volume_segment) {
-    min_importance = max_importance;
+    min_importance = 0.0f;
     return;
   }
 
@@ -267,10 +267,10 @@ ccl_device bool compute_emitter_centroid_and_dir(KernelGlobals kg,
         /* Arbitrary centroid and direction. */
         centroid = make_float3(0.0f, 0.0f, 1.0f);
         dir = make_float3(0.0f, 0.0f, -1.0f);
-        return !in_volume_segment;
+        break;
       case LIGHT_DISTANT:
         dir = centroid;
-        return !in_volume_segment;
+        break;
       default:
         return false;
     }
@@ -320,12 +320,13 @@ ccl_device void light_tree_node_importance(KernelGlobals kg,
   float cos_theta_u;
   float distance;
   if (knode->type == LIGHT_TREE_DISTANT) {
-    if (in_volume_segment) {
-      return;
-    }
     point_to_centroid = -bcone.axis;
     cos_theta_u = fast_cosf(bcone.theta_o + bcone.theta_e);
     distance = 1.0f;
+    if (t == FLT_MAX) {
+      /* In world volume, distant light has no contribution. */
+      return;
+    }
   }
   else {
     const float3 centroid = 0.5f * (bbox.min + bbox.max);
