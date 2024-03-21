@@ -827,7 +827,7 @@ void static gather_attributes_for_propagation(
   attribute_foreach(re_geometry_set,
                     component_types,
                     0,
-                    SpecificInstancesChoice::MAX_DEPTH,
+                    VariedDepthOption::MAX_DEPTH,
                     instance_depth,
                     selection,
                     [&](const AttributeIDRef &attribute_id,
@@ -878,7 +878,7 @@ void static gather_attributes_for_propagation(
 static OrderedAttributes gather_generic_instance_attributes_to_propagate(
     const bke::GeometrySet &in_geometry_set,
     const RealizeInstancesOptions &options,
-    const SpecificInstancesChoice &chosen_instances)
+    const VariedDepthOption &varied_depth_option)
 {
   Vector<bke::GeometryComponent::Type> src_component_types;
   src_component_types.append(bke::GeometryComponent::Type::Instance);
@@ -887,8 +887,8 @@ static OrderedAttributes gather_generic_instance_attributes_to_propagate(
   gather_attributes_for_propagation(in_geometry_set,
                                     src_component_types,
                                     bke::GeometryComponent::Type::Instance,
-                                    chosen_instances.depths,
-                                    chosen_instances.selection,
+                                    varied_depth_option.depths,
+                                    varied_depth_option.selection,
                                     options.propagation_info,
                                     attributes_to_propagate);
   attributes_to_propagate.remove("position");
@@ -1008,7 +1008,7 @@ static void execute_instances_tasks(
 static OrderedAttributes gather_generic_pointcloud_attributes_to_propagate(
     const bke::GeometrySet &in_geometry_set,
     const RealizeInstancesOptions &options,
-    const SpecificInstancesChoice &chosen_instances,
+    const VariedDepthOption &varied_depth_option,
     bool &r_create_radii,
     bool &r_create_id)
 {
@@ -1022,8 +1022,8 @@ static OrderedAttributes gather_generic_pointcloud_attributes_to_propagate(
   gather_attributes_for_propagation(in_geometry_set,
                                     src_component_types,
                                     bke::GeometryComponent::Type::PointCloud,
-                                    chosen_instances.depths,
-                                    chosen_instances.selection,
+                                    varied_depth_option.depths,
+                                    varied_depth_option.selection,
                                     options.propagation_info,
                                     attributes_to_propagate);
 
@@ -1055,12 +1055,12 @@ static void gather_pointclouds_to_realize(const bke::GeometrySet &geometry_set,
 
 static AllPointCloudsInfo preprocess_pointclouds(const bke::GeometrySet &geometry_set,
                                                  const RealizeInstancesOptions &options,
-                                                 const SpecificInstancesChoice &chosen_instances)
+                                                 const VariedDepthOption &varied_depth_option)
 {
   AllPointCloudsInfo info;
   info.attributes = gather_generic_pointcloud_attributes_to_propagate(geometry_set,
                                                                       options,
-                                                                      chosen_instances,
+                                                                      varied_depth_option,
                                                                       info.create_radius_attribute,
                                                                       info.create_id_attribute);
 
@@ -1217,7 +1217,7 @@ static void execute_realize_pointcloud_tasks(bool keep_original_ids,
 static OrderedAttributes gather_generic_mesh_attributes_to_propagate(
     const bke::GeometrySet &in_geometry_set,
     const RealizeInstancesOptions &options,
-    const SpecificInstancesChoice &chosen_instances,
+    const VariedDepthOption &varied_depth_option,
     bool &r_create_id,
     bool &r_create_material_index)
 {
@@ -1231,8 +1231,8 @@ static OrderedAttributes gather_generic_mesh_attributes_to_propagate(
   gather_attributes_for_propagation(in_geometry_set,
                                     src_component_types,
                                     bke::GeometryComponent::Type::Mesh,
-                                    chosen_instances.depths,
-                                    chosen_instances.selection,
+                                    varied_depth_option.depths,
+                                    varied_depth_option.selection,
                                     options.propagation_info,
                                     attributes_to_propagate);
   attributes_to_propagate.remove("position");
@@ -1266,13 +1266,13 @@ static void gather_meshes_to_realize(const bke::GeometrySet &geometry_set,
 
 static AllMeshesInfo preprocess_meshes(const bke::GeometrySet &geometry_set,
                                        const RealizeInstancesOptions &options,
-                                       const SpecificInstancesChoice &chosen_instances)
+                                       const VariedDepthOption &varied_depth_option)
 {
   AllMeshesInfo info;
   info.attributes = gather_generic_mesh_attributes_to_propagate(
       geometry_set,
       options,
-      chosen_instances,
+      varied_depth_option,
       info.create_id_attribute,
       info.create_material_index_attribute);
 
@@ -1588,7 +1588,7 @@ static void execute_realize_mesh_tasks(bool keep_original_ids,
 static OrderedAttributes gather_generic_curve_attributes_to_propagate(
     const bke::GeometrySet &in_geometry_set,
     const RealizeInstancesOptions &options,
-    const SpecificInstancesChoice &chosen_instances,
+    const VariedDepthOption &varied_depth_option,
     bool &r_create_id)
 {
   Vector<bke::GeometryComponent::Type> src_component_types;
@@ -1601,8 +1601,8 @@ static OrderedAttributes gather_generic_curve_attributes_to_propagate(
   gather_attributes_for_propagation(in_geometry_set,
                                     src_component_types,
                                     bke::GeometryComponent::Type::Curve,
-                                    chosen_instances.depths,
-                                    chosen_instances.selection,
+                                    varied_depth_option.depths,
+                                    varied_depth_option.selection,
                                     options.propagation_info,
                                     attributes_to_propagate);
   attributes_to_propagate.remove("position");
@@ -1638,11 +1638,11 @@ static void gather_curves_to_realize(const bke::GeometrySet &geometry_set,
 
 static AllCurvesInfo preprocess_curves(const bke::GeometrySet &geometry_set,
                                        const RealizeInstancesOptions &options,
-                                       const SpecificInstancesChoice &chosen_instances)
+                                       const VariedDepthOption &varied_depth_option)
 {
   AllCurvesInfo info;
   info.attributes = gather_generic_curve_attributes_to_propagate(
-      geometry_set, options, chosen_instances, info.create_id_attribute);
+      geometry_set, options, varied_depth_option, info.create_id_attribute);
 
   gather_curves_to_realize(geometry_set, info.order);
   info.realize_info.reinitialize(info.order.size());
@@ -1969,8 +1969,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
     return geometry_set;
   }
 
-  SpecificInstancesChoice all_instances;
-  all_instances.depths = VArray<int>::ForSingle(SpecificInstancesChoice::MAX_DEPTH,
+  VariedDepthOption all_instances;
+  all_instances.depths = VArray<int>::ForSingle(VariedDepthOption::MAX_DEPTH,
                                                 geometry_set.get_instances()->instances_num());
   IndexMaskMemory memory;
   all_instances.selection = IndexMask::from_bools(
@@ -1980,7 +1980,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
 
 bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                    const RealizeInstancesOptions &options,
-                                   const SpecificInstancesChoice &chosen_instances)
+                                   const VariedDepthOption &varied_depth_option)
 {
   /* The algorithm works in three steps:
    * 1. Preprocess each unique geometry that is instanced (e.g. each `Mesh`).
@@ -1995,18 +1995,18 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
 
   bke::GeometrySet not_to_realize_set;
   propagate_instances_to_keep(
-      geometry_set, chosen_instances.selection, not_to_realize_set, options.propagation_info);
+      geometry_set, varied_depth_option.selection, not_to_realize_set, options.propagation_info);
 
   if (options.keep_original_ids) {
     remove_id_attribute_from_instances(geometry_set);
   }
 
   AllPointCloudsInfo all_pointclouds_info = preprocess_pointclouds(
-      geometry_set, options, chosen_instances);
-  AllMeshesInfo all_meshes_info = preprocess_meshes(geometry_set, options, chosen_instances);
-  AllCurvesInfo all_curves_info = preprocess_curves(geometry_set, options, chosen_instances);
+      geometry_set, options, varied_depth_option);
+  AllMeshesInfo all_meshes_info = preprocess_meshes(geometry_set, options, varied_depth_option);
+  AllCurvesInfo all_curves_info = preprocess_curves(geometry_set, options, varied_depth_option);
   OrderedAttributes all_instance_attributes = gather_generic_instance_attributes_to_propagate(
-      geometry_set, options, chosen_instances);
+      geometry_set, options, varied_depth_option);
 
   const bool create_id_attribute = all_pointclouds_info.create_id_attribute ||
                                    all_meshes_info.create_id_attribute ||
@@ -2017,8 +2017,8 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                  all_curves_info,
                                  all_instance_attributes,
                                  create_id_attribute,
-                                 chosen_instances.selection,
-                                 chosen_instances.depths,
+                                 varied_depth_option.selection,
+                                 varied_depth_option.depths,
                                  temporary_arrays};
 
   if (not_to_realize_set.has_instances()) {
@@ -2033,7 +2033,7 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
 
   gather_realize_tasks_recursive(gather_info,
                                  0,
-                                 SpecificInstancesChoice::MAX_DEPTH,
+                                 VariedDepthOption::MAX_DEPTH,
                                  geometry_set,
                                  transform,
                                  attribute_fallbacks);

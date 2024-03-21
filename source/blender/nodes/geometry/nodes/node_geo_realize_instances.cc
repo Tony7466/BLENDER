@@ -65,15 +65,15 @@ static void node_geo_exec(GeoNodeExecParams params)
   evaluator.set_selection(selection_field_overrided);
   evaluator.evaluate();
 
-  geometry::SpecificInstancesChoice chosen_instances;
-  chosen_instances.depths = evaluator.get_evaluated<int>(evaluated_depth_index);
-  chosen_instances.selection = evaluator.get_evaluated_selection_as_mask();
+  geometry::VariedDepthOption varied_depth_option;
+  varied_depth_option.depths = evaluator.get_evaluated<int>(evaluated_depth_index);
+  varied_depth_option.selection = evaluator.get_evaluated_selection_as_mask();
 
   geometry::RealizeInstancesOptions options;
   options.keep_original_ids = false;
   options.realize_instance_attributes = true;
   options.propagation_info = params.get_output_propagation_info("Geometry");
-  geometry_set = geometry::realize_instances(geometry_set, options, chosen_instances);
+  geometry_set = geometry::realize_instances(geometry_set, options, varied_depth_option);
   params.set_output("Geometry", std::move(geometry_set));
 }
 
