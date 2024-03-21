@@ -324,6 +324,13 @@ ccl_device_inline bool volume_equiangular_valid_ray_segment(KernelGlobals kg,
                                                             ccl_private float2 *t_range,
                                                             const ccl_private LightSample *ls)
 {
+#  ifdef __LIGHT_TREE__
+  /* Do not compute ray segment until #119389 is landed. */
+  if (kernel_data.integrator.use_light_tree) {
+    return true;
+  }
+#  endif
+
   if (ls->type == LIGHT_SPOT) {
     ccl_global const KernelLight *klight = &kernel_data_fetch(lights, ls->lamp);
     return spot_light_valid_ray_segment(klight, ray_P, ray_D, t_range);
