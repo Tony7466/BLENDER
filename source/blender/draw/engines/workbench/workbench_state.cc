@@ -49,7 +49,7 @@ void SceneState::init(Object *camera_ob /*=nullptr*/)
   bool is_render_mode = !v3d || ELEM(v3d->shading.type, OB_RENDER, OB_MATERIAL);
 
   const View3DShading previous_shading = shading;
-  shading = is_render_mode ? scene->display.shading : v3d->shading;
+  shading = !v3d ? scene->display.shading : v3d->shading;
 
   cull_state = shading.flag & V3D_SHADING_BACKFACE_CULLING ? DRW_STATE_CULL_BACK :
                                                              DRW_STATE_NO_DRAW;
