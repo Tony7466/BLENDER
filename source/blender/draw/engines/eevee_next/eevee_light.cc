@@ -64,9 +64,11 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
   float influence_radius_surface = attenuation_radius_get(la, threshold, surface_max_power);
   float influence_radius_volume = attenuation_radius_get(la, threshold, volume_max_power);
 
-  spot.influence_radius_max = max_ff(influence_radius_surface, influence_radius_volume);
-  spot.influence_radius_invsqr_surface = 1.0f / square(max(influence_radius_surface, 1e-8f));
-  spot.influence_radius_invsqr_volume = 1.0f / square(max(influence_radius_volume, 1e-8f));
+  if (!is_sun_light(this->type)) {
+    local.influence_radius_max = max_ff(influence_radius_surface, influence_radius_volume);
+    local.influence_radius_invsqr_surface = 1.0f / square(max(influence_radius_surface, 1e-8f));
+    local.influence_radius_invsqr_volume = 1.0f / square(max(influence_radius_volume, 1e-8f));
+  }
 
   this->color = color * la->energy;
 
@@ -108,7 +110,7 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
     else {
       /* Reuse shape radius as near clip plane. */
       /* This assumes `shape_parameters_set` has already set `radius_squared`. */
-      float radius = math::sqrt(this->spot.radius_squared);
+      float radius = math::sqrt(this->local.radius_squared);
       float shadow_radius = la->shadow_softness_factor * radius;
       if (ELEM(la->type, LA_LOCAL, LA_SPOT)) {
         /* `shape_parameters_set` can increase the radius of point and spot lights to ensure a
@@ -123,7 +125,7 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
                            this->object_mat,
                            la->spotsize,
                            radius,
-                           this->spot.influence_radius_max,
+                           this->local.influence_radius_max,
                            la->shadow_softness_factor,
                            shadow_radius);
     }
@@ -282,7 +284,7 @@ float Light::point_radiance_get()
 void Light::debug_draw()
 {
 #ifndef NDEBUG
-  drw_debug_sphere(float3(_position), spot.influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
+  drw_debug_sphere(float3(_position), local.influence_radius_max, float4(0.8f, 0.3f, 0.0f, 1.0f));
 #endif
 }
 

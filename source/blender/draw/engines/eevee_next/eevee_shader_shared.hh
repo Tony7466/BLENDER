@@ -773,24 +773,24 @@ static inline bool is_sun_light(eLightType type)
 
 /* This is a dangerous process, make sure to static assert every assignment. */
 #define SAFE_ASSIGN(type, a, b) \
-  data.a = light.spot.b; \
-  CHECK_TYPE_PAIR(data.a, light.spot.b); \
-  BLI_STATIC_ASSERT(offsetof(type, a) == offsetof(LightSpotData, b), ERROR_OFS(a, "", b))
+  data.a = light.local.b; \
+  CHECK_TYPE_PAIR(data.a, light.local.b); \
+  BLI_STATIC_ASSERT(offsetof(type, a) == offsetof(LightLocalData, b), ERROR_OFS(a, "", b))
 
 #define SAFE_ASSIGN_INT_REINTERPRET(type, a, b) \
-  data.a = INT_REINTERPRET(light.spot.b); \
+  data.a = INT_REINTERPRET(light.local.b); \
   CHECK_TYPE(data.a, int); \
-  CHECK_TYPE(light.spot.b, float); \
-  BLI_STATIC_ASSERT(offsetof(type, a) == offsetof(LightSpotData, b), ERROR_OFS(a, "", b))
+  CHECK_TYPE(light.local.b, float); \
+  BLI_STATIC_ASSERT(offsetof(type, a) == offsetof(LightLocalData, b), ERROR_OFS(a, "", b))
 
 #define SAFE_ASSIGN_INT2_REINTERPRET(type, a, b, c) \
-  data.a.x = INT_REINTERPRET(light.spot.b); \
-  data.a.y = INT_REINTERPRET(light.spot.c); \
+  data.a.x = INT_REINTERPRET(light.local.b); \
+  data.a.y = INT_REINTERPRET(light.local.c); \
   CHECK_TYPE(data.a, int2); \
-  CHECK_TYPE(light.spot.b, float); \
-  CHECK_TYPE(light.spot.c, float); \
-  BLI_STATIC_ASSERT(offsetof(type, a.x) == offsetof(LightSpotData, b), ERROR_OFS(a, ".x ", c)) \
-  BLI_STATIC_ASSERT(offsetof(type, a.y) == offsetof(LightSpotData, c), ERROR_OFS(a, ".y ", c))
+  CHECK_TYPE(light.local.b, float); \
+  CHECK_TYPE(light.local.c, float); \
+  BLI_STATIC_ASSERT(offsetof(type, a.x) == offsetof(LightLocalData, b), ERROR_OFS(a, ".x ", c)) \
+  BLI_STATIC_ASSERT(offsetof(type, a.y) == offsetof(LightLocalData, c), ERROR_OFS(a, ".y ", c))
 
 /* Using define because GLSL doesn't have inheritance, and encapsulation forces us to add some
  * unneeded padding. */
@@ -812,6 +812,24 @@ static inline bool is_sun_light(eLightType type)
   /** Number of allocated tilemap for this local light. */ \
   int tilemaps_count;
 
+/* Untyped local light data. Gets reinterpreted to LightSpotData and LightAreaData.
+ * Allow access to local light common data without casting. */
+struct LightLocalData {
+  LOCAL_LIGHT_COMMON
+
+  /** Padding reserved for when shadow_projection_shift will become a vec3. */
+  float _pad0_reserved;
+  float _pad1_reserved;
+  float _pad1;
+  float _pad2;
+
+  float2 _pad3;
+  float _pad4;
+  float _pad5;
+};
+BLI_STATIC_ASSERT_ALIGN(LightLocalData, 16)
+
+/* Despite the name, is also used for omni light. */
 struct LightSpotData {
   LOCAL_LIGHT_COMMON
 
@@ -829,7 +847,7 @@ struct LightSpotData {
   float spot_tan;
   float spot_bias;
 };
-BLI_STATIC_ASSERT_ALIGN(LightSpotData, 16)
+BLI_STATIC_ASSERT(sizeof(LightSpotData) == sizeof(LightSpotData), "Data size must match")
 
 struct LightAreaData {
   LOCAL_LIGHT_COMMON
@@ -914,12 +932,13 @@ struct LightData {
   float _pad2;
 
 #if defined(GPU_SHADER) && !defined(GPU_BACKEND_METAL)
-  /* Spot is used by default. Avoid casting for all sphere and spot lights.
-   * Also used for accessing LOCAL_LIGHT_COMMON members.
-   * Use light_area_data_get and light_sun_data_get to access the others. */
-  LightSpotData spot;
+  /* Local light is used by default. Avoid casting for accessing common local light members.
+   * Use `light_area_data_get(light)` and `light_area_data_get(light)` to access shape related data
+   * or `light_sun_data_get(light)` for sun data. */
+  LightLocalData local;
 #else
   union {
+    LightLocalData local;
     LightSpotData spot;
     LightAreaData area;
     LightSunData sun;
@@ -936,6 +955,25 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 namespace do_not_use {
 #  endif
 
+static inline LightSpotData light_spot_data_get(LightData light)
+{
+  LightSpotData data;
+  SAFE_ASSIGN(LightSpotData, radius_squared, radius_squared)
+  SAFE_ASSIGN(LightSpotData, influence_radius_max, influence_radius_max)
+  SAFE_ASSIGN(LightSpotData, influence_radius_invsqr_surface, influence_radius_invsqr_surface)
+  SAFE_ASSIGN(LightSpotData, influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN(LightSpotData, clip_side, clip_side)
+  SAFE_ASSIGN(LightSpotData, shadow_scale, shadow_scale)
+  SAFE_ASSIGN(LightSpotData, shadow_projection_shift, shadow_projection_shift)
+  SAFE_ASSIGN(LightSpotData, tilemaps_count, tilemaps_count)
+  SAFE_ASSIGN(LightSpotData, radius, _pad1)
+  SAFE_ASSIGN(LightSpotData, spot_mul, _pad2)
+  SAFE_ASSIGN(LightSpotData, spot_size_inv, _pad3)
+  SAFE_ASSIGN(LightSpotData, spot_tan, _pad4)
+  SAFE_ASSIGN(LightSpotData, spot_bias, _pad5)
+  return data;
+}
+
 static inline LightAreaData light_area_data_get(LightData light)
 {
   LightAreaData data;
@@ -946,7 +984,8 @@ static inline LightAreaData light_area_data_get(LightData light)
   SAFE_ASSIGN(LightAreaData, clip_side, clip_side)
   SAFE_ASSIGN(LightAreaData, shadow_scale, shadow_scale)
   SAFE_ASSIGN(LightAreaData, shadow_projection_shift, shadow_projection_shift)
-  SAFE_ASSIGN(LightAreaData, size, spot_size_inv)
+  SAFE_ASSIGN(LightAreaData, tilemaps_count, tilemaps_count)
+  SAFE_ASSIGN(LightAreaData, size, _pad3)
   return data;
 }
 
@@ -955,11 +994,11 @@ static inline LightSunData light_sun_data_get(LightData light)
   LightSunData data;
   SAFE_ASSIGN(LightSunData, radius, radius_squared)
   SAFE_ASSIGN_INT2_REINTERPRET(LightSunData, clipmap_base_offset, _pad0_reserved, _pad1_reserved)
-  SAFE_ASSIGN(LightSunData, shadow_angle, radius)
-  SAFE_ASSIGN(LightSunData, shadow_trace_distance, spot_mul)
-  SAFE_ASSIGN(LightSunData, clipmap_origin, spot_size_inv)
-  SAFE_ASSIGN_INT_REINTERPRET(LightSunData, clipmap_lod_min, spot_tan)
-  SAFE_ASSIGN_INT_REINTERPRET(LightSunData, clipmap_lod_max, spot_bias)
+  SAFE_ASSIGN(LightSunData, shadow_angle, _pad1)
+  SAFE_ASSIGN(LightSunData, shadow_trace_distance, _pad2)
+  SAFE_ASSIGN(LightSunData, clipmap_origin, _pad3)
+  SAFE_ASSIGN_INT_REINTERPRET(LightSunData, clipmap_lod_min, _pad4)
+  SAFE_ASSIGN_INT_REINTERPRET(LightSunData, clipmap_lod_max, _pad5)
   return data;
 }
 
