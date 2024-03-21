@@ -350,13 +350,19 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
   float3 origin_shift = float3(0.0f);
 
   if (light.jittering > 0.0f) {
+    /* TODO: de-correlate. */
     float3 random = sampling.rng_3d_get(SAMPLING_SHADOW_U);
-    // if (is_sphere_light(light.type) || is_spot_light(light.type)) {
-    if (ELEM(light.type, LIGHT_OMNI_SPHERE, LIGHT_OMNI_DISK, LIGHT_SPOT_SPHERE, LIGHT_SPOT_DISK)) {
-      origin_shift = sampling.sample_ball(random);
-      // origin_shift *= shadow_radius_ * light.jittering;
-      origin_shift *= sqrtf(light.radius_squared) * light.jittering;
+    if (is_area_light(light.type)) {
+      origin_shift = light.type == LIGHT_RECT ? float3(random.xy() * 2.0f - 1.0f, 0.0f) :
+                                                float3(sampling.sample_disk(random.xy()), 0.0f);
+      origin_shift.x *= light._area_size_x;
+      origin_shift.y *= light._area_size_y;
     }
+    else {
+      origin_shift = sampling.sample_ball(random);
+      origin_shift *= sqrtf(light.radius_squared);
+    }
+    origin_shift *= light.jittering;
   }
 
   /* Shift shadow map origin for area light to avoid clipping nearby geometry. */
