@@ -421,6 +421,9 @@ static int geometry_attribute_convert_exec(bContext *C, wmOperator *op)
    * 4. Create a new attribute based on the previously copied data. */
   switch (mode) {
     case ConvertAttributeMode::Generic: {
+      const int active_color_index = BKE_id_attributes_color_index(&mesh->id,
+                                                                   mesh->active_color_attribute);
+
       if (!ED_geometry_attribute_convert(mesh,
                                          name.c_str(),
                                          eCustomDataType(RNA_enum_get(op->ptr, "data_type")),
@@ -429,12 +432,9 @@ static int geometry_attribute_convert_exec(bContext *C, wmOperator *op)
       {
         return OPERATOR_CANCELLED;
       }
-      if (!BKE_id_attribute_search(
-              &mesh->id, mesh->active_color_attribute, CD_MASK_COLOR_ALL, ATTR_DOMAIN_MASK_COLOR))
-      {
-        const CustomDataLayer *layer = BKE_id_attribute_from_index(
-            &mesh->id, 0, ATTR_DOMAIN_MASK_COLOR, CD_MASK_COLOR_ALL);
-        const char *name = layer ? layer->name : nullptr;
+
+      if (!BKE_id_attributes_color_find(&mesh->id, mesh->active_color_attribute)) {
+        const char *name = BKE_id_attributes_color_name_from_index(&mesh->id, active_color_index);
         BKE_id_attributes_active_color_set(&mesh->id, name);
         BKE_id_attributes_default_color_set(&mesh->id, name);
       }
