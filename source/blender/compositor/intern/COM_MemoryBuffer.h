@@ -231,7 +231,7 @@ class MemoryBuffer {
     const float2 texel_coordinates = coordinates * float2(size);
 
     float4 result = float4(0.0f, 0.0f, 0.0f, 1.0f);
-    math::interpolate_nearest_extend_fl(
+    math::interpolate_nearest_fl(
         buffer_, result, size.x, size.y, num_channels_, texel_coordinates.x, texel_coordinates.y);
     return result;
   }
