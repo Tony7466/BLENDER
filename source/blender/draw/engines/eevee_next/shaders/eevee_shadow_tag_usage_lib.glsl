@@ -107,7 +107,6 @@ void shadow_tag_usage_tilemap_punctual(
     }
   }
 
-  /* TODO(fclem): 3D shift for jittered soft shadows. */
   lP -= light.shadow_origin_shift;
   lP.z -= light.shadow_projection_shift;
 

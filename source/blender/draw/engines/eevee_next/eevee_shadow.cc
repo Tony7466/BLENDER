@@ -74,7 +74,6 @@ void ShadowTileMap::sync_cubeface(const float4x4 &object_mat_,
                                   float far_,
                                   float side_,
                                   float projection_shift,
-                                  float3 origin_shift,
                                   eCubeFace face,
                                   float lod_bias_)
 {
@@ -380,21 +379,15 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
     tilemaps_.append(tilemap_pool.acquire());
   }
 
-  tilemaps_[Z_NEG]->sync_cubeface(
-      obmat_tmp, near, far, side, projection_shift, origin_shift, Z_NEG, lod_bias);
+  tilemaps_[Z_NEG]->sync_cubeface(obmat_tmp, near, far, side, projection_shift, Z_NEG, lod_bias);
   if (tilemaps_needed_ >= 5) {
-    tilemaps_[X_POS]->sync_cubeface(
-        obmat_tmp, near, far, side, projection_shift, origin_shift, X_POS, lod_bias);
-    tilemaps_[X_NEG]->sync_cubeface(
-        obmat_tmp, near, far, side, projection_shift, origin_shift, X_NEG, lod_bias);
-    tilemaps_[Y_POS]->sync_cubeface(
-        obmat_tmp, near, far, side, projection_shift, origin_shift, Y_POS, lod_bias);
-    tilemaps_[Y_NEG]->sync_cubeface(
-        obmat_tmp, near, far, side, projection_shift, origin_shift, Y_NEG, lod_bias);
+    tilemaps_[X_POS]->sync_cubeface(obmat_tmp, near, far, side, projection_shift, X_POS, lod_bias);
+    tilemaps_[X_NEG]->sync_cubeface(obmat_tmp, near, far, side, projection_shift, X_NEG, lod_bias);
+    tilemaps_[Y_POS]->sync_cubeface(obmat_tmp, near, far, side, projection_shift, Y_POS, lod_bias);
+    tilemaps_[Y_NEG]->sync_cubeface(obmat_tmp, near, far, side, projection_shift, Y_NEG, lod_bias);
   }
   if (tilemaps_needed_ == 6) {
-    tilemaps_[Z_POS]->sync_cubeface(
-        obmat_tmp, near, far, side, projection_shift, origin_shift, Z_POS, lod_bias);
+    tilemaps_[Z_POS]->sync_cubeface(obmat_tmp, near, far, side, projection_shift, Z_POS, lod_bias);
   }
 
   light.tilemap_index = tilemap_pool.tilemaps_data.size();
