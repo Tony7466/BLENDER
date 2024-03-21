@@ -3318,6 +3318,11 @@ class VIEW3D_MT_object_convert(Menu):
 
         layout.template_node_operator_asset_menu_items(catalog_path="Object/Convert")
 
+        world = context.scene.world
+        if world and world.use_nodes:
+            layout.operator("world.convert_volume_to_mesh", icon='WORLD')
+            
+
 
 class VIEW3D_MT_make_links(Menu):
     bl_label = "Link/Transfer Data"
