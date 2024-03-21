@@ -949,8 +949,10 @@ static bool mesh_undosys_step_encode(bContext *C, Main *bmain, UndoStep *us_p)
     elem->obedit_ref.ptr = ob;
     Mesh *mesh = static_cast<Mesh *>(elem->obedit_ref.ptr->data);
     BMEditMesh *em = mesh->runtime->edit_mesh;
-    undomesh_from_editmesh(
-        &elem->data, mesh->runtime->edit_mesh, mesh->key, um_references ? um_references[i] : nullptr);
+    undomesh_from_editmesh(&elem->data,
+                           mesh->runtime->edit_mesh,
+                           mesh->key,
+                           um_references ? um_references[i] : nullptr);
     em->needs_flush_to_id = 1;
     us->step.data_size += elem->data.undo_size;
     elem->data.uv_selectmode = ts->uv_selectmode;
