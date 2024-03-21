@@ -2158,10 +2158,11 @@ static void outliner_mode_toggle_fn(bContext *C, void *tselem_poin, void * /*arg
   BLI_assert(tselem->id != nullptr && GS(tselem->id->name) == ID_OB);
 
   Object *ob = (Object *)tselem->id;
-  const bool object_data_shared = (ob->data == tvc.obact->data);
+  const bool object_data_in_mode = tvc.object_data_in_mode.contains(
+      static_cast<const ID *>(ob->data));
 
   wmWindow *win = CTX_wm_window(C);
-  const bool do_extend = (win->eventstate->modifier & KM_CTRL) && !object_data_shared;
+  const bool do_extend = (win->eventstate->modifier & KM_CTRL) && !object_data_in_mode;
   outliner_item_mode_toggle(C, &tvc, te, do_extend);
 }
 
@@ -2199,15 +2200,16 @@ static void outliner_draw_mode_column_toggle(uiBlock *block,
     draw_active_icon = false;
   }
 
-  const bool object_data_shared = (ob->data == ob_active->data);
-  draw_active_icon = draw_active_icon || object_data_shared;
+  const bool object_data_in_mode = tvc->object_data_in_mode.contains(
+      static_cast<const ID *>(ob->data));
+  draw_active_icon = draw_active_icon || object_data_in_mode;
 
   int icon;
   const char *tip;
   if (draw_active_icon) {
     icon = UI_icon_from_object_mode(ob_active->mode);
-    tip = object_data_shared ? TIP_("Change the object in the current mode") :
-                               TIP_("Remove from the current mode");
+    tip = object_data_in_mode ? TIP_("Change the object in the current mode") :
+                                TIP_("Remove from the current mode");
   }
   else {
     icon = ICON_DOT;

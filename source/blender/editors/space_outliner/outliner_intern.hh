@@ -10,6 +10,8 @@
 
 #include <memory>
 
+#include "BLI_set.hh"
+
 #include "RNA_types.hh"
 
 /* Needed for `tree_element_cast()`. */
@@ -253,6 +255,8 @@ struct TreeViewContext {
    * The pose object may not be the active object (when in weight paint mode).
    * Checking this in draw loops isn't efficient, so set only once. */
   Object *ob_pose;
+
+  Set<const ID *> object_data_in_mode;
 };
 
 enum TreeItemSelectAction {

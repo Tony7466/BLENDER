@@ -40,7 +40,7 @@ namespace blender::ed::outliner {
 
 void outliner_viewcontext_init(const bContext *C, TreeViewContext *tvc)
 {
-  memset(tvc, 0, sizeof(*tvc));
+  *tvc = {};
 
   /* Scene level. */
   tvc->scene = CTX_data_scene(C);
@@ -57,6 +57,13 @@ void outliner_viewcontext_init(const bContext *C, TreeViewContext *tvc)
         ((tvc->obact->type == OB_MESH) && tvc->obact->mode & OB_MODE_WEIGHT_PAINT))
     {
       tvc->ob_pose = BKE_object_pose_armature_get(tvc->obact);
+    }
+  }
+  if (tvc->obact->mode != OB_MODE_OBJECT) {
+    for (const Object *object : BKE_view_layer_array_from_objects_in_mode_unique_data(
+             tvc->scene, tvc->view_layer, nullptr, eObjectMode(tvc->obact->mode)))
+    {
+      tvc->object_data_in_mode.add_new(static_cast<const ID *>(object->data));
     }
   }
 }
