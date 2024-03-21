@@ -101,25 +101,23 @@ void TintOperation::on_stroke_begin(const bContext &C, const InputSample & /*sta
 
   screen_positions_per_drawing_.reinitialize(drawings_.size());
 
-  threading::parallel_for(drawings_.index_range(), 128, [&](const IndexRange range) {
-    for (const int drawing_index : range) {
-      MutableDrawingInfo drawing_info = drawings_[drawing_index];
-      bke::CurvesGeometry &strokes = drawing_info.drawing.strokes_for_write();
-      const Layer &layer = *grease_pencil.layers()[drawing_info.layer_index];
+  threading::parallel_for_each(drawings_.index_range(), [&](const int drawing_index) {
+    MutableDrawingInfo drawing_info = drawings_[drawing_index];
+    bke::CurvesGeometry &strokes = drawing_info.drawing.strokes_for_write();
+    const Layer &layer = *grease_pencil.layers()[drawing_info.layer_index];
 
-      screen_positions_per_drawing_[drawing_index].reinitialize(strokes.points_num());
+    screen_positions_per_drawing_[drawing_index].reinitialize(strokes.points_num());
 
-      bke::crazyspace::GeometryDeformation deformation =
-          bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-              ob_eval, *obact, drawing_info.layer_index, drawing_info.frame_number);
+    bke::crazyspace::GeometryDeformation deformation =
+        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+            ob_eval, *obact, drawing_info.layer_index, drawing_info.frame_number);
 
-      for (const int point : strokes.points_range()) {
-        ED_view3d_project_float_global(
-            region,
-            math::transform_point(layer.to_world_space(*ob_eval), deformation.positions[point]),
-            screen_positions_per_drawing_[drawing_index][point],
-            V3D_PROJ_TEST_NOP);
-      }
+    for (const int point : strokes.points_range()) {
+      ED_view3d_project_float_global(
+          region,
+          math::transform_point(layer.to_world_space(*ob_eval), deformation.positions[point]),
+          screen_positions_per_drawing_[drawing_index][point],
+          V3D_PROJ_TEST_NOP);
     }
   });
 }
@@ -240,11 +238,9 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
     fill_colors.finish();
   };
 
-  threading::parallel_for(drawings_.index_range(), 128, [&](const IndexRange range) {
-    for (const int drawing_index : range) {
-      const MutableDrawingInfo &info = drawings_[drawing_index];
-      execute_tint_on_drawing(info.drawing, drawing_index);
-    }
+  threading::parallel_for_each(drawings_.index_range(), [&](const int drawing_index) {
+    const MutableDrawingInfo &info = drawings_[drawing_index];
+    execute_tint_on_drawing(info.drawing, drawing_index);
   });
 
   if (changed) {
