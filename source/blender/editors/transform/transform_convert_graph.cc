@@ -806,27 +806,23 @@ static void sort_time_beztmaps(BeztMap *bezms, int totvert)
 /* This function firstly adjusts the pointers that the transdata has to each BezTriple. */
 static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totvert)
 {
-  BezTriple *bezts = fcu->bezt;
-  BeztMap *bezm;
   TransData2D *td2d;
   TransData *td;
-  int i, j;
-  char *adjusted;
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
   /* Dynamically allocate an array of chars to mark whether an TransData's
    * pointers have been fixed already, so that we don't override ones that are already done. */
-  adjusted = static_cast<char *>(MEM_callocN(tc->data_len, "beztmap_adjusted_map"));
+  char *adjusted = static_cast<char *>(MEM_callocN(tc->data_len, "beztmap_adjusted_map"));
 
   /* For each beztmap item, find if it is used anywhere. */
-  bezm = bezms;
-  for (i = 0; i < totvert; i++, bezm++) {
+  BeztMap *bezm = bezms;
+  for (int i = 0; i < totvert; i++, bezm++) {
     /* Loop through transdata, testing if we have a hit
      * for the handles (vec[0]/vec[2]), we must also check if they need to be swapped. */
     td2d = tc->data_2d;
     td = tc->data;
-    for (j = 0; j < tc->data_len; j++, td2d++, td++) {
+    for (int j = 0; j < tc->data_len; j++, td2d++, td++) {
       /* Skip item if already marked. */
       if (adjusted[j] != 0) {
         continue;
