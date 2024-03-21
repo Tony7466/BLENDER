@@ -1033,7 +1033,8 @@ class VIEW3D_HT_header(Header):
             sub.popover(panel="VIEW3D_PT_overlay_bones", text="", icon='POSE_HLT')
 
         row = layout.row()
-        row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'})
+        engine = context.scene.render.engine
+        row.active = (object_mode == 'EDIT') or (shading.type in {'WIREFRAME', 'SOLID'}) or (engine == 'BLENDER_WORKBENCH')
 
         # While exposing `shading.show_xray(_wireframe)` is correct.
         # this hides the key shortcut from users: #70433.
@@ -6654,6 +6655,7 @@ class VIEW3D_PT_shading_options(Panel):
         if shading.type == 'SOLID':
             col.prop(shading, "show_backface_culling")
 
+        engine = context.scene.render.engine
         row = col.row(align=True)
 
         if shading.type == 'WIREFRAME':
@@ -6661,7 +6663,7 @@ class VIEW3D_PT_shading_options(Panel):
             sub = row.row()
             sub.active = shading.show_xray_wireframe
             sub.prop(shading, "xray_alpha_wireframe", text="X-Ray")
-        elif shading.type == 'SOLID':
+        elif shading.type == 'SOLID' or engine == 'BLENDER_WORKBENCH':
             row.prop(shading, "show_xray", text="")
             sub = row.row()
             sub.active = shading.show_xray
@@ -7139,6 +7141,7 @@ class VIEW3D_PT_overlay_edit_mesh_shading(Panel):
         layout = self.layout
 
         view = context.space_data
+        engine = context.scene.render.engine
         shading = view.shading
         overlay = view.overlay
         tool_settings = context.tool_settings
@@ -7163,7 +7166,7 @@ class VIEW3D_PT_overlay_edit_mesh_shading(Panel):
 
         if shading.type == 'WIREFRAME':
             xray = shading.show_xray_wireframe and shading.xray_alpha_wireframe < 1.0
-        elif shading.type == 'SOLID':
+        elif shading.type == 'SOLID' or engine == 'BLENDER_WORKBENCH':
             xray = shading.show_xray and shading.xray_alpha < 1.0
         else:
             xray = False

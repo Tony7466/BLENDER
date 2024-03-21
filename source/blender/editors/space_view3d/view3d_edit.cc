@@ -28,6 +28,7 @@
 #include "BKE_report.hh"
 #include "BKE_scene.hh"
 #include "BKE_screen.hh"
+#include "RE_engine.h"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -1198,6 +1199,7 @@ static int toggle_xray_exec(bContext *C, wmOperator *op)
   View3D *v3d = CTX_wm_view3d(C);
   ScrArea *area = CTX_wm_area(C);
   Object *obact = CTX_data_active_object(C);
+  RenderEngineType *engine_type = CTX_data_engine_type(C);
 
   if (obact && ((obact->mode & OB_MODE_POSE) ||
                 ((obact->mode & OB_MODE_WEIGHT_PAINT) && BKE_object_pose_armature_get(obact))))
@@ -1206,7 +1208,8 @@ static int toggle_xray_exec(bContext *C, wmOperator *op)
   }
   else {
     const bool xray_active = ((obact && (obact->mode & OB_MODE_EDIT)) ||
-                              ELEM(v3d->shading.type, OB_WIRE, OB_SOLID));
+                              ELEM(v3d->shading.type, OB_WIRE, OB_SOLID) ||
+                              STREQ(engine_type->idname, "BLENDER_WORKBENCH"));
 
     if (v3d->shading.type == OB_WIRE) {
       v3d->shading.flag ^= V3D_SHADING_XRAY_WIREFRAME;
