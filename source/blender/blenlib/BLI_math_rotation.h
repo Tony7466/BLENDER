@@ -187,17 +187,6 @@ void mat3_to_quat_legacy(float q[4], const float wmat[3][3]);
 /* Other. */
 
 /**
- * Utility that computes the rotation quaternion of an object/camera looking towards
- * a specified direction with respect to a given up vector
- */
-void lookat_normalized_quat(float quat[4], const float dir[3], const float up[3]);
-
-/**
- * Safe version that takes care of normalizing the input vectors
- */
-void lookat_quat(float quat[4], const float dir[3], const float up[3]);
-
-/**
  * Utility that performs `sinf` & `cosf` intended for plotting a 2D circle,
  * where the values of the coordinates with are exactly symmetrical although this
  * favors even numbers as odd numbers can only be symmetrical on a single axis.

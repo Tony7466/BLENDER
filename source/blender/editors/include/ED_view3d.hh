@@ -1104,13 +1104,6 @@ bool ED_view3d_persp_ensure(const Depsgraph *depsgraph, View3D *v3d, ARegion *re
  */
 bool ED_view3d_camera_view_zoom_scale(RegionView3D *rv3d, const float scale);
 /**
- * Utility to level out the horizon / clear the roll of the viewport camera
- * \note This function is meant to be called from versioning code, calling it
- * by itself will *not* update the RegionView3D runtime components.
- * \return true when a change was made.
- */
-bool ED_view3d_camera_level_horizon(RegionView3D *rv3d);
-/**
  * Utility to pan when in camera view.
  * \param event_ofs: The offset the pan in screen (pixel) coordinates.
  * \return true when a change was made.

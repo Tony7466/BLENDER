@@ -982,28 +982,6 @@ float tri_to_quat(float q[4], const float a[3], const float b[3], const float c[
   return len;
 }
 
-void lookat_normalized_quat(float quat[4], const float dir[3], const float up[3])
-{
-  float mat[3][3], right[3];
-
-  negate_v3_v3(mat[2], dir);
-  cross_v3_v3v3(right, up, mat[2]);
-  normalize_v3_v3(mat[0], right);
-  cross_v3_v3v3(mat[1], mat[2], mat[0]);
-
-  mat3_to_quat(quat, mat);
-}
-
-void lookat_quat(float quat[4], const float dir[3], const float up[3])
-{
-  float normalized_dir[3], normalized_up[3];
-
-  normalize_v3_v3(normalized_dir, dir);
-  normalize_v3_v3(normalized_up, up);
-
-  lookat_normalized_quat(quat, normalized_dir, normalized_up);
-}
-
 void sin_cos_from_fraction(int numerator, int denominator, float *r_sin, float *r_cos)
 {
   /* By default, creating a circle from an integer: calling #sinf & #cosf on the fraction doesn't

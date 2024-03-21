@@ -60,7 +60,7 @@
 #include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
-#include "ED_view3d.hh"
+#include "BLO_readfile.hh"
 
 #include "BLT_translation.hh"
 
@@ -111,7 +111,6 @@ static void blo_update_defaults_screen(bScreen *screen,
     return;
   }
 
-  printf("Versioning workspace: %s\n", workspace_name);
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       /* Remove all stored panels, we want to use defaults
@@ -201,14 +200,6 @@ static void blo_update_defaults_screen(bScreen *screen,
       /* Disable Curve Normals. */
       v3d->overlay.edit_flag &= ~V3D_OVERLAY_EDIT_CU_NORMALS;
       v3d->overlay.normals_constant_screen_size = 7.0f;
-      /* Level out the 3D Viewport camera rotation (see: #113751) */
-      LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
-        if (region->regiontype == RGN_TYPE_WINDOW) {
-          RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
-          zero_v3(rv3d->ofs); // Clear the orbit pivot point
-          ED_view3d_camera_level_horizon(rv3d);
-        }
-      }
     }
     else if (area->spacetype == SPACE_CLIP) {
       SpaceClip *sclip = static_cast<SpaceClip *>(area->spacedata.first);

@@ -528,42 +528,6 @@ bool ED_view3d_camera_view_zoom_scale(RegionView3D *rv3d, const float scale)
   return (rv3d->camzoom != camzoom_init);
 }
 
-bool ED_view3d_camera_level_horizon(RegionView3D *rv3d)
-{
-  constexpr float up_vec[3] = {0, 0, 1};
-  float cam_mat[4][4], cam_direction[3];
-
-  ED_view3d_to_m4(cam_mat, rv3d->ofs, rv3d->viewquat, rv3d->dist);
-  negate_v3_v3(cam_direction, cam_mat[3]);
-  sub_v3_v3(cam_direction, rv3d->ofs);
-
-  float new_quat[4];
-  lookat_quat(new_quat, cam_direction, up_vec);
-
-  invert_qt(new_quat);
-  const bool ret_val = equals_v4v4(rv3d->viewquat, new_quat);
-
-  printf("Original Quaternion: {%a, %a, %a, %a}\n",
-         rv3d->viewquat[0],
-         rv3d->viewquat[1],
-         rv3d->viewquat[2],
-         rv3d->viewquat[3]);
-  printf("Orbit Pivot: {%a, %a, %a}\n",
-         rv3d->ofs[0],
-         rv3d->ofs[1],
-         rv3d->ofs[2]);
-  printf("New Quaternion: {%a, %a, %a, %a}\n",
-         new_quat[0],
-         new_quat[1],
-         new_quat[2],
-         new_quat[3]);
-  printf("\n");
-
-  copy_qt_qt(rv3d->viewquat, new_quat);
-
-  return ret_val;
-}
-
 bool ED_view3d_camera_view_pan(ARegion *region, const float event_ofs[2])
 {
   RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
