@@ -46,6 +46,7 @@ class RandomizeOperation : public GreasePencilStrokeOperationCommon {
                                   bke::greasepencil::Drawing &drawing,
                                   int frame_number,
                                   const ed::greasepencil::DrawingPlacement &placement,
+                                  const IndexMask &point_selection,
                                   Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
@@ -80,6 +81,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(
     bke::greasepencil::Drawing &drawing,
     int /*frame_number*/,
     const ed::greasepencil::DrawingPlacement &placement,
+    const IndexMask &point_selection,
     const Span<float2> view_positions,
     const InputSample &extension_sample)
 {
@@ -101,16 +103,14 @@ bool RandomizeOperation::on_stroke_extended_drawing(
         float2(extension_sample.mouse_position - prev_mouse_position));
     const float2 sideways = float2(-forward.y, forward.x);
 
-    threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
-      for (const int point_i : range) {
-        const float2 &co = view_positions[point_i];
-        const float influence = brush_influence(scene, brush, co, extension_sample);
-        if (influence < influence_threshold) {
-          continue;
-        }
-        const float noise = 2.0f * hash_rng(seed, 5678, point_i) - 1.0f;
-        positions[point_i] = placement.project(co + sideways * influence * noise);
+    point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+      const float2 &co = view_positions[point_i];
+      const float influence = brush_influence(scene, brush, co, extension_sample);
+      if (influence < influence_threshold) {
+        return;
       }
+      const float noise = 2.0f * hash_rng(seed, 5678, point_i) - 1.0f;
+      positions[point_i] = placement.project(co + sideways * influence * noise);
     });
 
     drawing.tag_positions_changed();
@@ -118,31 +118,27 @@ bool RandomizeOperation::on_stroke_extended_drawing(
   }
   if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_STRENGTH) {
     MutableSpan<float> opacities = drawing.opacities_for_write();
-    threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
-      for (const int point_i : range) {
-        const float2 &co = view_positions[point_i];
-        const float influence = brush_influence(scene, brush, co, extension_sample);
-        if (influence < influence_threshold) {
-          continue;
-        }
-        const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
-        opacities[point_i] = math::clamp(opacities[point_i] + influence * noise, 0.0f, 1.0f);
+    point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+      const float2 &co = view_positions[point_i];
+      const float influence = brush_influence(scene, brush, co, extension_sample);
+      if (influence < influence_threshold) {
+        return;
       }
+      const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
+      opacities[point_i] = math::clamp(opacities[point_i] + influence * noise, 0.0f, 1.0f);
     });
     changed = true;
   }
   if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_THICKNESS) {
     const MutableSpan<float> radii = drawing.radii_for_write();
-    threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
-      for (const int point_i : range) {
-        const float2 &co = view_positions[point_i];
-        const float influence = brush_influence(scene, brush, co, extension_sample);
-        if (influence < influence_threshold) {
-          continue;
-        }
-        const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
-        radii[point_i] = math::max(radii[point_i] + influence * noise * 0.001f, 0.0f);
+    point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+      const float2 &co = view_positions[point_i];
+      const float influence = brush_influence(scene, brush, co, extension_sample);
+      if (influence < influence_threshold) {
+        return;
       }
+      const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
+      radii[point_i] = math::max(radii[point_i] + influence * noise * 0.001f, 0.0f);
     });
     curves.tag_radii_changed();
     changed = true;
@@ -151,17 +147,15 @@ bool RandomizeOperation::on_stroke_extended_drawing(
     /* TODO stroke_u attribute not used yet. */
     bke::SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
         "rotation", bke::AttrDomain::Point);
-    threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
-      for (const int point_i : range) {
-        const float2 &co = view_positions[point_i];
-        const float influence = brush_influence(scene, brush, co, extension_sample);
-        if (influence < influence_threshold) {
-          continue;
-        }
-        const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
-        rotations.span[point_i] = math::clamp(
-            rotations.span[point_i] + influence * noise, -float(M_PI_2), float(M_PI_2));
+    point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+      const float2 &co = view_positions[point_i];
+      const float influence = brush_influence(scene, brush, co, extension_sample);
+      if (influence < influence_threshold) {
+        return;
       }
+      const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
+      rotations.span[point_i] = math::clamp(
+          rotations.span[point_i] + influence * noise, -float(M_PI_2), float(M_PI_2));
     });
     rotations.finish();
     changed = true;

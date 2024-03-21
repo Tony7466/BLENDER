@@ -57,6 +57,7 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
                                           bke::greasepencil::Drawing &drawing,
                                           int frame_number,
                                           const ed::greasepencil::DrawingPlacement &placement,
+                                          const IndexMask &point_selection,
                                           Span<float2> view_positions,
                                           const InputSample &extension_sample) = 0;
 };

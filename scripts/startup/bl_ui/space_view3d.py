@@ -946,6 +946,73 @@ class VIEW3D_HT_header(Header):
                     text="Multiframe",
                 )
 
+        # Grease Pencil
+        if obj and obj.type == 'GREASEPENCIL':
+            if object_mode == 'PAINT_GREASE_PENCIL':
+                row = layout.row()
+                sub = row.row(align=True)
+                sub.prop(tool_settings, "use_gpencil_draw_onback", text="", icon='MOD_OPACITY')
+                sub.separator(factor=0.4)
+                sub.prop(tool_settings, "use_gpencil_automerge_strokes", text="")
+                sub.separator(factor=0.4)
+                sub.prop(tool_settings, "use_gpencil_weight_data_add", text="", icon='WPAINT_HLT')
+                sub.separator(factor=0.4)
+                sub.prop(tool_settings, "use_gpencil_draw_additive", text="", icon='FREEZE')
+
+            # Select mode for Editing
+            if object_mode == 'EDIT':
+                row = layout.row(align=True)
+                row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='POINT')
+                row.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='STROKE')
+
+                subrow = row.row(align=True)
+                # ??? subrow.enabled = not gpd.use_curve_edit
+                subrow.prop_enum(tool_settings, "gpencil_selectmode_edit", text="", value='SEGMENT')
+
+                # Curve edit sub-mode.
+                # ??? row = layout.row(align=True)
+                # ??? row.prop(gpd, "use_curve_edit", text="", icon='IPO_BEZIER')
+                # ??? sub = row.row(align=True)
+                # ??? sub.active = gpd.use_curve_edit
+                # ??? sub.popover(
+                # ???     panel="VIEW3D_PT_gpencil_curve_edit",
+                # ???     text="Curve Editing",
+                # ??? )
+
+            # Select mode for Sculpt
+            if object_mode == 'SCULPT':
+                row = layout.row(align=True)
+                row.prop(tool_settings, "use_gpencil_select_mask_point", text="")
+                row.prop(tool_settings, "use_gpencil_select_mask_stroke", text="")
+                row.prop(tool_settings, "use_gpencil_select_mask_segment", text="")
+
+            # ??? # Select mode for Vertex Paint
+            # ??? if gpd.is_stroke_vertex_mode:
+            # ???     row = layout.row(align=True)
+            # ???     row.prop(tool_settings, "use_gpencil_vertex_select_mask_point", text="")
+            # ???     row.prop(tool_settings, "use_gpencil_vertex_select_mask_stroke", text="")
+            # ???     row.prop(tool_settings, "use_gpencil_vertex_select_mask_segment", text="")
+
+            # ??? if gpd.is_stroke_paint_mode:
+            # ???     row = layout.row(align=True)
+            # ???     row.prop(gpd, "use_multiedit", text="", icon='GP_MULTIFRAME_EDITING')
+
+            # ??? if (
+            # ???         gpd.use_stroke_edit_mode or
+            # ???         gpd.is_stroke_sculpt_mode or
+            # ???         gpd.is_stroke_weight_mode or
+            # ???         gpd.is_stroke_vertex_mode
+            # ??? ):
+            # ???     row = layout.row(align=True)
+            # ???     row.prop(gpd, "use_multiedit", text="", icon='GP_MULTIFRAME_EDITING')
+
+            # ???     sub = row.row(align=True)
+            # ???     sub.enabled = gpd.use_multiedit
+            # ???     sub.popover(
+            # ???         panel="VIEW3D_PT_gpencil_multi_frame",
+            # ???         text="Multiframe",
+            # ???     )
+
         overlay = view.overlay
 
         VIEW3D_MT_editor_menus.draw_collapsible(context, layout)
@@ -1158,7 +1225,7 @@ class VIEW3D_MT_editor_menus(Menu):
         mode_string = context.mode
         edit_object = context.edit_object
         gp_edit = obj and obj.mode in {
-            'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL',
+            'EDIT_GPENCIL', 'PAINT_GPENCIL', 'SCULPT_GPENCIL', 'SCULPT_GREASE_PENCIL', 'WEIGHT_GPENCIL', 'VERTEX_GPENCIL',
         }
         tool_settings = context.tool_settings
 
@@ -1166,18 +1233,11 @@ class VIEW3D_MT_editor_menus(Menu):
 
         # Select Menu
         if gp_edit:
-            if mode_string not in {'PAINT_GPENCIL', 'WEIGHT_GPENCIL'}:
-                if (
-                        mode_string == 'SCULPT_GPENCIL' and
-                        (tool_settings.use_gpencil_select_mask_point or
-                         tool_settings.use_gpencil_select_mask_stroke or
-                         tool_settings.use_gpencil_select_mask_segment)
-                ):
-                    layout.menu("VIEW3D_MT_select_edit_gpencil")
-                elif mode_string == 'EDIT_GPENCIL':
-                    layout.menu("VIEW3D_MT_select_edit_gpencil")
-                elif mode_string == 'VERTEX_GPENCIL':
-                    layout.menu("VIEW3D_MT_select_edit_gpencil")
+            use_gpencil_masking = (tool_settings.use_gpencil_select_mask_point or
+                                   tool_settings.use_gpencil_select_mask_stroke or
+                                   tool_settings.use_gpencil_select_mask_segment)
+            if mode_string in {'EDIT_GPENCIL', 'VERTEX_GPENCIL'} or (mode_string in {'SCULPT_GPENCIL', 'SCULPT_GREASE_PENCIL'} and use_gpencil_masking):
+                layout.menu("VIEW3D_MT_select_edit_gpencil")
         elif mode_string in {'PAINT_WEIGHT', 'PAINT_VERTEX', 'PAINT_TEXTURE'}:
             if obj.type == 'MESH':
                 mesh = obj.data

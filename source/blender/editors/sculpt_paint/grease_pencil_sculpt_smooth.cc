@@ -9,6 +9,7 @@
 #include "BKE_grease_pencil.hh"
 #include "BKE_paint.hh"
 
+#include "BLI_virtual_array.hh"
 #include "DNA_brush_enums.h"
 
 #include "GEO_smooth_curves.hh"
@@ -30,6 +31,7 @@ class SmoothOperation : public GreasePencilStrokeOperationCommon {
                                   bke::greasepencil::Drawing &drawing,
                                   int frame_number,
                                   const ed::greasepencil::DrawingPlacement &placement,
+                                  const IndexMask &point_selection,
                                   Span<float2> view_positions,
                                   const InputSample &extension_sample) override;
 };
@@ -39,6 +41,7 @@ bool SmoothOperation::on_stroke_extended_drawing(
     bke::greasepencil::Drawing &drawing,
     int /*frame_number*/,
     const ed::greasepencil::DrawingPlacement & /*placement*/,
+    const IndexMask &point_selection,
     Span<float2> view_positions,
     const InputSample &extension_sample)
 {
@@ -49,22 +52,24 @@ bool SmoothOperation::on_stroke_extended_drawing(
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   const OffsetIndices points_by_curve = curves.points_by_curve();
-  const VArray<bool> point_selection = VArray<bool>::ForSingle(true, curves.points_num());
   const VArray<bool> cyclic = curves.cyclic();
   const int iterations = 2;
 
   const VArray<float> influences = VArray<float>::ForFunc(
-      view_positions.size(), [&](const int64_t index) {
+      view_positions.size(), [&](const int64_t point_) {
         return brush_influence(
-            *CTX_data_scene(&C), brush, view_positions[index], extension_sample);
+            *CTX_data_scene(&C), brush, view_positions[point_], extension_sample);
       });
+  Array<bool> selection_array(curves.points_num());
+  point_selection.to_bools(selection_array);
+  const VArray<bool> selection_varray = VArray<bool>::ForSpan(selection_array);
 
   bool changed = false;
   if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_POSITION) {
     MutableSpan<float3> positions = curves.positions_for_write();
     geometry::smooth_curve_attribute(curves.curves_range(),
                                      points_by_curve,
-                                     point_selection,
+                                     selection_varray,
                                      cyclic,
                                      iterations,
                                      influences,
@@ -78,7 +83,7 @@ bool SmoothOperation::on_stroke_extended_drawing(
     MutableSpan<float> opacities = drawing.opacities_for_write();
     geometry::smooth_curve_attribute(curves.curves_range(),
                                      points_by_curve,
-                                     point_selection,
+                                     selection_varray,
                                      cyclic,
                                      iterations,
                                      influences,
@@ -91,7 +96,7 @@ bool SmoothOperation::on_stroke_extended_drawing(
     const MutableSpan<float> radii = drawing.radii_for_write();
     geometry::smooth_curve_attribute(curves.curves_range(),
                                      points_by_curve,
-                                     point_selection,
+                                     selection_varray,
                                      cyclic,
                                      iterations,
                                      influences,
@@ -107,7 +112,7 @@ bool SmoothOperation::on_stroke_extended_drawing(
         "rotation", bke::AttrDomain::Point);
     geometry::smooth_curve_attribute(curves.curves_range(),
                                      points_by_curve,
-                                     point_selection,
+                                     selection_varray,
                                      cyclic,
                                      iterations,
                                      influences,

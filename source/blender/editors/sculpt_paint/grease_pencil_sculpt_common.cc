@@ -2,6 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "BKE_attribute.hh"
 #include "BLI_hash.h"
 
 #include "BKE_brush.hh"
@@ -95,8 +96,8 @@ void GreasePencilStrokeOperationCommon::on_stroke_begin(const bContext &C,
 static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
                              const bContext &C,
                              const ARegion &region,
-                             const Object &ob_orig,
-                             const Object &ob_eval,
+                             Object &ob_orig,
+                             Object &ob_eval,
                              const bke::greasepencil::Layer &layer,
                              const int layer_index,
                              const int frame_number,
@@ -106,8 +107,19 @@ static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
   const Scene &scene = *CTX_data_scene(&C);
   const View3D &view3d = *CTX_wm_view3d(&C);
   const ed::greasepencil::DrawingPlacement placement(scene, region, view3d, ob_eval, layer);
+  const bool is_masking = GPENCIL_ANY_SCULPT_MASK(
+      eGP_Sculpt_SelectMaskFlag(scene.toolsettings->gpencil_selectmode_sculpt));
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
+
+  IndexMaskMemory selection_memory;
+  const IndexMask selection = (is_masking ?
+                                   ed::greasepencil::retrieve_editable_and_selected_points(
+                                       ob_eval, drawing, selection_memory) :
+                                   curves.points_range());
+  if (selection.is_empty()) {
+    return false;
+  }
 
   /* Evaluated geometry. */
   bke::crazyspace::GeometryDeformation deformation =
@@ -117,18 +129,16 @@ static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
   /* Compute screen space positions. */
   const float4x4 transform = layer.to_world_space(ob_eval);
   Array<float2> screen_space_positions(curves.points_num());
-  threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange points) {
-    for (const int point_i : points) {
-      ED_view3d_project_float_global(
-          &region,
-          math::transform_point(transform, deformation.positions[point_i]),
-          screen_space_positions[point_i],
-          V3D_PROJ_TEST_NOP);
-    }
+  selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
+    ED_view3d_project_float_global(
+        &region,
+        math::transform_point(transform, deformation.positions[point_i]),
+        screen_space_positions[point_i],
+        V3D_PROJ_TEST_NOP);
   });
 
   return op.on_stroke_extended_drawing(
-      C, drawing, frame_number, placement, screen_space_positions, extension_sample);
+      C, drawing, frame_number, placement, selection, screen_space_positions, extension_sample);
 }
 
 void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,
@@ -142,7 +152,7 @@ void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,
   const Scene &scene = *CTX_data_scene(&C);
   const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
   Object &ob_orig = *CTX_data_active_object(&C);
-  const Object &ob_eval = *DEG_get_evaluated_object(&depsgraph, &ob_orig);
+  Object &ob_eval = *DEG_get_evaluated_object(&depsgraph, &ob_orig);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
 
   Paint &paint = *BKE_paint_get_active_from_context(&C);
