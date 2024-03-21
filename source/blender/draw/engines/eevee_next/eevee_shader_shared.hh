@@ -743,6 +743,11 @@ static inline bool is_area_light(eLightType type)
   return type >= LIGHT_RECT;
 }
 
+static inline bool is_point_light(eLightType type)
+{
+  return type >= LIGHT_OMNI_SPHERE && type <= LIGHT_SPOT_DISK;
+}
+
 static inline bool is_spot_light(eLightType type)
 {
   return type == LIGHT_SPOT_SPHERE || type == LIGHT_SPOT_DISK;
@@ -755,7 +760,7 @@ static inline bool is_sphere_light(eLightType type)
 
 static inline bool is_oriented_disk_light(eLightType type)
 {
-  return type == LIGHT_OMNI_DISK || type == LIGHT_SPOT_DISK;
+  return type == LIGHT_SPOT_DISK || type == LIGHT_OMNI_DISK;
 }
 
 static inline bool is_sun_light(eLightType type)
@@ -991,7 +996,7 @@ namespace do_not_use {
 static inline LightSpotData light_spot_data_get(LightData light)
 {
   LightSpotData data;
-  SAFE_BEGIN(is_spot_light(light.type) || is_sphere_light(light.type))
+  SAFE_BEGIN(is_spot_light(light.type) || is_point_light(light.type))
   SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
