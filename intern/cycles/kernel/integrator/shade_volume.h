@@ -279,8 +279,8 @@ ccl_device float volume_equiangular_sample(ccl_private const Ray *ccl_restrict r
     *pdf = 0.0f;
     return 0.0f;
   }
-  const float tmin = coeffs.t_range[0];
-  const float tmax = coeffs.t_range[1];
+  const float tmin = coeffs.t_range.x;
+  const float tmax = coeffs.t_range.y;
   const float theta_a = atan2f(tmin - delta, D);
   const float theta_b = atan2f(tmax - delta, D);
   const float t_ = D * tanf((xi * theta_b) + (1 - xi) * theta_a);
@@ -303,8 +303,8 @@ ccl_device float volume_equiangular_pdf(ccl_private const Ray *ccl_restrict ray,
     return 0.0f;
   }
 
-  const float tmin = coeffs.t_range[0];
-  const float tmax = coeffs.t_range[1];
+  const float tmin = coeffs.t_range.x;
+  const float tmax = coeffs.t_range.y;
   const float t_ = sample_t - delta;
 
   const float theta_a = atan2f(tmin - delta, D);
