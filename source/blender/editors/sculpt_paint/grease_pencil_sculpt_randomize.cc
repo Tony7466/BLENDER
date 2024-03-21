@@ -23,9 +23,6 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-/* Cut-off value below which changes are ignored. */
-static const float influence_threshold = 0.001f;
-
 /* Use a hash to generate random numbers. */
 static float hash_rng(unsigned int seed1, unsigned int seed2, int index)
 {
@@ -106,7 +103,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(
     point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
       const float2 &co = view_positions[point_i];
       const float influence = brush_influence(scene, brush, co, extension_sample);
-      if (influence < influence_threshold) {
+      if (influence <= 0.0f) {
         return;
       }
       const float noise = 2.0f * hash_rng(seed, 5678, point_i) - 1.0f;
@@ -121,7 +118,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(
     point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
       const float2 &co = view_positions[point_i];
       const float influence = brush_influence(scene, brush, co, extension_sample);
-      if (influence < influence_threshold) {
+      if (influence <= 0.0f) {
         return;
       }
       const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
@@ -134,7 +131,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(
     point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
       const float2 &co = view_positions[point_i];
       const float influence = brush_influence(scene, brush, co, extension_sample);
-      if (influence < influence_threshold) {
+      if (influence <= 0.0f) {
         return;
       }
       const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
@@ -150,7 +147,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(
     point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
       const float2 &co = view_positions[point_i];
       const float influence = brush_influence(scene, brush, co, extension_sample);
-      if (influence < influence_threshold) {
+      if (influence <= 0.0f) {
         return;
       }
       const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;

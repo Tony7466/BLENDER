@@ -48,7 +48,7 @@ bool ThicknessOperation::on_stroke_extended_drawing(
 {
   Paint &paint = *BKE_paint_get_active_from_context(&C);
   const Brush &brush = *BKE_paint_brush(&paint);
-  const bool invert = brush_inverted(brush, this->stroke_mode);
+  const bool invert = is_brush_inverted(brush, this->stroke_mode);
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   BLI_assert(view_positions.size() == curves.points_num());
