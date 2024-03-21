@@ -159,7 +159,7 @@ float shadow_punctual_footprint_ratio(LightData light,
   /* Apply resolution ratio. */
   footprint_ratio *= tilemap_projection_ratio;
   /* Take the frustum padding into account. */
-  footprint_ratio *= light.spot.clip_side / orderedIntBitsToFloat(light.clip_near);
+  footprint_ratio *= light.local.clip_side / orderedIntBitsToFloat(light.clip_near);
   return footprint_ratio;
 }
 
@@ -282,7 +282,7 @@ int shadow_punctual_face_index_get(vec3 lL)
 ShadowCoordinates shadow_punctual_coordinates(LightData light, vec3 lP, int face_id)
 {
   float clip_near = intBitsToFloat(light.clip_near);
-  float clip_side = light.spot.clip_side;
+  float clip_side = light.local.clip_side;
 
   ShadowCoordinates ret;
   ret.tilemap_index = light.tilemap_index + face_id;

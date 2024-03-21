@@ -91,13 +91,13 @@ void shadow_tag_usage_tilemap_punctual(
 
   vec3 lP = light_world_to_local(light, P - light._position);
   float dist_to_light = max(length(lP) - radius, 1e-5);
-  if (dist_to_light > light.spot.influence_radius_max) {
+  if (dist_to_light > light.local.influence_radius_max) {
     return;
   }
   if (is_spot_light(light.type)) {
     /* Early out if out of cone. */
     float angle_tan = length(lP.xy / dist_to_light);
-    if (angle_tan > light.spot.spot_tan) {
+    if (angle_tan > light_spot_data_get(light).spot_tan) {
       return;
     }
   }
@@ -109,7 +109,7 @@ void shadow_tag_usage_tilemap_punctual(
   }
 
   /* TODO(fclem): 3D shift for jittered soft shadows. */
-  lP += vec3(0.0, 0.0, -light.spot.shadow_projection_shift);
+  lP += vec3(0.0, 0.0, -light.local.shadow_projection_shift);
 
   float footprint_ratio = shadow_punctual_footprint_ratio(
       light, P, drw_view_is_perspective(), dist_to_cam, tilemap_projection_ratio);

@@ -1016,6 +1016,7 @@ static inline LightSunData light_sun_data_get(LightData light)
 
 #if defined(GPU_BACKEND_METAL) || defined(__cplusplus)
 /* Metal supports unions. Avoid making codegen more difficult for the compiler. */
+#  define light_spot_data_get(light) light.spot
 #  define light_area_data_get(light) light.area
 #  define light_sun_data_get(light) light.sun
 #endif
@@ -1027,7 +1028,7 @@ static inline int light_tilemap_max_get(LightData light)
     return light.tilemap_index +
            (light_sun_data_get(light).clipmap_lod_max - light_sun_data_get(light).clipmap_lod_min);
   }
-  return light.tilemap_index + light.spot.tilemaps_count - 1;
+  return light.tilemap_index + light.local.tilemaps_count - 1;
 }
 
 /** \} */

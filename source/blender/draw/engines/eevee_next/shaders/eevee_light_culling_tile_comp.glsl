@@ -152,7 +152,7 @@ void main()
     vec3 v_right = drw_normal_world_to_view(light._right);
     vec3 v_up = drw_normal_world_to_view(light._up);
     vec3 v_back = drw_normal_world_to_view(light._back);
-    float radius = light.spot.influence_radius_max;
+    float radius = light.local.influence_radius_max;
 
     Sphere sphere = shape_sphere(vP, radius);
     bool intersect_tile = intersect(tile, sphere);
@@ -160,13 +160,14 @@ void main()
     switch (light.type) {
       case LIGHT_SPOT_SPHERE:
       case LIGHT_SPOT_DISK:
+        LightSpotData spot = light_spot_data_get(light);
         /* Only for < ~170 degree Cone due to plane extraction precision. */
-        if (light.spot.spot_tan < 10.0) {
+        if (spot.spot_tan < 10.0) {
           Pyramid pyramid = shape_pyramid_non_oblique(
               vP,
               vP - v_back * radius,
-              v_right * radius * light.spot.spot_tan / light.spot.spot_size_inv.x,
-              v_up * radius * light.spot.spot_tan / light.spot.spot_size_inv.y);
+              v_right * radius * spot.spot_tan / spot.spot_size_inv.x,
+              v_up * radius * spot.spot_tan / spot.spot_size_inv.y);
           intersect_tile = intersect_tile && intersect(tile, pyramid);
           break;
         }

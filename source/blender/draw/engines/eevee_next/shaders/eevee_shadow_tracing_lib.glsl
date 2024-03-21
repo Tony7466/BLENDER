@@ -299,17 +299,17 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
 
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
-  float clip_side = light.spot.clip_side;
+  float clip_side = light.local.clip_side;
 
   /* TODO(fclem): 3D shift for jittered soft shadows. */
-  vec3 projection_origin = vec3(0.0, 0.0, -light.spot.shadow_projection_shift);
+  vec3 projection_origin = vec3(0.0, 0.0, -light.local.shadow_projection_shift);
   vec3 direction;
   if (is_area_light(light.type)) {
     random_2d *= light_area_data_get(light).size;
 
     vec3 point_on_light_shape = vec3(random_2d, 0.0);
     /* Progressively blend the shape back to the projection origin. */
-    point_on_light_shape = mix(-projection_origin, point_on_light_shape, light.spot.shadow_scale);
+    point_on_light_shape = mix(-projection_origin, point_on_light_shape, light.local.shadow_scale);
 
     direction = point_on_light_shape - lP;
     r_is_above_surface = dot(direction, lNg) > 0.0;
@@ -335,15 +335,15 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
     /* Disk rotated towards light vector. */
     vec3 right, up;
     make_orthonormal_basis(L, right, up);
+
+    float shape_radius = light_spot_data_get(light).radius;
     if (is_sphere_light(light.type)) {
       /* FIXME(weizhen): this is not well-defined when `dist < light.spot.radius`. */
-      random_2d *= light_sphere_disk_radius(light.spot.radius, dist);
+      shape_radius = light_sphere_disk_radius(shape_radius, dist);
     }
-    else {
-      random_2d *= light.spot.radius;
-    }
+    random_2d *= shape_radius;
 
-    random_2d *= light.spot.shadow_scale;
+    random_2d *= light.local.shadow_scale;
     vec3 point_on_light_shape = right * random_2d.x + up * random_2d.y;
 
     direction = point_on_light_shape - lP;
@@ -359,7 +359,7 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
 #endif
 
     /* Clip the ray to not cross the light shape. */
-    float clip_distance = light.spot.radius;
+    float clip_distance = light_spot_data_get(light).radius;
     direction *= saturate((dist - clip_distance) / dist);
   }
 

@@ -37,7 +37,7 @@ void main()
     }
     vec3 P = light_buf[index]._position;
     /* TODO(fclem): Could have better bounds for spot and area lights. */
-    float radius = light_buf[index].spot.influence_radius_max;
+    float radius = light_buf[index].local.influence_radius_max;
     float z_dist = dot(drw_view_forward(), P) - dot(drw_view_forward(), drw_view_position());
     int z_min = culling_z_to_zbin(
         light_cull_buf.zbin_scale, light_cull_buf.zbin_bias, z_dist + radius);
