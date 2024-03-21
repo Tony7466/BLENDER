@@ -2251,8 +2251,11 @@ class USERPREF_PT_addons(AddOnPanel, Panel):
 
         prefs = context.preferences
 
-        use_extension_repos = prefs.experimental.use_extension_repos
-        if use_extension_repos and self.is_extended():
+        if (
+                prefs.view.show_developer_ui and
+                prefs.experimental.use_extension_repos and
+                self.is_extended()
+        ):
             # Rely on the draw function being appended to by the extensions add-on.
             return
 
@@ -2695,6 +2698,7 @@ class USERPREF_PT_experimental_prototypes(ExperimentalPanel, Panel):
                 ({"property": "use_new_matrix_socket"}, ("blender/blender/issues/116067", "Matrix Socket")),
                 ({"property": "enable_overlay_next"}, ("blender/blender/issues/102179", "#102179")),
                 ({"property": "use_extension_repos"}, ("/blender/blender/issues/117286", "#117286")),
+                ({"property": "use_extension_utils"}, ("/blender/blender/issues/117286", "#117286")),
             ),
         )
 
