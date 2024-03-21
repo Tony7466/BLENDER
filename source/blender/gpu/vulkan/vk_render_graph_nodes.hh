@@ -31,6 +31,8 @@ class VKRenderGraphNodes {
       FILL_BUFFER,
       COPY_BUFFER,
       COPY_IMAGE,
+      COPY_IMAGE_TO_BUFFER,
+      COPY_BUFFER_TO_IMAGE,
       DISPATCH,
     };
 
@@ -59,6 +61,18 @@ class VKRenderGraphNodes {
         VkImage dst_image;
         VkImageCopy region;
       } copy_image;
+
+      struct {
+        VkImage src_image;
+        VkBuffer dst_buffer;
+        VkBufferImageCopy region;
+      } copy_image_to_buffer;
+
+      struct {
+        VkBuffer src_buffer;
+        VkImage dst_image;
+        VkBufferImageCopy region;
+      } copy_buffer_to_image;
 
       VKDispatchNode dispatch;
     };
@@ -99,6 +113,12 @@ class VKRenderGraphNodes {
                                   VkBuffer dst_buffer,
                                   const VkBufferCopy &region);
   NodeHandle add_copy_image_node(VkImage src_image, VkImage dst_image, const VkImageCopy &region);
+  NodeHandle add_copy_buffer_to_image_node(VkBuffer src_buffer,
+                                           VkImage dst_image,
+                                           const VkBufferImageCopy &region);
+  NodeHandle add_copy_image_to_buffer_node(VkImage src_image,
+                                           VkBuffer dst_buffer,
+                                           const VkBufferImageCopy &region);
   NodeHandle add_dispatch_node(const VKDispatchInfo &dispatch_info);
 
   void add_read_resource(NodeHandle handle,

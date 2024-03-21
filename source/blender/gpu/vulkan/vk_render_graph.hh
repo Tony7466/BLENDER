@@ -77,18 +77,19 @@ class VKRenderGraph : public NonCopyable {
                             VkImageSubresourceRange &vk_image_subresource_range);
   void add_fill_buffer_node(VkBuffer vk_buffer, VkDeviceSize size, uint32_t data_);
   void add_copy_buffer_node(VkBuffer src_buffer, VkBuffer dst_buffer, const VkBufferCopy &region);
+  void add_copy_buffer_to_image_node(VkBuffer src_buffer,
+                                     VkImage dst_image,
+                                     const VkBufferImageCopy &region);
   void add_copy_image_node(VkImage src_image, VkImage dst_image, const VkImageCopy &region);
+  void add_copy_image_to_buffer_node(VkImage src_image,
+                                     VkBuffer dst_buffer,
+                                     const VkBufferImageCopy &region);
   void add_dispatch_node(const VKDispatchInfo &dispatch_info);
 
   /**
    * Submit the commands to readback the given vk_buffer to the command queue.
    */
   void submit_buffer_for_read_back(VkBuffer vk_buffer);
-
-  /**
-   * Submit the commands to readback the given vk_image to the command queue.=
-   */
-  void submit_image_for_read_back(VkImage vk_image);
 
   /**
    * Submit the commands to present the given vk_image to the command queue.

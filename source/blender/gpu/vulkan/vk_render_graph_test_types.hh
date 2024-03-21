@@ -243,10 +243,20 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                             uint32_t region_count,
                             const VkBufferImageCopy *p_regions) override
   {
-    UNUSED_VARS(src_buffer, dst_image, dst_image_layout, region_count, p_regions);
     BLI_assert_msg(is_recording_,
                    "Command is added to command buffer, which isn't in recording state.");
-    BLI_assert_unreachable();
+    std::stringstream ss;
+    ss << "copy_buffer_to_image(";
+    ss << "src_buffer=" << src_buffer;
+    ss << ", dst_image=" << dst_image;
+    ss << ", src_image_layout=" << to_string(dst_image_layout);
+    ss << "\n";
+    for (const VkBufferImageCopy &region : Span<const VkBufferImageCopy>(p_regions, region_count))
+    {
+      ss << " - region(" << to_string(region, 1) << ")\n";
+    }
+    ss << ")";
+    log_.append(ss.str());
   }
 
   void copy_image_to_buffer(VkImage src_image,
@@ -255,10 +265,20 @@ class CommandBufferLog : public VKRenderGraphCommandBuffer {
                             uint32_t region_count,
                             const VkBufferImageCopy *p_regions) override
   {
-    UNUSED_VARS(src_image, src_image_layout, dst_buffer, region_count, p_regions);
     BLI_assert_msg(is_recording_,
                    "Command is added to command buffer, which isn't in recording state.");
-    BLI_assert_unreachable();
+    std::stringstream ss;
+    ss << "copy_image_to_buffer(";
+    ss << "src_image=" << src_image;
+    ss << ", src_image_layout=" << to_string(src_image_layout);
+    ss << ", dst_buffer=" << dst_buffer;
+    ss << "\n";
+    for (const VkBufferImageCopy &region : Span<const VkBufferImageCopy>(p_regions, region_count))
+    {
+      ss << " - region(" << to_string(region, 1) << ")\n";
+    }
+    ss << ")";
+    log_.append(ss.str());
   }
 
   void fill_buffer(VkBuffer dst_buffer,

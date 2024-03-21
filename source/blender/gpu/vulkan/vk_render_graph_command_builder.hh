@@ -90,9 +90,15 @@ class VKRenderGraphCommandBuilder {
   void build_node_copy_buffer(VKRenderGraph &render_graph,
                               NodeHandle node_handle,
                               const VKRenderGraphNodes::Node &node);
+  void build_node_copy_buffer_to_image(VKRenderGraph &render_graph,
+                                       NodeHandle node_handle,
+                                       const VKRenderGraphNodes::Node &node);
   void build_node_copy_image(VKRenderGraph &render_graph,
                              NodeHandle node_handle,
                              const VKRenderGraphNodes::Node &node);
+  void build_node_copy_image_to_buffer(VKRenderGraph &render_graph,
+                                       NodeHandle node_handle,
+                                       const VKRenderGraphNodes::Node &node);
   void build_node_dispatch(VKRenderGraph &render_graph,
                            NodeHandle node_handle,
                            const VKRenderGraphNodes::Node &node);

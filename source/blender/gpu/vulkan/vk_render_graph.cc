@@ -98,6 +98,35 @@ void VKRenderGraph::add_copy_image_node(VkImage src_image,
       handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 }
 
+void VKRenderGraph::add_copy_buffer_to_image_node(VkBuffer src_buffer,
+                                                  VkImage dst_image,
+                                                  const VkBufferImageCopy &region)
+{
+  std::scoped_lock lock(mutex_);
+  NodeHandle handle = nodes_.add_copy_buffer_to_image_node(src_buffer, dst_image, region);
+
+  VersionedResource src_resource = resources_.get_buffer(src_buffer);
+  VersionedResource dst_resource = resources_.get_image_and_increase_version(dst_image);
+  nodes_.add_read_resource(
+      handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
+  nodes_.add_write_resource(
+      handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+}
+void VKRenderGraph::add_copy_image_to_buffer_node(VkImage src_image,
+                                                  VkBuffer dst_buffer,
+                                                  const VkBufferImageCopy &region)
+{
+  std::scoped_lock lock(mutex_);
+  NodeHandle handle = nodes_.add_copy_image_to_buffer_node(src_image, dst_buffer, region);
+
+  VersionedResource src_resource = resources_.get_image(src_image);
+  VersionedResource dst_resource = resources_.get_buffer_and_increase_version(dst_buffer);
+  nodes_.add_read_resource(
+      handle, src_resource, VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  nodes_.add_write_resource(
+      handle, dst_resource, VK_ACCESS_TRANSFER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED);
+}
+
 void VKRenderGraph::add_copy_buffer_node(VkBuffer src_buffer,
                                          VkBuffer dst_buffer,
                                          const VkBufferCopy &region)
@@ -190,18 +219,6 @@ void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
   command_buffer_->wait_for_cpu_synchronization();
 }
 
-void VKRenderGraph::submit_image_for_read_back(VkImage vk_image)
-{
-  std::scoped_lock lock(mutex_);
-  command_builder_.reset(*this);
-  command_buffer_->begin_recording();
-  command_builder_.build_image(*this, vk_image);
-  // TODO: add sync?
-  command_buffer_->end_recording();
-  command_buffer_->submit_with_cpu_synchronization();
-  command_builder_.update_state_after_submission(*this);
-  command_buffer_->wait_for_cpu_synchronization();
-}
 
 /** \} */
 
