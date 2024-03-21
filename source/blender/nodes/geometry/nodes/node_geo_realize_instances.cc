@@ -44,7 +44,7 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   static auto depth_override = mf::build::SI2_SO<int, bool, int>(
       "depth_override",
-      [](int value, bool realize) { return realize ? -1 : value; },
+      [](int value, bool realize) { return realize ? -1 : std::max(value, 0); },
       mf::build::exec_presets::AllSpanOrSingle());
 
   static auto selection_override = mf::build::SI2_SO<int, bool, bool>(
