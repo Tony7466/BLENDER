@@ -111,6 +111,7 @@ static void blo_update_defaults_screen(bScreen *screen,
     return;
   }
 
+  printf("Versioning workspace: %s\n", workspace_name);
   LISTBASE_FOREACH (ScrArea *, area, &screen->areabase) {
     LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
       /* Remove all stored panels, we want to use defaults
@@ -200,7 +201,7 @@ static void blo_update_defaults_screen(bScreen *screen,
       /* Disable Curve Normals. */
       v3d->overlay.edit_flag &= ~V3D_OVERLAY_EDIT_CU_NORMALS;
       v3d->overlay.normals_constant_screen_size = 7.0f;
-      /* Level out the viewport camera rotation (see: #113751) */
+      /* Level out the 3D Viewport camera rotation (see: #113751) */
       LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
         if (region->regiontype == RGN_TYPE_WINDOW) {
           RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
