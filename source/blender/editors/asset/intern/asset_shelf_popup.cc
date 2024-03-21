@@ -79,13 +79,13 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
   void build_tree() override
   {
     if (catalog_tree_.is_empty()) {
-      auto &item = add_tree_item<ui::BasicTreeViewItem>(RPT_("No applicable assets found"),
-                                                        ICON_INFO);
+      auto &item = this->add_tree_item<ui::BasicTreeViewItem>(RPT_("No applicable assets found"),
+                                                              ICON_INFO);
       item.disable_interaction();
       return;
     }
 
-    auto &all_item = add_tree_item<ui::BasicTreeViewItem>(IFACE_("All"));
+    auto &all_item = this->add_tree_item<ui::BasicTreeViewItem>(IFACE_("All"));
     all_item.set_on_activate_fn([this](bContext &C, ui::BasicTreeViewItem &) {
       settings_set_all_catalog_active(shelf_.settings);
       send_redraw_notifier(C);
@@ -94,11 +94,11 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
         [this]() { return settings_is_all_catalog_active(shelf_.settings); });
     all_item.uncollapse_by_default();
 
-    catalog_tree_.foreach_root_item(
-        [&, this](const asset_system::AssetCatalogTreeItem &catalog_item) {
-          ui::BasicTreeViewItem &item = build_catalog_items_recursive(all_item, catalog_item);
-          item.uncollapse_by_default();
-        });
+    catalog_tree_.foreach_root_item([&, this](
+                                        const asset_system::AssetCatalogTreeItem &catalog_item) {
+      ui::BasicTreeViewItem &item = this->build_catalog_items_recursive(all_item, catalog_item);
+      item.uncollapse_by_default();
+    });
   }
 
   ui::BasicTreeViewItem &build_catalog_items_recursive(
