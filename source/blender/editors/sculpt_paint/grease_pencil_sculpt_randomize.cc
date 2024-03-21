@@ -23,6 +23,9 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
+/* Cut-off value below which changes are ignored. */
+static const float influence_threshold = 0.001f;
+
 /* Use a hash to generate random numbers. */
 static float hash_rng(unsigned int seed1, unsigned int seed2, int index)
 {
@@ -102,7 +105,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(
       for (const int point_i : range) {
         const float2 &co = view_positions[point_i];
         const float influence = brush_influence(scene, brush, co, extension_sample);
-        if (influence < 0.001f) {
+        if (influence < influence_threshold) {
           continue;
         }
         const float noise = 2.0f * hash_rng(seed, 5678, point_i) - 1.0f;
@@ -114,46 +117,53 @@ bool RandomizeOperation::on_stroke_extended_drawing(
     changed = true;
   }
   if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_STRENGTH) {
-    // MutableSpan<float> opacities = drawing.opacities_for_write();
-    // geometry::smooth_curve_attribute(curves.curves_range(),
-    //                                  points_by_curve,
-    //                                  point_selection,
-    //                                  cyclic,
-    //                                  iterations,
-    //                                  influences,
-    //                                  true,
-    //                                  false,
-    //                                  opacities);
+    MutableSpan<float> opacities = drawing.opacities_for_write();
+    threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
+      for (const int point_i : range) {
+        const float2 &co = view_positions[point_i];
+        const float influence = brush_influence(scene, brush, co, extension_sample);
+        if (influence < influence_threshold) {
+          continue;
+        }
+        const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
+        opacities[point_i] = math::clamp(opacities[point_i] + influence * noise, 0.0f, 1.0f);
+      }
+    });
     changed = true;
   }
   if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_THICKNESS) {
-    // const MutableSpan<float> radii = drawing.radii_for_write();
-    // geometry::smooth_curve_attribute(curves.curves_range(),
-    //                                  points_by_curve,
-    //                                  point_selection,
-    //                                  cyclic,
-    //                                  iterations,
-    //                                  influences,
-    //                                  true,
-    //                                  false,
-    //                                  radii);
-    // curves.tag_radii_changed();
+    const MutableSpan<float> radii = drawing.radii_for_write();
+    threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
+      for (const int point_i : range) {
+        const float2 &co = view_positions[point_i];
+        const float influence = brush_influence(scene, brush, co, extension_sample);
+        if (influence < influence_threshold) {
+          continue;
+        }
+        const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
+        radii[point_i] = math::max(radii[point_i] + influence * noise * 0.001f, 0.0f);
+      }
+    });
+    curves.tag_radii_changed();
     changed = true;
   }
   if (sculpt_mode_flag & GP_SCULPT_FLAGMODE_APPLY_UV) {
     /* TODO stroke_u attribute not used yet. */
-    // bke::SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
-    //     "rotation", bke::AttrDomain::Point);
-    // geometry::smooth_curve_attribute(curves.curves_range(),
-    //                                  points_by_curve,
-    //                                  point_selection,
-    //                                  cyclic,
-    //                                  iterations,
-    //                                  influences,
-    //                                  true,
-    //                                  false,
-    //                                  rotations.span);
-    // rotations.finish();
+    bke::SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
+        "rotation", bke::AttrDomain::Point);
+    threading::parallel_for(curves.points_range(), 4096, [&](const IndexRange range) {
+      for (const int point_i : range) {
+        const float2 &co = view_positions[point_i];
+        const float influence = brush_influence(scene, brush, co, extension_sample);
+        if (influence < influence_threshold) {
+          continue;
+        }
+        const float noise = 2.0f * hash_rng(seed, 1212, point_i) - 1.0f;
+        rotations.span[point_i] = math::clamp(
+            rotations.span[point_i] + influence * noise, -float(M_PI_2), float(M_PI_2));
+      }
+    });
+    rotations.finish();
     changed = true;
   }
   return changed;
