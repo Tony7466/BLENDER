@@ -827,6 +827,7 @@ static void rna_Window_workspace_update(bContext *C, PointerRNA *ptr)
   if (new_workspace) {
     wmWindowManager *wm = CTX_wm_manager(C);
     WM_event_add_notifier_ex(wm, win, NC_SCREEN | ND_WORKSPACE_SET, new_workspace);
+    WM_event_add_notifier(C, NC_SPACE | ND_SPACE_INFO, nullptr);
     win->workspace_hook->temp_workspace_store = nullptr;
   }
 }
@@ -1340,12 +1341,17 @@ static int rna_operator_exec_cb(bContext *C, wmOperator *op)
 
   RNA_parameter_list_create(&list, &opr, func);
   RNA_parameter_set_lookup(&list, "context", &C);
-  op->type->rna_ext.call(C, &opr, func, &list);
+  const bool has_error = op->type->rna_ext.call(C, &opr, func, &list) == -1;
 
   RNA_parameter_get_lookup(&list, "result", &ret);
   result = *(int *)ret;
 
   RNA_parameter_list_free(&list);
+
+  if (UNLIKELY(has_error)) {
+    /* A modal handler may have been added, ensure this is removed, see: #113479. */
+    WM_event_remove_modal_handler_all(op, false);
+  }
 
   return result;
 }
@@ -1390,12 +1396,17 @@ static int rna_operator_invoke_cb(bContext *C, wmOperator *op, const wmEvent *ev
   RNA_parameter_list_create(&list, &opr, func);
   RNA_parameter_set_lookup(&list, "context", &C);
   RNA_parameter_set_lookup(&list, "event", &event);
-  op->type->rna_ext.call(C, &opr, func, &list);
+  const bool has_error = op->type->rna_ext.call(C, &opr, func, &list) == -1;
 
   RNA_parameter_get_lookup(&list, "result", &ret);
   result = *(int *)ret;
 
   RNA_parameter_list_free(&list);
+
+  if (UNLIKELY(has_error)) {
+    /* A modal handler may have been added, ensure this is removed, see: #113479. */
+    WM_event_remove_modal_handler_all(op, false);
+  }
 
   return result;
 }
@@ -1599,7 +1610,7 @@ static StructRNA *rna_Operator_register(Main *bmain,
   }
 
   /* XXX, this doubles up with the operator name #29666.
-   * for now just remove from dir(bpy.types) */
+   * for now just remove from `dir(bpy.types)`. */
 
   /* create a new operator type */
   dummy_ot.rna_ext.srna = RNA_def_struct_ptr(&BLENDER_RNA, dummy_ot.idname, &RNA_Operator);
@@ -1772,7 +1783,7 @@ static StructRNA *rna_MacroOperator_register(Main *bmain,
   }
 
   /* XXX, this doubles up with the operator name #29666.
-   * for now just remove from dir(bpy.types) */
+   * for now just remove from `dir(bpy.types)`. */
 
   /* create a new operator type */
   dummy_ot.rna_ext.srna = RNA_def_struct_ptr(&BLENDER_RNA, dummy_ot.idname, &RNA_Operator);

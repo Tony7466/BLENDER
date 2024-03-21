@@ -1594,14 +1594,15 @@ class CyclesPreferences(bpy.types.AddonPreferences):
         compute_device_type = self.get_compute_device_type()
 
         # We need non-CPU devices, used for rendering and supporting OIDN GPU denoising
-        for device in _cycles.available_devices(compute_device_type):
-            device_type = device[1]
-            if device_type == 'CPU':
-                continue
+        if compute_device_type != 'NONE':
+            for device in _cycles.available_devices(compute_device_type):
+                device_type = device[1]
+                if device_type == 'CPU':
+                    continue
 
-            has_device_oidn_support = device[5]
-            if has_device_oidn_support and self.find_existing_device_entry(device).use:
-                return True
+                has_device_oidn_support = device[5]
+                if has_device_oidn_support and self.find_existing_device_entry(device).use:
+                    return True
 
         return False
 
@@ -1655,7 +1656,7 @@ class CyclesPreferences(bpy.types.AddonPreferences):
                     col.label(text=rpt_("and Windows driver version %s or newer") % driver_version,
                               icon='BLANK1', translate=False)
                 elif sys.platform.startswith("linux"):
-                    driver_version = "XX.XX.26918.50"
+                    driver_version = "XX.XX.27642.38"
                     col.label(
                         text=rpt_("Requires Intel GPU with Xe-HPG architecture and"),
                         icon='BLANK1',

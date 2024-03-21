@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #pragma BLENDER_REQUIRE(common_shape_lib.glsl)
+#pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 
 /* ---------------------------------------------------------------------- */
 /** \name Tile-map data
@@ -106,7 +107,8 @@ ShadowTileData shadow_tile_load(usampler2D tilemaps_tx, ivec2 tile_co, int tilem
  * \a lP shading point position in light space, relative to the to camera position snapped to
  * the smallest clip-map level (`shadow_world_to_local(light, P) - light._position`).
  */
-int shadow_directional_level(LightData light, vec3 lP)
+
+float shadow_directional_level_fractional(LightData light, vec3 lP)
 {
   float lod;
   if (light.type == LIGHT_SUN) {
@@ -124,8 +126,39 @@ int shadow_directional_level(LightData light, vec3 lP)
     float lod_min_half_size = exp2(float(light.clipmap_lod_min - 1));
     lod = length(lP.xy) * narrowing / lod_min_half_size;
   }
-  int clipmap_lod = int(ceil(lod + light._clipmap_lod_bias));
-  return clamp(clipmap_lod, light.clipmap_lod_min, light.clipmap_lod_max);
+  float clipmap_lod = lod + light.lod_bias;
+  return clamp(clipmap_lod, float(light.clipmap_lod_min), float(light.clipmap_lod_max));
+}
+
+int shadow_directional_level(LightData light, vec3 lP)
+{
+  return int(ceil(shadow_directional_level_fractional(light, lP)));
+}
+
+/* How much a tilemap pixel covers a final image pixel. */
+float shadow_punctual_footprint_ratio(LightData light,
+                                      vec3 P,
+                                      bool is_perspective,
+                                      float dist_to_cam,
+                                      float tilemap_projection_ratio)
+{
+  /* We project a shadow map pixel (as a sphere for simplicity) to the receiver plane.
+   * We then reproject this sphere onto the camera screen and compare it to the film pixel size.
+   * This gives a good approximation of what LOD to select to get a somewhat uniform shadow map
+   * resolution in screen space. */
+
+  float dist_to_light = distance(P, light._position);
+  float footprint_ratio = dist_to_light;
+  /* Project the radius to the screen. 1 unit away from the camera the same way
+   * pixel_world_radius_inv was computed. Not needed in orthographic mode. */
+  if (is_perspective) {
+    footprint_ratio /= dist_to_cam;
+  }
+  /* Apply resolution ratio. */
+  footprint_ratio *= tilemap_projection_ratio;
+  /* Take the frustum padding into account. */
+  footprint_ratio *= light.clip_side / orderedIntBitsToFloat(light.clip_near);
+  return footprint_ratio;
 }
 
 struct ShadowCoordinates {
@@ -202,6 +235,24 @@ vec3 shadow_punctual_local_position_to_face_local(int face_id, vec3 lL)
       return vec3(lL.x, -lL.y, -lL.z);
     default:
       return lL;
+  }
+}
+
+vec3 shadow_punctual_face_local_to_local_position(int face_id, vec3 fL)
+{
+  switch (face_id) {
+    case 1:
+      return vec3(-fL.z, -fL.x, fL.y);
+    case 2:
+      return vec3(fL.z, fL.x, fL.y);
+    case 3:
+      return vec3(fL.x, -fL.z, fL.y);
+    case 4:
+      return vec3(-fL.x, fL.z, fL.y);
+    case 5:
+      return vec3(fL.x, -fL.y, -fL.z);
+    default:
+      return fL;
   }
 }
 

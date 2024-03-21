@@ -211,7 +211,7 @@ struct CameraData {
   float _pad1;
   float _pad2;
 
-  bool1 initialized;
+  bool32_t initialized;
 
 #ifdef __cplusplus
   /* Small constructor to allow detecting new buffers. */
@@ -262,10 +262,8 @@ struct FilmData {
   int2 extent;
   /** Offset to convert from Display space to Film space, in pixels. */
   int2 offset;
-  /** Size of the render buffers when rendering the main views, in pixels. */
+  /** Size of the render buffers including overscan when rendering the main views, in pixels. */
   int2 render_extent;
-  /** Offset to convert from Film space to Render space, in pixels. */
-  int2 render_offset;
   /**
    * Sub-pixel offset applied to the window matrix.
    * NOTE: In final film pixel unit.
@@ -276,8 +274,13 @@ struct FilmData {
   float2 subpixel_offset;
   /** Scaling factor to convert texel to uvs. */
   float2 extent_inv;
+  /**
+   * Number of border pixels on all sides inside the render_extent that do not contribute to the
+   * final image.
+   */
+  int overscan;
   /** Is true if history is valid and can be sampled. Bypass history to resets accumulation. */
-  bool1 use_history;
+  bool32_t use_history;
   /** Controlled by user in lookdev mode or by render settings. */
   float background_opacity;
   /** Output counts per type. */
@@ -305,7 +308,7 @@ struct FilmData {
   /** Storage type of the render-pass to be displayed. */
   ePassStorageType display_storage_type;
   /** True if we bypass the accumulation and directly output the accumulation buffer. */
-  bool1 display_only;
+  bool32_t display_only;
   /** Start of AOVs and number of aov. */
   int aov_color_id, aov_color_len;
   int aov_value_id, aov_value_len;
@@ -328,6 +331,7 @@ struct FilmData {
   /** Sum of the weights of all samples in the sample table. */
   float samples_weight_total;
   int _pad1;
+  int _pad2;
   FilmSample samples[FILM_PRECOMP_SAMPLE_MAX];
 };
 BLI_STATIC_ASSERT_ALIGN(FilmData, 16)
@@ -370,7 +374,7 @@ struct AOVsInfoData {
   /** Id of the AOV to be displayed (from the start of the AOV array). -1 for combined. */
   int display_id;
   /** True if the AOV to be displayed is from the value accumulation buffer. */
-  bool1 display_is_value;
+  bool32_t display_is_value;
 };
 BLI_STATIC_ASSERT_ALIGN(AOVsInfoData, 16)
 
@@ -426,7 +430,7 @@ struct VelocityGeometryIndex {
   /** Offset inside #VelocityGeometryBuf for each time-step. Indexed using eVelocityStep. */
   packed_int3 ofs;
   /** If true, compute deformation motion blur. */
-  bool1 do_deform;
+  bool32_t do_deform;
   /**
    * Length of data inside #VelocityGeometryBuf for each time-step.
    * Indexed using eVelocityStep.
@@ -793,8 +797,6 @@ struct LightData {
   float radius_squared;
   /** Spot angle tangent. */
   float spot_tan;
-  /** Reuse for directional LOD bias. */
-#define _clipmap_lod_bias spot_tan
 
   /** --- Shadow Data --- */
   /** Near clip distances. Float stored as int for atomic operations. */
@@ -807,8 +809,6 @@ struct LightData {
   int tilemap_index;
   /** Directional : Offset of the LOD min in LOD min tile units. */
   int2 clipmap_base_offset;
-  /** Number of step for shadow map tracing. */
-  int shadow_ray_step_count;
   /** Punctual: Other parts of the perspective matrix. */
   float clip_side;
   /** Punctual: Shift to apply to the light origin to get the shadow projection origin. */
@@ -817,7 +817,10 @@ struct LightData {
   float shadow_shape_scale_or_angle;
   /** Trace distance for directional lights. */
   float shadow_trace_distance;
-  float _pad2;
+  /* Radius in pixels for shadow filtering. */
+  float pcf_radius;
+  /* Shadow Map resolution bias. */
+  float lod_bias;
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 
@@ -1024,7 +1027,8 @@ struct ShadowSceneData {
   int step_count;
   /* Bias the shading point by using the normal to avoid self intersection. */
   float normal_bias;
-  int _pad2;
+  /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */
+  float tilemap_projection_ratio;
 };
 BLI_STATIC_ASSERT_ALIGN(ShadowSceneData, 16)
 
@@ -1101,6 +1105,16 @@ struct SphereProbeDisplayData {
 };
 BLI_STATIC_ASSERT_ALIGN(SphereProbeDisplayData, 16)
 
+/* Used for sphere probe spherical harmonics extraction. Output one for each thread-group
+ * and do a sum afterward. Reduces bandwidth usage. */
+struct SphereProbeHarmonic {
+  float4 L0_M0;
+  float4 L1_Mn1;
+  float4 L1_M0;
+  float4 L1_Mp1;
+};
+BLI_STATIC_ASSERT_ALIGN(SphereProbeHarmonic, 16)
+
 /** \} */
 
 /* -------------------------------------------------------------------- */
@@ -1137,7 +1151,7 @@ struct Surfel {
   /** Cluster this surfel is assigned to. */
   int cluster_id;
   /** True if the light can bounce or be emitted by the surfel back face. */
-  bool1 double_sided;
+  bool32_t double_sided;
   int _pad0;
   int _pad1;
   int _pad2;
@@ -1152,9 +1166,9 @@ struct CaptureInfoData {
   /** Number of surfels inside the surfel buffer or the needed len. */
   packed_int3 irradiance_grid_size;
   /** True if the surface shader needs to write the surfel data. */
-  bool1 do_surfel_output;
+  bool32_t do_surfel_output;
   /** True if the surface shader needs to increment the surfel_len. */
-  bool1 do_surfel_count;
+  bool32_t do_surfel_count;
   /** Number of surfels inside the surfel buffer or the needed len. */
   uint surfel_len;
   /** Total number of a ray for light transportation. */
@@ -1187,12 +1201,12 @@ struct CaptureInfoData {
   /** Radius of surfels. */
   float surfel_radius;
   /** Capture options. */
-  bool1 capture_world_direct;
-  bool1 capture_world_indirect;
-  bool1 capture_visibility_direct;
-  bool1 capture_visibility_indirect;
-  bool1 capture_indirect;
-  bool1 capture_emission;
+  bool32_t capture_world_direct;
+  bool32_t capture_world_indirect;
+  bool32_t capture_visibility_direct;
+  bool32_t capture_visibility_indirect;
+  bool32_t capture_indirect;
+  bool32_t capture_emission;
   int _pad0;
   /* World light probe atlas coordinate. */
   SphereProbeUvArea world_atlas_coord;
@@ -1319,6 +1333,9 @@ struct RayTraceData {
   int resolution_scale;
   /** View space thickness the objects. */
   float thickness;
+  /** Scale and bias to go from horizon-trace resolution to input resolution. */
+  int2 horizon_resolution_bias;
+  int horizon_resolution_scale;
   /** Determine how fast the sample steps are getting bigger. */
   float quality;
   /** Maximum brightness during lighting evaluation. */
@@ -1327,9 +1344,9 @@ struct RayTraceData {
   float roughness_mask_scale;
   float roughness_mask_bias;
   /** If set to true will bypass spatial denoising. */
-  bool1 skip_denoise;
+  bool32_t skip_denoise;
   /** If set to false will bypass tracing for refractive closures. */
-  bool1 trace_refraction;
+  bool32_t trace_refraction;
   /** Closure being ray-traced. */
   int closure_index;
   int _pad0;
@@ -1456,8 +1473,8 @@ BLI_STATIC_ASSERT_ALIGN(PlanarProbeDisplayData, 16)
 
 struct PipelineInfoData {
   float alpha_hash_scale;
-  bool1 is_probe_reflection;
-  bool1 use_combined_lightprobe_eval;
+  bool32_t is_probe_reflection;
+  bool32_t use_combined_lightprobe_eval;
   float _pad2;
 };
 BLI_STATIC_ASSERT_ALIGN(PipelineInfoData, 16)
@@ -1609,6 +1626,5 @@ using VelocityIndexBuf = draw::StorageArrayBuffer<VelocityIndex, 16>;
 using VelocityObjectBuf = draw::StorageArrayBuffer<float4x4, 16>;
 using CryptomatteObjectBuf = draw::StorageArrayBuffer<float2, 16>;
 using ClipPlaneBuf = draw::UniformBuffer<ClipPlaneData>;
-
 }  // namespace blender::eevee
 #endif

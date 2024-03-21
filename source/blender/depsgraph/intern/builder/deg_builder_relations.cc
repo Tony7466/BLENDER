@@ -56,7 +56,7 @@
 #include "DNA_world_types.h"
 
 #include "BKE_action.h"
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_armature.hh"
 #include "BKE_collection.hh"
 #include "BKE_collision.h"
@@ -524,6 +524,10 @@ void DepsgraphRelationBuilder::build_id(ID *id)
   switch (id_type) {
     case ID_AC:
       build_action((bAction *)id);
+      break;
+    case ID_AN:
+      /* TODO: actually handle this ID type properly, will be done in a followup commit. */
+      build_generic_id(id);
       break;
     case ID_AR:
       build_armature((bArmature *)id);
@@ -1500,7 +1504,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
           /* Standard object relation. */
           /* TODO: loc vs rot vs scale? */
           if (&ct->tar->id == id) {
-            /* Constraint targeting own object:
+            /* Constraint targeting its own object:
              * - This case is fine IF we're dealing with a bone
              *   constraint pointing to its own armature. In that
              *   case, it's just transform -> bone.
@@ -1682,7 +1686,7 @@ void DepsgraphRelationBuilder::build_animdata_drivers(ID *id)
     /* create the driver's relations to targets */
     build_driver(id, fcu);
 
-    /* prevent driver from occurring before own animation... */
+    /* prevent driver from occurring before its own animation... */
     if (adt->action || adt->nla_tracks.first) {
       add_relation(adt_key, driver_key, "AnimData Before Drivers");
     }
