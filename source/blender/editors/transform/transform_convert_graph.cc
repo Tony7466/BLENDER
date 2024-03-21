@@ -973,7 +973,7 @@ static void recalcData_graphedit(TransInfo *t)
   }
 
   /* Do resort and other updates? */
-  if (unsorted_fcurves.size() != 0) {
+  if (!unsorted_fcurves.is_empty()) {
     remake_graph_transdata(t, unsorted_fcurves);
   }
 
