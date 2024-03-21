@@ -31,6 +31,8 @@ namespace blender::ed::sculpt_paint::greasepencil {
 static constexpr float POINT_OVERRIDE_THRESHOLD_PX = 3.0f;
 static constexpr float POINT_RESAMPLE_MIN_DISTANCE_PX = 10.0f;
 
+using ed::greasepencil::MutableDrawingInfo;
+
 class TintOperation : public GreasePencilStrokeOperation {
  public:
   void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
@@ -42,12 +44,15 @@ class TintOperation : public GreasePencilStrokeOperation {
   float strength_;
   bool active_layer_only_;
   ColorGeometry4f color_;
+  Vector<MutableDrawingInfo> drawings_;
+  Array<Array<float2>> screen_positions_per_drawing_;
 
   void execute_tint(const bContext &C, const InputSample &extension_sample);
 };
 
 void TintOperation::on_stroke_begin(const bContext &C, const InputSample & /*start_sample*/)
 {
+  using namespace blender::bke::greasepencil;
   Scene *scene = CTX_data_scene(&C);
   Paint *paint = BKE_paint_get_active_from_context(&C);
   Brush *brush = BKE_paint_brush(paint);
@@ -68,16 +73,66 @@ void TintOperation::on_stroke_begin(const bContext &C, const InputSample & /*sta
   srgb_to_linearrgb_v3_v3(color_linear, brush->rgb);
 
   color_ = ColorGeometry4f(color_linear);
+
+  Object *obact = CTX_data_active_object(&C);
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
+
+  if (active_layer_only_) {
+    /* Tint only on the drawings of the active layer. */
+    const Layer *active_layer = grease_pencil.get_active_layer();
+    if (!active_layer) {
+      return;
+    }
+    drawings_ = ed::greasepencil::retrieve_editable_drawings_from_layer(
+        *scene, grease_pencil, *active_layer);
+  }
+  else {
+    /* Tint on all editable drawings. */
+    drawings_ = ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
+  }
+
+  if (drawings_.is_empty()) {
+    return;
+  }
+
+  ARegion *region = CTX_wm_region(&C);
+  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
+  Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
+
+  screen_positions_per_drawing_.reinitialize(drawings_.size());
+
+  threading::parallel_for(drawings_.index_range(), 128, [&](const IndexRange range) {
+    for (const int drawing_index : range) {
+      MutableDrawingInfo drawing_info = drawings_[drawing_index];
+      bke::CurvesGeometry &strokes = drawing_info.drawing.strokes_for_write();
+      const Layer &layer = *grease_pencil.layers()[drawing_info.layer_index];
+
+      screen_positions_per_drawing_[drawing_index].reinitialize(strokes.points_num());
+
+      bke::crazyspace::GeometryDeformation deformation =
+          bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
+              ob_eval, *obact, drawing_info.layer_index, drawing_info.frame_number);
+
+      for (const int point : strokes.points_range()) {
+        ED_view3d_project_float_global(
+            region,
+            math::transform_point(layer.to_world_space(*ob_eval), deformation.positions[point]),
+            screen_positions_per_drawing_[drawing_index][point],
+            V3D_PROJ_TEST_NOP);
+      }
+    }
+  });
 }
 
 void TintOperation::execute_tint(const bContext &C, const InputSample &extension_sample)
 {
+  if (drawings_.is_empty()) {
+    return;
+  }
+
   using namespace blender::bke::greasepencil;
   Scene *scene = CTX_data_scene(&C);
-  Depsgraph *depsgraph = CTX_data_depsgraph_pointer(&C);
-  ARegion *region = CTX_wm_region(&C);
   Object *obact = CTX_data_active_object(&C);
-  Object *ob_eval = DEG_get_evaluated_object(depsgraph, obact);
 
   Paint *paint = &scene->toolsettings->gp_paint->paint;
   Brush *brush = BKE_paint_brush(paint);
@@ -95,7 +150,7 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
         brush->gpencil_settings->curve_strength, 0, extension_sample.pressure);
   }
   /* Attenuate factor to get a smoother tinting. */
-  float fill_strength = strength / 1000.0f;
+  float fill_strength = strength / 100.0f;
 
   strength = math::clamp(strength, 0.0f, 1.0f);
   fill_strength = math::clamp(fill_strength, 0.0f, 1.0f);
@@ -108,27 +163,8 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(obact->data);
 
   std::atomic<bool> changed = false;
-  const auto execute_tint_on_drawing = [&](const int layer_index,
-                                           const int frame_number,
-                                           Drawing &drawing) {
-    const Layer &layer = *grease_pencil.layers()[layer_index];
+  const auto execute_tint_on_drawing = [&](Drawing &drawing, const int drawing_index) {
     bke::CurvesGeometry &strokes = drawing.strokes_for_write();
-
-    bke::crazyspace::GeometryDeformation deformation =
-        bke::crazyspace::get_evaluated_grease_pencil_drawing_deformation(
-            ob_eval, *obact, layer_index, frame_number);
-
-    /* Compute screen space positions. */
-    Array<float2> screen_space_positions(strokes.points_num());
-    threading::parallel_for(strokes.points_range(), 4096, [&](const IndexRange range) {
-      for (const int point : range) {
-        ED_view3d_project_float_global(
-            region,
-            math::transform_point(layer.to_world_space(*ob_eval), deformation.positions[point]),
-            screen_space_positions[point],
-            V3D_PROJ_TEST_NOP);
-      }
-    });
 
     MutableSpan<ColorGeometry4f> vertex_colors = drawing.vertex_colors_for_write();
     bke::MutableAttributeAccessor stroke_attributes = strokes.attributes_for_write();
@@ -136,6 +172,9 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
         stroke_attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color",
                                                                         bke::AttrDomain::Curve);
     OffsetIndices<int> points_by_curve = strokes.points_by_curve();
+
+    const Span<float2> screen_space_positions =
+        screen_positions_per_drawing_[drawing_index].as_span();
 
     auto point_inside_stroke = [&](const Span<float2> points, const float2 mouse) {
       std::optional<Bounds<float2>> bbox = bounds::min_max(points);
@@ -173,24 +212,24 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
               premul_to_straight_v4_v4(vertex_colors[point], rgba);
             }
           }
-          if (!fill_colors.span.is_empty() && tint_fills) {
-            /* Will tint fill color when either the brush being inside the fill region or touching
-             * the stroke. */
-            const bool fill_effective = stroke_touched ||
-                                        point_inside_stroke(screen_space_positions.as_span().slice(
-                                                                points_by_curve[curve].first(),
-                                                                points_by_curve[curve].size()),
-                                                            mouse_position);
-            if (fill_effective) {
-              float4 premultiplied;
-              straight_to_premul_v4_v4(premultiplied, fill_colors.span[curve]);
-              float4 rgba = float4(
-                  math::interpolate(float3(premultiplied), float3(color_), fill_strength),
-                  fill_colors.span[curve][3]);
-              rgba[3] = rgba[3] * (1.0f - fill_strength) + fill_strength;
-              premul_to_straight_v4_v4(fill_colors.span[curve], rgba);
-              stroke_touched = true;
-            }
+        }
+        if (tint_fills && !fill_colors.span.is_empty()) {
+          /* Will tint fill color when either the brush being inside the fill region or touching
+           * the stroke. */
+          const bool fill_effective = stroke_touched ||
+                                      point_inside_stroke(screen_space_positions.slice(
+                                                              points_by_curve[curve].first(),
+                                                              points_by_curve[curve].size()),
+                                                          mouse_position);
+          if (fill_effective) {
+            float4 premultiplied;
+            straight_to_premul_v4_v4(premultiplied, fill_colors.span[curve]);
+            float4 rgba = float4(
+                math::interpolate(float3(premultiplied), float3(color_), fill_strength),
+                fill_colors.span[curve][3]);
+            rgba[3] = rgba[3] * (1.0f - fill_strength) + fill_strength;
+            premul_to_straight_v4_v4(fill_colors.span[curve], rgba);
+            stroke_touched = true;
           }
         }
         if (stroke_touched) {
@@ -201,22 +240,11 @@ void TintOperation::execute_tint(const bContext &C, const InputSample &extension
     fill_colors.finish();
   };
 
-  Vector<ed::greasepencil::MutableDrawingInfo> drawings;
-  if (active_layer_only_) {
-    /* Tint only on the drawings of the active layer. */
-    const Layer *active_layer = grease_pencil.get_active_layer();
-    if (!active_layer) {
-      return;
+  threading::parallel_for(drawings_.index_range(), 128, [&](const IndexRange range) {
+    for (const int drawing_index : range) {
+      const MutableDrawingInfo &info = drawings_[drawing_index];
+      execute_tint_on_drawing(info.drawing, drawing_index);
     }
-    drawings = ed::greasepencil::retrieve_editable_drawings_from_layer(
-        *scene, grease_pencil, *active_layer);
-  }
-  else {
-    /* Tint on all editable drawings. */
-    drawings = ed::greasepencil::retrieve_editable_drawings(*scene, grease_pencil);
-  }
-  threading::parallel_for_each(drawings, [&](const ed::greasepencil::MutableDrawingInfo &info) {
-    execute_tint_on_drawing(info.layer_index, info.frame_number, info.drawing);
   });
 
   if (changed) {
