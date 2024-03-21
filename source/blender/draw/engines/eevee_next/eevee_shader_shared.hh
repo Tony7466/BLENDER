@@ -11,7 +11,9 @@
 #ifndef USE_GPU_SHADER_CREATE_INFO
 #  pragma once
 
+#  include "BLI_math_bits.h"
 #  include "BLI_memory_utils.hh"
+
 #  include "DRW_gpu_wrapper.hh"
 
 #  include "draw_manager.hh"
@@ -761,37 +763,6 @@ static inline bool is_sun_light(eLightType type)
   return type < LIGHT_OMNI_SPHERE;
 }
 
-#ifdef GPU_SHADER
-#  define INT_REINTERPRET(a) floatBitsToInt(a)
-#  define CHECK_TYPE_PAIR(a, b)
-#  define CHECK_TYPE(a, b)
-#else
-#  define INT_REINTERPRET(a) *reinterpret_cast<int *>(&a)
-#endif
-
-#define ERROR_OFS(a, b, c) "Offset of " STRINGIFY(a) b " mismatch offset of " STRINGIFY(c)
-
-/* This is a dangerous process, make sure to static assert every assignment. */
-#define SAFE_ASSIGN(type, a, b) \
-  data.a = light.local.b; \
-  CHECK_TYPE_PAIR(data.a, light.local.b); \
-  BLI_STATIC_ASSERT(offsetof(type, a) == offsetof(LightLocalData, b), ERROR_OFS(a, "", b))
-
-#define SAFE_ASSIGN_INT_REINTERPRET(type, a, b) \
-  data.a = INT_REINTERPRET(light.local.b); \
-  CHECK_TYPE(data.a, int); \
-  CHECK_TYPE(light.local.b, float); \
-  BLI_STATIC_ASSERT(offsetof(type, a) == offsetof(LightLocalData, b), ERROR_OFS(a, "", b))
-
-#define SAFE_ASSIGN_INT2_REINTERPRET(type, a, b, c) \
-  data.a.x = INT_REINTERPRET(light.local.b); \
-  data.a.y = INT_REINTERPRET(light.local.c); \
-  CHECK_TYPE(data.a, int2); \
-  CHECK_TYPE(light.local.b, float); \
-  CHECK_TYPE(light.local.c, float); \
-  BLI_STATIC_ASSERT(offsetof(type, a.x) == offsetof(LightLocalData, b), ERROR_OFS(a, ".x ", c)) \
-  BLI_STATIC_ASSERT(offsetof(type, a.y) == offsetof(LightLocalData, c), ERROR_OFS(a, ".y ", c))
-
 /* Using define because GLSL doesn't have inheritance, and encapsulation forces us to add some
  * unneeded padding. */
 #define LOCAL_LIGHT_COMMON \
@@ -847,7 +818,7 @@ struct LightSpotData {
   float spot_tan;
   float spot_bias;
 };
-BLI_STATIC_ASSERT(sizeof(LightSpotData) == sizeof(LightSpotData), "Data size must match")
+BLI_STATIC_ASSERT(sizeof(LightSpotData) == sizeof(LightLocalData), "Data size must match")
 
 struct LightAreaData {
   LOCAL_LIGHT_COMMON
@@ -863,7 +834,7 @@ struct LightAreaData {
   float _pad5;
   float _pad6;
 };
-BLI_STATIC_ASSERT(sizeof(LightAreaData) == sizeof(LightSpotData), "Data size must match")
+BLI_STATIC_ASSERT(sizeof(LightAreaData) == sizeof(LightLocalData), "Data size must match")
 
 struct LightSunData {
   float radius;
@@ -890,7 +861,7 @@ struct LightSunData {
   int clipmap_lod_min;
   int clipmap_lod_max;
 };
-BLI_STATIC_ASSERT(sizeof(LightSunData) == sizeof(LightAreaData), "Data size must match")
+BLI_STATIC_ASSERT(sizeof(LightSunData) == sizeof(LightLocalData), "Data size must match")
 
 struct LightData {
   /** Normalized object to world matrix. */
@@ -947,7 +918,69 @@ struct LightData {
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 
-#if !defined(GPU_BACKEND_METAL)
+#ifdef GPU_SHADER
+#  define CHECK_TYPE_PAIR(a, b)
+#  define CHECK_TYPE(a, b)
+#  define FLOAT_AS_INT floatBitsToInt
+#  define TYPECAST_NOOP
+#else
+#  define FLOAT_AS_INT float_as_int
+#  define TYPECAST_NOOP
+#endif
+
+/* Enable when debugging. This is quite costly. */
+#define USE_GPU_ACCESS_CHECKS
+
+/* In addition to the static asserts that verify correct member assignment, also verify access on
+ * the GPU so that only lights of a certain type can read for the appropriate union member.
+ * Return cross platform garbage data as some platform can return cleared memory if we early exit.
+ */
+#ifdef USE_GPU_ACCESS_CHECKS
+#  if defined(GPU_SHADER)
+/* Should result in a beautiful zebra pattern. */
+#    if defined(GPU_FRAGMENT_SHADER)
+#      define GARBAGE_VALUE sin(gl_FragCoord.x + gl_FragCoord.y)
+#    elif defined(GPU_COMPUTE_SHADER)
+#      define GARBAGE_VALUE \
+        sin(float(gl_GlobalInvocationID.x + gl_GlobalInvocationID.y + gl_GlobalInvocationID.z))
+#    else
+#      define GARBAGE_VALUE sin(float(gl_VertexID))
+#    endif
+/* Can be set to zero if zebra creates out-of-bound accesses and crashes. At least avoid UB. */
+// #    define GARBAGE_VALUE 0.0
+#  else /* C++ */
+#    define GARBAGE_VALUE 0.0f
+#  endif
+
+#  define SAFE_BEGIN(check) \
+    bool _validity_check = check; \
+    float _garbage = GARBAGE_VALUE;
+
+/* Assign garbage value if the light type check fails. */
+#  define SAFE_ASSIGN_LIGHT_TYPE_CHECK(_type, _value) \
+    (_validity_check ? (_value) : _type(_garbage))
+#else
+#  define SAFE_BEGIN(check)
+#  define SAFE_ASSIGN_LIGHT_TYPE_CHECK(_type, _value) _value
+#endif
+
+#define ERROR_OFS(a, b) "Offset of " STRINGIFY(a) " mismatch offset of " STRINGIFY(b)
+
+/* This is a dangerous process, make sure to static assert every assignment. */
+#define SAFE_ASSIGN(a, reinterpret_fn, in_type, b) \
+  CHECK_TYPE_PAIR(data.a, reinterpret_fn(light.local.b)); \
+  data.a = reinterpret_fn(SAFE_ASSIGN_LIGHT_TYPE_CHECK(in_type, light.local.b)); \
+  BLI_STATIC_ASSERT(offsetof(decltype(data), a) == offsetof(LightLocalData, b), ERROR_OFS(a, b))
+
+#define SAFE_ASSIGN_FLOAT(a, b) SAFE_ASSIGN(a, TYPECAST_NOOP, float, b);
+#define SAFE_ASSIGN_FLOAT2(a, b) SAFE_ASSIGN(a, TYPECAST_NOOP, float2, b);
+#define SAFE_ASSIGN_INT(a, b) SAFE_ASSIGN(a, TYPECAST_NOOP, int, b);
+#define SAFE_ASSIGN_FLOAT_AS_INT(a, b) SAFE_ASSIGN(a, FLOAT_AS_INT, float, b);
+#define SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(a, b, c) \
+  SAFE_ASSIGN_FLOAT_AS_INT(a.x, b); \
+  SAFE_ASSIGN_FLOAT_AS_INT(a.y, c);
+
+#if !defined(GPU_BACKEND_METAL) || defined(USE_GPU_ACCESS_CHECKS)
 
 /* These functions are not meant to be used in C++ code. They are only defined on the C++ side for
  * static assertions. Hide them. */
@@ -958,47 +991,50 @@ namespace do_not_use {
 static inline LightSpotData light_spot_data_get(LightData light)
 {
   LightSpotData data;
-  SAFE_ASSIGN(LightSpotData, radius_squared, radius_squared)
-  SAFE_ASSIGN(LightSpotData, influence_radius_max, influence_radius_max)
-  SAFE_ASSIGN(LightSpotData, influence_radius_invsqr_surface, influence_radius_invsqr_surface)
-  SAFE_ASSIGN(LightSpotData, influence_radius_invsqr_volume, influence_radius_invsqr_volume)
-  SAFE_ASSIGN(LightSpotData, clip_side, clip_side)
-  SAFE_ASSIGN(LightSpotData, shadow_scale, shadow_scale)
-  SAFE_ASSIGN(LightSpotData, shadow_projection_shift, shadow_projection_shift)
-  SAFE_ASSIGN(LightSpotData, tilemaps_count, tilemaps_count)
-  SAFE_ASSIGN(LightSpotData, radius, _pad1)
-  SAFE_ASSIGN(LightSpotData, spot_mul, _pad2)
-  SAFE_ASSIGN(LightSpotData, spot_size_inv, _pad3)
-  SAFE_ASSIGN(LightSpotData, spot_tan, _pad4)
-  SAFE_ASSIGN(LightSpotData, spot_bias, _pad5)
+  SAFE_BEGIN(is_spot_light(light.type) || is_sphere_light(light.type))
+  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_FLOAT(clip_side, clip_side)
+  SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
+  SAFE_ASSIGN_FLOAT(shadow_projection_shift, shadow_projection_shift)
+  SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
+  SAFE_ASSIGN_FLOAT(radius, _pad1)
+  SAFE_ASSIGN_FLOAT(spot_mul, _pad2)
+  SAFE_ASSIGN_FLOAT2(spot_size_inv, _pad3)
+  SAFE_ASSIGN_FLOAT(spot_tan, _pad4)
+  SAFE_ASSIGN_FLOAT(spot_bias, _pad5)
   return data;
 }
 
 static inline LightAreaData light_area_data_get(LightData light)
 {
   LightAreaData data;
-  SAFE_ASSIGN(LightAreaData, radius_squared, radius_squared)
-  SAFE_ASSIGN(LightAreaData, influence_radius_max, influence_radius_max)
-  SAFE_ASSIGN(LightAreaData, influence_radius_invsqr_surface, influence_radius_invsqr_surface)
-  SAFE_ASSIGN(LightAreaData, influence_radius_invsqr_volume, influence_radius_invsqr_volume)
-  SAFE_ASSIGN(LightAreaData, clip_side, clip_side)
-  SAFE_ASSIGN(LightAreaData, shadow_scale, shadow_scale)
-  SAFE_ASSIGN(LightAreaData, shadow_projection_shift, shadow_projection_shift)
-  SAFE_ASSIGN(LightAreaData, tilemaps_count, tilemaps_count)
-  SAFE_ASSIGN(LightAreaData, size, _pad3)
+  SAFE_BEGIN(is_area_light(light.type))
+  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_FLOAT(clip_side, clip_side)
+  SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
+  SAFE_ASSIGN_FLOAT(shadow_projection_shift, shadow_projection_shift)
+  SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
+  SAFE_ASSIGN_FLOAT2(size, _pad3)
   return data;
 }
 
 static inline LightSunData light_sun_data_get(LightData light)
 {
   LightSunData data;
-  SAFE_ASSIGN(LightSunData, radius, radius_squared)
-  SAFE_ASSIGN_INT2_REINTERPRET(LightSunData, clipmap_base_offset, _pad0_reserved, _pad1_reserved)
-  SAFE_ASSIGN(LightSunData, shadow_angle, _pad1)
-  SAFE_ASSIGN(LightSunData, shadow_trace_distance, _pad2)
-  SAFE_ASSIGN(LightSunData, clipmap_origin, _pad3)
-  SAFE_ASSIGN_INT_REINTERPRET(LightSunData, clipmap_lod_min, _pad4)
-  SAFE_ASSIGN_INT_REINTERPRET(LightSunData, clipmap_lod_max, _pad5)
+  SAFE_BEGIN(is_sun_light(light.type))
+  SAFE_ASSIGN_FLOAT(radius, radius_squared)
+  SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset, _pad0_reserved, _pad1_reserved)
+  SAFE_ASSIGN_FLOAT(shadow_angle, _pad1)
+  SAFE_ASSIGN_FLOAT(shadow_trace_distance, _pad2)
+  SAFE_ASSIGN_FLOAT2(clipmap_origin, _pad3)
+  SAFE_ASSIGN_FLOAT_AS_INT(clipmap_lod_min, _pad4)
+  SAFE_ASSIGN_FLOAT_AS_INT(clipmap_lod_max, _pad5)
   return data;
 }
 
@@ -1008,18 +1044,26 @@ static inline LightSunData light_sun_data_get(LightData light)
 
 #endif
 
-#undef ERROR_OFS
-#undef INT_REINTERPRET
-#undef SAFE_ASSIGN
-#undef SAFE_ASSIGN_INT_REINTERPRET
-#undef SAFE_ASSIGN_INT2_REINTERPRET
-
-#if defined(GPU_BACKEND_METAL) || defined(__cplusplus)
 /* Metal supports unions. Avoid making codegen more difficult for the compiler. */
+/* NOTE: you can still disable this if you want to check validity of union access on GPU. */
+#if (defined(GPU_BACKEND_METAL) && !defined(USE_GPU_ACCESS_CHECKS)) || defined(__cplusplus)
 #  define light_spot_data_get(light) light.spot
 #  define light_area_data_get(light) light.area
 #  define light_sun_data_get(light) light.sun
 #endif
+
+#undef GARBAGE_VALUE
+#undef FLOAT_AS_INT
+#undef TYPECAST_NOOP
+#undef SAFE_BEGIN
+#undef SAFE_ASSIGN_LIGHT_TYPE_CHECK
+#undef ERROR_OFS
+#undef SAFE_ASSIGN
+#undef SAFE_ASSIGN_FLOAT
+#undef SAFE_ASSIGN_FLOAT2
+#undef SAFE_ASSIGN_INT
+#undef SAFE_ASSIGN_FLOAT_AS_INT
+#undef SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE
 
 static inline int light_tilemap_max_get(LightData light)
 {
