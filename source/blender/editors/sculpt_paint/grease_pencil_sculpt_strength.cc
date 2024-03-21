@@ -48,8 +48,7 @@ bool StrengthOperation::on_stroke_extended_drawing(
   const Brush &brush = *BKE_paint_brush(&paint);
   const bool invert = is_brush_inverted(brush, this->stroke_mode);
 
-  bke::CurvesGeometry &curves = drawing.strokes_for_write();
-  BLI_assert(view_positions.size() == curves.points_num());
+  BLI_assert(view_positions.size() == drawing.strokes().points_num());
   MutableSpan<float> opacities = drawing.opacities_for_write();
 
   point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {

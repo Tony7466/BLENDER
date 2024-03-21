@@ -42,6 +42,9 @@ IndexMask selection_mask(const Scene &scene,
                          const bke::greasepencil::Drawing &drawing,
                          IndexMaskMemory &memory);
 
+/* Make sure the brush has all necessary grease pencil settings. */
+void init_brush(Brush &brush);
+
 /* Index mask of all points within the brush radius. */
 IndexMask brush_influence_mask(const Scene &scene,
                                const Brush &brush,

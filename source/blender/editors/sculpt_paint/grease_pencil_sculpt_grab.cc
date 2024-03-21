@@ -70,11 +70,13 @@ void GrabOperation::on_stroke_begin(const bContext &C, const InputSample &start_
   const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
   const Scene &scene = *CTX_data_scene(&C);
   Paint &paint = *BKE_paint_get_active_from_context(&C);
-  const Brush &brush = *BKE_paint_brush(&paint);
+  Brush &brush = *BKE_paint_brush(&paint);
   const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
   Object &ob_orig = *CTX_data_active_object(&C);
   Object &ob_eval = *DEG_get_evaluated_object(&depsgraph, &ob_orig);
   GreasePencil &grease_pencil = *static_cast<GreasePencil *>(ob_orig.data);
+
+  init_brush(brush);
 
   this->initial_mouse_position = start_sample.mouse_position;
 

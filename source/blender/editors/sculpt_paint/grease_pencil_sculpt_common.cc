@@ -70,6 +70,23 @@ IndexMask selection_mask(const Scene &scene,
               drawing.strokes().points_range());
 }
 
+void init_brush(Brush &brush)
+{
+  if (brush.gpencil_settings == nullptr) {
+    BKE_brush_init_gpencil_settings(&brush);
+  }
+  BLI_assert(brush.gpencil_settings != nullptr);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_strength);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_sensitivity);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_jitter);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_pressure);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_strength);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_uv);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_hue);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_saturation);
+  BKE_curvemapping_init(brush.gpencil_settings->curve_rand_value);
+}
+
 static float brush_radius(const Scene &scene, const Brush &brush, const float pressure = 1.0f)
 {
   float radius = BKE_brush_size_get(&scene, &brush);
@@ -188,20 +205,7 @@ void GreasePencilStrokeOperationCommon::on_stroke_begin(const bContext &C,
 {
   Paint *paint = BKE_paint_get_active_from_context(&C);
   Brush *brush = BKE_paint_brush(paint);
-
-  if (brush->gpencil_settings == nullptr) {
-    BKE_brush_init_gpencil_settings(brush);
-  }
-  BLI_assert(brush->gpencil_settings != nullptr);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_strength);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_sensitivity);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_jitter);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_pressure);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_strength);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_uv);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_hue);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_saturation);
-  BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
+  init_brush(*brush);
 }
 
 static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
