@@ -285,7 +285,8 @@ ccl_device_inline bool triangle_light_valid_ray_segment(KernelGlobals kg,
 
   /* Only one side is sampled, intersect the ray and the triangle light plane to find the visible
    * ray segment. Flip normal if Emission Sampling is set to back. */
-  return ray_plane_intersect((shader_flag & SD_MIS_BACK) ? -ls->Ng : ls->Ng, P, D, t_range);
+  const float3 N = ls->Ng;
+  return ray_plane_intersect((shader_flag & SD_MIS_BACK) ? -N : N, P, D, t_range);
 }
 
 template<bool in_volume_segment>
