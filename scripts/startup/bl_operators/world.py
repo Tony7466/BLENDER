@@ -1,6 +1,7 @@
 import bpy
 import bmesh
 
+
 class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
     """Convert the volume of a world to a mesh"""
     bl_label = "Convert World Volume To Mesh"
@@ -12,7 +13,7 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
         world = cls._world_get(context)
         if not world or not world.use_nodes:
             return False
-        
+
         camera = context.scene.camera
         if not camera:
             return False
@@ -41,7 +42,7 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
         bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=16, radius=camera.data.clip_end)
         bm.to_mesh(mesh)
         bm.free()
-        
+
         material = bpy.data.materials.new(name)
         mesh.materials.append(material)
         material.use_nodes = True
@@ -54,10 +55,16 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
         links_to_add = []
         volume_output_name = volume_output.name
         self.__sync_rna_properties(volume_output, world_output)
-        self.__sync_node_input(volume_tree, volume_output, volume_output.inputs['Volume'], world_output, world_output.inputs['Volume'], links_to_add)
+        self.__sync_node_input(
+            volume_tree,
+            volume_output,
+            volume_output.inputs['Volume'],
+            world_output,
+            world_output.inputs['Volume'],
+            links_to_add)
         self.__sync_links(volume_tree, links_to_add)
         volume_output.name = volume_output.name
-        
+
         # Remove all volume links from the world node tree.
         for link in world_output.inputs['Volume'].links:
             world_tree.links.remove(link)
@@ -74,7 +81,14 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
             return context.world
         return context.scene.world
 
-    def __sync_node_input(self, dst_tree: bpy.types.NodeTree, dst_node: bpy.types.Node, dst_socket: bpy.types.NodeSocket, src_node: bpy.types.Node, src_socket: bpy.types.NodeSocket, links_to_add) -> None:
+    def __sync_node_input(
+            self,
+            dst_tree: bpy.types.NodeTree,
+            dst_node: bpy.types.Node,
+            dst_socket: bpy.types.NodeSocket,
+            src_node: bpy.types.Node,
+            src_socket: bpy.types.NodeSocket,
+            links_to_add) -> None:
         self.__sync_rna_properties(dst_socket, src_socket)
         for src_link in src_socket.links:
             src_linked_node = src_link.from_node
@@ -95,11 +109,11 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
             return dst_tree.nodes[src_node.name]
 
         dst_node = dst_tree.nodes.new(src_node.bl_idname)
-        
+
         self.__sync_rna_properties(dst_node, src_node)
         self.__sync_node_inputs(dst_tree, dst_node, src_node, links_to_add)
         return dst_node
-    
+
     def __sync_rna_properties(self, dst, src) -> None:
         for rna_prop in src.bl_rna.properties:
             if rna_prop.is_readonly:
@@ -107,8 +121,13 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
 
             attr_name = rna_prop.identifier
             setattr(dst, attr_name, getattr(src, attr_name))
-    
-    def __sync_node_inputs(self, dst_tree: bpy.types.NodeTree, dst_node: bpy.types.Node, src_node: bpy.types.Node, links_to_add) -> None:
+
+    def __sync_node_inputs(
+            self,
+            dst_tree: bpy.types.NodeTree,
+            dst_node: bpy.types.Node,
+            src_node: bpy.types.Node,
+            links_to_add) -> None:
         for index in range(len(src_node.inputs)):
             src_socket = src_node.inputs[index]
             dst_socket = dst_node.inputs[index]
@@ -118,9 +137,6 @@ class WORLD_OT_convert_volume_to_mesh(bpy.types.Operator):
         pass
 
 
-
-
 classes = (
     WORLD_OT_convert_volume_to_mesh,
 )
-
