@@ -1326,7 +1326,12 @@ eSnapMode ED_transform_snap_object_project_view3d_ex(SnapObjectContext *sctx,
     use_occlusion_plane = is_allways_occluded || !XRAY_ENABLED(v3d);
   }
 
-  if (use_occlusion_plane || (snap_to_flag & SCE_SNAP_TO_FACE)) {
+  if (use_occlusion_plane || (snap_to_flag & (SCE_SNAP_TO_FACE | SCE_SNAP_TO_GRID))) {
+    /* Calculate the direction (`ray_dir`) and starting point (`ray_start`) of the ray from the
+     * viewport to a 3D point under the mouse cursor (`mval`), taking into account potential view
+     * clipping.
+     * This is required for raycast or snap to grid. */
+
     const RegionView3D *rv3d = static_cast<const RegionView3D *>(region->regiondata);
     float3 ray_end;
     ED_view3d_win_to_ray_clipped_ex(depsgraph,
