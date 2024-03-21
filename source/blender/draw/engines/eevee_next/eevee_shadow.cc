@@ -73,7 +73,8 @@ void ShadowTileMap::sync_cubeface(const float4x4 &object_mat_,
                                   float near_,
                                   float far_,
                                   float side_,
-                                  float3 shift,
+                                  float projection_shift,
+                                  float3 origin_shift,
                                   eCubeFace face,
                                   float lod_bias_)
 {
@@ -101,7 +102,8 @@ void ShadowTileMap::sync_cubeface(const float4x4 &object_mat_,
 
   winmat = math::projection::perspective(
       -half_size, half_size, -half_size, half_size, clip_near, clip_far);
-  viewmat = float4x4(shadow_face_mat[cubeface]) * math::from_location<float4x4>(-shift) *
+  viewmat = float4x4(shadow_face_mat[cubeface]) *
+            math::from_location<float4x4>(float3(0.0f, 0.0f, -projection_shift)) *
             math::invert(object_mat);
 
   /* Update corners. */
@@ -345,22 +347,20 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
   float side, near, far;
   compute_projection_boundaries(light_radius_, shadow_radius_, max_distance_, near, far, side);
 
-  float3 shift = float3(0.0f);
+  float3 origin_shift = float3(0.0f);
 
   if (light.jittering > 0.0f) {
     float3 random = sampling.rng_3d_get(SAMPLING_SHADOW_U);
     // if (is_sphere_light(light.type) || is_spot_light(light.type)) {
     if (ELEM(light.type, LIGHT_OMNI_SPHERE, LIGHT_OMNI_DISK, LIGHT_SPOT_SPHERE, LIGHT_SPOT_DISK)) {
-      shift = sampling.sample_ball(random);
-      // shift *= shadow_radius_ * light.jittering;
-      shift *= sqrtf(light.radius_squared) * light.jittering;
+      origin_shift = sampling.sample_ball(random);
+      // origin_shift *= shadow_radius_ * light.jittering;
+      origin_shift *= sqrtf(light.radius_squared) * light.jittering;
     }
   }
 
-  if (is_area_light(light.type)) {
-    /* Shift shadow map origin for area light to avoid clipping nearby geometry. */
-    shift.z += near;
-  }
+  /* Shift shadow map origin for area light to avoid clipping nearby geometry. */
+  float projection_shift = is_area_light(light.type) ? near : 0.0f;
 
   float4x4 obmat_tmp = light.object_mat;
 
@@ -373,15 +373,21 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
     tilemaps_.append(tilemap_pool.acquire());
   }
 
-  tilemaps_[Z_NEG]->sync_cubeface(obmat_tmp, near, far, side, shift, Z_NEG, lod_bias);
+  tilemaps_[Z_NEG]->sync_cubeface(
+      obmat_tmp, near, far, side, projection_shift, origin_shift, Z_NEG, lod_bias);
   if (tilemaps_needed_ >= 5) {
-    tilemaps_[X_POS]->sync_cubeface(obmat_tmp, near, far, side, shift, X_POS, lod_bias);
-    tilemaps_[X_NEG]->sync_cubeface(obmat_tmp, near, far, side, shift, X_NEG, lod_bias);
-    tilemaps_[Y_POS]->sync_cubeface(obmat_tmp, near, far, side, shift, Y_POS, lod_bias);
-    tilemaps_[Y_NEG]->sync_cubeface(obmat_tmp, near, far, side, shift, Y_NEG, lod_bias);
+    tilemaps_[X_POS]->sync_cubeface(
+        obmat_tmp, near, far, side, projection_shift, origin_shift, X_POS, lod_bias);
+    tilemaps_[X_NEG]->sync_cubeface(
+        obmat_tmp, near, far, side, projection_shift, origin_shift, X_NEG, lod_bias);
+    tilemaps_[Y_POS]->sync_cubeface(
+        obmat_tmp, near, far, side, projection_shift, origin_shift, Y_POS, lod_bias);
+    tilemaps_[Y_NEG]->sync_cubeface(
+        obmat_tmp, near, far, side, projection_shift, origin_shift, Y_NEG, lod_bias);
   }
   if (tilemaps_needed_ == 6) {
-    tilemaps_[Z_POS]->sync_cubeface(obmat_tmp, near, far, side, shift, Z_POS, lod_bias);
+    tilemaps_[Z_POS]->sync_cubeface(
+        obmat_tmp, near, far, side, projection_shift, origin_shift, Z_POS, lod_bias);
   }
 
   light.tilemap_index = tilemap_pool.tilemaps_data.size();
@@ -400,7 +406,8 @@ void ShadowPunctual::end_sync(Light &light, float lod_bias, Sampling &sampling)
   as_int.f = far;
   light.clip_far = as_int.i;
   light.clip_side = side;
-  light.shadow_projection_shift = shift;
+  light.shadow_projection_shift = projection_shift;
+  light.shadow_origin_shift = origin_shift;
   light.shadow_shape_scale_or_angle = softness_factor_;
 
   for (ShadowTileMap *tilemap : tilemaps_) {

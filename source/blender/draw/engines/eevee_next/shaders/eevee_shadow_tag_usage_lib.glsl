@@ -108,7 +108,7 @@ void shadow_tag_usage_tilemap_punctual(
   }
 
   /* TODO(fclem): 3D shift for jittered soft shadows. */
-  lP -= light.shadow_projection_shift;
+  lP.z -= light.shadow_projection_shift;
 
   float footprint_ratio = shadow_punctual_footprint_ratio(
       light, P, drw_view_is_perspective(), dist_to_cam, tilemap_projection_ratio);

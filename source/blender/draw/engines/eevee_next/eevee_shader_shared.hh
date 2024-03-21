@@ -820,8 +820,8 @@ struct LightData {
   /* Shadow Map resolution bias. */
   float lod_bias;
   /** Punctual: Shift to apply to the light origin to get the shadow projection origin. */
-  float _pad0;
-  packed_float3 shadow_projection_shift;
+  float shadow_projection_shift;
+  packed_float3 shadow_origin_shift;
   float _pad1;
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)

@@ -108,7 +108,8 @@ struct ShadowTileMap : public ShadowTileMapData {
                      float near,
                      float far,
                      float side,
-                     float3 shift,
+                     float projection_shift,
+                     float3 origin_shift,
                      eCubeFace face,
                      float lod_bias_);
 
