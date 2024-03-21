@@ -14,6 +14,9 @@ ccl_device_noinline void svm_node_convert(KernelGlobals kg,
                                           uint type,
                                           uint from,
                                           uint to)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   switch (type) {
     case NODE_CONVERT_FI: {
@@ -62,5 +65,6 @@ ccl_device_noinline void svm_node_convert(KernelGlobals kg,
     }
   }
 }
+#endif
 
 CCL_NAMESPACE_END

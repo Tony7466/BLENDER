@@ -12,6 +12,9 @@ ccl_device_noinline void svm_node_enter_bump_eval(KernelGlobals kg,
                                                   ccl_private ShaderData *sd,
                                                   ccl_private float *stack,
                                                   uint offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   /* save state */
   stack_store_float3(stack, offset + 0, sd->P);
@@ -36,15 +39,20 @@ ccl_device_noinline void svm_node_enter_bump_eval(KernelGlobals kg,
     stack_store_float3(stack, offset + 7, dP.dy);
   }
 }
+#endif
 
 ccl_device_noinline void svm_node_leave_bump_eval(KernelGlobals kg,
                                                   ccl_private ShaderData *sd,
                                                   ccl_private float *stack,
                                                   uint offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   /* restore state */
   sd->P = stack_load_float3(stack, offset + 0);
   sd->dP = stack_load_float(stack, offset + 3);
 }
+#endif
 
 CCL_NAMESPACE_END

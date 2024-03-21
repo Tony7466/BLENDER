@@ -10,6 +10,9 @@ ccl_device_noinline void svm_node_hsv(KernelGlobals kg,
                                       ccl_private ShaderData *sd,
                                       ccl_private float *stack,
                                       uint4 node)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint in_color_offset, fac_offset, out_color_offset;
   uint hue_offset, sat_offset, val_offset;
@@ -45,5 +48,6 @@ ccl_device_noinline void svm_node_hsv(KernelGlobals kg,
   if (stack_valid(out_color_offset))
     stack_store_float3(stack, out_color_offset, color);
 }
+#endif
 
 CCL_NAMESPACE_END

@@ -248,6 +248,9 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
                                            uint offsets2,
                                            uint offsets3,
                                            int node_offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint vector_stack_offset, w_stack_offset, scale_stack_offset, detail_stack_offset;
   uint roughness_stack_offset, lacunarity_stack_offset, offset_stack_offset, gain_stack_offset;
@@ -358,5 +361,6 @@ ccl_device_noinline int svm_node_tex_noise(KernelGlobals kg,
   }
   return node_offset;
 }
+#endif
 
 CCL_NAMESPACE_END

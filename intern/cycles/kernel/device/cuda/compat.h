@@ -6,6 +6,7 @@
 
 #define __KERNEL_GPU__
 #define __KERNEL_CUDA__
+
 #define CCL_NAMESPACE_BEGIN
 #define CCL_NAMESPACE_END
 
@@ -31,7 +32,7 @@ typedef unsigned long long uint64_t;
 /* Qualifiers */
 
 #define ccl_device __device__ __inline__
-#define ccl_device_extern extern "C" __device__
+#define ccl_device_extern_c extern "C" __device__
 #if __CUDA_ARCH__ < 500
 #  define ccl_device_inline __device__ __forceinline__
 #  define ccl_device_forceinline __device__ __forceinline__

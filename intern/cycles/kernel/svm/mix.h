@@ -15,6 +15,9 @@ ccl_device_noinline int svm_node_mix(KernelGlobals kg,
                                      uint c1_offset,
                                      uint c2_offset,
                                      int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   /* read extra data */
   uint4 node1 = read_node(kg, &offset);
@@ -27,12 +30,16 @@ ccl_device_noinline int svm_node_mix(KernelGlobals kg,
   stack_store_float3(stack, node1.z, result);
   return offset;
 }
+#endif
 
 ccl_device_noinline void svm_node_mix_color(ccl_private ShaderData *sd,
                                             ccl_private float *stack,
                                             uint options,
                                             uint input_offset,
                                             uint result_offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint use_clamp, blend_type, use_clamp_result;
   uint fac_in_stack_offset, a_in_stack_offset, b_in_stack_offset;
@@ -52,12 +59,16 @@ ccl_device_noinline void svm_node_mix_color(ccl_private ShaderData *sd,
   }
   stack_store_float3(stack, result_offset, result);
 }
+#endif
 
 ccl_device_noinline void svm_node_mix_float(ccl_private ShaderData *sd,
                                             ccl_private float *stack,
                                             uint use_clamp,
                                             uint input_offset,
                                             uint result_offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint fac_in_stack_offset, a_in_stack_offset, b_in_stack_offset;
   svm_unpack_node_uchar3(
@@ -73,11 +84,15 @@ ccl_device_noinline void svm_node_mix_float(ccl_private ShaderData *sd,
 
   stack_store_float(stack, result_offset, result);
 }
+#endif
 
 ccl_device_noinline void svm_node_mix_vector(ccl_private ShaderData *sd,
                                              ccl_private float *stack,
                                              uint input_offset,
                                              uint result_offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint use_clamp, fac_in_stack_offset, a_in_stack_offset, b_in_stack_offset;
   svm_unpack_node_uchar4(
@@ -92,11 +107,15 @@ ccl_device_noinline void svm_node_mix_vector(ccl_private ShaderData *sd,
   float3 result = a * (one_float3() - t) + b * t;
   stack_store_float3(stack, result_offset, result);
 }
+#endif
 
 ccl_device_noinline void svm_node_mix_vector_non_uniform(ccl_private ShaderData *sd,
                                                          ccl_private float *stack,
                                                          uint input_offset,
                                                          uint result_offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint use_clamp, fac_in_stack_offset, a_in_stack_offset, b_in_stack_offset;
   svm_unpack_node_uchar4(
@@ -111,5 +130,6 @@ ccl_device_noinline void svm_node_mix_vector_non_uniform(ccl_private ShaderData 
   float3 result = a * (one_float3() - t) + b * t;
   stack_store_float3(stack, result_offset, result);
 }
+#endif
 
 CCL_NAMESPACE_END

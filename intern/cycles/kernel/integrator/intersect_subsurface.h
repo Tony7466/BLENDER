@@ -8,7 +8,7 @@
 
 CCL_NAMESPACE_BEGIN
 
-ccl_device void integrator_intersect_subsurface(KernelGlobals kg, IntegratorState state)
+ccl_device_noinline void integrator_intersect_subsurface(KernelGlobals kg, IntegratorState state)
 {
   PROFILING_INIT(kg, PROFILING_INTERSECT_SUBSURFACE);
 

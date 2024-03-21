@@ -18,6 +18,9 @@ ccl_device_noinline void svm_node_blackbody(KernelGlobals kg,
                                             ccl_private float *stack,
                                             uint temperature_offset,
                                             uint col_offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   /* Input */
   float temperature = stack_load_float(stack, temperature_offset);
@@ -27,5 +30,6 @@ ccl_device_noinline void svm_node_blackbody(KernelGlobals kg,
 
   stack_store_float3(stack, col_offset, color_rgb);
 }
+#endif
 
 CCL_NAMESPACE_END

@@ -12,6 +12,9 @@ ccl_device_noinline void svm_node_tex_white_noise(KernelGlobals kg,
                                                   uint dimensions,
                                                   uint inputs_stack_offsets,
                                                   uint outputs_stack_offsets)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint vector_stack_offset, w_stack_offset, value_stack_offset, color_stack_offset;
   svm_unpack_node_uchar2(inputs_stack_offsets, &vector_stack_offset, &w_stack_offset);
@@ -66,5 +69,6 @@ ccl_device_noinline void svm_node_tex_white_noise(KernelGlobals kg,
     stack_store_float(stack, value_stack_offset, value);
   }
 }
+#endif
 
 CCL_NAMESPACE_END

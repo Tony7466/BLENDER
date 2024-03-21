@@ -25,6 +25,9 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
                                                      ccl_private const Ray *ray,
                                                      ccl_private Intersection *isect,
                                                      const uint visibility)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   /* todo:
    * - test if pushing distance on the stack helps (for non shadow rays)
@@ -66,9 +69,9 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
         {
           traverse_mask = NODE_INTERSECT(kg,
                                          P,
-#if BVH_FEATURE(BVH_HAIR)
+#  if BVH_FEATURE(BVH_HAIR)
                                          dir,
-#endif
+#  endif
                                          idir,
                                          tmin,
                                          isect->t,
@@ -131,11 +134,11 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
               continue;
             }
 
-#ifdef __SHADOW_LINKING__
+#  ifdef __SHADOW_LINKING__
             if (intersection_skip_shadow_link(kg, ray->self, prim_object)) {
               continue;
             }
-#endif
+#  endif
 
             switch (type & PRIMITIVE_ALL) {
               case PRIMITIVE_TRIANGLE: {
@@ -157,7 +160,7 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
                 }
                 break;
               }
-#if BVH_FEATURE(BVH_MOTION)
+#  if BVH_FEATURE(BVH_MOTION)
               case PRIMITIVE_MOTION_TRIANGLE: {
                 if (motion_triangle_intersect(kg,
                                               isect,
@@ -177,8 +180,8 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
                 }
                 break;
               }
-#endif /* BVH_FEATURE(BVH_MOTION) */
-#if BVH_FEATURE(BVH_HAIR)
+#  endif /* BVH_FEATURE(BVH_MOTION) */
+#  if BVH_FEATURE(BVH_HAIR)
               case PRIMITIVE_CURVE_THICK:
               case PRIMITIVE_MOTION_CURVE_THICK:
               case PRIMITIVE_CURVE_RIBBON:
@@ -200,8 +203,8 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
                 }
                 break;
               }
-#endif /* BVH_FEATURE(BVH_HAIR) */
-#if BVH_FEATURE(BVH_POINTCLOUD)
+#  endif /* BVH_FEATURE(BVH_HAIR) */
+#  if BVH_FEATURE(BVH_POINTCLOUD)
               case PRIMITIVE_POINT:
               case PRIMITIVE_MOTION_POINT: {
                 if ((type & PRIMITIVE_MOTION) && kernel_data.bvh.use_bvh_steps) {
@@ -221,7 +224,7 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
                 }
                 break;
               }
-#endif /* BVH_FEATURE(BVH_POINTCLOUD) */
+#  endif /* BVH_FEATURE(BVH_POINTCLOUD) */
             }
           }
         }
@@ -229,11 +232,11 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
           /* instance push */
           object = kernel_data_fetch(prim_object, -prim_addr - 1);
 
-#if BVH_FEATURE(BVH_MOTION)
+#  if BVH_FEATURE(BVH_MOTION)
           bvh_instance_motion_push(kg, object, ray, &P, &dir, &idir);
-#else
+#  else
           bvh_instance_push(kg, object, ray, &P, &dir, &idir);
-#endif
+#  endif
 
           ++stack_ptr;
           kernel_assert(stack_ptr < BVH_STACK_SIZE);
@@ -258,6 +261,7 @@ ccl_device_noinline bool BVH_FUNCTION_FULL_NAME(BVH)(KernelGlobals kg,
 
   return (isect->prim != PRIM_NONE);
 }
+#endif
 
 ccl_device_inline bool BVH_FUNCTION_NAME(KernelGlobals kg,
                                          ccl_private const Ray *ray,

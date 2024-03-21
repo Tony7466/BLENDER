@@ -4,6 +4,7 @@
 
 #ifdef __MNEE__
 
+#  include "kernel/bvh/bvh.h"
 #  include "kernel/light/sample.h"
 
 /*

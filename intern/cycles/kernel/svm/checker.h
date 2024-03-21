@@ -26,6 +26,9 @@ ccl_device_noinline void svm_node_tex_checker(KernelGlobals kg,
                                               ccl_private ShaderData *sd,
                                               ccl_private float *stack,
                                               uint4 node)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint co_offset, color1_offset, color2_offset, scale_offset;
   uint color_offset, fac_offset;
@@ -45,5 +48,6 @@ ccl_device_noinline void svm_node_tex_checker(KernelGlobals kg,
   if (stack_valid(fac_offset))
     stack_store_float(stack, fac_offset, f);
 }
+#endif
 
 CCL_NAMESPACE_END

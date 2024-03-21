@@ -5,7 +5,10 @@
 #pragma once
 
 #include "kernel/types.h"
-#include "util/atomic.h"
+
+#ifdef __KERNEL_GPU__
+#  include "util/atomic.h"
+#endif
 
 CCL_NAMESPACE_BEGIN
 

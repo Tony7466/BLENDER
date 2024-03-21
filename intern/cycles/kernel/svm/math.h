@@ -12,6 +12,9 @@ ccl_device_noinline void svm_node_math(KernelGlobals kg,
                                        uint type,
                                        uint inputs_stack_offsets,
                                        uint result_stack_offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint a_stack_offset, b_stack_offset, c_stack_offset;
   svm_unpack_node_uchar3(inputs_stack_offsets, &a_stack_offset, &b_stack_offset, &c_stack_offset);
@@ -23,6 +26,7 @@ ccl_device_noinline void svm_node_math(KernelGlobals kg,
 
   stack_store_float(stack, result_stack_offset, result);
 }
+#endif
 
 ccl_device_noinline int svm_node_vector_math(KernelGlobals kg,
                                              ccl_private ShaderData *sd,
@@ -31,6 +35,9 @@ ccl_device_noinline int svm_node_vector_math(KernelGlobals kg,
                                              uint inputs_stack_offsets,
                                              uint outputs_stack_offsets,
                                              int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint value_stack_offset, vector_stack_offset;
   uint a_stack_offset, b_stack_offset, param1_stack_offset;
@@ -62,5 +69,6 @@ ccl_device_noinline int svm_node_vector_math(KernelGlobals kg,
     stack_store_float3(stack, vector_stack_offset, vector);
   return offset;
 }
+#endif
 
 CCL_NAMESPACE_END

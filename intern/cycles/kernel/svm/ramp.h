@@ -80,6 +80,9 @@ ccl_device_inline float4 rgb_ramp_lookup(
 
 ccl_device_noinline int svm_node_rgb_ramp(
     KernelGlobals kg, ccl_private ShaderData *sd, ccl_private float *stack, uint4 node, int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint fac_offset, color_offset, alpha_offset;
   uint interpolate = node.z;
@@ -99,9 +102,13 @@ ccl_device_noinline int svm_node_rgb_ramp(
   offset += table_size;
   return offset;
 }
+#endif
 
 ccl_device_noinline int svm_node_curves(
     KernelGlobals kg, ccl_private ShaderData *sd, ccl_private float *stack, uint4 node, int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint fac_offset, color_offset, out_offset, extrapolate;
   svm_unpack_node_uchar4(node.y, &fac_offset, &color_offset, &out_offset, &extrapolate);
@@ -125,9 +132,13 @@ ccl_device_noinline int svm_node_curves(
   offset += table_size;
   return offset;
 }
+#endif
 
 ccl_device_noinline int svm_node_curve(
     KernelGlobals kg, ccl_private ShaderData *sd, ccl_private float *stack, uint4 node, int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint fac_offset, value_in_offset, out_offset, extrapolate;
   svm_unpack_node_uchar4(node.y, &fac_offset, &value_in_offset, &out_offset, &extrapolate);
@@ -149,5 +160,6 @@ ccl_device_noinline int svm_node_curve(
   offset += table_size;
   return offset;
 }
+#endif
 
 CCL_NAMESPACE_END

@@ -19,8 +19,59 @@ set(SRC_KERNEL_DEVICE_CPU
 )
 
 set(SRC_KERNEL_DEVICE_CUDA
-  device/cuda/kernel.cu
+  device/cuda/kernel_adaptive_sampling.cu
+  device/cuda/kernel_bake.cu
+  device/cuda/kernel_common.cu
+  device/cuda/kernel_cryptomatte_passes.cu
+  device/cuda/kernel_denoising.cu
+  device/cuda/kernel_film.cu
+  device/cuda/kernel_integrator.cu
+  device/cuda/kernel_integrator_init_from_bake.cu
+  device/cuda/kernel_integrator_init_from_camera.cu
+  device/cuda/kernel_integrator_intersect_closest.cu
+  device/cuda/kernel_integrator_intersect_dedicated_light.cu
+  device/cuda/kernel_integrator_intersect_shadow.cu
+  device/cuda/kernel_integrator_intersect_subsurface.cu
+  device/cuda/kernel_integrator_intersect_volume_stack.cu
+  device/cuda/kernel_integrator_shade_background.cu
+  device/cuda/kernel_integrator_shade_dedicated_light.cu
+  device/cuda/kernel_integrator_shade_light.cu
+  device/cuda/kernel_integrator_shade_shadow.cu
+  device/cuda/kernel_integrator_shade_surface.cu
+  device/cuda/kernel_integrator_shade_volume.cu
+  device/cuda/kernel_integrator_shadow_catcher.cu
 )
+
+set(SRC_KERNEL_DEVICE_OPTIX
+  device/optix/kernel_common.cu
+  device/optix/kernel_integrator_intersect_closest.cu
+  device/optix/kernel_integrator_intersect_dedicated_light.cu
+  device/optix/kernel_integrator_intersect_shadow.cu
+  device/optix/kernel_integrator_intersect_subsurface.cu
+  device/optix/kernel_integrator_intersect_volume_stack.cu
+  device/optix/kernel_integrator_shade_surface.cu
+)
+
+if(WITH_CYCLES_OSL)
+  math(EXPR OSL_LIBRARY_VERSION_CODE "${OSL_LIBRARY_VERSION_MAJOR} * 10000 + ${OSL_LIBRARY_VERSION_MINOR} * 100 + ${OSL_LIBRARY_VERSION_PATCH}")
+
+  add_compile_options("$<$<COMPILE_LANGUAGE:CUDA>:-DOSL_LIBRARY_VERSION_CODE=${OSL_LIBRARY_VERSION_CODE}>")
+
+  if(OSL_LIBRARY_VERSION_CODE GREATER_EQUAL 11300)
+    set(SRC_KERNEL_DEVICE_OPTIX
+      ${SRC_KERNEL_DEVICE_OPTIX}
+      osl/services_optix.cu
+      device/optix/kernel_bake_osl.cu
+      device/optix/kernel_common_osl.cu
+      device/optix/kernel_integrator_shade_background_osl.cu
+      device/optix/kernel_integrator_shade_dedicated_light_osl.cu
+      device/optix/kernel_integrator_shade_light_osl.cu
+      device/optix/kernel_integrator_shade_shadow_osl.cu
+      device/optix/kernel_integrator_shade_surface_osl.cu
+      device/optix/kernel_integrator_shade_volume_osl.cu
+    )
+  endif()
+endif()
 
 set(SRC_KERNEL_DEVICE_HIP
   device/hip/kernel.cpp
@@ -33,23 +84,6 @@ set(SRC_KERNEL_DEVICE_HIPRT
 set(SRC_KERNEL_DEVICE_METAL
   device/metal/kernel.metal
 )
-
-set(SRC_KERNEL_DEVICE_OPTIX
-  device/optix/kernel.cu
-  device/optix/kernel_shader_raytrace.cu
-)
-
-if(WITH_CYCLES_OSL)
-  math(EXPR OSL_LIBRARY_VERSION_CODE "${OSL_LIBRARY_VERSION_MAJOR} * 10000 + ${OSL_LIBRARY_VERSION_MINOR} * 100 + ${OSL_LIBRARY_VERSION_PATCH}")
-
-  if(OSL_LIBRARY_VERSION_CODE GREATER_EQUAL 11300)
-    set(SRC_KERNEL_DEVICE_OPTIX
-      ${SRC_KERNEL_DEVICE_OPTIX}
-      osl/services_optix.cu
-      device/optix/kernel_osl.cu
-    )
-  endif()
-endif()
 
 set(SRC_KERNEL_DEVICE_ONEAPI
   device/oneapi/kernel.cpp
@@ -67,6 +101,26 @@ set(SRC_KERNEL_DEVICE_CPU_HEADERS
 set(SRC_KERNEL_DEVICE_GPU_HEADERS
   device/gpu/image.h
   device/gpu/kernel.h
+  device/gpu/kernel_adaptive_sampling.h
+  device/gpu/kernel_bake.h
+  device/gpu/kernel_cryptomatte_passes.h
+  device/gpu/kernel_denoising.h
+  device/gpu/kernel_film.h
+  device/gpu/kernel_integrator.h
+  device/gpu/kernel_integrator_init_from_bake.h
+  device/gpu/kernel_integrator_init_from_camera.h
+  device/gpu/kernel_integrator_intersect_closest.h
+  device/gpu/kernel_integrator_intersect_dedicated_light.h
+  device/gpu/kernel_integrator_intersect_shadow.h
+  device/gpu/kernel_integrator_intersect_subsurface.h
+  device/gpu/kernel_integrator_intersect_volume_stack.h
+  device/gpu/kernel_integrator_shade_background.h
+  device/gpu/kernel_integrator_shade_dedicated_light.h
+  device/gpu/kernel_integrator_shade_light.h
+  device/gpu/kernel_integrator_shade_shadow.h
+  device/gpu/kernel_integrator_shade_surface.h
+  device/gpu/kernel_integrator_shade_volume.h
+  device/gpu/kernel_integrator_shadow_catcher.h
   device/gpu/parallel_active_index.h
   device/gpu/parallel_prefix_sum.h
   device/gpu/parallel_sorted_index.h
@@ -77,6 +131,12 @@ set(SRC_KERNEL_DEVICE_CUDA_HEADERS
   device/cuda/compat.h
   device/cuda/config.h
   device/cuda/globals.h
+)
+
+set(SRC_KERNEL_DEVICE_OPTIX_HEADERS
+  device/optix/bvh.h
+  device/optix/compat.h
+  device/optix/globals.h
 )
 
 set(SRC_KERNEL_DEVICE_HIP_HEADERS
@@ -90,12 +150,6 @@ set(SRC_KERNEL_DEVICE_HIPRT_HEADERS
   device/hiprt/common.h
   device/hiprt/globals.h
   device/hiprt/hiprt_kernels.h
-)
-
-set(SRC_KERNEL_DEVICE_OPTIX_HEADERS
-  device/optix/bvh.h
-  device/optix/compat.h
-  device/optix/globals.h
 )
 
 set(SRC_KERNEL_DEVICE_METAL_HEADERS
@@ -313,6 +367,7 @@ set(SRC_KERNEL_LIGHT_HEADERS
 )
 
 set(SRC_KERNEL_SAMPLE_HEADERS
+  sample/class.h
   sample/lcg.h
   sample/mapping.h
   sample/mis.h
@@ -417,10 +472,6 @@ set(LIB
 # CUDA module
 
 if(WITH_CYCLES_CUDA_BINARIES)
-  # 64 bit only
-  set(CUDA_BITS 64)
-
-  # CUDA version
   execute_process(COMMAND ${CUDA_NVCC_EXECUTABLE} "--version" OUTPUT_VARIABLE NVCC_OUT)
   string(REGEX REPLACE ".*release ([0-9]+)\\.([0-9]+).*" "\\1" CUDA_VERSION_MAJOR "${NVCC_OUT}")
   string(REGEX REPLACE ".*release ([0-9]+)\\.([0-9]+).*" "\\2" CUDA_VERSION_MINOR "${NVCC_OUT}")
@@ -438,152 +489,59 @@ if(WITH_CYCLES_CUDA_BINARIES)
   endif()
 
   # build for each arch
-  set(cuda_sources device/cuda/kernel.cu
-    ${SRC_KERNEL_HEADERS}
-    ${SRC_KERNEL_DEVICE_GPU_HEADERS}
-    ${SRC_KERNEL_DEVICE_CUDA_HEADERS}
-    ${SRC_UTIL_HEADERS}
-  )
-  set(cuda_cubins)
+  set(CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX ${CYCLES_CUDA_BINARIES_ARCH})
+  list(TRANSFORM CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX REPLACE "sm_" "")
 
-  macro(CYCLES_CUDA_KERNEL_ADD arch prev_arch name flags sources experimental)
+  add_library(cycles_kernel_cuda STATIC
+    ${SRC_KERNEL_DEVICE_CUDA}
+    ${SRC_KERNEL_DEVICE_GPU_HEADERS}
+    ${SRC_KERNEL_DEVICE_CUDA_HEADERS})
+
+  set_target_properties(cycles_kernel_cuda PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_ARCHITECTURES "${CYCLES_CUDA_BINARIES_ARCH_WITHOUT_PREFIX}")
+
+  target_compile_options(cycles_kernel_cuda PRIVATE -use_fast_math -lineinfo -Wno-deprecated-gpu-targets)
+
+  cycles_set_solution_folder(cycles_kernel_cuda)
+
+  foreach(arch ${CYCLES_CUDA_BINARIES_ARCH})
     if(${arch} MATCHES "compute_.*")
       set(format "ptx")
     else()
       set(format "cubin")
     endif()
-    set(cuda_file ${name}_${arch}.${format})
 
-    set(kernel_sources ${sources})
-    if(NOT ${prev_arch} STREQUAL "none")
-      if(${prev_arch} MATCHES "compute_.*")
-        set(kernel_sources ${kernel_sources} ${name}_${prev_arch}.ptx)
-      else()
-        set(kernel_sources ${kernel_sources} ${name}_${prev_arch}.cubin)
-      endif()
-    endif()
+    add_custom_command(
+      OUTPUT kernel_${arch}.${format}
+      DEPENDS cycles_kernel_cuda
+      COMMAND ${CUDA_NVCC_EXECUTABLE} -arch=${arch} ${CUDA_NVCC_FLAGS} --${format} --device-link "\"$<JOIN:$<TARGET_OBJECTS:cycles_kernel_cuda>,\" \">\"" -o ${CMAKE_CURRENT_BINARY_DIR}/kernel_${arch}.${format})
 
-    set(cuda_kernel_src "/device/cuda/${name}.cu")
-
-    set(cuda_flags ${flags}
-      -D CCL_NAMESPACE_BEGIN=
-      -D CCL_NAMESPACE_END=
-      -D NVCC
-      -m ${CUDA_BITS}
-      -I ${CMAKE_CURRENT_SOURCE_DIR}/..
-      -I ${CMAKE_CURRENT_SOURCE_DIR}/device/cuda
-      --use_fast_math
-      -o ${CMAKE_CURRENT_BINARY_DIR}/${cuda_file}
-      -Wno-deprecated-gpu-targets)
-
-    if(CUDA_HOST_COMPILER)
-      set(cuda_flags ${cuda_flags}
-        -ccbin="${CUDA_HOST_COMPILER}")
-    endif()
-
-    if(WITH_NANOVDB)
-      set(cuda_flags ${cuda_flags}
-        -D WITH_NANOVDB)
-    endif()
-
-    if(WITH_CYCLES_DEBUG)
-      set(cuda_flags ${cuda_flags} -D WITH_CYCLES_DEBUG)
-      set(cuda_flags ${cuda_flags} --ptxas-options="-v")
-    endif()
-
-    if(${cuda_version} GREATER_EQUAL 110)
-      # Helps with compatibility when using recent clang host compiler.
-      set(cuda_flags ${cuda_flags} -std=c++17)
-    endif()
-
-    set(_cuda_nvcc_args
-          -arch=${arch}
-          ${CUDA_NVCC_FLAGS}
-          --${format}
-          ${CMAKE_CURRENT_SOURCE_DIR}${cuda_kernel_src}
-          ${cuda_flags})
-
-    if(WITH_COMPILER_CCACHE AND CCACHE_PROGRAM)
-      add_custom_command(
-        OUTPUT ${cuda_file}
-        COMMAND ${CCACHE_PROGRAM} ${cuda_nvcc_executable} ${_cuda_nvcc_args}
-        DEPENDS ${kernel_sources})
-    else()
-      add_custom_command(
-        OUTPUT ${cuda_file}
-        COMMAND ${cuda_nvcc_executable} ${_cuda_nvcc_args}
-        DEPENDS ${kernel_sources})
-    endif()
-
-    unset(_cuda_nvcc_args)
-    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${cuda_file}" ${CYCLES_INSTALL_PATH}/lib)
-    list(APPEND cuda_cubins ${cuda_file})
-
-    unset(cuda_debug_flags)
-  endmacro()
-
-  set(prev_arch "none")
-  foreach(arch ${CYCLES_CUDA_BINARIES_ARCH})
-    if(${arch} MATCHES ".*_2.")
-      message(STATUS "CUDA binaries for ${arch} are no longer supported, skipped.")
-    elseif(${arch} MATCHES ".*_30")
-      if(DEFINED CUDA10_NVCC_EXECUTABLE)
-        set(cuda_nvcc_executable ${CUDA10_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA10_TOOLKIT_ROOT_DIR})
-        set(cuda_version 100)
-      elseif("${CUDA_VERSION}" LESS 110) # Support for sm_30 was removed in CUDA 11
-        set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
-        set(cuda_version ${CUDA_VERSION})
-      else()
-        message(STATUS "CUDA binaries for ${arch} require CUDA 10 or earlier, skipped.")
-      endif()
-    elseif(${arch} MATCHES ".*_3.")
-      if(DEFINED CUDA11_NVCC_EXECUTABLE)
-        set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
-        set(cuda_version 110)
-      elseif("${CUDA_VERSION}" LESS 120) # Support for sm_35, sm_37 was removed in CUDA 12
-        set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
-        set(cuda_version ${CUDA_VERSION})
-      else()
-        message(STATUS "CUDA binaries for ${arch} require CUDA 11 or earlier, skipped.")
-      endif()
-    elseif(${arch} MATCHES ".*_7." AND "${CUDA_VERSION}" LESS 100)
-      message(STATUS "CUDA binaries for ${arch} require CUDA 10.0+, skipped.")
-    elseif(${arch} MATCHES ".*_8.")
-      if("${CUDA_VERSION}" GREATER_EQUAL 111) # Support for sm_86 was introduced in CUDA 11
-        set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
-        set(cuda_version ${CUDA_VERSION})
-      elseif(DEFINED CUDA11_NVCC_EXECUTABLE)
-        set(cuda_nvcc_executable ${CUDA11_NVCC_EXECUTABLE})
-        set(cuda_toolkit_root_dir ${CUDA11_TOOLKIT_ROOT_DIR})
-        set(cuda_version 110)
-      else()
-        message(STATUS "CUDA binaries for ${arch} require CUDA 11.1+, skipped.")
-      endif()
-    else()
-      set(cuda_nvcc_executable ${CUDA_NVCC_EXECUTABLE})
-      set(cuda_toolkit_root_dir ${CUDA_TOOLKIT_ROOT_DIR})
-      set(cuda_version ${CUDA_VERSION})
-    endif()
-    if(DEFINED cuda_nvcc_executable AND DEFINED cuda_toolkit_root_dir)
-      # Compile regular kernel
-      cycles_cuda_kernel_add(${arch} ${prev_arch} kernel "" "${cuda_sources}" FALSE)
-
-      if(WITH_CYCLES_CUDA_BUILD_SERIAL)
-        set(prev_arch ${arch})
-      endif()
-
-      unset(cuda_nvcc_executable)
-      unset(cuda_toolkit_root_dir)
-    endif()
+    list(APPEND cuda_link kernel_${arch}.${format})
+    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" kernel_${arch}.${format} ${CYCLES_INSTALL_PATH}/lib)
   endforeach()
 
-  add_custom_target(cycles_kernel_cuda ALL DEPENDS ${cuda_cubins})
-  cycles_set_solution_folder(cycles_kernel_cuda)
+  add_custom_target(cycles_kernel_cuda_link ALL DEPENDS ${cuda_link})
+  cycles_set_solution_folder(cycles_kernel_cuda_link)
+endif()
+
+# OptiX PTX modules
+
+if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
+  add_library(cycles_kernel_optix OBJECT
+    ${SRC_KERNEL_DEVICE_OPTIX}
+    ${SRC_KERNEL_DEVICE_GPU_HEADERS}
+    ${SRC_KERNEL_DEVICE_OPTIX_HEADERS})
+
+  set_target_properties(cycles_kernel_optix PROPERTIES
+    CUDA_PTX_COMPILATION ON
+    CUDA_ARCHITECTURES 50)
+
+  target_compile_options(cycles_kernel_optix PRIVATE -use_fast_math -lineinfo -Wno-deprecated-gpu-targets -rdc=true)
+
+  delayed_install("" "$<TARGET_OBJECTS:cycles_kernel_optix>" ${CYCLES_INSTALL_PATH}/lib/optix)
+
+  cycles_set_solution_folder(cycles_kernel_optix)
 endif()
 
 # HIP module
@@ -745,80 +703,6 @@ if(WITH_CYCLES_DEVICE_HIPRT AND WITH_CYCLES_HIP_BINARIES)
   delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${hiprt_file}" ${CYCLES_INSTALL_PATH}/lib)
   add_custom_target(cycles_kernel_hiprt ALL DEPENDS ${hiprt_file})
   cycles_set_solution_folder(cycles_kernel_hiprt)
-endif()
-
-# OptiX PTX modules
-
-if(WITH_CYCLES_DEVICE_OPTIX AND WITH_CYCLES_CUDA_BINARIES)
-  macro(cycles_optix_kernel_add name input flags)
-    set(output "${CMAKE_CURRENT_BINARY_DIR}/${name}.ptx")
-
-    set(cuda_flags ${flags}
-      -I "${OPTIX_INCLUDE_DIR}"
-      -I "${CMAKE_CURRENT_SOURCE_DIR}/.."
-      -I "${CMAKE_CURRENT_SOURCE_DIR}/device/cuda"
-      --use_fast_math
-      -Wno-deprecated-gpu-targets
-      -o ${output})
-
-    if(WITH_NANOVDB)
-      set(cuda_flags ${cuda_flags}
-        -D WITH_NANOVDB)
-    endif()
-    if(WITH_CYCLES_OSL)
-      set(cuda_flags ${cuda_flags}
-        -D OSL_LIBRARY_VERSION_CODE=${OSL_LIBRARY_VERSION_CODE})
-    endif()
-
-    if(WITH_CYCLES_DEBUG)
-      set(cuda_flags ${cuda_flags} -D WITH_CYCLES_DEBUG)
-    endif()
-
-    add_custom_command(
-      OUTPUT
-        ${output}
-      DEPENDS
-        ${input}
-        ${SRC_KERNEL_HEADERS}
-        ${SRC_KERNEL_DEVICE_GPU_HEADERS}
-        ${SRC_KERNEL_DEVICE_CUDA_HEADERS}
-        ${SRC_KERNEL_DEVICE_OPTIX_HEADERS}
-        ${SRC_UTIL_HEADERS}
-      COMMAND
-        ${CUDA_NVCC_EXECUTABLE}
-        --ptx
-        -arch=sm_50
-        ${cuda_flags}
-        ${input}
-      WORKING_DIRECTORY
-        "${CMAKE_CURRENT_SOURCE_DIR}")
-
-    list(APPEND optix_ptx ${output})
-
-    delayed_install("${CMAKE_CURRENT_BINARY_DIR}" "${output}" ${CYCLES_INSTALL_PATH}/lib)
-  endmacro()
-
-  cycles_optix_kernel_add(
-    kernel_optix
-    "device/optix/kernel.cu"
-    "")
-  cycles_optix_kernel_add(
-    kernel_optix_shader_raytrace
-    "device/optix/kernel_shader_raytrace.cu"
-    "--keep-device-functions")
-  if(WITH_CYCLES_OSL AND OSL_LIBRARY_VERSION_CODE GREATER_EQUAL 11300)
-    cycles_optix_kernel_add(
-      kernel_optix_osl
-      "device/optix/kernel_osl.cu"
-      "--relocatable-device-code=true")
-    cycles_optix_kernel_add(
-      kernel_optix_osl_services
-      "osl/services_optix.cu"
-      "--relocatable-device-code=true")
-  endif()
-
-  add_custom_target(cycles_kernel_optix ALL DEPENDS ${optix_ptx})
-  cycles_set_solution_folder(cycles_kernel_optix)
 endif()
 
 # oneAPI module
@@ -1183,20 +1067,8 @@ endif()
 
 cycles_add_library(cycles_kernel "${LIB}"
   ${SRC_KERNEL_DEVICE_CPU}
-  ${SRC_KERNEL_DEVICE_CUDA}
-  ${SRC_KERNEL_DEVICE_HIP}
-  ${SRC_KERNEL_DEVICE_HIPRT}
-  ${SRC_KERNEL_DEVICE_OPTIX}
-  ${SRC_KERNEL_DEVICE_METAL}
   ${SRC_KERNEL_HEADERS}
   ${SRC_KERNEL_DEVICE_CPU_HEADERS}
-  ${SRC_KERNEL_DEVICE_GPU_HEADERS}
-  ${SRC_KERNEL_DEVICE_CUDA_HEADERS}
-  ${SRC_KERNEL_DEVICE_HIP_HEADERS}
-  ${SRC_KERNEL_DEVICE_HIPRT_HEADERS}
-  ${SRC_KERNEL_DEVICE_OPTIX_HEADERS}
-  ${SRC_KERNEL_DEVICE_METAL_HEADERS}
-  ${SRC_KERNEL_DEVICE_ONEAPI_HEADERS}
 )
 
 source_group("bake" FILES ${SRC_KERNEL_BAKE_HEADERS})
@@ -1204,11 +1076,11 @@ source_group("bvh" FILES ${SRC_KERNEL_BVH_HEADERS})
 source_group("camera" FILES ${SRC_KERNEL_CAMERA_HEADERS})
 source_group("closure" FILES ${SRC_KERNEL_CLOSURE_HEADERS})
 source_group("device\\cpu" FILES ${SRC_KERNEL_DEVICE_CPU} ${SRC_KERNEL_DEVICE_CPU_HEADERS})
-source_group("device\\cuda" FILES ${SRC_KERNEL_DEVICE_CUDA} ${SRC_KERNEL_DEVICE_CUDA_HEADERS})
 source_group("device\\gpu" FILES ${SRC_KERNEL_DEVICE_GPU_HEADERS})
+source_group("device\\cuda" FILES ${SRC_KERNEL_DEVICE_CUDA} ${SRC_KERNEL_DEVICE_CUDA_HEADERS})
+source_group("device\\optix" FILES ${SRC_KERNEL_DEVICE_OPTIX} ${SRC_KERNEL_DEVICE_OPTIX_HEADERS})
 source_group("device\\hip" FILES ${SRC_KERNEL_DEVICE_HIP} ${SRC_KERNEL_DEVICE_HIP_HEADERS})
 source_group("device\\hiprt" FILES ${SRC_KERNEL_DEVICE_HIPRT} ${SRC_KERNEL_DEVICE_HIPRT_HEADERS})
-source_group("device\\optix" FILES ${SRC_KERNEL_DEVICE_OPTIX} ${SRC_KERNEL_DEVICE_OPTIX_HEADERS})
 source_group("device\\metal" FILES ${SRC_KERNEL_DEVICE_METAL} ${SRC_KERNEL_DEVICE_METAL_HEADERS})
 source_group("device\\oneapi" FILES ${SRC_KERNEL_DEVICE_ONEAPI} ${SRC_KERNEL_DEVICE_ONEAPI_HEADERS})
 source_group("film" FILES ${SRC_KERNEL_FILM_HEADERS})
@@ -1240,15 +1112,15 @@ delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_BAKE_HEADERS}" ${CYCLE
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_BVH_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/bvh)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_CAMERA_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/camera)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_CLOSURE_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/closure)
+delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_GPU_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/gpu)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_CUDA}" ${CYCLES_INSTALL_PATH}/source/kernel/device/cuda)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_CUDA_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/cuda)
-delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_GPU_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/gpu)
+delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_OPTIX}" ${CYCLES_INSTALL_PATH}/source/kernel/device/optix)
+delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_OPTIX_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/optix)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_HIP}" ${CYCLES_INSTALL_PATH}/source/kernel/device/hip)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_HIP_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/hip)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_HIPRT}" ${CYCLES_INSTALL_PATH}/source/kernel/device/hiprt)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_HIPRT_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/hiprt)
-delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_OPTIX}" ${CYCLES_INSTALL_PATH}/source/kernel/device/optix)
-delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_OPTIX_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/optix)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_METAL}" ${CYCLES_INSTALL_PATH}/source/kernel/device/metal)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_DEVICE_METAL_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/device/metal)
 delayed_install(${CMAKE_CURRENT_SOURCE_DIR} "${SRC_KERNEL_FILM_HEADERS}" ${CYCLES_INSTALL_PATH}/source/kernel/film)

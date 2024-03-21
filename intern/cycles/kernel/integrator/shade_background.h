@@ -8,6 +8,8 @@
 #include "kernel/film/light_passes.h"
 
 #include "kernel/integrator/guiding.h"
+#include "kernel/integrator/shadow_catcher.h"
+#include "kernel/integrator/state_flow.h"
 #include "kernel/integrator/surface_shader.h"
 
 #include "kernel/light/light.h"
@@ -186,9 +188,9 @@ ccl_device_inline void integrate_distant_lights(KernelGlobals kg,
   }
 }
 
-ccl_device void integrator_shade_background(KernelGlobals kg,
-                                            IntegratorState state,
-                                            ccl_global float *ccl_restrict render_buffer)
+ccl_device_noinline void integrator_shade_background(KernelGlobals kg,
+                                                     IntegratorState state,
+                                                     ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_SHADE_LIGHT_SETUP);
 

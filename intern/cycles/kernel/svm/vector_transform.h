@@ -12,6 +12,9 @@ ccl_device_noinline void svm_node_vector_transform(KernelGlobals kg,
                                                    ccl_private ShaderData *sd,
                                                    ccl_private float *stack,
                                                    uint4 node)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint itype, ifrom, ito;
   uint vector_in, vector_out;
@@ -120,5 +123,6 @@ ccl_device_noinline void svm_node_vector_transform(KernelGlobals kg,
     stack_store_float3(stack, vector_out, in);
   }
 }
+#endif
 
 CCL_NAMESPACE_END

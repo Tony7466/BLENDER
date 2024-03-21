@@ -13,13 +13,80 @@
 #include "kernel/closure/bssrdf.h"
 #include "kernel/closure/volume.h"
 
-#include "kernel/integrator/intersect_volume_stack.h"
 #include "kernel/integrator/path_state.h"
+#include "kernel/integrator/state_flow.h"
 #include "kernel/integrator/subsurface_disk.h"
 #include "kernel/integrator/subsurface_random_walk.h"
 #include "kernel/integrator/surface_shader.h"
+#include "kernel/integrator/volume_stack.h"
 
 CCL_NAMESPACE_BEGIN
+
+#ifdef __VOLUME__
+ccl_device void integrator_volume_stack_update_for_subsurface(KernelGlobals kg,
+                                                              IntegratorState state,
+                                                              const float3 from_P,
+                                                              const float3 to_P)
+{
+  PROFILING_INIT(kg, PROFILING_INTERSECT_VOLUME_STACK);
+
+  ShaderDataTinyStorage stack_sd_storage;
+  ccl_private ShaderData *stack_sd = AS_SHADER_DATA(&stack_sd_storage);
+
+  kernel_assert(kernel_data.integrator.use_volumes);
+
+  Ray volume_ray ccl_optional_struct_init;
+  volume_ray.P = from_P;
+  volume_ray.D = normalize_len(to_P - from_P, &volume_ray.tmax);
+  volume_ray.tmin = 0.0f;
+  volume_ray.self.object = INTEGRATOR_STATE(state, isect, object);
+  volume_ray.self.prim = INTEGRATOR_STATE(state, isect, prim);
+  volume_ray.self.light_object = OBJECT_NONE;
+  volume_ray.self.light_prim = PRIM_NONE;
+  volume_ray.self.light = LAMP_NONE;
+  /* Store to avoid global fetches on every intersection step. */
+  const uint volume_stack_size = kernel_data.volume_stack_size;
+
+  const uint32_t path_flag = INTEGRATOR_STATE(state, path, flag);
+  const uint32_t visibility = SHADOW_CATCHER_PATH_VISIBILITY(path_flag, PATH_RAY_ALL_VISIBILITY);
+
+#  ifdef __VOLUME_RECORD_ALL__
+  Intersection hits[2 * MAX_VOLUME_STACK_SIZE + 1];
+  uint num_hits = scene_intersect_volume(kg, &volume_ray, hits, 2 * volume_stack_size, visibility);
+  if (num_hits > 0) {
+    Intersection *isect = hits;
+
+    qsort(hits, num_hits, sizeof(Intersection), intersections_compare);
+
+    for (uint hit = 0; hit < num_hits; ++hit, ++isect) {
+      /* Ignore self, SSS itself already enters and exits the object. */
+      if (isect->object == volume_ray.self.object) {
+        continue;
+      }
+      shader_setup_from_ray(kg, stack_sd, &volume_ray, isect);
+      volume_stack_enter_exit(kg, state, stack_sd);
+    }
+  }
+#  else
+  Intersection isect;
+  int step = 0;
+  while (step < 2 * volume_stack_size &&
+         scene_intersect_volume(kg, &volume_ray, &isect, visibility))
+  {
+    /* Ignore self, SSS itself already enters and exits the object. */
+    if (isect.object != volume_ray.self.object) {
+      shader_setup_from_ray(kg, stack_sd, &volume_ray, &isect);
+      volume_stack_enter_exit(kg, state, stack_sd);
+    }
+    /* Move ray forward. */
+    volume_ray.tmin = intersection_t_offset(isect.t);
+    volume_ray.self.object = isect.object;
+    volume_ray.self.prim = isect.prim;
+    ++step;
+  }
+#  endif
+}
+#endif
 
 #ifdef __SUBSURFACE__
 

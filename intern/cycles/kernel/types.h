@@ -87,14 +87,16 @@ CCL_NAMESPACE_BEGIN
 #define __VOLUME__
 
 /* Device specific features */
-#ifdef WITH_OSL
-#  define __OSL__
+#ifdef __OSL__
 #  ifdef __KERNEL_OPTIX__
 /* Kernels with OSL support are built separately in OptiX and don't need SVM. */
 #    undef __SVM__
 #  endif
 #endif
 #ifndef __KERNEL_GPU__
+#  ifdef WITH_OSL
+#    define __OSL__
+#  endif
 #  ifdef WITH_PATH_GUIDING
 #    define __PATH_GUIDING__
 #  endif
@@ -344,8 +346,8 @@ enum PathRayMNEE {
 #define SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) ((visibility) << 16)
 
 #define SHADOW_CATCHER_PATH_VISIBILITY(path_flag, visibility) \
-  (((path_flag) & PATH_RAY_SHADOW_CATCHER_PASS) ? SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) : \
-                                                  (visibility))
+  (((path_flag)&PATH_RAY_SHADOW_CATCHER_PASS) ? SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) : \
+                                                (visibility))
 
 #define SHADOW_CATCHER_OBJECT_VISIBILITY(is_shadow_catcher, visibility) \
   (((is_shadow_catcher) ? SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) : 0) | (visibility))

@@ -16,6 +16,26 @@ CCL_NAMESPACE_BEGIN
 class BVHOptiX;
 struct KernelParamsOptiX;
 
+/* List of OptiX modules. */
+enum {
+  MOD_COMMON,
+  MOD_INTEGRATOR_INTERSECT_CLOSEST,
+  MOD_INTEGRATOR_INTERSECT_DEDICATED_LIGHT,
+  MOD_INTEGRATOR_INTERSECT_SHADOW,
+  MOD_INTEGRATOR_INTERSECT_SUBSURFACE,
+  MOD_INTEGRATOR_INTERSECT_VOLUME_STACK,
+  MOD_INTEGRATOR_SHADE_BACKGROUND,
+  MOD_INTEGRATOR_SHADE_DEDICATED_LIGHT,
+  MOD_INTEGRATOR_SHADE_LIGHT,
+  MOD_INTEGRATOR_SHADE_SHADOW,
+  MOD_INTEGRATOR_SHADE_SURFACE,
+  MOD_INTEGRATOR_SHADE_VOLUME,
+  MOD_BAKE,
+  MOD_BUILTIN_CURVE,
+  MOD_BUILTIN_CURVE_MOTION,
+  NUM_MODULES
+};
+
 /* List of OptiX program groups. */
 enum {
   PG_RGEN_INTERSECT_CLOSEST,
@@ -67,8 +87,7 @@ class OptiXDevice : public CUDADevice {
  public:
   OptixDeviceContext context = NULL;
 
-  OptixModule optix_module = NULL; /* All necessary OptiX kernels are in one module. */
-  OptixModule builtin_modules[2] = {};
+  OptixModule modules[NUM_MODULES] = {};
   OptixPipeline pipelines[NUM_PIPELINES] = {};
   OptixProgramGroup groups[NUM_PROGRAM_GROUPS] = {};
   OptixPipelineCompileOptions pipeline_options = {};

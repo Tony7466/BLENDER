@@ -16,6 +16,9 @@ ccl_device_noinline void svm_node_wavelength(KernelGlobals kg,
                                              ccl_private float *stack,
                                              uint wavelength,
                                              uint color_out)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   float lambda_nm = stack_load_float(stack, wavelength);
   float ii = (lambda_nm - 380.0f) * (1.0f / 5.0f);  // scaled 0..80
@@ -39,5 +42,6 @@ ccl_device_noinline void svm_node_wavelength(KernelGlobals kg,
 
   stack_store_float3(stack, color_out, color);
 }
+#endif
 
 CCL_NAMESPACE_END

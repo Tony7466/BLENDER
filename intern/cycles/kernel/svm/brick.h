@@ -64,6 +64,9 @@ ccl_device_noinline_cpu float2 svm_brick(float3 p,
 
 ccl_device_noinline int svm_node_tex_brick(
     KernelGlobals kg, ccl_private ShaderData *sd, ccl_private float *stack, uint4 node, int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint4 node2 = read_node(kg, &offset);
   uint4 node3 = read_node(kg, &offset);
@@ -125,5 +128,6 @@ ccl_device_noinline int svm_node_tex_brick(
     stack_store_float(stack, fac_offset, f);
   return offset;
 }
+#endif
 
 CCL_NAMESPACE_END

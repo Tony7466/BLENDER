@@ -9,10 +9,8 @@
 #include "kernel/film/adaptive_sampling.h"
 #include "kernel/film/light_passes.h"
 
-#include "kernel/integrator/intersect_closest.h"
 #include "kernel/integrator/path_state.h"
-
-#include "kernel/sample/pattern.h"
+#include "kernel/integrator/shadow_catcher.h"
 
 #include "kernel/geom/geom.h"
 

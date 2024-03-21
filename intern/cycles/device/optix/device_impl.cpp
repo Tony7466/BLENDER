@@ -112,12 +112,9 @@ OptiXDevice::~OptiXDevice()
   launch_params.free();
 
   /* Unload modules. */
-  if (optix_module != NULL) {
-    optixModuleDestroy(optix_module);
-  }
-  for (int i = 0; i < 2; ++i) {
-    if (builtin_modules[i] != NULL) {
-      optixModuleDestroy(builtin_modules[i]);
+  for (int i = 0; i < NUM_MODULES; ++i) {
+    if (modules[i] != NULL) {
+      optixModuleDestroy(modules[i]);
     }
   }
   for (int i = 0; i < NUM_PIPELINES; ++i) {
@@ -210,13 +207,10 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   /* Detect existence of OptiX kernel and SDK here early. So we can error out
    * before compiling the CUDA kernels, to avoid failing right after when
    * compiling the OptiX kernel. */
-  string suffix = use_osl ? "_osl" :
-                  (kernel_features & (KERNEL_FEATURE_NODE_RAYTRACE | KERNEL_FEATURE_MNEE)) ?
-                            "_shader_raytrace" :
-                            "";
+  string suffix = use_osl ? "_osl" : "";
   string ptx_filename;
   if (need_optix_kernels) {
-    ptx_filename = path_get("lib/kernel_optix" + suffix + ".ptx");
+    ptx_filename = path_get("lib/optix/kernel_common" + suffix + ".ptx");
     if (use_adaptive_compilation() || path_file_size(ptx_filename) == -1) {
       std::string optix_include_dir = get_optix_include_dir();
       if (optix_include_dir.empty()) {
@@ -247,15 +241,11 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
 
   const CUDAContextScope scope(this);
 
-  /* Unload existing OptiX module and pipelines first. */
-  if (optix_module != NULL) {
-    optixModuleDestroy(optix_module);
-    optix_module = NULL;
-  }
-  for (int i = 0; i < 2; ++i) {
-    if (builtin_modules[i] != NULL) {
-      optixModuleDestroy(builtin_modules[i]);
-      builtin_modules[i] = NULL;
+  /* Unload existing OptiX modules and pipelines first. */
+  for (int i = 0; i < NUM_MODULES; ++i) {
+    if (modules[i] != NULL) {
+      optixModuleDestroy(modules[i]);
+      modules[i] = NULL;
     }
   }
   for (int i = 0; i < NUM_PIPELINES; ++i) {
@@ -342,11 +332,44 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
     pipeline_options.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
   }
 
-  { /* Load and compile PTX module with OptiX kernels. */
+  /* Load and compile PTX modules with OptiX kernels. */
+  const char *module_names[NUM_MODULES] = {};
+  module_names[MOD_COMMON] = "kernel_common";
+  module_names[MOD_INTEGRATOR_INTERSECT_CLOSEST] = "kernel_integrator_intersect_closest";
+  module_names[MOD_INTEGRATOR_INTERSECT_DEDICATED_LIGHT] =
+      "kernel_integrator_intersect_dedicated_light";
+  module_names[MOD_INTEGRATOR_INTERSECT_SHADOW] = "kernel_integrator_intersect_shadow";
+  module_names[MOD_INTEGRATOR_INTERSECT_SUBSURFACE] = "kernel_integrator_intersect_subsurface";
+  module_names[MOD_INTEGRATOR_INTERSECT_VOLUME_STACK] = "kernel_integrator_intersect_volume_stack";
+  if (use_osl || (kernel_features & (KERNEL_FEATURE_NODE_RAYTRACE | KERNEL_FEATURE_MNEE))) {
+    module_names[MOD_INTEGRATOR_SHADE_SURFACE] = "kernel_integrator_shade_surface";
+  }
+  if (use_osl) {
+    module_names[MOD_INTEGRATOR_SHADE_BACKGROUND] = "kernel_integrator_shade_background";
+    module_names[MOD_INTEGRATOR_SHADE_DEDICATED_LIGHT] = "kernel_integrator_shade_dedicated_light";
+    module_names[MOD_INTEGRATOR_SHADE_LIGHT] = "kernel_integrator_shade_light";
+    module_names[MOD_INTEGRATOR_SHADE_SHADOW] = "kernel_integrator_shade_shadow";
+    module_names[MOD_INTEGRATOR_SHADE_VOLUME] = "kernel_integrator_shade_volume";
+    module_names[MOD_BAKE] = "kernel_bake";
+  }
+
+  TaskPool pool;
+  OptixResult results[NUM_MODULES] = {};
+
+  for (int i = 0; i < NUM_MODULES; i++) {
+    if (module_names[i] == nullptr) {
+      continue;
+    }
+
+	string module_name = module_names[i];
+    if (i < MOD_INTEGRATOR_INTERSECT_CLOSEST || i >= MOD_INTEGRATOR_SHADE_BACKGROUND)
+      module_name += suffix;
+
+    ptx_filename = path_get("lib/optix/" + module_name + ".ptx");
     string ptx_data;
     if (use_adaptive_compilation() || path_file_size(ptx_filename) == -1) {
       string cflags = compile_kernel_get_common_cflags(kernel_features);
-      ptx_filename = compile_kernel(cflags, ("kernel" + suffix).c_str(), "optix", true);
+      ptx_filename = compile_kernel(cflags, module_name.c_str(), "optix", true);
     }
     if (ptx_filename.empty() || !path_read_text(ptx_filename, ptx_data)) {
       set_error(string_printf("Failed to load OptiX kernel from '%s'", ptx_filename.c_str()));
@@ -355,50 +378,57 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
 
 #  if OPTIX_ABI_VERSION >= 84
     OptixTask task = nullptr;
-    OptixResult result = optixModuleCreateWithTasks(context,
-                                                    &module_options,
-                                                    &pipeline_options,
-                                                    ptx_data.data(),
-                                                    ptx_data.size(),
-                                                    nullptr,
-                                                    nullptr,
-                                                    &optix_module,
-                                                    &task);
-    if (result == OPTIX_SUCCESS) {
-      TaskPool pool;
-      execute_optix_task(pool, task, result);
-      pool.wait_work();
+    results[i] = optixModuleCreateWithTasks(context,
+                                            &module_options,
+                                            &pipeline_options,
+                                            ptx_data.data(),
+                                            ptx_data.size(),
+                                            nullptr,
+                                            nullptr,
+                                            &modules[i],
+                                            &task);
+    if (results[i] == OPTIX_SUCCESS) {
+      execute_optix_task(pool, task, results[i]);
     }
 #  elif OPTIX_ABI_VERSION >= 55
     OptixTask task = nullptr;
-    OptixResult result = optixModuleCreateFromPTXWithTasks(context,
-                                                           &module_options,
-                                                           &pipeline_options,
-                                                           ptx_data.data(),
-                                                           ptx_data.size(),
-                                                           nullptr,
-                                                           nullptr,
-                                                           &optix_module,
-                                                           &task);
-    if (result == OPTIX_SUCCESS) {
-      TaskPool pool;
-      execute_optix_task(pool, task, result);
-      pool.wait_work();
+    results[i] = optixModuleCreateFromPTXWithTasks(context,
+                                                   &module_options,
+                                                   &pipeline_options,
+                                                   ptx_data.data(),
+                                                   ptx_data.size(),
+                                                   nullptr,
+                                                   nullptr,
+                                                   &modules[i],
+                                                   &task);
+    if (results[i] == OPTIX_SUCCESS) {
+      execute_optix_task(pool, task, results[i]);
     }
 #  else
-    const OptixResult result = optixModuleCreateFromPTX(context,
-                                                        &module_options,
-                                                        &pipeline_options,
-                                                        ptx_data.data(),
-                                                        ptx_data.size(),
-                                                        nullptr,
-                                                        0,
-                                                        &optix_module);
+    pool.push([this, &results, i, &module_options, &ptx_data]() {
+      results[i] = optixModuleCreateFromPTX(context,
+                                            &module_options,
+                                            &pipeline_options,
+                                            ptx_data.data(),
+                                            ptx_data.size(),
+                                            nullptr,
+                                            0,
+                                            &modules[i]);
+    });
 #  endif
-    if (result != OPTIX_SUCCESS) {
-      set_error(string_printf("Failed to load OptiX kernel from '%s' (%s)",
-                              ptx_filename.c_str(),
-                              optixGetErrorName(result)));
+  }
+
+  pool.wait_work();
+
+  for (int i = 0; i < NUM_MODULES; i++) {
+    if (module_names[i] == nullptr) {
+      continue;
+    }
+
+    if (results[i] != OPTIX_SUCCESS) {
+      set_error(string_printf("Failed to load OptiX kernel '%s' (%s)",
+                              module_names[i],
+                              optixGetErrorName(results[i])));
       return false;
     }
   }
@@ -407,40 +437,43 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   OptixProgramGroupDesc group_descs[NUM_PROGRAM_GROUPS] = {};
   OptixProgramGroupOptions group_options = {}; /* There are no options currently. */
   group_descs[PG_RGEN_INTERSECT_CLOSEST].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-  group_descs[PG_RGEN_INTERSECT_CLOSEST].raygen.module = optix_module;
+  group_descs[PG_RGEN_INTERSECT_CLOSEST].raygen.module = modules[MOD_INTEGRATOR_INTERSECT_CLOSEST];
   group_descs[PG_RGEN_INTERSECT_CLOSEST].raygen.entryFunctionName =
       "__raygen__kernel_optix_integrator_intersect_closest";
   group_descs[PG_RGEN_INTERSECT_SHADOW].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-  group_descs[PG_RGEN_INTERSECT_SHADOW].raygen.module = optix_module;
+  group_descs[PG_RGEN_INTERSECT_SHADOW].raygen.module = modules[MOD_INTEGRATOR_INTERSECT_SHADOW];
   group_descs[PG_RGEN_INTERSECT_SHADOW].raygen.entryFunctionName =
       "__raygen__kernel_optix_integrator_intersect_shadow";
   group_descs[PG_RGEN_INTERSECT_SUBSURFACE].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-  group_descs[PG_RGEN_INTERSECT_SUBSURFACE].raygen.module = optix_module;
+  group_descs[PG_RGEN_INTERSECT_SUBSURFACE].raygen.module =
+      modules[MOD_INTEGRATOR_INTERSECT_SUBSURFACE];
   group_descs[PG_RGEN_INTERSECT_SUBSURFACE].raygen.entryFunctionName =
       "__raygen__kernel_optix_integrator_intersect_subsurface";
   group_descs[PG_RGEN_INTERSECT_VOLUME_STACK].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-  group_descs[PG_RGEN_INTERSECT_VOLUME_STACK].raygen.module = optix_module;
+  group_descs[PG_RGEN_INTERSECT_VOLUME_STACK].raygen.module =
+      modules[MOD_INTEGRATOR_INTERSECT_VOLUME_STACK];
   group_descs[PG_RGEN_INTERSECT_VOLUME_STACK].raygen.entryFunctionName =
       "__raygen__kernel_optix_integrator_intersect_volume_stack";
   group_descs[PG_RGEN_INTERSECT_DEDICATED_LIGHT].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-  group_descs[PG_RGEN_INTERSECT_DEDICATED_LIGHT].raygen.module = optix_module;
+  group_descs[PG_RGEN_INTERSECT_DEDICATED_LIGHT].raygen.module =
+      modules[MOD_INTEGRATOR_INTERSECT_DEDICATED_LIGHT];
   group_descs[PG_RGEN_INTERSECT_DEDICATED_LIGHT].raygen.entryFunctionName =
       "__raygen__kernel_optix_integrator_intersect_dedicated_light";
   group_descs[PG_MISS].kind = OPTIX_PROGRAM_GROUP_KIND_MISS;
-  group_descs[PG_MISS].miss.module = optix_module;
+  group_descs[PG_MISS].miss.module = modules[MOD_COMMON];
   group_descs[PG_MISS].miss.entryFunctionName = "__miss__kernel_optix_miss";
   group_descs[PG_HITD].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-  group_descs[PG_HITD].hitgroup.moduleCH = optix_module;
+  group_descs[PG_HITD].hitgroup.moduleCH = modules[MOD_COMMON];
   group_descs[PG_HITD].hitgroup.entryFunctionNameCH = "__closesthit__kernel_optix_hit";
-  group_descs[PG_HITD].hitgroup.moduleAH = optix_module;
+  group_descs[PG_HITD].hitgroup.moduleAH = modules[MOD_COMMON];
   group_descs[PG_HITD].hitgroup.entryFunctionNameAH = "__anyhit__kernel_optix_visibility_test";
   group_descs[PG_HITS].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-  group_descs[PG_HITS].hitgroup.moduleAH = optix_module;
+  group_descs[PG_HITS].hitgroup.moduleAH = modules[MOD_COMMON];
   group_descs[PG_HITS].hitgroup.entryFunctionNameAH = "__anyhit__kernel_optix_shadow_all_hit";
   group_descs[PG_HITV].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-  group_descs[PG_HITV].hitgroup.moduleCH = optix_module;
+  group_descs[PG_HITV].hitgroup.moduleCH = modules[MOD_COMMON];
   group_descs[PG_HITV].hitgroup.entryFunctionNameCH = "__closesthit__kernel_optix_hit";
-  group_descs[PG_HITV].hitgroup.moduleAH = optix_module;
+  group_descs[PG_HITV].hitgroup.moduleAH = modules[MOD_COMMON];
   group_descs[PG_HITV].hitgroup.entryFunctionNameAH = "__anyhit__kernel_optix_volume_test";
 
   if (kernel_features & KERNEL_FEATURE_HAIR) {
@@ -457,30 +490,36 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
 #  endif
       builtin_options.usesMotionBlur = false;
 
-      optix_assert(optixBuiltinISModuleGet(
-          context, &module_options, &pipeline_options, &builtin_options, &builtin_modules[0]));
+      optix_assert(optixBuiltinISModuleGet(context,
+                                           &module_options,
+                                           &pipeline_options,
+                                           &builtin_options,
+                                           &modules[MOD_BUILTIN_CURVE]));
 
-      group_descs[PG_HITD].hitgroup.moduleIS = builtin_modules[0];
+      group_descs[PG_HITD].hitgroup.moduleIS = modules[MOD_BUILTIN_CURVE];
       group_descs[PG_HITD].hitgroup.entryFunctionNameIS = nullptr;
-      group_descs[PG_HITS].hitgroup.moduleIS = builtin_modules[0];
+      group_descs[PG_HITS].hitgroup.moduleIS = modules[MOD_BUILTIN_CURVE];
       group_descs[PG_HITS].hitgroup.entryFunctionNameIS = nullptr;
 
       if (pipeline_options.usesMotionBlur) {
         builtin_options.usesMotionBlur = true;
 
-        optix_assert(optixBuiltinISModuleGet(
-            context, &module_options, &pipeline_options, &builtin_options, &builtin_modules[1]));
+        optix_assert(optixBuiltinISModuleGet(context,
+                                             &module_options,
+                                             &pipeline_options,
+                                             &builtin_options,
+                                             &modules[MOD_BUILTIN_CURVE_MOTION]));
 
         group_descs[PG_HITD_MOTION] = group_descs[PG_HITD];
-        group_descs[PG_HITD_MOTION].hitgroup.moduleIS = builtin_modules[1];
+        group_descs[PG_HITD_MOTION].hitgroup.moduleIS = modules[MOD_BUILTIN_CURVE_MOTION];
         group_descs[PG_HITS_MOTION] = group_descs[PG_HITS];
-        group_descs[PG_HITS_MOTION].hitgroup.moduleIS = builtin_modules[1];
+        group_descs[PG_HITS_MOTION].hitgroup.moduleIS = modules[MOD_BUILTIN_CURVE_MOTION];
       }
     }
     else {
       /* Custom ribbon intersection. */
-      group_descs[PG_HITD].hitgroup.moduleIS = optix_module;
-      group_descs[PG_HITS].hitgroup.moduleIS = optix_module;
+      group_descs[PG_HITD].hitgroup.moduleIS = modules[MOD_COMMON];
+      group_descs[PG_HITS].hitgroup.moduleIS = modules[MOD_COMMON];
       group_descs[PG_HITD].hitgroup.entryFunctionNameIS = "__intersection__curve_ribbon";
       group_descs[PG_HITS].hitgroup.entryFunctionNameIS = "__intersection__curve_ribbon";
     }
@@ -489,35 +528,36 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   if (kernel_features & KERNEL_FEATURE_POINTCLOUD) {
     group_descs[PG_HITD_POINTCLOUD] = group_descs[PG_HITD];
     group_descs[PG_HITD_POINTCLOUD].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-    group_descs[PG_HITD_POINTCLOUD].hitgroup.moduleIS = optix_module;
+    group_descs[PG_HITD_POINTCLOUD].hitgroup.moduleIS = modules[MOD_COMMON];
     group_descs[PG_HITD_POINTCLOUD].hitgroup.entryFunctionNameIS = "__intersection__point";
     group_descs[PG_HITS_POINTCLOUD] = group_descs[PG_HITS];
     group_descs[PG_HITS_POINTCLOUD].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-    group_descs[PG_HITS_POINTCLOUD].hitgroup.moduleIS = optix_module;
+    group_descs[PG_HITS_POINTCLOUD].hitgroup.moduleIS = modules[MOD_COMMON];
     group_descs[PG_HITS_POINTCLOUD].hitgroup.entryFunctionNameIS = "__intersection__point";
   }
 
   /* Add hit group for local intersections. */
   if (kernel_features & (KERNEL_FEATURE_SUBSURFACE | KERNEL_FEATURE_NODE_RAYTRACE)) {
     group_descs[PG_HITL].kind = OPTIX_PROGRAM_GROUP_KIND_HITGROUP;
-    group_descs[PG_HITL].hitgroup.moduleAH = optix_module;
+    group_descs[PG_HITL].hitgroup.moduleAH = modules[MOD_COMMON];
     group_descs[PG_HITL].hitgroup.entryFunctionNameAH = "__anyhit__kernel_optix_local_hit";
   }
 
   /* Shader ray-tracing replaces some functions with direct callables. */
   if (kernel_features & KERNEL_FEATURE_NODE_RAYTRACE) {
     group_descs[PG_RGEN_SHADE_SURFACE_RAYTRACE].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_SHADE_SURFACE_RAYTRACE].raygen.module = optix_module;
+    group_descs[PG_RGEN_SHADE_SURFACE_RAYTRACE].raygen.module =
+        modules[MOD_INTEGRATOR_SHADE_SURFACE];
     group_descs[PG_RGEN_SHADE_SURFACE_RAYTRACE].raygen.entryFunctionName =
         "__raygen__kernel_optix_integrator_shade_surface_raytrace";
 
     /* Kernels with OSL support are built without SVM, so can skip those direct callables there. */
     if (!use_osl) {
       group_descs[PG_CALL_SVM_AO].kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
-      group_descs[PG_CALL_SVM_AO].callables.moduleDC = optix_module;
+      group_descs[PG_CALL_SVM_AO].callables.moduleDC = modules[MOD_COMMON];
       group_descs[PG_CALL_SVM_AO].callables.entryFunctionNameDC = "__direct_callable__svm_node_ao";
       group_descs[PG_CALL_SVM_BEVEL].kind = OPTIX_PROGRAM_GROUP_KIND_CALLABLES;
-      group_descs[PG_CALL_SVM_BEVEL].callables.moduleDC = optix_module;
+      group_descs[PG_CALL_SVM_BEVEL].callables.moduleDC = modules[MOD_COMMON];
       group_descs[PG_CALL_SVM_BEVEL].callables.entryFunctionNameDC =
           "__direct_callable__svm_node_bevel";
     }
@@ -525,7 +565,7 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
 
   if (kernel_features & KERNEL_FEATURE_MNEE) {
     group_descs[PG_RGEN_SHADE_SURFACE_MNEE].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_SHADE_SURFACE_MNEE].raygen.module = optix_module;
+    group_descs[PG_RGEN_SHADE_SURFACE_MNEE].raygen.module = modules[MOD_INTEGRATOR_SHADE_SURFACE];
     group_descs[PG_RGEN_SHADE_SURFACE_MNEE].raygen.entryFunctionName =
         "__raygen__kernel_optix_integrator_shade_surface_mnee";
   }
@@ -533,39 +573,40 @@ bool OptiXDevice::load_kernels(const uint kernel_features)
   /* OSL uses direct callables to execute, so shading needs to be done in OptiX if OSL is used. */
   if (use_osl) {
     group_descs[PG_RGEN_SHADE_BACKGROUND].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_SHADE_BACKGROUND].raygen.module = optix_module;
+    group_descs[PG_RGEN_SHADE_BACKGROUND].raygen.module = modules[MOD_INTEGRATOR_SHADE_BACKGROUND];
     group_descs[PG_RGEN_SHADE_BACKGROUND].raygen.entryFunctionName =
         "__raygen__kernel_optix_integrator_shade_background";
     group_descs[PG_RGEN_SHADE_LIGHT].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_SHADE_LIGHT].raygen.module = optix_module;
+    group_descs[PG_RGEN_SHADE_LIGHT].raygen.module = modules[MOD_INTEGRATOR_SHADE_LIGHT];
     group_descs[PG_RGEN_SHADE_LIGHT].raygen.entryFunctionName =
         "__raygen__kernel_optix_integrator_shade_light";
     group_descs[PG_RGEN_SHADE_SURFACE].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_SHADE_SURFACE].raygen.module = optix_module;
+    group_descs[PG_RGEN_SHADE_SURFACE].raygen.module = modules[MOD_INTEGRATOR_SHADE_SURFACE];
     group_descs[PG_RGEN_SHADE_SURFACE].raygen.entryFunctionName =
         "__raygen__kernel_optix_integrator_shade_surface";
     group_descs[PG_RGEN_SHADE_VOLUME].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_SHADE_VOLUME].raygen.module = optix_module;
+    group_descs[PG_RGEN_SHADE_VOLUME].raygen.module = modules[MOD_INTEGRATOR_SHADE_VOLUME];
     group_descs[PG_RGEN_SHADE_VOLUME].raygen.entryFunctionName =
         "__raygen__kernel_optix_integrator_shade_volume";
     group_descs[PG_RGEN_SHADE_SHADOW].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_SHADE_SHADOW].raygen.module = optix_module;
+    group_descs[PG_RGEN_SHADE_SHADOW].raygen.module = modules[MOD_INTEGRATOR_SHADE_SHADOW];
     group_descs[PG_RGEN_SHADE_SHADOW].raygen.entryFunctionName =
         "__raygen__kernel_optix_integrator_shade_shadow";
     group_descs[PG_RGEN_SHADE_DEDICATED_LIGHT].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_SHADE_DEDICATED_LIGHT].raygen.module = optix_module;
+    group_descs[PG_RGEN_SHADE_DEDICATED_LIGHT].raygen.module =
+        modules[MOD_INTEGRATOR_SHADE_DEDICATED_LIGHT];
     group_descs[PG_RGEN_SHADE_DEDICATED_LIGHT].raygen.entryFunctionName =
         "__raygen__kernel_optix_integrator_shade_dedicated_light";
     group_descs[PG_RGEN_EVAL_DISPLACE].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_EVAL_DISPLACE].raygen.module = optix_module;
+    group_descs[PG_RGEN_EVAL_DISPLACE].raygen.module = modules[MOD_BAKE];
     group_descs[PG_RGEN_EVAL_DISPLACE].raygen.entryFunctionName =
         "__raygen__kernel_optix_shader_eval_displace";
     group_descs[PG_RGEN_EVAL_BACKGROUND].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_EVAL_BACKGROUND].raygen.module = optix_module;
+    group_descs[PG_RGEN_EVAL_BACKGROUND].raygen.module = modules[MOD_BAKE];
     group_descs[PG_RGEN_EVAL_BACKGROUND].raygen.entryFunctionName =
         "__raygen__kernel_optix_shader_eval_background";
     group_descs[PG_RGEN_EVAL_CURVE_SHADOW_TRANSPARENCY].kind = OPTIX_PROGRAM_GROUP_KIND_RAYGEN;
-    group_descs[PG_RGEN_EVAL_CURVE_SHADOW_TRANSPARENCY].raygen.module = optix_module;
+    group_descs[PG_RGEN_EVAL_CURVE_SHADOW_TRANSPARENCY].raygen.module = modules[MOD_BAKE];
     group_descs[PG_RGEN_EVAL_CURVE_SHADOW_TRANSPARENCY].raygen.entryFunctionName =
         "__raygen__kernel_optix_shader_eval_curve_shadow_transparency";
   }
@@ -798,7 +839,7 @@ bool OptiXDevice::load_osl_kernels()
   osl_modules.resize(osl_kernels.size() + 1);
 
   { /* Load and compile PTX module with OSL services. */
-    string ptx_data, ptx_filename = path_get("lib/kernel_optix_osl_services.ptx");
+    string ptx_data, ptx_filename = path_get("lib/optix/services_optix.ptx");
     if (!path_read_text(ptx_filename, ptx_data)) {
       set_error(string_printf("Failed to load OptiX OSL services kernel from '%s'",
                               ptx_filename.c_str()));

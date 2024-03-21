@@ -192,9 +192,9 @@ add_definitions(
   ${BOOST_DEFINITIONS}
 )
 
-add_definitions(
-  -DCCL_NAMESPACE_BEGIN=namespace\ ccl\ {
-  -DCCL_NAMESPACE_END=}
+add_compile_options(
+  "$<$<COMPILE_LANGUAGE:CXX>:-DCCL_NAMESPACE_BEGIN=namespace\ ccl\ {>"
+  "$<$<COMPILE_LANGUAGE:CXX>:-DCCL_NAMESPACE_END=}>"
 )
 
 include_directories(

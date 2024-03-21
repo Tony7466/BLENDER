@@ -4,6 +4,11 @@
 
 #pragma once
 
+#include "kernel/integrator/state_util.h"
+#include "kernel/integrator/state_flow.h"
+
+#include "kernel/bvh/bvh.h"
+
 CCL_NAMESPACE_BEGIN
 
 /* Visibility for the shadow ray. */
@@ -141,7 +146,7 @@ ccl_device bool integrate_intersect_shadow_transparent(KernelGlobals kg,
 }
 #endif
 
-ccl_device void integrator_intersect_shadow(KernelGlobals kg, IntegratorShadowState state)
+ccl_device_noinline void integrator_intersect_shadow(KernelGlobals kg, IntegratorShadowState state)
 {
   PROFILING_INIT(kg, PROFILING_INTERSECT_SHADOW);
 

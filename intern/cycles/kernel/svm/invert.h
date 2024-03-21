@@ -16,6 +16,9 @@ ccl_device_noinline void svm_node_invert(ccl_private ShaderData *sd,
                                          uint in_fac,
                                          uint in_color,
                                          uint out_color)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   float factor = stack_load_float(stack, in_fac);
   float3 color = stack_load_float3(stack, in_color);
@@ -28,5 +31,6 @@ ccl_device_noinline void svm_node_invert(ccl_private ShaderData *sd,
     stack_store_float3(stack, out_color, color);
   }
 }
+#endif
 
 CCL_NAMESPACE_END

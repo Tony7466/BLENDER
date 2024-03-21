@@ -78,15 +78,26 @@
 #  error "Unknown or unsupported CUDA architecture, can't determine launch bounds"
 #endif
 
+#if 0
+
 /* Compute number of threads per block and minimum blocks per multiprocessor
  * given the maximum number of registers per thread. */
-#define ccl_gpu_kernel(block_num_threads, thread_num_registers) \
-  extern "C" __global__ void __launch_bounds__(block_num_threads, \
-                                               GPU_MULTIPRESSOR_MAX_REGISTERS / \
-                                                   (block_num_threads * thread_num_registers))
+#  define ccl_gpu_kernel(block_num_threads, thread_num_registers) \
+    extern "C" __global__ void __launch_bounds__(block_num_threads, \
+                                                 GPU_MULTIPRESSOR_MAX_REGISTERS / \
+                                                     (block_num_threads * thread_num_registers))
 
-#define ccl_gpu_kernel_threads(block_num_threads) \
-  extern "C" __global__ void __launch_bounds__(block_num_threads)
+#  define ccl_gpu_kernel_threads(block_num_threads) \
+    extern "C" __global__ void __launch_bounds__(block_num_threads)
+
+#else
+
+/* Cannot use launch bounds with separate compilation due to register targets mismatching between
+ * modules. */
+#  define ccl_gpu_kernel(block_num_threads, thread_num_registers) extern "C" __global__ void
+#  define ccl_gpu_kernel_threads(block_num_threads) extern "C" __global__ void
+
+#endif
 
 #define ccl_gpu_kernel_signature(name, ...) kernel_gpu_##name(__VA_ARGS__)
 #define ccl_gpu_kernel_postfix

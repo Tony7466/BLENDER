@@ -18,6 +18,9 @@ ccl_device_noinline int svm_node_tex_coord(KernelGlobals kg,
                                            ccl_private float *stack,
                                            uint4 node,
                                            int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   float3 data = zero_float3();
   uint type = node.y;
@@ -81,10 +84,10 @@ ccl_device_noinline int svm_node_tex_coord(KernelGlobals kg,
     case NODE_TEXCO_VOLUME_GENERATED: {
       data = sd->P;
 
-#ifdef __VOLUME__
+#  ifdef __VOLUME__
       if (sd->object != OBJECT_NONE)
         data = volume_normalized_position(kg, sd, data);
-#endif
+#  endif
       break;
     }
   }
@@ -92,6 +95,7 @@ ccl_device_noinline int svm_node_tex_coord(KernelGlobals kg,
   stack_store_float3(stack, out_offset, data);
   return offset;
 }
+#endif
 
 ccl_device_noinline int svm_node_tex_coord_bump_dx(KernelGlobals kg,
                                                    ccl_private ShaderData *sd,
@@ -99,8 +103,11 @@ ccl_device_noinline int svm_node_tex_coord_bump_dx(KernelGlobals kg,
                                                    ccl_private float *stack,
                                                    uint4 node,
                                                    int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
-#ifdef __RAY_DIFFERENTIALS__
+#  ifdef __RAY_DIFFERENTIALS__
   float3 data = zero_float3();
   uint type = node.y;
   uint out_offset = node.z;
@@ -163,20 +170,21 @@ ccl_device_noinline int svm_node_tex_coord_bump_dx(KernelGlobals kg,
     case NODE_TEXCO_VOLUME_GENERATED: {
       data = svm_node_bump_P_dx(sd);
 
-#  ifdef __VOLUME__
+#    ifdef __VOLUME__
       if (sd->object != OBJECT_NONE)
         data = volume_normalized_position(kg, sd, data);
-#  endif
+#    endif
       break;
     }
   }
 
   stack_store_float3(stack, out_offset, data);
   return offset;
-#else
+#  else
   return svm_node_tex_coord(kg, sd, path_flag, stack, node, offset);
-#endif
+#  endif
 }
+#endif
 
 ccl_device_noinline int svm_node_tex_coord_bump_dy(KernelGlobals kg,
                                                    ccl_private ShaderData *sd,
@@ -184,8 +192,11 @@ ccl_device_noinline int svm_node_tex_coord_bump_dy(KernelGlobals kg,
                                                    ccl_private float *stack,
                                                    uint4 node,
                                                    int offset)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
-#ifdef __RAY_DIFFERENTIALS__
+#  ifdef __RAY_DIFFERENTIALS__
   float3 data = zero_float3();
   uint type = node.y;
   uint out_offset = node.z;
@@ -248,25 +259,29 @@ ccl_device_noinline int svm_node_tex_coord_bump_dy(KernelGlobals kg,
     case NODE_TEXCO_VOLUME_GENERATED: {
       data = svm_node_bump_P_dy(sd);
 
-#  ifdef __VOLUME__
+#    ifdef __VOLUME__
       if (sd->object != OBJECT_NONE)
         data = volume_normalized_position(kg, sd, data);
-#  endif
+#    endif
       break;
     }
   }
 
   stack_store_float3(stack, out_offset, data);
   return offset;
-#else
+#  else
   return svm_node_tex_coord(kg, sd, path_flag, stack, node, offset);
-#endif
+#  endif
 }
+#endif
 
 ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
                                              ccl_private ShaderData *sd,
                                              ccl_private float *stack,
                                              uint4 node)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint color_offset, strength_offset, normal_offset, space;
   svm_unpack_node_uchar4(node.y, &color_offset, &strength_offset, &normal_offset, &space);
@@ -365,11 +380,15 @@ ccl_device_noinline void svm_node_normal_map(KernelGlobals kg,
 
   stack_store_float3(stack, normal_offset, N);
 }
+#endif
 
 ccl_device_noinline void svm_node_tangent(KernelGlobals kg,
                                           ccl_private ShaderData *sd,
                                           ccl_private float *stack,
                                           uint4 node)
+#ifdef CCL_EXTERN_DECLS
+    ;
+#else
 {
   uint tangent_offset, direction_type, axis;
   svm_unpack_node_uchar3(node.y, &tangent_offset, &direction_type, &axis);
@@ -420,5 +439,6 @@ ccl_device_noinline void svm_node_tangent(KernelGlobals kg,
   tangent = cross(sd->N, normalize(cross(tangent, sd->N)));
   stack_store_float3(stack, tangent_offset, tangent);
 }
+#endif
 
 CCL_NAMESPACE_END
