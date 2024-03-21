@@ -1340,7 +1340,7 @@ void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
   dispatch_depth_scan_size_ = math::divide_ceil(target_size, int3(SHADOW_DEPTH_SCAN_GROUP_SIZE));
 
   pixel_world_radius_ = screen_pixel_radius(view, int2(target_size));
-  data_.tilemap_projection_ratio_buf = tilemap_pixel_radius() / pixel_world_radius_;
+  data_.tilemap_projection_ratio = tilemap_pixel_radius() / pixel_world_radius_;
   inst_.uniform_data.push_update();
 
   usage_tag_fb_resolution_ = math::divide_ceil(int2(target_size),

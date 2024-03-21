@@ -140,7 +140,7 @@ float shadow_punctual_footprint_ratio(LightData light,
                                       vec3 P,
                                       bool is_perspective,
                                       float dist_to_cam,
-                                      float tilemap_proj_ratio)
+                                      float tilemap_proj_ratio_arg)
 {
   /* We project a shadow map pixel (as a sphere for simplicity) to the receiver plane.
    * We then reproject this sphere onto the camera screen and compare it to the film pixel size.
@@ -155,7 +155,7 @@ float shadow_punctual_footprint_ratio(LightData light,
     footprint_ratio /= dist_to_cam;
   }
   /* Apply resolution ratio. */
-  footprint_ratio *= tilemap_proj_ratio;
+  footprint_ratio *= tilemap_proj_ratio_arg;
   /* Take the frustum padding into account. */
   footprint_ratio *= light.clip_side / orderedIntBitsToFloat(light.clip_near);
   return footprint_ratio;
