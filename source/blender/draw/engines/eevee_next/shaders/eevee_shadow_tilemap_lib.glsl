@@ -128,8 +128,8 @@ float shadow_directional_level_fractional(LightData light, vec3 lP)
   }
   float clipmap_lod = lod + light.lod_bias;
   return clamp(clipmap_lod,
-               light_sun_data_get(light).clipmap_lod_min,
-               light_sun_data_get(light).clipmap_lod_max);
+               float(light_sun_data_get(light).clipmap_lod_min),
+               float(light_sun_data_get(light).clipmap_lod_max));
 }
 
 int shadow_directional_level(LightData light, vec3 lP)
