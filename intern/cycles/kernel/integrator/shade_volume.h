@@ -759,7 +759,7 @@ ccl_device_forceinline void integrate_volume_direct_light(
 {
   PROFILING_INIT(kg, PROFILING_SHADE_VOLUME_DIRECT_LIGHT);
 
-  if (!kernel_data.integrator.use_direct_light || ls->emitter_id == -1) {
+  if (!kernel_data.integrator.use_direct_light || ls->emitter_id == EMITTER_NONE) {
     return;
   }
 
@@ -1008,6 +1008,7 @@ ccl_device VolumeIntegrateEvent volume_integrate(KernelGlobals kg,
   /* Sample light ahead of volume stepping, for equiangular sampling. */
   /* TODO: distant lights are ignored now, but could instead use even distribution. */
   LightSample ls ccl_optional_struct_init;
+  ls.emitter_id = EMITTER_NONE;
   const bool need_light_sample = !(INTEGRATOR_STATE(state, path, flag) & PATH_RAY_TERMINATE);
 
   EquiangularCoefficients equiangular_coeffs = {zero_float3(), make_float2(ray->tmin, ray->tmax)};
