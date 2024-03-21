@@ -27,7 +27,7 @@ void main()
   }
 
   /* Do not select 0 power lights. */
-  if (light.local.influence_radius_max < 1e-8) {
+  if (light_local_data_get(light).influence_radius_max < 1e-8) {
     return;
   }
 
@@ -53,7 +53,7 @@ void main()
     case LIGHT_OMNI_SPHERE:
     case LIGHT_OMNI_DISK:
       sphere.center = light._position;
-      sphere.radius = light.local.influence_radius_max;
+      sphere.radius = light_local_data_get(light).influence_radius_max;
       break;
     default:
       break;

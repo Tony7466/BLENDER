@@ -768,6 +768,11 @@ static inline bool is_sun_light(eLightType type)
   return type < LIGHT_OMNI_SPHERE;
 }
 
+static inline bool is_local_light(eLightType type)
+{
+  return type >= LIGHT_OMNI_SPHERE;
+}
+
 /* Using define because GLSL doesn't have inheritance, and encapsulation forces us to add some
  * unneeded padding. */
 #define LOCAL_LIGHT_COMMON \
@@ -868,6 +873,9 @@ struct LightSunData {
 };
 BLI_STATIC_ASSERT(sizeof(LightSunData) == sizeof(LightLocalData), "Data size must match")
 
+/* Enable when debugging. This is quite costly. */
+#define USE_GPU_ACCESS_CHECKS
+
 struct LightData {
   /** Normalized object to world matrix. */
   /* TODO(fclem): Use float4x3. */
@@ -907,11 +915,9 @@ struct LightData {
   float _pad1;
   float _pad2;
 
-#if defined(GPU_SHADER) && !defined(GPU_BACKEND_METAL)
-  /* Local light is used by default. Avoid casting for accessing common local light members.
-   * Use `light_area_data_get(light)` and `light_area_data_get(light)` to access shape related data
-   * or `light_sun_data_get(light)` for sun data. */
-  LightLocalData local;
+#if defined(GPU_SHADER) && (!defined(GPU_BACKEND_METAL) || defined(USE_GPU_ACCESS_CHECKS))
+  /* Use `light_*_data_get(light)` to access typed data. */
+  LightLocalData do_not_access_directly;
 #else
   union {
     LightLocalData local;
@@ -933,16 +939,15 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 #  define TYPECAST_NOOP
 #endif
 
-/* Enable when debugging. This is quite costly. */
-#define USE_GPU_ACCESS_CHECKS
-
 /* In addition to the static asserts that verify correct member assignment, also verify access on
  * the GPU so that only lights of a certain type can read for the appropriate union member.
  * Return cross platform garbage data as some platform can return cleared memory if we early exit.
  */
 #ifdef USE_GPU_ACCESS_CHECKS
 #  if defined(GPU_SHADER)
-/* Should result in a beautiful zebra pattern. */
+#    define DATA_MEMBER do_not_access_directly
+
+/* Should result in a beautiful zebra pattern on invalid load. */
 #    if defined(GPU_FRAGMENT_SHADER)
 #      define GARBAGE_VALUE sin(gl_FragCoord.x + gl_FragCoord.y)
 #    elif defined(GPU_COMPUTE_SHADER)
@@ -951,10 +956,13 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 #    else
 #      define GARBAGE_VALUE sin(float(gl_VertexID))
 #    endif
+
 /* Can be set to zero if zebra creates out-of-bound accesses and crashes. At least avoid UB. */
 // #    define GARBAGE_VALUE 0.0
+
 #  else /* C++ */
 #    define GARBAGE_VALUE 0.0f
+#    define DATA_MEMBER local
 #  endif
 
 #  define SAFE_BEGIN(check) \
@@ -973,8 +981,8 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 
 /* This is a dangerous process, make sure to static assert every assignment. */
 #define SAFE_ASSIGN(a, reinterpret_fn, in_type, b) \
-  CHECK_TYPE_PAIR(data.a, reinterpret_fn(light.local.b)); \
-  data.a = reinterpret_fn(SAFE_ASSIGN_LIGHT_TYPE_CHECK(in_type, light.local.b)); \
+  CHECK_TYPE_PAIR(data.a, reinterpret_fn(light.DATA_MEMBER.b)); \
+  data.a = reinterpret_fn(SAFE_ASSIGN_LIGHT_TYPE_CHECK(in_type, light.DATA_MEMBER.b)); \
   BLI_STATIC_ASSERT(offsetof(decltype(data), a) == offsetof(LightLocalData, b), ERROR_OFS(a, b))
 
 #define SAFE_ASSIGN_FLOAT(a, b) SAFE_ASSIGN(a, TYPECAST_NOOP, float, b);
@@ -992,6 +1000,21 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 #  if !defined(GPU_SHADER)
 namespace do_not_use {
 #  endif
+
+static inline LightSpotData light_local_data_get(LightData light)
+{
+  LightSpotData data;
+  SAFE_BEGIN(is_local_light(light.type))
+  SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
+  SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
+  SAFE_ASSIGN_FLOAT(influence_radius_invsqr_volume, influence_radius_invsqr_volume)
+  SAFE_ASSIGN_FLOAT(clip_side, clip_side)
+  SAFE_ASSIGN_FLOAT(shadow_scale, shadow_scale)
+  SAFE_ASSIGN_FLOAT(shadow_projection_shift, shadow_projection_shift)
+  SAFE_ASSIGN_INT(tilemaps_count, tilemaps_count)
+  return data;
+}
 
 static inline LightSpotData light_spot_data_get(LightData light)
 {
@@ -1052,6 +1075,7 @@ static inline LightSunData light_sun_data_get(LightData light)
 /* Metal supports unions. Avoid making codegen more difficult for the compiler. */
 /* NOTE: you can still disable this if you want to check validity of union access on GPU. */
 #if (defined(GPU_BACKEND_METAL) && !defined(USE_GPU_ACCESS_CHECKS)) || defined(__cplusplus)
+#  define light_local_data_get(light) light.local
 #  define light_spot_data_get(light) light.spot
 #  define light_area_data_get(light) light.area
 #  define light_sun_data_get(light) light.sun
@@ -1077,7 +1101,7 @@ static inline int light_tilemap_max_get(LightData light)
     return light.tilemap_index +
            (light_sun_data_get(light).clipmap_lod_max - light_sun_data_get(light).clipmap_lod_min);
   }
-  return light.tilemap_index + light.local.tilemaps_count - 1;
+  return light.tilemap_index + light_local_data_get(light).tilemaps_count - 1;
 }
 
 /** \} */

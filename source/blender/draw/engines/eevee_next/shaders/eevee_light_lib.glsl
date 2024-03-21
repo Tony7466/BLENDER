@@ -149,10 +149,11 @@ vec2 light_attenuation_facing(LightData light, vec3 L, float distance_to_light, 
 
 vec2 light_attenuation_surface(LightData light, const bool is_directional, vec3 Ng, LightVector lv)
 {
-  float result = light_attenuation_common(light, is_directional, lv.L);
-  result *= light_attenuation_facing(light, lv.L, lv.dist, Ng);
+  vec2 result = light_attenuation_facing(light, lv.L, lv.dist, Ng);
+  result *= light_attenuation_common(light, is_directional, lv.L);
   if (!is_directional) {
-    result *= light_influence_attenuation(lv.dist, light.local.influence_radius_invsqr_surface);
+    result *= light_influence_attenuation(
+        lv.dist, light_local_data_get(light).influence_radius_invsqr_surface);
   }
   return result;
 }
@@ -161,7 +162,8 @@ float light_attenuation_volume(LightData light, const bool is_directional, Light
 {
   float result = light_attenuation_common(light, is_directional, lv.L);
   if (!is_directional) {
-    result *= light_influence_attenuation(lv.dist, light.local.influence_radius_invsqr_volume);
+    result *= light_influence_attenuation(
+        lv.dist, light_local_data_get(light).influence_radius_invsqr_volume);
   }
   return result;
 }
@@ -178,7 +180,7 @@ float light_point_light(LightData light, const bool is_directional, LightVector 
    * http://www.cemyuksel.com/research/pointlightattenuation/
    */
   float d_sqr = square(lv.dist);
-  float r_sqr = light.local.radius_squared;
+  float r_sqr = light_local_data_get(light).radius_squared;
   /* Using reformulation that has better numerical precision. */
   float power = 2.0 / (d_sqr + r_sqr + lv.dist * sqrt(d_sqr + r_sqr));
 

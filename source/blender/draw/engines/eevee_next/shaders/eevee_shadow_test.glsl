@@ -22,16 +22,16 @@ void set_clipmap_data(inout LightData light,
                       float clipmap_origin_y)
 {
   /* WATCH: Can get out of sync with light_sun_data_get(). */
-  light.local._pad3 = vec2(clipmap_origin_x, clipmap_origin_y);
-  light.local._pad4 = intBitsToFloat(clipmap_lod_min);
-  light.local._pad5 = intBitsToFloat(clipmap_lod_max);
+  light.do_not_access_directly._pad3 = vec2(clipmap_origin_x, clipmap_origin_y);
+  light.do_not_access_directly._pad4 = intBitsToFloat(clipmap_lod_min);
+  light.do_not_access_directly._pad5 = intBitsToFloat(clipmap_lod_max);
 }
 
 void set_clipmap_base_offset(inout LightData light, ivec2 clipmap_base_offset)
 {
   /* WATCH: Can get out of sync with light_sun_data_get(). */
-  light.local._pad0_reserved = intBitsToFloat(clipmap_base_offset.x);
-  light.local._pad1_reserved = intBitsToFloat(clipmap_base_offset.y);
+  light.do_not_access_directly._pad0_reserved = intBitsToFloat(clipmap_base_offset.x);
+  light.do_not_access_directly._pad1_reserved = intBitsToFloat(clipmap_base_offset.y);
 }
 
 void main()

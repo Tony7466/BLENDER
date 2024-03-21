@@ -152,7 +152,7 @@ void main()
     vec3 v_right = drw_normal_world_to_view(light._right);
     vec3 v_up = drw_normal_world_to_view(light._up);
     vec3 v_back = drw_normal_world_to_view(light._back);
-    float radius = light.local.influence_radius_max;
+    float radius = light_local_data_get(light).influence_radius_max;
 
     Sphere sphere = shape_sphere(vP, radius);
     bool intersect_tile = intersect(tile, sphere);

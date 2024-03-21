@@ -127,7 +127,7 @@ mat4 shadow_punctual_projection_perspective(LightData light)
   /* Face Local (View) Space > Clip Space. */
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
-  float clip_side = light.local.clip_side;
+  float clip_side = light_local_data_get(light).clip_side;
   return shadow_projection_perspective(clip_side, clip_near, clip_far);
 }
 
@@ -136,7 +136,7 @@ mat4 shadow_punctual_projection_perspective_inverse(LightData light)
   /* Face Local (View) Space > Clip Space. */
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
-  float clip_side = light.local.clip_side;
+  float clip_side = light_local_data_get(light).clip_side;
   return shadow_projection_perspective_inverse(clip_side, clip_near, clip_far);
 }
 
