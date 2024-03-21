@@ -17,11 +17,11 @@
 #include "BLI_rect.h"
 
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_gpencil_legacy.h"
 #include "BKE_grease_pencil.hh"
-#include "BKE_key.h"
-#include "BKE_layer.h"
+#include "BKE_key.hh"
+#include "BKE_layer.hh"
 #include "BKE_mask.h"
 #include "BKE_nla.h"
 
@@ -38,11 +38,11 @@
 #include "transform_convert.hh"
 
 /* Weak way of identifying whether TransData was set by #GPLayerToTransData or
- * #MaskLayerToTransData. This way we can identify whether the #td->extra is a pointer to an
- * integer value and we can correctly flush the #recalcData_actedit. */
-static bool data_is_gp_or_mask(TransData *td, TransData2D *td2d)
+ * #MaskLayerToTransData. This way we can identify whether the #td->loc2d_i is a pointer to an
+ * integer value and we can correctly flush in #recalcData_actedit. */
+static bool is_td2d_int(TransData2D *td2d)
 {
-  return td->extra && !td2d->loc2d;
+  return td2d->loc2d_i && td2d->h1 == nullptr;
 }
 
 /* -------------------------------------------------------------------- */
@@ -69,7 +69,7 @@ static bool grease_pencil_layer_initialize_trans_data(blender::bke::greasepencil
       continue;
     }
 
-    /* Store frames' duration to keep them visually correct while moving the frames */
+    /* Store frames' duration to keep them visually correct while moving the frames. */
     if (!frame.is_implicit_hold()) {
       trans_data.frames_duration.add(frame_number, layer.get_frame_duration_at(frame_number));
     }
@@ -196,7 +196,9 @@ static bool grease_pencil_layer_apply_trans_data(GreasePencil &grease_pencil,
 /** \name Action Transform Creation
  * \{ */
 
-/* fully select selected beztriples, but only include if it's on the right side of cfra */
+/**
+ * Fully select selected beztriples, but only include if it's on the right side of cfra.
+ */
 static int count_fcurve_keys(FCurve *fcu, char side, float cfra, bool is_prop_edit)
 {
   BezTriple *bezt;
@@ -206,11 +208,11 @@ static int count_fcurve_keys(FCurve *fcu, char side, float cfra, bool is_prop_ed
     return count;
   }
 
-  /* only include points that occur on the right side of cfra */
+  /* Only include points that occur on the right side of cfra. */
   for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
     if (FrameOnMouseSide(side, bezt->vec[1][0], cfra)) {
-      /* no need to adjust the handle selection since they are assumed
-       * selected (like graph editor with SIPO_NOHANDLES) */
+      /* No need to adjust the handle selection since they are assumed
+       * selected (like graph editor with #SIPO_NOHANDLES). */
       if (bezt->f2 & SELECT) {
         count++;
       }
@@ -225,7 +227,9 @@ static int count_fcurve_keys(FCurve *fcu, char side, float cfra, bool is_prop_ed
   return count;
 }
 
-/* fully select selected beztriples, but only include if it's on the right side of cfra */
+/**
+ * Fully select selected beztriples, but only include if it's on the right side of cfra.
+ */
 static int count_gplayer_frames(bGPDlayer *gpl, char side, float cfra, bool is_prop_edit)
 {
   int count = 0, count_all = 0;
@@ -234,7 +238,7 @@ static int count_gplayer_frames(bGPDlayer *gpl, char side, float cfra, bool is_p
     return count;
   }
 
-  /* only include points that occur on the right side of cfra */
+  /* Only include points that occur on the right side of cfra. */
   LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
     if (FrameOnMouseSide(side, float(gpf->framenum), cfra)) {
       if (gpf->flag & GP_FRAME_SELECT) {
@@ -287,7 +291,7 @@ static int count_grease_pencil_frames(const blender::bke::greasepencil::Layer *l
   return count_selected;
 }
 
-/* fully select selected beztriples, but only include if it's on the right side of cfra */
+/** Fully select selected beztriples, but only include if it's on the right side of cfra. */
 static int count_masklayer_frames(MaskLayer *masklay, char side, float cfra, bool is_prop_edit)
 {
   int count = 0, count_all = 0;
@@ -296,7 +300,7 @@ static int count_masklayer_frames(MaskLayer *masklay, char side, float cfra, boo
     return count;
   }
 
-  /* only include points that occur on the right side of cfra */
+  /* Only include points that occur on the right side of cfra. */
   LISTBASE_FOREACH (MaskLayerShape *, masklayer_shape, &masklay->splines_shapes) {
     if (FrameOnMouseSide(side, float(masklayer_shape->frame), cfra)) {
       if (masklayer_shape->flag & MASK_SHAPE_SELECT) {
@@ -312,7 +316,7 @@ static int count_masklayer_frames(MaskLayer *masklay, char side, float cfra, boo
   return count;
 }
 
-/* This function assigns the information to transdata */
+/* This function assigns the information to transdata. */
 static void TimeToTransData(
     TransData *td, TransData2D *td2d, BezTriple *bezt, AnimData *adt, float ypos)
 {
@@ -335,7 +339,12 @@ static void TimeToTransData(
   copy_v3_v3(td->iloc, td->loc);
   td->val = time;
   td->ival = *(time);
-  td->center[0] = td->ival;
+  if (adt) {
+    td->center[0] = BKE_nla_tweakedit_remap(adt, td->ival, NLATIME_CONVERT_MAP);
+  }
+  else {
+    td->center[0] = td->ival;
+  }
   td->center[1] = ypos;
 
   /* Store the AnimData where this keyframe exists as a keyframe of the
@@ -349,7 +358,7 @@ static void TimeToTransData(
   /* Set flags to move handles as necessary. */
   td->flag |= TD_MOVEHANDLE1 | TD_MOVEHANDLE2;
 
-  BLI_assert(!data_is_gp_or_mask(td, td2d));
+  BLI_assert(!is_td2d_int(td2d));
 }
 
 /* This function advances the address to which td points to, so it must return
@@ -377,10 +386,10 @@ static TransData *ActionFCurveToTransData(TransData *td,
   }
 
   for (i = 0, bezt = fcu->bezt; i < fcu->totvert; i++, bezt++) {
-    /* only add selected keyframes (for now, proportional edit is not enabled) */
+    /* Only add selected keyframes (for now, proportional edit is not enabled). */
     if (is_prop_edit || (bezt->f2 & SELECT))
-    { /* note this MUST match count_fcurve_keys(), * so can't use BEZT_ISSEL_ANY() macro */
-      /* only add if on the right 'side' of the current frame */
+    { /* Note this MUST match #count_fcurve_keys(), so can't use #BEZT_ISSEL_ANY() macro. */
+      /* Only add if on the right 'side' of the current frame. */
       if (FrameOnMouseSide(side, bezt->vec[1][0], cfra)) {
         TimeToTransData(td, td2d, bezt, adt, ypos);
 
@@ -413,12 +422,13 @@ static int GPLayerToTransData(TransData *td,
 {
   int count = 0;
 
-  /* check for select frames on right side of current frame */
+  /* Check for select frames on right side of current frame. */
   LISTBASE_FOREACH (bGPDframe *, gpf, &gpl->frames) {
     const bool is_selected = (gpf->flag & GP_FRAME_SELECT) != 0;
     if (is_prop_edit || is_selected) {
       if (FrameOnMouseSide(side, float(gpf->framenum), cfra)) {
         td2d->loc[0] = float(gpf->framenum);
+        td2d->loc2d_i = &gpf->framenum;
 
         td->loc = td->val = td2d->loc;
         td->iloc[0] = td->ival = td2d->loc[0];
@@ -426,14 +436,11 @@ static int GPLayerToTransData(TransData *td,
         td->center[0] = td->ival;
         td->center[1] = ypos;
 
-        /* Store the int value in #td->extra, so we can flush later. */
-        td->extra = &gpf->framenum;
-
         if (is_selected) {
           td->flag = TD_SELECTED;
         }
 
-        BLI_assert(data_is_gp_or_mask(td, td2d));
+        BLI_assert(is_td2d_int(td2d));
 
         /* Advance `td` now. */
         td++;
@@ -492,7 +499,7 @@ static int GreasePencilLayerToTransData(TransData *td,
     td->flag |= TD_GREASE_PENCIL_FRAME;
     td->extra = layer;
 
-    BLI_assert(!data_is_gp_or_mask(td, td2d));
+    BLI_assert(!is_td2d_int(td2d));
 
     /* Advance `td` now. */
     td++;
@@ -521,7 +528,9 @@ static int GreasePencilLayerToTransData(TransData *td,
   return total_trans_frames;
 }
 
-/* refer to comment above #GPLayerToTransData, this is the same but for masks */
+/**
+ * Refer to comment above #GPLayerToTransData, this is the same but for masks.
+ */
 static int MaskLayerToTransData(TransData *td,
                                 TransData2D *td2d,
                                 MaskLayer *masklay,
@@ -532,11 +541,12 @@ static int MaskLayerToTransData(TransData *td,
 {
   int count = 0;
 
-  /* check for select frames on right side of current frame */
+  /* Check for select frames on right side of current frame. */
   LISTBASE_FOREACH (MaskLayerShape *, masklay_shape, &masklay->splines_shapes) {
     if (is_prop_edit || (masklay_shape->flag & MASK_SHAPE_SELECT)) {
       if (FrameOnMouseSide(side, float(masklay_shape->frame), cfra)) {
         td2d->loc[0] = float(masklay_shape->frame);
+        td2d->loc2d_i = &masklay_shape->frame;
 
         td->loc = td->val = td2d->loc;
         td->iloc[0] = td->ival = td2d->loc[0];
@@ -544,12 +554,9 @@ static int MaskLayerToTransData(TransData *td,
         td->center[0] = td->ival;
         td->center[1] = ypos;
 
-        /* Store the int value in #td->extra, so we can flush later. */
-        td->extra = &masklay_shape->frame;
+        BLI_assert(is_td2d_int(td2d));
 
-        BLI_assert(data_is_gp_or_mask(td, td2d));
-
-        /* advance td now */
+        /* Advance td now. */
         td++;
         td2d++;
         count++;
@@ -588,32 +595,31 @@ static void createTransActionData(bContext *C, TransInfo *t)
   float cfra;
   float ypos = 1.0f / ((ysize / xsize) * (xmask / ymask)) * BLI_rctf_cent_y(&t->region->v2d.cur);
 
-  /* determine what type of data we are operating on */
+  /* Determine what type of data we are operating on. */
   if (ANIM_animdata_get_context(C, &ac) == 0) {
     return;
   }
 
-  /* filter data */
+  /* Filter data. */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT);
   ANIM_animdata_filter(
       &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-  /* which side of the current frame should be allowed */
+  /* Which side of the current frame should be allowed. */
   if (t->mode == TFM_TIME_EXTEND) {
     t->frame_side = transform_convert_frame_side_dir_get(t, float(scene->r.cfra));
   }
   else {
-    /* normal transform - both sides of current frame are considered */
+    /* Normal transform - both sides of current frame are considered. */
     t->frame_side = 'B';
   }
 
-  /* loop 1: fully select F-Curve keys and count how many BezTriples are selected */
+  /* Loop 1: fully select F-Curve keys and count how many BezTriples are selected. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(&ac, ale);
     int adt_count = 0;
-    /* convert current-frame to action-time (slightly less accurate, especially under
-     * higher scaling ratios, but is faster than converting all points)
-     */
+    /* Convert current-frame to action-time (slightly less accurate, especially under
+     * higher scaling ratios, but is faster than converting all points). */
     if (adt) {
       cfra = BKE_nla_tweakedit_remap(adt, float(scene->r.cfra), NLATIME_CONVERT_UNMAP);
     }
@@ -651,16 +657,16 @@ static void createTransActionData(bContext *C, TransInfo *t)
     }
   }
 
-  /* stop if trying to build list if nothing selected */
+  /* Stop if trying to build list if nothing selected. */
   if (count == 0 && gpf_count == 0) {
-    /* cleanup temp list */
+    /* Cleanup temp list. */
     ANIM_animdata_freelist(&anim_data);
     return;
   }
 
   TransDataContainer *tc = TRANS_DATA_CONTAINER_FIRST_SINGLE(t);
 
-  /* allocate memory for data */
+  /* Allocate memory for data. */
   tc->data_len = count;
 
   tc->data = static_cast<TransData *>(
@@ -670,7 +676,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
   td = tc->data;
   td2d = tc->data_2d;
 
-  /* loop 2: build transdata array */
+  /* Loop 2: build transdata array. */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
 
     if (is_prop_edit && !ale->tag) {
@@ -721,14 +727,14 @@ static void createTransActionData(bContext *C, TransInfo *t)
     }
   }
 
-  /* calculate distances for proportional editing */
+  /* Calculate distances for proportional editing. */
   if (is_prop_edit) {
     td = tc->data;
 
     LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
       AnimData *adt;
 
-      /* F-Curve may not have any keyframes */
+      /* F-Curve may not have any keyframes. */
       if (!ale->tag) {
         continue;
       }
@@ -799,7 +805,8 @@ static void createTransActionData(bContext *C, TransInfo *t)
         if (use_duplicated) {
           /* Also count for duplicated frames. */
           for (const auto [frame_number, frame] :
-               layer->runtime->trans_data_.temp_frames_buffer.items()) {
+               layer->runtime->trans_data_.temp_frames_buffer.items())
+          {
             grease_pencil_closest_selected_frame(frame_number, frame.is_selected());
           }
         }
@@ -863,7 +870,7 @@ static void createTransActionData(bContext *C, TransInfo *t)
     }
   }
 
-  /* cleanup temp list */
+  /* Cleanup temp list. */
   ANIM_animdata_freelist(&anim_data);
 }
 
@@ -898,8 +905,8 @@ static void recalcData_actedit(TransInfo *t)
 
   BKE_view_layer_synced_ensure(t->scene, t->view_layer);
 
-  /* initialize relevant anim-context 'context' data from TransInfo data */
-  /* NOTE: sync this with the code in ANIM_animdata_get_context() */
+  /* Initialize relevant anim-context `context` data from #TransInfo data. */
+  /* NOTE: sync this with the code in #ANIM_animdata_get_context(). */
   ac.bmain = CTX_data_main(t->context);
   ac.scene = t->scene;
   ac.view_layer = t->view_layer;
@@ -940,10 +947,10 @@ static void recalcData_actedit(TransInfo *t)
           round_fl_to_int(td2d->loc[0]),
           use_duplicated);
     }
-    else if (data_is_gp_or_mask(td, td2d)) {
+    else if (is_td2d_int(td2d)) {
       /* (Grease Pencil Legacy)
        * This helps flush transdata written to tempdata into the gp-frames. */
-      *reinterpret_cast<int *>(td->extra) = round_fl_to_int(td2d->loc[0]);
+      *td2d->loc2d_i = round_fl_to_int(td2d->loc[0]);
     }
   }
 
@@ -954,16 +961,15 @@ static void recalcData_actedit(TransInfo *t)
     ANIM_animdata_filter(
         &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
-    /* just tag these animdata-blocks to recalc, assuming that some data there changed
-     * BUT only do this if realtime updates are enabled
-     */
+    /* Just tag these animdata-blocks to recalc, assuming that some data there changed
+     * BUT only do this if realtime updates are enabled. */
     if ((saction->flag & SACTION_NOREALTIMEUPDATES) == 0) {
       LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
-        /* set refresh tags for objects using this animation */
+        /* Set refresh tags for objects using this animation. */
         ANIM_list_elem_update(CTX_data_main(t->context), t->scene, ale);
       }
 
-      /* now free temp channels */
+      /* Now free temp channels. */
       ANIM_animdata_freelist(&anim_data);
     }
 
@@ -1002,7 +1008,7 @@ static int masklay_shape_cmp_frame(void *thunk, const void *a, const void *b)
     return 1;
   }
   *((bool *)thunk) = true;
-  /* selected last */
+  /* Selected last. */
   if ((frame_a->flag & MASK_SHAPE_SELECT) && ((frame_b->flag & MASK_SHAPE_SELECT) == 0)) {
     return 1;
   }
@@ -1070,27 +1076,28 @@ static void posttrans_gpd_clean(bGPdata *gpd)
     }
 #endif
   }
-  /* set cache flag to dirty */
+  /* Set cache flag to dirty. */
   DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY);
 
   WM_main_add_notifier(NC_GPENCIL | NA_EDITED, gpd);
 }
 
-/* Called by special_aftertrans_update to make sure selected keyframes replace
+/**
+ * Called by #special_aftertrans_update to make sure selected keyframes replace
  * any other keyframes which may reside on that frame (that is not selected).
- * remake_action_ipos should have already been called
+ * remake_action_ipos should have already been called.
  */
 static void posttrans_action_clean(bAnimContext *ac, bAction *act)
 {
   ListBase anim_data = {nullptr, nullptr};
   int filter;
 
-  /* filter data */
+  /* Filter data. */
   filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT | ANIMFILTER_FCURVESONLY);
   ANIM_animdata_filter(ac, &anim_data, eAnimFilter_Flags(filter), act, ANIMCONT_ACTION);
 
-  /* loop through relevant data, removing keyframes as appropriate
-   *      - all keyframes are converted in/out of global time
+  /* Loop through relevant data, removing keyframes as appropriate.
+   *      - all keyframes are converted in/out of global time.
    */
   LISTBASE_FOREACH (bAnimListElem *, ale, &anim_data) {
     AnimData *adt = ANIM_nla_mapping_get(ac, ale);
@@ -1099,17 +1106,17 @@ static void posttrans_action_clean(bAnimContext *ac, bAction *act)
       ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), false, false);
       BKE_fcurve_merge_duplicate_keys(static_cast<FCurve *>(ale->key_data),
                                       SELECT,
-                                      false); /* only use handles in graph editor */
+                                      false); /* Only use handles in graph editor. */
       ANIM_nla_mapping_apply_fcurve(adt, static_cast<FCurve *>(ale->key_data), true, false);
     }
     else {
       BKE_fcurve_merge_duplicate_keys(static_cast<FCurve *>(ale->key_data),
                                       SELECT,
-                                      false); /* only use handles in graph editor */
+                                      false); /* Only use handles in graph editor. */
     }
   }
 
-  /* free temp data */
+  /* Free temp data. */
   ANIM_animdata_freelist(&anim_data);
 }
 
@@ -1121,7 +1128,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
   const bool canceled = (t->state == TRANS_CANCEL);
   const bool duplicate = (t->flag & T_DUPLICATED_KEYFRAMES) != 0;
 
-  /* initialize relevant anim-context 'context' data */
+  /* Initialize relevant anim-context 'context' data. */
   if (ANIM_animdata_get_context(C, &ac) == 0) {
     return;
   }
@@ -1132,7 +1139,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
     ListBase anim_data = {nullptr, nullptr};
     short filter = (ANIMFILTER_DATA_VISIBLE | ANIMFILTER_FOREDIT);
 
-    /* get channels to work on */
+    /* Get channels to work on. */
     ANIM_animdata_filter(
         &ac, &anim_data, eAnimFilter_Flags(filter), ac.data, eAnimCont_Types(ac.datatype));
 
@@ -1148,22 +1155,22 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
           FCurve *fcu = (FCurve *)ale->key_data;
 
           /* 3 cases here for curve cleanups:
-           * 1) NOTRANSKEYCULL on    -> cleanup of duplicates shouldn't be done
+           * 1) NOTRANSKEYCULL on    -> cleanup of duplicates shouldn't be done.
            * 2) canceled == 0        -> user confirmed the transform,
-           *                            so duplicates should be removed
+           *                            so duplicates should be removed.
            * 3) canceled + duplicate -> user canceled the transform,
-           *                            but we made duplicates, so get rid of these
+           *                            but we made duplicates, so get rid of these.
            */
           if ((saction->flag & SACTION_NOTRANSKEYCULL) == 0 && ((canceled == 0) || (duplicate))) {
             if (adt) {
               ANIM_nla_mapping_apply_fcurve(adt, fcu, false, false);
               BKE_fcurve_merge_duplicate_keys(
-                  fcu, SELECT, false); /* only use handles in graph editor */
+                  fcu, SELECT, false); /* Only use handles in graph editor. */
               ANIM_nla_mapping_apply_fcurve(adt, fcu, true, false);
             }
             else {
               BKE_fcurve_merge_duplicate_keys(
-                  fcu, SELECT, false); /* only use handles in graph editor */
+                  fcu, SELECT, false); /* Only use handles in graph editor. */
             }
           }
           break;
@@ -1174,11 +1181,11 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
       }
     }
 
-    /* free temp memory */
+    /* Free temp memory. */
     ANIM_animdata_freelist(&anim_data);
   }
   else if (ac.datatype == ANIMCONT_ACTION) { /* TODO: just integrate into the above. */
-    /* Depending on the lock status, draw necessary views */
+    /* Depending on the lock status, draw necessary views. */
     /* FIXME: some of this stuff is not good. */
     if (ob) {
       if (ob->pose || BKE_key_from_object(ob)) {
@@ -1201,13 +1208,13 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
     }
   }
   else if (ac.datatype == ANIMCONT_GPENCIL) {
-    /* remove duplicate frames and also make sure points are in order! */
+    /* Remove duplicate frames and also make sure points are in order! */
     /* 3 cases here for curve cleanups:
-     * 1) NOTRANSKEYCULL on    -> cleanup of duplicates shouldn't be done
+     * 1) NOTRANSKEYCULL on    -> cleanup of duplicates shouldn't be done.
      * 2) canceled == 0        -> user confirmed the transform,
-     *                            so duplicates should be removed
+     *                            so duplicates should be removed.
      * 3) canceled + duplicate -> user canceled the transform,
-     *                            but we made duplicates, so get rid of these
+     *                            but we made duplicates, so get rid of these.
      */
     ListBase anim_data = {nullptr, nullptr};
     const int filter = ANIMFILTER_DATA_VISIBLE;
@@ -1241,7 +1248,7 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
     ANIM_animdata_freelist(&anim_data);
   }
   else if (ac.datatype == ANIMCONT_MASK) {
-    /* remove duplicate frames and also make sure points are in order! */
+    /* Remove duplicate frames and also make sure points are in order! */
     /* 3 cases here for curve cleanups:
      * 1) NOTRANSKEYCULL on:
      *    Cleanup of duplicates shouldn't be done.
@@ -1266,18 +1273,17 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
     }
   }
 
-  /* marker transform, not especially nice but we may want to move markers
-   * at the same time as keyframes in the dope sheet.
-   */
+  /* Marker transform, not especially nice but we may want to move markers
+   * at the same time as keyframes in the dope sheet. */
   if ((saction->flag & SACTION_MARKERS_MOVE) && (canceled == 0)) {
     if (t->mode == TFM_TIME_TRANSLATE) {
 #if 0
-      if (ELEM(t->frame_side, 'L', 'R')) { /* TFM_TIME_EXTEND */
-        /* same as below */
+      if (ELEM(t->frame_side, 'L', 'R')) { /* #TFM_TIME_EXTEND. */
+        /* Same as below. */
         ED_markers_post_apply_transform(
             ED_context_get_markers(C), t->scene, t->mode, t->values_final[0], t->frame_side);
       }
-      else /* TFM_TIME_TRANSLATE */
+      else /* #TFM_TIME_TRANSLATE. */
 #endif
       {
         ED_markers_post_apply_transform(
@@ -1290,12 +1296,12 @@ static void special_aftertrans_update__actedit(bContext *C, TransInfo *t)
     }
   }
 
-  /* make sure all F-Curves are set correctly */
+  /* Make sure all F-Curves are set correctly. */
   if (!ELEM(ac.datatype, ANIMCONT_GPENCIL)) {
     ANIM_editkeyframes_refresh(&ac);
   }
 
-  /* clear flag that was set for time-slide drawing */
+  /* Clear flag that was set for time-slide drawing. */
   saction->flag &= ~SACTION_MOVING;
 }
 

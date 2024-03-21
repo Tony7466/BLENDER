@@ -21,6 +21,11 @@ class VIEW3D_OT_edit_mesh_extrude_individual_move(Operator):
         return (obj is not None and obj.mode == 'EDIT')
 
     def execute(self, context):
+        from bpy_extras.object_utils import object_report_if_active_shape_key_is_locked
+
+        if object_report_if_active_shape_key_is_locked(context.object, self):
+            return {'CANCELLED'}
+
         mesh = context.object.data
         select_mode = context.tool_settings.mesh_select_mode
 
@@ -83,7 +88,12 @@ class VIEW3D_OT_edit_mesh_extrude_move(Operator):
         return (obj is not None and obj.mode == 'EDIT')
 
     @staticmethod
-    def extrude_region(context, use_vert_normals, dissolve_and_intersect):
+    def extrude_region(operator, context, use_vert_normals, dissolve_and_intersect):
+        from bpy_extras.object_utils import object_report_if_active_shape_key_is_locked
+
+        if object_report_if_active_shape_key_is_locked(context.object, operator):
+            return {'CANCELLED'}
+
         mesh = context.object.data
 
         totface = mesh.total_face_sel
@@ -145,8 +155,7 @@ class VIEW3D_OT_edit_mesh_extrude_move(Operator):
         return {'FINISHED'}
 
     def execute(self, context):
-        return VIEW3D_OT_edit_mesh_extrude_move.extrude_region(
-            context, False, self.dissolve_and_intersect)
+        return VIEW3D_OT_edit_mesh_extrude_move.extrude_region(self, context, False, self.dissolve_and_intersect)
 
     def invoke(self, context, _event):
         return self.execute(context)
@@ -163,7 +172,7 @@ class VIEW3D_OT_edit_mesh_extrude_shrink_fatten(Operator):
         return (obj is not None and obj.mode == 'EDIT')
 
     def execute(self, context):
-        return VIEW3D_OT_edit_mesh_extrude_move.extrude_region(context, True, False)
+        return VIEW3D_OT_edit_mesh_extrude_move.extrude_region(self, context, True, False)
 
     def invoke(self, context, _event):
         return self.execute(context)
@@ -179,7 +188,11 @@ class VIEW3D_OT_edit_mesh_extrude_manifold_normal(Operator):
         obj = context.active_object
         return (obj is not None and obj.mode == 'EDIT')
 
-    def execute(self, _context):
+    def execute(self, context):
+        from bpy_extras.object_utils import object_report_if_active_shape_key_is_locked
+
+        if object_report_if_active_shape_key_is_locked(context.object, self):
+            return {'CANCELLED'}
         bpy.ops.mesh.extrude_manifold(
             'INVOKE_REGION_WIN',
             MESH_OT_extrude_region={

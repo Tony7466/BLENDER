@@ -213,6 +213,11 @@ class ShadowModule {
   /** Map of shadow casters to track deletion & update of intersected shadows. */
   Map<ObjectKey, ShadowObject> objects_;
 
+  /* Used to call caster_update_ps_ only once per sync (Initialized on begin_sync). */
+  bool update_casters_ = false;
+
+  bool jittered_transparency_ = false;
+
   /* -------------------------------------------------------------------- */
   /** \name Tile-map Management
    * \{ */
@@ -228,9 +233,12 @@ class ShadowModule {
 
   Framebuffer usage_tag_fb;
 
+  PassSimple caster_update_ps_ = {"CasterUpdate"};
+  PassSimple jittered_transparent_caster_update_ps_ = {"TransparentCasterUpdate"};
   /** List of Resource IDs (to get bounds) for tagging passes. */
   StorageVectorBuffer<uint, 128> past_casters_updated_ = {"PastCastersUpdated"};
   StorageVectorBuffer<uint, 128> curr_casters_updated_ = {"CurrCastersUpdated"};
+  StorageVectorBuffer<uint, 128> jittered_transparent_casters_ = {"JitteredTransparentCasters"};
   /** List of Resource IDs (to get bounds) for getting minimum clip-maps bounds. */
   StorageVectorBuffer<uint, 128> curr_casters_ = {"CurrCasters"};
 
@@ -248,8 +256,6 @@ class ShadowModule {
   StorageArrayBuffer<uint, SHADOW_VIEW_MAX, true> viewport_index_buf_ = {"viewport_index_buf"};
 
   int3 dispatch_depth_scan_size_;
-  /* Ratio between tile-map pixel world "radius" and film pixel world "radius". */
-  float tilemap_projection_ratio_;
   float pixel_world_radius_;
   int2 usage_tag_fb_resolution_;
   int usage_tag_fb_lod_ = 5;
@@ -292,8 +298,8 @@ class ShadowModule {
   Framebuffer render_fb_ = {"shadow_write_framebuffer"};
 
   /* NOTE(Metal): Metal requires memoryless textures to be created which represent attachments in
-   * the shadow write framebuffer. These textures do not occupy any physical memory, but require a
-   * Texture object containing its parameters.*/
+   * the shadow write frame-buffer. These textures do not occupy any physical memory, but require a
+   * Texture object containing its parameters. */
   Texture shadow_depth_fb_tx_ = {"shadow_depth_fb_tx_"};
   Texture shadow_depth_accum_tx_ = {"shadow_depth_accum_tx_"};
 
@@ -333,7 +339,8 @@ class ShadowModule {
   void sync_object(const Object *ob,
                    const ObjectHandle &handle,
                    const ResourceHandle &resource_handle,
-                   bool is_alpha_blend);
+                   bool is_alpha_blend,
+                   bool has_transparent_shadows);
   void end_sync();
 
   void set_lights_data();
@@ -353,9 +360,20 @@ class ShadowModule {
     pass.bind_texture(SHADOW_TILEMAPS_TEX_SLOT, &tilemap_pool.tilemap_tx);
   }
 
+  const ShadowSceneData &get_data()
+  {
+    return data_;
+  }
+
+  float get_global_lod_bias()
+  {
+    return lod_bias_;
+  }
+
  private:
   void remove_unused();
   void debug_page_map_call(DRWPass *pass);
+  bool shadow_update_finished();
 
   /** Compute approximate screen pixel space radius. */
   float screen_pixel_radius(const View &view, const int2 &extent);
@@ -388,6 +406,11 @@ class ShadowPunctual : public NonCopyable, NonMovable {
   int tilemaps_needed_;
   /** Scaling factor to the light shape for shadow ray casting. */
   float softness_factor_;
+  /**
+   * `radius * softness_factor` (Bypasses LightModule radius modifications
+   * to avoid unnecessary padding in the shadow projection).
+   */
+  float shadow_radius_;
 
  public:
   ShadowPunctual(ShadowModule &module) : shadows_(module){};
@@ -407,7 +430,8 @@ class ShadowPunctual : public NonCopyable, NonMovable {
             float cone_aperture,
             float light_shape_radius,
             float max_distance,
-            float softness_factor);
+            float softness_factor,
+            float shadow_radius);
 
   /**
    * Release the tile-maps that will not be used in the current frame.

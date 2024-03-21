@@ -108,6 +108,9 @@ static bool has_libdecor = true;
 #  endif
 #endif
 
+#include "IMB_imbuf.hh"
+#include "IMB_imbuf_types.hh"
+
 /* -------------------------------------------------------------------- */
 /** \name Forward Declarations
  * \{ */
@@ -134,6 +137,12 @@ struct GWL_RegistryHandler;
 static int gwl_registry_handler_interface_slot_max();
 static int gwl_registry_handler_interface_slot_from_string(const char *interface);
 static const GWL_RegistryHandler *gwl_registry_handler_from_interface_slot(int interface_slot);
+
+static bool xkb_compose_state_feed_and_get_utf8(
+    xkb_compose_state *compose_state,
+    xkb_state *state,
+    const xkb_keycode_t key,
+    char r_utf8_buf[sizeof(GHOST_TEventKeyData::utf8_buf)]);
 
 #ifdef USE_EVENT_BACKGROUND_THREAD
 static void gwl_display_event_thread_destroy(GWL_Display *display);
@@ -425,7 +434,7 @@ struct GWL_Cursor {
    * The size of the cursor (when looking up a cursor theme).
    * This must be scaled by the maximum output scale when passing to wl_cursor_theme_load.
    * See #update_cursor_scale.
-   * */
+   */
   int theme_size = 0;
   int custom_scale = 1;
 };
@@ -836,6 +845,13 @@ static void gwl_primary_selection_discard_source(GWL_PrimarySelection *primary)
 
 #ifdef WITH_INPUT_IME
 struct GWL_SeatIME {
+  /**
+   * The surface associated with this text input method.
+   *
+   * \note Even when null, IME callbacks run and events are generated to ensure
+   * the IME state remains consistent & allow for the compositor to assign the surface
+   * at any point in time which is then defines `window` IME events are associated with.
+   */
   wl_surface *surface_window = nullptr;
   GHOST_TEventImeData event_ime_data = {
       /*result_len*/ nullptr,
@@ -1096,6 +1112,37 @@ static void gwl_seat_key_layout_active_state_update_mask(GWL_Seat *seat)
   }
 }
 
+/** Callback that runs from GHOST's timer. */
+static void gwl_seat_key_repeat_timer_fn(GHOST_ITimerTask *task, uint64_t time_ms)
+{
+  GWL_KeyRepeatPlayload *payload = static_cast<GWL_KeyRepeatPlayload *>(task->getUserData());
+
+  GWL_Seat *seat = payload->seat;
+  wl_surface *wl_surface_focus = seat->keyboard.wl.surface_window;
+  if (UNLIKELY(wl_surface_focus == nullptr)) {
+    return;
+  }
+
+  GHOST_IWindow *win = ghost_wl_surface_user_data(wl_surface_focus);
+  GHOST_SystemWayland *system = seat->system;
+  const uint64_t event_ms = payload->time_ms_init + time_ms;
+  /* Calculate this value every time in case modifier keys are pressed. */
+
+  char utf8_buf[sizeof(GHOST_TEventKeyData::utf8_buf)] = {'\0'};
+  if (seat->xkb.compose_state &&
+      xkb_compose_state_feed_and_get_utf8(
+          seat->xkb.compose_state, seat->xkb.state, payload->key_code, utf8_buf))
+  {
+    /* `utf8_buf` has been filled by a compose action. */
+  }
+  else {
+    xkb_state_key_get_utf8(seat->xkb.state, payload->key_code, utf8_buf, sizeof(utf8_buf));
+  }
+
+  system->pushEvent_maybe_pending(new GHOST_EventKey(
+      event_ms, GHOST_kEventKeyDown, win, payload->key_data.gkey, true, utf8_buf));
+}
+
 /**
  * \note Caller must lock `timer_mutex`.
  */
@@ -1320,7 +1367,7 @@ struct GWL_Display {
 };
 
 /**
- * Free the #GWL_Display and it's related members.
+ * Free the #GWL_Display and its related members.
  *
  * \note This may run on a partially initialized struct,
  * so it can't be assumed all members are set.
@@ -1736,6 +1783,8 @@ static void ghost_wayland_log_handler(const char *msg, va_list arg)
     __attribute__((format(printf, 1, 0)));
 #endif
 
+static bool ghost_wayland_log_handler_is_background = false;
+
 /**
  * Callback for WAYLAND to run when there is an error.
  *
@@ -1744,6 +1793,15 @@ static void ghost_wayland_log_handler(const char *msg, va_list arg)
  */
 static void ghost_wayland_log_handler(const char *msg, va_list arg)
 {
+  /* This is fine in background mode, we will try to fall back to headless GPU context.
+   * Happens when render farm process runs without user login session. */
+  if (ghost_wayland_log_handler_is_background &&
+      (strstr(msg, "error: XDG_RUNTIME_DIR not set in the environment") ||
+       strstr(msg, "error: XDG_RUNTIME_DIR is invalid or not set in the environment")))
+  {
+    return;
+  }
+
   fprintf(stderr, "GHOST/Wayland: ");
   vfprintf(stderr, msg, arg); /* Includes newline. */
 
@@ -2079,6 +2137,13 @@ static int memfd_create_sealed(const char *name)
 #endif /* !HAVE_MEMFD_CREATE */
 }
 
+#if defined(WITH_GHOST_WAYLAND_LIBDECOR) && defined(WITH_VULKAN_BACKEND)
+int memfd_create_sealed_for_vulkan_hack(const char *name)
+{
+  return memfd_create_sealed(name);
+}
+#endif
+
 enum {
   GWL_IOR_READ = 1 << 0,
   GWL_IOR_WRITE = 1 << 1,
@@ -2338,6 +2403,9 @@ static char *read_file_as_buffer(const int fd, const bool nil_terminate, size_t 
       if (len_chunk <= 0) {
         if (UNLIKELY(len_chunk < 0)) {
           ok = false;
+        }
+        if (chunk == chunk_first) {
+          chunk_first = nullptr;
         }
         free(chunk);
         break;
@@ -2744,13 +2812,11 @@ static void keyboard_depressed_state_key_event(GWL_Seat *seat,
 }
 
 static void keyboard_depressed_state_push_events_from_change(
-    GWL_Seat *seat, const GWL_KeyboardDepressedState &key_depressed_prev)
+    GWL_Seat *seat,
+    GHOST_IWindow *win,
+    const uint64_t event_ms,
+    const GWL_KeyboardDepressedState &key_depressed_prev)
 {
-  GHOST_IWindow *win = ghost_wl_surface_user_data(seat->keyboard.wl.surface_window);
-  const GHOST_SystemWayland *system = seat->system;
-  /* Caller has no time-stamp, set from system. */
-  const uint64_t event_ms = system->getMilliSeconds();
-
   /* Separate key up and down into separate passes so key down events always come after key up.
    * Do this so users of GHOST can use the last pressed or released modifier to check
    * if the modifier is held instead of counting modifiers pressed as is done here,
@@ -2908,6 +2974,9 @@ static char *read_buffer_from_data_offer(GWL_DataOffer *data_offer,
       CLOG_WARN(LOG, "unable to pipe into buffer: %s", std::strerror(errno));
     }
     close(pipefd[0]);
+  }
+  else {
+    *r_len = 0;
   }
   return buf;
 }
@@ -3242,20 +3311,19 @@ static void data_device_handle_drop(void *data, wl_data_device * /*wl_data_devic
 
   CLOG_INFO(LOG, 2, "drop mime_recieve=%s", mime_receive);
 
-  auto read_uris_fn = [](GWL_Seat *const seat,
-                         GWL_DataOffer *data_offer,
-                         wl_surface *wl_surface_window,
-                         const char *mime_receive) {
+  auto read_drop_data_fn = [](GWL_Seat *const seat,
+                              GWL_DataOffer *data_offer,
+                              wl_surface *wl_surface_window,
+                              const char *mime_receive) {
     const uint64_t event_ms = seat->system->getMilliSeconds();
     const wl_fixed_t xy[2] = {UNPACK2(data_offer->dnd.xy)};
 
+    const bool nil_terminate = (mime_receive != ghost_wl_mime_text_uri);
     size_t data_buf_len = 0;
     const char *data_buf = read_buffer_from_data_offer(
-        data_offer, mime_receive, nullptr, false, &data_buf_len);
-    std::string data = data_buf ? std::string(data_buf, data_buf_len) : "";
-    free(const_cast<char *>(data_buf));
+        data_offer, mime_receive, nullptr, nil_terminate, &data_buf_len);
 
-    CLOG_INFO(LOG, 2, "drop_read_uris mime_receive=%s, data=%s", mime_receive, data.c_str());
+    CLOG_INFO(LOG, 2, "read_drop_data mime_receive=%s, data_len=%zu", mime_receive, data_buf_len);
 
     wl_data_offer_finish(data_offer->wl.id);
     wl_data_offer_destroy(data_offer->wl.id);
@@ -3266,69 +3334,97 @@ static void data_device_handle_drop(void *data, wl_data_device * /*wl_data_devic
     delete data_offer;
     data_offer = nullptr;
 
-    GHOST_SystemWayland *const system = seat->system;
+    /* Don't generate a drop event if the data could not be read,
+     * an error will have been logged. */
+    if (data_buf != nullptr) {
+      GHOST_TDragnDropTypes ghost_dnd_type = GHOST_kDragnDropTypeUnknown;
+      void *ghost_dnd_data = nullptr;
 
-    if (mime_receive == ghost_wl_mime_text_uri) {
-      static constexpr const char *file_proto = "file://";
-      /* NOTE: some applications CRLF (`\r\n`) GTK3 for e.g. & others don't `pcmanfm-qt`.
-       * So support both, once `\n` is found, strip the preceding `\r` if found. */
-      static constexpr const char *lf = "\n";
+      /* Failure to receive drop data . */
+      if (mime_receive == ghost_wl_mime_text_uri) {
+        const char file_proto[] = "file://";
+        /* NOTE: some applications CRLF (`\r\n`) GTK3 for e.g. & others don't `pcmanfm-qt`.
+         * So support both, once `\n` is found, strip the preceding `\r` if found. */
+        const char lf = '\n';
 
-      GHOST_WindowWayland *win = ghost_wl_surface_user_data(wl_surface_window);
-      std::vector<std::string> uris;
+        const std::string_view data = std::string_view(data_buf, data_buf_len);
+        std::vector<std::string_view> uris;
 
-      size_t pos = 0;
-      while (pos != std::string::npos) {
-        pos = data.find(file_proto, pos);
-        if (pos == std::string::npos) {
-          break;
+        size_t pos = 0;
+        while (pos != std::string::npos) {
+          pos = data.find(file_proto, pos);
+          if (pos == std::string::npos) {
+            break;
+          }
+          const size_t start = pos + sizeof(file_proto) - 1;
+          pos = data.find(lf, pos);
+
+          size_t end = pos;
+          if (UNLIKELY(end == std::string::npos)) {
+            /* Note that most well behaved file managers will add a trailing newline,
+             * Gnome's web browser (44.3) doesn't, so support reading up until the last byte. */
+            end = data.size();
+          }
+          /* Account for 'CRLF' case. */
+          if (data[end - 1] == '\r') {
+            end -= 1;
+          }
+
+          std::string_view data_substr = data.substr(start, end - start);
+          uris.push_back(data_substr);
+          CLOG_INFO(LOG,
+                    2,
+                    "read_drop_data pos=%zu, text_uri=\"%.*s\"",
+                    start,
+                    int(data_substr.size()),
+                    data_substr.data());
         }
-        const size_t start = pos + sizeof(file_proto) - 1;
-        pos = data.find(lf, pos);
 
-        size_t end = pos;
-        if (UNLIKELY(end == std::string::npos)) {
-          /* Note that most well behaved file managers will add a trailing newline,
-           * Gnome's web browser (44.3) doesn't, so support reading up until the last byte. */
-          end = data.size();
+        GHOST_TStringArray *flist = static_cast<GHOST_TStringArray *>(
+            malloc(sizeof(GHOST_TStringArray)));
+        flist->count = int(uris.size());
+        flist->strings = static_cast<uint8_t **>(malloc(uris.size() * sizeof(uint8_t *)));
+        for (size_t i = 0; i < uris.size(); i++) {
+          flist->strings[i] = reinterpret_cast<uint8_t *>(
+              GHOST_URL_decode_alloc(uris[i].data(), uris[i].size()));
         }
-        /* Account for 'CRLF' case. */
-        if (data[end - 1] == '\r') {
-          end -= 1;
-        }
-        uris.push_back(data.substr(start, end - start));
-        CLOG_INFO(LOG, 2, "drop_read_uris pos=%zu, text_uri=\"%s\"", start, uris.back().c_str());
+
+        CLOG_INFO(LOG, 2, "read_drop_data file_count=%d", flist->count);
+        ghost_dnd_type = GHOST_kDragnDropTypeFilenames;
+        ghost_dnd_data = flist;
+      }
+      else if (ELEM(mime_receive, ghost_wl_mime_text_plain, ghost_wl_mime_text_utf8)) {
+        ghost_dnd_type = GHOST_kDragnDropTypeString;
+        ghost_dnd_data = (void *)data_buf; /* Move ownership to the event. */
+        data_buf = nullptr;
       }
 
-      GHOST_TStringArray *flist = static_cast<GHOST_TStringArray *>(
-          malloc(sizeof(GHOST_TStringArray)));
-      flist->count = int(uris.size());
-      flist->strings = static_cast<uint8_t **>(malloc(uris.size() * sizeof(uint8_t *)));
-      for (size_t i = 0; i < uris.size(); i++) {
-        flist->strings[i] = reinterpret_cast<uint8_t *>(GHOST_URL_decode_alloc(uris[i].c_str()));
+      if (ghost_dnd_type != GHOST_kDragnDropTypeUnknown) {
+        GHOST_SystemWayland *const system = seat->system;
+        GHOST_WindowWayland *win = ghost_wl_surface_user_data(wl_surface_window);
+        const int event_xy[2] = {WL_FIXED_TO_INT_FOR_WINDOW_V2(win, xy)};
+
+        system->pushEvent_maybe_pending(new GHOST_EventDragnDrop(event_ms,
+                                                                 GHOST_kEventDraggingDropDone,
+                                                                 ghost_dnd_type,
+                                                                 win,
+                                                                 UNPACK2(event_xy),
+                                                                 ghost_dnd_data));
+
+        wl_display_roundtrip(system->wl_display_get());
+      }
+      else {
+        CLOG_INFO(LOG, 2, "read_drop_data, unhandled!");
       }
 
-      CLOG_INFO(LOG, 2, "drop_read_uris_fn file_count=%d", flist->count);
-      const int event_xy[2] = {WL_FIXED_TO_INT_FOR_WINDOW_V2(win, xy)};
-      system->pushEvent_maybe_pending(new GHOST_EventDragnDrop(event_ms,
-                                                               GHOST_kEventDraggingDropDone,
-                                                               GHOST_kDragnDropTypeFilenames,
-                                                               win,
-                                                               UNPACK2(event_xy),
-                                                               flist));
+      free(const_cast<char *>(data_buf));
     }
-    else if (ELEM(mime_receive, ghost_wl_mime_text_plain, ghost_wl_mime_text_utf8)) {
-      /* TODO: enable use of internal functions 'txt_insert_buf' and
-       * 'text_update_edited' to behave like dropped text was pasted. */
-      CLOG_INFO(LOG, 2, "drop_read_uris_fn (text_plain, text_utf8), unhandled!");
-    }
-    wl_display_roundtrip(system->wl_display_get());
   };
 
   /* Pass in `seat->wl_surface_window_focus_dnd` instead of accessing it from `seat` since the
    * leave callback (#data_device_handle_leave) will clear the value once this function starts. */
   std::thread read_thread(
-      read_uris_fn, seat, data_offer, seat->wl.surface_window_focus_dnd, mime_receive);
+      read_drop_data_fn, seat, data_offer, seat->wl.surface_window_focus_dnd, mime_receive);
   read_thread.detach();
 }
 
@@ -4300,10 +4396,8 @@ static void tablet_tool_handle_tilt(void *data,
   CLOG_INFO(LOG, 2, "tilt (x=%.4f, y=%.4f)", UNPACK2(tilt_unit));
   GWL_TabletTool *tablet_tool = static_cast<GWL_TabletTool *>(data);
   GHOST_TabletData &td = tablet_tool->data;
-  td.Xtilt = tilt_unit[0];
-  td.Ytilt = tilt_unit[1];
-  CLAMP(td.Xtilt, -1.0f, 1.0f);
-  CLAMP(td.Ytilt, -1.0f, 1.0f);
+  td.Xtilt = std::clamp(tilt_unit[0], -1.0f, 1.0f);
+  td.Ytilt = std::clamp(tilt_unit[1], -1.0f, 1.0f);
 
   gwl_tablet_tool_frame_event_add(tablet_tool, GWL_TabletTool_EventTypes::Tilt);
 }
@@ -4637,7 +4731,8 @@ static void keyboard_handle_keymap(void *data,
   if (seat->xkb.state_empty_with_shift) {
     seat->xkb_use_non_latin_workaround = true;
     for (xkb_keycode_t key_code = KEY_1 + EVDEV_OFFSET; key_code <= KEY_0 + EVDEV_OFFSET;
-         key_code++) {
+         key_code++)
+    {
       const xkb_keysym_t sym_test = xkb_state_key_get_one_sym(seat->xkb.state_empty_with_shift,
                                                               key_code);
       if (!(sym_test >= XKB_KEY_0 && sym_test <= XKB_KEY_9)) {
@@ -4672,6 +4767,8 @@ static void keyboard_handle_enter(void *data,
   CLOG_INFO(LOG, 2, "enter");
 
   GWL_Seat *seat = static_cast<GWL_Seat *>(data);
+  GHOST_IWindow *win = ghost_wl_surface_user_data(wl_surface);
+
   seat->keyboard.serial = serial;
   seat->keyboard.wl.surface_window = wl_surface;
 
@@ -4683,6 +4780,12 @@ static void keyboard_handle_enter(void *data,
   GWL_KeyboardDepressedState key_depressed_prev = seat->key_depressed;
   keyboard_depressed_state_reset(seat);
 
+  /* Keep track of the last held repeating key, start the repeat timer if one exists. */
+  struct {
+    uint32_t key = std::numeric_limits<uint32_t>::max();
+    xkb_keysym_t sym = 0;
+  } repeat;
+
   uint32_t *key;
   WL_ARRAY_FOR_EACH (key, keys) {
     const xkb_keycode_t key_code = *key + EVDEV_OFFSET;
@@ -4692,9 +4795,41 @@ static void keyboard_handle_enter(void *data,
     if (gkey != GHOST_kKeyUnknown) {
       keyboard_depressed_state_key_event(seat, gkey, GHOST_kEventKeyDown);
     }
+
+    if (xkb_keymap_key_repeats(xkb_state_get_keymap(seat->xkb.state), key_code)) {
+      repeat.key = *key;
+      repeat.sym = sym;
+    }
   }
 
-  keyboard_depressed_state_push_events_from_change(seat, key_depressed_prev);
+  /* Caller has no time-stamp, set from system. */
+  const uint64_t event_ms = seat->system->getMilliSeconds();
+  keyboard_depressed_state_push_events_from_change(seat, win, event_ms, key_depressed_prev);
+
+  if ((repeat.key != std::numeric_limits<uint32_t>::max()) && (seat->key_repeat.rate > 0)) {
+    /* Since the key has been held, immediately send a press event.
+     * This also ensures the key will be registered as pressed, see #117896. */
+#ifdef USE_EVENT_BACKGROUND_THREAD
+    std::lock_guard lock_timer_guard{*seat->system->timer_mutex};
+#endif
+    /* Should have been cleared on leave, set here just in case. */
+    if (UNLIKELY(seat->key_repeat.timer)) {
+      keyboard_handle_key_repeat_cancel(seat);
+    }
+
+    const xkb_keycode_t key_code = repeat.key + EVDEV_OFFSET;
+    const GHOST_TKey gkey = xkb_map_gkey_or_scan_code(repeat.sym, repeat.key);
+
+    GWL_KeyRepeatPlayload *key_repeat_payload = new GWL_KeyRepeatPlayload();
+    key_repeat_payload->seat = seat;
+    key_repeat_payload->key_code = key_code;
+    key_repeat_payload->key_data.gkey = gkey;
+
+    gwl_seat_key_repeat_timer_add(seat, gwl_seat_key_repeat_timer_fn, key_repeat_payload, false);
+    /* Ensure there is a press event on enter so this is known to be held before any mouse
+     * button events which may use a key-binding that depends on this key being held. */
+    gwl_seat_key_repeat_timer_fn(seat->key_repeat.timer, 0);
+  }
 }
 
 /**
@@ -4985,33 +5120,7 @@ static void keyboard_handle_key(void *data,
   }
 
   if (key_repeat_payload) {
-    auto key_repeat_fn = [](GHOST_ITimerTask *task, uint64_t time_ms) {
-      GWL_KeyRepeatPlayload *payload = static_cast<GWL_KeyRepeatPlayload *>(task->getUserData());
-
-      GWL_Seat *seat = payload->seat;
-      if (wl_surface *wl_surface_focus = seat->keyboard.wl.surface_window) {
-        GHOST_IWindow *win = ghost_wl_surface_user_data(wl_surface_focus);
-        GHOST_SystemWayland *system = seat->system;
-        const uint64_t event_ms = payload->time_ms_init + time_ms;
-        /* Calculate this value every time in case modifier keys are pressed. */
-
-        char utf8_buf[sizeof(GHOST_TEventKeyData::utf8_buf)] = {'\0'};
-        if (seat->xkb.compose_state &&
-            xkb_compose_state_feed_and_get_utf8(
-                seat->xkb.compose_state, seat->xkb.state, payload->key_code, utf8_buf))
-        {
-          /* `utf8_buf` has been filled by a compose action. */
-        }
-        else {
-          xkb_state_key_get_utf8(seat->xkb.state, payload->key_code, utf8_buf, sizeof(utf8_buf));
-        }
-
-        system->pushEvent_maybe_pending(new GHOST_EventKey(
-            event_ms, GHOST_kEventKeyDown, win, payload->key_data.gkey, true, utf8_buf));
-      }
-    };
-
-    gwl_seat_key_repeat_timer_add(seat, key_repeat_fn, key_repeat_payload, true);
+    gwl_seat_key_repeat_timer_add(seat, gwl_seat_key_repeat_timer_fn, key_repeat_payload, true);
   }
 }
 
@@ -5288,10 +5397,6 @@ static void text_input_handle_preedit_string(void *data,
             cursor_end);
 
   GWL_Seat *seat = static_cast<GWL_Seat *>(data);
-  if (UNLIKELY(seat->ime.surface_window == nullptr)) {
-    return;
-  }
-
   if (seat->ime.has_preedit == false) {
     /* Starting IME input. */
     gwl_seat_ime_full_reset(seat);
@@ -5318,10 +5423,6 @@ static void text_input_handle_commit_string(void *data,
   CLOG_INFO(LOG, 2, "commit_string (text=\"%s\")", text ? text : "<null>");
 
   GWL_Seat *seat = static_cast<GWL_Seat *>(data);
-  if (UNLIKELY(seat->ime.surface_window == nullptr)) {
-    return;
-  }
-
   seat->ime.result_is_null = (text == nullptr);
   if (seat->ime.result_is_null) {
     seat->ime.result = "";
@@ -5363,7 +5464,9 @@ static void text_input_handle_done(void *data,
 
   CLOG_INFO(LOG, 2, "done");
 
-  GHOST_WindowWayland *win = ghost_wl_surface_user_data(seat->ime.surface_window);
+  GHOST_WindowWayland *win = seat->ime.surface_window ?
+                                 ghost_wl_surface_user_data(seat->ime.surface_window) :
+                                 nullptr;
   if (seat->ime.has_commit_string_callback) {
     if (seat->ime.has_preedit) {
       const bool is_end = seat->ime.composite_is_null;
@@ -5441,6 +5544,111 @@ static zwp_text_input_v3_listener text_input_listener = {
 static CLG_LogRef LOG_WL_SEAT = {"ghost.wl.handle.seat"};
 #define LOG (&LOG_WL_SEAT)
 
+static bool gwl_seat_capability_pointer_multitouch_check(const GWL_Seat *seat, const bool fallback)
+{
+  const zwp_pointer_gestures_v1 *pointer_gestures = seat->system->wp_pointer_gestures_get();
+  if (pointer_gestures == nullptr) {
+    return fallback;
+  }
+
+  bool found = false;
+#ifdef ZWP_POINTER_GESTURE_HOLD_V1_INTERFACE
+  if (seat->wp.pointer_gesture_hold) {
+    return true;
+  }
+  found = true;
+#endif
+#ifdef ZWP_POINTER_GESTURE_PINCH_V1_INTERFACE
+  if (seat->wp.pointer_gesture_pinch) {
+    return true;
+  }
+  found = true;
+#endif
+#ifdef ZWP_POINTER_GESTURE_SWIPE_V1_INTERFACE
+  if (seat->wp.pointer_gesture_swipe) {
+    return true;
+  }
+  found = true;
+#endif
+  if (found == false) {
+    return fallback;
+  }
+  return false;
+}
+
+static void gwl_seat_capability_pointer_multitouch_enable(GWL_Seat *seat)
+{
+  zwp_pointer_gestures_v1 *pointer_gestures = seat->system->wp_pointer_gestures_get();
+  if (pointer_gestures == nullptr) {
+    return;
+  }
+
+  const uint pointer_gestures_version = zwp_pointer_gestures_v1_get_version(pointer_gestures);
+#ifdef ZWP_POINTER_GESTURE_HOLD_V1_INTERFACE
+  if (pointer_gestures_version >= ZWP_POINTER_GESTURES_V1_GET_HOLD_GESTURE_SINCE_VERSION)
+  { /* Hold gesture. */
+    zwp_pointer_gesture_hold_v1 *gesture = zwp_pointer_gestures_v1_get_hold_gesture(
+        pointer_gestures, seat->wl.pointer);
+    zwp_pointer_gesture_hold_v1_set_user_data(gesture, seat);
+    zwp_pointer_gesture_hold_v1_add_listener(gesture, &gesture_hold_listener, seat);
+    seat->wp.pointer_gesture_hold = gesture;
+  }
+#endif
+#ifdef ZWP_POINTER_GESTURE_PINCH_V1_INTERFACE
+  { /* Pinch gesture. */
+    zwp_pointer_gesture_pinch_v1 *gesture = zwp_pointer_gestures_v1_get_pinch_gesture(
+        pointer_gestures, seat->wl.pointer);
+    zwp_pointer_gesture_pinch_v1_set_user_data(gesture, seat);
+    zwp_pointer_gesture_pinch_v1_add_listener(gesture, &gesture_pinch_listener, seat);
+    seat->wp.pointer_gesture_pinch = gesture;
+  }
+#endif
+#ifdef ZWP_POINTER_GESTURE_SWIPE_V1_INTERFACE
+  { /* Swipe gesture. */
+    zwp_pointer_gesture_swipe_v1 *gesture = zwp_pointer_gestures_v1_get_swipe_gesture(
+        pointer_gestures, seat->wl.pointer);
+    zwp_pointer_gesture_swipe_v1_set_user_data(gesture, seat);
+    zwp_pointer_gesture_swipe_v1_add_listener(gesture, &gesture_swipe_listener, seat);
+    seat->wp.pointer_gesture_swipe = gesture;
+  }
+#endif
+}
+
+static void gwl_seat_capability_pointer_multitouch_disable(GWL_Seat *seat)
+{
+  const zwp_pointer_gestures_v1 *pointer_gestures = seat->system->wp_pointer_gestures_get();
+  if (pointer_gestures == nullptr) {
+    return;
+  }
+#ifdef ZWP_POINTER_GESTURE_HOLD_V1_INTERFACE
+  { /* Hold gesture. */
+    zwp_pointer_gesture_hold_v1 **gesture_p = &seat->wp.pointer_gesture_hold;
+    if (*gesture_p) {
+      zwp_pointer_gesture_hold_v1_destroy(*gesture_p);
+      *gesture_p = nullptr;
+    }
+  }
+#endif
+#ifdef ZWP_POINTER_GESTURE_PINCH_V1_INTERFACE
+  { /* Pinch gesture. */
+    zwp_pointer_gesture_pinch_v1 **gesture_p = &seat->wp.pointer_gesture_pinch;
+    if (*gesture_p) {
+      zwp_pointer_gesture_pinch_v1_destroy(*gesture_p);
+      *gesture_p = nullptr;
+    }
+  }
+#endif
+#ifdef ZWP_POINTER_GESTURE_SWIPE_V1_INTERFACE
+  { /* Swipe gesture. */
+    zwp_pointer_gesture_swipe_v1 **gesture_p = &seat->wp.pointer_gesture_swipe;
+    if (*gesture_p) {
+      zwp_pointer_gesture_swipe_v1_destroy(*gesture_p);
+      *gesture_p = nullptr;
+    }
+  }
+#endif
+}
+
 static void gwl_seat_capability_pointer_enable(GWL_Seat *seat)
 {
   if (seat->wl.pointer) {
@@ -5477,38 +5685,7 @@ static void gwl_seat_capability_pointer_enable(GWL_Seat *seat)
   wl_surface_add_listener(seat->cursor.wl.surface_cursor, &cursor_surface_listener, seat);
   ghost_wl_surface_tag_cursor_pointer(seat->cursor.wl.surface_cursor);
 
-  zwp_pointer_gestures_v1 *pointer_gestures = seat->system->wp_pointer_gestures_get();
-  if (pointer_gestures) {
-    const uint pointer_gestures_version = zwp_pointer_gestures_v1_get_version(pointer_gestures);
-#ifdef ZWP_POINTER_GESTURE_HOLD_V1_INTERFACE
-    if (pointer_gestures_version >= ZWP_POINTER_GESTURES_V1_GET_HOLD_GESTURE_SINCE_VERSION)
-    { /* Hold gesture. */
-      zwp_pointer_gesture_hold_v1 *gesture = zwp_pointer_gestures_v1_get_hold_gesture(
-          pointer_gestures, seat->wl.pointer);
-      zwp_pointer_gesture_hold_v1_set_user_data(gesture, seat);
-      zwp_pointer_gesture_hold_v1_add_listener(gesture, &gesture_hold_listener, seat);
-      seat->wp.pointer_gesture_hold = gesture;
-    }
-#endif
-#ifdef ZWP_POINTER_GESTURE_PINCH_V1_INTERFACE
-    { /* Pinch gesture. */
-      zwp_pointer_gesture_pinch_v1 *gesture = zwp_pointer_gestures_v1_get_pinch_gesture(
-          pointer_gestures, seat->wl.pointer);
-      zwp_pointer_gesture_pinch_v1_set_user_data(gesture, seat);
-      zwp_pointer_gesture_pinch_v1_add_listener(gesture, &gesture_pinch_listener, seat);
-      seat->wp.pointer_gesture_pinch = gesture;
-    }
-#endif
-#ifdef ZWP_POINTER_GESTURE_SWIPE_V1_INTERFACE
-    { /* Swipe gesture. */
-      zwp_pointer_gesture_swipe_v1 *gesture = zwp_pointer_gestures_v1_get_swipe_gesture(
-          pointer_gestures, seat->wl.pointer);
-      zwp_pointer_gesture_swipe_v1_set_user_data(gesture, seat);
-      zwp_pointer_gesture_swipe_v1_add_listener(gesture, &gesture_swipe_listener, seat);
-      seat->wp.pointer_gesture_swipe = gesture;
-    }
-#endif
-  }
+  gwl_seat_capability_pointer_multitouch_enable(seat);
 }
 
 static void gwl_seat_capability_pointer_disable(GWL_Seat *seat)
@@ -5517,36 +5694,7 @@ static void gwl_seat_capability_pointer_disable(GWL_Seat *seat)
     return;
   }
 
-  const zwp_pointer_gestures_v1 *pointer_gestures = seat->system->wp_pointer_gestures_get();
-  if (pointer_gestures) {
-#ifdef ZWP_POINTER_GESTURE_HOLD_V1_INTERFACE
-    { /* Hold gesture. */
-      zwp_pointer_gesture_hold_v1 **gesture_p = &seat->wp.pointer_gesture_hold;
-      if (*gesture_p) {
-        zwp_pointer_gesture_hold_v1_destroy(*gesture_p);
-        *gesture_p = nullptr;
-      }
-    }
-#endif
-#ifdef ZWP_POINTER_GESTURE_PINCH_V1_INTERFACE
-    { /* Pinch gesture. */
-      zwp_pointer_gesture_pinch_v1 **gesture_p = &seat->wp.pointer_gesture_pinch;
-      if (*gesture_p) {
-        zwp_pointer_gesture_pinch_v1_destroy(*gesture_p);
-        *gesture_p = nullptr;
-      }
-    }
-#endif
-#ifdef ZWP_POINTER_GESTURE_SWIPE_V1_INTERFACE
-    { /* Swipe gesture. */
-      zwp_pointer_gesture_swipe_v1 **gesture_p = &seat->wp.pointer_gesture_swipe;
-      if (*gesture_p) {
-        zwp_pointer_gesture_swipe_v1_destroy(*gesture_p);
-        *gesture_p = nullptr;
-      }
-    }
-#endif
-  }
+  gwl_seat_capability_pointer_multitouch_disable(seat);
 
   if (seat->cursor.wl.surface_cursor) {
     wl_surface_destroy(seat->cursor.wl.surface_cursor);
@@ -6768,6 +6916,7 @@ GHOST_SystemWayland::GHOST_SystemWayland(bool background)
 #endif
       display_(new GWL_Display)
 {
+  ghost_wayland_log_handler_is_background = background;
   wl_log_set_handler_client(ghost_wayland_log_handler);
 
   display_->system = this;
@@ -7325,6 +7474,148 @@ void GHOST_SystemWayland::putClipboard(const char *buffer, bool selection) const
   else {
     system_clipboard_put(display_, buffer);
   }
+}
+
+static constexpr const char *ghost_wl_mime_img_png = "image/png";
+
+GHOST_TSuccess GHOST_SystemWayland::hasClipboardImage(void) const
+{
+  GWL_Seat *seat = gwl_display_seat_active_get(display_);
+  if (UNLIKELY(!seat)) {
+    return GHOST_kFailure;
+  }
+
+  GWL_DataOffer *data_offer = seat->data_offer_copy_paste;
+  if (data_offer) {
+    if (data_offer->types.count(ghost_wl_mime_img_png)) {
+      return GHOST_kSuccess;
+    }
+  }
+
+  return GHOST_kFailure;
+}
+
+uint *GHOST_SystemWayland::getClipboardImage(int *r_width, int *r_height) const
+{
+#ifdef USE_EVENT_BACKGROUND_THREAD
+  std::lock_guard lock_server_guard{*server_mutex};
+#endif
+
+  GWL_Seat *seat = gwl_display_seat_active_get(display_);
+  if (UNLIKELY(!seat)) {
+    return nullptr;
+  }
+
+  std::mutex &mutex = seat->data_offer_copy_paste_mutex;
+  mutex.lock();
+  bool mutex_locked = true;
+
+  uint *rgba = nullptr;
+
+  GWL_DataOffer *data_offer = seat->data_offer_copy_paste;
+  if (data_offer) {
+    /* Check if the source offers a supported mime type.
+     * This check could be skipped, because the paste option is not supposed to be enabled
+     * otherwise. */
+    if (data_offer->types.count(ghost_wl_mime_img_png)) {
+      /* Receive the clipboard in a thread, performing round-trips while waiting,
+       * so pasting content from own `primary->data_source` doesn't hang. */
+      struct ThreadResult {
+        char *data = nullptr;
+        size_t data_len = 0;
+        std::atomic<bool> done = false;
+      } thread_result;
+
+      auto read_clipboard_fn = [](GWL_DataOffer *data_offer,
+                                  const char *mime_receive,
+                                  std::mutex *mutex,
+                                  ThreadResult *thread_result) {
+        thread_result->data = read_buffer_from_data_offer(
+            data_offer, mime_receive, mutex, false, &thread_result->data_len);
+        thread_result->done = true;
+      };
+      std::thread read_thread(
+          read_clipboard_fn, data_offer, ghost_wl_mime_img_png, &mutex, &thread_result);
+      read_thread.detach();
+
+      while (!thread_result.done) {
+        wl_display_roundtrip(display_->wl.display);
+      }
+
+      if (thread_result.data) {
+        /* Generate the image buffer with the received data. */
+        ImBuf *ibuf = IMB_ibImageFromMemory((uint8_t *)thread_result.data,
+                                            thread_result.data_len,
+                                            IB_rect,
+                                            nullptr,
+                                            "<clipboard>");
+        if (ibuf) {
+          *r_width = ibuf->x;
+          *r_height = ibuf->y;
+          const size_t byte_count = size_t(ibuf->x) * size_t(ibuf->y) * 4;
+          rgba = (uint *)malloc(byte_count);
+          std::memcpy(rgba, ibuf->byte_buffer.data, byte_count);
+          IMB_freeImBuf(ibuf);
+        }
+      }
+
+      /* After reading the data offer, the mutex gets unlocked. */
+      mutex_locked = false;
+    }
+  }
+
+  if (mutex_locked) {
+    mutex.unlock();
+  }
+  return rgba;
+}
+
+GHOST_TSuccess GHOST_SystemWayland::putClipboardImage(uint *rgba, int width, int height) const
+{
+#ifdef USE_EVENT_BACKGROUND_THREAD
+  std::lock_guard lock_server_guard{*server_mutex};
+#endif
+
+  /* Create a #wl_data_source object. */
+  GWL_Seat *seat = gwl_display_seat_active_get(display_);
+  if (UNLIKELY(!seat)) {
+    return GHOST_kFailure;
+  }
+  std::lock_guard lock(seat->data_source_mutex);
+
+  GWL_DataSource *data_source = seat->data_source;
+
+  /* Load buffer into an #ImBuf and convert to PNG. */
+  ImBuf *ibuf = IMB_allocFromBuffer(reinterpret_cast<uint8_t *>(rgba), nullptr, width, height, 32);
+  ibuf->ftype = IMB_FTYPE_PNG;
+  ibuf->foptions.quality = 15;
+  if (!IMB_saveiff(ibuf, "<memory>", IB_rect | IB_mem)) {
+    IMB_freeImBuf(ibuf);
+    return GHOST_kFailure;
+  }
+
+  /* Copy #ImBuf encoded_buffer to data source. */
+  GWL_SimpleBuffer *imgbuffer = &data_source->buffer_out;
+  gwl_simple_buffer_free_data(imgbuffer);
+  imgbuffer->data_size = ibuf->encoded_buffer_size;
+  char *data = static_cast<char *>(malloc(imgbuffer->data_size));
+  std::memcpy(data, ibuf->encoded_buffer.data, ibuf->encoded_buffer_size);
+  imgbuffer->data = data;
+
+  data_source->wl.source = wl_data_device_manager_create_data_source(
+      display_->wl.data_device_manager);
+  wl_data_source_add_listener(data_source->wl.source, &data_source_listener, seat);
+
+  /* Advertise the mime types supported. */
+  wl_data_source_offer(data_source->wl.source, ghost_wl_mime_img_png);
+
+  if (seat->wl.data_device) {
+    wl_data_device_set_selection(
+        seat->wl.data_device, data_source->wl.source, seat->data_source_serial);
+  }
+
+  IMB_freeImBuf(ibuf);
+  return GHOST_kSuccess;
 }
 
 uint8_t GHOST_SystemWayland::getNumDisplays() const
@@ -7902,9 +8193,7 @@ GHOST_TCapabilityFlag GHOST_SystemWayland::getCapabilities() const
            * is negligible. */
           GHOST_kCapabilityGPUReadFrontBuffer |
           /* This WAYLAND back-end has not yet implemented desktop color sample. */
-          GHOST_kCapabilityDesktopSample |
-          /* This WAYLAND back-end has not yet implemented image copy/paste. */
-          GHOST_kCapabilityClipboardImages));
+          GHOST_kCapabilityDesktopSample));
 }
 
 bool GHOST_SystemWayland::cursor_grab_use_software_display_get(const GHOST_TGrabCursorMode mode)
@@ -7959,6 +8248,30 @@ static GWL_SeatStateGrab seat_grab_state_from_mode(const GHOST_TGrabCursorMode m
   grab_state.use_lock = ELEM(mode, GHOST_kGrabWrap, GHOST_kGrabHide) || use_software_confine;
   grab_state.use_confine = (mode == GHOST_kGrabNormal) && (use_software_confine == false);
   return grab_state;
+}
+
+void GHOST_SystemWayland::setMultitouchGestures(const bool use)
+{
+  if (m_multitouchGestures == use) {
+    return;
+  }
+  m_multitouchGestures = use;
+
+#ifdef USE_EVENT_BACKGROUND_THREAD
+  /* Ensure this listeners aren't removed while events are generated. */
+  std::lock_guard lock_server_guard{*server_mutex};
+#endif
+  for (GWL_Seat *seat : display_->seats) {
+    if (use == gwl_seat_capability_pointer_multitouch_check(seat, use)) {
+      continue;
+    }
+    if (use) {
+      gwl_seat_capability_pointer_multitouch_enable(seat);
+    }
+    else {
+      gwl_seat_capability_pointer_multitouch_disable(seat);
+    }
+  }
 }
 
 /** \} */
@@ -8271,8 +8584,10 @@ uint64_t GHOST_SystemWayland::ms_from_input_time(const uint32_t timestamp_as_uin
   GWL_DisplayTimeStamp &input_timestamp = display_->input_timestamp;
   if (UNLIKELY(timestamp_as_uint < input_timestamp.last)) {
     /* NOTE(@ideasman42): Sometimes event times are out of order,
-     * while this should _never_ happen, it occasionally does when resizing the window then
-     * clicking on the window with GNOME+LIBDECOR.
+     * while this should _never_ happen, it occasionally does:
+     * - When resizing the window then clicking on the window with GNOME+LIBDECOR.
+     * - With accepting IME text with GNOME-v45.2 the timestamp is in seconds, see:
+     *   https://gitlab.gnome.org/GNOME/mutter/-/issues/3214
      * Accept events must occur within ~25 days, out-of-order time-stamps above this time-frame
      * will be treated as a wrapped integer. */
     if (input_timestamp.last - timestamp_as_uint > std::numeric_limits<uint32_t>::max() / 2) {
@@ -8531,7 +8846,8 @@ bool GHOST_SystemWayland::window_cursor_grab_set(const GHOST_TGrabCursorMode mod
       }
       else if (mode_current == GHOST_kGrabHide) {
         if ((init_grab_xy[0] != seat->grab_lock_xy[0]) ||
-            (init_grab_xy[1] != seat->grab_lock_xy[1])) {
+            (init_grab_xy[1] != seat->grab_lock_xy[1]))
+        {
           const wl_fixed_t xy_next[2] = {
               gwl_window_scale_wl_fixed_from(scale_params, wl_fixed_from_int(init_grab_xy[0])),
               gwl_window_scale_wl_fixed_from(scale_params, wl_fixed_from_int(init_grab_xy[1])),

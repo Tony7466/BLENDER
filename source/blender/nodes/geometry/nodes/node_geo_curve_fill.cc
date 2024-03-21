@@ -6,9 +6,6 @@
 #include "BLI_delaunay_2d.hh"
 #include "BLI_math_vector_types.hh"
 
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
-
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_instances.hh"
@@ -125,7 +122,7 @@ static Array<meshintersect::CDT_result<double>> do_group_aware_cdt(
     const CDT_output_type output_type,
     const Field<int> &group_index_field)
 {
-  const bke::GeometryFieldContext field_context{curves, ATTR_DOMAIN_CURVE};
+  const bke::GeometryFieldContext field_context{curves, AttrDomain::Curve};
   fn::FieldEvaluator data_evaluator{field_context, curves.curves_num()};
   data_evaluator.add(group_index_field);
   data_evaluator.evaluate();
@@ -135,26 +132,16 @@ static Array<meshintersect::CDT_result<double>> do_group_aware_cdt(
     return {do_cdt(curves, output_type)};
   }
 
-  const VArraySpan<int> group_ids_span(curve_group_ids);
-  const int domain_size = group_ids_span.size();
-
-  VectorSet<int> group_indexing(group_ids_span);
-  const int groups_num = group_indexing.size();
-
+  VectorSet<int> group_indexing;
   IndexMaskMemory mask_memory;
-  Array<IndexMask> group_masks(groups_num);
-  IndexMask::from_groups<int>(
-      IndexMask(domain_size),
-      mask_memory,
-      [&](const int i) {
-        const int group_id = group_ids_span[i];
-        return group_indexing.index_of(group_id);
-      },
-      group_masks);
+  const Vector<IndexMask> group_masks = IndexMask::from_group_ids(
+      curve_group_ids, mask_memory, group_indexing);
+  const int groups_num = group_masks.size();
 
   Array<meshintersect::CDT_result<double>> cdt_results(groups_num);
 
   /* The grain size should be larger as each group gets smaller. */
+  const int domain_size = curve_group_ids.size();
   const int avg_group_size = domain_size / groups_num;
   const int grain_size = std::max(8192 / avg_group_size, 1);
   threading::parallel_for(IndexRange(groups_num), grain_size, [&](const IndexRange range) {
@@ -247,7 +234,7 @@ static Mesh *cdts_to_mesh(const Span<meshintersect::CDT_result<double>> results)
 
   /* The delaunay triangulation doesn't seem to return all of the necessary all_edges, even in
    * triangulation mode. */
-  BKE_mesh_calc_edges(mesh, true, false);
+  bke::mesh_calc_edges(*mesh, true, false);
   bke::mesh_smooth_set(*mesh, false);
 
   mesh->tag_overlapping_none();

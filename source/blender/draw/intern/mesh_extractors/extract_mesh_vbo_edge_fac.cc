@@ -69,15 +69,15 @@ static void extract_edge_fac_init(const MeshRenderData &mr,
   }
 
   GPU_vertbuf_init_with_format(vbo, &format);
-  GPU_vertbuf_data_alloc(vbo, mr.loop_len + mr.loop_loose_len);
+  GPU_vertbuf_data_alloc(vbo, mr.corners_num + mr.loose_indices_num);
 
   MeshExtract_EdgeFac_Data *data = static_cast<MeshExtract_EdgeFac_Data *>(tls_data);
 
   if (mr.extract_type == MR_EXTRACT_MESH) {
     data->use_edge_render = !mr.mesh->runtime->subsurf_optimal_display_edges.is_empty();
-    data->edge_loop_count = MEM_cnew_array<uint8_t>(mr.edge_len, __func__);
+    data->edge_loop_count = MEM_cnew_array<uint8_t>(mr.edges_num, __func__);
     data->edge_pdata = (MEdgeDataPrev *)MEM_malloc_arrayN(
-        mr.edge_len, sizeof(MEdgeDataPrev), __func__);
+        mr.edges_num, sizeof(MEdgeDataPrev), __func__);
   }
   else {
     /* HACK to bypass non-manifold check in mesh_edge_fac_finish(). */
@@ -117,21 +117,21 @@ static void extract_edge_fac_iter_face_mesh(const MeshRenderData &mr,
   const IndexRange face = mr.faces[face_index];
   const BitSpan optimal_display_edges = mr.mesh->runtime->subsurf_optimal_display_edges;
 
-  for (const int ml_index : face) {
-    const int edge = mr.corner_edges[ml_index];
+  for (const int corner : face) {
+    const int edge = mr.corner_edges[corner];
 
     if (data->use_edge_render && !optimal_display_edges[edge]) {
-      data->vbo_data[ml_index] = FORCE_HIDE;
+      data->vbo_data[corner] = FORCE_HIDE;
     }
     else {
       MEdgeDataPrev *medata = &data->edge_pdata[edge];
 
       uint8_t corner_count = data->edge_loop_count[edge];
-      data->vbo_data[ml_index] = 0;
+      data->vbo_data[corner] = 0;
       if (corner_count < 4) {
         if (corner_count == 0) {
           /* Prepare to calculate the factor. */
-          medata->corner_a = ml_index;
+          medata->corner_a = corner;
           medata->data = face_index;
         }
         else if (corner_count == 1) {
@@ -140,10 +140,10 @@ static void extract_edge_fac_iter_face_mesh(const MeshRenderData &mr,
           uint8_t fac = loop_edge_factor_get(float3(mr.face_normals[face_index_a]),
                                              float3(mr.face_normals[face_index]));
           data->vbo_data[medata->corner_a] = fac;
-          data->vbo_data[ml_index] = fac;
+          data->vbo_data[corner] = fac;
 
           /* If the count still changes, use this `data` member to inform the corner. */
-          medata->data = ml_index;
+          medata->data = corner;
         }
         else {
           /* Non-manifold edge. Always visible. */
@@ -166,8 +166,8 @@ static void extract_edge_fac_iter_loose_edge_bm(const MeshRenderData &mr,
                                                 void *_data)
 {
   MeshExtract_EdgeFac_Data *data = static_cast<MeshExtract_EdgeFac_Data *>(_data);
-  data->vbo_data[mr.loop_len + (loose_edge_i * 2) + 0] = 0;
-  data->vbo_data[mr.loop_len + (loose_edge_i * 2) + 1] = 0;
+  data->vbo_data[mr.corners_num + (loose_edge_i * 2) + 0] = 0;
+  data->vbo_data[mr.corners_num + (loose_edge_i * 2) + 1] = 0;
 }
 
 static void extract_edge_fac_iter_loose_edge_mesh(const MeshRenderData &mr,
@@ -177,8 +177,8 @@ static void extract_edge_fac_iter_loose_edge_mesh(const MeshRenderData &mr,
 {
   MeshExtract_EdgeFac_Data *data = static_cast<MeshExtract_EdgeFac_Data *>(_data);
 
-  data->vbo_data[mr.loop_len + loose_edge_i * 2 + 0] = 0;
-  data->vbo_data[mr.loop_len + loose_edge_i * 2 + 1] = 0;
+  data->vbo_data[mr.corners_num + loose_edge_i * 2 + 0] = 0;
+  data->vbo_data[mr.corners_num + loose_edge_i * 2 + 1] = 0;
 }
 
 static void extract_edge_fac_finish(const MeshRenderData &mr,
@@ -201,13 +201,13 @@ static void extract_edge_fac_finish(const MeshRenderData &mr,
     data->vbo_data = static_cast<uchar *>(GPU_vertbuf_steal_data(vbo));
     GPU_vertbuf_clear(vbo);
 
-    int buf_len = mr.loop_len + mr.loop_loose_len;
+    int buf_len = mr.corners_num + mr.loose_indices_num;
     GPU_vertbuf_init_with_format(vbo, &format);
     GPU_vertbuf_data_alloc(vbo, buf_len);
 
     float *fdata_legacy = (float *)GPU_vertbuf_get_data(vbo);
-    for (int ml_index = 0; ml_index < buf_len; ml_index++, fdata_legacy++) {
-      *fdata_legacy = data->vbo_data[ml_index] / 255.0f;
+    for (int corner = 0; corner < buf_len; corner++, fdata_legacy++) {
+      *fdata_legacy = data->vbo_data[corner] / 255.0f;
     }
     /* Free old byte data. */
     MEM_freeN(data->vbo_data);
@@ -291,7 +291,7 @@ static void extract_edge_fac_init_subdiv(const DRWSubdivCache &subdiv_cache,
   GPU_vertbuf_init_build_on_device(
       vbo, get_subdiv_edge_fac_format(), subdiv_cache.num_subdiv_loops + loose_geom.loop_len);
 
-  GPUVertBuf *pos_nor = cache.final.buff.vbo.pos_nor;
+  GPUVertBuf *pos_nor = cache.final.buff.vbo.pos;
   GPUVertBuf *poly_other_map = build_poly_other_map_vbo(subdiv_cache);
 
   draw_subdiv_build_edge_fac_buffer(
@@ -350,6 +350,6 @@ constexpr MeshExtract create_extractor_edge_fac()
 
 /** \} */
 
-}  // namespace blender::draw
+const MeshExtract extract_edge_fac = create_extractor_edge_fac();
 
-const MeshExtract extract_edge_fac = blender::draw::create_extractor_edge_fac();
+}  // namespace blender::draw

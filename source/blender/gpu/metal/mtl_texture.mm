@@ -6,7 +6,7 @@
  * \ingroup gpu
  */
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "DNA_userdef_types.h"
 
@@ -620,7 +620,8 @@ void gpu::MTLTexture::update_sub(
 
     /* Safety Checks. */
     if (type == GPU_DATA_UINT_24_8 || type == GPU_DATA_10_11_11_REV ||
-        type == GPU_DATA_2_10_10_10_REV) {
+        type == GPU_DATA_2_10_10_10_REV)
+    {
       BLI_assert(can_use_direct_blit &&
                  "Special input data type must be a 1-1 mapping with destination texture as it "
                  "cannot easily be split");
@@ -1120,6 +1121,8 @@ void gpu::MTLTexture::update_sub(
 
     /* Decrement texture reference counts. This ensures temporary texture views are released. */
     [texture_handle release];
+
+    ctx->main_command_buffer.submit(false);
 
     /* Release temporary staging buffer allocation.
      * NOTE: Allocation will be tracked with command submission and released once no longer in use.
@@ -1686,11 +1689,16 @@ void gpu::MTLTexture::read_internal(int mip,
      * happen after work with associated texture is finished. */
     GPU_finish();
 
-    /* Texture View for SRGB special case. */
+    /** Determine source read texture handle. */
     id<MTLTexture> read_texture = texture_;
+    /* Use texture-view handle if reading from a GPU texture view. */
+    if (resource_mode_ == MTL_TEXTURE_MODE_TEXTURE_VIEW) {
+      read_texture = this->get_metal_handle();
+    }
+    /* Create Texture View for SRGB special case to bypass internal type conversion. */
     if (format_ == GPU_SRGB8_A8) {
       BLI_assert(gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_FORMAT_VIEW);
-      read_texture = [texture_ newTextureViewWithPixelFormat:MTLPixelFormatRGBA8Unorm];
+      read_texture = [read_texture newTextureViewWithPixelFormat:MTLPixelFormatRGBA8Unorm];
     }
 
     /* Perform per-texture type read. */
@@ -2341,20 +2349,19 @@ void gpu::MTLTexture::ensure_baked()
     /* Determine Resource Mode. */
     resource_mode_ = MTL_TEXTURE_MODE_DEFAULT;
 
-    /* Override storage mode if memoryless attachments are being used. */
+    /* Override storage mode if memoryless attachments are being used.
+     * NOTE: Memoryless textures can only be supported on TBDR GPUs. */
     if (gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_MEMORYLESS) {
-      if (@available(macOS 11.00, *)) {
+      const bool is_tile_based_arch = (GPU_platform_architecture() == GPU_ARCHITECTURE_TBDR);
+      if (is_tile_based_arch) {
         texture_descriptor_.storageMode = MTLStorageModeMemoryless;
-      }
-      else {
-        BLI_assert_msg(0, "GPU_TEXTURE_USAGE_MEMORYLESS is not available on older MacOS versions");
       }
     }
 
     /** Atomic texture fallback.
      * If texture atomic operations are required and are not natively supported, we instead
      * allocate a buffer-backed 2D texture and perform atomic operations on this instead. Support
-     * for 2D Array textures and 3D textures is achieved via packing layers into the 2D texture.*/
+     * for 2D Array textures and 3D textures is achieved via packing layers into the 2D texture. */
     bool native_texture_atomics = MTLBackend::get_capabilities().supports_texture_atomics;
     if ((gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_ATOMIC) && !native_texture_atomics) {
 

@@ -43,7 +43,7 @@
 #include "BLI_ghash.h"
 
 #include "BKE_context.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 /* so operators called can spawn threads which acquire the GIL */
 #define BPY_RELEASE_GIL
@@ -226,7 +226,7 @@ static PyObject *pyop_call(PyObject * /*self*/, PyObject *args)
 
     if (kw && PyDict_Size(kw)) {
       error_val = pyrna_pydict_to_props(
-          &ptr, kw, false, "Converting py args to operator properties: ");
+          &ptr, kw, false, "Converting py args to operator properties:");
     }
 
     if (error_val == 0) {
@@ -313,7 +313,6 @@ static PyObject *pyop_as_string(PyObject * /*self*/, PyObject *args)
   bool macro_args = true;
   int error_val = 0;
 
-  char *buf = nullptr;
   PyObject *pybuf;
 
   bContext *C = BPY_context_get();
@@ -367,11 +366,12 @@ static PyObject *pyop_as_string(PyObject * /*self*/, PyObject *args)
 
   if (kw && PyDict_Size(kw)) {
     error_val = pyrna_pydict_to_props(
-        &ptr, kw, false, "Converting py args to operator properties: ");
+        &ptr, kw, false, "Converting py args to operator properties:");
   }
 
+  std::string op_string;
   if (error_val == 0) {
-    buf = WM_operator_pystring_ex(C, nullptr, all_args, macro_args, ot, &ptr);
+    op_string = WM_operator_pystring_ex(C, nullptr, all_args, macro_args, ot, &ptr);
   }
 
   WM_operator_properties_free(&ptr);
@@ -380,9 +380,8 @@ static PyObject *pyop_as_string(PyObject * /*self*/, PyObject *args)
     return nullptr;
   }
 
-  if (buf) {
-    pybuf = PyUnicode_FromString(buf);
-    MEM_freeN(buf);
+  if (!op_string.empty()) {
+    pybuf = PyUnicode_FromString(op_string.c_str());
   }
   else {
     pybuf = PyUnicode_FromString("");

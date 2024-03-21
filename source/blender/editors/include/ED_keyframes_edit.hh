@@ -8,7 +8,9 @@
 
 #pragma once
 
+#include "BLI_array.hh"
 #include "BLI_math_vector_types.hh"
+
 #include "ED_anim_api.hh" /* for enum eAnimFilter_Flags */
 
 struct BezTriple;
@@ -98,8 +100,7 @@ enum eEditKeyframes_Mirror {
 struct KeyframeEdit_LassoData {
   rctf *rectf_scaled;
   const rctf *rectf_view;
-  const int (*mcoords)[2];
-  int mcoords_len;
+  blender::Array<blender::int2> mcoords;
 };
 
 /* use with BEZT_OK_REGION_CIRCLE */
@@ -437,6 +438,12 @@ void blend_to_neighbor_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float
 void breakdown_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 void scale_average_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
 void push_pull_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
+/* Used for operators that need a reference key of the segment to work. */
+enum class FCurveSegmentAnchor { LEFT, RIGHT };
+void scale_from_fcurve_segment_neighbor(FCurve *fcu,
+                                        FCurveSegment *segment,
+                                        float factor,
+                                        FCurveSegmentAnchor anchor);
 /**
  * Get a 1D gauss kernel. Since the kernel is symmetrical, only calculates the positive side.
  * \param sigma: The shape of the gauss distribution.
@@ -500,7 +507,12 @@ void bake_fcurve_segments(FCurve *fcu);
 void sample_fcurve_segment(
     FCurve *fcu, float start_frame, float sample_rate, float *r_samples, int sample_count);
 
-enum class BakeCurveRemove { REMOVE_NONE, REMOVE_IN_RANGE, REMOVE_OUT_RANGE, REMOVE_ALL };
+enum class BakeCurveRemove {
+  REMOVE_NONE = 0,
+  REMOVE_IN_RANGE = 1,
+  REMOVE_OUT_RANGE = 2,
+  REMOVE_ALL = 3,
+};
 /** Creates keyframes in the given range at the given step interval.
  * \param range: start and end frame to bake. Is inclusive on both ends.
  * \param remove_existing: choice which keys to remove in relation to the given range.

@@ -12,6 +12,9 @@
 #ifdef WIN32
 #  include "utfconv.hh"
 #  include <windows.h>
+#  ifdef WITH_CPU_CHECK
+#    pragma comment(linker, "/include:cpu_check_win32")
+#  endif
 #endif
 
 #if defined(WITH_TBB_MALLOC) && defined(_MSC_VER) && defined(NDEBUG)
@@ -32,20 +35,20 @@
 #include "BLI_utildefines.h"
 
 /* Mostly initialization functions. */
-#include "BKE_appdir.h"
-#include "BKE_blender.h"
+#include "BKE_appdir.hh"
+#include "BKE_blender.hh"
+#include "BKE_blender_cli_command.hh"
 #include "BKE_brush.hh"
-#include "BKE_cachefile.h"
-#include "BKE_callbacks.h"
+#include "BKE_cachefile.hh"
+#include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_cpp_types.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_gpencil_modifier_legacy.h"
-#include "BKE_idtype.h"
-#include "BKE_main.hh"
+#include "BKE_idtype.hh"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
-#include "BKE_node.h"
+#include "BKE_node.hh"
 #include "BKE_particle.h"
 #include "BKE_shader_fx.h"
 #include "BKE_sound.h"
@@ -58,7 +61,7 @@
 
 #include "DEG_depsgraph.hh"
 
-#include "IMB_imbuf.h" /* For #IMB_init. */
+#include "IMB_imbuf.hh" /* For #IMB_init. */
 
 #include "RE_engine.h"
 #include "RE_texture.h"
@@ -66,7 +69,6 @@
 #include "ED_datafiles.h"
 
 #include "WM_api.hh"
-#include "WM_toolsystem.h"
 
 #include "RNA_define.hh"
 
@@ -114,7 +116,7 @@
 /** \name Local Application State
  * \{ */
 
-/* written to by 'creator_args.c' */
+/* Written to by `creator_args.cc`. */
 ApplicationState app_state = []() {
   ApplicationState app_state{};
   app_state.signal.use_crash_handler = true;
@@ -196,7 +198,7 @@ static void callback_clg_fatal(void *fp)
 /** \name Blender as a Stand-Alone Python Module (bpy)
  *
  * While not officially supported, this can be useful for Python developers.
- * See: https://wiki.blender.org/wiki/Building_Blender/Other/BlenderAsPyModule
+ * See: https://developer.blender.org/docs/handbook/building_blender/python_module/
  * \{ */
 
 #ifdef WITH_PYTHON_MODULE
@@ -279,7 +281,6 @@ int main(int argc,
 )
 {
   bContext *C;
-
 #ifndef WITH_PYTHON_MODULE
   bArgs *ba;
 #endif
@@ -288,8 +289,6 @@ int main(int argc,
   char **argv;
   int argv_num;
 #endif
-
-  /* --- end declarations --- */
 
   /* Ensure we free data on early-exit. */
   CreatorAtExitData app_init_data = {nullptr};
@@ -314,7 +313,7 @@ int main(int argc,
   /* Win32 Unicode Arguments. */
   {
     /* NOTE: Can't use `guardedalloc` allocation here, as it's not yet initialized
-     * (it depends on the arguments passed in, which is what we're getting here!) */
+     * (it depends on the arguments passed in, which is what we're getting here!). */
     wchar_t **argv_16 = CommandLineToArgvW(GetCommandLineW(), &argc);
     argv = static_cast<char **>(malloc(argc * sizeof(char *)));
     for (argv_num = 0; argv_num < argc; argv_num++) {
@@ -322,7 +321,7 @@ int main(int argc,
     }
     LocalFree(argv_16);
 
-    /* free on early-exit */
+    /* Free on early-exit. */
     app_init_data.argv = argv;
     app_init_data.argv_num = argv_num;
   }
@@ -341,7 +340,7 @@ int main(int argc,
         MEM_use_guarded_allocator();
         break;
       }
-      if (STREQ(argv[i], "--")) {
+      if (STR_ELEM(argv[i], "--", "--command")) {
         break;
       }
     }
@@ -400,7 +399,7 @@ int main(int argc,
   main_callback_setup();
 
 #if defined(__APPLE__) && !defined(WITH_PYTHON_MODULE) && !defined(WITH_HEADLESS)
-  /* Patch to ignore argument finder gives us (PID?) */
+  /* Patch to ignore argument finder gives us (PID?). */
   if (argc == 2 && STRPREFIX(argv[1], "-psn_")) {
     static char firstfilebuf[512];
 
@@ -440,9 +439,9 @@ int main(int argc,
 
   BKE_callback_global_init();
 
-/* First test for background-mode (#Global.background) */
+/* First test for background-mode (#Global.background). */
 #ifndef WITH_PYTHON_MODULE
-  ba = BLI_args_create(argc, (const char **)argv); /* skip binary path */
+  ba = BLI_args_create(argc, (const char **)argv); /* Skip binary path. */
 
   /* Ensure we free on early exit. */
   app_init_data.ba = ba;
@@ -537,7 +536,7 @@ int main(int argc,
   FRS_set_context(C);
 #endif
 
-/* OK we are ready for it */
+/* OK we are ready for it. */
 #ifndef WITH_PYTHON_MODULE
   /* Handles #ARG_PASS_FINAL. */
   BLI_args_parse(ba, ARG_PASS_FINAL, main_args_handle_load_file, C);
@@ -566,8 +565,23 @@ int main(int argc,
 
 #ifndef WITH_PYTHON_MODULE
   if (G.background) {
+    int exit_code;
+    if (app_state.command.argv) {
+      const char *id = app_state.command.argv[0];
+      if (STREQ(id, "help")) {
+        BKE_blender_cli_command_print_help();
+        exit_code = EXIT_SUCCESS;
+      }
+      else {
+        exit_code = BKE_blender_cli_command_exec(
+            C, id, app_state.command.argc - 1, app_state.command.argv + 1);
+      }
+    }
+    else {
+      exit_code = G.is_break ? EXIT_FAILURE : EXIT_SUCCESS;
+    }
     /* Using window-manager API in background-mode is a bit odd, but works fine. */
-    WM_exit(C, G.is_break ? EXIT_FAILURE : EXIT_SUCCESS);
+    WM_exit(C, exit_code);
   }
   else {
     /* Shows the splash as needed. */

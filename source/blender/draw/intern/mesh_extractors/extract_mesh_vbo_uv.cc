@@ -90,8 +90,8 @@ static void extract_uv_init(const MeshRenderData &mr,
   GPUVertFormat format = {0};
 
   CustomData *cd_ldata = (mr.extract_type == MR_EXTRACT_BMESH) ? &mr.bm->ldata :
-                                                                 &mr.mesh->loop_data;
-  int v_len = mr.loop_len;
+                                                                 &mr.mesh->corner_data;
+  int v_len = mr.corners_num;
   uint32_t uv_layers = cache.cd_used.uv;
   if (!mesh_extract_uv_format_init(&format, cache, cd_ldata, mr.extract_type, uv_layers)) {
     /* VBO will not be used, only allocate minimum of memory. */
@@ -122,9 +122,9 @@ static void extract_uv_init(const MeshRenderData &mr,
       else {
         const Span<float2> uv_map(
             static_cast<const float2 *>(CustomData_get_layer_n(cd_ldata, CD_PROP_FLOAT2, i)),
-            mr.loop_len);
-        array_utils::copy(uv_map, uv_data.slice(vbo_index, mr.loop_len));
-        vbo_index += mr.loop_len;
+            mr.corners_num);
+        array_utils::copy(uv_map, uv_data.slice(vbo_index, mr.corners_num));
+        vbo_index += mr.corners_num;
       }
     }
   }
@@ -143,7 +143,7 @@ static void extract_uv_init_subdiv(const DRWSubdivCache &subdiv_cache,
   uint v_len = subdiv_cache.num_subdiv_loops;
   uint uv_layers;
   if (!mesh_extract_uv_format_init(
-          &format, cache, &coarse_mesh->loop_data, MR_EXTRACT_MESH, uv_layers))
+          &format, cache, &coarse_mesh->corner_data, MR_EXTRACT_MESH, uv_layers))
   {
     /* TODO(kevindietrich): handle this more gracefully. */
     v_len = 1;
@@ -179,6 +179,6 @@ constexpr MeshExtract create_extractor_uv()
 
 /** \} */
 
-}  // namespace blender::draw
+const MeshExtract extract_uv = create_extractor_uv();
 
-const MeshExtract extract_uv = blender::draw::create_extractor_uv();
+}  // namespace blender::draw

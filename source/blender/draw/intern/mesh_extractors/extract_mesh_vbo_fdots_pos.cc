@@ -44,7 +44,7 @@ static void extract_fdots_pos_init(const MeshRenderData &mr,
   GPUVertBuf *vbo = static_cast<GPUVertBuf *>(buf);
   GPUVertFormat *format = get_fdots_pos_format();
   GPU_vertbuf_init_with_format(vbo, format);
-  GPU_vertbuf_data_alloc(vbo, mr.face_len);
+  GPU_vertbuf_data_alloc(vbo, mr.faces_num);
   void *vbo_data = GPU_vertbuf_get_data(vbo);
   *(float(**)[3])tls_data = static_cast<float(*)[3]>(vbo_data);
 }
@@ -77,8 +77,8 @@ static void extract_fdots_pos_iter_face_mesh(const MeshRenderData &mr,
 
   const BitSpan facedot_tags = mr.mesh->runtime->subsurf_face_dot_tags;
 
-  for (const int ml_index : mr.faces[face_index]) {
-    const int vert = mr.corner_verts[ml_index];
+  for (const int corner : mr.faces[face_index]) {
+    const int vert = mr.corner_verts[corner];
     if (mr.use_subsurf_fdots) {
       if (facedot_tags[vert]) {
         copy_v3_v3(center[face_index], mr.vert_positions[vert]);
@@ -133,6 +133,6 @@ constexpr MeshExtract create_extractor_fdots_pos()
 
 /** \} */
 
-}  // namespace blender::draw
+const MeshExtract extract_fdots_pos = create_extractor_fdots_pos();
 
-const MeshExtract extract_fdots_pos = blender::draw::create_extractor_fdots_pos();
+}  // namespace blender::draw

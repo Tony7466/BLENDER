@@ -11,6 +11,7 @@
 struct GPUBatch;
 struct GPUMaterial;
 struct GPUVertBuf;
+struct GPUUniformBuf;
 struct ModifierData;
 struct PTCacheEdit;
 struct ParticleSystem;
@@ -26,6 +27,8 @@ struct bGPdata;
 struct GreasePencil;
 
 #include "BKE_mesh.h"
+
+namespace blender::draw {
 
 /* -------------------------------------------------------------------- */
 /** \name Expose via BKE callbacks
@@ -133,8 +136,11 @@ GPUVertBuf **DRW_curves_texture_for_evaluated_attribute(Curves *curves,
                                                         const char *name,
                                                         bool *r_is_point_domain);
 
+GPUUniformBuf *DRW_curves_batch_cache_ubo_storage(Curves *curves);
 GPUBatch *DRW_curves_batch_cache_get_edit_points(Curves *curves);
-GPUBatch *DRW_curves_batch_cache_get_edit_lines(Curves *curves);
+GPUBatch *DRW_curves_batch_cache_get_sculpt_curves_cage(Curves *curves);
+GPUBatch *DRW_curves_batch_cache_get_edit_curves_handles(Curves *curves);
+GPUBatch *DRW_curves_batch_cache_get_edit_curves_lines(Curves *curves);
 
 void DRW_curves_batch_cache_create_requested(Object *ob);
 
@@ -323,3 +329,5 @@ GPUBatch *DRW_particles_batch_cache_get_edit_tip_points(Object *object,
                                                         PTCacheEdit *edit);
 
 /** \} */
+
+}  // namespace blender::draw

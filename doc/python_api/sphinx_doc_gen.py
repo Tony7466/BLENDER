@@ -7,7 +7,7 @@ API dump in RST files
 ---------------------
   Run this script from Blender's root path once you have compiled Blender
 
-    blender --background --factory-startup -noaudio --python doc/python_api/sphinx_doc_gen.py
+    blender --background --factory-startup --python doc/python_api/sphinx_doc_gen.py
 
   This will generate python files in doc/python_api/sphinx-in/
   providing ./blender is or links to the blender executable
@@ -239,12 +239,12 @@ BPY_LOGGER.setLevel(logging.DEBUG)
 """
 # for quick rebuilds
 rm -rf /b/doc/python_api/sphinx-* && \
-./blender -b -noaudio --factory-startup -P doc/python_api/sphinx_doc_gen.py && \
+./blender -b --factory-startup -P doc/python_api/sphinx_doc_gen.py && \
 sphinx-build doc/python_api/sphinx-in doc/python_api/sphinx-out
 
 or
 
-./blender -b -noaudio --factory-startup -P doc/python_api/sphinx_doc_gen.py -- -f -B
+./blender -b --factory-startup -P doc/python_api/sphinx_doc_gen.py -- -f -B
 """
 
 # Switch for quick testing so doc-builds don't take so long.
@@ -1217,7 +1217,7 @@ context_type_map = {
     "particle_settings": ("ParticleSettings", False),
     "particle_system": ("ParticleSystem", False),
     "particle_system_editable": ("ParticleSystem", False),
-    "property": ("(:class:`bpy.types.ID`, :class:`string`, :class:`int`)", False),
+    "property": ("(:class:`bpy.types.AnyType`, :class:`string`, :class:`int`)", False),
     "pointcloud": ("PointCloud", False),
     "pose_bone": ("PoseBone", False),
     "pose_object": ("Object", False),
@@ -1247,6 +1247,7 @@ context_type_map = {
     "soft_body": ("SoftBodyModifier", False),
     "speaker": ("Speaker", False),
     "texture": ("Texture", False),
+    "texture_node": ("Node", False),
     "texture_slot": ("TextureSlot", False),
     "texture_user": ("ID", False),
     "texture_user_property": ("Property", False),
@@ -1928,22 +1929,30 @@ def write_sphinx_conf_py(basepath):
     # The theme 'sphinx_rtd_theme' is no longer distributed with sphinx by default, only use when available.
     fw(r"""
 try:
-    __import__('sphinx_rtd_theme')
-    html_theme = 'sphinx_rtd_theme'
+    import furo
+    html_theme = "furo"
+    del furo
 except ModuleNotFoundError:
     pass
-""")
+if html_theme == "furo":
+    html_theme_options = {
+        "light_css_variables": {
+            "color-brand-primary": "#265787",
+            "color-brand-content": "#265787",
+        },
+    }
 
-    fw("if html_theme == 'sphinx_rtd_theme':\n")
-    fw("    html_theme_options = {\n")
-    fw("        'display_version': False,\n")
-    # fw("        'analytics_id': '',\n")
-    # fw("        'collapse_navigation': True,\n")
-    fw("        'sticky_navigation': False,\n")
-    fw("        'navigation_depth': 1,\n")
-    fw("        'includehidden': False,\n")
-    # fw("        'titles_only': False\n")
-    fw("    }\n\n")
+    html_sidebars = {
+        "**": [
+            "sidebar/brand.html",
+            "sidebar/search.html",
+            "sidebar/scroll-start.html",
+            "sidebar/navigation.html",
+            "sidebar/scroll-end.html",
+            # "sidebar/variant-selector.html",
+        ]
+    }
+""")
 
     # not helpful since the source is generated, adds to upload size.
     fw("html_copy_source = False\n")
@@ -1960,7 +1969,7 @@ except ModuleNotFoundError:
     fw("html_logo = 'static/blender_logo.svg'\n")
     # Disable default `last_updated` value, since this is the date of doc generation, not the one of the source commit.
     fw("html_last_updated_fmt = None\n\n")
-    fw("if html_theme == 'sphinx_rtd_theme':\n")
+    fw("if html_theme == 'furo':\n")
     fw("    html_css_files = ['css/version_switch.css']\n")
     fw("    html_js_files = ['js/version_switch.js']\n")
 

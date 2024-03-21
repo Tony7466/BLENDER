@@ -116,6 +116,9 @@ CCL_NAMESPACE_BEGIN
 #  ifndef WITH_PRINCIPLED_HAIR
 #    undef __PRINCIPLED_HAIR__
 #  endif
+#  ifndef WITH_PATCH_EVAL
+#    undef __PATCH_EVAL__
+#  endif
 #endif
 
 /* Scene-based selective features compilation. */
@@ -341,8 +344,8 @@ enum PathRayMNEE {
 #define SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) ((visibility) << 16)
 
 #define SHADOW_CATCHER_PATH_VISIBILITY(path_flag, visibility) \
-  (((path_flag)&PATH_RAY_SHADOW_CATCHER_PASS) ? SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) : \
-                                                (visibility))
+  (((path_flag) & PATH_RAY_SHADOW_CATCHER_PASS) ? SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) : \
+                                                  (visibility))
 
 #define SHADOW_CATCHER_OBJECT_VISIBILITY(is_shadow_catcher, visibility) \
   (((is_shadow_catcher) ? SHADOW_CATCHER_VISIBILITY_SHIFT(visibility) : 0) | (visibility))
@@ -648,7 +651,8 @@ typedef enum PrimitiveType {
 } PrimitiveType;
 
 /* Convert type to index in range 0..PRIMITIVE_NUM-1. */
-#define PRIMITIVE_INDEX(type) (bitscan((uint32_t)(type)) * 2 + (((type)&PRIMITIVE_MOTION) ? 1 : 0))
+#define PRIMITIVE_INDEX(type) \
+  (bitscan((uint32_t)(type)) * 2 + (((type) & PRIMITIVE_MOTION) ? 1 : 0))
 
 /* Pack segment into type value to save space. */
 #define PRIMITIVE_PACK_SEGMENT(type, segment) ((segment << PRIMITIVE_NUM_BITS) | (type))
@@ -1216,7 +1220,9 @@ typedef enum KernelBVHLayout {
 } KernelBVHLayout;
 
 /* Specialized struct that can become constants in dynamic compilation. */
-#define KERNEL_STRUCT_BEGIN(name, parent) struct name {
+#define KERNEL_STRUCT_BEGIN(name, parent) \
+  struct ccl_align(16) name \
+  {
 #define KERNEL_STRUCT_END(name) \
   } \
   ; \
@@ -1258,7 +1264,8 @@ typedef struct KernelLightLinkSet {
   uint light_tree_root;
 } KernelLightLinkSet;
 
-typedef struct KernelData {
+typedef struct ccl_align(16) KernelData
+{
   /* Features and limits. */
   uint kernel_features;
   uint max_closures;
@@ -1293,7 +1300,8 @@ typedef struct KernelData {
 #  endif
 #endif
   int pad2, pad3;
-} KernelData;
+}
+KernelData;
 static_assert_align(KernelData, 16);
 
 /* Kernel data structures. */
@@ -1359,16 +1367,15 @@ typedef struct KernelCurveSegment {
 static_assert_align(KernelCurveSegment, 8);
 
 typedef struct KernelSpotLight {
-  packed_float3 scaled_axis_u;
-  float radius;
-  packed_float3 scaled_axis_v;
-  float eval_fac;
   packed_float3 dir;
+  float radius;
+  float eval_fac;
   float cos_half_spot_angle;
   float half_cot_half_spot_angle;
-  float inv_len_z;
   float spot_smooth;
-  float pad;
+  int is_sphere;
+  /* For non-uniform object scaling, the actual spread might be different. */
+  float cos_half_larger_spread;
 } KernelSpotLight;
 
 /* PointLight is SpotLight with only radius and invarea being used. */

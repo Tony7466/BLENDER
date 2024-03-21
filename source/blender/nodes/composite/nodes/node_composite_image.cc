@@ -15,11 +15,11 @@
 #include "BLI_utildefines.h"
 
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_image.h"
-#include "BKE_lib_id.h"
+#include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -565,7 +565,8 @@ static void node_composit_init_rlayers(const bContext *C, PointerRNA *ptr)
   id_us_plus(node->id);
 
   for (bNodeSocket *sock = (bNodeSocket *)node->outputs.first; sock;
-       sock = sock->next, sock_index++) {
+       sock = sock->next, sock_index++)
+  {
     NodeImageLayer *sockdata = MEM_cnew<NodeImageLayer>(__func__);
     sock->storage = sockdata;
 
@@ -578,7 +579,7 @@ static bool node_composit_poll_rlayers(const bNodeType * /*ntype*/,
                                        const char **r_disabled_hint)
 {
   if (!STREQ(ntree->idname, "CompositorNodeTree")) {
-    *r_disabled_hint = TIP_("Not a compositor node tree");
+    *r_disabled_hint = RPT_("Not a compositor node tree");
     return false;
   }
 
@@ -595,7 +596,7 @@ static bool node_composit_poll_rlayers(const bNodeType * /*ntype*/,
   }
 
   if (scene == nullptr) {
-    *r_disabled_hint = TIP_(
+    *r_disabled_hint = RPT_(
         "The node tree must be the compositing node tree of any scene in the file");
     return false;
   }
@@ -744,6 +745,11 @@ class RenderLayerOperation : public NodeOperation {
       return;
     }
 
+    if (!context().is_valid_compositing_region()) {
+      result.allocate_invalid();
+      return;
+    }
+
     GPUShader *shader = context().get_shader(shader_name);
     GPU_shader_bind(shader);
 
@@ -755,6 +761,11 @@ class RenderLayerOperation : public NodeOperation {
 
     const int input_unit = GPU_shader_get_sampler_binding(shader, "input_tx");
     GPU_texture_bind(pass_texture, input_unit);
+
+    /* Depth passes always need to be stored in full precision. */
+    if (GPU_texture_has_depth_format(pass_texture)) {
+      result.set_precision(ResultPrecision::Full);
+    }
 
     const int2 compositing_region_size = context().get_compositing_region_size();
     result.allocate_texture(Domain(compositing_region_size));

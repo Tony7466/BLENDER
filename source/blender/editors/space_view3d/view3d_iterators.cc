@@ -9,8 +9,6 @@
 #include "DNA_armature_types.h"
 #include "DNA_curve_types.h"
 #include "DNA_lattice_types.h"
-#include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_meta_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
@@ -28,9 +26,7 @@
 #include "BKE_editmesh.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_iterators.hh"
-#include "BKE_mesh_runtime.hh"
 #include "BKE_mesh_wrapper.hh"
-#include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_types.hh"
 
@@ -288,19 +284,20 @@ static void meshobject_foreachScreenVert__mapFunc(void *user_data,
   data->func(data->user_data, screen_co, index);
 }
 
-void meshobject_foreachScreenVert(ViewContext *vc,
+void meshobject_foreachScreenVert(const ViewContext *vc,
                                   void (*func)(void *user_data,
                                                const float screen_co[2],
                                                int index),
                                   void *user_data,
                                   eV3DProjTest clip_flag)
 {
+  using namespace blender;
   BLI_assert((clip_flag & V3D_PROJ_TEST_CLIP_CONTENT) == 0);
   foreachScreenObjectVert_userData data;
 
   const Object *ob_eval = DEG_get_evaluated_object(vc->depsgraph, vc->obact);
   const Mesh *mesh = BKE_object_get_evaluated_mesh(ob_eval);
-  const blender::bke::AttributeAccessor attributes = mesh->attributes();
+  const bke::AttributeAccessor attributes = mesh->attributes();
 
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
@@ -308,10 +305,10 @@ void meshobject_foreachScreenVert(ViewContext *vc,
   data.func = func;
   data.user_data = user_data;
   data.clip_flag = clip_flag;
-  data.hide_vert = *attributes.lookup<bool>(".hide_vert", ATTR_DOMAIN_POINT);
+  data.hide_vert = *attributes.lookup<bool>(".hide_vert", bke::AttrDomain::Point);
 
   if (clip_flag & V3D_PROJ_TEST_CLIP_BB) {
-    ED_view3d_clipping_local(vc->rv3d, vc->obact->object_to_world);
+    ED_view3d_clipping_local(vc->rv3d, vc->obact->object_to_world().ptr());
   }
 
   BKE_mesh_foreach_mapped_vert(
@@ -340,7 +337,7 @@ static void mesh_foreachScreenVert__mapFunc(void *user_data,
 }
 
 void mesh_foreachScreenVert(
-    ViewContext *vc,
+    const ViewContext *vc,
     void (*func)(void *user_data, BMVert *eve, const float screen_co[2], int index),
     void *user_data,
     eV3DProjTest clip_flag)
@@ -360,7 +357,7 @@ void mesh_foreachScreenVert(
 
   if (clip_flag & V3D_PROJ_TEST_CLIP_BB) {
     ED_view3d_clipping_local(vc->rv3d,
-                             vc->obedit->object_to_world); /* for local clipping lookups */
+                             vc->obedit->object_to_world().ptr()); /* for local clipping lookups */
   }
 
   BM_mesh_elem_table_ensure(vc->em->bm, BM_VERT);
@@ -401,7 +398,7 @@ static void mesh_foreachScreenEdge__mapFunc(void *user_data,
   data->func(data->user_data, eed, screen_co_a, screen_co_b, index);
 }
 
-void mesh_foreachScreenEdge(ViewContext *vc,
+void mesh_foreachScreenEdge(const ViewContext *vc,
                             void (*func)(void *user_data,
                                          BMEdge *eed,
                                          const float screen_co_a[2],
@@ -431,7 +428,7 @@ void mesh_foreachScreenEdge(ViewContext *vc,
 
   if (clip_flag & V3D_PROJ_TEST_CLIP_BB) {
     ED_view3d_clipping_local(vc->rv3d,
-                             vc->obedit->object_to_world); /* for local clipping lookups */
+                             vc->obedit->object_to_world().ptr()); /* for local clipping lookups */
   }
 
   if (clip_flag & V3D_PROJ_TEST_CLIP_CONTENT) {
@@ -491,7 +488,7 @@ static void mesh_foreachScreenEdge_clip_bb_segment__mapFunc(void *user_data,
   data->func(data->user_data, eed, screen_co_a, screen_co_b, index);
 }
 
-void mesh_foreachScreenEdge_clip_bb_segment(ViewContext *vc,
+void mesh_foreachScreenEdge_clip_bb_segment(const ViewContext *vc,
                                             void (*func)(void *user_data,
                                                          BMEdge *eed,
                                                          const float screen_co_a[2],
@@ -530,8 +527,8 @@ void mesh_foreachScreenEdge_clip_bb_segment(ViewContext *vc,
   BM_mesh_elem_table_ensure(vc->em->bm, BM_EDGE);
 
   if ((clip_flag & V3D_PROJ_TEST_CLIP_BB) && (vc->rv3d->clipbb != nullptr)) {
-    ED_view3d_clipping_local(vc->rv3d,
-                             vc->obedit->object_to_world); /* for local clipping lookups. */
+    ED_view3d_clipping_local(
+        vc->rv3d, vc->obedit->object_to_world().ptr()); /* for local clipping lookups. */
     BKE_mesh_foreach_mapped_edge(
         mesh, vc->em->bm->totedge, mesh_foreachScreenEdge_clip_bb_segment__mapFunc, &data);
   }
@@ -569,7 +566,7 @@ static void mesh_foreachScreenFace__mapFunc(void *user_data,
 }
 
 void mesh_foreachScreenFace(
-    ViewContext *vc,
+    const ViewContext *vc,
     void (*func)(void *user_data, BMFace *efa, const float screen_co_b[2], int index),
     void *user_data,
     const eV3DProjTest clip_flag)
@@ -590,7 +587,7 @@ void mesh_foreachScreenFace(
   BM_mesh_elem_table_ensure(vc->em->bm, BM_FACE);
 
   const int face_dot_tags_num = mesh->runtime->subsurf_face_dot_tags.size();
-  if (face_dot_tags_num && (face_dot_tags_num != mesh->totvert)) {
+  if (face_dot_tags_num && (face_dot_tags_num != mesh->verts_num)) {
     BKE_mesh_foreach_mapped_subdiv_face_center(
         mesh, mesh_foreachScreenFace__mapFunc, &data, MESH_FOREACH_NOP);
   }
@@ -606,7 +603,7 @@ void mesh_foreachScreenFace(
 /** \name Edit-Nurbs: For Each Screen Vertex
  * \{ */
 
-void nurbs_foreachScreenVert(ViewContext *vc,
+void nurbs_foreachScreenVert(const ViewContext *vc,
                              void (*func)(void *user_data,
                                           Nurb *nu,
                                           BPoint *bp,
@@ -627,7 +624,7 @@ void nurbs_foreachScreenVert(ViewContext *vc,
 
   if (clip_flag & V3D_PROJ_TEST_CLIP_BB) {
     ED_view3d_clipping_local(vc->rv3d,
-                             vc->obedit->object_to_world); /* for local clipping lookups */
+                             vc->obedit->object_to_world().ptr()); /* for local clipping lookups */
   }
 
   LISTBASE_FOREACH (Nurb *, nu, nurbs) {
@@ -705,7 +702,7 @@ void nurbs_foreachScreenVert(ViewContext *vc,
 /** \name Edit-Meta: For Each Screen Meta-Element
  * \{ */
 
-void mball_foreachScreenElem(ViewContext *vc,
+void mball_foreachScreenElem(const ViewContext *vc,
                              void (*func)(void *user_data,
                                           MetaElem *ml,
                                           const float screen_co_b[2]),
@@ -719,7 +716,8 @@ void mball_foreachScreenElem(ViewContext *vc,
   LISTBASE_FOREACH (MetaElem *, ml, mb->editelems) {
     float screen_co[2];
     if (ED_view3d_project_float_object(vc->region, &ml->x, screen_co, clip_flag) ==
-        V3D_PROJ_RET_OK) {
+        V3D_PROJ_RET_OK)
+    {
       func(user_data, ml, screen_co);
     }
   }
@@ -731,7 +729,7 @@ void mball_foreachScreenElem(ViewContext *vc,
 /** \name Edit-Lattice: For Each Screen Vertex
  * \{ */
 
-void lattice_foreachScreenVert(ViewContext *vc,
+void lattice_foreachScreenVert(const ViewContext *vc,
                                void (*func)(void *user_data, BPoint *bp, const float screen_co[2]),
                                void *user_data,
                                const eV3DProjTest clip_flag)
@@ -748,7 +746,8 @@ void lattice_foreachScreenVert(ViewContext *vc,
   ED_view3d_check_mats_rv3d(vc->rv3d);
 
   if (clip_flag & V3D_PROJ_TEST_CLIP_BB) {
-    ED_view3d_clipping_local(vc->rv3d, obedit->object_to_world); /* for local clipping lookups */
+    ED_view3d_clipping_local(vc->rv3d,
+                             obedit->object_to_world().ptr()); /* for local clipping lookups */
   }
 
   for (i = 0; i < N; i++, bp++, co += 3) {
@@ -769,7 +768,7 @@ void lattice_foreachScreenVert(ViewContext *vc,
 /** \name Edit-Armature: For Each Screen Bone
  * \{ */
 
-void armature_foreachScreenBone(ViewContext *vc,
+void armature_foreachScreenBone(const ViewContext *vc,
                                 void (*func)(void *user_data,
                                              EditBone *ebone,
                                              const float screen_co_a[2],
@@ -837,7 +836,7 @@ void armature_foreachScreenBone(ViewContext *vc,
 /** \name Pose: For Each Screen Bone
  * \{ */
 
-void pose_foreachScreenBone(ViewContext *vc,
+void pose_foreachScreenBone(const ViewContext *vc,
                             void (*func)(void *user_data,
                                          bPoseChannel *pchan,
                                          const float screen_co_a[2],
