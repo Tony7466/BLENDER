@@ -72,8 +72,9 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
 
   this->color = color * la->energy;
 
-  float4 scale;
-  this->object_mat = normalize_and_get_size(this->object_mat, scale);
+  float3 scale;
+  this->object_mat = ob->object_to_world();
+  this->object_mat.view<3, 3>() = normalize_and_get_size(this->object_mat.view<3, 3>(), scale);
 
   /* Make sure we have consistent handedness (in case of negatively scaled Z axis). */
   float3 back = cross(float3(this->_right), float3(this->_up));
@@ -81,7 +82,7 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
     negate_v3(this->_up);
   }
 
-  shape_parameters_set(la, scale.xyz());
+  shape_parameters_set(la, scale);
 
   float shape_power = shape_radiance_get();
   float point_power = point_radiance_get();
@@ -180,7 +181,7 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale)
 
   if (is_spot_light(this->type)) {
     /* Spot size & blend */
-    this->spot.spot_size_inv = scale.z / scale.xy();
+    this->spot.spot_size_inv = scale.z / max(scale.xy(), float2(1e-8f));
     float spot_size = cosf(la->spotsize * 0.5f);
     float spot_blend = (1.0f - spot_size) * la->spotblend;
     this->spot.spot_mul = 1.0f / max(1e-8f, spot_blend);
