@@ -281,12 +281,12 @@ bool ED_operator_outliner_active(bContext *C)
 bool ED_operator_region_outliner_active(bContext *C)
 {
   if (!ED_operator_outliner_active(C)) {
-    CTX_wm_operator_poll_msg_set(C, "expected an active Outliner");
+    CTX_wm_operator_poll_msg_set(C, "Expected an active Outliner");
     return false;
   }
   const ARegion *region = CTX_wm_region(C);
   if (!(region && region->regiontype == RGN_TYPE_WINDOW)) {
-    CTX_wm_operator_poll_msg_set(C, "expected an Outliner region");
+    CTX_wm_operator_poll_msg_set(C, "Expected an Outliner region");
     return false;
   }
   return true;
