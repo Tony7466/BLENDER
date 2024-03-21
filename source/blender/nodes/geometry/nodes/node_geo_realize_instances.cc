@@ -19,13 +19,13 @@ static void node_declare(NodeDeclarationBuilder &b)
       .default_value(true)
       .hide_value()
       .supports_field()
-      .description(("Which top-level instances to realize"));
+      .description("Which top-level instances to realize");
   b.add_input<decl::Bool>("Realize All")
       .default_value(true)
       .supports_field()
-      .description(("Determine wether to realize nested instances completly"));
+      .description("Determine wether to realize nested instances completly");
   b.add_input<decl::Int>("Depth").default_value(0).min(0).supports_field().description(
-      ("Number of levels of nested instances to realize for each top-level instance"));
+      "Number of levels of nested instances to realize for each top-level instance");
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
 
@@ -36,6 +36,7 @@ static void node_geo_exec(GeoNodeExecParams params)
     params.set_output("Geometry", std::move(geometry_set));
     return;
   }
+
   GeometryComponentEditData::remember_deformed_positions_if_necessary(geometry_set);
   Field<bool> selection_field = params.extract_input<Field<bool>>("Selection");
   Field<bool> realize_all_filed = params.extract_input<Field<bool>>("Realize All");
@@ -46,33 +47,33 @@ static void node_geo_exec(GeoNodeExecParams params)
       [](int value, bool realize) { return realize ? -1 : std::max(value, 0); },
       mf::build::exec_presets::AllSpanOrSingle());
 
-  static auto selction_override = mf::build::SI2_SO<int, bool, bool>(
-      "selction_override",
+  static auto selection_override = mf::build::SI2_SO<int, bool, bool>(
+      "selection_override",
       [](int value, bool selection) { return value == 0 ? false : selection; },
       mf::build::exec_presets::AllSpanOrSingle());
-
-  const bke::Instances &instances = *geometry_set.get_instances();
-  const bke::InstancesFieldContext field_context{instances};
-  fn::FieldEvaluator evaluator{field_context, instances.instances_num()};
 
   Field<int> depth_field_overrided(
       FieldOperation::Create(depth_override, {depth_field, realize_all_filed}));
   Field<bool> selection_field_overrided(
-      FieldOperation::Create(selction_override, {depth_field_overrided, selection_field}));
+      FieldOperation::Create(selection_override, {depth_field_overrided, selection_field}));
 
-  evaluator.add(depth_field_overrided);
+  const bke::Instances &instances = *geometry_set.get_instances();
+  const bke::InstancesFieldContext field_context(instances);
+  fn::FieldEvaluator evaluator(field_context, instances.instances_num());
+
+  const int evaluated_depth_index = evaluator.add(depth_field_overrided);
   evaluator.set_selection(selection_field_overrided);
   evaluator.evaluate();
-  const VArray<int> depths = evaluator.get_evaluated<int>(0);
-  const IndexMask selection = evaluator.get_evaluated_selection_as_mask();
+
+  geometry::VariedDepthOption varied_depth_option;
+  varied_depth_option.depths = evaluator.get_evaluated<int>(evaluated_depth_index);
+  varied_depth_option.selection = evaluator.get_evaluated_selection_as_mask();
 
   geometry::RealizeInstancesOptions options;
   options.keep_original_ids = false;
   options.realize_instance_attributes = true;
   options.propagation_info = params.get_output_propagation_info("Geometry");
-  options.depths = depths;
-  options.selection = selection;
-  geometry_set = geometry::realize_instances(geometry_set, options);
+  geometry_set = geometry::realize_instances(geometry_set, options, varied_depth_option);
   params.set_output("Geometry", std::move(geometry_set));
 }
 
