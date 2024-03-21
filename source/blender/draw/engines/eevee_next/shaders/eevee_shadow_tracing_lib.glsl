@@ -294,6 +294,8 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
     random_2d = sample_disk(random_2d);
   }
 
+  random_2d *= 1.0 - light.jittering;
+
   float clip_far = intBitsToFloat(light.clip_far);
   float clip_near = intBitsToFloat(light.clip_near);
   float clip_side = light.clip_side;
