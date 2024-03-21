@@ -5,7 +5,7 @@
 /* Directive for resetting the line numbering so the failing tests lines can be printed.
  * This conflict with the shader compiler error logging scheme.
  * Comment out for correct compilation error line. */
-// #line 9
+#line 9
 
 #pragma BLENDER_REQUIRE(gpu_shader_utildefines_lib.glsl)
 #pragma BLENDER_REQUIRE(gpu_shader_math_matrix_lib.glsl)
@@ -36,6 +36,20 @@ void set_clipmap_base_offset(inout LightData light, ivec2 clipmap_base_offset)
 
 void main()
 {
+  TEST(eevee_shadow, DirectionalMemberSet)
+  {
+    LightData light;
+    /* Test the setter functions define in this file to make sure
+     * that they are not out of sync with `light_sun_data_get`. */
+    set_clipmap_data(light, 1, 2, 3.0, 4.0);
+    set_clipmap_base_offset(light, ivec2(5, 6));
+
+    EXPECT_EQ(light_sun_data_get(light).clipmap_lod_min, 1);
+    EXPECT_EQ(light_sun_data_get(light).clipmap_lod_max, 2);
+    EXPECT_EQ(light_sun_data_get(light).clipmap_origin, vec2(3.0, 4.0));
+    EXPECT_EQ(light_sun_data_get(light).clipmap_base_offset, ivec2(5, 6));
+  }
+
   TEST(eevee_shadow, DirectionalClipmapLevel)
   {
     LightData light;
