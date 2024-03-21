@@ -92,12 +92,12 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
     });
     all_item.set_is_active_fn(
         [this]() { return settings_is_all_catalog_active(shelf_.settings); });
+    all_item.uncollapse_by_default();
 
     catalog_tree_.foreach_root_item(
         [&, this](const asset_system::AssetCatalogTreeItem &catalog_item) {
           ui::BasicTreeViewItem &item = build_catalog_items_recursive(all_item, catalog_item);
-          /* Uncollapse root items by default (user edits will override this just fine). */
-          item.set_collapsed(false);
+          item.uncollapse_by_default();
         });
   }
 
