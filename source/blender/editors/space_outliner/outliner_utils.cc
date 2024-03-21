@@ -59,7 +59,7 @@ void outliner_viewcontext_init(const bContext *C, TreeViewContext *tvc)
       tvc->ob_pose = BKE_object_pose_armature_get(tvc->obact);
     }
   }
-  if (tvc->obact->mode != OB_MODE_OBJECT) {
+  if (tvc->obact && tvc->obact->mode != OB_MODE_OBJECT) {
     for (const Object *object : BKE_view_layer_array_from_objects_in_mode_unique_data(
              tvc->scene, tvc->view_layer, nullptr, eObjectMode(tvc->obact->mode)))
     {
