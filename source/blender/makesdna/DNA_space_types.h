@@ -338,6 +338,7 @@ typedef enum eSpaceOutliner_Flag {
   SO_SKIP_SORT_ALPHA = (1 << 4),
   SO_SYNC_SELECT = (1 << 5),
   SO_MODE_COLUMN = (1 << 6),
+  SO_USER_COLUMN = (1 << 7),
 } eSpaceOutliner_Flag;
 
 /** #SpaceOutliner.filter */

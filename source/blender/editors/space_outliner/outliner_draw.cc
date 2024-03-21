@@ -1754,20 +1754,25 @@ static void outliner_draw_userbuts(uiBlock *block,
     }
 
     const TreeStoreElem *tselem = TREESTORE(te);
-    if (tselem->type != TSE_SOME_ID) {
+    ID *id = tselem->id;
+
+    if (tselem->type != TSE_SOME_ID || id->tag & LIB_TAG_EXTRAUSER) {
       return;
     }
 
     uiBut *bt;
-    ID *id = tselem->id;
-    const char *tip = nullptr;
     char buf[BLI_STR_FORMAT_INT32_GROUPED_SIZE] = "";
     int but_flag = UI_BUT_DRAG_LOCK;
+    const int real_users = id->us - ID_FAKE_USERS(id);
+    const bool has_fake_user = id->flag & LIB_FAKEUSER;
+    const bool is_linked = ID_IS_LINKED(id);
+    const bool is_object = GS(id->name) == ID_OB;
 
-    if (ID_IS_LINKED(id)) {
+    if (is_linked) {
       but_flag |= UI_BUT_DISABLED;
     }
 
+    /* Number of users in first column. */
     BLI_str_format_int_grouped(buf, id->us);
     bt = uiDefBut(block,
                   UI_BTYPE_BUT,
@@ -1780,30 +1785,44 @@ static void outliner_draw_userbuts(uiBlock *block,
                   nullptr,
                   0.0,
                   0.0,
-                  TIP_("Number of users of this data-block"));
+                  TIP_("Number of users"));
     UI_but_flag_enable(bt, but_flag);
 
-    if (id->flag & LIB_FAKEUSER) {
-      tip = TIP_("Data-block will be retained using a fake user");
+    /* Fake User shield toggle in second column. */
+    if (!is_object) {
+      const char *tip = nullptr;
+      if (has_fake_user) {
+        tip = is_linked ? TIP_("Item is protected from deletion") :
+                          TIP_("Click to remove protection from deletion");
+      }
+      else {
+        if (real_users) {
+          tip = is_linked ? TIP_("Item is not protected from deletion") :
+                            TIP_("Click to add protection from deletion");
+        }
+        else {
+          tip = is_linked ?
+                    TIP_("Item has no users and will be removed") :
+                    TIP_("Item has no users and will be removed.\nClick to protect from deletion");
+        }
+      }
+
+      bt = uiDefIconButBitS(block,
+                            UI_BTYPE_ICON_TOGGLE,
+                            LIB_FAKEUSER,
+                            1,
+                            ICON_FAKE_USER_OFF,
+                            int(region->v2d.cur.xmax - OL_TOG_USER_BUTS_STATUS),
+                            te->ys,
+                            UI_UNIT_X,
+                            UI_UNIT_Y,
+                            &id->flag,
+                            0,
+                            0,
+                            tip);
+      UI_but_func_set(bt, restrictbutton_id_user_toggle, id, nullptr);
+      UI_but_flag_enable(bt, but_flag);
     }
-    else {
-      tip = TIP_("Data-block has no users and will be deleted");
-    }
-    bt = uiDefIconButBitS(block,
-                          UI_BTYPE_ICON_TOGGLE,
-                          LIB_FAKEUSER,
-                          1,
-                          ICON_FAKE_USER_OFF,
-                          int(region->v2d.cur.xmax - OL_TOG_USER_BUTS_STATUS),
-                          te->ys,
-                          UI_UNIT_X,
-                          UI_UNIT_Y,
-                          &id->flag,
-                          0,
-                          0,
-                          tip);
-    UI_but_func_set(bt, restrictbutton_id_user_toggle, id, nullptr);
-    UI_but_flag_enable(bt, but_flag);
   });
 }
 
@@ -3986,7 +4005,9 @@ void draw_outliner(const bContext *C)
     UI_block_emboss_set(block, UI_EMBOSS_NONE_OR_STATUS);
   }
   else if (space_outliner->outlinevis == SO_ID_ORPHANS) {
-    /* draw user toggle columns */
+    outliner_draw_userbuts(block, region, space_outliner);
+  }
+  else if (space_outliner->outlinevis == SO_LIBRARIES && space_outliner->flag & SO_USER_COLUMN) {
     outliner_draw_userbuts(block, region, space_outliner);
   }
   else if (space_outliner->outlinevis == SO_OVERRIDES_LIBRARY) {

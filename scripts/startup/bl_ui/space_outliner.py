@@ -49,7 +49,7 @@ class OUTLINER_HT_header(Header):
             row.prop(space, "use_sync_select", icon='UV_SYNC_SELECT', text="")
 
         row = layout.row(align=True)
-        if display_mode in {'SCENES', 'VIEW_LAYER', 'LIBRARY_OVERRIDES'}:
+        if display_mode in {'SCENES', 'VIEW_LAYER', 'LIBRARY_OVERRIDES', 'LIBRARIES', 'ORPHAN_DATA'}:
             row.popover(
                 panel="OUTLINER_PT_filter",
                 text="",
@@ -57,7 +57,6 @@ class OUTLINER_HT_header(Header):
             )
 
         if display_mode in {'LIBRARIES', 'ORPHAN_DATA'}:
-            row.prop(space, "use_filter_id_type", text="", icon='FILTER')
             sub = row.row(align=True)
             sub.active = space.use_filter_id_type
             sub.prop(space, "filter_id_type", text="", icon_only=True)
@@ -409,13 +408,21 @@ class OUTLINER_PT_filter(Panel):
             col = layout.column(align=True)
             col.prop(space, "use_sort_alpha")
 
-        if display_mode != 'LIBRARY_OVERRIDES':
+        if display_mode in {'LIBRARIES', 'ORPHAN_DATA'}:
+            row = layout.row(align=True)
+            row.prop(space, "use_filter_id_type", text="Show Single Object Type")
+
+        if display_mode not in {'LIBRARY_OVERRIDES', 'LIBRARIES', 'ORPHAN_DATA'}:
             row = layout.row(align=True)
             row.prop(space, "use_sync_select", text="Sync Selection")
 
             row = layout.row(align=True)
             row.prop(space, "show_mode_column", text="Show Mode Column")
             layout.separator()
+
+        if display_mode == 'LIBRARIES':
+            row = layout.row(align=True)
+            row.prop(space, "show_user_column")
 
         filter_text_supported = True
         # Same exception for library overrides as in OUTLINER_HT_header.
