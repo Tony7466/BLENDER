@@ -62,7 +62,6 @@
 #include "sequencer_intern.hh"
 #include "sequencer_quads_batch.hh"
 
-#define SEQ_HANDLE_SIZE 5.0f
 #define MUTE_ALPHA 120
 
 struct StripDrawContext {
@@ -723,7 +722,9 @@ static void draw_handle_transform_text(const TimelineDrawContext *timeline_ctx,
 
 float sequence_handle_size_get_clamped(const Scene *scene, Sequence *seq, const float pixelx)
 {
-  const float maxhandle = (pixelx * SEQ_HANDLE_SIZE) * U.pixelsize;
+  const bool use_thin_handle = (U.sequencer_editor_flag & USER_SEQ_ED_SIMPLE_TWEAKING) != 0;
+  const float handle_size = use_thin_handle ? 5.0f : 8.0f;
+  const float maxhandle = (pixelx * handle_size) * U.pixelsize;
 
   /* Ensure that handle is not wider, than quarter of strip. */
   return min_ff(maxhandle,
