@@ -91,6 +91,7 @@ void VKCommandBufferWrapper::submit_with_cpu_synchronization()
   VKDevice &device = VKBackend::get().device_get();
   vkResetFences(device.device_get(), 1, &vk_fence_);
   vkQueueSubmit(device.queue_get(), 1, &vk_submit_info_, vk_fence_);
+  vk_command_buffer_ = VK_NULL_HANDLE;
 }
 
 void VKCommandBufferWrapper::wait_for_cpu_synchronization()
