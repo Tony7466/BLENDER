@@ -1199,7 +1199,7 @@ void wm_init_cursor_data()
   static BCursor RightHandleCursor = {
       right_handle_bitmap,
       right_handle_mask,
-      15,
+      7,
       7,
       false,
   };
@@ -1225,7 +1225,7 @@ void wm_init_cursor_data()
   static BCursor LeftHandleCursor = {
       left_handle_bitmap,
       left_handle_mask,
-      0,
+      7,
       7,
       false,
   };
