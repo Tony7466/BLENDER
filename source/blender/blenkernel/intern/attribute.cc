@@ -927,12 +927,12 @@ void BKE_id_attributes_default_color_set(ID *id, const char *name)
   }
 }
 
-const int BKE_id_attributes_color_index(ID *id, const char *name)
+int BKE_id_attributes_color_index(ID *id, const char *name)
 {
   return color_name_to_index(id, name);
 }
 
-const char *BKE_id_attributes_color_name_from_index(ID *id, const int index)
+const char *BKE_id_attributes_color_name_from_index(ID *id, int index)
 {
   return color_name_from_index(id, color_clamp_index(id, index));
 }

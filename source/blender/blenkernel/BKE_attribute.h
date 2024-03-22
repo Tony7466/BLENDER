@@ -110,8 +110,8 @@ const char *BKE_id_attributes_active_color_name(const struct ID *id);
 const char *BKE_id_attributes_default_color_name(const struct ID *id);
 void BKE_id_attributes_active_color_set(struct ID *id, const char *name);
 void BKE_id_attributes_default_color_set(struct ID *id, const char *name);
-const int BKE_id_attributes_color_index(ID *id, const char *name);
-const char *BKE_id_attributes_color_name_from_index(ID *id, const int index);
+int BKE_id_attributes_color_index(ID *id, const char *name);
+const char *BKE_id_attributes_color_name_from_index(ID *id, int index);
 
 const struct CustomDataLayer *BKE_id_attributes_color_find(const struct ID *id, const char *name);
 
