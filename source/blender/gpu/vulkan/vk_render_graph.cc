@@ -150,6 +150,14 @@ void VKRenderGraph::add_dispatch_node(const VKDispatchInfo &dispatch_info)
   // TODO: we should add descriptor sets and push constants as well.
 }
 
+void VKRenderGraph::add_ensure_image_layout_node(VkImage vk_image, VkImageLayout vk_image_layout)
+{
+  std::scoped_lock lock(mutex_);
+  NodeHandle handle = nodes_.add_synchronization_node();
+  VersionedResource resource = resources_.get_image_and_increase_version(vk_image);
+  nodes_.add_write_resource(handle, resource, VK_ACCESS_TRANSFER_WRITE_BIT, vk_image_layout);
+}
+
 void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo &resources)
 {
   // TODO: validate. resources should be unique (merged).
@@ -194,11 +202,14 @@ void VKRenderGraph::add_resources(NodeHandle handle, const VKResourceAccessInfo 
 
 void VKRenderGraph::submit_for_present(VkImage vk_swapchain_image)
 {
+  /* Needs to be executed before the scoped lock as add_ensure_image_layout_node also locks the
+   * mutex. */
+  add_ensure_image_layout_node(vk_swapchain_image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
   std::scoped_lock lock(mutex_);
   command_builder_.reset(*this);
   command_buffer_->begin_recording();
   command_builder_.build_image(*this, vk_swapchain_image);
-  command_builder_.ensure_image_layout(*this, vk_swapchain_image, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
   command_buffer_->end_recording();
   /* TODO: Can we implement gpu synchronization when presenting? */
   command_buffer_->submit_with_cpu_synchronization();
@@ -218,7 +229,6 @@ void VKRenderGraph::submit_buffer_for_read_back(VkBuffer vk_buffer)
   command_builder_.update_state_after_submission(*this);
   command_buffer_->wait_for_cpu_synchronization();
 }
-
 
 /** \} */
 

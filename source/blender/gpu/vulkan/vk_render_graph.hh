@@ -84,6 +84,7 @@ class VKRenderGraph : public NonCopyable {
   void add_copy_image_to_buffer_node(VkImage src_image,
                                      VkBuffer dst_buffer,
                                      const VkBufferImageCopy &region);
+  void add_ensure_image_layout_node(VkImage vk_image, VkImageLayout vk_image_layout);
   void add_dispatch_node(const VKDispatchInfo &dispatch_info);
 
   /**
@@ -95,6 +96,9 @@ class VKRenderGraph : public NonCopyable {
    * Submit the commands to present the given vk_image to the command queue.
    *
    * `vk_image` needs to be a swapchain owned image.
+   *
+   * Post conditions:
+   * - `vk_swapchain_image` layout is transitioned to `VK_IMAGE_LAYOUT_SRC_PRESENT`.
    */
   void submit_for_present(VkImage vk_swapchain_image);
 

@@ -76,8 +76,8 @@ NodeHandle VKRenderGraphNodes::add_copy_image_node(VkImage src_image,
 }
 
 NodeHandle VKRenderGraphNodes::add_copy_buffer_to_image_node(VkBuffer src_buffer,
-                                                   VkImage dst_image,
-                                                   const VkBufferImageCopy &region)
+                                                             VkImage dst_image,
+                                                             const VkBufferImageCopy &region)
 {
   NodeHandle handle = allocate();
   Node &node = nodes_.get(handle);
@@ -92,8 +92,8 @@ NodeHandle VKRenderGraphNodes::add_copy_buffer_to_image_node(VkBuffer src_buffer
 }
 
 NodeHandle VKRenderGraphNodes::add_copy_image_to_buffer_node(VkImage src_image,
-                                                   VkBuffer dst_buffer,
-                                                   const VkBufferImageCopy &region)
+                                                             VkBuffer dst_buffer,
+                                                             const VkBufferImageCopy &region)
 {
   NodeHandle handle = allocate();
   Node &node = nodes_.get(handle);
@@ -107,6 +107,16 @@ NodeHandle VKRenderGraphNodes::add_copy_image_to_buffer_node(VkImage src_image,
   return handle;
 }
 
+NodeHandle VKRenderGraphNodes::add_synchronization_node()
+{
+  NodeHandle handle = allocate();
+  Node &node = nodes_.get(handle);
+  BLI_assert(node.type == Node::Type::UNUSED);
+
+  node.type = Node::Type::SYNCHRONIZATION;
+
+  return handle;
+}
 
 NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_info)
 {

@@ -34,6 +34,7 @@ class VKRenderGraphNodes {
       COPY_IMAGE_TO_BUFFER,
       COPY_BUFFER_TO_IMAGE,
       DISPATCH,
+      SYNCHRONIZATION,
     };
 
     Type type;
@@ -73,6 +74,9 @@ class VKRenderGraphNodes {
         VkImage dst_image;
         VkBufferImageCopy region;
       } copy_buffer_to_image;
+
+      struct {
+      } synchronization;
 
       VKDispatchNode dispatch;
     };
@@ -119,6 +123,7 @@ class VKRenderGraphNodes {
   NodeHandle add_copy_image_to_buffer_node(VkImage src_image,
                                            VkBuffer dst_buffer,
                                            const VkBufferImageCopy &region);
+  NodeHandle add_synchronization_node();
   NodeHandle add_dispatch_node(const VKDispatchInfo &dispatch_info);
 
   void add_read_resource(NodeHandle handle,

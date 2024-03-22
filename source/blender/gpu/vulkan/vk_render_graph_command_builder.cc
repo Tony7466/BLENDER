@@ -10,13 +10,44 @@
 #include "vk_render_graph.hh"
 
 namespace blender::gpu {
+
+VKRenderGraphCommandBuilder::VKRenderGraphCommandBuilder()
+{
+  vk_buffer_memory_barrier_ = {};
+  vk_buffer_memory_barrier_.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  vk_buffer_memory_barrier_.pNext = nullptr;
+  vk_buffer_memory_barrier_.srcAccessMask = VK_ACCESS_NONE;
+  vk_buffer_memory_barrier_.dstAccessMask = VK_ACCESS_NONE;
+  vk_buffer_memory_barrier_.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  vk_buffer_memory_barrier_.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  vk_buffer_memory_barrier_.buffer = VK_NULL_HANDLE;
+  vk_buffer_memory_barrier_.offset = 0;
+  vk_buffer_memory_barrier_.size = VK_WHOLE_SIZE;
+
+  vk_image_memory_barrier_ = {};
+  vk_image_memory_barrier_.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  vk_image_memory_barrier_.pNext = nullptr;
+  vk_image_memory_barrier_.srcAccessMask = VK_ACCESS_NONE;
+  vk_image_memory_barrier_.dstAccessMask = VK_ACCESS_NONE;
+  vk_image_memory_barrier_.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  vk_image_memory_barrier_.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+  vk_image_memory_barrier_.image = VK_NULL_HANDLE;
+  vk_image_memory_barrier_.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  vk_image_memory_barrier_.newLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  vk_image_memory_barrier_.subresourceRange.aspectMask = VK_IMAGE_ASPECT_NONE;
+  vk_image_memory_barrier_.subresourceRange.baseArrayLayer = 0;
+  vk_image_memory_barrier_.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
+  vk_image_memory_barrier_.subresourceRange.baseMipLevel = 0;
+  vk_image_memory_barrier_.subresourceRange.levelCount = VK_REMAINING_MIP_LEVELS;
+}
+
 void VKRenderGraphCommandBuilder::reset(VKRenderGraph &render_graph)
 {
   selected_nodes_.clear();
   const int64_t resource_len = render_graph.resources_.resources_.size();
 
   // Reset access_masks, keep last known access masks around.
-  // NOTE: Access masks should be resetted when resources are removed. Handles can be reused and
+  // NOTE: Access masks should be reset when resources are removed. Handles can be reused and
   // that isn't take into account.
   if (resource_states_.size() < resource_len) {
     resource_states_.resize(resource_len);
@@ -111,6 +142,11 @@ void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
       break;
     }
 
+    case VKRenderGraphNodes::Node::Type::SYNCHRONIZATION: {
+      build_node_synchronization(render_graph, node_handle, node);
+      break;
+    }
+
     case VKRenderGraphNodes::Node::Type::DISPATCH: {
       build_node_dispatch(render_graph, node_handle, node);
       break;
@@ -119,17 +155,16 @@ void VKRenderGraphCommandBuilder::build_node(VKRenderGraph &render_graph,
 }
 
 void VKRenderGraphCommandBuilder::build_node_clear_color_image(
-    VKRenderGraph &render_graph, NodeHandle /*node_handle*/, const VKRenderGraphNodes::Node &node)
+    VKRenderGraph &render_graph, NodeHandle node_handle, const VKRenderGraphNodes::Node &node)
 {
   BLI_assert(node.type == VKRenderGraphNodes::Node::Type::CLEAR_COLOR_IMAGE);
   reset_barriers();
-  const VkImageLayout vk_image_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-  ensure_image_layout(render_graph, node.clear_color_image.vk_image, vk_image_layout);
+  add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
   send_pipeline_barriers(render_graph);
 
   render_graph.command_buffer_->clear_color_image(
       node.clear_color_image.vk_image,
-      vk_image_layout,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       &node.clear_color_image.vk_clear_color_value,
       1,
       &node.clear_color_image.vk_image_subresource_range);
@@ -208,11 +243,23 @@ void VKRenderGraphCommandBuilder::build_node_copy_image_to_buffer(
   add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TRANSFER_BIT);
   send_pipeline_barriers(render_graph);
 
-  render_graph.command_buffer_->copy_buffer_to_image(node.copy_buffer_to_image.src_buffer,
-                                                     node.copy_buffer_to_image.dst_image,
-                                                     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+  render_graph.command_buffer_->copy_image_to_buffer(node.copy_image_to_buffer.src_image,
+                                                     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                                     node.copy_image_to_buffer.dst_buffer,
                                                      1,
-                                                     &node.copy_buffer_to_image.region);
+                                                     &node.copy_image_to_buffer.region);
+}
+
+void VKRenderGraphCommandBuilder::build_node_synchronization(VKRenderGraph &render_graph,
+                                                             NodeHandle node_handle,
+                                                             const VKRenderGraphNodes::Node &node)
+{
+  BLI_assert(node.type == VKRenderGraphNodes::Node::Type::SYNCHRONIZATION);
+
+  reset_barriers();
+  add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+  add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+  send_pipeline_barriers(render_graph);
 }
 
 void VKRenderGraphCommandBuilder::build_node_dispatch(VKRenderGraph &render_graph,
@@ -223,6 +270,7 @@ void VKRenderGraphCommandBuilder::build_node_dispatch(VKRenderGraph &render_grap
 
   reset_barriers();
   add_buffer_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+  add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
   send_pipeline_barriers(render_graph);
 
   if (assign_if_different(active_compute_pipeline_, node.dispatch.vk_pipeline)) {
@@ -291,8 +339,9 @@ void VKRenderGraphCommandBuilder::reset_barriers()
 
 void VKRenderGraphCommandBuilder::send_pipeline_barriers(VKRenderGraph &render_graph)
 {
-  if ((vk_image_memory_barriers_.is_empty() && vk_buffer_memory_barriers_.is_empty()) ||
-      src_stage_mask_ == VK_PIPELINE_STAGE_NONE || dst_stage_mask_ == VK_PIPELINE_STAGE_NONE)
+  if ((vk_image_memory_barriers_.is_empty() && vk_buffer_memory_barriers_.is_empty()) 
+  /*||
+      src_stage_mask_ == VK_PIPELINE_STAGE_NONE || dst_stage_mask_ == VK_PIPELINE_STAGE_NONE*/)
   {
     reset_barriers();
     return;
@@ -405,18 +454,13 @@ void VKRenderGraphCommandBuilder::add_buffer_barrier(VkBuffer vk_buffer,
                                                      VkAccessFlags src_access_mask,
                                                      VkAccessFlags dst_access_mask)
 {
-  VkBufferMemoryBarrier vk_buffer_memory_barrier = {};
-  vk_buffer_memory_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-  vk_buffer_memory_barrier.pNext = nullptr;
-  vk_buffer_memory_barrier.srcAccessMask = src_access_mask;
-  vk_buffer_memory_barrier.dstAccessMask = dst_access_mask;
-  vk_buffer_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  vk_buffer_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  vk_buffer_memory_barrier.buffer = vk_buffer;
-  vk_buffer_memory_barrier.offset = 0;
-  vk_buffer_memory_barrier.size = VK_WHOLE_SIZE;
-
-  vk_buffer_memory_barriers_.append(vk_buffer_memory_barrier);
+  vk_buffer_memory_barrier_.srcAccessMask = src_access_mask;
+  vk_buffer_memory_barrier_.dstAccessMask = dst_access_mask;
+  vk_buffer_memory_barrier_.buffer = vk_buffer;
+  vk_buffer_memory_barriers_.append(vk_buffer_memory_barrier_);
+  vk_buffer_memory_barrier_.srcAccessMask = VK_ACCESS_NONE;
+  vk_buffer_memory_barrier_.dstAccessMask = VK_ACCESS_NONE;
+  vk_buffer_memory_barrier_.buffer = VK_NULL_HANDLE;
 }
 
 void VKRenderGraphCommandBuilder::add_image_barriers(VKRenderGraph &render_graph,
@@ -528,18 +572,20 @@ void VKRenderGraphCommandBuilder::add_image_barrier(VkImage vk_image,
                                                     VkImageLayout old_layout,
                                                     VkImageLayout new_layout)
 {
-  VkImageMemoryBarrier vk_image_memory_barrier = {};
-  vk_image_memory_barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-  vk_image_memory_barrier.pNext = nullptr;
-  vk_image_memory_barrier.srcAccessMask = src_access_mask;
-  vk_image_memory_barrier.dstAccessMask = dst_access_mask;
-  vk_image_memory_barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  vk_image_memory_barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-  vk_image_memory_barrier.image = vk_image;
-  vk_image_memory_barrier.oldLayout = old_layout;
-  vk_image_memory_barrier.newLayout = new_layout;
-  // TODO: add subresource.
-  vk_image_memory_barriers_.append(vk_image_memory_barrier);
+  vk_image_memory_barrier_.srcAccessMask = src_access_mask;
+  vk_image_memory_barrier_.dstAccessMask = dst_access_mask;
+  vk_image_memory_barrier_.image = vk_image;
+  vk_image_memory_barrier_.oldLayout = old_layout;
+  vk_image_memory_barrier_.newLayout = new_layout;
+  /* TODO: determine the correct aspect bits. */
+  vk_image_memory_barrier_.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+  vk_image_memory_barriers_.append(vk_image_memory_barrier_);
+  vk_image_memory_barrier_.srcAccessMask = VK_ACCESS_NONE;
+  vk_image_memory_barrier_.dstAccessMask = VK_ACCESS_NONE;
+  vk_image_memory_barrier_.image = VK_NULL_HANDLE;
+  vk_image_memory_barrier_.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  vk_image_memory_barrier_.newLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  vk_image_memory_barrier_.subresourceRange.aspectMask = VK_IMAGE_ASPECT_NONE;
 }
 
 /** \} */

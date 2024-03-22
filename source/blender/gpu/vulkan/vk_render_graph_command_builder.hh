@@ -27,6 +27,11 @@ class VKRenderGraphCommandBuilder {
   Vector<VkBufferMemoryBarrier> vk_buffer_memory_barriers_;
   Vector<VkImageMemoryBarrier> vk_image_memory_barriers_;
 
+  /** Template buffer memory barrier. */
+  VkBufferMemoryBarrier vk_buffer_memory_barrier_;
+  /** Template image memory barrier. */
+  VkImageMemoryBarrier vk_image_memory_barrier_;
+
   VkPipeline active_compute_pipeline_ = VK_NULL_HANDLE;
   VkDescriptorSet active_compute_descriptor_set_ = VK_NULL_HANDLE;
 
@@ -34,6 +39,7 @@ class VKRenderGraphCommandBuilder {
   VkPipelineStageFlags dst_stage_mask_ = VK_PIPELINE_STAGE_NONE;
 
  public:
+  VKRenderGraphCommandBuilder();
   /**
    * Reset the command builder.
    *
@@ -72,10 +78,11 @@ class VKRenderGraphCommandBuilder {
    * the given layout.
    *
    * NOTE: Should only be needed to ensure the swap chain images can be presented.
+   * TODO: Migrate to a render graph node, so we can de-duplicate the code.
    */
-  void ensure_image_layout(VKRenderGraph &render_graph,
-                           VkImage vk_image,
-                           VkImageLayout vk_image_layout);
+  [[deprecated]] void ensure_image_layout(VKRenderGraph &render_graph,
+                                          VkImage vk_image,
+                                          VkImageLayout vk_image_layout);
 
  private:
   void build_node(VKRenderGraph &render_graph,
@@ -99,6 +106,9 @@ class VKRenderGraphCommandBuilder {
   void build_node_copy_image_to_buffer(VKRenderGraph &render_graph,
                                        NodeHandle node_handle,
                                        const VKRenderGraphNodes::Node &node);
+  void build_node_synchronization(VKRenderGraph &render_graph,
+                                  NodeHandle node_handle,
+                                  const VKRenderGraphNodes::Node &node);
   void build_node_dispatch(VKRenderGraph &render_graph,
                            NodeHandle node_handle,
                            const VKRenderGraphNodes::Node &node);
