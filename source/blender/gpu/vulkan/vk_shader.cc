@@ -803,22 +803,24 @@ std::string VKShader::resources_declare(const shader::ShaderCreateInfo &info) co
 
   /* TODO: Add support for specialization constants at compile time. */
   ss << "\n/* Specialization Constants (pass-through). */\n";
+  uint constant_id = 0;
   for (const ShaderCreateInfo::SpecializationConstant &sc : info.specialization_constants_) {
+    ss << "layout (constant_id=" << constant_id++ << ") const ";
     switch (sc.type) {
       case Type::INT:
-        ss << "const int " << sc.name << "=" << std::to_string(sc.default_value.i) << ";\n";
+        ss << "int " << sc.name << "=" << std::to_string(sc.default_value.i) << ";\n";
         break;
       case Type::UINT:
-        ss << "const uint " << sc.name << "=" << std::to_string(sc.default_value.u) << "u;\n";
+        ss << "uint " << sc.name << "=" << std::to_string(sc.default_value.u) << "u;\n";
         break;
       case Type::BOOL:
-        ss << "const bool " << sc.name << "=" << (sc.default_value.u ? "true" : "false") << ";\n";
+        ss << "bool " << sc.name << "=" << (sc.default_value.u ? "true" : "false") << ";\n";
         break;
       case Type::FLOAT:
         /* Use uint representation to allow exact same bit pattern even if NaN. uintBitsToFloat
          * isn't supported during global const initialization.  */
-        ss << "#define " << sc.name << " uintBitsToFloat(" << std::to_string(sc.default_value.u)
-           << "u)\n";
+        ss << "uint " << sc.name << "_uint=" << std::to_string(sc.default_value.u) << "u;\n";
+        ss << "#define " << sc.name << " uintBitsToFloat(" << sc.name << "_uint)\n";
         break;
       default:
         BLI_assert_unreachable();
