@@ -6,13 +6,18 @@
  * \ingroup balembic
  */
 
+#include <functional>
+#include <memory>
+
 #include "abc_writer_curves.h"
 #include "intern/abc_axis_conversion.h"
 
 #include "DNA_curve_types.h"
 #include "DNA_object_types.h"
 
-#include "BKE_curve.hh"
+#include "BKE_curve_legacy_convert.hh"
+#include "BKE_curves.hh"
+#include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
 #include "BKE_object.hh"
 
@@ -27,7 +32,7 @@ using Alembic::AbcGeom::ON3fGeomParam;
 using Alembic::AbcGeom::OV2fGeomParam;
 
 namespace blender::io::alembic {
-
+#pragma optimize("", off)
 const std::string ABC_CURVE_RESOLUTION_U_PROPNAME("blender:resolution");
 
 ABCCurveWriter::ABCCurveWriter(const ABCWriterConstructorArgs &args) : ABCAbstractWriter(args) {}
@@ -56,7 +61,29 @@ Alembic::Abc::OCompoundProperty ABCCurveWriter::abc_prop_for_custom_props()
 
 void ABCCurveWriter::do_write(HierarchyContext &context)
 {
-  Curve *curve = static_cast<Curve *>(context.object->data);
+  Curves *curves;
+  std::unique_ptr<Curves, std::function<void(Curves *)>> converted_curves;
+
+  switch (context.object->type) {
+    case OB_CURVES_LEGACY: {
+      const Curve *legacy_curve = static_cast<Curve *>(context.object->data);
+      converted_curves = std::unique_ptr<Curves, std::function<void(Curves *)>>(
+          bke::curve_legacy_to_curves(*legacy_curve), [](Curves *c) { BKE_id_free(nullptr, c); });
+      curves = converted_curves.get();
+      break;
+    }
+    case OB_CURVES:
+      curves = static_cast<Curves *>(context.object->data);
+      break;
+    default:
+      BLI_assert_unreachable();
+      return;
+  }
+
+  const bke::CurvesGeometry &geometry = curves->geometry.wrap();
+  if (geometry.points_num() == 0) {
+    return;
+  }
 
   std::vector<Imath::V3f> verts;
   std::vector<int32_t> vert_counts;
@@ -70,79 +97,87 @@ void ABCCurveWriter::do_write(HierarchyContext &context)
   Alembic::AbcGeom::CurveType curve_type = Alembic::AbcGeom::kVariableOrder;
   Alembic::AbcGeom::CurvePeriodicity periodicity = Alembic::AbcGeom::kNonPeriodic;
 
-  Nurb *nurbs = static_cast<Nurb *>(curve->nurb.first);
-  for (; nurbs; nurbs = nurbs->next) {
-    const size_t current_point_count = verts.size();
-    if (nurbs->bp) {
-      curve_basis = Alembic::AbcGeom::kNoBasis;
-      curve_type = Alembic::AbcGeom::kVariableOrder;
+  const Span<float3> positions = geometry.positions();
+  const Span<float> nurbs_weights = geometry.nurbs_weights();
+  const VArray<int8_t> nurbs_orders = geometry.nurbs_orders();
+  const VArray<bool> is_cyclic = geometry.cyclic();
+  const bke::AttributeAccessor curve_attributes = geometry.attributes();
+  const bke::AttributeReader<float> radii = curve_attributes.lookup<float>("radius",
+                                                                           bke::AttrDomain::Point);
 
-      const int totpoint = nurbs->pntsu * nurbs->pntsv;
+  const OffsetIndices points_by_curve = geometry.points_by_curve();
+  for (const int i_curve : geometry.curves_range()) {
+    const IndexRange points = points_by_curve[i_curve];
+    const int8_t blender_curve_type = geometry.curve_types()[i_curve];
 
-      const BPoint *point = nurbs->bp;
+    switch (blender_curve_type) {
+      case CURVE_TYPE_POLY:
+        curve_basis = Alembic::AbcGeom::kNoBasis;
+        curve_type = Alembic::AbcGeom::kVariableOrder;
 
-      for (int i = 0; i < totpoint; i++, point++) {
-        copy_yup_from_zup(temp_vert.getValue(), point->vec);
-        verts.push_back(temp_vert);
-        weights.push_back(point->vec[3]);
-        widths.push_back(point->radius);
-      }
+        for (const int i_point : points) {
+          copy_yup_from_zup(temp_vert.getValue(), positions[i_point]);
+          verts.push_back(temp_vert);
+          weights.push_back(1.0f);
+          widths.push_back(radii.varray[i_point] * 2.0f);
+        }
+
+        break;
+
+      case CURVE_TYPE_CATMULL_ROM:
+        curve_basis = Alembic::AbcGeom::kCatmullromBasis;
+        curve_type = Alembic::AbcGeom::kVariableOrder;
+
+        for (const int i_point : points) {
+          copy_yup_from_zup(temp_vert.getValue(), positions[i_point]);
+          verts.push_back(temp_vert);
+          weights.push_back(1.0f);
+          widths.push_back(radii.varray[i_point] * 2.0f);
+        }
+
+        break;
+
+      case CURVE_TYPE_BEZIER:
+        curve_basis = Alembic::AbcGeom::kBezierBasis;
+        curve_type = Alembic::AbcGeom::kCubic;
+
+        /* TODO: Does Alembic support left/right handle data at all? */
+        for (const int i_point : points) {
+          copy_yup_from_zup(temp_vert.getValue(), positions[i_point]);
+          verts.push_back(temp_vert);
+          weights.push_back(1.0f);
+          widths.push_back(radii.varray[i_point] * 2.0f);
+        }
+
+        break;
+
+      case CURVE_TYPE_NURBS:
+        curve_basis = Alembic::AbcGeom::kBsplineBasis;
+        curve_type = Alembic::AbcGeom::kVariableOrder;
+
+        for (const int i_point : points) {
+          copy_yup_from_zup(temp_vert.getValue(), positions[i_point]);
+          verts.push_back(temp_vert);
+          weights.push_back(nurbs_weights[i_point]);
+          widths.push_back(radii.varray[i_point] * 2.0f);
+        }
+
+        break;
     }
-    else if (nurbs->bezt) {
-      curve_basis = Alembic::AbcGeom::kBezierBasis;
-      curve_type = Alembic::AbcGeom::kCubic;
 
-      const int totpoint = nurbs->pntsu;
-
-      const BezTriple *bezier = nurbs->bezt;
-
-      /* TODO(kevin): store info about handles, Alembic doesn't have this. */
-      for (int i = 0; i < totpoint; i++, bezier++) {
-        copy_yup_from_zup(temp_vert.getValue(), bezier->vec[1]);
-        verts.push_back(temp_vert);
-        widths.push_back(bezier->radius);
-      }
-    }
-
-    if ((nurbs->flagu & CU_NURB_ENDPOINT) != 0) {
-      periodicity = Alembic::AbcGeom::kNonPeriodic;
-    }
-    else if ((nurbs->flagu & CU_NURB_CYCLIC) != 0) {
+    int size_adjust = 0;
+    if (is_cyclic[i_curve]) {
+      /* Duplicate the first N vertices to indicate periodic construction. */
       periodicity = Alembic::AbcGeom::kPeriodic;
 
-      /* Duplicate the start points to indicate that the curve is actually
-       * cyclic since other software need those.
-       */
-
-      for (int i = 0; i < nurbs->orderu; i++) {
-        verts.push_back(verts[i]);
+      size_adjust = nurbs_orders[i_curve];
+      for (const int i_point : points.take_front(size_adjust)) {
+        verts.push_back(verts[i_point]);
       }
     }
 
-    if (nurbs->knotsu != nullptr) {
-      const size_t num_knots = KNOTSU(nurbs);
-
-      /* Add an extra knot at the beginning and end of the array since most apps
-       * require/expect them. */
-      knots.resize(num_knots + 2);
-
-      for (int i = 0; i < num_knots; i++) {
-        knots[i + 1] = nurbs->knotsu[i];
-      }
-
-      if ((nurbs->flagu & CU_NURB_CYCLIC) != 0) {
-        knots[0] = nurbs->knotsu[0];
-        knots[num_knots - 1] = nurbs->knotsu[num_knots - 1];
-      }
-      else {
-        knots[0] = (2.0f * nurbs->knotsu[0] - nurbs->knotsu[1]);
-        knots[num_knots - 1] = (2.0f * nurbs->knotsu[num_knots - 1] -
-                                nurbs->knotsu[num_knots - 2]);
-      }
-    }
-
-    orders.push_back(uint8_t(nurbs->orderu));
-    vert_counts.push_back(verts.size() - current_point_count);
+    orders.push_back(nurbs_orders[i_curve]);
+    vert_counts.push_back(points.size() + size_adjust);
   }
 
   Alembic::AbcGeom::OFloatGeomParam::Sample width_sample;

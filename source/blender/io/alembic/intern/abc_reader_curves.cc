@@ -40,6 +40,7 @@ using Alembic::AbcGeom::ISampleSelector;
 using Alembic::AbcGeom::kWrapExisting;
 
 namespace blender::io::alembic {
+#pragma optimize("", off)
 static int16_t get_curve_resolution(const ICurvesSchema &schema,
                                     const Alembic::Abc::ISampleSelector &sample_sel)
 {
@@ -338,7 +339,10 @@ void AbcCurveReader::read_curves_sample(Curves *curves_id,
   curves.fill_curve_types(data.curve_type);
 
   if (data.curve_type != CURVE_TYPE_POLY) {
-    curves.resolution_for_write().fill(get_curve_resolution(schema, sample_sel));
+    int16_t curve_resolution = get_curve_resolution(schema, sample_sel);
+    if (curve_resolution > 0) {
+      curves.resolution_for_write().fill(curve_resolution);
+    }
   }
 
   MutableSpan<float3> curves_positions = curves.positions_for_write();
@@ -364,7 +368,7 @@ void AbcCurveReader::read_curves_sample(Curves *curves_id,
     for (const int i_curve : curves.curves_range()) {
       int position_offset = data.offset_in_alembic[i_curve];
       for (const int i_point : curves.points_by_curve()[i_curve]) {
-        radii.span[i_point] = (*data.radii)[position_offset++];
+        radii.span[i_point] = (*data.radii)[position_offset++] / 2.0f;
       }
     }
 
