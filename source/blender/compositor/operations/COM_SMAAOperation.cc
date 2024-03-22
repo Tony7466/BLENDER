@@ -8,6 +8,7 @@
  * SPDX-License-Identifier: MIT AND GPL-2.0-or-later */
 
 #include "BLI_math_vector.h"
+#include "BLI_math_vector.hh"
 #include "BLI_smaa_textures.h"
 #include "BLI_span.hh"
 #include "BLI_task.hh"
