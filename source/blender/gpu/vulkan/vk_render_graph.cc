@@ -16,6 +16,12 @@ VKRenderGraph::VKRenderGraph(std::unique_ptr<VKRenderGraphCommandBuffer> command
 {
 }
 
+void VKRenderGraph::deinit()
+{
+  command_buffer_.reset();
+  scheduler_.reset();
+}
+
 /* -------------------------------------------------------------------- */
 /** \name Adding resources
  * \{ */

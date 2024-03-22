@@ -44,8 +44,17 @@ VKCommandBufferWrapper::VKCommandBufferWrapper()
 
 VKCommandBufferWrapper::~VKCommandBufferWrapper()
 {
-  // TODO: destroy pool
-  // TODO: destroy fence
+  VK_ALLOCATION_CALLBACKS;
+  VKDevice &device = VKBackend::get().device_get();
+
+  if (vk_command_pool_ != VK_NULL_HANDLE) {
+    vkDestroyCommandPool(device.device_get(), vk_command_pool_, vk_allocation_callbacks);
+    vk_command_pool_ = VK_NULL_HANDLE;
+  }
+  if (vk_fence_ != VK_NULL_HANDLE) {
+    vkDestroyFence(device.device_get(), vk_fence_, vk_allocation_callbacks);
+    vk_fence_ = VK_NULL_HANDLE;
+  }
 }
 
 void VKCommandBufferWrapper::begin_recording()

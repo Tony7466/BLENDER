@@ -52,6 +52,9 @@ class VKRenderGraph : public NonCopyable {
   VKRenderGraph(std::unique_ptr<VKRenderGraphCommandBuffer> command_buffer,
                 std::unique_ptr<VKRenderGraphScheduler> sorting_strategy);
 
+  /** Free all resources held by the render graph. */
+  void deinit();
+
   /**
    * Register a buffer resource to the render graph.
    */

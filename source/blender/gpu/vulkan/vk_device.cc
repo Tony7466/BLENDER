@@ -47,6 +47,7 @@ void VKDevice::deinit()
     return;
   }
 
+  render_graph_.deinit();
   timeline_semaphore_.free(*this);
   dummy_buffer_.free();
   if (dummy_color_attachment_.has_value()) {

@@ -23,7 +23,8 @@ TEST(vk_render_graph, transfer_and_present)
 
   EXPECT_EQ(1, log.size());
   EXPECT_EQ(
-      "pipeline_barrier(src_stage_mask=, dst_stage_mask=VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT\n"
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT\n"
       " - image_barrier(src_access_mask=, dst_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
       "old_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, "
       "new_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, image=0x1, subresource_range=\n"
@@ -51,7 +52,8 @@ TEST(vk_render_graph, clear_and_present)
   EXPECT_EQ(3, log.size());
 
   EXPECT_EQ(
-      "pipeline_barrier(src_stage_mask=, dst_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT\n"
+      "pipeline_barrier(src_stage_mask=VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, "
+      "dst_stage_mask=VK_PIPELINE_STAGE_TRANSFER_BIT\n"
       " - image_barrier(src_access_mask=, dst_access_mask=VK_ACCESS_TRANSFER_WRITE_BIT, "
       "old_layout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, "
       "new_layout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, image=0x1, subresource_range=\n"

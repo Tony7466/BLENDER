@@ -40,6 +40,7 @@ class VKRenderGraphCommandBuilder {
 
  public:
   VKRenderGraphCommandBuilder();
+
   /**
    * Reset the command builder.
    *

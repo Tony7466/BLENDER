@@ -306,12 +306,12 @@ messenger_callback(VkDebugUtilsMessageSeverityFlagBitsEXT message_severity,
              callback_data->messageIdNumber,
              callback_data->pMessageIdName,
              callback_data->pMessage);
-  }
 
-  const bool do_labels = (callback_data->objectCount + callback_data->cmdBufLabelCount +
-                          callback_data->queueLabelCount) > 0;
-  if (do_labels) {
-    debugging_tools.print_labels(callback_data);
+    const bool do_labels = (callback_data->objectCount + callback_data->cmdBufLabelCount +
+                            callback_data->queueLabelCount) > 0;
+    if (do_labels) {
+      debugging_tools.print_labels(callback_data);
+    }
   }
 
   return VK_FALSE;

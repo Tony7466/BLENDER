@@ -25,7 +25,7 @@ VKRenderGraphCommandBuilder::VKRenderGraphCommandBuilder()
   vk_buffer_memory_barrier_.size = VK_WHOLE_SIZE;
 
   vk_image_memory_barrier_ = {};
-  vk_image_memory_barrier_.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+  vk_image_memory_barrier_.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
   vk_image_memory_barrier_.pNext = nullptr;
   vk_image_memory_barrier_.srcAccessMask = VK_ACCESS_NONE;
   vk_image_memory_barrier_.dstAccessMask = VK_ACCESS_NONE;
@@ -339,12 +339,16 @@ void VKRenderGraphCommandBuilder::reset_barriers()
 
 void VKRenderGraphCommandBuilder::send_pipeline_barriers(VKRenderGraph &render_graph)
 {
-  if ((vk_image_memory_barriers_.is_empty() && vk_buffer_memory_barriers_.is_empty()) 
-  /*||
-      src_stage_mask_ == VK_PIPELINE_STAGE_NONE || dst_stage_mask_ == VK_PIPELINE_STAGE_NONE*/)
-  {
+  if (vk_image_memory_barriers_.is_empty() && vk_buffer_memory_barriers_.is_empty()) {
     reset_barriers();
     return;
+  }
+
+  /* When no resources have been used, we can start the barrier at the top of the pipeline.
+   * It is not allowed to set it to None. */
+  // TODO: VK_KHR_synchronization2 allows setting src_stage_mask_ to NONE.
+  if (src_stage_mask_ == VK_PIPELINE_STAGE_NONE) {
+    src_stage_mask_ = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
   }
 
   render_graph.command_buffer_->pipeline_barrier(src_stage_mask_,
