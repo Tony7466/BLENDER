@@ -3108,7 +3108,6 @@ std::string MSLGeneratorInterface::generate_msl_fragment_tile_input_population()
     }
   }
   else {
-    /* TODO: Read from generated images. */
     for (const MSLFragmentTileInputAttribute &tile_input : this->fragment_tile_inputs) {
       /* Get read swizzle mask. */
       char swizzle[] = "xyzw";
