@@ -3096,50 +3096,47 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
   Curves &active_curves_id = *static_cast<Curves *>(vc.obedit->data);
   const bke::AttrDomain selection_domain = bke::AttrDomain(active_curves_id.selection_domain);
 
-  const ClosestCurveDataBlock closest = ed::curves::selection_attr_with_deformed_pos_reduce(
-      selection_domain,
+  const ClosestCurveDataBlock closest = threading::parallel_reduce(
+      bases.index_range(),
+      1L,
       ClosestCurveDataBlock{},
-      [&](const bke::AttributeIDRef &selection_attribute_id,
-          const ed::curves::PositionsSource positions_source,
-          const ed::curves::MaskSource &mask_source,
-          const ClosestCurveDataBlock &) {
-        return threading::parallel_reduce(
-            bases.index_range(),
-            1L,
-            ClosestCurveDataBlock{selection_attribute_id},
-            [&](const IndexRange range, const ClosestCurveDataBlock &init) {
-              ClosestCurveDataBlock new_closest = init;
-              for (Base *base : bases.as_span().slice(range)) {
-                Object &curves_ob = *base->object;
-                Curves &curves_id = *static_cast<Curves *>(curves_ob.data);
-                bke::crazyspace::GeometryDeformation deformation =
-                    bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obedit);
-                const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
-                const float4x4 projection = ED_view3d_ob_project_mat_get(vc.rv3d, &curves_ob);
-                const IndexRange elements(curves.attributes().domain_size(selection_domain));
-                const Span<float3> positions = positions_source(deformation, curves);
-                IndexMaskMemory memory;
-                const IndexMask affective_mask = mask_source(elements, curves, memory);
+      [&](const IndexRange range, const ClosestCurveDataBlock &init) {
+        ClosestCurveDataBlock new_closest = init;
+        for (Base *base : bases.as_span().slice(range)) {
+          Object &curves_ob = *base->object;
+          Curves &curves_id = *static_cast<Curves *>(curves_ob.data);
+          bke::crazyspace::GeometryDeformation deformation =
+              bke::crazyspace::get_evaluated_curves_deformation(*vc.depsgraph, *vc.obedit);
+          const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
+          const float4x4 projection = ED_view3d_ob_project_mat_get(vc.rv3d, &curves_ob);
+          const IndexMask elements(curves.attributes().domain_size(selection_domain));
+          const ed::curves::SelectionAttributeList attribute_list(curves);
+          const ed::curves::SelectableRangeList selectables(
+              attribute_list, curves, selection_domain, deformation);
+
+          selectables.foreach_selectable_range(
+              [&](const IndexRange range,
+                  const Span<float3> positions,
+                  const bke::AttributeIDRef &selection_attribute_id) {
+                IndexMask mask = elements.slice(range);
 
                 std::optional<ed::curves::FindClosestData> new_closest_elem =
                     ed::curves::closest_elem_find_screen_space(vc,
                                                                curves.points_by_curve(),
                                                                positions,
                                                                projection,
-                                                               affective_mask,
+                                                               mask,
                                                                selection_domain,
                                                                mval,
                                                                new_closest.elem);
                 if (new_closest_elem) {
+                  new_closest.selection_attribute_id = selection_attribute_id;
                   new_closest.elem = *new_closest_elem;
                   new_closest.curves_id = &curves_id;
                 }
-              }
-              return new_closest;
-            },
-            [](const ClosestCurveDataBlock &a, const ClosestCurveDataBlock &b) {
-              return (a.elem.distance < b.elem.distance) ? a : b;
-            });
+              });
+        }
+        return new_closest;
       },
       [](const ClosestCurveDataBlock &a, const ClosestCurveDataBlock &b) {
         return (a.elem.distance < b.elem.distance) ? a : b;

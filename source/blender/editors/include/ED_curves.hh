@@ -188,36 +188,71 @@ bke::GSpanAttributeWriter ensure_selection_attribute(
     const eCustomDataType create_type,
     const bke::AttributeIDRef &attribute_id = ".selection");
 
-class SelectionAttributeWriterList {
+class SelectionAttributeList {
   const bke::AttributeIDRef attribute_ids[3];
-  bke::GSpanAttributeWriter selections[3];
   const int size_;
 
-  SelectionAttributeWriterList(bke::CurvesGeometry &curves,
-                               const bke::AttrDomain selection_domain,
-                               const bke::AttributeAccessor &attributes)
+  SelectionAttributeList(const bke::AttributeAccessor &attributes)
       : attribute_ids{".selection", ".selection_handle_left", ".selection_handle_right"},
         size_(
             (attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
                 sizeof(attribute_ids) / sizeof(bke::AttributeIDRef) :
                 1)
   {
-    for (const int i : IndexRange(size_)) {
-      selections[i] = ensure_selection_attribute(
-          curves, selection_domain, CD_PROP_BOOL, attribute_ids[i]);
-    };
   }
 
  public:
-  SelectionAttributeWriterList(bke::CurvesGeometry &curves, const bke::AttrDomain selection_domain)
-      : SelectionAttributeWriterList(curves, selection_domain, curves.attributes())
+  SelectionAttributeList(const bke::CurvesGeometry &curves)
+      : SelectionAttributeList(curves.attributes())
   {
+  }
+
+  const int size() const
+  {
+    return size_;
+  }
+
+  const bke::AttributeIDRef &operator[](const int index) const
+  {
+    BLI_assert(index >= 0);
+    BLI_assert(index < size_);
+    return attribute_ids[index];
+  }
+
+  const bke::AttributeIDRef *begin() const
+  {
+    return &(attribute_ids[0]);
+  }
+
+  const bke::AttributeIDRef *end() const
+  {
+    return &(attribute_ids[0]) + size_;
+  }
+};
+
+class SelectionAttributeWriterList {
+  const SelectionAttributeList attribute_list_;
+  bke::GSpanAttributeWriter selections[3];
+
+ public:
+  SelectionAttributeWriterList(bke::CurvesGeometry &curves, const bke::AttrDomain selection_domain)
+      : attribute_list_{curves}
+  {
+    for (const int i : IndexRange(attribute_list_.size())) {
+      selections[i] = ensure_selection_attribute(
+          curves, selection_domain, CD_PROP_BOOL, attribute_list_[i]);
+    };
+  }
+
+  const SelectionAttributeList &attribute_list() const
+  {
+    return attribute_list_;
   }
 
   bke::GSpanAttributeWriter &operator[](const int index)
   {
     BLI_assert(index >= 0);
-    BLI_assert(index < size_);
+    BLI_assert(index < attribute_list_.size());
     return selections[index];
   }
 
@@ -231,7 +266,7 @@ class SelectionAttributeWriterList {
 
   int size() const
   {
-    return size_;
+    return attribute_list_.size();
   }
 
   ~SelectionAttributeWriterList()
@@ -248,7 +283,88 @@ class SelectionAttributeWriterList {
 
   bke::GSpanAttributeWriter *end()
   {
-    return &(selections[0]) + size_;
+    return &(selections[0]) + attribute_list_.size();
+  }
+};
+
+typedef std::function<void(const IndexRange range,
+                           const Span<float3> positions,
+                           const bke::AttributeIDRef &selection_attribute_id)>
+    RangeConsumer;
+
+class SelectableRangeList {
+  const SelectionAttributeList &attribute_list;
+  const bke::CurvesGeometry &curves;
+  const bke::AttrDomain selection_domain;
+  const IndexRange full_range;
+
+  Span<float3> positions[3];
+  IndexMaskMemory memory;
+  IndexMask bezier_curves;
+
+ public:
+  SelectableRangeList(const SelectionAttributeList &attribute_list,
+                      const bke::CurvesGeometry &curves,
+                      const bke::AttrDomain selection_domain,
+                      const bke::crazyspace::GeometryDeformation &deformation)
+      : attribute_list(attribute_list),
+        curves(curves),
+        selection_domain(selection_domain),
+        full_range(curves.attributes().domain_size(selection_domain))
+  {
+    positions[0] = deformation.positions;
+    if (attribute_list.size() > 1) {
+      positions[1] = curves.handle_positions_left();
+      positions[2] = curves.handle_positions_right();
+
+      bezier_curves = curves.indices_for_curve_type(CURVE_TYPE_BEZIER, memory);
+    }
+  }
+
+  void foreach_point_range(const int index, RangeConsumer range_consumer) const
+  {
+    BLI_assert(index >= 0);
+    BLI_assert(index < attribute_list.size());
+    if (index) {
+      const OffsetIndices<int> points_by_curve = curves.points_by_curve();
+      bezier_curves.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
+        range_consumer(points_by_curve[curve_i], positions[index], attribute_list[index]);
+      });
+    }
+    else {
+      range_consumer(full_range, positions[0], attribute_list[0]);
+    }
+  }
+
+  void foreach_curve_range(const int index, RangeConsumer range_consumer) const
+  {
+    BLI_assert(index >= 0);
+    BLI_assert(index < attribute_list.size());
+    if (index) {
+      bezier_curves.foreach_range([&](const IndexRange curves_range) {
+        range_consumer(curves_range, positions[index], attribute_list[index]);
+      });
+    }
+    else {
+      range_consumer(full_range, positions[0], attribute_list[0]);
+    }
+  }
+
+  void foreach_selectable_range(RangeConsumer range_consumer) const
+  {
+    for (const int index : IndexRange(attribute_list.size())) {
+      foreach_selectable_range(index, range_consumer);
+    }
+  }
+
+  void foreach_selectable_range(const int index, RangeConsumer range_consumer) const
+  {
+    if (selection_domain == bke::AttrDomain::Point) {
+      foreach_point_range(index, range_consumer);
+    }
+    else if (selection_domain == bke::AttrDomain::Curve) {
+      foreach_curve_range(index, range_consumer);
+    }
   }
 };
 
@@ -262,76 +378,6 @@ inline void foreach_selection_attribute_writer(bke::CurvesGeometry &curves,
   for (bke::GSpanAttributeWriter &selection : selections) {
     fn(selection);
   }
-}
-
-typedef std::function<const Span<float3>(const bke::crazyspace::GeometryDeformation &,
-                                         const bke::CurvesGeometry &)>
-    PositionsSource;
-
-typedef std::function<const IndexMask(
-    const IndexMask &mask, const bke::CurvesGeometry &curves, IndexMaskMemory &memory)>
-    MaskSource;
-
-template<typename Value, typename Function, typename Reduction>
-inline Value selection_attr_with_deformed_pos_reduce(const bke::AttrDomain selection_domain,
-                                                     const Value &identity,
-                                                     const Function &function,
-                                                     const Reduction &reduction)
-{
-  static const bke::AttributeIDRef selection_attribute_ids[]{
-      ".selection", ".selection_handle_left", ".selection_handle_right"};
-
-  const PositionsSource position_sources[]{
-      [](const bke::crazyspace::GeometryDeformation &deformation, const bke::CurvesGeometry &) {
-        return deformation.positions;
-      },
-      [](const bke::crazyspace::GeometryDeformation &, const bke::CurvesGeometry &curves) {
-        return curves.handle_positions_left();
-      },
-      [](const bke::crazyspace::GeometryDeformation &, const bke::CurvesGeometry &curves) {
-        return curves.handle_positions_right();
-      }};
-
-  MaskSource bezier_curves =
-      [](const IndexMask &mask, const bke::CurvesGeometry &curves, IndexMaskMemory &memory) {
-        return curves.indices_for_curve_type(CURVE_TYPE_BEZIER, mask, memory);
-      };
-
-  MaskSource bezier_points = [](const IndexMask &mask,
-                                const bke::CurvesGeometry &curves,
-                                IndexMaskMemory &points_memory) {
-    const Array<int> map = curves.point_to_curve_map();
-    return IndexMask::from_predicate(
-        IndexRange(curves.points_num()),
-        GrainSize(4096),
-        points_memory,
-        [&](const int64_t point_i) {
-          return mask.contains(point_i) && curves.curve_types()[map[point_i]] == CURVE_TYPE_BEZIER;
-        });
-  };
-
-  MaskSource &left_right_source = selection_domain == bke::AttrDomain::Point ? bezier_points :
-                                                                               bezier_curves;
-
-  MaskSource mask_sources[]{
-      [](const IndexMask &mask, const bke::CurvesGeometry &, IndexMaskMemory &) { return mask; },
-      left_right_source,
-      left_right_source};
-
-  return threading::parallel_reduce(
-      IndexRange(3),
-      1L,
-      identity,
-      [&](const IndexRange range, const Value &init) {
-        Value ret = init;
-        for (const int64_t i : range) {
-          ret = reduction(
-              ret,
-              function(selection_attribute_ids[i], position_sources[i], mask_sources[i], init));
-        }
-        return ret;
-      },
-      reduction);
 }
 
 /** Apply a change to a single curve or point. Avoid using this when affecting many elements. */
