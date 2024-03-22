@@ -564,16 +564,16 @@ static bool ED_object_editmode_load_free_ex(Main *bmain,
 
   if (obedit->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(obedit->data);
-    if (mesh->edit_mesh == nullptr) {
+    if (mesh->runtime->edit_mesh == nullptr) {
       return false;
     }
 
-    if (mesh->edit_mesh->bm->totvert > MESH_MAX_VERTS) {
+    if (mesh->runtime->edit_mesh->bm->totvert > MESH_MAX_VERTS) {
       /* This used to be warned int the UI, we could warn again although it's quite rare. */
       CLOG_WARN(&LOG,
                 "Too many vertices for mesh '%s' (%d)",
                 mesh->id.name + 2,
-                mesh->edit_mesh->bm->totvert);
+                mesh->runtime->edit_mesh->bm->totvert);
       return false;
     }
 
@@ -582,9 +582,9 @@ static bool ED_object_editmode_load_free_ex(Main *bmain,
     }
 
     if (free_data) {
-      EDBM_mesh_free_data(mesh->edit_mesh);
-      MEM_freeN(mesh->edit_mesh);
-      mesh->edit_mesh = nullptr;
+      EDBM_mesh_free_data(mesh->runtime->edit_mesh);
+      MEM_freeN(mesh->runtime->edit_mesh);
+      mesh->runtime->edit_mesh = nullptr;
     }
     /* will be recalculated as needed. */
     {
@@ -1613,6 +1613,7 @@ static int shade_smooth_exec(bContext *C, wmOperator *op)
         const float angle = RNA_float_get(op->ptr, "angle");
         bke::mesh_sharp_edges_set_from_angle(mesh, angle, keep_sharp_edges);
       }
+      mesh.tag_sharpness_changed();
       BKE_mesh_batch_cache_dirty_tag(static_cast<Mesh *>(ob->data), BKE_MESH_BATCH_DIRTY_ALL);
       changed = true;
     }

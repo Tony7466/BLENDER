@@ -260,7 +260,7 @@ void BKE_paint_invalidate_overlay_tex(Scene *scene, ViewLayer *view_layer, const
     return;
   }
 
-  Brush *br = p->brush;
+  Brush *br = BKE_paint_brush(p);
   if (!br) {
     return;
   }
@@ -280,7 +280,7 @@ void BKE_paint_invalidate_cursor_overlay(Scene *scene, ViewLayer *view_layer, Cu
     return;
   }
 
-  Brush *br = p->brush;
+  Brush *br = BKE_paint_brush(p);
   if (br && br->curve == curve) {
     overlay_flags |= PAINT_OVERLAY_INVALID_CURVE;
   }
@@ -595,6 +595,10 @@ PaintMode BKE_paintmode_get_active_from_context(const bContext *C)
       switch (obact->mode) {
         case OB_MODE_SCULPT:
           return PaintMode::Sculpt;
+        case OB_MODE_SCULPT_GPENCIL_LEGACY:
+          return PaintMode::SculptGPencil;
+        case OB_MODE_WEIGHT_GPENCIL_LEGACY:
+          return PaintMode::WeightGPencil;
         case OB_MODE_VERTEX_PAINT:
           return PaintMode::Vertex;
         case OB_MODE_WEIGHT_PAINT:

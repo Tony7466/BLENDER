@@ -914,9 +914,9 @@ void ED_view3d_grid_steps(const Scene *scene,
   view3d_grid_steps_ex(scene, v3d, rv3d, r_grid_steps, nullptr, nullptr);
 }
 
-float ED_view3d_grid_view_scale(Scene *scene,
-                                View3D *v3d,
-                                ARegion *region,
+float ED_view3d_grid_view_scale(const Scene *scene,
+                                const View3D *v3d,
+                                const ARegion *region,
                                 const char **r_grid_unit)
 {
   float grid_scale;
@@ -1506,7 +1506,10 @@ void view3d_draw_region_info(const bContext *C, ARegion *region)
   if ((v3d->flag2 & V3D_HIDE_OVERLAYS) == 0) {
     int xoffset = rect->xmin + (0.5f * U.widget_unit);
     int yoffset = rect->ymax - (0.1f * U.widget_unit);
-    BLF_default_size(UI_style_get()->widgetlabel.points);
+
+    const uiFontStyle *fstyle = UI_FSTYLE_WIDGET_LABEL;
+    UI_fontstyle_set(fstyle);
+    BLF_default_size(fstyle->points);
     BLF_set_default();
 
     if ((v3d->overlay.flag & V3D_OVERLAY_HIDE_TEXT) == 0) {
@@ -2439,8 +2442,15 @@ void ED_view3d_depths_free(ViewDepths *depths)
   MEM_freeN(depths);
 }
 
-bool ED_view3d_has_depth_buffer_being_used(const Depsgraph *depsgraph, const View3D *v3d)
+bool ED_view3d_has_depth_buffer_updated(const Depsgraph *depsgraph, const View3D *v3d)
 {
+#ifdef REUSE_DEPTH_BUFFER
+  /* Check if the depth buffer was drawn by any engine and thus can be reused.
+   *
+   * The idea is good, but it is too error prone.
+   * Even when updated by an engine, the depth buffer can still be cleared by drawing callbacks and
+   * by the GPU_select API used by gizmos.
+   * Check #GPU_clear_depth to track when the depth buffer is cleared. */
   const char *engine_name = DEG_get_evaluated_scene(depsgraph)->r.engine;
   RenderEngineType *engine_type = RE_engines_find(engine_name);
 
@@ -2459,6 +2469,10 @@ bool ED_view3d_has_depth_buffer_being_used(const Depsgraph *depsgraph, const Vie
   return is_viewport_preview_solid || is_viewport_preview_material || is_viewport_wire_no_xray ||
          is_viewport_render_eevee || is_viewport_render_workbench ||
          is_viewport_render_external_with_overlay;
+#else
+  UNUSED_VARS(depsgraph, v3d);
+  return false;
+#endif
 }
 
 /** \} */
