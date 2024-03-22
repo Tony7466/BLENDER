@@ -16,6 +16,8 @@
 
 #include "DNA_brush_types.h"
 
+#include "DNA_screen_types.h"
+#include "DNA_view3d_types.h"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
@@ -23,6 +25,24 @@
 #include "grease_pencil_intern.hh"
 
 namespace blender::ed::sculpt_paint::greasepencil {
+
+float3 mouse_delta_in_world_space(const bContext &C,
+                                  const bke::greasepencil::Layer &layer,
+                                  const float2 &mouse_delta_win)
+{
+  const ARegion &region = *CTX_wm_region(&C);
+  const RegionView3D &rv3d = *CTX_wm_region_view3d(&C);
+  const Depsgraph &depsgraph = *CTX_data_depsgraph_pointer(&C);
+  Object &ob_orig = *CTX_data_active_object(&C);
+  Object &ob_eval = *DEG_get_evaluated_object(&depsgraph, &ob_orig);
+
+  const float3 layer_origin = layer.to_world_space(ob_eval).location();
+  const float zfac = ED_view3d_calc_zfac(&rv3d, layer_origin);
+  float3 mouse_delta;
+  ED_view3d_win_to_delta(&region, mouse_delta_win, zfac, mouse_delta);
+
+  return mouse_delta;
+}
 
 Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_sculpt(const bContext &C)
 {
@@ -200,12 +220,20 @@ void calculate_view_positions(const ARegion &region,
   });
 }
 
-void GreasePencilStrokeOperationCommon::on_stroke_begin(const bContext &C,
-                                                        const InputSample & /*start_sample*/)
+float2 GreasePencilStrokeOperationCommon::mouse_delta(const InputSample &input_sample) const
 {
-  Paint *paint = BKE_paint_get_active_from_context(&C);
-  Brush *brush = BKE_paint_brush(paint);
-  init_brush(*brush);
+  return input_sample.mouse_position - this->prev_mouse_position;
+}
+
+void GreasePencilStrokeOperationCommon::on_stroke_begin(const bContext &C,
+                                                        const InputSample &start_sample)
+{
+  Paint &paint = *BKE_paint_get_active_from_context(&C);
+  Brush &brush = *BKE_paint_brush(&paint);
+
+  init_brush(brush);
+
+  this->prev_mouse_position = start_sample.mouse_position;
 }
 
 static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
@@ -243,8 +271,14 @@ static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
                            selection,
                            view_positions);
 
-  return op.on_stroke_extended_drawing(
-      C, info.drawing, info.frame_number, placement, selection, view_positions, extension_sample);
+  return op.on_stroke_extended_drawing(C,
+                                       layer,
+                                       info.drawing,
+                                       info.frame_number,
+                                       placement,
+                                       selection,
+                                       view_positions,
+                                       extension_sample);
 }
 
 void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,
@@ -272,6 +306,8 @@ void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,
     DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);
     WM_event_add_notifier(&C, NC_GEOM | ND_DATA, &grease_pencil);
   }
+
+  this->prev_mouse_position = extension_sample.mouse_position;
 }
 
 void GreasePencilStrokeOperationCommon::on_stroke_done(const bContext & /*C*/) {}

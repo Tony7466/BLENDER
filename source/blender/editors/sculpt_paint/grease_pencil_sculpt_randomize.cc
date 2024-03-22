@@ -31,15 +31,11 @@ static float hash_rng(unsigned int seed1, unsigned int seed2, int index)
 
 class RandomizeOperation : public GreasePencilStrokeOperationCommon {
  public:
-  /* Previous mouse position for computing the direction. */
-  float2 prev_mouse_position;
-
   /* Get a different seed value for each stroke. */
   unsigned int unique_seed() const;
 
-  void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
-  void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   bool on_stroke_extended_drawing(const bContext &C,
+                                  const bke::greasepencil::Layer &layer,
                                   bke::greasepencil::Drawing &drawing,
                                   int frame_number,
                                   const ed::greasepencil::DrawingPlacement &placement,
@@ -58,23 +54,9 @@ unsigned int RandomizeOperation::unique_seed() const
   return RandomNumberGenerator::from_random_seed().get_uint32();
 }
 
-void RandomizeOperation::on_stroke_begin(const bContext &C, const InputSample &start_sample)
-{
-  GreasePencilStrokeOperationCommon::on_stroke_begin(C, start_sample);
-  this->prev_mouse_position = start_sample.mouse_position;
-}
-
-void RandomizeOperation::on_stroke_extended(const bContext &C, const InputSample &extension_sample)
-{
-  GreasePencilStrokeOperationCommon::on_stroke_extended(C, extension_sample);
-  /* Updating mouse position has to happen here after all layers are updated.
-   * Doing this in the per-drawing function would clear the mouse delta
-   * after the first layer, disabling the tool for subsequent layers. */
-  this->prev_mouse_position = extension_sample.mouse_position;
-}
-
 bool RandomizeOperation::on_stroke_extended_drawing(
     const bContext &C,
+    const bke::greasepencil::Layer & /*layer*/,
     bke::greasepencil::Drawing &drawing,
     int /*frame_number*/,
     const ed::greasepencil::DrawingPlacement &placement,
@@ -96,8 +78,7 @@ bool RandomizeOperation::on_stroke_extended_drawing(
     MutableSpan<float3> positions = curves.positions_for_write();
 
     /* Jitter is applied perpendicular to the mouse movement vector. */
-    const float2 forward = math::normalize(
-        float2(extension_sample.mouse_position - prev_mouse_position));
+    const float2 forward = math::normalize(this->mouse_delta(extension_sample));
     const float2 sideways = float2(-forward.y, forward.x);
 
     point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {

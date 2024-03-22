@@ -33,6 +33,10 @@ class GreasePencilStrokeOperation {
 
 namespace greasepencil {
 
+float3 mouse_delta_in_world_space(const bContext &C,
+                                  const bke::greasepencil::Layer &layer,
+                                  const float2 &mouse_delta_win);
+
 /* Get list of drawings the tool should be operating on. */
 Vector<ed::greasepencil::MutableDrawingInfo> get_drawings_for_sculpt(const bContext &C);
 
@@ -82,12 +86,18 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
   using MutableDrawingInfo = blender::ed::greasepencil::MutableDrawingInfo;
   using DrawingPlacement = ed::greasepencil::DrawingPlacement;
 
+  /* Previous mouse position for computing the direction. */
+  float2 prev_mouse_position;
+
+  float2 mouse_delta(const InputSample &input_sample) const;
+
   void on_stroke_begin(const bContext &C, const InputSample &start_sample) override;
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
 
   /* Extend the stroke in a drawing using projected 2D coordinates. */
   virtual bool on_stroke_extended_drawing(const bContext &C,
+                                          const bke::greasepencil::Layer &layer,
                                           bke::greasepencil::Drawing &drawing,
                                           int frame_number,
                                           const DrawingPlacement &placement,

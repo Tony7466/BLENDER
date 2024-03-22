@@ -28,6 +28,7 @@ namespace blender::ed::sculpt_paint::greasepencil {
 class SmoothOperation : public GreasePencilStrokeOperationCommon {
  public:
   bool on_stroke_extended_drawing(const bContext &C,
+                                  const bke::greasepencil::Layer &layer,
                                   bke::greasepencil::Drawing &drawing,
                                   int frame_number,
                                   const ed::greasepencil::DrawingPlacement &placement,
@@ -38,6 +39,7 @@ class SmoothOperation : public GreasePencilStrokeOperationCommon {
 
 bool SmoothOperation::on_stroke_extended_drawing(
     const bContext &C,
+    const bke::greasepencil::Layer & /*layer*/,
     bke::greasepencil::Drawing &drawing,
     int /*frame_number*/,
     const ed::greasepencil::DrawingPlacement & /*placement*/,
