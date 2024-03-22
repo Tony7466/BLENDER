@@ -221,10 +221,8 @@ void VKTexture::mip_range_set(int min, int max)
 void VKTexture::read_sub(
     int mip, eGPUDataFormat format, const int region[6], const IndexRange layers, void *r_data)
 {
-  VKContext &context = *VKContext::get();
-  layout_ensure(context, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-  /* Vulkan images cannot be directly mapped to host memory and requires a staging buffer. */
+  /* Vulkan images cannot be directly mapped to host memory and requires a staging buffer. Also
+   * allows us to continue sending GPU commands when the data is still being read on CPU side. */
   VKBuffer staging_buffer;
 
   size_t sample_len = (region[5] - region[2]) * (region[3] - region[0]) * (region[4] - region[1]) *
@@ -246,9 +244,11 @@ void VKTexture::read_sub(
   buffer_image_copy.imageSubresource.baseArrayLayer = layers.start();
   buffer_image_copy.imageSubresource.layerCount = layers.size();
 
-  VKCommandBuffers &command_buffers = context.command_buffers_get();
-  command_buffers.copy(staging_buffer, *this, Span<VkBufferImageCopy>(&buffer_image_copy, 1));
-  context.flush();
+  VKDevice &device = VKBackend::get().device_get();
+  VKRenderGraph &render_graph = device.render_graph_get();
+  render_graph.add_copy_image_to_buffer_node(
+      vk_image_handle(), staging_buffer.vk_handle(), buffer_image_copy);
+  render_graph.submit_buffer_for_read_back(staging_buffer.vk_handle());
 
   convert_device_to_host(
       r_data, staging_buffer.mapped_memory_get(), sample_len, format, format_, device_format_);
