@@ -1,2 +1,3 @@
 Referenced by issue #119787, Regression: Crash when hair curve shader uses attributes in Eevee and hair object animated
 Referenced by pull request #119795, Fix #119787: Curves viewport attribute drawing crash
+Referenced by commit 7f4a4fa60561e4192c6b108eded3783ce48163e9, Fix #119787: Curves viewport attribute drawing crash
