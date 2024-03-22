@@ -538,7 +538,10 @@ static void grease_pencil_geom_batch_ensure(Object &object,
             "fill_color", bke::AttrDomain::Curve, ColorGeometry4f(0.0f, 0.0f, 0.0f, 0.0f));
     const VArray<int> materials = *attributes.lookup_or_default<int>(
         "material_index", bke::AttrDomain::Curve, 0);
-    const VArray<float> stroke_us = *attributes.lookup<float>("u_stroke", bke::AttrDomain::Point);
+    const VArray<float> u_translations = *attributes.lookup_or_default<float>(
+        "u_translation", bke::AttrDomain::Curve, 0.0f);
+    const VArray<float> u_scales = *attributes.lookup_or_default<float>(
+        "u_scale", bke::AttrDomain::Curve, 1.0f);
     const Span<uint3> triangles = info.drawing.triangles();
     const Span<float4x2> texture_matrices = info.drawing.texture_matrices();
     const Span<int> verts_start_offsets = verts_start_offsets_per_visible_drawing[drawing_i];
@@ -613,10 +616,11 @@ static void grease_pencil_geom_batch_ensure(Object &object,
       }
 
       /* Write all the point attributes to the vertex buffers. Create a quad for each point. */
+      const float u_scale = u_scales[curve_i];
+      const float u_translation = u_translations[curve_i];
       for (const int i : IndexRange(points.size())) {
         const int idx = i + 1;
-        const float u_stroke = stroke_us.is_empty() ? ((i >= 1) ? lengths[i - 1] : 0.0f) :
-                                                      stroke_us[points[i]];
+        const float u_stroke = u_scale * (i > 0 ? lengths[i - 1] : 0.0f) + u_translation;
         populate_point(verts_range,
                        curve_i,
                        start_caps[curve_i],
@@ -631,9 +635,7 @@ static void grease_pencil_geom_batch_ensure(Object &object,
 
       if (is_cyclic) {
         const int idx = points.size() + 1;
-        const float u_stroke = (stroke_us.is_empty() ?
-                                    (points.size() > 1 ? lengths[points.size() - 1] : 0.0f) :
-                                    stroke_us[points.size() - 1]);
+        const float u_stroke = u_scale * lengths[points.size() - 1] + u_translation;
         populate_point(verts_range,
                        curve_i,
                        start_caps[curve_i],

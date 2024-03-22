@@ -6,6 +6,7 @@
  * \ingroup modifiers
  */
 
+#include "BKE_attribute.hh"
 #include "BLI_index_range.hh"
 #include "BLI_map.hh"
 #include "BLI_math_base.hh"
@@ -79,103 +80,77 @@ static void foreach_ID_link(ModifierData *md, Object *ob, IDWalkFunc walk, void 
   modifier::greasepencil::foreach_influence_ID_link(&tmd->influence, ob, walk, user_data);
 }
 
-/* Funky GPv2 method of calculating a planar transform of a stroke. */
-static float4x4 get_legacy_plane_transform(const Span<float3> positions)
-{
-  if (positions.size() < 2) {
-    return float4x4::identity();
-  }
-
-  const float3 &pt0 = positions[0];
-  const float3 &pt1 = positions[1];
-  const float3 &pt3 = positions[int(positions.size() * 0.75)];
-  /* Point vector at 3/4 */
-  const float3 loc3 = (positions.size() == 2 ? pt3 * 0.001f : pt3) - pt0;
-
-  /* Local X axis. */
-  const float3 locx = math::normalize(pt1 - pt0);
-  /* Vector orthogonal to polygon plane. */
-  const float3 normal = math::normalize(math::cross(locx, loc3));
-
-  return math::from_orthonormal_axes<float4x4>(pt0, locx, normal);
-}
-
-static float4x4 get_stroke_transform(const GreasePencilTextureModifierData &tmd,
-                                     const float3 &minv = {-1.0f, -1.0f, -1.0f},
-                                     const float3 &maxv = {1.0f, 1.0f, 1.0f})
-{
-  const float4x4 minmax_transform = math::scale(math::from_location<float4x4>(-minv),
-                                                math::safe_rcp(maxv - minv));
-  const float4x4 stroke_rotation = math::from_rotation<float4x4>(
-      math::AxisAngle(math::AxisSigned::Z_POS, tmd.fill_rotation));
-  const float3 rotation_center = {0.5f, 0.5f, 0.0f};
-  const float3 stroke_inv_scale = float3(math::safe_rcp(tmd.fill_scale));
-  const float4x4 curve_transform = math::from_scale<float4x4>(stroke_inv_scale) *
-                                   math::from_origin_transform(stroke_rotation, rotation_center) *
-                                   math::from_location<float4x4>(tmd.fill_offset) *
-                                   minmax_transform;
-  return curve_transform;
-}
-
-static void write_stroke_us(bke::greasepencil::Drawing &drawing,
-                            const IndexMask &curves_mask,
-                            const float offset,
-                            const float rotation,
-                            const float scale,
-                            const bool normalize_u)
+static void write_stroke_transforms(bke::greasepencil::Drawing &drawing,
+                                    const IndexMask &curves_mask,
+                                    const float offset,
+                                    const float rotation,
+                                    const float scale,
+                                    const bool normalize_u)
 {
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   const OffsetIndices<int> points_by_curve = curves.points_by_curve();
   const VArray<bool> cyclic = curves.cyclic();
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<float> stroke_us = attributes.lookup_or_add_for_write_span<float>(
-      "u_stroke", bke::AttrDomain::Point);
+  bke::SpanAttributeWriter<float> u_translations = attributes.lookup_or_add_for_write_span<float>(
+      "u_translation", bke::AttrDomain::Curve);
   bke::SpanAttributeWriter<float> rotations = attributes.lookup_or_add_for_write_span<float>(
       "rotation", bke::AttrDomain::Point);
+  bke::SpanAttributeWriter<float> u_scales = attributes.lookup_or_add_for_write_span<float>(
+      "u_scale",
+      bke::AttrDomain::Curve,
+      bke::AttributeInitVArray(VArray<float>::ForSingle(1.0f, curves.curves_num())));
 
   curves.ensure_evaluated_lengths();
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
+    const IndexRange points = points_by_curve[curve_i];
     const bool is_cyclic = cyclic[curve_i];
     const Span<float> lengths = curves.evaluated_lengths_for_curve(curve_i, is_cyclic);
-    const IndexRange points = points_by_curve[curve_i];
     const float norm = normalize_u ? math::safe_rcp(lengths.last()) : 1.0f;
 
-    stroke_us.span[points.first()] = offset;
-    rotations.span[points.first()] += rotation;
-    for (const int point_i : points.drop_front(1)) {
-      stroke_us.span[point_i] = lengths[point_i - 1] * norm * scale + offset;
+    u_translations.span[curve_i] += offset;
+    u_scales.span[curve_i] *= scale * norm;
+    for (const int point_i : points) {
       rotations.span[point_i] += rotation;
     }
   });
 
-  stroke_us.finish();
+  u_translations.finish();
+  u_scales.finish();
   rotations.finish();
 }
 
-static void write_fill_uvs(bke::greasepencil::Drawing &drawing,
-                           const IndexMask &curves_mask,
-                           const float4x4 &stroke_transform)
+static void write_fill_transforms(bke::greasepencil::Drawing &drawing,
+                                  const IndexMask &curves_mask,
+                                  const float2 &offset,
+                                  const float rotation,
+                                  const float scale)
 {
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
-  const OffsetIndices<int> points_by_curve = curves.points_by_curve();
-  const Span<float3> positions = curves.positions();
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  bke::SpanAttributeWriter<float2> fill_uvs = attributes.lookup_or_add_for_write_span<float2>(
-      "uv_fill", bke::AttrDomain::Point);
+  bke::SpanAttributeWriter<float2> uv_translations =
+      attributes.lookup_or_add_for_write_span<float2>("uv_translation", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<float> uv_rotations = attributes.lookup_or_add_for_write_span<float>(
+      "uv_rotation", bke::AttrDomain::Curve);
+  bke::SpanAttributeWriter<float2> uv_scales = attributes.lookup_or_add_for_write_span<float2>(
+      "uv_scale",
+      bke::AttrDomain::Curve,
+      bke::AttributeInitVArray(
+          VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
-    const IndexRange points = points_by_curve[curve_i];
-    const float4x4 plane_transform = get_legacy_plane_transform(positions.slice(points));
-    const float4x4 transform = math::invert(plane_transform * stroke_transform);
-    for (const int point_i : points) {
-      fill_uvs.span[point_i] = math::transform_point(transform, positions[point_i]).xy();
-    }
+    uv_translations.span[curve_i] += offset;
+    uv_scales.span[curve_i] *= scale;
+    uv_rotations.span[curve_i] += rotation;
   });
 
-  fill_uvs.finish();
+  uv_rotations.finish();
+  uv_translations.finish();
+  uv_scales.finish();
+
+  drawing.tag_texture_matrices_changed();
 }
 
 static void modify_curves(const GreasePencilTextureModifierData &tmd,
@@ -186,21 +161,21 @@ static void modify_curves(const GreasePencilTextureModifierData &tmd,
   const IndexMask curves_mask = modifier::greasepencil::get_filtered_stroke_mask(
       ctx.object, drawing.strokes(), tmd.influence, mask_memory);
 
-  const float4x4 stroke_transform = get_stroke_transform(tmd);
-
   const bool normalize_u = (tmd.fit_method == MOD_GREASE_PENCIL_TEXTURE_FIT_STROKE);
   switch (GreasePencilTextureModifierMode(tmd.mode)) {
     case MOD_GREASE_PENCIL_TEXTURE_STROKE:
-      write_stroke_us(
+      write_stroke_transforms(
           drawing, curves_mask, tmd.uv_offset, tmd.alignment_rotation, tmd.uv_scale, normalize_u);
       break;
     case MOD_GREASE_PENCIL_TEXTURE_FILL:
-      write_fill_uvs(drawing, curves_mask, stroke_transform);
+      write_fill_transforms(
+          drawing, curves_mask, tmd.fill_offset, tmd.fill_rotation, tmd.fill_scale);
       break;
     case MOD_GREASE_PENCIL_TEXTURE_STROKE_AND_FILL:
-      write_stroke_us(
+      write_stroke_transforms(
           drawing, curves_mask, tmd.uv_offset, tmd.alignment_rotation, tmd.uv_scale, normalize_u);
-      write_fill_uvs(drawing, curves_mask, stroke_transform);
+      write_fill_transforms(
+          drawing, curves_mask, tmd.fill_offset, tmd.fill_rotation, tmd.fill_scale);
       break;
   }
 }
