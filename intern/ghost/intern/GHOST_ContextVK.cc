@@ -224,9 +224,9 @@ class GHOST_DeviceVK {
     VkPhysicalDeviceFeatures device_features = {};
 #ifndef __APPLE__
     device_features.geometryShader = VK_TRUE;
-#endif
     /* MoltenVK supports logicOp, needs to be build with MVK_USE_METAL_PRIVATE_API. */
     device_features.logicOp = VK_TRUE;
+#endif
     device_features.dualSrcBlend = VK_TRUE;
     device_features.imageCubeArray = VK_TRUE;
     device_features.multiViewport = VK_TRUE;
@@ -1010,10 +1010,12 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
   extensions_device.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
   extensions_device.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
 
-  /* Enable MoltenVK required instance extensions. */
-#ifdef VK_MVK_MOLTENVK_EXTENSION_NAME
+#if __APPLE__
   requireExtension(
-      extensions_available, extensions_enabled, "VK_KHR_get_physical_device_properties2");
+      extensions_available, extensions_enabled, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+  requireExtension(extensions_available,
+                   extensions_enabled,
+                   VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 #endif
 
   VkInstance instance = VK_NULL_HANDLE;
@@ -1046,6 +1048,10 @@ GHOST_TSuccess GHOST_ContextVK::initializeDrawingContext()
     if (m_debug) {
       create_info.pNext = &validationFeatures;
     }
+
+#if __APPLE__
+    create_info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
 
     VK_CHECK(vkCreateInstance(&create_info, nullptr, &instance));
   }
