@@ -51,7 +51,6 @@
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
-#include "IMB_thumbs.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -1515,11 +1514,12 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
 
   const ID_Type type_id = GS(item_tooltip_data->id->name);
 
-  UI_tooltip_text_field_add(
-      data, item_tooltip_data->id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
-  UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
-
   if (type_id == ID_IM) {
+
+    UI_tooltip_text_field_add(
+      data, item_tooltip_data->id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
+    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+
     Image *ima = reinterpret_cast<Image *>(item_tooltip_data->id);
     ImageUser *iuser = static_cast<ImageUser *>(
         CTX_data_pointer_get_type(C, "image_user", &RNA_ImageUser).data);
@@ -1559,18 +1559,54 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
   }
   else if (type_id == ID_VF) {
     VFont *font = reinterpret_cast<VFont *>(item_tooltip_data->id);
-    if (font->filepath[0] && font->filepath[0] != '<') {
-      const int size = int(196.0f * UI_SCALE_FAC);
-      ImBuf *ibuf = IMB_thumb_load_font(font->filepath, size, size);
-      uiTooltipImage image_data;
-      image_data.width = size;
-      image_data.height = size;
-      image_data.ibuf = ibuf;
-      image_data.border = false;
-      image_data.background = uiTooltipImageBackground::None;
-      image_data.premultiplied = false;
-      image_data.text_color = true;
-      UI_tooltip_image_field_add(data, image_data);
+
+    if (font->filepath[0]) {
+
+        int font_id = (font->filepath[0] != '<') ? BLF_load(font->filepath) : 0;
+
+        int width = 200 * UI_SCALE_FAC;
+
+        float color[4] = { 1.0f,1.0f,1.0f,1.0f };
+        BLF_buffer_col(font_id, color);
+
+        BLF_size(font_id, 50.0f);
+        float name_w;
+        float name_h;
+        BLF_width_and_height(font_id, item_tooltip_data->id->name + 2, MAX_ID_NAME, &name_w, &name_h);
+        float scale = float(width) / name_w;
+        float size = scale * 50.0f;
+        BLF_size(font_id, size);
+        name_w *= scale;
+        name_h *= scale;
+
+        int height = int(name_h * 1.3f);
+        ImBuf *ibuf = IMB_allocImBuf(width, height, 32, IB_rect | IB_metadata);
+
+        //display_device = context->scene->display_settings.display_device;
+        //display = IMB_colormanagement_display_get_named(display_device);
+        BLF_buffer(
+          font_id, ibuf->float_buffer.data, ibuf->byte_buffer.data, width, height, ibuf->channels, nullptr);
+
+        BLF_position(font_id, 0.0f, height - name_h, 0.0f);
+        BLF_draw_buffer(font_id, item_tooltip_data->id->name + 2, MAX_ID_NAME);
+
+        BLF_buffer(font_id, nullptr, nullptr, 0, 0, 0, nullptr);
+
+        uiTooltipImage image_data;
+        image_data.width = width;
+        image_data.height = height;
+        image_data.ibuf = ibuf;
+        image_data.border = false;
+        image_data.background = uiTooltipImageBackground::None;
+        image_data.premultiplied = false;
+        image_data.text_color = true;
+        UI_tooltip_image_field_add(data, image_data);
+
+        IMB_freeImBuf(ibuf);
+
+        if (font_id != 0) {
+          BLF_unload_id(font_id);
+        }
     }
   }
   else if (type_id == ID_SCE) {
@@ -1580,6 +1616,9 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
     // MovieClip *mc = reinterpret_cast<MovieClip *>(item_tooltip_data->id);
   }
   else {
+    UI_tooltip_text_field_add(
+      data, item_tooltip_data->id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
+    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
 
     char description[UI_MAX_DRAW_STR] = {0};
     /* The full name of the item, without prefixes or suffixes (e.g. hint with UI_SEP_CHARP). */
