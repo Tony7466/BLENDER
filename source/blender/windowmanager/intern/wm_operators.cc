@@ -786,7 +786,7 @@ void WM_operator_properties_reset(wmOperator *op)
     RNA_PROP_BEGIN (op->ptr, itemptr, iterprop) {
       PropertyRNA *prop = static_cast<PropertyRNA *>(itemptr.data);
 
-      if ((RNA_property_flag(prop) & PROP_SKIP_SAVE) == 0) {
+      if ((RNA_property_flag(prop) & (PROP_SKIP_SAVE | PROP_SKIP_PRESET)) == 0) {
         const char *identifier = RNA_property_identifier(prop);
         RNA_struct_idprops_unset(op->ptr, identifier);
       }
@@ -1391,6 +1391,7 @@ static uiBlock *wm_block_create_redo(bContext *C, ARegion *region, void *arg_op)
   BLI_assert(op->type->flag & OPTYPE_REGISTER);
 
   UI_block_func_handle_set(block, wm_block_redo_cb, arg_op);
+  UI_popup_dummy_panel_set(region, block);
   uiLayout *layout = UI_block_layout(
       block, UI_LAYOUT_VERTICAL, UI_LAYOUT_PANEL, 0, 0, width, UI_UNIT_Y, 0, style);
 
@@ -1476,6 +1477,7 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   uiBlock *block = UI_block_begin(C, region, __func__, UI_EMBOSS);
   UI_block_flag_disable(block, UI_BLOCK_LOOP);
   UI_block_theme_style_set(block, UI_BLOCK_THEME_STYLE_POPUP);
+  UI_popup_dummy_panel_set(region, block);
 
   if (data->mouse_move_quit) {
     UI_block_flag_enable(block, UI_BLOCK_MOVEMOUSE_QUIT);
@@ -1605,8 +1607,8 @@ static uiBlock *wm_block_dialog_create(bContext *C, ARegion *region, void *user_
   const int padding = (small ? 7 : 14) * UI_SCALE_FAC;
 
   if (data->position == WM_POPUP_POSITION_MOUSE) {
-    const float button_center_x = windows_layout ? -0.33f : -0.66f;
-    const float button_center_y = small ? 1.9f : 3.1f;
+    const float button_center_x = windows_layout ? -0.4f : -0.90f;
+    const float button_center_y = small ? 2.0f : 3.1f;
     const int bounds_offset[2] = {int(button_center_x * uiLayoutGetWidth(layout)),
                                   int(button_center_y * UI_UNIT_X)};
     UI_block_bounds_set_popup(block, padding, bounds_offset);
