@@ -170,8 +170,9 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     this->area.size = float2(la->area_size, is_irregular ? la->area_sizey : la->area_size);
     /* Scale and clamp to minimum value before float imprecision artifacts appear. */
     this->area.size = max(float2(0.003f), this->area.size * scale.xy() / 2.0f);
+
     /* For volume point lighting. */
-    this->area.radius_squared = square(max(0.001f, length(this->area.size) / 2.0f));
+    this->local.radius_squared = square(max(0.001f, length(this->area.size) / 2.0f));
   }
   else if (is_point_light(this->type)) {
     /* Spot size & blend */
@@ -199,7 +200,7 @@ void Light::shape_parameters_set(const ::Light *la, const float3 &scale, float t
     this->spot.radius = max(0.001f, this->spot.radius);
 
     /* For volume point lighting. */
-    this->spot.radius_squared = square(this->spot.radius);
+    this->local.radius_squared = square(this->spot.radius);
   }
 
   if (is_local_light(this->type)) {
