@@ -942,7 +942,6 @@ ccl_device_forceinline bool integrate_volume_phase_scatter(
 
   /* Setup ray. */
   INTEGRATOR_STATE_WRITE(state, ray, P) = sd->P;
-  INTEGRATOR_STATE_WRITE(state, ray, previous_P) = ray->P + ray->D * ray->tmin;
   INTEGRATOR_STATE_WRITE(state, ray, D) = normalize(phase_wo);
   INTEGRATOR_STATE_WRITE(state, ray, tmin) = 0.0f;
   INTEGRATOR_STATE_WRITE(state, ray, previous_dt) = ray->tmax - ray->tmin;
@@ -974,8 +973,8 @@ ccl_device_forceinline bool integrate_volume_phase_scatter(
 
   /* Update path state */
   INTEGRATOR_STATE_WRITE(state, path, mis_ray_pdf) = phase_pdf;
-  /* HACK(weizhen): use non-normalized `N` to denote volume segment. Maybe find a better way. */
-  INTEGRATOR_STATE_WRITE(state, path, mis_origin_n) = ray->D * 0.5f;
+  const float t_advanced = (sd->P - ray->P).x / ray->D.x - ray->tmin;
+  INTEGRATOR_STATE_WRITE(state, path, mis_origin_n) = ray->D * t_advanced;
   INTEGRATOR_STATE_WRITE(state, path, min_ray_pdf) = fminf(
       unguided_phase_pdf, INTEGRATOR_STATE(state, path, min_ray_pdf));
 
