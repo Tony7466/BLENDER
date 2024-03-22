@@ -103,140 +103,54 @@ float light_spot_attenuation(LightData light, vec3 L)
   return spotmask * step(0.0, -dot(L, -light._back));
 }
 
-float light_circular_segment_area(float segment_height, float disk_radius)
-{
-  /* Using notation from https://mathworld.wolfram.com/CircularSegment.html . */
-  float R = disk_radius;
-  float r = segment_height;
-#if 0
-  return (R * R) * acos(r / R) - r * sqrt(R * R - r * r);
-#else
-  /* Approximation. This gives smoother result but a bit darker on the edges and a bit brighter on
-   * the inner parts. */
-  return smoothstep(-R, R, -r) * (M_PI * R * R);
-#endif
-}
-
-/* Optimized version already divided by the disk area. */
-float light_circular_segment_area_opti(float segment_height, float disk_radius)
-{
-  /* Using notation from https://mathworld.wolfram.com/CircularSegment.html . */
-  float R = disk_radius;
-  float r = segment_height;
-  return smoothstep(-R, R, -r);
-}
-
-float light_disk_area(float disk_radius)
-{
-  return square(disk_radius) * M_PI;
-}
-
-float light_spread_angle_rect_1D(float disk_center_distance, float disk_radius, float rect_extent)
-{
-  return light_circular_segment_area_opti(disk_center_distance - rect_extent, disk_radius) -
-         light_circular_segment_area_opti(disk_center_distance + rect_extent, disk_radius);
-}
-
 /**
- * Approximate the area of intersection of two spherical caps
- * radius1 : First cap’s radius (arc length in radians)
- * radius2 : Second caps’ radius (in radians)
- * dist : Distance between caps (radians between centers of caps)
- * NOTE: Result is divided by pi to save one multiply.
+ * Approximate the ratio of the area of intersection of two spherical caps divided by the area of
+ * the smallest cap.
  */
-float light_spread_spherical_cap_intersection(float radius1, float radius2, float dist)
+float light_spread_spherical_cap_intersection(float cone_angle_1,
+                                              float cone_angle_2,
+                                              float angle_between_axes)
 {
   /* From "Ambient Aperture Lighting" by Chris Oat
-   * Slide 15. */
-  float max_radius = max(radius1, radius2);
-  float min_radius = min(radius1, radius2);
-  float sum_radius = radius1 + radius2;
-  float area;
-  if (dist <= max_radius - min_radius) {
-    /* One cap in completely inside the other */
-    area = 1.0;
-  }
-  else if (dist >= sum_radius) {
-    /* No intersection exists */
-    area = 0;
-  }
-  else {
-    float diff = max_radius - min_radius;
-    area = smoothstep(0.0, 1.0, 1.0 - saturate((dist - diff) / (sum_radius - diff)));
-    area *= 1.0;
-  }
-  return area;
+   * Slide 15.
+   * Simplified since we divide by the solid angle of the smallest cone. */
+  float diff = abs(cone_angle_1 - cone_angle_2);
+  float sum_radius = cone_angle_1 + cone_angle_2;
+  return smoothstep(sum_radius, diff, angle_between_axes);
 }
 
 float light_cone_cone_ratio(float cone_half_angle,
                             float light_half_angle,
                             float angle_cone_hemisphere)
 {
-  float cone_hemisphere_ratio = light_spread_spherical_cap_intersection(
+  return light_spread_spherical_cap_intersection(
       cone_half_angle, light_half_angle, angle_cone_hemisphere);
-  /* But we don't want the clipped ratio wrt the shading hemisphere (otherwise, we duplicate what
-   * the LTC computes and do not converge towards 1 at full aperture), so divide by the shading
-   * hemisphere ratio. */
-  cone_hemisphere_ratio /= light_spread_spherical_cap_intersection(
-      M_PI / 2.0, light_half_angle, angle_cone_hemisphere);
-  return cone_hemisphere_ratio;
 }
 
-float light_hemisphere_cone_ratio(float cone_half_angle, float angle_cone_hemisphere)
+float light_hemisphere_cone_ratio(float cone_half_angle, float angle_between_axes)
 {
   float cone_hemisphere_ratio = light_spread_spherical_cap_intersection(
-      cone_half_angle, M_PI / 2.0, angle_cone_hemisphere);
+      cone_half_angle, M_PI / 2.0, angle_between_axes);
   /* But we don't want the clipped ratio wrt the shading hemisphere (otherwise, we duplicate what
    * the LTC computes and do not converge towards 1 at full aperture), so divide by the shading
    * hemisphere ratio. */
   cone_hemisphere_ratio /= light_spread_spherical_cap_intersection(
-      M_PI / 2.0, M_PI / 2.0, angle_cone_hemisphere);
+      M_PI / 2.0, M_PI / 2.0, angle_between_axes);
   return cone_hemisphere_ratio;
 }
 
-float light_spread_angle_rect_1D_spherical(
-    float spread_half_angle, vec3 corners0, vec3 corners1, vec3 corners2, vec3 corners3)
+float light_lune_cone_ratio(float spread_half_angle, float edge_angle_1, float edge_angle_2)
 {
-  float hemisphere_angle_1 = acos(normalize(cross(corners0, corners1)).z);
-  float hemisphere_angle_2 = acos(normalize(cross(corners2, corners3)).z);
+  float hemisphere_elevation_angle_1 = edge_angle_1 + (M_PI / 2.0);
+  float hemisphere_elevation_angle_2 = edge_angle_2 + (M_PI / 2.0);
 
-  float max_ratio = light_hemisphere_cone_ratio(spread_half_angle,
-                                                min(hemisphere_angle_1, hemisphere_angle_2));
-  float min_ratio = light_hemisphere_cone_ratio(spread_half_angle,
-                                                max(hemisphere_angle_1, hemisphere_angle_2));
+  float ratio_1 = light_hemisphere_cone_ratio(spread_half_angle, hemisphere_elevation_angle_1);
+  float ratio_2 = light_hemisphere_cone_ratio(spread_half_angle, hemisphere_elevation_angle_2);
 
-  /* Should maybe be this. But need signed angles */
-  // return (max_ratio - min_ratio);
-  return min(max_ratio, min_ratio);
+  return ratio_1 - ratio_2;
 }
 
 /* https://www.shadertoy.com/view/4dVcR1 */
-
-float sdEllipse(vec2 p, vec2 e)
-{
-  vec2 pAbs = abs(p);
-  vec2 ei = 1.0 / e;
-  vec2 e2 = e * e;
-  vec2 ve = ei * vec2(e2.x - e2.y, e2.y - e2.x);
-
-  vec2 t = vec2(0.70710678118654752, 0.70710678118654752);
-  for (int i = 0; i < 3; i++) {
-    vec2 v = ve * t * t * t;
-    vec2 u = normalize(pAbs - v) * length(t * e - v);
-    vec2 w = ei * (v + u);
-    t = normalize(clamp(w, 0.0, 1.0));
-  }
-
-  vec2 nearestAbs = t * e;
-  float dist = length(pAbs - nearestAbs);
-  return dot(pAbs, pAbs) < dot(nearestAbs, nearestAbs) ? -dist : dist;
-}
-
-float sdBox(vec2 p, vec2 b)
-{
-  vec2 q = abs(p) - b;
-  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
-}
 
 vec2 msign(vec2 x)
 {
@@ -286,74 +200,23 @@ vec2 sdEllipseFarthestPoint(vec2 p, vec2 ab)
 float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
 {
   vec3 lL = light_world_to_local(light, L * dist);
-  vec3 lL_norm = light_world_to_local(light, L);
-  float spread_half_angle_tan = tan(light.spread_half_angle);
   float distance_to_plane = abs(lL.z);
-  /* Using notation from https://mathworld.wolfram.com/Circle-CircleIntersection.html . */
-  float r = spread_half_angle_tan;
-  if (light.type == LIGHT_RECT) {
-    vec3 corners[4];
-    corners[0] = vec3(light._area_size_x, -light._area_size_y, 0.0);
-    corners[1] = vec3(light._area_size_x, light._area_size_y, 0.0);
-    corners[2] = -corners[0];
-    corners[3] = -corners[1];
-
-    corners[0] = normalize(corners[0] + lL);
-    corners[1] = normalize(corners[1] + lL);
-    corners[2] = normalize(corners[2] + lL);
-    corners[3] = normalize(corners[3] + lL);
-
-    float min_angle = atan(sdBox(lL.xy, vec2(light._area_size_x, light._area_size_y)),
-                           distance_to_plane);
-    float max_angle = acos(min(min(corners[0].z, corners[1].z), min(corners[2].z, corners[3].z)));
-
-    float half_light_angle = abs(max_angle - min_angle) / 2.0;
-    float elevation_angle = (max_angle + min_angle) / 2.0;
-
-    // return light_cone_cone_ratio(light.spread_half_angle, half_light_angle, elevation_angle);
-
-    /* Intuition. The coverage of each sector of */
-    float x = light_spread_angle_rect_1D_spherical(
-        light.spread_half_angle, corners[0], corners[1], corners[2], corners[3]);
-    float y = light_spread_angle_rect_1D_spherical(
-        light.spread_half_angle, corners[1], corners[2], corners[3], corners[0]);
-    return x * y;
-  }
-  /* Ellipse approximation. Stretch the configuration and resize the projected disk. This has the
-   * benefit to be very simple (simplify a few instructions since the light radius is 1 afterwards)
-   * and give the proper result for disk lights. */
   vec2 area_size = vec2(light._area_size_x, light._area_size_y);
 
-  float min_axis = reduce_min(area_size);
-  float maj_axis = reduce_max(area_size);
-  vec2 segment_size = vec2(maj_axis - min_axis, 0.0);
-  if (area_size.x < area_size.y) {
-    segment_size = segment_size.yx;
+  if (light.type == LIGHT_RECT) {
+    vec2 r1 = lL.xy - area_size;
+    vec2 r2 = lL.xy + area_size;
+
+    /* angle_1 is min angle of intersection with first edge of the lune.
+     * angle_2 is min angle of intersection with second edge of the lune. */
+    /* TODO(fclem): Port fast_atanf from cycles. */
+    vec2 angle_1 = atan(r1, vec2(distance_to_plane));
+    vec2 angle_2 = atan(r2, vec2(distance_to_plane));
+
+    float x = light_lune_cone_ratio(light.spread_half_angle, angle_1.x, angle_2.x);
+    float y = light_lune_cone_ratio(light.spread_half_angle, angle_1.y, angle_2.y);
+    return x;
   }
-
-  vec2 nearest_point_on_segment = clamp(lL.xy, -segment_size, segment_size);
-  vec2 nearest_point_on_pill = normalize(lL.xy - nearest_point_on_segment) * min_axis +
-                               nearest_point_on_segment;
-  vec2 nearest_point_on_shape = normalize(lL.xy / area_size) * area_size;
-
-  // nearest_point_on_shape = nearest_point_on_segment;
-
-  vec2 normalized_dir = normalize(lL.xy);
-  vec2 line_perp = orthogonal(normalized_dir);
-
-  /* Align with on the Cone-Light Line */
-  // nearest_point_on_shape -= dot(line_perp, nearest_point_on_shape) * line_perp;
-  /* test 1 Shit. */
-  // nearest_point_on_shape = dot(line_perp, segment_size) * line_perp;
-  /* test 2 Shit. */
-  // nearest_point_on_shape = length(area_size * normalized_dir) * normalized_dir;
-
-  // nearest_point_on_shape = nearest_point_distance_ellipse_exact(lL.xy, area_size);
-
-  /* Creates inflation because major axis is not considered properly. */
-  vec2 farsest_point_on_shape = -nearest_point_on_shape;
-
-  farsest_point_on_shape = -normalize(lL.xy / area_size) * area_size;
 
   float r1 = distance(sdEllipseNearestPoint(lL.xy, area_size), lL.xy);
   float r2 = distance(sdEllipseFarthestPoint(lL.xy, area_size), lL.xy);
@@ -364,58 +227,14 @@ float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
     r1 = -r1;
   }
 
-  /* Circle test */
-  // r1 = length(lL.xy) - area_size.x;
-  // r2 = length(lL.xy) + area_size.x;
-
+  /* TODO(fclem): Port fast_atanf from cycles. */
   float angle_1 = atan(r1, distance_to_plane);
   float angle_2 = atan(r2, distance_to_plane);
 
-  /* This is assuming both points lie on the same line in the direction of the spread cone. */
-  /* TODO, clamp to hemisphere */
   float half_light_angle = abs(angle_1 - angle_2) / 2.0;
   float elevation_angle = (angle_1 + angle_2) / 2.0;
 
   return light_cone_cone_ratio(light.spread_half_angle, half_light_angle, elevation_angle);
-  /* Ellipse approximation. Stretch the configuration and resize the projected disk. This has the
-   * benefit to be very simple (simplify a few instructions since the light radius is 1 afterwards)
-   * and give the proper result for disk lights. */
-  lL.x /= light._area_size_x;
-  lL.y /= light._area_size_y;
-  /* This is the root of the approximation. After stretching, the projected disk should become an
-   * ellipse. But that would just shift the problem. So we approximate the new ellipse by a disk of
-   * same radius. This as the effect of making the fade thinner on the thinner axis and larger on
-   * the larger axis compared to what they should. */
-  r /= length(vec2(light._area_size_x, light._area_size_y)) * M_SQRT1_2;
-
-  float d = length(lL.xy);
-  /* Should be light radius, but we normalized the configuration, so simplifies to 1. */
-  const float R = 1.0;
-  /* Special cases where the bottom would fails. */
-  if (d >= r + R) {
-    /* No intersection. */
-    return 0.0;
-  }
-  if (d + r <= R) {
-    /* Total intersection. */
-    return 1.0;
-  }
-  if (d + R <= r) {
-    /* Light area is completly inside the cone footprint. Compute ratio. */
-    return 1.0;
-  }
-  /* Eq. 14. */
-  float d1 = (d * d - r * r + R * R) / (2.0 * d);
-  float d2 = (d * d + r * r - R * R) / (2.0 * d);
-#if 0 /* Reference method. */
-  float area_section = (r * r) * acos(d2 / r) + (R * R) * acos(d1 / R) -
-                       0.5 * sqrt((-d + r + R) * (d + r - R) * (d - r + R) * (d + r + R));
-  float area_projection = square(r) * M_PI;
-  return area_section / area_projection;
-#else
-  return light_circular_segment_area_opti(d1, R) * square(R / r) +
-         light_circular_segment_area_opti(d2, r);
-#endif
 }
 
 float light_attenuation_common(LightData light, const bool is_directional, vec3 L, float dist)
