@@ -146,7 +146,7 @@ ccl_device bool integrate_intersect_shadow_transparent(KernelGlobals kg,
 }
 #endif
 
-ccl_device_noinline void integrator_intersect_shadow(KernelGlobals kg, IntegratorShadowState state)
+ccl_device void integrator_intersect_shadow(KernelGlobals kg, IntegratorShadowState state)
 {
   PROFILING_INIT(kg, PROFILING_INTERSECT_SHADOW);
 

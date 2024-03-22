@@ -152,9 +152,9 @@ ccl_device_forceinline void integrator_intersect_next_kernel(
   }
 }
 
-ccl_device_noinline void integrator_intersect_closest(KernelGlobals kg,
-                                                      IntegratorState state,
-                                                      ccl_global float *ccl_restrict render_buffer)
+ccl_device void integrator_intersect_closest(KernelGlobals kg,
+                                             IntegratorState state,
+                                             ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_INTERSECT_CLOSEST);
 

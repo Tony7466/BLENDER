@@ -156,7 +156,7 @@ ccl_device void integrator_volume_stack_init(KernelGlobals kg, IntegratorState s
   integrator_state_write_volume_stack(state, stack_index, new_entry);
 }
 
-ccl_device_noinline void integrator_intersect_volume_stack(KernelGlobals kg, IntegratorState state)
+ccl_device void integrator_intersect_volume_stack(KernelGlobals kg, IntegratorState state)
 {
   integrator_volume_stack_init(kg, state);
 

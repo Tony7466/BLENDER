@@ -260,9 +260,9 @@ ccl_device_inline bool integrate_transparent_shadow(KernelGlobals kg,
 }
 #endif /* __TRANSPARENT_SHADOWS__ */
 
-ccl_device_noinline void integrator_shade_shadow(KernelGlobals kg,
-                                                 IntegratorShadowState state,
-                                                 ccl_global float *ccl_restrict render_buffer)
+ccl_device void integrator_shade_shadow(KernelGlobals kg,
+                                        IntegratorShadowState state,
+                                        ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_SHADE_SHADOW_SETUP);
   const uint num_hits = INTEGRATOR_STATE(state, shadow_path, num_hits);

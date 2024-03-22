@@ -256,8 +256,9 @@ ccl_device void shadow_linking_shade(KernelGlobals kg,
 
 #endif /* __SHADOW_LINKING__ */
 
-ccl_device_noinline void integrator_shade_dedicated_light(
-    KernelGlobals kg, IntegratorState state, ccl_global float *ccl_restrict render_buffer)
+ccl_device void integrator_shade_dedicated_light(KernelGlobals kg,
+                                                 IntegratorState state,
+                                                 ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_SHADE_DEDICATED_LIGHT);
 

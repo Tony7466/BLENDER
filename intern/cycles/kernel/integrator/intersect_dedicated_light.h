@@ -187,8 +187,7 @@ ccl_device bool shadow_linking_intersect(KernelGlobals kg, IntegratorState state
 
 #endif /* __SHADOW_LINKING__ */
 
-ccl_device_noinline void integrator_intersect_dedicated_light(KernelGlobals kg,
-                                                              IntegratorState state)
+ccl_device void integrator_intersect_dedicated_light(KernelGlobals kg, IntegratorState state)
 {
   PROFILING_INIT(kg, PROFILING_INTERSECT_DEDICATED_LIGHT);
 

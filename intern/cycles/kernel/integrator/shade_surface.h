@@ -793,9 +793,9 @@ ccl_device_forceinline void integrator_shade_surface_next_kernel(KernelGlobals k
 
 template<uint node_feature_mask = KERNEL_FEATURE_NODE_MASK_SURFACE & ~KERNEL_FEATURE_NODE_RAYTRACE,
          DeviceKernel current_kernel = DEVICE_KERNEL_INTEGRATOR_SHADE_SURFACE>
-ccl_device_noinline void integrator_shade_surface(KernelGlobals kg,
-                                                  IntegratorState state,
-                                                  ccl_global float *ccl_restrict render_buffer)
+ccl_device_forceinline void integrator_shade_surface(KernelGlobals kg,
+                                                     IntegratorState state,
+                                                     ccl_global float *ccl_restrict render_buffer)
 {
   const int continue_path_label = integrate_surface<node_feature_mask>(kg, state, render_buffer);
   if (continue_path_label == LABEL_NONE) {

@@ -66,9 +66,9 @@ ccl_device_inline void integrate_light(KernelGlobals kg,
   film_write_surface_emission(kg, state, light_eval, mis_weight, render_buffer, ls.group);
 }
 
-ccl_device_noinline void integrator_shade_light(KernelGlobals kg,
-                                                IntegratorState state,
-                                                ccl_global float *ccl_restrict render_buffer)
+ccl_device void integrator_shade_light(KernelGlobals kg,
+                                       IntegratorState state,
+                                       ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_SHADE_LIGHT_SETUP);
 

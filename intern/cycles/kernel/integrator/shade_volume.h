@@ -1079,9 +1079,9 @@ ccl_device_forceinline void integrator_intersect_next_kernel_after_volume(
   }
 }
 
-ccl_device_noinline void integrator_shade_volume(KernelGlobals kg,
-                                                 IntegratorState state,
-                                                 ccl_global float *ccl_restrict render_buffer)
+ccl_device void integrator_shade_volume(KernelGlobals kg,
+                                        IntegratorState state,
+                                        ccl_global float *ccl_restrict render_buffer)
 {
   PROFILING_INIT(kg, PROFILING_SHADE_VOLUME_SETUP);
 
