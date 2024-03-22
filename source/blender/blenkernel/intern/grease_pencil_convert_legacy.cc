@@ -500,6 +500,7 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
   /* Convert the onion skinning settings. */
   grease_pencil.onion_skinning_settings.opacity = gpd.onion_factor;
   grease_pencil.onion_skinning_settings.mode = gpd.onion_mode;
+  /* Convert keytype filter to a bit flag. */
   if (gpd.onion_keytype == -1) {
     grease_pencil.onion_skinning_settings.filter = GREASE_PENCIL_ONION_SKINNING_FILTER_ALL;
   }

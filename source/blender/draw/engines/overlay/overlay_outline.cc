@@ -293,7 +293,7 @@ static void OVERLAY_outline_grease_pencil(OVERLAY_PrivateData *pd, Scene *scene,
   }
 
   int t_offset = 0;
-  const Vector<DrawingInfo> drawings = retrieve_visible_drawings(*scene, grease_pencil);
+  const Vector<DrawingInfo> drawings = retrieve_visible_drawings(*scene, grease_pencil, false);
   for (const DrawingInfo info : drawings) {
     const bool is_screenspace = false;
     const bool is_stroke_order_3d = (grease_pencil.flag & GREASE_PENCIL_STROKE_ORDER_3D) != 0;

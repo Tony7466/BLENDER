@@ -178,6 +178,7 @@ struct DrawingInfo {
   const bke::greasepencil::Drawing &drawing;
   const int layer_index;
   const int frame_number;
+  const int onion_id;
 };
 struct MutableDrawingInfo {
   bke::greasepencil::Drawing &drawing;
@@ -192,7 +193,8 @@ Vector<MutableDrawingInfo> retrieve_editable_drawings_with_falloff(const Scene &
 Vector<MutableDrawingInfo> retrieve_editable_drawings_from_layer(
     const Scene &scene, GreasePencil &grease_pencil, const bke::greasepencil::Layer &layer);
 Vector<DrawingInfo> retrieve_visible_drawings(const Scene &scene,
-                                              const GreasePencil &grease_pencil);
+                                              const GreasePencil &grease_pencil,
+                                              bool do_onion_skinning);
 
 IndexMask retrieve_editable_strokes(Object &grease_pencil_object,
                                     const bke::greasepencil::Drawing &drawing,

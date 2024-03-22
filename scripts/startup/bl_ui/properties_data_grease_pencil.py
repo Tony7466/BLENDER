@@ -229,6 +229,50 @@ class DATA_PT_grease_pencil_layer_relations(LayerDataButtonsPanel, Panel):
         col = layout.row(align=True)
         col.prop_search(layer, "viewlayer_render", context.scene, "view_layers", text="View Layer")
 
+class DATA_PT_grease_pencil_onion_skinning(DataButtonsPanel, Panel):
+    bl_label = "Onion Skinning"
+
+    def draw(self, context):
+        grease_pencil = context.grease_pencil
+
+        layout = self.layout
+        layout.use_property_split = True
+
+        col = layout.column()
+        col.prop(grease_pencil, "onion_mode")
+        col.prop(grease_pencil, "onion_factor", text="Opacity", slider=True)
+        col.prop(grease_pencil, "onion_keyframe_type")
+
+        if grease_pencil.onion_mode == 'ABSOLUTE':
+            col = layout.column(align=True)
+            col.prop(grease_pencil, "ghost_before_range", text="Frames Before")
+            col.prop(grease_pencil, "ghost_after_range", text="Frames After")
+        elif grease_pencil.onion_mode == 'RELATIVE':
+            col = layout.column(align=True)
+            col.prop(grease_pencil, "ghost_before_range", text="Keyframes Before")
+            col.prop(grease_pencil, "ghost_after_range", text="Keyframes After")
+
+
+class DATA_PT_grease_pencil_onion_skinning_custom_colors(DataButtonsPanel, Panel):
+    bl_parent_id = "DATA_PT_gpencil_onion_skinning"
+    bl_label = "Custom Colors"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    # def draw_header(self, context):
+    #     gpd = context.gpencil
+
+    #     self.layout.prop(gpd, "use_ghost_custom_colors", text="")
+
+    def draw(self, context):
+        grease_pencil = context.grease_pencil
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.enabled = grease_pencil.users <= 1# and grease_pencil.use_ghost_custom_colors
+
+        layout.prop(grease_pencil, "before_color", text="Before")
+        layout.prop(grease_pencil, "after_color", text="After")
+
 
 class DATA_PT_grease_pencil_settings(DataButtonsPanel, Panel):
     bl_label = "Settings"
@@ -245,7 +289,7 @@ class DATA_PT_grease_pencil_settings(DataButtonsPanel, Panel):
 
 class DATA_PT_grease_pencil_custom_props(DataButtonsPanel, PropertyPanel, Panel):
     _context_path = "object.data"
-    _property_type = bpy.types.GreasePencilv3
+    _property_type = getattr(bpy.types, "GreasePencilv3", None)
 
 
 classes = (
@@ -256,6 +300,8 @@ classes = (
     DATA_PT_grease_pencil_layer_masks,
     DATA_PT_grease_pencil_layer_transform,
     DATA_PT_grease_pencil_layer_relations,
+    DATA_PT_grease_pencil_onion_skinning,
+    DATA_PT_grease_pencil_onion_skinning_custom_colors,
     DATA_PT_grease_pencil_settings,
     DATA_PT_grease_pencil_custom_props,
     GREASE_PENCIL_MT_grease_pencil_add_layer_extra,
