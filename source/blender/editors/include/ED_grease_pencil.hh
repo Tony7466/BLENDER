@@ -23,7 +23,6 @@ struct Main;
 struct Object;
 struct KeyframeEditData;
 struct wmKeyConfig;
-struct wmKeyMap;
 struct wmOperator;
 struct ToolSettings;
 struct Scene;

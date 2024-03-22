@@ -4,7 +4,6 @@
 
 #include "BKE_context.hh"
 #include "BKE_grease_pencil.hh"
-#include "BKE_report.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -129,45 +128,9 @@ static bool grease_pencil_brush_stroke_poll(bContext *C)
   return true;
 }
 
-int grease_pencil_draw_operator_invoke(bContext *C, wmOperator *op)
-{
-  const Scene *scene = CTX_data_scene(C);
-  const Object *object = CTX_data_active_object(C);
-  if (!object || object->type != OB_GREASE_PENCIL) {
-    return OPERATOR_CANCELLED;
-  }
-
-  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object->data);
-  if (!grease_pencil.has_active_layer()) {
-    BKE_report(op->reports, RPT_ERROR, "No active Grease Pencil layer");
-    return OPERATOR_CANCELLED;
-  }
-
-  const Paint *paint = BKE_paint_get_active_from_context(C);
-  const Brush *brush = BKE_paint_brush_for_read(paint);
-  if (brush == nullptr) {
-    return OPERATOR_CANCELLED;
-  }
-
-  bke::greasepencil::Layer &active_layer = *grease_pencil.get_active_layer();
-
-  if (!active_layer.is_editable()) {
-    BKE_report(op->reports, RPT_ERROR, "Active layer is locked or hidden");
-    return OPERATOR_CANCELLED;
-  }
-
-  /* Ensure a drawing at the current keyframe. */
-  if (!ed::greasepencil::ensure_active_keyframe(*scene, grease_pencil)) {
-    BKE_report(op->reports, RPT_ERROR, "No Grease Pencil frame to draw on");
-    return OPERATOR_CANCELLED;
-  }
-
-  return OPERATOR_RUNNING_MODAL;
-}
-
 static int grease_pencil_brush_stroke_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
-  int return_value = grease_pencil_draw_operator_invoke(C, op);
+  int return_value = ed::sculpt_paint::greasepencil::grease_pencil_draw_operator_invoke(C, op);
   if (return_value != OPERATOR_RUNNING_MODAL) {
     return return_value;
   }
