@@ -56,10 +56,20 @@ VkPipeline VKPipelines::get_or_create_compute_pipeline(VKComputeInfo &compute_in
     vk_compute_pipeline_create_info_.stage.pSpecializationInfo = nullptr;
   }
   else {
+    while (vk_specialization_map_entries_.size() < compute_info.specialization_constants.size()) {
+      uint32_t constant_id = vk_specialization_map_entries_.size();
+      VkSpecializationMapEntry vk_specialization_map_entry = {};
+      vk_specialization_map_entry.constantID = constant_id;
+      vk_specialization_map_entry.offset = constant_id * sizeof(uint32_t);
+      vk_specialization_map_entry.size = sizeof(uint32_t);
+      vk_specialization_map_entries_.append(vk_specialization_map_entry);
+    }
     vk_compute_pipeline_create_info_.stage.pSpecializationInfo = &vk_specialization_info_;
     vk_specialization_info_.dataSize = compute_info.specialization_constants.size() *
                                        sizeof(uint32_t);
     vk_specialization_info_.pData = compute_info.specialization_constants.data();
+    vk_specialization_info_.mapEntryCount = compute_info.specialization_constants.size();
+    vk_specialization_info_.pMapEntries = vk_specialization_map_entries_.data();
   }
 
   /* Build pipeline. */
@@ -83,6 +93,8 @@ VkPipeline VKPipelines::get_or_create_compute_pipeline(VKComputeInfo &compute_in
   vk_compute_pipeline_create_info_.basePipelineHandle = VK_NULL_HANDLE;
   vk_specialization_info_.dataSize = 0;
   vk_specialization_info_.pData = nullptr;
+  vk_specialization_info_.mapEntryCount = 0;
+  vk_specialization_info_.pMapEntries = nullptr;
 
   return pipeline;
 }

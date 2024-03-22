@@ -73,6 +73,7 @@ class VKPipelines : NonCopyable {
   /* Partially initialized structures to reuse. */
   VkComputePipelineCreateInfo vk_compute_pipeline_create_info_;
   VkSpecializationInfo vk_specialization_info_;
+  Vector<VkSpecializationMapEntry> vk_specialization_map_entries_;
 
   std::mutex mutex_;
 
