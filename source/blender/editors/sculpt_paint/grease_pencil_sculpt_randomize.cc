@@ -35,7 +35,6 @@ class RandomizeOperation : public GreasePencilStrokeOperationCommon {
   unsigned int unique_seed() const;
 
   bool on_stroke_extended_drawing(const bContext &C,
-                                  const bke::greasepencil::Layer &layer,
                                   bke::greasepencil::Drawing &drawing,
                                   int frame_number,
                                   const ed::greasepencil::DrawingPlacement &placement,
@@ -56,7 +55,6 @@ unsigned int RandomizeOperation::unique_seed() const
 
 bool RandomizeOperation::on_stroke_extended_drawing(
     const bContext &C,
-    const bke::greasepencil::Layer & /*layer*/,
     bke::greasepencil::Drawing &drawing,
     int /*frame_number*/,
     const ed::greasepencil::DrawingPlacement &placement,

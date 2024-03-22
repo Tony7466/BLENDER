@@ -271,14 +271,8 @@ static bool apply_to_drawing(GreasePencilStrokeOperationCommon &op,
                            selection,
                            view_positions);
 
-  return op.on_stroke_extended_drawing(C,
-                                       layer,
-                                       info.drawing,
-                                       info.frame_number,
-                                       placement,
-                                       selection,
-                                       view_positions,
-                                       extension_sample);
+  return op.on_stroke_extended_drawing(
+      C, info.drawing, info.frame_number, placement, selection, view_positions, extension_sample);
 }
 
 void GreasePencilStrokeOperationCommon::on_stroke_extended(const bContext &C,

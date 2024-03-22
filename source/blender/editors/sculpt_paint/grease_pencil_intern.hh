@@ -97,7 +97,6 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
 
   /* Extend the stroke in a drawing using projected 2D coordinates. */
   virtual bool on_stroke_extended_drawing(const bContext &C,
-                                          const bke::greasepencil::Layer &layer,
                                           bke::greasepencil::Drawing &drawing,
                                           int frame_number,
                                           const DrawingPlacement &placement,
@@ -113,6 +112,7 @@ std::unique_ptr<GreasePencilStrokeOperation> new_thickness_operation(BrushStroke
 std::unique_ptr<GreasePencilStrokeOperation> new_strength_operation(BrushStrokeMode stroke_mode);
 std::unique_ptr<GreasePencilStrokeOperation> new_randomize_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_grab_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_push_operation(BrushStrokeMode stroke_mode);
 
 }  // namespace greasepencil
 

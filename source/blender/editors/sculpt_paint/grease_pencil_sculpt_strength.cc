@@ -27,7 +27,6 @@ class StrengthOperation : public GreasePencilStrokeOperationCommon {
   StrengthOperation(const BrushStrokeMode stroke_mode) : stroke_mode(stroke_mode) {}
 
   bool on_stroke_extended_drawing(const bContext &C,
-                                  const bke::greasepencil::Layer &layer,
                                   bke::greasepencil::Drawing &drawing,
                                   int frame_number,
                                   const ed::greasepencil::DrawingPlacement &placement,
@@ -38,7 +37,6 @@ class StrengthOperation : public GreasePencilStrokeOperationCommon {
 
 bool StrengthOperation::on_stroke_extended_drawing(
     const bContext &C,
-    const bke::greasepencil::Layer & /*layer*/,
     bke::greasepencil::Drawing &drawing,
     int /*frame_number*/,
     const ed::greasepencil::DrawingPlacement & /*placement*/,

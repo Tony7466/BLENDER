@@ -29,7 +29,6 @@ class ThicknessOperation : public GreasePencilStrokeOperationCommon {
   ThicknessOperation(const BrushStrokeMode stroke_mode) : stroke_mode(stroke_mode) {}
 
   bool on_stroke_extended_drawing(const bContext &C,
-                                  const bke::greasepencil::Layer &layer,
                                   bke::greasepencil::Drawing &drawing,
                                   int frame_number,
                                   const ed::greasepencil::DrawingPlacement &placement,
@@ -40,7 +39,6 @@ class ThicknessOperation : public GreasePencilStrokeOperationCommon {
 
 bool ThicknessOperation::on_stroke_extended_drawing(
     const bContext &C,
-    const bke::greasepencil::Layer & /*layer*/,
     bke::greasepencil::Drawing &drawing,
     int /*frame_number*/,
     const ed::greasepencil::DrawingPlacement & /*placement*/,
