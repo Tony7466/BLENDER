@@ -298,15 +298,13 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
   float clip_near = intBitsToFloat(light.clip_near);
   float clip_side = light.clip_side;
 
-  vec3 projection_origin = vec3(0.0, 0.0, -light.shadow_projection_shift);
   vec3 direction;
   if (is_area_light(light.type)) {
     random_2d *= vec2(light._area_size_x, light._area_size_y);
 
     vec3 point_on_light_shape = vec3(random_2d, 0.0);
     /* Progressively blend the shape back to the projection origin. */
-    point_on_light_shape = mix(
-        -projection_origin, point_on_light_shape, light.shadow_shape_scale_or_angle);
+    point_on_light_shape = point_on_light_shape * light.shadow_shape_scale_or_angle;
 
     direction = point_on_light_shape - lP;
     r_is_above_surface = dot(direction, lNg) > 0.0;
@@ -361,7 +359,7 @@ ShadowRayPunctual shadow_ray_generate_punctual(LightData light,
   }
 
   /* Apply shadow origin shift. */
-  vec3 local_ray_start = lP + projection_origin;
+  vec3 local_ray_start = lP;
   vec3 local_ray_end = local_ray_start + direction;
 
   /* Use an offset in the ray direction to jitter which face is traced.
