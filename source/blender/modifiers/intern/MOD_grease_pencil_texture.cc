@@ -8,17 +8,11 @@
 
 #include "BKE_attribute.hh"
 #include "BLI_index_range.hh"
-#include "BLI_map.hh"
 #include "BLI_math_base.hh"
-#include "BLI_math_matrix_types.hh"
 #include "BLI_span.hh"
-#include "BLI_string.h"
-#include "BLI_string_utf8.h"
-#include "BLI_vector_set.hh"
 
 #include "DNA_defaults.h"
 #include "DNA_modifier_types.h"
-#include "DNA_scene_types.h"
 
 #include "BKE_curves.hh"
 #include "BKE_geometry_set.hh"
