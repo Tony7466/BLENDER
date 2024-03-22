@@ -12,9 +12,11 @@
 
 #include "RE_pipeline.h"
 
+#include "GPU_context.h"
 #include "GPU_shader.h"
 #include "GPU_texture.h"
 
+#include "IMB_colormanagement.hh"
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
 
@@ -172,8 +174,17 @@ static ImBuf *compute_linear_buffer(ImBuf *image_buffer)
     IMB_float_from_rect(linear_image_buffer);
   }
 
-  /* If the image buffer contained compressed data, assign them as well. */
-  if (image_buffer->ftype == IMB_FTYPE_DDS) {
+  /* If the image buffer contained compressed data, assign them as well, but only if the GPU
+   * backend is not Metal since it does not support compressed textures, and only if the color
+   * space of the buffer is linear or data, since we need linear data and can't preprocess the
+   * compressed buffer. If either conditions are not satisified, we fallback to the float buffer
+   * already assigned, which is guranteed to exist as a fallback for compressed textures. */
+  const bool is_suitable_compressed_color_space =
+      IMB_colormanagement_space_is_data(image_buffer->byte_buffer.colorspace) ||
+      IMB_colormanagement_space_is_scene_linear(image_buffer->byte_buffer.colorspace);
+  if (image_buffer->ftype == IMB_FTYPE_DDS && GPU_backend_get_type() != GPU_BACKEND_METAL &&
+      is_suitable_compressed_color_space)
+  {
     linear_image_buffer->ftype = IMB_FTYPE_DDS;
     IMB_assign_dds_data(linear_image_buffer, image_buffer->dds_data, IB_DO_NOT_TAKE_OWNERSHIP);
   }
