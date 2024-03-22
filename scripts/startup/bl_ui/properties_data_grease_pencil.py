@@ -229,6 +229,7 @@ class DATA_PT_grease_pencil_layer_relations(LayerDataButtonsPanel, Panel):
         col = layout.row(align=True)
         col.prop_search(layer, "viewlayer_render", context.scene, "view_layers", text="View Layer")
 
+
 class DATA_PT_grease_pencil_onion_skinning(DataButtonsPanel, Panel):
     bl_label = "Onion Skinning"
 
@@ -258,20 +259,38 @@ class DATA_PT_grease_pencil_onion_skinning_custom_colors(DataButtonsPanel, Panel
     bl_label = "Custom Colors"
     bl_options = {'DEFAULT_CLOSED'}
 
-    # def draw_header(self, context):
-    #     gpd = context.gpencil
-
-    #     self.layout.prop(gpd, "use_ghost_custom_colors", text="")
+    def draw_header(self, context):
+        grease_pencil = context.grease_pencil
+        self.layout.prop(grease_pencil, "use_ghost_custom_colors", text="")
 
     def draw(self, context):
         grease_pencil = context.grease_pencil
 
         layout = self.layout
         layout.use_property_split = True
-        layout.enabled = grease_pencil.users <= 1# and grease_pencil.use_ghost_custom_colors
+        layout.enabled = grease_pencil.users <= 1 and grease_pencil.use_ghost_custom_colors
 
         layout.prop(grease_pencil, "before_color", text="Before")
         layout.prop(grease_pencil, "after_color", text="After")
+
+
+class DATA_PT_grease_pencil_onion_skinning_display(DataButtonsPanel, Panel):
+    bl_parent_id = "DATA_PT_grease_pencil_onion_skinning"
+    bl_label = "Display"
+    bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        grease_pencil = context.grease_pencil
+
+        layout = self.layout
+        layout.use_property_split = True
+        layout.enabled = grease_pencil.users <= 1
+
+        col = layout.column(align=True)
+        col.prop(grease_pencil, "use_onion_fade", text="Fade")
+        sub = layout.column()
+        sub.active = grease_pencil.onion_mode in {'RELATIVE', 'SELECTED'}
+        sub.prop(grease_pencil, "use_onion_loop", text="Show Start Frame")
 
 
 class DATA_PT_grease_pencil_settings(DataButtonsPanel, Panel):
@@ -302,6 +321,7 @@ classes = (
     DATA_PT_grease_pencil_layer_relations,
     DATA_PT_grease_pencil_onion_skinning,
     DATA_PT_grease_pencil_onion_skinning_custom_colors,
+    DATA_PT_grease_pencil_onion_skinning_display,
     DATA_PT_grease_pencil_settings,
     DATA_PT_grease_pencil_custom_props,
     GREASE_PENCIL_MT_grease_pencil_add_layer_extra,

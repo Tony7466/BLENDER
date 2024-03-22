@@ -663,7 +663,8 @@ static GPENCIL_tObject *grease_pencil_object_cache_populate(GPENCIL_PrivateData 
 
     drawcall_flush();
 
-    GPENCIL_tLayer *tgp_layer = grease_pencil_layer_cache_add(pd, ob, layer, info.onion_id, tgp_ob);
+    GPENCIL_tLayer *tgp_layer = grease_pencil_layer_cache_add(
+        pd, ob, layer, info.onion_id, tgp_ob);
 
     const bool use_lights = pd->use_lighting &&
                             ((layer.base.flag & GP_LAYER_TREE_NODE_USE_LIGHTS) != 0) &&

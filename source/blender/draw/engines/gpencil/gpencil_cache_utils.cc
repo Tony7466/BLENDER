@@ -268,8 +268,10 @@ static float4 grease_pencil_layer_final_tint_and_alpha_get(const GPENCIL_Private
 {
   const bool use_onion = (onion_id != 0);
   if (use_onion) {
-    const bool use_onion_custom_col = true;
-    const bool use_onion_fade = true;
+    const bool use_onion_custom_col = (grease_pencil.onion_skinning_settings.flag &
+                                       GP_ONION_SKINNING_USE_CUSTOM_COLORS) != 0;
+    const bool use_onion_fade = (grease_pencil.onion_skinning_settings.flag &
+                                 GP_ONION_SKINNING_USE_FADE) != 0;
     const bool use_next_col = onion_id > 0;
 
     const float onion_factor = grease_pencil.onion_skinning_settings.opacity;
