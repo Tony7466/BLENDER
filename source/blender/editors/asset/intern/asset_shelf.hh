@@ -63,11 +63,13 @@ void settings_blend_write(BlendWriter *writer, const AssetShelfSettings &setting
 void settings_blend_read_data(BlendDataReader *reader, AssetShelfSettings &settings);
 
 void settings_set_active_catalog(AssetShelfSettings &settings,
-                                 const asset_system::AssetCatalogPath &path);
-void settings_set_all_catalog_active(AssetShelfSettings &settings);
+                                 const asset_system::AssetCatalogPath &path,
+                                 bool is_popup = false);
+void settings_set_all_catalog_active(AssetShelfSettings &settings, bool is_popup = false);
 bool settings_is_active_catalog(const AssetShelfSettings &settings,
-                                const asset_system::AssetCatalogPath &path);
-bool settings_is_all_catalog_active(const AssetShelfSettings &settings);
+                                const asset_system::AssetCatalogPath &path,
+                                bool is_popup = false);
+bool settings_is_all_catalog_active(const AssetShelfSettings &settings, bool is_popup = false);
 void settings_clear_enabled_catalogs(const AssetShelf &shelf);
 bool settings_is_catalog_path_enabled(const AssetShelf &shelf,
                                       const asset_system::AssetCatalogPath &path);

@@ -12,6 +12,8 @@
 
 #include "BLT_translation.hh"
 
+#include "BLI_string.h"
+
 #include "UI_interface_c.hh"
 #include "UI_tree_view.hh"
 
@@ -87,11 +89,11 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
 
     auto &all_item = this->add_tree_item<ui::BasicTreeViewItem>(IFACE_("All"));
     all_item.set_on_activate_fn([this](bContext &C, ui::BasicTreeViewItem &) {
-      settings_set_all_catalog_active(shelf_.settings);
+      settings_set_all_catalog_active(shelf_.settings, true);
       send_redraw_notifier(C);
     });
     all_item.set_is_active_fn(
-        [this]() { return settings_is_all_catalog_active(shelf_.settings); });
+        [this]() { return settings_is_all_catalog_active(shelf_.settings, true); });
     all_item.uncollapse_by_default();
 
     catalog_tree_.foreach_root_item([&, this](
@@ -108,12 +110,13 @@ class AssetCatalogTreeView : public ui::AbstractTreeView {
     ui::BasicTreeViewItem &view_item = parent_view_item.add_tree_item<ui::BasicTreeViewItem>(
         catalog_item.get_name());
 
-    view_item.set_on_activate_fn([this, catalog_item](bContext &C, ui::BasicTreeViewItem &) {
-      settings_set_active_catalog(shelf_.settings, catalog_item.catalog_path());
+    std::string catalog_path = catalog_item.catalog_path().str();
+    view_item.set_on_activate_fn([this, catalog_path](bContext &C, ui::BasicTreeViewItem &) {
+      settings_set_active_catalog(shelf_.settings, catalog_path, true);
       send_redraw_notifier(C);
     });
-    view_item.set_is_active_fn([this, catalog_item]() {
-      return settings_is_active_catalog(shelf_.settings, catalog_item.catalog_path());
+    view_item.set_is_active_fn([this, catalog_path]() {
+      return settings_is_active_catalog(shelf_.settings, catalog_path, true);
     });
 
     catalog_item.foreach_child(

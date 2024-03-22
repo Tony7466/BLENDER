@@ -788,6 +788,7 @@ typedef struct AssetShelfSettings {
 
   /** If not set (null or empty string), all assets will be displayed ("All" catalog behavior). */
   const char *active_catalog_path;
+  const char *active_catalog_path_popup;
 
   /** For filtering assets displayed in the asset view. */
   char search_string[64];
