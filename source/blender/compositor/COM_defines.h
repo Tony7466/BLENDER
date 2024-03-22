@@ -56,7 +56,6 @@ constexpr int COM_DATA_TYPE_VALUE_CHANNELS = COM_data_type_num_channels(DataType
 constexpr int COM_DATA_TYPE_FLOAT2_CHANNELS = COM_data_type_num_channels(DataType::Float2);
 constexpr int COM_DATA_TYPE_VECTOR_CHANNELS = COM_data_type_num_channels(DataType::Vector);
 constexpr int COM_DATA_TYPE_COLOR_CHANNELS = COM_data_type_num_channels(DataType::Color);
-constexpr int COM_DATA_TYPE_FLOAT2_CHANNELS = COM_data_type_num_channels(DataType::Float2);
 
 constexpr float COM_COLOR_TRANSPARENT[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 constexpr float COM_FLOAT2_ZERO[2] = {0.0f, 0.0f};

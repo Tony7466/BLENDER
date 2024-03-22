@@ -4,7 +4,6 @@
 
 #include <set>
 
-#include "BLI_assert.h"
 #include "BLI_multi_value_map.hh"
 
 #include "BKE_node_runtime.hh"
