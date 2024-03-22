@@ -14,7 +14,7 @@
 struct GPUBatch;
 
 /** Opaque type hiding blender::gpu::DrawList. */
-typedef struct GPUDrawList GPUDrawList;
+struct GPUDrawList;
 
 /* Create a list with at least length drawcalls. Length can affect performance. */
 GPUDrawList *GPU_draw_list_create(int length);

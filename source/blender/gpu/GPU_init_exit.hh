@@ -10,6 +10,6 @@
 
 #include "BLI_utildefines.h"
 
-void GPU_init(void);
-void GPU_exit(void);
-bool GPU_is_init(void);
+void GPU_init();
+void GPU_exit();
+bool GPU_is_init();

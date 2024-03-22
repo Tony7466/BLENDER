@@ -32,11 +32,11 @@ void GPU_compute_dispatch(GPUShader *shader,
  * Dispatch a compute shader task. The size of the dispatch is sourced from a \a indirect_buf
  * which must follow this layout:
  * \code{.c}
- * typedef struct {
+ * struct DispatchIndirectCommand {
  *   uint groups_x_len;
  *   uint groups_y_len;
  *   uint groups_z_len;
- * } DispatchIndirectCommand;
+ * };
  * \encode
  *
  * \note The writes to the \a indirect_buf do not need to be synchronized as a memory barrier is

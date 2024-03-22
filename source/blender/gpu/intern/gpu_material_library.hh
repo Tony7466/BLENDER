@@ -16,19 +16,19 @@
 
 struct GSet;
 
-typedef enum {
+enum GPUFunctionQual {
   FUNCTION_QUAL_IN,
   FUNCTION_QUAL_OUT,
   FUNCTION_QUAL_INOUT,
-} GPUFunctionQual;
+};
 
-typedef struct GPUFunction {
+struct GPUFunction {
   char name[MAX_FUNCTION_NAME];
   eGPUType paramtype[MAX_PARAMETER];
   GPUFunctionQual paramqual[MAX_PARAMETER];
   int totparam;
   /* TODO(@fclem): Clean that void pointer. */
   void *source; /* GPUSource */
-} GPUFunction;
+};
 
-GPUFunction *gpu_material_library_use_function(struct GSet *used_libraries, const char *name);
+GPUFunction *gpu_material_library_use_function(GSet *used_libraries, const char *name);

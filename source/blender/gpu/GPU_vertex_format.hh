@@ -15,6 +15,8 @@
 #include "BLI_math_geom.h"
 #include "GPU_common.hh"
 
+struct GPUShader;
+
 #define GPU_VERT_ATTR_MAX_LEN 16
 #define GPU_VERT_ATTR_MAX_NAMES 6
 #define GPU_VERT_ATTR_NAMES_BUF_LEN 256
@@ -22,7 +24,7 @@
 /* Computed as GPU_VERT_ATTR_NAMES_BUF_LEN / 30 (actual max format name). */
 #define GPU_MAX_SAFE_ATTR_NAME 12
 
-typedef enum {
+enum GPUVertCompType {
   GPU_COMP_I8 = 0,
   GPU_COMP_U8,
   GPU_COMP_I16,
@@ -36,17 +38,17 @@ typedef enum {
   /* Warning! adjust GPUVertAttr if changing. */
 
   GPU_COMP_MAX
-} GPUVertCompType;
+};
 
-typedef enum {
+enum GPUVertFetchMode {
   GPU_FETCH_FLOAT = 0,
   GPU_FETCH_INT,
   GPU_FETCH_INT_TO_FLOAT_UNIT, /* 127 (ubyte) -> 0.5 (and so on for other int types) */
   GPU_FETCH_INT_TO_FLOAT,      /* 127 (any int type) -> 127.0 */
   /* Warning! adjust GPUVertAttr if changing. */
-} GPUVertFetchMode;
+};
 
-typedef struct GPUVertAttr {
+struct GPUVertAttr {
   /* GPUVertFetchMode */
   uint fetch_mode : 2;
   /* GPUVertCompType */
@@ -60,7 +62,7 @@ typedef struct GPUVertAttr {
   /* up to GPU_VERT_ATTR_MAX_NAMES */
   uint name_len : 3;
   uchar names[GPU_VERT_ATTR_MAX_NAMES];
-} GPUVertAttr;
+};
 
 BLI_STATIC_ASSERT(GPU_VERT_ATTR_NAMES_BUF_LEN <= 256,
                   "We use uchar as index inside the name buffer "
@@ -68,7 +70,7 @@ BLI_STATIC_ASSERT(GPU_VERT_ATTR_NAMES_BUF_LEN <= 256,
                   "smaller than GPUVertFormat->name_offset and "
                   "GPUVertAttr->names maximum value");
 
-typedef struct GPUVertFormat {
+struct GPUVertFormat {
   /** 0 to 16 (GPU_VERT_ATTR_MAX_LEN). */
   uint attr_len : 5;
   /** Total count of active vertex attribute names. (max GPU_VERT_FORMAT_MAX_NAMES) */
@@ -84,13 +86,11 @@ typedef struct GPUVertFormat {
 
   GPUVertAttr attrs[GPU_VERT_ATTR_MAX_LEN];
   char names[GPU_VERT_ATTR_NAMES_BUF_LEN];
-} GPUVertFormat;
-
-struct GPUShader;
+};
 
 void GPU_vertformat_clear(GPUVertFormat *);
 void GPU_vertformat_copy(GPUVertFormat *dest, const GPUVertFormat *src);
-void GPU_vertformat_from_shader(GPUVertFormat *format, const struct GPUShader *shader);
+void GPU_vertformat_from_shader(GPUVertFormat *format, const GPUShader *shader);
 
 uint GPU_vertformat_attr_add(
     GPUVertFormat *, const char *name, GPUVertCompType, uint comp_len, GPUVertFetchMode);
@@ -148,22 +148,22 @@ void GPU_vertformat_safe_attr_name(const char *attr_name, char *r_safe_name, uin
 
 /* format conversion */
 
-typedef struct GPUPackedNormal {
+struct GPUPackedNormal {
   int x : 10;
   int y : 10;
   int z : 10;
   int w : 2; /* 0 by default, can manually set to { -2, -1, 0, 1 } */
-} GPUPackedNormal;
+};
 
-typedef struct GPUNormal {
+struct GPUNormal {
   union {
     GPUPackedNormal low;
     short high[3];
   };
-} GPUNormal;
+};
 
 /* OpenGL ES packs in a different order as desktop GL but component conversion is the same.
- * Of the code here, only struct GPUPackedNormal needs to change. */
+ * Of the code here, only GPUPackedNormal needs to change. */
 
 #define SIGNED_INT_10_MAX 511
 #define SIGNED_INT_10_MIN -512

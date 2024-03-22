@@ -8,11 +8,10 @@
 
 #pragma once
 
-
 /**
  * Describes the load operation of a frame-buffer attachment at the start of a render pass.
  */
-typedef enum eGPULoadOp {
+enum eGPULoadOp {
   /**
    * Clear the frame-buffer attachment using the clear value.
    */
@@ -29,12 +28,12 @@ typedef enum eGPULoadOp {
    * Faster than `GPU_LOADACTION_CLEAR`.
    */
   GPU_LOADACTION_DONT_CARE,
-} eGPULoadOp;
+};
 
 /**
  * Describes the store operation of a frame-buffer attachment at the end of a render pass.
  */
-typedef enum eGPUStoreOp {
+enum eGPUStoreOp {
   /**
    * Do not care about the content of the attachment when the render pass ends.
    * Useful if only the values being written are important.
@@ -50,7 +49,7 @@ typedef enum eGPUStoreOp {
    * a render pass (ex.: Unneeded depth buffer result).
    */
   GPU_STOREACTION_DONT_CARE,
-} eGPUStoreOp;
+};
 
 /**
  * Describes the state of a frame-buffer attachment during a sub-pass.
@@ -58,17 +57,16 @@ typedef enum eGPUStoreOp {
  * NOTE: Until this is correctly implemented in all backend, reading and writing from the
  * same attachment will not work. Although there is no case where it would currently be useful.
  */
-typedef enum GPUAttachmentState {
+enum GPUAttachmentState {
   /** Attachment will not be written during rendering. */
   GPU_ATTACHEMENT_IGNORE = 0,
   /** Attachment will be written during render sub-pass. This also works with blending. */
   GPU_ATTACHEMENT_WRITE,
   /** Attachment is used as input in the fragment shader. Incompatible with depth on Metal. */
   GPU_ATTACHEMENT_READ,
-} GPUAttachmentState;
+};
 
-typedef enum eGPUFrontFace {
+enum eGPUFrontFace {
   GPU_CLOCKWISE,
   GPU_COUNTERCLOCKWISE,
-} eGPUFrontFace;
-
+};

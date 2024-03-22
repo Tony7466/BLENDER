@@ -14,15 +14,15 @@
 
 void gpu_select_pick_begin(GPUSelectBuffer *buffer, const rcti *input, eGPUSelectMode mode);
 bool gpu_select_pick_load_id(uint id, bool end);
-uint gpu_select_pick_end(void);
+uint gpu_select_pick_end();
 
-void gpu_select_pick_cache_begin(void);
-void gpu_select_pick_cache_end(void);
+void gpu_select_pick_cache_begin();
+void gpu_select_pick_cache_end();
 /**
  * \return true if drawing is not needed.
  */
-bool gpu_select_pick_is_cached(void);
-void gpu_select_pick_cache_load_id(void);
+bool gpu_select_pick_is_cached();
+void gpu_select_pick_cache_load_id();
 
 /* gpu_select_sample_query */
 
@@ -31,16 +31,16 @@ void gpu_select_query_begin(GPUSelectBuffer *buffer,
                             eGPUSelectMode mode,
                             int oldhits);
 bool gpu_select_query_load_id(uint id);
-uint gpu_select_query_end(void);
+uint gpu_select_query_end();
 
 /* gpu_select_next */
 
 void gpu_select_next_begin(GPUSelectBuffer *buffer, const rcti *input, eGPUSelectMode mode);
-uint gpu_select_next_end(void);
+uint gpu_select_next_end();
 
 /* Return a single offset since picking uses squared viewport. */
-int gpu_select_next_get_pick_area_center(void);
-eGPUSelectMode gpu_select_next_get_mode(void);
+int gpu_select_next_get_pick_area_center();
+eGPUSelectMode gpu_select_next_get_mode();
 void gpu_select_next_set_result(GPUSelectResult *buffer, uint buffer_len);
 
 #define SELECT_ID_NONE ((uint)0xffffffff)

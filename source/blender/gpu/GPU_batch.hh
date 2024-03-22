@@ -26,12 +26,14 @@
 #include "GPU_uniform_buffer.hh"
 #include "GPU_vertex_buffer.hh"
 
+struct GPUShader;
+
 #define GPU_BATCH_VBO_MAX_LEN 16
 #define GPU_BATCH_INST_VBO_MAX_LEN 2
 #define GPU_BATCH_VAO_STATIC_LEN 3
 #define GPU_BATCH_VAO_DYN_ALLOC_COUNT 16
 
-typedef enum eGPUBatchFlag {
+enum eGPUBatchFlag {
   /** Invalid default state. */
   GPU_BATCH_INVALID = 0,
 
@@ -53,7 +55,7 @@ typedef enum eGPUBatchFlag {
   GPU_BATCH_BUILDING = (1 << 26),
   /** Cached data need to be rebuild. (VAO, PSO, ...) */
   GPU_BATCH_DIRTY = (1 << 27),
-} eGPUBatchFlag;
+};
 
 #define GPU_BATCH_OWNS_NONE GPU_BATCH_INVALID
 
@@ -68,12 +70,12 @@ ENUM_OPERATORS(eGPUBatchFlag, GPU_BATCH_DIRTY)
  * instead.
  * TODO(fclem): Make the content of this struct hidden and expose getters/setters.
  */
-typedef struct GPUBatch {
-  /** verts[0] is required, others can be NULL */
+struct GPUBatch {
+  /** verts[0] is required, others can be nullptr */
   GPUVertBuf *verts[GPU_BATCH_VBO_MAX_LEN];
   /** Instance attributes. */
   GPUVertBuf *inst[GPU_BATCH_INST_VBO_MAX_LEN];
-  /** NULL if element list not needed */
+  /** nullptr if element list not needed */
   GPUIndexBuf *elem;
   /** Resource ID attribute workaround. */
   GPUStorageBuf *resource_id_buf;
@@ -82,8 +84,8 @@ typedef struct GPUBatch {
   /** Type of geometry to draw. */
   GPUPrimType prim_type;
   /** Current assigned shader. DEPRECATED. Here only for uniform binding. */
-  struct GPUShader *shader;
-} GPUBatch;
+  GPUShader *shader;
+};
 
 /* -------------------------------------------------------------------- */
 /** \name Creation
@@ -93,7 +95,7 @@ typedef struct GPUBatch {
  * Allocate a #GPUBatch with a cleared state.
  * The returned #GPUBatch needs to be passed to `GPU_batch_init` before being usable.
  */
-GPUBatch *GPU_batch_calloc(void);
+GPUBatch *GPU_batch_calloc();
 
 /**
  * Creates a #GPUBatch with explicit buffer ownership.
@@ -147,7 +149,7 @@ void GPU_batch_clear(GPUBatch *batch);
 
 #define GPU_BATCH_CLEAR_SAFE(batch) \
   do { \
-    if (batch != NULL) { \
+    if (batch != nullptr) { \
       GPU_batch_clear(batch); \
       memset(batch, 0, sizeof(*(batch))); \
     } \
@@ -161,9 +163,9 @@ void GPU_batch_discard(GPUBatch *batch);
 
 #define GPU_BATCH_DISCARD_SAFE(batch) \
   do { \
-    if (batch != NULL) { \
+    if (batch != nullptr) { \
       GPU_batch_discard(batch); \
-      batch = NULL; \
+      batch = nullptr; \
     } \
   } while (0)
 
@@ -361,7 +363,7 @@ void GPU_batch_draw_parameter_get(GPUBatch *batch,
 /** \name Module init/exit
  * \{ */
 
-void gpu_batch_init(void);
-void gpu_batch_exit(void);
+void gpu_batch_init();
+void gpu_batch_exit();
 
 /** \} */

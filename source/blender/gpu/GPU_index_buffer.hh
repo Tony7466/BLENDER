@@ -13,11 +13,11 @@
 #include "GPU_primitive.hh"
 
 /** Opaque type hiding blender::gpu::IndexBuf. */
-typedef struct GPUIndexBuf GPUIndexBuf;
+struct GPUIndexBuf;
 
-GPUIndexBuf *GPU_indexbuf_calloc(void);
+GPUIndexBuf *GPU_indexbuf_calloc();
 
-typedef struct GPUIndexBufBuilder {
+struct GPUIndexBufBuilder {
   uint max_allowed_index;
   uint max_index_len;
   uint index_len;
@@ -28,7 +28,7 @@ typedef struct GPUIndexBufBuilder {
 
   GPUPrimType prim_type;
   uint32_t *data;
-} GPUIndexBufBuilder;
+};
 
 /** Supports all primitive types. */
 void GPU_indexbuf_init_ex(GPUIndexBufBuilder *, GPUPrimType, uint index_len, uint vertex_len);
@@ -106,8 +106,8 @@ int GPU_indexbuf_primitive_len(GPUPrimType prim_type);
 
 #define GPU_INDEXBUF_DISCARD_SAFE(elem) \
   do { \
-    if (elem != NULL) { \
+    if (elem != nullptr) { \
       GPU_indexbuf_discard(elem); \
-      elem = NULL; \
+      elem = nullptr; \
     } \
   } while (0)

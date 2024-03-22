@@ -15,9 +15,9 @@
 struct GPUVertBuf;
 
 /** Opaque type hiding #blender::gpu::shader::ShaderCreateInfo */
-typedef struct GPUShaderCreateInfo GPUShaderCreateInfo;
+struct GPUShaderCreateInfo;
 /** Opaque type hiding #blender::gpu::Shader */
-typedef struct GPUShader GPUShader;
+struct GPUShader;
 
 /* Hardware limit is 16. Position attribute is always needed so we reduce to 15.
  * This makes sure the GPUVertexFormat name buffer does not overflow. */
@@ -32,7 +32,7 @@ typedef struct GPUShader GPUShader;
 
 /**
  * Create a shader using the given #GPUShaderCreateInfo.
- * Can return a NULL pointer if compilation fails.
+ * Can return a null pointer if compilation fails.
  */
 GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info);
 
@@ -40,14 +40,14 @@ GPUShader *GPU_shader_create_from_info(const GPUShaderCreateInfo *_info);
  * Create a shader using a named #GPUShaderCreateInfo registered at startup.
  * These are declared inside `*_info.hh` files using the `GPU_SHADER_CREATE_INFO()` macro.
  * They are also expected to have been flagged using `do_static_compilation`.
- * Can return a NULL pointer if compilation fails.
+ * Can return a null pointer if compilation fails.
  */
 GPUShader *GPU_shader_create_from_info_name(const char *info_name);
 
 /**
  * Fetch a named #GPUShaderCreateInfo registered at startup.
  * These are declared inside `*_info.hh` files using the `GPU_SHADER_CREATE_INFO()` macro.
- * Can return a NULL pointer if no match is found.
+ * Can return a null pointer if no match is found.
  */
 const GPUShaderCreateInfo *GPU_shader_create_info_get(const char *info_name);
 
@@ -85,13 +85,13 @@ void GPU_shader_bind(GPUShader *shader);
  * \note this is a no-op in release builds. But it make sense to actually do it in user land code
  * to detect incorrect API usage.
  */
-void GPU_shader_unbind(void);
+void GPU_shader_unbind();
 
 /**
  * Return the currently bound shader to the active GPU context.
- * \return NULL pointer if no shader is bound of if no context is active.
+ * \return null pointer if no shader is bound of if no context is active.
  */
-GPUShader *GPU_shader_get_bound(void);
+GPUShader *GPU_shader_get_bound();
 
 /** \} */
 
@@ -200,12 +200,12 @@ void GPU_shader_constant_bool(GPUShader *sh, const char *name, bool value);
  * All of this section is deprecated and should be ported to use the API described above.
  * \{ */
 
-typedef enum eGPUShaderTFBType {
+enum eGPUShaderTFBType {
   GPU_SHADER_TFB_NONE = 0, /* Transform feedback unsupported. */
   GPU_SHADER_TFB_POINTS = 1,
   GPU_SHADER_TFB_LINES = 2,
   GPU_SHADER_TFB_TRIANGLES = 3,
-} eGPUShaderTFBType;
+};
 
 GPUShader *GPU_shader_create(const char *vertcode,
                              const char *fragcode,
@@ -296,7 +296,7 @@ int GPU_shader_get_program(GPUShader *shader);
 /**
  * Indexed commonly used uniform name for faster lookup into the uniform cache.
  */
-typedef enum {
+enum GPUUniformBuiltin {
   GPU_UNIFORM_MODEL = 0,      /* mat4 ModelMatrix */
   GPU_UNIFORM_VIEW,           /* mat4 ViewMatrix */
   GPU_UNIFORM_MODELVIEW,      /* mat4 ModelViewMatrix */
@@ -319,7 +319,7 @@ typedef enum {
   GPU_UNIFORM_RESOURCE_CHUNK, /* int resourceChunk */
   GPU_UNIFORM_RESOURCE_ID,    /* int resourceId */
   GPU_UNIFORM_SRGB_TRANSFORM, /* bool srgbTarget */
-} GPUUniformBuiltin;
+};
 #define GPU_NUM_UNIFORMS (GPU_UNIFORM_SRGB_TRANSFORM + 1)
 
 /**
@@ -336,7 +336,7 @@ int GPU_shader_get_builtin_uniform(GPUShader *shader, int builtin);
 void GPU_shader_compile_static();
 
 /** DEPRECATED: Use hard-coded buffer location instead. */
-typedef enum {
+enum GPUUniformBlockBuiltin {
   GPU_UNIFORM_BLOCK_VIEW = 0, /* viewBlock */
   GPU_UNIFORM_BLOCK_MODEL,    /* modelBlock */
   GPU_UNIFORM_BLOCK_INFO,     /* infoBlock */
@@ -347,7 +347,7 @@ typedef enum {
   GPU_UNIFORM_BLOCK_DRW_CLIPPING,
 
   GPU_NUM_UNIFORM_BLOCKS, /* Special value, denotes number of builtin uniforms block. */
-} GPUUniformBlockBuiltin;
+};
 
 /** DEPRECATED: Use hard-coded buffer location instead. */
 int GPU_shader_get_builtin_block(GPUShader *shader, int builtin);

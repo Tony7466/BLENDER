@@ -13,15 +13,14 @@
 #include "GPU_material.hh"
 #include "GPU_shader.hh"
 
-
 struct GPUNodeGraph;
 
-typedef struct GPUPass GPUPass;
+struct GPUPass;
 
 /* Pass */
 
 GPUPass *GPU_generate_pass(GPUMaterial *material,
-                           struct GPUNodeGraph *graph,
+                           GPUNodeGraph *graph,
                            eGPUMaterialEngine engine,
                            GPUCodegenCallbackFn finalize_source_cb,
                            void *thunk,
@@ -33,6 +32,5 @@ bool GPU_pass_should_optimize(GPUPass *pass);
 
 /* Module */
 
-void gpu_codegen_init(void);
-void gpu_codegen_exit(void);
-
+void gpu_codegen_init();
+void gpu_codegen_exit();

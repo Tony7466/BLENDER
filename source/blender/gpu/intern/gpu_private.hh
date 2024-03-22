@@ -10,9 +10,4 @@
 
 /* gpu_backend.cc */
 
-void gpu_backend_delete_resources(void);
-
-/* gpu_pbvh.c */
-
-void gpu_pbvh_init(void);
-void gpu_pbvh_exit(void);
+void gpu_backend_delete_resources();

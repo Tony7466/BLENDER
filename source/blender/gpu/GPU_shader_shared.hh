@@ -11,7 +11,7 @@
 
 #  include "GPU_shader_shared_utils.hh"
 
-typedef struct TestOutputRawData TestOutputRawData;
+struct TestOutputRawData;
 #endif
 
 /* NOTE: float3 has differing stride and alignment rules across different GPU back-ends. If 12 byte
@@ -46,7 +46,7 @@ struct NodeLinkData {
   float arrowSize;
   float2 _pad;
 };
-BLI_STATIC_ASSERT_ALIGN(struct NodeLinkData, 16)
+BLI_STATIC_ASSERT_ALIGN(NodeLinkData, 16)
 
 struct NodeLinkInstanceData {
   float4 colors[6];
@@ -54,7 +54,7 @@ struct NodeLinkInstanceData {
   float arrowSize;
   float2 _pad;
 };
-BLI_STATIC_ASSERT_ALIGN(struct NodeLinkInstanceData, 16)
+BLI_STATIC_ASSERT_ALIGN(NodeLinkInstanceData, 16)
 
 struct GPencilStrokeData {
   float2 viewport;
@@ -68,27 +68,27 @@ struct GPencilStrokeData {
   bool32_t fill_stroke;
   float2 _pad;
 };
-BLI_STATIC_ASSERT_ALIGN(struct GPencilStrokeData, 16)
+BLI_STATIC_ASSERT_ALIGN(GPencilStrokeData, 16)
 
 struct GPUClipPlanes {
   float4x4 ClipModelMatrix;
   float4 world[6];
 };
-BLI_STATIC_ASSERT_ALIGN(struct GPUClipPlanes, 16)
+BLI_STATIC_ASSERT_ALIGN(GPUClipPlanes, 16)
 
 struct SimpleLightingData {
   float4 l_color;
   packed_float3 light;
   float _pad;
 };
-BLI_STATIC_ASSERT_ALIGN(struct SimpleLightingData, 16)
+BLI_STATIC_ASSERT_ALIGN(SimpleLightingData, 16)
 
 #define MAX_CALLS 16
 
 struct MultiIconCallData {
   float4 calls_data[MAX_CALLS * 3];
 };
-BLI_STATIC_ASSERT_ALIGN(struct MultiIconCallData, 16)
+BLI_STATIC_ASSERT_ALIGN(MultiIconCallData, 16)
 
 enum TestStatus : uint32_t {
   TEST_STATUS_NONE = 0u,
@@ -124,7 +124,7 @@ enum TestType : uint32_t {
 struct TestOutputRawData {
   uint data[16];
 };
-BLI_STATIC_ASSERT_ALIGN(struct TestOutputRawData, 16)
+BLI_STATIC_ASSERT_ALIGN(TestOutputRawData, 16)
 
 struct TestOutput {
   TestOutputRawData expect;
@@ -137,7 +137,7 @@ struct TestOutput {
   uint type;
   int _pad0;
 };
-BLI_STATIC_ASSERT_ALIGN(struct TestOutput, 16)
+BLI_STATIC_ASSERT_ALIGN(TestOutput, 16)
 
 #ifdef GPU_SHADER
 TestOutput test_output(

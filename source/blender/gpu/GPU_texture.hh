@@ -31,7 +31,7 @@ struct GPUVertBuf;
  * The `GPUSamplerFiltering` bit flag specifies the enabled filtering options of a texture
  * sampler.
  */
-typedef enum GPUSamplerFiltering {
+enum GPUSamplerFiltering {
   /**
    * Default sampler filtering with all options off.
    * It means no linear filtering, no mipmapping, and no anisotropic filtering.
@@ -61,7 +61,7 @@ typedef enum GPUSamplerFiltering {
    * changed, except by the user through the user preferences, see the use of U.anisotropic_filter.
    */
   GPU_SAMPLER_FILTERING_ANISOTROPIC = (1 << 2),
-} GPUSamplerFiltering;
+};
 
 ENUM_OPERATORS(GPUSamplerFiltering, GPU_SAMPLER_FILTERING_ANISOTROPIC)
 
@@ -75,7 +75,7 @@ static const int GPU_SAMPLER_FILTERING_TYPES_COUNT = (GPU_SAMPLER_FILTERING_LINE
  * The `GPUSamplerExtendMode` specifies how the texture will be extrapolated for out-of-bound
  * texture sampling.
  */
-typedef enum GPUSamplerExtendMode {
+enum GPUSamplerExtendMode {
   /**
    * Extrapolate by extending the edge pixels of the texture, in other words, the texture
    * coordinates are clamped.
@@ -90,7 +90,7 @@ typedef enum GPUSamplerExtendMode {
    * black color (0, 0, 0, 0) and can't be changed.
    */
   GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER,
-} GPUSamplerExtendMode;
+};
 
 #define GPU_SAMPLER_EXTEND_MODES_COUNT (GPU_SAMPLER_EXTEND_MODE_CLAMP_TO_BORDER + 1)
 
@@ -105,7 +105,7 @@ typedef enum GPUSamplerExtendMode {
  * multiply the number of configurations that needs to be cached, which is not worth it due to the
  * limited use of the parameters needed to setup those custom samplers.
  */
-typedef enum GPUSamplerCustomType {
+enum GPUSamplerCustomType {
   /**
    * Enable compare mode for depth texture. The depth texture must then be bound to a shadow
    * sampler. This is equivalent to:
@@ -127,7 +127,7 @@ typedef enum GPUSamplerCustomType {
    * - TEXTURE_LOD_BIAS   -> -0.5.
    */
   GPU_SAMPLER_CUSTOM_ICON,
-} GPUSamplerCustomType;
+};
 
 #define GPU_SAMPLER_CUSTOM_TYPES_COUNT (GPU_SAMPLER_CUSTOM_ICON + 1)
 
@@ -136,7 +136,7 @@ typedef enum GPUSamplerCustomType {
  * when passed around due to it being an overloaded type, see the documentation of each of the
  * types for more information.
  */
-typedef enum GPUSamplerStateType {
+enum GPUSamplerStateType {
   /**
    * The filtering, extend_x, and extend_yz members of the GPUSamplerState structure will be used
    * in setting up the sampler state for the texture. The custom_type member will be ignored in
@@ -155,7 +155,7 @@ typedef enum GPUSamplerStateType {
    * actual data.
    */
   GPU_SAMPLER_STATE_TYPE_INTERNAL,
-} GPUSamplerStateType;
+};
 
 /**
  * The `GPUSamplerState` specifies the sampler state to bind a texture with.
@@ -171,7 +171,7 @@ typedef enum GPUSamplerStateType {
  * // Use the texture ...
  * GPU_texture_compare_mode(texture, false);
  */
-typedef struct GPUSamplerState {
+struct GPUSamplerState {
   /** Specifies the enabled filtering options for the sampler. */
   GPUSamplerFiltering filtering : 8;
   /**
@@ -386,7 +386,7 @@ typedef struct GPUSamplerState {
            this->type == rhs.type;
   }
 #endif
-} GPUSamplerState;
+};
 
 #ifndef __cplusplus
 /** Identical to GPUSamplerState::default_sampler for non C++ users. */
@@ -407,7 +407,7 @@ static const GPUSamplerState GPU_SAMPLER_DEFAULT = {GPU_SAMPLER_FILTERING_DEFAUL
  * Types of texture internal storage. Defines how the data is stored inside the video memory.
  * Be aware that some formats are not supported by render-buffers.
  */
-typedef enum eGPUTextureFormat {
+enum eGPUTextureFormat {
   /* Formats texture & render-buffer. */
 
   GPU_RGBA8UI,
@@ -496,7 +496,7 @@ typedef enum eGPUTextureFormat {
   GPU_DEPTH_COMPONENT32F,
   GPU_DEPTH_COMPONENT24,
   GPU_DEPTH_COMPONENT16,
-} eGPUTextureFormat;
+};
 
 /**
  * Types of data for data specification.
@@ -504,7 +504,7 @@ typedef enum eGPUTextureFormat {
  * When used with textures, they need to match or be compatible with the `eGPUTextureFormat` used.
  * Check `validate_data_format` for compatibility list.
  */
-typedef enum eGPUDataFormat {
+enum eGPUDataFormat {
   GPU_DATA_FLOAT,
   GPU_DATA_HALF_FLOAT,
   GPU_DATA_INT,
@@ -515,7 +515,7 @@ typedef enum eGPUDataFormat {
   /** Special type used for packed 32bit per pixel textures. Data is stored in reverse order. */
   GPU_DATA_10_11_11_REV,
   GPU_DATA_2_10_10_10_REV,
-} eGPUDataFormat;
+};
 
 /**
  * Texture usage flags allow backend implementations to contextually optimize texture resources.
@@ -528,7 +528,7 @@ typedef enum eGPUDataFormat {
  * explicit usage can ensure that hardware features such as render target/texture compression can
  * be used. For explicit APIs such as Metal/Vulkan, texture usage needs to be specified up-front.
  */
-typedef enum eGPUTextureUsage {
+enum eGPUTextureUsage {
   /* Whether texture is sampled or read during a shader. */
   GPU_TEXTURE_USAGE_SHADER_READ = (1 << 0),
   /* Whether the texture is written to by a shader using imageStore. */
@@ -549,7 +549,7 @@ typedef enum eGPUTextureUsage {
    * This is unoptimized and should not be used. */
   GPU_TEXTURE_USAGE_GENERAL = (0xFF &
                                (~(GPU_TEXTURE_USAGE_MEMORYLESS | GPU_TEXTURE_USAGE_ATOMIC))),
-} eGPUTextureUsage;
+};
 
 ENUM_OPERATORS(eGPUTextureUsage, GPU_TEXTURE_USAGE_GENERAL);
 
@@ -560,7 +560,7 @@ ENUM_OPERATORS(eGPUTextureUsage, GPU_TEXTURE_USAGE_GENERAL);
  * \{ */
 
 /** Opaque type hiding blender::gpu::Texture. */
-typedef struct GPUTexture GPUTexture;
+struct GPUTexture;
 
 /**
  * \note \a data is expected to be float. If the \a format is not compatible with float data or if
@@ -622,7 +622,7 @@ GPUTexture *GPU_texture_create_cube_array(const char *name,
                                           eGPUTextureUsage usage,
                                           const float *data);
 /**
- * DDS texture loading. Return NULL if compressed texture support is not available.
+ * DDS texture loading. Return nullptr if compressed texture support is not available.
  * \a data should hold all the data for \a mip_len mipmaps.
  * The data is expected to be in compressed form. This isn't going to compress un-compress data.
  */
@@ -638,7 +638,7 @@ GPUTexture *GPU_texture_create_compressed_2d(const char *name,
  * Create a buffer texture that allow access to a buffer \a vertex_buf through a sampler of type
  * `(FLOAT/INT/UINT)_BUFFER`.
  */
-GPUTexture *GPU_texture_create_from_vertbuf(const char *name, struct GPUVertBuf *vertex_buf);
+GPUTexture *GPU_texture_create_from_vertbuf(const char *name, GPUVertBuf *vertex_buf);
 
 /**
  * Create an error texture that will bind an pink texture at draw time.
@@ -669,9 +669,9 @@ void GPU_texture_free(GPUTexture *texture);
 
 #define GPU_TEXTURE_FREE_SAFE(texture) \
   do { \
-    if (texture != NULL) { \
+    if (texture != nullptr) { \
       GPU_texture_free(texture); \
-      texture = NULL; \
+      texture = nullptr; \
     } \
   } while (0)
 
@@ -824,7 +824,7 @@ void GPU_texture_unbind(GPUTexture *texture);
 /**
  * Unbind all texture from all texture sampling image units.
  */
-void GPU_texture_unbind_all(void);
+void GPU_texture_unbind_all();
 
 /**
  * Bind \a tex to an arbitrary load/store image unit.
@@ -840,7 +840,7 @@ void GPU_texture_image_unbind(GPUTexture *texture);
 /**
  * Unbind all texture from all arbitrary load/store image units.
  */
-void GPU_texture_image_unbind_all(void);
+void GPU_texture_image_unbind_all();
 
 /** \} */
 
@@ -1068,12 +1068,12 @@ const char *GPU_texture_format_name(eGPUTextureFormat format);
  * \note that does not mean all of the textures are inside VRAM. Drivers can swap the texture
  * memory back and forth depending on usage.
  */
-unsigned int GPU_texture_memory_usage_get(void);
+unsigned int GPU_texture_memory_usage_get();
 
 /**
  * Update sampler states depending on user settings.
  */
-void GPU_samplers_update(void);
+void GPU_samplers_update();
 
 /** \} */
 
@@ -1085,7 +1085,7 @@ void GPU_samplers_update(void);
  * \{ */
 
 /** Opaque type hiding blender::gpu::PixelBuffer. */
-typedef struct GPUPixelBuffer GPUPixelBuffer;
+struct GPUPixelBuffer;
 
 /**
  * Creates a #GPUPixelBuffer object with \a byte_size worth of storage.
@@ -1137,4 +1137,3 @@ void GPU_texture_update_sub_from_pixel_buffer(GPUTexture *texture,
                                               int height,
                                               int depth);
 /** \} */
-

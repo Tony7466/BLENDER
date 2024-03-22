@@ -18,18 +18,18 @@
 #include "GPU_vertex_format.hh"
 
 /** Returns a cleared vertex format, ready for #add_attr. */
-GPUVertFormat *immVertexFormat(void);
+GPUVertFormat *immVertexFormat();
 
 /** Every #immBegin must have a program bound first. */
 void immBindShader(GPUShader *shader);
 /** Call after your last immEnd, or before binding another program. */
-void immUnbindProgram(void);
+void immUnbindProgram();
 
 /** Must supply exactly vertex_len vertices. */
 void immBegin(GPUPrimType, uint vertex_len);
 /** Can supply fewer vertices. */
 void immBeginAtMost(GPUPrimType, uint max_vertex_len);
-void immEnd(void); /* finishes and draws. */
+void immEnd(); /* finishes and draws. */
 
 /* - #immBegin a batch, then use standard `imm*` functions as usual.
  * - #immEnd will finalize the batch instead of drawing.

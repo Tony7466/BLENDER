@@ -18,7 +18,7 @@
 #include "GPU_vertex_buffer.hh"
 
 /** Opaque type hiding blender::gpu::StorageBuf. */
-typedef struct GPUStorageBuf GPUStorageBuf;
+struct GPUStorageBuf;
 
 GPUStorageBuf *GPU_storagebuf_create_ex(size_t size,
                                         const void *data,
@@ -26,7 +26,7 @@ GPUStorageBuf *GPU_storagebuf_create_ex(size_t size,
                                         const char *name);
 
 #define GPU_storagebuf_create(size) \
-  GPU_storagebuf_create_ex(size, NULL, GPU_USAGE_DYNAMIC, __func__);
+  GPU_storagebuf_create_ex(size, nullptr, GPU_USAGE_DYNAMIC, __func__);
 
 void GPU_storagebuf_free(GPUStorageBuf *ssbo);
 
@@ -34,7 +34,7 @@ void GPU_storagebuf_update(GPUStorageBuf *ssbo, const void *data);
 
 void GPU_storagebuf_bind(GPUStorageBuf *ssbo, int slot);
 void GPU_storagebuf_unbind(GPUStorageBuf *ssbo);
-void GPU_storagebuf_unbind_all(void);
+void GPU_storagebuf_unbind_all();
 
 void GPU_storagebuf_clear_to_zero(GPUStorageBuf *ssbo);
 

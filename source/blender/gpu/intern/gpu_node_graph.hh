@@ -22,7 +22,7 @@ struct GPUNode;
 struct GPUOutput;
 struct ListBase;
 
-typedef enum eGPUDataSource {
+enum eGPUDataSource {
   GPU_SOURCE_OUTPUT,
   GPU_SOURCE_CONSTANT,
   GPU_SOURCE_UNIFORM,
@@ -34,9 +34,9 @@ typedef enum eGPUDataSource {
   GPU_SOURCE_TEX_TILED_MAPPING,
   GPU_SOURCE_FUNCTION_CALL,
   GPU_SOURCE_CRYPTOMATTE,
-} eGPUDataSource;
+};
 
-typedef enum {
+enum GPUNodeLinkType {
   GPU_NODE_LINK_NONE = 0,
   GPU_NODE_LINK_ATTR,
   GPU_NODE_LINK_UNIFORM_ATTR,
@@ -50,9 +50,9 @@ typedef enum {
   GPU_NODE_LINK_OUTPUT,
   GPU_NODE_LINK_UNIFORM,
   GPU_NODE_LINK_DIFFERENTIATE_FLOAT_FN,
-} GPUNodeLinkType;
+};
 
-typedef enum {
+enum eGPUNodeTag {
   GPU_NODE_TAG_NONE = 0,
   GPU_NODE_TAG_SURFACE = (1 << 0),
   GPU_NODE_TAG_VOLUME = (1 << 1),
@@ -61,12 +61,12 @@ typedef enum {
   GPU_NODE_TAG_AOV = (1 << 4),
   GPU_NODE_TAG_FUNCTION = (1 << 5),
   GPU_NODE_TAG_COMPOSITOR = (1 << 6),
-} eGPUNodeTag;
+};
 
 ENUM_OPERATORS(eGPUNodeTag, GPU_NODE_TAG_COMPOSITOR)
 
 struct GPUNode {
-  struct GPUNode *next, *prev;
+  GPUNode *next, *prev;
 
   const char *name;
 
@@ -87,33 +87,33 @@ struct GPUNodeLink {
     /* GPU_NODE_LINK_CONSTANT | GPU_NODE_LINK_UNIFORM */
     const float *data;
     /* GPU_NODE_LINK_COLORBAND */
-    struct GPUTexture **colorband;
+    GPUTexture **colorband;
     /* GPU_NODE_LINK_OUTPUT */
-    struct GPUOutput *output;
+    GPUOutput *output;
     /* GPU_NODE_LINK_ATTR */
-    struct GPUMaterialAttribute *attr;
+    GPUMaterialAttribute *attr;
     /* GPU_NODE_LINK_UNIFORM_ATTR */
-    struct GPUUniformAttr *uniform_attr;
+    GPUUniformAttr *uniform_attr;
     /* GPU_NODE_LINK_LAYER_ATTR */
-    struct GPULayerAttr *layer_attr;
+    GPULayerAttr *layer_attr;
     /* GPU_NODE_LINK_IMAGE_BLENDER */
-    struct GPUMaterialTexture *texture;
+    GPUMaterialTexture *texture;
     /* GPU_NODE_LINK_DIFFERENTIATE_FLOAT_FN */
     const char *function_name;
   };
 };
 
-typedef struct GPUOutput {
-  struct GPUOutput *next, *prev;
+struct GPUOutput {
+  GPUOutput *next, *prev;
 
   GPUNode *node;
   eGPUType type;     /* data type = length of vector/matrix */
   GPUNodeLink *link; /* output link */
   int id;            /* unique id as created by code generator */
-} GPUOutput;
+};
 
-typedef struct GPUInput {
-  struct GPUInput *next, *prev;
+struct GPUInput {
+  GPUInput *next, *prev;
 
   GPUNode *node;
   eGPUType type; /* data-type. */
@@ -126,32 +126,32 @@ typedef struct GPUInput {
   union {
     /* GPU_SOURCE_CONSTANT | GPU_SOURCE_UNIFORM */
     float vec[16]; /* vector data */
-    /* GPU_SOURCE_TEX | GPU_SOURCE_TEX_TILED_MAPPING */
-    struct GPUMaterialTexture *texture;
+                   /* GPU_SOURCE_TEX | GPU_SOURCE_TEX_TILED_MAPPING */
+    GPUMaterialTexture *texture;
     /* GPU_SOURCE_ATTR */
-    struct GPUMaterialAttribute *attr;
+    GPUMaterialAttribute *attr;
     /* GPU_SOURCE_UNIFORM_ATTR */
-    struct GPUUniformAttr *uniform_attr;
+    GPUUniformAttr *uniform_attr;
     /* GPU_SOURCE_LAYER_ATTR */
-    struct GPULayerAttr *layer_attr;
+    GPULayerAttr *layer_attr;
     /* GPU_SOURCE_FUNCTION_CALL */
     char function_call[64];
   };
-} GPUInput;
+};
 
-typedef struct GPUNodeGraphOutputLink {
-  struct GPUNodeGraphOutputLink *next, *prev;
+struct GPUNodeGraphOutputLink {
+  GPUNodeGraphOutputLink *next, *prev;
   int hash;
   GPUNodeLink *outlink;
-} GPUNodeGraphOutputLink;
+};
 
-typedef struct GPUNodeGraphFunctionLink {
-  struct GPUNodeGraphFunctionLink *next, *prev;
+struct GPUNodeGraphFunctionLink {
+  GPUNodeGraphFunctionLink *next, *prev;
   char name[16];
   GPUNodeLink *outlink;
-} GPUNodeGraphFunctionLink;
+};
 
-typedef struct GPUNodeGraph {
+struct GPUNodeGraph {
   /* Nodes */
   ListBase nodes;
 
@@ -179,7 +179,7 @@ typedef struct GPUNodeGraph {
 
   /** Set of all the GLSL lib code blocks. */
   GSet *used_libraries;
-} GPUNodeGraph;
+};
 
 /* Node Graph */
 
@@ -211,16 +211,16 @@ void gpu_node_graph_free(GPUNodeGraph *graph);
 
 /* Material calls */
 
-struct GPUNodeGraph *gpu_material_node_graph(struct GPUMaterial *material);
+GPUNodeGraph *gpu_material_node_graph(GPUMaterial *material);
 /**
  * Returns the address of the future pointer to coba_tex.
  */
-struct GPUTexture **gpu_material_ramp_texture_row_set(struct GPUMaterial *mat,
-                                                      int size,
-                                                      float *pixels,
-                                                      float *row);
+GPUTexture **gpu_material_ramp_texture_row_set(GPUMaterial *mat,
+                                               int size,
+                                               float *pixels,
+                                               float *row);
 /**
  * Returns the address of the future pointer to sky_tex
  */
-struct GPUTexture **gpu_material_sky_texture_layer_set(
-    struct GPUMaterial *mat, int width, int height, const float *pixels, float *row);
+GPUTexture **gpu_material_sky_texture_layer_set(
+    GPUMaterial *mat, int width, int height, const float *pixels, float *row);

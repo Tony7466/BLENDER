@@ -20,11 +20,9 @@
 
 #pragma once
 
-
-
 struct GPUShader;
 
-typedef enum eGPUBuiltinShader {
+enum eGPUBuiltinShader {
   /** Glyph drawing shader used by the BLF module. */
   GPU_SHADER_TEXT,
   /** Draws keyframe markers. All markers shapes are supported through a single shader. */
@@ -130,19 +128,18 @@ typedef enum eGPUBuiltinShader {
    * \param pos: in vec3
    */
   GPU_SHADER_3D_IMAGE_COLOR,
-} eGPUBuiltinShader;
+};
 #define GPU_SHADER_BUILTIN_LEN (GPU_SHADER_3D_IMAGE_COLOR + 1)
 
 /** Support multiple configurations. */
-typedef enum eGPUShaderConfig {
+enum eGPUShaderConfig {
   GPU_SHADER_CFG_DEFAULT = 0,
   GPU_SHADER_CFG_CLIPPED = 1,
-} eGPUShaderConfig;
+};
 #define GPU_SHADER_CFG_LEN (GPU_SHADER_CFG_CLIPPED + 1)
 
-struct GPUShader *GPU_shader_get_builtin_shader_with_config(eGPUBuiltinShader shader,
-                                                            eGPUShaderConfig sh_cfg);
-struct GPUShader *GPU_shader_get_builtin_shader(eGPUBuiltinShader shader);
+GPUShader *GPU_shader_get_builtin_shader_with_config(eGPUBuiltinShader shader,
+                                                     eGPUShaderConfig sh_cfg);
+GPUShader *GPU_shader_get_builtin_shader(eGPUBuiltinShader shader);
 
-void GPU_shader_free_builtin_shaders(void);
-
+void GPU_shader_free_builtin_shaders();

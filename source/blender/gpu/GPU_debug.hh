@@ -46,11 +46,10 @@
 
 #include "BLI_sys_types.h"
 
-
 #define GPU_DEBUG_SHADER_COMPILATION_GROUP "Shader Compilation"
 
 void GPU_debug_group_begin(const char *name);
-void GPU_debug_group_end(void);
+void GPU_debug_group_end();
 /**
  * Return a formatted string showing the current group hierarchy in this format:
  * "Group1 > Group 2 > Group3 > ... > GroupN : "
@@ -69,7 +68,7 @@ bool GPU_debug_group_match(const char *ref);
  * \param title: Optional title to set for the frame capture.
  */
 void GPU_debug_capture_begin(const char *title);
-void GPU_debug_capture_end(void);
+void GPU_debug_capture_end();
 
 /**
  * GPU debug frame capture scopes.
@@ -93,4 +92,3 @@ void *GPU_debug_capture_scope_create(const char *name);
  */
 bool GPU_debug_capture_scope_begin(void *scope);
 void GPU_debug_capture_scope_end(void *scope);
-

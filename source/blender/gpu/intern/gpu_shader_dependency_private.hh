@@ -16,9 +16,9 @@
 
 #include "gpu_shader_create_info.hh"
 
-void gpu_shader_dependency_init(void);
+void gpu_shader_dependency_init();
 
-void gpu_shader_dependency_exit(void);
+void gpu_shader_dependency_exit();
 
 namespace blender::gpu::shader {
 

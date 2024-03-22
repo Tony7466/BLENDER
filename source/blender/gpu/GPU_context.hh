@@ -14,14 +14,13 @@
 #include "GPU_common.hh"
 #include "GPU_platform.hh"
 
-
 /* GPU back-ends abstract the differences between different APIs. #GPU_context_create
  * automatically initializes the back-end, and #GPU_context_discard frees it when there
  * are no more contexts. */
-bool GPU_backend_supported(void);
+bool GPU_backend_supported();
 void GPU_backend_type_selection_set(const eGPUBackendType backend);
-eGPUBackendType GPU_backend_type_selection_get(void);
-eGPUBackendType GPU_backend_get_type(void);
+eGPUBackendType GPU_backend_type_selection_get();
+eGPUBackendType GPU_backend_get_type();
 
 /**
  * Detect the most suited eGPUBackendType.
@@ -35,7 +34,7 @@ eGPUBackendType GPU_backend_get_type(void);
  * When no supported backend is found GPU_backend_type_selection_set is called with
  * GPU_BACKEND_NONE.
  */
-bool GPU_backend_type_selection_detect(void);
+bool GPU_backend_type_selection_detect();
 
 /**
  * Alter the GPU_backend_type_selection_detect to only test a specific backend
@@ -45,10 +44,10 @@ void GPU_backend_type_selection_set_override(eGPUBackendType backend_type);
 /**
  * Check if the GPU_backend_type_selection_detect is overridden to only test a specific backend.
  */
-bool GPU_backend_type_selection_is_overridden(void);
+bool GPU_backend_type_selection_is_overridden();
 
 /** Opaque type hiding blender::gpu::Context. */
-typedef struct GPUContext GPUContext;
+struct GPUContext;
 
 GPUContext *GPU_context_create(void *ghost_window, void *ghost_context);
 /**
@@ -57,10 +56,10 @@ GPUContext *GPU_context_create(void *ghost_window, void *ghost_context);
 void GPU_context_discard(GPUContext *);
 
 /**
- * Ctx can be NULL.
+ * Ctx can be null.
  */
 void GPU_context_active_set(GPUContext *);
-GPUContext *GPU_context_active_get(void);
+GPUContext *GPU_context_active_get();
 
 /* Begin and end frame are used to mark the singular boundary representing the lifetime of a whole
  * frame. This also acts as a divisor for ensuring workload submission and flushing, especially for
@@ -74,13 +73,13 @@ void GPU_context_end_frame(GPUContext *ctx);
  * compiling. When a legacy GPU is detected (`GPU_use_main_context_workaround()`) any worker
  * threads should use the draw manager opengl context and make sure that they are the only one
  * using it by locking the main context using these two functions. */
-void GPU_context_main_lock(void);
-void GPU_context_main_unlock(void);
+void GPU_context_main_lock();
+void GPU_context_main_unlock();
 
 /* GPU Begin/end work blocks */
-void GPU_render_begin(void);
-void GPU_render_end(void);
+void GPU_render_begin();
+void GPU_render_end();
 
 /* For operations which need to run exactly once per frame -- even if there are no render updates.
  */
-void GPU_render_step(void);
+void GPU_render_step();

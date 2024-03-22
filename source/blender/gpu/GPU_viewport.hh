@@ -18,14 +18,14 @@
 
 #define GLA_PIXEL_OFS 0.375f
 
-typedef struct GHash GHash;
-typedef struct GPUViewport GPUViewport;
-
 struct DRWData;
+struct GHash;
+struct GPUViewport;
 struct GPUFrameBuffer;
+struct GPUOffScreen;
 
-GPUViewport *GPU_viewport_create(void);
-GPUViewport *GPU_viewport_stereo_create(void);
+GPUViewport *GPU_viewport_create();
+GPUViewport *GPU_viewport_stereo_create();
 void GPU_viewport_bind(GPUViewport *viewport, int view, const rcti *rect);
 void GPU_viewport_unbind(GPUViewport *viewport);
 /**
@@ -59,17 +59,17 @@ void GPU_viewport_colorspace_set(GPUViewport *viewport,
  * Should be called from DRW after DRW_gpu_context_enable.
  */
 void GPU_viewport_bind_from_offscreen(GPUViewport *viewport,
-                                      struct GPUOffScreen *ofs,
+                                      GPUOffScreen *ofs,
                                       bool is_xr_surface);
 /**
  * Clear vars assigned from offscreen, so we don't free data owned by `GPUOffScreen`.
  */
 void GPU_viewport_unbind_from_offscreen(GPUViewport *viewport,
-                                        struct GPUOffScreen *ofs,
+                                        GPUOffScreen *ofs,
                                         bool display_colorspace,
                                         bool do_overlay_merge);
 
-struct DRWData **GPU_viewport_data_get(GPUViewport *viewport);
+DRWData **GPU_viewport_data_get(GPUViewport *viewport);
 
 /**
  * Merge the stereo textures. `color` and `overlay` texture will be modified.

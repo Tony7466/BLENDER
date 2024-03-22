@@ -14,7 +14,7 @@
 
 #include "GPU_vertex_format.hh"
 
-typedef enum {
+enum GPUVertBufStatus {
   /** Initial state. */
   GPU_VERTBUF_INVALID = 0,
   /** Was init with a vertex format. */
@@ -23,7 +23,7 @@ typedef enum {
   GPU_VERTBUF_DATA_DIRTY = (1 << 1),
   /** The buffer has been created inside GPU memory. */
   GPU_VERTBUF_DATA_UPLOADED = (1 << 2),
-} GPUVertBufStatus;
+};
 
 ENUM_OPERATORS(GPUVertBufStatus, GPU_VERTBUF_DATA_UPLOADED)
 
@@ -35,7 +35,7 @@ ENUM_OPERATORS(GPUVertBufStatus, GPU_VERTBUF_DATA_UPLOADED)
  * 4) GPU_vertbuf_attr_fill(verts, pos, application_pos_buffer)
  */
 
-typedef enum {
+enum GPUUsageType {
   /* can be extended to support more types */
   GPU_USAGE_STREAM = 0,
   GPU_USAGE_STATIC = 1, /* do not keep data in memory */
@@ -47,14 +47,14 @@ typedef enum {
    * format matches the texture exactly. Can be masked with other properties, and is stripped
    * during VertBuf::init. */
   GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY = 1 << 3,
-} GPUUsageType;
+};
 
 ENUM_OPERATORS(GPUUsageType, GPU_USAGE_FLAG_BUFFER_TEXTURE_ONLY);
 
 /** Opaque type hiding blender::gpu::VertBuf. */
-typedef struct GPUVertBuf GPUVertBuf;
+struct GPUVertBuf;
 
-GPUVertBuf *GPU_vertbuf_calloc(void);
+GPUVertBuf *GPU_vertbuf_calloc();
 GPUVertBuf *GPU_vertbuf_create_with_format_ex(const GPUVertFormat *, GPUUsageType);
 
 #define GPU_vertbuf_create_with_format(format) \
@@ -120,7 +120,7 @@ void GPU_vertbuf_attr_fill_stride(GPUVertBuf *, uint a_idx, uint stride, const v
 /**
  * For low level access only.
  */
-typedef struct GPUVertBufRaw {
+struct GPUVertBufRaw {
   uint size;
   uint stride;
   unsigned char *data;
@@ -129,7 +129,7 @@ typedef struct GPUVertBufRaw {
   /* Only for overflow check */
   unsigned char *_data_end;
 #endif
-} GPUVertBufRaw;
+};
 
 GPU_INLINE void *GPU_vertbuf_raw_step(GPUVertBufRaw *a)
 {
@@ -168,8 +168,8 @@ void GPU_vertbuf_tag_dirty(GPUVertBuf *verts);
  * Should be rename to #GPU_vertbuf_data_upload.
  */
 void GPU_vertbuf_use(GPUVertBuf *);
-void GPU_vertbuf_bind_as_ssbo(struct GPUVertBuf *verts, int binding);
-void GPU_vertbuf_bind_as_texture(struct GPUVertBuf *verts, int binding);
+void GPU_vertbuf_bind_as_ssbo(GPUVertBuf *verts, int binding);
+void GPU_vertbuf_bind_as_texture(GPUVertBuf *verts, int binding);
 
 void GPU_vertbuf_wrap_handle(GPUVertBuf *verts, uint64_t handle);
 
@@ -181,13 +181,13 @@ void GPU_vertbuf_wrap_handle(GPUVertBuf *verts, uint64_t handle);
 void GPU_vertbuf_update_sub(GPUVertBuf *verts, uint start, uint len, const void *data);
 
 /* Metrics */
-uint GPU_vertbuf_get_memory_usage(void);
+uint GPU_vertbuf_get_memory_usage();
 
 /* Macros */
 #define GPU_VERTBUF_DISCARD_SAFE(verts) \
   do { \
-    if (verts != NULL) { \
+    if (verts != nullptr) { \
       GPU_vertbuf_discard(verts); \
-      verts = NULL; \
+      verts = nullptr; \
     } \
   } while (0)

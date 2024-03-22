@@ -13,7 +13,7 @@
 #include "BLI_assert.h"
 #include "GPU_common.hh"
 
-typedef enum {
+enum GPUPrimType {
   GPU_PRIM_POINTS,
   GPU_PRIM_LINES,
   GPU_PRIM_TRIS,
@@ -29,16 +29,16 @@ typedef enum {
   GPU_PRIM_LINE_STRIP_ADJ,
 
   GPU_PRIM_NONE,
-} GPUPrimType;
+};
 
 /* what types of primitives does each shader expect? */
-typedef enum {
+enum GPUPimClass {
   GPU_PRIM_CLASS_NONE = 0,
   GPU_PRIM_CLASS_POINT = (1 << 0),
   GPU_PRIM_CLASS_LINE = (1 << 1),
   GPU_PRIM_CLASS_SURFACE = (1 << 2),
   GPU_PRIM_CLASS_ANY = GPU_PRIM_CLASS_POINT | GPU_PRIM_CLASS_LINE | GPU_PRIM_CLASS_SURFACE,
-} GPUPrimClass;
+};
 
 inline int gpu_get_prim_count_from_type(uint vertex_len, GPUPrimType prim_type)
 {
@@ -118,4 +118,3 @@ inline bool is_restart_compatible(GPUPrimType type)
  * GPUPrimClass GPU_primtype_class(GPUPrimType);
  * bool GPU_primtype_belongs_to_class(GPUPrimType, GPUPrimClass);
  */
-

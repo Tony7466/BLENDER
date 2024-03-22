@@ -14,53 +14,53 @@
 
 #include "BLI_sys_types.h"
 
-int GPU_max_texture_size(void);
-int GPU_max_texture_3d_size(void);
-int GPU_max_texture_layers(void);
-int GPU_max_textures(void);
-int GPU_max_textures_vert(void);
-int GPU_max_textures_geom(void);
-int GPU_max_textures_frag(void);
-int GPU_max_images(void);
+int GPU_max_texture_size();
+int GPU_max_texture_3d_size();
+int GPU_max_texture_layers();
+int GPU_max_textures();
+int GPU_max_textures_vert();
+int GPU_max_textures_geom();
+int GPU_max_textures_frag();
+int GPU_max_images();
 int GPU_max_work_group_count(int index);
 int GPU_max_work_group_size(int index);
-int GPU_max_uniforms_vert(void);
-int GPU_max_uniforms_frag(void);
-int GPU_max_batch_indices(void);
-int GPU_max_batch_vertices(void);
-int GPU_max_vertex_attribs(void);
-int GPU_max_varying_floats(void);
-int GPU_max_shader_storage_buffer_bindings(void);
-int GPU_max_compute_shader_storage_blocks(void);
-int GPU_max_samplers(void);
-size_t GPU_max_storage_buffer_size(void);
+int GPU_max_uniforms_vert();
+int GPU_max_uniforms_frag();
+int GPU_max_batch_indices();
+int GPU_max_batch_vertices();
+int GPU_max_vertex_attribs();
+int GPU_max_varying_floats();
+int GPU_max_shader_storage_buffer_bindings();
+int GPU_max_compute_shader_storage_blocks();
+int GPU_max_samplers();
+size_t GPU_max_storage_buffer_size();
 
-int GPU_extensions_len(void);
+int GPU_extensions_len();
 const char *GPU_extension_get(int i);
 
 int GPU_texture_size_with_limit(int res);
 
-bool GPU_mip_render_workaround(void);
-bool GPU_depth_blitting_workaround(void);
-bool GPU_use_main_context_workaround(void);
-bool GPU_use_hq_normals_workaround(void);
-bool GPU_clear_viewport_workaround(void);
-bool GPU_crappy_amd_driver(void);
+bool GPU_mip_render_workaround();
+bool GPU_depth_blitting_workaround();
+bool GPU_use_main_context_workaround();
+bool GPU_use_hq_normals_workaround();
+bool GPU_clear_viewport_workaround();
+bool GPU_crappy_amd_driver();
 
-bool GPU_geometry_shader_support(void);
-bool GPU_compute_shader_support(void);
-bool GPU_shader_draw_parameters_support(void);
-bool GPU_hdr_support(void);
+bool GPU_geometry_shader_support();
+bool GPU_compute_shader_support();
+bool GPU_shader_draw_parameters_support();
+bool GPU_hdr_support();
 bool GPU_texture_view_support();
 bool GPU_stencil_export_support();
 
-bool GPU_mem_stats_supported(void);
+bool GPU_mem_stats_supported();
 void GPU_mem_stats_get(int *totalmem, int *freemem);
 
 /**
  * Return support for the active context + window.
  */
-bool GPU_stereo_quadbuffer_support(void);
+bool GPU_stereo_quadbuffer_support();
 
-int GPU_minimum_per_vertex_stride(void);
-bool GPU_transform_feedback_support(void);
+int GPU_minimum_per_vertex_stride();
+bool GPU_transform_feedback_support();
