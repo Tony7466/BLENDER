@@ -258,12 +258,31 @@ class LayerViewItem : public AbstractTreeViewItem {
 
     uiBlock *block = uiLayoutGetBlock(&row);
 
-    const int icon = (layer_.base.flag & GP_LAYER_TREE_NODE_HIDE_MASKS) == 0 ? ICON_CLIPUV_DEHLT :
-                                                                               ICON_CLIPUV_HLT;
     but = uiDefIconButR(block,
                         UI_BTYPE_ICON_TOGGLE,
                         0,
-                        icon,
+                        ICON_NONE,
+                        0,
+                        0,
+                        UI_UNIT_X,
+                        UI_UNIT_Y,
+                        &layer_ptr,
+                        "use_onion_skinning",
+                        0,
+                        0.0f,
+                        0.0f,
+                        nullptr);
+    if (!layer_.parent_group().use_onion_skinning()) {
+      UI_but_flag_enable(but, UI_BUT_INACTIVE);
+    }
+
+    const int mask_icon = (layer_.base.flag & GP_LAYER_TREE_NODE_HIDE_MASKS) == 0 ?
+                              ICON_CLIPUV_DEHLT :
+                              ICON_CLIPUV_HLT;
+    but = uiDefIconButR(block,
+                        UI_BTYPE_ICON_TOGGLE,
+                        0,
+                        mask_icon,
                         0,
                         0,
                         UI_UNIT_X,

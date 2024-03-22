@@ -254,7 +254,7 @@ class DATA_PT_grease_pencil_onion_skinning(DataButtonsPanel, Panel):
 
 
 class DATA_PT_grease_pencil_onion_skinning_custom_colors(DataButtonsPanel, Panel):
-    bl_parent_id = "DATA_PT_gpencil_onion_skinning"
+    bl_parent_id = "DATA_PT_grease_pencil_onion_skinning"
     bl_label = "Custom Colors"
     bl_options = {'DEFAULT_CLOSED'}
 

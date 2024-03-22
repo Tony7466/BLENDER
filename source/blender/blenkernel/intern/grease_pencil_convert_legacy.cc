@@ -537,8 +537,8 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     SET_FLAG_FROM_TEST(
         new_layer.base.flag, (gpl->flag & GP_LAYER_USE_LIGHTS), GP_LAYER_TREE_NODE_USE_LIGHTS);
     SET_FLAG_FROM_TEST(new_layer.base.flag,
-                       (gpl->onion_flag & GP_LAYER_ONIONSKIN),
-                       GP_LAYER_TREE_NODE_USE_ONION_SKINNING);
+                       (gpl->onion_flag & GP_LAYER_ONIONSKIN) == 0,
+                       GP_LAYER_TREE_NODE_HIDE_ONION_SKINNING);
     SET_FLAG_FROM_TEST(
         new_layer.base.flag, (gpl->flag & GP_LAYER_USE_MASK) == 0, GP_LAYER_TREE_NODE_HIDE_MASKS);
 
