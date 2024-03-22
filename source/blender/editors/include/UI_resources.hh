@@ -354,6 +354,8 @@ enum ThemeColorID {
 
   TH_EDGE_BEVEL,
   TH_VERTEX_BEVEL,
+
+  TH_POPUP_PANEL_SUB_BACK,
 };
 
 /* Specific defines per space should have higher define values. */

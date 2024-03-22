@@ -206,7 +206,7 @@ typedef struct ThemeUI {
    * icons. */
   float icon_border_intensity;
   float panel_roundness;
-  char _pad2[4];
+  unsigned char popup_panel_sub_back[4];
 
 } ThemeUI;
 

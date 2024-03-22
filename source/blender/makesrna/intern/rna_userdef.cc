@@ -1940,6 +1940,14 @@ static void rna_def_userdef_theme_ui(BlenderRNA *brna)
       prop, "Icon Border", "Control the intensity of the border around themes icons");
   RNA_def_property_ui_range(prop, 0.0, 1.0, 0.1, 2);
   RNA_def_property_update(prop, 0, "rna_userdef_theme_update_icons");
+
+  prop = RNA_def_property(srna, "popup_panel_sub_back", PROP_FLOAT, PROP_COLOR_GAMMA);
+  RNA_def_property_float_sdna(prop, nullptr, "popup_panel_sub_back");
+  RNA_def_property_array(prop, 4);
+  RNA_def_property_ui_text(prop,
+                           "Popup layout panel sub background",
+                           "Color of layout panels sub background in popups");
+  RNA_def_property_update(prop, 0, "rna_userdef_theme_update");
 }
 
 static void rna_def_userdef_theme_space_common(StructRNA *srna)

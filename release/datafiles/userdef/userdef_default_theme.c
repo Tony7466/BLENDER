@@ -245,6 +245,7 @@ const bTheme U_theme_default = {
     .icon_shading = RGBA(0xcc6670ff),
     .icon_folder = RGBA(0xccad63ff),
     .panel_roundness = 0.4f,
+    .popup_panel_sub_back = RGBA(0x41403D1E),
   },
   .space_properties = {
     .back = RGBA(0x30303000),

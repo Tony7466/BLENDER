@@ -1010,6 +1010,7 @@ class USERPREF_PT_theme_interface_styles(ThemePanel, CenterAlignMixIn, Panel):
         col.prop(ui, "editor_outline")
         col.prop(ui, "widget_emboss")
         col.prop(ui, "panel_roundness")
+        col.prop(ui, "popup_panel_sub_back")
 
 
 class USERPREF_PT_theme_interface_transparent_checker(ThemePanel, CenterAlignMixIn, Panel):

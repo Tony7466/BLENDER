@@ -1057,6 +1057,8 @@ const uchar *UI_ThemeGetColorPtr(bTheme *btheme, int spacetype, int colorid)
         case TH_V3D_CLIPPING_BORDER:
           cp = ts->clipping_border_3d;
           break;
+        case TH_POPUP_PANEL_SUB_BACK:
+          cp = btheme->tui.popup_panel_sub_back;
       }
     }
   }
