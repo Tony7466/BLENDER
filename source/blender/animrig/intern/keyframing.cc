@@ -203,55 +203,22 @@ static void get_keyframe_values_create_reports(ReportList *reports,
   MEM_freeN(str_failed_indices);
 }
 
-/**
- * Retrieve current property values to keyframe,
- * possibly applying NLA correction when necessary.
- *
- * \param r_successful_remaps: Enables bits for indices which are both intended to be remapped and
- * were successfully remapped. Bitmap allocated so it must be freed afterward.
- */
-static Vector<float> get_keyframe_values(ReportList *reports,
-                                         PointerRNA ptr,
-                                         PropertyRNA *prop,
-                                         int index,
-                                         NlaKeyframingContext *nla_context,
-                                         eInsertKeyFlags flag,
-                                         const AnimationEvalContext *anim_eval_context,
-                                         bool *r_force_all,
-                                         blender::BitVector<> &r_successful_remaps)
+static blender::Vector<float> get_keyframe_values(PointerRNA *ptr,
+                                                  PropertyRNA *prop,
+                                                  const bool visual_key)
 {
   Vector<float> values;
 
-  if ((flag & INSERTKEY_MATRIX) && visualkey_can_use(&ptr, prop)) {
+  if (visual_key && visualkey_can_use(ptr, prop)) {
     /* Visual-keying is only available for object and pchan datablocks, as
      * it works by keyframing using a value extracted from the final matrix
      * instead of using the kt system to extract a value.
      */
-    values = visualkey_get_values(&ptr, prop);
+    values = visualkey_get_values(ptr, prop);
   }
   else {
-    values = get_rna_values(&ptr, prop);
+    values = get_rna_values(ptr, prop);
   }
-
-  r_successful_remaps.resize(values.size());
-
-  /* adjust the value for NLA factors */
-  BKE_animsys_nla_remap_keyframe_values(nla_context,
-                                        &ptr,
-                                        prop,
-                                        values.as_mutable_span(),
-                                        index,
-                                        anim_eval_context,
-                                        r_force_all,
-                                        r_successful_remaps);
-  get_keyframe_values_create_reports(reports,
-                                     ptr,
-                                     prop,
-                                     index,
-                                     values.size(),
-                                     r_force_all ? *r_force_all : false,
-                                     r_successful_remaps);
-
   return values;
 }
 
@@ -429,9 +396,20 @@ bool insert_keyframe_direct(ReportList *reports,
   update_autoflags_fcurve_direct(fcu, prop);
 
   const int index = fcu->array_index;
-  BitVector<> successful_remaps;
-  Vector<float> values = get_keyframe_values(
-      reports, ptr, prop, index, nla_context, flag, anim_eval_context, nullptr, successful_remaps);
+  const bool visual_keyframing = flag & INSERTKEY_MATRIX;
+  Vector<float> values = get_keyframe_values(&ptr, prop, visual_keyframing);
+
+  BitVector<> successful_remaps(values.size(), false);
+  BKE_animsys_nla_remap_keyframe_values(nla_context,
+                                        &ptr,
+                                        prop,
+                                        values.as_mutable_span(),
+                                        index,
+                                        anim_eval_context,
+                                        nullptr,
+                                        successful_remaps);
+  get_keyframe_values_create_reports(
+      reports, ptr, prop, index, values.size(), false, successful_remaps);
 
   float current_value = 0.0f;
   if (index >= 0 && index < values.size()) {
@@ -595,16 +573,20 @@ int insert_keyframe(Main *bmain,
       anim_eval_context, &id_ptr, adt, act, &nla_cache, &nla_context);
 
   bool force_all;
-  BitVector successful_remaps;
-  Vector<float> values = get_keyframe_values(reports,
-                                             ptr,
-                                             prop,
-                                             array_index,
-                                             nla_context,
-                                             flag,
-                                             anim_eval_context,
-                                             &force_all,
-                                             successful_remaps);
+  const bool visual_keyframing = flag & INSERTKEY_MATRIX;
+  Vector<float> values = get_keyframe_values(&ptr, prop, visual_keyframing);
+
+  BitVector<> successful_remaps(values.size(), false);
+  BKE_animsys_nla_remap_keyframe_values(nla_context,
+                                        &ptr,
+                                        prop,
+                                        values.as_mutable_span(),
+                                        array_index,
+                                        anim_eval_context,
+                                        &force_all,
+                                        successful_remaps);
+  get_keyframe_values_create_reports(
+      reports, ptr, prop, array_index, values.size(), false, successful_remaps);
 
   CombinedKeyingResult combined_result;
 
@@ -969,25 +951,6 @@ int insert_key_action(Main *bmain,
     property_array_index++;
   }
   return inserted_keys;
-}
-
-static blender::Vector<float> get_keyframe_values(PointerRNA *ptr,
-                                                  PropertyRNA *prop,
-                                                  const bool visual_key)
-{
-  Vector<float> values;
-
-  if (visual_key && visualkey_can_use(ptr, prop)) {
-    /* Visual-keying is only available for object and pchan datablocks, as
-     * it works by keyframing using a value extracted from the final matrix
-     * instead of using the kt system to extract a value.
-     */
-    values = visualkey_get_values(ptr, prop);
-  }
-  else {
-    values = get_rna_values(ptr, prop);
-  }
-  return values;
 }
 
 void insert_key_rna(PointerRNA *rna_pointer,
