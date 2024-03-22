@@ -200,8 +200,14 @@ float light_spread_angle_rect_1D_spherical(
   float hemisphere_angle_1 = acos(normalize(cross(corners0, corners1)).z);
   float hemisphere_angle_2 = acos(normalize(cross(corners2, corners3)).z);
 
-  return min(light_hemisphere_cone_ratio(spread_half_angle, hemisphere_angle_1),
-             light_hemisphere_cone_ratio(spread_half_angle, hemisphere_angle_2));
+  float max_ratio = light_hemisphere_cone_ratio(spread_half_angle,
+                                                min(hemisphere_angle_1, hemisphere_angle_2));
+  float min_ratio = light_hemisphere_cone_ratio(spread_half_angle,
+                                                max(hemisphere_angle_1, hemisphere_angle_2));
+
+  /* Should maybe be this. But need signed angles */
+  // return (max_ratio - min_ratio);
+  return min(max_ratio, min_ratio);
 }
 
 /* https://www.shadertoy.com/view/4dVcR1 */
@@ -311,7 +317,7 @@ float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
         light.spread_half_angle, corners[0], corners[1], corners[2], corners[3]);
     float y = light_spread_angle_rect_1D_spherical(
         light.spread_half_angle, corners[1], corners[2], corners[3], corners[0]);
-    return x;
+    return x * y;
   }
   /* Ellipse approximation. Stretch the configuration and resize the projected disk. This has the
    * benefit to be very simple (simplify a few instructions since the light radius is 1 afterwards)
