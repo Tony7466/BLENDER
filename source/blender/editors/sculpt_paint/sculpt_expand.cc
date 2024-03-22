@@ -2144,7 +2144,6 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   }
 
   SCULPT_stroke_id_next(ob);
-    TOCK_START("1"); TICK;
 
   /* Create and configure the Expand Cache. */
   ss->expand_cache = MEM_new<Cache>(__func__);
@@ -2159,7 +2158,6 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
     BKE_sculpt_color_layer_create_if_needed(ob);
     depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   }
-    TOCK("2"); TICK;
 
   if (ss->expand_cache->target == SCULPT_EXPAND_TARGET_MASK) {
     MultiresModifierData *mmd = BKE_sculpt_multires_active(ss->scene, ob);
@@ -2171,7 +2169,6 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
       }
     }
   }
-    TOCK("3"); TICK;
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, needs_colors);
 
@@ -2182,14 +2179,12 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
     sculpt_expand_cache_free(ss);
     return OPERATOR_CANCELLED;
   }
-    TOCK("4"); TICK;
 
   sculpt_expand_ensure_sculptsession_data(ob);
 
   /* Initialize undo. */
   undo::push_begin(ob, op);
   sculpt_expand_undo_push(ob, ss->expand_cache);
-    TOCK("5");TICK;
 
   /* Set the initial element for expand from the event position. */
   const float mouse[2] = {float(event->mval[0]), float(event->mval[1])};
@@ -2203,7 +2198,6 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
 
   /* Store initial state. */
   sculpt_expand_original_state_store(ob, ss->expand_cache);
-    TOCK("6");TICK;
 
   if (ss->expand_cache->modify_active_face_set) {
     sculpt_expand_delete_face_set_id(ss->expand_cache->initial_face_sets.data(),
@@ -2221,17 +2215,16 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   if (SCULPT_vertex_is_boundary(ss, ss->expand_cache->initial_active_vertex)) {
     falloff_type = SCULPT_EXPAND_FALLOFF_BOUNDARY_TOPOLOGY;
   }
-    TOCK("7");TICK;
+    TOCK_START("1"); TICK;
 
   sculpt_expand_falloff_factors_from_vertex_and_symm_create(
       ss->expand_cache, ob, ss->expand_cache->initial_active_vertex, falloff_type);
 
-  sculpt_expand_check_topology_islands(ob, falloff_type);
-    TOCK("8");TICK;
-
+    TOCK("2");TICK;
+    sculpt_expand_check_topology_islands(ob, falloff_type);
   /* Initial mesh data update, resets all target data in the sculpt mesh. */
   sculpt_expand_update_for_vertex(C, ob, ss->expand_cache->initial_active_vertex);
-  TOCK("9");
+  TOCK("3");
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
 }
