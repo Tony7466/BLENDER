@@ -56,6 +56,7 @@ bool GPU_compute_shader_support(void);
 bool GPU_shader_draw_parameters_support(void);
 bool GPU_hdr_support(void);
 bool GPU_texture_view_support();
+bool GPU_compressed_texture_support();
 bool GPU_stencil_export_support();
 
 bool GPU_mem_stats_supported(void);

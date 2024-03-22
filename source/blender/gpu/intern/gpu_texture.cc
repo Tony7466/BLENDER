@@ -8,6 +8,7 @@
 
 #include "BLI_string.h"
 
+#include "GPU_capabilities.h"
 #include "GPU_framebuffer.h"
 #include "GPU_texture.h"
 
@@ -391,6 +392,13 @@ GPUTexture *GPU_texture_create_compressed_2d(const char *name,
                                              eGPUTextureUsage usage,
                                              const void *data)
 {
+  if (!GPU_compressed_texture_support()) {
+    /* Assert in this case since this is an optional feature that needs to be handled gracefully by
+     * the caller. */
+    BLI_assert_unreachable();
+    return nullptr;
+  }
+
   Texture *tex = GPUBackend::get()->texture_alloc(name);
   tex->usage_set(usage);
   bool success = tex->init_2D(w, h, 0, miplen, tex_format);

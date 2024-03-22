@@ -430,6 +430,7 @@ void MTLBackend::capabilities_init(MTLContext *ctx)
   GCaps.compute_shader_support = true;
   GCaps.shader_draw_parameters_support = true;
   GCaps.hdr_viewport_support = true;
+  GCaps.compressed_texture_support = false;
 
   GCaps.geometry_shader_support = false;
 

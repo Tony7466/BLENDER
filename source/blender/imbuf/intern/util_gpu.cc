@@ -328,7 +328,10 @@ GPUTexture *IMB_create_gpu_texture(const char *name,
 
   if (ibuf->ftype == IMB_FTYPE_DDS) {
     eGPUTextureFormat compressed_format;
-    if (!IMB_gpu_get_compressed_format(ibuf, &compressed_format)) {
+    if (!GPU_compressed_texture_support()) {
+      fprintf(stderr, "GPU backend does not support DXT compression,");
+    }
+    else if (!IMB_gpu_get_compressed_format(ibuf, &compressed_format)) {
       fprintf(stderr, "Unable to find a suitable DXT compression,");
     }
     else if (do_rescale) {

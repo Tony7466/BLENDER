@@ -187,6 +187,11 @@ bool GPU_texture_view_support()
   return GCaps.texture_view_support;
 }
 
+bool GPU_compressed_texture_support()
+{
+  return GCaps.compressed_texture_support;
+}
+
 bool GPU_stencil_export_support()
 {
   return GCaps.stencil_export_support;
