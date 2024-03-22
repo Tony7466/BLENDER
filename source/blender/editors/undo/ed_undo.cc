@@ -902,7 +902,6 @@ Vector<Object *> ED_undo_editmode_objects_from_view_layer(const Scene *scene,
   }
   Set<const ID *> object_data;
   const short object_type = baseact->object->type;
-  int i = 0;
   Vector<Object *> objects(object_data.size());
   /* Base iteration, starting with the active-base to ensure it's the first item in the array.
    * Looping over the active-base twice is OK as the tag check prevents it being handled twice. */
@@ -932,7 +931,6 @@ Vector<Base *> ED_undo_editmode_bases_from_view_layer(const Scene *scene, ViewLa
   }
   Set<const ID *> object_data;
   const short object_type = baseact->object->type;
-  int i = 0;
   Vector<Base *> bases;
   /* Base iteration, starting with the active-base to ensure it's the first item in the array.
    * Looping over the active-base twice is OK as the tag check prevents it being handled twice. */
@@ -950,7 +948,7 @@ Vector<Base *> ED_undo_editmode_bases_from_view_layer(const Scene *scene, ViewLa
   }
 
   BLI_assert(object_data.is_empty());
-  BLI_assert(base_array[0] == baseact);
+  BLI_assert(bases[0] == baseact);
   return bases;
 }
 
