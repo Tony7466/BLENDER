@@ -230,7 +230,7 @@ bool autokeyframe_property(bContext *C,
  * already.
  * \param keying_mask is expected to have the same size as `rna_path`. A false bit means that index
  * will be skipped.
- * \returns How often keyframe insertion was successful how often it failed for which reason.
+ * \returns How often keyframe insertion was successful and how often it failed / for which reason.
  */
 CombinedKeyingResult insert_key_action(Main *bmain,
                                        bAction *action,
@@ -247,7 +247,7 @@ CombinedKeyingResult insert_key_action(Main *bmain,
  * Insert keys to the ID of the given PointerRNA for the given RNA paths. Tries to create an
  * action if none exists yet.
  * \param scene_frame: is expected to be not NLA mapped as that happens within the function.
- * \returns How often keyframe insertion was successful how often it failed for which reason.
+ * \returns How often keyframe insertion was successful and how often it failed / for which reason.
  */
 CombinedKeyingResult insert_key_rna(PointerRNA *rna_pointer,
                                     const blender::Span<std::string> rna_paths,

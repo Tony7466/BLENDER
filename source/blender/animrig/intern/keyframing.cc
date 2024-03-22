@@ -75,6 +75,7 @@ bool CombinedKeyingResult::has_errors() const
 {
   /* For loop starts at 1 to skip the SUCCESS flag. Assumes that SUCCESS is 0 and the rest of the
    * enum are sequential values. */
+  static_assert(int(SingleKeyingResult::SUCCESS) == 0);
   for (int i = 1; i < result_counter.size(); i++) {
     if (result_counter[i] > 0) {
       return true;
@@ -85,8 +86,15 @@ bool CombinedKeyingResult::has_errors() const
 
 void CombinedKeyingResult::generate_reports(ReportList *reports)
 {
+  if (!this->has_errors() && this->get_count(SingleKeyingResult::SUCCESS) == 0) {
+    BKE_reportf(
+        reports, RPT_WARNING, "No keys have been inserted and no errors have been reported.");
+    return;
+  }
+
   std::string error = "Inserting keyframes failed due to the following reasons:";
 
+  bool has_reported_error = false;
   if (this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE);
     error.append(
@@ -94,6 +102,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
                     "available F-Curves.",
                     error_count,
                     error_count > 1 ? "s" : ""));
+    has_reported_error = true;
   }
 
   if (this->get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE) > 0) {
@@ -105,6 +114,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
       error.append(fmt::format(
           "\n- {} F-Curves are not keyframeable. They might be locked or sampled.", error_count));
     }
+    has_reported_error = true;
   }
 
   if (this->get_count(SingleKeyingResult::NO_KEY_NEEDED) > 0) {
@@ -113,6 +123,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
         "\n- Due to the setting 'Only Insert Needed', {} keyframe{} not been inserted.",
         error_count,
         error_count > 1 ? "s have" : " has"));
+    has_reported_error = true;
   }
 
   if (this->get_count(SingleKeyingResult::UNABLE_TO_INSERT_TO_NLA_STACK) > 0) {
@@ -120,9 +131,15 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
     error.append(fmt::format("\n- Due to the NLA stack setup, {} keyframe{} not been inserted.",
                              error_count,
                              error_count > 1 ? "s have" : " has"));
+    has_reported_error = true;
   }
 
-  BKE_reportf(reports, RPT_ERROR, "%s", error.c_str());
+  if (has_reported_error) {
+    BKE_reportf(reports, RPT_ERROR, "%s", error.c_str());
+  }
+  else {
+    BKE_report(reports, RPT_WARNING, "Encountered unhandled error during keyframing");
+  }
 }
 
 void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop)
