@@ -35,7 +35,9 @@ constexpr GPUSamplerState with_filter = {GPU_SAMPLER_FILTERING_LINEAR};
 #endif
 
 /* __cplusplus is true when compiling with MSL, so ensure we are not inside a shader. */
-#define IS_CPP !defined(GPU_SHADER)
+#ifndef GPU_SHADER
+#  define IS_CPP
+#endif
 
 #define UBO_MIN_MAX_SUPPORTED_SIZE 1 << 14
 
