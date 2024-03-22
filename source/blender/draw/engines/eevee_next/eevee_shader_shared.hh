@@ -35,8 +35,10 @@ constexpr GPUSamplerState with_filter = {GPU_SAMPLER_FILTERING_LINEAR};
 #endif
 
 /* __cplusplus is true when compiling with MSL, so ensure we are not inside a shader. */
-#ifndef GPU_SHADER
-#  define IS_CPP
+#ifdef GPU_SHADER
+#  define IS_CPP 0
+#else
+#  define IS_CPP 1
 #endif
 
 #define UBO_MIN_MAX_SUPPORTED_SIZE 1 << 14
@@ -879,9 +881,9 @@ struct LightSunData {
 BLI_STATIC_ASSERT(sizeof(LightSunData) == sizeof(LightLocalData), "Data size must match")
 
 /* Enable when debugging. This is quite costly. */
-#define SAFE_UNION_ACCESS 1
+#define SAFE_UNION_ACCESS 0
 
-#ifndef GPU_SHADER
+#if IS_CPP
 /* C++ always uses union. */
 #  define USE_LIGHT_UNION 1
 #elif defined(GPU_BACKEND_METAL) && !SAFE_UNION_ACCESS
@@ -1808,8 +1810,7 @@ BLI_STATIC_ASSERT_ALIGN(UniformData, 16)
 #define UTIL_DISK_INTEGRAL_LAYER UTIL_SSS_TRANSMITTANCE_PROFILE_LAYER
 #define UTIL_DISK_INTEGRAL_COMP 3
 
-/* __cplusplus is true when compiling with MSL, so include if inside a shader. */
-#if !defined(__cplusplus) || defined(GPU_SHADER)
+#ifdef GPU_SHADER
 
 #  if defined(GPU_FRAGMENT_SHADER)
 #    define UTIL_TEXEL vec2(gl_FragCoord.xy)
