@@ -34,6 +34,9 @@ constexpr GPUSamplerState no_filter = GPUSamplerState::default_sampler();
 constexpr GPUSamplerState with_filter = {GPU_SAMPLER_FILTERING_LINEAR};
 #endif
 
+/* __cplusplus is true when compiling with MSL, so ensure we are not inside a shader. */
+#define IS_CPP !defined(GPU_SHADER)
+
 #define UBO_MIN_MAX_SUPPORTED_SIZE 1 << 14
 
 /* -------------------------------------------------------------------- */
@@ -874,7 +877,18 @@ struct LightSunData {
 BLI_STATIC_ASSERT(sizeof(LightSunData) == sizeof(LightLocalData), "Data size must match")
 
 /* Enable when debugging. This is quite costly. */
-#define USE_GPU_ACCESS_CHECKS
+#define SAFE_UNION_ACCESS 1
+
+#ifndef GPU_SHADER
+/* C++ always uses union. */
+#  define USE_LIGHT_UNION 1
+#elif defined(GPU_BACKEND_METAL) && !SAFE_UNION_ACCESS
+/* Metal supports union, but force usage of the getters if SAFE_UNION_ACCESS is enabled. */
+#  define USE_LIGHT_UNION 1
+#else
+/* Use getter functions on GPU if not supported or if SAFE_UNION_ACCESS is enabled. */
+#  define USE_LIGHT_UNION 0
+#endif
 
 struct LightData {
   /** Normalized object to world matrix. */
@@ -915,16 +929,16 @@ struct LightData {
   float _pad1;
   float _pad2;
 
-#if defined(GPU_SHADER) && (!defined(GPU_BACKEND_METAL) || defined(USE_GPU_ACCESS_CHECKS))
-  /* Use `light_*_data_get(light)` to access typed data. */
-  LightLocalData do_not_access_directly;
-#else
+#if USE_LIGHT_UNION
   union {
     LightLocalData local;
     LightSpotData spot;
     LightAreaData area;
     LightSunData sun;
   };
+#else
+  /* Use `light_*_data_get(light)` to access typed data. */
+  LightLocalData do_not_access_directly;
 #endif
 };
 BLI_STATIC_ASSERT_ALIGN(LightData, 16)
@@ -934,7 +948,8 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 #  define CHECK_TYPE(a, b)
 #  define FLOAT_AS_INT floatBitsToInt
 #  define TYPECAST_NOOP
-#else
+
+#else /* C++ */
 #  define FLOAT_AS_INT float_as_int
 #  define TYPECAST_NOOP
 #endif
@@ -943,8 +958,8 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
  * the GPU so that only lights of a certain type can read for the appropriate union member.
  * Return cross platform garbage data as some platform can return cleared memory if we early exit.
  */
-#ifdef USE_GPU_ACCESS_CHECKS
-#  if defined(GPU_SHADER)
+#ifdef SAFE_UNION_ACCESS
+#  ifdef GPU_SHADER
 #    define DATA_MEMBER do_not_access_directly
 
 /* Should result in a beautiful zebra pattern on invalid load. */
@@ -965,7 +980,8 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 #    define DATA_MEMBER local
 #  endif
 
-#  define SAFE_BEGIN(check) \
+#  define SAFE_BEGIN(data_type, check) \
+    data_type data; \
     bool _validity_check = check; \
     float _garbage = GARBAGE_VALUE;
 
@@ -973,7 +989,7 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
 #  define SAFE_ASSIGN_LIGHT_TYPE_CHECK(_type, _value) \
     (_validity_check ? (_value) : _type(_garbage))
 #else
-#  define SAFE_BEGIN(check)
+#  define SAFE_BEGIN(data_type, check) data_type data;
 #  define SAFE_ASSIGN_LIGHT_TYPE_CHECK(_type, _value) _value
 #endif
 
@@ -993,18 +1009,17 @@ BLI_STATIC_ASSERT_ALIGN(LightData, 16)
   SAFE_ASSIGN_FLOAT_AS_INT(a.x, b); \
   SAFE_ASSIGN_FLOAT_AS_INT(a.y, c);
 
-#if !defined(GPU_BACKEND_METAL) || defined(USE_GPU_ACCESS_CHECKS)
+#if !USE_LIGHT_UNION || IS_CPP
 
 /* These functions are not meant to be used in C++ code. They are only defined on the C++ side for
  * static assertions. Hide them. */
-#  if !defined(GPU_SHADER)
+#  if IS_CPP
 namespace do_not_use {
 #  endif
 
 static inline LightSpotData light_local_data_get(LightData light)
 {
-  LightSpotData data;
-  SAFE_BEGIN(is_local_light(light.type))
+  SAFE_BEGIN(LightSpotData, is_local_light(light.type))
   SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
@@ -1018,8 +1033,7 @@ static inline LightSpotData light_local_data_get(LightData light)
 
 static inline LightSpotData light_spot_data_get(LightData light)
 {
-  LightSpotData data;
-  SAFE_BEGIN(is_spot_light(light.type) || is_point_light(light.type))
+  SAFE_BEGIN(LightSpotData, is_spot_light(light.type) || is_point_light(light.type))
   SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
@@ -1038,8 +1052,7 @@ static inline LightSpotData light_spot_data_get(LightData light)
 
 static inline LightAreaData light_area_data_get(LightData light)
 {
-  LightAreaData data;
-  SAFE_BEGIN(is_area_light(light.type))
+  SAFE_BEGIN(LightAreaData, is_area_light(light.type))
   SAFE_ASSIGN_FLOAT(radius_squared, radius_squared)
   SAFE_ASSIGN_FLOAT(influence_radius_max, influence_radius_max)
   SAFE_ASSIGN_FLOAT(influence_radius_invsqr_surface, influence_radius_invsqr_surface)
@@ -1054,8 +1067,7 @@ static inline LightAreaData light_area_data_get(LightData light)
 
 static inline LightSunData light_sun_data_get(LightData light)
 {
-  LightSunData data;
-  SAFE_BEGIN(is_sun_light(light.type))
+  SAFE_BEGIN(LightSunData, is_sun_light(light.type))
   SAFE_ASSIGN_FLOAT(radius, radius_squared)
   SAFE_ASSIGN_FLOAT_AS_INT2_COMBINE(clipmap_base_offset, _pad0_reserved, _pad1_reserved)
   SAFE_ASSIGN_FLOAT(shadow_angle, _pad1)
@@ -1066,22 +1078,20 @@ static inline LightSunData light_sun_data_get(LightData light)
   return data;
 }
 
-#  if !defined(GPU_SHADER)
+#  if IS_CPP
 }  // namespace do_not_use
 #  endif
 
 #endif
 
-/* Metal supports unions. Avoid making codegen more difficult for the compiler. */
-/* NOTE: you can still disable this if you want to check validity of union access on GPU. */
-#if (defined(GPU_BACKEND_METAL) && !defined(USE_GPU_ACCESS_CHECKS)) || defined(__cplusplus) || \
-    (defined(__cplusplus) && !defined(GPU_SHADER))
+#if USE_LIGHT_UNION
 #  define light_local_data_get(light) light.local
 #  define light_spot_data_get(light) light.spot
 #  define light_area_data_get(light) light.area
 #  define light_sun_data_get(light) light.sun
 #endif
 
+#undef DATA_MEMBER
 #undef GARBAGE_VALUE
 #undef FLOAT_AS_INT
 #undef TYPECAST_NOOP
@@ -1857,8 +1867,7 @@ float4 utility_tx_sample_lut(sampler2DArray util_tx, float cos_theta, float roug
 
 /** \} */
 
-/* __cplusplus is true when compiling with MSL, so ensure we are not inside a shader. */
-#if defined(__cplusplus) && !defined(GPU_SHADER)
+#if IS_CPP
 
 using AOVsInfoDataBuf = draw::StorageBuffer<AOVsInfoData>;
 using CameraDataBuf = draw::UniformBuffer<CameraData>;
