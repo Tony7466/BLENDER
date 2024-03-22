@@ -698,6 +698,8 @@ ccl_device int light_tree_root_node_index(KernelGlobals kg, const int object_rec
   return 0;
 }
 
+/* Pick a random light from the light tree from a given shading point P, write to the picked light
+ * index and the probability of picking the light. */
 template<bool in_volume_segment>
 ccl_device_noinline bool light_tree_sample(KernelGlobals kg,
                                            const float rand,
