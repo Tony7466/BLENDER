@@ -6,6 +6,8 @@
  * \ingroup edsculpt
  */
 
+#include <chrono>
+#include <iostream>
 #include <cmath>
 #include <cstdlib>
 
@@ -46,6 +48,17 @@
 #include "IMB_imbuf.hh"
 
 #include "bmesh.hh"
+
+#define TICK_START auto tic = std::chrono::steady_clock::now();
+#define TICK tic = std::chrono::steady_clock::now();
+#define TOCK_START(X) \
+  auto toc = std::chrono::steady_clock::now(); \
+  std::cout << std::string(X) << " time: " << std::chrono::duration<double>(toc - tic).count() << " seconds" \
+            << std::endl;
+#define TOCK(X) \
+  toc = std::chrono::steady_clock::now(); \
+  std::cout << std::string(X) << " time: " << std::chrono::duration<double>(toc - tic).count() << " seconds" \
+            << std::endl;
 
 namespace blender::ed::sculpt_paint::expand {
 
@@ -1397,25 +1410,6 @@ static void sculpt_expand_colors_update_task(SculptSession *ss, PBVHNode *node)
   }
 }
 
-static void sculpt_expand_flush_updates(bContext *C)
-{
-  Object *ob = CTX_data_active_object(C);
-  SculptSession *ss = ob->sculpt;
-  switch (ss->expand_cache->target) {
-    case SCULPT_EXPAND_TARGET_MASK:
-      SCULPT_flush_update_step(C, SCULPT_UPDATE_MASK);
-      break;
-    case SCULPT_EXPAND_TARGET_FACE_SETS:
-      SCULPT_flush_update_step(C, SCULPT_UPDATE_FACE_SET);
-      break;
-    case SCULPT_EXPAND_TARGET_COLORS:
-      SCULPT_flush_update_step(C, SCULPT_UPDATE_COLOR);
-      break;
-    default:
-      break;
-  }
-}
-
 /* Store the original mesh data state in the expand cache. */
 static void sculpt_expand_original_state_store(Object *ob, Cache *expand_cache)
 {
@@ -1484,7 +1478,7 @@ static void sculpt_expand_update_for_vertex(bContext *C, Object *ob, const PBVHV
   }
 
   if (expand_cache->target == SCULPT_EXPAND_TARGET_FACE_SETS) {
-    /* Face sets needs to be restored their initial state on each iteration as the overwrite
+    /* Face sets needs to be restored their initial state on each iteration as they overwrite
      * existing data. */
     sculpt_expand_face_sets_restore(*ob, expand_cache);
   }
@@ -1497,10 +1491,12 @@ static void sculpt_expand_update_for_vertex(bContext *C, Object *ob, const PBVHV
           sculpt_expand_mask_update_task(ss, mask_write, expand_cache->nodes[i]);
         }
       });
+      SCULPT_flush_update_step(C, SCULPT_UPDATE_MASK);
       break;
     }
     case SCULPT_EXPAND_TARGET_FACE_SETS:
       sculpt_expand_face_sets_update(*ob, expand_cache);
+      SCULPT_flush_update_step(C, SCULPT_UPDATE_FACE_SET);
       break;
     case SCULPT_EXPAND_TARGET_COLORS:
       threading::parallel_for(expand_cache->nodes.index_range(), 1, [&](const IndexRange range) {
@@ -1508,10 +1504,9 @@ static void sculpt_expand_update_for_vertex(bContext *C, Object *ob, const PBVHV
           sculpt_expand_colors_update_task(ss, expand_cache->nodes[i]);
         }
       });
+      SCULPT_flush_update_step(C, SCULPT_UPDATE_COLOR);
       break;
   }
-
-  sculpt_expand_flush_updates(C);
 }
 
 /**
@@ -2130,6 +2125,7 @@ static bool any_nonzero_mask(const Object &object)
 
 static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
+  TICK_START;
   Depsgraph *depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   Object *ob = CTX_data_active_object(C);
   SculptSession *ss = ob->sculpt;
@@ -2140,8 +2136,15 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   if (!BKE_base_is_visible(v3d, base)) {
     return OPERATOR_CANCELLED;
   }
+  /* Do nothing when the mesh has 0 vertices. */
+  const int totvert = SCULPT_vertex_count_get(ss);
+  if (totvert == 0) {
+    // sculpt_expand_cache_free(ss); not needed
+    return OPERATOR_CANCELLED;
+  }
 
   SCULPT_stroke_id_next(ob);
+    TOCK_START("1"); TICK;
 
   /* Create and configure the Expand Cache. */
   ss->expand_cache = MEM_new<Cache>(__func__);
@@ -2156,6 +2159,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
     BKE_sculpt_color_layer_create_if_needed(ob);
     depsgraph = CTX_data_ensure_evaluated_depsgraph(C);
   }
+    TOCK("2"); TICK;
 
   if (ss->expand_cache->target == SCULPT_EXPAND_TARGET_MASK) {
     MultiresModifierData *mmd = BKE_sculpt_multires_active(ss->scene, ob);
@@ -2167,15 +2171,9 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
       }
     }
   }
+    TOCK("3"); TICK;
 
   BKE_sculpt_update_object_for_edit(depsgraph, ob, needs_colors);
-
-  /* Do nothing when the mesh has 0 vertices. */
-  const int totvert = SCULPT_vertex_count_get(ss);
-  if (totvert == 0) {
-    sculpt_expand_cache_free(ss);
-    return OPERATOR_CANCELLED;
-  }
 
   /* Face Set operations are not supported in dyntopo. */
   if (ss->expand_cache->target == SCULPT_EXPAND_TARGET_FACE_SETS &&
@@ -2184,22 +2182,28 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
     sculpt_expand_cache_free(ss);
     return OPERATOR_CANCELLED;
   }
+    TOCK("4"); TICK;
 
   sculpt_expand_ensure_sculptsession_data(ob);
 
   /* Initialize undo. */
   undo::push_begin(ob, op);
   sculpt_expand_undo_push(ob, ss->expand_cache);
+    TOCK("5");TICK;
 
   /* Set the initial element for expand from the event position. */
   const float mouse[2] = {float(event->mval[0]), float(event->mval[1])};
   sculpt_expand_set_initial_components_for_mouse(C, ob, ss->expand_cache, mouse);
 
   /* Cache PBVH nodes. */
-  ss->expand_cache->nodes = bke::pbvh::search_gather(ss->pbvh, {});
+    /* TODO: check when this need to be rebuilt, otherwise reuse */
+  if (ss->expand_cache->nodes.size() == 0) {
+        ss->expand_cache->nodes = bke::pbvh::search_gather(ss->pbvh, {});
+    }
 
   /* Store initial state. */
   sculpt_expand_original_state_store(ob, ss->expand_cache);
+    TOCK("6");TICK;
 
   if (ss->expand_cache->modify_active_face_set) {
     sculpt_expand_delete_face_set_id(ss->expand_cache->initial_face_sets.data(),
@@ -2217,15 +2221,17 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   if (SCULPT_vertex_is_boundary(ss, ss->expand_cache->initial_active_vertex)) {
     falloff_type = SCULPT_EXPAND_FALLOFF_BOUNDARY_TOPOLOGY;
   }
+    TOCK("7");TICK;
 
   sculpt_expand_falloff_factors_from_vertex_and_symm_create(
       ss->expand_cache, ob, ss->expand_cache->initial_active_vertex, falloff_type);
 
   sculpt_expand_check_topology_islands(ob, falloff_type);
+    TOCK("8");TICK;
 
   /* Initial mesh data update, resets all target data in the sculpt mesh. */
   sculpt_expand_update_for_vertex(C, ob, ss->expand_cache->initial_active_vertex);
-
+  TOCK("9");
   WM_event_add_modal_handler(C, op);
   return OPERATOR_RUNNING_MODAL;
 }
