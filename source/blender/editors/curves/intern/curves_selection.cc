@@ -76,6 +76,96 @@ IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &mem
   return retrieve_selected_points(curves, memory);
 }
 
+SelectionAttributeList::SelectionAttributeList(const bke::AttributeAccessor &attributes)
+    : attribute_ids_{".selection", ".selection_handle_left", ".selection_handle_right"},
+      size_((attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
+                sizeof(attribute_ids_) / sizeof(bke::AttributeIDRef) :
+                1)
+{
+}
+
+SelectionAttributeWriterList::SelectionAttributeWriterList(bke::CurvesGeometry &curves,
+                                                           const bke::AttrDomain selection_domain)
+    : attribute_list_{curves}
+{
+  for (const int i : IndexRange(attribute_list_.size())) {
+    selections_[i] = ensure_selection_attribute(
+        curves, selection_domain, CD_PROP_BOOL, attribute_list_[i]);
+  };
+}
+
+SelectionAttributeWriterList::~SelectionAttributeWriterList()
+{
+  for (auto &selection : selections_) {
+    selection.finish();
+  }
+}
+
+SelectableRangeList::SelectableRangeList(const SelectionAttributeList &attribute_list,
+                                         const bke::CurvesGeometry &curves,
+                                         const bke::AttrDomain selection_domain,
+                                         const bke::crazyspace::GeometryDeformation &deformation)
+    : attribute_list_(attribute_list),
+      curves_(curves),
+      selection_domain_(selection_domain),
+      full_range_(curves.attributes().domain_size(selection_domain))
+{
+  positions_[0] = deformation.positions;
+  if (attribute_list_.size() > 1) {
+    positions_[1] = curves_.handle_positions_left();
+    positions_[2] = curves_.handle_positions_right();
+
+    bezier_curves_ = curves.indices_for_curve_type(CURVE_TYPE_BEZIER, memory_);
+  }
+}
+
+void SelectableRangeList::foreach_point_range(const int index, RangeConsumer range_consumer) const
+{
+  BLI_assert(index >= 0);
+  BLI_assert(index < attribute_list_.size());
+  if (index) {
+    const OffsetIndices<int> points_by_curve = curves_.points_by_curve();
+    bezier_curves_.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
+      range_consumer(points_by_curve[curve_i], positions_[index], attribute_list_[index]);
+    });
+  }
+  else {
+    range_consumer(full_range_, positions_[0], attribute_list_[0]);
+  }
+}
+
+void SelectableRangeList::foreach_curve_range(const int index, RangeConsumer range_consumer) const
+{
+  BLI_assert(index >= 0);
+  BLI_assert(index < attribute_list_.size());
+  if (index) {
+    bezier_curves_.foreach_range([&](const IndexRange curves_range) {
+      range_consumer(curves_range, positions_[index], attribute_list_[index]);
+    });
+  }
+  else {
+    range_consumer(full_range_, positions_[0], attribute_list_[0]);
+  }
+}
+
+void SelectableRangeList::foreach_selectable_range(RangeConsumer range_consumer) const
+{
+  for (const int index : IndexRange(attribute_list_.size())) {
+    foreach_selectable_range(index, range_consumer);
+  }
+}
+
+void SelectableRangeList::foreach_selectable_range(const int index,
+                                                   RangeConsumer range_consumer) const
+{
+  if (selection_domain_ == bke::AttrDomain::Point) {
+    foreach_point_range(index, range_consumer);
+  }
+  else if (selection_domain_ == bke::AttrDomain::Curve) {
+    foreach_curve_range(index, range_consumer);
+  }
+}
+
 bke::GSpanAttributeWriter ensure_selection_attribute(bke::CurvesGeometry &curves,
                                                      const bke::AttrDomain selection_domain,
                                                      const eCustomDataType create_type,

@@ -3099,7 +3099,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
   const ClosestCurveDataBlock closest = threading::parallel_reduce(
       bases.index_range(),
       1L,
-      ClosestCurveDataBlock{},
+      ClosestCurveDataBlock(),
       [&](const IndexRange range, const ClosestCurveDataBlock &init) {
         ClosestCurveDataBlock new_closest = init;
         for (Base *base : bases.as_span().slice(range)) {

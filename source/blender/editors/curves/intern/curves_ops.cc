@@ -809,9 +809,9 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
     if (const CustomDataLayer *layer = BKE_id_attributes_active_get(&curves_id->id)) {
       active_attribute = layer->name;
     }
-    static const blender::bke::AttributeIDRef selection_attribute_ids[]{
-        ".selection", ".selection_handle_left", ".selection_handle_right"};
-    for (const blender::bke::AttributeIDRef &selection_attribute_id : selection_attribute_ids) {
+    for (const blender::bke::AttributeIDRef &selection_attribute_id :
+         SelectionAttributeList(curves))
+    {
       if (const GVArray src = *attributes.lookup(selection_attribute_id, domain)) {
         const CPPType &type = src.type();
         void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
