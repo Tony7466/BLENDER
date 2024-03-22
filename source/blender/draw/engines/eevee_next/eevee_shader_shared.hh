@@ -1074,7 +1074,8 @@ static inline LightSunData light_sun_data_get(LightData light)
 
 /* Metal supports unions. Avoid making codegen more difficult for the compiler. */
 /* NOTE: you can still disable this if you want to check validity of union access on GPU. */
-#if (defined(GPU_BACKEND_METAL) && !defined(USE_GPU_ACCESS_CHECKS)) || defined(__cplusplus)
+#if (defined(GPU_BACKEND_METAL) && !defined(USE_GPU_ACCESS_CHECKS)) || defined(__cplusplus) || \
+    (defined(__cplusplus) && !defined(GPU_SHADER))
 #  define light_local_data_get(light) light.local
 #  define light_spot_data_get(light) light.spot
 #  define light_area_data_get(light) light.area

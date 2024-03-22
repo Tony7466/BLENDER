@@ -159,7 +159,7 @@ void main()
 
     switch (light.type) {
       case LIGHT_SPOT_SPHERE:
-      case LIGHT_SPOT_DISK:
+      case LIGHT_SPOT_DISK: {
         LightSpotData spot = light_spot_data_get(light);
         /* Only for < ~170 degree Cone due to plane extraction precision. */
         if (spot.spot_tan < 10.0) {
@@ -172,6 +172,7 @@ void main()
           break;
         }
         /* Fall-through to the hemispheric case. */
+      }
       case LIGHT_RECT:
       case LIGHT_ELLIPSE: {
         vec3 v000 = vP - v_right * radius - v_up * radius;
