@@ -2,8 +2,10 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "COM_ImageNode.h"
+#include "BLI_assert.h"
+
 #include "COM_ConvertOperation.h"
+#include "COM_ImageNode.h"
 #include "COM_MultilayerImageOperation.h"
 
 #include "COM_SetColorOperation.h"
@@ -255,8 +257,8 @@ void ImageNode::convert_to_operations(NodeConverter &converter,
             operation = coloroperation;
             break;
           }
-          default:
-            /* Other types are internal and needn't be handled by operations. */
+          case DataType::Float2:
+            /* An internal type that needn't be handled. */
             BLI_assert_unreachable();
             break;
         }

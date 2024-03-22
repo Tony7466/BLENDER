@@ -107,8 +107,8 @@ int DebugInfo::graphviz_operation(const ExecutionSystem *system,
         case DataType::Color:
           len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "Color");
           break;
-        default:
-          /* Other types are internal and needn't be handled by operations. */
+        case DataType::Float2:
+          /* An internal type that needn't be handled. */
           BLI_assert_unreachable();
           break;
       }
@@ -171,8 +171,8 @@ int DebugInfo::graphviz_operation(const ExecutionSystem *system,
           len += snprintf(str + len, maxlen > len ? maxlen - len : 0, "Color");
           break;
         }
-        default:
-          /* Other types are internal and needn't be handled by operations. */
+        case DataType::Float2:
+          /* An internal type that needn't be handled. */
           BLI_assert_unreachable();
           break;
       }
@@ -293,8 +293,8 @@ bool DebugInfo::graphviz_system(const ExecutionSystem *system, char *str, int ma
         case DataType::Color:
           color = "orange";
           break;
-        default:
-          /* Other types are internal and needn't be handled by operations. */
+        case DataType::Float2:
+          /* An internal type that needn't be handled. */
           BLI_assert_unreachable();
           break;
       }
