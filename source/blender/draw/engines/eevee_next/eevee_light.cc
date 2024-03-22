@@ -79,9 +79,8 @@ void Light::sync(ShadowModule &shadows, const Object *ob, float threshold)
 
   this->pcf_radius = la->shadow_filter_radius;
 
-  /* TODO(fclem): Cleanup: This is a shadow member that is set exclusively for punctual shadow
-   * here. The value is overwritten for directional.
-   * So move that block to ShadowPunctual::end_sync. */
+  /* TODO(fclem): Cleanup: Move that block to `ShadowPunctual::end_sync()` and
+   * `ShadowDirectional::end_sync()`. */
   float resolution_scale = clamp(la->shadow_resolution_scale, 0.0f, 2.0f);
   this->lod_bias = (resolution_scale < 1.0) ? -log2(resolution_scale) : -(resolution_scale - 1.0f);
   this->lod_bias += shadows.get_global_lod_bias();
