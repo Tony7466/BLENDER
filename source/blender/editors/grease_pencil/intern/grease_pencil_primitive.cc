@@ -93,16 +93,16 @@ enum class ModelKeyMode : int8_t {
   DECREASE_SUBDIVISION,
 };
 
-static constexpr float UI_PRIMARY_POINT_DRAW_SIZE_PX = 8.0f;
-static constexpr float UI_SECONDARY_POINT_DRAW_SIZE_PX = 5.0f;
-static constexpr float UI_TERTIARY_POINT_DRAW_SIZE_PX = 3.0f;
-static constexpr float UI_POINT_HIT_SIZE_PX = 20.0f;
-static constexpr float UI_POINT_MAX_HIT_SIZE_PX = 600.0f;
+static constexpr float ui_primary_point_draw_size_px = 8.0f;
+static constexpr float ui_secondary_point_draw_size_px = 5.0f;
+static constexpr float ui_tertiary_point_draw_size_px = 3.0f;
+static constexpr float ui_point_hit_size_px = 20.0f;
+static constexpr float ui_point_max_hit_size_px = 600.0f;
 
 /* These three points are only used for `Box` and `Circle` type. */
-static constexpr int CONTROL_POINT_FIRST = 0;
-static constexpr int CONTROL_POINT_CENTER = 1;
-static constexpr int CONTROL_POINT_LAST = 2;
+static constexpr int control_point_first = 0;
+static constexpr int control_point_center = 1;
+static constexpr int control_point_last = 2;
 
 struct PrimitiveToolOperation {
   ARegion *region;
@@ -185,9 +185,9 @@ static void control_point_colors_and_sizes(const PrimitiveToolOperation &ptd,
   UI_GetThemeColor4fv(TH_GIZMO_A, color_gizmo_a);
   UI_GetThemeColor4fv(TH_GIZMO_B, color_gizmo_b);
 
-  const float size_primary = UI_PRIMARY_POINT_DRAW_SIZE_PX;
-  const float size_secondary = UI_SECONDARY_POINT_DRAW_SIZE_PX;
-  const float size_tertiary = UI_TERTIARY_POINT_DRAW_SIZE_PX;
+  const float size_primary = ui_primary_point_draw_size_px;
+  const float size_secondary = ui_secondary_point_draw_size_px;
+  const float size_tertiary = ui_tertiary_point_draw_size_px;
 
   if (ptd.segments == 0) {
     colors.fill(color_gizmo_primary);
@@ -200,8 +200,8 @@ static void control_point_colors_and_sizes(const PrimitiveToolOperation &ptd,
     sizes.fill(size_primary);
 
     /* Set the center point's color. */
-    colors[CONTROL_POINT_CENTER] = color_gizmo_b;
-    sizes[CONTROL_POINT_CENTER] = size_secondary;
+    colors[control_point_center] = color_gizmo_b;
+    sizes[control_point_center] = size_secondary;
   }
   else {
     colors.fill(color_gizmo_secondary);
@@ -348,8 +348,8 @@ static void primitive_calulate_curve_positions_exec(PrimitiveToolOperation &ptd,
       return;
     }
     case PrimitiveType::CIRCLE: {
-      const T center = control_points[CONTROL_POINT_CENTER];
-      const T offset = control_points[CONTROL_POINT_FIRST] - center;
+      const T center = control_points[control_point_center];
+      const T offset = control_points[control_point_first] - center;
       for (const int i : new_positions.index_range()) {
         const float t = i / float(new_points_num);
         const float a = t * math::numbers::pi * 2.0f;
@@ -358,8 +358,8 @@ static void primitive_calulate_curve_positions_exec(PrimitiveToolOperation &ptd,
       return;
     }
     case PrimitiveType::BOX: {
-      const T center = control_points[CONTROL_POINT_CENTER];
-      const T offset = control_points[CONTROL_POINT_FIRST] - center;
+      const T center = control_points[control_point_center];
+      const T offset = control_points[control_point_first] - center;
       /*
        * Calculate the 4 corners of the box.
        * Here's a diagram.
@@ -849,21 +849,21 @@ static void grease_pencil_primitive_grab_update(PrimitiveToolOperation &ptd, con
   }
 
   /* If the center point is been grabbed, move all points. */
-  if (ptd.active_control_point_index == CONTROL_POINT_CENTER) {
+  if (ptd.active_control_point_index == control_point_center) {
     grease_pencil_primitive_drag_all_update(ptd, event);
     return;
   }
 
-  const int other_point_id = ptd.active_control_point_index == CONTROL_POINT_FIRST ?
-                                 CONTROL_POINT_LAST :
-                                 CONTROL_POINT_FIRST;
+  const int other_point_id = ptd.active_control_point_index == control_point_first ?
+                                 control_point_last :
+                                 control_point_first;
 
   /* Get the location of the other control point.*/
   const float2 other_point_2d = ED_view3d_project_float_v2_m4(
       ptd.vc.region, ptd.temp_control_points[other_point_id], ptd.projection);
 
   /* Set the center point to between the first and last point. */
-  ptd.control_points[CONTROL_POINT_CENTER] = ptd.placement.project(
+  ptd.control_points[control_point_center] = ptd.placement.project(
       (other_point_2d + float2(event->mval)) / 2.0f);
 }
 
@@ -885,7 +885,7 @@ static float2 primitive_center_of_mass(const PrimitiveToolOperation &ptd)
 {
   if (ELEM(ptd.type, PrimitiveType::BOX, PrimitiveType::CIRCLE)) {
     return ED_view3d_project_float_v2_m4(
-        ptd.vc.region, ptd.temp_control_points[CONTROL_POINT_CENTER], ptd.projection);
+        ptd.vc.region, ptd.temp_control_points[control_point_center], ptd.projection);
   }
   float2 center_of_mass = float2(0.0f, 0.0f);
 
@@ -952,7 +952,7 @@ static int primitive_check_ui_hover(const PrimitiveToolOperation &ptd, const wmE
     const int point_id = (ptd.control_points.size() - 1) - i;
     const float2 pos_proj = ED_view3d_project_float_v2_m4(
         ptd.vc.region, ptd.control_points[point_id], ptd.projection);
-    const float radius_sq = UI_POINT_HIT_SIZE_PX * UI_POINT_HIT_SIZE_PX;
+    const float radius_sq = ui_point_hit_size_px * ui_point_hit_size_px;
     const float distance_squared = math::distance_squared(pos_proj, float2(event->mval));
     /* If the mouse is over a control point. */
     if (distance_squared <= radius_sq) {
@@ -964,7 +964,7 @@ static int primitive_check_ui_hover(const PrimitiveToolOperation &ptd, const wmE
     /* Save the closest handle point. */
     if (distance_squared < closest_distance_squared &&
         control_point_type == ControlPointType::HANDLE_POINT &&
-        distance_squared < UI_POINT_MAX_HIT_SIZE_PX * UI_POINT_MAX_HIT_SIZE_PX)
+        distance_squared < ui_point_max_hit_size_px * ui_point_max_hit_size_px)
     {
       closest_point = point_id;
       closest_distance_squared = distance_squared;
