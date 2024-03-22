@@ -423,6 +423,9 @@ static int geometry_attribute_convert_exec(bContext *C, wmOperator *op)
     case ConvertAttributeMode::Generic: {
       const int active_color_index = BKE_id_attributes_color_index(&mesh->id,
                                                                    mesh->active_color_attribute);
+      const int default_color_index = BKE_id_attributes_color_index(&mesh->id,
+                                                                    mesh->default_color_attribute);
+      const std::string layer_name = layer->name;
 
       if (!ED_geometry_attribute_convert(mesh,
                                          name.c_str(),
@@ -433,9 +436,15 @@ static int geometry_attribute_convert_exec(bContext *C, wmOperator *op)
         return OPERATOR_CANCELLED;
       }
 
-      if (!BKE_id_attributes_color_find(&mesh->id, mesh->active_color_attribute)) {
+      if (mesh->active_color_attribute && STREQ(layer_name.c_str(), mesh->active_color_attribute))
+      {
         const char *name = BKE_id_attributes_color_name_from_index(&mesh->id, active_color_index);
         BKE_id_attributes_active_color_set(&mesh->id, name);
+      }
+      if (mesh->default_color_attribute &&
+          STREQ(layer_name.c_str(), mesh->default_color_attribute))
+      {
+        const char *name = BKE_id_attributes_color_name_from_index(&mesh->id, default_color_index);
         BKE_id_attributes_default_color_set(&mesh->id, name);
       }
       break;
