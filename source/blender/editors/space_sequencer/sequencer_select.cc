@@ -903,8 +903,7 @@ static void sequencer_select_strip_impl(const Editing *ed,
 static float clickable_handle_size_get(const Scene *scene, const Sequence *seq, const View2D *v2d)
 {
   const float pixelx = 1 / UI_view2d_scale_get_x(v2d);
-  const int strip_len = SEQ_time_right_handle_frame_get(scene, seq) -
-                        SEQ_time_left_handle_frame_get(scene, seq);
+  const float strip_len = SEQ_time_strip_length_get(scene, seq);
   return min_ff(15.0f * pixelx * U.pixelsize, strip_len / 4);
 }
 
