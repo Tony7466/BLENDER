@@ -814,7 +814,7 @@ ccl_device float light_tree_pdf(KernelGlobals kg,
     }
   }
   else {
-    root_index = 0;
+    root_index = -1;
     bit_trail = kemitter->bit_trail;
     target_emitter = index_emitter;
   }
@@ -856,13 +856,13 @@ ccl_device float light_tree_pdf(KernelGlobals kg,
         return 0.0f;
       }
 
-      if (root_index) {
+      if (root_index != -1) {
         /* Arrived at the mesh light. Continue with the subtree. */
         float unused;
         light_tree_to_local_space<false>(kg, object_emitter, P, N, unused);
 
         node_index = root_index;
-        root_index = 0;
+        root_index = -1;
         target_emitter = index_emitter;
         bit_trail = kemitter->bit_trail;
         continue;
