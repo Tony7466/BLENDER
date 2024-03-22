@@ -930,7 +930,7 @@ void blo_do_versions_userdef(UserDef *userdef)
     }
   }
 
-  if (!USER_VERSION_ATLEAST(402, 9)) {
+  if (!USER_VERSION_ATLEAST(402, 10)) {
     userdef->sequencer_editor_flag |= USER_SEQ_ED_SIMPLE_TWEAKING;
   }
 
