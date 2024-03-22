@@ -102,6 +102,16 @@ class ImportHelper:
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
 
+    def invoke_popup(self, context, confirm_text="Ok"):
+        if self.properties.is_property_set("filepath"):
+            title = self.filepath
+            if len(self.files) > 1:
+                title = "Import %d files" % len(self.files)
+            context.window_manager.invoke_props_dialog(self, confirm_text=confirm_text, title=title)
+            return {'RUNNING_MODAL'}
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
+
     def check(self, _context):
         return _check_axis_conversion(self)
 
@@ -392,6 +402,19 @@ def unpack_face_list(list_of_tuples):
         flat_ls[i:i + len(t)] = t
         i += 4
     return flat_ls
+
+
+def poll_file_object_drop(context):
+    """
+    A default implementation for FileHandler poll_drop methods. Allows for both the 3D Viewport and
+    the Outliner (in ViewLayer display mode) to be targets for file drag and drop.
+    """
+    area = context.area
+    if not area:
+        return False
+    is_v3d = area.type == 'VIEW_3D'
+    is_outliner_view_layer = area.type == 'OUTLINER' and area.spaces.active.display_mode == 'VIEW_LAYER'
+    return is_v3d or is_outliner_view_layer
 
 
 path_reference_mode = EnumProperty(
