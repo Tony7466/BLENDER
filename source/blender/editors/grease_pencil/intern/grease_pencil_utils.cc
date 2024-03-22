@@ -238,6 +238,7 @@ static std::optional<int> get_frame_id(const bke::greasepencil::Layer &layer,
                                        const int current_frame_index,
                                        const bool use_multi_frame_editing,
                                        const bool do_onion_skinning,
+                                       const bool is_before_first,
                                        const GreasePencilOnionSkinningSettings onion_settings)
 {
   if (use_multi_frame_editing) {
@@ -259,14 +260,23 @@ static std::optional<int> get_frame_id(const bke::greasepencil::Layer &layer,
       return {};
     }
 
-    int delta = (onion_settings.mode == GP_ONION_SKINNING_MODE_ABSOLUTE) ?
-                    frame_number - current_frame :
-                    frame_index - current_frame_index;
+    int delta = 0;
+    if (onion_settings.mode == GP_ONION_SKINNING_MODE_ABSOLUTE) {
+      delta = frame_number - current_frame;
+    }
+    else {
+      delta = frame_index - current_frame_index;
+    }
+
+    if (is_before_first) {
+      delta++;
+    }
+    /* Frame range filter. */
     if (-delta > onion_settings.num_frames_before || delta > onion_settings.num_frames_after) {
       return {};
     }
 
-    return delta; 
+    return delta;
   }
   return {};
 }
@@ -280,8 +290,16 @@ static Array<std::pair<int, int>> get_visible_frames_for_layer(
 {
   GreasePencilOnionSkinningSettings onion_settings = grease_pencil.onion_skinning_settings;
   Vector<std::pair<int, int>> frame_numbers;
-  const std::optional<int> current_frame_index = layer.frame_key_at(current_frame);
   const Span<int> sorted_keys = layer.sorted_keys();
+  if (sorted_keys.is_empty()) {
+    return {};
+  }
+  const std::optional<bke::greasepencil::FramesMapKey> current_frame_key = layer.frame_key_at(
+      current_frame);
+  const int current_frame_index = current_frame_key.has_value() ?
+                                      sorted_keys.first_index(*current_frame_key) :
+                                      0;
+  const bool is_before_first = (current_frame < sorted_keys.first());
   for (const int frame_i : sorted_keys.index_range()) {
     const int frame_number = sorted_keys[frame_i];
     if (frame_number == current_frame) {
@@ -293,11 +311,13 @@ static Array<std::pair<int, int>> get_visible_frames_for_layer(
                                                      frame_number,
                                                      frame_i,
                                                      current_frame,
-                                                     *current_frame_index,
+                                                     current_frame_index,
                                                      use_multi_frame_editing,
                                                      do_onion_skinning,
+                                                     is_before_first,
                                                      onion_settings);
     if (!frame_id.has_value()) {
+      /* Drawing on this frame is not visible. */
       continue;
     }
 
