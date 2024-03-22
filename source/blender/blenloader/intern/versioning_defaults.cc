@@ -205,6 +205,7 @@ static void blo_update_defaults_screen(bScreen *screen,
       LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
         if (region->regiontype == RGN_TYPE_WINDOW) {
           RegionView3D *rv3d = static_cast<RegionView3D *>(region->regiondata);
+          zero_v3(rv3d->ofs); // Clear the orbit pivot point
           ED_view3d_camera_level_horizon(rv3d);
         }
       }
