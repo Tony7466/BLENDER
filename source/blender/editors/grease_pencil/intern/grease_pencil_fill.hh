@@ -8,7 +8,7 @@
 
 #pragma once
 
-/* DEBUG: show developer extra's in viewport and console. */
+/* DEBUG: show developer extras in viewport and console. */
 /* #define GP_FILL_DEBUG_MODE */
 
 #include "BKE_context.hh"
@@ -144,6 +144,13 @@ class FillOperation {
   Vector<int2> radius_connections;
 
   /**
+   * Overridable methods, implemented by #FloodFillOperation and #GeometryFillOperation.
+   */
+  virtual void store_overlapping_segment(
+      const int, const int, const bool, const int, const int) = 0;
+  virtual bool execute_fill() = 0;
+
+  /**
    * Get the normalized distance from v1 and v3 to the intersection point of line segments v1-v2
    * and v3-v4.
    */
@@ -182,9 +189,6 @@ class FillOperation {
                        math::clamp(math::length(isect - v3) / v3_length, 0.0f, 1.0f));
     return distance;
   }
-
-  virtual void store_overlapping_segment(
-      const int, const int, const bool, const int, const int) = 0;
 
   /**
    * Get all intersections of a segment with other curves.
@@ -733,9 +737,8 @@ class FillOperation {
    * Get a list of layers used for the fill edge detection. The list is based on the 'Layers' field
    * in the tool settings.
    */
-  void get_fill_edge_layers(const int frame_number,
-                            Vector<const bke::greasepencil::Drawing *> &r_drawings,
-                            Vector<int> &r_layer_index)
+  std::pair<Vector<const bke::greasepencil::Drawing *>, Vector<int>> get_fill_edge_layers(
+      const int frame_number)
   {
     /* Find index of active layer. */
     int active_layer_index = -1;
@@ -749,6 +752,8 @@ class FillOperation {
     }
 
     /* Select layers based on position in the layer collection. */
+    Vector<const bke::greasepencil::Drawing *> drawings;
+    Vector<int> layer_indices;
     for (int layer_index = 0; layer_index < layers.size(); layer_index++) {
       /* Skip invisible layers. */
       if (!layers[layer_index]->is_visible()) {
@@ -783,10 +788,12 @@ class FillOperation {
       if (const bke::greasepencil::Drawing *drawing = this->grease_pencil->get_editable_drawing_at(
               *layers[layer_index], frame_number))
       {
-        r_drawings.append(drawing);
-        r_layer_index.append(layer_index);
+        drawings.append(drawing);
+        layer_indices.append(layer_index);
       }
     }
+
+    return {drawings, layer_indices};
   }
 
   /**
@@ -797,8 +804,8 @@ class FillOperation {
     /* Get layers according to tool settings (visible, above, below, etc.) */
     Vector<const bke::greasepencil::Drawing *> drawings;
     Vector<int> layer_indices;
+    std::tie(drawings, layer_indices) = this->get_fill_edge_layers(frame_number);
 
-    this->get_fill_edge_layers(frame_number, drawings, layer_indices);
     if (drawings.is_empty()) {
       return false;
     }
@@ -849,7 +856,7 @@ class FillOperation {
     this->brush = BKE_paint_brush(&ts->gp_paint->paint);
     this->additive_drawing = ((ts->gpencil_flags & GP_TOOL_FLAG_RETAIN_LAST) != 0);
 
-    /* Init vector fill flags. */
+    /* Init geometry fill flags. */
     this->use_gap_close_extend = (this->brush->gpencil_settings->fill_extend_mode ==
                                   GP_FILL_EMODE_EXTEND);
     this->use_gap_close_radius = (this->brush->gpencil_settings->fill_extend_mode ==
@@ -899,8 +906,6 @@ class FillOperation {
       BLI_kdtree_2d_free(this->curve_ends);
     }
   }
-
-  virtual bool execute_fill() = 0;
 
   /**
    * Execute the fill operation (on second mouse click in the viewport).

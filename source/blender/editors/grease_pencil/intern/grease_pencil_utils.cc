@@ -611,8 +611,8 @@ IndexMask retrieve_editable_and_selected_elements(Object &object,
 Curves2DSpace curves_in_2d_space_get(Object &object,
                                      const ViewContext &vc,
                                      const GreasePencil &grease_pencil,
-                                     const Span<const bke::greasepencil::Drawing *> &drawings,
-                                     const Span<int> &layer_index,
+                                     const Span<const bke::greasepencil::Drawing *> drawings,
+                                     const Span<int> layer_index,
                                      const int frame_number,
                                      const bool get_stroke_flag)
 {

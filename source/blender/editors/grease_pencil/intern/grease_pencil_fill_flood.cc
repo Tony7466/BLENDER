@@ -19,6 +19,10 @@ class FloodFillOperation : public FillOperation {
 
   bool execute_fill() override
   {
+    /* TODO... */
+    printf("Perform flood fill algorithm on %lld strokes at frame %d \n",
+           this->curves_2d.point_offset.size(),
+           this->frame_number);
     return true;
   }
 };
@@ -33,13 +37,7 @@ void flood_fill_exit(const wmOperator &op)
 bool flood_fill_exec(const wmOperator &op)
 {
   FloodFillOperation &fill_op = *static_cast<FloodFillOperation *>(op.customdata);
-
-  /* TODO... */
-  printf("Perform flood fill algorithm on %lld strokes at frame %d \n",
-         fill_op.curves_2d.point_offset.size(),
-         fill_op.frame_number);
-
-  return true;
+  return fill_op.fill_exec();
 }
 
 int flood_fill_modal(const wmOperator &op, const wmEvent &event)
