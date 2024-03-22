@@ -362,7 +362,7 @@ ccl_device bool light_sample_from_position(KernelGlobals kg,
                                            const uint32_t path_flag,
                                            ccl_private LightSample *ls)
 {
-  /* Pick a light, write to `ls->emitter_id` and `ls->pdf_selection`. */
+  /* Randomly select a light. */
 #ifdef __LIGHT_TREE__
   if (kernel_data.integrator.use_light_tree) {
     if (!light_tree_sample<false>(kg, rand.z, P, N, 0.0f, object_receiver, shader_flags, ls)) {

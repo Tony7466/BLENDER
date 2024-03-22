@@ -973,8 +973,8 @@ ccl_device_forceinline bool integrate_volume_phase_scatter(
 
   /* Update path state */
   INTEGRATOR_STATE_WRITE(state, path, mis_ray_pdf) = phase_pdf;
-  const float t_advanced = (sd->P - ray->P).x / ray->D.x - ray->tmin;
-  INTEGRATOR_STATE_WRITE(state, path, mis_origin_n) = ray->D * t_advanced;
+  const float3 previous_P = ray->P + ray->D * ray->tmin;
+  INTEGRATOR_STATE_WRITE(state, path, mis_origin_n) = sd->P - previous_P;
   INTEGRATOR_STATE_WRITE(state, path, min_ray_pdf) = fminf(
       unguided_phase_pdf, INTEGRATOR_STATE(state, path, min_ray_pdf));
 
