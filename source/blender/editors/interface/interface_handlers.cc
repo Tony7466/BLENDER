@@ -55,6 +55,7 @@
 #include "ED_undo.hh"
 
 #include "UI_interface.hh"
+#include "UI_interface_c.hh"
 #include "UI_string_search.hh"
 
 #include "BLF_api.hh"
@@ -2166,7 +2167,7 @@ static bool ui_but_drag_init(bContext *C,
     else if (but->type == UI_BTYPE_VIEW_ITEM) {
       const uiButViewItem *view_item_but = (uiButViewItem *)but;
       if (view_item_but->view_item) {
-        return UI_view_item_drag_start(C, view_item_but->view_item);
+        return UI_view_item_drag_start(*C, *view_item_but->view_item);
       }
     }
     else {
@@ -4879,7 +4880,7 @@ static int ui_do_but_VIEW_ITEM(bContext *C,
             return WM_UI_HANDLER_BREAK;
           }
 
-          if (UI_view_item_supports_drag(view_item_but->view_item)) {
+          if (UI_view_item_supports_drag(*view_item_but->view_item)) {
             button_activate_state(C, but, BUTTON_STATE_WAIT_DRAG);
             data->dragstartx = event->xy[0];
             data->dragstarty = event->xy[1];
@@ -4891,7 +4892,7 @@ static int ui_do_but_VIEW_ITEM(bContext *C,
           return WM_UI_HANDLER_CONTINUE;
         case KM_DBL_CLICK:
           data->cancel = true;
-          UI_view_item_begin_rename(view_item_but->view_item);
+          UI_view_item_begin_rename(*view_item_but->view_item);
           ED_region_tag_redraw(CTX_wm_region(C));
           return WM_UI_HANDLER_BREAK;
       }
@@ -9758,7 +9759,8 @@ static int ui_handle_list_event(bContext *C, const wmEvent *event, ARegion *regi
 
         for (int i = 0; i < len; i++) {
           if (!dyn_data->items_filter_flags ||
-              ((dyn_data->items_filter_flags[i] & UILST_FLT_ITEM) ^ filter_exclude))
+              (((dyn_data->items_filter_flags[i] & UILST_FLT_ITEM_NEVER_SHOW) == 0) &&
+               (dyn_data->items_filter_flags[i] & UILST_FLT_ITEM) ^ filter_exclude))
           {
             org_order[new_order ? new_order[++org_idx] : ++org_idx] = i;
             if (i == value) {
@@ -10124,6 +10126,8 @@ static void ui_menu_scroll_apply_offset_y(ARegion *region, uiBlock *block, float
 
   /* remember scroll offset for refreshes */
   block->handle->scrolloffset += dy;
+  /* Apply popup scroll delta to layout panels too. */
+  UI_layout_panel_popup_scroll_apply(block->panel, dy);
 
   /* apply scroll offset */
   LISTBASE_FOREACH (uiBut *, bt, &block->buttons) {
@@ -11426,6 +11430,25 @@ static int ui_handle_menus_recursive(bContext *C,
 
       retval = ui_handle_menus_recursive(
           C, event, submenu, level + 1, is_parent_inside || inside, is_menu, false);
+    }
+  }
+  else if (event->val == KM_PRESS && event->type == LEFTMOUSE) {
+    LISTBASE_FOREACH (uiBlock *, block, &menu->region->uiblocks) {
+      if (block->panel) {
+        int mx = event->xy[0];
+        int my = event->xy[1];
+        ui_window_to_block(menu->region, block, &mx, &my);
+        if (!IN_RANGE(float(mx), block->rect.xmin, block->rect.xmax)) {
+          break;
+        }
+        LayoutPanelHeader *header = UI_layout_panel_header_under_mouse(*block->panel, my);
+        if (header) {
+          ED_region_tag_redraw(menu->region);
+          ED_region_tag_refresh_ui(menu->region);
+          UI_panel_drag_collapse_handler_add(C, !UI_layout_panel_toggle_open(C, header));
+          retval = WM_UI_HANDLER_BREAK;
+        }
+      }
     }
   }
 

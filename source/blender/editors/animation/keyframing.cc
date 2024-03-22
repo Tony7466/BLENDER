@@ -726,6 +726,20 @@ static int clear_anim_v3d_exec(bContext *C, wmOperator * /*op*/)
   return OPERATOR_FINISHED;
 }
 
+static int clear_anim_v3d_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Remove animation from selected objects?"),
+                                  nullptr,
+                                  IFACE_("Remove"),
+                                  ALERT_ICON_NONE,
+                                  false);
+  }
+  return clear_anim_v3d_exec(C, op);
+}
+
 void ANIM_OT_keyframe_clear_v3d(wmOperatorType *ot)
 {
   /* identifiers */
@@ -734,7 +748,7 @@ void ANIM_OT_keyframe_clear_v3d(wmOperatorType *ot)
   ot->idname = "ANIM_OT_keyframe_clear_v3d";
 
   /* callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = clear_anim_v3d_invoke;
   ot->exec = clear_anim_v3d_exec;
 
   ot->poll = ED_operator_areaactive;
@@ -868,6 +882,20 @@ static int delete_key_v3d_exec(bContext *C, wmOperator *op)
   return delete_key_using_keying_set(C, op, ks);
 }
 
+static int delete_key_v3d_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+{
+  if (RNA_boolean_get(op->ptr, "confirm")) {
+    return WM_operator_confirm_ex(C,
+                                  op,
+                                  IFACE_("Delete keyframes from selected objects?"),
+                                  nullptr,
+                                  IFACE_("Delete"),
+                                  ALERT_ICON_NONE,
+                                  false);
+  }
+  return delete_key_v3d_exec(C, op);
+}
+
 void ANIM_OT_keyframe_delete_v3d(wmOperatorType *ot)
 {
   /* identifiers */
@@ -876,7 +904,7 @@ void ANIM_OT_keyframe_delete_v3d(wmOperatorType *ot)
   ot->idname = "ANIM_OT_keyframe_delete_v3d";
 
   /* callbacks */
-  ot->invoke = WM_operator_confirm_or_exec;
+  ot->invoke = delete_key_v3d_invoke;
   ot->exec = delete_key_v3d_exec;
 
   ot->poll = ED_operator_areaactive;
@@ -995,7 +1023,6 @@ static int insert_key_button_exec(bContext *C, wmOperator *op)
         changed = (blender::animrig::insert_keyframe(bmain,
                                                      op->reports,
                                                      ptr.owner_id,
-                                                     nullptr,
                                                      group,
                                                      path->c_str(),
                                                      index,

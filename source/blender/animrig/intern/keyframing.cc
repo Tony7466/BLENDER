@@ -548,7 +548,6 @@ static SingleKeyingResult insert_keyframe_fcurve_value(Main *bmain,
 int insert_keyframe(Main *bmain,
                     ReportList *reports,
                     ID *id,
-                    bAction *act,
                     const char group[],
                     const char rna_path[],
                     int array_index,
@@ -579,18 +578,15 @@ int insert_keyframe(Main *bmain,
     return 0;
   }
 
-  /* If no action is provided, keyframe to the default one attached to this ID-block. */
+  bAction *act = id_action_ensure(bmain, id);
   if (act == nullptr) {
-    act = id_action_ensure(bmain, id);
-    if (act == nullptr) {
-      BKE_reportf(reports,
-                  RPT_ERROR,
-                  "Could not insert keyframe, as this type does not support animation data (ID = "
-                  "%s, path = %s)",
-                  id->name,
-                  rna_path);
-      return 0;
-    }
+    BKE_reportf(reports,
+                RPT_ERROR,
+                "Could not insert keyframe, as this type does not support animation data (ID = "
+                "%s, path = %s)",
+                id->name,
+                rna_path);
+    return 0;
   }
 
   /* Apply NLA-mapping to frame to use (if applicable). */

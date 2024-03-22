@@ -276,6 +276,7 @@ class PassBase {
   /**
    * Record a compute dispatch call.
    */
+  void dispatch(int group_len);
   void dispatch(int2 group_len);
   void dispatch(int3 group_len);
   void dispatch(int3 *group_len);
@@ -340,7 +341,7 @@ class PassBase {
    * IMPORTANT: Will keep a reference to the data and dereference it upon drawing. Make sure data
    * still alive until pass submission.
    *
-   * \note bool reference version is expected to take bool1 reference which is aliased to int.
+   * \note bool reference version is expected to take bool32_t reference which is aliased to int.
    */
   void push_constant(const char *name, const float &data);
   void push_constant(const char *name, const float2 &data);
@@ -801,6 +802,12 @@ inline void PassBase<T>::draw_procedural_indirect(
 /* -------------------------------------------------------------------- */
 /** \name Compute Dispatch Implementation
  * \{ */
+
+template<class T> inline void PassBase<T>::dispatch(int group_len)
+{
+  BLI_assert(shader_);
+  create_command(Type::Dispatch).dispatch = {int3(group_len, 1, 1)};
+}
 
 template<class T> inline void PassBase<T>::dispatch(int2 group_len)
 {
