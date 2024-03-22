@@ -658,7 +658,7 @@ void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
   int item_count = 0;
   tree_view.foreach_item(
       [&, this](AbstractTreeViewItem &item) {
-        if (item_count >= first_visible_index && (item_count <= max_visible_index)) {
+        if ((item_count >= first_visible_index) && (item_count < max_visible_index)) {
           this->build_row(item);
         }
         item_count++;
