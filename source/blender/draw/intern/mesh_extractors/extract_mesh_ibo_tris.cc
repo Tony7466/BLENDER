@@ -6,8 +6,6 @@
  * \ingroup draw
  */
 
-#include "BLI_array_utils.hh"
-
 #include "BKE_editmesh.hh"
 
 #include "GPU_index_buffer.hh"
