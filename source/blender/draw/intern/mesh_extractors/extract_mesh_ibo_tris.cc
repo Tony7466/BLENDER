@@ -68,7 +68,7 @@ static void extract_tris_bmesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
   const uint32_t restart_value = GPU_indexbuf_get_restart_value(&builder);
 
   BMesh &bm = *mr.bm;
-  BMLoop *(*looptris)[3] = mr.edit_bmesh->looptris;
+  const Span<std::array<BMLoop *, 3>> looptris = mr.edit_bmesh->looptris;
   const Span<int> face_tri_offsets = *mr.face_sorted->face_tri_offsets;
   threading::parallel_for(IndexRange(bm.totface), 1024, [&](const IndexRange range) {
     for (const int face_index : range) {
