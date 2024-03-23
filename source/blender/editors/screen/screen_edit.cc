@@ -985,7 +985,7 @@ void ED_screen_set_active_region(bContext *C, wmWindow *win, const int xy[2])
           area_iter->type->deactivate(C, area_iter);
         }
 
-        /* call new area's activate handler if defined */
+        /* Call new area's activate handler if defined. */
         if (region == screen->active_region && area_iter->type->activate) {
           area_iter->type->activate(C, area_iter);
         }

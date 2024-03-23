@@ -301,7 +301,7 @@ static void console_main_region_listener(const wmRegionListenerParams *params)
         }
         else if (wmn->action == NA_CURSOR_BLINK) {
           SpaceConsole *sconsole = static_cast<SpaceConsole *>(area->spacedata.first);
-          sconsole->is_cursor_visible = (sconsole->is_cursor_visible) ? false : true;
+          sconsole->is_cursor_visible = !bool(sconsole->is_cursor_visible);
           ED_region_tag_redraw(region);
         }
         else {
