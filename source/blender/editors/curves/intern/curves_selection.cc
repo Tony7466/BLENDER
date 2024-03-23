@@ -76,11 +76,16 @@ IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &mem
   return retrieve_selected_points(curves, memory);
 }
 
+const bke::AttributeIDRef SelectionAttributeList::attribute_ids_[3]{
+    ".selection", ".selection_handle_left", ".selection_handle_right"};
+
+SelectionAttributeList::SelectionAttributeList(const int size) : size_(size) {}
+
 SelectionAttributeList::SelectionAttributeList(const bke::AttributeAccessor &attributes)
-    : attribute_ids_{".selection", ".selection_handle_left", ".selection_handle_right"},
-      size_((attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
-                sizeof(attribute_ids_) / sizeof(bke::AttributeIDRef) :
-                1)
+    : SelectionAttributeList(
+          (attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
+              sizeof(attribute_ids_) / sizeof(bke::AttributeIDRef) :
+              1)
 {
 }
 

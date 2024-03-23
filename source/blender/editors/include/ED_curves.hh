@@ -51,10 +51,11 @@ float (*ED_curves_point_normals_array_create(const Curves *curves_id))[3];
 namespace blender::ed::curves {
 
 class SelectionAttributeList {
-  const bke::AttributeIDRef attribute_ids_[3];
+  static const bke::AttributeIDRef attribute_ids_[];
   const int size_;
 
  public:
+  SelectionAttributeList() : SelectionAttributeList(3) {}
   SelectionAttributeList(const bke::CurvesGeometry &curves)
       : SelectionAttributeList(curves.attributes())
   {
@@ -83,6 +84,7 @@ class SelectionAttributeList {
   }
 
  private:
+  SelectionAttributeList(const int size);
   SelectionAttributeList(const bke::AttributeAccessor &attributes);
 };
 
