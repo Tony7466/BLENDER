@@ -20,6 +20,7 @@
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_view3d_types.h"
+#include "DNA_collection_types.h"
 
 #include "BLI_listbase.h"
 #include "BLI_math_geom.h"
@@ -269,11 +270,43 @@ void *BKE_camera_add(Main *bmain, const char *name)
   return cam;
 }
 
+static void sum_obj_positions(float pos[3], int *count, Collection *c){
+  ListBase *gobject = &(c->gobject);
+  ListBase *children = &(c->children);
+  *count += BLI_listbase_count(gobject);
+  LISTBASE_FOREACH(LinkData*,current,gobject){
+    Object* o =static_cast<Object*>(current->data);
+    const blender::float3 &cpos = o->object_to_world().location();
+    add_v3_v3v3(pos,pos,cpos);
+    printf("Name: %s, Pos: %f, %f, %f, Total: %f, %f, %f\n",o->id.name,cpos.x,cpos.y,cpos.z,pos[0],pos[1],pos[2]); //DEBUG
+  }
+  LISTBASE_FOREACH(LinkData*,current,children){
+    Collection *child = static_cast<Collection*>(current->data);
+    sum_obj_positions(pos,count,child);
+  }
+}
+
 float BKE_camera_object_dof_distance(const Object *ob)
 {
   const Camera *cam = (const Camera *)ob->data;
   if (ob->type != OB_CAMERA) {
     return 0.0f;
+  }
+  if (cam->dof.focus_collection){
+    float view_dir[3], dof_dir[3];
+    normalize_v3_v3(view_dir, ob->object_to_world().ptr()[2]);
+
+    float pos[3] = {0.0f,0.0f,0.0f};
+    int count = 0;
+    sum_obj_positions(pos,&count,cam->dof.focus_collection);
+    float scale = 1.0f / static_cast<float>(count);
+    mul_v3_fl(pos,scale);
+    printf("Nobjects: %d, AVG Pos: %f, %f, %f\n",count,pos[0],pos[1],pos[2]);  // DEBUG
+
+    sub_v3_v3v3(dof_dir,
+                ob->object_to_world().location(),
+                pos);
+    return fabsf(dot_v3v3(view_dir, dof_dir));
   }
   if (cam->dof.focus_object) {
     float view_dir[3], dof_dir[3];

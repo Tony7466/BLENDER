@@ -3070,7 +3070,7 @@ class VIEW3D_MT_object_context_menu(Menu):
                 props.input_scale = 0.01
                 props.header_text = rpt_("Camera Lens Scale: %.3f")
 
-            if not obj.data.dof.focus_object:
+            if not obj.data.dof.focus_object and not obj.data.dof.focus_collection:
                 if view and view.camera == obj and view.region_3d.view_perspective == 'CAMERA':
                     props = layout.operator("ui.eyedropper_depth", text="DOF Distance (Pick)")
                 else:

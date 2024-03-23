@@ -143,15 +143,48 @@ static void blender_camera_init(BlenderCamera *bcam, BL::RenderSettings &b_rende
   bcam->full_height = bcam->render_height;
 }
 
+static void sum_obj_positions(float3 &pos, int &count, BL::Collection &coll){
+  for (BL::Object obj : coll.objects){
+    Transform dofmat = get_transform(obj.matrix_world());
+    float3 curr = transform_get_column(&dofmat, 3);
+    pos.x += curr.x;
+    pos.y += curr.y;
+    pos.z += curr.z;
+    count += 1;
+    printf("Pos: %f, %f, %f\n",pos.x,pos.y,pos.z); // DEBUG
+  }
+  for (BL::Collection child : coll.children){
+    sum_obj_positions(pos,count,child);
+  }
+}
+
 static float blender_camera_focal_distance(BL::RenderEngine &b_engine,
                                            BL::Object &b_ob,
                                            BL::Camera &b_camera,
                                            BlenderCamera *bcam)
 {
   BL::Object b_dof_object = b_camera.dof().focus_object();
+  BL::Collection b_dof_collection = b_camera.dof().focus_collection();
 
-  if (!b_dof_object) {
+  if (!b_dof_object && !b_dof_collection) {
     return b_camera.dof().focus_distance();
+  }
+
+  if(b_dof_collection){
+    int count = 0;
+    float3 pos = {};
+    sum_obj_positions(pos,count,b_dof_collection);
+    float den = static_cast<float>(count);
+    pos.x /= den;
+    pos.y /= den;
+    pos.z /= den;
+    printf("AVG POS: %f, %f, %f\n",pos.x,pos.y,pos.z); // DEBUG
+    BL::Array<float, 16> b_ob_matrix;
+    b_engine.camera_model_matrix(b_ob, bcam->use_spherical_stereo, b_ob_matrix);
+    Transform obmat = transform_clear_scale(get_transform(b_ob_matrix));
+    float3 view_dir = normalize(transform_get_column(&obmat, 2));
+    float3 dof_dir = transform_get_column(&obmat, 3) - pos;
+    return fabsf(dot(view_dir, dof_dir));
   }
 
   Transform dofmat = get_transform(b_dof_object.matrix_world());

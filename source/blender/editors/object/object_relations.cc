@@ -1850,6 +1850,7 @@ static void single_obdata_users(
                                           nullptr,
                                           LIB_ID_COPY_DEFAULT | LIB_ID_COPY_ACTIONS)));
             ID_NEW_REMAP(cam->dof.focus_object);
+            ID_NEW_REMAP(cam->dof.focus_collection);
             break;
           case OB_MESH:
             /* Needed to remap texcomesh below. */
