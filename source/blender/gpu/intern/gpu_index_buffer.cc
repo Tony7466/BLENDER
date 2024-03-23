@@ -17,9 +17,9 @@
 
 #include "gpu_index_buffer_private.hh"
 
-#include "GPU_capabilities.h"
-#include "GPU_compute.h"
-#include "GPU_platform.h"
+#include "GPU_capabilities.hh"
+#include "GPU_compute.hh"
+#include "GPU_platform.hh"
 
 #include <algorithm> /* For `min/max`. */
 #include <cstring>
@@ -270,12 +270,7 @@ GPUIndexBuf *GPU_indexbuf_build_curves_on_device(GPUPrimType prim_type,
       tris ? GPU_SHADER_INDEXBUF_TRIS :
              (lines ? GPU_SHADER_INDEXBUF_LINES : GPU_SHADER_INDEXBUF_POINTS));
   GPU_shader_bind(shader);
-  int index_len = curves_num * dispatch_x_dim;
-  /* Buffer's size in bytes is required to be multiple of 16.
-   * Here is made an assumption that buffer's index_type is GPU_INDEX_U32.
-   * This will make buffer size multiple of 16 after multiplying by sizeof(uint32_t). */
-  int multiple_of_4 = ceil_to_multiple_u(index_len, 4);
-  GPUIndexBuf *ibo = GPU_indexbuf_build_on_device(multiple_of_4);
+  GPUIndexBuf *ibo = GPU_indexbuf_build_on_device(curves_num * dispatch_x_dim);
   int resolution;
   if (tris) {
     resolution = 6;

@@ -11,8 +11,8 @@
 
 #include "BKE_unit.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
 
 #include "ED_screen.hh"
 #include "ED_transform_snap_object_context.hh"
@@ -334,7 +334,12 @@ static EdgeSlideData *createEdgeSlideVerts(TransInfo *t,
 {
   int group_len;
   EdgeSlideData *sld = MEM_new<EdgeSlideData>("sld");
-  sld->sv = transform_mesh_edge_slide_data_create(tc, &group_len);
+  if (t->data_type == &TransConvertType_MeshUV) {
+    sld->sv = transform_mesh_uv_edge_slide_data_create(t, tc, &group_len);
+  }
+  else {
+    sld->sv = transform_mesh_edge_slide_data_create(tc, &group_len);
+  }
 
   if (sld->sv.is_empty()) {
     MEM_delete(sld);

@@ -44,7 +44,7 @@
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 
 #include "DRW_engine.hh"
 #include "DRW_pbvh.hh"
@@ -52,7 +52,7 @@
 #include "attribute_convert.hh"
 #include "bmesh.hh"
 #include "draw_pbvh.hh"
-#include "gpu_private.h"
+#include "gpu_private.hh"
 
 #define MAX_PBVH_BATCH_KEY 512
 #define MAX_PBVH_VBOS 16
@@ -312,6 +312,21 @@ static const CustomData *get_cdata(bke::AttrDomain domain, const PBVH_GPU_Args &
     default:
       return nullptr;
   }
+}
+
+template<typename T> T fallback_value_for_fill()
+{
+  return T();
+}
+
+template<> ColorGeometry4f fallback_value_for_fill()
+{
+  return ColorGeometry4f(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
+template<> ColorGeometry4b fallback_value_for_fill()
+{
+  return fallback_value_for_fill<ColorGeometry4f>().encode();
 }
 
 struct PBVHBatches {
@@ -585,7 +600,7 @@ struct PBVHBatches {
         if constexpr (!std::is_void_v<VBOType>) {
           std::fill_n(static_cast<VBOType *>(GPU_vertbuf_get_data(vbo.vert_buf)),
                       GPU_vertbuf_get_vertex_len(vbo.vert_buf),
-                      VBOType());
+                      Converter::convert(fallback_value_for_fill<T>()));
         }
       });
     }
