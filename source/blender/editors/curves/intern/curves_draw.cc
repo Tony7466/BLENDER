@@ -774,7 +774,10 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
 
-  attributes.remove(".selection");
+  const SelectionAttributeList selection_attribute_ids(curves);
+  for (const bke::AttributeIDRef &selection_attribute_id : selection_attribute_ids) {
+    attributes.remove(selection_attribute_id);
+  }
 
   if (cdd->curve_type == CU_BEZIER) {
     /* Allow to interpolate multiple channels */
@@ -918,10 +921,15 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
       curves.nurbs_orders_for_write()[curve_index] = order;
       curves.fill_curve_types(IndexRange(curve_index, 1), curve_type);
 
-      bke::AttributeWriter<bool> selection = attributes.lookup_or_add_for_write<bool>(
-          ".selection", bke::AttrDomain::Curve);
-      selection.varray.set(curve_index, true);
-      selection.finish();
+      /* If Bezier curve is being added, loop through all three ids.  */
+      for (const bke::AttributeIDRef &selection_attribute_id :
+           (bezier_as_nurbs ? selection_attribute_ids : SelectionAttributeList()))
+      {
+        bke::AttributeWriter<bool> selection = attributes.lookup_or_add_for_write<bool>(
+            selection_attribute_id, bke::AttrDomain::Curve);
+        selection.varray.set(curve_index, true);
+        selection.finish();
+      }
 
       if (attributes.contains("resolution")) {
         curves.resolution_for_write()[curve_index] = 12;
@@ -935,13 +943,21 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
                                          "handle_type_left",
                                          "handle_type_right",
                                          "nurbs_weight",
-                                         ".selection"},
+                                         ".selection",
+                                         ".selection_handle_left",
+                                         ".selection_handle_right"},
                                         curves.points_by_curve()[curve_index]);
-      bke::fill_attribute_range_default(
-          attributes,
-          bke::AttrDomain::Curve,
-          {"curve_type", "resolution", "cyclic", "nurbs_order", "knots_mode", ".selection"},
-          IndexRange(curve_index, 1));
+      bke::fill_attribute_range_default(attributes,
+                                        bke::AttrDomain::Curve,
+                                        {"curve_type",
+                                         "resolution",
+                                         "cyclic",
+                                         "nurbs_order",
+                                         "knots_mode",
+                                         ".selection",
+                                         ".selection_handle_left",
+                                         ".selection_handle_right"},
+                                        IndexRange(curve_index, 1));
     }
 
     if (corners_index) {
@@ -986,12 +1002,22 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
     selection.varray.set(curve_index, true);
     selection.finish();
 
+    for (const int i : IndexRange(1, selection_attribute_ids.size() - 1)) {
+      bke::AttributeWriter<bool> selection = attributes.lookup_or_add_for_write<bool>(
+          selection_attribute_ids[i], bke::AttrDomain::Curve);
+      selection.finish();
+    }
+
     bke::fill_attribute_range_default(
-        attributes, bke::AttrDomain::Point, {"position", "radius", ".selection"}, new_points);
-    bke::fill_attribute_range_default(attributes,
-                                      bke::AttrDomain::Curve,
-                                      {"curve_type", ".selection"},
-                                      IndexRange(curve_index, 1));
+        attributes,
+        bke::AttrDomain::Point,
+        {"position", "radius", ".selection", ".selection_handle_left", ".selection_handle_right"},
+        new_points);
+    bke::fill_attribute_range_default(
+        attributes,
+        bke::AttrDomain::Curve,
+        {"curve_type", ".selection", ".selection_handle_left", ".selection_handle_right"},
+        IndexRange(curve_index, 1));
   }
 
   if (is_cyclic) {
