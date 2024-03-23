@@ -528,12 +528,13 @@ void GPU_indexbuf_build_in_place_from_memory(GPUIndexBuf *ibo,
                                              const int32_t index_max,
                                              const bool uses_restart_indices)
 {
-  uint32_t *copy = static_cast<uint32_t *>(
-      MEM_malloc_arrayN(data_len, sizeof(uint32_t), __func__));
+  const uint32_t indices_num = data_len * indices_per_primitive(prim_type);
   /* TODO: This copy is meant to be temporary. The data should be uploaded directly to the GPU here
    * rather than copied to an array owned by the IBO first. */
-  memcpy(copy, data, sizeof(uint32_t) * data_len);
-  unwrap(ibo)->init(data_len, copy, index_min, index_max, prim_type, uses_restart_indices);
+  uint32_t *copy = static_cast<uint32_t *>(
+      MEM_malloc_arrayN(indices_num, sizeof(uint32_t), __func__));
+  memcpy(copy, data, sizeof(uint32_t) * indices_num);
+  unwrap(ibo)->init(indices_num, copy, index_min, index_max, prim_type, uses_restart_indices);
 }
 
 void GPU_indexbuf_create_subrange_in_place(GPUIndexBuf *elem,

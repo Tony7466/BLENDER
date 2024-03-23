@@ -234,11 +234,6 @@ static void accumululate_material_counts_mesh(
   });
 }
 
-static bool single_material(const Span<int> tris_num_by_material)
-{
-  return tris_num_by_material.count(0) == tris_num_by_material.size() - 1;
-}
-
 /* Count how many triangles for each material. */
 static Array<int> mesh_render_data_mat_tri_len_build(const MeshRenderData &mr)
 {
@@ -263,16 +258,65 @@ static Array<int> mesh_render_data_mat_tri_len_build(const MeshRenderData &mr)
   return std::move(tris_num_by_material);
 }
 
-static std::optional<Array<int>> sort_face_tris_by_material_mesh(
-    const MeshRenderData &mr, MutableSpan<int> material_tri_starts)
+static Array<int> sort_face_tris_by_material_bmesh(const MeshRenderData &mr,
+                                                   MutableSpan<int> material_tri_starts)
 {
+  BMesh &bm = *mr.bm;
+  Array<int> face_tri_offsets(bm.totface);
+#ifndef NDEBUG
+  face_tri_offsets.fill(-1);
+#endif
+
+  const int mat_last = mr.materials_num - 1;
+  BMIter iter;
+  BMFace *face;
+  int i;
+  BM_ITER_MESH_INDEX (face, &iter, &bm, BM_FACES_OF_MESH, i) {
+    if (BM_elem_flag_test(face, BM_ELEM_HIDDEN)) {
+      continue;
+    }
+    const int mat = std::clamp(int(face->mat_nr), 0, mat_last);
+    face_tri_offsets[i] = material_tri_starts[mat];
+    material_tri_starts[mat] += face->len - 2;
+  }
+
+  return face_tri_offsets;
+}
+
+static bool mesh_is_single_material(const Span<int> tris_num_by_material)
+{
+  return tris_num_by_material.count(0) == tris_num_by_material.size() - 1;
+}
+
+static std::optional<Array<int>> sort_face_tris_by_material_mesh(
+    const MeshRenderData &mr,
+    const Span<int> tris_num_by_material,
+    MutableSpan<int> material_tri_starts)
+{
+  const bool single_material = mesh_is_single_material(tris_num_by_material);
+  if (single_material && mr.hide_poly.is_empty()) {
+    return std::nullopt;
+  }
+
   const OffsetIndices faces = mr.faces;
   const Span<bool> hide_poly = mr.hide_poly;
   const Span<int> material_indices = mr.material_indices;
 
   Array<int> face_tri_offsets(faces.size());
+#ifndef NDEBUG
+  face_tri_offsets.fill(-1);
+#endif
 
-  // TODO: Multithread this loop somehow?
+  if (single_material) {
+    int offset = 0;
+    for (const int face : faces.index_range()) {
+      if (hide_poly[face]) {
+        continue;
+      }
+      face_tri_offsets[face] = offset;
+      offset += bke::mesh::face_triangles_num(faces[face].size());
+    }
+  }
 
   const int mat_last = mr.materials_num - 1;
   if (hide_poly.is_empty()) {
@@ -285,13 +329,11 @@ static std::optional<Array<int>> sort_face_tris_by_material_mesh(
   else {
     for (const int face : faces.index_range()) {
       if (hide_poly[face]) {
-        face_tri_offsets[face] = -1;
+        continue;
       }
-      else {
-        const int mat = std::clamp(material_indices[face], 0, mat_last);
-        face_tri_offsets[face] = material_tri_starts[mat];
-        material_tri_starts[mat] += bke::mesh::face_triangles_num(faces[face].size());
-      }
+      const int mat = std::clamp(material_indices[face], 0, mat_last);
+      face_tri_offsets[face] = material_tri_starts[mat];
+      material_tri_starts[mat] += bke::mesh::face_triangles_num(faces[face].size());
     }
   }
 
@@ -310,40 +352,11 @@ static SortedFaceData mesh_render_data_faces_sorted_build(const MeshRenderData &
   cache.visible_tris_num = material_tri_starts.last();
 
   /* Sort per material. */
-  const int mat_last = mr.materials_num - 1;
   if (mr.extract_type == MR_EXTRACT_BMESH) {
-    cache.face_tri_offsets.emplace();
-    cache.face_tri_offsets->reinitialize(mr.faces_num);
-    MutableSpan<int> face_tri_offsets = cache.face_tri_offsets->as_mutable_span();
-
-    BMIter iter;
-    BMFace *f;
-    int i;
-    BM_ITER_MESH_INDEX (f, &iter, mr.bm, BM_FACES_OF_MESH, i) {
-      if (!BM_elem_flag_test(f, BM_ELEM_HIDDEN)) {
-        const int mat = std::clamp(int(f->mat_nr), 0, mat_last);
-        face_tri_offsets[i] = material_tri_starts[mat];
-        material_tri_starts[mat] += f->len - 2;
-      }
-      else {
-        face_tri_offsets[i] = -1;
-      }
-    }
+    cache.face_tri_offsets = sort_face_tris_by_material_bmesh(mr, material_tri_starts);
   }
   else {
-    if (single_material(tris_num_by_material)) {
-      if (mr.hide_poly.is_empty()) {
-        cache.visible_tris_num = mr.corner_tris_num;
-      }
-      else {
-        cache.visible_tris_num = *std::find_if(tris_num_by_material.begin(),
-                                               tris_num_by_material.end(),
-                                               [](const int tri_count) { return tri_count != 0; });
-      }
-    }
-    else {
-      cache.face_tri_offsets = sort_face_tris_by_material_mesh(mr, material_tri_starts);
-    }
+    cache.face_tri_offsets = sort_face_tris_by_material_mesh(mr, material_tri_starts);
   }
   return cache;
 }
