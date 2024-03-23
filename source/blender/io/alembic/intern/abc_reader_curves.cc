@@ -76,6 +76,15 @@ static int16_t get_curve_order(const Alembic::AbcGeom::CurveType abc_curve_type,
   }
 }
 
+static int8_t get_knot_mode(const Alembic::AbcGeom::CurveType abc_curve_type)
+{
+  if (abc_curve_type == Alembic::AbcGeom::kCubic) {
+    return NURBS_KNOT_MODE_ENDPOINT;
+  }
+
+  return NURBS_KNOT_MODE_NORMAL;
+}
+
 static int get_curve_overlap(const Alembic::AbcGeom::CurvePeriodicity periodicity,
                              const P3fArraySamplePtr positions,
                              const int idx,
@@ -167,6 +176,7 @@ struct PreprocessedSampleData {
 
   /* Only one curve type for the whole objects. */
   CurveType curve_type;
+  int8_t knot_mode;
 
   /* Store the pointers during preprocess so we do not have to look up the sample twice. */
   P3fArraySamplePtr positions = nullptr;
@@ -218,6 +228,7 @@ static std::optional<PreprocessedSampleData> preprocess_sample(StringRefNull iob
   data.offset_in_alembic.resize(curve_count + 1);
   data.curves_cyclic.resize(curve_count);
   data.curve_type = get_curve_type(smp.getBasis());
+  data.knot_mode = get_knot_mode(smp.getType());
 
   if (data.curve_type == CURVE_TYPE_NURBS) {
     data.curves_orders.resize(curve_count);
@@ -377,6 +388,7 @@ void AbcCurveReader::read_curves_sample(Curves *curves_id,
 
   if (data.curve_type == CURVE_TYPE_NURBS) {
     curves.nurbs_orders_for_write().copy_from(data.curves_orders);
+    curves.nurbs_knots_modes_for_write().fill(data.knot_mode);
 
     if (data.weights) {
       MutableSpan<float> curves_weights = curves.nurbs_weights_for_write();
