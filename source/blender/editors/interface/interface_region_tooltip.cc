@@ -45,9 +45,9 @@
 
 #include "DNA_vfont_types.h"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_state.hh"
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
@@ -1507,6 +1507,97 @@ ARegion *UI_tooltip_create_from_gizmo(bContext *C, wmGizmo *gz)
   return ui_tooltip_create_with_data(C, data, init_position, nullptr, aspect);
 }
 
+static void ui_tooltip_from_image(Image *ima, uiTooltipData *data)
+{
+  UI_tooltip_text_field_add(data, ima->id.name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
+  UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+
+  if (ima->filepath[0]) {
+    char root[FILE_MAX];
+    BLI_path_split_dir_part(ima->filepath, root, FILE_MAX);
+    UI_tooltip_text_field_add(data, root, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
+    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+  }
+
+  void *lock;
+  ImBuf *ibuf = BKE_image_acquire_ibuf(ima, nullptr, &lock);
+
+  if (ibuf) {
+    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
+    float scale = (200.0f * UI_SCALE_FAC) / float(std::max(ibuf->x, ibuf->y));
+    uiTooltipImage image_data;
+    image_data.width = int(float(ibuf->x) * scale);
+    image_data.height = int(float(ibuf->y) * scale);
+    image_data.ibuf = ibuf;
+    image_data.border = true;
+    image_data.background = uiTooltipImageBackground::Checkerboard_Themed;
+    image_data.premultiplied = true;
+    UI_tooltip_image_field_add(data, image_data);
+    UI_tooltip_text_field_add(data,
+                              fmt::format("{} \u00D7 {}", ibuf->x, ibuf->y),
+                              {},
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_NORMAL);
+    BKE_image_release_ibuf(ima, ibuf, lock);
+  }
+}
+
+static void ui_tooltip_from_vfont(VFont *font, uiTooltipData *data)
+{
+  if (!font->filepath[0]) {
+    /* Let's not bother with packed files _for now_.*/
+    return;
+  }
+
+  int font_id = (font->filepath[0] != '<') ? BLF_load(font->filepath) : 0;
+
+  float color[4];
+  const uiWidgetColors *theme = ui_tooltip_get_theme();
+  rgba_uchar_to_float(color, theme->text);
+  BLF_buffer_col(font_id, color);
+
+  int width = 200 * UI_SCALE_FAC;
+  BLF_size(font_id, 50.0f);
+  float name_w;
+  float name_h;
+  BLF_width_and_height(font_id, font->id.name + 2, MAX_ID_NAME, &name_w, &name_h);
+  float scale = float(width) / name_w;
+  BLF_size(font_id, scale * 50.0f);
+  name_w *= scale;
+  name_h *= scale;
+
+  int height = int(name_h * 1.3f);
+  ImBuf *ibuf = IMB_allocImBuf(width, height, 32, IB_rect | IB_metadata);
+
+  BLF_buffer(font_id,
+             ibuf->float_buffer.data,
+             ibuf->byte_buffer.data,
+             width,
+             height,
+             ibuf->channels,
+             nullptr);
+
+  BLF_position(font_id, 0.0f, height - name_h, 0.0f);
+  BLF_draw_buffer(font_id, font->id.name + 2, MAX_ID_NAME);
+
+  uiTooltipImage image_data;
+  image_data.width = width;
+  image_data.height = height;
+  image_data.ibuf = ibuf;
+  image_data.border = false;
+  image_data.background = uiTooltipImageBackground::None;
+  image_data.premultiplied = false;
+  image_data.text_color = true;
+  UI_tooltip_image_field_add(data, image_data);
+
+  BLF_buffer(font_id, nullptr, nullptr, 0, 0, 0, nullptr);
+  IMB_freeImBuf(ibuf);
+
+  if (font_id != 0) {
+    BLF_unload_id(font_id);
+  }
+}
+
 static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
     bContext *C, const uiSearchItemTooltipData *item_tooltip_data)
 {
@@ -1515,109 +1606,20 @@ static uiTooltipData *ui_tooltip_data_from_search_item_tooltip_data(
   const ID_Type type_id = GS(item_tooltip_data->id->name);
 
   if (type_id == ID_IM) {
-
-    UI_tooltip_text_field_add(
-      data, item_tooltip_data->id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
-    UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
-
-    Image *ima = reinterpret_cast<Image *>(item_tooltip_data->id);
-    ImageUser *iuser = static_cast<ImageUser *>(
-        CTX_data_pointer_get_type(C, "image_user", &RNA_ImageUser).data);
-    if (ima != nullptr) {
-      void *lock;
-      ImBuf *ibuf = BKE_image_acquire_ibuf(ima, iuser, &lock);
-
-      if (ima->filepath[0]) {
-        char root[FILE_MAX];
-        BLI_path_split_dir_part(ima->filepath, root, FILE_MAX);
-        UI_tooltip_text_field_add(data, root, {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_NORMAL);
-        UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
-      }
-
-      if (ibuf) {
-        UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
-        float scale = (200.0f * UI_SCALE_FAC) / float(std::max(ibuf->x, ibuf->y));
-
-        uiTooltipImage image_data;
-        image_data.width = int(float(ibuf->x) * scale);
-        image_data.height = int(float(ibuf->y) * scale);
-        image_data.ibuf = ibuf;
-        image_data.border = true;
-        image_data.background = uiTooltipImageBackground::Checkerboard_Themed;
-        image_data.premultiplied = true;
-        UI_tooltip_image_field_add(data, image_data);
-
-        UI_tooltip_text_field_add(data,
-                                  fmt::format("{} \u00D7 {}", ibuf->x, ibuf->y),
-                                  {},
-                                  UI_TIP_STYLE_NORMAL,
-                                  UI_TIP_LC_NORMAL);
-
-        BKE_image_release_ibuf(ima, ibuf, lock);
-      }
-    }
+    ui_tooltip_from_image(reinterpret_cast<Image *>(item_tooltip_data->id), data);
   }
   else if (type_id == ID_VF) {
-    VFont *font = reinterpret_cast<VFont *>(item_tooltip_data->id);
-
-    if (font->filepath[0]) {
-
-        int font_id = (font->filepath[0] != '<') ? BLF_load(font->filepath) : 0;
-
-        int width = 200 * UI_SCALE_FAC;
-
-        float color[4] = { 1.0f,1.0f,1.0f,1.0f };
-        BLF_buffer_col(font_id, color);
-
-        BLF_size(font_id, 50.0f);
-        float name_w;
-        float name_h;
-        BLF_width_and_height(font_id, item_tooltip_data->id->name + 2, MAX_ID_NAME, &name_w, &name_h);
-        float scale = float(width) / name_w;
-        float size = scale * 50.0f;
-        BLF_size(font_id, size);
-        name_w *= scale;
-        name_h *= scale;
-
-        int height = int(name_h * 1.3f);
-        ImBuf *ibuf = IMB_allocImBuf(width, height, 32, IB_rect | IB_metadata);
-
-        //display_device = context->scene->display_settings.display_device;
-        //display = IMB_colormanagement_display_get_named(display_device);
-        BLF_buffer(
-          font_id, ibuf->float_buffer.data, ibuf->byte_buffer.data, width, height, ibuf->channels, nullptr);
-
-        BLF_position(font_id, 0.0f, height - name_h, 0.0f);
-        BLF_draw_buffer(font_id, item_tooltip_data->id->name + 2, MAX_ID_NAME);
-
-        BLF_buffer(font_id, nullptr, nullptr, 0, 0, 0, nullptr);
-
-        uiTooltipImage image_data;
-        image_data.width = width;
-        image_data.height = height;
-        image_data.ibuf = ibuf;
-        image_data.border = false;
-        image_data.background = uiTooltipImageBackground::None;
-        image_data.premultiplied = false;
-        image_data.text_color = true;
-        UI_tooltip_image_field_add(data, image_data);
-
-        IMB_freeImBuf(ibuf);
-
-        if (font_id != 0) {
-          BLF_unload_id(font_id);
-        }
-    }
+    ui_tooltip_from_vfont(reinterpret_cast<VFont *>(item_tooltip_data->id), data);
   }
-  else if (type_id == ID_SCE) {
-    // Scene *sc = reinterpret_cast<Scene *>(item_tooltip_data->id);
-  }
-  else if (type_id == ID_MC) {
-    // MovieClip *mc = reinterpret_cast<MovieClip *>(item_tooltip_data->id);
-  }
+  // else if (type_id == ID_SCE) {
+  //   Scene *sc = reinterpret_cast<Scene *>(item_tooltip_data->id);
+  // }
+  // else if (type_id == ID_MC) {
+  //   MovieClip *mc = reinterpret_cast<MovieClip *>(item_tooltip_data->id);
+  // }
   else {
     UI_tooltip_text_field_add(
-      data, item_tooltip_data->id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
+        data, item_tooltip_data->id->name + 2, {}, UI_TIP_STYLE_HEADER, UI_TIP_LC_MAIN);
     UI_tooltip_text_field_add(data, {}, {}, UI_TIP_STYLE_SPACER, UI_TIP_LC_NORMAL, false);
 
     char description[UI_MAX_DRAW_STR] = {0};

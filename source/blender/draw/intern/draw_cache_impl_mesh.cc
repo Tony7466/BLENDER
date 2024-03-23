@@ -49,7 +49,7 @@
 
 #include "bmesh.hh"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 #include "GPU_material.hh"
 
 #include "DRW_render.hh"
@@ -62,7 +62,7 @@
 #include "draw_subdivision.hh"
 
 #include "draw_cache_impl.hh" /* own include */
-#include "draw_manager.h"
+#include "draw_manager_c.hh"
 
 #include "mesh_extractors/extract_mesh.hh"
 
