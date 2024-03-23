@@ -285,6 +285,19 @@ class MemoryBuffer {
                                          get_relative_y(y));
   }
 
+  void read_elem_bicubic_mitchell(float x, float y, float *out) const
+  {
+    BLI_assert_msg(num_channels_ == 4, "bicubic interpolation assumes a 4 channel input buffer");
+
+    float4 res = math::interpolate_cubic_mitchell_fl(
+        buffer_, get_width(), get_height(), get_relative_x(x), get_relative_y(y));
+
+    out[0] = res.x;
+    out[1] = res.y;
+    out[2] = res.z;
+    out[3] = res.w;
+  }
+
   void read_elem_sampled(float x, float y, PixelSampler sampler, float *out) const
   {
     switch (sampler) {
@@ -292,9 +305,12 @@ class MemoryBuffer {
         read_elem_checked(x, y, out);
         break;
       case PixelSampler::Bilinear:
-      case PixelSampler::Bicubic:
-        /* No bicubic. Current implementation produces fuzzy results. */
         read_elem_bilinear(x, y, out);
+        break;
+      case PixelSampler::Bicubic:
+        /* Use Mitchell method to have results more similar to Bilinear, and therefore more similar
+         * to GPU compositor. */
+        read_elem_bicubic_mitchell(x, y, out);
         break;
     }
   }
