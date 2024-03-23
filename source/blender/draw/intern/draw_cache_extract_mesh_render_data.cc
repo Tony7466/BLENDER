@@ -258,8 +258,8 @@ static Array<int> mesh_render_data_mat_tri_len_build(const MeshRenderData &mr)
   return std::move(tris_num_by_material);
 }
 
-static Array<int> sort_face_tris_by_material_bmesh(const MeshRenderData &mr,
-                                                   MutableSpan<int> material_tri_starts)
+static Array<int> calc_face_tri_starts_bmesh(const MeshRenderData &mr,
+                                             MutableSpan<int> material_tri_starts)
 {
   BMesh &bm = *mr.bm;
   Array<int> face_tri_offsets(bm.totface);
@@ -283,24 +283,25 @@ static Array<int> sort_face_tris_by_material_bmesh(const MeshRenderData &mr,
   return face_tri_offsets;
 }
 
-static bool mesh_is_single_material(const Span<int> tris_num_by_material)
+static bool mesh_is_single_material(const OffsetIndices<int> material_tri_starts)
 {
-  return tris_num_by_material.count(0) == tris_num_by_material.size() - 1;
+  const int used_materials = std::count_if(
+      material_tri_starts.index_range().begin(),
+      material_tri_starts.index_range().end(),
+      [&](const int i) { return material_tri_starts[i].size() > 0; });
+  return used_materials == 1;
 }
 
-static std::optional<Array<int>> sort_face_tris_by_material_mesh(
-    const MeshRenderData &mr,
-    const Span<int> tris_num_by_material,
-    MutableSpan<int> material_tri_starts)
+static std::optional<Array<int>> calc_face_tri_starts_mesh(const MeshRenderData &mr,
+                                                           MutableSpan<int> material_tri_starts)
 {
-  const bool single_material = mesh_is_single_material(tris_num_by_material);
+  const bool single_material = mesh_is_single_material(material_tri_starts.as_span());
   if (single_material && mr.hide_poly.is_empty()) {
     return std::nullopt;
   }
 
   const OffsetIndices faces = mr.faces;
   const Span<bool> hide_poly = mr.hide_poly;
-  const Span<int> material_indices = mr.material_indices;
 
   Array<int> face_tri_offsets(faces.size());
 #ifndef NDEBUG
@@ -316,25 +317,18 @@ static std::optional<Array<int>> sort_face_tris_by_material_mesh(
       face_tri_offsets[face] = offset;
       offset += bke::mesh::face_triangles_num(faces[face].size());
     }
+    return face_tri_offsets;
   }
 
+  const Span<int> material_indices = mr.material_indices;
   const int mat_last = mr.materials_num - 1;
-  if (hide_poly.is_empty()) {
-    for (const int face : faces.index_range()) {
-      const int mat = std::clamp(material_indices[face], 0, mat_last);
-      face_tri_offsets[face] = material_tri_starts[mat];
-      material_tri_starts[mat] += bke::mesh::face_triangles_num(faces[face].size());
+  for (const int face : faces.index_range()) {
+    if (!hide_poly.is_empty() && hide_poly[face]) {
+      continue;
     }
-  }
-  else {
-    for (const int face : faces.index_range()) {
-      if (hide_poly[face]) {
-        continue;
-      }
-      const int mat = std::clamp(material_indices[face], 0, mat_last);
-      face_tri_offsets[face] = material_tri_starts[mat];
-      material_tri_starts[mat] += bke::mesh::face_triangles_num(faces[face].size());
-    }
+    const int mat = std::clamp(material_indices[face], 0, mat_last);
+    face_tri_offsets[face] = material_tri_starts[mat];
+    material_tri_starts[mat] += bke::mesh::face_triangles_num(faces[face].size());
   }
 
   return face_tri_offsets;
@@ -353,10 +347,10 @@ static SortedFaceData mesh_render_data_faces_sorted_build(const MeshRenderData &
 
   /* Sort per material. */
   if (mr.extract_type == MR_EXTRACT_BMESH) {
-    cache.face_tri_offsets = sort_face_tris_by_material_bmesh(mr, material_tri_starts);
+    cache.face_tri_offsets = calc_face_tri_starts_bmesh(mr, material_tri_starts);
   }
   else {
-    cache.face_tri_offsets = sort_face_tris_by_material_mesh(mr, material_tri_starts);
+    cache.face_tri_offsets = calc_face_tri_starts_mesh(mr, material_tri_starts);
   }
   return cache;
 }

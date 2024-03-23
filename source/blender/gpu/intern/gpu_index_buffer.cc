@@ -101,11 +101,6 @@ blender::MutableSpan<uint32_t> GPU_indexbuf_get_data(GPUIndexBufBuilder *builder
   return {builder->data, builder->max_index_len};
 }
 
-uint32_t GPU_indexbuf_get_restart_value(GPUIndexBufBuilder *builder)
-{
-  return builder->restart_index_value;
-}
-
 void GPU_indexbuf_join(GPUIndexBufBuilder *builder_to, const GPUIndexBufBuilder *builder_from)
 {
   BLI_assert(builder_to->data == builder_from->data);

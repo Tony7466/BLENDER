@@ -22,10 +22,8 @@ namespace blender::draw {
 
 static void extract_tris_mesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
 {
-  const OffsetIndices faces = mr.faces;
   const Span<int3> corner_tris = mr.corner_tris;
-
-  if (mr.face_sorted->face_tri_offsets.has_value()) {
+  if (!mr.face_sorted->face_tri_offsets) {
     /* There are no hidden faces and no reordering is necessary to group triangles with the same
      * material. The corner indices from #Mesh::corner_tris() can be copied directly to the GPU. */
     GPU_indexbuf_build_in_place_from_memory(&ibo,
@@ -38,6 +36,7 @@ static void extract_tris_mesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
     return;
   }
 
+  const OffsetIndices faces = mr.faces;
   const Span<bool> hide_poly = mr.hide_poly;
 
   GPUIndexBufBuilder builder;
@@ -45,7 +44,7 @@ static void extract_tris_mesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
   MutableSpan<uint3> data = GPU_indexbuf_get_data(&builder).cast<uint3>();
 
   const Span<int> face_tri_offsets = mr.face_sorted->face_tri_offsets->as_span();
-  threading::parallel_for(corner_tris.index_range(), 2048, [&](const IndexRange range) {
+  threading::parallel_for(faces.index_range(), 2048, [&](const IndexRange range) {
     for (const int face : range) {
       if (!hide_poly.is_empty() && hide_poly[face]) {
         continue;
@@ -65,7 +64,6 @@ static void extract_tris_bmesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
   GPUIndexBufBuilder builder;
   GPU_indexbuf_init(&builder, GPU_PRIM_TRIS, mr.face_sorted->visible_tris_num, mr.corners_num);
   MutableSpan<uint3> data = GPU_indexbuf_get_data(&builder).cast<uint3>();
-  const uint32_t restart_value = GPU_indexbuf_get_restart_value(&builder);
 
   BMesh &bm = *mr.bm;
   const Span<std::array<BMLoop *, 3>> looptris = mr.edit_bmesh->looptris;

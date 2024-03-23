@@ -42,7 +42,6 @@ GPUIndexBuf *GPU_indexbuf_build_on_device(uint index_len);
 void GPU_indexbuf_init_build_on_device(GPUIndexBuf *elem, uint index_len);
 
 blender::MutableSpan<uint32_t> GPU_indexbuf_get_data(GPUIndexBufBuilder *);
-uint32_t GPU_indexbuf_get_restart_value(GPUIndexBufBuilder *);
 
 /*
  * Thread safe.
