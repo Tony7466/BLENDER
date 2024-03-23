@@ -387,6 +387,8 @@ static int console_move_exec(bContext *C, wmOperator *op)
   ScrArea *area = CTX_wm_area(C);
   ARegion *region = BKE_area_find_region_type(area, RGN_TYPE_WINDOW);
 
+  sc->is_cursor_visible = true;
+
   int type = RNA_enum_get(op->ptr, "type");
   bool select = RNA_boolean_get(op->ptr, "select");
 
@@ -1286,6 +1288,7 @@ static void console_modal_select_apply(bContext *C, wmOperator *op, const wmEven
 
   /* only redraw if the selection changed */
   if (sel_prev[0] != sc->sel_start || sel_prev[1] != sc->sel_end) {
+    sc->is_cursor_visible = true;
     ED_area_tag_redraw(area);
   }
 }

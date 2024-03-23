@@ -28,6 +28,8 @@ extern "C" {
 
 void draw_text_main(SpaceText *st, ARegion *region);
 
+void draw_text_cursor(SpaceText *st, ARegion *region);
+
 void text_update_line_edited(TextLine *line);
 void text_update_edited(Text *text);
 
@@ -215,6 +217,9 @@ struct SpaceText_Runtime {
    * Values must be between zero and the line, column width: (cwidth, TXT_LINE_HEIGHT(st)).
    */
   int scroll_ofs_px[2]{0, 0};
+
+  bool is_area_active;
+  bool is_cursor_visible;
 
   /** Cache for faster drawing. */
   void *drawcache = nullptr;

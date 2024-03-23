@@ -42,6 +42,10 @@ class AbstractViewItem;
 void UI_but_func_set(uiBut *but, std::function<void(bContext &)> func);
 void UI_but_func_pushed_state_set(uiBut *but, std::function<bool(const uiBut &)> func);
 
+/* Text cursor blink rate and opacity. */
+#define TEXT_CURSOR_BLINK_RATE 0.53f
+#define TEXT_CURSOR_BLINK_OFF_OPACITY 0.35f
+
 namespace blender::ui {
 
 class AbstractGridView;

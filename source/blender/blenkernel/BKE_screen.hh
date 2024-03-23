@@ -90,7 +90,9 @@ struct SpaceType {
   void (*listener)(const wmSpaceTypeListenerParams *params);
 
   /* called when the mouse moves out of the area */
-  void (*deactivate)(ScrArea *area);
+  void (*deactivate)(bContext *C, ScrArea *area);
+  /* called when the mouse moves into the area */
+  void (*activate)(bContext *C, struct ScrArea *sa);
 
   /** Refresh context, called after file-reads, #ED_area_tag_refresh(). */
   void (*refresh)(const bContext *C, ScrArea *area);

@@ -131,6 +131,15 @@ static void text_listener(const wmSpaceTypeListenerParams *params)
       }
 
       switch (wmn->action) {
+        case NA_CURSOR_BLINK:
+          st->runtime->is_cursor_visible = !st->runtime->is_cursor_visible;
+          LISTBASE_FOREACH (ARegion *, region, &area->regionbase) {
+            if (region->type->regionid == RGN_TYPE_WINDOW) {
+              ED_region_tag_redraw_editor_overlays(region);
+              break;
+            }
+          }
+          break;
         case NA_EDITED:
           if (st->text) {
             space_text_drawcache_tag_update(st, true);
@@ -284,6 +293,12 @@ static void text_main_region_draw(const bContext *C, ARegion *region)
   /* scrollers? */
 }
 
+static void text_main_region_draw_overlay(const bContext *C, ARegion *region)
+{
+  SpaceText *st = CTX_wm_space_text(C);
+  draw_text_cursor(st, region);
+}
+
 static void text_cursor(wmWindow *win, ScrArea *area, ARegion *region)
 {
   SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
@@ -414,6 +429,47 @@ static void text_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceText, sl);
 }
 
+static void text_activate(bContext *C, struct ScrArea *area)
+{
+  SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
+  st->runtime->is_area_active = true;
+  st->runtime->is_cursor_visible = true;
+
+  if (C) {
+    wmWindow *win = CTX_wm_window(C);
+    wmWindowManager *wm = CTX_wm_manager(C);
+    if (wm->cursor_blink_timer) {
+      WM_event_timer_remove_notifier(wm, win, wm->cursor_blink_timer);
+    }
+    if (U.text_cursor_blink) {
+      wm->cursor_blink_timer = WM_event_timer_add_notifier(
+          wm, win, NC_TEXT | NA_CURSOR_BLINK, TEXT_CURSOR_BLINK_RATE);
+    }
+  }
+
+  /* Redraw to show active text caret. */
+  ED_region_tag_redraw(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
+}
+
+static void text_deactivate(bContext *C, struct ScrArea *area)
+{
+  SpaceText *st = static_cast<SpaceText *>(area->spacedata.first);
+  st->runtime->is_area_active = false;
+  st->runtime->is_cursor_visible = false;
+
+  if (C && area == CTX_wm_area(C)) {
+    wmWindow *win = CTX_wm_window(C);
+    wmWindowManager *wm = CTX_wm_manager(C);
+    if (wm->cursor_blink_timer) {
+      WM_event_timer_remove_notifier(wm, win, wm->cursor_blink_timer);
+      wm->cursor_blink_timer = nullptr;
+    }
+  }
+
+  /* Redraw to remove active text caret. */
+  ED_region_tag_redraw(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
+}
+
 /********************* registration ********************/
 
 void ED_spacetype_text()
@@ -438,12 +494,15 @@ void ED_spacetype_text()
   st->blend_read_data = text_space_blend_read_data;
   st->blend_read_after_liblink = nullptr;
   st->blend_write = text_space_blend_write;
+  st->activate = text_activate;
+  st->deactivate = text_deactivate;
 
   /* regions: main window */
   art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype text region"));
   art->regionid = RGN_TYPE_WINDOW;
   art->init = text_main_region_init;
   art->draw = text_main_region_draw;
+  art->draw_overlay = text_main_region_draw_overlay;
   art->cursor = text_cursor;
   art->event_cursor = true;
 

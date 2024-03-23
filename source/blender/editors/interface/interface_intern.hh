@@ -183,6 +183,8 @@ struct uiBut {
 
   std::string drawstr;
 
+  bool is_cursor_visible = true;
+
   char *placeholder = nullptr;
 
   rctf rect = {}; /* block relative coords */

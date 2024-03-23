@@ -2054,13 +2054,14 @@ static void widget_draw_text(const uiFontStyle *fstyle,
       /* We are drawing on top of widget bases. Flush cache. */
       GPU_blend(GPU_BLEND_ALPHA);
       UI_widgetbase_draw_cache_flush();
-      GPU_blend(GPU_BLEND_NONE);
 
       uint pos = GPU_vertformat_attr_add(
           immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
       immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-      immUniformThemeColor(TH_WIDGET_TEXT_CURSOR);
+      immUniformThemeColorAlpha(
+          TH_WIDGET_TEXT_CURSOR,
+          (but->is_cursor_visible || !U.text_cursor_blink) ? 1.0f : TEXT_CURSOR_BLINK_OFF_OPACITY);
 
       /* Shape of the cursor for drawing. */
       rcti but_cursor_shape;
@@ -2077,6 +2078,7 @@ static void widget_draw_text(const uiFontStyle *fstyle,
                but_cursor_shape.ymax);
 
       immUnbindProgram();
+      GPU_blend(GPU_BLEND_NONE);
 
 #ifdef WITH_INPUT_IME
       /* IME candidate window uses cursor position. */

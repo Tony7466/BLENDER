@@ -1165,6 +1165,81 @@ static void draw_suggestion_list(const SpaceText *st, const TextDrawContext *tdc
 /** \name Draw Cursor
  * \{ */
 
+void draw_text_cursor(SpaceText *st, ARegion *region)
+{
+  if (st == nullptr || st->text == nullptr) {
+    return;
+  }
+
+  bool hidden = false;
+  Text *text = st->text;
+  int vsell, vselc;
+  int x, y, w;
+  int offl, offc;
+  const int lheight = TXT_LINE_HEIGHT(st);
+
+  /* Convert to view space character coordinates to determine if cursor is hidden */
+  space_text_wrap_offset(st, region, text->sell, text->selc, &offl, &offc);
+  vsell = txt_get_span(static_cast<TextLine *>(text->lines.first), text->sell) - st->top + offl;
+  vselc = space_text_get_char_pos(st, text->sell->line, text->selc) - st->left + offc;
+
+  if (vselc < 0) {
+    vselc = 0;
+    hidden = true;
+  }
+
+  if (text->curl == text->sell && text->curc == text->selc && !st->line_hlight && hidden) {
+    /* Nothing to draw here */
+    return;
+  }
+
+  uint pos = GPU_vertformat_attr_add(
+      immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
+  immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+
+  if (!hidden) {
+    /* Draw the cursor itself (we draw the sel. cursor as this is the leading edge) */
+    x = TXT_BODY_LEFT(st) + (vselc * st->runtime->cwidth_px);
+    y = region->winy - vsell * lheight;
+    if (st->flags & ST_SCROLL_SELECT) {
+      y += st->runtime->scroll_ofs_px[1];
+    }
+
+    float color[4];
+    UI_GetThemeColor4fv(TH_HILITE, color);
+    if (st->runtime->is_area_active) {
+      color[3] = (st->runtime->is_cursor_visible || !U.text_cursor_blink) ?
+                     1.0f :
+                     TEXT_CURSOR_BLINK_OFF_OPACITY;
+    }
+    else {
+      color[0] = color[1] = color[2] = color[3] = 0.5f;
+    }
+    immUniformColor4fv(color);
+
+    GPU_blend(GPU_BLEND_ALPHA);
+
+    if (st->overwrite) {
+      char ch = text->sell->line[text->selc];
+
+      y += TXT_LINE_SPACING(st);
+      w = st->runtime->cwidth_px;
+      if (ch == '\t') {
+        w *= st->tabnumber - (vselc + st->left) % st->tabnumber;
+      }
+
+      immRecti(
+          pos, x, y - lheight - U.pixelsize, x + w + U.pixelsize, y - lheight - (3 * U.pixelsize));
+    }
+    else {
+      immRecti(pos, x - U.pixelsize, y, x + U.pixelsize, y - lheight);
+    }
+    GPU_blend(GPU_BLEND_NONE);
+  }
+
+  immUnbindProgram();
+}
+
 static void draw_text_decoration(SpaceText *st, ARegion *region)
 {
   Text *text = st->text;
@@ -1294,33 +1369,6 @@ static void draw_text_decoration(SpaceText *st, ARegion *region)
       GPU_blend(GPU_BLEND_ALPHA);
       immRecti(pos, 0, y1, region->winx, y2);
       GPU_blend(GPU_BLEND_NONE);
-    }
-  }
-
-  if (!hidden) {
-    /* Draw the cursor itself (we draw the sel. cursor as this is the leading edge) */
-    x = TXT_BODY_LEFT(st) + (vselc * st->runtime->cwidth_px);
-    y = region->winy - vsell * lheight;
-    if (st->flags & ST_SCROLL_SELECT) {
-      y += st->runtime->scroll_ofs_px[1];
-    }
-
-    immUniformThemeColor(TH_HILITE);
-
-    if (st->overwrite) {
-      char ch = text->sell->line[text->selc];
-
-      y += TXT_LINE_SPACING(st);
-      w = st->runtime->cwidth_px;
-      if (ch == '\t') {
-        w *= st->tabnumber - (vselc + st->left) % st->tabnumber;
-      }
-
-      immRecti(
-          pos, x, y - lheight - U.pixelsize, x + w + U.pixelsize, y - lheight - (3 * U.pixelsize));
-    }
-    else {
-      immRecti(pos, x - U.pixelsize, y, x + U.pixelsize, y - lheight);
     }
   }
 
@@ -1782,6 +1830,7 @@ void space_text_update_cursor_moved(bContext *C)
   ScrArea *area = CTX_wm_area(C);
   SpaceText *st = CTX_wm_space_text(C);
 
+  st->runtime->is_cursor_visible = true;
   space_text_scroll_to_cursor_with_area(st, area, true);
 }
 

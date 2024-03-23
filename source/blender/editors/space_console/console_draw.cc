@@ -18,6 +18,7 @@
 
 #include "GPU_immediate.h"
 
+#include "UI_interface.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
@@ -133,8 +134,8 @@ static void console_cursor_wrap_offset(
 static void console_textview_draw_cursor(TextViewContext *tvc, int cwidth, int columns)
 {
   int pen[2];
+  const SpaceConsole *sc = (SpaceConsole *)tvc->arg1;
   {
-    const SpaceConsole *sc = (SpaceConsole *)tvc->arg1;
     const ConsoleLine *cl = (ConsoleLine *)sc->history.last;
     int offl = 0, offc = 0;
 
@@ -151,13 +152,25 @@ static void console_textview_draw_cursor(TextViewContext *tvc, int cwidth, int c
   }
 
   /* cursor */
+  GPU_blend(GPU_BLEND_ALPHA);
   GPUVertFormat *format = immVertexFormat();
   uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
   immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-  immUniformThemeColor(TH_CONSOLE_CURSOR);
+
+  float color[4];
+  UI_GetThemeColor4fv(TH_CONSOLE_CURSOR, color);
+  if (sc->is_area_active) {
+    color[3] = (sc->is_cursor_visible || !U.text_cursor_blink) ? 1.0f :
+                                                                 TEXT_CURSOR_BLINK_OFF_OPACITY;
+  }
+  else {
+    color[0] = color[1] = color[2] = color[3] = 0.5f;
+  }
+  immUniformColor4fv(color);
 
   immRectf(pos, pen[0] - U.pixelsize, pen[1], pen[0] + U.pixelsize, pen[1] + tvc->lheight);
 
+  GPU_blend(GPU_BLEND_NONE);
   immUnbindProgram();
 }
 

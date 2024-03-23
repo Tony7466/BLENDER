@@ -553,6 +553,7 @@ struct wmNotifier {
 #define NA_ACTIVATED 7
 #define NA_PAINTING 8
 #define NA_JOB_FINISHED 9
+#define NA_CURSOR_BLINK 10
 
 /* ************** Gesture Manager data ************** */
 

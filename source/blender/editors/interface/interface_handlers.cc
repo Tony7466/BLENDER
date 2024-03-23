@@ -3080,6 +3080,8 @@ static void ui_textedit_set_cursor_pos(uiBut *but, uiHandleButtonData *data, con
   /* treat 'str_last' as null terminator for str, no need to modify in-place */
   const char *str = but->editstr, *str_last;
 
+  but->is_cursor_visible = true;
+
   ui_block_to_window_fl(data->region, but->block, &startx, &starty_dummy);
 
   ui_fontscale(&fstyle.points, aspect);
@@ -3205,6 +3207,8 @@ static void ui_textedit_move(uiBut *but,
   const int len = strlen(str);
   const int pos_prev = but->pos;
   const bool has_sel = (but->selend - but->selsta) > 0;
+
+  but->is_cursor_visible = true;
 
   ui_but_update(but);
 
@@ -3417,6 +3421,15 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 
   MEM_SAFE_FREE(data->str);
 
+  but->is_cursor_visible = true;
+  if (data->wm->cursor_blink_timer) {
+    WM_event_timer_remove_notifier(data->wm, win, data->wm->cursor_blink_timer);
+  }
+  if (U.text_cursor_blink) {
+    data->wm->cursor_blink_timer = WM_event_timer_add(
+        data->wm, win, TIMER, TEXT_CURSOR_BLINK_RATE);
+  }
+
 #ifdef USE_DRAG_MULTINUM
   /* this can happen from multi-drag */
   if (data->applied_interactive) {
@@ -3530,6 +3543,11 @@ static void ui_textedit_begin(bContext *C, uiBut *but, uiHandleButtonData *data)
 static void ui_textedit_end(bContext *C, uiBut *but, uiHandleButtonData *data)
 {
   wmWindow *win = data->window;
+
+  if (data->wm->cursor_blink_timer) {
+    WM_event_timer_remove_notifier(data->wm, win, data->wm->cursor_blink_timer);
+    data->wm->cursor_blink_timer = nullptr;
+  }
 
   if (but) {
     if (UI_but_is_utf8(but)) {
@@ -11557,7 +11575,13 @@ static int ui_region_handler(bContext *C, const wmEvent *event, void * /*userdat
 
   if (retval == WM_UI_HANDLER_CONTINUE) {
     if (but) {
-      retval = ui_handle_button_event(C, event, but);
+      if (event->type == TIMER) {
+        but->is_cursor_visible = !but->is_cursor_visible;
+        ED_region_tag_redraw(region);
+      }
+      else {
+        retval = ui_handle_button_event(C, event, but);
+      }
     }
     else {
       retval = ui_handle_button_over(C, event, region);

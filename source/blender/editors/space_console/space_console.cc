@@ -26,6 +26,7 @@
 #include "WM_api.hh"
 #include "WM_types.hh"
 
+#include "UI_interface.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 
@@ -298,6 +299,11 @@ static void console_main_region_listener(const wmRegionListenerParams *params)
             ED_region_tag_redraw(region);
           }
         }
+        else if (wmn->action == NA_CURSOR_BLINK) {
+          SpaceConsole *sconsole = static_cast<SpaceConsole *>(area->spacedata.first);
+          sconsole->is_cursor_visible = (sconsole->is_cursor_visible) ? false : true;
+          ED_region_tag_redraw(region);
+        }
         else {
           /* generic redraw request */
           ED_region_tag_redraw(region);
@@ -343,6 +349,47 @@ static void console_space_blend_write(BlendWriter *writer, SpaceLink *sl)
   BLO_write_struct(writer, SpaceConsole, sl);
 }
 
+static void console_activate(bContext *C, struct ScrArea *area)
+{
+  SpaceConsole *sc = static_cast<SpaceConsole *>(area->spacedata.first);
+  sc->is_area_active = true;
+  sc->is_cursor_visible = true;
+
+  if (C) {
+    wmWindow *win = CTX_wm_window(C);
+    wmWindowManager *wm = CTX_wm_manager(C);
+    if (wm->cursor_blink_timer) {
+      WM_event_timer_remove_notifier(wm, win, wm->cursor_blink_timer);
+    }
+    if (U.text_cursor_blink) {
+      wm->cursor_blink_timer = WM_event_timer_add_notifier(
+          wm, win, NC_SPACE | ND_SPACE_CONSOLE | NA_CURSOR_BLINK, TEXT_CURSOR_BLINK_RATE);
+    }
+  }
+
+  /* Redraw to show active caret. */
+  ED_region_tag_redraw(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
+}
+
+static void console_deactivate(bContext *C, struct ScrArea *area)
+{
+  SpaceConsole *sc = static_cast<SpaceConsole *>(area->spacedata.first);
+  sc->is_area_active = false;
+  sc->is_cursor_visible = false;
+
+  if (C && area == CTX_wm_area(C)) {
+    wmWindow *win = CTX_wm_window(C);
+    wmWindowManager *wm = CTX_wm_manager(C);
+    if (wm->cursor_blink_timer) {
+      WM_event_timer_remove_notifier(wm, win, wm->cursor_blink_timer);
+      wm->cursor_blink_timer = nullptr;
+    }
+  }
+
+  /* Redraw to remove active caret. */
+  ED_region_tag_redraw(BKE_area_find_region_type(area, RGN_TYPE_WINDOW));
+}
+
 void ED_spacetype_console()
 {
   std::unique_ptr<SpaceType> st = std::make_unique<SpaceType>();
@@ -360,6 +407,8 @@ void ED_spacetype_console()
   st->dropboxes = console_dropboxes;
   st->blend_read_data = console_blend_read_data;
   st->blend_write = console_space_blend_write;
+  st->activate = console_activate;
+  st->deactivate = console_deactivate;
 
   /* regions: main window */
   art = static_cast<ARegionType *>(MEM_callocN(sizeof(ARegionType), "spacetype console region"));

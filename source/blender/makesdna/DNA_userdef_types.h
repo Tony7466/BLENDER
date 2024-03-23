@@ -1043,7 +1043,8 @@ typedef struct UserDef {
 
   float collection_instance_empty_size;
   char text_flag;
-  char _pad10[1];
+
+  char text_cursor_blink;
 
   char file_preview_type; /* eUserpref_File_Preview_Type */
   char statusbar_flag;    /* eUserpref_StatusBar_Flag */

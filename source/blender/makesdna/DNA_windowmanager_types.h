@@ -208,6 +208,8 @@ typedef struct wmWindowManager {
 
   /** Active timers. */
   ListBase timers;
+  /** Timer for text cursor blinking. */
+  struct wmTimer *cursor_blink_timer;
   /** Timer for auto save. */
   struct wmTimer *autosavetimer;
   /** Auto-save timer was up, but it wasn't possible to auto-save in the current mode. */
