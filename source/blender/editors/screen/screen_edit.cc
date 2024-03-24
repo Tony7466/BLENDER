@@ -42,6 +42,7 @@
 
 #include "WM_message.hh"
 #include "WM_toolsystem.hh"
+#include "wm_window.hh"
 
 #include "DEG_depsgraph_query.hh"
 
@@ -1533,6 +1534,8 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *area, const
 {
   wmWindowManager *wm = CTX_wm_manager(C);
   WorkSpace *workspace = WM_window_get_active_workspace(win);
+  eSpace_Type spaceid = eSpace_Type(area->type->spaceid);
+  const bool restore = (area && area->full);
 
   if (area) {
     /* ensure we don't have a button active anymore, can crash when
@@ -1551,7 +1554,9 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *area, const
     ED_workspace_status_text(C, nullptr);
   }
   bScreen *screen;
-  if (area && area->full) {
+
+  if (restore) {
+
     WorkSpaceLayout *layout_old = WM_window_get_active_layout(win);
     /* restoring back to SCREENNORMAL */
     screen = area->full;                                   /* the old screen to restore */
@@ -1601,6 +1606,8 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *area, const
 
     BKE_workspace_layout_remove(CTX_data_main(C), workspace, layout_old);
 
+    wm_window_fullscreen_toggle_exec(C, nullptr);
+
     /* After we've restored back to SCREENNORMAL, we have to wait with
      * screen handling as it uses the area coords which aren't updated yet.
      * Without doing so, the screen handling gets wrong area coords,
@@ -1619,6 +1626,8 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *area, const
 
     screen = screen_state_to_nonnormal(C, win, toggle_area, state);
 
+    wm_window_fullscreen_toggle_exec(C, nullptr);
+
     ED_screen_change(C, screen);
   }
 
@@ -1632,6 +1641,16 @@ ScrArea *ED_screen_state_toggle(bContext *C, wmWindow *win, ScrArea *area, const
    * NOTE: an old comment stated this was "bad code",
    * however it doesn't cause problems so leave as-is. */
   CTX_wm_area_set(C, static_cast<ScrArea *>(screen->areabase.first));
+
+  if (!restore && spaceid == SPACE_VIEW3D) {
+    ScrArea *newsa = area_split(CTX_wm_window(C),
+                                CTX_wm_screen(C),
+                                static_cast<ScrArea *>(screen->areabase.first),
+                                SCREEN_AXIS_V,
+                                0.9999f,
+                                true);
+    ED_area_newspace(C, newsa, SPACE_PROPERTIES, false);
+  }
 
   return static_cast<ScrArea *>(screen->areabase.first);
 }
