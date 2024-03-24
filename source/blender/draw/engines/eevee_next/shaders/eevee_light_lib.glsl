@@ -107,47 +107,66 @@ float light_spot_attenuation(LightData light, vec3 L)
  * Approximate the ratio of the area of intersection of two spherical caps divided by the area of
  * the smallest cap.
  */
-float light_spread_spherical_cap_intersection(float cone_angle_1,
-                                              float cone_angle_2,
-                                              float angle_between_axes)
+float light_cone_cone_ratio(float cone_angle_1, float cone_angle_2, float angle_between_axes)
 {
   /* From "Ambient Aperture Lighting" by Chris Oat
    * Slide 15.
    * Simplified since we divide by the solid angle of the smallest cone. */
-  float diff = abs(cone_angle_1 - cone_angle_2);
-  float sum_radius = cone_angle_1 + cone_angle_2;
-  return smoothstep(sum_radius, diff, angle_between_axes);
+  return smoothstep(
+      cone_angle_1 + cone_angle_2, abs(cone_angle_1 - cone_angle_2), abs(angle_between_axes));
 }
 
-float light_cone_cone_ratio(float cone_half_angle,
-                            float light_half_angle,
-                            float angle_cone_hemisphere)
+float linearstep(float edge0, float edge1, float x)
 {
-  return light_spread_spherical_cap_intersection(
-      cone_half_angle, light_half_angle, angle_cone_hemisphere);
+  return saturate((x - edge0) / (edge1 - edge0));
 }
 
-float light_hemisphere_cone_ratio(float cone_half_angle, float angle_between_axes)
+float ratio_cone_cone(float cone_angle_1, float cone_angle_2, float angle_between_axes)
 {
-  float cone_hemisphere_ratio = light_spread_spherical_cap_intersection(
-      cone_half_angle, M_PI / 2.0, angle_between_axes);
-  /* But we don't want the clipped ratio wrt the shading hemisphere (otherwise, we duplicate what
-   * the LTC computes and do not converge towards 1 at full aperture), so divide by the shading
-   * hemisphere ratio. */
-  cone_hemisphere_ratio /= light_spread_spherical_cap_intersection(
-      M_PI / 2.0, M_PI / 2.0, angle_between_axes);
-  return cone_hemisphere_ratio;
+  return light_cone_cone_ratio(cone_angle_1, cone_angle_2, angle_between_axes);
+}
+
+float area_cone(float cone_angle)
+{
+  return M_TAU * (1.0 - cos(cone_angle));
+}
+
+float area_lune(float lune_angle)
+{
+  return linearstep(0.0, M_TAU, abs(lune_angle));
+}
+
+float area_cone_cone(float cone_angle_1, float cone_angle_2, float angle_between_axes)
+{
+  return ratio_cone_cone(cone_angle_1, cone_angle_2, angle_between_axes) *
+         area_cone(min(cone_angle_1, cone_angle_2));
+}
+
+float area_cone_hemisphere(float cone_angle, float angle_between_axes)
+{
+  float r = abs(cone_angle);
+  float d = abs(angle_between_axes);
+  d = clamp(d, M_PI_2 - r + 0.0001, M_PI_2 + r - 0.0001);
+  return -2.0 * acos(cos(d) / sin(r)) - 2.0 * acos(-cos(d) * cos(r) / (sin(d) * sin(r))) * cos(r) +
+         M_TAU;
+}
+
+float light_cone_lune_area(float spread_half_angle, float edge_angle_1, float edge_angle_2)
+{
+  float angle_hemi1 = edge_angle_1 + M_PI_2;
+  float angle_hemi2 = edge_angle_2 - M_PI_2;
+  float ratio_hemi1_cone_isect = area_cone_hemisphere(spread_half_angle, angle_hemi1) /
+                                 min(area_cone_hemisphere(M_PI_2, angle_hemi1),
+                                     area_cone(spread_half_angle));
+  float ratio_hemi2_cone_isect = area_cone_hemisphere(spread_half_angle, angle_hemi2) /
+                                 min(area_cone_hemisphere(M_PI_2, angle_hemi2),
+                                     area_cone(spread_half_angle));
+  return min(ratio_hemi1_cone_isect, ratio_hemi2_cone_isect);
 }
 
 float light_lune_cone_ratio(float spread_half_angle, float edge_angle_1, float edge_angle_2)
 {
-  float hemisphere_elevation_angle_1 = edge_angle_1 + (M_PI / 2.0);
-  float hemisphere_elevation_angle_2 = edge_angle_2 + (M_PI / 2.0);
-
-  float ratio_1 = light_hemisphere_cone_ratio(spread_half_angle, hemisphere_elevation_angle_1);
-  float ratio_2 = light_hemisphere_cone_ratio(spread_half_angle, hemisphere_elevation_angle_2);
-
-  return ratio_1 - ratio_2;
+  return light_cone_lune_area(spread_half_angle, edge_angle_1, edge_angle_2);
 }
 
 /* https://www.shadertoy.com/view/4dVcR1 */
@@ -197,6 +216,22 @@ vec2 sdEllipseFarthestPoint(vec2 p, vec2 ab)
   return ab * vec2(cos(w), sin(w)) * p_sign;
 }
 
+/* from Real-Time Area Lighting: a Journey from Research to Production
+ * Stephen Hill and Eric Heitz */
+vec3 light_edge_integral_vec(vec3 v1, vec3 v2)
+{
+  float x = dot(v1, v2);
+  float y = abs(x);
+
+  float a = 0.8543985 + (0.4965155 + 0.0145206 * y) * y;
+  float b = 3.4175940 + (4.1616724 + y) * y;
+  float v = a / b;
+
+  float theta_sintheta = (x > 0.0) ? v : 0.5 * inversesqrt(max(1.0 - x * x, 1e-7)) - v;
+
+  return cross(v1, v2) * theta_sintheta;
+}
+
 float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
 {
   vec3 lL = light_world_to_local(light, L * dist);
@@ -215,7 +250,7 @@ float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
 
     float x = light_lune_cone_ratio(light.spread_half_angle, angle_1.x, angle_2.x);
     float y = light_lune_cone_ratio(light.spread_half_angle, angle_1.y, angle_2.y);
-    return x;
+    return x * y;
   }
 
   float r1 = distance(sdEllipseNearestPoint(lL.xy, area_size), lL.xy);
