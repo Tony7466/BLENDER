@@ -189,46 +189,45 @@ static void accumululate_material_counts_mesh(
     const MeshRenderData &mr, threading::EnumerableThreadSpecific<Array<int>> &all_tri_counts)
 {
   const OffsetIndices faces = mr.faces;
+  const Span<bool> hide_poly = mr.hide_poly;
   const Span material_indices = mr.material_indices;
   if (material_indices.is_empty()) {
-    if (mr.hide_poly.is_empty()) {
-      all_tri_counts.local().first() = poly_to_tri_count(mr.faces_num, mr.corners_num);
-      return;
-    }
-    const Span hide_poly = mr.hide_poly;
-    all_tri_counts.local().first() = threading::parallel_reduce(
-        faces.index_range(),
-        4096,
-        0,
-        [&](const IndexRange range, int count) {
-          for (const int face : range) {
-            if (!hide_poly[face]) {
-              count += bke::mesh::face_triangles_num(faces[face].size());
+    if (!hide_poly.is_empty()) {
+      all_tri_counts.local().first() = threading::parallel_reduce(
+          faces.index_range(),
+          4096,
+          0,
+          [&](const IndexRange range, int count) {
+            for (const int face : range) {
+              if (!hide_poly[face]) {
+                count += bke::mesh::face_triangles_num(faces[face].size());
+              }
             }
-          }
-          return count;
-        },
-        std::plus<int>());
+            return count;
+          },
+          std::plus<int>());
+    }
+    else {
+      all_tri_counts.local().first() = poly_to_tri_count(mr.faces_num, mr.corners_num);
+    }
     return;
   }
-
-  const Span<bool> hide_poly = mr.hide_poly;
 
   threading::parallel_for(material_indices.index_range(), 1024, [&](const IndexRange range) {
     Array<int> &tri_counts = all_tri_counts.local();
     const int last_index = tri_counts.size() - 1;
-    if (hide_poly.is_empty()) {
-      for (const int i : range) {
-        const int mat = std::clamp(material_indices[i], 0, last_index);
-        tri_counts[mat] += bke::mesh::face_triangles_num(faces[i].size());
-      }
-    }
-    else {
+    if (!hide_poly.is_empty()) {
       for (const int i : range) {
         if (!hide_poly[i]) {
           const int mat = std::clamp(material_indices[i], 0, last_index);
           tri_counts[mat] += bke::mesh::face_triangles_num(faces[i].size());
         }
+      }
+    }
+    else {
+      for (const int i : range) {
+        const int mat = std::clamp(material_indices[i], 0, last_index);
+        tri_counts[mat] += bke::mesh::face_triangles_num(faces[i].size());
       }
     }
   });
