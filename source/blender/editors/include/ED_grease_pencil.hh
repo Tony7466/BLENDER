@@ -131,7 +131,9 @@ void select_layer_channel(GreasePencil &grease_pencil, bke::greasepencil::Layer 
 
 bool grease_pencil_copy_keyframes(bAnimContext *ac);
 
-bool grease_pencil_paste_keyframes(bAnimContext *ac, const short offset_mode);
+bool grease_pencil_paste_keyframes(bAnimContext *ac,
+                                   const eKeyPasteOffset offset_mode,
+                                   const eKeyMergeMode merge_mode);
 
 /**
  * Sets the selection flag, according to \a selection_mode to the frame at \a frame_number in the

@@ -508,7 +508,9 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
   return !copy_buffer.is_empty();
 }
 
-bool grease_pencil_paste_keyframes(bAnimContext *ac, const short offset_mode)
+bool grease_pencil_paste_keyframes(bAnimContext *ac,
+                                   const eKeyPasteOffset offset_mode,
+                                   const eKeyMergeMode merge_mode)
 {
   using namespace bke::greasepencil;
 
@@ -558,11 +560,55 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac, const short offset_mode)
         if (layer->name() != buffer.layer_name) {
           continue;
         }
+        /* Mix mode with existing data. */
+        switch (merge_mode) {
+          case KEYFRAME_PASTE_MERGE_MIX:
+            /* Do nothing. */
+            break;
+
+          case KEYFRAME_PASTE_MERGE_OVER:
+            /* remove all keys */
+            grease_pencil->remove_frames(*layer, layer->sorted_keys());
+            change = true;
+            break;
+
+          case KEYFRAME_PASTE_MERGE_OVER_RANGE:
+          case KEYFRAME_PASTE_MERGE_OVER_RANGE_ALL: {
+            int frame_min, frame_max;
+
+            if (merge_mode == KEYFRAME_PASTE_MERGE_OVER_RANGE) {
+              /* Entire range of this layer. */
+              frame_min = buffer.drawing_buffer_items.first().frame_number + offset;
+              frame_max = buffer.drawing_buffer_items.last().frame_number + offset;
+            }
+            else {
+              /* Entire range of all copied keys. */
+              frame_min = copy_buffer_first_frame + offset;
+              frame_max = copy_buffer_last_frame + offset;
+            }
+
+            /* Remove keys in range. */
+            if (frame_min < frame_max) {
+              Vector<int> frames_to_remove;
+              for (auto frame_number : layer->sorted_keys()) {
+                if (frame_min < frame_number && frame_number < frame_max) {
+                  frames_to_remove.append(frame_number);
+                }
+              }
+              grease_pencil->remove_frames(*layer, frames_to_remove);
+              change = true;
+            }
+            break;
+          }
+        }
         for (auto drawing_buffer : buffer.drawing_buffer_items) {
-          change = true;
-          layer->add_frame(
-              drawing_buffer.frame_number + offset, grease_pencil->drawings().size(), 0);
+          int target_frame_number = drawing_buffer.frame_number + offset;
+          if (layer->frames().contains(target_frame_number)) {
+            layer->remove_frame(target_frame_number);
+          }
+          layer->add_frame(target_frame_number, grease_pencil->drawings().size(), 0);
           grease_pencil->add_duplicate_drawings(1, drawing_buffer.drawing);
+          change = true;
         }
       }
     }

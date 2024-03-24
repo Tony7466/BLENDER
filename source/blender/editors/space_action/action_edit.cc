@@ -652,7 +652,8 @@ static int actkeys_paste_exec(bContext *C, wmOperator *op)
   /* paste keyframes */
   if (ac.datatype == ANIMCONT_GPENCIL) {
     if (ED_gpencil_anim_copybuf_paste(&ac, offset_mode) == false &&
-        blender::ed::greasepencil::grease_pencil_paste_keyframes(&ac, offset_mode) == false)
+        blender::ed::greasepencil::grease_pencil_paste_keyframes(&ac, offset_mode, merge_mode) ==
+            false)
     {
       BKE_report(op->reports, RPT_ERROR, "No data in the internal clipboard to paste");
       return OPERATOR_CANCELLED;
@@ -670,7 +671,8 @@ static int actkeys_paste_exec(bContext *C, wmOperator *op)
     const eKeyPasteError kf_empty = paste_action_keys(&ac, offset_mode, merge_mode, flipped);
     /* non-zero return means an error occurred while trying to paste */
     gpframes_inbuf = ED_gpencil_anim_copybuf_paste(&ac, offset_mode) ||
-                     blender::ed::greasepencil::grease_pencil_paste_keyframes(&ac, offset_mode);
+                     blender::ed::greasepencil::grease_pencil_paste_keyframes(
+                         &ac, offset_mode, merge_mode);
 
     /* Only report an error if nothing was pasted, i.e. when both FCurve and GPencil failed. */
     if (!gpframes_inbuf) {
