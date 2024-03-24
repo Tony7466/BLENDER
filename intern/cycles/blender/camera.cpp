@@ -151,7 +151,6 @@ static void sum_obj_positions(float3 &pos, int &count, BL::Collection &coll){
     pos.y += curr.y;
     pos.z += curr.z;
     count += 1;
-    printf("Pos: %f, %f, %f\n",pos.x,pos.y,pos.z); // DEBUG
   }
   for (BL::Collection child : coll.children){
     sum_obj_positions(pos,count,child);
@@ -178,7 +177,6 @@ static float blender_camera_focal_distance(BL::RenderEngine &b_engine,
     pos.x /= den;
     pos.y /= den;
     pos.z /= den;
-    printf("AVG POS: %f, %f, %f\n",pos.x,pos.y,pos.z); // DEBUG
     BL::Array<float, 16> b_ob_matrix;
     b_engine.camera_model_matrix(b_ob, bcam->use_spherical_stereo, b_ob_matrix);
     Transform obmat = transform_clear_scale(get_transform(b_ob_matrix));
