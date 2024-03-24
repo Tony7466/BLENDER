@@ -20,7 +20,7 @@ namespace blender::draw {
 /** \name Extract Triangles Indices (multi material)
  * \{ */
 
-static void extract_tris_mesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
+static void extract_tris_mesh(const MeshRenderData &mr, gpu::IndexBuf &ibo)
 {
   const Span<int3> corner_tris = mr.corner_tris;
   if (!mr.face_sorted->face_tri_offsets) {
@@ -59,7 +59,7 @@ static void extract_tris_mesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
   GPU_indexbuf_build_in_place_ex(&builder, 0, mr.face_sorted->visible_tris_num, false, &ibo);
 }
 
-static void extract_tris_bmesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
+static void extract_tris_bmesh(const MeshRenderData &mr, gpu::IndexBuf &ibo)
 {
   GPUIndexBufBuilder builder;
   GPU_indexbuf_init(&builder, GPU_PRIM_TRIS, mr.face_sorted->visible_tris_num, mr.corners_num);
@@ -89,7 +89,9 @@ static void extract_tris_bmesh(const MeshRenderData &mr, GPUIndexBuf &ibo)
   GPU_indexbuf_build_in_place_ex(&builder, 0, mr.face_sorted->visible_tris_num, false, &ibo);
 }
 
-static void extract_tris_finish(const MeshRenderData &mr, MeshBatchCache &cache, GPUIndexBuf &ibo)
+static void extract_tris_finish(const MeshRenderData &mr,
+                                MeshBatchCache &cache,
+                                gpu::IndexBuf &ibo)
 {
   /* Create ibo sub-ranges. Always do this to avoid error when the standard surface batch
    * is created before the surfaces-per-material. */
@@ -116,7 +118,7 @@ static void extract_tris_init(const MeshRenderData &mr,
                               void *ibo_v,
                               void * /*tls_data*/)
 {
-  GPUIndexBuf &ibo = *static_cast<GPUIndexBuf *>(ibo_v);
+  gpu::IndexBuf &ibo = *static_cast<gpu::IndexBuf *>(ibo_v);
 
   if (mr.extract_type == MR_EXTRACT_MESH) {
     extract_tris_mesh(mr, ibo);
@@ -134,7 +136,7 @@ static void extract_tris_init_subdiv(const DRWSubdivCache &subdiv_cache,
                                      void *buffer,
                                      void * /*data*/)
 {
-  GPUIndexBuf *ibo = static_cast<GPUIndexBuf *>(buffer);
+  gpu::IndexBuf *ibo = static_cast<gpu::IndexBuf *>(buffer);
   /* Initialize the index buffer, it was already allocated, it will be filled on the device. */
   GPU_indexbuf_init_build_on_device(ibo, subdiv_cache.num_subdiv_triangles * 3);
 

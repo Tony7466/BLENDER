@@ -947,7 +947,7 @@ Vector<Base *> ED_undo_editmode_bases_from_view_layer(const Scene *scene, ViewLa
     }
   }
 
-  BLI_assert(object_data.is_empty());
+  BLI_assert(!object_data.is_empty());
   BLI_assert(bases[0] == baseact);
   return bases;
 }
