@@ -262,7 +262,9 @@ float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
     float form_factor = length(avg_dir);
     float avg_dir_z = (avg_dir / form_factor).z;
 
-    // return light_cone_cone_ratio(light.spread_half_angle, half_light_angle, acos(avg_dir_z));
+    float half_light_angle = acos(1.0 - form_factor);
+
+    return light_cone_cone_ratio(light.spread_half_angle, half_light_angle, acos(avg_dir_z));
 
     /* angle_1 is min angle of intersection with first edge of the lune.
      * angle_2 is min angle of intersection with second edge of the lune. */
