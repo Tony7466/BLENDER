@@ -7,9 +7,9 @@
  */
 
 #include <chrono>
-#include <iostream>
 #include <cmath>
 #include <cstdlib>
+#include <iostream>
 
 #include "MEM_guardedalloc.h"
 
@@ -53,12 +53,12 @@
 #define TICK tic = std::chrono::steady_clock::now();
 #define TOCK_START(X) \
   auto toc = std::chrono::steady_clock::now(); \
-  std::cout << std::string(X) << " time: " << std::chrono::duration<double>(toc - tic).count() << " seconds" \
-            << std::endl;
+  std::cout << std::string(X) << " time: " << std::chrono::duration<double>(toc - tic).count() \
+            << " seconds" << std::endl;
 #define TOCK(X) \
   toc = std::chrono::steady_clock::now(); \
-  std::cout << std::string(X) << " time: " << std::chrono::duration<double>(toc - tic).count() << " seconds" \
-            << std::endl;
+  std::cout << std::string(X) << " time: " << std::chrono::duration<double>(toc - tic).count() \
+            << " seconds" << std::endl;
 
 namespace blender::ed::sculpt_paint::expand {
 
@@ -621,11 +621,15 @@ static float *sculpt_expand_spherical_falloff_create(Object *ob, const PBVHVertR
         ob, symm_it, v);
     if (symm_vertex.i != SCULPT_EXPAND_VERTEX_NONE) {
       const float *co = SCULPT_vertex_co_get(ss, symm_vertex);
-      for (int i = 0; i < totvert; i++) {
+      tbb::parallel_for(0, totvert, [&](int i) {
+        PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
+        dists[i] = min_ff(dists[i], len_v3v3(co, SCULPT_vertex_co_get(ss, vertex)));
+      });
+      /*for (int i = 0; i < totvert; i++) {
         PBVHVertRef vertex = BKE_pbvh_index_to_vertex(ss->pbvh, i);
 
         dists[i] = min_ff(dists[i], len_v3v3(co, SCULPT_vertex_co_get(ss, vertex)));
-      }
+      }*/
     }
   }
 
@@ -2191,10 +2195,7 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   sculpt_expand_set_initial_components_for_mouse(C, ob, ss->expand_cache, mouse);
 
   /* Cache PBVH nodes. */
-    /* TODO: check when this need to be rebuilt, otherwise reuse */
-  if (ss->expand_cache->nodes.size() == 0) {
-        ss->expand_cache->nodes = bke::pbvh::search_gather(ss->pbvh, {});
-    }
+  ss->expand_cache->nodes = bke::pbvh::search_gather(ss->pbvh, {});
 
   /* Store initial state. */
   sculpt_expand_original_state_store(ob, ss->expand_cache);
@@ -2215,13 +2216,15 @@ static int sculpt_expand_invoke(bContext *C, wmOperator *op, const wmEvent *even
   if (SCULPT_vertex_is_boundary(ss, ss->expand_cache->initial_active_vertex)) {
     falloff_type = SCULPT_EXPAND_FALLOFF_BOUNDARY_TOPOLOGY;
   }
-    TOCK_START("1"); TICK;
+  TOCK_START("1");
+  TICK;
 
   sculpt_expand_falloff_factors_from_vertex_and_symm_create(
       ss->expand_cache, ob, ss->expand_cache->initial_active_vertex, falloff_type);
 
-    TOCK("2");TICK;
-    sculpt_expand_check_topology_islands(ob, falloff_type);
+  TOCK("2");
+  TICK;
+  sculpt_expand_check_topology_islands(ob, falloff_type);
   /* Initial mesh data update, resets all target data in the sculpt mesh. */
   sculpt_expand_update_for_vertex(C, ob, ss->expand_cache->initial_active_vertex);
   TOCK("3");
