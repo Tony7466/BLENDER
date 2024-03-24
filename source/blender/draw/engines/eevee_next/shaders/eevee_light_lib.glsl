@@ -242,6 +242,28 @@ float light_spread_angle_attenuation(LightData light, vec3 L, float dist)
     vec2 r1 = lL.xy - area_size;
     vec2 r2 = lL.xy + area_size;
 
+    vec3 corners[4];
+    corners[0] = vec3(area_size.x, -area_size.y, 0.0);
+    corners[1] = vec3(area_size.x, area_size.y, 0.0);
+    corners[2] = -corners[0];
+    corners[3] = -corners[1];
+
+    corners[0] = normalize(corners[0] + lL);
+    corners[1] = normalize(corners[1] + lL);
+    corners[2] = normalize(corners[2] + lL);
+    corners[3] = normalize(corners[3] + lL);
+
+    vec3 avg_dir;
+    avg_dir = light_edge_integral_vec(corners[0], corners[1]);
+    avg_dir += light_edge_integral_vec(corners[1], corners[2]);
+    avg_dir += light_edge_integral_vec(corners[2], corners[3]);
+    avg_dir += light_edge_integral_vec(corners[3], corners[0]);
+
+    float form_factor = length(avg_dir);
+    float avg_dir_z = (avg_dir / form_factor).z;
+
+    // return light_cone_cone_ratio(light.spread_half_angle, half_light_angle, acos(avg_dir_z));
+
     /* angle_1 is min angle of intersection with first edge of the lune.
      * angle_2 is min angle of intersection with second edge of the lune. */
     /* TODO(fclem): Port fast_atanf from cycles. */
