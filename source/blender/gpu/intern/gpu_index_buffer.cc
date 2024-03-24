@@ -10,6 +10,7 @@
 
 #include "MEM_guardedalloc.h"
 
+#include "BLI_array_utils.hh"
 #include "BLI_math_base.h"
 #include "BLI_utildefines.h"
 
@@ -524,11 +525,13 @@ void GPU_indexbuf_build_in_place_from_memory(IndexBuf *ibo,
                                              const bool uses_restart_indices)
 {
   const uint32_t indices_num = data_len * indices_per_primitive(prim_type);
-  /* TODO: This copy is meant to be temporary. The data should be uploaded directly to the GPU here
-   * rather than copied to an array owned by the IBO first. */
+  /* TODO: The need for this copy is meant to be temporary. The data should be uploaded directly to
+   * the GPU here rather than copied to an array owned by the IBO first. */
   uint32_t *copy = static_cast<uint32_t *>(
       MEM_malloc_arrayN(indices_num, sizeof(uint32_t), __func__));
-  memcpy(copy, data, sizeof(uint32_t) * indices_num);
+  threading::memory_bandwidth_bound_task(sizeof(uint32_t) * indices_num * 2, [&]() {
+    array_utils::copy(Span(data, indices_num), MutableSpan(copy, indices_num));
+  });
   ibo->init(indices_num, copy, index_min, index_max, prim_type, uses_restart_indices);
 }
 
