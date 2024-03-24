@@ -414,7 +414,10 @@ class MemoryBuffer {
    */
   MemoryBuffer *inflate() const;
 
-  inline void wrap_pixel(int &x, int &y, MemoryBufferExtend extend_x, MemoryBufferExtend extend_y) const
+  inline void wrap_pixel(int &x,
+                         int &y,
+                         MemoryBufferExtend extend_x,
+                         MemoryBufferExtend extend_y) const
   {
     const int w = get_width();
     const int h = get_height();

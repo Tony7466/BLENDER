@@ -99,12 +99,12 @@ void TranslateOperation::update_memory_buffer_partial(MemoryBuffer *output,
 
   float delta_x = this->get_delta_x();
   float delta_y = this->get_delta_y();
-  if(sampler_ == PixelSampler::Nearest) {
+  if (sampler_ == PixelSampler::Nearest) {
     /* Use same rounding convention for GPU compositor. */
     delta_x = round(delta_x);
     delta_y = round(delta_y);
   }
-  
+
   for (int y = area.ymin; y < area.ymax; y++) {
     float *out = output->get_elem(area.xmin, y);
     for (int x = area.xmin; x < area.xmax; x++) {
