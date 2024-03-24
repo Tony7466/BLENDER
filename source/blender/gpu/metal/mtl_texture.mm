@@ -761,7 +761,7 @@ void gpu::MTLTexture::update_sub(
           size_t bytes_per_image = bytes_per_row;
           if (is_compressed) {
             size_t block_size = to_block_size(format_);
-            size_t blocks_x = (extent[0] + 3) / 4;
+            size_t blocks_x = divide_ceil_u(extent[0], 4);
             bytes_per_row = blocks_x * block_size;
             bytes_per_image = bytes_per_row;
           }
@@ -839,8 +839,8 @@ void gpu::MTLTexture::update_sub(
           size_t bytes_per_image = bytes_per_row * extent[1];
           if (is_compressed) {
             size_t block_size = to_block_size(format_);
-            size_t blocks_x = (extent[0] + 3) / 4;
-            size_t blocks_y = (extent[1] + 3) / 4;
+            size_t blocks_x = divide_ceil_u(extent[0], 4);
+            size_t blocks_y = divide_ceil_u(extent[1], 4);
             bytes_per_row = blocks_x * block_size;
             bytes_per_image = bytes_per_row * blocks_y;
           }
