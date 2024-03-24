@@ -433,8 +433,13 @@ static void GREASE_PENCIL_OT_insert_blank_frame(wmOperatorType *ot)
 }
 
 /* Datatype for use in copy/paste buffer */
+struct DrawingBufferItem {
+  blender::bke::greasepencil::FramesMapKey frame_number;
+  bke::greasepencil::Drawing drawing;
+};
+
 struct BufferItem {
-  Vector<int> frame_numbers;
+  Vector<DrawingBufferItem> drawing_buffer_items;
   std::string layer_name;
 };
 
@@ -470,11 +475,14 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
       continue;
     }
 
+    GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
     Layer *layer = reinterpret_cast<Layer *>(ale->data);
     BufferItem buf = {{}, layer->name()};
     for (auto [frame_number, frame] : layer->frames().items()) {
       if (frame.is_selected()) {
-        buf.frame_numbers.append(frame_number);
+        const Drawing *drawing = grease_pencil->get_drawing_at(*layer, frame_number);
+
+        buf.drawing_buffer_items.append({frame_number, Drawing(*drawing)});
 
         /* Check if this is the earliest frame encountered so far */
         if (frame_number < copy_buffer_first_frame) {
@@ -485,7 +493,7 @@ bool grease_pencil_copy_keyframes(bAnimContext *ac)
         }
       }
     }
-    if (!buf.frame_numbers.is_empty()) {
+    if (!buf.drawing_buffer_items.is_empty()) {
       copy_buffer.append(buf);
     }
   }
@@ -548,9 +556,10 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac, const short offset_mode)
         if (layer->name() != buffer.layer_name) {
           continue;
         }
-        for (auto frame_number : buffer.frame_numbers) {
-          grease_pencil->insert_duplicate_frame(
-              *layer, frame_number, frame_number + offset, false);
+        for (auto drawing_buffer : buffer.drawing_buffer_items) {
+          layer->add_frame(
+              drawing_buffer.frame_number + offset, grease_pencil->drawings().size(), 0);
+          grease_pencil->add_duplicate_drawings(1, drawing_buffer.drawing);
         }
       }
     }
