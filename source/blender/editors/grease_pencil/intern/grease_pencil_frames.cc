@@ -551,17 +551,22 @@ bool grease_pencil_paste_keyframes(bAnimContext *ac, const short offset_mode)
     }
     GreasePencil *grease_pencil = reinterpret_cast<GreasePencil *>(ale->id);
     blender::Span<Layer *> layers = grease_pencil->layers_for_write();
+    bool change = false;
     for (const BufferItem buffer : copy_buffer) {
       for (Layer *layer : layers) {
         if (layer->name() != buffer.layer_name) {
           continue;
         }
         for (auto drawing_buffer : buffer.drawing_buffer_items) {
+          change = true;
           layer->add_frame(
               drawing_buffer.frame_number + offset, grease_pencil->drawings().size(), 0);
           grease_pencil->add_duplicate_drawings(1, drawing_buffer.drawing);
         }
       }
+    }
+    if (change) {
+      DEG_id_tag_update(&grease_pencil->id, ID_RECALC_GEOMETRY);
     }
   }
 
