@@ -32,7 +32,7 @@
 
 #include "mesh_extractors/extract_mesh.hh"
 
-#define DEBUG_TIME
+// #define DEBUG_TIME
 
 #ifdef DEBUG_TIME
 #  include "BLI_time_utildefines.h"
