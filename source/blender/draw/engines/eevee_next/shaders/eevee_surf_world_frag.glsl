@@ -13,6 +13,7 @@
 #pragma BLENDER_REQUIRE(eevee_surf_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_nodetree_lib.glsl)
 #pragma BLENDER_REQUIRE(eevee_colorspace_lib.glsl)
+#pragma BLENDER_REQUIRE(eevee_reflection_probe_lib.glsl)
 
 vec4 closure_to_rgba(Closure cl)
 {
@@ -37,6 +38,20 @@ void main()
 
   out_background.rgb = colorspace_safe_color(g_emission) * (1.0 - g_holdout);
   out_background.a = saturate(average(g_transmittance)) * g_holdout;
+
+  if (g_data.ray_type == RAY_TYPE_CAMERA && world_background_blur != 0.0 &&
+      world_opacity_fade != 0.0)
+  {
+    // MIX with LOD1 as LOD0 is already represented by the background color.
+    // We could add LOD0 into account as an intermediate, but unsure this has any benefit on
+    // quality.
+    float lod = 0.0;
+    SphereProbeUvArea world_atlas_coord = reinterpret_as_atlas_coord(world_coord_packed);
+    vec4 probe_color = reflection_probes_sample(g_data.N, lod, world_atlas_coord);
+    float mix_factor = 1.0;
+    out_background.rgb = probe_color.rgb;
+    // mix(out_background.rgb, probe_color.rgb, mix_factor);
+  }
 
   /* World opacity. */
   out_background = mix(vec4(0.0, 0.0, 0.0, 1.0), out_background, world_opacity_fade);

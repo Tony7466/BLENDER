@@ -24,7 +24,9 @@ namespace blender::eevee {
  * Used to draw background.
  * \{ */
 
-void BackgroundPipeline::sync(GPUMaterial *gpumat, const float background_opacity)
+void BackgroundPipeline::sync(GPUMaterial *gpumat,
+                              const float background_opacity,
+                              const float background_blur)
 {
   Manager &manager = *inst_.manager;
   RenderBuffers &rbufs = inst_.render_buffers;
@@ -33,6 +35,10 @@ void BackgroundPipeline::sync(GPUMaterial *gpumat, const float background_opacit
   world_ps_.state_set(DRW_STATE_WRITE_COLOR);
   world_ps_.material_set(manager, gpumat);
   world_ps_.push_constant("world_opacity_fade", background_opacity);
+  world_ps_.push_constant("world_background_blur", background_blur);
+  SphereProbeUvArea world_atlas_coord =
+      inst_.light_probes.world_sphere_.atlas_coord.as_sampling_coord();
+  world_ps_.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_atlas_coord));
   world_ps_.bind_texture("utility_tx", inst_.pipelines.utility_tx);
   /* RenderPasses & AOVs. Cleared by background (even if bad practice). */
   world_ps_.bind_image("rp_color_img", &rbufs.rp_color_tx);
@@ -41,6 +47,7 @@ void BackgroundPipeline::sync(GPUMaterial *gpumat, const float background_opacit
   /* Required by validation layers. */
   world_ps_.bind_resources(inst_.cryptomatte);
   world_ps_.bind_resources(inst_.uniform_data);
+  world_ps_.bind_resources(inst_.sphere_probes);
   world_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   /* To allow opaque pass rendering over it. */
   world_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -74,6 +81,8 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
   Manager &manager = *inst_.manager;
   pass.material_set(manager, gpumat);
   pass.push_constant("world_opacity_fade", 1.0f);
+  pass.push_constant("world_background_blur", 0.0f);
+  pass.push_constant("world_coord_packed", float4(0.0f));
   pass.bind_texture(RBUFS_UTILITY_TEX_SLOT, inst_.pipelines.utility_tx);
   pass.bind_image("rp_normal_img", dummy_renderpass_tx_);
   pass.bind_image("rp_light_img", dummy_renderpass_tx_);
@@ -89,6 +98,8 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
   /* Required by validation layers. */
   pass.bind_resources(inst_.cryptomatte);
   pass.bind_resources(inst_.uniform_data);
+  pass.bind_resources(inst_.sphere_probes);
+  pass.bind_texture(SPHERE_PROBE_TEX_SLOT, dummy_aov_color_tx_);
   pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 

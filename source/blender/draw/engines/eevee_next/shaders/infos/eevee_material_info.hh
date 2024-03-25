@@ -218,13 +218,16 @@ GPU_SHADER_CREATE_INFO(eevee_surf_depth)
 
 GPU_SHADER_CREATE_INFO(eevee_surf_world)
     .push_constant(Type::FLOAT, "world_opacity_fade")
+    .push_constant(Type::FLOAT, "world_background_blur")
+    .push_constant(Type::IVEC4, "world_coord_packed")
     .fragment_out(0, Type::VEC4, "out_background")
     .fragment_source("eevee_surf_world_frag.glsl")
     .additional_info("eevee_global_ubo",
                      /* Optionally added depending on the material. */
                      //  "eevee_render_pass_out",
                      //  "eevee_cryptomatte_out",
-                     "eevee_utility_texture");
+                     "eevee_utility_texture",
+                     "eevee_reflection_probe_data");
 
 GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_atomic_iface, "shadow_iface")
     .flat(Type::INT, "shadow_view_id");

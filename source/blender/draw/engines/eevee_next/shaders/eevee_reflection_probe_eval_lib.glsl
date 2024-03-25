@@ -31,4 +31,6 @@ int reflection_probes_select(vec3 P, float random_probe)
   /* This should never happen (world probe is always last). */
   return SPHERE_PROBE_MAX - 1;
 }
+
+
 #endif /* SPHERE_PROBE */
