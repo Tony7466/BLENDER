@@ -8,6 +8,8 @@
 
 #include <cmath>
 #include <cstdlib>
+#include <tbb/concurrent_vector.h>
+#include <tbb/parallel_for.h>
 
 #include "MEM_guardedalloc.h"
 
@@ -223,6 +225,153 @@ static float *geodesic_mesh_create(Object *ob, GSet *initial_verts, const float 
   return dists;
 }
 
+static float *geodesic_mesh_create_parallel(Object *ob,
+                                            GSet *initial_verts,
+                                            const float limit_radius)
+{
+  SculptSession *ss = ob->sculpt;
+  Mesh *mesh = BKE_object_get_original_mesh(ob);
+
+  const int totvert = mesh->verts_num;
+  const int totedge = mesh->edges_num;
+
+  const float limit_radius_sq = limit_radius * limit_radius;
+
+  const Span<float3> vert_positions = SCULPT_mesh_deformed_positions_get(ss);
+  const Span<int2> edges = mesh->edges();
+  const OffsetIndices faces = mesh->faces();
+  const Span<int> corner_verts = mesh->corner_verts();
+  const Span<int> corner_edges = mesh->corner_edges();
+  const bke::AttributeAccessor attributes = mesh->attributes();
+  const VArraySpan<bool> hide_poly = *attributes.lookup<bool>(".hide_poly", bke::AttrDomain::Face);
+
+  float *dists = static_cast<float *>(MEM_malloc_arrayN(totvert, sizeof(float), __func__));
+  BitVector<> edge_tag(totedge);
+
+  if (ss->edge_to_face_map.is_empty()) {
+    ss->edge_to_face_map = bke::mesh::build_edge_to_face_map(
+        faces, corner_edges, edges.size(), ss->edge_to_face_offsets, ss->edge_to_face_indices);
+  }
+  if (ss->vert_to_edge_map.is_empty()) {
+    ss->vert_to_edge_map = bke::mesh::build_vert_to_edge_map(
+        edges, mesh->verts_num, ss->vert_to_edge_offsets, ss->vert_to_edge_indices);
+  }
+
+  tbb::parallel_for(0, totvert, [&](int i) {
+    if (BLI_gset_haskey(initial_verts, POINTER_FROM_INT(i))) {
+      dists[i] = 0.0f;
+    }
+    else {
+      dists[i] = FLT_MAX;
+    }
+  });
+
+  /* Masks vertices that are further than limit radius from an initial vertex. As there is no need
+   * to define a distance to them the algorithm can stop earlier by skipping them. */
+  BitVector<> affected_vert(totvert);
+  GSetIterator gs_iter;
+
+  if (limit_radius == FLT_MAX) {
+    /* In this case, no need to loop through all initial vertices to check distances as they are
+     * all going to be affected. */
+    affected_vert.fill(true);
+  }
+  else {
+    /* This is an O(n^2) loop used to limit the geodesic distance calculation to a radius. When
+     * this optimization is needed, it is expected for the tool to request the distance to a low
+     * number of vertices (usually just 1 or 2). */
+    GSET_ITER (gs_iter, initial_verts) {
+      const int v = POINTER_AS_INT(BLI_gsetIterator_getKey(&gs_iter));
+      const float *v_co = vert_positions[v];
+      tbb::parallel_for(0, totvert, [&](int i) {
+        if (len_squared_v3v3(v_co, vert_positions[i]) <= limit_radius_sq) {
+          affected_vert[i].set();
+        }
+      });
+    }
+  }
+
+  // Initialize queues
+  /* Both contain edge indices encoded as *void. */
+  BLI_LINKSTACK_DECLARE(queue, void *);
+  BLI_LINKSTACK_DECLARE(queue_next, void *);
+
+  BLI_LINKSTACK_INIT(queue);
+  BLI_LINKSTACK_INIT(queue_next);
+
+  /* Add edges adjacent to an initial vertex to the queue. */
+  tbb::parallel_for(0, totedge, [&](int i) {
+    const int v1 = edges[i][0];
+    const int v2 = edges[i][1];
+    if ((affected_vert[v1] || affected_vert[v2]) && (dists[v1] != FLT_MAX || dists[v2] != FLT_MAX))
+    {
+      BLI_LINKSTACK_PUSH(queue, POINTER_FROM_INT(i));
+    }
+  });
+
+  do {
+    while (BLI_LINKSTACK_SIZE(queue)) {
+      const int e = POINTER_AS_INT(BLI_LINKSTACK_POP(queue));
+      int v1 = edges[e][0];
+      int v2 = edges[e][1];
+
+      if (dists[v1] == FLT_MAX || dists[v2] == FLT_MAX) {
+        if (dists[v1] > dists[v2]) {
+          std::swap(v1, v2);
+        }
+        sculpt_geodesic_mesh_test_dist_add(
+            vert_positions, v2, v1, SCULPT_GEODESIC_VERTEX_NONE, dists, initial_verts);
+      }
+
+      for (const int face : ss->edge_to_face_map[e]) {
+        if (!hide_poly.is_empty() && hide_poly[face]) {
+          continue;
+        }
+        for (const int v_other : corner_verts.slice(faces[face])) {
+          if (ELEM(v_other, v1, v2)) {
+            continue;
+          }
+          if (sculpt_geodesic_mesh_test_dist_add(
+                  vert_positions, v_other, v1, v2, dists, initial_verts))
+          {
+            for (const int e_other : ss->vert_to_edge_map[v_other]) {
+              int ev_other;
+              if (edges[e_other][0] == v_other) {
+                ev_other = edges[e_other][1];
+              }
+              else {
+                ev_other = edges[e_other][0];
+              }
+
+              if (e_other != e && !edge_tag[e_other] &&
+                  (ss->edge_to_face_map[e_other].is_empty() || dists[ev_other] != FLT_MAX))
+              {
+                if (affected_vert[v_other] || affected_vert[ev_other]) {
+                  edge_tag[e_other].set();
+                  BLI_LINKSTACK_PUSH(queue_next, POINTER_FROM_INT(e_other));
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    for (LinkNode *lnk = queue_next; lnk; lnk = lnk->next) {
+      const int e = POINTER_AS_INT(lnk->link);
+      edge_tag[e].reset();
+    }
+
+    BLI_LINKSTACK_SWAP(queue, queue_next);
+
+  } while (BLI_LINKSTACK_SIZE(queue));
+
+  BLI_LINKSTACK_FREE(queue);
+  BLI_LINKSTACK_FREE(queue_next);
+
+  return dists;
+}
+
 /* For sculpt mesh data that does not support a geodesic distances algorithm, fallback to the
  * distance to each vertex. In this case, only one of the initial vertices will be used to
  * calculate the distance. */
@@ -262,7 +411,10 @@ float *distances_create(Object *ob, GSet *initial_verts, const float limit_radiu
   SculptSession *ss = ob->sculpt;
   switch (BKE_pbvh_type(ss->pbvh)) {
     case PBVH_FACES:
-      return geodesic_mesh_create(ob, initial_verts, limit_radius);
+      return geodesic_mesh_create_parallel(
+          ob,
+          initial_verts,
+          limit_radius);  // geodesic_mesh_create(ob, initial_verts, limit_radius);
     case PBVH_BMESH:
     case PBVH_GRIDS:
       return geodesic_fallback_create(ob, initial_verts);
