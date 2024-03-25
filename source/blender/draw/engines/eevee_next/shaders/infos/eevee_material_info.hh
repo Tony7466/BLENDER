@@ -223,11 +223,11 @@ GPU_SHADER_CREATE_INFO(eevee_surf_world)
     .fragment_out(0, Type::VEC4, "out_background")
     .fragment_source("eevee_surf_world_frag.glsl")
     .additional_info("eevee_global_ubo",
+                     "eevee_reflection_probe_data",
                      /* Optionally added depending on the material. */
                      //  "eevee_render_pass_out",
                      //  "eevee_cryptomatte_out",
-                     "eevee_utility_texture",
-                     "eevee_reflection_probe_data");
+                     "eevee_utility_texture");
 
 GPU_SHADER_INTERFACE_INFO(eevee_surf_shadow_atomic_iface, "shadow_iface")
     .flat(Type::INT, "shadow_view_id");
