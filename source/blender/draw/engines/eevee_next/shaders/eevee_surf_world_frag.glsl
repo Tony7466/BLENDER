@@ -45,9 +45,9 @@ void main()
     // MIX with LOD1 as LOD0 is already represented by the background color.
     // We could add LOD0 into account as an intermediate, but unsure this has any benefit on
     // quality.
-    float base_lod = pow(world_background_blur, 2.0) * 4.0;
+    float base_lod = pow(world_background_blur, 0.75) * 4.0;
     float lod = max(1.0, base_lod);
-    float mix_factor = min(1.0, world_background_blur).pow(0.5);
+    float mix_factor = min(1.0, base_lod);
     SphereProbeUvArea world_atlas_coord = reinterpret_as_atlas_coord(world_coord_packed);
     vec4 probe_color = reflection_probes_sample(-g_data.N, lod, world_atlas_coord);
     out_background.rgb = mix(out_background.rgb, probe_color.rgb, mix_factor);
