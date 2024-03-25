@@ -17,7 +17,7 @@ Generate source code that can be copied into `vk_to_string.hh`:
 Every vulkan installation contains a `vk.xml` which contains the specification in a machine
 readable format.
 
-The generated source code will be printed to the console. 
+The generated source code will be printed to the console.
 
 """
 import argparse
