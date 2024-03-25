@@ -308,7 +308,7 @@ class DATA_PT_grease_pencil_settings(DataButtonsPanel, Panel):
 
 class DATA_PT_grease_pencil_custom_props(DataButtonsPanel, PropertyPanel, Panel):
     _context_path = "object.data"
-    _property_type = getattr(bpy.types, "GreasePencilv3", None)
+    _property_type = bpy.types.GreasePencilv3
 
 
 classes = (
