@@ -1195,12 +1195,14 @@ static void test_eevee_shadow_page_mask()
     /* Init all LOD to true. */
     for (auto i : IndexRange(SHADOW_TILEDATA_PER_TILEMAP)) {
       tile.is_used = true;
+      tile.do_update = true;
       tiles_data[i] = shadow_tile_pack(tile);
     }
 
     /* Init all of LOD0 to false. */
     for (auto i : IndexRange(square_i(SHADOW_TILEMAP_RES))) {
       tile.is_used = false;
+      tile.do_update = false;
       tiles_data[i] = shadow_tile_pack(tile);
     }
 
@@ -1208,6 +1210,7 @@ static void test_eevee_shadow_page_mask()
     for (auto y : IndexRange((SHADOW_TILEMAP_RES / 2) + 1)) {
       for (auto x : IndexRange((SHADOW_TILEMAP_RES / 2) + 1)) {
         tile.is_used = true;
+        tile.do_update = true;
         tiles_data[x + y * SHADOW_TILEMAP_RES] = shadow_tile_pack(tile);
       }
     }
@@ -1215,6 +1218,7 @@ static void test_eevee_shadow_page_mask()
     /* All Bottom of the LOD0 to true. */
     for (auto x : IndexRange(SHADOW_TILEMAP_RES)) {
       tile.is_used = true;
+      tile.do_update = true;
       tiles_data[x] = shadow_tile_pack(tile);
     }
 
@@ -1223,6 +1227,7 @@ static void test_eevee_shadow_page_mask()
     for (auto y : IndexRange((SHADOW_TILEMAP_RES / 8))) {
       for (auto x : IndexRange((SHADOW_TILEMAP_RES / 8))) {
         tile.is_used = false;
+        tile.do_update = false;
         tiles_data[x + y * (SHADOW_TILEMAP_RES / 2) + lod0_len] = shadow_tile_pack(tile);
       }
     }
@@ -1233,6 +1238,7 @@ static void test_eevee_shadow_page_mask()
       int x = SHADOW_TILEMAP_RES / 4;
       int y = SHADOW_TILEMAP_RES / 4;
       tile.is_used = false;
+      tile.do_update = false;
       tiles_data[x + y * (SHADOW_TILEMAP_RES / 2) + lod0_len] = shadow_tile_pack(tile);
     }
 
