@@ -1983,9 +1983,9 @@ static void rna_Scene_editmesh_select_mode_set(PointerRNA *ptr, const bool *valu
         Object *object = BKE_view_layer_active_object_get(view_layer);
         if (object) {
           Mesh *mesh = BKE_mesh_from_object(object);
-          if (mesh && mesh->edit_mesh && mesh->edit_mesh->selectmode != flag) {
-            mesh->edit_mesh->selectmode = flag;
-            EDBM_selectmode_set(mesh->edit_mesh);
+          if (mesh && mesh->runtime->edit_mesh && mesh->runtime->edit_mesh->selectmode != flag) {
+            mesh->runtime->edit_mesh->selectmode = flag;
+            EDBM_selectmode_set(mesh->runtime->edit_mesh);
           }
         }
       }
@@ -2003,7 +2003,7 @@ static void rna_Scene_editmesh_select_mode_update(bContext *C, PointerRNA * /*pt
   Object *object = BKE_view_layer_active_object_get(view_layer);
   if (object) {
     mesh = BKE_mesh_from_object(object);
-    if (mesh && mesh->edit_mesh == nullptr) {
+    if (mesh && mesh->runtime->edit_mesh == nullptr) {
       mesh = nullptr;
     }
   }
@@ -2070,6 +2070,10 @@ static void object_simplify_update(Scene *scene,
     if (OB_TYPE_IS_GEOMETRY(ob->type)) {
       DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
     }
+  }
+
+  if (ob->type == OB_LAMP) {
+    DEG_id_tag_update(&ob->id, ID_RECALC_SHADING);
   }
 }
 
@@ -3570,7 +3574,7 @@ static void rna_def_tool_settings(BlenderRNA *brna)
       prop, "rna_ToolSettings_snap_mode_get", "rna_ToolSettings_snap_mode_set", nullptr);
   RNA_def_property_flag(prop, PROP_ENUM_FLAG);
   RNA_def_property_ui_text(
-      prop, "Snap Element", "Type of element for the \"Snap With\" to snap to");
+      prop, "Snap Element", "Type of element for the \"Snap Base\" to snap to");
   RNA_def_property_update(prop, NC_SCENE | ND_TOOLSETTINGS, nullptr); /* header redraw */
 
   prop = RNA_def_property(srna, "snap_elements_individual", PROP_ENUM, PROP_NONE);
@@ -8032,6 +8036,14 @@ static void rna_def_scene_eevee(BlenderRNA *brna)
   RNA_def_property_enum_items(prop, ray_tracing_method_items);
   RNA_def_property_ui_text(
       prop, "Tracing Method", "Select the tracing method used to find scene-ray intersections");
+  RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
+
+  prop = RNA_def_property(srna, "use_shadow_jittered_viewport", PROP_BOOLEAN, PROP_NONE);
+  RNA_def_property_boolean_sdna(prop, nullptr, "flag", SCE_EEVEE_SHADOW_JITTERED_VIEWPORT);
+  RNA_def_property_ui_text(prop,
+                           "Jittered Shadows (Viewport)",
+                           "Enable jittered shadows on the viewport. (Jittered shadows are always "
+                           "enabled for final renders)");
   RNA_def_property_update(prop, NC_SCENE | ND_RENDER_OPTIONS, nullptr);
 
   /* Volumetrics */

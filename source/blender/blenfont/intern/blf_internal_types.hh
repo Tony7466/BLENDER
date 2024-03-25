@@ -13,13 +13,15 @@
 #include "BLI_map.hh"
 #include "BLI_vector.hh"
 
-#include "GPU_texture.h"
-#include "GPU_vertex_buffer.h"
+#include "GPU_texture.hh"
+#include "GPU_vertex_buffer.hh"
 
 struct ColorManagedDisplay;
 struct FontBLF;
 struct GPUBatch;
-struct GPUVertBuf;
+namespace blender::gpu {
+class VertBuf;
+}
 struct GPUVertBufRaw;
 
 #include FT_MULTIPLE_MASTERS_H /* Variable font support. */
@@ -94,7 +96,7 @@ struct BatchBLF {
   /** Can only batch glyph from the same font. */
   FontBLF *font;
   GPUBatch *batch;
-  GPUVertBuf *verts;
+  blender::gpu::VertBuf *verts;
   GPUVertBufRaw pos_step, col_step, offset_step, glyph_size_step, glyph_comp_len_step,
       glyph_mode_step;
   unsigned int pos_loc, col_loc, offset_loc, glyph_size_loc, glyph_comp_len_loc, glyph_mode_loc;

@@ -13,7 +13,7 @@
 
 #include "BKE_global.hh"
 
-#include "GPU_common.h"
+#include "GPU_common.hh"
 #include "gpu_batch_private.hh"
 #include "gpu_shader_private.hh"
 
@@ -134,7 +134,7 @@ int MTLBatch::prepare_vertex_binding(MTLVertBuf *verts,
         "In Metal, Vertex buffer stride should be 4. SSBO Vertex fetch is not affected by this");
   }
 
-  /* Iterate over GPUVertBuf vertex format and find attributes matching those in the active
+  /* Iterate over VertBuf vertex format and find attributes matching those in the active
    * shader's interface. */
   for (uint32_t a_idx = 0; a_idx < format->attr_len; a_idx++) {
     const GPUVertAttr *a = &format->attrs[a_idx];

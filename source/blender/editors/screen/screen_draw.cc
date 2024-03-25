@@ -8,10 +8,10 @@
 
 #include "ED_screen.hh"
 
-#include "GPU_batch_presets.h"
-#include "GPU_immediate.h"
-#include "GPU_platform.h"
-#include "GPU_state.h"
+#include "GPU_batch_presets.hh"
+#include "GPU_immediate.hh"
+#include "GPU_platform.hh"
+#include "GPU_state.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_math_vector.hh"
@@ -26,7 +26,7 @@
 
 #define CORNER_RESOLUTION 3
 
-static void do_vert_pair(GPUVertBuf *vbo, uint pos, uint *vidx, int corner, int i)
+static void do_vert_pair(blender::gpu::VertBuf *vbo, uint pos, uint *vidx, int corner, int i)
 {
   float inter[2];
   inter[0] = cosf(corner * M_PI_2 + (i * M_PI_2 / (CORNER_RESOLUTION - 1.0f)));
@@ -79,7 +79,7 @@ static GPUBatch *batch_screen_edges_get(int *corner_len)
     GPUVertFormat format = {0};
     uint pos = GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
 
-    GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+    blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(&format);
     GPU_vertbuf_data_alloc(vbo, CORNER_RESOLUTION * 2 * 4 + 2);
 
     uint vidx = 0;
