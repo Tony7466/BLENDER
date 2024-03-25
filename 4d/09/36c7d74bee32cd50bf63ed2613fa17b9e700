@@ -1,1 +1,2 @@
 Referenced by issue #119873, crash when baking instanced collections with non-mesh objects
+Referenced by pull request #119892, Fix #119873: Bake node crash with instanced light objects
