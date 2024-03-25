@@ -48,5 +48,5 @@ void _BLI_assert_abort(void)
    * For example `BLI_assert_unreachable();` at the end of a function that returns a value,
    * will hide that it's missing a return. */
 
-    abort();
+  abort();
 }
