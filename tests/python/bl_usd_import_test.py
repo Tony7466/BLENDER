@@ -413,8 +413,8 @@ class USDImportTest(AbstractUSDTest):
         self.assertAlmostEqual(f.evaluate(10), 0.0, 2, "Unexpected value for rotation quaternion Z curve at frame 10")
 
     def check_curve(self, blender_curve, usd_curve):
-        curve_type_map = { "linear": 1, "cubic": 2 }
-        cyclic_map = { "nonperiodic": False, "periodic": True }
+        curve_type_map = {"linear": 1, "cubic": 2}
+        cyclic_map = {"nonperiodic": False, "periodic": True}
 
         # Check correct spline count.
         blender_spline_count = len(blender_curve.attributes["curve_type"].data)
@@ -598,7 +598,10 @@ class USDImportTest(AbstractUSDTest):
         self.assertEqual({'FINISHED'}, res, f"Unable to import USD file {infile}")
 
         pointclouds = [o for o in bpy.data.objects if o.type == 'POINTCLOUD']
-        self.assertEqual(2, len(pointclouds), f"Test scene {infile} should have 2 pointclouds; found {len(pointclouds)}")
+        self.assertEqual(
+            2,
+            len(pointclouds),
+            f"Test scene {infile} should have 2 pointclouds; found {len(pointclouds)}")
 
         vertical_points = len(bpy.data.pointclouds['verticalpoints'].attributes["position"].data)
         horizontal_points = len(bpy.data.pointclouds['horizontalpoints'].attributes["position"].data)
@@ -671,6 +674,7 @@ class USDImportTest(AbstractUSDTest):
         self.assertAlmostEqual(blender_light.energy, 6, 3)
         self.assertEqual(blender_light.shape, 'DISK')
         self.assertAlmostEqual(blender_light.size, 2, 3)
+
 
 def main():
     global args
