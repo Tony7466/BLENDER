@@ -1466,6 +1466,13 @@ static bScreen *screen_state_to_nonnormal(bContext *C,
 
   bScreen *oldscreen = WM_window_get_active_screen(win);
 
+  /* Put the old area to the last in the list to preserve tool when exiting
+   * fullscreen. See #WM_toolsystem_ref_set_from_runtime and
+   * https://projects.blender.org/blender/blender/issues/98014#issuecomment-1153043 for
+   * detailed explaination. */
+  BLI_remlink(&oldscreen->areabase, toggle_area);
+  BLI_addtail(&oldscreen->areabase, toggle_area);
+
   oldscreen->state = state;
   SNPRINTF(newname, "%s-%s", oldscreen->id.name + 2, "nonnormal");
 
