@@ -41,6 +41,7 @@
 #include "BLT_translation.hh"
 
 #include "BKE_asset.hh"
+#include "BKE_asset_edit.hh"
 #include "BKE_attribute.hh"
 #include "BKE_brush.hh"
 #include "BKE_ccg.h"
@@ -621,7 +622,7 @@ static bool paint_brush_set_from_asset_reference(Main *bmain, Paint *paint)
   }
 
   Brush *brush = reinterpret_cast<Brush *>(
-      BKE_asset_weak_reference_ensure(*bmain, ID_BR, *paint->brush_asset_reference));
+      BKE_asset_edit_id_from_weak_reference(*bmain, ID_BR, *paint->brush_asset_reference));
   BLI_assert(brush == nullptr || (brush->id.tag & LIB_TAG_ASSET_MAIN));
 
   /* Ensure we have a brush with appropriate mode to assign.
