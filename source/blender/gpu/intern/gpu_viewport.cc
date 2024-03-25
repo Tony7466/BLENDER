@@ -19,13 +19,13 @@
 
 #include "DNA_vec_types.h"
 
-#include "GPU_capabilities.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_texture.h"
+#include "GPU_capabilities.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_texture.hh"
 #include "GPU_uniform_buffer.hh"
-#include "GPU_viewport.h"
+#include "GPU_viewport.hh"
 
 #include "DRW_engine.hh"
 
@@ -371,7 +371,7 @@ static GPUVertFormat *gpu_viewport_batch_format()
 
 static GPUBatch *gpu_viewport_batch_create(const rctf *rect_pos, const rctf *rect_uv)
 {
-  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(gpu_viewport_batch_format());
+  blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(gpu_viewport_batch_format());
   const uint vbo_len = 4;
   GPU_vertbuf_data_alloc(vbo, vbo_len);
 

@@ -20,11 +20,11 @@
 #include "ED_view3d_offscreen.hh"
 
 #include "GHOST_C-api.h"
-#include "GPU_batch_presets.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
+#include "GPU_batch_presets.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
 
-#include "GPU_viewport.h"
+#include "GPU_viewport.hh"
 
 #include "WM_api.hh"
 
@@ -212,13 +212,13 @@ static GPUBatch *wm_xr_controller_model_batch_create(GHOST_XrContextHandle xr_co
   GPU_vertformat_attr_add(&format, "pos", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
   GPU_vertformat_attr_add(&format, "nor", GPU_COMP_F32, 3, GPU_FETCH_FLOAT);
 
-  GPUVertBuf *vbo = GPU_vertbuf_create_with_format(&format);
+  blender::gpu::VertBuf *vbo = GPU_vertbuf_create_with_format(&format);
   GPU_vertbuf_data_alloc(vbo, model_data.count_vertices);
   void *vbo_data = GPU_vertbuf_get_data(vbo);
   memcpy(
       vbo_data, model_data.vertices, model_data.count_vertices * sizeof(model_data.vertices[0]));
 
-  GPUIndexBuf *ibo = nullptr;
+  blender::gpu::IndexBuf *ibo = nullptr;
   if (model_data.count_indices > 0 && ((model_data.count_indices % 3) == 0)) {
     GPUIndexBufBuilder ibo_builder;
     const uint prim_len = model_data.count_indices / 3;
