@@ -15,7 +15,7 @@ Generate source code that can be copied into `vk_to_string.hh`:
   `python3 vk_to_string.py <path-to-vk-xml> --header`
 
 Every vulkan installation contains a `vk.xml` which contains the specification in a machine
-readable format.
+readable format. It is also part of the vulkan library in blender libs.
 
 The generated source code will be printed to the console.
 
