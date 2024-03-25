@@ -16,7 +16,7 @@
 /* Visibility value to write back. */
 #define SHADOW_TILE_MASKED SHADOW_IS_ALLOCATED
 
-shared uint tiles[SHADOW_TILEDATA_PER_TILEMAP];
+shared uint tiles_local[SHADOW_TILEDATA_PER_TILEMAP];
 shared uint levels_rendered;
 
 int shadow_tile_offset_lds(ivec2 tile, int lod)
@@ -46,7 +46,6 @@ void main()
     for (int lod = 0; lod <= SHADOW_TILEMAP_LOD; lod++) {
       if (thread_mask(tile_co, lod)) {
         int tile_offset = shadow_tile_offset(tile_co, tilemap.tiles_index, lod);
-        int tile_lds = shadow_tile_offset_lds(tile_co, lod);
         ShadowTileDataPacked tile_data = tiles_buf[tile_offset];
 
         if ((tile_data & SHADOW_IS_USED) == 0) {
@@ -57,7 +56,8 @@ void main()
         /* Clear these flags as they could contain any values. */
         tile_data &= ~(SHADOW_TILE_AMENDED | SHADOW_TILE_MASKED);
 
-        tiles[tile_lds] = tile_data;
+        int tile_lds = shadow_tile_offset_lds(tile_co, lod);
+        tiles_local[tile_lds] = tile_data;
       }
     }
 
@@ -79,19 +79,20 @@ void main()
         int tile_2 = shadow_tile_offset_lds(tile_co_prev_lod + ivec2(0, 1), prev_lod);
         int tile_3 = shadow_tile_offset_lds(tile_co_prev_lod + ivec2(1, 1), prev_lod);
         /* Is masked if all tiles from the previous level were tagged as used. */
-        bool is_masked = ((tiles[tile_0] & tiles[tile_1] & tiles[tile_2] & tiles[tile_3]) &
+        bool is_masked = ((tiles_local[tile_0] & tiles_local[tile_1] & tiles_local[tile_2] &
+                           tiles_local[tile_3]) &
                           SHADOW_IS_USED) != 0;
 
         int tile_offset = shadow_tile_offset_lds(tile_co, lod);
         if (is_masked) {
           /* Consider this tile occluding lower levels. Use SHADOW_IS_USED flag for that. */
-          tiles[tile_offset] |= SHADOW_IS_USED;
+          tiles_local[tile_offset] |= SHADOW_IS_USED;
           /* Do not consider this tile when checking which tilemap level to render in next loop. */
-          tiles[tile_offset] &= ~SHADOW_DO_UPDATE;
+          tiles_local[tile_offset] &= ~SHADOW_DO_UPDATE;
           /* Tag as modified so that we can amend it inside the `tiles_buf`. */
-          tiles[tile_offset] |= SHADOW_TILE_AMENDED;
+          tiles_local[tile_offset] |= SHADOW_TILE_AMENDED;
           /* Visibility value to write back. */
-          tiles[tile_offset] |= SHADOW_TILE_MASKED;
+          tiles_local[tile_offset] |= SHADOW_TILE_MASKED;
         }
       }
     }
@@ -113,7 +114,7 @@ void main()
     for (int lod = 0; lod <= SHADOW_TILEMAP_LOD; lod++) {
       if (thread_mask(tile_co, lod)) {
         int tile_offset = shadow_tile_offset_lds(tile_co, lod);
-        if ((tiles[tile_offset] & SHADOW_DO_UPDATE) != 0) {
+        if ((tiles_local[tile_offset] & SHADOW_DO_UPDATE) != 0) {
           atomicOr(levels_rendered, 1u << lod);
         }
       }
@@ -133,48 +134,22 @@ void main()
       for (int lod = 0; lod < max_lod; lod++) {
         if (thread_mask(tile_co, lod)) {
           int tile_offset = shadow_tile_offset_lds(tile_co, lod);
-          if ((tiles[tile_offset] & SHADOW_DO_UPDATE) != 0) {
+          if ((tiles_local[tile_offset] & SHADOW_DO_UPDATE) != 0) {
             /* This tile is now masked and not considered for rendering. */
-            tiles[tile_offset] |= SHADOW_TILE_MASKED | SHADOW_TILE_AMENDED;
-            tiles[tile_offset] &= ~SHADOW_DO_UPDATE;
+            tiles_local[tile_offset] |= SHADOW_TILE_MASKED | SHADOW_TILE_AMENDED;
+            tiles_local[tile_offset] &= ~SHADOW_DO_UPDATE;
             /* Note that we can have multiple thread writting to this tile. */
             int tile_bottom_offset = shadow_tile_offset_lds(tile_co >> (max_lod - lod), max_lod);
             /* Tag the associated tile in max_lod to be used as it contains the shadowmap area
              * covered by this collapsed tile. */
-            atomicOr(tiles[tile_bottom_offset], SHADOW_TILE_AMENDED);
+            atomicOr(tiles_local[tile_bottom_offset], SHADOW_TILE_AMENDED);
             /* This tile could have been masked by the masking phase.
              * Make sure the flag is unset. */
-            atomicAnd(tiles[tile_bottom_offset], ~SHADOW_TILE_MASKED);
+            atomicAnd(tiles_local[tile_bottom_offset], ~SHADOW_TILE_MASKED);
           }
         }
       }
     }
-
-#  if 1 /* Debug Checks to remove before merge. */
-    uint before = bitCount(levels_rendered);
-
-    if (gl_LocalInvocationIndex == 0u) {
-      levels_rendered = 0u;
-    }
-
-    barrier();
-
-    /* Find list of LOD that contain tiles to render. */
-    for (int lod = 0; lod <= SHADOW_TILEMAP_LOD; lod++) {
-      if (thread_mask(tile_co, lod)) {
-        int tile_offset = shadow_tile_offset_lds(tile_co, lod);
-        if ((tiles[tile_offset] & SHADOW_DO_UPDATE) != 0) {
-          atomicOr(levels_rendered, 1u << lod);
-        }
-      }
-    }
-
-    barrier();
-
-    if (gl_LocalInvocationIndex == 0u) {
-      drw_print("Tilemap", tilemap_index, "Before ", before, " After " bitCount(levels_rendered));
-    }
-#  endif
 #endif
 
     barrier();
@@ -182,10 +157,11 @@ void main()
     /* Flush back visibility bits to the tile SSBO. */
     for (int lod = 0; lod <= SHADOW_TILEMAP_LOD; lod++) {
       if (thread_mask(tile_co, lod)) {
-        int tile_offset = shadow_tile_offset(tile_co, tilemap.tiles_index, lod);
-        if ((tiles[tile_offset] & SHADOW_TILE_AMENDED) != 0) {
+        int tile_lds = shadow_tile_offset_lds(tile_co, lod);
+        if ((tiles_local[tile_lds] & SHADOW_TILE_AMENDED) != 0) {
+          int tile_offset = shadow_tile_offset(tile_co, tilemap.tiles_index, lod);
           /* Note that we only flush the visibility so that cached pages can be reused. */
-          if ((tiles[tile_offset] & SHADOW_TILE_MASKED) != 0) {
+          if ((tiles_local[tile_lds] & SHADOW_TILE_MASKED) != 0) {
             tiles_buf[tile_offset] &= ~SHADOW_IS_USED;
           }
           else {
