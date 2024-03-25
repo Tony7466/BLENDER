@@ -130,6 +130,8 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
 
   void foreach_item(ItemIterFn iter_fn, IterOptions options = IterOptions::None) const;
 
+  void scroll(ViewScrollDirection direction) override;
+
   /**
    * \param xy: The mouse coordinates in window space.
    */
@@ -152,6 +154,8 @@ class AbstractTreeView : public AbstractView, public TreeViewItemContainer {
   static AbstractTreeViewItem *find_matching_child(const AbstractTreeViewItem &lookup_item,
                                                    const TreeViewOrItem &items);
   std::optional<int> tot_visible_row_count();
+
+  bool supports_scrolling() const override;
 
   void draw_hierarchy_lines(const ARegion &region) const;
   void draw_hierarchy_lines_recursive(const ARegion &region,

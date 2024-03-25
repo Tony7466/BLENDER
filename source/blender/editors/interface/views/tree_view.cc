@@ -251,6 +251,20 @@ std::optional<int> AbstractTreeView::tot_visible_row_count()
   return round_fl_to_int(float(*custom_height_) / padded_item_height());
 }
 
+bool AbstractTreeView::supports_scrolling() const
+{
+  return custom_height_ && scroll_value_;
+}
+
+void AbstractTreeView::scroll(ViewScrollDirection direction)
+{
+  if (!supports_scrolling()) {
+    return;
+  }
+  /* Scroll value will be sanitized/clamped when drawing. */
+  *scroll_value_ += ((direction == ViewScrollDirection::UP) ? -1 : 1);
+}
+
 /* ---------------------------------------------------------------------- */
 
 TreeViewItemDropTarget::TreeViewItemDropTarget(AbstractTreeViewItem &view_item,
@@ -638,6 +652,15 @@ TreeViewLayoutBuilder::TreeViewLayoutBuilder(uiLayout &layout) : block_(*uiLayou
 {
 }
 
+static int count_visible_items(AbstractTreeView &tree_view)
+{
+  int item_count = 0;
+  tree_view.foreach_item([&](AbstractTreeViewItem &) { item_count++; },
+                         AbstractTreeView::IterOptions::SkipCollapsed |
+                             AbstractTreeView::IterOptions::SkipFiltered);
+  return item_count;
+}
+
 void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
 {
   uiLayout &parent_layout = this->current_layout();
@@ -648,34 +671,40 @@ void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
   /* Row for the tree-view and the scroll bar. */
   uiLayout *row = uiLayoutRow(col, false);
 
-  const std::optional<int> max_rows = tree_view.tot_visible_row_count();
+  const std::optional<int> visible_row_count = tree_view.tot_visible_row_count();
+  const int tot_items = count_visible_items(tree_view);
 
   /* Column for the tree view. */
   uiLayoutColumn(row, true);
 
+  /* Clamp scroll-value to valid range. */
+  if (tree_view.scroll_value_ && visible_row_count) {
+    *tree_view.scroll_value_ = std::clamp(
+        *tree_view.scroll_value_, 0, tot_items - *visible_row_count);
+  }
+
   const int first_visible_index = tree_view.scroll_value_ ? *tree_view.scroll_value_ : 0;
-  const int max_visible_index = first_visible_index +
-                                max_rows.value_or(std::numeric_limits<int>::max());
-  int item_count = 0;
+  const int max_visible_index = visible_row_count ? first_visible_index + *visible_row_count - 1 :
+                                                    std::numeric_limits<int>::max();
+  int index = 0;
   tree_view.foreach_item(
       [&, this](AbstractTreeViewItem &item) {
-        if ((item_count >= first_visible_index) && (item_count < max_visible_index)) {
+        if ((index >= first_visible_index) && (index <= max_visible_index)) {
           this->build_row(item);
         }
-        item_count++;
+        index++;
       },
       AbstractTreeView::IterOptions::SkipCollapsed | AbstractTreeView::IterOptions::SkipFiltered);
 
   if (tree_view.custom_height_) {
     uiLayoutColumn(row, false);
 
-    *tree_view.custom_height_ = tree_view.tot_visible_row_count().value_or(1) *
-                                padded_item_height();
+    *tree_view.custom_height_ = visible_row_count.value_or(1) * padded_item_height();
     if (!tree_view.scroll_value_) {
       tree_view.scroll_value_ = std::make_unique<int>(0);
     }
 
-    if (max_rows && (item_count > *max_rows)) {
+    if (visible_row_count && (tot_items > *visible_row_count)) {
       uiBut *but = uiDefButI(block,
                              UI_BTYPE_SCROLL,
                              0,
@@ -686,10 +715,10 @@ void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
                              *tree_view.custom_height_,
                              tree_view.scroll_value_.get(),
                              0,
-                             item_count - *max_rows,
+                             tot_items - *visible_row_count,
                              "");
       uiButScrollBar *but_scroll = reinterpret_cast<uiButScrollBar *>(but);
-      but_scroll->visual_height = *max_rows;
+      but_scroll->visual_height = *visible_row_count;
     }
 
     UI_block_layout_set_current(block, col);

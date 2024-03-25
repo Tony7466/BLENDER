@@ -113,6 +113,16 @@ void AbstractView::draw_overlays(const ARegion & /*region*/) const
   /* Nothing by default. */
 }
 
+bool AbstractView::supports_scrolling() const
+{
+  return false;
+}
+
+void AbstractView::scroll(ViewScrollDirection /*direction*/)
+{
+  BLI_assert_msg(false, "Unsupported for this view type");
+}
+
 /** \} */
 
 /* ---------------------------------------------------------------------- */
