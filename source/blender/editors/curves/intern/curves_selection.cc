@@ -99,11 +99,11 @@ Span<bke::AttributeIDRef> get_curves_selection_attribute_ids(const int size)
 }
 SelectionAttributeWriterList::SelectionAttributeWriterList(bke::CurvesGeometry &curves,
                                                            const bke::AttrDomain selection_domain)
-    : attribute_list_{get_curves_selection_attribute_ids(curves)}
+    : attribute_ids_{get_curves_selection_attribute_ids(curves)}
 {
-  for (const int i : IndexRange(attribute_list_.size())) {
+  for (const int i : IndexRange(attribute_ids_.size())) {
     selections_[i] = ensure_selection_attribute(
-        curves, selection_domain, CD_PROP_BOOL, attribute_list_[i]);
+        curves, selection_domain, CD_PROP_BOOL, attribute_ids_[i]);
   };
 }
 
@@ -152,9 +152,9 @@ void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
   }
 }
 
-void oreach_selectable_curve_range(const bke::CurvesGeometry &curves,
-                                   const bke::crazyspace::GeometryDeformation &deformation,
-                                   SelectableRangeConsumer range_consumer)
+void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
+                                    const bke::crazyspace::GeometryDeformation &deformation,
+                                    SelectableRangeConsumer range_consumer)
 {
   Span<bke::AttributeIDRef> selection_attribute_ids;
   std::array<Span<float3>, 3> positions;
@@ -454,12 +454,12 @@ void select_linked(bke::CurvesGeometry &curves, const IndexMask &curves_mask)
   SelectionAttributeWriterList selections(curves, bke::AttrDomain::Point);
 
   curves_mask.foreach_index(GrainSize(256), [&](const int64_t curve_i) {
-    for (int i = 0; i < selections.size(); i++) {
+    for (const int i : selections.attribute_ids().index_range()) {
       bke::GSpanAttributeWriter &selection = selections[i];
       GMutableSpan selection_curve = selection.span.slice(points_by_curve[curve_i]);
       if (has_anything_selected(selection_curve)) {
         fill_selection_true(selection_curve);
-        for (int j = 0; j < selections.size(); j++) {
+        for (const int j : selections.attribute_ids().index_range()) {
           if (j == i) {
             continue;
           }
@@ -855,7 +855,7 @@ bool select_box(const ViewContext &vc,
   }
   else if (selection_domain == bke::AttrDomain::Curve) {
     const OffsetIndices points_by_curve = curves.points_by_curve();
-    oreach_selectable_curve_range(
+    foreach_selectable_curve_range(
         curves,
         deformation,
         [&](const IndexRange range, const Span<float3> positions, const int /* attribute_i */) {
@@ -934,7 +934,7 @@ bool select_lasso(const ViewContext &vc,
   }
   else if (selection_domain == bke::AttrDomain::Curve) {
     const OffsetIndices points_by_curve = curves.points_by_curve();
-    oreach_selectable_curve_range(
+    foreach_selectable_curve_range(
         curves,
         deformation,
         [&](const IndexRange range, const Span<float3> positions, const int /* attribute_i */) {
@@ -1023,7 +1023,7 @@ bool select_circle(const ViewContext &vc,
   }
   else if (selection_domain == bke::AttrDomain::Curve) {
     const OffsetIndices points_by_curve = curves.points_by_curve();
-    oreach_selectable_curve_range(
+    foreach_selectable_curve_range(
         curves,
         deformation,
         [&](const IndexRange range, const Span<float3> positions, const int /* attribute_i */) {

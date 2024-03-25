@@ -55,7 +55,7 @@ Span<bke::AttributeIDRef> get_curves_selection_attribute_ids(const int size);
 Span<bke::AttributeIDRef> get_curves_selection_attribute_ids();
 
 class SelectionAttributeWriterList {
-  const Span<bke::AttributeIDRef> attribute_list_;
+  const Span<bke::AttributeIDRef> attribute_ids_;
   bke::GSpanAttributeWriter selections_[3];
 
  public:
@@ -63,19 +63,19 @@ class SelectionAttributeWriterList {
                                const bke::AttrDomain selection_domain);
   ~SelectionAttributeWriterList();
 
-  inline const Span<bke::AttributeIDRef> &attribute_list() const
+  inline const Span<bke::AttributeIDRef> &attribute_ids() const
   {
-    return attribute_list_;
+    return attribute_ids_;
   }
   inline const int size() const
   {
-    return attribute_list_.size();
+    return attribute_ids_.size();
   }
 
   bke::GSpanAttributeWriter &operator[](const int index)
   {
     BLI_assert(index >= 0);
-    BLI_assert(index < attribute_list_.size());
+    BLI_assert(index < attribute_ids_.size());
     return selections_[index];
   }
 
@@ -86,7 +86,7 @@ class SelectionAttributeWriterList {
 
   bke::GSpanAttributeWriter *end()
   {
-    return &(selections_[0]) + attribute_list_.size();
+    return &(selections_[0]) + attribute_ids_.size();
   }
 };
 
