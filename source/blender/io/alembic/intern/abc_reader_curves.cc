@@ -40,7 +40,6 @@ using Alembic::AbcGeom::ISampleSelector;
 using Alembic::AbcGeom::kWrapExisting;
 
 namespace blender::io::alembic {
-#pragma optimize("", off)
 static int16_t get_curve_resolution(const ICurvesSchema &schema,
                                     const Alembic::Abc::ISampleSelector &sample_sel)
 {
@@ -138,6 +137,18 @@ static CurveType get_curve_type(const Alembic::AbcGeom::BasisType basis)
   return CURVE_TYPE_POLY;
 }
 
+static inline int bezier_point_count(int alembic_count, bool is_cyclic)
+{
+  return is_cyclic ? (alembic_count / 3) : ((alembic_count / 3) + 1);
+}
+
+static inline float3 to_zup_float3(Imath::V3f v)
+{
+  float3 p;
+  copy_zup_from_yup(p, v.getValue());
+  return p;
+}
+
 static bool curves_topology_changed(const bke::CurvesGeometry &curves,
                                     Span<int> preprocessed_offsets)
 {
@@ -168,8 +179,8 @@ struct PreprocessedSampleData {
   bool do_cyclic = false;
 
   /* Only one curve type for the whole objects. */
-  CurveType curve_type;
-  int8_t knot_mode;
+  CurveType curve_type = CURVE_TYPE_POLY;
+  int8_t knot_mode = 0;
 
   /* Store the pointers during preprocess so we do not have to look up the sample twice. */
   P3fArraySamplePtr positions = nullptr;
@@ -252,7 +263,13 @@ static std::optional<PreprocessedSampleData> preprocess_sample(StringRefNull iob
                                 positions, alembic_offset, vertices_count, curve_order) :
                             0;
 
-    blender_offset += (overlap >= vertices_count) ? vertices_count : (vertices_count - overlap);
+    if (data.curve_type == CURVE_TYPE_BEZIER) {
+      blender_offset += bezier_point_count(vertices_count, data.do_cyclic);
+    }
+    else {
+      blender_offset += (overlap >= vertices_count) ? vertices_count : (vertices_count - overlap);
+    }
+
     alembic_offset += vertices_count;
   }
   data.offset_in_blender[curve_count] = blender_offset;
@@ -321,6 +338,30 @@ void AbcCurveReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSele
   }
 }
 
+static void add_bezier_control_point(int cp,
+                                     int offset,
+                                     MutableSpan<float3> positions,
+                                     MutableSpan<float3> handles_left,
+                                     MutableSpan<float3> handles_right,
+                                     const Span<Imath::V3f> alembic_positions)
+{
+  if (offset == 0) {
+    positions[cp] = to_zup_float3(alembic_positions[offset]);
+    handles_right[cp] = to_zup_float3(alembic_positions[offset + 1]);
+    handles_left[cp] = 2.0f * positions[cp] - handles_right[cp];
+  }
+  else if (offset == alembic_positions.size() - 1) {
+    positions[cp] = to_zup_float3(alembic_positions[offset]);
+    handles_left[cp] = to_zup_float3(alembic_positions[offset - 1]);
+    handles_right[cp] = 2.0f * positions[cp] - handles_left[cp];
+  }
+  else {
+    positions[cp] = to_zup_float3(alembic_positions[offset]);
+    handles_left[cp] = to_zup_float3(alembic_positions[offset - 1]);
+    handles_right[cp] = to_zup_float3(alembic_positions[offset + 1]);
+  }
+}
+
 void AbcCurveReader::read_curves_sample(Curves *curves_id,
                                         const ICurvesSchema &schema,
                                         const ISampleSelector &sample_sel)
@@ -353,18 +394,46 @@ void AbcCurveReader::read_curves_sample(Curves *curves_id,
   }
 
   MutableSpan<float3> curves_positions = curves.positions_for_write();
-  for (const int i_curve : curves.curves_range()) {
-    int position_offset = data.offset_in_alembic[i_curve];
-    for (const int i_point : curves.points_by_curve()[i_curve]) {
-      const Imath::V3f &pos = (*data.positions)[position_offset++];
-      copy_zup_from_yup(curves_positions[i_point], pos.getValue());
+  Span<Imath::V3f> alembic_points{&(*data.positions)[0], int64_t((*data.positions).size())};
+
+  if (data.curve_type == CURVE_TYPE_BEZIER) {
+    curves.handle_types_left_for_write().fill(BEZIER_HANDLE_ALIGN);
+    curves.handle_types_right_for_write().fill(BEZIER_HANDLE_ALIGN);
+
+    MutableSpan<float3> handles_right = curves.handle_positions_right_for_write();
+    MutableSpan<float3> handles_left = curves.handle_positions_left_for_write();
+
+    int point_offset = 0;
+    for (const int i_curve : curves.curves_range()) {
+      const int alembic_point_offset = data.offset_in_alembic[i_curve];
+      const int alembic_point_count = data.offset_in_alembic[i_curve + 1] - alembic_point_offset;
+      const int cp_count = data.offset_in_blender[i_curve + 1] - data.offset_in_blender[i_curve];
+
+      int cp_offset = 0;
+      for (const int cp : IndexRange(cp_count)) {
+        add_bezier_control_point(cp,
+                                 cp_offset,
+                                 curves_positions.slice(point_offset, point_count),
+                                 handles_left.slice(point_offset, point_count),
+                                 handles_right.slice(point_offset, point_count),
+                                 alembic_points.slice(alembic_point_offset, alembic_point_count));
+        cp_offset += 3;
+      }
+
+      point_offset += cp_count;
+    }
+  }
+  else {
+    for (const int i_curve : curves.curves_range()) {
+      int position_offset = data.offset_in_alembic[i_curve];
+      for (const int i_point : curves.points_by_curve()[i_curve]) {
+        curves_positions[i_point] = to_zup_float3(alembic_points[position_offset++]);
+      }
     }
   }
 
   if (data.do_cyclic) {
     curves.cyclic_for_write().copy_from(data.curves_cyclic);
-    curves.handle_types_left_for_write().fill(BEZIER_HANDLE_AUTO);
-    curves.handle_types_right_for_write().fill(BEZIER_HANDLE_AUTO);
   }
 
   if (data.radii) {
@@ -372,11 +441,9 @@ void AbcCurveReader::read_curves_sample(Curves *curves_id,
         curves.attributes_for_write().lookup_or_add_for_write_span<float>("radius",
                                                                           bke::AttrDomain::Point);
 
-    for (const int i_curve : curves.curves_range()) {
-      int position_offset = data.offset_in_alembic[i_curve];
-      for (const int i_point : curves.points_by_curve()[i_curve]) {
-        radii.span[i_point] = (*data.radii)[position_offset++] / 2.0f;
-      }
+    Alembic::Abc::FloatArraySample alembic_widths = *data.radii;
+    for (const int i_point : curves.points_range()) {
+      radii.span[i_point] = alembic_widths[i_point] / 2.0f;
     }
 
     radii.finish();

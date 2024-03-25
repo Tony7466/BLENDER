@@ -33,8 +33,15 @@ using Alembic::AbcGeom::ON3fGeomParam;
 using Alembic::AbcGeom::OV2fGeomParam;
 
 namespace blender::io::alembic {
-#pragma optimize("", off)
+
 const std::string ABC_CURVE_RESOLUTION_U_PROPNAME("blender:resolution");
+
+static inline Imath::V3f to_yup_V3f(float3 v)
+{
+  Imath::V3f p;
+  copy_yup_from_zup(p.getValue(), v);
+  return p;
+}
 
 ABCCurveWriter::ABCCurveWriter(const ABCWriterConstructorArgs &args) : ABCAbstractWriter(args) {}
 
@@ -44,10 +51,22 @@ void ABCCurveWriter::create_alembic_objects(const HierarchyContext *context)
   abc_curve_ = OCurves(args_.abc_parent, args_.abc_name, timesample_index_);
   abc_curve_schema_ = abc_curve_.getSchema();
 
-  Curve *cu = static_cast<Curve *>(context->object->data);
+  int resolution_u = 1;
+  switch (context->object->type) {
+    case OB_CURVES_LEGACY: {
+      Curve *cu = static_cast<Curve *>(context->object->data);
+      resolution_u = cu->resolu;
+    } break;
+    case OB_CURVES: {
+      Curves *curves = static_cast<Curves *>(context->object->data);
+      const bke::CurvesGeometry &geometry = curves->geometry.wrap();
+      resolution_u = geometry.resolution().first();
+    } break;
+  }
+
   OCompoundProperty user_props = abc_curve_schema_.getUserProperties();
   OInt16Property user_prop_resolu(user_props, ABC_CURVE_RESOLUTION_U_PROPNAME);
-  user_prop_resolu.set(cu->resolu);
+  user_prop_resolu.set(resolution_u);
 }
 
 Alembic::Abc::OObject ABCCurveWriter::get_alembic_object() const
@@ -138,11 +157,8 @@ void ABCCurveWriter::do_write(HierarchyContext &context)
   std::vector<float> weights;
   std::vector<float> knots;
   std::vector<uint8_t> orders;
-  Imath::V3f temp_vert;
 
   const Span<float3> positions = geometry.positions();
-  const Span<float3> handles_l = geometry.handle_positions_left();
-  const Span<float3> handles_r = geometry.handle_positions_right();
   const Span<float> nurbs_weights = geometry.nurbs_weights();
   const VArray<int8_t> nurbs_orders = geometry.nurbs_orders();
   const bke::AttributeAccessor curve_attributes = geometry.attributes();
@@ -158,13 +174,15 @@ void ABCCurveWriter::do_write(HierarchyContext &context)
       case CURVE_TYPE_POLY:
       case CURVE_TYPE_CATMULL_ROM:
         for (const int i_point : points) {
-          copy_yup_from_zup(temp_vert.getValue(), positions[i_point]);
-          verts.push_back(temp_vert);
+          verts.push_back(to_yup_V3f(positions[i_point]));
           widths.push_back(radii.varray[i_point] * 2.0f);
         }
         break;
 
       case CURVE_TYPE_BEZIER: {
+        const Span<float3> handles_l = geometry.handle_positions_left();
+        const Span<float3> handles_r = geometry.handle_positions_right();
+
         const int start_point_index = points.first();
         const int last_point_index = points.last();
 
@@ -175,39 +193,30 @@ void ABCCurveWriter::do_write(HierarchyContext &context)
          *   control point 2(+ width), ...
          * ] */
         for (int i_point = start_point_index; i_point < last_point_index; i_point++) {
-          copy_yup_from_zup(temp_vert.getValue(), positions[i_point]);
-          verts.push_back(temp_vert);
+          verts.push_back(to_yup_V3f(positions[i_point]));
           widths.push_back(radii.varray[last_point_index] * 2.0f);
 
-          copy_yup_from_zup(temp_vert.getValue(), handles_r[i_point]);
-          verts.push_back(temp_vert);
-
-          copy_yup_from_zup(temp_vert.getValue(), handles_l[i_point + 1]);
-          verts.push_back(temp_vert);
+          verts.push_back(to_yup_V3f(handles_r[i_point]));
+          verts.push_back(to_yup_V3f(handles_l[i_point + 1]));
         }
 
         /* The last vert in the array doesn't need a right handle because the curve stops
          * at that point. */
-        copy_yup_from_zup(temp_vert.getValue(), positions[last_point_index]);
-        verts.push_back(temp_vert);
+        verts.push_back(to_yup_V3f(positions[last_point_index]));
         widths.push_back(radii.varray[last_point_index] * 2.0f);
 
         /* If the curve is cyclic, include the right handle of the last point and the
          * left handle of the first point. */
         if (is_cyclic) {
-          copy_yup_from_zup(temp_vert.getValue(), handles_r[last_point_index]);
-          verts.push_back(temp_vert);
-
-          copy_yup_from_zup(temp_vert.getValue(), handles_l[start_point_index]);
-          verts.push_back(temp_vert);
+          verts.push_back(to_yup_V3f(handles_r[last_point_index]));
+          verts.push_back(to_yup_V3f(handles_l[start_point_index]));
         }
 
       } break;
 
       case CURVE_TYPE_NURBS:
         for (const int i_point : points) {
-          copy_yup_from_zup(temp_vert.getValue(), positions[i_point]);
-          verts.push_back(temp_vert);
+          verts.push_back(to_yup_V3f(positions[i_point]));
           weights.push_back(nurbs_weights[i_point]);
           widths.push_back(radii.varray[i_point] * 2.0f);
         }
