@@ -126,6 +126,13 @@ class VIEW3D_HT_tool_header(Header):
         elif tool_mode == 'VERTEX_GPENCIL':
             if is_valid_context:
                 layout.popover("VIEW3D_PT_tools_grease_pencil_vertex_appearance")
+        elif tool_mode == "PAINT_GREASE_PENCIL":
+            if is_valid_context:
+                brush = context.tool_settings.gpencil_paint.brush
+                if brush:
+                    if brush.gpencil_tool != 'ERASE':
+                        if brush.gpencil_tool not in {'FILL', 'TINT'}:
+                            layout.popover("VIEW3D_PT_tools_grease_pencil_v3_brush_stroke")
 
     def draw_mode_settings(self, context):
         layout = self.layout

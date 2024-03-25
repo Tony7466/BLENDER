@@ -628,16 +628,19 @@ static void paint_brush_stroke_add_step(
 static bool paint_smooth_stroke(PaintStroke *stroke,
                                 const PaintSample *sample,
                                 PaintMode mode,
+                                const wmEvent *event,
                                 float r_mouse[2],
                                 float *r_pressure)
 {
-  if (paint_supports_smooth_stroke(stroke->brush, mode)) {
+  if (paint_supports_smooth_stroke(stroke->brush, mode, event)) {
     float radius = stroke->brush->smooth_stroke_radius * stroke->zoom_2d;
     float u = stroke->brush->smooth_stroke_factor;
 
     /* If the mouse is moving within the radius of the last move,
      * don't update the mouse position. This allows sharp turns. */
-    if (len_squared_v2v2(stroke->last_mouse_position, sample->mouse) < square_f(radius)) {
+    if (len_squared_v2v2(stroke->last_mouse_position, sample->mouse) < square_f(radius) &&
+        stroke->tot_samples != 0)
+    {
       return false;
     }
 
@@ -1091,8 +1094,13 @@ bool paint_supports_dynamic_size(Brush *br, PaintMode mode)
   return true;
 }
 
-bool paint_supports_smooth_stroke(Brush *br, PaintMode mode)
+bool paint_supports_smooth_stroke(Brush *br, PaintMode mode, const wmEvent *event)
 {
+  /* Grease pencil draw mode allows for holding `shift` to toggle smoothing. */
+  if ((mode == PaintMode::GPencil) && (br->gpencil_tool == GPAINT_TOOL_DRAW)) {
+    return ((br->flag & BRUSH_SMOOTH_STROKE) != 0) ^ (event->modifier & KM_SHIFT);
+  }
+
   if (!(br->flag & BRUSH_SMOOTH_STROKE) ||
       (br->flag & (BRUSH_ANCHORED | BRUSH_DRAG_DOT | BRUSH_LINE)))
   {
@@ -1488,13 +1496,26 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
       return OPERATOR_FINISHED;
     }
 
-    if (paint_supports_smooth_stroke(br, mode)) {
-      stroke->stroke_cursor = WM_paint_cursor_activate(
-          SPACE_TYPE_ANY, RGN_TYPE_ANY, paint_brush_tool_poll, paint_draw_smooth_cursor, stroke);
-    }
-
     stroke->stroke_init = true;
     first_modal = true;
+  }
+
+  /* Smoothing can be activated and deactivated while running, so the cursor has to update. */
+  if ((br->flag & BRUSH_LINE) == 0) {
+    if (paint_supports_smooth_stroke(br, mode, event)) {
+      /* Activate if it is not active. */
+      if (!stroke->stroke_cursor) {
+        stroke->stroke_cursor = WM_paint_cursor_activate(
+            SPACE_TYPE_ANY, RGN_TYPE_ANY, paint_brush_tool_poll, paint_draw_smooth_cursor, stroke);
+      }
+    }
+    else {
+      /* Deactivate it if it is active. */
+      if (stroke->stroke_cursor) {
+        WM_paint_cursor_end(static_cast<wmPaintCursor *>(stroke->stroke_cursor));
+        stroke->stroke_cursor = nullptr;
+      }
+    }
   }
 
   /* one time stroke initialization */
@@ -1577,7 +1598,7 @@ int paint_stroke_modal(bContext *C, wmOperator *op, const wmEvent *event, PaintS
            ((br->flag & BRUSH_AIRBRUSH) && event->type == TIMER &&
             event->customdata == stroke->timer))
   {
-    if (paint_smooth_stroke(stroke, &sample_average, mode, mouse, &pressure)) {
+    if (paint_smooth_stroke(stroke, &sample_average, mode, event, mouse, &pressure)) {
       if (stroke->stroke_started) {
         if (paint_space_stroke_enabled(br, mode)) {
           if (paint_space_stroke(C, op, stroke, mouse, pressure)) {

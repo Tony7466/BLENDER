@@ -88,7 +88,7 @@ bool paint_supports_dynamic_size(Brush *br, PaintMode mode);
  * Return true if the brush size can change during paint (normally used for pressure).
  */
 bool paint_supports_dynamic_tex_coords(Brush *br, PaintMode mode);
-bool paint_supports_smooth_stroke(Brush *br, PaintMode mode);
+bool paint_supports_smooth_stroke(Brush *br, PaintMode mode, const wmEvent *event);
 bool paint_supports_texture(PaintMode mode);
 
 /**

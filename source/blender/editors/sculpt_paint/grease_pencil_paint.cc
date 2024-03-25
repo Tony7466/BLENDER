@@ -172,6 +172,10 @@ struct PaintOperationExecutor {
                                                      settings_->vertex_factor) :
                                               float4(0.0f);
     srgb_to_linearrgb_v4(vertex_color_, vertex_color_);
+    paint->paint_cursor_col[0] = uint(vertex_color_[0] * 255);
+    paint->paint_cursor_col[1] = uint(vertex_color_[1] * 255);
+    paint->paint_cursor_col[2] = uint(vertex_color_[2] * 255);
+    paint->paint_cursor_col[3] = 128;
     /* TODO: UI setting. */
     hardness_ = 1.0f;
 
