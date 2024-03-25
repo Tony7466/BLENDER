@@ -302,6 +302,24 @@ struct InstanceContext {
   }
 };
 
+static int64_t get_final_points_num(const GatherTasks &tasks)
+{
+  int64_t points_num = 0;
+  if (!tasks.pointcloud_tasks.is_empty()) {
+    const RealizePointCloudTask &task = tasks.pointcloud_tasks.last();
+    points_num += task.start_index + task.pointcloud_info->pointcloud->totpoint;
+  }
+  if (!tasks.mesh_tasks.is_empty()) {
+    const RealizeMeshTask &task = tasks.mesh_tasks.last();
+    points_num += task.start_indices.vertex + task.mesh_info->mesh->verts_num;
+  }
+  if (!tasks.curve_tasks.is_empty()) {
+    const RealizeCurveTask &task = tasks.curve_tasks.last();
+    points_num += task.start_indices.point + task.curve_info->curves->geometry.point_num;
+  }
+  return points_num;
+}
+
 static void realize_collections(Collection *collection, bke::Instances *instances)
 {
   LISTBASE_FOREACH (CollectionChild *, collection_child, &collection->children) {
@@ -2039,32 +2057,34 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
                                  attribute_fallbacks);
 
   bke::GeometrySet new_geometry_set;
-
   execute_instances_tasks(gather_info.instances.instances_components_to_merge,
                           gather_info.instances.instances_components_transforms,
                           all_instance_attributes,
                           gather_info.instances.attribute_fallback,
                           new_geometry_set);
-
+                          
+  const int64_t total_points_num = get_final_points_num(gather_info.r_tasks);
+  /* This doesn't have to be exact at all, it's just a rough estimate ot make decisions about
+   * multi-threading (overhead). */
+  const int64_t approximate_used_bytes_num = total_points_num * 32;
+  threading::memory_bandwidth_bound_task(approximate_used_bytes_num, [&]() {
   execute_realize_pointcloud_tasks(options.keep_original_ids,
                                    all_pointclouds_info,
                                    gather_info.r_tasks.pointcloud_tasks,
                                    all_pointclouds_info.attributes,
                                    new_geometry_set);
-
   execute_realize_mesh_tasks(options.keep_original_ids,
                              all_meshes_info,
                              gather_info.r_tasks.mesh_tasks,
                              all_meshes_info.attributes,
                              all_meshes_info.materials,
                              new_geometry_set);
-
   execute_realize_curve_tasks(options.keep_original_ids,
                               all_curves_info,
                               gather_info.r_tasks.curve_tasks,
                               all_curves_info.attributes,
                               new_geometry_set);
-
+  });
   if (gather_info.r_tasks.first_volume) {
     new_geometry_set.add(*gather_info.r_tasks.first_volume);
   }

@@ -10,13 +10,13 @@
 
 #include "DNA_userdef_types.h"
 
-#include "GPU_batch.h"
-#include "GPU_batch_presets.h"
-#include "GPU_capabilities.h"
-#include "GPU_framebuffer.h"
-#include "GPU_immediate.h"
-#include "GPU_platform.h"
-#include "GPU_state.h"
+#include "GPU_batch.hh"
+#include "GPU_batch_presets.hh"
+#include "GPU_capabilities.hh"
+#include "GPU_framebuffer.hh"
+#include "GPU_immediate.hh"
+#include "GPU_platform.hh"
+#include "GPU_state.hh"
 
 #include "mtl_backend.hh"
 #include "mtl_common.hh"
@@ -258,7 +258,7 @@ id<MTLTexture> gpu::MTLTexture::get_metal_handle()
       this->reset();
 
       /* Re-initialize. */
-      this->init_internal(wrap(vert_buffer_));
+      this->init_internal(vert_buffer_);
 
       /* Update for assertion check below. */
       buf = vert_buffer_->get_metal_buffer();
@@ -1013,7 +1013,7 @@ void gpu::MTLTexture::update_sub(
 
       case GPU_TEXTURE_BUFFER: {
         /* TODO(Metal): Support Data upload to TEXTURE BUFFER
-         * Data uploads generally happen via GPUVertBuf instead. */
+         * Data uploads generally happen via VertBuf instead. */
         BLI_assert(false);
       } break;
 
@@ -1689,11 +1689,16 @@ void gpu::MTLTexture::read_internal(int mip,
      * happen after work with associated texture is finished. */
     GPU_finish();
 
-    /* Texture View for SRGB special case. */
+    /** Determine source read texture handle. */
     id<MTLTexture> read_texture = texture_;
+    /* Use texture-view handle if reading from a GPU texture view. */
+    if (resource_mode_ == MTL_TEXTURE_MODE_TEXTURE_VIEW) {
+      read_texture = this->get_metal_handle();
+    }
+    /* Create Texture View for SRGB special case to bypass internal type conversion. */
     if (format_ == GPU_SRGB8_A8) {
       BLI_assert(gpu_image_usage_flags_ & GPU_TEXTURE_USAGE_FORMAT_VIEW);
-      read_texture = [texture_ newTextureViewWithPixelFormat:MTLPixelFormatRGBA8Unorm];
+      read_texture = [read_texture newTextureViewWithPixelFormat:MTLPixelFormatRGBA8Unorm];
     }
 
     /* Perform per-texture type read. */
@@ -2023,15 +2028,15 @@ bool gpu::MTLTexture::init_internal()
   return true;
 }
 
-bool gpu::MTLTexture::init_internal(GPUVertBuf *vbo)
+bool gpu::MTLTexture::init_internal(VertBuf *vbo)
 {
   MTLPixelFormat mtl_format = gpu_texture_format_to_metal(this->format_);
   mtl_max_mips_ = 1;
   mipmaps_ = 0;
   this->mip_range_set(0, 0);
 
-  /* Create texture from GPUVertBuf's buffer. */
-  MTLVertBuf *mtl_vbo = static_cast<MTLVertBuf *>(unwrap(vbo));
+  /* Create texture from VertBuf's buffer. */
+  MTLVertBuf *mtl_vbo = static_cast<MTLVertBuf *>(vbo);
   mtl_vbo->bind();
   mtl_vbo->flag_used();
 

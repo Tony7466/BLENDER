@@ -15,9 +15,9 @@
 #include "BLI_time.h"
 #include "BLI_utildefines.h"
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "BKE_editmesh.hh"
 #include "BKE_layer.hh"
@@ -1788,7 +1788,9 @@ float transform_snap_increment_get(const TransInfo *t)
 
 void tranform_snap_source_restore_context(TransInfo *t)
 {
-  snap_object_context_init(t);
+  if (t->spacetype == SPACE_VIEW3D) {
+    snap_object_context_init(t);
+  }
   snap_multipoints_free(t);
 }
 

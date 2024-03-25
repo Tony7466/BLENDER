@@ -1132,7 +1132,7 @@ class _defs_edit_mesh:
         )
 
 
-def curve_draw_settings(context, layout, _tool, *, extra=False):
+def curve_draw_settings(context, layout, tool, *, extra=False):
     # Tool settings initialize operator options.
     tool_settings = context.tool_settings
     cps = tool_settings.curve_paint_settings
@@ -1186,6 +1186,11 @@ def curve_draw_settings(context, layout, _tool, *, extra=False):
         if cps.use_stroke_endpoints:
             colsub = layout.column(align=True)
             colsub.prop(cps, "surface_plane")
+
+    props = tool.operator_properties("curves.draw")
+    col = layout.column(align=True)
+    col.prop(props, "is_curve_2d", text="Curve 2D")
+    col.prop(props, "bezier_as_nurbs", text="As NURBS")
 
 
 class _defs_edit_curve:
@@ -1287,12 +1292,6 @@ class _defs_edit_curves:
         def curve_draw(context, layout, tool, *, extra=False):
             curve_draw_settings(context, layout, tool, extra=extra)
 
-            if extra:
-                props = tool.operator_properties("curves.draw")
-                col = layout.column(align=True)
-                col.prop(props, "is_curve_2d", text="Curve 2D")
-                col.prop(props, "bezier_as_nurbs", text="As NURBS")
-
         return dict(
             idname="builtin.draw",
             label="Draw",
@@ -1381,12 +1380,32 @@ class _defs_sculpt:
 
     @ToolDef.from_fn
     def hide_border():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.hide_show")
+            layout.prop(props, "area", expand=False)
+
         return dict(
             idname="builtin.box_hide",
             label="Box Hide",
             icon="ops.sculpt.border_hide",
             widget=None,
             keymap=(),
+            draw_settings=draw_settings,
+        )
+
+    @ToolDef.from_fn
+    def hide_lasso():
+        def draw_settings(_context, layout, tool):
+            props = tool.operator_properties("paint.hide_show_lasso_gesture")
+            layout.prop(props, "area", expand=False)
+
+        return dict(
+            idname="builtin.lasso_hide",
+            label="Lasso Hide",
+            icon="ops.sculpt.lasso_hide",
+            widget=None,
+            keymap=(),
+            draw_settings=draw_settings,
         )
 
     @ToolDef.from_fn
@@ -3077,7 +3096,10 @@ class VIEW3D_PT_tools_active(ToolSelectPanelHelper, Panel):
                 _defs_sculpt.mask_lasso,
                 _defs_sculpt.mask_line,
             ),
-            _defs_sculpt.hide_border,
+            (
+                _defs_sculpt.hide_border,
+                _defs_sculpt.hide_lasso
+            ),
             (
                 _defs_sculpt.face_set_box,
                 _defs_sculpt.face_set_lasso,
