@@ -42,9 +42,6 @@ void main()
   if (g_data.ray_type == RAY_TYPE_CAMERA && world_background_blur != 0.0 &&
       world_opacity_fade != 0.0)
   {
-    // MIX with LOD1 as LOD0 is already represented by the background color.
-    // We could add LOD0 into account as an intermediate, but unsure this has any benefit on
-    // quality.
     float base_lod = pow(world_background_blur, 0.75) * 4.0;
     float lod = max(1.0, base_lod);
     float mix_factor = min(1.0, base_lod);
