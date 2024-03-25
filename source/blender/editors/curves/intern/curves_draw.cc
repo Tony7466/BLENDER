@@ -773,8 +773,8 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
                                     (cps->radius_taper_end != 0.0f));
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-
-  const SelectionAttributeList selection_attribute_ids(curves);
+  const Span<bke::AttributeIDRef> selection_attribute_ids = get_curves_selection_attribute_ids(
+      curves);
   for (const bke::AttributeIDRef &selection_attribute_id : selection_attribute_ids) {
     attributes.remove(selection_attribute_id);
   }
@@ -923,7 +923,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
       /* If Bezier curve is being added, loop through all three ids.  */
       for (const bke::AttributeIDRef &selection_attribute_id :
-           (bezier_as_nurbs ? selection_attribute_ids : SelectionAttributeList()))
+           (bezier_as_nurbs ? selection_attribute_ids : get_curves_selection_attribute_ids()))
       {
         bke::AttributeWriter<bool> selection = attributes.lookup_or_add_for_write<bool>(
             selection_attribute_id, bke::AttrDomain::Curve);

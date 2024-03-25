@@ -50,46 +50,12 @@ float (*ED_curves_point_normals_array_create(const Curves *curves_id))[3];
 
 namespace blender::ed::curves {
 
-class SelectionAttributeList {
-  static const bke::AttributeIDRef attribute_ids_[];
-  const int size_;
-
- public:
-  SelectionAttributeList() : SelectionAttributeList(3) {}
-  SelectionAttributeList(const bke::CurvesGeometry &curves)
-      : SelectionAttributeList(curves.attributes())
-  {
-  }
-
-  inline const int size() const
-  {
-    return size_;
-  }
-
-  inline const bke::AttributeIDRef &operator[](const int index) const
-  {
-    BLI_assert(index >= 0);
-    BLI_assert(index < size_);
-    return attribute_ids_[index];
-  }
-
-  inline const bke::AttributeIDRef *begin() const
-  {
-    return &(attribute_ids_[0]);
-  }
-
-  inline const bke::AttributeIDRef *end() const
-  {
-    return &(attribute_ids_[0]) + size_;
-  }
-
- private:
-  SelectionAttributeList(const int size);
-  SelectionAttributeList(const bke::AttributeAccessor &attributes);
-};
+Span<bke::AttributeIDRef> get_curves_selection_attribute_ids(const bke::CurvesGeometry &curves);
+Span<bke::AttributeIDRef> get_curves_selection_attribute_ids(const int size);
+Span<bke::AttributeIDRef> get_curves_selection_attribute_ids();
 
 class SelectionAttributeWriterList {
-  const SelectionAttributeList attribute_list_;
+  const Span<bke::AttributeIDRef> attribute_list_;
   bke::GSpanAttributeWriter selections_[3];
 
  public:
@@ -97,7 +63,7 @@ class SelectionAttributeWriterList {
                                const bke::AttrDomain selection_domain);
   ~SelectionAttributeWriterList();
 
-  inline const SelectionAttributeList &attribute_list() const
+  inline const Span<bke::AttributeIDRef> &attribute_list() const
   {
     return attribute_list_;
   }
@@ -130,17 +96,17 @@ typedef std::function<void(const IndexRange range,
     RangeConsumer;
 
 class SelectableRangeList {
-  const SelectionAttributeList &attribute_list_;
+  const Span<bke::AttributeIDRef> attribute_list_;
   const bke::CurvesGeometry &curves_;
   const bke::AttrDomain selection_domain_;
   const IndexRange full_range_;
 
-  Span<float3> positions_[3];
+  std::array<Span<float3>, 3> positions_;
   IndexMaskMemory memory_;
   IndexMask bezier_curves_;
 
  public:
-  SelectableRangeList(const SelectionAttributeList &attribute_list,
+  SelectableRangeList(const Span<bke::AttributeIDRef> attribute_list,
                       const bke::CurvesGeometry &curves,
                       const bke::AttrDomain selection_domain,
                       const bke::crazyspace::GeometryDeformation &deformation);

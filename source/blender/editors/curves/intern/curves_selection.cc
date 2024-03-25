@@ -76,22 +76,30 @@ IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &mem
   return retrieve_selected_points(curves, memory);
 }
 
-const bke::AttributeIDRef SelectionAttributeList::attribute_ids_[3]{
+static const std::array<bke::AttributeIDRef, 3> selection_attribute_ids_{
     ".selection", ".selection_handle_left", ".selection_handle_right"};
 
-SelectionAttributeList::SelectionAttributeList(const int size) : size_(size) {}
-
-SelectionAttributeList::SelectionAttributeList(const bke::AttributeAccessor &attributes)
-    : SelectionAttributeList(
-          (attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
-              sizeof(attribute_ids_) / sizeof(bke::AttributeIDRef) :
-              1)
+Span<bke::AttributeIDRef> get_curves_selection_attribute_ids(const bke::CurvesGeometry &curves)
 {
+  const bke::AttributeAccessor attributes = curves.attributes();
+  return get_curves_selection_attribute_ids(
+      (attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
+          selection_attribute_ids_.size() :
+          1);
 }
 
+Span<bke::AttributeIDRef> get_curves_selection_attribute_ids()
+{
+  return get_curves_selection_attribute_ids(selection_attribute_ids_.size());
+}
+
+Span<bke::AttributeIDRef> get_curves_selection_attribute_ids(const int size)
+{
+  return Span<bke::AttributeIDRef>(selection_attribute_ids_.data(), size);
+}
 SelectionAttributeWriterList::SelectionAttributeWriterList(bke::CurvesGeometry &curves,
                                                            const bke::AttrDomain selection_domain)
-    : attribute_list_{curves}
+    : attribute_list_{get_curves_selection_attribute_ids(curves)}
 {
   for (const int i : IndexRange(attribute_list_.size())) {
     selections_[i] = ensure_selection_attribute(
@@ -106,7 +114,7 @@ SelectionAttributeWriterList::~SelectionAttributeWriterList()
   }
 }
 
-SelectableRangeList::SelectableRangeList(const SelectionAttributeList &attribute_list,
+SelectableRangeList::SelectableRangeList(const Span<bke::AttributeIDRef> attribute_list,
                                          const bke::CurvesGeometry &curves,
                                          const bke::AttrDomain selection_domain,
                                          const bke::crazyspace::GeometryDeformation &deformation)
@@ -340,8 +348,7 @@ bool has_anything_selected(const bke::CurvesGeometry &curves)
 bool has_anything_selected(const bke::CurvesGeometry &curves,
                            const bke::AttrDomain selection_domain)
 {
-  const ed::curves::SelectionAttributeList attribute_ids(curves);
-  for (const bke::AttributeIDRef &attribute_id : attribute_ids) {
+  for (const bke::AttributeIDRef &attribute_id : get_curves_selection_attribute_ids(curves)) {
     const VArray<bool> selection = *curves.attributes().lookup<bool>(attribute_id,
                                                                      selection_domain);
     if (!selection || contains(selection, selection.index_range(), true))
