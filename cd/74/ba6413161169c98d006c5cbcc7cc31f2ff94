@@ -7,3 +7,4 @@ Referenced by issue #111335, Vertex weight table in edit mode completely useless
 Referenced by issue #111306, Item panel displays incorrect weights for active vertex
 Referenced by pull request #111421, Fix #111273: multiple vertex weight sliders show the same value
 Referenced by commit b6df32f74001af42b3d9753d6b7fc0acb792d329, Fix #111273: multiple vertex weight sliders show the same value
+Referenced by issue #119831, Vertex weights menu cannot be operated by mouse dragging
