@@ -644,8 +644,9 @@ void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
   uiBlock *block = uiLayoutGetBlock(&parent_layout);
 
   uiLayout *box = uiLayoutBox(&parent_layout);
+  uiLayout *col = uiLayoutColumn(box, true);
   /* Row for the tree-view and the scroll bar. */
-  uiLayout *row = uiLayoutRow(box, false);
+  uiLayout *row = uiLayoutRow(col, false);
 
   const std::optional<int> max_rows = tree_view.tot_visible_row_count();
 
@@ -691,7 +692,7 @@ void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
       but_scroll->visual_height = *max_rows;
     }
 
-    UI_block_layout_set_current(block, box);
+    UI_block_layout_set_current(block, col);
     uiDefIconButI(block,
                   UI_BTYPE_GRIP,
                   0,
@@ -699,10 +700,10 @@ void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
                   0,
                   0,
                   UI_UNIT_X * 10,
-                  short(UI_UNIT_Y * 0.8f),
+                  UI_UNIT_Y * 0.5f,
                   tree_view.custom_height_.get(),
-                  UI_UNIT_Y,
-                  UI_UNIT_Y * 20.0f,
+                  0,
+                  0,
                   "");
   }
 
