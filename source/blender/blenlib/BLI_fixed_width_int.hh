@@ -39,10 +39,10 @@ template<typename T, int S> struct UIntF {
   /** Construct from a string. */
   explicit UIntF(StringRefNull str, int base = 10);
 
-  /** Convert to a normal integer. Note that this may loose digits. */
+  /** Convert to a normal integer. Note that this may lose digits. */
   explicit operator uint64_t() const;
 
-  /** Convert to floating point. This may loose precision. */
+  /** Convert to floating point. This may lose precision. */
   explicit operator double() const;
   explicit operator float() const;
 
@@ -81,10 +81,10 @@ template<typename T, int S> struct IntF {
   /** Construct from a string. */
   explicit IntF(StringRefNull str, int base = 10);
 
-  /** Convert to a normal integer. Note that this may loose digits. */
+  /** Convert to a normal integer. Note that this may lose digits. */
   explicit operator int64_t() const;
 
-  /** Convert to floating point. This may loose precision. */
+  /** Convert to floating point. This may lose precision. */
   explicit operator double() const;
   explicit operator float() const;
 
@@ -265,7 +265,7 @@ template<typename T, int S> inline IntF<T, S>::operator UIntF<T, S>() const
 }
 
 /**
- * Adds two fixed-width-integer together using the standard addition with carry algorithm tought
+ * Adds two fixed-width-integer together using the standard addition with carry algorithm taught
  * in schools. The main difference is that the digits here are not 0 to 9, but 0 to max(T).
  *
  * Due to the design of two's-complement numbers, this works for signed and unsigned
