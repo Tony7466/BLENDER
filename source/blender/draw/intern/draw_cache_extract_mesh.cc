@@ -654,27 +654,6 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
   EXTRACT_ADD_REQUESTED(vbo, vnor);
 
   EXTRACT_ADD_REQUESTED(ibo, tris);
-  if (DRW_ibo_requested(mbuflist->ibo.lines_loose)) {
-    /* `ibo.lines_loose` require the `ibo.lines` buffer. */
-    if (mbuflist->ibo.lines == nullptr) {
-      DRW_ibo_request(nullptr, &mbuflist->ibo.lines);
-    }
-    const MeshExtract *extractor = DRW_ibo_requested(mbuflist->ibo.lines) ?
-                                       &extract_lines_with_lines_loose :
-                                       &extract_lines_loose_only;
-    extractors.append(extractor);
-  }
-  else if (DRW_ibo_requested(mbuflist->ibo.lines)) {
-    const MeshExtract *extractor;
-    if (mbuflist->ibo.lines_loose != nullptr) {
-      /* Update `ibo.lines_loose` as it depends on `ibo.lines`. */
-      extractor = &extract_lines_with_lines_loose;
-    }
-    else {
-      extractor = &extract_lines;
-    }
-    extractors.append(extractor);
-  }
   EXTRACT_ADD_REQUESTED(ibo, points);
   EXTRACT_ADD_REQUESTED(ibo, fdots);
   EXTRACT_ADD_REQUESTED(ibo, lines_paint_mask);
@@ -720,6 +699,22 @@ void mesh_buffer_cache_create_requested(TaskGraph *task_graph,
 
   /* Simple heuristic. */
   const bool use_thread = (mr->corners_num + mr->loose_indices_num) > MIN_RANGE_LEN;
+
+  if (DRW_ibo_requested(mbuflist->ibo.lines) || DRW_ibo_requested(mbuflist->ibo.lines_loose)) {
+    struct LooseEdgedata {
+      MeshRenderData &mr;
+      MeshBufferList &buffers;
+    };
+    TaskNode *task_node = BLI_task_graph_node_create(
+        task_graph,
+        [](void *__restrict task_data) {
+          const LooseEdgedata &data = *static_cast<LooseEdgedata *>(task_data);
+          extract_lines_mesh(data.mr, data.buffers.ibo.lines, data.buffers.ibo.lines_loose);
+        },
+        new LooseEdgedata{*mr, *mbuflist},
+        [](void *task_data) { delete static_cast<LooseEdgedata *>(task_data); });
+    BLI_task_graph_edge_create(task_node_mesh_render_data, task_node);
+  }
 
   if (use_thread) {
     /* First run the requested extractors that do not support asynchronous ranges. */
@@ -830,26 +825,8 @@ void mesh_buffer_cache_create_requested_subdiv(MeshBatchCache &cache,
     extractors.append(&extract_fdots_pos);
   }
 
-  if (DRW_ibo_requested(mbuflist->ibo.lines_loose)) {
-    /* `ibo.lines_loose` require the `ibo.lines` buffer. */
-    if (mbuflist->ibo.lines == nullptr) {
-      DRW_ibo_request(nullptr, &mbuflist->ibo.lines);
-    }
-    const MeshExtract *extractor = DRW_ibo_requested(mbuflist->ibo.lines) ?
-                                       &extract_lines_with_lines_loose :
-                                       &extract_lines_loose_only;
-    extractors.append(extractor);
-  }
-  else if (DRW_ibo_requested(mbuflist->ibo.lines)) {
-    const MeshExtract *extractor;
-    if (mbuflist->ibo.lines_loose != nullptr) {
-      /* Update `ibo.lines_loose` as it depends on `ibo.lines`. */
-      extractor = &extract_lines_with_lines_loose;
-    }
-    else {
-      extractor = &extract_lines;
-    }
-    extractors.append(extractor);
+  if (DRW_ibo_requested(mbuflist->ibo.lines_loose) || DRW_ibo_requested(mbuflist->ibo.lines)) {
+    extractors.append(&extract_lines);
   }
   EXTRACT_ADD_REQUESTED(ibo, edituv_points);
   EXTRACT_ADD_REQUESTED(ibo, edituv_tris);
