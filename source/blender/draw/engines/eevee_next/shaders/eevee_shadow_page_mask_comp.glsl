@@ -17,7 +17,7 @@
 #define SHADOW_TILE_MASKED SHADOW_IS_ALLOCATED
 
 shared uint tiles[SHADOW_TILEDATA_PER_TILEMAP];
-shared uint levels_rendered = 0u;
+shared uint levels_rendered;
 
 int shadow_tile_offset_lds(ivec2 tile, int lod)
 {
@@ -38,6 +38,7 @@ void main()
   uint tilemap_index = gl_GlobalInvocationID.z;
   ShadowTileMapData tilemap = tilemaps_buf[tilemap_index];
 
+  /* NOTE: Barriers are ok since this branch is taken by all threads. */
   if (tilemap.projection_type == SHADOW_PROJECTION_CUBEFACE) {
 
     /* Load all data to LDS. Allows us to do some modification on the flag bits and only flush to
@@ -60,8 +61,7 @@ void main()
       }
     }
 
-    barrier();
-
+#if 1 /* Can be isolated for debugging. */
     /* For each level collect the number of used (or masked) tile that are covering the tile from
      * the level underneath. If this adds up to 4 the underneath tile is flag unused as its data
      * is not needed for rendering.
@@ -69,6 +69,7 @@ void main()
      * This is because 2 receivers can tag "used" the same area of the shadow-map but with
      * different LODs. */
     for (int lod = 1; lod <= SHADOW_TILEMAP_LOD; lod++) {
+      barrier();
       if (thread_mask(tile_co, lod)) {
         ivec2 tile_co_prev_lod = tile_co * 2;
         int prev_lod = lod - 1;
@@ -93,8 +94,70 @@ void main()
           tiles[tile_offset] |= SHADOW_TILE_MASKED;
         }
       }
-      barrier();
     }
+#endif
+
+#if 1 /* Can be isolated for debugging. */
+    /* Count the number of LOD level to render for this tilemap and to clamp it to a maximum number
+     * of view per tilemap.
+     * This avoid flooding the 64 view limit per redraw with ~3-4 LOD levels per tilemaps leaving
+     * some lights unshadowed.
+     * The clamped LOD levels' tiles need to be merged to the highest LOD allowed. */
+
+    /* Construct bitfield of the LODs that contain tiles to render (i.e: that will request a view).
+     */
+    if (gl_LocalInvocationIndex == 0u) {
+      levels_rendered = 0u;
+    }
+    barrier();
+    for (int lod = 0; lod <= SHADOW_TILEMAP_LOD; lod++) {
+      if (thread_mask(tile_co, lod)) {
+        int tile_offset = shadow_tile_offset_lds(tile_co, lod);
+        if ((tiles[tile_offset] & SHADOW_DO_UPDATE) != 0) {
+          atomicOr(levels_rendered, 1u << lod);
+        }
+      }
+    }
+    barrier();
+
+    /* If there is more LODs to update than the load balancing heuristic allows. */
+    const int max_lod_rendered_per_tilemap = 1;
+    if (bitCount(levels_rendered) > max_lod_rendered_per_tilemap) {
+      /* Find the cutoff LOD that contain tiles to render. */
+      int max_lod = findMSB(levels_rendered);
+      /* Allow more than one level. */
+      for (int i = 1; i < max_lod_rendered_per_tilemap; i++) {
+        max_lod = findMSB(levels_rendered & ~(~0u << max_lod));
+      }
+      /* Collapse all bits to highest level. */
+      for (int lod = 0; lod < max_lod; lod++) {
+        if (thread_mask(tile_co, lod)) {
+          int tile_offset = shadow_tile_offset_lds(tile_co, lod);
+          if ((tiles[tile_offset] & SHADOW_DO_UPDATE) != 0) {
+            /* This tile is now masked and not considered for rendering. */
+            tiles[tile_offset] |= SHADOW_TILE_MASKED | SHADOW_TILE_AMENDED;
+            tiles[tile_offset] &= ~SHADOW_DO_UPDATE;
+            /* Note that we can have multiple thread writting to this tile. */
+            int tile_bottom_offset = shadow_tile_offset_lds(tile_co >> (max_lod - lod), max_lod);
+            /* Tag the associated tile in max_lod to be used as it contains the shadowmap area
+             * covered by this collapsed tile. */
+            atomicOr(tiles[tile_bottom_offset], SHADOW_TILE_AMENDED);
+            /* This tile could have been masked by the masking phase.
+             * Make sure the flag is unset. */
+            atomicAnd(tiles[tile_bottom_offset], ~SHADOW_TILE_MASKED);
+          }
+        }
+      }
+    }
+
+#  if 1 /* Debug Checks to remove before merge. */
+    uint before = bitCount(levels_rendered);
+
+    if (gl_LocalInvocationIndex == 0u) {
+      levels_rendered = 0u;
+    }
+
+    barrier();
 
     /* Find list of LOD that contain tiles to render. */
     for (int lod = 0; lod <= SHADOW_TILEMAP_LOD; lod++) {
@@ -108,31 +171,11 @@ void main()
 
     barrier();
 
-    /* If there is more LODs to update than the load balancing heuristic allows. */
-    const int max_lod_rendered_per_tilemap = 1;
-    if (bitCount(levels_rendered) > max_lod_rendered_per_tilemap) {
-      /* Find the cutoff LOD that contain tiles to render. */
-      int max_lod = findLSB(levels_rendered);
-      /* Allow more than one level. */
-      for (int i = 1; i < max_lod_rendered_per_tilemap; i++) {
-        max_lod = findLSB(levels_rendered >> (max_lod + 1));
-      }
-      /* Collapse all bits to highest level. */
-      for (int lod = 0; lod < max_lod; lod++) {
-        if (thread_mask(tile_co, lod)) {
-          int tile_offset = shadow_tile_offset_lds(tile_co, lod);
-          if ((tiles[tile_offset] & SHADOW_DO_UPDATE) != 0) {
-            /* This tile is now masked and not considered for rendering. */
-            tiles[tile_offset] |= SHADOW_TILE_MASKED | SHADOW_TILE_AMENDED;
-            /* Tag the associated tile in max_lod to be used as it contains the shadowmap area
-             * covered by this collapsed tile.  */
-            ivec2 tile_to_co = tile_co >> (max_lod - lod);
-            int tile_to_offset = shadow_tile_offset_lds(tile_to_co, max_lod);
-            tiles[tile_to_offset] |= SHADOW_IS_USED | SHADOW_TILE_AMENDED;
-          }
-        }
-      }
+    if (gl_LocalInvocationIndex == 0u) {
+      drw_print("Tilemap", tilemap_index, "Before ", before, " After " bitCount(levels_rendered));
     }
+#  endif
+#endif
 
     barrier();
 
