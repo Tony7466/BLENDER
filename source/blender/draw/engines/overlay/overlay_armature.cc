@@ -42,7 +42,7 @@
 
 #include "UI_resources.hh"
 
-#include "draw_common.h"
+#include "draw_common_c.hh"
 #include "draw_manager_text.hh"
 
 #include "overlay_private.hh"
@@ -1754,7 +1754,7 @@ static void draw_bone_degrees_of_freedom(const ArmatureDrawContext *ctx, const b
     zero_v3(tmp[3]);
     mul_m4_m4m4(posetrans, posetrans, tmp);
   }
-  /* ... but own rest-space. */
+  /* ... but its own rest-space. */
   mul_m4_m4m3(posetrans, posetrans, pchan->bone->bone_mat);
 
   float scale = pchan->bone->length * pchan->size[1];

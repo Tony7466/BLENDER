@@ -317,8 +317,7 @@ void OBJECT_OT_hide_view_clear(wmOperatorType *ot)
   /* flags */
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 
-  PropertyRNA *prop = RNA_def_boolean(ot->srna, "select", true, "Select", "");
-  RNA_def_property_flag(prop, PropertyFlag(PROP_SKIP_SAVE | PROP_HIDDEN));
+  RNA_def_boolean(ot->srna, "select", true, "Select", "");
 }
 
 static int object_hide_view_set_exec(bContext *C, wmOperator *op)
@@ -565,16 +564,16 @@ static bool ED_object_editmode_load_free_ex(Main *bmain,
 
   if (obedit->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(obedit->data);
-    if (mesh->edit_mesh == nullptr) {
+    if (mesh->runtime->edit_mesh == nullptr) {
       return false;
     }
 
-    if (mesh->edit_mesh->bm->totvert > MESH_MAX_VERTS) {
+    if (mesh->runtime->edit_mesh->bm->totvert > MESH_MAX_VERTS) {
       /* This used to be warned int the UI, we could warn again although it's quite rare. */
       CLOG_WARN(&LOG,
                 "Too many vertices for mesh '%s' (%d)",
                 mesh->id.name + 2,
-                mesh->edit_mesh->bm->totvert);
+                mesh->runtime->edit_mesh->bm->totvert);
       return false;
     }
 
@@ -583,9 +582,9 @@ static bool ED_object_editmode_load_free_ex(Main *bmain,
     }
 
     if (free_data) {
-      EDBM_mesh_free_data(mesh->edit_mesh);
-      MEM_freeN(mesh->edit_mesh);
-      mesh->edit_mesh = nullptr;
+      EDBM_mesh_free_data(mesh->runtime->edit_mesh);
+      MEM_freeN(mesh->runtime->edit_mesh);
+      mesh->runtime->edit_mesh = nullptr;
     }
     /* will be recalculated as needed. */
     {
@@ -1859,6 +1858,13 @@ static int object_mode_set_exec(bContext *C, wmOperator *op)
           }
         }
       }
+    }
+  }
+
+  wmWindowManager *wm = CTX_wm_manager(C);
+  if (wm) {
+    if (WM_autosave_is_scheduled(wm)) {
+      WM_autosave_write(wm, CTX_data_main(C));
     }
   }
 

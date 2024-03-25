@@ -10,7 +10,10 @@
 
 struct GPUBatch;
 struct GPUMaterial;
-struct GPUVertBuf;
+namespace blender::gpu {
+class VertBuf;
+}
+struct GPUUniformBuf;
 struct ModifierData;
 struct PTCacheEdit;
 struct ParticleSystem;
@@ -89,7 +92,7 @@ void DRW_pointcloud_batch_cache_free_old(PointCloud *pointcloud, int ctime);
 /** \name Generic
  * \{ */
 
-void DRW_vertbuf_create_wiredata(GPUVertBuf *vbo, int vert_len);
+void DRW_vertbuf_create_wiredata(gpu::VertBuf *vbo, int vert_len);
 
 /** \} */
 
@@ -131,12 +134,15 @@ int DRW_curves_material_count_get(const Curves *curves);
  * \return A pointer to location where the texture will be
  * stored, which will be filled by #DRW_shgroup_curves_create_sub.
  */
-GPUVertBuf **DRW_curves_texture_for_evaluated_attribute(Curves *curves,
-                                                        const char *name,
-                                                        bool *r_is_point_domain);
+gpu::VertBuf **DRW_curves_texture_for_evaluated_attribute(Curves *curves,
+                                                          const char *name,
+                                                          bool *r_is_point_domain);
 
+GPUUniformBuf *DRW_curves_batch_cache_ubo_storage(Curves *curves);
 GPUBatch *DRW_curves_batch_cache_get_edit_points(Curves *curves);
-GPUBatch *DRW_curves_batch_cache_get_edit_lines(Curves *curves);
+GPUBatch *DRW_curves_batch_cache_get_sculpt_curves_cage(Curves *curves);
+GPUBatch *DRW_curves_batch_cache_get_edit_curves_handles(Curves *curves);
+GPUBatch *DRW_curves_batch_cache_get_edit_curves_lines(Curves *curves);
 
 void DRW_curves_batch_cache_create_requested(Object *ob);
 
@@ -148,9 +154,9 @@ void DRW_curves_batch_cache_create_requested(Object *ob);
 
 int DRW_pointcloud_material_count_get(const PointCloud *pointcloud);
 
-GPUVertBuf *DRW_pointcloud_position_and_radius_buffer_get(Object *ob);
+gpu::VertBuf *DRW_pointcloud_position_and_radius_buffer_get(Object *ob);
 
-GPUVertBuf **DRW_pointcloud_evaluated_attribute(PointCloud *pointcloud, const char *name);
+gpu::VertBuf **DRW_pointcloud_evaluated_attribute(PointCloud *pointcloud, const char *name);
 GPUBatch *DRW_pointcloud_batch_cache_get_dots(Object *ob);
 
 void DRW_pointcloud_batch_cache_create_requested(Object *ob);
@@ -272,7 +278,7 @@ GPUBatch *DRW_mesh_batch_cache_get_edit_mesh_analysis(Mesh *mesh);
 /** \name For Direct Data Access
  * \{ */
 
-GPUVertBuf *DRW_mesh_batch_cache_pos_vertbuf_get(Mesh *mesh);
+gpu::VertBuf *DRW_mesh_batch_cache_pos_vertbuf_get(Mesh *mesh);
 
 int DRW_mesh_material_count_get(const Object *object, const Mesh *mesh);
 

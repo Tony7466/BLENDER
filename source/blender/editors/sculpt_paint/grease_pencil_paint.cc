@@ -9,6 +9,7 @@
 #include "BKE_curves.hh"
 #include "BKE_grease_pencil.hh"
 #include "BKE_material.h"
+#include "BKE_scene.hh"
 
 #include "BLI_length_parameterize.hh"
 #include "BLI_math_color.h"
@@ -16,6 +17,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
+#include "ED_curves.hh"
 #include "ED_grease_pencil.hh"
 #include "ED_view3d.hh"
 
@@ -116,6 +118,7 @@ class PaintOperation : public GreasePencilStrokeOperation {
   Vector<float2> screen_space_smoothed_coords_;
   /* The start index of the smoothing window. */
   int active_smooth_start_index_ = 0;
+  blender::float4x2 texture_space_ = float4x2::identity();
 
   /* Helper class to project screen space coordinates to 3d. */
   ed::greasepencil::DrawingPlacement placement_;
@@ -129,7 +132,7 @@ class PaintOperation : public GreasePencilStrokeOperation {
 
  private:
   void simplify_stroke(bke::greasepencil::Drawing &drawing, float epsilon_px);
-  void process_stroke_end(bke::greasepencil::Drawing &drawing);
+  void process_stroke_end(const bContext &C, bke::greasepencil::Drawing &drawing);
 };
 
 /**
@@ -242,6 +245,21 @@ struct PaintOperationExecutor {
     materials.span.last() = material_index;
     hardnesses.span.last() = hardness_;
 
+    /* Only set the attribute if the type is not the default or if it already exists. */
+    if (settings_->caps_type != GP_STROKE_CAP_TYPE_ROUND || attributes.contains("start_cap")) {
+      bke::SpanAttributeWriter<int8_t> start_caps =
+          attributes.lookup_or_add_for_write_span<int8_t>("start_cap", bke::AttrDomain::Curve);
+      start_caps.span.last() = settings_->caps_type;
+      start_caps.finish();
+    }
+
+    if (settings_->caps_type != GP_STROKE_CAP_TYPE_ROUND || attributes.contains("end_cap")) {
+      bke::SpanAttributeWriter<int8_t> end_caps = attributes.lookup_or_add_for_write_span<int8_t>(
+          "end_cap", bke::AttrDomain::Curve);
+      end_caps.span.last() = settings_->caps_type;
+      end_caps.finish();
+    }
+
     cyclic.finish();
     materials.finish();
     hardnesses.finish();
@@ -254,10 +272,11 @@ struct PaintOperationExecutor {
                                       bke::AttrDomain::Point,
                                       {"position", "radius", "opacity", "vertex_color"},
                                       curves.points_range().take_back(1));
-    bke::fill_attribute_range_default(attributes,
-                                      bke::AttrDomain::Curve,
-                                      {"curve_type", "material_index", "cyclic", "hardness"},
-                                      curves.curves_range().take_back(1));
+    bke::fill_attribute_range_default(
+        attributes,
+        bke::AttrDomain::Curve,
+        {"curve_type", "material_index", "cyclic", "hardness", "start_cap", "end_cap"},
+        curves.curves_range().take_back(1));
 
     drawing_->tag_topology_changed();
   }
@@ -420,6 +439,9 @@ struct PaintOperationExecutor {
                                       bke::AttrDomain::Point,
                                       {"position", "radius", "opacity", "vertex_color"},
                                       curves.points_range().take_back(1));
+
+    drawing_->set_texture_matrices(Span<float4x2>(&(self.texture_space_), 1),
+                                   IndexMask(IndexRange(curves.curves_range().last(), 1)));
   }
 
   void execute(PaintOperation &self, const bContext &C, const InputSample &extension_sample)
@@ -456,15 +478,57 @@ void PaintOperation::on_stroke_begin(const bContext &C, const InputSample &start
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_saturation);
   BKE_curvemapping_init(brush->gpencil_settings->curve_rand_value);
 
+  const bke::greasepencil::Layer layer = *grease_pencil->get_active_layer();
   /* Initialize helper class for projecting screen space coordinates. */
-  placement_ = ed::greasepencil::DrawingPlacement(
-      *scene, *region, *view3d, *eval_object, *grease_pencil->get_active_layer());
+  placement_ = ed::greasepencil::DrawingPlacement(*scene, *region, *view3d, *eval_object, layer);
   if (placement_.use_project_to_surface()) {
     placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
   }
   else if (placement_.use_project_to_nearest_stroke()) {
     placement_.cache_viewport_depths(CTX_data_depsgraph_pointer(&C), region, view3d);
     placement_.set_origin_to_nearest_stroke(start_sample.mouse_position);
+  }
+
+  float3 u_dir;
+  float3 v_dir;
+  /* Set the texture space origin to be the first point. */
+  float3 origin = placement_.project(start_sample.mouse_position);
+  /* Align texture with the drawing plane. */
+  switch (scene->toolsettings->gp_sculpt.lock_axis) {
+    case GP_LOCKAXIS_VIEW:
+      u_dir = math::normalize(
+          placement_.project(float2(region->winx, 0.0f) + start_sample.mouse_position) - origin);
+      v_dir = math::normalize(
+          placement_.project(float2(0.0f, region->winy) + start_sample.mouse_position) - origin);
+      break;
+    case GP_LOCKAXIS_Y:
+      u_dir = float3(1.0f, 0.0f, 0.0f);
+      v_dir = float3(0.0f, 0.0f, 1.0f);
+      break;
+    case GP_LOCKAXIS_X:
+      u_dir = float3(0.0f, 1.0f, 0.0f);
+      v_dir = float3(0.0f, 0.0f, 1.0f);
+      break;
+    case GP_LOCKAXIS_Z:
+      u_dir = float3(1.0f, 0.0f, 0.0f);
+      v_dir = float3(0.0f, 1.0f, 0.0f);
+      break;
+    case GP_LOCKAXIS_CURSOR: {
+      float3x3 mat;
+      BKE_scene_cursor_rot_to_mat3(&scene->cursor, mat.ptr());
+      u_dir = mat * float3(1.0f, 0.0f, 0.0f);
+      v_dir = mat * float3(0.0f, 1.0f, 0.0f);
+      origin = float3(scene->cursor.location);
+      break;
+    }
+  }
+
+  this->texture_space_ = math::transpose(float2x4(float4(u_dir, -math::dot(u_dir, origin)),
+                                                  float4(v_dir, -math::dot(v_dir, origin))));
+
+  /* `View` is already stored in object space but all others are in layer space. */
+  if (scene->toolsettings->gp_sculpt.lock_axis != GP_LOCKAXIS_VIEW) {
+    this->texture_space_ = this->texture_space_ * layer.to_object_space(*object);
   }
 
   Material *material = BKE_grease_pencil_object_material_ensure_from_active_input_brush(
@@ -537,8 +601,9 @@ void PaintOperation::simplify_stroke(bke::greasepencil::Drawing &drawing, const 
   }
 }
 
-void PaintOperation::process_stroke_end(bke::greasepencil::Drawing &drawing)
+void PaintOperation::process_stroke_end(const bContext &C, bke::greasepencil::Drawing &drawing)
 {
+  Scene *scene = CTX_data_scene(&C);
   const int stroke_index = drawing.strokes().curves_range().last();
   const IndexRange points = drawing.strokes().points_by_curve()[stroke_index];
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
@@ -558,6 +623,24 @@ void PaintOperation::process_stroke_end(bke::greasepencil::Drawing &drawing)
     curves.resize(curves.points_num() - points_to_remove, curves.curves_num());
     curves.offsets_for_write().last() = curves.points_num();
   }
+
+  const bke::AttrDomain selection_domain = ED_grease_pencil_selection_domain_get(
+      scene->toolsettings);
+
+  bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(
+      curves, selection_domain, CD_PROP_BOOL);
+
+  if (selection_domain == bke::AttrDomain::Curve) {
+    ed::curves::fill_selection_false(selection.span.slice(IndexRange(stroke_index, 1)));
+  }
+  else if (selection_domain == bke::AttrDomain::Point) {
+    ed::curves::fill_selection_false(selection.span.slice(points));
+  }
+
+  selection.finish();
+
+  drawing.set_texture_matrices(Span<float4x2>(&(this->texture_space_), 1),
+                               IndexMask(IndexRange(curves.curves_range().last(), 1)));
 }
 
 void PaintOperation::on_stroke_done(const bContext &C)
@@ -579,7 +662,7 @@ void PaintOperation::on_stroke_done(const bContext &C)
 
   const float simplifiy_threshold_px = 0.5f;
   this->simplify_stroke(drawing, simplifiy_threshold_px);
-  this->process_stroke_end(drawing);
+  this->process_stroke_end(C, drawing);
   drawing.tag_topology_changed();
 
   DEG_id_tag_update(&grease_pencil.id, ID_RECALC_GEOMETRY);

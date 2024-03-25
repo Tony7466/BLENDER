@@ -20,29 +20,29 @@
 
 #include "BKE_duplilist.hh"
 
-#include "GPU_batch.h"
-#include "GPU_capabilities.h"
-#include "GPU_compute.h"
-#include "GPU_context.h"
+#include "GPU_batch.hh"
+#include "GPU_capabilities.hh"
+#include "GPU_compute.hh"
+#include "GPU_context.hh"
 #include "GPU_material.hh"
-#include "GPU_shader.h"
-#include "GPU_texture.h"
-#include "GPU_vertex_buffer.h"
+#include "GPU_shader.hh"
+#include "GPU_texture.hh"
+#include "GPU_vertex_buffer.hh"
 
 #include "DRW_gpu_wrapper.hh"
 
-#include "draw_hair_private.h"
+#include "draw_hair_private.hh"
 #include "draw_shader.hh"
-#include "draw_shader_shared.h"
+#include "draw_shader_shared.hh"
 
 struct ParticleRefineCall {
   ParticleRefineCall *next;
-  GPUVertBuf *vbo;
+  blender::gpu::VertBuf *vbo;
   DRWShadingGroup *shgrp;
   uint vert_len;
 };
 
-static GPUVertBuf *g_dummy_vbo = nullptr;
+static blender::gpu::VertBuf *g_dummy_vbo = nullptr;
 static DRWPass *g_tf_pass; /* XXX can be a problem with multiple #DRWManager in the future */
 static blender::draw::UniformBuffer<CurvesInfos> *g_dummy_curves_info = nullptr;
 
@@ -132,7 +132,9 @@ static ParticleHairCache *drw_hair_particle_cache_get(Object *object,
   return cache;
 }
 
-GPUVertBuf *DRW_hair_pos_buffer_get(Object *object, ParticleSystem *psys, ModifierData *md)
+blender::gpu::VertBuf *DRW_hair_pos_buffer_get(Object *object,
+                                               ParticleSystem *psys,
+                                               ModifierData *md)
 {
   const DRWContextState *draw_ctx = DRW_context_state_get();
   Scene *scene = draw_ctx->scene;
@@ -323,10 +325,10 @@ static ParticleHairCache *hair_particle_cache_get(Object *object,
   return cache;
 }
 
-GPUVertBuf *hair_pos_buffer_get(Scene *scene,
-                                Object *object,
-                                ParticleSystem *psys,
-                                ModifierData *md)
+blender::gpu::VertBuf *hair_pos_buffer_get(Scene *scene,
+                                           Object *object,
+                                           ParticleSystem *psys,
+                                           ModifierData *md)
 {
   int subdiv = scene->r.hair_subdiv;
   int thickness_res = (scene->r.hair_type == SCE_HAIR_SHAPE_STRAND) ? 1 : 2;

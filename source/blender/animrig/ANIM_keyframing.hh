@@ -12,7 +12,7 @@
 
 #include <string>
 
-#include "BLI_bitmap.h"
+#include "BLI_bit_span.hh"
 #include "BLI_vector.hh"
 #include "DNA_anim_types.h"
 #include "ED_transform.hh"
@@ -51,7 +51,6 @@ void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop);
 int insert_keyframe(Main *bmain,
                     ReportList *reports,
                     ID *id,
-                    bAction *act,
                     const char group[],
                     const char rna_path[],
                     int array_index,
@@ -206,7 +205,7 @@ int insert_key_action(Main *bmain,
                       Span<float> values,
                       eInsertKeyFlags insert_key_flag,
                       eBezTriple_KeyframeType key_type,
-                      const BLI_bitmap *keying_mask);
+                      BitSpan keying_mask);
 
 /**
  * Insert keys to the ID of the given PointerRNA for the given RNA paths. Tries to create an
