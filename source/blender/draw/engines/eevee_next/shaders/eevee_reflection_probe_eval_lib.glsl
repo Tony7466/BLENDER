@@ -32,5 +32,4 @@ int reflection_probes_select(vec3 P, float random_probe)
   return SPHERE_PROBE_MAX - 1;
 }
 
-
 #endif /* SPHERE_PROBE */
