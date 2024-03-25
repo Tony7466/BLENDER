@@ -12,14 +12,14 @@
 #  include "UI_resources.hh"
 #endif
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_texture.h"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_texture.hh"
 
 #include "gpu_context_private.hh"
 #include "gpu_immediate_private.hh"
 #include "gpu_shader_private.hh"
-#include "gpu_vertex_format_private.h"
+#include "gpu_vertex_format_private.hh"
 
 using namespace blender::gpu;
 
@@ -224,7 +224,7 @@ GPUBatch *immBeginBatch(GPUPrimType prim_type, uint vertex_len)
   imm->vertex_idx = 0;
   imm->unassigned_attr_bits = imm->enabled_attr_bits;
 
-  GPUVertBuf *verts = GPU_vertbuf_create_with_format(&imm->vertex_format);
+  VertBuf *verts = GPU_vertbuf_create_with_format(&imm->vertex_format);
   GPU_vertbuf_data_alloc(verts, vertex_len);
 
   imm->vertex_data = (uchar *)GPU_vertbuf_get_data(verts);
