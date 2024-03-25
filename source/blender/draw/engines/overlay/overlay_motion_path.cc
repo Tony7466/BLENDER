@@ -16,7 +16,7 @@
 
 #include "DEG_depsgraph_query.hh"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 
 #include "UI_resources.hh"
 
@@ -45,7 +45,7 @@ void OVERLAY_motion_path_cache_init(OVERLAY_Data *vedata)
 
 /* Just convert the CPU cache to GPU cache. */
 /* T0D0(fclem) This should go into a draw_cache_impl_motionpath. */
-static GPUVertBuf *mpath_vbo_get(bMotionPath *mpath)
+static blender::gpu::VertBuf *mpath_vbo_get(bMotionPath *mpath)
 {
   if (!mpath->points_vbo) {
     GPUVertFormat format = {0};

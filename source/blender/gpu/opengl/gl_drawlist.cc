@@ -11,11 +11,11 @@
 
 #include "BLI_assert.h"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 
+#include "GPU_vertex_buffer.hh"
 #include "gpu_context_private.hh"
 #include "gpu_drawlist_private.hh"
-#include "gpu_vertex_buffer_private.hh"
 
 #include "gl_backend.hh"
 #include "gl_drawlist.hh"
