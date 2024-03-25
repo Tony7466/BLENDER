@@ -973,6 +973,7 @@ static std::shared_ptr<DictionaryValue> serialize_geometry_set(const GeometrySet
         io_references->append(serialize_geometry_set(geometry, blob_writer, blob_sharing));
       }
       else {
+        /* TODO: Support serializing object and collection references. */
         io_references->append(serialize_geometry_set({}, blob_writer, blob_sharing));
       }
     }
