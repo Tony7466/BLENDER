@@ -46,12 +46,12 @@ static int16_t get_curve_resolution(const ICurvesSchema &schema,
 {
   ICompoundProperty user_props = schema.getUserProperties();
   if (!user_props) {
-    return 1;
+    return 0;
   }
 
   const PropertyHeader *header = user_props.getPropertyHeader(ABC_CURVE_RESOLUTION_U_PROPNAME);
   if (!header || !header->isScalar() || !IInt16Property::matches(*header)) {
-    return 1;
+    return 0;
   }
 
   IInt16Property resolu(user_props, header->getName());
@@ -85,17 +85,11 @@ static int8_t get_knot_mode(const Alembic::AbcGeom::CurveType abc_curve_type)
   return NURBS_KNOT_MODE_NORMAL;
 }
 
-static int get_curve_overlap(const Alembic::AbcGeom::CurvePeriodicity periodicity,
-                             const P3fArraySamplePtr positions,
+static int get_curve_overlap(const P3fArraySamplePtr positions,
                              const int idx,
                              const int num_verts,
                              const int16_t order)
 {
-  if (periodicity != Alembic::AbcGeom::kPeriodic) {
-    /* kNonPeriodic is always assumed to have no overlap. */
-    return 0;
-  }
-
   /* Check the number of points which overlap, we don't have overlapping points in Blender, but
    * other software do use them to indicate that a curve is actually cyclic. Usually the number of
    * overlapping points is equal to the order/degree of the curve.
@@ -122,7 +116,6 @@ static int get_curve_overlap(const Alembic::AbcGeom::CurvePeriodicity periodicit
     overlap = 1;
   }
 
-  /* There is no real cycles. */
   return overlap;
 }
 
@@ -229,6 +222,7 @@ static std::optional<PreprocessedSampleData> preprocess_sample(StringRefNull iob
   data.curves_cyclic.resize(curve_count);
   data.curve_type = get_curve_type(smp.getBasis());
   data.knot_mode = get_knot_mode(smp.getType());
+  data.do_cyclic = periodicity == Alembic::AbcGeom::kPeriodic;
 
   if (data.curve_type == CURVE_TYPE_NURBS) {
     data.curves_orders.resize(curve_count);
@@ -243,19 +237,21 @@ static std::optional<PreprocessedSampleData> preprocess_sample(StringRefNull iob
 
     const int curve_order = get_curve_order(smp.getType(), orders, i);
 
-    /* Check if the curve is cyclic. */
-    const int overlap = get_curve_overlap(
-        periodicity, positions, alembic_offset, vertices_count, curve_order);
-
     data.offset_in_blender[i] = blender_offset;
     data.offset_in_alembic[i] = alembic_offset;
-    data.curves_cyclic[i] = overlap != 0;
+    data.curves_cyclic[i] = data.do_cyclic;
 
     if (data.curve_type == CURVE_TYPE_NURBS) {
       data.curves_orders[i] = curve_order;
     }
 
-    data.do_cyclic |= data.curves_cyclic[i];
+    /* Some software writes repeated vertices to indicate periodicity but Blender
+     * should skip these if present. */
+    const int overlap = data.do_cyclic ?
+                            get_curve_overlap(
+                                positions, alembic_offset, vertices_count, curve_order) :
+                            0;
+
     blender_offset += (overlap >= vertices_count) ? vertices_count : (vertices_count - overlap);
     alembic_offset += vertices_count;
   }

@@ -16,6 +16,7 @@
 #include "DNA_object_types.h"
 
 #include "BKE_curve_legacy_convert.hh"
+#include "BKE_curve_to_mesh.hh"
 #include "BKE_curves.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_mesh.hh"
@@ -167,10 +168,12 @@ void ABCCurveWriter::do_write(HierarchyContext &context)
         const int start_point_index = points.first();
         const int last_point_index = points.last();
 
-        /* Vert order in the bezier curve representation is [
+        /* Vert order in the bezier curve representation is:
+         * [
          *   control point 0(+ width), right handle 0, left handle 1,
          *   control point 1(+ width), right handle 1, left handle 2,
-         *   control point 2(+ width), ...] */
+         *   control point 2(+ width), ...
+         * ] */
         for (int i_point = start_point_index; i_point < last_point_index; i_point++) {
           copy_yup_from_zup(temp_vert.getValue(), positions[i_point]);
           verts.push_back(temp_vert);
@@ -242,15 +245,27 @@ ABCCurveMeshWriter::ABCCurveMeshWriter(const ABCWriterConstructorArgs &args)
 
 Mesh *ABCCurveMeshWriter::get_export_mesh(Object *object_eval, bool &r_needsfree)
 {
-  Mesh *mesh_eval = BKE_object_get_evaluated_mesh(object_eval);
-  if (mesh_eval != nullptr) {
-    /* Mesh_eval only exists when generative modifiers are in use. */
-    r_needsfree = false;
-    return mesh_eval;
+  switch (object_eval->type) {
+    case OB_CURVES_LEGACY: {
+      Mesh *mesh_eval = BKE_object_get_evaluated_mesh(object_eval);
+      if (mesh_eval != nullptr) {
+        /* Mesh_eval only exists when generative modifiers are in use. */
+        r_needsfree = false;
+        return mesh_eval;
+      }
+
+      r_needsfree = true;
+      return BKE_mesh_new_nomain_from_curve(object_eval);
+    }
+
+    case OB_CURVES:
+      const bke::AnonymousAttributePropagationInfo propagation_info;
+      Curves *curves = static_cast<Curves *>(object_eval->data);
+      r_needsfree = true;
+      return bke::curve_to_wire_mesh(curves->geometry.wrap(), propagation_info);
   }
 
-  r_needsfree = true;
-  return BKE_mesh_new_nomain_from_curve(object_eval);
+  return nullptr;
 }
 
 }  // namespace blender::io::alembic
