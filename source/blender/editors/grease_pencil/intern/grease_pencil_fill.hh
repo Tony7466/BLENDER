@@ -131,8 +131,8 @@ class FillOperation {
   Array<bool> extension_has_intersection;
   /* Intersections of curve end extensions with curves or other extensions. */
   Vector<IntersectingCurve> extension_intersections;
-  /* Slight normalized extension of all curve segments (epsilon), used to avoid floating point
-   * precision errors when looking for intersections. */
+  /* Slight normalized extension of all curve segments (epsilon), used to find intersections at the
+   * outer ends of the curve segments. */
   Array<float2> curve_segment_epsilon;
   /* Ratio between length of extension and length of curve end segment. */
   Array<float> extension_length_ratio;
@@ -197,7 +197,7 @@ class FillOperation {
       const float2 &segment_a,
       const float2 &segment_b,
       const int segment_curve_index,
-      const Curves2DSpace *curves_2d,
+      const Curves2DSpace &curves_2d,
       const float2 &adj_a = {FLT_MAX, FLT_MAX},
       const float2 &adj_b = {FLT_MAX, FLT_MAX},
       const bool store_overlap = false,
@@ -215,28 +215,28 @@ class FillOperation {
     float2 segment_epsilon = {0.0f, 0.0f};
     if (use_epsilon) {
       if (segment_direction == 1) {
-        const int epsilon_i = curves_2d->point_offset[segment_curve_index] + segment_point_a;
+        const int epsilon_i = curves_2d.point_offset[segment_curve_index] + segment_point_a;
         segment_epsilon = -this->curve_segment_epsilon[epsilon_i];
       }
       else {
-        const int epsilon_i = curves_2d->point_offset[segment_curve_index] + segment_point_b;
+        const int epsilon_i = curves_2d.point_offset[segment_curve_index] + segment_point_b;
         segment_epsilon = this->curve_segment_epsilon[epsilon_i];
       }
     }
 
     /* Loop all curves, looking for intersecting segments. */
     threading::parallel_for(
-        curves_2d->point_offset.index_range(), 256, [&](const IndexRange range) {
+        curves_2d.point_offset.index_range(), 256, [&](const IndexRange range) {
           rctf bbox_segment, bbox_isect;
 
           for (const int curve_i : range) {
             /* Only process curves with at least two points. */
-            if (curves_2d->point_size[curve_i] < 2) {
+            if (curves_2d.point_size[curve_i] < 2) {
               continue;
             }
 
-            /* Create a slightly extended segment to avoid floating point precision errors.
-             * Otherwise an intersection can be missed when it is on the outer end of a segment. */
+            /* Create a slightly extended segment. Otherwise an intersection can be missed when it
+             * is on the outer end of a segment. */
             float2 seg_a_extended = segment_a;
             float2 seg_b_extended = segment_b;
             if (use_epsilon && curve_i != segment_curve_index) {
@@ -251,15 +251,15 @@ class FillOperation {
 
             /* Do a quick bounding box check. When the bounding box of a curve doesn't
              * intersect with the segment, none of the curve segments do. */
-            if (!BLI_rctf_isect(&bbox_segment, &curves_2d->curve_bbox[curve_i], nullptr)) {
+            if (!BLI_rctf_isect(&bbox_segment, &curves_2d.curve_bbox[curve_i], nullptr)) {
               continue;
             }
 
             /* Get point range. */
-            const int point_offset = curves_2d->point_offset[curve_i];
-            const int point_size = curves_2d->point_size[curve_i] -
-                                   (curves_2d->is_cyclic[curve_i] ? 0 : 1);
-            const int point_last = point_offset + curves_2d->point_size[curve_i] - 1;
+            const int point_offset = curves_2d.point_offset[curve_i];
+            const int point_size = curves_2d.point_size[curve_i] -
+                                   (curves_2d.is_cyclic[curve_i] ? 0 : 1);
+            const int point_last = point_offset + curves_2d.point_size[curve_i] - 1;
 
             /* Skip curves with identical (overlapping) segments, because they produce
              * false-positive intersections. Overlapping curves are most likely created by a
@@ -268,8 +268,8 @@ class FillOperation {
               bool skip_curve = false;
               for (const int point_i : IndexRange(point_offset, point_size)) {
                 const int point_i_next = (point_i == point_last ? point_offset : point_i + 1);
-                const float2 p0 = curves_2d->points_2d[point_i];
-                const float2 p1 = curves_2d->points_2d[point_i_next];
+                const float2 p0 = curves_2d.points_2d[point_i];
+                const float2 p1 = curves_2d.points_2d[point_i_next];
 
                 /* Check for identical segments. */
                 if (segment_a == p0 && segment_b == p1) {
@@ -298,8 +298,8 @@ class FillOperation {
             int prev_intersection_point = -1;
             for (const int point_i : IndexRange(point_offset, point_size)) {
               const int point_i_next = (point_i == point_last ? point_offset : point_i + 1);
-              const float2 p0 = curves_2d->points_2d[point_i];
-              const float2 p1 = curves_2d->points_2d[point_i_next];
+              const float2 p0 = curves_2d.points_2d[point_i];
+              const float2 p1 = curves_2d.points_2d[point_i_next];
               float2 p0_extended = p0;
               float2 p1_extended = p1;
               if (use_epsilon && curve_i != segment_curve_index) {
@@ -351,7 +351,7 @@ class FillOperation {
                 intersection.point_end = point_i_next - point_offset;
                 intersection.distance = get_intersection_distance_normalized(
                     segment_a, segment_b, p0, p1);
-                intersection.has_stroke = curves_2d->has_stroke[curve_i];
+                intersection.has_stroke = curves_2d.has_stroke[curve_i];
 
                 BLI_mutex_lock(&mutex);
                 intersections.append(intersection);
@@ -548,7 +548,7 @@ class FillOperation {
       /* Get intersections with other curve end extensions. */
       Vector<IntersectingCurve> all_intersections;
       Vector<IntersectingCurve> intersections = this->get_intersections_of_segment_with_curves(
-          segment_point_a, segment_point_b, extension_index, &this->extensions_2d);
+          segment_point_a, segment_point_b, extension_index, this->extensions_2d);
 
       for (auto intersection : intersections) {
         intersection.with_end_extension = true;
@@ -559,7 +559,7 @@ class FillOperation {
       /* Get intersections with other curves. */
       const int curve_i = int(extension_index / 2);
       intersections = this->get_intersections_of_segment_with_curves(
-          segment_point_a, segment_point_b, curve_i, &this->curves_2d);
+          segment_point_a, segment_point_b, curve_i, this->curves_2d);
 
       for (auto intersection : intersections) {
         intersection.with_end_extension = false;

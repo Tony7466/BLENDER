@@ -87,7 +87,7 @@ class GeometryFillOperation : public FillOperation {
   Vector<OverlappingSegment> overlapping_segments;
 
   /* The intersection distance of the start segment (found by the casted ray). */
-  float start_distance{};
+  float start_distance;
 
   ThreadMutex mutex;
 
@@ -146,11 +146,11 @@ class GeometryFillOperation : public FillOperation {
   /**
    * Check if the shortest distance between two line segments is within a given proximity distance.
    * Note: this computation doesn't handle intersecting lines, but that is okay, since we check
-   * intersections already in a different function.
+   * intersections already in a different method.
    */
   std::tuple<bool, bool, bool> line_segments_are_in_proximity(
-      const float2 &segment_a,
-      const float2 &segment_b,
+      const float2 &segment_p0,
+      const float2 &segment_p1,
       const float2 &curve_p0,
       const float2 &curve_p1,
       const float proximity_distance_squared)
@@ -158,9 +158,9 @@ class GeometryFillOperation : public FillOperation {
     constexpr float DET_EPSILON = 1e-6f;
 
     /* Calculate the shortest distance between the two line segments. */
-    const float2 vec_segment = segment_a - segment_b;
+    const float2 vec_segment = segment_p0 - segment_p1;
     const float2 vec_curve = curve_p0 - curve_p1;
-    const float2 vec_segment_curve = segment_b - curve_p1;
+    const float2 vec_segment_curve = segment_p1 - curve_p1;
 
     const float dot_seg = math::dot(vec_segment, vec_segment);
     const float dot_seg_cur = math::dot(vec_segment, vec_curve);
@@ -251,19 +251,19 @@ class GeometryFillOperation : public FillOperation {
     const bool use_segment_b = (c_seg == 0.0f);
 
     /* Establish which curve point is nearest to the segment start point. */
-    const float dist_p0 = math::length_squared(curve_p0 - segment_a);
-    const float dist_p1 = math::length_squared(curve_p1 - segment_a);
+    const float dist_p0 = math::length_squared(curve_p0 - segment_p0);
+    const float dist_p1 = math::length_squared(curve_p1 - segment_p0);
     const bool curve_p0_is_nearest = dist_p0 < dist_p1;
 
     return std::tuple<bool, bool, bool>(true, use_segment_b, curve_p0_is_nearest);
   }
 
   /**
-   * TODO: add description...
+   * Check if the outer end of an edge segment is in proximity of a curve head or tail.
    */
-  ProximityCurve get_segment_end_proximity(EdgeSegment &segment,
-                                           const int segment_direction,
-                                           const int curve_index)
+  ProximityCurve get_segment_in_proximity_of_curve_head_tail(EdgeSegment &segment,
+                                                             const int segment_direction,
+                                                             const int curve_index)
   {
     /* Get segment end points. */
     const int segment_curve_index = segment.curve_index_2d;
@@ -309,10 +309,10 @@ class GeometryFillOperation : public FillOperation {
     }
 
     /* Check proximity. */
-    ProximityCurve proxim{};
+    ProximityCurve proxim;
     bool in_proximity;
     std::tie(in_proximity, proxim.use_segment_point_end, proxim.curve_point_start_is_nearest) =
-        line_segments_are_in_proximity(
+        this->line_segments_are_in_proximity(
             segment_a, segment_b, curve_p0, curve_p1, this->proximity_distance_squared);
 
     /* Create proximity data. */
@@ -365,7 +365,7 @@ class GeometryFillOperation : public FillOperation {
                          this->curves_2d.points_2d[segment_point_offset + segment.point_range[1]]);
     BLI_rctf_pad(&bbox_segment, this->proximity_distance, this->proximity_distance);
 
-    /* Check all curves for promity. */
+    /* Check all curves for proximity. */
     threading::parallel_for(
         this->curves_2d.point_offset.index_range(), 256, [&](const IndexRange range) {
           for (const int curve_i : range) {
@@ -374,12 +374,31 @@ class GeometryFillOperation : public FillOperation {
               continue;
             }
 
-            /* Skip previous segment curve and current segment curve, to avoid local looping. But
-             * we don't want to exclude simple one- or two-stroke fills, so we do a
-             * head-tail-proximity check when we are at the end of a curve. */
+            /* In general, we don't check the current segment curve and the previous segment curve
+             * for proximity, because it can cause a lot of jumping back and forth. In the
+             * following example we would constantly hop between curve a and b, via points
+             * a3-b1-a2-b2-a1-b3-a0-b4.
+             * Or hop on curve b, via b0-b10-b1-b9-b2-b8-b3-b7.
+             *
+             *              \   a3    a2   a1    a0
+             *    curve a    x---x-----x----x-----x
+             *
+             *    curve b   x-----x---x------x-----x-------x
+             *             b0    b1  b2     b3    b4       |
+             *                                             |
+             *                x----x----x------x-----------x
+             *               b10  b9   b8     b7
+             *
+             * So when checking curve b, we exclude curve a and b from the proximity check.
+             */
             if (curve_i == segment_curve_index || curve_i == prev_segment_curve_index) {
+              /* But now we would miss simple one- or two-stroke fills, e.g. a sketchy circle drawn
+               * in one or two strokes. To somehow handle that, we check the head and tails of the
+               * curves for proximity. E.g. when the head of curve b is in proximity of the tail of
+               * curve b, it means that curve b is a self-closing fill. Or when the tail of curve b
+               * is in proximity of the head of curve a, curve a and b form a closed fill. */
               if (at_end_of_curve) {
-                ProximityCurve in_proximity = this->get_segment_end_proximity(
+                ProximityCurve in_proximity = this->get_segment_in_proximity_of_curve_head_tail(
                     segment, segment_direction, curve_i);
                 if (in_proximity.curve_index_2d != -1) {
                   BLI_mutex_lock(&mutex);
@@ -491,11 +510,11 @@ class GeometryFillOperation : public FillOperation {
                 /* Check if the line segments are in proximity of each other. */
                 bool in_proximity, use_segment_point_end, curve_point_start_nearest;
                 std::tie(in_proximity, use_segment_point_end, curve_point_start_nearest) =
-                    line_segments_are_in_proximity(segment_a,
-                                                   segment_b,
-                                                   curve_p0,
-                                                   curve_p1,
-                                                   this->proximity_distance_squared);
+                    this->line_segments_are_in_proximity(segment_a,
+                                                         segment_b,
+                                                         curve_p0,
+                                                         curve_p1,
+                                                         this->proximity_distance_squared);
 
                 /* When the line segments are in proximity, add the data to the proximity list. */
                 if (in_proximity) {
@@ -596,7 +615,7 @@ class GeometryFillOperation : public FillOperation {
       point_end += direction;
 
       for (int point_i = point_start; point_i != point_end; point_i += direction) {
-        if (!position_equals_previous(positions[point_i], co_prev)) {
+        if (!this->position_equals_previous(positions[point_i], co_prev)) {
           edge_points.append(positions[point_i]);
           edge_point_index++;
         }
@@ -609,7 +628,7 @@ class GeometryFillOperation : public FillOperation {
                                    (positions[point_offset + segment_end.ori_segment_point_end] -
                                     edge_points.last()) *
                                        segment_end.distance;
-        if (!position_equals_previous(isect_point, co_prev)) {
+        if (!this->position_equals_previous(isect_point, co_prev)) {
           edge_points.append(isect_point);
           edge_point_index++;
         }
@@ -627,7 +646,7 @@ class GeometryFillOperation : public FillOperation {
                                     edge_points[edge_point_index - 2]) *
                                        this->extension_length_ratio[extension_index] *
                                        segment_end.distance;
-        if (!position_equals_previous(isect_point, co_prev)) {
+        if (!this->position_equals_previous(isect_point, co_prev)) {
           edge_points.append(isect_point);
           edge_point_index++;
         }
@@ -849,7 +868,7 @@ class GeometryFillOperation : public FillOperation {
   {
     Vector<float2> closed_edge = this->get_closed_fill_edge_as_2d_polygon();
 
-    return mouse_pos_is_inside_polygon(this->mouse_pos, closed_edge);
+    return this->mouse_pos_is_inside_polygon(this->mouse_pos, closed_edge);
   }
 
   /**
@@ -938,7 +957,7 @@ class GeometryFillOperation : public FillOperation {
       /* Check overlap in curve points. */
       if (head.point_range[0] <= tail.point_range[1] && head.point_range[1] >= tail.point_range[0])
       {
-        remove_overlapping_edge_tail_points(head, tail, head.point_range, tail.point_range);
+        this->remove_overlapping_edge_tail_points(head, tail, head.point_range, tail.point_range);
         return true;
       }
       return false;
@@ -952,7 +971,7 @@ class GeometryFillOperation : public FillOperation {
       {
         this->split_segment_with_overlap(tail, overlap);
         EdgeSegment &new_tail = this->segments.last();
-        remove_overlapping_edge_tail_points(
+        this->remove_overlapping_edge_tail_points(
             head, new_tail, head.point_range, new_tail.point_range);
         return true;
       }
@@ -1033,7 +1052,7 @@ class GeometryFillOperation : public FillOperation {
 
   /**
    * Add proximity 'end' information to an edge segment:
-   * - Curve index, curve point index of curves in proximity.
+   * - Curve index and curve point index of curves in proximity.
    * - Determine the turns (angles) for the proximity curves.
    */
   void add_curves_in_proximity_of_segment(EdgeSegment &segment)
@@ -1074,12 +1093,14 @@ class GeometryFillOperation : public FillOperation {
 
       if (proxim.curve_point_start_is_nearest) {
         segment_end.point_end = proxim.curve_point_start;
-        angle0 = get_rounded_angle(M_PI - angle_signed_v2v2(segment_vec, curve_p2 - segment_a));
+        angle0 = this->get_rounded_angle(M_PI -
+                                         angle_signed_v2v2(segment_vec, curve_p2 - segment_a));
 
-        const int curve_point_prev = get_next_curve_point(proxim.curve_point_start,
-                                                          -1,
-                                                          this->curves_2d.point_size[curve_i],
-                                                          this->curves_2d.is_cyclic[curve_i]);
+        const int curve_point_prev = this->get_next_curve_point(
+            proxim.curve_point_start,
+            -1,
+            this->curves_2d.point_size[curve_i],
+            this->curves_2d.is_cyclic[curve_i]);
         if (curve_point_prev == -1) {
           segment_end.angle_is_set[1] = false;
           angle1 = 0.0f;
@@ -1087,7 +1108,8 @@ class GeometryFillOperation : public FillOperation {
         }
         else {
           const float2 curve_p0 = this->curves_2d.points_2d[curve_point_offset + curve_point_prev];
-          angle1 = get_rounded_angle(M_PI - angle_signed_v2v2(segment_vec, curve_p0 - segment_a));
+          angle1 = this->get_rounded_angle(M_PI -
+                                           angle_signed_v2v2(segment_vec, curve_p0 - segment_a));
 
           if (angle0 < angle1) {
             segment_end.point_start = proxim.curve_point_end;
@@ -1101,12 +1123,14 @@ class GeometryFillOperation : public FillOperation {
       }
       else {
         segment_end.point_end = proxim.curve_point_end;
-        angle0 = get_rounded_angle(M_PI - angle_signed_v2v2(segment_vec, curve_p1 - segment_a));
+        angle0 = this->get_rounded_angle(M_PI -
+                                         angle_signed_v2v2(segment_vec, curve_p1 - segment_a));
 
-        const int curve_point_next = get_next_curve_point(proxim.curve_point_end,
-                                                          1,
-                                                          this->curves_2d.point_size[curve_i],
-                                                          this->curves_2d.is_cyclic[curve_i]);
+        const int curve_point_next = this->get_next_curve_point(
+            proxim.curve_point_end,
+            1,
+            this->curves_2d.point_size[curve_i],
+            this->curves_2d.is_cyclic[curve_i]);
         if (curve_point_next == -1) {
           segment_end.angle_is_set[1] = false;
           angle1 = 0.0f;
@@ -1115,7 +1139,8 @@ class GeometryFillOperation : public FillOperation {
         }
         else {
           const float2 curve_p3 = this->curves_2d.points_2d[curve_point_offset + curve_point_next];
-          angle1 = get_rounded_angle(M_PI - angle_signed_v2v2(segment_vec, curve_p3 - segment_a));
+          angle1 = this->get_rounded_angle(M_PI -
+                                           angle_signed_v2v2(segment_vec, curve_p3 - segment_a));
 
           if (angle0 < angle1) {
             dir_backwards = true;
@@ -1251,8 +1276,8 @@ class GeometryFillOperation : public FillOperation {
       float2 p1 = curves_2d.points_2d[point_offset + intersection.point_start];
       float2 p2 = curves_2d.points_2d[point_offset + intersection.point_end];
 
-      float angle0 = get_rounded_angle(M_PI - angle_signed_v2v2(segment_vec, p2 - p1));
-      float angle1 = get_rounded_angle(angle0 + M_PI);
+      float angle0 = this->get_rounded_angle(M_PI - angle_signed_v2v2(segment_vec, p2 - p1));
+      float angle1 = this->get_rounded_angle(angle0 + M_PI);
       bool dir_backwards = (angle0 >= M_PI);
 
       /* Handle the edge case where the intersecting segment starts at segment a-b. E.g.:
@@ -1269,10 +1294,10 @@ class GeometryFillOperation : public FillOperation {
        */
       if (!is_end_extension && compare_ff(intersection.distance[1], 0.0f, DISTANCE_EPSILON)) {
         dir_backwards = false;
-        const int point_prev = get_next_curve_point(intersection.point_start,
-                                                    -1,
-                                                    curves_2d.point_size[curve_i],
-                                                    curves_2d.is_cyclic[curve_i]);
+        const int point_prev = this->get_next_curve_point(intersection.point_start,
+                                                          -1,
+                                                          curves_2d.point_size[curve_i],
+                                                          curves_2d.is_cyclic[curve_i]);
         if (point_prev == -1) {
           segment_end.angle_is_set[1] = false;
         }
@@ -1298,16 +1323,16 @@ class GeometryFillOperation : public FillOperation {
       if (!is_end_extension && compare_ff(intersection.distance[1], 1.0f, DISTANCE_EPSILON)) {
         dir_backwards = true;
         angle0 = angle1;
-        const int point_next = get_next_curve_point(intersection.point_end,
-                                                    1,
-                                                    curves_2d.point_size[curve_i],
-                                                    curves_2d.is_cyclic[curve_i]);
+        const int point_next = this->get_next_curve_point(intersection.point_end,
+                                                          1,
+                                                          curves_2d.point_size[curve_i],
+                                                          curves_2d.is_cyclic[curve_i]);
         if (point_next == -1) {
           segment_end.angle_is_set[1] = false;
         }
         else {
           float2 p3 = curves_2d.points_2d[point_offset + point_next];
-          angle1 = get_rounded_angle(M_PI - angle_signed_v2v2(segment_vec, p3 - p2));
+          angle1 = this->get_rounded_angle(M_PI - angle_signed_v2v2(segment_vec, p3 - p2));
           dir_backwards = (angle1 > angle0);
         }
       }
@@ -1430,7 +1455,7 @@ class GeometryFillOperation : public FillOperation {
       }
 
       /* Get the next point on curve, so that we have a point pair a-b. */
-      const int point_next = get_next_curve_point(point_i, direction, point_size, is_cyclic);
+      const int point_next = this->get_next_curve_point(point_i, direction, point_size, is_cyclic);
       if (point_next == -1) {
         check_gaps = true;
         break;
@@ -1441,7 +1466,8 @@ class GeometryFillOperation : public FillOperation {
       segment_point_a = this->curves_2d.points_2d[point_offset + point_i];
       const float2 segment_point_b = this->curves_2d.points_2d[point_offset + point_next];
       float2 point_b_next = {FLT_MAX, FLT_MAX};
-      const int point_next2 = get_next_curve_point(point_next, direction, point_size, is_cyclic);
+      const int point_next2 = this->get_next_curve_point(
+          point_next, direction, point_size, is_cyclic);
       if (point_next2 != -1) {
         point_b_next = this->curves_2d.points_2d[point_offset + point_next2];
       }
@@ -1451,7 +1477,7 @@ class GeometryFillOperation : public FillOperation {
           segment_point_a,
           segment_point_b,
           curve_i,
-          &this->curves_2d,
+          this->curves_2d,
           point_a_prev,
           point_b_next,
           true,
@@ -1504,7 +1530,6 @@ class GeometryFillOperation : public FillOperation {
 
       /* TODO: Get curves in proximity. */
       if (this->use_gap_close_proximity) {
-        // TODO
       }
 
       /* When one or more intersections are found, we can stop walking along the curve. */
@@ -2047,7 +2072,7 @@ class GeometryFillOperation : public FillOperation {
       }
 
       this->starting_segments = get_intersections_of_segment_with_curves(
-          this->mouse_pos, ray_vec, -1, &this->curves_2d);
+          this->mouse_pos, ray_vec, -1, this->curves_2d);
 
       if (this->starting_segments.size() == 0) {
         continue;

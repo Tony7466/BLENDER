@@ -10,11 +10,6 @@
 
 #include <chrono>
 
-#include "BLI_math_vector_types.hh"
-#include "BLI_sys_types.h"
-
-#include "BKE_customdata.hh"
-
 namespace blender::ed::greasepencil::fill {
 
 /* Margin for angles to be considered equal. */
@@ -92,23 +87,23 @@ struct ProximityCurve {
   bool curve_point_start_is_nearest;
 };
 
-/* Edge segment ending: intersection data when a curve of a curve end extension intersects
+/* Edge segment ending: intersection data when a curve or a curve end extension intersects
  * the edge segment. */
 struct SegmentEnd {
   /* Curve index (in #Curves2DSpace struct) of the intersecting/gap closing curve. */
-  int curve_index_2d{};
+  int curve_index_2d;
   /* Curve point index of the intersection start point. */
-  int point_start{};
+  int point_start;
   /* Curve point index of the intersection end point. */
-  int point_end{};
+  int point_end;
   /* Start point index of the original segment that is intersected. */
-  int ori_segment_point_start{};
+  int ori_segment_point_start;
   /* End point index of the original segment that is intersected. */
-  int ori_segment_point_end{};
+  int ori_segment_point_end;
   /* Normalized distance of intersection. */
-  float distance{};
+  float distance;
   /* Incoming and outgoing angle of the intersection. */
-  float2 angle{};
+  float2 angle;
   /* Minimum angle. */
   float angle_min;
   /* Maximum angle. */
@@ -118,7 +113,7 @@ struct SegmentEnd {
   /* Segment flags. */
   gfFlag flag = gfFlag::None;
   /* Turn to take at intersections. */
-  short turn{};
+  short turn;
 
   bool first_angle_is_smallest() const
   {
@@ -147,16 +142,16 @@ struct SegmentEnd {
  * closed set of edge segments. */
 struct EdgeSegment {
   /* Curve index in #Curves2DSpace struct (with curve points in 2D space). */
-  int curve_index_2d{};
+  int curve_index_2d;
   /* Curve point index range. */
-  int2 point_range{};
+  int2 point_range;
   /* Segment flags. */
   gfFlag flag = gfFlag::None;
 
   /* Segment endings: intersection data or gap closure data. */
-  Vector<SegmentEnd> segment_ends{};
+  Vector<SegmentEnd> segment_ends;
   /* Last handled segment end. */
-  int segment_ends_index{};
+  int segment_ends_index;
 
   void init_point_range(const int point_i)
   {
@@ -197,10 +192,10 @@ struct IntersectingCurve {
 /* Curve segment that overlaps with another curve segment. An overlap is a series of consecutive
  * points in a curve that have exactly the same position as the points in the other curve. */
 struct OverlappingSegment {
-  int2 base_point_range{};
-  int overlapping_curve_index{};
-  int2 overlapping_point_range{};
-  bool overlapping_backwards = false;
+  int2 base_point_range;
+  int overlapping_curve_index;
+  int2 overlapping_point_range;
+  bool overlapping_backwards;
 };
 
 }  // namespace blender::ed::greasepencil::fill
