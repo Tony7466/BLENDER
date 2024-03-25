@@ -292,7 +292,9 @@ static float4 grease_pencil_layer_final_tint_and_alpha_get(const GPENCIL_Private
     return onion_col_custom;
   }
 
-  float4 layer_tint(float3(0.0f), 1.0f);
+  /* Layer tint is not a property in GPv3 anymore. It's only used for onion skinning. The previous
+   * property is replaced by a tint modifier during conversion. */
+  float4 layer_tint(0.0f);
   if (GPENCIL_SIMPLIFY_TINT(pd->scene)) {
     layer_tint[3] = 0.0f;
   }
