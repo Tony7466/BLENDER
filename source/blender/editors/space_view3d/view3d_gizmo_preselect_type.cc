@@ -500,7 +500,7 @@ void ED_view3d_gizmo_mesh_preselect_get_active(bContext *C,
   const Scene *scene = CTX_data_scene(C);
   ViewLayer *view_layer = CTX_data_view_layer(C);
 
-  const int object_index = RNA_int_get(gz->ptr, "object_index");
+  const int object_index = max_ii(0, RNA_int_get(gz->ptr, "object_index"));
 
   /* weak, allocate an array just to access the index. */
   Base *base = nullptr;
