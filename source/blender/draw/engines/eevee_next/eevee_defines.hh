@@ -43,6 +43,7 @@
 /* Must be power of two for correct partitioning. */
 #define SPHERE_PROBE_ATLAS_MAX_SUBDIV 10
 #define SPHERE_PROBE_ATLAS_RES (1 << SPHERE_PROBE_ATLAS_MAX_SUBDIV)
+#define SPHERE_PROBE_ATLAS_MAX_LOD 4
 /* Maximum number of thread-groups dispatched for remapping a probe to octahedral mapping. */
 #define SPHERE_PROBE_MAX_HARMONIC SQUARE(SPHERE_PROBE_ATLAS_RES / SPHERE_PROBE_REMAP_GROUP_SIZE)
 /* Start and end value for mixing sphere probe and volume probes. */

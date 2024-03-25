@@ -42,7 +42,7 @@ void main()
   if (g_data.ray_type == RAY_TYPE_CAMERA && world_background_blur != 0.0 &&
       world_opacity_fade != 0.0)
   {
-    float base_lod = pow(world_background_blur, 0.75) * 4.0;
+    float base_lod = sqrt(world_background_blur) * SPHERE_PROBE_ATLAS_MAX_LOD;
     float lod = max(1.0, base_lod);
     float mix_factor = min(1.0, base_lod);
     SphereProbeUvArea world_atlas_coord = reinterpret_as_atlas_coord(world_coord_packed);
