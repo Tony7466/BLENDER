@@ -236,6 +236,8 @@ static std::optional<int> get_frame_id(const bke::greasepencil::Layer &layer,
                                        const int frame_index,
                                        const int current_frame,
                                        const int current_frame_index,
+                                       const int last_frame,
+                                       const int last_frame_index,
                                        const bool use_multi_frame_editing,
                                        const bool do_onion_skinning,
                                        const bool is_before_first,
@@ -271,8 +273,26 @@ static std::optional<int> get_frame_id(const bke::greasepencil::Layer &layer,
     if (is_before_first) {
       delta++;
     }
+    if ((onion_settings.flag & GP_ONION_SKINNING_SHOW_LOOP) != 0 &&
+        (-delta > onion_settings.num_frames_before || delta > onion_settings.num_frames_after))
+    {
+      /* We wrap the value using the last frame and 0 as reference. */
+      /* FIXME: This might not be good for animations not starting at 0. */
+      int shift = 0;
+      if (onion_settings.mode == GP_ONION_SKINNING_MODE_ABSOLUTE) {
+        shift = last_frame;
+      }
+      else {
+        shift = last_frame_index;
+      }
+      delta += (delta < 0) ? (shift + 1) : -(shift + 1);
+    }
     /* Frame range filter. */
-    if (-delta > onion_settings.num_frames_before || delta > onion_settings.num_frames_after) {
+    if (ELEM(onion_settings.mode,
+             GP_ONION_SKINNING_MODE_ABSOLUTE,
+             GP_ONION_SKINNING_MODE_RELATIVE) &&
+        (-delta > onion_settings.num_frames_before || delta > onion_settings.num_frames_after))
+    {
       return {};
     }
 
@@ -299,6 +319,8 @@ static Array<std::pair<int, int>> get_visible_frames_for_layer(
   const int current_frame_index = current_frame_key.has_value() ?
                                       sorted_keys.first_index(*current_frame_key) :
                                       0;
+  const int last_frame = sorted_keys.last();
+  const int last_frame_index = sorted_keys.index_range().last();
   const bool is_before_first = (current_frame < sorted_keys.first());
   for (const int frame_i : sorted_keys.index_range()) {
     const int frame_number = sorted_keys[frame_i];
@@ -312,6 +334,8 @@ static Array<std::pair<int, int>> get_visible_frames_for_layer(
                                                      frame_i,
                                                      current_frame,
                                                      current_frame_index,
+                                                     last_frame,
+                                                     last_frame_index,
                                                      use_multi_frame_editing,
                                                      do_onion_skinning,
                                                      is_before_first,
