@@ -19,9 +19,11 @@ namespace blender::draw {
 /** \name Extract Edges Indices
  * \{ */
 
-static IndexMask calc_loose_edge_visibility(const MeshRenderData &mr, IndexMaskMemory &memory)
+static IndexMask calc_edge_visibility(const MeshRenderData &mr,
+                                      const IndexMask &start_mask,
+                                      IndexMaskMemory &memory)
 {
-  IndexMask visible = IndexMask::from_indices(mr.loose_edges, memory);
+  IndexMask visible = start_mask;
   if (!mr.mesh->runtime->subsurf_optimal_display_edges.is_empty()) {
     const BoundedBitSpan visible_bits = mr.mesh->runtime->subsurf_optimal_display_edges;
     visible = IndexMask::from_bits(visible, visible_bits, memory);
@@ -37,6 +39,28 @@ static IndexMask calc_loose_edge_visibility(const MeshRenderData &mr, IndexMaskM
   }
   return visible;
 }
+
+static IndexMask calc_loose_edge_visibility(const MeshRenderData &mr, IndexMaskMemory &memory)
+{
+  return calc_edge_visibility(mr, IndexMask::from_indices(mr.loose_edges, memory), memory);
+}
+static IndexMask calc_edge_visibility(const MeshRenderData &mr, IndexMaskMemory &memory)
+{
+  return calc_edge_visibility(mr, IndexMask(mr.edges_num), memory);
+}
+
+// Array<bool> show_edge(mr.edges_num);
+// if (!mr.hide_edge.is_empty()) {
+//   const Span<bool> hide_edge = mr.hide_edge;
+//   threading::parallel_for(show_edge.index_range(), 4096, [&](const IndexRange range) {
+//     for (const int i : range) {
+//       show_edge[i] = !hide_edge[i];
+//     }
+//   });
+// }
+// else {
+//   show_edge.fill(true);
+// }
 
 void extract_lines_mesh(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::IndexBuf *lines_loose)
 {
@@ -59,7 +83,42 @@ void extract_lines_mesh(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::Ind
       });
     });
 
-    GPU_indexbuf_build_in_place(&builder, lines_loose);
+    GPU_indexbuf_build_in_place_ex(
+        &builder, 0, mr.corners_num + visible.size() * 2, false, lines_loose);
+    // if (lines) {
+    //   GPU_indexbuf_create_subrange_in_place(lines, lines_loose, 0, data.cast<uint>().size());
+    // }
+    return;
+  }
+
+  if (!DRW_ibo_requested(lines_loose) && DRW_ibo_requested(lines)) {
+    IndexMaskMemory memory;
+    const IndexMask visible = calc_edge_visibility(mr, memory);
+    Array<int> map(mr.corners_num, -1);
+    index_mask::build_reverse_map(visible, map.as_mutable_span());
+
+    GPUIndexBufBuilder builder;
+    GPU_indexbuf_init(&builder, GPU_PRIM_LINES, visible.size(), mr.corners_num);
+    MutableSpan<uint2> data = GPU_indexbuf_get_data(&builder).cast<uint2>();
+
+    const OffsetIndices faces = mr.faces;
+    const Span<int> corner_edges = mr.corner_edges;
+    threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+      for (const int face_index : range) {
+        const IndexRange face = faces[face_index];
+        for (const int corner : face) {
+          const int edge = corner_edges[corner];
+          if (map[edge] == -1) {
+            continue;
+          }
+          const int corner_next = bke::mesh::face_corner_next(face, corner);
+          data[map[edge]] = uint2(corner, corner_next);
+          map[edge] = -1;
+        }
+      }
+    });
+
+    GPU_indexbuf_build_in_place_ex(&builder, 0, mr.corners_num + visible.size() * 2, false, lines);
     return;
   }
 }
