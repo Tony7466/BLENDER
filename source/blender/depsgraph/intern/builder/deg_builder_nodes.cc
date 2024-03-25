@@ -1891,7 +1891,7 @@ void DepsgraphNodeBuilder::build_camera(Camera *camera)
     build_object(-1, camera->dof.focus_object, DEG_ID_LINKED_INDIRECTLY, false);
   }
   if (camera->dof.focus_collection != nullptr) {
-    build_collection(nullptr,camera->dof.focus_collection);
+    build_collection(nullptr, camera->dof.focus_collection);
   }
 }
 

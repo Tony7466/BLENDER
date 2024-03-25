@@ -143,8 +143,9 @@ static void blender_camera_init(BlenderCamera *bcam, BL::RenderSettings &b_rende
   bcam->full_height = bcam->render_height;
 }
 
-static void sum_obj_positions(float3 &pos, int &count, BL::Collection &coll){
-  for (BL::Object obj : coll.objects){
+static void sum_obj_positions(float3 &pos, int &count, BL::Collection &coll)
+{
+  for (BL::Object obj : coll.objects) {
     Transform dofmat = get_transform(obj.matrix_world());
     float3 curr = transform_get_column(&dofmat, 3);
     pos.x += curr.x;
@@ -152,8 +153,8 @@ static void sum_obj_positions(float3 &pos, int &count, BL::Collection &coll){
     pos.z += curr.z;
     count += 1;
   }
-  for (BL::Collection child : coll.children){
-    sum_obj_positions(pos,count,child);
+  for (BL::Collection child : coll.children) {
+    sum_obj_positions(pos, count, child);
   }
 }
 
@@ -169,10 +170,10 @@ static float blender_camera_focal_distance(BL::RenderEngine &b_engine,
     return b_camera.dof().focus_distance();
   }
 
-  if(b_dof_collection){
+  if (b_dof_collection) {
     int count = 0;
     float3 pos = {};
-    sum_obj_positions(pos,count,b_dof_collection);
+    sum_obj_positions(pos, count, b_dof_collection);
     float den = static_cast<float>(count);
     pos.x /= den;
     pos.y /= den;
