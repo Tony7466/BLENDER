@@ -74,8 +74,8 @@ static void fill_new_attribute(const Span<const GeometryComponent *> src_compone
 }
 
 void join_attributes(const Span<const GeometryComponent *> src_components,
-                     GeometryComponent &r_result,
-                     const Span<StringRef> ignored_attributes)
+                     const Span<StringRef> ignored_attributes,
+                     GeometryComponent &r_result)
 {
   const Map<AttributeIDRef, AttributeMetaData> info = get_final_attribute_info(src_components,
                                                                                ignored_attributes);
@@ -129,7 +129,7 @@ static void join_instances(const Span<const GeometryComponent *> src_components,
 
   r_result.replace_instances(dst_instances.release());
   auto &dst_component = r_result.get_component_for_write<bke::InstancesComponent>();
-  join_attributes(src_components, dst_component, {".reference_index"});
+  join_attributes(src_components, {".reference_index"}, dst_component);
 }
 
 static void join_volumes(const Span<const GeometryComponent *> /*src_components*/,

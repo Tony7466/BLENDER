@@ -18,13 +18,13 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Bool>("Selection")
       .default_value(true)
       .hide_value()
-      .supports_field()
+      .field_on_all()
       .description("Which top-level instances to realize");
   b.add_input<decl::Bool>("Realize All")
       .default_value(true)
-      .supports_field()
+      .field_on_all()
       .description("Determine wether to realize nested instances completly");
-  b.add_input<decl::Int>("Depth").default_value(0).min(0).supports_field().description(
+  b.add_input<decl::Int>("Depth").default_value(0).min(0).field_on_all().description(
       "Number of levels of nested instances to realize for each top-level instance");
   b.add_output<decl::Geometry>("Geometry").propagate_all();
 }
@@ -44,7 +44,9 @@ static void node_geo_exec(GeoNodeExecParams params)
 
   static auto depth_override = mf::build::SI2_SO<int, bool, int>(
       "depth_override",
-      [](int value, bool realize) { return realize ? -1 : std::max(value, 0); },
+      [](int value, bool realize_all_filed) {
+        return realize_all_filed ? geometry::VariedDepthOption::MAX_DEPTH : std::max(value, 0);
+      },
       mf::build::exec_presets::AllSpanOrSingle());
 
   static auto selection_override = mf::build::SI2_SO<int, bool, bool>(
