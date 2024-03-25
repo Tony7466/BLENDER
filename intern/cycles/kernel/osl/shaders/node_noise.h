@@ -7,76 +7,86 @@
 
 #define vector3 point
 
-float safe_noise(float p)
+float safe_noise(float co)
 {
-  float f = noise("noise", p);
-  if (isinf(f)) {
-    return 0.5;
-  }
-  return f;
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  float p = fmod(co, 100000.0);
+
+  return noise("noise", p);
 }
 
-float safe_noise(vector2 p)
+float safe_noise(vector2 co)
 {
-  float f = noise("noise", p.x, p.y);
-  if (isinf(f)) {
-    return 0.5;
-  }
-  return f;
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  vector2 p = vector2(fmod(co.x, 100000.0), fmod(co.y, 100000.0));
+
+  return noise("noise", p.x, p.y);
 }
 
-float safe_noise(vector3 p)
+float safe_noise(vector3 co)
 {
-  float f = noise("noise", p);
-  if (isinf(f)) {
-    return 0.5;
-  }
-  return f;
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  vector3 p = vector3(fmod(co.x, 100000.0), fmod(co.y, 100000.0), fmod(co.z, 100000.0));
+
+  return noise("noise", p);
 }
 
-float safe_noise(vector4 p)
+float safe_noise(vector4 co)
 {
-  float f = noise("noise", vector3(p.x, p.y, p.z), p.w);
-  if (isinf(f)) {
-    return 0.5;
-  }
-  return f;
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  vector4 p = vector4(
+      fmod(co.x, 100000.0), fmod(co.y, 100000.0), fmod(co.z, 100000.0), fmod(co.w, 100000.0));
+
+  return noise("noise", vector3(p.x, p.y, p.z), p.w);
 }
 
-float safe_snoise(float p)
+float safe_snoise(float co)
 {
-  float f = noise("snoise", p);
-  if (isinf(f)) {
-    return 0.0;
-  }
-  return f;
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  float p = fmod(co, 100000.0);
+
+  return noise("snoise", p);
 }
 
-float safe_snoise(vector2 p)
+float safe_snoise(vector2 co)
 {
-  float f = noise("snoise", p.x, p.y);
-  if (isinf(f)) {
-    return 0.0;
-  }
-  return f;
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  vector2 p = vector2(fmod(co.x, 100000.0), fmod(co.y, 100000.0));
+
+  return noise("snoise", p.x, p.y);
 }
 
-float safe_snoise(vector3 p)
+float safe_snoise(vector3 co)
 {
-  float f = noise("snoise", p);
-  if (isinf(f)) {
-    return 0.0;
-  }
-  return f;
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  vector3 p = vector3(fmod(co.x, 100000.0), fmod(co.y, 100000.0), fmod(co.z, 100000.0));
+
+  return noise("snoise", p);
 }
 
-float safe_snoise(vector4 p)
+float safe_snoise(vector4 co)
 {
-  float f = noise("snoise", vector3(p.x, p.y, p.z), p.w);
-  if (isinf(f)) {
-    return 0.0;
-  }
-  return f;
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  vector4 p = vector4(
+      fmod(co.x, 100000.0), fmod(co.y, 100000.0), fmod(co.z, 100000.0), fmod(co.w, 100000.0));
+
+  return noise("snoise", vector3(p.x, p.y, p.z), p.w);
 }
 
 #define NOISE_FBM(T) \

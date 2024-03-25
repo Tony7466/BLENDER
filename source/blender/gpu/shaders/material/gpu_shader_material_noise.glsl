@@ -260,8 +260,12 @@ float noise_scale4(float result)
 
 float snoise(float p)
 {
-  float r = noise_perlin(p);
-  return (isinf(r)) ? 0.0 : noise_scale1(r);
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  p = compatible_fmod(p, 100000.0);
+
+  return noise_scale1(noise_perlin(p));
 }
 
 float noise(float p)
@@ -271,8 +275,12 @@ float noise(float p)
 
 float snoise(vec2 p)
 {
-  float r = noise_perlin(p);
-  return (isinf(r)) ? 0.0 : noise_scale2(r);
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  p = vec2(compatible_fmod(p.x, 100000.0), compatible_fmod(p.y, 100000.0));
+
+  return noise_scale2(noise_perlin(p));
 }
 
 float noise(vec2 p)
@@ -282,8 +290,14 @@ float noise(vec2 p)
 
 float snoise(vec3 p)
 {
-  float r = noise_perlin(p);
-  return (isinf(r)) ? 0.0 : noise_scale3(r);
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  p = vec3(compatible_fmod(p.x, 100000.0),
+           compatible_fmod(p.y, 100000.0),
+           compatible_fmod(p.z, 100000.0));
+
+  return noise_scale3(noise_perlin(p));
 }
 
 float noise(vec3 p)
@@ -293,8 +307,15 @@ float noise(vec3 p)
 
 float snoise(vec4 p)
 {
-  float r = noise_perlin(p);
-  return (isinf(r)) ? 0.0 : noise_scale4(r);
+  /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
+   * representation issues. This causes discontinuities every 100000.0, however at such scales this
+   * usually shouldn't be noticible. */
+  p = vec4(compatible_fmod(p.x, 100000.0),
+           compatible_fmod(p.y, 100000.0),
+           compatible_fmod(p.z, 100000.0),
+           compatible_fmod(p.w, 100000.0));
+
+  return noise_scale4(noise_perlin(p));
 }
 
 float noise(vec4 p)
