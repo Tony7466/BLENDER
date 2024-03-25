@@ -152,6 +152,9 @@ struct AssetWeakReferenceMain {
   }
   AssetWeakReferenceMain &operator=(AssetWeakReferenceMain &&other)
   {
+    if (this == &other) {
+      return *this;
+    }
     this->filepath = std::exchange(other.filepath, "");
     this->main = std::exchange(other.main, nullptr);
     return *this;
@@ -183,7 +186,7 @@ void AssetWeakReferenceMain::reload(Main &global_main)
 
   BKE_blendfile_link_append_context_library_add(lapp_context, this->filepath.c_str(), nullptr);
 
-  /* Requests all existing datablocks to be append again. */
+  /* Requests all existing datablocks to be appended again. */
   ID *old_id;
   FOREACH_MAIN_ID_BEGIN (old_main, old_id) {
     ID_Type old_id_code = GS(old_id->name);

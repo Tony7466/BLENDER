@@ -1361,7 +1361,8 @@ static int brush_asset_revert_exec(bContext *C, wmOperator * /*op*/)
   Brush *brush = BKE_paint_brush(paint);
   Main *asset_main = BKE_main_from_id(bmain, &brush->id);
 
-  /* Reload entire main, including texture dependencies. */
+  /* Reload entire main, including texture dependencies. This relies on there
+   * being only a single brush asset per blend file. */
   BKE_asset_weak_reference_main_reload(*bmain, *asset_main);
 
   WM_main_add_notifier(NC_BRUSH | NA_EDITED, nullptr);
