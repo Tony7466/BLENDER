@@ -262,7 +262,7 @@ float snoise(float p)
 {
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0, however at such scales this
-   * usually shouldn't be noticible. */
+   * usually shouldn't be noticeable. */
   p = compatible_fmod(p, 100000.0);
 
   return noise_scale1(noise_perlin(p));
@@ -277,7 +277,7 @@ float snoise(vec2 p)
 {
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0, however at such scales this
-   * usually shouldn't be noticible. */
+   * usually shouldn't be noticeable. */
   p = vec2(compatible_fmod(p.x, 100000.0), compatible_fmod(p.y, 100000.0));
 
   return noise_scale2(noise_perlin(p));
@@ -292,7 +292,7 @@ float snoise(vec3 p)
 {
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0, however at such scales this
-   * usually shouldn't be noticible. */
+   * usually shouldn't be noticeable. */
   p = vec3(compatible_fmod(p.x, 100000.0),
            compatible_fmod(p.y, 100000.0),
            compatible_fmod(p.z, 100000.0));
@@ -309,7 +309,7 @@ float snoise(vec4 p)
 {
   /* Repeat Perlin noise texture every 100000.0 on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0, however at such scales this
-   * usually shouldn't be noticible. */
+   * usually shouldn't be noticeable. */
   p = vec4(compatible_fmod(p.x, 100000.0),
            compatible_fmod(p.y, 100000.0),
            compatible_fmod(p.z, 100000.0),

@@ -686,7 +686,7 @@ ccl_device_inline float snoise_1d(float p)
 {
   /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0f, however at such scales
-   * this usually shouldn't be noticible. */
+   * this usually shouldn't be noticeable. */
   p = fmodf(p, 100000.0f);
 
   return noise_scale1(perlin_1d(p));
@@ -701,7 +701,7 @@ ccl_device_inline float snoise_2d(float2 p)
 {
   /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0f, however at such scales
-   * this usually shouldn't be noticible. */
+   * this usually shouldn't be noticeable. */
   p = make_float2(fmodf(p.x, 100000.0f), fmodf(p.y, 100000.0f));
 
   return noise_scale2(perlin_2d(p.x, p.y));
@@ -716,7 +716,7 @@ ccl_device_inline float snoise_3d(float3 p)
 {
   /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0f, however at such scales
-   * this usually shouldn't be noticible. */
+   * this usually shouldn't be noticeable. */
   p = make_float3(fmodf(p.x, 100000.0f), fmodf(p.y, 100000.0f), fmodf(p.z, 100000.0f));
 
   return noise_scale3(perlin_3d(p.x, p.y, p.z));
@@ -731,7 +731,7 @@ ccl_device_inline float snoise_4d(float4 p)
 {
   /* Repeat Perlin noise texture every 100000.0f on each axis to prevent floating point
    * representation issues. This causes discontinuities every 100000.0f, however at such scales
-   * this usually shouldn't be noticible. */
+   * this usually shouldn't be noticeable. */
   p = make_float4(
       fmodf(p.x, 100000.0f), fmodf(p.y, 100000.0f), fmodf(p.z, 100000.0f), fmodf(p.w, 100000.0f));
 
