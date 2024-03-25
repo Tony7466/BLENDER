@@ -666,6 +666,8 @@ void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
       AbstractTreeView::IterOptions::SkipCollapsed | AbstractTreeView::IterOptions::SkipFiltered);
 
   if (tree_view.custom_height_) {
+    uiLayoutColumn(row, false);
+
     *tree_view.custom_height_ = tree_view.tot_visible_row_count().value_or(1) *
                                 padded_item_height();
     if (!tree_view.scroll_value_) {
@@ -673,7 +675,6 @@ void TreeViewLayoutBuilder::build_from_tree(AbstractTreeView &tree_view)
     }
 
     if (max_rows && (item_count > *max_rows)) {
-      uiLayoutColumn(row, false);
       uiBut *but = uiDefButI(block,
                              UI_BTYPE_SCROLL,
                              0,
