@@ -49,7 +49,7 @@
 
 #include "bmesh.hh"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 #include "GPU_material.hh"
 
 #include "DRW_render.hh"
@@ -62,7 +62,7 @@
 #include "draw_subdivision.hh"
 
 #include "draw_cache_impl.hh" /* own include */
-#include "draw_manager.h"
+#include "draw_manager_c.hh"
 
 #include "mesh_extractors/extract_mesh.hh"
 
@@ -557,7 +557,7 @@ static bool mesh_batch_cache_valid(Object *object, Mesh *mesh)
 
   /* Note: PBVH draw data should not be checked here. */
 
-  if (cache->is_editmode != (mesh->edit_mesh != nullptr)) {
+  if (cache->is_editmode != (mesh->runtime->edit_mesh != nullptr)) {
     return false;
   }
 
@@ -582,7 +582,7 @@ static void mesh_batch_cache_init(Object *object, Mesh *mesh)
   }
   MeshBatchCache *cache = static_cast<MeshBatchCache *>(mesh->runtime->batch_cache);
 
-  cache->is_editmode = mesh->edit_mesh != nullptr;
+  cache->is_editmode = mesh->runtime->edit_mesh != nullptr;
 
   if (object->sculpt && object->sculpt->pbvh) {
     cache->pbvh_is_drawing = BKE_pbvh_is_drawing(object->sculpt->pbvh);
@@ -598,7 +598,7 @@ static void mesh_batch_cache_init(Object *object, Mesh *mesh)
   cache->mat_len = mesh_render_mat_len_get(object, mesh);
   cache->surface_per_mat = static_cast<GPUBatch **>(
       MEM_callocN(sizeof(*cache->surface_per_mat) * cache->mat_len, __func__));
-  cache->tris_per_mat = static_cast<GPUIndexBuf **>(
+  cache->tris_per_mat = static_cast<gpu::IndexBuf **>(
       MEM_callocN(sizeof(*cache->tris_per_mat) * cache->mat_len, __func__));
 
   cache->is_dirty = false;
@@ -781,8 +781,8 @@ void DRW_mesh_batch_cache_dirty_tag(Mesh *mesh, eMeshBatchDirtyMode mode)
 
 static void mesh_buffer_list_clear(MeshBufferList *mbuflist)
 {
-  GPUVertBuf **vbos = (GPUVertBuf **)&mbuflist->vbo;
-  GPUIndexBuf **ibos = (GPUIndexBuf **)&mbuflist->ibo;
+  gpu::VertBuf **vbos = (gpu::VertBuf **)&mbuflist->vbo;
+  gpu::IndexBuf **ibos = (gpu::IndexBuf **)&mbuflist->ibo;
   for (int i = 0; i < sizeof(mbuflist->vbo) / sizeof(void *); i++) {
     GPU_VERTBUF_DISCARD_SAFE(vbos[i]);
   }
@@ -1066,7 +1066,7 @@ GPUBatch *DRW_mesh_batch_cache_get_surface_viewer_attribute(Mesh *mesh)
 /** \name Edit Mode API
  * \{ */
 
-GPUVertBuf *DRW_mesh_batch_cache_pos_vertbuf_get(Mesh *mesh)
+gpu::VertBuf *DRW_mesh_batch_cache_pos_vertbuf_get(Mesh *mesh)
 {
   MeshBatchCache &cache = *mesh_batch_cache_get(mesh);
   /* Request surface to trigger the vbo filling. Otherwise it may do nothing. */
@@ -1312,22 +1312,22 @@ static void drw_mesh_batch_cache_check_available(TaskGraph *task_graph, Mesh *me
     BLI_assert(!DRW_batch_requested(((GPUBatch **)&cache->batch)[i], (GPUPrimType)0));
   }
   for (int i = 0; i < MBC_VBO_LEN; i++) {
-    BLI_assert(!DRW_vbo_requested(((GPUVertBuf **)&cache->final.buff.vbo)[i]));
+    BLI_assert(!DRW_vbo_requested(((gpu::VertBuf **)&cache->final.buff.vbo)[i]));
   }
   for (int i = 0; i < MBC_IBO_LEN; i++) {
-    BLI_assert(!DRW_ibo_requested(((GPUIndexBuf **)&cache->final.buff.ibo)[i]));
+    BLI_assert(!DRW_ibo_requested(((gpu::IndexBuf **)&cache->final.buff.ibo)[i]));
   }
   for (int i = 0; i < MBC_VBO_LEN; i++) {
-    BLI_assert(!DRW_vbo_requested(((GPUVertBuf **)&cache->cage.buff.vbo)[i]));
+    BLI_assert(!DRW_vbo_requested(((gpu::VertBuf **)&cache->cage.buff.vbo)[i]));
   }
   for (int i = 0; i < MBC_IBO_LEN; i++) {
-    BLI_assert(!DRW_ibo_requested(((GPUIndexBuf **)&cache->cage.buff.ibo)[i]));
+    BLI_assert(!DRW_ibo_requested(((gpu::IndexBuf **)&cache->cage.buff.ibo)[i]));
   }
   for (int i = 0; i < MBC_VBO_LEN; i++) {
-    BLI_assert(!DRW_vbo_requested(((GPUVertBuf **)&cache->uv_cage.buff.vbo)[i]));
+    BLI_assert(!DRW_vbo_requested(((gpu::VertBuf **)&cache->uv_cage.buff.vbo)[i]));
   }
   for (int i = 0; i < MBC_IBO_LEN; i++) {
-    BLI_assert(!DRW_ibo_requested(((GPUIndexBuf **)&cache->uv_cage.buff.ibo)[i]));
+    BLI_assert(!DRW_ibo_requested(((gpu::IndexBuf **)&cache->uv_cage.buff.ibo)[i]));
   }
 }
 #endif
@@ -1374,11 +1374,11 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
 #endif
 
   /* Sanity check. */
-  if ((mesh->edit_mesh != nullptr) && (ob->mode & OB_MODE_EDIT)) {
+  if ((mesh->runtime->edit_mesh != nullptr) && (ob->mode & OB_MODE_EDIT)) {
     BLI_assert(BKE_object_get_editmesh_eval_final(ob) != nullptr);
   }
 
-  const bool is_editmode = (mesh->edit_mesh != nullptr) &&
+  const bool is_editmode = (mesh->runtime->edit_mesh != nullptr) &&
                            (BKE_object_get_editmesh_eval_final(ob) != nullptr) &&
                            DRW_object_is_in_edit_mode(ob);
 
@@ -1407,7 +1407,7 @@ void DRW_mesh_batch_cache_create_requested(TaskGraph *task_graph,
     /* Modifiers will only generate an orco layer if the mesh is deformed. */
     if (cache.cd_needed.orco != 0) {
       /* Orco is always extracted from final mesh. */
-      Mesh *me_final = (mesh->edit_mesh) ? BKE_object_get_editmesh_eval_final(ob) : mesh;
+      Mesh *me_final = (mesh->runtime->edit_mesh) ? BKE_object_get_editmesh_eval_final(ob) : mesh;
       if (CustomData_get_layer(&me_final->vert_data, CD_ORCO) == nullptr) {
         /* Skip orco calculation */
         cache.cd_needed.orco = 0;

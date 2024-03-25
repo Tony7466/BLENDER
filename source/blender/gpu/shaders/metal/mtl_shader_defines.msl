@@ -366,6 +366,9 @@ struct SStruct {
 #define imageStore(_tex, _coord, _value) _texture_write_internal(_tex, _coord, _value)
 #define imageStoreFast(_tex, _coord, _value) _texture_write_internal_fast(_tex, _coord, _value)
 
+/* Texture synchronization functions. */
+#define imageFence(image) image.texture->fence()
+
 /* Singular return values from texture functions of type DEPTH are often indexed with either .r or
  * .x. This is a lightweight wrapper type for handling this syntax. */
 union _msl_return_float {
@@ -1901,7 +1904,7 @@ inline float2x2 operator-(float2x2 a)
 #  define vertex_fetch_get_input_vert_count() UNIFORM_SSBO_INPUT_VERT_COUNT_STR
 #  define vertex_fetch_get_attr_type(attr) PPCAT(UNIFORM_SSBO_TYPE_STR, attr)
 
-/* Must mirror GPU_primitive.h. */
+/* Must mirror GPU_primitive.hh. */
 #  define GPU_PRIM_POINTS 0
 #  define GPU_PRIM_LINES 1
 #  define GPU_PRIM_TRIS 2
