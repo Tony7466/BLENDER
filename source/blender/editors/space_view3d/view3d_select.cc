@@ -3112,13 +3112,8 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
           const IndexMask elements(curves.attributes().domain_size(selection_domain));
           const Span<bke::AttributeIDRef> selection_attribute_ids =
               ed::curves::get_curves_selection_attribute_ids(curves);
-          const ed::curves::SelectableRangeList selectables(
-              selection_attribute_ids, curves, selection_domain, deformation);
-
-          selectables.foreach_selectable_range(
-              [&](const IndexRange range,
-                  const Span<float3> positions,
-                  const bke::AttributeIDRef &selection_attribute_id) {
+          const ed::curves::SelectableRangeConsumer range_consumer =
+              [&](const IndexRange range, const Span<float3> positions, const int attribute_i) {
                 IndexMask mask = elements.slice(range);
 
                 std::optional<ed::curves::FindClosestData> new_closest_elem =
@@ -3131,11 +3126,18 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
                                                                mval,
                                                                new_closest.elem);
                 if (new_closest_elem) {
-                  new_closest.selection_attribute_id = selection_attribute_id;
+                  new_closest.selection_attribute_id = selection_attribute_ids[attribute_i];
                   new_closest.elem = *new_closest_elem;
                   new_closest.curves_id = &curves_id;
                 }
-              });
+              };
+
+          if (selection_domain == bke::AttrDomain::Point) {
+            ed::curves::foreach_selectable_point_range(curves, deformation, range_consumer);
+          }
+          else if (selection_domain == bke::AttrDomain::Curve) {
+            ed::curves::foreach_selectable_curve_range(curves, deformation, range_consumer);
+          };
         }
         return new_closest;
       },

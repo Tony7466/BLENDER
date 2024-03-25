@@ -90,31 +90,17 @@ class SelectionAttributeWriterList {
   }
 };
 
-typedef std::function<void(const IndexRange range,
-                           const Span<float3> positions,
-                           const bke::AttributeIDRef &selection_attribute_id)>
-    RangeConsumer;
+typedef std::function<void(
+    const IndexRange range, const Span<float3> positions, const int selection_attribute_index)>
+    SelectableRangeConsumer;
 
-class SelectableRangeList {
-  const Span<bke::AttributeIDRef> attribute_list_;
-  const bke::CurvesGeometry &curves_;
-  const bke::AttrDomain selection_domain_;
-  const IndexRange full_range_;
+void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
+                                    const bke::crazyspace::GeometryDeformation &deformation,
+                                    SelectableRangeConsumer range_consumer);
 
-  std::array<Span<float3>, 3> positions_;
-  IndexMaskMemory memory_;
-  IndexMask bezier_curves_;
-
- public:
-  SelectableRangeList(const Span<bke::AttributeIDRef> attribute_list,
-                      const bke::CurvesGeometry &curves,
-                      const bke::AttrDomain selection_domain,
-                      const bke::crazyspace::GeometryDeformation &deformation);
-  void foreach_point_range(const int index, RangeConsumer range_consumer) const;
-  void foreach_curve_range(const int index, RangeConsumer range_consumer) const;
-  void foreach_selectable_range(RangeConsumer range_consumer) const;
-  void foreach_selectable_range(const int index, RangeConsumer range_consumer) const;
-};
+void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
+                                    const bke::crazyspace::GeometryDeformation &deformation,
+                                    SelectableRangeConsumer range_consumer);
 
 bool object_has_editable_curves(const Main &bmain, const Object &object);
 bke::CurvesGeometry primitive_random_sphere(int curves_size, int points_per_curve);
