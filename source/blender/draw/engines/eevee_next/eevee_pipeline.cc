@@ -36,9 +36,8 @@ void BackgroundPipeline::sync(GPUMaterial *gpumat,
   world_ps_.material_set(manager, gpumat);
   world_ps_.push_constant("world_opacity_fade", background_opacity);
   world_ps_.push_constant("world_background_blur", background_blur);
-  SphereProbeUvArea world_atlas_coord =
-      inst_.light_probes.world_sphere_.atlas_coord.as_sampling_coord();
-  world_ps_.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_atlas_coord));
+  SphereProbeData &world_data = *static_cast<SphereProbeData *>(&inst_.light_probes.world_sphere_);
+  world_ps_.push_constant("world_coord_packed", reinterpret_cast<int4 *>(&world_data.atlas_coord));
   world_ps_.bind_texture("utility_tx", inst_.pipelines.utility_tx);
   /* RenderPasses & AOVs. Cleared by background (even if bad practice). */
   world_ps_.bind_image("rp_color_img", &rbufs.rp_color_tx);
