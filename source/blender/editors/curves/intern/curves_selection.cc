@@ -101,7 +101,7 @@ SelectionAttributeWriterList::SelectionAttributeWriterList(bke::CurvesGeometry &
                                                            const bke::AttrDomain selection_domain)
     : attribute_ids_{get_curves_selection_attribute_ids(curves)}
 {
-  for (const int i : IndexRange(attribute_ids_.size())) {
+  for (const int i : attribute_ids_.index_range()) {
     selections_[i] = ensure_selection_attribute(
         curves, selection_domain, CD_PROP_BOOL, attribute_ids_[i]);
   };

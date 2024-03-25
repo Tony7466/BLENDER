@@ -1002,7 +1002,9 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
     selection.varray.set(curve_index, true);
     selection.finish();
 
-    for (const int i : IndexRange(1, selection_attribute_ids.size() - 1)) {
+    /* Creates ".selection_handle_left" and ".selection_handle_right" attributes, otherwise all
+     * existing Bezier handles would be treated as selected. */
+    for (const int i : selection_attribute_ids.index_range().drop_front(1)) {
       bke::AttributeWriter<bool> selection = attributes.lookup_or_add_for_write<bool>(
           selection_attribute_ids[i], bke::AttrDomain::Curve);
       selection.finish();
