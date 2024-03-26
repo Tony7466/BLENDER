@@ -1164,7 +1164,7 @@ static void test_eevee_shadow_finalize()
 }
 DRAW_TEST(eevee_shadow_finalize)
 
-static void test_eevee_shadow_page_mask()
+static void test_eevee_shadow_page_mask_ex(int max_view_per_tilemap)
 {
   GPU_render_begin();
   ShadowTileMapDataBuf tilemaps_data = {"tilemaps_data"};
@@ -1207,7 +1207,7 @@ static void test_eevee_shadow_page_mask()
     }
 
     /* Bottom Left of the LOD0 to true. */
-    for (auto y : IndexRange((SHADOW_TILEMAP_RES / 2) + 1)) {
+    for (auto y : IndexRange((SHADOW_TILEMAP_RES / 2))) {
       for (auto x : IndexRange((SHADOW_TILEMAP_RES / 2) + 1)) {
         tile.is_used = true;
         tile.do_update = true;
@@ -1251,6 +1251,7 @@ static void test_eevee_shadow_page_mask()
 
   PassSimple pass("Test");
   pass.shader_set(sh);
+  pass.push_constant("max_view_per_tilemap", max_view_per_tilemap);
   pass.bind_ssbo("tilemaps_buf", tilemaps_data);
   pass.bind_ssbo("tiles_buf", tiles_data);
   pass.dispatch(int3(1, 1, tilemaps_data.size()));
@@ -1279,7 +1280,7 @@ static void test_eevee_shadow_page_mask()
       "xxxxxxxxxxxxxxxxx---------------"
       "xxxxxxxxxxxxxxxxx---------------"
       "xxxxxxxxxxxxxxxxx---------------"
-      "xxxxxxxxxxxxxxxxx---------------"
+      "--------------------------------"
       "--------------------------------"
       "--------------------------------"
       "--------------------------------"
@@ -1312,6 +1313,23 @@ static void test_eevee_shadow_page_mask()
       "xxxxxxxxxxxxxxxx"
       "xxxxxxxxxxxxxxxx"
       "xxxxxxxxxxxxxxxx";
+  StringRefNull expected_lod1_collapsed =
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxx-xxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxx";
   StringRefNull expected_lod2 =
       "--------"
       "--------"
@@ -1321,6 +1339,15 @@ static void test_eevee_shadow_page_mask()
       "--------"
       "--------"
       "--------";
+  StringRefNull expected_lod2_collapsed =
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx"
+      "xxxxxxxx";
   StringRefNull expected_lod3 =
       "----"
       "----"
@@ -1339,9 +1366,40 @@ static void test_eevee_shadow_page_mask()
     return result;
   };
 
-  EXPECT_EQ(stringify_result(lod0_ofs, lod0_len), expected_lod0);
-  EXPECT_EQ(stringify_result(lod1_ofs, lod1_len), expected_lod1);
-  EXPECT_EQ(stringify_result(lod2_ofs, lod2_len), expected_lod2);
+  auto empty_result = [&](uint len) -> std::string {
+    std::string result = "";
+    for ([[maybe_unused]] const int i : IndexRange(len)) {
+      result += "-";
+    }
+    return result;
+  };
+
+  if (max_view_per_tilemap >= 3) {
+    EXPECT_EQ(stringify_result(lod0_ofs, lod0_len), expected_lod0);
+  }
+  else {
+    EXPECT_EQ(stringify_result(lod0_ofs, lod0_len), empty_result(lod0_len));
+  }
+
+  if (max_view_per_tilemap > 2) {
+    EXPECT_EQ(stringify_result(lod1_ofs, lod1_len), expected_lod1);
+  }
+  else if (max_view_per_tilemap == 2) {
+    EXPECT_EQ(stringify_result(lod1_ofs, lod1_len), expected_lod1_collapsed);
+  }
+  else {
+    EXPECT_EQ(stringify_result(lod1_ofs, lod1_len), empty_result(lod1_len));
+  }
+
+  if (max_view_per_tilemap > 1) {
+    EXPECT_EQ(stringify_result(lod2_ofs, lod2_len), expected_lod2);
+  }
+  else if (max_view_per_tilemap == 1) {
+    EXPECT_EQ(stringify_result(lod2_ofs, lod2_len), expected_lod2_collapsed);
+  }
+  else {
+    EXPECT_EQ(stringify_result(lod2_ofs, lod2_len), empty_result(lod2_len));
+  }
   EXPECT_EQ(stringify_result(lod3_ofs, lod3_len), expected_lod3);
   EXPECT_EQ(stringify_result(lod4_ofs, lod4_len), expected_lod4);
   EXPECT_EQ(stringify_result(lod5_ofs, lod5_len), expected_lod5);
@@ -1349,6 +1407,18 @@ static void test_eevee_shadow_page_mask()
   GPU_shader_free(sh);
   DRW_shaders_free();
   GPU_render_end();
+}
+
+static void test_eevee_shadow_page_mask()
+{
+  /* Expect default behavior. */
+  test_eevee_shadow_page_mask_ex(999);
+  /* Expect default behavior. */
+  test_eevee_shadow_page_mask_ex(3);
+  /* Expect LOD0 merged into LOD1. */
+  test_eevee_shadow_page_mask_ex(2);
+  /* Expect LOD0 and LOD1 merged into LOD2. */
+  test_eevee_shadow_page_mask_ex(1);
 }
 DRAW_TEST(eevee_shadow_page_mask)
 
