@@ -46,7 +46,9 @@ void BackgroundPipeline::sync(GPUMaterial *gpumat,
   /* Required by validation layers. */
   world_ps_.bind_resources(inst_.cryptomatte);
   world_ps_.bind_resources(inst_.uniform_data);
+  world_ps_.bind_resources(inst_.sampling);
   world_ps_.bind_resources(inst_.sphere_probes);
+  world_ps_.bind_resources(inst_.volume_probes);
   world_ps_.draw_procedural(GPU_PRIM_TRIS, 1, 3);
   /* To allow opaque pass rendering over it. */
   world_ps_.barrier(GPU_BARRIER_SHADER_IMAGE_ACCESS);
@@ -97,7 +99,9 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
   /* Required by validation layers. */
   pass.bind_resources(inst_.cryptomatte);
   pass.bind_resources(inst_.uniform_data);
+  pass.bind_resources(inst_.sampling);
   pass.bind_resources(inst_.sphere_probes);
+  pass.bind_resources(inst_.volume_probes);
   pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 
