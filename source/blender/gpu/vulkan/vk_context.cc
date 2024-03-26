@@ -206,18 +206,20 @@ void VKContext::update_shader_data(VKShaderData &shader_data)
   shader_data.vk_pipeline_layout = vk_shader.vk_pipeline_layout_get();
 
   /* Update descriptor set. */
+  shader_data.vk_descriptor_set = VK_NULL_HANDLE;
   if (vk_shader.has_descriptor_set()) {
     descriptor_set_.update(*this);
-    shader_data.descriptor_set.vk_descriptor_set =
-        descriptor_set_get().active_descriptor_set()->vk_handle();
+    shader_data.vk_descriptor_set = descriptor_set_get().active_descriptor_set()->vk_handle();
   }
 
   /* Update push constants. */
+  shader_data.push_constants_data = nullptr;
+  shader_data.push_constants_size = 0;
   const VKPushConstants::Layout &push_constants_layout =
       vk_shader.interface_get().push_constants_layout_get();
   if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::PUSH_CONSTANTS) {
-    shader_data.push_constants.size = push_constants_layout.size_in_bytes();
-    shader_data.push_constants.data = vk_shader.pipeline_get().push_constants_get().data();
+    shader_data.push_constants_size = push_constants_layout.size_in_bytes();
+    shader_data.push_constants_data = vk_shader.pipeline_get().push_constants_get().data();
   }
 }
 

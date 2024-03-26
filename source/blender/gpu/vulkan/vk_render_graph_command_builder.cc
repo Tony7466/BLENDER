@@ -279,25 +279,22 @@ void VKRenderGraphCommandBuilder::build_node_dispatch(VKRenderGraph &render_grap
   }
 
   const VKShaderData &shader_data = node.dispatch.shader_data;
-  if (assign_if_different(active_compute_descriptor_set_,
-                          shader_data.descriptor_set.vk_descriptor_set))
-  {
-    render_graph.command_buffer_->bind_descriptor_sets(
-        VK_PIPELINE_BIND_POINT_COMPUTE,
-        shader_data.vk_pipeline_layout,
-        0,
-        1,
-        &shader_data.descriptor_set.vk_descriptor_set,
-        0,
-        nullptr);
+  if (assign_if_different(active_compute_descriptor_set_, shader_data.vk_descriptor_set)) {
+    render_graph.command_buffer_->bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE,
+                                                       shader_data.vk_pipeline_layout,
+                                                       0,
+                                                       1,
+                                                       &shader_data.vk_descriptor_set,
+                                                       0,
+                                                       nullptr);
   }
 
-  if (shader_data.push_constants.size) {
+  if (shader_data.push_constants_size) {
     render_graph.command_buffer_->push_constants(shader_data.vk_pipeline_layout,
                                                  VK_SHADER_STAGE_COMPUTE_BIT,
                                                  0,
-                                                 shader_data.push_constants.size,
-                                                 shader_data.push_constants.data);
+                                                 shader_data.push_constants_size,
+                                                 shader_data.push_constants_data);
   }
 
   render_graph.command_buffer_->dispatch(

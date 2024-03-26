@@ -31,22 +31,14 @@ struct VKResourceBarrierState {
   VkImageLayout image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 };
 
-struct VKDescriptorSetData {
-  VkDescriptorSet vk_descriptor_set;
-};
-
-struct VKPushConstantsData {
-  uint32_t size;
-  const void *data;
-};
-
 /**
- * Container for storing shader related binding and push constants.
+ * Container for storing shader descriptor set and push constants.
  */
 struct VKShaderData {
   VkPipelineLayout vk_pipeline_layout;
-  VKDescriptorSetData descriptor_set;
-  VKPushConstantsData push_constants;
+  VkDescriptorSet vk_descriptor_set;
+  uint32_t push_constants_size;
+  const void *push_constants_data;
 };
 
 /**

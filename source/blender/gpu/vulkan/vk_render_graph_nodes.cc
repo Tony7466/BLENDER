@@ -118,21 +118,21 @@ NodeHandle VKRenderGraphNodes::add_synchronization_node()
   return handle;
 }
 
-static void localize_push_constants_data(VKPushConstantsData &dst, const VKPushConstantsData &src)
+static void localize_shader_data(VKShaderData &dst, const VKShaderData &src)
 {
-  if (src.size) {
-    BLI_assert(src.data);
-    void *data = MEM_mallocN(src.size, __func__);
-    memcpy(data, src.data, src.size);
-    dst.data = data;
+  dst.push_constants_data = nullptr;
+  dst.push_constants_size = src.push_constants_size;
+  if (src.push_constants_size) {
+    BLI_assert(src.push_constants_data);
+    void *data = MEM_mallocN(src.push_constants_size, __func__);
+    memcpy(data, src.push_constants_data, src.push_constants_size);
+    dst.push_constants_data = data;
   }
-  dst.size = src.size;
 }
 
 static void free_shader_data(VKShaderData &data)
 {
-  data.push_constants.size = 0;
-  MEM_SAFE_FREE(data.push_constants.data);
+  MEM_SAFE_FREE(data.push_constants_data);
 }
 
 NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_info)
@@ -143,8 +143,7 @@ NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_
 
   node.type = Node::Type::DISPATCH;
   node.dispatch = dispatch_info.dispatch_node;
-  localize_push_constants_data(node.dispatch.shader_data.push_constants,
-                               dispatch_info.dispatch_node.shader_data.push_constants);
+  localize_shader_data(node.dispatch.shader_data, dispatch_info.dispatch_node.shader_data);
 
   return handle;
 }
