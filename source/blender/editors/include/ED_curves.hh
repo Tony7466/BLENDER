@@ -101,11 +101,23 @@ using SelectableRangeConsumer =
     blender::FunctionRef<void(const IndexRange range,
                               const Span<float3> positions,
                               const std::string &selection_attribute_name)>;
-
+/**
+ * Traverses all ranges of control points posible select. Callback function is provided with a
+ * range being visited, positions (deformed if possible) referenced by the range and selection
+ * attribute name positions belongs to:
+ *  curves.positions() belong to ".selection",
+ *  curves.handle_positions_left() belong to  ".selection_handle_left",
+ *  curves.handle_positions_right() belong to ".selection_handle_right".
+ */
 void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     SelectableRangeConsumer range_consumer);
 
+/**
+ * Same logic as in foreach_selectable_point_range, just ranges reference curves insted of
+ * positions directly. Futher positions can be referenced by using curves.points_by_curve() in a
+ * callback function.
+ */
 void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     SelectableRangeConsumer range_consumer);
