@@ -3,8 +3,6 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 #include "BLI_array_utils.hh"
-#include "BLI_math_geom.h"
-#include "BLI_set.hh"
 #include "BLI_stack.hh"
 
 #include "BKE_curves_utils.hh"
