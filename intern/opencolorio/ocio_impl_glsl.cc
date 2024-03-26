@@ -19,9 +19,9 @@
 #  pragma warning(pop)
 #endif
 
-#include "GPU_immediate.h"
-#include "GPU_shader.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_immediate.hh"
+#include "GPU_shader.hh"
+#include "GPU_uniform_buffer.hh"
 
 #include "gpu_shader_create_info.hh"
 

@@ -3151,7 +3151,8 @@ void uiItemDecoratorR_prop(uiLayout *layout, PointerRNA *ptr, PropertyRNA *prop,
 
     UI_but_func_set(but, ui_but_anim_decorate_cb, but, nullptr);
     but->flag |= UI_BUT_UNDO | UI_BUT_DRAG_LOCK;
-    /* Decorators have own RNA data, using the normal #uiBut RNA members has many side-effects. */
+    /* Decorators have their own RNA data, using the normal #uiBut RNA members has many
+     * side-effects. */
     but->decorated_rnapoin = *ptr;
     but->decorated_rnaprop = prop;
     /* ui_def_but_rna() sets non-array buttons to have a RNA index of 0. */
@@ -3367,35 +3368,6 @@ void uiItemLDrag(uiLayout *layout, PointerRNA *ptr, const char *name, int icon)
     if (RNA_struct_is_ID(ptr->type)) {
       UI_but_drag_set_id(but, ptr->owner_id);
     }
-  }
-}
-
-void uiItemV(uiLayout *layout, const char *name, int icon, int argval)
-{
-  /* label */
-  uiBlock *block = layout->root->block;
-  int *retvalue = (block->handle) ? &block->handle->retvalue : nullptr;
-
-  UI_block_layout_set_current(block, layout);
-
-  if (!name) {
-    name = "";
-  }
-  if (layout->root->type == UI_LAYOUT_MENU && !icon) {
-    icon = ICON_BLANK1;
-  }
-
-  const int w = ui_text_icon_width(layout, name, icon, false);
-
-  if (icon && name[0]) {
-    uiDefIconTextButI(
-        block, UI_BTYPE_BUT, argval, icon, name, 0, 0, w, UI_UNIT_Y, retvalue, 0.0, 0.0, "");
-  }
-  else if (icon) {
-    uiDefIconButI(block, UI_BTYPE_BUT, argval, icon, 0, 0, w, UI_UNIT_Y, retvalue, 0.0, 0.0, "");
-  }
-  else {
-    uiDefButI(block, UI_BTYPE_BUT, argval, name, 0, 0, w, UI_UNIT_Y, retvalue, 0.0, 0.0, "");
   }
 }
 
@@ -6164,11 +6136,19 @@ static bool ui_layout_has_panel_label(const uiLayout *layout, const PanelType *p
 
 static void ui_paneltype_draw_impl(bContext *C, PanelType *pt, uiLayout *layout, bool show_header)
 {
+  uiBlock *block = uiLayoutGetBlock(layout);
   Panel *panel = BKE_panel_new(pt);
   panel->flag = PNL_POPOVER;
 
   if (pt->listener) {
-    ui_block_add_dynamic_listener(uiLayoutGetBlock(layout), pt->listener);
+    ui_block_add_dynamic_listener(block, pt->listener);
+  }
+
+  /* This check may be paranoid, this function might run outside the context of a popup or can run
+   * in popopers that are not supposed to support refreshing, see #ui_popover_create_block. */
+  if (block->handle && block->handle->region) {
+    /* Allow popovers to contain collapsible sections, see #uiItemPopoverPanel. */
+    UI_popup_dummy_panel_set(block->handle->region, block);
   }
 
   uiLayout *last_item = static_cast<uiLayout *>(layout->items.last);

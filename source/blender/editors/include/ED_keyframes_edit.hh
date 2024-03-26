@@ -8,7 +8,9 @@
 
 #pragma once
 
+#include "BLI_array.hh"
 #include "BLI_math_vector_types.hh"
+
 #include "ED_anim_api.hh" /* for enum eAnimFilter_Flags */
 
 struct BezTriple;
@@ -98,8 +100,7 @@ enum eEditKeyframes_Mirror {
 struct KeyframeEdit_LassoData {
   rctf *rectf_scaled;
   const rctf *rectf_view;
-  const int (*mcoords)[2];
-  int mcoords_len;
+  blender::Array<blender::int2> mcoords;
 };
 
 /* use with BEZT_OK_REGION_CIRCLE */
@@ -469,7 +470,10 @@ void smooth_fcurve_segment(FCurve *fcu,
                            float factor,
                            int kernel_size,
                            double *kernel);
-void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor);
+/** Snap the keys on the given FCurve segment to an S-Curve. By modifying the `factor` the part of
+ * the S-Curve that the keys are snapped to is moved on the x-axis.*/
+void ease_fcurve_segment(FCurve *fcu, FCurveSegment *segment, float factor, float width);
+
 enum tShearDirection {
   SHEAR_FROM_LEFT = 1,
   SHEAR_FROM_RIGHT,

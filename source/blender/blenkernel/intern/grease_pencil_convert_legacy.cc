@@ -6,6 +6,8 @@
  * \ingroup bke
  */
 
+#include <optional>
+
 #include <fmt/format.h>
 
 #include "BKE_anim_data.hh"
@@ -19,15 +21,20 @@
 #include "BKE_grease_pencil_legacy_convert.hh"
 #include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
+#include "BKE_lib_remap.hh"
+#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_modifier.hh"
 #include "BKE_node.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_object.hh"
 
+#include "BLO_readfile.hh"
+
 #include "BLI_color.hh"
 #include "BLI_function_ref.hh"
 #include "BLI_listbase.h"
+#include "BLI_map.hh"
 #include "BLI_math_matrix.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
@@ -156,6 +163,113 @@ static void find_used_vertex_groups(const bGPDframe &gpf,
   }
 }
 
+/*
+ * This takes the legacy UV transforms and returns the stroke-space to texture-space matrix.
+ */
+static float3x2 get_legacy_stroke_to_texture_matrix(const float2 uv_translation,
+                                                    const float uv_rotation,
+                                                    const float2 uv_scale)
+{
+  using namespace blender;
+
+  /* Bounding box data. */
+  const float2 minv = float2(-1.0f, -1.0f);
+  const float2 maxv = float2(1.0f, 1.0f);
+  /* Center of rotation. */
+  const float2 center = float2(0.5f, 0.5f);
+
+  const float2 uv_scale_inv = math::safe_rcp(uv_scale);
+  const float2 diagonal = maxv - minv;
+  const float sin_rotation = sin(uv_rotation);
+  const float cos_rotation = cos(uv_rotation);
+  const float2x2 rotation = float2x2(float2(cos_rotation, sin_rotation),
+                                     float2(-sin_rotation, cos_rotation));
+
+  float3x2 texture_matrix = float3x2::identity();
+
+  /* Apply bounding box rescaling. */
+  texture_matrix[2] -= minv;
+  texture_matrix = math::from_scale<float2x2>(1.0f / diagonal) * texture_matrix;
+
+  /* Apply translation. */
+  texture_matrix[2] += uv_translation;
+
+  /* Apply rotation. */
+  texture_matrix[2] -= center;
+  texture_matrix = rotation * texture_matrix;
+  texture_matrix[2] += center;
+
+  /* Apply scale. */
+  texture_matrix = math::from_scale<float2x2>(uv_scale_inv) * texture_matrix;
+
+  return texture_matrix;
+}
+
+/*
+ * This gets the legacy layer-space to stroke-space matrix.
+ */
+static blender::float4x2 get_legacy_layer_to_stroke_matrix(bGPDstroke *gps)
+{
+  using namespace blender;
+  using namespace blender::math;
+
+  const bGPDspoint *points = gps->points;
+  const int totpoints = gps->totpoints;
+
+  if (totpoints < 2) {
+    return float4x2::identity();
+  }
+
+  const bGPDspoint *point0 = &points[0];
+  const bGPDspoint *point1 = &points[1];
+  const bGPDspoint *point3 = &points[int(totpoints * 0.75f)];
+
+  const float3 pt0 = float3(point0->x, point0->y, point0->z);
+  const float3 pt1 = float3(point1->x, point1->y, point1->z);
+  const float3 pt3 = float3(point3->x, point3->y, point3->z);
+
+  /* Local X axis (p0 -> p1) */
+  const float3 local_x = normalize(pt1 - pt0);
+
+  /* Point vector at 3/4 */
+  const float3 local_3 = (totpoints == 2) ? (pt3 * 0.001f) - pt0 : pt3 - pt0;
+
+  /* Vector orthogonal to polygon plane. */
+  const float3 normal = cross(local_x, local_3);
+
+  /* Local Y axis (cross to normal/x axis). */
+  const float3 local_y = normalize(cross(normal, local_x));
+
+  /* Get local space using first point as origin. */
+  const float4x2 mat = transpose(
+      float2x4(float4(local_x, -dot(pt0, local_x)), float4(local_y, -dot(pt0, local_y))));
+
+  return mat;
+}
+
+static blender::float4x2 get_legacy_texture_matrix(bGPDstroke *gps)
+{
+  const float3x2 texture_matrix = get_legacy_stroke_to_texture_matrix(
+      float2(gps->uv_translation), gps->uv_rotation, float2(gps->uv_scale));
+
+  const float4x2 strokemat = get_legacy_layer_to_stroke_matrix(gps);
+  float4x3 strokemat4x3 = float4x3(strokemat);
+  /*
+   * We need the diagonal of ones to start from the bottom right instead top left to properly apply
+   * the two matrices.
+   *
+   * i.e.
+   *          # # # #              # # # #
+   * We need  # # # #  Instead of  # # # #
+   *          0 0 0 1              0 0 1 0
+   *
+   */
+  strokemat4x3[2][2] = 0.0f;
+  strokemat4x3[3][2] = 1.0f;
+
+  return texture_matrix * strokemat4x3;
+}
+
 void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
                                                    const ListBase &vertex_group_names,
                                                    GreasePencilDrawing &r_drawing)
@@ -259,16 +373,12 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       "hardness", AttrDomain::Curve);
   SpanAttributeWriter<float> stroke_point_aspect_ratios =
       attributes.lookup_or_add_for_write_span<float>("aspect_ratio", AttrDomain::Curve);
-  SpanAttributeWriter<float2> stroke_fill_translations =
-      attributes.lookup_or_add_for_write_span<float2>("fill_translation", AttrDomain::Curve);
-  SpanAttributeWriter<float> stroke_fill_rotations =
-      attributes.lookup_or_add_for_write_span<float>("fill_rotation", AttrDomain::Curve);
-  SpanAttributeWriter<float2> stroke_fill_scales = attributes.lookup_or_add_for_write_span<float2>(
-      "fill_scale", AttrDomain::Curve);
   SpanAttributeWriter<ColorGeometry4f> stroke_fill_colors =
       attributes.lookup_or_add_for_write_span<ColorGeometry4f>("fill_color", AttrDomain::Curve);
   SpanAttributeWriter<int> stroke_materials = attributes.lookup_or_add_for_write_span<int>(
       "material_index", AttrDomain::Curve);
+
+  Array<float4x2> legacy_texture_matrices(num_strokes);
 
   int stroke_i = 0;
   LISTBASE_FOREACH_INDEX (bGPDstroke *, gps, &gpf.strokes, stroke_i) {
@@ -280,9 +390,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
     stroke_hardnesses.span[stroke_i] = gps->hardness;
     stroke_point_aspect_ratios.span[stroke_i] = gps->aspect_ratio[0] /
                                                 max_ff(gps->aspect_ratio[1], 1e-8);
-    stroke_fill_translations.span[stroke_i] = float2(gps->uv_translation);
-    stroke_fill_rotations.span[stroke_i] = gps->uv_rotation;
-    stroke_fill_scales.span[stroke_i] = float2(gps->uv_scale);
     stroke_fill_colors.span[stroke_i] = ColorGeometry4f(gps->vert_color_fill);
     stroke_materials.span[stroke_i] = gps->mat_nr;
 
@@ -367,7 +474,14 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
       /* Unknown curve type. */
       BLI_assert_unreachable();
     }
+
+    const float4x2 legacy_texture_matrix = get_legacy_texture_matrix(gps);
+    legacy_texture_matrices[stroke_i] = legacy_texture_matrix;
   }
+
+  /* Ensure that the normals are up to date. */
+  curves.tag_normals_changed();
+  drawing.set_texture_matrices(legacy_texture_matrices.as_span(), curves.curves_range());
 
   delta_times.finish();
   rotations.finish();
@@ -380,9 +494,6 @@ void legacy_gpencil_frame_to_grease_pencil_drawing(const bGPDframe &gpf,
   stroke_end_caps.finish();
   stroke_hardnesses.finish();
   stroke_point_aspect_ratios.finish();
-  stroke_fill_translations.finish();
-  stroke_fill_rotations.finish();
-  stroke_fill_scales.finish();
   stroke_fill_colors.finish();
   stroke_materials.finish();
 }
@@ -399,6 +510,15 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
   if (gpd.id.properties) {
     grease_pencil.id.properties = IDP_CopyProperty(gpd.id.properties);
   }
+
+  /** Convert Grease Pencil data flag. */
+  SET_FLAG_FROM_TEST(
+      grease_pencil.flag, (gpd.flag & GP_DATA_EXPAND) != 0, GREASE_PENCIL_ANIM_CHANNEL_EXPANDED);
+  SET_FLAG_FROM_TEST(grease_pencil.flag,
+                     (gpd.flag & GP_DATA_AUTOLOCK_LAYERS) != 0,
+                     GREASE_PENCIL_AUTOLOCK_LAYERS);
+  SET_FLAG_FROM_TEST(
+      grease_pencil.flag, (gpd.draw_mode == GP_DRAWMODE_3D), GREASE_PENCIL_STROKE_ORDER_3D);
 
   int num_drawings = 0;
   LISTBASE_FOREACH (bGPDlayer *, gpl, &gpd.layers) {
@@ -426,6 +546,8 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     SET_FLAG_FROM_TEST(new_layer.base.flag,
                        (gpl->onion_flag & GP_LAYER_ONIONSKIN),
                        GP_LAYER_TREE_NODE_USE_ONION_SKINNING);
+    SET_FLAG_FROM_TEST(
+        new_layer.base.flag, (gpl->flag & GP_LAYER_USE_MASK) == 0, GP_LAYER_TREE_NODE_HIDE_MASKS);
 
     new_layer.blend_mode = int8_t(gpl->blend_mode);
 
@@ -436,9 +558,11 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
     copy_v3_v3(new_layer.rotation, gpl->rotation);
     copy_v3_v3(new_layer.scale, gpl->scale);
 
+    new_layer.set_view_layer_name(gpl->viewlayername);
+
     /* Convert the layer masks. */
     LISTBASE_FOREACH (bGPDlayer_Mask *, mask, &gpl->mask_layers) {
-      LayerMask *new_mask = MEM_new<LayerMask>(mask->name);
+      LayerMask *new_mask = MEM_new<LayerMask>(__func__, mask->name);
       new_mask->flag = mask->flag;
       BLI_addtail(&new_layer.masks, new_mask);
     }
@@ -511,11 +635,10 @@ static bNodeTree *add_offset_radius_node_tree(Main &bmain)
   }
   group->geometry_node_asset_traits->flag |= GEO_NODE_ASSET_MODIFIER;
 
-  group->tree_interface.add_socket(DATA_("Geometry"),
-                                   "",
-                                   "NodeSocketGeometry",
-                                   NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
-                                   nullptr);
+  group->tree_interface.add_socket(
+      DATA_("Geometry"), "", "NodeSocketGeometry", NODE_INTERFACE_SOCKET_INPUT, nullptr);
+  group->tree_interface.add_socket(
+      DATA_("Geometry"), "", "NodeSocketGeometry", NODE_INTERFACE_SOCKET_OUTPUT, nullptr);
 
   bNodeTreeInterfaceSocket *radius_offset = group->tree_interface.add_socket(
       DATA_("Offset"), "", "NodeSocketFloat", NODE_INTERFACE_SOCKET_INPUT, nullptr);
@@ -559,11 +682,11 @@ static bNodeTree *add_offset_radius_node_tree(Main &bmain)
               set_curve_radius,
               nodeFindSocket(set_curve_radius, SOCK_OUT, "Curve"),
               group_output,
-              nodeFindSocket(group_output, SOCK_IN, "Socket_0"));
+              nodeFindSocket(group_output, SOCK_IN, "Socket_1"));
 
   nodeAddLink(group,
               group_input,
-              nodeFindSocket(group_input, SOCK_OUT, "Socket_2"),
+              nodeFindSocket(group_input, SOCK_OUT, "Socket_3"),
               named_layer_selection,
               nodeFindSocket(named_layer_selection, SOCK_IN, "Name"));
   nodeAddLink(group,
@@ -574,7 +697,7 @@ static bNodeTree *add_offset_radius_node_tree(Main &bmain)
 
   nodeAddLink(group,
               group_input,
-              nodeFindSocket(group_input, SOCK_OUT, "Socket_1"),
+              nodeFindSocket(group_input, SOCK_OUT, "Socket_2"),
               add,
               nodeFindSocket(add, SOCK_IN, "Value"));
   nodeAddLink(group,
@@ -664,14 +787,14 @@ void layer_adjustments_to_modifiers(Main &bmain,
 
       md->settings.properties = bke::idprop::create_group("Nodes Modifier Settings").release();
       IDProperty *radius_offset_prop =
-          bke::idprop::create(DATA_("Socket_1"), radius_offset).release();
+          bke::idprop::create(DATA_("Socket_2"), radius_offset).release();
       auto *ui_data = reinterpret_cast<IDPropertyUIDataFloat *>(
           IDP_ui_data_ensure(radius_offset_prop));
       ui_data->soft_min = 0.0f;
       ui_data->base.rna_subtype = PROP_TRANSLATION;
       IDP_AddToGroup(md->settings.properties, radius_offset_prop);
       IDP_AddToGroup(md->settings.properties,
-                     bke::idprop::create(DATA_("Socket_2"), gpl->info).release());
+                     bke::idprop::create(DATA_("Socket_3"), gpl->info).release());
     }
   }
 
@@ -717,6 +840,13 @@ static ModifierData &legacy_object_modifier_common(Object &object,
   /* Convert animation data if needed. */
   AnimData *anim_data = BKE_animdata_from_id(&object.id);
   if (anim_data) {
+    char legacy_name_esc[MAX_NAME * 2];
+    BLI_str_escape(legacy_name_esc, legacy_md.name, sizeof(legacy_name_esc));
+    const std::string legacy_root_path = fmt::format("grease_pencil_modifiers[\"{}\"]",
+                                                     legacy_name_esc);
+    char new_name_esc[MAX_NAME * 2];
+    BLI_str_escape(new_name_esc, new_md.name, sizeof(new_name_esc));
+
     auto modifier_path_update = [&](FCurve *fcurve) -> bool {
       /* NOTE: This logic will likely need to be re-used in other similar conditions for other
        * areas, should be put into its own util then. */
@@ -724,15 +854,9 @@ static ModifierData &legacy_object_modifier_common(Object &object,
         return false;
       }
       StringRefNull rna_path = fcurve->rna_path;
-      char legacy_name_esc[MAX_NAME * 2];
-      BLI_str_escape(legacy_name_esc, legacy_md.name, sizeof(legacy_name_esc));
-      const std::string legacy_root_path = fmt::format("grease_pencil_modifiers[\"{}\"]",
-                                                       legacy_name_esc);
       if (!rna_path.startswith(legacy_root_path)) {
         return false;
       }
-      char new_name_esc[MAX_NAME * 2];
-      BLI_str_escape(new_name_esc, new_md.name, sizeof(new_name_esc));
       const std::string new_rna_path = fmt::format(
           "modifiers[\"{}\"]{}", new_name_esc, rna_path.substr(int64_t(legacy_root_path.size())));
       MEM_freeN(fcurve->rna_path);
@@ -1324,6 +1448,82 @@ static void legacy_object_modifier_opacity(Object &object, GpencilModifierData &
                                    legacy_md_opacity.flag & GP_OPACITY_CUSTOM_CURVE);
 }
 
+static void legacy_object_modifier_outline(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilOutline, legacy_md);
+  auto &md_outline = reinterpret_cast<GreasePencilOutlineModifierData &>(md);
+  auto &legacy_md_outline = reinterpret_cast<OutlineGpencilModifierData &>(legacy_md);
+
+  md_outline.flag = 0;
+  if (legacy_md_outline.flag & GP_OUTLINE_KEEP_SHAPE) {
+    md_outline.flag |= MOD_GREASE_PENCIL_OUTLINE_KEEP_SHAPE;
+  }
+  md_outline.object = legacy_md_outline.object;
+  legacy_md_outline.object = nullptr;
+  md_outline.outline_material = legacy_md_outline.outline_material;
+  legacy_md_outline.outline_material = nullptr;
+  md_outline.sample_length = legacy_md_outline.sample_length;
+  md_outline.subdiv = legacy_md_outline.subdiv;
+  md_outline.thickness = legacy_md_outline.thickness;
+
+  legacy_object_modifier_influence(md_outline.influence,
+                                   legacy_md_outline.layername,
+                                   legacy_md_outline.layer_pass,
+                                   legacy_md_outline.flag & GP_OUTLINE_INVERT_LAYER,
+                                   legacy_md_outline.flag & GP_OUTLINE_INVERT_LAYERPASS,
+                                   &legacy_md_outline.material,
+                                   legacy_md_outline.pass_index,
+                                   legacy_md_outline.flag & GP_OUTLINE_INVERT_MATERIAL,
+                                   legacy_md_outline.flag & GP_OUTLINE_INVERT_PASS,
+                                   "",
+                                   false,
+                                   nullptr,
+                                   false);
+}
+
+static void legacy_object_modifier_shrinkwrap(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilShrinkwrap, legacy_md);
+  auto &md_shrinkwrap = reinterpret_cast<GreasePencilShrinkwrapModifierData &>(md);
+  auto &legacy_md_shrinkwrap = reinterpret_cast<ShrinkwrapGpencilModifierData &>(legacy_md);
+
+  /* Shrinkwrap enums and flags do not have named types. */
+  /* MOD_SHRINKWRAP_NEAREST_SURFACE etc. */
+  md_shrinkwrap.shrink_type = legacy_md_shrinkwrap.shrink_type;
+  /* MOD_SHRINKWRAP_PROJECT_ALLOW_POS_DIR etc. */
+  md_shrinkwrap.shrink_opts = legacy_md_shrinkwrap.shrink_opts;
+  /* MOD_SHRINKWRAP_ON_SURFACE etc. */
+  md_shrinkwrap.shrink_mode = legacy_md_shrinkwrap.shrink_mode;
+  /* MOD_SHRINKWRAP_PROJECT_OVER_NORMAL etc. */
+  md_shrinkwrap.proj_axis = legacy_md_shrinkwrap.proj_axis;
+
+  md_shrinkwrap.target = legacy_md_shrinkwrap.target;
+  legacy_md_shrinkwrap.target = nullptr;
+  md_shrinkwrap.aux_target = legacy_md_shrinkwrap.aux_target;
+  legacy_md_shrinkwrap.aux_target = nullptr;
+  md_shrinkwrap.keep_dist = legacy_md_shrinkwrap.keep_dist;
+  md_shrinkwrap.proj_limit = legacy_md_shrinkwrap.proj_limit;
+  md_shrinkwrap.subsurf_levels = legacy_md_shrinkwrap.subsurf_levels;
+  md_shrinkwrap.smooth_factor = legacy_md_shrinkwrap.smooth_factor;
+  md_shrinkwrap.smooth_step = legacy_md_shrinkwrap.smooth_step;
+
+  legacy_object_modifier_influence(md_shrinkwrap.influence,
+                                   legacy_md_shrinkwrap.layername,
+                                   legacy_md_shrinkwrap.layer_pass,
+                                   legacy_md_shrinkwrap.flag & GP_SHRINKWRAP_INVERT_LAYER,
+                                   legacy_md_shrinkwrap.flag & GP_SHRINKWRAP_INVERT_LAYERPASS,
+                                   &legacy_md_shrinkwrap.material,
+                                   legacy_md_shrinkwrap.pass_index,
+                                   legacy_md_shrinkwrap.flag & GP_SHRINKWRAP_INVERT_MATERIAL,
+                                   legacy_md_shrinkwrap.flag & GP_SHRINKWRAP_INVERT_PASS,
+                                   legacy_md_shrinkwrap.vgname,
+                                   legacy_md_shrinkwrap.flag & GP_SHRINKWRAP_INVERT_VGROUP,
+                                   nullptr,
+                                   false);
+}
+
 static void legacy_object_modifier_smooth(Object &object, GpencilModifierData &legacy_md)
 {
   ModifierData &md = legacy_object_modifier_common(
@@ -1647,6 +1847,97 @@ static void legacy_object_modifier_weight_lineart(Object &object, GpencilModifie
   greasepencil::convert::lineart_wrap_v3(&legacy_md_lineart, &md_lineart);
 }
 
+static void legacy_object_modifier_build(Object &object, GpencilModifierData &legacy_md)
+{
+  ModifierData &md = legacy_object_modifier_common(
+      object, eModifierType_GreasePencilBuild, legacy_md);
+  auto &md_build = reinterpret_cast<GreasePencilBuildModifierData &>(md);
+  auto &legacy_md_build = reinterpret_cast<BuildGpencilModifierData &>(legacy_md);
+
+  md_build.flag = 0;
+  if (legacy_md_build.flag & GP_BUILD_RESTRICT_TIME) {
+    md_build.flag |= MOD_GREASE_PENCIL_BUILD_RESTRICT_TIME;
+  }
+  if (legacy_md_build.flag & GP_BUILD_USE_FADING) {
+    md_build.flag |= MOD_GREASE_PENCIL_BUILD_USE_FADING;
+  }
+
+  switch (legacy_md_build.mode) {
+    case GP_BUILD_MODE_ADDITIVE:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_MODE_ADDITIVE;
+      break;
+    case GP_BUILD_MODE_CONCURRENT:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_MODE_CONCURRENT;
+      break;
+    case GP_BUILD_MODE_SEQUENTIAL:
+    default:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_MODE_SEQUENTIAL;
+      break;
+  }
+
+  switch (legacy_md_build.time_alignment) {
+    default:
+    case GP_BUILD_TIMEALIGN_START:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_TIMEALIGN_START;
+      break;
+    case GP_BUILD_TIMEALIGN_END:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_TIMEALIGN_END;
+      break;
+  }
+
+  switch (legacy_md_build.time_mode) {
+    default:
+    case GP_BUILD_TIMEMODE_FRAMES:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_TIMEMODE_FRAMES;
+      break;
+    case GP_BUILD_TIMEMODE_PERCENTAGE:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_TIMEMODE_PERCENTAGE;
+      break;
+    case GP_BUILD_TIMEMODE_DRAWSPEED:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_TIMEMODE_DRAWSPEED;
+      break;
+  }
+
+  switch (legacy_md_build.transition) {
+    default:
+    case GP_BUILD_TRANSITION_GROW:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_TRANSITION_GROW;
+      break;
+    case GP_BUILD_TRANSITION_SHRINK:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_TRANSITION_SHRINK;
+      break;
+    case GP_BUILD_TRANSITION_VANISH:
+      md_build.mode = MOD_GREASE_PENCIL_BUILD_TRANSITION_VANISH;
+      break;
+  }
+
+  md_build.start_frame = legacy_md_build.start_frame;
+  md_build.end_frame = legacy_md_build.end_frame;
+  md_build.start_delay = legacy_md_build.start_delay;
+  md_build.length = legacy_md_build.length;
+  md_build.fade_fac = legacy_md_build.fade_fac;
+  md_build.fade_opacity_strength = legacy_md_build.fade_opacity_strength;
+  md_build.fade_thickness_strength = legacy_md_build.fade_thickness_strength;
+  md_build.percentage_fac = legacy_md_build.percentage_fac;
+  md_build.speed_fac = legacy_md_build.speed_fac;
+  md_build.speed_maxgap = legacy_md_build.speed_maxgap;
+  STRNCPY(md_build.target_vgname, legacy_md_build.target_vgname);
+
+  legacy_object_modifier_influence(md_build.influence,
+                                   legacy_md_build.layername,
+                                   legacy_md_build.layer_pass,
+                                   legacy_md_build.flag & GP_WEIGHT_INVERT_LAYER,
+                                   legacy_md_build.flag & GP_WEIGHT_INVERT_LAYERPASS,
+                                   &legacy_md_build.material,
+                                   legacy_md_build.pass_index,
+                                   legacy_md_build.flag & GP_WEIGHT_INVERT_MATERIAL,
+                                   legacy_md_build.flag & GP_WEIGHT_INVERT_PASS,
+                                   legacy_md_build.target_vgname,
+                                   legacy_md_build.flag & GP_WEIGHT_INVERT_VGROUP,
+                                   nullptr,
+                                   false);
+}
+
 static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
 {
   BLI_assert(BLI_listbase_is_empty(&object.modifiers));
@@ -1697,6 +1988,12 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
       case eGpencilModifierType_Opacity:
         legacy_object_modifier_opacity(object, *gpd_md);
         break;
+      case eGpencilModifierType_Outline:
+        legacy_object_modifier_outline(object, *gpd_md);
+        break;
+      case eGpencilModifierType_Shrinkwrap:
+        legacy_object_modifier_shrinkwrap(object, *gpd_md);
+        break;
       case eGpencilModifierType_Smooth:
         legacy_object_modifier_smooth(object, *gpd_md);
         break;
@@ -1718,15 +2015,14 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
       case eGpencilModifierType_WeightProximity:
         legacy_object_modifier_weight_proximity(object, *gpd_md);
         break;
-
-      case eGpencilModifierType_Build:
-      case eGpencilModifierType_Simplify:
-      case eGpencilModifierType_Texture:
       case eGpencilModifierType_Lineart:
         legacy_object_modifier_weight_lineart(object, *gpd_md);
         break;
-      case eGpencilModifierType_Shrinkwrap:
-      case eGpencilModifierType_Outline:
+      case eGpencilModifierType_Build:
+        legacy_object_modifier_build(object, *gpd_md);
+        break;
+      case eGpencilModifierType_Simplify:
+      case eGpencilModifierType_Texture:
         break;
     }
 
@@ -1734,21 +2030,41 @@ static void legacy_object_modifiers(Main & /*bmain*/, Object &object)
   }
 }
 
-void legacy_gpencil_object(Main &bmain, Object &object)
+static void legacy_gpencil_object_ex(
+    Main &bmain,
+    Object &object,
+    std::optional<blender::Map<bGPdata *, GreasePencil *>> legacy_to_greasepencil_data)
 {
-  bGPdata *gpd = static_cast<bGPdata *>(object.data);
+  BLI_assert((GS(static_cast<ID *>(object.data)->name) == ID_GD_LEGACY));
 
-  GreasePencil *new_grease_pencil = static_cast<GreasePencil *>(
-      BKE_id_new(&bmain, ID_GP, gpd->id.name + 2));
+  bGPdata *gpd = static_cast<bGPdata *>(object.data);
+  GreasePencil *new_grease_pencil = nullptr;
+  bool do_gpencil_data_conversion = true;
+
+  if (legacy_to_greasepencil_data) {
+    new_grease_pencil = legacy_to_greasepencil_data->lookup_default(gpd, nullptr);
+    do_gpencil_data_conversion = (new_grease_pencil == nullptr);
+  }
+
+  if (!new_grease_pencil) {
+    new_grease_pencil = static_cast<GreasePencil *>(
+        BKE_id_new_in_lib(&bmain, gpd->id.lib, ID_GP, gpd->id.name + 2));
+    id_us_min(&new_grease_pencil->id);
+  }
+
   object.data = new_grease_pencil;
   object.type = OB_GREASE_PENCIL;
 
   /* NOTE: Could also use #BKE_id_free_us, to also free the legacy GP if not used anymore? */
   id_us_min(&gpd->id);
-  /* No need to increase user-count of `new_grease_pencil`,
-   * since ID creation already set it to 1. */
+  id_us_plus(&new_grease_pencil->id);
 
-  legacy_gpencil_to_grease_pencil(bmain, *new_grease_pencil, *gpd);
+  if (do_gpencil_data_conversion) {
+    legacy_gpencil_to_grease_pencil(bmain, *new_grease_pencil, *gpd);
+    if (legacy_to_greasepencil_data) {
+      legacy_to_greasepencil_data->add(gpd, new_grease_pencil);
+    }
+  }
 
   legacy_object_modifiers(bmain, object);
 
@@ -1758,6 +2074,45 @@ void legacy_gpencil_object(Main &bmain, Object &object)
   thickness_factor_to_modifier(*gpd, object);
 
   BKE_object_free_derived_caches(&object);
+}
+
+void legacy_gpencil_object(Main &bmain, Object &object)
+{
+  legacy_gpencil_object_ex(bmain, object, std::nullopt);
+}
+
+void legacy_main(Main &bmain, BlendFileReadReport & /*reports*/)
+{
+  /* Allows to convert a legacy GPencil data only once, in case it's used by several objects. */
+  blender::Map<bGPdata *, GreasePencil *> legacy_to_greasepencil_data;
+
+  LISTBASE_FOREACH (Object *, object, &bmain.objects) {
+    if (object->type != OB_GPENCIL_LEGACY) {
+      continue;
+    }
+    legacy_gpencil_object_ex(bmain, *object, std::make_optional(legacy_to_greasepencil_data));
+  }
+
+  /* Potential other usages of legacy bGPdata IDs also need to be remapped to their matching new
+   * GreasePencil counterparts. */
+  blender::bke::id::IDRemapper gpd_remapper;
+  /* Allow remapping from legacy bGPdata IDs to new GreasePencil ones. */
+  gpd_remapper.allow_idtype_mismatch = true;
+
+  LISTBASE_FOREACH (bGPdata *, legacy_gpd, &bmain.gpencils) {
+    GreasePencil *new_grease_pencil = legacy_to_greasepencil_data.lookup_default(legacy_gpd,
+                                                                                 nullptr);
+    if (!new_grease_pencil) {
+      new_grease_pencil = static_cast<GreasePencil *>(
+          BKE_id_new_in_lib(&bmain, legacy_gpd->id.lib, ID_GP, legacy_gpd->id.name + 2));
+      id_us_min(&new_grease_pencil->id);
+      legacy_gpencil_to_grease_pencil(bmain, *new_grease_pencil, *legacy_gpd);
+      legacy_to_greasepencil_data.add(legacy_gpd, new_grease_pencil);
+    }
+    gpd_remapper.add(&legacy_gpd->id, &new_grease_pencil->id);
+  }
+
+  BKE_libblock_remap_multiple(&bmain, gpd_remapper, ID_REMAP_ALLOW_IDTYPE_MISMATCH);
 }
 
 void lineart_wrap_v3(const LineartGpencilModifierData *lmd_legacy,
