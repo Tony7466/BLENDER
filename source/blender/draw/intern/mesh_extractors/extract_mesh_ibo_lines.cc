@@ -85,17 +85,12 @@ void extract_lines_mesh(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::Ind
 
     GPU_indexbuf_build_in_place_ex(
         &builder, 0, mr.corners_num + visible.size() * 2, false, lines_loose);
-    // if (lines) {
-    //   GPU_indexbuf_create_subrange_in_place(lines, lines_loose, 0, data.cast<uint>().size());
-    // }
     return;
   }
 
   if (!DRW_ibo_requested(lines_loose) && DRW_ibo_requested(lines)) {
     IndexMaskMemory memory;
     const IndexMask visible = calc_edge_visibility(mr, memory);
-    Array<int> map(mr.corners_num, -1);
-    index_mask::build_reverse_map(visible, map.as_mutable_span());
 
     GPUIndexBufBuilder builder;
     GPU_indexbuf_init(&builder, GPU_PRIM_LINES, visible.size(), mr.corners_num);
@@ -103,20 +98,52 @@ void extract_lines_mesh(const MeshRenderData &mr, gpu::IndexBuf *lines, gpu::Ind
 
     const OffsetIndices faces = mr.faces;
     const Span<int> corner_edges = mr.corner_edges;
-    threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
-      for (const int face_index : range) {
-        const IndexRange face = faces[face_index];
-        for (const int corner : face) {
-          const int edge = corner_edges[corner];
-          if (map[edge] == -1) {
-            continue;
-          }
-          const int corner_next = bke::mesh::face_corner_next(face, corner);
-          data[map[edge]] = uint2(corner, corner_next);
-          map[edge] = -1;
-        }
-      }
-    });
+    if (visible.size() == mr.edges_num) {
+      /* Use separate boolean array to avoid writing to the same indices again multiple times,
+       * possibly from different threads. This is slightly beneficial because booleans are 8 times
+       * smaller than the `uint2` for each edge. */
+      Array<bool> used(mr.edges_num, false);
+      threading::memory_bandwidth_bound_task(
+          used.as_span().size_in_bytes() + data.size_in_bytes() + corner_edges.size_in_bytes(),
+          [&]() {
+            threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+              for (const int face_index : range) {
+                const IndexRange face = faces[face_index];
+                for (const int corner : face) {
+                  const int edge = corner_edges[corner];
+                  if (used[edge]) {
+                    continue;
+                  }
+                  const int corner_next = bke::mesh::face_corner_next(face, corner);
+                  data[edge] = uint2(corner, corner_next);
+                  used[edge] = true;
+                }
+              }
+            });
+          });
+    }
+    else {
+      Array<int> map(mr.corners_num, -1);
+      threading::memory_bandwidth_bound_task(
+          map.as_span().size_in_bytes() + data.size_in_bytes() + corner_edges.size_in_bytes(),
+          [&]() {
+            index_mask::build_reverse_map(visible, map.as_mutable_span());
+            threading::parallel_for(faces.index_range(), 1024, [&](const IndexRange range) {
+              for (const int face_index : range) {
+                const IndexRange face = faces[face_index];
+                for (const int corner : face) {
+                  const int edge = corner_edges[corner];
+                  if (map[edge] == -1) {
+                    continue;
+                  }
+                  const int corner_next = bke::mesh::face_corner_next(face, corner);
+                  data[map[edge]] = uint2(corner, corner_next);
+                  map[edge] = -1;
+                }
+              }
+            });
+          });
+    }
 
     GPU_indexbuf_build_in_place_ex(&builder, 0, mr.corners_num + visible.size() * 2, false, lines);
     return;
