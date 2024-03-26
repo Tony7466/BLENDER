@@ -106,7 +106,8 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
   void on_stroke_extended(const bContext &C, const InputSample &extension_sample) override;
   void on_stroke_done(const bContext &C) override;
 
-  /* Extend the stroke in a drawing using projected 2D coordinates. */
+  /* Extend the stroke in a drawing using projected 2D coordinates.
+   * This is an optional function that has all common data set up in advance. */
   virtual bool on_stroke_extended_drawing(const bContext & /*C*/,
                                           bke::greasepencil::Drawing & /*drawing*/,
                                           int /*frame_number*/,
