@@ -131,7 +131,7 @@ IndexMask simplify_curve_attribute(const Span<float3> positions,
                                    const VArray<bool> &cyclic,
                                    const float epsilon,
                                    GSpan attribute_data,
-                                   IndexMaskMemory memory)
+                                   IndexMaskMemory &memory)
 {
   Array<bool> points_to_delete(positions.size(), false);
   bke::curves::fill_points(

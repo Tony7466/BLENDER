@@ -18,6 +18,6 @@ IndexMask simplify_curve_attribute(const Span<float3> positions,
                                    const VArray<bool> &cyclic,
                                    float epsilon,
                                    GSpan attribute_data,
-                                   IndexMaskMemory memory);
+                                   IndexMaskMemory &memory);
 
 }  // namespace blender::geometry
