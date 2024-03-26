@@ -2,6 +2,8 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
+#include "usd_reader_points.h"
+
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_modifier.hh"
@@ -16,10 +18,6 @@
 #include "DNA_windowmanager_types.h"
 
 #include "WM_api.hh"
-
-#include "usd_reader_points.h"
-// this is where the copy_zup_from_yup comes from
-#include "../../alembic/intern/abc_axis_conversion.h"
 
 #include <iostream>
 
