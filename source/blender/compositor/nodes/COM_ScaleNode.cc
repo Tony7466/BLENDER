@@ -19,15 +19,31 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
                                       const CompositorContext &context) const
 {
   const bNode *bnode = this->get_bnode();
+  const NodeScaleData *data = (const NodeScaleData *)bnode->storage;
 
   NodeInput *input_socket = this->get_input_socket(0);
   NodeInput *input_xsocket = this->get_input_socket(1);
   NodeInput *input_ysocket = this->get_input_socket(2);
   NodeOutput *output_socket = this->get_output_socket(0);
 
+  PixelSampler sampler = PixelSampler::Nearest;
+  switch (data->interpolation) {
+    case 0:
+      sampler = PixelSampler::Nearest;
+      break;
+    case 1:
+      sampler = PixelSampler::Bilinear;
+      break;
+    case 2:
+      sampler = PixelSampler::Bicubic;
+      break;
+  }
+
   switch (bnode->custom1) {
     case CMP_NODE_SCALE_RELATIVE: {
       ScaleRelativeOperation *operation = new ScaleRelativeOperation();
+      
+      operation->set_sampler(sampler);
       converter.add_operation(operation);
 
       converter.map_input_socket(input_socket, operation->get_input_socket(0));
@@ -44,6 +60,8 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
       converter.add_operation(scale_factor_operation);
 
       ScaleRelativeOperation *operation = new ScaleRelativeOperation();
+      
+      operation->set_sampler(sampler);
       converter.add_operation(operation);
 
       converter.map_input_socket(input_socket, operation->get_input_socket(0));
@@ -67,7 +85,8 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
       operation->set_is_crop(bnode->custom2 == CMP_NODE_SCALE_RENDER_SIZE_CROP);
       operation->set_offset(bnode->custom3, bnode->custom4);
       operation->set_new_width(rd->xsch * render_size_factor);
-      operation->set_new_height(rd->ysch * render_size_factor);
+      operation->set_new_height(rd->ysch * render_size_factor);      
+      operation->set_sampler(sampler);
       converter.add_operation(operation);
 
       converter.map_input_socket(input_socket, operation->get_input_socket(0));
@@ -80,6 +99,8 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
     case CMP_NODE_SCALE_ABSOLUTE: {
       /* TODO: what is the use of this one.... perhaps some issues when the ui was updated... */
       ScaleAbsoluteOperation *operation = new ScaleAbsoluteOperation();
+      
+      operation->set_sampler(sampler);
       converter.add_operation(operation);
 
       converter.map_input_socket(input_socket, operation->get_input_socket(0));

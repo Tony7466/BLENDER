@@ -27,6 +27,8 @@
 /* **************** Scale  ******************** */
 
 namespace blender::nodes::node_composite_scale_cc {
+  
+NODE_STORAGE_FUNCS(NodeScaleData)
 
 static void cmp_node_scale_declare(NodeDeclarationBuilder &b)
 {
@@ -46,6 +48,12 @@ static void cmp_node_scale_declare(NodeDeclarationBuilder &b)
   b.add_output<decl::Color>("Image");
 }
 
+static void node_composit_init_scale(bNodeTree * /*ntree*/, bNode *node)
+{
+  NodeScaleData *data = MEM_cnew<NodeScaleData>(__func__);
+  node->storage = data;
+}
+
 static void node_composite_update_scale(bNodeTree *ntree, bNode *node)
 {
   bool use_xy_scale = ELEM(node->custom1, CMP_NODE_SCALE_RELATIVE, CMP_NODE_SCALE_ABSOLUTE);
@@ -60,6 +68,7 @@ static void node_composite_update_scale(bNodeTree *ntree, bNode *node)
 
 static void node_composit_buts_scale(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
 {
+  uiItemR(layout, ptr, "interpolation", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
   uiItemR(layout, ptr, "space", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
 
   if (RNA_enum_get(ptr, "space") == CMP_NODE_SCALE_RENDER_SIZE) {
@@ -93,7 +102,10 @@ class ScaleOperation : public NodeOperation {
     const float3x3 transformation = math::from_loc_rot_scale<float3x3>(
         translation, rotation, scale);
 
-    transform(context(), input, output, transformation, input.get_realization_options());
+    RealizationOptions realization_options = input.get_realization_options();
+    realization_options.interpolation = get_interpolation();
+
+    transform(context(), input, output, transformation, realization_options);
   }
 
   float2 get_scale()
@@ -111,6 +123,21 @@ class ScaleOperation : public NodeOperation {
         BLI_assert_unreachable();
         return float2(1.0f);
     }
+  }
+
+  Interpolation get_interpolation()
+  {
+    switch (node_storage(bnode()).interpolation) {
+      case 0:
+        return Interpolation::Nearest;
+      case 1:
+        return Interpolation::Bilinear;
+      case 2:
+        return Interpolation::Bicubic;
+    }
+
+    BLI_assert_unreachable();
+    return Interpolation::Nearest;
   }
 
   /* Scale by the input factors. */
@@ -201,17 +228,17 @@ class ScaleOperation : public NodeOperation {
 
   CMPNodeScaleMethod get_scale_method()
   {
-    return (CMPNodeScaleMethod)bnode().custom1;
+    return (CMPNodeScaleMethod)node_storage(bnode()).space;
   }
 
   CMPNodeScaleRenderSizeMethod get_scale_render_size_method()
   {
-    return (CMPNodeScaleRenderSizeMethod)bnode().custom2;
+    return (CMPNodeScaleRenderSizeMethod)node_storage(bnode()).frame_method;
   }
 
   float2 get_offset()
   {
-    return float2(bnode().custom3, bnode().custom4);
+    return float2(node_storage(bnode()).offset_x, node_storage(bnode()).offset_y);
   }
 };
 
@@ -233,6 +260,7 @@ void register_node_type_cmp_scale()
   ntype.draw_buttons = file_ns::node_composit_buts_scale;
   ntype.updatefunc = file_ns::node_composite_update_scale;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
+  ntype.initfunc = file_ns::node_composit_init_scale;
 
   nodeRegisterType(&ntype);
 }

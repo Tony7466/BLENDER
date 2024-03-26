@@ -25,7 +25,7 @@ class BaseScaleOperation : public MultiThreadedOperation {
 
   PixelSampler get_effective_sampler(PixelSampler sampler)
   {
-    return (sampler_ == -1) ? sampler : (PixelSampler)sampler_;
+    return (PixelSampler)sampler_;
   }
 
   int sampler_;

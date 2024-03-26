@@ -6612,27 +6612,42 @@ static void def_cmp_scale(StructRNA *srna)
       {0, nullptr, 0, nullptr, nullptr},
   };
 
+  static const EnumPropertyItem interpolation_items[] = {
+      {CMP_NODE_STABILIZE_INTERPOLATION_NEAREST, "NEAREST", 0, "Nearest", "Use nearest interpolation"},
+      {CMP_NODE_STABILIZE_INTERPOLATION_BILINEAR, "BILINEAR", 0, "Bilinear", "Use bilinear interpolation"},
+      {CMP_NODE_STABILIZE_INTERPOLATION_BICUBIC, "BICUBIC", 0, "Bicubic", "Use bicubic interpolation"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+  
+  RNA_def_struct_sdna_from(srna, "NodeScaleData", "storage");
+
   prop = RNA_def_property(srna, "space", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_sdna(prop, nullptr, "space");
   RNA_def_property_enum_items(prop, space_items);
   RNA_def_property_ui_text(prop, "Space", "Coordinate space to scale relative to");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_CompositorNodeScale_update");
 
   /* expose 2 flags as a enum of 3 items */
   prop = RNA_def_property(srna, "frame_method", PROP_ENUM, PROP_NONE);
-  RNA_def_property_enum_bitflag_sdna(prop, nullptr, "custom2");
+  RNA_def_property_enum_bitflag_sdna(prop, nullptr, "frame_method");
   RNA_def_property_enum_items(prop, space_frame_items);
   RNA_def_property_ui_text(prop, "Frame Method", "How the image fits in the camera frame");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "offset_x", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "custom3");
+  RNA_def_property_float_sdna(prop, nullptr, "offset_x");
   RNA_def_property_ui_text(prop, "X Offset", "Offset image horizontally (factor of image size)");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 
   prop = RNA_def_property(srna, "offset_y", PROP_FLOAT, PROP_NONE);
-  RNA_def_property_float_sdna(prop, nullptr, "custom4");
+  RNA_def_property_float_sdna(prop, nullptr, "offset_y");
   RNA_def_property_ui_text(prop, "Y Offset", "Offset image vertically (factor of image size)");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+
+  prop = RNA_def_property(srna, "interpolation", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "interpolation");
+  RNA_def_property_enum_items(prop, interpolation_items);
+  RNA_def_property_ui_text(prop, "Interpolation", "Which interpolation method to use");
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 

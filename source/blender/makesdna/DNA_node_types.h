@@ -1418,6 +1418,13 @@ typedef struct NodeTranslateData {
   char relative;
 } NodeTranslateData;
 
+typedef struct NodeScaleData {
+  int16_t space, frame_method;
+  float offset_x, offset_y;
+  short interpolation;
+  char _pad[2];
+} NodeScaleData;
+
 typedef struct NodePlaneTrackDeformData {
   char tracking_object[64];
   char plane_track_name[64];
