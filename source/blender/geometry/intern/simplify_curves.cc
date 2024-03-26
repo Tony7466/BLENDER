@@ -91,31 +91,28 @@ static void ramer_douglas_peucker(const IndexRange range,
 }
 
 template<typename T>
-static void curve_simplifiy(const IndexRange points,
-                            const Span<float3> positions,
+static void curve_simplifiy(const Span<float3> positions,
                             const bool cyclic,
                             const float epsilon,
                             const Span<T> attribute_data,
                             MutableSpan<bool> points_to_delete)
 {
-  const Span<bool> curve_selection = points_to_delete.slice(points);
-  const bool is_last_segment_selected = (curve_selection.first() && curve_selection.last());
-
-  const Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(curve_selection, true);
+  const Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(
+      points_to_delete.as_span(), true);
   threading::parallel_for(
       selection_ranges.index_range(), 512, [&](const IndexRange range_of_ranges) {
         for (const IndexRange range : selection_ranges.as_span().slice(range_of_ranges)) {
-          ramer_douglas_peucker(
-              range.shift(points.start()), positions, epsilon, attribute_data, points_to_delete);
+          ramer_douglas_peucker(range, positions, epsilon, attribute_data, points_to_delete);
         }
       });
 
   /* For cyclic curves, handle the last segment separately. */
-  if (cyclic && points.size() > 2 && is_last_segment_selected) {
+  const int points_num = positions.size();
+  if (cyclic && points_num > 2) {
     const float dist = perpendicular_distance(
-        positions, attribute_data, points.last(1), points.first(), points.last());
+        positions, attribute_data, points_num - 2, 0, points_num - 1);
     if (dist <= epsilon) {
-      points_to_delete[points.last()] = true;
+      points_to_delete[points_num - 1] = true;
     }
   }
 }
@@ -141,12 +138,11 @@ IndexMask simplify_curve_attribute(const Span<float3> positions,
       if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
                     std::is_same_v<T, float3>)
       {
-        curve_simplifiy(points,
-                        positions,
+        curve_simplifiy(positions.slice(points),
                         cyclic[curve_i],
                         epsilon,
-                        attribute_data.typed<T>(),
-                        points_to_delete.as_mutable_span());
+                        attribute_data.typed<T>().slice(points),
+                        points_to_delete.as_mutable_span().slice(points));
       }
     });
   });
