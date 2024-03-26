@@ -1127,6 +1127,7 @@ void ShadowModule::end_sync()
         /* Mark tiles that are redundant in the mipmap chain as unused. */
         PassSimple::Sub &sub = pass.sub("MaskLod");
         sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_MASK));
+        sub.push_constant("max_lod_render_per_tilemap", &max_lod_render_per_tilemap);
         sub.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_data);
         sub.bind_ssbo("tiles_buf", tilemap_pool.tiles_data);
         sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_data.size()));
@@ -1314,6 +1315,23 @@ bool ShadowModule::shadow_update_finished()
   return stats.page_rendered_count == stats.page_update_count;
 }
 
+int ShadowModule::max_view_per_tilemap()
+{
+  /* For now very simple heuristic. Can be improved later. */
+  int cubeface_count = 0;
+  int clipmap_lvl_count = 0;
+  for (auto i : IndexRange(tilemap_pool.tilemaps_data.size())) {
+    if (tilemap_pool.tilemaps_data[i].projection_type == SHADOW_PROJECTION_CUBEFACE) {
+      cubeface_count++;
+    }
+    else {
+      clipmap_lvl_count++;
+    }
+  }
+  divide_ceil_u(SHADOW_VIEW_MAX, tilemap_pool.tilemaps_data.size());
+  return;
+}
+
 void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
 {
   if (enabled_ == false) {
@@ -1366,6 +1384,8 @@ void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
     DRW_stats_group_start("Shadow");
     {
       GPU_uniformbuf_clear_to_zero(shadow_multi_view_.matrices_ubo_get());
+
+      max_lod_render_per_tilemap = max_view_per_tilemap();
 
       inst_.manager->submit(tilemap_setup_ps_, view);
       if (assign_if_different(update_casters_, false)) {

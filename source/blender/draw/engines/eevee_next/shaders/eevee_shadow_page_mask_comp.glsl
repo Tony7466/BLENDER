@@ -122,12 +122,11 @@ void main()
     barrier();
 
     /* If there is more LODs to update than the load balancing heuristic allows. */
-    const int max_lod_rendered_per_tilemap = 1;
-    if (bitCount(levels_rendered) > max_lod_rendered_per_tilemap) {
+    if (bitCount(levels_rendered) > max_lod_render_per_tilemap) {
       /* Find the cutoff LOD that contain tiles to render. */
       int max_lod = findMSB(levels_rendered);
       /* Allow more than one level. */
-      for (int i = 1; i < max_lod_rendered_per_tilemap; i++) {
+      for (int i = 1; i < max_lod_render_per_tilemap; i++) {
         max_lod = findMSB(levels_rendered & ~(~0u << max_lod));
       }
       /* Collapse all bits to highest level. */
