@@ -13,7 +13,8 @@
 
 namespace blender::geometry {
 
-/* Computes a "perpendicular distance" value for the generic attribute data based on the
+/**
+ * Computes a "perpendicular distance" value for the generic attribute data based on the
  * positions of the curve.
  *
  * First, we compute a lambda value that represents a factor from the first point to the last
