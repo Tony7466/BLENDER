@@ -980,7 +980,7 @@ class VIEW3D_HT_header(Header):
                 # ??? )
 
             # Select mode for Sculpt
-            if object_mode == 'SCULPT':
+            if object_mode == 'SCULPT_GPENCIL':
                 row = layout.row(align=True)
                 row.prop(tool_settings, "use_gpencil_select_mask_point", text="")
                 row.prop(tool_settings, "use_gpencil_select_mask_stroke", text="")
