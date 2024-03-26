@@ -8,6 +8,8 @@
 #include "usd_reader_geom.hh"
 #include "usd_reader_xform.hh"
 #include <pxr/usd/usdGeom/points.h>
+#include <pxr/usd/usdGeom/primvarsAPI.h>
+#include <pxr/usd/usd/attribute.h>
 
 struct Mesh;
 
