@@ -6636,6 +6636,36 @@ static void def_cmp_scale(StructRNA *srna)
   RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
 }
 
+static void def_cmp_displace(StructRNA *srna)
+{
+  PropertyRNA *prop;
+
+  static const EnumPropertyItem interpolation_items[] = {
+      {CMP_NODE_STABILIZE_INTERPOLATION_NEAREST,
+       "NEAREST",
+       0,
+       "Nearest",
+       "Use nearest interpolation"},
+      {CMP_NODE_STABILIZE_INTERPOLATION_BILINEAR,
+       "BILINEAR",
+       0,
+       "Bilinear",
+       "Use bilinear interpolation"},
+      {CMP_NODE_STABILIZE_INTERPOLATION_BICUBIC,
+       "BICUBIC",
+       0,
+       "Bicubic",
+       "Use bicubic interpolation"},
+      {0, nullptr, 0, nullptr, nullptr},
+  };
+
+  prop = RNA_def_property(srna, "interpolation", PROP_ENUM, PROP_NONE);
+  RNA_def_property_enum_sdna(prop, nullptr, "custom1");
+  RNA_def_property_enum_items(prop, interpolation_items);
+  RNA_def_property_ui_text(prop, "Interpolation", "Which interpolation method to use");
+  RNA_def_property_update(prop, NC_NODE | NA_EDITED, "rna_Node_update");
+}
+
 static void def_cmp_rotate(StructRNA *srna)
 {
   PropertyRNA *prop;

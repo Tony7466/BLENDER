@@ -11,6 +11,9 @@
 #include "GPU_shader.hh"
 #include "GPU_texture.hh"
 
+#include "UI_interface.hh"
+#include "UI_resources.hh"
+
 #include "COM_node_operation.hh"
 #include "COM_utilities.hh"
 
@@ -42,6 +45,11 @@ static void cmp_node_displace_declare(NodeDeclarationBuilder &b)
       .max(1000.0f)
       .compositor_domain_priority(3);
   b.add_output<decl::Color>("Image");
+}
+
+static void node_composit_buts_displace(uiLayout *layout, bContext * /*C*/, PointerRNA *ptr)
+{
+  uiItemR(layout, ptr, "interpolation", UI_ITEM_R_SPLIT_EMPTY_NAME, "", ICON_NONE);
 }
 
 using namespace blender::realtime_compositor;
@@ -129,6 +137,7 @@ void register_node_type_cmp_displace()
 
   cmp_node_type_base(&ntype, CMP_NODE_DISPLACE, "Displace", NODE_CLASS_DISTORT);
   ntype.declare = file_ns::cmp_node_displace_declare;
+  ntype.draw_buttons = file_ns::node_composit_buts_displace;
   ntype.get_compositor_operation = file_ns::get_compositor_operation;
 
   nodeRegisterType(&ntype);

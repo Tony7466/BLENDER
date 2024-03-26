@@ -35,6 +35,14 @@ class DisplaceOperation : public MultiThreadedOperation {
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;
 
+  void set_sampler(PixelSampler sampler)
+  {
+    sampler_ = (int)sampler;
+  }
+
+ protected:
+  int sampler_;
+
  private:
   bool read_displacement(
       float x, float y, float xscale, float yscale, const float origin[2], float &r_u, float &r_v);

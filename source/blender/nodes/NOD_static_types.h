@@ -172,7 +172,7 @@ DefNode(CompositorNode, CMP_NODE_MAP_UV,         def_cmp_map_uv,         "MAP_UV
 DefNode(CompositorNode, CMP_NODE_ID_MASK,        def_cmp_id_mask,        "ID_MASK",        IDMask,           "ID Mask",           ""              )
 DefNode(CompositorNode, CMP_NODE_DOUBLEEDGEMASK, def_cmp_double_edge_mask,"DOUBLEEDGEMASK", DoubleEdgeMask,  "Double Edge Mask",  ""              )
 DefNode(CompositorNode, CMP_NODE_DEFOCUS,        def_cmp_defocus,        "DEFOCUS",        Defocus,          "Defocus",           ""              )
-DefNode(CompositorNode, CMP_NODE_DISPLACE,       0,                      "DISPLACE",       Displace,         "Displace",          ""              )
+DefNode(CompositorNode, CMP_NODE_DISPLACE,       def_cmp_displace,       "DISPLACE",       Displace,         "Displace",          ""              )
 DefNode(CompositorNode, CMP_NODE_COMBHSVA_LEGACY,0,                      "COMBHSVA",       CombHSVA,         "Combine HSVA",      ""              )
 DefNode(CompositorNode, CMP_NODE_MATH,           def_math,               "MATH",           Math,             "Math",              ""              )
 DefNode(CompositorNode, CMP_NODE_LUMA_MATTE,     def_cmp_luma_matte,     "LUMA_MATTE",     LumaMatte,        "Luminance Key",     ""              )

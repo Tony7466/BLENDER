@@ -141,19 +141,14 @@ void DisplaceOperation::update_memory_buffer_partial(MemoryBuffer *output,
                                                      Span<MemoryBuffer *> inputs)
 {
   const MemoryBuffer *input_color = inputs[0];
+  PixelSampler sampler = (PixelSampler)sampler_;
   for (BuffersIterator<float> it = output->iterate_with({}, area); !it.is_end(); ++it) {
     const float xy[2] = {float(it.x), float(it.y)};
     float uv[2];
     float deriv[2][2];
 
     pixel_transform(xy, uv, deriv);
-    if (is_zero_v2(deriv[0]) && is_zero_v2(deriv[1])) {
-      input_color->read_elem_bilinear(uv[0], uv[1], it.out);
-    }
-    else {
-      /* EWA filtering (without nearest it gets blurry with NO distortion). */
-      input_color->read_elem_filtered(uv[0], uv[1], deriv[0], deriv[1], false, it.out);
-    }
+    input_color->read_elem_sampled(uv[0], uv[1], sampler, it.out);
   }
 }
 

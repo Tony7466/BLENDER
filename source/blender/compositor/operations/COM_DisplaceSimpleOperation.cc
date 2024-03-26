@@ -46,6 +46,7 @@ void DisplaceSimpleOperation::update_memory_buffer_partial(MemoryBuffer *output,
   const float width = this->get_width();
   const float height = this->get_height();
   const MemoryBuffer *input_color = inputs[0];
+  PixelSampler sampler = (PixelSampler)sampler_;
   for (BuffersIterator<float> it = output->iterate_with(inputs.drop_front(1), area); !it.is_end();
        ++it)
   {
@@ -69,7 +70,7 @@ void DisplaceSimpleOperation::update_memory_buffer_partial(MemoryBuffer *output,
     CLAMP(u, 0.0f, width - 1.0f);
     CLAMP(v, 0.0f, height - 1.0f);
 
-    input_color->read_elem_checked(u, v, it.out);
+    input_color->read_elem_sampled(u, v, sampler, it.out);
   }
 }
 

@@ -22,6 +22,14 @@ class DisplaceSimpleOperation : public MultiThreadedOperation {
   void update_memory_buffer_partial(MemoryBuffer *output,
                                     const rcti &area,
                                     Span<MemoryBuffer *> inputs) override;
+
+  void set_sampler(PixelSampler sampler)
+  {
+    sampler_ = (int)sampler;
+  }
+
+ protected:
+  int sampler_;
 };
 
 }  // namespace blender::compositor
