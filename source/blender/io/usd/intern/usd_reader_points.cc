@@ -16,6 +16,8 @@
 #include "WM_api.hh"
 
 #include "usd_reader_points.h"
+// this is where the copy_zup_from_yup comes from
+#include "../../alembic/intern/abc_axis_conversion.h"
 
 namespace blender::io::usd {
 
@@ -91,12 +93,61 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
   pxr::VtVec3fArray positions;
   points_prim_.GetPointsAttr().Get(&positions, params.motion_sample_time);
 
+  // see if we can get a sense of what attributes are on the USD
+  auto attrs = points_prim_.GetSchemaAttributeNames();
+  // convert to strings for print out
+  auto strings = TfToStringVector(attrs);
+
+  for (const std::string& str : strings) {
+        std::cout << "attr: " << str << std::endl;
+  }
+
+  // instead use the getprimvars
+  pxr::UsdGeomPrimvarsAPI primvarsLoaded(points_prim_);
+  std::vector<pxr::UsdGeomPrimvar> customAttrs=primvarsLoaded.GetPrimvars();
+
+    std::cout << "Custom Attributes:" << std::endl;
+    for (auto attr : customAttrs) {
+        std::cout << attr.GetName() << " (" << attr.GetTypeName() << ")" << std::endl;
+    }
+
   if (point_cloud->totpoint != positions.size()) {
     /* Size changed so we must reallocate. */
     point_cloud = BKE_pointcloud_new_nomain(positions.size());
   }
 
   /* TODO: Update point poistions and attributes here. */
+  
+  bke::SpanAttributeWriter<float3> positions_writer =
+      point_cloud->attributes_for_write().lookup_or_add_for_write_span<float3>("position",
+                                                                               ATTR_DOMAIN_POINT);
+  MutableSpan<float3> point_positions = positions_writer.span;
+
+  // do things like iterate over the points and add their data via the point positions writerh
+  // uses the copy_zup_from_yup?
+  for (size_t i = 0 ; i < positions.size(); i++) {
+    //blender::io::alembic::copy_zup_from_yup(point_positions[i],positions[i]);
+    point_positions[i][0]=positions[i][0];
+    point_positions[i][1]=positions[i][1];
+    point_positions[i][2]=positions[i][2];
+  }
+
+  // not sure what other types I can use for the span attribute
+  positions_writer.finish();
+  bke::SpanAttributeWriter<float3> color_writer =
+      point_cloud->attributes_for_write().lookup_or_add_for_write_span<float3>("color",
+                                                                               ATTR_DOMAIN_POINT);
+  MutableSpan<float3> point_colors = color_writer.span;
+  for (size_t i = 0 ; i < positions.size(); i++) {
+    //blender::io::alembic::copy_zup_from_yup(point_positions[i],positions[i]);
+    point_colors[i][0]=.1;
+    point_colors[i][1]=.8;
+    point_colors[i][2]=.5;
+  }
+  color_writer.finish();
+  
+
+  
 
   /* See AbcPointsReader::read_geometry() for an example of updating point
    * cloud geometry. */
