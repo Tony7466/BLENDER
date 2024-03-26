@@ -61,7 +61,7 @@ void main()
       }
     }
 
-#if 1 /* Can be isolated for debugging. */
+#if 1 /* Can be disabled for debugging. */
     /* For each level collect the number of used (or masked) tile that are covering the tile from
      * the level underneath. If this adds up to 4 the underneath tile is flag unused as its data
      * is not needed for rendering.
@@ -98,20 +98,20 @@ void main()
     }
 #endif
 
-#if 1 /* Can be isolated for debugging. */
+#if 1 /* Can be disabled for debugging. */
     /* Count the number of LOD level to render for this tilemap and to clamp it to a maximum number
      * of view per tilemap.
      * This avoid flooding the 64 view limit per redraw with ~3-4 LOD levels per tilemaps leaving
      * some lights unshadowed.
      * The clamped LOD levels' tiles need to be merged to the highest LOD allowed. */
 
-    /* Construct bitfield of the LODs that contain tiles to render (i.e: that will request a view).
-     */
+    /* Construct bitmask of LODs that contain tiles to render (i.e: that will request a view). */
     if (gl_LocalInvocationIndex == 0u) {
       levels_rendered = 0u;
     }
     barrier();
     for (int lod = 0; lod <= SHADOW_TILEMAP_LOD; lod++) {
+      /* TODO(fclem): Could maybe speedup using WaveAllBitOr. */
       if (thread_mask(tile_co, lod)) {
         int tile_offset = shadow_tile_offset_lds(tile_co, lod);
         if ((tiles_local[tile_offset] & SHADOW_DO_UPDATE) != 0) {
@@ -137,7 +137,6 @@ void main()
           if ((tiles_local[tile_offset] & SHADOW_DO_UPDATE) != 0) {
             /* This tile is now masked and not considered for rendering. */
             tiles_local[tile_offset] |= SHADOW_TILE_MASKED | SHADOW_TILE_AMENDED;
-            tiles_local[tile_offset] &= ~SHADOW_DO_UPDATE;
             /* Note that we can have multiple thread writting to this tile. */
             int tile_bottom_offset = shadow_tile_offset_lds(tile_co >> (max_lod - lod), max_lod);
             /* Tag the associated tile in max_lod to be used as it contains the shadowmap area
