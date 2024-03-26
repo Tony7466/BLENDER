@@ -1294,7 +1294,7 @@ float ShadowModule::tilemap_pixel_radius()
 
 bool ShadowModule::shadow_update_finished()
 {
-  if (inst_.is_viewport()) {
+  if (!inst_.is_image_render()) {
     /* For viewport, only run the shadow update once per redraw.
      * This avoids the stall from the read-back and freezes from long shadow update. */
     return true;
@@ -1317,19 +1317,24 @@ bool ShadowModule::shadow_update_finished()
 
 int ShadowModule::max_view_per_tilemap()
 {
-  /* For now very simple heuristic. Can be improved later. */
-  int cubeface_count = 0;
+  if (inst_.is_image_render()) {
+    /* No need to limit updates per lights as we ensure all lights levels will be rendered.
+     * is_image_render. */
+    return SHADOW_TILEMAP_LOD;
+  }
+  /* For now very simple heuristic. Can be improved later by taking into consideration how many
+   * tilemaps are updating, but we cannot know the ones updated by casters. */
+  int potential_view_count = 0;
   int clipmap_lvl_count = 0;
   for (auto i : IndexRange(tilemap_pool.tilemaps_data.size())) {
     if (tilemap_pool.tilemaps_data[i].projection_type == SHADOW_PROJECTION_CUBEFACE) {
-      cubeface_count++;
+      potential_view_count += 6;
     }
     else {
-      clipmap_lvl_count++;
+      potential_view_count += 1;
     }
   }
-  divide_ceil_u(SHADOW_VIEW_MAX, tilemap_pool.tilemaps_data.size());
-  return;
+  return divide_ceil_u(SHADOW_VIEW_MAX, potential_view_count);
 }
 
 void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
