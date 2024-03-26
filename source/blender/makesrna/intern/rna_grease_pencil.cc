@@ -474,7 +474,7 @@ static void rna_def_grease_pencil_layer(BlenderRNA *brna)
   RNA_def_property_update(prop, NC_GPENCIL | ND_DATA, "rna_grease_pencil_update");
 
   prop = RNA_def_property(srna, "lock_material", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_sdna(
+  RNA_def_property_boolean_negative_sdna(
       prop, "GreasePencilLayerTreeNode", "flag", GP_LAYER_TREE_NODE_LOCK_MATERIAL);
   RNA_def_property_clear_flag(prop, PROP_ANIMATABLE);
   RNA_def_property_ui_text(

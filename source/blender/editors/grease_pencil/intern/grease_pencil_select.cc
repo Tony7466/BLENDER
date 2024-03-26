@@ -306,7 +306,7 @@ static int select_ends_exec(bContext *C, wmOperator *op)
         curves, selectable_strokes, amount_start, amount_end, true, memory);
 
     const IndexMask selectable_points = ed::greasepencil::retrieve_editable_points(
-        *object, info.drawing, memory);
+        *object, info.drawing, info.layer_index, memory);
     const bool was_anything_selected = ed::curves::has_anything_selected(curves,
                                                                          selectable_points);
     bke::GSpanAttributeWriter selection = ed::curves::ensure_selection_attribute(

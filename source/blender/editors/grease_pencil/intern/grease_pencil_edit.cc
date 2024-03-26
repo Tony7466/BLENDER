@@ -600,7 +600,7 @@ static int grease_pencil_dissolve_exec(bContext *C, wmOperator *op)
 
     IndexMaskMemory memory;
     const IndexMask points = ed::greasepencil::retrieve_editable_and_selected_points(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (points.is_empty()) {
       return;
     }
