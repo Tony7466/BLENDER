@@ -7,11 +7,14 @@
 
 #include "BLT_translation.hh"
 
+#include "BKE_context.hh"
 #include "BKE_file_handler.hh"
 
 #include "CLG_log.h"
 
 #include "DNA_space_types.h"
+
+#include "ED_screen.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -21,6 +24,7 @@
 #include "WM_types.hh"
 
 #include "UI_interface.hh"
+#include "UI_view2d.hh"
 
 #include "io_drop_import_file.hh"
 #include "io_utils.hh"
@@ -44,11 +48,25 @@ static blender::Vector<blender::bke::FileHandlerType *> drop_import_file_poll_fi
 }
 
 /**
+ * Drag and Drop miscellaneous event data.
+ */
+struct DragAndDropMiscData {
+  /** Drop mouse coordinates, required because operators may not run immediately on drop. */
+  int mval[2]{};
+  /** When files are dropped in #SPACE_SEQ, `channel` under the mouse is set. */
+  std::optional<int> channel;
+  /** When files are dropped in #SPACE_SEQ, closest `frame` to the mouse is set */
+  std::optional<int> frame;
+};
+
+/**
  * Creates a RNA pointer for the `FileHandlerType.import_operator` and sets on it all supported
  * file paths from `paths`.
  */
 static PointerRNA file_handler_import_operator_create_ptr(
-    const blender::bke::FileHandlerType *file_handler, const blender::Span<std::string> paths)
+    const blender::bke::FileHandlerType *file_handler,
+    const blender::Span<std::string> paths,
+    DragAndDropMiscData &misc_data)
 {
   wmOperatorType *ot = WM_operatortype_find(file_handler->import_operator, false);
   BLI_assert(ot != nullptr);
@@ -95,35 +113,88 @@ static PointerRNA file_handler_import_operator_create_ptr(
         "FileHandler documentation for details.";
     CLOG_WARN(&LOG, "%s", message);
   }
+  /* Set drag and drop miscellaneous event data. */
+  PropertyRNA *channel_prop = RNA_struct_find_property_check(props, "channel", PROP_INT);
+  if (channel_prop && misc_data.channel.has_value()) {
+    RNA_property_int_set(&props, channel_prop, misc_data.channel.value());
+  }
+
+  PropertyRNA *frame_prop = RNA_struct_find_property_check(props, "frame", PROP_INT);
+  if (frame_prop && misc_data.frame.has_value()) {
+    RNA_property_int_set(&props, frame_prop, misc_data.frame.value());
+  }
+
+  PropertyRNA *mouse_coords_prop = RNA_struct_find_property_check(props, "mouse_coords", PROP_INT);
+  if (mouse_coords_prop && RNA_property_array_check(mouse_coords_prop) &&
+      RNA_property_array_length(&props, mouse_coords_prop) == 2)
+  {
+    RNA_property_int_set_array(&props, mouse_coords_prop, misc_data.mval);
+  }
+
   return props;
+}
+
+static void drag_and_drop_misc_data_free(wmOperator *op)
+{
+  DragAndDropMiscData *misc_data = static_cast<DragAndDropMiscData *>(op->customdata);
+  op->customdata = nullptr;
+  MEM_delete(misc_data);
 }
 
 static int wm_drop_import_file_exec(bContext *C, wmOperator *op)
 {
   const auto paths = blender::ed::io::paths_from_operator_properties(op->ptr);
   if (paths.is_empty()) {
+    drag_and_drop_misc_data_free(op);
     return OPERATOR_CANCELLED;
   }
 
   auto file_handlers = drop_import_file_poll_file_handlers(C, paths, false);
   if (file_handlers.is_empty()) {
+    drag_and_drop_misc_data_free(op);
     return OPERATOR_CANCELLED;
   }
-
+  DragAndDropMiscData &misc_data = *static_cast<DragAndDropMiscData *>(op->customdata);
   wmOperatorType *ot = WM_operatortype_find(file_handlers[0]->import_operator, false);
-  PointerRNA file_props = file_handler_import_operator_create_ptr(file_handlers[0], paths);
+  PointerRNA file_props = file_handler_import_operator_create_ptr(
+      file_handlers[0], paths, misc_data);
 
   WM_operator_name_call_ptr(C, ot, WM_OP_INVOKE_DEFAULT, &file_props, nullptr);
   WM_operator_properties_free(&file_props);
+  drag_and_drop_misc_data_free(op);
   return OPERATOR_FINISHED;
 }
 
-static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent * /*event*/)
+static void drag_and_drop_misc_data_set(bContext *C, wmOperator *op, const wmEvent *event)
+{
+  DragAndDropMiscData *misc_data = MEM_new<DragAndDropMiscData>(__func__);
+  op->customdata = misc_data;
+
+  misc_data->mval[0] = event->mval[0];
+  misc_data->mval[1] = event->mval[1];
+
+  if (ED_operator_sequencer_active_editable(C)) {
+    float frame{}, channel{};
+    ARegion *region = CTX_wm_region(C);
+    if (ELEM(region->regiontype, RGN_TYPE_WINDOW, RGN_TYPE_CHANNELS)) {
+      View2D *v2d = &region->v2d;
+      UI_view2d_region_to_view(v2d, event->mval[0], event->mval[1], &frame, &channel);
+      misc_data->channel = std::max<int>(1, channel);
+      if (region->regiontype == RGN_TYPE_WINDOW) {
+        misc_data->frame = frame;
+      }
+    }
+  }
+}
+
+static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent *event)
 {
   const auto paths = blender::ed::io::paths_from_operator_properties(op->ptr);
   if (paths.is_empty()) {
     return OPERATOR_CANCELLED;
   }
+
+  drag_and_drop_misc_data_set(C, op, event);
 
   auto file_handlers = drop_import_file_poll_file_handlers(C, paths, false);
   if (file_handlers.size() == 1) {
@@ -138,8 +209,10 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
   uiLayout *layout = UI_popup_menu_layout(pup);
   uiLayoutSetOperatorContext(layout, WM_OP_INVOKE_DEFAULT);
 
+  DragAndDropMiscData &misc_data = *static_cast<DragAndDropMiscData *>(op->customdata);
   for (auto *file_handler : file_handlers) {
-    const PointerRNA file_props = file_handler_import_operator_create_ptr(file_handler, paths);
+    const PointerRNA file_props = file_handler_import_operator_create_ptr(
+        file_handler, paths, misc_data);
     wmOperatorType *ot = WM_operatortype_find(file_handler->import_operator, false);
     uiItemFullO_ptr(layout,
                     ot,
@@ -152,6 +225,7 @@ static int wm_drop_import_file_invoke(bContext *C, wmOperator *op, const wmEvent
   }
 
   UI_popup_menu_end(C, pup);
+  drop_misc_data_free(op);
   return OPERATOR_INTERFACE;
 }
 
