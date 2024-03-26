@@ -50,12 +50,11 @@ float (*ED_curves_point_normals_array_create(const Curves *curves_id))[3];
 
 namespace blender::ed::curves {
 
-Span<bke::AttributeIDRef> get_curves_selection_attribute_ids(const bke::CurvesGeometry &curves);
-Span<bke::AttributeIDRef> get_curves_selection_attribute_ids(const int size);
-Span<bke::AttributeIDRef> get_curves_selection_attribute_ids();
+Span<std::string> get_curves_selection_attribute_names(const bke::CurvesGeometry &curves);
+Span<std::string> get_curves_all_selection_attribute_names();
 
 class SelectionAttributeWriterList {
-  const Span<bke::AttributeIDRef> attribute_ids_;
+  const Span<std::string> attribute_names_;
   bke::GSpanAttributeWriter selections_[3];
 
  public:
@@ -63,19 +62,19 @@ class SelectionAttributeWriterList {
                                const bke::AttrDomain selection_domain);
   ~SelectionAttributeWriterList();
 
-  inline const Span<bke::AttributeIDRef> &attribute_ids() const
+  inline const Span<std::string> &attribute_names() const
   {
-    return attribute_ids_;
+    return attribute_names_;
   }
   inline const int size() const
   {
-    return attribute_ids_.size();
+    return attribute_names_.size();
   }
 
   bke::GSpanAttributeWriter &operator[](const int index)
   {
     BLI_assert(index >= 0);
-    BLI_assert(index < attribute_ids_.size());
+    BLI_assert(index < attribute_names_.size());
     return selections_[index];
   }
 
@@ -86,7 +85,7 @@ class SelectionAttributeWriterList {
 
   bke::GSpanAttributeWriter *end()
   {
-    return &(selections_[0]) + attribute_ids_.size();
+    return &(selections_[0]) + attribute_names_.size();
   }
 };
 

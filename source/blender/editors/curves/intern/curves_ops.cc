@@ -810,7 +810,7 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
       active_attribute = layer->name;
     }
     for (const blender::bke::AttributeIDRef &selection_attribute_id :
-         get_curves_selection_attribute_ids(curves))
+         get_curves_selection_attribute_names(curves))
     {
       if (const GVArray src = *attributes.lookup(selection_attribute_id, domain)) {
         const CPPType &type = src.type();

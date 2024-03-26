@@ -773,9 +773,8 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
                                     (cps->radius_taper_end != 0.0f));
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
-  const Span<bke::AttributeIDRef> selection_attribute_ids = get_curves_selection_attribute_ids(
-      curves);
-  for (const bke::AttributeIDRef &selection_attribute_id : selection_attribute_ids) {
+  Span<std::string> selection_attribute_names = get_curves_selection_attribute_names(curves);
+  for (const bke::AttributeIDRef &selection_attribute_id : selection_attribute_names) {
     attributes.remove(selection_attribute_id);
   }
 
@@ -923,7 +922,8 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
       /* If Bezier curve is being added, loop through all three ids.  */
       for (const bke::AttributeIDRef &selection_attribute_id :
-           (bezier_as_nurbs ? selection_attribute_ids : get_curves_selection_attribute_ids()))
+           (bezier_as_nurbs ? selection_attribute_names :
+                              get_curves_all_selection_attribute_names()))
       {
         bke::AttributeWriter<bool> selection = attributes.lookup_or_add_for_write<bool>(
             selection_attribute_id, bke::AttrDomain::Curve);
@@ -1004,9 +1004,9 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
     /* Creates ".selection_handle_left" and ".selection_handle_right" attributes, otherwise all
      * existing Bezier handles would be treated as selected. */
-    for (const int i : selection_attribute_ids.index_range().drop_front(1)) {
+    for (const int i : selection_attribute_names.index_range().drop_front(1)) {
       bke::AttributeWriter<bool> selection = attributes.lookup_or_add_for_write<bool>(
-          selection_attribute_ids[i], bke::AttrDomain::Curve);
+          selection_attribute_names[i], bke::AttrDomain::Curve);
       selection.finish();
     }
 
