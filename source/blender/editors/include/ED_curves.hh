@@ -67,11 +67,12 @@ class SelectionAttributeWriterList {
                                const bke::AttrDomain selection_domain);
   ~SelectionAttributeWriterList();
 
-  inline const Span<std::string> &attribute_names() const
+  const Span<std::string> &attribute_names() const
   {
     return attribute_names_;
   }
-  inline const int size() const
+
+  int size() const
   {
     return attribute_names_.size();
   }
@@ -82,6 +83,8 @@ class SelectionAttributeWriterList {
     BLI_assert(index < attribute_names_.size());
     return selections_[index];
   }
+
+  bke::GSpanAttributeWriter &operator[](const std::string &attribute_name);
 
   bke::GSpanAttributeWriter *begin()
   {
@@ -94,9 +97,10 @@ class SelectionAttributeWriterList {
   }
 };
 
-typedef std::function<void(
-    const IndexRange range, const Span<float3> positions, const int selection_attribute_index)>
-    SelectableRangeConsumer;
+using SelectableRangeConsumer =
+    blender::FunctionRef<void(const IndexRange range,
+                              const Span<float3> positions,
+                              const std::string &selection_attribute_name)>;
 
 void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
@@ -244,10 +248,10 @@ bke::GSpanAttributeWriter ensure_selection_attribute(
     const eCustomDataType create_type,
     const bke::AttributeIDRef &attribute_id = ".selection");
 
-template<typename Fn>
-inline void foreach_selection_attribute_writer(bke::CurvesGeometry &curves,
-                                               const bke::AttrDomain selection_domain,
-                                               Fn &&fn)
+inline void foreach_selection_attribute_writer(
+    bke::CurvesGeometry &curves,
+    const bke::AttrDomain selection_domain,
+    blender::FunctionRef<void(bke::GSpanAttributeWriter &selection)> fn)
 {
   SelectionAttributeWriterList selections(curves, selection_domain);
   /* TODO: maybe add threading */

@@ -109,6 +109,20 @@ SelectionAttributeWriterList::~SelectionAttributeWriterList()
   }
 }
 
+bke::GSpanAttributeWriter &SelectionAttributeWriterList::operator[](
+    const std::string &attribute_name)
+{
+  BLI_assert(attribute_names_.contains(attribute_name));
+
+  for (const int index : attribute_names_.index_range()) {
+    if (attribute_name.length() == attribute_names_[index].length()) {
+      return selections_[index];
+    }
+  }
+  BLI_assert_unreachable();
+  return selections_[0];
+}
+
 static void init_selectable_foreach(const bke::CurvesGeometry &curves,
                                     const bke::crazyspace::GeometryDeformation &deformation,
                                     Span<std::string> &r_selection_attribute_names,
@@ -136,12 +150,14 @@ void foreach_selectable_point_range(const bke::CurvesGeometry &curves,
   init_selectable_foreach(
       curves, deformation, selection_attribute_names, positions, memory, bezier_curves);
 
-  range_consumer(curves.points_range(), positions[0], 0);
+  range_consumer(curves.points_range(), positions[0], selection_attribute_names[0]);
   if (selection_attribute_names.size() > 1) {
     const OffsetIndices<int> points_by_curve = curves.points_by_curve();
     for (const int attribute_i : IndexRange(1, 2)) {
       bezier_curves.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
-        range_consumer(points_by_curve[curve_i], positions[attribute_i], attribute_i);
+        range_consumer(points_by_curve[curve_i],
+                       positions[attribute_i],
+                       selection_attribute_names[attribute_i]);
       });
     }
   }
@@ -158,11 +174,12 @@ void foreach_selectable_curve_range(const bke::CurvesGeometry &curves,
   init_selectable_foreach(
       curves, deformation, selection_attribute_names, positions, memory, bezier_curves);
 
-  range_consumer(curves.curves_range(), positions[0], 0);
+  range_consumer(curves.curves_range(), positions[0], selection_attribute_names[0]);
   if (selection_attribute_names.size() > 1) {
     for (const int attribute_i : IndexRange(1, 2)) {
       bezier_curves.foreach_range([&](const IndexRange curves_range) {
-        range_consumer(curves_range, positions[attribute_i], attribute_i);
+        range_consumer(
+            curves_range, positions[attribute_i], selection_attribute_names[attribute_i]);
       });
     }
   }
@@ -337,7 +354,7 @@ bool has_anything_selected(const bke::CurvesGeometry &curves)
 bool has_anything_selected(const bke::CurvesGeometry &curves,
                            const bke::AttrDomain selection_domain)
 {
-  for (const bke::AttributeIDRef &attribute_id : get_curves_selection_attribute_names(curves)) {
+  for (const bke::AttributeIDRef attribute_id : get_curves_selection_attribute_names(curves)) {
     const VArray<bool> selection = *curves.attributes().lookup<bool>(attribute_id,
                                                                      selection_domain);
     if (!selection || contains(selection, selection.index_range(), true))
@@ -837,12 +854,15 @@ bool select_box(const ViewContext &vc,
     foreach_selectable_point_range(
         curves,
         deformation,
-        [&](const IndexRange range, const Span<float3> positions, const int attribute_i) {
+        [&](const IndexRange range,
+            const Span<float3> positions,
+            const std::string &selection_attribute_name) {
           mask.slice(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection);
             if (BLI_rcti_isect_pt_v(&rect, int2(pos_proj))) {
-              apply_selection_operation_at_index(selections[attribute_i].span, point_i, sel_op);
+              apply_selection_operation_at_index(
+                  selections[selection_attribute_name].span, point_i, sel_op);
               changed = true;
             }
           });
@@ -853,7 +873,9 @@ bool select_box(const ViewContext &vc,
     foreach_selectable_curve_range(
         curves,
         deformation,
-        [&](const IndexRange range, const Span<float3> positions, const int /* attribute_i */) {
+        [&](const IndexRange range,
+            const Span<float3> positions,
+            const std::string & /* selection_attribute_name */) {
           mask.slice(range).foreach_index(GrainSize(512), [&](const int curve_i) {
             const IndexRange points = points_by_curve[curve_i];
             if (points.size() == 1) {
@@ -912,7 +934,9 @@ bool select_lasso(const ViewContext &vc,
     foreach_selectable_point_range(
         curves,
         deformation,
-        [&](const IndexRange range, const Span<float3> positions, const int attribute_i) {
+        [&](const IndexRange range,
+            const Span<float3> positions,
+            const std::string &selection_attribute_name) {
           mask.slice(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection_matrix);
@@ -921,7 +945,8 @@ bool select_lasso(const ViewContext &vc,
                 BLI_lasso_is_point_inside(
                     lasso_coords, int(pos_proj.x), int(pos_proj.y), IS_CLIPPED))
             {
-              apply_selection_operation_at_index(selections[attribute_i].span, point_i, sel_op);
+              apply_selection_operation_at_index(
+                  selections[selection_attribute_name].span, point_i, sel_op);
               changed = true;
             }
           });
@@ -932,7 +957,9 @@ bool select_lasso(const ViewContext &vc,
     foreach_selectable_curve_range(
         curves,
         deformation,
-        [&](const IndexRange range, const Span<float3> positions, const int /* attribute_i */) {
+        [&](const IndexRange range,
+            const Span<float3> positions,
+            const std::string & /* selection_attribute_name */) {
           mask.slice(range).foreach_index(GrainSize(512), [&](const int curve_i) {
             const IndexRange points = points_by_curve[curve_i];
             if (points.size() == 1) {
@@ -1005,12 +1032,15 @@ bool select_circle(const ViewContext &vc,
     foreach_selectable_point_range(
         curves,
         deformation,
-        [&](const IndexRange range, const Span<float3> positions, const int attribute_i) {
+        [&](const IndexRange range,
+            const Span<float3> positions,
+            const std::string &selection_attribute_name) {
           mask.slice(range).foreach_index(GrainSize(1024), [&](const int point_i) {
             const float2 pos_proj = ED_view3d_project_float_v2_m4(
                 vc.region, positions[point_i], projection);
             if (math::distance_squared(pos_proj, float2(coord)) <= radius_sq) {
-              apply_selection_operation_at_index(selections[attribute_i].span, point_i, sel_op);
+              apply_selection_operation_at_index(
+                  selections[selection_attribute_name].span, point_i, sel_op);
               changed = true;
             }
           });
@@ -1021,7 +1051,9 @@ bool select_circle(const ViewContext &vc,
     foreach_selectable_curve_range(
         curves,
         deformation,
-        [&](const IndexRange range, const Span<float3> positions, const int /* attribute_i */) {
+        [&](const IndexRange range,
+            const Span<float3> positions,
+            const std::string & /* selection_attribute_name */) {
           mask.slice(range).foreach_index(GrainSize(512), [&](const int curve_i) {
             const IndexRange points = points_by_curve[curve_i];
             if (points.size() == 1) {

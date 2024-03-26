@@ -774,7 +774,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   Span<std::string> selection_attribute_names = get_curves_selection_attribute_names(curves);
-  for (const bke::AttributeIDRef &selection_attribute_id : selection_attribute_names) {
+  for (const bke::AttributeIDRef selection_attribute_id : selection_attribute_names) {
     attributes.remove(selection_attribute_id);
   }
 
@@ -921,7 +921,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
       curves.fill_curve_types(IndexRange(curve_index, 1), curve_type);
 
       /* If Bezier curve is being added, loop through all three ids.  */
-      for (const bke::AttributeIDRef &selection_attribute_id :
+      for (const bke::AttributeIDRef selection_attribute_id :
            (bezier_as_nurbs ? selection_attribute_names :
                               get_curves_all_selection_attribute_names()))
       {
