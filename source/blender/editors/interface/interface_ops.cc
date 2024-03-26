@@ -2509,14 +2509,27 @@ static bool ui_view_scroll_poll(bContext *C)
 static int ui_view_scroll_invoke(bContext *C, wmOperator * /*op*/, const wmEvent *event)
 {
   ARegion *region = CTX_wm_region(C);
+  int type = event->type;
+  bool invert_direction = false;
+
+  if (type == MOUSEPAN) {
+    int dummy_val;
+    ui_pan_to_scroll(event, &type, &dummy_val);
+
+    /* 'ui_pan_to_scroll' gives the absolute direction. */
+    if (event->flag & WM_EVENT_SCROLL_INVERT) {
+      invert_direction = true;
+    }
+  }
 
   AbstractView *view = get_view_focused(C);
-  std::optional<ViewScrollDirection> direction = [event]() -> std::optional<ViewScrollDirection> {
-    switch (event->type) {
+  std::optional<ViewScrollDirection> direction =
+      [type, invert_direction]() -> std::optional<ViewScrollDirection> {
+    switch (type) {
       case WHEELUPMOUSE:
-        return ViewScrollDirection::UP;
+        return invert_direction ? ViewScrollDirection::DOWN : ViewScrollDirection::UP;
       case WHEELDOWNMOUSE:
-        return ViewScrollDirection::DOWN;
+        return invert_direction ? ViewScrollDirection::UP : ViewScrollDirection::DOWN;
       default:
         return std::nullopt;
     }
