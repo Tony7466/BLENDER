@@ -301,7 +301,9 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
         if (!ELEM(prop->type,
                   eIDPropertyType::IDP_BOOLEAN,
                   eIDPropertyType::IDP_INT,
-                  eIDPropertyType::IDP_FLOAT))
+                  eIDPropertyType::IDP_FLOAT,
+                  eIDPropertyType::IDP_DOUBLE,
+                  eIDPropertyType::IDP_ARRAY))
         {
           /* Ignore unkeyable properties. */
           continue;
