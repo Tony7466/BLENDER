@@ -17,7 +17,7 @@
 
 #include "BKE_object.hh"
 #include "DRW_render.hh"
-#include "GPU_compute.h"
+#include "GPU_compute.hh"
 
 #include "workbench_private.hh"
 
@@ -96,8 +96,8 @@ void ShadowPass::ShadowView::setup(View &view, float3 light_direction, bool forc
   float4 frustum_planes[6];
   DRW_culling_frustum_planes_get(nullptr, (float(*)[4])frustum_planes);
 
-  Vector<float4> faces_result = {};
-  Vector<float3> corners_result = {};
+  Vector<float4> faces_result;
+  Vector<float3> corners_result;
 
   /* "Unlit" frustum faces are left "as-is" */
 
@@ -381,7 +381,7 @@ void ShadowPass::object_sync(SceneState &scene_state,
 
   Object *ob = ob_ref.object;
   bool is_manifold;
-  GPUBatch *geom_shadow = DRW_cache_object_edge_detection_get(ob, &is_manifold);
+  blender::gpu::Batch *geom_shadow = DRW_cache_object_edge_detection_get(ob, &is_manifold);
   if (geom_shadow == nullptr) {
     return;
   }

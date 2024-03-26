@@ -51,7 +51,7 @@ set(SRC
   intern/bit_ref.cc
   intern/bit_span.cc
   intern/bitmap.c
-  intern/bitmap_draw_2d.c
+  intern/bitmap_draw_2d.cc
   intern/boxpack_2d.c
   intern/buffer.c
   intern/cache_mutex.cc
@@ -82,13 +82,14 @@ set(SRC
   intern/hash_tables.cc
   intern/implicit_sharing.cc
   intern/index_mask.cc
+  intern/index_mask_expression.cc
   intern/index_range.cc
   intern/jitter_2d.c
   intern/kdtree_1d.c
   intern/kdtree_2d.c
   intern/kdtree_3d.c
   intern/kdtree_4d.c
-  intern/lasso_2d.c
+  intern/lasso_2d.cc
   intern/lazy_threading.cc
   intern/length_parameterize.cc
   intern/listbase.cc
@@ -228,6 +229,8 @@ set(SRC
   BLI_fileops.hh
   BLI_fileops_types.h
   BLI_filereader.h
+  BLI_fixed_width_int.hh
+  BLI_fixed_width_int_str.hh
   BLI_fnmatch.h
   BLI_function_ref.hh
   BLI_generic_array.hh
@@ -252,6 +255,7 @@ set(SRC
   BLI_implicit_sharing_ptr.hh
   BLI_index_mask.hh
   BLI_index_mask_fwd.hh
+  BLI_index_mask_expression.hh
   BLI_index_range.hh
   BLI_inplace_priority_queue.hh
   BLI_iterator.h
@@ -259,7 +263,7 @@ set(SRC
   BLI_kdopbvh.h
   BLI_kdtree.h
   BLI_kdtree_impl.h
-  BLI_lasso_2d.h
+  BLI_lasso_2d.hh
   BLI_lazy_threading.hh
   BLI_length_parameterize.hh
   BLI_linear_allocator.hh
@@ -371,6 +375,7 @@ set(SRC
   BLI_timeit.hh
   BLI_timer.h
   BLI_unique_sorted_indices.hh
+  BLI_unroll.hh
   BLI_utildefines.h
   BLI_utildefines_iter.h
   BLI_utildefines_stack.h
@@ -506,6 +511,7 @@ if(WITH_GTESTS)
     tests/BLI_disjoint_set_test.cc
     tests/BLI_expr_pylike_eval_test.cc
     tests/BLI_fileops_test.cc
+    tests/BLI_fixed_width_int_test.cc
     tests/BLI_function_ref_test.cc
     tests/BLI_generic_array_test.cc
     tests/BLI_generic_span_test.cc
@@ -516,13 +522,14 @@ if(WITH_GTESTS)
     tests/BLI_heap_test.cc
     tests/BLI_implicit_sharing_test.cc
     tests/BLI_index_mask_test.cc
+    tests/BLI_index_mask_expression_test.cc
     tests/BLI_index_range_test.cc
     tests/BLI_inplace_priority_queue_test.cc
     tests/BLI_kdopbvh_test.cc
     tests/BLI_kdtree_test.cc
     tests/BLI_length_parameterize_test.cc
-    tests/BLI_linear_allocator_test.cc
     tests/BLI_linear_allocator_chunked_list_test.cc
+    tests/BLI_linear_allocator_test.cc
     tests/BLI_linklist_lockfree_test.cc
     tests/BLI_listbase_test.cc
     tests/BLI_map_test.cc

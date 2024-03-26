@@ -525,6 +525,10 @@ void DepsgraphRelationBuilder::build_id(ID *id)
     case ID_AC:
       build_action((bAction *)id);
       break;
+    case ID_AN:
+      /* TODO: actually handle this ID type properly, will be done in a followup commit. */
+      build_generic_id(id);
+      break;
     case ID_AR:
       build_armature((bArmature *)id);
       break;
@@ -1500,7 +1504,7 @@ void DepsgraphRelationBuilder::build_constraints(ID *id,
           /* Standard object relation. */
           /* TODO: loc vs rot vs scale? */
           if (&ct->tar->id == id) {
-            /* Constraint targeting own object:
+            /* Constraint targeting its own object:
              * - This case is fine IF we're dealing with a bone
              *   constraint pointing to its own armature. In that
              *   case, it's just transform -> bone.
@@ -1682,7 +1686,7 @@ void DepsgraphRelationBuilder::build_animdata_drivers(ID *id)
     /* create the driver's relations to targets */
     build_driver(id, fcu);
 
-    /* prevent driver from occurring before own animation... */
+    /* prevent driver from occurring before its own animation... */
     if (adt->action || adt->nla_tracks.first) {
       add_relation(adt_key, driver_key, "AnimData Before Drivers");
     }
@@ -2661,6 +2665,17 @@ void DepsgraphRelationBuilder::build_object_data_geometry_datablock(ID *obdata)
         ComponentKey textoncurve_key(&cu->textoncurve->id, NodeType::TRANSFORM);
         add_relation(textoncurve_key, obdata_geom_eval_key, "Text on Curve Transform");
         build_object(cu->textoncurve);
+      }
+      /* Special relation to ensure active spline index gets properly updated.
+       *
+       * The active spline index is stored on the Curve data-block, and the curve evaluation might
+       * create a new curve data-block for the result, which does not intrinsically sharing the
+       * active spline index. Hence a special relation is added to ensure the modifier stack is
+       * evaluated when selection changes. */
+      {
+        const OperationKey object_data_select_key(
+            obdata, NodeType::BATCH_CACHE, OperationCode::GEOMETRY_SELECT_UPDATE);
+        add_relation(object_data_select_key, obdata_geom_eval_key, "Active Spline Update");
       }
       break;
     }

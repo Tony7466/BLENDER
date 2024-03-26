@@ -40,6 +40,7 @@
 #include "BKE_deform.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_layer.hh"
+#include "BKE_mesh_types.hh"
 #include "BKE_object.hh"
 #include "BKE_object_deform.h"
 #include "BKE_object_types.hh"
@@ -309,7 +310,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
   if (ob->type == OB_MESH) {
     TransformMedian_Mesh *median = &median_basis.mesh;
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    BMEditMesh *em = mesh->edit_mesh;
+    BMEditMesh *em = mesh->runtime->edit_mesh;
     BMesh *bm = em->bm;
     BMVert *eve;
     BMEdge *eed;
@@ -470,20 +471,8 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
   }
 
   if (tot == 0) {
-    uiDefBut(block,
-             UI_BTYPE_LABEL,
-             0,
-             IFACE_("Nothing selected"),
-             0,
-             130,
-             200,
-             20,
-             nullptr,
-             0,
-             0,
-             0,
-             0,
-             "");
+    uiDefBut(
+        block, UI_BTYPE_LABEL, 0, IFACE_("Nothing selected"), 0, 130, 200, 20, nullptr, 0, 0, "");
     return;
   }
 
@@ -547,7 +536,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
     else {
       c = IFACE_("Median:");
     }
-    uiDefBut(block, UI_BTYPE_LABEL, 0, c, 0, yi -= buth, butw, buth, nullptr, 0, 0, 0, 0, "");
+    uiDefBut(block, UI_BTYPE_LABEL, 0, c, 0, yi -= buth, butw, buth, nullptr, 0, 0, "");
 
     UI_block_align_begin(block);
 
@@ -659,8 +648,6 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
                  nullptr,
                  0.0,
                  0.0,
-                 0,
-                 0,
                  "");
         /* customdata layer added on demand */
         but = uiDefButF(block,
@@ -737,8 +724,6 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
                  nullptr,
                  0.0,
                  0.0,
-                 0,
-                 0,
                  "");
         /* customdata layer added on demand */
         but = uiDefButF(block,
@@ -914,7 +899,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
 
     if (ob->type == OB_MESH) {
       Mesh *mesh = static_cast<Mesh *>(ob->data);
-      BMEditMesh *em = mesh->edit_mesh;
+      BMEditMesh *em = mesh->runtime->edit_mesh;
       if (em != nullptr) {
         uiBlockInteraction_CallbackData callback_data{};
         callback_data.begin_fn = editmesh_partial_update_begin_fn;
@@ -948,7 +933,7 @@ static void v3d_editvertex_buts(uiLayout *layout, View3D *v3d, Object *ob, float
     {
       const TransformMedian_Mesh *median = &median_basis.mesh, *ve_median = &ve_median_basis.mesh;
       Mesh *mesh = static_cast<Mesh *>(ob->data);
-      BMEditMesh *em = mesh->edit_mesh;
+      BMEditMesh *em = mesh->runtime->edit_mesh;
       BMesh *bm = em->bm;
       BMIter iter;
       BMVert *eve;
@@ -1213,8 +1198,6 @@ static void v3d_object_dimension_buts(bContext *C, uiLayout *layout, View3D *v3d
              butw,
              buth,
              nullptr,
-             0,
-             0,
              0,
              0,
              "");
