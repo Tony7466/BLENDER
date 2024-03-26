@@ -58,7 +58,7 @@ static void ramer_douglas_peucker(const IndexRange range,
   /* Mark all points to be kept. */
   points_to_delete.slice(range).fill(false);
 
-  Stack<IndexRange> stack;
+  Stack<IndexRange, 32> stack;
   stack.push(range);
   while (!stack.is_empty()) {
     const IndexRange sub_range = stack.pop();
