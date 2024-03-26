@@ -1,17 +1,19 @@
+# SPDX-FileCopyrightText: 2024 Blender Authors
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+from string import Template
 import time
 
-try:
-    from BLENDER_INFO import BLENDER_VERSION_STRING, BLENDER_VERSION_DOTS, BLENDER_REVISION, BLENDER_REVISION_TIMESTAMP
-except ModuleNotFoundError:
-    BLENDER_VERSION_STRING = "Version Unknown"
-    BLENDER_VERSION_DOTS = "Version Unknown"
-    BLENDER_REVISION = "Unknown"
-    BLENDER_REVISION_TIMESTAMP = "Unknown"
+BLENDER_VERSION_STRING = Template.safe_substitute(Template("$BLENDER_VERSION_STRING"))
+BLENDER_VERSION_DOTS = Template.safe_substitute(Template("$BLENDER_VERSION_DOTS"))
+BLENDER_REVISION = Template.safe_substitute(Template("$BLENDER_REVISION"))
+BLENDER_REVISION_TIMESTAMP = Template.safe_substitute(Template("$BLENDER_REVISION_TIMESTAMP"))
 
 if BLENDER_REVISION != "Unknown":
     # SHA1 Git hash
     BLENDER_VERSION_HASH = BLENDER_REVISION
-    BLENDER_VERSION_HASH_HTML_LINK = "<a href=https://projects.blender.org/blender/blender/commit/%s>%s</a>" % BLENDER_VERSION_HASH
+    BLENDER_VERSION_HASH_HTML_LINK = "<a href=https://projects.blender.org/blender/blender/commit/%s>%s</a>" % (BLENDER_VERSION_HASH, BLENDER_VERSION_HASH)
     BLENDER_VERSION_DATE = time.strftime("%d/%m/%Y", time.localtime(BLENDER_REVISION_TIMESTAMP))
 else:
     # Fallback: Should not be used

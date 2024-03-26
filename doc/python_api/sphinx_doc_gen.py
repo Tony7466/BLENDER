@@ -1883,21 +1883,6 @@ def pyrna2sphinx(basepath):
         write_ops()
 
 
-def write_blender_info_py(basepath):
-    """
-    Write write information that is needed by sphinx's ``conf.py``.
-    """
-    filepath = os.path.join(basepath, "BLENDER_INFO.py")
-    file = open(filepath, "w", encoding="utf-8")
-    fw = file.write
-
-    fw("BLENDER_VERSION_STRING = '%s'\n" % BLENDER_VERSION_STRING)
-    fw("BLENDER_VERSION_DOTS   = %s\n" % BLENDER_VERSION_DOTS)
-    fw("BLENDER_REVISION_TIMESTAMP = %s\n" % BLENDER_REVISION_TIMESTAMP)
-    fw("BLENDER_REVISION = '%s'\n" % BLENDER_REVISION)
-    fw("\n")
-
-
 def write_rst_index(basepath):
     """
     Write the RST file of the main page, needed for sphinx: ``index.html``.
@@ -2326,6 +2311,29 @@ def copy_sphinx_files(basepath):
     shutil.copy2(os.path.join(SCRIPT_DIR, "conf.py"), basepath, )
 
 
+def format_config(basepath):
+    """
+    Updates conf.py with context infromation from Blender.
+    """
+    from string import Template
+
+    substitutions = {
+        'BLENDER_VERSION_STRING': BLENDER_VERSION_STRING,
+        'BLENDER_VERSION_DOTS': BLENDER_VERSION_DOTS,
+        'BLENDER_REVISION_TIMESTAMP': BLENDER_REVISION_TIMESTAMP,
+        'BLENDER_REVISION': BLENDER_REVISION,
+        }
+
+    # Read the template string from the template file
+    with open(os.path.join(basepath, "conf.py"), 'r') as file:
+        template_file = file.read()
+
+    with open(os.path.join(basepath, "conf.py"), 'w') as file:
+        file.write(Template(template_file).safe_substitute(substitutions))
+
+    return Template(template_file).safe_substitute(substitutions)
+
+
 def rna2sphinx(basepath):
     # main page
     write_rst_index(basepath)
@@ -2482,11 +2490,11 @@ def main():
     except:
         pass
 
-    # write infromation needed for 'conf.py'
-    write_blender_info_py(SPHINX_IN_TMP)
-
     # copy extra files needed for theme
     copy_sphinx_files(SPHINX_IN_TMP)
+
+    # write infromation needed for 'conf.py'
+    format_config(SPHINX_IN_TMP)
 
     # Dump the API in RST files.
     rna2sphinx(SPHINX_IN_TMP)
