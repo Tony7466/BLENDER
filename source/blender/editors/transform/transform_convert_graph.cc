@@ -882,10 +882,7 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
 
 /* This function is called by recalc_data during the Transform loop to recalculate
  * the handles of curves and sort the keyframes so that the curves draw correctly.
- * It is only called if some keyframes have moved out of order.
- *
- * anim_data is the list of channels (F-Curves) retrieved already containing the
- * channels to work on. It should not be freed here as it may still need to be used.
+ * The Span of FCurves should only contain those that need sorting.
  */
 static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> fcurves)
 {
@@ -931,8 +928,6 @@ static void recalcData_graphedit(TransInfo *t)
   ListBase anim_data = {nullptr, nullptr};
   bAnimContext ac = {nullptr};
   int filter;
-
-  int dosort = 0;
 
   BKE_view_layer_synced_ensure(t->scene, t->view_layer);
 
@@ -985,7 +980,7 @@ static void recalcData_graphedit(TransInfo *t)
   }
 
   /* Do resort and other updates? */
-  if (unsorted_fcurves.size() != 0) {
+  if (!unsorted_fcurves.is_empty()) {
     remake_graph_transdata(t, unsorted_fcurves);
   }
 
