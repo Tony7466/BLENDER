@@ -26,8 +26,8 @@ TEST(vk_render_graph, dispatch_read_back)
   dispatch_info.dispatch_node.group_count_x = 1;
   dispatch_info.dispatch_node.group_count_y = 1;
   dispatch_info.dispatch_node.group_count_z = 1;
-  dispatch_info.dispatch_node.descriptor_set.vk_pipeline_layout = pipeline_layout;
-  dispatch_info.dispatch_node.descriptor_set.vk_descriptor_set = descriptor_set;
+  dispatch_info.dispatch_node.shader_data.vk_pipeline_layout = pipeline_layout;
+  dispatch_info.dispatch_node.shader_data.descriptor_set.vk_descriptor_set = descriptor_set;
   dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
   render_graph.add_dispatch_node(dispatch_info);
   render_graph.submit_buffer_for_read_back(buffer);
@@ -63,8 +63,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back)
     dispatch_info.dispatch_node.group_count_x = 1;
     dispatch_info.dispatch_node.group_count_y = 1;
     dispatch_info.dispatch_node.group_count_z = 1;
-    dispatch_info.dispatch_node.descriptor_set.vk_pipeline_layout = pipeline_layout;
-    dispatch_info.dispatch_node.descriptor_set.vk_descriptor_set = descriptor_set;
+    dispatch_info.dispatch_node.shader_data.vk_pipeline_layout = pipeline_layout;
+    dispatch_info.dispatch_node.shader_data.descriptor_set.vk_descriptor_set = descriptor_set;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
     render_graph.add_dispatch_node(dispatch_info);
   }
@@ -74,8 +74,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back)
     dispatch_info.dispatch_node.group_count_x = 2;
     dispatch_info.dispatch_node.group_count_y = 2;
     dispatch_info.dispatch_node.group_count_z = 2;
-    dispatch_info.dispatch_node.descriptor_set.vk_pipeline_layout = pipeline_layout;
-    dispatch_info.dispatch_node.descriptor_set.vk_descriptor_set = descriptor_set;
+    dispatch_info.dispatch_node.shader_data.vk_pipeline_layout = pipeline_layout;
+    dispatch_info.dispatch_node.shader_data.descriptor_set.vk_descriptor_set = descriptor_set;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
     render_graph.add_dispatch_node(dispatch_info);
   }
@@ -123,8 +123,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_descriptor_sets)
     dispatch_info.dispatch_node.group_count_x = 1;
     dispatch_info.dispatch_node.group_count_y = 1;
     dispatch_info.dispatch_node.group_count_z = 1;
-    dispatch_info.dispatch_node.descriptor_set.vk_pipeline_layout = pipeline_layout;
-    dispatch_info.dispatch_node.descriptor_set.vk_descriptor_set = descriptor_set_a;
+    dispatch_info.dispatch_node.shader_data.vk_pipeline_layout = pipeline_layout;
+    dispatch_info.dispatch_node.shader_data.descriptor_set.vk_descriptor_set = descriptor_set_a;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
     render_graph.add_dispatch_node(dispatch_info);
   }
@@ -134,8 +134,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_descriptor_sets)
     dispatch_info.dispatch_node.group_count_x = 2;
     dispatch_info.dispatch_node.group_count_y = 2;
     dispatch_info.dispatch_node.group_count_z = 2;
-    dispatch_info.dispatch_node.descriptor_set.vk_pipeline_layout = pipeline_layout;
-    dispatch_info.dispatch_node.descriptor_set.vk_descriptor_set = descriptor_set_b;
+    dispatch_info.dispatch_node.shader_data.vk_pipeline_layout = pipeline_layout;
+    dispatch_info.dispatch_node.shader_data.descriptor_set.vk_descriptor_set = descriptor_set_b;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
     render_graph.add_dispatch_node(dispatch_info);
   }
@@ -186,8 +186,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines)
     dispatch_info.dispatch_node.group_count_x = 1;
     dispatch_info.dispatch_node.group_count_y = 1;
     dispatch_info.dispatch_node.group_count_z = 1;
-    dispatch_info.dispatch_node.descriptor_set.vk_pipeline_layout = pipeline_layout;
-    dispatch_info.dispatch_node.descriptor_set.vk_descriptor_set = descriptor_set;
+    dispatch_info.dispatch_node.shader_data.vk_pipeline_layout = pipeline_layout;
+    dispatch_info.dispatch_node.shader_data.descriptor_set.vk_descriptor_set = descriptor_set;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
     render_graph.add_dispatch_node(dispatch_info);
   }
@@ -197,8 +197,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines)
     dispatch_info.dispatch_node.group_count_x = 2;
     dispatch_info.dispatch_node.group_count_y = 2;
     dispatch_info.dispatch_node.group_count_z = 2;
-    dispatch_info.dispatch_node.descriptor_set.vk_pipeline_layout = pipeline_layout;
-    dispatch_info.dispatch_node.descriptor_set.vk_descriptor_set = descriptor_set;
+    dispatch_info.dispatch_node.shader_data.vk_pipeline_layout = pipeline_layout;
+    dispatch_info.dispatch_node.shader_data.descriptor_set.vk_descriptor_set = descriptor_set;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
     render_graph.add_dispatch_node(dispatch_info);
   }
@@ -249,8 +249,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines_descri
     dispatch_info.dispatch_node.group_count_x = 1;
     dispatch_info.dispatch_node.group_count_y = 1;
     dispatch_info.dispatch_node.group_count_z = 1;
-    dispatch_info.dispatch_node.descriptor_set.vk_pipeline_layout = pipeline_layout;
-    dispatch_info.dispatch_node.descriptor_set.vk_descriptor_set = descriptor_set_a;
+    dispatch_info.dispatch_node.shader_data.vk_pipeline_layout = pipeline_layout;
+    dispatch_info.dispatch_node.shader_data.descriptor_set.vk_descriptor_set = descriptor_set_a;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
     render_graph.add_dispatch_node(dispatch_info);
   }
@@ -260,8 +260,8 @@ TEST(vk_render_graph, dispatch_dispatch_read_back_with_changing_pipelines_descri
     dispatch_info.dispatch_node.group_count_x = 2;
     dispatch_info.dispatch_node.group_count_y = 2;
     dispatch_info.dispatch_node.group_count_z = 2;
-    dispatch_info.dispatch_node.descriptor_set.vk_pipeline_layout = pipeline_layout;
-    dispatch_info.dispatch_node.descriptor_set.vk_descriptor_set = descriptor_set_b;
+    dispatch_info.dispatch_node.shader_data.vk_pipeline_layout = pipeline_layout;
+    dispatch_info.dispatch_node.shader_data.descriptor_set.vk_descriptor_set = descriptor_set_b;
     dispatch_info.resources.buffers.append({buffer, VK_ACCESS_SHADER_WRITE_BIT});
     render_graph.add_dispatch_node(dispatch_info);
   }

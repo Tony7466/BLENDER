@@ -118,7 +118,7 @@ NodeHandle VKRenderGraphNodes::add_synchronization_node()
   return handle;
 }
 
-static void duplicate_push_constants_data(VKPushConstantsData &dst, const VKPushConstantsData &src)
+static void localize_push_constants_data(VKPushConstantsData &dst, const VKPushConstantsData &src)
 {
   if (src.size) {
     BLI_assert(src.data);
@@ -127,14 +127,12 @@ static void duplicate_push_constants_data(VKPushConstantsData &dst, const VKPush
     dst.data = data;
   }
   dst.size = src.size;
-  dst.vk_pipeline_layout = src.vk_pipeline_layout;
 }
 
-static void free_push_constants_data(VKPushConstantsData &data)
+static void free_shader_data(VKShaderData &data)
 {
-  data.size = 0;
-  data.vk_pipeline_layout = VK_NULL_HANDLE;
-  MEM_SAFE_FREE(data.data);
+  data.push_constants.size = 0;
+  MEM_SAFE_FREE(data.push_constants.data);
 }
 
 NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_info)
@@ -145,8 +143,8 @@ NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_
 
   node.type = Node::Type::DISPATCH;
   node.dispatch = dispatch_info.dispatch_node;
-  duplicate_push_constants_data(node.dispatch.push_constants,
-                                dispatch_info.dispatch_node.push_constants);
+  localize_push_constants_data(node.dispatch.shader_data.push_constants,
+                               dispatch_info.dispatch_node.shader_data.push_constants);
 
   return handle;
 }
@@ -191,7 +189,7 @@ void VKRenderGraphNodes::free_data(Node &node)
 {
   switch (node.type) {
     case Node::Type::DISPATCH:
-      free_push_constants_data(node.dispatch.push_constants);
+      free_shader_data(node.dispatch.shader_data);
       break;
 
     case Node::Type::UNUSED:

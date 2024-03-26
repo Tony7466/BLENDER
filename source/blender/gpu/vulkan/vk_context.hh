@@ -99,6 +99,13 @@ class VKContext : public Context, NonCopyable {
  private:
   void swap_buffers_pre_handler(const GHOST_VulkanSwapChainData &data);
   void swap_buffers_post_handler();
+
+  /**
+   * Update the give shader data with the current state of the context.
+   *
+   * NOTE: Shader data structure is reused between render graph nodes.
+   */
+  void update_shader_data(VKShaderData &shader_data);
 };
 
 BLI_INLINE bool operator==(const VKContext &a, const VKContext &b)

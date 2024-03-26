@@ -200,6 +200,27 @@ void VKContext::bind_compute_pipeline()
   }
 }
 
+void VKContext::update_shader_data(VKShaderData &shader_data)
+{
+  VKShader &vk_shader = unwrap(*shader);
+  shader_data.vk_pipeline_layout = vk_shader.vk_pipeline_layout_get();
+
+  /* Update descriptor set. */
+  if (vk_shader.has_descriptor_set()) {
+    descriptor_set_.update(*this);
+    shader_data.descriptor_set.vk_descriptor_set =
+        descriptor_set_get().active_descriptor_set()->vk_handle();
+  }
+
+  /* Update push constants. */
+  const VKPushConstants::Layout &push_constants_layout =
+      vk_shader.interface_get().push_constants_layout_get();
+  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::PUSH_CONSTANTS) {
+    shader_data.push_constants.size = push_constants_layout.size_in_bytes();
+    shader_data.push_constants.data = vk_shader.pipeline_get().push_constants_get().data();
+  }
+}
+
 void VKContext::update_dispatch_info()
 {
   dispatch_info_.dispatch_node = {};
@@ -208,28 +229,8 @@ void VKContext::update_dispatch_info()
 
   VKShader &vk_shader = unwrap(*shader);
   VkPipeline vk_pipeline = vk_shader.ensure_and_get_compute_pipeline();
-  // TODO: push constants aren't added yet.
   dispatch_info_.dispatch_node.vk_pipeline = vk_pipeline;
-
-  /* Add descriptor set. */
-  if (vk_shader.has_descriptor_set()) {
-    dispatch_info_.dispatch_node.descriptor_set.vk_pipeline_layout =
-        vk_shader.vk_pipeline_layout_get();
-    descriptor_set_.update(*this);
-    dispatch_info_.dispatch_node.descriptor_set.vk_descriptor_set =
-        descriptor_set_get().active_descriptor_set()->vk_handle();
-  }
-
-  /* Add push constants. */
-  const VKPushConstants::Layout &push_constants_layout =
-      vk_shader.interface_get().push_constants_layout_get();
-  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::PUSH_CONSTANTS) {
-    dispatch_info_.dispatch_node.push_constants.size = push_constants_layout.size_in_bytes();
-    dispatch_info_.dispatch_node.push_constants.data =
-        vk_shader.pipeline_get().push_constants_get().data();
-    dispatch_info_.dispatch_node.push_constants.vk_pipeline_layout =
-        vk_shader.vk_pipeline_layout_get();
-  }
+  update_shader_data(dispatch_info_.dispatch_node.shader_data);
 }
 
 VKDispatchInfo &VKContext::update_and_get_dispatch_info()
@@ -237,7 +238,6 @@ VKDispatchInfo &VKContext::update_and_get_dispatch_info()
   VKShader *shader = unwrap(this->shader);
   VKPipeline &pipeline = shader->pipeline_get();
   pipeline.update_push_constants(*this);
-  
   update_dispatch_info();
   return dispatch_info_;
 }
