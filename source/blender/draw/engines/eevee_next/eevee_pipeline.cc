@@ -98,7 +98,6 @@ void WorldPipeline::sync(GPUMaterial *gpumat)
   pass.bind_resources(inst_.cryptomatte);
   pass.bind_resources(inst_.uniform_data);
   pass.bind_resources(inst_.sphere_probes);
-  pass.bind_texture(SPHERE_PROBE_TEX_SLOT, dummy_aov_color_tx_);
   pass.draw_procedural(GPU_PRIM_TRIS, 1, 3);
 }
 
