@@ -1,1 +1,2 @@
 Referenced by commit ab93a426a0c316f263c7f40d7956e7bf680361f3, Fix assert from recent cleanup
+Referenced by commit 2220696d25ad0530d169d6ac6192115fd6bb4b68, BMesh: avoid copying by value for BMLoop triangles
