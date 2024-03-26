@@ -132,19 +132,70 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
     point_positions[i][2]=positions[i][2];
   }
 
-  // not sure what other types I can use for the span attribute
   positions_writer.finish();
-  bke::SpanAttributeWriter<float3> color_writer =
-      point_cloud->attributes_for_write().lookup_or_add_for_write_span<float3>("color",
-                                                                               ATTR_DOMAIN_POINT);
-  MutableSpan<float3> point_colors = color_writer.span;
-  for (size_t i = 0 ; i < positions.size(); i++) {
-    //blender::io::alembic::copy_zup_from_yup(point_positions[i],positions[i]);
-    point_colors[i][0]=.1;
-    point_colors[i][1]=.8;
-    point_colors[i][2]=.5;
+  // here we will use the same approach as above iterating over the prim vars to create custom spans for the attrs
+
+
+  // not sure what other types I can use for the span attribute
+  std::vector<pxr::UsdGeomPrimvar> primvars=primvarsLoaded.GetPrimvarsWithValues();
+  for (auto pv : primvars) {
+      std::cout << pv.GetName() << " (" << pv.GetTypeName() << ")" << std::endl;
+      if (!pv.HasValue()) {
+        continue;
+      }
+      const pxr::SdfValueTypeName type = pv.GetTypeName();
+      const pxr::TfToken interp = pv.GetInterpolation();
+      const pxr::TfToken name = pv.StripPrimvarsName(pv.GetPrimvarName());
+    
+
+    // I guess the hard part  is knowing which tempated pvibute writer goes with a particular primvar
+      if (type == pxr::SdfValueTypeNames->Color3fArray && interp == pxr::UsdGeomTokens->vertex) {
+        bke::SpanAttributeWriter<ColorGeometry4f> primvar_writer =
+            point_cloud->attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(pv.GetName().GetText(),ATTR_DOMAIN_POINT);
+        if (!primvar_writer) {
+          printf("couldn't make writer for color %s\n", name.GetText());
+          continue;
+        }
+        pxr::VtVec3fArray colors;
+        // where did the params value come from?
+        if (!pv.ComputeFlattened(&colors,params.motion_sample_time)) {
+          printf("coulnd't compute the flattened colors %s\n", name.GetText());
+          continue;
+        }
+
+      // ? what does the 4f mean, like rgba? where do we find the other types that can go here?
+        for (int i =0; i < colors.size(); ++i) {
+          const pxr::GfVec3f & usd_color = colors[i];
+          primvar_writer.span[i] = ColorGeometry4f(
+            usd_color[0],usd_color[1],usd_color[2],1.0f
+          );
+        };
+        primvar_writer.finish();
+      }
+      if (type == pxr::SdfValueTypeNames->FloatArray) {
+        printf("WE ARE IN THE FLOAT ARRAY PROCESSING BLOCK");
+        // where do I find the value for just a float
+        bke::SpanAttributeWriter<float> primvar_writer =
+            point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(pv.GetName().GetText(),ATTR_DOMAIN_POINT);
+        if (!primvar_writer) {
+          printf("couldn't make writer for float prop %s\n", name.GetText());
+          continue;
+        }
+        pxr::VtArray<float> values;
+        // where did the params value come from?
+        if (!pv.ComputeFlattened(&values,params.motion_sample_time)) {
+          printf("coulnd't compute the flattened colors %s\n", name.GetText());
+          continue;
+        }
+
+      // ? what does the 4f mean, like rgba? where do we find the other types that can go here?
+        for (int i =0; i < values.size(); ++i) {
+          primvar_writer.span[i] = values[i];
+        };
+        printf("finished writing values into the primvar writer");
+        primvar_writer.finish();
+}
   }
-  color_writer.finish();
   
 
   
