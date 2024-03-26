@@ -291,7 +291,14 @@ void VKRenderGraphCommandBuilder::build_node_dispatch(VKRenderGraph &render_grap
         nullptr);
   }
 
-  // TODO: Check changes in push constants.
+  if (node.dispatch.push_constants.size) {
+    render_graph.command_buffer_->push_constants(node.dispatch.push_constants.vk_pipeline_layout,
+                                                 VK_SHADER_STAGE_COMPUTE_BIT,
+                                                 0,
+                                                 node.dispatch.push_constants.size,
+                                                 node.dispatch.push_constants.data);
+  }
+
   render_graph.command_buffer_->dispatch(
       node.dispatch.group_count_x, node.dispatch.group_count_y, node.dispatch.group_count_z);
 }

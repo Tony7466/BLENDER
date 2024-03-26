@@ -139,8 +139,6 @@ void VKBackend::samplers_update()
 
 void VKBackend::compute_dispatch(int groups_x_len, int groups_y_len, int groups_z_len)
 {
-  // TODO: Move most code to context. as here it is glued all together and ensured to be thread
-  // safe. context.update_and_get_dispatch_info()
   VKContext &context = *VKContext::get();
   VKDispatchInfo &dispatch_info = context.update_and_get_dispatch_info();
   dispatch_info.dispatch_node.group_count_x = groups_x_len;

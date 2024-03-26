@@ -31,9 +31,17 @@ struct VKResourceBarrierState {
   VkImageLayout image_layout = VK_IMAGE_LAYOUT_UNDEFINED;
 };
 
+// TODO: Both descriptor sets and push constants keeps a handle to the same pipeline layout. This
+// should be merged to a higher level.
 struct VKDescriptorSetData {
   VkPipelineLayout vk_pipeline_layout;
   VkDescriptorSet vk_descriptor_set;
+};
+
+struct VKPushConstantsData {
+  VkPipelineLayout vk_pipeline_layout;
+  uint32_t size;
+  const void *data;
 };
 
 /**
@@ -45,6 +53,7 @@ struct VKDispatchNode {
   uint32_t group_count_y;
   uint32_t group_count_z;
   VKDescriptorSetData descriptor_set;
+  VKPushConstantsData push_constants;
 };
 
 constexpr VkAccessFlags VK_ACCESS_READ_MASK = VK_ACCESS_INDIRECT_COMMAND_READ_BIT |

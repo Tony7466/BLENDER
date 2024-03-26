@@ -35,6 +35,10 @@ VKPipelines::VKPipelines()
   vk_specialization_info_.pMapEntries = nullptr;
   vk_specialization_info_.dataSize = 0;
   vk_specialization_info_.pData = nullptr;
+
+  vk_push_constant_range_.stageFlags = 0;
+  vk_push_constant_range_.offset = 0;
+  vk_push_constant_range_.size = 0;
 }
 
 VkPipeline VKPipelines::get_or_create_compute_pipeline(VKComputeInfo &compute_info,

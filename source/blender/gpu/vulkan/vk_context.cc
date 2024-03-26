@@ -211,27 +211,33 @@ void VKContext::update_dispatch_info()
   // TODO: push constants aren't added yet.
   dispatch_info_.dispatch_node.vk_pipeline = vk_pipeline;
 
+  /* Add descriptor set. */
   if (vk_shader.has_descriptor_set()) {
     dispatch_info_.dispatch_node.descriptor_set.vk_pipeline_layout =
         vk_shader.vk_pipeline_layout_get();
     descriptor_set_.update(*this);
     dispatch_info_.dispatch_node.descriptor_set.vk_descriptor_set =
         descriptor_set_get().active_descriptor_set()->vk_handle();
-    // TODO: add resource dependencies. This is currently a combination from descriptor set bound
-    // resources and shader create info that contains the data where these resources are used and
-    // how. In stead of using the descriptor set we could also determine this when the
-    // state_manager updates its bindings. In this case we already take some parts of the shader
-    // create info into account, but we don't access the access flags.
-    // context.descriptor_set_get().active_descriptor_set().build(dispatch_info.resources);
-    //
-    // New approach is to add resource access to the descriptor set where it will be build during
-    // apply_bindings. This Seems to be thread safe, main issue might still be where to locate the
-    // resources list to reduce memory operations.
+  }
+
+  /* Add push constants. */
+  const VKPushConstants::Layout &push_constants_layout =
+      vk_shader.interface_get().push_constants_layout_get();
+  if (push_constants_layout.storage_type_get() == VKPushConstants::StorageType::PUSH_CONSTANTS) {
+    dispatch_info_.dispatch_node.push_constants.size = push_constants_layout.size_in_bytes();
+    dispatch_info_.dispatch_node.push_constants.data =
+        vk_shader.pipeline_get().push_constants_get().data();
+    dispatch_info_.dispatch_node.push_constants.vk_pipeline_layout =
+        vk_shader.vk_pipeline_layout_get();
   }
 }
 
 VKDispatchInfo &VKContext::update_and_get_dispatch_info()
 {
+  VKShader *shader = unwrap(this->shader);
+  VKPipeline &pipeline = shader->pipeline_get();
+  pipeline.update_push_constants(*this);
+  
   update_dispatch_info();
   return dispatch_info_;
 }

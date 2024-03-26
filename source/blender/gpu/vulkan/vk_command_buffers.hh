@@ -84,9 +84,9 @@ class VKCommandBuffers : public NonCopyable, NonMovable {
    *
    * Only valid when the storage type of push_constants is StorageType::PUSH_CONSTANTS.
    */
-  void push_constants(const VKPushConstants &push_constants,
-                      const VkPipelineLayout vk_pipeline_layout,
-                      const VkShaderStageFlags vk_shader_stages);
+  [[deprecated]] void push_constants(const VKPushConstants &push_constants,
+                                     const VkPipelineLayout vk_pipeline_layout,
+                                     const VkShaderStageFlags vk_shader_stages);
   [[deprecated]] void dispatch(int groups_x_len, int groups_y_len, int groups_z_len);
   void dispatch(VKStorageBuffer &command_buffer);
   /** Copy the contents of a texture MIP level to the dst buffer. */

@@ -153,7 +153,6 @@ void VKRenderGraph::add_dispatch_node(const VKDispatchInfo &dispatch_info)
   std::scoped_lock lock(mutex_);
   NodeHandle handle = nodes_.add_dispatch_node(dispatch_info);
   add_resources(handle, dispatch_info.resources);
-  // TODO: we should add descriptor sets and push constants as well.
 }
 
 void VKRenderGraph::add_ensure_image_layout_node(VkImage vk_image, VkImageLayout vk_image_layout)

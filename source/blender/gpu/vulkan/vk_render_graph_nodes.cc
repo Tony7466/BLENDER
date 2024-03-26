@@ -118,6 +118,25 @@ NodeHandle VKRenderGraphNodes::add_synchronization_node()
   return handle;
 }
 
+static void duplicate_push_constants_data(VKPushConstantsData &dst, const VKPushConstantsData &src)
+{
+  if (src.size) {
+    BLI_assert(src.data);
+    void *data = MEM_mallocN(src.size, __func__);
+    memcpy(data, src.data, src.size);
+    dst.data = data;
+  }
+  dst.size = src.size;
+  dst.vk_pipeline_layout = src.vk_pipeline_layout;
+}
+
+static void free_push_constants_data(VKPushConstantsData &data)
+{
+  data.size = 0;
+  data.vk_pipeline_layout = VK_NULL_HANDLE;
+  MEM_SAFE_FREE(data.data);
+}
+
 NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_info)
 {
   NodeHandle handle = allocate();
@@ -126,6 +145,8 @@ NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_
 
   node.type = Node::Type::DISPATCH;
   node.dispatch = dispatch_info.dispatch_node;
+  duplicate_push_constants_data(node.dispatch.push_constants,
+                                dispatch_info.dispatch_node.push_constants);
 
   return handle;
 }
@@ -160,14 +181,30 @@ void VKRenderGraphNodes::remove_nodes(Span<NodeHandle> node_handles)
     // TODO: move resources.clear to functions.
     read_resources_per_node_[node_handle].resources.clear();
     write_resources_per_node_[node_handle].resources.clear();
-    mark_unused(get(node_handle));
+    Node &node = get(node_handle);
+    free_data(node);
     nodes_.free(node_handle);
   }
 }
 
-void VKRenderGraphNodes::mark_unused(Node &node)
+void VKRenderGraphNodes::free_data(Node &node)
 {
-  BLI_assert(node.type != Node::Type::UNUSED);
+  switch (node.type) {
+    case Node::Type::DISPATCH:
+      free_push_constants_data(node.dispatch.push_constants);
+      break;
+
+    case Node::Type::UNUSED:
+    case Node::Type::CLEAR_COLOR_IMAGE:
+    case Node::Type::FILL_BUFFER:
+    case Node::Type::COPY_BUFFER:
+    case Node::Type::COPY_IMAGE:
+    case Node::Type::COPY_IMAGE_TO_BUFFER:
+    case Node::Type::COPY_BUFFER_TO_IMAGE:
+    case Node::Type::SYNCHRONIZATION:
+      break;
+  }
+
   memset(&node, 0, sizeof(Node));
   node.type = Node::Type::UNUSED;
 }

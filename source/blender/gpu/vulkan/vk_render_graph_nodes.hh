@@ -168,7 +168,7 @@ class VKRenderGraphNodes {
  private:
   NodeHandle allocate();
   void ensure_vector_sizes();
-  void mark_unused(Node &node);
+  void free_data(Node &node);
 };
 
 }  // namespace blender::gpu

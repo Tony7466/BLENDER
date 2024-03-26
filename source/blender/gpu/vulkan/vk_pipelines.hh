@@ -20,6 +20,7 @@ namespace gpu {
 struct VKComputeInfo {
   VkShaderModule vk_shader_module;
   VkPipelineLayout vk_pipeline_layout;
+
   Vector<shader::ShaderCreateInfo::SpecializationConstant::Value> specialization_constants;
 
   bool operator==(const VKComputeInfo &other) const
@@ -65,7 +66,6 @@ using ComputePipelineHandle = int64_t;
  * required data because we control which data we actually use, removing te boiler plating and
  * improve hashing performance. See #VKPipelines::ComputeInfo.
  */
-// TODO: Make thread safe by adding a mutex.
 class VKPipelines : NonCopyable {
  public:
  private:
@@ -74,6 +74,7 @@ class VKPipelines : NonCopyable {
   VkComputePipelineCreateInfo vk_compute_pipeline_create_info_;
   VkSpecializationInfo vk_specialization_info_;
   Vector<VkSpecializationMapEntry> vk_specialization_map_entries_;
+  VkPushConstantRange vk_push_constant_range_;
 
   std::mutex mutex_;
 
