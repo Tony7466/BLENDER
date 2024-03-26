@@ -235,8 +235,8 @@ def enum_preview_denoiser(self, context):
         items = [
             ('AUTO',
              "Automatic",
-             ("Use the fastest available denoiser for viewport rendering "
-              "(OptiX if available, OpenImageDenoise otherwise)"),
+             ("Use the best denoiser for viewport rendering (GPU OpenImageDenoise if supported, "
+              "otherwise OptiX or CPU OpenImageDenoise depending on your hardware)"),
              0)]
     else:
         items = [('AUTO', "None", "Blender was compiled without a viewport denoiser", 0)]
