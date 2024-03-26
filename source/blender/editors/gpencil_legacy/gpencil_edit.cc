@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "DNA_object_enums.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_ghash.h"
@@ -62,6 +63,7 @@
 #include "UI_view2d.hh"
 
 #include "ED_gpencil_legacy.hh"
+#include "ED_image.hh"
 #include "ED_object.hh"
 #include "ED_outliner.hh"
 #include "ED_screen.hh"
@@ -463,6 +465,18 @@ static bool gpencil_sculptmode_toggle_poll(bContext *C)
   return false;
 }
 
+bool gpencil_sculpt_poll_view3d(bContext *C)
+{
+  const Object *ob = CTX_data_active_object(C);
+  if (ob == nullptr || (ob->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) == 0) {
+    return false;
+  }
+  if (CTX_wm_region_view3d(C) == nullptr) {
+    return false;
+  }
+  return true;
+}
+
 static int gpencil_sculptmode_toggle_exec(bContext *C, wmOperator *op)
 {
   Main *bmain = CTX_data_main(C);
@@ -499,7 +513,17 @@ static int gpencil_sculptmode_toggle_exec(bContext *C, wmOperator *op)
   }
   if ((ob) && (ob->type == OB_GREASE_PENCIL)) {
     const bool is_mode_set = (ob->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) != 0;
-    mode = (is_mode_set ? OB_MODE_OBJECT : OB_MODE_SCULPT_GPENCIL_LEGACY);
+    if (is_mode_set) {
+      mode = OB_MODE_OBJECT;
+    }
+    else {
+      Scene *scene = CTX_data_scene(C);
+      BKE_paint_init(
+          bmain, scene, PaintMode::SculptGreasePencil, PAINT_CURSOR_SCULPT_GREASE_PENCIL);
+      Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::SculptGreasePencil);
+      ED_paint_cursor_start(paint, gpencil_sculpt_poll_view3d);
+      mode = OB_MODE_SCULPT_GPENCIL_LEGACY;
+    }
     is_object = true;
   }
 

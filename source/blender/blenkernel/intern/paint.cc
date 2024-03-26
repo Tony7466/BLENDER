@@ -1116,7 +1116,7 @@ eObjectMode BKE_paint_object_mode_from_paintmode(const PaintMode mode)
     case PaintMode::GPencil:
       return OB_MODE_PAINT_GREASE_PENCIL;
     case PaintMode::SculptGreasePencil:
-      return OB_MODE_SCULPT;
+      return OB_MODE_SCULPT_GPENCIL_LEGACY;
     case PaintMode::Invalid:
     default:
       return OB_MODE_OBJECT;
