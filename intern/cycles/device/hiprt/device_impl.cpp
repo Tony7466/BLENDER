@@ -799,6 +799,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
 {
 
   size_t num_object = objects.size();
+
   if (num_object == 0) {
     return 0;
   }
