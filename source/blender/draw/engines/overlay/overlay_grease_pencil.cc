@@ -63,7 +63,8 @@ void OVERLAY_edit_grease_pencil_cache_populate(OVERLAY_Data *vedata, Object *ob)
 
   DRWShadingGroup *points_grp = pd->edit_grease_pencil_points_grp;
   if (points_grp) {
-    blender::gpu::Batch *geom_points = DRW_cache_grease_pencil_edit_points_get(draw_ctx->scene, ob);
+    blender::gpu::Batch *geom_points = DRW_cache_grease_pencil_edit_points_get(draw_ctx->scene,
+                                                                               ob);
     DRW_shgroup_call_no_cull(points_grp, geom_points, ob);
   }
 }
