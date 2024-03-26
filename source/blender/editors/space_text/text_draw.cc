@@ -1208,9 +1208,7 @@ void draw_text_cursor(SpaceText *st, ARegion *region)
     float color[4];
     UI_GetThemeColor4fv(TH_HILITE, color);
     if (st->runtime->is_area_active) {
-      color[3] = (st->runtime->is_cursor_visible || !U.text_cursor_blink) ?
-                     1.0f :
-                     TEXT_CURSOR_BLINK_OFF_OPACITY;
+      color[3] = st->runtime->is_cursor_visible ? 1.0f : TEXT_CURSOR_BLINK_OFF_OPACITY;
     }
     else {
       color[0] = color[1] = color[2] = color[3] = 0.5f;

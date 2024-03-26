@@ -5899,11 +5899,6 @@ static void rna_def_userdef_system(BlenderRNA *brna)
   RNA_def_property_clear_flag(prop, PROP_EDITABLE);
   RNA_def_property_float_sdna(prop, nullptr, "pixelsize");
 
-  prop = RNA_def_property(srna, "text_cursor_blink", PROP_BOOLEAN, PROP_NONE);
-  RNA_def_property_boolean_default(prop, true);
-  RNA_def_property_ui_text(prop, "Text Cursor Blink", "Blinking cursor when the area is active");
-  RNA_def_property_update(prop, 0, "rna_userdef_gpu_update");
-
   /* Memory */
 
   prop = RNA_def_property(srna, "memory_cache_limit", PROP_INT, PROP_NONE);

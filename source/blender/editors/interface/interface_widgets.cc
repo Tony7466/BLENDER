@@ -2059,9 +2059,8 @@ static void widget_draw_text(const uiFontStyle *fstyle,
           immVertexFormat(), "pos", GPU_COMP_I32, 2, GPU_FETCH_INT_TO_FLOAT);
       immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
 
-      immUniformThemeColorAlpha(
-          TH_WIDGET_TEXT_CURSOR,
-          (but->is_cursor_visible || !U.text_cursor_blink) ? 1.0f : TEXT_CURSOR_BLINK_OFF_OPACITY);
+      immUniformThemeColorAlpha(TH_WIDGET_TEXT_CURSOR,
+                                but->is_cursor_visible ? 1.0f : TEXT_CURSOR_BLINK_OFF_OPACITY);
 
       /* Shape of the cursor for drawing. */
       rcti but_cursor_shape;

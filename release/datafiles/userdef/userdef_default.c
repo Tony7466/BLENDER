@@ -84,7 +84,6 @@ const UserDef U_default = {
     .menuthreshold1 = 5,
     .menuthreshold2 = 2,
     .app_template = "",
-    .text_cursor_blink = true,
 
     /** Initialized by #UI_theme_init_default. */
     .themes = {NULL},
