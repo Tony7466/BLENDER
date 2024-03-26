@@ -163,7 +163,6 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
           continue;
         }
 
-      // ? what does the 4f mean, like rgba? where do we find the other types that can go here?
         for (int i =0; i < colors.size(); ++i) {
           const pxr::GfVec3f & usd_color = colors[i];
           primvar_writer.span[i] = ColorGeometry4f(
@@ -174,27 +173,24 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
       }
       if (type == pxr::SdfValueTypeNames->FloatArray) {
         printf("WE ARE IN THE FLOAT ARRAY PROCESSING BLOCK");
-        // where do I find the value for just a float
         bke::SpanAttributeWriter<float> primvar_writer =
-            point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(pv.GetName().GetText(),ATTR_DOMAIN_POINT);
+            point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(name.GetText(),ATTR_DOMAIN_POINT);
         if (!primvar_writer) {
           printf("couldn't make writer for float prop %s\n", name.GetText());
           continue;
         }
         pxr::VtArray<float> values;
-        // where did the params value come from?
         if (!pv.ComputeFlattened(&values,params.motion_sample_time)) {
-          printf("coulnd't compute the flattened colors %s\n", name.GetText());
+          printf("couldn't compute the flattened colors %s\n", name.GetText());
           continue;
         }
 
-      // ? what does the 4f mean, like rgba? where do we find the other types that can go here?
         for (int i =0; i < values.size(); ++i) {
           primvar_writer.span[i] = values[i];
         };
         printf("finished writing values into the primvar writer");
         primvar_writer.finish();
-}
+    }
   }
   
 
