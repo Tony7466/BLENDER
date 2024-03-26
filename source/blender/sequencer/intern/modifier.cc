@@ -16,7 +16,7 @@
 #include "BLI_string_utils.hh"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_mask_types.h"
 #include "DNA_scene_types.h"
@@ -86,7 +86,6 @@ static ImBuf *modifier_render_mask_input(const SeqRenderData *context,
   if (mask_input_type == SEQUENCE_MASK_INPUT_STRIP) {
     if (mask_sequence) {
       SeqRenderState state;
-      seq_render_state_init(&state);
 
       mask_input = seq_render_strip(context, &state, mask_sequence, timeline_frame);
 
@@ -862,15 +861,15 @@ static void hue_correct_init_data(SequenceModifierData *smd)
   int c;
 
   BKE_curvemapping_set_defaults(&hcmd->curve_mapping, 1, 0.0f, 0.0f, 1.0f, 1.0f, HD_AUTO);
-  hcmd->curve_mapping.preset = CURVE_PRESET_MID9;
+  hcmd->curve_mapping.preset = CURVE_PRESET_MID8;
 
   for (c = 0; c < 3; c++) {
     CurveMap *cuma = &hcmd->curve_mapping.cm[c];
-
     BKE_curvemap_reset(
         cuma, &hcmd->curve_mapping.clipr, hcmd->curve_mapping.preset, CURVEMAP_SLOPE_POSITIVE);
   }
-
+  /* use wrapping for all hue correct modifiers */
+  hcmd->curve_mapping.flag |= CUMA_USE_WRAPPING;
   /* default to showing Saturation */
   hcmd->curve_mapping.cur = 1;
 }

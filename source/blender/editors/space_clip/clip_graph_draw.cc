@@ -11,21 +11,19 @@
 
 #include "BLI_utildefines.h"
 
-#include "BKE_context.hh"
 #include "BKE_movieclip.h"
 #include "BKE_tracking.h"
 
 #include "ED_clip.hh"
 #include "ED_screen.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_matrix.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_matrix.hh"
+#include "GPU_state.hh"
 
 #include "WM_types.hh"
 
-#include "UI_interface.hh"
 #include "UI_resources.hh"
 #include "UI_view2d.hh"
 

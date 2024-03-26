@@ -29,8 +29,8 @@
 #include "RNA_access.hh"
 #include "RNA_prototypes.h"
 
-#include "GPU_immediate.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 #include "clip_intern.h" /* own include */
 
@@ -400,8 +400,6 @@ void clip_draw_dopesheet_channels(const bContext *C, ARegion *region)
                          UI_UNIT_Y,
                          &ptr,
                          chan_prop_lock,
-                         0,
-                         0,
                          0,
                          0,
                          0,

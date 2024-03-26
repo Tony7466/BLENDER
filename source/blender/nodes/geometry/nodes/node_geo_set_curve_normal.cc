@@ -21,7 +21,10 @@ static void node_declare(NodeDeclarationBuilder &b)
   b.add_input<decl::Geometry>("Curve").supported_type(
       {GeometryComponent::Type::Curve, GeometryComponent::Type::GreasePencil});
   b.add_input<decl::Bool>("Selection").default_value(true).hide_value().field_on_all();
-  b.add_input<decl::Vector>("Normal").default_value({0.0f, 0.0f, 1.0f}).field_on_all();
+  b.add_input<decl::Vector>("Normal")
+      .default_value({0.0f, 0.0f, 1.0f})
+      .subtype(PROP_XYZ)
+      .field_on_all();
   b.add_output<decl::Geometry>("Curve").propagate_all();
 }
 
@@ -57,13 +60,13 @@ static void set_curve_normal(bke::CurvesGeometry &curves,
                                      fn::make_constant_field<int8_t>(mode));
 
   if (mode == NORMAL_MODE_FREE) {
-    bke::try_capture_field_on_geometry(
-        curves.attributes_for_write(),
-        point_context,
-        "custom_normal",
-        AttrDomain::Point,
-        Field<bool>(std::make_shared<EvaluateOnDomainInput>(selection_field, AttrDomain::Curve)),
-        custom_normal);
+    bke::try_capture_field_on_geometry(curves.attributes_for_write(),
+                                       point_context,
+                                       "custom_normal",
+                                       AttrDomain::Point,
+                                       Field<bool>(std::make_shared<bke::EvaluateOnDomainInput>(
+                                           selection_field, AttrDomain::Curve)),
+                                       custom_normal);
   }
 
   curves.tag_normals_changed();

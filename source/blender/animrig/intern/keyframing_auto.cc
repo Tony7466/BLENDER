@@ -8,10 +8,8 @@
 
 #include "BKE_animsys.h"
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
-#include "BKE_layer.hh"
-#include "BKE_object.hh"
-#include "BKE_scene.h"
+#include "BKE_fcurve.hh"
+#include "BKE_scene.hh"
 
 #include "BLI_listbase.h"
 #include "BLI_string.h"
@@ -22,11 +20,8 @@
 #include "RNA_prototypes.h"
 
 #include "ED_keyframing.hh"
-#include "ED_scene.hh"
-#include "ED_transform.hh"
 
 #include "ANIM_keyframing.hh"
-#include "ANIM_rna.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -143,7 +138,6 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
         insert_keyframe(bmain,
                         reports,
                         id,
-                        adt->action,
                         (fcu->grp ? fcu->grp->name : nullptr),
                         fcu->rna_path,
                         fcu->array_index,
@@ -165,7 +159,8 @@ void autokeyframe_object(bContext *C, Scene *scene, Object *ob, Span<std::string
                    flag,
                    eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
                    bmain,
-                   reports);
+                   reports,
+                   anim_eval_context);
   }
 }
 
@@ -271,7 +266,6 @@ void autokeyframe_pose_channel(bContext *C,
         blender::animrig::insert_keyframe(bmain,
                                           reports,
                                           id,
-                                          act,
                                           ((fcu->grp) ? (fcu->grp->name) : (nullptr)),
                                           fcu->rna_path,
                                           fcu->array_index,
@@ -290,7 +284,8 @@ void autokeyframe_pose_channel(bContext *C,
                    flag,
                    eBezTriple_KeyframeType(scene->toolsettings->keyframe_type),
                    bmain,
-                   reports);
+                   reports,
+                   anim_eval_context);
   }
 }
 
@@ -364,7 +359,6 @@ bool autokeyframe_property(bContext *C,
       changed = insert_keyframe(bmain,
                                 reports,
                                 id,
-                                action,
                                 (fcu && fcu->grp) ? fcu->grp->name : nullptr,
                                 fcu ? fcu->rna_path : (path ? path->c_str() : nullptr),
                                 rnaindex,

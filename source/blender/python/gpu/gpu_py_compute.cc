@@ -13,25 +13,15 @@
 
 #include "BLI_utildefines.h"
 
-#include "GPU_capabilities.h"
-#include "GPU_compute.h"
-#include "GPU_shader.h"
-#include "GPU_state.h"
-#include "GPU_texture.h"
-#include "GPU_uniform_buffer.h"
+#include "GPU_capabilities.hh"
+#include "GPU_compute.hh"
+#include "GPU_state.hh"
 
-#include "../generic/py_capi_utils.h"
 #include "../generic/python_compat.h"
-#include "../generic/python_utildefines.h"
 
-#include "../mathutils/mathutils.h"
-
-#include "gpu_py.h"
-#include "gpu_py_compute.h" /* own include */
-#include "gpu_py_shader.h"
-#include "gpu_py_texture.h"
-#include "gpu_py_uniformbuffer.h"
-#include "gpu_py_vertex_format.h"
+#include "gpu_py.hh"
+#include "gpu_py_compute.hh" /* own include */
+#include "gpu_py_shader.hh"
 
 PyDoc_STRVAR(
     /* Wrap. */

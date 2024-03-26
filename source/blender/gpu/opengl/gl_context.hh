@@ -10,7 +10,7 @@
 
 #include "gpu_context_private.hh"
 
-#include "GPU_framebuffer.h"
+#include "GPU_framebuffer.hh"
 
 #include "BLI_set.hh"
 #include "BLI_vector.hh"
@@ -69,7 +69,7 @@ class GLContext : public Context {
   static bool generate_mipmap_workaround;
   static float derivative_signs[2];
 
-  /** VBO for missing vertex attrib binding. Avoid undefined behavior on some implementation. */
+  /** VBO for missing vertex attribute binding. Avoid undefined behavior on some implementation. */
   GLuint default_attr_vbo_;
 
   /** Used for debugging purpose. Bitflags of all bound slots. */
@@ -77,7 +77,7 @@ class GLContext : public Context {
 
  private:
   /**
-   * #GPUBatch & #GPUFramebuffer have references to the context they are from, in the case the
+   * #Batch & #GPUFramebuffer have references to the context they are from, in the case the
    * context is destroyed, we need to remove any reference to it.
    */
   Set<GLVaoCache *> vao_caches_;
@@ -129,7 +129,7 @@ class GLContext : public Context {
 
   void debug_group_begin(const char *name, int index) override;
   void debug_group_end() override;
-  bool debug_capture_begin() override;
+  bool debug_capture_begin(const char *title) override;
   void debug_capture_end() override;
   void *debug_capture_scope_create(const char *name) override;
   bool debug_capture_scope_begin(void *scope) override;

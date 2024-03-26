@@ -23,13 +23,13 @@
 #include "DNA_userdef_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_fcurve.hh"
+#include "BKE_global.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
 #include "BKE_packedFile.h"
-#include "BKE_report.h"
-#include "BKE_scene.h"
+#include "BKE_report.hh"
+#include "BKE_scene.hh"
 #include "BKE_sound.h"
 
 #include "RNA_access.hh"
@@ -38,7 +38,6 @@
 #include "RNA_prototypes.h"
 
 #include "SEQ_iterator.hh"
-#include "SEQ_utils.hh"
 
 #include "UI_interface.hh"
 
@@ -371,6 +370,7 @@ static int sound_mixdown_exec(bContext *C, wmOperator *op)
                                      container,
                                      codec,
                                      bitrate,
+                                     AUD_RESAMPLE_QUALITY_MEDIUM,
                                      nullptr,
                                      nullptr,
                                      error_message,
@@ -386,6 +386,7 @@ static int sound_mixdown_exec(bContext *C, wmOperator *op)
                          container,
                          codec,
                          bitrate,
+                         AUD_RESAMPLE_QUALITY_MEDIUM,
                          nullptr,
                          nullptr,
                          error_message,

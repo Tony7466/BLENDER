@@ -12,7 +12,7 @@
 #include "BKE_context.hh"
 #include "BKE_screen.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_screen_types.h"
 #include "DNA_space_types.h"
@@ -35,7 +35,6 @@
 
 #include "file_intern.hh"
 #include "filelist.hh"
-#include "fsmenu.h"
 
 #include <cstring>
 
@@ -163,9 +162,7 @@ static void file_panel_execution_buttons_draw(const bContext *C, Panel *panel)
                   0,
                   0.0f,
                   float(FILE_MAXFILE),
-                  0,
-                  0,
-                  TIP_(overwrite_alert ? N_("File name, overwrite existing") : N_("File name")));
+                  overwrite_alert ? TIP_("File name, overwrite existing") : TIP_("File name"));
 
   BLI_assert(!UI_but_flag_is_set(but, UI_BUT_UNDO));
   BLI_assert(!UI_but_is_utf8(but));
@@ -254,7 +251,8 @@ static void file_panel_asset_catalog_buttons_draw(const bContext *C, Panel *pane
 
   uiItemS(col);
 
-  file_create_asset_catalog_tree_view_in_layout(asset_library, col, sfile, params);
+  blender::ed::asset_browser::file_create_asset_catalog_tree_view_in_layout(
+      asset_library, col, sfile, params);
 }
 
 void file_tools_region_panels_register(ARegionType *art)

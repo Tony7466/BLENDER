@@ -22,9 +22,9 @@
 #include "BLI_string_utf8_symbols.h"
 #include "BLI_string_utils.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "BKE_anim_data.h"
+#include "BKE_anim_data.hh"
 #include "BKE_animsys.h"
 #include "BKE_sound.h"
 
@@ -115,10 +115,10 @@ const EnumPropertyItem rna_enum_strip_color_items[] = {
 
 #  include <fmt/format.h>
 
-#  include "BKE_global.h"
+#  include "BKE_global.hh"
 #  include "BKE_idprop.h"
 #  include "BKE_movieclip.h"
-#  include "BKE_report.h"
+#  include "BKE_report.hh"
 
 #  include "WM_api.hh"
 
@@ -205,13 +205,13 @@ static void rna_Sequence_use_sequence(Main *bmain, Scene *scene, PointerRNA *ptr
 {
   /* General update callback. */
   rna_Sequence_invalidate_raw_update(bmain, scene, ptr);
-  /* Changing recursion changes set of IDs which needs to be remapped by the copy-on-write.
-   * the only way for this currently is to tag the ID for ID_RECALC_COPY_ON_WRITE. */
+  /* Changing recursion changes set of IDs which needs to be remapped by the copy-on-evaluation.
+   * the only way for this currently is to tag the ID for ID_RECALC_SYNC_TO_EVAL. */
   Editing *ed = SEQ_editing_get(scene);
   if (ed) {
     Sequence *seq = (Sequence *)ptr->data;
     if (seq->scene != nullptr) {
-      DEG_id_tag_update(&seq->scene->id, ID_RECALC_COPY_ON_WRITE);
+      DEG_id_tag_update(&seq->scene->id, ID_RECALC_SYNC_TO_EVAL);
     }
   }
   /* The sequencer scene is to be updated as well, including new relations from the nested
@@ -573,7 +573,7 @@ static int rna_Sequence_frame_length_get(PointerRNA *ptr)
   return SEQ_time_right_handle_frame_get(scene, seq) - SEQ_time_left_handle_frame_get(scene, seq);
 }
 
-static int rna_Sequence_frame_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_Sequence_frame_editable(const PointerRNA *ptr, const char ** /*r_info*/)
 {
   Sequence *seq = (Sequence *)ptr->data;
   /* Effect sequences' start frame and length must be readonly! */
@@ -860,7 +860,7 @@ static bool rna_MovieSequence_reload_if_needed(ID *scene_id, Sequence *seq, Main
   return can_produce_frames;
 }
 
-static PointerRNA rna_MovieSequence_metadata_get(Sequence *seq)
+static PointerRNA rna_MovieSequence_metadata_get(ID *scene_id, Sequence *seq)
 {
   if (seq == nullptr || seq->anims.first == nullptr) {
     return PointerRNA_NULL;
@@ -876,7 +876,7 @@ static PointerRNA rna_MovieSequence_metadata_get(Sequence *seq)
     return PointerRNA_NULL;
   }
 
-  PointerRNA ptr = RNA_pointer_create(nullptr, &RNA_IDPropertyWrapPtr, metadata);
+  PointerRNA ptr = RNA_pointer_create(scene_id, &RNA_IDPropertyWrapPtr, metadata);
   return ptr;
 }
 
@@ -1471,7 +1471,7 @@ static void rna_SequenceModifier_strip_set(PointerRNA *ptr, PointerRNA value, Re
   Sequence *target = (Sequence *)value.data;
 
   if (target != nullptr && SEQ_relations_render_loop_check(target, seq)) {
-    BKE_report(reports, RPT_ERROR, "Recursion detected, can not use this strip");
+    BKE_report(reports, RPT_ERROR, "Recursion detected, cannot use this strip");
     return;
   }
 
@@ -1696,6 +1696,11 @@ static void rna_def_strip_crop(BlenderRNA *brna)
 }
 
 static const EnumPropertyItem transform_filter_items[] = {
+    {SEQ_TRANSFORM_FILTER_AUTO,
+     "AUTO",
+     0,
+     "Auto",
+     "Automatically choose filter based on scaling factor"},
     {SEQ_TRANSFORM_FILTER_NEAREST, "NEAREST", 0, "Nearest", "Use nearest sample"},
     {SEQ_TRANSFORM_FILTER_BILINEAR,
      "BILINEAR",
@@ -1770,7 +1775,7 @@ static void rna_def_strip_transform(BlenderRNA *brna)
   prop = RNA_def_property(srna, "filter", PROP_ENUM, PROP_NONE);
   RNA_def_property_enum_sdna(prop, nullptr, "filter");
   RNA_def_property_enum_items(prop, transform_filter_items);
-  RNA_def_property_enum_default(prop, SEQ_TRANSFORM_FILTER_BILINEAR);
+  RNA_def_property_enum_default(prop, SEQ_TRANSFORM_FILTER_AUTO);
   RNA_def_property_ui_text(prop, "Filter", "Type of filter to use for image transformation");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceTransform_update");
 
@@ -2957,6 +2962,7 @@ static void rna_def_movie(BlenderRNA *brna)
 
   /* metadata */
   func = RNA_def_function(srna, "metadata", "rna_MovieSequence_metadata_get");
+  RNA_def_function_flag(func, FUNC_USE_SELF_ID);
   RNA_def_function_ui_description(func, "Retrieve metadata of the movie file");
   /* return type */
   parm = RNA_def_pointer(
@@ -3744,7 +3750,7 @@ static void rna_def_brightcontrast_modifier(BlenderRNA *brna)
   prop = RNA_def_property(srna, "bright", PROP_FLOAT, PROP_UNSIGNED);
   RNA_def_property_float_sdna(prop, nullptr, "bright");
   RNA_def_property_range(prop, -FLT_MAX, FLT_MAX);
-  RNA_def_property_ui_text(prop, "Bright", "Adjust the luminosity of the colors");
+  RNA_def_property_ui_text(prop, "Brightness", "Adjust the luminosity of the colors");
   RNA_def_property_update(prop, NC_SCENE | ND_SEQUENCER, "rna_SequenceModifier_update");
 
   prop = RNA_def_property(srna, "contrast", PROP_FLOAT, PROP_UNSIGNED);

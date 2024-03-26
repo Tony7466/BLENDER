@@ -22,7 +22,7 @@
 #include "BKE_context.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_volume.hh"
 
 #include "WM_api.hh"
@@ -41,11 +41,9 @@ static Object *object_volume_add(bContext *C, wmOperator *op, const char *name)
   ushort local_view_bits;
   float loc[3], rot[3];
 
-  if (!ED_object_add_generic_get_opts(
-          C, op, 'Z', loc, rot, nullptr, nullptr, &local_view_bits, nullptr))
-  {
-    return nullptr;
-  }
+  ED_object_add_generic_get_opts(
+      C, op, 'Z', loc, rot, nullptr, nullptr, &local_view_bits, nullptr);
+
   return ED_object_add_type(C, OB_VOLUME, name, loc, rot, false, local_view_bits);
 }
 

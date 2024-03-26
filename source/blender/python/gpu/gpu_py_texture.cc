@@ -17,18 +17,18 @@
 
 #include "DNA_image_types.h"
 
-#include "GPU_context.h"
-#include "GPU_texture.h"
+#include "GPU_context.hh"
+#include "GPU_texture.hh"
 
 #include "BKE_image.h"
 
 #include "../generic/py_capi_utils.h"
 #include "../generic/python_compat.h"
 
-#include "gpu_py.h"
-#include "gpu_py_buffer.h"
+#include "gpu_py.hh"
+#include "gpu_py_buffer.hh"
 
-#include "gpu_py_texture.h" /* own include */
+#include "gpu_py_texture.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name GPUTexture Common Utilities
@@ -672,7 +672,7 @@ static PyObject *pygpu_texture_from_image(PyObject * /*self*/, PyObject *arg)
 
   ImageUser iuser;
   BKE_imageuser_default(&iuser);
-  GPUTexture *tex = BKE_image_get_gpu_texture(ima, &iuser, nullptr);
+  GPUTexture *tex = BKE_image_get_gpu_texture(ima, &iuser);
 
   return BPyGPUTexture_CreatePyObject(tex, true);
 }

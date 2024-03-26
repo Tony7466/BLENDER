@@ -21,15 +21,11 @@
 #include "BLI_string.h"
 #include "BLI_utildefines.h"
 
-#include "BKE_global.h"
+#include "BKE_global.hh"
 
 #include "BLF_api.hh"
 
-#include "BLT_translation.h"
-
 #include "UI_interface.hh"
-
-#include "ED_datafiles.h"
 
 #include "interface_intern.hh"
 
@@ -498,7 +494,7 @@ static void fontstyle_set_ex(const uiFontStyle *fs, const float dpi_fac)
   uiFont *font = uifont_to_blfont(fs->uifont_id);
 
   BLF_size(font->blf_id, fs->points * dpi_fac);
-  BLF_character_weight(fs->uifont_id, fs->character_weight);
+  BLF_character_weight(font->blf_id, fs->character_weight);
 }
 
 void UI_fontstyle_set(const uiFontStyle *fs)

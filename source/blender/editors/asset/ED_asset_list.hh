@@ -40,7 +40,7 @@ void asset_reading_region_listen_fn(const wmRegionListenerParams *params);
 asset_system::AssetLibrary *library_get_once_available(
     const AssetLibraryReference &library_reference);
 
-/* Can return false to stop iterating. */
+/** Can return false to stop iterating. */
 using AssetListHandleIterFn = FunctionRef<bool(AssetHandle)>;
 using AssetListIterFn = FunctionRef<bool(asset_system::AssetRepresentation &)>;
 
@@ -61,7 +61,7 @@ void iterate(const AssetLibraryReference &library_reference, AssetListIterFn fn)
 void storage_fetch(const AssetLibraryReference *library_reference, const bContext *C);
 bool is_loaded(const AssetLibraryReference *library_reference);
 void ensure_previews_job(const AssetLibraryReference *library_reference, const bContext *C);
-void clear(const AssetLibraryReference *library_reference, bContext *C);
+void clear(const AssetLibraryReference *library_reference, const bContext *C);
 bool storage_has_list_for_library(const AssetLibraryReference *library_reference);
 /**
  * Tag all asset lists in the storage that show main data as needing an update (re-fetch).

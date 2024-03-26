@@ -31,7 +31,7 @@
 #include "BLI_cpp_types.hh"
 #include "BLI_dot_export.hh"
 #include "BLI_hash.h"
-#include "BLI_hash_md5.h"
+#include "BLI_hash_md5.hh"
 #include "BLI_lazy_threading.hh"
 #include "BLI_map.hh"
 
@@ -330,7 +330,8 @@ class LazyFunctionForGeometryNode : public LazyFunction {
 
     if (geo_eval_log::GeoTreeLogger *tree_logger = local_user_data.try_get_tree_logger(*user_data))
     {
-      tree_logger->node_execution_times.append({node_.identifier, start_time, end_time});
+      tree_logger->node_execution_times.append(*tree_logger->allocator,
+                                               {node_.identifier, start_time, end_time});
     }
   }
 
@@ -345,7 +346,7 @@ class LazyFunctionForGeometryNode : public LazyFunction {
     GField output_field{std::make_shared<AnonymousAttributeFieldInput>(
         std::move(attribute_id),
         *bsocket.typeinfo->base_cpp_type,
-        fmt::format(TIP_("{} node"), std::string_view(node_.label_or_name())))};
+        fmt::format(TIP_("{} node"), node_.label_or_name()))};
     void *r_value = params.get_output_data_ptr(lf_index);
     new (r_value) SocketValueVariant(std::move(output_field));
     params.output_set(lf_index);
@@ -965,8 +966,8 @@ class LazyFunctionForBakeInputsUsage : public LazyFunction {
       this->set_default_outputs(params);
       return;
     }
-    const bool need_inputs = std::holds_alternative<sim_output::PassThrough>(*behavior) ||
-                             std::holds_alternative<sim_output::StoreNewState>(*behavior);
+    const bool need_inputs = std::holds_alternative<sim_output::PassThrough>(behavior->behavior) ||
+                             std::holds_alternative<sim_output::StoreNewState>(behavior->behavior);
     params.set_output(0, need_inputs);
   }
 
@@ -1706,6 +1707,7 @@ class LazyFunctionForRepeatZone : public LazyFunction {
                 user_data))
         {
           tree_logger->node_warnings.append(
+              *tree_logger->allocator,
               {repeat_output_bnode_.identifier,
                {NodeWarningType::Info, N_("Inspection index is out of range")}});
         }
@@ -2004,7 +2006,8 @@ class GeometryNodesLazyFunctionLogger : public lf::GraphExecutor::Logger {
         if (!bsockets.is_empty()) {
           const bNodeSocket &bsocket = *bsockets[0];
           const bNode &bnode = bsocket.owner_node();
-          tree_logger->debug_messages.append({bnode.identifier, thread_id_str});
+          tree_logger->debug_messages.append(*tree_logger->allocator,
+                                             {bnode.identifier, thread_id_str});
           return true;
         }
       }
@@ -3547,6 +3550,9 @@ struct GeometryNodesLazyFunctionBuilder {
       graph_params.lf_output_by_bsocket.add(&bsocket, &lf_socket);
       mapping_->bsockets_by_lf_socket_map.add(&lf_socket, &bsocket);
     }
+
+    mapping_->possible_side_effect_node_map.add(&bnode, &lf_node);
+
     return lf_node;
   }
 

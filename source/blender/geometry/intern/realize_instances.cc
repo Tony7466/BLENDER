@@ -15,9 +15,9 @@
 #include "BLI_noise.hh"
 #include "BLI_task.hh"
 
-#include "BKE_collection.h"
+#include "BKE_collection.hh"
 #include "BKE_curves.hh"
-#include "BKE_deform.hh"
+#include "BKE_customdata.hh"
 #include "BKE_geometry_set_instances.hh"
 #include "BKE_instances.hh"
 #include "BKE_material.h"
@@ -286,6 +286,24 @@ struct InstanceContext {
   }
 };
 
+static int64_t get_final_points_num(const GatherTasks &tasks)
+{
+  int64_t points_num = 0;
+  if (!tasks.pointcloud_tasks.is_empty()) {
+    const RealizePointCloudTask &task = tasks.pointcloud_tasks.last();
+    points_num += task.start_index + task.pointcloud_info->pointcloud->totpoint;
+  }
+  if (!tasks.mesh_tasks.is_empty()) {
+    const RealizeMeshTask &task = tasks.mesh_tasks.last();
+    points_num += task.start_indices.vertex + task.mesh_info->mesh->verts_num;
+  }
+  if (!tasks.curve_tasks.is_empty()) {
+    const RealizeCurveTask &task = tasks.curve_tasks.last();
+    points_num += task.start_indices.point + task.curve_info->curves->geometry.point_num;
+  }
+  return points_num;
+}
+
 static void copy_transformed_positions(const Span<float3> src,
                                        const float4x4 &transform,
                                        MutableSpan<float3> dst)
@@ -470,8 +488,7 @@ static void foreach_geometry_in_reference(
       int index = 0;
       FOREACH_COLLECTION_OBJECT_RECURSIVE_BEGIN (&collection, object) {
         const bke::GeometrySet object_geometry = bke::object_get_evaluated_geometry_set(*object);
-        const float4x4 matrix = base_transform * offset_matrix *
-                                float4x4_view(object->object_to_world);
+        const float4x4 matrix = base_transform * offset_matrix * object->object_to_world();
         const int sub_id = noise::hash(id, index);
         fn(object_geometry, matrix, sub_id);
         index++;
@@ -1171,7 +1188,22 @@ static void execute_realize_mesh_tasks(const RealizeInstancesOptions &options,
     dst_attribute_writers.append(
         dst_attributes.lookup_or_add_for_write_only_span(attribute_id, domain, data_type));
   }
-
+  const char *active_layer = CustomData_get_active_layer_name(&first_mesh.corner_data,
+                                                              CD_PROP_FLOAT2);
+  if (active_layer != nullptr) {
+    int id = CustomData_get_named_layer(&dst_mesh->corner_data, CD_PROP_FLOAT2, active_layer);
+    if (id >= 0) {
+      CustomData_set_layer_active(&dst_mesh->corner_data, CD_PROP_FLOAT2, id);
+    }
+  }
+  const char *render_layer = CustomData_get_render_layer_name(&first_mesh.corner_data,
+                                                              CD_PROP_FLOAT2);
+  if (render_layer != nullptr) {
+    int id = CustomData_get_named_layer(&dst_mesh->corner_data, CD_PROP_FLOAT2, render_layer);
+    if (id >= 0) {
+      CustomData_set_layer_render(&dst_mesh->corner_data, CD_PROP_FLOAT2, id);
+    }
+  }
   /* Actually execute all tasks. */
   threading::parallel_for(tasks.index_range(), 100, [&](const IndexRange task_range) {
     for (const int task_index : task_range) {
@@ -1598,22 +1630,29 @@ bke::GeometrySet realize_instances(bke::GeometrySet geometry_set,
   gather_realize_tasks_recursive(gather_info, geometry_set, transform, attribute_fallbacks);
 
   bke::GeometrySet new_geometry_set;
-  execute_realize_pointcloud_tasks(options,
-                                   all_pointclouds_info,
-                                   gather_info.r_tasks.pointcloud_tasks,
-                                   all_pointclouds_info.attributes,
-                                   new_geometry_set);
-  execute_realize_mesh_tasks(options,
-                             all_meshes_info,
-                             gather_info.r_tasks.mesh_tasks,
-                             all_meshes_info.attributes,
-                             all_meshes_info.materials,
-                             new_geometry_set);
-  execute_realize_curve_tasks(options,
-                              all_curves_info,
-                              gather_info.r_tasks.curve_tasks,
-                              all_curves_info.attributes,
-                              new_geometry_set);
+
+  const int64_t total_points_num = get_final_points_num(gather_info.r_tasks);
+  /* This doesn't have to be exact at all, it's just a rough estimate ot make decisions about
+   * multi-threading (overhead). */
+  const int64_t approximate_used_bytes_num = total_points_num * 32;
+  threading::memory_bandwidth_bound_task(approximate_used_bytes_num, [&]() {
+    execute_realize_pointcloud_tasks(options,
+                                     all_pointclouds_info,
+                                     gather_info.r_tasks.pointcloud_tasks,
+                                     all_pointclouds_info.attributes,
+                                     new_geometry_set);
+    execute_realize_mesh_tasks(options,
+                               all_meshes_info,
+                               gather_info.r_tasks.mesh_tasks,
+                               all_meshes_info.attributes,
+                               all_meshes_info.materials,
+                               new_geometry_set);
+    execute_realize_curve_tasks(options,
+                                all_curves_info,
+                                gather_info.r_tasks.curve_tasks,
+                                all_curves_info.attributes,
+                                new_geometry_set);
+  });
 
   if (gather_info.r_tasks.first_volume) {
     new_geometry_set.add(*gather_info.r_tasks.first_volume);

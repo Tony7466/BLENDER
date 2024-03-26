@@ -20,7 +20,6 @@
 #include "DNA_modifier_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
-#include "DNA_workspace_types.h"
 
 #include "BLI_array.hh"
 #include "BLI_bitmap.h"
@@ -37,20 +36,17 @@
 #include "BKE_editmesh.hh"
 #include "BKE_grease_pencil_vertex_groups.hh"
 #include "BKE_lattice.hh"
-#include "BKE_layer.hh"
 #include "BKE_mesh.hh"
 #include "BKE_mesh_mapping.hh"
-#include "BKE_mesh_runtime.hh"
 #include "BKE_modifier.hh"
 #include "BKE_object.hh"
 #include "BKE_object_deform.h"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "DEG_depsgraph.hh"
 #include "DEG_depsgraph_build.hh"
-#include "DEG_depsgraph_query.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_armature_types.h"
 #include "RNA_access.hh"
@@ -167,8 +163,7 @@ bool ED_vgroup_parray_alloc(ID *id,
       case ID_ME: {
         Mesh *mesh = (Mesh *)id;
 
-        if (mesh->edit_mesh) {
-          BMEditMesh *em = mesh->edit_mesh;
+        if (BMEditMesh *em = mesh->runtime->edit_mesh) {
           BMesh *bm = em->bm;
           const int cd_dvert_offset = CustomData_get_offset(&bm->vdata, CD_MDEFORMVERT);
           BMIter iter;
@@ -536,7 +531,7 @@ static void ED_mesh_defvert_mirror_update_em(
     Object *ob, BMVert *eve, int def_nr, int vidx, const int cd_dvert_offset)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->edit_mesh;
+  BMEditMesh *em = mesh->runtime->edit_mesh;
   BMVert *eve_mirr;
   bool use_topology = (mesh->editflag & ME_EDIT_MIRROR_TOPO) != 0;
 
@@ -574,7 +569,7 @@ static void ED_mesh_defvert_mirror_update_ob(Object *ob, int def_nr, int vidx)
 void ED_vgroup_vert_active_mirror(Object *ob, int def_nr)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->edit_mesh;
+  BMEditMesh *em = mesh->runtime->edit_mesh;
   MDeformVert *dvert_act;
 
   if (mesh->symmetry & ME_SYMMETRY_X) {
@@ -610,7 +605,7 @@ static void vgroup_remove_weight(Object *ob, const int def_nr)
 static bool vgroup_normalize_active_vertex(Object *ob, eVGroupSelect subset_type)
 {
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->edit_mesh;
+  BMEditMesh *em = mesh->runtime->edit_mesh;
   BMVert *eve_act;
   int v_act;
   MDeformVert *dvert_act;
@@ -650,7 +645,7 @@ static void vgroup_copy_active_to_sel(Object *ob, eVGroupSelect subset_type)
 {
   using namespace blender;
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->edit_mesh;
+  BMEditMesh *em = mesh->runtime->edit_mesh;
   MDeformVert *dvert_act;
   int i, vgroup_tot, subset_count;
   const bool *vgroup_validmap = BKE_object_defgroup_subset_from_select_type(
@@ -947,8 +942,8 @@ static float get_vert_def_nr(Object *ob, const int def_nr, const int vertnum)
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-    if (mesh->edit_mesh) {
-      BMEditMesh *em = mesh->edit_mesh;
+    if (mesh->runtime->edit_mesh) {
+      BMEditMesh *em = mesh->runtime->edit_mesh;
       const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
       /* warning, this lookup is _not_ fast */
 
@@ -1033,8 +1028,8 @@ static void vgroup_select_verts(Object *ob, int select)
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-    if (mesh->edit_mesh) {
-      BMEditMesh *em = mesh->edit_mesh;
+    if (mesh->runtime->edit_mesh) {
+      BMEditMesh *em = mesh->runtime->edit_mesh;
       const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
 
       if (cd_dvert_offset != -1) {
@@ -2053,7 +2048,7 @@ void ED_vgroup_mirror(Object *ob,
   /* only the active group */
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
-    BMEditMesh *em = mesh->edit_mesh;
+    BMEditMesh *em = mesh->runtime->edit_mesh;
 
     if (em) {
       const int cd_dvert_offset = CustomData_get_offset(&em->bm->vdata, CD_MDEFORMVERT);
@@ -2247,8 +2242,8 @@ static void vgroup_assign_verts(Object *ob, const float weight)
   if (ob->type == OB_MESH) {
     Mesh *mesh = static_cast<Mesh *>(ob->data);
 
-    if (mesh->edit_mesh) {
-      BMEditMesh *em = mesh->edit_mesh;
+    if (mesh->runtime->edit_mesh) {
+      BMEditMesh *em = mesh->runtime->edit_mesh;
       int cd_dvert_offset;
 
       BMIter iter;
@@ -2719,7 +2714,7 @@ static int vertex_group_select_exec(bContext *C, wmOperator * /*op*/)
   }
 
   vgroup_select_verts(ob, 1);
-  DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);
+  DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob->data);
 
   return OPERATOR_FINISHED;
@@ -2751,7 +2746,7 @@ static int vertex_group_deselect_exec(bContext *C, wmOperator * /*op*/)
   Object *ob = ED_object_context(C);
 
   vgroup_select_verts(ob, 0);
-  DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_COPY_ON_WRITE | ID_RECALC_SELECT);
+  DEG_id_tag_update(static_cast<ID *>(ob->data), ID_RECALC_SYNC_TO_EVAL | ID_RECALC_SELECT);
   WM_event_add_notifier(C, NC_GEOM | ND_SELECT, ob->data);
 
   return OPERATOR_FINISHED;
@@ -3886,7 +3881,7 @@ static void vgroup_copy_active_to_sel_single(Object *ob, const int def_nr)
   MDeformVert *dvert_act;
 
   Mesh *mesh = static_cast<Mesh *>(ob->data);
-  BMEditMesh *em = mesh->edit_mesh;
+  BMEditMesh *em = mesh->runtime->edit_mesh;
   int i;
 
   if (em) {

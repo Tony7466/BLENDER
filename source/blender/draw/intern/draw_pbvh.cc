@@ -44,7 +44,7 @@
 #include "BKE_pbvh_api.hh"
 #include "BKE_subdiv_ccg.hh"
 
-#include "GPU_batch.h"
+#include "GPU_batch.hh"
 
 #include "DRW_engine.hh"
 #include "DRW_pbvh.hh"
@@ -52,7 +52,7 @@
 #include "attribute_convert.hh"
 #include "bmesh.hh"
 #include "draw_pbvh.hh"
-#include "gpu_private.h"
+#include "gpu_private.hh"
 
 #define MAX_PBVH_BATCH_KEY 512
 #define MAX_PBVH_VBOS 16
@@ -99,7 +99,7 @@ static std::string calc_request_key(const AttributeRequest &request)
 
 struct PBVHVbo {
   AttributeRequest request;
-  GPUVertBuf *vert_buf = nullptr;
+  gpu::VertBuf *vert_buf = nullptr;
   std::string key;
 
   PBVHVbo(const AttributeRequest &request) : request(request)
@@ -121,7 +121,7 @@ inline short4 normal_float_to_short(const float3 &value)
 }
 
 template<typename T>
-void extract_data_vert_faces(const PBVH_GPU_Args &args, const Span<T> attribute, GPUVertBuf &vbo)
+void extract_data_vert_faces(const PBVH_GPU_Args &args, const Span<T> attribute, gpu::VertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
   using VBOType = typename Converter::VBOType;
@@ -144,7 +144,7 @@ void extract_data_vert_faces(const PBVH_GPU_Args &args, const Span<T> attribute,
 }
 
 template<typename T>
-void extract_data_face_faces(const PBVH_GPU_Args &args, const Span<T> attribute, GPUVertBuf &vbo)
+void extract_data_face_faces(const PBVH_GPU_Args &args, const Span<T> attribute, gpu::VertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
   using VBOType = typename Converter::VBOType;
@@ -164,7 +164,9 @@ void extract_data_face_faces(const PBVH_GPU_Args &args, const Span<T> attribute,
 }
 
 template<typename T>
-void extract_data_corner_faces(const PBVH_GPU_Args &args, const Span<T> attribute, GPUVertBuf &vbo)
+void extract_data_corner_faces(const PBVH_GPU_Args &args,
+                               const Span<T> attribute,
+                               gpu::VertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
   using VBOType = typename Converter::VBOType;
@@ -202,7 +204,7 @@ template<typename T> const T &bmesh_cd_face_get(const BMFace &face, const int of
 }
 
 template<typename T>
-void extract_data_vert_bmesh(const PBVH_GPU_Args &args, const int cd_offset, GPUVertBuf &vbo)
+void extract_data_vert_bmesh(const PBVH_GPU_Args &args, const int cd_offset, gpu::VertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
   using VBOType = typename Converter::VBOType;
@@ -223,7 +225,7 @@ void extract_data_vert_bmesh(const PBVH_GPU_Args &args, const int cd_offset, GPU
 }
 
 template<typename T>
-void extract_data_face_bmesh(const PBVH_GPU_Args &args, const int cd_offset, GPUVertBuf &vbo)
+void extract_data_face_bmesh(const PBVH_GPU_Args &args, const int cd_offset, gpu::VertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
   using VBOType = typename Converter::VBOType;
@@ -239,7 +241,7 @@ void extract_data_face_bmesh(const PBVH_GPU_Args &args, const int cd_offset, GPU
 }
 
 template<typename T>
-void extract_data_corner_bmesh(const PBVH_GPU_Args &args, const int cd_offset, GPUVertBuf &vbo)
+void extract_data_corner_bmesh(const PBVH_GPU_Args &args, const int cd_offset, gpu::VertBuf &vbo)
 {
   using Converter = AttributeConverter<T>;
   using VBOType = typename Converter::VBOType;
@@ -261,7 +263,7 @@ void extract_data_corner_bmesh(const PBVH_GPU_Args &args, const int cd_offset, G
 
 struct PBVHBatch {
   Vector<int> vbos;
-  GPUBatch *tris = nullptr, *lines = nullptr;
+  gpu::Batch *tris = nullptr, *lines = nullptr;
   int tris_count = 0, lines_count = 0;
   /* Coarse multi-resolution, will use full-sized VBOs only index buffer changes. */
   bool is_coarse = false;
@@ -314,11 +316,26 @@ static const CustomData *get_cdata(bke::AttrDomain domain, const PBVH_GPU_Args &
   }
 }
 
+template<typename T> T fallback_value_for_fill()
+{
+  return T();
+}
+
+template<> ColorGeometry4f fallback_value_for_fill()
+{
+  return ColorGeometry4f(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
+template<> ColorGeometry4b fallback_value_for_fill()
+{
+  return fallback_value_for_fill<ColorGeometry4f>().encode();
+}
+
 struct PBVHBatches {
   Vector<PBVHVbo> vbos;
   Map<std::string, PBVHBatch> batches;
-  GPUIndexBuf *tri_index = nullptr;
-  GPUIndexBuf *lines_index = nullptr;
+  gpu::IndexBuf *tri_index = nullptr;
+  gpu::IndexBuf *lines_index = nullptr;
   int faces_count = 0; /* Used by PBVH_BMESH and PBVH_GRIDS */
   int tris_count = 0, lines_count = 0;
   bool needs_tri_index = false;
@@ -326,8 +343,8 @@ struct PBVHBatches {
   int material_index = 0;
 
   /* Stuff for displaying coarse multires grids. */
-  GPUIndexBuf *tri_index_coarse = nullptr;
-  GPUIndexBuf *lines_index_coarse = nullptr;
+  gpu::IndexBuf *tri_index_coarse = nullptr;
+  gpu::IndexBuf *lines_index_coarse = nullptr;
   int coarse_level = 0; /* Coarse multires depth. */
   int tris_count_coarse = 0, lines_count_coarse = 0;
 
@@ -434,7 +451,7 @@ struct PBVHBatches {
     return batches.lookup_or_add(std::move(key), create_batch(requests, args, do_coarse_grids));
   }
 
-  void fill_vbo_normal_faces(const PBVH_GPU_Args &args, GPUVertBuf &vert_buf)
+  void fill_vbo_normal_faces(const PBVH_GPU_Args &args, gpu::VertBuf &vert_buf)
   {
     const bke::AttributeAccessor attributes = args.mesh->attributes();
     const VArraySpan sharp_faces = *attributes.lookup<bool>("sharp_face", bke::AttrDomain::Face);
@@ -582,9 +599,11 @@ struct PBVHBatches {
         using T = decltype(dummy);
         using Converter = AttributeConverter<T>;
         using VBOType = typename Converter::VBOType;
-        std::fill_n(static_cast<VBOType *>(GPU_vertbuf_get_data(vbo.vert_buf)),
-                    GPU_vertbuf_get_vertex_len(vbo.vert_buf),
-                    VBOType());
+        if constexpr (!std::is_void_v<VBOType>) {
+          std::fill_n(static_cast<VBOType *>(GPU_vertbuf_get_data(vbo.vert_buf)),
+                      GPU_vertbuf_get_vertex_len(vbo.vert_buf),
+                      Converter::convert(fallback_value_for_fill<T>()));
+        }
       });
     }
   }
@@ -665,7 +684,7 @@ struct PBVHBatches {
       GPU_vertbuf_data_alloc(vbo.vert_buf, totvert);
     }
 
-    GPUVertBuf &vert_buf = *vbo.vert_buf;
+    gpu::VertBuf &vert_buf = *vbo.vert_buf;
 
     const bke::AttributeAccessor attributes = args.mesh->attributes();
 
@@ -754,18 +773,20 @@ struct PBVHBatches {
       const GVArraySpan attribute = *attributes.lookup_or_default(name, domain, data_type);
       bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
         using T = decltype(dummy);
-        switch (domain) {
-          case bke::AttrDomain::Point:
-            extract_data_vert_faces<T>(args, attribute.typed<T>(), vert_buf);
-            break;
-          case bke::AttrDomain::Face:
-            extract_data_face_faces<T>(args, attribute.typed<T>(), vert_buf);
-            break;
-          case bke::AttrDomain::Corner:
-            extract_data_corner_faces<T>(args, attribute.typed<T>(), vert_buf);
-            break;
-          default:
-            BLI_assert_unreachable();
+        if constexpr (!std::is_void_v<typename AttributeConverter<T>::VBOType>) {
+          switch (domain) {
+            case bke::AttrDomain::Point:
+              extract_data_vert_faces<T>(args, attribute.typed<T>(), vert_buf);
+              break;
+            case bke::AttrDomain::Face:
+              extract_data_face_faces<T>(args, attribute.typed<T>(), vert_buf);
+              break;
+            case bke::AttrDomain::Corner:
+              extract_data_corner_faces<T>(args, attribute.typed<T>(), vert_buf);
+              break;
+            default:
+              BLI_assert_unreachable();
+          }
         }
       });
     }
@@ -914,25 +935,26 @@ struct PBVHBatches {
     }
     else {
       const GenericRequest &request = std::get<GenericRequest>(vbo.request);
-      const StringRefNull name = request.name;
       const bke::AttrDomain domain = request.domain;
       const eCustomDataType data_type = request.type;
       const CustomData &custom_data = *get_cdata(domain, args);
-      const int cd_offset = CustomData_get_offset_named(&custom_data, data_type, name.c_str());
+      const int cd_offset = CustomData_get_offset_named(&custom_data, data_type, request.name);
       bke::attribute_math::convert_to_static_type(data_type, [&](auto dummy) {
         using T = decltype(dummy);
-        switch (domain) {
-          case bke::AttrDomain::Point:
-            extract_data_vert_bmesh<T>(args, cd_offset, *vbo.vert_buf);
-            break;
-          case bke::AttrDomain::Face:
-            extract_data_face_bmesh<T>(args, cd_offset, *vbo.vert_buf);
-            break;
-          case bke::AttrDomain::Corner:
-            extract_data_corner_bmesh<T>(args, cd_offset, *vbo.vert_buf);
-            break;
-          default:
-            BLI_assert_unreachable();
+        if constexpr (!std::is_void_v<typename AttributeConverter<T>::VBOType>) {
+          switch (domain) {
+            case bke::AttrDomain::Point:
+              extract_data_vert_bmesh<T>(args, cd_offset, *vbo.vert_buf);
+              break;
+            case bke::AttrDomain::Face:
+              extract_data_face_bmesh<T>(args, cd_offset, *vbo.vert_buf);
+              break;
+            case bke::AttrDomain::Corner:
+              extract_data_corner_bmesh<T>(args, cd_offset, *vbo.vert_buf);
+              break;
+            default:
+              BLI_assert_unreachable();
+          }
         }
       });
     }
@@ -1378,20 +1400,20 @@ void node_free(PBVHBatches *batches)
   delete batches;
 }
 
-GPUBatch *tris_get(PBVHBatches *batches,
-                   const Span<AttributeRequest> attrs,
-                   const PBVH_GPU_Args &args,
-                   bool do_coarse_grids)
+gpu::Batch *tris_get(PBVHBatches *batches,
+                     const Span<AttributeRequest> attrs,
+                     const PBVH_GPU_Args &args,
+                     bool do_coarse_grids)
 {
   do_coarse_grids &= args.pbvh_type == PBVH_GRIDS;
   PBVHBatch &batch = batches->ensure_batch(attrs, args, do_coarse_grids);
   return batch.tris;
 }
 
-GPUBatch *lines_get(PBVHBatches *batches,
-                    const Span<AttributeRequest> attrs,
-                    const PBVH_GPU_Args &args,
-                    bool do_coarse_grids)
+gpu::Batch *lines_get(PBVHBatches *batches,
+                      const Span<AttributeRequest> attrs,
+                      const PBVH_GPU_Args &args,
+                      bool do_coarse_grids)
 {
   do_coarse_grids &= args.pbvh_type == PBVH_GRIDS;
   PBVHBatch &batch = batches->ensure_batch(attrs, args, do_coarse_grids);

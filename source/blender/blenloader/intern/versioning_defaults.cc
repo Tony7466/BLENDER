@@ -22,7 +22,6 @@
 #include "BLI_math_vector.h"
 #include "BLI_math_vector_types.hh"
 #include "BLI_string.h"
-#include "BLI_system.h"
 #include "BLI_utildefines.h"
 
 #include "DNA_camera_types.h"
@@ -33,7 +32,6 @@
 #include "DNA_mask_types.h"
 #include "DNA_material_types.h"
 #include "DNA_mesh_types.h"
-#include "DNA_meshdata_types.h"
 #include "DNA_object_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_screen_types.h"
@@ -56,16 +54,15 @@
 #include "BKE_main_namemap.hh"
 #include "BKE_material.h"
 #include "BKE_mesh.hh"
-#include "BKE_node.hh"
 #include "BKE_node_runtime.hh"
 #include "BKE_node_tree_update.hh"
 #include "BKE_paint.hh"
 #include "BKE_screen.hh"
 #include "BKE_workspace.h"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "versioning_common.hh"
 
@@ -320,7 +317,7 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
   /* New EEVEE defaults. */
   scene->eevee.bloom_intensity = 0.05f;
   scene->eevee.bloom_clamp = 0.0f;
-  scene->eevee.motion_blur_shutter = 0.5f;
+  scene->eevee.motion_blur_shutter_deprecated = 0.5f;
 
   copy_v3_v3(scene->display.light_direction, blender::float3(M_SQRT1_3));
   copy_v2_fl2(scene->safe_areas.title, 0.1f, 0.05f);
@@ -331,6 +328,14 @@ static void blo_update_defaults_scene(Main *bmain, Scene *scene)
 
   /* Enable Soft Shadows by default. */
   scene->eevee.flag |= SCE_EEVEE_SHADOW_SOFT;
+
+  /* Default Rotate Increment. */
+  const float default_snap_angle_increment = DEG2RADF(5.0f);
+  scene->toolsettings->snap_angle_increment_2d = default_snap_angle_increment;
+  scene->toolsettings->snap_angle_increment_3d = default_snap_angle_increment;
+  const float default_snap_angle_increment_precision = DEG2RADF(1.0f);
+  scene->toolsettings->snap_angle_increment_2d_precision = default_snap_angle_increment_precision;
+  scene->toolsettings->snap_angle_increment_3d_precision = default_snap_angle_increment_precision;
 
   /* Be sure `curfalloff` and primitive are initialized. */
   ToolSettings *ts = scene->toolsettings;
@@ -851,6 +856,14 @@ void BLO_update_defaults_startup_blend(Main *bmain, const char *app_template)
 
       brush->automasking_view_normal_limit = default_brush->automasking_view_normal_limit;
       brush->automasking_view_normal_falloff = default_brush->automasking_view_normal_falloff;
+    }
+  }
+
+  {
+    LISTBASE_FOREACH (Brush *, brush, &bmain->brushes) {
+      if (!brush->automasking_cavity_curve) {
+        brush->automasking_cavity_curve = BKE_sculpt_default_cavity_curve();
+      }
     }
   }
 }

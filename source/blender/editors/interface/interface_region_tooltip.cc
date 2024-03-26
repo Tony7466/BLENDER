@@ -26,7 +26,6 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "DNA_brush_types.h"
 #include "DNA_userdef_types.h"
 
 #include "BLI_listbase.h"
@@ -42,9 +41,9 @@
 
 #include "BIF_glutil.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_immediate_util.h"
-#include "GPU_state.h"
+#include "GPU_immediate.hh"
+#include "GPU_immediate_util.hh"
+#include "GPU_state.hh"
 
 #include "IMB_imbuf.hh"
 #include "IMB_imbuf_types.hh"
@@ -58,7 +57,7 @@
 #include "UI_interface.hh"
 
 #include "BLF_api.hh"
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #ifdef WITH_PYTHON
 #  include "BPY_extern_run.h"
@@ -91,8 +90,7 @@ struct uiTooltipField {
     uint lines;
   } geom;
   uiTooltipFormat format;
-  ImBuf *image;
-  short image_size[2];
+  std::optional<uiTooltipImage> image;
 };
 
 struct uiTooltipData {
@@ -125,13 +123,12 @@ void UI_tooltip_text_field_add(uiTooltipData *data,
   data->fields.append(std::move(field));
 }
 
-void UI_tooltip_image_field_add(uiTooltipData *data, const ImBuf *image, const short image_size[2])
+void UI_tooltip_image_field_add(uiTooltipData *data, const uiTooltipImage &image_data)
 {
   uiTooltipField field{};
   field.format.style = UI_TIP_STYLE_IMAGE;
-  field.image = IMB_dupImBuf(image);
-  field.image_size[0] = std::min(image_size[0], short(UI_TIP_MAXIMAGEWIDTH * UI_SCALE_FAC));
-  field.image_size[1] = std::min(image_size[1], short(UI_TIP_MAXIMAGEHEIGHT * UI_SCALE_FAC));
+  field.image = image_data;
+  field.image->ibuf = IMB_dupImBuf(image_data.ibuf);
   data->fields.append(std::move(field));
 }
 
@@ -256,55 +253,69 @@ static void ui_tooltip_region_draw_cb(const bContext * /*C*/, ARegion *region)
       UI_fontstyle_draw(
           &fstyle_mono, &bbox, field->text.c_str(), field->text.size(), drawcol, &fs_params);
     }
-    else if (field->format.style == UI_TIP_STYLE_IMAGE) {
+    else if (field->format.style == UI_TIP_STYLE_IMAGE && field->image.has_value()) {
 
-      bbox.ymax -= field->image_size[1];
+      bbox.ymax -= field->image->height;
 
-      /* Draw checker pattern behind the image in case is has transparency. */
-      imm_draw_box_checker_2d(float(bbox.xmin),
-                              float(bbox.ymax),
-                              float(bbox.xmin + field->image_size[0]),
-                              float(bbox.ymax + field->image_size[1]));
+      if (field->image->background == uiTooltipImageBackground::Checkerboard_Themed) {
+        imm_draw_box_checker_2d(float(bbox.xmin),
+                                float(bbox.ymax),
+                                float(bbox.xmin + field->image->width),
+                                float(bbox.ymax + field->image->height));
+      }
+      else if (field->image->background == uiTooltipImageBackground::Checkerboard_Fixed) {
+        const float checker_dark = UI_ALPHA_CHECKER_DARK / 255.0f;
+        const float checker_light = UI_ALPHA_CHECKER_LIGHT / 255.0f;
+        const float color1[4] = {checker_dark, checker_dark, checker_dark, 1.0f};
+        const float color2[4] = {checker_light, checker_light, checker_light, 1.0f};
+        imm_draw_box_checker_2d_ex(float(bbox.xmin + U.pixelsize),
+                                   float(bbox.ymax + U.pixelsize),
+                                   float(bbox.xmin + field->image->width),
+                                   float(bbox.ymax + field->image->height),
+                                   color1,
+                                   color2,
+                                   8);
+      }
 
-      GPU_blend(GPU_BLEND_ALPHA_PREMULT);
+      GPU_blend((field->image->premultiplied) ? GPU_BLEND_ALPHA_PREMULT : GPU_BLEND_ALPHA);
 
       IMMDrawPixelsTexState state = immDrawPixelsTexSetup(GPU_SHADER_3D_IMAGE_COLOR);
       immDrawPixelsTexScaledFullSize(&state,
                                      bbox.xmin,
                                      bbox.ymax,
-                                     field->image->x,
-                                     field->image->y,
+                                     field->image->ibuf->x,
+                                     field->image->ibuf->y,
                                      GPU_RGBA8,
                                      true,
-                                     field->image->byte_buffer.data,
+                                     field->image->ibuf->byte_buffer.data,
                                      1.0f,
                                      1.0f,
-                                     float(field->image_size[0]) / float(field->image->x),
-                                     float(field->image_size[1]) / float(field->image->y),
-                                     nullptr);
-      GPU_blend(GPU_BLEND_ALPHA);
+                                     float(field->image->width) / float(field->image->ibuf->x),
+                                     float(field->image->height) / float(field->image->ibuf->y),
+                                     (field->image->text_color) ? main_color : nullptr);
 
-      /* Draw border around it. */
-      GPUVertFormat *format = immVertexFormat();
-      uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
-      immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
-      float border_color[4] = {1.0f, 1.0f, 1.0f, 0.15f};
-      float bgcolor[4];
-      UI_GetThemeColor4fv(TH_BACK, bgcolor);
-      if (rgb_to_grayscale(bgcolor) > 0.5f) {
-        border_color[0] = 0.0f;
-        border_color[1] = 0.0f;
-        border_color[2] = 0.0f;
+      if (field->image->border) {
+        GPU_blend(GPU_BLEND_ALPHA);
+        GPUVertFormat *format = immVertexFormat();
+        uint pos = GPU_vertformat_attr_add(format, "pos", GPU_COMP_F32, 2, GPU_FETCH_FLOAT);
+        immBindBuiltinProgram(GPU_SHADER_3D_UNIFORM_COLOR);
+        float border_color[4] = {1.0f, 1.0f, 1.0f, 0.15f};
+        float bgcolor[4];
+        UI_GetThemeColor4fv(TH_BACK, bgcolor);
+        if (rgb_to_grayscale(bgcolor) > 0.5f) {
+          border_color[0] = 0.0f;
+          border_color[1] = 0.0f;
+          border_color[2] = 0.0f;
+        }
+        immUniformColor4fv(border_color);
+        imm_draw_box_wire_2d(pos,
+                             float(bbox.xmin),
+                             float(bbox.ymax),
+                             float(bbox.xmin + field->image->width),
+                             float(bbox.ymax + field->image->height));
+        immUnbindProgram();
+        GPU_blend(GPU_BLEND_NONE);
       }
-      immUniformColor4fv(border_color);
-      imm_draw_box_wire_2d(pos,
-                           float(bbox.xmin),
-                           float(bbox.ymax),
-                           float(bbox.xmin + field->image_size[0]),
-                           float(bbox.ymax + field->image_size[1]));
-      immUnbindProgram();
-
-      GPU_blend(GPU_BLEND_NONE);
     }
     else if (field->format.style == UI_TIP_STYLE_SPACER) {
       bbox.ymax -= data->lineh * UI_TIP_SPACER;
@@ -333,8 +344,8 @@ static void ui_tooltip_region_free_cb(ARegion *region)
 {
   uiTooltipData *data = static_cast<uiTooltipData *>(region->regiondata);
   for (uiTooltipField &field : data->fields) {
-    if (field.image) {
-      IMB_freeImBuf(field.image);
+    if (field.image && field.image->ibuf) {
+      IMB_freeImBuf(field.image->ibuf);
     }
   }
   MEM_delete(data);
@@ -368,39 +379,33 @@ static std::string ui_tooltip_text_python_from_op(bContext *C,
 static bool ui_tooltip_data_append_from_keymap(bContext *C, uiTooltipData *data, wmKeyMap *keymap)
 {
   const int fields_len_init = data->fields.size();
-  char buf[512];
 
   LISTBASE_FOREACH (wmKeyMapItem *, kmi, &keymap->items) {
     wmOperatorType *ot = WM_operatortype_find(kmi->idname, true);
-    if (ot != nullptr) {
-      /* Tip. */
-      {
-        UI_tooltip_text_field_add(data,
-                                  ot->description ? ot->description : ot->name,
-                                  {},
-                                  UI_TIP_STYLE_NORMAL,
-                                  UI_TIP_LC_MAIN,
-                                  true);
-      }
-      /* Shortcut. */
-      {
-        bool found = false;
-        if (WM_keymap_item_to_string(kmi, false, buf, sizeof(buf))) {
-          found = true;
-        }
-        UI_tooltip_text_field_add(data,
-                                  fmt::format(TIP_("Shortcut: {}"), found ? buf : "None"),
-                                  {},
-                                  UI_TIP_STYLE_NORMAL,
-                                  UI_TIP_LC_NORMAL);
-      }
+    if (!ot) {
+      continue;
+    }
+    /* Tip. */
+    UI_tooltip_text_field_add(data,
+                              ot->description ? ot->description : ot->name,
+                              {},
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_MAIN,
+                              true);
 
-      /* Python. */
-      if (U.flag & USER_TOOLTIPS_PYTHON) {
-        std::string str = ui_tooltip_text_python_from_op(C, ot, kmi->ptr);
-        UI_tooltip_text_field_add(
-            data, fmt::format(TIP_("Python: {}"), str), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_PYTHON);
-      }
+    /* Shortcut. */
+    const std::string kmi_str = WM_keymap_item_to_string(kmi, false).value_or("None");
+    UI_tooltip_text_field_add(data,
+                              fmt::format(TIP_("Shortcut: {}"), kmi_str),
+                              {},
+                              UI_TIP_STYLE_NORMAL,
+                              UI_TIP_LC_NORMAL);
+
+    /* Python. */
+    if (U.flag & USER_TOOLTIPS_PYTHON) {
+      std::string str = ui_tooltip_text_python_from_op(C, ot, kmi->ptr);
+      UI_tooltip_text_field_add(
+          data, fmt::format(TIP_("Python: {}"), str), {}, UI_TIP_STYLE_NORMAL, UI_TIP_LC_PYTHON);
     }
   }
 
@@ -590,16 +595,14 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
           RNA_enum_set(&op_props, tool_attr, items[i].value);
 
           /* Check for direct access to the tool. */
-          char shortcut_brush[128] = "";
-          if (WM_key_event_operator_string(C,
-                                           ot->idname,
-                                           WM_OP_INVOKE_REGION_WIN,
-                                           static_cast<IDProperty *>(op_props.data),
-                                           true,
-                                           shortcut_brush,
-                                           ARRAY_SIZE(shortcut_brush)))
+          if (std::optional<std::string> shortcut_brush = WM_key_event_operator_string(
+                  C,
+                  ot->idname,
+                  WM_OP_INVOKE_REGION_WIN,
+                  static_cast<IDProperty *>(op_props.data),
+                  true))
           {
-            shortcut = shortcut_brush;
+            shortcut = *shortcut_brush;
           }
           WM_operator_properties_free(&op_props);
         }
@@ -608,14 +611,8 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
 
     if (shortcut.empty()) {
       /* Check for direct access to the tool. */
-      char shortcut_toolbar[128] = "";
-      if (WM_key_event_operator_string(C,
-                                       "WM_OT_toolbar",
-                                       WM_OP_INVOKE_REGION_WIN,
-                                       nullptr,
-                                       true,
-                                       shortcut_toolbar,
-                                       ARRAY_SIZE(shortcut_toolbar)))
+      if (std::optional<std::string> shortcut_toolbar = WM_key_event_operator_string(
+              C, "WM_OT_toolbar", WM_OP_INVOKE_REGION_WIN, nullptr, true))
       {
         /* Generate keymap in order to inspect it.
          * NOTE: we could make a utility to avoid the keymap generation part of this. */
@@ -641,9 +638,8 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
                 char tool_id_test[MAX_NAME];
                 RNA_string_get(kmi->ptr, "name", tool_id_test);
                 if (STREQ(tool_id, tool_id_test)) {
-                  char buf[128];
-                  WM_keymap_item_to_string(kmi, false, buf, sizeof(buf));
-                  shortcut = fmt::format("{}, {}", shortcut_toolbar, buf);
+                  std::string kmi_str = WM_keymap_item_to_string(kmi, false).value_or("");
+                  shortcut = fmt::format("{}, {}", *shortcut_toolbar, kmi_str);
                   break;
                 }
               }
@@ -707,21 +703,19 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
       WM_operator_properties_create_ptr(&op_props, but->optype);
       RNA_boolean_set(&op_props, "cycle", true);
 
-      char shortcut[128] = "";
+      std::optional<std::string> shortcut;
 
       const char *item_end = expr_result + expr_result_len;
       const char *item_step = expr_result;
 
       while (item_step < item_end) {
         RNA_string_set(&op_props, "name", item_step);
-        if (WM_key_event_operator_string(C,
-                                         but->optype->idname,
-                                         WM_OP_INVOKE_REGION_WIN,
-                                         static_cast<IDProperty *>(op_props.data),
-                                         true,
-                                         shortcut,
-                                         ARRAY_SIZE(shortcut)))
-        {
+        shortcut = WM_key_event_operator_string(C,
+                                                but->optype->idname,
+                                                WM_OP_INVOKE_REGION_WIN,
+                                                static_cast<IDProperty *>(op_props.data),
+                                                true);
+        if (shortcut) {
           break;
         }
         item_step += strlen(item_step) + 1;
@@ -730,9 +724,9 @@ static uiTooltipData *ui_tooltip_data_from_tool(bContext *C, uiBut *but, bool is
       WM_operator_properties_free(&op_props);
       MEM_freeN(expr_result);
 
-      if (shortcut[0] != '\0') {
+      if (shortcut) {
         UI_tooltip_text_field_add(data,
-                                  fmt::format(TIP_("Shortcut Cycle: {}"), shortcut),
+                                  fmt::format(TIP_("Shortcut Cycle: {}"), *shortcut),
                                   {},
                                   UI_TIP_STYLE_NORMAL,
                                   UI_TIP_LC_VALUE,
@@ -1010,7 +1004,7 @@ static uiTooltipData *ui_tooltip_data_from_button_or_extra_icon(bContext *C,
       call_params.opcontext = opcontext;
       CTX_wm_operator_poll_msg_clear(C);
       ui_but_context_poll_operator_ex(C, but, &call_params);
-      disabled_msg = CTX_wm_operator_poll_msg_get(C, &disabled_msg_free);
+      disabled_msg = TIP_(CTX_wm_operator_poll_msg_get(C, &disabled_msg_free));
     }
     /* Alternatively, buttons can store some reasoning too. */
     else if (!extra_icon && but->disabled_info) {
@@ -1101,12 +1095,11 @@ static uiTooltipData *ui_tooltip_data_from_gizmo(bContext *C, wmGizmo *gz)
         /* Shortcut */
         {
           IDProperty *prop = static_cast<IDProperty *>(gzop->ptr.data);
-          char buf[128];
-          if (WM_key_event_operator_string(
-                  C, gzop->type->idname, WM_OP_INVOKE_DEFAULT, prop, true, buf, ARRAY_SIZE(buf)))
+          if (std::optional<std::string> shortcut_str = WM_key_event_operator_string(
+                  C, gzop->type->idname, WM_OP_INVOKE_DEFAULT, prop, true))
           {
             UI_tooltip_text_field_add(data,
-                                      fmt::format(TIP_("Shortcut: {}"), buf),
+                                      fmt::format(TIP_("Shortcut: {}"), *shortcut_str),
                                       {},
                                       UI_TIP_STYLE_NORMAL,
                                       UI_TIP_LC_VALUE,
@@ -1221,7 +1214,8 @@ static ARegion *ui_tooltip_create_with_data(bContext *C,
     /* check for suffix (enum label) */
     if (!field->text_suffix.empty()) {
       x_pos = info.width;
-      w = max_ii(w, x_pos + BLF_width(font_id, field->text_suffix.c_str(), field->text.size()));
+      w = max_ii(
+          w, x_pos + BLF_width(font_id, field->text_suffix.c_str(), field->text_suffix.size()));
     }
 
     fonth += h * info.lines;
@@ -1230,9 +1224,9 @@ static ARegion *ui_tooltip_create_with_data(bContext *C,
       fonth += h * UI_TIP_SPACER;
     }
 
-    if (field->format.style == UI_TIP_STYLE_IMAGE) {
-      fonth += field->image_size[1];
-      w = max_ii(w, field->image_size[0]);
+    if (field->format.style == UI_TIP_STYLE_IMAGE && field->image) {
+      fonth += field->image->height;
+      w = max_ii(w, field->image->width);
     }
 
     fontw = max_ii(fontw, w);
@@ -1458,6 +1452,10 @@ ARegion *UI_tooltip_create_from_button_or_extra_icon(
       overlap_rect_fl = but->rect;
     }
     BLI_rcti_rctf_copy_round(&init_rect, &overlap_rect_fl);
+  }
+  else if (but->type == UI_BTYPE_LABEL && BLI_rctf_size_y(&but->rect) > UI_UNIT_Y) {
+    init_position[0] = win->eventstate->xy[0];
+    init_position[1] = win->eventstate->xy[1] - (UI_POPUP_MARGIN / 2);
   }
   else {
     init_position[0] = BLI_rctf_cent_x(&but->rect);

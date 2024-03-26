@@ -30,7 +30,6 @@ struct FieldInferencingInterface;
 class NodeDeclaration;
 struct GeometryNodesLazyFunctionGraphInfo;
 namespace anonymous_attribute_lifetime {
-struct RelationsInNode;
 }
 namespace aal = anonymous_attribute_lifetime;
 }  // namespace blender::nodes
@@ -75,6 +74,12 @@ namespace blender::bke {
 
 using NodeIDVectorSet = VectorSet<bNode *, DefaultProbingStrategy, NodeIDHash, NodeIDEquality>;
 
+/**
+ * Runtime data for #bNodeTree from the perspective of execution instructions (rather than runtime
+ * data from evaluation of the node tree). Evaluation data is not the responsibility of the node
+ * tree and should be stored elsewhere. Evaluating a node tree should be possible without changing
+ * it.
+ */
 class bNodeTreeRuntime : NonCopyable, NonMovable {
  public:
   /**
@@ -109,24 +114,20 @@ class bNodeTreeRuntime : NonCopyable, NonMovable {
   NodeIDVectorSet nodes_by_id;
 
   /**
-   * Execution data.
+   * Legacy execution data.
    *
-   * XXX It would be preferable to completely move this data out of the underlying node tree,
-   * so node tree execution could finally run independent of the tree itself.
-   * This would allow node trees to be merely linked by other data (materials, textures, etc.),
-   * as ID data is supposed to.
-   * Execution data is generated from the tree once at execution start and can then be used
-   * as long as necessary, even while the tree is being modified.
+   * \todo Move this out of the node tree to improve semantic/physical separation between the node
+   * tree execution instructions and its evaluation.
    */
   bNodeTreeExec *execdata = nullptr;
-
-  /* Callbacks. */
   void (*progress)(void *, float progress) = nullptr;
   /** \warning may be called by different threads */
   void (*stats_draw)(void *, const char *str) = nullptr;
   bool (*test_break)(void *) = nullptr;
   void (*update_draw)(void *) = nullptr;
   void *tbh = nullptr, *prh = nullptr, *sdh = nullptr, *udh = nullptr;
+
+  /* End legacy execution data. */
 
   /** Information about how inputs and outputs of the node group interact with fields. */
   std::unique_ptr<nodes::FieldInferencingInterface> field_inferencing_interface;
@@ -185,7 +186,7 @@ class bNodeSocketRuntime : NonCopyable, NonMovable {
    * data. It has to be updated when the node declaration changes. Access can be allowed by using
    * #AllowUsingOutdatedInfo.
    */
-  const SocketDeclarationHandle *declaration = nullptr;
+  const nodes::SocketDeclaration *declaration = nullptr;
 
   /** #eNodeTreeChangedFlag. */
   uint32_t changed_flag = 0;
@@ -252,7 +253,7 @@ class bNodeRuntime : NonCopyable, NonMovable {
    * intended to change though. Especially when nodes become more dynamic with respect to how many
    * sockets they have.
    */
-  NodeDeclarationHandle *declaration = nullptr;
+  nodes::NodeDeclaration *declaration = nullptr;
 
   /** #eNodeTreeChangedFlag. */
   uint32_t changed_flag = 0;
@@ -477,6 +478,11 @@ inline const bNode *bNodeTree::group_output_node() const
 {
   BLI_assert(blender::bke::node_tree_runtime::topology_cache_is_available(*this));
   return this->runtime->group_output_node;
+}
+
+inline blender::Span<bNode *> bNodeTree::group_input_nodes()
+{
+  return this->nodes_by_type("NodeGroupInput");
 }
 
 inline blender::Span<const bNode *> bNodeTree::group_input_nodes() const

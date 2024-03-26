@@ -22,10 +22,8 @@
 #include "IMB_imbuf_types.hh"
 
 #include "DNA_image_types.h"
-#include "DNA_scene_types.h"
 #include "DNA_texture_types.h"
 
-#include "BLI_blenlib.h"
 #include "BLI_math_color.h"
 #include "BLI_math_interp.hh"
 #include "BLI_math_vector.h"
@@ -138,7 +136,7 @@ int imagewrap(Tex *tex,
 
   /* setup mapping */
   if (tex->imaflag & TEX_IMAROT) {
-    SWAP(float, fx, fy);
+    std::swap(fx, fy);
   }
 
   if (tex->extend == TEX_CHECKER) {
@@ -1055,7 +1053,7 @@ static int imagewraposa_aniso(Tex *tex,
 
   if (tex->imaflag & TEX_IMAROT) {
     float t;
-    SWAP(float, minx, miny);
+    std::swap(minx, miny);
     /* must rotate dxt/dyt 90 deg
      * yet another blender problem is that swapping X/Y axes (or any tex projection switches)
      * should do something similar, but it doesn't, it only swaps coords,
@@ -1459,7 +1457,7 @@ int imagewraposa(Tex *tex,
   }
 
   if (tex->imaflag & TEX_IMAROT) {
-    SWAP(float, minx, miny);
+    std::swap(minx, miny);
   }
 
   if (minx > 0.25f) {

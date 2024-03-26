@@ -13,9 +13,8 @@
 
 #include "../generic/py_capi_utils.h"
 #include "../generic/python_compat.h"
-#include "../generic/python_utildefines.h"
 
-#include "gpu_py_vertex_format.h" /* own include */
+#include "gpu_py_vertex_format.hh" /* own include */
 
 /* -------------------------------------------------------------------- */
 /** \name Enum Conversion

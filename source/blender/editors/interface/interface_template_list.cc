@@ -20,9 +20,8 @@
 
 #include "BKE_screen.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
-#include "ED_asset.hh"
 #include "ED_screen.hh"
 
 #include "MEM_guardedalloc.h"
@@ -250,7 +249,7 @@ void UI_list_filter_and_sort_items(uiList *ui_list,
         const eUIListFilterResult filter_result = item_filter_fn(itemptr, name, i);
 
         if (filter_result == UI_LIST_ITEM_NEVER_SHOW) {
-          /* Pass. */
+          dyn_data->items_filter_flags[i] = UILST_FLT_ITEM_NEVER_SHOW;
         }
         else if (filter_result == UI_LIST_ITEM_FILTER_MATCHES) {
           dyn_data->items_filter_flags[i] = UILST_FLT_ITEM;
@@ -302,6 +301,23 @@ void UI_list_filter_and_sort_items(uiList *ui_list,
       MEM_freeN(names);
     }
   }
+}
+
+bool UI_list_item_index_is_filtered_visible(const uiList *ui_list, const int item_idx)
+{
+  const uiListDyn *dyn_data = ui_list->dyn_data;
+
+  if (!dyn_data->items_filter_flags) {
+    /* If there are no filter flags to check, always consider all items visible. */
+    return true;
+  }
+
+  if (dyn_data->items_filter_flags[item_idx] & UILST_FLT_ITEM_NEVER_SHOW) {
+    return false;
+  }
+
+  const int filter_exclude = ui_list->filter_flag & UILST_FLT_EXCLUDE;
+  return (dyn_data->items_filter_flags[item_idx] & UILST_FLT_ITEM) ^ filter_exclude;
 }
 
 /**
@@ -419,20 +435,18 @@ static bool ui_template_list_data_retrieve(const char *listtype_name,
 
 static void ui_template_list_collect_items(PointerRNA *list_ptr,
                                            PropertyRNA *list_prop,
-                                           uiListDyn *dyn_data,
-                                           int filter_exclude,
-                                           bool order_reverse,
+                                           const uiList *ui_list,
                                            int activei,
                                            TemplateListItems *r_items)
 {
+  const uiListDyn *dyn_data = ui_list->dyn_data;
+  const bool order_reverse = (ui_list->filter_sort_flag & UILST_FLT_SORT_REVERSE) != 0;
   int i = 0;
   int reorder_i = 0;
   bool activei_mapping_pending = true;
 
   RNA_PROP_BEGIN (list_ptr, itemptr, list_prop) {
-    if (!dyn_data->items_filter_flags ||
-        ((dyn_data->items_filter_flags[i] & UILST_FLT_ITEM) ^ filter_exclude))
-    {
+    if (UI_list_item_index_is_filtered_visible(ui_list, i)) {
       int new_order_idx;
       if (dyn_data->items_filter_neworder) {
         new_order_idx = dyn_data->items_filter_neworder[reorder_i++];
@@ -493,8 +507,6 @@ static void ui_template_list_collect_display_items(const bContext *C,
 
   /* Filter list items! (not for compact layout, though) */
   if (input_data->dataptr.data && input_data->prop) {
-    const int filter_exclude = ui_list->filter_flag & UILST_FLT_EXCLUDE;
-    const bool order_reverse = (ui_list->filter_sort_flag & UILST_FLT_SORT_REVERSE) != 0;
     int items_shown;
 #if 0
     int prev_ii = -1, prev_i;
@@ -516,13 +528,8 @@ static void ui_template_list_collect_display_items(const bContext *C,
           MEM_mallocN(sizeof(*r_items->item_vec) * items_shown, __func__));
       // printf("%s: items shown: %d.\n", __func__, items_shown);
 
-      ui_template_list_collect_items(&input_data->dataptr,
-                                     input_data->prop,
-                                     dyn_data,
-                                     filter_exclude,
-                                     order_reverse,
-                                     input_data->active_item_idx,
-                                     r_items);
+      ui_template_list_collect_items(
+          &input_data->dataptr, input_data->prop, ui_list, input_data->active_item_idx, r_items);
     }
     if (dyn_data->items_shown >= 0) {
       r_items->tot_items = dyn_data->items_shown;
@@ -780,8 +787,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                                0,
                                0,
                                org_i,
-                               0,
-                               0,
                                editable ? TIP_("Double click to rename") : "");
           if ((dyntip_data = uilist_item_use_dynamic_tooltip(itemptr,
                                                              input_data->item_dyntip_propname)))
@@ -827,20 +832,20 @@ static void ui_template_list_layout_draw(const bContext *C,
       /* Add scroll-bar. */
       if (items->tot_items > visual_info.visual_items) {
         uiLayoutColumn(row, false);
-        uiDefButI(block,
-                  UI_BTYPE_SCROLL,
-                  0,
-                  "",
-                  0,
-                  0,
-                  V2D_SCROLL_WIDTH,
-                  UI_UNIT_Y * dyn_data->visual_height,
-                  &ui_list->list_scroll,
-                  0,
-                  dyn_data->height - dyn_data->visual_height,
-                  dyn_data->visual_height,
-                  0,
-                  "");
+        but = uiDefButI(block,
+                        UI_BTYPE_SCROLL,
+                        0,
+                        "",
+                        0,
+                        0,
+                        V2D_SCROLL_WIDTH,
+                        UI_UNIT_Y * dyn_data->visual_height,
+                        &ui_list->list_scroll,
+                        0,
+                        dyn_data->height - dyn_data->visual_height,
+                        "");
+        uiButScrollBar *but_scroll = reinterpret_cast<uiButScrollBar *>(but);
+        but_scroll->visual_height = dyn_data->visual_height;
       }
       break;
     }
@@ -886,8 +891,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                                    UI_UNIT_Y,
                                    &input_data->active_dataptr,
                                    input_data->activeprop,
-                                   0,
-                                   0,
                                    0,
                                    0,
                                    0,
@@ -939,8 +942,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                                0,
                                0,
                                org_i,
-                               0,
-                               0,
                                nullptr);
           UI_but_drawflag_enable(but, UI_BUT_NO_TOOLTIP);
 
@@ -978,20 +979,20 @@ static void ui_template_list_layout_draw(const bContext *C,
       /* Add scroll-bar. */
       if (items->tot_items > visual_info.visual_items) {
         /* col = */ uiLayoutColumn(row, false);
-        uiDefButI(block,
-                  UI_BTYPE_SCROLL,
-                  0,
-                  "",
-                  0,
-                  0,
-                  V2D_SCROLL_WIDTH,
-                  UI_UNIT_Y * dyn_data->visual_height,
-                  &ui_list->list_scroll,
-                  0,
-                  dyn_data->height - dyn_data->visual_height,
-                  dyn_data->visual_height,
-                  0,
-                  "");
+        but = uiDefButI(block,
+                        UI_BTYPE_SCROLL,
+                        0,
+                        "",
+                        0,
+                        0,
+                        V2D_SCROLL_WIDTH,
+                        UI_UNIT_Y * dyn_data->visual_height,
+                        &ui_list->list_scroll,
+                        0,
+                        dyn_data->height - dyn_data->visual_height,
+                        "");
+        uiButScrollBar *but_scroll = reinterpret_cast<uiButScrollBar *>(but);
+        but_scroll->visual_height = dyn_data->visual_height;
       }
       break;
     }
@@ -1041,8 +1042,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                                0,
                                0,
                                org_i,
-                               0,
-                               0,
                                nullptr);
           UI_but_drawflag_enable(but, UI_BUT_NO_TOOLTIP);
 
@@ -1075,20 +1074,20 @@ static void ui_template_list_layout_draw(const bContext *C,
 
       if (items->tot_items > visual_info.visual_items) {
         /* col = */ uiLayoutColumn(row, false);
-        uiDefButI(block,
-                  UI_BTYPE_SCROLL,
-                  0,
-                  "",
-                  0,
-                  0,
-                  V2D_SCROLL_WIDTH,
-                  size_y * dyn_data->visual_height,
-                  &ui_list->list_scroll,
-                  0,
-                  dyn_data->height - dyn_data->visual_height,
-                  dyn_data->visual_height,
-                  0,
-                  "");
+        but = uiDefButI(block,
+                        UI_BTYPE_SCROLL,
+                        0,
+                        "",
+                        0,
+                        0,
+                        V2D_SCROLL_WIDTH,
+                        size_y * dyn_data->visual_height,
+                        &ui_list->list_scroll,
+                        0,
+                        dyn_data->height - dyn_data->visual_height,
+                        "");
+        uiButScrollBar *but_scroll = reinterpret_cast<uiButScrollBar *>(but);
+        but_scroll->visual_height = dyn_data->visual_height;
       }
       break;
   }
@@ -1130,8 +1129,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                              &(ui_list->filter_flag),
                              0,
                              0,
-                             0,
-                             0,
                              TIP_("Hide filtering options"));
       UI_but_flag_disable(but, UI_BUT_UNDO); /* skip undo on screen buttons */
 
@@ -1147,8 +1144,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                             &dyn_data->resize,
                             0.0,
                             0.0,
-                            0,
-                            0,
                             "");
         UI_but_func_set(but, [ui_list](bContext &C) { uilist_resize_update(&C, ui_list); });
       }
@@ -1168,8 +1163,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                nullptr,
                0.0,
                0.0,
-               0,
-               0,
                "");
 
       layout_data->draw_filter(ui_list, C, col);
@@ -1187,8 +1180,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                              &(ui_list->filter_flag),
                              0,
                              0,
-                             0,
-                             0,
                              TIP_("Show filtering options"));
       UI_but_flag_disable(but, UI_BUT_UNDO); /* skip undo on screen buttons */
 
@@ -1204,8 +1195,6 @@ static void ui_template_list_layout_draw(const bContext *C,
                             &dyn_data->resize,
                             0.0,
                             0.0,
-                            0,
-                            0,
                             "");
         UI_but_func_set(but, [ui_list](bContext &C) { uilist_resize_update(&C, ui_list); });
       }

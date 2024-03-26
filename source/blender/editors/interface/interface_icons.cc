@@ -13,13 +13,13 @@
 
 #include "MEM_guardedalloc.h"
 
-#include "GPU_batch.h"
-#include "GPU_batch_presets.h"
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
-#include "GPU_shader_shared.h"
-#include "GPU_state.h"
-#include "GPU_texture.h"
+#include "GPU_batch.hh"
+#include "GPU_batch_presets.hh"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
+#include "GPU_shader_shared.hh"
+#include "GPU_state.hh"
+#include "GPU_texture.hh"
 
 #include "BLI_blenlib.h"
 #include "BLI_fileops_types.h"
@@ -42,7 +42,7 @@
 
 #include "BKE_appdir.hh"
 #include "BKE_context.hh"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_icons.h"
 #include "BKE_paint.hh"
 #include "BKE_preview_image.hh"
@@ -1633,7 +1633,7 @@ static void icon_draw_cache_texture_flush_ex(GPUTexture *texture,
   const int img_binding = GPU_shader_get_sampler_binding(shader, "image");
   GPU_texture_bind_ex(texture, GPUSamplerState::icon_sampler(), img_binding);
 
-  GPUBatch *quad = GPU_batch_preset_quad();
+  blender::gpu::Batch *quad = GPU_batch_preset_quad();
   GPU_batch_set_shader(quad, shader);
   GPU_batch_draw_instance_range(quad, 0, texture_draw_calls->calls);
 
@@ -1825,7 +1825,7 @@ static void icon_draw_texture(float x,
 
   GPU_texture_bind_ex(texture, GPUSamplerState::icon_sampler(), img_binding);
 
-  GPUBatch *quad = GPU_batch_preset_quad();
+  blender::gpu::Batch *quad = GPU_batch_preset_quad();
   GPU_batch_set_shader(quad, shader);
   GPU_batch_draw(quad);
 
@@ -2392,6 +2392,8 @@ int UI_icon_from_idcode(const int idcode)
   switch ((ID_Type)idcode) {
     case ID_AC:
       return ICON_ACTION;
+    case ID_AN:
+      return ICON_ACTION; /* TODO: give Animation its own icon. */
     case ID_AR:
       return ICON_ARMATURE_DATA;
     case ID_BR:

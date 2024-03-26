@@ -15,17 +15,16 @@
 #include "BLI_timecode.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "DNA_anim_types.h"
 #include "DNA_scene_types.h"
 #include "DNA_sound_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
-#include "BKE_global.h"
+#include "BKE_global.hh"
 #include "BKE_main.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_sound.h"
 
 #include "SEQ_add.hh"
@@ -643,10 +642,10 @@ static void sequencer_slip_update_header(Scene *scene, ScrArea *area, SlipData *
     if (hasNumInput(&data->num_input)) {
       char num_str[NUM_STR_REP_LEN];
       outputNumInput(&data->num_input, num_str, &scene->unit);
-      SNPRINTF(msg, RPT_("Slip offset: %s"), num_str);
+      SNPRINTF(msg, IFACE_("Slip offset: %s"), num_str);
     }
     else {
-      SNPRINTF(msg, RPT_("Slip offset: %d"), offset);
+      SNPRINTF(msg, IFACE_("Slip offset: %d"), offset);
     }
   }
 
@@ -1113,9 +1112,14 @@ int seq_effect_find_selected(Scene *scene,
     seq2 = SEQ_select_active_get(scene);
   }
 
+  if (SEQ_effect_get_num_inputs(type) == 0) {
+    *r_selseq1 = *r_selseq2 = *r_selseq3 = nullptr;
+    return 1;
+  }
+
   LISTBASE_FOREACH (Sequence *, seq, ed->seqbasep) {
     if (seq->flag & SELECT) {
-      if (seq->type == SEQ_TYPE_SOUND_RAM && SEQ_effect_get_num_inputs(type) != 0) {
+      if (seq->type == SEQ_TYPE_SOUND_RAM) {
         *r_error_str = N_("Cannot apply effects to audio sequence strips");
         return 0;
       }
@@ -1146,9 +1150,6 @@ int seq_effect_find_selected(Scene *scene,
   }
 
   switch (SEQ_effect_get_num_inputs(type)) {
-    case 0:
-      *r_selseq1 = *r_selseq2 = *r_selseq3 = nullptr;
-      return 1; /* Success. */
     case 1:
       if (seq2 == nullptr) {
         *r_error_str = N_("At least one selected sequence strip is needed");
@@ -2585,7 +2586,7 @@ static int sequencer_change_effect_input_exec(bContext *C, wmOperator *op)
     return OPERATOR_CANCELLED;
   }
 
-  SWAP(Sequence *, *seq_1, *seq_2);
+  std::swap(*seq_1, *seq_2);
 
   SEQ_relations_invalidate_cache_preprocessed(scene, seq);
   WM_event_add_notifier(C, NC_SCENE | ND_SEQUENCER, scene);

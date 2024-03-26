@@ -34,6 +34,7 @@
  */
 const EnumPropertyItem rna_enum_id_type_items[] = {
     {ID_AC, "ACTION", ICON_ACTION, "Action", ""},
+    {ID_AN, "ANIMATION", ICON_ACTION, "Animation", ""}, /* TODO: give Animation its own icon. */
     {ID_AR, "ARMATURE", ICON_ARMATURE_DATA, "Armature", ""},
     {ID_BR, "BRUSH", ICON_BRUSH_DATA, "Brush", ""},
     {ID_CF, "CACHEFILE", ICON_FILE, "Cache File", ""},
@@ -213,10 +214,12 @@ const IDFilterEnumPropertyItem rna_enum_id_type_filter_items[] = {
 #  include "BLI_listbase.h"
 #  include "BLI_math_base.h"
 
-#  include "BLO_readfile.h"
+#  include "BLT_translation.hh"
 
-#  include "BKE_anim_data.h"
-#  include "BKE_global.h" /* XXX, remove me */
+#  include "BLO_readfile.hh"
+
+#  include "BKE_anim_data.hh"
+#  include "BKE_global.hh" /* XXX, remove me */
 #  include "BKE_idprop.h"
 #  include "BKE_idtype.hh"
 #  include "BKE_lib_override.hh"
@@ -283,9 +286,11 @@ int rna_ID_name_length(PointerRNA *ptr)
 void rna_ID_name_set(PointerRNA *ptr, const char *value)
 {
   ID *id = (ID *)ptr->data;
+  BLI_assert(BKE_id_is_in_global_main(id));
+  BLI_assert(!ID_IS_LINKED(id));
+
   BKE_main_namemap_remove_name(G_MAIN, id, id->name + 2);
   BLI_strncpy_utf8(id->name + 2, value, sizeof(id->name) - 2);
-  BLI_assert(BKE_id_is_in_global_main(id));
   BKE_libblock_ensure_unique_name(G_MAIN, id);
 
   if (GS(id->name) == ID_OB) {
@@ -296,17 +301,33 @@ void rna_ID_name_set(PointerRNA *ptr, const char *value)
   }
 }
 
-static int rna_ID_name_editable(PointerRNA *ptr, const char ** /*r_info*/)
+static int rna_ID_name_editable(const PointerRNA *ptr, const char **r_info)
 {
   ID *id = (ID *)ptr->data;
+
+  /* NOTE: For the time being, allow rename of local liboverrides from the RNA API.
+   *       While this is not allowed from the UI, this should work with modern liboverride code,
+   *       and could be useful in some cases. */
+  if (ID_IS_LINKED(id)) {
+    if (r_info) {
+      *r_info = N_("Linked data-blocks cannot be renamed");
+    }
+    return 0;
+  }
 
   if (GS(id->name) == ID_VF) {
     VFont *vfont = (VFont *)id;
     if (BKE_vfont_is_builtin(vfont)) {
+      if (r_info) {
+        *r_info = N_("Built-in fonts cannot be renamed");
+      }
       return 0;
     }
   }
   else if (!BKE_id_is_in_global_main(id)) {
+    if (r_info) {
+      *r_info = N_("Datablocks not in global Main data-base cannot be renamed");
+    }
     return 0;
   }
 
@@ -478,6 +499,8 @@ StructRNA *ID_code_to_RNA_type(short idcode)
   switch ((ID_Type)idcode) {
     case ID_AC:
       return &RNA_Action;
+    case ID_AN:
+      break;
     case ID_AR:
       return &RNA_Armature;
     case ID_BR:
@@ -579,12 +602,12 @@ IDProperty **rna_ID_idprops(PointerRNA *ptr)
   return &id->properties;
 }
 
-int rna_ID_is_runtime_editable(PointerRNA *ptr, const char **r_info)
+int rna_ID_is_runtime_editable(const PointerRNA *ptr, const char **r_info)
 {
   ID *id = (ID *)ptr->data;
   /* TODO: This should be abstracted in a BKE function or define, somewhat related to #88555. */
   if (id->tag & (LIB_TAG_NO_MAIN | LIB_TAG_TEMP_MAIN | LIB_TAG_LOCALIZED |
-                 LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT | LIB_TAG_COPIED_ON_WRITE))
+                 LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT | LIB_TAG_COPIED_ON_EVAL))
   {
     *r_info =
         "Cannot edit 'runtime' status of non-blendfile data-blocks, as they are by definition "
@@ -600,7 +623,7 @@ bool rna_ID_is_runtime_get(PointerRNA *ptr)
   ID *id = (ID *)ptr->data;
   /* TODO: This should be abstracted in a BKE function or define, somewhat related to #88555. */
   if (id->tag & (LIB_TAG_NO_MAIN | LIB_TAG_TEMP_MAIN | LIB_TAG_LOCALIZED |
-                 LIB_TAG_COPIED_ON_WRITE_EVAL_RESULT | LIB_TAG_COPIED_ON_WRITE))
+                 LIB_TAG_COPIED_ON_EVAL_FINAL_RESULT | LIB_TAG_COPIED_ON_EVAL))
   {
     return true;
   }
@@ -1037,7 +1060,8 @@ static void rna_ID_update_tag(ID *id, Main *bmain, ReportList *reports, int flag
         allow_flag = OB_RECALC_ALL | PSYS_RECALC;
         break;
 #  endif
-      case ID_AC:
+      case ID_AC: /* Fall-through. */
+      case ID_AN:
         allow_flag = ID_RECALC_ANIMATION;
         break;
       default:
@@ -2322,7 +2346,10 @@ static void rna_def_ID(BlenderRNA *brna)
   /* functions */
   func = RNA_def_function(srna, "evaluated_get", "rna_ID_evaluated_get");
   RNA_def_function_ui_description(
-      func, "Get corresponding evaluated ID from the given dependency graph");
+      func,
+      "Get corresponding evaluated ID from the given dependency graph. Note that this does not "
+      "ensure the dependency graph is fully evaluated, it just returns the result of the last "
+      "evaluation");
   parm = RNA_def_pointer(
       func, "depsgraph", "Depsgraph", "", "Dependency graph to perform lookup in");
   RNA_def_parameter_flags(parm, PROP_NEVER_NULL, PARM_REQUIRED);

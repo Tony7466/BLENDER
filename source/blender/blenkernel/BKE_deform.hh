@@ -93,7 +93,7 @@ void BKE_object_defgroup_unique_name(bDeformGroup *dg, Object *ob);
 
 MDeformWeight *BKE_defvert_find_index(const MDeformVert *dv, int defgroup);
 /**
- * Ensures that `dv` has a deform weight entry for the specified defweight group.
+ * Ensures that `dv` has a deform weight entry for the specified group (`defgroup`).
  *
  * \note this function is mirrored in editmesh_tools.cc, for use for edit-vertices.
  */
@@ -254,8 +254,6 @@ void BKE_defvert_normalize_lock_map(MDeformVert *dvert,
 void BKE_defvert_extract_vgroup_to_vertweights(
     const MDeformVert *dvert, int defgroup, int verts_num, bool invert_vgroup, float *r_weights);
 
-#ifdef __cplusplus
-
 /**
  * The following three make basic interpolation,
  * using temp vert_weights array to avoid looking up same weight several times.
@@ -283,7 +281,6 @@ void BKE_defvert_extract_vgroup_to_faceweights(const MDeformVert *dvert,
                                                blender::OffsetIndices<int> faces,
                                                bool invert_vgroup,
                                                float *r_weights);
-#endif
 
 void BKE_defvert_weight_to_rgb(float r_rgb[3], float weight);
 

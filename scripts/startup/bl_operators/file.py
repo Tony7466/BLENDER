@@ -105,7 +105,6 @@ class WM_OT_previews_batch_generate(Operator):
                 bpy.app.binary_path,
                 "--background",
                 "--factory-startup",
-                "-noaudio",
             ]
             if self.use_trusted:
                 cmd.append("--enable-autoexec")
@@ -116,13 +115,13 @@ class WM_OT_previews_batch_generate(Operator):
                 "--",
             ])
             if not self.use_scenes:
-                cmd.append('--no_scenes')
+                cmd.append("--no_scenes")
             if not self.use_collections:
-                cmd.append('--no_collections')
+                cmd.append("--no_collections")
             if not self.use_objects:
-                cmd.append('--no_objects')
+                cmd.append("--no_objects")
             if not self.use_intern_data:
-                cmd.append('--no_data_intern')
+                cmd.append("--no_data_intern")
             if not self.use_backups:
                 cmd.append("--no_backups")
             if subprocess.call(cmd):
@@ -215,7 +214,6 @@ class WM_OT_previews_batch_clear(Operator):
                 bpy.app.binary_path,
                 "--background",
                 "--factory-startup",
-                "-noaudio",
             ]
             if self.use_trusted:
                 cmd.append("--enable-autoexec")
@@ -227,13 +225,13 @@ class WM_OT_previews_batch_clear(Operator):
                 "--clear",
             ])
             if not self.use_scenes:
-                cmd.append('--no_scenes')
+                cmd.append("--no_scenes")
             if not self.use_collections:
-                cmd.append('--no_collections')
+                cmd.append("--no_collections")
             if not self.use_objects:
-                cmd.append('--no_objects')
+                cmd.append("--no_objects")
             if not self.use_intern_data:
-                cmd.append('--no_data_intern')
+                cmd.append("--no_data_intern")
             if not self.use_backups:
                 cmd.append("--no_backups")
             if subprocess.call(cmd):

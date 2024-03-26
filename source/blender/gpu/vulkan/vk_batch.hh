@@ -8,7 +8,9 @@
 
 #pragma once
 
-#include "gpu_batch_private.hh"
+#include "vk_common.hh"
+
+#include "GPU_batch.hh"
 
 namespace blender::gpu {
 class VKVertexBuffer;
@@ -22,6 +24,7 @@ class VKBatch : public Batch {
                            int count,
                            intptr_t offset,
                            intptr_t stride) override;
+  void multi_draw_indirect(VkBuffer indirect_buf, int count, intptr_t offset, intptr_t stride);
 
   VKVertexBuffer *vertex_buffer_get(int index);
   VKVertexBuffer *instance_buffer_get(int index);
@@ -31,7 +34,7 @@ class VKBatch : public Batch {
   void draw_setup();
 };
 
-BLI_INLINE VKBatch *unwrap(GPUBatch *batch)
+inline VKBatch *unwrap(Batch *batch)
 {
   return static_cast<VKBatch *>(batch);
 }

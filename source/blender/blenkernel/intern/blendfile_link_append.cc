@@ -34,8 +34,9 @@
 #include "BLI_memarena.h"
 #include "BLI_utildefines.h"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
+#include "BKE_grease_pencil_legacy_convert.hh"
 #include "BKE_idtype.hh"
 #include "BKE_key.hh"
 #include "BKE_layer.hh"
@@ -43,17 +44,19 @@
 #include "BKE_lib_override.hh"
 #include "BKE_lib_query.hh"
 #include "BKE_lib_remap.hh"
+#include "BKE_library.hh"
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
 #include "BKE_material.h"
+#include "BKE_mesh_legacy_convert.hh"
 #include "BKE_object.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 #include "BKE_rigidbody.h"
-#include "BKE_scene.h"
+#include "BKE_scene.hh"
 
 #include "BKE_blendfile_link_append.hh"
 
-#include "BLO_readfile.h"
+#include "BLO_readfile.hh"
 #include "BLO_writefile.hh"
 
 static CLG_LogRef LOG = {"bke.blendfile_link_append"};
@@ -519,11 +522,13 @@ static void loose_data_instantiate_ensure_active_collection(
   Scene *scene = instantiate_context->lapp_context->params->context.scene;
   ViewLayer *view_layer = instantiate_context->lapp_context->params->context.view_layer;
 
-  /* Find or add collection as needed. */
+  /* Find or add collection as needed. When `active_collection` is non-null, it is assumed to be
+   * editable. */
   if (instantiate_context->active_collection == nullptr) {
     if (lapp_context->params->flag & FILE_ACTIVE_COLLECTION) {
       LayerCollection *lc = BKE_layer_collection_get_active(view_layer);
-      instantiate_context->active_collection = lc->collection;
+      instantiate_context->active_collection = BKE_collection_parent_editable_find_recursive(
+          view_layer, lc->collection);
     }
     else {
       if (lapp_context->params->flag & FILE_LINK) {
@@ -1374,6 +1379,15 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
   BKE_main_id_newptr_and_tag_clear(bmain);
 
   blendfile_link_append_proxies_convert(bmain, reports);
+  BKE_main_mesh_legacy_convert_auto_smooth(*bmain);
+
+  if (U.experimental.use_grease_pencil_version3 &&
+      U.experimental.use_grease_pencil_version3_convert_on_load)
+  {
+    BlendFileReadReport bf_reports{};
+    bf_reports.reports = reports;
+    blender::bke::greasepencil::convert::legacy_main(*bmain, bf_reports);
+  }
 }
 
 void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *reports)
@@ -1490,6 +1504,15 @@ void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *re
 
   if ((lapp_context->params->flag & FILE_LINK) != 0) {
     blendfile_link_append_proxies_convert(lapp_context->params->bmain, reports);
+    BKE_main_mesh_legacy_convert_auto_smooth(*lapp_context->params->bmain);
+
+    if (U.experimental.use_grease_pencil_version3 &&
+        U.experimental.use_grease_pencil_version3_convert_on_load)
+    {
+      BlendFileReadReport bf_reports{};
+      bf_reports.reports = reports;
+      blender::bke::greasepencil::convert::legacy_main(*lapp_context->params->bmain, bf_reports);
+    }
   }
 
   BKE_main_namemap_clear(lapp_context->params->bmain);
@@ -1894,7 +1917,7 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
     if (lib->id.tag & LIB_TAG_DOIT) {
       id_us_clear_real(&lib->id);
       if (lib->id.us == 0) {
-        BKE_id_free(bmain, (ID *)lib);
+        BKE_id_delete(bmain, lib);
       }
     }
   }
@@ -1915,6 +1938,8 @@ void BKE_blendfile_library_relocate(BlendfileLinkAppendContext *lapp_context,
     }
   }
   FOREACH_MAIN_ID_END;
+
+  BKE_library_main_rebuild_hierarchy(bmain);
 
   /* Resync overrides if needed. */
   if (!USER_EXPERIMENTAL_TEST(&U, no_override_auto_resync)) {

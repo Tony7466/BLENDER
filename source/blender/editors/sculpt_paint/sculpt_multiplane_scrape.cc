@@ -17,14 +17,13 @@
 #include "DNA_object_types.h"
 
 #include "BKE_ccg.h"
-#include "BKE_context.hh"
 #include "BKE_paint.hh"
 #include "BKE_pbvh_api.hh"
 
 #include "sculpt_intern.hh"
 
-#include "GPU_immediate.h"
-#include "GPU_matrix.h"
+#include "GPU_immediate.hh"
+#include "GPU_matrix.hh"
 
 #include "bmesh.hh"
 

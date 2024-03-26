@@ -19,9 +19,9 @@
 #include "BKE_context.hh"
 #include "BKE_editmesh.hh"
 #include "BKE_layer.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
-#include "BLT_translation.h"
+#include "BLT_translation.hh"
 
 #include "RNA_access.hh"
 #include "RNA_define.hh"
@@ -29,7 +29,6 @@
 #include "WM_types.hh"
 
 #include "ED_mesh.hh"
-#include "ED_screen.hh"
 #include "ED_transform.hh"
 #include "ED_view3d.hh"
 
@@ -467,10 +466,10 @@ static void edbm_tagged_loop_pairs_do_fill_faces(BMesh *bm, UnorderedLoopPair *u
         f_verts[3] = ulp->l_pair[0]->e->v2;
 
         if (ulp->flag & ULP_FLIP_0) {
-          SWAP(BMVert *, f_verts[0], f_verts[3]);
+          std::swap(f_verts[0], f_verts[3]);
         }
         if (ulp->flag & ULP_FLIP_1) {
-          SWAP(BMVert *, f_verts[1], f_verts[2]);
+          std::swap(f_verts[1], f_verts[2]);
         }
       }
       else {
@@ -482,7 +481,7 @@ static void edbm_tagged_loop_pairs_do_fill_faces(BMesh *bm, UnorderedLoopPair *u
 
         /* don't use the flip flags */
         if (v_shared == ulp->l_pair[0]->v) {
-          SWAP(BMVert *, f_verts[0], f_verts[1]);
+          std::swap(f_verts[0], f_verts[1]);
         }
       }
 
@@ -724,7 +723,7 @@ static int edbm_rip_invoke__vert(bContext *C, const wmEvent *event, Object *obed
      * vout[2+] == splice with glue (when vout_len > 2)
      */
     if (vi_best != 0) {
-      SWAP(BMVert *, vout[0], vout[vi_best]);
+      std::swap(vout[0], vout[vi_best]);
       vi_best = 0;
     }
 

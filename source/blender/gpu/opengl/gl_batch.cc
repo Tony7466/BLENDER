@@ -5,14 +5,14 @@
 /** \file
  * \ingroup gpu
  *
- * GL implementation of GPUBatch.
+ * GL implementation of gpu::Batch.
  * The only specificity of GL here is that it caches a list of
  * Vertex Array Objects based on the bound shader interface.
  */
 
 #include "BLI_assert.h"
 
-#include "gpu_batch_private.hh"
+#include "GPU_batch.hh"
 #include "gpu_shader_private.hh"
 
 #include "gl_context.hh"
@@ -174,7 +174,7 @@ void GLVaoCache::clear()
   if (context_) {
     context_->vao_cache_unregister(this);
   }
-  /* Reinit. */
+  /* Reinitialize. */
   this->init();
 }
 
@@ -208,7 +208,7 @@ void GLVaoCache::context_check()
   }
 }
 
-GLuint GLVaoCache::vao_get(GPUBatch *batch)
+GLuint GLVaoCache::vao_get(Batch *batch)
 {
   this->context_check();
 
@@ -276,11 +276,7 @@ void GLBatch::draw_indirect(GPUStorageBuf *indirect_buf, intptr_t offset)
   GL_CHECK_RESOURCES("Batch");
 
   this->bind();
-
-  /* TODO(fclem): Make the barrier and binding optional if consecutive draws are issued. */
   dynamic_cast<GLStorageBuf *>(unwrap(indirect_buf))->bind_as(GL_DRAW_INDIRECT_BUFFER);
-  /* This barrier needs to be here as it only work on the currently bound indirect buffer. */
-  glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
 
   GLenum gl_type = to_gl(prim_type);
   if (elem) {
@@ -303,11 +299,7 @@ void GLBatch::multi_draw_indirect(GPUStorageBuf *indirect_buf,
   GL_CHECK_RESOURCES("Batch");
 
   this->bind();
-
-  /* TODO(fclem): Make the barrier and binding optional if consecutive draws are issued. */
   dynamic_cast<GLStorageBuf *>(unwrap(indirect_buf))->bind_as(GL_DRAW_INDIRECT_BUFFER);
-  /* This barrier needs to be here as it only work on the currently bound indirect buffer. */
-  glMemoryBarrier(GL_COMMAND_BARRIER_BIT);
 
   GLenum gl_type = to_gl(prim_type);
   if (elem) {

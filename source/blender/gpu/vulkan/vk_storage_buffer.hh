@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include "GPU_texture.h"
+#include "GPU_texture.hh"
 
+#include "GPU_vertex_buffer.hh"
 #include "gpu_storage_buffer_private.hh"
-#include "gpu_vertex_buffer_private.hh"
 
 #include "vk_bindable_resource.hh"
 #include "vk_buffer.hh"
@@ -36,6 +36,7 @@ class VKStorageBuffer : public StorageBuf, public VKBindableResource {
   void copy_sub(VertBuf *src, uint dst_offset, uint src_offset, uint copy_size) override;
   void read(void *data) override;
   void async_flush_to_host() override;
+  void sync_as_indirect_buffer() override{/* No-Op.*/};
 
   VkBuffer vk_handle() const
   {
@@ -49,11 +50,6 @@ class VKStorageBuffer : public StorageBuf, public VKBindableResource {
 
   void ensure_allocated();
 
-  const VKBuffer &buffer_get() const
-  {
-    return buffer_;
-  }
-
  private:
   void allocate();
 };
@@ -61,10 +57,6 @@ class VKStorageBuffer : public StorageBuf, public VKBindableResource {
 BLI_INLINE VKStorageBuffer *unwrap(StorageBuf *storage_buffer)
 {
   return static_cast<VKStorageBuffer *>(storage_buffer);
-}
-BLI_INLINE StorageBuf *wrap(VKStorageBuffer *storage_buffer)
-{
-  return static_cast<StorageBuf *>(storage_buffer);
 }
 
 }  // namespace blender::gpu

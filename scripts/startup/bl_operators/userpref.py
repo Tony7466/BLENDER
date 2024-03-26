@@ -148,6 +148,8 @@ class PREFERENCES_OT_copy_prev(Operator):
         # Reload preferences and `recent-files.txt`.
         bpy.ops.wm.read_userpref()
         bpy.ops.wm.read_history()
+        # Fix operator presets that have unwanted filepath properties
+        bpy.ops.wm.operator_presets_cleanup()
 
         # don't loose users work if they open the splash later.
         if bpy.data.is_saved is bpy.data.is_dirty is False:
@@ -425,9 +427,9 @@ class PREFERENCES_OT_keyconfig_remove(Operator):
 # Add-on Operators
 
 class PREFERENCES_OT_addon_enable(Operator):
-    """Enable an add-on"""
+    """Turn on this extension"""
     bl_idname = "preferences.addon_enable"
-    bl_label = "Enable Add-on"
+    bl_label = "Enable Extension"
 
     module: StringProperty(
         name="Module",
@@ -441,16 +443,20 @@ class PREFERENCES_OT_addon_enable(Operator):
 
         def err_cb(ex):
             import traceback
+            traceback.print_exc()
+
+            # The full trace-back in the UI is unwieldy and associated with unhandled exceptions.
+            # Only show a single exception instead of the full trace-back,
+            # developers can debug using information printed in the console.
             nonlocal err_str
-            err_str = traceback.format_exc()
-            print(err_str)
+            err_str = str(ex)
 
         mod = addon_utils.enable(self.module, default_set=True, handle_error=err_cb)
 
         if mod:
-            info = addon_utils.module_bl_info(mod)
+            bl_info = addon_utils.module_bl_info(mod)
 
-            info_ver = info.get("blender", (0, 0, 0))
+            info_ver = bl_info.get("blender", (0, 0, 0))
 
             if info_ver > bpy.app.version:
                 self.report(
@@ -471,9 +477,9 @@ class PREFERENCES_OT_addon_enable(Operator):
 
 
 class PREFERENCES_OT_addon_disable(Operator):
-    """Disable an add-on"""
+    """Turn off this extension"""
     bl_idname = "preferences.addon_disable"
-    bl_label = "Disable Add-on"
+    bl_label = "Disable Extension"
 
     module: StringProperty(
         name="Module",
@@ -725,12 +731,12 @@ class PREFERENCES_OT_addon_install(Operator):
         # but for now just use the first
         for mod in addon_utils.modules(refresh=False):
             if mod.__name__ in addons_new:
-                info = addon_utils.module_bl_info(mod)
+                bl_info = addon_utils.module_bl_info(mod)
 
                 # show the newly installed addon.
                 context.preferences.view.show_addons_enabled_only = False
                 context.window_manager.addon_filter = 'All'
-                context.window_manager.addon_search = info["name"]
+                context.window_manager.addon_search = bl_info["name"]
                 break
 
         # in case a new module path was created to install this addon.
@@ -825,12 +831,12 @@ class PREFERENCES_OT_addon_expand(Operator):
     def execute(self, _context):
         import addon_utils
 
-        module_name = self.module
+        addon_module_name = self.module
 
-        mod = addon_utils.addons_fake_modules.get(module_name)
+        mod = addon_utils.addons_fake_modules.get(addon_module_name)
         if mod is not None:
-            info = addon_utils.module_bl_info(mod)
-            info["show_expanded"] = not info["show_expanded"]
+            bl_info = addon_utils.module_bl_info(mod)
+            bl_info["show_expanded"] = not bl_info["show_expanded"]
 
         return {'FINISHED'}
 
@@ -849,18 +855,18 @@ class PREFERENCES_OT_addon_show(Operator):
     def execute(self, context):
         import addon_utils
 
-        module_name = self.module
+        addon_module_name = self.module
 
         _modules = addon_utils.modules(refresh=False)
-        mod = addon_utils.addons_fake_modules.get(module_name)
+        mod = addon_utils.addons_fake_modules.get(addon_module_name)
         if mod is not None:
-            info = addon_utils.module_bl_info(mod)
-            info["show_expanded"] = True
+            bl_info = addon_utils.module_bl_info(mod)
+            bl_info["show_expanded"] = True
 
             context.preferences.active_section = 'ADDONS'
             context.preferences.view.show_addons_enabled_only = False
             context.window_manager.addon_filter = 'All'
-            context.window_manager.addon_search = info["name"]
+            context.window_manager.addon_search = bl_info["name"]
             bpy.ops.screen.userpref_show('INVOKE_DEFAULT')
 
         return {'FINISHED'}

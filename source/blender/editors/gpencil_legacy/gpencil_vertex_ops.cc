@@ -19,10 +19,9 @@
 #include "DNA_material_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_main.hh"
 #include "BKE_material.h"
 #include "BKE_paint.hh"
-#include "BKE_report.h"
+#include "BKE_report.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"
@@ -554,7 +553,7 @@ static int gpencil_vertexpaint_set_exec(bContext *C, wmOperator *op)
   Object *ob = CTX_data_active_object(C);
   bGPdata *gpd = (bGPdata *)ob->data;
   Paint *paint = &ts->gp_vertexpaint->paint;
-  Brush *brush = paint->brush;
+  Brush *brush = BKE_paint_brush(paint);
 
   const bool is_multiedit = bool(GPENCIL_MULTIEDIT_SESSIONS_ON(gpd));
   const eGp_Vertex_Mode mode = eGp_Vertex_Mode(RNA_enum_get(op->ptr, "mode"));
@@ -1129,9 +1128,8 @@ static int gpencil_stroke_reset_vertex_color_exec(bContext *C, wmOperator *op)
 
   if (changed) {
     /* updates */
-    DEG_id_tag_update(&gpd->id,
-                      ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_COPY_ON_WRITE);
-    DEG_id_tag_update(&obact->id, ID_RECALC_COPY_ON_WRITE);
+    DEG_id_tag_update(&gpd->id, ID_RECALC_TRANSFORM | ID_RECALC_GEOMETRY | ID_RECALC_SYNC_TO_EVAL);
+    DEG_id_tag_update(&obact->id, ID_RECALC_SYNC_TO_EVAL);
     WM_event_add_notifier(C, NC_GPENCIL | ND_DATA | NA_EDITED, nullptr);
   }
 
