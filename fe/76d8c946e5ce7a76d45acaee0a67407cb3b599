@@ -1,1 +1,2 @@
 Referenced by commit b1c85fa78c61c60db7d68317958ba0336b760f22, Fix: Python import error for GPUVertBuf
+Referenced by pull request #119898, Refactor: Remove unnecessary C wrapper for GPUBatch class
