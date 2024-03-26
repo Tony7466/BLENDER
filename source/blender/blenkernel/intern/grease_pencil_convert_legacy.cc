@@ -68,7 +68,7 @@ using FCurveCallback = bool(bAction *owner_action, FCurve &fcurve);
 /* Utils to move a list of fcurves from one container (Action or Drivers) to another. */
 static void legacy_fcurves_move(ListBase &fcurves_dst,
                                 ListBase &fcurves_src,
-                                blender::Vector<FCurve *> fcurves)
+                                const Span<FCurve *> fcurves)
 {
   for (FCurve *fcurve : fcurves) {
     BLI_assert(BLI_findindex(&fcurves_src, fcurve) >= 0);
@@ -657,8 +657,7 @@ void legacy_gpencil_to_grease_pencil(Main &bmain, GreasePencil &grease_pencil, b
    *
    * Note that currently, Actions IDs are not duplicated. They may be needed ultimately, but for
    * the time being, assuming invalid fcurves/drivers are fine here. */
-  AnimData *gpd_animdata = BKE_animdata_from_id(&gpd.id);
-  if (gpd_animdata) {
+  if (AnimData *gpd_animdata = BKE_animdata_from_id(&gpd.id)) {
     grease_pencil.adt = BKE_animdata_copy_in_lib(
         &bmain, gpd.id.lib, gpd_animdata, LIB_ID_COPY_DEFAULT);
   }
@@ -850,8 +849,8 @@ void layer_adjustments_to_modifiers(Main &bmain, bGPdata &src_object_data, Objec
           return false;
         }
         StringRefNull rna_path = fcurve.rna_path;
-        for (auto prop_path : fcurve_tint_valid_prop_paths) {
-          const char *rna_adjustment_prop_path = prop_path.first;
+        for (const auto &[from_prop_path, to_prop_path] : fcurve_tint_valid_prop_paths) {
+          const char *rna_adjustment_prop_path = from_prop_path;
           const std::string old_rna_path = fmt::format(
               "{}{}", legacy_root_path, rna_adjustment_prop_path);
           if (rna_path == old_rna_path) {
@@ -859,8 +858,8 @@ void layer_adjustments_to_modifiers(Main &bmain, bGPdata &src_object_data, Objec
             return false;
           }
         }
-        for (auto prop_path : fcurve_thickness_valid_prop_paths) {
-          const char *rna_prop_rna_adjustment_prop_pathpath = prop_path.first;
+        for (const auto &[from_prop_path, to_prop_path] : fcurve_thickness_valid_prop_paths) {
+          const char *rna_prop_rna_adjustment_prop_pathpath = from_prop_path;
           const std::string old_rna_path = fmt::format(
               "{}{}", legacy_root_path, rna_prop_rna_adjustment_prop_pathpath);
           if (rna_path == old_rna_path) {
@@ -909,9 +908,9 @@ void layer_adjustments_to_modifiers(Main &bmain, bGPdata &src_object_data, Objec
             return false;
           }
           StringRefNull rna_path = fcurve.rna_path;
-          for (auto prop_path : fcurve_tint_valid_prop_paths) {
-            const char *rna_adjustment_prop_path = prop_path.first;
-            const char *rna_modifier_prop_path = prop_path.second;
+          for (const auto &[from_prop_path, to_prop_path] : fcurve_tint_valid_prop_paths) {
+            const char *rna_adjustment_prop_path = from_prop_path;
+            const char *rna_modifier_prop_path = to_prop_path;
             const std::string old_rna_path = fmt::format(
                 "{}{}", legacy_root_path, rna_adjustment_prop_path);
             if (rna_path == old_rna_path) {
@@ -985,9 +984,9 @@ void layer_adjustments_to_modifiers(Main &bmain, bGPdata &src_object_data, Objec
             return false;
           }
           StringRefNull rna_path = fcurve.rna_path;
-          for (auto prop_path : fcurve_thickness_valid_prop_paths) {
-            const char *rna_adjustment_prop_path = prop_path.first;
-            const char *rna_modifier_prop_path = prop_path.second;
+          for (const auto &[from_prop_path, to_prop_path] : fcurve_thickness_valid_prop_paths) {
+            const char *rna_adjustment_prop_path = from_prop_path;
+            const char *rna_modifier_prop_path = to_prop_path;
             const std::string old_rna_path = fmt::format(
                 "{}{}", legacy_root_path, rna_adjustment_prop_path);
             if (rna_path == old_rna_path) {
@@ -1088,8 +1087,7 @@ static ModifierData &legacy_object_modifier_common(Object &object,
   new_md.ui_expand_flag = legacy_md.ui_expand_flag;
 
   /* Convert animation data if needed. */
-  AnimData *anim_data = BKE_animdata_from_id(&object.id);
-  if (anim_data) {
+  if (AnimData *anim_data = BKE_animdata_from_id(&object.id)) {
     char legacy_name_esc[MAX_NAME * 2];
     BLI_str_escape(legacy_name_esc, legacy_md.name, sizeof(legacy_name_esc));
     const std::string legacy_root_path = fmt::format("grease_pencil_modifiers[\"{}\"]",
