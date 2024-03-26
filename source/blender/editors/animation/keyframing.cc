@@ -341,7 +341,7 @@ static int insert_key(bContext *C, wmOperator *op)
   }
 
   if (BLI_listbase_is_empty(&selection)) {
-    BKE_reportf(op->reports, RPT_WARNING, "Nothing selected to keyframe");
+    BKE_reportf(op->reports, RPT_WARNING, "Nothing selected to key");
     BLI_freelistN(&selection);
     return OPERATOR_CANCELLED;
   }

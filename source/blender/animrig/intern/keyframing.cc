@@ -135,7 +135,7 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
   }
 
   if (has_reported_error) {
-    BKE_reportf(reports, RPT_ERROR, "%s", error.c_str());
+    BKE_report(reports, RPT_ERROR, error.c_str());
   }
   else {
     BKE_report(reports, RPT_WARNING, "Encountered unhandled error during keyframing");
