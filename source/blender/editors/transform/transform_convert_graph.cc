@@ -886,32 +886,32 @@ static void beztmap_to_data(TransInfo *t, FCurve *fcu, BeztMap *bezms, int totve
  */
 static void remake_graph_transdata(TransInfo *t, const blender::Span<FCurve *> fcurves)
 {
+  SCOPED_TIMER_AVERAGED("remake");
   SpaceGraph *sipo = (SpaceGraph *)t->area->spacedata.first;
   const bool use_handle = (sipo->flag & SIPO_NOHANDLES) == 0;
 
-  blender::threading::parallel_for(
-      fcurves.index_range(), 16, [&](const blender::IndexRange range) {
-        for (const int i : range) {
-          FCurve *fcu = fcurves[i];
+  blender::threading::parallel_for(fcurves.index_range(), 1, [&](const blender::IndexRange range) {
+    for (const int i : range) {
+      FCurve *fcu = fcurves[i];
 
-          if (fcu->bezt) {
-            BeztMap *bezm;
+      if (fcu->bezt) {
+        BeztMap *bezm;
 
-            /* Adjust transform-data pointers. */
-            /* NOTE: none of these functions use 'use_handle', it could be removed. */
-            bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
-            sort_time_beztmaps(bezm, fcu->totvert);
-            beztmap_to_data(t, fcu, bezm, fcu->totvert);
+        /* Adjust transform-data pointers. */
+        /* NOTE: none of these functions use 'use_handle', it could be removed. */
+        bezm = bezt_to_beztmaps(fcu->bezt, fcu->totvert);
+        sort_time_beztmaps(bezm, fcu->totvert);
+        beztmap_to_data(t, fcu, bezm, fcu->totvert);
 
-            /* Free mapping stuff. */
-            MEM_freeN(bezm);
+        /* Free mapping stuff. */
+        MEM_freeN(bezm);
 
-            /* Re-sort actual beztriples
-             * (perhaps this could be done using the beztmaps to save time?). */
-            sort_time_fcurve(fcu);
-          }
-        }
-      });
+        /* Re-sort actual beztriples
+         * (perhaps this could be done using the beztmaps to save time?). */
+        sort_time_fcurve(fcu);
+      }
+    }
+  });
 
   /* Run the handle recalculation outside the parallel_for
    * because it might use threading itself. */
