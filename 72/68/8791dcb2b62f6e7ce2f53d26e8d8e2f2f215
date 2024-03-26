@@ -1,2 +1,3 @@
 Referenced by issue #112618, Many bpy.ops.outliner operators crash running without a region (overridden context)
 Referenced by pull request #119696, Fix #112618: many Outliner operators crash running without a region
+Referenced by commit b8bd76271459c05fac4fa95495550db45ea2a1ee, Fix #112618: many Outliner operators crash running without a region
