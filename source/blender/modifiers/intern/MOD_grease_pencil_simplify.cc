@@ -22,6 +22,7 @@
 #include "BKE_modifier.hh"
 
 #include "GEO_resample_curves.hh"
+#include "GEO_simplify_curves.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
@@ -103,8 +104,15 @@ static void simplify_drawing(GreasePencilSimplifyModifierData &mmd,
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_ADAPTIVE: {
-      /* simplify stroke using Ramer-Douglas-Peucker algorithm */
-      // geometry::resample_adaptive(curves,strokes,VArray<float>::ForSingle(mmd.factor,curves.curves_num()));
+      const IndexMask points_to_delete = geometry::simplify_curve_attribute(
+          curves.positions(),
+          strokes,
+          curves.points_by_curve(),
+          curves.cyclic(),
+          mmd.factor,
+          curves.positions(),
+          memory);
+      drawing.strokes_for_write().remove_points(points_to_delete, {});
       break;
     }
     case MOD_GREASE_PENCIL_SIMPLIFY_SAMPLE: {
