@@ -515,13 +515,7 @@ Paint *BKE_paint_get_active(Scene *sce, ViewLayer *view_layer)
     if (actob) {
       switch (actob->mode) {
         case OB_MODE_SCULPT:
-          if (actob->type == OB_MESH) {
-            return &ts->sculpt->paint;
-          }
-          if (actob->type == OB_GREASE_PENCIL) {
-            return &ts->gp_sculptpaint->paint;
-          }
-          break;
+          return &ts->sculpt->paint;
         case OB_MODE_VERTEX_PAINT:
           return &ts->vpaint->paint;
         case OB_MODE_WEIGHT_PAINT:
@@ -612,15 +606,15 @@ PaintMode BKE_paintmode_get_active_from_context(const bContext *C)
     else if (obact) {
       switch (obact->mode) {
         case OB_MODE_SCULPT:
-          if (obact->type == OB_MESH) {
-            return PaintMode::Sculpt;
+          return PaintMode::Sculpt;
+        case OB_MODE_SCULPT_GPENCIL_LEGACY:
+          if (obact->type == OB_GPENCIL_LEGACY) {
+            return PaintMode::SculptGPencil;
           }
           if (obact->type == OB_GREASE_PENCIL) {
             return PaintMode::SculptGreasePencil;
           }
           return PaintMode::Invalid;
-        case OB_MODE_SCULPT_GPENCIL_LEGACY:
-          return PaintMode::SculptGPencil;
         case OB_MODE_WEIGHT_GPENCIL_LEGACY:
           return PaintMode::WeightGPencil;
         case OB_MODE_VERTEX_PAINT:

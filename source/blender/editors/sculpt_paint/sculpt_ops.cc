@@ -7,7 +7,6 @@
  * Implements the Sculpt Mode tools.
  */
 
-#include "DNA_ID.h"
 #include "MEM_guardedalloc.h"
 
 #include "BLI_ghash.h"
@@ -280,8 +279,6 @@ namespace blender::ed::sculpt_paint {
 
 static void sculpt_init_session(Main *bmain, Depsgraph *depsgraph, Scene *scene, Object *ob)
 {
-  BLI_assert(ob->type == OB_MESH);
-
   /* Create persistent sculpt mode data. */
   BKE_sculpt_toolsettings_data_ensure(scene);
 
@@ -355,9 +352,12 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
 {
   using namespace blender::ed::sculpt_paint;
   const int mode_flag = OB_MODE_SCULPT;
+  Mesh *mesh = BKE_mesh_from_object(ob);
 
   /* Enter sculpt mode. */
   ob->mode |= mode_flag;
+
+  sculpt_init_session(bmain, depsgraph, scene, ob);
 
   if (!(fabsf(ob->scale[0] - ob->scale[1]) < 1e-4f && fabsf(ob->scale[1] - ob->scale[2]) < 1e-4f))
   {
@@ -368,91 +368,67 @@ void ED_object_sculptmode_enter_ex(Main *bmain,
     BKE_report(reports, RPT_WARNING, "Object has negative scale, sculpting may be unpredictable");
   }
 
-  Paint *paint = nullptr;
-  if (ob->type == OB_MESH) {
-    paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::Sculpt);
-    BKE_paint_init(bmain, scene, PaintMode::Sculpt, PAINT_CURSOR_SCULPT);
-    ED_paint_cursor_start(paint, SCULPT_mode_poll_view3d);
-  }
-  else if (ob->type == OB_GREASE_PENCIL) {
-    paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::SculptGreasePencil);
-    BKE_paint_init(bmain, scene, PaintMode::SculptGreasePencil, PAINT_CURSOR_SCULPT_GREASE_PENCIL);
-    /* Custom poll function because SCULPT_mode_poll_view3d only works for mesh objects. */
-    ED_paint_cursor_start(paint, [](bContext *C) {
-      Object *ob = CTX_data_active_object(C);
-      return ob && ob->type == OB_GREASE_PENCIL && ob->mode & OB_MODE_SCULPT &&
-             CTX_wm_region_view3d(C);
-    });
-  }
-  else {
-    BLI_assert_unreachable();
-  }
+  Paint *paint = BKE_paint_get_active_from_paintmode(scene, PaintMode::Sculpt);
+  BKE_paint_init(bmain, scene, PaintMode::Sculpt, PAINT_CURSOR_SCULPT);
 
-  if (ob->type == OB_MESH) {
-    Mesh *mesh = BKE_mesh_from_object(ob);
+  ED_paint_cursor_start(paint, SCULPT_mode_poll_view3d);
 
-    sculpt_init_session(bmain, depsgraph, scene, ob);
+  /* Check dynamic-topology flag; re-enter dynamic-topology mode when changing modes,
+   * As long as no data was added that is not supported. */
+  if (mesh->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
+    MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
 
-    /* Check dynamic-topology flag; re-enter dynamic-topology mode when changing modes,
-     * As long as no data was added that is not supported. */
-    if (mesh->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
-      MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
-
-      const char *message_unsupported = nullptr;
-      if (mesh->corners_num != mesh->faces_num * 3) {
-        message_unsupported = RPT_("non-triangle face");
+    const char *message_unsupported = nullptr;
+    if (mesh->corners_num != mesh->faces_num * 3) {
+      message_unsupported = RPT_("non-triangle face");
+    }
+    else if (mmd != nullptr) {
+      message_unsupported = RPT_("multi-res modifier");
+    }
+    else {
+      dyntopo::WarnFlag flag = dyntopo::check_attribute_warning(scene, ob);
+      if (flag == 0) {
+        /* pass */
       }
-      else if (mmd != nullptr) {
-        message_unsupported = RPT_("multi-res modifier");
+      else if (flag & dyntopo::VDATA) {
+        message_unsupported = RPT_("vertex data");
+      }
+      else if (flag & dyntopo::EDATA) {
+        message_unsupported = RPT_("edge data");
+      }
+      else if (flag & dyntopo::LDATA) {
+        message_unsupported = RPT_("face data");
+      }
+      else if (flag & dyntopo::MODIFIER) {
+        message_unsupported = RPT_("constructive modifier");
       }
       else {
-        dyntopo::WarnFlag flag = dyntopo::check_attribute_warning(scene, ob);
-        if (flag == 0) {
-          /* pass */
-        }
-        else if (flag & dyntopo::VDATA) {
-          message_unsupported = RPT_("vertex data");
-        }
-        else if (flag & dyntopo::EDATA) {
-          message_unsupported = RPT_("edge data");
-        }
-        else if (flag & dyntopo::LDATA) {
-          message_unsupported = RPT_("face data");
-        }
-        else if (flag & dyntopo::MODIFIER) {
-          message_unsupported = RPT_("constructive modifier");
-        }
-        else {
-          BLI_assert(0);
-        }
-      }
-
-      if ((message_unsupported == nullptr) || force_dyntopo) {
-        /* Needed because we may be entering this mode before the undo system loads. */
-        wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
-        bool has_undo = wm->undo_stack != nullptr;
-        /* Undo push is needed to prevent memory leak. */
-        if (has_undo) {
-          undo::push_begin_ex(ob, "Dynamic topology enable");
-        }
-        dyntopo::enable_ex(bmain, depsgraph, ob);
-        if (has_undo) {
-          undo::push_node(ob, nullptr, undo::Type::DyntopoBegin);
-          undo::push_end(ob);
-        }
-      }
-      else {
-        BKE_reportf(
-            reports, RPT_WARNING, "Dynamic Topology found: %s, disabled", message_unsupported);
-        mesh->flag &= ~ME_SCULPT_DYNAMIC_TOPOLOGY;
+        BLI_assert(0);
       }
     }
 
-    ensure_valid_pivot(ob, scene);
+    if ((message_unsupported == nullptr) || force_dyntopo) {
+      /* Needed because we may be entering this mode before the undo system loads. */
+      wmWindowManager *wm = static_cast<wmWindowManager *>(bmain->wm.first);
+      bool has_undo = wm->undo_stack != nullptr;
+      /* Undo push is needed to prevent memory leak. */
+      if (has_undo) {
+        undo::push_begin_ex(ob, "Dynamic topology enable");
+      }
+      dyntopo::enable_ex(bmain, depsgraph, ob);
+      if (has_undo) {
+        undo::push_node(ob, nullptr, undo::Type::DyntopoBegin);
+        undo::push_end(ob);
+      }
+    }
+    else {
+      BKE_reportf(
+          reports, RPT_WARNING, "Dynamic Topology found: %s, disabled", message_unsupported);
+      mesh->flag &= ~ME_SCULPT_DYNAMIC_TOPOLOGY;
+    }
   }
-  if (ob->type == OB_GREASE_PENCIL) {
-    /* TODO set up grease pencil sculpt */
-  }
+
+  ensure_valid_pivot(ob, scene);
 
   /* Flush object mode. */
   DEG_id_tag_update(&ob->id, ID_RECALC_SYNC_TO_EVAL);
@@ -472,41 +448,36 @@ void ED_object_sculptmode_exit_ex(Main *bmain, Depsgraph *depsgraph, Scene *scen
 {
   using namespace blender::ed::sculpt_paint;
   const int mode_flag = OB_MODE_SCULPT;
+  Mesh *mesh = BKE_mesh_from_object(ob);
 
-  if (ob->type == OB_MESH) {
-    Mesh *mesh = BKE_mesh_from_object(ob);
+  multires_flush_sculpt_updates(ob);
 
-    multires_flush_sculpt_updates(ob);
-
-    /* Not needed for now. */
+  /* Not needed for now. */
 #if 0
-    MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
-    const int flush_recalc = ed_object_sculptmode_flush_recalc_flag(scene, ob, mmd);
+  MultiresModifierData *mmd = BKE_sculpt_multires_active(scene, ob);
+  const int flush_recalc = ed_object_sculptmode_flush_recalc_flag(scene, ob, mmd);
 #endif
 
-    /* Always for now, so leaving sculpt mode always ensures scene is in
-     * a consistent state. */
-    if (true || /* flush_recalc || */ (ob->sculpt && ob->sculpt->bm)) {
-      DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
-    }
-
-    if (mesh->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
-      /* Dynamic topology must be disabled before exiting sculpt
-       * mode to ensure the undo stack stays in a consistent
-       * state. */
-      dyntopo::disable_with_undo(bmain, depsgraph, scene, ob);
-
-      /* Store so we know to re-enable when entering sculpt mode. */
-      mesh->flag |= ME_SCULPT_DYNAMIC_TOPOLOGY;
-    }
-
-    BKE_sculptsession_free(ob);
+  /* Always for now, so leaving sculpt mode always ensures scene is in
+   * a consistent state. */
+  if (true || /* flush_recalc || */ (ob->sculpt && ob->sculpt->bm)) {
+    DEG_id_tag_update(&ob->id, ID_RECALC_GEOMETRY);
   }
-  if (ob->type == OB_GREASE_PENCIL) {
+
+  if (mesh->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) {
+    /* Dynamic topology must be disabled before exiting sculpt
+     * mode to ensure the undo stack stays in a consistent
+     * state. */
+    dyntopo::disable_with_undo(bmain, depsgraph, scene, ob);
+
+    /* Store so we know to re-enable when entering sculpt mode. */
+    mesh->flag |= ME_SCULPT_DYNAMIC_TOPOLOGY;
   }
 
   /* Leave sculpt mode. */
   ob->mode &= ~mode_flag;
+
+  BKE_sculptsession_free(ob);
 
   paint_cursor_delete_textures();
 
@@ -558,7 +529,7 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
     ED_object_sculptmode_enter_ex(bmain, depsgraph, scene, ob, false, op->reports);
     BKE_paint_toolslots_brush_validate(bmain, &ts->sculpt->paint);
 
-    if ((ob->type == OB_MESH) && (ob->mode & mode_flag)) {
+    if (ob->mode & mode_flag) {
       Mesh *mesh = static_cast<Mesh *>(ob->data);
       /* Dyntopo adds its own undo step. */
       if ((mesh->flag & ME_SCULPT_DYNAMIC_TOPOLOGY) == 0) {
@@ -582,18 +553,6 @@ static int sculpt_mode_toggle_exec(bContext *C, wmOperator *op)
   return OPERATOR_FINISHED;
 }
 
-static bool sculpt_mode_toggle_poll(bContext *C)
-{
-  Object *ob = ED_object_active_context(C);
-  if (!ED_operator_object_active_editable_ex(C, ob) || ID_IS_OVERRIDE_LIBRARY(ob)) {
-    return false;
-  }
-  if (ELEM(ob->type, OB_MESH, OB_GREASE_PENCIL)) {
-    return !ID_IS_LINKED(ob->data) && !ID_IS_OVERRIDE_LIBRARY(ob->data);
-  }
-  return false;
-}
-
 static void SCULPT_OT_sculptmode_toggle(wmOperatorType *ot)
 {
   /* Identifiers. */
@@ -603,7 +562,7 @@ static void SCULPT_OT_sculptmode_toggle(wmOperatorType *ot)
 
   /* API callbacks. */
   ot->exec = sculpt_mode_toggle_exec;
-  ot->poll = sculpt_mode_toggle_poll;
+  ot->poll = ED_operator_object_active_editable_mesh;
 
   ot->flag = OPTYPE_REGISTER | OPTYPE_UNDO;
 }

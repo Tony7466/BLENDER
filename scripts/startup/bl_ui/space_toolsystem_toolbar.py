@@ -2435,7 +2435,7 @@ class _defs_grease_pencil_sculpt:
         tool_settings = context.scene.tool_settings
         return (
             ob is not None and
-            ob.type == 'GPENCIL' and (
+            ob.type in {'GPENCIL', 'GREASE_PENCIL'} and (
                 tool_settings.use_gpencil_select_mask_point or
                 tool_settings.use_gpencil_select_mask_stroke or
                 tool_settings.use_gpencil_select_mask_segment

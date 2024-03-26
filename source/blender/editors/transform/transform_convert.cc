@@ -891,7 +891,7 @@ static TransConvertTypeInfo *convert_type_get(const TransInfo *t, Object **r_obj
     return &TransConvertType_Cursor3D;
   }
   if (!(t->options & CTX_PAINT_CURVE) && (t->spacetype == SPACE_VIEW3D) && ob &&
-      (ob->type == OB_MESH) && (ob->mode == OB_MODE_SCULPT) && ob->sculpt)
+      (ob->mode == OB_MODE_SCULPT) && ob->sculpt)
   {
     return &TransConvertType_Sculpt;
   }

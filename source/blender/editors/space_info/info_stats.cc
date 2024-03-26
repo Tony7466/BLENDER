@@ -9,7 +9,6 @@
 #include <cstdio>
 #include <cstring>
 
-#include "DNA_object_types.h"
 #include "MEM_guardedalloc.h"
 
 #include "DNA_armature_types.h"
@@ -358,36 +357,31 @@ static void stats_object_pose(const Object *ob, SceneStats *stats)
 static bool stats_is_object_dynamic_topology_sculpt(const Object *ob)
 {
   BLI_assert(ob->mode & OB_MODE_SCULPT);
-  return (ob->type == OB_MESH && ob->sculpt && ob->sculpt->bm);
+  return (ob->sculpt && ob->sculpt->bm);
 }
 
 static void stats_object_sculpt(const Object *ob, SceneStats *stats)
 {
-  BLI_assert(ob->mode & OB_MODE_SCULPT);
-  if (ob->type == OB_MESH) {
-    SculptSession *ss = ob->sculpt;
 
-    if (ss == nullptr || ss->pbvh == nullptr) {
-      return;
-    }
+  SculptSession *ss = ob->sculpt;
 
-    switch (BKE_pbvh_type(ss->pbvh)) {
-      case PBVH_FACES:
-        stats->totvertsculpt = ss->totvert;
-        stats->totfacesculpt = ss->totfaces;
-        break;
-      case PBVH_BMESH:
-        stats->totvertsculpt = ob->sculpt->bm->totvert;
-        stats->tottri = ob->sculpt->bm->totface;
-        break;
-      case PBVH_GRIDS:
-        stats->totvertsculpt = BKE_pbvh_get_grid_num_verts(ss->pbvh);
-        stats->totfacesculpt = BKE_pbvh_get_grid_num_faces(ss->pbvh);
-        break;
-    }
+  if (ss == nullptr || ss->pbvh == nullptr) {
+    return;
   }
-  if (ob->type == OB_GREASE_PENCIL) {
-    /* TODO. */
+
+  switch (BKE_pbvh_type(ss->pbvh)) {
+    case PBVH_FACES:
+      stats->totvertsculpt = ss->totvert;
+      stats->totfacesculpt = ss->totfaces;
+      break;
+    case PBVH_BMESH:
+      stats->totvertsculpt = ob->sculpt->bm->totvert;
+      stats->tottri = ob->sculpt->bm->totface;
+      break;
+    case PBVH_GRIDS:
+      stats->totvertsculpt = BKE_pbvh_get_grid_num_verts(ss->pbvh);
+      stats->totfacesculpt = BKE_pbvh_get_grid_num_faces(ss->pbvh);
+      break;
   }
 }
 

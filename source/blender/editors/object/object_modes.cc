@@ -143,8 +143,8 @@ bool ED_object_mode_compat_test(const Object *ob, eObjectMode mode)
       }
       break;
     case OB_GREASE_PENCIL:
-      if (mode &
-          (OB_MODE_EDIT | OB_MODE_PAINT_GREASE_PENCIL | OB_MODE_WEIGHT_PAINT | OB_MODE_SCULPT))
+      if (mode & (OB_MODE_EDIT | OB_MODE_PAINT_GREASE_PENCIL | OB_MODE_WEIGHT_PAINT |
+                  OB_MODE_SCULPT_GPENCIL_LEGACY))
       {
         return true;
       }
@@ -267,13 +267,7 @@ static bool ed_object_mode_generic_exit_ex(
     }
   }
   else if (ob->mode & OB_MODE_SCULPT) {
-    if (ob->type == OB_MESH && ob->sculpt && (ob->sculpt->mode_type == OB_MODE_SCULPT)) {
-      if (only_test) {
-        return true;
-      }
-      ED_object_sculptmode_exit_ex(bmain, depsgraph, scene, ob);
-    }
-    if (ob->type == OB_GREASE_PENCIL) {
+    if (ob->sculpt && (ob->sculpt->mode_type == OB_MODE_SCULPT)) {
       if (only_test) {
         return true;
       }

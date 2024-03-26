@@ -2119,15 +2119,7 @@ static int ui_id_brush_get_icon(const bContext *C, ID *id)
 
     if ((space_type == SPACE_VIEW3D) && ob) {
       if (ob->mode & OB_MODE_SCULPT) {
-        if (ob->type == OB_MESH) {
-          paint_mode = PaintMode::Sculpt;
-        }
-        else if (ob->type == OB_GREASE_PENCIL) {
-          paint_mode = PaintMode::SculptGreasePencil;
-        }
-        else {
-          paint_mode = PaintMode::Invalid;
-        }
+        paint_mode = PaintMode::Sculpt;
       }
       else if (ob->mode & OB_MODE_VERTEX_PAINT) {
         paint_mode = PaintMode::Vertex;
