@@ -75,11 +75,17 @@ static void generic_poll_operations(const wmEvent *event, uint8_t type)
   g_drop_coords.use_snapping = event->modifier & KM_CTRL;
 }
 
+/* Poll for single file drop, multiple file drop is handled with file handlers. */
+static bool single_file_drop(wmDrag *drag)
+{
+  return drag->type == WM_DRAG_PATH && WM_drag_get_paths(drag).size() == 1;
+}
+
 static bool image_drop_poll(bContext * /*C*/, wmDrag *drag, const wmEvent *event)
 {
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
-    if (file_type == FILE_TYPE_IMAGE) {
+    if (file_type == FILE_TYPE_IMAGE && single_file_drop(drag)) {
       generic_poll_operations(event, TH_SEQ_IMAGE);
       return true;
     }
@@ -97,7 +103,7 @@ static bool is_movie(wmDrag *drag)
 {
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
-    if (file_type == FILE_TYPE_MOVIE) {
+    if (file_type == FILE_TYPE_MOVIE && single_file_drop(drag)) {
       return true;
     }
   }
@@ -121,7 +127,7 @@ static bool is_sound(wmDrag *drag)
 {
   if (drag->type == WM_DRAG_PATH) {
     const eFileSel_File_Types file_type = eFileSel_File_Types(WM_drag_get_path_file_type(drag));
-    if (file_type == FILE_TYPE_SOUND) {
+    if (file_type == FILE_TYPE_SOUND && single_file_drop(drag)) {
       return true;
     }
   }
