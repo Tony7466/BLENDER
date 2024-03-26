@@ -1327,13 +1327,23 @@ int ShadowModule::max_view_per_tilemap()
   int potential_view_count = 0;
   for (auto i : IndexRange(tilemap_pool.tilemaps_data.size())) {
     if (tilemap_pool.tilemaps_data[i].projection_type == SHADOW_PROJECTION_CUBEFACE) {
-      potential_view_count += 6;
+      potential_view_count += SHADOW_TILEMAP_LOD;
     }
     else {
       potential_view_count += 1;
     }
   }
-  return divide_ceil_u(SHADOW_VIEW_MAX, potential_view_count);
+  int max_view_count = divide_ceil_u(SHADOW_VIEW_MAX, potential_view_count);
+  /* For viewport interactivity, have a hard maximum. This allows smoother experience. */
+  if (inst_.is_transforming() || inst_.is_navigating()) {
+    max_view_count = math::min(2, max_view_count);
+  }
+  /* For animation playback, we always want the maximum performance. */
+  if (inst_.is_playback()) {
+    max_view_count = math::min(1, max_view_count);
+  }
+
+  return max_view_count;
 }
 
 void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
