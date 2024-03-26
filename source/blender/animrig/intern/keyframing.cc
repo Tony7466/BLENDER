@@ -92,54 +92,57 @@ void CombinedKeyingResult::generate_reports(ReportList *reports)
     return;
   }
 
-  std::string error = "Inserting keyframes failed due to the following reasons:";
-
-  bool has_reported_error = false;
+  Vector<std::string> errors;
   if (this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::CANNOT_CREATE_FCURVE);
-    error.append(
-        fmt::format("\n- Could not create {} F-Curve{}. This can happen when only inserting to "
+    errors.append(
+        fmt::format("Could not create {} F-Curve{}. This can happen when only inserting to "
                     "available F-Curves.",
                     error_count,
                     error_count > 1 ? "s" : ""));
-    has_reported_error = true;
   }
 
   if (this->get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::FCURVE_NOT_KEYFRAMEABLE);
     if (error_count == 1) {
-      error.append("\n- One F-Curve is not keyframeable. It might be locked or sampled.");
+      errors.append("One F-Curve is not keyframeable. It might be locked or sampled.");
     }
     else {
-      error.append(fmt::format(
-          "\n- {} F-Curves are not keyframeable. They might be locked or sampled.", error_count));
+      errors.append(fmt::format(
+          "{} F-Curves are not keyframeable. They might be locked or sampled.", error_count));
     }
-    has_reported_error = true;
   }
 
   if (this->get_count(SingleKeyingResult::NO_KEY_NEEDED) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::NO_KEY_NEEDED);
-    error.append(fmt::format(
-        "\n- Due to the setting 'Only Insert Needed', {} keyframe{} not been inserted.",
-        error_count,
-        error_count > 1 ? "s have" : " has"));
-    has_reported_error = true;
+    errors.append(
+        fmt::format("Due to the setting 'Only Insert Needed', {} keyframe{} not been inserted.",
+                    error_count,
+                    error_count > 1 ? "s have" : " has"));
   }
 
   if (this->get_count(SingleKeyingResult::UNABLE_TO_INSERT_TO_NLA_STACK) > 0) {
     const int error_count = this->get_count(SingleKeyingResult::UNABLE_TO_INSERT_TO_NLA_STACK);
-    error.append(fmt::format("\n- Due to the NLA stack setup, {} keyframe{} not been inserted.",
-                             error_count,
-                             error_count > 1 ? "s have" : " has"));
-    has_reported_error = true;
+    errors.append(fmt::format("Due to the NLA stack setup, {} keyframe{} not been inserted.",
+                              error_count,
+                              error_count > 1 ? "s have" : " has"));
   }
 
-  if (has_reported_error) {
-    BKE_report(reports, RPT_ERROR, error.c_str());
-  }
-  else {
+  if (errors.is_empty()) {
     BKE_report(reports, RPT_WARNING, "Encountered unhandled error during keyframing");
+    return;
   }
+
+  if (errors.size() == 1) {
+    BKE_report(reports, RPT_ERROR, errors[0].c_str());
+    return;
+  }
+
+  std::string error_message = "Inserting keyframes failed:";
+  for (const std::string &error : errors) {
+    error_message.append(fmt::format("\n- {}", error));
+  }
+  BKE_report(reports, RPT_ERROR, error_message.c_str());
 }
 
 void update_autoflags_fcurve_direct(FCurve *fcu, PropertyRNA *prop)
