@@ -42,7 +42,7 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
   switch (bnode->custom1) {
     case CMP_NODE_SCALE_RELATIVE: {
       ScaleRelativeOperation *operation = new ScaleRelativeOperation();
-      
+
       operation->set_sampler(sampler);
       converter.add_operation(operation);
 
@@ -60,7 +60,7 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
       converter.add_operation(scale_factor_operation);
 
       ScaleRelativeOperation *operation = new ScaleRelativeOperation();
-      
+
       operation->set_sampler(sampler);
       converter.add_operation(operation);
 
@@ -85,7 +85,7 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
       operation->set_is_crop(bnode->custom2 == CMP_NODE_SCALE_RENDER_SIZE_CROP);
       operation->set_offset(bnode->custom3, bnode->custom4);
       operation->set_new_width(rd->xsch * render_size_factor);
-      operation->set_new_height(rd->ysch * render_size_factor);      
+      operation->set_new_height(rd->ysch * render_size_factor);
       operation->set_sampler(sampler);
       converter.add_operation(operation);
 
@@ -99,7 +99,7 @@ void ScaleNode::convert_to_operations(NodeConverter &converter,
     case CMP_NODE_SCALE_ABSOLUTE: {
       /* TODO: what is the use of this one.... perhaps some issues when the ui was updated... */
       ScaleAbsoluteOperation *operation = new ScaleAbsoluteOperation();
-      
+
       operation->set_sampler(sampler);
       converter.add_operation(operation);
 

@@ -6613,12 +6613,24 @@ static void def_cmp_scale(StructRNA *srna)
   };
 
   static const EnumPropertyItem interpolation_items[] = {
-      {CMP_NODE_STABILIZE_INTERPOLATION_NEAREST, "NEAREST", 0, "Nearest", "Use nearest interpolation"},
-      {CMP_NODE_STABILIZE_INTERPOLATION_BILINEAR, "BILINEAR", 0, "Bilinear", "Use bilinear interpolation"},
-      {CMP_NODE_STABILIZE_INTERPOLATION_BICUBIC, "BICUBIC", 0, "Bicubic", "Use bicubic interpolation"},
+      {CMP_NODE_STABILIZE_INTERPOLATION_NEAREST,
+       "NEAREST",
+       0,
+       "Nearest",
+       "Use nearest interpolation"},
+      {CMP_NODE_STABILIZE_INTERPOLATION_BILINEAR,
+       "BILINEAR",
+       0,
+       "Bilinear",
+       "Use bilinear interpolation"},
+      {CMP_NODE_STABILIZE_INTERPOLATION_BICUBIC,
+       "BICUBIC",
+       0,
+       "Bicubic",
+       "Use bicubic interpolation"},
       {0, nullptr, 0, nullptr, nullptr},
   };
-  
+
   RNA_def_struct_sdna_from(srna, "NodeScaleData", "storage");
 
   prop = RNA_def_property(srna, "space", PROP_ENUM, PROP_NONE);

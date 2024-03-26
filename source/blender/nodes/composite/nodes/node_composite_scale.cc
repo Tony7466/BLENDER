@@ -27,7 +27,7 @@
 /* **************** Scale  ******************** */
 
 namespace blender::nodes::node_composite_scale_cc {
-  
+
 NODE_STORAGE_FUNCS(NodeScaleData)
 
 static void cmp_node_scale_declare(NodeDeclarationBuilder &b)
