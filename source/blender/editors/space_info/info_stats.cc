@@ -62,7 +62,7 @@
 
 #include "UI_resources.hh"
 
-#include "GPU_capabilities.h"
+#include "GPU_capabilities.hh"
 
 ENUM_OPERATORS(eUserpref_StatusBar_Flag, STATUSBAR_SHOW_VERSION)
 
@@ -235,7 +235,7 @@ static void stats_object_edit(Object *obedit, SceneStats *stats)
     stats->totface += em->bm->totface;
     stats->totfacesel += em->bm->totfacesel;
 
-    stats->tottri += em->tottri;
+    stats->tottri += em->looptris.size();
   }
   else if (obedit->type == OB_ARMATURE) {
     /* Armature Edit */
