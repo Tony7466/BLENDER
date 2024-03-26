@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
 /**
- * Virtual shadow-mapping: Usage un-tagging
+ * Virtual shadow-mapping: Usage un-tagging.
  *
- * Remove used tag from masked tiles (LOD overlap).
+ * Remove used tag from masked tiles (LOD overlap) or for load balancing (reducing the number of
+ * views per shadow map).
  */
 
 #pragma BLENDER_REQUIRE(eevee_shadow_tilemap_lib.glsl)
