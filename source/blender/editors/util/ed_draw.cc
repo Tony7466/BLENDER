@@ -55,6 +55,7 @@
 #define SLIDE_PIXEL_DISTANCE (300.0f * UI_SCALE_FAC)
 #define OVERSHOOT_RANGE_DELTA 0.2f
 #define SLIDER_UNIT_STRING_SIZE 64
+#define SLIDER_PROPERTY_STRING_SIZE 64
 
 struct tSlider {
   Scene *scene;
@@ -80,6 +81,10 @@ struct tSlider {
 
   /* How the factor number is drawn. When drawing percent it is factor*100. */
   SliderMode slider_mode;
+
+  /* Optional string that will display next to the slider to indicate which property is modified
+   * right now. */
+  char property_name[SLIDER_PROPERTY_STRING_SIZE];
 
   /* What unit to add to the slider. */
   char unit_string[SLIDER_UNIT_STRING_SIZE];
@@ -224,7 +229,8 @@ static void draw_backdrop(const int fontid,
                           const rctf *main_line_rect,
                           const uint8_t color_bg[4],
                           const short region_y_size,
-                          const float base_tick_height)
+                          const float base_tick_height,
+                          const char *property_name)
 {
   float string_pixel_size[2];
   const char *percentage_string_placeholder = "000%%";
@@ -233,10 +239,18 @@ static void draw_backdrop(const int fontid,
                        sizeof(percentage_string_placeholder),
                        &string_pixel_size[0],
                        &string_pixel_size[1]);
-  const float pad[2] = {(region_y_size - base_tick_height) / 2, 2.0f * U.pixelsize};
+
+  float property_name_pixel_size[2];
+  BLF_width_and_height(fontid,
+                       property_name,
+                       SLIDER_PROPERTY_STRING_SIZE,
+                       &property_name_pixel_size[0],
+                       &property_name_pixel_size[1]);
+  const float pad[2] = {(region_y_size - base_tick_height) / 2 + 12.0f * U.pixelsize,
+                        2.0f * U.pixelsize};
   rctf backdrop_rect{};
   backdrop_rect.xmin = main_line_rect->xmin - string_pixel_size[0] - pad[0];
-  backdrop_rect.xmax = main_line_rect->xmax + pad[0];
+  backdrop_rect.xmax = main_line_rect->xmax + property_name_pixel_size[0] + pad[0];
   backdrop_rect.ymin = pad[1];
   backdrop_rect.ymax = region_y_size - pad[1];
   UI_draw_roundbox_3ub_alpha(&backdrop_rect, true, 4.0f, color_bg, color_bg[3]);
@@ -304,7 +318,12 @@ static void slider_draw(const bContext * /*C*/, ARegion *region, void *arg)
     handle_pos_x = main_line_rect.xmin + SLIDE_PIXEL_DISTANCE * range_factor;
   }
 
-  draw_backdrop(fontid, &main_line_rect, color_bg, slider->region_header->winy, base_tick_height);
+  draw_backdrop(fontid,
+                &main_line_rect,
+                color_bg,
+                slider->region_header->winy,
+                base_tick_height,
+                slider->property_name);
 
   draw_main_line(&main_line_rect, slider->factor, slider->overshoot, color_overshoot, color_line);
 
@@ -356,11 +375,26 @@ static void slider_draw(const bContext * /*C*/, ARegion *region, void *arg)
                        &factor_string_pixel_size[0],
                        &factor_string_pixel_size[1]);
 
-  BLF_position(fontid,
-               main_line_rect.xmin - 12.0 * U.pixelsize - factor_string_pixel_size[0],
-               (region->winy / 2) - factor_string_pixel_size[1] / 2,
-               0.0f);
+  const float text_padding = 12.0 * U.pixelsize;
+  const float factor_string_pos_x = main_line_rect.xmin - text_padding -
+                                    factor_string_pixel_size[0];
+  BLF_position(
+      fontid, factor_string_pos_x, (region->winy / 2) - factor_string_pixel_size[1] / 2, 0.0f);
   BLF_draw(fontid, factor_string, sizeof(factor_string));
+
+  if (slider->property_name) {
+    float property_name_pixel_size[2];
+    BLF_width_and_height(fontid,
+                         slider->property_name,
+                         sizeof(slider->property_name),
+                         &property_name_pixel_size[0],
+                         &property_name_pixel_size[1]);
+    BLF_position(fontid,
+                 main_line_rect.xmax + text_padding,
+                 (region->winy / 2) - property_name_pixel_size[1] / 2,
+                 0.0f);
+    BLF_draw(fontid, slider->property_name, sizeof(slider->property_name));
+  }
 }
 
 static void slider_update_factor(tSlider *slider, const wmEvent *event)
@@ -582,6 +616,11 @@ SliderMode ED_slider_mode_get(tSlider *slider)
 void ED_slider_unit_set(tSlider *slider, const char *unit)
 {
   STRNCPY(slider->unit_string, unit);
+}
+
+void ED_slider_property_name_set(tSlider *slider, const char *prop_name)
+{
+  STRNCPY(slider->property_name, prop_name);
 }
 
 /** \} */
