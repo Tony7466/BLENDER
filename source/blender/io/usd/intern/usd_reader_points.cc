@@ -8,6 +8,8 @@
 #include "BKE_object.hh"
 #include "BKE_pointcloud.hh"
 
+#include "BLI_color.hh"
+
 #include "DNA_cachefile_types.h"
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
@@ -18,6 +20,8 @@
 #include "usd_reader_points.h"
 // this is where the copy_zup_from_yup comes from
 #include "../../alembic/intern/abc_axis_conversion.h"
+
+#include <iostream>
 
 namespace blender::io::usd {
 
@@ -120,7 +124,7 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
   
   bke::SpanAttributeWriter<float3> positions_writer =
       point_cloud->attributes_for_write().lookup_or_add_for_write_span<float3>("position",
-                                                                               ATTR_DOMAIN_POINT);
+                                                                               bke::AttrDomain::Point);
   MutableSpan<float3> point_positions = positions_writer.span;
 
   // do things like iterate over the points and add their data via the point positions writerh
@@ -151,7 +155,7 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
     // I guess the hard part  is knowing which tempated pvibute writer goes with a particular primvar
       if (type == pxr::SdfValueTypeNames->Color3fArray && interp == pxr::UsdGeomTokens->vertex) {
         bke::SpanAttributeWriter<ColorGeometry4f> primvar_writer =
-            point_cloud->attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(pv.GetName().GetText(),ATTR_DOMAIN_POINT);
+            point_cloud->attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(pv.GetName().GetText(), bke::AttrDomain::Point);
         if (!primvar_writer) {
           printf("couldn't make writer for color %s\n", name.GetText());
           continue;
@@ -174,7 +178,7 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
       if (type == pxr::SdfValueTypeNames->FloatArray) {
         printf("WE ARE IN THE FLOAT ARRAY PROCESSING BLOCK");
         bke::SpanAttributeWriter<float> primvar_writer =
-            point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(name.GetText(),ATTR_DOMAIN_POINT);
+            point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(name.GetText(), bke::AttrDomain::Point);
         if (!primvar_writer) {
           printf("couldn't make writer for float prop %s\n", name.GetText());
           continue;
