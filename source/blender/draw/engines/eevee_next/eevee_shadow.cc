@@ -1127,7 +1127,7 @@ void ShadowModule::end_sync()
         /* Mark tiles that are redundant in the mipmap chain as unused. */
         PassSimple::Sub &sub = pass.sub("MaskLod");
         sub.shader_set(inst_.shaders.static_shader_get(SHADOW_PAGE_MASK));
-        sub.push_constant("max_lod_render_per_tilemap", &max_lod_render_per_tilemap);
+        sub.push_constant("max_view_per_tilemap", &max_view_per_tilemap_);
         sub.bind_ssbo("tilemaps_buf", tilemap_pool.tilemaps_data);
         sub.bind_ssbo("tiles_buf", tilemap_pool.tiles_data);
         sub.dispatch(int3(1, 1, tilemap_pool.tilemaps_data.size()));
@@ -1325,7 +1325,6 @@ int ShadowModule::max_view_per_tilemap()
   /* For now very simple heuristic. Can be improved later by taking into consideration how many
    * tilemaps are updating, but we cannot know the ones updated by casters. */
   int potential_view_count = 0;
-  int clipmap_lvl_count = 0;
   for (auto i : IndexRange(tilemap_pool.tilemaps_data.size())) {
     if (tilemap_pool.tilemaps_data[i].projection_type == SHADOW_PROJECTION_CUBEFACE) {
       potential_view_count += 6;
@@ -1352,6 +1351,7 @@ void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
   GPU_texture_get_mipmap_size(depth_tx, 0, target_size);
 
   dispatch_depth_scan_size_ = math::divide_ceil(target_size, int3(SHADOW_DEPTH_SCAN_GROUP_SIZE));
+  max_view_per_tilemap_ = max_view_per_tilemap();
 
   pixel_world_radius_ = screen_pixel_radius(view, int2(target_size));
   data_.tilemap_projection_ratio = tilemap_pixel_radius() / pixel_world_radius_;
@@ -1389,8 +1389,6 @@ void ShadowModule::set_view(View &view, GPUTexture *depth_tx)
     DRW_stats_group_start("Shadow");
     {
       GPU_uniformbuf_clear_to_zero(shadow_multi_view_.matrices_ubo_get());
-
-      max_lod_render_per_tilemap = max_view_per_tilemap();
 
       inst_.manager->submit(tilemap_setup_ps_, view);
       if (assign_if_different(update_casters_, false)) {

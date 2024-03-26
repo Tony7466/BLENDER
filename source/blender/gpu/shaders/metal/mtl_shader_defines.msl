@@ -2033,7 +2033,12 @@ inline float4 uintBitsToFloat(uint4 f)
 #define bitfieldReverse reverse_bits
 #define bitfieldExtract extract_bits
 #define bitfieldInsert insert_bits
-#define bitCount popcount
+
+template<typename T> int bitCount(T x)
+{
+  /* popcount returns the same type as T. bitCount always returns int. */
+  return int(popcount(x));
+}
 
 template<typename T> int findLSB(T x)
 {

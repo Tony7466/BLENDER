@@ -122,11 +122,11 @@ void main()
     barrier();
 
     /* If there is more LODs to update than the load balancing heuristic allows. */
-    if (bitCount(levels_rendered) > max_lod_render_per_tilemap) {
+    if (bitCount(levels_rendered) > max_view_per_tilemap) {
       /* Find the cutoff LOD that contain tiles to render. */
       int max_lod = findMSB(levels_rendered);
       /* Allow more than one level. */
-      for (int i = 1; i < max_lod_render_per_tilemap; i++) {
+      for (int i = 1; i < max_view_per_tilemap; i++) {
         max_lod = findMSB(levels_rendered & ~(~0u << max_lod));
       }
       /* Collapse all bits to highest level. */
@@ -140,10 +140,10 @@ void main()
             int tile_bottom_offset = shadow_tile_offset_lds(tile_co >> (max_lod - lod), max_lod);
             /* Tag the associated tile in max_lod to be used as it contains the shadowmap area
              * covered by this collapsed tile. */
-            atomicOr(tiles_local[tile_bottom_offset], SHADOW_TILE_AMENDED);
+            atomicOr(tiles_local[tile_bottom_offset], uint(SHADOW_TILE_AMENDED));
             /* This tile could have been masked by the masking phase.
              * Make sure the flag is unset. */
-            atomicAnd(tiles_local[tile_bottom_offset], ~SHADOW_TILE_MASKED);
+            atomicAnd(tiles_local[tile_bottom_offset], ~uint(SHADOW_TILE_MASKED));
           }
         }
       }
