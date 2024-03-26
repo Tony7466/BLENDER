@@ -105,7 +105,7 @@ class VKContext : public Context, NonCopyable {
    *
    * NOTE: Shader data structure is reused between render graph nodes.
    */
-  void update_shader_data(VKShaderData &shader_data);
+  void update_pipeline_data(VKPipelineData &pipeline_data);
 };
 
 BLI_INLINE bool operator==(const VKContext &a, const VKContext &b)

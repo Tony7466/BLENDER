@@ -118,7 +118,7 @@ NodeHandle VKRenderGraphNodes::add_synchronization_node()
   return handle;
 }
 
-static void localize_shader_data(VKShaderData &dst, const VKShaderData &src)
+static void localize_shader_data(VKPipelineData &dst, const VKPipelineData &src)
 {
   dst.push_constants_data = nullptr;
   dst.push_constants_size = src.push_constants_size;
@@ -130,7 +130,7 @@ static void localize_shader_data(VKShaderData &dst, const VKShaderData &src)
   }
 }
 
-static void free_shader_data(VKShaderData &data)
+static void free_shader_data(VKPipelineData &data)
 {
   MEM_SAFE_FREE(data.push_constants_data);
 }
@@ -143,7 +143,7 @@ NodeHandle VKRenderGraphNodes::add_dispatch_node(const VKDispatchInfo &dispatch_
 
   node.type = Node::Type::DISPATCH;
   node.dispatch = dispatch_info.dispatch_node;
-  localize_shader_data(node.dispatch.shader_data, dispatch_info.dispatch_node.shader_data);
+  localize_shader_data(node.dispatch.pipeline_data, dispatch_info.dispatch_node.pipeline_data);
 
   return handle;
 }
@@ -188,7 +188,7 @@ void VKRenderGraphNodes::free_data(Node &node)
 {
   switch (node.type) {
     case Node::Type::DISPATCH:
-      free_shader_data(node.dispatch.shader_data);
+      free_shader_data(node.dispatch.pipeline_data);
       break;
 
     case Node::Type::UNUSED:

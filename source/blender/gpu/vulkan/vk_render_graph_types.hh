@@ -34,7 +34,8 @@ struct VKResourceBarrierState {
 /**
  * Container for storing shader descriptor set and push constants.
  */
-struct VKShaderData {
+struct VKPipelineData {
+  VkPipeline vk_pipeline;
   VkPipelineLayout vk_pipeline_layout;
   VkDescriptorSet vk_descriptor_set;
   uint32_t push_constants_size;
@@ -45,11 +46,10 @@ struct VKShaderData {
  * Data kept inside a dispatch node.
  */
 struct VKDispatchNode {
-  VkPipeline vk_pipeline;
+  VKPipelineData pipeline_data;
   uint32_t group_count_x;
   uint32_t group_count_y;
   uint32_t group_count_z;
-  VKShaderData shader_data;
 };
 
 constexpr VkAccessFlags VK_ACCESS_READ_MASK = VK_ACCESS_INDIRECT_COMMAND_READ_BIT |

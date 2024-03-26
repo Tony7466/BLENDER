@@ -273,28 +273,28 @@ void VKRenderGraphCommandBuilder::build_node_dispatch(VKRenderGraph &render_grap
   add_image_barriers(render_graph, node_handle, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
   send_pipeline_barriers(render_graph);
 
-  if (assign_if_different(active_compute_pipeline_, node.dispatch.vk_pipeline)) {
+  const VKPipelineData &pipeline_data = node.dispatch.pipeline_data;
+  if (assign_if_different(active_compute_pipeline_, pipeline_data.vk_pipeline)) {
     render_graph.command_buffer_->bind_pipeline(VK_PIPELINE_BIND_POINT_COMPUTE,
                                                 active_compute_pipeline_);
   }
 
-  const VKShaderData &shader_data = node.dispatch.shader_data;
-  if (assign_if_different(active_compute_descriptor_set_, shader_data.vk_descriptor_set)) {
+  if (assign_if_different(active_compute_descriptor_set_, pipeline_data.vk_descriptor_set)) {
     render_graph.command_buffer_->bind_descriptor_sets(VK_PIPELINE_BIND_POINT_COMPUTE,
-                                                       shader_data.vk_pipeline_layout,
+                                                       pipeline_data.vk_pipeline_layout,
                                                        0,
                                                        1,
-                                                       &shader_data.vk_descriptor_set,
+                                                       &pipeline_data.vk_descriptor_set,
                                                        0,
                                                        nullptr);
   }
 
-  if (shader_data.push_constants_size) {
-    render_graph.command_buffer_->push_constants(shader_data.vk_pipeline_layout,
+  if (pipeline_data.push_constants_size) {
+    render_graph.command_buffer_->push_constants(pipeline_data.vk_pipeline_layout,
                                                  VK_SHADER_STAGE_COMPUTE_BIT,
                                                  0,
-                                                 shader_data.push_constants_size,
-                                                 shader_data.push_constants_data);
+                                                 pipeline_data.push_constants_size,
+                                                 pipeline_data.push_constants_data);
   }
 
   render_graph.command_buffer_->dispatch(
