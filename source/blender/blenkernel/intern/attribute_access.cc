@@ -425,9 +425,6 @@ bool BuiltinCustomDataLayerProvider::try_delete(void *owner) const
 bool BuiltinCustomDataLayerProvider::try_create(void *owner,
                                                 const AttributeInit &initializer) const
 {
-  if (createable_ != Creatable) {
-    return false;
-  }
   CustomData *custom_data = custom_data_access_.get_custom_data(owner);
   if (custom_data == nullptr) {
     return false;
@@ -441,8 +438,12 @@ bool BuiltinCustomDataLayerProvider::try_create(void *owner,
   if (add_custom_data_layer_from_attribute_init(
           name_, *custom_data, data_type_, element_num, initializer))
   {
-    if (update_on_change_ != nullptr) {
-      update_on_change_(owner);
+    if (initializer.type != AttributeInit::Type::Construct) {
+      /* Avoid calling update function when values are not initialized. In that case
+       * values must be set elsewhere anyway, which will cause a separate update tag. */
+      if (update_on_change_ != nullptr) {
+        update_on_change_(owner);
+      }
     }
     return true;
   }
