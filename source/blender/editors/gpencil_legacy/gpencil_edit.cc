@@ -498,7 +498,8 @@ static int gpencil_sculptmode_toggle_exec(bContext *C, wmOperator *op)
     is_object = true;
   }
   if ((ob) && (ob->type == OB_GREASE_PENCIL)) {
-    mode = OB_MODE_SCULPT_GPENCIL_LEGACY;
+    const bool is_mode_set = (ob->mode & OB_MODE_SCULPT_GPENCIL_LEGACY) != 0;
+    mode = (is_mode_set ? OB_MODE_OBJECT : OB_MODE_SCULPT_GPENCIL_LEGACY);
     is_object = true;
   }
 
