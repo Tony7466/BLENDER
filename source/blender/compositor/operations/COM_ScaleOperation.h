@@ -23,7 +23,7 @@ class BaseScaleOperation : public MultiThreadedOperation {
  protected:
   BaseScaleOperation();
 
-  PixelSampler get_effective_sampler(PixelSampler sampler)
+  PixelSampler get_effective_sampler()
   {
     return (PixelSampler)sampler_;
   }
