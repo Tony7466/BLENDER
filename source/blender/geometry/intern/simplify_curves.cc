@@ -91,11 +91,11 @@ static void ramer_douglas_peucker(const IndexRange range,
 }
 
 template<typename T>
-static void curve_simplifiy(const Span<float3> positions,
-                            const bool cyclic,
-                            const float epsilon,
-                            const Span<T> attribute_data,
-                            MutableSpan<bool> points_to_delete)
+static void curve_simplify(const Span<float3> positions,
+                           const bool cyclic,
+                           const float epsilon,
+                           const Span<T> attribute_data,
+                           MutableSpan<bool> points_to_delete)
 {
   const Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(
       points_to_delete.as_span(), true);
@@ -138,11 +138,11 @@ IndexMask simplify_curve_attribute(const Span<float3> positions,
       if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
                     std::is_same_v<T, float3>)
       {
-        curve_simplifiy(positions.slice(points),
-                        cyclic[curve_i],
-                        epsilon,
-                        attribute_data.typed<T>().slice(points),
-                        points_to_delete.as_mutable_span().slice(points));
+        curve_simplify(positions.slice(points),
+                       cyclic[curve_i],
+                       epsilon,
+                       attribute_data.typed<T>().slice(points),
+                       points_to_delete.as_mutable_span().slice(points));
       }
     });
   });
