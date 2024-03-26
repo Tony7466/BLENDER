@@ -18,7 +18,7 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-class PushOperation : public GreasePencilStrokeOperationCommon {
+class CloneOperation : public GreasePencilStrokeOperationCommon {
  public:
   using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
@@ -31,13 +31,14 @@ class PushOperation : public GreasePencilStrokeOperationCommon {
                                   const InputSample &extension_sample) override;
 };
 
-bool PushOperation::on_stroke_extended_drawing(const bContext &C,
-                                               bke::greasepencil::Drawing &drawing,
-                                               int /*frame_number*/,
-                                               const ed::greasepencil::DrawingPlacement &placement,
-                                               const IndexMask &point_selection,
-                                               Span<float2> view_positions,
-                                               const InputSample &extension_sample)
+bool CloneOperation::on_stroke_extended_drawing(
+    const bContext &C,
+    bke::greasepencil::Drawing &drawing,
+    int /*frame_number*/,
+    const ed::greasepencil::DrawingPlacement &placement,
+    const IndexMask &point_selection,
+    Span<float2> view_positions,
+    const InputSample &extension_sample)
 {
   const Scene &scene = *CTX_data_scene(&C);
   Paint &paint = *BKE_paint_get_active_from_context(&C);
@@ -62,9 +63,9 @@ bool PushOperation::on_stroke_extended_drawing(const bContext &C,
   return true;
 }
 
-std::unique_ptr<GreasePencilStrokeOperation> new_push_operation(const BrushStrokeMode stroke_mode)
+std::unique_ptr<GreasePencilStrokeOperation> new_clone_operation(const BrushStrokeMode stroke_mode)
 {
-  return std::make_unique<PushOperation>(stroke_mode);
+  return std::make_unique<CloneOperation>(stroke_mode);
 }
 
 }  // namespace blender::ed::sculpt_paint::greasepencil

@@ -241,23 +241,23 @@ static GreasePencilStrokeOperation *grease_pencil_sculpt_paint_operation(
   const Brush &brush = *BKE_paint_brush_for_read(&gp_sculptpaint.paint);
   switch (eBrushGPSculptTool(brush.gpencil_sculpt_tool)) {
     case GPSCULPT_TOOL_SMOOTH:
-      return greasepencil::new_smooth_operation().release();
+      return greasepencil::new_smooth_operation(stroke_mode).release();
     case GPSCULPT_TOOL_THICKNESS:
       return greasepencil::new_thickness_operation(stroke_mode).release();
     case GPSCULPT_TOOL_STRENGTH:
       return greasepencil::new_strength_operation(stroke_mode).release();
     case GPSCULPT_TOOL_GRAB:
-      return greasepencil::new_grab_operation().release();
+      return greasepencil::new_grab_operation(stroke_mode).release();
     case GPSCULPT_TOOL_PUSH:
       return greasepencil::new_push_operation(stroke_mode).release();
     case GPSCULPT_TOOL_TWIST:
-      return nullptr;
+      return greasepencil::new_twist_operation(stroke_mode).release();
     case GPSCULPT_TOOL_PINCH:
-      return nullptr;
+      return greasepencil::new_pinch_operation(stroke_mode).release();
     case GPSCULPT_TOOL_RANDOMIZE:
-      return greasepencil::new_randomize_operation().release();
+      return greasepencil::new_randomize_operation(stroke_mode).release();
     case GPSCULPT_TOOL_CLONE:
-      return nullptr;
+      return greasepencil::new_clone_operation(stroke_mode).release();
   }
   return nullptr;
 }

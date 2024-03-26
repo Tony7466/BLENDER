@@ -27,6 +27,8 @@ namespace blender::ed::sculpt_paint::greasepencil {
 
 class SmoothOperation : public GreasePencilStrokeOperationCommon {
  public:
+  using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
+
   bool on_stroke_extended_drawing(const bContext &C,
                                   bke::greasepencil::Drawing &drawing,
                                   int frame_number,
@@ -125,9 +127,10 @@ bool SmoothOperation::on_stroke_extended_drawing(
   return changed;
 }
 
-std::unique_ptr<GreasePencilStrokeOperation> new_smooth_operation()
+std::unique_ptr<GreasePencilStrokeOperation> new_smooth_operation(
+    const BrushStrokeMode stroke_mode)
 {
-  return std::make_unique<SmoothOperation>();
+  return std::make_unique<SmoothOperation>(stroke_mode);
 }
 
 }  // namespace blender::ed::sculpt_paint::greasepencil

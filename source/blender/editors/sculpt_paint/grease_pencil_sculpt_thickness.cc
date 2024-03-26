@@ -24,9 +24,7 @@ namespace blender::ed::sculpt_paint::greasepencil {
 
 class ThicknessOperation : public GreasePencilStrokeOperationCommon {
  public:
-  BrushStrokeMode stroke_mode = BRUSH_STROKE_NORMAL;
-
-  ThicknessOperation(const BrushStrokeMode stroke_mode) : stroke_mode(stroke_mode) {}
+  using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
   bool on_stroke_extended_drawing(const bContext &C,
                                   bke::greasepencil::Drawing &drawing,
@@ -48,7 +46,7 @@ bool ThicknessOperation::on_stroke_extended_drawing(
 {
   Paint &paint = *BKE_paint_get_active_from_context(&C);
   const Brush &brush = *BKE_paint_brush(&paint);
-  const bool invert = is_brush_inverted(brush, this->stroke_mode);
+  const bool invert = this->is_inverted(brush);
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   BLI_assert(view_positions.size() == curves.points_num());

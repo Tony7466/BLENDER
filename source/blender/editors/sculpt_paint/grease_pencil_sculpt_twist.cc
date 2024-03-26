@@ -18,11 +18,9 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-class PushOperation : public GreasePencilStrokeOperationCommon {
+class TwistOperation : public GreasePencilStrokeOperationCommon {
  public:
-  BrushStrokeMode stroke_mode;
-
-  PushOperation(const BrushStrokeMode stroke_mode) : stroke_mode(stroke_mode) {}
+  using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
   bool on_stroke_extended_drawing(const bContext &C,
                                   bke::greasepencil::Drawing &drawing,
@@ -33,13 +31,14 @@ class PushOperation : public GreasePencilStrokeOperationCommon {
                                   const InputSample &extension_sample) override;
 };
 
-bool PushOperation::on_stroke_extended_drawing(const bContext &C,
-                                               bke::greasepencil::Drawing &drawing,
-                                               int /*frame_number*/,
-                                               const ed::greasepencil::DrawingPlacement &placement,
-                                               const IndexMask &point_selection,
-                                               Span<float2> view_positions,
-                                               const InputSample &extension_sample)
+bool TwistOperation::on_stroke_extended_drawing(
+    const bContext &C,
+    bke::greasepencil::Drawing &drawing,
+    int /*frame_number*/,
+    const ed::greasepencil::DrawingPlacement &placement,
+    const IndexMask &point_selection,
+    Span<float2> view_positions,
+    const InputSample &extension_sample)
 {
   const Scene &scene = *CTX_data_scene(&C);
   Paint &paint = *BKE_paint_get_active_from_context(&C);
@@ -64,9 +63,9 @@ bool PushOperation::on_stroke_extended_drawing(const bContext &C,
   return true;
 }
 
-std::unique_ptr<GreasePencilStrokeOperation> new_push_operation(const BrushStrokeMode stroke_mode)
+std::unique_ptr<GreasePencilStrokeOperation> new_twist_operation(const BrushStrokeMode stroke_mode)
 {
-  return std::make_unique<PushOperation>(stroke_mode);
+  return std::make_unique<TwistOperation>(stroke_mode);
 }
 
 }  // namespace blender::ed::sculpt_paint::greasepencil

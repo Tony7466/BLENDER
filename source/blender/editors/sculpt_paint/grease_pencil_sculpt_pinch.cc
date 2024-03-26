@@ -18,11 +18,9 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-class PushOperation : public GreasePencilStrokeOperationCommon {
+class PinchOperation : public GreasePencilStrokeOperationCommon {
  public:
-  BrushStrokeMode stroke_mode;
-
-  PushOperation(const BrushStrokeMode stroke_mode) : stroke_mode(stroke_mode) {}
+  using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
   bool on_stroke_extended_drawing(const bContext &C,
                                   bke::greasepencil::Drawing &drawing,
@@ -33,22 +31,24 @@ class PushOperation : public GreasePencilStrokeOperationCommon {
                                   const InputSample &extension_sample) override;
 };
 
-bool PushOperation::on_stroke_extended_drawing(const bContext &C,
-                                               bke::greasepencil::Drawing &drawing,
-                                               int /*frame_number*/,
-                                               const ed::greasepencil::DrawingPlacement &placement,
-                                               const IndexMask &point_selection,
-                                               Span<float2> view_positions,
-                                               const InputSample &extension_sample)
+bool PinchOperation::on_stroke_extended_drawing(
+    const bContext &C,
+    bke::greasepencil::Drawing &drawing,
+    int /*frame_number*/,
+    const ed::greasepencil::DrawingPlacement &placement,
+    const IndexMask &point_selection,
+    Span<float2> view_positions,
+    const InputSample &extension_sample)
 {
   const Scene &scene = *CTX_data_scene(&C);
   Paint &paint = *BKE_paint_get_active_from_context(&C);
   const Brush &brush = *BKE_paint_brush(&paint);
+  const bool invert = this->is_inverted(brush);
 
   bke::CurvesGeometry &curves = drawing.strokes_for_write();
   MutableSpan<float3> positions = curves.positions_for_write();
 
-  const float2 mouse_delta = this->mouse_delta(extension_sample);
+  const float2 target = extension_sample.mouse_position;
 
   point_selection.foreach_index(GrainSize(4096), [&](const int64_t point_i) {
     const float2 &co = view_positions[point_i];
@@ -57,16 +57,18 @@ bool PushOperation::on_stroke_extended_drawing(const bContext &C,
       return;
     }
 
-    positions[point_i] = placement.project(co + mouse_delta * influence);
+    const float scale_offset = influence * influence / 25.0f;
+    const float scale = invert ? 1.0 + scale_offset : 1.0f - scale_offset;
+    positions[point_i] = placement.project(target + (co - target) * scale);
   });
 
   drawing.tag_positions_changed();
   return true;
 }
 
-std::unique_ptr<GreasePencilStrokeOperation> new_push_operation(const BrushStrokeMode stroke_mode)
+std::unique_ptr<GreasePencilStrokeOperation> new_pinch_operation(const BrushStrokeMode stroke_mode)
 {
-  return std::make_unique<PushOperation>(stroke_mode);
+  return std::make_unique<PinchOperation>(stroke_mode);
 }
 
 }  // namespace blender::ed::sculpt_paint::greasepencil

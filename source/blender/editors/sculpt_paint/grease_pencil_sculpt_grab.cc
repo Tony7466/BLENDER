@@ -27,12 +27,11 @@
 
 namespace blender::ed::sculpt_paint::greasepencil {
 
-class GrabOperation : public GreasePencilStrokeOperation {
+class GrabOperation : public GreasePencilStrokeOperationCommon {
  public:
+  using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
   using MutableDrawingInfo = blender::ed::greasepencil::MutableDrawingInfo;
   using DrawingPlacement = ed::greasepencil::DrawingPlacement;
-
-  float2 prev_mouse_position;
 
   /* Cached point mask and influence for a particular drawing. */
   struct PointWeights {
@@ -207,9 +206,9 @@ void GrabOperation::on_stroke_extended(const bContext &C, const InputSample &ext
 
 void GrabOperation::on_stroke_done(const bContext & /*C*/) {}
 
-std::unique_ptr<GreasePencilStrokeOperation> new_grab_operation()
+std::unique_ptr<GreasePencilStrokeOperation> new_grab_operation(const BrushStrokeMode stroke_mode)
 {
-  return std::make_unique<GrabOperation>();
+  return std::make_unique<GrabOperation>(stroke_mode);
 }
 
 }  // namespace blender::ed::sculpt_paint::greasepencil

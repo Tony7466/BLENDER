@@ -86,8 +86,19 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
   using MutableDrawingInfo = blender::ed::greasepencil::MutableDrawingInfo;
   using DrawingPlacement = ed::greasepencil::DrawingPlacement;
 
+  BrushStrokeMode stroke_mode;
+
   /* Previous mouse position for computing the direction. */
   float2 prev_mouse_position;
+
+  GreasePencilStrokeOperationCommon(const BrushStrokeMode stroke_mode) : stroke_mode(stroke_mode)
+  {
+  }
+
+  bool is_inverted(const Brush &brush) const
+  {
+    return is_brush_inverted(brush, this->stroke_mode);
+  }
 
   float2 mouse_delta(const InputSample &input_sample) const;
 
@@ -96,23 +107,29 @@ class GreasePencilStrokeOperationCommon : public GreasePencilStrokeOperation {
   void on_stroke_done(const bContext &C) override;
 
   /* Extend the stroke in a drawing using projected 2D coordinates. */
-  virtual bool on_stroke_extended_drawing(const bContext &C,
-                                          bke::greasepencil::Drawing &drawing,
-                                          int frame_number,
-                                          const DrawingPlacement &placement,
-                                          const IndexMask &point_selection,
-                                          Span<float2> view_positions,
-                                          const InputSample &extension_sample) = 0;
+  virtual bool on_stroke_extended_drawing(const bContext & /*C*/,
+                                          bke::greasepencil::Drawing & /*drawing*/,
+                                          int /*frame_number*/,
+                                          const DrawingPlacement & /*placement*/,
+                                          const IndexMask & /*point_selection*/,
+                                          Span<float2> /*view_positions*/,
+                                          const InputSample & /*extension_sample*/)
+  {
+    return false;
+  }
 };
 
 std::unique_ptr<GreasePencilStrokeOperation> new_paint_operation();
 std::unique_ptr<GreasePencilStrokeOperation> new_erase_operation();
-std::unique_ptr<GreasePencilStrokeOperation> new_smooth_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_smooth_operation(BrushStrokeMode stroke_mode);
 std::unique_ptr<GreasePencilStrokeOperation> new_thickness_operation(BrushStrokeMode stroke_mode);
 std::unique_ptr<GreasePencilStrokeOperation> new_strength_operation(BrushStrokeMode stroke_mode);
-std::unique_ptr<GreasePencilStrokeOperation> new_randomize_operation();
-std::unique_ptr<GreasePencilStrokeOperation> new_grab_operation();
+std::unique_ptr<GreasePencilStrokeOperation> new_randomize_operation(BrushStrokeMode stroke_mode);
+std::unique_ptr<GreasePencilStrokeOperation> new_grab_operation(BrushStrokeMode stroke_mode);
 std::unique_ptr<GreasePencilStrokeOperation> new_push_operation(BrushStrokeMode stroke_mode);
+std::unique_ptr<GreasePencilStrokeOperation> new_pinch_operation(BrushStrokeMode stroke_mode);
+std::unique_ptr<GreasePencilStrokeOperation> new_twist_operation(BrushStrokeMode stroke_mode);
+std::unique_ptr<GreasePencilStrokeOperation> new_clone_operation(BrushStrokeMode stroke_mode);
 
 }  // namespace greasepencil
 

@@ -22,9 +22,7 @@ namespace blender::ed::sculpt_paint::greasepencil {
 
 class StrengthOperation : public GreasePencilStrokeOperationCommon {
  public:
-  BrushStrokeMode stroke_mode = BRUSH_STROKE_NORMAL;
-
-  StrengthOperation(const BrushStrokeMode stroke_mode) : stroke_mode(stroke_mode) {}
+  using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
 
   bool on_stroke_extended_drawing(const bContext &C,
                                   bke::greasepencil::Drawing &drawing,
@@ -46,7 +44,7 @@ bool StrengthOperation::on_stroke_extended_drawing(
 {
   Paint &paint = *BKE_paint_get_active_from_context(&C);
   const Brush &brush = *BKE_paint_brush(&paint);
-  const bool invert = is_brush_inverted(brush, this->stroke_mode);
+  const bool invert = this->is_inverted(brush);
 
   BLI_assert(view_positions.size() == drawing.strokes().points_num());
   MutableSpan<float> opacities = drawing.opacities_for_write();

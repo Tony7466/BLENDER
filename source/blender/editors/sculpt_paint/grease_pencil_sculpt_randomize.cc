@@ -31,6 +31,8 @@ static float hash_rng(unsigned int seed1, unsigned int seed2, int index)
 
 class RandomizeOperation : public GreasePencilStrokeOperationCommon {
  public:
+  using GreasePencilStrokeOperationCommon::GreasePencilStrokeOperationCommon;
+
   /* Get a different seed value for each stroke. */
   unsigned int unique_seed() const;
 
@@ -139,9 +141,10 @@ bool RandomizeOperation::on_stroke_extended_drawing(
   return changed;
 }
 
-std::unique_ptr<GreasePencilStrokeOperation> new_randomize_operation()
+std::unique_ptr<GreasePencilStrokeOperation> new_randomize_operation(
+    const BrushStrokeMode stroke_mode)
 {
-  return std::make_unique<RandomizeOperation>();
+  return std::make_unique<RandomizeOperation>(stroke_mode);
 }
 
 }  // namespace blender::ed::sculpt_paint::greasepencil
