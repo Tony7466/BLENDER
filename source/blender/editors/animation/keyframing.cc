@@ -298,6 +298,14 @@ static blender::Vector<std::string> construct_rna_paths(PointerRNA *ptr)
   if (insert_channel_flags & USER_ANIM_KEY_CHANNEL_CUSTOM_PROPERTIES) {
     if (properties) {
       LISTBASE_FOREACH (IDProperty *, prop, &properties->data.group) {
+        if (!ELEM(prop->type,
+                  eIDPropertyType::IDP_BOOLEAN,
+                  eIDPropertyType::IDP_INT,
+                  eIDPropertyType::IDP_FLOAT))
+        {
+          /* Ignore unkeyable properties. */
+          continue;
+        }
         std::string name = prop->name;
         std::string rna_path = "[\"" + name + "\"]";
         paths.append(rna_path);
