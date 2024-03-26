@@ -18,7 +18,8 @@
 
 #include <pxr/usd/usdGeom/primvarsAPI.h>
 
-#include <iostream>
+#include "CLG_log.h"
+static CLG_LogRef LOG = { "io.usd" };
 
 namespace blender::io::usd {
 
@@ -52,9 +53,6 @@ void USDPointsReader::read_object_data(Main *bmain, double motionSampleTime)
                                                           import_params_.mesh_read_flag);
 
   PointCloud *point_cloud = static_cast<PointCloud *>(object_->data);
-
-  /* The code below is partly based on AbcPointsReader implementation,
-   * but hasn't been tested. */
 
   bke::GeometrySet geometry_set = bke::GeometrySet::from_pointcloud(
       point_cloud, bke::GeometryOwnershipType::Editable);
@@ -94,53 +92,33 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
   pxr::VtVec3fArray positions;
   points_prim_.GetPointsAttr().Get(&positions, params.motion_sample_time);
 
-  // see if we can get a sense of what attributes are on the USD
-  auto attrs = points_prim_.GetSchemaAttributeNames();
-  // convert to strings for print out
-  auto strings = TfToStringVector(attrs);
-
-  for (const std::string& str : strings) {
-        std::cout << "attr: " << str << std::endl;
-  }
-
-  // instead use the getprimvars
   pxr::UsdGeomPrimvarsAPI primvarsLoaded(points_prim_);
-  std::vector<pxr::UsdGeomPrimvar> customAttrs=primvarsLoaded.GetPrimvars();
-
-    std::cout << "Custom Attributes:" << std::endl;
-    for (auto attr : customAttrs) {
-        std::cout << attr.GetName() << " (" << attr.GetTypeName() << ")" << std::endl;
-    }
+  std::vector<pxr::UsdGeomPrimvar> customAttrs = primvarsLoaded.GetPrimvars();
 
   if (point_cloud->totpoint != positions.size()) {
     /* Size changed so we must reallocate. */
     point_cloud = BKE_pointcloud_new_nomain(positions.size());
   }
 
-  /* TODO: Update point poistions and attributes here. */
-  
+  /* Update point positions and attributes. */
   bke::SpanAttributeWriter<float3> positions_writer =
       point_cloud->attributes_for_write().lookup_or_add_for_write_span<float3>("position",
                                                                                bke::AttrDomain::Point);
   MutableSpan<float3> point_positions = positions_writer.span;
 
-  // do things like iterate over the points and add their data via the point positions writerh
-  // uses the copy_zup_from_yup?
   for (size_t i = 0 ; i < positions.size(); i++) {
-    //blender::io::alembic::copy_zup_from_yup(point_positions[i],positions[i]);
-    point_positions[i][0]=positions[i][0];
-    point_positions[i][1]=positions[i][1];
-    point_positions[i][2]=positions[i][2];
+    point_positions[i][0] = positions[i][0];
+    point_positions[i][1] = positions[i][1];
+    point_positions[i][2] = positions[i][2];
   }
 
   positions_writer.finish();
-  // here we will use the same approach as above iterating over the prim vars to create custom spans for the attrs
 
+  /* Here we will use the same approach as above iterating over the prim vars to create
+   * custom spans for the attributes. */
 
-  // not sure what other types I can use for the span attribute
-  std::vector<pxr::UsdGeomPrimvar> primvars=primvarsLoaded.GetPrimvarsWithValues();
+  std::vector<pxr::UsdGeomPrimvar> primvars = primvarsLoaded.GetPrimvarsWithValues();
   for (auto pv : primvars) {
-      std::cout << pv.GetName() << " (" << pv.GetTypeName() << ")" << std::endl;
       if (!pv.HasValue()) {
         continue;
       }
@@ -148,57 +126,48 @@ void USDPointsReader::read_geometry(bke::GeometrySet &geometry_set,
       const pxr::TfToken interp = pv.GetInterpolation();
       const pxr::TfToken name = pv.StripPrimvarsName(pv.GetPrimvarName());
     
-
-    // I guess the hard part  is knowing which tempated pvibute writer goes with a particular primvar
       if (type == pxr::SdfValueTypeNames->Color3fArray && interp == pxr::UsdGeomTokens->vertex) {
         bke::SpanAttributeWriter<ColorGeometry4f> primvar_writer =
             point_cloud->attributes_for_write().lookup_or_add_for_write_span<ColorGeometry4f>(pv.GetName().GetText(), bke::AttrDomain::Point);
         if (!primvar_writer) {
-          printf("couldn't make writer for color %s\n", name.GetText());
+          CLOG_WARN(&LOG, "Couldn't make writer for color %s", name.GetText());
           continue;
         }
         pxr::VtVec3fArray colors;
-        // where did the params value come from?
-        if (!pv.ComputeFlattened(&colors,params.motion_sample_time)) {
-          printf("coulnd't compute the flattened colors %s\n", name.GetText());
+        if (!pv.ComputeFlattened(&colors, params.motion_sample_time)) {
+          CLOG_WARN(&LOG, "Couldn't compute the flattened colors %s", name.GetText());
           continue;
         }
 
         for (int i =0; i < colors.size(); ++i) {
           const pxr::GfVec3f & usd_color = colors[i];
           primvar_writer.span[i] = ColorGeometry4f(
-            usd_color[0],usd_color[1],usd_color[2],1.0f
+            usd_color[0], usd_color[1], usd_color[2], 1.0f
           );
         };
         primvar_writer.finish();
       }
       if (type == pxr::SdfValueTypeNames->FloatArray) {
-        printf("WE ARE IN THE FLOAT ARRAY PROCESSING BLOCK");
+
         bke::SpanAttributeWriter<float> primvar_writer =
             point_cloud->attributes_for_write().lookup_or_add_for_write_span<float>(name.GetText(), bke::AttrDomain::Point);
         if (!primvar_writer) {
-          printf("couldn't make writer for float prop %s\n", name.GetText());
+          CLOG_WARN(&LOG, "Couldn't make writer for float prop %s", name.GetText());
           continue;
         }
         pxr::VtArray<float> values;
         if (!pv.ComputeFlattened(&values,params.motion_sample_time)) {
-          printf("couldn't compute the flattened colors %s\n", name.GetText());
+          CLOG_WARN(&LOG, "Couldn't compute the flattened float prop %s", name.GetText());
           continue;
         }
 
         for (int i =0; i < values.size(); ++i) {
           primvar_writer.span[i] = values[i];
         };
-        printf("finished writing values into the primvar writer");
+
         primvar_writer.finish();
     }
   }
-  
-
-  
-
-  /* See AbcPointsReader::read_geometry() for an example of updating point
-   * cloud geometry. */
 
   geometry_set.replace_pointcloud(point_cloud);
 }
