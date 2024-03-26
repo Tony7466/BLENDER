@@ -42,7 +42,7 @@ struct wmOperator;
 struct UvElement;
 struct UvElementMap;
 
-/* editmesh_utils.cc */
+/* `editmesh_utils.cc` */
 
 /**
  * \param em: Edit-mesh used for generating mirror data.
@@ -73,10 +73,11 @@ void EDBM_verts_mirror_cache_end(BMEditMesh *em);
 
 void EDBM_mesh_normals_update_ex(BMEditMesh *em, const BMeshNormalsUpdate_Params *params);
 void EDBM_mesh_normals_update(BMEditMesh *em);
-void EDBM_mesh_clear(BMEditMesh *em);
 
 void EDBM_selectmode_to_scene(bContext *C);
 void EDBM_mesh_make(Object *ob, int select_mode, bool add_key_index);
+/** Replaces the edit-mesh in the object with a new one based on the given mesh. */
+void EDBM_mesh_make_from_mesh(Object *ob, Mesh *src_mesh, int select_mode, bool add_key_index);
 /**
  * Should only be called on the active edit-mesh, otherwise call #BKE_editmesh_free_data.
  */
@@ -188,12 +189,12 @@ void EDBM_automerge(Object *obedit, bool update, char hflag, float dist);
 void EDBM_automerge_and_split(
     Object *obedit, bool split_edges, bool split_faces, bool update, char hflag, float dist);
 
-/* editmesh_undo.cc */
+/* `editmesh_undo.cc` */
 
 /** Export for ED_undo_sys. */
 void ED_mesh_undosys_type(UndoType *ut);
 
-/* editmesh_select.cc */
+/* `editmesh_select.cc` */
 
 void EDBM_select_mirrored(
     BMEditMesh *em, const Mesh *mesh, int axis, bool extend, int *r_totmirr, int *r_totfail);
@@ -440,7 +441,7 @@ void ED_mesh_mirrtopo_init(BMEditMesh *em,
                            bool skip_em_vert_array_init);
 void ED_mesh_mirrtopo_free(MirrTopoStore_t *mesh_topo_store);
 
-/* object_vgroup.cc */
+/* `object_vgroup.cc` */
 
 #define WEIGHT_REPLACE 1
 #define WEIGHT_ADD 2
@@ -512,7 +513,7 @@ float ED_vgroup_vert_weight(Object *ob, bDeformGroup *dg, int vertnum);
  */
 void ED_vgroup_vert_active_mirror(Object *ob, int def_nr);
 
-/* mesh_data.cc */
+/* `mesh_data.cc` */
 
 void ED_mesh_verts_add(Mesh *mesh, ReportList *reports, int count);
 void ED_mesh_edges_add(Mesh *mesh, ReportList *reports, int count);
@@ -583,7 +584,7 @@ void EDBM_redo_state_restore_and_free(BMBackup *backup, BMEditMesh *em, bool rec
     ATTR_NONNULL(1, 2);
 void EDBM_redo_state_free(BMBackup *backup) ATTR_NONNULL(1);
 
-/* *** meshtools.cc *** */
+/* `meshtools.cc` */
 
 int ED_mesh_join_objects_exec(bContext *C, wmOperator *op);
 int ED_mesh_shapes_join_objects_exec(bContext *C, wmOperator *op);
@@ -591,11 +592,11 @@ int ED_mesh_shapes_join_objects_exec(bContext *C, wmOperator *op);
 /* mirror lookup api */
 
 /* Spatial Mirror */
-void ED_mesh_mirror_spatial_table_begin(Object *ob, BMEditMesh *em, Mesh *me_eval);
+void ED_mesh_mirror_spatial_table_begin(Object *ob, BMEditMesh *em, Mesh *mesh_eval);
 void ED_mesh_mirror_spatial_table_end(Object *ob);
 int ED_mesh_mirror_spatial_table_lookup(Object *ob,
                                         BMEditMesh *em,
-                                        Mesh *me_eval,
+                                        Mesh *mesh_eval,
                                         const float co[3]);
 
 /* Topology Mirror */
@@ -605,20 +606,20 @@ int ED_mesh_mirror_spatial_table_lookup(Object *ob,
  * \note This is supposed return -1 on error,
  * which callers are currently checking for, but is not used so far.
  */
-void ED_mesh_mirror_topo_table_begin(Object *ob, Mesh *me_eval);
+void ED_mesh_mirror_topo_table_begin(Object *ob, Mesh *mesh_eval);
 void ED_mesh_mirror_topo_table_end(Object *ob);
 
 /**
  * Retrieves mirrored cache vert, or NULL if there isn't one.
  * \note calling this without ensuring the mirror cache state is bad.
  */
-int mesh_get_x_mirror_vert(Object *ob, Mesh *me_eval, int index, bool use_topology);
+int mesh_get_x_mirror_vert(Object *ob, Mesh *mesh_eval, int index, bool use_topology);
 BMVert *editbmesh_get_x_mirror_vert(
     Object *ob, BMEditMesh *em, BMVert *eve, const float co[3], int index, bool use_topology);
 /**
  * This is a Mesh-based copy of #mesh_get_x_mirror_faces().
  */
-int *mesh_get_x_mirror_faces(Object *ob, BMEditMesh *em, Mesh *me_eval);
+int *mesh_get_x_mirror_faces(Object *ob, BMEditMesh *em, Mesh *mesh_eval);
 
 /**
  * Wrapper for object-mode/edit-mode.

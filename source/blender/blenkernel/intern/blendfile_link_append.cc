@@ -36,6 +36,7 @@
 
 #include "BLT_translation.hh"
 
+#include "BKE_grease_pencil_legacy_convert.hh"
 #include "BKE_idtype.hh"
 #include "BKE_key.hh"
 #include "BKE_layer.hh"
@@ -47,6 +48,7 @@
 #include "BKE_main.hh"
 #include "BKE_main_namemap.hh"
 #include "BKE_material.h"
+#include "BKE_mesh_legacy_convert.hh"
 #include "BKE_object.hh"
 #include "BKE_report.hh"
 #include "BKE_rigidbody.h"
@@ -1377,6 +1379,15 @@ void BKE_blendfile_append(BlendfileLinkAppendContext *lapp_context, ReportList *
   BKE_main_id_newptr_and_tag_clear(bmain);
 
   blendfile_link_append_proxies_convert(bmain, reports);
+  BKE_main_mesh_legacy_convert_auto_smooth(*bmain);
+
+  if (U.experimental.use_grease_pencil_version3 &&
+      U.experimental.use_grease_pencil_version3_convert_on_load)
+  {
+    BlendFileReadReport bf_reports{};
+    bf_reports.reports = reports;
+    blender::bke::greasepencil::convert::legacy_main(*bmain, bf_reports);
+  }
 }
 
 void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *reports)
@@ -1493,6 +1504,15 @@ void BKE_blendfile_link(BlendfileLinkAppendContext *lapp_context, ReportList *re
 
   if ((lapp_context->params->flag & FILE_LINK) != 0) {
     blendfile_link_append_proxies_convert(lapp_context->params->bmain, reports);
+    BKE_main_mesh_legacy_convert_auto_smooth(*lapp_context->params->bmain);
+
+    if (U.experimental.use_grease_pencil_version3 &&
+        U.experimental.use_grease_pencil_version3_convert_on_load)
+    {
+      BlendFileReadReport bf_reports{};
+      bf_reports.reports = reports;
+      blender::bke::greasepencil::convert::legacy_main(*lapp_context->params->bmain, bf_reports);
+    }
   }
 
   BKE_main_namemap_clear(lapp_context->params->bmain);
