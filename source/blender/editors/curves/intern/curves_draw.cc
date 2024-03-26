@@ -774,8 +774,8 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   Span<std::string> selection_attribute_names = get_curves_selection_attribute_names(curves);
-  for (const bke::AttributeIDRef selection_attribute_id : selection_attribute_names) {
-    attributes.remove(selection_attribute_id);
+  for (const StringRef selection_name : selection_attribute_names) {
+    attributes.remove(selection_name);
   }
 
   if (cdd->curve_type == CU_BEZIER) {
@@ -920,14 +920,17 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
       curves.nurbs_orders_for_write()[curve_index] = order;
       curves.fill_curve_types(IndexRange(curve_index, 1), curve_type);
 
-      /* If Bezier curve is being added, loop through all three ids.  */
-      for (const bke::AttributeIDRef selection_attribute_id :
+      /* If Bezier curve is being added, loop through all three names, otherwise through ones in
+       * `selection_attribute_names`. */
+      for (const StringRef selection_name :
            (bezier_as_nurbs ? selection_attribute_names :
                               get_curves_all_selection_attribute_names()))
       {
         bke::AttributeWriter<bool> selection = attributes.lookup_or_add_for_write<bool>(
-            selection_attribute_id, bke::AttrDomain::Curve);
-        selection.varray.set(curve_index, true);
+            selection_name, bke::AttrDomain::Curve);
+        if (!bezier_as_nurbs) {
+          selection.varray.set(curve_index, true);
+        }
         selection.finish();
       }
 
@@ -1004,9 +1007,9 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
 
     /* Creates ".selection_handle_left" and ".selection_handle_right" attributes, otherwise all
      * existing Bezier handles would be treated as selected. */
-    for (const int i : selection_attribute_names.index_range().drop_front(1)) {
+    for (const StringRef selection_name : get_curves_bezier_selection_attribute_names(curves)) {
       bke::AttributeWriter<bool> selection = attributes.lookup_or_add_for_write<bool>(
-          selection_attribute_names[i], bke::AttrDomain::Curve);
+          selection_name, bke::AttrDomain::Curve);
       selection.finish();
     }
 

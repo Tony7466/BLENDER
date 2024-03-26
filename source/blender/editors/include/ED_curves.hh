@@ -50,13 +50,20 @@ float (*ED_curves_point_normals_array_create(const Curves *curves_id))[3];
 
 namespace blender::ed::curves {
 
-/* Get selection attribute names need for given curve.
- * Posible outcomes: [".selection"] if Bezier curves are present,
+/**
+ * Get selection attribute names need for given curve.
+ * Possible outcomes: [".selection"] if Bezier curves are present,
  * [".selection", ".selection_handle_left", ".selection_handle_right"] otherwise. */
 Span<std::string> get_curves_selection_attribute_names(const bke::CurvesGeometry &curves);
 
 /* Get all possible curve selection attribute names. */
 Span<std::string> get_curves_all_selection_attribute_names();
+
+/**
+ * Returns [".selection_handle_left", ".selection_handle_right"] if argument contains Bezier
+ * curves, empty span otherwise.
+ */
+Span<std::string> get_curves_bezier_selection_attribute_names(const bke::CurvesGeometry &curves);
 
 class SelectionAttributeWriterList {
   const Span<std::string> attribute_names_;
@@ -84,7 +91,7 @@ class SelectionAttributeWriterList {
     return selections_[index];
   }
 
-  bke::GSpanAttributeWriter &operator[](const std::string &attribute_name);
+  bke::GSpanAttributeWriter &writter_by_name(StringRef attribute_name);
 
   bke::GSpanAttributeWriter *begin()
   {
@@ -97,12 +104,10 @@ class SelectionAttributeWriterList {
   }
 };
 
-using SelectableRangeConsumer =
-    blender::FunctionRef<void(const IndexRange range,
-                              const Span<float3> positions,
-                              const std::string &selection_attribute_name)>;
+using SelectableRangeConsumer = blender::FunctionRef<void(
+    const IndexRange range, const Span<float3> positions, StringRef selection_attribute_name)>;
 /**
- * Traverses all ranges of control points posible select. Callback function is provided with a
+ * Traverses all ranges of control points possible select. Callback function is provided with a
  * range being visited, positions (deformed if possible) referenced by the range and selection
  * attribute name positions belongs to:
  *  curves.positions() belong to ".selection",

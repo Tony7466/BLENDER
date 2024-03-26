@@ -3073,7 +3073,7 @@ static bool ed_wpaint_vertex_select_pick(bContext *C,
 }
 
 struct ClosestCurveDataBlock {
-  blender::bke::AttributeIDRef selection_attribute_id;
+  blender::StringRef selection_name;
   Curves *curves_id = nullptr;
   blender::ed::curves::FindClosestData elem = {};
 };
@@ -3110,12 +3110,10 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
           const bke::CurvesGeometry &curves = curves_id.geometry.wrap();
           const float4x4 projection = ED_view3d_ob_project_mat_get(vc.rv3d, &curves_ob);
           const IndexMask elements(curves.attributes().domain_size(selection_domain));
-          const Span<std::string> selection_attribute_names =
-              ed::curves::get_curves_selection_attribute_names(curves);
           const ed::curves::SelectableRangeConsumer range_consumer =
               [&](const IndexRange range,
                   const Span<float3> positions,
-                  const std::string &selection_attribute_name) {
+                  StringRef selection_attribute_name) {
                 IndexMask mask = elements.slice(range);
 
                 std::optional<ed::curves::FindClosestData> new_closest_elem =
@@ -3128,7 +3126,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
                                                                mval,
                                                                new_closest.elem);
                 if (new_closest_elem) {
-                  new_closest.selection_attribute_id = selection_attribute_name;
+                  new_closest.selection_name = selection_attribute_name;
                   new_closest.elem = *new_closest_elem;
                   new_closest.curves_id = &curves_id;
                 }
@@ -3181,7 +3179,7 @@ static bool ed_curves_select_pick(bContext &C, const int mval[2], const SelectPi
         closest.curves_id->geometry.wrap(),
         bke::AttrDomain::Point,
         CD_PROP_BOOL,
-        closest.selection_attribute_id);
+        closest.selection_name);
     ed::curves::apply_selection_operation_at_index(
         selection.span, closest.elem.index, params.sel_op);
     selection.finish();

@@ -809,16 +809,14 @@ static int curves_set_selection_domain_exec(bContext *C, wmOperator *op)
     if (const CustomDataLayer *layer = BKE_id_attributes_active_get(&curves_id->id)) {
       active_attribute = layer->name;
     }
-    for (const blender::bke::AttributeIDRef selection_attribute_id :
-         get_curves_selection_attribute_names(curves))
-    {
-      if (const GVArray src = *attributes.lookup(selection_attribute_id, domain)) {
+    for (const StringRef selection_name : get_curves_selection_attribute_names(curves)) {
+      if (const GVArray src = *attributes.lookup(selection_name, domain)) {
         const CPPType &type = src.type();
         void *dst = MEM_malloc_arrayN(attributes.domain_size(domain), type.size(), __func__);
         src.materialize(dst);
 
-        attributes.remove(selection_attribute_id);
-        if (!attributes.add(selection_attribute_id,
+        attributes.remove(selection_name);
+        if (!attributes.add(selection_name,
                             domain,
                             bke::cpp_type_to_custom_data_type(type),
                             bke::AttributeInitMoveArray(dst)))
