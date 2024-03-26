@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 #include "CLG_log.h"
 
@@ -59,6 +60,7 @@
 static CLG_LogRef LOG = {"bke.gpencil"};
 
 static void greasepencil_copy_data(Main * /*bmain*/,
+                                   std::optional<Library *> /*owner_library*/,
                                    ID *id_dst,
                                    const ID *id_src,
                                    const int /*flag*/)
@@ -1059,7 +1061,7 @@ bGPdata *BKE_gpencil_data_duplicate(Main *bmain, const bGPdata *gpd_src, bool in
   }
 
   /* Copy internal data (layers, etc.) */
-  greasepencil_copy_data(bmain, &gpd_dst->id, &gpd_src->id, 0);
+  greasepencil_copy_data(bmain, std::nullopt, &gpd_dst->id, &gpd_src->id, 0);
 
   /* return new */
   return gpd_dst;
@@ -1747,9 +1749,9 @@ Material *BKE_gpencil_object_material_ensure_from_active_input_toolsettings(Main
                                                                             Object *ob,
                                                                             ToolSettings *ts)
 {
-  if (ts && ts->gp_paint && ts->gp_paint->paint.brush) {
+  if (ts && ts->gp_paint && BKE_paint_brush(&ts->gp_paint->paint)) {
     return BKE_gpencil_object_material_ensure_from_active_input_brush(
-        bmain, ob, ts->gp_paint->paint.brush);
+        bmain, ob, BKE_paint_brush(&ts->gp_paint->paint));
   }
 
   return BKE_gpencil_object_material_ensure_from_active_input_brush(bmain, ob, nullptr);

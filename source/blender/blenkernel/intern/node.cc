@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 
 /* Allow using deprecated functionality for .blend file I/O. */
 #define DNA_DEPRECATED_ALLOW
@@ -150,12 +151,16 @@ static void ntree_init_data(ID *id)
   ntree_set_typeinfo(ntree, nullptr);
 }
 
-static void ntree_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
+static void ntree_copy_data(Main * /*bmain*/,
+                            std::optional<Library *> /*owner_library*/,
+                            ID *id_dst,
+                            const ID *id_src,
+                            const int flag)
 {
   bNodeTree *ntree_dst = reinterpret_cast<bNodeTree *>(id_dst);
   const bNodeTree *ntree_src = reinterpret_cast<const bNodeTree *>(id_src);
 
-  /* We never handle user-count here for own data. */
+  /* We never handle user-count here for owned data. */
   const int flag_subdata = flag | LIB_ID_CREATE_NO_USER_REFCOUNT;
 
   ntree_dst->runtime = MEM_new<bNodeTreeRuntime>(__func__);
@@ -798,10 +803,10 @@ void ntreeBlendWrite(BlendWriter *writer, bNodeTree *ntree)
         /* Not in undo case. */
         if (!BLO_write_is_undo(writer)) {
           switch (ndg->type) {
-            case 2: /* Grrrr! magic numbers :( */
+            case CMP_NODE_GLARE_STREAKS:
               ndg->angle = ndg->streaks;
               break;
-            case 0:
+            case CMP_NODE_GLARE_SIMPLE_STAR:
               ndg->angle = ndg->star_45;
               break;
             default:
@@ -2503,14 +2508,17 @@ bool nodeIsDanglingReroute(const bNodeTree *ntree, const bNode *node)
 {
   ntree->ensure_topology_cache();
   BLI_assert(node_tree_runtime::topology_cache_is_available(*ntree));
-  BLI_assert(!ntree->has_available_link_cycle());
 
   const bNode *iter_node = node;
-  if (!iter_node->is_reroute()) {
-    return false;
-  }
-
+  Set<const bNode *> visited_nodes;
   while (true) {
+    if (!iter_node->is_reroute()) {
+      return false;
+    }
+    if (!visited_nodes.add(iter_node)) {
+      /* Treat cycle of reroute as dangling reroute branch. */
+      return true;
+    }
     const Span<const bNodeLink *> links = iter_node->input_socket(0).directly_linked_links();
     BLI_assert(links.size() <= 1);
     if (links.is_empty()) {
@@ -2524,9 +2532,6 @@ bool nodeIsDanglingReroute(const bNodeTree *ntree, const bNode *node)
       return false;
     }
     iter_node = link.fromnode;
-    if (!iter_node->is_reroute()) {
-      return false;
-    }
   }
 }
 
@@ -2895,7 +2900,7 @@ bNodeLink *nodeAddLink(
   }
 
   if (link != nullptr && link->tosock->is_multi_input()) {
-    link->multi_input_socket_index = node_count_links(ntree, link->tosock) - 1;
+    link->multi_input_sort_id = node_count_links(ntree, link->tosock) - 1;
   }
 
   return link;
@@ -2961,10 +2966,10 @@ static void adjust_multi_input_indices_after_removed_link(bNodeTree *ntree,
   LISTBASE_FOREACH (bNodeLink *, link, &ntree->links) {
     /* We only need to adjust those with a greater index, because the others will have the same
      * index. */
-    if (link->tosock != sock || link->multi_input_socket_index <= deleted_index) {
+    if (link->tosock != sock || link->multi_input_sort_id <= deleted_index) {
       continue;
     }
-    link->multi_input_socket_index -= 1;
+    link->multi_input_sort_id -= 1;
   }
 }
 
@@ -2990,7 +2995,7 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
     if (fromlink == nullptr) {
       if (link->tosock->is_multi_input()) {
         blender::bke::adjust_multi_input_indices_after_removed_link(
-            ntree, link->tosock, link->multi_input_socket_index);
+            ntree, link->tosock, link->multi_input_sort_id);
       }
       nodeRemLink(ntree, link);
       continue;
@@ -3003,7 +3008,7 @@ void nodeInternalRelink(bNodeTree *ntree, bNode *node)
             link_to_compare->tosock == link->tosock)
         {
           blender::bke::adjust_multi_input_indices_after_removed_link(
-              ntree, link_to_compare->tosock, link_to_compare->multi_input_socket_index);
+              ntree, link_to_compare->tosock, link_to_compare->multi_input_sort_id);
           duplicate_links_to_remove.append_non_duplicates(link_to_compare);
         }
       }
@@ -3390,7 +3395,7 @@ void nodeUnlinkNode(bNodeTree *ntree, bNode *node)
       /* Only bother adjusting if the socket is not on the node we're deleting. */
       if (link->tonode != node && link->tosock->is_multi_input()) {
         adjust_multi_input_indices_after_removed_link(
-            ntree, link->tosock, link->multi_input_socket_index);
+            ntree, link->tosock, link->multi_input_sort_id);
       }
       LISTBASE_FOREACH (const bNodeSocket *, sock, lb) {
         if (link->fromsock == sock || link->tosock == sock) {
@@ -4378,6 +4383,8 @@ std::optional<eNodeSocketDatatype> custom_data_type_to_socket_type(eCustomDataTy
   switch (type) {
     case CD_PROP_FLOAT:
       return SOCK_FLOAT;
+    case CD_PROP_INT8:
+      return SOCK_INT;
     case CD_PROP_INT32:
       return SOCK_INT;
     case CD_PROP_FLOAT3:

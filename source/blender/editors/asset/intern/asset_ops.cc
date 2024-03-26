@@ -582,12 +582,12 @@ static void ASSET_OT_catalog_delete(wmOperatorType *ot)
 static asset_system::AssetCatalogService *get_catalog_service(bContext *C)
 {
   const SpaceFile *sfile = CTX_wm_space_file(C);
-  if (!sfile) {
+  if (!sfile || ED_fileselect_is_file_browser(sfile)) {
     return nullptr;
   }
 
   asset_system::AssetLibrary *asset_lib = ED_fileselect_active_asset_library_get(sfile);
-  return asset_lib->catalog_service.get();
+  return &asset_lib->catalog_service();
 }
 
 static int asset_catalog_undo_exec(bContext *C, wmOperator * /*op*/)

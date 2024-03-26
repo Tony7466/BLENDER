@@ -14,13 +14,13 @@
 #include "DNA_sequence_types.h"
 
 #include "BKE_context.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 
 #include "BLF_api.hh"
 
-#include "GPU_batch.h"
-#include "GPU_immediate.h"
-#include "GPU_state.h"
+#include "GPU_batch.hh"
+#include "GPU_immediate.hh"
+#include "GPU_state.hh"
 
 #include "WM_api.hh"
 #include "WM_types.hh"

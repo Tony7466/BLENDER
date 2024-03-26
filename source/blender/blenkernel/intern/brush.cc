@@ -5,6 +5,7 @@
 /** \file
  * \ingroup bke
  */
+#include <optional>
 
 #include "MEM_guardedalloc.h"
 
@@ -55,7 +56,11 @@ static void brush_init_data(ID *id)
   BKE_brush_curve_preset(brush, CURVE_PRESET_SMOOTH);
 }
 
-static void brush_copy_data(Main * /*bmain*/, ID *id_dst, const ID *id_src, const int flag)
+static void brush_copy_data(Main * /*bmain*/,
+                            std::optional<Library *> /*owner_library*/,
+                            ID *id_dst,
+                            const ID *id_src,
+                            const int flag)
 {
   Brush *brush_dst = (Brush *)id_dst;
   const Brush *brush_src = (const Brush *)id_src;
@@ -1150,7 +1155,6 @@ void BKE_gpencil_brush_preset_set(Main *bmain, Brush *brush, const short type)
 
       brush->gpencil_settings->draw_strength = 0.3f;
       brush->gpencil_settings->flag |= GP_BRUSH_USE_STRENGTH_PRESSURE;
-      brush->gpencil_settings->sculpt_flag = GP_SCULPT_FLAGMODE_APPLY_THICKNESS;
       brush->gpencil_settings->sculpt_mode_flag |= GP_SCULPT_FLAGMODE_APPLY_POSITION;
 
       break;
@@ -1372,7 +1376,7 @@ void BKE_brush_gpencil_paint_presets(Main *bmain, ToolSettings *ts, const bool r
   bool is_new = false;
 
   Paint *paint = &ts->gp_paint->paint;
-  Brush *brush_prev = paint->brush;
+  Brush *brush_prev = BKE_paint_brush(paint);
   Brush *brush, *deft_draw;
   /* Airbrush brush. */
   brush = gpencil_brush_ensure(bmain, ts, "Airbrush", OB_MODE_PAINT_GPENCIL_LEGACY, &is_new);
@@ -1473,7 +1477,7 @@ void BKE_brush_gpencil_vertex_presets(Main *bmain, ToolSettings *ts, const bool 
   bool is_new = false;
 
   Paint *vertexpaint = &ts->gp_vertexpaint->paint;
-  Brush *brush_prev = vertexpaint->brush;
+  Brush *brush_prev = BKE_paint_brush(vertexpaint);
   Brush *brush, *deft_vertex;
   /* Vertex Draw brush. */
   brush = gpencil_brush_ensure(bmain, ts, "Vertex Draw", OB_MODE_VERTEX_GPENCIL_LEGACY, &is_new);
@@ -1521,7 +1525,7 @@ void BKE_brush_gpencil_sculpt_presets(Main *bmain, ToolSettings *ts, const bool 
   bool is_new = false;
 
   Paint *sculptpaint = &ts->gp_sculptpaint->paint;
-  Brush *brush_prev = sculptpaint->brush;
+  Brush *brush_prev = BKE_paint_brush(sculptpaint);
   Brush *brush, *deft_sculpt;
 
   /* Smooth brush. */
@@ -1598,7 +1602,7 @@ void BKE_brush_gpencil_weight_presets(Main *bmain, ToolSettings *ts, const bool 
   bool is_new = false;
 
   Paint *weightpaint = &ts->gp_weightpaint->paint;
-  Brush *brush_prev = weightpaint->brush;
+  Brush *brush_prev = BKE_paint_brush(weightpaint);
   Brush *brush, *deft_weight;
 
   /* Weight Draw brush. */

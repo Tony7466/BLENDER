@@ -29,7 +29,6 @@
 #define MAX_SOCKET 512
 
 struct BlendDataReader;
-struct BlendLibReader;
 struct BlendWriter;
 struct FreestyleLineStyle;
 struct GPUMaterial;
@@ -87,7 +86,6 @@ typedef struct bNodeSocketTemplate {
 /* Use `void *` for callbacks that require C++. This is rather ugly, but works well for now. This
  * would not be necessary if we would use bNodeSocketType and bNodeType only in C++ code.
  * However, achieving this requires quite a few changes currently. */
-#ifdef __cplusplus
 namespace blender {
 class CPPType;
 namespace nodes {
@@ -107,7 +105,6 @@ class ShaderNode;
 }  // namespace realtime_compositor
 }  // namespace blender
 
-using CPPTypeHandle = blender::CPPType;
 using NodeMultiFunctionBuildFunction = void (*)(blender::nodes::NodeMultiFunctionBuilder &builder);
 using NodeGeometryExecFunction = void (*)(blender::nodes::GeoNodeExecParams params);
 using NodeDeclareFunction = void (*)(blender::nodes::NodeDeclarationBuilder &builder);
@@ -130,23 +127,6 @@ using NodeGetCompositorOperationFunction = blender::realtime_compositor::NodeOpe
 using NodeGetCompositorShaderNodeFunction =
     blender::realtime_compositor::ShaderNode *(*)(blender::nodes::DNode node);
 using NodeExtraInfoFunction = void (*)(blender::nodes::NodeExtraInfoParams &params);
-
-#else
-typedef void *NodeGetCompositorOperationFunction;
-typedef void *NodeGetCompositorShaderNodeFunction;
-typedef void *NodeMultiFunctionBuildFunction;
-typedef void *NodeGeometryExecFunction;
-typedef void *NodeDeclareFunction;
-typedef void *NodeDeclareDynamicFunction;
-typedef void *NodeGatherSocketLinkOperationsFunction;
-typedef void *NodeGatherAddOperationsFunction;
-typedef void *SocketGetCPPTypeFunction;
-typedef void *SocketGetGeometryNodesCPPTypeFunction;
-typedef void *SocketGetGeometryNodesCPPValueFunction;
-typedef void *SocketGetCPPValueFunction;
-typedef void *NodeExtraInfoFunction;
-typedef struct CPPTypeHandle CPPTypeHandle;
-#endif
 
 /**
  * \brief Defines a socket type.
@@ -202,11 +182,11 @@ typedef struct bNodeSocketType {
   void (*free_self)(struct bNodeSocketType *stype);
 
   /* Return the CPPType of this socket. */
-  const CPPTypeHandle *base_cpp_type;
+  const blender::CPPType *base_cpp_type;
   /* Get the value of this socket in a generic way. */
   SocketGetCPPValueFunction get_base_cpp_value;
   /* Get geometry nodes cpp type. */
-  const CPPTypeHandle *geometry_nodes_cpp_type;
+  const blender::CPPType *geometry_nodes_cpp_type;
   /* Get geometry nodes cpp value. */
   SocketGetGeometryNodesCPPValueFunction get_geometry_nodes_cpp_value;
   /* Default value for this socket type. */
@@ -380,7 +360,7 @@ typedef struct bNodeType {
    * the node. In this case, the static declaration is mostly just a hint, and does not have to
    * match with the final node.
    */
-  NodeDeclarationHandle *static_declaration;
+  blender::nodes::NodeDeclaration *static_declaration;
 
   /**
    * Add to the list of search names and operations gathered by node link drag searching.
@@ -474,7 +454,7 @@ struct bNodeTreeType *ntreeTypeFind(const char *idname);
 void ntreeTypeAdd(struct bNodeTreeType *nt);
 void ntreeTypeFreeLink(const struct bNodeTreeType *nt);
 bool ntreeIsRegistered(const struct bNodeTree *ntree);
-struct GHashIterator *ntreeTypeGetIterator(void);
+struct GHashIterator *ntreeTypeGetIterator();
 
 /* Helper macros for iterating over tree types. */
 #define NODE_TREE_TYPES_BEGIN(ntype) \
@@ -559,7 +539,7 @@ const char *nodeTypeFindAlias(const char *idname);
 void nodeRegisterType(struct bNodeType *ntype);
 void nodeUnregisterType(struct bNodeType *ntype);
 void nodeRegisterAlias(struct bNodeType *nt, const char *alias);
-struct GHashIterator *nodeTypeGetIterator(void);
+struct GHashIterator *nodeTypeGetIterator();
 
 /* Helper macros for iterating over node types. */
 #define NODE_TYPES_BEGIN(ntype) \
@@ -579,7 +559,7 @@ struct bNodeSocketType *nodeSocketTypeFind(const char *idname);
 void nodeRegisterSocketType(struct bNodeSocketType *stype);
 void nodeUnregisterSocketType(struct bNodeSocketType *stype);
 bool nodeSocketIsRegistered(const struct bNodeSocket *sock);
-struct GHashIterator *nodeSocketTypeGetIterator(void);
+struct GHashIterator *nodeSocketTypeGetIterator();
 const char *nodeSocketTypeLabel(const bNodeSocketType *stype);
 
 const char *nodeStaticSocketType(int type, int subtype);
@@ -1380,8 +1360,8 @@ void BKE_nodetree_remove_layer_n(struct bNodeTree *ntree, struct Scene *scene, i
 
 /** \} */
 
-void BKE_node_system_init(void);
-void BKE_node_system_exit(void);
+void BKE_node_system_init();
+void BKE_node_system_exit();
 
 namespace blender::bke {
 

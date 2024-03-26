@@ -67,7 +67,7 @@
 #include "BKE_customdata.hh"
 #include "BKE_data_transfer.h"
 #include "BKE_deform.hh"
-#include "BKE_fcurve.h"
+#include "BKE_fcurve.hh"
 #include "BKE_fcurve_driver.h"
 #include "BKE_idprop.h"
 #include "BKE_image.h"
@@ -554,11 +554,10 @@ static bNodeTree *add_realize_node_tree(Main *bmain)
 {
   bNodeTree *node_tree = ntreeAddTree(bmain, "Realize Instances 2.93 Legacy", "GeometryNodeTree");
 
-  node_tree->tree_interface.add_socket("Geometry",
-                                       "",
-                                       "NodeSocketGeometry",
-                                       NODE_INTERFACE_SOCKET_INPUT | NODE_INTERFACE_SOCKET_OUTPUT,
-                                       nullptr);
+  node_tree->tree_interface.add_socket(
+      "Geometry", "", "NodeSocketGeometry", NODE_INTERFACE_SOCKET_OUTPUT, nullptr);
+  node_tree->tree_interface.add_socket(
+      "Geometry", "", "NodeSocketGeometry", NODE_INTERFACE_SOCKET_INPUT, nullptr);
 
   bNode *group_input = nodeAddStaticNode(nullptr, node_tree, NODE_GROUP_INPUT);
   group_input->locx = -400.0f;
