@@ -70,7 +70,7 @@
 #include "BKE_callbacks.hh"
 #include "BKE_context.hh"
 #include "BKE_global.hh"
-#include "BKE_idprop.h"
+#include "BKE_idprop.hh"
 #include "BKE_lib_id.hh"
 #include "BKE_lib_override.hh"
 #include "BKE_lib_remap.hh"
@@ -109,7 +109,7 @@
 #include "GHOST_C-api.h"
 #include "GHOST_Path-api.hh"
 
-#include "GPU_context.h"
+#include "GPU_context.hh"
 
 #include "UI_interface.hh"
 #include "UI_resources.hh"
