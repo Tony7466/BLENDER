@@ -131,32 +131,30 @@ IndexMask simplify_curve_attribute(const Span<float3> positions,
                                    const OffsetIndices<int> points_by_curve,
                                    const VArray<bool> &cyclic,
                                    const float epsilon,
-                                   GSpan attribute_data,
+                                   const GSpan attribute_data,
                                    IndexMaskMemory &memory)
 {
   Array<bool> points_to_delete(positions.size(), false);
+  if (epsilon <= 0.0f) {
+    return IndexMask::from_bools(points_to_delete, memory);
+  }
   bke::curves::fill_points(
       points_by_curve, curves_selection, true, points_to_delete.as_mutable_span());
   curves_selection.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const IndexRange points = points_by_curve[curve_i];
-    if (epsilon > 0.0f) {
-      bke::attribute_math::convert_to_static_type(attribute_data.type(), [&](auto dummy) {
-        using T = decltype(dummy);
-        if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
-                      std::is_same_v<T, float3>)
-        {
-          curve_simplifiy(points,
-                          positions,
-                          cyclic[curve_i],
-                          epsilon,
-                          attribute_data.typed<T>(),
-                          points_to_delete.as_mutable_span());
-        }
-      });
-    }
-    else {
-      points_to_delete.as_mutable_span().slice(points).fill(false);
-    }
+    bke::attribute_math::convert_to_static_type(attribute_data.type(), [&](auto dummy) {
+      using T = decltype(dummy);
+      if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
+                    std::is_same_v<T, float3>)
+      {
+        curve_simplifiy(points,
+                        positions,
+                        cyclic[curve_i],
+                        epsilon,
+                        attribute_data.typed<T>(),
+                        points_to_delete.as_mutable_span());
+      }
+    });
   });
   return IndexMask::from_bools(points_to_delete, memory);
 }
