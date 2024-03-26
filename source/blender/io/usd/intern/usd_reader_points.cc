@@ -15,9 +15,8 @@
 #include "DNA_cachefile_types.h"
 #include "DNA_object_types.h"
 #include "DNA_pointcloud_types.h"
-#include "DNA_windowmanager_types.h"
 
-#include "WM_api.hh"
+#include <pxr/usd/usdGeom/primvarsAPI.h>
 
 #include <iostream>
 
