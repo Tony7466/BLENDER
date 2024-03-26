@@ -928,7 +928,7 @@ static int curves_draw_exec(bContext *C, wmOperator *op)
       {
         bke::AttributeWriter<bool> selection = attributes.lookup_or_add_for_write<bool>(
             selection_name, bke::AttrDomain::Curve);
-        if (!bezier_as_nurbs) {
+        if (selection_name == ".selection" || !bezier_as_nurbs) {
           selection.varray.set(curve_index, true);
         }
         selection.finish();
