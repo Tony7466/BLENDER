@@ -261,10 +261,10 @@ class VIEW3D_OT_transform_gizmo_set(Operator):
         return self.execute(context)
 
 
-class VIEW3D_FH_image_plane(FileHandler):
-    bl_idname = "VIEW3D_FH_image_plane"
-    bl_label = "Add image plane"
-    bl_import_operator = "OBJECT_OT_drop_named_image"
+class VIEW3D_FH_empty_image(FileHandler):
+    bl_idname = "VIEW3D_FH_empty_image"
+    bl_label = "Add empty image"
+    bl_import_operator = "OBJECT_OT_empty_image_add"
     bl_file_extensions = ';'.join(bpy.path.extensions_image) + ';' + ';'.join(bpy.path.extensions_movie)
 
     @classmethod
@@ -275,10 +275,10 @@ class VIEW3D_FH_image_plane(FileHandler):
         return rv3d.view_perspective == 'PERSP' or rv3d.view_perspective == 'ORTHO'
 
 
-class VIEW3D_FH_background_image(FileHandler):
-    bl_idname = "VIEW3D_FH_background_image"
-    bl_label = "Add background image"
-    bl_import_operator = "VIEW3D_OT_background_image_add"
+class VIEW3D_FH_camera_background_image(FileHandler):
+    bl_idname = "VIEW3D_FH_camera_background_image"
+    bl_label = "Add camera background image"
+    bl_import_operator = "VIEW3D_OT_camera_background_image_add"
     bl_file_extensions = ';'.join(bpy.path.extensions_image) + ';' + ';'.join(bpy.path.extensions_movie)
 
     @classmethod
@@ -295,6 +295,6 @@ classes = (
     VIEW3D_OT_edit_mesh_extrude_shrink_fatten,
     VIEW3D_OT_edit_mesh_extrude_manifold_normal,
     VIEW3D_OT_transform_gizmo_set,
-    VIEW3D_FH_background_image,
-    VIEW3D_FH_image_plane,
+    VIEW3D_FH_camera_background_image,
+    VIEW3D_FH_empty_image,
 )
