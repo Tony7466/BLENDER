@@ -83,6 +83,7 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
     def draw(self, context):
         layout = self.layout
         grease_pencil = context.object.data
+        layer = grease_pencil.layers.active
         space = context.space_data
 
         if space.type == 'PROPERTIES':
@@ -102,6 +103,7 @@ class GREASE_PENCIL_MT_grease_pencil_add_layer_extra(Menu):
 
         layout.separator()
         layout.prop(grease_pencil, "use_autolock_layers", text="Autolock Inactive Layers")
+        layout.prop(layer, "lock_material")
 
 
 class DATA_PT_grease_pencil_layers(DataButtonsPanel, Panel):

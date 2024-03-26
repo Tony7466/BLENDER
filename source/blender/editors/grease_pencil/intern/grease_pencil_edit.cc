@@ -80,7 +80,7 @@ static int grease_pencil_stroke_smooth_exec(bContext *C, wmOperator *op)
 
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -242,7 +242,7 @@ static int grease_pencil_stroke_simplify_exec(bContext *C, wmOperator *op)
 
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -452,7 +452,7 @@ static int grease_pencil_delete_exec(bContext *C, wmOperator * /*op*/)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask elements = ed::greasepencil::retrieve_editable_and_selected_elements(
-        *object, info.drawing, selection_domain, memory);
+        *object, info, selection_domain, memory);
     if (elements.is_empty()) {
       return;
     }
@@ -768,7 +768,7 @@ static int grease_pencil_stroke_material_set_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -843,7 +843,7 @@ static int grease_pencil_cyclical_set_exec(bContext *C, wmOperator *op)
 
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -918,7 +918,7 @@ static int grease_pencil_set_active_material_exec(bContext *C, wmOperator * /*op
   for (const MutableDrawingInfo &info : drawings) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       continue;
     }
@@ -966,7 +966,7 @@ static int grease_pencil_set_uniform_thickness_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1023,7 +1023,7 @@ static int grease_pencil_set_uniform_opacity_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1078,7 +1078,7 @@ static int grease_pencil_stroke_switch_direction_exec(bContext *C, wmOperator * 
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1155,7 +1155,7 @@ static int grease_pencil_caps_set_exec(bContext *C, wmOperator *op)
     bke::CurvesGeometry &curves = info.drawing.strokes_for_write();
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1330,7 +1330,7 @@ static int grease_pencil_duplicate_exec(bContext *C, wmOperator * /*op*/)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask elements = retrieve_editable_and_selected_elements(
-        *object, info.drawing, selection_domain, memory);
+        *object, info, selection_domain, memory);
     if (elements.is_empty()) {
       return;
     }
@@ -1382,7 +1382,7 @@ static int grease_pencil_clean_loose_exec(bContext *C, wmOperator *op)
 
     IndexMaskMemory memory;
     const IndexMask editable_strokes = ed::greasepencil::retrieve_editable_strokes(
-        *object, info.drawing, memory);
+        *object, info.drawing, info.layer_index, memory);
 
     const IndexMask curves_to_delete = IndexMask::from_predicate(
         editable_strokes, GrainSize(4096), memory, [&](const int i) {
@@ -1445,7 +1445,7 @@ static int gpencil_stroke_subdivide_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1641,7 +1641,7 @@ static int grease_pencil_stroke_reorder_exec(bContext *C, wmOperator *op)
   threading::parallel_for_each(drawings, [&](const MutableDrawingInfo &info) {
     IndexMaskMemory memory;
     const IndexMask strokes = ed::greasepencil::retrieve_editable_and_selected_strokes(
-        *object, info.drawing, memory);
+        *object, info, memory);
     if (strokes.is_empty()) {
       return;
     }
@@ -1986,7 +1986,8 @@ static bool grease_pencil_separate_layer(bContext &C,
     for (const MutableDrawingInfo &info : drawings_src) {
       bke::CurvesGeometry &curves_src = info.drawing.strokes_for_write();
       IndexMaskMemory memory;
-      const IndexMask strokes = retrieve_editable_strokes(object_src, info.drawing, memory);
+      const IndexMask strokes = retrieve_editable_strokes(
+          object_src, info.drawing, info.layer_index, memory);
       if (strokes.is_empty()) {
         continue;
       }

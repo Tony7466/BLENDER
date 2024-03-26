@@ -105,7 +105,7 @@ static void createTransGreasePencilVerts(bContext *C, TransInfo *t)
 
       if (use_proportional_edit) {
         const IndexMask affected_strokes = ed::greasepencil::retrieve_editable_strokes(
-            *object, info.drawing, memory);
+            *object, info.drawing, info.layer_index, memory);
         curve_populate_trans_data_structs(tc,
                                           curves,
                                           layer_space_to_world_space,

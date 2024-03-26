@@ -414,6 +414,7 @@ static VectorSet<int> get_hidden_material_indices(Object &object)
 
 IndexMask retrieve_editable_strokes(Object &object,
                                     const bke::greasepencil::Drawing &drawing,
+                                    int layer_index,
                                     IndexMaskMemory &memory)
 {
   using namespace blender;
@@ -427,6 +428,8 @@ IndexMask retrieve_editable_strokes(Object &object,
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange curves_range = drawing.strokes().curves_range();
   const bke::AttributeAccessor attributes = curves.attributes();
+  GreasePencil &grease_pencil = *static_cast<GreasePencil *>(object.data);
+  const bke::greasepencil::Layer &layer = *grease_pencil.layers()[layer_index];
 
   const VArray<int> materials = *attributes.lookup<int>("material_index", bke::AttrDomain::Curve);
   if (!materials) {
@@ -440,7 +443,8 @@ IndexMask retrieve_editable_strokes(Object &object,
   return IndexMask::from_predicate(
       curves_range, GrainSize(4096), memory, [&](const int64_t curve_i) {
         const int material_index = materials[curve_i];
-        return editable_material_indices.contains(material_index);
+        return editable_material_indices.contains(material_index) ||
+               !(layer.as_node().flag & GP_LAYER_TREE_NODE_LOCK_MATERIAL);
       });
 }
 
@@ -512,12 +516,14 @@ IndexMask retrieve_editable_points(Object &object,
 }
 
 IndexMask retrieve_editable_elements(Object &object,
-                                     const bke::greasepencil::Drawing &drawing,
+                                     const MutableDrawingInfo &info,
                                      const bke::AttrDomain selection_domain,
                                      IndexMaskMemory &memory)
 {
+
+  const bke::greasepencil::Drawing &drawing = info.drawing;
   if (selection_domain == bke::AttrDomain::Curve) {
-    return ed::greasepencil::retrieve_editable_strokes(object, drawing, memory);
+    return ed::greasepencil::retrieve_editable_strokes(object, drawing, info.layer_index, memory);
   }
   else if (selection_domain == bke::AttrDomain::Point) {
     return ed::greasepencil::retrieve_editable_points(object, drawing, memory);
@@ -553,15 +559,16 @@ IndexMask retrieve_visible_strokes(Object &object,
 }
 
 IndexMask retrieve_editable_and_selected_strokes(Object &object,
-                                                 const bke::greasepencil::Drawing &drawing,
+                                                 const MutableDrawingInfo &info,
                                                  IndexMaskMemory &memory)
 {
   using namespace blender;
-
+  const bke::greasepencil::Drawing &drawing = info.drawing;
   const bke::CurvesGeometry &curves = drawing.strokes();
   const IndexRange curves_range = drawing.strokes().curves_range();
 
-  const IndexMask editable_strokes = retrieve_editable_strokes(object, drawing, memory);
+  const IndexMask editable_strokes = retrieve_editable_strokes(
+      object, drawing, info.layer_index, memory);
   const IndexMask selected_strokes = ed::curves::retrieve_selected_curves(curves, memory);
 
   BitVector<> editable_strokes_bits(curves.curves_num(), false);
@@ -593,12 +600,13 @@ IndexMask retrieve_editable_and_selected_points(Object &object,
 }
 
 IndexMask retrieve_editable_and_selected_elements(Object &object,
-                                                  const bke::greasepencil::Drawing &drawing,
+                                                  const MutableDrawingInfo &info,
                                                   const bke::AttrDomain selection_domain,
                                                   IndexMaskMemory &memory)
 {
+  const bke::greasepencil::Drawing &drawing = info.drawing;
   if (selection_domain == bke::AttrDomain::Curve) {
-    return ed::greasepencil::retrieve_editable_and_selected_strokes(object, drawing, memory);
+    return ed::greasepencil::retrieve_editable_and_selected_strokes(object, info, memory);
   }
   else if (selection_domain == bke::AttrDomain::Point) {
     return ed::greasepencil::retrieve_editable_and_selected_points(object, drawing, memory);
