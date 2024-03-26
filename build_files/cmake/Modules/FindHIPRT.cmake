@@ -40,7 +40,7 @@ if(HIPRT_INCLUDE_DIR)
 
   find_file(HIPRT_BITCODE
     NAMES
-      hiprt${_hiprt_version}_amd_lib_win.bc
+      hiprt${_hiprt_version}_6.0_amd_lib_win.bc # this has to be handled automatically, should not hardcode rcom version
     HINTS
       ${HIPRT_ROOT_DIR}/bin
       ${HIPRT_ROOT_DIR}/dist/bin/Release

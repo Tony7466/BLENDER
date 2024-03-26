@@ -77,6 +77,7 @@ HIPRTDevice::HIPRTDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
       prim_time_offset(this, "prim_time_offset", MEM_GLOBAL)
 {
   HIPContextScope scope(this);
+  global_stack_buffer = {0};
   hiprtContextCreationInput hiprt_context_input = {0};
   hiprt_context_input.ctxt = hipContext;
   hiprt_context_input.device = hipDevice;
@@ -90,7 +91,7 @@ HIPRTDevice::HIPRTDevice(const DeviceInfo &info, Stats &stats, Profiler &profile
   }
 
   rt_result = hiprtCreateFuncTable(
-      hiprt_context, Max_Primitive_Type, Max_Intersect_Filter_Function, &functions_table);
+      hiprt_context, Max_Primitive_Type, Max_Intersect_Filter_Function, functions_table);
 
   if (rt_result != hiprtSuccess) {
     set_error(string_printf("Failed to create HIPRT Function Table"));
@@ -113,7 +114,8 @@ HIPRTDevice::~HIPRTDevice()
   custom_prim_info.free();
   prim_time_offset.free();
   prims_time.free();
-  global_stack_buffer.free();
+
+  hiprtDestroyGlobalStackBuffer(hiprt_context, global_stack_buffer);
   hiprtDestroyFuncTable(hiprt_context, functions_table);
   hiprtDestroyScene(hiprt_context, scene);
   hiprtDestroyContext(hiprt_context);
@@ -457,7 +459,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
     bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
 
     geom_input.type = hiprtPrimitiveTypeAABBList;
-    geom_input.aabbList.primitive = &bvh->custom_prim_aabb;
+    geom_input.primitive.aabbList.aabbs = &bvh->custom_prim_aabb;
     geom_input.geomType = Motion_Triangle;
   }
   else {
@@ -489,7 +491,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_triangle_blas(BVHHIPRT *bvh, Mesh *
     bvh->vertex_data.host_pointer = 0;
 
     geom_input.type = hiprtPrimitiveTypeTriangleMesh;
-    geom_input.triangleMesh.primitive = &(bvh->triangle_mesh);
+    geom_input.primitive.triangleMesh = bvh->triangle_mesh;
   }
 
   return geom_input;
@@ -612,7 +614,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_curve_blas(BVHHIPRT *bvh, Hair *hai
   bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
 
   geom_input.type = hiprtPrimitiveTypeAABBList;
-  geom_input.aabbList.primitive = &bvh->custom_prim_aabb;
+  geom_input.primitive.aabbList.aabbs = &bvh->custom_prim_aabb;
   geom_input.geomType = Curve;
 
   return geom_input;
@@ -713,7 +715,7 @@ hiprtGeometryBuildInput HIPRTDevice::prepare_point_blas(BVHHIPRT *bvh, PointClou
   bvh->custom_prim_aabb.aabbs = (void *)bvh->custom_primitive_bound.device_pointer;
 
   geom_input.type = hiprtPrimitiveTypeAABBList;
-  geom_input.aabbList.primitive = &bvh->custom_prim_aabb;
+  geom_input.primitive.aabbList.aabbs = &bvh->custom_prim_aabb;
   geom_input.geomType = Point;
 
   return geom_input;
@@ -760,13 +762,13 @@ void HIPRTDevice::build_blas(BVHHIPRT *bvh, Geometry *geom, hiprtBuildOptions op
 
   size_t blas_scratch_buffer_size = 0;
   hiprtError rt_err = hiprtGetGeometryBuildTemporaryBufferSize(
-      hiprt_context, &geom_input, &options, &blas_scratch_buffer_size);
+      hiprt_context, geom_input, options, blas_scratch_buffer_size);
 
   if (rt_err != hiprtSuccess) {
     set_error(string_printf("Failed to get scratch buffer size for BLAS!"));
   }
 
-  rt_err = hiprtCreateGeometry(hiprt_context, &geom_input, &options, &bvh->hiprt_geom);
+  rt_err = hiprtCreateGeometry(hiprt_context, geom_input, options, bvh->hiprt_geom);
 
   if (rt_err != hiprtSuccess) {
     set_error(string_printf("Failed to create BLAS!"));
@@ -781,8 +783,8 @@ void HIPRTDevice::build_blas(BVHHIPRT *bvh, Geometry *geom, hiprtBuildOptions op
     }
     rt_err = hiprtBuildGeometry(hiprt_context,
                                 hiprtBuildOperationBuild,
-                                &bvh->geom_input,
-                                &options,
+                                bvh->geom_input,
+                                options,
                                 (void *)(scratch_buffer.device_pointer),
                                 0,
                                 bvh->hiprt_geom);
@@ -932,7 +934,8 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
 
       user_instance_id[num_instances] = blender_instance_id;
       prim_visibility[num_instances] = mask;
-      hiprt_blas_ptr[num_instances] = (uint64_t)hiprt_geom_current;
+      hiprt_blas_ptr[num_instances].geometry = hiprt_geom_current;
+      hiprt_blas_ptr[num_instances].type = hiprtInstanceTypeGeometry;
       num_instances++;
     }
     blas_ptr[blender_instance_id] = (uint64_t)hiprt_geom_current;
@@ -961,13 +964,13 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
   }
 
   scene_input_ptr.instanceMasks = (void *)prim_visibility.device_pointer;
-  scene_input_ptr.instanceGeometries = (void *)hiprt_blas_ptr.device_pointer;
+  scene_input_ptr.instances = (void *)hiprt_blas_ptr.device_pointer;
   scene_input_ptr.instanceTransformHeaders = (void *)transform_headers.device_pointer;
   scene_input_ptr.instanceFrames = (void *)instance_transform_matrix.device_pointer;
 
   hiprtScene scene = 0;
 
-  hiprtError rt_err = hiprtCreateScene(hiprt_context, &scene_input_ptr, &options, &scene);
+  hiprtError rt_err = hiprtCreateScene(hiprt_context, scene_input_ptr, options, scene);
 
   if (rt_err != hiprtSuccess) {
     set_error(string_printf("Failed to create TLAS"));
@@ -975,7 +978,7 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
 
   size_t tlas_scratch_buffer_size;
   rt_err = hiprtGetSceneBuildTemporaryBufferSize(
-      hiprt_context, &scene_input_ptr, &options, &tlas_scratch_buffer_size);
+      hiprt_context, scene_input_ptr, options, tlas_scratch_buffer_size);
 
   if (rt_err != hiprtSuccess) {
     set_error(string_printf("Failed to get scratch buffer size for TLAS"));
@@ -988,8 +991,8 @@ hiprtScene HIPRTDevice::build_tlas(BVHHIPRT *bvh,
 
   rt_err = hiprtBuildScene(hiprt_context,
                            build_operation,
-                           &scene_input_ptr,
-                           &options,
+                           scene_input_ptr,
+                           options,
                            (void *)scratch_buffer.device_pointer,
                            0,
                            scene);
