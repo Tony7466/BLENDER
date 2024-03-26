@@ -638,8 +638,7 @@ static void operator_properties(wmOperatorType *ot)
                "Extrude Mode",
                nullptr);
 
-  RNA_def_enum(
-      ot->srna, "trim_solver", solver_modes, int(SolverMode::Fast), "Solver Mode", nullptr);
+  RNA_def_enum(ot->srna, "trim_solver", solver_modes, int(SolverMode::Fast), "Solver", nullptr);
 }
 
 static int gesture_box_exec(bContext *C, wmOperator *op)
