@@ -603,7 +603,7 @@ static void init_operation(gesture::GestureData &gesture_data, wmOperator &op)
   trim_operation->use_cursor_depth = RNA_boolean_get(op.ptr, "use_cursor_depth");
   trim_operation->orientation = OrientationType(RNA_enum_get(op.ptr, "trim_orientation"));
   trim_operation->extrude_mode = ExtrudeMode(RNA_enum_get(op.ptr, "trim_extrude_mode"));
-  trim_operation->solver_mode = SolverMode(RNA_enum_get(op.ptr, "trim_solver_mode"));
+  trim_operation->solver_mode = SolverMode(RNA_enum_get(op.ptr, "trim_solver"));
 
   /* If the cursor was not over the mesh, force the orientation to view. */
   if (!gesture_data.ss->gesture_initial_hit) {
@@ -639,7 +639,7 @@ static void operator_properties(wmOperatorType *ot)
                nullptr);
 
   RNA_def_enum(
-      ot->srna, "trim_solver_mode", solver_modes, int(SolverMode::Fast), "Solver Mode", nullptr);
+      ot->srna, "trim_solver", solver_modes, int(SolverMode::Fast), "Solver Mode", nullptr);
 }
 
 static int gesture_box_exec(bContext *C, wmOperator *op)
