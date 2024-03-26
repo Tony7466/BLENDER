@@ -115,14 +115,48 @@ static void write_stroke_transforms(bke::greasepencil::Drawing &drawing,
   rotations.finish();
 }
 
+static float2 rotate_by_angle(const float2 &p, const float angle)
+{
+  const float cos_angle = math::cos(angle);
+  const float sin_angle = math::sin(angle);
+  return float2(p.x * cos_angle - p.y * sin_angle, p.x * sin_angle + p.y * cos_angle);
+}
+
 static void write_fill_transforms(bke::greasepencil::Drawing &drawing,
                                   const IndexMask &curves_mask,
                                   const float2 &offset,
                                   const float rotation,
                                   const float scale)
 {
-  bke::CurvesGeometry &curves = drawing.strokes_for_write();
+  /* Texture matrices are a combination of an unknown 3D transform into UV space, with a known 2D
+   * transform on top.
 
+   * However, the modifier offset is not applied directly to the UV transform, since it emulates
+   * legacy behavior of the GPv2 modifier, which applied translation first, before rotating about
+   * (0.5, 0.5) and scaling. To achieve the same result as the legacy modifier, the actual offset
+   * is calculated such that the result matches the GPv2 behavior.
+   *
+   * The canonical transform is
+   *   uv = T + R / S * xy
+   *
+   * In terms of legacy variables TL, RL, SL the same transform is described as
+   *   uv = (RL * (xy / 2 + TL) + 1/2) / SL
+   *
+   * where the 1/2 scaling factor and offset are the "bounds" transform and rotation center.
+   *
+   * Rearranging into canonical loc/rot/scale terms:
+   *   uv = (RL * TL + 1/2) / SL + 1/2 * RL / SL * xy
+   * <=>
+   *    T = (RL * TL + 1/2) / SL
+   *    R = RL
+   *    S = 2*SL
+   * <=>
+   *    TL = 1/2 * R^T * (T * S - 1)
+   *    RL = R
+   *    SL = S/2
+   */
+
+  bke::CurvesGeometry &curves = drawing.strokes_for_write();
   bke::MutableAttributeAccessor attributes = curves.attributes_for_write();
   bke::SpanAttributeWriter<float2> uv_translations =
       attributes.lookup_or_add_for_write_span<float2>("uv_translation", bke::AttrDomain::Curve);
@@ -135,9 +169,24 @@ static void write_fill_transforms(bke::greasepencil::Drawing &drawing,
           VArray<float2>::ForSingle(float2(1.0f, 1.0f), curves.curves_num())));
 
   curves_mask.foreach_index(GrainSize(512), [&](int64_t curve_i) {
-    uv_translations.span[curve_i] += offset;
-    uv_scales.span[curve_i] *= scale;
-    uv_rotations.span[curve_i] += rotation;
+    const float2 uv_translation = uv_translations.span[curve_i];
+    const float uv_rotation = uv_rotations.span[curve_i];
+    const float2 uv_scale = uv_scales.span[curve_i];
+
+    const float2 legacy_uv_translation = rotate_by_angle(0.5f * uv_scale * uv_translation - 0.5f,
+                                                         -uv_rotation);
+    const float legacy_uv_rotation = uv_rotation;
+    const float2 legacy_uv_scale = 0.5f * uv_scale;
+
+    const float2 legacy_uv_translation_new = legacy_uv_translation + offset;
+    const float legacy_uv_rotation_new = legacy_uv_rotation + rotation;
+    const float2 legacy_uv_scale_new = legacy_uv_scale * scale;
+
+    uv_translations.span[curve_i] =
+        (rotate_by_angle(legacy_uv_translation_new, legacy_uv_rotation_new) + 0.5f) *
+        math::safe_rcp(legacy_uv_scale_new);
+    uv_rotations.span[curve_i] = legacy_uv_rotation_new;
+    uv_scales.span[curve_i] = 2.0f * legacy_uv_scale_new;
   });
 
   uv_rotations.finish();
