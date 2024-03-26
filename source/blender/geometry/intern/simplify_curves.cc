@@ -145,7 +145,7 @@ IndexMask simplify_curve_attribute(const Span<float3> positions,
                       std::is_same_v<T, float3>)
         {
           curve_simplifiy(points,
-                          positions.slice(points),
+                          positions,
                           cyclic[curve_i],
                           epsilon,
                           attribute_data.typed<T>(),
