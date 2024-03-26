@@ -15,27 +15,26 @@ Generate source code that can be copied into `vk_to_string.hh`:
   `python3 vk_to_string.py <path-to-vk-xml> --header`
 
 Every vulkan installation contains a `vk.xml` which contains the specification in a machine
-readable format. It is also part of the vulkan library in blender libs.
+readable format. `vk.xml` is also part of the vulkan library in blender libs.
 
 The generated source code will be printed to the console.
-
 """
 import argparse
 import xml.etree.ElementTree as ET
 
 
-# List of features that we use. These can extend our enum types and these extensions should also be parsed.
+# List of features blender uses. Features can extend enum flags.
 FEATURES = [
     "VK_VERSION_1_0",
     "VK_VERSION_1_1",
     "VK_VERSION_1_2",
 ]
-# List of extension (names) that we use. These can extend enum types that we use.
+# List of extensions blender uses. These can extend enum flags.
 EXTENSIONS = [
     "VK_KHR_swapchain",
 ]
 
-# List of vkCmd commands we use.
+# List of vkCmd commands blender uses.
 COMMANDS_TO_GEN = [
     "vkCmdClearColorImage",
     "vkCmdClearDepthStencilImage",
@@ -75,6 +74,7 @@ ENUMS_TO_IGNORE = [
     "VkStructureType"
 ]
 
+# A list of struct members to ignore as they aren't supported or not useful.
 MEMBERS_TO_IGNORE = [
     "sType", "pNext",
     # Disabled as these are arrays.
@@ -260,6 +260,7 @@ def generate_struct_to_string_cpp(struct, flags_to_generate, enums_to_generate, 
     return header + result
 
 
+# Parsing vk.xml
 def parse_features(root):
     # Find all features that we use.
     features = []
@@ -299,6 +300,7 @@ def parse_all_flags(root):
     return all_flags
 
 
+# Extraction of used data types.
 def extract_used_types(root, commands, all_flags):
     enums_to_generate = []
     enums_to_generate.extend(DEFAULT_ENUMS_TO_GENERATE)
