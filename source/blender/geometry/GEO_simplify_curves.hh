@@ -8,14 +8,16 @@
 
 namespace blender::geometry {
 
-using bke::CurvesGeometry;
-
 /**
- * Simplifies the selected curves using the Ramer-Douglas-Peucker algorithm by removing points that
- * don't change the shape of the curve within distance #epsilon.
+ * Compute an index masks of points to remove to simplify the curve attribute using the
+ * Ramer-Douglas-Peucker algorithm.
  */
-CurvesGeometry curves_simplify(const CurvesGeometry &src_curves,
-                               const IndexMask &selection,
-                               float epsilon);
+IndexMask simplify_curve_attribute(const Span<float3> positions,
+                                   const IndexMask &curves_selection,
+                                   const OffsetIndices<int> points_by_curve,
+                                   const VArray<bool> cyclic,
+                                   float epsilon,
+                                   GSpan attribute_data,
+                                   IndexMaskMemory memory);
 
 }  // namespace blender::geometry

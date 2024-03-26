@@ -13,21 +13,46 @@
 
 namespace blender::geometry {
 
+/* Computes a "perpendicular distance" value for the generic attribute data based on the
+ * positions of the curve.
+ *
+ * First, we compute a lambda value that represents a factor from the first point to the last
+ * point of the current range. This is the projection of the point of interest onto the vector
+ * from the first to the last point.
+ *
+ * Then this lambda value is used to compute an interpolated value of the first and last point
+ * and finally we compute the distance from the interpolated value to the actual value.
+ * This is the "perpendicular distance".
+ */
+template<typename T>
+float perpendicular_distance(const Span<float3> positions,
+                             const Span<T> attribute_data,
+                             const int64_t first_index,
+                             const int64_t last_index,
+                             const int64_t index)
+{
+  const float3 ray_dir = positions[last_index] - positions[first_index];
+  float lambda = 0.0f;
+  if (!math::is_zero(ray_dir)) {
+    lambda = math::dot(ray_dir, positions[index] - positions[first_index]) /
+             math::dot(ray_dir, ray_dir);
+  }
+  const T &from = attribute_data[first_index];
+  const T &to = attribute_data[last_index];
+  const T &value = attribute_data[index];
+  const T &interpolated = math::interpolate(from, to, lambda);
+  return math::distance(value, interpolated);
+}
+
 /**
  * An implementation of the Ramer-Douglas-Peucker algorithm.
- *
- * \param range: The range to simplify.
- * \param epsilon: The threshold distance from the coord between two points for when a point
- * in-between needs to be kept.
- * \param dist_function: A function that computes the distance to a point at an index in the range.
- * The IndexRange is a subrange of \a range and the index is an index relative to the subrange.
- * \param points_to_delete: Writes true to the indices for which the points should be removed.
  */
-static void ramer_douglas_peucker(
-    const IndexRange range,
-    const float epsilon,
-    const FunctionRef<float(int64_t, int64_t, int64_t)> dist_function,
-    MutableSpan<bool> points_to_delete)
+template<typename T>
+static void ramer_douglas_peucker(const IndexRange range,
+                                  const Span<float3> positions,
+                                  const float epsilon,
+                                  const Span<T> attribute_data,
+                                  MutableSpan<bool> points_to_delete)
 {
   /* Mark all points to be kept. */
   points_to_delete.slice(range).fill(false);
@@ -45,7 +70,8 @@ static void ramer_douglas_peucker(
     float max_dist = -1.0f;
     int max_index = -1;
     for (const int64_t index : inside_range) {
-      const float dist = dist_function(sub_range.first(), sub_range.last(), index);
+      const float dist = perpendicular_distance(
+          positions, attribute_data, sub_range.first(), sub_range.last(), index);
       if (dist > max_dist) {
         max_dist = dist;
         max_index = index - sub_range.first();
@@ -65,10 +91,12 @@ static void ramer_douglas_peucker(
   }
 }
 
+template<typename T>
 static void curve_simplifiy(const IndexRange points,
+                            const Span<float3> positions,
                             const bool cyclic,
                             const float epsilon,
-                            const FunctionRef<float(int64_t, int64_t, int64_t)> dist_function,
+                            const Span<T> attribute_data,
                             MutableSpan<bool> points_to_delete)
 {
   const Span<bool> curve_selection = points_to_delete.slice(points);
@@ -80,60 +108,56 @@ static void curve_simplifiy(const IndexRange points,
 
   const Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(curve_selection, true);
   threading::parallel_for(
-      selection_ranges.index_range(), 1024, [&](const IndexRange range_of_ranges) {
+      selection_ranges.index_range(), 512, [&](const IndexRange range_of_ranges) {
         for (const IndexRange range : selection_ranges.as_span().slice(range_of_ranges)) {
           ramer_douglas_peucker(
-              range.shift(points.start()), epsilon, dist_function, points_to_delete);
+              range.shift(points.start()), positions, epsilon, attribute_data, points_to_delete);
         }
       });
 
-  /* For cyclic curves, handle the last segment. */
+  /* For cyclic curves, handle the last segment separately. */
   if (cyclic && points.size() > 2 && is_last_segment_selected) {
-    const float dist = dist_function(points.last(1), points.first(), points.last());
+    const float dist = perpendicular_distance(
+        positions, attribute_data, points.last(1), points.first(), points.last());
     if (dist <= epsilon) {
       points_to_delete[points.last()] = true;
     }
   }
 }
 
-CurvesGeometry curves_simplify(const CurvesGeometry &src_curves,
-                               const IndexMask &selection,
-                               const float epsilon)
+IndexMask simplify_curve_attribute(const Span<float3> positions,
+                                   const IndexMask &curves_selection,
+                                   const OffsetIndices<int> points_by_curve,
+                                   const VArray<bool> cyclic,
+                                   const float epsilon,
+                                   GSpan attribute_data,
+                                   IndexMaskMemory memory)
 {
-  CurvesGeometry dst_curves(src_curves);
-
-  const Span<float3> positions = src_curves.positions();
-  const VArray<bool> cyclic = src_curves.cyclic();
-  const OffsetIndices<int> points_by_curve = src_curves.points_by_curve();
-
-  /* Distance functions for `ramer_douglas_peucker_simplify`. */
-  const auto dist_function_positions =
-      [positions](int64_t first_index, int64_t last_index, int64_t index) {
-        const float dist_position = dist_to_line_v3(
-            positions[index], positions[first_index], positions[last_index]);
-        return dist_position;
-      };
-
-  Array<bool> points_to_delete(src_curves.points_num(), false);
-  bke::curves::fill_points(points_by_curve, selection, true, points_to_delete.as_mutable_span());
-
-  selection.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
+  Array<bool> points_to_delete(positions.size(), false);
+  bke::curves::fill_points(
+      points_by_curve, curves_selection, true, points_to_delete.as_mutable_span());
+  curves_selection.foreach_index(GrainSize(512), [&](const int64_t curve_i) {
     const IndexRange points = points_by_curve[curve_i];
     if (epsilon > 0.0f) {
-      curve_simplifiy(points,
-                      cyclic[curve_i],
-                      epsilon,
-                      dist_function_positions,
-                      points_to_delete.as_mutable_span());
+      bke::attribute_math::convert_to_static_type(attribute_data.type(), [&](auto dummy) {
+        using T = decltype(dummy);
+        if constexpr (std::is_same_v<T, float> || std::is_same_v<T, float2> ||
+                      std::is_same_v<T, float3>)
+        {
+          curve_simplifiy(points,
+                          positions.slice(points),
+                          cyclic[curve_i],
+                          epsilon,
+                          attribute_data.typed<T>(),
+                          points_to_delete.as_mutable_span());
+        }
+      });
     }
     else {
       points_to_delete.as_mutable_span().slice(points).fill(false);
     }
   });
-
-  IndexMaskMemory memory;
-  dst_curves.remove_points(IndexMask::from_bools(points_to_delete, memory), {});
-  return dst_curves;
+  return IndexMask::from_bools(points_to_delete, memory);
 }
 
 }  // namespace blender::geometry
