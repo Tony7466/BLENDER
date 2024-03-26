@@ -155,7 +155,7 @@ set(SRC
   intern/usd_reader_mesh.hh
   intern/usd_reader_nurbs.hh
   intern/usd_reader_pointinstancer.hh
-  intern/usd_reader_points.h
+  intern/usd_reader_points.hh
   intern/usd_reader_prim.hh
   intern/usd_reader_shape.hh
   intern/usd_reader_skeleton.hh

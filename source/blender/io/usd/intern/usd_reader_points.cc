@@ -2,7 +2,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0-or-later */
 
-#include "usd_reader_points.h"
+#include "usd_reader_points.hh"
 
 #include "BKE_geometry_set.hh"
 #include "BKE_lib_id.hh"
