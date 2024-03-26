@@ -99,10 +99,6 @@ static void curve_simplifiy(const IndexRange points,
                             MutableSpan<bool> points_to_delete)
 {
   const Span<bool> curve_selection = points_to_delete.slice(points);
-  if (!curve_selection.contains(true)) {
-    return;
-  }
-
   const bool is_last_segment_selected = (curve_selection.first() && curve_selection.last());
 
   const Vector<IndexRange> selection_ranges = array_utils::find_all_ranges(curve_selection, true);
