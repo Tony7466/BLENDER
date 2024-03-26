@@ -50,7 +50,12 @@ float (*ED_curves_point_normals_array_create(const Curves *curves_id))[3];
 
 namespace blender::ed::curves {
 
+/* Get selection attribute names need for given curve.
+ * Posible outcomes: [".selection"] if Bezier curves are present,
+ * [".selection", ".selection_handle_left", ".selection_handle_right"] otherwise. */
 Span<std::string> get_curves_selection_attribute_names(const bke::CurvesGeometry &curves);
+
+/* Get all possible curve selection attribute names. */
 Span<std::string> get_curves_all_selection_attribute_names();
 
 class SelectionAttributeWriterList {

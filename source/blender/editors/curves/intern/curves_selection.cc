@@ -79,23 +79,17 @@ IndexMask retrieve_selected_points(const Curves &curves_id, IndexMaskMemory &mem
 static const std::array<std::string, 3> selection_attribute_names_{
     ".selection", ".selection_handle_left", ".selection_handle_right"};
 
-static Span<std::string> get_curves_selection_attribute_names(const int size)
-{
-  return Span<std::string>(selection_attribute_names_.data(), size);
-}
-
 Span<std::string> get_curves_selection_attribute_names(const bke::CurvesGeometry &curves)
 {
   const bke::AttributeAccessor attributes = curves.attributes();
-  return get_curves_selection_attribute_names(
-      (attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
-          selection_attribute_names_.size() :
-          1);
+  return (attributes.contains("handle_type_left") && attributes.contains("handle_type_right")) ?
+             get_curves_all_selection_attribute_names() :
+             Span<std::string>(selection_attribute_names_.data(), 1);
 }
 
 Span<std::string> get_curves_all_selection_attribute_names()
 {
-  return get_curves_selection_attribute_names(selection_attribute_names_.size());
+  return Span<std::string>(selection_attribute_names_.data(), selection_attribute_names_.size());
 }
 
 SelectionAttributeWriterList::SelectionAttributeWriterList(bke::CurvesGeometry &curves,
