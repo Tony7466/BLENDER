@@ -128,7 +128,7 @@ static void curve_simplifiy(const IndexRange points,
 IndexMask simplify_curve_attribute(const Span<float3> positions,
                                    const IndexMask &curves_selection,
                                    const OffsetIndices<int> points_by_curve,
-                                   const VArray<bool> cyclic,
+                                   const VArray<bool> &cyclic,
                                    const float epsilon,
                                    GSpan attribute_data,
                                    IndexMaskMemory memory)
