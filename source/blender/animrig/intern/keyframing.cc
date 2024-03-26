@@ -227,11 +227,12 @@ static BitVector<> nla_map_keyframe_values_and_generate_reports(
     PropertyRNA &prop,
     NlaKeyframingContext *nla_context,
     const AnimationEvalContext *anim_eval_context,
-    ReportList *reports)
+    ReportList *reports,
+    bool *force_all)
 {
   BitVector<> successful_remaps(values.size(), false);
   BKE_animsys_nla_remap_keyframe_values(
-      nla_context, &ptr, &prop, values, index, anim_eval_context, nullptr, successful_remaps);
+      nla_context, &ptr, &prop, values, index, anim_eval_context, force_all, successful_remaps);
   get_keyframe_values_create_reports(
       reports, ptr, &prop, index, values.size(), false, successful_remaps);
   return successful_remaps;
@@ -415,7 +416,14 @@ bool insert_keyframe_direct(ReportList *reports,
   Vector<float> values = get_keyframe_values(&ptr, prop, visual_keyframing);
 
   BitVector<> successful_remaps = nla_map_keyframe_values_and_generate_reports(
-      values.as_mutable_span(), index, ptr, *prop, nla_context, anim_eval_context, reports);
+      values.as_mutable_span(),
+      index,
+      ptr,
+      *prop,
+      nla_context,
+      anim_eval_context,
+      reports,
+      nullptr);
 
   float current_value = 0.0f;
   if (index >= 0 && index < values.size()) {
@@ -578,12 +586,19 @@ int insert_keyframe(Main *bmain,
   const float nla_mapped_frame = nla_time_remap(
       anim_eval_context, &id_ptr, adt, act, &nla_cache, &nla_context);
 
-  bool force_all;
   const bool visual_keyframing = flag & INSERTKEY_MATRIX;
   Vector<float> values = get_keyframe_values(&ptr, prop, visual_keyframing);
 
+  bool force_all;
   BitVector<> successful_remaps = nla_map_keyframe_values_and_generate_reports(
-      values.as_mutable_span(), array_index, ptr, *prop, nla_context, anim_eval_context, reports);
+      values.as_mutable_span(),
+      array_index,
+      ptr,
+      *prop,
+      nla_context,
+      anim_eval_context,
+      reports,
+      &force_all);
 
   CombinedKeyingResult combined_result;
 
