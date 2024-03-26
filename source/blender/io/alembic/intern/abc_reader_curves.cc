@@ -340,10 +340,10 @@ void AbcCurveReader::readObjectData(Main *bmain, const Alembic::Abc::ISampleSele
 
 static void add_bezier_control_point(int cp,
                                      int offset,
+                                     const Span<Imath::V3f> alembic_positions,
                                      MutableSpan<float3> positions,
                                      MutableSpan<float3> handles_left,
-                                     MutableSpan<float3> handles_right,
-                                     const Span<Imath::V3f> alembic_positions)
+                                     MutableSpan<float3> handles_right)
 {
   if (offset == 0) {
     positions[cp] = to_zup_float3(alembic_positions[offset]);
@@ -413,10 +413,10 @@ void AbcCurveReader::read_curves_sample(Curves *curves_id,
       for (const int cp : IndexRange(cp_count)) {
         add_bezier_control_point(cp,
                                  cp_offset,
+                                 alembic_points.slice(alembic_point_offset, alembic_point_count),
                                  curves_positions.slice(point_offset, point_count),
                                  handles_left.slice(point_offset, point_count),
-                                 handles_right.slice(point_offset, point_count),
-                                 alembic_points.slice(alembic_point_offset, alembic_point_count));
+                                 handles_right.slice(point_offset, point_count));
         cp_offset += 3;
       }
 
